@@ -77,6 +77,7 @@ impl LuaBridge {
             element_data.set("visible", element.visible)?;
             element_data.set("text", element.text.clone())?;
             element_data.set("style_id", element.style_id)?;
+            element_data.set("is_checked", element.current_state == kryon_core::InteractionState::Checked)?;
             
             // Store parent/children relationships
             if let Some(parent_id) = element.parent {

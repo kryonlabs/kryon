@@ -162,6 +162,12 @@ impl StyleComputer {
                     computed_style.visible = b;
                 }
             }
+            crate::PropertyId::Display => {
+                if let Some(s) = prop_value.as_string() {
+                    // Handle display: none as equivalent to visibility: hidden
+                    computed_style.visible = s != "none";
+                }
+            }
             crate::PropertyId::Cursor => {
                 if let Some(s) = prop_value.as_string() {
                     computed_style.cursor = match s {

@@ -97,6 +97,17 @@ function getElementById(element_id)
                 return true -- Default to visible if not found
             end,
 
+            -- Gets the current checked state of the element, considering pending changes.
+            getChecked = function(self)
+                if _pending_state_changes[self.numeric_id] ~= nil then
+                    return _pending_state_changes[self.numeric_id]
+                end
+                if _elements_data and _elements_data[self.numeric_id] then
+                    return _elements_data[self.numeric_id].is_checked or false
+                end
+                return false -- Default to unchecked if not found
+            end,
+
             -- DOM Traversal Methods
             getParent = function(self) return _get_parent_element(self.numeric_id) end,
             getChildren = function(self) return _get_children_elements(self.numeric_id) end,

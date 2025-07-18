@@ -1120,6 +1120,19 @@ impl KRBParser {
                     for _ in 0..size { self.read_u8(); }
                 }
             }
+            0x1D => { // StyleId
+                if size == 1 {
+                    let string_index = self.read_u8() as usize;
+                    if string_index < strings.len() {
+                        let style_name = strings[string_index].clone();
+                        element.custom_properties.insert("style_name".to_string(), PropertyValue::String(style_name.clone()));
+                        eprintln!("[PROP] StyleId: '{}'", style_name);
+                    }
+                } else {
+                    eprintln!("[PROP] StyleId: size mismatch, expected 1, got {}, skipping", size);
+                    for _ in 0..size { self.read_u8(); }
+                }
+            }
             0x8B => { // Overflow
                 if size == 2 {
                     let overflow_value = self.read_u16();
@@ -2095,6 +2108,208 @@ impl KRBParser {
         Ok(())
     }
     
+    /// Public method to re-apply style properties to specific elements
+    /// This is used when template variables change style_id values
+    pub fn reapply_styles_for_elements(&self, elements: &mut HashMap<ElementId, Element>, styles: &HashMap<u8, Style>, element_ids: &[ElementId]) -> Result<()> {
+        for &element_id in element_ids {
+            if let Some(element) = elements.get_mut(&element_id) {
+                if element.style_id > 0 {
+                    if let Some(style_block) = styles.get(&element.style_id) {
+                        eprintln!("[STYLE_REAPPLY] Re-applying style '{}' (ID: {}) to element {}", 
+                            style_block.name, element.style_id, element_id);
+                        
+                        // Apply width property (0x19)
+                        if let Some(width_prop) = style_block.properties.get(&0x19) {
+                            if let Some(width) = width_prop.as_float() {
+                                eprintln!("[STYLE_REAPPLY] Applying width {} from style '{}' to element {}", 
+                                    width, style_block.name, element_id);
+                                element.size.x = width;
+                            }
+                        }
+                        
+                        // Apply height property (0x1A)
+                        if let Some(height_prop) = style_block.properties.get(&0x1A) {
+                            if let Some(height) = height_prop.as_float() {
+                                eprintln!("[STYLE_REAPPLY] Applying height {} from style '{}' to element {}", 
+                                    height, style_block.name, element_id);
+                                element.size.y = height;
+                            }
+                        }
+                        
+                        // Apply display property (0x40) - CRITICAL FOR VISIBILITY
+                        if let Some(display_prop) = style_block.properties.get(&0x40) {
+                            if let Some(display_value) = display_prop.as_string() {
+                                eprintln!("[STYLE_REAPPLY] Applying display '{}' from style '{}' to element {}", 
+                                    display_value, style_block.name, element_id);
+                                
+                                // Set the display property in the element
+                                element.custom_properties.insert("display".to_string(), PropertyValue::String(display_value.to_string()));
+                                
+                                // Handle display: none as equivalent to visibility: hidden
+                                element.visible = display_value != "none";
+                                eprintln!("[STYLE_REAPPLY] Set element {} visibility to {}", element_id, element.visible);
+                            }
+                        }
+                        
+                        // Apply background_color property (0x01)
+                        if let Some(bg_color_prop) = style_block.properties.get(&0x01) {
+                            if let Some(bg_color_value) = bg_color_prop.as_color() {
+                                eprintln!("[STYLE_REAPPLY] Applying background_color {:?} from style '{}' to element {}", 
+                                    bg_color_value, style_block.name, element_id);
+                                
+                                element.custom_properties.insert("background_color".to_string(), PropertyValue::Color(bg_color_value));
+                            }
+                        }
+                        
+                        // Apply border_color property (0x03)
+                        if let Some(border_color_prop) = style_block.properties.get(&0x03) {
+                            if let Some(border_color_value) = border_color_prop.as_color() {
+                                eprintln!("[STYLE_REAPPLY] Applying border_color {:?} from style '{}' to element {}", 
+                                    border_color_value, style_block.name, element_id);
+                                
+                                element.custom_properties.insert("border_color".to_string(), PropertyValue::Color(border_color_value));
+                            }
+                        }
+                        
+                        // Apply border_width property (0x04)
+                        if let Some(border_width_prop) = style_block.properties.get(&0x04) {
+                            if let Some(border_width) = border_width_prop.as_float() {
+                                eprintln!("[STYLE_REAPPLY] Applying border_width {} from style '{}' to element {}", 
+                                    border_width, style_block.name, element_id);
+                                
+                                element.custom_properties.insert("border_width".to_string(), PropertyValue::Float(border_width));
+                            }
+                        }
+                        
+                        // Apply display property (important for visibility)
+                        if let Some(display_prop) = style_block.properties.get(&0x03) {
+                            if let Some(display_value) = display_prop.as_string() {
+                                eprintln!("[STYLE_REAPPLY] Applying display '{}' from style '{}' to element {}", 
+                                    display_value, style_block.name, element_id);
+                                element.custom_properties.insert("display".to_string(), PropertyValue::String(display_value.to_string()));
+                            }
+                        }
+                        
+                        // Apply other important layout properties
+                        if let Some(layout_prop) = style_block.properties.get(&0x06)
+                            .or_else(|| style_block.properties.get(&0x1A)) {
+                            if let Some(layout_flags) = layout_prop.as_int() {
+                                let new_flags = layout_flags as u8;
+                                eprintln!("[STYLE_REAPPLY] Applying layout flags 0x{:02X} from style '{}' to element {}", 
+                                    new_flags, style_block.name, element_id);
+                                element.layout_flags = new_flags;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl KRBFile {
+    /// Re-apply styles for specific elements (public interface)
+    pub fn reapply_styles_for_elements(&self, elements: &mut HashMap<ElementId, Element>, element_ids: &[ElementId]) -> Result<()> {
+        // Apply styles directly without needing a parser instance
+        for &element_id in element_ids {
+            if let Some(element) = elements.get_mut(&element_id) {
+                if element.style_id > 0 {
+                    if let Some(style_block) = self.styles.get(&element.style_id) {
+                        eprintln!("[STYLE_REAPPLY] Re-applying style '{}' (ID: {}) to element {}", 
+                            style_block.name, element.style_id, element_id);
+                        
+                        // Apply width property (0x19)
+                        if let Some(width_prop) = style_block.properties.get(&0x19) {
+                            if let Some(width) = width_prop.as_float() {
+                                eprintln!("[STYLE_REAPPLY] Applying width {} from style '{}' to element {}", 
+                                    width, style_block.name, element_id);
+                                element.size.x = width;
+                            }
+                        }
+                        
+                        // Apply height property (0x1A)
+                        if let Some(height_prop) = style_block.properties.get(&0x1A) {
+                            if let Some(height) = height_prop.as_float() {
+                                eprintln!("[STYLE_REAPPLY] Applying height {} from style '{}' to element {}", 
+                                    height, style_block.name, element_id);
+                                element.size.y = height;
+                            }
+                        }
+                        
+                        // Apply display property (0x40) - CRITICAL FOR VISIBILITY
+                        if let Some(display_prop) = style_block.properties.get(&0x40) {
+                            if let Some(display_value) = display_prop.as_string() {
+                                eprintln!("[STYLE_REAPPLY] Applying display '{}' from style '{}' to element {}", 
+                                    display_value, style_block.name, element_id);
+                                
+                                // Set the display property in the element
+                                element.custom_properties.insert("display".to_string(), PropertyValue::String(display_value.to_string()));
+                                
+                                // Handle display: none as equivalent to visibility: hidden
+                                element.visible = display_value != "none";
+                                eprintln!("[STYLE_REAPPLY] Set element {} visibility to {}", element_id, element.visible);
+                            }
+                        }
+                        
+                        // Apply background_color property (0x01)
+                        if let Some(bg_color_prop) = style_block.properties.get(&0x01) {
+                            if let Some(bg_color_value) = bg_color_prop.as_color() {
+                                eprintln!("[STYLE_REAPPLY] Applying background_color {:?} from style '{}' to element {}", 
+                                    bg_color_value, style_block.name, element_id);
+                                
+                                element.custom_properties.insert("background_color".to_string(), PropertyValue::Color(bg_color_value));
+                            }
+                        }
+                        
+                        // Apply border_color property (0x03)
+                        if let Some(border_color_prop) = style_block.properties.get(&0x03) {
+                            if let Some(border_color_value) = border_color_prop.as_color() {
+                                eprintln!("[STYLE_REAPPLY] Applying border_color {:?} from style '{}' to element {}", 
+                                    border_color_value, style_block.name, element_id);
+                                
+                                element.custom_properties.insert("border_color".to_string(), PropertyValue::Color(border_color_value));
+                            }
+                        }
+                        
+                        // Apply border_width property (0x04)
+                        if let Some(border_width_prop) = style_block.properties.get(&0x04) {
+                            if let Some(border_width) = border_width_prop.as_float() {
+                                eprintln!("[STYLE_REAPPLY] Applying border_width {} from style '{}' to element {}", 
+                                    border_width, style_block.name, element_id);
+                                
+                                element.custom_properties.insert("border_width".to_string(), PropertyValue::Float(border_width));
+                            }
+                        }
+                        
+                        // Apply display property (important for visibility)
+                        if let Some(display_prop) = style_block.properties.get(&0x03) {
+                            if let Some(display_value) = display_prop.as_string() {
+                                eprintln!("[STYLE_REAPPLY] Applying display '{}' from style '{}' to element {}", 
+                                    display_value, style_block.name, element_id);
+                                element.custom_properties.insert("display".to_string(), PropertyValue::String(display_value.to_string()));
+                            }
+                        }
+                        
+                        // Apply other important layout properties
+                        if let Some(layout_prop) = style_block.properties.get(&0x06)
+                            .or_else(|| style_block.properties.get(&0x1A)) {
+                            if let Some(layout_flags) = layout_prop.as_int() {
+                                let new_flags = layout_flags as u8;
+                                eprintln!("[STYLE_REAPPLY] Applying layout flags 0x{:02X} from style '{}' to element {}", 
+                                    new_flags, style_block.name, element_id);
+                                element.layout_flags = new_flags;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl KRBParser {
     // Helper methods for reading binary data
     fn read_u8(&mut self) -> u8 {
         if self.position >= self.data.len() {

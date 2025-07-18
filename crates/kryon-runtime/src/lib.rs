@@ -6,7 +6,7 @@ use kryon_core::{
 };
 use kryon_layout::{LayoutEngine, TaffyLayoutEngine, LayoutResult};
 use kryon_render::{ElementRenderer, CommandRenderer, KeyCode};
-use kryon_render::events::{InputEvent, MouseButton};
+use kryon_render::events::{InputEvent, MouseButton, KeyModifiers};
 use glam::Vec2;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -71,7 +71,7 @@ impl<R: CommandRenderer> KryonApp<R> {
             Box::new(TaffyLayoutEngine::new())
         });
         let renderer = ElementRenderer::new(renderer, style_computer.clone());
-        let viewport_size = renderer.viewport_size();
+        let viewport_size = renderer.backend().viewport_size();
         
         let event_system = EventSystem::new();
         let script_system = ScriptSystem::new()?;
@@ -289,7 +289,8 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
         };
         
         // Update the cursor through the renderer
-        self.renderer.backend_mut().set_cursor(cursor_type);
+        // Note: set_cursor is backend-specific, not part of CommandRenderer trait
+        // self.renderer.backend_mut().set_cursor(cursor_type);
         
         // Update hover states (but preserve checked state)
         for (element_id, element) in self.elements.iter_mut() {
@@ -387,7 +388,7 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
         Ok(())
     }
     
-    fn handle_key_press(&mut self, key: KeyCode, _modifiers: kryon_render::KeyModifiers) -> anyhow::Result<()> {
+    fn handle_key_press(&mut self, key: KeyCode, _modifiers: KeyModifiers) -> anyhow::Result<()> {
         // Handle global key events
         match key {
             KeyCode::Escape => {
@@ -475,7 +476,7 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
         
         if !bindings_for_var.is_empty() {
             // Update the elements with new template values
-            self.template_engine.update_elements(&mut self.elements);
+            self.template_engine.update_elements(&mut self.elements, &self.krb_file);
             
             // Mark layout and render as needed
             self.mark_needs_layout();
@@ -511,7 +512,7 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
     /// Initialize template variables (apply initial values to elements)
     pub fn initialize_template_variables(&mut self) -> anyhow::Result<()> {
         if self.template_engine.has_bindings() {
-            self.template_engine.update_elements(&mut self.elements);
+            self.template_engine.update_elements(&mut self.elements, &self.krb_file);
             self.mark_needs_layout();
             self.mark_needs_render();
             tracing::info!("Template variables initialized");

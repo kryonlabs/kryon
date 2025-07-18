@@ -401,18 +401,37 @@ impl TemplateEngine {
             }
             Expression::Ternary { condition, true_value, false_value } => {
                 let condition_result = self.evaluate_expr(condition);
-                let is_true = match condition_result.as_str() {
-                    "true" => true,
-                    "false" => false,
-                    "" => false,
-                    "0" => false,
-                    _ => true, // Non-empty strings are truthy
-                };
+                let is_true = self.evaluate_truthiness(&condition_result);
                 
                 if is_true {
                     self.evaluate_expr(true_value)
                 } else {
                     self.evaluate_expr(false_value)
+                }
+            }
+        }
+    }
+    
+    /// Evaluate truthiness of a value using JavaScript-like rules
+    fn evaluate_truthiness(&self, value: &str) -> bool {
+        match value {
+            // Explicit boolean strings
+            "true" => true,
+            "false" => false,
+            // Empty string is falsy
+            "" => false,
+            // Zero values are falsy
+            "0" | "0.0" => false,
+            // Null/undefined-like values are falsy
+            "null" | "undefined" | "NaN" => false,
+            // Try to parse as number
+            _ => {
+                // If it's a valid number, check if it's zero
+                if let Ok(num) = value.parse::<f64>() {
+                    num != 0.0 && !num.is_nan()
+                } else {
+                    // Non-empty strings are truthy
+                    true
                 }
             }
         }
@@ -455,8 +474,11 @@ impl TemplateEngine {
     }
     
     /// Update all elements that have template bindings
-    pub fn update_elements(&self, elements: &mut HashMap<ElementId, Element>) {
+    pub fn update_elements(&self, elements: &mut HashMap<ElementId, Element>, krb_file: &kryon_core::KRBFile) {
+        let styles = &krb_file.styles;
         eprintln!("[TEMPLATE_UPDATE] Updating {} bindings on {} elements", self.bindings.len(), elements.len());
+        let mut elements_with_style_changes = Vec::new();
+        
         for binding in &self.bindings {
             if let Some(element) = elements.get_mut(&(binding.element_index as u32)) {
                 let evaluated_value = self.evaluate_expression(&binding.template_expression);
@@ -472,11 +494,41 @@ impl TemplateEngine {
                         eprintln!("[TEMPLATE_UPDATE] Element {} text updated: '{}' -> '{}'", 
                             binding.element_index, old_text, evaluated_value);
                     }
+                    0x1D => { // StyleId property
+                        let old_style_id = element.style_id;
+                        // Find the style ID by name
+                        let mut new_style_id = 0;
+                        for (style_id, style) in styles {
+                            if style.name == evaluated_value {
+                                new_style_id = *style_id;
+                                break;
+                            }
+                        }
+                        element.style_id = new_style_id;
+                        eprintln!("[TEMPLATE_UPDATE] Element {} style_id updated: {} -> {} (name: '{}')", 
+                            binding.element_index, old_style_id, new_style_id, evaluated_value);
+                        
+                        // Track this element for style reapplication
+                        if old_style_id != new_style_id {
+                            elements_with_style_changes.push(binding.element_index as u32);
+                            eprintln!("[TEMPLATE_UPDATE] Marked element {} for style reapplication", binding.element_index);
+                        }
+                    }
                     // Add more property types as needed
                     _ => {}
                 }
             } else {
                 eprintln!("[TEMPLATE_UPDATE] Element {} not found in elements map", binding.element_index);
+            }
+        }
+        
+        // Re-apply styles for elements that had their style_id changed
+        if !elements_with_style_changes.is_empty() {
+            eprintln!("[TEMPLATE_UPDATE] Re-applying styles for {} elements with style changes", elements_with_style_changes.len());
+            if let Err(e) = krb_file.reapply_styles_for_elements(elements, &elements_with_style_changes) {
+                eprintln!("[TEMPLATE_UPDATE] Error re-applying styles: {}", e);
+            } else {
+                eprintln!("[TEMPLATE_UPDATE] Successfully re-applied styles for {} elements", elements_with_style_changes.len());
             }
         }
     }
@@ -580,10 +632,10 @@ mod tests {
                 assert_eq!(**true_value, Expression::String("A".to_string()));
                 
                 // Check nested ternary in false value
-                match &**false_value {
+                match false_value.as_ref() {
                     Expression::Ternary { condition: nested_cond, true_value: nested_true, false_value: nested_false } => {
                         // Check nested condition
-                        match &**nested_cond {
+                        match nested_cond.as_ref() {
                             Expression::Equals(left, right) => {
                                 assert_eq!(**left, Expression::Variable("x".to_string()));
                                 assert_eq!(**right, Expression::String("b".to_string()));
@@ -604,7 +656,20 @@ mod tests {
     #[test]
     fn test_evaluate_ternary() {
         let krb_file = KRBFile {
-            header: Default::default(),
+            header: KRBHeader {
+                magic: [0x4B, 0x52, 0x42, 0x01],
+                version: 1,
+                flags: 0,
+                element_count: 0,
+                style_count: 0,
+                component_count: 0,
+                script_count: 0,
+                string_count: 0,
+                resource_count: 0,
+                template_variable_count: 1,
+                template_binding_count: 0,
+                transform_count: 0,
+            },
             strings: vec![],
             elements: HashMap::new(),
             styles: HashMap::new(),
@@ -619,6 +684,8 @@ mod tests {
                 }
             ],
             template_bindings: vec![],
+            transforms: vec![],
+            fonts: HashMap::new(),
         };
         
         let engine = TemplateEngine::new(&krb_file);
@@ -635,9 +702,90 @@ mod tests {
     }
     
     #[test]
+    fn test_enhanced_truthiness() {
+        let krb_file = KRBFile {
+            header: KRBHeader {
+                magic: [0x4B, 0x52, 0x42, 0x01],
+                version: 1,
+                flags: 0,
+                element_count: 0,
+                style_count: 0,
+                component_count: 0,
+                script_count: 0,
+                string_count: 0,
+                resource_count: 0,
+                template_variable_count: 1,
+                template_binding_count: 0,
+                transform_count: 0,
+            },
+            strings: vec![],
+            elements: HashMap::new(),
+            styles: HashMap::new(),
+            root_element_id: None,
+            resources: vec![],
+            scripts: vec![],
+            template_variables: vec![
+                TemplateVariable {
+                    name: "test_var".to_string(),
+                    value_type: 15,
+                    default_value: "1".to_string(),
+                }
+            ],
+            template_bindings: vec![],
+            transforms: vec![],
+            fonts: HashMap::new(),
+        };
+        
+        let mut engine = TemplateEngine::new(&krb_file);
+        
+        // Test numeric truthiness
+        engine.set_variable("test_var", "0");
+        assert_eq!(engine.evaluate_expression("$test_var ? \"TRUE\" : \"FALSE\""), "FALSE");
+        
+        engine.set_variable("test_var", "1");
+        assert_eq!(engine.evaluate_expression("$test_var ? \"TRUE\" : \"FALSE\""), "TRUE");
+        
+        engine.set_variable("test_var", "0.0");
+        assert_eq!(engine.evaluate_expression("$test_var ? \"TRUE\" : \"FALSE\""), "FALSE");
+        
+        engine.set_variable("test_var", "3.14");
+        assert_eq!(engine.evaluate_expression("$test_var ? \"TRUE\" : \"FALSE\""), "TRUE");
+        
+        // Test string truthiness
+        engine.set_variable("test_var", "");
+        assert_eq!(engine.evaluate_expression("$test_var ? \"TRUE\" : \"FALSE\""), "FALSE");
+        
+        engine.set_variable("test_var", "hello");
+        assert_eq!(engine.evaluate_expression("$test_var ? \"TRUE\" : \"FALSE\""), "TRUE");
+        
+        // Test special values
+        engine.set_variable("test_var", "null");
+        assert_eq!(engine.evaluate_expression("$test_var ? \"TRUE\" : \"FALSE\""), "FALSE");
+        
+        engine.set_variable("test_var", "undefined");
+        assert_eq!(engine.evaluate_expression("$test_var ? \"TRUE\" : \"FALSE\""), "FALSE");
+        
+        engine.set_variable("test_var", "NaN");
+        assert_eq!(engine.evaluate_expression("$test_var ? \"TRUE\" : \"FALSE\""), "FALSE");
+    }
+    
+    #[test]
     fn test_evaluate_comparison_ternary() {
         let krb_file = KRBFile {
-            header: Default::default(),
+            header: KRBHeader {
+                magic: [0x4B, 0x52, 0x42, 0x01],
+                version: 1,
+                flags: 0,
+                element_count: 0,
+                style_count: 0,
+                component_count: 0,
+                script_count: 0,
+                string_count: 0,
+                resource_count: 0,
+                template_variable_count: 1,
+                template_binding_count: 0,
+                transform_count: 0,
+            },
             strings: vec![],
             elements: HashMap::new(),
             styles: HashMap::new(),
@@ -652,6 +800,8 @@ mod tests {
                 }
             ],
             template_bindings: vec![],
+            transforms: vec![],
+            fonts: HashMap::new(),
         };
         
         let engine = TemplateEngine::new(&krb_file);

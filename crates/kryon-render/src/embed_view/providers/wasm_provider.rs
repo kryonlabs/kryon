@@ -3,7 +3,8 @@
 //! Provides a WASM view for executing WebAssembly modules.
 
 use super::super::*;
-use crate::{RenderCommand, TextAlignment};
+use crate::RenderCommand;
+use kryon_core::TextAlignment;
 use glam::{Vec2, Vec4};
 use std::collections::HashMap;
 use kryon_core::PropertyValue;

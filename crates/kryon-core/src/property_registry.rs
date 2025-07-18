@@ -47,6 +47,7 @@ pub enum PropertyId {
     Width = 0x19,
     Height = 0x1A,
     OldLayoutFlags = 0x1B, // Legacy layout flags
+    StyleId = 0x1D, // Style reference for dynamic style switching
     
     // Window Properties (0x20-0x2F)
     WindowWidth = 0x20,
@@ -181,6 +182,7 @@ impl From<u8> for PropertyId {
             0x19 => PropertyId::Width,
             0x1A => PropertyId::Height,
             0x1B => PropertyId::OldLayoutFlags,
+            0x1D => PropertyId::StyleId,
             0x20 => PropertyId::WindowWidth,
             0x21 => PropertyId::WindowHeight,
             0x22 => PropertyId::WindowTitle,
@@ -291,6 +293,7 @@ impl PropertyId {
             PropertyId::Width => 0x19,
             PropertyId::Height => 0x1A,
             PropertyId::OldLayoutFlags => 0x1B,
+            PropertyId::StyleId => 0x1D,
             PropertyId::WindowWidth => 0x20,
             PropertyId::WindowHeight => 0x21,
             PropertyId::WindowTitle => 0x22,
@@ -583,6 +586,14 @@ impl PropertyRegistry {
             inheritable: false,
             default_value: PropertyValue::Float(0.0),
             value_type: PropertyValueType::Float,
+        });
+        
+        self.register_property(PropertyMetadata {
+            id: PropertyId::StyleId,
+            name: "style",
+            inheritable: false,
+            default_value: PropertyValue::String("".to_string()),
+            value_type: PropertyValueType::String,
         });
         
         // CSS Grid Properties

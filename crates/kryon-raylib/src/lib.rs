@@ -1,8 +1,8 @@
 // crates/kryon-raylib/src/lib.rs
 use kryon_render::{
-    Renderer, CommandRenderer, RenderCommand, RenderResult, KeyCode, KeyModifiers, TextManager
+    Renderer, CommandRenderer, RenderCommand, RenderResult, KeyCode, TextManager
 };
-use kryon_render::events::{InputEvent, MouseButton};
+use kryon_render::events::{InputEvent, MouseButton, KeyModifiers};
 use kryon_core::{CursorType, TransformData, TransformPropertyType, CSSUnit};
 use kryon_layout::LayoutResult;
 use glam::{Vec2, Vec4};
@@ -132,9 +132,7 @@ impl CommandRenderer for RaylibRenderer {
         Ok(())
     }
     
-    fn set_cursor(&mut self, cursor_type: CursorType) {
-        self.set_cursor_internal(cursor_type);
-    }
+    // Note: set_cursor moved to impl RaylibRenderer block
 }
 
 impl RaylibRenderer {
@@ -229,7 +227,11 @@ impl RaylibRenderer {
     }
     
     /// Set the mouse cursor type
-    pub fn set_cursor_internal(&mut self, cursor_type: CursorType) {
+    pub fn set_cursor(&mut self, cursor_type: CursorType) {
+        self.set_cursor_internal(cursor_type);
+    }
+    
+    fn set_cursor_internal(&mut self, cursor_type: CursorType) {
         if self.current_cursor != cursor_type {
             match cursor_type {
                 CursorType::Default => self.handle.set_mouse_cursor(MouseCursor::MOUSE_CURSOR_DEFAULT),
