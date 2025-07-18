@@ -133,6 +133,15 @@ node_modules/
 /test-output/
 *.test
 
+# HTML backend output
+html-test/
+output/
+*.html
+*.css
+*.js
+kryon-*.css
+kryon-*.js
+
 # Profiling data
 *.prof
 perf.data*

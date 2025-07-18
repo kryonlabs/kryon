@@ -13,6 +13,7 @@ kryon-render = { path = "../kryon-render" }
 kryon-wgpu = { path = "../kryon-wgpu", optional = true }
 kryon-ratatui = { path = "../kryon-ratatui", optional = true }
 kryon-raylib = { path = "../kryon-raylib", optional = true }
+kryon-html = { path = "../kryon-html", optional = true }
 
 # VM backends (optional - to be created)
 # kryon-runtime-javascript = { path = "../kryon-runtime-javascript", optional = true }
@@ -48,6 +49,7 @@ default = ["lua-vm"]  # Enable Lua VM by default for core functionality
 wgpu = ["dep:kryon-wgpu"]
 ratatui = ["dep:kryon-ratatui"] 
 raylib = ["dep:kryon-raylib"]
+html = ["dep:kryon-html"]
 
 # VM backends (new) - enable only what you use
 lua-vm = ["mlua"]

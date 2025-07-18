@@ -30,6 +30,11 @@ name = "kryon-renderer-debug"
 path = "src/bin/kryon-renderer-debug.rs"
 
 [[bin]]
+name = "kryon-renderer-html"
+path = "src/bin/kryon-renderer-html.rs"
+required-features = ["html"]
+
+[[bin]]
 name = "kryon-bundle"
 path = "src/bin/kryon-bundle.rs"
 
@@ -71,6 +76,7 @@ members = [
     "crates/kryon-ratatui",
     "crates/kryon-raylib",
     "crates/kryon-runtime",
+    "crates/kryon-html",
     # "crates/kryon-web"  # Temporarily disabled due to compilation issues
 ]
 
@@ -85,6 +91,7 @@ kryon-render = { path = "crates/kryon-render" }
 kryon-wgpu = { path = "crates/kryon-wgpu", optional = true }
 kryon-ratatui = { path = "crates/kryon-ratatui", optional = true }
 kryon-raylib = { path = "crates/kryon-raylib", optional = true }
+kryon-html = { path = "crates/kryon-html", optional = true }
 
 # CLI and utilities
 clap = { version = "4.0", features = ["derive"] }
@@ -113,6 +120,8 @@ default = ["raylib", "kryon-runtime/lua-vm"]
 wgpu = ["dep:kryon-wgpu", "dep:wgpu", "dep:winit", "dep:pollster", "kryon-runtime/wgpu", "kryon-runtime/lua-vm"]
 ratatui = ["dep:kryon-ratatui", "dep:ratatui", "dep:crossterm", "kryon-runtime/ratatui", "kryon-runtime/lua-vm"]
 raylib = ["dep:kryon-raylib", "dep:raylib", "kryon-runtime/raylib", "kryon-runtime/lua-vm"]
+html = ["dep:kryon-html", "kryon-runtime/html"]
+html-server = ["html", "kryon-html/server"]
 embedded_krb = []  # Feature flag for building standalone executables
 
 [workspace.dependencies]
