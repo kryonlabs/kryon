@@ -407,3 +407,345 @@ end
 function _clear_template_variable_changes()
     _clear_table_in_place(_template_variable_changes)
 end
+
+
+-- =============================================================================
+--  6. Canvas Drawing API
+-- =============================================================================
+-- Canvas drawing functions for script execution
+-- These functions are called from within Canvas draw_script functions
+
+-- Global Canvas drawing context
+_canvas_commands = {} -- Commands to be executed for current canvas
+
+-- Clear canvas commands (called by runtime for each canvas)
+function _clear_canvas_commands()
+    _clear_table_in_place(_canvas_commands)
+end
+
+-- Get canvas commands (called by runtime to retrieve drawing commands)
+function _get_canvas_commands()
+    return _copy_table(_canvas_commands)
+end
+
+-- Helper function to add a canvas command
+function _add_canvas_command(command)
+    table.insert(_canvas_commands, command)
+end
+
+---
+-- Draws a line on the canvas
+---@param x1 number Start X coordinate
+---@param y1 number Start Y coordinate
+---@param x2 number End X coordinate
+---@param y2 number End Y coordinate
+---@param color table Color as {r, g, b, a} values (0-1)
+---@param width number Line width (optional, default 1.0)
+--
+function drawLine(x1, y1, x2, y2, color, width)
+    _add_canvas_command({
+        type = "DrawCanvasLine",
+        start = {x = x1, y = y1},
+        ["end"] = {x = x2, y = y2},
+        color = color or {r = 1.0, g = 1.0, b = 1.0, a = 1.0},
+        width = width or 1.0
+    })
+end
+
+---
+-- Draws a rectangle on the canvas
+---@param x number X coordinate
+---@param y number Y coordinate
+---@param width number Width of rectangle
+---@param height number Height of rectangle
+---@param fill_color table Fill color as {r, g, b, a} (optional)
+---@param stroke_color table Stroke color as {r, g, b, a} (optional)
+---@param stroke_width number Stroke width (optional, default 1.0)
+--
+function drawRect(x, y, width, height, fill_color, stroke_color, stroke_width)
+    _add_canvas_command({
+        type = "DrawCanvasRect",
+        position = {x = x, y = y},
+        size = {x = width, y = height},
+        fill_color = fill_color,
+        stroke_color = stroke_color,
+        stroke_width = stroke_width or 1.0
+    })
+end
+
+---
+-- Draws a circle on the canvas
+---@param x number Center X coordinate
+---@param y number Center Y coordinate
+---@param radius number Circle radius
+---@param fill_color table Fill color as {r, g, b, a} (optional)
+---@param stroke_color table Stroke color as {r, g, b, a} (optional)
+---@param stroke_width number Stroke width (optional, default 1.0)
+--
+function drawCircle(x, y, radius, fill_color, stroke_color, stroke_width)
+    _add_canvas_command({
+        type = "DrawCanvasCircle",
+        center = {x = x, y = y},
+        radius = radius,
+        fill_color = fill_color,
+        stroke_color = stroke_color,
+        stroke_width = stroke_width or 1.0
+    })
+end
+
+---
+-- Draws text on the canvas
+---@param text string Text to draw
+---@param x number X coordinate
+---@param y number Y coordinate
+---@param font_size number Font size (optional, default 16)
+---@param color table Color as {r, g, b, a} (optional, default white)
+---@param font_family string Font family (optional)
+---@param alignment string Text alignment: "Left", "Center", "Right" (optional, default "Left")
+--
+function drawText(text, x, y, font_size, color, font_family, alignment)
+    _add_canvas_command({
+        type = "DrawCanvasText",
+        text = tostring(text),
+        position = {x = x, y = y},
+        font_size = font_size or 16,
+        color = color or {r = 1.0, g = 1.0, b = 1.0, a = 1.0},
+        font_family = font_family,
+        alignment = alignment or "Left"
+    })
+end
+
+---
+-- Draws an ellipse on the canvas
+---@param x number Center X coordinate
+---@param y number Center Y coordinate
+---@param rx number X radius
+---@param ry number Y radius
+---@param fill_color table Fill color as {r, g, b, a} (optional)
+---@param stroke_color table Stroke color as {r, g, b, a} (optional)
+---@param stroke_width number Stroke width (optional, default 1.0)
+--
+function drawEllipse(x, y, rx, ry, fill_color, stroke_color, stroke_width)
+    _add_canvas_command({
+        type = "DrawCanvasEllipse",
+        center = {x = x, y = y},
+        rx = rx,
+        ry = ry,
+        fill_color = fill_color,
+        stroke_color = stroke_color,
+        stroke_width = stroke_width or 1.0
+    })
+end
+
+---
+-- Draws a polygon on the canvas
+---@param points table Array of points as {{x, y}, {x, y}, ...}
+---@param fill_color table Fill color as {r, g, b, a} (optional)
+---@param stroke_color table Stroke color as {r, g, b, a} (optional)
+---@param stroke_width number Stroke width (optional, default 1.0)
+--
+function drawPolygon(points, fill_color, stroke_color, stroke_width)
+    _add_canvas_command({
+        type = "DrawCanvasPolygon",
+        points = points,
+        fill_color = fill_color,
+        stroke_color = stroke_color,
+        stroke_width = stroke_width or 1.0
+    })
+end
+
+---
+-- Draws an image on the canvas
+---@param source string Image source/path
+---@param x number X coordinate
+---@param y number Y coordinate
+---@param width number Width to draw
+---@param height number Height to draw
+---@param opacity number Opacity (0-1, optional, default 1.0)
+--
+function drawImage(source, x, y, width, height, opacity)
+    _add_canvas_command({
+        type = "DrawCanvasImage",
+        source = source,
+        position = {x = x, y = y},
+        size = {x = width, y = height},
+        opacity = opacity or 1.0
+    })
+end
+
+-- =============================================================================
+--  3D Canvas Functions
+-- =============================================================================
+
+---
+-- Begins 3D rendering mode with camera configuration
+---@param camera_pos table Camera position as {x, y, z} (optional, default {0, 0, 10})
+---@param camera_target table Camera target as {x, y, z} (optional, default {0, 0, 0})
+---@param camera_up table Camera up vector as {x, y, z} (optional, default {0, 1, 0})
+---@param fov number Field of view in degrees (optional, default 45.0)
+---@param near_plane number Near clipping plane (optional, default 0.1)
+---@param far_plane number Far clipping plane (optional, default 100.0)
+--
+function beginCanvas3D(camera_pos, camera_target, camera_up, fov, near_plane, far_plane)
+    _add_canvas_command({
+        type = "BeginCanvas3D",
+        camera = {
+            position = camera_pos or {x = 0, y = 0, z = 10},
+            target = camera_target or {x = 0, y = 0, z = 0},
+            up = camera_up or {x = 0, y = 1, z = 0},
+            fov = fov or 45.0,
+            near_plane = near_plane or 0.1,
+            far_plane = far_plane or 100.0
+        }
+    })
+end
+
+---
+-- Ends 3D rendering mode
+--
+function endCanvas3D()
+    _add_canvas_command({
+        type = "EndCanvas3D"
+    })
+end
+
+---
+-- Draws a 3D cube
+---@param x number X position
+---@param y number Y position
+---@param z number Z position
+---@param width number Width
+---@param height number Height
+---@param depth number Depth
+---@param color table Color as {r, g, b, a} (optional, default white)
+---@param wireframe boolean Draw as wireframe (optional, default false)
+--
+function drawCube3D(x, y, z, width, height, depth, color, wireframe)
+    _add_canvas_command({
+        type = "DrawCanvas3DCube",
+        position = {x = x, y = y, z = z},
+        size = {x = width, y = height, z = depth},
+        color = color or {r = 1.0, g = 1.0, b = 1.0, a = 1.0},
+        wireframe = wireframe or false
+    })
+end
+
+---
+-- Draws a 3D sphere
+---@param x number X position
+---@param y number Y position
+---@param z number Z position
+---@param radius number Sphere radius
+---@param color table Color as {r, g, b, a} (optional, default white)
+---@param wireframe boolean Draw as wireframe (optional, default false)
+--
+function drawSphere3D(x, y, z, radius, color, wireframe)
+    _add_canvas_command({
+        type = "DrawCanvas3DSphere",
+        center = {x = x, y = y, z = z},
+        radius = radius,
+        color = color or {r = 1.0, g = 1.0, b = 1.0, a = 1.0},
+        wireframe = wireframe or false
+    })
+end
+
+---
+-- Draws a 3D plane
+---@param x number X position
+---@param y number Y position
+---@param z number Z position
+---@param width number Width
+---@param height number Height
+---@param normal_x number Normal X component (optional, default 0)
+---@param normal_y number Normal Y component (optional, default 1)
+---@param normal_z number Normal Z component (optional, default 0)
+---@param color table Color as {r, g, b, a} (optional, default white)
+--
+function drawPlane3D(x, y, z, width, height, normal_x, normal_y, normal_z, color)
+    _add_canvas_command({
+        type = "DrawCanvas3DPlane",
+        center = {x = x, y = y, z = z},
+        size = {x = width, y = height},
+        normal = {x = normal_x or 0, y = normal_y or 1, z = normal_z or 0},
+        color = color or {r = 1.0, g = 1.0, b = 1.0, a = 1.0}
+    })
+end
+
+---
+-- Draws a 3D mesh from vertices
+---@param vertices table Array of vertex positions as {{x, y, z}, ...}
+---@param indices table Array of triangle indices (optional)
+---@param normals table Array of vertex normals (optional)
+---@param uvs table Array of texture coordinates (optional)
+---@param color table Color as {r, g, b, a} (optional, default white)
+---@param texture string Texture source (optional)
+--
+function drawMesh3D(vertices, indices, normals, uvs, color, texture)
+    _add_canvas_command({
+        type = "DrawCanvas3DMesh",
+        vertices = vertices,
+        indices = indices or {},
+        normals = normals or {},
+        uvs = uvs or {},
+        color = color or {r = 1.0, g = 1.0, b = 1.0, a = 1.0},
+        texture = texture
+    })
+end
+
+---
+-- Sets 3D lighting configuration
+---@param ambient_color table Ambient light color as {r, g, b, a} (optional, default dark gray)
+---@param directional_light table Directional light as {direction = {x, y, z}, color = {r, g, b, a}, intensity = number} (optional)
+---@param point_lights table Array of point lights as {{position = {x, y, z}, color = {r, g, b, a}, intensity = number, range = number}, ...} (optional)
+--
+function setLighting3D(ambient_color, directional_light, point_lights)
+    _add_canvas_command({
+        type = "SetCanvas3DLighting",
+        ambient_color = ambient_color or {r = 0.1, g = 0.1, b = 0.1, a = 1.0},
+        directional_light = directional_light,
+        point_lights = point_lights or {}
+    })
+end
+
+---
+-- Applies a 3D transformation matrix
+---@param transform_matrix table Transform matrix (simplified as translation, rotation, scale)
+--
+function applyTransform3D(transform_matrix)
+    _add_canvas_command({
+        type = "ApplyCanvas3DTransform",
+        transform = transform_matrix
+    })
+end
+
+---
+-- Helper function to create transform matrices
+---@param translation table Translation as {x, y, z} (optional, default {0, 0, 0})
+---@param rotation table Rotation as {x, y, z} in degrees (optional, default {0, 0, 0})
+---@param scale table Scale as {x, y, z} (optional, default {1, 1, 1})
+---@return table Transform matrix
+--
+function createTransformMatrix(translation, rotation, scale)
+    return {
+        translation = translation or {x = 0, y = 0, z = 0},
+        rotation = rotation or {x = 0, y = 0, z = 0},
+        scale = scale or {x = 1, y = 1, z = 1}
+    }
+end
+
+---
+-- Draws a path on the canvas using SVG-like path data
+---@param path_data string SVG path data (e.g., "M10,10 L20,20 Z")
+---@param fill_color table Fill color as {r, g, b, a} (optional)
+---@param stroke_color table Stroke color as {r, g, b, a} (optional)
+---@param stroke_width number Stroke width (optional, default 1.0)
+--
+function drawPath(path_data, fill_color, stroke_color, stroke_width)
+    _add_canvas_command({
+        type = "DrawCanvasPath",
+        path_data = path_data,
+        fill_color = fill_color,
+        stroke_color = stroke_color,
+        stroke_width = stroke_width or 1.0
+    })
+end

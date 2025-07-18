@@ -71,7 +71,7 @@ members = [
     "crates/kryon-ratatui",
     "crates/kryon-raylib",
     "crates/kryon-runtime",
-    "crates/kryon-web"
+    # "crates/kryon-web"  # Temporarily disabled due to compilation issues
 ]
 
 [dependencies]

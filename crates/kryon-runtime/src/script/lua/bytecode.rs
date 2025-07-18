@@ -222,15 +222,15 @@ mod tests {
     
     #[test]
     fn test_bytecode_executor_creation() {
-        let lua = Lua::new();
-        let executor = LuaBytecodeExecutor::new(&lua);
+        let lua = Rc::new(Lua::new());
+        let executor = LuaBytecodeExecutor::new(lua);
         assert!(executor.is_ok());
     }
     
     #[test]
     fn test_bytecode_validation() {
-        let lua = Lua::new();
-        let executor = LuaBytecodeExecutor::new(&lua).unwrap();
+        let lua = Rc::new(Lua::new());
+        let executor = LuaBytecodeExecutor::new(lua).unwrap();
         
         // Test empty bytecode
         assert!(!executor.is_valid_lua_bytecode(&[]));

@@ -32,6 +32,7 @@ pollster = { workspace = true }
 mlua = { version = "0.9", features = ["luajit", "vendored"], optional = true }
 regex = "1.10"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 thiserror = "1.0"
 
 # Web dependencies
@@ -41,7 +42,7 @@ js-sys = { version = "0.3", optional = true }
 wasm-bindgen-futures = { version = "0.4", optional = true }
 
 [features]
-default = []  # No VMs by default - user chooses what they need
+default = ["lua-vm"]  # Enable Lua VM by default for core functionality
 
 # Renderer backends (existing)
 wgpu = ["dep:kryon-wgpu"]

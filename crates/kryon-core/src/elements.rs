@@ -11,9 +11,9 @@ pub enum ElementType {
     Text = 0x02,
     Link = 0x03,
     Image = 0x04,
-    Canvas = 0x05,
-    WasmView = 0x06,
-    NativeRendererView = 0x07,
+    Canvas = 0x05, // Native 2D/3D drawing canvas
+    Video = 0x06, // Native video playback element
+    EmbedView = 0x07, // For platform-breaking content (webview, wasm, native renderer emulation, etc.)
     Button = 0x10,
     Input = 0x11,
     Custom(u8),
@@ -28,8 +28,8 @@ impl From<u8> for ElementType {
             0x03 => ElementType::Link,
             0x04 => ElementType::Image,
             0x05 => ElementType::Canvas,
-            0x06 => ElementType::WasmView,
-            0x07 => ElementType::NativeRendererView,
+            0x06 => ElementType::Video,
+            0x07 => ElementType::EmbedView,
             0x10 => ElementType::Button,
             0x11 => ElementType::Input,
             other => ElementType::Custom(other),
@@ -113,10 +113,15 @@ pub struct Element {
     pub component_name: Option<String>,
     pub is_component_instance: bool,
     
-    // NativeRendererView-specific
-    pub native_backend: Option<String>,        // e.g., "raylib", "wgpu"
-    pub native_render_script: Option<String>,  // Lua function name
-    pub native_config: HashMap<String, PropertyValue>, // Backend-specific config
+    // EmbedView-specific (webview, wasm, native renderer emulation)
+    pub embed_view_type: Option<String>,     // e.g., "webview", "wasm", "native_renderer", "iframe"
+    pub embed_view_source: Option<String>,   // URI or function name
+    pub embed_view_config: HashMap<String, PropertyValue>, // Type-specific config
+    
+    // Legacy compatibility fields (deprecated)
+    pub native_backend: Option<String>,        // Mapped to embed_view_type
+    pub native_render_script: Option<String>,  // Mapped to embed_view_source
+    pub native_config: HashMap<String, PropertyValue>, // Mapped to embed_view_config
 }
 
 pub type ElementId = u32;
@@ -197,6 +202,10 @@ impl Default for Element {
             event_handlers: HashMap::new(),
             component_name: None,
             is_component_instance: false,
+            embed_view_type: None,
+            embed_view_source: None,
+            embed_view_config: HashMap::new(),
+            
             native_backend: None,
             native_render_script: None,
             native_config: HashMap::new(),

@@ -12,6 +12,7 @@ use crate::script::{
     engine_trait::{BridgeData, ChangeSet, ScriptValue},
     error::ScriptError,
 };
+use serde_json;
 
 /// Lua DOM API bridge
 /// 
@@ -206,6 +207,152 @@ impl LuaBridge {
         Ok(changes)
     }
     
+    /// Get Canvas drawing commands from the Lua bridge
+    pub fn get_canvas_commands(&mut self) -> Result<Vec<serde_json::Value>> {
+        let mut commands = Vec::new();
+        
+        // Get canvas commands
+        if let Ok(get_commands_fn) = self.lua.globals().get::<_, LuaFunction>("_get_canvas_commands") {
+            if let Ok(commands_table) = get_commands_fn.call::<_, LuaTable>(()) {
+                for pair in commands_table.pairs::<u32, LuaTable>() {
+                    if let Ok((_, command_table)) = pair {
+                        // Convert Lua table to JSON value for easier handling
+                        if let Ok(json_str) = self.lua_table_to_json_string(&command_table) {
+                            if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                                commands.push(json_value);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(commands)
+    }
+    
+    /// Clear Canvas drawing commands
+    pub fn clear_canvas_commands(&mut self) -> Result<()> {
+        if let Ok(clear_fn) = self.lua.globals().get::<_, LuaFunction>("_clear_canvas_commands") {
+            clear_fn.call::<_, ()>(()).map_err(|e| {
+                ScriptError::BridgeSetupFailed {
+                    error: e.to_string(),
+                    context: "Clearing Canvas commands".to_string(),
+                }
+            })?;
+        }
+        Ok(())
+    }
+    
+    /// Convert Lua table to JSON string
+    fn lua_table_to_json_string(&self, table: &LuaTable) -> Result<String> {
+        let mut json_map = serde_json::Map::new();
+        
+        for pair in table.clone().pairs::<mlua::Value, mlua::Value>() {
+            if let Ok((key, value)) = pair {
+                let key_str = match key {
+                    mlua::Value::String(s) => s.to_str()?.to_string(),
+                    mlua::Value::Number(n) => n.to_string(),
+                    mlua::Value::Integer(i) => i.to_string(),
+                    _ => continue,
+                };
+                
+                let json_value = self.lua_value_to_json_value(value)?;
+                json_map.insert(key_str, json_value);
+            }
+        }
+        
+        Ok(serde_json::to_string(&json_map)?)
+    }
+    
+    /// Convert Lua value to JSON value
+    fn lua_value_to_json_value(&self, value: mlua::Value) -> Result<serde_json::Value> {
+        match value {
+            mlua::Value::Nil => Ok(serde_json::Value::Null),
+            mlua::Value::Boolean(b) => Ok(serde_json::Value::Bool(b)),
+            mlua::Value::Integer(i) => Ok(serde_json::Value::Number(serde_json::Number::from(i))),
+            mlua::Value::Number(n) => {
+                if let Some(num) = serde_json::Number::from_f64(n) {
+                    Ok(serde_json::Value::Number(num))
+                } else {
+                    Ok(serde_json::Value::Null)
+                }
+            },
+            mlua::Value::String(s) => Ok(serde_json::Value::String(s.to_str()?.to_string())),
+            mlua::Value::Table(t) => {
+                let mut json_obj = serde_json::Map::new();
+                for pair in t.pairs::<mlua::Value, mlua::Value>() {
+                    if let Ok((key, val)) = pair {
+                        let key_str = match key {
+                            mlua::Value::String(s) => s.to_str()?.to_string(),
+                            mlua::Value::Number(n) => n.to_string(),
+                            mlua::Value::Integer(i) => i.to_string(),
+                            _ => continue,
+                        };
+                        json_obj.insert(key_str, self.lua_value_to_json_value(val)?);
+                    }
+                }
+                Ok(serde_json::Value::Object(json_obj))
+            },
+            _ => Ok(serde_json::Value::Null),
+        }
+    }
+    
+    /// Execute Canvas script function
+    pub fn execute_canvas_script(&mut self, script_name: &str) -> Result<()> {
+        // Clear any previous canvas commands
+        self.clear_canvas_commands()?;
+        
+        // Execute the script function
+        if let Ok(script_fn) = self.lua.globals().get::<_, LuaFunction>(script_name) {
+            script_fn.call::<_, ()>(()).map_err(|e| {
+                ScriptError::ExecutionFailed {
+                    function: script_name.to_string(),
+                    error: e.to_string(),
+                    context: "Executing Canvas script".to_string(),
+                }
+            })?;
+        } else {
+            return Err(ScriptError::FunctionNotFound {
+                function: script_name.to_string(),
+                available: "Canvas script function not found".to_string(),
+            }.into());
+        }
+        
+        Ok(())
+    }
+    
+    /// Execute Canvas lifecycle hook with optional delta time
+    pub fn execute_canvas_lifecycle_hook(&mut self, hook_name: &str, delta_time: Option<f64>) -> Result<()> {
+        // Clear any previous canvas commands
+        self.clear_canvas_commands()?;
+        
+        // Execute the lifecycle hook function
+        if let Ok(hook_fn) = self.lua.globals().get::<_, LuaFunction>(hook_name) {
+            if let Some(dt) = delta_time {
+                // Call with delta time (for onUpdate)
+                hook_fn.call::<_, ()>(dt).map_err(|e| {
+                    ScriptError::ExecutionFailed {
+                        function: hook_name.to_string(),
+                        error: e.to_string(),
+                        context: format!("Executing Canvas lifecycle hook '{}' with delta time", hook_name),
+                    }
+                })?;
+            } else {
+                // Call without arguments (for onLoad)
+                hook_fn.call::<_, ()>(()).map_err(|e| {
+                    ScriptError::ExecutionFailed {
+                        function: hook_name.to_string(),
+                        error: e.to_string(),
+                        context: format!("Executing Canvas lifecycle hook '{}'", hook_name),
+                    }
+                })?;
+            }
+        }
+        // If hook doesn't exist, that's okay - it's optional
+        
+        Ok(())
+    }
+    
     /// Clear pending changes from the bridge
     pub fn clear_pending_changes(&mut self) -> Result<()> {
         // Clear the DOM API changes by calling the Lua clear function
@@ -272,15 +419,15 @@ mod tests {
     
     #[test]
     fn test_lua_bridge_creation() {
-        let lua = Lua::new();
-        let bridge = LuaBridge::new(&lua);
+        let lua = Rc::new(Lua::new());
+        let bridge = LuaBridge::new(lua);
         assert!(bridge.is_ok());
     }
     
     #[test]
     fn test_bridge_api_loading() {
-        let lua = Lua::new();
-        let bridge = LuaBridge::new(&lua).unwrap();
+        let lua = Rc::new(Lua::new());
+        let bridge = LuaBridge::new(lua.clone()).unwrap();
         
         // Check that bridge API functions are available
         let globals = lua.globals();
@@ -291,8 +438,8 @@ mod tests {
     
     #[test]
     fn test_bridge_setup() {
-        let lua = Lua::new();
-        let mut bridge = LuaBridge::new(&lua).unwrap();
+        let lua = Rc::new(Lua::new());
+        let mut bridge = LuaBridge::new(lua.clone()).unwrap();
         
         // Create test bridge data
         let mut element_ids = HashMap::new();

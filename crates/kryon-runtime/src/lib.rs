@@ -5,7 +5,8 @@ use kryon_core::{
     StyleComputer,
 };
 use kryon_layout::{LayoutEngine, TaffyLayoutEngine, LayoutResult};
-use kryon_render::{ElementRenderer, CommandRenderer, InputEvent, MouseButton, KeyCode};
+use kryon_render::{ElementRenderer, CommandRenderer, KeyCode};
+use kryon_render::events::{InputEvent, MouseButton};
 use glam::Vec2;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};

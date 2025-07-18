@@ -16,7 +16,8 @@ use ratatui::prelude::CrosstermBackend;
 
 // Kryon imports
 use kryon_core::load_krb_file; // Assuming you might want this for inspect
-use kryon_render::{InputEvent, Renderer}; // Keep Renderer for trait bounds
+use kryon_render::Renderer; // Keep Renderer for trait bounds
+use kryon_render::events::{InputEvent, MouseButton};
 use kryon_ratatui::RatatuiRenderer;
 use kryon_runtime::KryonApp;
 
@@ -99,7 +100,7 @@ fn run(args: &Args) -> Result<()> {
                         MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
                             let event = InputEvent::MousePress {
                                 position: glam::vec2(mouse_event.column as f32, mouse_event.row as f32),
-                                button: kryon_render::MouseButton::Left,
+                                button: MouseButton::Left,
                             };
                             if let Err(e) = app.handle_input(event) {
                                 tracing::error!("Failed to handle mouse click: {:?}", e);

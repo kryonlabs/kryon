@@ -1,7 +1,8 @@
 // crates/kryon-raylib/src/lib.rs
 use kryon_render::{
-    Renderer, CommandRenderer, RenderCommand, RenderResult, InputEvent, MouseButton, KeyCode, KeyModifiers, TextManager
+    Renderer, CommandRenderer, RenderCommand, RenderResult, KeyCode, KeyModifiers, TextManager
 };
+use kryon_render::events::{InputEvent, MouseButton};
 use kryon_core::{CursorType, TransformData, TransformPropertyType, CSSUnit};
 use kryon_layout::LayoutResult;
 use glam::{Vec2, Vec4};
@@ -928,6 +929,216 @@ impl RaylibRenderer {
                 }
             },
             RenderCommand::SetCanvasSize(_) => {},
+            
+            // Basic 2D drawing commands (standalone, not canvas-specific)
+            RenderCommand::DrawLine { start, end, color, width, transform, z_index: _ } => {
+                let start_vec = Vector2::new(start.x, start.y);
+                let end_vec = Vector2::new(end.x, end.y);
+                let raylib_color = vec4_to_raylib_color(*color);
+                
+                // Apply transform if present
+                let (transformed_start, transformed_end) = if let Some(transform_data) = transform {
+                    let (scale, rotation, translation) = extract_transform_values(transform_data);
+                    
+                    // Transform start and end points
+                    let rotated_start = rotate_point(*start - Vec2::new(0.0, 0.0), rotation);
+                    let rotated_end = rotate_point(*end - Vec2::new(0.0, 0.0), rotation);
+                    
+                    let transformed_start = Vec2::new(
+                        rotated_start.x * scale.x + translation.x,
+                        rotated_start.y * scale.y + translation.y,
+                    );
+                    let transformed_end = Vec2::new(
+                        rotated_end.x * scale.x + translation.x,
+                        rotated_end.y * scale.y + translation.y,
+                    );
+                    
+                    (transformed_start, transformed_end)
+                } else {
+                    (*start, *end)
+                };
+                
+                let start_vec = Vector2::new(transformed_start.x, transformed_start.y);
+                let end_vec = Vector2::new(transformed_end.x, transformed_end.y);
+                
+                if *width <= 1.0 {
+                    d.draw_line_v(start_vec, end_vec, raylib_color);
+                } else {
+                    d.draw_line_ex(start_vec, end_vec, *width, raylib_color);
+                }
+            }
+            
+            RenderCommand::DrawCircle { center, radius, fill_color, stroke_color, stroke_width, transform, z_index: _ } => {
+                // Apply transform if present
+                let (transformed_center, transformed_radius) = if let Some(transform_data) = transform {
+                    let (scale, rotation, translation) = extract_transform_values(transform_data);
+                    
+                    // For circles, we'll use the average scale to transform radius
+                    let avg_scale = (scale.x + scale.y) / 2.0;
+                    let transformed_center = Vec2::new(
+                        center.x * scale.x + translation.x,
+                        center.y * scale.y + translation.y,
+                    );
+                    
+                    (transformed_center, radius * avg_scale)
+                } else {
+                    (*center, *radius)
+                };
+                
+                let center_vec = Vector2::new(transformed_center.x, transformed_center.y);
+                
+                // Draw fill if specified
+                if let Some(fill) = fill_color {
+                    let fill_raylib_color = vec4_to_raylib_color(*fill);
+                    d.draw_circle_v(center_vec, transformed_radius, fill_raylib_color);
+                }
+                
+                // Draw stroke if specified
+                if let Some(stroke) = stroke_color {
+                    let stroke_raylib_color = vec4_to_raylib_color(*stroke);
+                    if *stroke_width <= 1.0 {
+                        d.draw_circle_lines(center_vec.x as i32, center_vec.y as i32, transformed_radius, stroke_raylib_color);
+                    } else {
+                        // Raylib doesn't have thick circle lines, approximate with multiple circles
+                        for i in 0..(*stroke_width as i32) {
+                            let r = transformed_radius + i as f32;
+                            d.draw_circle_lines(center_vec.x as i32, center_vec.y as i32, r, stroke_raylib_color);
+                        }
+                    }
+                }
+            }
+            
+            RenderCommand::DrawEllipse { center, rx, ry, fill_color, stroke_color, stroke_width, transform, z_index: _ } => {
+                // Apply transform if present
+                let (transformed_center, transformed_rx, transformed_ry) = if let Some(transform_data) = transform {
+                    let (scale, rotation, translation) = extract_transform_values(transform_data);
+                    
+                    let transformed_center = Vec2::new(
+                        center.x * scale.x + translation.x,
+                        center.y * scale.y + translation.y,
+                    );
+                    
+                    (transformed_center, rx * scale.x, ry * scale.y)
+                } else {
+                    (*center, *rx, *ry)
+                };
+                
+                // Draw fill if specified
+                if let Some(fill) = fill_color {
+                    let fill_raylib_color = vec4_to_raylib_color(*fill);
+                    // Raylib doesn't have a direct ellipse function, so approximate with a polygon
+                    let num_segments = 32;
+                    let mut points = Vec::new();
+                    for i in 0..num_segments {
+                        let angle = (i as f32 * 2.0 * std::f32::consts::PI) / num_segments as f32;
+                        let x = transformed_center.x + angle.cos() * transformed_rx;
+                        let y = transformed_center.y + angle.sin() * transformed_ry;
+                        points.push(Vector2::new(x, y));
+                    }
+                    
+                    // Draw filled polygon
+                    if !points.is_empty() {
+                        for i in 1..points.len() - 1 {
+                            d.draw_triangle(points[0], points[i], points[i + 1], fill_raylib_color);
+                        }
+                    }
+                }
+                
+                // Draw stroke if specified
+                if let Some(stroke) = stroke_color {
+                    let stroke_raylib_color = vec4_to_raylib_color(*stroke);
+                    let num_segments = 32;
+                    for i in 0..num_segments {
+                        let angle1 = (i as f32 * 2.0 * std::f32::consts::PI) / num_segments as f32;
+                        let angle2 = ((i + 1) as f32 * 2.0 * std::f32::consts::PI) / num_segments as f32;
+                        
+                        let x1 = transformed_center.x + angle1.cos() * transformed_rx;
+                        let y1 = transformed_center.y + angle1.sin() * transformed_ry;
+                        let x2 = transformed_center.x + angle2.cos() * transformed_rx;
+                        let y2 = transformed_center.y + angle2.sin() * transformed_ry;
+                        
+                        let p1 = Vector2::new(x1, y1);
+                        let p2 = Vector2::new(x2, y2);
+                        
+                        if *stroke_width <= 1.0 {
+                            d.draw_line_v(p1, p2, stroke_raylib_color);
+                        } else {
+                            d.draw_line_ex(p1, p2, *stroke_width, stroke_raylib_color);
+                        }
+                    }
+                }
+            }
+            
+            RenderCommand::DrawPolygon { points, fill_color, stroke_color, stroke_width, transform, z_index: _ } => {
+                if points.len() < 3 {
+                    return Ok(()); // Need at least 3 points for a polygon
+                }
+                
+                // Apply transform if present
+                let transformed_points: Vec<Vec2> = if let Some(transform_data) = transform {
+                    let (scale, rotation, translation) = extract_transform_values(transform_data);
+                    
+                    points.iter().map(|point| {
+                        let rotated_point = rotate_point(*point, rotation);
+                        Vec2::new(
+                            rotated_point.x * scale.x + translation.x,
+                            rotated_point.y * scale.y + translation.y,
+                        )
+                    }).collect()
+                } else {
+                    points.clone()
+                };
+                
+                let raylib_points: Vec<Vector2> = transformed_points.iter()
+                    .map(|p| Vector2::new(p.x, p.y))
+                    .collect();
+                
+                // Draw fill if specified
+                if let Some(fill) = fill_color {
+                    let fill_raylib_color = vec4_to_raylib_color(*fill);
+                    
+                    // Triangulate the polygon for filling
+                    if raylib_points.len() >= 3 {
+                        for i in 1..raylib_points.len() - 1 {
+                            d.draw_triangle(raylib_points[0], raylib_points[i], raylib_points[i + 1], fill_raylib_color);
+                        }
+                    }
+                }
+                
+                // Draw stroke if specified
+                if let Some(stroke) = stroke_color {
+                    let stroke_raylib_color = vec4_to_raylib_color(*stroke);
+                    
+                    // Draw lines between consecutive points
+                    for i in 0..raylib_points.len() {
+                        let next_i = (i + 1) % raylib_points.len();
+                        let p1 = raylib_points[i];
+                        let p2 = raylib_points[next_i];
+                        
+                        if *stroke_width <= 1.0 {
+                            d.draw_line_v(p1, p2, stroke_raylib_color);
+                        } else {
+                            d.draw_line_ex(p1, p2, *stroke_width, stroke_raylib_color);
+                        }
+                    }
+                }
+            }
+            
+            RenderCommand::DrawPath { path_data, fill_color, stroke_color, stroke_width, transform, z_index: _ } => {
+                // SVG path parsing is complex - for now, just draw a placeholder
+                eprintln!("[RAYLIB] DrawPath not fully implemented, path_data: {}", path_data);
+                
+                // Draw a simple placeholder rectangle to indicate path rendering
+                if let Some(fill) = fill_color {
+                    let fill_raylib_color = vec4_to_raylib_color(*fill);
+                    d.draw_rectangle(10, 10, 50, 50, fill_raylib_color);
+                }
+                
+                if let Some(stroke) = stroke_color {
+                    let stroke_raylib_color = vec4_to_raylib_color(*stroke);
+                    d.draw_rectangle_lines(10, 10, 50, 50, stroke_raylib_color);
+                }
+            }
             // Canvas rendering commands
             RenderCommand::BeginCanvas { canvas_id: _, position: _, size: _ } => {
                 // For Raylib, canvas rendering is just direct drawing
@@ -1197,6 +1408,161 @@ impl RaylibRenderer {
                     );
                 }
             }
+            RenderCommand::EmbedView { view_id, view_type, source, position, size, config: _, z_index: _ } => {
+                // For now, draw a placeholder for EmbedView elements
+                d.draw_rectangle(
+                    position.x as i32,
+                    position.y as i32,
+                    size.x as i32,
+                    size.y as i32,
+                    Color::new(50, 50, 150, 100), // Blue placeholder
+                );
+                
+                let placeholder_text = match view_type.as_str() {
+                    "webview" => "🌐 WebView",
+                    "wasm" => "⚡ WASM",
+                    "native_renderer" => "🖥️ Native",
+                    "uxn" => "🎮 UXN",
+                    _ => "🔌 EmbedView",
+                };
+                
+                d.draw_text(
+                    placeholder_text,
+                    (position.x + 10.0) as i32,
+                    (position.y + 10.0) as i32,
+                    16,
+                    Color::WHITE,
+                );
+                
+                if let Some(src) = source {
+                    d.draw_text(
+                        &format!("ID: {}", view_id),
+                        (position.x + 10.0) as i32,
+                        (position.y + 30.0) as i32,
+                        12,
+                        Color::WHITE,
+                    );
+                    
+                    d.draw_text(
+                        &format!("Source: {}", src),
+                        (position.x + 10.0) as i32,
+                        (position.y + 45.0) as i32,
+                        10,
+                        Color::WHITE,
+                    );
+                }
+            }
+            // Canvas 3D rendering commands
+            RenderCommand::BeginCanvas3D { canvas_id: _, position: _, size: _, camera } => {
+                // 3D camera setup would be handled by the 3D renderer
+                // For Raylib, we would need to manage the camera state properly
+                eprintln!("[RAYLIB_3D] BeginCanvas3D with camera at {:?}", camera.position);
+            }
+            RenderCommand::EndCanvas3D => {
+                // End 3D mode
+                eprintln!("[RAYLIB_3D] EndCanvas3D");
+            }
+            RenderCommand::DrawCanvas3DCube { position, size, color, wireframe } => {
+                let raylib_color = vec4_to_raylib_color(*color);
+                
+                if *wireframe {
+                    // Draw wireframe cube as multiple lines (simplified)
+                    let x = position.x;
+                    let y = position.y;
+                    let z = position.z;
+                    let w = size.x;
+                    let h = size.y;
+                    let _depth = size.z;
+                    
+                    // Draw cube edges by drawing lines between vertices
+                    // This is a simplified 2D projection of a 3D cube
+                    let proj_scale = 100.0 / (z + 10.0); // Simple perspective projection
+                    let screen_x = (x * proj_scale) as i32;
+                    let screen_y = (y * proj_scale) as i32;
+                    let screen_w = (w * proj_scale) as i32;
+                    let screen_h = (h * proj_scale) as i32;
+                    
+                    d.draw_rectangle_lines(screen_x, screen_y, screen_w, screen_h, raylib_color);
+                } else {
+                    // Draw solid cube as a 2D rectangle (simplified)
+                    let proj_scale = 100.0 / (position.z + 10.0); // Simple perspective projection
+                    let screen_x = (position.x * proj_scale) as i32;
+                    let screen_y = (position.y * proj_scale) as i32;
+                    let screen_w = (size.x * proj_scale) as i32;
+                    let screen_h = (size.y * proj_scale) as i32;
+                    
+                    d.draw_rectangle(screen_x, screen_y, screen_w, screen_h, raylib_color);
+                }
+            }
+            RenderCommand::DrawCanvas3DSphere { center, radius, color, wireframe } => {
+                let raylib_color = vec4_to_raylib_color(*color);
+                
+                // Simple 2D projection of 3D sphere
+                let proj_scale = 100.0 / (center.z + 10.0); // Simple perspective projection
+                let screen_x = (center.x * proj_scale) as i32;
+                let screen_y = (center.y * proj_scale) as i32;
+                let screen_radius = radius * proj_scale;
+                
+                if *wireframe {
+                    d.draw_circle_lines(screen_x, screen_y, screen_radius, raylib_color);
+                } else {
+                    d.draw_circle(screen_x, screen_y, screen_radius, raylib_color);
+                }
+            }
+            RenderCommand::DrawCanvas3DPlane { center, size, normal: _, color } => {
+                let raylib_color = vec4_to_raylib_color(*color);
+                
+                // Simple 2D projection of 3D plane
+                let proj_scale = 100.0 / (center.z + 10.0); // Simple perspective projection
+                let screen_x = (center.x * proj_scale) as i32;
+                let screen_y = (center.y * proj_scale) as i32;
+                let screen_w = (size.x * proj_scale) as i32;
+                let screen_h = (size.y * proj_scale) as i32;
+                
+                d.draw_rectangle(screen_x, screen_y, screen_w, screen_h, raylib_color);
+            }
+            RenderCommand::DrawCanvas3DMesh { vertices, indices, normals: _, uvs: _, color, texture: _ } => {
+                // For now, draw a simplified mesh representation using 2D lines
+                let raylib_color = vec4_to_raylib_color(*color);
+                
+                // Draw wireframe representation of the mesh using 2D projection
+                for chunk in indices.chunks(3) {
+                    if chunk.len() == 3 {
+                        let v0 = vertices.get(chunk[0] as usize);
+                        let v1 = vertices.get(chunk[1] as usize);
+                        let v2 = vertices.get(chunk[2] as usize);
+                        
+                        if let (Some(v0), Some(v1), Some(v2)) = (v0, v1, v2) {
+                            // Simple 2D projection
+                            let proj_scale0 = 100.0 / (v0.z + 10.0);
+                            let proj_scale1 = 100.0 / (v1.z + 10.0);
+                            let proj_scale2 = 100.0 / (v2.z + 10.0);
+                            
+                            let p0x = (v0.x * proj_scale0) as i32;
+                            let p0y = (v0.y * proj_scale0) as i32;
+                            let p1x = (v1.x * proj_scale1) as i32;
+                            let p1y = (v1.y * proj_scale1) as i32;
+                            let p2x = (v2.x * proj_scale2) as i32;
+                            let p2y = (v2.y * proj_scale2) as i32;
+                            
+                            // Draw triangle edges
+                            d.draw_line(p0x, p0y, p1x, p1y, raylib_color);
+                            d.draw_line(p1x, p1y, p2x, p2y, raylib_color);
+                            d.draw_line(p2x, p2y, p0x, p0y, raylib_color);
+                        }
+                    }
+                }
+            }
+            RenderCommand::SetCanvas3DLighting { ambient_color: _, directional_light: _, point_lights: _ } => {
+                // 3D lighting setup would be handled by the 3D renderer
+                // For Raylib, this would configure the lighting system
+                eprintln!("[RAYLIB_3D] SetCanvas3DLighting");
+            }
+            RenderCommand::ApplyCanvas3DTransform { transform: _ } => {
+                // 3D transformation would be applied to the model matrix
+                // For Raylib, this would push/pop matrix transformations
+                eprintln!("[RAYLIB_3D] ApplyCanvas3DTransform");
+            }
         }
         Ok(())
     }
@@ -1212,6 +1578,15 @@ fn vec4_to_raylib_color(color: Vec4) -> Color {
 }
 
 /// Extract transform values from TransformData
+fn rotate_point(point: Vec2, angle_radians: f32) -> Vec2 {
+    let cos_a = angle_radians.cos();
+    let sin_a = angle_radians.sin();
+    Vec2::new(
+        point.x * cos_a - point.y * sin_a,
+        point.x * sin_a + point.y * cos_a,
+    )
+}
+
 fn extract_transform_values(transform: &TransformData) -> (Vec2, f32, Vec2) {
     let mut scale = Vec2::new(1.0, 1.0);
     let mut rotation = 0.0f32;

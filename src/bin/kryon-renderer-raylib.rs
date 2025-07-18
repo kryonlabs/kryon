@@ -172,8 +172,8 @@ fn main() -> Result<()> {
         let input_events = app.renderer_mut().backend_mut().poll_input_events();
         for event in input_events {
             // Check for ESC key to quit application
-            if let kryon_render::InputEvent::KeyPress { key, .. } = &event {
-                if matches!(key, kryon_render::KeyCode::Escape) {
+            if let kryon_render::events::InputEvent::KeyPress { key, .. } = &event {
+                if matches!(key, kryon_render::events::KeyCode::Escape) {
                     info!("ESC key pressed - quitting application");
                     break 'main_loop;
                 }

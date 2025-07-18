@@ -140,6 +140,9 @@ pub trait ScriptEngine {
     
     /// Get memory usage statistics
     fn get_memory_usage(&self) -> EngineMemoryStats;
+    
+    /// Get self as Any for downcasting
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
 /// Memory usage statistics for an engine

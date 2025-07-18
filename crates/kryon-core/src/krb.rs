@@ -1907,6 +1907,9 @@ impl KRBParser {
             native_backend: None,
             native_render_script: None,
             native_config: HashMap::new(),
+            embed_view_type: None,
+            embed_view_source: None,
+            embed_view_config: HashMap::new(),
         };
         
         // Collect all current root elements (elements with no parent)

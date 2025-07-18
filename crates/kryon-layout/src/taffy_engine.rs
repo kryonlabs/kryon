@@ -729,15 +729,10 @@ impl TaffyLayoutEngine {
                 // Links are inline by default but can be styled as block
                 // For now, treat them similar to Text elements
             }
-            kryon_core::ElementType::Canvas => {
+            kryon_core::ElementType::Canvas | kryon_core::ElementType::Video | kryon_core::ElementType::EmbedView => {
                 style.display = Display::Block;
-                // Canvas elements are block-level containers for custom drawing
-                // They should maintain their specified width and height
-            }
-            kryon_core::ElementType::WasmView => {
-                style.display = Display::Block;
-                // WasmView elements are block-level containers for WASM module output
-                // They should maintain their specified width and height for the WASM viewport
+                // Canvas, Video, and EmbedView elements are block-level containers for external content
+                // They should maintain their specified width and height for the viewport
             }
             _ => {
                 style.display = Display::Block;

@@ -24,7 +24,8 @@
 
 use std::collections::HashMap;
 use anyhow::Result;
-use kryon_core::{ScriptEntry, Element, ElementId, PropertyValue, KRBFile};
+use kryon_core::{ScriptEntry, Element, ElementId, PropertyValue, KRBFile, TextAlignment};
+use glam::{Vec2, Vec3, Vec4, Mat4};
 
 pub mod engine_trait;
 pub mod error;
@@ -34,6 +35,7 @@ pub mod lua;
 use engine_trait::{ScriptValue, BridgeData, ChangeSet};
 use error::ScriptError;
 use registry::ScriptRegistry;
+use serde_json;
 
 /// Main script system coordinator
 /// 
@@ -355,6 +357,313 @@ impl ScriptSystem {
             elements_data: elements.clone(),
             template_variables: self.template_variables.clone(),
         })
+    }
+    
+    /// Execute Canvas script and get drawing commands
+    pub fn execute_canvas_script(&mut self, script_name: &str) -> Result<Vec<kryon_render::RenderCommand>> {
+        let mut json_commands = Vec::new();
+        
+        // Find the Lua engine (Canvas scripts are primarily Lua-based)
+        for engine in self.registry.get_all_engines_mut() {
+            if let Some(lua_engine) = engine.as_any_mut().downcast_mut::<crate::script::lua::LuaEngine>() {
+                // Execute the Canvas script
+                lua_engine.execute_canvas_script(script_name)?;
+                
+                // Get the drawing commands from the Lua bridge
+                json_commands = lua_engine.get_canvas_commands()?;
+                
+                // Clear the commands after retrieving them
+                lua_engine.clear_canvas_commands()?;
+                break;
+            }
+        }
+        
+        // Convert JSON commands to RenderCommand
+        let mut commands = Vec::new();
+        for json_cmd in json_commands {
+            if let Some(render_cmd) = self.json_to_render_command(&json_cmd) {
+                commands.push(render_cmd);
+            }
+        }
+        
+        Ok(commands)
+    }
+    
+    /// Execute Canvas lifecycle hook (onLoad, onUpdate)
+    pub fn execute_canvas_lifecycle_hook(&mut self, hook_name: &str, delta_time: Option<f64>) -> Result<()> {
+        // Find the Lua engine (Canvas scripts are primarily Lua-based)
+        for engine in self.registry.get_all_engines_mut() {
+            if let Some(lua_engine) = engine.as_any_mut().downcast_mut::<crate::script::lua::LuaEngine>() {
+                // Execute the lifecycle hook with optional delta time
+                lua_engine.execute_canvas_lifecycle_hook(hook_name, delta_time)?;
+                break;
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// Convert JSON command to RenderCommand
+    fn json_to_render_command(&self, json_cmd: &serde_json::Value) -> Option<kryon_render::RenderCommand> {
+        use kryon_render::RenderCommand;
+        
+        let cmd_type = json_cmd.get("type")?.as_str()?;
+        
+        match cmd_type {
+            "DrawCanvasLine" => {
+                let start = self.json_to_vec2(json_cmd.get("start")?)?;
+                let end = self.json_to_vec2(json_cmd.get("end")?)?;
+                let color = self.json_to_vec4(json_cmd.get("color")?)?;
+                let width = json_cmd.get("width")?.as_f64()? as f32;
+                
+                Some(RenderCommand::DrawCanvasLine { start, end, color, width })
+            },
+            "DrawCanvasRect" => {
+                let position = self.json_to_vec2(json_cmd.get("position")?)?;
+                let size = self.json_to_vec2(json_cmd.get("size")?)?;
+                let fill_color = json_cmd.get("fill_color").and_then(|c| self.json_to_vec4(c));
+                let stroke_color = json_cmd.get("stroke_color").and_then(|c| self.json_to_vec4(c));
+                let stroke_width = json_cmd.get("stroke_width")?.as_f64()? as f32;
+                
+                Some(RenderCommand::DrawCanvasRect { position, size, fill_color, stroke_color, stroke_width })
+            },
+            "DrawCanvasCircle" => {
+                let center = self.json_to_vec2(json_cmd.get("center")?)?;
+                let radius = json_cmd.get("radius")?.as_f64()? as f32;
+                let fill_color = json_cmd.get("fill_color").and_then(|c| self.json_to_vec4(c));
+                let stroke_color = json_cmd.get("stroke_color").and_then(|c| self.json_to_vec4(c));
+                let stroke_width = json_cmd.get("stroke_width")?.as_f64()? as f32;
+                
+                Some(RenderCommand::DrawCanvasCircle { center, radius, fill_color, stroke_color, stroke_width })
+            },
+            "DrawCanvasText" => {
+                let text = json_cmd.get("text")?.as_str()?.to_string();
+                let position = self.json_to_vec2(json_cmd.get("position")?)?;
+                let font_size = json_cmd.get("font_size")?.as_f64()? as f32;
+                let color = self.json_to_vec4(json_cmd.get("color")?)?;
+                let font_family = json_cmd.get("font_family").and_then(|f| f.as_str().map(String::from));
+                let alignment = json_cmd.get("alignment").and_then(|a| a.as_str()).unwrap_or("Left");
+                
+                let text_alignment = match alignment {
+                    "Center" => TextAlignment::Center,
+                    "Right" => TextAlignment::End,
+                    "End" => TextAlignment::End,
+                    _ => TextAlignment::Start,
+                };
+                
+                Some(RenderCommand::DrawCanvasText { 
+                    text, 
+                    position, 
+                    font_size, 
+                    color, 
+                    font_family, 
+                    alignment: text_alignment 
+                })
+            },
+            "DrawCanvasEllipse" => {
+                let center = self.json_to_vec2(json_cmd.get("center")?)?;
+                let rx = json_cmd.get("rx")?.as_f64()? as f32;
+                let ry = json_cmd.get("ry")?.as_f64()? as f32;
+                let fill_color = json_cmd.get("fill_color").and_then(|c| self.json_to_vec4(c));
+                let stroke_color = json_cmd.get("stroke_color").and_then(|c| self.json_to_vec4(c));
+                let stroke_width = json_cmd.get("stroke_width")?.as_f64()? as f32;
+                
+                Some(RenderCommand::DrawCanvasEllipse { center, rx, ry, fill_color, stroke_color, stroke_width })
+            },
+            "DrawCanvasPolygon" => {
+                let points_json = json_cmd.get("points")?.as_array()?;
+                let mut points = Vec::new();
+                for point_json in points_json {
+                    if let Some(point) = self.json_to_vec2(point_json) {
+                        points.push(point);
+                    }
+                }
+                let fill_color = json_cmd.get("fill_color").and_then(|c| self.json_to_vec4(c));
+                let stroke_color = json_cmd.get("stroke_color").and_then(|c| self.json_to_vec4(c));
+                let stroke_width = json_cmd.get("stroke_width")?.as_f64()? as f32;
+                
+                Some(RenderCommand::DrawCanvasPolygon { points, fill_color, stroke_color, stroke_width })
+            },
+            "DrawCanvasPath" => {
+                let path_data = json_cmd.get("path_data")?.as_str()?.to_string();
+                let fill_color = json_cmd.get("fill_color").and_then(|c| self.json_to_vec4(c));
+                let stroke_color = json_cmd.get("stroke_color").and_then(|c| self.json_to_vec4(c));
+                let stroke_width = json_cmd.get("stroke_width")?.as_f64()? as f32;
+                
+                Some(RenderCommand::DrawCanvasPath { path_data, fill_color, stroke_color, stroke_width })
+            },
+            "DrawCanvasImage" => {
+                let source = json_cmd.get("source")?.as_str()?.to_string();
+                let position = self.json_to_vec2(json_cmd.get("position")?)?;
+                let size = self.json_to_vec2(json_cmd.get("size")?)?;
+                let opacity = json_cmd.get("opacity")?.as_f64()? as f32;
+                
+                Some(RenderCommand::DrawCanvasImage { source, position, size, opacity })
+            },
+            // 3D Canvas commands
+            "BeginCanvas3D" => {
+                let camera = json_cmd.get("camera")?;
+                let camera_data = kryon_render::CameraData {
+                    position: self.json_to_vec3(camera.get("position")?)?,
+                    target: self.json_to_vec3(camera.get("target")?)?,
+                    up: self.json_to_vec3(camera.get("up")?)?,
+                    fov: camera.get("fov")?.as_f64()? as f32,
+                    near_plane: camera.get("near_plane")?.as_f64()? as f32,
+                    far_plane: camera.get("far_plane")?.as_f64()? as f32,
+                };
+                
+                Some(RenderCommand::BeginCanvas3D {
+                    canvas_id: "default".to_string(),
+                    position: Vec2::new(0.0, 0.0), // Will be set by Canvas element
+                    size: Vec2::new(800.0, 600.0), // Will be set by Canvas element
+                    camera: camera_data,
+                })
+            },
+            "EndCanvas3D" => {
+                Some(RenderCommand::EndCanvas3D)
+            },
+            "DrawCanvas3DCube" => {
+                let position = self.json_to_vec3(json_cmd.get("position")?)?;
+                let size = self.json_to_vec3(json_cmd.get("size")?)?;
+                let color = self.json_to_vec4(json_cmd.get("color")?)?;
+                let wireframe = json_cmd.get("wireframe")?.as_bool().unwrap_or(false);
+                
+                Some(RenderCommand::DrawCanvas3DCube { position, size, color, wireframe })
+            },
+            "DrawCanvas3DSphere" => {
+                let center = self.json_to_vec3(json_cmd.get("center")?)?;
+                let radius = json_cmd.get("radius")?.as_f64()? as f32;
+                let color = self.json_to_vec4(json_cmd.get("color")?)?;
+                let wireframe = json_cmd.get("wireframe")?.as_bool().unwrap_or(false);
+                
+                Some(RenderCommand::DrawCanvas3DSphere { center, radius, color, wireframe })
+            },
+            "DrawCanvas3DPlane" => {
+                let center = self.json_to_vec3(json_cmd.get("center")?)?;
+                let size = self.json_to_vec2(json_cmd.get("size")?)?;
+                let normal = self.json_to_vec3(json_cmd.get("normal")?)?;
+                let color = self.json_to_vec4(json_cmd.get("color")?)?;
+                
+                Some(RenderCommand::DrawCanvas3DPlane { center, size, normal, color })
+            },
+            "DrawCanvas3DMesh" => {
+                let vertices_json = json_cmd.get("vertices")?.as_array()?;
+                let mut vertices = Vec::new();
+                for vertex_json in vertices_json {
+                    if let Some(vertex) = self.json_to_vec3(vertex_json) {
+                        vertices.push(vertex);
+                    }
+                }
+                
+                let indices_json = json_cmd.get("indices")?.as_array()?;
+                let mut indices = Vec::new();
+                for index_json in indices_json {
+                    if let Some(index) = index_json.as_u64() {
+                        indices.push(index as u32);
+                    }
+                }
+                
+                let normals_json = json_cmd.get("normals")?.as_array()?;
+                let mut normals = Vec::new();
+                for normal_json in normals_json {
+                    if let Some(normal) = self.json_to_vec3(normal_json) {
+                        normals.push(normal);
+                    }
+                }
+                
+                let uvs_json = json_cmd.get("uvs")?.as_array()?;
+                let mut uvs = Vec::new();
+                for uv_json in uvs_json {
+                    if let Some(uv) = self.json_to_vec2(uv_json) {
+                        uvs.push(uv);
+                    }
+                }
+                
+                let color = self.json_to_vec4(json_cmd.get("color")?)?;
+                let texture = json_cmd.get("texture").and_then(|t| t.as_str().map(String::from));
+                
+                Some(RenderCommand::DrawCanvas3DMesh { vertices, indices, normals, uvs, color, texture })
+            },
+            "SetCanvas3DLighting" => {
+                let ambient_color = self.json_to_vec4(json_cmd.get("ambient_color")?)?;
+                
+                let directional_light = json_cmd.get("directional_light").and_then(|dl| {
+                    let direction = self.json_to_vec3(dl.get("direction")?);
+                    let color = self.json_to_vec4(dl.get("color")?);
+                    let intensity = dl.get("intensity")?.as_f64()? as f32;
+                    
+                    if let (Some(direction), Some(color)) = (direction, color) {
+                        Some(kryon_render::DirectionalLight { direction, color, intensity })
+                    } else {
+                        None
+                    }
+                });
+                
+                let point_lights_json = json_cmd.get("point_lights")?.as_array()?;
+                let mut point_lights = Vec::new();
+                for pl_json in point_lights_json {
+                    if let (Some(position), Some(color)) = (
+                        self.json_to_vec3(pl_json.get("position")?),
+                        self.json_to_vec4(pl_json.get("color")?)
+                    ) {
+                        let intensity = pl_json.get("intensity")?.as_f64()? as f32;
+                        let range = pl_json.get("range")?.as_f64()? as f32;
+                        
+                        point_lights.push(kryon_render::PointLight {
+                            position,
+                            color,
+                            intensity,
+                            range,
+                        });
+                    }
+                }
+                
+                Some(RenderCommand::SetCanvas3DLighting { ambient_color, directional_light, point_lights })
+            },
+            "ApplyCanvas3DTransform" => {
+                let transform = json_cmd.get("transform")?;
+                let translation = self.json_to_vec3(transform.get("translation")?)?;
+                let rotation = self.json_to_vec3(transform.get("rotation")?)?;
+                let scale = self.json_to_vec3(transform.get("scale")?)?;
+                
+                // Create transformation matrix from translation, rotation, and scale
+                let transform_matrix = Mat4::from_scale_rotation_translation(
+                    scale,
+                    glam::Quat::from_euler(glam::EulerRot::XYZ, 
+                        rotation.x.to_radians(), 
+                        rotation.y.to_radians(), 
+                        rotation.z.to_radians()),
+                    translation,
+                );
+                
+                Some(RenderCommand::ApplyCanvas3DTransform { transform: transform_matrix })
+            },
+            _ => None,
+        }
+    }
+    
+    /// Convert JSON object to Vec2
+    fn json_to_vec2(&self, json: &serde_json::Value) -> Option<Vec2> {
+        let x = json.get("x")?.as_f64()? as f32;
+        let y = json.get("y")?.as_f64()? as f32;
+        Some(Vec2::new(x, y))
+    }
+    
+    /// Convert JSON object to Vec3
+    fn json_to_vec3(&self, json: &serde_json::Value) -> Option<Vec3> {
+        let x = json.get("x")?.as_f64()? as f32;
+        let y = json.get("y")?.as_f64()? as f32;
+        let z = json.get("z")?.as_f64()? as f32;
+        Some(Vec3::new(x, y, z))
+    }
+    
+    /// Convert JSON object to Vec4
+    fn json_to_vec4(&self, json: &serde_json::Value) -> Option<Vec4> {
+        let r = json.get("r")?.as_f64()? as f32;
+        let g = json.get("g")?.as_f64()? as f32;
+        let b = json.get("b")?.as_f64()? as f32;
+        let a = json.get("a")?.as_f64()? as f32;
+        Some(Vec4::new(r, g, b, a))
     }
     
     /// Convert PropertyValue to ScriptValue

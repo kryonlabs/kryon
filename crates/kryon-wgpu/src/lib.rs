@@ -123,12 +123,22 @@ impl CommandRenderer for WgpuRenderer {
         let mut rect_commands = Vec::new();
         let mut text_commands = Vec::new();
         let mut image_commands = Vec::new();
+        let mut line_commands = Vec::new();
+        let mut circle_commands = Vec::new();
+        let mut ellipse_commands = Vec::new();
+        let mut polygon_commands = Vec::new();
+        let mut path_commands = Vec::new();
         
         for command in commands {
             match command {
                 RenderCommand::DrawRect { .. } => rect_commands.push(command),
                 RenderCommand::DrawText { .. } => text_commands.push(command),
                 RenderCommand::DrawImage { .. } => image_commands.push(command),
+                RenderCommand::DrawLine { .. } => line_commands.push(command),
+                RenderCommand::DrawCircle { .. } => circle_commands.push(command),
+                RenderCommand::DrawEllipse { .. } => ellipse_commands.push(command),
+                RenderCommand::DrawPolygon { .. } => polygon_commands.push(command),
+                RenderCommand::DrawPath { .. } => path_commands.push(command),
                 _ => {} // Handle other commands
             }
         }
@@ -136,6 +146,31 @@ impl CommandRenderer for WgpuRenderer {
         // Render rectangles
         if !rect_commands.is_empty() {
             self.render_rects(context, &rect_commands)?;
+        }
+        
+        // Render lines
+        if !line_commands.is_empty() {
+            self.render_lines(context, &line_commands)?;
+        }
+        
+        // Render circles
+        if !circle_commands.is_empty() {
+            self.render_circles(context, &circle_commands)?;
+        }
+        
+        // Render ellipses
+        if !ellipse_commands.is_empty() {
+            self.render_ellipses(context, &ellipse_commands)?;
+        }
+        
+        // Render polygons
+        if !polygon_commands.is_empty() {
+            self.render_polygons(context, &polygon_commands)?;
+        }
+        
+        // Render paths
+        if !path_commands.is_empty() {
+            self.render_paths(context, &path_commands)?;
         }
         
         // Render text
@@ -585,6 +620,339 @@ impl WgpuRenderer {
     ) -> RenderResult<()> {
         // TODO: Implement image rendering with transform support
         // When implementing, handle transform field in RenderCommand::DrawImage
+        Ok(())
+    }
+    
+    fn render_lines(
+        &mut self,
+        context: &mut WgpuRenderContext,
+        commands: &[&RenderCommand],
+    ) -> RenderResult<()> {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+        let mut index_offset = 0u16;
+        
+        for command in commands {
+            if let RenderCommand::DrawLine {
+                start,
+                end,
+                color,
+                width,
+                transform,
+                z_index: _,
+            } = command {
+                // Generate vertices for line (as a thin rectangle)
+                let line_vertices = generate_line_vertices(*start, *end, *color, *width);
+                
+                // Apply transform if present
+                let transformed_vertices = if let Some(transform_data) = transform {
+                    apply_transform_to_vertices(line_vertices, transform_data)
+                } else {
+                    line_vertices
+                };
+                
+                // Add vertices and indices
+                for vertex in transformed_vertices {
+                    vertices.push(vertex);
+                }
+                
+                // Generate indices for line quad
+                indices.extend_from_slice(&[
+                    index_offset,
+                    index_offset + 1,
+                    index_offset + 2,
+                    index_offset + 2,
+                    index_offset + 3,
+                    index_offset,
+                ]);
+                index_offset += 4;
+            }
+        }
+        
+        if vertices.is_empty() {
+            return Ok(());
+        }
+        
+        // Upload and render using existing rect pipeline
+        self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&vertices));
+        self.queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(&indices));
+        
+        let mut render_pass = context.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Line Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &context.view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        
+        render_pass.set_pipeline(&self.rect_pipeline);
+        render_pass.set_bind_group(0, &self.view_proj_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
+        
+        Ok(())
+    }
+    
+    fn render_circles(
+        &mut self,
+        context: &mut WgpuRenderContext,
+        commands: &[&RenderCommand],
+    ) -> RenderResult<()> {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+        let mut index_offset = 0u16;
+        
+        for command in commands {
+            if let RenderCommand::DrawCircle {
+                center,
+                radius,
+                fill_color,
+                stroke_color,
+                stroke_width,
+                transform,
+                z_index: _,
+            } = command {
+                // Generate vertices for circle (as a polygon)
+                let circle_vertices = generate_circle_vertices(*center, *radius, *fill_color, *stroke_color, *stroke_width);
+                
+                // Apply transform if present
+                let transformed_vertices = if let Some(transform_data) = transform {
+                    apply_transform_to_vertices(circle_vertices, transform_data)
+                } else {
+                    circle_vertices
+                };
+                
+                // Add vertices and generate indices for triangulated circle
+                let start_index = index_offset;
+                for vertex in transformed_vertices {
+                    vertices.push(vertex);
+                    index_offset += 1;
+                }
+                
+                // Generate indices for triangle fan (circle triangulation)
+                let vertex_count = index_offset - start_index;
+                for i in 1..(vertex_count - 1) {
+                    indices.extend_from_slice(&[
+                        start_index,
+                        start_index + i,
+                        start_index + i + 1,
+                    ]);
+                }
+            }
+        }
+        
+        if vertices.is_empty() {
+            return Ok(());
+        }
+        
+        // Upload and render
+        self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&vertices));
+        self.queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(&indices));
+        
+        let mut render_pass = context.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Circle Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &context.view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        
+        render_pass.set_pipeline(&self.rect_pipeline);
+        render_pass.set_bind_group(0, &self.view_proj_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
+        
+        Ok(())
+    }
+    
+    fn render_ellipses(
+        &mut self,
+        context: &mut WgpuRenderContext,
+        commands: &[&RenderCommand],
+    ) -> RenderResult<()> {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+        let mut index_offset = 0u16;
+        
+        for command in commands {
+            if let RenderCommand::DrawEllipse {
+                center,
+                rx,
+                ry,
+                fill_color,
+                stroke_color,
+                stroke_width,
+                transform,
+                z_index: _,
+            } = command {
+                // Generate vertices for ellipse (as a polygon)
+                let ellipse_vertices = generate_ellipse_vertices(*center, *rx, *ry, *fill_color, *stroke_color, *stroke_width);
+                
+                // Apply transform if present
+                let transformed_vertices = if let Some(transform_data) = transform {
+                    apply_transform_to_vertices(ellipse_vertices, transform_data)
+                } else {
+                    ellipse_vertices
+                };
+                
+                // Add vertices and generate indices for triangulated ellipse
+                let start_index = index_offset;
+                for vertex in transformed_vertices {
+                    vertices.push(vertex);
+                    index_offset += 1;
+                }
+                
+                // Generate indices for triangle fan
+                let vertex_count = index_offset - start_index;
+                for i in 1..(vertex_count - 1) {
+                    indices.extend_from_slice(&[
+                        start_index,
+                        start_index + i,
+                        start_index + i + 1,
+                    ]);
+                }
+            }
+        }
+        
+        if vertices.is_empty() {
+            return Ok(());
+        }
+        
+        // Upload and render
+        self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&vertices));
+        self.queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(&indices));
+        
+        let mut render_pass = context.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Ellipse Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &context.view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        
+        render_pass.set_pipeline(&self.rect_pipeline);
+        render_pass.set_bind_group(0, &self.view_proj_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
+        
+        Ok(())
+    }
+    
+    fn render_polygons(
+        &mut self,
+        context: &mut WgpuRenderContext,
+        commands: &[&RenderCommand],
+    ) -> RenderResult<()> {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+        let mut index_offset = 0u16;
+        
+        for command in commands {
+            if let RenderCommand::DrawPolygon {
+                points,
+                fill_color,
+                stroke_color,
+                stroke_width,
+                transform,
+                z_index: _,
+            } = command {
+                if points.len() < 3 {
+                    continue; // Skip invalid polygons
+                }
+                
+                // Generate vertices for polygon
+                let polygon_vertices = generate_polygon_vertices(points, *fill_color, *stroke_color, *stroke_width);
+                
+                // Apply transform if present
+                let transformed_vertices = if let Some(transform_data) = transform {
+                    apply_transform_to_vertices(polygon_vertices, transform_data)
+                } else {
+                    polygon_vertices
+                };
+                
+                // Add vertices and generate indices for triangulated polygon
+                let start_index = index_offset;
+                for vertex in transformed_vertices {
+                    vertices.push(vertex);
+                    index_offset += 1;
+                }
+                
+                // Generate indices for triangle fan
+                let vertex_count = index_offset - start_index;
+                for i in 1..(vertex_count - 1) {
+                    indices.extend_from_slice(&[
+                        start_index,
+                        start_index + i,
+                        start_index + i + 1,
+                    ]);
+                }
+            }
+        }
+        
+        if vertices.is_empty() {
+            return Ok(());
+        }
+        
+        // Upload and render
+        self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&vertices));
+        self.queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(&indices));
+        
+        let mut render_pass = context.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Polygon Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &context.view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        
+        render_pass.set_pipeline(&self.rect_pipeline);
+        render_pass.set_bind_group(0, &self.view_proj_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
+        
+        Ok(())
+    }
+    
+    fn render_paths(
+        &mut self,
+        _context: &mut WgpuRenderContext,
+        _commands: &[&RenderCommand],
+    ) -> RenderResult<()> {
+        // TODO: Implement SVG path rendering - this is complex and requires path parsing
+        // For now, just log that path rendering was requested
+        eprintln!("[WGPU] Path rendering not yet implemented");
         Ok(())
     }
 }

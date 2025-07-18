@@ -12,6 +12,7 @@ use std::rc::Rc;
 use anyhow::Result;
 use mlua::{Lua, Value as LuaValue, Function as LuaFunction};
 use regex;
+use serde_json;
 
 use crate::script::{
     engine_trait::{
@@ -199,6 +200,26 @@ impl LuaEngine {
     /// Remove a native renderer context
     pub fn remove_native_context(&mut self, context_id: &str) {
         self.native_contexts.remove(context_id);
+    }
+    
+    /// Execute Canvas script function
+    pub fn execute_canvas_script(&mut self, script_name: &str) -> Result<()> {
+        self.bridge.execute_canvas_script(script_name)
+    }
+    
+    /// Get Canvas drawing commands
+    pub fn get_canvas_commands(&mut self) -> Result<Vec<serde_json::Value>> {
+        self.bridge.get_canvas_commands()
+    }
+    
+    /// Clear Canvas drawing commands
+    pub fn clear_canvas_commands(&mut self) -> Result<()> {
+        self.bridge.clear_canvas_commands()
+    }
+    
+    /// Execute Canvas lifecycle hook (onLoad, onUpdate)
+    pub fn execute_canvas_lifecycle_hook(&mut self, hook_name: &str, delta_time: Option<f64>) -> Result<()> {
+        self.bridge.execute_canvas_lifecycle_hook(hook_name, delta_time)
     }
 }
 
@@ -391,6 +412,10 @@ impl ScriptEngine for LuaEngine {
     
     fn get_memory_usage(&self) -> EngineMemoryStats {
         self.memory_stats.clone()
+    }
+    
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }
 

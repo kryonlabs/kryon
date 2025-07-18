@@ -95,7 +95,8 @@ fn main() -> anyhow::Result<()> {
         {
             use kryon_runtime::KryonApp;
             use kryon_ratatui::RatatuiRenderer;
-            use kryon_render::{Renderer, InputEvent, KeyCode as RenderKeyCode};
+            use kryon_render::{Renderer, KeyCode as RenderKeyCode};
+            use kryon_render::events::InputEvent;
             use ratatui::backend::CrosstermBackend;
             use crossterm::{
                 event::{self, Event as CEvent, KeyCode},

@@ -112,6 +112,93 @@ fn render_commands_to_frame(commands: &[RenderCommand], frame: &mut Frame, app_c
                 }
             }
             RenderCommand::SetCanvasSize(_) => {},
+            
+            // Basic 2D drawing commands (limited support in terminal)
+            RenderCommand::DrawLine { start, end, color, width: _, transform, .. } => {
+                let (final_start, _) = apply_transform_ratatui(*start, Vec2::new(1.0, 1.0), transform);
+                let (final_end, _) = apply_transform_ratatui(*end, Vec2::new(1.0, 1.0), transform);
+                
+                // Very basic line rendering using dashes or pipe characters
+                let dx = final_end.x - final_start.x;
+                let dy = final_end.y - final_start.y;
+                let length = (dx * dx + dy * dy).sqrt();
+                
+                if length > 0.0 {
+                    // Approximate line with a single character at midpoint
+                    let mid_x = (final_start.x + final_end.x) / 2.0;
+                    let mid_y = (final_start.y + final_end.y) / 2.0;
+                    
+                    if let Some(area) = translate_rect(Vec2::new(mid_x, mid_y), Vec2::new(8.0, 16.0), app_canvas_size, terminal_area) {
+                        let line_char = if dx.abs() > dy.abs() { "─" } else { "│" };
+                        let paragraph = Paragraph::new(line_char)
+                            .style(Style::default().fg(vec4_to_ratatui_color(*color)));
+                        frame.render_widget(paragraph, area);
+                    }
+                }
+            }
+            
+            RenderCommand::DrawCircle { center, radius, fill_color, stroke_color: _, stroke_width: _, transform, .. } => {
+                let (final_center, _) = apply_transform_ratatui(*center, Vec2::new(1.0, 1.0), transform);
+                
+                // Approximate circle with "●" character
+                if let Some(fill) = fill_color {
+                    let circle_size = Vec2::new(*radius * 2.0, *radius * 2.0);
+                    let circle_pos = Vec2::new(final_center.x - radius, final_center.y - radius);
+                    
+                    if let Some(area) = translate_rect(circle_pos, circle_size, app_canvas_size, terminal_area) {
+                        let paragraph = Paragraph::new("●")
+                            .style(Style::default().fg(vec4_to_ratatui_color(*fill)))
+                            .alignment(Alignment::Center);
+                        frame.render_widget(paragraph, area);
+                    }
+                }
+            }
+            
+            RenderCommand::DrawEllipse { center, rx, ry, fill_color, stroke_color: _, stroke_width: _, transform, .. } => {
+                let (final_center, _) = apply_transform_ratatui(*center, Vec2::new(1.0, 1.0), transform);
+                
+                // Approximate ellipse with "○" character
+                if let Some(fill) = fill_color {
+                    let ellipse_size = Vec2::new(*rx * 2.0, *ry * 2.0);
+                    let ellipse_pos = Vec2::new(final_center.x - rx, final_center.y - ry);
+                    
+                    if let Some(area) = translate_rect(ellipse_pos, ellipse_size, app_canvas_size, terminal_area) {
+                        let paragraph = Paragraph::new("○")
+                            .style(Style::default().fg(vec4_to_ratatui_color(*fill)))
+                            .alignment(Alignment::Center);
+                        frame.render_widget(paragraph, area);
+                    }
+                }
+            }
+            
+            RenderCommand::DrawPolygon { points, fill_color, stroke_color: _, stroke_width: _, transform, .. } => {
+                if points.len() >= 3 {
+                    // Approximate polygon with "◆" character at centroid
+                    if let Some(fill) = fill_color {
+                        let centroid = points.iter().fold(Vec2::ZERO, |acc, p| acc + *p) / points.len() as f32;
+                        let (final_centroid, _) = apply_transform_ratatui(centroid, Vec2::new(1.0, 1.0), transform);
+                        
+                        if let Some(area) = translate_rect(final_centroid, Vec2::new(16.0, 16.0), app_canvas_size, terminal_area) {
+                            let paragraph = Paragraph::new("◆")
+                                .style(Style::default().fg(vec4_to_ratatui_color(*fill)))
+                                .alignment(Alignment::Center);
+                            frame.render_widget(paragraph, area);
+                        }
+                    }
+                }
+            }
+            
+            RenderCommand::DrawPath { path_data: _, fill_color, stroke_color: _, stroke_width: _, transform, .. } => {
+                // Path rendering is too complex for terminal - show placeholder
+                if let Some(fill) = fill_color {
+                    if let Some(area) = translate_rect(Vec2::new(50.0, 50.0), Vec2::new(100.0, 100.0), app_canvas_size, terminal_area) {
+                        let paragraph = Paragraph::new("PATH")
+                            .style(Style::default().fg(vec4_to_ratatui_color(*fill)))
+                            .alignment(Alignment::Center);
+                        frame.render_widget(paragraph, area);
+                    }
+                }
+            }
             // Canvas rendering commands
             RenderCommand::BeginCanvas { canvas_id: _, position, size } => {
                 // For ratatui, we can draw a simple border to represent the canvas

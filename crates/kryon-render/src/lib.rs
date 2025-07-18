@@ -1,9 +1,50 @@
-use glam::{Vec2, Vec4};
+use glam::{Vec2, Vec3, Vec4, Mat4};
 use std::collections::HashMap;
 // use tracing::info; // No longer needed
 
 use kryon_core::{Element, ElementId, ElementType, PropertyValue, StyleComputer, TextAlignment, TransformData};
 use kryon_layout::LayoutResult;
+
+// Canvas-specific data structures
+#[derive(Debug, Clone)]
+pub struct CameraData {
+    pub position: Vec3,
+    pub target: Vec3,
+    pub up: Vec3,
+    pub fov: f32,
+    pub near_plane: f32,
+    pub far_plane: f32,
+}
+
+#[derive(Debug, Clone)]
+pub struct Shadow {
+    pub blur: f32,
+    pub color: Vec4,
+    pub offset_x: f32,
+    pub offset_y: f32,
+}
+
+#[derive(Debug, Clone)]
+pub struct ImageData {
+    pub width: u32,
+    pub height: u32,
+    pub data: Vec<u8>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DirectionalLight {
+    pub direction: Vec3,
+    pub color: Vec4,
+    pub intensity: f32,
+}
+
+#[derive(Debug, Clone)]
+pub struct PointLight {
+    pub position: Vec3,
+    pub color: Vec4,
+    pub intensity: f32,
+    pub range: f32,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ScrollbarOrientation {
@@ -16,6 +57,9 @@ pub use events::*;
 
 pub mod text_manager;
 pub use text_manager::*;
+
+pub mod embed_view;
+pub use embed_view::*;
 
 #[cfg(feature = "wasm")]
 pub mod wasm;
@@ -107,7 +151,17 @@ pub enum RenderCommand {
     ClearClip,
     /// Informs the renderer of the application's intended canvas size.
     SetCanvasSize(Vec2),
-    /// Native renderer view command for backend-specific rendering
+    /// Unified embed view command for external content rendering
+    EmbedView {
+        view_id: String,
+        view_type: String,        // "webview", "wasm", "native_renderer", "iframe", etc.
+        source: Option<String>,   // URI, file path, or function name
+        position: Vec2,
+        size: Vec2,
+        config: HashMap<String, PropertyValue>,
+        z_index: i32,
+    },
+    /// Legacy native renderer view command (deprecated)
     NativeRendererView {
         position: Vec2,
         size: Vec2,
@@ -169,6 +223,50 @@ pub enum RenderCommand {
         thumb_color: Vec4,
         border_color: Vec4,
         border_width: f32,
+        z_index: i32,
+    },
+    /// Basic 2D drawing commands (standalone, not canvas-specific)
+    DrawLine {
+        start: Vec2,
+        end: Vec2,
+        color: Vec4,
+        width: f32,
+        transform: Option<TransformData>,
+        z_index: i32,
+    },
+    DrawCircle {
+        center: Vec2,
+        radius: f32,
+        fill_color: Option<Vec4>,
+        stroke_color: Option<Vec4>,
+        stroke_width: f32,
+        transform: Option<TransformData>,
+        z_index: i32,
+    },
+    DrawEllipse {
+        center: Vec2,
+        rx: f32,
+        ry: f32,
+        fill_color: Option<Vec4>,
+        stroke_color: Option<Vec4>,
+        stroke_width: f32,
+        transform: Option<TransformData>,
+        z_index: i32,
+    },
+    DrawPolygon {
+        points: Vec<Vec2>,
+        fill_color: Option<Vec4>,
+        stroke_color: Option<Vec4>,
+        stroke_width: f32,
+        transform: Option<TransformData>,
+        z_index: i32,
+    },
+    DrawPath {
+        path_data: String,
+        fill_color: Option<Vec4>,
+        stroke_color: Option<Vec4>,
+        stroke_width: f32,
+        transform: Option<TransformData>,
         z_index: i32,
     },
     /// Canvas-specific rendering commands
@@ -236,6 +334,54 @@ pub enum RenderCommand {
         position: Vec2,
         size: Vec2,
         opacity: f32,
+    },
+    /// 3D Canvas rendering commands
+    BeginCanvas3D {
+        canvas_id: String,
+        position: Vec2,
+        size: Vec2,
+        camera: CameraData,
+    },
+    EndCanvas3D,
+    /// Draw a 3D cube
+    DrawCanvas3DCube {
+        position: Vec3,
+        size: Vec3,
+        color: Vec4,
+        wireframe: bool,
+    },
+    /// Draw a 3D sphere
+    DrawCanvas3DSphere {
+        center: Vec3,
+        radius: f32,
+        color: Vec4,
+        wireframe: bool,
+    },
+    /// Draw a 3D plane
+    DrawCanvas3DPlane {
+        center: Vec3,
+        size: Vec2,
+        normal: Vec3,
+        color: Vec4,
+    },
+    /// Draw a 3D mesh from vertices
+    DrawCanvas3DMesh {
+        vertices: Vec<Vec3>,
+        indices: Vec<u32>,
+        normals: Vec<Vec3>,
+        uvs: Vec<Vec2>,
+        color: Vec4,
+        texture: Option<String>,
+    },
+    /// Set 3D lighting
+    SetCanvas3DLighting {
+        ambient_color: Vec4,
+        directional_light: Option<DirectionalLight>,
+        point_lights: Vec<PointLight>,
+    },
+    /// Apply 3D transformation matrix
+    ApplyCanvas3DTransform {
+        transform: Mat4,
     },
     /// WASM View rendering commands
     BeginWasmView {
@@ -312,6 +458,11 @@ impl<R: CommandRenderer> ElementRenderer<R> {
                     RenderCommand::DrawText { z_index, .. } => *z_index,
                     RenderCommand::DrawRichText { z_index, .. } => *z_index,
                     RenderCommand::DrawScrollbar { z_index, .. } => *z_index,
+                    RenderCommand::DrawLine { z_index, .. } => *z_index,
+                    RenderCommand::DrawCircle { z_index, .. } => *z_index,
+                    RenderCommand::DrawEllipse { z_index, .. } => *z_index,
+                    RenderCommand::DrawPolygon { z_index, .. } => *z_index,
+                    RenderCommand::DrawPath { z_index, .. } => *z_index,
                     RenderCommand::DrawImage { .. } => 0,
                     RenderCommand::DrawTextInput { .. } => 1,
                     RenderCommand::DrawCheckbox { .. } => 1,
@@ -746,155 +897,99 @@ impl<R: CommandRenderer> ElementRenderer<R> {
             return Ok(commands);
         }
         
-        // Handle NativeRendererView elements
-        if element.element_type == ElementType::NativeRendererView {
-            if let (Some(backend), Some(script_name)) = (
-                element.native_backend.as_ref(),
-                element.native_render_script.as_ref()
-            ) {
-                commands.push(RenderCommand::NativeRendererView {
-                    position,
-                    size,
-                    backend: backend.clone(),
-                    script_name: script_name.clone(),
-                    element_id: element_id,
-                    config: element.native_config.clone(),
-                    z_index: element.z_index,
-                });
-            }
-            
-            // Don't render anything else for NativeRendererView
-            return Ok(commands);
-        }
-        
-        // Handle Canvas elements
+        // Handle Canvas elements (native 2D/3D drawing)
         if element.element_type == ElementType::Canvas {
-            // Begin canvas rendering context
-            commands.push(RenderCommand::BeginCanvas {
-                canvas_id: element.id.clone(),
+            let canvas_script = element.custom_properties.get("draw_script")
+                .and_then(|v| if let PropertyValue::String(s) = v { Some(s.clone()) } else { None });
+            
+            commands.push(RenderCommand::EmbedView {
+                view_id: element.id.clone(),
+                view_type: "canvas".to_string(),
+                source: canvas_script,
                 position,
                 size,
+                config: element.custom_properties.clone(),
+                z_index: element.z_index,
             });
             
-            // Execute canvas draw script if available
-            if let Some(draw_script) = element.custom_properties.get("draw_script") {
-                if let PropertyValue::String(script_name) = draw_script {
-                    // TODO: Execute the canvas draw script here
-                    // This would call into the script system to execute the named function
-                    eprintln!("[CANVAS] Canvas '{}' should execute draw script: '{}'", element.id, script_name);
-                    
-                    // For now, draw a placeholder to show Canvas is working
-                    commands.push(RenderCommand::DrawCanvasRect {
-                        position: Vec2::new(10.0, 10.0), // Relative to canvas
-                        size: Vec2::new(size.x - 20.0, size.y - 20.0),
-                        fill_color: Some(Vec4::new(0.2, 0.4, 0.8, 0.3)), // Light blue
-                        stroke_color: Some(Vec4::new(0.0, 0.2, 0.6, 1.0)), // Darker blue
-                        stroke_width: 2.0,
-                    });
-                    
-                    commands.push(RenderCommand::DrawCanvasText {
-                        position: Vec2::new(size.x / 2.0 - 30.0, size.y / 2.0), // Center-ish
-                        text: "Canvas".to_string(),
-                        font_size: 16.0,
-                        color: Vec4::new(1.0, 1.0, 1.0, 1.0), // White text
-                        font_family: None,
-                        alignment: TextAlignment::Center,
-                    });
-                }
-            } else {
-                // Default canvas appearance when no draw script is specified
-                commands.push(RenderCommand::DrawCanvasRect {
-                    position: Vec2::ZERO,
-                    size,
-                    fill_color: Some(Vec4::new(0.1, 0.1, 0.1, 1.0)), // Dark background
-                    stroke_color: Some(Vec4::new(0.5, 0.5, 0.5, 1.0)), // Gray border
-                    stroke_width: 1.0,
-                });
-            }
-            
-            // End canvas rendering context
-            commands.push(RenderCommand::EndCanvas);
-            
-            // Skip the regular background and text rendering for Canvas elements
+            // Don't render anything else for Canvas
             return Ok(commands);
         }
         
-        // Handle WasmView elements
-        if element.element_type == ElementType::WasmView {
-            // Begin WASM view rendering context
-            commands.push(RenderCommand::BeginWasmView {
-                wasm_id: element.id.clone(),
+        // Handle Video elements (native video playback)
+        if element.element_type == ElementType::Video {
+            let video_source = element.custom_properties.get("src")
+                .and_then(|v| if let PropertyValue::String(s) = v { Some(s.clone()) } else { None });
+            
+            let autoplay = element.custom_properties.get("autoplay")
+                .and_then(|v| if let PropertyValue::Bool(b) = v { Some(*b) } else { None })
+                .unwrap_or(false);
+            
+            let muted = element.custom_properties.get("muted")
+                .and_then(|v| if let PropertyValue::Bool(b) = v { Some(*b) } else { None })
+                .unwrap_or(false);
+            
+            let loop_video = element.custom_properties.get("loop")
+                .and_then(|v| if let PropertyValue::Bool(b) = v { Some(*b) } else { None })
+                .unwrap_or(false);
+            
+            // TODO: Add native video render command
+            // For now, render as a placeholder
+            commands.push(RenderCommand::DrawRect {
                 position,
                 size,
+                color: Vec4::new(0.1, 0.1, 0.1, 1.0), // Dark background
+                border_radius: 4.0,
+                border_width: 2.0,
+                border_color: Vec4::new(0.3, 0.3, 0.3, 1.0),
+                transform: None,
+                shadow: None,
+                z_index: element.z_index,
             });
             
-            // Load and execute WASM module if specified
-            if let Some(source) = element.custom_properties.get("source") {
-                if let PropertyValue::String(wasm_path) = source {
-                    eprintln!("[WASM] WasmView '{}' should load WASM module: '{}'", element.id, wasm_path);
-                    
-                    // Execute onLoad function if specified
-                    if let Some(on_load) = element.custom_properties.get("onLoad") {
-                        if let PropertyValue::String(function_name) = on_load {
-                            commands.push(RenderCommand::ExecuteWasmFunction {
-                                function_name: function_name.clone(),
-                                params: vec![], // No parameters for onLoad
-                            });
-                        }
-                    }
-                    
-                    // Execute onDraw function if specified  
-                    if let Some(on_draw) = element.custom_properties.get("onDraw") {
-                        if let PropertyValue::String(function_name) = on_draw {
-                            commands.push(RenderCommand::ExecuteWasmFunction {
-                                function_name: function_name.clone(),
-                                params: vec![], // No parameters for onDraw for now
-                            });
-                        }
-                    }
-                    
-                    // For now, draw a placeholder to show WasmView is working
-                    commands.push(RenderCommand::DrawCanvasRect {
-                        position: Vec2::new(10.0, 10.0), // Relative to wasm view
-                        size: Vec2::new(size.x - 20.0, size.y - 20.0),
-                        fill_color: Some(Vec4::new(0.8, 0.2, 0.4, 0.3)), // Light purple
-                        stroke_color: Some(Vec4::new(0.6, 0.0, 0.2, 1.0)), // Darker purple
-                        stroke_width: 2.0,
-                    });
-                    
-                    commands.push(RenderCommand::DrawCanvasText {
-                        position: Vec2::new(size.x / 2.0 - 40.0, size.y / 2.0), // Center-ish
-                        text: "WASM View".to_string(),
-                        font_size: 16.0,
-                        color: Vec4::new(1.0, 1.0, 1.0, 1.0), // White text
-                        font_family: None,
-                        alignment: TextAlignment::Center,
-                    });
-                }
-            } else {
-                // Default appearance when no WASM source is specified
-                commands.push(RenderCommand::DrawCanvasRect {
-                    position: Vec2::ZERO,
-                    size,
-                    fill_color: Some(Vec4::new(0.2, 0.1, 0.3, 1.0)), // Dark purple background
-                    stroke_color: Some(Vec4::new(0.8, 0.4, 0.6, 1.0)), // Pink border
-                    stroke_width: 1.0,
-                });
-                
-                commands.push(RenderCommand::DrawCanvasText {
-                    position: Vec2::new(size.x / 2.0 - 50.0, size.y / 2.0),
-                    text: "No WASM Source".to_string(),
+            if let Some(src) = video_source {
+                commands.push(RenderCommand::DrawText {
+                    position: Vec2::new(position.x + size.x / 2.0 - 40.0, position.y + size.y / 2.0),
+                    text: format!("🎬 Video: {}", src),
                     font_size: 14.0,
-                    color: Vec4::new(0.8, 0.8, 0.8, 1.0), // Light gray text
-                    font_family: None,
+                    color: Vec4::new(0.8, 0.8, 0.8, 1.0),
                     alignment: TextAlignment::Center,
+                    max_width: Some(size.x),
+                    max_height: Some(size.y),
+                    transform: None,
+                    font_family: None,
+                    z_index: element.z_index + 1,
                 });
             }
             
-            // End WASM view rendering context
-            commands.push(RenderCommand::EndWasmView);
+            // Don't render anything else for Video
+            return Ok(commands);
+        }
+        
+        // Handle EmbedView elements (webview, wasm, native renderer emulation)
+        if element.element_type == ElementType::EmbedView {
+            let view_type = element.embed_view_type.as_ref()
+                .or_else(|| element.custom_properties.get("type")
+                    .and_then(|v| if let PropertyValue::String(s) = v { Some(s) } else { None }))
+                .cloned()
+                .unwrap_or_else(|| "webview".to_string()); // Default to webview
+                
+            let view_source = element.embed_view_source.as_ref()
+                .or_else(|| element.custom_properties.get("source")
+                    .and_then(|v| if let PropertyValue::String(s) = v { Some(s) } else { None }))
+                .cloned();
             
-            // Skip the regular background and text rendering for WasmView elements
+            commands.push(RenderCommand::EmbedView {
+                view_id: element.id.clone(),
+                view_type,
+                source: view_source,
+                position,
+                size,
+                config: element.embed_view_config.clone(),
+                z_index: element.z_index,
+            });
+            
+            // Don't render anything else for EmbedView
             return Ok(commands);
         }
 
