@@ -8,6 +8,7 @@ mod backend;
 pub(crate) mod frontend;
 pub(crate) mod middle_end;
 mod optimizer;
+mod bundler;
 
 // 2. Bring necessary types and modules into the current scope.
 use crate::core::*;

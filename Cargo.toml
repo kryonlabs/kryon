@@ -19,6 +19,7 @@ path = "src/main.rs"
 [dependencies]
 # Error handling
 thiserror = "1.0"
+anyhow = "1.0"
 
 # CLI
 clap = { version = "4.4", features = ["derive"] }
@@ -50,6 +51,7 @@ walkdir = "2.4"
 # Utilities
 hex = "0.4"
 md5 = "0.7"
+flate2 = "1.0"
 
 # Script compilation (with feature gating)
 mlua = { version = "0.9", features = ["luajit", "vendored"], optional = true }

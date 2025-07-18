@@ -1,7 +1,7 @@
 // FILE: src/core/types.rs
 
 // Element Types
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum ElementType {
     App = 0x00,
@@ -9,16 +9,15 @@ pub enum ElementType {
     Text = 0x02,
     Link = 0x03,
     Image = 0x04,
-    Canvas = 0x05,
-    WasmView = 0x06,
-    NativeRendererView = 0x07,
+    Canvas = 0x05, // Native 2D/3D drawing canvas
+    Video = 0x06, // Native video playback element
+    EmbedView = 0x07, // For platform-breaking content (webview, wasm, native renderer emulation, etc.)
     Button = 0x10,
     Input = 0x11,
     List = 0x20,
     Grid = 0x21,
     Scrollable = 0x22,
     Tabs = 0x23,
-    Video = 0x30,
     InternalComponentUsage = 0xFE,
     Unknown = 0xFF,
     CustomBase = 0x31,
@@ -33,8 +32,8 @@ impl ElementType {
             "Link" => Self::Link,
             "Image" => Self::Image,
             "Canvas" => Self::Canvas,
-            "WasmView" => Self::WasmView,
-            "NativeRendererView" => Self::NativeRendererView,
+            "Video" => Self::Video,
+            "EmbedView" => Self::EmbedView,
             "Button" => Self::Button,
             "Input" => Self::Input,
             "List" => Self::List,
@@ -85,6 +84,51 @@ pub enum InputType {
     Reset = 0x51,
     Button = 0x52,
     Image = 0x53,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum EmbedViewType {
+    WebView = 0x00,
+    NativeRenderer = 0x01,
+    WasmView = 0x02,
+    UxnView = 0x03,
+    GbaView = 0x04,
+    DosView = 0x05,
+    CodeEditor = 0x06,
+    Terminal = 0x07,
+    ModelViewer = 0x08,
+}
+
+impl EmbedViewType {
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "webview" | "web" => Some(Self::WebView),
+            "native_renderer" | "native" => Some(Self::NativeRenderer),
+            "wasm_view" | "wasm" => Some(Self::WasmView),
+            "uxn_view" | "uxn" => Some(Self::UxnView),
+            "gba_view" | "gba" => Some(Self::GbaView),
+            "dos_view" | "dos" => Some(Self::DosView),
+            "code_editor" | "editor" => Some(Self::CodeEditor),
+            "terminal" | "term" => Some(Self::Terminal),
+            "model_viewer" | "model" => Some(Self::ModelViewer),
+            _ => None,
+        }
+    }
+    
+    pub fn to_name(self) -> &'static str {
+        match self {
+            Self::WebView => "webview",
+            Self::NativeRenderer => "native_renderer",
+            Self::WasmView => "wasm_view",
+            Self::UxnView => "uxn_view",
+            Self::GbaView => "gba_view",
+            Self::DosView => "dos_view",
+            Self::CodeEditor => "code_editor",
+            Self::Terminal => "terminal",
+            Self::ModelViewer => "model_viewer",
+        }
+    }
 }
 
 impl InputType {

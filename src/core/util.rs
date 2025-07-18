@@ -21,6 +21,24 @@ pub fn is_valid_identifier(name: &str) -> bool {
     chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
+/// Check if a string starting with # is a color value rather than a comment
+fn is_color_value(value: &str) -> bool {
+    if !value.starts_with('#') {
+        return false;
+    }
+    
+    let hex_part = &value[1..];
+    
+    // Check for valid hex color lengths (3, 4, 6, 8 characters)
+    match hex_part.len() {
+        3 | 4 | 6 | 8 => {
+            // Check if all characters are valid hex digits
+            hex_part.chars().all(|c| c.is_ascii_hexdigit())
+        }
+        _ => false,
+    }
+}
+
 
 // Color utilities
 #[derive(Debug, Clone, Copy)]
@@ -164,8 +182,8 @@ pub fn parse_color(color_str: &str) -> Result<Color> {
 pub fn clean_and_quote_value(value: &str) -> (String, bool) {
     let trimmed = value.trim();
     
-    // Check for full-line comment
-    if trimmed.starts_with('#') {
+    // Check for full-line comment (but not if it's quoted or a color value)
+    if trimmed.starts_with('#') && !trimmed.starts_with("\"#") && !is_color_value(trimmed) {
         return (String::new(), false);
     }
     

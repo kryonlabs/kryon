@@ -48,6 +48,7 @@ pub enum PropertyId {
     Cursor = 0x29,
     Checked = 0x2A,
     InputType = 0x2B,
+    EmbedViewType = 0x2C,
     
     // CSS Grid Properties (0x60-0x6F - matching renderer PropertyRegistry)
     GridTemplateColumns = 0x60,

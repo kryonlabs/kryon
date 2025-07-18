@@ -47,6 +47,9 @@ impl Parser {
                 TokenType::Variables => {
                     directives.push(self.parse_variables()?);
                 }
+                TokenType::Variable => {
+                    directives.push(self.parse_variable()?);
+                }
                 TokenType::Script => {
                     scripts.push(self.parse_script()?);
                 }
@@ -194,6 +197,39 @@ impl Parser {
         }
         
         self.consume(TokenType::RightBrace, "Expected '}' after variables")?;
+        
+        Ok(AstNode::Variables { variables })
+    }
+    
+    fn parse_variable(&mut self) -> Result<AstNode> {
+        self.consume(TokenType::Variable, "Expected @variable/@var")?;
+        
+        // Parse variable name
+        let name = match &self.advance().token_type {
+            TokenType::Identifier(name) => name.clone(),
+            _ => return Err(CompilerError::parse_legacy(
+                self.previous().line,
+                "Expected variable name after @variable/@var"
+            )),
+        };
+        
+        self.consume(TokenType::Equals, "Expected '=' after variable name")?;
+        
+        // Parse variable value as string
+        let value = match &self.advance().token_type {
+            TokenType::String(s) => s.clone(),
+            TokenType::Number(n) => n.to_string(),
+            TokenType::Boolean(b) => b.to_string(),
+            TokenType::Identifier(id) => id.clone(),
+            _ => return Err(CompilerError::parse_legacy(
+                self.previous().line,
+                "Expected value after '=' in variable declaration"
+            )),
+        };
+        
+        // Convert single variable to variables map for consistency
+        let mut variables = HashMap::new();
+        variables.insert(name, value);
         
         Ok(AstNode::Variables { variables })
     }
@@ -735,9 +771,8 @@ impl Parser {
             TokenType::Text => "Text".to_string(),
             TokenType::Link => "Link".to_string(),
             TokenType::Image => "Image".to_string(),
+            TokenType::EmbedView => "EmbedView".to_string(),
             TokenType::Canvas => "Canvas".to_string(),
-            TokenType::WasmView => "WasmView".to_string(),
-            TokenType::NativeRendererView => "NativeRendererView".to_string(),
             TokenType::Button => "Button".to_string(),
             TokenType::Input => "Input".to_string(),
             TokenType::Identifier(name) => name.clone(),
@@ -773,7 +808,7 @@ impl Parser {
                 } else if matches!(self.peek().token_type, TokenType::If) {
                     children.push(self.parse_if()?);
                 } else if matches!(self.peek().token_type, TokenType::String(_)) {
-                    // Handle shorthand syntax for Text elements: Text { "Hello" } → Text { text: "Hello" }
+                    // Handle Text element shorthand
                     if element_type == "Text" {
                         let string_value = match &self.advance().token_type {
                             TokenType::String(s) => s.clone(),
@@ -781,35 +816,38 @@ impl Parser {
                         };
                         properties.push(AstProperty::new(
                             "text".to_string(),
-                            PropertyValue::String(string_value),
+                            PropertyValue::String(format!("\"{}\"", string_value)),
                             self.previous().line,
                         ));
                     } else {
-                        return Err(CompilerError::parse_legacy(
+                        return Err(CompilerError::parse(
+                            self.peek().token_type.to_string(),
                             self.peek().line,
-                            format!("String literal shorthand only supported for Text elements, not {}", element_type)
-                        ));
-                    }
-                } else if matches!(self.peek().token_type, TokenType::LeftBracket) {
-                    // Handle array shorthand syntax for Text elements: Text { ["Line 1", "Line 2"] } → Text { text: "Line 1\nLine 2" }
-                    if element_type == "Text" {
-                        let array_value = self.parse_array_literal()?;
-                        properties.push(AstProperty::new(
-                            "text".to_string(),
-                            array_value,
-                            self.previous().line,
-                        ));
-                    } else {
-                        return Err(CompilerError::parse_legacy(
-                            self.peek().line,
-                            format!("Array literal shorthand only supported for Text elements, not {}", element_type)
+                            &format!("String literal shorthand only supported for Text elements, not {}", element_type)
                         ));
                     }
                 } else {
-                    return Err(CompilerError::parse_legacy(
-                        self.peek().line,
-                        format!("Unexpected token in element body: {}", self.peek().token_type)
-                    ));
+                    // Better error handling for unexpected tokens
+                    match &self.peek().token_type {
+                        // These tokens suggest a syntax error in an expression
+                        TokenType::Question | TokenType::Colon | 
+                        TokenType::EqualEquals | TokenType::NotEquals |
+                        TokenType::LessThan | TokenType::LessThanOrEqual |
+                        TokenType::GreaterThan | TokenType::GreaterThanOrEqual => {
+                            return Err(CompilerError::parse(
+                                self.peek().token_type.to_string(),
+                                self.peek().line,
+                                "Operator found outside of property value. Check your syntax - operators like '?', '==', etc. must be part of a property value expression"
+                            ));
+                        }
+                        _ => {
+                            return Err(CompilerError::parse(
+                                self.peek().token_type.to_string(),
+                                self.peek().line,
+                                &format!("Unexpected token in element body. Expected property, child element, or closing brace")
+                            ));
+                        }
+                    }
                 }
             }
             
@@ -857,50 +895,63 @@ impl Parser {
             TokenType::Text => "text".to_string(),
             TokenType::Link => "link".to_string(),
             TokenType::Image => "image".to_string(),
+            TokenType::EmbedView => "embedview".to_string(),
             TokenType::Canvas => "canvas".to_string(),
-            TokenType::WasmView => "wasmview".to_string(),
-            TokenType::NativeRendererView => "nativerenderview".to_string(),
             TokenType::Button => "button".to_string(),
             TokenType::Input => "input".to_string(),
             TokenType::Container => "container".to_string(),
-            TokenType::Identifier(name) => name.clone(),
             TokenType::App => "app".to_string(),
+            TokenType::Define => "define".to_string(),
+            TokenType::Properties => "properties".to_string(),
             _ => {
-                return Err(CompilerError::parse_legacy(
+                return Err(CompilerError::parse(
+                    self.peek().token_type.to_string(),
                     self.peek().line,
-                    format!("Expected property name, but found token: {}", self.peek().token_type)
+                    &format!("Expected property name, but found '{}'", self.peek().token_type)
                 ));
             }
         };
-        self.advance(); // Now consume the token we just processed
+        self.advance();
     
         self.consume(TokenType::Colon, "Expected ':' after property name")?;
         
-        // Skip whitespace and newlines after the colon
-        self.skip_whitespace_and_comments();
-
-        let value = if self.is_function_call() {
-            self.parse_function_call()?
-        } else if self.is_shorthand_property(&key) {
-            self.parse_shorthand_value(&key)?
+        // Skip any newlines after the colon
+        while self.match_token(&TokenType::Newline) {}
+        
+        // Parse the value using our robust parse_value method
+        let value = if key == "margin" || key == "padding" {
+            self.parse_multi_value()?
         } else {
             self.parse_value()?
         };
         
-        // Optional semicolon or comma
-        self.match_token(&TokenType::Semicolon);
-        self.match_token(&TokenType::Comma);
+        // Extract template variables based on the value type
+        let template_variables = match &value {
+            PropertyValue::String(s) => self.extract_template_variables(s),
+            PropertyValue::Variable(v) => vec![v.clone()],
+            PropertyValue::Expression(expr) => expr.extract_variables(),
+            PropertyValue::Array(items) => {
+                let mut vars = Vec::new();
+                for item in items {
+                    match item {
+                        PropertyValue::String(s) => vars.extend(self.extract_template_variables(s)),
+                        PropertyValue::Variable(v) => vars.push(v.clone()),
+                        PropertyValue::Expression(expr) => vars.extend(expr.extract_variables()),
+                        _ => {}
+                    }
+                }
+                vars
+            }
+            _ => Vec::new(),
+        };
         
-        // Extract template variables from the value
-        let template_variables = value.extract_variables();
-        
-        if template_variables.is_empty() {
-            Ok(AstProperty::new(key, value, self.previous().line))
-        } else {
-            Ok(AstProperty::new_with_templates(key, value, self.previous().line, template_variables))
-        }
+        Ok(AstProperty::new_with_templates(
+            key,
+            value,
+            self.previous().line,
+            template_variables,
+        ))
     }
-
 
     fn is_function_call(&self) -> bool {
         // A function call is an Identifier followed by a LeftParen
@@ -913,48 +964,198 @@ impl Parser {
         }
         false
     }
-    
-    fn parse_function_call(&mut self) -> Result<PropertyValue> {
-        let name = if let TokenType::Identifier(name) = &self.peek().token_type {
-            name.clone()
-        } else {
-            // This should not happen if is_function_call() passed
-            return Err(CompilerError::parse_legacy(self.peek().line, "Expected function name"));
-        };
-        self.advance(); // consume name
-
-        self.consume(TokenType::LeftParen, "Expected '(' after function name")?;
         
-        let mut args = Vec::new();
-        if !self.check(&TokenType::RightParen) {
-            loop {
-                // Each argument is itself a value (e.g., a variable, a string, a number)
-                args.push(self.parse_value()?);
-                
-                if !self.match_token(&TokenType::Comma) {
-                    break;
-                }
+    /// Parse multi-value properties like "margin: 10 0" or "padding: 5 10 15 20" or "padding: \"10 16\""
+    fn parse_multi_value(&mut self) -> Result<PropertyValue> {
+        // Check if it's a quoted string first
+        if let TokenType::String(s) = &self.peek().token_type {
+            let quoted_value = s.clone();
+            self.advance();
+            
+            // Check if the quoted string contains space-separated numbers
+            if self.is_space_separated_numbers(&quoted_value) {
+                // Parse the numbers from the string
+                let numbers = self.parse_numbers_from_string(&quoted_value)?;
+                let value_strings: Vec<String> = numbers.iter().map(|n| n.to_string()).collect();
+                return Ok(PropertyValue::String(value_strings.join(" ")));
+            } else {
+                // Regular quoted string, return as is
+                return Ok(PropertyValue::String(quoted_value));
             }
         }
         
-        self.consume(TokenType::RightParen, "Expected ')' after function arguments")?;
-
-        Ok(PropertyValue::FunctionCall { name, args })
-    }
-
-    
-    fn parse_value(&mut self) -> Result<PropertyValue> {
-        // First try to parse as an expression (for ternary operators)
-        if let Ok(expr) = self.try_parse_expression() {
-            return Ok(PropertyValue::Expression(Box::new(expr)));
+        let mut values = Vec::new();
+        
+        // Parse first value
+        values.push(self.parse_single_numeric_value()?);
+        
+        // Parse additional values if they exist (space-separated)
+        while self.is_at_numeric_value() {
+            values.push(self.parse_single_numeric_value()?);
         }
         
-        let result = match &self.peek().token_type {
+        // Convert to CSS-style string representation
+        let value_strings: Vec<String> = values.iter().map(|v| {
+            match v {
+                PropertyValue::Integer(i) => i.to_string(),
+                PropertyValue::Number(n) => n.to_string(),
+                PropertyValue::Pixels(p) => format!("{}px", p),
+                PropertyValue::Percentage(p) => format!("{}%", p),
+                _ => "0".to_string(),
+            }
+        }).collect();
+        
+        Ok(PropertyValue::String(value_strings.join(" ")))
+    }
+    
+    /// Parse a single numeric value (integer, number, pixels, etc.)
+    fn parse_single_numeric_value(&mut self) -> Result<PropertyValue> {
+        match &self.peek().token_type {
+            TokenType::Integer(i) => {
+                let value = *i;
+                self.advance();
+                Ok(PropertyValue::Integer(value))
+            }
+            TokenType::Number(n) => {
+                let value = *n;
+                self.advance();
+                Ok(PropertyValue::Number(value))
+            }
+            TokenType::Pixels(p) => {
+                let value = *p;
+                self.advance();
+                Ok(PropertyValue::Pixels(value))
+            }
+            TokenType::Percentage(p) => {
+                let value = *p;
+                self.advance();
+                Ok(PropertyValue::Percentage(value))
+            }
+            _ => Err(CompilerError::parse(
+                self.peek().token_type.to_string(),
+                self.peek().line,
+                "Expected numeric value for margin/padding"
+            ))
+        }
+    }
+    
+    /// Check if we're at a numeric value without advancing
+    fn is_at_numeric_value(&self) -> bool {
+        matches!(self.peek().token_type, 
+            TokenType::Integer(_) | 
+            TokenType::Number(_) | 
+            TokenType::Pixels(_) | 
+            TokenType::Percentage(_)
+        )
+    }
+    
+    /// Check if a string contains space-separated numbers
+    fn is_space_separated_numbers(&self, s: &str) -> bool {
+        let parts: Vec<&str> = s.split_whitespace().collect();
+        if parts.is_empty() {
+            return false;
+        }
+        
+        // All parts must be valid numbers
+        parts.iter().all(|part| {
+            part.parse::<i32>().is_ok() || part.parse::<f64>().is_ok()
+        })
+    }
+    
+    /// Parse numbers from a space-separated string
+    fn parse_numbers_from_string(&self, s: &str) -> Result<Vec<i32>> {
+        let parts: Vec<&str> = s.split_whitespace().collect();
+        let mut numbers = Vec::new();
+        
+        for part in parts {
+            if let Ok(num) = part.parse::<i32>() {
+                numbers.push(num);
+            } else {
+                return Err(CompilerError::parse(
+                    format!("string \"{}\"", s),
+                    0, // We don't have line info in this context
+                    &format!("Invalid number '{}' in space-separated value", part)
+                ));
+            }
+        }
+        
+        Ok(numbers)
+    }
+
+    fn parse_value(&mut self) -> Result<PropertyValue> {
+        let start_position = self.current;
+        let start_line = self.peek().line;
+        
+        // Skip any leading whitespace/newlines
+        while self.match_token(&TokenType::Newline) {}
+        
+        // Check for comments and skip them
+        if matches!(self.peek().token_type, TokenType::Comment(_)) {
+            self.advance();
+            return self.parse_value(); // Recursively try again after comment
+        }
+        
+        // FIRST: Check if this is a function call (identifier followed by '(')
+        if let TokenType::Identifier(_) = &self.peek().token_type {
+            if self.peek_next().map_or(false, |t| matches!(t.token_type, TokenType::LeftParen)) {
+                // This is definitely a function call, not an expression
+                return self.parse_function_call();
+            }
+        }
+        
+        // THEN: Check if this could be an expression
+        if self.could_start_expression() {
+            match self.try_parse_expression() {
+                Ok(expr) => {
+                    // Successfully parsed an expression
+                    match &expr {
+                        // Simple literals that are not part of a larger expression
+                        Expression::String(s) if !self.is_followed_by_operator() => {
+                            Ok(PropertyValue::String(s.clone()))
+                        }
+                        Expression::Number(n) if !self.is_followed_by_operator() => {
+                            Ok(PropertyValue::Number(*n))
+                        }
+                        Expression::Integer(i) if !self.is_followed_by_operator() => {
+                            Ok(PropertyValue::Integer(*i))
+                        }
+                        Expression::Boolean(b) if !self.is_followed_by_operator() => {
+                            Ok(PropertyValue::Boolean(*b))
+                        }
+                        // Variables should stay as expressions for proper evaluation
+                        Expression::Variable(_) => {
+                            Ok(PropertyValue::Expression(Box::new(expr)))
+                        }
+                        // All complex expressions (comparisons, ternary, etc.) stay wrapped
+                        _ => Ok(PropertyValue::Expression(Box::new(expr)))
+                    }
+                }
+                Err(_) => {
+                    // Expression parsing failed, reset position
+                    self.current = start_position;
+                    
+                    // Try parsing as a non-expression value
+                    self.parse_non_expression_value()
+                }
+            }
+        } else {
+            // Definitely not an expression, parse as regular value
+            self.parse_non_expression_value()
+        }
+    }
+    
+    
+    /// Parse non-expression values (units, colors, objects, arrays, etc.)
+    fn parse_non_expression_value(&mut self) -> Result<PropertyValue> {
+        match &self.peek().token_type {
+            // String literals
             TokenType::String(s) => {
-                let value = format!("\"{}\"", s);
+                let value = s.clone();
                 self.advance();
                 Ok(PropertyValue::String(value))
             }
+            
+            // Numeric values with units
             TokenType::Number(n) => {
                 let value = *n;
                 self.advance();
@@ -1010,120 +1211,189 @@ impl Parser {
                 self.advance();
                 Ok(PropertyValue::Turns(value))
             }
+            
+            // Boolean values
             TokenType::Boolean(b) => {
                 let value = *b;
                 self.advance();
                 Ok(PropertyValue::Boolean(value))
             }
+            
+            // Color values
             TokenType::Color(c) => {
                 let value = c.clone();
                 self.advance();
                 Ok(PropertyValue::Color(value))
             }
-            TokenType::Dollar => {
-                // Handle both $variable and ${variable} syntax
-                self.advance(); // consume '$'
-                
-                // Check if next token is '{' (for ${variable}) or an identifier (for $variable)
-                match &self.peek().token_type {
-                    TokenType::LeftBrace => {
-                        // Handle ${variable} syntax
-                        self.advance(); // consume '{'
-                        if let TokenType::Identifier(var_name) = &self.advance().token_type {
-                            let value = var_name.clone();
-                            self.consume(TokenType::RightBrace, "Expected '}' after variable name")?;
-                            Ok(PropertyValue::Variable(value))
-                        } else {
-                            Err(CompilerError::parse_legacy(
-                                self.previous().line,
-                                "Expected variable name in ${variable}"
-                            ))
-                        }
-                    },
-                    TokenType::Identifier(var_name) => {
-                        // Handle $variable syntax
-                        let value = var_name.clone();
-                        self.advance(); // consume identifier
-                        Ok(PropertyValue::Variable(value))
-                    },
-                    _ => {
-                        Err(CompilerError::parse_legacy(
-                            self.peek().line,
-                            "Expected variable name after '$' (use $variable or ${variable})"
-                        ))
-                    }
-                }
-            }
+            
+            // Object literals
             TokenType::LeftBrace => {
-                // Parse object literal
                 self.parse_object_literal()
             }
+            
+            // Array literals
             TokenType::LeftBracket => {
-                // Parse array literal
                 self.parse_array_literal()
             }
+            
+            // Identifiers (could be function calls or string values)
             TokenType::Identifier(id) => {
-                let value = id.clone();
-                self.advance();
-                Ok(PropertyValue::String(value))
+                // Peek ahead to see if this is a function call
+                if self.peek_next().map_or(false, |t| matches!(t.token_type, TokenType::LeftParen)) {
+                    self.parse_function_call()
+                } else {
+                    // Regular identifier used as a string value
+                    let value = id.clone();
+                    self.advance();
+                    Ok(PropertyValue::String(value))
+                }
             }
+            
+            // Error cases
             _ => {
-                Err(CompilerError::parse_legacy(
+                Err(CompilerError::parse(
+                    self.peek().token_type.to_string(),
                     self.peek().line,
-                    format!("Expected a value, but found {}", self.peek().token_type)
+                    &format!(
+                        "Expected a value (string, number, boolean, color, object, array, or expression), but found '{}'",
+                        self.peek().token_type
+                    )
                 ))
             }
-        };
-        result
+        }
     }
-    
-    /// Parse object literal: { key: value, key: value }
-    fn parse_object_literal(&mut self) -> Result<PropertyValue> {
-        self.consume(TokenType::LeftBrace, "Expected '{'")?;
-        let mut object = HashMap::new();
-        
-        // Skip newlines after opening brace
-        while self.match_token(&TokenType::Newline) {}
-        
-        // Parse key-value pairs
-        while !self.check(&TokenType::RightBrace) && !self.is_at_end() {
-            // Skip newlines
-            if self.match_token(&TokenType::Newline) {
-                continue;
+
+    /// Helper: Check if the current token could start an expression
+    fn could_start_expression(&self) -> bool {
+        match &self.peek().token_type {
+            TokenType::Dollar |           // Variables
+            TokenType::String(_) |        // String literals in expressions
+            TokenType::Number(_) |        // Numeric literals
+            TokenType::Integer(_) |       // Integer literals
+            TokenType::Boolean(_) |       // Boolean literals
+            TokenType::LeftParen |        // Parenthesized expressions
+            TokenType::Identifier(_) => { // Identifiers that might be compared
+                // Check if followed by an operator or could be part of expression
+                true
             }
-            
-            // Parse key
-            let key = match &self.peek().token_type {
-                TokenType::Identifier(id) => {
-                    let key = id.clone();
-                    self.advance();
-                    key
+            _ => false
+        }
+    }
+
+    /// Helper: Check if tokens ahead look like an expression
+    fn looks_like_expression(&self) -> bool {
+        // Look ahead for expression operators
+        for i in 0..5 {
+            if let Some(token) = self.peek_ahead(i) {
+                match &token.token_type {
+                    TokenType::Question |      // Ternary
+                    TokenType::Colon |         // Ternary
+                    TokenType::EqualEquals |   // Comparison
+                    TokenType::NotEquals |     // Comparison
+                    TokenType::LessThan |      // Comparison
+                    TokenType::LessThanOrEqual |
+                    TokenType::GreaterThan |
+                    TokenType::GreaterThanOrEqual => {
+                        return true;
+                    }
+                    _ => continue,
                 }
-                _ => return Err(CompilerError::parse_legacy(
-                    self.peek().line,
-                    "Expected property name in object"
-                )),
-            };
-            
-            self.consume(TokenType::Colon, "Expected ':' after object property name")?;
-            
-            // Parse value
-            let value = self.parse_value()?;
-            
-            object.insert(key, value);
-            
-            // Optional comma
-            self.match_token(&TokenType::Comma);
-            
-            // Skip newlines after comma
-            while self.match_token(&TokenType::Newline) {}
+            }
+        }
+        false
+    }
+
+    /// Helper: Check if the next token is an operator (for expression detection)
+    fn is_followed_by_operator(&self) -> bool {
+        if let Some(next) = self.peek_next() {
+            matches!(next.token_type,
+                TokenType::Question |
+                TokenType::Colon |
+                TokenType::EqualEquals |
+                TokenType::NotEquals |
+                TokenType::LessThan |
+                TokenType::LessThanOrEqual |
+                TokenType::GreaterThan |
+                TokenType::GreaterThanOrEqual
+            )
+        } else {
+            false
+        }
+    }
+
+    /// Helper: Validate that an expression is valid in the current context
+    fn validate_expression_context(&self, expr: &Expression) -> bool {
+        // All expressions are valid in property values
+        // This method exists for future extensibility
+        match expr {
+            Expression::Ternary { .. } |
+            Expression::NotEquals(_, _) |
+            Expression::EqualEquals(_, _) |
+            Expression::LessThan(_, _) |
+            Expression::LessThanOrEqual(_, _) |
+            Expression::GreaterThan(_, _) |
+            Expression::GreaterThanOrEqual(_, _) |
+            Expression::Variable(_) |
+            Expression::String(_) |
+            Expression::Number(_) |
+            Expression::Integer(_) |
+            Expression::Boolean(_) => true,
+        }
+    }
+
+    /// Helper: Peek at the next token without advancing
+    fn peek_next(&self) -> Option<&Token> {
+        self.tokens.get(self.current + 1)
+    }
+
+    /// Helper: Peek ahead by n tokens without advancing
+    fn peek_ahead(&self, offset: usize) -> Option<&Token> {
+        self.tokens.get(self.current + offset)
+    }
+
+    /// Parse function call: identifier(arg1, arg2, ...)
+    fn parse_function_call(&mut self) -> Result<PropertyValue> {
+        let name = match &self.advance().token_type {
+            TokenType::Identifier(n) => n.clone(),
+            _ => return Err(CompilerError::parse(
+                self.previous().token_type.to_string(),
+                self.previous().line,
+                "Expected function name"
+            )),
+        };
+        
+        self.consume(TokenType::LeftParen, "Expected '(' after function name")?;
+        
+        let mut args = Vec::new();
+        
+        // Parse arguments
+        if !self.check(&TokenType::RightParen) {
+            loop {
+                // Skip newlines between arguments
+                while self.match_token(&TokenType::Newline) {}
+                
+                // Parse each argument as a value
+                args.push(self.parse_value()?);
+                
+                // Skip newlines after argument
+                while self.match_token(&TokenType::Newline) {}
+                
+                // Check for comma or end of arguments
+                if !self.match_token(&TokenType::Comma) {
+                    break;
+                }
+                
+                // Skip newlines after comma
+                while self.match_token(&TokenType::Newline) {}
+            }
         }
         
-        self.consume(TokenType::RightBrace, "Expected '}'")?;
-        Ok(PropertyValue::Object(object))
+        self.consume(TokenType::RightParen, "Expected ')' after function arguments")?;
+        
+        Ok(PropertyValue::FunctionCall { name, args })
     }
-    
-    /// Parse array literal: [value, value, value]
+
+    /// Parse array literal: [value1, value2, ...]
     fn parse_array_literal(&mut self) -> Result<PropertyValue> {
         self.consume(TokenType::LeftBracket, "Expected '['")?;
         let mut array = Vec::new();
@@ -1131,13 +1401,14 @@ impl Parser {
         // Skip newlines after opening bracket
         while self.match_token(&TokenType::Newline) {}
         
-        // Parse values
+        // Parse array elements
         while !self.check(&TokenType::RightBracket) && !self.is_at_end() {
             // Skip newlines
             if self.match_token(&TokenType::Newline) {
                 continue;
             }
             
+            // Parse element value
             let value = self.parse_value()?;
             array.push(value);
             
@@ -1148,10 +1419,74 @@ impl Parser {
             while self.match_token(&TokenType::Newline) {}
         }
         
-        self.consume(TokenType::RightBracket, "Expected ']'")?;
+        self.consume(TokenType::RightBracket, "Expected ']' after array elements")?;
         Ok(PropertyValue::Array(array))
     }
-    
+
+    /// Parse object literal: { key: value, key: value }
+    fn parse_object_literal(&mut self) -> Result<PropertyValue> {
+        self.consume(TokenType::LeftBrace, "Expected '{'")?;
+        let mut object = HashMap::new();
+        
+        // Skip newlines after opening brace
+        while self.match_token(&TokenType::Newline) {}
+        
+        // Parse key-value pairs
+        while !self.check(&TokenType::RightBrace) && !self.is_at_end() {
+            // Skip newlines and comments
+            if self.match_token(&TokenType::Newline) {
+                continue;
+            }
+            if matches!(self.peek().token_type, TokenType::Comment(_)) {
+                self.advance();
+                continue;
+            }
+            
+            // Parse key
+            let key = match &self.peek().token_type {
+                TokenType::Identifier(id) => {
+                    let key = id.clone();
+                    self.advance();
+                    key
+                }
+                TokenType::String(s) => {
+                    let key = s.clone();
+                    self.advance();
+                    key
+                }
+                _ => return Err(CompilerError::parse(
+                    self.peek().token_type.to_string(),
+                    self.peek().line,
+                    "Expected property name (identifier or string) in object"
+                )),
+            };
+            
+            self.consume(TokenType::Colon, "Expected ':' after object property name")?;
+            
+            // Skip newlines after colon
+            while self.match_token(&TokenType::Newline) {}
+            
+            // Parse value
+            let value = self.parse_value()?;
+            
+            // Check for duplicate keys
+            if object.contains_key(&key) {
+                log::warn!("Duplicate key '{}' in object literal at line {}", key, self.previous().line);
+            }
+            
+            object.insert(key, value);
+            
+            // Optional comma
+            self.match_token(&TokenType::Comma);
+            
+            // Skip newlines after comma
+            while self.match_token(&TokenType::Newline) {}
+        }
+        
+        self.consume(TokenType::RightBrace, "Expected '}' after object properties")?;
+        Ok(PropertyValue::Object(object))
+    }
+
     // Utility methods
 
     fn is_property(&self) -> bool {
@@ -1163,9 +1498,8 @@ impl Parser {
             TokenType::Text => true,
             TokenType::Link => true,
             TokenType::Image => true,
+            TokenType::EmbedView => true,
             TokenType::Canvas => true,
-            TokenType::WasmView => true,
-            TokenType::NativeRendererView => true,
             TokenType::Button => true,
             TokenType::Input => true,
             TokenType::Container => true,
@@ -1189,7 +1523,7 @@ impl Parser {
         match &self.peek().token_type {
             // Known element types
             TokenType::App | TokenType::Container | TokenType::Text |
-            TokenType::Link | TokenType::Image | TokenType::Canvas | TokenType::WasmView | TokenType::NativeRendererView | TokenType::Button | TokenType::Input => true,
+            TokenType::Link | TokenType::Image | TokenType::EmbedView | TokenType::Canvas | TokenType::Button | TokenType::Input => true,
             
             // For identifiers, check if they're followed by an opening brace (element)
             // rather than a colon (property)
@@ -1205,6 +1539,7 @@ impl Parser {
         }
     }
     
+    /// Check if the current token matches and consume it if it does
     fn match_token(&mut self, token_type: &TokenType) -> bool {
         if self.check(token_type) {
             self.advance();
@@ -1214,6 +1549,7 @@ impl Parser {
         }
     }
     
+    /// Check if the current token matches the given type (without consuming)
     fn check(&self, token_type: &TokenType) -> bool {
         if self.is_at_end() {
             false
@@ -1222,6 +1558,30 @@ impl Parser {
         }
     }
     
+    /// Consume a token of the given type or return an error
+    fn consume(&mut self, token_type: TokenType, message: &str) -> Result<&Token> {
+        if self.check(&token_type) {
+            Ok(self.advance())
+        } else {
+            Err(CompilerError::parse(
+                self.peek().token_type.to_string(),
+                self.peek().line,
+                message
+            ))
+        }
+    }
+
+    /// Get the current token without consuming it
+    fn peek(&self) -> &Token {
+        &self.tokens[self.current]
+    }
+    
+    /// Get the previous token
+    fn previous(&self) -> &Token {
+        &self.tokens[self.current - 1]
+    }
+    
+    /// Advance to the next token and return the previous one
     fn advance(&mut self) -> &Token {
         if !self.is_at_end() {
             self.current += 1;
@@ -1229,27 +1589,9 @@ impl Parser {
         self.previous()
     }
     
+    /// Check if we've reached the end of tokens
     fn is_at_end(&self) -> bool {
         matches!(self.peek().token_type, TokenType::Eof)
-    }
-    
-    fn peek(&self) -> &Token {
-        &self.tokens[self.current]
-    }
-    
-    fn previous(&self) -> &Token {
-        &self.tokens[self.current - 1]
-    }
-    
-    fn consume(&mut self, token_type: TokenType, message: &str) -> Result<&Token> {
-        if self.check(&token_type) {
-            Ok(self.advance())
-        } else {
-            Err(CompilerError::parse_legacy(
-                self.peek().line,
-                format!("{}, got {}", message, self.peek().token_type)
-            ))
-        }
     }
     
     /// Create a default App wrapper when no App element is present in the KRY file
@@ -1454,28 +1796,57 @@ impl Parser {
         variables
     }
     
-    /// Try to parse an expression (with backtracking)
+    /// Try to parse an expression with proper error handling and backtracking
+    /// 
     fn try_parse_expression(&mut self) -> Result<Expression> {
         let start_position = self.current;
+        let start_line = self.peek().line;
         
+        // Try to parse as a full expression (including ternary)
         match self.parse_ternary_expression() {
-            Ok(expr) => Ok(expr),
-            Err(_) => {
-                // Backtrack if parsing fails
+            Ok(expr) => {
+                // Validate the expression makes sense in this context
+                if self.validate_expression_context(&expr) {
+                    Ok(expr)
+                } else {
+                    // Invalid expression context, backtrack
+                    self.current = start_position;
+                    Err(CompilerError::parse(
+                        self.peek().token_type.to_string(),
+                        start_line,
+                        "Expression not valid in this context"
+                    ))
+                }
+            }
+            Err(e) => {
+                // Ensure we fully backtrack on any error
                 self.current = start_position;
-                Err(CompilerError::parse("Unknown".to_string(), 0, "Not an expression"))
+                
+                // Check if we have tokens that look like they should be part of an expression
+                if self.looks_like_expression() {
+                    // Provide a more helpful error message
+                    Err(CompilerError::parse(
+                        self.peek().token_type.to_string(),
+                        start_line,
+                        &format!("Invalid expression syntax. {}", e)
+                    ))
+                } else {
+                    // Not an expression, return the original error
+                    Err(e)
+                }
             }
         }
     }
-    
+
     /// Parse ternary expression: condition ? true_value : false_value
     fn parse_ternary_expression(&mut self) -> Result<Expression> {
         let condition = self.parse_comparison_expression()?;
         
         if self.match_token(&TokenType::Question) {
             let true_value = self.parse_comparison_expression()?;
-            self.consume(TokenType::Colon, "Expected ':' in ternary expression")?;
-            let false_value = self.parse_comparison_expression()?;
+            self.consume(TokenType::Colon, "Expected ':' after true branch in ternary expression")?;
+            // KEY FIX: Parse false branch as ternary (not comparison) for nesting
+            let false_value = self.parse_ternary_expression()?;
             
             Ok(Expression::Ternary {
                 condition: Box::new(condition),
@@ -1486,11 +1857,19 @@ impl Parser {
             Ok(condition)
         }
     }
-    
+
     /// Parse comparison expressions: ==, !=, <, <=, >, >=
     fn parse_comparison_expression(&mut self) -> Result<Expression> {
-        let left = self.parse_primary_expression()?;
+        // First try to parse a primary expression
+        let left = match self.parse_primary_expression() {
+            Ok(expr) => expr,
+            Err(e) => {
+                // If we can't parse a primary expression, return the error
+                return Err(e);
+            }
+        };
         
+        // Then check for comparison operators
         match &self.peek().token_type {
             TokenType::NotEquals => {
                 self.advance();
@@ -1522,76 +1901,94 @@ impl Parser {
                 let right = self.parse_primary_expression()?;
                 Ok(Expression::GreaterThanOrEqual(Box::new(left), Box::new(right)))
             }
-            _ => Ok(left)
+            _ => Ok(left) // No comparison operator, just return the primary expression
         }
     }
-    
+
     /// Parse primary expressions: literals, variables
-    fn parse_primary_expression(&mut self) -> Result<Expression> {
-        match &self.peek().token_type {
-            TokenType::String(s) => {
-                let value = s.clone();
-                self.advance();
-                Ok(Expression::String(value))
-            }
-            TokenType::Number(n) => {
-                let value = *n;
-                self.advance();
-                Ok(Expression::Number(value))
-            }
-            TokenType::Integer(i) => {
-                let value = *i;
-                self.advance();
-                Ok(Expression::Integer(value))
-            }
-            TokenType::Boolean(b) => {
-                let value = *b;
-                self.advance();
-                Ok(Expression::Boolean(value))
-            }
-            TokenType::Dollar => {
-                // Handle both $variable and ${variable} syntax in expressions
-                self.advance(); // consume '$'
-                
-                // Check if next token is '{' (for ${variable}) or an identifier (for $variable)
-                match &self.peek().token_type {
-                    TokenType::LeftBrace => {
-                        // Handle ${variable} syntax
-                        self.advance(); // consume '{'
-                        if let TokenType::Identifier(var_name) = &self.advance().token_type {
+    /// 
+fn parse_primary_expression(&mut self) -> Result<Expression> {
+    match &self.peek().token_type {
+        TokenType::String(s) => {
+            let value = s.clone();
+            self.advance();
+            Ok(Expression::String(value))
+        }
+        TokenType::Number(n) => {
+            let value = *n;
+            self.advance();
+            Ok(Expression::Number(value))
+        }
+        TokenType::Integer(i) => {
+            let value = *i;
+            self.advance();
+            Ok(Expression::Integer(value))
+        }
+        TokenType::Boolean(b) => {
+            let value = *b;
+            self.advance();
+            Ok(Expression::Boolean(value))
+        }
+        TokenType::Identifier(id) => {
+            // Bare identifiers in expressions should be treated as strings
+            // This handles cases like: style == red_style
+            let value = id.clone();
+            self.advance();
+            Ok(Expression::String(value))
+        }
+        TokenType::Dollar => {
+            // Parse variable reference
+            self.advance(); // consume '$'
+            
+            match &self.peek().token_type {
+                TokenType::LeftBrace => {
+                    // ${variable} syntax
+                    self.advance(); // consume '{'
+                    match &self.peek().token_type {
+                        TokenType::Identifier(var_name) => {
                             let value = var_name.clone();
+                            self.advance();
                             self.consume(TokenType::RightBrace, "Expected '}' after variable name")?;
                             Ok(Expression::Variable(value))
-                        } else {
-                            Err(CompilerError::parse_legacy(
-                                self.previous().line,
-                                "Expected variable name in ${variable}"
-                            ))
                         }
-                    },
-                    TokenType::Identifier(var_name) => {
-                        // Handle $variable syntax
-                        let value = var_name.clone();
-                        self.advance(); // consume identifier
-                        Ok(Expression::Variable(value))
-                    },
-                    _ => {
-                        Err(CompilerError::parse_legacy(
+                        _ => Err(CompilerError::parse(
+                            self.peek().token_type.to_string(),
                             self.peek().line,
-                            "Expected variable name after '$' (use $variable or ${variable})"
+                            "Expected variable name in ${...}"
                         ))
                     }
-                }
+                },
+                TokenType::Identifier(var_name) => {
+                    // $variable syntax
+                    let value = var_name.clone();
+                    self.advance();
+                    Ok(Expression::Variable(value))
+                },
+                _ => Err(CompilerError::parse(
+                    self.peek().token_type.to_string(),
+                    self.peek().line,
+                    "Expected variable name after '$'"
+                ))
             }
-            TokenType::LeftParen => {
-                self.advance(); // consume '('
-                let expr = self.parse_ternary_expression()?;
-                self.consume(TokenType::RightParen, "Expected ')' after expression")?;
-                Ok(expr)
-            }
-            _ => Err(CompilerError::parse("Unknown".to_string(), 0, "Expected expression"))
+        }
+        TokenType::LeftParen => {
+            self.advance(); // consume '('
+            let expr = self.parse_ternary_expression()?;
+            self.consume(TokenType::RightParen, "Expected ')' after expression")?;
+            Ok(expr)
+        }
+        _ => {
+            // Provide better error message with actual token info
+            Err(CompilerError::parse(
+                self.peek().token_type.to_string(),
+                self.peek().line,
+                &format!("Expected expression value (string, number, boolean, variable, or parenthesized expression), but found '{}'", 
+                    self.peek().token_type)
+            ))
         }
     }
+}
+
     
     /// Parse @for loop: @for variable in collection ... @end or @for index, variable in collection ... @end
     fn parse_for(&mut self) -> Result<AstNode> {
@@ -2112,3 +2509,4 @@ mod tests {
         }
     }
 }
+

@@ -230,7 +230,7 @@ impl Expression {
     /// Convert Expression to string representation
     pub fn to_string(&self) -> String {
         match self {
-            Expression::String(s) => s.clone(),
+            Expression::String(s) => format!("\"{}\"", s),
             Expression::Number(n) => n.to_string(),
             Expression::Integer(i) => i.to_string(),
             Expression::Boolean(b) => b.to_string(),

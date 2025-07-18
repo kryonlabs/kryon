@@ -571,9 +571,14 @@ impl SemanticAnalyzer {
                         value: color.to_bytes().to_vec(),
                     })
                 } else {
+                    let length_info = if cleaned_value.starts_with('#') {
+                        format!("length: {} chars after #", cleaned_value.len() - 1)
+                    } else {
+                        format!("length: {} chars total", cleaned_value.len())
+                    };
                     Err(CompilerError::semantic_legacy(
                         prop.line_num,
-                        format!("Invalid color value: {}", cleaned_value)
+                        format!("Invalid color value: '{}' ({})", cleaned_value, length_info)
                     ))
                 }
             }
@@ -1337,6 +1342,58 @@ fn convert_element_to_state(
                         element.style_id = style_entry.id;
                     }
                 },
+                "type" => {
+                    // Handle type property based on element type
+                    match element.element_type {
+                        ElementType::Input => {
+                            // For Input elements, use InputType property
+                            let property_id = PropertyId::InputType;
+                            let cleaned_value = ast_prop.cleaned_value();
+                            let input_type_value = if let Some(input_type) = InputType::from_name(&cleaned_value) {
+                                input_type as u8
+                            } else {
+                                return Err(CompilerError::semantic_legacy(
+                                    ast_prop.line, 
+                                    format!("Invalid input type: '{}'. Valid types are: text, password, email, number, tel, url, search, checkbox, radio, range, date, datetime-local, month, time, week, color, file, hidden, submit, reset, button, image", cleaned_value)
+                                ));
+                            };
+                            element.krb_properties.push(KrbProperty { 
+                                property_id: property_id as u8, 
+                                value_type: ValueType::Enum, 
+                                size: 1, 
+                                value: vec![input_type_value] 
+                            });
+                        },
+                        ElementType::EmbedView => {
+                            // For EmbedView elements, use EmbedViewType property
+                            let property_id = PropertyId::EmbedViewType;
+                            let cleaned_value = ast_prop.cleaned_value();
+                            let embed_type_value = if let Some(embed_type) = EmbedViewType::from_name(&cleaned_value) {
+                                embed_type as u8
+                            } else {
+                                return Err(CompilerError::semantic_legacy(
+                                    ast_prop.line, 
+                                    format!("Invalid EmbedView type: '{}'. Valid types are: webview (or web), native_renderer (or native), wasm_view (or wasm), uxn_view (or uxn), gba_view (or gba), dos_view (or dos), code_editor (or editor), terminal (or term), model_viewer (or model)", cleaned_value)
+                                ));
+                            };
+                            element.krb_properties.push(KrbProperty { 
+                                property_id: property_id as u8, 
+                                value_type: ValueType::Enum, 
+                                size: 1, 
+                                value: vec![embed_type_value] 
+                            });
+                        },
+                        _ => {
+                            // For other element types, fall through to default property processing
+                            let expanded_props = expand_shorthand_property(ast_prop)?;
+                            for expanded_prop in expanded_props {
+                                if let Some(krb_prop) = convert_ast_property_to_krb(&expanded_prop, state)? {
+                                    element.krb_properties.push(krb_prop);
+                                }
+                            }
+                        }
+                    }
+                },
                 "checked" => {
                     let checked_value = ast_prop.cleaned_value();
                     element.checked = checked_value == "true";
@@ -1785,7 +1842,12 @@ fn convert_ast_property_to_krb(ast_prop: &AstProperty, state: &mut CompilerState
                     value: color.to_bytes().to_vec(),
                 })
             } else {
-                return Err(CompilerError::semantic_legacy(ast_prop.line, format!("Invalid color value: {}", cleaned_value)));
+                let length_info = if cleaned_value.starts_with('#') {
+                    format!("length: {} chars after #", cleaned_value.len() - 1)
+                } else {
+                    format!("length: {} chars total", cleaned_value.len())
+                };
+                return Err(CompilerError::semantic_legacy(ast_prop.line, format!("Invalid color value: '{}' ({})", cleaned_value, length_info)));
             }
         }
         PropertyId::BorderWidth | PropertyId::BorderRadius | PropertyId::Padding | PropertyId::Margin | PropertyId::Gap => {
@@ -1823,19 +1885,39 @@ fn convert_ast_property_to_krb(ast_prop: &AstProperty, state: &mut CompilerState
         PropertyId::FontSize => {
             if let Ok(val) = cleaned_value.parse::<u16>() {
                 Some(KrbProperty { property_id: property_id as u8, value_type: ValueType::Short, size: 2, value: val.to_le_bytes().to_vec() })
+            } else if cleaned_value.starts_with('$') {
+                // This is a template variable - store it as a string for later resolution
+                let string_index = state.add_string(cleaned_value.clone())?;
+                Some(KrbProperty {
+                    property_id: property_id as u8,
+                    value_type: ValueType::TemplateVariable,
+                    size: 1,
+                    value: vec![string_index],
+                })
             } else {
                 return Err(CompilerError::semantic_legacy(ast_prop.line, format!("Invalid font size value: {}", cleaned_value)));
             }
         }
         PropertyId::FontWeight => {
-            let weight_val = match cleaned_value.to_lowercase().as_str() {
-                "normal" => 400u16,
-                "bold" => 700u16,
-                "light" => 300u16,
-                "heavy" => 900u16,
-                _ => if let Ok(val) = cleaned_value.parse::<u16>() { val } else { 400 }
-            };
-            Some(KrbProperty { property_id: property_id as u8, value_type: ValueType::Short, size: 2, value: weight_val.to_le_bytes().to_vec() })
+            if cleaned_value.starts_with('$') {
+                // This is a template variable - store it as a string for later resolution
+                let string_index = state.add_string(cleaned_value.clone())?;
+                Some(KrbProperty {
+                    property_id: property_id as u8,
+                    value_type: ValueType::TemplateVariable,
+                    size: 1,
+                    value: vec![string_index],
+                })
+            } else {
+                let weight_val = match cleaned_value.to_lowercase().as_str() {
+                    "normal" => 400u16,
+                    "bold" => 700u16,
+                    "light" => 300u16,
+                    "heavy" => 900u16,
+                    _ => if let Ok(val) = cleaned_value.parse::<u16>() { val } else { 400 }
+                };
+                Some(KrbProperty { property_id: property_id as u8, value_type: ValueType::Short, size: 2, value: weight_val.to_le_bytes().to_vec() })
+            }
         }
         PropertyId::FontFamily => {
             let string_index = state.add_string(cleaned_value.clone())?;
@@ -1923,6 +2005,23 @@ fn convert_ast_property_to_krb(ast_prop: &AstProperty, state: &mut CompilerState
                 value_type: ValueType::Enum, 
                 size: 1, 
                 value: vec![input_type_value] 
+            })
+        }
+        PropertyId::EmbedViewType => {
+            // Parse the embed view type string and convert to EmbedViewType enum value
+            let embed_type_value = if let Some(embed_type) = EmbedViewType::from_name(&cleaned_value) {
+                embed_type as u8
+            } else {
+                return Err(CompilerError::semantic_legacy(
+                    ast_prop.line, 
+                    format!("Invalid EmbedView type: '{}'. Valid types are: webview (or web), native_renderer (or native), wasm_view (or wasm), uxn_view (or uxn), gba_view (or gba), dos_view (or dos)", cleaned_value)
+                ));
+            };
+            Some(KrbProperty { 
+                property_id: property_id as u8, 
+                value_type: ValueType::Enum, 
+                size: 1, 
+                value: vec![embed_type_value] 
             })
         }
         PropertyId::ImageSource => {
@@ -2106,9 +2205,14 @@ fn convert_ast_property_to_krb(ast_prop: &AstProperty, state: &mut CompilerState
                     value: color.to_bytes().to_vec(),
                 })
             } else {
+                let length_info = if cleaned_value.starts_with('#') {
+                    format!("length: {} chars after #", cleaned_value.len() - 1)
+                } else {
+                    format!("length: {} chars total", cleaned_value.len())
+                };
                 return Err(CompilerError::semantic_legacy(
                     ast_prop.line,
-                    format!("Invalid color value for {}: {}", ast_prop.key, cleaned_value)
+                    format!("Invalid color value for {}: '{}' ({})", ast_prop.key, cleaned_value, length_info)
                 ));
             }
         }

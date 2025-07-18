@@ -12,9 +12,8 @@ pub enum TokenType {
     Text,
     Link,
     Image,
-    Canvas,
-    WasmView,
-    NativeRendererView,
+    EmbedView,  // Renamed from ForeignView
+    Canvas,     // Core rendering primitive with universal drawing API
     Button,
     Input,
     List,
@@ -30,6 +29,7 @@ pub enum TokenType {
     // Directives
     Include,
     Variables,
+    Variable,
     Script,
     Function,
     
@@ -104,17 +104,19 @@ pub struct Token {
     pub filename: String,
 }
 
+
+
 impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            // Keywords and Elements
             TokenType::App => write!(f, "App"),
             TokenType::Container => write!(f, "Container"),
             TokenType::Text => write!(f, "Text"),
             TokenType::Link => write!(f, "Link"),
             TokenType::Image => write!(f, "Image"),
+            TokenType::EmbedView => write!(f, "EmbedView"),
             TokenType::Canvas => write!(f, "Canvas"),
-            TokenType::WasmView => write!(f, "WasmView"),
-            TokenType::NativeRendererView => write!(f, "NativeRendererView"),
             TokenType::Button => write!(f, "Button"),
             TokenType::Input => write!(f, "Input"),
             TokenType::List => write!(f, "List"),
@@ -122,26 +124,39 @@ impl fmt::Display for TokenType {
             TokenType::Scrollable => write!(f, "Scrollable"),
             TokenType::Tabs => write!(f, "Tabs"),
             TokenType::Video => write!(f, "Video"),
+            
+            // Style and Font
             TokenType::Style => write!(f, "style"),
             TokenType::Font => write!(f, "font"),
+            
+            // Component Definition
             TokenType::Define => write!(f, "Define"),
             TokenType::Properties => write!(f, "Properties"),
+            
+            // Directives
             TokenType::Include => write!(f, "@include"),
             TokenType::Variables => write!(f, "@variables"),
+            TokenType::Variable => write!(f, "@variable"),
             TokenType::Script => write!(f, "@script"),
-            TokenType::Function => write!(f, "@function/@method/@func"),
+            TokenType::Function => write!(f, "@function"),
+            
+            // Control Flow
             TokenType::For => write!(f, "@for"),
             TokenType::If => write!(f, "@if"),
             TokenType::Elif => write!(f, "@elif"),
             TokenType::Else => write!(f, "@else"),
             TokenType::End => write!(f, "@end"),
             TokenType::In => write!(f, "in"),
+            
+            // Delimiters
             TokenType::LeftBrace => write!(f, "{{"),
             TokenType::RightBrace => write!(f, "}}"),
             TokenType::LeftBracket => write!(f, "["),
             TokenType::RightBracket => write!(f, "]"),
             TokenType::LeftParen => write!(f, "("),
             TokenType::RightParen => write!(f, ")"),
+            
+            // Operators and Symbols
             TokenType::Colon => write!(f, ":"),
             TokenType::Semicolon => write!(f, ";"),
             TokenType::Comma => write!(f, ","),
@@ -156,25 +171,31 @@ impl fmt::Display for TokenType {
             TokenType::Ampersand => write!(f, "&"),
             TokenType::Dollar => write!(f, "$"),
             TokenType::Dot => write!(f, "."),
-            TokenType::PseudoSelector(state) => write!(f, "pseudo-selector({})", state),
-            TokenType::String(s) => write!(f, "string(\"{}\")", s),
-            TokenType::Number(n) => write!(f, "number({})", n),
-            TokenType::Integer(i) => write!(f, "integer({})", i),
-            TokenType::Percentage(p) => write!(f, "percentage({}%)", p),
-            TokenType::Boolean(b) => write!(f, "boolean({})", b),
-            TokenType::Color(c) => write!(f, "color({})", c),
-            TokenType::Identifier(id) => write!(f, "identifier({})", id),
-            TokenType::ScriptContent(content) => write!(f, "script_content({})", content),
-            TokenType::Pixels(p) => write!(f, "pixels({}px)", p),
-            TokenType::Em(e) => write!(f, "em({}em)", e),
-            TokenType::Rem(r) => write!(f, "rem({}rem)", r),
-            TokenType::ViewportWidth(vw) => write!(f, "viewport_width({}vw)", vw),
-            TokenType::ViewportHeight(vh) => write!(f, "viewport_height({}vh)", vh),
-            TokenType::Degrees(d) => write!(f, "degrees({}deg)", d),
-            TokenType::Radians(r) => write!(f, "radians({}rad)", r),
-            TokenType::Turns(t) => write!(f, "turns({}turn)", t),
+            
+            // Values with content - use concise format for better error messages
+            TokenType::PseudoSelector(state) => write!(f, "&:{}", state),
+            TokenType::String(s) => write!(f, "string \"{}\"", s),
+            TokenType::Number(n) => write!(f, "number {}", n),
+            TokenType::Integer(i) => write!(f, "integer {}", i),
+            TokenType::Boolean(b) => write!(f, "boolean {}", b),
+            TokenType::Color(c) => write!(f, "color {}", c),
+            TokenType::Identifier(id) => write!(f, "identifier '{}'", id),
+            TokenType::ScriptContent(content) => write!(f, "script content ({}...)", &content.chars().take(20).collect::<String>()),
+            
+            // Units
+            TokenType::Pixels(p) => write!(f, "{}px", p),
+            TokenType::Em(e) => write!(f, "{}em", e),
+            TokenType::Rem(r) => write!(f, "{}rem", r),
+            TokenType::ViewportWidth(vw) => write!(f, "{}vw", vw),
+            TokenType::ViewportHeight(vh) => write!(f, "{}vh", vh),
+            TokenType::Percentage(p) => write!(f, "{}%", p),
+            TokenType::Degrees(d) => write!(f, "{}deg", d),
+            TokenType::Radians(r) => write!(f, "{}rad", r),
+            TokenType::Turns(t) => write!(f, "{}turn", t),
+            
+            // Special
             TokenType::Newline => write!(f, "newline"),
-            TokenType::Comment(c) => write!(f, "comment({})", c),
+            TokenType::Comment(c) => write!(f, "comment: {}", c),
             TokenType::Eof => write!(f, "EOF"),
         }
     }
@@ -469,7 +490,8 @@ impl Lexer {
                 let directive = self.read_directive()?;
                 match directive.as_str() {
                     "@include" => TokenType::Include,
-                    "@variables" => TokenType::Variables,
+                    "@variables" | "@vars" => TokenType::Variables,
+                    "@variable" | "@var" => TokenType::Variable,
                     "@script" => {
                         // For @script, we need to read the script content specially
                         TokenType::Script
@@ -788,9 +810,8 @@ impl Lexer {
             "Text" => TokenType::Text,
             "Link" => TokenType::Link,
             "Image" => TokenType::Image,
+            "EmbedView" => TokenType::EmbedView,
             "Canvas" => TokenType::Canvas,
-            "WasmView" => TokenType::WasmView,
-            "NativeRendererView" => TokenType::NativeRendererView,
             "Button" => TokenType::Button,
             "Input" => TokenType::Input,
             "List" => TokenType::List,

@@ -214,9 +214,14 @@ impl StyleResolver {
                         value: color.to_bytes().to_vec(),
                     })
                 } else {
+                    let length_info = if cleaned_value.starts_with('#') {
+                        format!("length: {} chars after #", cleaned_value.len() - 1)
+                    } else {
+                        format!("length: {} chars total", cleaned_value.len())
+                    };
                     return Err(CompilerError::semantic_legacy(
                         source_prop.line_num,
-                        format!("Invalid color value: {}", cleaned_value)
+                        format!("Invalid color value: '{}' ({})", cleaned_value, length_info)
                     ));
                 }
             }
@@ -243,6 +248,15 @@ impl StyleResolver {
                         size: 2,
                         value: val.to_le_bytes().to_vec(),
                     })
+                } else if cleaned_value.starts_with('$') {
+                    // This is a template variable - store it as a string for later resolution
+                    let string_index = state.add_string(cleaned_value.clone())?;
+                    Some(KrbProperty {
+                        property_id: property_id as u8,
+                        value_type: ValueType::TemplateVariable,
+                        size: 1,
+                        value: vec![string_index],
+                    })
                 } else {
                     return Err(CompilerError::semantic_legacy(
                         source_prop.line_num,
@@ -251,35 +265,46 @@ impl StyleResolver {
                 }
             }
             PropertyId::FontWeight => {
-                let weight_value = match cleaned_value.as_str() {
-                    "normal" => 0u8,
-                    "bold" => 1u8,
-                    "light" => 2u8,
-                    "heavy" => 3u8,
-                    weight_str => {
-                        // Try parsing as numeric weight
-                        match weight_str.parse::<u16>() {
-                            Ok(weight) => match weight {
-                                100..=200 => 2u8, // light
-                                201..=500 => 0u8, // normal
-                                501..=700 => 1u8, // bold
-                                701..=900 => 3u8, // heavy
-                                _ => 0u8, // default to normal
-                            },
-                            Err(_) => return Err(CompilerError::semantic_legacy(
-                                source_prop.line_num,
-                                format!("Invalid font weight: {}", cleaned_value)
-                            )),
+                if cleaned_value.starts_with('$') {
+                    // This is a template variable - store it as a string for later resolution
+                    let string_index = state.add_string(cleaned_value.clone())?;
+                    Some(KrbProperty {
+                        property_id: property_id as u8,
+                        value_type: ValueType::TemplateVariable,
+                        size: 1,
+                        value: vec![string_index],
+                    })
+                } else {
+                    let weight_value = match cleaned_value.as_str() {
+                        "normal" => 0u8,
+                        "bold" => 1u8,
+                        "light" => 2u8,
+                        "heavy" => 3u8,
+                        weight_str => {
+                            // Try parsing as numeric weight
+                            match weight_str.parse::<u16>() {
+                                Ok(weight) => match weight {
+                                    100..=200 => 2u8, // light
+                                    201..=500 => 0u8, // normal
+                                    501..=700 => 1u8, // bold
+                                    701..=900 => 3u8, // heavy
+                                    _ => 0u8, // default to normal
+                                },
+                                Err(_) => return Err(CompilerError::semantic_legacy(
+                                    source_prop.line_num,
+                                    format!("Invalid font weight: {}", cleaned_value)
+                                )),
+                            }
                         }
-                    }
-                };
-                
-                Some(KrbProperty {
-                    property_id: property_id as u8,
-                    value_type: ValueType::Enum,
-                    size: 1,
-                    value: vec![weight_value],
-                })
+                    };
+                    
+                    Some(KrbProperty {
+                        property_id: property_id as u8,
+                        value_type: ValueType::Enum,
+                        size: 1,
+                        value: vec![weight_value],
+                    })
+                }
             }
             PropertyId::TextAlignment => {
                 let alignment_value = match cleaned_value.as_str() {
