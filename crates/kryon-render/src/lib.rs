@@ -22,6 +22,11 @@ pub use text_manager::*;
 
 pub mod embed_view;
 
+#[cfg(feature = "svg")]
+pub mod svg;
+#[cfg(feature = "svg")]
+pub use svg::*;
+
 #[cfg(feature = "wasm")]
 pub mod wasm;
 #[cfg(feature = "wasm")]

@@ -64,7 +64,9 @@ RUST_LOG=debug ./target/debug/kryon-renderer-raylib examples/tabbar_left_demo.kr
 - ✅ **DOM API**: Complete script integration with element manipulation
 - ✅ **Event System**: Click, hover, focus events with script callbacks
 - ✅ **Property Resolution**: Style application and element property management
-- 🟡 **Percentage Support**: Layout engine percentage-to-pixel conversion (pending)
+- ✅ **SVG Rendering**: Native SVG support with resvg library and Arc<> caching
+- ✅ **Transform System**: CSS-like transforms with DOM API integration
+- ✅ **LayoutDimension System**: Native percentage support with type safety
 - 🔴 **Animation System**: Planned for future implementation
 
 ## Core Testing Principle
@@ -92,6 +94,17 @@ element:setVisible(false)
 element:setChecked(true)
 element:setStyle("new_style_name")
 
+-- Transform manipulation
+element:setTransform({
+    translateX = 100, translateY = 50, translateZ = 0,
+    scaleX = 1.5, scaleY = 1.5, scaleZ = 1.0,
+    rotateX = 0, rotateY = 0, rotateZ = 45
+})
+element:setTranslation(100, 50, 0)
+element:setScale(1.5, 1.5, 1.0)
+element:setRotation(45, "z")
+element:resetTransform()
+
 -- DOM traversal
 local parent = element:getParent()
 local children = element:getChildren()
@@ -109,13 +122,20 @@ local element = querySelector("#my_id")
 - **Languages**: Lua, JavaScript, Python, Wren support
 - **Memory Model**: Element data cloned into script context
 
-## Layout Engine
+## Optimized Layout Engine
 
-### Layout System (✅ IMPLEMENTED)
-- **Flex Layout**: Row/column with alignment and growth
-- **Absolute Layout**: Precise positioning with overlap support
-- **Layout Flags**: Proper compilation from KRY styles to binary format
-- **Constraint System**: Width/height constraints and scaling
+### Layout System (✅ FULLY OPTIMIZED)
+- **OptimizedTaffyLayoutEngine**: Production-ready layout engine with caching
+- **LayoutDimension System**: Native percentage support with type safety
+- **Incremental Updates**: Invalidation regions for partial layout updates
+- **Property Caching**: O(1) access with cache-friendly data structures
+- **Performance Monitoring**: Built-in profiling and benchmarking tools
+
+### Layout Architecture
+- **Core**: `crates/kryon-layout/src/optimized_taffy_engine.rs`
+- **Property Cache**: `crates/kryon-core/src/optimized_property_cache.rs`
+- **Dimension Types**: `crates/kryon-core/src/layout_units.rs`
+- **Performance Tools**: `crates/kryon-layout/src/performance.rs`
 
 ### Layout Flag Values
 - `0x00`: Row layout (default)
@@ -124,26 +144,46 @@ local element = querySelector("#my_id")
 - `0x04`: Center alignment
 - `0x20`: Grow flag
 
+### LayoutDimension Types
+- **Pixels**: Fixed pixel values for precise positioning
+- **Percentage**: Responsive sizing (0.0 to 1.0)
+- **Auto**: Content-driven automatic sizing
+- **MinPixels/MaxPixels**: Constraint-based sizing
+
+### Performance Optimizations
+- ✅ **Debug-free hot paths**: All eprintln! statements removed from layout computation
+- ✅ **Node caching**: Taffy nodes reused across layout cycles
+- ✅ **Incremental updates**: Only recompute changed layout subtrees
+- ✅ **Property caching**: O(1) access to element properties
+- ✅ **Layout diffing**: Minimal re-renders through result comparison
+
 ### Common Issues Fixed
 - ✅ **Layout flag compilation**: Styles now correctly generate absolute positioning flags
 - ✅ **Overlay positioning**: Content panels properly overlap instead of stacking
 - ✅ **DOM API availability**: Functions available when scripts execute
+- ✅ **Legacy system removal**: All Vec2 fields removed, LayoutDimension system unified
 
 ## Development Status
 
 ### Completed Features
 - ✅ **KRB parsing**: Complete binary format support with debug output
 - ✅ **Multi-backend rendering**: WGPU, Ratatui, Raylib implementations
-- ✅ **Layout engine**: Flex and absolute positioning with scaling
+- ✅ **Optimized layout engine**: Production-ready with caching and incremental updates
+- ✅ **LayoutDimension system**: Native percentage support with type safety
 - ✅ **Script integration**: Full DOM API with element manipulation
 - ✅ **Event system**: Click handlers and state management
-- ✅ **Property system**: Style application and element property resolution
+- ✅ **Property system**: Optimized style application and element property resolution
+- ✅ **SVG rendering**: resvg integration with Arc<> caching for external files
+- ✅ **Transform system**: CSS-like transforms with matrix operations and DOM API
+- ✅ **Performance optimization**: Debug-free hot paths, property caching, layout diffing
 
 ### Pending Features
-- 🟡 **Percentage support**: Layout engine percentage-to-pixel conversion
 - 🟡 **Resource management**: Image and font loading system
+- 🟡 **Layout diffing integration**: Minimal re-renders with renderer backends
+- 🟡 **SVG animations**: Interactive SVG elements with script integration
 - 🔴 **Animation system**: Transitions and keyframe animations
 - 🔴 **Accessibility**: Screen reader and keyboard navigation support
+- 🔴 **Spatial indexing**: Accelerated hit testing for large element counts
 
 ## Development Workflow
 

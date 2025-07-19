@@ -48,6 +48,15 @@ pub enum RenderCommand {
         opacity: f32,
         transform: Option<TransformData>,
     },
+    DrawSvg {
+        position: Vec2,
+        size: Vec2,
+        source: String, // File path or inline SVG content
+        opacity: f32,
+        transform: Option<TransformData>,
+        background_color: Option<Vec4>, // Optional background color
+        z_index: i32,
+    },
     
     // Clipping
     SetClip {
@@ -89,13 +98,22 @@ pub enum RenderCommand {
         placeholder: String,
         font_size: f32,
         text_color: Vec4,
+        placeholder_color: Vec4,
         background_color: Vec4,
         border_color: Vec4,
+        focus_border_color: Vec4,
         border_width: f32,
         border_radius: f32,
         is_focused: bool,
+        is_editing: bool,
         is_readonly: bool,
+        cursor_position: usize,
+        selection_start: Option<usize>,
+        selection_end: Option<usize>,
+        text_scroll_offset: f32,
+        input_type: u8, // Maps to InputType enum
         transform: Option<TransformData>,
+        z_index: i32,
     },
     DrawCheckbox {
         position: Vec2,

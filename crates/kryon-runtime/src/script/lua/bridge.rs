@@ -205,6 +205,26 @@ impl LuaBridge {
             }
         }
         
+        // Get transform changes
+        if let Ok(get_changes_fn) = self.lua.globals().get::<_, LuaFunction>("_get_pending_transform_changes") {
+            if let Ok(changes_table) = get_changes_fn.call::<_, LuaTable>(()) {
+                let mut transform_changes = HashMap::new();
+                for pair in changes_table.pairs::<u32, LuaTable>() {
+                    if let Ok((element_id, transform_table)) = pair {
+                        // Convert the Lua table to a JSON string for storage
+                        let transform_data = lua_table_to_json_string(&transform_table);
+                        transform_changes.insert(element_id.to_string(), transform_data);
+                    }
+                }
+                if !transform_changes.is_empty() {
+                    changes.insert("transform_changes".to_string(), ChangeSet {
+                        change_type: "transform_changes".to_string(),
+                        data: transform_changes,
+                    });
+                }
+            }
+        }
+        
         Ok(changes)
     }
     
@@ -410,6 +430,24 @@ impl LuaBridge {
         }
         Ok(())
     }
+}
+
+/// Convert a Lua table to JSON string for storing transform data
+fn lua_table_to_json_string(table: &LuaTable) -> String {
+    let mut json_data = serde_json::Map::new();
+    
+    // Extract common transform properties
+    let transform_props = ["translateX", "translateY", "translateZ", "scaleX", "scaleY", "scaleZ", "rotateX", "rotateY", "rotateZ"];
+    
+    for prop in &transform_props {
+        if let Ok(value) = table.get::<_, f64>(*prop) {
+            json_data.insert(prop.to_string(), serde_json::Value::Number(
+                serde_json::Number::from_f64(value).unwrap_or(serde_json::Number::from(0))
+            ));
+        }
+    }
+    
+    serde_json::to_string(&json_data).unwrap_or("{}".to_string())
 }
 
 #[cfg(test)]

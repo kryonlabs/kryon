@@ -437,6 +437,47 @@ impl TemplateEngine {
         }
     }
     
+    /// Evaluate a template expression with element context for $parent and $root variables
+    pub fn evaluate_expression_with_context(&self, expression: &str, current_element: &Element, elements: &HashMap<ElementId, Element>) -> String {
+        eprintln!("[TEMPLATE_DEBUG] Evaluating expression with context: '{}'", expression);
+        
+        // First check if it's a simple variable reference with dot notation
+        if expression.starts_with('$') && !expression.contains(' ') {
+            return self.resolve_simple_variable_with_context(expression, current_element, elements);
+        }
+        
+        // Create parser and try to parse the expression  
+        let mut parser = ExpressionParser::new(expression);
+        
+        match parser.parse() {
+            Ok(expr) => {
+                eprintln!("[TEMPLATE_DEBUG] Successfully parsed expression: '{}'", expression);
+                self.evaluate_expr_with_context(&expr, current_element, elements)
+            },
+            Err(parse_error) => {
+                eprintln!("[TEMPLATE_DEBUG] Failed to parse expression: '{}', error: {}", expression, parse_error);
+                // If parsing fails, fall back to simple string substitution with context
+                let mut result = expression.to_string();
+                
+                // Handle reserved variables with dot notation ($parent.property, $root.property)
+                result = self.resolve_reserved_variables(&result, current_element, elements);
+                
+                // Replace all regular $variable patterns with their values
+                for capture in self.template_regex.captures_iter(expression) {
+                    if let Some(var_name) = capture.get(1) {
+                        let var_name_str = var_name.as_str();
+                        if let Some(value) = self.variables.get(var_name_str) {
+                            let pattern = format!("${}", var_name_str);
+                            result = result.replace(&pattern, value);
+                        }
+                    }
+                }
+                
+                result
+            }
+        }
+    }
+
     /// Evaluate a template expression by parsing and evaluating it
     pub fn evaluate_expression(&self, expression: &str) -> String {
         // First check if it's a simple variable reference
@@ -478,13 +519,22 @@ impl TemplateEngine {
         let styles = &krb_file.styles;
         eprintln!("[TEMPLATE_UPDATE] Updating {} bindings on {} elements", self.bindings.len(), elements.len());
         let mut elements_with_style_changes = Vec::new();
+        let mut processed_bindings = std::collections::HashSet::new();
         
         for binding in &self.bindings {
+            // Create a unique key for this binding to avoid duplicates
+            let binding_key = (binding.element_index, binding.property_id);
+            if processed_bindings.contains(&binding_key) {
+                eprintln!("[TEMPLATE_UPDATE] Skipping duplicate binding for element {} property 0x{:02X}", 
+                    binding.element_index, binding.property_id);
+                continue;
+            }
+            processed_bindings.insert(binding_key);
             if let Some(element) = elements.get_mut(&(binding.element_index as u32)) {
-                let evaluated_value = self.evaluate_expression(&binding.template_expression);
+                let evaluated_value = self.evaluate_expression_with_context(&binding.template_expression, element, elements);
                 
-                eprintln!("[TEMPLATE_UPDATE] Element {}: '{}' -> '{}'", 
-                    binding.element_index, binding.template_expression, evaluated_value);
+                eprintln!("[TEMPLATE_UPDATE] Element {}: '{}' -> '{}' (property_id: 0x{:02X})", 
+                    binding.element_index, binding.template_expression, evaluated_value, binding.property_id);
                 
                 // Update the element property based on property_id
                 match binding.property_id {
@@ -493,6 +543,12 @@ impl TemplateEngine {
                         element.text = evaluated_value.clone();
                         eprintln!("[TEMPLATE_UPDATE] Element {} text updated: '{}' -> '{}'", 
                             binding.element_index, old_text, evaluated_value);
+                    }
+                    0x10 => { // Visibility property
+                        let old_visible = element.visible;
+                        element.visible = self.evaluate_truthiness(&evaluated_value);
+                        eprintln!("[TEMPLATE_UPDATE] Element {} visibility updated: {} -> {} (from value: '{}')", 
+                            binding.element_index, old_visible, element.visible, evaluated_value);
                     }
                     0x1D => { // StyleId property
                         let old_style_id = element.style_id;
@@ -568,6 +624,147 @@ impl TemplateEngine {
         }
         
         affected_elements
+    }
+
+    /// Resolve simple variable references with context (e.g., $parent.pos_x)
+    fn resolve_simple_variable_with_context(&self, expression: &str, current_element: &Element, elements: &HashMap<ElementId, Element>) -> String {
+        let var_name = &expression[1..]; // Remove the $
+        
+        // Check for reserved variables with dot notation
+        if var_name.starts_with("parent.") {
+            if let Some(parent_id) = current_element.parent {
+                if let Some(parent_element) = elements.get(&parent_id) {
+                    let property = &var_name[7..]; // Remove "parent."
+                    return self.get_element_property_value(parent_element, property);
+                }
+            }
+            return "0".to_string(); // Default if no parent
+        }
+        
+        if var_name.starts_with("root.") {
+            // Find root element (App type with no parent)
+            if let Some((_, root_element)) = elements.iter().find(|(_, element)| {
+                element.element_type == kryon_core::ElementType::App && element.parent.is_none()
+            }) {
+                let property = &var_name[5..]; // Remove "root."
+                return self.get_element_property_value(root_element, property);
+            }
+            return "0".to_string(); // Default if no root
+        }
+        
+        // Regular variable lookup
+        self.variables.get(var_name).cloned().unwrap_or_default()
+    }
+
+    /// Resolve reserved variables in a string (handles ${parent.property} syntax)
+    fn resolve_reserved_variables(&self, text: &str, current_element: &Element, elements: &HashMap<ElementId, Element>) -> String {
+        use regex::Regex;
+        
+        // Create regex for ${parent.property} and ${root.property}
+        let reserved_regex = Regex::new(r"\$\{(parent|root)\.([^}]+)\}").unwrap();
+        
+        let mut result = text.to_string();
+        
+        for capture in reserved_regex.captures_iter(text) {
+            if let (Some(context), Some(property)) = (capture.get(1), capture.get(2)) {
+                let context_str = context.as_str();
+                let property_str = property.as_str();
+                let full_match = capture.get(0).unwrap().as_str();
+                
+                let value = match context_str {
+                    "parent" => {
+                        if let Some(parent_id) = current_element.parent {
+                            if let Some(parent_element) = elements.get(&parent_id) {
+                                self.get_element_property_value(parent_element, property_str)
+                            } else {
+                                "0".to_string()
+                            }
+                        } else {
+                            "0".to_string()
+                        }
+                    },
+                    "root" => {
+                        if let Some((_, root_element)) = elements.iter().find(|(_, element)| {
+                            element.element_type == kryon_core::ElementType::App && element.parent.is_none()
+                        }) {
+                            self.get_element_property_value(root_element, property_str)
+                        } else {
+                            "0".to_string()
+                        }
+                    },
+                    _ => "0".to_string()
+                };
+                
+                result = result.replace(full_match, &value);
+            }
+        }
+        
+        result
+    }
+
+    /// Get the value of any property from an element
+    fn get_element_property_value(&self, element: &Element, property: &str) -> String {
+        match property {
+            // Position properties
+            "pos_x" => element.layout_position.x.to_pixels().to_string(),
+            "pos_y" => element.layout_position.y.to_pixels().to_string(),
+            "x" => element.layout_position.x.to_pixels().to_string(), // Alias for pos_x
+            "y" => element.layout_position.y.to_pixels().to_string(), // Alias for pos_y
+            
+            // Size properties
+            "width" => element.layout_size.width.to_pixels().to_string(),
+            "height" => element.layout_size.height.to_pixels().to_string(),
+            
+            // Layout properties
+            "layout_flags" => element.layout_flags.to_string(),
+            "style_id" => element.style_id.to_string(),
+            
+            // Visual properties
+            "background_color" => format!("rgba({}, {}, {}, {})", 
+                (element.background_color.x * 255.0) as u8,
+                (element.background_color.y * 255.0) as u8,
+                (element.background_color.z * 255.0) as u8,
+                (element.background_color.w * 255.0) as u8),
+            "border_width" => element.border_width.to_string(),
+            "border_radius" => element.border_radius.to_string(),
+            
+            // Text properties
+            "text" => element.text.clone(),
+            "font_size" => element.font_size.to_string(),
+            "text_color" => format!("rgba({}, {}, {}, {})", 
+                (element.text_color.x * 255.0) as u8,
+                (element.text_color.y * 255.0) as u8,
+                (element.text_color.z * 255.0) as u8,
+                (element.text_color.w * 255.0) as u8),
+            
+            // State properties
+            "visible" => element.visible.to_string(),
+            "checked" => element.checked.to_string(),
+            "id" => element.id.clone(),
+            
+            // Fallback - try custom properties
+            _ => {
+                if let Some(prop) = element.custom_properties.get(property) {
+                    match prop {
+                        kryon_core::PropertyValue::String(s) => s.clone(),
+                        kryon_core::PropertyValue::Float(f) => f.to_string(),
+                        kryon_core::PropertyValue::Int(i) => i.to_string(),
+                        kryon_core::PropertyValue::Bool(b) => b.to_string(),
+                        kryon_core::PropertyValue::Color(c) => format!("rgba({}, {}, {}, {})", 
+                            (c.x * 255.0) as u8, (c.y * 255.0) as u8, (c.z * 255.0) as u8, (c.w * 255.0) as u8),
+                    }
+                } else {
+                    "0".to_string()
+                }
+            }
+        }
+    }
+
+    /// Evaluate expression with context (placeholder for now)
+    fn evaluate_expr_with_context(&self, expr: &Expression, current_element: &Element, elements: &HashMap<ElementId, Element>) -> String {
+        // For now, fall back to regular evaluation
+        // TODO: Implement proper context-aware expression evaluation
+        self.evaluate_expr(expr)
     }
 }
 

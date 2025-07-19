@@ -131,8 +131,8 @@ fn render_element_tree(
         // Layout information
         if args.show_layout {
             output.push_str(&format!(" pos:({:.0},{:.0}) size:({:.0},{:.0})", 
-                                   element.position.x, element.position.y,
-                                   element.size.x, element.size.y));
+                                   element.layout_position.x.to_pixels(1.0), element.layout_position.y.to_pixels(1.0),
+                                   element.layout_size.width.to_pixels(1.0), element.layout_size.height.to_pixels(1.0)));
         }
         
         // Show key properties inline
@@ -367,8 +367,8 @@ fn generate_json_output(krb_file: &kryon_core::KRBFile) -> Result<String> {
         output.push_str(&format!("      \"id\": {},\n", id));
         output.push_str(&format!("      \"type\": \"{:?}\",\n", element.element_type));
         output.push_str(&format!("      \"text\": \"{}\",\n", element.text.replace('"', "\\\"")));
-        output.push_str(&format!("      \"position\": [{:.1}, {:.1}],\n", element.position.x, element.position.y));
-        output.push_str(&format!("      \"size\": [{:.1}, {:.1}],\n", element.size.x, element.size.y));
+        output.push_str(&format!("      \"position\": [{:.1}, {:.1}],\n", element.layout_position.x.to_pixels(1.0), element.layout_position.y.to_pixels(1.0)));
+        output.push_str(&format!("      \"size\": [{:.1}, {:.1}],\n", element.layout_size.width.to_pixels(1.0), element.layout_size.height.to_pixels(1.0)));
         output.push_str(&format!("      \"children\": {:?}\n", element.children));
         output.push_str("    }");
     }

@@ -2,6 +2,8 @@
 use kryon_render::{
     Renderer, CommandRenderer, RenderCommand, RenderResult, KeyCode, TextManager
 };
+#[cfg(feature = "svg")]
+use kryon_render::{SvgRenderer, SvgRenderOptions};
 use kryon_render::events::{InputEvent, MouseButton, KeyModifiers};
 use kryon_core::{CursorType, TransformData, TransformPropertyType, CSSUnit};
 use kryon_layout::LayoutResult;
@@ -22,6 +24,8 @@ pub struct RaylibRenderer {
     pending_commands: Vec<RenderCommand>,
     prev_mouse_pos: Vec2,
     current_cursor: CursorType,
+    #[cfg(feature = "svg")]
+    svg_renderer: SvgRenderer,
 }
 
 pub struct RaylibRenderContext {
@@ -58,6 +62,8 @@ impl Renderer for RaylibRenderer {
             pending_commands: Vec::new(),
             prev_mouse_pos: Vec2::new(-1.0, -1.0), // Initialize to invalid position
             current_cursor: CursorType::Default,
+            #[cfg(feature = "svg")]
+            svg_renderer: SvgRenderer::new(),
         })
     }
     
@@ -83,7 +89,7 @@ impl Renderer for RaylibRenderer {
             // Execute all commands without borrowing self
             for command in &commands {
 
-                Self::execute_single_command_impl(&mut d, &mut self.textures, &self.fonts, &mut self.text_manager, command)?;
+                Self::execute_single_command_impl(&mut d, &mut self.textures, &self.fonts, &mut self.text_manager, command, &mut self.svg_renderer, &self.thread)?;
             }
         }
         
@@ -326,6 +332,8 @@ impl RaylibRenderer {
         fonts: &HashMap<String, Font>,
         text_manager: &mut TextManager,
         command: &RenderCommand,
+        svg_renderer: &mut SvgRenderer,
+        thread: &RaylibThread,
     ) -> RenderResult<()> {
         match command {
             RenderCommand::DrawRect {
@@ -719,6 +727,171 @@ impl RaylibRenderer {
                     }
                 }
             }
+            #[cfg(feature = "svg")]
+            RenderCommand::DrawSvg {
+                position,
+                size,
+                source,
+                opacity,
+                transform,
+                background_color,
+                z_index: _,
+            } => {
+                eprintln!("[RAYLIB] DrawSvg match arm reached for: {}", source);
+                
+                // Check if source is a file path or inline SVG
+                if let Ok(svg_data) = if source.starts_with('<') {
+                    // Inline SVG content
+                    svg_renderer.render_string(source, &SvgRenderOptions {
+                        target_width: Some(size.x as u32),
+                        target_height: Some(size.y as u32),
+                        background_color: background_color.map(|c| [
+                            (c.x * 255.0) as u8,
+                            (c.y * 255.0) as u8,
+                            (c.z * 255.0) as u8,
+                            (c.w * 255.0) as u8,
+                        ]),
+                        ..Default::default()
+                    })
+                } else {
+                    // File path
+                    svg_renderer.render_file(std::path::Path::new(source), &SvgRenderOptions {
+                        target_width: Some(size.x as u32),
+                        target_height: Some(size.y as u32),
+                        background_color: background_color.map(|c| [
+                            (c.x * 255.0) as u8,
+                            (c.y * 255.0) as u8,
+                            (c.z * 255.0) as u8,
+                            (c.w * 255.0) as u8,
+                        ]),
+                        ..Default::default()
+                    })
+                } {
+                    // Create texture from SVG data
+                    let texture_key = format!("svg_{}_{}", source.len(), svg_data.width);
+                    
+                    // Check if we have a cached texture
+                    if let Some(texture) = textures.get(&texture_key) {
+                        // Draw the cached texture
+                        let dest_rect = Rectangle::new(position.x, position.y, size.x, size.y);
+                        let source_rect = Rectangle::new(0.0, 0.0, texture.width as f32, texture.height as f32);
+                        let tint = Color::new(255, 255, 255, (*opacity * 255.0) as u8);
+                        
+                        // Apply transform if present
+                        if let Some(transform_data) = transform {
+                            let (scale, _rotation, translation) = extract_transform_values(transform_data);
+                            
+                            // Apply transformations manually (modern Raylib API)
+                            let center_x = position.x + size.x / 2.0;
+                            let center_y = position.y + size.y / 2.0;
+                            
+                            // Calculate transformed rectangle
+                            let transformed_dest = Rectangle::new(
+                                center_x - (size.x * scale.x) / 2.0 + translation.x,
+                                center_y - (size.y * scale.y) / 2.0 + translation.y,
+                                size.x * scale.x,
+                                size.y * scale.y
+                            );
+                            
+                            d.draw_texture_pro(
+                                texture,
+                                source_rect,
+                                transformed_dest,
+                                Vector2::new(transformed_dest.width / 2.0, transformed_dest.height / 2.0),
+                                0.0, // rotation - simplified for now
+                                tint,
+                            );
+                        } else {
+                            // Draw without transform
+                            d.draw_texture_pro(
+                                texture,
+                                source_rect,
+                                dest_rect,
+                                Vector2::zero(),
+                                0.0,
+                                tint,
+                            );
+                        }
+                        
+                        eprintln!("[RAYLIB] Drew SVG texture: {} at ({:.1},{:.1}) size ({:.1},{:.1})", 
+                            source, position.x, position.y, size.x, size.y);
+                    } else {
+                        // Create new texture from SVG data using Raylib 5.x API
+                        let pixels = svg_data.pixels.as_slice();
+                        let image = unsafe {
+                            raylib::ffi::Image {
+                                data: pixels.as_ptr() as *mut std::ffi::c_void,
+                                width: svg_data.width as i32,
+                                height: svg_data.height as i32,
+                                mipmaps: 1,
+                                format: raylib::ffi::PixelFormat::PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 as i32,
+                            }
+                        };
+                        
+                        if let Ok(texture) = d.load_texture_from_image(thread, &unsafe { Image::from_raw(image) }) {
+                            // Draw the texture
+                            let dest_rect = Rectangle::new(position.x, position.y, size.x, size.y);
+                            let source_rect = Rectangle::new(0.0, 0.0, texture.width as f32, texture.height as f32);
+                            let tint = Color::new(255, 255, 255, (*opacity * 255.0) as u8);
+                            
+                            d.draw_texture_pro(
+                                &texture,
+                                source_rect,
+                                dest_rect,
+                                Vector2::zero(),
+                                0.0,
+                                tint,
+                            );
+                            
+                            // Cache the texture for future use
+                            textures.insert(texture_key, texture);
+                        }
+                        
+                        eprintln!("[RAYLIB] Rendered and cached SVG: {} at ({:.1},{:.1}) size ({:.1},{:.1})", 
+                            source, position.x, position.y, size.x, size.y);
+                    }
+                } else {
+                    // SVG rendering failed - draw error placeholder
+                    let error_color = Color::new(150, 50, 150, (*opacity * 255.0) as u8);
+                    d.draw_rectangle(
+                        position.x as i32,
+                        position.y as i32,
+                        size.x as i32,
+                        size.y as i32,
+                        error_color,
+                    );
+                    
+                    let text = "SVG ERROR";
+                    let font_size = 12;
+                    let text_width = d.measure_text(text, font_size);
+                    let text_x = position.x + (size.x - text_width as f32) / 2.0;
+                    let text_y = position.y + (size.y - font_size as f32) / 2.0;
+                    d.draw_text(text, text_x as i32, text_y as i32, font_size, Color::WHITE);
+                    
+                    eprintln!("[RAYLIB] SVG rendering failed: {}", source);
+                }
+            }
+            #[cfg(not(feature = "svg"))]
+            RenderCommand::DrawSvg { position, size, source, opacity, .. } => {
+                // SVG feature not enabled - draw placeholder
+                let placeholder_color = Color::new(100, 100, 100, (*opacity * 255.0) as u8);
+                d.draw_rectangle(
+                    position.x as i32,
+                    position.y as i32,
+                    size.x as i32,
+                    size.y as i32,
+                    placeholder_color,
+                );
+                
+                let text = "SVG DISABLED";
+                let font_size = 10;
+                let text_width = d.measure_text(text, font_size);
+                let text_x = position.x + (size.x - text_width as f32) / 2.0;
+                let text_y = position.y + (size.y - font_size as f32) / 2.0;
+                d.draw_text(text, text_x as i32, text_y as i32, font_size, Color::WHITE);
+                
+                eprintln!("[RAYLIB] SVG rendering disabled - source: {}", source);
+            }
             RenderCommand::SetClip { position, size } => {
                 let _scissor = d.begin_scissor_mode(
                     position.x as i32,
@@ -738,32 +911,54 @@ impl RaylibRenderer {
                 placeholder,
                 font_size,
                 text_color,
+                placeholder_color,
                 background_color,
                 border_color,
+                focus_border_color,
                 border_width,
                 border_radius: _,
                 is_focused,
+                is_editing,
                 is_readonly: _,
+                cursor_position,
+                selection_start,
+                selection_end,
+                text_scroll_offset,
+                input_type: _,
                 transform: _,
+                z_index: _,
             } => {
-                // Draw background
+                // Draw background with state-based color adjustments
                 let rect = Rectangle::new(position.x, position.y, size.x, size.y);
-                let bg_color = vec4_to_raylib_color(*background_color);
+                let bg_color = if *is_editing {
+                    // Slightly brighter background when editing
+                    let mut color = *background_color;
+                    color.x = (color.x + 0.05).min(1.0);
+                    color.y = (color.y + 0.05).min(1.0);
+                    color.z = (color.z + 0.05).min(1.0);
+                    vec4_to_raylib_color(color)
+                } else {
+                    vec4_to_raylib_color(*background_color)
+                };
                 d.draw_rectangle_rec(rect, bg_color);
                 
-                // Draw border
+                // Draw border with focus state
                 if *border_width > 0.0 {
-                    let border_raylib_color = vec4_to_raylib_color(*border_color);
+                    let border_raylib_color = if *is_focused {
+                        vec4_to_raylib_color(*focus_border_color)
+                    } else {
+                        vec4_to_raylib_color(*border_color)
+                    };
                     d.draw_rectangle_lines_ex(rect, *border_width, border_raylib_color);
                 }
                 
-                // Draw focus indicator if focused
-                if *is_focused {
-                    let focus_color = Color::BLUE;
-                    d.draw_rectangle_lines_ex(rect, 2.0, focus_color);
-                }
+                // Text rendering area with padding
+                let text_padding = 5.0;
+                let text_area_x = position.x + text_padding;
+                let text_area_width = size.x - (text_padding * 2.0);
+                let text_y = position.y + (size.y - *font_size) / 2.0;
                 
-                // Draw text or placeholder
+                // Handle text display with scroll offset
                 let display_text = if text.is_empty() && !placeholder.is_empty() {
                     placeholder
                 } else {
@@ -771,11 +966,76 @@ impl RaylibRenderer {
                 };
                 
                 if !display_text.is_empty() {
-                    let text_raylib_color = vec4_to_raylib_color(*text_color);
-                    let text_x = position.x + 5.0; // Small padding
-                    let text_y = position.y + (size.y - *font_size) / 2.0; // Vertically center
+                    let text_raylib_color = if text.is_empty() && !placeholder.is_empty() {
+                        vec4_to_raylib_color(*placeholder_color)
+                    } else {
+                        vec4_to_raylib_color(*text_color)
+                    };
+                    
+                    // Apply text scroll offset for long text
+                    let text_x = text_area_x - *text_scroll_offset;
+                    
+                    // Clip text to input area
+                    unsafe {
+                        raylib::ffi::BeginScissorMode(
+                            text_area_x as i32,
+                            position.y as i32,
+                            text_area_width as i32,
+                            size.y as i32
+                        );
+                    }
                     
                     d.draw_text(display_text, text_x as i32, text_y as i32, *font_size as i32, text_raylib_color);
+                    
+                    // Draw text selection if any
+                    if let (Some(sel_start), Some(sel_end)) = (selection_start, selection_end) {
+                        if sel_start != sel_end {
+                            let actual_start = (*sel_start).min(*sel_end);
+                            let actual_end = (*sel_start).max(*sel_end);
+                            
+                            // Calculate selection bounds (simplified - would need proper text measurement)
+                            let char_width = *font_size * 0.6; // Approximate character width
+                            let sel_start_x = text_x + (actual_start as f32 * char_width);
+                            let sel_width = (actual_end - actual_start) as f32 * char_width;
+                            
+                            let selection_rect = Rectangle::new(
+                                sel_start_x,
+                                text_y - 2.0,
+                                sel_width,
+                                *font_size + 4.0
+                            );
+                            
+                            // Draw selection background
+                            d.draw_rectangle_rec(selection_rect, Color::new(100, 149, 237, 80)); // Light blue with transparency
+                        }
+                    }
+                    
+                    // Draw cursor if editing
+                    if *is_editing && !text.is_empty() {
+                        let char_width = *font_size * 0.6; // Approximate character width
+                        let cursor_x = text_x + (*cursor_position as f32 * char_width);
+                        
+                        // Simple blinking cursor (always visible for now)
+                        d.draw_line_ex(
+                            Vector2::new(cursor_x, text_y),
+                            Vector2::new(cursor_x, text_y + *font_size),
+                            1.0,
+                            Color::BLACK
+                        );
+                    }
+                    
+                    unsafe {
+                        raylib::ffi::EndScissorMode();
+                    }
+                } else if *is_editing {
+                    // Show cursor even when no text
+                    let cursor_x = text_area_x;
+                    d.draw_line_ex(
+                        Vector2::new(cursor_x, text_y),
+                        Vector2::new(cursor_x, text_y + *font_size),
+                        1.0,
+                        Color::BLACK
+                    );
                 }
             },
             RenderCommand::DrawCheckbox {

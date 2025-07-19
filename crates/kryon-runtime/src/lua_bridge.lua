@@ -17,6 +17,7 @@ _pending_style_changes      = {} -- { [element_id] = new_style_id }
 _pending_state_changes      = {} -- { [element_id] = is_checked (boolean) }
 _pending_text_changes       = {} -- { [element_id] = new_text (string) }
 _pending_visibility_changes = {} -- { [element_id] = is_visible (boolean) }
+_pending_transform_changes  = {} -- { [element_id] = transform_table (table) }
 
 -- Event listener system state
 _event_listeners            = {} -- { [event_type] = {callback1, callback2, ...} }
@@ -106,6 +107,68 @@ function getElementById(element_id)
                     return _elements_data[self.numeric_id].is_checked or false
                 end
                 return false -- Default to unchecked if not found
+            end,
+
+            -- Transform manipulation methods
+            setTransform = function(self, transform_table)
+                -- transform_table should contain: { translateX, translateY, scaleX, scaleY, rotation, ... }
+                if not _pending_transform_changes then
+                    _pending_transform_changes = {}
+                end
+                _pending_transform_changes[self.numeric_id] = transform_table
+                print("Queuing transform change for element '" .. self.id .. "'")
+            end,
+
+            setTranslation = function(self, x, y, z)
+                local transform = self:getTransform() or {}
+                transform.translateX = x or 0
+                transform.translateY = y or 0
+                transform.translateZ = z or 0
+                self:setTransform(transform)
+            end,
+
+            setScale = function(self, x, y, z)
+                local transform = self:getTransform() or {}
+                transform.scaleX = x or 1
+                transform.scaleY = y or x or 1  -- Default scaleY to scaleX if not provided
+                transform.scaleZ = z or 1
+                self:setTransform(transform)
+            end,
+
+            setRotation = function(self, angle, axis)
+                local transform = self:getTransform() or {}
+                if axis == "x" then
+                    transform.rotateX = angle or 0
+                elseif axis == "y" then
+                    transform.rotateY = angle or 0
+                else
+                    transform.rotateZ = angle or 0  -- Default to Z rotation (2D)
+                end
+                self:setTransform(transform)
+            end,
+
+            getTransform = function(self)
+                if _pending_transform_changes and _pending_transform_changes[self.numeric_id] then
+                    return _pending_transform_changes[self.numeric_id]
+                end
+                if _elements_data and _elements_data[self.numeric_id] then
+                    return _elements_data[self.numeric_id].transform or {}
+                end
+                return {}
+            end,
+
+            -- Convenience methods for common transforms
+            translate = function(self, x, y) self:setTranslation(x, y, 0) end,
+            scale = function(self, factor) self:setScale(factor, factor, 1) end,
+            rotate = function(self, angle) self:setRotation(angle, "z") end,
+            
+            -- Reset transform to identity
+            resetTransform = function(self)
+                self:setTransform({
+                    translateX = 0, translateY = 0, translateZ = 0,
+                    scaleX = 1, scaleY = 1, scaleZ = 1,
+                    rotateX = 0, rotateY = 0, rotateZ = 0
+                })
             end,
 
             -- DOM Traversal Methods
@@ -398,6 +461,10 @@ end
 
 function _get_pending_visibility_changes()
     return _copy_table(_pending_visibility_changes)
+end
+
+function _get_pending_transform_changes()
+    return _copy_table(_pending_transform_changes)
 end
 
 -- This getter is part of the reactive variable system.

@@ -4,13 +4,22 @@ use kryon_core::{Element, ElementId};
 use glam::Vec2;
 use std::collections::HashMap;
 
-pub mod flexbox;
 pub mod constraints;
-pub mod taffy_engine;
+pub mod optimized_taffy_engine;
+pub mod taffy;
+pub mod layout_diff;
+pub mod performance;
+pub mod spatial_index;
 
-pub use flexbox::{LayoutFlags, LayoutDirection, LayoutAlignment};
 pub use constraints::*;
-pub use taffy_engine::TaffyLayoutEngine;
+pub use optimized_taffy_engine::{OptimizedTaffyLayoutEngine, LayoutConfig, InvalidationRegion};
+pub use taffy::{StyleConverter, TreeBuilder, LayoutComputer};
+pub use layout_diff::{LayoutDiff, LayoutDiffer, PositionChange, SizeChange};
+pub use performance::{LayoutProfiler, LayoutPerformanceMetrics, LayoutBenchmark, BenchmarkComplexity};
+pub use spatial_index::{SpatialIndex, SpatialIndexManager, Rect, SpatialIndexStats};
+
+// Re-export the optimized engine as the default TaffyLayoutEngine
+pub use optimized_taffy_engine::OptimizedTaffyLayoutEngine as TaffyLayoutEngine;
 
 #[derive(Debug, Clone)]
 pub struct LayoutResult {

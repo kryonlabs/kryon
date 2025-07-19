@@ -112,8 +112,10 @@ fn main() -> Result<()> {
     let mut viewport_size = glam::Vec2::new(800.0, 600.0);
     if let Some(root_id) = krb_file.root_element_id {
         if let Some(root_element) = krb_file.elements.get(&root_id) {
-            if root_element.size.x > 0.0 && root_element.size.y > 0.0 {
-                viewport_size = root_element.size;
+            let size_x = root_element.layout_size.width.to_pixels(1.0);
+            let size_y = root_element.layout_size.height.to_pixels(1.0);
+            if size_x > 0.0 && size_y > 0.0 {
+                viewport_size = Vec2::new(size_x, size_y);
             }
         }
     }

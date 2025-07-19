@@ -169,7 +169,7 @@ fn main() -> Result<()> {
                         
                         if let Err(e) = app.handle_input(kryon_render::InputEvent::KeyPress { 
                             key: key_code,
-                            modifiers: kryon_render::KeyModifiers::none()
+                            modifiers: kryon_render::events::KeyModifiers::none()
                         }) {
                             error!("Failed to handle key press: {}", e);
                         }

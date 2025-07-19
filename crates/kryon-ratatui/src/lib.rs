@@ -3,7 +3,7 @@ use ratatui::{
     backend::Backend,
     layout::{Alignment, Rect},
     style::{Color, Style},
-    widgets::{Block, Clear, Paragraph},
+    widgets::{Block, Clear, Paragraph, Wrap},
     Frame, Terminal,
 };
 
@@ -197,6 +197,35 @@ fn render_commands_to_frame(commands: &[RenderCommand], frame: &mut Frame, app_c
                             .alignment(Alignment::Center);
                         frame.render_widget(paragraph, area);
                     }
+                }
+            }
+            
+            RenderCommand::DrawSvg { position, size, source, opacity: _, transform: _, background_color, .. } => {
+                // SVG rendering is complex for terminal - show placeholder with source info
+                if let Some(area) = translate_rect(*position, *size, app_canvas_size, terminal_area) {
+                    let source_name = if source.ends_with(".svg") {
+                        source.split('/').last().unwrap_or(source)
+                    } else {
+                        "SVG"
+                    };
+                    
+                    let display_text = format!("SVG\n{}", source_name);
+                    let color = background_color.map(vec4_to_ratatui_color).unwrap_or(Color::Yellow);
+                    
+                    let paragraph = Paragraph::new(display_text)
+                        .style(Style::default().fg(color))
+                        .alignment(Alignment::Center)
+                        .wrap(Wrap { trim: true });
+                    
+                    // Add border to indicate SVG boundary
+                    let block = ratatui::widgets::Block::default()
+                        .borders(ratatui::widgets::Borders::ALL)
+                        .border_style(ratatui::style::Style::default().fg(color))
+                        .title("SVG");
+                    let inner_area = block.inner(area);
+                    
+                    frame.render_widget(block, area);
+                    frame.render_widget(paragraph, inner_area);
                 }
             }
             // Canvas rendering commands

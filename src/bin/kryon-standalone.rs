@@ -1,7 +1,7 @@
 // kryon-standalone: Template for creating self-contained Kryon executables
 // This file serves as a template that gets compiled with embedded KRB data
 
-use kryon_render::Renderer;
+use kryon_render::{Renderer, events::KeyModifiers};
 
 // Placeholder for embedded KRB data - replaced by build script
 const EMBEDDED_KRB_DATA: &[u8] = &[];
@@ -142,7 +142,7 @@ fn main() -> anyhow::Result<()> {
                         
                         app.handle_input(InputEvent::KeyPress { 
                             key: render_key, 
-                            modifiers: kryon_render::KeyModifiers::none() 
+                            modifiers: KeyModifiers::none() 
                         })?;
                     }
                 }

@@ -584,6 +584,7 @@ impl WgpuRenderer {
                 max_height: _,
                 transform,
                 font_family: _, // WGPU doesn't support custom fonts yet
+                z_index: _, // WGPU doesn't use z_index for text rendering ordering
             } = command {
                 // Apply transform to text position if present
                 let final_position = if let Some(transform_data) = transform {

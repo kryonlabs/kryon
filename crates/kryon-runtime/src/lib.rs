@@ -2,9 +2,9 @@
 
 use kryon_core::{
     KRBFile, Element, ElementId, InteractionState, EventType, load_krb_file,
-    StyleComputer,
+    StyleComputer, OptimizedPropertyCache, LayoutDimension,
 };
-use kryon_layout::{LayoutEngine, TaffyLayoutEngine, LayoutResult};
+use kryon_layout::{LayoutEngine, TaffyLayoutEngine, OptimizedTaffyLayoutEngine, LayoutResult, LayoutConfig};
 use kryon_render::{ElementRenderer, CommandRenderer, KeyCode};
 use kryon_render::events::{InputEvent, MouseButton, KeyModifiers};
 use glam::Vec2;
@@ -16,12 +16,14 @@ pub mod event_system;
 pub mod script;
 pub mod template_engine;
 pub mod shared_data;
+pub mod optimized_app;
 
 pub use backends::*;
 pub use event_system::*;
 pub use script::ScriptSystem;
 pub use template_engine::*;
 pub use shared_data::*;
+pub use optimized_app::*;
 
 pub struct KryonApp<R: CommandRenderer> {
     // Core data
@@ -41,6 +43,7 @@ pub struct KryonApp<R: CommandRenderer> {
     viewport_size: Vec2,
     needs_layout: bool,
     needs_render: bool,
+    current_cursor: kryon_core::CursorType,
     
     // Timing
     last_frame_time: Instant,
@@ -55,6 +58,11 @@ impl<R: CommandRenderer> KryonApp<R> {
     pub fn new_with_layout_engine(krb_path: &str, renderer: R, layout_engine: Option<Box<dyn LayoutEngine>>) -> anyhow::Result<Self> {
         let krb_file = load_krb_file(krb_path)?;
         Self::new_with_krb(krb_file, renderer, layout_engine)
+    }
+    
+    pub fn new_optimized(krb_path: &str, renderer: R) -> anyhow::Result<OptimizedKryonApp<R>> {
+        let krb_file = load_krb_file(krb_path)?;
+        OptimizedKryonApp::with_krb_and_config(krb_file, renderer, OptimizedAppConfig::default())
     }
     
     pub fn new_with_krb(krb_file: KRBFile, renderer: R, layout_engine: Option<Box<dyn LayoutEngine>>) -> anyhow::Result<Self> {
@@ -93,6 +101,7 @@ impl<R: CommandRenderer> KryonApp<R> {
             viewport_size,
             needs_layout: true,
             needs_render: true,
+            current_cursor: kryon_core::CursorType::Default,
             last_frame_time: Instant::now(),
             frame_count: 0,
         };
@@ -253,21 +262,18 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
             self.viewport_size,
         );
         
-        // Apply computed layout results back to element positions and sizes
+        // Apply computed layout results back to element layout positions and sizes
         for (&element_id, computed_position) in &self.layout_result.computed_positions {
             if let Some(element) = self.elements.get_mut(&element_id) {
-                eprintln!("[LAYOUT_APPLY] Element {}: applying computed position {:?} (was {:?})", 
-                    element_id, computed_position, element.position);
-                element.position = *computed_position;
+                element.layout_position.x = LayoutDimension::Pixels(computed_position.x);
+                element.layout_position.y = LayoutDimension::Pixels(computed_position.y);
             }
         }
         
         for (&element_id, computed_size) in &self.layout_result.computed_sizes {
             if let Some(element) = self.elements.get_mut(&element_id) {
-                // Debug: Log size application
-                eprintln!("[LAYOUT_APPLY] Element {}: applying computed size {:?} (was {:?})", 
-                    element_id, computed_size, element.size);
-                element.size = *computed_size;
+                element.layout_size.width = LayoutDimension::Pixels(computed_size.x);
+                element.layout_size.height = LayoutDimension::Pixels(computed_size.y);
             }
         }
     }
@@ -288,9 +294,8 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
             kryon_core::CursorType::Default
         };
         
-        // Update the cursor through the renderer
-        // Note: set_cursor is backend-specific, not part of CommandRenderer trait
-        // self.renderer.backend_mut().set_cursor(cursor_type);
+        // Update the cursor if it changed
+        self.update_cursor(cursor_type);
         
         // Update hover states (but preserve checked state)
         for (element_id, element) in self.elements.iter_mut() {
@@ -404,18 +409,30 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
         let mut found_elements = Vec::new();
         
         for (element_id, element) in &self.elements {
+            // Debug all click positions with detailed element info
+            if position.x >= 0.0 && position.y >= 0.0 {
+                eprintln!("[HIT_TEST_DEBUG] Checking element {} at click position ({:.1}, {:.1}), visible: {}", 
+                    element_id, position.x, position.y, element.visible);
+            }
+            
             if !element.visible {
+                if *element_id == 6 { // Debug dropdown menu visibility
+                    eprintln!("[HIT_TEST_DEBUG] Element 6 (dropdown menu) is invisible, skipping");
+                }
                 continue;
+            }
+            if *element_id == 6 { // Debug dropdown menu visibility
+                eprintln!("[HIT_TEST_DEBUG] Element 6 (dropdown menu) is visible, checking hit");
             }
             
             let element_pos = self.layout_result.computed_positions
                 .get(element_id)
                 .copied()
-                .unwrap_or(element.position);
+                .unwrap_or(Vec2::new(element.layout_position.x.to_pixels(1.0), element.layout_position.y.to_pixels(1.0)));
             let element_size = self.layout_result.computed_sizes
                 .get(element_id)
                 .copied()
-                .unwrap_or(element.size);
+                .unwrap_or(Vec2::new(element.layout_size.width.to_pixels(1.0), element.layout_size.height.to_pixels(1.0)));
             
             if position.x >= element_pos.x
                 && position.x <= element_pos.x + element_size.x
@@ -454,12 +471,34 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
         self.needs_render = true;
     }
     
+    /// Switch to optimized layout engine
+    pub fn use_optimized_layout_engine(&mut self) {
+        self.layout_engine = Box::new(OptimizedTaffyLayoutEngine::new());
+        self.needs_layout = true;
+    }
+    
     pub fn renderer(&self) -> &ElementRenderer<R> {
         &self.renderer
     }
     
     pub fn renderer_mut(&mut self) -> &mut ElementRenderer<R> {
         &mut self.renderer
+    }
+    
+    /// Update the cursor type - returns true if the cursor changed
+    fn update_cursor(&mut self, new_cursor: kryon_core::CursorType) -> bool {
+        if self.current_cursor != new_cursor {
+            self.current_cursor = new_cursor;
+            // We'll handle the actual cursor update in the main loop
+            true
+        } else {
+            false
+        }
+    }
+    
+    /// Get the current cursor type
+    pub fn current_cursor(&self) -> kryon_core::CursorType {
+        self.current_cursor
     }
     
     // Template variable methods

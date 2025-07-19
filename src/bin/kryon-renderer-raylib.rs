@@ -82,11 +82,13 @@ fn main() -> Result<()> {
     // Read properties from the KRB file's root element
     if let Some(root_id) = krb_file.root_element_id {
         if let Some(root_element) = krb_file.elements.get(&root_id) {
-            if root_element.size.x > 0.0 {
-                width = root_element.size.x as i32;
+            let size_x = root_element.layout_size.width.to_pixels(1.0);
+            let size_y = root_element.layout_size.height.to_pixels(1.0);
+            if size_x > 0.0 {
+                width = size_x as i32;
             }
-            if root_element.size.y > 0.0 {
-                height = root_element.size.y as i32;
+            if size_y > 0.0 {
+                height = size_y as i32;
             }
             if !root_element.text.is_empty() {
                 title = root_element.text.clone();
@@ -189,6 +191,10 @@ fn main() -> Result<()> {
             error!("Failed to update app: {}", e);
             break;
         }
+        
+        // Update cursor based on current hover state
+        let cursor_type = app.current_cursor();
+        app.renderer_mut().backend_mut().set_cursor(cursor_type);
         
         // Render frame
         if let Err(e) = app.render() {
