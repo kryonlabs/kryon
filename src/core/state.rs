@@ -163,6 +163,7 @@ pub struct SourceProperty {
     pub key: String,
     pub value: String,
     pub line_num: usize,
+    pub template_variables: Vec<String>, // Variables used in this property
 }
 
 #[derive(Debug, Clone)]

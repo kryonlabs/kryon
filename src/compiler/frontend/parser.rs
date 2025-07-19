@@ -2021,7 +2021,7 @@ fn parse_primary_expression(&mut self) -> Result<Expression> {
                     "Expected variable name after comma in '@for'"
                 )),
             };
-            (Some(first_variable), second_variable)
+            (Some(second_variable), first_variable)
         } else {
             // Single variable syntax @for variable
             (None, first_variable)

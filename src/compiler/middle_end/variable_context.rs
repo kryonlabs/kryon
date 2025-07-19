@@ -915,7 +915,7 @@ impl VariableProcessor {
         
         // Check for other element properties that should support template variables
         let template_properties = [
-            "text:", "value:", "placeholder:", "title:", "label:", "content:"
+            "text:", "value:", "placeholder:", "title:", "label:", "content:", "visible:"
         ];
         
         for prop in &template_properties {

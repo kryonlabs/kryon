@@ -718,8 +718,8 @@ pub fn process_template_variables(state: &mut CompilerState, options: &CompilerO
         
         // Also check source_properties for backward compatibility
         for source_prop in &element.source_properties {
-            // Check if this property has template variables
-            let template_variables = extract_template_variables(&source_prop.value);
+            // Use pre-extracted template variables from parser instead of regex
+            let template_variables = &source_prop.template_variables;
             
             if options.debug_mode {
                 log::debug!("Element {}: property '{}' = '{}' -> template vars: {:?}", 
@@ -728,7 +728,7 @@ pub fn process_template_variables(state: &mut CompilerState, options: &CompilerO
             
             if !template_variables.is_empty() {
                 let property_id = PropertyId::from_name(&source_prop.key) as u8;
-                properties_to_process.push((element_index, property_id, source_prop.value.clone(), template_variables));
+                properties_to_process.push((element_index, property_id, source_prop.value.clone(), template_variables.clone()));
             }
         }
     }

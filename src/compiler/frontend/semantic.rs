@@ -109,6 +109,7 @@ impl SemanticAnalyzer {
                     key: ast_prop.key.clone(),
                     value: ast_prop.value.to_string(),
                     line_num: ast_prop.line,
+                    template_variables: ast_prop.template_variables.clone(),
                 });
             }
             
@@ -702,7 +703,7 @@ impl SemanticAnalyzer {
             "text" | "text_color" | "font_size" | "font_weight" | "font_family" |
             "text_alignment" | "line_height" | "text_decoration" | "text_transform" |
             "list_style_type" | "white_space" |
-            "id" | "pos_x" | "pos_y" | "width" | "height" | "style" |
+            "id" | "pos_x" | "pos_y" | "x" | "y" | "position_x" | "position_y" | "left" | "top" | "right" | "bottom" | "width" | "height" | "style" |
             "background_color" | "border_color" | "border_width" | "border_radius" |
             "padding" | "margin" | "opacity" | "visibility" | "visible" | "z_index" |
             // Transform properties
@@ -819,7 +820,7 @@ impl SemanticAnalyzer {
         let is_common_property = matches!(property,
             "type" | "id" | "style" | "disabled" | "visible" | "width" | "height" |
             "padding" | "margin" | "background_color" | "border_color" | "border_width" |
-            "border_radius" | "opacity" | "z_index" | "pos_x" | "pos_y" |
+            "border_radius" | "opacity" | "z_index" | "pos_x" | "pos_y" | "x" | "y" | "position_x" | "position_y" | "left" | "top" | "right" | "bottom" |
             "onClick" | "onFocus" | "onBlur" | "onHover" | "onPress" | "onRelease" |
             // Box model properties
             "padding_top" | "padding_right" | "padding_bottom" | "padding_left" |
@@ -989,7 +990,7 @@ impl SemanticAnalyzer {
     
     fn is_valid_container_property(&self, key: &str) -> bool {
         matches!(key,
-            "gap" | "id" | "pos_x" | "pos_y" | "width" | "height" |
+            "gap" | "id" | "pos_x" | "pos_y" | "x" | "y" | "position_x" | "position_y" | "left" | "top" | "right" | "bottom" | "width" | "height" |
             "min_width" | "min_height" | "max_width" | "max_height" |
             "style" | "background_color" | "border_color" | "border_width" |
             "border_radius" | "padding" | "margin" | "opacity" | "visibility" | "visible" | "z_index" |
@@ -999,7 +1000,7 @@ impl SemanticAnalyzer {
             // Modern Taffy layout properties
             "display" | "flex_direction" | "flex_wrap" | "flex_grow" | "flex_shrink" | "flex_basis" |
             "align_items" | "align_self" | "align_content" | "justify_content" | "justify_items" | "justify_self" |
-            "order" | "position" | "top" | "right" | "bottom" | "left" | "inset" |
+            "order" | "position" | "inset" |
             "grid_template_columns" | "grid_template_rows" | "grid_area" | "grid_column" | "grid_row" |
             // Overflow properties
             "overflow" | "overflow_x" | "overflow_y" |
@@ -1171,6 +1172,7 @@ pub fn convert_ast_to_state(ast: &AstNode, state: &mut CompilerState) -> Result<
                                 key: p.key.clone(),
                                 value: p.value.to_string(),
                                 line_num: p.line,
+                                template_variables: p.template_variables.clone(),
                             }).collect(),
                             calculated_size: 0, // Will be calculated later
                             is_resolved: true,
@@ -1226,6 +1228,24 @@ pub fn convert_ast_to_state(ast: &AstNode, state: &mut CompilerState) -> Result<
                                 default_value: default_value.clone().unwrap_or_default(),
                             };
                             component_def.properties.push(prop_def);
+                            
+                            // If this is a private property (starts with _), add it as a template variable
+                            if prop_name.starts_with('_') {
+                                let name_index = state.add_string(&prop_name)?;
+                                let default_value_str = default_value.clone().unwrap_or_default();
+                                let default_value_index = state.add_string(&default_value_str)?;
+                                
+                                let template_var = crate::core::state::TemplateVariable {
+                                    name: prop_name.clone(),
+                                    name_index,
+                                    value_type: ValueType::String, // TODO: infer from property_type
+                                    default_value: default_value_str,
+                                    default_value_index,
+                                };
+                                
+                                state.template_variables.push(template_var);
+                                println!("Added template variable: {} = {}", prop_name, default_value.clone().unwrap_or_default());
+                            }
                         }
                     }
                     
@@ -1317,6 +1337,7 @@ fn convert_element_to_state(
                 key: ast_prop.key.clone(),
                 value: ast_prop.value.to_string(),
                 line_num: ast_prop.line,
+                template_variables: ast_prop.template_variables.clone(),
             });
             
             match ast_prop.key.as_str() {
@@ -1325,6 +1346,66 @@ fn convert_element_to_state(
                 "window_height" => if let Ok(val) = ast_prop.cleaned_value().parse::<u16>() { element.height = val; },
                 "pos_x" => if let Ok(val) = ast_prop.cleaned_value().parse::<u16>() { element.pos_x = val; },
                 "pos_y" => if let Ok(val) = ast_prop.cleaned_value().parse::<u16>() { element.pos_y = val; },
+                
+                // Position aliases - direct mapping to pos_x/pos_y
+                "x" => if let Ok(val) = ast_prop.cleaned_value().parse::<u16>() { element.pos_x = val; },
+                "y" => if let Ok(val) = ast_prop.cleaned_value().parse::<u16>() { element.pos_y = val; },
+                "position_x" => if let Ok(val) = ast_prop.cleaned_value().parse::<u16>() { element.pos_x = val; },
+                "position_y" => if let Ok(val) = ast_prop.cleaned_value().parse::<u16>() { element.pos_y = val; },
+                "left" => if let Ok(val) = ast_prop.cleaned_value().parse::<u16>() { element.pos_x = val; },
+                "top" => if let Ok(val) = ast_prop.cleaned_value().parse::<u16>() { element.pos_y = val; },
+                
+                // CSS-style positioning that requires formula conversion
+                "right" => {
+                    // right = container_width - element_width - right_value
+                    // We'll create a template binding: pos_x = ${parent.width} - ${width} - right_value
+                    if ast_prop.cleaned_value().contains('$') {
+                        // Contains template variables, add as template binding
+                        let formula = format!("${{parent.width}} - ${{width}} - {}", ast_prop.cleaned_value());
+                        let expression_index = state.add_string(formula.clone()).unwrap_or(0);
+                        state.template_bindings.push(TemplateBinding {
+                            element_index: state.elements.len() as u16,
+                            property_id: 0x55, // Custom property ID for pos_x via formula
+                            template_expression: formula,
+                            template_expression_index: expression_index,
+                            variable_count: 0, // Will be populated during template processing
+                            variable_indices: vec![], // Will be populated during template processing
+                        });
+                    } else if let Ok(right_val) = ast_prop.cleaned_value().parse::<u16>() {
+                        // Static value, we'll handle this in the renderer
+                        element.krb_custom_properties.push(KrbCustomProperty {
+                            key_index: state.add_string("right".to_string()).unwrap_or(0),
+                            value_type: ValueType::Short,
+                            size: 2,
+                            value: right_val.to_le_bytes().to_vec(),
+                        });
+                    }
+                },
+                "bottom" => {
+                    // bottom = container_height - element_height - bottom_value  
+                    // We'll create a template binding: pos_y = ${parent.height} - ${height} - bottom_value
+                    if ast_prop.cleaned_value().contains('$') {
+                        // Contains template variables, add as template binding
+                        let formula = format!("${{parent.height}} - ${{height}} - {}", ast_prop.cleaned_value());
+                        let expression_index = state.add_string(formula.clone()).unwrap_or(0);
+                        state.template_bindings.push(TemplateBinding {
+                            element_index: state.elements.len() as u16,
+                            property_id: 0x56, // Custom property ID for pos_y via formula
+                            template_expression: formula,
+                            template_expression_index: expression_index,
+                            variable_count: 0, // Will be populated during template processing
+                            variable_indices: vec![], // Will be populated during template processing
+                        });
+                    } else if let Ok(bottom_val) = ast_prop.cleaned_value().parse::<u16>() {
+                        // Static value, we'll handle this in the renderer
+                        element.krb_custom_properties.push(KrbCustomProperty {
+                            key_index: state.add_string("bottom".to_string()).unwrap_or(0),
+                            value_type: ValueType::Short,
+                            size: 2,
+                            value: bottom_val.to_le_bytes().to_vec(),
+                        });
+                    }
+                },
                 "id" => {
                     // Store the element ID string in the string table and set the index
                     let id_string = ast_prop.cleaned_value();

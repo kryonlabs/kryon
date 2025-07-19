@@ -518,10 +518,158 @@ impl StyleResolver {
                     ));
                 }
             }
+            PropertyId::Display => {
+                let display_value = match cleaned_value.as_str() {
+                    "none" => 0u8,
+                    "block" => 1u8,
+                    "inline" => 2u8,
+                    "inline-block" => 3u8,
+                    "flex" => 4u8,
+                    "inline-flex" => 5u8,
+                    "grid" => 6u8,
+                    "inline-grid" => 7u8,
+                    _ => return Err(CompilerError::semantic_legacy(
+                        source_prop.line_num,
+                        format!("Invalid display value: '{}'. Use 'none', 'block', 'inline', 'inline-block', 'flex', 'inline-flex', 'grid', or 'inline-grid'", cleaned_value)
+                    )),
+                };
+                
+                Some(KrbProperty {
+                    property_id: property_id as u8,
+                    value_type: ValueType::String,
+                    size: 1,
+                    value: {
+                        let string_index = state.add_string(cleaned_value.clone())?;
+                        vec![string_index]
+                    },
+                })
+            }
+            PropertyId::FlexDirection => {
+                let flex_direction_value = match cleaned_value.as_str() {
+                    "row" => 0u8,
+                    "row-reverse" => 1u8,
+                    "column" => 2u8,
+                    "column-reverse" => 3u8,
+                    _ => return Err(CompilerError::semantic_legacy(
+                        source_prop.line_num,
+                        format!("Invalid flex-direction value: '{}'. Use 'row', 'row-reverse', 'column', or 'column-reverse'", cleaned_value)
+                    )),
+                };
+                
+                Some(KrbProperty {
+                    property_id: property_id as u8,
+                    value_type: ValueType::String,
+                    size: 1,
+                    value: {
+                        let string_index = state.add_string(cleaned_value.clone())?;
+                        vec![string_index]
+                    },
+                })
+            }
+            PropertyId::AlignItems => {
+                let align_items_value = match cleaned_value.as_str() {
+                    "stretch" => 0u8,
+                    "flex-start" | "start" => 1u8,
+                    "flex-end" | "end" => 2u8,
+                    "center" => 3u8,
+                    "baseline" => 4u8,
+                    _ => return Err(CompilerError::semantic_legacy(
+                        source_prop.line_num,
+                        format!("Invalid align-items value: '{}'. Use 'stretch', 'start', 'end', 'center', or 'baseline'", cleaned_value)
+                    )),
+                };
+                
+                Some(KrbProperty {
+                    property_id: property_id as u8,
+                    value_type: ValueType::String,
+                    size: 1,
+                    value: {
+                        let string_index = state.add_string(cleaned_value.clone())?;
+                        vec![string_index]
+                    },
+                })
+            }
+            PropertyId::JustifyContent => {
+                let justify_content_value = match cleaned_value.as_str() {
+                    "flex-start" | "start" => 0u8,
+                    "flex-end" | "end" => 1u8,
+                    "center" => 2u8,
+                    "space-between" => 3u8,
+                    "space-around" => 4u8,
+                    "space-evenly" => 5u8,
+                    _ => return Err(CompilerError::semantic_legacy(
+                        source_prop.line_num,
+                        format!("Invalid justify-content value: '{}'. Use 'start', 'end', 'center', 'space-between', 'space-around', or 'space-evenly'", cleaned_value)
+                    )),
+                };
+                
+                Some(KrbProperty {
+                    property_id: property_id as u8,
+                    value_type: ValueType::String,
+                    size: 1,
+                    value: {
+                        let string_index = state.add_string(cleaned_value.clone())?;
+                        vec![string_index]
+                    },
+                })
+            }
+            PropertyId::Gap => {
+                if let Ok(val) = cleaned_value.parse::<u8>() {
+                    Some(KrbProperty {
+                        property_id: property_id as u8,
+                        value_type: ValueType::Byte,
+                        size: 1,
+                        value: vec![val],
+                    })
+                } else {
+                    return Err(CompilerError::semantic_legacy(
+                        source_prop.line_num,
+                        format!("Invalid gap value: {}", cleaned_value)
+                    ));
+                }
+            }
+            PropertyId::PaddingTop | PropertyId::PaddingRight | PropertyId::PaddingBottom | PropertyId::PaddingLeft => {
+                if let Ok(val) = cleaned_value.parse::<u8>() {
+                    Some(KrbProperty {
+                        property_id: property_id as u8,
+                        value_type: ValueType::Byte,
+                        size: 1,
+                        value: vec![val],
+                    })
+                } else {
+                    return Err(CompilerError::semantic_legacy(
+                        source_prop.line_num,
+                        format!("Invalid padding value: {}", cleaned_value)
+                    ));
+                }
+            }
+            PropertyId::MarginTop | PropertyId::MarginRight | PropertyId::MarginBottom | PropertyId::MarginLeft => {
+                if let Ok(val) = cleaned_value.parse::<u8>() {
+                    Some(KrbProperty {
+                        property_id: property_id as u8,
+                        value_type: ValueType::Byte,
+                        size: 1,
+                        value: vec![val],
+                    })
+                } else {
+                    return Err(CompilerError::semantic_legacy(
+                        source_prop.line_num,
+                        format!("Invalid margin value: {}", cleaned_value)
+                    ));
+                }
+            }
             PropertyId::Invalid => None, // Skip invalid properties
             _ => {
                 // For other properties, store as string for now
-                None // Skip for simplicity in this implementation
+                Some(KrbProperty {
+                    property_id: property_id as u8,
+                    value_type: ValueType::String,
+                    size: 1,
+                    value: {
+                        let string_index = state.add_string(cleaned_value.clone()).unwrap_or(0);
+                        vec![string_index]
+                    },
+                })
             }
         };
         

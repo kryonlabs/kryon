@@ -394,8 +394,32 @@ impl ComponentResolver {
                 // Replace variable references in properties using the variable context
                 for prop in properties {
                     let value_str = prop.value.to_string();
-                    let substituted = state.variable_context.substitute_variables(&value_str)?;
-                    prop.value = PropertyValue::String(substituted);
+                    
+                    // Check if this property should preserve template variables for runtime binding
+                    let property_line = format!("{}: {}", prop.key, value_str);
+                    if self.should_preserve_template_variables(&property_line, &prop.key) {
+                        // Preserve template variables that start with underscore (private/template variables)
+                        // Only substitute non-template variables (component properties, regular variables)
+                        let substituted = self.substitute_preserving_template_variables(&value_str, state)?;
+                        
+                        // Re-extract template variables after partial substitution
+                        let re = regex::Regex::new(r"\$([a-zA-Z_][a-zA-Z0-9_]*)").unwrap();
+                        let mut template_vars = Vec::new();
+                        for capture in re.captures_iter(&substituted) {
+                            if let Some(var_name) = capture.get(1) {
+                                let name = var_name.as_str().to_string();
+                                if !template_vars.contains(&name) {
+                                    template_vars.push(name);
+                                }
+                            }
+                        }
+                        prop.template_variables = template_vars;
+                        prop.value = PropertyValue::String(substituted);
+                    } else {
+                        // Normal substitution for non-template properties
+                        let substituted = state.variable_context.substitute_variables(&value_str)?;
+                        prop.value = PropertyValue::String(substituted);
+                    }
                 }
                 
                 // Recursively process children
@@ -407,6 +431,55 @@ impl ComponentResolver {
         }
         
         Ok(())
+    }
+    
+    /// Check if a property should preserve template variables for runtime binding
+    fn should_preserve_template_variables(&self, _property_line: &str, property_key: &str) -> bool {
+        // Properties that support runtime template binding
+        let template_properties = [
+            "text", "value", "placeholder", "title", "label", "content", "visible"
+        ];
+        
+        template_properties.contains(&property_key)
+    }
+    
+    /// Substitute variables while preserving template variables (those starting with _)
+    fn substitute_preserving_template_variables(&self, input: &str, state: &mut CompilerState) -> Result<String> {
+        let mut result = input.to_string();
+        
+        // Support both $variable and ${variable} syntax
+        let var_regex = regex::Regex::new(r"\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}|\$([a-zA-Z_][a-zA-Z0-9_]*)")
+            .map_err(|e| CompilerError::variable_legacy(0, format!("Regex error: {}", e)))?;
+        
+        // Process both $variable and ${variable} syntax
+        let matches: Vec<_> = var_regex.captures_iter(input).collect();
+        for captures in matches {
+            if let Some(var_match) = captures.get(0) {
+                // Check which capture group matched (1 for ${variable}, 2 for $variable)
+                let var_name = if let Some(braced_var) = captures.get(1) {
+                    braced_var.as_str()
+                } else if let Some(simple_var) = captures.get(2) {
+                    simple_var.as_str()
+                } else {
+                    continue;
+                };
+                
+                // Only substitute non-template variables (template variables start with _)
+                if !var_name.starts_with('_') {
+                    if let Some(var_entry) = state.variable_context.get_variable(var_name) {
+                        result = result.replace(var_match.as_str(), &var_entry.value);
+                    } else {
+                        return Err(CompilerError::variable_legacy(
+                            0,
+                            format!("Undefined variable: {}", var_name)
+                        ));
+                    }
+                }
+                // Template variables (starting with _) are left as-is for runtime binding
+            }
+        }
+        
+        Ok(result)
     }
     
     fn inject_slot_content(&self, template: &mut AstNode, slot_content: &[AstNode]) -> Result<()> {

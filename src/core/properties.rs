@@ -160,7 +160,7 @@ impl PropertyId {
     pub fn from_name(key: &str) -> Self {
         match key {
             "background_color" => PropertyId::BackgroundColor,     // 0x01
-            "text_color" | "foreground_color" => PropertyId::ForegroundColor,  // 0x02  
+            "text_color" | "foreground_color" | "color" => PropertyId::ForegroundColor,  // 0x02  
             "border_color" => PropertyId::BorderColor,             // 0x03
             "border_width" => PropertyId::BorderWidth,             // 0x04
             "border_radius" => PropertyId::BorderRadius,           // 0x05
