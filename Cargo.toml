@@ -1,0 +1,46 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/kryon-shared",
+    "crates/kryon-compiler", 
+    "crates/kryon-renderer",
+    "crates/kryon-raylib",
+    "crates/kryon-ratatui", 
+    "crates/kryon-wgpu",
+    "crates/kryon-runtime",
+    "crates/kryon-layout",
+    "crates/kryon-render",
+    "tools/kryc",            # Compiler CLI
+    "tools/kryon-renderer-raylib",  # Raylib renderer CLI
+    "tools/kryon-renderer-ratatui", # Terminal renderer CLI
+    "tools/kryon-renderer-wgpu",    # WGPU renderer CLI
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Kryon Labs"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/kryonlabs/kryon"
+
+[workspace.dependencies]
+# Core shared dependencies
+serde = { version = "1.0", features = ["derive"] }
+anyhow = "1.0"
+thiserror = "1.0"
+glam = "0.25"
+clap = { version = "4.0", features = ["derive"] }
+tracing = "0.1"
+
+# Kryon internal dependencies
+kryon-shared = { path = "crates/kryon-shared" }
+kryon-compiler = { path = "crates/kryon-compiler" }
+kryon-renderer = { path = "crates/kryon-renderer" }
+kryon-runtime = { path = "crates/kryon-runtime" }
+kryon-layout = { path = "crates/kryon-layout" }
+kryon-render = { path = "crates/kryon-render" }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
