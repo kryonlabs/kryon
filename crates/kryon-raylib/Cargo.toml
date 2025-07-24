@@ -1,0 +1,31 @@
+[package]
+name = "kryon-raylib"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kryon Labs"]
+description = "Raylib rendering backend for Kryon"
+license = "0BSD"
+
+[dependencies]
+kryon-core = { path = "../kryon-core" }
+kryon-render = { path = "../kryon-render" }
+kryon-layout = { path = "../kryon-layout" }
+
+# Core dependencies
+anyhow = { workspace = true }
+glam = { workspace = true }
+tracing = { workspace = true }
+
+# Raylib
+raylib = "5.0"
+
+# Text rendering
+cosmic-text = "0.13"
+
+# SVG rendering (optional)
+resvg = { version = "0.42", optional = true }
+image = { version = "0.25", optional = true }
+
+[features]
+default = ["svg"]
+svg = ["resvg", "image", "kryon-render/svg"]

@@ -10,10 +10,12 @@ members = [
     "crates/kryon-runtime",
     "crates/kryon-layout",
     "crates/kryon-render",
+    "crates/kryon-html",
     "tools/kryc",            # Compiler CLI
     "tools/kryon-renderer-raylib",  # Raylib renderer CLI
     "tools/kryon-renderer-ratatui", # Terminal renderer CLI
     "tools/kryon-renderer-wgpu",    # WGPU renderer CLI
+    "tools/kryon-renderer-debug",   # Debug renderer CLI
 ]
 
 [workspace.package]
@@ -32,8 +34,10 @@ thiserror = "1.0"
 glam = "0.25"
 clap = { version = "4.4", features = ["derive"] }
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 log = "0.4"
 env_logger = "0.10"
+bitflags = "2.5"
 
 # Compiler dependencies
 byteorder = "1.5"
@@ -47,6 +51,17 @@ flate2 = "1.0"
 toml = "0.8"
 mlua = { version = "0.9", features = ["luajit", "vendored"], optional = true }
 
+# Renderer dependencies
+wgpu = "0.19"
+winit = "0.29"
+ratatui = "0.26"
+crossterm = "0.27"
+raylib = { version = "5.0", optional = true }
+cosmic-text = "0.13"
+pollster = "0.3"
+tokio = { version = "1.0", features = ["full"] }
+bytemuck = { version = "1.14", features = ["derive"] }
+
 # Development dependencies
 tempfile = "3.8"
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -58,6 +73,13 @@ kryon-renderer = { path = "crates/kryon-renderer" }
 kryon-runtime = { path = "crates/kryon-runtime" }
 kryon-layout = { path = "crates/kryon-layout" }
 kryon-render = { path = "crates/kryon-render" }
+kryon-raylib = { path = "crates/kryon-raylib" }
+kryon-ratatui = { path = "crates/kryon-ratatui" }
+kryon-wgpu = { path = "crates/kryon-wgpu" }
+kryon-html = { path = "crates/kryon-html" }
+
+[profile.dev]
+opt-level = 1
 
 [profile.release]
 opt-level = 3
