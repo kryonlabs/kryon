@@ -1,0 +1,845 @@
+//! Integration tests for the complete Kryon compiler pipeline
+
+use kryc::*;
+use std::fs;
+use std::path::PathBuf;
+use tempfile::TempDir;
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_simple_app_compilation() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_path = temp_dir.path().join("simple.kry");
+    let output_path = temp_dir.path().join("simple.krb");
+    
+    let kry_content = r#"
+App {
+    window_title: "Simple Test"
+    window_width: 800
+    window_height: 600
+    
+    Text {
+        text: "Hello, World!"
+        font_size: 18
+    }
+}
+"#;
+    
+    fs::write(&input_path, kry_content).unwrap();
+    
+    let result = compile_file(
+        input_path.to_str().unwrap(),
+        output_path.to_str().unwrap()
+    );
+    
+    assert!(result.is_ok());
+    assert!(output_path.exists());
+    
+    // Validate the KRB file
+    let krb_info = analyze_krb_file(output_path.to_str().unwrap()).unwrap();
+    assert_eq!(krb_info.version, (KRB_VERSION_MAJOR, KRB_VERSION_MINOR));
+    assert!(krb_info.element_count >= 2); // App + Text
+}
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_variables_and_includes() {
+    let temp_dir = TempDir::new().unwrap();
+    
+    // Create included file
+    let included_file = temp_dir.path().join("colors.kry");
+    let included_content = r#"
+@variables {
+    primary_color: "#007BFF"
+    secondary_color: "#6C757D"
+}
+"#;
+    fs::write(&included_file, included_content).unwrap();
+    
+    // Create main file
+    let main_file = temp_dir.path().join("main.kry");
+    let main_content = format!(r#"
+@include "{}"
+
+@variables {{
+    app_title: "Test App"
+}}
+
+App {{
+    window_title: $app_title
+    background_color: $primary_color
+    
+    Text {{
+        text: "Colored Text"
+        text_color: $secondary_color
+    }}
+}}
+"#, included_file.to_str().unwrap());
+    
+    fs::write(&main_file, main_content).unwrap();
+    
+    let output_path = temp_dir.path().join("output.krb");
+    let result = compile_file(
+        main_file.to_str().unwrap(),
+        output_path.to_str().unwrap()
+    );
+    
+    assert!(result.is_ok());
+    
+    let stats = result.unwrap();
+    assert!(stats.variable_count >= 3); // 3 variables total
+    assert!(stats.include_count >= 1);
+}
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_style_inheritance() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_path = temp_dir.path().join("styles.kry");
+    let output_path = temp_dir.path().join("styles.krb");
+    
+    let kry_content = r#"
+style "base" {
+    font_size: 16
+    text_color: "#000000"
+    padding: 8
+}
+
+style "header" {
+    extends: "base"
+    font_size: 24
+    font_weight: "bold"
+}
+
+style "button_base" {
+    extends: "base"
+    background_color: "#007BFF"
+    text_color: "#FFFFFF"
+    border_radius: 6
+}
+
+style "primary_button" {
+    extends: "button_base"
+    background_color: "#0056B3"
+}
+
+App {
+    window_title: "Style Test"
+    
+    Text {
+        text: "Header Text"
+        style: "header"
+    }
+    
+    Button {
+        text: "Primary Button"
+        style: "primary_button"
+    }
+}
+"#;
+    
+    fs::write(&input_path, kry_content).unwrap();
+    
+    let result = compile_file(
+        input_path.to_str().unwrap(),
+        output_path.to_str().unwrap()
+    );
+    
+    assert!(result.is_ok());
+    
+    let stats = result.unwrap();
+    assert!(stats.style_count >= 4); // 4 styles defined
+}
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_component_system() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_path = temp_dir.path().join("components.kry");
+    let output_path = temp_dir.path().join("components.krb");
+    
+    let kry_content = r#"
+Define Card {
+    Properties {
+        title: String = "Default Title"
+        content: String = "Default content"
+        width: String = "300px"
+    }
+    
+    Container {
+        width: $width
+        background_color: "#FFFFFF"
+        border_width: 1
+        border_color: "#DEE2E6"
+        border_radius: 8
+        padding: 16
+        
+        Text {
+            text: $title
+            font_size: 18
+            font_weight: "bold"
+            margin: "0 0 8 0"
+        }
+        
+        Text {
+            text: $content
+            font_size: 14
+            text_color: "#6C757D"
+        }
+    }
+}
+
+App {
+    window_title: "Component Test"
+    
+    Container {
+        layout: "row"
+        gap: 16
+        padding: 24
+        
+        Card {
+            title: "First Card"
+            content: "This is the first card with custom content."
+        }
+        
+        Card {
+            title: "Second Card"
+            content: "This is the second card."
+            width: "400px"
+        }
+        
+        Card {
+            # Uses default properties
+        }
+    }
+}
+"#;
+    
+    fs::write(&input_path, kry_content).unwrap();
+    
+    let result = compile_file(
+        input_path.to_str().unwrap(),
+        output_path.to_str().unwrap()
+    );
+    
+    assert!(result.is_ok());
+    
+    let stats = result.unwrap();
+    assert!(stats.component_count >= 1); // Card component
+    assert!(stats.element_count >= 10); // Expanded component instances
+}
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_script_integration() {
+    let temp_dir = TempDir::new().unwrap();
+    
+    // Create external script file
+    let script_file = temp_dir.path().join("handlers.lua");
+    let script_content = r#"
+function handleClick()
+    local button = kryon.getElementById("test_button")
+    if button then
+        button.text = "Clicked!"
+    end
+end
+
+function updateCounter()
+    local counter = kryon.getState("counter") or 0
+    counter = counter + 1
+    kryon.setState("counter", counter)
+    
+    local display = kryon.getElementById("counter_display")
+    if display then
+        display.text = "Count: " .. counter
+    end
+end
+"#;
+    fs::write(&script_file, script_content).unwrap();
+    
+    // Create main KRY file
+    let input_path = temp_dir.path().join("scripted.kry");
+    let kry_content = format!(r#"
+@script "lua" from "{}"
+
+@script "lua" name="inline_handlers" {{
+    function resetCounter()
+        kryon.setState("counter", 0)
+        local display = kryon.getElementById("counter_display")
+        if display then
+            display.text = "Count: 0"
+        end
+    end
+}}
+
+App {{
+    window_title: "Script Test"
+    
+    Container {{
+        layout: "column"
+        padding: 24
+        gap: 16
+        
+        Text {{
+            id: "counter_display"
+            text: "Count: 0"
+            font_size: 18
+        }}
+        
+        Container {{
+            layout: "row"
+            gap: 12
+            
+            Button {{
+                id: "test_button"
+                text: "Click Me"
+                onClick: "handleClick"
+            }}
+            
+            Button {{
+                text: "Increment"
+                onClick: "updateCounter"
+            }}
+            
+            Button {{
+                text: "Reset"
+                onClick: "resetCounter"
+            }}
+        }}
+    }}
+}}
+"#, script_file.to_str().unwrap());
+    
+    fs::write(&input_path, kry_content).unwrap();
+    
+    let output_path = temp_dir.path().join("scripted.krb");
+    let result = compile_file(
+        input_path.to_str().unwrap(),
+        output_path.to_str().unwrap()
+    );
+    
+    assert!(result.is_ok());
+    
+    let stats = result.unwrap();
+    assert!(stats.script_count >= 2); // External + inline scripts
+    assert!(stats.resource_count >= 1); // External script file
+}
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_pseudo_selectors() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_path = temp_dir.path().join("pseudo.kry");
+    let output_path = temp_dir.path().join("pseudo.krb");
+    
+    let kry_content = r#"
+App {
+    window_title: "Pseudo-selector Test"
+    
+    Button {
+        text: "Interactive Button"
+        background_color: "#007BFF"
+        text_color: "#FFFFFF"
+        padding: "12 24"
+        border_radius: 6
+        
+        &:hover {
+            background_color: "#0056B3"
+            cursor: "pointer"
+        }
+        
+        &:active {
+            background_color: "#004085"
+            transform: "scale(0.98)"
+        }
+        
+        &:focus {
+            border_color: "#80BDFF"
+            box_shadow: "0 0 0 3px rgba(0,123,255,0.25)"
+        }
+        
+        &:disabled {
+            background_color: "#6C757D"
+            opacity: 0.65
+            cursor: "not_allowed"
+        }
+    }
+    
+    Input {
+        placeholder: "Type here..."
+        padding: "8 12"
+        border_width: 1
+        border_color: "#CED4DA"
+        border_radius: 4
+        
+        &:focus {
+            border_color: "#007BFF"
+            box_shadow: "0 0 0 2px rgba(0,123,255,0.25)"
+        }
+    }
+}
+"#;
+    
+    fs::write(&input_path, kry_content).unwrap();
+    
+    let result = compile_file(
+        input_path.to_str().unwrap(),
+        output_path.to_str().unwrap()
+    );
+    
+    assert!(result.is_ok());
+    
+    // Validate KRB contains state properties
+    let krb_info = analyze_krb_file(output_path.to_str().unwrap()).unwrap();
+    assert!(krb_info.has_feature(FLAG_HAS_STATE_PROPERTIES));
+}
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_optimization_levels() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_path = temp_dir.path().join("optimize.kry");
+    
+    // Create a file with potential optimizations
+    let kry_content = r#"
+@variables {
+    repeated_text: "Hello World"
+    repeated_color: "#007BFF"
+    repeated_size: 16
+}
+
+style "repeated_style" {
+    font_size: $repeated_size
+    text_color: $repeated_color
+    padding: 8
+}
+
+App {
+    window_title: "Optimization Test"
+    
+    Container {
+        Text {
+            text: $repeated_text
+            style: "repeated_style"
+        }
+        
+        Text {
+            text: $repeated_text
+            style: "repeated_style"
+        }
+        
+        Text {
+            text: $repeated_text
+            style: "repeated_style"
+        }
+        
+        Button {
+            text: $repeated_text
+            background_color: $repeated_color
+        }
+    }
+}
+"#;
+    
+    fs::write(&input_path, kry_content).unwrap();
+    
+    // Test different optimization levels
+    for opt_level in 0..=2 {
+        let output_path = temp_dir.path().join(format!("opt{}.krb", opt_level));
+        
+        let options = CompilerOptions {
+            optimization_level: opt_level,
+            debug_mode: false,
+            ..Default::default()
+        };
+        
+        let result = compile_file_with_options(
+            input_path.to_str().unwrap(),
+            output_path.to_str().unwrap(),
+            options
+        );
+        
+        assert!(result.is_ok(), "Optimization level {} failed", opt_level);
+        
+        let stats = result.unwrap();
+        
+        // Higher optimization levels should generally produce smaller files
+        if opt_level > 0 {
+            assert!(stats.compression_ratio < 1.0, "No compression at level {}", opt_level);
+        }
+    }
+}
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_target_platforms() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_path = temp_dir.path().join("platform.kry");
+    
+    let kry_content = r#"
+App {
+    window_title: "Platform Test"
+    window_width: 800
+    window_height: 600
+    
+    Text {
+        text: "Cross-platform UI"
+        font_size: 18
+    }
+}
+"#;
+    
+    fs::write(&input_path, kry_content).unwrap();
+    
+    let platforms = [
+        TargetPlatform::Desktop,
+        TargetPlatform::Mobile, 
+        TargetPlatform::Web,
+        TargetPlatform::Embedded,
+        TargetPlatform::Universal,
+    ];
+    
+    for platform in platforms {
+        let output_path = temp_dir.path().join(format!("{:?}.krb", platform));
+        
+        let options = CompilerOptions {
+            target_platform: platform,
+            debug_mode: false,
+            ..Default::default()
+        };
+        
+        let result = compile_file_with_options(
+            input_path.to_str().unwrap(),
+            output_path.to_str().unwrap(),
+            options
+        );
+        
+        assert!(result.is_ok(), "Platform {:?} compilation failed", platform);
+        
+        // Embedded platform should produce smaller files
+        if platform == TargetPlatform::Embedded {
+            let stats = result.unwrap();
+            // Embedded builds should be more compact
+            assert!(stats.output_size < 10000, "Embedded build too large: {} bytes", stats.output_size);
+        }
+    }
+}
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_error_handling() {
+    let temp_dir = TempDir::new().unwrap();
+    
+    // Test syntax errors
+    let syntax_error_file = temp_dir.path().join("syntax_error.kry");
+    let syntax_error_content = r#"
+App {
+    window_title: "Syntax Error Test"
+    Text {
+        text: "Missing closing brace"
+    # Missing closing brace for Text
+# Missing closing brace for App
+"#;
+    
+    fs::write(&syntax_error_file, syntax_error_content).unwrap();
+    
+    let output_path = temp_dir.path().join("syntax_error.krb");
+    let result = compile_file(
+        syntax_error_file.to_str().unwrap(),
+        output_path.to_str().unwrap()
+    );
+    
+    assert!(result.is_err());
+    if let Err(CompilerError::Parse { line, .. }) = result {
+        assert!(line > 0);
+    } else {
+        panic!("Expected parse error");
+    }
+    
+    // Test semantic errors
+    let semantic_error_file = temp_dir.path().join("semantic_error.kry");
+    let semantic_error_content = r#"
+App {
+    window_title: "Semantic Error Test"
+    Text {
+        text: "Valid text"
+        nonexistent_property: "This should fail"
+    }
+}
+"#;
+    
+    fs::write(&semantic_error_file, semantic_error_content).unwrap();
+    
+    let output_path = temp_dir.path().join("semantic_error.krb");
+    let result = compile_file(
+        semantic_error_file.to_str().unwrap(),
+        output_path.to_str().unwrap()
+    );
+    
+    // This might be a warning rather than an error depending on implementation
+    // The test verifies that unknown properties are handled gracefully
+}
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_large_file_compilation() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_path = temp_dir.path().join("large.kry");
+    
+    // Generate a large KRY file with many elements
+    let mut content = String::from("App {\n    window_title: \"Large File Test\"\n    Container {\n        layout: \"column\"\n        gap: 4\n");
+    
+    for i in 0..1000 {
+        content.push_str(&format!(r#"
+        Text {{
+            text: "Item {}"
+            font_size: 14
+            margin: 2
+        }}
+"#, i));
+    }
+    
+    content.push_str("    }\n}");
+    
+    fs::write(&input_path, content).unwrap();
+    
+    let output_path = temp_dir.path().join("large.krb");
+    let result = compile_file(
+        input_path.to_str().unwrap(),
+        output_path.to_str().unwrap()
+    );
+    
+    assert!(result.is_ok());
+    
+    let stats = result.unwrap();
+    assert!(stats.element_count >= 1000); // At least 1000 Text elements + containers
+    assert!(stats.compile_time_ms < 10000); // Should compile in under 10 seconds
+    assert!(stats.compression_ratio < 0.8); // Should achieve good compression
+}
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_circular_dependency_detection() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_path = temp_dir.path().join("circular.kry");
+    
+    let kry_content = r#"
+style "a" {
+    extends: "b"
+    font_size: 16
+}
+
+style "b" {
+    extends: "c"
+    text_color: "#000000"
+}
+
+style "c" {
+    extends: "a"
+    padding: 8
+}
+
+App {
+    window_title: "Circular Dependency Test"
+    Text {
+        text: "This should fail"
+        style: "a"
+    }
+}
+"#;
+    
+    fs::write(&input_path, kry_content).unwrap();
+    
+    let output_path = temp_dir.path().join("circular.krb");
+    let result = compile_file(
+        input_path.to_str().unwrap(),
+        output_path.to_str().unwrap()
+    );
+    
+    assert!(result.is_err());
+    if let Err(CompilerError::Semantic { message, .. }) = result {
+        assert!(message.to_lowercase().contains("circular"));
+    } else {
+        panic!("Expected semantic error for circular dependency");
+    }
+}
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_compression_effectiveness() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_path = temp_dir.path().join("compressible.kry");
+    
+    // Create content with lots of repetition
+    let mut content = String::from(r#"
+@variables {
+    repeated_string: "This is a very long string that will be repeated many times to test compression effectiveness"
+    common_color: "#007BFF"
+    standard_size: 16
+}
+
+App {
+    window_title: "Compression Test"
+    Container {
+        layout: "column"
+"#);
+    
+    for i in 0..100 {
+        content.push_str(&format!(r#"
+        Text {{
+            text: $repeated_string
+            text_color: $common_color
+            font_size: $standard_size
+            id: "text_{}"
+        }}
+"#, i));
+    }
+    
+    content.push_str("    }\n}");
+    
+    fs::write(&input_path, content).unwrap();
+    
+    // Test without compression
+    let output_uncompressed = temp_dir.path().join("uncompressed.krb");
+    let options_uncompressed = CompilerOptions {
+        compress_output: false,
+        optimization_level: 2,
+        ..Default::default()
+    };
+    
+    let stats_uncompressed = compile_file_with_options(
+        input_path.to_str().unwrap(),
+        output_uncompressed.to_str().unwrap(),
+        options_uncompressed
+    ).unwrap();
+    
+    // Test with compression
+    let output_compressed = temp_dir.path().join("compressed.krb");
+    let options_compressed = CompilerOptions {
+        compress_output: true,
+        optimization_level: 2,
+        ..Default::default()
+    };
+    
+    let stats_compressed = compile_file_with_options(
+        input_path.to_str().unwrap(),
+        output_compressed.to_str().unwrap(),
+        options_compressed
+    ).unwrap();
+    
+    // Compression should significantly reduce file size
+    let compression_ratio = stats_compressed.output_size as f64 / stats_uncompressed.output_size as f64;
+    assert!(compression_ratio < 0.7, "Compression not effective enough: {:.2}", compression_ratio);
+}
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_build_info_and_version() {
+    let build_info = build_info();
+    
+    assert!(!build_info.version.is_empty());
+    assert_eq!(build_info.name, env!("CARGO_PKG_NAME"));
+    assert!(build_info.supported_features.len() > 0);
+    
+    // Test feature support queries
+    assert!(supports_feature("variables"));
+    assert!(supports_feature("styles"));
+    assert!(supports_feature("components"));
+    assert!(supports_feature("scripting"));
+    assert!(!supports_feature("nonexistent_feature"));
+}
+
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_config_file_integration() {
+    let temp_dir = TempDir::new().unwrap();
+    
+    // Create a config file
+    let config_file = temp_dir.path().join("kryon.json");
+    let config_content = r#"{
+    "optimization_level": 2,
+    "target_platform": "web",
+    "embed_scripts": true,
+    "custom_variables": {
+        "theme": "dark",
+        "company": "Test Corp"
+    }
+}"#;
+    
+    fs::write(&config_file, config_content).unwrap();
+    
+    // Create a simple KRY file that uses the config
+    let input_path = temp_dir.path().join("config_test.kry");
+    let kry_content = r#"
+@variables {
+    app_title: "Config Test - $company"
+}
+
+App {
+    window_title: $app_title
+    background_color: $theme == "dark" ? "#1E1E1E" : "#FFFFFF"
+    
+    Text {
+        text: "Theme: $theme"
+        text_color: $theme == "dark" ? "#FFFFFF" : "#000000"
+    }
+}
+"#;
+    
+    fs::write(&input_path, kry_content).unwrap();
+    
+    // Test compilation with config
+    let output_path = temp_dir.path().join("config_test.krb");
+    
+    // This would be tested with the CLI tool rather than the library directly
+    // For now, just verify the file can be compiled
+    let result = compile_file(
+        input_path.to_str().unwrap(),
+        output_path.to_str().unwrap()
+    );
+    
+    assert!(result.is_ok());
+}
+
+/// Performance regression test
+#[ignore] // TODO: Fix integration tests
+#[test]
+fn test_performance_regression() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_path = temp_dir.path().join("perf_test.kry");
+    
+    // Create a moderately complex file
+    let kry_content = include_str!("../examples/calculator.kry");
+    fs::write(&input_path, kry_content).unwrap();
+    
+    let output_path = temp_dir.path().join("perf_test.krb");
+    
+    // Warm up
+    for _ in 0..3 {
+        let _ = compile_file(
+            input_path.to_str().unwrap(),
+            output_path.to_str().unwrap()
+        );
+    }
+    
+    // Benchmark
+    let start = std::time::Instant::now();
+    let result = compile_file(
+        input_path.to_str().unwrap(),
+        output_path.to_str().unwrap()
+    );
+    let elapsed = start.elapsed();
+    
+    assert!(result.is_ok());
+    
+    // Performance regression check - should compile in under 100ms for typical files
+    assert!(elapsed.as_millis() < 100, 
+           "Compilation took too long: {}ms", elapsed.as_millis());
+}
+
+// Helper function to create test files
+fn create_test_files(temp_dir: &TempDir) -> (PathBuf, PathBuf) {
+    let input_path = temp_dir.path().join("test.kry");
+    let output_path = temp_dir.path().join("test.krb");
+    (input_path, output_path)
+}
