@@ -1,11 +1,13 @@
 //! Kryon Compiler Binary
 
-use kryc::{compile_file, CompilerError, NAME, VERSION};
+use kryon_compiler::{compile_file, CompilerError};
 use std::env;
 use std::process;
 
+const NAME: &str = "kryon";
+const VERSION: &str = "0.1.0";
+
 fn main() {
-    env_logger::init();
     
     let args: Vec<String> = env::args().collect();
     

@@ -286,13 +286,15 @@ impl KRBParser {
                     // Modern Taffy layout properties (0x40-0x4F range)
                     0x40 => { // Display
                         if size == 1 {
-                            let string_index = self.read_u8() as usize;
-                            if string_index < strings.len() {
-                                PropertyValue::String(strings[string_index].clone())
-                            } else {
-                                eprintln!("[STYLE]     Display: invalid string index {}", string_index);
-                                continue;
-                            }
+                            let value = self.read_u8();
+                            let display_str = match value {
+                                0 => "none",
+                                1 => "block", 
+                                2 => "flex",
+                                3 => "grid",
+                                _ => "flex", // Default
+                            };
+                            PropertyValue::String(display_str.to_string())
                         } else {
                             for _ in 0..size { self.read_u8(); }
                             continue;
@@ -300,13 +302,15 @@ impl KRBParser {
                     }
                     0x41 => { // FlexDirection
                         if size == 1 {
-                            let string_index = self.read_u8() as usize;
-                            if string_index < strings.len() {
-                                PropertyValue::String(strings[string_index].clone())
-                            } else {
-                                eprintln!("[STYLE]     FlexDirection: invalid string index {}", string_index);
-                                continue;
-                            }
+                            let value = self.read_u8();
+                            let direction_str = match value {
+                                0 => "row",
+                                1 => "column",
+                                2 => "row-reverse",
+                                3 => "column-reverse",
+                                _ => "row", // Default
+                            };
+                            PropertyValue::String(direction_str.to_string())
                         } else {
                             for _ in 0..size { self.read_u8(); }
                             continue;
@@ -372,15 +376,18 @@ impl KRBParser {
                             continue;
                         }
                     }
-                    0x47 => { // AlignSelf
+                    0x47 => { // AlignItems
                         if size == 1 {
-                            let string_index = self.read_u8() as usize;
-                            if string_index < strings.len() {
-                                PropertyValue::String(strings[string_index].clone())
-                            } else {
-                                eprintln!("[STYLE]     AlignSelf: invalid string index {}", string_index);
-                                continue;
-                            }
+                            let value = self.read_u8();
+                            let align_str = match value {
+                                0 => "flex-start",
+                                1 => "flex-end", 
+                                2 => "center",
+                                3 => "baseline",
+                                4 => "stretch",
+                                _ => "stretch", // Default
+                            };
+                            PropertyValue::String(align_str.to_string())
                         } else {
                             for _ in 0..size { self.read_u8(); }
                             continue;
@@ -414,15 +421,19 @@ impl KRBParser {
                             continue;
                         }
                     }
-                    0x4A => { // JustifyItems
+                    0x4A => { // JustifyContent
                         if size == 1 {
-                            let string_index = self.read_u8() as usize;
-                            if string_index < strings.len() {
-                                PropertyValue::String(strings[string_index].clone())
-                            } else {
-                                eprintln!("[STYLE]     JustifyItems: invalid string index {}", string_index);
-                                continue;
-                            }
+                            let value = self.read_u8();
+                            let justify_str = match value {
+                                0 => "flex-start",
+                                1 => "flex-end",
+                                2 => "center",
+                                3 => "space-between",
+                                4 => "space-around", 
+                                5 => "space-evenly",
+                                _ => "flex-start", // Default
+                            };
+                            PropertyValue::String(justify_str.to_string())
                         } else {
                             for _ in 0..size { self.read_u8(); }
                             continue;
@@ -444,13 +455,16 @@ impl KRBParser {
                     }
                     0x50 => { // Position
                         if size == 1 {
-                            let string_index = self.read_u8() as usize;
-                            if string_index < strings.len() {
-                                PropertyValue::String(strings[string_index].clone())
-                            } else {
-                                eprintln!("[STYLE]     Position: invalid string index {}", string_index);
-                                continue;
-                            }
+                            let value = self.read_u8();
+                            let position_str = match value {
+                                0 => "static",
+                                1 => "relative",
+                                2 => "absolute",
+                                3 => "fixed",
+                                4 => "sticky",
+                                _ => "static", // Default
+                            };
+                            PropertyValue::String(position_str.to_string())
                         } else {
                             for _ in 0..size { self.read_u8(); }
                             continue;
@@ -485,28 +499,14 @@ impl KRBParser {
                         // Check if we have enough bytes remaining
                         let bytes_remaining = self.data.len() - self.position;
                         if size as usize > bytes_remaining {
-                            eprintln!("[STYLE]     ERROR: Property size {} exceeds remaining bytes {}, skipping", size, bytes_remaining);
-                            continue;
+                            eprintln!("[STYLE]     ERROR: Property size {} exceeds remaining bytes {}, stopping style parsing to prevent crash", size, bytes_remaining);
+                            break; // Stop parsing this style to prevent crash
                         }
                         
-                        let mut raw_bytes = Vec::new();
-                        for i in 0..size {
-                            let byte = self.read_u8();
-                            raw_bytes.push(byte);
-                            eprintln!("[STYLE]       Byte {}: 0x{:02X} ({})", i, byte, byte);
-                        }
-                        
-                        // Try to interpret as different types
-                        if size == 1 {
-                            eprintln!("[STYLE]     Could be layout flags: 0x{:02X}", raw_bytes[0]);
-                        } else if size == 4 {
-                            let color = Vec4::new(
-                                raw_bytes[0] as f32 / 255.0,
-                                raw_bytes[1] as f32 / 255.0,
-                                raw_bytes[2] as f32 / 255.0,
-                                raw_bytes[3] as f32 / 255.0
-                            );
-                            eprintln!("[STYLE]     Could be color: {:?}", color);
+                        // Safely skip the unknown property bytes
+                        if !self.skip_bytes(size as usize) {
+                            eprintln!("[STYLE]     ERROR: Failed to skip {} bytes for unknown property 0x{:02X}, stopping style parsing", size, prop_id);
+                            break;
                         }
                         continue;
                     }
@@ -1284,12 +1284,16 @@ impl KRBParser {
             // Modern Taffy layout properties (0x40-0x4F range)
             0x40 => { // Display
                 if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let display_value = strings[string_index].clone();
-                        element.custom_properties.insert("display".to_string(), PropertyValue::String(display_value.clone()));
-                        eprintln!("[PROP] Display: '{}'", display_value);
-                    }
+                    let display_value = self.read_u8();
+                    let display_str = match display_value {
+                        0 => "none",
+                        1 => "block", 
+                        2 => "flex",
+                        3 => "grid",
+                        _ => "flex", // Default
+                    };
+                    element.custom_properties.insert("display".to_string(), PropertyValue::String(display_str.to_string()));
+                    eprintln!("[PROP] Display: '{}'", display_str);
                 } else {
                     eprintln!("[PROP] Display: size mismatch, expected 1, got {}, skipping", size);
                     for _ in 0..size { self.read_u8(); }
@@ -1297,12 +1301,16 @@ impl KRBParser {
             }
             0x41 => { // FlexDirection
                 if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let flex_direction = strings[string_index].clone();
-                        element.custom_properties.insert("flex_direction".to_string(), PropertyValue::String(flex_direction.clone()));
-                        eprintln!("[PROP] FlexDirection: '{}'", flex_direction);
-                    }
+                    let flex_direction_value = self.read_u8();
+                    let flex_direction_str = match flex_direction_value {
+                        0 => "row",
+                        1 => "column",
+                        2 => "row-reverse",
+                        3 => "column-reverse",
+                        _ => "row", // Default
+                    };
+                    element.custom_properties.insert("flex_direction".to_string(), PropertyValue::String(flex_direction_str.to_string()));
+                    eprintln!("[PROP] FlexDirection: '{}'", flex_direction_str);
                 } else {
                     eprintln!("[PROP] FlexDirection: size mismatch, expected 1, got {}, skipping", size);
                     for _ in 0..size { self.read_u8(); }
@@ -1369,16 +1377,21 @@ impl KRBParser {
                     for _ in 0..size { self.read_u8(); }
                 }
             }
-            0x47 => { // AlignSelf
+            0x47 => { // AlignItems
                 if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let align_self = strings[string_index].clone();
-                        element.custom_properties.insert("align_self".to_string(), PropertyValue::String(align_self.clone()));
-                        eprintln!("[PROP] AlignSelf: '{}'", align_self);
-                    }
+                    let align_items_value = self.read_u8();
+                    let align_items_str = match align_items_value {
+                        0 => "stretch",
+                        1 => "flex-start",
+                        2 => "center",
+                        3 => "flex-end",
+                        4 => "baseline",
+                        _ => "stretch", // Default
+                    };
+                    element.custom_properties.insert("align_items".to_string(), PropertyValue::String(align_items_str.to_string()));
+                    eprintln!("[PROP] AlignItems: '{}'", align_items_str);
                 } else {
-                    eprintln!("[PROP] AlignSelf: size mismatch, expected 1, got {}, skipping", size);
+                    eprintln!("[PROP] AlignItems: size mismatch, expected 1, got {}, skipping", size);
                     for _ in 0..size { self.read_u8(); }
                 }
             }
@@ -1408,16 +1421,22 @@ impl KRBParser {
                     for _ in 0..size { self.read_u8(); }
                 }
             }
-            0x4A => { // JustifyItems
+            0x4A => { // JustifyContent
                 if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let justify_items = strings[string_index].clone();
-                        element.custom_properties.insert("justify_items".to_string(), PropertyValue::String(justify_items.clone()));
-                        eprintln!("[PROP] JustifyItems: '{}'", justify_items);
-                    }
+                    let justify_content_value = self.read_u8();
+                    let justify_content_str = match justify_content_value {
+                        0 => "flex-start",
+                        1 => "flex-end",
+                        2 => "center",
+                        3 => "space-between",
+                        4 => "space-around",
+                        5 => "space-evenly",
+                        _ => "flex-start", // Default
+                    };
+                    element.custom_properties.insert("justify_content".to_string(), PropertyValue::String(justify_content_str.to_string()));
+                    eprintln!("[PROP] JustifyContent: '{}'", justify_content_str);
                 } else {
-                    eprintln!("[PROP] JustifyItems: size mismatch, expected 1, got {}, skipping", size);
+                    eprintln!("[PROP] JustifyContent: size mismatch, expected 1, got {}, skipping", size);
                     for _ in 0..size { self.read_u8(); }
                 }
             }

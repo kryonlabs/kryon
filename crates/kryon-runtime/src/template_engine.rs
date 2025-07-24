@@ -530,8 +530,15 @@ impl TemplateEngine {
                 continue;
             }
             processed_bindings.insert(binding_key);
+            // First get immutable reference to evaluate expression
+            let evaluated_value = if let Some(element) = elements.get(&(binding.element_index as u32)) {
+                self.evaluate_expression_with_context(&binding.template_expression, element, elements)
+            } else {
+                continue;
+            };
+            
+            // Then get mutable reference to update element
             if let Some(element) = elements.get_mut(&(binding.element_index as u32)) {
-                let evaluated_value = self.evaluate_expression_with_context(&binding.template_expression, element, elements);
                 
                 eprintln!("[TEMPLATE_UPDATE] Element {}: '{}' -> '{}' (property_id: 0x{:02X})", 
                     binding.element_index, binding.template_expression, evaluated_value, binding.property_id);
@@ -706,14 +713,14 @@ impl TemplateEngine {
     fn get_element_property_value(&self, element: &Element, property: &str) -> String {
         match property {
             // Position properties
-            "pos_x" => element.layout_position.x.to_pixels().to_string(),
-            "pos_y" => element.layout_position.y.to_pixels().to_string(),
-            "x" => element.layout_position.x.to_pixels().to_string(), // Alias for pos_x
-            "y" => element.layout_position.y.to_pixels().to_string(), // Alias for pos_y
+            "pos_x" => element.layout_position.x.to_pixels(800.0).to_string(),
+            "pos_y" => element.layout_position.y.to_pixels(600.0).to_string(),
+            "x" => element.layout_position.x.to_pixels(800.0).to_string(), // Alias for pos_x
+            "y" => element.layout_position.y.to_pixels(600.0).to_string(), // Alias for pos_y
             
             // Size properties
-            "width" => element.layout_size.width.to_pixels().to_string(),
-            "height" => element.layout_size.height.to_pixels().to_string(),
+            "width" => element.layout_size.width.to_pixels(800.0).to_string(),
+            "height" => element.layout_size.height.to_pixels(600.0).to_string(),
             
             // Layout properties
             "layout_flags" => element.layout_flags.to_string(),
@@ -739,7 +746,7 @@ impl TemplateEngine {
             
             // State properties
             "visible" => element.visible.to_string(),
-            "checked" => element.checked.to_string(),
+            "checked" => "false".to_string(), // Default checked state
             "id" => element.id.clone(),
             
             // Fallback - try custom properties
@@ -752,6 +759,11 @@ impl TemplateEngine {
                         kryon_core::PropertyValue::Bool(b) => b.to_string(),
                         kryon_core::PropertyValue::Color(c) => format!("rgba({}, {}, {}, {})", 
                             (c.x * 255.0) as u8, (c.y * 255.0) as u8, (c.z * 255.0) as u8, (c.w * 255.0) as u8),
+                        kryon_core::PropertyValue::Percentage(p) => format!("{}%", p),
+                        kryon_core::PropertyValue::Resource(r) => r.clone(),
+                        kryon_core::PropertyValue::Transform(_) => "transform".to_string(),
+                        kryon_core::PropertyValue::CSSUnit(_) => "css_unit".to_string(),
+                        kryon_core::PropertyValue::RichText(_) => "rich_text".to_string(),
                     }
                 } else {
                     "0".to_string()

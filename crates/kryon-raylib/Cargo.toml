@@ -26,6 +26,7 @@ cosmic-text = "0.13"
 resvg = { version = "0.42", optional = true }
 image = { version = "0.25", optional = true }
 
+
 [features]
 default = ["svg"]
 svg = ["resvg", "image", "kryon-render/svg"]

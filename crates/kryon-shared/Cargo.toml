@@ -1,0 +1,22 @@
+[package]
+name = "kryon-shared"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kryon Labs"]
+description = "Shared types and utilities for Kryon compiler and renderer"
+license = "0BSD"
+
+[dependencies]
+# Core dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+glam = { workspace = true }
+bitflags = { workspace = true }
+
+# Optional features
+byteorder = { workspace = true }
+
+[features]
+default = []

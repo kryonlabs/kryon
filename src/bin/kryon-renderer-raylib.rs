@@ -82,16 +82,26 @@ fn main() -> Result<()> {
     // Read properties from the KRB file's root element
     if let Some(root_id) = krb_file.root_element_id {
         if let Some(root_element) = krb_file.elements.get(&root_id) {
+            eprintln!("[WINDOW_INIT] Root element type: {:?}, ID: {}", root_element.element_type, root_element.id);
+            
+            // The KRB parser stores WindowWidth/WindowHeight in layout_size for App elements
             let size_x = root_element.layout_size.width.to_pixels(1.0);
             let size_y = root_element.layout_size.height.to_pixels(1.0);
+            eprintln!("[WINDOW_INIT] Root element layout_size: {}x{}", size_x, size_y);
+            
             if size_x > 0.0 {
                 width = size_x as i32;
+                eprintln!("[WINDOW_INIT] Found WindowWidth in layout_size: {}", width);
             }
             if size_y > 0.0 {
                 height = size_y as i32;
+                eprintln!("[WINDOW_INIT] Found WindowHeight in layout_size: {}", height);
             }
+            
+            // Window title is stored in the text field
             if !root_element.text.is_empty() {
                 title = root_element.text.clone();
+                eprintln!("[WINDOW_INIT] Found WindowTitle in text field: {}", title);
             }
         }
     }
@@ -189,7 +199,8 @@ fn main() -> Result<()> {
         // Update application
         if let Err(e) = app.update(delta_time) {
             error!("Failed to update app: {}", e);
-            break;
+            // Don't break - continue running to help debug issues
+            error!("Continuing despite update error...");
         }
         
         // Update cursor based on current hover state
@@ -199,7 +210,8 @@ fn main() -> Result<()> {
         // Render frame
         if let Err(e) = app.render() {
             error!("Failed to render frame: {}", e);
-            break;
+            // Don't break - continue running to help debug issues
+            error!("Continuing despite render error...");
         }
         
         // Handle screenshot mode

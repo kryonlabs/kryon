@@ -1,5 +1,0 @@
-style "test" { text_color: "#FF0000FF" }
-
-App { 
-    window_title: "Test"
-}

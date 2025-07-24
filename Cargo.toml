@@ -3,26 +3,24 @@ resolver = "2"
 members = [
     "crates/kryon-shared",
     "crates/kryon-compiler", 
-    "crates/kryon-renderer",
-    "crates/kryon-raylib",
-    "crates/kryon-ratatui", 
-    "crates/kryon-wgpu",
+    "crates/kryon-core",
     "crates/kryon-runtime",
     "crates/kryon-layout",
     "crates/kryon-render",
+    "crates/kryon-raylib",
+    "crates/kryon-ratatui", 
+    "crates/kryon-wgpu",
     "crates/kryon-html",
-    "tools/kryc",            # Compiler CLI
-    "tools/kryon-renderer-raylib",  # Raylib renderer CLI
-    "tools/kryon-renderer-ratatui", # Terminal renderer CLI
-    "tools/kryon-renderer-wgpu",    # WGPU renderer CLI
-    "tools/kryon-renderer-debug",   # Debug renderer CLI
+    "crates/kryon-web",
+    "tools/kryc",
+    "examples/tests"
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 authors = ["Kryon Labs"]
-license = "MIT OR Apache-2.0"
+license = "0BSD"
 repository = "https://github.com/kryonlabs/kryon"
 
 [workspace.dependencies]
@@ -49,14 +47,14 @@ hex = "0.4"
 md5 = "0.7"
 flate2 = "1.0"
 toml = "0.8"
-mlua = { version = "0.9", features = ["luajit", "vendored"], optional = true }
+mlua = { version = "0.9", features = ["lua54", "vendored"] }
 
 # Renderer dependencies
 wgpu = "0.19"
 winit = "0.29"
 ratatui = "0.26"
 crossterm = "0.27"
-raylib = { version = "5.0", optional = true }
+raylib = "5.0"
 cosmic-text = "0.13"
 pollster = "0.3"
 tokio = { version = "1.0", features = ["full"] }
@@ -89,3 +87,46 @@ panic = "abort"
 
 [profile.bench]
 debug = true
+
+# Package section for binaries
+[package]
+name = "kryon"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+# Workspace crates
+kryon-shared = { path = "crates/kryon-shared" }
+kryon-core = { path = "crates/kryon-core" }
+kryon-runtime = { path = "crates/kryon-runtime" }
+kryon-layout = { path = "crates/kryon-layout" }
+kryon-render = { path = "crates/kryon-render" }
+kryon-raylib = { path = "crates/kryon-raylib" }
+kryon-ratatui = { path = "crates/kryon-ratatui" }
+kryon-wgpu = { path = "crates/kryon-wgpu" }
+kryon-html = { path = "crates/kryon-html" }
+kryon-compiler = { path = "crates/kryon-compiler" }
+
+# CLI dependencies
+clap = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[[bin]]
+name = "kryon-renderer-raylib"
+path = "src/bin/kryon-renderer-raylib.rs"
+
+[[bin]]
+name = "kryon-renderer-ratatui"
+path = "src/bin/kryon-renderer-ratatui.rs"
+
+[[bin]]
+name = "kryon-renderer-wgpu"
+path = "src/bin/kryon-renderer-wgpu.rs"
+
+[[bin]]
+name = "kryon-renderer-debug"
+path = "src/bin/kryon-renderer-debug.rs"
