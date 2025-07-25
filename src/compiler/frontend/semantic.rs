@@ -1794,9 +1794,61 @@ fn expand_padding_shorthand(ast_prop: &AstProperty) -> Result<Vec<AstProperty>> 
 
 /// Expand border shorthand: border: 1px solid #000 -> border_width: 1px, etc.
 fn expand_border_shorthand(ast_prop: &AstProperty) -> Result<Vec<AstProperty>> {
-    // For now, just return the original property - border shorthand is more complex
-    // TODO: Implement full border shorthand parsing (width, style, color)
-    Ok(vec![ast_prop.clone()])
+    let cleaned_value = ast_prop.cleaned_value();
+    
+    // Parse CSS border shorthand: "3px solid #FF0000FF"
+    // Format: [width] [style] [color]
+    let parts: Vec<&str> = cleaned_value.split_whitespace().collect();
+    
+    if parts.len() != 3 {
+        // If not valid shorthand, return as-is (for compatibility)
+        return Ok(vec![ast_prop.clone()]);
+    }
+    
+    let width_str = parts[0];
+    let style_str = parts[1]; // We'll ignore style for now since we don't support border-style
+    let color_str = parts[2];
+    
+    // Validate that we have a width (number + unit) and a color (hex)
+    if !is_valid_size_value(width_str) || !color_str.starts_with('#') {
+        return Ok(vec![ast_prop.clone()]);
+    }
+    
+    // Create separate border_width and border_color properties
+    let mut expanded_props = Vec::new();
+    
+    // Add border_width property - create as integer if it's a simple number
+    let width_value = if let Ok(num) = width_str.replace("px", "").parse::<i64>() {
+        PropertyValue::Integer(num)
+    } else {
+        PropertyValue::String(width_str.replace("px", ""))
+    };
+    
+    expanded_props.push(AstProperty::new(
+        "border_width".to_string(),
+        width_value,
+        ast_prop.line
+    ));
+    
+    // Add border_color property
+    expanded_props.push(AstProperty::new(
+        "border_color".to_string(),
+        PropertyValue::String(color_str.to_string()),
+        ast_prop.line
+    ));
+    
+    Ok(expanded_props)
+}
+
+// Helper function to validate size values
+fn is_valid_size_value(value: &str) -> bool {
+    // Check if it's a number with optional px unit
+    if value.ends_with("px") {
+        let num_part = &value[..value.len()-2];
+        num_part.parse::<f32>().is_ok()
+    } else {
+        value.parse::<f32>().is_ok()
+    }
 }
 
 /// Expand box model values based on CSS shorthand rules

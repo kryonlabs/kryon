@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use std::fs;
 use std::path::Path;
+use kryon_core::Vec4;
 
 #[derive(Parser)]
 #[command(name = "kryon-renderer-debug")]
@@ -152,7 +153,7 @@ fn render_element_tree(
         }
         
         // Show text color if not default
-        if element.text_color != glam::Vec4::new(0.0, 0.0, 0.0, 1.0) {
+        if element.text_color != Vec4::new(0.0, 0.0, 0.0, 1.0) {
             if args.show_colors {
                 inline_props.push(format!("color:#{:02X}{:02X}{:02X}{:02X}", 
                     (element.text_color.x * 255.0) as u8,
@@ -255,7 +256,7 @@ fn render_element_tree(
                     output.push_str(&format!("{}• background_color: set\n", prop_indent));
                 }
             }
-            if element.text_color != glam::Vec4::new(0.0, 0.0, 0.0, 1.0) {
+            if element.text_color != Vec4::new(0.0, 0.0, 0.0, 1.0) {
                 if args.show_colors {
                     output.push_str(&format!("{}• text_color: #{:02X}{:02X}{:02X}{:02X}\n", 
                         prop_indent,

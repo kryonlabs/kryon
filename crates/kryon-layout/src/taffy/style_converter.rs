@@ -205,6 +205,15 @@ impl StyleConverter {
             style.flex_shrink = *value;
         }
 
+        // Gap property for flexbox spacing
+        if let Some(PropertyValue::Float(value)) = element.custom_properties.get("gap") {
+            let gap = LengthPercentage::Length(*value);
+            style.gap = Size {
+                width: gap,
+                height: gap,
+            };
+        }
+
         // Box model properties
         if let Some(PropertyValue::Float(value)) = element.custom_properties.get("margin") {
             let margin = LengthPercentageAuto::Length(*value);

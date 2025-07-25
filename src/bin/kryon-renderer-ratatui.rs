@@ -7,15 +7,17 @@ use anyhow::{Context, Result};
 use clap::Parser;
 
 // Terminal specific imports
+#[cfg(feature = "ratatui")]
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event as CrosstermEvent, KeyCode, MouseEventKind},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event as CrosstermEvent, KeyCode, MouseEventKind, MouseButton as CrosstermMouseButton},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+#[cfg(feature = "ratatui")]
 use ratatui::prelude::CrosstermBackend;
 
 // Kryon imports
-use kryon_core::load_krb_file; // Assuming you might want this for inspect
+use kryon_core::{load_krb_file, Vec2}; // Assuming you might want this for inspect
 use kryon_render::Renderer; // Keep Renderer for trait bounds
 use kryon_render::events::{InputEvent, MouseButton};
 use kryon_ratatui::RatatuiRenderer;
@@ -89,7 +91,7 @@ fn run(args: &Args) -> Result<()> {
                 }
                 CrosstermEvent::Resize(width, height) => {
                     let event = InputEvent::Resize {
-                        size: glam::vec2(width as f32, height as f32),
+                        size: Vec2::new(width as f32, height as f32),
                     };
                     if let Err(e) = app.handle_input(event) {
                         tracing::error!("Failed to handle resize: {:?}", e);
@@ -97,9 +99,9 @@ fn run(args: &Args) -> Result<()> {
                 }
                 CrosstermEvent::Mouse(mouse_event) => {
                     match mouse_event.kind {
-                        MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
+                        MouseEventKind::Down(CrosstermMouseButton::Left) => {
                             let event = InputEvent::MousePress {
-                                position: glam::vec2(mouse_event.column as f32, mouse_event.row as f32),
+                                position: Vec2::new(mouse_event.column as f32, mouse_event.row as f32),
                                 button: MouseButton::Left,
                             };
                             if let Err(e) = app.handle_input(event) {

@@ -2,9 +2,8 @@ use std::path::Path;
 use std::fs;
 use anyhow::{Context, Result};
 use clap::Parser;
-use tracing::{info, error};
-use kryon_core::load_krb_file;
-use kryon_render::Renderer;
+use tracing::info;
+use kryon_core::{load_krb_file, Vec2};
 use kryon_runtime::KryonApp;
 use kryon_html::{HtmlRenderer, HtmlConfig};
 
@@ -109,7 +108,7 @@ fn main() -> Result<()> {
         .context("Failed to load KRB file")?;
 
     // Get viewport size from KRB file
-    let mut viewport_size = glam::Vec2::new(800.0, 600.0);
+    let mut viewport_size = Vec2::new(800.0, 600.0);
     if let Some(root_id) = krb_file.root_element_id {
         if let Some(root_element) = krb_file.elements.get(&root_id) {
             let size_x = root_element.layout_size.width.to_pixels(1.0);
@@ -185,7 +184,10 @@ fn main() -> Result<()> {
         {
             info!("Starting development server on http://{}:{}", args.host, args.port);
             
-            use kryon_html::{ServerBuilder, ServerConfig};
+            use kryon_html::server::ServerBuilder;
+            
+            // Create a new renderer for the server since we need ownership
+            let server_renderer = HtmlRenderer::new(viewport_size);
             
             let server = ServerBuilder::new()
                 .host(args.host)
@@ -193,17 +195,17 @@ fn main() -> Result<()> {
                 .html_config(html_config)
                 .build();
             
-            // Set the renderer
+            // Set the renderer and start server
             tokio::runtime::Runtime::new()
                 .unwrap()
                 .block_on(async {
-                    server.set_renderer(html_renderer.clone()).await?;
+                    server.set_renderer(server_renderer).await?;
                     server.start().await
                 })?;
         }
         #[cfg(not(feature = "html-server"))]
         {
-            error!("Server feature not enabled. Please compile with --features html-server");
+            eprintln!("Server feature not enabled. Please compile with --features html-server");
             anyhow::bail!("Server feature not available");
         }
     } else {

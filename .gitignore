@@ -186,3 +186,4 @@ Session.vim
 auto-save-list
 tramp
 .\#*
+temp/

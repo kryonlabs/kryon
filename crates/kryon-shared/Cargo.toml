@@ -20,3 +20,4 @@ byteorder = { workspace = true }
 
 [features]
 default = []
+serde_support = []

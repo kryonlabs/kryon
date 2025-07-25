@@ -445,7 +445,7 @@ impl PropertyId {
             "background_color" => PropertyId::BackgroundColor,
             "text_color" | "foreground_color" | "color" => PropertyId::ForegroundColor,
             "border_color" => PropertyId::BorderColor,
-            "border_width" => PropertyId::BorderWidth,
+            "border_width" | "border" => PropertyId::BorderWidth,
             "border_radius" => PropertyId::BorderRadius,
             "padding" => PropertyId::Padding,
             "margin" => PropertyId::Margin,

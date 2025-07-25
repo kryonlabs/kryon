@@ -202,7 +202,17 @@ impl KRBParser {
                 
                 let value = match prop_id {
                     0x01 | 0x02 | 0x03 => PropertyValue::Color(self.read_color()),
-                    0x04 | 0x05 => PropertyValue::Float(self.read_u8() as f32), // BorderWidth, BorderRadius
+                    0x04 | 0x05 => { // BorderWidth, BorderRadius
+                        if size == 2 {
+                            PropertyValue::Float(self.read_u16() as f32)
+                        } else if size == 1 {
+                            PropertyValue::Float(self.read_u8() as f32)
+                        } else {
+                            // Skip if wrong size
+                            for _ in 0..size { self.read_u8(); }
+                            continue;
+                        }
+                    }
                     0x06 => {
                         if size == 1 {
                             PropertyValue::Int(self.read_u8() as i32) // Layout flags
@@ -212,7 +222,7 @@ impl KRBParser {
                             continue;
                         }
                     }
-                    0x1A => { // Width
+                    0x19 => { // Width
                         if size == 2 {
                             PropertyValue::Float(self.read_u16() as f32)
                         } else {
@@ -275,7 +285,7 @@ impl KRBParser {
                             continue;
                         }
                     }
-                    0x1C => { // Height
+                    0x1A => { // Height
                         if size == 2 {
                             PropertyValue::Float(self.read_u16() as f32)
                         } else {
@@ -380,11 +390,11 @@ impl KRBParser {
                         if size == 1 {
                             let value = self.read_u8();
                             let align_str = match value {
-                                0 => "flex-start",
-                                1 => "flex-end", 
-                                2 => "center",
-                                3 => "baseline",
-                                4 => "stretch",
+                                0 => "flex-start",  // FlexStart
+                                1 => "flex-end",    // FlexEnd
+                                2 => "center",      // Center
+                                3 => "stretch",     // Stretch
+                                4 => "baseline",    // Baseline
                                 _ => "stretch", // Default
                             };
                             PropertyValue::String(align_str.to_string())
@@ -1377,15 +1387,15 @@ impl KRBParser {
                     for _ in 0..size { self.read_u8(); }
                 }
             }
-            0x47 => { // AlignItems
+            0x47 => { // AlignItems (direct byte value)
                 if size == 1 {
                     let align_items_value = self.read_u8();
                     let align_items_str = match align_items_value {
-                        0 => "stretch",
-                        1 => "flex-start",
-                        2 => "center",
-                        3 => "flex-end",
-                        4 => "baseline",
+                        0 => "flex-start",  // FlexStart
+                        1 => "flex-end",    // FlexEnd
+                        2 => "center",      // Center
+                        3 => "stretch",     // Stretch
+                        4 => "baseline",    // Baseline
                         _ => "stretch", // Default
                     };
                     element.custom_properties.insert("align_items".to_string(), PropertyValue::String(align_items_str.to_string()));
@@ -1552,6 +1562,17 @@ impl KRBParser {
                     eprintln!("[PROP] PaddingLeft: {}", padding_left);
                 } else {
                     eprintln!("[PROP] PaddingLeft: size mismatch, expected 1, got {}, skipping", size);
+                    for _ in 0..size { self.read_u8(); }
+                }
+            }
+            0x4E => { // Gap (modern property ID)
+                if size == 4 {
+                    let gap_bytes = [self.read_u8(), self.read_u8(), self.read_u8(), self.read_u8()];
+                    let gap = f32::from_le_bytes(gap_bytes);
+                    element.custom_properties.insert("gap".to_string(), PropertyValue::Float(gap));
+                    eprintln!("[PROP] Gap: {}", gap);
+                } else {
+                    eprintln!("[PROP] Gap: size mismatch, expected 4, got {}, skipping", size);
                     for _ in 0..size { self.read_u8(); }
                 }
             }

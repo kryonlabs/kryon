@@ -163,6 +163,7 @@ impl PropertyId {
             "text_color" | "foreground_color" | "color" => PropertyId::ForegroundColor,  // 0x02  
             "border_color" => PropertyId::BorderColor,             // 0x03
             "border_width" => PropertyId::BorderWidth,             // 0x04
+            "border" => PropertyId::BorderWidth,                   // 0x04 (shorthand maps to width for now)
             "border_radius" => PropertyId::BorderRadius,           // 0x05
             "padding" => PropertyId::Padding,                      // 0x06
             "margin" => PropertyId::Margin,                        // 0x07

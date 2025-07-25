@@ -61,20 +61,25 @@ if [ $SKIP_COUNT -gt 0 ]; then
     echo ""
 fi
 
-# Check if binaries exist and build if needed
-if [ ! -f "$COMPILER_PATH" ] || [ ! -f "$RENDERER_PATH" ]; then
-    echo "🔧 Building Kryon workspace..."
-    cd "$SCRIPT_DIR"
-    cargo build --release --workspace
-    
-    # Copy binaries from kryon workspace to root target
-    mkdir -p target/release
-    if [ -f "kryon/target/release/kryc" ]; then
-        cp "kryon/target/release/kryc" "target/release/"
-    fi
-    if [ -f "kryon/target/release/kryon-renderer-raylib" ]; then
-        cp "kryon/target/release/kryon-renderer-raylib" "target/release/"
-    fi
+# Always build compiler and renderer to ensure latest code
+echo "🔧 Building Kryon compiler and raylib renderer..."
+cd "$SCRIPT_DIR"
+
+echo "  📦 Building compiler (kryc)..."
+cargo build --release -p kryc
+
+echo "  🎮 Building raylib renderer..."
+cargo build --release --features raylib --bin kryon-renderer-raylib
+
+# Verify binaries were created
+if [ ! -f "$COMPILER_PATH" ]; then
+    echo "❌ Compiler build failed: $COMPILER_PATH not found"
+    exit 1
+fi
+
+if [ ! -f "$RENDERER_PATH" ]; then
+    echo "❌ Renderer build failed: $RENDERER_PATH not found"
+    exit 1
 fi
 
 echo "✅ Compiler: $COMPILER_PATH"
@@ -122,15 +127,24 @@ echo ""
 for i in "${!krb_files[@]}"; do
     krb_file="${krb_files[i]}"
     actual_index=$((i + SKIP_COUNT + 1))
-    echo "🎯 Running [$actual_index]: $krb_file"
-    echo "   (Close the window to continue to next example)"
+    total_examples=${#krb_files[@]}
+    
+    echo "════════════════════════════════════════════════════════════════"
+    echo "🎯 Running [$actual_index/$((total_examples + SKIP_COUNT))]: $krb_file"
+    echo "════════════════════════════════════════════════════════════════"
+    echo ""
+    echo "   📝 Description: $(basename "$krb_file" .krb | sed 's/_/ /g' | sed 's/\b\w/\U&/g')"
+    echo "   🎮 Instructions: Close the window or press Ctrl+C when done viewing"
+    echo "   🚀 Auto-launching in 1 second..."
+    
+    sleep 1
     
     # Run the renderer with the .krb file
     if "$RENDERER_PATH" "$krb_file"; then
-        echo "✅ Completed: $krb_file"
+        echo "   ✅ Completed: $krb_file"
     else
-        echo "❌ Failed to run: $krb_file (exit code: $?)"
-        echo "   Continue anyway? [y/N]"
+        echo "   ❌ Failed to run: $krb_file (exit code: $?)"
+        echo "   Continue to next example? [y/N]"
         read -r response
         if [[ ! "$response" =~ ^[Yy]$ ]]; then
             echo "🛑 Stopping test run."
@@ -138,6 +152,8 @@ for i in "${!krb_files[@]}"; do
         fi
     fi
     echo ""
+    
+    # No delay - immediately continue to next example
 done
 
 echo "🎉 All examples completed!"

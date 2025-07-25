@@ -59,6 +59,9 @@ cosmic-text = "0.13"
 pollster = "0.3"
 tokio = { version = "1.0", features = ["full"] }
 bytemuck = { version = "1.14", features = ["derive"] }
+warp = "0.3"
+uuid = { version = "1.0", features = ["v4"] }
+html-escape = "0.2"
 
 # Development dependencies
 tempfile = "3.8"
@@ -74,7 +77,7 @@ kryon-render = { path = "crates/kryon-render" }
 kryon-raylib = { path = "crates/kryon-raylib" }
 kryon-ratatui = { path = "crates/kryon-ratatui" }
 kryon-wgpu = { path = "crates/kryon-wgpu" }
-kryon-html = { path = "crates/kryon-html" }
+kryon-html = { path = "crates/kryon-html", default-features = false }
 
 [profile.dev]
 opt-level = 1
@@ -106,7 +109,7 @@ kryon-render = { path = "crates/kryon-render" }
 kryon-raylib = { path = "crates/kryon-raylib" }
 kryon-ratatui = { path = "crates/kryon-ratatui" }
 kryon-wgpu = { path = "crates/kryon-wgpu" }
-kryon-html = { path = "crates/kryon-html" }
+kryon-html = { path = "crates/kryon-html", default-features = false, features = [] }
 kryon-compiler = { path = "crates/kryon-compiler" }
 
 # CLI dependencies
@@ -115,18 +118,45 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
+# Feature-specific dependencies
+wgpu = { workspace = true, optional = true }
+winit = { workspace = true, optional = true }
+glam = { workspace = true, optional = true }
+crossterm = { workspace = true, optional = true }
+ratatui = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+warp = { version = "0.3", optional = true }
+uuid = { version = "1.0", optional = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+
+[features]
+default = ["raylib"]
+wgpu = ["dep:wgpu", "dep:winit", "dep:glam"]
+ratatui = ["dep:ratatui", "dep:crossterm", "dep:glam"]
+raylib = []
+html-server = ["dep:glam", "dep:tokio", "dep:warp", "dep:uuid", "dep:serde", "dep:serde_json", "kryon-html/server"]
+
 [[bin]]
 name = "kryon-renderer-raylib"
 path = "src/bin/kryon-renderer-raylib.rs"
+required-features = ["raylib"]
 
 [[bin]]
 name = "kryon-renderer-ratatui"
 path = "src/bin/kryon-renderer-ratatui.rs"
+required-features = ["ratatui"]
 
 [[bin]]
 name = "kryon-renderer-wgpu"
 path = "src/bin/kryon-renderer-wgpu.rs"
+required-features = ["wgpu"]
 
 [[bin]]
 name = "kryon-renderer-debug"
 path = "src/bin/kryon-renderer-debug.rs"
+
+[[bin]]
+name = "kryon-renderer-html"
+path = "src/bin/kryon-renderer-html.rs"
+required-features = ["html-server"]

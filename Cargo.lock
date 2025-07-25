@@ -2847,6 +2847,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap 4.5.40",
+ "crossterm",
+ "glam",
  "kryon-compiler",
  "kryon-core",
  "kryon-html",
@@ -2857,8 +2859,16 @@ dependencies = [
  "kryon-runtime",
  "kryon-shared",
  "kryon-wgpu",
+ "ratatui",
+ "serde",
+ "serde_json",
+ "tokio",
  "tracing",
  "tracing-subscriber",
+ "uuid",
+ "warp",
+ "wgpu",
+ "winit",
 ]
 
 [[package]]
