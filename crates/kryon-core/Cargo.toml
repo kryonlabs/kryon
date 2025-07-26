@@ -12,6 +12,7 @@ glam = { workspace = true }
 tracing = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
 taffy = "0.5"
+kryon-shared = { path = "../kryon-shared" }
 
 # Web dependencies
 wasm-bindgen = { version = "0.2", optional = true }

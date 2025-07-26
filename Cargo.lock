@@ -2998,6 +2998,7 @@ dependencies = [
  "bytemuck",
  "glam",
  "js-sys",
+ "kryon-shared",
  "serde",
  "taffy",
  "thiserror 1.0.69",

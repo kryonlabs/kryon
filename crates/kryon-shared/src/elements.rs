@@ -430,86 +430,9 @@ impl Default for ToggleState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum ElementType {
-    App = 0x00,
-    Container = 0x01,
-    Text = 0x02,
-    Link = 0x03,
-    Image = 0x04,
-    Canvas = 0x05, // Native 2D/3D drawing canvas
-    Video = 0x06, // Native video playbook element
-    EmbedView = 0x07, // For platform-breaking content (webview, wasm, native renderer emulation, etc.)
-    Svg = 0x08, // SVG vector graphics element
-    Button = 0x10,
-    Input = 0x11,
-    Select = 0x12,       // Dropdown/combobox
-    Slider = 0x13,       // Range slider
-    ProgressBar = 0x14,  // Progress indicator
-    Checkbox = 0x15,     // Dedicated checkbox element
-    RadioGroup = 0x16,   // Radio button group
-    Toggle = 0x17,       // Switch/toggle
-    DatePicker = 0x18,   // Date input
-    FilePicker = 0x19,   // File upload
-    Form = 0x1A,         // Form container
-    
-    // List elements
-    List = 0x20,         // Ordered/unordered list
-    ListItem = 0x21,     // List item
-    
-    // Table elements
-    Table = 0x30,        // Table container
-    TableRow = 0x31,     // Table row
-    TableCell = 0x32,    // Table cell
-    TableHeader = 0x33,  // Table header
-    
-    Custom(u8),
-}
+// Use unified types from types.rs
+pub use crate::types::{ElementType, InteractionState, FontWeight, TextAlignment, CursorType, EventType};
 
-impl From<u8> for ElementType {
-    fn from(value: u8) -> Self {
-        match value {
-            0x00 => ElementType::App,
-            0x01 => ElementType::Container,
-            0x02 => ElementType::Text,
-            0x03 => ElementType::Link,
-            0x04 => ElementType::Image,
-            0x05 => ElementType::Canvas,
-            0x06 => ElementType::Video,
-            0x07 => ElementType::EmbedView,
-            0x08 => ElementType::Svg,
-            0x10 => ElementType::Button,
-            0x11 => ElementType::Input,
-            0x12 => ElementType::Select,
-            0x13 => ElementType::Slider,
-            0x14 => ElementType::ProgressBar,
-            0x15 => ElementType::Checkbox,
-            0x16 => ElementType::RadioGroup,
-            0x17 => ElementType::Toggle,
-            0x18 => ElementType::DatePicker,
-            0x19 => ElementType::FilePicker,
-            0x1A => ElementType::Form,
-            0x20 => ElementType::List,
-            0x21 => ElementType::ListItem,
-            0x30 => ElementType::Table,
-            0x31 => ElementType::TableRow,
-            0x32 => ElementType::TableCell,
-            0x33 => ElementType::TableHeader,
-            other => ElementType::Custom(other),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum InteractionState {
-    Normal = 0,
-    Hover = 1,
-    Active = 2,
-    Focus = 4,
-    Disabled = 8,
-    Checked = 16,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OverflowType {
@@ -602,42 +525,6 @@ pub struct Element {
 
 pub type ElementId = u32;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FontWeight {
-    Normal = 400,
-    Bold = 700,
-    Light = 300,
-    Heavy = 900,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TextAlignment {
-    Start,
-    Center,
-    End,
-    Justify,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CursorType {
-    Default,
-    Pointer,
-    Text,
-    Move,
-    NotAllowed,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum EventType {
-    Click,
-    Press,
-    Release,
-    Hover,
-    Focus,
-    Blur,
-    Change,
-    Submit,
-}
 
 impl Default for Element {
     fn default() -> Self {
