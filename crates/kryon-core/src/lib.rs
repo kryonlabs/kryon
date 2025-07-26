@@ -1,4 +1,8 @@
 // crates/kryon-core/src/lib.rs
+
+// Re-export unified types from kryon-shared as the single source of truth
+pub use kryon_shared::types::*;
+
 pub mod krb;
 pub mod elements;
 pub mod properties;

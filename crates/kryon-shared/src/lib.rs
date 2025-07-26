@@ -3,6 +3,9 @@
 //! This crate provides unified type definitions, property mappings, and constants
 //! used by both the Kryon compiler and renderer to ensure consistency across the monorepo.
 
+// UNIFIED TYPES - SINGLE SOURCE OF TRUTH
+pub mod types;
+
 // Shared type modules from the unified codebase
 pub mod elements;
 pub mod events;
@@ -18,6 +21,9 @@ pub mod css_transforms;
 pub mod encoding;
 pub mod krb_format;
 pub mod errors;
+
+// Re-export unified types - SINGLE SOURCE OF TRUTH
+pub use types::*;
 
 // Re-export commonly used types for convenience
 pub use elements::*;

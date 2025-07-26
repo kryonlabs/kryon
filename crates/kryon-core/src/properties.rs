@@ -31,32 +31,8 @@ pub enum TransformType {
 
 #[derive(Debug, Clone)]
 pub struct TransformProperty {
-    pub property_type: TransformPropertyType,
+    pub property_type: kryon_shared::types::TransformPropertyType,
     pub value: CSSUnitValue,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TransformPropertyType {
-    // 2D Transform properties
-    Scale = 0x01,
-    ScaleX = 0x02,
-    ScaleY = 0x03,
-    TranslateX = 0x04,
-    TranslateY = 0x05,
-    Rotate = 0x06,
-    SkewX = 0x07,
-    SkewY = 0x08,
-    
-    // 3D Transform properties
-    ScaleZ = 0x09,
-    TranslateZ = 0x0A,
-    RotateX = 0x0B,
-    RotateY = 0x0C,
-    RotateZ = 0x0D,
-    Perspective = 0x0E,
-    
-    // Matrix properties
-    Matrix = 0x0F,
 }
 
 #[derive(Debug, Clone)]

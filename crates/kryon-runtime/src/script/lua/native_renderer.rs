@@ -141,7 +141,7 @@ impl NativeRendererContext {
             Ok(())
         })?)?;
         
-        raylib_ctx.set("DrawText", self.lua.create_function(|_, (text, x, y, _font_size, _color): (String, i32, i32, i32, LuaTable)| {
+        raylib_ctx.set("DrawText", self.lua.create_function(|_, (_text, _x, _y, _font_size, _color): (String, i32, i32, i32, LuaTable)| {
             // Store the draw text command for later execution
             Ok(())
         })?)?;

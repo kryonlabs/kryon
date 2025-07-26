@@ -428,6 +428,48 @@ impl<R: CommandRenderer> ElementRenderer<R> {
             ElementType::Video => {
                 self.render_video(&mut commands, element, &style, position, size);
             },
+            ElementType::Slider => {
+                self.render_slider(&mut commands, element, &style, position, size);
+            },
+            ElementType::ProgressBar => {
+                self.render_progress_bar(&mut commands, element, &style, position, size);
+            },
+            ElementType::Checkbox => {
+                self.render_checkbox(&mut commands, element, &style, position, size);
+            },
+            ElementType::RadioGroup => {
+                self.render_radio_group(&mut commands, element, &style, position, size);
+            },
+            ElementType::Toggle => {
+                self.render_toggle(&mut commands, element, &style, position, size);
+            },
+            ElementType::DatePicker => {
+                self.render_date_picker(&mut commands, element, &style, position, size);
+            },
+            ElementType::FilePicker => {
+                self.render_file_picker(&mut commands, element, &style, position, size);
+            },
+            ElementType::Form => {
+                self.render_form(&mut commands, element, &style, position, size);
+            },
+            ElementType::List => {
+                self.render_list(&mut commands, element, &style, position, size);
+            },
+            ElementType::ListItem => {
+                self.render_list_item(&mut commands, element, &style, position, size);
+            },
+            ElementType::Table => {
+                self.render_table(&mut commands, element, &style, position, size);
+            },
+            ElementType::TableRow => {
+                self.render_table_row(&mut commands, element, &style, position, size);
+            },
+            ElementType::TableCell => {
+                self.render_table_cell(&mut commands, element, &style, position, size);
+            },
+            ElementType::TableHeader => {
+                self.render_table_header(&mut commands, element, &style, position, size);
+            },
             ElementType::Custom(_custom_type) => {
                 // Handle custom element types
                 self.render_custom(&mut commands, element, &style, position, size, _custom_type);
@@ -440,7 +482,11 @@ impl<R: CommandRenderer> ElementRenderer<R> {
     // Helper methods for rendering specific element types
     fn render_container(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
         // Render background
+        eprintln!("🎨 [CONTAINER_DEBUG] Element '{}' background_color={:?}, alpha={}", 
+                 element.id, style.background_color, style.background_color.w);
+        
         if style.background_color.w > 0.0 {
+            eprintln!("✅ [CONTAINER_DEBUG] Creating DrawRect command for '{}'", element.id);
             commands.push(RenderCommand::DrawRect {
                 position,
                 size,
@@ -456,6 +502,9 @@ impl<R: CommandRenderer> ElementRenderer<R> {
                 },
                 z_index: element.z_index,
             });
+        } else {
+            eprintln!("❌ [CONTAINER_DEBUG] Skipping DrawRect for '{}' - transparent background (alpha={})", 
+                     element.id, style.background_color.w);
         }
 
         // Special handling for buttons with text
@@ -828,6 +877,76 @@ impl<R: CommandRenderer> ElementRenderer<R> {
 
     fn render_custom(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2, _custom_type: u8) {
         // For now, render custom elements as containers
+        self.render_container(commands, element, style, position, size);
+    }
+
+    fn render_slider(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render slider as a container with slider-specific styling
+        self.render_container(commands, element, style, position, size);
+    }
+
+    fn render_progress_bar(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render progress bar as a container with progress-specific styling
+        self.render_container(commands, element, style, position, size);
+    }
+
+    fn render_checkbox(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render checkbox as a container with checkbox-specific styling
+        self.render_container(commands, element, style, position, size);
+    }
+
+    fn render_radio_group(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render radio group as a container
+        self.render_container(commands, element, style, position, size);
+    }
+
+    fn render_toggle(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render toggle as a container with toggle-specific styling
+        self.render_container(commands, element, style, position, size);
+    }
+
+    fn render_date_picker(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render date picker as a specialized input
+        self.render_input(commands, element, style, position, size);
+    }
+
+    fn render_file_picker(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render file picker as a specialized input
+        self.render_input(commands, element, style, position, size);
+    }
+
+    fn render_form(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render form as a container
+        self.render_container(commands, element, style, position, size);
+    }
+
+    fn render_list(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render list as a container with list-specific styling
+        self.render_container(commands, element, style, position, size);
+    }
+
+    fn render_list_item(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render list item as a container
+        self.render_container(commands, element, style, position, size);
+    }
+
+    fn render_table(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render table as a specialized container
+        self.render_container(commands, element, style, position, size);
+    }
+
+    fn render_table_row(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render table row as a container
+        self.render_container(commands, element, style, position, size);
+    }
+
+    fn render_table_cell(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render table cell as a container
+        self.render_container(commands, element, style, position, size);
+    }
+
+    fn render_table_header(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Render table header as a container with header styling
         self.render_container(commands, element, style, position, size);
     }
 

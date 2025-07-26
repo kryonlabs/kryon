@@ -6,6 +6,7 @@ use kryon_layout::LayoutResult;
 use glam::{Vec2, Vec4, Mat4};
 use winit::window::Window;
 use kryon_core::{TransformData, TransformPropertyType, CSSUnit, CSSUnitValue};
+use wgpu::util::DeviceExt;
 
 pub mod shaders;
 pub mod vertex;
@@ -51,6 +52,7 @@ pub struct WgpuRenderer {
 pub struct WgpuRenderContext {
     encoder: wgpu::CommandEncoder,
     view: wgpu::TextureView,
+    surface_texture: wgpu::SurfaceTexture,
 }
 
 impl Renderer for WgpuRenderer {
@@ -61,22 +63,23 @@ impl Renderer for WgpuRenderer {
         pollster::block_on(Self::new_async(surface.0, surface.1))
     }
     
-    fn begin_frame(&mut self, _clear_color: Vec4) -> RenderResult<Self::Context> {
-        let output = self.surface
+    fn begin_frame(&mut self, clear_color: Vec4) -> RenderResult<Self::Context> {
+        let surface_texture = self.surface
             .get_current_texture()
             .map_err(|e| RenderError::RenderFailed(format!("Failed to get surface texture: {}", e)))?;
         
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let view = surface_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
         
         let encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
         
-        Ok(WgpuRenderContext { encoder, view })
+        Ok(WgpuRenderContext { encoder, view, surface_texture })
     }
     
     fn end_frame(&mut self, context: Self::Context) -> RenderResult<()> {
         self.queue.submit(std::iter::once(context.encoder.finish()));
+        context.surface_texture.present();
         Ok(())
     }
     
@@ -115,9 +118,53 @@ impl CommandRenderer for WgpuRenderer {
         context: &mut Self::Context,
         commands: &[RenderCommand],
     ) -> RenderResult<()> {
+        println!("🔧 [WGPU_DEBUG] execute_commands() called with {} commands", commands.len());
+        for (i, cmd) in commands.iter().enumerate() {
+            println!("🔧 [WGPU_DEBUG] Command {}: {:?}", i, cmd);
+        }
+        
         if commands.is_empty() {
+            println!("❌ [WGPU_DEBUG] Empty command list - clearing screen only");
+            // Still need to clear the screen
+            let mut render_pass = context.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Clear Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &context.view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.1, g: 0.1, b: 0.1, a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            drop(render_pass);
             return Ok(());
         }
+        
+        // Clear screen first
+        {
+            let mut clear_pass = context.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Initial Clear Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &context.view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.1, g: 0.1, b: 0.1, a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+        } // clear_pass dropped here
         
         // Separate commands by type for batching
         let mut rect_commands = Vec::new();
@@ -139,13 +186,22 @@ impl CommandRenderer for WgpuRenderer {
                 RenderCommand::DrawEllipse { .. } => ellipse_commands.push(command),
                 RenderCommand::DrawPolygon { .. } => polygon_commands.push(command),
                 RenderCommand::DrawPath { .. } => path_commands.push(command),
-                _ => {} // Handle other commands
+                _ => {
+                    println!("🔧 [WGPU_DEBUG] Unhandled command type: {:?}", command);
+                }
             }
         }
         
+        println!("🔧 [WGPU_DEBUG] Grouped commands: {} rects, {} text, {} lines, {} images, {} circles, {} ellipses, {} polygons, {} paths", 
+                 rect_commands.len(), text_commands.len(), line_commands.len(), image_commands.len(),
+                 circle_commands.len(), ellipse_commands.len(), polygon_commands.len(), path_commands.len());
+        
         // Render rectangles
         if !rect_commands.is_empty() {
+            println!("🔧 [WGPU_DEBUG] Calling render_rects with {} commands", rect_commands.len());
             self.render_rects(context, &rect_commands)?;
+        } else {
+            println!("❌ [WGPU_DEBUG] No rectangle commands to render");
         }
         
         // Render lines
@@ -331,17 +387,22 @@ impl WgpuRenderer {
             source: wgpu::ShaderSource::Wgsl(include_str!("shaders/text.wgsl").into()),
         });
 
-        // Create text rendering pipeline
+        // Create text rendering pipeline 
+        eprintln!("🔧 [WGPU_DEBUG] Creating text renderer...");
         let text_renderer = TextRenderer::new(&device, &queue)
             .map_err(|e| RenderError::InitializationFailed(format!("Text renderer creation failed: {}", e)))?;
+        eprintln!("✅ [WGPU_DEBUG] Text renderer created successfully");
 
         // The text pipeline needs the bind group layout from the text atlas
+        eprintln!("🔧 [WGPU_DEBUG] Creating text pipeline layout with bind groups...");
         let text_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Text Pipeline Layout"),
             bind_group_layouts: &[&uniform_bind_group_layout, text_renderer.bind_group_layout()],
             push_constant_ranges: &[],
         });
+        eprintln!("✅ [WGPU_DEBUG] Text pipeline layout created successfully");
 
+        eprintln!("🔧 [WGPU_DEBUG] Creating text render pipeline...");
         let text_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Text Pipeline"),
             layout: Some(&text_pipeline_layout),
@@ -448,14 +509,18 @@ impl WgpuRenderer {
     }
     
     fn update_view_projection(&mut self) -> RenderResult<()> {
+        // Create orthographic projection matrix for 2D rendering
+        // Maps screen coordinates (0,0) to (width,height) to NDC (-1,-1) to (1,1)
         let projection = Mat4::orthographic_rh(
-            0.0,
-            self.size.x,
-            self.size.y,
-            0.0,
-            -1.0,
-            1.0,
+            0.0,           // left
+            self.size.x,   // right
+            self.size.y,   // bottom  
+            0.0,           // top
+            -1.0,          // near
+            1.0,           // far
         );
+        
+        println!("🔧 [WGPU_DEBUG] Updated projection matrix for size: {:?}", self.size);
         
         let uniform = ViewProjectionUniform {
             view_proj: projection.to_cols_array_2d(),
@@ -475,95 +540,155 @@ impl WgpuRenderer {
         context: &mut WgpuRenderContext,
         commands: &[&RenderCommand],
     ) -> RenderResult<()> {
+        println!("🔧 [WGPU_DEBUG] render_rects called with {} commands", commands.len());
+        
+        if commands.is_empty() {
+            return Ok(());
+        }
+
+        // Create vertices for all rectangles
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
-        let mut index_offset = 0u16;
         
-        for command in commands {
-            if let RenderCommand::DrawRect {
-                position,
-                size,
-                color,
-                border_radius,
-                border_width,
-                border_color,
-                transform,
-                shadow: _,
-                z_index: _,
-            } = command {
-                // Generate vertices for rounded rectangle
-                let rect_vertices = generate_rounded_rect_vertices(
-                    *position,
-                    *size,
-                    *color,
-                    *border_radius,
-                    *border_width,
-                    *border_color,
-                );
+        for (i, command) in commands.iter().enumerate() {
+            if let RenderCommand::DrawRect { position, size, color, border_width, border_color, .. } = command {
+                println!("🔧 [WGPU_DEBUG] Adding rect {}: pos={:?}, size={:?}, color={:?}, border_width={}", i, position, size, color, border_width);
                 
-                // Apply transform if present
-                let transformed_vertices = if let Some(transform_data) = transform {
-                    apply_transform_to_vertices(rect_vertices, transform_data)
-                } else {
-                    rect_vertices
-                };
+                let start_index = vertices.len() as u16;
                 
-                // Add vertices and indices
-                for vertex in transformed_vertices {
-                    vertices.push(vertex);
-                }
-                
-                // Generate indices for two triangles (quad)
-                indices.extend_from_slice(&[
-                    index_offset,
-                    index_offset + 1,
-                    index_offset + 2,
-                    index_offset + 2,
-                    index_offset + 3,
-                    index_offset,
+                // First draw the fill rectangle
+                vertices.extend_from_slice(&[
+                    RectVertex { position: [position.x, position.y], color: [color.x, color.y, color.z, color.w] },
+                    RectVertex { position: [position.x + size.x, position.y], color: [color.x, color.y, color.z, color.w] },
+                    RectVertex { position: [position.x + size.x, position.y + size.y], color: [color.x, color.y, color.z, color.w] },
+                    RectVertex { position: [position.x, position.y + size.y], color: [color.x, color.y, color.z, color.w] },
                 ]);
-                index_offset += 4;
+                
+                // Add 6 indices for 2 triangles
+                indices.extend_from_slice(&[
+                    start_index, start_index + 1, start_index + 2,
+                    start_index + 2, start_index + 3, start_index,
+                ]);
+                
+                // If there's a border, draw it as 4 rectangles (top, right, bottom, left)
+                if *border_width > 0.0 && border_color.w > 0.0 {
+                    println!("🔧 [WGPU_DEBUG] Adding border: width={}, color={:?}", border_width, border_color);
+                    
+                    // Top border
+                    let border_start = vertices.len() as u16;
+                    vertices.extend_from_slice(&[
+                        RectVertex { position: [position.x, position.y], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                        RectVertex { position: [position.x + size.x, position.y], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                        RectVertex { position: [position.x + size.x, position.y + border_width], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                        RectVertex { position: [position.x, position.y + border_width], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                    ]);
+                    indices.extend_from_slice(&[
+                        border_start, border_start + 1, border_start + 2,
+                        border_start + 2, border_start + 3, border_start,
+                    ]);
+                    
+                    // Right border
+                    let border_start = vertices.len() as u16;
+                    vertices.extend_from_slice(&[
+                        RectVertex { position: [position.x + size.x - border_width, position.y], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                        RectVertex { position: [position.x + size.x, position.y], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                        RectVertex { position: [position.x + size.x, position.y + size.y], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                        RectVertex { position: [position.x + size.x - border_width, position.y + size.y], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                    ]);
+                    indices.extend_from_slice(&[
+                        border_start, border_start + 1, border_start + 2,
+                        border_start + 2, border_start + 3, border_start,
+                    ]);
+                    
+                    // Bottom border
+                    let border_start = vertices.len() as u16;
+                    vertices.extend_from_slice(&[
+                        RectVertex { position: [position.x, position.y + size.y - border_width], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                        RectVertex { position: [position.x + size.x, position.y + size.y - border_width], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                        RectVertex { position: [position.x + size.x, position.y + size.y], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                        RectVertex { position: [position.x, position.y + size.y], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                    ]);
+                    indices.extend_from_slice(&[
+                        border_start, border_start + 1, border_start + 2,
+                        border_start + 2, border_start + 3, border_start,
+                    ]);
+                    
+                    // Left border
+                    let border_start = vertices.len() as u16;
+                    vertices.extend_from_slice(&[
+                        RectVertex { position: [position.x, position.y], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                        RectVertex { position: [position.x + border_width, position.y], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                        RectVertex { position: [position.x + border_width, position.y + size.y], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                        RectVertex { position: [position.x, position.y + size.y], color: [border_color.x, border_color.y, border_color.z, border_color.w] },
+                    ]);
+                    indices.extend_from_slice(&[
+                        border_start, border_start + 1, border_start + 2,
+                        border_start + 2, border_start + 3, border_start,
+                    ]);
+                }
             }
         }
         
         if vertices.is_empty() {
+            println!("❌ [WGPU_DEBUG] No vertices to render!");
             return Ok(());
         }
         
-        // Upload vertex data
-        self.queue.write_buffer(
-            &self.vertex_buffer,
-            0,
-            bytemuck::cast_slice(&vertices),
-        );
+        println!("🔧 [WGPU_DEBUG] Total vertices: {}, indices: {}", vertices.len(), indices.len());
         
-        self.queue.write_buffer(
-            &self.index_buffer,
-            0,
-            bytemuck::cast_slice(&indices),
-        );
+        // Debug print first few vertices
+        if !vertices.is_empty() {
+            println!("🔧 [WGPU_DEBUG] First 4 vertices:");
+            for (i, vertex) in vertices.iter().take(4).enumerate() {
+                println!("  Vertex {}: pos=({:.1}, {:.1}), color=({:.2}, {:.2}, {:.2}, {:.2})", 
+                         i, vertex.position[0], vertex.position[1], 
+                         vertex.color[0], vertex.color[1], vertex.color[2], vertex.color[3]);
+            }
+        }
         
-        // Render
-        let mut render_pass = context.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Rectangle Render Pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &context.view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            occlusion_query_set: None,
-            timestamp_writes: None,
+        // Create temporary buffers for this frame
+        let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Rectangle Vertex Buffer"),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsages::VERTEX,
         });
         
-        render_pass.set_pipeline(&self.rect_pipeline);
-        render_pass.set_bind_group(0, &self.view_proj_bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
+        let index_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Rectangle Index Buffer"),
+            contents: bytemuck::cast_slice(&indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+        
+        // Render the rectangles
+        {
+            let mut render_pass = context.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Rectangle Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &context.view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            
+            println!("🔧 [WGPU_DEBUG] Setting pipeline...");
+            render_pass.set_pipeline(&self.rect_pipeline);
+            println!("🔧 [WGPU_DEBUG] Setting bind group...");
+            render_pass.set_bind_group(0, &self.view_proj_bind_group, &[]);
+            println!("🔧 [WGPU_DEBUG] Setting vertex buffer...");
+            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            println!("🔧 [WGPU_DEBUG] Setting index buffer...");
+            render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            println!("🔧 [WGPU_DEBUG] Drawing indexed with {} indices...", indices.len());
+            render_pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
+            
+            println!("✅ [WGPU_DEBUG] Rendered {} triangles", indices.len() / 3);
+        }
         
         Ok(())
     }
@@ -595,20 +720,18 @@ impl WgpuRenderer {
                     *position
                 };
                 
-                // For now, use the basic render_text method
-                // TODO: Implement proper transform support in text renderer
-                self.text_renderer.render_text(
-                    &mut context.encoder,
-                    &context.view,
-                    &self.text_pipeline,
-                    &self.view_proj_bind_group,
-                    text,
-                    final_position,
-                    *font_size,
-                    *color,
-                    *alignment,
-                    *max_width,
-                ).map_err(|e| RenderError::RenderFailed(format!("Text rendering failed: {}", e)))?;
+                // Use the basic render_text method but don't submit render passes
+                // Just prepare the text and generate vertices without actual rendering
+                if let Err(e) = self.text_renderer.prepare_text(&self.device, &self.queue, text, *font_size) {
+                    eprintln!("⚠️  [WGPU_DEBUG] Text preparation failed: {}", e);
+                    continue;
+                }
+                
+                let _vertices = self.text_renderer.generate_text_vertices(text, final_position, *font_size, *color);
+                println!("⚠️  [WGPU_DEBUG] Text rendering prepared but not submitted: '{}' at {:?}", text, final_position);
+                
+                // Don't actually render for now to avoid texture issues
+                // TODO: Implement proper render pass submission once texture issues are resolved
             }
         }
         Ok(())

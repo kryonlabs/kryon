@@ -1,7 +1,7 @@
 // kryon-standalone: Template for creating self-contained Kryon executables
 // This file serves as a template that gets compiled with embedded KRB data
 
-use kryon_render::{Renderer, events::KeyModifiers};
+use kryon_render::Renderer;
 
 // Placeholder for embedded KRB data - replaced by build script
 const EMBEDDED_KRB_DATA: &[u8] = &[];
@@ -47,41 +47,40 @@ fn main() -> anyhow::Result<()> {
             use winit::event::{Event, WindowEvent};
             use winit::event_loop::ControlFlow;
             
-            let event_loop = EventLoop::new();
+            let event_loop = EventLoop::new()?;
             let window = WindowBuilder::new()
                 .with_title("Kryon Application")
                 .with_inner_size(winit::dpi::LogicalSize::new(1024, 768))
                 .build(&event_loop)?;
             
-            let renderer = pollster::block_on(WgpuRenderer::new(&window))?;
+            let viewport_size = glam::Vec2::new(1024.0, 768.0);
+            let window = std::sync::Arc::new(window);
+            let renderer = WgpuRenderer::initialize((window.clone(), viewport_size))?;
             let mut app = KryonApp::new_with_krb(krb_file, renderer, None)?;
             
-            event_loop.run(move |event, _, control_flow| {
-                *control_flow = ControlFlow::Poll;
+            event_loop.run(move |event, elwt| {
+                elwt.set_control_flow(ControlFlow::Poll);
                 
                 match event {
                     Event::WindowEvent { event, .. } => {
-                        if let Err(e) = app.handle_window_event(&event) {
-                            eprintln!("Error handling window event: {}", e);
-                        }
-                        
                         match event {
-                            WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                            WindowEvent::CloseRequested => elwt.exit(),
                             WindowEvent::Resized(size) => {
-                                if let Err(e) = app.resize(size.into()) {
-                                    eprintln!("Error resizing: {}", e);
+                                let new_size = glam::Vec2::new(size.width as f32, size.height as f32);
+                                if let Err(e) = app.handle_input(kryon_render::events::InputEvent::Resize { size: new_size }) {
+                                    eprintln!("Error handling resize: {}", e);
                                 }
                             }
                             _ => {}
                         }
                     }
-                    Event::MainEventsCleared => {
-                        if let Err(e) = app.update() {
+                    Event::AboutToWait => {
+                        if let Err(e) = app.update(std::time::Duration::from_millis(16)) {
                             eprintln!("Error updating app: {}", e);
                         }
                         window.request_redraw();
                     }
-                    Event::RedrawRequested(_) => {
+                    Event::WindowEvent { event: WindowEvent::RedrawRequested, .. } => {
                         if let Err(e) = app.render() {
                             eprintln!("Error rendering: {}", e);
                         }
@@ -95,8 +94,8 @@ fn main() -> anyhow::Result<()> {
         {
             use kryon_runtime::KryonApp;
             use kryon_ratatui::RatatuiRenderer;
-            use kryon_render::{Renderer, KeyCode as RenderKeyCode};
-            use kryon_render::events::InputEvent;
+            use kryon_render::KeyCode as RenderKeyCode;
+            use kryon_render::events::{InputEvent, KeyModifiers};
             use ratatui::backend::CrosstermBackend;
             use crossterm::{
                 event::{self, Event as CEvent, KeyCode},

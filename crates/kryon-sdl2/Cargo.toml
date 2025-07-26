@@ -1,0 +1,31 @@
+[package]
+name = "kryon-sdl2"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kryon Labs"]
+description = "SDL2 rendering backend for Kryon"
+license = "0BSD"
+
+[dependencies]
+kryon-core = { path = "../kryon-core" }
+kryon-render = { path = "../kryon-render" }
+kryon-layout = { path = "../kryon-layout" }
+
+# Core dependencies
+anyhow = { workspace = true }
+glam = { workspace = true }
+tracing = { workspace = true }
+
+# SDL2
+sdl2 = { version = "0.37", features = ["ttf", "image", "gfx"] }
+
+# Text rendering
+cosmic-text = "0.13"
+
+# SVG rendering (optional)
+resvg = { version = "0.42", optional = true }
+image = { version = "0.25", optional = true }
+
+[features]
+default = ["svg"]
+svg = ["resvg", "image", "kryon-render/svg"]

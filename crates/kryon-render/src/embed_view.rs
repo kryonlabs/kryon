@@ -109,10 +109,27 @@ impl ViewProviderRegistry {
     /// Create a new registry with default providers
     pub fn with_defaults() -> Self {
         let mut registry = Self::new();
+        
+        // Core web and native providers
         registry.register(Box::new(WasmViewProvider::new()));
         registry.register(Box::new(WebViewProvider::new()));
         registry.register(Box::new(NativeRendererProvider::new()));
         registry.register(Box::new(IFrameProvider::new()));
+        
+        // Modern web rendering
+        registry.register(Box::new(BlitzViewProvider::new()));
+        
+        // Emulation providers
+        registry.register(Box::new(UxnViewProvider::new()));
+        registry.register(Box::new(GbaViewProvider::new()));
+        registry.register(Box::new(DosBoxViewProvider::new()));
+        registry.register(Box::new(DolphinViewProvider::new()));
+        registry.register(Box::new(Chip8ViewProvider::new()));
+        
+        // Media and document providers
+        registry.register(Box::new(PdfViewProvider::new()));
+        registry.register(Box::new(VideoViewProvider::new()));
+        
         registry
     }
     

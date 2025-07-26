@@ -1,32 +1,57 @@
 #!/usr/bin/env bash
 
-# Test script for running all KRB examples with kryon-renderer-raylib
-# Compiles .kry files to .krb, then runs each .krb file one by one
+# Test script for running all KRY examples with the unified kryon binary
+# Automatically compiles .kry files and runs them with the appropriate renderer
 #
 # Usage:
-#   ./run_examples.sh            - Run all examples from the beginning
-#   ./run_examples.sh 6          - Skip first 6 examples, start from example 7
-#   ./run_examples.sh list       - List all examples with their numbers
-#   ./run_examples.sh list 3     - List all examples (skip parameter ignored with list)
+#   ./run_examples.sh                - Run all examples with raylib renderer
+#   ./run_examples.sh raylib         - Run all examples with raylib renderer
+#   ./run_examples.sh wgpu           - Run all examples with wgpu renderer
+#   ./run_examples.sh ratatui        - Run all examples with ratatui renderer
+#   ./run_examples.sh 6              - Skip first 6 examples, start from example 7
+#   ./run_examples.sh wgpu 6         - Run with wgpu renderer, skip first 6 examples
+#   ./run_examples.sh list           - List all examples with their numbers
 
 set -e  # Exit on any error
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMPILER_PATH="$SCRIPT_DIR/target/release/kryc"
-RENDERER_PATH="$SCRIPT_DIR/target/release/kryon-renderer-raylib"
 
-# Parse command line arguments
+# Default renderer
+RENDERER="raylib"
 SKIP_COUNT=0
 SHOW_LIST=false
 
-# Check arguments
+# Parse command line arguments
 for arg in "$@"; do
     if [ "$arg" = "list" ]; then
         SHOW_LIST=true
+    elif [[ "$arg" =~ ^(raylib|wgpu|sdl2|ratatui|all)$ ]]; then
+        RENDERER="$arg"
     elif [[ "$arg" =~ ^[0-9]+$ ]]; then
         SKIP_COUNT=$arg
     fi
 done
+
+# Set the appropriate binary path and renderer flag
+KRYON_PATH="$SCRIPT_DIR/target/release/kryon"
+case "$RENDERER" in
+    raylib)
+        RENDERER_FLAG="-r raylib"
+        BUILD_FEATURES="--features raylib"
+        ;;
+    wgpu)
+        RENDERER_FLAG="-r wgpu"
+        BUILD_FEATURES=""
+        ;;
+    sdl2)
+        RENDERER_FLAG="-r sdl2"
+        BUILD_FEATURES=""
+        ;;
+    ratatui)
+        RENDERER_FLAG="-r ratatui"
+        BUILD_FEATURES=""
+        ;;
+esac
 
 # Show list if requested
 if $SHOW_LIST; then
@@ -34,18 +59,18 @@ if $SHOW_LIST; then
     echo "================================"
     
     # Find all .kry files and display them in order
-    krb_files=($(find examples -name "*.kry" -type f ! -path "*/widgets/*" ! -path "*/templates/*" | sort))
+    kry_files=($(find examples -name "*.kry" -type f ! -path "*/widgets/*" ! -path "*/templates/*" | sort))
     
-    if [ ${#krb_files[@]} -eq 0 ]; then
+    if [ ${#kry_files[@]} -eq 0 ]; then
         echo "❌ No .kry files found!"
         exit 1
     fi
     
-    echo "Found ${#krb_files[@]} examples:"
+    echo "Found ${#kry_files[@]} examples:"
     echo ""
     
-    for i in "${!krb_files[@]}"; do
-        echo "  [$((i+1))] ${krb_files[i]}"
+    for i in "${!kry_files[@]}"; do
+        echo "  [$((i+1))] ${kry_files[i]}"
     done
     
     echo ""
@@ -61,89 +86,90 @@ if [ $SKIP_COUNT -gt 0 ]; then
     echo ""
 fi
 
-# Always build compiler and renderer to ensure latest code
-echo "🔧 Building Kryon compiler and raylib renderer..."
+# Always build the unified kryon binary to ensure latest code
+echo "🔧 Building Kryon unified binary with $RENDERER renderer..."
 cd "$SCRIPT_DIR"
 
-echo "  📦 Building compiler (kryc)..."
-cargo build --release -p kryc
+echo "  📦 Building kryon unified binary with $RENDERER features..."
+case "$RENDERER" in
+    raylib)
+        cargo build --release --features raylib -p kryon
+        ;;
+    wgpu)
+        cargo build --release --features wgpu -p kryon
+        ;;
+    sdl2)
+        cargo build --release --features sdl2 -p kryon
+        ;;
+    ratatui)
+        cargo build --release --features ratatui -p kryon
+        ;;
+    all)
+        cargo build --release --features raylib,wgpu,sdl2,ratatui,html-server -p kryon
+        RENDERER_FLAG="-r raylib"  # Default to raylib when 'all' is used
+        ;;
+    *)
+        cargo build --release -p kryon
+        ;;
+esac
 
-echo "  🎮 Building raylib renderer..."
-cargo build --release --features raylib --bin kryon-renderer-raylib
-
-# Verify binaries were created
-if [ ! -f "$COMPILER_PATH" ]; then
-    echo "❌ Compiler build failed: $COMPILER_PATH not found"
+# Verify binary was created
+if [ ! -f "$KRYON_PATH" ]; then
+    echo "❌ Kryon build failed: $KRYON_PATH not found"
     exit 1
 fi
 
-if [ ! -f "$RENDERER_PATH" ]; then
-    echo "❌ Renderer build failed: $RENDERER_PATH not found"
-    exit 1
-fi
-
-echo "✅ Compiler: $COMPILER_PATH"
-echo "✅ Renderer: $RENDERER_PATH"
+echo "✅ Kryon renderer: $KRYON_PATH ($RENDERER)"
 echo ""
 
-# Find all .kry files and compile them (excluding widgets and templates folders)
-echo "📦 Compiling .kry files to .krb..."
-find examples -name "*.kry" -type f ! -path "*/widgets/*" ! -path "*/templates/*" | while read -r kry_file; do
-    krb_file="${kry_file%.kry}.krb"
-    echo "  Compiling: $kry_file -> $krb_file"
-    "$COMPILER_PATH" "$kry_file" "$krb_file"
-done
+# Find all .kry files (no need to pre-compile, kryon does it automatically)
+kry_files=($(find examples -name "*.kry" -type f ! -path "*/widgets/*" ! -path "*/templates/*" | sort))
 
-echo ""
-
-# Find all .krb files and prepare list (excluding widgets and templates folders)
-krb_files=($(find examples -name "*.krb" -type f ! -path "*/widgets/*" ! -path "*/templates/*" | sort))
-
-if [ ${#krb_files[@]} -eq 0 ]; then
-    echo "❌ No .krb files found!"
+if [ ${#kry_files[@]} -eq 0 ]; then
+    echo "❌ No .kry files found!"
     exit 1
 fi
 
 # Apply skip count
 if [ $SKIP_COUNT -gt 0 ]; then
-    if [ $SKIP_COUNT -ge ${#krb_files[@]} ]; then
-        echo "❌ Skip count ($SKIP_COUNT) is greater than or equal to total examples (${#krb_files[@]})"
+    if [ $SKIP_COUNT -ge ${#kry_files[@]} ]; then
+        echo "❌ Skip count ($SKIP_COUNT) is greater than or equal to total examples (${#kry_files[@]})"
         exit 1
     fi
     
     # Create new array with skipped elements
-    skipped_files=("${krb_files[@]:$SKIP_COUNT}")
-    krb_files=("${skipped_files[@]}")
+    skipped_files=("${kry_files[@]:$SKIP_COUNT}")
+    kry_files=("${skipped_files[@]}")
 fi
 
-echo "🎮 Found ${#krb_files[@]} .krb files to test:"
-for i in "${!krb_files[@]}"; do
+echo "🎮 Found ${#kry_files[@]} .kry files to test:"
+for i in "${!kry_files[@]}"; do
     actual_index=$((i + SKIP_COUNT + 1))
-    echo "  [$actual_index] ${krb_files[i]}"
+    echo "  [$actual_index] ${kry_files[i]}"
 done
 echo ""
 
-# Run each .krb file
-for i in "${!krb_files[@]}"; do
-    krb_file="${krb_files[i]}"
+# Run each .kry file with unified kryon binary
+for i in "${!kry_files[@]}"; do
+    kry_file="${kry_files[i]}"
     actual_index=$((i + SKIP_COUNT + 1))
-    total_examples=${#krb_files[@]}
+    total_examples=${#kry_files[@]}
     
     echo "════════════════════════════════════════════════════════════════"
-    echo "🎯 Running [$actual_index/$((total_examples + SKIP_COUNT))]: $krb_file"
+    echo "🎯 Running [$actual_index/$((total_examples + SKIP_COUNT))]: $kry_file"
     echo "════════════════════════════════════════════════════════════════"
     echo ""
-    echo "   📝 Description: $(basename "$krb_file" .krb | sed 's/_/ /g' | sed 's/\b\w/\U&/g')"
+    echo "   📝 Description: $(basename "$kry_file" .kry | sed 's/_/ /g' | sed 's/\b\w/\U&/g')"
     echo "   🎮 Instructions: Close the window or press Ctrl+C when done viewing"
     echo "   🚀 Auto-launching in 1 second..."
     
     sleep 1
     
-    # Run the renderer with the .krb file
-    if "$RENDERER_PATH" "$krb_file"; then
-        echo "   ✅ Completed: $krb_file"
+    # Run with unified kryon binary (auto-compiles and runs)
+    if "$KRYON_PATH" $RENDERER_FLAG "$kry_file"; then
+        echo "   ✅ Completed: $kry_file"
     else
-        echo "   ❌ Failed to run: $krb_file (exit code: $?)"
+        echo "   ❌ Failed to run: $kry_file (exit code: $?)"
         echo "   Continue to next example? [y/N]"
         read -r response
         if [[ ! "$response" =~ ^[Yy]$ ]]; then
@@ -159,6 +185,6 @@ done
 echo "🎉 All examples completed!"
 echo "================================"
 echo "Summary:"
-echo "  Total files tested: ${#krb_files[@]}"
-echo "  Compiler: $COMPILER_PATH"  
-echo "  Renderer: $RENDERER_PATH"
+echo "  Total files tested: ${#kry_files[@]}"
+echo "  Renderer used: $RENDERER"
+echo "  Binary: $KRYON_PATH"

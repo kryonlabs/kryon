@@ -1,7 +1,24 @@
 {
   "permissions": {
     "allow": [
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(find:*)",
+      "Bash(diff:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(echo $CARGO_BUILD_JOBS)",
+      "Bash(env)",
+      "Bash(rm:*)",
+      "Bash(cargo install:*)",
+      "Bash(mkdir:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo check:*)",
+      "Bash(nix-shell:*)",
+      "Bash(exit)",
+      "Bash(unset RUSTC_WRAPPER)",
+      "Bash(unset RUSTC_WRAPPER SCCACHE_DIR)",
+      "Bash(export:*)",
+      "Bash(timeout:*)"
     ],
     "deny": []
   }

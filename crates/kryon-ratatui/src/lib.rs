@@ -188,7 +188,7 @@ fn render_commands_to_frame(commands: &[RenderCommand], frame: &mut Frame, app_c
                 }
             }
             
-            RenderCommand::DrawPath { path_data: _, fill_color, stroke_color: _, stroke_width: _, transform, .. } => {
+            RenderCommand::DrawPath { path_data: _, fill_color, stroke_color: _, stroke_width: _, transform: _, .. } => {
                 // Path rendering is too complex for terminal - show placeholder
                 if let Some(fill) = fill_color {
                     if let Some(area) = translate_rect(Vec2::new(50.0, 50.0), Vec2::new(100.0, 100.0), app_canvas_size, terminal_area) {

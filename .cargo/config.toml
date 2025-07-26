@@ -1,0 +1,27 @@
+[build]
+# Use fastest linker (mold > lld > default)
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+# Enable sccache for distributed compilation caching (disabled due to temp dir issues)
+# rustc-wrapper = "sccache"
+
+# Enable maximum parallel compilation
+# jobs setting removed - cargo uses all available cores by default
+
+[target.x86_64-unknown-linux-gnu]
+# Use clang + mold for fastest builds
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[profile.dev]
+# Optimized debug builds for faster iteration
+opt-level = 1          # Some optimization for speed
+debug = 0              # No debug info for fastest compilation
+incremental = true     # Incremental compilation
+split-debuginfo = "unpacked"  # Faster debug info
+
+[profile.release]
+# Optimized release builds
+lto = "thin"           # Thin LTO for faster builds
+codegen-units = 16     # More codegen units for parallelism
+panic = "abort"        # Smaller binaries

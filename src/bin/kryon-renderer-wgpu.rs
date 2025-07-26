@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -116,7 +116,7 @@ fn main() -> Result<()> {
     }
     
     // Now create surface
-    let surface = instance.create_surface(window.clone())?;
+    let _surface = instance.create_surface(window.clone())?;
     
     // Initialize renderer
 
