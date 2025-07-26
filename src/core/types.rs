@@ -14,13 +14,8 @@ pub enum ElementType {
     EmbedView = 0x07, // For platform-breaking content (webview, wasm, native renderer emulation, etc.)
     Button = 0x10,
     Input = 0x11,
-    List = 0x20,
-    Grid = 0x21,
-    Scrollable = 0x22,
-    Tabs = 0x23,
     InternalComponentUsage = 0xFE,
     Unknown = 0xFF,
-    CustomBase = 0x31,
 }
 
 impl ElementType {
@@ -36,11 +31,6 @@ impl ElementType {
             "EmbedView" => Self::EmbedView,
             "Button" => Self::Button,
             "Input" => Self::Input,
-            "List" => Self::List,
-            "Grid" => Self::Grid,
-            "Scrollable" => Self::Scrollable,
-            "Tabs" => Self::Tabs,
-            "Video" => Self::Video,
             _ => Self::Unknown,
         }
     }

@@ -818,15 +818,13 @@ impl RaylibRenderer {
                     } else {
                         // Create new texture from SVG data using Raylib 5.x API
                         let pixels = svg_data.pixels.as_slice();
-                        let image = unsafe {
-                            raylib::ffi::Image {
+                        let image = raylib::ffi::Image {
                                 data: pixels.as_ptr() as *mut std::ffi::c_void,
                                 width: svg_data.width as i32,
                                 height: svg_data.height as i32,
                                 mipmaps: 1,
                                 format: raylib::ffi::PixelFormat::PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 as i32,
-                            }
-                        };
+                            };
                         
                         if let Ok(texture) = d.load_texture_from_image(thread, &unsafe { Image::from_raw(image) }) {
                             // Draw the texture
@@ -1167,7 +1165,7 @@ impl RaylibRenderer {
                 let thumb_ratio = viewport_size / content_size;
                 let scroll_ratio = scroll_position / (content_size - viewport_size).max(1.0);
                 
-                let (thumb_rect, thumb_size) = match orientation {
+                let (thumb_rect, _thumb_size) = match orientation {
                     ScrollbarOrientation::Vertical => {
                         let thumb_height = (size.y * thumb_ratio).max(20.0); // Minimum thumb height
                         let thumb_y = position.y + (size.y - thumb_height) * scroll_ratio;
@@ -1194,8 +1192,8 @@ impl RaylibRenderer {
             
             // Basic 2D drawing commands (standalone, not canvas-specific)
             RenderCommand::DrawLine { start, end, color, width, transform, z_index: _ } => {
-                let start_vec = Vector2::new(start.x, start.y);
-                let end_vec = Vector2::new(end.x, end.y);
+                let _start_vec = Vector2::new(start.x, start.y);
+                let _end_vec = Vector2::new(end.x, end.y);
                 let raylib_color = vec4_to_raylib_color(*color);
                 
                 // Apply transform if present
@@ -1233,7 +1231,7 @@ impl RaylibRenderer {
             RenderCommand::DrawCircle { center, radius, fill_color, stroke_color, stroke_width, transform, z_index: _ } => {
                 // Apply transform if present
                 let (transformed_center, transformed_radius) = if let Some(transform_data) = transform {
-                    let (scale, rotation, translation) = extract_transform_values(transform_data);
+                    let (scale, _rotation, translation) = extract_transform_values(transform_data);
                     
                     // For circles, we'll use the average scale to transform radius
                     let avg_scale = (scale.x + scale.y) / 2.0;
@@ -1273,7 +1271,7 @@ impl RaylibRenderer {
             RenderCommand::DrawEllipse { center, rx, ry, fill_color, stroke_color, stroke_width, transform, z_index: _ } => {
                 // Apply transform if present
                 let (transformed_center, transformed_rx, transformed_ry) = if let Some(transform_data) = transform {
-                    let (scale, rotation, translation) = extract_transform_values(transform_data);
+                    let (scale, _rotation, translation) = extract_transform_values(transform_data);
                     
                     let transformed_center = Vec2::new(
                         center.x * scale.x + translation.x,
@@ -1386,7 +1384,7 @@ impl RaylibRenderer {
                 }
             }
             
-            RenderCommand::DrawPath { path_data, fill_color, stroke_color, stroke_width, transform, z_index: _ } => {
+            RenderCommand::DrawPath { path_data, fill_color, stroke_color, stroke_width: _, transform: _, z_index: _ } => {
                 // SVG path parsing is complex - for now, just draw a placeholder
                 eprintln!("[RAYLIB] DrawPath not fully implemented, path_data: {}", path_data);
                 
@@ -1815,6 +1813,138 @@ impl RaylibRenderer {
                     }
                 }
             }
+            RenderCommand::DrawSelectButton {
+                position,
+                size,
+                text,
+                is_open,
+                font_size,
+                text_color,
+                background_color,
+                border_color,
+                border_width,
+                transform: _,
+            } => {
+                // Draw button background
+                let button_rect = Rectangle::new(position.x, position.y, size.x, size.y);
+                let bg_raylib_color = vec4_to_raylib_color(*background_color);
+                d.draw_rectangle_rec(button_rect, bg_raylib_color);
+                
+                // Draw button border
+                if *border_width > 0.0 {
+                    let border_raylib_color = vec4_to_raylib_color(*border_color);
+                    d.draw_rectangle_lines_ex(button_rect, *border_width, border_raylib_color);
+                }
+                
+                // Draw text (centered)
+                let text_raylib_color = vec4_to_raylib_color(*text_color);
+                let text_width = text.len() as f32 * (*font_size * 0.6); // Approximate text width
+                let text_x = position.x + (size.x - text_width) / 2.0;
+                let text_y = position.y + (size.y - *font_size) / 2.0;
+                d.draw_text(text, text_x as i32, text_y as i32, *font_size as i32, text_raylib_color);
+                
+                // Draw dropdown arrow
+                let arrow_x = position.x + size.x - 20.0;
+                let arrow_y = position.y + size.y / 2.0;
+                let arrow_size = 6.0;
+                
+                if *is_open {
+                    // Draw up arrow
+                    d.draw_triangle(
+                        Vector2::new(arrow_x - arrow_size, arrow_y + 2.0),
+                        Vector2::new(arrow_x + arrow_size, arrow_y + 2.0),
+                        Vector2::new(arrow_x, arrow_y - 4.0),
+                        text_raylib_color,
+                    );
+                } else {
+                    // Draw down arrow
+                    d.draw_triangle(
+                        Vector2::new(arrow_x - arrow_size, arrow_y - 2.0),
+                        Vector2::new(arrow_x + arrow_size, arrow_y - 2.0),
+                        Vector2::new(arrow_x, arrow_y + 4.0),
+                        text_raylib_color,
+                    );
+                }
+            },
+            RenderCommand::DrawSelectMenu {
+                position,
+                size,
+                options,
+                highlighted_index,
+                font_size,
+                text_color,
+                background_color,
+                border_color,
+                border_width,
+                highlight_color,
+                selected_color,
+                transform: _,
+            } => {
+                // Draw menu background
+                let menu_rect = Rectangle::new(position.x, position.y, size.x, size.y);
+                let bg_raylib_color = vec4_to_raylib_color(*background_color);
+                d.draw_rectangle_rec(menu_rect, bg_raylib_color);
+                
+                // Draw menu border
+                if *border_width > 0.0 {
+                    let border_raylib_color = vec4_to_raylib_color(*border_color);
+                    d.draw_rectangle_lines_ex(menu_rect, *border_width, border_raylib_color);
+                }
+                
+                // Calculate option height
+                let option_height = if options.is_empty() { 0.0 } else { size.y / options.len() as f32 };
+                let text_raylib_color = vec4_to_raylib_color(*text_color);
+                let highlight_raylib_color = vec4_to_raylib_color(*highlight_color);
+                let selected_raylib_color = vec4_to_raylib_color(*selected_color);
+                let border_raylib_color = vec4_to_raylib_color(*border_color);
+                
+                // Draw each option
+                for (index, option) in options.iter().enumerate() {
+                    let option_y = position.y + index as f32 * option_height;
+                    let option_rect = Rectangle::new(position.x, option_y, size.x, option_height);
+                    
+                    // Draw background for highlighted or selected options
+                    if Some(index) == *highlighted_index {
+                        d.draw_rectangle_rec(option_rect, highlight_raylib_color);
+                    } else if option.selected {
+                        d.draw_rectangle_rec(option_rect, selected_raylib_color);
+                    }
+                    
+                    // Draw option text
+                    let text_y = option_y + (option_height - *font_size) / 2.0;
+                    let text_x = position.x + 8.0; // Small padding from left edge
+                    
+                    let option_text_color = if option.disabled {
+                        Color::new(
+                            (text_raylib_color.r as f32 * 0.5) as u8,
+                            (text_raylib_color.g as f32 * 0.5) as u8,
+                            (text_raylib_color.b as f32 * 0.5) as u8,
+                            text_raylib_color.a,
+                        )
+                    } else {
+                        text_raylib_color
+                    };
+                    
+                    d.draw_text(&option.text, text_x as i32, text_y as i32, *font_size as i32, option_text_color);
+                    
+                    // Draw separator line between options (except for last option)
+                    if index < options.len() - 1 {
+                        let separator_y = option_y + option_height;
+                        d.draw_line(
+                            position.x as i32,
+                            separator_y as i32,
+                            (position.x + size.x) as i32,
+                            separator_y as i32,
+                            Color::new(
+                                border_raylib_color.r,
+                                border_raylib_color.g,
+                                border_raylib_color.b,
+                                (border_raylib_color.a as f32 * 0.3) as u8,
+                            ),
+                        );
+                    }
+                }
+            },
             RenderCommand::SetCanvas3DLighting { ambient_color: _, directional_light: _, point_lights: _ } => {
                 // 3D lighting setup would be handled by the 3D renderer
                 // For Raylib, this would configure the lighting system
@@ -2064,6 +2194,7 @@ fn resolve_image_path_static(path: &str) -> Option<String> {
 struct BoxShadowValues {
     offset_x: f32,
     offset_y: f32,
+    #[allow(dead_code)]
     blur_radius: f32,
     spread_radius: f32,
     color: Vec4,

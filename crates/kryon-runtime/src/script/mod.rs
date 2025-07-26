@@ -708,6 +708,7 @@ pub enum ScriptLanguage {
 }
 
 impl ScriptLanguage {
+    #[allow(dead_code)]
     fn as_str(&self) -> &'static str {
         match self {
             ScriptLanguage::Lua => "lua",

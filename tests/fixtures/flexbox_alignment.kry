@@ -1,0 +1,100 @@
+// Test fixture for flexbox alignment
+App {
+    window_width: 400
+    window_height: 300
+    background_color: "#000000ff"
+    
+    // Test 1: Column with align_items: start
+    Container {
+        id: "column_start"
+        display: flex
+        flex_direction: column
+        align_items: start
+        background_color: "#111111ff"
+        width: 100
+        height: 100
+        
+        Container {
+            id: "child1"
+            width: 50
+            height: 20
+            background_color: "#ff0000ff"
+        }
+        
+        Container {
+            id: "child2"
+            width: 70
+            height: 20
+            background_color: "#00ff00ff"
+        }
+    }
+    
+    // Test 2: Column with align_items: center
+    Container {
+        id: "column_center"
+        display: flex
+        flex_direction: column
+        align_items: center
+        background_color: "#222222ff"
+        width: 100
+        height: 100
+        
+        Container {
+            width: 50
+            height: 20
+            background_color: "#ff0000ff"
+        }
+        
+        Container {
+            width: 70
+            height: 20
+            background_color: "#00ff00ff"
+        }
+    }
+    
+    // Test 3: Column with align_items: end
+    Container {
+        id: "column_end"
+        display: flex
+        flex_direction: column
+        align_items: end
+        background_color: "#333333ff"
+        width: 100
+        height: 100
+        
+        Container {
+            width: 50
+            height: 20
+            background_color: "#ff0000ff"
+        }
+        
+        Container {
+            width: 70
+            height: 20
+            background_color: "#00ff00ff"
+        }
+    }
+    
+    // Test 4: Row with justify_content: end
+    Container {
+        id: "row_end"
+        display: flex
+        flex_direction: row
+        justify_content: end
+        background_color: "#444444ff"
+        width: 200
+        height: 50
+        
+        Container {
+            width: 30
+            height: 30
+            background_color: "#0000ffff"
+        }
+        
+        Container {
+            width: 40
+            height: 30
+            background_color: "#ffff00ff"
+        }
+    }
+}

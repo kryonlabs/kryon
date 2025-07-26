@@ -1,0 +1,63 @@
+[package]
+name = "kryon-tests"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Core Kryon dependencies
+kryon-compiler = { path = "../crates/kryon-compiler" }
+kryon-core = { path = "../crates/kryon-core" }
+kryon-runtime = { path = "../crates/kryon-runtime" }
+kryon-layout = { path = "../crates/kryon-layout" }
+kryon-render = { path = "../crates/kryon-render" }
+kryon-raylib = { path = "../crates/kryon-raylib" }
+kryon-ratatui = { path = "../crates/kryon-ratatui" }
+
+# Testing dependencies
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+tempfile = "3.0"
+walkdir = "2.0"
+regex = "1.0"
+colored = "2.0"
+indexmap = "2.0"
+
+# Snapshot testing
+insta = { version = "1.34", features = ["yaml", "json"] }
+
+# Performance testing
+criterion = { version = "0.5", features = ["html_reports"] }
+
+# Property-based testing
+proptest = "1.0"
+
+# Async testing
+futures = "0.3"
+
+# File watching for continuous testing
+notify = "6.0"
+
+# Test utilities
+assert_matches = "1.5"
+pretty_assertions = "1.4"
+log = "0.4"
+
+[dev-dependencies]
+env_logger = "0.10"
+
+[[bin]]
+name = "test-runner"
+path = "src/bin/test_runner.rs"
+
+[[bin]]
+name = "benchmark-runner"
+path = "src/bin/benchmark_runner.rs"
+
+[lib]
+name = "kryon_tests"
+path = "src/lib.rs"

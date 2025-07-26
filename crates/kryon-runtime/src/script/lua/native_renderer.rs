@@ -19,6 +19,7 @@ pub struct NativeRendererContext {
     /// Element bounds for rendering constraints
     element_bounds: (Vec2, Vec2), // (position, size)
     /// Element ID for reference
+    #[allow(dead_code)]
     element_id: ElementId,
 }
 
@@ -140,7 +141,7 @@ impl NativeRendererContext {
             Ok(())
         })?)?;
         
-        raylib_ctx.set("DrawText", self.lua.create_function(|_, (text, x, y, font_size, _color): (String, i32, i32, i32, LuaTable)| {
+        raylib_ctx.set("DrawText", self.lua.create_function(|_, (text, x, y, _font_size, _color): (String, i32, i32, i32, LuaTable)| {
             // Store the draw text command for later execution
             Ok(())
         })?)?;
@@ -173,7 +174,7 @@ impl NativeRendererContext {
             Ok(now.as_secs_f64())
         })?)?;
         
-        raylib_ctx.set("IsKeyPressed", self.lua.create_function(|_, key: i32| {
+        raylib_ctx.set("IsKeyPressed", self.lua.create_function(|_, _key: i32| {
             // For now, always return false - actual implementation will be in the renderer
             Ok(false)
         })?)?;

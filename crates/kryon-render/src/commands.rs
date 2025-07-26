@@ -153,6 +153,32 @@ pub enum RenderCommand {
         border_width: f32,
         z_index: i32,
     },
+    DrawSelectButton {
+        position: Vec2,
+        size: Vec2,
+        text: String,
+        is_open: bool,
+        font_size: f32,
+        text_color: Vec4,
+        background_color: Vec4,
+        border_color: Vec4,
+        border_width: f32,
+        transform: Option<TransformData>,
+    },
+    DrawSelectMenu {
+        position: Vec2,
+        size: Vec2,
+        options: Vec<kryon_core::SelectOption>,
+        highlighted_index: Option<usize>,
+        font_size: f32,
+        text_color: Vec4,
+        background_color: Vec4,
+        border_color: Vec4,
+        border_width: f32,
+        highlight_color: Vec4,
+        selected_color: Vec4,
+        transform: Option<TransformData>,
+    },
     
     // Basic 2D shapes (standalone, not canvas-specific)
     DrawLine {

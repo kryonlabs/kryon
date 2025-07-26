@@ -1,0 +1,161 @@
+// Test fixture for complex nested layouts
+App {
+    window_width: 600
+    window_height: 400
+    background_color: "#f5f5f5ff"
+    
+    Container {
+        id: "root"
+        display: flex
+        flex_direction: row
+        width: 600
+        height: 400
+        
+        // Sidebar
+        Container {
+            id: "sidebar"
+            display: flex
+            flex_direction: column
+            width: 200
+            background_color: "#2d3748ff"
+            padding: 10
+            gap: 5
+            
+            Text {
+                text: "Sidebar"
+                text_color: "#ffffffff"
+                font_weight: bold
+            }
+            
+            Container {
+                id: "nav_item_1"
+                background_color: "#4a5568ff"
+                padding: 8
+                border_radius: 4
+                
+                Text {
+                    text: "Item 1"
+                    text_color: "#e2e8f0ff"
+                }
+            }
+            
+            Container {
+                id: "nav_item_2"
+                background_color: "#4a5568ff"
+                padding: 8
+                border_radius: 4
+                
+                Text {
+                    text: "Item 2"
+                    text_color: "#e2e8f0ff"
+                }
+            }
+        }
+        
+        // Main content
+        Container {
+            id: "main"
+            display: flex
+            flex_direction: column
+            flex: 1
+            padding: 20
+            gap: 15
+            
+            // Header
+            Container {
+                id: "header"
+                display: flex
+                flex_direction: row
+                justify_content: space_between
+                align_items: center
+                padding: 15
+                background_color: "#ffffffff"
+                border_radius: 8
+                
+                Text {
+                    text: "Dashboard"
+                    font_size: 24
+                    font_weight: bold
+                }
+                
+                Container {
+                    display: flex
+                    flex_direction: row
+                    gap: 10
+                    
+                    Button {
+                        id: "btn_refresh"
+                        padding: 8
+                        background_color: "#48bb78ff"
+                        border_radius: 4
+                        
+                        Text {
+                            text: "Refresh"
+                            text_color: "#ffffffff"
+                        }
+                    }
+                    
+                    Button {
+                        id: "btn_settings"
+                        padding: 8
+                        background_color: "#4299e1ff"
+                        border_radius: 4
+                        
+                        Text {
+                            text: "Settings"
+                            text_color: "#ffffffff"
+                        }
+                    }
+                }
+            }
+            
+            // Content grid
+            Container {
+                id: "content"
+                display: flex
+                flex_direction: row
+                gap: 15
+                flex: 1
+                
+                Container {
+                    id: "card1"
+                    flex: 1
+                    background_color: "#ffffffff"
+                    border_radius: 8
+                    padding: 15
+                    
+                    Text {
+                        text: "Card 1"
+                        font_weight: bold
+                    }
+                }
+                
+                Container {
+                    id: "card2"
+                    flex: 1
+                    background_color: "#ffffffff"
+                    border_radius: 8
+                    padding: 15
+                    
+                    Text {
+                        text: "Card 2"
+                        font_weight: bold
+                    }
+                }
+                
+                Container {
+                    id: "card3"
+                    flex: 1
+                    background_color: "#ffffffff"
+                    border_radius: 8
+                    padding: 15
+                    
+                    Text {
+                        text: "Card 3"
+                        font_weight: bold
+                    }
+                }
+            }
+        }
+    }
+}

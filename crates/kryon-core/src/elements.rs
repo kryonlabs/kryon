@@ -272,6 +272,7 @@ pub enum ElementType {
     Svg = 0x08, // SVG vector graphics element
     Button = 0x10,
     Input = 0x11,
+    Select = 0x12,       // Dropdown/combobox
     Custom(u8),
 }
 
@@ -289,6 +290,7 @@ impl From<u8> for ElementType {
             0x08 => ElementType::Svg,
             0x10 => ElementType::Button,
             0x11 => ElementType::Input,
+            0x12 => ElementType::Select,
             other => ElementType::Custom(other),
         }
     }
@@ -360,6 +362,9 @@ pub struct Element {
     
     // Input-specific state (only used for Input elements)
     pub input_state: Option<InputState>,
+    
+    // Select-specific state (only used for Select elements)
+    pub select_state: Option<SelectState>,
     
     // Custom properties (for components)
     pub custom_properties: HashMap<String, PropertyValue>,
@@ -458,6 +463,7 @@ impl Default for Element {
             disabled: false,
             current_state: InteractionState::Normal,
             input_state: None,
+            select_state: None,
             custom_properties: HashMap::new(),
             state_properties: HashMap::new(),
             event_handlers: HashMap::new(),
@@ -513,6 +519,23 @@ impl Element {
     /// Get reference to input state (only for Input elements)
     pub fn get_input_state(&self) -> Option<&InputState> {
         self.input_state.as_ref()
+    }
+    
+    /// Initialize select state for this element (should only be called for Select elements)
+    pub fn initialize_select_state(&mut self) {
+        if self.element_type == ElementType::Select {
+            self.select_state = Some(SelectState::default());
+        }
+    }
+    
+    /// Get mutable reference to select state (only for Select elements)
+    pub fn get_select_state_mut(&mut self) -> Option<&mut SelectState> {
+        self.select_state.as_mut()
+    }
+    
+    /// Get reference to select state (only for Select elements)
+    pub fn get_select_state(&self) -> Option<&SelectState> {
+        self.select_state.as_ref()
     }
     
     /// Check if this element is an input that can receive focus
@@ -595,5 +618,146 @@ impl Element {
             }
         }
         false
+    }
+}
+
+/// Select/Dropdown element state
+#[derive(Debug, Clone, PartialEq)]
+pub struct SelectState {
+    /// Current selected value(s)
+    pub selected_values: Vec<String>,
+    /// Available options
+    pub options: Vec<SelectOption>,
+    /// Whether dropdown is open
+    pub is_open: bool,
+    /// Multiple selection allowed
+    pub multiple: bool,
+    /// Maximum visible options (for scrolling)
+    pub size: usize,
+    /// Currently highlighted option index
+    pub highlighted_index: Option<usize>,
+}
+
+/// Option within a select element
+#[derive(Debug, Clone, PartialEq)]
+pub struct SelectOption {
+    pub value: String,
+    pub text: String,
+    pub selected: bool,
+    pub disabled: bool,
+    pub group: Option<String>,
+}
+
+impl Default for SelectState {
+    fn default() -> Self {
+        Self {
+            selected_values: Vec::new(),
+            options: Vec::new(),
+            is_open: false,
+            multiple: false,
+            size: 1,
+            highlighted_index: None,
+        }
+    }
+}
+
+impl SelectState {
+    /// Create new select state with options
+    pub fn new(options: Vec<SelectOption>) -> Self {
+        Self {
+            options,
+            ..Default::default()
+        }
+    }
+    
+    /// Toggle dropdown open/closed state
+    pub fn toggle_dropdown(&mut self) {
+        self.is_open = !self.is_open;
+        if self.is_open && self.highlighted_index.is_none() {
+            // Highlight first non-disabled option when opening
+            self.highlighted_index = self.options.iter().position(|opt| !opt.disabled);
+        }
+    }
+    
+    /// Close dropdown
+    pub fn close_dropdown(&mut self) {
+        self.is_open = false;
+        self.highlighted_index = None;
+    }
+    
+    /// Select an option by index
+    pub fn select_option(&mut self, index: usize) -> bool {
+        if index >= self.options.len() || self.options[index].disabled {
+            return false;
+        }
+        
+        if self.multiple {
+            let option = &mut self.options[index];
+            option.selected = !option.selected;
+            if option.selected {
+                if !self.selected_values.contains(&option.value) {
+                    self.selected_values.push(option.value.clone());
+                }
+            } else {
+                self.selected_values.retain(|v| v != &option.value);
+            }
+        } else {
+            // Single select - first deselect all options, then select the target
+            for opt in &mut self.options {
+                opt.selected = false;
+            }
+            self.options[index].selected = true;
+            self.selected_values.clear();
+            self.selected_values.push(self.options[index].value.clone());
+            self.close_dropdown();
+        }
+        true
+    }
+    
+    /// Move highlight up/down
+    pub fn move_highlight(&mut self, direction: i32) {
+        if self.options.is_empty() {
+            return;
+        }
+        
+        let current = self.highlighted_index.unwrap_or(0);
+        let mut new_index = if direction > 0 {
+            (current + 1) % self.options.len()
+        } else {
+            if current == 0 { self.options.len() - 1 } else { current - 1 }
+        };
+        
+        // Skip disabled options
+        let start = new_index;
+        loop {
+            if !self.options[new_index].disabled {
+                break;
+            }
+            new_index = if direction > 0 {
+                (new_index + 1) % self.options.len()
+            } else {
+                if new_index == 0 { self.options.len() - 1 } else { new_index - 1 }
+            };
+            
+            if new_index == start {
+                break; // All options are disabled
+            }
+        }
+        
+        self.highlighted_index = Some(new_index);
+    }
+    
+    /// Get currently selected option text for display
+    pub fn get_display_text(&self) -> String {
+        if self.selected_values.is_empty() {
+            "Select an option".to_string()
+        } else if self.multiple {
+            format!("{} selected", self.selected_values.len())
+        } else {
+            self.options.iter()
+                .find(|opt| opt.selected)
+                .map(|opt| opt.text.clone())
+                .unwrap_or_else(|| self.selected_values[0].clone())
+        }
     }
 }

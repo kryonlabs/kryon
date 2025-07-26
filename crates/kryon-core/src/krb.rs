@@ -1,5 +1,5 @@
 // crates/kryon-core/src/krb.rs
-use crate::{Element, ElementId, ElementType, PropertyValue, Result, KryonError, TextAlignment, Style, CursorType, InteractionState, EventType, TransformData, TransformType, TransformProperty, TransformPropertyType, CSSUnitValue, CSSUnit, LayoutSize, LayoutPosition, LayoutDimension, OverflowType}; 
+use crate::{Element, ElementId, ElementType, PropertyValue, Result, KryonError, TextAlignment, Style, CursorType, InteractionState, EventType, TransformData, TransformType, TransformProperty, TransformPropertyType, CSSUnitValue, CSSUnit, LayoutSize, LayoutPosition, LayoutDimension, OverflowType, SelectOption}; 
 use std::collections::HashMap;
 use glam::Vec4;
 
@@ -1201,14 +1201,14 @@ impl KRBParser {
             0x8B => { // Overflow
                 if size == 2 {
                     let overflow_value = self.read_u16();
-                    let overflow_x = match (overflow_value & 0xF) {
+                    let overflow_x = match overflow_value & 0xF {
                         0 => OverflowType::Visible,
                         1 => OverflowType::Hidden,
                         2 => OverflowType::Scroll,
                         3 => OverflowType::Auto,
                         _ => OverflowType::Visible,
                     };
-                    let overflow_y = match ((overflow_value >> 4) & 0xF) {
+                    let overflow_y = match (overflow_value >> 4) & 0xF {
                         0 => OverflowType::Visible,
                         1 => OverflowType::Hidden,
                         2 => OverflowType::Scroll,
@@ -1374,7 +1374,7 @@ impl KRBParser {
                     for _ in 0..size { self.read_u8(); }
                 }
             }
-            0x46 => { // AlignItems
+            0x46 => { // AlignItems (string index format)
                 if size == 1 {
                     let string_index = self.read_u8() as usize;
                     if string_index < strings.len() {
@@ -1573,6 +1573,58 @@ impl KRBParser {
                     eprintln!("[PROP] Gap: {}", gap);
                 } else {
                     eprintln!("[PROP] Gap: size mismatch, expected 4, got {}, skipping", size);
+                    for _ in 0..size { self.read_u8(); }
+                }
+            }
+            0xD7 => { // Placeholder
+                if size == 1 {
+                    let string_index = self.read_u8() as usize;
+                    if string_index < strings.len() {
+                        let placeholder = strings[string_index].clone();
+                        element.custom_properties.insert("placeholder".to_string(), PropertyValue::String(placeholder.clone()));
+                        eprintln!("[PROP] Placeholder: '{}'", placeholder);
+                    } else {
+                        eprintln!("[PROP] Placeholder: invalid string index {}", string_index);
+                    }
+                } else {
+                    eprintln!("[PROP] Placeholder: size mismatch, expected 1, got {}, skipping", size);
+                    for _ in 0..size { self.read_u8(); }
+                }
+            }
+            0xE3 => { // SelectOptions
+                if size == 1 {
+                    let string_index = self.read_u8() as usize;
+                    if string_index < strings.len() {
+                        let options_str = strings[string_index].clone();
+                        
+                        // Initialize select state if not already present
+                        element.initialize_select_state();
+                        
+                        // Parse comma-separated options and populate SelectState
+                        if let Some(ref mut select_state) = element.select_state {
+                            select_state.options.clear();
+                            for option_text in options_str.split(',') {
+                                let trimmed = option_text.trim();
+                                if !trimmed.is_empty() {
+                                    select_state.options.push(SelectOption {
+                                        value: trimmed.to_string(),
+                                        text: trimmed.to_string(),
+                                        selected: false,
+                                        disabled: false,
+                                        group: None,
+                                    });
+                                }
+                            }
+                        }
+                        
+                        element.custom_properties.insert("options".to_string(), PropertyValue::String(options_str.clone()));
+                        eprintln!("[PROP] SelectOptions: '{}' ({} options parsed)", options_str, 
+                                 element.select_state.as_ref().map_or(0, |s| s.options.len()));
+                    } else {
+                        eprintln!("[PROP] SelectOptions: invalid string index {}", string_index);
+                    }
+                } else {
+                    eprintln!("[PROP] SelectOptions: size mismatch, expected 1, got {}, skipping", size);
                     for _ in 0..size { self.read_u8(); }
                 }
             }
@@ -2173,6 +2225,7 @@ impl KRBParser {
             disabled: false,
             current_state: crate::elements::InteractionState::Normal,
             input_state: None,
+            select_state: None,
             custom_properties: HashMap::new(),
             state_properties: HashMap::new(),
             event_handlers: HashMap::new(),
@@ -2214,7 +2267,7 @@ impl KRBParser {
     }
     
     fn apply_style_layout_flags(&self, elements: &mut HashMap<ElementId, Element>, styles: &HashMap<u8, Style>) -> Result<()> {
-        for (element_id, element) in elements.iter_mut() {
+        for (_element_id, element) in elements.iter_mut() {
             if element.style_id > 0 {
                 if let Some(style_block) = styles.get(&element.style_id) {
                     // Apply layout flags - Check property ID 0x06 and 0x1A for layout flags

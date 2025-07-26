@@ -5,7 +5,7 @@
 
 use kryon_core::{
     KRBFile, Element, ElementId, InteractionState, EventType, load_krb_file,
-    StyleComputer, OptimizedPropertyCache, LayoutDimension,
+    StyleComputer, OptimizedPropertyCache, LayoutDimension, PropertyValue,
 };
 use kryon_layout::{LayoutEngine, OptimizedTaffyLayoutEngine, LayoutResult, LayoutConfig, InvalidationRegion};
 use kryon_render::{ElementRenderer, CommandRenderer, KeyCode};
@@ -17,6 +17,169 @@ use std::time::{Duration, Instant};
 use crate::event_system::EventSystem;
 use crate::script::ScriptSystem;
 use crate::template_engine::TemplateEngine;
+
+/// Theme definition for runtime switching
+#[derive(Debug, Clone)]
+pub struct RuntimeTheme {
+    pub name: String,
+    pub variables: HashMap<String, PropertyValue>,
+    pub parent: Option<String>,
+}
+
+/// Theme manager for runtime theme switching
+#[derive(Debug, Clone)]
+pub struct ThemeManager {
+    themes: HashMap<String, RuntimeTheme>,
+    active_theme: Option<String>,
+    variable_cache: HashMap<String, PropertyValue>,
+}
+
+impl RuntimeTheme {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            variables: HashMap::new(),
+            parent: None,
+        }
+    }
+
+    pub fn with_variable(mut self, name: impl Into<String>, value: PropertyValue) -> Self {
+        self.variables.insert(name.into(), value);
+        self
+    }
+
+    pub fn with_parent(mut self, parent: impl Into<String>) -> Self {
+        self.parent = Some(parent.into());
+        self
+    }
+}
+
+impl ThemeManager {
+    pub fn new() -> Self {
+        let mut manager = Self {
+            themes: HashMap::new(),
+            active_theme: None,
+            variable_cache: HashMap::new(),
+        };
+        manager.create_default_themes();
+        manager
+    }
+
+    fn create_default_themes(&mut self) {
+        // Light theme
+        let light_theme = RuntimeTheme::new("light")
+            .with_variable("primary_color".to_string(), PropertyValue::String("#3b82f6".to_string()))
+            .with_variable("secondary_color".to_string(), PropertyValue::String("#64748b".to_string()))
+            .with_variable("background_color".to_string(), PropertyValue::String("#ffffff".to_string()))
+            .with_variable("surface_color".to_string(), PropertyValue::String("#f8fafc".to_string()))
+            .with_variable("text_color".to_string(), PropertyValue::String("#1e293b".to_string()))
+            .with_variable("text_muted_color".to_string(), PropertyValue::String("#64748b".to_string()))
+            .with_variable("border_color".to_string(), PropertyValue::String("#e2e8f0".to_string()))
+            .with_variable("spacing".to_string(), PropertyValue::Int(16))
+            .with_variable("border_radius".to_string(), PropertyValue::Int(8));
+
+        // Dark theme
+        let dark_theme = RuntimeTheme::new("dark")
+            .with_variable("primary_color".to_string(), PropertyValue::String("#60a5fa".to_string()))
+            .with_variable("secondary_color".to_string(), PropertyValue::String("#94a3b8".to_string()))
+            .with_variable("background_color".to_string(), PropertyValue::String("#0f172a".to_string()))
+            .with_variable("surface_color".to_string(), PropertyValue::String("#1e293b".to_string()))
+            .with_variable("text_color".to_string(), PropertyValue::String("#f1f5f9".to_string()))
+            .with_variable("text_muted_color".to_string(), PropertyValue::String("#94a3b8".to_string()))
+            .with_variable("border_color".to_string(), PropertyValue::String("#334155".to_string()))
+            .with_variable("spacing".to_string(), PropertyValue::Int(16))
+            .with_variable("border_radius".to_string(), PropertyValue::Int(8));
+
+        self.add_theme(light_theme);
+        self.add_theme(dark_theme);
+        self.set_active_theme("light");
+    }
+
+    pub fn add_theme(&mut self, theme: RuntimeTheme) {
+        self.themes.insert(theme.name.clone(), theme);
+        self.rebuild_variable_cache();
+    }
+
+    pub fn set_active_theme(&mut self, theme_name: &str) -> bool {
+        if self.themes.contains_key(theme_name) {
+            self.active_theme = Some(theme_name.to_string());
+            self.rebuild_variable_cache();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn get_active_theme(&self) -> Option<&str> {
+        self.active_theme.as_deref()
+    }
+
+    pub fn get_variable(&self, variable_name: &str) -> Option<&PropertyValue> {
+        self.variable_cache.get(variable_name)
+    }
+
+    fn rebuild_variable_cache(&mut self) {
+        self.variable_cache.clear();
+        
+        if let Some(active_theme_name) = self.active_theme.clone() {
+            self.resolve_theme_variables(&active_theme_name);
+        }
+    }
+
+    fn resolve_theme_variables(&mut self, theme_name: &str) {
+        let mut visited = std::collections::HashSet::new();
+        self.resolve_theme_variables_recursive(theme_name, &mut visited);
+    }
+
+    fn resolve_theme_variables_recursive(&mut self, theme_name: &str, visited: &mut std::collections::HashSet<String>) {
+        if visited.contains(theme_name) {
+            // Circular dependency detected, skip
+            return;
+        }
+        
+        visited.insert(theme_name.to_string());
+        
+        if let Some(theme) = self.themes.get(theme_name).cloned() {
+            // First resolve parent theme variables
+            if let Some(parent_name) = &theme.parent {
+                self.resolve_theme_variables_recursive(parent_name, visited);
+            }
+            
+            // Then add/override with current theme variables
+            for (var_name, var_value) in theme.variables {
+                self.variable_cache.insert(var_name, var_value);
+            }
+        }
+    }
+
+    pub fn interpolate_string(&self, input: &str) -> String {
+        let mut result = input.to_string();
+        
+        // Simple variable interpolation for ${theme.variable_name}
+        let re = regex::Regex::new(r"\$\{theme\.([^}]+)\}").unwrap();
+        
+        result = re.replace_all(&result, |caps: &regex::Captures| {
+            let var_name = &caps[1];
+            if let Some(value) = self.get_variable(var_name) {
+                match value {
+                    PropertyValue::String(s) => s.clone(),
+                    PropertyValue::Int(i) => i.to_string(),
+                    PropertyValue::Float(f) => f.to_string(),
+                    PropertyValue::Bool(b) => b.to_string(),
+                    _ => format!("{:?}", value),
+                }
+            } else {
+                caps[0].to_string() // Return original if variable not found
+            }
+        }).to_string();
+        
+        result
+    }
+
+    pub fn list_themes(&self) -> Vec<&str> {
+        self.themes.keys().map(|s| s.as_str()).collect()
+    }
+}
 
 /// Performance configuration for optimized app
 #[derive(Debug, Clone)]
@@ -52,6 +215,7 @@ pub struct OptimizedKryonApp<R: CommandRenderer> {
     elements: HashMap<ElementId, Element>,
     
     // Optimized systems
+    #[allow(dead_code)]
     style_computer: StyleComputer,
     layout_engine: OptimizedTaffyLayoutEngine,
     property_cache: OptimizedPropertyCache,
@@ -59,6 +223,7 @@ pub struct OptimizedKryonApp<R: CommandRenderer> {
     event_system: EventSystem,
     script_system: ScriptSystem,
     template_engine: TemplateEngine,
+    theme_manager: ThemeManager,
     
     // State
     layout_result: LayoutResult,
@@ -110,6 +275,7 @@ impl<R: CommandRenderer> OptimizedKryonApp<R> {
         let event_system = EventSystem::new();
         let script_system = ScriptSystem::new()?;
         let template_engine = TemplateEngine::new(&krb_file);
+        let theme_manager = ThemeManager::new();
         
         let mut app = Self {
             krb_file,
@@ -121,6 +287,7 @@ impl<R: CommandRenderer> OptimizedKryonApp<R> {
             event_system,
             script_system,
             template_engine,
+            theme_manager,
             layout_result: LayoutResult {
                 computed_positions: HashMap::new(),
                 computed_sizes: HashMap::new(),
@@ -271,6 +438,7 @@ impl<R: CommandRenderer> OptimizedKryonApp<R> {
     }
 
     /// Optimized click handling
+    #[allow(dead_code)]
     fn handle_click_optimized(&mut self, element_id: ElementId, _position: Vec2) -> anyhow::Result<()> {
         // Get handler name first to avoid borrowing issues
         let handler_name = self.elements.get(&element_id)
@@ -304,6 +472,7 @@ impl<R: CommandRenderer> OptimizedKryonApp<R> {
     }
 
     /// Optimized hover handling
+    #[allow(dead_code)]
     fn handle_hover_optimized(&mut self, element_id: ElementId, _position: Vec2) -> anyhow::Result<()> {
         // Update hover state efficiently
         if let Some(element) = self.elements.get_mut(&element_id) {
@@ -323,6 +492,7 @@ impl<R: CommandRenderer> OptimizedKryonApp<R> {
     }
 
     /// Optimized focus handling
+    #[allow(dead_code)]
     fn handle_focus_optimized(&mut self, element_id: ElementId) -> anyhow::Result<()> {
         // Update focus state efficiently
         if let Some(element) = self.elements.get_mut(&element_id) {
@@ -342,6 +512,7 @@ impl<R: CommandRenderer> OptimizedKryonApp<R> {
     }
 
     /// Optimized key press handling
+    #[allow(dead_code)]
     fn handle_key_press_optimized(&mut self, key: KeyCode, _modifiers: KeyModifiers) -> anyhow::Result<()> {
         // Handle global key events
         match key {
@@ -491,6 +662,125 @@ impl<R: CommandRenderer> OptimizedKryonApp<R> {
         
         self.mark_needs_layout();
         Ok(())
+    }
+
+    // === Theme Management API ===
+
+    /// Switch to a different theme
+    pub fn set_theme(&mut self, theme_name: &str) -> anyhow::Result<bool> {
+        if self.theme_manager.set_active_theme(theme_name) {
+            // Theme changed successfully, recompute all themed properties
+            self.recompute_themed_properties()?;
+            self.mark_needs_layout();
+            self.mark_needs_render();
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// Get the currently active theme name
+    pub fn get_active_theme(&self) -> Option<&str> {
+        self.theme_manager.get_active_theme()
+    }
+
+    /// Add a custom theme at runtime
+    pub fn add_theme(&mut self, theme: RuntimeTheme) {
+        self.theme_manager.add_theme(theme);
+    }
+
+    /// List all available themes
+    pub fn list_themes(&self) -> Vec<&str> {
+        self.theme_manager.list_themes()
+    }
+
+    /// Get a theme variable value
+    pub fn get_theme_variable(&self, variable_name: &str) -> Option<&PropertyValue> {
+        self.theme_manager.get_variable(variable_name)
+    }
+
+    /// Create a theme at runtime with builder pattern
+    pub fn create_theme(&mut self, name: &str) -> RuntimeThemeBuilder {
+        RuntimeThemeBuilder::new(name, &mut self.theme_manager)
+    }
+
+    /// Recompute all themed properties after theme change
+    fn recompute_themed_properties(&mut self) -> anyhow::Result<()> {
+        // Iterate through all elements and recompute their themed properties
+        for (_element_id, element) in self.elements.iter_mut() {
+            // Check each property for theme variable references
+            let mut properties_to_update = Vec::new();
+            
+            for (prop_name, prop_value) in &element.custom_properties {
+                if let PropertyValue::String(s) = prop_value {
+                    if s.contains("${theme.") {
+                        // This property contains theme variables, interpolate it
+                        let interpolated = self.theme_manager.interpolate_string(s);
+                        properties_to_update.push((prop_name.clone(), PropertyValue::String(interpolated)));
+                    }
+                }
+            }
+            
+            // Apply updated properties
+            for (prop_name, new_value) in properties_to_update {
+                element.custom_properties.insert(prop_name, new_value);
+            }
+        }
+        
+        // Update property cache
+        self.property_cache.update_from_elements(&self.elements);
+        
+        Ok(())
+    }
+}
+
+/// Builder for creating themes at runtime
+pub struct RuntimeThemeBuilder<'a> {
+    theme: RuntimeTheme,
+    theme_manager: &'a mut ThemeManager,
+}
+
+impl<'a> RuntimeThemeBuilder<'a> {
+    fn new(name: &str, theme_manager: &'a mut ThemeManager) -> Self {
+        Self {
+            theme: RuntimeTheme::new(name),
+            theme_manager,
+        }
+    }
+
+    /// Add a string variable to the theme
+    pub fn with_string(mut self, name: &str, value: &str) -> Self {
+        self.theme = self.theme.with_variable(name.to_string(), PropertyValue::String(value.to_string()));
+        self
+    }
+
+    /// Add an integer variable to the theme
+    pub fn with_integer(mut self, name: &str, value: i32) -> Self {
+        self.theme = self.theme.with_variable(name.to_string(), PropertyValue::Int(value));
+        self
+    }
+
+    /// Add a float variable to the theme
+    pub fn with_float(mut self, name: &str, value: f32) -> Self {
+        self.theme = self.theme.with_variable(name.to_string(), PropertyValue::Float(value));
+        self
+    }
+
+    /// Add a boolean variable to the theme
+    pub fn with_boolean(mut self, name: &str, value: bool) -> Self {
+        self.theme = self.theme.with_variable(name.to_string(), PropertyValue::Bool(value));
+        self
+    }
+
+    /// Set parent theme for inheritance
+    pub fn with_parent(mut self, parent_name: &str) -> Self {
+        self.theme = self.theme.with_parent(parent_name);
+        self
+    }
+
+    /// Finish building and add the theme
+    pub fn build(self) {
+        self.theme_manager.add_theme(self.theme);
     }
 }
 

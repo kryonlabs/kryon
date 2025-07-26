@@ -1,4 +1,4 @@
-use crate::{HtmlRenderer, HtmlResult, HtmlError, CanvasElement, CanvasType};
+use crate::{HtmlRenderer, HtmlResult};
 use glam::{Vec2, Vec4};
 use kryon_core::TextAlignment;
 

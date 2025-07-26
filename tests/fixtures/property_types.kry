@@ -1,0 +1,63 @@
+// Test fixture for all property types
+App {
+    window_width: 300
+    window_height: 200
+    window_title: "Property Test"
+    background_color: "#ffffffff"
+    
+    Container {
+        id: "test_container"
+        
+        // Layout properties
+        display: flex
+        flex_direction: column
+        align_items: center
+        justify_content: center
+        gap: 10
+        
+        // Size properties
+        width: 250
+        height: 150
+        padding: 20
+        
+        // Visual properties
+        background_color: "#f0f0f0ff"
+        border_width: 2
+        border_color: "#333333ff"
+        border_radius: 8
+        opacity: 0.95
+        
+        Text {
+            id: "test_text"
+            text: "Hello World"
+            font_size: 16
+            font_weight: bold
+            text_color: "#000000ff"
+            text_alignment: center
+        }
+        
+        Button {
+            id: "test_button"
+            width: 100
+            height: 40
+            background_color: "#4299e1ff"
+            border_radius: 6
+            cursor: pointer
+            
+            Text {
+                text: "Click Me"
+                text_color: "#ffffffff"
+            }
+        }
+        
+        Input {
+            id: "test_input"
+            width: 200
+            height: 30
+            placeholder: "Enter text..."
+            background_color: "#ffffffff"
+            border_width: 1
+            border_color: "#ccccccff"
+        }
+    }
+}

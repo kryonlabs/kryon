@@ -1,0 +1,36 @@
+[package]
+name = "kryon-tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Core dependencies
+kryon-compiler = { path = "../crates/kryon-compiler" }
+kryon-core = { path = "../crates/kryon-core" }
+kryon-layout = { path = "../crates/kryon-layout" }
+kryon-render = { path = "../crates/kryon-render" }
+kryon-runtime = { path = "../crates/kryon-runtime" }
+
+# Test dependencies
+insta = { workspace = true }
+tempfile = "3.8"
+assert_fs = "1.0"
+predicates = "3.0"
+criterion = "0.5"
+proptest = "1.4"
+
+[[test]]
+name = "compiler"
+path = "compiler/mod.rs"
+
+[[test]]
+name = "renderer"
+path = "renderer/mod.rs"
+
+[[test]]
+name = "integration"
+path = "integration/mod.rs"
+
+[[bench]]
+name = "benchmarks"
+harness = false

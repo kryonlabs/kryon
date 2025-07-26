@@ -336,7 +336,7 @@ impl HtmlRenderer {
         }
         
         let canvas_id = format!("kryon-element-{}", canvas_count);
-        let function_name = format!("kryonCanvas2D_{}", canvas_id.replace('-', "_"));
+        let _function_name = format!("kryonCanvas2D_{}", canvas_id.replace('-', "_"));
         
         // Add drawing commands to the canvas function
         let js_commands = if let Some(fill) = fill_color {

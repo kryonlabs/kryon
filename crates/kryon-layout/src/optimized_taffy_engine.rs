@@ -273,7 +273,7 @@ impl OptimizedTaffyLayoutEngine {
     /// Update cache for specific elements
     fn update_cache_for_elements(
         &mut self,
-        elements: &HashMap<ElementId, Element>,
+        _elements: &HashMap<ElementId, Element>,
         element_ids: &std::collections::HashSet<ElementId>,
     ) -> Result<(), taffy::TaffyError> {
         for &element_id in element_ids {

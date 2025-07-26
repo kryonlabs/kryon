@@ -74,6 +74,11 @@ lcov.info
 /examples/**/*.krb
 hello_world_bundled
 
+# Kryon build artifacts
+**/.build/
+*.kir.json
+*.scripts/
+
 # Kryon renderer specific logs
 ratatui.log
 debug_log.txt

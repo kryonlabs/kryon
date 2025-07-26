@@ -1,0 +1,172 @@
+// Theming system demonstration
+Theme DarkTheme {
+    // Color palette
+    primary: "#3b82f6"
+    primary_hover: "#2563eb"
+    secondary: "#8b5cf6"
+    background: "#1a1a2e"
+    surface: "#2d3748"
+    text: "#f7fafc"
+    text_muted: "#a0aec0"
+    success: "#48bb78"
+    warning: "#ed8936"
+    danger: "#f56565"
+    
+    // Typography
+    font_family: "Inter"
+    font_size_base: 16
+    font_size_sm: 14
+    font_size_lg: 18
+    font_size_xl: 24
+    
+    // Spacing
+    spacing_xs: 4
+    spacing_sm: 8
+    spacing_md: 16
+    spacing_lg: 24
+    spacing_xl: 32
+    
+    // Border
+    border_radius: 8
+    border_radius_sm: 4
+    border_radius_lg: 12
+    
+    // Shadows
+    shadow_sm: "0 1px 2px rgba(0,0,0,0.1)"
+    shadow_md: "0 4px 6px rgba(0,0,0,0.1)"
+    shadow_lg: "0 10px 15px rgba(0,0,0,0.1)"
+}
+
+Theme LightTheme {
+    primary: "#3b82f6"
+    primary_hover: "#60a5fa"
+    secondary: "#a78bfa"
+    background: "#ffffff"
+    surface: "#f7fafc"
+    text: "#1a202c"
+    text_muted: "#718096"
+    success: "#68d391"
+    warning: "#f6ad55"
+    danger: "#fc8181"
+    
+    // Same structure as dark theme...
+}
+
+App {
+    window_width: 800
+    window_height: 600
+    theme: DarkTheme  // or LightTheme
+    
+    Container {
+        style: "container"
+        
+        Text {
+            style: "heading"
+            text: "Welcome to Themed UI"
+        }
+        
+        Container {
+            style: "card"
+            
+            Text {
+                style: "card_title"
+                text: "Card Title"
+            }
+            
+            Text {
+                style: "body_text"
+                text: "This is a themed card component using the design system."
+            }
+            
+            Container {
+                style: "button_group"
+                
+                Button {
+                    style: "button_primary"
+                    Text { text: "Primary" }
+                }
+                
+                Button {
+                    style: "button_secondary"
+                    Text { text: "Secondary" }
+                }
+                
+                Button {
+                    style: "button_danger"
+                    Text { text: "Danger" }
+                }
+            }
+        }
+    }
+}
+
+// Style definitions using theme variables
+Style container {
+    display: flex
+    flex_direction: column
+    padding: ${theme.spacing_lg}
+    gap: ${theme.spacing_md}
+    background_color: ${theme.background}
+}
+
+Style heading {
+    font_size: ${theme.font_size_xl}
+    font_weight: bold
+    text_color: ${theme.text}
+    margin_bottom: ${theme.spacing_lg}
+}
+
+Style card {
+    background_color: ${theme.surface}
+    border_radius: ${theme.border_radius}
+    padding: ${theme.spacing_lg}
+    gap: ${theme.spacing_md}
+    shadow: ${theme.shadow_md}
+}
+
+Style card_title {
+    font_size: ${theme.font_size_lg}
+    font_weight: bold
+    text_color: ${theme.text}
+}
+
+Style body_text {
+    font_size: ${theme.font_size_base}
+    text_color: ${theme.text_muted}
+    line_height: 1.5
+}
+
+Style button_group {
+    display: flex
+    flex_direction: row
+    gap: ${theme.spacing_sm}
+    margin_top: ${theme.spacing_md}
+}
+
+Style button_primary {
+    background_color: ${theme.primary}
+    text_color: "#ffffff"
+    padding: "${theme.spacing_sm} ${theme.spacing_md}"
+    border_radius: ${theme.border_radius_sm}
+    cursor: pointer
+    
+    &:hover {
+        background_color: ${theme.primary_hover}
+    }
+}
+
+Style button_secondary {
+    background_color: ${theme.secondary}
+    text_color: "#ffffff"
+    padding: "${theme.spacing_sm} ${theme.spacing_md}"
+    border_radius: ${theme.border_radius_sm}
+    cursor: pointer
+}
+
+Style button_danger {
+    background_color: ${theme.danger}
+    text_color: "#ffffff"
+    padding: "${theme.spacing_sm} ${theme.spacing_md}"
+    border_radius: ${theme.border_radius_sm}
+    cursor: pointer
+}

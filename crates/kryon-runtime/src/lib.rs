@@ -2,9 +2,9 @@
 
 use kryon_core::{
     KRBFile, Element, ElementId, InteractionState, EventType, load_krb_file,
-    StyleComputer, OptimizedPropertyCache, LayoutDimension,
+    StyleComputer, LayoutDimension,
 };
-use kryon_layout::{LayoutEngine, TaffyLayoutEngine, OptimizedTaffyLayoutEngine, LayoutResult, LayoutConfig};
+use kryon_layout::{LayoutEngine, TaffyLayoutEngine, OptimizedTaffyLayoutEngine, LayoutResult};
 use kryon_render::{ElementRenderer, CommandRenderer, KeyCode};
 use kryon_render::events::{InputEvent, MouseButton, KeyModifiers};
 use glam::Vec2;
@@ -310,7 +310,6 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
                 
                 // Trigger hover event
                 if let Some(handler) = element.event_handlers.get(&EventType::Hover) {
-                    use kryon_core::PropertyValue;
                     self.script_system.call_function(handler, vec![])?;
                 }
             } else if !should_hover && was_hovering && !is_checked {
@@ -343,7 +342,6 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
                 if let Some(element) = self.elements.get(&element_id) {
                     if let Some(handler) = element.event_handlers.get(&EventType::Click) {
                         // Call the click handler function
-                        use kryon_core::PropertyValue;
                         self.script_system.call_function(handler, vec![])?;
                         
                         // Apply any pending changes from scripts

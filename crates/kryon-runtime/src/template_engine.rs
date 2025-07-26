@@ -294,6 +294,7 @@ pub struct TemplateEngine {
     /// Template bindings from KRB file
     bindings: Vec<TemplateBinding>,
     /// Template variables from KRB file
+    #[allow(dead_code)]
     template_variables: Vec<TemplateVariable>,
     /// Compiled regex for template variable extraction
     template_regex: Regex,
@@ -773,7 +774,7 @@ impl TemplateEngine {
     }
 
     /// Evaluate expression with context (placeholder for now)
-    fn evaluate_expr_with_context(&self, expr: &Expression, current_element: &Element, elements: &HashMap<ElementId, Element>) -> String {
+    fn evaluate_expr_with_context(&self, expr: &Expression, _current_element: &Element, _elements: &HashMap<ElementId, Element>) -> String {
         // For now, fall back to regular evaluation
         // TODO: Implement proper context-aware expression evaluation
         self.evaluate_expr(expr)

@@ -119,7 +119,7 @@ impl LayoutComputer {
     pub fn get_computed_sizes(
         taffy: &TaffyTree<ElementId>,
         element_to_node: &HashMap<ElementId, taffy::NodeId>,
-        elements: &HashMap<ElementId, Element>,
+        _elements: &HashMap<ElementId, Element>,
     ) -> HashMap<ElementId, Vec2> {
         let mut computed_sizes = HashMap::new();
         

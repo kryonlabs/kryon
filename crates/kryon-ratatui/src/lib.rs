@@ -298,6 +298,113 @@ fn render_commands_to_frame(commands: &[RenderCommand], frame: &mut Frame, app_c
                 // In terminal mode, WASM execution is limited - just log it
                 // The actual WASM execution would happen elsewhere
             }
+            RenderCommand::DrawSelectButton {
+                position,
+                size,
+                text,
+                is_open,
+                font_size: _,
+                text_color,
+                background_color,
+                border_color,
+                border_width,
+                transform,
+            } => {
+                let (final_position, final_size) = apply_transform_ratatui(*position, *size, transform);
+                if let Some(area) = translate_rect(final_position, final_size, app_canvas_size, terminal_area) {
+                    // Create the button background
+                    let mut block = Block::default()
+                        .style(Style::default().bg(vec4_to_ratatui_color(*background_color)));
+                    
+                    // Add border if specified
+                    if *border_width > 0.0 {
+                        block = block
+                            .borders(ratatui::widgets::Borders::ALL)
+                            .border_style(Style::default().fg(vec4_to_ratatui_color(*border_color)));
+                    }
+                    
+                    // Render the block background
+                    frame.render_widget(block.clone(), area);
+                    
+                    // Create dropdown arrow symbol
+                    let arrow = if *is_open { "▲" } else { "▼" };
+                    let button_text = format!(" {} {}", text, arrow);
+                    
+                    // Render the text content centered
+                    let inner_area = if *border_width > 0.0 { block.inner(area) } else { area };
+                    let paragraph = Paragraph::new(button_text)
+                        .style(Style::default().fg(vec4_to_ratatui_color(*text_color)))
+                        .alignment(Alignment::Center);
+                    
+                    frame.render_widget(paragraph, inner_area);
+                }
+            },
+            RenderCommand::DrawSelectMenu {
+                position,
+                size,
+                options,
+                highlighted_index,
+                font_size: _,
+                text_color,
+                background_color,
+                border_color,
+                border_width,
+                highlight_color,
+                selected_color,
+                transform,
+            } => {
+                let (final_position, final_size) = apply_transform_ratatui(*position, *size, transform);
+                if let Some(area) = translate_rect(final_position, final_size, app_canvas_size, terminal_area) {
+                    // Create the menu background
+                    let mut block = Block::default()
+                        .style(Style::default().bg(vec4_to_ratatui_color(*background_color)));
+                    
+                    // Add border if specified
+                    if *border_width > 0.0 {
+                        block = block
+                            .borders(ratatui::widgets::Borders::ALL)
+                            .border_style(Style::default().fg(vec4_to_ratatui_color(*border_color)));
+                    }
+                    
+                    // Render the block background
+                    frame.render_widget(block.clone(), area);
+                    
+                    // Prepare the menu content
+                    let inner_area = if *border_width > 0.0 { block.inner(area) } else { area };
+                    
+                    // Build the options text with proper highlighting
+                    let mut menu_lines = Vec::new();
+                    for (index, option) in options.iter().enumerate() {
+                        let mut line_style = Style::default().fg(vec4_to_ratatui_color(*text_color));
+                        
+                        // Apply highlighting/selection styling
+                        if Some(index) == *highlighted_index {
+                            line_style = line_style.bg(vec4_to_ratatui_color(*highlight_color));
+                        } else if option.selected {
+                            line_style = line_style.bg(vec4_to_ratatui_color(*selected_color));
+                        }
+                        
+                        // Dim text for disabled options
+                        if option.disabled {
+                            line_style = line_style.fg(Color::DarkGray);
+                        }
+                        
+                        // Add selection marker for selected options
+                        let prefix = if option.selected { "✓ " } else { "  " };
+                        let option_text = format!("{}{}", prefix, option.text);
+                        
+                        menu_lines.push(ratatui::text::Line::from(vec![
+                            ratatui::text::Span::styled(option_text, line_style)
+                        ]));
+                    }
+                    
+                    // Render the menu options
+                    let paragraph = Paragraph::new(menu_lines)
+                        .wrap(Wrap { trim: false });
+                    
+                    frame.render_widget(paragraph, inner_area);
+                }
+            },
             _ => {} 
         }
     }

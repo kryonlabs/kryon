@@ -258,6 +258,178 @@ impl InputState {
     }
 }
 
+/// Select/Dropdown element state
+#[derive(Debug, Clone, PartialEq)]
+pub struct SelectState {
+    /// Current selected value(s)
+    pub selected_values: Vec<String>,
+    /// Available options
+    pub options: Vec<SelectOption>,
+    /// Whether dropdown is open
+    pub is_open: bool,
+    /// Multiple selection allowed
+    pub multiple: bool,
+    /// Maximum visible options (for scrolling)
+    pub size: usize,
+    /// Currently highlighted option index
+    pub highlighted_index: Option<usize>,
+}
+
+/// Option within a select element
+#[derive(Debug, Clone, PartialEq)]
+pub struct SelectOption {
+    pub value: String,
+    pub text: String,
+    pub selected: bool,
+    pub disabled: bool,
+    pub group: Option<String>,
+}
+
+impl Default for SelectState {
+    fn default() -> Self {
+        Self {
+            selected_values: Vec::new(),
+            options: Vec::new(),
+            is_open: false,
+            multiple: false,
+            size: 1,
+            highlighted_index: None,
+        }
+    }
+}
+
+/// Slider/Range element state
+#[derive(Debug, Clone, PartialEq)]
+pub struct SliderState {
+    /// Current value
+    pub value: f64,
+    /// Minimum value
+    pub min: f64,
+    /// Maximum value
+    pub max: f64,
+    /// Step increment
+    pub step: f64,
+    /// Slider orientation
+    pub orientation: SliderOrientation,
+    /// Whether user is currently dragging
+    pub is_dragging: bool,
+    /// Thumb size in pixels
+    pub thumb_size: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SliderOrientation {
+    Horizontal = 0,
+    Vertical = 1,
+}
+
+impl Default for SliderState {
+    fn default() -> Self {
+        Self {
+            value: 0.0,
+            min: 0.0,
+            max: 100.0,
+            step: 1.0,
+            orientation: SliderOrientation::Horizontal,
+            is_dragging: false,
+            thumb_size: 20.0,
+        }
+    }
+}
+
+/// Progress bar element state
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProgressState {
+    /// Current progress value
+    pub value: f64,
+    /// Maximum value (for determinate progress)
+    pub max: f64,
+    /// Whether progress is indeterminate
+    pub indeterminate: bool,
+}
+
+impl Default for ProgressState {
+    fn default() -> Self {
+        Self {
+            value: 0.0,
+            max: 100.0,
+            indeterminate: false,
+        }
+    }
+}
+
+/// Checkbox element state (dedicated checkbox, not input type)
+#[derive(Debug, Clone, PartialEq)]
+pub struct CheckboxState {
+    /// Whether checkbox is checked
+    pub checked: bool,
+    /// Indeterminate state (tri-state checkbox)
+    pub indeterminate: bool,
+    /// Associated value when checked
+    pub value: String,
+}
+
+impl Default for CheckboxState {
+    fn default() -> Self {
+        Self {
+            checked: false,
+            indeterminate: false,
+            value: "on".to_string(),
+        }
+    }
+}
+
+/// Radio group element state
+#[derive(Debug, Clone, PartialEq)]
+pub struct RadioGroupState {
+    /// Currently selected radio button value
+    pub selected_value: Option<String>,
+    /// Radio button options
+    pub options: Vec<RadioOption>,
+    /// Group name for form submission
+    pub name: String,
+}
+
+/// Individual radio button option
+#[derive(Debug, Clone, PartialEq)]
+pub struct RadioOption {
+    pub value: String,
+    pub text: String,
+    pub selected: bool,
+    pub disabled: bool,
+}
+
+impl Default for RadioGroupState {
+    fn default() -> Self {
+        Self {
+            selected_value: None,
+            options: Vec::new(),
+            name: String::new(),
+        }
+    }
+}
+
+/// Toggle/Switch element state
+#[derive(Debug, Clone, PartialEq)]
+pub struct ToggleState {
+    /// Whether toggle is on
+    pub on: bool,
+    /// Text when on
+    pub on_text: String,
+    /// Text when off
+    pub off_text: String,
+}
+
+impl Default for ToggleState {
+    fn default() -> Self {
+        Self {
+            on: false,
+            on_text: "On".to_string(),
+            off_text: "Off".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum ElementType {
@@ -272,6 +444,26 @@ pub enum ElementType {
     Svg = 0x08, // SVG vector graphics element
     Button = 0x10,
     Input = 0x11,
+    Select = 0x12,       // Dropdown/combobox
+    Slider = 0x13,       // Range slider
+    ProgressBar = 0x14,  // Progress indicator
+    Checkbox = 0x15,     // Dedicated checkbox element
+    RadioGroup = 0x16,   // Radio button group
+    Toggle = 0x17,       // Switch/toggle
+    DatePicker = 0x18,   // Date input
+    FilePicker = 0x19,   // File upload
+    Form = 0x1A,         // Form container
+    
+    // List elements
+    List = 0x20,         // Ordered/unordered list
+    ListItem = 0x21,     // List item
+    
+    // Table elements
+    Table = 0x30,        // Table container
+    TableRow = 0x31,     // Table row
+    TableCell = 0x32,    // Table cell
+    TableHeader = 0x33,  // Table header
+    
     Custom(u8),
 }
 
@@ -289,6 +481,21 @@ impl From<u8> for ElementType {
             0x08 => ElementType::Svg,
             0x10 => ElementType::Button,
             0x11 => ElementType::Input,
+            0x12 => ElementType::Select,
+            0x13 => ElementType::Slider,
+            0x14 => ElementType::ProgressBar,
+            0x15 => ElementType::Checkbox,
+            0x16 => ElementType::RadioGroup,
+            0x17 => ElementType::Toggle,
+            0x18 => ElementType::DatePicker,
+            0x19 => ElementType::FilePicker,
+            0x1A => ElementType::Form,
+            0x20 => ElementType::List,
+            0x21 => ElementType::ListItem,
+            0x30 => ElementType::Table,
+            0x31 => ElementType::TableRow,
+            0x32 => ElementType::TableCell,
+            0x33 => ElementType::TableHeader,
             other => ElementType::Custom(other),
         }
     }
@@ -360,6 +567,14 @@ pub struct Element {
     
     // Input-specific state (only used for Input elements)
     pub input_state: Option<InputState>,
+    
+    // Form element states (only used for respective element types)
+    pub select_state: Option<SelectState>,
+    pub slider_state: Option<SliderState>,
+    pub progress_state: Option<ProgressState>,
+    pub checkbox_state: Option<CheckboxState>,
+    pub radio_group_state: Option<RadioGroupState>,
+    pub toggle_state: Option<ToggleState>,
     
     // Custom properties (for components)
     pub custom_properties: HashMap<String, PropertyValue>,
@@ -458,6 +673,12 @@ impl Default for Element {
             disabled: false,
             current_state: InteractionState::Normal,
             input_state: None,
+            select_state: None,
+            slider_state: None,
+            progress_state: None,
+            checkbox_state: None,
+            radio_group_state: None,
+            toggle_state: None,
             custom_properties: HashMap::new(),
             state_properties: HashMap::new(),
             event_handlers: HashMap::new(),
@@ -505,6 +726,48 @@ impl Element {
         }
     }
     
+    /// Initialize select state for this element (should only be called for Select elements)
+    pub fn initialize_select_state(&mut self) {
+        if self.element_type == ElementType::Select {
+            self.select_state = Some(SelectState::default());
+        }
+    }
+    
+    /// Initialize slider state for this element (should only be called for Slider elements)
+    pub fn initialize_slider_state(&mut self) {
+        if self.element_type == ElementType::Slider {
+            self.slider_state = Some(SliderState::default());
+        }
+    }
+    
+    /// Initialize progress state for this element (should only be called for ProgressBar elements)
+    pub fn initialize_progress_state(&mut self) {
+        if self.element_type == ElementType::ProgressBar {
+            self.progress_state = Some(ProgressState::default());
+        }
+    }
+    
+    /// Initialize checkbox state for this element (should only be called for Checkbox elements)
+    pub fn initialize_checkbox_state(&mut self) {
+        if self.element_type == ElementType::Checkbox {
+            self.checkbox_state = Some(CheckboxState::default());
+        }
+    }
+    
+    /// Initialize radio group state for this element (should only be called for RadioGroup elements)
+    pub fn initialize_radio_group_state(&mut self) {
+        if self.element_type == ElementType::RadioGroup {
+            self.radio_group_state = Some(RadioGroupState::default());
+        }
+    }
+    
+    /// Initialize toggle state for this element (should only be called for Toggle elements)
+    pub fn initialize_toggle_state(&mut self) {
+        if self.element_type == ElementType::Toggle {
+            self.toggle_state = Some(ToggleState::default());
+        }
+    }
+    
     /// Get mutable reference to input state (only for Input elements)
     pub fn get_input_state_mut(&mut self) -> Option<&mut InputState> {
         self.input_state.as_mut()
@@ -515,10 +778,26 @@ impl Element {
         self.input_state.as_ref()
     }
     
+    /// Get mutable reference to select state (only for Select elements)
+    pub fn get_select_state_mut(&mut self) -> Option<&mut SelectState> {
+        self.select_state.as_mut()
+    }
+    
+    /// Get reference to select state (only for Select elements)
+    pub fn get_select_state(&self) -> Option<&SelectState> {
+        self.select_state.as_ref()
+    }
+    
     /// Check if this element is an input that can receive focus
     pub fn can_receive_focus(&self) -> bool {
         match self.element_type {
-            ElementType::Input | ElementType::Button => !self.disabled,
+            ElementType::Input 
+            | ElementType::Button 
+            | ElementType::Select 
+            | ElementType::Slider 
+            | ElementType::Checkbox 
+            | ElementType::RadioGroup 
+            | ElementType::Toggle => !self.disabled,
             _ => false,
         }
     }

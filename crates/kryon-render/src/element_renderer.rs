@@ -1,6 +1,6 @@
 use glam::{Vec2, Vec4};
 use std::collections::HashMap;
-use kryon_core::{Element, ElementId, ElementType, PropertyValue, StyleComputer, Transform, TransformData, TransformType, TransformProperty, TransformPropertyType, CSSUnitValue, CSSUnit};
+use kryon_core::{Element, ElementId, ElementType, PropertyValue, StyleComputer, TransformData, TransformType, TransformProperty, TransformPropertyType, CSSUnitValue, CSSUnit};
 use kryon_layout::{LayoutResult, LayoutDiff};
 use crate::{CommandRenderer, RenderCommand, RenderResult, types::ScrollbarOrientation};
 
@@ -403,6 +403,9 @@ impl<R: CommandRenderer> ElementRenderer<R> {
             ElementType::Input => {
                 self.render_input(&mut commands, element, &style, position, size);
             },
+            ElementType::Select => {
+                self.render_select(&mut commands, element, &style, position, size);
+            },
             ElementType::Image => {
                 self.render_image(&mut commands, element, &style, position, size);
             },
@@ -650,6 +653,76 @@ impl<R: CommandRenderer> ElementRenderer<R> {
                     });
                 }
             }
+        }
+    }
+
+    fn render_select(&self, commands: &mut Vec<RenderCommand>, element: &Element, style: &kryon_core::ComputedStyle, position: Vec2, size: Vec2) {
+        // Check if this element has select state
+        if let Some(select_state) = element.get_select_state() {
+            // Render dropdown button
+            let display_text = select_state.get_display_text();
+            let is_open = select_state.is_open;
+            
+            // Button background color based on state
+            let button_bg_color = if is_open {
+                Vec4::new(0.9, 0.9, 0.9, 1.0) // Light gray when open
+            } else {
+                style.background_color
+            };
+            
+            commands.push(RenderCommand::DrawSelectButton {
+                position,
+                size,
+                text: display_text,
+                is_open,
+                font_size: style.font_size,
+                text_color: style.text_color,
+                background_color: button_bg_color,
+                border_color: style.border_color,
+                border_width: style.border_width.max(1.0),
+                transform: self.get_transform_data(element),
+            });
+            
+            // Render dropdown menu if open
+            if is_open && !select_state.options.is_empty() {
+                let menu_position = Vec2::new(position.x, position.y + size.y + 2.0);
+                let option_height = 32.0;
+                let menu_height = (select_state.options.len() as f32 * option_height).min(select_state.size as f32 * option_height);
+                let menu_size = Vec2::new(size.x, menu_height);
+                
+                commands.push(RenderCommand::DrawSelectMenu {
+                    position: menu_position,
+                    size: menu_size,
+                    options: select_state.options.clone(),
+                    highlighted_index: select_state.highlighted_index,
+                    font_size: style.font_size,
+                    text_color: style.text_color,
+                    background_color: Vec4::new(1.0, 1.0, 1.0, 1.0), // White background
+                    border_color: style.border_color,
+                    border_width: 1.0,
+                    highlight_color: Vec4::new(0.0, 0.5, 1.0, 0.2), // Light blue highlight
+                    selected_color: Vec4::new(0.0, 0.5, 1.0, 0.3), // Darker blue for selected
+                    transform: self.get_transform_data(element),
+                });
+            }
+        } else {
+            // Fallback: render as simple text
+            let options_text = element.custom_properties.get("options")
+                .and_then(|v| v.as_string())
+                .unwrap_or("Select an option");
+                
+            commands.push(RenderCommand::DrawSelectButton {
+                position,
+                size,
+                text: options_text.to_string(),
+                is_open: false,
+                font_size: style.font_size,
+                text_color: style.text_color,
+                background_color: style.background_color,
+                border_color: style.border_color,
+                border_width: style.border_width.max(1.0),
+                transform: self.get_transform_data(element),
+            });
         }
     }
 

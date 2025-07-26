@@ -990,7 +990,7 @@ impl SemanticAnalyzer {
     
     fn is_valid_container_property(&self, key: &str) -> bool {
         matches!(key,
-            "gap" | "id" | "pos_x" | "pos_y" | "x" | "y" | "position_x" | "position_y" | "left" | "top" | "right" | "bottom" | "width" | "height" |
+            "layout" | "gap" | "id" | "pos_x" | "pos_y" | "x" | "y" | "position_x" | "position_y" | "left" | "top" | "right" | "bottom" | "width" | "height" |
             "min_width" | "min_height" | "max_width" | "max_height" |
             "style" | "background_color" | "border_color" | "border_width" |
             "border_radius" | "padding" | "margin" | "opacity" | "visibility" | "visible" | "z_index" |

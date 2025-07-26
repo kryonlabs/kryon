@@ -269,6 +269,7 @@ impl TextManager {
     }
     
     /// Create a cache key for text rendering
+    #[allow(dead_code)]
     fn create_cache_key(&self, rich_text: &RichText, max_width: Option<f32>, default_color: Vec4) -> String {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};

@@ -24,6 +24,7 @@ pub enum PropertyId {
     LetterSpacing = 0x0E,
     
     // Layout properties (0x10-0x2F)
+    Layout = 0x10,
     Width = 0x19,
     Height = 0x1A,
     MinWidth = 0x1B,
@@ -164,6 +165,45 @@ pub enum PropertyId {
     TransformAlt = 0xAD,     // Alternative transform property
     Shadow = 0xAE,
     
+    // Form validation properties (0xD0-0xDF)
+    Required = 0xD0,
+    Pattern = 0xD1,
+    Min = 0xD2,
+    Max = 0xD3,
+    Step = 0xD4,
+    MinLength = 0xD5,
+    MaxLength = 0xD6,
+    Placeholder = 0xD7,
+    AutoComplete = 0xD8,
+    AutoFocus = 0xD9,
+    Multiple = 0xDA,
+    Accept = 0xDB,          // File input accept types
+    FormAction = 0xDC,
+    FormMethod = 0xDD,
+    FormEnctype = 0xDE,
+    FormTarget = 0xDF,
+    
+    // Select/dropdown properties (0xE0-0xE7)
+    SelectValue = 0xE0,     // Current selected value
+    SelectMultiple = 0xE1,  // Multiple selection
+    SelectSize = 0xE2,      // Visible options count
+    SelectOptions = 0xE3,   // Comma-separated options list
+    OptionValue = 0xE4,     // Option value
+    OptionText = 0xE5,      // Option display text
+    OptionSelected = 0xE6,  // Option selected state
+    OptionDisabled = 0xE7,  // Option disabled state
+    OptionGroup = 0xE8,     // Option group label
+    
+    // Slider/range properties (0xE9-0xEF)
+    SliderValue = 0xE9,     // Current slider value
+    SliderMin = 0xEA,       // Minimum value
+    SliderMax = 0xEB,       // Maximum value  
+    SliderStep = 0xEC,      // Step increment
+    SliderOrientation = 0xED, // horizontal/vertical
+    SliderThumbSize = 0xEE, // Thumb size
+    SliderTrackColor = 0xEF, // Track color
+    SliderThumbColor = 0xF0, // Thumb color
+    
     // Flex extensions (0xB0-0xBF)
     FlexWrapAlt = 0xB0,      // Alternative flex-wrap property
     FlexBasisAlt = 0xB1,     // Alternative flex-basis property  
@@ -202,6 +242,7 @@ impl PropertyId {
             0x0C => Some(PropertyId::TextDecoration),
             0x0D => Some(PropertyId::LineHeight),
             0x0E => Some(PropertyId::LetterSpacing),
+            0x10 => Some(PropertyId::Layout),
             0x19 => Some(PropertyId::Width),
             0x1A => Some(PropertyId::Height),
             0x1B => Some(PropertyId::MinWidth),
@@ -350,6 +391,46 @@ impl PropertyId {
             0xB9 => Some(PropertyId::MinSize),
             0xBA => Some(PropertyId::MaxSize),
             0xBB => Some(PropertyId::PreferredSize),
+            
+            // Form validation properties
+            0xD0 => Some(PropertyId::Required),
+            0xD1 => Some(PropertyId::Pattern),
+            0xD2 => Some(PropertyId::Min),
+            0xD3 => Some(PropertyId::Max),
+            0xD4 => Some(PropertyId::Step),
+            0xD5 => Some(PropertyId::MinLength),
+            0xD6 => Some(PropertyId::MaxLength),
+            0xD7 => Some(PropertyId::Placeholder),
+            0xD8 => Some(PropertyId::AutoComplete),
+            0xD9 => Some(PropertyId::AutoFocus),
+            0xDA => Some(PropertyId::Multiple),
+            0xDB => Some(PropertyId::Accept),
+            0xDC => Some(PropertyId::FormAction),
+            0xDD => Some(PropertyId::FormMethod),
+            0xDE => Some(PropertyId::FormEnctype),
+            0xDF => Some(PropertyId::FormTarget),
+            
+            // Select/dropdown properties
+            0xE0 => Some(PropertyId::SelectValue),
+            0xE1 => Some(PropertyId::SelectMultiple),
+            0xE2 => Some(PropertyId::SelectSize),
+            0xE3 => Some(PropertyId::SelectOptions),
+            0xE4 => Some(PropertyId::OptionValue),
+            0xE5 => Some(PropertyId::OptionText),
+            0xE6 => Some(PropertyId::OptionSelected),
+            0xE7 => Some(PropertyId::OptionDisabled),
+            0xE8 => Some(PropertyId::OptionGroup),
+            
+            // Slider/range properties
+            0xE9 => Some(PropertyId::SliderValue),
+            0xEA => Some(PropertyId::SliderMin),
+            0xEB => Some(PropertyId::SliderMax),
+            0xEC => Some(PropertyId::SliderStep),
+            0xED => Some(PropertyId::SliderOrientation),
+            0xEE => Some(PropertyId::SliderThumbSize),
+            0xEF => Some(PropertyId::SliderTrackColor),
+            0xF0 => Some(PropertyId::SliderThumbColor),
+            
             _ => None,
         }
     }
@@ -371,6 +452,7 @@ impl PropertyId {
             PropertyId::TextDecoration => "TextDecoration",
             PropertyId::LineHeight => "LineHeight",
             PropertyId::LetterSpacing => "LetterSpacing",
+            PropertyId::Layout => "Layout",
             PropertyId::Width => "Width",
             PropertyId::Height => "Height",
             PropertyId::MinWidth => "MinWidth",
@@ -435,6 +517,46 @@ impl PropertyId {
             PropertyId::Checked => "Checked",
             PropertyId::InputType => "InputType",
             PropertyId::EmbedViewType => "EmbedViewType",
+            
+            // Form validation properties
+            PropertyId::Required => "Required",
+            PropertyId::Pattern => "Pattern",
+            PropertyId::Min => "Min",
+            PropertyId::Max => "Max",
+            PropertyId::Step => "Step",
+            PropertyId::MinLength => "MinLength",
+            PropertyId::MaxLength => "MaxLength",
+            PropertyId::Placeholder => "Placeholder",
+            PropertyId::AutoComplete => "AutoComplete",
+            PropertyId::AutoFocus => "AutoFocus",
+            PropertyId::Multiple => "Multiple",
+            PropertyId::SelectOptions => "SelectOptions",
+            PropertyId::Accept => "Accept",
+            PropertyId::FormAction => "FormAction",
+            PropertyId::FormMethod => "FormMethod",
+            PropertyId::FormEnctype => "FormEnctype",
+            PropertyId::FormTarget => "FormTarget",
+            
+            // Select/dropdown properties
+            PropertyId::SelectValue => "SelectValue",
+            PropertyId::SelectMultiple => "SelectMultiple",
+            PropertyId::SelectSize => "SelectSize",
+            PropertyId::OptionValue => "OptionValue",
+            PropertyId::OptionText => "OptionText",
+            PropertyId::OptionSelected => "OptionSelected",
+            PropertyId::OptionDisabled => "OptionDisabled",
+            PropertyId::OptionGroup => "OptionGroup",
+            
+            // Slider/range properties
+            PropertyId::SliderValue => "SliderValue",
+            PropertyId::SliderMin => "SliderMin",
+            PropertyId::SliderMax => "SliderMax",
+            PropertyId::SliderStep => "SliderStep",
+            PropertyId::SliderOrientation => "SliderOrientation",
+            PropertyId::SliderThumbSize => "SliderThumbSize",
+            PropertyId::SliderTrackColor => "SliderTrackColor",
+            PropertyId::SliderThumbColor => "SliderThumbColor",
+            
             _ => "UnknownProperty",
         }
     }
@@ -465,6 +587,7 @@ impl PropertyId {
             "min_height" => PropertyId::MinHeight,
             "max_width" => PropertyId::MaxWidth,
             "max_height" => PropertyId::MaxHeight,
+            "layout" => PropertyId::Layout,
             "width" => PropertyId::Width,
             "height" => PropertyId::Height,
             "pos_x" | "x" | "position_x" => PropertyId::PosX,
@@ -490,6 +613,49 @@ impl PropertyId {
             "top" => PropertyId::Top,
             "right" => PropertyId::Right,
             "bottom" => PropertyId::Bottom,
+            
+            // Form validation properties (with web dev aliases)
+            "required" => PropertyId::Required,
+            "pattern" => PropertyId::Pattern,
+            "min" => PropertyId::Min,
+            "max" => PropertyId::Max,
+            "step" => PropertyId::Step,
+            "minlength" | "min_length" => PropertyId::MinLength,
+            "maxlength" | "max_length" => PropertyId::MaxLength,
+            "placeholder" => PropertyId::Placeholder,
+            "autocomplete" | "auto_complete" => PropertyId::AutoComplete,
+            "autofocus" | "auto_focus" => PropertyId::AutoFocus,
+            "multiple" => PropertyId::Multiple,
+            "options" => PropertyId::SelectOptions,
+            "accept" => PropertyId::Accept,
+            "formaction" | "form_action" => PropertyId::FormAction,
+            "formmethod" | "form_method" => PropertyId::FormMethod,
+            "formenctype" | "form_enctype" => PropertyId::FormEnctype,
+            "formtarget" | "form_target" => PropertyId::FormTarget,
+            
+            // Select/dropdown properties (with aliases for web dev familiarity)
+            "value" | "select_value" => PropertyId::SelectValue,
+            "select_multiple" => PropertyId::SelectMultiple,
+            "size" | "select_size" => PropertyId::SelectSize,
+            "option_value" => PropertyId::OptionValue,
+            "option_text" => PropertyId::OptionText,
+            "option_selected" | "selected" => PropertyId::OptionSelected,
+            "option_disabled" | "disabled" => PropertyId::OptionDisabled,
+            "option_group" => PropertyId::OptionGroup,
+            
+            // Alias inputtype to type for web dev familiarity
+            "inputtype" | "input_type" => PropertyId::InputType,
+            
+            // Slider/range properties
+            "slider_value" => PropertyId::SliderValue,
+            "slider_min" => PropertyId::SliderMin,
+            "slider_max" => PropertyId::SliderMax,
+            "slider_step" => PropertyId::SliderStep,
+            "slider_orientation" | "orientation" => PropertyId::SliderOrientation,
+            "slider_thumb_size" | "thumb_size" => PropertyId::SliderThumbSize,
+            "slider_track_color" | "track_color" => PropertyId::SliderTrackColor,
+            "slider_thumb_color" | "thumb_color" => PropertyId::SliderThumbColor,
+            
             _ => PropertyId::CustomData,
         }
     }
