@@ -1,0 +1,317 @@
+# Core Components Test Suite
+# Tests basic UI components functionality across all renderers
+
+style "test_container" {
+    background_color: "#2C2C2CFF"
+    padding: 20
+    display: flex
+    flex_direction: column
+    gap: 15
+    border_width: 1
+    border_color: "#444444FF"
+    border_radius: 8
+}
+
+style "test_section" {
+    background_color: "#1E1E1EFF"
+    padding: 15
+    display: flex
+    flex_direction: column
+    gap: 10
+    border_radius: 6
+}
+
+style "test_title" {
+    font_size: 18
+    font_weight: 700
+    text_color: "#FFFFFFFF"
+    text_alignment: center
+    padding: 10
+}
+
+style "test_button" {
+    background_color: "#0066CCFF"
+    text_color: "#FFFFFFFF"
+    font_size: 14
+    text_alignment: center
+    border_width: 0
+    border_radius: 4
+    width: 120
+    height: 32
+    cursor: pointer
+    
+    &:hover {
+        background_color: "#0077DDFF"
+    }
+    
+    &:active {
+        background_color: "#004499FF"
+    }
+}
+
+style "test_text" {
+    font_size: 14
+    text_color: "#CCCCCCFF"
+    text_alignment: left
+    padding: 5
+}
+
+style "test_row" {
+    display: flex
+    flex_direction: row
+    align_items: center
+    gap: 10
+    padding: 5
+}
+
+@variables {
+    test_counter: 0
+    test_status: "Ready"
+    button_clicks: 0
+    text_content: "Initial text"
+}
+
+App {
+    window_width: 800
+    window_height: 600
+    window_title: "Kryon Core Components Test Suite"
+    resizable: true
+    keep_aspect_ratio: false
+    background_color: "#191919FF"
+
+    Container {
+        id: "main_container"
+        style: "test_container"
+        
+        Text {
+            text: "🧪 Core Components Test Suite"
+            style: "test_title"
+        }
+        
+        # Basic Text Tests
+        Container {
+            style: "test_section"
+            
+            Text {
+                text: "📝 Text Component Tests"
+                font_size: 16
+                font_weight: 600
+                text_color: "#00FF88FF"
+                padding: 5
+            }
+            
+            Text {
+                id: "static_text"
+                text: "Static text content"
+                style: "test_text"
+            }
+            
+            Text {
+                id: "dynamic_text"
+                text: $text_content
+                style: "test_text"
+            }
+            
+            Text {
+                id: "formatted_text"
+                text: "Counter: ${test_counter}"
+                style: "test_text"
+            }
+        }
+        
+        # Button Tests
+        Container {
+            style: "test_section"
+            
+            Text {
+                text: "🔘 Button Component Tests"
+                font_size: 16
+                font_weight: 600
+                text_color: "#00FF88FF"
+                padding: 5
+            }
+            
+            Container {
+                style: "test_row"
+                
+                Button {
+                    id: "increment_btn"
+                    text: "Increment"
+                    style: "test_button"
+                    onClick: "incrementCounter"
+                }
+                
+                Button {
+                    id: "decrement_btn" 
+                    text: "Decrement"
+                    style: "test_button"
+                    onClick: "decrementCounter"
+                }
+                
+                Button {
+                    id: "reset_btn"
+                    text: "Reset"
+                    style: "test_button"
+                    onClick: "resetCounter"
+                }
+            }
+            
+            Container {
+                style: "test_row"
+                
+                Button {
+                    id: "change_text_btn"
+                    text: "Change Text"
+                    style: "test_button"
+                    onClick: "changeText"
+                }
+                
+                Button {
+                    id: "test_status_btn"
+                    text: "Update Status"
+                    style: "test_button"
+                    onClick: "updateStatus"
+                }
+            }
+        }
+        
+        # Container Layout Tests
+        Container {
+            style: "test_section"
+            
+            Text {
+                text: "📦 Container Layout Tests"
+                font_size: 16
+                font_weight: 600
+                text_color: "#00FF88FF"
+                padding: 5
+            }
+            
+            # Flex Row Test
+            Container {
+                display: flex
+                flex_direction: row
+                justify_content: space-between
+                align_items: center
+                padding: 10
+                background_color: "#333333FF"
+                border_radius: 4
+                gap: 10
+                
+                Text {
+                    text: "Left"
+                    style: "test_text"
+                }
+                
+                Text {
+                    text: "Center"
+                    style: "test_text"
+                }
+                
+                Text {
+                    text: "Right"
+                    style: "test_text"
+                }
+            }
+            
+            # Flex Column Test
+            Container {
+                display: flex
+                flex_direction: column
+                align_items: center
+                padding: 10
+                background_color: "#333333FF"
+                border_radius: 4
+                gap: 5
+                margin_top: 10
+                
+                Text {
+                    text: "Top"
+                    style: "test_text"
+                }
+                
+                Text {
+                    text: "Middle"
+                    style: "test_text"
+                }
+                
+                Text {
+                    text: "Bottom"
+                    style: "test_text"
+                }
+            }
+        }
+        
+        # Status Display
+        Container {
+            style: "test_section"
+            
+            Text {
+                text: "📊 Test Status"
+                font_size: 16
+                font_weight: 600
+                text_color: "#00FF88FF"
+                padding: 5
+            }
+            
+            Text {
+                text: "Status: ${test_status}"
+                style: "test_text"
+            }
+            
+            Text {
+                text: "Button Clicks: ${button_clicks}"
+                style: "test_text"
+            }
+            
+            Text {
+                text: "Counter Value: ${test_counter}"
+                style: "test_text"
+            }
+        }
+    }
+}
+
+@function "lua" incrementCounter() {
+    test_counter = test_counter + 1
+    button_clicks = button_clicks + 1
+    test_status = "Counter incremented"
+    print("✅ incrementCounter: " .. test_counter)
+}
+
+@function "lua" decrementCounter() {
+    test_counter = test_counter - 1
+    button_clicks = button_clicks + 1
+    test_status = "Counter decremented"
+    print("✅ decrementCounter: " .. test_counter)
+}
+
+@function "lua" resetCounter() {
+    test_counter = 0
+    button_clicks = button_clicks + 1
+    test_status = "Counter reset"
+    print("✅ resetCounter: " .. test_counter)
+}
+
+@function "lua" changeText() {
+    local texts = {"Updated text!", "New content", "Changed successfully", "Text modified"}
+    local index = (button_clicks % 4) + 1
+    text_content = texts[index]
+    button_clicks = button_clicks + 1
+    test_status = "Text changed"
+    print("✅ changeText: " .. text_content)
+}
+
+@function "lua" updateStatus() {
+    local statuses = {"Running tests...", "All systems go!", "Tests passing", "Ready for more"}
+    local index = (button_clicks % 4) + 1
+    test_status = statuses[index]
+    button_clicks = button_clicks + 1
+    print("✅ updateStatus: " .. test_status)
+}
+
+# Initialize on startup
+@init {
+    test_status = "Initialized"
+    print("🚀 Core Components Test Suite loaded")
+}

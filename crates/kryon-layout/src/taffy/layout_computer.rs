@@ -22,28 +22,61 @@ impl LayoutComputer {
         computed_positions: &mut HashMap<ElementId, Vec2>,
         computed_sizes: &mut HashMap<ElementId, Vec2>,
     ) -> Result<(), taffy::TaffyError> {
+        eprintln!("🎯 [LAYOUT_COMPUTER] Processing element {} at parent_offset ({:.1}, {:.1})", element_id, parent_offset.x, parent_offset.y);
         if let Some(&node) = element_to_node.get(&element_id) {
             let layout = *taffy.layout(node)?;
             
             let taffy_position = Vec2::new(layout.location.x, layout.location.y);
             let taffy_size = Vec2::new(layout.size.width, layout.size.height);
             
-            // Calculate absolute position
-            let absolute_position = parent_offset + taffy_position;
+            // Calculate absolute position with flexbox padding fix
+            let mut absolute_position = parent_offset + taffy_position;
             
-            // Debug positioning for dropdown menu (element 6)
-            if element_id == 6 {
-                eprintln!("[LAYOUT_DEBUG] Dropdown menu (element 6) positioning:");
-                eprintln!("  - Parent offset: {:?}", parent_offset);
-                eprintln!("  - Taffy position: {:?}", taffy_position);
-                eprintln!("  - Final absolute position: {:?}", absolute_position);
-                if let Some(element) = elements.get(&element_id) {
-                    eprintln!("  - Element ID: {}", element.id);
-                    eprintln!("  - Layout flags: 0x{:02x}", element.layout_flags);
-                    eprintln!("  - Layout position: x={:?}, y={:?}", element.layout_position.x, element.layout_position.y);
-                    eprintln!("  - Style ID: {}", element.style_id);
+            // ✨ Fix for flexbox justify-content:end padding inconsistency
+            // This ensures flex-end containers have symmetric visual padding like flex-start containers
+            if let Some(current_element) = elements.get(&element_id) {
+                eprintln!("🎯 [DEBUG] Checking element {} for flex-end fix", element_id);
+                
+                // Check if this element is a flex container with justify-content: end
+                if let (Some(justify_content), Some(display)) = (
+                    current_element.custom_properties.get("justify_content"),
+                    current_element.custom_properties.get("display")
+                ) {
+                    eprintln!("🎯 [DEBUG] Element {} has display: {:?}, justify: {:?}", 
+                             element_id, display.as_string(), justify_content.as_string());
+                    
+                    if display.as_string().map_or(false, |s| s == "flex") {
+                        if let Some(justify_val) = justify_content.as_string() {
+                            eprintln!("🎯 [DEBUG] Element {} justify_content = '{}'", element_id, justify_val);
+                            
+                            if justify_val == "end" || justify_val == "flex-end" {
+                                eprintln!("🎯 [DEBUG] Element {} has flex-end, looking for parent...", element_id);
+                                
+                                // Find the parent container to get its padding
+                                for (_parent_id, parent_element) in elements {
+                                    if parent_element.children.contains(&element_id) {
+                                        let parent_padding = parent_element.custom_properties.get("padding")
+                                            .and_then(|p| p.as_float()).unwrap_or(0.0);
+                                        
+                                        eprintln!("🎯 [DEBUG] Found parent with padding: {:.1}px", parent_padding);
+                                        
+                                        if parent_padding > 0.0 {
+                                            // For flex-end containers, shift left by the padding amount to achieve symmetry
+                                            let symmetry_shift = parent_padding;
+                                            absolute_position.x -= symmetry_shift;
+                                            
+                                            eprintln!("🎯 [FLEX-END-SYMMETRY] Element {} (justify:end) adjusted by -{:.1}px for visual balance", 
+                                                     element_id, symmetry_shift);
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
+            
             
             computed_positions.insert(element_id, absolute_position);
             computed_sizes.insert(element_id, taffy_size);

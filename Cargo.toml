@@ -106,17 +106,8 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
-# Workspace crates
-kryon-shared = { path = "crates/kryon-shared" }
+# Core dependencies (shared by main CLI and renderer binaries)
 kryon-core = { path = "crates/kryon-core" }
-kryon-runtime = { path = "crates/kryon-runtime" }
-kryon-layout = { path = "crates/kryon-layout" }
-kryon-render = { path = "crates/kryon-render" }
-kryon-raylib = { path = "crates/kryon-raylib" }
-kryon-ratatui = { path = "crates/kryon-ratatui" }
-kryon-wgpu = { path = "crates/kryon-wgpu" }
-kryon-sdl2 = { path = "crates/kryon-sdl2" }
-kryon-html = { path = "crates/kryon-html", default-features = false, features = [] }
 kryon-compiler = { path = "crates/kryon-compiler" }
 
 # CLI dependencies
@@ -130,7 +121,17 @@ inquire = "0.7"
 which = "6.0"
 walkdir = { workspace = true }
 
-# Feature-specific dependencies
+# Renderer-specific dependencies (only for individual renderer binaries)
+kryon-raylib = { path = "crates/kryon-raylib", optional = true }
+kryon-ratatui = { path = "crates/kryon-ratatui", optional = true }
+kryon-wgpu = { path = "crates/kryon-wgpu", optional = true }
+kryon-sdl2 = { path = "crates/kryon-sdl2", optional = true }
+kryon-html = { path = "crates/kryon-html", optional = true, default-features = false }
+kryon-runtime = { path = "crates/kryon-runtime", optional = true }
+kryon-render = { path = "crates/kryon-render", optional = true }
+kryon-layout = { path = "crates/kryon-layout", optional = true }
+
+# Renderer feature dependencies
 wgpu = { workspace = true, optional = true }
 winit = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
@@ -144,12 +145,14 @@ serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 
 [features]
-default = ["wgpu"]
-wgpu = ["dep:wgpu", "dep:winit", "dep:glam", "dep:pollster"]
-ratatui = ["dep:ratatui", "dep:crossterm", "dep:glam"]
-raylib = []
-sdl2 = []
-html-server = ["dep:glam", "dep:tokio", "dep:warp", "dep:uuid", "dep:serde", "dep:serde_json", "kryon-html/server"]
+default = []
+
+# Renderer features (only enabled when building specific renderer binaries)
+wgpu = ["dep:wgpu", "dep:winit", "dep:glam", "dep:pollster", "dep:kryon-wgpu", "dep:kryon-runtime", "dep:kryon-render", "dep:kryon-layout"]
+ratatui = ["dep:ratatui", "dep:crossterm", "dep:glam", "dep:kryon-ratatui", "dep:kryon-runtime", "dep:kryon-render", "dep:kryon-layout"]
+raylib = ["dep:kryon-raylib", "dep:kryon-runtime", "dep:kryon-render", "dep:kryon-layout"]
+sdl2 = ["dep:kryon-sdl2", "dep:kryon-runtime", "dep:kryon-render", "dep:kryon-layout"]
+html-server = ["dep:glam", "dep:tokio", "dep:warp", "dep:uuid", "dep:serde", "dep:serde_json", "dep:kryon-html", "kryon-html/server", "dep:kryon-runtime", "dep:kryon-render", "dep:kryon-layout"]
 
 [[bin]]
 name = "kryon"
@@ -183,3 +186,18 @@ path = "src/bin/kryon-renderer-debug.rs"
 name = "kryon-renderer-html"
 path = "src/bin/kryon-renderer-html.rs"
 required-features = ["html-server"]
+
+[[bin]]
+name = "kryon-web-examples"
+path = "src/bin/kryon-web-examples.rs"
+required-features = ["html-server"]
+
+[[bin]]
+name = "kryon-debug-interactive"
+path = "src/bin/kryon-debug-interactive.rs"
+required-features = ["ratatui"]
+
+[[bin]]
+name = "kryon-standalone"
+path = "src/bin/kryon-standalone.rs"
+required-features = ["ratatui"]

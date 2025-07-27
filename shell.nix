@@ -189,7 +189,22 @@ pkgs.mkShell {
     export KRYON_ROOT="/home/wao/lyra/proj/kryonlabs/kryon"
     export KRYON_BINARY="$KRYON_ROOT/target/release/kryon"
     
-    # Function to run kryon files with unified binary
+    # Add renderer binaries to PATH for modular system
+    export PATH="$KRYON_ROOT/target/release:$KRYON_ROOT/target/debug:$PATH"
+    
+    # Function to ensure renderers are built
+    ensure_renderer() {
+      local renderer="$1"
+      local binary="kryon-renderer-$renderer"
+      
+      if ! command -v "$binary" &> /dev/null; then
+        echo "⚠️  Renderer '$renderer' not found in PATH"
+        echo "   Building $renderer renderer..."
+        (cd "$KRYON_ROOT" && cargo build --release --bin "$binary" --features "$renderer")
+      fi
+    }
+    
+    # Function to run kryon files with modular system
     kryon_run() {
       local input_file="$1"
       local renderer="$2"
@@ -207,11 +222,16 @@ pkgs.mkShell {
       
       # Check if file is .kry
       if [[ "$input_file" != *.kry ]]; then
-        echo "❌ Error: File must be .kry (unified kryon binary handles compilation automatically)" >&2
+        echo "❌ Error: File must be .kry (kryon handles compilation automatically)" >&2
         return 1
       fi
       
-      # Run with unified kryon binary
+      # Ensure renderer is available if specified
+      if [[ -n "$renderer" ]]; then
+        ensure_renderer "$renderer"
+      fi
+      
+      # Run with modular kryon system
       if [[ -n "$renderer" ]]; then
         "$KRYON_BINARY" --renderer "$renderer" "$input_file"
       else
@@ -271,18 +291,46 @@ pkgs.mkShell {
     kryon-root() { cd "$KRYON_ROOT"; }
     kryon-examples() { cd "$KRYON_ROOT/examples"; }
     
-    echo "🚀 KRYON SHELL - Unified Binary Edition!"
+    # Build helpers for modular system
+    build-renderer() {
+      local renderer="$1"
+      if [[ -z "$renderer" ]]; then
+        echo "Usage: build-renderer <renderer-name>"
+        echo "Available: wgpu, raylib, sdl2, ratatui, html, debug"
+        return 1
+      fi
+      
+      echo "🔨 Building $renderer renderer..."
+      (cd "$KRYON_ROOT" && cargo build --release --bin "kryon-renderer-$renderer" --features "$renderer")
+    }
+    
+    build-all-renderers() {
+      echo "🔨 Building all renderers..."
+      (cd "$KRYON_ROOT" && ./scripts/build-renderers.sh --release --all)
+    }
+    
+    # Check available renderers
+    check-renderers() {
+      "$KRYON_BINARY" --list-renderers
+    }
+    
+    echo "🚀 KRYON SHELL - Modular Renderer Edition!"
     echo ""
-    echo "🎯 UNIFIED KRYON BINARY:"
-    echo "  kryon <file.kry>            - Auto-compile and run with default renderer (Raylib)"
-    echo "  kryon --renderer <name> <file> - Run with specific renderer"
+    echo "🎯 MODULAR KRYON SYSTEM:"
+    echo "  kryon <file.kry>            - Auto-compile and run with default renderer"
+    echo "  kryon -r <name> <file>      - Run with specific renderer"
     echo "  kryon --compile-only <file> - Just compile to .krb"
     echo "  kryon --list-renderers      - Show available renderers"
     echo ""
+    echo "🔨 BUILD COMMANDS:"
+    echo "  build-renderer <name>       - Build a specific renderer"
+    echo "  build-all-renderers         - Build all renderers"
+    echo "  check-renderers             - Check which renderers are available"
+    echo ""
     echo "🎮 QUICK RENDERER ALIASES:"
-    echo "  kryon-raylib <file>         - Run with Raylib renderer"
-    echo "  kryon-wgpu <file>           - Run with WGPU renderer"
-    echo "  kryon-sdl2 <file>           - Run with SDL2 renderer"
+    echo "  kryon-raylib <file>         - Run with Raylib renderer (auto-builds if needed)"
+    echo "  kryon-wgpu <file>           - Run with WGPU renderer (auto-builds if needed)"
+    echo "  kryon-sdl2 <file>           - Run with SDL2 renderer (auto-builds if needed)"
     echo "  kryon-ratatui <file>        - Run with Ratatui renderer (no logs)"
     echo "  kryon-ratatui-log <file>    - Run with Ratatui renderer (logs to ratatui.log)"
     echo "  kryon-debug <file>          - Run with debug renderer"
@@ -298,9 +346,10 @@ pkgs.mkShell {
     echo "  kryon ~/path/to/my/app.kry"
     echo "  kryon-raylib $KRYON_ROOT/examples/01_Getting_Started/hello_world.kry"
     echo "  kryon-ratatui $KRYON_ROOT/examples/03_Buttons_and_Events/button.kry"
-    echo "  kryon --renderer wgpu --debug ~/my-app/main.kry"
+    echo "  kryon -r wgpu --debug ~/my-app/main.kry"
     echo ""
-    echo "💡 TIP: The unified binary automatically compiles .kry files and runs them!"
+    echo "💡 TIP: Renderers are now separate binaries - build only what you need!"
+    echo "   First time? Try: build-renderer debug && kryon-debug examples/01_Getting_Started/hello_world.kry"
     echo ""
   '';
 }

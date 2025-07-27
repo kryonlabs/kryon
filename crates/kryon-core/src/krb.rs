@@ -179,10 +179,24 @@ impl KRBParser {
         
         self.position = style_offset;
         
-        for _i in 0..header.style_count {
+        for i in 0..header.style_count {
+            // Add bounds checking before reading
+            if self.position + 3 > self.data.len() {
+                eprintln!("[STYLE] ERROR: Not enough data to read style header at position {}, file size {}", self.position, self.data.len());
+                break;
+            }
+            
             let style_id = self.read_u8(); // Read the actual style ID from file
             let name_index = self.read_u8() as usize;
             let property_count = self.read_u8();
+
+            // Sanity check the values
+            if name_index > 200 || property_count > 50 {
+                eprintln!("[STYLE] ERROR: Corrupted style data at position {}: style_id={}, name_index={}, property_count={}", 
+                         self.position - 3, style_id, name_index, property_count);
+                eprintln!("[STYLE] ERROR: This suggests we're reading beyond the style table or the file is corrupted");
+                break;
+            }
 
             let name = if name_index < strings.len() {
                 strings[name_index].clone()
@@ -190,13 +204,31 @@ impl KRBParser {
                 format!("style_{}", style_id)
             };
 
-            eprintln!("[STYLE] Style {}: name='{}', name_index={}, props={}", style_id, name, name_index, property_count);
+            eprintln!("[STYLE] Style {} (iteration {}): name='{}', name_index={}, props={}", style_id, i, name, name_index, property_count);
 
             let mut properties = HashMap::new();
             for j in 0..property_count {
+                // Check if we have enough data for property header
+                if self.position + 3 > self.data.len() {
+                    eprintln!("[STYLE] ERROR: Not enough data to read property {} header at position {}", j, self.position);
+                    break;
+                }
+                
                 let prop_id = self.read_u8();
                 let _value_type = self.read_u8(); // We can use this for more robust parsing later
                 let size = self.read_u8();
+                
+                // Sanity check property size
+                if size > 200 {
+                    eprintln!("[STYLE] ERROR: Property {} has unrealistic size {}, skipping", j, size);
+                    break;
+                }
+                
+                // Check if we have enough data for the property value
+                if self.position + size as usize > self.data.len() {
+                    eprintln!("[STYLE] ERROR: Not enough data to read property {} value (size {}) at position {}", j, size, self.position);
+                    break;
+                }
                 
                 eprintln!("[STYLE]   Property {}: id=0x{:02X}, size={}", j, prop_id, size);
                 
@@ -569,6 +601,9 @@ impl KRBParser {
         
         for _ in 0..header.string_count {
             let length = self.read_u8() as usize;
+            if self.position + length > self.data.len() {
+                panic!("KRB parsing error: trying to read string of length {} at position {} but data length is {}", length, self.position, self.data.len());
+            }
             let string_data = &self.data[self.position..self.position + length];
             let string = String::from_utf8_lossy(string_data).to_string();
             strings.push(string);
@@ -1023,10 +1058,27 @@ impl KRBParser {
                     for _ in 0..size { self.read_u8(); }
                 }
             }
-            0x15 => { // MaxHeight
-                let max_height = self.read_u16() as f32;
-                element.custom_properties.insert("max_height".to_string(), PropertyValue::Float(max_height));
-                eprintln!("[PROP] MaxHeight: {}", max_height);
+            0x15 => { // ImageSrc or MaxHeight
+                if value_type == 0x04 { // String - ImageSrc
+                    if size == 1 {
+                        let string_index = self.read_u8() as usize;
+                        if string_index < strings.len() {
+                            let src = strings[string_index].clone();
+                            element.custom_properties.insert("src".to_string(), PropertyValue::String(src.clone()));
+                            eprintln!("[PROP] ImageSrc: '{}'", src);
+                        }
+                    } else {
+                        eprintln!("[PROP] ImageSrc: size mismatch, expected 1, got {}, skipping", size);
+                        for _ in 0..size { self.read_u8(); }
+                    }
+                } else if value_type == 0x02 && size == 2 { // Short - MaxHeight
+                    let max_height = self.read_u16() as f32;
+                    element.custom_properties.insert("max_height".to_string(), PropertyValue::Float(max_height));
+                    eprintln!("[PROP] MaxHeight: {}", max_height);
+                } else {
+                    eprintln!("[PROP] Property 0x15: unsupported value_type {:02x} or size {}, skipping", value_type, size);
+                    for _ in 0..size { self.read_u8(); }
+                }
             }
             // App-specific properties
             0x20 => { // WindowWidth
@@ -1819,6 +1871,9 @@ impl KRBParser {
         
         for _ in 0..header.resource_count {
             let length = self.read_u8() as usize;
+            if self.position + length > self.data.len() {
+                panic!("KRB parsing error: trying to read resource of length {} at position {} but data length is {}", length, self.position, self.data.len());
+            }
             let resource_data = &self.data[self.position..self.position + length];
             let resource = String::from_utf8_lossy(resource_data).to_string();
             resources.push(resource);
@@ -1866,6 +1921,9 @@ impl KRBParser {
             
             // Parse script bytecode
             let bytecode = if storage_format == 0 { // Inline
+                if self.position + data_size > self.data.len() {
+                    panic!("KRB parsing error: trying to read bytecode of size {} at position {} but data length is {}", data_size, self.position, self.data.len());
+                }
                 let bytecode_data = &self.data[self.position..self.position + data_size];
                 bytecode_data.to_vec()
             } else { // External
@@ -2689,7 +2747,7 @@ impl KRBParser {
     }
     
     fn read_u16(&mut self) -> u16 {
-        if self.position + 1 >= self.data.len() {
+        if self.position + 2 > self.data.len() {
             panic!("KRB parsing error: trying to read u16 at position {} but data length is {}", self.position, self.data.len());
         }
         let value = u16::from_le_bytes([self.data[self.position], self.data[self.position + 1]]);
@@ -2698,11 +2756,14 @@ impl KRBParser {
     }
     
     fn read_u16_at(&self, offset: usize) -> u16 {
+        if offset + 2 > self.data.len() {
+            panic!("KRB parsing error: trying to read u16 at offset {} but data length is {}", offset, self.data.len());
+        }
         u16::from_le_bytes([self.data[offset], self.data[offset + 1]])
     }
     
     fn _read_u32(&mut self) -> u32 {
-        if self.position + 3 >= self.data.len() {
+        if self.position + 4 > self.data.len() {
             panic!("KRB parsing error: trying to read u32 at position {} but data length is {}", self.position, self.data.len());
         }
         let value = u32::from_le_bytes([
@@ -2716,6 +2777,9 @@ impl KRBParser {
     }
     
     fn read_u32_at(&self, offset: usize) -> u32 {
+        if offset + 4 > self.data.len() {
+            panic!("KRB parsing error: trying to read u32 at offset {} but data length is {}", offset, self.data.len());
+        }
         u32::from_le_bytes([
             self.data[offset],
             self.data[offset + 1],

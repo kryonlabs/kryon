@@ -1,0 +1,142 @@
+# Kryon Test Suite Configuration
+# Central configuration for all testing parameters
+
+[general]
+# Test suite metadata
+name = "Kryon Comprehensive Test Suite"
+version = "1.0.0"
+description = "Centralized testing ground for the Kryon UI framework"
+
+# Default settings
+default_renderer = "SDL2"
+default_window_width = 800
+default_window_height = 600
+enable_logging = true
+log_level = "INFO"
+
+[renderers]
+# Available renderers and their configurations
+[renderers.sdl2]
+binary = "kryon-renderer-sdl2"
+enabled = true
+supports_input = true
+supports_animation = true
+supports_transparency = true
+
+[renderers.wgpu]
+binary = "kryon-renderer-wgpu"
+enabled = true
+supports_input = true
+supports_animation = true
+supports_transparency = true
+requires_gpu = true
+
+[renderers.ratatui]
+binary = "kryon-renderer-ratatui"
+enabled = true
+supports_input = true
+supports_animation = false
+supports_transparency = false
+terminal_only = true
+
+[renderers.web]
+binary = "kryon-renderer-web"
+enabled = false
+supports_input = true
+supports_animation = true
+supports_transparency = true
+requires_browser = true
+
+[test_suites]
+# Test suite configurations
+[test_suites.core_components]
+file = "01_core_components.kry"
+description = "Basic UI components and functionality"
+timeout_seconds = 30
+required_renderers = ["sdl2", "wgpu", "ratatui"]
+
+[test_suites.input_fields]
+file = "02_input_fields.kry"
+description = "Comprehensive input field testing"
+timeout_seconds = 45
+required_renderers = ["sdl2", "wgpu"]
+skip_renderers = ["ratatui"]  # Limited input support
+
+[test_suites.layout_engine]
+file = "03_layout_engine.kry"
+description = "Layout and flexbox system testing"
+timeout_seconds = 30
+required_renderers = ["sdl2", "wgpu", "ratatui"]
+
+[test_suites.renderer_comparison]
+file = "04_renderer_comparison.kry"
+description = "Cross-renderer consistency testing"
+timeout_seconds = 60
+required_renderers = ["sdl2", "wgpu", "ratatui"]
+
+[test_suites.performance_benchmark]
+file = "05_performance_benchmark.kry"
+description = "Performance and stress testing"
+timeout_seconds = 120
+required_renderers = ["sdl2", "wgpu"]
+skip_renderers = ["ratatui"]  # Performance testing not meaningful in terminal
+
+[performance]
+# Performance testing configuration
+benchmark_duration_seconds = 60
+element_count_levels = [50, 100, 200, 500, 1000]
+stress_test_iterations = 100
+memory_sampling_interval_ms = 1000
+
+# Performance thresholds
+min_fps = 30
+max_memory_mb = 500
+max_cpu_percent = 80
+
+[quality]
+# Code quality checks
+check_warnings = true
+check_formatting = true
+check_clippy = true
+fail_on_warnings = false
+fail_on_formatting = false
+fail_on_clippy = false
+
+[reporting]
+# Test reporting configuration
+generate_html_report = true
+generate_json_report = true
+generate_csv_metrics = true
+save_screenshots = false  # Future feature
+include_performance_graphs = true
+
+# Report retention
+keep_reports_days = 30
+max_report_files = 100
+
+[ci]
+# Continuous Integration settings
+parallel_execution = true
+fail_fast = false
+timeout_multiplier = 1.5  # Increase timeouts in CI
+upload_artifacts = true
+
+[environment]
+# Environment-specific settings
+[environment.development]
+log_level = "DEBUG"
+enable_debug_renderer = true
+show_layout_bounds = true
+enable_performance_overlay = true
+
+[environment.testing]
+log_level = "INFO"
+enable_debug_renderer = false
+show_layout_bounds = false
+enable_performance_overlay = false
+
+[environment.production]
+log_level = "WARN"
+enable_debug_renderer = false
+show_layout_bounds = false
+enable_performance_overlay = false

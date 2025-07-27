@@ -1,0 +1,692 @@
+# Input Fields Test Suite
+# Comprehensive testing of all input field types and interactions
+
+style "input_container" {
+    background_color: "#2C2C2CFF"
+    padding: 20
+    display: flex
+    flex_direction: column
+    gap: 20
+    border_width: 1
+    border_color: "#444444FF"
+    border_radius: 8
+}
+
+style "input_section" {
+    background_color: "#1E1E1EFF"
+    padding: 15
+    display: flex
+    flex_direction: column
+    gap: 15
+    border_radius: 6
+}
+
+style "section_title" {
+    font_size: 16
+    font_weight: 600
+    text_color: "#00FF88FF"
+    padding: 5
+}
+
+style "input_row" {
+    display: flex
+    flex_direction: row
+    align_items: center
+    gap: 15
+    padding: 5
+}
+
+style "input_label" {
+    font_size: 14
+    text_color: "#CCCCCCFF"
+    width: 120
+    text_alignment: left
+}
+
+style "test_input" {
+    background_color: "#333333FF"
+    text_color: "#FFFFFFFF"
+    border_color: "#555555FF"
+    border_width: 2
+    border_radius: 4
+    font_size: 14
+    padding: 8
+    width: 200
+    height: 32
+    
+    &:focus {
+        border_color: "#0088FFFF"
+        background_color: "#444444FF"
+    }
+}
+
+style "test_button" {
+    background_color: "#0066CCFF"
+    text_color: "#FFFFFFFF"
+    font_size: 14
+    text_alignment: center
+    border_width: 0
+    border_radius: 4
+    width: 100
+    height: 32
+    cursor: pointer
+    
+    &:hover {
+        background_color: "#0077DDFF"
+    }
+    
+    &:active {
+        background_color: "#004499FF"
+    }
+}
+
+style "status_text" {
+    font_size: 12
+    text_color: "#AAAAAA"
+    padding: 5
+}
+
+@variables {
+    text_input_value: ""
+    password_input_value: ""
+    email_input_value: ""
+    number_input_value: 0
+    textarea_value: ""
+    slider_value: 50
+    checkbox_checked: false
+    radio_selected: "option1"
+    dropdown_selected: "item1"
+    form_status: "Ready for input"
+    total_interactions: 0
+}
+
+App {
+    window_width: 900
+    window_height: 800
+    window_title: "Kryon Input Fields Test Suite"
+    resizable: true
+    keep_aspect_ratio: false
+    background_color: "#191919FF"
+
+    Container {
+        id: "main_container"
+        style: "input_container"
+        
+        Text {
+            text: "🎛️ Input Fields Test Suite"
+            font_size: 20
+            font_weight: 700
+            text_color: "#FFFFFFFF"
+            text_alignment: center
+            padding: 10
+        }
+        
+        # Text Input Tests
+        Container {
+            style: "input_section"
+            
+            Text {
+                text: "📝 Text Input Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                style: "input_row"
+                
+                Text {
+                    text: "Text Input:"
+                    style: "input_label"
+                }
+                
+                Input {
+                    id: "text_input"
+                    input_type: text
+                    placeholder: "Enter text here..."
+                    text: $text_input_value
+                    style: "test_input"
+                    onChange: "onTextChange"
+                }
+                
+                Button {
+                    text: "Clear"
+                    style: "test_button"
+                    onClick: "clearTextInput"
+                }
+            }
+            
+            Container {
+                style: "input_row"
+                
+                Text {
+                    text: "Password:"
+                    style: "input_label"
+                }
+                
+                Input {
+                    id: "password_input"
+                    input_type: password
+                    placeholder: "Enter password..."
+                    text: $password_input_value
+                    style: "test_input"
+                    onChange: "onPasswordChange"
+                }
+                
+                Button {
+                    text: "Show"
+                    style: "test_button"
+                    onClick: "togglePasswordVisibility"
+                }
+            }
+            
+            Container {
+                style: "input_row"
+                
+                Text {
+                    text: "Email:"
+                    style: "input_label"
+                }
+                
+                Input {
+                    id: "email_input"
+                    input_type: email
+                    placeholder: "user@example.com"
+                    text: $email_input_value
+                    style: "test_input"
+                    onChange: "onEmailChange"
+                }
+                
+                Button {
+                    text: "Validate"
+                    style: "test_button"
+                    onClick: "validateEmail"
+                }
+            }
+            
+            Container {
+                style: "input_row"
+                
+                Text {
+                    text: "Number:"
+                    style: "input_label"
+                }
+                
+                Input {
+                    id: "number_input"
+                    input_type: number
+                    text: $number_input_value
+                    style: "test_input"
+                    min_value: 0
+                    max_value: 100
+                    onChange: "onNumberChange"
+                }
+                
+                Button {
+                    text: "Double"
+                    style: "test_button"
+                    onClick: "doubleNumber"
+                }
+            }
+        }
+        
+        # Checkbox and Radio Tests
+        Container {
+            style: "input_section"
+            
+            Text {
+                text: "☑️ Selection Input Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                style: "input_row"
+                
+                Checkbox {
+                    id: "test_checkbox"
+                    text: "Enable notifications"
+                    checked: $checkbox_checked
+                    onClick: "onCheckboxToggle"
+                }
+                
+                Button {
+                    text: "Toggle"
+                    style: "test_button"
+                    onClick: "toggleCheckbox"
+                }
+            }
+            
+            Container {
+                display: flex
+                flex_direction: column
+                gap: 10
+                padding: 10
+                
+                Text {
+                    text: "Radio buttons:"
+                    style: "input_label"
+                }
+                
+                Container {
+                    display: flex
+                    flex_direction: row
+                    gap: 20
+                    
+                    Radio {
+                        id: "radio1"
+                        text: "Option 1"
+                        value: "option1"
+                        checked: $radio_selected == "option1"
+                        group: "test_group"
+                        onChange: "onRadioChange"
+                    }
+                    
+                    Radio {
+                        id: "radio2"
+                        text: "Option 2"
+                        value: "option2"
+                        checked: $radio_selected == "option2"
+                        group: "test_group"
+                        onChange: "onRadioChange"
+                    }
+                    
+                    Radio {
+                        id: "radio3"
+                        text: "Option 3"
+                        value: "option3"
+                        checked: $radio_selected == "option3"
+                        group: "test_group"
+                        onChange: "onRadioChange"
+                    }
+                }
+            }
+        }
+        
+        # Range and Textarea Tests
+        Container {
+            style: "input_section"
+            
+            Text {
+                text: "🎚️ Advanced Input Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                style: "input_row"
+                
+                Text {
+                    text: "Slider:"
+                    style: "input_label"
+                }
+                
+                Slider {
+                    id: "test_slider"
+                    min_value: 0
+                    max_value: 100
+                    value: $slider_value
+                    width: 200
+                    height: 20
+                    track_color: "#555555FF"
+                    thumb_color: "#0088FFFF"
+                    border_color: "#777777FF"
+                    border_width: 1
+                    onChange: "onSliderChange"
+                }
+                
+                Text {
+                    text: "${slider_value}%"
+                    style: "input_label"
+                    width: 50
+                }
+            }
+            
+            Container {
+                display: flex
+                flex_direction: column
+                gap: 10
+                
+                Text {
+                    text: "Text Area:"
+                    style: "input_label"
+                }
+                
+                TextArea {
+                    id: "test_textarea"
+                    placeholder: "Enter multiple lines of text..."
+                    text: $textarea_value
+                    width: 400
+                    height: 80
+                    background_color: "#333333FF"
+                    text_color: "#FFFFFFFF"
+                    border_color: "#555555FF"
+                    border_width: 2
+                    border_radius: 4
+                    padding: 8
+                    font_size: 14
+                    onChange: "onTextareaChange"
+                }
+                
+                Container {
+                    style: "input_row"
+                    
+                    Button {
+                        text: "Clear"
+                        style: "test_button"
+                        onClick: "clearTextarea"
+                    }
+                    
+                    Button {
+                        text: "Fill Sample"
+                        style: "test_button"
+                        onClick: "fillSampleText"
+                    }
+                }
+            }
+        }
+        
+        # Dropdown Tests
+        Container {
+            style: "input_section"
+            
+            Text {
+                text: "📋 Dropdown Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                style: "input_row"
+                
+                Text {
+                    text: "Select Item:"
+                    style: "input_label"
+                }
+                
+                Dropdown {
+                    id: "test_dropdown"
+                    selected_value: $dropdown_selected
+                    width: 200
+                    height: 32
+                    background_color: "#333333FF"
+                    text_color: "#FFFFFFFF"
+                    border_color: "#555555FF"
+                    border_width: 2
+                    border_radius: 4
+                    onChange: "onDropdownChange"
+                    
+                    Option {
+                        value: "item1"
+                        text: "First Item"
+                    }
+                    
+                    Option {
+                        value: "item2"
+                        text: "Second Item"
+                    }
+                    
+                    Option {
+                        value: "item3"
+                        text: "Third Item"
+                    }
+                    
+                    Option {
+                        value: "item4"
+                        text: "Fourth Item"
+                    }
+                }
+                
+                Button {
+                    text: "Reset"
+                    style: "test_button"
+                    onClick: "resetDropdown"
+                }
+            }
+        }
+        
+        # Status Display
+        Container {
+            style: "input_section"
+            
+            Text {
+                text: "📊 Form Status"
+                style: "section_title"
+            }
+            
+            Text {
+                text: "Status: ${form_status}"
+                style: "status_text"
+            }
+            
+            Text {
+                text: "Text: '${text_input_value}'"
+                style: "status_text"
+            }
+            
+            Text {
+                text: "Email: '${email_input_value}'"
+                style: "status_text"
+            }
+            
+            Text {
+                text: "Number: ${number_input_value}"
+                style: "status_text"
+            }
+            
+            Text {
+                text: "Checkbox: ${checkbox_checked ? 'checked' : 'unchecked'}"
+                style: "status_text"
+            }
+            
+            Text {
+                text: "Radio: ${radio_selected}"
+                style: "status_text"
+            }
+            
+            Text {
+                text: "Slider: ${slider_value}"
+                style: "status_text"
+            }
+            
+            Text {
+                text: "Dropdown: ${dropdown_selected}"
+                style: "status_text"
+            }
+            
+            Text {
+                text: "Total Interactions: ${total_interactions}"
+                style: "status_text"
+            }
+            
+            Container {
+                style: "input_row"
+                margin_top: 10
+                
+                Button {
+                    text: "Test All"
+                    style: "test_button"
+                    onClick: "testAllInputs"
+                }
+                
+                Button {
+                    text: "Reset All"
+                    style: "test_button"
+                    onClick: "resetAllInputs"
+                }
+                
+                Button {
+                    text: "Export Data"
+                    style: "test_button"
+                    onClick: "exportFormData"
+                }
+            }
+        }
+    }
+}
+
+@function "lua" onTextChange() {
+    total_interactions = total_interactions + 1
+    form_status = "Text input changed"
+    print("📝 Text changed: " .. text_input_value)
+}
+
+@function "lua" onPasswordChange() {
+    total_interactions = total_interactions + 1
+    form_status = "Password input changed"
+    print("🔒 Password changed (length: " .. string.len(password_input_value) .. ")")
+}
+
+@function "lua" onEmailChange() {
+    total_interactions = total_interactions + 1
+    form_status = "Email input changed"
+    print("📧 Email changed: " .. email_input_value)
+}
+
+@function "lua" onNumberChange() {
+    total_interactions = total_interactions + 1
+    form_status = "Number input changed"
+    print("🔢 Number changed: " .. number_input_value)
+}
+
+@function "lua" onCheckboxToggle() {
+    checkbox_checked = not checkbox_checked
+    total_interactions = total_interactions + 1
+    form_status = "Checkbox toggled"
+    print("☑️ Checkbox: " .. (checkbox_checked and "checked" or "unchecked"))
+}
+
+@function "lua" onRadioChange() {
+    -- Radio value will be set by the component
+    total_interactions = total_interactions + 1
+    form_status = "Radio selection changed"
+    print("📻 Radio selected: " .. radio_selected)
+}
+
+@function "lua" onSliderChange() {
+    total_interactions = total_interactions + 1
+    form_status = "Slider value changed"
+    print("🎚️ Slider: " .. slider_value)
+}
+
+@function "lua" onTextareaChange() {
+    total_interactions = total_interactions + 1
+    form_status = "Textarea content changed"
+    print("📄 Textarea length: " .. string.len(textarea_value))
+}
+
+@function "lua" onDropdownChange() {
+    total_interactions = total_interactions + 1
+    form_status = "Dropdown selection changed"
+    print("📋 Dropdown: " .. dropdown_selected)
+}
+
+@function "lua" clearTextInput() {
+    text_input_value = ""
+    total_interactions = total_interactions + 1
+    form_status = "Text input cleared"
+    print("🗑️ Text input cleared")
+}
+
+@function "lua" togglePasswordVisibility() {
+    total_interactions = total_interactions + 1
+    form_status = "Password visibility toggled"
+    print("👁️ Password visibility toggled")
+}
+
+@function "lua" validateEmail() {
+    local is_valid = string.match(email_input_value, "^[%w._%%-]+@[%w._%%-]+%.%w+$") ~= nil
+    total_interactions = total_interactions + 1
+    form_status = is_valid and "Email is valid" or "Email is invalid"
+    print("✉️ Email validation: " .. form_status)
+}
+
+@function "lua" doubleNumber() {
+    number_input_value = number_input_value * 2
+    if number_input_value > 100 then
+        number_input_value = 100
+    end
+    total_interactions = total_interactions + 1
+    form_status = "Number doubled"
+    print("✖️2 Number doubled: " .. number_input_value)
+}
+
+@function "lua" toggleCheckbox() {
+    checkbox_checked = not checkbox_checked
+    total_interactions = total_interactions + 1
+    form_status = "Checkbox toggled programmatically"
+    print("⚡ Checkbox toggled: " .. (checkbox_checked and "checked" or "unchecked"))
+}
+
+@function "lua" clearTextarea() {
+    textarea_value = ""
+    total_interactions = total_interactions + 1
+    form_status = "Textarea cleared"
+    print("🗑️ Textarea cleared")
+}
+
+@function "lua" fillSampleText() {
+    textarea_value = "This is a sample text\\nwith multiple lines\\nfor testing the textarea\\ncomponent functionality."
+    total_interactions = total_interactions + 1
+    form_status = "Sample text filled"
+    print("📝 Sample text filled in textarea")
+}
+
+@function "lua" resetDropdown() {
+    dropdown_selected = "item1"
+    total_interactions = total_interactions + 1
+    form_status = "Dropdown reset"
+    print("🔄 Dropdown reset to first item")
+}
+
+@function "lua" testAllInputs() {
+    text_input_value = "Test text"
+    email_input_value = "test@example.com"
+    number_input_value = 42
+    checkbox_checked = true
+    radio_selected = "option2"
+    slider_value = 75
+    dropdown_selected = "item3"
+    textarea_value = "Test content for textarea"
+    total_interactions = total_interactions + 1
+    form_status = "All inputs populated with test data"
+    print("🧪 All inputs populated with test data")
+}
+
+@function "lua" resetAllInputs() {
+    text_input_value = ""
+    password_input_value = ""
+    email_input_value = ""
+    number_input_value = 0
+    textarea_value = ""
+    slider_value = 50
+    checkbox_checked = false
+    radio_selected = "option1"
+    dropdown_selected = "item1"
+    total_interactions = total_interactions + 1
+    form_status = "All inputs reset"
+    print("🔄 All inputs reset to defaults")
+}
+
+@function "lua" exportFormData() {
+    local data = {
+        text = text_input_value,
+        email = email_input_value,
+        number = number_input_value,
+        checkbox = checkbox_checked,
+        radio = radio_selected,
+        slider = slider_value,
+        dropdown = dropdown_selected,
+        textarea = textarea_value,
+        interactions = total_interactions
+    }
+    
+    print("📤 Form data exported:")
+    for key, value in pairs(data) do
+        print("  " .. key .. ": " .. tostring(value))
+    end
+    
+    total_interactions = total_interactions + 1
+    form_status = "Form data exported to console"
+}
+
+# Initialize on startup
+@init {
+    form_status = "Input fields test suite loaded"
+    print("🚀 Input Fields Test Suite initialized")
+}

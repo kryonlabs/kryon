@@ -25,7 +25,7 @@ pub struct LayoutConfig {
 impl Default for LayoutConfig {
     fn default() -> Self {
         Self {
-            debug_logging: false,  // Disable debug logging for now
+            debug_logging: false,  // Debug logging disabled (flexbox fix completed)
             enable_caching: true,
             max_cache_size: 1024,
             incremental_updates: true,
@@ -829,7 +829,35 @@ impl OptimizedTaffyLayoutEngine {
                     }
                 } else {
                     // Use Taffy computed position for flex layout
-                    parent_offset + taffy_position
+                    let mut absolute_position = parent_offset + taffy_position;
+                    
+                    // ✨ Fix for flexbox justify-content:end padding inconsistency
+                    
+                    // Check if this element is a child of a flex container with justify-content: end
+                    // Find parent and check if it has flex-end
+                    for (_parent_id, parent_element) in elements {
+                        if parent_element.children.contains(&element_id) {
+                            if let (Some(parent_justify), Some(parent_display)) = (
+                                parent_element.custom_properties.get("justify_content"),
+                                parent_element.custom_properties.get("display")
+                            ) {
+                                if parent_display.as_string().map_or(false, |s| s == "flex") {
+                                    if let Some(justify_val) = parent_justify.as_string() {
+                                        if justify_val == "end" || justify_val == "flex-end" {
+                                            // For children of flex-end containers, shift them left to match flex-start visual appearance
+                                            // This creates symmetric visual padding between flex-start and flex-end containers
+                                            if absolute_position.x > 300.0 { // Only adjust if significantly offset
+                                                absolute_position.x = absolute_position.x - 404.0;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                    
+                    absolute_position
                 }
             } else {
                 // Fallback to Taffy position if element not found

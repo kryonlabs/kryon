@@ -33,25 +33,8 @@ for arg in "$@"; do
 done
 
 # Set the appropriate binary path and renderer flag
-KRYON_PATH="$SCRIPT_DIR/target/release/kryon"
-case "$RENDERER" in
-    raylib)
-        RENDERER_FLAG="-r raylib"
-        BUILD_FEATURES="--features raylib"
-        ;;
-    wgpu)
-        RENDERER_FLAG="-r wgpu"
-        BUILD_FEATURES=""
-        ;;
-    sdl2)
-        RENDERER_FLAG="-r sdl2"
-        BUILD_FEATURES=""
-        ;;
-    ratatui)
-        RENDERER_FLAG="-r ratatui"
-        BUILD_FEATURES=""
-        ;;
-esac
+KRYON_PATH="$SCRIPT_DIR/../target/release/kryon"
+RENDERER_FLAG="-r $RENDERER"
 
 # Show list if requested
 if $SHOW_LIST; then
@@ -86,30 +69,42 @@ if [ $SKIP_COUNT -gt 0 ]; then
     echo ""
 fi
 
-# Always build the unified kryon binary to ensure latest code
-echo "🔧 Building Kryon unified binary with $RENDERER renderer..."
-cd "$SCRIPT_DIR"
+# Build the modular system
+echo "🔧 Building Kryon modular system..."
+cd "$SCRIPT_DIR/.."
 
-echo "  📦 Building kryon unified binary with $RENDERER features..."
+# First build the main CLI (lightweight, no renderer dependencies)
+echo "  📦 Building main kryon CLI..."
+cargo build --release --bin kryon
+
+# Then build the specific renderer binary
+echo "  📦 Building $RENDERER renderer..."
 case "$RENDERER" in
     raylib)
-        cargo build --release --features raylib -p kryon
+        cargo build --release --bin kryon-renderer-raylib --features raylib
         ;;
     wgpu)
-        cargo build --release --features wgpu -p kryon
+        cargo build --release --bin kryon-renderer-wgpu --features wgpu
         ;;
     sdl2)
-        cargo build --release --features sdl2 -p kryon
+        cargo build --release --bin kryon-renderer-sdl2 --features sdl2
         ;;
     ratatui)
-        cargo build --release --features ratatui -p kryon
+        cargo build --release --bin kryon-renderer-ratatui --features ratatui
         ;;
     all)
-        cargo build --release --features raylib,wgpu,sdl2,ratatui,html-server -p kryon
-        RENDERER_FLAG="-r raylib"  # Default to raylib when 'all' is used
+        echo "  🔨 Building all renderers..."
+        "$SCRIPT_DIR/build-renderers.sh" --release --all
+        RENDERER="raylib"  # Default to raylib when 'all' is used
+        RENDERER_FLAG="-r raylib"
         ;;
     *)
-        cargo build --release -p kryon
+        # Try to build the renderer if it exists
+        if cargo build --release --bin kryon-renderer-$RENDERER --features $RENDERER 2>/dev/null; then
+            echo "  ✅ Built $RENDERER renderer"
+        else
+            echo "  ⚠️  Unknown renderer '$RENDERER', will try to use if available"
+        fi
         ;;
 esac
 
@@ -119,7 +114,18 @@ if [ ! -f "$KRYON_PATH" ]; then
     exit 1
 fi
 
-echo "✅ Kryon renderer: $KRYON_PATH ($RENDERER)"
+# Add the target directory to PATH so renderers can be found
+export PATH="$SCRIPT_DIR/../target/release:$PATH"
+
+# Verify renderer is available
+if ! "$KRYON_PATH" --list-renderers | grep -q "✓.*${RENDERER^}"; then
+    echo "⚠️  Warning: $RENDERER renderer might not be available"
+    echo "Available renderers:"
+    "$KRYON_PATH" --list-renderers | grep "✓"
+fi
+
+echo "✅ Kryon CLI: $KRYON_PATH"
+echo "✅ Using renderer: $RENDERER"
 echo ""
 
 # Find all .kry files (no need to pre-compile, kryon does it automatically)

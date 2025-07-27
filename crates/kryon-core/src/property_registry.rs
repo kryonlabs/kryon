@@ -1,7 +1,6 @@
 // crates/kryon-core/src/property_registry.rs
 
-use glam::Vec4;
-use crate::PropertyValue;
+// Removed unused imports
 
 // Import unified property types from kryon-shared
 pub use kryon_shared::types::PropertyId;
@@ -98,11 +97,6 @@ impl PropertyRegistry {
                 inheritable: false,
             },
             PropertyMetadata {
-                id: PropertyId::ZIndex,
-                name: "z_index",
-                inheritable: false,
-            },
-            PropertyMetadata {
                 id: PropertyId::Visibility,
                 name: "visibility",
                 inheritable: true,
@@ -110,11 +104,6 @@ impl PropertyRegistry {
             PropertyMetadata {
                 id: PropertyId::Shadow,
                 name: "box-shadow",
-                inheritable: false,
-            },
-            PropertyMetadata {
-                id: PropertyId::Shadow,
-                name: "shadow",
                 inheritable: false,
             },
             PropertyMetadata {

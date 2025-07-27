@@ -18,7 +18,7 @@ fn main() -> anyhow::Result<()> {
     if EMBEDDED_KRB_DATA.is_empty() {
         eprintln!("This is a template for standalone Kryon executables.");
         eprintln!("To create a bundled executable, use the bundle script:");
-        eprintln!("  ./bundle_krb.sh <krb_file> [backend] [output_name]");
+        eprintln!("  ./scripts/bundle_krb.sh <krb_file> [backend] [output_name]");
         eprintln!("Or manually set KRYON_EMBEDDED_KRB_PATH and rebuild.");
         std::process::exit(1);
     }

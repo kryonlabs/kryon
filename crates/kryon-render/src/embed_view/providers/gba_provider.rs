@@ -63,9 +63,12 @@ enum EmulatorState {
 struct CpuState {
     // ARM7TDMI registers
     registers: [u32; 16], // R0-R15 (R15 is PC)
+    #[allow(dead_code)]
     cpsr: u32, // Current Program Status Register
+    #[allow(dead_code)]
     spsr: u32, // Saved Program Status Register
     cycles: u64,
+    #[allow(dead_code)]
     thumb_mode: bool,
 }
 
@@ -80,6 +83,7 @@ impl CpuState {
         }
     }
     
+    #[allow(dead_code)]
     fn reset(&mut self) {
         self.registers = [0; 16];
         self.registers[15] = 0x08000000; // ROM start address
@@ -118,6 +122,7 @@ impl GbaViewInstance {
     
     fn simulate_cpu_frame(&mut self) {
         // Simulate ARM7TDMI CPU execution for one frame
+        #[allow(dead_code)]
         const CYCLES_PER_FRAME: u64 = 280896; // ~16.78MHz / 59.73Hz
         
         for _ in 0..1000 { // Simulate some CPU instructions per frame

@@ -45,6 +45,10 @@ pub struct KryonApp<R: CommandRenderer> {
     needs_render: bool,
     current_cursor: kryon_core::CursorType,
     
+    // Focus management
+    focused_element: Option<ElementId>,
+    tab_order: Vec<ElementId>,
+    
     // Timing
     last_frame_time: Instant,
     frame_count: u64,
@@ -102,6 +106,8 @@ impl<R: CommandRenderer> KryonApp<R> {
             needs_layout: true,
             needs_render: true,
             current_cursor: kryon_core::CursorType::Default,
+            focused_element: None,
+            tab_order: Vec::new(),
             last_frame_time: Instant::now(),
             frame_count: 0,
         };
@@ -246,6 +252,9 @@ impl<R: CommandRenderer> KryonApp<R> {
             InputEvent::KeyPress { key, modifiers } => {
                 self.handle_key_press(key, modifiers)?;
             }
+            InputEvent::TextInput { text } => {
+                self.handle_text_input(&text)?;
+            }
             _ => {}
         }
         
@@ -326,10 +335,39 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
     fn handle_mouse_press(&mut self, position: Vec2, button: MouseButton) -> anyhow::Result<()> {
         if button == MouseButton::Left {
             if let Some(element_id) = self.find_element_at_position(position) {
-                if let Some(element) = self.elements.get_mut(&element_id) {
-                    element.current_state = InteractionState::Active;
-                    self.needs_render = true;
+                // Check if element can receive focus before getting mutable reference
+                let can_receive_focus = self.elements.get(&element_id)
+                    .map(|e| e.can_receive_focus())
+                    .unwrap_or(false);
+                
+                if can_receive_focus {
+                    self.set_focus(element_id)?;
+                    
+                    // For text inputs, start editing mode
+                    if let Some(element) = self.elements.get_mut(&element_id) {
+                        if let Some(input_state) = element.get_input_state_mut() {
+                            input_state.set_mode(kryon_core::InputMode::Edit);
+                        }
+                    }
+                } else {
+                    // Clear focus if clicking on non-focusable element
+                    self.clear_focus()?;
                 }
+                
+                // Only set Active if not already checked
+                if let Some(element) = self.elements.get_mut(&element_id) {
+                    if element.current_state != InteractionState::Checked {
+                        element.current_state = InteractionState::Active;
+                        self.needs_render = true;
+                        eprintln!("🎯 [INTERACTION_FIX] Element {} pressed - set to Active", element_id);
+                    }
+                }
+            } else {
+                // Clear focus if clicking on empty space
+                self.clear_focus()?;
+                
+                // Close any open dropdowns when clicking outside
+                self.close_all_dropdowns()?;
             }
         }
         Ok(())
@@ -338,9 +376,19 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
     fn handle_mouse_release(&mut self, position: Vec2, button: MouseButton) -> anyhow::Result<()> {
         if button == MouseButton::Left {
             if let Some(element_id) = self.find_element_at_position(position) {
-                // Trigger click event first, before changing any states
+                // First, handle click events and state transitions
+                let mut should_set_hover = true;
+                
                 if let Some(element) = self.elements.get(&element_id) {
+                    // If element is checked, don't change its state
+                    if element.current_state == InteractionState::Checked {
+                        should_set_hover = false;
+                    }
+                    
+                    // Process click handler if it exists
                     if let Some(handler) = element.event_handlers.get(&EventType::Click) {
+                        eprintln!("🎯 [INTERACTION_FIX] Element {} click handler found, executing", element_id);
+                        
                         // Call the click handler function
                         self.script_system.call_function(handler, vec![])?;
                         
@@ -363,26 +411,57 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
                             self.needs_render = true;
                             
                             // Force layout update for visibility changes and template variable changes
-                            // This ensures that elements become visible/invisible immediately and template variables update
                             if template_variable_changes {
                                 self.update_layout()?;
                                 self.needs_layout = false;
                                 tracing::info!("🚀 [SCRIPT_IMMEDIATE] Immediate layout update applied for template changes");
                             }
                         }
+                    }
+                }
+                
+                // Handle Select element specific click behavior
+                if let Some(element) = self.elements.get(&element_id) {
+                    if element.element_type == kryon_core::ElementType::Select {
+                        // Check if this is a click on the dropdown menu vs the button (without mutable borrow)
+                        let clicked_dropdown_option = if let Some(select_state) = element.get_select_state() {
+                            if select_state.is_open {
+                                self.find_dropdown_option_at_position(element_id, position)
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
                         
-                        // After script changes are applied, set hover state only for non-checked elements
+                        // Now get mutable reference to handle the action
                         if let Some(element) = self.elements.get_mut(&element_id) {
-                            if element.current_state != InteractionState::Checked {
-                                element.current_state = InteractionState::Hover;
-                                self.needs_render = true;
+                            if let Some(select_state) = element.get_select_state_mut() {
+                                if let Some(option_index) = clicked_dropdown_option {
+                                    // Select the clicked option
+                                    if select_state.select_option(option_index) {
+                                        self.needs_render = true;
+                                        eprintln!("🎯 [SELECT] Selected option {} at index {}", 
+                                            select_state.options[option_index].text, option_index);
+                                    }
+                                } else {
+                                    // Toggle dropdown open/closed for button clicks
+                                    select_state.is_open = !select_state.is_open;
+                                    self.needs_render = true;
+                                    eprintln!("🎯 [SELECT] Toggled dropdown state to: {}", select_state.is_open);
+                                }
                             }
                         }
-                    } else {
-                        // No click handler, just set hover state
-                        if let Some(element) = self.elements.get_mut(&element_id) {
+                    }
+                }
+                
+                // Now set the appropriate state after all script processing is done
+                if should_set_hover {
+                    if let Some(element) = self.elements.get_mut(&element_id) {
+                        if element.current_state != InteractionState::Checked {
                             element.current_state = InteractionState::Hover;
                             self.needs_render = true;
+                            eprintln!("🎯 [INTERACTION_FIX] Element {} released - set to Hover", element_id);
                         }
                     }
                 }
@@ -391,13 +470,84 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
         Ok(())
     }
     
-    fn handle_key_press(&mut self, key: KeyCode, _modifiers: KeyModifiers) -> anyhow::Result<()> {
-        // Handle global key events
+    fn handle_key_press(&mut self, key: KeyCode, modifiers: KeyModifiers) -> anyhow::Result<()> {
+        // Handle focus navigation first
         match key {
+            KeyCode::Tab => {
+                if modifiers.shift {
+                    self.focus_previous_element()?;
+                } else {
+                    self.focus_next_element()?;
+                }
+                return Ok(());
+            }
             KeyCode::Escape => {
-                // Could trigger app exit
+                // Close any open dropdowns first, then clear focus
+                self.close_all_dropdowns()?;
+                self.clear_focus()?;
+                return Ok(());
             }
             _ => {}
+        }
+        
+        // Handle Select element keyboard navigation
+        if let Some(focused_id) = self.focused_element {
+            if let Some(element) = self.elements.get(&focused_id) {
+                if element.element_type == kryon_core::ElementType::Select {
+                    // Handle dropdown-specific keys
+                    let handled = match key {
+                        KeyCode::ArrowDown => {
+                            self.handle_select_key_down(focused_id)?
+                        }
+                        KeyCode::ArrowUp => {
+                            self.handle_select_key_up(focused_id)?
+                        }
+                        KeyCode::Enter | KeyCode::Space => {
+                            self.handle_select_key_enter(focused_id)?
+                        }
+                        _ => false,
+                    };
+                    
+                    if handled {
+                        return Ok(());
+                    }
+                }
+            }
+        }
+        
+        // Handle input-specific key events for focused element
+        if let Some(focused_id) = self.focused_element {
+            if let Some(element) = self.elements.get_mut(&focused_id) {
+                // Convert KeyCode to string for element handler
+                let key_string = match key {
+                    KeyCode::Backspace => "Backspace",
+                    KeyCode::Delete => "Delete",
+                    KeyCode::ArrowLeft => "ArrowLeft",
+                    KeyCode::ArrowRight => "ArrowRight",
+                    KeyCode::ArrowUp => "ArrowUp",
+                    KeyCode::ArrowDown => "ArrowDown",
+                    KeyCode::Home => "Home",
+                    KeyCode::End => "End",
+                    KeyCode::Enter => "Enter",
+                    _ => return Ok(()), // Other keys handled by text input
+                };
+                
+                if element.handle_key_press(key_string, modifiers.shift) {
+                    self.needs_render = true;
+                }
+            }
+        }
+        
+        Ok(())
+    }
+    
+    fn handle_text_input(&mut self, text: &str) -> anyhow::Result<()> {
+        if let Some(focused_id) = self.focused_element {
+            if let Some(element) = self.elements.get_mut(&focused_id) {
+                if element.handle_text_input(text) {
+                    self.needs_render = true;
+                }
+            }
         }
         Ok(())
     }
@@ -443,6 +593,49 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
         
         // Return the highest element ID (topmost)
         found_elements.into_iter().max()
+    }
+    
+    fn find_dropdown_option_at_position(&self, select_element_id: ElementId, position: Vec2) -> Option<usize> {
+        if let Some(element) = self.elements.get(&select_element_id) {
+            if let Some(select_state) = element.get_select_state() {
+                if !select_state.is_open || select_state.options.is_empty() {
+                    return None;
+                }
+                
+                // Calculate dropdown menu position and size
+                let element_pos = self.layout_result.computed_positions
+                    .get(&select_element_id)
+                    .copied()
+                    .unwrap_or(Vec2::new(element.layout_position.x.to_pixels(1.0), element.layout_position.y.to_pixels(1.0)));
+                let element_size = self.layout_result.computed_sizes
+                    .get(&select_element_id)
+                    .copied()
+                    .unwrap_or(Vec2::new(element.layout_size.width.to_pixels(1.0), element.layout_size.height.to_pixels(1.0)));
+                
+                let menu_position = Vec2::new(element_pos.x, element_pos.y + element_size.y + 2.0);
+                let option_height = 32.0;
+                let menu_height = (select_state.options.len() as f32 * option_height).min(select_state.size as f32 * option_height);
+                let menu_size = Vec2::new(element_size.x, menu_height);
+                
+                // Check if click is within dropdown menu bounds
+                if position.x >= menu_position.x
+                    && position.x <= menu_position.x + menu_size.x
+                    && position.y >= menu_position.y
+                    && position.y <= menu_position.y + menu_size.y
+                {
+                    // Calculate which option was clicked
+                    let relative_y = position.y - menu_position.y;
+                    let option_index = (relative_y / option_height) as usize;
+                    
+                    if option_index < select_state.options.len() {
+                        eprintln!("🎯 [SELECT] Clicked on dropdown option {} at position ({:.1}, {:.1})", 
+                            option_index, position.x, position.y);
+                        return Some(option_index);
+                    }
+                }
+            }
+        }
+        None
     }
     
     pub fn get_element(&self, id: &str) -> Option<&Element> {
@@ -555,5 +748,232 @@ fn update_layout(&mut self) -> anyhow::Result<()> {
             tracing::info!("Template variables initialized");
         }
         Ok(())
+    }
+    
+    // Focus management methods
+    
+    /// Set focus to a specific element
+    fn set_focus(&mut self, element_id: ElementId) -> anyhow::Result<()> {
+        // Clear previous focus
+        if let Some(prev_focused) = self.focused_element {
+            if let Some(prev_element) = self.elements.get_mut(&prev_focused) {
+                prev_element.set_focus(false);
+            }
+        }
+        
+        // Set new focus
+        if let Some(element) = self.elements.get_mut(&element_id) {
+            if element.can_receive_focus() {
+                element.set_focus(true);
+                self.focused_element = Some(element_id);
+                self.needs_render = true;
+                
+                // Initialize input state if this is an input element
+                if element.element_type == kryon_core::ElementType::Input && element.input_state.is_none() {
+                    element.initialize_input_state(kryon_core::InputType::Text);
+                }
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// Clear focus from all elements
+    fn clear_focus(&mut self) -> anyhow::Result<()> {
+        if let Some(focused_id) = self.focused_element {
+            if let Some(element) = self.elements.get_mut(&focused_id) {
+                element.set_focus(false);
+                
+                // Exit editing mode for input elements
+                if let Some(input_state) = element.get_input_state_mut() {
+                    input_state.set_mode(kryon_core::InputMode::Normal);
+                }
+            }
+        }
+        
+        self.focused_element = None;
+        self.needs_render = true;
+        Ok(())
+    }
+    
+    /// Focus the next focusable element (Tab navigation)
+    fn focus_next_element(&mut self) -> anyhow::Result<()> {
+        self.build_tab_order();
+        
+        if self.tab_order.is_empty() {
+            return Ok(());
+        }
+        
+        let next_index = if let Some(current_focused) = self.focused_element {
+            // Find current element in tab order and move to next
+            if let Some(current_index) = self.tab_order.iter().position(|&id| id == current_focused) {
+                (current_index + 1) % self.tab_order.len()
+            } else {
+                0 // Current focused not in tab order, start from beginning
+            }
+        } else {
+            0 // No current focus, start from beginning
+        };
+        
+        let next_element_id = self.tab_order[next_index];
+        self.set_focus(next_element_id)?;
+        
+        Ok(())
+    }
+    
+    /// Focus the previous focusable element (Shift+Tab navigation)
+    fn focus_previous_element(&mut self) -> anyhow::Result<()> {
+        self.build_tab_order();
+        
+        if self.tab_order.is_empty() {
+            return Ok(());
+        }
+        
+        let prev_index = if let Some(current_focused) = self.focused_element {
+            // Find current element in tab order and move to previous
+            if let Some(current_index) = self.tab_order.iter().position(|&id| id == current_focused) {
+                if current_index == 0 {
+                    self.tab_order.len() - 1
+                } else {
+                    current_index - 1
+                }
+            } else {
+                self.tab_order.len() - 1 // Current focused not in tab order, start from end
+            }
+        } else {
+            self.tab_order.len() - 1 // No current focus, start from end
+        };
+        
+        let prev_element_id = self.tab_order[prev_index];
+        self.set_focus(prev_element_id)?;
+        
+        Ok(())
+    }
+    
+    /// Build tab order based on element positions and types
+    fn build_tab_order(&mut self) {
+        let mut focusable_elements: Vec<(ElementId, Vec2)> = Vec::new();
+        
+        // Collect all focusable elements with their positions
+        for (&element_id, element) in &self.elements {
+            if element.can_receive_focus() {
+                let position = self.layout_result.computed_positions
+                    .get(&element_id)
+                    .copied()
+                    .unwrap_or(Vec2::new(
+                        element.layout_position.x.to_pixels(1.0),
+                        element.layout_position.y.to_pixels(1.0)
+                    ));
+                focusable_elements.push((element_id, position));
+            }
+        }
+        
+        // Sort by Y position first, then by X position (reading order)
+        focusable_elements.sort_by(|a, b| {
+            let y_cmp = a.1.y.partial_cmp(&b.1.y).unwrap_or(std::cmp::Ordering::Equal);
+            if y_cmp == std::cmp::Ordering::Equal {
+                a.1.x.partial_cmp(&b.1.x).unwrap_or(std::cmp::Ordering::Equal)
+            } else {
+                y_cmp
+            }
+        });
+        
+        self.tab_order = focusable_elements.into_iter().map(|(id, _)| id).collect();
+    }
+    
+    /// Close all open dropdown menus
+    fn close_all_dropdowns(&mut self) -> anyhow::Result<()> {
+        let mut closed_any = false;
+        
+        for (_, element) in self.elements.iter_mut() {
+            if element.element_type == kryon_core::ElementType::Select {
+                if let Some(select_state) = element.get_select_state_mut() {
+                    if select_state.is_open {
+                        select_state.close_dropdown();
+                        closed_any = true;
+                        eprintln!("🎯 [SELECT] Closed dropdown due to outside click");
+                    }
+                }
+            }
+        }
+        
+        if closed_any {
+            self.needs_render = true;
+        }
+        
+        Ok(())
+    }
+    
+    // Select element keyboard navigation methods
+    
+    fn handle_select_key_down(&mut self, element_id: ElementId) -> anyhow::Result<bool> {
+        if let Some(element) = self.elements.get_mut(&element_id) {
+            if let Some(select_state) = element.get_select_state_mut() {
+                if select_state.is_open {
+                    // Navigate down in open dropdown
+                    select_state.move_highlight(1);
+                    self.needs_render = true;
+                    eprintln!("🎯 [SELECT] Arrow down - highlight moved to {:?}", select_state.highlighted_index);
+                } else {
+                    // Open dropdown and highlight first option
+                    select_state.is_open = true;
+                    if select_state.highlighted_index.is_none() {
+                        select_state.highlighted_index = select_state.options.iter().position(|opt| !opt.disabled);
+                    }
+                    self.needs_render = true;
+                    eprintln!("🎯 [SELECT] Arrow down - opened dropdown");
+                }
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+    
+    fn handle_select_key_up(&mut self, element_id: ElementId) -> anyhow::Result<bool> {
+        if let Some(element) = self.elements.get_mut(&element_id) {
+            if let Some(select_state) = element.get_select_state_mut() {
+                if select_state.is_open {
+                    // Navigate up in open dropdown
+                    select_state.move_highlight(-1);
+                    self.needs_render = true;
+                    eprintln!("🎯 [SELECT] Arrow up - highlight moved to {:?}", select_state.highlighted_index);
+                } else {
+                    // Open dropdown and highlight last option
+                    select_state.is_open = true;
+                    select_state.highlighted_index = select_state.options.iter().rposition(|opt| !opt.disabled);
+                    self.needs_render = true;
+                    eprintln!("🎯 [SELECT] Arrow up - opened dropdown at end");
+                }
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+    
+    fn handle_select_key_enter(&mut self, element_id: ElementId) -> anyhow::Result<bool> {
+        if let Some(element) = self.elements.get_mut(&element_id) {
+            if let Some(select_state) = element.get_select_state_mut() {
+                if select_state.is_open {
+                    // Select highlighted option
+                    if let Some(highlighted) = select_state.highlighted_index {
+                        if select_state.select_option(highlighted) {
+                            self.needs_render = true;
+                            eprintln!("🎯 [SELECT] Enter - selected option {} ({})", 
+                                highlighted, select_state.options[highlighted].text);
+                        }
+                    }
+                } else {
+                    // Open dropdown
+                    select_state.is_open = true;
+                    if select_state.highlighted_index.is_none() {
+                        select_state.highlighted_index = select_state.options.iter().position(|opt| !opt.disabled);
+                    }
+                    self.needs_render = true;
+                    eprintln!("🎯 [SELECT] Enter - opened dropdown");
+                }
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 }

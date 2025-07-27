@@ -32,6 +32,7 @@ pub struct WgpuRenderer {
     
     // Rendering pipeline
     rect_pipeline: wgpu::RenderPipeline,
+    #[allow(dead_code)]
     text_pipeline: wgpu::RenderPipeline,
     
     // Uniform buffers
@@ -63,7 +64,7 @@ impl Renderer for WgpuRenderer {
         pollster::block_on(Self::new_async(surface.0, surface.1))
     }
     
-    fn begin_frame(&mut self, clear_color: Vec4) -> RenderResult<Self::Context> {
+    fn begin_frame(&mut self, _clear_color: Vec4) -> RenderResult<Self::Context> {
         let surface_texture = self.surface
             .get_current_texture()
             .map_err(|e| RenderError::RenderFailed(format!("Failed to get surface texture: {}", e)))?;
@@ -126,7 +127,7 @@ impl CommandRenderer for WgpuRenderer {
         if commands.is_empty() {
             println!("❌ [WGPU_DEBUG] Empty command list - clearing screen only");
             // Still need to clear the screen
-            let mut render_pass = context.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let render_pass = context.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Clear Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &context.view,
@@ -148,7 +149,7 @@ impl CommandRenderer for WgpuRenderer {
         
         // Clear screen first
         {
-            let mut clear_pass = context.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let _clear_pass = context.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Initial Clear Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &context.view,
@@ -695,7 +696,7 @@ impl WgpuRenderer {
     
     fn render_text(
         &mut self,
-        context: &mut WgpuRenderContext,
+        _context: &mut WgpuRenderContext,
         commands: &[&RenderCommand],
     ) -> RenderResult<()> {
         for command in commands {
@@ -704,8 +705,8 @@ impl WgpuRenderer {
                 text,
                 font_size,
                 color,
-                alignment,
-                max_width,
+                alignment: _,
+                max_width: _,
                 max_height: _,
                 transform,
                 font_family: _, // WGPU doesn't support custom fonts yet

@@ -2997,7 +2997,6 @@ dependencies = [
  "kryon-render",
  "kryon-runtime",
  "kryon-sdl2",
- "kryon-shared",
  "kryon-wgpu",
  "pollster",
  "ratatui",

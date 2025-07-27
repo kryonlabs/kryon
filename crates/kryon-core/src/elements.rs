@@ -447,7 +447,7 @@ impl Element {
     /// Check if this element is an input that can receive focus
     pub fn can_receive_focus(&self) -> bool {
         match self.element_type {
-            ElementType::Input | ElementType::Button => !self.disabled,
+            ElementType::Input | ElementType::Button | ElementType::Select => !self.disabled,
             _ => false,
         }
     }

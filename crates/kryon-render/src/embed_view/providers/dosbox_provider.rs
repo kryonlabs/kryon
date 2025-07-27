@@ -48,6 +48,7 @@ pub struct DosBoxViewInstance {
     bounds: Rect,
     config: HashMap<String, PropertyValue>,
     dos_state: DosState,
+    #[allow(dead_code)]
     scale_factor: f32,
     sound_enabled: bool,
     cpu_speed: u32, // CPU cycles
@@ -59,6 +60,7 @@ pub struct DosBoxViewInstance {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum DosState {
     BootingDos,
     CommandPrompt,

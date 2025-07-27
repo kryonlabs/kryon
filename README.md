@@ -29,13 +29,38 @@ kryon/
 
 ## Quick Start
 
-```bash
-# Build everything
-cargo build --workspace
+### Modular Build System (NEW!)
 
-# Compile and run an example
-cargo run --bin kryc examples/counter.kry
-cargo run --bin kryon-renderer-raylib examples/counter.krb
+Kryon now uses a modular architecture where renderers are separate binaries:
+
+```bash
+# Build just the main CLI (fast!)
+cargo build --bin kryon
+
+# Build specific renderers as needed
+cargo build --bin kryon-renderer-wgpu --features wgpu
+cargo build --bin kryon-renderer-raylib --features raylib
+cargo build --bin kryon-renderer-debug  # No features needed
+
+# Or use the convenience script
+./scripts/build-renderers.sh wgpu raylib  # Build specific renderers
+./scripts/build-renderers.sh --all        # Build everything
+```
+
+### Running Examples
+
+The main `kryon` binary automatically compiles .kry files and runs them:
+
+```bash
+# Run with default renderer (discovered at runtime)
+kryon examples/counter.kry
+
+# Run with specific renderer
+kryon -r wgpu examples/counter.kry
+kryon -r debug examples/counter.kry
+
+# List available renderers
+kryon --list-renderers
 ```
 
 ## Features
@@ -97,7 +122,7 @@ cargo run --bin kryon-bundle file.krb output-executable
 
 ```bash
 # Auto-compile and run examples
-./run_examples.sh
+./scripts/run_examples.sh
 
 # Build documentation
 cd kryon-docs && mdbook serve

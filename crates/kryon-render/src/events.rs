@@ -8,6 +8,7 @@ pub enum InputEvent {
     MouseRelease { position: Vec2, button: MouseButton },
     KeyPress { key: KeyCode, modifiers: KeyModifiers },
     KeyRelease { key: KeyCode, modifiers: KeyModifiers },
+    TextInput { text: String },
     Scroll { delta: Vec2 },
     Resize { size: Vec2 },
 }
@@ -27,6 +28,12 @@ pub enum KeyCode {
     Backspace,
     Delete,
     Tab,
+    ArrowLeft,
+    ArrowRight,
+    ArrowUp,
+    ArrowDown,
+    Home,
+    End,
     Character(char),
     // Add more as needed
 }
@@ -47,5 +54,25 @@ impl KeyModifiers {
             alt: false,
             meta: false,
         }
+    }
+    
+    pub fn shift(mut self) -> Self {
+        self.shift = true;
+        self
+    }
+    
+    pub fn ctrl(mut self) -> Self {
+        self.ctrl = true;
+        self
+    }
+    
+    pub fn alt(mut self) -> Self {
+        self.alt = true;
+        self
+    }
+    
+    pub fn meta(mut self) -> Self {
+        self.meta = true;
+        self
     }
 }

@@ -46,6 +46,7 @@ pub struct PdfViewInstance {
     current_page: usize,
     total_pages: usize,
     zoom_level: f32,
+    #[allow(dead_code)]
     rotation: f32, // degrees
     fit_mode: FitMode,
     // Mock PDF document state

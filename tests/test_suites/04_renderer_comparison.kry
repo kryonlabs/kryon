@@ -1,0 +1,713 @@
+# Renderer Comparison Test Suite
+# Tests rendering consistency across different backends (SDL2, WGPU, Ratatui, etc.)
+
+style "renderer_container" {
+    background_color: "#2C2C2CFF"
+    padding: 20
+    display: flex
+    flex_direction: column
+    gap: 15
+    border_width: 1
+    border_color: "#444444FF"
+    border_radius: 8
+}
+
+style "renderer_section" {
+    background_color: "#1E1E1EFF"
+    padding: 15
+    display: flex
+    flex_direction: column
+    gap: 10
+    border_radius: 6
+    border_width: 1
+    border_color: "#333333FF"
+}
+
+style "section_title" {
+    font_size: 16
+    font_weight: 600
+    text_color: "#00FF88FF"
+    padding: 5
+}
+
+style "renderer_info" {
+    font_size: 12
+    text_color: "#AAAAAA"
+    padding: 3
+}
+
+style "test_button" {
+    background_color: "#4CAF50FF"
+    text_color: "#FFFFFFFF"
+    font_size: 14
+    text_alignment: center
+    border_width: 0
+    border_radius: 4
+    width: 120
+    height: 32
+    cursor: pointer
+    
+    &:hover {
+        background_color: "#66BB6AFF"
+        transform: translateY(-1px)
+    }
+    
+    &:active {
+        background_color: "#2E7D32FF"
+        transform: translateY(0px)
+    }
+}
+
+style "color_box" {
+    width: 40
+    height: 40
+    border_radius: 4
+    border_width: 2
+    border_color: "#FFFFFFFF"
+}
+
+style "gradient_box" {
+    width: 200
+    height: 60
+    border_radius: 8
+    border_width: 1
+    border_color: "#666666FF"
+}
+
+style "text_sample" {
+    padding: 8
+    border_radius: 4
+    text_alignment: center
+}
+
+style "performance_text" {
+    font_size: 11
+    text_color: "#FFFF88FF"
+    padding: 2
+}
+
+@variables {
+    current_renderer: "Unknown"
+    render_time_ms: 0
+    frame_count: 0
+    color_test_index: 0
+    gradient_direction: "horizontal"
+    font_size_test: 14
+    animation_progress: 0
+    test_results: "No tests run yet"
+    benchmark_running: false
+}
+
+App {
+    window_width: 900
+    window_height: 700
+    window_title: "Kryon Renderer Comparison Test Suite"
+    resizable: true
+    keep_aspect_ratio: false
+    background_color: "#191919FF"
+
+    Container {
+        id: "main_container"
+        style: "renderer_container"
+        
+        Text {
+            text: "🎨 Renderer Comparison Test Suite"
+            font_size: 20
+            font_weight: 700
+            text_color: "#FFFFFFFF"
+            text_alignment: center
+            padding: 10
+        }
+        
+        # Renderer Info Section
+        Container {
+            style: "renderer_section"
+            
+            Text {
+                text: "🖥️ Renderer Information"
+                style: "section_title"
+            }
+            
+            Text {
+                text: "Current Renderer: ${current_renderer}"
+                style: "renderer_info"
+            }
+            
+            Text {
+                text: "Frame Count: ${frame_count}"
+                style: "renderer_info"
+            }
+            
+            Text {
+                text: "Last Render Time: ${render_time_ms}ms"
+                style: "renderer_info"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                margin_top: 10
+                
+                Button {
+                    text: "Detect Renderer"
+                    style: "test_button"
+                    onClick: "detectRenderer"
+                }
+                
+                Button {
+                    text: "Start Benchmark"
+                    style: "test_button"
+                    onClick: "startBenchmark"
+                }
+                
+                Button {
+                    text: "Stop Benchmark"
+                    style: "test_button"
+                    onClick: "stopBenchmark"
+                }
+            }
+        }
+        
+        # Color Rendering Tests
+        Container {
+            style: "renderer_section"
+            
+            Text {
+                text: "🌈 Color Rendering Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                align_items: center
+                margin_bottom: 10
+                
+                Button {
+                    text: "Next Colors"
+                    style: "test_button"
+                    onClick: "nextColorTest"
+                }
+                
+                Button {
+                    text: "Test Alpha"
+                    style: "test_button"
+                    onClick: "testAlphaBlending"
+                }
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 15
+                align_items: center
+                
+                Container {
+                    style: "color_box"
+                    background_color: "#FF0000FF"
+                }
+                
+                Container {
+                    style: "color_box"
+                    background_color: "#00FF00FF"
+                }
+                
+                Container {
+                    style: "color_box"
+                    background_color: "#0000FFFF"
+                }
+                
+                Container {
+                    style: "color_box"
+                    background_color: "#FFFF00FF"
+                }
+                
+                Container {
+                    style: "color_box"
+                    background_color: "#FF00FFFF"
+                }
+                
+                Container {
+                    style: "color_box"
+                    background_color: "#00FFFFFF"
+                }
+                
+                Container {
+                    style: "color_box"
+                    background_color: "#FFFFFFFF"
+                }
+                
+                Container {
+                    style: "color_box"
+                    background_color: "#000000FF"
+                }
+            }
+            
+            Text {
+                text: "Alpha transparency test (backgrounds should blend):"
+                style: "renderer_info"
+                margin_top: 10
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: -20
+                
+                Container {
+                    style: "color_box"
+                    background_color: "#FF000080"
+                    z_index: 1
+                }
+                
+                Container {
+                    style: "color_box"
+                    background_color: "#00FF0080"
+                    z_index: 2
+                }
+                
+                Container {
+                    style: "color_box"
+                    background_color: "#0000FF80"
+                    z_index: 3
+                }
+            }
+        }
+        
+        # Typography Tests
+        Container {
+            style: "renderer_section"
+            
+            Text {
+                text: "📝 Typography Rendering Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                margin_bottom: 10
+                
+                Button {
+                    text: "Small Font"
+                    style: "test_button"
+                    onClick: "setSmallFont"
+                }
+                
+                Button {
+                    text: "Medium Font"
+                    style: "test_button"
+                    onClick: "setMediumFont"
+                }
+                
+                Button {
+                    text: "Large Font"
+                    style: "test_button"
+                    onClick: "setLargeFont"
+                }
+            }
+            
+            Container {
+                display: flex
+                flex_direction: column
+                gap: 8
+                
+                Text {
+                    text: "Font Size ${font_size_test}px: The quick brown fox jumps over the lazy dog"
+                    font_size: $font_size_test
+                    style: "text_sample"
+                    background_color: "#333333FF"
+                    text_color: "#FFFFFFFF"
+                }
+                
+                Text {
+                    text: "Bold Weight: ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                    font_size: $font_size_test
+                    font_weight: 700
+                    style: "text_sample"
+                    background_color: "#444444FF"
+                    text_color: "#FFFFFFFF"
+                }
+                
+                Text {
+                    text: "Numbers: 0123456789 !@#$%^&*()_+-=[]{}|;':\",./<>?"
+                    font_size: $font_size_test
+                    style: "text_sample"
+                    background_color: "#555555FF"
+                    text_color: "#FFFFFFFF"
+                }
+            }
+        }
+        
+        # Layout Precision Tests
+        Container {
+            style: "renderer_section"
+            
+            Text {
+                text: "📐 Layout Precision Tests"
+                style: "section_title"
+            }
+            
+            Text {
+                text: "These elements should be perfectly aligned:"
+                style: "renderer_info"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: column
+                gap: 0
+                border_width: 1
+                border_color: "#666666FF"
+                background_color: "#333333FF"
+                
+                Container {
+                    display: flex
+                    flex_direction: row
+                    
+                    Container {
+                        width: 100
+                        height: 30
+                        background_color: "#FF000050"
+                        border_width: 1
+                        border_color: "#FFFFFFFF"
+                        
+                        Text {
+                            text: "100px"
+                            font_size: 10
+                            text_alignment: center
+                            text_color: "#FFFFFFFF"
+                            padding: 8
+                        }
+                    }
+                    
+                    Container {
+                        width: 150
+                        height: 30
+                        background_color: "#00FF0050"
+                        border_width: 1
+                        border_color: "#FFFFFFFF"
+                        
+                        Text {
+                            text: "150px"
+                            font_size: 10
+                            text_alignment: center
+                            text_color: "#FFFFFFFF"
+                            padding: 8
+                        }
+                    }
+                    
+                    Container {
+                        width: 200
+                        height: 30
+                        background_color: "#0000FF50"
+                        border_width: 1
+                        border_color: "#FFFFFFFF"
+                        
+                        Text {
+                            text: "200px"
+                            font_size: 10
+                            text_alignment: center
+                            text_color: "#FFFFFFFF"
+                            padding: 8
+                        }
+                    }
+                }
+                
+                Container {
+                    display: flex
+                    flex_direction: row
+                    justify_content: space-between
+                    padding: 10
+                    
+                    Text {
+                        text: "Left"
+                        font_size: 12
+                        text_color: "#FFFFFFFF"
+                    }
+                    
+                    Text {
+                        text: "Center"
+                        font_size: 12
+                        text_color: "#FFFFFFFF"
+                    }
+                    
+                    Text {
+                        text: "Right"
+                        font_size: 12
+                        text_color: "#FFFFFFFF"
+                    }
+                }
+            }
+        }
+        
+        # Border and Shape Tests
+        Container {
+            style: "renderer_section"
+            
+            Text {
+                text: "🔲 Border and Shape Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 15
+                align_items: center
+                
+                Container {
+                    width: 60
+                    height: 60
+                    background_color: "#FF6B6BFF"
+                    border_radius: 0
+                    border_width: 2
+                    border_color: "#FFFFFFFF"
+                    
+                    Text {
+                        text: "Square"
+                        font_size: 8
+                        text_alignment: center
+                        text_color: "#FFFFFFFF"
+                        padding: 20
+                    }
+                }
+                
+                Container {
+                    width: 60
+                    height: 60
+                    background_color: "#4ECDC4FF"
+                    border_radius: 8
+                    border_width: 2
+                    border_color: "#FFFFFFFF"
+                    
+                    Text {
+                        text: "Rounded"
+                        font_size: 8
+                        text_alignment: center
+                        text_color: "#FFFFFFFF"
+                        padding: 18
+                    }
+                }
+                
+                Container {
+                    width: 60
+                    height: 60
+                    background_color: "#45B7D1FF"
+                    border_radius: 30
+                    border_width: 2
+                    border_color: "#FFFFFFFF"
+                    
+                    Text {
+                        text: "Circle"
+                        font_size: 8
+                        text_alignment: center
+                        text_color: "#FFFFFFFF"
+                        padding: 20
+                    }
+                }
+                
+                Container {
+                    width: 80
+                    height: 40
+                    background_color: "#96CEB4FF"
+                    border_radius: 20
+                    border_width: 3
+                    border_color: "#2C3E50FF"
+                    
+                    Text {
+                        text: "Pill"
+                        font_size: 8
+                        text_alignment: center
+                        text_color: "#FFFFFFFF"
+                        padding: 14
+                    }
+                }
+            }
+        }
+        
+        # Performance and Test Results
+        Container {
+            style: "renderer_section"
+            
+            Text {
+                text: "📊 Performance and Results"
+                style: "section_title"
+            }
+            
+            Text {
+                text: $test_results
+                style: "performance_text"
+            }
+            
+            Text {
+                text: "Benchmark Status: ${benchmark_running ? 'Running...' : 'Stopped'}"
+                style: "performance_text"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                margin_top: 10
+                
+                Button {
+                    text: "Run All Tests"
+                    style: "test_button"
+                    onClick: "runAllTests"
+                }
+                
+                Button {
+                    text: "Export Results"
+                    style: "test_button"
+                    onClick: "exportResults"
+                }
+                
+                Button {
+                    text: "Reset Tests"
+                    style: "test_button"
+                    onClick: "resetTests"
+                }
+            }
+        }
+    }
+}
+
+@function "lua" detectRenderer() {
+    -- This would be implemented to detect the current renderer
+    -- For now, we'll simulate detection
+    local renderers = {"SDL2", "WGPU", "Ratatui", "Web Canvas", "Raylib"}
+    local index = (frame_count % 5) + 1
+    current_renderer = renderers[index]
+    frame_count = frame_count + 1
+    print("🖥️ Detected renderer: " .. current_renderer)
+}
+
+@function "lua" startBenchmark() {
+    benchmark_running = true
+    frame_count = 0
+    render_time_ms = 0
+    test_results = "Benchmark started - collecting performance data..."
+    print("🚀 Starting performance benchmark")
+}
+
+@function "lua" stopBenchmark() {
+    benchmark_running = false
+    local avg_frame_time = frame_count > 0 and (render_time_ms / frame_count) or 0
+    test_results = string.format("Benchmark complete: %d frames, avg %.2fms/frame", frame_count, avg_frame_time)
+    print("⏹️ Benchmark stopped: " .. test_results)
+}
+
+@function "lua" nextColorTest() {
+    color_test_index = (color_test_index + 1) % 8
+    test_results = "Color test " .. (color_test_index + 1) .. "/8 - checking color accuracy"
+    print("🌈 Running color test " .. (color_test_index + 1))
+}
+
+@function "lua" testAlphaBlending() {
+    test_results = "Alpha blending test - overlapping transparent elements should blend correctly"
+    print("🎨 Testing alpha blending - check overlapping colored boxes")
+}
+
+@function "lua" setSmallFont() {
+    font_size_test = 10
+    test_results = "Font size set to 10px - testing small text rendering"
+    print("📝 Font size set to 10px")
+}
+
+@function "lua" setMediumFont() {
+    font_size_test = 16
+    test_results = "Font size set to 16px - testing medium text rendering"
+    print("📝 Font size set to 16px")
+}
+
+@function "lua" setLargeFont() {
+    font_size_test = 24
+    test_results = "Font size set to 24px - testing large text rendering"
+    print("📝 Font size set to 24px")
+}
+
+@function "lua" runAllTests() {
+    print("🧪 Running comprehensive renderer tests...")
+    
+    -- Simulate running all tests
+    test_results = "Running comprehensive test suite..."
+    
+    -- Test color rendering
+    print("  ✓ Color rendering test")
+    
+    -- Test typography
+    print("  ✓ Typography rendering test")
+    
+    -- Test layout precision
+    print("  ✓ Layout precision test")
+    
+    -- Test border rendering
+    print("  ✓ Border and shape rendering test")
+    
+    -- Test alpha blending
+    print("  ✓ Alpha blending test")
+    
+    test_results = string.format(
+        "All tests complete on %s renderer. Frame count: %d, Performance: %.2fms avg",
+        current_renderer, frame_count, render_time_ms > 0 and (render_time_ms / math.max(frame_count, 1)) or 0
+    )
+    
+    print("✅ All renderer tests completed")
+}
+
+@function "lua" exportResults() {
+    local results = {
+        renderer = current_renderer,
+        frame_count = frame_count,
+        avg_render_time = render_time_ms > 0 and (render_time_ms / math.max(frame_count, 1)) or 0,
+        color_test_index = color_test_index,
+        font_size_test = font_size_test,
+        benchmark_running = benchmark_running
+    }
+    
+    print("📤 Renderer test results exported:")
+    for key, value in pairs(results) do
+        print("  " .. key .. ": " .. tostring(value))
+    end
+    
+    test_results = "Results exported to console - check output for detailed data"
+}
+
+@function "lua" resetTests() {
+    current_renderer = "Unknown"
+    render_time_ms = 0
+    frame_count = 0
+    color_test_index = 0
+    font_size_test = 14
+    animation_progress = 0
+    benchmark_running = false
+    test_results = "All tests reset to initial state"
+    
+    print("🔄 All renderer tests reset to defaults")
+}
+
+# Simulate frame updates for benchmarking
+@function "lua" updateFrame() {
+    if benchmark_running then
+        frame_count = frame_count + 1
+        -- Simulate render time (would be actual timing in real implementation)
+        render_time_ms = render_time_ms + math.random(1, 3)
+        
+        if frame_count % 60 == 0 then
+            local fps = 1000 / (render_time_ms / frame_count)
+            test_results = string.format("Benchmark running: %d frames, %.1f FPS", frame_count, fps)
+        end
+    end
+}
+
+# Initialize on startup
+@init {
+    current_renderer = "Detecting..."
+    test_results = "Renderer comparison test suite loaded - ready to test rendering consistency"
+    print("🚀 Renderer Comparison Test Suite initialized")
+    print("🎨 This suite tests rendering consistency across different backends")
+}

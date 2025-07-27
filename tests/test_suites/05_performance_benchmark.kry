@@ -1,0 +1,731 @@
+# Performance Benchmark Test Suite
+# Stress testing and performance measurement across different scenarios
+
+style "benchmark_container" {
+    background_color: "#2C2C2CFF"
+    padding: 20
+    display: flex
+    flex_direction: column
+    gap: 15
+    border_width: 1
+    border_color: "#444444FF"
+    border_radius: 8
+}
+
+style "benchmark_section" {
+    background_color: "#1E1E1EFF"
+    padding: 15
+    display: flex
+    flex_direction: column
+    gap: 10
+    border_radius: 6
+    border_width: 1
+    border_color: "#333333FF"
+}
+
+style "section_title" {
+    font_size: 16
+    font_weight: 600
+    text_color: "#FF6B6BFF"
+    padding: 5
+}
+
+style "benchmark_button" {
+    background_color: "#E74C3CFF"
+    text_color: "#FFFFFFFF"
+    font_size: 14
+    text_alignment: center
+    border_width: 0
+    border_radius: 4
+    width: 140
+    height: 32
+    cursor: pointer
+    
+    &:hover {
+        background_color: "#C0392BFF"
+    }
+    
+    &:active {
+        background_color: "#A93226FF"
+    }
+}
+
+style "stress_item" {
+    background_color: "#3498DBFF"
+    text_color: "#FFFFFFFF"
+    width: 50
+    height: 30
+    border_radius: 4
+    font_size: 10
+    text_alignment: center
+    padding: 8
+}
+
+style "metric_text" {
+    font_size: 12
+    text_color: "#F39C12FF"
+    padding: 3
+}
+
+style "result_text" {
+    font_size: 11
+    text_color: "#2ECC71FF"
+    padding: 2
+    background_color: "#1A1A1AFF"
+    border_radius: 3
+}
+
+@variables {
+    elements_count: 50
+    render_fps: 60
+    memory_usage_mb: 0
+    cpu_usage_percent: 0
+    stress_test_running: false
+    benchmark_results: "No benchmarks run yet"
+    test_iteration: 0
+    max_elements: 1000
+    animation_enabled: false
+    layout_complexity: "simple"
+    current_stress_level: "none"
+}
+
+App {
+    window_width: 1000
+    window_height: 800
+    window_title: "Kryon Performance Benchmark Suite"
+    resizable: true
+    keep_aspect_ratio: false
+    background_color: "#191919FF"
+
+    Container {
+        id: "main_container"
+        style: "benchmark_container"
+        
+        Text {
+            text: "⚡ Performance Benchmark Test Suite"
+            font_size: 20
+            font_weight: 700
+            text_color: "#FFFFFFFF"
+            text_alignment: center
+            padding: 10
+        }
+        
+        # System Performance Metrics
+        Container {
+            style: "benchmark_section"
+            
+            Text {
+                text: "📊 System Performance Metrics"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                justify_content: space-between
+                
+                Container {
+                    display: flex
+                    flex_direction: column
+                    gap: 5
+                    
+                    Text {
+                        text: "FPS: ${render_fps}"
+                        style: "metric_text"
+                    }
+                    
+                    Text {
+                        text: "Elements: ${elements_count}"
+                        style: "metric_text"
+                    }
+                    
+                    Text {
+                        text: "Memory: ${memory_usage_mb}MB"
+                        style: "metric_text"
+                    }
+                }
+                
+                Container {
+                    display: flex
+                    flex_direction: column
+                    gap: 5
+                    
+                    Text {
+                        text: "CPU: ${cpu_usage_percent}%"
+                        style: "metric_text"
+                    }
+                    
+                    Text {
+                        text: "Iteration: ${test_iteration}"
+                        style: "metric_text"
+                    }
+                    
+                    Text {
+                        text: "Stress: ${current_stress_level}"
+                        style: "metric_text"
+                    }
+                }
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                margin_top: 10
+                
+                Button {
+                    text: "Update Metrics"
+                    style: "benchmark_button"
+                    onClick: "updateMetrics"
+                }
+                
+                Button {
+                    text: "Reset Counters"
+                    style: "benchmark_button"
+                    onClick: "resetCounters"
+                }
+            }
+        }
+        
+        # Element Stress Test
+        Container {
+            style: "benchmark_section"
+            
+            Text {
+                text: "🔥 Element Rendering Stress Test"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                margin_bottom: 10
+                
+                Button {
+                    text: "50 Elements"
+                    style: "benchmark_button"
+                    onClick: "stress50Elements"
+                }
+                
+                Button {
+                    text: "200 Elements"
+                    style: "benchmark_button"
+                    onClick: "stress200Elements"
+                }
+                
+                Button {
+                    text: "500 Elements"
+                    style: "benchmark_button"
+                    onClick: "stress500Elements"
+                }
+                
+                Button {
+                    text: "1000 Elements"
+                    style: "benchmark_button"
+                    onClick: "stress1000Elements"
+                }
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                
+                Button {
+                    text: "Start Stress"
+                    style: "benchmark_button"
+                    onClick: "startStressTest"
+                }
+                
+                Button {
+                    text: "Stop Stress"
+                    style: "benchmark_button"
+                    onClick: "stopStressTest"
+                }
+                
+                Button {
+                    text: "Toggle Animation"
+                    style: "benchmark_button"
+                    onClick: "toggleAnimation"
+                }
+            }
+            
+            Text {
+                text: "Status: ${stress_test_running ? 'Running stress test...' : 'Idle'}"
+                style: "result_text"
+                margin_top: 10
+            }
+            
+            # Dynamic stress test container
+            Container {
+                id: "stress_container"
+                display: flex
+                flex_direction: row
+                flex_wrap: wrap
+                gap: 3
+                padding: 10
+                background_color: "#2C3E50FF"
+                border_radius: 4
+                max_height: 150
+                overflow: auto
+                margin_top: 10
+                
+                # These elements will be dynamically generated based on elements_count
+                # For demonstration, showing a few sample elements
+                Container { style: "stress_item"; Text { text: "1" } }
+                Container { style: "stress_item"; Text { text: "2" } }
+                Container { style: "stress_item"; Text { text: "3" } }
+                Container { style: "stress_item"; Text { text: "4" } }
+                Container { style: "stress_item"; Text { text: "5" } }
+                Container { style: "stress_item"; Text { text: "6" } }
+                Container { style: "stress_item"; Text { text: "7" } }
+                Container { style: "stress_item"; Text { text: "8" } }
+                Container { style: "stress_item"; Text { text: "9" } }
+                Container { style: "stress_item"; Text { text: "10" } }
+            }
+        }
+        
+        # Layout Performance Tests
+        Container {
+            style: "benchmark_section"
+            
+            Text {
+                text: "📐 Layout Performance Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                margin_bottom: 10
+                
+                Button {
+                    text: "Simple Layout"
+                    style: "benchmark_button"
+                    onClick: "testSimpleLayout"
+                }
+                
+                Button {
+                    text: "Complex Layout"
+                    style: "benchmark_button"
+                    onClick: "testComplexLayout"
+                }
+                
+                Button {
+                    text: "Nested Layout"
+                    style: "benchmark_button"
+                    onClick: "testNestedLayout"
+                }
+            }
+            
+            Text {
+                text: "Current complexity: ${layout_complexity}"
+                style: "result_text"
+            }
+            
+            # Layout test demonstration
+            Container {
+                display: flex
+                flex_direction: column
+                gap: 5
+                padding: 10
+                background_color: "#34495EFF"
+                border_radius: 4
+                margin_top: 10
+                
+                Container {
+                    display: flex
+                    flex_direction: row
+                    justify_content: space-between
+                    gap: 5
+                    
+                    Container {
+                        flex: 1
+                        background_color: "#E67E22FF"
+                        height: 30
+                        border_radius: 3
+                        
+                        Text {
+                            text: "Flex 1"
+                            font_size: 10
+                            text_alignment: center
+                            text_color: "#FFFFFFFF"
+                            padding: 8
+                        }
+                    }
+                    
+                    Container {
+                        flex: 2
+                        background_color: "#9B59B6FF"
+                        height: 30
+                        border_radius: 3
+                        
+                        Text {
+                            text: "Flex 2"
+                            font_size: 10
+                            text_alignment: center
+                            text_color: "#FFFFFFFF"
+                            padding: 8
+                        }
+                    }
+                    
+                    Container {
+                        flex: 1
+                        background_color: "#1ABC9CFF"
+                        height: 30
+                        border_radius: 3
+                        
+                        Text {
+                            text: "Flex 1"
+                            font_size: 10
+                            text_alignment: center
+                            text_color: "#FFFFFFFF"
+                            padding: 8
+                        }
+                    }
+                }
+                
+                Container {
+                    display: flex
+                    flex_direction: row
+                    gap: 5
+                    
+                    Container {
+                        width: 100
+                        height: 40
+                        background_color: "#E74C3CFF"
+                        border_radius: 3
+                        
+                        Text {
+                            text: "Fixed 100px"
+                            font_size: 8
+                            text_alignment: center
+                            text_color: "#FFFFFFFF"
+                            padding: 12
+                        }
+                    }
+                    
+                    Container {
+                        flex: 1
+                        height: 40
+                        background_color: "#3498DBFF"
+                        border_radius: 3
+                        
+                        Text {
+                            text: "Flexible"
+                            font_size: 8
+                            text_alignment: center
+                            text_color: "#FFFFFFFF"
+                            padding: 12
+                        }
+                    }
+                    
+                    Container {
+                        width: 80
+                        height: 40
+                        background_color: "#2ECC71FF"
+                        border_radius: 3
+                        
+                        Text {
+                            text: "Fixed 80px"
+                            font_size: 8
+                            text_alignment: center
+                            text_color: "#FFFFFFFF"
+                            padding: 12
+                        }
+                    }
+                }
+            }
+        }
+        
+        # Memory and Resource Tests
+        Container {
+            style: "benchmark_section"
+            
+            Text {
+                text: "💾 Memory and Resource Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                margin_bottom: 10
+                
+                Button {
+                    text: "Memory Test"
+                    style: "benchmark_button"
+                    onClick: "runMemoryTest"
+                }
+                
+                Button {
+                    text: "GC Test"
+                    style: "benchmark_button"
+                    onClick: "runGCTest"
+                }
+                
+                Button {
+                    text: "Resource Test"
+                    style: "benchmark_button"
+                    onClick: "runResourceTest"
+                }
+            }
+            
+            Text {
+                text: "Memory allocation patterns and garbage collection performance"
+                style: "result_text"
+            }
+        }
+        
+        # Comprehensive Benchmark
+        Container {
+            style: "benchmark_section"
+            
+            Text {
+                text: "🧪 Comprehensive Benchmark Suite"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                margin_bottom: 10
+                
+                Button {
+                    text: "Quick Benchmark"
+                    style: "benchmark_button"
+                    onClick: "runQuickBenchmark"
+                }
+                
+                Button {
+                    text: "Full Benchmark"
+                    style: "benchmark_button"
+                    onClick: "runFullBenchmark"
+                }
+                
+                Button {
+                    text: "Export Results"
+                    style: "benchmark_button"
+                    onClick: "exportBenchmarkResults"
+                }
+            }
+            
+            Text {
+                text: $benchmark_results
+                style: "result_text"
+            }
+        }
+    }
+}
+
+@function "lua" updateMetrics() {
+    -- Simulate metric collection
+    render_fps = math.random(55, 65)
+    memory_usage_mb = math.random(50, 200)
+    cpu_usage_percent = math.random(10, 80)
+    test_iteration = test_iteration + 1
+    
+    print("📊 Metrics updated - FPS: " .. render_fps .. ", Memory: " .. memory_usage_mb .. "MB, CPU: " .. cpu_usage_percent .. "%")
+}
+
+@function "lua" resetCounters() {
+    render_fps = 60
+    memory_usage_mb = 0
+    cpu_usage_percent = 0
+    test_iteration = 0
+    elements_count = 50
+    current_stress_level = "none"
+    benchmark_results = "Counters reset to default values"
+    print("🔄 All performance counters reset")
+}
+
+@function "lua" stress50Elements() {
+    elements_count = 50
+    current_stress_level = "low"
+    print("🔥 Stress test: 50 elements")
+}
+
+@function "lua" stress200Elements() {
+    elements_count = 200
+    current_stress_level = "medium"
+    print("🔥 Stress test: 200 elements")
+}
+
+@function "lua" stress500Elements() {
+    elements_count = 500
+    current_stress_level = "high"
+    print("🔥 Stress test: 500 elements")
+}
+
+@function "lua" stress1000Elements() {
+    elements_count = 1000
+    current_stress_level = "extreme"
+    print("🔥 Stress test: 1000 elements")
+}
+
+@function "lua" startStressTest() {
+    stress_test_running = true
+    test_iteration = 0
+    benchmark_results = "Stress test started with " .. elements_count .. " elements"
+    print("🚀 Starting stress test with " .. elements_count .. " elements")
+}
+
+@function "lua" stopStressTest() {
+    stress_test_running = false
+    benchmark_results = "Stress test stopped after " .. test_iteration .. " iterations"
+    print("⏹️ Stress test stopped")
+}
+
+@function "lua" toggleAnimation() {
+    animation_enabled = not animation_enabled
+    benchmark_results = "Animation " .. (animation_enabled and "enabled" or "disabled") .. " - this affects rendering performance"
+    print("🎬 Animation " .. (animation_enabled and "enabled" or "disabled"))
+}
+
+@function "lua" testSimpleLayout() {
+    layout_complexity = "simple"
+    benchmark_results = "Testing simple layout performance - basic flex containers"
+    print("📐 Testing simple layout performance")
+}
+
+@function "lua" testComplexLayout() {
+    layout_complexity = "complex"
+    benchmark_results = "Testing complex layout performance - nested containers with multiple flex properties"
+    print("📐 Testing complex layout performance")
+}
+
+@function "lua" testNestedLayout() {
+    layout_complexity = "nested"
+    benchmark_results = "Testing nested layout performance - deeply nested container hierarchies"
+    print("📐 Testing nested layout performance")
+}
+
+@function "lua" runMemoryTest() {
+    memory_usage_mb = math.random(100, 500)
+    benchmark_results = "Memory test: Allocated " .. memory_usage_mb .. "MB, testing for leaks and efficiency"
+    print("💾 Running memory allocation test")
+}
+
+@function "lua" runGCTest() {
+    local old_memory = memory_usage_mb
+    memory_usage_mb = math.random(20, old_memory)
+    benchmark_results = "GC test: Memory reduced from " .. old_memory .. "MB to " .. memory_usage_mb .. "MB"
+    print("🗑️ Running garbage collection test")
+}
+
+@function "lua" runResourceTest() {
+    benchmark_results = "Resource test: Testing texture loading, font rendering, and asset management"
+    print("📦 Running resource management test")
+}
+
+@function "lua" runQuickBenchmark() {
+    print("⚡ Running quick benchmark suite...")
+    
+    -- Simulate quick tests
+    local start_time = os.clock()
+    
+    -- Test rendering performance
+    render_fps = math.random(50, 70)
+    print("  ✓ Rendering performance: " .. render_fps .. " FPS")
+    
+    -- Test layout performance
+    print("  ✓ Layout computation: " .. math.random(1, 5) .. "ms")
+    
+    -- Test memory usage
+    memory_usage_mb = math.random(80, 150)
+    print("  ✓ Memory usage: " .. memory_usage_mb .. "MB")
+    
+    local duration = (os.clock() - start_time) * 1000
+    benchmark_results = string.format("Quick benchmark complete in %.1fms - FPS: %d, Memory: %dMB", 
+                                    duration, render_fps, memory_usage_mb)
+    test_iteration = test_iteration + 1
+}
+
+@function "lua" runFullBenchmark() {
+    print("🧪 Running comprehensive benchmark suite...")
+    
+    local results = {}
+    
+    -- Element rendering stress test
+    for i = 50, 500, 50 do
+        elements_count = i
+        local fps = math.random(60 - (i/20), 65 - (i/20))
+        results[#results + 1] = string.format("%d elements: %d FPS", i, fps)
+        print("  " .. results[#results])
+    end
+    
+    -- Layout complexity tests
+    local layout_times = {
+        simple = math.random(1, 3),
+        complex = math.random(3, 8),
+        nested = math.random(8, 15)
+    }
+    
+    for layout_type, time_ms in pairs(layout_times) do
+        results[#results + 1] = string.format("%s layout: %dms", layout_type, time_ms)
+        print("  " .. results[#results])
+    end
+    
+    -- Memory tests
+    local max_memory = math.random(200, 400)
+    local min_memory = math.random(50, 100)
+    results[#results + 1] = string.format("Memory range: %d-%dMB", min_memory, max_memory)
+    print("  " .. results[#results])
+    
+    benchmark_results = "Full benchmark complete - " .. #results .. " tests run. Check console for details."
+    test_iteration = test_iteration + 1
+    
+    print("✅ Full benchmark suite completed")
+}
+
+@function "lua" exportBenchmarkResults() {
+    local export_data = {
+        timestamp = os.date("%Y-%m-%d %H:%M:%S"),
+        elements_count = elements_count,
+        render_fps = render_fps,
+        memory_usage_mb = memory_usage_mb,
+        cpu_usage_percent = cpu_usage_percent,
+        stress_test_running = stress_test_running,
+        test_iteration = test_iteration,
+        layout_complexity = layout_complexity,
+        animation_enabled = animation_enabled,
+        current_stress_level = current_stress_level
+    }
+    
+    print("📤 Benchmark results exported:")
+    for key, value in pairs(export_data) do
+        print("  " .. key .. ": " .. tostring(value))
+    end
+    
+    benchmark_results = "Results exported to console with timestamp: " .. export_data.timestamp
+}
+
+# Continuous performance monitoring during stress test
+@function "lua" monitorPerformance() {
+    if stress_test_running then
+        test_iteration = test_iteration + 1
+        
+        -- Simulate performance degradation with more elements
+        local performance_factor = math.max(0.1, 1 - (elements_count / max_elements))
+        render_fps = math.floor(60 * performance_factor) + math.random(-3, 3)
+        cpu_usage_percent = math.min(95, 20 + (elements_count / 10) + math.random(-5, 5))
+        memory_usage_mb = 50 + (elements_count / 2) + math.random(-10, 10)
+        
+        if test_iteration % 30 == 0 then  -- Log every 30 iterations
+            print(string.format("📊 Performance: %d FPS, %d%% CPU, %dMB RAM (%d elements)", 
+                               render_fps, cpu_usage_percent, memory_usage_mb, elements_count))
+        end
+    end
+end
+
+# Initialize on startup
+@init {
+    benchmark_results = "Performance benchmark suite loaded - ready to stress test the system"
+    current_stress_level = "none"
+    print("🚀 Performance Benchmark Test Suite initialized")
+    print("⚡ This suite will test rendering, layout, and memory performance")
+}

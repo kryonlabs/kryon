@@ -1,0 +1,812 @@
+# Layout Engine Test Suite
+# Comprehensive testing of flexbox layouts, positioning, and sizing
+
+style "layout_container" {
+    background_color: "#2C2C2CFF"
+    padding: 15
+    display: flex
+    flex_direction: column
+    gap: 20
+    border_width: 1
+    border_color: "#444444FF"
+    border_radius: 8
+}
+
+style "test_section" {
+    background_color: "#1E1E1EFF"
+    padding: 15
+    border_radius: 6
+    border_width: 1
+    border_color: "#333333FF"
+}
+
+style "section_title" {
+    font_size: 16
+    font_weight: 600
+    text_color: "#00FF88FF"
+    padding: 5
+    margin_bottom: 10
+}
+
+style "flex_demo_item" {
+    background_color: "#0066CCFF"
+    text_color: "#FFFFFFFF"
+    padding: 10
+    border_radius: 4
+    font_size: 12
+    text_alignment: center
+    min_width: 60
+    min_height: 40
+}
+
+style "demo_label" {
+    font_size: 12
+    text_color: "#AAAAAA"
+    padding: 5
+    text_alignment: center
+}
+
+style "test_button" {
+    background_color: "#4CAF50FF"
+    text_color: "#FFFFFFFF"
+    font_size: 12
+    text_alignment: center
+    border_width: 0
+    border_radius: 4
+    width: 80
+    height: 28
+    cursor: pointer
+    
+    &:hover {
+        background_color: "#66BB6AFF"
+    }
+    
+    &:active {
+        background_color: "#2E7D32FF"
+    }
+}
+
+style "measurement_text" {
+    font_size: 11
+    text_color: "#FFFF88FF"
+    padding: 2
+}
+
+@variables {
+    flex_direction_test: "row"
+    justify_content_test: "flex-start"
+    align_items_test: "stretch"
+    gap_size: 10
+    container_width: 300
+    container_height: 100
+    test_mode: "flexbox"
+    layout_measurements: "Measurements will appear here"
+}
+
+App {
+    window_width: 1000
+    window_height: 800
+    window_title: "Kryon Layout Engine Test Suite"
+    resizable: true
+    keep_aspect_ratio: false
+    background_color: "#191919FF"
+
+    Container {
+        id: "main_container"
+        style: "layout_container"
+        
+        Text {
+            text: "📐 Layout Engine Test Suite"
+            font_size: 20
+            font_weight: 700
+            text_color: "#FFFFFFFF"
+            text_alignment: center
+            padding: 10
+        }
+        
+        # Flexbox Direction Tests
+        Container {
+            style: "test_section"
+            
+            Text {
+                text: "🔄 Flex Direction Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                margin_bottom: 10
+                
+                Button {
+                    text: "Row"
+                    style: "test_button"
+                    onClick: "setFlexDirectionRow"
+                }
+                
+                Button {
+                    text: "Column"
+                    style: "test_button"
+                    onClick: "setFlexDirectionColumn"
+                }
+                
+                Button {
+                    text: "Row Rev"
+                    style: "test_button"
+                    onClick: "setFlexDirectionRowReverse"
+                }
+                
+                Button {
+                    text: "Col Rev"
+                    style: "test_button"
+                    onClick: "setFlexDirectionColumnReverse"
+                }
+            }
+            
+            Text {
+                text: "Current: ${flex_direction_test}"
+                style: "demo_label"
+            }
+            
+            Container {
+                id: "flex_direction_demo"
+                display: flex
+                flex_direction: $flex_direction_test
+                gap: $gap_size
+                padding: 15
+                background_color: "#444444FF"
+                border_radius: 4
+                width: $container_width
+                height: $container_height
+                
+                Container {
+                    style: "flex_demo_item"
+                    Text { text: "1" }
+                }
+                
+                Container {
+                    style: "flex_demo_item"
+                    Text { text: "2" }
+                }
+                
+                Container {
+                    style: "flex_demo_item"
+                    Text { text: "3" }
+                }
+            }
+        }
+        
+        # Justify Content Tests
+        Container {
+            style: "test_section"
+            
+            Text {
+                text: "↔️ Justify Content Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 8
+                margin_bottom: 10
+                flex_wrap: wrap
+                
+                Button {
+                    text: "Start"
+                    style: "test_button"
+                    onClick: "setJustifyStart"
+                }
+                
+                Button {
+                    text: "Center"
+                    style: "test_button"
+                    onClick: "setJustifyCenter"
+                }
+                
+                Button {
+                    text: "End"
+                    style: "test_button"
+                    onClick: "setJustifyEnd"
+                }
+                
+                Button {
+                    text: "Between"
+                    style: "test_button"
+                    onClick: "setJustifyBetween"
+                }
+                
+                Button {
+                    text: "Around"
+                    style: "test_button"
+                    onClick: "setJustifyAround"
+                }
+                
+                Button {
+                    text: "Evenly"
+                    style: "test_button"
+                    onClick: "setJustifyEvenly"
+                }
+            }
+            
+            Text {
+                text: "Current: ${justify_content_test}"
+                style: "demo_label"
+            }
+            
+            Container {
+                id: "justify_content_demo"
+                display: flex
+                flex_direction: row
+                justify_content: $justify_content_test
+                gap: $gap_size
+                padding: 15
+                background_color: "#444444FF"
+                border_radius: 4
+                width: 400
+                height: 80
+                
+                Container {
+                    style: "flex_demo_item"
+                    width: 50
+                    Text { text: "A" }
+                }
+                
+                Container {
+                    style: "flex_demo_item"
+                    width: 50
+                    Text { text: "B" }
+                }
+                
+                Container {
+                    style: "flex_demo_item"
+                    width: 50
+                    Text { text: "C" }
+                }
+            }
+        }
+        
+        # Align Items Tests
+        Container {
+            style: "test_section"
+            
+            Text {
+                text: "↕️ Align Items Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                margin_bottom: 10
+                
+                Button {
+                    text: "Stretch"
+                    style: "test_button"
+                    onClick: "setAlignStretch"
+                }
+                
+                Button {
+                    text: "Start"
+                    style: "test_button"
+                    onClick: "setAlignStart"
+                }
+                
+                Button {
+                    text: "Center"
+                    style: "test_button"
+                    onClick: "setAlignCenter"
+                }
+                
+                Button {
+                    text: "End"
+                    style: "test_button"
+                    onClick: "setAlignEnd"
+                }
+                
+                Button {
+                    text: "Baseline"
+                    style: "test_button"
+                    onClick: "setAlignBaseline"
+                }
+            }
+            
+            Text {
+                text: "Current: ${align_items_test}"
+                style: "demo_label"
+            }
+            
+            Container {
+                id: "align_items_demo"
+                display: flex
+                flex_direction: row
+                justify_content: center
+                align_items: $align_items_test
+                gap: $gap_size
+                padding: 15
+                background_color: "#444444FF"
+                border_radius: 4
+                width: 400
+                height: 120
+                
+                Container {
+                    style: "flex_demo_item"
+                    height: 30
+                    Text { text: "Short" }
+                }
+                
+                Container {
+                    style: "flex_demo_item"
+                    height: 60
+                    Text { text: "Medium" }
+                }
+                
+                Container {
+                    style: "flex_demo_item"
+                    height: 90
+                    Text { text: "Tall" }
+                }
+            }
+        }
+        
+        # Gap and Sizing Tests
+        Container {
+            style: "test_section"
+            
+            Text {
+                text: "📏 Gap and Sizing Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                margin_bottom: 10
+                align_items: center
+                
+                Button {
+                    text: "Gap 5"
+                    style: "test_button"
+                    onClick: "setGap5"
+                }
+                
+                Button {
+                    text: "Gap 15"
+                    style: "test_button"
+                    onClick: "setGap15"
+                }
+                
+                Button {
+                    text: "Gap 25"
+                    style: "test_button"
+                    onClick: "setGap25"
+                }
+                
+                Button {
+                    text: "W+50"
+                    style: "test_button"
+                    onClick: "increaseWidth"
+                }
+                
+                Button {
+                    text: "W-50"
+                    style: "test_button"
+                    onClick: "decreaseWidth"
+                }
+                
+                Button {
+                    text: "H+30"
+                    style: "test_button"
+                    onClick: "increaseHeight"
+                }
+                
+                Button {
+                    text: "H-30"
+                    style: "test_button"
+                    onClick: "decreaseHeight"
+                }
+            }
+            
+            Text {
+                text: "Gap: ${gap_size}px, Size: ${container_width}x${container_height}"
+                style: "demo_label"
+            }
+            
+            Container {
+                id: "sizing_demo"
+                display: flex
+                flex_direction: row
+                justify_content: center
+                align_items: center
+                gap: $gap_size
+                padding: 15
+                background_color: "#444444FF"
+                border_radius: 4
+                width: $container_width
+                height: $container_height
+                border_width: 2
+                border_color: "#666666FF"
+                
+                Container {
+                    style: "flex_demo_item"
+                    flex: 1
+                    Text { text: "Flex 1" }
+                }
+                
+                Container {
+                    style: "flex_demo_item"
+                    flex: 2
+                    Text { text: "Flex 2" }
+                }
+                
+                Container {
+                    style: "flex_demo_item"
+                    flex: 1
+                    Text { text: "Flex 1" }
+                }
+            }
+        }
+        
+        # Nested Layout Tests
+        Container {
+            style: "test_section"
+            
+            Text {
+                text: "🔗 Nested Layout Tests"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 15
+                padding: 15
+                background_color: "#444444FF"
+                border_radius: 4
+                height: 200
+                
+                # Left column (flex: 1)
+                Container {
+                    flex: 1
+                    display: flex
+                    flex_direction: column
+                    gap: 10
+                    background_color: "#555555FF"
+                    padding: 10
+                    border_radius: 4
+                    
+                    Text {
+                        text: "Column 1"
+                        style: "demo_label"
+                        text_color: "#FFFFFFFF"
+                    }
+                    
+                    Container {
+                        style: "flex_demo_item"
+                        flex: 1
+                        Text { text: "Top" }
+                    }
+                    
+                    Container {
+                        style: "flex_demo_item"
+                        flex: 2
+                        Text { text: "Middle (2x)" }
+                    }
+                    
+                    Container {
+                        style: "flex_demo_item"
+                        flex: 1
+                        Text { text: "Bottom" }
+                    }
+                }
+                
+                # Middle column (flex: 2)
+                Container {
+                    flex: 2
+                    display: flex
+                    flex_direction: column
+                    gap: 10
+                    background_color: "#555555FF"
+                    padding: 10
+                    border_radius: 4
+                    
+                    Text {
+                        text: "Column 2 (2x width)"
+                        style: "demo_label"
+                        text_color: "#FFFFFFFF"
+                    }
+                    
+                    Container {
+                        display: flex
+                        flex_direction: row
+                        gap: 5
+                        flex: 1
+                        
+                        Container {
+                            style: "flex_demo_item"
+                            flex: 1
+                            Text { text: "A" }
+                        }
+                        
+                        Container {
+                            style: "flex_demo_item"
+                            flex: 1
+                            Text { text: "B" }
+                        }
+                        
+                        Container {
+                            style: "flex_demo_item"
+                            flex: 1
+                            Text { text: "C" }
+                        }
+                    }
+                    
+                    Container {
+                        style: "flex_demo_item"
+                        height: 60
+                        Text { text: "Fixed Height" }
+                    }
+                }
+                
+                # Right column (flex: 1)
+                Container {
+                    flex: 1
+                    display: flex
+                    flex_direction: column
+                    justify_content: space-between
+                    background_color: "#555555FF"
+                    padding: 10
+                    border_radius: 4
+                    
+                    Text {
+                        text: "Column 3"
+                        style: "demo_label"
+                        text_color: "#FFFFFFFF"
+                    }
+                    
+                    Container {
+                        style: "flex_demo_item"
+                        Text { text: "Top" }
+                    }
+                    
+                    Container {
+                        style: "flex_demo_item"
+                        Text { text: "Bottom" }
+                    }
+                }
+            }
+        }
+        
+        # Layout Measurements
+        Container {
+            style: "test_section"
+            
+            Text {
+                text: "📊 Layout Measurements"
+                style: "section_title"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                margin_bottom: 10
+                
+                Button {
+                    text: "Measure"
+                    style: "test_button"
+                    onClick: "measureLayouts"
+                }
+                
+                Button {
+                    text: "Reset"
+                    style: "test_button"
+                    onClick: "resetToDefaults"
+                }
+                
+                Button {
+                    text: "Test All"
+                    style: "test_button"
+                    onClick: "runAllTests"
+                }
+            }
+            
+            Text {
+                text: $layout_measurements
+                style: "measurement_text"
+            }
+        }
+    }
+}
+
+# Flex Direction Functions
+@function "lua" setFlexDirectionRow() {
+    flex_direction_test = "row"
+    print("🔄 Flex direction set to: row")
+}
+
+@function "lua" setFlexDirectionColumn() {
+    flex_direction_test = "column"
+    print("🔄 Flex direction set to: column")
+}
+
+@function "lua" setFlexDirectionRowReverse() {
+    flex_direction_test = "row-reverse"
+    print("🔄 Flex direction set to: row-reverse")
+}
+
+@function "lua" setFlexDirectionColumnReverse() {
+    flex_direction_test = "column-reverse"
+    print("🔄 Flex direction set to: column-reverse")
+}
+
+# Justify Content Functions
+@function "lua" setJustifyStart() {
+    justify_content_test = "flex-start"
+    print("↔️ Justify content set to: flex-start")
+}
+
+@function "lua" setJustifyCenter() {
+    justify_content_test = "center"
+    print("↔️ Justify content set to: center")
+}
+
+@function "lua" setJustifyEnd() {
+    justify_content_test = "flex-end"
+    print("↔️ Justify content set to: flex-end")
+}
+
+@function "lua" setJustifyBetween() {
+    justify_content_test = "space-between"
+    print("↔️ Justify content set to: space-between")
+}
+
+@function "lua" setJustifyAround() {
+    justify_content_test = "space-around"
+    print("↔️ Justify content set to: space-around")
+}
+
+@function "lua" setJustifyEvenly() {
+    justify_content_test = "space-evenly"
+    print("↔️ Justify content set to: space-evenly")
+}
+
+# Align Items Functions
+@function "lua" setAlignStretch() {
+    align_items_test = "stretch"
+    print("↕️ Align items set to: stretch")
+}
+
+@function "lua" setAlignStart() {
+    align_items_test = "flex-start"
+    print("↕️ Align items set to: flex-start")
+}
+
+@function "lua" setAlignCenter() {
+    align_items_test = "center"
+    print("↕️ Align items set to: center")
+}
+
+@function "lua" setAlignEnd() {
+    align_items_test = "flex-end"
+    print("↕️ Align items set to: flex-end")
+}
+
+@function "lua" setAlignBaseline() {
+    align_items_test = "baseline"
+    print("↕️ Align items set to: baseline")
+}
+
+# Gap and Sizing Functions
+@function "lua" setGap5() {
+    gap_size = 5
+    print("📏 Gap set to: 5px")
+}
+
+@function "lua" setGap15() {
+    gap_size = 15
+    print("📏 Gap set to: 15px")
+}
+
+@function "lua" setGap25() {
+    gap_size = 25
+    print("📏 Gap set to: 25px")
+}
+
+@function "lua" increaseWidth() {
+    container_width = container_width + 50
+    if container_width > 500 then
+        container_width = 500
+    end
+    print("📏 Width increased to: " .. container_width .. "px")
+}
+
+@function "lua" decreaseWidth() {
+    container_width = container_width - 50
+    if container_width < 200 then
+        container_width = 200
+    end
+    print("📏 Width decreased to: " .. container_width .. "px")
+}
+
+@function "lua" increaseHeight() {
+    container_height = container_height + 30
+    if container_height > 200 then
+        container_height = 200
+    end
+    print("📏 Height increased to: " .. container_height .. "px")
+}
+
+@function "lua" decreaseHeight() {
+    container_height = container_height - 30
+    if container_height < 60 then
+        container_height = 60
+    end
+    print("📏 Height decreased to: " .. container_height .. "px")
+}
+
+# Test and Measurement Functions
+@function "lua" measureLayouts() {
+    layout_measurements = string.format(
+        "Container: %dx%d | Gap: %dpx | Direction: %s | Justify: %s | Align: %s",
+        container_width, container_height, gap_size,
+        flex_direction_test, justify_content_test, align_items_test
+    )
+    print("📊 Layout measured: " .. layout_measurements)
+}
+
+@function "lua" resetToDefaults() {
+    flex_direction_test = "row"
+    justify_content_test = "flex-start"
+    align_items_test = "stretch"
+    gap_size = 10
+    container_width = 300
+    container_height = 100
+    layout_measurements = "Reset to default values"
+    print("🔄 All layout values reset to defaults")
+}
+
+@function "lua" runAllTests() {
+    print("🧪 Running comprehensive layout tests...")
+    
+    -- Test all flex directions
+    local directions = {"row", "column", "row-reverse", "column-reverse"}
+    for i, direction in ipairs(directions) do
+        flex_direction_test = direction
+        print("  Testing flex-direction: " .. direction)
+    end
+    
+    -- Test all justify content values
+    local justifies = {"flex-start", "center", "flex-end", "space-between", "space-around", "space-evenly"}
+    for i, justify in ipairs(justifies) do
+        justify_content_test = justify
+        print("  Testing justify-content: " .. justify)
+    end
+    
+    -- Test all align items values
+    local aligns = {"stretch", "flex-start", "center", "flex-end", "baseline"}
+    for i, align in ipairs(aligns) do
+        align_items_test = align
+        print("  Testing align-items: " .. align)
+    end
+    
+    -- Reset to defaults
+    flex_direction_test = "row"
+    justify_content_test = "flex-start"
+    align_items_test = "stretch"
+    
+    layout_measurements = "Comprehensive test completed - check console for details"
+    print("✅ All layout tests completed")
+}
+
+# Initialize on startup
+@init {
+    layout_measurements = "Layout engine test suite loaded"
+    print("🚀 Layout Engine Test Suite initialized")
+    print("📐 Default values: flex-direction=" .. flex_direction_test .. 
+          ", justify-content=" .. justify_content_test .. 
+          ", align-items=" .. align_items_test)
+}

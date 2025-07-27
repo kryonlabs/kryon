@@ -101,6 +101,7 @@ struct ControllerState {
     start: bool,
     z_trigger: bool,
     analog_stick: Vec2,
+    #[allow(dead_code)]
     c_stick: Vec2,
 }
 

@@ -88,11 +88,20 @@ impl KryonHtmlServer {
         let renderer = self.renderer.clone();
         let html_config = self.html_config.clone();
         
+        // Clone for each route to avoid move errors
+        let renderer_html = renderer.clone();
+        let html_config_html = html_config.clone();
+        let renderer_css = renderer.clone();
+        let html_config_css = html_config.clone();
+        let renderer_js = renderer.clone();
+        let html_config_js = html_config.clone();
+        let renderer_api = renderer.clone();
+        
         // Main HTML route
         let html_route = warp::path::end()
             .and(warp::get())
-            .and(warp::any().map(move || renderer.clone()))
-            .and(warp::any().map(move || html_config.clone()))
+            .and(warp::any().map(move || renderer_html.clone()))
+            .and(warp::any().map(move || html_config_html.clone()))
             .and_then(serve_html);
         
         // CSS route
@@ -100,8 +109,8 @@ impl KryonHtmlServer {
             .and(warp::path::end())
             .and(warp::get())
             .and(warp::header::<String>("accept"))
-            .and(warp::any().map(move || renderer.clone()))
-            .and(warp::any().map(move || html_config.clone()))
+            .and(warp::any().map(move || renderer_css.clone()))
+            .and(warp::any().map(move || html_config_css.clone()))
             .and_then(serve_css);
         
         // JavaScript route
@@ -109,8 +118,8 @@ impl KryonHtmlServer {
             .and(warp::path::end())
             .and(warp::get())
             .and(warp::header::<String>("accept"))
-            .and(warp::any().map(move || renderer.clone()))
-            .and(warp::any().map(move || html_config.clone()))
+            .and(warp::any().map(move || renderer_js.clone()))
+            .and(warp::any().map(move || html_config_js.clone()))
             .and_then(serve_js);
         
         // API route for live reload
@@ -118,7 +127,7 @@ impl KryonHtmlServer {
             .and(warp::path("reload"))
             .and(warp::post())
             .and(warp::body::json())
-            .and(warp::any().map(move || renderer.clone()))
+            .and(warp::any().map(move || renderer_api.clone()))
             .and_then(handle_reload);
         
         // Static files route
@@ -141,16 +150,19 @@ impl KryonHtmlServer {
             .or(static_route);
         
         // Add CORS if enabled
-        if self.config.cors_enabled {
-            routes
-                .with(warp::cors()
-                    .allow_any_origin()
-                    .allow_headers(vec!["content-type"])
-                    .allow_methods(vec!["GET", "POST"]))
-                .boxed()
+        let cors = if self.config.cors_enabled {
+            warp::cors()
+                .allow_any_origin()
+                .allow_headers(vec!["content-type"])
+                .allow_methods(vec!["GET", "POST"])
         } else {
-            routes.boxed()
-        }
+            warp::cors()
+                .allow_origin("http://localhost:3000") // Restrict to localhost if CORS disabled
+                .allow_headers(vec!["content-type"])
+                .allow_methods(vec!["GET", "POST"])
+        };
+        
+        routes.with(cors).boxed()
     }
 }
 
@@ -200,10 +212,10 @@ async fn serve_css(
     
     if let Some(renderer) = renderer_guard.as_ref() {
         let css = renderer.generate_css(&html_config);
-        Ok(warp::reply::with_header(css, "content-type", "text/css"))
+        Ok(warp::reply::with_header(css, "content-type", "text/css".to_string()))
     } else {
-        let default_css = "/* No renderer loaded */";
-        Ok(warp::reply::with_header(default_css, "content-type", "text/css"))
+        let default_css = "/* No renderer loaded */".to_string();
+        Ok(warp::reply::with_header(default_css, "content-type", "text/css".to_string()))
     }
 }
 
@@ -222,10 +234,10 @@ async fn serve_js(
     
     if let Some(renderer) = renderer_guard.as_ref() {
         let js = renderer.generate_js(&html_config);
-        Ok(warp::reply::with_header(js, "content-type", "application/javascript"))
+        Ok(warp::reply::with_header(js, "content-type", "application/javascript".to_string()))
     } else {
-        let default_js = "/* No renderer loaded */";
-        Ok(warp::reply::with_header(default_js, "content-type", "application/javascript"))
+        let default_js = "/* No renderer loaded */".to_string();
+        Ok(warp::reply::with_header(default_js, "content-type", "application/javascript".to_string()))
     }
 }
 
@@ -238,7 +250,7 @@ struct ReloadRequest {
 #[cfg(feature = "server")]
 async fn handle_reload(
     request: ReloadRequest,
-    renderer: Arc<RwLock<Option<HtmlRenderer>>>,
+    _renderer: Arc<RwLock<Option<HtmlRenderer>>>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     println!("🔄 Reload request for: {}", request.path);
     

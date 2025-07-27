@@ -29,7 +29,7 @@ Kryon is a unified tool for working with Kryon UI files (.kry). It automatically
 compiles your source files and runs them with the appropriate renderer backend.
 
 Examples:
-  kryon hello_world.kry           # Auto-compile and run with default renderer
+  kryon hello_world.kry           # Auto-compile and run with default renderer (HTML)
   kryon -r wgpu app.kry          # Use specific renderer 
   kryon --debug app.kry          # Run with debug output
   kryon --compile-only app.kry   # Just compile to .krb
@@ -133,7 +133,9 @@ pub enum DevCommands {
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub enum RendererType {
-    /// Raylib renderer (2D/3D graphics, default)
+    /// HTML server renderer (web, default)
+    Html,
+    /// Raylib renderer (2D/3D graphics)
     Raylib,
     /// WGPU renderer (high-performance GPU)
     Wgpu,
@@ -141,8 +143,6 @@ pub enum RendererType {
     Sdl2,
     /// Ratatui renderer (terminal UI)
     Ratatui,
-    /// HTML server renderer (web)
-    Html,
     /// Debug text output
     Debug,
 }
@@ -161,25 +161,18 @@ impl RendererType {
 
     fn description(&self) -> &'static str {
         match self {
+            RendererType::Html => "HTML/CSS web renderer (server, default)",
             RendererType::Raylib => "2D/3D graphics renderer (desktop)",
             RendererType::Wgpu => "High-performance GPU renderer (desktop)",
             RendererType::Sdl2 => "SDL2 cross-platform renderer (desktop)",
             RendererType::Ratatui => "Terminal UI renderer (text-based)",
-            RendererType::Html => "HTML/CSS web renderer (server)",
             RendererType::Debug => "Debug text output renderer",
         }
     }
 
     fn is_available(&self) -> bool {
-        // Check if the renderer binary exists or if features are compiled in
-        match self {
-            RendererType::Raylib => cfg!(feature = "raylib"),
-            RendererType::Wgpu => cfg!(feature = "wgpu"),
-            RendererType::Sdl2 => cfg!(feature = "sdl2"),
-            RendererType::Ratatui => cfg!(feature = "ratatui"),
-            RendererType::Html => cfg!(feature = "html-server"),
-            RendererType::Debug => true, // Always available
-        }
+        // Check if the renderer binary exists in PATH
+        which::which(self.binary_name()).is_ok()
     }
 }
 
@@ -244,10 +237,10 @@ fn list_renderers() -> Result<()> {
     println!();
 
     let renderers = [
+        RendererType::Html,
         RendererType::Raylib,
         RendererType::Wgpu,
         RendererType::Ratatui,
-        RendererType::Html,
         RendererType::Debug,
     ];
 
@@ -266,8 +259,10 @@ fn list_renderers() -> Result<()> {
     }
 
     println!();
-    println!("To enable additional renderers, rebuild with feature flags:");
-    println!("  {}", "cargo build --features wgpu,ratatui,html-server".bright_yellow());
+    println!("To install additional renderers, build them separately:");
+    println!("  {}", "cargo build --bin kryon-renderer-wgpu --features wgpu".bright_yellow());
+    println!("  {}", "cargo build --bin kryon-renderer-raylib --features raylib".bright_yellow());
+    println!("  {}", "cargo build --bin kryon-renderer-html --features html-server".bright_yellow());
 
     Ok(())
 }
@@ -409,10 +404,10 @@ fn select_renderer(preferred: Option<RendererType>) -> Result<RendererType> {
 
     // Get list of available renderers
     let available: Vec<RendererType> = [
+        RendererType::Html,
         RendererType::Raylib,
         RendererType::Wgpu,
         RendererType::Ratatui,
-        RendererType::Html,
         RendererType::Debug,
     ]
     .into_iter()
@@ -428,7 +423,10 @@ fn select_renderer(preferred: Option<RendererType>) -> Result<RendererType> {
         return Ok(available[0].clone());
     }
 
-    // Default to WGPU if available, otherwise Raylib
+    // Default to HTML if available, then WGPU, then Raylib
+    if available.contains(&RendererType::Html) {
+        return Ok(RendererType::Html);
+    }
     if available.contains(&RendererType::Wgpu) {
         return Ok(RendererType::Wgpu);
     }
