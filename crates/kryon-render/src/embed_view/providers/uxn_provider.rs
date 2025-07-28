@@ -134,6 +134,7 @@ impl ViewInstance for UxnViewInstance {
         
         // Draw emulator housing background
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(bounds.x, bounds.y),
             size: Vec2::new(bounds.width, bounds.height),
             color: Vec4::new(0.12, 0.12, 0.12, 1.0), // Dark Varvara-style background
@@ -172,6 +173,7 @@ impl ViewInstance for UxnViewInstance {
                 
                 // Draw UXN screen background
                 frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                     position: Vec2::new(screen_x, screen_y),
                     size: Vec2::new(screen_width, screen_height),
                     color: Vec4::new(0.05, 0.05, 0.05, 1.0), // Very dark screen
@@ -200,6 +202,7 @@ impl ViewInstance for UxnViewInstance {
                             let pixel_y = screen_y + py as f32 * pixel_size;
                             
                             frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                                 position: Vec2::new(pixel_x, pixel_y),
                                 size: Vec2::new(pixel_size, pixel_size),
                                 color: Vec4::new(r, g, b, 1.0),

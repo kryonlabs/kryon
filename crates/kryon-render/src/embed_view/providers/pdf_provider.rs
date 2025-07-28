@@ -131,6 +131,7 @@ impl PdfViewInstance {
     fn render_pdf_page(&self, frame: &mut dyn Frame, page_x: f32, page_y: f32, page_width: f32, page_height: f32) {
         // Draw page background (white paper)
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(page_x, page_y),
             size: Vec2::new(page_width, page_height),
             color: Vec4::new(1.0, 1.0, 1.0, 1.0), // White page
@@ -209,6 +210,7 @@ impl PdfViewInstance {
             let img_y = page_y + 60.0 * self.zoom_level;
             
             frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                 position: Vec2::new(img_x, img_y),
                 size: Vec2::new(img_width, img_height),
                 color: Vec4::new(0.9, 0.95, 1.0, 1.0), // Light blue placeholder
@@ -245,6 +247,7 @@ impl ViewInstance for PdfViewInstance {
         
         // Draw viewer background
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(bounds.x, bounds.y),
             size: Vec2::new(bounds.width, bounds.height),
             color: Vec4::new(0.95, 0.95, 0.95, 1.0), // Light gray background
@@ -259,6 +262,7 @@ impl ViewInstance for PdfViewInstance {
         // Draw toolbar
         let toolbar_height = 40.0;
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(bounds.x, bounds.y),
             size: Vec2::new(bounds.width, toolbar_height),
             color: Vec4::new(0.9, 0.9, 0.9, 1.0),
@@ -385,6 +389,7 @@ impl ViewInstance for PdfViewInstance {
         let status_y = bounds.y + bounds.height - status_bar_height;
         
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(bounds.x, status_y),
             size: Vec2::new(bounds.width, status_bar_height),
             color: Vec4::new(0.85, 0.85, 0.85, 1.0),

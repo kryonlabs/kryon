@@ -234,6 +234,7 @@ impl VideoViewInstance {
     fn render_video_frame(&self, frame: &mut dyn Frame, video_x: f32, video_y: f32, video_width: f32, video_height: f32) {
         // Draw video background
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(video_x, video_y),
             size: Vec2::new(video_width, video_height),
             color: Vec4::new(0.0, 0.0, 0.0, 1.0),
@@ -265,6 +266,7 @@ impl VideoViewInstance {
                     let pixel_y = video_y + y as f32 * pixel_height;
                     
                     frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                         position: Vec2::new(pixel_x, pixel_y),
                         size: Vec2::new(pixel_width * 4.0, pixel_height * 4.0),
                         color: Vec4::new(r, g, b, 1.0),
@@ -283,6 +285,7 @@ impl VideoViewInstance {
     fn render_media_controls(&self, frame: &mut dyn Frame, controls_x: f32, controls_y: f32, controls_width: f32, controls_height: f32) {
         // Draw controls background
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(controls_x, controls_y),
             size: Vec2::new(controls_width, controls_height),
             color: Vec4::new(0.1, 0.1, 0.1, 0.9),
@@ -323,6 +326,7 @@ impl VideoViewInstance {
         
         // Background track
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(progress_x, progress_y),
             size: Vec2::new(progress_width, progress_height),
             color: Vec4::new(0.3, 0.3, 0.3, 1.0),
@@ -340,6 +344,7 @@ impl VideoViewInstance {
             let fill_width = progress_width * progress_ratio;
             
             frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                 position: Vec2::new(progress_x, progress_y),
                 size: Vec2::new(fill_width, progress_height),
                 color: Vec4::new(1.0, 0.3, 0.3, 1.0), // Red progress
@@ -398,6 +403,7 @@ impl ViewInstance for VideoViewInstance {
         
         // Draw player background
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(bounds.x, bounds.y),
             size: Vec2::new(bounds.width, bounds.height),
             color: Vec4::new(0.05, 0.05, 0.05, 1.0),

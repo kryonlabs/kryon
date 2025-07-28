@@ -222,6 +222,7 @@ impl ViewInstance for DosBoxViewInstance {
         
         // Draw DOSBox window frame
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(bounds.x, bounds.y),
             size: Vec2::new(bounds.width, bounds.height),
             color: Vec4::new(0.1, 0.1, 0.1, 1.0), // Dark frame
@@ -241,6 +242,7 @@ impl ViewInstance for DosBoxViewInstance {
         
         // Draw DOS screen
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(screen_x, screen_y),
             size: Vec2::new(screen_width, screen_height),
             color: Vec4::new(0.0, 0.0, 0.67, 1.0), // DOS blue background
@@ -353,6 +355,7 @@ impl ViewInstance for DosBoxViewInstance {
                         );
                         
                         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                             position: Vec2::new(x, y),
                             size: Vec2::new(block_size, block_size),
                             color,

@@ -4,6 +4,90 @@ use kryon_core::{ElementId, PropertyValue, TextAlignment, TransformData};
 
 use crate::{CameraData, DirectionalLight, PointLight, ScrollbarOrientation};
 
+/// Layout style information for containers (flexbox, grid, etc.)
+#[derive(Debug, Clone)]
+pub struct LayoutStyle {
+    /// Display type (flex, block, grid, etc.)
+    pub display: Option<String>,
+    /// Flex direction (row, column, row-reverse, column-reverse)
+    pub flex_direction: Option<String>,
+    /// Justify content (flex-start, center, flex-end, space-between, space-around, space-evenly)
+    pub justify_content: Option<String>,
+    /// Align items (flex-start, center, flex-end, stretch, baseline)
+    pub align_items: Option<String>,
+    /// Align content (for multi-line flex containers)
+    pub align_content: Option<String>,
+    /// Flex wrap (wrap, nowrap, wrap-reverse)
+    pub flex_wrap: Option<String>,
+    /// Gap between flex items
+    pub gap: Option<f32>,
+    /// Row gap
+    pub row_gap: Option<f32>,
+    /// Column gap
+    pub column_gap: Option<f32>,
+}
+
+impl Default for LayoutStyle {
+    fn default() -> Self {
+        Self {
+            display: None,
+            flex_direction: None,
+            justify_content: None,
+            align_items: None,
+            align_content: None,
+            flex_wrap: None,
+            gap: None,
+            row_gap: None,
+            column_gap: None,
+        }
+    }
+}
+
+impl LayoutStyle {
+    /// Create a new LayoutStyle from element's custom properties
+    pub fn from_element_properties(custom_properties: &HashMap<String, PropertyValue>) -> Self {
+        let mut style = Self::default();
+        
+        if let Some(PropertyValue::String(display)) = custom_properties.get("display") {
+            style.display = Some(display.clone());
+        }
+        
+        if let Some(PropertyValue::String(flex_direction)) = custom_properties.get("flex_direction") {
+            style.flex_direction = Some(flex_direction.clone());
+        }
+        
+        if let Some(PropertyValue::String(justify_content)) = custom_properties.get("justify_content") {
+            style.justify_content = Some(justify_content.clone());
+        }
+        
+        if let Some(PropertyValue::String(align_items)) = custom_properties.get("align_items") {
+            style.align_items = Some(align_items.clone());
+        }
+        
+        if let Some(PropertyValue::String(align_content)) = custom_properties.get("align_content") {
+            style.align_content = Some(align_content.clone());
+        }
+        
+        if let Some(PropertyValue::String(flex_wrap)) = custom_properties.get("flex_wrap") {
+            style.flex_wrap = Some(flex_wrap.clone());
+        }
+        
+        if let Some(PropertyValue::Float(gap)) = custom_properties.get("gap") {
+            style.gap = Some(*gap);
+        }
+        
+        if let Some(PropertyValue::Float(row_gap)) = custom_properties.get("row_gap") {
+            style.row_gap = Some(*row_gap);
+        }
+        
+        if let Some(PropertyValue::Float(column_gap)) = custom_properties.get("column_gap") {
+            style.column_gap = Some(*column_gap);
+        }
+        
+        style
+    }
+}
+
 /// All rendering commands that can be issued to a backend
 #[derive(Debug, Clone)]
 pub enum RenderCommand {
@@ -17,6 +101,7 @@ pub enum RenderCommand {
         border_color: Vec4,
         transform: Option<TransformData>,
         shadow: Option<String>,
+        layout_style: Option<LayoutStyle>,
         z_index: i32,
     },
     DrawText {

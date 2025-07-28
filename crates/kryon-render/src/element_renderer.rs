@@ -500,6 +500,7 @@ impl<R: CommandRenderer> ElementRenderer<R> {
                 } else {
                     None
                 },
+                layout_style: Some(crate::LayoutStyle::from_element_properties(&element.custom_properties)),
                 z_index: element.z_index,
             });
         } else {

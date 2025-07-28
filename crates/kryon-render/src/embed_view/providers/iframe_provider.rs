@@ -78,6 +78,7 @@ impl ViewInstance for IFrameInstance {
             
             // For now, draw a placeholder to show IFrame is working
             frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                 position: Vec2::new(bounds.x, bounds.y),
                 size: Vec2::new(bounds.width, bounds.height),
                 color: Vec4::new(0.95, 0.95, 0.95, 1.0), // Light gray background
@@ -91,6 +92,7 @@ impl ViewInstance for IFrameInstance {
             
             // Draw an iframe-like header
             frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                 position: Vec2::new(bounds.x + 1.0, bounds.y + 1.0),
                 size: Vec2::new(bounds.width - 2.0, 25.0),
                 color: Vec4::new(0.85, 0.85, 0.85, 1.0), // Darker gray header
@@ -130,6 +132,7 @@ impl ViewInstance for IFrameInstance {
         } else {
             // Error state - no URL specified
             frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                 position: Vec2::new(bounds.x, bounds.y),
                 size: Vec2::new(bounds.width, bounds.height),
                 color: Vec4::new(0.4, 0.4, 0.4, 1.0), // Dark gray background

@@ -75,6 +75,7 @@ impl ViewInstance for NativeRendererInstance {
             
             // For now, draw a placeholder to show Native renderer is working
             frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                 position: Vec2::new(bounds.x + 5.0, bounds.y + 5.0),
                 size: Vec2::new(bounds.width - 10.0, bounds.height - 10.0),
                 color: Vec4::new(0.9, 0.7, 0.2, 0.4), // Gold/yellow background
@@ -101,6 +102,7 @@ impl ViewInstance for NativeRendererInstance {
         } else {
             // Error state - no script specified
             frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                 position: Vec2::new(bounds.x, bounds.y),
                 size: Vec2::new(bounds.width, bounds.height),
                 color: Vec4::new(0.4, 0.3, 0.1, 1.0), // Dark brown background

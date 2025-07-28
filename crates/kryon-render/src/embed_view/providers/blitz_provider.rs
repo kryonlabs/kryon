@@ -189,6 +189,7 @@ impl ViewInstance for BlitzViewInstance {
         
         // Draw browser chrome background
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(bounds.x, bounds.y),
             size: Vec2::new(bounds.width, bounds.height),
             color: Vec4::new(0.98, 0.98, 0.98, 1.0), // Light browser background
@@ -203,6 +204,7 @@ impl ViewInstance for BlitzViewInstance {
         // Draw address bar
         let address_bar_height = 32.0;
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(bounds.x + 2.0, bounds.y + 2.0),
             size: Vec2::new(bounds.width - 4.0, address_bar_height),
             color: Vec4::new(0.95, 0.95, 0.95, 1.0),
@@ -265,6 +267,7 @@ impl ViewInstance for BlitzViewInstance {
                     let scroll_thumb_y = content_bounds.y + scroll_ratio * (content_bounds.height - scroll_thumb_height);
                     
                     frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                         position: Vec2::new(content_bounds.x + content_bounds.width - 8.0, scroll_thumb_y),
                         size: Vec2::new(6.0, scroll_thumb_height),
                         color: Vec4::new(0.6, 0.6, 0.6, 0.8),

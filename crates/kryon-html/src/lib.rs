@@ -340,8 +340,8 @@ impl HtmlRenderer {
 
     fn process_command(&mut self, command: &RenderCommand) -> RenderResult<()> {
         match command {
-            RenderCommand::DrawRect { position, size, color, border_radius, border_width, border_color, z_index, .. } => {
-                self.generate_rect_element(*position, *size, *color, *border_radius, *border_width, *border_color, *z_index)?;
+            RenderCommand::DrawRect { position, size, color, border_radius, border_width, border_color, layout_style, z_index, .. } => {
+                self.generate_rect_element(*position, *size, *color, *border_radius, *border_width, *border_color, layout_style.as_ref(), *z_index)?;
             }
             RenderCommand::DrawText { position, text, font_size, color, alignment, max_width, max_height, font_family, z_index, .. } => {
                 self.generate_text_element(*position, text, *font_size, *color, *alignment, *max_width, *max_height, font_family, *z_index)?;

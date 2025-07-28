@@ -342,6 +342,7 @@ mod tests {
             border_color: Vec4::new(0.0, 0.0, 0.0, 1.0),
             transform: None,
             shadow: None,
+            layout_style: None,
             z_index: 0,
         };
         

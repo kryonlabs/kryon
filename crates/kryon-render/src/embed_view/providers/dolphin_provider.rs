@@ -290,6 +290,7 @@ impl DolphinViewInstance {
     fn render_game_screen(&self, frame: &mut dyn Frame, screen_x: f32, screen_y: f32, screen_width: f32, screen_height: f32) {
         // Draw the screen background
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(screen_x, screen_y),
             size: Vec2::new(screen_width, screen_height),
             color: Vec4::new(0.0, 0.0, 0.0, 1.0),
@@ -329,6 +330,7 @@ impl DolphinViewInstance {
                     let pixel_y = screen_y + y as f32 * pixel_height;
                     
                     frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                         position: Vec2::new(pixel_x, pixel_y),
                         size: Vec2::new(pixel_width * 8.0, pixel_height * 8.0),
                         color: Vec4::new(r, g, b, a),
@@ -351,6 +353,7 @@ impl ViewInstance for DolphinViewInstance {
         
         // Draw emulator frame
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(bounds.x, bounds.y),
             size: Vec2::new(bounds.width, bounds.height),
             color: Vec4::new(0.05, 0.05, 0.05, 1.0), // Very dark background

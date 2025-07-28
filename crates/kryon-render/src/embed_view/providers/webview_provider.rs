@@ -68,6 +68,7 @@ impl ViewInstance for WebViewInstance {
             
             // For now, draw a placeholder to show WebView is working
             frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                 position: Vec2::new(bounds.x, bounds.y),
                 size: Vec2::new(bounds.width, bounds.height),
                 color: Vec4::new(1.0, 1.0, 1.0, 1.0), // White background
@@ -81,6 +82,7 @@ impl ViewInstance for WebViewInstance {
             
             // Draw a simple browser-like header
             frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                 position: Vec2::new(bounds.x, bounds.y),
                 size: Vec2::new(bounds.width, 30.0),
                 color: Vec4::new(0.9, 0.9, 0.9, 1.0), // Light gray header
@@ -120,6 +122,7 @@ impl ViewInstance for WebViewInstance {
         } else {
             // Error state - no URL specified
             frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                 position: Vec2::new(bounds.x, bounds.y),
                 size: Vec2::new(bounds.width, bounds.height),
                 color: Vec4::new(0.3, 0.3, 0.3, 1.0), // Dark gray background

@@ -69,6 +69,7 @@ impl ViewInstance for WasmViewInstance {
             
             // For now, draw a placeholder to show WasmView is working
             frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                 position: Vec2::new(bounds.x + 10.0, bounds.y + 10.0),
                 size: Vec2::new(bounds.width - 20.0, bounds.height - 20.0),
                 color: Vec4::new(0.8, 0.2, 0.4, 0.3), // Light purple
@@ -95,6 +96,7 @@ impl ViewInstance for WasmViewInstance {
         } else {
             // Error state - no WASM source specified
             frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                 position: Vec2::new(bounds.x, bounds.y),
                 size: Vec2::new(bounds.width, bounds.height),
                 color: Vec4::new(0.2, 0.1, 0.3, 1.0), // Dark purple background

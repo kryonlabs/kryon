@@ -364,6 +364,7 @@ impl Chip8ViewInstance {
     fn render_display(&self, frame: &mut dyn Frame, display_x: f32, display_y: f32) {
         // Draw CHIP-8 display background
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(display_x, display_y),
             size: Vec2::new(64.0 * self.scale_factor, 32.0 * self.scale_factor),
             color: self.background_color,
@@ -384,6 +385,7 @@ impl Chip8ViewInstance {
                     let pixel_y = display_y + y as f32 * self.scale_factor;
                     
                     frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
                         position: Vec2::new(pixel_x, pixel_y),
                         size: Vec2::new(self.scale_factor, self.scale_factor),
                         color: self.pixel_color,
@@ -414,6 +416,7 @@ impl ViewInstance for Chip8ViewInstance {
         
         // Draw emulator background
         frame.execute_command(RenderCommand::DrawRect {
+            layout_style: None,
             position: Vec2::new(bounds.x, bounds.y),
             size: Vec2::new(bounds.width, bounds.height),
             color: Vec4::new(0.1, 0.1, 0.1, 1.0),
