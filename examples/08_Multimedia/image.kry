@@ -1,0 +1,16 @@
+App {
+    window_width: 300
+    window_height: 250
+    window_title: "Kryon Image Viewer"
+    resizable: false
+    display: flex
+    align_items: center
+    justify_content: center
+
+    Image {
+        id: "mainLogo"
+        width: 128
+        height: 128
+        src: "kryon_image.png"
+    }
+}

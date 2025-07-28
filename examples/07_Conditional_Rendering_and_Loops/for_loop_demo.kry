@@ -1,0 +1,102 @@
+# @for Loop Demo - Testing dynamic element generation
+# This will help us understand what's happening with the dropdown options
+
+style "app_container" {
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    gap: 20
+    padding: 40
+    background_color: "#F8F9FAFF"
+}
+
+style "section_title" {
+    font_size: 18
+    font_weight: 600
+    text_color: "#333333FF"
+    margin_bottom: 15
+}
+
+style "test_button" {
+    background_color: "#007BFFFF"
+    text_color: "#FFFFFFFF"
+    padding: 10
+    border_radius: 5
+    border_width: 0
+    margin: 5
+    min_width: 150
+    height: 40
+    text_alignment: center
+    font_size: 14
+    
+    &:hover {
+        background_color: "#0056B3FF"
+    }
+}
+
+style "result_display" {
+    background_color: "#E8F5E8FF"
+    text_color: "#2D5016FF"
+    padding: 15
+    border_radius: 8
+    border_width: 1
+    border_color: "#4CAF50FF"
+    margin_top: 20
+    min_width: 300
+    text_alignment: center
+}
+
+@variables {
+    selected_item: "Nothing selected"
+    test_items: ["Apple", "Banana", "Cherry", "Date", "Elderberry"]
+}
+
+@function "lua" selectItem(item) {
+    selected_item = item
+    local result = getElementById("result_display")
+    if result then
+        result:setText("Selected: " .. item)
+    end
+    print("🔍 [FOR_LOOP_TEST] Selected item:", item)
+}
+
+App {
+    window_width: 600
+    window_height: 500
+    window_title: "@for Loop Demo"
+    resizable: true
+    style: "app_container"
+    
+    Text {
+        text: "@for Loop Test"
+        style: "section_title"
+    }
+    
+    Text {
+        text: "Testing @for with index variables:"
+        style: "section_title"
+    }
+    
+    Container {
+        display: flex
+        flex_direction: column
+        align_items: center
+        gap: 10
+        
+        @for item, index in $test_items
+            Button {
+                key: $index
+                text: "[$index] $item"
+                style: "test_button"
+                onClick: "selectItem"
+            }
+        @end
+    }
+    
+    Text {
+        id: "result_display"
+        text: "Nothing selected"
+        style: "result_display"
+    }
+}

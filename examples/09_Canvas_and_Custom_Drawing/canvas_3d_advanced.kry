@@ -1,0 +1,204 @@
+App {
+    window_width: 1000
+    window_height: 700
+    window_title: "Canvas 3D Advanced Demo"
+    
+    Container {
+        padding: 20
+        gap: 20
+        
+        Text {
+            text: "Canvas 3D Advanced Demo"
+            font_size: 18
+            font_weight: "bold"
+        }
+        
+        Text {
+            text: "Advanced 3D features: custom meshes, multiple lights, complex transformations"
+            font_size: 14
+            color: "#666666"
+            margin_bottom: 20
+        }
+        
+        Canvas {
+            id: "canvas_3d_advanced"
+            width: 800
+            height: 500
+            draw_script: "draw_advanced_3d_scene"
+            onUpdate: "update_3d_scene"
+            config: {
+                "mode": "3d",
+                "enable_depth_test": true,
+                "enable_lighting": true,
+                "enable_shadows": true,
+                "msaa_samples": 4
+            }
+        }
+        
+        Text {
+            text: "Features: Custom meshes, multiple point lights, animated transformations, shadows"
+            font_size: 12
+            color: "#666666"
+            margin_top: 10
+        }
+    }
+}
+
+@script "lua" {
+    local time = 0
+    local objects = {}
+    local lights = {}
+    
+    function initialize_3d_scene()
+        -- Create animated objects
+        for i = 1, 8 do
+            local angle = (i - 1) * (math.pi * 2 / 8)
+            table.insert(objects, {
+                position = {x = math.cos(angle) * 4, y = 0, z = math.sin(angle) * 4},
+                rotation = {x = 0, y = 0, z = 0},
+                scale = {x = 1, y = 1, z = 1},
+                color = {
+                    r = (i % 3 == 1) and 1.0 or 0.2,
+                    g = (i % 3 == 2) and 1.0 or 0.2,
+                    b = (i % 3 == 0) and 1.0 or 0.2,
+                    a = 1.0
+                },
+                type = (i % 3 == 0) and "sphere" or "cube"
+            })
+        end
+        
+        -- Create orbiting lights
+        for i = 1, 3 do
+            table.insert(lights, {
+                orbit_radius = 6 + i,
+                orbit_speed = 0.5 + i * 0.3,
+                height = 2 + i,
+                color = {
+                    r = i == 1 and 1.0 or 0.2,
+                    g = i == 2 and 1.0 or 0.2,
+                    b = i == 3 and 1.0 or 0.2,
+                    a = 1.0
+                },
+                intensity = 0.6,
+                range = 8 + i * 2
+            })
+        end
+    end
+    
+    function update_3d_scene(deltaTime)
+        time = time + deltaTime
+        
+        -- Update object rotations
+        for i, obj in ipairs(objects) do
+            obj.rotation.x = obj.rotation.x + deltaTime * 30 * i
+            obj.rotation.y = obj.rotation.y + deltaTime * 20 * i
+            obj.rotation.z = obj.rotation.z + deltaTime * 10 * i
+            
+            -- Animate scale
+            local scale_factor = 1.0 + math.sin(time * 2 + i) * 0.3
+            obj.scale.x = scale_factor
+            obj.scale.y = scale_factor
+            obj.scale.z = scale_factor
+        end
+        
+        -- Update light positions
+        for i, light in ipairs(lights) do
+            local angle = time * light.orbit_speed + i * (math.pi * 2 / 3)
+            light.position = {
+                x = math.cos(angle) * light.orbit_radius,
+                y = light.height,
+                z = math.sin(angle) * light.orbit_radius
+            }
+        end
+    end
+    
+    function draw_advanced_3d_scene()
+        -- Initialize if needed
+        if #objects == 0 then
+            initialize_3d_scene()
+        end
+        
+        -- Set up 3D camera (orbiting around scene)
+        local camera_angle = time * 0.3
+        local camera_pos = {
+            x = math.cos(camera_angle) * 15,
+            y = 8,
+            z = math.sin(camera_angle) * 15
+        }
+        local camera_target = {x = 0, y = 0, z = 0}
+        local camera_up = {x = 0, y = 1, z = 0}
+        
+        beginCanvas3D(camera_pos, camera_target, camera_up, 45, 0.1, 100)
+        
+        -- Set up lighting
+        local ambient = {r = 0.1, g = 0.1, b = 0.1, a = 1.0}
+        local directional = {
+            direction = {x = -1, y = -2, z = -1},
+            color = {r = 1.0, g = 1.0, b = 0.8, a = 1.0},
+            intensity = 0.4
+        }
+        
+        -- Build point lights array
+        local point_lights = {}
+        for _, light in ipairs(lights) do
+            table.insert(point_lights, {
+                position = light.position,
+                color = light.color,
+                intensity = light.intensity,
+                range = light.range
+            })
+        end
+        
+        setLighting3D(ambient, directional, point_lights)
+        
+        -- Draw ground plane with grid pattern
+        drawPlane3D(0, -2, 0, 20, 20, 0, 1, 0, {r = 0.3, g = 0.3, b = 0.3, a = 1.0})
+        
+        -- Draw animated objects
+        for i, obj in ipairs(objects) do
+            local transform = createTransformMatrix(obj.position, obj.rotation, obj.scale)
+            applyTransform3D(transform)
+            
+            if obj.type == "sphere" then
+                drawSphere3D(0, 0, 0, 1, obj.color, false)
+            else
+                drawCube3D(0, 0, 0, 1.5, 1.5, 1.5, obj.color, false)
+            end
+        end
+        
+        -- Draw light positions as small spheres
+        for _, light in ipairs(lights) do
+            local light_transform = createTransformMatrix(light.position, {x = 0, y = 0, z = 0}, {x = 0.3, y = 0.3, z = 0.3})
+            applyTransform3D(light_transform)
+            drawSphere3D(0, 0, 0, 1, light.color, false)
+        end
+        
+        -- Draw a complex mesh (pyramid)
+        local pyramid_vertices = {
+            {x = 0, y = 2, z = 0},     -- Top
+            {x = -1, y = 0, z = 1},   -- Base corners
+            {x = 1, y = 0, z = 1},
+            {x = 1, y = 0, z = -1},
+            {x = -1, y = 0, z = -1}
+        }
+        
+        local pyramid_indices = {
+            0, 1, 2,  -- Side faces
+            0, 2, 3,
+            0, 3, 4,
+            0, 4, 1,
+            1, 4, 3,  -- Base triangles
+            1, 3, 2
+        }
+        
+        local pyramid_transform = createTransformMatrix(
+            {x = 0, y = 3, z = 0},
+            {x = 0, y = time * 45, z = 0},
+            {x = 2, y = 2, z = 2}
+        )
+        applyTransform3D(pyramid_transform)
+        drawMesh3D(pyramid_vertices, pyramid_indices, {}, {}, {r = 0.8, g = 0.8, b = 0.2, a = 1.0})
+        
+        endCanvas3D()
+    end
+}

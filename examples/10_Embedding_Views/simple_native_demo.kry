@@ -1,0 +1,57 @@
+style "container" {
+    background_color: "#2D2D2DFF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    gap: 20
+    padding: 20
+}
+
+style "native_view" {
+    background_color: "#1A1A1AFF"
+    border_width: 2
+    border_color: "#555555FF"
+    border_radius: 8
+    width: 300
+    height: 200
+}
+
+App {
+    window_width: 500
+    window_height: 400
+    window_title: "Simple Native Renderer Demo"
+    
+    Container {
+        id: "container"
+        style: "container"
+        
+        Text {
+            text: "Native Raylib View Below (via EmbedView):"
+            font_size: 18
+            text_color: "#FFFFFFFF"
+        }
+        
+        EmbedView {
+            id: "native_view"
+            style: "native_view"
+            type: "native_renderer"
+            source: "simple_render"
+            config: {
+                "backend": "raylib"
+            }
+        }
+    }
+}
+
+@function "lua" simple_render(rl_ctx) {
+    -- Simple native rendering demo
+    rl_ctx:BeginDrawing()
+    rl_ctx:ClearBackground(rl_ctx.colors.BLUE)
+    
+    -- Draw some simple shapes
+    rl_ctx:DrawText("Hello from Raylib!", 10, 10, 20, rl_ctx.colors.WHITE)
+    rl_ctx:DrawText("This is native rendering!", 10, 40, 16, rl_ctx.colors.YELLOW)
+    
+    rl_ctx:EndDrawing()
+}

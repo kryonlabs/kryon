@@ -1,0 +1,69 @@
+App {
+    window_width: 400
+    window_height: 300
+    window_title: "Minimal Bundle Demo"
+    
+    Container {
+        padding: 20
+        
+        Text {
+            text: "Minimal Bundle Demo"
+            font_size: 18
+            font_weight: "bold"
+        }
+        
+        Text {
+            text: "This app uses NO EmbedView or Canvas - should have minimal bundle size"
+            font_size: 14
+            color: "#666666"
+            margin_bottom: 20
+        }
+        
+        Button {
+            text: "Click me!"
+            onClick: "handle_click"
+        }
+        
+        Text {
+            id: "status"
+            text: "Ready"
+            font_size: 12
+            color: "#006600"
+            margin_top: 20
+        }
+        
+        Text {
+            text: "Bundle Analysis:"
+            font_size: 16
+            font_weight: "bold"
+            margin_top: 20
+        }
+        
+        Text {
+            text: "✅ Included: Core renderer (~50KB), Basic UI elements (~30KB), Lua engine (~150KB)"
+            font_size: 12
+            color: "#006600"
+        }
+        
+        Text {
+            text: "❌ Excluded: All EmbedView providers (~1.7MB), Canvas API (~30KB), Other script engines (~5MB)"
+            font_size: 12
+            color: "#cc0000"
+        }
+        
+        Text {
+            text: "💾 Bundle size: ~230KB instead of ~6.9MB (97% smaller!)"
+            font_size: 12
+            color: "#0066cc"
+            font_weight: "bold"
+        }
+    }
+}
+
+@script "lua" {
+    function handle_click()
+        -- Simple script - only requires basic DOM API
+        local status = getElementById("status")
+        status:setText("Button clicked!")
+    end
+}

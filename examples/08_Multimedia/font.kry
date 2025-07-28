@@ -1,0 +1,81 @@
+# Font Example - Demonstrates custom font loading and application
+
+# Font declaration (new syntax)
+font "calistoga" "Calistoga-Regular.ttf"
+
+# Custom font style definitions
+style "title_font" {
+    font_family: "calistoga"
+    font_size: 32
+    font_weight: bold
+    text_color: "#FFD700FF"
+    text_alignment: center
+    margin: 16
+}
+
+style "body_font" {
+    font_family: "calistoga"
+    font_size: 18
+    font_weight: normal
+    text_color: "#CCCCCCFF"
+    text_alignment: center
+    margin: 8
+}
+
+style "default_font" {
+    font_family: "default"
+    font_size: 14
+    font_weight: normal
+    text_color: "#999999FF"
+    text_alignment: center
+    margin: 8
+}
+
+App {
+    window_width: 400
+    window_height: 300
+    window_title: "Kryon Font Demo"
+    resizable: false
+    flex_direction: "column"
+    justify_content: "center"
+    align_items: "center"
+    background_color: "#1E1E1EFF"
+    
+    Container {
+        flex_direction: "column"
+    justify_content: "center"
+    align_items: "center"
+        gap: 16
+        
+        # Title with custom font
+        Text {
+            id: "title"
+            text: "Custom Font Demo"
+            style: "title_font"
+        }
+        
+        # Body text with custom font
+        Text {
+            id: "body1"
+            text: "This text uses Calistoga font"
+            style: "body_font"
+        }
+        
+        # Another text with custom font but different size
+        Text {
+            id: "body2"
+            text: "Loaded from Calistoga-Regular.ttf"
+            font_family: "calistoga"
+            font_size: 16
+            text_color: "#00AAFFFF"
+            text_alignment: center
+        }
+        
+        # Default font for comparison
+        Text {
+            id: "default"
+            text: "This uses the default system font"
+            style: "default_font"
+        }
+    }
+}

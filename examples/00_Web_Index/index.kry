@@ -1,0 +1,402 @@
+container: web_index_main {
+    display: flex
+    flex_direction: column
+    width: 100%
+    height: 100%
+    background_color: #667eea
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)
+    padding: 32
+    gap: 24
+    align_items: center
+    
+    container: header {
+        display: flex
+        flex_direction: column
+        align_items: center
+        gap: 8
+        
+        text: title {
+            text: "Kryon Examples"
+            font_size: 48
+            font_weight: bold
+            color: #ffffff
+            text_alignment: center
+            text_shadow: 0 2px 4px rgba(0,0,0,0.3)
+        }
+        
+        text: subtitle {
+            text: "Interactive examples built with Kryon framework"
+            font_size: 18
+            color: rgba(255,255,255,0.9)
+            text_alignment: center
+        }
+    }
+    
+    container: stats_row {
+        display: flex
+        flex_direction: row
+        gap: 32
+        
+        container: stat_examples {
+            background_color: rgba(255,255,255,0.1)
+            border_radius: 12
+            padding: 16
+            backdrop_filter: blur(10px)
+            
+            text: stat_number {
+                text: "40+"
+                font_size: 32
+                font_weight: bold
+                color: #ffffff
+                text_alignment: center
+            }
+            
+            text: stat_label {
+                text: "Examples"
+                font_size: 14
+                color: rgba(255,255,255,0.8)
+                text_alignment: center
+            }
+        }
+        
+        container: stat_categories {
+            background_color: rgba(255,255,255,0.1)
+            border_radius: 12
+            padding: 16
+            backdrop_filter: blur(10px)
+            
+            text: stat_number2 {
+                text: "10+"
+                font_size: 32
+                font_weight: bold
+                color: #ffffff
+                text_alignment: center
+            }
+            
+            text: stat_label2 {
+                text: "Categories"
+                font_size: 14
+                color: rgba(255,255,255,0.8)
+                text_alignment: center
+            }
+        }
+    }
+    
+    container: search_container {
+        width: 100%
+        max_width: 500
+        
+        input: search_input {
+            width: 100%
+            height: 48
+            padding: 16
+            font_size: 16
+            border_radius: 24
+            border_width: 0
+            background_color: rgba(255,255,255,0.9)
+            placeholder: "Search examples..."
+            backdrop_filter: blur(10px)
+            box_shadow: 0 8px 32px rgba(0,0,0,0.1)
+        }
+    }
+    
+    container: categories_container {
+        width: 100%
+        display: flex
+        flex_direction: column
+        gap: 32
+        
+        container: category_getting_started {
+            background_color: rgba(255,255,255,0.05)
+            border_radius: 20
+            padding: 24
+            border_width: 1
+            border_color: rgba(255,255,255,0.1)
+            backdrop_filter: blur(10px)
+            
+            text: category_title {
+                text: "01 Getting Started"
+                font_size: 24
+                font_weight: 600
+                color: #ffffff
+                text_alignment: center
+                margin_bottom: 16
+            }
+            
+            container: examples_grid {
+                display: grid
+                grid_template_columns: repeat(auto-fill, minmax(300px, 1fr))
+                gap: 16
+                
+                container: example_hello_world {
+                    background_color: rgba(255,255,255,0.9)
+                    border_radius: 12
+                    padding: 20
+                    cursor: pointer
+                    transition: transform 0.3s ease
+                    onclick: "openExample('01_Getting_Started/hello_world')"
+                    
+                    text: example_title {
+                        text: "Hello World"
+                        font_size: 18
+                        font_weight: 600
+                        color: #2c3e50
+                        margin_bottom: 8
+                    }
+                    
+                    text: example_path {
+                        text: "examples/01_Getting_Started/hello_world.kry"
+                        font_size: 12
+                        color: #666
+                        font_family: monospace
+                        background_color: #f8f9fa
+                        padding: 4
+                        border_radius: 4
+                        margin_bottom: 12
+                    }
+                    
+                    container: example_meta {
+                        display: flex
+                        justify_content: space-between
+                        align_items: center
+                        
+                        text: example_category {
+                            text: "Getting Started"
+                            background_color: #667eea
+                            color: #ffffff
+                            padding: 4
+                            border_radius: 12
+                            font_size: 12
+                            font_weight: 500
+                        }
+                    }
+                }
+            }
+        }
+        
+        container: category_layouts {
+            background_color: rgba(255,255,255,0.05)
+            border_radius: 20
+            padding: 24
+            border_width: 1
+            border_color: rgba(255,255,255,0.1)
+            backdrop_filter: blur(10px)
+            
+            text: category_title2 {
+                text: "02 Layouts"
+                font_size: 24
+                font_weight: 600
+                color: #ffffff
+                text_alignment: center
+                margin_bottom: 16
+            }
+            
+            container: examples_grid2 {
+                display: grid
+                grid_template_columns: repeat(auto-fill, minmax(300px, 1fr))
+                gap: 16
+                
+                container: example_flexbox {
+                    background_color: rgba(255,255,255,0.9)
+                    border_radius: 12
+                    padding: 20
+                    cursor: pointer
+                    onclick: "openExample('02_Layouts/flexbox_guide')"
+                    
+                    text: example_title2 {
+                        text: "Flexbox Guide"
+                        font_size: 18
+                        font_weight: 600
+                        color: #2c3e50
+                        margin_bottom: 8
+                    }
+                    
+                    text: example_path2 {
+                        text: "examples/02_Layouts/flexbox_guide.kry"
+                        font_size: 12
+                        color: #666
+                        font_family: monospace
+                        background_color: #f8f9fa
+                        padding: 4
+                        border_radius: 4
+                        margin_bottom: 12
+                    }
+                    
+                    container: example_meta2 {
+                        display: flex
+                        justify_content: space-between
+                        align_items: center
+                        
+                        text: example_category2 {
+                            text: "Layouts"
+                            background_color: #764ba2
+                            color: #ffffff
+                            padding: 4
+                            border_radius: 12
+                            font_size: 12
+                            font_weight: 500
+                        }
+                    }
+                }
+                
+                container: example_zindex {
+                    background_color: rgba(255,255,255,0.9)
+                    border_radius: 12
+                    padding: 20
+                    cursor: pointer
+                    onclick: "openExample('02_Layouts/zindex_layout_example')"
+                    
+                    text: example_title3 {
+                        text: "Z-Index Layout"
+                        font_size: 18
+                        font_weight: 600
+                        color: #2c3e50
+                        margin_bottom: 8
+                    }
+                    
+                    text: example_path3 {
+                        text: "examples/02_Layouts/zindex_layout_example.kry"
+                        font_size: 12
+                        color: #666
+                        font_family: monospace
+                        background_color: #f8f9fa
+                        padding: 4
+                        border_radius: 4
+                        margin_bottom: 12
+                    }
+                    
+                    container: example_meta3 {
+                        display: flex
+                        justify_content: space-between
+                        align_items: center
+                        
+                        text: example_category3 {
+                            text: "Layouts"
+                            background_color: #764ba2
+                            color: #ffffff
+                            padding: 4
+                            border_radius: 12
+                            font_size: 12
+                            font_weight: 500
+                        }
+                    }
+                }
+            }
+        }
+        
+        container: category_buttons {
+            background_color: rgba(255,255,255,0.05)
+            border_radius: 20
+            padding: 24
+            border_width: 1
+            border_color: rgba(255,255,255,0.1)
+            backdrop_filter: blur(10px)
+            
+            text: category_title3 {
+                text: "03 Buttons and Events"
+                font_size: 24
+                font_weight: 600
+                color: #ffffff
+                text_alignment: center
+                margin_bottom: 16
+            }
+            
+            container: examples_grid3 {
+                display: grid
+                grid_template_columns: repeat(auto-fill, minmax(300px, 1fr))
+                gap: 16
+                
+                container: example_counter {
+                    background_color: rgba(255,255,255,0.9)
+                    border_radius: 12
+                    padding: 20
+                    cursor: pointer
+                    onclick: "openExample('03_Buttons_and_Events/counter_simple')"
+                    
+                    text: example_title4 {
+                        text: "Simple Counter"
+                        font_size: 18
+                        font_weight: 600
+                        color: #2c3e50
+                        margin_bottom: 8
+                    }
+                    
+                    text: example_path4 {
+                        text: "examples/03_Buttons_and_Events/counter_simple.kry"
+                        font_size: 12
+                        color: #666
+                        font_family: monospace
+                        background_color: #f8f9fa
+                        padding: 4
+                        border_radius: 4
+                        margin_bottom: 12
+                    }
+                    
+                    container: example_meta4 {
+                        display: flex
+                        justify_content: space-between
+                        align_items: center
+                        
+                        text: example_category4 {
+                            text: "Interactive"
+                            background_color: #50c878
+                            color: #ffffff
+                            padding: 4
+                            border_radius: 12
+                            font_size: 12
+                            font_weight: 500
+                        }
+                    }
+                }
+                
+                container: example_button {
+                    background_color: rgba(255,255,255,0.9)
+                    border_radius: 12
+                    padding: 20
+                    cursor: pointer
+                    onclick: "openExample('03_Buttons_and_Events/button')"
+                    
+                    text: example_title5 {
+                        text: "Button Demo"
+                        font_size: 18
+                        font_weight: 600
+                        color: #2c3e50
+                        margin_bottom: 8
+                    }
+                    
+                    text: example_path5 {
+                        text: "examples/03_Buttons_and_Events/button.kry"
+                        font_size: 12
+                        color: #666
+                        font_family: monospace
+                        background_color: #f8f9fa
+                        padding: 4
+                        border_radius: 4
+                        margin_bottom: 12
+                    }
+                    
+                    container: example_meta5 {
+                        display: flex
+                        justify_content: space-between
+                        align_items: center
+                        
+                        text: example_category5 {
+                            text: "Interactive"
+                            background_color: #50c878
+                            color: #ffffff
+                            padding: 4
+                            border_radius: 12
+                            font_size: 12
+                            font_weight: 500
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+window_width: 1200
+window_height: 800
+resizable: true
+window_title: "Kryon Examples - Web Index"

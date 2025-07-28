@@ -1,0 +1,66 @@
+# Simple Dropdown with Select Element
+# This demonstrates the native Select element for dropdowns
+
+style "app" {
+    background_color: "#f0f0f0"
+    display: flex
+    align_items: center
+    justify_content: center
+    padding: 40
+}
+
+style "card" {
+    background_color: "#ffffff"
+    padding: 30
+    border_radius: 8
+    box_shadow: "0 2px 8px rgba(0,0,0,0.1)"
+    display: flex
+    flex_direction: column
+    gap: 20
+    width: 300
+}
+
+style "title" {
+    font_size: 24
+    font_weight: bold
+    text_color: "#333333"
+    text_alignment: center
+}
+
+style "dropdown" {
+    background_color: "#ffffff"
+    border_width: 1
+    border_color: "#cccccc"
+    border_radius: 4
+    padding: 8
+    font_size: 16
+    width: 100%
+    height: 40
+}
+
+App {
+    window_width: 500
+    window_height: 400
+    window_title: "Simple Dropdown Demo"
+    
+    Container {
+        style: "app"
+        
+        Container {
+            style: "card"
+            
+            Text {
+                text: "Choose a Color"
+                style: "title"
+            }
+            
+            Select {
+                id: "color_select"
+                style: "dropdown"
+                placeholder: "Select a color"
+                options: ["Red", "Blue", "Green", "Yellow", "Purple", "Orange"]
+                width: 100%
+            }
+        }
+    }
+}

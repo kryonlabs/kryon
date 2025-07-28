@@ -1,0 +1,82 @@
+App {
+    window_width: 800
+    window_height: 600
+    window_title: "Canvas Lifecycle Demo"
+    
+    Container {
+        Canvas {
+            id: "animated_canvas"
+            width: 600
+            height: 400
+            onLoad: "initialize_canvas"
+            onUpdate: "update_animation"
+            draw_script: "draw_scene"
+        }
+        
+        Text {
+            text: "Canvas with Lifecycle Hooks (onLoad, onUpdate, draw)"
+            font_size: 14
+        }
+    }
+}
+
+@script "lua" {
+    -- Animation state
+    local time = 0
+    local objects = {}
+    
+    -- Called once when canvas loads
+    function initialize_canvas()
+        print("Canvas initialized!")
+        
+        -- Create animated objects
+        objects = {
+            {x = 100, y = 100, vx = 2, vy = 1, color = {r = 1.0, g = 0.0, b = 0.0, a = 1.0}},
+            {x = 200, y = 150, vx = -1, vy = 2, color = {r = 0.0, g = 1.0, b = 0.0, a = 1.0}},
+            {x = 300, y = 200, vx = 1, vy = -1, color = {r = 0.0, g = 0.0, b = 1.0, a = 1.0}}
+        }
+    end
+    
+    -- Called every frame with delta time
+    function update_animation(deltaTime)
+        time = time + deltaTime
+        
+        -- Update object positions
+        for i, obj in ipairs(objects) do
+            obj.x = obj.x + obj.vx
+            obj.y = obj.y + obj.vy
+            
+            -- Bounce off walls
+            if obj.x < 20 or obj.x > 580 then obj.vx = -obj.vx end
+            if obj.y < 20 or obj.y > 380 then obj.vy = -obj.vy end
+        end
+    end
+    
+    -- Called every frame for drawing
+    function draw_scene()
+        -- Clear background
+        drawRect(0, 0, 600, 400, {r = 0.1, g = 0.1, b = 0.1, a = 1.0})
+        
+        -- Draw animated objects
+        for i, obj in ipairs(objects) do
+            drawCircle(obj.x, obj.y, 20, obj.color)
+        end
+        
+        -- Draw time-based sine wave
+        local points = {}
+        for i = 0, 580, 5 do
+            local y = 200 + math.sin(time + i * 0.01) * 50
+            table.insert(points, {x = i, y = y})
+        end
+        
+        -- Draw wave as connected lines
+        for i = 1, #points - 1 do
+            drawLine(points[i].x, points[i].y, points[i+1].x, points[i+1].y, 
+                    {r = 1.0, g = 1.0, b = 0.0, a = 1.0}, 2)
+        end
+        
+        -- Draw frame counter
+        drawText("Time: " .. string.format("%.2f", time), 10, 10, 16, 
+                {r = 1.0, g = 1.0, b = 1.0, a = 1.0})
+    end
+}

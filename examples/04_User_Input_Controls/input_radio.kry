@@ -1,0 +1,191 @@
+# Radio Input Example
+# Radio button group for single selection
+
+style "app_container" {
+    background_color: "#F5F5F5FF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    padding: 20
+}
+
+style "form_container" {
+    background_color: "#FFFFFFFF"
+    border_width: 1
+    border_color: "#DDDDDDFF"
+    border_radius: 8
+    padding: 30
+    width: 350
+}
+
+style "form_title" {
+    font_size: 16
+    font_weight: bold
+    text_color: "#333333FF"
+    margin_bottom: 15
+}
+
+style "radio_group" {
+    display: flex
+    flex_direction: column
+}
+
+style "radio_item" {
+    margin: 8
+}
+
+style "selection_display" {
+    background_color: "#E3F2FDFF"
+    border_width: 1
+    border_color: "#2196F3FF"
+    border_radius: 4
+    padding: 10
+    margin_top: 20
+    text_alignment: center
+    font_size: 14
+    text_color: "#1565C0FF"
+}
+
+App {
+    window_title: "Radio Input Example"
+    window_width: 450
+    window_height: 400
+    
+    Container {
+        style: "app_container"
+        
+        Container {
+            style: "form_container"
+            
+            Text {
+                text: "Select your preferred shipping method:"
+                style: "form_title"
+            }
+            
+            Container {
+                style: "radio_group"
+                
+                Container {
+                    style: "radio_item"
+                    
+                    Input {
+                        id: "standard_radio"
+                        type: "radio"
+                        name: "shipping"
+                        value: "standard"
+                        checked: true
+                        onChange: "update_shipping"
+                    }
+                    Text {
+                        text: " Standard Shipping (5-7 days) - Free"
+                        onClick: "select_standard"
+                    }
+                }
+                
+                Container {
+                    style: "radio_item"
+                    
+                    Input {
+                        id: "express_radio"
+                        type: "radio"
+                        name: "shipping"
+                        value: "express"
+                        checked: false
+                        onChange: "update_shipping"
+                    }
+                    Text {
+                        text: " Express Shipping (2-3 days) - $9.99"
+                        onClick: "select_express"
+                    }
+                }
+                
+                Container {
+                    style: "radio_item"
+                    
+                    Input {
+                        id: "overnight_radio"
+                        type: "radio"
+                        name: "shipping"
+                        value: "overnight"
+                        checked: false
+                        onChange: "update_shipping"
+                    }
+                    Text {
+                        text: " Overnight Shipping (1 day) - $24.99"
+                        onClick: "select_overnight"
+                    }
+                }
+            }
+            
+            Text {
+                id: "selection_display"
+                text: "Selected: Standard Shipping - Free"
+                style: "selection_display"
+            }
+        }
+    }
+}
+
+@script "lua" {
+-- Radio group state tracking (workaround until getChecked() is available)
+selected_shipping = "standard"
+
+function clear_radio_group(group_name)
+    local radios = {"standard_radio", "express_radio", "overnight_radio"}
+    for _, radio_id in ipairs(radios) do
+        local radio = getElementById(radio_id)
+        if radio then
+            radio:setChecked(false)
+        end
+    end
+end
+
+function update_shipping()
+    local display = getElementById("selection_display")
+    
+    if display then
+        if selected_shipping == "standard" then
+            display:setText("Selected: Standard Shipping - Free")
+        elseif selected_shipping == "express" then
+            display:setText("Selected: Express Shipping - $9.99")
+        elseif selected_shipping == "overnight" then
+            display:setText("Selected: Overnight Shipping - $24.99")
+        end
+    end
+end
+
+-- Click handlers for labels
+function select_standard()
+    clear_radio_group("shipping")
+    local radio = getElementById("standard_radio")
+    if radio then
+        radio:setChecked(true)
+        selected_shipping = "standard"
+        update_shipping()
+    end
+end
+
+function select_express()
+    clear_radio_group("shipping")
+    local radio = getElementById("express_radio")
+    if radio then
+        radio:setChecked(true)
+        selected_shipping = "express"
+        update_shipping()
+    end
+end
+
+function select_overnight()
+    clear_radio_group("shipping")
+    local radio = getElementById("overnight_radio")
+    if radio then
+        radio:setChecked(true)
+        selected_shipping = "overnight"
+        update_shipping()
+    end
+end
+
+-- Initialize display
+update_shipping()
+}

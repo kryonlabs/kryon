@@ -1,0 +1,181 @@
+# Number Input Example
+# Number input with min/max validation
+
+style "app_container" {
+    background_color: "#F5F5F5FF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    padding: 20
+}
+
+style "form_container" {
+    background_color: "#FFFFFFFF"
+    border_width: 1
+    border_color: "#DDDDDDFF"
+    border_radius: 8
+    padding: 30
+    width: 350
+}
+
+style "form_label" {
+    font_size: 14
+    text_color: "#333333FF"
+    margin_bottom: 8
+}
+
+style "input_row" {
+    display: flex
+    flex_direction: row
+    align_items: center
+}
+
+style "stepper_button" {
+    background_color: "#E0E0E0FF"
+    border_width: 1
+    border_color: "#CCCCCCFF"
+    border_radius: 4
+    padding: 8
+    margin: 5
+    font_size: 16
+    width: 40
+}
+
+style "result_display" {
+    background_color: "#E8F5E9FF"
+    border_width: 1
+    border_color: "#4CAF50FF"
+    border_radius: 4
+    padding: 10
+    margin_top: 20
+    text_alignment: center
+    font_size: 14
+    text_color: "#2E7D32FF"
+}
+
+App {
+    window_title: "Number Input Example"
+    window_width: 450
+    window_height: 350
+    
+    Container {
+        style: "app_container"
+        
+        Container {
+            style: "form_container"
+            
+            Text {
+                text: "Enter quantity (1-100):"
+                style: "form_label"
+            }
+            
+            Container {
+                style: "input_row"
+                
+                Button {
+                    id: "decrement_btn"
+                    text: "-"
+                    style: "stepper_button"
+                    onClick: "decrement_value"
+                }
+                
+                Input {
+                    id: "number_input"
+                    type: "number"
+                    placeholder: "0"
+                    value: "1"
+                    width: 100
+                    min: 1
+                    max: 100
+                    onChange: "validate_number"
+                    text_alignment: center
+                }
+                
+                Button {
+                    id: "increment_btn"
+                    text: "+"
+                    style: "stepper_button"
+                    onClick: "increment_value"
+                }
+            }
+            
+            Text {
+                id: "total_display"
+                text: "Total: $10.00 (1 × $10.00)"
+                style: "result_display"
+            }
+        }
+    }
+}
+
+@script "lua" {
+unit_price = 10.00
+
+function validate_number()
+    local input = getElementById("number_input")
+    if input then
+        local value = tonumber(input:getText()) or 0
+        
+        -- Clamp to min/max
+        if value < 1 then
+            value = 1
+            input:setText(tostring(value))
+        elseif value > 100 then
+            value = 100
+            input:setText(tostring(value))
+        end
+        
+        update_total(value)
+        update_buttons(value)
+    end
+end
+
+function increment_value()
+    local input = getElementById("number_input")
+    if input then
+        local value = tonumber(input:getText()) or 0
+        if value < 100 then
+            input:setText(tostring(value + 1))
+            validate_number()
+        end
+    end
+end
+
+function decrement_value()
+    local input = getElementById("number_input")
+    if input then
+        local value = tonumber(input:getText()) or 0
+        if value > 1 then
+            input:setText(tostring(value - 1))
+            validate_number()
+        end
+    end
+end
+
+function update_total(quantity)
+    local display = getElementById("total_display")
+    if display then
+        local total = quantity * unit_price
+        display:setText(string.format("Total: $%.2f (%d × $%.2f)", total, quantity, unit_price))
+    end
+end
+
+function update_buttons(value)
+    local dec_btn = getElementById("decrement_btn")
+    local inc_btn = getElementById("increment_btn")
+    
+    -- Note: setEnabled() method doesn't exist in current DOM API
+    -- For now, we could use setVisible() or setStyle() to indicate disabled state
+    -- This is a placeholder - the buttons will remain enabled
+    if dec_btn then
+        -- dec_btn:setEnabled(value > 1)  -- Not available
+    end
+    if inc_btn then
+        -- inc_btn:setEnabled(value < 100)  -- Not available
+    end
+end
+
+-- Initialize
+validate_number()
+}

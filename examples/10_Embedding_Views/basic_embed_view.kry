@@ -1,0 +1,106 @@
+App {
+    window_width: 900
+    window_height: 700
+    window_title: "EmbedView Examples - Basic Views"
+    
+    Container {
+        padding: 20
+        gap: 20
+        
+        Text {
+            text: "EmbedView Examples - Different View Types"
+            font_size: 18
+            font_weight: "bold"
+        }
+        
+        // WebView Example
+        Container {
+            border_width: 2
+            border_color: "#333333"
+            border_radius: 8
+            padding: 10
+            
+            Text {
+                text: "WebView - Web Content"
+                font_size: 14
+                font_weight: "bold"
+                margin_bottom: 10
+            }
+            
+            EmbedView {
+                id: "web_view"
+                type: "webview"
+                source: "https://example.com"
+                width: 400
+                height: 200
+                
+                // WebView configuration
+                config: {
+                    "javascript_enabled": true,
+                    "user_agent": "Kryon/1.0",
+                    "zoom_factor": 1.0
+                }
+            }
+        }
+        
+        // WASM View Example
+        Container {
+            border_width: 2
+            border_color: "#333333"
+            border_radius: 8
+            padding: 10
+            
+            Text {
+                text: "WASM View - WebAssembly Module"
+                font_size: 14
+                font_weight: "bold"
+                margin_bottom: 10
+            }
+            
+            EmbedView {
+                id: "wasm_view"
+                type: "wasm"
+                source: "modules/game.wasm"
+                width: 400
+                height: 200
+                
+                // WASM configuration
+                config: {
+                    "memory_pages": 16,
+                    "max_memory": 1048576,
+                    "enable_simd": true
+                }
+            }
+        }
+        
+        // Native Renderer Example
+        Container {
+            border_width: 2
+            border_color: "#333333"
+            border_radius: 8
+            padding: 10
+            
+            Text {
+                text: "Native Renderer - Custom Graphics"
+                font_size: 14
+                font_weight: "bold"
+                margin_bottom: 10
+            }
+            
+            EmbedView {
+                id: "native_view"
+                type: "native_renderer"
+                source: "scripts/custom_renderer.lua"
+                width: 400
+                height: 200
+                
+                // Native renderer configuration
+                config: {
+                    "backend": "skia",
+                    "vsync": true,
+                    "antialiasing": true
+                }
+            }
+        }
+    }
+}

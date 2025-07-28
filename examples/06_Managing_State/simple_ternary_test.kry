@@ -1,0 +1,79 @@
+# Simple Ternary Test for Style Assignment
+# Just focuses on the core ternary expression issue
+
+style "visible_style" {
+    background_color: "#FF0000FF"
+    border_width: 2
+    border_color: "#FFFF00FF"
+    width: 200
+    height: 100
+    display: flex
+    align_items: center
+    justify_content: center
+}
+
+style "hidden_style" {
+    background_color: "#FF0000FF"
+    border_width: 2
+    border_color: "#FFFF00FF"
+    width: 200
+    height: 100
+    display: none
+    align_items: center
+    justify_content: center
+}
+
+style "app_style" {
+    background_color: "#333333FF"
+    text_color: "#FFFFFFFF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    gap: 20
+    padding: 20
+}
+
+@var showBox = true
+
+App {
+    window_width: 400
+    window_height: 300
+    window_title: "Simple Ternary Test"
+    style: "app_style"
+    
+    Button {
+        text: "Toggle Box"
+        background_color: "#0066CCFF"
+        text_color: "#FFFFFFFF"
+        width: 120
+        height: 40
+        onClick: "toggle_box"
+    }
+    
+    Container {
+        # This is the key test - style property with ternary expression
+        style: $showBox ? "visible_style" : "hidden_style"
+        
+        Text {
+            text: "BOX"
+            text_alignment: center
+            text_color: "#FFFFFFFF"
+        }
+    }
+}
+
+@script "lua" {
+function toggle_box()
+    print("🔍 toggle_box called, current showBox:", showBox)
+    
+    if showBox == "true" or showBox == true then
+        showBox = "false"
+        print("🔍 Set showBox to false")
+    else
+        showBox = "true"
+        print("🔍 Set showBox to true")
+    end
+    
+    print("🔍 New showBox value:", showBox)
+end
+}

@@ -1,0 +1,106 @@
+@metadata {
+    title: "Game Boy Advance Emulator Demo"
+    author: "KryonLabs"
+    description: "Demonstrates GBA game emulation with ARM7TDMI CPU simulation"
+}
+
+Container {
+    display: flex
+    flex_direction: column
+    gap: 20
+    margin: 20
+
+    Text {
+        text: "🎮 Game Boy Advance Emulator"
+        font_size: 24
+        font_weight: "bold"
+        color: "#8e44ad"
+        text_align: "center"
+        margin_bottom: 10
+    }
+
+    Text {
+        text: "Emulates GBA games with authentic ARM7TDMI CPU simulation and RGB555 graphics"
+        font_size: 14
+        color: "#7f8c8d"
+        text_align: "center"
+        margin_bottom: 20
+    }
+
+    Container {
+        display: flex
+        flex_direction: row
+        gap: 20
+        justify_content: "center"
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "Pokemon Ruby ROM"
+                font_size: 16
+                font_weight: "bold"
+                color: "#c0392b"
+            }
+
+            EmbedView {
+                provider: "gba"
+                source: "pokemon_ruby.gba"
+                scale_factor: 2.0
+                sound_enabled: true
+                width: 480
+                height: 320
+                border: "2px solid #34495e"
+                border_radius: 8
+            }
+
+            Text {
+                text: "Controls: A/Z = A button, S/X = B button, Arrow keys = D-pad, Enter = Start"
+                font_size: 12
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "Fire Emblem ROM"
+                font_size: 16
+                font_weight: "bold"
+                color: "#27ae60"
+            }
+
+            EmbedView {
+                provider: "gba"
+                source: "fire_emblem.gba"
+                scale_factor: 1.5
+                sound_enabled: true
+                width: 360
+                height: 240
+                border: "2px solid #2c3e50"
+                border_radius: 8
+            }
+
+            Text {
+                text: "Click to pause/resume"
+                font_size: 12
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+    }
+
+    Text {
+        text: "Features: Save states, sound emulation, authentic pixel-perfect rendering"
+        font_size: 12
+        color: "#7f8c8d"
+        text_align: "center"
+        margin_top: 20
+    }
+}

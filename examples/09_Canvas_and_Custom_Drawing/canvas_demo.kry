@@ -1,0 +1,130 @@
+style "app_base" {
+    background_color: "#191919FF"
+    text_color: "#FFFFFFFF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    gap: 20
+}
+
+style "main_container" {
+    background_color: "#2C2C2CFF"
+    border_width: 2
+    border_color: "#444444FF"
+    border_radius: 8
+    padding: 20
+    display: flex
+    flex_direction: column
+    align_items: center
+    gap: 20
+}
+
+style "canvas_style" {
+    background_color: "#1E1E1EFF"
+    border_width: 2
+    border_color: "#666666FF"
+    border_radius: 4
+    width: 400
+    height: 300
+}
+
+style "button_style" {
+    background_color: "#0066CCFF"
+    text_color: "#FFFFFFFF"
+    font_size: 16
+    text_alignment: center
+    border_width: 0
+    border_radius: 6
+    width: 100
+    height: 40
+    
+    &:hover {
+        background_color: "#0077DDFF"
+    }
+    
+    &:active {
+        background_color: "#004499FF"
+    }
+}
+
+App {
+    window_width: 600
+    window_height: 500
+    window_title: "Canvas Demo"
+    resizable: true
+    keep_aspect_ratio: false
+    style: "app_base"
+
+    Container {
+        id: "main_container"
+        style: "main_container"
+
+        Text {
+            id: "title"
+            text: "Canvas Element Demo"
+            font_size: 24
+            text_color: "#FFFFFFFF"
+        }
+
+        # Canvas element for 2D drawing
+        Canvas {
+            id: "demo_canvas"
+            style: "canvas_style"
+            mode: "2d"
+            draw_script: "draw_canvas_content"
+            onUpdate: "update_canvas"
+            data: { 
+                animation_time: 0.0
+                show_animation: true
+            }
+        }
+
+        Button {
+            id: "demo_button"
+            text: "Click me!"
+            style: "button_style"
+            onClick: "on_button_click"
+        }
+    }
+}
+
+@function "lua" draw_canvas_content() {
+    -- This function is called every frame for the Canvas
+    
+    -- Clear the canvas with a dark background
+    clearCanvas("#1E1E1EFF")
+    
+    -- Draw some basic shapes
+    drawLine(10, 10, 200, 50, "#FF0000FF", 2)
+    drawRect(50, 100, 100, 80, "#00FF00FF", "#0000FFFF", 2)
+    drawCircle(300, 150, 40, "#FFFF00FF", "#FF00FFFF", 3)
+    
+    -- Draw some text
+    drawText("Hello Canvas!", 50, 250, 20, "#FFFFFFFF")
+    
+    -- Draw animated content based on time
+    local time = getTime()
+    local x = 200 + math.sin(time * 2) * 50
+    local y = 200 + math.cos(time * 2) * 30
+    drawCircle(x, y, 10, "#FF8800FF", nil, 0)
+}
+
+@function "lua" update_canvas(deltaTime) {
+    -- This function is called every frame before drawing
+    -- Use this for game logic, animations, etc.
+    
+    -- Update animation time
+    local data = getCanvasData()
+    data.animation_time = data.animation_time + deltaTime
+    
+    -- Toggle animation every 3 seconds
+    if data.animation_time > 3.0 then
+        data.show_animation = not data.show_animation
+        data.animation_time = 0.0
+    end
+}
+
+@function "lua" on_button_click() {
+    print("Button clicked! This shows regular Kryon UI working alongside Canvas")
+}

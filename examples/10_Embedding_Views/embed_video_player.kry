@@ -1,0 +1,178 @@
+@metadata {
+    title: "Video Player Demo"
+    author: "KryonLabs"
+    description: "Demonstrates video playback with media controls and format support"
+}
+
+Container {
+    display: flex
+    flex_direction: column
+    gap: 20
+    margin: 20
+
+    Text {
+        text: "🎬 Video Player"
+        font_size: 24
+        font_weight: "bold"
+        color: "#e74c3c"
+        text_align: "center"
+        margin_bottom: 10
+    }
+
+    Text {
+        text: "Play videos with full media controls, multiple formats, and streaming support"
+        font_size: 14
+        color: "#7f8c8d"
+        text_align: "center"
+        margin_bottom: 20
+    }
+
+    Container {
+        display: flex
+        flex_direction: row
+        gap: 20
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "Local MP4 Video"
+                font_size: 16
+                font_weight: "bold"
+                color: "#2c3e50"
+            }
+
+            EmbedView {
+                provider: "video"
+                source: "sample_1080p.mp4"
+                volume: 0.8
+                playback_speed: 1.0
+                auto_play: false
+                width: 400
+                height: 300
+                border: "2px solid #34495e"
+                border_radius: 8
+            }
+
+            Text {
+                text: "Click to play/pause, Space = play/pause, Left/Right = seek"
+                font_size: 11
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "Streaming Video"
+                font_size: 16
+                font_weight: "bold"
+                color: "#3498db"
+            }
+
+            EmbedView {
+                provider: "video"
+                source: "https://youtube.com/watch?v=example"
+                volume: 0.6
+                playback_speed: 1.0
+                auto_play: true
+                width: 400
+                height: 300
+                border: "2px solid #3498db"
+                border_radius: 8
+            }
+
+            Text {
+                text: "YouTube streaming with auto-play enabled"
+                font_size: 11
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+    }
+
+    Container {
+        display: flex
+        flex_direction: row
+        gap: 20
+        margin_top: 20
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "WebM Video"
+                font_size: 16
+                font_weight: "bold"
+                color: "#27ae60"
+            }
+
+            EmbedView {
+                provider: "video"
+                source: "animation.webm"
+                volume: 1.0
+                playback_speed: 1.5
+                auto_play: false
+                width: 350
+                height: 250
+                border: "2px solid #27ae60"
+                border_radius: 8
+            }
+
+            Text {
+                text: "WebM format with 1.5x playback speed"
+                font_size: 11
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "MKV High Quality"
+                font_size: 16
+                font_weight: "bold"
+                color: "#9b59b6"
+            }
+
+            EmbedView {
+                provider: "video"
+                source: "movie_4k.mkv"
+                volume: 0.7
+                playback_speed: 1.0
+                auto_play: false
+                width: 400
+                height: 250
+                border: "2px solid #9b59b6"
+                border_radius: 8
+            }
+
+            Text {
+                text: "4K MKV with high bitrate"
+                font_size: 11
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+    }
+
+    Text {
+        text: "Controls: Space=play/pause, Left/Right=seek ±10s, Up/Down=volume, M=mute, F=fullscreen, +/-=speed"
+        font_size: 12
+        color: "#7f8c8d"
+        text_align: "center"
+        margin_top: 15
+    }
+}

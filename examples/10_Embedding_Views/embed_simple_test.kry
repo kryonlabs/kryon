@@ -1,0 +1,24 @@
+Container {
+    display: flex
+    flex_direction: column
+    gap: 20
+    margin: 20
+
+    Text {
+        text: "🔮 UXN/Varvara Virtual Machine"
+        font_size: 24
+        font_weight: "bold"
+        color: "#8e44ad"
+        text_align: "center"
+        margin_bottom: 10
+    }
+
+    EmbedView {
+        provider: "uxn"
+        source: "graphics_demo.rom"
+        width: 512
+        height: 320
+        border: "2px solid #e74c3c"
+        border_radius: 8
+    }
+}

@@ -1,0 +1,13 @@
+App {
+    window_width: 800
+    window_height: 600
+    window_title: "Simple Canvas Test"
+    
+    Container {
+        Canvas {
+            id: "test_canvas"
+            width: 400
+            height: 300
+        }
+    }
+}

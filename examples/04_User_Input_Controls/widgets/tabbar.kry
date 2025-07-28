@@ -1,0 +1,341 @@
+# TabBar Component
+# Reusable tab bar component with Define syntax and custom properties
+
+Define TabBar {
+    Properties {
+        position: String = "top"
+        button_alignment: String = "start"
+    }
+    
+    Container {
+        id: "tabbar_container"
+        style: "tabbar_container_${position}"
+        
+        Button {
+            id: "tab_home"
+            text: "Home"
+            style: "tab_button_${position}"
+            checked: true
+            onClick: "tab_home_clicked"
+        }
+        
+        Button {
+            id: "tab_profile"
+            text: "Profile"
+            style: "tab_button_${position}"
+            onClick: "tab_profile_clicked"
+        }
+        
+        Button {
+            id: "tab_settings"
+            text: "Settings"
+            style: "tab_button_${position}"
+            onClick: "tab_settings_clicked"
+        }
+    }
+}
+
+# Base TabBar Container Styles
+style "tabbar_container_top" {
+    background_color: "#2C2C2CFF"
+    display: flex
+    flex_direction: row
+    align_items: center
+    border_width: 1
+    border_color: "#444444FF"
+    height: 50
+    width: 100%
+}
+
+style "tabbar_container_bottom" {
+    background_color: "#2C2C2CFF"
+    display: flex
+    flex_direction: row
+    align_items: start
+    border_width: 1
+    border_color: "#444444FF"
+    height: 50
+    width: 900
+}
+
+style "tabbar_container_left" {
+    background_color: "#2C2C2CFF"
+    display: flex
+    flex_direction: column
+    align_items: start
+    border_width: 1
+    border_color: "#444444FF"
+    width: 150
+    height: 600
+    z_index: 100
+}
+
+style "tabbar_container_right" {
+    background_color: "#2C2C2CFF"
+    display: flex
+    flex_direction: column
+    align_items: start
+    flex_grow: 1
+    border_width: 1
+    border_color: "#444444FF"
+    width: 150
+}
+
+# Button alignment variations for vertical TabBars
+style "tabbar_container_left_center" {
+    background_color: "#2C2C2CFF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    flex_grow: 1
+    border_width: 1
+    border_color: "#444444FF"
+    width: 150
+}
+
+style "tabbar_container_left_end" {
+    background_color: "#2C2C2CFF"
+    display: flex
+    flex_direction: column
+    align_items: end
+    flex_grow: 1
+    border_width: 1
+    border_color: "#444444FF"
+    width: 150
+}
+
+style "tabbar_container_right_center" {
+    background_color: "#2C2C2CFF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    flex_grow: 1
+    border_width: 1
+    border_color: "#444444FF"
+    width: 150
+}
+
+style "tabbar_container_right_end" {
+    background_color: "#2C2C2CFF"
+    display: flex
+    flex_direction: column
+    align_items: end
+    flex_grow: 1
+    border_width: 1
+    border_color: "#444444FF"
+    width: 150
+}
+
+# Tab Button Styles for Different Positions
+
+# Horizontal TabBar buttons (top/bottom)
+style "tab_button_top" {
+    background_color: "#404040FF"
+    text_color: "#CCCCCCFF"
+    text_alignment: center
+    border_width: 0
+    flex_grow: 1
+    height: 50
+    
+    &:hover {
+        background_color: "#505050FF"
+    }
+    
+    &:checked {
+        background_color: "#0066CCFF"
+        text_color: "#FFFFFFFF"
+    }
+}
+
+style "tab_button_bottom" {
+    background_color: "#404040FF"
+    text_color: "#CCCCCCFF"
+    text_alignment: center
+    border_width: 0
+    flex_grow: 1
+    height: 50
+    
+    &:hover {
+        background_color: "#505050FF"
+    }
+    
+    &:checked {
+        background_color: "#0066CCFF"
+        text_color: "#FFFFFFFF"
+    }
+}
+
+# Vertical TabBar buttons (left/right)
+style "tab_button_left" {
+    background_color: "#404040FF"
+    text_color: "#CCCCCCFF"
+    text_alignment: center
+    border_width: 0
+    width: 150
+    height: 45
+    
+    &:hover {
+        background_color: "#505050FF"
+    }
+    
+    &:checked {
+        background_color: "#0066CCFF"
+        text_color: "#FFFFFFFF"
+    }
+}
+
+style "tab_button_right" {
+    background_color: "#404040FF"
+    text_color: "#CCCCCCFF"
+    text_alignment: center
+    border_width: 0
+    width: 150
+    height: 45
+    
+    &:hover {
+        background_color: "#505050FF"
+    }
+    
+    &:checked {
+        background_color: "#0066CCFF"
+        text_color: "#FFFFFFFF"
+    }
+}
+
+# Content area styles for tab panels
+style "tab_content" {
+    background_color: "#1E1E1EFF"
+    text_color: "#FFFFFFFF"
+    text_alignment: center
+    flex_grow: 1
+}
+
+# Overlay content style for overlapping panels
+style "tab_content_overlay" {
+    background_color: "#1E1E1EFF"
+    text_color: "#FFFFFFFF"
+    text_alignment: center
+    position: absolute
+    display: flex
+    justify_content: center
+    align_items: center
+    top: 0
+    left: 0
+    right: 0
+    bottom: 0
+}
+
+# TabBar widget script logic
+@script "lua" {
+function tabbar_init()
+    print("TabBar widget initialized")
+    
+    -- Attempt auto-discovery after a brief delay to ensure all elements are loaded
+    -- This gives the page time to fully load all content panels
+    auto_discover_content()
+end
+
+_global_content_ids = {}
+
+function switch_tab(tab_id)
+    local tab_buttons = {"tab_home", "tab_profile", "tab_settings"}
+    for _, button_id in ipairs(tab_buttons) do
+        local button = getElementById(button_id)
+        if button then
+            button:setChecked(false)
+        end
+    end
+    
+    local clicked_tab = getElementById(tab_id)
+    if clicked_tab then
+        clicked_tab:setChecked(true)
+    end
+    
+    if _global_content_ids and #_global_content_ids > 0 then
+        for _, content_id in ipairs(_global_content_ids) do
+            local content = getElementById(content_id)
+            if content then
+                content:setVisible(false)
+                print("Hiding content: " .. content_id)
+            end
+        end
+    end
+    
+    local content_mapping = {
+        tab_home = "home_content",
+        tab_profile = "profile_content", 
+        tab_settings = "settings_content"
+    }
+    
+    local target_content = content_mapping[tab_id]
+    if target_content then
+        local content = getElementById(target_content)
+        if content then
+            content:setVisible(true)
+            print("Showing content: " .. target_content)
+        else
+            print("ERROR: Could not find content element: " .. target_content)
+        end
+    else
+        print("ERROR: No content mapping for tab: " .. tab_id)
+    end
+end
+
+function setup_tab_handlers(tab_ids, content_ids)
+    _global_content_ids = content_ids
+    
+    -- Initially hide all content panels except the first one
+    for i, content_id in ipairs(content_ids) do
+        local content = getElementById(content_id)
+        if content then
+            if i == 1 then
+                content:setVisible(true)
+                print("Setting initial visibility for " .. content_id .. " to true")
+            else
+                content:setVisible(false) 
+                print("Setting initial visibility for " .. content_id .. " to false")
+            end
+        end
+    end
+    
+    print("TabBar initialized with " .. tostring(#content_ids) .. " content panels")
+end
+
+-- Intelligent auto-discovery of content panels
+function auto_discover_content()
+    local standard_content_ids = {"home_content", "profile_content", "settings_content"}
+    local found_content = {}
+    
+    for _, content_id in ipairs(standard_content_ids) do
+        local element = getElementById(content_id)
+        if element then
+            table.insert(found_content, content_id)
+            print("Auto-discovered content panel: " .. content_id)
+        end
+    end
+    
+    if #found_content > 0 then
+        local tab_buttons = {"tab_home", "tab_profile", "tab_settings"}
+        setup_tab_handlers(tab_buttons, found_content)
+        print("Auto-initialized TabBar with " .. tostring(#found_content) .. " discovered panels")
+        return true
+    else
+        print("No standard content panels found for auto-discovery")
+        return false
+    end
+end
+
+function tab_home_clicked()
+    switch_tab("tab_home")
+end
+
+function tab_profile_clicked()
+    switch_tab("tab_profile")
+end
+
+function tab_settings_clicked()
+    switch_tab("tab_settings")
+end
+
+tabbar_init()
+}

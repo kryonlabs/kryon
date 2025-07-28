@@ -1,0 +1,72 @@
+# TabBar Bottom Position Demo  
+# Simplified version with proper content centering
+
+@include "widgets/tabbar.kry"
+
+style "app_container" {
+    background_color: "#191919FF"
+    text_color: "#FFFFFFFF"
+    display: flex
+    flex_direction: column
+    width: 100%
+    height: 100%
+}
+
+style "content_area" {
+    background_color: "#1E1E1EFF"
+    text_color: "#FFFFFFFF"
+    flex_grow: 1
+    position: relative
+    display: flex
+    justify_content: center
+    align_items: center
+    width: 100%
+}
+
+App {
+    window_width: 900
+    window_height: 600
+    window_title: "TabBar Bottom Demo"
+    style: "app_container"
+
+    # Content area - single container for all content
+    Container {
+        style: "content_area"
+        
+        # All tab content with absolute positioning
+        Container {
+            id: "home_content"
+            style: "tab_content_overlay"
+            
+            Text {
+                text: "Home Page\n\nWelcome to the home section!\nThis content is displayed when the Home tab is active."
+                text_alignment: center
+            }
+        }
+        
+        Container {
+            id: "profile_content"
+            style: "tab_content_overlay"
+            
+            Text {
+                text: "Profile Page\n\nUser profile information goes here.\nThis content shows when Profile tab is selected."
+                text_alignment: center
+            }
+        }
+        
+        Container {
+            id: "settings_content"
+            style: "tab_content_overlay"
+            
+            Text {
+                text: "Settings Page\n\nApplication settings and preferences.\nThis content appears when Settings tab is clicked."
+                text_alignment: center
+            }
+        }
+    }
+
+    # TabBar at bottom
+    TabBar {
+        position: "bottom"
+    }
+}

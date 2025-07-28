@@ -1,0 +1,84 @@
+App {
+    id: "app"
+    title: "Z-Index Layout Example"
+    width: 600
+    height: 500
+    
+    Container {
+        id: "main_container"
+        width: 600
+        height: 500
+        style: "main_style"
+        
+        # Red rectangle - should be behind (z-index: 1)
+        Container {
+            id: "red_rect"
+            width: 350
+            height: 250
+            pos_x: 50
+            pos_y: 50
+            style: "red_style"
+            
+            Text {
+                text: "Red Rectangle (z-index: 1)"
+                style: "text_style"
+            }
+        }
+        
+        # Blue rectangle - should be on top (z-index: 999)
+        Container {
+            id: "blue_rect"
+            width: 350
+            height: 250
+            pos_x: 150
+            pos_y: 100
+            style: "blue_style"
+            
+            Text {
+                text: "Blue Rectangle (z-index: 999)"
+                style: "text_style"
+            }
+        }
+    }
+}
+
+style "main_style" {
+    background_color: "#F5F5F5FF"
+    display: flex
+    position: relative
+}
+
+style "red_style" {
+    background_color: "#FF4444FF"
+    border_width: 3
+    border_color: "#CC0000FF"
+    position: absolute
+    z_index: 1
+    width: 350
+    height: 250
+    display: flex
+    flex_direction: column
+    justify_content: center
+    align_items: center
+}
+
+style "blue_style" {
+    background_color: "#4444FFFF"
+    border_width: 3
+    border_color: "#0000CCFF"
+    position: absolute
+    z_index: 999
+    width: 350
+    height: 250
+    display: flex
+    flex_direction: column
+    justify_content: center
+    align_items: center
+}
+
+style "text_style" {
+    text_color: "#FFFFFFFF"
+    font_size: 18
+    text_alignment: center
+    font_weight: bold
+}

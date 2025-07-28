@@ -1,0 +1,187 @@
+# Kryon Dropdown - Final Recommended Syntax
+# A functional and styled dropdown using a declarative data-binding syntax for events
+# and directly modifiable reactive variables.
+
+# --- GLOBAL VARIABLES & STATE ---
+# These variables are now directly readable and writable from script functions.
+@variables {
+    country_options: ["United States", "Canada", "Mexico", "Brazil", "Germany", "Japan", "India", "Australia"]
+    is_country_menu_open: false
+    selected_country_text: "Select a Country"
+}
+
+# --- STYLES ---
+# Centralized styles for the App and the Dropdown components.
+style "app_container" {
+    background_color: "#f4f7f9"
+    display: flex
+    align_items: center
+    justify_content: center
+    padding: 40
+}
+
+style "content_card" {
+    # A card to hold the demo content, giving it a modern look.
+    background_color: "#ffffff"
+    padding: 40
+    border_radius: 16
+    box_shadow: "0 8px 24px rgba(0, 42, 89, 0.1)"
+    display: flex
+    flex_direction: column
+    align_items: center
+    gap: 30
+    width: 350
+}
+
+style "app_title" {
+    font_size: 28
+    font_weight: 700
+    text_color: "#1a2b48"
+    margin_bottom: 10
+}
+
+style "app_subtitle" {
+    font_size: 16
+    text_color: "#6a788e"
+    margin_bottom: 20
+}
+
+style "dropdown_container" {
+    # This container is crucial for absolute positioning of the menu.
+    position: relative
+    width: 100%
+}
+
+style "dropdown_button" {
+    background_color: "#ffffff"
+    text_color: "#495057"
+    border_width: 1
+    border_color: "#ced4da"
+    border_radius: 8
+    padding: "10 16"
+    font_size: 16
+    text_alignment: center
+    cursor: pointer
+    transition: "all 0.2s ease"
+    display: flex
+    align_items: center
+    justify_content: center
+
+    &:hover {
+        border_color: "#80bdff"
+        box_shadow: "0 0 0 3px rgba(13, 110, 253, 0.25)"
+    }
+}
+
+style "dropdown_menu" {
+    background_color: "#ffffff"
+    border_radius: 8
+    box_shadow: "0 4px 12px rgba(0, 0, 0, 0.15)"
+    border_width: 1
+    border_color: "#dee2e6"
+    position: absolute
+    pos_y: 52
+    pos_x: 0
+    z_index: 1000
+    width: 100%
+    max_height: 200
+    overflow: auto
+    display: flex
+    flex_direction: column
+    padding: "8 0"
+    gap: 2
+}
+
+style "dropdown_option" {
+    padding: "12 16"
+    text_alignment: start
+    cursor: pointer
+    background_color: transparent
+    text_color: "#212529"
+    transition: "all 0.15s ease"
+    width: 100%
+    margin: "0 0"
+
+    &:hover {
+        background_color: "#e9ecef"
+        text_color: "#000000"
+    }
+}
+
+style "dropdown_option_selected" {
+    extends: "dropdown_option"
+    background_color: "#0d6efd"
+    text_color: "#ffffff"
+    font_weight: 500
+
+    &:hover {
+        background_color: "#0b5ed7"
+    }
+}
+
+# --- APPLICATION UI ---
+
+App {
+    window_width: 600
+    window_height: 500
+    window_title: "Kryon Dropdown Demo"
+    
+    Container {
+        style: "app_container"
+        Container {
+            style: "content_card"
+            
+            Text {
+                text: "Dropdown Demo"
+                style: "app_title"
+            }
+            
+            Text {
+                text: "A simple, stateful dropdown component"
+                style: "app_subtitle"
+            }
+            
+            Container {
+                id: "country_dropdown_container"
+                style: "dropdown_container"
+                width: 100%
+                
+                Button {
+                    id: "country_button"
+                    text: $selected_country_text
+                    style: "dropdown_button"
+                    width: 100%
+                    onClick: "toggle_country_menu"
+                }
+                
+                Container {
+                    id: "country_menu"
+                    style: "dropdown_menu"
+                    width: 100%
+                    visible: $is_country_menu_open
+                    
+                    @for option, index in $country_options
+                        Button {
+                            text: $option
+                            style: $selected_country_text == $option ? "dropdown_option_selected" : "dropdown_option"
+                            # The binding passes data to the generic handler.
+                            onClick: select_country($index, $option)
+                        }
+                    @end
+                }
+            }
+        }
+    }
+}
+
+
+@function "lua" toggle_country_menu() {
+    is_country_menu_open = not is_country_menu_open
+}
+
+@function "lua" select_country(index, option) {
+    selected_country_text = option    
+    is_country_menu_open = false
+    
+    print("Country selected at index " .. tostring(index) .. ": " .. option)
+}

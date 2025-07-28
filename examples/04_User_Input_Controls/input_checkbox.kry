@@ -1,0 +1,230 @@
+# Checkbox Input Example
+# Checkbox input with multiple options
+
+style "app_container" {
+    background_color: "#F5F5F5FF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    padding: 20
+}
+
+style "form_container" {
+    background_color: "#FFFFFFFF"
+    border_width: 1
+    border_color: "#DDDDDDFF"
+    border_radius: 8
+    padding: 30
+    width: 350
+}
+
+style "form_title" {
+    font_size: 16
+    font_weight: bold
+    text_color: "#333333FF"
+    margin_bottom: 15
+}
+
+style "checkbox_group" {
+    display: flex
+    flex_direction: column
+}
+
+style "checkbox_item" {
+    margin: 8
+}
+
+style "summary_display" {
+    background_color: "#F3E5F5FF"
+    border_width: 1
+    border_color: "#9C27B0FF"
+    border_radius: 4
+    padding: 10
+    margin_top: 20
+    font_size: 14
+    text_color: "#6A1B9AFF"
+}
+
+style "submit_button" {
+    background_color: "#9C27B0FF"
+    text_color: "#FFFFFFFF"
+    border_width: 0
+    border_radius: 4
+    padding: 10
+    margin_top: 15
+    font_size: 14
+    width: 100%
+}
+
+App {
+    window_title: "Checkbox Input Example"
+    window_width: 450
+    window_height: 450
+    
+    Container {
+        style: "app_container"
+        
+        Container {
+            style: "form_container"
+            
+            Text {
+                text: "Select your interests:"
+                style: "form_title"
+            }
+            
+            Container {
+                style: "checkbox_group"
+                
+                Container {
+                    style: "checkbox_item"
+                    
+                    Input {
+                        id: "sports_checkbox"
+                        type: "checkbox"
+                        checked: false
+                        onChange: "update_summary"
+                    }
+                    Text {
+                        text: " Sports & Fitness"
+                        onClick: "toggle_sports"
+                    }
+                }
+                
+                Container {
+                    style: "checkbox_item"
+                    
+                    Input {
+                        id: "music_checkbox"
+                        type: "checkbox"
+                        checked: false
+                        onChange: "update_summary"
+                    }
+                    Text {
+                        text: " Music & Arts"
+                        onClick: "toggle_music"
+                    }
+                }
+                
+                Container {
+                    style: "checkbox_item"
+                    
+                    Input {
+                        id: "tech_checkbox"
+                        type: "checkbox"
+                        checked: false
+                        onChange: "update_summary"
+                    }
+                    Text {
+                        text: " Technology"
+                        onClick: "toggle_tech"
+                    }
+                }
+                
+                Container {
+                    style: "checkbox_item"
+                    
+                    Input {
+                        id: "cooking_checkbox"
+                        type: "checkbox"
+                        checked: false
+                        onChange: "update_summary"
+                    }
+                    Text {
+                        text: " Cooking & Food"
+                        onClick: "toggle_cooking"
+                    }
+                }
+            }
+            
+            Text {
+                id: "summary_display"
+                text: "No interests selected"
+                style: "summary_display"
+            }
+            
+            Button {
+                text: "Submit Preferences"
+                style: "submit_button"
+                onClick: "submit_preferences"
+            }
+        }
+    }
+}
+
+@script "lua" {
+function update_summary()
+    local sports = getElementById("sports_checkbox")
+    local music = getElementById("music_checkbox")
+    local tech = getElementById("tech_checkbox")
+    local cooking = getElementById("cooking_checkbox")
+    local display = getElementById("summary_display")
+    
+    if display then
+        local interests = {}
+        
+        if sports and sports:getChecked() then
+            table.insert(interests, "Sports & Fitness")
+        end
+        if music and music:getChecked() then
+            table.insert(interests, "Music & Arts")
+        end
+        if tech and tech:getChecked() then
+            table.insert(interests, "Technology")
+        end
+        if cooking and cooking:getChecked() then
+            table.insert(interests, "Cooking & Food")
+        end
+        
+        if #interests == 0 then
+            display:setText("No interests selected")
+        elseif #interests == 1 then
+            display:setText("Selected: " .. interests[1])
+        else
+            display:setText("Selected " .. #interests .. " interests: " .. table.concat(interests, ", "))
+        end
+    end
+end
+
+-- Toggle functions for clicking on labels
+function toggle_sports()
+    local checkbox = getElementById("sports_checkbox")
+    if checkbox then
+        checkbox:setChecked(not checkbox:getChecked())
+        update_summary()
+    end
+end
+
+function toggle_music()
+    local checkbox = getElementById("music_checkbox")
+    if checkbox then
+        checkbox:setChecked(not checkbox:getChecked())
+        update_summary()
+    end
+end
+
+function toggle_tech()
+    local checkbox = getElementById("tech_checkbox")
+    if checkbox then
+        checkbox:setChecked(not checkbox:getChecked())
+        update_summary()
+    end
+end
+
+function toggle_cooking()
+    local checkbox = getElementById("cooking_checkbox")
+    if checkbox then
+        checkbox:setChecked(not checkbox:getChecked())
+        update_summary()
+    end
+end
+
+function submit_preferences()
+    local summary = getElementById("summary_display")
+    if summary then
+        local text = summary:getText()
+        print("Submitting preferences: " .. text)
+        alert("Preferences saved!")
+    end
+end
+}

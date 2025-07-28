@@ -1,0 +1,99 @@
+// Demo showcasing native Select/Dropdown element functionality
+
+style "app_title" {
+    font_size: 24
+    text_color: "#333333FF"
+    font_weight: 600
+    text_alignment: center
+    margin_bottom: 20
+}
+
+style "demo_section" {
+    display: flex
+    flex_direction: column
+    align_items: center
+    gap: 25
+    padding: 30
+    width: 100%
+    max_width: 400
+}
+
+style "section_title" {
+    font_size: 16
+    text_color: "#666666FF"
+    font_weight: 500
+    text_alignment: center
+    margin_bottom: 10
+}
+
+style "content_wrapper" {
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: space-around
+    background_color: "#F8F9FAFF"
+    border_radius: 12
+    padding: 40
+    gap: 30
+    border_width: 1
+    border_color: "#E9ECEFFF"
+    min_height: 350
+    overflow: visible
+    box_shadow: "0 2px 4px rgba(0, 0, 0, 0.1)"
+}
+
+App {
+    window_width: 500
+    window_height: 400
+    window_title: "Dropdown Widget Demo"
+    resizable: true
+    background_color: "#FFFFFFFF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: flex-start
+    padding: 40
+    gap: 40
+
+    Container {
+        id: "main_content"
+        style: content_wrapper
+        
+        Text {
+            id: "title"
+            text: "Dropdown Widget Demo"
+            style: app_title
+        }
+        
+        Container {
+            id: "dropdown_section"
+            style: demo_section
+            
+            Select {
+                placeholder: "Select Country"
+                options: "United States,Canada,Mexico,Brazil,Argentina,United Kingdom,France,Germany,Italy,Spain,Russia,China,Japan,India,Australia"
+                width: 300
+                multiple: false
+            }
+        }
+        
+        Container {
+            id: "status_section"
+            style: demo_section
+            
+            Text {
+                id: "selected_country"
+                text: "No country selected"
+                style: section_title
+            }
+        }
+    }
+}
+
+// Script for handling select events
+@function "lua" on_country_change(value) {
+    local status_element = getElementById("selected_country")
+    if status_element then
+        status_element:setText("Selected: " .. value)
+    end
+}

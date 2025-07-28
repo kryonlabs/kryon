@@ -1,0 +1,164 @@
+style "app_base" {
+    background_color: "#191919FF"
+    text_color: "#FFFFFFFF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+}
+
+style "counter_container" {
+    background_color: "#2C2C2CFF"
+    border_width: 2
+    border_color: "#444444FF"
+    border_radius: 8
+    padding: 20
+    display: flex
+    flex_direction: column
+    align_items: center
+    gap: 15
+}
+
+style "counter_display" {
+    background_color: "#1E1E1EFF"
+    text_color: "#00FF88FF"
+    font_size: 32
+    text_alignment: center
+    padding: 8
+    border_width: 1
+    border_color: "#666666FF"
+    border_radius: 4
+    width: 50
+    height: 50
+}
+
+style "counter_row" {
+    display: flex
+    flex_direction: row
+    gap: 10
+    align_items: center
+    justify_content: center
+}
+
+style "button_row" {
+    display: flex
+    flex_direction: row
+    gap: 20
+    align_items: center
+    justify_content: center
+    margin_top: 15
+}
+
+style "counter_button" {
+    background_color: "#0066CCFF"
+    text_color: "#FFFFFFFF"
+    font_size: 24
+    text_alignment: center
+    border_width: 0
+    border_radius: 6
+    width: 50
+    height: 50
+    
+    &:hover {
+        background_color: "#0077DDFF"
+    }
+    
+    &:active {
+        background_color: "#004499FF"
+    }
+}
+
+style "reset_button" {
+    background_color: "#CC3300FF"
+    text_color: "#FFFFFFFF"
+    font_size: 16
+    text_alignment: center
+    border_width: 0
+    border_radius: 6
+    width: 100
+    height: 50
+    
+    &:hover {
+        background_color: "#DD4411FF"
+    }
+    
+    &:active {
+        background_color: "#BB2200FF"
+    }
+}
+
+
+@variables {
+    counter_value: 0
+}
+
+
+App {
+    window_width: 400
+    window_height: 300
+    window_title: "Counter Example"
+    resizable: true
+    keep_aspect_ratio: false
+    style: "app_base"
+
+    Container {
+        id: "counter_main"
+        style: "counter_container"
+
+        # Counter with inline buttons
+        Container {
+            id: "counter_container"
+            style: "counter_row"
+
+            Button {
+                id: "decrement_btn"
+                text: "-"
+                style: "counter_button"
+                onClick: "decrement"
+            }
+
+            Text {
+                id: "counter_display"
+                text: $counter_value
+                style: "counter_display"
+            }
+
+            Button {
+                id: "increment_btn"
+                text: "+"
+                style: "counter_button"
+                onClick: "increment"
+            }
+        }
+
+        # Reset Button (separate row)
+        Container {
+            id: "button_container"
+            style: "button_row"
+
+            Button {
+                id: "reset_btn"
+                text: "Reset"
+                style: "reset_button"
+                onClick: "reset"
+            }
+        }
+    }
+}
+
+
+@function "lua" increment() {
+    print("INCREMENT BUTTON CLICKED!!!")
+    counter_value = counter_value + 1
+    print("Counter incremented to: " .. counter_value)
+}
+
+@function "lua" decrement() {
+    counter_value = counter_value - 1
+    print("Counter decremented to: " .. counter_value)
+}
+
+@function "lua" reset() {
+    counter_value = 0
+    print("Counter reset to: " .. counter_value)
+}

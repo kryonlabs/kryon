@@ -1,0 +1,50 @@
+# Simple Container Test
+# Testing if container styling works
+
+style "app_container" {
+    background_color: "#191919FF"
+    text_color: "#FFFFFFFF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    gap: 20
+    padding: 40
+}
+
+style "test_container" {
+    background_color: "#FF0000FF"
+    text_color: "#FFFFFFFF"
+    border_width: 5
+    border_color: "#FFFF00FF"
+    border_radius: 12
+    padding: 30
+    width: 500
+    height: 150
+    display: flex
+    align_items: center
+    justify_content: center
+    margin: 20
+}
+
+App {
+    window_width: 600
+    window_height: 400
+    window_title: "Container Test"
+    style: "app_container"
+    
+    Text {
+        text: "Container Test"
+        font_size: 20
+        text_alignment: center
+    }
+    
+    Container {
+        style: "test_container"
+        
+        Text {
+            text: "This is inside the container!"
+            text_alignment: center
+        }
+    }
+}

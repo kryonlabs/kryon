@@ -1,0 +1,141 @@
+@metadata {
+    title: "Dolphin Nintendo Emulator Demo"
+    author: "KryonLabs"
+    description: "Demonstrates GameCube and Wii emulation with PowerPC simulation"
+}
+
+Container {
+    display: flex
+    flex_direction: column
+    gap: 20
+    margin: 20
+
+    Text {
+        text: "🐬 Dolphin Nintendo Emulator"
+        font_size: 24
+        font_weight: "bold"
+        color: "#9b59b6"
+        text_align: "center"
+        margin_bottom: 10
+    }
+
+    Text {
+        text: "Play GameCube and Wii games with authentic PowerPC CPU emulation"
+        font_size: 14
+        color: "#7f8c8d"
+        text_align: "center"
+        margin_bottom: 20
+    }
+
+    Container {
+        display: flex
+        flex_direction: row
+        gap: 20
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "🟣 GameCube Games"
+                font_size: 18
+                font_weight: "bold"
+                color: "#8e44ad"
+            }
+
+            EmbedView {
+                provider: "dolphin"
+                source: "super_mario_sunshine.gcm"
+                graphics_backend: "vulkan"
+                audio_enabled: true
+                width: 640
+                height: 480
+                border: "2px solid #8e44ad"
+                border_radius: 8
+            }
+
+            Text {
+                text: "Super Mario Sunshine (PowerPC 750CL @ 486MHz)"
+                font_size: 12
+                color: "#95a5a6"
+                text_align: "center"
+            }
+
+            EmbedView {
+                provider: "dolphin"
+                source: "metroid_prime.gcz"
+                graphics_backend: "opengl"
+                audio_enabled: true
+                width: 640
+                height: 480
+                border: "2px solid #34495e"
+                border_radius: 8
+            }
+
+            Text {
+                text: "Metroid Prime (Compressed GameCube ROM)"
+                font_size: 12
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "⚪ Wii Games"
+                font_size: 18
+                font_weight: "bold"
+                color: "#3498db"
+            }
+
+            EmbedView {
+                provider: "dolphin"
+                source: "super_mario_galaxy.wbfs"
+                graphics_backend: "vulkan"
+                audio_enabled: true
+                width: 854
+                height: 480
+                border: "2px solid #3498db"
+                border_radius: 8
+            }
+
+            Text {
+                text: "Super Mario Galaxy (Broadway @ 729MHz)"
+                font_size: 12
+                color: "#95a5a6"
+                text_align: "center"
+            }
+
+            EmbedView {
+                provider: "dolphin"
+                source: "zelda_twilight_princess.rvz"
+                graphics_backend: "d3d11"
+                audio_enabled: true
+                width: 854
+                height: 480
+                border: "2px solid #27ae60"
+                border_radius: 8
+            }
+
+            Text {
+                text: "Zelda: Twilight Princess (RVZ compressed)"
+                font_size: 12
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+    }
+
+    Text {
+        text: "Controls: A/Z=A, S/X=B, D/C=X, F/V=Y, Q=Z trigger, Arrow keys=Analog stick, Enter=Start"
+        font_size: 12
+        color: "#7f8c8d"
+        text_align: "center"
+        margin_top: 15
+    }
+}

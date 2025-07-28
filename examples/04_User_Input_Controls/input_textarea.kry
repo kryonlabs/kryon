@@ -1,0 +1,150 @@
+# Textarea Input Example
+# Multi-line text input with character counter
+
+style "app_container" {
+    background_color: "#F5F5F5FF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    padding: 20
+}
+
+style "form_container" {
+    background_color: "#FFFFFFFF"
+    border_width: 1
+    border_color: "#DDDDDDFF"
+    border_radius: 8
+    padding: 30
+    width: 400
+}
+
+style "form_label" {
+    font_size: 14
+    text_color: "#333333FF"
+    margin_bottom: 8
+}
+
+style "character_counter" {
+    font_size: 12
+    text_color: "#666666FF"
+    text_alignment: end
+    margin_top: 5
+}
+
+style "submit_button" {
+    background_color: "#4CAF50FF"
+    text_color: "#FFFFFFFF"
+    border_width: 0
+    border_radius: 4
+    padding: 10
+    margin_top: 20
+    font_size: 14
+    width: 100%
+}
+
+style "submit_disabled" {
+    background_color: "#CCCCCCFF"
+    text_color: "#666666FF"
+    border_width: 0
+    border_radius: 4
+    padding: 10
+    margin_top: 20
+    font_size: 14
+    width: 100%
+}
+
+App {
+    window_title: "Textarea Input Example"
+    window_width: 500
+    window_height: 450
+    
+    Container {
+        style: "app_container"
+        
+        Container {
+            style: "form_container"
+            
+            Text {
+                text: "Share your feedback:"
+                style: "form_label"
+            }
+            
+            Input {
+                id: "feedback_textarea"
+                type: "text"
+                placeholder: "Tell us what you think..."
+                value: ""
+                width: 340
+                height: 150
+                max_length: 500
+                onChange: "update_character_count"
+            }
+            
+            Text {
+                id: "char_counter"
+                text: "0 / 500 characters"
+                style: "character_counter"
+            }
+            
+            Button {
+                id: "submit_button"
+                text: "Submit Feedback"
+                style: "submit_disabled"
+                onClick: "submit_feedback"
+                disabled: true
+            }
+        }
+    }
+}
+
+@script "lua" {
+max_length = 500
+
+function update_character_count()
+    local textarea = getElementById("feedback_textarea")
+    local counter = getElementById("char_counter")
+    local submit = getElementById("submit_button")
+    
+    if textarea and counter and submit then
+        local text = textarea:getValue() or ""
+        local length = #text
+        
+        -- Update counter
+        counter:setText(length .. " / " .. max_length .. " characters")
+        
+        -- Update counter color based on length
+        if length > max_length * 0.9 then
+            counter:setStyle("character_counter")
+            counter:setTextColor("#FF5722FF")
+        elseif length > max_length * 0.7 then
+            counter:setStyle("character_counter")
+            counter:setTextColor("#FF9800FF")
+        else
+            counter:setStyle("character_counter")
+        end
+        
+        -- Enable/disable submit button
+        if length > 10 and length <= max_length then
+            submit:setEnabled(true)
+            submit:setStyle("submit_button")
+        else
+            submit:setEnabled(false)
+            submit:setStyle("submit_disabled")
+        end
+    end
+end
+
+function submit_feedback()
+    local textarea = getElementById("feedback_textarea")
+    if textarea then
+        local feedback = textarea:getValue()
+        if feedback and #feedback > 10 then
+            print("Submitted feedback: " .. feedback)
+            alert("Thank you for your feedback!")
+            textarea:setValue("")
+            update_character_count()
+        end
+    end
+end
+}

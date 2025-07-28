@@ -1,0 +1,135 @@
+# Email Input Example
+# Email input with validation
+
+style "app_container" {
+    background_color: "#F5F5F5FF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    padding: 20
+}
+
+style "form_container" {
+    background_color: "#FFFFFFFF"
+    border_width: 1
+    border_color: "#DDDDDDFF"
+    border_radius: 8
+    padding: 30
+    width: 400
+}
+
+style "form_label" {
+    font_size: 14
+    text_color: "#333333FF"
+    margin_bottom: 8
+}
+
+style "validation_message" {
+    font_size: 12
+    margin_top: 8
+}
+
+style "validation_valid" {
+    text_color: "#4CAF50FF"
+}
+
+style "validation_invalid" {
+    text_color: "#F44336FF"
+}
+
+style "submit_button" {
+    background_color: "#2196F3FF"
+    text_color: "#FFFFFFFF"
+    border_width: 0
+    border_radius: 4
+    padding: 10
+    margin_top: 20
+    font_size: 14
+    width: 100%
+}
+
+App {
+    window_title: "Email Input Example"
+    window_width: 500
+    window_height: 350
+    
+    Container {
+        style: "app_container"
+        
+        Container {
+            style: "form_container"
+            
+            Text {
+                text: "Enter your email address:"
+                style: "form_label"
+            }
+            
+            Input {
+                id: "email_input"
+                type: "email"
+                placeholder: "name@example.com"
+                value: ""
+                width: 340
+                onChange: "validate_email"
+            }
+            
+            Text {
+                id: "validation_message"
+                text: ""
+                style: "validation_message"
+            }
+            
+            Button {
+                id: "submit_button"
+                text: "Submit"
+                style: "submit_button"
+                onClick: "submit_email"
+                disabled: true
+            }
+        }
+    }
+}
+
+@script "lua" {
+email_valid = false
+
+function validate_email()
+    local input = getElementById("email_input")
+    local message = getElementById("validation_message")
+    local submit = getElementById("submit_button")
+    
+    if input and message and submit then
+        local email = input:getValue()
+        
+        if not email or email == "" then
+            message:setText("")
+            message:setStyle("validation_message")
+            submit:setEnabled(false)
+            email_valid = false
+        elseif string.match(email, "^[%w._%+-]+@[%w.-]+%.[%a]+$") then
+            message:setText("✓ Valid email address")
+            message:setStyle("validation_message validation_valid")
+            submit:setEnabled(true)
+            email_valid = true
+        else
+            message:setText("✗ Please enter a valid email address")
+            message:setStyle("validation_message validation_invalid")
+            submit:setEnabled(false)
+            email_valid = false
+        end
+    end
+end
+
+function submit_email()
+    if email_valid then
+        local input = getElementById("email_input")
+        if input then
+            local email = input:getValue()
+            print("Submitted email: " .. email)
+            -- In a real app, this would send the email to a server
+            alert("Email submitted successfully: " .. email)
+        end
+    end
+end
+}

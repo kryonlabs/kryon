@@ -1,0 +1,147 @@
+App {
+    window_width: 1000
+    window_height: 800
+    window_title: "EmbedView Examples - Advanced Usage"
+    
+    Container {
+        padding: 20
+        
+        Text {
+            text: "Advanced EmbedView Examples"
+            font_size: 20
+            font_weight: "bold"
+            margin_bottom: 20
+        }
+        
+        // Side-by-side comparison
+        Container {
+            flex_direction: "row"
+            gap: 20
+            
+            // Left column - Gaming/Emulation Views
+            Container {
+                width: 480
+                gap: 15
+                
+                Text {
+                    text: "Gaming & Emulation Views"
+                    font_size: 16
+                    font_weight: "bold"
+                    margin_bottom: 10
+                }
+                
+                // Game Boy Emulator
+                EmbedView {
+                    id: "gba_emulator"
+                    type: "gba"
+                    source: "roms/game.gba"
+                    width: 240
+                    height: 160
+                    
+                    config: {
+                        "scale_factor": 2.0,
+                        "frame_skip": 0,
+                        "audio_enabled": true,
+                        "save_state_enabled": true
+                    }
+                }
+                
+                // DOS Emulator
+                EmbedView {
+                    id: "dos_emulator"
+                    type: "dos"
+                    source: "games/doom.exe"
+                    width: 320
+                    height: 200
+                    
+                    config: {
+                        "cpu_speed": "486dx2",
+                        "memory_size": "4mb",
+                        "sound_card": "sb16",
+                        "mount_c": "/games"
+                    }
+                }
+                
+                // UXN Virtual Machine
+                EmbedView {
+                    id: "uxn_vm"
+                    type: "uxn"
+                    source: "apps/calculator.rom"
+                    width: 200
+                    height: 200
+                    
+                    config: {
+                        "stack_size": 256,
+                        "device_mode": "console",
+                        "debug_enabled": false
+                    }
+                }
+            }
+            
+            // Right column - Development/Productivity Views
+            Container {
+                width: 480
+                gap: 15
+                
+                Text {
+                    text: "Development & Productivity Views"
+                    font_size: 16
+                    font_weight: "bold"
+                    margin_bottom: 10
+                }
+                
+                // Code Editor
+                EmbedView {
+                    id: "code_editor"
+                    type: "code_editor"
+                    source: "main.rs"
+                    width: 460
+                    height: 300
+                    
+                    config: {
+                        "language": "rust",
+                        "theme": "dark",
+                        "font_size": 14,
+                        "line_numbers": true,
+                        "auto_complete": true,
+                        "syntax_highlighting": true
+                    }
+                }
+                
+                // Terminal Emulator
+                EmbedView {
+                    id: "terminal"
+                    type: "terminal"
+                    source: "/bin/bash"
+                    width: 460
+                    height: 200
+                    
+                    config: {
+                        "shell": "/bin/bash",
+                        "working_directory": "/home/user",
+                        "font_family": "Monaco",
+                        "font_size": 12,
+                        "scrollback_lines": 1000
+                    }
+                }
+                
+                // 3D Model Viewer
+                EmbedView {
+                    id: "model_viewer"
+                    type: "model_viewer"
+                    source: "models/spaceship.obj"
+                    width: 460
+                    height: 250
+                    
+                    config: {
+                        "renderer": "opengl",
+                        "camera_mode": "orbit",
+                        "lighting": "pbr",
+                        "wireframe": false,
+                        "background_color": "#1a1a1a"
+                    }
+                }
+            }
+        }
+    }
+}

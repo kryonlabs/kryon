@@ -1,0 +1,491 @@
+@metadata {
+    title: "Complete EmbedView Provider Showcase"
+    author: "KryonLabs"
+    description: "Demonstrates all available EmbedView providers in one comprehensive demo"
+    version: "1.0"
+}
+
+Container {
+    display: flex
+    flex_direction: column
+    gap: 30
+    margin: 20
+
+    Text {
+        text: "🚀 Complete EmbedView Provider Showcase"
+        font_size: 28
+        font_weight: "bold"
+        color: "#2c3e50"
+        text_align: "center"
+        margin_bottom: 15
+    }
+
+    Text {
+        text: "Experience all EmbedView providers: web rendering, emulators, media players, and more"
+        font_size: 16
+        color: "#7f8c8d"
+        text_align: "center"
+        margin_bottom: 30
+    }
+
+    # Web and Modern Content Section
+    Container {
+        display: flex
+    flex_direction: column
+        gap: 15
+
+        Text {
+            text: "🌐 Web and Modern Content"
+            font_size: 20
+            font_weight: "bold"
+            color: "#3498db"
+            margin_bottom: 10
+        }
+
+        Container {
+            display: flex
+        flex_direction: row
+            gap: 20
+
+            EmbedView {
+                provider: "blitz"
+                source: "https://example.com"
+                width: 350
+                height: 250
+                border: "2px solid #3498db"
+                border_radius: 8
+            }
+
+            EmbedView {
+                provider: "webview"
+                source: "https://kryon.dev"
+                width: 350
+                height: 250
+                border: "2px solid #1abc9c"
+                border_radius: 8
+            }
+
+            EmbedView {
+                provider: "iframe"
+                source: "demo.html"
+                width: 350
+                height: 250
+                border: "2px solid #9b59b6"
+                border_radius: 8
+            }
+        }
+    }
+
+    # Gaming and Emulation Section
+    Container {
+        display: flex
+    flex_direction: column
+        gap: 15
+
+        Text {
+            text: "🎮 Gaming and Emulation"
+            font_size: 20
+            font_weight: "bold"
+            color: "#e74c3c"
+            margin_bottom: 10
+        }
+
+        Container {
+            display: flex
+        flex_direction: row
+            gap: 20
+
+            Container {
+                display: flex
+    flex_direction: column
+                gap: 10
+
+                Text {
+                    text: "GBA Emulator"
+                    font_size: 14
+                    font_weight: "bold"
+                    color: "#8e44ad"
+                }
+
+                EmbedView {
+                    provider: "gba"
+                    source: "pokemon.gba"
+                    scale_factor: 1.5
+                    width: 360
+                    height: 240
+                    border: "2px solid #8e44ad"
+                    border_radius: 6
+                }
+            }
+
+            Container {
+                display: flex
+    flex_direction: column
+                gap: 10
+
+                Text {
+                    text: "GameCube/Wii"
+                    font_size: 14
+                    font_weight: "bold"
+                    color: "#e67e22"
+                }
+
+                EmbedView {
+                    provider: "dolphin"
+                    source: "mario_sunshine.gcm"
+                    graphics_backend: "vulkan"
+                    width: 360
+                    height: 240
+                    border: "2px solid #e67e22"
+                    border_radius: 6
+                }
+            }
+
+            Container {
+                display: flex
+    flex_direction: column
+                gap: 10
+
+                Text {
+                    text: "CHIP-8 Retro"
+                    font_size: 14
+                    font_weight: "bold"
+                    color: "#f39c12"
+                }
+
+                EmbedView {
+                    provider: "chip8"
+                    source: "pong.ch8"
+                    scale_factor: 5
+                    width: 320
+                    height: 160
+                    border: "2px solid #f39c12"
+                    border_radius: 6
+                }
+            }
+        }
+
+        Container {
+            display: flex
+        flex_direction: row
+            gap: 20
+            margin_top: 15
+
+            Container {
+                display: flex
+    flex_direction: column
+                gap: 10
+
+                Text {
+                    text: "DOSBox PC Games"
+                    font_size: 14
+                    font_weight: "bold"
+                    color: "#27ae60"
+                }
+
+                EmbedView {
+                    provider: "dosbox"
+                    source: "doom.exe"
+                    video_mode: "VGA"
+                    width: 400
+                    height: 300
+                    border: "2px solid #27ae60"
+                    border_radius: 6
+                }
+            }
+
+            Container {
+                display: flex
+    flex_direction: column
+                gap: 10
+
+                Text {
+                    text: "UXN/Varvara VM"
+                    font_size: 14
+                    font_weight: "bold"
+                    color: "#c0392b"
+                }
+
+                EmbedView {
+                    provider: "uxn"
+                    source: "graphics_demo.rom"
+                    width: 400
+                    height: 250
+                    border: "2px solid #c0392b"
+                    border_radius: 6
+                }
+            }
+        }
+    }
+
+    # Media and Documents Section
+    Container {
+        display: flex
+    flex_direction: column
+        gap: 15
+
+        Text {
+            text: "📺 Media and Documents"
+            font_size: 20
+            font_weight: "bold"
+            color: "#16a085"
+            margin_bottom: 10
+        }
+
+        Container {
+            display: flex
+        flex_direction: row
+            gap: 20
+
+            Container {
+                display: flex
+    flex_direction: column
+                gap: 10
+
+                Text {
+                    text: "Video Player"
+                    font_size: 14
+                    font_weight: "bold"
+                    color: "#e74c3c"
+                }
+
+                EmbedView {
+                    provider: "video"
+                    source: "demo_video.mp4"
+                    volume: 0.8
+                    auto_play: false
+                    width: 400
+                    height: 250
+                    border: "2px solid #e74c3c"
+                    border_radius: 6
+                }
+            }
+
+            Container {
+                display: flex
+    flex_direction: column
+                gap: 10
+
+                Text {
+                    text: "PDF Viewer"
+                    font_size: 14
+                    font_weight: "bold"
+                    color: "#d35400"
+                }
+
+                EmbedView {
+                    provider: "pdf"
+                    source: "manual.pdf"
+                    zoom_level: 1.0
+                    fit_mode: "width"
+                    width: 350
+                    height: 400
+                    border: "2px solid #d35400"
+                    border_radius: 6
+                }
+            }
+        }
+    }
+
+    # Development and Native Section
+    Container {
+        display: flex
+    flex_direction: column
+        gap: 15
+
+        Text {
+            text: "⚙️ Development and Native"
+            font_size: 20
+            font_weight: "bold"
+            color: "#34495e"
+            margin_bottom: 10
+        }
+
+        Container {
+            display: flex
+        flex_direction: row
+            gap: 20
+
+            Container {
+                display: flex
+    flex_direction: column
+                gap: 10
+
+                Text {
+                    text: "Native Renderer"
+                    font_size: 14
+                    font_weight: "bold"
+                    color: "#2c3e50"
+                }
+
+                EmbedView {
+                    provider: "native_renderer"
+                    source: "3d_scene.lua"
+                    width: 400
+                    height: 300
+                    border: "2px solid #2c3e50"
+                    border_radius: 6
+                }
+            }
+
+            Container {
+                display: flex
+    flex_direction: column
+                gap: 10
+
+                Text {
+                    text: "WASM Module"
+                    font_size: 14
+                    font_weight: "bold"
+                    color: "#7f8c8d"
+                }
+
+                EmbedView {
+                    provider: "wasm"
+                    source: "game_engine.wasm"
+                    width: 400
+                    height: 300
+                    border: "2px solid #7f8c8d"
+                    border_radius: 6
+                }
+            }
+        }
+    }
+
+    # Controls Reference
+    Container {
+        display: flex
+    flex_direction: column
+        gap: 15
+        margin_top: 30
+        padding: 20
+        background_color: "#ecf0f1"
+        border_radius: 12
+
+        Text {
+            text: "🎯 Universal Controls Reference"
+            font_size: 18
+            font_weight: "bold"
+            color: "#2c3e50"
+            text_align: "center"
+            margin_bottom: 15
+        }
+
+        Container {
+            display: flex
+        flex_direction: row
+            gap: 30
+
+            Container {
+                display: flex
+    flex_direction: column
+                gap: 5
+
+                Text {
+                    text: "Gaming Controls"
+                    font_size: 14
+                    font_weight: "bold"
+                    color: "#e74c3c"
+                }
+
+                Text {
+                    text: "A/Z = Action A"
+                    font_size: 11
+                    color: "#34495e"
+                }
+
+                Text {
+                    text: "S/X = Action B"
+                    font_size: 11
+                    color: "#34495e"
+                }
+
+                Text {
+                    text: "Arrow Keys = D-pad/Movement"
+                    font_size: 11
+                    color: "#34495e"
+                }
+
+                Text {
+                    text: "Enter = Start/Pause"
+                    font_size: 11
+                    color: "#34495e"
+                }
+            }
+
+            Container {
+                display: flex
+    flex_direction: column
+                gap: 5
+
+                Text {
+                    text: "Media Controls"
+                    font_size: 14
+                    font_weight: "bold"
+                    color: "#3498db"
+                }
+
+                Text {
+                    text: "Space = Play/Pause"
+                    font_size: 11
+                    color: "#34495e"
+                }
+
+                Text {
+                    text: "Left/Right = Seek/Navigate"
+                    font_size: 11
+                    color: "#34495e"
+                }
+
+                Text {
+                    text: "+/- = Zoom/Volume"
+                    font_size: 11
+                    color: "#34495e"
+                }
+
+                Text {
+                    text: "M = Mute, F = Fullscreen"
+                    font_size: 11
+                    color: "#34495e"
+                }
+            }
+
+            Container {
+                display: flex
+    flex_direction: column
+                gap: 5
+
+                Text {
+                    text: "Document Controls"
+                    font_size: 14
+                    font_weight: "bold"
+                    color: "#e67e22"
+                }
+
+                Text {
+                    text: "PageUp/Down = Pages"
+                    font_size: 11
+                    color: "#34495e"
+                }
+
+                Text {
+                    text: "Home/End = First/Last"
+                    font_size: 11
+                    color: "#34495e"
+                }
+
+                Text {
+                    text: "1-4 = Fit modes"
+                    font_size: 11
+                    color: "#34495e"
+                }
+
+                Text {
+                    text: "Up/Down = Scroll"
+                    font_size: 11
+                    color: "#34495e"
+                }
+            }
+        }
+    }
+}

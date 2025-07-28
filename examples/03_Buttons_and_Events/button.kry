@@ -1,0 +1,34 @@
+style "base" {
+    background_color: "#191919FF"
+    text_color: "#FF9900FF"
+    border_color: "#00AAFFFF"
+    border_width: 1
+}
+
+@function "lua" handleButtonClick() {
+    print("🎯 Button clicked! Hello from Lua script!")
+}
+
+App {
+    window_width: 600
+    window_height: 400
+    window_title: "Interactive Button Demo"
+    resizable: true
+    keep_aspect_ratio: false 
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    style: "base"
+
+    Button {
+        width: 150
+        height: 50
+
+        text: "Click Me!"
+        text_alignment: center
+        background_color: "#404080FF"
+        border_color: "#0099FFFF"
+        onClick: "handleButtonClick"
+    }
+}

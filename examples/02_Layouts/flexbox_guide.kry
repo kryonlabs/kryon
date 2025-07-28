@@ -1,0 +1,470 @@
+// Layout System Documentation Example
+# Complete guide to Flexbox layouts in Kryon
+
+App {
+    window_title: "Layout System - Flexbox Complete Guide"
+    window_width: 800
+    window_height: 900
+    background_color: "#F8F9FAFF"
+    
+    Container {
+        display: flex
+        flex_direction: column
+        align_items: start
+        padding: 30
+        gap: 25
+        
+        Text {
+            text: "Flexbox Layout Complete Guide"
+            font_size: 24
+            text_color: "#212529FF"
+            text_alignment: center
+        }
+        
+        # Column Layouts
+        Container {
+            display: flex
+            flex_direction: column
+            align_items: start
+            background_color: "#FFFFFFFF"
+            border_radius: 8
+            padding: 20
+            gap: 15
+            
+            Text {
+                text: "Column Layouts"
+                font_size: 18
+                text_color: "#495057FF"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                align_items: start
+                gap: 20
+                
+                // Column Start
+                Container {
+                    display: flex
+                    flex_direction: column
+                    align_items: start
+                    background_color: "#E3F2FDFF"
+                    border_radius: 6
+                    padding: 15
+                    width: 180
+                    height: 200
+                    gap: 8
+                    
+                    Text {
+                        text: "column start"
+                        font_size: 14
+                        text_color: "#1976D2FF"
+                        text_alignment: center
+                    }
+                    
+                    Container {
+                        background_color: "#2196F3FF"
+                        width: 60
+                        height: 30
+                        border_radius: 4
+                    }
+                    
+                    Container {
+                        background_color: "#2196F3FF"
+                        width: 80
+                        height: 30
+                        border_radius: 4
+                    }
+                    
+                    Container {
+                        background_color: "#2196F3FF"
+                        width: 70
+                        height: 30
+                        border_radius: 4
+                    }
+                }
+                
+                // Column Center
+                Container {
+                    display: flex
+                    flex_direction: column
+                    align_items: center
+                    background_color: "#E8F5E8FF"
+                    border_radius: 6
+                    padding: 15
+                    width: 180
+                    height: 200
+                    gap: 8
+                    
+                    Text {
+                        text: "column center"
+                        font_size: 14
+                        text_color: "#388E3CFF"
+                        text_alignment: center
+                    }
+                    
+                    Container {
+                        background_color: "#4CAF50FF"
+                        width: 60
+                        height: 30
+                        border_radius: 4
+                    }
+                    
+                    Container {
+                        background_color: "#4CAF50FF"
+                        width: 80
+                        height: 30
+                        border_radius: 4
+                    }
+                    
+                    Container {
+                        background_color: "#4CAF50FF"
+                        width: 70
+                        height: 30
+                        border_radius: 4
+                    }
+                }
+                
+                // Column End
+                Container {
+                    display: flex
+                    flex_direction: column
+                    align_items: end
+                    background_color: "#FFF3E0FF"
+                    border_radius: 6
+                    padding: 15
+                    width: 180
+                    height: 200
+                    gap: 8
+                    
+                    Text {
+                        text: "column end"
+                        font_size: 14
+                        text_color: "#F57C00FF"
+                        text_alignment: center
+                    }
+                    
+                    Container {
+                        background_color: "#FF9800FF"
+                        width: 60
+                        height: 30
+                        border_radius: 4
+                    }
+                    
+                    Container {
+                        background_color: "#FF9800FF"
+                        width: 80
+                        height: 30
+                        border_radius: 4
+                    }
+                    
+                    Container {
+                        background_color: "#FF9800FF"
+                        width: 70
+                        height: 30
+                        border_radius: 4
+                    }
+                }
+            }
+        }
+        
+        // Row Layouts
+        Container {
+            display: flex
+            flex_direction: column
+            align_items: start
+            background_color: "#FFFFFFFF"
+            border_radius: 8
+            padding: 20
+            gap: 15
+            
+            Text {
+                text: "Row Layouts"
+                font_size: 18
+                text_color: "#495057FF"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: column
+                align_items: start
+                gap: 15
+                
+                // Row Start
+                Container {
+                    display: flex
+                    flex_direction: column
+                    align_items: start
+                    background_color: "#FCE4ECFF"
+                    border_radius: 6
+                    padding: 15
+                    gap: 8
+                    width: 630
+                    
+                    Text {
+                        text: "row start"
+                        font_size: 14
+                        text_color: "#C2185BFF"
+                    }
+                    
+                    Container {
+                        display: flex
+                        flex_direction: row
+                        align_items: center
+                        justify_content: start
+                        gap: 8
+                        
+                        Container {
+                            background_color: "#E91E63FF"
+                            width: 50
+                            height: 30
+                            border_radius: 4
+                        }
+                        
+                        Container {
+                            background_color: "#E91E63FF"
+                            width: 70
+                            height: 50
+                            border_radius: 4
+                        }
+                        
+                        Container {
+                            background_color: "#E91E63FF"
+                            width: 60
+                            height: 40
+                            border_radius: 4
+                        }
+                    }
+                }
+                
+                // Row Center
+                Container {
+                    display: flex
+                    flex_direction: column
+                    align_items: start
+                    background_color: "#F3E5F5FF"
+                    border_radius: 6
+                    padding: 15
+                    gap: 8
+                    width: 630
+                    
+                    Text {
+                        text: "row center"
+                        font_size: 14
+                        text_color: "#7B1FA2FF"
+                    }
+                    
+                    Container {
+                        display: flex
+                        flex_direction: row
+                        align_items: center
+                        justify_content: center
+                        width: 600
+                        gap: 8
+                        
+                        Container {
+                            background_color: "#9C27B0FF"
+                            width: 50
+                            height: 30
+                            border_radius: 4
+                        }
+                        
+                        Container {
+                            background_color: "#9C27B0FF"
+                            width: 70
+                            height: 50
+                            border_radius: 4
+                        }
+                        
+                        Container {
+                            background_color: "#9C27B0FF"
+                            width: 60
+                            height: 40
+                            border_radius: 4
+                        }
+                    }
+                }
+                
+                // Row End
+                Container {
+                    display: flex
+                    flex_direction: column
+                    align_items: start
+                    background_color: "#FFEBEEFF"
+                    border_radius: 6
+                    padding: 15
+                    gap: 8
+                    width: 630
+                    
+                    Text {
+                        text: "row end"
+                        font_size: 14
+                        text_color: "#D32F2FFF"
+                    }
+                    
+                    Container {
+                        display: flex
+                        flex_direction: row
+                        align_items: center
+                        justify_content: end
+                        width: 600
+                        gap: 8
+                        
+                        Container {
+                            background_color: "#F44336FF"
+                            width: 50
+                            height: 30
+                            border_radius: 4
+                        }
+                        
+                        Container {
+                            background_color: "#F44336FF"
+                            width: 70
+                            height: 50
+                            border_radius: 4
+                        }
+                        
+                        Container {
+                            background_color: "#F44336FF"
+                            width: 60
+                            height: 40
+                            border_radius: 4
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Spacing and Gaps
+        Container {
+            display: flex
+            flex_direction: column
+            align_items: start
+            background_color: "#FFFFFFFF"
+            border_radius: 8
+            padding: 20
+            gap: 15
+            
+            Text {
+                text: "Spacing & Gaps"
+                font_size: 18
+                text_color: "#495057FF"
+            }
+            
+            Container {
+                display: flex
+                flex_direction: row
+                align_items: start
+                gap: 20
+                
+                Container {
+                    display: flex
+                    flex_direction: column
+                    align_items: start
+                    background_color: "#F5F5F5FF"
+                    border_radius: 6
+                    padding: 15
+                    gap: 4
+                    
+                    Text {
+                        text: "gap: 4"
+                        font_size: 12
+                    }
+                    
+                    Container {
+                        background_color: "#607D8BFF"
+                        width: 80
+                        height: 25
+                        border_radius: 3
+                    }
+                    
+                    Container {
+                        background_color: "#607D8BFF"
+                        width: 80
+                        height: 25
+                        border_radius: 3
+                    }
+                    
+                    Container {
+                        background_color: "#607D8BFF"
+                        width: 80
+                        height: 25
+                        border_radius: 3
+                    }
+                }
+                
+                Container {
+                    display: flex
+                    flex_direction: column
+                    align_items: start
+                    background_color: "#F5F5F5FF"
+                    border_radius: 6
+                    padding: 15
+                    gap: 12
+                    
+                    Text {
+                        text: "gap: 12"
+                        font_size: 12
+                    }
+                    
+                    Container {
+                        background_color: "#607D8BFF"
+                        width: 80
+                        height: 25
+                        border_radius: 3
+                    }
+                    
+                    Container {
+                        background_color: "#607D8BFF"
+                        width: 80
+                        height: 25
+                        border_radius: 3
+                    }
+                    
+                    Container {
+                        background_color: "#607D8BFF"
+                        width: 80
+                        height: 25
+                        border_radius: 3
+                    }
+                }
+                
+                Container {
+                    display: flex
+                    flex_direction: column
+                    align_items: start
+                    background_color: "#F5F5F5FF"
+                    border_radius: 6
+                    padding: 15
+                    gap: 20
+                    
+                    Text {
+                        text: "gap: 20"
+                        font_size: 12
+                    }
+                    
+                    Container {
+                        background_color: "#607D8BFF"
+                        width: 80
+                        height: 25
+                        border_radius: 3
+                    }
+                    
+                    Container {
+                        background_color: "#607D8BFF"
+                        width: 80
+                        height: 25
+                        border_radius: 3
+                    }
+                    
+                    Container {
+                        background_color: "#607D8BFF"
+                        width: 80
+                        height: 25
+                        border_radius: 3
+                    }
+                }
+            }
+        }
+    }
+}

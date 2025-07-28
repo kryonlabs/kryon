@@ -1,0 +1,162 @@
+# Simple Ternary Expression Test
+# Minimal example to test ternary operator functionality
+
+@variables {
+    test_value: 5
+    is_active: true
+    selected_color: "red"
+}
+
+style "container_style" {
+    display: flex
+    flex_direction: column
+    gap: 20
+    padding: 40
+    align_items: center
+    background_color: "#f0f0f0"
+}
+
+style "active_style" {
+    background_color: "#4CAF50"
+    text_color: "#ffffff"
+    padding: 20
+    border_radius: 8
+    font_size: 18
+    font_weight: 600
+}
+
+style "inactive_style" {
+    background_color: "#cccccc"
+    text_color: "#666666"
+    padding: 20
+    border_radius: 8
+    font_size: 18
+}
+
+style "red_style" {
+    background_color: "#ff0000"
+    text_color: "#ffffff"
+    padding: 15
+    border_radius: 5
+}
+
+style "blue_style" {
+    background_color: "#0000ff"
+    text_color: "#ffffff"
+    padding: 15
+    border_radius: 5
+}
+
+style "default_style" {
+    background_color: "#888888"
+    text_color: "#ffffff"
+    padding: 15
+    border_radius: 5
+}
+
+@function "lua" toggleActive() {
+    is_active = not is_active
+    print("[TERNARY_TEST] is_active toggled to:", is_active)
+}
+
+@function "lua" setColor(color) {
+    selected_color = color
+    print("[TERNARY_TEST] selected_color set to:", color)
+}
+
+@function "lua" incrementValue() {
+    test_value = test_value + 1
+    print("[TERNARY_TEST] test_value incremented to:", test_value)
+}
+
+App {
+    window_width: 500
+    window_height: 600
+    window_title: "Simple Ternary Test"
+    style: "container_style"
+    
+    Text {
+        text: "Ternary Expression Tests"
+        font_size: 24
+        font_weight: 700
+        margin_bottom: 20
+    }
+    
+    # Test 1: Boolean ternary
+    Container {
+        style: $is_active ? "active_style" : "inactive_style"
+        
+        Text {
+            text: $is_active ? "Status: ACTIVE" : "Status: INACTIVE"
+        }
+        
+        Button {
+            text: "Toggle Active"
+            onClick: "toggleActive"
+            margin_top: 10
+        }
+    }
+    
+    # Test 2: Numeric comparison ternary
+    Container {
+        background_color: $test_value > 7 ? "#4CAF50" : "#FF9800"
+        padding: 20
+        border_radius: 8
+        
+        Text {
+            text: "Value: $test_value"
+            text_color: "#ffffff"
+        }
+        
+        Text {
+            text: $test_value > 7 ? "High Value!" : "Low Value"
+            text_color: "#ffffff"
+        }
+        
+        Button {
+            text: "Increment"
+            onClick: "incrementValue"
+            margin_top: 10
+        }
+    }
+    
+    # Test 3: String comparison with nested ternary
+    Container {
+        style: $selected_color == "red" ? "red_style" : $selected_color == "blue" ? "blue_style" : "default_style"
+        
+        Text {
+            text: "Color: $selected_color"
+        }
+        
+        Container {
+            display: flex
+            flex_direction: row
+            gap: 10
+            margin_top: 10
+            
+            Button {
+                text: "Red"
+                onClick: setColor("red")
+            }
+            
+            Button {
+                text: "Blue"
+                onClick: setColor("blue")
+            }
+            
+            Button {
+                text: "Green"
+                onClick: setColor("green")
+            }
+        }
+    }
+    
+    # Test 4: Ternary in property values
+    Text {
+        text: "Dynamic Properties Test"
+        font_size: $test_value > 5 ? 20 : 14
+        font_weight: $is_active ? 700 : 400
+        text_color: $selected_color == "red" ? "#ff0000" : "#000000"
+        margin_top: 20
+    }
+}

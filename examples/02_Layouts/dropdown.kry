@@ -1,0 +1,78 @@
+# Simple Native Dropdown Example
+# Demonstrates the native Select element - no scripting required!
+
+style "app_style" {
+    background_color: "#F5F5F5"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    padding: 40
+}
+
+style "card" {
+    background_color: "#ffffff"
+    padding: 30
+    border_radius: 12
+    box_shadow: "0 4px 12px rgba(0,0,0,0.15)"
+    display: flex
+    flex_direction: column
+    gap: 24
+    width: 320
+    align_items: center
+}
+
+style "title" {
+    font_size: 28
+    font_weight: bold
+    text_color: "#2c3e50"
+    text_alignment: center
+    margin_bottom: 8
+}
+
+style "subtitle" {
+    font_size: 16
+    text_color: "#7f8c8d"
+    text_alignment: center
+    margin_bottom: 16
+}
+
+style "native_dropdown" {
+    background_color: "#ffffff"
+    border_width: 2
+    border_color: "#3498db"
+    border_radius: 8
+    padding: 12
+    font_size: 16
+    text_color: "#2c3e50"
+    width: 100%
+    height: 48
+}
+
+App {
+    window_width: 500
+    window_height: 400
+    window_title: "Native Dropdown - No Scripts Required!"
+    style: "app_style"
+    
+    Container {
+        style: "card"
+        
+        Text {
+            text: "Native Select Element"
+            style: "title"
+        }
+        
+        Text {
+            text: "Choose your favorite option below"
+            style: "subtitle"
+        }
+        
+        Select {
+            id: "favorite_option"
+            style: "native_dropdown"
+            placeholder: "Select your favorite..."
+            options: ["Documents", "Analytics", "Settings", "Profile", "Dashboard", "Reports"]
+        }
+    }
+}

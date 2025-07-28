@@ -1,0 +1,350 @@
+# Advanced Calculator Example
+# Demonstrates components, styles, scripting, and state management
+
+@variables {
+    app_title: "Kryon Calculator"
+    primary_color: "#007BFF"
+    secondary_color: "#6C757D"
+    success_color: "#28A745"
+    danger_color: "#DC3545"
+    dark_color: "#343A40"
+    light_color: "#F8F9FA"
+    button_size: 60
+    display_height: 80
+}
+
+@script "lua" {
+    -- Calculator state
+    local calc = {
+        display = "0",
+        previous = nil,
+        operation = nil,
+        waiting_for_operand = false
+    }
+    
+    function updateDisplay()
+        local display = kryon.getElementById("display")
+        if display then
+            display.text = calc.display
+        end
+    end
+    
+    function inputNumber(num)
+        if calc.waiting_for_operand then
+            calc.display = tostring(num)
+            calc.waiting_for_operand = false
+        else
+            calc.display = calc.display == "0" and tostring(num) or calc.display .. num
+        end
+        updateDisplay()
+    end
+    
+    function inputOperation(op)
+        local input_value = tonumber(calc.display)
+        
+        if calc.previous == nil then
+            calc.previous = input_value
+        elseif calc.operation then
+            local current_value = calc.previous or 0
+            local new_value = calculate(current_value, input_value, calc.operation)
+            
+            calc.display = tostring(new_value)
+            calc.previous = new_value
+            updateDisplay()
+        end
+        
+        calc.waiting_for_operand = true
+        calc.operation = op
+    end
+    
+    function calculate(first, second, operation)
+        if operation == "+" then
+            return first + second
+        elseif operation == "-" then
+            return first - second
+        elseif operation == "*" then
+            return first * second
+        elseif operation == "/" then
+            return second ~= 0 and first / second or 0
+        end
+        return second
+    end
+    
+    function performCalculation()
+        local input_value = tonumber(calc.display)
+        
+        if calc.previous ~= nil and calc.operation then
+            local new_value = calculate(calc.previous, input_value, calc.operation)
+            calc.display = tostring(new_value)
+            calc.previous = nil
+            calc.operation = nil
+            calc.waiting_for_operand = true
+            updateDisplay()
+        end
+    end
+    
+    function clearCalculator()
+        calc.display = "0"
+        calc.previous = nil
+        calc.operation = nil
+        calc.waiting_for_operand = false
+        updateDisplay()
+    end
+    
+    function clearEntry()
+        calc.display = "0"
+        updateDisplay()
+    end
+    
+    -- Initialize
+    updateDisplay()
+}
+
+style "calc_button" {
+    width: $button_size
+    height: $button_size
+    border_radius: 8
+    font_size: 18
+    border_width: 1
+    border_color: "#DEE2E6"
+}
+
+style "number_button" {
+    extends: "calc_button"
+    background_color: "#FFFFFF"
+    text_color: $dark_color
+}
+
+style "operation_button" {
+    extends: "calc_button"
+    background_color: $primary_color
+    text_color: "#FFFFFF"
+}
+
+style "function_button" {
+    extends: "calc_button"
+    background_color: $secondary_color
+    text_color: "#FFFFFF"
+}
+
+style "equals_button" {
+    extends: "calc_button"
+    background_color: $success_color
+    text_color: "#FFFFFF"
+}
+
+style "clear_button" {
+    extends: "calc_button"
+    background_color: $danger_color
+    text_color: "#FFFFFF"
+}
+
+Define CalculatorButton {
+    Properties {
+        text: String = "0"
+        style_name: String = "number_button"
+        action: String = ""
+    }
+    
+    Button {
+        text: $text
+        style: $style_name
+        onClick: $action
+    }
+}
+
+App {
+    window_title: $app_title
+    window_width: 320
+    window_height: 520
+    background_color: $light_color
+    resizable: false
+    
+    Container {
+        display: flex
+        flex_direction: column
+        padding: 16
+        gap: 12
+        
+        # Display
+        Container {
+            width: 288
+            height: $display_height
+            background_color: "#000000"
+            border_radius: 8
+            padding: 16
+            
+            Text {
+                id: "display"
+                text: "0"
+                font_size: 32
+                font_weight: "bold"
+                text_color: "#00FF00"
+                text_alignment: "end"
+                width: 256
+                height: 48
+            }
+        }
+        
+        # Button Grid
+        Container {
+            display: flex
+        flex_direction: column
+            gap: 8
+            
+            # Row 1: Functions
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 8
+                
+                CalculatorButton {
+                    text: "C"
+                    style_name: "clear_button"
+                    action: "clearCalculator"
+                }
+                
+                CalculatorButton {
+                    text: "CE"
+                    style_name: "function_button"
+                    action: "clearEntry"
+                }
+                
+                CalculatorButton {
+                    text: "±"
+                    style_name: "function_button"
+                    action: "function() inputNumber('-') end"
+                }
+                
+                CalculatorButton {
+                    text: "÷"
+                    style_name: "operation_button"
+                    action: "function() inputOperation('/') end"
+                }
+            }
+            
+            # Row 2: 7, 8, 9, ×
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 8
+                
+                CalculatorButton {
+                    text: "7"
+                    action: "function() inputNumber(7) end"
+                }
+                
+                CalculatorButton {
+                    text: "8"
+                    action: "function() inputNumber(8) end"
+                }
+                
+                CalculatorButton {
+                    text: "9"
+                    action: "function() inputNumber(9) end"
+                }
+                
+                CalculatorButton {
+                    text: "×"
+                    style_name: "operation_button"
+                    action: "function() inputOperation('*') end"
+                }
+            }
+            
+            # Row 3: 4, 5, 6, −
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 8
+                
+                CalculatorButton {
+                    text: "4"
+                    action: "function() inputNumber(4) end"
+                }
+                
+                CalculatorButton {
+                    text: "5"
+                    action: "function() inputNumber(5) end"
+                }
+                
+                CalculatorButton {
+                    text: "6"
+                    action: "function() inputNumber(6) end"
+                }
+                
+                CalculatorButton {
+                    text: "−"
+                    style_name: "operation_button"
+                    action: "function() inputOperation('-') end"
+                }
+            }
+            
+            # Row 4: 1, 2, 3, +
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 8
+                
+                CalculatorButton {
+                    text: "1"
+                    action: "function() inputNumber(1) end"
+                }
+                
+                CalculatorButton {
+                    text: "2"
+                    action: "function() inputNumber(2) end"
+                }
+                
+                CalculatorButton {
+                    text: "3"
+                    action: "function() inputNumber(3) end"
+                }
+                
+                CalculatorButton {
+                    text: "+"
+                    style_name: "operation_button"
+                    action: "function() inputOperation('+') end"
+                }
+            }
+            
+            # Row 5: 0, ., =
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 8
+                
+                Button {
+                    text: "0"
+                    width: 128  # Double width
+                    height: $button_size
+                    style: "number_button"
+                    onClick: "function() inputNumber(0) end"
+                }
+                
+                CalculatorButton {
+                    text: "."
+                    action: "function() inputNumber('.') end"
+                }
+                
+                CalculatorButton {
+                    text: "="
+                    style_name: "equals_button"
+                    action: "performCalculation"
+                }
+            }
+        }
+        
+        # Status bar
+        Container {
+            display: flex
+            flex_direction: row
+            align_items: center
+            
+            Text {
+                text: "Kryon Calculator v1.0"
+                font_size: 12
+                text_color: $secondary_color
+            }
+        }
+    }
+}

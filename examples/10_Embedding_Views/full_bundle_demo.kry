@@ -1,0 +1,149 @@
+App {
+    window_width: 1200
+    window_height: 800
+    window_title: "Full Bundle Demo - Uses Everything"
+    
+    Container {
+        padding: 20
+        gap: 15
+        
+        Text {
+            text: "Full Bundle Demo - Uses Multiple Providers"
+            font_size: 18
+            font_weight: "bold"
+        }
+        
+        Text {
+            text: "This app uses many different providers - bundle will be larger but still optimized"
+            font_size: 14
+            color: "#666666"
+            margin_bottom: 20
+        }
+        
+        Container {
+            flex_direction: "row"
+            gap: 15
+            
+            // Multiple EmbedView types used
+            EmbedView {
+                id: "webview"
+                type: "webview"
+                source: "https://example.com"
+                width: 280
+                height: 180
+            }
+            
+            EmbedView {
+                id: "wasm_module"
+                type: "wasm"
+                source: "demo.wasm"
+                width: 280
+                height: 180
+            }
+            
+            EmbedView {
+                id: "native_renderer"
+                type: "native_renderer"
+                source: "render_3d"
+                width: 280
+                height: 180
+                config: {
+                    "backend": "raylib"
+                }
+            }
+            
+            EmbedView {
+                id: "gba_emulator"
+                type: "gba"
+                source: "game.gba"
+                width: 280
+                height: 180
+            }
+        }
+        
+        Container {
+            flex_direction: "row"
+            gap: 15
+            
+            // Canvas usage
+            Canvas {
+                id: "canvas_2d"
+                width: 280
+                height: 180
+                draw_script: "draw_2d_scene"
+            }
+            
+            Canvas {
+                id: "canvas_3d"
+                width: 280
+                height: 180
+                draw_script: "draw_3d_scene"
+                config: {
+                    "mode": "3d"
+                }
+            }
+            
+            // More EmbedView types
+            EmbedView {
+                id: "code_editor"
+                type: "code_editor"
+                source: "main.rs"
+                width: 280
+                height: 180
+            }
+            
+            EmbedView {
+                id: "terminal"
+                type: "terminal"
+                source: "/bin/bash"
+                width: 280
+                height: 180
+            }
+        }
+        
+        Text {
+            text: "Bundle Analysis:"
+            font_size: 16
+            font_weight: "bold"
+            margin_top: 20
+        }
+        
+        Text {
+            text: "✅ Included: WebView (~150KB), WASM (~200KB), Native renderer (~100KB), GBA emulator (~500KB), Code editor (~300KB), Terminal (~100KB), Canvas API (~30KB), Lua engine (~150KB)"
+            font_size: 12
+            color: "#006600"
+        }
+        
+        Text {
+            text: "❌ Excluded: DOS emulator (~800KB), UXN VM (~50KB), Model viewer (~400KB), Python engine (~3MB), JavaScript engine (~2MB)"
+            font_size: 12
+            color: "#cc0000"
+        }
+        
+        Text {
+            text: "💾 Bundle size: ~1.5MB instead of ~6.9MB (78% smaller!)"
+            font_size: 12
+            color: "#0066cc"
+            font_weight: "bold"
+        }
+    }
+}
+
+@script "lua" {
+    function draw_2d_scene()
+        drawRect(20, 20, 200, 100, {r = 0.8, g = 0.2, b = 0.2, a = 1.0})
+        drawText("2D Canvas", 30, 30, 16, {r = 1.0, g = 1.0, b = 1.0, a = 1.0})
+    end
+    
+    function draw_3d_scene()
+        -- This would use 3D Canvas API
+        drawRect(20, 20, 200, 100, {r = 0.2, g = 0.8, b = 0.2, a = 1.0})
+        drawText("3D Canvas", 30, 30, 16, {r = 1.0, g = 1.0, b = 1.0, a = 1.0})
+    end
+    
+    function render_3d()
+        -- Native renderer script
+        drawRect(20, 20, 200, 100, {r = 0.2, g = 0.2, b = 0.8, a = 1.0})
+        drawText("Native 3D", 30, 30, 16, {r = 1.0, g = 1.0, b = 1.0, a = 1.0})
+    end
+}

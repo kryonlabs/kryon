@@ -1,0 +1,83 @@
+App {
+    window_width: 800
+    window_height: 600
+    window_title: "Bundle Optimization Demo"
+    
+    Container {
+        padding: 20
+        gap: 20
+        
+        Text {
+            text: "Bundle Optimization Demo"
+            font_size: 18
+            font_weight: "bold"
+        }
+        
+        Text {
+            text: "This app only uses WebView and Canvas - other providers should be excluded from bundle"
+            font_size: 14
+            color: "#666666"
+            margin_bottom: 20
+        }
+        
+        Container {
+            flex_direction: "row"
+            gap: 20
+            
+            // Only WebView is used - no WASM, GBA, DOS, etc.
+            EmbedView {
+                id: "web_content"
+                type: "webview"
+                source: "https://example.com"
+                width: 350
+                height: 200
+                
+                config: {
+                    "javascript_enabled": true
+                }
+            }
+            
+            // Only Canvas is used - with simple drawing
+            Canvas {
+                id: "simple_canvas"
+                width: 350
+                height: 200
+                draw_script: "simple_draw"
+            }
+        }
+        
+        Text {
+            text: "Bundle Analysis:"
+            font_size: 16
+            font_weight: "bold"
+            margin_top: 20
+        }
+        
+        Text {
+            text: "✅ Included: WebView provider (~150KB), Canvas drawing API (~30KB), Lua engine (~150KB)"
+            font_size: 12
+            color: "#006600"
+        }
+        
+        Text {
+            text: "❌ Excluded: WASM provider (~200KB), GBA emulator (~500KB), DOS emulator (~800KB), Python engine (~3MB), JavaScript engine (~2MB)"
+            font_size: 12
+            color: "#cc0000"
+        }
+        
+        Text {
+            text: "💾 Bundle size: ~330KB instead of ~6.7MB (95% smaller!)"
+            font_size: 12
+            color: "#0066cc"
+            font_weight: "bold"
+        }
+    }
+}
+
+@script "lua" {
+    function simple_draw()
+        -- Simple canvas drawing - only requires basic Canvas API
+        drawRect(50, 50, 100, 80, {r = 0.2, g = 0.6, b = 1.0, a = 1.0})
+        drawText("Canvas Demo", 70, 70, 14, {r = 1.0, g = 1.0, b = 1.0, a = 1.0})
+    end
+}

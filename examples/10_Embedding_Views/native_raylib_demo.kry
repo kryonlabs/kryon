@@ -1,0 +1,135 @@
+style "app_base" {
+    background_color: "#191919FF"
+    text_color: "#FFFFFFFF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    gap: 20
+}
+
+style "main_container" {
+    background_color: "#2C2C2CFF"
+    border_width: 2
+    border_color: "#444444FF"
+    border_radius: 8
+    padding: 20
+    display: flex
+    flex_direction: column
+    align_items: center
+    gap: 20
+}
+
+style "native_view" {
+    background_color: "#1E1E1EFF"
+    border_width: 2
+    border_color: "#666666FF"
+    border_radius: 4
+    width: 400
+    height: 300
+}
+
+style "button_style" {
+    background_color: "#0066CCFF"
+    text_color: "#FFFFFFFF"
+    font_size: 16
+    text_alignment: center
+    border_width: 0
+    border_radius: 6
+    width: 100
+    height: 40
+    
+    &:hover {
+        background_color: "#0077DDFF"
+    }
+    
+    &:active {
+        background_color: "#004499FF"
+    }
+}
+
+App {
+    window_width: 600
+    window_height: 500
+    window_title: "Native Raylib Demo"
+    resizable: true
+    keep_aspect_ratio: false
+    style: "app_base"
+
+    Container {
+        id: "main_container"
+        style: "main_container"
+
+        Text {
+            id: "title"
+            text: "Native Raylib Renderer Demo"
+            font_size: 24
+            text_color: "#FFFFFFFF"
+        }
+
+        # This is the key element - EmbedView with native_renderer type
+        EmbedView {
+            id: "native_view"
+            style: "native_view"
+            type: "native_renderer"
+            source: "render_raylib_scene"
+            config: {
+                "backend": "raylib",
+                "vsync": true,
+                "target_fps": 60
+            }
+        }
+
+        Button {
+            id: "demo_button"
+            text: "Click me!"
+            style: "button_style"
+            onClick: "on_button_click"
+        }
+    }
+}
+
+@function "lua" render_raylib_scene(rl_ctx) {
+    -- This function is called every frame for the NativeRendererView
+    
+    -- Begin drawing context
+    rl_ctx:BeginDrawing()
+    
+    -- Clear with a dark blue background
+    rl_ctx:ClearBackground(rl_ctx.colors.BLUE)
+    
+    -- Get the current time for animation
+    local time = rl_ctx:GetTime()
+    
+    -- Draw some animated content
+    local center_x, center_y = 200, 150
+    local radius = 50 + math.sin(time * 2) * 20
+    
+    -- Draw a pulsing circle (simulated with rectangle for now)
+    rl_ctx:DrawText("Native Raylib Content!", 50, 50, 20, rl_ctx.colors.WHITE)
+    rl_ctx:DrawText("Time: " .. string.format("%.2f", time), 50, 80, 16, rl_ctx.colors.YELLOW)
+    rl_ctx:DrawText("Pulsing animation:", 50, 100, 16, rl_ctx.colors.GREEN)
+    
+    -- Simple 3D cube demo
+    local cube_pos = rl_ctx:Vector3(0, 0, 0)
+    local camera_pos = rl_ctx:Vector3(0, 10, 10)
+    local camera_target = rl_ctx:Vector3(0, 0, 0)
+    local camera_up = rl_ctx:Vector3(0, 1, 0)
+    
+    -- Begin 3D mode
+    rl_ctx:BeginMode3D(camera_pos, camera_target, camera_up, 45.0, 0.1, 1000.0)
+    
+    -- Draw rotating cube
+    rl_ctx:DrawCube(cube_pos, 2.0, 2.0, 2.0, rl_ctx.colors.RED)
+    rl_ctx:DrawCubeWires(cube_pos, 2.0, 2.0, 2.0, rl_ctx.colors.YELLOW)
+    
+    -- End 3D mode
+    rl_ctx:EndMode3D()
+    
+    -- End drawing context
+    rl_ctx:EndDrawing()
+}
+
+@function "lua" on_button_click() {
+    print("Button clicked! This shows regular Kryon UI working alongside native rendering")
+}

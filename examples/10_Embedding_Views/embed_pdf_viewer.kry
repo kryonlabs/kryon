@@ -1,0 +1,160 @@
+@metadata {
+    title: "PDF Document Viewer Demo"
+    author: "KryonLabs"
+    description: "Demonstrates PDF viewing with navigation and zoom controls"
+}
+
+Container {
+    display: flex
+    flex_direction: column
+    gap: 20
+    margin: 20
+
+    Text {
+        text: "📄 PDF Document Viewer"
+        font_size: 24
+        font_weight: "bold"
+        color: "#c0392b"
+        text_align: "center"
+        margin_bottom: 10
+    }
+
+    Text {
+        text: "View PDF documents with zoom, navigation, and multiple fit modes"
+        font_size: 14
+        color: "#7f8c8d"
+        text_align: "center"
+        margin_bottom: 20
+    }
+
+    Container {
+        display: flex
+        flex_direction: row
+        gap: 20
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "Technical Manual"
+                font_size: 16
+                font_weight: "bold"
+                color: "#2c3e50"
+            }
+
+            EmbedView {
+                provider: "pdf"
+                source: "technical_manual.pdf"
+                zoom_level: 1.0
+                fit_mode: "width"
+                width: 400
+                height: 500
+                border: "1px solid #bdc3c7"
+                border_radius: 4
+            }
+
+            Text {
+                text: "Right/Space = Next page, Left = Previous, +/- = Zoom"
+                font_size: 10
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "Research Paper"
+                font_size: 16
+                font_weight: "bold"
+                color: "#27ae60"
+            }
+
+            EmbedView {
+                provider: "pdf"
+                source: "research_paper.pdf"
+                zoom_level: 1.2
+                fit_mode: "page"
+                width: 350
+                height: 450
+                border: "1px solid #27ae60"
+                border_radius: 4
+            }
+
+            Text {
+                text: "1-4 keys = Fit modes (Actual/Width/Page/Visible)"
+                font_size: 10
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "User Guide"
+                font_size: 16
+                font_weight: "bold"
+                color: "#e67e22"
+            }
+
+            EmbedView {
+                provider: "pdf"
+                source: "user_guide.pdf"
+                zoom_level: 0.8
+                fit_mode: "visible"
+                width: 300
+                height: 400
+                border: "1px solid #e67e22"
+                border_radius: 4
+            }
+
+            Text {
+                text: "Home/End = First/Last page, Up/Down = Scroll"
+                font_size: 10
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+    }
+
+    Container {
+        display: flex
+    flex_direction: column
+        gap: 10
+        margin_top: 20
+
+        Text {
+            text: "Large Document Preview"
+            font_size: 16
+            font_weight: "bold"
+            color: "#8e44ad"
+        }
+
+        EmbedView {
+            provider: "pdf"
+            source: "large_document.pdf"
+            zoom_level: 1.0
+            fit_mode: "width"
+            width: 800
+            height: 300
+            border: "2px solid #8e44ad"
+            border_radius: 8
+        }
+
+        Text {
+            text: "Features: Vector graphics, font rendering, interactive navigation, multiple zoom modes"
+            font_size: 12
+            color: "#7f8c8d"
+            text_align: "center"
+        }
+    }
+}

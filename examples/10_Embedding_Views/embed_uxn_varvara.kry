@@ -1,0 +1,200 @@
+@metadata {
+    title: "UXN/Varvara Virtual Machine Demo"
+    author: "KryonLabs"
+    description: "Demonstrates UXN virtual machine with Varvara device interface"
+}
+
+Container {
+    display: flex
+    flex_direction: column
+    gap: 20
+    margin: 20
+
+    Text {
+        text: "🔮 UXN/Varvara Virtual Machine"
+        font_size: 24
+        font_weight: "bold"
+        color: "#8e44ad"
+        text_align: "center"
+        margin_bottom: 10
+    }
+
+    Text {
+        text: "Run UXN ROMs on the Varvara computer with stack-based programming"
+        font_size: 14
+        color: "#7f8c8d"
+        text_align: "center"
+        margin_bottom: 20
+    }
+
+    Container {
+        display: flex
+        flex_direction: row
+        gap: 20
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "Graphics Demo"
+                font_size: 16
+                font_weight: "bold"
+                color: "#e74c3c"
+            }
+
+            EmbedView {
+                provider: "uxn"
+                source: "graphics_demo.rom"
+                width: 512
+                height: 320
+                border: "2px solid #e74c3c"
+                border_radius: 8
+            }
+
+            Text {
+                text: "UXN graphics with sprite animation"
+                font_size: 12
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "Music Tracker"
+                font_size: 16
+                font_weight: "bold"
+                color: "#27ae60"
+            }
+
+            EmbedView {
+                provider: "uxn"
+                source: "tracker.uxn"
+                width: 512
+                height: 320
+                border: "2px solid #27ae60"
+                border_radius: 8
+            }
+
+            Text {
+                text: "UXN audio synthesis and sequencing"
+                font_size: 12
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+    }
+
+    Container {
+        display: flex
+        flex_direction: row
+        gap: 20
+        margin_top: 20
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "Calculator Tool"
+                font_size: 16
+                font_weight: "bold"
+                color: "#3498db"
+            }
+
+            EmbedView {
+                provider: "uxn"
+                source: "calculator.tal"
+                width: 400
+                height: 300
+                border: "2px solid #3498db"
+                border_radius: 8
+            }
+
+            Text {
+                text: "TAL source file compilation"
+                font_size: 12
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "Text Editor"
+                font_size: 16
+                font_weight: "bold"
+                color: "#f39c12"
+            }
+
+            EmbedView {
+                provider: "uxn"
+                source: "editor.rom"
+                width: 400
+                height: 300
+                border: "2px solid #f39c12"
+                border_radius: 8
+            }
+
+            Text {
+                text: "UXN-based text editing application"
+                font_size: 12
+                color: "#95a5a6"
+                text_align: "center"
+            }
+        }
+    }
+
+    Container {
+        display: flex
+    flex_direction: column
+        gap: 10
+        margin_top: 20
+        padding: 15
+        background_color: "#ecf0f1"
+        border_radius: 8
+
+        Text {
+            text: "About UXN/Varvara"
+            font_size: 16
+            font_weight: "bold"
+            color: "#2c3e50"
+            text_align: "center"
+        }
+
+        Text {
+            text: "• Stack-based virtual machine with 256x240 pixel display"
+            font_size: 12
+            color: "#34495e"
+        }
+
+        Text {
+            text: "• 16-device system interface (screen, mouse, keyboard, audio, etc.)"
+            font_size: 12
+            color: "#34495e"
+        }
+
+        Text {
+            text: "• TAL assembly language compilation support"
+            font_size: 12
+            color: "#34495e"
+        }
+
+        Text {
+            text: "• Minimal computing environment for creative applications"
+            font_size: 12
+            color: "#34495e"
+        }
+    }
+}

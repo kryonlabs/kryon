@@ -1,0 +1,46 @@
+App {
+    window_width: 800
+    window_height: 600
+    window_title: "Canvas with Script Test"
+    
+    Container {
+        Canvas {
+            id: "scripted_canvas"
+            width: 400
+            height: 300
+            draw_script: "draw_graphics"
+        }
+        
+        Text {
+            text: "Canvas with Lua Script Drawing"
+            font_size: 16
+        }
+    }
+}
+
+@script "lua" {
+    function draw_graphics()
+        -- Draw a blue rectangle
+        drawRect(50, 50, 100, 80, {r = 0.0, g = 0.5, b = 1.0, a = 1.0})
+        
+        -- Draw a red circle
+        drawCircle(200, 100, 30, {r = 1.0, g = 0.0, b = 0.0, a = 1.0})
+        
+        -- Draw a green line
+        drawLine(50, 200, 350, 200, {r = 0.0, g = 1.0, b = 0.0, a = 1.0}, 3)
+        
+        -- Draw some text
+        drawText("Hello Canvas!", 50, 220, 20, {r = 1.0, g = 1.0, b = 1.0, a = 1.0})
+        
+        -- Draw an ellipse
+        drawEllipse(300, 80, 40, 25, nil, {r = 1.0, g = 0.5, b = 0.0, a = 1.0}, 2)
+        
+        -- Draw a polygon (triangle)
+        local triangle = {
+            {x = 120, y = 250},
+            {x = 180, y = 250},
+            {x = 150, y = 200}
+        }
+        drawPolygon(triangle, {r = 0.8, g = 0.2, b = 0.8, a = 1.0})
+    end
+}

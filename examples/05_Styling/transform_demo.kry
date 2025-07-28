@@ -1,0 +1,133 @@
+App {
+    window_width: 800
+    window_height: 600
+    window_title: "Transform Demo"
+    
+    // Original container (no transform)
+    Container {
+        pos_x: 50
+        pos_y: 50
+        width: 100
+        height: 50
+        background_color: "#0088FFFF"
+        
+        Text {
+            text: "Original"
+            color: "#FFFFFF"
+            font_size: 12
+        }
+    }
+    
+    // Scaled container
+    Container {
+        pos_x: 200
+        pos_y: 50
+        width: 100
+        height: 50
+        background_color: "#FF0000FF"
+        transform: {
+            scale: 1.5
+        }
+        
+        Text {
+            text: "Scaled"
+            color: "#FFFFFF"
+            font_size: 12
+        }
+    }
+    
+    // Rotated container
+    Container {
+        pos_x: 400
+        pos_y: 50
+        width: 100
+        height: 50
+        background_color: "#00FF00FF"
+        transform: {
+            rotate: 45deg
+        }
+        
+        Text {
+            text: "Rotated"
+            color: "#FFFFFF"
+            font_size: 12
+        }
+    }
+    
+    // Translated container
+    Container {
+        pos_x: 50
+        pos_y: 150
+        width: 100
+        height: 50
+        background_color: "#FF00FFFF"
+        transform: {
+            translate_x: 50
+            translate_y: 20
+        }
+        
+        Text {
+            text: "Translated"
+            color: "#FFFFFF"
+            font_size: 12
+        }
+    }
+    
+    // Combined transforms
+    Container {
+        pos_x: 300
+        pos_y: 200
+        width: 100
+        height: 50
+        background_color: "#FFFF00FF"
+        transform: {
+            scale: 1.2
+            rotate: 30deg
+            translate_x: 25
+            translate_y: 10
+        }
+        
+        Text {
+            text: "Combined"
+            color: "#000000"
+            font_size: 12
+        }
+    }
+    
+    // Different scale values
+    Container {
+        pos_x: 50
+        pos_y: 300
+        width: 80
+        height: 40
+        background_color: "#FF8000FF"
+        transform: {
+            scale_x: 0.5
+            scale_y: 2.0
+        }
+        
+        Text {
+            text: "Scale X/Y"
+            color: "#FFFFFF"
+            font_size: 10
+        }
+    }
+    
+    // Rotation with different units
+    Container {
+        pos_x: 200
+        pos_y: 350
+        width: 60
+        height: 60
+        background_color: "#8000FFFF"
+        transform: {
+            rotate: 0.5turn
+        }
+        
+        Text {
+            text: "Turns"
+            color: "#FFFFFF"
+            font_size: 10
+        }
+    }
+}

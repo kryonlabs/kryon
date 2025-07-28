@@ -1,0 +1,163 @@
+App {
+    window_width: 800
+    window_height: 600
+    window_title: "Unified Native Renderer via EmbedView"
+    
+    Container {
+        padding: 20
+        gap: 20
+        
+        Text {
+            text: "Native Renderer Examples (Unified via EmbedView)"
+            font_size: 18
+            font_weight: "bold"
+        }
+        
+        Text {
+            text: "All native rendering is now handled through EmbedView with type: 'native_renderer'"
+            font_size: 14
+            color: "#666666"
+            margin_bottom: 20
+        }
+        
+        Container {
+            flex_direction: "row"
+            gap: 20
+            
+            // Raylib 3D Scene
+            Container {
+                border_width: 1
+                border_color: "#cccccc"
+                border_radius: 8
+                padding: 10
+                
+                Text {
+                    text: "Raylib 3D Scene"
+                    font_size: 14
+                    font_weight: "bold"
+                    margin_bottom: 10
+                }
+                
+                EmbedView {
+                    id: "raylib_3d_scene"
+                    type: "native_renderer"
+                    source: "render_3d_scene"
+                    width: 350
+                    height: 250
+                    
+                    config: {
+                        "backend": "raylib",
+                        "enable_3d": true,
+                        "camera_mode": "free",
+                        "vsync": true
+                    }
+                }
+            }
+            
+            // Custom Graphics Engine
+            Container {
+                border_width: 1
+                border_color: "#cccccc"
+                border_radius: 8
+                padding: 10
+                
+                Text {
+                    text: "Custom Graphics"
+                    font_size: 14
+                    font_weight: "bold"
+                    margin_bottom: 10
+                }
+                
+                EmbedView {
+                    id: "custom_graphics"
+                    type: "native_renderer"
+                    source: "custom_particle_system"
+                    width: 350
+                    height: 250
+                    
+                    config: {
+                        "backend": "opengl",
+                        "particle_count": 1000,
+                        "physics_enabled": true
+                    }
+                }
+            }
+        }
+        
+        // Full-width native rendering example
+        Container {
+            border_width: 1
+            border_color: "#cccccc"
+            border_radius: 8
+            padding: 10
+            
+            Text {
+                text: "Full-width Native Renderer"
+                font_size: 14
+                font_weight: "bold"
+                margin_bottom: 10
+            }
+            
+            EmbedView {
+                id: "full_width_renderer"
+                type: "native_renderer"
+                source: "render_data_visualization"
+                width: 720
+                height: 200
+                
+                config: {
+                    "backend": "skia",
+                    "data_source": "sales_data.json",
+                    "chart_type": "line",
+                    "animation_enabled": true
+                }
+            }
+        }
+    }
+}
+
+@script "lua" {
+    -- 3D scene rendering function
+    function render_3d_scene(ctx)
+        -- Initialize 3D camera
+        local camera_pos = ctx.Vector3(4.0, 2.0, 4.0)
+        local camera_target = ctx.Vector3(0.0, 0.0, 0.0)
+        local camera_up = ctx.Vector3(0.0, 1.0, 0.0)
+        
+        -- Clear background
+        ctx.ClearBackground(ctx.colors.RAYWHITE)
+        
+        -- Begin 3D mode
+        ctx.BeginMode3D(camera_pos, camera_target, camera_up, 45.0, 0.1, 100.0)
+        
+        -- Draw a rotating cube
+        local time = ctx.GetTime()
+        local cube_pos = ctx.Vector3(0.0, 0.0, 0.0)
+        ctx.DrawCube(cube_pos, 2.0, 2.0, 2.0, ctx.colors.RED)
+        ctx.DrawCubeWires(cube_pos, 2.0, 2.0, 2.0, ctx.colors.BLUE)
+        
+        -- End 3D mode
+        ctx.EndMode3D()
+        
+        -- Draw UI overlay
+        ctx.DrawText("3D Scene", 10, 10, 20, ctx.colors.BLACK)
+        ctx.DrawText("Press SPACE to interact", 10, 40, 12, ctx.colors.GRAY)
+    end
+    
+    -- Custom particle system
+    function custom_particle_system(ctx)
+        -- This would implement a custom particle system
+        -- For now, just draw a placeholder
+        ctx.ClearBackground(ctx.colors.BLACK)
+        ctx.DrawText("Custom Particle System", 10, 10, 16, ctx.colors.WHITE)
+        ctx.DrawText("Coming soon...", 10, 40, 12, ctx.colors.GRAY)
+    end
+    
+    -- Data visualization renderer
+    function render_data_visualization(ctx)
+        -- This would render charts and graphs
+        ctx.ClearBackground(ctx.colors.RAYWHITE)
+        ctx.DrawText("Data Visualization", 10, 10, 16, ctx.colors.BLACK)
+        ctx.DrawText("Sales data chart would render here", 10, 40, 12, ctx.colors.GRAY)
+    end
+}

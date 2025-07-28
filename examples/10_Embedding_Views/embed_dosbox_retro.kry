@@ -1,0 +1,127 @@
+@metadata {
+    title: "DOSBox Retro Gaming Demo"
+    author: "KryonLabs"
+    description: "Demonstrates DOS game emulation for retro PC gaming"
+}
+
+Container {
+    display: flex
+    flex_direction: column
+    gap: 20
+    margin: 20
+
+    Text {
+        text: "💾 DOSBox Retro Gaming"
+        font_size: 24
+        font_weight: "bold"
+        color: "#2c3e50"
+        text_align: "center"
+        margin_bottom: 10
+    }
+
+    Text {
+        text: "Experience classic DOS games with authentic x86 emulation"
+        font_size: 14
+        color: "#7f8c8d"
+        text_align: "center"
+        margin_bottom: 20
+    }
+
+    Container {
+        display: flex
+        flex_direction: row
+        gap: 20
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "DOOM (1993)"
+                font_size: 16
+                font_weight: "bold"
+                color: "#e74c3c"
+            }
+
+            EmbedView {
+                provider: "dosbox"
+                source: "doom.exe"
+                video_mode: "VGA"
+                cpu_cycles: 3000
+                width: 640
+                height: 400
+                border: "2px solid #34495e"
+                border_radius: 8
+            }
+
+            Text {
+                text: "VGA 320x200 mode"
+                font_size: 12
+                color: "#95a5a6"
+            }
+        }
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 15
+
+            Text {
+                text: "Commander Keen"
+                font_size: 16
+                font_weight: "bold"
+                color: "#3498db"
+            }
+
+            EmbedView {
+                provider: "dosbox"
+                source: "keen.exe"
+                video_mode: "EGA"
+                cpu_cycles: 1000
+                width: 640
+                height: 350
+                border: "2px solid #2c3e50"
+                border_radius: 8
+            }
+
+            Text {
+                text: "EGA 640x350 mode"
+                font_size: 12
+                color: "#95a5a6"
+            }
+        }
+    }
+
+    Container {
+        display: flex
+    flex_direction: column
+        gap: 10
+        margin_top: 20
+
+        Text {
+            text: "DOS Command Prompt"
+            font_size: 16
+            font_weight: "bold"
+            color: "#f39c12"
+        }
+
+        EmbedView {
+            provider: "dosbox"
+            source: ""
+            video_mode: "Text"
+            cpu_cycles: 3000
+            width: 800
+            height: 300
+            border: "2px solid #f39c12"
+            border_radius: 8
+        }
+
+        Text {
+            text: "Text mode 80x25 - type DOS commands here"
+            font_size: 12
+            color: "#95a5a6"
+            text_align: "center"
+        }
+    }
+}

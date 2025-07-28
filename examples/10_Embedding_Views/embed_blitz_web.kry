@@ -1,0 +1,85 @@
+@metadata {
+    title: "Blitz Web Rendering Demo"
+    author: "KryonLabs"
+    description: "Demonstrates modern web rendering with Blitz engine"
+}
+
+Container {
+    display: flex
+    flex_direction: column
+    gap: 20
+    margin: 20
+
+    Text {
+        text: "🌐 Blitz Web Rendering Demo"
+        font_size: 24
+        font_weight: "bold"
+        color: "#2c3e50"
+        text_align: "center"
+        margin_bottom: 10
+    }
+
+    Text {
+        text: "The Blitz provider renders modern web content with HTML, CSS, and JavaScript support"
+        font_size: 14
+        color: "#7f8c8d"
+        text_align: "center"
+        margin_bottom: 20
+    }
+
+    Container {
+        display: flex
+        flex_direction: row
+        gap: 20
+        height: 400
+
+        EmbedView {
+            provider: "blitz"
+            source: "https://example.com"
+            width: 300
+            height: 400
+            border: "1px solid #bdc3c7"
+            border_radius: 8
+        }
+
+        Container {
+            display: flex
+    flex_direction: column
+            gap: 10
+            width: 300
+
+            Text {
+                text: "HTML Content Rendering"
+                font_size: 16
+                font_weight: "bold"
+                color: "#34495e"
+            }
+
+            EmbedView {
+                provider: "blitz"
+                source: "data:text/html,<h1>Hello Blitz!</h1><p>Modern web rendering in Kryon</p><button onclick='alert(\"Interactive!\")'>Click me</button>"
+                width: 280
+                height: 150
+                border: "1px solid #3498db"
+                border_radius: 4
+            }
+
+            Text {
+                text: "Local HTML File"
+                font_size: 16
+                font_weight: "bold"
+                color: "#34495e"
+                margin_top: 10
+            }
+
+            EmbedView {
+                provider: "blitz"
+                source: "demo.html"
+                width: 280
+                height: 200
+                border: "1px solid #e74c3c"
+                border_radius: 4
+            }
+        }
+    }
+}

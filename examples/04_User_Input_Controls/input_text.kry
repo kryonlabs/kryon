@@ -1,0 +1,88 @@
+# Text Input Example
+# Basic text input field usage
+
+style "app_container" {
+    background_color: "#F5F5F5FF"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    padding: 20
+}
+
+style "form_container" {
+    background_color: "#FFFFFFFF"
+    border_width: 1
+    border_color: "#DDDDDDFF"
+    border_radius: 8
+    padding: 30
+    width: 350
+}
+
+style "form_label" {
+    font_size: 14
+    text_color: "#333333FF"
+    margin_bottom: 8
+}
+
+style "input_display" {
+    background_color: "#F0F8FFFF"
+    border_width: 1
+    border_color: "#4A90E2FF"
+    border_radius: 4
+    padding: 10
+    margin_top: 20
+    text_alignment: center
+    font_size: 14
+    text_color: "#2E5C8AFF"
+}
+
+App {
+    window_title: "Text Input Example"
+    window_width: 450
+    window_height: 300
+    
+    Container {
+        style: "app_container"
+        
+        Container {
+            style: "form_container"
+            
+            Text {
+                text: "Enter your name:"
+                style: "form_label"
+            }
+            
+            Input {
+                id: "name_input"
+                type: "text"
+                placeholder: "Type your name here"
+                value: ""
+                width: 290
+                onChange: "handle_name_change"
+            }
+            
+            Text {
+                id: "greeting_display"
+                text: "Hello, please enter your name above"
+                style: "input_display"
+            }
+        }
+    }
+}
+
+@script "lua" {
+function handle_name_change()
+    local input = getElementById("name_input")
+    local display = getElementById("greeting_display")
+    
+    if input and display then
+        local name = input:getValue()
+        if name and name ~= "" then
+            display:setText("Hello, " .. name .. "!")
+        else
+            display:setText("Hello, please enter your name above")
+        end
+    end
+end
+}

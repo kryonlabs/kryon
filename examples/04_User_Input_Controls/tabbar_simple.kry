@@ -1,0 +1,155 @@
+style "app_base" {
+    background_color: "#191919FF"
+    text_color: "#FFFFFFFF"
+    display: flex
+    flex_direction: column
+    align_items: start
+}
+
+style "tab_bar_container" {
+    background_color: "#2C2C2CFF"
+    height: 50
+    display: flex
+    flex_direction: row
+    align_items: stretch
+    justify_content: stretch
+    width: 100%
+    border_width: 1
+    border_color: "#444444FF"
+}
+
+style "tab_button" {
+    background_color: "#404040FF"
+    text_color: "#CCCCCCFF"
+    text_alignment: center
+    border_width: 0
+    flex_grow: 1
+    flex_basis: 0
+    height: 50
+    min_width: 0
+    
+    &:hover {
+        background_color: "#505050FF"
+    }
+    
+    &:checked {
+        background_color: "#0066CCFF"
+    }
+}
+
+style "content_area" {
+    background_color: "#1E1E1EFF"
+    text_color: "#FFFFFFFF"
+    flex_grow: 1
+    display: flex
+    align_items: center
+    justify_content: center
+    text_alignment: center
+}
+
+@variables {
+    current_tab: 0
+}
+
+@function "lua" switchToHome() {
+    current_tab = 0
+    print("Switched to Home tab")
+    
+    -- Update button checked states
+    local homeBtn = getElementById("tab_home")
+    local profileBtn = getElementById("tab_profile")
+    local settingsBtn = getElementById("tab_settings")
+    
+    if homeBtn then homeBtn:setChecked(true) end
+    if profileBtn then profileBtn:setChecked(false) end
+    if settingsBtn then settingsBtn:setChecked(false) end
+    
+    -- Update content text
+    local contentText = getElementById("content_text")
+    if contentText then contentText:setText("HOME TAB - Welcome to the Home page! This is your main dashboard.") end
+}
+
+@function "lua" switchToProfile() {
+    current_tab = 1
+    print("Switched to Profile tab")
+    
+    -- Update button checked states
+    local homeBtn = getElementById("tab_home")
+    local profileBtn = getElementById("tab_profile")
+    local settingsBtn = getElementById("tab_settings")
+    
+    if homeBtn then homeBtn:setChecked(false) end
+    if profileBtn then profileBtn:setChecked(true) end
+    if settingsBtn then settingsBtn:setChecked(false) end
+    
+    -- Update content text
+    local contentText = getElementById("content_text")
+    if contentText then contentText:setText("PROFILE TAB - Manage your user profile and personal settings here.") end
+}
+
+@function "lua" switchToSettings() {
+    current_tab = 2
+    print("Switched to Settings tab")
+    
+    -- Update button checked states
+    local homeBtn = getElementById("tab_home")
+    local profileBtn = getElementById("tab_profile")
+    local settingsBtn = getElementById("tab_settings")
+    
+    if homeBtn then homeBtn:setChecked(false) end
+    if profileBtn then profileBtn:setChecked(false) end
+    if settingsBtn then settingsBtn:setChecked(true) end
+    
+    -- Update content text
+    local contentText = getElementById("content_text")
+    if contentText then contentText:setText("SETTINGS TAB - Configure application preferences and system options.") end
+}
+
+App {
+    window_width: 800
+    window_height: 600
+    window_title: "Simple TabBar Test"
+    resizable: true
+    keep_aspect_ratio: false
+    style: "app_base"
+
+    # Tab Bar Container
+    Container {
+        id: "tab_bar"
+        style: "tab_bar_container"
+
+        Button {
+            id: "tab_home"
+            text: "Home"
+            style: "tab_button"
+            onClick: "switchToHome"
+            checked: true
+        }
+
+        Button {
+            id: "tab_profile"
+            text: "Profile"
+            style: "tab_button"
+            onClick: "switchToProfile"
+        }
+
+        Button {
+            id: "tab_settings"
+            text: "Settings"
+            style: "tab_button"
+            onClick: "switchToSettings"
+        }
+    }
+
+    # Content Area
+    Container {
+        id: "content_container"
+        style: "content_area"
+
+        Text {
+            id: "content_text"
+            text: "HOME TAB - Welcome to the Home page! This is your main dashboard."
+            text_alignment: center
+        }
+    }
+}

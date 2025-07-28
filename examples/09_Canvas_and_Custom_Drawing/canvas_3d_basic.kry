@@ -1,0 +1,103 @@
+App {
+    window_width: 800
+    window_height: 600
+    window_title: "Canvas 3D Basic Demo"
+    
+    Container {
+        padding: 20
+        gap: 20
+        
+        Text {
+            text: "Canvas 3D Basic Demo"
+            font_size: 18
+            font_weight: "bold"
+        }
+        
+        Text {
+            text: "This demonstrates basic 3D Canvas functionality with cubes, spheres, and lighting"
+            font_size: 14
+            color: "#666666"
+            margin_bottom: 20
+        }
+        
+        Canvas {
+            id: "canvas_3d"
+            width: 600
+            height: 400
+            draw_script: "draw_3d_scene"
+            config: {
+                "mode": "3d",
+                "enable_depth_test": true,
+                "enable_lighting": true
+            }
+        }
+        
+        Text {
+            text: "Features: 3D cubes, spheres, planes, lighting, camera controls"
+            font_size: 12
+            color: "#666666"
+            margin_top: 10
+        }
+    }
+}
+
+@script "lua" {
+    local time = 0
+    local rotation = 0
+    
+    function draw_3d_scene()
+        time = time + 0.016 -- Simulate 60 FPS
+        rotation = rotation + 1
+        
+        -- Set up 3D camera
+        local camera_pos = {x = 5, y = 5, z = 10}
+        local camera_target = {x = 0, y = 0, z = 0}
+        local camera_up = {x = 0, y = 1, z = 0}
+        
+        beginCanvas3D(camera_pos, camera_target, camera_up, 45, 0.1, 100)
+        
+        -- Set up lighting
+        local ambient = {r = 0.2, g = 0.2, b = 0.2, a = 1.0}
+        local directional = {
+            direction = {x = -1, y = -1, z = -1},
+            color = {r = 1.0, g = 1.0, b = 1.0, a = 1.0},
+            intensity = 0.8
+        }
+        local point_lights = {
+            {
+                position = {x = 5, y = 5, z = 5},
+                color = {r = 1.0, g = 0.5, b = 0.5, a = 1.0},
+                intensity = 0.5,
+                range = 10
+            }
+        }
+        setLighting3D(ambient, directional, point_lights)
+        
+        -- Draw rotating cube
+        local cube_transform = createTransformMatrix(
+            {x = -2, y = 0, z = 0},
+            {x = rotation, y = rotation * 0.5, z = 0},
+            {x = 1, y = 1, z = 1}
+        )
+        applyTransform3D(cube_transform)
+        drawCube3D(0, 0, 0, 2, 2, 2, {r = 0.8, g = 0.2, b = 0.2, a = 1.0}, false)
+        
+        -- Draw wireframe cube
+        local wireframe_transform = createTransformMatrix(
+            {x = 2, y = 0, z = 0},
+            {x = -rotation, y = rotation * 0.3, z = 0},
+            {x = 1, y = 1, z = 1}
+        )
+        applyTransform3D(wireframe_transform)
+        drawCube3D(0, 0, 0, 2, 2, 2, {r = 0.2, g = 0.8, b = 0.2, a = 1.0}, true)
+        
+        -- Draw bouncing sphere
+        local sphere_y = math.sin(time * 2) * 2
+        drawSphere3D(0, sphere_y, 2, 1, {r = 0.2, g = 0.2, b = 0.8, a = 1.0}, false)
+        
+        -- Draw ground plane
+        drawPlane3D(0, -3, 0, 10, 10, 0, 1, 0, {r = 0.5, g = 0.5, b = 0.5, a = 1.0})
+        
+        endCanvas3D()
+    end
+}
