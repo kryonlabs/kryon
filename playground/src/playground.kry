@@ -1,0 +1,357 @@
+// Kryon Playground - A live code editor for Kryon
+// Built entirely in Kryon
+
+style "playground_app" {
+    background_color: "#1e1e1e"
+    text_color: "#d4d4d4"
+}
+
+style "split_container" {
+    display: flex
+    flex_direction: row
+    width: 100%
+    height: 100%
+}
+
+style "editor_pane" {
+    flex: 1
+    background_color: "#252526"
+    border_right_width: 1
+    border_right_color: "#3e3e3e"
+    padding: 0
+    display: flex
+    flex_direction: column
+}
+
+style "preview_pane" {
+    flex: 1
+    background_color: "#1e1e1e"
+    padding: 20
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+}
+
+style "toolbar" {
+    height: 40
+    background_color: "#2d2d30"
+    border_bottom_width: 1
+    border_bottom_color: "#3e3e3e"
+    display: flex
+    flex_direction: row
+    align_items: center
+    padding_left: 10
+    padding_right: 10
+}
+
+style "toolbar_button" {
+    padding_left: 15
+    padding_right: 15
+    padding_top: 8
+    padding_bottom: 8
+    background_color: "#0e639c"
+    border_radius: 4
+    margin_right: 10
+    cursor: pointer
+}
+
+style "toolbar_button:hover" {
+    background_color: "#1177bb"
+}
+
+style "status_bar" {
+    height: 25
+    background_color: "#007acc"
+    display: flex
+    flex_direction: row
+    align_items: center
+    padding_left: 10
+    padding_right: 10
+}
+
+style "editor_container" {
+    flex: 1
+    display: flex
+    flex_direction: column
+    background_color: "#1e1e1e"
+}
+
+style "line_numbers" {
+    width: 50
+    background_color: "#1e1e1e"
+    border_right_width: 1
+    border_right_color: "#3e3e3e"
+    padding_right: 10
+    text_align: right
+    text_color: "#858585"
+    font_family: "monospace"
+    font_size: 14
+}
+
+style "code_editor" {
+    flex: 1
+    background_color: "#1e1e1e"
+    text_color: "#d4d4d4"
+    font_family: "monospace"
+    font_size: 14
+    padding: 10
+    overflow: auto
+}
+
+style "preview_header" {
+    text_color: "#cccccc"
+    font_size: 18
+    margin_bottom: 20
+}
+
+style "preview_content" {
+    flex: 1
+    width: 100%
+    background_color: "#252526"
+    border_radius: 8
+    padding: 20
+    overflow: auto
+}
+
+App {
+    window_width: 1200
+    window_height: 800
+    window_title: "Kryon Playground"
+    resizable: true
+    style: "playground_app"
+    
+    Container {
+        style: "split_container"
+        
+        // Left pane - Code Editor
+        Container {
+            style: "editor_pane"
+            
+            // Toolbar
+            Container {
+                style: "toolbar"
+                
+                Button {
+                    style: "toolbar_button"
+                    text: "Run"
+                    on_click: "compile_and_preview"
+                }
+                
+                Button {
+                    style: "toolbar_button"
+                    text: "Save"
+                    on_click: "save_code"
+                }
+                
+                Button {
+                    style: "toolbar_button"
+                    text: "Load Example"
+                    on_click: "load_example"
+                }
+            }
+            
+            // Editor area with line numbers
+            Container {
+                style: "editor_container"
+                display: flex
+                flex_direction: row
+                
+                // Line numbers
+                Container {
+                    id: "line_numbers"
+                    style: "line_numbers"
+                    
+                    Text {
+                        text: "1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+                    }
+                }
+                
+                // Code editor
+                TextInput {
+                    id: "code_editor"
+                    style: "code_editor"
+                    multiline: true
+                    placeholder: "// Start writing your Kryon code here...\n\nstyle \"my_style\" {\n    background_color: \"#2196F3\"\n    text_color: \"#FFFFFF\"\n}\n\nApp {\n    window_width: 400\n    window_height: 300\n    \n    Container {\n        style: \"my_style\"\n        \n        Text {\n            text: \"Hello, Kryon!\"\n        }\n    }\n}"
+                }
+            }
+            
+            // Status bar
+            Container {
+                style: "status_bar"
+                
+                Text {
+                    text: "Ready"
+                    text_color: "#FFFFFF"
+                    font_size: 12
+                }
+            }
+        }
+        
+        // Right pane - Preview
+        Container {
+            style: "preview_pane"
+            
+            Text {
+                style: "preview_header"
+                text: "Preview"
+            }
+            
+            Container {
+                id: "preview_content"
+                style: "preview_content"
+                
+                Text {
+                    text: "Click 'Run' to compile and preview your Kryon code"
+                    text_color: "#808080"
+                    text_alignment: center
+                }
+            }
+        }
+    }
+}
+
+// Script section for handling compilation and preview
+script {
+    language: lua
+    
+    function compile_and_preview()
+        -- Get the code from editor
+        local code = get_element_property("code_editor", "text")
+        
+        -- Save to temporary file
+        local temp_file = "/tmp/playground_temp.kry"
+        write_file(temp_file, code)
+        
+        -- Compile using Kryon compiler
+        local compile_result = execute_command("kryon", "--compile-only", "-o", "/tmp/playground_temp.krb", temp_file)
+        
+        if compile_result.success then
+            -- Update preview with compiled result
+            update_preview("/tmp/playground_temp.krb")
+            set_status("Compilation successful")
+        else
+            -- Show error in preview
+            show_error(compile_result.error)
+            set_status("Compilation failed")
+        end
+    end
+    
+    function save_code()
+        local code = get_element_property("code_editor", "text")
+        -- Save dialog would go here
+        set_status("Code saved")
+    end
+    
+    function load_example()
+        -- Load example code
+        local example_code = [[
+style "container_style" {
+    background_color: "#3F51B5"
+    padding: 20
+    border_radius: 8
+}
+
+style "text_style" {
+    text_color: "#FFFFFF"
+    font_size: 24
+    text_alignment: center
+}
+
+App {
+    window_width: 600
+    window_height: 400
+    window_title: "Kryon Example"
+    
+    Container {
+        style: "container_style"
+        
+        Text {
+            style: "text_style"
+            text: "Welcome to Kryon!"
+        }
+    }
+}
+]]
+        set_element_property("code_editor", "text", example_code)
+        update_line_numbers()
+        set_status("Example loaded")
+    end
+    
+    function update_preview(krb_path)
+        -- This would embed the compiled KRB in the preview pane
+        -- Using EmbedView or similar mechanism
+        local preview = get_element("preview_content")
+        clear_children(preview)
+        
+        -- Create embedded view
+        create_element(preview, "EmbedView", {
+            source = krb_path,
+            renderer = "html"
+        })
+    end
+    
+    function show_error(error_message)
+        local preview = get_element("preview_content")
+        clear_children(preview)
+        
+        create_element(preview, "Text", {
+            text = "Compilation Error:\n\n" .. error_message,
+            text_color = "#FF5252",
+            font_family = "monospace"
+        })
+    end
+    
+    function set_status(message)
+        -- Update status bar
+        local status_text = get_element_by_selector(".status_bar Text")
+        set_element_property(status_text, "text", message)
+    end
+    
+    function update_line_numbers()
+        local code = get_element_property("code_editor", "text")
+        local lines = count_lines(code)
+        local line_text = ""
+        
+        for i = 1, lines do
+            line_text = line_text .. tostring(i) .. "\n"
+        end
+        
+        set_element_property("line_numbers", "text", line_text)
+    end
+    
+    function count_lines(text)
+        local count = 1
+        for _ in string.gmatch(text, "\n") do
+            count = count + 1
+        end
+        return count
+    end
+    
+    -- Auto-compile on text change (with debounce)
+    local compile_timer = nil
+    
+    function on_text_changed()
+        if compile_timer then
+            cancel_timer(compile_timer)
+        end
+        
+        compile_timer = set_timer(1000, function()
+            compile_and_preview()
+            compile_timer = nil
+        end)
+        
+        update_line_numbers()
+    end
+    
+    -- Initialize
+    function init()
+        -- Set up event listeners
+        add_event_listener("code_editor", "text_changed", on_text_changed)
+        
+        -- Load initial example
+        load_example()
+    end
+    
+    init()
+end

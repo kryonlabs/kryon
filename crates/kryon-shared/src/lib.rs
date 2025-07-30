@@ -17,6 +17,11 @@ pub mod style;
 pub mod text;
 pub mod css_transforms;
 
+// Widget system - only included if widget features are enabled
+#[cfg(any(feature = "dropdown", feature = "data-grid", feature = "date-picker", feature = "rich-text", 
+          feature = "color-picker", feature = "file-upload", feature = "number-input", feature = "range-slider"))]
+pub mod widgets;
+
 // Legacy modules for backward compatibility (will be deprecated)
 pub mod encoding;
 pub mod krb_format;
@@ -36,9 +41,7 @@ pub use text::*;
 pub use css_transforms::*;
 
 // Re-export property registry with explicit names to avoid conflicts
-pub use property_registry::{PropertyId, PropertyRegistry, JustifyContent, AlignItems, FlexDirection, Display, Position};
-// Re-export TextAlignment explicitly to resolve ambiguity
-pub use property_registry::TextAlignment as PropertyTextAlignment;
+pub use property_registry::{PropertyId, PropertyRegistry, TextAlignment as PropertyTextAlignment};
 
 // Legacy re-exports
 pub use encoding::*;

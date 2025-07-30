@@ -186,6 +186,7 @@ impl CommandRenderer for WgpuRenderer {
                 RenderCommand::DrawCircle { .. } => circle_commands.push(command),
                 RenderCommand::DrawEllipse { .. } => ellipse_commands.push(command),
                 RenderCommand::DrawPolygon { .. } => polygon_commands.push(command),
+                RenderCommand::DrawTriangle { .. } => polygon_commands.push(command), // Treat triangle as polygon
                 RenderCommand::DrawPath { .. } => path_commands.push(command),
                 _ => {
                     println!("🔧 [WGPU_DEBUG] Unhandled command type: {:?}", command);
@@ -1033,6 +1034,29 @@ impl WgpuRenderer {
                         start_index,
                         start_index + i,
                         start_index + i + 1,
+                    ]);
+                }
+            } else if let RenderCommand::DrawTriangle {
+                points,
+                color,
+            } = command {
+                if points.len() >= 3 {
+                    // Triangle is already a simple polygon, just convert the points
+                    let triangle_points = vec![points[0], points[1], points[2]];
+                    let triangle_vertices = generate_polygon_vertices(&triangle_points, Some(*color), None, 0.0);
+                    
+                    // Add vertices and generate indices for triangle
+                    let start_index = index_offset;
+                    for vertex in triangle_vertices {
+                        vertices.push(vertex);
+                        index_offset += 1;
+                    }
+                    
+                    // Simple triangle - just add one triangle
+                    indices.extend_from_slice(&[
+                        start_index,
+                        start_index + 1,
+                        start_index + 2,
                     ]);
                 }
             }

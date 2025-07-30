@@ -1,0 +1,26 @@
+// Simple container with multiple elements
+// Tests: Container rendering, child elements, basic layout
+App {
+    window_width: 800
+    window_height: 600
+    
+    Container {
+        width: 400
+        height: 300
+        background_color: "#f0f0f0"
+        padding: 20
+        
+        Text {
+            text: "Container Title"
+            font_size: 20
+            font_weight: "bold"
+            margin_bottom: 10
+        }
+        
+        Text {
+            text: "This is content inside a container."
+            font_size: 14
+            text_color: "#666666"
+        }
+    }
+}

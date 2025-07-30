@@ -1,0 +1,93 @@
+# Working Dropdown Example
+# Uses the native Select element which should render properly
+
+@variables {
+    selected_value: ""
+    selection_text: "No selection made"
+}
+
+style "app_container" {
+    background_color: "#f0f0f0"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    padding: 40
+    gap: 20
+}
+
+style "card" {
+    background_color: "#ffffff"
+    padding: 30
+    border_radius: 8
+    box_shadow: "0 2px 8px rgba(0, 0, 0, 0.1)"
+    width: 350
+    display: flex
+    flex_direction: column
+    gap: 20
+}
+
+style "title" {
+    font_size: 24
+    font_weight: bold
+    text_color: "#333333"
+    text_alignment: center
+}
+
+style "subtitle" {
+    font_size: 14
+    text_color: "#666666"
+    text_alignment: center
+}
+
+style "result" {
+    font_size: 16
+    text_color: "#0066cc"
+    text_alignment: center
+    margin_top: 10
+}
+
+App {
+    window_width: 600
+    window_height: 500
+    window_title: "Working Dropdown Test"
+    
+    Container {
+        style: "app_container"
+        
+        Container {
+            style: "card"
+            
+            Text {
+                text: "Dropdown Widget Test"
+                style: "title"
+            }
+            
+            Text {
+                text: "This uses the native Select element"
+                style: "subtitle"
+            }
+            
+            # Native Select element
+            Select {
+                id: "main_dropdown"
+                placeholder: "Choose an option..."
+                options: "Option 1,Option 2,Option 3,Very Long Option 4,Final Option"
+                width: 100%
+                font_size: 16
+                onChange: handle_selection
+            }
+            
+            Text {
+                text: $selection_text
+                style: "result"
+            }
+        }
+    }
+}
+
+@function "lua" handle_selection(value) {
+    selected_value = value
+    selection_text = "Selected: " .. value
+    print("Dropdown selection changed to: " .. value)
+}

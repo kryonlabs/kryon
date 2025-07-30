@@ -197,6 +197,16 @@ pkgs.mkShell {
       local renderer="$1"
       local binary="kryon-renderer-$renderer"
       
+      # Also ensure main kryon binary exists
+      if [[ ! -f "$KRYON_BINARY" ]]; then
+        echo "🔨 Building kryon compiler (release mode)..."
+        (cd "$KRYON_ROOT" && cargo build --release --bin kryon)
+        if [[ $? -ne 0 ]]; then
+          echo "❌ Failed to build kryon compiler"
+          return 1
+        fi
+      fi
+      
       if ! command -v "$binary" &> /dev/null; then
         echo "⚠️  Renderer '$renderer' not found in PATH"
         echo "   Building $renderer renderer..."
@@ -264,8 +274,19 @@ pkgs.mkShell {
       kryon_run "$1" "debug"
     }
     
-    # Alias for the unified kryon binary
+    # Alias for the unified kryon binary (with auto-build)
     kryon() {
+      # Auto-build kryon binary if it doesn't exist
+      if [[ ! -f "$KRYON_BINARY" ]]; then
+        echo "🔨 Building kryon compiler (release mode)..."
+        (cd "$KRYON_ROOT" && cargo build --release --bin kryon)
+        if [[ $? -ne 0 ]]; then
+          echo "❌ Failed to build kryon compiler"
+          return 1
+        fi
+        echo "✅ Kryon compiler built successfully!"
+      fi
+      
       local args=()
       for arg in "$@"; do
         if [[ "$arg" == *.kry ]]; then

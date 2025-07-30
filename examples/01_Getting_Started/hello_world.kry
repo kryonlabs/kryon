@@ -1,41 +1,41 @@
 style "appstyle" {
-    text_color: "#FFFF00FF"
-    background_color: "#191919FF"
+    textColor: "#FFFF00FF"
+    backgroundColor: "#191919FF"
 }
 
 style "containerstyle" {
-    border_width: 1
-    background_color: "#191970FF"
-    border_color: "#0099FFFF"
+    borderWidth: 1
+    backgroundColor: "#191970FF"
+    borderColor: "#0099FFFF"
     position: absolute
     display: flex
-    flex_direction: column
-    align_items: center
-    justify_content: center
+    flexDirection: column
+    alignItems: center
+    justifyContent: center
 }
 
 App {
-    window_width: 800
-    window_height: 600
-    window_title: "Hello World Example"
+    windowWidth: 800
+    windowHeight: 600
+    windowTitle: "Hello World Example"
     resizable: true
-    keep_aspect_ratio: false
-    scale_factor: 1.0
+    keepAspectRatio: false
+    scaleFactor: 1.0
     icon: "app_icon.png"
     version: "1.0.0"
     author: "WaoziXyz"
     style: "appstyle"
     
     Container { 
-        pos_x: 200
-        pos_y: 100
+        posX: 200
+        posY: 100
         width: 200
         height: 100
         style: "containerstyle"
 
         Text {
             text: "Hello World"
-            text_alignment: center 
+            textAlignment: center 
         }
     }
 }

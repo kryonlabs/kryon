@@ -1,23 +1,48 @@
 [package]
 name = "kryon-tests"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
-# Core dependencies
-kryon-compiler = { path = "../crates/kryon-compiler" }
-kryon-core = { path = "../crates/kryon-core" }
-kryon-layout = { path = "../crates/kryon-layout" }
-kryon-render = { path = "../crates/kryon-render" }
-kryon-runtime = { path = "../crates/kryon-runtime" }
+# Use workspace dependencies
+kryon-compiler.workspace = true
+kryon-core.workspace = true
+kryon-layout.workspace = true
+kryon-render.workspace = true
+kryon-runtime.workspace = true
+kryon-shared.workspace = true
 
 # Test dependencies
-insta = { workspace = true }
-tempfile = "3.8"
-assert_fs = "1.0"
-predicates = "3.0"
-criterion = "0.5"
-proptest = "1.4"
+insta.workspace = true
+tempfile.workspace = true
+assert_fs.workspace = true
+predicates.workspace = true
+criterion.workspace = true
+proptest.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+colored.workspace = true
+log.workspace = true
+env_logger.workspace = true
+futures.workspace = true
+assert_matches.workspace = true
+pretty_assertions.workspace = true
+sha2.workspace = true
+rand.workspace = true
+glam.workspace = true
+image.workspace = true
+indexmap.workspace = true
+uuid.workspace = true
+walkdir.workspace = true
+regex.workspace = true
+notify.workspace = true
+toml.workspace = true
+clap.workspace = true
 
 [[test]]
 name = "compiler"

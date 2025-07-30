@@ -67,14 +67,27 @@ html-escape = "0.2"
 # Development dependencies
 tempfile = "3.8"
 criterion = { version = "0.5", features = ["html_reports"] }
-insta = "1.34"
+insta = { version = "1.34", features = ["yaml", "json"] }
 colored = "2.0"
 inquire = "0.7"
 which = "6.0"
 
+# Testing dependencies
+assert_fs = "1.0"
+predicates = "3.0"
+proptest = "1.4"
+futures = "0.3"
+assert_matches = "1.5"
+pretty_assertions = "1.4"
+sha2 = "0.10"
+rand = "0.8"
+image = "0.24"
+indexmap = "2.0"
+
 # Kryon internal dependencies
 kryon-shared = { path = "crates/kryon-shared" }
 kryon-compiler = { path = "crates/kryon-compiler" }
+kryon-core = { path = "crates/kryon-core" }
 kryon-renderer = { path = "crates/kryon-renderer" }
 kryon-runtime = { path = "crates/kryon-runtime" }
 kryon-layout = { path = "crates/kryon-layout" }
@@ -146,6 +159,19 @@ serde_json = { workspace = true, optional = true }
 
 [features]
 default = []
+
+# Widget features - optional built-in widgets
+basic-widgets = []
+extended-widgets = ["dropdown", "data-grid", "date-picker", "rich-text"]
+dropdown = []
+data-grid = []
+date-picker = []
+rich-text = []
+color-picker = []
+file-upload = []
+number-input = []
+range-slider = []
+all-widgets = ["extended-widgets", "color-picker", "file-upload", "number-input", "range-slider"]
 
 # Renderer features (only enabled when building specific renderer binaries)
 wgpu = ["dep:wgpu", "dep:winit", "dep:glam", "dep:pollster", "dep:kryon-wgpu", "dep:kryon-runtime", "dep:kryon-render", "dep:kryon-layout"]

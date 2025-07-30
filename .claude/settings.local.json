@@ -44,7 +44,15 @@
       "Bash(env:*)",
       "Bash(./target/release/kryon:*)",
       "Bash(scripts/build-web-examples.sh:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git submodule:*)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)",
+      "Bash(./build.sh:*)",
+      "Bash(rustc:*)",
+      "Bash(echo:*)",
+      "Bash(/tmp/test_decoder:*)",
+      "Bash(/tmp/test_layout_style:*)"
     ],
     "deny": []
   }

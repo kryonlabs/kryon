@@ -1,0 +1,129 @@
+# Backend Dropdown Test
+# This example demonstrates the dropdown widget with our custom rendering logic
+
+@variables {
+    selected_value: ""
+    selection_info: "No selection made"
+}
+
+style "app_container" {
+    background_color: "#f5f5f5"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    padding: 40
+    gap: 20
+}
+
+style "demo_card" {
+    background_color: "#ffffff"
+    padding: 30
+    border_radius: 8
+    box_shadow: "0 2px 8px rgba(0, 0, 0, 0.1)"
+    width: 400
+    display: flex
+    flex_direction: column
+    gap: 20
+}
+
+style "title" {
+    font_size: 22
+    font_weight: bold
+    text_color: "#333333"
+    text_alignment: center
+}
+
+style "info_text" {
+    font_size: 14
+    text_color: "#666666"
+    text_alignment: center
+}
+
+style "result_text" {
+    font_size: 16
+    text_color: "#0066cc"
+    text_alignment: center
+    font_weight: 500
+}
+
+App {
+    window_width: 600
+    window_height: 500
+    window_title: "Dropdown Backend Test"
+    
+    Container {
+        style: "app_container"
+        
+        Container {
+            style: "demo_card"
+            
+            Text {
+                text: "Dropdown Widget Test"
+                style: "title"
+            }
+            
+            Text {
+                text: "Testing dropdown rendering across backends"
+                style: "info_text"
+            }
+            
+            # Using the built-in dropdown widget
+            Widget {
+                type: "dropdown"
+                width: 100%
+                placeholder: "Select an option..."
+                font_size: 16
+                border_radius: 4
+                
+                # Set the options
+                options: [
+                    { label: "Option 1", value: "value1" },
+                    { label: "Option 2", value: "value2" },
+                    { label: "Option 3", value: "value3" },
+                    { label: "Very Long Option 4", value: "value4" },
+                    { label: "Final Option", value: "value5" }
+                ]
+                
+                # Handle selection
+                onSelectionChanged: handle_dropdown_selection
+            }
+            
+            Text {
+                text: $selection_info
+                style: "result_text"
+            }
+        }
+        
+        Container {
+            style: "demo_card"
+            
+            Text {
+                text: "Native Select Element"
+                style: "title"
+            }
+            
+            # Using the native Select element for comparison
+            Select {
+                placeholder: "Choose an option"
+                options: "Red,Green,Blue,Yellow,Purple"
+                width: 100%
+                onChange: handle_select_change
+            }
+        }
+    }
+}
+
+@function "lua" handle_dropdown_selection(values) {
+    if #values > 0 then
+        selected_value = values[1]
+        selection_info = "Selected: " .. selected_value
+    else
+        selected_value = ""
+        selection_info = "No selection made"
+    end
+end
+
+@function "lua" handle_select_change(value) {
+    print("Native select changed to: " .. value)
+end

@@ -1,0 +1,49 @@
+[package]
+name = "performance-tests"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Core Kryon dependencies
+kryon-compiler.workspace = true
+kryon-core.workspace = true
+kryon-runtime.workspace = true
+kryon-layout.workspace = true
+kryon-render.workspace = true
+kryon-shared.workspace = true
+
+# Performance testing dependencies
+criterion.workspace = true
+tokio.workspace = true
+tempfile.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+colored.workspace = true
+log.workspace = true
+
+# Memory profiling
+jemalloc-ctl = "0.5"
+
+[[bench]]
+name = "compilation_benchmarks"
+harness = false
+path = "benches/compilation.rs"
+
+[[bench]]
+name = "layout_benchmarks"
+harness = false
+path = "benches/layout.rs"
+
+[[bench]]
+name = "rendering_benchmarks"
+harness = false
+path = "benches/rendering.rs"
+
+[[bench]]
+name = "memory_benchmarks"
+harness = false
+path = "benches/memory.rs"

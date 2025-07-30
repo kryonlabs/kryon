@@ -346,6 +346,7 @@ impl RaylibRenderer {
                 transform,
                 shadow,
                 z_index: _,
+                layout_style: _,
             } => {
                 let rect = Rectangle::new(position.x, position.y, size.x, size.y);
                 let raylib_color = vec4_to_raylib_color(*color);
@@ -1949,6 +1950,20 @@ impl RaylibRenderer {
                 // 3D lighting setup would be handled by the 3D renderer
                 // For Raylib, this would configure the lighting system
                 eprintln!("[RAYLIB_3D] SetCanvas3DLighting");
+            }
+            RenderCommand::DrawTriangle {
+                points,
+                color,
+            } => {
+                if points.len() >= 3 {
+                    let raylib_color = vec4_to_raylib_color(*color);
+                    d.draw_triangle(
+                        Vector2::new(points[0].x, points[0].y),
+                        Vector2::new(points[1].x, points[1].y),
+                        Vector2::new(points[2].x, points[2].y),
+                        raylib_color,
+                    );
+                }
             }
             RenderCommand::ApplyCanvas3DTransform { transform: _ } => {
                 // 3D transformation would be applied to the model matrix

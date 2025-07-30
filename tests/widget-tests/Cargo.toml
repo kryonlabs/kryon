@@ -1,0 +1,65 @@
+[package]
+name = "widget-tests"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Core Kryon dependencies
+kryon-core.workspace = true
+kryon-shared = { workspace = true, features = ["dropdown", "data-grid", "date-picker", "rich-text", "color-picker", "file-upload", "number-input", "range-slider"] }
+kryon-render.workspace = true
+kryon-layout.workspace = true
+
+# Test dependencies
+insta.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+colored.workspace = true
+pretty_assertions.workspace = true
+proptest.workspace = true
+glam.workspace = true
+rand.workspace = true
+uuid.workspace = true
+
+[[test]]
+name = "dropdown_widget_tests"
+path = "src/dropdown_tests.rs"
+
+[[test]]
+name = "data_grid_widget_tests"
+path = "src/data_grid_tests.rs"
+
+[[test]]
+name = "date_picker_widget_tests"
+path = "src/date_picker_tests.rs"
+
+[[test]]
+name = "rich_text_widget_tests"
+path = "src/rich_text_tests.rs"
+
+[[test]]
+name = "color_picker_widget_tests"
+path = "src/color_picker_tests.rs"
+
+[[test]]
+name = "file_upload_widget_tests"
+path = "src/file_upload_tests.rs"
+
+[[test]]
+name = "number_input_widget_tests"
+path = "src/number_input_tests.rs"
+
+[[test]]
+name = "widget_integration_tests"
+path = "src/integration_tests.rs"
+
+[[bench]]
+name = "widget_benchmarks"
+harness = false
+path = "benches/widget_benchmarks.rs"

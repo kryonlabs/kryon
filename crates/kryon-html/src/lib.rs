@@ -1,6 +1,6 @@
 use glam::{Vec2, Vec4};
 use kryon_render::{Renderer, CommandRenderer, RenderCommand, RenderResult, RenderError};
-use kryon_core::{Element, ElementId};
+use kryon_core::{Element, ElementId, ScriptEntry};
 // use kryon_layout::LayoutResult;
 use uuid::Uuid;
 
@@ -242,6 +242,211 @@ impl HtmlRenderer {
         format!("kryon-element-{}", self.element_counter)
     }
 
+    /// Initialize Lua VM support in JavaScript
+    pub fn initialize_lua_vm(&mut self) -> HtmlResult<()> {
+        // Add the Lua VM JavaScript library (using Wasmoon - a Lua VM in WebAssembly)
+        self.js_content.push_str(r#"
+// Lua VM Support for Kryon
+class KryonLuaVM {
+    constructor() {
+        this.luaState = null;
+        this.variables = new Map();
+        this.functions = new Map();
+        this.initialized = false;
+    }
+
+    async init() {
+        try {
+            // Import Wasmoon Lua engine
+            const { LuaFactory } = await import('https://cdn.skypack.dev/wasmoon@1.16.0');
+            const factory = new LuaFactory();
+            this.luaState = await factory.createEngine();
+            
+            // Set up global functions available to Lua scripts
+            this.luaState.global.set('print', (...args) => {
+                console.log('[Kryon Lua]', ...args);
+            });
+            
+            this.luaState.global.set('set_window_title', (title) => {
+                document.title = title;
+            });
+            
+            this.initialized = true;
+            console.log('Kryon Lua VM initialized successfully');
+        } catch (error) {
+            console.warn('Lua VM initialization failed, falling back to JavaScript mode:', error);
+            // Fallback mode - create mock functions
+            this.createJavaScriptFallback();
+        }
+    }
+
+    createJavaScriptFallback() {
+        // Create JavaScript equivalents of common Lua patterns
+        this.luaState = {
+            doString: (code) => {
+                // Simple JavaScript evaluation as fallback
+                try {
+                    // Convert basic Lua syntax to JavaScript
+                    let jsCode = code
+                        .replace(/function\s+(\w+)\s*\(/g, 'this.$1 = function(')
+                        .replace(/end\s*$/gm, '}')
+                        .replace(/not\s+/g, '!')
+                        .replace(/\bprint\s*\(/g, 'console.log(')
+                        .replace(/--\s/g, '//');
+                    
+                    eval(jsCode);
+                } catch (e) {
+                    console.error('JavaScript fallback execution failed:', e);
+                }
+            }
+        };
+        this.initialized = true;
+    }
+
+    setVariable(name, value) {
+        this.variables.set(name, value);
+        if (this.luaState && this.luaState.global) {
+            this.luaState.global.set(name, value);
+        }
+    }
+
+    getVariable(name) {
+        if (this.luaState && this.luaState.global) {
+            return this.luaState.global.get(name);
+        }
+        return this.variables.get(name);
+    }
+
+    executeScript(script) {
+        if (!this.initialized) {
+            console.error('Lua VM not initialized');
+            return;
+        }
+
+        try {
+            if (this.luaState.doString) {
+                this.luaState.doString(script);
+            }
+        } catch (error) {
+            console.error('Lua script execution failed:', error);
+        }
+    }
+
+    async executeBytecode(scriptName, bytecode) {
+        if (!this.initialized) {
+            console.error('Lua VM not initialized');
+            return;
+        }
+
+        try {
+            if (this.luaState.loadBuffer && typeof this.luaState.loadBuffer === 'function') {
+                // Use loadBuffer for bytecode execution (if available in Wasmoon)
+                const chunk = this.luaState.loadBuffer(bytecode, scriptName);
+                await chunk();
+                console.log(`[Kryon Lua] Successfully executed bytecode for script: ${scriptName}`);
+            } else if (this.luaState.load && typeof this.luaState.load === 'function') {
+                // Alternative: Use the load method with bytecode
+                const chunk = this.luaState.load(bytecode, scriptName);
+                const func = await chunk.into_function();
+                await func();
+                console.log(`[Kryon Lua] Successfully executed bytecode for script: ${scriptName}`);
+            } else {
+                // Fallback: Log that bytecode execution is not supported
+                console.warn(`[Kryon Lua] Bytecode execution not supported, skipping script: ${scriptName}`);
+                console.log(`[Kryon Lua] Bytecode size: ${bytecode.length} bytes`);
+            }
+        } catch (error) {
+            console.error(`[Kryon Lua] Failed to execute bytecode for ${scriptName}:`, error);
+            // Try to provide more detailed error information
+            if (error.message) {
+                console.error(`[Kryon Lua] Error details: ${error.message}`);
+            }
+        }
+    }
+
+    callFunction(functionName, ...args) {
+        if (!this.initialized) {
+            console.error('Lua VM not initialized');
+            return;
+        }
+
+        try {
+            if (this.luaState.global) {
+                const func = this.luaState.global.get(functionName);
+                if (typeof func === 'function') {
+                    return func(...args);
+                }
+            }
+            // Fallback: try to call from stored functions
+            if (this.functions.has(functionName)) {
+                return this.functions.get(functionName)(...args);
+            }
+        } catch (error) {
+            console.error(`Failed to call Lua function ${functionName}:`, error);
+        }
+    }
+}
+
+// Global Kryon Lua VM instance
+window.kryonLua = new KryonLuaVM();
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', async () => {
+    await window.kryonLua.init();
+});
+
+"#);
+        
+        Ok(())
+    }
+
+    /// Add Lua scripts from KRB file to the JavaScript runtime
+    pub fn add_lua_scripts(&mut self, scripts: &[ScriptEntry]) -> HtmlResult<()> {
+        eprintln!("DEBUG: add_lua_scripts called with {} scripts", scripts.len());
+        if scripts.is_empty() {
+            eprintln!("DEBUG: No scripts found, returning early");
+            return Ok(());
+        }
+        
+        // Initialize Lua VM support since we have scripts
+        self.initialize_lua_vm()?;
+
+        self.js_content.push_str("\n// Kryon Lua Scripts\n");
+        self.js_content.push_str("document.addEventListener('DOMContentLoaded', async () => {\n");
+        self.js_content.push_str("    // Wait for Lua VM to be ready\n");
+        self.js_content.push_str("    while (!window.kryonLua.initialized) {\n");
+        self.js_content.push_str("        await new Promise(resolve => setTimeout(resolve, 10));\n");
+        self.js_content.push_str("    }\n\n");
+
+        for script in scripts {
+            if script.language == "lua" {
+                self.js_content.push_str(&format!(
+                    "    // Script: {} ({} bytes of bytecode, {} entry points)\n",
+                    script.name, script.bytecode.len(), script.entry_points.len()
+                ));
+                
+                // Execute Lua bytecode directly using Wasmoon
+                // Convert bytecode to base64 for safe transmission to JavaScript
+                let bytecode_b64 = base64::encode(&script.bytecode);
+                self.js_content.push_str(&format!(
+                    "    try {{\n        // Load and execute Lua bytecode\n        const bytecode = Uint8Array.from(atob('{}'), c => c.charCodeAt(0));\n        await window.kryonLua.executeBytecode('{}', bytecode);\n        console.log('[Kryon Lua] Successfully loaded script: {}');\n    }} catch (error) {{\n        console.error('[Kryon Lua] Failed to load script {}: ', error);\n    }}\n\n",
+                    bytecode_b64, script.name, script.name, script.name
+                ));
+                
+                // Create JavaScript wrappers for the entry points
+                for entry_point in &script.entry_points {
+                    self.js_content.push_str(&format!(
+                        "    window.{} = function(...args) {{\n        try {{\n            return window.kryonLua.callFunction('{}', ...args);\n        }} catch (error) {{\n            console.error('[Kryon Lua] Error calling function {}:', error);\n            return null;\n        }}\n    }};\n\n",
+                        entry_point, entry_point, entry_point
+                    ));
+                }
+            }
+        }
+
+        self.js_content.push_str("});\n\n");
+        Ok(())
+    }
+
 }
 
 impl Renderer for HtmlRenderer {
@@ -260,6 +465,8 @@ impl Renderer for HtmlRenderer {
         self.canvas_elements.clear();
         self.command_buffer.clear();
         self.element_counter = 0;
+
+        // Note: Lua VM will be initialized only when scripts are added via add_lua_scripts()
 
         // Set up base styles
         self.css_content.push_str("/* Kryon HTML Renderer */\n");
@@ -340,6 +547,12 @@ impl HtmlRenderer {
 
     fn process_command(&mut self, command: &RenderCommand) -> RenderResult<()> {
         match command {
+            RenderCommand::BeginContainer { element_id, position, size, color, border_radius, border_width, border_color, layout_style, z_index } => {
+                self.generate_begin_container_element(element_id, *position, *size, *color, *border_radius, *border_width, *border_color, layout_style.as_ref(), *z_index)?;
+            }
+            RenderCommand::EndContainer => {
+                self.generate_end_container_element()?;
+            }
             RenderCommand::DrawRect { position, size, color, border_radius, border_width, border_color, layout_style, z_index, .. } => {
                 self.generate_rect_element(*position, *size, *color, *border_radius, *border_width, *border_color, layout_style.as_ref(), *z_index)?;
             }

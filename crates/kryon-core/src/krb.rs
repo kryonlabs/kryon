@@ -1,5 +1,6 @@
 // crates/kryon-core/src/krb.rs
-use crate::{Element, ElementId, ElementType, PropertyValue, Result, KryonError, TextAlignment, Style, CursorType, InteractionState, EventType, TransformData, TransformType, TransformProperty, TransformPropertyType, CSSUnitValue, CSSUnit, LayoutSize, LayoutPosition, LayoutDimension, OverflowType, SelectOption}; 
+use crate::{Element, ElementId, ElementType, PropertyValue, Result, KryonError, TextAlignment, Style, CursorType, InteractionState, EventType, TransformData, TransformType, TransformProperty, TransformPropertyType, CSSUnitValue, CSSUnit, LayoutSize, LayoutPosition, LayoutDimension, OverflowType};
+use kryon_shared::PropertyId; 
 use std::collections::HashMap;
 use glam::Vec4;
 
@@ -39,6 +40,7 @@ pub struct ScriptEntry {
     pub language: String,
     pub name: String,
     pub bytecode: Vec<u8>,
+    pub source_code: Option<String>, // Store original source code for web compilation
     pub entry_points: Vec<String>,
 }
 
@@ -325,39 +327,7 @@ impl KRBParser {
                             continue;
                         }
                     }
-                    // Modern Taffy layout properties (0x40-0x4F range)
-                    0x40 => { // Display
-                        if size == 1 {
-                            let value = self.read_u8();
-                            let display_str = match value {
-                                0 => "none",
-                                1 => "block", 
-                                2 => "flex",
-                                3 => "grid",
-                                _ => "flex", // Default
-                            };
-                            PropertyValue::String(display_str.to_string())
-                        } else {
-                            for _ in 0..size { self.read_u8(); }
-                            continue;
-                        }
-                    }
-                    0x41 => { // FlexDirection
-                        if size == 1 {
-                            let value = self.read_u8();
-                            let direction_str = match value {
-                                0 => "row",
-                                1 => "column",
-                                2 => "row-reverse",
-                                3 => "column-reverse",
-                                _ => "row", // Default
-                            };
-                            PropertyValue::String(direction_str.to_string())
-                        } else {
-                            for _ in 0..size { self.read_u8(); }
-                            continue;
-                        }
-                    }
+                    // Modern Taffy layout properties (0x40-0x4F range) - REMOVED duplicates, now handled in custom property section
                     0x42 => { // FlexWrap
                         if size == 1 {
                             let string_index = self.read_u8() as usize;
@@ -404,66 +374,48 @@ impl KRBParser {
                             continue;
                         }
                     }
-                    0x46 => { // AlignItems
+                    0x40 => { // Display (byte value)
                         if size == 1 {
-                            let string_index = self.read_u8() as usize;
-                            if string_index < strings.len() {
-                                PropertyValue::String(strings[string_index].clone())
-                            } else {
-                                eprintln!("[STYLE]     AlignItems: invalid string index {}", string_index);
-                                continue;
-                            }
+                            let value = self.read_u8() as i32;
+                            eprintln!("[STYLE]     Display: parsed value={}", value);
+                            PropertyValue::Int(value)
                         } else {
                             for _ in 0..size { self.read_u8(); }
                             continue;
                         }
                     }
-                    0x47 => { // AlignItems
+                    0x41 => { // FlexDirection (byte value)
                         if size == 1 {
-                            let value = self.read_u8();
-                            let align_str = match value {
-                                0 => "flex-start",  // FlexStart
-                                1 => "flex-end",    // FlexEnd
-                                2 => "center",      // Center
-                                3 => "stretch",     // Stretch
-                                4 => "baseline",    // Baseline
-                                _ => "stretch", // Default
-                            };
-                            PropertyValue::String(align_str.to_string())
+                            let value = self.read_u8() as i32;
+                            eprintln!("[STYLE]     FlexDirection: parsed value={}", value);
+                            PropertyValue::Int(value)
                         } else {
                             for _ in 0..size { self.read_u8(); }
                             continue;
                         }
                     }
-                    0x48 => { // AlignContent
+                    0x46 => { // AlignItems (byte value)
                         if size == 1 {
-                            let string_index = self.read_u8() as usize;
-                            if string_index < strings.len() {
-                                PropertyValue::String(strings[string_index].clone())
-                            } else {
-                                eprintln!("[STYLE]     AlignContent: invalid string index {}", string_index);
-                                continue;
-                            }
+                            let value = self.read_u8() as i32;
+                            eprintln!("[STYLE]     AlignItems: parsed value={}", value);
+                            PropertyValue::Int(value)
                         } else {
                             for _ in 0..size { self.read_u8(); }
                             continue;
                         }
                     }
-                    0x49 => { // JustifyContent
+                    // Modern Taffy alignment properties - REMOVED duplicates with wrong hex mappings
+                    // 0x46 = AlignItems, 0x47 = AlignContent, 0x48 = AlignSelf 
+                    // Now handled correctly in custom property section with centralized PropertyId
+                    0x49 => { // JustifyContent (byte value)
                         if size == 1 {
-                            let string_index = self.read_u8() as usize;
-                            if string_index < strings.len() {
-                                PropertyValue::String(strings[string_index].clone())
-                            } else {
-                                eprintln!("[STYLE]     JustifyContent: invalid string index {}", string_index);
-                                continue;
-                            }
+                            PropertyValue::Int(self.read_u8() as i32)
                         } else {
                             for _ in 0..size { self.read_u8(); }
                             continue;
                         }
                     }
-                    0x4A => { // JustifyContent
+                    0x4A => { // JustifyContent (bytes)
                         if size == 1 {
                             let value = self.read_u8();
                             let justify_str = match value {
@@ -840,893 +792,191 @@ impl KRBParser {
         
         eprintln!("[PROP] Property ID: 0x{:02X}, value_type: 0x{:02X}, size: {}", property_id, value_type, size);
         
-        match property_id {
-            0x01 => { // BackgroundColor
+        // Use centralized PropertyId system for ALL properties
+        let property_enum = PropertyId::from_u8(property_id);
+        let property_name = match property_enum {
+            PropertyId::BackgroundColor => "background_color",
+            PropertyId::TextColor => "text_color",
+            PropertyId::BorderColor => "border_color",
+            PropertyId::BorderWidth => "border_width",
+            PropertyId::BorderRadius => "border_radius",
+            PropertyId::TextContent => "text_content",
+            PropertyId::FontSize => "font_size",
+            PropertyId::FontWeight => "font_weight",
+            PropertyId::TextAlignment => "text_alignment",
+            PropertyId::FontFamily => "font_family",
+            PropertyId::Display => "display",
+            PropertyId::FlexDirection => "flex_direction",
+            PropertyId::AlignItems => "align_items",
+            PropertyId::AlignContent => "align_content",
+            PropertyId::AlignSelf => "align_self",
+            PropertyId::JustifyContent => "justify_content",
+            PropertyId::Gap => "gap",
+            PropertyId::Padding => "padding",
+            PropertyId::Margin => "margin",
+            PropertyId::Width => "width",
+            PropertyId::Height => "height",
+            _ => "unknown_property",
+        };
+        
+        eprintln!("[PROP] {}: processing...", property_name);
+        
+        // For now, just store all properties as custom properties using centralized names
+        match value_type {
+            0x01 => { // Vec4 (color)
                 if size == 4 {
-                    element.background_color = self.read_color();
-                    eprintln!("[PROP] BackgroundColor: {:?}", element.background_color);
+                    let color = self.read_color();
+                    element.custom_properties.insert(property_name.to_string(), PropertyValue::Color(color));
+                    eprintln!("[PROP] {}: {:?}", property_name, color);
                 } else {
-                    eprintln!("[PROP] BackgroundColor: size mismatch, expected 4, got {}, skipping", size);
+                    eprintln!("[PROP] {}: size mismatch for Vec4, expected 4, got {}, skipping", property_name, size);
                     for _ in 0..size { self.read_u8(); }
                 }
             }
-            0x02 => { // ForegroundColor/TextColor
-                if size == 4 {
-                    element.text_color = self.read_color();
-                    eprintln!("[PROP] TextColor: {:?}", element.text_color);
-                } else {
-                    eprintln!("[PROP] TextColor: size mismatch, expected 4, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x03 => { // BorderColor
-                if size == 4 {
-                    element.border_color = self.read_color();
-                    eprintln!("[PROP] BorderColor: {:?}", element.border_color);
-                } else {
-                    eprintln!("[PROP] BorderColor: size mismatch, expected 4, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x04 => { // BorderWidth
+            0x02 => { // Bytes (enum value or integer)
                 if size == 1 {
-                    element.border_width = self.read_u8() as f32;
-                    eprintln!("[PROP] BorderWidth: {}", element.border_width);
-                } else {
-                    eprintln!("[PROP] BorderWidth: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x05 => { // BorderRadius
-                if size == 1 {
-                    element.border_radius = self.read_u8() as f32;
-                    eprintln!("[PROP] BorderRadius: {}", element.border_radius);
-                } else {
-                    eprintln!("[PROP] BorderRadius: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x06 => { // Layout flags  
-                if size == 1 {
-                    let layout_value = self.read_u8();
-                    element.layout_flags = layout_value;
-                    eprintln!("[PROP] Layout: flags=0x{:02X} (binary: {:08b})", layout_value, layout_value);
-                } else {
-                    eprintln!("[PROP] Layout: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x08 => { // TextContent
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        element.text = strings[string_index].clone();
-                        eprintln!("[PROP] TextContent: '{}'", element.text);
-                    }
-                } else {
-                    eprintln!("[PROP] TextContent: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x09 => { // FontSize
-                if size == 2 {
-                    element.font_size = self.read_u16() as f32;
-                    eprintln!("[PROP] FontSize: {}", element.font_size);
-                } else {
-                    eprintln!("[PROP] FontSize: size mismatch, expected 2, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x0A => { // FontWeight
-                if size == 2 {
-                    let weight = self.read_u16();
-                    element.font_weight = match weight {
-                        300 => crate::elements::FontWeight::Light,
-                        400 => crate::elements::FontWeight::Normal,
-                        700 => crate::elements::FontWeight::Bold,
-                        900 => crate::elements::FontWeight::Heavy,
-                        _ => crate::elements::FontWeight::Normal,
-                    };
-                    eprintln!("[PROP] FontWeight: {}", weight);
-                } else {
-                    eprintln!("[PROP] FontWeight: size mismatch, expected 2, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x0C => { // FontFamily
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        element.font_family = strings[string_index].clone();
-                        eprintln!("[PROP] FontFamily: '{}'", element.font_family);
-                    }
-                } else {
-                    eprintln!("[PROP] FontFamily: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x0E => { // Opacity
-                if size == 2 {
-                    element.opacity = self.read_u16() as f32 / 256.0; // 8.8 fixed point
-                    eprintln!("[PROP] Opacity: {}", element.opacity);
-                } else {
-                    eprintln!("[PROP] Opacity: size mismatch, expected 2, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x0F => { // ZIndex
-                if size == 2 {
-                    element.z_index = self.read_u16() as i32;
-                    eprintln!("[PROP] ZIndex: {}", element.z_index);
-                } else {
-                    eprintln!("[PROP] ZIndex: size mismatch, expected 2, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x19 => { // Width
-                if size == 2 {
-                    let width = self.read_u16() as f32;
-                    element.layout_size.width = LayoutDimension::Pixels(width);
-                    eprintln!("[PROP] Width: {}", width);
-                } else if size == 4 {
-                    // Percentage value stored as float - read as u32 bytes then convert to f32
-                    let bytes = [self.read_u8(), self.read_u8(), self.read_u8(), self.read_u8()];
-                    let width_percent = f32::from_le_bytes(bytes);
-                    element.layout_size.width = LayoutDimension::Percentage(width_percent / 100.0);
-                    eprintln!("[PROP] Width: {}%", width_percent);
-                } else {
-                    eprintln!("[PROP] Width: size mismatch, expected 2 or 4, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x0B => { // TextAlignment
-                if size == 1 {
-                    let alignment = self.read_u8();
-                    eprintln!("[PROP] TextAlignment: {}", alignment);
-                    // Apply text alignment to element
-                    element.text_alignment = match alignment {
-                        0 => TextAlignment::Start,
-                        1 => TextAlignment::Center,
-                        2 => TextAlignment::End,
-                        3 => TextAlignment::Justify,
-                        _ => TextAlignment::Start,
-                    };
-                } else {
-                    eprintln!("[PROP] TextAlignment: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x0D => { // ImageSource
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let image_src = strings[string_index].clone();
-                        element.custom_properties.insert("src".to_string(), PropertyValue::String(image_src.clone()));
-                        eprintln!("[PROP] ImageSource: '{}'", image_src);
-                    }
-                } else {
-                    eprintln!("[PROP] ImageSource: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x10 => { // Visibility
-                if size == 1 {
-                    element.visible = self.read_u8() != 0;
-                    eprintln!("[PROP] Visibility: {}", element.visible);
-                } else {
-                    eprintln!("[PROP] Visibility: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x11 => { // Gap
-                if size == 1 {
-                    let gap = self.read_u8() as f32;
-                    element.custom_properties.insert("gap".to_string(), PropertyValue::Float(gap));
-                    eprintln!("[PROP] Gap: {}", gap);
-                } else {
-                    eprintln!("[PROP] Gap: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x12 => { // MinWidth
-                if size == 2 {
-                    let min_width = self.read_u16() as f32;
-                    element.custom_properties.insert("min_width".to_string(), PropertyValue::Float(min_width));
-                    eprintln!("[PROP] MinWidth: {}", min_width);
-                } else {
-                    eprintln!("[PROP] MinWidth: size mismatch, expected 2, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x13 => { // MinHeight
-                if size == 2 {
-                    let min_height = self.read_u16() as f32;
-                    element.custom_properties.insert("min_height".to_string(), PropertyValue::Float(min_height));
-                    eprintln!("[PROP] MinHeight: {}", min_height);
-                } else {
-                    eprintln!("[PROP] MinHeight: size mismatch, expected 2, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x14 => { // MaxWidth
-                if size == 2 {
-                    let max_width = self.read_u16() as f32;
-                    element.custom_properties.insert("max_width".to_string(), PropertyValue::Float(max_width));
-                    eprintln!("[PROP] MaxWidth: {}", max_width);
-                } else {
-                    eprintln!("[PROP] MaxWidth: size mismatch, expected 2, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x15 => { // ImageSrc or MaxHeight
-                if value_type == 0x04 { // String - ImageSrc
-                    if size == 1 {
-                        let string_index = self.read_u8() as usize;
-                        if string_index < strings.len() {
-                            let src = strings[string_index].clone();
-                            element.custom_properties.insert("src".to_string(), PropertyValue::String(src.clone()));
-                            eprintln!("[PROP] ImageSrc: '{}'", src);
+                    let byte_value = self.read_u8();
+                    let string_value = match property_enum {
+                        PropertyId::AlignItems => match byte_value {
+                            0 => "flex-start",
+                            1 => "flex-end", 
+                            2 => "center",
+                            3 => "stretch",
+                            4 => "baseline",
+                            _ => "flex-start",
+                        },
+                        PropertyId::AlignContent => match byte_value {
+                            0 => "flex-start",
+                            1 => "flex-end",
+                            2 => "center", 
+                            3 => "stretch",
+                            4 => "space-between",
+                            5 => "space-around",
+                            _ => "flex-start",
+                        },
+                        PropertyId::Display => match byte_value {
+                            0 => "none",
+                            1 => "block",
+                            2 => "flex",
+                            3 => "grid",
+                            _ => "flex",
+                        },
+                        PropertyId::FlexDirection => match byte_value {
+                            0 => "row",
+                            1 => "column",
+                            2 => "row-reverse",
+                            3 => "column-reverse",
+                            _ => "row",
+                        },
+                        _ => {
+                            eprintln!("[PROP] {}: unknown byte value {}, storing as number", property_name, byte_value);
+                            &byte_value.to_string()
                         }
+                    };
+                    element.custom_properties.insert(property_name.to_string(), PropertyValue::String(string_value.to_string()));
+                    eprintln!("[PROP] {}: '{}' (from byte {})", property_name, string_value, byte_value);
+                } else if size == 2 {
+                    // Handle 2-byte integers (e.g., width, height)
+                    let int_value = self.read_u16();
+                    element.custom_properties.insert(property_name.to_string(), PropertyValue::Int(int_value as i32));
+                    eprintln!("[PROP] {}: {} (from u16)", property_name, int_value);
+                } else {
+                    eprintln!("[PROP] {}: size mismatch for bytes, expected 1 or 2, got {}, skipping", property_name, size);
+                    for _ in 0..size { self.read_u8(); }
+                }
+            }
+            0x04 => { // String reference
+                if size == 1 {
+                    let string_index = self.read_u8() as usize;
+                    if string_index < strings.len() {
+                        let string_value = strings[string_index].clone();
+                        element.custom_properties.insert(property_name.to_string(), PropertyValue::String(string_value.clone()));
+                        eprintln!("[PROP] {}: '{}' (from string index {})", property_name, string_value, string_index);
                     } else {
-                        eprintln!("[PROP] ImageSrc: size mismatch, expected 1, got {}, skipping", size);
-                        for _ in 0..size { self.read_u8(); }
-                    }
-                } else if value_type == 0x02 && size == 2 { // Short - MaxHeight
-                    let max_height = self.read_u16() as f32;
-                    element.custom_properties.insert("max_height".to_string(), PropertyValue::Float(max_height));
-                    eprintln!("[PROP] MaxHeight: {}", max_height);
-                } else {
-                    eprintln!("[PROP] Property 0x15: unsupported value_type {:02x} or size {}, skipping", value_type, size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            // App-specific properties
-            0x20 => { // WindowWidth
-                if size == 2 {
-                    let width = self.read_u16();
-                    eprintln!("[PROP] WindowWidth: {}", width);
-                    // App elements use this for initial size
-                    if element.element_type == ElementType::App {
-                        element.layout_size.width = LayoutDimension::Pixels(width as f32);
+                        eprintln!("[PROP] {}: invalid string index {}, skipping", property_name, string_index);
                     }
                 } else {
-                    eprintln!("[PROP] WindowWidth: size mismatch, expected 2, got {}, skipping", size);
+                    eprintln!("[PROP] {}: size mismatch for string, expected 1, got {}, skipping", property_name, size);
                     for _ in 0..size { self.read_u8(); }
                 }
             }
-            0x21 => { // WindowHeight  
-                if size == 2 {
-                    let height = self.read_u16();
-                    eprintln!("[PROP] WindowHeight: {}", height);
-                    if element.element_type == ElementType::App {
-                        element.layout_size.height = LayoutDimension::Pixels(height as f32);
-                    }
-                } else {
-                    eprintln!("[PROP] WindowHeight: size mismatch, expected 2, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x22 => { // WindowTitle
+            0x07 => { // Single byte enum (same as 0x02 but different encoding)
                 if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        eprintln!("[PROP] WindowTitle: '{}'", strings[string_index]);
-                        // Could store in custom properties if needed
-                    }
-                } else {
-                    eprintln!("[PROP] WindowTitle: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x23 => { // Resizable
-                if size == 1 {
-                    let resizable = self.read_u8() != 0;
-                    eprintln!("[PROP] Resizable: {}", resizable);
-                } else {
-                    eprintln!("[PROP] Resizable: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x24 => { // KeepAspectRatio
-                if size == 1 {
-                    let keep_aspect = self.read_u8() != 0;
-                    eprintln!("[PROP] KeepAspectRatio: {}", keep_aspect);
-                } else {
-                    eprintln!("[PROP] KeepAspectRatio: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x25 => { // ScaleFactor
-                if size == 2 {
-                    let scale = self.read_u16() as f32 / 256.0; // 8.8 fixed point
-                    eprintln!("[PROP] ScaleFactor: {}", scale);
-                } else {
-                    eprintln!("[PROP] ScaleFactor: size mismatch, expected 2, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x26 => { // Icon
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        eprintln!("[PROP] Icon: '{}'", strings[string_index]);
-                    }
-                } else {
-                    eprintln!("[PROP] Icon: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x27 => { // Version
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        eprintln!("[PROP] Version: '{}'", strings[string_index]);
-                    }
-                } else {
-                    eprintln!("[PROP] Version: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x28 => { // Author
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        eprintln!("[PROP] Author: '{}'", strings[string_index]);
-                    }
-                } else {
-                    eprintln!("[PROP] Author: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x29 => { // Cursor
-                if size == 1 {
-                    let cursor_value = self.read_u8();
-                    element.cursor = match cursor_value {
-                        0 => CursorType::Default,
-                        1 => CursorType::Pointer,
-                        2 => CursorType::Text,
-                        3 => CursorType::Move,
-                        4 => CursorType::NotAllowed,
-                        _ => CursorType::Default,
-                    };
-                    eprintln!("[PROP] Cursor: {} ({})", cursor_value, match element.cursor {
-                        CursorType::Default => "Default",
-                        CursorType::Pointer => "Pointer",
-                        CursorType::Text => "Text",
-                        CursorType::Move => "Move",
-                        CursorType::NotAllowed => "NotAllowed",
-                    });
-                } else {
-                    eprintln!("[PROP] Cursor: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x1A => { // Height
-                if size == 2 {
-                    let height = self.read_u16() as f32;
-                    element.layout_size.height = LayoutDimension::Pixels(height);
-                    eprintln!("[PROP] Height: {}", height);
-                } else if size == 4 {
-                    // Percentage value stored as float - read as u32 bytes then convert to f32
-                    let bytes = [self.read_u8(), self.read_u8(), self.read_u8(), self.read_u8()];
-                    let height_percent = f32::from_le_bytes(bytes);
-                    element.layout_size.height = LayoutDimension::Percentage(height_percent / 100.0);
-                    eprintln!("[PROP] Height: {}%", height_percent);
-                } else {
-                    eprintln!("[PROP] Height: size mismatch, expected 2 or 4, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x1B => { // LayoutFlags (layout property)
-                if size == 1 {
-                    let layout_value = self.read_u8();
-                    element.layout_flags = layout_value;
-                    eprintln!("[PROP] LayoutFlags: flags=0x{:02X} (binary: {:08b})", layout_value, layout_value);
-                } else {
-                    eprintln!("[PROP] LayoutFlags: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x1C => { // Height
-                if size == 2 {
-                    let height = self.read_u16() as f32;
-                    element.layout_size.height = LayoutDimension::Pixels(height);
-                    eprintln!("[PROP] Height: {}", height);
-                } else {
-                    eprintln!("[PROP] Height: size mismatch, expected 2, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x1D => { // StyleId
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let style_name = strings[string_index].clone();
-                        element.custom_properties.insert("style_name".to_string(), PropertyValue::String(style_name.clone()));
-                        eprintln!("[PROP] StyleId: '{}'", style_name);
-                    }
-                } else {
-                    eprintln!("[PROP] StyleId: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x8B => { // Overflow
-                if size == 2 {
-                    let overflow_value = self.read_u16();
-                    let overflow_x = match overflow_value & 0xF {
-                        0 => OverflowType::Visible,
-                        1 => OverflowType::Hidden,
-                        2 => OverflowType::Scroll,
-                        3 => OverflowType::Auto,
-                        _ => OverflowType::Visible,
-                    };
-                    let overflow_y = match (overflow_value >> 4) & 0xF {
-                        0 => OverflowType::Visible,
-                        1 => OverflowType::Hidden,
-                        2 => OverflowType::Scroll,
-                        3 => OverflowType::Auto,
-                        _ => OverflowType::Visible,
-                    };
-                    element.overflow_x = overflow_x;
-                    element.overflow_y = overflow_y;
-                    eprintln!("[PROP] Overflow: x={:?}, y={:?}", overflow_x, overflow_y);
-                } else {
-                    eprintln!("[PROP] Overflow: size mismatch, expected 2, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x8C => { // OverflowX  
-                if size == 1 {
-                    let overflow_x = match self.read_u8() {
-                        0 => OverflowType::Visible,
-                        1 => OverflowType::Hidden,
-                        2 => OverflowType::Scroll,
-                        3 => OverflowType::Auto,
-                        _ => OverflowType::Visible,
-                    };
-                    element.overflow_x = overflow_x;
-                    eprintln!("[PROP] OverflowX: {:?}", overflow_x);
-                } else {
-                    eprintln!("[PROP] OverflowX: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x8D => { // OverflowY
-                if size == 1 {
-                    let overflow_y = match self.read_u8() {
-                        0 => OverflowType::Visible,
-                        1 => OverflowType::Hidden,
-                        2 => OverflowType::Scroll,
-                        3 => OverflowType::Auto,
-                        _ => OverflowType::Visible,
-                    };
-                    element.overflow_y = overflow_y;
-                    eprintln!("[PROP] OverflowY: {:?}", overflow_y);
-                } else {
-                    eprintln!("[PROP] OverflowY: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x2B => { // InputType
-                if size == 1 && value_type == 0x09 { // Enum type
-                    let input_type_value = self.read_u8();
-                    // Map the enum value to a string representation
-                    let input_type_name = match input_type_value {
-                        0x00 => "text",
-                        0x01 => "password",
-                        0x02 => "email",
-                        0x03 => "number",
-                        0x04 => "tel",
-                        0x05 => "url",
-                        0x06 => "search",
-                        0x10 => "checkbox",
-                        0x11 => "radio",
-                        0x20 => "range",
-                        0x30 => "date",
-                        0x31 => "datetime-local",
-                        0x32 => "month",
-                        0x33 => "time",
-                        0x34 => "week",
-                        0x40 => "color",
-                        0x41 => "file",
-                        0x42 => "hidden",
-                        0x50 => "submit",
-                        0x51 => "reset",
-                        0x52 => "button",
-                        0x53 => "image",
-                        _ => "text", // Default to text for unknown types
-                    };
-                    element.custom_properties.insert("input_type".to_string(), PropertyValue::String(input_type_name.to_string()));
-                    eprintln!("[PROP] InputType: '{}' (0x{:02X})", input_type_name, input_type_value);
-                } else {
-                    eprintln!("[PROP] InputType: size mismatch or wrong type, expected size=1 type=0x09, got size={} type=0x{:02X}, skipping", size, value_type);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            // Modern Taffy layout properties (0x40-0x4F range)
-            0x40 => { // Display
-                if value_type == 0x04 && size == 1 { // String reference
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let display_str = strings[string_index].clone();
-                        element.custom_properties.insert("display".to_string(), PropertyValue::String(display_str.clone()));
-                        eprintln!("[PROP] Display (string): '{}'", display_str);
-                    } else {
-                        eprintln!("[PROP] Display: invalid string index {}, skipping", string_index);
-                    }
-                } else if value_type == 0x02 && size == 1 { // Direct byte value
-                    let display_value = self.read_u8();
-                    let display_str = match display_value {
-                        0 => "none",
-                        1 => "block", 
-                        2 => "flex",
-                        3 => "grid",
-                        _ => "flex", // Default
-                    };
-                    element.custom_properties.insert("display".to_string(), PropertyValue::String(display_str.to_string()));
-                    eprintln!("[PROP] Display (byte): '{}'", display_str);
-                } else {
-                    eprintln!("[PROP] Display: unsupported value_type {:02x} or size {}, skipping", value_type, size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x41 => { // FlexDirection
-                if value_type == 0x04 && size == 1 { // String reference
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let flex_direction_str = strings[string_index].clone();
-                        element.custom_properties.insert("flex_direction".to_string(), PropertyValue::String(flex_direction_str.clone()));
-                        eprintln!("[PROP] FlexDirection (string): '{}'", flex_direction_str);
-                    } else {
-                        eprintln!("[PROP] FlexDirection: invalid string index {}, skipping", string_index);
-                    }
-                } else if value_type == 0x02 && size == 1 { // Direct byte value
-                    let flex_direction_value = self.read_u8();
-                    let flex_direction_str = match flex_direction_value {
-                        0 => "row",
-                        1 => "column",
-                        2 => "row-reverse",
-                        3 => "column-reverse",
-                        _ => "row", // Default
-                    };
-                    element.custom_properties.insert("flex_direction".to_string(), PropertyValue::String(flex_direction_str.to_string()));
-                    eprintln!("[PROP] FlexDirection (byte): '{}'", flex_direction_str);
-                } else {
-                    eprintln!("[PROP] FlexDirection: unsupported value_type {:02x} or size {}, skipping", value_type, size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x42 => { // FlexWrap
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let flex_wrap = strings[string_index].clone();
-                        element.custom_properties.insert("flex_wrap".to_string(), PropertyValue::String(flex_wrap.clone()));
-                        eprintln!("[PROP] FlexWrap: '{}'", flex_wrap);
-                    }
-                } else {
-                    eprintln!("[PROP] FlexWrap: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x43 => { // FlexGrow
-                if size == 4 {
-                    let flex_grow_bytes = [self.read_u8(), self.read_u8(), self.read_u8(), self.read_u8()];
-                    let flex_grow = f32::from_le_bytes(flex_grow_bytes);
-                    element.custom_properties.insert("flex_grow".to_string(), PropertyValue::Float(flex_grow));
-                    eprintln!("[PROP] FlexGrow: {}", flex_grow);
-                } else {
-                    eprintln!("[PROP] FlexGrow: size mismatch, expected 4, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x44 => { // FlexShrink
-                if size == 4 {
-                    let flex_shrink_bytes = [self.read_u8(), self.read_u8(), self.read_u8(), self.read_u8()];
-                    let flex_shrink = f32::from_le_bytes(flex_shrink_bytes);
-                    element.custom_properties.insert("flex_shrink".to_string(), PropertyValue::Float(flex_shrink));
-                    eprintln!("[PROP] FlexShrink: {}", flex_shrink);
-                } else {
-                    eprintln!("[PROP] FlexShrink: size mismatch, expected 4, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x45 => { // FlexBasis
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let flex_basis = strings[string_index].clone();
-                        element.custom_properties.insert("flex_basis".to_string(), PropertyValue::String(flex_basis.clone()));
-                        eprintln!("[PROP] FlexBasis: '{}'", flex_basis);
-                    }
-                } else {
-                    eprintln!("[PROP] FlexBasis: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x46 => { // AlignItems (string index format)
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let align_items = strings[string_index].clone();
-                        element.custom_properties.insert("align_items".to_string(), PropertyValue::String(align_items.clone()));
-                        eprintln!("[PROP] AlignItems: '{}'", align_items);
-                    }
-                } else {
-                    eprintln!("[PROP] AlignItems: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x47 => { // AlignItems
-                if value_type == 0x04 && size == 1 { // String reference
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let align_items_str = strings[string_index].clone();
-                        element.custom_properties.insert("align_items".to_string(), PropertyValue::String(align_items_str.clone()));
-                        eprintln!("[PROP] AlignItems (string): '{}'", align_items_str);
-                    } else {
-                        eprintln!("[PROP] AlignItems: invalid string index {}, skipping", string_index);
-                    }
-                } else if value_type == 0x02 && size == 1 { // Direct byte value
-                    let align_items_value = self.read_u8();
-                    let align_items_str = match align_items_value {
-                        0 => "flex-start",  // FlexStart
-                        1 => "flex-end",    // FlexEnd
-                        2 => "center",      // Center
-                        3 => "stretch",     // Stretch
-                        4 => "baseline",    // Baseline
-                        _ => "stretch", // Default
-                    };
-                    element.custom_properties.insert("align_items".to_string(), PropertyValue::String(align_items_str.to_string()));
-                    eprintln!("[PROP] AlignItems (byte): '{}'", align_items_str);
-                } else {
-                    eprintln!("[PROP] AlignItems: unsupported value_type {:02x} or size {}, skipping", value_type, size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x48 => { // AlignContent
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let align_content = strings[string_index].clone();
-                        element.custom_properties.insert("align_content".to_string(), PropertyValue::String(align_content.clone()));
-                        eprintln!("[PROP] AlignContent: '{}'", align_content);
-                    }
-                } else {
-                    eprintln!("[PROP] AlignContent: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x49 => { // JustifyContent
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let justify_content = strings[string_index].clone();
-                        element.custom_properties.insert("justify_content".to_string(), PropertyValue::String(justify_content.clone()));
-                        eprintln!("[PROP] JustifyContent: '{}'", justify_content);
-                    }
-                } else {
-                    eprintln!("[PROP] JustifyContent: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x4A => { // JustifyContent
-                if value_type == 0x04 && size == 1 { // String reference
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let justify_content_str = strings[string_index].clone();
-                        element.custom_properties.insert("justify_content".to_string(), PropertyValue::String(justify_content_str.clone()));
-                        eprintln!("[PROP] JustifyContent (string): '{}'", justify_content_str);
-                    } else {
-                        eprintln!("[PROP] JustifyContent: invalid string index {}, skipping", string_index);
-                    }
-                } else if value_type == 0x02 && size == 1 { // Direct byte value
-                    let justify_content_value = self.read_u8();
-                    let justify_content_str = match justify_content_value {
-                        0 => "flex-start",
-                        1 => "flex-end",
-                        2 => "center",
-                        3 => "space-between",
-                        4 => "space-around",
-                        5 => "space-evenly",
-                        _ => "flex-start", // Default
-                    };
-                    element.custom_properties.insert("justify_content".to_string(), PropertyValue::String(justify_content_str.to_string()));
-                    eprintln!("[PROP] JustifyContent (byte): '{}'", justify_content_str);
-                } else {
-                    eprintln!("[PROP] JustifyContent: unsupported value_type {:02x} or size {}, skipping", value_type, size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x4B => { // JustifySelf
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let justify_self = strings[string_index].clone();
-                        element.custom_properties.insert("justify_self".to_string(), PropertyValue::String(justify_self.clone()));
-                        eprintln!("[PROP] JustifySelf: '{}'", justify_self);
-                    }
-                } else {
-                    eprintln!("[PROP] JustifySelf: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x50 => { // Position
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let position = strings[string_index].clone();
-                        element.custom_properties.insert("position".to_string(), PropertyValue::String(position.clone()));
-                        eprintln!("[PROP] Position: '{}'", position);
-                        
-                        // CRITICAL FIX: Set layout flags based on position property
-                        if position == "absolute" {
-                            element.layout_flags |= 0x02; // Set absolute positioning flag
-                            eprintln!("[PROP] Position: absolute -> set layout_flags to 0x{:02X}", element.layout_flags);
+                    let enum_value = self.read_u8();
+                    let string_value = match property_enum {
+                        PropertyId::AlignItems => match enum_value {
+                            0 => "flex-start",
+                            1 => "flex-end",
+                            2 => "center", 
+                            3 => "stretch",
+                            4 => "baseline",
+                            _ => "flex-start",
+                        },
+                        PropertyId::AlignContent => match enum_value {
+                            0 => "flex-start",
+                            1 => "flex-end",
+                            2 => "center",
+                            3 => "stretch", 
+                            4 => "space-between",
+                            5 => "space-around",
+                            _ => "flex-start",
+                        },
+                        PropertyId::Display => match enum_value {
+                            0 => "none",
+                            1 => "block",
+                            2 => "flex", 
+                            3 => "grid",
+                            _ => "flex",
+                        },
+                        PropertyId::FlexDirection => match enum_value {
+                            0 => "row",
+                            1 => "column",
+                            2 => "row-reverse",
+                            3 => "column-reverse", 
+                            _ => "row",
+                        },
+                        PropertyId::TextAlignment => match enum_value {
+                            0 => "start",
+                            1 => "center",
+                            2 => "end",
+                            3 => "justify",
+                            _ => "start",
+                        },
+                        _ => {
+                            eprintln!("[PROP] {}: unknown enum value {}, storing as number", property_name, enum_value);
+                            &enum_value.to_string()
                         }
-                    }
+                    };
+                    element.custom_properties.insert(property_name.to_string(), PropertyValue::String(string_value.to_string()));
+                    eprintln!("[PROP] {}: '{}' (from enum {})", property_name, string_value, enum_value);
                 } else {
-                    eprintln!("[PROP] Position: size mismatch, expected 1, got {}, skipping", size);
+                    eprintln!("[PROP] {}: size mismatch for enum, expected 1, got {}, skipping", property_name, size);
                     for _ in 0..size { self.read_u8(); }
                 }
             }
-            0x51 => { // Left
-                if size == 2 {
-                    let left = self.read_u16() as f32;
-                    element.layout_position.x = LayoutDimension::Pixels(left);
-                    element.custom_properties.insert("left".to_string(), PropertyValue::Float(left));
-                    eprintln!("[PROP] Left: {}", left);
-                } else {
-                    eprintln!("[PROP] Left: size mismatch, expected 2, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x52 => { // Top
-                if size == 2 {
-                    let top = self.read_u16() as f32;
-                    element.layout_position.y = LayoutDimension::Pixels(top);
-                    element.custom_properties.insert("top".to_string(), PropertyValue::Float(top));
-                    eprintln!("[PROP] Top: {}", top);
-                } else {
-                    eprintln!("[PROP] Top: size mismatch, expected 2, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x16 => { // Transform
-                // Store transform index for later application
-                let transform_index = self.read_u8() as usize;
-                element.custom_properties.insert("transform_index".to_string(), PropertyValue::Int(transform_index as i32));
-                eprintln!("[PROP] Transform: index={}", transform_index);
-                
-                // Skip remaining bytes if any
-                for _ in 1..size {
-                    self.read_u8();
-                }
-            }
-            0x70 => { // Padding (all sides)
+            0x08 => { // Integer
                 if size == 1 {
-                    let padding = self.read_u8() as f32;
-                    element.custom_properties.insert("padding".to_string(), PropertyValue::Float(padding));
-                    eprintln!("[PROP] Padding: {}", padding);
+                    let int_value = self.read_u8() as i32;
+                    element.custom_properties.insert(property_name.to_string(), PropertyValue::Int(int_value));
+                    eprintln!("[PROP] {}: {}", property_name, int_value);
+                } else if size == 2 {
+                    let int_value = self.read_u16() as i32;
+                    element.custom_properties.insert(property_name.to_string(), PropertyValue::Int(int_value));
+                    eprintln!("[PROP] {}: {}", property_name, int_value);
                 } else {
-                    eprintln!("[PROP] Padding: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x71 => { // PaddingTop
-                if size == 1 {
-                    let padding_top = self.read_u8() as f32;
-                    element.custom_properties.insert("padding_top".to_string(), PropertyValue::Float(padding_top));
-                    eprintln!("[PROP] PaddingTop: {}", padding_top);
-                } else {
-                    eprintln!("[PROP] PaddingTop: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x72 => { // PaddingRight
-                if size == 1 {
-                    let padding_right = self.read_u8() as f32;
-                    element.custom_properties.insert("padding_right".to_string(), PropertyValue::Float(padding_right));
-                    eprintln!("[PROP] PaddingRight: {}", padding_right);
-                } else {
-                    eprintln!("[PROP] PaddingRight: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x73 => { // PaddingBottom
-                if size == 1 {
-                    let padding_bottom = self.read_u8() as f32;
-                    element.custom_properties.insert("padding_bottom".to_string(), PropertyValue::Float(padding_bottom));
-                    eprintln!("[PROP] PaddingBottom: {}", padding_bottom);
-                } else {
-                    eprintln!("[PROP] PaddingBottom: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x74 => { // PaddingLeft
-                if size == 1 {
-                    let padding_left = self.read_u8() as f32;
-                    element.custom_properties.insert("padding_left".to_string(), PropertyValue::Float(padding_left));
-                    eprintln!("[PROP] PaddingLeft: {}", padding_left);
-                } else {
-                    eprintln!("[PROP] PaddingLeft: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0x4E => { // Gap (modern property ID)
-                if size == 4 {
-                    let gap_bytes = [self.read_u8(), self.read_u8(), self.read_u8(), self.read_u8()];
-                    let gap = f32::from_le_bytes(gap_bytes);
-                    element.custom_properties.insert("gap".to_string(), PropertyValue::Float(gap));
-                    eprintln!("[PROP] Gap: {}", gap);
-                } else {
-                    eprintln!("[PROP] Gap: size mismatch, expected 4, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0xD7 => { // Placeholder
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let placeholder = strings[string_index].clone();
-                        element.custom_properties.insert("placeholder".to_string(), PropertyValue::String(placeholder.clone()));
-                        eprintln!("[PROP] Placeholder: '{}'", placeholder);
-                    } else {
-                        eprintln!("[PROP] Placeholder: invalid string index {}", string_index);
-                    }
-                } else {
-                    eprintln!("[PROP] Placeholder: size mismatch, expected 1, got {}, skipping", size);
-                    for _ in 0..size { self.read_u8(); }
-                }
-            }
-            0xE3 => { // SelectOptions
-                if size == 1 {
-                    let string_index = self.read_u8() as usize;
-                    if string_index < strings.len() {
-                        let options_str = strings[string_index].clone();
-                        
-                        // Initialize select state if not already present
-                        element.initialize_select_state();
-                        
-                        // Parse comma-separated options and populate SelectState
-                        if let Some(ref mut select_state) = element.select_state {
-                            select_state.options.clear();
-                            for option_text in options_str.split(',') {
-                                let trimmed = option_text.trim();
-                                if !trimmed.is_empty() {
-                                    select_state.options.push(SelectOption {
-                                        value: trimmed.to_string(),
-                                        text: trimmed.to_string(),
-                                        selected: false,
-                                        disabled: false,
-                                        group: None,
-                                    });
-                                }
-                            }
-                        }
-                        
-                        element.custom_properties.insert("options".to_string(), PropertyValue::String(options_str.clone()));
-                        eprintln!("[PROP] SelectOptions: '{}' ({} options parsed)", options_str, 
-                                 element.select_state.as_ref().map_or(0, |s| s.options.len()));
-                    } else {
-                        eprintln!("[PROP] SelectOptions: invalid string index {}", string_index);
-                    }
-                } else {
-                    eprintln!("[PROP] SelectOptions: size mismatch, expected 1, got {}, skipping", size);
+                    eprintln!("[PROP] {}: unsupported integer size {}, skipping", property_name, size);
                     for _ in 0..size { self.read_u8(); }
                 }
             }
             _ => {
-                eprintln!("[PROP] Unknown property 0x{:02X}, skipping {} bytes...", property_id, size);
-                // Skip unknown property using size field
-                for _ in 0..size {
-                    self.read_u8();
-                }
+                eprintln!("[PROP] {}: unsupported value_type 0x{:02X}, skipping {} bytes", property_name, value_type, size);
+                for _ in 0..size { self.read_u8(); }
             }
         }
         
         Ok(())
     }
+    // ALL LEGACY PROPERTY PARSING REMOVED - Now using centralized PropertyId system above
     
     fn parse_custom_property(&mut self, element: &mut Element, strings: &[String]) -> Result<()> {
         let key_index = self.read_u8() as usize;
@@ -1976,6 +1226,7 @@ impl KRBParser {
                 language,
                 name,
                 bytecode,
+                source_code: None, // Not available in KRB files
                 entry_points,
             });
         }
@@ -2475,33 +1726,130 @@ impl KRBParser {
                                 element.font_family = font_family.to_string();
                             }
                         }
+                        
+                        // Apply layout properties to custom_properties for LayoutStyle::from_element_properties
+                        if element.element_type == ElementType::Container {
+                            // Display property (0x40)
+                            if let Some(display_prop) = style_block.properties.get(&0x40) {
+                                if let Some(display_byte) = display_prop.as_int() {
+                                    let display_str = match display_byte {
+                                        0 => "none",
+                                        1 => "block",
+                                        2 => "flex",
+                                        3 => "grid",
+                                        _ => "flex",
+                                    };
+                                    element.custom_properties.insert("display".to_string(), PropertyValue::String(display_str.to_string()));
+                                    eprintln!("[STYLE_LAYOUT] Applied display '{}' from style '{}' to element custom_properties", display_str, style_block.name);
+                                }
+                            }
+                            
+                            // FlexDirection property (0x41)  
+                            if let Some(flex_dir_prop) = style_block.properties.get(&0x41) {
+                                if let Some(flex_dir_byte) = flex_dir_prop.as_int() {
+                                    let flex_dir_str = match flex_dir_byte {
+                                        0 => "row",
+                                        1 => "column",
+                                        2 => "row-reverse",
+                                        3 => "column-reverse",
+                                        _ => "row",
+                                    };
+                                    element.custom_properties.insert("flex_direction".to_string(), PropertyValue::String(flex_dir_str.to_string()));
+                                    eprintln!("[STYLE_LAYOUT] Applied flex_direction '{}' from style '{}' to element custom_properties", flex_dir_str, style_block.name);
+                                }
+                            }
+                            
+                            // AlignItems property (0x46)
+                            if let Some(align_items_prop) = style_block.properties.get(&0x46) {
+                                if let Some(align_items_byte) = align_items_prop.as_int() {
+                                    let align_items_str = match align_items_byte {
+                                        0 => "flex-start",
+                                        1 => "flex-end", 
+                                        2 => "center",
+                                        3 => "stretch",
+                                        4 => "baseline",
+                                        _ => "flex-start",
+                                    };
+                                    element.custom_properties.insert("align_items".to_string(), PropertyValue::String(align_items_str.to_string()));
+                                    eprintln!("[STYLE_LAYOUT] Applied align_items '{}' from style '{}' to element custom_properties", align_items_str, style_block.name);
+                                }
+                            }
+                            
+                            // JustifyContent property (0x49)
+                            if let Some(justify_content_prop) = style_block.properties.get(&0x49) {
+                                if let Some(justify_content_byte) = justify_content_prop.as_int() {
+                                    let justify_content_str = match justify_content_byte {
+                                        0 => "flex-start",
+                                        1 => "flex-end",
+                                        2 => "center", 
+                                        3 => "stretch",
+                                        4 => "space-between",
+                                        5 => "space-around",
+                                        _ => "flex-start",
+                                    };
+                                    element.custom_properties.insert("justify_content".to_string(), PropertyValue::String(justify_content_str.to_string()));
+                                    eprintln!("[STYLE_LAYOUT] Applied justify_content '{}' from style '{}' to element custom_properties", justify_content_str, style_block.name);
+                                }
+                            }
+                        }
                     }
                     
-                    // Apply Taffy layout properties to custom_properties
+                    // Apply Taffy layout properties to custom_properties using centralized PropertyId types
                     let taffy_properties = [
-                        (0x40, "display"),
-                        (0x41, "flex_direction"),
-                        (0x42, "flex_wrap"),
-                        (0x43, "flex_grow"),
-                        (0x44, "flex_shrink"),
-                        (0x45, "flex_basis"),
-                        (0x46, "align_items"),
-                        (0x47, "align_self"),
-                        (0x48, "align_content"),
-                        (0x49, "justify_content"),
-                        (0x4A, "justify_items"),
-                        (0x4B, "justify_self"),
-                        (0x50, "position"),
-                        (0x51, "left"),
-                        (0x52, "top"),
+                        PropertyId::Display,
+                        PropertyId::FlexDirection,
+                        PropertyId::FlexWrap,
+                        PropertyId::FlexGrow,
+                        PropertyId::FlexShrink,
+                        PropertyId::FlexBasis,
+                        PropertyId::AlignItems,
+                        PropertyId::AlignContent,
+                        PropertyId::AlignSelf,
+                        PropertyId::JustifyContent,
+                        PropertyId::JustifyItems,
+                        PropertyId::JustifySelf,
+                        PropertyId::Position,
+                        PropertyId::Left,
+                        PropertyId::Top,
+                        PropertyId::Right,
+                        PropertyId::Bottom,
+                        PropertyId::Gap,
+                        PropertyId::Padding,
+                        PropertyId::Margin,
                     ];
                     
-                    for (prop_id, prop_name) in taffy_properties {
-                        if let Some(taffy_prop) = style_block.properties.get(&prop_id) {
+                    for property_id in taffy_properties {
+                        let prop_id_u8 = property_id.to_u8();
+                        if let Some(taffy_prop) = style_block.properties.get(&prop_id_u8) {
+                            // Use centralized snake_case property name conversion
+                            let prop_name = match property_id {
+                                PropertyId::Display => "display",
+                                PropertyId::FlexDirection => "flex_direction",
+                                PropertyId::FlexWrap => "flex_wrap",
+                                PropertyId::FlexGrow => "flex_grow",
+                                PropertyId::FlexShrink => "flex_shrink",
+                                PropertyId::FlexBasis => "flex_basis",
+                                PropertyId::AlignItems => "align_items",
+                                PropertyId::AlignContent => "align_content",
+                                PropertyId::AlignSelf => "align_self",
+                                PropertyId::JustifyContent => "justify_content",
+                                PropertyId::JustifyItems => "justify_items",
+                                PropertyId::JustifySelf => "justify_self",
+                                PropertyId::Position => "position",
+                                PropertyId::Left => "left",
+                                PropertyId::Top => "top",
+                                PropertyId::Right => "right",
+                                PropertyId::Bottom => "bottom",
+                                PropertyId::Gap => "gap",
+                                PropertyId::Padding => "padding",
+                                PropertyId::Margin => "margin",
+                                _ => continue, // Skip unknown properties
+                            };
+                            
                             element.custom_properties.insert(prop_name.to_string(), taffy_prop.clone());
                             
                             // CRITICAL FIX: Handle position property to set layout flags
-                            if prop_id == 0x50 && prop_name == "position" {
+                            if property_id == PropertyId::Position {
                                 if let Some(position_value) = taffy_prop.as_string() {
                                     if position_value == "absolute" {
                                         element.layout_flags |= 0x02; // Set absolute positioning flag
@@ -2553,7 +1901,14 @@ impl KRBParser {
                         
                         // Apply display property (0x40) - CRITICAL FOR VISIBILITY
                         if let Some(display_prop) = style_block.properties.get(&0x40) {
-                            if let Some(display_value) = display_prop.as_string() {
+                            if let Some(display_byte) = display_prop.as_int() {
+                                let display_value = match display_byte {
+                                    0 => "none",
+                                    1 => "block",
+                                    2 => "flex",
+                                    3 => "grid",
+                                    _ => "flex",
+                                };
                                 eprintln!("[STYLE_REAPPLY] Applying display '{}' from style '{}' to element {}", 
                                     display_value, style_block.name, element_id);
                                 
@@ -2563,6 +1918,57 @@ impl KRBParser {
                                 // Handle display: none as equivalent to visibility: hidden
                                 element.visible = display_value != "none";
                                 eprintln!("[STYLE_REAPPLY] Set element {} visibility to {}", element_id, element.visible);
+                            }
+                        }
+                        
+                        // Apply flex_direction property (0x41)
+                        if let Some(flex_dir_prop) = style_block.properties.get(&0x41) {
+                            if let Some(flex_dir_byte) = flex_dir_prop.as_int() {
+                                let flex_dir_value = match flex_dir_byte {
+                                    0 => "row",
+                                    1 => "column",
+                                    2 => "row-reverse",
+                                    3 => "column-reverse",
+                                    _ => "row",
+                                };
+                                eprintln!("[STYLE_REAPPLY] Applying flex_direction '{}' from style '{}' to element {}", 
+                                    flex_dir_value, style_block.name, element_id);
+                                element.custom_properties.insert("flex_direction".to_string(), PropertyValue::String(flex_dir_value.to_string()));
+                            }
+                        }
+                        
+                        // Apply align_items property (0x46)  
+                        if let Some(align_items_prop) = style_block.properties.get(&0x46) {
+                            if let Some(align_items_byte) = align_items_prop.as_int() {
+                                let align_items_value = match align_items_byte {
+                                    0 => "flex-start",
+                                    1 => "flex-end", 
+                                    2 => "center",
+                                    3 => "stretch",
+                                    4 => "baseline",
+                                    _ => "flex-start",
+                                };
+                                eprintln!("[STYLE_REAPPLY] Applying align_items '{}' from style '{}' to element {}", 
+                                    align_items_value, style_block.name, element_id);
+                                element.custom_properties.insert("align_items".to_string(), PropertyValue::String(align_items_value.to_string()));
+                            }
+                        }
+                        
+                        // Apply justify_content property (0x49)
+                        if let Some(justify_content_prop) = style_block.properties.get(&0x49) {
+                            if let Some(justify_content_byte) = justify_content_prop.as_int() {
+                                let justify_content_value = match justify_content_byte {
+                                    0 => "flex-start",
+                                    1 => "flex-end",
+                                    2 => "center", 
+                                    3 => "stretch",
+                                    4 => "space-between",
+                                    5 => "space-around",
+                                    _ => "flex-start",
+                                };
+                                eprintln!("[STYLE_REAPPLY] Applying justify_content '{}' from style '{}' to element {}", 
+                                    justify_content_value, style_block.name, element_id);
+                                element.custom_properties.insert("justify_content".to_string(), PropertyValue::String(justify_content_value.to_string()));
                             }
                         }
                         
@@ -2670,7 +2076,14 @@ impl KRBFile {
                         
                         // Apply display property (0x40) - CRITICAL FOR VISIBILITY
                         if let Some(display_prop) = style_block.properties.get(&0x40) {
-                            if let Some(display_value) = display_prop.as_string() {
+                            if let Some(display_byte) = display_prop.as_int() {
+                                let display_value = match display_byte {
+                                    0 => "none",
+                                    1 => "block",
+                                    2 => "flex",
+                                    3 => "grid",
+                                    _ => "flex",
+                                };
                                 eprintln!("[STYLE_REAPPLY] Applying display '{}' from style '{}' to element {}", 
                                     display_value, style_block.name, element_id);
                                 
@@ -2680,6 +2093,57 @@ impl KRBFile {
                                 // Handle display: none as equivalent to visibility: hidden
                                 element.visible = display_value != "none";
                                 eprintln!("[STYLE_REAPPLY] Set element {} visibility to {}", element_id, element.visible);
+                            }
+                        }
+                        
+                        // Apply flex_direction property (0x41)
+                        if let Some(flex_dir_prop) = style_block.properties.get(&0x41) {
+                            if let Some(flex_dir_byte) = flex_dir_prop.as_int() {
+                                let flex_dir_value = match flex_dir_byte {
+                                    0 => "row",
+                                    1 => "column",
+                                    2 => "row-reverse",
+                                    3 => "column-reverse",
+                                    _ => "row",
+                                };
+                                eprintln!("[STYLE_REAPPLY] Applying flex_direction '{}' from style '{}' to element {}", 
+                                    flex_dir_value, style_block.name, element_id);
+                                element.custom_properties.insert("flex_direction".to_string(), PropertyValue::String(flex_dir_value.to_string()));
+                            }
+                        }
+                        
+                        // Apply align_items property (0x46)  
+                        if let Some(align_items_prop) = style_block.properties.get(&0x46) {
+                            if let Some(align_items_byte) = align_items_prop.as_int() {
+                                let align_items_value = match align_items_byte {
+                                    0 => "flex-start",
+                                    1 => "flex-end", 
+                                    2 => "center",
+                                    3 => "stretch",
+                                    4 => "baseline",
+                                    _ => "flex-start",
+                                };
+                                eprintln!("[STYLE_REAPPLY] Applying align_items '{}' from style '{}' to element {}", 
+                                    align_items_value, style_block.name, element_id);
+                                element.custom_properties.insert("align_items".to_string(), PropertyValue::String(align_items_value.to_string()));
+                            }
+                        }
+                        
+                        // Apply justify_content property (0x49)
+                        if let Some(justify_content_prop) = style_block.properties.get(&0x49) {
+                            if let Some(justify_content_byte) = justify_content_prop.as_int() {
+                                let justify_content_value = match justify_content_byte {
+                                    0 => "flex-start",
+                                    1 => "flex-end",
+                                    2 => "center", 
+                                    3 => "stretch",
+                                    4 => "space-between",
+                                    5 => "space-around",
+                                    _ => "flex-start",
+                                };
+                                eprintln!("[STYLE_REAPPLY] Applying justify_content '{}' from style '{}' to element {}", 
+                                    justify_content_value, style_block.name, element_id);
+                                element.custom_properties.insert("justify_content".to_string(), PropertyValue::String(justify_content_value.to_string()));
                             }
                         }
                         
@@ -2826,31 +2290,107 @@ impl KRBParser {
     
     /// Parse percentage values from custom properties and update layout fields
     fn parse_percentage_properties(&self, element: &mut Element) {
-        // Check for width percentage
-        if let Some(PropertyValue::String(width_str)) = element.custom_properties.get("width") {
-            if let Ok(dimension) = self.parse_dimension_string(width_str) {
-                element.layout_size.width = dimension;
+        // Check for width percentage or numeric value
+        match element.custom_properties.get("width") {
+            Some(PropertyValue::String(width_str)) => {
+                if let Ok(dimension) = self.parse_dimension_string(width_str) {
+                    element.layout_size.width = dimension;
+                }
             }
+            Some(PropertyValue::Float(width)) => {
+                element.layout_size.width = LayoutDimension::Pixels(*width);
+            }
+            Some(PropertyValue::Int(width)) => {
+                element.layout_size.width = LayoutDimension::Pixels(*width as f32);
+            }
+            _ => {}
         }
         
-        // Check for height percentage
-        if let Some(PropertyValue::String(height_str)) = element.custom_properties.get("height") {
-            if let Ok(dimension) = self.parse_dimension_string(height_str) {
-                element.layout_size.height = dimension;
+        // Check for height percentage or numeric value
+        match element.custom_properties.get("height") {
+            Some(PropertyValue::String(height_str)) => {
+                if let Ok(dimension) = self.parse_dimension_string(height_str) {
+                    element.layout_size.height = dimension;
+                }
             }
+            Some(PropertyValue::Float(height)) => {
+                element.layout_size.height = LayoutDimension::Pixels(*height);
+            }
+            Some(PropertyValue::Int(height)) => {
+                element.layout_size.height = LayoutDimension::Pixels(*height as f32);
+            }
+            _ => {}
         }
         
-        // Check for position percentages
-        if let Some(PropertyValue::String(x_str)) = element.custom_properties.get("pos_x") {
-            if let Ok(dimension) = self.parse_dimension_string(x_str) {
-                element.layout_position.x = dimension;
+        // Check for position percentages or numeric values
+        match element.custom_properties.get("pos_x") {
+            Some(PropertyValue::String(x_str)) => {
+                if let Ok(dimension) = self.parse_dimension_string(x_str) {
+                    element.layout_position.x = dimension;
+                }
             }
+            Some(PropertyValue::Float(x)) => {
+                element.layout_position.x = LayoutDimension::Pixels(*x);
+            }
+            Some(PropertyValue::Int(x)) => {
+                element.layout_position.x = LayoutDimension::Pixels(*x as f32);
+            }
+            _ => {}
         }
         
-        if let Some(PropertyValue::String(y_str)) = element.custom_properties.get("pos_y") {
-            if let Ok(dimension) = self.parse_dimension_string(y_str) {
-                element.layout_position.y = dimension;
+        match element.custom_properties.get("pos_y") {
+            Some(PropertyValue::String(y_str)) => {
+                if let Ok(dimension) = self.parse_dimension_string(y_str) {
+                    element.layout_position.y = dimension;
+                }
             }
+            Some(PropertyValue::Float(y)) => {
+                element.layout_position.y = LayoutDimension::Pixels(*y);
+            }
+            Some(PropertyValue::Int(y)) => {
+                element.layout_position.y = LayoutDimension::Pixels(*y as f32);
+            }
+            _ => {}
+        }
+        
+        // Check for text content
+        if let Some(PropertyValue::String(text)) = element.custom_properties.get("text_content") {
+            element.text = text.clone();
+        }
+        
+        // Debug: Show all custom properties for text elements
+        if element.element_type == crate::elements::ElementType::Text {
+            eprintln!("[DEBUG] Text element {} (text='{}') custom properties:", element.id, element.text);
+            for (key, value) in &element.custom_properties {
+                eprintln!("[DEBUG]   {} = {:?}", key, value);
+            }
+            eprintln!("[DEBUG] Text element current text_alignment: {:?}", element.text_alignment);
+        }
+        
+        // Check for text alignment from element properties (0x0B)
+        if let Some(PropertyValue::Int(alignment_int)) = element.custom_properties.get("text_alignment") {
+            element.text_alignment = match *alignment_int {
+                0 => crate::elements::TextAlignment::Start,
+                1 => crate::elements::TextAlignment::Center,
+                2 => crate::elements::TextAlignment::End,
+                3 => crate::elements::TextAlignment::Justify,
+                _ => crate::elements::TextAlignment::Start,
+            };
+            eprintln!("[PARSE] Set text_alignment to {:?} from element property value {}", element.text_alignment, alignment_int);
+        } else if let Some(PropertyValue::String(alignment_str)) = element.custom_properties.get("text_alignment") {
+            element.text_alignment = match alignment_str.as_str() {
+                "left" | "start" => crate::elements::TextAlignment::Start,
+                "center" => crate::elements::TextAlignment::Center,
+                "right" | "end" => crate::elements::TextAlignment::End,
+                "justify" => crate::elements::TextAlignment::Justify,
+                _ => {
+                    eprintln!("[WARNING] Unknown text_alignment value: {}", alignment_str);
+                    crate::elements::TextAlignment::Start
+                }
+            };
+            eprintln!("[PARSE] Set text_alignment to {:?} from custom property '{}'", element.text_alignment, alignment_str);
+        } else {
+            eprintln!("[DEBUG] No text_alignment property found in custom_properties");
         }
     }
     

@@ -1,0 +1,275 @@
+// Syntax Highlighter Module for Kryon Playground
+// Provides syntax highlighting for Kryon code
+
+style "syntax_keyword" {
+    text_color: "#569CD6"  // Blue for keywords
+    font_weight: bold
+}
+
+style "syntax_string" {
+    text_color: "#CE9178"  // Orange for strings
+}
+
+style "syntax_number" {
+    text_color: "#B5CEA8"  // Light green for numbers
+}
+
+style "syntax_comment" {
+    text_color: "#6A9955"  // Green for comments
+    font_style: italic
+}
+
+style "syntax_property" {
+    text_color: "#9CDCFE"  // Light blue for properties
+}
+
+style "syntax_style_name" {
+    text_color: "#4EC9B0"  // Cyan for style names
+}
+
+style "syntax_element" {
+    text_color: "#4EC9B0"  // Cyan for element types
+}
+
+style "syntax_function" {
+    text_color: "#DCDCAA"  // Yellow for functions
+}
+
+style "syntax_operator" {
+    text_color: "#D4D4D4"  // Default for operators
+}
+
+style "syntax_bracket" {
+    text_color: "#FFD700"  // Gold for brackets
+}
+
+Component SyntaxHighlighter {
+    properties {
+        code: String
+        language: String = "kryon"
+    }
+    
+    Container {
+        id: "highlighted_code"
+        background_color: "transparent"
+        
+        // This will be dynamically populated with highlighted spans
+    }
+    
+    script {
+        language: lua
+        
+        -- Kryon language keywords
+        local keywords = {
+            "style", "App", "Container", "Text", "Button", "Input", "TextInput",
+            "Image", "Select", "EmbedView", "Canvas", "script", "language",
+            "properties", "on_click", "on_change", "on_focus", "on_blur",
+            "if", "else", "for", "while", "function", "return", "true", "false"
+        }
+        
+        -- Kryon properties
+        local properties = {
+            "background_color", "text_color", "border_color", "border_width",
+            "border_radius", "padding", "margin", "width", "height", "flex",
+            "display", "flex_direction", "align_items", "justify_content",
+            "position", "top", "left", "right", "bottom", "font_size",
+            "font_family", "font_weight", "text_alignment", "opacity",
+            "z_index", "cursor", "overflow", "id", "style", "text",
+            "window_width", "window_height", "window_title", "resizable"
+        }
+        
+        -- Token types
+        local TOKEN_KEYWORD = "keyword"
+        local TOKEN_STRING = "string"
+        local TOKEN_NUMBER = "number"
+        local TOKEN_COMMENT = "comment"
+        local TOKEN_PROPERTY = "property"
+        local TOKEN_IDENTIFIER = "identifier"
+        local TOKEN_OPERATOR = "operator"
+        local TOKEN_BRACKET = "bracket"
+        
+        function tokenize(code)
+            local tokens = {}
+            local i = 1
+            local length = string.len(code)
+            
+            while i <= length do
+                local char = string.sub(code, i, i)
+                
+                -- Skip whitespace
+                if string.match(char, "%s") then
+                    table.insert(tokens, {type = "whitespace", value = char})
+                    i = i + 1
+                    
+                -- Comments
+                elseif string.sub(code, i, i+1) == "//" then
+                    local comment_end = string.find(code, "\n", i) or length + 1
+                    local comment = string.sub(code, i, comment_end - 1)
+                    table.insert(tokens, {type = TOKEN_COMMENT, value = comment})
+                    i = comment_end
+                    
+                -- Strings
+                elseif char == '"' then
+                    local string_end = i + 1
+                    local escaped = false
+                    
+                    while string_end <= length do
+                        local c = string.sub(code, string_end, string_end)
+                        if c == '"' and not escaped then
+                            break
+                        end
+                        escaped = (c == '\\' and not escaped)
+                        string_end = string_end + 1
+                    end
+                    
+                    local str = string.sub(code, i, string_end)
+                    table.insert(tokens, {type = TOKEN_STRING, value = str})
+                    i = string_end + 1
+                    
+                -- Numbers
+                elseif string.match(char, "%d") then
+                    local num_end = i
+                    while num_end <= length and string.match(string.sub(code, num_end, num_end), "[%d%.]") do
+                        num_end = num_end + 1
+                    end
+                    
+                    local num = string.sub(code, i, num_end - 1)
+                    table.insert(tokens, {type = TOKEN_NUMBER, value = num})
+                    i = num_end
+                    
+                -- Identifiers and keywords
+                elseif string.match(char, "[%a_]") then
+                    local ident_end = i
+                    while ident_end <= length and string.match(string.sub(code, ident_end, ident_end), "[%w_]") do
+                        ident_end = ident_end + 1
+                    end
+                    
+                    local ident = string.sub(code, i, ident_end - 1)
+                    local token_type = TOKEN_IDENTIFIER
+                    
+                    -- Check if it's a keyword
+                    for _, keyword in ipairs(keywords) do
+                        if ident == keyword then
+                            token_type = TOKEN_KEYWORD
+                            break
+                        end
+                    end
+                    
+                    -- Check if it's a property
+                    if token_type == TOKEN_IDENTIFIER then
+                        for _, prop in ipairs(properties) do
+                            if ident == prop then
+                                token_type = TOKEN_PROPERTY
+                                break
+                            end
+                        end
+                    end
+                    
+                    table.insert(tokens, {type = token_type, value = ident})
+                    i = ident_end
+                    
+                -- Brackets
+                elseif string.match(char, "[{}%[%]()]") then
+                    table.insert(tokens, {type = TOKEN_BRACKET, value = char})
+                    i = i + 1
+                    
+                -- Operators and other characters
+                else
+                    table.insert(tokens, {type = TOKEN_OPERATOR, value = char})
+                    i = i + 1
+                end
+            end
+            
+            return tokens
+        end
+        
+        function create_highlighted_element(token)
+            local style_map = {
+                [TOKEN_KEYWORD] = "syntax_keyword",
+                [TOKEN_STRING] = "syntax_string",
+                [TOKEN_NUMBER] = "syntax_number",
+                [TOKEN_COMMENT] = "syntax_comment",
+                [TOKEN_PROPERTY] = "syntax_property",
+                [TOKEN_BRACKET] = "syntax_bracket",
+                [TOKEN_OPERATOR] = "syntax_operator",
+                ["whitespace"] = nil,
+                [TOKEN_IDENTIFIER] = nil
+            }
+            
+            local element = {
+                type = "Text",
+                text = token.value,
+                style = style_map[token.type]
+            }
+            
+            -- Special handling for element types
+            if token.type == TOKEN_IDENTIFIER and is_element_type(token.value) then
+                element.style = "syntax_element"
+            end
+            
+            return element
+        end
+        
+        function is_element_type(name)
+            local element_types = {
+                "App", "Container", "Text", "Button", "Input", "TextInput",
+                "Image", "Select", "EmbedView", "Canvas", "Component"
+            }
+            
+            for _, elem in ipairs(element_types) do
+                if name == elem then
+                    return true
+                end
+            end
+            
+            return false
+        end
+        
+        function highlight_code()
+            local code = get_property("code")
+            local tokens = tokenize(code)
+            local container = get_element("highlighted_code")
+            
+            -- Clear existing highlights
+            clear_children(container)
+            
+            -- Create a flow container for inline text
+            local line_container = create_element(container, "Container", {
+                display = "flex",
+                flex_direction = "row",
+                flex_wrap = "wrap"
+            })
+            
+            -- Add highlighted tokens
+            for _, token in ipairs(tokens) do
+                if token.value == "\n" then
+                    -- Create new line container
+                    line_container = create_element(container, "Container", {
+                        display = "flex",
+                        flex_direction = "row",
+                        flex_wrap = "wrap"
+                    })
+                else
+                    local elem = create_highlighted_element(token)
+                    create_element(line_container, elem.type, {
+                        text = elem.text,
+                        style = elem.style
+                    })
+                end
+            end
+        end
+        
+        -- Update highlighting when code changes
+        function on_code_changed()
+            highlight_code()
+        end
+        
+        -- Initialize
+        function init()
+            observe_property("code", on_code_changed)
+            highlight_code()
+        end
+        
+        init()
+    end
+}

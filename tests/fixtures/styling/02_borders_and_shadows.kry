@@ -1,0 +1,142 @@
+// Border and shadow styling tests
+// Tests: Border properties, shadows, visual effects
+App {
+    window_width: 800
+    window_height: 600
+    background_color: "#f1f5f9"
+    
+    Container {
+        width: 700
+        height: 500
+        padding: 50
+        display: flex
+        flex_direction: column
+        gap: 30
+        
+        Text {
+            text: "Border and Shadow Examples"
+            font_size: 24
+            font_weight: "bold"
+            text_color: "#1e293b"
+            margin_bottom: 20
+        }
+        
+        Container {
+            display: flex
+            flex_direction: row
+            gap: 30
+            margin_bottom: 30
+            
+            Container {
+                width: 150
+                height: 100
+                background_color: "#ffffff"
+                border: "2px solid #e2e8f0"
+                border_radius: 8
+                display: flex
+                justify_content: center
+                align_items: center
+                
+                Text {
+                    text: "Simple Border"
+                    font_size: 12
+                    text_color: "#64748b"
+                }
+            }
+            
+            Container {
+                width: 150
+                height: 100
+                background_color: "#ffffff"
+                border: "3px solid #3b82f6"
+                border_radius: 12
+                display: flex
+                justify_content: center
+                align_items: center
+                
+                Text {
+                    text: "Colored Border"
+                    font_size: 12
+                    text_color: "#3b82f6"
+                    font_weight: "bold"
+                }
+            }
+            
+            Container {
+                width: 150
+                height: 100
+                background_color: "#ffffff"
+                border: "1px dashed #8b5cf6"
+                border_radius: 16
+                display: flex
+                justify_content: center
+                align_items: center
+                
+                Text {
+                    text: "Dashed Border"
+                    font_size: 12
+                    text_color: "#8b5cf6"
+                }
+            }
+        }
+        
+        Container {
+            display: flex
+            flex_direction: row
+            gap: 30
+            
+            Container {
+                width: 150
+                height: 100
+                background_color: "#ffffff"
+                border_radius: 8
+                box_shadow: "0 1px 3px rgba(0, 0, 0, 0.1)"
+                display: flex
+                justify_content: center
+                align_items: center
+                
+                Text {
+                    text: "Light Shadow"
+                    font_size: 12
+                    text_color: "#374151"
+                }
+            }
+            
+            Container {
+                width: 150
+                height: 100
+                background_color: "#ffffff"
+                border_radius: 12
+                box_shadow: "0 4px 6px rgba(0, 0, 0, 0.15)"
+                display: flex
+                justify_content: center
+                align_items: center
+                
+                Text {
+                    text: "Medium Shadow"
+                    font_size: 12
+                    text_color: "#374151"
+                    font_weight: "bold"
+                }
+            }
+            
+            Container {
+                width: 150
+                height: 100
+                background_color: "#ffffff"
+                border_radius: 16
+                box_shadow: "0 10px 25px rgba(0, 0, 0, 0.25)"
+                display: flex
+                justify_content: center
+                align_items: center
+                
+                Text {
+                    text: "Heavy Shadow"
+                    font_size: 12
+                    text_color: "#374151"
+                    font_weight: "bold"
+                }
+            }
+        }
+    }
+}

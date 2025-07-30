@@ -1,0 +1,140 @@
+// Custom card component definition
+// Tests: Component definition, property passing, composition
+Define Card {
+    Properties {
+        title: String = "Default Title"
+        content: String = "Default content goes here"
+        image_url: String = ""
+        show_button: Boolean = true
+        button_text: String = "Action"
+    }
+    
+    Container {
+        width: 280
+        height: 320
+        background_color: "#ffffff"
+        border_radius: 12
+        box_shadow: "0 4px 6px rgba(0, 0, 0, 0.1)"
+        border: "1px solid #e5e7eb"
+        display: flex
+        flex_direction: column
+        overflow: "hidden"
+        
+        // Image section (if provided)
+        Conditional {
+            condition: ${image_url != ""}
+            
+            Container {
+                width: 280
+                height: 160
+                background_color: "#f3f4f6"
+                display: flex
+                justify_content: center
+                align_items: center
+                
+                Text {
+                    text: "Image: ${image_url}"
+                    font_size: 12
+                    text_color: "#6b7280"
+                }
+            }
+        }
+        
+        // Content section
+        Container {
+            flex: 1
+            padding: 20
+            display: flex
+            flex_direction: column
+            
+            Text {
+                text: ${title}
+                font_size: 18
+                font_weight: "bold"
+                text_color: "#111827"
+                margin_bottom: 8
+            }
+            
+            Text {
+                text: ${content}
+                font_size: 14
+                text_color: "#6b7280"
+                line_height: 1.4
+                flex: 1
+            }
+            
+            // Button section (if enabled)
+            Conditional {
+                condition: ${show_button}
+                
+                Button {
+                    text: ${button_text}
+                    width: 240
+                    height: 36
+                    background_color: "#3b82f6"
+                    text_color: "#ffffff"
+                    border_radius: 6
+                    font_size: 14
+                    font_weight: "600"
+                    margin_top: 15
+                    
+                    on_click: {
+                        action: "card_action"
+                        card_title: ${title}
+                    }
+                }
+            }
+        }
+    }
+}
+
+App {
+    window_width: 1000
+    window_height: 700
+    background_color: "#f8fafc"
+    
+    Container {
+        width: 900
+        height: 600
+        padding: 50
+        display: flex
+        flex_direction: column
+        gap: 30
+        
+        Text {
+            text: "Custom Card Components"
+            font_size: 28
+            font_weight: "bold"
+            text_color: "#1e293b"
+            margin_bottom: 20
+        }
+        
+        Container {
+            display: flex
+            flex_direction: row
+            gap: 30
+            flex_wrap: wrap
+            
+            Card {
+                title: "Basic Card"
+                content: "This is a basic card with minimal configuration. It shows the default styling and behavior."
+                show_button: true
+                button_text: "Learn More"
+            }
+            
+            Card {
+                title: "Card with Image"
+                content: "This card demonstrates how images can be included in the component design."
+                image_url: "product-image.jpg"
+                show_button: true
+                button_text: "View Product"
+            }
+            
+            Card {
+                title: "Text Only Card"
+                content: "Sometimes you just need a simple card without any buttons or actions. This card focuses purely on displaying information in a clean, readable format."
+                show_button: false
+            }
+        }
+    }
+}

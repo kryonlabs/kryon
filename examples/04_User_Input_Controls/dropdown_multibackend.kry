@@ -1,0 +1,135 @@
+# Multi-Backend Dropdown Demo
+# This example demonstrates the dropdown widget working across SDL2, Raylib, and WGPU backends
+
+@variables {
+    options: [
+        { label: "Option 1", value: "value1" },
+        { label: "Option 2", value: "value2" }, 
+        { label: "Option 3", value: "value3" },
+        { label: "Very Long Option 4", value: "value4" },
+        { label: "Final Option", value: "value5" }
+    ]
+    selected_values: []
+    last_selection: "None"
+}
+
+style "app_container" {
+    background_color: "#f0f0f0"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    padding: 20
+    gap: 20
+}
+
+style "demo_card" {
+    background_color: "#ffffff"
+    padding: 30
+    border_radius: 12
+    box_shadow: "0 4px 12px rgba(0, 0, 0, 0.1)"
+    width: 400
+}
+
+style "title" {
+    font_size: 24
+    font_weight: bold
+    text_color: "#333333"
+    margin_bottom: 10
+}
+
+style "subtitle" {
+    font_size: 14
+    text_color: "#666666"
+    margin_bottom: 20
+}
+
+style "result_text" {
+    font_size: 16
+    text_color: "#0066cc"
+    margin_top: 20
+}
+
+App {
+    window_width: 800
+    window_height: 600
+    window_title: "Multi-Backend Dropdown Demo"
+    
+    Container {
+        style: "app_container"
+        
+        Container {
+            style: "demo_card"
+            
+            Text {
+                text: "Native Dropdown Widget"
+                style: "title"
+            }
+            
+            Text {
+                text: "This dropdown works across SDL2, Raylib, and WGPU backends"
+                style: "subtitle"
+            }
+            
+            # Basic dropdown
+            Widget {
+                type: "dropdown"
+                width: 100%
+                placeholder: "Select an option..."
+                font_size: 16
+                
+                # Bind the dropdown state
+                options: $options
+                
+                # Handle selection changes
+                onSelectionChanged: handle_selection
+            }
+            
+            Text {
+                text: "Last selection: " + $last_selection
+                style: "result_text"
+            }
+        }
+        
+        Container {
+            style: "demo_card"
+            
+            Text {
+                text: "Multi-Select Dropdown"
+                style: "title"
+            }
+            
+            # Multi-select dropdown with search
+            Widget {
+                type: "dropdown"
+                width: 100%
+                placeholder: "Select multiple options..."
+                font_size: 16
+                multi_select: true
+                searchable: true
+                clearable: true
+                max_height: 200
+                
+                options: $options
+                onSelectionChanged: handle_multi_selection
+            }
+            
+            Text {
+                text: "Selected values: " + $selected_values.join(", ")
+                style: "result_text"
+            }
+        }
+    }
+}
+
+@function "lua" handle_selection(values) {
+    if #values > 0 then
+        last_selection = values[1]
+    else
+        last_selection = "None"
+    end
+}
+
+@function "lua" handle_multi_selection(values) {
+    selected_values = values
+}

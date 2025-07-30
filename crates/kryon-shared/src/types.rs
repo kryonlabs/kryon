@@ -6,7 +6,6 @@
 //! ALL OTHER CRATES MUST IMPORT FROM HERE - DO NOT DUPLICATE DEFINITIONS!
 
 
-#[cfg(feature = "serde_support")]
 use serde::{Deserialize, Serialize};
 
 // =============================================================================
@@ -44,6 +43,24 @@ pub enum ElementType {
     Toggle = 0x35,
     DatePicker = 0x36,
     FilePicker = 0x37,
+    
+    // Extended Widgets (0x60-0x7F) - Feature gated
+    #[cfg(feature = "dropdown")]
+    Dropdown = 0x60,
+    #[cfg(feature = "data-grid")]
+    DataGrid = 0x61,
+    #[cfg(feature = "date-picker")]
+    EnhancedDatePicker = 0x62,
+    #[cfg(feature = "rich-text")]
+    RichText = 0x63,
+    #[cfg(feature = "color-picker")]
+    ColorPicker = 0x64,
+    #[cfg(feature = "file-upload")]
+    FileUpload = 0x65,
+    #[cfg(feature = "number-input")]
+    NumberInput = 0x66,
+    #[cfg(feature = "range-slider")]
+    RangeSlider = 0x67,
     
     // Semantic Elements (0x40-0x4F)
     Form = 0x40,
@@ -91,6 +108,24 @@ impl ElementType {
             0x36 => ElementType::DatePicker,
             0x37 => ElementType::FilePicker,
             
+            // Extended Widgets (0x60-0x7F) - Feature gated
+            #[cfg(feature = "dropdown")]
+            0x60 => ElementType::Dropdown,
+            #[cfg(feature = "data-grid")]
+            0x61 => ElementType::DataGrid,
+            #[cfg(feature = "date-picker")]
+            0x62 => ElementType::EnhancedDatePicker,
+            #[cfg(feature = "rich-text")]
+            0x63 => ElementType::RichText,
+            #[cfg(feature = "color-picker")]
+            0x64 => ElementType::ColorPicker,
+            #[cfg(feature = "file-upload")]
+            0x65 => ElementType::FileUpload,
+            #[cfg(feature = "number-input")]
+            0x66 => ElementType::NumberInput,
+            #[cfg(feature = "range-slider")]
+            0x67 => ElementType::RangeSlider,
+            
             // Semantic Elements (0x40-0x4F)
             0x40 => ElementType::Form,
             0x41 => ElementType::List,
@@ -128,6 +163,25 @@ impl ElementType {
             ElementType::Toggle => 0x35,
             ElementType::DatePicker => 0x36,
             ElementType::FilePicker => 0x37,
+            
+            // Extended Widgets (0x60-0x7F) - Feature gated
+            #[cfg(feature = "dropdown")]
+            ElementType::Dropdown => 0x60,
+            #[cfg(feature = "data-grid")]
+            ElementType::DataGrid => 0x61,
+            #[cfg(feature = "date-picker")]
+            ElementType::EnhancedDatePicker => 0x62,
+            #[cfg(feature = "rich-text")]
+            ElementType::RichText => 0x63,
+            #[cfg(feature = "color-picker")]
+            ElementType::ColorPicker => 0x64,
+            #[cfg(feature = "file-upload")]
+            ElementType::FileUpload => 0x65,
+            #[cfg(feature = "number-input")]
+            ElementType::NumberInput => 0x66,
+            #[cfg(feature = "range-slider")]
+            ElementType::RangeSlider => 0x67,
+            
             ElementType::Form => 0x40,
             ElementType::List => 0x41,
             ElementType::ListItem => 0x42,
@@ -161,6 +215,25 @@ impl ElementType {
             "Toggle" => Self::Toggle,
             "DatePicker" => Self::DatePicker,
             "FilePicker" => Self::FilePicker,
+            
+            // Extended Widgets
+            #[cfg(feature = "dropdown")]
+            "Dropdown" => Self::Dropdown,
+            #[cfg(feature = "data-grid")]
+            "DataGrid" => Self::DataGrid,
+            #[cfg(feature = "date-picker")]
+            "EnhancedDatePicker" => Self::EnhancedDatePicker,
+            #[cfg(feature = "rich-text")]
+            "RichText" => Self::RichText,
+            #[cfg(feature = "color-picker")]
+            "ColorPicker" => Self::ColorPicker,
+            #[cfg(feature = "file-upload")]
+            "FileUpload" => Self::FileUpload,
+            #[cfg(feature = "number-input")]
+            "NumberInput" => Self::NumberInput,
+            #[cfg(feature = "range-slider")]
+            "RangeSlider" => Self::RangeSlider,
+            
             "Form" => Self::Form,
             "List" => Self::List,
             "ListItem" => Self::ListItem,
@@ -194,6 +267,24 @@ impl ElementType {
             ElementType::Toggle => "Toggle",
             ElementType::DatePicker => "DatePicker",
             ElementType::FilePicker => "FilePicker",
+            
+            // Extended Widgets
+            #[cfg(feature = "dropdown")]
+            ElementType::Dropdown => "Dropdown",
+            #[cfg(feature = "data-grid")]
+            ElementType::DataGrid => "DataGrid",
+            #[cfg(feature = "date-picker")]
+            ElementType::EnhancedDatePicker => "EnhancedDatePicker",
+            #[cfg(feature = "rich-text")]
+            ElementType::RichText => "RichText",
+            #[cfg(feature = "color-picker")]
+            ElementType::ColorPicker => "ColorPicker",
+            #[cfg(feature = "file-upload")]
+            ElementType::FileUpload => "FileUpload",
+            #[cfg(feature = "number-input")]
+            ElementType::NumberInput => "NumberInput",
+            #[cfg(feature = "range-slider")]
+            ElementType::RangeSlider => "RangeSlider",
             ElementType::Form => "Form",
             ElementType::List => "List",
             ElementType::ListItem => "ListItem",
@@ -218,8 +309,7 @@ impl From<u8> for ElementType {
 
 /// Unified property IDs - the single source of truth for all properties
 /// Used in the binary KRB format and throughout the system
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum PropertyId {
     // Visual Properties (0x01-0x0F)
@@ -415,11 +505,368 @@ pub enum PropertyId {
     DataAttributes = 0xF5,
     CustomProperties = 0xF6,
     
+    // New legacy properties with unique values
+    CustomData = 0xF7, // For legacy compatibility
+    Author = 0xF8, // New legacy property
+    Version = 0xF9, // New legacy property
+    BoxShadow = 0x97, // New property
+    MinViewportWidth = 0xFA,
+    MaxViewportWidth = 0xFB,
+    Order = 0xFC, // New unique value
+    
     // Custom properties (0xFF for unknown)
     Custom(u8),
 }
 
 impl PropertyId {
+    /// Create PropertyId from string name
+    pub fn from_name(name: &str) -> Self {
+        let result = match name {
+            // Visual Properties (PascalCase and snake_case)
+            "BackgroundColor" | "background_color" => PropertyId::BackgroundColor,
+            "TextColor" | "ForegroundColor" | "text_color" | "foreground_color" => PropertyId::TextColor,
+            "BorderColor" | "border_color" => PropertyId::BorderColor,
+            "BorderWidth" | "border_width" => PropertyId::BorderWidth,
+            "BorderRadius" | "border_radius" => PropertyId::BorderRadius,
+            "LayoutFlags" | "layout_flags" => PropertyId::LayoutFlags,
+            "TextContent" | "text_content" | "text" => PropertyId::TextContent,
+            "FontSize" | "font_size" => PropertyId::FontSize,
+            "FontWeight" | "font_weight" => PropertyId::FontWeight,
+            "TextAlignment" | "text_alignment" => PropertyId::TextAlignment,
+            "FontFamily" | "font_family" => PropertyId::FontFamily,
+            "ImageSource" => PropertyId::ImageSource,
+            "Opacity" => PropertyId::Opacity,
+            "ZIndex" => PropertyId::ZIndex,
+            
+            // Display Properties (PascalCase and snake_case)
+            "Visibility" | "visibility" => PropertyId::Visibility,
+            "Gap" | "gap" => PropertyId::Gap,
+            "Padding" | "padding" => PropertyId::Padding,
+            "PaddingTop" | "padding_top" => PropertyId::PaddingTop,
+            "PaddingRight" | "padding_right" => PropertyId::PaddingRight,
+            "PaddingBottom" | "padding_bottom" => PropertyId::PaddingBottom,
+            "PaddingLeft" | "padding_left" => PropertyId::PaddingLeft,
+            "Margin" | "margin" => PropertyId::Margin,
+            "MarginTop" | "margin_top" => PropertyId::MarginTop,
+            "MarginRight" | "margin_right" => PropertyId::MarginRight,
+            "MarginBottom" | "margin_bottom" => PropertyId::MarginBottom,
+            "MarginLeft" | "margin_left" => PropertyId::MarginLeft,
+            "MinWidth" | "min_width" => PropertyId::MinWidth,
+            "MinHeight" | "min_height" => PropertyId::MinHeight,
+            "MaxWidth" | "max_width" => PropertyId::MaxWidth,
+            "MaxHeight" | "max_height" => PropertyId::MaxHeight,
+            "Transform" | "transform" => PropertyId::Transform,
+            "Shadow" | "shadow" => PropertyId::Shadow,
+            "Width" | "width" => PropertyId::Width,
+            "Height" | "height" => PropertyId::Height,
+            "StyleId" | "style_id" => PropertyId::StyleId,
+            "ListStyleType" | "list_style_type" => PropertyId::ListStyleType,
+            "WhiteSpace" | "white_space" => PropertyId::WhiteSpace,
+            
+            // Window Properties (PascalCase and snake_case)
+            "WindowWidth" | "window_width" => PropertyId::WindowWidth,
+            "WindowHeight" | "window_height" => PropertyId::WindowHeight,
+            "WindowTitle" | "window_title" => PropertyId::WindowTitle,
+            "WindowResizable" | "Resizable" | "resizable" => PropertyId::WindowResizable,
+            "WindowFullscreen" | "window_fullscreen" => PropertyId::WindowFullscreen,
+            "WindowVsync" | "window_vsync" => PropertyId::WindowVsync,
+            "WindowTargetFps" | "window_target_fps" => PropertyId::WindowTargetFps,
+            "WindowAntialiasing" | "window_antialiasing" => PropertyId::WindowAntialiasing,
+            "WindowIcon" | "window_icon" | "Icon" | "icon" => PropertyId::WindowIcon,
+            "Cursor" | "cursor" => PropertyId::Cursor,
+            
+            // Flexbox Properties (PascalCase and snake_case)
+            "Display" | "display" => PropertyId::Display,
+            "FlexDirection" | "flex_direction" => PropertyId::FlexDirection,
+            "FlexWrap" | "flex_wrap" => PropertyId::FlexWrap,
+            "FlexGrow" | "flex_grow" => PropertyId::FlexGrow,
+            "FlexShrink" | "flex_shrink" => PropertyId::FlexShrink,
+            "FlexBasis" | "flex_basis" => PropertyId::FlexBasis,
+            "AlignItems" | "align_items" => PropertyId::AlignItems,
+            "AlignContent" | "align_content" => PropertyId::AlignContent,
+            "AlignSelf" | "align_self" => PropertyId::AlignSelf,
+            "JustifyContent" | "justify_content" => PropertyId::JustifyContent,
+            "JustifyItems" | "justify_items" => PropertyId::JustifyItems,
+            "JustifySelf" | "justify_self" => PropertyId::JustifySelf,
+            
+            // Position Properties (PascalCase and snake_case)
+            "Position" | "position" => PropertyId::Position,
+            "Left" | "left" => PropertyId::Left,
+            "Top" | "top" => PropertyId::Top,
+            "Right" | "right" => PropertyId::Right,
+            "Bottom" | "bottom" => PropertyId::Bottom,
+            "PosX" | "pos_x" => PropertyId::Left,  // Alias
+            "PosY" | "pos_y" => PropertyId::Top,   // Alias
+            
+            // Grid Properties (PascalCase and snake_case)
+            "GridTemplateColumns" | "grid_template_columns" => PropertyId::GridTemplateColumns,
+            "GridTemplateRows" | "grid_template_rows" => PropertyId::GridTemplateRows,
+            "GridTemplateAreas" | "grid_template_areas" => PropertyId::GridTemplateAreas,
+            "GridAutoColumns" | "grid_auto_columns" => PropertyId::GridAutoColumns,
+            "GridAutoRows" | "grid_auto_rows" => PropertyId::GridAutoRows,
+            "GridAutoFlow" | "grid_auto_flow" => PropertyId::GridAutoFlow,
+            "GridArea" | "grid_area" => PropertyId::GridArea,
+            "GridColumn" | "grid_column" => PropertyId::GridColumn,
+            "GridRow" | "grid_row" => PropertyId::GridRow,
+            "GridColumnStart" | "grid_column_start" => PropertyId::GridColumnStart,
+            "GridColumnEnd" | "grid_column_end" => PropertyId::GridColumnEnd,
+            "GridRowStart" | "grid_row_start" => PropertyId::GridRowStart,
+            "GridRowEnd" | "grid_row_end" => PropertyId::GridRowEnd,
+            "GridGap" | "grid_gap" => PropertyId::GridGap,
+            "GridColumnGap" | "grid_column_gap" => PropertyId::GridColumnGap,
+            "GridRowGap" | "grid_row_gap" => PropertyId::GridRowGap,
+            
+            // Border Properties (PascalCase and snake_case)
+            "BorderTopWidth" | "border_top_width" => PropertyId::BorderTopWidth,
+            "BorderRightWidth" | "border_right_width" => PropertyId::BorderRightWidth,
+            "BorderBottomWidth" | "border_bottom_width" => PropertyId::BorderBottomWidth,
+            "BorderLeftWidth" | "border_left_width" => PropertyId::BorderLeftWidth,
+            "BorderTopColor" | "border_top_color" => PropertyId::BorderTopColor,
+            "BorderRightColor" | "border_right_color" => PropertyId::BorderRightColor,
+            "BorderBottomColor" | "border_bottom_color" => PropertyId::BorderBottomColor,
+            "BorderLeftColor" | "border_left_color" => PropertyId::BorderLeftColor,
+            "BorderTopLeftRadius" | "border_top_left_radius" => PropertyId::BorderTopLeftRadius,
+            "BorderTopRightRadius" | "border_top_right_radius" => PropertyId::BorderTopRightRadius,
+            "BorderBottomRightRadius" | "border_bottom_right_radius" => PropertyId::BorderBottomRightRadius,
+            "BorderBottomLeftRadius" | "border_bottom_left_radius" => PropertyId::BorderBottomLeftRadius,
+            "BoxSizing" | "box_sizing" => PropertyId::BoxSizing,
+            "Outline" | "outline" => PropertyId::Outline,
+            "OutlineColor" | "outline_color" => PropertyId::OutlineColor,
+            "OutlineWidth" | "outline_width" => PropertyId::OutlineWidth,
+            "OutlineOffset" | "outline_offset" => PropertyId::OutlineOffset,
+            "Overflow" | "overflow" => PropertyId::Overflow,
+            "OverflowX" | "overflow_x" => PropertyId::OverflowX,
+            "OverflowY" | "overflow_y" => PropertyId::OverflowY,
+            "Spans" | "spans" => PropertyId::Spans,
+            
+            // Transform Properties (PascalCase and snake_case)
+            "TransformScale" | "transform_scale" => PropertyId::TransformScale,
+            "TransformScaleX" | "transform_scale_x" => PropertyId::TransformScaleX,
+            "TransformScaleY" | "transform_scale_y" => PropertyId::TransformScaleY,
+            "TransformScaleZ" | "transform_scale_z" => PropertyId::TransformScaleZ,
+            "TransformTranslateX" | "transform_translate_x" => PropertyId::TransformTranslateX,
+            "TransformTranslateY" | "transform_translate_y" => PropertyId::TransformTranslateY,
+            "TransformTranslateZ" | "transform_translate_z" => PropertyId::TransformTranslateZ,
+            "TransformRotate" | "transform_rotate" => PropertyId::TransformRotate,
+            "TransformRotateX" | "transform_rotate_x" => PropertyId::TransformRotateX,
+            "TransformRotateY" | "transform_rotate_y" => PropertyId::TransformRotateY,
+            "TransformRotateZ" | "transform_rotate_z" => PropertyId::TransformRotateZ,
+            "TransformSkewX" | "transform_skew_x" => PropertyId::TransformSkewX,
+            "TransformSkewY" | "transform_skew_y" => PropertyId::TransformSkewY,
+            "TransformPerspective" | "transform_perspective" => PropertyId::TransformPerspective,
+            "TransformMatrix" | "transform_matrix" => PropertyId::TransformMatrix,
+            
+            // Semantic Properties (PascalCase and snake_case)
+            "SemanticRole" | "semantic_role" => PropertyId::SemanticRole,
+            "HeadingLevel" | "heading_level" => PropertyId::HeadingLevel,
+            "ListType" | "list_type" => PropertyId::ListType,
+            "ListItemRole" | "list_item_role" => PropertyId::ListItemRole,
+            "TableSection" | "table_section" => PropertyId::TableSection,
+            "InteractiveType" | "interactive_type" => PropertyId::InteractiveType,
+            "MediaType" | "media_type" => PropertyId::MediaType,
+            "EmbedType" | "embed_type" => PropertyId::EmbedType,
+            "InputTypeProperty" | "input_type_property" => PropertyId::InputTypeProperty,
+            
+            // Text Formatting Properties (PascalCase and snake_case)
+            "FontStyle" | "font_style" => PropertyId::FontStyle,
+            "TextDecoration" | "text_decoration" => PropertyId::TextDecoration,
+            "VerticalAlign" | "vertical_align" => PropertyId::VerticalAlign,
+            "LineHeight" | "line_height" => PropertyId::LineHeight,
+            "LetterSpacing" | "letter_spacing" => PropertyId::LetterSpacing,
+            "WordSpacing" | "word_spacing" => PropertyId::WordSpacing,
+            "TextIndent" | "text_indent" => PropertyId::TextIndent,
+            "TextTransform" | "text_transform" => PropertyId::TextTransform,
+            "TextShadow" | "text_shadow" => PropertyId::TextShadow,
+            "WordWrap" | "word_wrap" => PropertyId::WordWrap,
+            "TextOverflow" | "text_overflow" => PropertyId::TextOverflow,
+            "WritingMode" | "writing_mode" => PropertyId::WritingMode,
+            
+            // Extended Visual Properties (PascalCase and snake_case)
+            "BackgroundImage" | "background_image" => PropertyId::BackgroundImage,
+            "BackgroundRepeat" | "background_repeat" => PropertyId::BackgroundRepeat,
+            "BackgroundPosition" | "background_position" => PropertyId::BackgroundPosition,
+            "BackgroundSize" | "background_size" => PropertyId::BackgroundSize,
+            "BackgroundAttachment" | "background_attachment" => PropertyId::BackgroundAttachment,
+            "BorderStyle" | "border_style" => PropertyId::BorderStyle,
+            "BorderImage" | "border_image" => PropertyId::BorderImage,
+            "Filter" | "filter" => PropertyId::Filter,
+            "BackdropFilter" | "backdrop_filter" => PropertyId::BackdropFilter,
+            "ClipPath" | "clip_path" => PropertyId::ClipPath,
+            "Mask" | "mask" => PropertyId::Mask,
+            "MixBlendMode" | "mix_blend_mode" => PropertyId::MixBlendMode,
+            "ObjectFit" | "object_fit" => PropertyId::ObjectFit,
+            "ObjectPosition" | "object_position" => PropertyId::ObjectPosition,
+            
+            // Special Properties (PascalCase and snake_case)
+            "RichTextContent" | "rich_text_content" => PropertyId::RichTextContent,
+            "AccessibilityLabel" | "accessibility_label" => PropertyId::AccessibilityLabel,
+            "AccessibilityRole" | "accessibility_role" => PropertyId::AccessibilityRole,
+            "AccessibilityDescription" | "accessibility_description" => PropertyId::AccessibilityDescription,
+            "DataAttributes" | "data_attributes" => PropertyId::DataAttributes,
+            "CustomProperties" | "custom_properties" => PropertyId::CustomProperties,
+            "BoxShadow" | "box_shadow" => PropertyId::BoxShadow,
+            "MinViewportWidth" | "min_viewport_width" => PropertyId::MinViewportWidth,
+            "MaxViewportWidth" | "max_viewport_width" => PropertyId::MaxViewportWidth,
+            "Order" | "order" => PropertyId::Order,
+            
+            // Special aliases (PascalCase and snake_case)
+            "KeepAspect" | "keep_aspect_ratio" => PropertyId::WindowFullscreen, // Map to proper property
+            "ScaleFactor" | "scale_factor" => PropertyId::WindowTargetFps, // Map to proper property
+            "Version" | "version" => PropertyId::Version, // Use proper enum variant
+            "Author" | "author" => PropertyId::Author, // Use proper enum variant
+            
+            _ => PropertyId::CustomData, // Unknown properties fall back to CustomData
+        };
+        
+        
+        result
+    }
+    
+    /// Get the string name of this property
+    pub fn to_name(self) -> &'static str {
+        match self {
+            // Visual Properties
+            PropertyId::BackgroundColor => "BackgroundColor",
+            PropertyId::TextColor => "TextColor",
+            PropertyId::BorderColor => "BorderColor",
+            PropertyId::BorderWidth => "BorderWidth",
+            PropertyId::BorderRadius => "BorderRadius",
+            PropertyId::LayoutFlags => "LayoutFlags",
+            PropertyId::TextContent => "TextContent",
+            PropertyId::FontSize => "FontSize",
+            PropertyId::FontWeight => "FontWeight",
+            PropertyId::TextAlignment => "TextAlignment",
+            PropertyId::FontFamily => "FontFamily",
+            PropertyId::ImageSource => "ImageSource",
+            PropertyId::Opacity => "Opacity",
+            PropertyId::ZIndex => "ZIndex",
+            
+            // Display Properties
+            PropertyId::Visibility => "Visibility",
+            PropertyId::Gap => "Gap",
+            PropertyId::MinWidth => "MinWidth",
+            PropertyId::MinHeight => "MinHeight",
+            PropertyId::MaxWidth => "MaxWidth",
+            PropertyId::MaxHeight => "MaxHeight",
+            PropertyId::Transform => "Transform",
+            PropertyId::Shadow => "Shadow",
+            PropertyId::Width => "Width",
+            PropertyId::Height => "Height",
+            PropertyId::StyleId => "StyleId",
+            PropertyId::ListStyleType => "ListStyleType",
+            PropertyId::WhiteSpace => "WhiteSpace",
+            
+            // Window Properties
+            PropertyId::WindowWidth => "WindowWidth",
+            PropertyId::WindowHeight => "WindowHeight",
+            PropertyId::WindowTitle => "WindowTitle",
+            PropertyId::WindowResizable => "WindowResizable",
+            PropertyId::WindowFullscreen => "WindowFullscreen",
+            PropertyId::WindowVsync => "WindowVsync",
+            PropertyId::WindowTargetFps => "WindowTargetFps",
+            PropertyId::WindowAntialiasing => "WindowAntialiasing",
+            PropertyId::WindowIcon => "WindowIcon",
+            PropertyId::Cursor => "Cursor",
+            
+            // Flexbox Properties
+            PropertyId::Display => "Display",
+            PropertyId::FlexDirection => "FlexDirection",
+            PropertyId::FlexWrap => "FlexWrap",
+            PropertyId::FlexGrow => "FlexGrow",
+            PropertyId::FlexShrink => "FlexShrink",
+            PropertyId::FlexBasis => "FlexBasis",
+            PropertyId::AlignItems => "AlignItems",
+            PropertyId::AlignContent => "AlignContent",
+            PropertyId::AlignSelf => "AlignSelf",
+            PropertyId::JustifyContent => "JustifyContent",
+            PropertyId::JustifyItems => "JustifyItems",
+            PropertyId::JustifySelf => "JustifySelf",
+            
+            // Position Properties
+            PropertyId::Position => "Position",
+            PropertyId::Left => "Left",
+            PropertyId::Top => "Top",
+            PropertyId::Right => "Right",
+            PropertyId::Bottom => "Bottom",
+            
+            _ => "Custom",
+        }
+    }
+    
+    /// Convert PropertyId to CSS property name for HTML rendering
+    pub fn to_css_name(self) -> &'static str {
+        match self {
+            // Visual Properties → CSS equivalents
+            PropertyId::BackgroundColor => "background-color",
+            PropertyId::TextColor => "color",
+            PropertyId::BorderColor => "border-color", 
+            PropertyId::BorderWidth => "border-width",
+            PropertyId::BorderRadius => "border-radius",
+            PropertyId::FontSize => "font-size",
+            PropertyId::FontWeight => "font-weight",
+            PropertyId::FontStyle => "font-style",
+            PropertyId::TextAlignment => "text-align",
+            PropertyId::FontFamily => "font-family",
+            PropertyId::Opacity => "opacity",
+            PropertyId::ZIndex => "z-index",
+            
+            // Layout Properties → CSS equivalents
+            PropertyId::Display => "display",
+            PropertyId::Visibility => "visibility",
+            PropertyId::Position => "position",
+            PropertyId::Left => "left",
+            PropertyId::Top => "top", 
+            PropertyId::Right => "right",
+            PropertyId::Bottom => "bottom",
+            PropertyId::Width => "width",
+            PropertyId::Height => "height",
+            PropertyId::MinWidth => "min-width",
+            PropertyId::MinHeight => "min-height",
+            PropertyId::MaxWidth => "max-width",
+            PropertyId::MaxHeight => "max-height",
+            
+            // Spacing Properties → CSS equivalents
+            PropertyId::Padding => "padding",
+            PropertyId::PaddingTop => "padding-top",
+            PropertyId::PaddingRight => "padding-right", 
+            PropertyId::PaddingBottom => "padding-bottom",
+            PropertyId::PaddingLeft => "padding-left",
+            PropertyId::Margin => "margin",
+            PropertyId::MarginTop => "margin-top",
+            PropertyId::MarginRight => "margin-right",
+            PropertyId::MarginBottom => "margin-bottom", 
+            PropertyId::MarginLeft => "margin-left",
+            PropertyId::Gap => "gap",
+            
+            // Flexbox Properties → CSS equivalents
+            PropertyId::FlexDirection => "flex-direction",
+            PropertyId::FlexWrap => "flex-wrap",
+            PropertyId::FlexGrow => "flex-grow",
+            PropertyId::FlexShrink => "flex-shrink",
+            PropertyId::FlexBasis => "flex-basis",
+            PropertyId::AlignItems => "align-items",
+            PropertyId::AlignContent => "align-content",
+            PropertyId::AlignSelf => "align-self",
+            PropertyId::JustifyContent => "justify-content",
+            PropertyId::JustifyItems => "justify-items",
+            PropertyId::JustifySelf => "justify-self",
+            
+            // Transform & Effects → CSS equivalents
+            PropertyId::Transform => "transform",
+            PropertyId::Shadow => "box-shadow",
+            
+            // Non-CSS properties (handled specially by renderers)
+            PropertyId::WindowWidth => "window-width",
+            PropertyId::WindowHeight => "window-height", 
+            PropertyId::WindowTitle => "window-title",
+            PropertyId::TextContent => "content",
+            PropertyId::ImageSource => "src",
+            
+            // Fallback for unknown properties
+            _ => "unknown-property",
+        }
+    }
+    
     /// Create PropertyId from hex value
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -603,6 +1050,15 @@ impl PropertyId {
             0xF5 => PropertyId::DataAttributes,
             0xF6 => PropertyId::CustomProperties,
             
+            // Legacy compatibility mappings
+            0xF7 => PropertyId::CustomData,
+            0xF8 => PropertyId::Author,
+            0xF9 => PropertyId::Version,
+            0x97 => PropertyId::BoxShadow,
+            0xFA => PropertyId::MinViewportWidth,
+            0xFB => PropertyId::MaxViewportWidth,
+            0xFC => PropertyId::Order,
+            
             other => PropertyId::Custom(other),
         }
     }
@@ -777,6 +1233,16 @@ impl PropertyId {
             PropertyId::AccessibilityDescription => 0xF4,
             PropertyId::DataAttributes => 0xF5,
             PropertyId::CustomProperties => 0xF6,
+            
+            // Legacy compatibility mappings
+            PropertyId::CustomData => 0xF7,
+            PropertyId::Author => 0xF8,
+            PropertyId::Version => 0xF9,
+            PropertyId::BoxShadow => 0x97,
+            PropertyId::MinViewportWidth => 0xFA,
+            PropertyId::MaxViewportWidth => 0xFB,
+            PropertyId::Order => 0xFC,
+            
             PropertyId::Custom(value) => value,
         }
     }
@@ -785,6 +1251,53 @@ impl PropertyId {
 impl From<u8> for PropertyId {
     fn from(value: u8) -> Self {
         Self::from_u8(value)
+    }
+}
+
+#[cfg(feature = "serde_support")]
+impl<'de> serde::Deserialize<'de> for PropertyId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+        
+        struct PropertyIdVisitor;
+        
+        impl<'de> serde::de::Visitor<'de> for PropertyIdVisitor {
+            type Value = PropertyId;
+            
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a property ID string or number")
+            }
+            
+            fn visit_str<E>(self, value: &str) -> Result<PropertyId, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(PropertyId::from_name(value))
+            }
+            
+            fn visit_u8<E>(self, value: u8) -> Result<PropertyId, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(PropertyId::from_u8(value))
+            }
+            
+            fn visit_u64<E>(self, value: u64) -> Result<PropertyId, E>
+            where
+                E: serde::de::Error,
+            {
+                if value <= u8::MAX as u64 {
+                    Ok(PropertyId::from_u8(value as u8))
+                } else {
+                    Err(E::custom(format!("property ID value {} is too large", value)))
+                }
+            }
+        }
+        
+        deserializer.deserialize_any(PropertyIdVisitor)
     }
 }
 

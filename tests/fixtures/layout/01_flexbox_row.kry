@@ -1,0 +1,41 @@
+// Flexbox layout - row direction
+// Tests: Flexbox layout engine, row distribution, alignment
+App {
+    window_width: 800
+    window_height: 600
+    
+    Container {
+        display: flex
+        flex_direction: row
+        justify_content: space-between
+        align_items: center
+        width: 600
+        height: 100
+        background_color: "#f8fafc"
+        padding: 20
+        
+        Button {
+            text: "Start"
+            width: 80
+            height: 40
+            background_color: "#ef4444"
+            text_color: "#ffffff"
+        }
+        
+        Button {
+            text: "Middle"
+            width: 80
+            height: 40
+            background_color: "#10b981"
+            text_color: "#ffffff"
+        }
+        
+        Button {
+            text: "End"
+            width: 80
+            height: 40
+            background_color: "#3b82f6"
+            text_color: "#ffffff"
+        }
+    }
+}

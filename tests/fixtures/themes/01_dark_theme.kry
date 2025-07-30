@@ -1,0 +1,291 @@
+// Dark theme example
+// Tests: Theme definition, variable interpolation, consistent styling
+Theme dark {
+    // Color palette
+    primary_color: "#3b82f6"
+    secondary_color: "#8b5cf6"
+    success_color: "#10b981"
+    warning_color: "#f59e0b"
+    danger_color: "#ef4444"
+    
+    // Background colors
+    bg_primary: "#111827"
+    bg_secondary: "#1f2937"
+    bg_tertiary: "#374151"
+    
+    // Text colors
+    text_primary: "#f9fafb"
+    text_secondary: "#d1d5db"
+    text_muted: "#9ca3af"
+    
+    // Component styles
+    button_radius: 8
+    card_radius: 12
+    input_radius: 6
+    
+    // Spacing
+    space_xs: 4
+    space_sm: 8
+    space_md: 16
+    space_lg: 24
+    space_xl: 32
+    
+    // Typography
+    font_size_sm: 12
+    font_size_md: 14
+    font_size_lg: 16
+    font_size_xl: 20
+    font_size_2xl: 24
+}
+
+App {
+    window_width: 900
+    window_height: 650
+    background_color: ${theme.bg_primary}
+    
+    Container {
+        width: 850
+        height: 600
+        padding: ${theme.space_lg}
+        display: flex
+        flex_direction: column
+        gap: ${theme.space_lg}
+        
+        // Header
+        Container {
+            display: flex
+            flex_direction: row
+            justify_content: space-between
+            align_items: center
+            padding_bottom: ${theme.space_md}
+            border_bottom: "1px solid ${theme.bg_tertiary}"
+            
+            Text {
+                text: "Dark Theme Demo"
+                font_size: ${theme.font_size_2xl}
+                font_weight: "bold"
+                text_color: ${theme.text_primary}
+            }
+            
+            Button {
+                text: "Toggle Theme"
+                width: 120
+                height: 36
+                background_color: ${theme.primary_color}
+                text_color: ${theme.text_primary}
+                border_radius: ${theme.button_radius}
+                font_size: ${theme.font_size_md}
+            }
+        }
+        
+        // Main content
+        Container {
+            display: flex
+            flex_direction: row
+            gap: ${theme.space_lg}
+            flex: 1
+            
+            // Sidebar
+            Container {
+                width: 250
+                background_color: ${theme.bg_secondary}
+                border_radius: ${theme.card_radius}
+                padding: ${theme.space_md}
+                display: flex
+                flex_direction: column
+                gap: ${theme.space_sm}
+                
+                Text {
+                    text: "Navigation"
+                    font_size: ${theme.font_size_lg}
+                    font_weight: "bold"
+                    text_color: ${theme.text_primary}
+                    margin_bottom: ${theme.space_sm}
+                }
+                
+                Button {
+                    text: "Dashboard"
+                    width: 220
+                    height: 32
+                    background_color: ${theme.secondary_color}
+                    text_color: ${theme.text_primary}
+                    border_radius: ${theme.button_radius}
+                    font_size: ${theme.font_size_md}
+                    margin_bottom: ${theme.space_xs}
+                }
+                
+                Button {
+                    text: "Analytics"
+                    width: 220
+                    height: 32
+                    background_color: "transparent"
+                    text_color: ${theme.text_secondary}
+                    border_radius: ${theme.button_radius}
+                    font_size: ${theme.font_size_md}
+                    margin_bottom: ${theme.space_xs}
+                }
+                
+                Button {
+                    text: "Settings"
+                    width: 220
+                    height: 32
+                    background_color: "transparent"
+                    text_color: ${theme.text_secondary}
+                    border_radius: ${theme.button_radius}
+                    font_size: ${theme.font_size_md}
+                }
+            }
+            
+            // Content area
+            Container {
+                flex: 1
+                background_color: ${theme.bg_secondary}
+                border_radius: ${theme.card_radius}
+                padding: ${theme.space_lg}
+                display: flex
+                flex_direction: column
+                gap: ${theme.space_md}
+                
+                Text {
+                    text: "Welcome to the Dark Side"
+                    font_size: ${theme.font_size_xl}
+                    font_weight: "bold"
+                    text_color: ${theme.text_primary}
+                }
+                
+                Text {
+                    text: "This interface demonstrates a cohesive dark theme using theme variables for consistent styling across all components."
+                    font_size: ${theme.font_size_md}
+                    text_color: ${theme.text_secondary}
+                    line_height: 1.5
+                    margin_bottom: ${theme.space_md}
+                }
+                
+                // Status cards
+                Container {
+                    display: flex
+                    flex_direction: row
+                    gap: ${theme.space_md}
+                    margin_bottom: ${theme.space_lg}
+                    
+                    Container {
+                        width: 120
+                        height: 80
+                        background_color: ${theme.bg_tertiary}
+                        border_radius: ${theme.button_radius}
+                        border_left: "4px solid ${theme.success_color}"
+                        padding: ${theme.space_md}
+                        display: flex
+                        flex_direction: column
+                        justify_content: center
+                        
+                        Text {
+                            text: "Active"
+                            font_size: ${theme.font_size_sm}
+                            text_color: ${theme.text_muted}
+                            margin_bottom: ${theme.space_xs}
+                        }
+                        
+                        Text {
+                            text: "127"
+                            font_size: ${theme.font_size_xl}
+                            font_weight: "bold"
+                            text_color: ${theme.success_color}
+                        }
+                    }
+                    
+                    Container {
+                        width: 120
+                        height: 80
+                        background_color: ${theme.bg_tertiary}
+                        border_radius: ${theme.button_radius}
+                        border_left: "4px solid ${theme.warning_color}"
+                        padding: ${theme.space_md}
+                        display: flex
+                        flex_direction: column
+                        justify_content: center
+                        
+                        Text {
+                            text: "Pending"
+                            font_size: ${theme.font_size_sm}
+                            text_color: ${theme.text_muted}
+                            margin_bottom: ${theme.space_xs}
+                        }
+                        
+                        Text {
+                            text: "23"
+                            font_size: ${theme.font_size_xl}
+                            font_weight: "bold"
+                            text_color: ${theme.warning_color}
+                        }
+                    }
+                    
+                    Container {
+                        width: 120
+                        height: 80
+                        background_color: ${theme.bg_tertiary}
+                        border_radius: ${theme.button_radius}
+                        border_left: "4px solid ${theme.danger_color}"
+                        padding: ${theme.space_md}
+                        display: flex
+                        flex_direction: column
+                        justify_content: center
+                        
+                        Text {
+                            text: "Failed"
+                            font_size: ${theme.font_size_sm}
+                            text_color: ${theme.text_muted}
+                            margin_bottom: ${theme.space_xs}
+                        }
+                        
+                        Text {
+                            text: "5"
+                            font_size: ${theme.font_size_xl}
+                            font_weight: "bold"
+                            text_color: ${theme.danger_color}
+                        }
+                    }
+                }
+                
+                // Action buttons
+                Container {
+                    display: flex
+                    flex_direction: row
+                    gap: ${theme.space_md}
+                    
+                    Button {
+                        text: "Primary Action"
+                        width: 130
+                        height: 40
+                        background_color: ${theme.primary_color}
+                        text_color: ${theme.text_primary}
+                        border_radius: ${theme.button_radius}
+                        font_size: ${theme.font_size_md}
+                        font_weight: "600"
+                    }
+                    
+                    Button {
+                        text: "Secondary"
+                        width: 100
+                        height: 40
+                        background_color: "transparent"
+                        text_color: ${theme.text_secondary}
+                        border: "1px solid ${theme.bg_tertiary}"
+                        border_radius: ${theme.button_radius}
+                        font_size: ${theme.font_size_md}
+                    }
+                    
+                    Button {
+                        text: "Danger"
+                        width: 80
+                        height: 40
+                        background_color: ${theme.danger_color}
+                        text_color: ${theme.text_primary}
+                        border_radius: ${theme.button_radius}
+                        font_size: ${theme.font_size_md}
+                    }
+                }
+            }
+        }
+    }
+}

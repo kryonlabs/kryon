@@ -1,0 +1,23 @@
+// Basic button component
+// Tests: Interactive elements, event handling, styling
+App {
+    window_width: 800
+    window_height: 600
+    
+    Button {
+        text: "Click Me"
+        width: 120
+        height: 40
+        background_color: "#3b82f6"
+        text_color: "#ffffff"
+        border_radius: 8
+        font_size: 14
+        x: 100
+        y: 100
+        
+        on_click: {
+            action: "print"
+            message: "Button clicked!"
+        }
+    }
+}

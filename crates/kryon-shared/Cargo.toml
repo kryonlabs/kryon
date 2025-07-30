@@ -21,3 +21,16 @@ byteorder = { workspace = true }
 [features]
 default = []
 serde_support = []
+
+# Widget features - optional built-in widgets
+basic-widgets = []
+extended-widgets = ["dropdown", "data-grid", "date-picker", "rich-text"]
+dropdown = []
+data-grid = []
+date-picker = []
+rich-text = []
+color-picker = []
+file-upload = []
+number-input = []
+range-slider = []
+all-widgets = ["extended-widgets", "color-picker", "file-upload", "number-input", "range-slider"]

@@ -270,8 +270,10 @@ fn process_example(example: &ExampleInfo, args: &Args) -> Result<PathBuf> {
     // Render one frame to generate HTML
     app.render().context("Failed to render application")?;
 
-    // Get the rendered HTML
+    // Add Lua scripts from KRB file to HTML renderer (after rendering to avoid being cleared)
     let html_renderer = app.renderer_mut().backend_mut();
+    html_renderer.add_lua_scripts(&krb_file.scripts)
+        .context("Failed to add Lua scripts to HTML renderer")?;
 
     // Generate additional styles
     if args.responsive {
@@ -327,290 +329,112 @@ fn process_example(example: &ExampleInfo, args: &Args) -> Result<PathBuf> {
 }
 
 fn generate_kryon_index_page(examples: &[(ExampleInfo, PathBuf)], args: &Args) -> Result<PathBuf> {
-    // Generate a simple HTML index page without Kryon compilation
-    let html_content = generate_simple_html_index(examples, args);
+    // Use the Kryon-based index file
+    let index_kry_path = Path::new("examples/00_Web_Index/index.kry");
+    
+    if !index_kry_path.exists() {
+        return Err(anyhow::anyhow!("Kryon index file not found at {}. Cannot generate index page without Kryon source.", index_kry_path.display()));
+    }
+
+    // Compile the Kryon index file using the same pipeline as examples
+    let krb_data = match compile_kry_to_krb(index_kry_path) {
+        Ok(data) => data,
+        Err(e) => {
+            eprintln!("❌ Detailed compilation error: {}", e);
+            eprintln!("❌ Error chain: {:#}", e);
+            return Err(anyhow::anyhow!("Failed to compile index.kry to KRB: {}", e));
+        }
+    };
+    
+    // Create a temporary KRB file for the index
+    let temp_krb_path = index_kry_path.with_extension("krb");
+    fs::write(&temp_krb_path, &krb_data)
+        .context("Failed to write temporary index KRB file")?;
+    
+    // Load the KRB file
+    let krb_file = load_krb_file(temp_krb_path.to_str().unwrap())
+        .context("Failed to load index KRB file")?;
+
+    // Get viewport size from KRB file
+    let mut viewport_size = Vec2::new(1200.0, 800.0); // Default for index page
+    if let Some(root_id) = krb_file.root_element_id {
+        if let Some(root_element) = krb_file.elements.get(&root_id) {
+            let size_x = root_element.layout_size.width.to_pixels(1.0);
+            let size_y = root_element.layout_size.height.to_pixels(1.0);
+            if size_x > 0.0 && size_y > 0.0 {
+                viewport_size = Vec2::new(size_x, size_y);
+            }
+        }
+    }
+
+    // Create HTML configuration for index
+    let html_config = HtmlConfig {
+        inline_css: args.inline_css,
+        inline_js: args.inline_js,
+        minify: args.minify,
+        title: args.title.clone(),
+        additional_css: String::new(),
+        additional_js: String::new(),
+        meta_tags: vec![
+            r#"<meta charset="UTF-8">"#.to_string(),
+            r#"<meta name="viewport" content="width=device-width, initial-scale=1.0">"#.to_string(),
+            r#"<meta name="description" content="Interactive examples built with Kryon framework">"#.to_string(),
+        ],
+    };
+
+    // Create HTML renderer
+    let mut html_renderer = HtmlRenderer::new(viewport_size);
+
+    // Create and render the index application
+    let mut app = KryonApp::new(temp_krb_path.to_string_lossy().as_ref(), html_renderer)
+        .context("Failed to create Kryon index application")?;
+
+    // Render one frame to generate HTML
+    app.render().context("Failed to render index application")?;
+
+    // Add Lua scripts from KRB file to HTML renderer (if any)
+    let html_renderer = app.renderer_mut().backend_mut();
+    html_renderer.add_lua_scripts(&krb_file.scripts)
+        .context("Failed to add Lua scripts to index HTML renderer")?;
+
+    // Generate additional styles for index
+    if args.responsive {
+        html_renderer.generate_responsive_styles()
+            .context("Failed to generate responsive styles for index")?;
+    }
+
+    if args.accessibility {
+        html_renderer.generate_accessibility_styles()
+            .context("Failed to generate accessibility styles for index")?;
+    }
+
+    if args.dark_mode {
+        html_renderer.generate_dark_mode_styles()
+            .context("Failed to generate dark mode styles for index")?;
+    }
+
+    // Generate utility classes and CSS variables
+    html_renderer.generate_utility_classes()
+        .context("Failed to generate utility classes for index")?;
+
+    html_renderer.generate_css_variables()
+        .context("Failed to generate CSS variables for index")?;
+
+    // Generate the final HTML
+    let html_content = html_renderer.generate_html(&html_config);
     let index_path = Path::new(&args.output).join("index.html");
     fs::write(&index_path, html_content)
-        .context("Failed to write index HTML file")?;
+        .context("Failed to write Kryon-generated index HTML file")?;
+
+    // Clean up temporary file
+    let _ = fs::remove_file(&temp_krb_path);
+
+    eprintln!("✅ Generated fully Kryon-powered index page");
     Ok(index_path)
 }
 
-fn generate_simple_html_index(examples: &[(ExampleInfo, PathBuf)], args: &Args) -> String {
-    let mut html = String::new();
-    
-    // HTML head
-    html.push_str("<!DOCTYPE html>\n");
-    html.push_str("<html lang=\"en\">\n");
-    html.push_str("<head>\n");
-    html.push_str("    <meta charset=\"UTF-8\">\n");
-    html.push_str("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
-    html.push_str(&format!("    <title>{}</title>\n", args.title));
-    html.push_str("    <meta name=\"description\" content=\"Interactive examples built with Kryon framework\">\n");
-    html.push_str("    <style>\n");
-    html.push_str(&generate_index_css());
-    html.push_str("    </style>\n");
-    html.push_str("</head>\n");
-    html.push_str("<body>\n");
-    
-    // Header
-    html.push_str("    <div class=\"header\">\n");
-    html.push_str("        <h1>Kryon Examples</h1>\n");
-    html.push_str("        <p>Interactive examples built with Kryon framework</p>\n");
-    html.push_str(&format!("        <div class=\"stats\">\n"));
-    html.push_str(&format!("            <div class=\"stat\"><span class=\"stat-number\">{}</span><span class=\"stat-label\">Examples</span></div>\n", examples.len()));
-    
-    // Count categories
-    let mut categories = std::collections::HashSet::new();
-    for (example, _) in examples {
-        categories.insert(&example.category);
-    }
-    html.push_str(&format!("            <div class=\"stat\"><span class=\"stat-number\">{}</span><span class=\"stat-label\">Categories</span></div>\n", categories.len()));
-    html.push_str("        </div>\n");
-    html.push_str("    </div>\n");
-    
-    // Search
-    html.push_str("    <div class=\"search-container\">\n");
-    html.push_str("        <input type=\"text\" id=\"search\" placeholder=\"Search examples...\">\n");
-    html.push_str("    </div>\n");
-    
-    // Examples by category
-    html.push_str("    <div class=\"examples-container\">\n");
-    
-    let mut examples_by_category: std::collections::BTreeMap<String, Vec<&(ExampleInfo, PathBuf)>> = std::collections::BTreeMap::new();
-    for example in examples {
-        examples_by_category.entry(example.0.category.clone()).or_insert_with(Vec::new).push(example);
-    }
-    
-    for (category, category_examples) in examples_by_category {
-        html.push_str(&format!("        <div class=\"category\">\n"));
-        html.push_str(&format!("            <h2>{}</h2>\n", category.replace('_', " ")));
-        html.push_str("            <div class=\"examples-grid\">\n");
-        
-        for (example, _) in category_examples {
-            let relative_path = format!("{}/{}", example.category, example.name);
-            html.push_str(&format!("                <div class=\"example-card\" onclick=\"openExample('{}')\">\n", relative_path));
-            html.push_str(&format!("                    <h3>{}</h3>\n", example.description));
-            html.push_str(&format!("                    <code>{}</code>\n", example.relative_path));
-            html.push_str(&format!("                    <span class=\"category-tag\">{}</span>\n", example.category.replace('_', " ")));
-            html.push_str("                </div>\n");
-        }
-        
-        html.push_str("            </div>\n");
-        html.push_str("        </div>\n");
-    }
-    
-    html.push_str("    </div>\n");
-    
-    // JavaScript
-    html.push_str("    <script>\n");
-    html.push_str(&generate_dynamic_js_for_examples(examples));
-    html.push_str("    </script>\n");
-    html.push_str("</body>\n");
-    html.push_str("</html>\n");
-    
-    html
-}
 
-fn generate_index_css() -> String {
-    r#"
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
-        }
-        
-        .header {
-            text-align: center;
-            padding: 60px 20px;
-            color: white;
-        }
-        
-        .header h1 {
-            font-size: 3rem;
-            margin: 0 0 20px 0;
-            font-weight: 700;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .header p {
-            font-size: 1.2rem;
-            margin: 0 0 40px 0;
-            opacity: 0.9;
-        }
-        
-        .stats {
-            display: flex;
-            justify-content: center;
-            gap: 40px;
-        }
-        
-        .stat {
-            background: rgba(255,255,255,0.1);
-            padding: 20px;
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-            text-align: center;
-        }
-        
-        .stat-number {
-            display: block;
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            font-size: 0.9rem;
-            opacity: 0.8;
-        }
-        
-        .search-container {
-            max-width: 500px;
-            margin: 0 auto 40px auto;
-            padding: 0 20px;
-        }
-        
-        #search {
-            width: 100%;
-            padding: 15px 20px;
-            font-size: 16px;
-            border: none;
-            border-radius: 25px;
-            background: rgba(255,255,255,0.9);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        }
-        
-        .examples-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px 60px 20px;
-        }
-        
-        .category {
-            margin-bottom: 60px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 20px;
-            padding: 30px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .category h2 {
-            color: white;
-            text-align: center;
-            margin: 0 0 30px 0;
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-        
-        .examples-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-        
-        .example-card {
-            background: rgba(255,255,255,0.9);
-            border-radius: 12px;
-            padding: 25px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(0,0,0,0.1);
-        }
-        
-        .example-card:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-        }
-        
-        .example-card h3 {
-            margin: 0 0 10px 0;
-            color: #2c3e50;
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-        
-        .example-card code {
-            display: block;
-            background: #f8f9fa;
-            padding: 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            color: #666;
-            margin-bottom: 15px;
-            font-family: 'Monaco', 'Menlo', monospace;
-        }
-        
-        .category-tag {
-            background: #667eea;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-        
-        @media (max-width: 768px) {
-            .header h1 { font-size: 2rem; }
-            .stats { flex-direction: column; gap: 20px; }
-            .examples-grid { grid-template-columns: 1fr; }
-            .category { padding: 20px; }
-        }
-    "#.to_string()
-}
 
-fn generate_dynamic_css_for_examples(_examples: &[(ExampleInfo, PathBuf)]) -> String {
-    let mut css = String::new();
-    
-    // Add hover effects for example cards
-    css.push_str("\n/* Dynamic example styles */\n");
-    css.push_str(".example-card:hover {\n");
-    css.push_str("  transform: translateY(-5px) scale(1.02);\n");
-    css.push_str("  box-shadow: 0 20px 40px rgba(0,0,0,0.2);\n");
-    css.push_str("  transition: all 0.3s ease;\n");
-    css.push_str("}\n");
-    
-    // Add search functionality styles
-    css.push_str(".hidden { display: none !important; }\n");
-    css.push_str(".highlight { background-color: yellow; }\n");
-    
-    css
-}
-
-fn generate_dynamic_js_for_examples(_examples: &[(ExampleInfo, PathBuf)]) -> String {
-    let mut js = String::new();
-    
-    // Generate example navigation
-    js.push_str("\n// Dynamic example navigation\n");
-    js.push_str("function openExample(examplePath) {\n");
-    js.push_str("  window.location.href = examplePath + '/index.html';\n");
-    js.push_str("}\n\n");
-    
-    // Generate search functionality
-    js.push_str("document.addEventListener('DOMContentLoaded', function() {\n");
-    js.push_str("  const searchInput = document.querySelector('input[placeholder*=\"Search\"]');\n");
-    js.push_str("  if (searchInput) {\n");
-    js.push_str("    searchInput.addEventListener('input', function(e) {\n");
-    js.push_str("      const query = e.target.value.toLowerCase();\n");
-    js.push_str("      const cards = document.querySelectorAll('[onclick*=\"openExample\"]');\n");
-    js.push_str("      cards.forEach(card => {\n");
-    js.push_str("        const text = card.textContent.toLowerCase();\n");
-    js.push_str("        if (text.includes(query)) {\n");
-    js.push_str("          card.style.display = 'block';\n");
-    js.push_str("        } else {\n");
-    js.push_str("          card.style.display = 'none';\n");
-    js.push_str("        }\n");
-    js.push_str("      });\n");
-    js.push_str("    });\n");
-    js.push_str("  }\n");
-    js.push_str("});\n");
-    
-    js
-}
 
 fn copy_example_assets(examples_dir: &str, output_dir: &str) -> Result<()> {
     let assets_to_copy = &["png", "jpg", "jpeg", "gif", "svg", "ttf", "woff", "woff2"];

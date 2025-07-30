@@ -1,0 +1,168 @@
+// Performance test with many elements
+// Tests: Rendering performance, memory usage, layout calculation
+App {
+    window_width: 1200
+    window_height: 800
+    background_color: "#f8fafc"
+    
+    Container {
+        width: 1150
+        height: 750
+        padding: 25
+        display: flex
+        flex_direction: column
+        gap: 20
+        
+        Text {
+            text: "Performance Test - Many Elements"
+            font_size: 24
+            font_weight: "bold"
+            text_color: "#1e293b"
+            margin_bottom: 20
+        }
+        
+        // Grid of many small elements
+        Container {
+            display: flex
+            flex_direction: row
+            flex_wrap: wrap
+            gap: 5
+            width: 1100
+            
+            // Generate 100 small colored boxes
+            Container { width: 50; height: 50; background_color: "#ef4444"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#f97316"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#eab308"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#84cc16"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#10b981"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#06b6d4"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#3b82f6"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#8b5cf6"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#a855f7"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#ec4899"; border_radius: 4 }
+            
+            // Repeat pattern multiple times (simplified for brevity)
+            Container { width: 50; height: 50; background_color: "#ef4444"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#f97316"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#eab308"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#84cc16"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#10b981"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#06b6d4"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#3b82f6"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#8b5cf6"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#a855f7"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#ec4899"; border_radius: 4 }
+            
+            Container { width: 50; height: 50; background_color: "#ef4444"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#f97316"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#eab308"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#84cc16"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#10b981"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#06b6d4"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#3b82f6"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#8b5cf6"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#a855f7"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#ec4899"; border_radius: 4 }
+            
+            Container { width: 50; height: 50; background_color: "#ef4444"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#f97316"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#eab308"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#84cc16"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#10b981"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#06b6d4"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#3b82f6"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#8b5cf6"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#a855f7"; border_radius: 4 }
+            Container { width: 50; height: 50; background_color: "#ec4899"; border_radius: 4 }
+        }
+        
+        // Complex nested structure for layout performance
+        Container {
+            display: flex
+            flex_direction: column
+            gap: 10
+            margin_top: 20
+            
+            Container {
+                display: flex
+                flex_direction: row
+                gap: 10
+                
+                Container {
+                    width: 200
+                    height: 80
+                    background_color: "#ffffff"
+                    border: "1px solid #e5e7eb"
+                    border_radius: 8
+                    padding: 10
+                    display: flex
+                    flex_direction: column
+                    justify_content: center
+                    
+                    Text {
+                        text: "Nested Layout 1"
+                        font_size: 14
+                        font_weight: "bold"
+                        text_color: "#374151"
+                    }
+                    
+                    Text {
+                        text: "Performance testing"
+                        font_size: 12
+                        text_color: "#6b7280"
+                    }
+                }
+                
+                Container {
+                    width: 200
+                    height: 80
+                    background_color: "#ffffff"
+                    border: "1px solid #e5e7eb"
+                    border_radius: 8
+                    padding: 10
+                    display: flex
+                    flex_direction: column
+                    justify_content: center
+                    
+                    Text {
+                        text: "Nested Layout 2"
+                        font_size: 14
+                        font_weight: "bold"
+                        text_color: "#374151"
+                    }
+                    
+                    Text {
+                        text: "Memory usage test"
+                        font_size: 12
+                        text_color: "#6b7280"
+                    }
+                }
+                
+                Container {
+                    width: 200
+                    height: 80
+                    background_color: "#ffffff"
+                    border: "1px solid #e5e7eb"
+                    border_radius: 8
+                    padding: 10
+                    display: flex
+                    flex_direction: column
+                    justify_content: center
+                    
+                    Text {
+                        text: "Nested Layout 3"
+                        font_size: 14
+                        font_weight: "bold"
+                        text_color: "#374151"
+                    }
+                    
+                    Text {
+                        text: "Render time test"
+                        font_size: 12
+                        text_color: "#6b7280"
+                    }
+                }
+            }
+        }
+    }
+}

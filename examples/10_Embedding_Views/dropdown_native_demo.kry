@@ -1,0 +1,251 @@
+# Native Dropdown Integration Demo
+# This example shows how to use the dropdown widget with native rendering
+
+@variables {
+    dropdown_state: {
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 30,
+        items: [
+            { text: "Option 1", value: "value1" },
+            { text: "Option 2", value: "value2" },
+            { text: "Option 3", value: "value3" },
+            { text: "Very Long Option 4", value: "value4" },
+            { text: "Final Option", value: "value5" }
+        ],
+        selected_index: 0,
+        is_open: false,
+        hovered_index: null
+    }
+    selected_text: "Option 1"
+    backend_name: "SDL2"  # Can be "SDL2", "Raylib", or "WGPU"
+}
+
+style "app_container" {
+    background_color: "#f8f9fa"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    padding: 40
+    gap: 30
+}
+
+style "info_section" {
+    background_color: "#ffffff"
+    padding: 20
+    border_radius: 8
+    box_shadow: "0 2px 8px rgba(0, 0, 0, 0.1)"
+    width: 400
+    text_alignment: center
+}
+
+style "title" {
+    font_size: 28
+    font_weight: bold
+    text_color: "#212529"
+    margin_bottom: 10
+}
+
+style "backend_text" {
+    font_size: 18
+    text_color: "#6c757d"
+    margin_bottom: 5
+}
+
+style "selection_text" {
+    font_size: 16
+    text_color: "#0d6efd"
+    font_weight: 500
+}
+
+App {
+    window_width: 800
+    window_height: 600
+    window_title: "Native Dropdown Demo - " + $backend_name
+    
+    Container {
+        style: "app_container"
+        
+        Container {
+            style: "info_section"
+            
+            Text {
+                text: "Native Dropdown Widget"
+                style: "title"
+            }
+            
+            Text {
+                text: "Backend: " + $backend_name
+                style: "backend_text"
+            }
+            
+            Text {
+                text: "Selected: " + $selected_text
+                style: "selection_text"
+            }
+        }
+        
+        # Native dropdown rendering
+        EmbedView {
+            width: 400
+            height: 300
+            provider: "native_renderer"
+            
+            # Pass the render function to draw our dropdown
+            renderer_function: "render_dropdown"
+            
+            # Handle mouse events
+            onMousePress: handle_mouse_click
+            onMouseMove: handle_mouse_move
+            
+            # Handle keyboard events
+            onKeyPress: handle_key_press
+        }
+    }
+}
+
+# Native renderer function that draws the dropdown
+@function "lua" render_dropdown(ctx) {
+    local state = dropdown_state
+    
+    -- Main dropdown button
+    local main_color = { 0.94, 0.94, 0.94, 1.0 }  -- Light gray
+    ctx:draw_rect(state.x, state.y, state.width, state.height, main_color)
+    
+    -- Border
+    local border_color = { 0.47, 0.47, 0.47, 1.0 }  -- Dark gray
+    ctx:draw_rect_outline(state.x, state.y, state.width, state.height, border_color, 1)
+    
+    -- Selected text
+    local text_color = { 0, 0, 0, 1.0 }  -- Black
+    local selected_item = state.items[state.selected_index + 1]
+    ctx:draw_text(selected_item.text, state.x + 10, state.y + 8, 16, text_color)
+    
+    -- Dropdown arrow
+    local arrow_x = state.x + state.width - 20
+    local arrow_y = state.y + state.height / 2
+    
+    if state.is_open then
+        -- Up arrow
+        ctx:draw_triangle(
+            arrow_x - 5, arrow_y + 3,
+            arrow_x + 5, arrow_y + 3,
+            arrow_x, arrow_y - 3,
+            text_color
+        )
+    else
+        -- Down arrow
+        ctx:draw_triangle(
+            arrow_x - 5, arrow_y - 3,
+            arrow_x + 5, arrow_y - 3,
+            arrow_x, arrow_y + 3,
+            text_color
+        )
+    end
+    
+    -- Dropdown items (if open)
+    if state.is_open then
+        for i, item in ipairs(state.items) do
+            local item_y = state.y + state.height * i
+            
+            -- Background color based on hover/selection
+            local bg_color
+            if state.hovered_index == i then
+                bg_color = { 0.78, 0.86, 1.0, 1.0 }  -- Light blue (hover)
+            elseif i == state.selected_index + 1 then
+                bg_color = { 0.86, 0.86, 1.0, 1.0 }  -- Light purple (selected)
+            else
+                bg_color = { 1.0, 1.0, 1.0, 1.0 }    -- White
+            end
+            
+            ctx:draw_rect(state.x, item_y, state.width, state.height, bg_color)
+            ctx:draw_rect_outline(state.x, item_y, state.width, state.height, border_color, 1)
+            
+            -- Item text
+            ctx:draw_text(item.text, state.x + 10, item_y + 8, 16, text_color)
+        end
+    end
+end
+
+@function "lua" handle_mouse_click(x, y) {
+    local state = dropdown_state
+    
+    -- Check if click is on main button
+    if x >= state.x and x <= state.x + state.width and
+       y >= state.y and y <= state.y + state.height then
+        state.is_open = not state.is_open
+        dropdown_state = state
+        return
+    end
+    
+    -- Check if click is on dropdown items
+    if state.is_open then
+        for i, item in ipairs(state.items) do
+            local item_y = state.y + state.height * i
+            if x >= state.x and x <= state.x + state.width and
+               y >= item_y and y <= item_y + state.height then
+                state.selected_index = i - 1
+                state.is_open = false
+                selected_text = item.text
+                dropdown_state = state
+                return
+            end
+        end
+        
+        -- Click outside - close dropdown
+        state.is_open = false
+        dropdown_state = state
+    end
+end
+
+@function "lua" handle_mouse_move(x, y) {
+    local state = dropdown_state
+    
+    if not state.is_open then
+        return
+    end
+    
+    -- Update hovered index
+    state.hovered_index = nil
+    for i, item in ipairs(state.items) do
+        local item_y = state.y + state.height * i
+        if x >= state.x and x <= state.x + state.width and
+           y >= item_y and y <= item_y + state.height then
+            state.hovered_index = i
+            break
+        end
+    end
+    
+    dropdown_state = state
+end
+
+@function "lua" handle_key_press(key) {
+    local state = dropdown_state
+    
+    if key == "ArrowDown" then
+        if state.is_open then
+            state.selected_index = (state.selected_index + 1) % #state.items
+            selected_text = state.items[state.selected_index + 1].text
+        else
+            state.is_open = true
+        end
+    elseif key == "ArrowUp" then
+        if state.is_open then
+            state.selected_index = (state.selected_index - 1) % #state.items
+            if state.selected_index < 0 then
+                state.selected_index = #state.items - 1
+            end
+            selected_text = state.items[state.selected_index + 1].text
+        else
+            state.is_open = true
+        end
+    elseif key == "Enter" or key == "Space" then
+        state.is_open = not state.is_open
+    elseif key == "Escape" then
+        state.is_open = false
+    end
+    
+    dropdown_state = state
+end

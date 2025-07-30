@@ -1,0 +1,39 @@
+// Property validation error cases
+// Tests: Type checking, property validation, value constraints
+App {
+    window_width: 800
+    window_height: 600
+    
+    Text {
+        text: "Valid text"
+        font_size: 16
+        text_color: "#000000"
+    }
+    
+    // Invalid property values
+    Text {
+        text: "Invalid properties below"
+        font_size: "not_a_number"  // Should be integer
+        text_color: "invalid_color"  // Invalid color format
+        margin_top: -50  // Negative margin might be invalid
+    }
+    
+    Container {
+        width: "should_be_number"  // Should be integer
+        height: 100.5  // Might not support decimals
+        background_color: "#gggggg"  // Invalid hex color
+        
+        // Unknown property
+        unknown_property: "value"
+        
+        Text {
+            text: "Inside container"
+            font_size: 0  // Zero or negative font size
+        }
+    }
+    
+    // Component that doesn't exist
+    NonExistentComponent {
+        some_property: "value"
+    }
+}

@@ -1,0 +1,135 @@
+// Nested flexbox layouts
+// Tests: Complex nested layouts, mixed flex directions
+App {
+    window_width: 800
+    window_height: 600
+    
+    Container {
+        display: flex
+        flex_direction: column
+        width: 700
+        height: 500
+        background_color: "#ffffff"
+        border: "1px solid #e5e7eb"
+        
+        // Header
+        Container {
+            display: flex
+            flex_direction: row
+            justify_content: space-between
+            align_items: center
+            height: 60
+            background_color: "#111827"
+            padding: 20
+            
+            Text {
+                text: "App Title"
+                font_size: 18
+                font_weight: "bold"
+                text_color: "#ffffff"
+            }
+            
+            Button {
+                text: "Menu"
+                width: 60
+                height: 30
+                background_color: "#374151"
+                text_color: "#ffffff"
+                border_radius: 4
+            }
+        }
+        
+        // Main content area
+        Container {
+            display: flex
+            flex_direction: row
+            flex: 1
+            
+            // Sidebar
+            Container {
+                width: 200
+                background_color: "#f9fafb"
+                border_right: "1px solid #e5e7eb"
+                padding: 20
+                display: flex
+                flex_direction: column
+                
+                Text {
+                    text: "Navigation"
+                    font_size: 14
+                    font_weight: "bold"
+                    margin_bottom: 15
+                    text_color: "#374151"
+                }
+                
+                Button {
+                    text: "Home"
+                    width: 160
+                    height: 30
+                    background_color: "transparent"
+                    text_color: "#6b7280"
+                    margin_bottom: 5
+                    text_align: "left"
+                }
+                
+                Button {
+                    text: "Settings"
+                    width: 160
+                    height: 30
+                    background_color: "transparent"
+                    text_color: "#6b7280"
+                    text_align: "left"
+                }
+            }
+            
+            // Content area
+            Container {
+                flex: 1
+                padding: 30
+                display: flex
+                flex_direction: column
+                align_items: center
+                justify_content: center
+                
+                Text {
+                    text: "Welcome to the App"
+                    font_size: 24
+                    font_weight: "bold"
+                    margin_bottom: 20
+                    text_color: "#111827"
+                }
+                
+                Text {
+                    text: "This is a nested flexbox layout example"
+                    font_size: 16
+                    text_color: "#6b7280"
+                    margin_bottom: 30
+                }
+                
+                Container {
+                    display: flex
+                    flex_direction: row
+                    gap: 15
+                    
+                    Button {
+                        text: "Primary"
+                        width: 100
+                        height: 40
+                        background_color: "#3b82f6"
+                        text_color: "#ffffff"
+                        border_radius: 6
+                    }
+                    
+                    Button {
+                        text: "Secondary"
+                        width: 100
+                        height: 40
+                        background_color: "#e5e7eb"
+                        text_color: "#374151"
+                        border_radius: 6
+                    }
+                }
+            }
+        }
+    }
+}

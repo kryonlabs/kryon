@@ -18,6 +18,29 @@ use kryon_render::RenderError;
 use kryon_core::TextAlignment;
 use std::path::Path;
 
+// Helper function to check if a point is inside a triangle
+fn point_in_triangle(px: f32, py: f32, x1: f32, y1: f32, x2: f32, y2: f32, x3: f32, y3: f32) -> bool {
+    // Calculate barycentric coordinates
+    let v0x = x3 - x1;
+    let v0y = y3 - y1;
+    let v1x = x2 - x1;
+    let v1y = y2 - y1;
+    let v2x = px - x1;
+    let v2y = py - y1;
+    
+    let dot00 = v0x * v0x + v0y * v0y;
+    let dot01 = v0x * v1x + v0y * v1y;
+    let dot02 = v0x * v2x + v0y * v2y;
+    let dot11 = v1x * v1x + v1y * v1y;
+    let dot12 = v1x * v2x + v1y * v2y;
+    
+    let inv_denom = 1.0 / (dot00 * dot11 - dot01 * dot01);
+    let u = (dot11 * dot02 - dot01 * dot12) * inv_denom;
+    let v = (dot00 * dot12 - dot01 * dot02) * inv_denom;
+    
+    (u >= 0.0) && (v >= 0.0) && (u + v <= 1.0)
+}
+
 pub struct Sdl2Renderer {
     canvas: Canvas<Window>,
     event_pump: sdl2::EventPump,
@@ -492,6 +515,55 @@ impl Sdl2Renderer {
                     *position, *size, *value, *min_value, *max_value,
                     *track_color, *thumb_color, *border_color, *border_width
                 )?;
+            }
+            RenderCommand::DrawTriangle {
+                points,
+                color,
+            } => {
+                if points.len() >= 3 {
+                    // SDL2 doesn't have a direct triangle drawing function, so we use filled polygon
+                    let sdl_color = vec4_to_sdl_color(*color);
+                    
+                    // Convert Vec2 points to SDL2 points
+                    let x_coords: Vec<i16> = points.iter().map(|p| p.x as i16).collect();
+                    let y_coords: Vec<i16> = points.iter().map(|p| p.y as i16).collect();
+                    
+                    // Draw filled triangle using gfx primitives
+                    // Note: SDL2 doesn't have built-in filled polygon, so we draw it as lines
+                    self.canvas.set_draw_color(sdl_color);
+                    
+                    // Draw the three lines of the triangle
+                    for i in 0..3 {
+                        let start = i;
+                        let end = (i + 1) % 3;
+                        self.canvas.draw_line(
+                            (x_coords[start] as i32, y_coords[start] as i32),
+                            (x_coords[end] as i32, y_coords[end] as i32)
+                        ).map_err(|e| RenderError::RenderFailed(format!("Failed to draw triangle line: {}", e)))?;
+                    }
+                    
+                    // Fill the triangle using a simple scanline approach
+                    // Find bounding box
+                    let min_x = x_coords.iter().min().copied().unwrap_or(0) as i32;
+                    let max_x = x_coords.iter().max().copied().unwrap_or(0) as i32;
+                    let min_y = y_coords.iter().min().copied().unwrap_or(0) as i32;
+                    let max_y = y_coords.iter().max().copied().unwrap_or(0) as i32;
+                    
+                    // Simple triangle fill - for small triangles like dropdown arrows
+                    for y in min_y..=max_y {
+                        for x in min_x..=max_x {
+                            if point_in_triangle(
+                                x as f32, y as f32,
+                                points[0].x, points[0].y,
+                                points[1].x, points[1].y,
+                                points[2].x, points[2].y
+                            ) {
+                                self.canvas.draw_point((x, y))
+                                    .map_err(|e| RenderError::RenderFailed(format!("Failed to fill triangle: {}", e)))?;
+                            }
+                        }
+                    }
+                }
             }
             // Transform commands are not separate - they're part of individual commands
             _ => {

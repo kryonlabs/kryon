@@ -50,10 +50,11 @@ impl<R: CommandRenderer> ElementRenderer<R> {
             all_commands.sort_by_key(|cmd| {
                 match cmd {
                     RenderCommand::DrawRect { z_index, .. } => *z_index,
+                    RenderCommand::BeginContainer { z_index, .. } => *z_index,
                     RenderCommand::DrawText { z_index, .. } => *z_index,
                     RenderCommand::DrawRichText { z_index, .. } => *z_index,
                     RenderCommand::DrawScrollbar { z_index, .. } => *z_index,
-                    RenderCommand::DrawLine { z_index, .. } => *z_index,
+                    RenderCommand::DrawLineWithTransform { z_index, .. } => *z_index,
                     RenderCommand::DrawCircle { z_index, .. } => *z_index,
                     RenderCommand::DrawEllipse { z_index, .. } => *z_index,
                     RenderCommand::DrawPolygon { z_index, .. } => *z_index,
@@ -135,10 +136,11 @@ impl<R: CommandRenderer> ElementRenderer<R> {
         incremental_commands.sort_by_key(|cmd| {
             match cmd {
                 RenderCommand::DrawRect { z_index, .. } => *z_index,
+                RenderCommand::BeginContainer { z_index, .. } => *z_index,
                 RenderCommand::DrawText { z_index, .. } => *z_index,
                 RenderCommand::DrawRichText { z_index, .. } => *z_index,
                 RenderCommand::DrawScrollbar { z_index, .. } => *z_index,
-                RenderCommand::DrawLine { z_index, .. } => *z_index,
+                RenderCommand::DrawLineWithTransform { z_index, .. } => *z_index,
                 RenderCommand::DrawCircle { z_index, .. } => *z_index,
                 RenderCommand::DrawEllipse { z_index, .. } => *z_index,
                 RenderCommand::DrawPolygon { z_index, .. } => *z_index,
@@ -164,6 +166,7 @@ impl<R: CommandRenderer> ElementRenderer<R> {
         element_id: ElementId,
         element: &Element,
     ) -> RenderResult<()> {
+        eprintln!("🚀 [COLLECT_DEBUG] Starting collect_render_commands for element {} ('{}')", element_id, element.id);
         // Check visibility
         if !self.is_element_visible(elements, element_id, element) {
             eprintln!("❌ [RENDER_ELEMENT] Element {} ('{}') not visible - skipping render", element_id, element.id);
@@ -269,6 +272,12 @@ impl<R: CommandRenderer> ElementRenderer<R> {
             if let Some(child_element) = elements.get(&child_id) {
                 self.collect_render_commands(all_commands, elements, layout, child_id, child_element)?;
             }
+        }
+
+        // End container if this is a Container element
+        if element.element_type == ElementType::Container {
+            eprintln!("🔧 [HIERARCHY_DEBUG] Ending EndContainer for '{}'", element.id);
+            all_commands.push(RenderCommand::EndContainer);
         }
 
         // Clear clipping after rendering children if it was set.
@@ -393,9 +402,30 @@ impl<R: CommandRenderer> ElementRenderer<R> {
             element_id, element.id, position, size, element.element_type);
 
         // Generate commands based on element type
+        eprintln!("🔍 [ELEMENT_TYPE_DEBUG] Element '{}' has type {:?}", element.id, element.element_type);
         match element.element_type {
             ElementType::Container | ElementType::App | ElementType::Button => {
-                self.render_container(&mut commands, element, &style, position, size);
+                eprintln!("✅ [ELEMENT_TYPE_DEBUG] Rendering element '{}' as Container/App/Button", element.id);
+                
+                // For containers, use hierarchical BeginContainer/EndContainer commands
+                if element.element_type == ElementType::Container {
+                    eprintln!("🔧 [HIERARCHY_DEBUG] Starting BeginContainer for '{}'", element.id);
+                    eprintln!("🔍 [ELEMENT_DEBUG] Element custom_properties: {:?}", element.custom_properties);
+                    commands.push(RenderCommand::BeginContainer {
+                        element_id: element.id.clone(),
+                        position,
+                        size,
+                        color: style.background_color,
+                        border_radius: style.border_radius,
+                        border_width: style.border_width,
+                        border_color: style.border_color,
+                        layout_style: Some(crate::LayoutStyle::from_element_properties(&element.custom_properties)),
+                        z_index: element.z_index,
+                    });
+                } else {
+                    // For App and Button, still use regular DrawRect
+                    self.render_container(&mut commands, element, &style, position, size);
+                }
             },
             ElementType::Text => {
                 self.render_text(&mut commands, element, &style, position, size);
@@ -485,6 +515,12 @@ impl<R: CommandRenderer> ElementRenderer<R> {
         eprintln!("🎨 [CONTAINER_DEBUG] Element '{}' background_color={:?}, alpha={}", 
                  element.id, style.background_color, style.background_color.w);
         
+        // ALWAYS create LayoutStyle for debugging
+        eprintln!("🔍 [CONTAINER_DEBUG] Creating LayoutStyle for element '{}'", element.id);
+        let debug_layout_style = crate::LayoutStyle::from_element_properties(&element.custom_properties);
+        eprintln!("🔍 [CONTAINER_DEBUG] LayoutStyle created: display={:?}, flex_direction={:?}, align_items={:?}, justify_content={:?}", 
+                 debug_layout_style.display, debug_layout_style.flex_direction, debug_layout_style.align_items, debug_layout_style.justify_content);
+        
         if style.background_color.w > 0.0 {
             eprintln!("✅ [CONTAINER_DEBUG] Creating DrawRect command for '{}'", element.id);
             commands.push(RenderCommand::DrawRect {
@@ -510,17 +546,21 @@ impl<R: CommandRenderer> ElementRenderer<R> {
 
         // Special handling for buttons with text
         if element.element_type == ElementType::Button && !element.text.is_empty() {
-            eprintln!("[RENDER_TEXT] Element {}: text='{}', alignment={:?}, size={:?}", 
-                element.id, element.text, element.text_alignment, size);
+            // 🧠 INTELLIGENT PROPERTY INFERENCE for button text
+            let intelligent_alignment = self.infer_text_alignment(element);
+            let (intelligent_max_width, intelligent_max_height) = self.infer_text_sizing(element, size);
+            
+            eprintln!("[RENDER_TEXT] Button Element {}: text='{}', original_alignment={:?}, intelligent_alignment={:?}", 
+                element.id, element.text, element.text_alignment, intelligent_alignment);
             
             commands.push(RenderCommand::DrawText {
                 position,
                 text: element.text.clone(),
                 font_size: style.font_size,
                 color: style.text_color,
-                alignment: element.text_alignment,
-                max_width: Some(size.x),
-                max_height: Some(size.y),
+                alignment: intelligent_alignment,
+                max_width: intelligent_max_width,
+                max_height: intelligent_max_height,
                 transform: self.get_transform_data(element),
                 font_family: Some(element.font_family.clone()),
                 z_index: element.z_index + 1, // Text above background
@@ -542,17 +582,24 @@ impl<R: CommandRenderer> ElementRenderer<R> {
                 z_index: element.z_index,
             });
         } else if !element.text.is_empty() {
-            eprintln!("[RENDER_TEXT] Element {}: text='{}', alignment={:?}, size={:?}", 
-                element.id, element.text, element.text_alignment, size);
+            // 🧠 INTELLIGENT PROPERTY INFERENCE
+            // Auto-infer text alignment from parent container's flex properties
+            let intelligent_alignment = self.infer_text_alignment(element);
+            
+            // Auto-size text appropriately (don't over-constrain)
+            let (intelligent_max_width, intelligent_max_height) = self.infer_text_sizing(element, size);
+            
+            eprintln!("[RENDER_TEXT] Element {}: text='{}', original_alignment={:?}, intelligent_alignment={:?}, intelligent_size=({:?}x{:?})", 
+                element.id, element.text, element.text_alignment, intelligent_alignment, intelligent_max_width, intelligent_max_height);
             
             commands.push(RenderCommand::DrawText {
                 position,
                 text: element.text.clone(),
                 font_size: style.font_size,
                 color: style.text_color,
-                alignment: element.text_alignment,
-                max_width: Some(size.x),
-                max_height: Some(size.y),
+                alignment: intelligent_alignment,
+                max_width: intelligent_max_width,
+                max_height: intelligent_max_height,
                 transform: self.get_transform_data(element),
                 font_family: Some(element.font_family.clone()),
                 z_index: element.z_index,
@@ -963,5 +1010,84 @@ impl<R: CommandRenderer> ElementRenderer<R> {
     pub fn resize(&mut self, new_size: Vec2) -> RenderResult<()> {
         self.viewport_size = new_size;
         self.backend.resize(new_size)
+    }
+
+    // 🧠 INTELLIGENT PROPERTY INFERENCE METHODS
+    
+    /// Intelligently infer text alignment from parent container's flex properties
+    fn infer_text_alignment(&self, element: &Element) -> kryon_core::TextAlignment {
+        // First check if element has explicit text_alignment property in custom properties
+        if let Some(text_align_prop) = element.custom_properties.get("text_alignment") {
+            if let Some(align_str) = text_align_prop.as_string() {
+                match align_str {
+                    "center" => return kryon_core::TextAlignment::Center,
+                    "left" | "start" => return kryon_core::TextAlignment::Start,
+                    "right" | "end" => return kryon_core::TextAlignment::End,
+                    "justify" => return kryon_core::TextAlignment::Justify,
+                    _ => {}
+                }
+            }
+        }
+        
+        // If element has explicit text_alignment field, respect it
+        if element.text_alignment != kryon_core::TextAlignment::Start {
+            return element.text_alignment;
+        }
+        
+        // Look at parent container's flex properties to auto-infer alignment
+        if let Some(parent) = self.get_parent_element(element) {
+            // Check if parent is a flex container with centering
+            if let Some(display) = parent.custom_properties.get("display") {
+                if display.as_string() == Some("flex") {
+                    // Check justify_content for horizontal alignment
+                    if let Some(justify) = parent.custom_properties.get("justify_content") {
+                        match justify.as_string().as_deref() {
+                            Some("center") => return kryon_core::TextAlignment::Center,
+                            Some("flex-end") | Some("end") => return kryon_core::TextAlignment::End,
+                            _ => {}
+                        }
+                    }
+                    
+                    // Check align_items for text alignment inference
+                    if let Some(align) = parent.custom_properties.get("align_items") {
+                        match align.as_string().as_deref() {
+                            Some("center") => return kryon_core::TextAlignment::Center,
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Fallback to element's original alignment
+        element.text_alignment
+    }
+    
+    /// Intelligently infer text sizing constraints
+    fn infer_text_sizing(&self, _element: &Element, container_size: Vec2) -> (Option<f32>, Option<f32>) {
+        // Don't over-constrain text - let it flow naturally within reasonable bounds
+        
+        // If container is reasonably sized, use generous constraints
+        let max_width = if container_size.x > 50.0 {
+            Some(container_size.x * 0.9) // Use 90% of container width
+        } else {
+            None // No width constraint for small containers
+        };
+        
+        let max_height = if container_size.y > 20.0 {
+            Some(container_size.y * 0.8) // Use 80% of container height  
+        } else {
+            None // No height constraint for small containers
+        };
+        
+        (max_width, max_height)
+    }
+    
+    /// Helper to get parent element (simplified - in real implementation would traverse tree)
+    fn get_parent_element(&self, _element: &Element) -> Option<&Element> {
+        // For now, we can't easily traverse up the element tree in this context
+        // This would need to be passed in or stored in a different way
+        // Returning None for now - the alignment inference will fall back to defaults
+        None
     }
 }

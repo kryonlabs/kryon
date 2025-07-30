@@ -1,0 +1,187 @@
+# Kryon Test Suite Configuration
+# This file defines the comprehensive test configuration for the Kryon project
+
+[general]
+name = "Kryon Comprehensive Test Suite"
+version = "1.0.0"
+description = "Centralized testing ground for the Kryon UI framework"
+default_renderer = "ratatui"
+default_window_width = 800
+default_window_height = 600
+enable_logging = true
+log_level = "INFO"
+
+# Renderer configurations
+[renderers.html]
+binary = "kryon-html"
+enabled = true
+supports_input = true
+supports_animation = true
+supports_transparency = true
+requires_browser = true
+
+[renderers.raylib]
+binary = "kryon-raylib"
+enabled = true
+supports_input = true
+supports_animation = true
+supports_transparency = true
+requires_gpu = false
+
+[renderers.ratatui]
+binary = "kryon-ratatui"
+enabled = true
+supports_input = true
+supports_animation = false
+supports_transparency = false
+terminal_only = true
+
+[renderers.wgpu]
+binary = "kryon-wgpu"
+enabled = true
+supports_input = true
+supports_animation = true
+supports_transparency = true
+requires_gpu = true
+
+[renderers.sdl2]
+binary = "kryon-sdl2"
+enabled = true
+supports_input = true
+supports_animation = true
+supports_transparency = true
+requires_gpu = false
+
+# Test suite definitions
+[test_suites.core_components]
+file = "01_core_components.kry"
+description = "Basic UI components and functionality"
+timeout_seconds = 30
+required_renderers = ["html", "ratatui"]
+environment = "testing"
+
+[test_suites.input_fields]
+file = "02_input_fields.kry"
+description = "Comprehensive input field testing"
+timeout_seconds = 45
+required_renderers = ["html", "wgpu"]
+skip_renderers = ["ratatui"]
+environment = "testing"
+
+[test_suites.layout_engine]
+file = "03_layout_engine.kry"
+description = "Layout and flexbox system testing"
+timeout_seconds = 30
+required_renderers = ["html", "ratatui"]
+environment = "testing"
+
+[test_suites.renderer_comparison]
+file = "04_renderer_comparison.kry"
+description = "Cross-renderer consistency testing"
+timeout_seconds = 60
+required_renderers = ["html", "ratatui", "wgpu"]
+environment = "testing"
+
+[test_suites.performance_benchmark]
+file = "05_performance_benchmark.kry"
+description = "Performance and stress testing"
+timeout_seconds = 120
+required_renderers = ["wgpu"]
+skip_renderers = ["ratatui"]
+environment = "performance"
+
+[test_suites.playground_e2e]
+file = "playground_test.kry"
+description = "End-to-end playground functionality"
+timeout_seconds = 180
+required_renderers = ["html"]
+environment = "e2e"
+
+# Performance testing configuration
+[performance]
+benchmark_duration_seconds = 60
+element_count_levels = [50, 100, 200, 500, 1000]
+stress_test_iterations = 100
+memory_sampling_interval_ms = 1000
+min_fps = 30.0
+max_memory_mb = 500
+max_cpu_percent = 80.0
+
+# Quality gates
+[quality]
+check_warnings = true
+check_formatting = true
+check_clippy = true
+fail_on_warnings = false
+fail_on_formatting = false
+fail_on_clippy = false
+min_code_coverage = 80.0
+
+# Reporting configuration
+[reporting]
+generate_html_report = true
+generate_json_report = true
+generate_csv_metrics = true
+save_screenshots = false
+include_performance_graphs = true
+keep_reports_days = 30
+max_report_files = 100
+output_directory = "target/test-reports"
+
+# CI/CD configuration
+[ci]
+parallel_execution = true
+fail_fast = false
+timeout_multiplier = 1.5
+upload_artifacts = true
+max_parallel_jobs = 4
+
+# Environment configurations
+[environments.development]
+log_level = "DEBUG"
+enable_debug_renderer = true
+show_layout_bounds = true
+enable_performance_overlay = true
+
+[environments.development.custom_env_vars]
+RUST_BACKTRACE = "full"
+KRYON_DEBUG = "1"
+
+[environments.testing]
+log_level = "INFO"
+enable_debug_renderer = false
+show_layout_bounds = false
+enable_performance_overlay = false
+
+[environments.testing.custom_env_vars]
+RUST_BACKTRACE = "1"
+KRYON_TEST_MODE = "1"
+
+[environments.performance]
+log_level = "WARN"
+enable_debug_renderer = false
+show_layout_bounds = false
+enable_performance_overlay = true
+
+[environments.performance.custom_env_vars]
+KRYON_BENCHMARK_MODE = "1"
+
+[environments.e2e]
+log_level = "INFO"
+enable_debug_renderer = false
+show_layout_bounds = false
+enable_performance_overlay = false
+
+[environments.e2e.custom_env_vars]
+KRYON_E2E_MODE = "1"
+HEADLESS = "1"
+
+[environments.ci]
+log_level = "INFO"
+enable_debug_renderer = false
+show_layout_bounds = false
+enable_performance_overlay = false
+
+[environments.ci.custom_env_vars]
+CI = "true"
+RUST_BACKTRACE = "1"

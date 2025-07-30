@@ -48,8 +48,17 @@ impl LayoutStyle {
     pub fn from_element_properties(custom_properties: &HashMap<String, PropertyValue>) -> Self {
         let mut style = Self::default();
         
+        // Debug all custom properties
+        eprintln!("🔍 [LAYOUT_STYLE_DEBUG] Custom properties for element:");
+        for (key, value) in custom_properties {
+            eprintln!("🔍 [LAYOUT_STYLE_DEBUG]   {} = {:?}", key, value);
+        }
+        
         if let Some(PropertyValue::String(display)) = custom_properties.get("display") {
+            eprintln!("✅ [LAYOUT_STYLE_DEBUG] Found display property: '{}'", display);
             style.display = Some(display.clone());
+        } else {
+            eprintln!("❌ [LAYOUT_STYLE_DEBUG] No display property found or not a string");
         }
         
         if let Some(PropertyValue::String(flex_direction)) = custom_properties.get("flex_direction") {
@@ -57,11 +66,17 @@ impl LayoutStyle {
         }
         
         if let Some(PropertyValue::String(justify_content)) = custom_properties.get("justify_content") {
+            eprintln!("✅ [LAYOUT_STYLE_DEBUG] Found justify_content property: '{}'", justify_content);
             style.justify_content = Some(justify_content.clone());
+        } else {
+            eprintln!("❌ [LAYOUT_STYLE_DEBUG] No justify_content property found or not a string");
         }
         
         if let Some(PropertyValue::String(align_items)) = custom_properties.get("align_items") {
+            eprintln!("✅ [LAYOUT_STYLE_DEBUG] Found align_items property: '{}'", align_items);
             style.align_items = Some(align_items.clone());
+        } else {
+            eprintln!("❌ [LAYOUT_STYLE_DEBUG] No align_items property found or not a string");
         }
         
         if let Some(PropertyValue::String(align_content)) = custom_properties.get("align_content") {
@@ -104,6 +119,20 @@ pub enum RenderCommand {
         layout_style: Option<LayoutStyle>,
         z_index: i32,
     },
+    
+    // Container hierarchy commands for HTML rendering
+    BeginContainer {
+        element_id: String,
+        position: Vec2,
+        size: Vec2,
+        color: Vec4,
+        border_radius: f32,
+        border_width: f32,
+        border_color: Vec4,
+        layout_style: Option<LayoutStyle>,
+        z_index: i32,
+    },
+    EndContainer,
     DrawText {
         position: Vec2,
         text: String,
@@ -132,6 +161,16 @@ pub enum RenderCommand {
         source: String,
         opacity: f32,
         transform: Option<TransformData>,
+    },
+    DrawLine {
+        start: Vec2,
+        end: Vec2,
+        color: Vec4,
+        width: f32,
+    },
+    DrawTriangle {
+        points: Vec<Vec2>,
+        color: Vec4,
     },
     DrawSvg {
         position: Vec2,
@@ -266,7 +305,7 @@ pub enum RenderCommand {
     },
     
     // Basic 2D shapes (standalone, not canvas-specific)
-    DrawLine {
+    DrawLineWithTransform {
         start: Vec2,
         end: Vec2,
         color: Vec4,

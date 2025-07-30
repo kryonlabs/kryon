@@ -1,0 +1,112 @@
+// Color and font styling tests
+// Tests: Color parsing, font properties, text styling
+App {
+    window_width: 800
+    window_height: 600
+    background_color: "#f8fafc"
+    
+    Container {
+        width: 600
+        height: 400
+        padding: 40
+        display: flex
+        flex_direction: column
+        gap: 20
+        
+        Text {
+            text: "Large Bold Header"
+            font_size: 32
+            font_weight: "bold"
+            text_color: "#1e293b"
+            margin_bottom: 10
+        }
+        
+        Text {
+            text: "Medium Regular Text"
+            font_size: 18
+            font_weight: "normal"
+            text_color: "#475569"
+            margin_bottom: 10
+        }
+        
+        Text {
+            text: "Small Italic Text"
+            font_size: 14
+            font_style: "italic"
+            text_color: "#64748b"
+            margin_bottom: 20
+        }
+        
+        Container {
+            display: flex
+            flex_direction: row
+            gap: 10
+            margin_bottom: 20
+            
+            Container {
+                width: 80
+                height: 60
+                background_color: "#ef4444"
+                border_radius: 8
+                display: flex
+                justify_content: center
+                align_items: center
+                
+                Text {
+                    text: "Red"
+                    font_size: 12
+                    text_color: "#ffffff"
+                    font_weight: "bold"
+                }
+            }
+            
+            Container {
+                width: 80
+                height: 60
+                background_color: "#10b981"
+                border_radius: 8
+                display: flex
+                justify_content: center
+                align_items: center
+                
+                Text {
+                    text: "Green"
+                    font_size: 12
+                    text_color: "#ffffff"
+                    font_weight: "bold"
+                }
+            }
+            
+            Container {
+                width: 80
+                height: 60
+                background_color: "#3b82f6"
+                border_radius: 8
+                display: flex
+                justify_content: center
+                align_items: center
+                
+                Text {
+                    text: "Blue"
+                    font_size: 12
+                    text_color: "#ffffff"
+                    font_weight: "bold"
+                }
+            }
+        }
+        
+        Text {
+            text: "This text demonstrates various color formats:"
+            font_size: 16
+            text_color: "#374151"
+            margin_bottom: 10
+        }
+        
+        Text {
+            text: "Hex: #ff6b35 | RGB: rgb(255, 107, 53) | Named: orange"
+            font_size: 14
+            text_color: "#ff6b35"
+            font_family: "monospace"
+        }
+    }
+}

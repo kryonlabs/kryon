@@ -1,0 +1,49 @@
+[package]
+name = "integration-tests"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Core Kryon dependencies
+kryon-compiler.workspace = true
+kryon-core.workspace = true
+kryon-runtime.workspace = true
+kryon-layout.workspace = true
+kryon-render.workspace = true
+kryon-shared.workspace = true
+kryon-raylib.workspace = true
+kryon-ratatui.workspace = true
+kryon-wgpu.workspace = true
+kryon-html.workspace = true
+
+# Test dependencies
+tokio.workspace = true
+tempfile.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+walkdir.workspace = true
+regex.workspace = true
+colored.workspace = true
+insta.workspace = true
+assert_fs.workspace = true
+predicates.workspace = true
+
+[[test]]
+name = "compilation_pipeline_tests"
+path = "src/compilation_tests.rs"
+
+[[test]]
+name = "rendering_pipeline_tests"
+path = "src/rendering_tests.rs"
+
+[[test]]
+name = "cross_backend_tests"
+path = "src/cross_backend_tests.rs"
+
+[[test]]
+name = "end_to_end_tests"
+path = "src/e2e_tests.rs"

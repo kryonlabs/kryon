@@ -71,9 +71,16 @@ App {
             
             Select {
                 placeholder: "Select Country"
-                options: "United States,Canada,Mexico,Brazil,Argentina,United Kingdom,France,Germany,Italy,Spain,Russia,China,Japan,India,Australia"
+                options: [
+                    "United States",
+                    "Canada", 
+                    "Mexico",
+                    "Brazil",
+                    "Argentina"
+                ]
                 width: 300
                 multiple: false
+                onChange: on_country_change
             }
         }
         

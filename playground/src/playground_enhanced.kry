@@ -1,0 +1,828 @@
+// Enhanced Kryon Playground with Syntax Highlighting
+// A complete development environment for Kryon
+
+import "syntax_highlighter.kry"
+
+style "playground_app" {
+    background_color: "#1e1e1e"
+    text_color: "#d4d4d4"
+}
+
+style "split_container" {
+    display: flex
+    flex_direction: row
+    width: 100%
+    height: 100%
+}
+
+style "editor_pane" {
+    flex: 1
+    background_color: "#252526"
+    border_right_width: 1
+    border_right_color: "#3e3e3e"
+    padding: 0
+    display: flex
+    flex_direction: column
+    min_width: 400
+}
+
+style "preview_pane" {
+    flex: 1
+    background_color: "#1e1e1e"
+    padding: 0
+    display: flex
+    flex_direction: column
+    min_width: 400
+}
+
+style "toolbar" {
+    height: 40
+    background_color: "#2d2d30"
+    border_bottom_width: 1
+    border_bottom_color: "#3e3e3e"
+    display: flex
+    flex_direction: row
+    align_items: center
+    padding_left: 10
+    padding_right: 10
+}
+
+style "toolbar_button" {
+    padding_left: 15
+    padding_right: 15
+    padding_top: 8
+    padding_bottom: 8
+    background_color: "#0e639c"
+    border_radius: 4
+    margin_right: 10
+    cursor: pointer
+    text_color: "#FFFFFF"
+    font_size: 14
+}
+
+style "toolbar_button:hover" {
+    background_color: "#1177bb"
+}
+
+style "toolbar_button:active" {
+    background_color: "#005a9e"
+}
+
+style "toolbar_separator" {
+    width: 1
+    height: 24
+    background_color: "#3e3e3e"
+    margin_left: 10
+    margin_right: 10
+}
+
+style "status_bar" {
+    height: 25
+    background_color: "#007acc"
+    display: flex
+    flex_direction: row
+    align_items: center
+    padding_left: 10
+    padding_right: 10
+}
+
+style "status_text" {
+    text_color: "#FFFFFF"
+    font_size: 12
+    margin_right: 20
+}
+
+style "editor_container" {
+    flex: 1
+    display: flex
+    flex_direction: row
+    background_color: "#1e1e1e"
+    position: relative
+}
+
+style "line_numbers" {
+    width: 50
+    background_color: "#1e1e1e"
+    border_right_width: 1
+    border_right_color: "#3e3e3e"
+    padding_right: 10
+    padding_top: 10
+    text_align: right
+    text_color: "#858585"
+    font_family: "monospace"
+    font_size: 14
+    line_height: 20
+}
+
+style "code_editor_wrapper" {
+    flex: 1
+    position: relative
+    overflow: hidden
+}
+
+style "code_editor" {
+    position: absolute
+    top: 0
+    left: 0
+    right: 0
+    bottom: 0
+    background_color: "transparent"
+    text_color: "transparent"
+    caret_color: "#FFFFFF"
+    font_family: "monospace"
+    font_size: 14
+    line_height: 20
+    padding: 10
+    z_index: 2
+}
+
+style "syntax_overlay" {
+    position: absolute
+    top: 0
+    left: 0
+    right: 0
+    bottom: 0
+    font_family: "monospace"
+    font_size: 14
+    line_height: 20
+    padding: 10
+    z_index: 1
+    pointer_events: none
+}
+
+style "preview_header" {
+    height: 40
+    background_color: "#2d2d30"
+    border_bottom_width: 1
+    border_bottom_color: "#3e3e3e"
+    display: flex
+    flex_direction: row
+    align_items: center
+    padding_left: 15
+    padding_right: 15
+}
+
+style "preview_title" {
+    text_color: "#cccccc"
+    font_size: 14
+    flex: 1
+}
+
+style "preview_content" {
+    flex: 1
+    background_color: "#252526"
+    overflow: auto
+}
+
+style "error_panel" {
+    background_color: "#3c1f1f"
+    border_color: "#f48771"
+    border_width: 1
+    border_radius: 4
+    padding: 15
+    margin: 20
+}
+
+style "error_text" {
+    text_color: "#f48771"
+    font_family: "monospace"
+    font_size: 13
+    line_height: 18
+}
+
+style "resizer" {
+    width: 4
+    background_color: "#3e3e3e"
+    cursor: col-resize
+    position: absolute
+    top: 0
+    bottom: 0
+    z_index: 10
+}
+
+style "resizer:hover" {
+    background_color: "#007acc"
+}
+
+App {
+    window_width: 1400
+    window_height: 900
+    window_title: "Kryon Playground - Live Editor"
+    resizable: true
+    style: "playground_app"
+    
+    Container {
+        style: "split_container"
+        
+        // Left pane - Code Editor
+        Container {
+            id: "editor_pane"
+            style: "editor_pane"
+            
+            // Toolbar
+            Container {
+                style: "toolbar"
+                
+                Button {
+                    style: "toolbar_button"
+                    text: "▶ Run"
+                    on_click: "compile_and_preview"
+                }
+                
+                Button {
+                    style: "toolbar_button"
+                    text: "💾 Save"
+                    on_click: "save_code"
+                }
+                
+                Container {
+                    style: "toolbar_separator"
+                }
+                
+                Button {
+                    style: "toolbar_button"
+                    text: "📁 Open"
+                    on_click: "open_file"
+                }
+                
+                Button {
+                    style: "toolbar_button"
+                    text: "📚 Examples"
+                    on_click: "show_examples"
+                }
+                
+                Container {
+                    style: "toolbar_separator"
+                }
+                
+                Button {
+                    style: "toolbar_button"
+                    text: "⚙ Settings"
+                    on_click: "show_settings"
+                }
+            }
+            
+            // Editor area with line numbers
+            Container {
+                style: "editor_container"
+                
+                // Line numbers
+                Container {
+                    id: "line_numbers"
+                    style: "line_numbers"
+                    
+                    Text {
+                        id: "line_numbers_text"
+                        text: "1"
+                    }
+                }
+                
+                // Code editor with syntax highlighting
+                Container {
+                    style: "code_editor_wrapper"
+                    
+                    // Syntax highlighted overlay
+                    Container {
+                        id: "syntax_overlay"
+                        style: "syntax_overlay"
+                        
+                        SyntaxHighlighter {
+                            id: "syntax_highlighter"
+                            code: ""
+                        }
+                    }
+                    
+                    // Actual text input (transparent)
+                    TextInput {
+                        id: "code_editor"
+                        style: "code_editor"
+                        multiline: true
+                        text: ""
+                        on_change: "on_code_changed"
+                    }
+                }
+            }
+            
+            // Status bar
+            Container {
+                style: "status_bar"
+                
+                Text {
+                    id: "status_text"
+                    style: "status_text"
+                    text: "Ready"
+                }
+                
+                Text {
+                    id: "cursor_position"
+                    style: "status_text"
+                    text: "Ln 1, Col 1"
+                }
+                
+                Text {
+                    id: "file_type"
+                    style: "status_text"
+                    text: "Kryon"
+                }
+            }
+        }
+        
+        // Resizer handle
+        Container {
+            id: "resizer"
+            style: "resizer"
+            on_mouse_down: "start_resize"
+            on_mouse_move: "do_resize"
+            on_mouse_up: "end_resize"
+        }
+        
+        // Right pane - Preview
+        Container {
+            id: "preview_pane"
+            style: "preview_pane"
+            
+            Container {
+                style: "preview_header"
+                
+                Text {
+                    style: "preview_title"
+                    text: "Preview"
+                }
+                
+                Button {
+                    style: "toolbar_button"
+                    text: "🔄 Refresh"
+                    on_click: "refresh_preview"
+                }
+                
+                Button {
+                    style: "toolbar_button"
+                    text: "📤 Export"
+                    on_click: "export_krb"
+                }
+            }
+            
+            Container {
+                id: "preview_content"
+                style: "preview_content"
+                
+                Container {
+                    id: "preview_placeholder"
+                    display: flex
+                    align_items: center
+                    justify_content: center
+                    width: 100%
+                    height: 100%
+                    
+                    Text {
+                        text: "Click 'Run' to compile and preview your Kryon application"
+                        text_color: "#808080"
+                        font_size: 16
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Script section for handling all functionality
+script {
+    language: lua
+    
+    local resizing = false
+    local resize_start_x = 0
+    local editor_width = 0
+    local auto_compile_timer = nil
+    local current_file = nil
+    
+    -- Example templates
+    local examples = {
+        {
+            name = "Hello World",
+            code = [[
+style "main_container" {
+    background_color: "#2196F3"
+    display: flex
+    align_items: center
+    justify_content: center
+    width: 100%
+    height: 100%
+}
+
+style "hello_text" {
+    text_color: "#FFFFFF"
+    font_size: 48
+    font_weight: bold
+    text_alignment: center
+}
+
+App {
+    window_width: 800
+    window_height: 600
+    window_title: "Hello Kryon"
+    
+    Container {
+        style: "main_container"
+        
+        Text {
+            style: "hello_text"
+            text: "Hello, Kryon!"
+        }
+    }
+}]]
+        },
+        {
+            name = "Counter App",
+            code = [[
+style "app_container" {
+    background_color: "#f5f5f5"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    width: 100%
+    height: 100%
+}
+
+style "counter_display" {
+    font_size: 72
+    text_color: "#333333"
+    margin_bottom: 30
+}
+
+style "button_container" {
+    display: flex
+    flex_direction: row
+    gap: 20
+}
+
+style "counter_button" {
+    padding: 15
+    padding_left: 30
+    padding_right: 30
+    background_color: "#4CAF50"
+    text_color: "#FFFFFF"
+    border_radius: 8
+    font_size: 18
+    cursor: pointer
+}
+
+style "counter_button:hover" {
+    background_color: "#45a049"
+}
+
+style "reset_button" {
+    background_color: "#f44336"
+}
+
+style "reset_button:hover" {
+    background_color: "#da190b"
+}
+
+App {
+    window_width: 600
+    window_height: 400
+    window_title: "Counter App"
+    
+    Container {
+        style: "app_container"
+        
+        Text {
+            id: "counter_text"
+            style: "counter_display"
+            text: "0"
+        }
+        
+        Container {
+            style: "button_container"
+            
+            Button {
+                style: "counter_button"
+                text: "- Decrease"
+                on_click: "decrease_counter"
+            }
+            
+            Button {
+                style: "counter_button reset_button"
+                text: "Reset"
+                on_click: "reset_counter"
+            }
+            
+            Button {
+                style: "counter_button"
+                text: "+ Increase"
+                on_click: "increase_counter"
+            }
+        }
+    }
+}
+
+script {
+    language: lua
+    
+    local counter = 0
+    
+    function update_counter_display()
+        set_element_property("counter_text", "text", tostring(counter))
+    end
+    
+    function increase_counter()
+        counter = counter + 1
+        update_counter_display()
+    end
+    
+    function decrease_counter()
+        counter = counter - 1
+        update_counter_display()
+    end
+    
+    function reset_counter()
+        counter = 0
+        update_counter_display()
+    end
+}]]
+        }
+    }
+    
+    function init()
+        -- Load default example
+        load_example(1)
+        update_line_numbers()
+    end
+    
+    function on_code_changed()
+        local code = get_element_property("code_editor", "text")
+        
+        -- Update syntax highlighter
+        set_element_property("syntax_highlighter", "code", code)
+        
+        -- Update line numbers
+        update_line_numbers()
+        
+        -- Update cursor position
+        update_cursor_position()
+        
+        -- Schedule auto-compile
+        schedule_auto_compile()
+    end
+    
+    function update_line_numbers()
+        local code = get_element_property("code_editor", "text")
+        local lines = 1
+        
+        for _ in string.gmatch(code, "\n") do
+            lines = lines + 1
+        end
+        
+        local line_text = ""
+        for i = 1, lines do
+            if i > 1 then
+                line_text = line_text .. "\n"
+            end
+            line_text = line_text .. tostring(i)
+        end
+        
+        set_element_property("line_numbers_text", "text", line_text)
+    end
+    
+    function update_cursor_position()
+        -- This would get actual cursor position from editor
+        -- For now, just show placeholder
+        set_element_property("cursor_position", "text", "Ln 1, Col 1")
+    end
+    
+    function schedule_auto_compile()
+        if auto_compile_timer then
+            cancel_timer(auto_compile_timer)
+        end
+        
+        auto_compile_timer = set_timer(1500, function()
+            compile_and_preview()
+            auto_compile_timer = nil
+        end)
+        
+        set_status("Editing...")
+    end
+    
+    function compile_and_preview()
+        local code = get_element_property("code_editor", "text")
+        
+        -- Clear previous preview
+        local preview = get_element("preview_content")
+        clear_children(preview)
+        
+        -- Validate code is not empty
+        if string.len(string.trim(code)) == 0 then
+            show_placeholder()
+            set_status("Ready")
+            return
+        end
+        
+        set_status("Compiling...")
+        
+        -- Save to temporary file
+        local temp_file = "/tmp/kryon_playground_" .. os.time() .. ".kry"
+        local success = write_file(temp_file, code)
+        
+        if not success then
+            show_error("Failed to write temporary file")
+            set_status("Error")
+            return
+        end
+        
+        -- Compile the file
+        local compile_result = execute_command("kryon", "compile", temp_file, "-o", temp_file .. ".krb")
+        
+        if compile_result.exit_code == 0 then
+            -- Success - show preview
+            show_preview(temp_file .. ".krb")
+            set_status("Compilation successful")
+        else
+            -- Error - show error message
+            show_error(compile_result.stderr or compile_result.stdout)
+            set_status("Compilation failed")
+        end
+        
+        -- Clean up temp file
+        delete_file(temp_file)
+    end
+    
+    function show_preview(krb_path)
+        local preview = get_element("preview_content")
+        
+        -- Create embed view for the compiled application
+        create_element(preview, "EmbedView", {
+            id = "preview_embed",
+            source = krb_path,
+            view_type = "kryon",
+            width = "100%",
+            height = "100%",
+            config = {
+                renderer = "html",
+                isolated = true
+            }
+        })
+    end
+    
+    function show_error(error_message)
+        local preview = get_element("preview_content")
+        
+        create_element(preview, "Container", {
+            style = "error_panel",
+            children = {
+                {
+                    type = "Text",
+                    style = "error_text",
+                    text = error_message
+                }
+            }
+        })
+    end
+    
+    function show_placeholder()
+        local preview = get_element("preview_content")
+        
+        create_element(preview, "Container", {
+            id = "preview_placeholder",
+            display = "flex",
+            align_items = "center",
+            justify_content = "center",
+            width = "100%",
+            height = "100%",
+            children = {
+                {
+                    type = "Text",
+                    text = "Click 'Run' to compile and preview your Kryon application",
+                    text_color = "#808080",
+                    font_size = 16
+                }
+            }
+        })
+    end
+    
+    function save_code()
+        local code = get_element_property("code_editor", "text")
+        
+        if current_file then
+            -- Save to current file
+            local success = write_file(current_file, code)
+            if success then
+                set_status("Saved to " .. current_file)
+            else
+                set_status("Failed to save file")
+            end
+        else
+            -- Show save dialog
+            local file_path = show_save_dialog("Save Kryon File", "*.kry")
+            if file_path then
+                local success = write_file(file_path, code)
+                if success then
+                    current_file = file_path
+                    set_status("Saved to " .. file_path)
+                else
+                    set_status("Failed to save file")
+                end
+            end
+        end
+    end
+    
+    function open_file()
+        local file_path = show_open_dialog("Open Kryon File", "*.kry")
+        if file_path then
+            local content = read_file(file_path)
+            if content then
+                set_element_property("code_editor", "text", content)
+                current_file = file_path
+                set_status("Opened " .. file_path)
+            else
+                set_status("Failed to open file")
+            end
+        end
+    end
+    
+    function show_examples()
+        -- Create example picker dialog
+        local selected = show_menu(examples, function(example)
+            return example.name
+        end)
+        
+        if selected then
+            load_example(selected)
+        end
+    end
+    
+    function load_example(index)
+        local example = examples[index]
+        if example then
+            set_element_property("code_editor", "text", example.code)
+            current_file = nil
+            set_status("Loaded example: " .. example.name)
+        end
+    end
+    
+    function refresh_preview()
+        compile_and_preview()
+    end
+    
+    function export_krb()
+        local code = get_element_property("code_editor", "text")
+        
+        if string.len(string.trim(code)) == 0 then
+            set_status("Nothing to export")
+            return
+        end
+        
+        local file_path = show_save_dialog("Export KRB File", "*.krb")
+        if file_path then
+            -- Compile and export
+            local temp_file = "/tmp/kryon_export_temp.kry"
+            write_file(temp_file, code)
+            
+            local compile_result = execute_command("kryon", "compile", temp_file, "-o", file_path)
+            
+            if compile_result.exit_code == 0 then
+                set_status("Exported to " .. file_path)
+            else
+                set_status("Export failed")
+            end
+            
+            delete_file(temp_file)
+        end
+    end
+    
+    function show_settings()
+        -- Show settings dialog
+        set_status("Settings coming soon...")
+    end
+    
+    function set_status(message)
+        set_element_property("status_text", "text", message)
+    end
+    
+    -- Resizing functionality
+    function start_resize(event)
+        resizing = true
+        resize_start_x = event.x
+        editor_width = get_element_property("editor_pane", "width")
+    end
+    
+    function do_resize(event)
+        if resizing then
+            local delta = event.x - resize_start_x
+            local new_width = editor_width + delta
+            
+            -- Constrain width
+            new_width = math.max(300, math.min(new_width, window_width - 300))
+            
+            set_element_property("editor_pane", "width", new_width)
+            set_element_property("preview_pane", "width", window_width - new_width - 4)
+        end
+    end
+    
+    function end_resize(event)
+        resizing = false
+    end
+    
+    -- Initialize the playground
+    init()
+end

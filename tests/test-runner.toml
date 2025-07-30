@@ -1,0 +1,211 @@
+# Kryon Centralized Test Configuration
+# This configuration file defines test suites, settings, and execution parameters
+# for the comprehensive Kryon testing framework.
+
+[general]
+# Global test settings
+parallel_execution = true
+max_parallel_jobs = 8
+timeout_seconds = 300
+verbose_output = false
+fail_fast = false
+generate_reports = true
+report_format = "json"
+report_output_dir = "tests/reports"
+
+[unit_tests]
+enabled = true
+# Test patterns to include
+include_patterns = [
+    "tests/compiler/**/*_test.rs",
+    "tests/renderer/**/*_test.rs",
+    "tests/kryon-tests/src/**/*.rs"
+]
+# Test patterns to exclude
+exclude_patterns = [
+    "tests/**/*bench*.rs",
+    "tests/**/integration_*.rs"
+]
+# Cargo test arguments
+cargo_args = ["--lib", "--bins"]
+
+[widget_tests]
+enabled = true
+# Widget feature flags to test
+test_features = [
+    "dropdown",
+    "data-grid", 
+    "date-picker",
+    "rich-text",
+    "color-picker",
+    "file-upload",
+    "number-input",
+    "range-slider"
+]
+# Individual widget test suites
+suites = [
+    { name = "dropdown", path = "widget-tests/src/dropdown_tests.rs", critical = true },
+    { name = "data-grid", path = "widget-tests/src/data_grid_tests.rs", critical = true },
+    { name = "date-picker", path = "widget-tests/src/date_picker_tests.rs", critical = false },
+    { name = "rich-text", path = "widget-tests/src/rich_text_tests.rs", critical = false },
+    { name = "color-picker", path = "widget-tests/src/color_picker_tests.rs", critical = false },
+    { name = "file-upload", path = "widget-tests/src/file_upload_tests.rs", critical = false },
+    { name = "number-input", path = "widget-tests/src/number_input_tests.rs", critical = false },
+    { name = "integration", path = "widget-tests/src/integration_tests.rs", critical = true }
+]
+
+[integration_tests]
+enabled = true
+# Backend combinations to test
+backends = ["ratatui", "html", "raylib", "wgpu"]
+cross_backend_testing = true
+# Test fixtures directory
+fixtures_dir = "tests/fixtures"
+# Integration test categories
+categories = [
+    { name = "compilation", pattern = "integration-tests/src/compilation_tests.rs" },
+    { name = "rendering", pattern = "integration-tests/src/rendering_tests.rs" },
+    { name = "cross-backend", pattern = "integration-tests/src/cross_backend_tests.rs" },
+    { name = "end-to-end", pattern = "integration-tests/src/e2e_tests.rs" }
+]
+
+[performance_tests]
+enabled = true
+# Performance benchmarking settings
+benchmark_iterations = 100
+warmup_iterations = 10
+measurement_time = 30 # seconds
+# Performance thresholds (fail if exceeded)
+max_compilation_time_ms = 500
+max_render_time_ms = 16  # 60 FPS target
+max_memory_usage_mb = 100
+max_binary_size_kb = 1024
+# Benchmark suites
+suites = [
+    { name = "compilation", path = "performance-tests/benches/compilation.rs" },
+    { name = "layout", path = "performance-tests/benches/layout.rs" },
+    { name = "rendering", path = "performance-tests/benches/rendering.rs" },
+    { name = "memory", path = "performance-tests/benches/memory.rs" }
+]
+
+[visual_tests]
+enabled = true
+# Visual regression testing
+snapshot_dir = "tests/snapshots"
+update_snapshots = false
+pixel_tolerance = 5
+# Visual test backends
+backends = ["ratatui", "html"]
+# Test cases for visual regression
+test_cases = [
+    { name = "basic-layout", fixture = "basic/01_hello_world.kry" },
+    { name = "flexbox-layout", fixture = "layout/01_flexbox_row.kry" },
+    { name = "nested-layout", fixture = "layout/03_nested_flexbox.kry" },
+    { name = "styling", fixture = "styling/01_colors_and_fonts.kry" },
+    { name = "components", fixture = "components/01_custom_card.kry" }
+]
+
+[property_tests]
+enabled = true
+# Property-based testing with QuickCheck/PropTest
+max_test_cases = 1000
+max_shrink_iterations = 100
+# Property test generators
+generators = [
+    "arbitrary_kry_syntax",
+    "arbitrary_property_values", 
+    "arbitrary_layout_constraints",
+    "arbitrary_color_values",
+    "arbitrary_text_content"
+]
+
+[coverage]
+enabled = true
+# Code coverage settings
+minimum_line_coverage = 80
+minimum_branch_coverage = 70
+exclude_patterns = [
+    "tests/**/*",
+    "examples/**/*",
+    "**/generated/**/*"
+]
+# Coverage report formats
+report_formats = ["html", "lcov", "json"]
+output_dir = "tests/coverage"
+
+[ci_cd]
+# Continuous Integration settings
+pre_commit_hooks = true
+# Quick test suite for PR checks (faster subset)
+quick_test_patterns = [
+    "tests/compiler/parser_tests.rs",
+    "tests/compiler/semantic_tests.rs", 
+    "widget-tests/src/dropdown_tests.rs",
+    "integration-tests/src/compilation_tests.rs"
+]
+# Full test suite for main branch
+full_test_on_branches = ["main", "develop", "release/*"]
+
+[test_environments]
+# Different test environment configurations
+[test_environments.local]
+parallel_jobs = 4
+timeout_seconds = 120
+generate_reports = false
+
+[test_environments.ci]  
+parallel_jobs = 8
+timeout_seconds = 300
+generate_reports = true
+fail_fast = true
+
+[test_environments.nightly]
+parallel_jobs = 16
+timeout_seconds = 600
+extended_property_testing = true
+full_cross_platform_testing = true
+memory_profiling = true
+
+[fixtures]
+# Test fixture management
+auto_generate = false
+fixture_formats = ["kry", "krb", "json"]
+# Fixture categories and their sources
+categories = [
+    { name = "basic", description = "Simple component tests", count = 10 },
+    { name = "layout", description = "Layout engine tests", count = 15 },
+    { name = "styling", description = "CSS and styling tests", count = 12 },
+    { name = "components", description = "Complex component tests", count = 8 },
+    { name = "performance", description = "Large-scale performance tests", count = 5 },
+    { name = "error_cases", description = "Error handling tests", count = 20 }
+]
+
+[reporting]
+# Test result reporting
+formats = ["console", "json", "html", "junit"]
+console_colors = true
+detailed_failures = true
+performance_graphs = true
+trend_analysis = true
+# Report destinations
+outputs = [
+    { format = "console", destination = "stdout" },
+    { format = "json", destination = "tests/reports/results.json" },
+    { format = "html", destination = "tests/reports/index.html" },
+    { format = "junit", destination = "tests/reports/junit.xml" }
+]
+
+[notifications]
+# Test result notifications (for CI/CD)
+enabled = false
+webhooks = []
+email_on_failure = false
+slack_integration = false
+
+[debugging]
+# Debugging and diagnostic settings
+save_intermediate_files = false
+debug_compilation_steps = false
+memory_leak_detection = false
+performance_profiling = false
+verbose_error_messages = true

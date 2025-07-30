@@ -14,6 +14,8 @@ pub enum LayoutDimension {
     MinPixels(f32),
     /// Fixed maximum size in pixels
     MaxPixels(f32),
+    /// CSS Grid fraction unit (flexible length)
+    Fraction(f32),
 }
 
 impl LayoutDimension {
@@ -25,17 +27,23 @@ impl LayoutDimension {
             LayoutDimension::Auto => parent_size, // For now, auto fills parent
             LayoutDimension::MinPixels(px) => *px,
             LayoutDimension::MaxPixels(px) => *px,
+            LayoutDimension::Fraction(fr) => {
+                // For basic implementation, treat fr as proportional to parent
+                // In a proper grid implementation, fractions would be distributed
+                // proportionally among all fr units in the container
+                fr * parent_size
+            }
         }
     }
     
     /// Check if this dimension is definite (not auto)
     pub fn is_definite(&self) -> bool {
-        !matches!(self, LayoutDimension::Auto)
+        !matches!(self, LayoutDimension::Auto | LayoutDimension::Fraction(_))
     }
     
     /// Check if this dimension depends on parent size
     pub fn depends_on_parent(&self) -> bool {
-        matches!(self, LayoutDimension::Percentage(_) | LayoutDimension::Auto)
+        matches!(self, LayoutDimension::Percentage(_) | LayoutDimension::Auto | LayoutDimension::Fraction(_))
     }
     
     /// Create from a string value (like "50%", "100px", "auto")
@@ -55,6 +63,12 @@ impl LayoutDimension {
         if value.ends_with("px") {
             if let Ok(px) = value[..value.len()-2].parse::<f32>() {
                 return LayoutDimension::Pixels(px);
+            }
+        }
+        
+        if value.ends_with("fr") {
+            if let Ok(fr) = value[..value.len()-2].parse::<f32>() {
+                return LayoutDimension::Fraction(fr);
             }
         }
         
@@ -196,6 +210,7 @@ mod tests {
         assert_eq!(LayoutDimension::from_string("100px"), LayoutDimension::Pixels(100.0));
         assert_eq!(LayoutDimension::from_string("auto"), LayoutDimension::Auto);
         assert_eq!(LayoutDimension::from_string("200"), LayoutDimension::Pixels(200.0));
+        assert_eq!(LayoutDimension::from_string("1fr"), LayoutDimension::Fraction(1.0));
     }
     
     #[test]
@@ -205,6 +220,7 @@ mod tests {
         assert_eq!(LayoutDimension::Pixels(100.0).to_pixels(parent_size), 100.0);
         assert_eq!(LayoutDimension::Percentage(0.5).to_pixels(parent_size), 200.0);
         assert_eq!(LayoutDimension::Auto.to_pixels(parent_size), 400.0);
+        assert_eq!(LayoutDimension::Fraction(1.0).to_pixels(parent_size), 400.0);
     }
     
     #[test]

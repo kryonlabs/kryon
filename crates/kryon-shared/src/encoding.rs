@@ -47,6 +47,7 @@ impl TextAlignment {
 }
 
 /// JustifyContent encoding and decoding
+/* REMOVED: JustifyContent is now PropertyId::JustifyContent variant
 impl JustifyContent {
     pub fn from_string(s: &str) -> Result<Self, EncodingError> {
         match s.to_lowercase().as_str() {
@@ -90,8 +91,9 @@ impl JustifyContent {
         }
     }
 }
+*/
 
-/// AlignItems encoding and decoding
+/* REMOVED: AlignItems is now PropertyId::AlignItems variant
 impl AlignItems {
     pub fn from_string(s: &str) -> Result<Self, EncodingError> {
         match s.to_lowercase().as_str() {
@@ -132,8 +134,9 @@ impl AlignItems {
         }
     }
 }
+*/
 
-/// FlexDirection encoding and decoding
+/* REMOVED: FlexDirection is now PropertyId::FlexDirection variant
 impl FlexDirection {
     pub fn from_string(s: &str) -> Result<Self, EncodingError> {
         match s.to_lowercase().as_str() {
@@ -171,8 +174,9 @@ impl FlexDirection {
         }
     }
 }
+*/
 
-/// Display encoding and decoding
+/* REMOVED: Display is now PropertyId::Display variant
 impl Display {
     pub fn from_string(s: &str) -> Result<Self, EncodingError> {
         match s.to_lowercase().as_str() {
@@ -216,8 +220,9 @@ impl Display {
         }
     }
 }
+*/
 
-/// Position encoding and decoding
+/* REMOVED: Position is now PropertyId::Position variant
 impl Position {
     pub fn from_string(s: &str) -> Result<Self, EncodingError> {
         match s.to_lowercase().as_str() {
@@ -258,29 +263,34 @@ impl Position {
         }
     }
 }
+*/
 
 /// Utility function to encode any property value from string
+/// FIXME: Update this to work with PropertyId variants instead of separate enums
 pub fn encode_property_value(property_id: PropertyId, value: &str) -> Result<u8, EncodingError> {
     match property_id {
         PropertyId::TextAlignment => TextAlignment::from_string(value).map(|v| v.to_u8()),
-        PropertyId::JustifyContent => JustifyContent::from_string(value).map(|v| v.to_u8()),
-        PropertyId::AlignItems => AlignItems::from_string(value).map(|v| v.to_u8()),
-        PropertyId::FlexDirection => FlexDirection::from_string(value).map(|v| v.to_u8()),
-        PropertyId::Display => Display::from_string(value).map(|v| v.to_u8()),
-        PropertyId::Position => Position::from_string(value).map(|v| v.to_u8()),
-        _ => Err(EncodingError::UnsupportedProperty(property_id.name())),
+        // FIXME: These need to be reimplemented as PropertyId methods
+        // PropertyId::JustifyContent => JustifyContent::from_string(value).map(|v| v.to_u8()),
+        // PropertyId::AlignItems => AlignItems::from_string(value).map(|v| v.to_u8()),
+        // PropertyId::FlexDirection => FlexDirection::from_string(value).map(|v| v.to_u8()),
+        // PropertyId::Display => Display::from_string(value).map(|v| v.to_u8()),
+        // PropertyId::Position => Position::from_string(value).map(|v| v.to_u8()),
+        _ => Err(EncodingError::UnsupportedProperty("FIXME")),
     }
 }
 
 /// Utility function to decode any property value to string
+/// FIXME: Update this to work with PropertyId variants instead of separate enums
 pub fn decode_property_value(property_id: PropertyId, value: u8) -> Result<String, EncodingError> {
     match property_id {
         PropertyId::TextAlignment => TextAlignment::from_u8(value).map(|v| v.to_string().to_string()),
-        PropertyId::JustifyContent => JustifyContent::from_u8(value).map(|v| v.to_string().to_string()),
-        PropertyId::AlignItems => AlignItems::from_u8(value).map(|v| v.to_string().to_string()),
-        PropertyId::FlexDirection => FlexDirection::from_u8(value).map(|v| v.to_string().to_string()),
-        PropertyId::Display => Display::from_u8(value).map(|v| v.to_string().to_string()),
-        PropertyId::Position => Position::from_u8(value).map(|v| v.to_string().to_string()),
-        _ => Err(EncodingError::UnsupportedProperty(property_id.name())),
+        // FIXME: These need to be reimplemented as PropertyId methods
+        // PropertyId::JustifyContent => JustifyContent::from_u8(value).map(|v| v.to_string().to_string()),
+        // PropertyId::AlignItems => AlignItems::from_u8(value).map(|v| v.to_string().to_string()),
+        // PropertyId::FlexDirection => FlexDirection::from_u8(value).map(|v| v.to_string().to_string()),
+        // PropertyId::Display => Display::from_u8(value).map(|v| v.to_string().to_string()),
+        // PropertyId::Position => Position::from_u8(value).map(|v| v.to_string().to_string()),
+        _ => Err(EncodingError::UnsupportedProperty("FIXME")),
     }
 }

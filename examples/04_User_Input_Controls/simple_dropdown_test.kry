@@ -1,0 +1,83 @@
+# Simple Dropdown Test
+# Test if the dropdown renders with triangle arrows
+
+@variables {
+    selected_option: "None"
+}
+
+style "app_container" {
+    background_color: "#f0f0f0"
+    display: flex
+    flex_direction: column
+    align_items: center
+    justify_content: center
+    padding: 50
+    gap: 20
+}
+
+style "dropdown_card" {
+    background_color: "#ffffff"
+    padding: 30
+    border_radius: 8
+    box_shadow: "0 2px 8px rgba(0, 0, 0, 0.1)"
+    width: 300
+}
+
+style "title" {
+    font_size: 20
+    font_weight: bold
+    text_color: "#333333"
+    text_alignment: center
+    margin_bottom: 20
+}
+
+App {
+    window_width: 500
+    window_height: 400
+    window_title: "Simple Dropdown Test"
+    
+    Container {
+        style: "app_container"
+        
+        Container {
+            style: "dropdown_card"
+            
+            Text {
+                text: "Dropdown Test"
+                style: "title"
+            }
+            
+            # Test the built-in dropdown widget
+            Widget {
+                type: "dropdown"
+                width: 100%
+                placeholder: "Choose an option..."
+                font_size: 16
+                
+                options: [
+                    { label: "Option 1", value: "value1" },
+                    { label: "Option 2", value: "value2" },
+                    { label: "Option 3", value: "value3" }
+                ]
+                
+                onSelectionChanged: handle_selection
+            }
+            
+            Text {
+                text: "Selected: " + $selected_option
+                font_size: 14
+                text_color: "#666666"
+                text_alignment: center
+                margin_top: 20
+            }
+        }
+    }
+}
+
+@function "lua" handle_selection(values) {
+    if #values > 0 then
+        selected_option = values[1]
+    else
+        selected_option = "None"
+    end
+}

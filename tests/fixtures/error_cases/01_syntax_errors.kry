@@ -1,0 +1,28 @@
+// This file contains intentional syntax errors for testing error handling
+// Tests: Error detection, recovery, helpful error messages
+
+App {
+    window_width: 800
+    window_height: 600
+    
+    Text {
+        text: "This should work fine"
+        font_size: 16
+    }
+    
+    // Missing closing brace - should cause syntax error
+    Container {
+        width: 200
+        height: 100
+        
+        Text {
+            text: "Missing brace below"
+        // Missing closing brace here
+    
+    // This should not be parsed correctly
+    Button {
+        text: "After Error"
+        width: 100
+    }
+}
+// Missing final closing brace for App

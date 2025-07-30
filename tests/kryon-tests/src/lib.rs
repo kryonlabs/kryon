@@ -35,6 +35,7 @@
 //! ```
 
 pub mod prelude;
+pub mod config;
 pub mod utils;
 pub mod fixtures;
 pub mod runners;
@@ -44,6 +45,12 @@ pub mod benchmarks;
 pub mod properties;
 pub mod integration;
 pub mod visual;
+pub mod metrics;
+pub mod coverage;
+pub mod dependencies;
+pub mod orchestrator;
+pub mod generation;
+pub mod caching;
 
 // Re-export commonly used types
 pub use prelude::*;

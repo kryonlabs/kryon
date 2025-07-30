@@ -4,6 +4,158 @@ use kryon_core::TextAlignment;
 use kryon_render::LayoutStyle;
 
 impl HtmlRenderer {
+    /// Generate opening tag for a container element with proper nesting
+    pub fn generate_begin_container_element(
+        &mut self,
+        element_id: &str,
+        position: Vec2,
+        size: Vec2,
+        color: Vec4,
+        border_radius: f32,
+        border_width: f32,
+        border_color: Vec4,
+        layout_style: Option<&LayoutStyle>,
+        z_index: i32,
+    ) -> HtmlResult<()> {
+        let element_id = self.next_element_id();
+        
+        // Generate opening div tag
+        self.html_content.push_str(&format!(
+            "  <div id=\"{}\" class=\"kryon-container\">\n",
+            element_id
+        ));
+        
+        // Generate CSS (same as rect_element)
+        self.css_content.push_str(&format!(
+            "#{} {{\n",
+            element_id
+        ));
+        
+        // Always use absolute positioning if position is specified (non-zero)
+        // This ensures containers appear in the correct location
+        if position.x != 0.0 || position.y != 0.0 {
+            self.css_content.push_str("  position: absolute;\n");
+            self.css_content.push_str(&format!("  left: {}px;\n", position.x));
+            self.css_content.push_str(&format!("  top: {}px;\n", position.y));
+        } else if let Some(layout) = layout_style {
+            if let Some(display) = &layout.display {
+                if display == "flex" || display == "grid" {
+                    // Flex/grid containers at root use relative positioning
+                    self.css_content.push_str("  position: relative;\n");
+                }
+            }
+        }
+        
+        self.css_content.push_str(&format!(
+            "  width: {}px;\n", size.x
+        ));
+        self.css_content.push_str(&format!(
+            "  height: {}px;\n", size.y
+        ));
+        
+        // Background color
+        if color.w > 0.0 {
+            self.css_content.push_str(&format!(
+                "  background-color: rgba({}, {}, {}, {});\n",
+                (color.x * 255.0) as u8,
+                (color.y * 255.0) as u8,
+                (color.z * 255.0) as u8,
+                color.w
+            ));
+        }
+        
+        // Border
+        if border_width > 0.0 && border_color.w > 0.0 {
+            self.css_content.push_str(&format!(
+                "  border: {}px solid rgba({}, {}, {}, {});\n",
+                border_width,
+                (border_color.x * 255.0) as u8,
+                (border_color.y * 255.0) as u8,
+                (border_color.z * 255.0) as u8,
+                border_color.w
+            ));
+        }
+        
+        // Border radius
+        if border_radius > 0.0 {
+            self.css_content.push_str(&format!(
+                "  border-radius: {}px;\n", border_radius
+            ));
+        }
+        
+        // Layout styles (flexbox, grid, etc.)
+        if let Some(layout) = layout_style {
+            if let Some(display) = &layout.display {
+                self.css_content.push_str(&format!(
+                    "  display: {};\n", display
+                ));
+            }
+            
+            if let Some(flex_direction) = &layout.flex_direction {
+                self.css_content.push_str(&format!(
+                    "  flex-direction: {};\n", flex_direction
+                ));
+            }
+            
+            if let Some(justify_content) = &layout.justify_content {
+                self.css_content.push_str(&format!(
+                    "  justify-content: {};\n", justify_content
+                ));
+            }
+            
+            if let Some(align_items) = &layout.align_items {
+                self.css_content.push_str(&format!(
+                    "  align-items: {};\n", align_items
+                ));
+            }
+            
+            if let Some(align_content) = &layout.align_content {
+                self.css_content.push_str(&format!(
+                    "  align-content: {};\n", align_content
+                ));
+            }
+            
+            if let Some(flex_wrap) = &layout.flex_wrap {
+                self.css_content.push_str(&format!(
+                    "  flex-wrap: {};\n", flex_wrap
+                ));
+            }
+            
+            if let Some(gap) = layout.gap {
+                self.css_content.push_str(&format!(
+                    "  gap: {}px;\n", gap
+                ));
+            }
+            
+            if let Some(row_gap) = layout.row_gap {
+                self.css_content.push_str(&format!(
+                    "  row-gap: {}px;\n", row_gap
+                ));
+            }
+            
+            if let Some(column_gap) = layout.column_gap {
+                self.css_content.push_str(&format!(
+                    "  column-gap: {}px;\n", column_gap
+                ));
+            }
+        }
+        
+        // Z-index
+        self.css_content.push_str(&format!(
+            "  z-index: {};\n", z_index
+        ));
+        
+        self.css_content.push_str("}\n");
+        
+        Ok(())
+    }
+    
+    /// Generate closing tag for a container element
+    pub fn generate_end_container_element(&mut self) -> HtmlResult<()> {
+        self.html_content.push_str("  </div>\n");
+        Ok(())
+    }
+
     /// Generate a div element for rectangles/containers
     pub fn generate_rect_element(
         &mut self,
@@ -29,15 +181,22 @@ impl HtmlRenderer {
             "#{} {{\n",
             element_id
         ));
-        self.css_content.push_str(&format!(
-            "  position: absolute;\n"
-        ));
-        self.css_content.push_str(&format!(
-            "  left: {}px;\n", position.x
-        ));
-        self.css_content.push_str(&format!(
-            "  top: {}px;\n", position.y
-        ));
+        
+        // Always use absolute positioning if position is specified (non-zero)
+        // This ensures containers appear in the correct location
+        if position.x != 0.0 || position.y != 0.0 {
+            self.css_content.push_str("  position: absolute;\n");
+            self.css_content.push_str(&format!("  left: {}px;\n", position.x));
+            self.css_content.push_str(&format!("  top: {}px;\n", position.y));
+        } else if let Some(layout) = layout_style {
+            if let Some(display) = &layout.display {
+                if display == "flex" || display == "grid" {
+                    // Flex/grid containers at root use relative positioning
+                    self.css_content.push_str("  position: relative;\n");
+                }
+            }
+        }
+        
         self.css_content.push_str(&format!(
             "  width: {}px;\n", size.x
         ));
@@ -170,15 +329,21 @@ impl HtmlRenderer {
         self.css_content.push_str(&format!(
             "#{} {{\n", element_id
         ));
-        self.css_content.push_str(&format!(
-            "  position: absolute;\n"
-        ));
-        self.css_content.push_str(&format!(
-            "  left: {}px;\n", position.x
-        ));
-        self.css_content.push_str(&format!(
-            "  top: {}px;\n", position.y
-        ));
+        
+        // Text elements inside flex/grid containers should not be absolutely positioned
+        // They should flow with their parent container's layout
+        // Only use absolute positioning for standalone text elements at specific positions
+        
+        // For now, don't apply absolute positioning to text elements
+        // This allows them to flow naturally within flex/grid containers
+        // In the future, we could track parent container context to make smarter decisions
+        if position.x != 0.0 || position.y != 0.0 {
+            // TODO: Only apply absolute positioning if the text is not inside a flex/grid container
+            // For now, comment this out to fix text not appearing in containers
+            // self.css_content.push_str("  position: absolute;\n");
+            // self.css_content.push_str(&format!("  left: {}px;\n", position.x));
+            // self.css_content.push_str(&format!("  top: {}px;\n", position.y));
+        }
         
         // Font size
         self.css_content.push_str(&format!(

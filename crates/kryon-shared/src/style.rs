@@ -81,7 +81,7 @@ impl StyleComputer {
     /// Now uses the unified PropertyRegistry instead of hardcoded match
     #[allow(dead_code)]
     fn is_property_inheritable(&self, property_id: u8) -> bool {
-        let property_enum = crate::PropertyId::from_u8(property_id).unwrap_or(crate::PropertyId::Invalid);
+        let property_enum = crate::PropertyId::from_u8(property_id);
         self.property_registry.is_inheritable(property_enum)
     }
     
@@ -93,7 +93,7 @@ impl StyleComputer {
         prop_value: &PropertyValue,
         state: crate::InteractionState
     ) {
-        let property_enum = crate::PropertyId::from_u8(property_id).unwrap_or(crate::PropertyId::Invalid);
+        let property_enum = crate::PropertyId::from_u8(property_id);
         
         match property_enum {
             crate::PropertyId::BackgroundColor => {
@@ -103,7 +103,7 @@ impl StyleComputer {
                     }
                 }
             }
-            crate::PropertyId::ForegroundColor => {
+            crate::PropertyId::TextColor => {
                 if state != crate::InteractionState::Checked {
                     if let Some(c) = prop_value.as_color() { 
                         computed_style.text_color = c; 

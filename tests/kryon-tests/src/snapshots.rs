@@ -38,6 +38,33 @@ pub struct SnapshotTestConfig {
     pub timeout: Duration,
 }
 
+/// Snapshot comparison result with detailed analysis
+#[derive(Debug, Clone)]
+pub struct SnapshotComparison {
+    pub matches: bool,
+    pub similarity_percentage: f64,
+    pub total_lines: usize,
+    pub matching_lines: usize,
+    pub differences: Vec<LineDifference>,
+}
+
+/// Individual line difference in snapshot comparison
+#[derive(Debug, Clone)]
+pub struct LineDifference {
+    pub line_number: usize,
+    pub expected: String,
+    pub actual: String,
+    pub change_type: ChangeType,
+}
+
+/// Type of change in a line difference
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ChangeType {
+    Addition,
+    Deletion,
+    Modification,
+}
+
 impl SnapshotManager {
     pub fn new(output_dir: impl Into<PathBuf>, backend: SnapshotBackend) -> Self {
         Self {
@@ -145,8 +172,9 @@ impl SnapshotManager {
         let existing_content = fs::read_to_string(snapshot_path)?;
         let diff_path = self.output_dir.join(format!("{}.diff", test_name));
         
-        // Create a simple diff format
+        // Create enhanced diff with context and statistics
         let mut diff_lines = Vec::new();
+        diff_lines.push(format!("=== Snapshot Diff for {} ===", test_name));
         diff_lines.push(format!("--- Expected ({})", snapshot_path.display()));
         diff_lines.push(format!("+++ Actual"));
         diff_lines.push("".to_string());
@@ -154,22 +182,126 @@ impl SnapshotManager {
         let existing_lines: Vec<&str> = existing_content.lines().collect();
         let new_lines: Vec<&str> = new_content.lines().collect();
         
-        // Simple line-by-line diff
+        let mut changes = 0;
+        let mut additions = 0;
+        let mut deletions = 0;
+        
+        // Enhanced line-by-line diff with context
         let max_lines = existing_lines.len().max(new_lines.len());
         for i in 0..max_lines {
             let existing_line = existing_lines.get(i).unwrap_or(&"");
             let new_line = new_lines.get(i).unwrap_or(&"");
             
             if existing_line != new_line {
-                diff_lines.push(format!("-{}", existing_line));
-                diff_lines.push(format!("+{}", new_line));
-            } else {
-                diff_lines.push(format!(" {}", existing_line));
+                changes += 1;
+                
+                // Show line numbers
+                let line_num = i + 1;
+                
+                if existing_line.is_empty() {
+                    additions += 1;
+                    diff_lines.push(format!("{}:+{}", line_num, new_line));
+                } else if new_line.is_empty() {
+                    deletions += 1;
+                    diff_lines.push(format!("{}:-{}", line_num, existing_line));
+                } else {
+                    diff_lines.push(format!("{}:-{}", line_num, existing_line));
+                    diff_lines.push(format!("{}:+{}", line_num, new_line));
+                }
+                
+                // Add separator for readability
+                if changes % 3 == 0 {
+                    diff_lines.push("".to_string());
+                }
             }
         }
         
+        // Add statistics
+        diff_lines.push("".to_string());
+        diff_lines.push(format!("=== Statistics ==="));
+        diff_lines.push(format!("Total changes: {}", changes));
+        diff_lines.push(format!("Lines added: {}", additions));
+        diff_lines.push(format!("Lines removed: {}", deletions));
+        diff_lines.push(format!("Expected lines: {}", existing_lines.len()));
+        diff_lines.push(format!("Actual lines: {}", new_lines.len()));
+        
         fs::write(&diff_path, diff_lines.join("\n"))?;
         Ok(diff_path)
+    }
+    
+    /// Compare snapshots with similarity analysis
+    pub fn compare_snapshots(&self, expected: &str, actual: &str) -> SnapshotComparison {
+        let expected_lines: Vec<&str> = expected.lines().collect();
+        let actual_lines: Vec<&str> = actual.lines().collect();
+        
+        let total_lines = expected_lines.len().max(actual_lines.len());
+        let mut matching_lines = 0;
+        let mut differences = Vec::new();
+        
+        for i in 0..total_lines {
+            let expected_line = expected_lines.get(i).unwrap_or(&"");
+            let actual_line = actual_lines.get(i).unwrap_or(&"");
+            
+            if expected_line == actual_line {
+                matching_lines += 1;
+            } else {
+                differences.push(LineDifference {
+                    line_number: i + 1,
+                    expected: expected_line.to_string(),
+                    actual: actual_line.to_string(),
+                    change_type: if expected_line.is_empty() {
+                        ChangeType::Addition
+                    } else if actual_line.is_empty() {
+                        ChangeType::Deletion
+                    } else {
+                        ChangeType::Modification
+                    },
+                });
+            }
+        }
+        
+        let similarity = if total_lines > 0 {
+            (matching_lines as f64 / total_lines as f64) * 100.0
+        } else {
+            100.0
+        };
+        
+        SnapshotComparison {
+            matches: differences.is_empty(),
+            similarity_percentage: similarity,
+            total_lines,
+            matching_lines,
+            differences,
+        }
+    }
+    
+    /// Generate visual diff output for terminal display
+    pub fn generate_visual_diff(&self, comparison: &SnapshotComparison) -> String {
+        let mut output = Vec::new();
+        
+        output.push(format!("Similarity: {:.1}%", comparison.similarity_percentage));
+        output.push(format!("Total lines: {}, Matching: {}, Different: {}", 
+            comparison.total_lines, 
+            comparison.matching_lines, 
+            comparison.differences.len()));
+        output.push("".to_string());
+        
+        for diff in &comparison.differences {
+            match diff.change_type {
+                ChangeType::Addition => {
+                    output.push(format!("{}:+{}", diff.line_number, diff.actual));
+                }
+                ChangeType::Deletion => {
+                    output.push(format!("{}:-{}", diff.line_number, diff.expected));
+                }
+                ChangeType::Modification => {
+                    output.push(format!("{}:-{}", diff.line_number, diff.expected));
+                    output.push(format!("{}:+{}", diff.line_number, diff.actual));
+                }
+            }
+        }
+        
+        output.join("\n")
     }
 
     /// Run all snapshot tests from a directory

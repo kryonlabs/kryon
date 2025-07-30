@@ -1,0 +1,79 @@
+container: web_index_main {
+    display: flex
+    flex_direction: column
+    width: 100%
+    height: 100%
+    background_color: #667eea
+    padding: 32
+    gap: 24
+    align_items: center
+    
+    container: header {
+        display: flex
+        flex_direction: column
+        align_items: center
+        gap: 8
+        
+        text: title {
+            text: "Kryon Examples"
+            font_size: 48
+            font_weight: bold
+            color: #ffffff
+            text_alignment: center
+        }
+        
+        text: subtitle {
+            text: "Interactive examples built with Kryon framework"
+            font_size: 18
+            color: #ffffff
+            text_alignment: center
+        }
+    }
+    
+    container: examples_container {
+        width: 100%
+        display: flex
+        flex_direction: column
+        gap: 32
+        
+        container: category_getting_started {
+            background_color: #ffffff
+            border_radius: 20
+            padding: 24
+            
+            text: category_title {
+                text: "01 Getting Started"
+                font_size: 24
+                font_weight: 600
+                color: #333333
+                text_alignment: center
+                margin_bottom: 16
+            }
+            
+            container: example_hello_world {
+                background_color: #f8f9fa
+                border_radius: 12
+                padding: 20
+                
+                text: example_title {
+                    text: "Hello World"
+                    font_size: 18
+                    font_weight: 600
+                    color: #2c3e50
+                    margin_bottom: 8
+                }
+                
+                text: example_path {
+                    text: "examples/01_Getting_Started/hello_world.kry"
+                    font_size: 12
+                    color: #666
+                }
+            }
+        }
+    }
+}
+
+window_width: 1200
+window_height: 800
+resizable: true
+window_title: "Kryon Examples - Web Index"
