@@ -1,0 +1,469 @@
+name: Kryon-C Continuous Integration
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  # =============================================================================
+  # LINUX BUILD AND TEST
+  # =============================================================================
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+        build_type: [Debug, Release]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          ninja-build \
+          libgl1-mesa-dev \
+          libglu1-mesa-dev \
+          libasound2-dev \
+          libpulse-dev \
+          libudev-dev \
+          libncurses5-dev \
+          libxcursor-dev \
+          libxrandr-dev \
+          libxinerama-dev \
+          libxi-dev \
+          libxext-dev \
+          libwayland-dev \
+          libxkbcommon-dev \
+          valgrind \
+          clang-tidy \
+          clang-format
+    
+    - name: Set up compiler
+      run: |
+        if [ "${{ matrix.compiler }}" = "clang" ]; then
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+        else
+          echo "CC=gcc" >> $GITHUB_ENV
+          echo "CXX=g++" >> $GITHUB_ENV
+        fi
+    
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DKRYON_BUILD_TESTS=ON \
+          -DKRYON_BUILD_EXAMPLES=ON \
+          -DKRYON_BUILD_TOOLS=ON \
+          -DKRYON_RENDERER_SOFTWARE=ON \
+          -DKRYON_RENDERER_TERMINAL=ON \
+          -DKRYON_SCRIPT_LUA=ON \
+          -DKRYON_SCRIPT_JAVASCRIPT=ON \
+          -DKRYON_ENABLE_NETWORK=ON \
+          -DKRYON_ENABLE_AUDIO=ON
+          
+    - name: Build
+      run: cmake --build build --config ${{ matrix.build_type }}
+    
+    - name: Run tests
+      working-directory: build
+      run: ctest --output-on-failure --verbose
+    
+    - name: Run memory check (Debug only)
+      if: matrix.build_type == 'Debug'
+      working-directory: build
+      run: |
+        ctest -T memcheck --output-on-failure || true
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: kryon-linux-${{ matrix.compiler }}-${{ matrix.build_type }}
+        path: |
+          build/bin/
+          build/lib/
+        retention-days: 7
+
+  # =============================================================================
+  # WINDOWS BUILD AND TEST
+  # =============================================================================
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Set up Visual Studio
+      uses: microsoft/setup-msbuild@v2
+    
+    - name: Configure CMake
+      run: |
+        cmake -B build `
+          -G "Visual Studio 17 2022" `
+          -A x64 `
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
+          -DKRYON_BUILD_TESTS=ON `
+          -DKRYON_BUILD_EXAMPLES=ON `
+          -DKRYON_BUILD_TOOLS=ON `
+          -DKRYON_RENDERER_SOFTWARE=ON `
+          -DKRYON_RENDERER_TERMINAL=ON `
+          -DKRYON_SCRIPT_LUA=ON `
+          -DKRYON_SCRIPT_JAVASCRIPT=ON `
+          -DKRYON_ENABLE_NETWORK=ON `
+          -DKRYON_ENABLE_AUDIO=ON
+    
+    - name: Build
+      run: cmake --build build --config ${{ matrix.build_type }}
+    
+    - name: Run tests
+      working-directory: build
+      run: ctest -C ${{ matrix.build_type }} --output-on-failure --verbose
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: kryon-windows-${{ matrix.build_type }}
+        path: |
+          build/bin/
+          build/lib/
+        retention-days: 7
+
+  # =============================================================================
+  # MACOS BUILD AND TEST
+  # =============================================================================
+  macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        brew install cmake ninja
+    
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DKRYON_BUILD_TESTS=ON \
+          -DKRYON_BUILD_EXAMPLES=ON \
+          -DKRYON_BUILD_TOOLS=ON \
+          -DKRYON_RENDERER_SOFTWARE=ON \
+          -DKRYON_RENDERER_TERMINAL=ON \
+          -DKRYON_SCRIPT_LUA=ON \
+          -DKRYON_SCRIPT_JAVASCRIPT=ON \
+          -DKRYON_ENABLE_NETWORK=ON \
+          -DKRYON_ENABLE_AUDIO=ON
+    
+    - name: Build
+      run: cmake --build build --config ${{ matrix.build_type }}
+    
+    - name: Run tests
+      working-directory: build
+      run: ctest --output-on-failure --verbose
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: kryon-macos-${{ matrix.build_type }}
+        path: |
+          build/bin/
+          build/lib/
+        retention-days: 7
+
+  # =============================================================================
+  # WEB BUILD (EMSCRIPTEN)
+  # =============================================================================
+  web:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Setup Emscripten
+      uses: mymindstorm/setup-emsdk@v14
+      with:
+        version: latest
+    
+    - name: Configure CMake for Web
+      run: |
+        emcmake cmake -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DKRYON_BUILD_TESTS=OFF \
+          -DKRYON_BUILD_EXAMPLES=ON \
+          -DKRYON_RENDERER_WEBGL=ON \
+          -DKRYON_RENDERER_HTML=ON \
+          -DKRYON_SCRIPT_LUA=ON \
+          -DKRYON_SCRIPT_JAVASCRIPT=ON \
+          -DKRYON_ENABLE_NETWORK=ON \
+          -DKRYON_ENABLE_AUDIO=OFF
+    
+    - name: Build for Web
+      run: emmake make -C build
+    
+    - name: Upload web artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: kryon-web
+        path: |
+          build/bin/*.wasm
+          build/bin/*.js
+          build/bin/*.html
+        retention-days: 7
+
+  # =============================================================================
+  # CODE QUALITY CHECKS
+  # =============================================================================
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          clang-format \
+          clang-tidy \
+          cppcheck \
+          cmake \
+          ninja-build
+    
+    - name: Check code formatting
+      run: |
+        find src include -name "*.c" -o -name "*.h" | \
+        xargs clang-format --dry-run --Werror
+    
+    - name: Run static analysis
+      run: |
+        cmake -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        clang-tidy src/**/*.c -- -Iinclude -Iinclude/internal
+    
+    - name: Run cppcheck
+      run: |
+        cppcheck --enable=all --std=c99 \
+          --suppress=missingIncludeSystem \
+          --inline-suppr \
+          src/ include/
+    
+    - name: Check for TODO/FIXME comments
+      run: |
+        if grep -r "TODO\|FIXME" src/ include/ --include="*.c" --include="*.h"; then
+          echo "Found TODO/FIXME comments. Please resolve before merging."
+          exit 1
+        fi
+
+  # =============================================================================
+  # SECURITY SCAN
+  # =============================================================================
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: cpp
+    
+    - name: Build for analysis
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Debug
+        cmake --build build
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+  # =============================================================================
+  # PERFORMANCE BENCHMARKS
+  # =============================================================================
+  benchmarks:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build
+    
+    - name: Build benchmarks
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+          -DKRYON_BUILD_BENCHMARKS=ON
+        cmake --build build
+    
+    - name: Run benchmarks
+      working-directory: build
+      run: |
+        ctest -R benchmark --verbose
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results
+        path: build/benchmark_results.json
+        retention-days: 30
+
+  # =============================================================================
+  # COVERAGE REPORT
+  # =============================================================================
+  coverage:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake ninja-build gcc gcov lcov
+    
+    - name: Configure with coverage
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DKRYON_BUILD_TESTS=ON \
+          -DCMAKE_C_FLAGS="--coverage" \
+          -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+    
+    - name: Build and test
+      run: |
+        cmake --build build
+        cd build && ctest --output-on-failure
+    
+    - name: Generate coverage report
+      run: |
+        lcov --directory build --capture --output-file coverage.info
+        lcov --remove coverage.info '/usr/*' 'third-party/*' 'tests/*' --output-file coverage.info
+        lcov --list coverage.info
+    
+    - name: Upload to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.info
+        flags: unittests
+        name: codecov-umbrella
+
+  # =============================================================================
+  # DOCUMENTATION BUILD
+  # =============================================================================
+  documentation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install Doxygen
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y doxygen graphviz
+    
+    - name: Generate documentation
+      run: |
+        cmake -B build -DKRYON_BUILD_DOCS=ON
+        cmake --build build --target docs
+    
+    - name: Upload documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation
+        path: build/docs/html/
+        retention-days: 30
+    
+    - name: Deploy to GitHub Pages
+      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: build/docs/html
+
+  # =============================================================================
+  # RELEASE BUILD
+  # =============================================================================
+  release:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [linux, windows, macos, web, code-quality, security]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+    
+    - name: Create release packages
+      run: |
+        # Create distribution packages for each platform
+        mkdir -p dist
+        
+        # Linux package
+        tar -czf dist/kryon-linux-x64.tar.gz -C kryon-linux-gcc-Release .
+        
+        # Windows package  
+        cd kryon-windows-Release && zip -r ../dist/kryon-windows-x64.zip . && cd ..
+        
+        # macOS package
+        tar -czf dist/kryon-macos-x64.tar.gz -C kryon-macos-Release .
+        
+        # Web package
+        tar -czf dist/kryon-web.tar.gz -C kryon-web .
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/*
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

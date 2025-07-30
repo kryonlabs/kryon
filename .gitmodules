@@ -1,0 +1,71 @@
+# Kryon-C Git Submodules Configuration
+
+# =============================================================================
+# CORE DEPENDENCIES
+# =============================================================================
+
+[submodule "third-party/lua"]
+	path = third-party/lua
+	url = https://github.com/lua/lua.git
+	branch = v5.4
+	
+[submodule "third-party/quickjs"]
+	path = third-party/quickjs
+	url = https://github.com/bellard/quickjs.git
+	branch = master
+
+# =============================================================================
+# GRAPHICS AND MEDIA
+# =============================================================================
+
+[submodule "third-party/stb"]
+	path = third-party/stb
+	url = https://github.com/nothings/stb.git
+	branch = master
+
+[submodule "third-party/raylib"]
+	path = third-party/raylib
+	url = https://github.com/raysan5/raylib.git
+	branch = master
+
+[submodule "third-party/freetype"]
+	path = third-party/freetype
+	url = https://github.com/freetype/freetype.git
+	branch = master
+
+# =============================================================================
+# UTILITY LIBRARIES
+# =============================================================================
+
+[submodule "third-party/cjson"]
+	path = third-party/cjson
+	url = https://github.com/DaveGamble/cJSON.git
+	branch = master
+
+[submodule "third-party/curl"]
+	path = third-party/curl
+	url = https://github.com/curl/curl.git
+	branch = master
+
+# =============================================================================
+# TESTING FRAMEWORKS
+# =============================================================================
+
+[submodule "third-party/unity"]
+	path = third-party/unity
+	url = https://github.com/ThrowTheSwitch/Unity.git
+	branch = master
+
+[submodule "third-party/cmocka"]
+	path = third-party/cmocka
+	url = https://git.cryptomilk.org/projects/cmocka.git
+	branch = master
+
+# =============================================================================
+# BUILD AND DEVELOPMENT TOOLS
+# =============================================================================
+
+[submodule "third-party/cmake-modules"]
+	path = third-party/cmake-modules
+	url = https://github.com/bilke/cmake-modules.git
+	branch = master

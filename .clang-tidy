@@ -1,0 +1,180 @@
+# Kryon-C Static Analysis Configuration
+# Comprehensive clang-tidy configuration for high-quality C code
+
+# =============================================================================
+# ENABLED CHECKS
+# =============================================================================
+
+Checks: >
+  -*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  hicpp-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -cert-dcl37-c,
+  -cert-dcl51-cpp,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-macro-usage,
+  -hicpp-avoid-magic-numbers,
+  -hicpp-braces-around-statements,
+  -hicpp-function-size,
+  -hicpp-multiway-paths-covered,
+  -hicpp-no-assembler,
+  -hicpp-signed-bitwise,
+  -misc-no-recursion,
+  -modernize-macro-to-enum,
+  -modernize-use-trailing-return-type,
+  -readability-function-cognitive-complexity,
+  -readability-function-size,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-uppercase-literal-suffix
+
+# =============================================================================
+# CHECK OPTIONS
+# =============================================================================
+
+CheckOptions:
+  # Naming conventions
+  - key: readability-identifier-naming.VariableCase
+    value: snake_case
+  - key: readability-identifier-naming.FunctionCase
+    value: snake_case
+  - key: readability-identifier-naming.ParameterCase
+    value: snake_case
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypedefCase
+    value: CamelCase
+  - key: readability-identifier-naming.MacroCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.ConstantCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: UPPER_CASE
+  
+  # Prefixes for Kryon-specific naming
+  - key: readability-identifier-naming.StructPrefix
+    value: 'Kryon'
+  - key: readability-identifier-naming.EnumPrefix
+    value: 'Kryon'
+  - key: readability-identifier-naming.TypedefPrefix
+    value: 'Kryon'
+  - key: readability-identifier-naming.MacroPrefix
+    value: 'KRYON_'
+  - key: readability-identifier-naming.ConstantPrefix
+    value: 'KRYON_'
+  
+  # Function length limits
+  - key: readability-function-size.LineThreshold
+    value: 150
+  - key: readability-function-size.StatementThreshold
+    value: 100
+  - key: readability-function-size.BranchThreshold
+    value: 25
+  - key: readability-function-size.ParameterThreshold
+    value: 8
+  
+  # Cognitive complexity
+  - key: readability-function-cognitive-complexity.Threshold
+    value: 25
+  
+  # Line length
+  - key: readability-line-length.LineLength
+    value: 100
+  
+  # Performance settings
+  - key: performance-for-range-copy.WarnOnAllAutoCopies
+    value: true
+  - key: performance-type-promotion-in-math-fn.IncludeStyle
+    value: google
+  
+  # Security settings
+  - key: cert-str34-c.DiagnoseSignedUnsignedCharComparisons
+    value: true
+  
+  # Portability settings
+  - key: portability-restrict-system-includes.Includes
+    value: '*'
+  
+  # Modernization settings
+  - key: modernize-use-nullptr.NullMacros
+    value: 'NULL'
+  
+  # Bug prevention
+  - key: bugprone-argument-comment.StrictMode
+    value: true
+  - key: bugprone-assert-side-effect.AssertMacros
+    value: 'assert,KRYON_ASSERT'
+  - key: bugprone-dangling-handle.HandleClasses
+    value: 'KryonString,KryonBuffer'
+  - key: bugprone-dynamic-static-initializers.HeaderFileExtensions
+    value: 'h,hh,hpp,hxx'
+  - key: bugprone-misplaced-widening-cast.CheckImplicitCasts
+    value: true
+  - key: bugprone-sizeof-expression.WarnOnSizeOfCompareToConstant
+    value: true
+  - key: bugprone-string-constructor.WarnOnLargeLength
+    value: true
+  - key: bugprone-suspicious-enum-usage.StrictMode
+    value: true
+  - key: bugprone-suspicious-memset-usage.CheckNonTrivial
+    value: true
+  - key: bugprone-suspicious-string-compare.WarnOnImplicitComparison
+    value: true
+  - key: bugprone-suspicious-string-compare.WarnOnLogicalNotComparison
+    value: true
+  
+  # Memory safety
+  - key: clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
+    value: true
+  
+  # Code quality
+  - key: misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
+    value: true
+
+# =============================================================================
+# HEADER FILTER
+# =============================================================================
+
+# Only analyze our own headers, not system or third-party headers
+HeaderFilterRegex: '^.*(include/kryon|src)/.*$'
+
+# =============================================================================
+# WARNING SETTINGS
+# =============================================================================
+
+# Treat warnings as errors for CI/CD
+WarningsAsErrors: '*'
+
+# =============================================================================
+# SYSTEM HEADERS
+# =============================================================================
+
+# System headers to ignore
+SystemHeaders: false
+
+# =============================================================================
+# CUSTOM KRYON-SPECIFIC SETTINGS
+# =============================================================================
+
+# These would be specific patterns we want to check for in Kryon code
+ExtraArgs:
+  - '-std=c99'
+  - '-DKRYON_STATIC_ANALYSIS=1'
+  - '-I./include'
+  - '-I./include/kryon'
+  - '-I./include/internal'
+  - '-I./third-party/lua'
+  - '-I./third-party/stb'
+  - '-I./third-party/cjson'

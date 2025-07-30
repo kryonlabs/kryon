@@ -1,0 +1,534 @@
+/**
+ * @file krb_reader.c
+ * @brief KRB File Reader Implementation
+ */
+
+#include "internal/krb_format.h"
+#include "internal/memory.h"
+#include "internal/error.h"
+#include <string.h>
+#include <stdlib.h>
+
+// =============================================================================
+// ENDIANNESS UTILITIES
+// =============================================================================
+
+static bool is_big_endian(void) {
+    uint16_t test = 1;
+    return *(uint8_t*)&test == 0;
+}
+
+static uint16_t swap_uint16(uint16_t value) {
+    return (value << 8) | (value >> 8);
+}
+
+static uint32_t swap_uint32(uint32_t value) {
+    return ((value << 24) & 0xff000000) |
+           ((value << 8)  & 0x00ff0000) |
+           ((value >> 8)  & 0x0000ff00) |
+           ((value >> 24) & 0x000000ff);
+}
+
+static uint64_t swap_uint64(uint64_t value) {
+    return ((value << 56) & 0xff00000000000000ULL) |
+           ((value << 40) & 0x00ff000000000000ULL) |
+           ((value << 24) & 0x0000ff0000000000ULL) |
+           ((value << 8)  & 0x000000ff00000000ULL) |
+           ((value >> 8)  & 0x00000000ff000000ULL) |
+           ((value >> 24) & 0x0000000000ff0000ULL) |
+           ((value >> 40) & 0x000000000000ff00ULL) |
+           ((value >> 56) & 0x00000000000000ffULL);
+}
+
+static double swap_double(double value) {
+    union { double d; uint64_t i; } u;
+    u.d = value;
+    u.i = swap_uint64(u.i);
+    return u.d;
+}
+
+// =============================================================================
+// READER CREATION AND DESTRUCTION
+// =============================================================================
+
+KryonKrbReader *kryon_krb_reader_create_file(const char *filename) {
+    if (!filename) {
+        KRYON_LOG_ERROR("Filename cannot be NULL");
+        return NULL;
+    }
+    
+    FILE *file = fopen(filename, "rb");
+    if (!file) {
+        KRYON_LOG_ERROR("Failed to open file: %s", filename);
+        return NULL;
+    }
+    
+    KryonKrbReader *reader = kryon_alloc_type(KryonKrbReader);
+    if (!reader) {
+        fclose(file);
+        KRYON_LOG_ERROR("Failed to allocate reader");
+        return NULL;
+    }
+    
+    memset(reader, 0, sizeof(KryonKrbReader));
+    reader->file = file;
+    reader->big_endian = is_big_endian();
+    
+    return reader;
+}
+
+KryonKrbReader *kryon_krb_reader_create_memory(const uint8_t *data, size_t size) {
+    if (!data || size == 0) {
+        KRYON_LOG_ERROR("Invalid memory buffer");
+        return NULL;
+    }
+    
+    KryonKrbReader *reader = kryon_alloc_type(KryonKrbReader);
+    if (!reader) {
+        KRYON_LOG_ERROR("Failed to allocate reader");
+        return NULL;
+    }
+    
+    memset(reader, 0, sizeof(KryonKrbReader));
+    reader->data = data;
+    reader->data_size = size;
+    reader->position = 0;
+    reader->big_endian = is_big_endian();
+    
+    return reader;
+}
+
+void kryon_krb_reader_destroy(KryonKrbReader *reader) {
+    if (!reader) return;
+    
+    if (reader->file) {
+        fclose(reader->file);
+    }
+    
+    if (reader->krb_file) {
+        kryon_krb_file_destroy(reader->krb_file);
+    }
+    
+    kryon_free(reader);
+}
+
+const char *kryon_krb_reader_get_error(const KryonKrbReader *reader) {
+    return reader ? reader->error_message : "Reader is NULL";
+}
+
+// =============================================================================
+// BINARY READING UTILITIES
+// =============================================================================
+
+static bool read_bytes(KryonKrbReader *reader, void *buffer, size_t size) {
+    if (!reader || !buffer || size == 0) return false;
+    
+    if (reader->file) {
+        size_t read = fread(buffer, 1, size, reader->file);
+        if (read != size) {
+            snprintf(reader->error_message, sizeof(reader->error_message),
+                    "Failed to read %zu bytes from file", size);
+            return false;
+        }
+    } else if (reader->data) {
+        if (reader->position + size > reader->data_size) {
+            snprintf(reader->error_message, sizeof(reader->error_message),
+                    "Not enough data remaining (%zu bytes needed, %zu available)",
+                    size, reader->data_size - reader->position);
+            return false;
+        }
+        
+        memcpy(buffer, reader->data + reader->position, size);
+        reader->position += size;
+    } else {
+        strcpy(reader->error_message, "No data source available");
+        return false;
+    }
+    
+    return true;
+}
+
+static bool read_uint8(KryonKrbReader *reader, uint8_t *value) {
+    return read_bytes(reader, value, sizeof(uint8_t));
+}
+
+static bool read_uint16(KryonKrbReader *reader, uint16_t *value) {
+    if (!read_bytes(reader, value, sizeof(uint16_t))) return false;
+    
+    if (reader->big_endian) {
+        *value = swap_uint16(*value);
+    }
+    return true;
+}
+
+static bool read_uint32(KryonKrbReader *reader, uint32_t *value) {
+    if (!read_bytes(reader, value, sizeof(uint32_t))) return false;
+    
+    if (reader->big_endian) {
+        *value = swap_uint32(*value);
+    }
+    return true;
+}
+
+static bool read_uint64(KryonKrbReader *reader, uint64_t *value) {
+    if (!read_bytes(reader, value, sizeof(uint64_t))) return false;
+    
+    if (reader->big_endian) {
+        *value = swap_uint64(*value);
+    }
+    return true;
+}
+
+static bool read_double(KryonKrbReader *reader, double *value) {
+    if (!read_bytes(reader, value, sizeof(double))) return false;
+    
+    if (reader->big_endian) {
+        *value = swap_double(*value);
+    }
+    return true;
+}
+
+static bool read_string(KryonKrbReader *reader, char **out_string, uint16_t length) {
+    if (!reader || !out_string || length == 0) return false;
+    
+    char *string = kryon_alloc(length + 1);
+    if (!string) {
+        strcpy(reader->error_message, "Failed to allocate string memory");
+        return false;
+    }
+    
+    if (!read_bytes(reader, string, length)) {
+        kryon_free(string);
+        return false;
+    }
+    
+    string[length] = '\0';
+    *out_string = string;
+    return true;
+}
+
+// =============================================================================
+// HEADER PARSING
+// =============================================================================
+
+static bool parse_header(KryonKrbReader *reader, KryonKrbHeader *header) {
+    if (!reader || !header) return false;
+    
+    // Read magic number
+    if (!read_uint32(reader, &header->magic)) return false;
+    if (header->magic != KRYON_KRB_MAGIC) {
+        snprintf(reader->error_message, sizeof(reader->error_message),
+                "Invalid magic number: 0x%08X (expected 0x%08X)", 
+                header->magic, KRYON_KRB_MAGIC);
+        return false;
+    }
+    
+    // Read version
+    if (!read_uint16(reader, &header->version_major) ||
+        !read_uint16(reader, &header->version_minor) ||
+        !read_uint16(reader, &header->version_patch)) {
+        return false;
+    }
+    
+    // Check version compatibility
+    if (header->version_major > KRYON_KRB_VERSION_MAJOR) {
+        snprintf(reader->error_message, sizeof(reader->error_message),
+                "Unsupported version: %d.%d.%d (maximum supported: %d.%d.%d)",
+                header->version_major, header->version_minor, header->version_patch,
+                KRYON_KRB_VERSION_MAJOR, KRYON_KRB_VERSION_MINOR, KRYON_KRB_VERSION_PATCH);
+        return false;
+    }
+    
+    // Read remaining header fields
+    if (!read_uint16(reader, &header->flags) ||
+        !read_uint32(reader, &header->element_count) ||
+        !read_uint32(reader, &header->property_count) ||
+        !read_uint32(reader, &header->string_table_size) ||
+        !read_uint32(reader, &header->data_size) ||
+        !read_uint32(reader, &header->checksum)) {
+        return false;
+    }
+    
+    // Read compression type
+    uint8_t compression;
+    if (!read_uint8(reader, &compression)) return false;
+    header->compression = (KryonKrbCompressionType)compression;
+    
+    if (!read_uint32(reader, &header->uncompressed_size)) return false;
+    
+    // Read reserved bytes
+    if (!read_bytes(reader, header->reserved, sizeof(header->reserved))) return false;
+    
+    // Validate header values
+    if (header->element_count > KRYON_KRB_MAX_ELEMENTS) {
+        snprintf(reader->error_message, sizeof(reader->error_message),
+                "Too many elements: %u (maximum: %u)", 
+                header->element_count, KRYON_KRB_MAX_ELEMENTS);
+        return false;
+    }
+    
+    if (header->property_count > KRYON_KRB_MAX_PROPERTIES) {
+        snprintf(reader->error_message, sizeof(reader->error_message),
+                "Too many properties: %u (maximum: %u)", 
+                header->property_count, KRYON_KRB_MAX_PROPERTIES);
+        return false;
+    }
+    
+    KRYON_LOG_DEBUG("Parsed KRB header: version %d.%d.%d, %u elements, %u properties",
+                   header->version_major, header->version_minor, header->version_patch,
+                   header->element_count, header->property_count);
+    
+    return true;
+}
+
+// =============================================================================
+// STRING TABLE PARSING
+// =============================================================================
+
+static bool parse_string_table(KryonKrbReader *reader, KryonKrbFile *krb_file) {
+    if (!reader || !krb_file) return false;
+    
+    if (krb_file->header.string_table_size == 0) {
+        krb_file->string_table = NULL;
+        krb_file->string_count = 0;
+        return true;
+    }
+    
+    // Read string count
+    uint32_t string_count;
+    if (!read_uint32(reader, &string_count)) return false;
+    
+    if (string_count == 0) {
+        krb_file->string_table = NULL;
+        krb_file->string_count = 0;
+        return true;
+    }
+    
+    // Allocate string table
+    krb_file->string_table = kryon_alloc_array(char*, string_count);
+    if (!krb_file->string_table) {
+        strcpy(reader->error_message, "Failed to allocate string table");
+        return false;
+    }
+    
+    krb_file->string_count = string_count;
+    
+    // Read string lengths and data
+    for (uint32_t i = 0; i < string_count; i++) {
+        uint16_t length;
+        if (!read_uint16(reader, &length)) {
+            return false;
+        }
+        
+        if (length > KRYON_KRB_MAX_STRING_LENGTH) {
+            snprintf(reader->error_message, sizeof(reader->error_message),
+                    "String too long: %u characters (maximum: %u)", 
+                    length, KRYON_KRB_MAX_STRING_LENGTH);
+            return false;
+        }
+        
+        if (!read_string(reader, &krb_file->string_table[i], length)) {
+            return false;
+        }
+    }
+    
+    KRYON_LOG_DEBUG("Parsed string table: %u strings", string_count);
+    return true;
+}
+
+// =============================================================================
+// PROPERTY PARSING
+// =============================================================================
+
+static bool parse_property_value(KryonKrbReader *reader, KryonPropertyType type, 
+                                KryonPropertyValue *value) {
+    if (!reader || !value) return false;
+    
+    switch (type) {
+        case KRYON_PROPERTY_STRING: {
+            uint16_t length;
+            if (!read_uint16(reader, &length)) return false;
+            return read_string(reader, &value->string_value, length);
+        }
+        
+        case KRYON_PROPERTY_INTEGER: {
+            int64_t int_val;
+            if (!read_uint64(reader, (uint64_t*)&int_val)) return false;
+            value->int_value = int_val;
+            return true;
+        }
+        
+        case KRYON_PROPERTY_FLOAT: {
+            return read_double(reader, &value->float_value);
+        }
+        
+        case KRYON_PROPERTY_BOOLEAN: {
+            uint8_t bool_val;
+            if (!read_uint8(reader, &bool_val)) return false;
+            value->bool_value = bool_val != 0;
+            return true;
+        }
+        
+        case KRYON_PROPERTY_COLOR: {
+            return read_uint32(reader, &value->color_value);
+        }
+        
+        case KRYON_PROPERTY_SIZE: {
+            return read_double(reader, &value->size_value.width) &&
+                   read_double(reader, &value->size_value.height);
+        }
+        
+        case KRYON_PROPERTY_POSITION: {
+            return read_double(reader, &value->position_value.x) &&
+                   read_double(reader, &value->position_value.y);
+        }
+        
+        case KRYON_PROPERTY_MARGIN:
+        case KRYON_PROPERTY_PADDING: {
+            return read_double(reader, &value->spacing_value.top) &&
+                   read_double(reader, &value->spacing_value.right) &&
+                   read_double(reader, &value->spacing_value.bottom) &&
+                   read_double(reader, &value->spacing_value.left);
+        }
+        
+        case KRYON_PROPERTY_REFERENCE: {
+            return read_uint32(reader, &value->reference_id);
+        }
+        
+        default:
+            snprintf(reader->error_message, sizeof(reader->error_message),
+                    "Unsupported property type: %d", type);
+            return false;
+    }
+}
+
+static bool parse_property(KryonKrbReader *reader, KryonKrbProperty *property) {
+    if (!reader || !property) return false;
+    
+    // Read property header
+    if (!read_uint16(reader, &property->name_id)) return false;
+    
+    uint8_t type;
+    if (!read_uint8(reader, &type)) return false;
+    property->type = (KryonPropertyType)type;
+    
+    if (!read_uint32(reader, &property->flags)) return false;
+    
+    // Read property value
+    return parse_property_value(reader, property->type, &property->value);
+}
+
+// =============================================================================
+// ELEMENT PARSING
+// =============================================================================
+
+static bool parse_element(KryonKrbReader *reader, KryonKrbElement *element) {
+    if (!reader || !element) return false;
+    
+    // Read element header
+    if (!read_uint32(reader, &element->id)) return false;
+    
+    uint8_t type;
+    if (!read_uint8(reader, &type)) return false;
+    element->type = (KryonElementType)type;
+    
+    if (!read_uint16(reader, &element->name_id) ||
+        !read_uint32(reader, &element->parent_id) ||
+        !read_uint16(reader, &element->property_count) ||
+        !read_uint16(reader, &element->child_count) ||
+        !read_uint32(reader, &element->flags)) {
+        return false;
+    }
+    
+    // Allocate and read properties
+    if (element->property_count > 0) {
+        element->properties = kryon_alloc_array(KryonKrbProperty, element->property_count);
+        if (!element->properties) {
+            strcpy(reader->error_message, "Failed to allocate properties array");
+            return false;
+        }
+        
+        for (uint16_t i = 0; i < element->property_count; i++) {
+            if (!parse_property(reader, &element->properties[i])) {
+                return false;
+            }
+        }
+    } else {
+        element->properties = NULL;
+    }
+    
+    // Allocate and read child IDs
+    if (element->child_count > 0) {
+        element->child_ids = kryon_alloc_array(uint32_t, element->child_count);
+        if (!element->child_ids) {
+            strcpy(reader->error_message, "Failed to allocate child IDs array");
+            return false;
+        }
+        
+        for (uint16_t i = 0; i < element->child_count; i++) {
+            if (!read_uint32(reader, &element->child_ids[i])) {
+                return false;
+            }
+        }
+    } else {
+        element->child_ids = NULL;
+    }
+    
+    return true;
+}
+
+// =============================================================================
+// MAIN PARSING FUNCTION
+// =============================================================================
+
+KryonKrbFile *kryon_krb_reader_parse(KryonKrbReader *reader) {
+    if (!reader) {
+        KRYON_LOG_ERROR("Reader cannot be NULL");
+        return NULL;
+    }
+    
+    // Create KRB file structure
+    KryonKrbFile *krb_file = kryon_krb_file_create();
+    if (!krb_file) {
+        strcpy(reader->error_message, "Failed to create KRB file structure");
+        return NULL;
+    }
+    
+    // Parse header
+    if (!parse_header(reader, &krb_file->header)) {
+        kryon_krb_file_destroy(krb_file);
+        return NULL;
+    }
+    
+    // Parse string table
+    if (!parse_string_table(reader, krb_file)) {
+        kryon_krb_file_destroy(krb_file);
+        return NULL;
+    }
+    
+    // Allocate elements array
+    if (krb_file->header.element_count > 0) {
+        krb_file->elements = kryon_alloc_array(KryonKrbElement, krb_file->header.element_count);
+        if (!krb_file->elements) {
+            strcpy(reader->error_message, "Failed to allocate elements array");
+            kryon_krb_file_destroy(krb_file);
+            return NULL;
+        }
+        
+        // Parse elements
+        for (uint32_t i = 0; i < krb_file->header.element_count; i++) {
+            if (!parse_element(reader, &krb_file->elements[i])) {
+                kryon_krb_file_destroy(krb_file);
+                return NULL;
+            }
+        }
+    }
+    
+    // Store the parsed file in reader
+    reader->krb_file = krb_file;
+    
+    KRYON_LOG_INFO("Successfully parsed KRB file: %u elements, %u strings",
+                  krb_file->header.element_count, krb_file->string_count);
+    
+    return krb_file;
+}

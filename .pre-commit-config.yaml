@@ -1,0 +1,276 @@
+# Kryon-C Pre-commit Hooks Configuration
+# Ensures code quality before commits
+
+repos:
+  # =============================================================================
+  # GENERAL CODE QUALITY
+  # =============================================================================
+  
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      # Basic file checks
+      - id: trailing-whitespace
+        exclude: '\.md$'
+      - id: end-of-file-fixer
+        exclude: '\.md$'
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-xml
+      
+      # Prevent large files and secrets
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: detect-private-key
+      - id: detect-aws-credentials
+      
+      # File consistency
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      
+      # Executable bit fixes
+      - id: check-executables-have-shebangs
+      - id: fix-byte-order-marker
+
+  # =============================================================================
+  # C CODE FORMATTING
+  # =============================================================================
+  
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v16.0.6
+    hooks:
+      - id: clang-format
+        name: Format C source files
+        files: '\.(c|h)$'
+        args: ['-i', '--style=file']
+        exclude: '^third-party/'
+
+  # =============================================================================
+  # C STATIC ANALYSIS
+  # =============================================================================
+  
+  - repo: local
+    hooks:
+      - id: clang-tidy
+        name: C static analysis with clang-tidy
+        entry: clang-tidy
+        language: system
+        files: '\.(c|h)$'
+        exclude: '^third-party/'
+        args: 
+          - '--config-file=.clang-tidy'
+          - '--fix'
+          - '--format-style=file'
+        require_serial: false
+      
+      - id: cppcheck
+        name: C static analysis with cppcheck
+        entry: cppcheck
+        language: system
+        files: '\.(c|h)$'
+        exclude: '^third-party/'
+        args:
+          - '--enable=all'
+          - '--std=c99'
+          - '--suppress=missingIncludeSystem'
+          - '--suppress=unusedFunction'
+          - '--inline-suppr'
+          - '--quiet'
+          - '--error-exitcode=1'
+        pass_filenames: true
+
+  # =============================================================================
+  # CMAKE FORMATTING
+  # =============================================================================
+  
+  - repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.13
+    hooks:
+      - id: cmake-format
+        name: Format CMake files
+        files: '(CMakeLists\.txt|\.cmake)$'
+        args: ['--in-place']
+      
+      - id: cmake-lint
+        name: Lint CMake files
+        files: '(CMakeLists\.txt|\.cmake)$'
+
+  # =============================================================================
+  # DOCUMENTATION
+  # =============================================================================
+  
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.17
+    hooks:
+      - id: mdformat
+        name: Format Markdown files
+        args: ['--wrap=100']
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-black
+
+  # =============================================================================
+  # SECURITY CHECKS
+  # =============================================================================
+  
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: Detect secrets in code
+        args: ['--baseline', '.secrets.baseline']
+        exclude: '\.lock$'
+
+  # =============================================================================
+  # CUSTOM KRYON CHECKS
+  # =============================================================================
+  
+  - repo: local
+    hooks:
+      # Check for proper header guards
+      - id: check-header-guards
+        name: Check C header include guards
+        entry: python3
+        language: system
+        files: '\.h$'
+        exclude: '^third-party/'
+        args: ['-c', 'import sys, re; [sys.exit(1) for f in sys.argv[1:] if not re.search(r"#ifndef.*_H\s*\n#define.*_H", open(f).read())]']
+      
+      # Check for TODO/FIXME comments
+      - id: check-todos
+        name: Check for TODO/FIXME comments
+        entry: bash
+        language: system
+        files: '\.(c|h)$'
+        exclude: '^third-party/'
+        args: ['-c', 'if grep -Hn "TODO\|FIXME" "$@"; then echo "Please resolve TODO/FIXME comments before committing"; exit 1; fi', '--']
+      
+      # Check for proper error handling
+      - id: check-error-handling
+        name: Check for proper error handling
+        entry: python3
+        language: system
+        files: '\.c$'
+        exclude: '^third-party/'
+        args: ['-c', '''
+import sys, re
+for f in sys.argv[1:]:
+    content = open(f).read()
+    # Check for malloc without error check
+    if re.search(r"malloc\s*\([^)]+\)\s*;", content):
+        print(f"{f}: malloc without error check")
+        sys.exit(1)
+    # Check for function calls that return KryonResult without checking
+    if re.search(r"kryon_\w+\([^)]*\)\s*;", content):
+        print(f"{f}: Kryon function call without result check")
+        sys.exit(1)
+        ''']
+      
+      # Check for proper include ordering
+      - id: check-include-order
+        name: Check include statement ordering
+        entry: python3
+        language: system
+        files: '\.(c|h)$'
+        exclude: '^third-party/'
+        args: ['-c', '''
+import sys, re
+for f in sys.argv[1:]:
+    with open(f) as file:
+        lines = file.readlines()
+    includes = [i for i, line in enumerate(lines) if line.strip().startswith("#include")]
+    if includes:
+        prev_type = 0
+        for i in includes:
+            line = lines[i].strip()
+            # System headers: <...>
+            if line.startswith("#include <") and not any(x in line for x in ["kryon/", "lua/", "stb/", "cjson/"]):
+                curr_type = 1
+            # Third-party: <third-party/...>
+            elif any(x in line for x in ["lua/", "stb/", "cjson/", "raylib/"]):
+                curr_type = 2
+            # Kryon public: <kryon/...>
+            elif "kryon/" in line:
+                curr_type = 3
+            # Local: "..."
+            elif line.startswith('#include "'):
+                curr_type = 4
+            else:
+                continue
+                
+            if curr_type < prev_type:
+                print(f"{f}:{i+1}: Incorrect include order")
+                sys.exit(1)
+            prev_type = curr_type
+        ''']
+      
+      # Check for consistent naming conventions
+      - id: check-naming-conventions
+        name: Check naming conventions
+        entry: python3
+        language: system
+        files: '\.(c|h)$'
+        exclude: '^third-party/'
+        args: ['-c', '''
+import sys, re
+for f in sys.argv[1:]:
+    content = open(f).read()
+    # Check for non-snake_case function names
+    functions = re.findall(r"(?:^|\n)(?:static\s+)?[a-zA-Z_][a-zA-Z0-9_*\s]*\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(", content)
+    for func in functions:
+        if not re.match(r"^[a-z_][a-z0-9_]*$", func) and not func.startswith("kryon_"):
+            print(f"{f}: Function {func} should use snake_case")
+            sys.exit(1)
+        ''']
+
+  # =============================================================================
+  # BUILD VALIDATION
+  # =============================================================================
+  
+  - repo: local
+    hooks:
+      # Quick compile check
+      - id: compile-check
+        name: Quick compilation check
+        entry: bash
+        language: system
+        files: '\.(c|h)$'
+        exclude: '^third-party/'
+        args: ['-c', '''
+          if [ ! -d "build" ]; then
+            echo "Creating build directory for compile check..."
+            mkdir -p build
+            cd build
+            cmake .. -DKRYON_BUILD_TESTS=OFF -DKRYON_BUILD_EXAMPLES=OFF
+          fi
+          cd build
+          echo "Running quick compile check..."
+          make -j2 2>&1 | head -20
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "Compilation failed. Please fix errors before committing."
+            exit 1
+          fi
+        ''']
+
+# =============================================================================
+# GLOBAL CONFIGURATION
+# =============================================================================
+
+# Fail fast - stop on first failure
+fail_fast: true
+
+# Default language version
+default_language_version:
+  python: python3
+
+# Exclude patterns
+exclude: |
+  (?x)^(
+    third-party/.*|
+    build/.*|
+    \.git/.*|
+    .*\.generated\.(c|h)$
+  )$

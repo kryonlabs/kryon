@@ -1,0 +1,361 @@
+# Kryon-C Git Ignore File
+
+# =============================================================================
+# BUILD ARTIFACTS
+# =============================================================================
+
+# Build directories
+build/
+cmake-build-*/
+out/
+.build/
+dist/
+
+# CMake cache and files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+install_manifest.txt
+CTestTestfile.cmake
+DartConfiguration.tcl
+
+# Generated files
+*.generated.c
+*.generated.h
+compile_commands.json
+.ninja_deps
+.ninja_log
+build.ninja
+
+# =============================================================================
+# COMPILED BINARIES
+# =============================================================================
+
+# Executables
+*.exe
+*.out
+*.app
+kryon
+kryon_cli
+test_*
+benchmark_*
+
+# Object files
+*.o
+*.obj
+*.ko
+*.elf
+
+# Libraries
+*.a
+*.la
+*.lo
+*.so
+*.so.*
+*.dylib
+*.dll
+*.lib
+
+# =============================================================================
+# DEBUGGING AND PROFILING
+# =============================================================================
+
+# Debug symbols
+*.dSYM/
+*.pdb
+*.idb
+*.ilk
+
+# Profiling data
+*.gcno
+*.gcda
+*.gcov
+callgrind.out.*
+cachegrind.out.*
+massif.out.*
+vgcore.*
+core.*
+
+# Valgrind files
+*.valgrind
+*.suppressions.tmp
+
+# =============================================================================
+# COMPILER AND LINKER
+# =============================================================================
+
+# Precompiled headers
+*.gch
+*.pch
+
+# Dependencies
+*.d
+*.dep
+
+# Assembly listings
+*.s
+*.asm
+*.lst
+
+# =============================================================================
+# KRYON-SPECIFIC FILES
+# =============================================================================
+
+# Compiled KRB files (unless explicitly needed for tests)
+*.krb
+!tests/fixtures/**/*.krb
+!examples/**/*.krb
+
+# Generated documentation
+docs/html/
+docs/latex/
+docs/xml/
+docs/man/
+docs/rtf/
+doxygen_warnings.txt
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.#*
+\#*#
+
+# =============================================================================
+# PLATFORM-SPECIFIC
+# =============================================================================
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =============================================================================
+# DEVELOPMENT ENVIRONMENTS
+# =============================================================================
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+*.vcxproj.filters
+*.sln.docstates
+*.sln.ide/
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/c_cpp_properties.json
+
+# CLion
+.idea/
+cmake-build-*/
+
+# Xcode
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+project.xcworkspace/
+xcuserdata/
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.xcscmblueprint
+
+# Qt Creator
+CMakeLists.txt.user*
+
+# Code::Blocks
+*.cbp
+*.depend
+*.layout
+*.workspace
+
+# Dev-C++
+*.dev
+*.devpak
+
+# =============================================================================
+# PACKAGE MANAGERS AND DEPENDENCIES
+# =============================================================================
+
+# Conan
+conanbuildinfo.cmake
+conaninfo.txt
+conandata.yml
+
+# vcpkg
+vcpkg_installed/
+.vcpkg-root
+
+# Hunter
+_builds/
+_install/
+
+# CPM
+CPM_modules/
+
+# =============================================================================
+# TESTING AND COVERAGE
+# =============================================================================
+
+# Test results
+test_results/
+test_output/
+*.xml
+*.junit
+gtest_output.xml
+ctest_output.xml
+
+# Coverage reports
+coverage/
+coverage.info
+*.coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Sanitizer outputs
+*.asan
+*.tsan
+*.msan
+*.ubsan
+
+# =============================================================================
+# DOCUMENTATION
+# =============================================================================
+
+# Generated docs
+html/
+latex/
+xml/
+man/
+rtf/
+
+# Temporary documentation files
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.vrb
+*.synctex.gz
+
+# =============================================================================
+# PACKAGING AND DISTRIBUTION
+# =============================================================================
+
+# CPack artifacts
+_CPack_Packages/
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.zip
+*.dmg
+*.pkg
+*.deb
+*.rpm
+*.msi
+*.exe
+
+# Docker
+.dockerignore
+
+# =============================================================================
+# LOGS AND CRASH DUMPS
+# =============================================================================
+
+# Log files
+*.log
+logs/
+crash_*.txt
+core_dump_*
+
+# =============================================================================
+# TEMPORARY AND BACKUP FILES
+# =============================================================================
+
+# Editor backups
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+
+# Temporary directories
+tmp/
+temp/
+.tmp/
+
+# =============================================================================
+# SECURITY AND CREDENTIALS
+# =============================================================================
+
+# Credentials and secrets
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.txt
+.env
+.env.local
+.env.production
+credentials.json
+
+# =============================================================================
+# CUSTOM PROJECT IGNORES
+# =============================================================================
+
+# Add project-specific ignores here
+# Examples:
+# my_custom_tool_output/
+# specific_generated_file.c
