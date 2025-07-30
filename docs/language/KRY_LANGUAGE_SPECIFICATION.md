@@ -94,10 +94,10 @@ enabled: true
 visible: false
 required: true
 
-# References never quoted (identifiers)
-styleId: button_primary
-onClick: handle_click()
-id: my_element
+# All strings are quoted (functions, classes, IDs, text)
+class: "button_primary"
+onClick: "handle_click"
+id: "my_element"
 ```
 
 ### 2. Standardized Property Naming
@@ -116,15 +116,15 @@ justify_content: "center"
 All event handlers use consistent function call syntax:
 ```kry
 Button {
-    onClick: handle_click()       # Always with parentheses
-    onHover: show_tooltip()
-    onFocus: highlight_button()
+    onClick: "handle_click"       # Function reference (quoted)
+    onHover: "show_tooltip"       # Function reference (quoted)
+    onFocus: "highlight_button"   # Function reference (quoted)
 }
 
 Input {
-    onChange: validate_input()    # Function receives (value) parameter
-    onInput: update_search()      # Function receives (value) parameter
-    onBlur: save_draft()          # Function receives (value) parameter
+    onChange: "validate_input"    # Function receives value parameter
+    onInput: "update_search"      # Function receives value parameter
+    onBlur: "save_draft"          # Function receives value parameter
 }
 
 Select {
@@ -174,11 +174,11 @@ user_name: $users?.$selected_id?.name ?? "Unknown user"
 Better style inheritance and composition:
 ```kry
 # Multiple style inheritance
-styleId: "base_button primary_variant hover_state"
+class: "base_button primary_variant hover_state"
 
 # Style composition with conditions
-styleId: $enabled ? "button_enabled" : "button_disabled"
-styleId: "base_style ${variant}_variant ${size}_size"
+class: $enabled ? "button_enabled" : "button_disabled"
+class: "base_style ${variant}_variant ${size}_size"
 
 # Conditional style properties
 Button {
@@ -207,10 +207,10 @@ enabled: true
 visible: false
 required: true
 
-# CORRECT: References never quoted (identifiers)
-styleId: primary_button
-onClick: handle_click()
-id: my_element
+# CORRECT: All strings are quoted (functions, classes, IDs)
+class: "primary_button"
+onClick: "handle_click"
+id: "my_element"
 ```
 
 #### Property Aliases (✅ Implemented)
@@ -274,13 +274,13 @@ Container {
 #### 2. Function Call Syntax
 ```kry
 # ALWAYS use parentheses for function calls
-onClick: handle_click()           # ✓ Correct
-onChange: validate_input()        # ✓ Correct
-onSubmit: process_form()          # ✓ Correct
+onClick: "handle_click"           # ✓ Correct
+onChange: "validate_input"        # ✓ Correct  
+onSubmit: "process_form"          # ✓ Correct
 
-# NEVER omit parentheses
-onClick: handle_click             # ✗ Wrong
-onChange: validate_input          # ✗ Wrong
+# Variables without quotes
+onClick: $dynamic_handler         # ✓ Correct
+onChange: validate_input          # ✗ Wrong - needs quotes
 ```
 
 #### 3. Dimension and Unit Handling
@@ -431,7 +431,7 @@ Define Button {
     
     Button {
         text: $text
-        styleId: "button_${variant}"
+        class: "button_${variant}"
     }
 }
 
@@ -673,7 +673,7 @@ Available on all elements:
 ```kry
 Element {
     id: "unique_identifier"        # Element identifier
-    styleId: "style_reference"       # KRY style reference
+    class: "style_reference"       # KRY style reference
     
     # Layout properties
     width: 100px
@@ -732,8 +732,38 @@ background_color: "red"
 border_color: "rgb(255, 0, 0)"
 
 # Identifiers - unquoted for references, quoted for literal strings
-styleId: button_primary        # Reference to style definition
+class: "button_primary"        # Reference to style definition
 id: element_id               # Element ID reference
+```
+
+#### Quoting and Variable Rules
+
+**Consistent Quoting Rules:**
+```kry
+# ALWAYS quote strings (functions, CSS classes, IDs, text content)
+onClick: "handle_click"
+class: "button_primary"  
+id: "submit_btn"
+text: "Click me"
+placeholder: "Enter your name"
+
+# NEVER quote literals (boolean, numbers, null)
+enabled: true
+visible: false
+count: 42
+opacity: 0.8
+data: null
+
+# NEVER quote variables (they start with $)
+text: $user_name
+count: $item_count
+visible: $is_authenticated
+
+# Use ${} for variables inside quoted strings
+text: "Welcome ${user_name}!"
+class: "button_${theme}_style"
+placeholder: "Enter ${field_label}"
+onClick: "handle_click_${button_type}"
 ```
 
 #### Type Consistency Rules
@@ -773,14 +803,14 @@ padding: {top: 10px, right: 20px, bottom: 10px, left: 20px}  # Object form
 
 #### Event Handler Syntax
 ```kry
-# Function references - no quotes, with parentheses
-onClick: handle_click()
-onChange: validate_input()
-onSubmit: process_form()
+# Function references - quoted strings
+onClick: "handle_click"
+onChange: "validate_input"
+onSubmit: "process_form"
 
 # Conditional handlers - use ternary with function calls
-onClick: $enabled ? handle_click() : null
-onInput: $live_search ? update_results() : save_draft()
+onClick: $enabled ? "handle_click" : null
+onInput: $live_search ? "update_results" : "save_draft"
 ```
 
 ### Property Binding
@@ -823,9 +853,8 @@ color: $dark_theme ? "#ffffff" : "#000000"
 ### Style Application
 ```kry
 Element {
-    styleId: button_primary            # Apply single style (reference)
-    styleId: "button_primary"          # Apply single style (string)
-    styleId: "base_style other_style"  # Apply multiple styles (space-separated)
+    class: "button_primary"            # Apply single style
+    class: "base_style other_style"    # Apply multiple styles (space-separated)
 }
 ```
 
@@ -1263,7 +1292,7 @@ Container {
     
     # Reactive updates
     Container {
-        styleId: $userStore.themeClass  # Updates when theme changes
+        class: $userStore.themeClass  # Updates when theme changes
         
         Text {
             text: "Cart: " + $cartStore.items.length + " items ($" + $cartStore.total + ")"
@@ -2482,8 +2511,8 @@ KRY supports both Lua-style (`do`/`then`...`@end`) and C-style (`{}`/`()`) synta
 # Simple conditional styling
 Button {
     text: $is_enabled ? "Enabled" : "Disabled"
-    styleId: $is_enabled ? "button_enabled" : "button_disabled"
-    onClick: $is_enabled ? "handle_click()" : null
+    class: $is_enabled ? "button_enabled" : "button_disabled"
+    onClick: $is_enabled ? "handle_click" : null
 }
 
 Text {
@@ -2788,28 +2817,28 @@ Define Card {
     }
     
     Container {
-        styleId: "card_container"
+        class: "card_container"
         onClick: $clickable ? $on_click : null
         
         # Conditional image
         @if $image_src != ""
             Image {
                 src: $image_src
-                styleId: "card_image"
+                class: "card_image"
             }
         @end
         
         Container {
-            styleId: "card_body"
+            class: "card_body"
             
             Text {
                 text: $title
-                styleId: "card_title"
+                class: "card_title"
             }
             
             Text {
                 text: $content
-                styleId: "card_content"
+                class: "card_content"
             }
         }
     }
@@ -2914,7 +2943,7 @@ Button {
 
 # Undefined style reference
 Text {
-    styleId: "nonexistent_style"  # E101 - undefined style
+    class: "nonexistent_style"  # E101 - undefined style
 }
 ```
 
@@ -3198,7 +3227,7 @@ Define, Properties, Render, do, then
 
 ### Property Keywords
 ```
-id, styleId, width, height, position, top, left, right, bottom
+id, class, width, height, position, top, left, right, bottom
 background_color, color, border_width, border_color, border_radius
 padding, margin, opacity, visibility, display, flex_direction
 text, src, href, onClick, onChange, onInput, onHover, onFocus
@@ -3341,7 +3370,7 @@ Define TodoItem {
     }
     
     Container {
-        styleId: "todo_item"
+        class: "todo_item"
         
         Checkbox {
             checked: $todo.completed
@@ -3350,7 +3379,7 @@ Define TodoItem {
         
         Text {
             text: $todo.text
-            styleId: $todo.completed ? "todo_completed" : "todo_active"
+            class: $todo.completed ? "todo_completed" : "todo_active"
             flex_grow: 1
             margin_left: 10px
             onDoubleClick: $on_edit
@@ -3359,7 +3388,7 @@ Define TodoItem {
         Button {
             text: "Delete"
             onClick: $on_delete
-            styleId: "delete_button"
+            class: "delete_button"
         }
     }
 }
@@ -3370,11 +3399,11 @@ App {
     window_height: 600
     
     Container {
-        styleId: "app_container"
+        class: "app_container"
         
         # Header
         Container {
-            styleId: "header"
+            class: "header"
             
             Text {
                 text: "Todo List"
@@ -3388,7 +3417,7 @@ App {
             type: "text"
             placeholder: "What needs to be done?"
             value: $new_todo
-            styleId: "todo_input"
+            class: "todo_input"
             onInput: "update_new_todo"
             onKeyPress: "handle_add_todo"
         }
@@ -3408,23 +3437,23 @@ App {
         
         # Filter buttons
         Container {
-            styleId: "filter_buttons"
+            class: "filter_buttons"
             
             Button {
                 text: "All (${total_count})"
-                styleId: $filter == "all" ? "filter_active" : "filter_inactive"
+                class: $filter == "all" ? "filter_active" : "filter_inactive"
                 onClick: "set_filter_all"
             }
             
             Button {
                 text: "Active (${active_count})" 
-                styleId: $filter == "active" ? "filter_active" : "filter_inactive"
+                class: $filter == "active" ? "filter_active" : "filter_inactive"
                 onClick: "set_filter_active"
             }
             
             Button {
                 text: "Completed (${completed_count})"
-                styleId: $filter == "completed" ? "filter_active" : "filter_inactive"
+                class: $filter == "completed" ? "filter_active" : "filter_inactive"
                 onClick: "set_filter_completed"
             }
         }
@@ -3434,7 +3463,7 @@ App {
             text: "Clear Completed"
             onClick: "clear_completed"
             visibility: $completed_count > 0
-            styleId: "clear_button"
+            class: "clear_button"
         }
     }
 }
@@ -5905,7 +5934,7 @@ Define WeatherWidget {
     }
     
     Container {
-        styleId: "weather-widget"
+        class: "weather-widget"
         
         @if $weatherData.loading {
             Text { text: "Loading weather..." }
@@ -5945,7 +5974,7 @@ Define CalendarWidget {
     }
     
     Container {
-        styleId: "calendar-widget"
+        class: "calendar-widget"
         
         // Calendar implementation
         Calendar {

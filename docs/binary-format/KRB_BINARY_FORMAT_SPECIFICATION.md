@@ -650,7 +650,7 @@ Complete mapping of hex values to property types.
 | `0x25` | display | display | String | No |
 | `0x26` | position | position | String | No |
 | `0x27` | transform | transform | Transform | No |
-| `0x28` | styleId | styleId | String | No |
+| `0x28` | class | class | String | No |
 | `0x29` | *Reserved* | - | - | - |
 | `0x2A` | *Reserved* | - | - | - |
 | `0x2B` | *Reserved* | - | - | - |

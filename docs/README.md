@@ -179,7 +179,7 @@ App {
         }
         
         Button {
-            styleId: "button_style"
+            class: "button_style"
             text: "Increment"
             onClick: "incrementCounter()"
         }

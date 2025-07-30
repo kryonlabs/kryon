@@ -279,7 +279,7 @@ pub struct TemplateBinding {
 |-------------|---------------|-------------|---------|
 | `0x08` | textContent | Element text | `"Count: " + $counter` |
 | `0x10` | visibility | Show/hide element | `$isVisible` |
-| `0x1D` | styleId | Dynamic styling | `$theme == "dark" ? "dark_style" : "light_style"` |
+| `0x1D` | class | Dynamic styling | `$theme == "dark" ? "dark_style" : "light_style"` |
 
 ### Binding Resolution Process
 
@@ -601,11 +601,11 @@ App {
     
     Container {
         # Dynamic style selection
-        styleId: $theme == "dark" ? "dark_theme" : "light_theme"
+        class: $theme == "dark" ? "dark_theme" : "light_theme"
         
         Text {
             text: "Welcome!"
-            styleId: $userLevel > 10 ? "expert_style" : "beginner_style"
+            class: $userLevel > 10 ? "expert_style" : "beginner_style"
         }
     }
 }

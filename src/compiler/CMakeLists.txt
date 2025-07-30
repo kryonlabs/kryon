@@ -51,6 +51,8 @@ set(PARSER_HEADERS
 set(CODEGEN_SOURCES
     codegen/generator.c
     codegen/krb_writer.c
+    codegen/krb_reader.c
+    codegen/krb_file.c
     codegen/element_encoder.c
     codegen/property_encoder.c
     codegen/binary_utils.c
@@ -59,6 +61,8 @@ set(CODEGEN_SOURCES
 set(CODEGEN_HEADERS
     codegen/generator.h
     codegen/krb_writer.h
+    codegen/krb_reader.h
+    codegen/krb_file.h
     codegen/element_encoder.h
     codegen/property_encoder.h
     codegen/binary_utils.h

@@ -85,19 +85,19 @@ Spec → Design → Implement → Test → Document → Integrate → Optimize
 **Goal**: KRB file I/O and validation
 
 #### Tasks:
-- [ ] **KRB File Format** (`src/compiler/codegen/`)
+- [x] **KRB File Format** (`src/compiler/codegen/`)
   - Binary reader/writer with validation
   - Endianness handling for cross-platform
   - File format versioning system
   - Compression support (optional)
 
-- [ ] **Element Type System** (`src/runtime/elements/`)
+- [x] **Element Type System** (`src/runtime/elements/`)
   - Element hierarchy with inheritance
   - Property system with type validation
   - Element factory and lifecycle management
   - Memory-efficient element storage
 
-- [ ] **Property Value System** (`src/runtime/elements/`)
+- [x] **Property Value System** (`src/runtime/elements/`)
   - Variant type for all property values
   - Type conversion and validation
   - Property inheritance and resolution
