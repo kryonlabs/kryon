@@ -12,16 +12,11 @@ message(STATUS "Configuring Kryon Compiler module")
 
 set(LEXER_SOURCES
     lexer/lexer.c
-    lexer/token.c
-    lexer/keywords.c
     lexer/unicode.c
 )
 
 set(LEXER_HEADERS
-    lexer/lexer.h
-    lexer/token.h
-    lexer/keywords.h
-    lexer/unicode.h
+    ../include/internal/lexer.h
 )
 
 # =============================================================================
@@ -30,18 +25,11 @@ set(LEXER_HEADERS
 
 set(PARSER_SOURCES
     parser/parser.c
-    parser/ast.c
-    parser/expressions.c
-    parser/statements.c
-    parser/error_recovery.c
+    parser/ast_utils.c
 )
 
 set(PARSER_HEADERS
-    parser/parser.h
-    parser/ast.h
-    parser/expressions.h
-    parser/statements.h
-    parser/error_recovery.h
+    ../include/internal/parser.h
 )
 
 # =============================================================================
@@ -49,41 +37,27 @@ set(PARSER_HEADERS
 # =============================================================================
 
 set(CODEGEN_SOURCES
-    codegen/generator.c
+    codegen/codegen.c
     codegen/krb_writer.c
     codegen/krb_reader.c
     codegen/krb_file.c
-    codegen/element_encoder.c
-    codegen/property_encoder.c
-    codegen/binary_utils.c
 )
 
 set(CODEGEN_HEADERS
-    codegen/generator.h
-    codegen/krb_writer.h
-    codegen/krb_reader.h
-    codegen/krb_file.h
-    codegen/element_encoder.h
-    codegen/property_encoder.h
-    codegen/binary_utils.h
+    ../include/internal/codegen.h
+    ../include/internal/krb_format.h
 )
 
 # =============================================================================
-# OPTIMIZER COMPONENT
+# OPTIMIZER COMPONENT  
 # =============================================================================
 
 set(OPTIMIZER_SOURCES
     optimizer/optimizer.c
-    optimizer/dead_code_elimination.c
-    optimizer/constant_folding.c
-    optimizer/property_deduplication.c
-    optimizer/template_inlining.c
 )
 
 set(OPTIMIZER_HEADERS
-    optimizer/optimizer.h
-    optimizer/passes.h
-    optimizer/analysis.h
+    # Optimizer headers will be added as needed
 )
 
 # =============================================================================
@@ -92,16 +66,10 @@ set(OPTIMIZER_HEADERS
 
 set(DIAGNOSTICS_SOURCES
     diagnostics/diagnostics.c
-    diagnostics/error_reporter.c
-    diagnostics/warning_system.c
-    diagnostics/source_highlighter.c
 )
 
 set(DIAGNOSTICS_HEADERS
-    diagnostics/diagnostics.h
-    diagnostics/error_reporter.h
-    diagnostics/warning_system.h
-    diagnostics/source_highlighter.h
+    ../include/internal/diagnostics.h
 )
 
 # =============================================================================
@@ -109,11 +77,11 @@ set(DIAGNOSTICS_HEADERS
 # =============================================================================
 
 set(MAPPINGS_SOURCES
-    ../mappings.c
+    # Will be added when mappings are implemented
 )
 
 set(MAPPINGS_HEADERS
-    ../mappings.h
+    # Will be added when mappings are implemented
 )
 
 # =============================================================================

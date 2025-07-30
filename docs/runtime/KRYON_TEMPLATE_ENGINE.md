@@ -404,15 +404,15 @@ impl TemplateEngine {
     fn get_element_property_value(&self, element: &Element, property: &str) -> String {
         match property {
             // Position properties
-            "pos_x" | "x" => element.layout_position.x.to_pixels(800.0).to_string(),
-            "pos_y" | "y" => element.layout_position.y.to_pixels(600.0).to_string(),
+            "posX" | "x" => element.layout_position.x.to_pixels(800.0).to_string(),
+            "posY" | "y" => element.layout_position.y.to_pixels(600.0).to_string(),
             
             // Size properties
             "width" => element.layout_size.width.to_pixels(800.0).to_string(),
             "height" => element.layout_size.height.to_pixels(600.0).to_string(),
             
             // Visual properties
-            "background_color" => format!("#{:02X}{:02X}{:02X}", 
+            "backgroundColor" => format!("#{:02X}{:02X}{:02X}", 
                 (element.background_color.x * 255.0) as u8,
                 (element.background_color.y * 255.0) as u8,
                 (element.background_color.z * 255.0) as u8),

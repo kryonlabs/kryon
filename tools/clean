@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Simple clean script for Kryon-C
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+echo "Cleaning build artifacts..."
+
+rm -rf "$PROJECT_ROOT/build"
+rm -f "$PROJECT_ROOT"/*.html "$PROJECT_ROOT"/*.css
+find "$PROJECT_ROOT" -name "*.o" -delete
+find "$PROJECT_ROOT" -name "CMakeCache.txt" -delete
+find "$PROJECT_ROOT" -name "CMakeFiles" -type d -exec rm -rf {} + 2>/dev/null || true
+
+echo "Clean complete!"

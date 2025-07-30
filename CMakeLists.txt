@@ -45,11 +45,12 @@ endif()
 message(STATUS "Building for platform: ${KRYON_PLATFORM}")
 
 # Renderer backend selection
+option(KRYON_RENDERER_SDL2 "Enable SDL2 renderer" ON)
 option(KRYON_RENDERER_WEBGL "Enable WebGL renderer" ${EMSCRIPTEN})
 option(KRYON_RENDERER_WGPU "Enable WGPU renderer" ${UNIX})
 option(KRYON_RENDERER_RAYLIB "Enable Raylib renderer" ON)
 option(KRYON_RENDERER_TERMINAL "Enable terminal renderer" ON)
-option(KRYON_RENDERER_HTML "Enable HTML renderer" ${EMSCRIPTEN})
+option(KRYON_RENDERER_HTML "Enable HTML renderer" ON)
 option(KRYON_RENDERER_SOFTWARE "Enable software renderer" ON)
 
 # Script engine selection
@@ -239,6 +240,7 @@ message(STATUS "Platform: ${KRYON_PLATFORM}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "")
 message(STATUS "Renderers:")
+message(STATUS "  SDL2: ${KRYON_RENDERER_SDL2}")
 message(STATUS "  WebGL: ${KRYON_RENDERER_WEBGL}")
 message(STATUS "  WGPU: ${KRYON_RENDERER_WGPU}")
 message(STATUS "  Raylib: ${KRYON_RENDERER_RAYLIB}")

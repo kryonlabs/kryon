@@ -740,7 +740,7 @@ impl ScriptContext {
         self.set_variable("$app", ScriptValue::Object(HashMap::from([
             ("width".to_string(), ScriptValue::Float(app.viewport.width as f64)),
             ("height".to_string(), ScriptValue::Float(app.viewport.height as f64)),
-            ("scale".to_string(), ScriptValue::Float(app.viewport.scale_factor as f64)),
+            ("scale".to_string(), ScriptValue::Float(app.viewport.scaleFactor as f64)),
         ])));
         
         // Template variables

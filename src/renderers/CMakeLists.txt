@@ -11,23 +11,11 @@ message(STATUS "Configuring Kryon Renderers module")
 # =============================================================================
 
 set(COMMON_SOURCES
-    common/renderer_interface.c
-    common/render_context.c
-    common/render_stats.c
-    common/viewport.c
-    common/transform_stack.c
-    common/color_utils.c
-    common/primitive_renderer.c
+    # For now, just include the implemented renderers
 )
 
 set(COMMON_HEADERS
-    common/renderer_interface.h
-    common/render_context.h
-    common/render_stats.h
-    common/viewport.h
-    common/transform_stack.h
-    common/color_utils.h
-    common/primitive_renderer.h
+    # For now, just include the implemented renderers
 )
 
 # =============================================================================
@@ -37,18 +25,10 @@ set(COMMON_HEADERS
 if(KRYON_RENDERER_SOFTWARE)
     set(SOFTWARE_SOURCES
         software/software_renderer.c
-        software/pixel_buffer.c
-        software/rasterizer.c
-        software/text_renderer.c
-        software/image_renderer.c
     )
     
     set(SOFTWARE_HEADERS
         software/software_renderer.h
-        software/pixel_buffer.h
-        software/rasterizer.h
-        software/text_renderer.h
-        software/image_renderer.h
     )
 endif()
 
@@ -59,20 +39,12 @@ endif()
 if(KRYON_RENDERER_WEBGL)
     set(WEBGL_SOURCES
         webgl/webgl_renderer.c
-        webgl/webgl_context.c
-        webgl/webgl_shaders.c
-        webgl/webgl_buffers.c
-        webgl/webgl_textures.c
-        webgl/webgl_uniforms.c
+        shaders/shader_compiler.c
     )
     
     set(WEBGL_HEADERS
         webgl/webgl_renderer.h
-        webgl/webgl_context.h
-        webgl/webgl_shaders.h
-        webgl/webgl_buffers.h
-        webgl/webgl_textures.h
-        webgl/webgl_uniforms.h
+        shaders/shader_compiler.h
     )
 endif()
 
@@ -101,24 +73,32 @@ if(KRYON_RENDERER_WGPU)
 endif()
 
 # =============================================================================
+# SDL2 RENDERER
+# =============================================================================
+
+option(KRYON_RENDERER_SDL2 "Enable SDL2 renderer" ON)
+
+if(KRYON_RENDERER_SDL2)
+    set(SDL2_SOURCES
+        sdl2/sdl2_renderer.c
+    )
+    
+    set(SDL2_HEADERS
+        # Headers would go here if we had public headers
+    )
+endif()
+
+# =============================================================================
 # RAYLIB RENDERER
 # =============================================================================
 
 if(KRYON_RENDERER_RAYLIB)
     set(RAYLIB_SOURCES
         raylib/raylib_renderer.c
-        raylib/raylib_context.c
-        raylib/raylib_2d.c
-        raylib/raylib_3d.c
-        raylib/raylib_textures.c
     )
     
     set(RAYLIB_HEADERS
-        raylib/raylib_renderer.h
-        raylib/raylib_context.h
-        raylib/raylib_2d.h
-        raylib/raylib_3d.h
-        raylib/raylib_textures.h
+        # Headers would go here if we had public headers
     )
 endif()
 
@@ -151,18 +131,10 @@ endif()
 if(KRYON_RENDERER_HTML)
     set(HTML_SOURCES
         html/html_renderer.c
-        html/html_dom.c
-        html/html_css.c
-        html/html_events.c
-        html/html_serializer.c
     )
     
     set(HTML_HEADERS
-        html/html_renderer.h
-        html/html_dom.h
-        html/html_css.h
-        html/html_events.h
-        html/html_serializer.h
+        # Headers would go here if we had public headers
     )
 endif()
 
@@ -177,6 +149,11 @@ set(RENDERERS_HEADERS ${COMMON_HEADERS})
 if(KRYON_RENDERER_SOFTWARE)
     list(APPEND RENDERERS_SOURCES ${SOFTWARE_SOURCES})
     list(APPEND RENDERERS_HEADERS ${SOFTWARE_HEADERS})
+endif()
+
+if(KRYON_RENDERER_SDL2)
+    list(APPEND RENDERERS_SOURCES ${SDL2_SOURCES})
+    list(APPEND RENDERERS_HEADERS ${SDL2_HEADERS})
 endif()
 
 if(KRYON_RENDERER_WEBGL)
@@ -237,6 +214,10 @@ if(KRYON_RENDERER_SOFTWARE)
     target_compile_definitions(kryon_renderers PRIVATE KRYON_RENDERER_SOFTWARE=1)
 endif()
 
+if(KRYON_RENDERER_SDL2)
+    target_compile_definitions(kryon_renderers PRIVATE KRYON_RENDERER_SDL2=1)
+endif()
+
 if(KRYON_RENDERER_WEBGL)
     target_compile_definitions(kryon_renderers PRIVATE KRYON_RENDERER_WEBGL=1)
 endif()
@@ -264,9 +245,41 @@ endif()
 # STB libraries for image processing
 target_link_libraries(kryon_renderers PRIVATE stb)
 
+# SDL2 dependency
+if(KRYON_RENDERER_SDL2)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SDL2 REQUIRED sdl2)
+    pkg_check_modules(SDL2_TTF REQUIRED SDL2_ttf)
+    pkg_check_modules(SDL2_IMAGE REQUIRED SDL2_image)
+    
+    target_link_libraries(kryon_renderers PRIVATE 
+        ${SDL2_LIBRARIES}
+        ${SDL2_TTF_LIBRARIES}
+        ${SDL2_IMAGE_LIBRARIES}
+    )
+    
+    target_include_directories(kryon_renderers PRIVATE
+        ${SDL2_INCLUDE_DIRS}
+        ${SDL2_TTF_INCLUDE_DIRS}
+        ${SDL2_IMAGE_INCLUDE_DIRS}
+    )
+    
+    target_compile_options(kryon_renderers PRIVATE
+        ${SDL2_CFLAGS_OTHER}
+        ${SDL2_TTF_CFLAGS_OTHER}
+        ${SDL2_IMAGE_CFLAGS_OTHER}
+    )
+endif()
+
 # Raylib dependency
 if(KRYON_RENDERER_RAYLIB)
-    target_link_libraries(kryon_renderers PRIVATE raylib)
+    find_package(raylib QUIET)
+    if(raylib_FOUND)
+        target_link_libraries(kryon_renderers PRIVATE raylib)
+    else()
+        message(WARNING "Raylib not found, disabling Raylib renderer")
+        set(KRYON_RENDERER_RAYLIB OFF CACHE BOOL "Enable Raylib renderer" FORCE)
+    endif()
 endif()
 
 # Platform-specific graphics libraries

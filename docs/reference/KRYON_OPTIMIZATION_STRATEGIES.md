@@ -72,9 +72,9 @@ impl LayoutCache {
         element.height.hash(&mut properties_hasher);
         element.padding.hash(&mut properties_hasher);
         element.margin.hash(&mut properties_hasher);
-        element.flex_direction.hash(&mut properties_hasher);
-        element.justify_content.hash(&mut properties_hasher);
-        element.align_items.hash(&mut properties_hasher);
+        element.flexDirection.hash(&mut properties_hasher);
+        element.justifyContent.hash(&mut properties_hasher);
+        element.alignItems.hash(&mut properties_hasher);
         let properties_hash = properties_hasher.finish();
         
         // Hash constraints

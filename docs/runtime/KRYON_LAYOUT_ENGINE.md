@@ -315,7 +315,7 @@ fn apply_custom_properties(&self, style: &mut Style, element: &Element) {
     }
     
     // Flexbox direction
-    if let Some(PropertyValue::String(value)) = element.custom_properties.get("flex_direction") {
+    if let Some(PropertyValue::String(value)) = element.custom_properties.get("flexDirection") {
         style.flex_direction = match value.as_str() {
             "row" => FlexDirection::Row,
             "column" => FlexDirection::Column,
@@ -326,7 +326,7 @@ fn apply_custom_properties(&self, style: &mut Style, element: &Element) {
     }
     
     // Justify content (main axis)
-    if let Some(PropertyValue::String(value)) = element.custom_properties.get("justify_content") {
+    if let Some(PropertyValue::String(value)) = element.custom_properties.get("justifyContent") {
         style.justify_content = match value.as_str() {
             "flex-start" | "start" => Some(JustifyContent::FlexStart),
             "flex-end" | "end" => Some(JustifyContent::FlexEnd),
@@ -339,11 +339,11 @@ fn apply_custom_properties(&self, style: &mut Style, element: &Element) {
     }
     
     // Numeric flex properties
-    if let Some(PropertyValue::Float(value)) = element.custom_properties.get("flex_grow") {
+    if let Some(PropertyValue::Float(value)) = element.custom_properties.get("flexGrow") {
         style.flex_grow = *value;
     }
     
-    if let Some(PropertyValue::Float(value)) = element.custom_properties.get("flex_shrink") {
+    if let Some(PropertyValue::Float(value)) = element.custom_properties.get("flexShrink") {
         style.flex_shrink = *value;
     }
 }
@@ -513,9 +513,9 @@ fn apply_element_type_optimizations(&self, style: &mut Style, element: &Element)
         
         ElementType::Container => {
             // Smart flex detection for containers
-            let should_be_flex = element.custom_properties.contains_key("flex_direction") ||
-                               element.custom_properties.contains_key("justify_content") ||
-                               element.custom_properties.contains_key("align_items") ||
+            let should_be_flex = element.custom_properties.contains_key("flexDirection") ||
+                               element.custom_properties.contains_key("justifyContent") ||
+                               element.custom_properties.contains_key("alignItems") ||
                                element.layout_flags != 0;
             
             if should_be_flex {
@@ -543,16 +543,16 @@ if let Some(PropertyValue::Float(value)) = element.custom_properties.get("margin
 }
 
 // Individual padding properties
-if let Some(PropertyValue::Float(value)) = element.custom_properties.get("padding_top") {
+if let Some(PropertyValue::Float(value)) = element.custom_properties.get("paddingTop") {
     style.padding.top = LengthPercentage::Length(*value);
 }
-if let Some(PropertyValue::Float(value)) = element.custom_properties.get("padding_right") {
+if let Some(PropertyValue::Float(value)) = element.custom_properties.get("paddingRight") {
     style.padding.right = LengthPercentage::Length(*value);
 }
-if let Some(PropertyValue::Float(value)) = element.custom_properties.get("padding_bottom") {
+if let Some(PropertyValue::Float(value)) = element.custom_properties.get("paddingBottom") {
     style.padding.bottom = LengthPercentage::Length(*value);
 }
-if let Some(PropertyValue::Float(value)) = element.custom_properties.get("padding_left") {
+if let Some(PropertyValue::Float(value)) = element.custom_properties.get("paddingLeft") {
     style.padding.left = LengthPercentage::Length(*value);
 }
 ```

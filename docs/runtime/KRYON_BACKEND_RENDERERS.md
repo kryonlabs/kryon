@@ -87,8 +87,8 @@ pub enum RenderCommand {
         size: Vec2,
         color: Vec4,
         border_radius: f32,
-        border_width: f32,
-        border_color: Vec4,
+        borderWidth: f32,
+        borderColor: Vec4,
     },
     DrawText {
         text: String,
@@ -603,7 +603,7 @@ App "My Application"
     • Applied style: 'app_style' (id: 1)
     • COMPUTED FINAL VALUES:
     • text: "My Application"
-    • background_color: #00000000
+    • backgroundColor: #00000000
     • layout_flags: 0x01
 ```
 

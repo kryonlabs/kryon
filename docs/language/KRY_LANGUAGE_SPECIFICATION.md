@@ -32,7 +32,7 @@
 ### ✅ Core Features (Fully Implemented)
 - **Elements**: All basic elements (Container, Text, Button, Input, Image, Video, etc.)
 - **Properties**: Universal properties, layout, styling, text properties
-- **Property Aliases**: Universal and element-specific aliases (x→pos_x, bg→background_color, etc.)
+- **Property Aliases**: Universal and element-specific aliases (x→posX, bg→backgroundColor, etc.)
 - **Styles**: Style definitions, pseudo-selectors (:hover, :active, :checked, :disabled)
 - **Variables**: @variables and @var declarations, reactive updates
 - **Control Flow**: @if/@elif/@else, @const_if (compile-time), @for loops, @while loops
@@ -101,15 +101,15 @@ id: "my_element"
 ```
 
 ### 2. Standardized Property Naming
-All properties use consistent snake_case:
+All properties use consistent camelCase:
 ```kry
-pos_x: 10
-font_size: 16
-background_color: "red"
-border_width: 2
-text_align: "center"
-flex_direction: "column"
-justify_content: "center"
+posX: 10
+fontSize: 16
+backgroundColor: "red"
+borderWidth: 2
+textAlign: "center"
+flexDirection: "column"
+justifyContent: "center"
 ```
 
 ### 3. Unified Event System
@@ -162,8 +162,8 @@ width: $container_width > 0 ? $container_width : 300px
 height: $data?.length ? ${$data.length * 20}px : 100px
 
 # Validation with default fallbacks
-font_size: $user_font_size in [12, 14, 16, 18, 24] ? $user_font_size : 16
-opacity: $user_opacity >= 0 && $user_opacity <= 1 ? $user_opacity : 1.0
+fontSize: $userFontSize in [12, 14, 16, 18, 24] ? $userFontSize : 16
+opacity: $userOpacity >= 0 && $userOpacity <= 1 ? $userOpacity : 1.0
 
 # Safe array/object access
 first_item: $items?.0 ?? "No items"
@@ -182,8 +182,8 @@ class: "base_style ${variant}_variant ${size}_size"
 
 # Conditional style properties
 Button {
-    background_color: $variant == "primary" ? "#0066cc" : "#666666"
-    border_width: $focused ? 2 : 1
+    backgroundColor: $variant == "primary" ? "#0066cc" : "#666666"
+    borderWidth: $focused ? 2 : 1
     opacity: $disabled ? 0.5 : 1.0
 }
 ```
@@ -220,8 +220,8 @@ All property aliases are automatically resolved by the compiler:
 ##### Universal Aliases (Work on all elements)
 ```kry
 # Layout/Position shortcuts
-x: 10        # → pos_x: 10
-y: 20        # → pos_y: 20
+x: 10        # → posX: 10
+y: 20        # → posY: 20
 w: 100       # → width: 100
 h: 50        # → height: 50
 
@@ -289,7 +289,7 @@ onChange: validate_input          # ✗ Wrong - needs quotes
 width: 100px                     # ✓ Pixels
 height: 50%                      # ✓ Percentage  
 margin: 10px 20px               # ✓ Multiple values
-font_size: 16                   # ✓ Unitless (defaults to px)
+fontSize: 16                   # ✓ Unitless (defaults to px)
 
 # Avoid ambiguous unit-less values for dimensions
 width: 100                      # ⚠ Acceptable but less clear
@@ -404,9 +404,9 @@ false
 
 # Metadata (app configuration)
 @metadata {
-    window_title: "My App"
-    window_width: 800
-    window_height: 600
+    windowTitle: "My App"
+    windowWidth: 800
+    windowHeight: 600
     author: "Developer Name"
 }
 
@@ -418,7 +418,7 @@ false
 
 # Styles
 @style "button_primary" {
-    background_color: $theme_color
+    backgroundColor: $theme_color
     color: "white"
 }
 
@@ -451,9 +451,9 @@ Container {
 
 # OR explicitly with App
 App {
-    window_title: "My App"
-    window_width: 800
-    window_height: 600
+    windowTitle: "My App"
+    windowWidth: 800
+    windowHeight: 600
     
     Container {
         Text {
@@ -495,7 +495,7 @@ App {
 # OR just start with elements directly (App auto-generated)
 Container {        # Layout container
     display: flex
-    flex_direction: column
+    flexDirection: column
 }
 
 Text {             # Text display
@@ -683,9 +683,9 @@ Element {
     left: 20px
     
     # Visual properties
-    background_color: "#f0f0f0"
-    border_width: 1
-    border_color: "#cccccc"
+    backgroundColor: "#f0f0f0"
+    borderWidth: 1
+    borderColor: "#cccccc"
     border_radius: 4
     opacity: 0.8
     visibility: true
@@ -719,7 +719,7 @@ integer_prop: 42
 float_prop: 3.14
 width: 100px          # Dimension with unit
 height: 50%           # Percentage
-font_size: 16         # Unitless number (defaults to px for sizes)
+fontSize: 16         # Unitless number (defaults to px for sizes)
 
 # Booleans - explicit keywords
 boolean_prop: true
@@ -728,8 +728,8 @@ visible: true
 
 # Colors - always quoted (hex, named, or functions)
 color_prop: "#FF0000"
-background_color: "red" 
-border_color: "rgb(255, 0, 0)"
+backgroundColor: "red" 
+borderColor: "rgb(255, 0, 0)"
 
 # Identifiers - unquoted for references, quoted for literal strings
 class: "button_primary"        # Reference to style definition
@@ -861,23 +861,23 @@ Element {
 ### Pseudo-selectors
 ```kry
 @style "button_style" {
-    background_color: "#0066cc"
+    backgroundColor: "#0066cc"
     color: "white"
     
     &:hover {
-        background_color: "#0052a3"
+        backgroundColor: "#0052a3"
     }
     
     &:active {
-        background_color: "#004080"
+        backgroundColor: "#004080"
     }
     
     &:checked {
-        background_color: "#00aa00"
+        backgroundColor: "#00aa00"
     }
     
     &:disabled {
-        background_color: "#cccccc"
+        backgroundColor: "#cccccc"
         color: "#666666"
     }
 }
@@ -886,9 +886,9 @@ Element {
 ### Style Interpolation
 ```kry
 @style "dynamic_button" {
-    background_color: $theme_color
-    border_color: "${theme_color}80"  # Theme color with alpha
-    font_size: ${base_font_size + 2}px
+    backgroundColor: $theme_color
+    borderColor: "${theme_color}80"  # Theme color with alpha
+    fontSize: ${baseFontSize + 2}px
 }
 ```
 
@@ -898,9 +898,9 @@ Element {
 ```kry
 @metadata {
     # Window configuration
-    window_title: "My Application"
-    window_width: 800
-    window_height: 600
+    windowTitle: "My Application"
+    windowWidth: 800
+    windowHeight: 600
     window_resizable: true
     window_fullscreen: false
     
@@ -1012,8 +1012,8 @@ The bundler will warn about:
 ```kry
 # Using @metadata (recommended)
 @metadata {
-    window_title: "My App"
-    window_width: 800
+    windowTitle: "My App"
+    windowWidth: 800
 }
 
 Container {
@@ -1022,8 +1022,8 @@ Container {
 
 # OR using App element (explicit)
 App {
-    window_title: "My App"
-    window_width: 800
+    windowTitle: "My App"
+    windowWidth: 800
     
     Container {
         Text { text: "Content" }
@@ -1032,12 +1032,12 @@ App {
 
 # OR mixed approach (App overrides @metadata)
 @metadata {
-    window_title: "Default Title"
+    windowTitle: "Default Title"
     version: "1.0.0"
 }
 
 App {
-    window_title: "Override Title"  # This wins
+    windowTitle: "Override Title"  # This wins
     
     Container {
         Text { text: "Content" }
@@ -1054,7 +1054,7 @@ App {
     username: "Guest"
     is_logged_in: false
     theme_color: "#0066cc"
-    font_size: 16
+    fontSize: 16
     
     # Array variables
     menu_items: ["Home", "About", "Contact"]
@@ -1071,12 +1071,12 @@ App {
 Text {
     text: $username                    # Direct binding
     color: $is_logged_in ? "green" : "red"  # Conditional
-    font_size: $font_size
+    fontSize: $fontSize
 }
 
 Container {
-    background_color: $theme_color
-    border_color: "${theme_color}40"   # Interpolated
+    backgroundColor: $theme_color
+    borderColor: "${theme_color}40"   # Interpolated
 }
 ```
 
@@ -2583,7 +2583,7 @@ Text {
 # Generate elements at compile time
 @const_for size in [12, 14, 16, 18, 24] do
     style "text_size_${size}" {
-        font_size: ${size}px
+        fontSize: ${size}px
     }
 @end
 
@@ -2592,7 +2592,7 @@ Text {
 # C-style compile-time loop
 @const_for (color in ["red", "green", "blue"]) {
     style "button_${color}" {
-        background_color: $color
+        backgroundColor: $color
     }
 }
 ```
@@ -2778,7 +2778,7 @@ Define ComponentName {
     Container {
         Text {
             text: $text
-            font_size: $size
+            fontSize: $size
             color: $enabled ? "black" : "gray"
         }
         
@@ -3228,8 +3228,8 @@ Define, Properties, Render, do, then
 ### Property Keywords
 ```
 id, class, width, height, position, top, left, right, bottom
-background_color, color, border_width, border_color, border_radius
-padding, margin, opacity, visibility, display, flex_direction
+backgroundColor, color, borderWidth, borderColor, border_radius
+padding, margin, opacity, visibility, display, flexDirection
 text, src, href, onClick, onChange, onInput, onHover, onFocus
 ```
 
@@ -3323,41 +3323,41 @@ Literal = StringLiteral | NumberLiteral | BooleanLiteral | ArrayLiteral | Object
 }
 
 @style "app_container" {
-    background_color: "#f5f5f5"
+    backgroundColor: "#f5f5f5"
     padding: 20px
     max_width: 600px
     margin: "0 auto"
 }
 
 @style "header" {
-    text_alignment: center
-    margin_bottom: 30px
+    textAlignment: center
+    marginBottom: 30px
 }
 
 @style "todo_input" {
     width: 100%
     padding: 12px
-    font_size: 16px
-    border_width: 1px
-    border_color: "#ddd"
+    fontSize: 16px
+    borderWidth: 1px
+    borderColor: "#ddd"
     border_radius: 4px
 }
 
 @style "todo_item" {
     display: flex
-    align_items: center
+    alignItems: center
     padding: 10px
     border_bottom: "1px solid #eee"
     
     &:hover {
-        background_color: "#f9f9f9"
+        backgroundColor: "#f9f9f9"
     }
 }
 
 @style "filter_buttons" {
     display: flex
     gap: 10px
-    justify_content: center
+    justifyContent: center
     margin_top: 20px
 }
 
@@ -3394,9 +3394,9 @@ Define TodoItem {
 }
 
 App {
-    window_title: "Todo List"
-    window_width: 800
-    window_height: 600
+    windowTitle: "Todo List"
+    windowWidth: 800
+    windowHeight: 600
     
     Container {
         class: "app_container"
@@ -3407,7 +3407,7 @@ App {
             
             Text {
                 text: "Todo List"
-                font_size: 24
+                fontSize: 24
                 font_weight: bold
             }
         }
@@ -3710,10 +3710,10 @@ Container {
 
 # Usage with validation and autocompletion
 Button {
-    background_color: @colors.primary
+    backgroundColor: @colors.primary
     color: @colors.text.primary
     padding: @spacing.md
-    font_size: @typography.body.size
+    fontSize: @typography.body.size
     box_shadow: @shadows.sm
 }
 ```
@@ -3756,7 +3756,7 @@ Container {
         
         # Transition properties
         transition: {
-            background_color: { duration: 150ms, easing: "ease" }
+            backgroundColor: { duration: 150ms, easing: "ease" }
             transform: { duration: 100ms, easing: "ease_out" }
         }
     }

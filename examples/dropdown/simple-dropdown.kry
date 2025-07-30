@@ -1,0 +1,238 @@
+// Simple Kryon Dropdown Example
+// Demonstrates basic dropdown functionality with all features
+
+@style "container" {
+    display: "flex"
+    flexDirection: "column"
+    alignItems: "center"
+    justifyContent: "center"
+    padding: 20
+    gap: 15
+    backgroundColor: "#f5f5f5FF"
+}
+
+@style "title" {
+    fontSize: 24
+    fontWeight: "bold"
+    color: "#333333FF"
+    marginBottom: 10
+}
+
+@style "dropdown" {
+    width: 200
+    height: 35
+    backgroundColor: "#ffffffFF"
+    borderColor: "#ccccccFF"
+    borderWidth: 1
+    borderRadius: 6
+    fontSize: 14
+    color: "#333333FF"
+    padding: {
+        top: 8
+        right: 12
+        bottom: 8
+        left: 12
+    }
+}
+
+@style "dropdown:hover" {
+    borderColor: "#4285f4FF"
+    backgroundColor: "#f8f9faFF"
+}
+
+@style "dropdown:focus" {
+    borderColor: "#4285f4FF"
+    boxShadow: "0 0 0 2px rgba(66, 133, 244, 0.2)"
+}
+
+@style "info_text" {
+    fontSize: 14
+    color: "#666666FF"
+    textAlign: "center"
+    maxWidth: 300
+}
+
+@style "demo_section" {
+    display: "flex"
+    flexDirection: "column"
+    alignItems: "center"
+    gap: 10
+    marginTop: 20
+    padding: 15
+    backgroundColor: "#ffffffFF"
+    borderRadius: 8
+    borderWidth: 1
+    borderColor: "#e0e0e0FF"
+    minWidth: 250
+}
+
+Container {
+    class: "container"
+    
+    Text {
+        class: "title"
+        text: "Kryon Dropdown Demo"
+    }
+    
+    Container {
+        class: "demo_section"
+        
+        Text {
+            text: "Select a Color:"
+            fontSize: 16
+            fontWeight: "semibold"
+            color: "#333333FF"
+        }
+        
+        Dropdown {
+            id: "color_picker"
+            class: "dropdown"
+            selectedIndex: 0
+            onChange: "handleColorChange"
+            
+            options: [
+                { text: "Red", value: "#ff0000" },
+                { text: "Green", value: "#00ff00" },
+                { text: "Blue", value: "#0000ff" },
+                { text: "Purple", value: "#800080" },
+                { text: "Orange", value: "#ffa500" },
+                { text: "Yellow", value: "#ffff00" },
+                { text: "Pink", value: "#ffc0cb" },
+                { text: "Cyan", value: "#00ffff" }
+            ]
+        }
+        
+        Text {
+            id: "color_display"
+            text: "Selected: Red (#ff0000)"
+            fontSize: 14
+            color: "#ff0000"
+            fontWeight: "medium"
+        }
+    }
+    
+    Container {
+        class: "demo_section"
+        
+        Text {
+            text: "Choose a Size:"
+            fontSize: 16
+            fontWeight: "semibold"
+            color: "#333333FF"
+        }
+        
+        Dropdown {
+            id: "size_picker"
+            class: "dropdown"
+            selectedIndex: 1
+            onChange: "handleSizeChange"
+            
+            options: [
+                { text: "Small", value: "small" },
+                { text: "Medium", value: "medium" },
+                { text: "Large", value: "large" },
+                { text: "Extra Large", value: "xl" }
+            ]
+        }
+        
+        Text {
+            id: "size_display"
+            text: "Selected: Medium"
+            fontSize: 14
+            color: "#333333FF"
+        }
+    }
+    
+    Container {
+        class: "demo_section"
+        
+        Text {
+            text: "Multi-Select Countries:"
+            fontSize: 16
+            fontWeight: "semibold"
+            color: "#333333FF"
+        }
+        
+        Dropdown {
+            id: "country_picker"
+            class: "dropdown"
+            multiSelect: true
+            maxHeight: 150
+            selectedIndices: [0, 2]
+            onChange: "handleCountryChange"
+            
+            options: [
+                { text: "United States", value: "us" },
+                { text: "Canada", value: "ca" },
+                { text: "United Kingdom", value: "uk" },
+                { text: "Germany", value: "de" },
+                { text: "France", value: "fr" },
+                { text: "Japan", value: "jp" },
+                { text: "Australia", value: "au" },
+                { text: "Brazil", value: "br" },
+                { text: "India", value: "in" },
+                { text: "China", value: "cn" }
+            ]
+        }
+        
+        Text {
+            id: "country_display"
+            text: "Selected: United States, United Kingdom"
+            fontSize: 14
+            color: "#333333FF"
+            maxWidth: 200
+            textAlign: "center"
+        }
+    }
+    
+    Container {
+        class: "demo_section"
+        
+        Text {
+            text: "Disabled Dropdown:"
+            fontSize: 16
+            fontWeight: "semibold"
+            color: "#333333FF"
+        }
+        
+        Dropdown {
+            id: "disabled_dropdown"
+            class: "dropdown"
+            enabled: false
+            selectedIndex: 0
+            
+            options: [
+                { text: "Option 1", value: "opt1" },
+                { text: "Option 2", value: "opt2" },
+                { text: "Option 3", value: "opt3" }
+            ]
+        }
+    }
+    
+    Text {
+        class: "info_text"
+        text: "This example demonstrates basic dropdown functionality including single select, multi-select, styling, and disabled states. The dropdown maps to HTML <select> elements when targeting web platforms."
+    }
+}
+
+// Event handlers would be implemented in the script system
+@script {
+    function handleColorChange(dropdown, selectedIndex, selectedValue) {
+        const colorDisplay = document.getElementById("color_display");
+        const optionText = dropdown.options[selectedIndex].text;
+        colorDisplay.textContent = `Selected: ${optionText} (${selectedValue})`;
+        colorDisplay.style.color = selectedValue;
+    }
+    
+    function handleSizeChange(dropdown, selectedIndex, selectedValue) {
+        const sizeDisplay = document.getElementById("size_display");
+        const optionText = dropdown.options[selectedIndex].text;
+        sizeDisplay.textContent = `Selected: ${optionText}`;
+    }
+    
+    function handleCountryChange(dropdown, selectedIndices, selectedValues) {
+        const countryDisplay = document.getElementById("country_display");
+        const selectedTexts = selectedIndices.map(i => dropdown.options[i].text);
+        countryDisplay.textContent = `Selected: ${selectedTexts.join(", ")}`;
+    }
+}

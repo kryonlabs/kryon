@@ -90,7 +90,7 @@ pub struct LayoutConstraints {
 pub struct Viewport {
     pub width: f32,
     pub height: f32,
-    pub scale_factor: f32,
+    pub scaleFactor: f32,
 }
 
 #[derive(Debug, Clone)]

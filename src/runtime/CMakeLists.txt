@@ -12,18 +12,10 @@ message(STATUS "Configuring Kryon Runtime module")
 
 set(CORE_SOURCES
     core/runtime.c
-    core/application.c
-    core/event_loop.c
-    core/initialization.c
-    core/shutdown.c
 )
 
 set(CORE_HEADERS
-    core/runtime.h
-    core/application.h
-    core/event_loop.h
-    core/initialization.h
-    core/shutdown.h
+    ../include/internal/runtime.h
 )
 
 # =============================================================================
@@ -31,19 +23,11 @@ set(CORE_HEADERS
 # =============================================================================
 
 set(ELEMENTS_SOURCES
-    elements/element_manager.c
-    elements/element_tree.c
-    elements/element_factory.c
-    elements/property_manager.c
-    elements/template_binding.c
+    # Will be added when implemented
 )
 
 set(ELEMENTS_HEADERS
-    elements/element_manager.h
-    elements/element_tree.h
-    elements/element_factory.h
-    elements/property_manager.h
-    elements/template_binding.h
+    # Will be added when implemented
 )
 
 # =============================================================================
@@ -51,19 +35,11 @@ set(ELEMENTS_HEADERS
 # =============================================================================
 
 set(STATE_SOURCES
-    state/state_manager.c
-    state/reactive_variables.c
-    state/global_stores.c
-    state/watchers.c
-    state/change_tracking.c
+    # Will be added when implemented
 )
 
 set(STATE_HEADERS
-    state/state_manager.h
-    state/reactive_variables.h
-    state/global_stores.h
-    state/watchers.h
-    state/change_tracking.h
+    # Will be added when implemented
 )
 
 # =============================================================================
@@ -71,19 +47,11 @@ set(STATE_HEADERS
 # =============================================================================
 
 set(LIFECYCLE_SOURCES
-    lifecycle/lifecycle_manager.c
-    lifecycle/mount_hooks.c
-    lifecycle/unmount_hooks.c
-    lifecycle/update_hooks.c
-    lifecycle/effect_system.c
+    # Will be added when implemented
 )
 
 set(LIFECYCLE_HEADERS
-    lifecycle/lifecycle_manager.h
-    lifecycle/mount_hooks.h
-    lifecycle/unmount_hooks.h
-    lifecycle/update_hooks.h
-    lifecycle/effect_system.h
+    # Will be added when implemented
 )
 
 # =============================================================================
@@ -111,19 +79,11 @@ set(MEMORY_HEADERS
 # =============================================================================
 
 set(PROFILER_SOURCES
-    profiler/profiler.c
-    profiler/frame_timer.c
-    profiler/memory_tracker.c
-    profiler/performance_counter.c
-    profiler/bottleneck_detector.c
+    # Will be added when implemented
 )
 
 set(PROFILER_HEADERS
-    profiler/profiler.h
-    profiler/frame_timer.h
-    profiler/memory_tracker.h
-    profiler/performance_counter.h
-    profiler/bottleneck_detector.h
+    # Will be added when implemented
 )
 
 # =============================================================================

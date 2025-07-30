@@ -379,8 +379,8 @@ impl Renderer for WgpuRenderer {
                 position: [rect.x, rect.y],
                 size: [rect.width, rect.height],
                 color: style.fill_color.into(),
-                border_width: style.border_width,
-                border_color: style.border_color.into(),
+                borderWidth: style.borderWidth,
+                borderColor: style.borderColor.into(),
             };
             
             self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[rect_data]));

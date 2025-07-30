@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Simple example runner for Kryon-C
+# Usage: tools/run [example.kry] [renderer]
+
+set -e
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BUILD_DIR="$PROJECT_ROOT/build"
+
+# Default values
+EXAMPLE="${1:-hello-world.kry}"
+RENDERER="${2:-html}"
+
+# Make sure we have .kry extension
+if [[ "$EXAMPLE" != *.kry ]]; then
+    EXAMPLE="$EXAMPLE.kry"
+fi
+
+EXAMPLE_PATH="$PROJECT_ROOT/examples/$EXAMPLE"
+
+if [[ ! -f "$EXAMPLE_PATH" ]]; then
+    echo "Error: Example not found: $EXAMPLE_PATH"
+    echo "Available examples:"
+    ls "$PROJECT_ROOT/examples"/*.kry 2>/dev/null || echo "  No examples found"
+    exit 1
+fi
+
+echo "Building Kryon-C..."
+
+# Simple build
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
+
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
+
+echo "Running: $EXAMPLE with $RENDERER renderer"
+
+# Run the example
+case "$RENDERER" in
+    html)
+        ./kryon_html_example "$EXAMPLE_PATH"
+        echo "Generated HTML files:"
+        ls -la *.html *.css 2>/dev/null || true
+        ;;
+    sdl2)
+        ./kryon_sdl2_example "$EXAMPLE_PATH"
+        ;;
+    raylib)
+        ./kryon_raylib_example "$EXAMPLE_PATH"
+        ;;
+    *)
+        echo "Unknown renderer: $RENDERER"
+        echo "Available renderers: html, sdl2, raylib"
+        exit 1
+        ;;
+esac
