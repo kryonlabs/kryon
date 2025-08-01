@@ -12,6 +12,7 @@ message(STATUS "Configuring Kryon Runtime module")
 
 set(CORE_SOURCES
     core/runtime.c
+    core/krb_loader.c
 )
 
 set(CORE_HEADERS
@@ -23,7 +24,7 @@ set(CORE_HEADERS
 # =============================================================================
 
 set(ELEMENTS_SOURCES
-    # Will be added when implemented
+    elements/element_manager.c
 )
 
 set(ELEMENTS_HEADERS
@@ -59,19 +60,11 @@ set(LIFECYCLE_HEADERS
 # =============================================================================
 
 set(MEMORY_SOURCES
-    memory/memory_manager.c
-    memory/memory_pools.c
-    memory/garbage_collector.c
-    memory/leak_detector.c
-    memory/allocator.c
+    # Memory management moved to src/core
 )
 
 set(MEMORY_HEADERS
-    memory/memory_manager.h
-    memory/memory_pools.h
-    memory/garbage_collector.h
-    memory/leak_detector.h
-    memory/allocator.h
+    # Memory headers moved to core utilities
 )
 
 # =============================================================================

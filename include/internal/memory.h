@@ -19,6 +19,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 // =============================================================================
 // FORWARD DECLARATIONS
@@ -325,8 +326,31 @@ extern KryonMemoryManager *g_kryon_memory_manager;
 
 // Common alignment values
 #define KRYON_ALIGN_DEFAULT 8
+
+// =============================================================================
+// STRING UTILITIES
+// =============================================================================
+
+/**
+ * @brief Duplicate a string using Kryon memory allocator
+ * @param str String to duplicate
+ * @return Newly allocated string copy, or NULL on failure
+ */
+char *kryon_strdup(const char *str);
 #define KRYON_ALIGN_CACHE_LINE 64
 #define KRYON_ALIGN_PAGE 4096
+
+// =============================================================================
+// COMPATIBILITY MACROS FOR WIDGET SYSTEM
+// =============================================================================
+
+// Simple compatibility macros for basic allocation functions
+// These can be replaced with the full memory manager later
+#include <stdlib.h>
+#include <string.h>
+
+#define kryon_malloc(size) malloc(size)
+#define kryon_calloc(count, size) calloc(count, size)
 
 #ifdef __cplusplus
 }

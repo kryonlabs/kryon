@@ -65,6 +65,8 @@ static const char *token_type_names[] = {
     [KRYON_TOKEN_IMPORT_DIRECTIVE] = "IMPORT_DIRECTIVE",
     [KRYON_TOKEN_EXPORT_DIRECTIVE] = "EXPORT_DIRECTIVE",
     [KRYON_TOKEN_INCLUDE_DIRECTIVE] = "INCLUDE_DIRECTIVE",
+    [KRYON_TOKEN_METADATA_DIRECTIVE] = "METADATA_DIRECTIVE",
+    [KRYON_TOKEN_EVENT_DIRECTIVE] = "EVENT_DIRECTIVE",
     [KRYON_TOKEN_TEMPLATE_START] = "TEMPLATE_START",
     [KRYON_TOKEN_TEMPLATE_END] = "TEMPLATE_END",
     [KRYON_TOKEN_UNIT_PX] = "UNIT_PX",
@@ -112,6 +114,8 @@ static const KeywordEntry directives[] = {
     {"import", KRYON_TOKEN_IMPORT_DIRECTIVE},
     {"export", KRYON_TOKEN_EXPORT_DIRECTIVE},
     {"include", KRYON_TOKEN_INCLUDE_DIRECTIVE},
+    {"metadata", KRYON_TOKEN_METADATA_DIRECTIVE},
+    {"event", KRYON_TOKEN_EVENT_DIRECTIVE},
 };
 
 static const size_t directives_count = sizeof(directives) / sizeof(directives[0]);
@@ -527,6 +531,7 @@ static bool lex_identifier(KryonLexer *lexer) {
 // MAIN TOKENIZATION
 // =============================================================================
 
+
 static bool scan_token(KryonLexer *lexer) {
     lexer->start = lexer->current;
     
@@ -819,7 +824,11 @@ bool kryon_token_is_operator(KryonTokenType type) {
 }
 
 bool kryon_token_is_directive(KryonTokenType type) {
-    return type >= KRYON_TOKEN_STYLE_DIRECTIVE && type <= KRYON_TOKEN_INCLUDE_DIRECTIVE;
+    return type >= KRYON_TOKEN_STYLE_DIRECTIVE && type <= KRYON_TOKEN_METADATA_DIRECTIVE;
+}
+
+bool kryon_token_is_unit(KryonTokenType type) {
+    return type >= KRYON_TOKEN_UNIT_PX && type <= KRYON_TOKEN_UNIT_PT;
 }
 
 bool kryon_token_is_bracket(KryonTokenType type) {

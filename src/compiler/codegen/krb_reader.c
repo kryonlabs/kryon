@@ -6,46 +6,9 @@
 #include "internal/krb_format.h"
 #include "internal/memory.h"
 #include "internal/error.h"
+#include "internal/binary_io.h"
 #include <string.h>
 #include <stdlib.h>
-
-// =============================================================================
-// ENDIANNESS UTILITIES
-// =============================================================================
-
-static bool is_big_endian(void) {
-    uint16_t test = 1;
-    return *(uint8_t*)&test == 0;
-}
-
-static uint16_t swap_uint16(uint16_t value) {
-    return (value << 8) | (value >> 8);
-}
-
-static uint32_t swap_uint32(uint32_t value) {
-    return ((value << 24) & 0xff000000) |
-           ((value << 8)  & 0x00ff0000) |
-           ((value >> 8)  & 0x0000ff00) |
-           ((value >> 24) & 0x000000ff);
-}
-
-static uint64_t swap_uint64(uint64_t value) {
-    return ((value << 56) & 0xff00000000000000ULL) |
-           ((value << 40) & 0x00ff000000000000ULL) |
-           ((value << 24) & 0x0000ff0000000000ULL) |
-           ((value << 8)  & 0x000000ff00000000ULL) |
-           ((value >> 8)  & 0x00000000ff000000ULL) |
-           ((value >> 24) & 0x0000000000ff0000ULL) |
-           ((value >> 40) & 0x000000000000ff00ULL) |
-           ((value >> 56) & 0x00000000000000ffULL);
-}
-
-static double swap_double(double value) {
-    union { double d; uint64_t i; } u;
-    u.d = value;
-    u.i = swap_uint64(u.i);
-    return u.d;
-}
 
 // =============================================================================
 // READER CREATION AND DESTRUCTION
@@ -72,7 +35,6 @@ KryonKrbReader *kryon_krb_reader_create_file(const char *filename) {
     
     memset(reader, 0, sizeof(KryonKrbReader));
     reader->file = file;
-    reader->big_endian = is_big_endian();
     
     return reader;
 }
@@ -93,7 +55,6 @@ KryonKrbReader *kryon_krb_reader_create_memory(const uint8_t *data, size_t size)
     reader->data = data;
     reader->data_size = size;
     reader->position = 0;
-    reader->big_endian = is_big_endian();
     
     return reader;
 }
@@ -149,43 +110,78 @@ static bool read_bytes(KryonKrbReader *reader, void *buffer, size_t size) {
 }
 
 static bool read_uint8(KryonKrbReader *reader, uint8_t *value) {
-    return read_bytes(reader, value, sizeof(uint8_t));
+    if (reader->data) {
+        return kryon_read_uint8(reader->data, &reader->position, reader->data_size, value);
+    } else {
+        uint8_t temp_buffer[sizeof(uint8_t)];
+        size_t bytes_read = fread(temp_buffer, 1, sizeof(uint8_t), reader->file);
+        if (bytes_read != sizeof(uint8_t)) {
+            strcpy(reader->error_message, "Failed to read uint8 from file");
+            return false;
+        }
+        size_t offset = 0;
+        return kryon_read_uint8(temp_buffer, &offset, sizeof(temp_buffer), value);
+    }
 }
 
 static bool read_uint16(KryonKrbReader *reader, uint16_t *value) {
-    if (!read_bytes(reader, value, sizeof(uint16_t))) return false;
-    
-    if (reader->big_endian) {
-        *value = swap_uint16(*value);
+    if (reader->data) {
+        return kryon_read_uint16(reader->data, &reader->position, reader->data_size, value);
+    } else {
+        uint8_t temp_buffer[sizeof(uint16_t)];
+        size_t bytes_read = fread(temp_buffer, 1, sizeof(uint16_t), reader->file);
+        if (bytes_read != sizeof(uint16_t)) {
+            strcpy(reader->error_message, "Failed to read uint16 from file");
+            return false;
+        }
+        size_t offset = 0;
+        return kryon_read_uint16(temp_buffer, &offset, sizeof(temp_buffer), value);
     }
-    return true;
 }
 
 static bool read_uint32(KryonKrbReader *reader, uint32_t *value) {
-    if (!read_bytes(reader, value, sizeof(uint32_t))) return false;
-    
-    if (reader->big_endian) {
-        *value = swap_uint32(*value);
+    if (reader->data) {
+        return kryon_read_uint32(reader->data, &reader->position, reader->data_size, value);
+    } else {
+        uint8_t temp_buffer[sizeof(uint32_t)];
+        size_t bytes_read = fread(temp_buffer, 1, sizeof(uint32_t), reader->file);
+        if (bytes_read != sizeof(uint32_t)) {
+            strcpy(reader->error_message, "Failed to read uint32 from file");
+            return false;
+        }
+        size_t offset = 0;
+        return kryon_read_uint32(temp_buffer, &offset, sizeof(temp_buffer), value);
     }
-    return true;
 }
 
 static bool read_uint64(KryonKrbReader *reader, uint64_t *value) {
-    if (!read_bytes(reader, value, sizeof(uint64_t))) return false;
-    
-    if (reader->big_endian) {
-        *value = swap_uint64(*value);
+    if (reader->data) {
+        return kryon_read_uint64(reader->data, &reader->position, reader->data_size, value);
+    } else {
+        uint8_t temp_buffer[sizeof(uint64_t)];
+        size_t bytes_read = fread(temp_buffer, 1, sizeof(uint64_t), reader->file);
+        if (bytes_read != sizeof(uint64_t)) {
+            strcpy(reader->error_message, "Failed to read uint64 from file");
+            return false;
+        }
+        size_t offset = 0;
+        return kryon_read_uint64(temp_buffer, &offset, sizeof(temp_buffer), value);
     }
-    return true;
 }
 
 static bool read_double(KryonKrbReader *reader, double *value) {
-    if (!read_bytes(reader, value, sizeof(double))) return false;
-    
-    if (reader->big_endian) {
-        *value = swap_double(*value);
+    if (reader->data) {
+        return kryon_read_bytes(reader->data, &reader->position, reader->data_size, value, sizeof(double));
+    } else {
+        uint8_t temp_buffer[sizeof(double)];
+        size_t bytes_read = fread(temp_buffer, 1, sizeof(double), reader->file);
+        if (bytes_read != sizeof(double)) {
+            strcpy(reader->error_message, "Failed to read double from file");
+            return false;
+        }
+        size_t offset = 0;
+        return kryon_read_bytes(temp_buffer, &offset, sizeof(temp_buffer), value, sizeof(double));
     }
-    return true;
 }
 
 static bool read_string(KryonKrbReader *reader, char **out_string, uint16_t length) {

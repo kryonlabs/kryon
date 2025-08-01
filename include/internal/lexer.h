@@ -98,6 +98,8 @@ typedef enum {
     KRYON_TOKEN_IMPORT_DIRECTIVE,    // @import
     KRYON_TOKEN_EXPORT_DIRECTIVE,    // @export
     KRYON_TOKEN_INCLUDE_DIRECTIVE,   // @include
+    KRYON_TOKEN_METADATA_DIRECTIVE,  // @metadata
+    KRYON_TOKEN_EVENT_DIRECTIVE,     // @event
     
     // Template interpolation
     KRYON_TOKEN_TEMPLATE_START,      // ${
@@ -298,6 +300,20 @@ const KryonToken *kryon_lexer_get_tokens(const KryonLexer *lexer, size_t *out_co
  * @return Error message, or NULL if no error
  */
 const char *kryon_lexer_get_error(const KryonLexer *lexer);
+
+/**
+ * @brief Check if a token type is a directive
+ * @param type Token type to check
+ * @return true if the token is a directive, false otherwise
+ */
+bool kryon_token_is_directive(KryonTokenType type);
+
+/**
+ * @brief Check if a token type is a unit
+ * @param type Token type to check
+ * @return true if the token is a unit, false otherwise
+ */
+bool kryon_token_is_unit(KryonTokenType type);
 
 /**
  * @brief Get lexer statistics

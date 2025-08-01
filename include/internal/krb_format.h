@@ -86,6 +86,8 @@ typedef enum {
     KRYON_ELEMENT_SECTION = 0x2D,
     KRYON_ELEMENT_ARTICLE = 0x2E,
     KRYON_ELEMENT_ASIDE = 0x2F,
+    // Directive elements
+    KRYON_ELEMENT_EVENT_DIRECTIVE = 0x30,
     // Extended elements up to 0xFF
     KRYON_ELEMENT_CUSTOM = 0xFF
 } KryonElementType;
@@ -105,7 +107,8 @@ typedef enum {
     KRYON_PROPERTY_FONT = 0x0B,
     KRYON_PROPERTY_ARRAY = 0x0C,
     KRYON_PROPERTY_OBJECT = 0x0D,
-    KRYON_PROPERTY_REFERENCE = 0x0E
+    KRYON_PROPERTY_REFERENCE = 0x0E,
+    KRYON_PROPERTY_EVENT_HANDLER = 0x0F
 } KryonPropertyType;
 
 // =============================================================================

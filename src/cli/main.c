@@ -17,7 +17,6 @@
 int compile_command(int argc, char *argv[]);
 int run_command(int argc, char *argv[]);
 int dev_command(int argc, char *argv[]);
-int build_command(int argc, char *argv[]);
 int debug_command(int argc, char *argv[]);
 int package_command(int argc, char *argv[]);
 
@@ -28,7 +27,6 @@ static void print_usage(const char *program_name) {
     printf("  compile <file.kry>     Compile KRY file to KRB binary\n");
     printf("  run <file.krb>         Run KRB application\n");
     printf("  dev <file.kry>         Development mode with hot reload\n");
-    printf("  build <project>        Build complete project\n");
     printf("  debug <file.krb>       Debug KRB application\n");
     printf("  package <project>      Package for distribution\n");
     printf("  --help, -h             Show this help message\n");
@@ -59,7 +57,7 @@ static void print_version(void) {
 
 int main(int argc, char *argv[]) {
     // Initialize memory management
-    kryon_memory_ensure_init();
+    // Memory is managed by libraries, no explicit init needed
     
     if (argc < 2) {
         print_usage(argv[0]);
@@ -86,8 +84,6 @@ int main(int argc, char *argv[]) {
         return run_command(argc - 1, argv + 1);
     } else if (strcmp(command, "dev") == 0) {
         return dev_command(argc - 1, argv + 1);
-    } else if (strcmp(command, "build") == 0) {
-        return build_command(argc - 1, argv + 1);
     } else if (strcmp(command, "debug") == 0) {
         return debug_command(argc - 1, argv + 1);
     } else if (strcmp(command, "package") == 0) {

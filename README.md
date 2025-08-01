@@ -10,7 +10,7 @@ Kryon-C is a complete implementation of the Kryon UI system, providing:
 - **Cross-Platform Runtime** - Execute Kryon applications on Web, Desktop, Mobile, Terminal
 - **Multi-Backend Rendering** - WebGL, WGPU, Raylib, Terminal, HTML, Software rendering
 - **Multi-Language Scripting** - Lua, JavaScript, Python, Kryon Lisp integration
-- **Modern Layout Engine** - Flexbox and CSS Grid support
+- **Flutter-Inspired Layout Engine** - Column/Row/Stack widget system with dynamic transformation
 - **Comprehensive Tooling** - CLI, debugger, profiler, formatter, language server
 
 ## 📁 **Project Structure**
@@ -257,6 +257,8 @@ make docs
 1. File → Open → CMake
 2. Select CMakeLists.txt
 
+**⚠️ Important**: The layout system is being enhanced with a Flutter-inspired widget system internally, while maintaining the current .kry syntax. See [LAYOUT_SYSTEM_ROADMAP.md](LAYOUT_SYSTEM_ROADMAP.md) for implementation details.
+
 ## 📚 **Documentation**
 
 Comprehensive documentation is available in the `docs/` directory:
@@ -280,7 +282,7 @@ Comprehensive documentation is available in the `docs/` directory:
 - ✅ **Cross-Platform** - Web, Windows, macOS, Linux, iOS, Android, Terminal
 - ✅ **Multi-Renderer** - WebGL, WGPU, Raylib, Terminal, HTML, Software
 - ✅ **Multi-Script** - Lua, JavaScript, Python, Kryon Lisp integration
-- ✅ **Layout Engine** - Flexbox and CSS Grid support
+- ✅ **Layout Engine** - Flutter-inspired widget system with dynamic transformation
 - ✅ **Event System** - Comprehensive input and gesture handling
 - ✅ **State Management** - Global stores and reactive state
 - ✅ **Network Support** - HTTP, WebSocket, fetch API
@@ -310,7 +312,7 @@ Comprehensive documentation is available in the `docs/` directory:
 | **Runtime Core** | 🔴 Not Started | Core runtime execution system |
 | **Platform Abstraction** | 🔴 Not Started | Cross-platform APIs |
 | **Hardware Renderers** | 🔴 Not Started | WebGL, SDL2, Raylib renderers |
-| **Layout Engine** | 🔴 Not Started | Flexbox and CSS Grid |
+| **Layout Engine** | 🔴 Not Started | Flutter-inspired widget system |
 | **Script Integration** | 🔴 Not Started | Lua, JavaScript, Python |
 | **CLI Tools** | 🔴 Not Started | Command line interface |
 

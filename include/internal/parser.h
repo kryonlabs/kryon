@@ -56,6 +56,13 @@ typedef enum {
     KRYON_AST_IMPORT_DIRECTIVE,      // @import
     KRYON_AST_EXPORT_DIRECTIVE,      // @export
     KRYON_AST_INCLUDE_DIRECTIVE,     // @include
+    KRYON_AST_METADATA_DIRECTIVE,    // @metadata
+    KRYON_AST_EVENT_DIRECTIVE,       // @event
+    
+    // Widget definitions
+    KRYON_AST_DEFINE,                // Define custom widget
+    KRYON_AST_PROPERTIES,            // Properties block
+    KRYON_AST_SCRIPT,                // @script block
     
     // Expressions
     KRYON_AST_LITERAL,               // String, number, boolean literals
@@ -187,6 +194,28 @@ struct KryonASTNode {
             char *message;           // Error message
             const KryonToken *token; // Token that caused error
         } error;
+        
+        struct {
+            char *name;              // Define widget name
+            KryonASTNode *properties; // Properties block
+            KryonASTNode **children; // Child elements
+            size_t child_count;
+            size_t child_capacity;
+            KryonASTNode **scripts;  // Script blocks
+            size_t script_count;
+            size_t script_capacity;
+        } define;
+        
+        struct {
+            KryonASTNode **properties; // Property definitions
+            size_t property_count;
+            size_t property_capacity;
+        } properties;
+        
+        struct {
+            char *language;          // Script language (e.g., "lua")
+            char *code;              // Script code
+        } script;
     } data;
     
     // Metadata

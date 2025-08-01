@@ -3,8 +3,7 @@
  * @brief Kryon Text Layout Engine Implementation
  */
 
-#include "internal/layout.h"
-#include "internal/graphics.h"
+#include "kryon/widget_system.h"
 #include "internal/memory.h"
 #include <string.h>
 #include <stdio.h>

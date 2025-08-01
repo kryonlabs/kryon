@@ -576,6 +576,7 @@ const char *kryon_krb_element_type_name(KryonElementType type) {
         case KRYON_ELEMENT_SECTION: return "section";
         case KRYON_ELEMENT_ARTICLE: return "article";
         case KRYON_ELEMENT_ASIDE: return "aside";
+        case KRYON_ELEMENT_EVENT_DIRECTIVE: return "event_directive";
         case KRYON_ELEMENT_CUSTOM: return "custom";
         default: return "unknown";
     }
@@ -597,6 +598,7 @@ const char *kryon_krb_property_type_name(KryonPropertyType type) {
         case KRYON_PROPERTY_ARRAY: return "array";
         case KRYON_PROPERTY_OBJECT: return "object";
         case KRYON_PROPERTY_REFERENCE: return "reference";
+        case KRYON_PROPERTY_EVENT_HANDLER: return "event_handler";
         default: return "unknown";
     }
 }

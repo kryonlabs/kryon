@@ -3,26 +3,19 @@
     version: "1.0.0"
 }
 
-@style "welcome_card" {
-    borderWidth: 1
-    backgroundColor: "#191970FF"
-    borderColor: "#0099FFFF"
-    display: "flex"
-    flexDirection: "column"
-    alignItems: "center"
-    justifyContent: "center"
-    padding: 20px
-}
-
 Container { 
     posX: 200
     posY: 100
     width: 200
     height: 100
-    class: "welcome_card"
+    backgroundColor: "#191970FF"
+    borderColor: "#0099FFFF"
+    borderWidth: 1
+    padding: 20px
+    contentAlignment: "center"
 
     Text {
         text: "Hello World"
-        textAlignment: "center"
+        color: "yellow"
     }
 }

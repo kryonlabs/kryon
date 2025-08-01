@@ -17,17 +17,6 @@
 #include <time.h>
 #include <assert.h>
 
-// String duplication utility (since we don't have kryon_strdup)
-static char *kryon_strdup(const char *str) {
-    if (!str) return NULL;
-    size_t len = strlen(str) + 1;
-    char *copy = kryon_alloc(len);
-    if (copy) {
-        memcpy(copy, str, len);
-    }
-    return copy;
-}
-
 // =============================================================================
 // FORWARD DECLARATIONS
 // =============================================================================
@@ -193,6 +182,13 @@ void kryon_parser_destroy(KryonParser *parser) {
                         break;
                     case KRYON_AST_ERROR:
                         kryon_free(node->data.error.message);
+                        break;
+                    case KRYON_AST_METADATA_DIRECTIVE:
+                    case KRYON_AST_EVENT_DIRECTIVE:
+                        // These use element structure for properties
+                        kryon_free(node->data.element.element_type);
+                        kryon_free(node->data.element.children);
+                        kryon_free(node->data.element.properties);
                         break;
                     default:
                         break;
@@ -465,11 +461,40 @@ static KryonASTNode *parse_literal(KryonParser *parser) {
             literal->data.literal.value = kryon_ast_value_string(token->value.string_value);
             break;
         case KRYON_TOKEN_INTEGER:
-            literal->data.literal.value = kryon_ast_value_integer(token->value.int_value);
+        case KRYON_TOKEN_FLOAT: {
+            // Check if followed by a unit
+            if (peek(parser) && kryon_token_is_unit(peek(parser)->type)) {
+                const KryonToken *unit_token = advance(parser);
+                
+                // Create a string value combining number and unit
+                char value_with_unit[64];
+                char unit_str[16];
+                
+                // Copy unit lexeme (it's not null-terminated)
+                size_t unit_len = unit_token->lexeme_length < sizeof(unit_str) - 1 ? 
+                                 unit_token->lexeme_length : sizeof(unit_str) - 1;
+                memcpy(unit_str, unit_token->lexeme, unit_len);
+                unit_str[unit_len] = '\0';
+                
+                if (token->type == KRYON_TOKEN_INTEGER) {
+                    snprintf(value_with_unit, sizeof(value_with_unit), "%lld%s", 
+                            token->value.int_value, unit_str);
+                } else {
+                    snprintf(value_with_unit, sizeof(value_with_unit), "%f%s", 
+                            token->value.float_value, unit_str);
+                }
+                
+                literal->data.literal.value = kryon_ast_value_string(value_with_unit);
+            } else {
+                // No unit, just the number
+                if (token->type == KRYON_TOKEN_INTEGER) {
+                    literal->data.literal.value = kryon_ast_value_integer(token->value.int_value);
+                } else {
+                    literal->data.literal.value = kryon_ast_value_float(token->value.float_value);
+                }
+            }
             break;
-        case KRYON_TOKEN_FLOAT:
-            literal->data.literal.value = kryon_ast_value_float(token->value.float_value);
-            break;
+        }
         case KRYON_TOKEN_BOOLEAN_TRUE:
             literal->data.literal.value = kryon_ast_value_boolean(true);
             break;
@@ -536,12 +561,71 @@ static KryonASTNode *parse_template(KryonParser *parser) {
 }
 
 static KryonASTNode *parse_directive(KryonParser *parser) {
-    // Simplified directive parsing - just consume the directive for now
     const KryonToken *token = advance(parser);
     
-    KryonASTNode *directive = kryon_ast_create_node(parser, KRYON_AST_STORE_DIRECTIVE,
-                                                   &token->location);
-    // TODO: Implement full directive parsing
+    // Map token type to AST node type
+    KryonASTNodeType ast_type;
+    switch (token->type) {
+        case KRYON_TOKEN_STORE_DIRECTIVE:
+            ast_type = KRYON_AST_STORE_DIRECTIVE;
+            break;
+        case KRYON_TOKEN_WATCH_DIRECTIVE:
+            ast_type = KRYON_AST_WATCH_DIRECTIVE;
+            break;
+        case KRYON_TOKEN_ON_MOUNT_DIRECTIVE:
+            ast_type = KRYON_AST_ON_MOUNT_DIRECTIVE;
+            break;
+        case KRYON_TOKEN_ON_UNMOUNT_DIRECTIVE:
+            ast_type = KRYON_AST_ON_UNMOUNT_DIRECTIVE;
+            break;
+        case KRYON_TOKEN_IMPORT_DIRECTIVE:
+            ast_type = KRYON_AST_IMPORT_DIRECTIVE;
+            break;
+        case KRYON_TOKEN_EXPORT_DIRECTIVE:
+            ast_type = KRYON_AST_EXPORT_DIRECTIVE;
+            break;
+        case KRYON_TOKEN_INCLUDE_DIRECTIVE:
+            ast_type = KRYON_AST_INCLUDE_DIRECTIVE;
+            break;
+        case KRYON_TOKEN_METADATA_DIRECTIVE:
+            ast_type = KRYON_AST_METADATA_DIRECTIVE;
+            break;
+        case KRYON_TOKEN_EVENT_DIRECTIVE:
+            ast_type = KRYON_AST_EVENT_DIRECTIVE;
+            break;
+        default:
+            parser_error(parser, "Unknown directive type");
+            return NULL;
+    }
+    
+    KryonASTNode *directive = kryon_ast_create_node(parser, ast_type, &token->location);
+    if (!directive) {
+        parser_error(parser, "Failed to create directive AST node");
+        return NULL;
+    }
+    
+    // Parse directive body (properties in braces)
+    if (check_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
+        advance(parser); // consume '{'
+        
+        while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
+            KryonASTNode *property = parse_property(parser);
+            if (property) {
+                kryon_ast_add_property(directive, property);
+            } else {
+                // Skip to next property or end of block
+                while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) &&
+                       !check_token(parser, KRYON_TOKEN_IDENTIFIER) &&
+                       !at_end(parser)) {
+                    advance(parser);
+                }
+            }
+        }
+        
+        if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
+            parser_error(parser, "Expected '}' after directive body");
+        }
+    }
     
     return directive;
 }
@@ -719,7 +803,7 @@ bool kryon_ast_add_child(KryonASTNode *parent, KryonASTNode *child) {
     if (parent->data.element.child_count >= parent->data.element.child_capacity) {
         size_t new_capacity = parent->data.element.child_capacity ?
                              parent->data.element.child_capacity * 2 : 4;
-        KryonASTNode **new_children = kryon_realloc(parent->data.element.children,
+        KryonASTNode **new_children = realloc(parent->data.element.children,
                                                    new_capacity * sizeof(KryonASTNode*));
         if (!new_children) {
             return false;
@@ -739,8 +823,11 @@ bool kryon_ast_add_property(KryonASTNode *parent, KryonASTNode *property) {
         return false;
     }
     
-    // Only elements and styles can have properties
-    if (parent->type != KRYON_AST_ELEMENT && parent->type != KRYON_AST_STYLE_BLOCK) {
+    // Only elements, styles, metadata, and event directives can have properties
+    if (parent->type != KRYON_AST_ELEMENT && 
+        parent->type != KRYON_AST_STYLE_BLOCK && 
+        parent->type != KRYON_AST_METADATA_DIRECTIVE &&
+        parent->type != KRYON_AST_EVENT_DIRECTIVE) {
         return false;
     }
     
@@ -749,7 +836,7 @@ bool kryon_ast_add_property(KryonASTNode *parent, KryonASTNode *property) {
     size_t *property_count;
     size_t *property_capacity;
     
-    if (parent->type == KRYON_AST_ELEMENT) {
+    if (parent->type == KRYON_AST_ELEMENT || parent->type == KRYON_AST_METADATA_DIRECTIVE || parent->type == KRYON_AST_EVENT_DIRECTIVE) {
         properties = &parent->data.element.properties;
         property_count = &parent->data.element.property_count;
         property_capacity = &parent->data.element.property_capacity;
@@ -762,7 +849,7 @@ bool kryon_ast_add_property(KryonASTNode *parent, KryonASTNode *property) {
     // Expand property array if needed
     if (*property_count >= *property_capacity) {
         size_t new_capacity = *property_capacity ? *property_capacity * 2 : 4;
-        KryonASTNode **new_properties = kryon_realloc(*properties,
+        KryonASTNode **new_properties = realloc(*properties,
                                                      new_capacity * sizeof(KryonASTNode*));
         if (!new_properties) {
             return false;

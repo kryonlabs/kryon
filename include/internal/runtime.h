@@ -22,6 +22,8 @@ extern "C" {
 #include <stdio.h>
 #include "internal/krb_format.h"
 #include "internal/memory.h"
+#include "internal/events.h"
+#include "internal/renderer_interface.h"
 
 // =============================================================================
 // FORWARD DECLARATIONS
@@ -33,8 +35,22 @@ typedef struct KryonElement KryonElement;
 typedef struct KryonProperty KryonProperty;
 typedef struct KryonStyle KryonStyle;
 typedef struct KryonState KryonState;
-typedef struct KryonEventHandler KryonEventHandler;
 typedef struct KryonRenderContext KryonRenderContext;
+typedef struct KryonEventSystem KryonEventSystem;
+
+// =============================================================================
+// EVENT HANDLER STRUCTURE
+// =============================================================================
+
+/**
+ * @brief Event handler structure
+ */
+typedef struct {
+    KryonEventType type;          // Event type to handle
+    KryonEventHandler handler;    // Handler function (from events.h)
+    void *user_data;              // User data for handler
+    bool capture;                 // Use capture phase?
+} ElementEventHandler;
 
 // =============================================================================
 // RUNTIME CONFIGURATION
@@ -120,7 +136,7 @@ struct KryonElement {
     void *user_data;                 // User-defined data
     
     // Events
-    KryonEventHandler **handlers;    // Event handlers
+    ElementEventHandler **handlers;  // Event handlers
     size_t handler_count;            // Number of handlers
     size_t handler_capacity;         // Handler array capacity
     
@@ -221,96 +237,7 @@ struct KryonState {
     KryonState *parent;           // Parent state node
 };
 
-// =============================================================================
-// EVENT SYSTEM
-// =============================================================================
-
-/**
- * @brief Event types
- */
-typedef enum {
-    // Mouse events
-    KRYON_EVENT_CLICK = 0,
-    KRYON_EVENT_DOUBLE_CLICK,
-    KRYON_EVENT_MOUSE_DOWN,
-    KRYON_EVENT_MOUSE_UP,
-    KRYON_EVENT_MOUSE_MOVE,
-    KRYON_EVENT_MOUSE_ENTER,
-    KRYON_EVENT_MOUSE_LEAVE,
-    
-    // Keyboard events
-    KRYON_EVENT_KEY_DOWN,
-    KRYON_EVENT_KEY_UP,
-    KRYON_EVENT_KEY_PRESS,
-    
-    // Focus events
-    KRYON_EVENT_FOCUS,
-    KRYON_EVENT_BLUR,
-    
-    // Form events
-    KRYON_EVENT_CHANGE,
-    KRYON_EVENT_INPUT,
-    KRYON_EVENT_SUBMIT,
-    
-    // Touch events
-    KRYON_EVENT_TOUCH_START,
-    KRYON_EVENT_TOUCH_MOVE,
-    KRYON_EVENT_TOUCH_END,
-    
-    // Custom events
-    KRYON_EVENT_CUSTOM
-} KryonEventType;
-
-/**
- * @brief Event structure
- */
-typedef struct {
-    KryonEventType type;          // Event type
-    KryonElement *target;         // Target element
-    KryonElement *current_target; // Current target (for bubbling)
-    double timestamp;             // Event timestamp
-    bool bubbles;                 // Does event bubble?
-    bool cancelable;              // Can event be cancelled?
-    bool default_prevented;       // Was default action prevented?
-    bool propagation_stopped;     // Was propagation stopped?
-    
-    // Event-specific data
-    union {
-        struct {
-            float x, y;           // Mouse position
-            uint8_t button;       // Mouse button
-            bool ctrl, alt, shift, meta; // Modifier keys
-        } mouse;
-        
-        struct {
-            uint32_t key_code;    // Key code
-            char *key;            // Key string
-            bool ctrl, alt, shift, meta; // Modifier keys
-        } keyboard;
-        
-        struct {
-            float x, y;           // Touch position
-            uint32_t identifier;  // Touch identifier
-        } touch;
-        
-        void *custom_data;        // Custom event data
-    } data;
-} KryonEvent;
-
-/**
- * @brief Event handler function type
- */
-typedef void (*KryonEventHandlerFn)(const KryonEvent *event, void *user_data);
-
-/**
- * @brief Event handler structure
- */
-struct KryonEventHandler {
-    KryonEventType type;          // Event type to handle
-    KryonEventHandlerFn handler;  // Handler function
-    void *user_data;              // User data for handler
-    bool capture;                 // Use capture phase?
-};
+// Event types are defined in internal/events.h
 
 // =============================================================================
 // RUNTIME STRUCTURE
@@ -341,7 +268,8 @@ struct KryonRuntime {
     size_t style_capacity;        // Style array capacity
     
     // Event system
-    KryonEvent *event_queue;      // Event queue
+    KryonEventSystem *event_system; // Event system instance
+    KryonEvent *event_queue;      // Event queue (legacy)
     size_t event_count;           // Events in queue
     size_t event_capacity;        // Queue capacity
     size_t event_read_pos;        // Queue read position
@@ -500,7 +428,7 @@ const void *kryon_element_get_property(const KryonElement *element, uint16_t pro
  * @return true on success
  */
 bool kryon_element_add_handler(KryonElement *element, KryonEventType type,
-                              KryonEventHandlerFn handler, void *user_data, bool capture);
+                              KryonEventHandler handler, void *user_data, bool capture);
 
 /**
  * @brief Remove event handler from element
@@ -510,7 +438,7 @@ bool kryon_element_add_handler(KryonElement *element, KryonEventType type,
  * @return true if handler was removed
  */
 bool kryon_element_remove_handler(KryonElement *element, KryonEventType type,
-                                 KryonEventHandlerFn handler);
+                                 KryonEventHandler handler);
 
 /**
  * @brief Mark element for layout update
@@ -619,6 +547,15 @@ const char **kryon_runtime_get_errors(const KryonRuntime *runtime, size_t *out_c
  * @param runtime Runtime instance
  */
 void kryon_runtime_clear_errors(KryonRuntime *runtime);
+
+/**
+ * @brief Convert element tree to render commands
+ * @param root Root element to convert
+ * @param commands Output array for render commands
+ * @param command_count Output for number of commands generated
+ * @param max_commands Maximum number of commands in array
+ */
+void kryon_element_tree_to_render_commands(KryonElement* root, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 
 // =============================================================================
 // CONFIGURATION

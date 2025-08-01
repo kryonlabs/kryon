@@ -11,6 +11,7 @@
 #include "internal/memory.h"
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
 
 // =============================================================================
 // OPTIMIZATION PASS IMPLEMENTATIONS
@@ -177,7 +178,7 @@ bool kryon_codegen_check_version(const uint8_t *binary_data, size_t size,
     
     // Check magic number
     uint32_t magic = *(uint32_t*)binary_data;
-    if (magic != 0x4B524200) { // "KRB\0"
+    if (magic != 0x4B52594E) { // "KRYN"
         return false;
     }
     
@@ -202,7 +203,7 @@ void kryon_codegen_print_binary(const uint8_t *binary_data, size_t size, FILE *f
     if (size >= 4) {
         uint32_t magic = *(uint32_t*)binary_data;
         fprintf(file, "Magic: 0x%08X", magic);
-        if (magic == 0x4B524200) {
+        if (magic == 0x4B52594E) {
             fprintf(file, " (valid KRB)\n");
         } else {
             fprintf(file, " (invalid)\n");

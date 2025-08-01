@@ -180,7 +180,7 @@ const uint8_t *kryon_codegen_get_binary(const KryonCodeGenerator *codegen, size_
  * @param filename Output file path
  * @return true on success, false on error
  */
-bool kryon_codegen_write_file(const KryonCodeGenerator *codegen, const char *filename);
+bool kryon_write_file(const KryonCodeGenerator *codegen, const char *filename);
 
 /**
  * @brief Get generation errors
@@ -312,7 +312,7 @@ size_t kryon_codegen_fold_constants(KryonCodeGenerator *codegen, KryonASTNode *a
  * @param codegen Code generator
  * @return true on success, false on error
  */
-bool kryon_codegen_write_header(KryonCodeGenerator *codegen);
+bool kryon_write_header(KryonCodeGenerator *codegen);
 
 /**
  * @brief Generate metadata section
@@ -320,14 +320,14 @@ bool kryon_codegen_write_header(KryonCodeGenerator *codegen);
  * @param ast_root Root AST node
  * @return true on success, false on error
  */
-bool kryon_codegen_write_metadata(KryonCodeGenerator *codegen, const KryonASTNode *ast_root);
+bool kryon_write_metadata(KryonCodeGenerator *codegen, const KryonASTNode *ast_root);
 
 /**
  * @brief Generate string table
  * @param codegen Code generator
  * @return true on success, false on error
  */
-bool kryon_codegen_write_string_table(KryonCodeGenerator *codegen);
+bool kryon_write_string_table(KryonCodeGenerator *codegen);
 
 /**
  * @brief Generate style definitions
@@ -343,7 +343,7 @@ bool kryon_codegen_write_styles(KryonCodeGenerator *codegen, const KryonASTNode 
  * @param ast_root Root AST node
  * @return true on success, false on error
  */
-bool kryon_codegen_write_elements(KryonCodeGenerator *codegen, const KryonASTNode *ast_root);
+bool kryon_write_elements(KryonCodeGenerator *codegen, const KryonASTNode *ast_root);
 
 // =============================================================================
 // VALIDATION

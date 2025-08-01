@@ -238,15 +238,21 @@ Spec → Design → Implement → Test → Document → Integrate → Optimize
 - ✅ Element tree construction and management
 - ✅ Basic reactive system functioning
 
-### Week 15-16: Software Renderer
-**Goal**: Basic rendering for development and testing
+### Week 15-16: Renderer Integration
+**Goal**: Integrate with existing proven renderers
 
 #### Tasks:
-- [ ] **Software Renderer** (`src/renderers/software/`)
-  - Pixel buffer rendering implementation
-  - Basic primitive drawing (rectangles, text)
-  - Color management and blending
-  - Text rendering with basic fonts
+- [ ] **Renderer Interface** (`src/renderers/`)
+  - Common renderer trait/interface
+  - Renderer capability detection
+  - Dynamic renderer selection
+  - Performance metrics collection
+
+- [ ] **Clay Renderer Integration** (`src/renderers/`)
+  - SDL2 renderer integration
+  - Raylib renderer integration  
+  - HTML/Web renderer integration
+  - Terminal renderer integration
 
 - [ ] **Layout Engine Basic** (`src/layout/`)
   - Simple layout calculations
@@ -261,7 +267,7 @@ Spec → Design → Implement → Test → Document → Integrate → Optimize
   - Platform abstraction foundation
 
 **Deliverables**:
-- ✅ Software renderer displaying basic UI
+- ✅ Multiple proven renderers integrated
 - ✅ Simple layout working correctly
 - ✅ Basic platform integration complete
 
@@ -295,7 +301,7 @@ Spec → Design → Implement → Test → Document → Integrate → Optimize
 **Phase 3 Milestone**:
 - Complete KRY → KRB → Runtime → Render pipeline
 - Working example applications
-- All platforms supported with software renderer
+- All platforms supported with proven renderers (SDL2, Raylib, HTML, Terminal)
 - Performance baseline established
 
 ---
@@ -334,23 +340,23 @@ Spec → Design → Implement → Test → Document → Integrate → Optimize
 **Goal**: GPU-accelerated rendering backends
 
 #### Tasks:
-- [ ] **WebGL Renderer** (`src/renderers/webgl/`)
-  - WebGL 2.0 implementation
-  - Shader compilation and management
-  - Texture and buffer management
-  - Emscripten integration
+- [ ] **Advanced Renderer Support** (`src/renderers/`)
+  - WebGL integration for web platforms
+  - WGPU integration for modern GPU support
+  - Enhanced Raylib features (3D, advanced effects)
+  - Cairo renderer for high-quality vector graphics
 
-- [ ] **WGPU Renderer** (`src/renderers/wgpu/`)
-  - Modern graphics API implementation
-  - Cross-platform GPU support
-  - Compute shader integration
-  - Performance optimization
+- [ ] **Renderer Optimization** (`src/renderers/`)
+  - GPU-accelerated operations where available
+  - Batched rendering for performance
+  - Memory-efficient resource management  
+  - Cross-platform shader support
 
-- [ ] **Raylib Renderer** (`src/renderers/raylib/`)
-  - Raylib integration and wrapper
-  - 2D and 3D rendering support
-  - Asset loading and management
-  - Cross-platform compatibility
+- [ ] **Specialized Renderers** (`src/renderers/`)
+  - Terminal renderer with rich text support
+  - PDF export renderer via Cairo
+  - SVG export capabilities
+  - Headless rendering for testing
 
 **Deliverables**:
 - ✅ Hardware-accelerated rendering working

@@ -111,6 +111,11 @@ KryonRenderer* kryon_raylib_renderer_create(void* surface) {
     return renderer;
 }
 
+// Factory function for renderer system
+KryonRenderer* kryon_renderer_create_raylib(void) {
+    return kryon_raylib_renderer_create(NULL);
+}
+
 // =============================================================================
 // RENDERER IMPLEMENTATION
 // =============================================================================

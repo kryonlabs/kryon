@@ -1,0 +1,236 @@
+@variables {
+    selectedWidget: null
+    visible: true
+}
+
+@event "keyboard" {
+    "Ctrl+I": toggleInspector()
+}
+
+@event "mouse" {
+    "LeftClick": selectWidget()
+}
+
+Define DebugInspector {
+    Container {
+        id: "debug_inspector"
+        width: 100%
+        height: 200
+        posY: $root.height - 200
+        backgroundColor: "#28282870"
+        borderColor: "#646464FF"
+        borderWidth: 1
+        visible: $visible
+        
+        Text {
+            id: "inspector_title"
+            text: "Widget Inspector"
+            color: "white"
+            fontSize: 16
+            posX: 10
+            posY: 10
+        }
+        
+        Text {
+            id: "inspector_help"
+            text: "Ctrl+I: Toggle"
+            color: "lightgray"
+            fontSize: 12
+            posX: 10
+            posY: 35
+        }
+        
+        Text {
+            id: "widget_type"
+            text: "Type: None Selected"
+            color: "white"
+            fontSize: 14
+            posX: 10
+            posY: 70
+        }
+        
+        Text {
+            id: "widget_position"
+            text: "Position: -"
+            color: "lightgray"
+            fontSize: 12
+            posX: 10
+            posY: 95
+        }
+        
+        Text {
+            id: "widget_size"
+            text: "Size: -"
+            color: "lightgray"
+            fontSize: 12
+            posX: 10
+            posY: 115
+        }
+        
+        Text {
+            id: "click_instruction"
+            text: "Click on a widget to inspect"
+            color: "gray"
+            fontSize: 12
+            posX: 10
+            posY: 500
+        }
+    }
+
+}
+
+@function "lua" selectWidget() {
+    -- Get mouse position from the current event
+    local mouseX, mouseY = getMousePosition()
+    
+    -- Find the topmost widget at the mouse position
+    local clickedWidget = getWidgetAtPosition(mouseX, mouseY)
+    
+    if clickedWidget then
+        -- Don't select the inspector itself or its children
+        if clickedWidget.id == "debug_inspector" or 
+           isChildOf(clickedWidget, "debug_inspector") then
+            return
+        end
+        
+        -- Update selected widget
+        selectedWidget = {
+            id = clickedWidget.id or "unknown",
+            type = clickedWidget.type or "unknown",
+            x = clickedWidget.posX or clickedWidget.x or 0,
+            y = clickedWidget.posY or clickedWidget.y or 0,
+            width = clickedWidget.width or 0,
+            height = clickedWidget.height or 0,
+            visible = clickedWidget.visible or true,
+            element = clickedWidget
+        }
+        
+        -- Highlight the selected widget
+        highlightWidget(clickedWidget)
+        
+        -- Update the inspector display
+        updateInspectorContent()
+        
+        print("Selected widget: " .. selectedWidget.type .. " (" .. selectedWidget.id .. ")")
+    else
+        -- Clear selection if clicked on empty space
+        selectedWidget = null
+        clearWidgetHighlight()
+        updateInspectorContent()
+    end
+}
+
+@function "lua" toggleInspector() {
+    local inspector = getElementById("debug_inspector")
+    if inspector then
+        local currentVisible = inspector:getVisible()
+        inspector:setVisible(not currentVisible)
+    end
+}
+
+@function "lua" updateInspectorContent() {
+    if not selectedWidget then
+        getElementById("widget_type"):setText("Type: None Selected")
+        getElementById("widget_position"):setText("Position: -")
+        getElementById("widget_size"):setText("Size: -")
+        return
+    end
+    
+    -- Update inspector with selected widget info
+    getElementById("widget_type"):setText("Type: " .. selectedWidget.type)
+    getElementById("widget_position"):setText("Position: " .. selectedWidget.x .. "x" .. selectedWidget.y)
+    getElementById("widget_size"):setText("Size: " .. selectedWidget.width .. "x" .. selectedWidget.height)
+}
+
+@function "lua" getMousePosition() {
+    -- Get current mouse coordinates from the runtime
+    -- This would typically be provided by the event system
+    local event = getCurrentEvent()
+    if event and event.type == "mouse" then
+        return event.x, event.y
+    end
+    return 0, 0
+}
+
+@function "lua" getWidgetAtPosition(x, y) {
+    -- Traverse the widget tree to find the topmost widget at position (x, y)
+    -- This performs hit testing starting from the root
+    local root = getRootWidget()
+    return hitTest(root, x, y)
+}
+
+@function "lua" hitTest(widget, x, y) {
+    if not widget or not widget.visible then
+        return null
+    end
+    
+    -- Check if point is within widget bounds
+    local wx = widget.posX or widget.x or 0
+    local wy = widget.posY or widget.y or 0
+    local ww = widget.width or 0
+    local wh = widget.height or 0
+    
+    if x >= wx and x <= wx + ww and y >= wy and y <= wy + wh then
+        -- Check children first (they render on top)
+        if widget.children then
+            for i = #widget.children, 1, -1 do  -- Reverse order for z-index
+                local child = hitTest(widget.children[i], x, y)
+                if child then
+                    return child
+                end
+            end
+        end
+        
+        -- Return this widget if no child was hit
+        return widget
+    end
+    
+    return null
+}
+
+@function "lua" isChildOf(widget, parentId) {
+    if not widget then return false end
+    
+    local current = widget.parent
+    while current do
+        if current.id == parentId then
+            return true
+        end
+        current = current.parent
+    end
+    
+    return false
+}
+
+@function "lua" highlightWidget(widget) {
+    if not widget then return end
+    
+    -- Store original border properties
+    widget._originalBorderColor = widget.borderColor
+    widget._originalBorderWidth = widget.borderWidth
+    
+    -- Apply highlight border
+    widget.borderColor = "#00FF00FF"  -- Bright green
+    widget.borderWidth = 2
+}
+
+@function "lua" clearWidgetHighlight() {
+    if selectedWidget and selectedWidget.element then
+        local widget = selectedWidget.element
+        
+        -- Restore original border properties
+        if widget._originalBorderColor then
+            widget.borderColor = widget._originalBorderColor
+            widget._originalBorderColor = null
+        else
+            widget.borderColor = "transparent"
+        end
+        
+        if widget._originalBorderWidth then
+            widget.borderWidth = widget._originalBorderWidth
+            widget._originalBorderWidth = null
+        else
+            widget.borderWidth = 0
+        end
+    end
+}

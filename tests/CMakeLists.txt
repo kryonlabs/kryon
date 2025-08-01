@@ -31,6 +31,9 @@ add_kryon_test(test_software_renderer unit/renderers/test_software_renderer.c)
 add_kryon_test(test_gpu_renderer unit/renderers/test_gpu_renderer.c)
 add_kryon_test(test_platform unit/platform/test_platform.c)
 
+# Widget system tests (new Flutter-inspired layout system)
+add_kryon_test(test_widget_system widget_system_test.c)
+
 # New renderer interface tests
 find_package(PkgConfig REQUIRED)
 

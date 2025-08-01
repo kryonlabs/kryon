@@ -6,7 +6,11 @@ set(SCRIPT_SOURCES
 )
 
 if(KRYON_SCRIPT_LUA)
-    list(APPEND SCRIPT_SOURCES lua/lua_engine.c lua/lua_bindings.c)
+    list(APPEND SCRIPT_SOURCES 
+        lua/lua_engine.c 
+        lua/lua_bindings.c
+        lua/lua_widget_api.c  # New widget transformation API
+    )
 endif()
 
 if(KRYON_SCRIPT_JAVASCRIPT)

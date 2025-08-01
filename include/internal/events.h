@@ -238,6 +238,42 @@ bool kryon_event_poll(KryonEventSystem* system, KryonEvent* event);
 bool kryon_event_wait(KryonEventSystem* system, KryonEvent* event, uint32_t timeoutMs);
 
 // =============================================================================
+// GLOBAL EVENT REGISTRATION (for @event directive)
+// =============================================================================
+
+/**
+ * Register a global keyboard shortcut handler
+ */
+bool kryon_event_register_keyboard_handler(KryonEventSystem* system,
+                                           const char* shortcut,
+                                           KryonEventHandler handler,
+                                           void* userData);
+
+/**
+ * Register a global mouse event handler
+ */
+bool kryon_event_register_mouse_handler(KryonEventSystem* system,
+                                        const char* mouseEvent,
+                                        KryonEventHandler handler,
+                                        void* userData);
+
+/**
+ * Parse a keyboard shortcut string (e.g., "Ctrl+I") into key event parameters
+ */
+bool kryon_event_parse_keyboard_shortcut(const char* shortcut,
+                                         int* keyCode,
+                                         bool* ctrl,
+                                         bool* shift,
+                                         bool* alt,
+                                         bool* meta);
+
+/**
+ * Check if a key event matches a shortcut pattern
+ */
+bool kryon_event_matches_shortcut(const KryonKeyEvent* keyEvent,
+                                  const char* shortcut);
+
+// =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 

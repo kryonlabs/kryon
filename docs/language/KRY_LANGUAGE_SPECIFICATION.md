@@ -2644,6 +2644,173 @@ Text {
 
 ## Script Integration
 
+### Event Handling
+
+The `@event` directive provides a declarative way to register global event handlers, particularly useful for system-wide shortcuts and debug tools.
+
+#### Basic Event Registration
+```kry
+@event "keyboard" {
+    "Ctrl+I": toggleInspector()
+    "Ctrl+D": toggleDebugMode()
+    "F12": openDevTools()
+}
+
+@event "mouse" {
+    "RightClick": showContextMenu()
+    "DoubleClick": handleDoubleClick()
+}
+```
+
+#### Event Types
+- **"keyboard"**: Keyboard events (key combinations, shortcuts)
+- **"mouse"**: Mouse events (clicks, movements, gestures)  
+- **"touch"**: Touch events (taps, swipes, gestures)
+- **"system"**: System events (window focus, resize, etc.)
+
+#### Keyboard Event Syntax
+```kry
+@event "keyboard" {
+    # Single keys
+    "Escape": closeModal()
+    "Enter": submitForm()
+    "Space": pausePlayback()
+    
+    # Modifier combinations
+    "Ctrl+S": saveDocument()
+    "Ctrl+Shift+Z": redoAction()
+    "Alt+F4": closeWindow()
+    "Cmd+Q": quitApplication()  # macOS
+    
+    # Function keys
+    "F1": showHelp()
+    "F5": refreshPage()
+    "F11": toggleFullscreen()
+}
+```
+
+#### Mouse Event Syntax
+```kry
+@event "mouse" {
+    # Basic clicks
+    "LeftClick": selectItem()
+    "RightClick": showContextMenu()
+    "MiddleClick": openInNewTab()
+    
+    # Double/Triple clicks
+    "DoubleClick": editItem()
+    "TripleClick": selectAll()
+    
+    # Mouse with modifiers
+    "Ctrl+LeftClick": multiSelect()
+    "Shift+RightClick": rangeSelect()
+}
+```
+
+#### Event Handler Functions
+Event handlers can reference functions defined in `@script` blocks:
+
+```kry
+@script "lua" {
+    function toggleInspector()
+        local inspector = kryon.get_widget("debug_inspector")
+        if inspector then
+            inspector.visible = not inspector.visible
+        end
+    end
+    
+    function saveDocument()
+        kryon.dispatch("document.save", {
+            timestamp = os.time()
+        })
+    end
+}
+
+@event "keyboard" {
+    "Ctrl+I": toggleInspector()
+    "Ctrl+S": saveDocument()
+}
+```
+
+#### Script VM API Integration
+Events can also be registered programmatically via the script API:
+
+```kry
+@script "lua" {
+    -- Register global keyboard listener
+    kryon.register_event("keyboard", "Ctrl+K", function(event)
+        print("Ctrl+K pressed!", event.timestamp)
+    end)
+    
+    -- Register with event object access
+    kryon.register_event("mouse", "RightClick", function(event)
+        local menu = {
+            { text = "Copy", action = "copy" },
+            { text = "Paste", action = "paste" }
+        }
+        kryon.show_context_menu(event.x, event.y, menu)
+    end)
+    
+    -- Unregister events
+    kryon.unregister_event("keyboard", "Ctrl+K")
+}
+```
+
+#### Event Object Properties
+Event handlers receive an event object with relevant properties:
+
+```kry
+@script "javascript" {
+    kryon.register_event("keyboard", "any", function(event) {
+        console.log({
+            type: event.type,           // "keyboard", "mouse", etc.
+            key: event.key,             // "i", "Enter", etc.
+            modifiers: event.modifiers, // { ctrl: true, shift: false }
+            timestamp: event.timestamp,
+            target: event.target        // Element that had focus
+        });
+    });
+    
+    kryon.register_event("mouse", "any", function(event) {
+        console.log({
+            type: event.type,
+            button: event.button,       // "left", "right", "middle"
+            x: event.x,                 // Screen coordinates
+            y: event.y,
+            modifiers: event.modifiers,
+            timestamp: event.timestamp
+        });
+    });
+}
+```
+
+#### Global vs Element Events
+- **@event directive**: Registers global system-wide events
+- **Element onClick/onInput**: Element-specific event handlers
+- **kryon.register_event()**: Programmatic global event registration
+
+```kry
+# Global system shortcut
+@event "keyboard" {
+    "Ctrl+Q": quitApplication()
+}
+
+# Element-specific handler
+Button {
+    text: "Click me"
+    onClick: handleButtonClick()
+}
+
+# Programmatic registration
+@script "lua" {
+    function setupDynamicEvents()
+        if debug_mode then
+            kryon.register_event("keyboard", "Ctrl+Alt+D", debugDump)
+        end
+    end
+}
+```
+
 ### Script Blocks
 ```kry
 # Lua scripts
@@ -3213,7 +3380,7 @@ Table, TableRow, TableCell, TableHeader
 
 #### Core Directives
 ```
-@include, @metadata, @variables, @var, @style, @styles, @script, @function, @func
+@include, @metadata, @variables, @var, @style, @styles, @script, @function, @func, @event
 @for, @const_for, @while, @end, @if, @const_if, @elif, @else, @match
 Define, Properties, Render, do, then
 ```
@@ -3253,6 +3420,7 @@ Statement = Include
           | Style
           | Component
           | Script
+          | Event
           | Element ;
 
 Include = "@include" StringLiteral ;
@@ -3273,6 +3441,10 @@ Component = "Define" Identifier "{"
 Script = "@script" StringLiteral "{" ScriptContent "}"
        | "@function" StringLiteral Identifier "(" [ ParameterList ] ")" "{" ScriptContent "}"
        | "@func" StringLiteral Identifier "(" [ ParameterList ] ")" "{" ScriptContent "}" ;
+
+Event = "@event" StringLiteral "{" { EventHandler } "}" ;
+
+EventHandler = StringLiteral ":" ( FunctionCall | Identifier ) ;
 
 Element = Identifier "{" { Property | Element } "}" ;
 

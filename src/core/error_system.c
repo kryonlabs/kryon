@@ -32,7 +32,7 @@ static KryonLogger g_logger = {0};
 #ifdef _WIN32
 static __declspec(thread) KryonErrorContext *g_error_context = NULL;
 #else
-static __thread KryonErrorContext *g_error_context = NULL;
+static __thread KryonErrorContext *g_error_context __attribute__((unused)) = NULL;
 static pthread_key_t g_error_context_key;
 #endif
 

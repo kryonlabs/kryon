@@ -359,3 +359,5 @@ credentials.json
 # Examples:
 # my_custom_tool_output/
 # specific_generated_file.c
+
+*.krb

@@ -216,6 +216,12 @@ uint64_t kryon_hash_string(const char *str) {
     return kryon_hash_bytes(str, strlen(str));
 }
 
+// Wrapper function for KryonHashFunc interface
+static uint64_t kryon_hash_string_wrapper(const void *key, size_t key_size) {
+    (void)key_size; // Suppress unused parameter warning
+    return kryon_hash_string((const char*)key);
+}
+
 uint64_t kryon_hash_int(int64_t value) {
     // Wang's integer hash
     uint64_t key = (uint64_t)value;
@@ -510,7 +516,7 @@ KryonStringInterner *kryon_interner_create(void) {
     if (!interner) return NULL;
     
     interner->string_map = kryon_hashmap_create(0, sizeof(uint32_t), 
-                                               (KryonHashFunc)kryon_hash_string,
+                                               kryon_hash_string_wrapper,
                                                (KryonKeyCompareFunc)kryon_key_compare_string,
                                                256);
     if (!interner->string_map) {

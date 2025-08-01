@@ -292,11 +292,11 @@ KryonMemoryManager *kryon_memory_init(const KryonMemoryConfig *config) {
     KryonMemoryManager *manager = malloc(sizeof(KryonMemoryManager));
     if (!manager) return NULL;
     
-    // Initialize manager structure
+    // Initialize manager structure  
     memset(manager, 0, sizeof(KryonMemoryManager));
     manager->config = *config;
     
-    // Create allocation tracking mutex
+    // Create mutex for allocations tracking
     manager->allocations_mutex = create_mutex();
     if (!manager->allocations_mutex) {
         free(manager);
@@ -360,6 +360,9 @@ KryonMemoryManager *kryon_memory_init(const KryonMemoryConfig *config) {
             fflush(manager->debug_log);
         }
     }
+    
+    // Set global reference
+    g_kryon_memory_manager = manager;
     
     return manager;
 }
@@ -716,4 +719,19 @@ size_t kryon_memory_compact(KryonMemoryManager *manager) {
     // - Update pointers if needed
     
     return 0;
+}
+
+// =============================================================================
+// STRING UTILITIES
+// =============================================================================
+
+char *kryon_strdup(const char *str) {
+    if (!str) return NULL;
+    
+    size_t len = strlen(str) + 1;
+    char *copy = kryon_alloc(len);
+    if (copy) {
+        memcpy(copy, str, len);
+    }
+    return copy;
 }

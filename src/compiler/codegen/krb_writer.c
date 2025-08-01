@@ -6,6 +6,7 @@
 #include "internal/krb_format.h"
 #include "internal/memory.h"
 #include "internal/error.h"
+#include "internal/binary_io.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -142,8 +143,12 @@ static bool write_bytes(KryonKrbWriter *writer, const void *data, size_t size) {
             return false;
         }
         
-        memcpy(writer->buffer + writer->buffer_size, data, size);
-        writer->buffer_size += size;
+        size_t offset = writer->buffer_size;
+        if (!kryon_write_bytes(&writer->buffer, &offset, writer->buffer_capacity, data, size)) {
+            strcpy(writer->error_message, "Failed to write bytes to buffer");
+            return false;
+        }
+        writer->buffer_size = offset;
     } else {
         strcpy(writer->error_message, "No output destination available");
         return false;
@@ -153,55 +158,116 @@ static bool write_bytes(KryonKrbWriter *writer, const void *data, size_t size) {
 }
 
 static bool write_uint8(KryonKrbWriter *writer, uint8_t value) {
-    return write_bytes(writer, &value, sizeof(uint8_t));
+    if (writer->buffer) {
+        if (!ensure_buffer_capacity(writer, sizeof(uint8_t))) {
+            return false;
+        }
+        size_t offset = writer->buffer_size;
+        if (!kryon_write_uint8(&writer->buffer, &offset, writer->buffer_capacity, value)) {
+            strcpy(writer->error_message, "Failed to write uint8 to buffer");
+            return false;
+        }
+        writer->buffer_size = offset;
+        return true;
+    } else {
+        return write_bytes(writer, &value, sizeof(uint8_t));
+    }
 }
 
 static bool write_uint16(KryonKrbWriter *writer, uint16_t value) {
-    if (writer->big_endian) {
-        value = (value << 8) | (value >> 8);
+    if (writer->buffer) {
+        if (!ensure_buffer_capacity(writer, sizeof(uint16_t))) {
+            return false;
+        }
+        size_t offset = writer->buffer_size;
+        if (!kryon_write_uint16(&writer->buffer, &offset, writer->buffer_capacity, value)) {
+            strcpy(writer->error_message, "Failed to write uint16 to buffer");
+            return false;
+        }
+        writer->buffer_size = offset;
+        return true;
+    } else {
+        uint8_t temp_buffer[sizeof(uint16_t)];
+        uint8_t *temp_ptr = temp_buffer;
+        size_t temp_offset = 0;
+        if (!kryon_write_uint16(&temp_ptr, &temp_offset, sizeof(temp_buffer), value)) {
+            strcpy(writer->error_message, "Failed to encode uint16");
+            return false;
+        }
+        return write_bytes(writer, temp_buffer, sizeof(uint16_t));
     }
-    return write_bytes(writer, &value, sizeof(uint16_t));
 }
 
 static bool write_uint32(KryonKrbWriter *writer, uint32_t value) {
-    if (writer->big_endian) {
-        value = ((value << 24) & 0xff000000) |
-                ((value << 8)  & 0x00ff0000) |
-                ((value >> 8)  & 0x0000ff00) |
-                ((value >> 24) & 0x000000ff);
+    if (writer->buffer) {
+        if (!ensure_buffer_capacity(writer, sizeof(uint32_t))) {
+            return false;
+        }
+        size_t offset = writer->buffer_size;
+        if (!kryon_write_uint32(&writer->buffer, &offset, writer->buffer_capacity, value)) {
+            strcpy(writer->error_message, "Failed to write uint32 to buffer");
+            return false;
+        }
+        writer->buffer_size = offset;
+        return true;
+    } else {
+        uint8_t temp_buffer[sizeof(uint32_t)];
+        uint8_t *temp_ptr = temp_buffer;
+        size_t temp_offset = 0;
+        if (!kryon_write_uint32(&temp_ptr, &temp_offset, sizeof(temp_buffer), value)) {
+            strcpy(writer->error_message, "Failed to encode uint32");
+            return false;
+        }
+        return write_bytes(writer, temp_buffer, sizeof(uint32_t));
     }
-    return write_bytes(writer, &value, sizeof(uint32_t));
 }
 
 static bool write_uint64(KryonKrbWriter *writer, uint64_t value) {
-    if (writer->big_endian) {
-        value = ((value << 56) & 0xff00000000000000ULL) |
-                ((value << 40) & 0x00ff000000000000ULL) |
-                ((value << 24) & 0x0000ff0000000000ULL) |
-                ((value << 8)  & 0x000000ff00000000ULL) |
-                ((value >> 8)  & 0x00000000ff000000ULL) |
-                ((value >> 24) & 0x0000000000ff0000ULL) |
-                ((value >> 40) & 0x000000000000ff00ULL) |
-                ((value >> 56) & 0x00000000000000ffULL);
+    if (writer->buffer) {
+        if (!ensure_buffer_capacity(writer, sizeof(uint64_t))) {
+            return false;
+        }
+        size_t offset = writer->buffer_size;
+        if (!kryon_write_uint64(&writer->buffer, &offset, writer->buffer_capacity, value)) {
+            strcpy(writer->error_message, "Failed to write uint64 to buffer");
+            return false;
+        }
+        writer->buffer_size = offset;
+        return true;
+    } else {
+        uint8_t temp_buffer[sizeof(uint64_t)];
+        uint8_t *temp_ptr = temp_buffer;
+        size_t temp_offset = 0;
+        if (!kryon_write_uint64(&temp_ptr, &temp_offset, sizeof(temp_buffer), value)) {
+            strcpy(writer->error_message, "Failed to encode uint64");
+            return false;
+        }
+        return write_bytes(writer, temp_buffer, sizeof(uint64_t));
     }
-    return write_bytes(writer, &value, sizeof(uint64_t));
 }
 
 static bool write_double(KryonKrbWriter *writer, double value) {
-    if (writer->big_endian) {
-        union { double d; uint64_t i; } u;
-        u.d = value;
-        u.i = ((u.i << 56) & 0xff00000000000000ULL) |
-              ((u.i << 40) & 0x00ff000000000000ULL) |
-              ((u.i << 24) & 0x0000ff0000000000ULL) |
-              ((u.i << 8)  & 0x000000ff00000000ULL) |
-              ((u.i >> 8)  & 0x00000000ff000000ULL) |
-              ((u.i >> 24) & 0x0000000000ff0000ULL) |
-              ((u.i >> 40) & 0x000000000000ff00ULL) |
-              ((u.i >> 56) & 0x00000000000000ffULL);
-        value = u.d;
+    if (writer->buffer) {
+        if (!ensure_buffer_capacity(writer, sizeof(double))) {
+            return false;
+        }
+        size_t offset = writer->buffer_size;
+        if (!kryon_write_bytes(&writer->buffer, &offset, writer->buffer_capacity, &value, sizeof(double))) {
+            strcpy(writer->error_message, "Failed to write double to buffer");
+            return false;
+        }
+        writer->buffer_size = offset;
+        return true;
+    } else {
+        uint8_t temp_buffer[sizeof(double)];
+        uint8_t *temp_ptr = temp_buffer;
+        size_t temp_offset = 0;
+        if (!kryon_write_bytes(&temp_ptr, &temp_offset, sizeof(temp_buffer), &value, sizeof(double))) {
+            strcpy(writer->error_message, "Failed to encode double");
+            return false;
+        }
+        return write_bytes(writer, temp_buffer, sizeof(double));
     }
-    return write_bytes(writer, &value, sizeof(double));
 }
 
 static bool write_string(KryonKrbWriter *writer, const char *str) {
