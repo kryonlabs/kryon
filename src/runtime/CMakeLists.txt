@@ -158,6 +158,11 @@ endif()
 # Link with JSON library for state serialization
 target_link_libraries(kryon_runtime PRIVATE cjson)
 
+# Link with events module
+if(TARGET kryon_events)
+    target_link_libraries(kryon_runtime PRIVATE kryon_events)
+endif()
+
 # Platform-specific dependencies
 if(WIN32)
     target_link_libraries(kryon_runtime PRIVATE 

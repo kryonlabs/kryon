@@ -316,12 +316,7 @@ static bool parse_string_table(KryonKrbReader *reader, KryonKrbFile *krb_file) {
             return false;
         }
         
-        if (length > KRYON_KRB_MAX_STRING_LENGTH) {
-            snprintf(reader->error_message, sizeof(reader->error_message),
-                    "String too long: %u characters (maximum: %u)", 
-                    length, KRYON_KRB_MAX_STRING_LENGTH);
-            return false;
-        }
+        // length is uint16_t, so it's always <= KRYON_KRB_MAX_STRING_LENGTH (65535)
         
         if (!read_string(reader, &krb_file->string_table[i], length)) {
             return false;
@@ -370,21 +365,39 @@ static bool parse_property_value(KryonKrbReader *reader, KryonPropertyType type,
         }
         
         case KRYON_PROPERTY_SIZE: {
-            return read_double(reader, &value->size_value.width) &&
-                   read_double(reader, &value->size_value.height);
+            double width, height;
+            bool result = read_double(reader, &width) && read_double(reader, &height);
+            if (result) {
+                value->size_value.width = (float)width;
+                value->size_value.height = (float)height;
+            }
+            return result;
         }
         
         case KRYON_PROPERTY_POSITION: {
-            return read_double(reader, &value->position_value.x) &&
-                   read_double(reader, &value->position_value.y);
+            double x, y;
+            bool result = read_double(reader, &x) && read_double(reader, &y);
+            if (result) {
+                value->position_value.x = (float)x;
+                value->position_value.y = (float)y;
+            }
+            return result;
         }
         
         case KRYON_PROPERTY_MARGIN:
         case KRYON_PROPERTY_PADDING: {
-            return read_double(reader, &value->spacing_value.top) &&
-                   read_double(reader, &value->spacing_value.right) &&
-                   read_double(reader, &value->spacing_value.bottom) &&
-                   read_double(reader, &value->spacing_value.left);
+            double top, right, bottom, left;
+            bool result = read_double(reader, &top) &&
+                         read_double(reader, &right) &&
+                         read_double(reader, &bottom) &&
+                         read_double(reader, &left);
+            if (result) {
+                value->spacing_value.top = (float)top;
+                value->spacing_value.right = (float)right;
+                value->spacing_value.bottom = (float)bottom;
+                value->spacing_value.left = (float)left;
+            }
+            return result;
         }
         
         case KRYON_PROPERTY_REFERENCE: {

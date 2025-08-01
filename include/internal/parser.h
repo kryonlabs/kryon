@@ -59,9 +59,15 @@ typedef enum {
     KRYON_AST_METADATA_DIRECTIVE,    // @metadata
     KRYON_AST_EVENT_DIRECTIVE,       // @event
     
-    // Widget definitions
-    KRYON_AST_DEFINE,                // Define custom widget
-    KRYON_AST_PROPERTIES,            // Properties block
+    // Component system
+    KRYON_AST_COMPONENT,             // @component directive
+    KRYON_AST_PROPS,                 // @props block
+    KRYON_AST_SLOTS,                 // @slots block
+    KRYON_AST_LIFECYCLE,             // @lifecycle block
+    
+    // Legacy (deprecated)
+    KRYON_AST_DEFINE,                // Define custom widget (deprecated)
+    KRYON_AST_PROPERTIES,            // Properties block (deprecated)
     KRYON_AST_SCRIPT,                // @script block
     
     // Expressions

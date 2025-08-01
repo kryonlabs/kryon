@@ -100,6 +100,10 @@ typedef enum {
     KRYON_TOKEN_INCLUDE_DIRECTIVE,   // @include
     KRYON_TOKEN_METADATA_DIRECTIVE,  // @metadata
     KRYON_TOKEN_EVENT_DIRECTIVE,     // @event
+    KRYON_TOKEN_COMPONENT_DIRECTIVE, // @component
+    KRYON_TOKEN_PROPS_DIRECTIVE,     // @props
+    KRYON_TOKEN_SLOTS_DIRECTIVE,     // @slots
+    KRYON_TOKEN_LIFECYCLE_DIRECTIVE, // @lifecycle
     
     // Template interpolation
     KRYON_TOKEN_TEMPLATE_START,      // ${

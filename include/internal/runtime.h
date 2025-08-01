@@ -36,7 +36,7 @@ typedef struct KryonProperty KryonProperty;
 typedef struct KryonStyle KryonStyle;
 typedef struct KryonState KryonState;
 typedef struct KryonRenderContext KryonRenderContext;
-typedef struct KryonEventSystem KryonEventSystem;
+// KryonEventSystem defined in events.h
 
 // =============================================================================
 // EVENT HANDLER STRUCTURE

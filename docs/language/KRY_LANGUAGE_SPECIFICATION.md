@@ -37,7 +37,7 @@
 - **Variables**: @variables and @var declarations, reactive updates
 - **Control Flow**: @if/@elif/@else, @const_if (compile-time), @for loops, @while loops
 - **Script Integration**: @script blocks, @function/@func declarations (Lua, JavaScript, Python, Wren)
-- **Components**: Define/Properties/Render, component reuse
+- **Components**: @component/@props/@slots directive system, reactive component composition
 - **Imports**: @include system, relative paths
 - **Metadata**: @metadata directive, window configuration
 - **Expression Language**: Variable binding, ternary operators, arithmetic, comparison, logical operators
@@ -423,15 +423,16 @@ false
 }
 
 # Components
-Define Button {
-    Properties {
+@component Button {
+    @props {
         text: String = "Click me"
-        variant: String = "primary"
+        variant: "primary" | "secondary" | "danger" = "primary"
+        buttonClass: "button_${variant}"
     }
     
     Button {
         text: $text
-        class: "button_${variant}"
+        class: $buttonClass
     }
 }
 
@@ -2016,27 +2017,30 @@ Kryon provides modern developer experience features including hot reload, DevToo
 
 #### Component Type Definitions
 ```kry
-Define UserCard {
-    Properties {
+@component UserCard {
+    @props {
         # Typed properties with validation
-        user: User required,
-        showActions: boolean = true,
-        onEdit: (user: User) => void,
-        onDelete: (userId: number) => void,
+        user: User required
+        showActions: Boolean = true
+        onEdit?: (user: User) => void
+        onDelete?: (userId: number) => void
         theme: "compact" | "detailed" = "detailed"
+        # Computed properties
+        cardClass: "user-card user-card-${theme}"
+        showEditButton: $showActions && $onEdit != null
     }
     
-    # Type checking in render
-    Render {
-        Container {
-            Text {
-                # Type-safe property access
-                text: $user.name  # TypeScript-like intellisense
-                visible: $user.isActive
-            }
-            
-            @if $showActions do
-                Button {
+    Container {
+        class: $cardClass
+        
+        Text {
+            # Type-safe property access
+            text: $user.name
+            visible: $user.isActive
+        }
+        
+        @if $showEditButton {
+            Button {
                     text: "Edit"
                     onClick: () => $onEdit($user)  # Type-checked callback
                 }
@@ -2304,15 +2308,13 @@ Container {
 ```kry
 # Built-in snippets for common patterns
 @snippet "component" {
-    Define ${1:ComponentName} {
-        Properties {
+    @component ${1:ComponentName} {
+        @props {
             ${2:props}
         }
         
-        Render {
-            Container {
-                ${0:content}
-            }
+        Container {
+            ${0:content}
         }
     }
 }
@@ -2929,27 +2931,35 @@ Slider {
 
 ## Component System
 
+KRY uses a modern directive-based component system with `@component`, `@props`, and `@slots` for creating reusable UI components.
+
 ### Component Definition
 ```kry
-Define ComponentName {
-    # Component properties
-    Properties {
-        prop_name: Type = default_value
+@component ComponentName {
+    @props {
+        # Input properties
         text: String = "Default text"
         size: Number = 16
         enabled: Boolean = true
         items: Array = []
+        # Computed properties
+        textColor: $enabled ? "black" : "gray"
+        itemCount: $items.length
     }
     
-    # Component template
     Container {
         Text {
             text: $text
             fontSize: $size
-            color: $enabled ? "black" : "gray"
+            color: $textColor
         }
         
-        @for item in $items
+        Text {
+            text: "Items: ${itemCount}"
+            fontSize: 12
+        }
+        
+        @for item in $items {
             Text {
                 text: $item
             }
@@ -2968,32 +2978,171 @@ ComponentName {
     text: "Custom text"
     size: 18
     enabled: false
+    items: ["Apple", "Banana", "Orange"]
+}
+```
+
+### @props Directive Features
+
+The `@props` directive provides a unified way to define component properties:
+
+```kry
+@component Button {
+    @props {
+        # Input properties with types and defaults
+        text: String = "Click me"
+        variant: "primary" | "secondary" | "danger" = "primary"
+        size: "sm" | "md" | "lg" = "md"
+        disabled: Boolean = false
+        onClick?: (event: Event) => void
+        
+        # Computed properties (automatically reactive)
+        buttonClass: "btn btn-${variant} btn-${size}"
+        isClickable: !$disabled && $onClick != null
+        ariaLabel: $text + ($disabled ? " (disabled)" : "")
+        iconClass: $variant === "primary" ? "icon-primary" : "icon-secondary"
+    }
+    
+    Button {
+        text: $text
+        class: $buttonClass
+        disabled: $disabled
+        onClick: $isClickable ? $onClick : null
+        ariaLabel: $ariaLabel
+        
+        @if $iconClass {
+            Icon { class: $iconClass }
+        }
+    }
+}
+```
+
+#### Property Types
+
+- **Basic Types**: `String`, `Number`, `Boolean`, `Array`, `Object`
+- **Union Types**: `"small" | "medium" | "large"`
+- **Optional Properties**: `onClick?: (event: Event) => void`
+- **Function Types**: `(param: Type) => ReturnType`
+- **Required Properties**: `data: Object required`
+
+### @slots Directive
+
+Enable content composition and template injection:
+
+```kry
+@component Card {
+    @props {
+        title: String = "Card Title"
+        variant: "default" | "bordered" | "elevated" = "default"
+        cardClass: "card card-${variant}"
+    }
+    
+    @slots {
+        default: "Main card content"
+        header?: "Custom header content"
+        footer?: "Card action buttons"
+    }
+    
+    Container {
+        class: $cardClass
+        
+        @if $slots.header {
+            Container {
+                class: "card-header"
+                @slot header
+            }
+        } @else {
+            Container {
+                class: "card-header-default"
+                Text {
+                    text: $title
+                    class: "card-title"
+                }
+            }
+        }
+        
+        Container {
+            class: "card-body"
+            @slot default
+        }
+        
+        @if $slots.footer {
+            Container {
+                class: "card-footer"
+                @slot footer
+            }
+        }
+    }
+}
+
+# Usage with slots
+Card {
+    title: "User Profile"
+    variant: "elevated"
+    
+    # Default slot content
+    Text { text: "User information goes here" }
+    Image { src: "avatar.jpg" }
+    
+    # Named slot
+    @slot footer {
+        Button {
+            text: "Edit Profile"
+            onClick: "editUser"
+        }
+        Button {
+            text: "Delete"
+            variant: "danger"
+            onClick: "deleteUser"
+        }
+    }
+}
+    enabled: false
     items: ["Item 1", "Item 2"]
 }
 ```
 
 ### Advanced Component Example
 ```kry
-Define Card {
-    Properties {
+@component Card {
+    @props {
         title: String = "Card Title"
         content: String = "Card content"
-        image_src: String = ""
+        imageSrc: String = ""
         clickable: Boolean = false
-        on_click: String = ""
+        onClick?: () => void
+        # Computed properties
+        hasImage: $imageSrc != ""
+        cardClass: "card-container" + ($clickable ? " clickable" : "")
+    }
+    
+    @slots {
+        default: "Card content slot"
+        actions?: "Optional action buttons"
     }
     
     Container {
-        class: "card_container"
-        onClick: $clickable ? $on_click : null
+        class: $cardClass
+        onClick: $clickable ? $onClick : null
         
-        # Conditional image
-        @if $image_src != ""
+        @if $hasImage {
             Image {
-                src: $image_src
-                class: "card_image"
+                src: $imageSrc
+                class: "card-image"
             }
-        @end
+        }
+        
+        Container {
+            class: "card-content"
+            @slot default
+        }
+        
+        @if $slots.actions {
+            Container {
+                class: "card-actions"
+                @slot actions
+            }
+        }
         
         Container {
             class: "card_body"
@@ -3433,10 +3582,20 @@ Variables = "@variables" "{" { VariableDecl } "}"
 Style = "@style" StringLiteral "{" { StyleRule } "}"
       | "@styles" "{" { StringLiteral "{" { StyleRule } "}" } "}" ;
 
-Component = "Define" Identifier "{" 
-            [ "Properties" "{" { PropertyDecl } "}" ]
+Component = "@component" Identifier "{" 
+            [ "@props" "{" { PropDecl } "}" ]
+            [ "@slots" "{" { SlotDecl } "}" ]
+            [ "@lifecycle" "{" { LifecycleHook } "}" ]
             Element
             "}" ;
+
+PropDecl = Identifier ":" TypeAnnotation [ "=" Expression ] [ "?" ] ;
+SlotDecl = Identifier [ "?" ] ":" StringLiteral ;
+LifecycleHook = ( "onMount" | "onUnmount" | "onUpdate" ) ":" Expression ;
+TypeAnnotation = BasicType | UnionType | FunctionType ;
+BasicType = "String" | "Number" | "Boolean" | "Array" | "Object" | Identifier ;
+UnionType = BasicType { "|" BasicType } ;
+FunctionType = "(" [ TypeList ] ")" "=>" ( "void" | TypeAnnotation ) ;
 
 Script = "@script" StringLiteral "{" ScriptContent "}"
        | "@function" StringLiteral Identifier "(" [ ParameterList ] ")" "{" ScriptContent "}"
@@ -3533,27 +3692,54 @@ Literal = StringLiteral | NumberLiteral | BooleanLiteral | ArrayLiteral | Object
     margin_top: 20px
 }
 
-Define TodoItem {
-    Properties {
+@component TodoItem {
+    @props {
         todo: Object = {}
-        on_toggle: String = ""
-        on_delete: String = ""
-        on_edit: String = ""
+        onToggle?: (todo: Object) => void
+        onDelete?: (todo: Object) => void  
+        onEdit?: (todo: Object) => void
+        # Computed properties
+        todoClass: $todo.completed ? "todo-completed" : "todo-active"
+        showActions: $onDelete != null || $onEdit != null
     }
     
     Container {
-        class: "todo_item"
+        class: "todo-item"
         
         Checkbox {
             checked: $todo.completed
-            onChange: $on_toggle
+            onChange: () => $onToggle($todo)
         }
         
         Text {
             text: $todo.text
-            class: $todo.completed ? "todo_completed" : "todo_active"
-            flex_grow: 1
-            margin_left: 10px
+            class: $todoClass
+            flexGrow: 1
+            marginLeft: 10
+            onDoubleClick: $onEdit ? () => $onEdit($todo) : null
+        }
+        
+        @if $showActions {
+            Container {
+                class: "todo-actions"
+                
+                @if $onEdit {
+                    Button {
+                        text: "Edit"
+                        class: "btn-edit"
+                        onClick: () => $onEdit($todo)
+                    }
+                }
+                
+                @if $onDelete {
+                    Button {
+                        text: "Delete"
+                        class: "btn-delete"
+                        onClick: () => $onDelete($todo)
+                    }
+                }
+            }
+        }
             onDoubleClick: $on_edit
         }
         
@@ -6094,27 +6280,48 @@ App {
 }
 
 // Export components
-Define WeatherWidget {
-    Properties {
-        city: String = "New York",
-        showForecast: Boolean = false,
-        units: String = "metric"
+@component WeatherWidget {
+    @props {
+        city: String = "New York"
+        showForecast: Boolean = false
+        units: "metric" | "imperial" = "metric"
+        # Computed properties
+        widgetClass: "weather-widget weather-${units}"
+        temperatureDisplay: $weatherData?.current?.temperature ? $weatherData.current.temperature + "°" : "--°"
+        isLoading: $weatherData?.loading ?? true
     }
     
-    @on_mount {
-        action: "loadWeatherData"
+    @lifecycle {
+        onMount: () => loadWeatherData($city, $units)
+        onUpdate: (prevProps) => {
+            if (prevProps.city !== $city || prevProps.units !== $units) {
+                loadWeatherData($city, $units)
+            }
+        }
     }
     
     Container {
-        class: "weather-widget"
+        class: $widgetClass
         
-        @if $weatherData.loading {
-            Text { text: "Loading weather..." }
+        @if $isLoading {
+            Text { 
+                text: "Loading weather..." 
+                class: "loading-text"
+            }
         } @else {
             Container {
+                class: "weather-current"
+                
                 Text {
-                    text: $weatherData.current.temperature + "°"
+                    text: $temperatureDisplay
                     fontSize: 32
+                    class: "temperature"
+                }
+                
+                Text {
+                    text: $city
+                    fontSize: 16
+                    class: "city-name"
                     fontWeight: 700
                 }
                 

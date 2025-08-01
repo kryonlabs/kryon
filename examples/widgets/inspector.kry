@@ -11,7 +11,7 @@
     "LeftClick": selectWidget()
 }
 
-Define DebugInspector {
+@component DebugInspector {
     Container {
         id: "debug_inspector"
         width: 100%

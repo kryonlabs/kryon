@@ -88,6 +88,10 @@ typedef enum {
     KRYON_ELEMENT_ASIDE = 0x2F,
     // Directive elements
     KRYON_ELEMENT_EVENT_DIRECTIVE = 0x30,
+    KRYON_ELEMENT_COMPONENT = 0x31,
+    KRYON_ELEMENT_PROPS = 0x32,
+    KRYON_ELEMENT_SLOTS = 0x33,
+    KRYON_ELEMENT_LIFECYCLE = 0x34,
     // Extended elements up to 0xFF
     KRYON_ELEMENT_CUSTOM = 0xFF
 } KryonElementType;

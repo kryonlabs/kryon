@@ -477,7 +477,7 @@ static KryonASTNode *parse_literal(KryonParser *parser) {
                 unit_str[unit_len] = '\0';
                 
                 if (token->type == KRYON_TOKEN_INTEGER) {
-                    snprintf(value_with_unit, sizeof(value_with_unit), "%lld%s", 
+                    snprintf(value_with_unit, sizeof(value_with_unit), "%ld%s", 
                             token->value.int_value, unit_str);
                 } else {
                     snprintf(value_with_unit, sizeof(value_with_unit), "%f%s", 
@@ -592,6 +592,18 @@ static KryonASTNode *parse_directive(KryonParser *parser) {
             break;
         case KRYON_TOKEN_EVENT_DIRECTIVE:
             ast_type = KRYON_AST_EVENT_DIRECTIVE;
+            break;
+        case KRYON_TOKEN_COMPONENT_DIRECTIVE:
+            ast_type = KRYON_AST_COMPONENT;
+            break;
+        case KRYON_TOKEN_PROPS_DIRECTIVE:
+            ast_type = KRYON_AST_PROPS;
+            break;
+        case KRYON_TOKEN_SLOTS_DIRECTIVE:
+            ast_type = KRYON_AST_SLOTS;
+            break;
+        case KRYON_TOKEN_LIFECYCLE_DIRECTIVE:
+            ast_type = KRYON_AST_LIFECYCLE;
             break;
         default:
             parser_error(parser, "Unknown directive type");

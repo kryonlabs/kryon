@@ -280,7 +280,7 @@ void kryon_diagnostic_print(const KryonDiagnosticManager *manager,
     
     // Print location if available
     if (diag->source_filename) {
-        fprintf(file, "\n  --> %s:%zu:%zu",
+        fprintf(file, "\n  --> %s:%u:%u",
                diag->source_filename,
                diag->location.line,
                diag->location.column);
