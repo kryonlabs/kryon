@@ -1,16 +1,37 @@
-# KRY Language Specification v1.0
+# KRY Language Specification v2.0
+## Smart Hybrid System
+
+## Core Philosophy
+
+**The Best of Both Worlds: CSS-Like Styling + Widget Layout**
+
+KRY combines familiar CSS-like properties for styling with powerful widget elements for layout, giving developers the flexibility of CSS with the structure and performance of widgets.
 
 ## Syntax
 
 ### Basic Structure
-```
-Element {
+```kry
+# CSS-like styles for appearance
+style "styleName" {
+    background: "#ffffff"
+    color: "#000000"
+    fontSize: 16
+    padding: 12
+    borderRadius: 6
+}
+
+# Widget elements for layout and structure
+Widget {
     property: value
-    property: value
+    style: "styleName"
     
-    ChildElement {
-        property: value
-    }
+    child: ChildWidget { }
+    
+    # Or multiple children
+    children: [
+        ChildWidget1 { }
+        ChildWidget2 { }
+    ]
 }
 ```
 
@@ -18,551 +39,482 @@ Element {
 - **String**: `"text"` (always quoted)
 - **Number**: `42`, `3.14`, `100px`, `50%`, `12rem`, `1.5em` (never quoted)
 - **Boolean**: `true`, `false` (never quoted)
-- **Color**: `"#RRGGBBAA"`, `"#RGB"`, `"red"`, `"rgb(255,0,0)"` (always quoted)
-- **Array**: `["item1", "item2", "item3"]`
+- **Color**: `"#RRGGBBAA"`, `"#RGB"`, `"red"`, `"rgb(255,0,0)"`, `"hsl(120,50%,50%)"` (always quoted)
+- **Array**: `["item1", "item2", "item3"]`, `[1, 2, 3]`
 - **Object**: `{ key: value, key2: value2 }`
-- **Reference**: `$variableName`
+- **Function**: `"functionName"` (quoted function reference)
+- **Variable**: `$variableName`
 - **Expression**: `${expression}`
 
-### Elements
+## Style System
 
-#### Core Elements
-- `App` - Application root container
-- `Container` - Layout container  
-- `Text` - Text display
-- `Button` - Interactive button
-- `Input` - Text input field
-- `Image` - Image display
-- `Link` - Navigation link
-- `EmbedView` - Platform-specific embed
+### Style Definitions
+```kry
+style "button" {
+    background: "#007AFF"
+    color: "#ffffff"
+    fontSize: 16
+    fontWeight: 600
+    borderRadius: 6
+    padding: "12px 24px"
+    border: "none"
+    cursor: "pointer"
+    transition: "all 0.2s ease"
+}
 
-#### Form Elements
-- `Form` - Form container
-- `Select` - Dropdown selection
-- `Checkbox` - Boolean checkbox
-- `Radio` - Radio button
-- `Slider` - Range slider
-- `TextArea` - Multi-line input
-- `FileInput` - File upload
-- `DatePicker` - Date selection
-- `ColorPicker` - Color selection
+style "primaryButton" extends "button" {
+    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+}
 
-#### Media Elements
-- `Video` - Video player
-- `Audio` - Audio player
-- `Canvas` - Drawing surface
-- `Svg` - SVG graphics
-- `WebView` - Web content embed
+style "card" {
+    background: "#ffffff"
+    borderRadius: 8
+    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+    padding: 16
+    border: "1px solid #e5e5e7"
+}
+```
 
-#### Layout Elements
-- `ScrollView` - Scrollable container
-- `Grid` - Grid layout
-- `Stack` - Stacked/layered layout
-- `Spacer` - Flexible space
-
-#### Semantic Elements
-- `Header` - Header section
-- `Footer` - Footer section
-- `Nav` - Navigation section
-- `Section` - Content section
-- `Article` - Article content
-- `Aside` - Sidebar content
-- `List` - List container
-- `ListItem` - List item
-- `Table` - Table container
-- `TableRow` - Table row
-- `TableCell` - Table cell
-- `TableHeader` - Table header
-
-### Properties
-
-#### Universal Properties
-- `id` - Element identifier
-- `class` - Style classes
-- `style` - Inline style reference
-- `visible` / `visibility` - Show/hide element
-- `enabled` / `disabled` - Enable/disable element
-- `tooltip` - Tooltip text
+### CSS-Like Properties
 
 #### Layout Properties
-- `width`, `height` - Dimensions (px, %, auto, min-content, max-content)
-- `minWidth`, `maxWidth`, `minHeight`, `maxHeight` - Size constraints
-- `display` - "flex", "block", "inline", "inline-block", "grid", "none"
-- `position` - "relative", "absolute", "fixed", "sticky"
-- `x`, `y` / `left`, `top`, `right`, `bottom` - Position
-- `zIndex` - Stacking order
-
-#### Flexbox Properties
-- `flexDirection` - "row", "column", "row-reverse", "column-reverse"
-- `flexWrap` - "nowrap", "wrap", "wrap-reverse"
-- `alignItems` - "start", "center", "end", "stretch", "baseline"
-- `justifyContent` - "start", "center", "end", "space-between", "space-around", "space-evenly"
-- `alignContent` - "start", "center", "end", "stretch", "space-between", "space-around"
-- `alignSelf` - "auto", "start", "center", "end", "stretch", "baseline"
-- `flexGrow` - Growth factor
-- `flexShrink` - Shrink factor
-- `flexBasis` - Base size
-- `gap` / `rowGap` / `columnGap` - Spacing between items
-
-#### Grid Properties
-- `gridTemplateColumns` - Column definition
-- `gridTemplateRows` - Row definition
-- `gridColumn` - Column placement
-- `gridRow` - Row placement
-- `gridArea` - Area placement
-- `gridGap` - Grid spacing
-
-#### Box Model Properties
-- `padding` / `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft`
-- `margin` / `marginTop`, `marginRight`, `marginBottom`, `marginLeft`
-- `border` / `borderTop`, `borderRight`, `borderBottom`, `borderLeft`
-- `borderWidth` / `borderTopWidth`, etc.
-- `borderColor` / `borderTopColor`, etc.
-- `borderStyle` - "solid", "dashed", "dotted", "none"
-- `borderRadius` / `borderTopLeftRadius`, etc.
-- `boxShadow` - Shadow definition
-- `overflow` - "visible", "hidden", "scroll", "auto"
-- `overflowX`, `overflowY` - Axis-specific overflow
+| Property | Type | Example | Description |
+|----------|------|---------|-------------|
+| width | Dimension | `200`, `"100%"`, `"50vw"` | Element width |
+| height | Dimension | `100`, `"auto"`, `"50vh"` | Element height |
+| minWidth | Dimension | `100`, `"200px"` | Minimum width |
+| maxWidth | Dimension | `500`, `"100%"` | Maximum width |
+| minHeight | Dimension | `50`, `"100px"` | Minimum height |
+| maxHeight | Dimension | `300`, `"80vh"` | Maximum height |
+| padding | Spacing | `16`, `"10px 20px"` | Inner spacing |
+| margin | Spacing | `8`, `"auto"`, `"10px 0"` | Outer spacing |
 
 #### Visual Properties
-- `backgroundColor` / `bg` - Background color
-- `backgroundImage` - Background image URL
-- `backgroundSize` - "cover", "contain", "auto", dimensions
-- `backgroundPosition` - Position of background
-- `backgroundRepeat` - "repeat", "repeat-x", "repeat-y", "no-repeat"
-- `gradient` - Gradient definition
-- `opacity` - Transparency (0.0-1.0)
-- `filter` - CSS filters
-- `backdropFilter` - Backdrop filters
-- `transform` - Transform string
-- `transformOrigin` - Transform origin
-- `transition` - Transition definition
-- `animation` - Animation name
+| Property | Type | Example | Description |
+|----------|------|---------|-------------|
+| background | Color/Gradient | `"#ffffff"`, `"linear-gradient(...)"` | Background color/gradient |
+| color | Color | `"#000000"`, `"red"` | Text color |
+| fontSize | Number | `16`, `14` | Font size in pixels |
+| fontWeight | Number/String | `600`, `"bold"` | Font weight |
+| fontFamily | String | `"Arial"`, `"system-ui"` | Font family |
+| lineHeight | Number | `1.5`, `24` | Line height |
+| textAlign | String | `"left"`, `"center"`, `"right"` | Text alignment |
+| border | String | `"1px solid #ccc"` | Border definition |
+| borderRadius | Number | `8`, `6` | Corner radius |
+| boxShadow | String | `"0 2px 4px rgba(0,0,0,0.1)"` | Drop shadow |
+| opacity | Number | `0.8`, `1` | Transparency |
+| cursor | String | `"pointer"`, `"default"` | Mouse cursor |
+| transition | String | `"all 0.2s ease"` | CSS transitions |
 
-#### Text Properties
-- `text` / `textContent` - Text content
-- `textColor` / `color` - Text color
-- `fontSize` / `size` - Font size
-- `fontWeight` / `weight` - Font weight (100-900)
-- `fontFamily` / `font` - Font family
-- `fontStyle` - "normal", "italic", "oblique"
-- `textAlign` / `align` - "left", "center", "right", "justify"
-- `textDecoration` - "none", "underline", "overline", "line-through"
-- `textTransform` - "none", "uppercase", "lowercase", "capitalize"
-- `lineHeight` - Line height
-- `letterSpacing` - Letter spacing
-- `wordSpacing` - Word spacing
-- `whiteSpace` - "normal", "nowrap", "pre", "pre-wrap"
-- `textOverflow` - "clip", "ellipsis"
-- `wordBreak` - "normal", "break-all", "keep-all"
+## Enhanced Theming System
 
-#### Interactive Properties
-- `onClick` - Click event handler
-- `onDoubleClick` - Double click handler
-- `onMouseEnter` / `onHover` - Mouse enter
-- `onMouseLeave` - Mouse leave
-- `onMouseMove` - Mouse move
-- `onMouseDown` - Mouse button down
-- `onMouseUp` - Mouse button up
-- `onFocus` - Focus event
-- `onBlur` - Blur event
-- `onChange` - Value change
-- `onInput` - Input event
-- `onKeyDown` - Key down
-- `onKeyUp` - Key up
-- `onKeyPress` - Key press
-- `onScroll` - Scroll event
-- `onLoad` - Load complete
-- `onError` - Error event
-- `cursor` - Cursor type
-- `pointerEvents` - "auto", "none"
-- `userSelect` - "auto", "none", "text", "all"
+### Theme Variables (Enhanced Variables)
+```kry
+# Theme as organized variable groups
+@theme colors {
+    primary: "#007AFF"
+    secondary: "#34C759"
+    success: "#30D158"
+    warning: "#FF9500"
+    error: "#FF3B30"
+    background: "#ffffff"
+    surface: "#f2f2f7"
+    text: "#000000"
+    textSecondary: "#8E8E93"
+    border: "#C6C6C8"
+}
 
-#### Element-Specific Properties
+@theme spacing {
+    xs: 4
+    sm: 8
+    md: 16
+    lg: 24
+    xl: 32
+    xxl: 48
+}
 
-**App**
-- `windowTitle` / `title` - Window title
-- `windowWidth` / `windowHeight` - Window dimensions
-- `windowResizable` / `resizable` - Allow resize
-- `windowFullscreen` / `fullscreen` - Fullscreen mode
-- `windowMinWidth` / `windowMinHeight` - Minimum size
-- `windowMaxWidth` / `windowMaxHeight` - Maximum size
-- `windowIcon` - Icon path
-- `theme` - Theme name
+@theme typography {
+    small: 12
+    body: 16
+    subtitle: 18
+    title: 24
+    heading: 32
+    display: 48
+}
 
-**Input/TextArea**
-- `value` - Current value
-- `placeholder` / `hint` - Placeholder text
-- `type` - "text", "password", "email", "number", "tel", "url", "search", "date", "time"
-- `required` - Required field
-- `readonly` - Read-only
-- `maxLength` - Maximum length
-- `minLength` - Minimum length
-- `pattern` - Validation pattern
-- `autocomplete` - Autocomplete hint
-- `spellcheck` - Enable spellcheck
-
-**Select**
-- `options` - Array of options
-- `selected` / `value` - Selected value
-- `multiple` - Multi-select
-- `size` - Visible options
-
-**Image**
-- `src` / `imageSource` - Image URL
-- `alt` - Alternative text
-- `objectFit` - "fill", "contain", "cover", "none", "scale-down"
-- `objectPosition` - Position within container
-- `loading` - "eager", "lazy"
-
-**Link**
-- `href` - Target URL
-- `target` - "_self", "_blank", "_parent", "_top"
-- `download` - Download filename
-- `rel` - Relationship
-
-**Video/Audio**
-- `src` - Media URL
-- `autoplay` - Auto play
-- `controls` - Show controls
-- `loop` - Loop playback
-- `muted` - Start muted
-- `poster` - Poster image (video)
-- `preload` - "none", "metadata", "auto"
-
-**List**
-- `listStyle` - "disc", "circle", "square", "decimal", "none"
-- `listStylePosition` - "inside", "outside"
-
-**Table**
-- `borderCollapse` - "collapse", "separate"
-- `borderSpacing` - Cell spacing
-
-### Directives
-
-#### Style Definition
-```
-style "styleName" {
-    property: value
-    property: value
-    
-    :hover {
-        property: value
-    }
-    
-    :active {
-        property: value
-    }
-    
-    :focus {
-        property: value
-    }
-    
-    :disabled {
-        property: value
-    }
-    
-    :checked {
-        property: value
-    }
+@theme radius {
+    sm: 4
+    md: 8
+    lg: 16
+    xl: 24
 }
 ```
 
-#### Variables
-```
-@variables {
-    varName: value
-    typedVar: Type = value
-    count: Int = 0
-    theme: String = "dark"
-    enabled: Bool = true
-    colors: Array<String> = ["red", "green", "blue"]
-    config: Object = {
-        timeout: 5000,
-        retries: 3
-    }
+### Using Theme Variables
+```kry
+style "primaryButton" {
+    background: $colors.primary
+    color: $colors.background
+    fontSize: $typography.body
+    padding: "$spacing.sm $spacing.md"
+    borderRadius: $radius.md
 }
 
-# Or shorthand
-@var count = 0
-@var theme = "dark"
-```
-
-#### Metadata
-```
-@metadata {
-    version: "1.0.0"
-    author: "Developer Name"
-    description: "App description"
-    icon: "icon.png"
-    bundle: ["page1.krb", "page2.krb"]
-    scripts: ["utils.js", "helpers.lua"]
-    permissions: ["camera", "microphone"]
+Button {
+    style: "primaryButton"
+    text: "Click Me"
 }
 ```
 
-#### Conditionals
-```
-@if condition {
-    Element { }
-}
-@elif condition {
-    Element { }  
-}
-@else {
-    Element { }
-}
-
-# Compile-time conditionals
-@const_if PLATFORM == "web" {
-    WebView { }
-}
-```
-
-#### Loops
-```
-@for item in collection {
-    Text { text: $item }
+### Theme Switching
+```kry
+# Define multiple themes
+@theme light {
+    background: "#ffffff"
+    surface: "#f2f2f7"
+    text: "#000000"
+    textSecondary: "#8E8E93"
+    primary: "#007AFF"
 }
 
-@for i in 0..10 {
-    Text { text: "Item ${i}" }
+@theme dark {
+    background: "#000000"
+    surface: "#1C1C1E"
+    text: "#ffffff"
+    textSecondary: "#8E8E93"
+    primary: "#0A84FF"
 }
 
-@while condition {
-    Element { }
-}
-```
-
-#### Functions
-```
-@function "lua" functionName(param1, param2) {
-    -- Lua code
-}
-
-@func "javascript" handleClick() {
-    // JavaScript code
-}
-
-@function "python" processData(data) {
-    # Python code
-}
-
-@func "wren" calculate(x, y) {
-    // Wren code
-}
-```
-
-#### Script Blocks
-```
-@script "lua" {
-    -- Global Lua code
-    function setup()
-        print("Initialized")
-    end
-}
-```
-
-#### Components
-```
-@component Button {
-    @props {
-        text: String = "Click me"
-        variant: String = "primary"
-        size: String = "medium"
-        disabled: Bool = false
-    }
+# App can switch themes
+App {
+    theme: "light"  # or "dark"
     
     Container {
-        class: "button button-${props.variant} button-${props.size}"
-        onClick: props.onClick
-        opacity: props.disabled ? 0.5 : 1.0
+        background: $background
+        color: $text
         
-        Text {
-            text: props.text
+        Button {
+            background: $primary
+            color: $background
         }
     }
 }
+```
 
-# Using component
+### Regular Variables (Existing)
+```kry
+@variables {
+    userName: String = "John Doe"
+    count: Int = 0
+    isLoggedIn: Boolean = false
+}
+
+# Shorthand syntax
+@var apiUrl = "https://api.example.com"
+@var maxItems = 10
+```
+
+## Layout Widgets
+
+### Column - Vertical Layout
+```kry
+Column {
+    spacing: 16                    # Space between children
+    mainAxis: "start"              # start, center, end, spaceBetween, spaceAround, spaceEvenly
+    crossAxis: "center"            # start, center, end, stretch
+    
+    children: [
+        Text { text: "Item 1" }
+        Text { text: "Item 2" }
+        Text { text: "Item 3" }
+    ]
+}
+```
+
+### Row - Horizontal Layout  
+```kry
+Row {
+    spacing: 8
+    mainAxis: "spaceBetween"
+    crossAxis: "center"
+    
+    children: [
+        Button { text: "Cancel" }
+        Button { text: "Save", style: "primaryButton" }
+    ]
+}
+```
+
+### Container - Basic Container
+```kry
+Container {
+    width: 200
+    height: 100
+    background: $colors.surface
+    borderRadius: $radius.md
+    padding: $spacing.md
+    
+    child: Text { 
+        text: "Hello, World!"
+        color: $colors.text
+    }
+}
+```
+
+### Center - Center Child
+```kry
+Center {
+    child: Button {
+        text: "Centered Button"
+        style: "primaryButton"
+    }
+}
+```
+
+### Spacer - Flexible Space
+```kry
+Row {
+    children: [
+        Text { text: "Left" }
+        Spacer {}  # Pushes content apart
+        Text { text: "Right" }
+    ]
+}
+```
+
+### Flex - Flexible Layout
+```kry
+Flex {
+    direction: "row"      # row, column
+    wrap: "nowrap"        # nowrap, wrap
+    align: "center"       # start, center, end, stretch
+    justify: "spaceBetween" # start, center, end, spaceBetween, spaceAround, spaceEvenly
+    gap: 12
+    
+    children: [
+        Container { flex: 1, background: $colors.primary }
+        Container { flex: 2, background: $colors.secondary }  
+        Container { flex: 1, background: $colors.success }
+    ]
+}
+```
+
+## Content Widgets
+
+### Text - Text Display
+```kry
+Text {
+    text: "Hello, World!"
+    fontSize: $typography.body
+    fontWeight: 600
+    color: $colors.text
+    textAlign: "center"
+}
+```
+
+### Button - Interactive Button
+```kry
+Button {
+    text: "Click Me"
+    style: "primaryButton"
+    onClick: "handleClick"
+    disabled: false
+}
+```
+
+### Image - Image Display
+```kry
+Image {
+    src: "avatar.jpg"
+    width: 100
+    height: 100
+    borderRadius: $radius.xl
+    objectFit: "cover"  # cover, contain, fill
+}
+```
+
+### Input - Text Input
+```kry
+Input {
+    placeholder: "Enter your name"
+    value: $userName
+    onChange: "handleNameChange"
+    style: "inputField"
+}
+```
+
+## Practical Example
+
+```kry
+# Theme variables
+@theme colors {
+    primary: "#007AFF"
+    background: "#ffffff"
+    surface: "#f2f2f7"
+    text: "#000000"
+    border: "#e5e5e7"
+}
+
+@theme spacing {
+    sm: 8
+    md: 16
+    lg: 24
+}
+
+# Styles
+style "card" {
+    background: $colors.surface
+    borderRadius: 12
+    padding: $spacing.lg
+    border: "1px solid $colors.border"
+    boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+}
+
+style "primaryButton" {
+    background: $colors.primary
+    color: $colors.background
+    fontSize: 16
+    fontWeight: 600
+    borderRadius: 8
+    padding: "$spacing.sm $spacing.md"
+    border: "none"
+    cursor: "pointer"
+}
+
+# Layout with widgets + styles
+App {
+    windowWidth: 800
+    windowHeight: 600
+    background: $colors.background
+    
+    Center {
+        child: Container {
+            style: "card"
+            width: 400
+            
+            Column {
+                spacing: $spacing.md
+                
+                Text {
+                    text: "User Profile"
+                    fontSize: 24
+                    fontWeight: 700
+                    color: $colors.text
+                }
+                
+                Row {
+                    spacing: $spacing.sm
+                    crossAxis: "center"
+                    
+                    Image {
+                        src: "avatar.jpg"
+                        width: 60
+                        height: 60
+                        borderRadius: 30
+                    }
+                    
+                    Column {
+                        spacing: 4
+                        
+                        Text { text: "John Doe", fontWeight: 600 }
+                        Text { text: "Designer", color: $colors.textSecondary }
+                    }
+                    
+                    Spacer {}
+                    
+                    Button {
+                        text: "Edit"
+                        style: "primaryButton"
+                        onClick: "handleEdit"
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+## Advanced Features
+
+### Style Inheritance
+```kry
+style "button" {
+    fontSize: 16
+    padding: "8px 16px"
+    borderRadius: 6
+    border: "none"
+    cursor: "pointer"
+}
+
+style "primaryButton" extends "button" {
+    background: $colors.primary
+    color: $colors.background
+}
+
+style "secondaryButton" extends "button" {
+    background: "transparent"
+    color: $colors.primary
+    border: "1px solid $colors.primary"
+}
+```
+
+### Responsive Properties
+```kry
+Container {
+    width: {
+        mobile: "100%"
+        tablet: 600
+        desktop: 800
+    }
+    padding: {
+        mobile: $spacing.sm
+        tablet: $spacing.md
+        desktop: $spacing.lg
+    }
+}
+```
+
+### Conditional Styling
+```kry
 Button {
     text: "Submit"
-    variant: "success"
-    onClick: "handleSubmit"
+    style: $isValid ? "primaryButton" : "disabledButton"
+    disabled: !$isValid
 }
 ```
 
-#### Slots
-```
-@component Card {
-    @props {
-        title: String
-    }
-    
-    @slots {
-        header
-        default
-        footer
-    }
-    
-    Container {
-        @slot header {
-            Text { text: props.title }
-        }
-        
-        Container {
-            @slot default
-        }
-        
-        @slot footer
-    }
+## Functions and Event Handlers
+
+### Function Definitions
+```kry
+@function "javascript" handleClick() {
+    console.log("Button clicked!");
 }
 
-# Using slots
-Card {
-    title: "My Card"
-    
-    @slot default {
-        Text { text: "Card content" }
-    }
-    
-    @slot footer {
-        Button { text: "Action" }
-    }
+@function "lua" calculateTotal(items) {
+    local total = 0
+    for i, item in ipairs(items) do
+        total = total + item.price
+    end
+    return total
 }
 ```
 
-#### Imports
-```
-@include "./components/button.kry"
-@include "./styles/theme.kry"
-@include "./shared/utils.kry"
-```
-
-#### Lifecycle Hooks
-```
-@onMount {
-    // Called when element mounts
+### Event Handling
+```kry
+Button {
+    text: "Click Me"
+    onClick: "handleClick"
+    onMouseEnter: "handleHover"
+    onMouseLeave: "handleUnhover"
 }
 
-@onUnmount {
-    // Called when element unmounts
-}
-
-@onUpdate {
-    // Called when element updates
+Input {
+    value: $inputValue
+    onChange: "handleInputChange"
+    onFocus: "handleFocus"
+    onBlur: "handleBlur"
 }
 ```
 
-#### Debug Directives
-```
-@debug {
-    // Debug-only code
-}
-
-@trace_renders {
-    // Track render cycles
-}
-
-@performance_monitor {
-    // Performance tracking
-}
-```
-
-### Expressions
-
-#### Variable References
-```
-text: $variableName
-width: $containerWidth
-color: $theme.primaryColor
-```
-
-#### String Interpolation
-```
-text: "Hello, ${userName}!"
-class: "button button-${size} button-${variant}"
-```
-
-#### Arithmetic
-```
-width: ${baseWidth + padding * 2}
-height: ${screenHeight - headerHeight - footerHeight}
-x: ${index * itemWidth + spacing}
-```
-
-#### Comparison
-```
-visible: $count > 0
-disabled: $age < 18
-opacity: $loading ? 0.5 : 1.0
-```
-
-#### Logical
-```
-enabled: $isLoggedIn && $hasPermission
-visible: $showMenu || $debugMode
-valid: !$errors
-```
-
-#### Ternary
-```
-text: $isLoggedIn ? "Logout" : "Login"
-color: $isDarkMode ? "#FFFFFF" : "#000000"
-```
-
-#### Array/Object Access
-```
-text: $items[0]
-color: $theme.colors.primary
-value: $user?.email ?? "No email"
-```
-
-#### Method Calls
-```
-text: $name.toUpperCase()
-items: $data.filter(item => item.active)
-```
-
-### Property Aliases
-
-#### Universal Aliases
-| Alias | Full Property |
-|-------|---------------|
-| `bg` | `backgroundColor` |
-| `color` | `textColor` |
-| `size` | `fontSize` |
-| `weight` | `fontWeight` |
-| `align` | `textAlign` |
-| `font` | `fontFamily` |
-| `w` | `width` |
-| `h` | `height` |
-| `x` | `left` |
-| `y` | `top` |
-| `p` | `padding` |
-| `m` | `margin` |
-| `pt`, `pr`, `pb`, `pl` | padding sides |
-| `mt`, `mr`, `mb`, `ml` | margin sides |
-
-#### Element-Specific Aliases
-| Element | Alias | Property |
-|---------|-------|----------|
-| App | `title` | `windowTitle` |
-| Image | `src` | `imageSource` |
-| Input | `hint` | `placeholder` |
-| Container | `direction` | `flexDirection` |
-| Container | `justify` | `justifyContent` |
-| Container | `items` | `alignItems` |
-
-### Comments
-```
-# Single line comment
-// Also single line comment
-```
-
-### Reserved Keywords
-- All element names
-- All directive names (@if, @for, etc.)
-- Boolean values (true, false)
-- null, undefined
-- All event handler names (onClick, etc.)
+This hybrid system gives you the familiar styling power of CSS with the structural benefits of widgets, plus an enhanced theming system that builds naturally on your existing variables.

@@ -1,9 +1,10 @@
-# Kryon IR Pipeline Reference
+# Kryon IR Pipeline Reference v2.0
+## Smart Hybrid System Compilation
 
 ## Pipeline Overview
 
 ```
-KRY Source → Lexer → Parser → AST → Optimizer → Code Generator → KRB Binary
+KRY Source → Lexer → Parser → Hybrid AST → Optimizer → Generator → KRB Binary
 ```
 
 ## 1. Lexer Phase
@@ -12,11 +13,18 @@ KRY Source → Lexer → Parser → AST → Optimizer → Code Generator → KRB
 
 | Token | Value | Description |
 |-------|-------|-------------|
-| IDENTIFIER | - | Element names, property names |
+| WIDGET_IDENTIFIER | - | Widget type names (Button, Column, etc.) |
+| STYLE_IDENTIFIER | - | Style names |
+| PROPERTY_IDENTIFIER | - | Property names |
+| THEME_IDENTIFIER | - | Theme variable names |
 | STRING | - | Quoted string literals |
-| NUMBER | - | Numeric literals |
+| NUMBER | - | Numeric literals with optional units (px, %, em, rem, vw, vh, etc.) |
 | BOOLEAN | true/false | Boolean literals |
-| COLOR | - | Color values (#RRGGBBAA) |
+| COLOR | - | Color values (#RRGGBBAA, rgb(), hsl()) |
+| THEME_VARIABLE | - | Theme variable references ($colors.primary) |
+| STYLE | style | Style declaration keyword |
+| THEME | @theme | Theme declaration keyword |
+| EXTENDS | extends | Style inheritance keyword |
 | LBRACE | { | Left brace |
 | RBRACE | } | Right brace |
 | LBRACKET | [ | Left bracket |
@@ -25,26 +33,9 @@ KRY Source → Lexer → Parser → AST → Optimizer → Code Generator → KRB
 | RPAREN | ) | Right parenthesis |
 | COLON | : | Property separator |
 | COMMA | , | List separator |
-| DOT | . | Member access |
-| DOLLAR | $ | Variable prefix |
+| DOT | . | Member access / theme access |
+| DOLLAR | $ | Theme variable prefix |
 | AT | @ | Directive prefix |
-| PLUS | + | Addition |
-| MINUS | - | Subtraction |
-| MULTIPLY | * | Multiplication |
-| DIVIDE | / | Division |
-| MODULO | % | Modulus |
-| EQUALS | == | Equality |
-| NOT_EQUALS | != | Inequality |
-| LESS_THAN | < | Less than |
-| GREATER_THAN | > | Greater than |
-| LESS_EQUAL | <= | Less or equal |
-| GREATER_EQUAL | >= | Greater or equal |
-| AND | && | Logical AND |
-| OR | \|\| | Logical OR |
-| NOT | ! | Logical NOT |
-| QUESTION | ? | Ternary operator |
-| ASSIGN | = | Assignment |
-| ARROW | -> | Function arrow |
 | COMMENT | #, // | Comments |
 | EOF | - | End of file |
 
@@ -53,206 +44,316 @@ KRY Source → Lexer → Parser → AST → Optimizer → Code Generator → KRB
 1. **Whitespace**: Spaces, tabs, newlines are ignored (except in strings)
 2. **Comments**: `#` or `//` to end of line
 3. **Strings**: Always quoted with `"`, supports escape sequences
-4. **Numbers**: Integer or float, with optional units (px, %, em, etc.)
-5. **Identifiers**: Start with letter or underscore, contain alphanumeric
-6. **Keywords**: Reserved words (true, false, null, undefined)
+4. **Numbers**: Integer or float, with optional units (px, %, em, rem, vw, vh, etc.)
+5. **Widget Identifiers**: Widget type names (Button, Column, Text, etc.)
+6. **Theme Variables**: Dot notation for theme access ($colors.primary, $spacing.md)
+7. **Style References**: String references to style definitions
+8. **Keywords**: Reserved words (true, false, style, extends, @theme)
 
 ## 2. Parser Phase
 
-### AST Node Types
+### Hybrid AST Node Types
 
 ```
-ASTNode
+HybridASTNode
 ├── Program
-│   └── statements: Statement[]
-├── Statement
-│   ├── ElementDeclaration
-│   ├── StyleDeclaration
-│   ├── DirectiveStatement
-│   └── ExpressionStatement
-├── ElementDeclaration
-│   ├── type: string
-│   ├── properties: Property[]
-│   └── children: ElementDeclaration[]
-├── Property
+│   ├── styleDefinitions: StyleDefinition[]
+│   ├── themeDefinitions: ThemeDefinition[]
+│   ├── variables: VariableDefinition[]
+│   └── widgets: WidgetDeclaration[]
+├── StyleDefinition
 │   ├── name: string
-│   └── value: Expression
-├── Expression
+│   ├── parent: string (for inheritance)
+│   └── properties: StyleProperty[]
+├── ThemeDefinition
+│   ├── groupName: string ("colors", "spacing", etc.)
+│   └── variables: ThemeVariable[]
+├── WidgetDeclaration
+│   ├── type: WidgetType
+│   ├── properties: WidgetProperty[]
+│   ├── styleReference: string
+│   └── children: WidgetDeclaration[]
+├── StyleProperty
+│   ├── name: string
+│   ├── value: StyleExpression
+│   └── responsive: ResponsiveValue
+├── WidgetProperty
+│   ├── name: string
+│   ├── value: WidgetExpression
+│   └── responsive: ResponsiveValue
+├── StyleExpression
 │   ├── Literal (string, number, boolean, color)
-│   ├── Identifier
-│   ├── MemberExpression
-│   ├── BinaryExpression
-│   ├── UnaryExpression
-│   ├── TernaryExpression
-│   ├── ArrayExpression
-│   ├── ObjectExpression
-│   └── FunctionCall
-└── Directive
-    ├── VariableDirective
-    ├── IfDirective
-    ├── ForDirective
-    ├── FunctionDirective
-    ├── ComponentDirective
-    ├── IncludeDirective
-    └── MetadataDirective
+│   ├── ThemeVariableReference
+│   ├── ResponsiveExpression
+│   └── ConditionalExpression
+├── ThemeVariable
+│   ├── name: string
+│   ├── type: ThemeVariableType
+│   └── value: Expression
+└── ResponsiveValue
+    ├── mobile: Expression
+    ├── tablet: Expression
+    └── desktop: Expression
 ```
 
 ### Parser Rules
 
-1. **Program**: Collection of top-level statements
-2. **Element**: `Type { properties and children }`
-3. **Property**: `name: value`
-4. **Expression**: Literals, variables, operations
-5. **Directive**: `@directiveName args { body }`
+1. **Program**: Collection of style definitions, theme definitions, and widget declarations
+2. **Style**: `style "name" { properties }` or `style "name" extends "parent" { properties }`
+3. **Theme**: `@theme groupName { variables }`
+4. **Widget**: `WidgetType { properties and children }`
+5. **Property**: `name: value` with optional responsive values
+6. **Theme Variable**: `$groupName.variableName`
 
 ## 3. Semantic Analysis
 
-### Type Checking
+### Hybrid System Type Checking
 
-1. **Property Validation**: Ensure properties exist for element type
-2. **Type Compatibility**: Check value types match property types
-3. **Variable Resolution**: Resolve variable references
-4. **Function Validation**: Check function signatures
+1. **Style Validation**: Ensure style names are unique and inheritance chains are valid
+2. **Theme Variable Validation**: Check theme variable references are valid
+3. **Widget Property Validation**: Ensure properties are valid for widget type
+4. **CSS Property Validation**: Validate CSS-like property names and values
+5. **Theme Variable Resolution**: Resolve theme variable references
+6. **Style Inheritance Resolution**: Resolve style inheritance chains
+7. **Responsive Value Validation**: Check responsive breakpoint definitions
 
 ### Scope Management
 
 ```
 GlobalScope
 ├── StyleScope
-├── ComponentScope
-│   └── PropsScope
-└── FunctionScope
-    └── LocalScope
+│   ├── StyleDefinitions
+│   └── StyleInheritance
+├── ThemeScope
+│   ├── ThemeGroups ("colors", "spacing", etc.)
+│   └── ThemeVariables
+├── WidgetScope
+│   ├── WidgetDefinitions
+│   ├── PropertyScope
+│   └── ChildrenScope
+└── VariableScope
+    └── RegularVariables
 ```
 
 ## 4. Optimization Phase
 
-### Optimization Passes
+### Hybrid System Optimization Passes
 
-1. **Constant Folding**: Evaluate constant expressions
+1. **Theme Variable Resolution**: Resolve theme variables to concrete values where beneficial
    ```
-   width: 100 + 50  →  width: 150
-   ```
-
-2. **Dead Code Elimination**: Remove unreachable code
-   ```
-   @if false { Element { } }  →  (removed)
+   background: $colors.primary  →  background: var(--kryon-colors-primary)
    ```
 
-3. **Variable Inlining**: Replace constant variables
+2. **Style Inheritance Flattening**: Flatten style inheritance chains
    ```
-   @var size = 20
-   width: $size  →  width: 20
-   ```
-
-4. **Style Merging**: Combine duplicate styles
-   ```
-   style "a" { color: "red" }
-   style "b" { color: "red" }  →  (merged)
+   style "primaryButton" extends "button"
+   →  primaryButton with all inherited + override properties
    ```
 
-5. **String Deduplication**: Share identical strings
+3. **CSS Property Optimization**: Optimize CSS-like properties
+   ```
+   padding: "8px 16px"  →  optimized padding values
+   ```
+
+4. **Style Deduplication**: Merge identical style definitions
+   ```
+   style1: { background: "#007AFF" }
+   style2: { background: "#007AFF" }  →  (shared style definition)
+   ```
+
+5. **Theme Variable Grouping**: Optimize theme variable organization
+   ```
+   Multiple color references  →  Grouped color variable table
+   ```
+
+6. **Responsive Value Optimization**: Optimize responsive breakpoints
+   ```
+   width: { mobile: 100px, tablet: 200px }
+   →  Optimized media query conditions
+   ```
+
+7. **Widget Layout Optimization**: Optimize widget layout properties
+   ```
+   Column with spacing  →  Optimized flexbox properties
+   ```
+
+8. **Dead Style Elimination**: Remove unused styles and theme variables
 
 ## 5. Code Generation
 
-### Element ID Assignment
+### Hybrid System Code Generation
+
+#### Style Definition Table Generation
 
 ```
-Root: 0
-├── Child1: 1
-│   ├── Grandchild1: 2
-│   └── Grandchild2: 3
-└── Child2: 4
+Style ID Assignment:
+primaryButton: 0x0001
+button: 0x0002
+card: 0x0003
 ```
 
-### Property Encoding
+#### Style Property Encoding
 
-1. **Property Resolution**: Name → Property ID
-2. **Value Encoding**: Type-specific binary encoding
-3. **Reference Resolution**: Variable/element references → IDs
+1. **CSS Property Resolution**: CSS property names → Property IDs
+2. **Theme Variable Linking**: Theme variable references → Theme variable IDs
+3. **Style Inheritance**: Parent style references → Parent style IDs
+4. **Responsive Values**: Breakpoint values → Responsive value definitions
 
-### String Table Generation
+#### Theme Variable Table Generation
 
-1. Collect all unique strings
-2. Sort by frequency (optional)
-3. Assign indices
-4. Encode UTF-8 data
+```
+Theme Group Assignment:
+colors: 0x0001
+spacing: 0x0002
+typography: 0x0003
+
+Theme Variable Assignment:
+colors.primary: 0x0001
+colors.background: 0x0002
+spacing.sm: 0x0003
+spacing.md: 0x0004
+```
+
+#### Widget Instance Generation
+
+1. **Widget ID Assignment**: Widget instances → Instance IDs
+2. **Style Reference**: Style name → Style ID
+3. **Property Encoding**: Widget properties → Property definitions
+4. **Theme Variable References**: Theme variables → Theme variable IDs
+
+#### String Table Generation (Enhanced)
+
+1. Collect all unique strings (widget names, style names, theme group names, property names)
+2. Sort by frequency for better compression
+3. Assign 16-bit indices for efficiency
+4. Encode UTF-8 data with length prefixes
 
 ## 6. Binary Emission
 
 ### Write Order
 
-1. **Header**: Magic, version, counts, offsets
-2. **String Table**: All strings used in file
-3. **Elements**: Depth-first order
-4. **Metadata**: JSON-encoded metadata
-5. **Scripts**: Embedded script code
-6. **Resources**: Embedded resources
-7. **Checksum**: CRC32 of all data
+1. **Header**: Magic, version, style counts, theme counts, widget counts, offsets
+2. **String Table**: All strings (style names, theme names, property names)
+3. **Style Definition Table**: Style definitions with inheritance chains
+4. **Theme Variable Table**: Theme groups and variables
+5. **Widget Definition Table**: Widget types and property definitions
+6. **Widget Instances**: Widget tree in depth-first order
+7. **Script Section**: Embedded event handlers and functions
+8. **Resource Section**: Embedded assets (images, fonts, etc.)
+9. **Checksum**: CRC32 of all data
 
 ## Error Handling
 
-### Error Categories
+### Hybrid System Error Categories
 
 | Category | Examples |
 |----------|----------|
 | Lexical | Invalid character, unterminated string |
-| Syntax | Missing brace, invalid property |
-| Semantic | Unknown property, type mismatch |
-| Reference | Undefined variable, unknown function |
+| Syntax | Missing brace, invalid style syntax |
+| Semantic | Unknown widget type, invalid CSS property |
+| Style | Unknown style reference, invalid inheritance |
+| Theme | Unknown theme variable, invalid theme group |
+| Responsive | Invalid breakpoint definition |
+| Reference | Undefined style, unknown theme variable |
 
-### Error Format
+### Enhanced Error Format
 
 ```
 [filename]:[line]:[column]: [severity]: [message]
+[context information if applicable]
   |
-  v [code snippet]
-    ^--- [pointer to error]
+  v [code snippet with syntax highlighting]
+    ^--- [pointer to error with suggestions]
 ```
 
-Example:
+Examples:
 ```
-button.kry:15:10: error: Unknown property 'onClick' for element 'Text'
-15 |   Text { onClick: "handler" }
-   |          ^^^^^^^
+button.kry:15:10: error: Unknown CSS property 'backgroundColor' in style definition
+  Did you mean 'background'?
+15 |   style "button" { backgroundColor: "#007AFF" }
+   |                    ^^^^^^^^^^^^^^^
+
+theme.kry:8:15: error: Unknown theme variable '$colors.primaryDark'
+  Available variables in 'colors': primary, secondary, background, text
+8  |   background: $colors.primaryDark
+   |               ^^^^^^^^^^^^^^^^^^
+   |               Did you mean '$colors.primary'?
+
+widget.kry:22:5: error: Style 'unknownStyle' not found
+  Available styles: button, primaryButton, card
+22 |   Button { style: "unknownStyle" }
+   |                   ^^^^^^^^^^^^^
 ```
 
 ## Compilation Flags
 
 | Flag | Description |
 |------|-------------|
-| `--optimize` | Enable optimizations |
-| `--debug` | Include debug information |
-| `--source-map` | Generate source mapping |
-| `--compress` | Compress output |
-| `--validate` | Strict validation mode |
-| `--target` | Target platform (web, native) |
+| `--optimize` | Enable style and theme optimizations |
+| `--debug` | Include style and theme debug information |
+| `--source-map` | Generate style and widget source mapping |
+| `--compress` | Compress output with style-aware compression |
+| `--validate` | Strict style inheritance and theme validation |
+| `--target` | Target platform (web, native, mobile) |
+| `--responsive` | Enable responsive design features |
+| `--theme-validation` | Strict theme variable validation |
 
 ## Metadata Generation
 
 Compiler automatically generates:
 
-1. **Element Metadata**: Type information, property defaults
-2. **Style Metadata**: Computed styles, inheritance
-3. **Script Metadata**: Function signatures, dependencies
-4. **Resource Metadata**: Asset references, sizes
+1. **Style Metadata**: Style definitions, inheritance chains, property mappings
+2. **Theme Metadata**: Theme variable tables, theme switching definitions
+3. **Widget Metadata**: Widget types, property definitions, layout hints
+4. **Responsive Metadata**: Breakpoint definitions, media query conditions
+5. **CSS Metadata**: CSS property mappings, optimization hints
+6. **Script Metadata**: Event handlers, function signatures
+7. **Resource Metadata**: Asset references, sizes, optimization data
 
 ## Platform-Specific Transformations
 
 ### Web Target
-- Convert dimensions to CSS units
-- Generate HTML-compatible event names
-- Include polyfills for missing features
+- Convert styles to CSS classes with proper prefixing
+- Generate CSS custom properties for theme variables
+- Map widget layout to HTML elements with flexbox CSS
+- Generate JavaScript for theme switching
+- Create responsive CSS media queries
+- Optimize CSS output for web performance
 
-### Native Target
-- Convert colors to platform format
-- Map to native UI elements
-- Generate platform-specific layouts
+### Native Target (Desktop/Mobile)
+- Convert styles to platform-specific styling systems
+- Map theme variables to platform color schemes
+- Generate native layout constraints from widget definitions
+- Create platform-specific responsive behaviors
+- Map CSS-like properties to native equivalents
+
+### Cross-Platform
+- Generate style compatibility matrices
+- Create platform-specific property overrides
+- Generate responsive breakpoint definitions for each platform
+- Create theme adaptation rules per platform
 
 ## Performance Considerations
 
-1. **String Interning**: Reuse string table indices
-2. **Property Packing**: Bit-pack boolean properties
-3. **Layout Hints**: Pre-calculate layout properties
-4. **Dead Code**: Remove unused styles/components
-5. **Compression**: Optional zlib/lz4 compression
+### Compilation Optimizations
+1. **Style String Interning**: Reuse string table indices for style names, CSS properties
+2. **Theme Variable Caching**: Pre-compute theme variable resolution chains
+3. **CSS Property Mapping**: Pre-map CSS properties to platform equivalents
+4. **Style Inheritance Flattening**: Pre-flatten style inheritance for runtime performance
+5. **Responsive Value Pre-calculation**: Pre-calculate responsive breakpoint conditions
+
+### Runtime Optimizations
+1. **Style Deduplication**: Share identical style definitions between widgets
+2. **Theme Variable Pooling**: Pool theme variable resolution results
+3. **CSS Class Generation**: Generate optimized CSS classes for web target
+4. **Widget Layout Caching**: Cache widget layout calculations
+5. **Responsive Calculation**: Pre-calculate responsive value transitions
+
+### Binary Optimizations
+1. **Style-Aware Compression**: Use style structure knowledge for better compression
+2. **Theme Variable Delta Encoding**: Store only theme variable differences
+3. **CSS Property Compression**: Compress CSS property names using frequency analysis
+4. **Style Reference Compression**: Compress style references using dependency analysis
+5. **Responsive Value Compression**: Compress responsive breakpoint data efficiently
+
+This compilation pipeline supports the Smart Hybrid System by efficiently processing both CSS-like styling and widget-based layout, with comprehensive theme support and cross-platform optimization.

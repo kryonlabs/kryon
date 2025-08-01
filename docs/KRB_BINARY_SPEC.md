@@ -1,392 +1,405 @@
-# KRB Binary Format Specification v1.0
+# KRB Binary Format Specification v2.0
+## Smart Hybrid System with Enhanced Theming
 
 ## Overview
-KRB (Kryon Binary) is a compact, efficient binary format for storing UI definitions compiled from KRY source files.
+KRB (Kryon Binary) v2.0 is designed for the Smart Hybrid System, supporting CSS-like styling, widget-based layout, style inheritance, and enhanced theming with variable groups.
 
 ## File Structure
 
 ```
-[Header - 64 bytes]
+[Header - 128 bytes]
 [String Table]
-[Elements Array]
-[Metadata Section]
+[Style Definition Table]
+[Theme Variable Table]
+[Widget Definition Table]
+[Widget Instances]
 [Script Section]
 [Resource Section]
 [Checksum - 4 bytes]
 ```
 
-## Header Format (64 bytes)
+## Header Format (128 bytes)
 
 | Offset | Size | Field | Type | Description |
 |--------|------|-------|------|-------------|
 | 0x00 | 4 | Magic | u32 | `0x4B52594E` ("KRYN") |
-| 0x04 | 2 | Version Major | u16 | Format version major (1) |
+| 0x04 | 2 | Version Major | u16 | Format version major (2) |
 | 0x06 | 2 | Version Minor | u16 | Format version minor (0) |
 | 0x08 | 2 | Version Patch | u16 | Format version patch (0) |
 | 0x0A | 2 | Flags | u16 | File flags (see below) |
-| 0x0C | 4 | Element Count | u32 | Number of elements |
-| 0x10 | 4 | Property Count | u32 | Total properties across all elements |
-| 0x14 | 4 | String Table Size | u32 | String table size in bytes |
-| 0x18 | 4 | Data Size | u32 | Total file data size |
-| 0x1C | 4 | Checksum | u32 | CRC32 checksum |
-| 0x20 | 1 | Compression | u8 | Compression type |
-| 0x21 | 4 | Uncompressed Size | u32 | Original size if compressed |
-| 0x25 | 4 | Metadata Offset | u32 | Offset to metadata section |
-| 0x29 | 4 | Script Offset | u32 | Offset to script section |
-| 0x2D | 4 | Resource Offset | u32 | Offset to resource section |
-| 0x31 | 15 | Reserved | bytes | Reserved for future use |
+| 0x0C | 4 | Style Definition Count | u32 | Number of style definitions |
+| 0x10 | 4 | Theme Variable Count | u32 | Number of theme variable groups |
+| 0x14 | 4 | Widget Definition Count | u32 | Number of widget types |
+| 0x18 | 4 | Widget Instance Count | u32 | Number of widget instances |
+| 0x1C | 4 | Property Count | u32 | Total properties across all widgets |
+| 0x20 | 4 | String Table Size | u32 | String table size in bytes |
+| 0x24 | 4 | Data Size | u32 | Total file data size |
+| 0x28 | 4 | Checksum | u32 | CRC32 checksum |
+| 0x2C | 1 | Compression | u8 | Compression type |
+| 0x2D | 4 | Uncompressed Size | u32 | Original size if compressed |
+| 0x31 | 4 | Style Definition Offset | u32 | Offset to style definitions |
+| 0x35 | 4 | Theme Variable Offset | u32 | Offset to theme variables |
+| 0x39 | 4 | Widget Definition Offset | u32 | Offset to widget definitions |
+| 0x3D | 4 | Widget Instance Offset | u32 | Offset to widget instances |
+| 0x41 | 4 | Script Offset | u32 | Offset to script section |
+| 0x45 | 4 | Resource Offset | u32 | Offset to resource section |
+| 0x49 | 47 | Reserved | bytes | Reserved for future use |
 
 ### Header Flags
-- `0x0001` - Has metadata section
-- `0x0002` - Has embedded scripts
-- `0x0004` - Is compressed
-- `0x0008` - Has debug information
-- `0x0010` - Has resources section
-- `0x0020` - Has source mapping
-- `0x0040` - Has component definitions
-- `0x0080` - Has style definitions
+- `0x0001` - Has styles
+- `0x0002` - Has theme variables
+- `0x0004` - Has embedded scripts
+- `0x0008` - Is compressed
+- `0x0010` - Has debug information
+- `0x0020` - Has resources section
+- `0x0040` - Has source mapping
+- `0x0080` - Has style inheritance
+- `0x0100` - Has responsive properties
+- `0x0200` - Supports theme switching
 
-### Compression Types
-- `0x00` - None
-- `0x01` - Zlib
-- `0x02` - LZ4
-- `0x03` - Brotli
+## Style Definition Table
 
-## String Table
+### Style Definition Structure
 
 ```
-[String Count: u32]
-[String 0: Length(u16) + UTF-8 Data]
-[String 1: Length(u16) + UTF-8 Data]
-...
+[Style ID: u32]
+[Style Name String ID: u16]
+[Parent Style ID: u32]             # 0 = no parent, for inheritance
+[Property Count: u16]
+[Property Definitions]
+[Style Flags: u16]
+[Reserved: 4 bytes]
 ```
 
-All strings in the file are stored in the string table and referenced by index.
-
-## Element Structure
+### Style Property Definition
 
 ```
-[Element Header - 24 bytes]
-[Properties Array]
-[Child IDs Array]
-[Event Handlers Array]
+[Property Name String ID: u16]
+[Property Type: u8]
+[Value Type: u8]
+[Value Size: u16]
+[Value Data]
 ```
 
-### Element Header
+### CSS-Like Property Types
 
-| Offset | Size | Field | Type | Description |
-|--------|------|-------|------|-------------|
-| 0x00 | 4 | ID | u32 | Unique element ID |
-| 0x04 | 1 | Type | u8 | Element type code |
-| 0x05 | 2 | Name String ID | u16 | String table index for element name |
-| 0x07 | 4 | Parent ID | u32 | Parent element ID (0 = root) |
-| 0x0B | 2 | Property Count | u16 | Number of properties |
-| 0x0D | 2 | Child Count | u16 | Number of children |
-| 0x0F | 2 | Handler Count | u16 | Number of event handlers |
-| 0x11 | 4 | Flags | u32 | Element flags |
-| 0x15 | 3 | Reserved | bytes | Reserved |
+| Property Type | ID | Description |
+|---------------|----|----|
+| Layout | 0x01 | width, height, padding, margin |
+| Visual | 0x02 | background, color, border, shadow |
+| Typography | 0x03 | fontSize, fontWeight, fontFamily |
+| Transform | 0x04 | transition, animation, transform |
+| Interaction | 0x05 | cursor, userSelect, pointerEvents |
 
-### Element Type Codes
+### Built-in Style Property IDs
 
-| Type | Code | Description |
-|------|------|-------------|
-| App | 0x00 | Application root |
-| Container | 0x01 | Layout container |
-| Text | 0x02 | Text element |
-| EmbedView | 0x03 | Platform embed |
-| Button | 0x10 | Button |
-| Input | 0x11 | Text input |
-| Link | 0x12 | Hyperlink |
-| Image | 0x20 | Image |
-| Video | 0x21 | Video player |
-| Audio | 0x22 | Audio player |
-| Canvas | 0x23 | Drawing canvas |
-| Svg | 0x24 | SVG graphics |
-| WebView | 0x25 | Web view |
-| Select | 0x30 | Dropdown |
-| Slider | 0x31 | Range slider |
-| Checkbox | 0x33 | Checkbox |
-| Radio | 0x34 | Radio button |
-| TextArea | 0x35 | Multi-line input |
-| FileInput | 0x36 | File picker |
-| DatePicker | 0x37 | Date picker |
-| ColorPicker | 0x38 | Color picker |
-| Form | 0x40 | Form container |
-| List | 0x41 | List container |
-| ListItem | 0x42 | List item |
-| Header | 0x43 | Header section |
-| Footer | 0x44 | Footer section |
-| Nav | 0x45 | Navigation |
-| Section | 0x46 | Section |
-| Article | 0x47 | Article |
-| Aside | 0x48 | Aside |
-| Table | 0x50 | Table |
-| TableRow | 0x51 | Table row |
-| TableCell | 0x52 | Table cell |
-| TableHeader | 0x53 | Table header |
-| ScrollView | 0x60 | Scrollable area |
-| Grid | 0x61 | Grid layout |
-| Stack | 0x62 | Stack layout |
-| Spacer | 0x63 | Flexible space |
+#### Layout Properties (0x0100-0x01FF)
+| Property | ID | Type | Description |
+|----------|----|----|-------------|
+| width | 0x0100 | Dimension | Element width |
+| height | 0x0101 | Dimension | Element height |
+| minWidth | 0x0102 | Dimension | Minimum width |
+| maxWidth | 0x0103 | Dimension | Maximum width |
+| minHeight | 0x0104 | Dimension | Minimum height |
+| maxHeight | 0x0105 | Dimension | Maximum height |
+| padding | 0x0106 | Spacing | Inner spacing |
+| margin | 0x0107 | Spacing | Outer spacing |
 
-### Element Flags
-- `0x00000001` - Is hidden
-- `0x00000002` - Is absolute positioned
-- `0x00000004` - Has event handlers
-- `0x00000008` - Has animations
-- `0x00000010` - Has conditional rendering
-- `0x00000020` - Is component instance
-- `0x00000040` - Has slots
-- `0x00000080` - Has lifecycle hooks
+#### Visual Properties (0x0200-0x02FF)
+| Property | ID | Type | Description |
+|----------|----|----|-------------|
+| background | 0x0200 | Color/Gradient | Background color/gradient |
+| color | 0x0201 | Color | Text color |
+| border | 0x0202 | String | Border definition |
+| borderRadius | 0x0203 | Number | Corner radius |
+| boxShadow | 0x0204 | String | Drop shadow |
+| opacity | 0x0205 | Number | Transparency |
 
-## Property Structure
+#### Typography Properties (0x0300-0x03FF)
+| Property | ID | Type | Description |
+|----------|----|----|-------------|
+| fontSize | 0x0300 | Number | Font size |
+| fontWeight | 0x0301 | Number/String | Font weight |
+| fontFamily | 0x0302 | String | Font family |
+| lineHeight | 0x0303 | Number | Line height |
+| textAlign | 0x0304 | String | Text alignment |
+
+## Theme Variable Table
+
+### Theme Variable Group Structure
 
 ```
-[Property Header - 8 bytes]
-[Property Value - varies]
+[Theme Group ID: u32]
+[Theme Group Name String ID: u16]  # "colors", "spacing", "typography"
+[Variable Count: u16]
+[Variables]
+[Theme Flags: u16]
 ```
 
-### Property Header
+### Theme Variable Definition
 
-| Offset | Size | Field | Type | Description |
-|--------|------|-------|------|-------------|
-| 0x00 | 2 | Property ID | u16 | Property type ID |
-| 0x02 | 1 | Value Type | u8 | Value data type |
-| 0x03 | 1 | Flags | u8 | Property flags |
-| 0x04 | 4 | Value Size | u32 | Value size in bytes |
+```
+[Variable Name String ID: u16]     # "primary", "secondary", "sm", "md"
+[Variable Type: u8]
+[Value Type: u8]
+[Value Size: u16]
+[Value Data]
+```
 
-### Property Type IDs
+### Theme Variable Types
 
-#### Visual Properties (0x01-0x1F)
-| ID | Property | Type |
-|----|----------|------|
-| 0x01 | backgroundColor | Color |
-| 0x02 | textColor | Color |
-| 0x03 | borderColor | Color |
-| 0x04 | borderWidth | Float |
-| 0x05 | borderRadius | Float |
-| 0x06 | opacity | Float |
-| 0x07 | visibility | Boolean |
-| 0x08 | cursor | String |
-| 0x09 | boxShadow | String |
-| 0x0A | filter | String |
-| 0x0B | backdropFilter | String |
-| 0x0C | transform | String |
-| 0x0D | transition | String |
-| 0x0E | animation | String |
-| 0x0F | gradient | String |
+| Type | ID | Description |
+|------|----|-------------|
+| Color | 0x01 | Color values |
+| Spacing | 0x02 | Spacing values |
+| Typography | 0x03 | Typography values |
+| Radius | 0x04 | Border radius values |
+| Shadow | 0x05 | Shadow definitions |
+| Custom | 0x06 | Custom theme variables |
 
-#### Text Properties (0x20-0x3F)
-| ID | Property | Type |
-|----|----------|------|
-| 0x20 | textContent | String |
-| 0x21 | fontSize | Float |
-| 0x22 | fontWeight | Integer |
-| 0x23 | fontFamily | String |
-| 0x24 | fontStyle | String |
-| 0x25 | textAlign | String |
-| 0x26 | textDecoration | String |
-| 0x27 | textTransform | String |
-| 0x28 | lineHeight | Float |
-| 0x29 | letterSpacing | Float |
-| 0x2A | wordSpacing | Float |
-| 0x2B | whiteSpace | String |
-| 0x2C | textOverflow | String |
-| 0x2D | wordBreak | String |
+### Theme Switching Support
 
-#### Layout Properties (0x40-0x5F)
-| ID | Property | Type |
-|----|----------|------|
-| 0x40 | width | Dimension |
-| 0x41 | height | Dimension |
-| 0x42 | minWidth | Dimension |
-| 0x43 | maxWidth | Dimension |
-| 0x44 | minHeight | Dimension |
-| 0x45 | maxHeight | Dimension |
-| 0x46 | display | String |
-| 0x47 | position | String |
-| 0x48 | left | Dimension |
-| 0x49 | top | Dimension |
-| 0x4A | right | Dimension |
-| 0x4B | bottom | Dimension |
-| 0x4C | zIndex | Integer |
-| 0x4D | overflow | String |
-| 0x4E | overflowX | String |
-| 0x4F | overflowY | String |
+```
+[Active Theme Name String ID: u16] # "light", "dark", etc.
+[Theme Count: u8]
+[Theme Definitions]
+```
 
-#### Flexbox Properties (0x60-0x7F)
-| ID | Property | Type |
-|----|----------|------|
-| 0x60 | flexDirection | String |
-| 0x61 | flexWrap | String |
-| 0x62 | justifyContent | String |
-| 0x63 | alignItems | String |
-| 0x64 | alignContent | String |
-| 0x65 | alignSelf | String |
-| 0x66 | flexGrow | Float |
-| 0x67 | flexShrink | Float |
-| 0x68 | flexBasis | Dimension |
-| 0x69 | gap | Float |
-| 0x6A | rowGap | Float |
-| 0x6B | columnGap | Float |
+### Theme Definition
 
-#### Spacing Properties (0x80-0x9F)
-| ID | Property | Type |
-|----|----------|------|
-| 0x80 | padding | Spacing |
-| 0x81 | paddingTop | Float |
-| 0x82 | paddingRight | Float |
-| 0x83 | paddingBottom | Float |
-| 0x84 | paddingLeft | Float |
-| 0x85 | margin | Spacing |
-| 0x86 | marginTop | Float |
-| 0x87 | marginRight | Float |
-| 0x88 | marginBottom | Float |
-| 0x89 | marginLeft | Float |
+```
+[Theme Name String ID: u16]        # "light", "dark"
+[Variable Override Count: u16]
+[Variable Overrides]
+```
 
-#### Interactive Properties (0xA0-0xBF)
-| ID | Property | Type |
-|----|----------|------|
-| 0xA0 | id | String |
-| 0xA1 | class | String |
-| 0xA2 | style | String |
-| 0xA3 | disabled | Boolean |
-| 0xA4 | enabled | Boolean |
-| 0xA5 | tooltip | String |
-| 0xA6 | pointerEvents | String |
-| 0xA7 | userSelect | String |
+### Variable Override
 
-#### Element-Specific Properties (0xC0-0xFF)
-| ID | Property | Type |
-|----|----------|------|
-| 0xC0 | windowTitle | String |
-| 0xC1 | windowWidth | Integer |
-| 0xC2 | windowHeight | Integer |
-| 0xC3 | windowResizable | Boolean |
-| 0xC4 | src | String |
-| 0xC5 | alt | String |
-| 0xC6 | href | String |
-| 0xC7 | target | String |
-| 0xC8 | placeholder | String |
-| 0xC9 | value | String |
-| 0xCA | type | String |
-| 0xCB | checked | Boolean |
-| 0xCC | options | Array |
-| 0xCD | selected | String |
-| 0xCE | autoplay | Boolean |
-| 0xCF | controls | Boolean |
+```
+[Variable Group String ID: u16]    # "colors"
+[Variable Name String ID: u16]     # "background"
+[New Value Type: u8]
+[New Value Size: u16]
+[New Value Data]
+```
+
+## Widget Definition Table
+
+### Widget Definition Structure
+
+```
+[Widget Type ID: u32]
+[Widget Name String ID: u16]
+[Property Definition Count: u16]
+[Property Definitions]
+[Default Property Values]
+[Widget Flags: u32]
+[Reserved: 8 bytes]
+```
+
+### Built-in Widget Type IDs
+
+#### Layout Widgets (0x0000-0x00FF)
+| Widget | ID | Description |
+|--------|----|-------------|
+| Widget | 0x0000 | Base widget (abstract) |
+| Column | 0x0001 | Vertical layout |
+| Row | 0x0002 | Horizontal layout |
+| Center | 0x0003 | Center child |
+| Container | 0x0004 | Basic container |
+| Flex | 0x0005 | Flexible layout |
+| Spacer | 0x0006 | Flexible space |
+
+#### Content Widgets (0x0400-0x04FF)
+| Widget | ID | Description |
+|--------|----|-------------|
+| Text | 0x0400 | Text display |
+| Button | 0x0401 | Interactive button |
+| Image | 0x0402 | Image display |
+| Input | 0x0403 | Text input |
+
+#### Custom Widgets (0x1000+)
+Reserved for user-defined widgets
+
+## Widget Instance Structure
+
+```
+[Instance ID: u32]
+[Widget Type ID: u32]
+[Parent Instance ID: u32]
+[Style Reference ID: u32]          # 0 = no style
+[Property Count: u16]
+[Child Count: u16]
+[Event Handler Count: u16]
+[Widget Flags: u32]
+[Properties]
+[Child Instance IDs]
+[Event Handlers]
+```
+
+## Property System
+
+### Property Structure
+
+```
+[Property ID: u16]
+[Value Type: u8]
+[Flags: u8]
+[Theme Variable Reference: u16]    # 0 = no reference
+[Responsive Breakpoints: u8]       # Number of breakpoints
+[Value Size: u32]
+[Value Data]
+[Responsive Values]                # If breakpoints > 0
+```
 
 ### Value Types
-| Type | Code | Size | Description |
-|------|------|------|-------------|
-| Null | 0x00 | 0 | No value |
-| Boolean | 0x01 | 1 | true/false |
-| Integer | 0x02 | 8 | Signed 64-bit |
-| Float | 0x03 | 8 | Double precision |
-| String | 0x04 | varies | String table index (u16) |
-| Color | 0x05 | 4 | RGBA (0xRRGGBBAA) |
-| Dimension | 0x06 | 5 | Type(u8) + Value(f32) |
-| Spacing | 0x07 | 16 | TRBL floats |
-| Position | 0x08 | 8 | X(f32) + Y(f32) |
-| Size | 0x09 | 8 | W(f32) + H(f32) |
-| Array | 0x0A | varies | Count(u32) + Items |
-| Object | 0x0B | varies | Count(u32) + KV pairs |
-| Reference | 0x0C | 4 | Element ID |
-| Expression | 0x0D | varies | Expression data |
-| Function | 0x0E | 2 | Function string ID |
 
-### Dimension Type Codes
 | Type | Code | Description |
 |------|------|-------------|
-| Auto | 0x00 | Automatic |
-| Pixels | 0x01 | Absolute pixels |
-| Percent | 0x02 | Percentage |
-| MinContent | 0x03 | Minimum content |
-| MaxContent | 0x04 | Maximum content |
-| Rem | 0x05 | Root em units |
-| Em | 0x06 | Relative em units |
-| Vw | 0x07 | Viewport width |
-| Vh | 0x08 | Viewport height |
+| Null | 0x00 | No value |
+| Boolean | 0x01 | true/false |
+| Integer | 0x02 | Signed 64-bit |
+| Float | 0x03 | Double precision |
+| String | 0x04 | String table index |
+| Color | 0x05 | RGBA color |
+| ThemeVariable | 0x06 | Theme variable reference |
+| Dimension | 0x07 | Size with units |
+| Spacing | 0x08 | TRBL spacing |
+| Array | 0x09 | Array of values |
+| Object | 0x0A | Key-value pairs |
+| StyleReference | 0x0B | Style definition reference |
 
-## Event Handler Structure
-
-```
-[Event Type: u8]
-[Handler String ID: u16]
-[Flags: u8]
-```
-
-### Event Type Codes
-| Type | Code | Description |
-|------|------|-------------|
-| onClick | 0x01 | Click event |
-| onDoubleClick | 0x02 | Double click |
-| onMouseEnter | 0x03 | Mouse enter |
-| onMouseLeave | 0x04 | Mouse leave |
-| onMouseMove | 0x05 | Mouse move |
-| onMouseDown | 0x06 | Mouse down |
-| onMouseUp | 0x07 | Mouse up |
-| onFocus | 0x08 | Focus gained |
-| onBlur | 0x09 | Focus lost |
-| onChange | 0x0A | Value changed |
-| onInput | 0x0B | Input event |
-| onKeyDown | 0x0C | Key down |
-| onKeyUp | 0x0D | Key up |
-| onKeyPress | 0x0E | Key press |
-| onScroll | 0x0F | Scroll event |
-| onLoad | 0x10 | Load complete |
-| onError | 0x11 | Error occurred |
-
-## Metadata Section
+### Theme Variable Reference
 
 ```
-[Section Size: u32]
-[JSON Data: UTF-8]
+[Theme Group String ID: u16]       # "colors", "spacing"
+[Variable Name String ID: u16]     # "primary", "md"
 ```
 
-Contains JSON-encoded metadata:
-- App configuration
-- Component definitions
-- Style definitions
-- Script references
-- Resource manifest
+### Responsive Values
+
+```
+[Breakpoint Name String ID: u16]   # "mobile", "tablet", "desktop"
+[Value Type: u8]
+[Value Size: u16]
+[Value Data]
+```
+
+## Style Inheritance
+
+### Style Inheritance Chain
+
+```
+[Child Style ID: u32]
+[Parent Style ID: u32]
+[Override Property Count: u16]
+[Override Properties]
+```
+
+### Override Property
+
+```
+[Property ID: u16]
+[Override Value Type: u8]
+[Override Value Size: u16]
+[Override Value Data]
+```
+
+## Event System
+
+### Event Handler
+
+```
+[Event Type String ID: u16]        # "onClick", "onChange"
+[Handler Function String ID: u16]  # Function name
+[Handler Type: u8]                 # 0=built-in, 1=script
+[Handler Flags: u8]
+```
 
 ## Script Section
 
+### Script Definition
+
 ```
-[Script Count: u32]
-[Script 0: Language(u8) + NameID(u16) + Size(u32) + Code]
-[Script 1: Language(u8) + NameID(u16) + Size(u32) + Code]
-...
+[Script ID: u32]
+[Script Language String ID: u16]   # "javascript", "lua"
+[Function Count: u16]
+[Functions]
 ```
 
-### Language Codes
-| Language | Code |
-|----------|------|
-| Lua | 0x01 |
-| JavaScript | 0x02 |
-| Python | 0x03 |
-| Wren | 0x04 |
+### Function Definition
+
+```
+[Function Name String ID: u16]
+[Parameter Count: u8]
+[Parameter Names]
+[Code Size: u32]
+[Code Data]
+```
 
 ## Resource Section
 
+### Resource Definition
+
 ```
-[Resource Count: u32]
-[Resource 0: Type(u8) + PathID(u16) + Size(u32) + Data]
-[Resource 1: Type(u8) + PathID(u16) + Size(u32) + Data]
-...
+[Resource ID: u32]
+[Resource Type: u8]                # 0=image, 1=font, 2=audio, 3=video
+[Resource Name String ID: u16]
+[MIME Type String ID: u16]
+[Data Size: u32]
+[Data]
 ```
 
-### Resource Types
-| Type | Code | Description |
-|------|------|-------------|
-| Image | 0x01 | Embedded image |
-| Font | 0x02 | Font data |
-| Audio | 0x03 | Audio file |
-| Video | 0x04 | Video file |
-| Data | 0x05 | Generic data |
+## Performance Optimizations
 
-## Checksum
-- Algorithm: CRC32
-- Coverage: All file data except checksum field itself
-- Location: End of file (4 bytes)
+### Style Deduplication
+
+```
+[Unique Style Hash: u32]
+[Reference Count: u16]
+[Style Definition]
+```
+
+### Theme Variable Caching
+
+```
+[Computed Value Cache Size: u16]
+[Cached Values]
+```
+
+### Widget Instance Pooling
+
+```
+[Pool ID: u16]
+[Widget Type ID: u32]
+[Pool Size: u16]
+[Pool Flags: u16]
+```
+
+## Cross-Platform Considerations
+
+### Platform-Specific Overrides
+
+```
+[Platform ID: u8]                  # 0=web, 1=native, 2=mobile
+[Override Count: u16]
+[Property Overrides]
+```
+
+### Platform Property Override
+
+```
+[Property ID: u16]
+[Override Value Type: u8]
+[Override Value Size: u16]
+[Override Value Data]
+```
+
+## Checksum & Validation
+
+- **Algorithm**: CRC32
+- **Coverage**: All file data except checksum field
+- **Validation**: Header validation, style inheritance validation, theme variable validation
+- **Location**: End of file (4 bytes)
+
+This binary format supports the Smart Hybrid System with CSS-like styling, widget-based layout, style inheritance, and enhanced theming with organized variable groups.

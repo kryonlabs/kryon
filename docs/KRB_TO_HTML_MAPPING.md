@@ -1,322 +1,594 @@
-# KRB to HTML Mapping Reference
+# KRB to HTML Mapping Reference v2.0
+## Smart Hybrid System Mapping
 
-## Element Mapping
+## Overview
+This document describes how the Smart Hybrid System (CSS-like styling + Widget layout) maps to HTML, CSS, and JavaScript for web deployment.
 
-| KRB Element | HTML Element | Notes |
-|-------------|--------------|-------|
-| App | `<div class="kryon-app">` | Root container with window metadata |
-| Container | `<div>` | Generic container |
-| Text | `<span>` or `<p>` | Based on context |
-| Button | `<button>` | Interactive button |
-| Input | `<input>` | Various input types |
-| Link | `<a>` | Hyperlink |
-| Image | `<img>` | Image element |
-| Video | `<video>` | Video player |
-| Audio | `<audio>` | Audio player |
-| Canvas | `<canvas>` | Drawing surface |
-| Svg | `<svg>` | SVG container |
-| WebView | `<iframe>` | Embedded web content |
-| Form | `<form>` | Form container |
-| Select | `<select>` | Dropdown list |
-| TextArea | `<textarea>` | Multi-line input |
-| Checkbox | `<input type="checkbox">` | Checkbox input |
-| Radio | `<input type="radio">` | Radio button |
-| Slider | `<input type="range">` | Range slider |
-| FileInput | `<input type="file">` | File picker |
-| DatePicker | `<input type="date">` | Date picker |
-| ColorPicker | `<input type="color">` | Color picker |
-| List | `<ul>` or `<ol>` | List container |
-| ListItem | `<li>` | List item |
-| Table | `<table>` | Table container |
-| TableRow | `<tr>` | Table row |
-| TableCell | `<td>` | Table cell |
-| TableHeader | `<th>` | Table header |
-| Header | `<header>` | Header section |
-| Footer | `<footer>` | Footer section |
-| Nav | `<nav>` | Navigation section |
-| Section | `<section>` | Content section |
-| Article | `<article>` | Article content |
-| Aside | `<aside>` | Sidebar content |
-| ScrollView | `<div style="overflow:auto">` | Scrollable container |
-| Grid | `<div style="display:grid">` | Grid container |
-| Stack | `<div style="position:relative">` | Stacked layout |
-| Spacer | `<div style="flex:1">` | Flexible space |
-| EmbedView | `<div>` or platform-specific | Platform embed |
+## Style System Mapping
 
-## Property Mapping
+### Style Definitions to CSS
 
-### Visual Properties
-
-| KRB Property | CSS Property | Value Mapping |
-|--------------|--------------|---------------|
-| backgroundColor | background-color | Direct |
-| textColor | color | Direct |
-| borderColor | border-color | Direct |
-| borderWidth | border-width | `{value}px` |
-| borderRadius | border-radius | `{value}px` |
-| borderStyle | border-style | Direct |
-| opacity | opacity | Direct (0-1) |
-| visibility | visibility | `true` → "visible", `false` → "hidden" |
-| cursor | cursor | Direct |
-| boxShadow | box-shadow | Direct |
-| filter | filter | Direct |
-| backdropFilter | backdrop-filter | Direct |
-| transform | transform | Direct |
-| transition | transition | Direct |
-| animation | animation | Direct |
-| gradient | background | Linear/radial gradient |
-
-### Text Properties
-
-| KRB Property | CSS Property | Value Mapping |
-|--------------|--------------|---------------|
-| fontSize | font-size | `{value}px` |
-| fontWeight | font-weight | Direct |
-| fontFamily | font-family | Direct |
-| fontStyle | font-style | Direct |
-| textAlign | text-align | Direct |
-| textDecoration | text-decoration | Direct |
-| textTransform | text-transform | Direct |
-| lineHeight | line-height | Direct |
-| letterSpacing | letter-spacing | `{value}px` |
-| wordSpacing | word-spacing | `{value}px` |
-| whiteSpace | white-space | Direct |
-| textOverflow | text-overflow | Direct |
-| wordBreak | word-break | Direct |
-
-### Layout Properties
-
-| KRB Property | CSS Property | Value Mapping |
-|--------------|--------------|---------------|
-| width | width | Dimension mapping |
-| height | height | Dimension mapping |
-| minWidth | min-width | Dimension mapping |
-| maxWidth | max-width | Dimension mapping |
-| minHeight | min-height | Dimension mapping |
-| maxHeight | max-height | Dimension mapping |
-| display | display | Direct |
-| position | position | Direct |
-| left/x | left | Dimension mapping |
-| top/y | top | Dimension mapping |
-| right | right | Dimension mapping |
-| bottom | bottom | Dimension mapping |
-| zIndex | z-index | Direct |
-| overflow | overflow | Direct |
-| overflowX | overflow-x | Direct |
-| overflowY | overflow-y | Direct |
-
-### Flexbox Properties
-
-| KRB Property | CSS Property | Value Mapping |
-|--------------|--------------|---------------|
-| flexDirection | flex-direction | Direct |
-| flexWrap | flex-wrap | Direct |
-| justifyContent | justify-content | Direct |
-| alignItems | align-items | Direct |
-| alignContent | align-content | Direct |
-| alignSelf | align-self | Direct |
-| flexGrow | flex-grow | Direct |
-| flexShrink | flex-shrink | Direct |
-| flexBasis | flex-basis | Dimension mapping |
-| gap | gap | `{value}px` |
-| rowGap | row-gap | `{value}px` |
-| columnGap | column-gap | `{value}px` |
-
-### Grid Properties
-
-| KRB Property | CSS Property | Value Mapping |
-|--------------|--------------|---------------|
-| gridTemplateColumns | grid-template-columns | Direct |
-| gridTemplateRows | grid-template-rows | Direct |
-| gridColumn | grid-column | Direct |
-| gridRow | grid-row | Direct |
-| gridArea | grid-area | Direct |
-| gridGap | grid-gap | `{value}px` |
-
-### Spacing Properties
-
-| KRB Property | CSS Property | Value Mapping |
-|--------------|--------------|---------------|
-| padding | padding | `{value}px` or `{t}px {r}px {b}px {l}px` |
-| paddingTop | padding-top | `{value}px` |
-| paddingRight | padding-right | `{value}px` |
-| paddingBottom | padding-bottom | `{value}px` |
-| paddingLeft | padding-left | `{value}px` |
-| margin | margin | `{value}px` or `{t}px {r}px {b}px {l}px` |
-| marginTop | margin-top | `{value}px` |
-| marginRight | margin-right | `{value}px` |
-| marginBottom | margin-bottom | `{value}px` |
-| marginLeft | margin-left | `{value}px` |
-
-### Interactive Properties
-
-| KRB Property | HTML Attribute | CSS Property | Notes |
-|--------------|----------------|--------------|-------|
-| id | id | - | Direct |
-| class | class | - | Direct |
-| style | - | - | Apply to style attribute |
-| disabled | disabled | - | Boolean attribute |
-| enabled | - | - | Inverse of disabled |
-| tooltip | title | - | Direct |
-| pointerEvents | - | pointer-events | Direct |
-| userSelect | - | user-select | Direct |
-
-## Dimension Mapping
-
-| KRB Dimension | CSS Value |
-|---------------|-----------|
-| Auto | `auto` |
-| Pixels(n) | `{n}px` |
-| Percent(n) | `{n}%` |
-| MinContent | `min-content` |
-| MaxContent | `max-content` |
-| Rem(n) | `{n}rem` |
-| Em(n) | `{n}em` |
-| Vw(n) | `{n}vw` |
-| Vh(n) | `{n}vh` |
-
-## Event Mapping
-
-| KRB Event | HTML Event | JavaScript Handler |
-|-----------|------------|-------------------|
-| onClick | onclick | `element.addEventListener('click', handler)` |
-| onDoubleClick | ondblclick | `element.addEventListener('dblclick', handler)` |
-| onMouseEnter | onmouseenter | `element.addEventListener('mouseenter', handler)` |
-| onMouseLeave | onmouseleave | `element.addEventListener('mouseleave', handler)` |
-| onMouseMove | onmousemove | `element.addEventListener('mousemove', handler)` |
-| onMouseDown | onmousedown | `element.addEventListener('mousedown', handler)` |
-| onMouseUp | onmouseup | `element.addEventListener('mouseup', handler)` |
-| onFocus | onfocus | `element.addEventListener('focus', handler)` |
-| onBlur | onblur | `element.addEventListener('blur', handler)` |
-| onChange | onchange | `element.addEventListener('change', handler)` |
-| onInput | oninput | `element.addEventListener('input', handler)` |
-| onKeyDown | onkeydown | `element.addEventListener('keydown', handler)` |
-| onKeyUp | onkeyup | `element.addEventListener('keyup', handler)` |
-| onKeyPress | onkeypress | `element.addEventListener('keypress', handler)` |
-| onScroll | onscroll | `element.addEventListener('scroll', handler)` |
-| onLoad | onload | `element.addEventListener('load', handler)` |
-| onError | onerror | `element.addEventListener('error', handler)` |
-
-## Element-Specific Attributes
-
-### Input Element
-
-| KRB Property | HTML Attribute |
-|--------------|----------------|
-| type | type |
-| value | value |
-| placeholder | placeholder |
-| required | required |
-| readonly | readonly |
-| maxLength | maxlength |
-| minLength | minlength |
-| pattern | pattern |
-| autocomplete | autocomplete |
-| spellcheck | spellcheck |
-
-### Image Element
-
-| KRB Property | HTML Attribute |
-|--------------|----------------|
-| src | src |
-| alt | alt |
-| loading | loading |
-
-### Link Element
-
-| KRB Property | HTML Attribute |
-|--------------|----------------|
-| href | href |
-| target | target |
-| download | download |
-| rel | rel |
-
-### Media Elements (Video/Audio)
-
-| KRB Property | HTML Attribute |
-|--------------|----------------|
-| src | src |
-| autoplay | autoplay |
-| controls | controls |
-| loop | loop |
-| muted | muted |
-| poster | poster |
-| preload | preload |
-
-### Select Element
-
-| KRB Property | HTML Implementation |
-|--------------|-------------------|
-| options | `<option>` children |
-| selected | selected attribute on option |
-| multiple | multiple attribute |
-| size | size attribute |
-
-## Style Classes
-
-Generated HTML includes Kryon-specific classes:
-
-```html
-<div class="kryon-app">
-  <div class="kryon-container">
-    <span class="kryon-text">Text</span>
-    <button class="kryon-button">Button</button>
-  </div>
-</div>
-```
-
-## Data Attributes
-
-KRB metadata is preserved as data attributes:
-
-```html
-<div data-kryon-id="123" 
-     data-kryon-type="Container"
-     data-kryon-parent="122">
-```
-
-## Script Integration
-
-Scripts are included based on language:
-
-```html
-<!-- Lua -->
-<script src="https://unpkg.com/fengari-web/dist/fengari-web.js"></script>
-<script type="application/lua">
-  -- Lua code
-</script>
-
-<!-- JavaScript -->
-<script>
-  // JavaScript code
-</script>
-
-<!-- Python (Pyodide) -->
-<script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
-<script type="text/python">
-  # Python code
-</script>
-```
-
-## Component Rendering
-
-Components are expanded inline:
+KRY style definitions map directly to CSS classes:
 
 ```kry
-@component Card {
-  @props { title: String }
-  Container {
-    Text { text: props.title }
-  }
+style "primaryButton" {
+    background: "#007AFF"
+    color: "#ffffff"
+    fontSize: 16
+    fontWeight: 600
+    borderRadius: 6
+    padding: "12px 24px"
+    border: "none"
+    cursor: "pointer"
+    transition: "all 0.2s ease"
+}
+```
+
+Maps to:
+
+```css
+.kryon-style-primaryButton {
+    background-color: #007AFF;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 12px 24px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+```
+
+### Style Inheritance Mapping
+
+```kry
+style "button" {
+    fontSize: 16
+    padding: "8px 16px"
+    borderRadius: 6
+    border: "none"
+    cursor: "pointer"
 }
 
-Card { title: "Hello" }
+style "primaryButton" extends "button" {
+    background: "#007AFF"
+    color: "#ffffff"
+}
 ```
 
-Becomes:
+Maps to:
+
+```css
+.kryon-style-button {
+    font-size: 16px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+}
+
+.kryon-style-primaryButton {
+    /* Inherits from button */
+    font-size: 16px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    /* Override properties */
+    background-color: #007AFF;
+    color: #ffffff;
+}
+```
+
+## Theme Variable Mapping
+
+### Theme Variables to CSS Custom Properties
+
+```kry
+@theme colors {
+    primary: "#007AFF"
+    secondary: "#34C759"
+    background: "#ffffff"
+    text: "#000000"
+}
+
+@theme spacing {
+    sm: 8
+    md: 16
+    lg: 24
+}
+```
+
+Maps to:
+
+```css
+:root {
+    --kryon-colors-primary: #007AFF;
+    --kryon-colors-secondary: #34C759;
+    --kryon-colors-background: #ffffff;
+    --kryon-colors-text: #000000;
+    --kryon-spacing-sm: 8px;
+    --kryon-spacing-md: 16px;
+    --kryon-spacing-lg: 24px;
+}
+```
+
+### Theme Variable Usage
+
+```kry
+style "card" {
+    background: $colors.background
+    color: $colors.text
+    padding: $spacing.md
+}
+```
+
+Maps to:
+
+```css
+.kryon-style-card {
+    background-color: var(--kryon-colors-background);
+    color: var(--kryon-colors-text);
+    padding: var(--kryon-spacing-md);
+}
+```
+
+### Theme Switching
+
+```kry
+@theme light {
+    background: "#ffffff"
+    text: "#000000"
+}
+
+@theme dark {
+    background: "#000000"
+    text: "#ffffff"
+}
+```
+
+Maps to:
+
+```css
+:root {
+    --kryon-background: #ffffff;
+    --kryon-text: #000000;
+}
+
+[data-theme="dark"] {
+    --kryon-background: #000000;
+    --kryon-text: #ffffff;
+}
+```
+
+## Widget Layout Mapping
+
+### Layout Widgets to HTML + CSS
+
+| KRY Widget | HTML Element | CSS Classes | CSS Properties |
+|------------|--------------|-------------|----------------|
+| Column | `<div>` | `kryon-column` | `display: flex; flex-direction: column` |
+| Row | `<div>` | `kryon-row` | `display: flex; flex-direction: row` |
+| Center | `<div>` | `kryon-center` | `display: flex; align-items: center; justify-content: center` |
+| Container | `<div>` | `kryon-container` | `display: block` |
+| Flex | `<div>` | `kryon-flex` | `display: flex` with dynamic properties |
+| Spacer | `<div>` | `kryon-spacer` | `flex: 1; min-width: 0; min-height: 0` |
+
+### Content Widgets to HTML
+
+| KRY Widget | HTML Element | CSS Classes | Notes |
+|------------|--------------|-------------|-------|
+| Text | `<span>` or `<p>` | `kryon-text` | Based on context |
+| Button | `<button>` | `kryon-button` | Interactive button |
+| Image | `<img>` | `kryon-image` | Image element |
+| Input | `<input>` | `kryon-input` | Various input types |
+
+## Complete Mapping Example
+
+### KRY Source
+
+```kry
+@theme colors {
+    primary: "#007AFF"
+    background: "#ffffff"
+    text: "#000000"
+}
+
+@theme spacing {
+    sm: 8
+    md: 16
+}
+
+style "card" {
+    background: $colors.background
+    borderRadius: 8
+    padding: $spacing.md
+    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+}
+
+style "primaryButton" {
+    background: $colors.primary
+    color: $colors.background
+    fontSize: 16
+    padding: "$spacing.sm $spacing.md"
+    borderRadius: 6
+    border: "none"
+}
+
+App {
+    windowWidth: 800
+    windowHeight: 600
+    
+    Center {
+        child: Container {
+            style: "card"
+            width: 400
+            
+            Column {
+                spacing: $spacing.md
+                
+                Text {
+                    text: "Hello, World!"
+                    fontSize: 24
+                    color: $colors.text
+                }
+                
+                Button {
+                    text: "Click Me"
+                    style: "primaryButton"
+                    onClick: "handleClick"
+                }
+            }
+        }
+    }
+}
+```
+
+### Generated HTML
 
 ```html
-<div class="kryon-container kryon-component-card">
-  <span class="kryon-text">Hello</span>
-</div>
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        :root {
+            --kryon-colors-primary: #007AFF;
+            --kryon-colors-background: #ffffff;
+            --kryon-colors-text: #000000;
+            --kryon-spacing-sm: 8px;
+            --kryon-spacing-md: 16px;
+        }
+        
+        .kryon-app {
+            width: 800px;
+            height: 600px;
+            margin: 0 auto;
+        }
+        
+        .kryon-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .kryon-container {
+            display: block;
+        }
+        
+        .kryon-column {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .kryon-column[data-spacing="16"] > * + * {
+            margin-top: 16px;
+        }
+        
+        .kryon-text {
+            margin: 0;
+        }
+        
+        .kryon-button {
+            border: none;
+            cursor: pointer;
+            background: transparent;
+        }
+        
+        .kryon-style-card {
+            background-color: var(--kryon-colors-background);
+            border-radius: 8px;
+            padding: var(--kryon-spacing-md);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .kryon-style-primaryButton {
+            background-color: var(--kryon-colors-primary);
+            color: var(--kryon-colors-background);
+            font-size: 16px;
+            padding: var(--kryon-spacing-sm) var(--kryon-spacing-md);
+            border-radius: 6px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="kryon-app">
+        <div class="kryon-center">
+            <div class="kryon-container kryon-style-card" style="width: 400px;">
+                <div class="kryon-column" data-spacing="16">
+                    <p class="kryon-text" style="font-size: 24px; color: var(--kryon-colors-text);">
+                        Hello, World!
+                    </p>
+                    <button class="kryon-button kryon-style-primaryButton" onclick="handleClick()">
+                        Click Me
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
 ```
+
+## Widget Property Mapping
+
+### Layout Widget Properties
+
+#### Column Widget
+
+```kry
+Column {
+    spacing: 16
+    mainAxis: "center"
+    crossAxis: "stretch"
+}
+```
+
+Maps to:
+
+```css
+.kryon-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;  /* mainAxis */
+    align-items: stretch;     /* crossAxis */
+}
+
+.kryon-column[data-spacing="16"] > * + * {
+    margin-top: 16px;
+}
+```
+
+#### Row Widget
+
+```kry
+Row {
+    spacing: 8
+    mainAxis: "spaceBetween"
+    crossAxis: "center"
+}
+```
+
+Maps to:
+
+```css
+.kryon-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;  /* mainAxis */
+    align-items: center;            /* crossAxis */
+    gap: 8px;                       /* spacing */
+}
+```
+
+#### Flex Widget
+
+```kry
+Flex {
+    direction: "row"
+    align: "center"
+    justify: "spaceBetween"
+    gap: 12
+}
+```
+
+Maps to:
+
+```css
+.kryon-flex {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+```
+
+## Responsive Property Mapping
+
+### Responsive Values
+
+```kry
+Container {
+    width: {
+        mobile: "100%"
+        tablet: 600
+        desktop: 800
+    }
+    padding: {
+        mobile: $spacing.sm
+        tablet: $spacing.md
+        desktop: $spacing.lg
+    }
+}
+```
+
+Maps to:
+
+```css
+.kryon-container {
+    /* Mobile (default) */
+    width: 100%;
+    padding: var(--kryon-spacing-sm);
+}
+
+@media (min-width: 768px) {
+    .kryon-container {
+        /* Tablet */
+        width: 600px;
+        padding: var(--kryon-spacing-md);
+    }
+}
+
+@media (min-width: 1024px) {
+    .kryon-container {
+        /* Desktop */
+        width: 800px;
+        padding: var(--kryon-spacing-lg);
+    }
+}
+```
+
+## Theme Switching JavaScript
+
+### Theme Manager
+
+```javascript
+class KryonThemeManager {
+    constructor() {
+        this.currentTheme = 'light';
+        this.themes = new Map();
+    }
+    
+    registerTheme(name, variables) {
+        this.themes.set(name, variables);
+    }
+    
+    setTheme(themeName) {
+        const theme = this.themes.get(themeName);
+        if (!theme) return;
+        
+        const root = document.documentElement;
+        
+        // Apply theme variables
+        Object.entries(theme).forEach(([key, value]) => {
+            root.style.setProperty(`--kryon-${key}`, value);
+        });
+        
+        // Set theme attribute
+        root.setAttribute('data-theme', themeName);
+        this.currentTheme = themeName;
+    }
+}
+
+// Initialize theme manager
+const themeManager = new KryonThemeManager();
+
+// Register themes
+themeManager.registerTheme('light', {
+    background: '#ffffff',
+    text: '#000000',
+    primary: '#007AFF'
+});
+
+themeManager.registerTheme('dark', {
+    background: '#000000',
+    text: '#ffffff',
+    primary: '#0A84FF'
+});
+
+// Auto-detect system theme
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+themeManager.setTheme(prefersDark.matches ? 'dark' : 'light');
+
+// Listen for system theme changes
+prefersDark.addEventListener('change', (e) => {
+    themeManager.setTheme(e.matches ? 'dark' : 'light');
+});
+```
+
+## Event Handling
+
+### Event Mapping
+
+```kry
+Button {
+    onClick: "handleClick"
+    onMouseEnter: "handleHover"
+}
+
+Input {
+    onChange: "handleChange"
+    onFocus: "handleFocus"
+}
+```
+
+Maps to:
+
+```html
+<button onclick="handleClick()" onmouseenter="handleHover()">
+    Click Me
+</button>
+
+<input onchange="handleChange(event)" onfocus="handleFocus(event)">
+```
+
+## Performance Optimizations
+
+### Style Deduplication
+
+Identical styles are automatically deduplicated:
+
+```kry
+style "button1" { background: "#007AFF" }
+style "button2" { background: "#007AFF" }
+```
+
+Results in single CSS rule:
+
+```css
+.kryon-style-button1,
+.kryon-style-button2 {
+    background-color: #007AFF;
+}
+```
+
+### CSS Custom Property Optimization
+
+Theme variables are optimized for minimal CSS custom property usage:
+
+```css
+:root {
+    /* Only variables that are actually used */
+    --kryon-colors-primary: #007AFF;
+    --kryon-spacing-md: 16px;
+}
+```
+
+### Widget CSS Classes
+
+Base widget classes provide consistent styling and performance:
+
+```css
+.kryon-column,
+.kryon-row,
+.kryon-flex {
+    box-sizing: border-box;
+}
+
+.kryon-text {
+    margin: 0;
+    padding: 0;
+}
+
+.kryon-button {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+```
+
+This mapping system provides clean, efficient HTML/CSS output that preserves the hybrid nature of CSS-like styling with widget-based layout structure.
