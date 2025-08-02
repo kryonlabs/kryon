@@ -165,8 +165,10 @@ void kryon_ast_print(const KryonASTNode *node, FILE *file, int indent) {
 // AST VALIDATION
 // =============================================================================
 
+
 static bool validate_element_node(const KryonASTNode *node, char **errors, size_t *error_count, size_t max_errors) {
-    if (!node->data.element.element_type) {
+    // ROOT nodes don't have element_type, only actual elements do
+    if (node->type != KRYON_AST_ROOT && !node->data.element.element_type) {
         if (*error_count < max_errors) {
             errors[(*error_count)++] = kryon_alloc(64);
             if (errors[*error_count - 1]) {
@@ -202,6 +204,7 @@ static bool validate_element_node(const KryonASTNode *node, char **errors, size_
     
     return true;
 }
+
 
 static bool validate_property_node(const KryonASTNode *node, char **errors, size_t *error_count, size_t max_errors) {
     if (!node->data.property.name) {

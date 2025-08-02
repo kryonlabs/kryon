@@ -78,6 +78,11 @@ struct KryonCodeGenStats {
     size_t output_elements;        // Elements in binary
     size_t output_properties;      // Properties in binary
     size_t output_strings;         // String literals in binary
+    size_t output_styles;          // Style blocks in binary
+    size_t output_themes;          // Theme definitions in binary
+    size_t output_variables;       // Variable definitions in binary
+    size_t output_functions;       // Function definitions in binary
+    size_t output_metadata;        // Metadata directives in binary
     
     // Optimization statistics
     size_t strings_deduplicated;   // Number of strings deduplicated
@@ -243,21 +248,7 @@ uint16_t kryon_codegen_get_element_hex(const char *element_name);
  */
 uint16_t kryon_codegen_get_property_hex(const char *property_name);
 
-/**
- * @brief Register custom element type
- * @param element_name Element type name
- * @param hex_code Hex code to assign
- * @return true on success, false if code already used
- */
-bool kryon_codegen_register_element(const char *element_name, uint16_t hex_code);
 
-/**
- * @brief Register custom property
- * @param property_name Property name
- * @param hex_code Hex code to assign
- * @return true on success, false if code already used
- */
-bool kryon_codegen_register_property(const char *property_name, uint16_t hex_code);
 
 // =============================================================================
 // OPTIMIZATION PASSES

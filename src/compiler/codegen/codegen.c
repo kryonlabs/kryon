@@ -14,10 +14,15 @@
 #include "internal/memory.h"
 #include "internal/krb_format.h"
 #include "internal/binary_io.h"
+#include "internal/color_utils.h"    
+#include "../../shared/kryon_mappings.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <assert.h>
+
+// KRB compression types
+#define KRYON_KRB_COMPRESSION_NONE 0
 
 // =============================================================================
 // FORWARD DECLARATIONS
@@ -27,45 +32,35 @@ static bool generate_binary_from_ast(KryonCodeGenerator *codegen, const KryonAST
 static bool write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *element);
 static bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode *property);
 static bool write_style_node(KryonCodeGenerator *codegen, const KryonASTNode *style);
+static bool write_theme_node(KryonCodeGenerator *codegen, const KryonASTNode *theme);
+static bool write_variable_node(KryonCodeGenerator *codegen, const KryonASTNode *variable);
+static bool write_function_node(KryonCodeGenerator *codegen, const KryonASTNode *function);
+static bool write_metadata_node(KryonCodeGenerator *codegen, const KryonASTNode *metadata);
 static bool write_value_node(KryonCodeGenerator *codegen, const KryonASTValue *value);
 static bool write_property_value_node(KryonCodeGenerator *codegen, const KryonASTValue *value, uint16_t property_hex);
-static bool write_simple_krb_format(KryonCodeGenerator *codegen, const KryonASTNode *ast_root);
+static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonASTNode *ast_root);
+static bool write_style_definition(KryonCodeGenerator *codegen, const KryonASTNode *style);
+static bool write_widget_instance(KryonCodeGenerator *codegen, const KryonASTNode *element);
 
 static uint32_t add_string_to_table(KryonCodeGenerator *codegen, const char *str);
 static bool expand_binary_buffer(KryonCodeGenerator *codegen, size_t additional_size);
+static uint32_t count_elements_recursive(const KryonASTNode *node);
+static uint32_t count_properties_recursive(const KryonASTNode *node);
 static uint16_t get_or_create_custom_element_hex(const char *element_name);
 
 static bool write_uint8(KryonCodeGenerator *codegen, uint8_t value);
 static bool write_uint16(KryonCodeGenerator *codegen, uint16_t value);
 static bool write_uint32(KryonCodeGenerator *codegen, uint32_t value);
 static bool write_binary_data(KryonCodeGenerator *codegen, const void *data, size_t size);
+static bool update_header_uint32(KryonCodeGenerator *codegen, size_t offset, uint32_t value);
 
 static void codegen_error(KryonCodeGenerator *codegen, const char *message);
-static uint32_t parse_color_string(const char *color_str);
 
 // =============================================================================
 // ELEMENT AND PROPERTY MAPPINGS
 // =============================================================================
 
-// Built-in element type mappings
-static struct {
-    const char *name;
-    uint16_t hex;
-} element_mappings[] = {
-    {"App", 0x0001},
-    {"Container", 0x0002},
-    {"Button", 0x0003},
-    {"Text", 0x0004},
-    {"Input", 0x0005},
-    {"Image", 0x0006},
-    {"List", 0x0007},
-    {"Grid", 0x0008},
-    {"Form", 0x0009},
-    {"Modal", 0x000A},
-    {"Tabs", 0x000B},
-    {"Menu", 0x000C},
-    {NULL, 0}
-};
+// Using centralized element mappings
 
 // Custom element registry for dynamic element types
 static struct {
@@ -75,44 +70,7 @@ static struct {
 static size_t custom_element_count = 0;
 static uint16_t next_custom_element_hex = 0x1000; // Start custom elements at 0x1000
 
-// Basic property mappings (expandable)
-static struct {
-    const char *name;
-    uint16_t hex;
-} property_mappings[] = {
-    {"text", 0x0001},
-    {"backgroundColor", 0x0002},
-    {"borderColor", 0x0003},
-    {"borderWidth", 0x0004},
-    {"color", 0x0005},
-    {"fontSize", 0x0006},
-    {"fontWeight", 0x0007},
-    {"fontFamily", 0x0008},
-    {"width", 0x0009},
-    {"height", 0x000A},
-    {"posX", 0x000B},
-    {"posY", 0x000C},
-    {"padding", 0x000D},
-    {"margin", 0x000E},
-    {"display", 0x000F},
-    {"flexDirection", 0x0010},
-    {"alignItems", 0x0011},
-    {"justifyContent", 0x0012},
-    {"textAlignment", 0x0013},
-    {"visible", 0x0014},
-    {"enabled", 0x0015},
-    {"class", 0x0016},
-    {"id", 0x0017},
-    {"style", 0x0018},
-    {"onClick", 0x0019},
-    {"onHover", 0x001A},
-    {"onFocus", 0x001B},
-    {"onChange", 0x001C},
-    {"contentAlignment", 0x001D},
-    {"title", 0x001E},
-    {"version", 0x001F},
-    {NULL, 0}
-};
+// Using centralized property mappings
 
 // =============================================================================
 // CONFIGURATION
@@ -252,9 +210,9 @@ bool kryon_codegen_generate(KryonCodeGenerator *codegen, const KryonASTNode *ast
     codegen->string_count = 0;
     codegen->next_element_id = 1;
     
-    // Write simple KRB format (header + elements directly)
-    if (!write_simple_krb_format(codegen, ast_root)) {
-        codegen_error(codegen, "Failed to write simple KRB format");
+    // Write complex KRB format (v0.1 spec)
+    if (!write_complex_krb_format(codegen, ast_root)) {
+        codegen_error(codegen, "Failed to write complex KRB format");
         return false;
     }
     
@@ -359,7 +317,10 @@ bool kryon_write_metadata(KryonCodeGenerator *codegen, const KryonASTNode *ast_r
     // Update metadata size
     size_t metadata_end = codegen->current_offset;
     uint32_t metadata_size = (uint32_t)(metadata_end - metadata_size_offset - 4);
-    memcpy(codegen->binary_data + metadata_size_offset, &metadata_size, sizeof(uint32_t));
+    if (!update_header_uint32(codegen, metadata_size_offset, metadata_size)) {
+        codegen_error(codegen, "Failed to write metadata size to header");
+        return false;
+    }
     
     return true;
 }
@@ -402,7 +363,10 @@ bool kryon_write_elements(KryonCodeGenerator *codegen, const KryonASTNode *ast_r
     }
     
     // Update element count
-    memcpy(codegen->binary_data + element_count_offset, &element_count, sizeof(uint32_t));
+    if (!update_header_uint32(codegen, element_count_offset, element_count)) {
+        codegen_error(codegen, "Failed to write element count to header");
+        return false;
+    }
     
     return true;
 }
@@ -465,15 +429,35 @@ static bool write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *
     return true;
 }
 
+
+/**
+ * @brief Retrieves the data type hint for a property from the centralized mappings.
+ * @param property_hex The hex code of the property.
+ * @return The KryonValueTypeHint for the property, or KRYON_TYPE_HINT_ANY if not found.
+ */
+static KryonValueTypeHint get_property_type_hint(uint16_t property_hex) {
+    return kryon_get_property_type_hint(property_hex);
+}
+
+
+
 static bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode *property) {
     if (!property || property->type != KRYON_AST_PROPERTY) {
         return false;
     }
     
+    // Debug: Show which property we're processing
+    if (property->data.property.name) {
+        printf("🔧 Processing property: '%s'\n", property->data.property.name);
+    }
+    
     // Get property hex code
     uint16_t property_hex = kryon_codegen_get_property_hex(property->data.property.name);
     if (property_hex == 0) {
-        codegen_error(codegen, "Unknown property type");
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "Unknown property type: '%s'", 
+                property->data.property.name ? property->data.property.name : "NULL");
+        codegen_error(codegen, error_msg);
         return false;
     }
     
@@ -527,16 +511,147 @@ static bool write_style_node(KryonCodeGenerator *codegen, const KryonASTNode *st
     return true;
 }
 
+static bool write_theme_node(KryonCodeGenerator *codegen, const KryonASTNode *theme) {
+    if (!theme || theme->type != KRYON_AST_THEME_DEFINITION) {
+        return false;
+    }
+    
+    // Write theme header
+    if (!write_uint32(codegen, 0x54484D45)) { // "THME"
+        return false;
+    }
+    
+    // Theme group name (as string reference)
+    uint32_t name_ref = add_string_to_table(codegen, theme->data.theme.group_name);
+    if (!write_uint32(codegen, name_ref)) {
+        return false;
+    }
+    
+    // Variable count
+    if (!write_uint32(codegen, (uint32_t)theme->data.theme.variable_count)) {
+        return false;
+    }
+    
+    // Write variables (as properties)
+    for (size_t i = 0; i < theme->data.theme.variable_count; i++) {
+        if (!write_property_node(codegen, theme->data.theme.variables[i])) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+static bool write_variable_node(KryonCodeGenerator *codegen, const KryonASTNode *variable) {
+    if (!variable || variable->type != KRYON_AST_VARIABLE_DEFINITION) {
+        return false;
+    }
+    
+    // Write variable header
+    if (!write_uint32(codegen, 0x56415253)) { // "VARS"
+        return false;
+    }
+    
+    // Variable name (as string reference)
+    uint32_t name_ref = add_string_to_table(codegen, variable->data.variable_def.name);
+    if (!write_uint32(codegen, name_ref)) {
+        return false;
+    }
+    
+    // Variable type (optional, can be NULL)
+    uint32_t type_ref = variable->data.variable_def.type ? 
+                       add_string_to_table(codegen, variable->data.variable_def.type) : 0;
+    if (!write_uint32(codegen, type_ref)) {
+        return false;
+    }
+    
+    // Variable value
+    if (variable->data.variable_def.value) {
+        if (!write_uint8(codegen, 1)) { // Has value
+            return false;
+        }
+        // For now, serialize the variable value as an element (recursive)
+        return write_element_node(codegen, variable->data.variable_def.value);
+    } else {
+        return write_uint8(codegen, 0); // No value
+    }
+}
+
+static bool write_function_node(KryonCodeGenerator *codegen, const KryonASTNode *function) {
+    if (!function || function->type != KRYON_AST_FUNCTION_DEFINITION) {
+        return false;
+    }
+    
+    // Write function header
+    if (!write_uint32(codegen, 0x46554E43)) { // "FUNC"
+        return false;
+    }
+    
+    // Function language (as string reference)
+    uint32_t lang_ref = add_string_to_table(codegen, function->data.function_def.language);
+    if (!write_uint32(codegen, lang_ref)) {
+        return false;
+    }
+    
+    // Function name (as string reference)
+    uint32_t name_ref = add_string_to_table(codegen, function->data.function_def.name);
+    if (!write_uint32(codegen, name_ref)) {
+        return false;
+    }
+    
+    // Parameter count
+    if (!write_uint32(codegen, (uint32_t)function->data.function_def.parameter_count)) {
+        return false;
+    }
+    
+    // Write parameters
+    for (size_t i = 0; i < function->data.function_def.parameter_count; i++) {
+        uint32_t param_ref = add_string_to_table(codegen, function->data.function_def.parameters[i]);
+        if (!write_uint32(codegen, param_ref)) {
+            return false;
+        }
+    }
+    
+    // Function code (as string reference)
+    uint32_t code_ref = add_string_to_table(codegen, function->data.function_def.code);
+    if (!write_uint32(codegen, code_ref)) {
+        return false;
+    }
+    
+    return true;
+}
+
+static bool write_metadata_node(KryonCodeGenerator *codegen, const KryonASTNode *metadata) {
+    if (!metadata || metadata->type != KRYON_AST_METADATA_DIRECTIVE) {
+        return false;
+    }
+    
+    // Write metadata header
+    if (!write_uint32(codegen, 0x4D455441)) { // "META"
+        return false;
+    }
+    
+    // Property count
+    if (!write_uint32(codegen, (uint32_t)metadata->data.element.property_count)) {
+        return false;
+    }
+    
+    // Write properties
+    for (size_t i = 0; i < metadata->data.element.property_count; i++) {
+        if (!write_property_node(codegen, metadata->data.element.properties[i])) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
 static bool write_value_node(KryonCodeGenerator *codegen, const KryonASTValue *value) {
     if (!value) {
         return false;
     }
     
-    // Write value type
-    if (!write_uint8(codegen, (uint8_t)value->type)) {
-        return false;
-    }
-    
+    // Don't write type tags - values are interpreted based on property type hints
     switch (value->type) {
         case KRYON_VALUE_STRING: {
             // For simple format, write string inline: length + data
@@ -593,11 +708,10 @@ uint16_t kryon_codegen_get_element_hex(const char *element_name) {
         return 0;
     }
     
-    // First check built-in element mappings
-    for (int i = 0; element_mappings[i].name; i++) {
-        if (strcmp(element_mappings[i].name, element_name) == 0) {
-            return element_mappings[i].hex;
-        }
+    // Use centralized element mappings
+    uint16_t hex = kryon_get_widget_hex(element_name);
+    if (hex != 0) {
+        return hex;
     }
     
     // If not found in built-ins, check/create custom element
@@ -609,11 +723,8 @@ uint16_t kryon_codegen_get_property_hex(const char *property_name) {
         return 0;
     }
     
-    for (int i = 0; property_mappings[i].name; i++) {
-        if (strcmp(property_mappings[i].name, property_name) == 0) {
-            return property_mappings[i].hex;
-        }
-    }
+    // Use centralized property mappings
+    return kryon_get_property_hex(property_name);
     
     return 0; // Unknown property
 }
@@ -746,6 +857,14 @@ static bool write_binary_data(KryonCodeGenerator *codegen, const void *data, siz
     return true;
 }
 
+static bool update_header_uint32(KryonCodeGenerator *codegen, size_t offset, uint32_t value) {
+    if (offset + sizeof(uint32_t) > codegen->binary_capacity) {
+        return false;
+    }
+    uint8_t *buffer = codegen->binary_data;
+    return kryon_write_uint32(&buffer, &offset, codegen->binary_capacity, value);
+}
+
 static void codegen_error(KryonCodeGenerator *codegen, const char *message) {
     if (!codegen || !message) {
         return;
@@ -816,58 +935,349 @@ const KryonCodeGenStats *kryon_codegen_get_stats(const KryonCodeGenerator *codeg
     return codegen ? &codegen->stats : NULL;
 }
 
-static bool write_simple_krb_format(KryonCodeGenerator *codegen, const KryonASTNode *ast_root) {
+static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonASTNode *ast_root) {
     if (!ast_root) {
         return false;
     }
     
-    // Write header: magic + version + flags
-    if (!write_uint32(codegen, 0x4B52594E)) { // "KRYN"
-        return false;
-    }
-    
-    if (!write_uint32(codegen, codegen->config.target_version)) {
-        return false;
-    }
-    
-    uint32_t flags = 0;
-    if (codegen->config.enable_compression) flags |= 0x01;
-    if (codegen->config.preserve_debug_info) flags |= 0x02;
-    if (!write_uint32(codegen, flags)) {
-        return false;
-    }
-    
-    // Count elements first
+    // First, count sections for header values
+    uint32_t style_count = 0;
+    uint32_t theme_count = 0; // For future theme support
+    uint32_t widget_def_count = 0; // For future widget definitions
     uint32_t element_count = 0;
+    uint32_t total_properties = 0;
+    
     if (ast_root->type == KRYON_AST_ROOT) {
         for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
             const KryonASTNode *child = ast_root->data.element.children[i];
-            if (child && (child->type == KRYON_AST_ELEMENT || child->type == KRYON_AST_EVENT_DIRECTIVE)) {
-                element_count++;
+            if (child) {
+                switch (child->type) {
+                    case KRYON_AST_STYLE_BLOCK:
+                        style_count++;
+                        break;
+                    case KRYON_AST_ELEMENT:
+                        element_count++;
+                        total_properties += child->data.element.property_count;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+    } else if (ast_root->type == KRYON_AST_ELEMENT) {
+        // Handle case where AST root is directly an element
+        element_count = count_elements_recursive(ast_root);
+        total_properties = count_properties_recursive(ast_root);
+    }
+    
+    // Write complete 128-byte header as per KRB v0.1 spec
+    
+    // 0x00-0x03: Magic number "KRYN"
+    if (!write_uint32(codegen, 0x4B52594E)) return false;
+    
+    // 0x04-0x05: Version Major
+    if (!write_uint16(codegen, 0)) return false;
+    
+    // 0x06-0x07: Version Minor  
+    if (!write_uint16(codegen, 1)) return false;
+    
+    // 0x08-0x09: Version Patch
+    if (!write_uint16(codegen, 0)) return false;
+    
+    // 0x0A-0x0B: Flags
+    uint16_t flags = 0;
+    if (codegen->config.enable_compression) flags |= 0x0008;
+    if (codegen->config.preserve_debug_info) flags |= 0x0010;
+    flags |= 0x0001; // Has styles
+    if (!write_uint16(codegen, flags)) return false;
+    
+    // 0x0C-0x0F: Style Definition Count
+    if (!write_uint32(codegen, style_count)) return false;
+    
+    // 0x10-0x13: Theme Variable Count
+    if (!write_uint32(codegen, theme_count)) return false;
+    
+    // 0x14-0x17: Widget Definition Count
+    if (!write_uint32(codegen, widget_def_count)) return false;
+    
+    // 0x18-0x1B: Widget Instance Count
+    if (!write_uint32(codegen, element_count)) return false;
+    
+    // 0x1C-0x1F: Property Count
+    if (!write_uint32(codegen, total_properties)) return false;
+    
+    // 0x20-0x23: String Table Size (placeholder, will be updated later)
+    size_t string_table_size_offset = codegen->current_offset;
+    if (!write_uint32(codegen, 0)) return false;
+    
+    // 0x24-0x27: Data Size (placeholder, will be updated later)
+    size_t data_size_offset = codegen->current_offset;
+    if (!write_uint32(codegen, 0)) return false;
+    
+    // 0x28-0x2B: Checksum (placeholder, will be calculated at end)
+    size_t checksum_offset = codegen->current_offset;
+    if (!write_uint32(codegen, 0)) return false;
+    
+    // 0x2C: Compression
+    if (!write_uint8(codegen, KRYON_KRB_COMPRESSION_NONE)) return false;
+    
+    // 0x2D-0x30: Uncompressed Size
+    if (!write_uint32(codegen, 0)) return false; // Will be same as data size for no compression
+    
+    // 0x31-0x34: Style Definition Offset (placeholder)
+    size_t style_offset_pos = codegen->current_offset;
+    if (!write_uint32(codegen, 0)) return false;
+    
+    // 0x35-0x38: Theme Variable Offset (placeholder)
+    size_t theme_offset_pos = codegen->current_offset;
+    if (!write_uint32(codegen, 0)) return false;
+    
+    // 0x39-0x3C: Widget Definition Offset (placeholder)
+    size_t widget_def_offset_pos = codegen->current_offset;
+    if (!write_uint32(codegen, 0)) return false;
+    
+    // 0x3D-0x40: Widget Instance Offset (placeholder)
+    size_t widget_inst_offset_pos = codegen->current_offset;
+    if (!write_uint32(codegen, 0)) return false;
+    
+    // 0x41-0x44: Script Offset (unused)
+    if (!write_uint32(codegen, 0)) return false;
+    
+    // 0x45-0x48: Resource Offset (unused)
+    if (!write_uint32(codegen, 0)) return false;
+    
+    // Debug: Check current offset before reserved bytes
+    size_t offset_before_reserved = codegen->current_offset;
+    
+    // 0x49-0x7F: Reserved bytes (need to calculate exactly how many)
+    // We need to reach 128 bytes total, so calculate remaining
+    size_t bytes_needed = 128 - offset_before_reserved;
+    printf("DEBUG: Writing %zu reserved bytes (offset %zu, need to reach 128)\n", bytes_needed, offset_before_reserved);
+    
+    for (size_t i = 0; i < bytes_needed; i++) {
+        if (!write_uint8(codegen, 0)) return false;
+    }
+    
+    // Debug: Check final offset
+    printf("DEBUG: Final header size: %zu bytes\n", codegen->current_offset);
+    
+    // Header is now complete (128 bytes). Start writing sections.
+    
+    // Write String Table first
+    size_t string_table_start = codegen->current_offset;
+    if (!kryon_write_string_table(codegen)) {
+        return false;
+    }
+    size_t string_table_end = codegen->current_offset;
+    
+    // Update string table size in header
+    uint32_t string_table_size = (uint32_t)(string_table_end - string_table_start);
+    printf("DEBUG: String table size: %u bytes (start=%zu, end=%zu)\n", string_table_size, string_table_start, string_table_end);
+    
+    // Use proper endianness-aware write (fix for endianness issue)
+    if (!update_header_uint32(codegen, string_table_size_offset, string_table_size)) {
+        codegen_error(codegen, "Failed to write string table size to header");
+        return false;
+    }
+    
+    // Write Style Definition Table
+    size_t style_section_start = codegen->current_offset;
+    if (style_count > 0) {
+        // Update style offset in header
+        if (!update_header_uint32(codegen, style_offset_pos, (uint32_t)style_section_start)) {
+            codegen_error(codegen, "Failed to write style offset to header");
+            return false;
+        }
+        
+        if (ast_root->type == KRYON_AST_ROOT) {
+            for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
+                const KryonASTNode *child = ast_root->data.element.children[i];
+                if (child && child->type == KRYON_AST_STYLE_BLOCK) {
+                    if (!write_style_definition(codegen, child)) {
+                        codegen_error(codegen, "Failed to write style definition");
+                        return false;
+                    }
+                    codegen->stats.output_styles++;
+                }
             }
         }
     }
     
-    // Write element count
-    if (!write_uint32(codegen, element_count)) {
+    // Write Theme Variable Table (empty for now)
+    size_t theme_section_start = codegen->current_offset;
+    if (theme_count > 0) {
+        if (!update_header_uint32(codegen, theme_offset_pos, (uint32_t)theme_section_start)) {
+            codegen_error(codegen, "Failed to write theme offset to header");
+            return false;
+        }
+        // TODO: Implement theme variable writing
+    }
+    
+    // Write Widget Definition Table (empty for now - using built-in widgets)
+    size_t widget_def_section_start = codegen->current_offset;
+    if (widget_def_count > 0) {
+        if (!update_header_uint32(codegen, widget_def_offset_pos, (uint32_t)widget_def_section_start)) {
+            codegen_error(codegen, "Failed to write widget definition offset to header");
+            return false;
+        }
+        // TODO: Implement widget definition writing
+    }
+    
+    // Write Widget Instance Table (the actual UI elements)
+    size_t widget_inst_section_start = codegen->current_offset;
+    if (!update_header_uint32(codegen, widget_inst_offset_pos, (uint32_t)widget_inst_section_start)) {
+        codegen_error(codegen, "Failed to write widget instance offset to header");
         return false;
     }
     
-    // Write elements directly (no sections)
     if (ast_root->type == KRYON_AST_ROOT) {
         for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
             const KryonASTNode *child = ast_root->data.element.children[i];
-            if (child && (child->type == KRYON_AST_ELEMENT || child->type == KRYON_AST_EVENT_DIRECTIVE)) {
-                if (!write_element_node(codegen, child)) {
+            if (child && child->type == KRYON_AST_ELEMENT) {
+                if (!write_widget_instance(codegen, child)) {
+                    codegen_error(codegen, "Failed to write widget instance");
                     return false;
                 }
                 codegen->stats.output_elements++;
             }
         }
+    } else if (ast_root->type == KRYON_AST_ELEMENT) {
+        // Handle case where AST root is directly an element (e.g., App)
+        if (!write_widget_instance(codegen, ast_root)) {
+            codegen_error(codegen, "Failed to write root widget instance");
+            return false;
+        }
+        codegen->stats.output_elements++;
+    }
+    
+    // Update data size in header
+    size_t total_data_size = codegen->current_offset;
+    if (!update_header_uint32(codegen, data_size_offset, (uint32_t)total_data_size)) {
+        codegen_error(codegen, "Failed to write data size to header");
+        return false;
+    }
+    
+    // Calculate and write checksum
+    uint32_t checksum = kryon_krb_calculate_checksum(codegen->binary_data, codegen->current_offset);
+    if (!update_header_uint32(codegen, checksum_offset, checksum)) {
+        codegen_error(codegen, "Failed to write checksum to header");
+        return false;
     }
     
     return true;
 }
+
+// =============================================================================
+// COMPLEX FORMAT HELPER FUNCTIONS
+// =============================================================================
+
+static bool write_style_definition(KryonCodeGenerator *codegen, const KryonASTNode *style) {
+    if (!style || style->type != KRYON_AST_STYLE_BLOCK) {
+        return false;
+    }
+    
+    // Style Definition Structure as per KRB v0.1 spec:
+    // [Style ID: u32]
+    // [Style Name String ID: u16]
+    // [Parent Style ID: u32]
+    // [Property Count: u16]
+    // [Property Definitions]
+    // [Style Flags: u16]
+    // [Reserved: 4 bytes]
+    
+    // Style ID (auto-increment)
+    if (!write_uint32(codegen, codegen->next_element_id++)) return false;
+    
+    // Style Name String ID
+    uint32_t name_string_id = add_string_to_table(codegen, style->data.style.name);
+    if (!write_uint16(codegen, (uint16_t)name_string_id)) return false;
+    
+    // Parent Style ID (0 = no parent)
+    if (!write_uint32(codegen, 0)) return false;
+    
+    // Property Count  
+    if (!write_uint16(codegen, (uint16_t)style->data.style.property_count)) return false;
+    
+    // Write style properties
+    for (size_t i = 0; i < style->data.style.property_count; i++) {
+        if (!write_property_node(codegen, style->data.style.properties[i])) {
+            return false;
+        }
+    }
+    
+    // Style Flags (0 for now)
+    if (!write_uint16(codegen, 0)) return false;
+    
+    // Reserved bytes
+    if (!write_uint32(codegen, 0)) return false;
+    
+    return true;
+}
+
+static bool write_widget_instance(KryonCodeGenerator *codegen, const KryonASTNode *element) {
+    if (!element || element->type != KRYON_AST_ELEMENT) {
+        return false;
+    }
+    
+    // Widget Instance Structure as per KRB v0.1 spec:
+    // [Instance ID: u32]
+    // [Widget Type ID: u32]
+    // [Parent Instance ID: u32]
+    // [Style Reference ID: u32]
+    // [Property Count: u16]
+    // [Child Count: u16]
+    // [Event Handler Count: u16]
+    // [Widget Flags: u32]
+    // [Properties]
+    // [Child Instance IDs]
+    // [Event Handlers]
+    
+    // Instance ID
+    uint32_t instance_id = codegen->next_element_id++;
+    if (!write_uint32(codegen, instance_id)) return false;
+    
+    // Widget Type ID (use our widget mappings)
+    uint16_t widget_type = kryon_codegen_get_element_hex(element->data.element.element_type);
+    if (!write_uint32(codegen, (uint32_t)widget_type)) return false;
+    
+    // Parent Instance ID (0 for root elements)
+    if (!write_uint32(codegen, 0)) return false;
+    
+    // Style Reference ID (0 = no style)
+    if (!write_uint32(codegen, 0)) return false;
+    
+    // Property Count
+    if (!write_uint16(codegen, (uint16_t)element->data.element.property_count)) return false;
+    
+    // Child Count  
+    if (!write_uint16(codegen, (uint16_t)element->data.element.child_count)) return false;
+    
+    // Event Handler Count (0 for now)
+    if (!write_uint16(codegen, 0)) return false;
+    
+    // Widget Flags (0 for now)
+    if (!write_uint32(codegen, 0)) return false;
+    
+    // Write properties
+    for (size_t i = 0; i < element->data.element.property_count; i++) {
+        if (!write_property_node(codegen, element->data.element.properties[i])) {
+            return false;
+        }
+    }
+    
+    // Write child instances recursively
+    for (size_t i = 0; i < element->data.element.child_count; i++) {
+        if (!write_widget_instance(codegen, element->data.element.children[i])) {
+            return false;
+        }
+    }
+    
+    // Event handlers (none for now)
+    
+    return true;
+}
+
+// CRC32 checksum function is implemented in krb_file.c
 
 bool kryon_codegen_validate_binary(const KryonCodeGenerator *codegen) {
     if (!codegen || codegen->binary_size < 12) { // header + version + flags
@@ -893,93 +1303,125 @@ bool kryon_codegen_validate_binary(const KryonCodeGenerator *codegen) {
 // PROPERTY VALUE CONVERSION
 // =============================================================================
 
-static uint32_t parse_color_string(const char *color_str) {
-    if (!color_str) {
-        return 0x000000FF; // Default black with full alpha
-    }
-    
-    // Handle common color names
-    if (strcmp(color_str, "red") == 0) return 0xFF0000FF;
-    if (strcmp(color_str, "green") == 0) return 0x00FF00FF;
-    if (strcmp(color_str, "blue") == 0) return 0x0000FFFF;
-    if (strcmp(color_str, "yellow") == 0) return 0xFFFF00FF;
-    if (strcmp(color_str, "white") == 0) return 0xFFFFFFFF;
-    if (strcmp(color_str, "black") == 0) return 0x000000FF;
-    if (strcmp(color_str, "transparent") == 0) return 0x00000000;
-    
-    // Handle hex colors like "#RRGGBB" or "#RRGGBBAA"
-    if (color_str[0] == '#') {
-        const char *hex = color_str + 1;
-        size_t len = strlen(hex);
-        
-        if (len == 6) {
-            // #RRGGBB format
-            unsigned int rgb;
-            if (sscanf(hex, "%06x", &rgb) == 1) {
-                return (rgb << 8) | 0xFF; // Add full alpha
-            }
-        } else if (len == 8) {
-            // #RRGGBBAA format
-            unsigned int rgba;
-            if (sscanf(hex, "%08x", &rgba) == 1) {
-                return rgba;
-            }
-        }
-    }
-    
-    // Default to black if parsing fails
-    return 0x000000FF;
-}
+// =============================================================================
+// PROPERTY VALUE CONVERSION
+// =============================================================================
 
-static bool write_property_value_node(KryonCodeGenerator *codegen, const KryonASTValue *value, uint16_t property_hex) {
+/**
+ * @brief Writes a property's value, performing type conversions based on property hints.
+ *
+ * This function intelligently converts string values to colors, integers to floats, etc.,
+ * based on the expected type of the property, making the KRY language more flexible.
+ *
+ * @param codegen The code generator instance.
+ * @param value The AST value node to write.
+ * @param property_hex The hex code of the property being written.
+ * @return true on success, false on failure.
+ */
+ static bool write_property_value_node(KryonCodeGenerator *codegen, const KryonASTValue *value, uint16_t property_hex) {
     if (!value) {
         return false;
     }
+
+    // Use the helper function you correctly added
+    KryonValueTypeHint hint = get_property_type_hint(property_hex);
     
-    // Check if this property expects a specific type
-    bool is_color_property = false;
-    bool is_float_property = false;
-    
-    // Determine property type based on hex code
-    for (int i = 0; property_mappings[i].name; i++) {
-        if (property_mappings[i].hex == property_hex) {
-            const char *prop_name = property_mappings[i].name;
-            if (strstr(prop_name, "Color") || strcmp(prop_name, "color") == 0) {
-                is_color_property = true;
-            } else if (strstr(prop_name, "width") || strstr(prop_name, "height") || 
-                      strstr(prop_name, "Width") || strstr(prop_name, "Height") ||
-                      strstr(prop_name, "pos") || strstr(prop_name, "Size") ||
-                      strstr(prop_name, "padding") || strstr(prop_name, "margin") ||
-                      strstr(prop_name, "borderWidth") || strstr(prop_name, "borderRadius") ||
-                      strcmp(prop_name, "fontSize") == 0) {
-                is_float_property = true;
+    // Debug: Show type hint resolution
+    printf("🔍 Property 0x%04X has type hint %d, value type %d\n", property_hex, hint, value->type);
+
+    // Perform type conversions based on the property's expected type
+    switch (hint) {
+        case KRYON_TYPE_HINT_COLOR:
+            // If this property expects a color and we got a string, parse it to uint32
+            if (value->type == KRYON_VALUE_STRING) {
+                // Use the color parsing utility to convert to hex
+                uint32_t color_value = kryon_color_parse_string(value->data.string_value);
+                // Write directly as uint32 without type tag
+                return write_uint32(codegen, color_value);
+            }
+            // If it's not a string, it might already be a color value. Fall through to default.
+            break;
+
+        case KRYON_TYPE_HINT_FLOAT:
+            // If this property expects a float (like width, size) and we got an integer, convert it.
+            if (value->type == KRYON_VALUE_INTEGER) {
+                float float_value = (float)value->data.int_value;
+                // Write directly as float without type tag
+                
+                // Use memcpy to safely get the bit representation of the float.
+                uint32_t float_bits;
+                memcpy(&float_bits, &float_value, sizeof(float));
+                return write_uint32(codegen, float_bits);
+            }
+            // If not an integer, fall through to default.
+            break;
+
+        case KRYON_TYPE_HINT_DIMENSION:
+        case KRYON_TYPE_HINT_SPACING:
+            // If this property expects a dimension/spacing and we got a unit value, convert to float
+            if (value->type == KRYON_VALUE_UNIT) {
+                float float_value = (float)value->data.unit_value.value;
+                // Write directly as float without type tag (ignore unit for now)
+                
+                // Use memcpy to safely get the bit representation of the float.
+                uint32_t float_bits;
+                memcpy(&float_bits, &float_value, sizeof(float));
+                return write_uint32(codegen, float_bits);
+            }
+            // If property expects dimension but got integer, convert it
+            if (value->type == KRYON_VALUE_INTEGER) {
+                float float_value = (float)value->data.int_value;
+                uint32_t float_bits;
+                memcpy(&float_bits, &float_value, sizeof(float));
+                return write_uint32(codegen, float_bits);
             }
             break;
+
+        // Add more conversion cases here as needed (e.g., KRYON_TYPE_HINT_BOOL)
+
+        default:
+            // For KRYON_TYPE_HINT_ANY or if no conversion is applicable, do nothing special.
+            break;
+    }
+
+    // Default behavior: write the value as-is without any conversion.
+    return write_value_node(codegen, value);
+}
+
+// =============================================================================
+// RECURSIVE COUNTING HELPERS
+// =============================================================================
+
+static uint32_t count_elements_recursive(const KryonASTNode *node) {
+    if (!node || node->type != KRYON_AST_ELEMENT) {
+        return 0;
+    }
+    
+    uint32_t count = 1; // Count this element
+    
+    // Count child elements recursively
+    for (size_t i = 0; i < node->data.element.child_count; i++) {
+        if (node->data.element.children[i]) {
+            count += count_elements_recursive(node->data.element.children[i]);
         }
     }
     
-    // Convert value based on property type and input value type
-    if (is_color_property && value->type == KRYON_VALUE_STRING) {
-        // Convert color string to color value
-        uint32_t color_value = parse_color_string(value->data.string_value);
-        
-        // Write as color type
-        if (!write_uint8(codegen, 4)) return false; // Color value type
-        return write_uint32(codegen, color_value);
-        
-    } else if (is_float_property && value->type == KRYON_VALUE_INTEGER) {
-        // Convert integer to float for position/size properties
-        float float_value = (float)value->data.int_value;
-        
-        // Write as float type  
-        if (!write_uint8(codegen, 2)) return false; // Float value type
-        // Write as uint32 with endian conversion
-        uint32_t float_bits;
-        memcpy(&float_bits, &float_value, sizeof(float));
-        return write_uint32(codegen, float_bits);
-        
-    } else {
-        // Use original value without conversion
-        return write_value_node(codegen, value);
+    return count;
+}
+
+static uint32_t count_properties_recursive(const KryonASTNode *node) {
+    if (!node || node->type != KRYON_AST_ELEMENT) {
+        return 0;
     }
+    
+    uint32_t count = node->data.element.property_count; // Count this element's properties
+    
+    // Count child element properties recursively
+    for (size_t i = 0; i < node->data.element.child_count; i++) {
+        if (node->data.element.children[i]) {
+            count += count_properties_recursive(node->data.element.children[i]);
+        }
+    }
+    
+    return count;
 }

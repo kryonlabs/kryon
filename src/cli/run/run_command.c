@@ -135,7 +135,9 @@ int run_command(int argc, char *argv[]) {
     // Simple render loop for now - in future this should be event-driven
     bool running = true;
     int frame_count = 0;
+    printf("🔍 DEBUG: About to start render loop\n");
     while (running) { // Run until window is closed
+        printf("🔍 DEBUG: Frame %d - calling kryon_runtime_render\n", frame_count);
         if (!kryon_runtime_render(runtime)) {
             fprintf(stderr, "❌ Rendering failed at frame %d\n", frame_count);
             break;
@@ -231,6 +233,9 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
     if (runtime && runtime->root) {
         KryonElement* app_element = runtime->root;
         
+        printf("🔍 DEBUG: App element pointer: %p\n", (void*)app_element);
+        printf("🔍 DEBUG: App element type: %u (%s)\n", app_element->type, app_element->type_name ? app_element->type_name : "NULL");
+        printf("🔍 DEBUG: App element properties pointer: %p\n", (void*)app_element->properties);
         printf("🔍 DEBUG: App element has %zu properties:\n", app_element->property_count);
         for (size_t j = 0; j < app_element->property_count; j++) {
             if (app_element->properties[j] && app_element->properties[j]->name) {
@@ -246,16 +251,27 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
                     surface.title = app_element->properties[i]->value.string_value;
                     printf("🐛 Debug: Using title from App metadata: %s\n", surface.title);
                 }
-                else if (strcmp(app_element->properties[i]->name, "width") == 0) {
-                    surface.width = (int)app_element->properties[i]->value.int_value;
+                else if (strcmp(app_element->properties[i]->name, "windowWidth") == 0 ||
+                         strcmp(app_element->properties[i]->name, "winWidth") == 0) {
+                    surface.width = (int)app_element->properties[i]->value.float_value;
                     if (debug) {
-                        printf("🐛 Debug: Using width from App metadata: %d\n", surface.width);
+                        printf("🐛 Debug: Using windowWidth from App metadata: %d\n", surface.width);
                     }
                 }
-                else if (strcmp(app_element->properties[i]->name, "height") == 0) {
-                    surface.height = (int)app_element->properties[i]->value.int_value;
+                else if (strcmp(app_element->properties[i]->name, "windowHeight") == 0 ||
+                         strcmp(app_element->properties[i]->name, "winHeight") == 0) {
+                    surface.height = (int)app_element->properties[i]->value.float_value;
                     if (debug) {
-                        printf("🐛 Debug: Using height from App metadata: %d\n", surface.height);
+                        printf("🐛 Debug: Using windowHeight from App metadata: %d\n", surface.height);
+                    }
+                }
+                else if (strcmp(app_element->properties[i]->name, "windowTitle") == 0 ||
+                         strcmp(app_element->properties[i]->name, "winTitle") == 0) {
+                    if (app_element->properties[i]->value.string_value) {
+                        surface.title = app_element->properties[i]->value.string_value;
+                        if (debug) {
+                            printf("🐛 Debug: Using windowTitle from App metadata: %s\n", surface.title);
+                        }
                     }
                 }
             }
@@ -267,7 +283,10 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
                surface.width, surface.height, surface.title);
     }
     
+    printf("🔍 DEBUG: About to call kryon_raylib_renderer_create\n");
     KryonRenderer* renderer = kryon_raylib_renderer_create(&surface);
+    printf("🔍 DEBUG: kryon_raylib_renderer_create returned: %p\n", (void*)renderer);
+    
     if (!renderer) {
         fprintf(stderr, "❌ Failed to create raylib renderer\n");
         if (debug) {
@@ -280,6 +299,7 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
         printf("🐛 Debug: Raylib renderer created successfully\n");
     }
     
+    printf("🔍 DEBUG: About to return renderer from create_raylib_renderer\n");
     return renderer;
 #else
     fprintf(stderr, "❌ RAYLIB NOT AVAILABLE\n");

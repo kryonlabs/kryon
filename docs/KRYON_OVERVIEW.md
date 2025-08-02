@@ -1,4 +1,4 @@
-# Kryon Overview v2.0
+# Kryon Overview v0.1
 ## Smart Hybrid System
 
 ## What is Kryon?
@@ -16,7 +16,7 @@ Kryon is a cross-platform UI framework that combines the familiar styling power 
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────┐
-│                  Hybrid Compiler v2.0                    │
+│                  Hybrid Compiler v0.1                    │
 │    Lexer → Parser → Hybrid AST → Optimizer → Generator  │
 │  + Style Resolution + Theme Variables + Widget Layout   │
 └─────────────────────────────────────────────────────────┘
@@ -30,7 +30,7 @@ Kryon is a cross-platform UI framework that combines the familiar styling power 
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────┐
-│                 Hybrid Runtime v2.0                      │
+│                 Hybrid Runtime v0.1                      │
 │  Loader → Style System → Theme System → Widget Layout   │
 │       → Layout Engine → Renderer                        │
 └─────────────────────────────────────────────────────────┘
@@ -45,7 +45,7 @@ Kryon is a cross-platform UI framework that combines the familiar styling power 
 
 ## Key Components
 
-### 1. Smart Hybrid Language v2.0
+### 1. Smart Hybrid Language v0.1
 - **CSS-like styling** for familiar property-based appearance control
 - **Widget composition** for powerful layout and structure
 - **Enhanced theming** with organized variable groups
@@ -54,7 +54,7 @@ Kryon is a cross-platform UI framework that combines the familiar styling power 
 - **Theme switching** with light/dark mode support
 - **Event handling** with script integration
 
-### 2. Hybrid Compiler v2.0
+### 2. Hybrid Compiler v0.1
 - **Style resolution** and inheritance flattening
 - **Theme variable** processing and optimization
 - **Widget layout** analysis and optimization
@@ -63,7 +63,7 @@ Kryon is a cross-platform UI framework that combines the familiar styling power 
 - **Style deduplication** and compression
 - **Responsive value** optimization
 
-### 3. KRB Hybrid Binary Format v2.0
+### 3. KRB Hybrid Binary Format v0.1
 - **Style definition table** with inheritance support
 - **Theme variable table** with organized groups
 - **Widget definition table** for layout widgets
@@ -71,7 +71,7 @@ Kryon is a cross-platform UI framework that combines the familiar styling power 
 - **Cross-platform** compatibility data
 - **Efficient compression** with style awareness
 
-### 4. Hybrid Runtime v2.0
+### 4. Hybrid Runtime v0.1
 - **Style system** with inheritance resolution
 - **Theme system** with variable resolution and switching
 - **Widget layout** engine with flexbox-like behavior
@@ -204,20 +204,20 @@ kryon dev app.kry --hot-reload --theme auto
 
 ## Documentation Structure
 
-1. **KRY_LANGUAGE_SPEC.md** - Complete hybrid language reference v2.0
-2. **KRB_BINARY_SPEC.md** - Hybrid binary format specification v2.0  
-3. **KRB_TO_HTML_MAPPING.md** - Hybrid system to HTML/CSS mapping v2.0
-4. **KRYON_IR_PIPELINE.md** - Hybrid compilation pipeline details v2.0
-5. **KRYON_OVERVIEW.md** - This hybrid framework overview v2.0
+1. **KRY_LANGUAGE_SPEC.md** - Complete hybrid language reference v0.1
+2. **KRB_BINARY_SPEC.md** - Hybrid binary format specification v0.1  
+3. **KRB_TO_HTML_MAPPING.md** - Hybrid system to HTML/CSS mapping v0.1
+4. **KRYON_IR_PIPELINE.md** - Hybrid compilation pipeline details v0.1
+5. **KRYON_OVERVIEW.md** - This hybrid framework overview v0.1
 
 ## Project Status
 
-### Core Hybrid System v2.0
+### Core Hybrid System v0.1
 - ✅ Smart hybrid language specification complete
 - ✅ CSS-like styling with widget layout design
 - ✅ Enhanced theming with variable groups
 - ✅ Style inheritance system
-- ✅ Binary format v2.0 with hybrid support
+- ✅ Binary format v0.1 with hybrid support
 - ✅ Responsive design system
 - ✅ Theme switching capabilities
 

@@ -88,9 +88,17 @@ typedef enum {
     KRYON_TOKEN_HASH,                // #
     KRYON_TOKEN_DOLLAR,              // $ (for variables)
     
+    // Keywords
+    KRYON_TOKEN_STYLE_KEYWORD,       // style
+    KRYON_TOKEN_EXTENDS_KEYWORD,     // extends
+    
     // Directives
     KRYON_TOKEN_STYLE_DIRECTIVE,     // @style
     KRYON_TOKEN_STYLES_DIRECTIVE,    // @styles
+    KRYON_TOKEN_THEME_DIRECTIVE,     // @theme
+    KRYON_TOKEN_VARIABLE_DIRECTIVE,  // @var
+    KRYON_TOKEN_VARIABLES_DIRECTIVE, // @variables
+    KRYON_TOKEN_FUNCTION_DIRECTIVE,  // @function
     KRYON_TOKEN_STORE_DIRECTIVE,     // @store
     KRYON_TOKEN_WATCH_DIRECTIVE,     // @watch
     KRYON_TOKEN_ON_MOUNT_DIRECTIVE,  // @on_mount

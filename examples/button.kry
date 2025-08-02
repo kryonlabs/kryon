@@ -1,8 +1,8 @@
-style "base" {
-    background_color: "#191919FF"
-    text_color: "#FF9900FF"
-    border_color: "#00AAFFFF"
-    border_width: 1
+@style "base" {
+    backgroundColor: "#191919FF"
+    color: "#FF9900FF"
+    borderColor: "#00AAFFFF"
+    borderWidth: 1
 }
 
 @function "lua" handleButtonClick() {
@@ -14,20 +14,18 @@ App {
     windowHeight: 400
     windowTitle: "Interactive Button Demo"
     windowResizable: true
-    keepAspectRatio: false 
-    display: "flex"
-    flexDirection: "column"
-    alignItems: "center"
-    justifyContent: "center"
-    style: "base"
+    keepAspectRatio: false
+    class: "base"
 
-    Button {
-        width: 150
-        height: 50
-        text: "Click Me!"
-        textAlignment: "center"
-        backgroundColor: "#404080FF"
-        borderColor: "#0099FFFF"
-        onClick: "handleButtonClick"
+    Center {
+        Button {
+            width: 150
+            height: 50
+            text: "Click Me!"
+            textAlign: "center"
+            backgroundColor: "#404080FF"
+            borderColor: "#0099FFFF"
+            onClick: "handleButtonClick"
+        }
     }
 }

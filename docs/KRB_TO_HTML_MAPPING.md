@@ -1,4 +1,4 @@
-# KRB to HTML Mapping Reference v2.0
+# KRB to HTML Mapping Reference v0.1
 ## Smart Hybrid System Mapping
 
 ## Overview

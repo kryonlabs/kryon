@@ -45,8 +45,11 @@ typedef enum {
     KRYON_AST_ROOT = 0,              // Root document node
     KRYON_AST_ELEMENT,               // UI element (Button, Text, etc.)
     KRYON_AST_PROPERTY,              // Element property
-    KRYON_AST_STYLE_BLOCK,           // @style block
-    KRYON_AST_STYLES_BLOCK,          // @styles block
+    KRYON_AST_STYLE_BLOCK,           // @style "name" { ... } (single style)
+    KRYON_AST_STYLES_BLOCK,          // @styles { "name1": {...}, "name2": {...} }
+    KRYON_AST_THEME_DEFINITION,      // @theme groupName { ... }
+    KRYON_AST_VARIABLE_DEFINITION,   // @var name = value
+    KRYON_AST_FUNCTION_DEFINITION,   // @function language name() { ... }
     
     // Directives
     KRYON_AST_STORE_DIRECTIVE,       // @store
@@ -151,6 +154,7 @@ struct KryonASTNode {
         
         struct {
             char *name;              // Style name
+            char *parent_name;       // Parent style for inheritance (extends)
             KryonASTNode **properties; // Style properties
             size_t property_count;
             size_t property_capacity;
@@ -222,6 +226,27 @@ struct KryonASTNode {
             char *language;          // Script language (e.g., "lua")
             char *code;              // Script code
         } script;
+        
+        struct {
+            char *group_name;        // Theme group name (colors, spacing, etc.)
+            KryonASTNode **variables; // Theme variables
+            size_t variable_count;
+            size_t variable_capacity;
+        } theme;
+        
+        struct {
+            char *language;          // Function language ("javascript", "lua", etc.)
+            char *name;              // Function name
+            char **parameters;       // Function parameters
+            size_t parameter_count;
+            char *code;              // Function code body
+        } function_def;
+        
+        struct {
+            char *name;              // Variable name
+            KryonASTNode *value;     // Variable value
+            char *type;              // Variable type (String, Int, Boolean, etc.)
+        } variable_def;
     } data;
     
     // Metadata

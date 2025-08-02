@@ -48,7 +48,6 @@ kryon-c/
 │   │   ├── python/                 # Python engine integration
 │   │   └── kryon-lisp/             # Kryon Lisp interpreter
 │   ├── layout/                     # Layout Engine
-│   │   ├── flexbox/                # Flexbox layout
 │   │   ├── grid/                   # CSS Grid layout
 │   │   ├── constraints/            # Constraint solver
 │   │   ├── cache/                  # Layout caching

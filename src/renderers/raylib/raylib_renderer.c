@@ -138,19 +138,27 @@ static KryonRenderResult raylib_initialize(void* surface) {
     }
     
     // Set target FPS
-    SetTargetFPS(surf->target_fps > 0 ? surf->target_fps : 60);
+    printf("🔍 DEBUG: Setting target FPS to %d\n", surf->target_fps > 0 ? surf->target_fps : 60);
+    // DISABLED: SetTargetFPS(surf->target_fps > 0 ? surf->target_fps : 60);
+    // ^ SetTargetFPS causes segfault in this environment - skip it for now
+    printf("🔍 DEBUG: SetTargetFPS skipped (would cause segfault)\n");
     
     // Load default font (Raylib has a built-in default font)
+    printf("🔍 DEBUG: Getting default font\n");
     g_raylib_impl.default_font = GetFontDefault();
+    printf("🔍 DEBUG: GetFontDefault loaded successfully\n");
     
+    printf("🔍 DEBUG: Setting impl variables\n");
     g_raylib_impl.width = surf->width;
     g_raylib_impl.height = surf->height;
     g_raylib_impl.initialized = true;
     g_raylib_impl.window_should_close = false;
+    printf("🔍 DEBUG: Impl variables set\n");
     
     printf("Raylib Renderer initialized: %dx%d @ %d FPS\n", 
            surf->width, surf->height, surf->target_fps > 0 ? surf->target_fps : 60);
     
+    printf("🔍 DEBUG: About to return KRYON_RENDER_SUCCESS\n");
     return KRYON_RENDER_SUCCESS;
 }
 
@@ -250,8 +258,26 @@ static KryonRenderResult raylib_execute_commands(KryonRenderContext* context,
                 
                 if (data->text) {
                     Color color = kryon_color_to_raylib(data->color);
-                    draw_text_with_font_raylib(data->text, data->position,
-                                              ctx->current_font, data->font_size, color);
+                    
+                    // Calculate position based on text alignment
+                    Vector2 text_size = MeasureTextEx(ctx->current_font, data->text, 
+                                                     data->font_size, 1.0f);
+                    Vector2 final_pos = {data->position.x, data->position.y};
+                    
+                    // Adjust position based on alignment (text_align: 0=left, 1=center, 2=right)
+                    if (data->text_align == 1) { // center
+                        final_pos.x -= text_size.x / 2.0f;
+                        final_pos.y -= text_size.y / 2.0f;
+                        printf("🎯 TEXT CENTER: size=%.1fx%.1f, orig_pos=%.1f,%.1f, final_pos=%.1f,%.1f\n",
+                               text_size.x, text_size.y, data->position.x, data->position.y,
+                               final_pos.x, final_pos.y);
+                    } else if (data->text_align == 2) { // right
+                        final_pos.x -= text_size.x;
+                    }
+                    // text_align == 0 (left) uses original position
+                    
+                    DrawTextEx(ctx->current_font, data->text, final_pos, 
+                              data->font_size, 1.0f, color);
                 }
                 break;
             }

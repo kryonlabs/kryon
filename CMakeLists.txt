@@ -39,6 +39,20 @@ if(UNIX)
 endif()
 
 # =============================================================================
+# SHARED MODULES
+# =============================================================================
+
+add_library(kryon_shared STATIC
+    src/shared/kryon_mappings.c
+)
+
+target_include_directories(kryon_shared PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/internal
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+# =============================================================================
 # MINIMAL MEMORY MANAGEMENT
 # =============================================================================
 
@@ -66,6 +80,12 @@ add_subdirectory(src/runtime)
 add_subdirectory(src/events)
 
 # =============================================================================
+# GRAPHICS MODULE (for color utils)
+# =============================================================================
+
+add_subdirectory(src/graphics)
+
+# =============================================================================
 # COMPILER MODULE (for lexer and parser)
 # =============================================================================
 
@@ -73,6 +93,7 @@ add_subdirectory(src/compiler)
 
 add_library(kryon_minimal_compiler STATIC
     $<TARGET_OBJECTS:kryon_compiler>
+    $<TARGET_OBJECTS:kryon_graphics>
     src/core/error_system.c
 )
 
@@ -81,7 +102,7 @@ target_include_directories(kryon_minimal_compiler PUBLIC
     ${CMAKE_SOURCE_DIR}/include/internal
 )
 
-target_link_libraries(kryon_minimal_compiler kryon_minimal_memory cjson)
+target_link_libraries(kryon_minimal_compiler kryon_minimal_memory kryon_shared cjson)
 
 # =============================================================================
 # WIDGET SYSTEM (Core only)

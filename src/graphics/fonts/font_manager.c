@@ -5,7 +5,7 @@
 
 #include "internal/graphics.h"
 #include "internal/memory.h"
-#include "internal/renderer.h"
+#include "internal/renderer_interface.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -86,7 +86,7 @@ static KryonTextMetrics raylib_measure_text(const KryonFont* font, const char* t
     
     metrics.width = size.x;
     metrics.height = size.y;
-    metrics.advance_x = size.x;
+    // metrics.advance_x = size.x;
     
     return metrics;
 }
@@ -128,7 +128,7 @@ static KryonTextMetrics sdl2_measure_text(const KryonFont* font, const char* tex
     if (TTF_SizeText(ttf_font, text, &width, &height) == 0) {
         metrics.width = width;
         metrics.height = height;
-        metrics.advance_x = width;
+        // metrics.advance_x = width;
     }
     
     return metrics;
@@ -169,7 +169,7 @@ static KryonTextMetrics software_measure_text(const KryonFont* font, const char*
     
     metrics.width = text_length * char_width;
     metrics.height = font->line_height;
-    metrics.advance_x = metrics.width;
+    // metrics.advance_x = metrics.width;
     
     return metrics;
 }
@@ -340,10 +340,10 @@ KryonFont* kryon_font_load(const char* file_path, int size) {
             break;
 #endif
             
-        case KRYON_RENDERER_SOFTWARE:
         case KRYON_RENDERER_HTML:
         default:
-            font = software_load_font(file_path, size);
+            // HTML renderer fonts handled by browser
+            font = NULL; // TODO: Implement HTML font loading
             break;
     }
     
@@ -380,10 +380,10 @@ KryonTextMetrics kryon_font_measure_text(const KryonFont* font, const char* text
             return sdl2_measure_text(font, text);
 #endif
             
-        case KRYON_RENDERER_SOFTWARE:
         case KRYON_RENDERER_HTML:
         default:
-            return software_measure_text(font, text);
+            // HTML renderer text measurement handled by browser
+            return (KryonTextMetrics){0}; // TODO: Implement HTML text measurement
     }
 }
 

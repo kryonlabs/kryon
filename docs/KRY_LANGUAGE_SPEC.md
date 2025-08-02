@@ -1,4 +1,4 @@
-# KRY Language Specification v2.0
+# KRY Language Specification v0.1
 ## Smart Hybrid System
 
 ## Core Philosophy
@@ -134,12 +134,12 @@ style "card" {
 }
 
 @theme typography {
-    small: 12
+    caption: 12
     body: 16
-    subtitle: 18
-    title: 24
-    heading: 32
-    display: 48
+    subheading: 18
+    h3: 24
+    h2: 32
+    h1: 48
 }
 
 @theme radius {
@@ -501,6 +501,12 @@ Button {
 ```
 
 ### Event Handling
+
+KRY supports two forms of event handler syntax:
+
+#### Short Form (Simple Function Reference)
+For simple cases, use a string reference to the function name:
+
 ```kry
 Button {
     text: "Click Me"
@@ -517,4 +523,145 @@ Input {
 }
 ```
 
+#### Long Form (Advanced Event Configuration)
+For advanced scenarios with parameters, async handling, or event options:
+
+```kry
+Button {
+    text: "Submit Form"
+    onClick: {
+        handler: "submitForm"
+        args: ["userId", "formData"]
+        async: true
+        preventDefault: true
+        debounce: 300
+    }
+}
+
+Button {
+    text: "Delete Item"
+    onClick: {
+        handler: "deleteItem"
+        args: [$itemId]
+        confirm: "Are you sure you want to delete this item?"
+        async: true
+    }
+}
+```
+
 This hybrid system gives you the familiar styling power of CSS with the structural benefits of widgets, plus an enhanced theming system that builds naturally on your existing variables.
+
+## Component System
+
+### @component Syntax
+```kry
+@component UserCard(name: String, avatar: String, role: String) {
+    Container {
+        style: "card"
+        
+        Row {
+            spacing: $spacing.sm
+            crossAxis: "center"
+            
+            Image {
+                src: $avatar
+                width: 60
+                height: 60
+                borderRadius: 30
+            }
+            
+            Column {
+                spacing: 4
+                
+                Text { text: $name, fontWeight: 600 }
+                Text { text: $role, color: $colors.textSecondary }
+            }
+        }
+    }
+}
+
+# Usage
+UserCard {
+    name: "John Doe"
+    avatar: "avatar.jpg" 
+    role: "Designer"
+}
+```
+
+## Reactive System
+
+### Reactive Variables & Functions
+```kry
+@variables {
+    count: 0           # Reactive - changing triggers re-render
+    currentTheme: "light"  # Reactive theme switcher
+}
+
+@function increment() {
+    count = count + 1  # Direct assignment updates reactive variable
+}
+
+@function toggleTheme() {
+    currentTheme = currentTheme == "light" ? "dark" : "light"
+}
+
+Button {
+    text: "Count: $count"  # Automatically updates when count changes
+    onClick: "increment"   # Function directly modifies reactive variable
+}
+```
+
+### Advanced Theme Switching
+```kry
+# Define themes
+@theme light {
+    background: "#ffffff"
+    text: "#000000" 
+    primary: "#007AFF"
+}
+
+@theme dark {
+    background: "#000000"
+    text: "#ffffff"
+    primary: "#0A84FF" 
+}
+
+# App-level theme switching
+App {
+    theme: $currentTheme  # reactive variable controls active theme
+    
+    Container {
+        background: $background  # automatically uses active theme
+        color: $text
+    }
+}
+
+# Theme switching function
+@function setTheme(themeName) {
+    currentTheme = themeName  # Updates reactive variable, triggers re-render
+}
+```
+
+## Property Precedence Rules
+
+When the same property is defined in multiple places, KRY follows this precedence order (highest to lowest):
+
+1. **Widget Properties** (highest precedence)
+2. **Style Properties** 
+3. **Theme Variables** (lowest precedence)
+
+```kry
+style "button" { fontSize: 16, color: "blue" }
+
+Button {
+    style: "button"
+    fontSize: 20      # Widget property OVERRIDES style property
+    text: "Click"     # Final: fontSize=20, color="blue"
+}
+```
+
+### Key Points:
+- **@variables are reactive by default** - any change triggers re-render
+- **Functions directly modify variables** - no setState needed
+- **Theme switching via reactive theme property** on App
+- **Widget properties override style properties**

@@ -5,7 +5,7 @@
 
 #include "internal/graphics.h"
 #include "internal/memory.h"
-#include "internal/renderer.h"
+#include "internal/renderer_interface.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -356,42 +356,6 @@ static KryonImage* sdl2_load_image_from_file(const char* file_path) {
 }
 #endif
 
-static KryonImage* software_load_image_from_file(const char* file_path) {
-    if (!file_path) return NULL;
-    
-    FILE* file = fopen(file_path, "rb");
-    if (!file) return NULL;
-    
-    // Get file size
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    
-    if (file_size <= 0) {
-        fclose(file);
-        return NULL;
-    }
-    
-    // Read file data
-    uint8_t* file_data = kryon_alloc(file_size);
-    if (!file_data) {
-        fclose(file);
-        return NULL;
-    }
-    
-    size_t bytes_read = fread(file_data, 1, file_size, file);
-    fclose(file);
-    
-    if (bytes_read != (size_t)file_size) {
-        kryon_free(file_data);
-        return NULL;
-    }
-    
-    KryonImage* image = software_load_image_from_memory(file_data, file_size);
-    kryon_free(file_data);
-    
-    return image;
-}
 
 // =============================================================================
 // PUBLIC API
@@ -414,53 +378,21 @@ KryonImage* kryon_image_load_from_file(const char* file_path) {
             return sdl2_load_image_from_file(file_path);
 #endif
             
-        case KRYON_RENDERER_SOFTWARE:
         case KRYON_RENDERER_HTML:
         default:
-            return software_load_image_from_file(file_path);
+            // HTML renderer - images handled by browser
+            return NULL; // TODO: Implement HTML image loading
     }
 }
 
-static KryonImage* software_load_image_from_memory(const void* data, size_t size) {
-    if (!data || size == 0) return NULL;
-    
-    const uint8_t* byte_data = (const uint8_t*)data;
-    KryonImageFormat format = detect_image_format(byte_data, size);
-    
-    KryonImage* image = NULL;
-    
-    switch (format) {
-        case KRYON_IMAGE_FORMAT_BMP:
-            image = load_bmp(byte_data, size);
-            break;
-            
-        case KRYON_IMAGE_FORMAT_TGA:
-            image = load_tga(byte_data, size);
-            break;
-            
-        case KRYON_IMAGE_FORMAT_PNG:
-        case KRYON_IMAGE_FORMAT_JPEG:
-        case KRYON_IMAGE_FORMAT_GIF:
-            // These would require external libraries (stb_image, etc.)
-            printf("Image format not supported in basic implementation\n");
-            break;
-            
-        default:
-            printf("Unknown image format\n");
-            break;
-    }
-    
-    return image;
-}
 
 KryonImage* kryon_image_load_from_memory(const void* data, size_t size) {
     if (!data || size == 0) return NULL;
     
     // For memory loading, most renderers don't have direct support
-    // So we primarily use our software implementation
     // TODO: Add renderer-specific memory loading if available
     
-    return software_load_image_from_memory(data, size);
+    return NULL; // TODO: Implement memory loading for specific renderers
 }
 
 KryonImage* kryon_image_create(uint32_t width, uint32_t height, KryonPixelFormat format) {

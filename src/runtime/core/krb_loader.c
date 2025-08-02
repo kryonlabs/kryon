@@ -14,6 +14,7 @@
 #include "internal/events.h"
 #include "internal/memory.h"
 #include "internal/binary_io.h"
+#include "../../shared/kryon_mappings.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -21,73 +22,53 @@
 // ELEMENT TYPE MAPPING
 // =============================================================================
 
-static const struct {
-    uint16_t hex;
-    const char *name;
-} element_type_map[] = {
-    {0x0001, "App"},
-    {0x0002, "Container"},
-    {0x0003, "Button"},
-    {0x0004, "Text"},
-    {0x0005, "Input"},
-    {0x0006, "Image"},
-    {0x0007, "List"},
-    {0x0008, "Grid"},
-    {0x0009, "Form"},
-    {0x000A, "Modal"},
-    {0x000B, "Tabs"},
-    {0x000C, "Menu"},
-    {0x000D, "Dropdown"},
-    {KRYON_ELEMENT_EVENT_DIRECTIVE, "EventDirective"},
-    {0, NULL}
-};
+// Using centralized element mappings
 
 // =============================================================================
 // PROPERTY TYPE MAPPING
 // =============================================================================
 
-static const struct {
-    uint16_t hex;
-    const char *name;
-    KryonRuntimePropertyType type;
-} property_type_map[] = {
-    {0x0001, "text", KRYON_RUNTIME_PROP_STRING},
-    {0x0002, "backgroundColor", KRYON_RUNTIME_PROP_COLOR},
-    {0x0003, "borderColor", KRYON_RUNTIME_PROP_COLOR},
-    {0x0004, "borderWidth", KRYON_RUNTIME_PROP_FLOAT},
-    {0x0005, "color", KRYON_RUNTIME_PROP_COLOR},
-    {0x0006, "fontSize", KRYON_RUNTIME_PROP_FLOAT},
-    {0x0007, "fontWeight", KRYON_RUNTIME_PROP_STRING},
-    {0x0008, "fontFamily", KRYON_RUNTIME_PROP_STRING},
-    {0x0009, "width", KRYON_RUNTIME_PROP_FLOAT},
-    {0x000A, "height", KRYON_RUNTIME_PROP_FLOAT},
-    {0x000B, "posX", KRYON_RUNTIME_PROP_FLOAT},
-    {0x000C, "posY", KRYON_RUNTIME_PROP_FLOAT},
-    {0x000D, "padding", KRYON_RUNTIME_PROP_FLOAT},
-    {0x000E, "margin", KRYON_RUNTIME_PROP_FLOAT},
-    {0x000F, "display", KRYON_RUNTIME_PROP_STRING},
-    {0x0010, "flexDirection", KRYON_RUNTIME_PROP_STRING},
-    {0x0011, "alignItems", KRYON_RUNTIME_PROP_STRING},
-    {0x0012, "justifyContent", KRYON_RUNTIME_PROP_STRING},
-    {0x0013, "textAlignment", KRYON_RUNTIME_PROP_STRING},
-    {0x0014, "visible", KRYON_RUNTIME_PROP_BOOLEAN},
-    {0x0015, "enabled", KRYON_RUNTIME_PROP_BOOLEAN},
-    {0x0016, "class", KRYON_RUNTIME_PROP_STRING},
-    {0x0017, "id", KRYON_RUNTIME_PROP_STRING},
-    {0x0018, "style", KRYON_RUNTIME_PROP_STRING},
-    {0x0019, "onClick", KRYON_RUNTIME_PROP_FUNCTION},
-    {0x001A, "onHover", KRYON_RUNTIME_PROP_FUNCTION},
-    {0x001B, "onFocus", KRYON_RUNTIME_PROP_FUNCTION},
-    {0x001C, "onChange", KRYON_RUNTIME_PROP_FUNCTION},
-    {0x001D, "contentAlignment", KRYON_RUNTIME_PROP_STRING},
-    {0x001E, "title", KRYON_RUNTIME_PROP_STRING},
-    {0x001F, "version", KRYON_RUNTIME_PROP_STRING},
-    {0x0020, "selectedIndex", KRYON_RUNTIME_PROP_INTEGER},
-    {0x0021, "multiSelect", KRYON_RUNTIME_PROP_BOOLEAN},
-    {0x0022, "maxHeight", KRYON_RUNTIME_PROP_FLOAT},
-    {0x0023, "borderRadius", KRYON_RUNTIME_PROP_FLOAT},
-    {0, NULL, 0}
-};
+// Using centralized property mappings - need to map to runtime types
+static KryonRuntimePropertyType get_runtime_property_type(const char *property_name) {
+    if (!property_name) return KRYON_RUNTIME_PROP_STRING;
+    
+    // Color properties
+    if (strstr(property_name, "Color") || strcmp(property_name, "color") == 0 ||
+        strcmp(property_name, "background") == 0 || strcmp(property_name, "backgroundColor") == 0) {
+        return KRYON_RUNTIME_PROP_COLOR;
+    }
+    
+    // Float properties (numeric dimensions, positions)
+    if (strstr(property_name, "width") || strstr(property_name, "Width") ||
+        strstr(property_name, "height") || strstr(property_name, "Height") ||
+        strstr(property_name, "pos") || strstr(property_name, "Size") ||
+        strstr(property_name, "padding") || strstr(property_name, "margin") ||
+        strstr(property_name, "borderWidth") || strstr(property_name, "borderRadius") ||
+        strcmp(property_name, "fontSize") == 0) {
+        return KRYON_RUNTIME_PROP_FLOAT;
+    }
+    
+    // Boolean properties
+    if (strcmp(property_name, "visible") == 0 || strcmp(property_name, "enabled") == 0 ||
+        strcmp(property_name, "windowResizable") == 0 || strcmp(property_name, "resizable") == 0 ||
+        strcmp(property_name, "keepAspectRatio") == 0 || strcmp(property_name, "aspectRatio") == 0 ||
+        strcmp(property_name, "multiSelect") == 0) {
+        return KRYON_RUNTIME_PROP_BOOLEAN;
+    }
+    
+    // Function properties (event handlers)
+    if (strncmp(property_name, "on", 2) == 0) {
+        return KRYON_RUNTIME_PROP_FUNCTION;
+    }
+    
+    // Integer properties
+    if (strcmp(property_name, "selectedIndex") == 0) {
+        return KRYON_RUNTIME_PROP_INTEGER;
+    }
+    
+    // Default to string
+    return KRYON_RUNTIME_PROP_STRING;
+}
 
 // =============================================================================
 // FORWARD DECLARATIONS
@@ -107,6 +88,8 @@ static bool load_property_value(KryonProperty *property,
                                const uint8_t *data,
                                size_t *offset,
                                size_t size);
+static bool skip_styles_section(const uint8_t *data, size_t *offset, size_t size, uint32_t style_count);
+static bool skip_functions_section(const uint8_t *data, size_t *offset, size_t size, uint32_t function_count);
 static void register_event_directive_handlers(KryonRuntime *runtime, KryonElement *element);
 
 // =============================================================================
@@ -114,11 +97,10 @@ static void register_event_directive_handlers(KryonRuntime *runtime, KryonElemen
 // =============================================================================
 
 static const char *get_element_type_name(uint16_t hex) {
-    // Check built-in element types
-    for (int i = 0; element_type_map[i].name; i++) {
-        if (element_type_map[i].hex == hex) {
-            return element_type_map[i].name;
-        }
+    // Use centralized element mappings
+    const char *name = kryon_get_widget_name(hex);
+    if (name) {
+        return name;
     }
     
     // Handle custom elements (hex >= 0x1000)
@@ -134,19 +116,15 @@ static const char *get_element_type_name(uint16_t hex) {
 }
 
 static const char *get_property_name(uint16_t hex) {
-    for (int i = 0; property_type_map[i].name; i++) {
-        if (property_type_map[i].hex == hex) {
-            return property_type_map[i].name;
-        }
-    }
-    return NULL;
+    // Use centralized property mappings
+    return kryon_get_property_name(hex);
 }
 
 static KryonRuntimePropertyType get_property_type(uint16_t hex) {
-    for (int i = 0; property_type_map[i].name; i++) {
-        if (property_type_map[i].hex == hex) {
-            return property_type_map[i].type;
-        }
+    // Use centralized property mappings with runtime type mapping
+    const char *property_name = kryon_get_property_name(hex);
+    if (property_name) {
+        return get_runtime_property_type(property_name);
     }
     return KRYON_RUNTIME_PROP_STRING; // Default to string
 }
@@ -183,13 +161,13 @@ static bool read_uint8_safe(const uint8_t *data, size_t *offset, size_t size, ui
 // =============================================================================
 
 bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, size_t size) {
-    if (!runtime || !data || size < 12) {
+    if (!runtime || !data || size < 128) { // Minimum size for complex format header
         return false;
     }
     
     size_t offset = 0;
     
-    // Read and validate header
+    // Read and validate 128-byte complex header
     uint32_t magic;
     if (!read_uint32_safe(data, &offset, size, &magic)) {
         printf("DEBUG: Failed to read magic number\n");
@@ -200,25 +178,100 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
         return false;
     }
     
-    uint32_t version, flags;
-    if (!read_uint32_safe(data, &offset, size, &version) ||
-        !read_uint32_safe(data, &offset, size, &flags)) {
-        printf("DEBUG: Failed to read version/flags\n");
+    // Read version fields (KRB v0.1 format)
+    uint16_t version_major, version_minor, version_patch;
+    if (!read_uint16_safe(data, &offset, size, &version_major) ||
+        !read_uint16_safe(data, &offset, size, &version_minor) ||
+        !read_uint16_safe(data, &offset, size, &version_patch)) {
+        printf("DEBUG: Failed to read version\n");
         return false;
     }
     
-    // Simple format: header is followed directly by element count
-    if (offset + 4 > size) {
+    uint16_t flags;
+    if (!read_uint16_safe(data, &offset, size, &flags)) {
+        printf("DEBUG: Failed to read flags\n");
         return false;
     }
     
-    // Read element count
-    uint32_t element_count;
-    if (!read_uint32_safe(data, &offset, size, &element_count)) {
-        printf("DEBUG: Failed to read element count\n");
+    printf("DEBUG: KRB file v%u.%u.%u, flags: 0x%04X\n", version_major, version_minor, version_patch, flags);
+    
+    // Read section counts from header
+    uint32_t style_count, theme_count, widget_def_count, element_count, property_count;
+    if (!read_uint32_safe(data, &offset, size, &style_count) ||
+        !read_uint32_safe(data, &offset, size, &theme_count) ||
+        !read_uint32_safe(data, &offset, size, &widget_def_count) ||
+        !read_uint32_safe(data, &offset, size, &element_count) ||
+        !read_uint32_safe(data, &offset, size, &property_count)) {
+        printf("DEBUG: Failed to read section counts\n");
         return false;
     }
-    printf("DEBUG: Found %u elements in KRB file\n", element_count);
+    
+    // Read size and checksum fields
+    uint32_t string_table_size, data_size, checksum;
+    if (!read_uint32_safe(data, &offset, size, &string_table_size) ||
+        !read_uint32_safe(data, &offset, size, &data_size) ||
+        !read_uint32_safe(data, &offset, size, &checksum)) {
+        printf("DEBUG: Failed to read size/checksum fields\n");
+        return false;
+    }
+    
+    // Skip compression byte and uncompressed size
+    uint8_t compression;
+    uint32_t uncompressed_size;
+    if (!read_uint8_safe(data, &offset, size, &compression) ||
+        !read_uint32_safe(data, &offset, size, &uncompressed_size)) {
+        printf("DEBUG: Failed to read compression fields\n");
+        return false;
+    }
+    
+    // Read section offsets
+    uint32_t style_offset, theme_offset, widget_def_offset, widget_inst_offset;
+    uint32_t script_offset, resource_offset;
+    if (!read_uint32_safe(data, &offset, size, &style_offset) ||
+        !read_uint32_safe(data, &offset, size, &theme_offset) ||
+        !read_uint32_safe(data, &offset, size, &widget_def_offset) ||
+        !read_uint32_safe(data, &offset, size, &widget_inst_offset) ||
+        !read_uint32_safe(data, &offset, size, &script_offset) ||
+        !read_uint32_safe(data, &offset, size, &resource_offset)) {
+        printf("DEBUG: Failed to read section offsets\n");
+        return false;
+    }
+    
+    // Skip reserved bytes (55 bytes)
+    offset += 55;
+    
+    // Validate header size (should be 128 bytes now)
+    if (offset != 128) {
+        printf("DEBUG: Header size mismatch: %zu (expected 128)\n", offset);
+        return false;
+    }
+    
+    printf("DEBUG: Found %u styles, %u themes, %u widget defs, %u elements, %u properties in KRB file\n", 
+           style_count, theme_count, widget_def_count, element_count, property_count);
+    
+    // Now we're at the start of the data sections after the 128-byte header
+    // First should be the string table, then style definitions, etc.
+    
+    // Skip string table (for now)
+    printf("DEBUG: String table size from header: %u bytes (0x%08X)\n", string_table_size, string_table_size);
+    if (string_table_size > 0) {
+        if (string_table_size > 1000000) { // If > 1MB, something's wrong
+            printf("DEBUG: String table size seems too large, possible endianness issue\n");
+            return false;
+        }
+        printf("DEBUG: Skipping string table (%u bytes)\n", string_table_size);
+        offset += string_table_size;
+        if (offset > size) {
+            printf("DEBUG: String table extends beyond file size (offset=%zu, size=%zu)\n", offset, size);
+            return false;
+        }
+    }
+    
+    // Navigate to widget instance section if we have elements
+    if (element_count > 0 && widget_inst_offset > 0) {
+        printf("DEBUG: Jumping to widget instance section at offset %u\n", widget_inst_offset);
+        offset = widget_inst_offset;
+    }
     
     // Load root element (should be the first one)
     if (element_count > 0) {
@@ -240,56 +293,65 @@ static KryonElement *load_element_from_binary(KryonRuntime *runtime,
                                              size_t *offset, 
                                              size_t size,
                                              KryonElement *parent) {
-    if (*offset + 10 > size) {
+    // Read widget instance header as per KRB v0.1 spec:
+    // [Instance ID: u32] [Widget Type ID: u32] [Parent Instance ID: u32] [Style Reference ID: u32]
+    // [Property Count: u16] [Child Count: u16] [Event Handler Count: u16] [Widget Flags: u32]
+    
+    if (*offset + 24 > size) { // Minimum header size for widget instance
         return NULL;
     }
     
-    // Read element header
-    uint16_t element_type;
-    uint32_t element_id, property_count;
-    if (!read_uint16_safe(data, offset, size, &element_type) ||
-        !read_uint32_safe(data, offset, size, &element_id) ||
-        !read_uint32_safe(data, offset, size, &property_count)) {
-        printf("DEBUG: Failed to read element header\n");
+    // Read widget instance header
+    uint32_t instance_id, widget_type_id, parent_id, style_ref_id;
+    uint16_t property_count, child_count, event_handler_count;
+    uint32_t widget_flags;
+    
+    if (!read_uint32_safe(data, offset, size, &instance_id) ||
+        !read_uint32_safe(data, offset, size, &widget_type_id) ||
+        !read_uint32_safe(data, offset, size, &parent_id) ||
+        !read_uint32_safe(data, offset, size, &style_ref_id) ||
+        !read_uint16_safe(data, offset, size, &property_count) ||
+        !read_uint16_safe(data, offset, size, &child_count) ||
+        !read_uint16_safe(data, offset, size, &event_handler_count) ||
+        !read_uint32_safe(data, offset, size, &widget_flags)) {
+        printf("DEBUG: Failed to read widget instance header\n");
         return NULL;
     }
     
-    // Create element
-    KryonElement *element = kryon_element_create(runtime, element_type, parent);
+    // Create element using the widget type ID
+    KryonElement *element = kryon_element_create(runtime, (uint16_t)widget_type_id, parent);
     if (!element) {
         return NULL;
     }
     
-    // Set element type name
-    element->type_name = kryon_alloc(strlen(get_element_type_name(element_type)) + 1);
-    if (element->type_name) {
-        strcpy(element->type_name, get_element_type_name(element_type));
+    // Set element type name with null check
+    const char* type_name = kryon_get_widget_type_name((uint16_t)widget_type_id);
+    if (type_name) {
+        element->type_name = kryon_alloc(strlen(type_name) + 1);
+        if (element->type_name) {
+            strcpy(element->type_name, type_name);
+        }
+    } else {
+        printf("❌ ERROR: Unknown widget type ID: %u\n", widget_type_id);
+        element->type_name = kryon_alloc(strlen("Unknown") + 1);
+        if (element->type_name) {
+            strcpy(element->type_name, "Unknown");
+        }
     }
     
     // Load properties
     if (property_count > 0) {
+        printf("DEBUG: About to load %u properties for element %s\n", property_count, element->type_name);
         if (!load_element_properties(element, data, offset, size, property_count)) {
             kryon_element_destroy(runtime, element);
             return NULL;
         }
+        printf("DEBUG: Successfully loaded %zu properties for element %s\n", element->property_count, element->type_name);
     }
     
     // Special handling for event directive elements
-    if (element_type == KRYON_ELEMENT_EVENT_DIRECTIVE) {
+    if (widget_type_id == KRYON_ELEMENT_EVENT_DIRECTIVE) {
         register_event_directive_handlers(runtime, element);
-    }
-    
-    // Read child count
-    if (*offset + 4 > size) {
-        kryon_element_destroy(runtime, element);
-        return NULL;
-    }
-    
-    uint32_t child_count;
-    if (!read_uint32_safe(data, offset, size, &child_count)) {
-        printf("DEBUG: Failed to read child count\n");
-        kryon_element_destroy(runtime, element);
-        return NULL;
     }
     
     if (child_count > 0) {
@@ -297,13 +359,16 @@ static KryonElement *load_element_from_binary(KryonRuntime *runtime,
     }
     
     // Load children
+    printf("DEBUG: About to load %u children for element %s\n", child_count, element->type_name);
     for (uint32_t i = 0; i < child_count; i++) {
+        printf("DEBUG: Loading child %u/%u (offset=%zu)\n", i+1, child_count, *offset);
         KryonElement *child = load_element_from_binary(runtime, data, offset, size, element);
         if (!child) {
+            printf("DEBUG: Failed to load child %u\n", i+1);
             kryon_element_destroy(runtime, element);
             return NULL;
         }
-        printf("DEBUG: Loaded child %u: %s\n", i, child->type_name);
+        printf("DEBUG: Successfully loaded child %u: %s\n", i+1, child->type_name);
     }
     
     return element;
@@ -340,9 +405,18 @@ static bool load_element_properties(KryonElement *element,
         }
         
         property->id = property_id;
-        property->name = kryon_alloc(strlen(get_property_name(property_id)) + 1);
-        if (property->name) {
-            strcpy(property->name, get_property_name(property_id));
+        const char* prop_name = get_property_name(property_id);
+        if (prop_name) {
+            property->name = kryon_alloc(strlen(prop_name) + 1);
+            if (property->name) {
+                strcpy(property->name, prop_name);
+            }
+        } else {
+            printf("❌ ERROR: Unknown property ID: 0x%04X\n", property_id);
+            property->name = kryon_alloc(strlen("unknown") + 1);
+            if (property->name) {
+                strcpy(property->name, "unknown");
+            }
         }
         property->type = get_property_type(property_id);
         
@@ -350,7 +424,7 @@ static bool load_element_properties(KryonElement *element,
                property->name, property_id, property->type);
         
         // Handle special properties
-        if (property_id == 0x0017) { // "id" property
+        if (property_id == kryon_get_property_hex("id")) { // "id" property
             // Read the property value
             if (!load_property_value(property, data, offset, size)) {
                 kryon_free(property->name);
@@ -365,7 +439,7 @@ static bool load_element_properties(KryonElement *element,
                     strcpy(element->element_id, property->value.string_value);
                 }
             }
-        } else if (property_id == 0x0016) { // "class" property
+        } else if (property_id == kryon_get_property_hex("class")) { // "class" property
             // Read the property value
             if (!load_property_value(property, data, offset, size)) {
                 kryon_free(property->name);
@@ -404,20 +478,11 @@ static bool load_property_value(KryonProperty *property,
                                const uint8_t *data,
                                size_t *offset,
                                size_t size) {
-    if (*offset + 1 > size) {
-        return false;
-    }
-    
-    // Read value type
-    uint8_t value_type;
-    if (!read_uint8_safe(data, offset, size, &value_type)) {
-        printf("DEBUG: Failed to read value type\n");
-        return false;
-    }
-    
-    switch (value_type) {
-        case 0: // String (inline format: length + data)
+    // Load value based on the expected property type (no type tags in KRB)
+    switch (property->type) {
+        case KRYON_RUNTIME_PROP_STRING:
             {
+                // For string properties, read as string (length + data)
                 uint16_t string_length;
                 if (!read_uint16_safe(data, offset, size, &string_length)) {
                     printf("DEBUG: Failed to read string length\n");
@@ -429,7 +494,6 @@ static bool load_property_value(KryonProperty *property,
                     return false;
                 }
                 
-                // Allocate and copy string data
                 property->value.string_value = kryon_alloc(string_length + 1);
                 if (!property->value.string_value) {
                     printf("DEBUG: Failed to allocate string memory\n");
@@ -442,11 +506,11 @@ static bool load_property_value(KryonProperty *property,
                 property->value.string_value[string_length] = '\0';
                 *offset += string_length;
                 
-                printf("DEBUG: Read inline string: '%s'\n", property->value.string_value);
+                printf("DEBUG: Read string property '%s' = '%s'\n", property->name, property->value.string_value);
             }
             break;
             
-        case 1: // Integer (stored as uint32)
+        case KRYON_RUNTIME_PROP_INTEGER:
             {
                 uint32_t int_value;
                 if (!read_uint32_safe(data, offset, size, &int_value)) {
@@ -454,22 +518,26 @@ static bool load_property_value(KryonProperty *property,
                     return false;
                 }
                 property->value.int_value = (int64_t)int_value;
+                printf("DEBUG: Read integer property '%s' = %lld\n", property->name, (long long)property->value.int_value);
             }
             break;
             
-        case 2: // Float (stored as 32-bit float)
+        case KRYON_RUNTIME_PROP_FLOAT:
             {
-                float float_value;
-                if (!read_float_safe(data, offset, size, &float_value)) {
+                // For float properties, read as uint32 and reinterpret as float
+                uint32_t float_bits;
+                if (!read_uint32_safe(data, offset, size, &float_bits)) {
                     printf("DEBUG: Failed to read float value\n"); 
                     return false;
                 }
+                float float_value;
+                memcpy(&float_value, &float_bits, sizeof(float));
                 property->value.float_value = (double)float_value;
                 printf("DEBUG: Read float property '%s' = %f\n", property->name, float_value);
             }
             break;
             
-        case 3: // Boolean (stored as uint8)
+        case KRYON_RUNTIME_PROP_BOOLEAN:
             {
                 uint8_t bool_value;
                 if (!read_uint8_safe(data, offset, size, &bool_value)) {
@@ -477,21 +545,25 @@ static bool load_property_value(KryonProperty *property,
                     return false;
                 }
                 property->value.bool_value = bool_value != 0;
+                printf("DEBUG: Read boolean property '%s' = %s\n", property->name, property->value.bool_value ? "true" : "false");
             }
             break;
             
-        case 4: // Color (stored as uint32 RGBA)
+        case KRYON_RUNTIME_PROP_COLOR:
             {
+                // For color properties, read as uint32 RGBA value
                 uint32_t color_value;
                 if (!read_uint32_safe(data, offset, size, &color_value)) {
                     printf("DEBUG: Failed to read color value\n");
                     return false;
                 }
                 property->value.color_value = color_value;
+                printf("DEBUG: Read color property '%s' = 0x%08X\n", property->name, color_value);
             }
             break;
             
         default:
+            printf("DEBUG: Unknown property type %d for property '%s'\n", property->type, property->name);
             return false;
     }
     
@@ -567,9 +639,18 @@ bool kryon_element_set_property(KryonElement *element, uint16_t property_id, con
     }
     
     prop->id = property_id;
-    prop->name = kryon_alloc(strlen(get_property_name(property_id)) + 1);
-    if (prop->name) {
-        strcpy(prop->name, get_property_name(property_id));
+    const char* prop_name = get_property_name(property_id);
+    if (prop_name) {
+        prop->name = kryon_alloc(strlen(prop_name) + 1);
+        if (prop->name) {
+            strcpy(prop->name, prop_name);
+        }
+    } else {
+        printf("❌ ERROR: Unknown property ID: 0x%04X\n", property_id);
+        prop->name = kryon_alloc(strlen("unknown") + 1);
+        if (prop->name) {
+            strcpy(prop->name, "unknown");
+        }
     }
     prop->type = get_property_type(property_id);
     
@@ -655,7 +736,7 @@ static void register_event_directive_handlers(KryonRuntime *runtime, KryonElemen
     
     // Process each property as an event handler
     for (size_t i = 0; i < element->property_count; i++) {
-        KryonProperty *prop = &element->properties[i];
+        KryonProperty *prop = element->properties[i];
         if (!prop->name || !prop->value.string_value) {
             continue;
         }
@@ -693,4 +774,107 @@ static void register_event_directive_handlers(KryonRuntime *runtime, KryonElemen
             //                                    handler_name);
         }
     }
+}
+
+// =============================================================================
+// SECTION SKIPPING FUNCTIONS
+// =============================================================================
+
+/**
+ * Skip styles section by reading and discarding style data
+ */
+static bool skip_styles_section(const uint8_t *data, size_t *offset, size_t size, uint32_t style_count) {
+    for (uint32_t i = 0; i < style_count; i++) {
+        // Skip style header ("STYL" magic)
+        if (*offset + 4 > size) return false;
+        *offset += 4;
+        
+        // Skip style name reference
+        if (*offset + 4 > size) return false;
+        *offset += 4;
+        
+        // Read property count
+        uint32_t prop_count;
+        if (!read_uint32_safe(data, offset, size, &prop_count)) {
+            return false;
+        }
+        
+        // Skip all properties
+        for (uint32_t j = 0; j < prop_count; j++) {
+            // Skip property ID
+            if (*offset + 2 > size) return false;
+            *offset += 2;
+            
+            // Skip property value (read type first)
+            uint8_t value_type;
+            if (!read_uint8_safe(data, offset, size, &value_type)) {
+                return false;
+            }
+            
+            // Skip value data based on type
+            switch (value_type) {
+                case 0: // String
+                    {
+                        uint16_t str_len;
+                        if (!read_uint16_safe(data, offset, size, &str_len)) return false;
+                        if (*offset + str_len > size) return false;
+                        *offset += str_len;
+                    }
+                    break;
+                case 1: // Integer
+                case 2: // Float  
+                case 4: // Color
+                    if (*offset + 4 > size) return false;
+                    *offset += 4;
+                    break;
+                case 3: // Boolean
+                    if (*offset + 1 > size) return false;
+                    *offset += 1;
+                    break;
+                default:
+                    return false; // Unknown type
+            }
+        }
+    }
+    
+    printf("DEBUG: Successfully skipped %u styles\n", style_count);
+    return true;
+}
+
+/**
+ * Skip functions section by reading and discarding function data
+ */
+static bool skip_functions_section(const uint8_t *data, size_t *offset, size_t size, uint32_t function_count) {
+    for (uint32_t i = 0; i < function_count; i++) {
+        // Skip function header ("FUNC" magic)
+        if (*offset + 4 > size) return false;
+        *offset += 4;
+        
+        // Skip language reference
+        if (*offset + 4 > size) return false;
+        *offset += 4;
+        
+        // Skip function name reference
+        if (*offset + 4 > size) return false;
+        *offset += 4;
+        
+        // Read parameter count
+        uint32_t param_count;
+        if (!read_uint32_safe(data, offset, size, &param_count)) {
+            return false;
+        }
+        
+        // Skip parameter references
+        for (uint32_t j = 0; j < param_count; j++) {
+            if (*offset + 4 > size) return false;
+            *offset += 4;
+        }
+        
+        // Skip function code reference
+        if (*offset + 4 > size) return false;
+        *offset += 4;
+    }
+    
+    printf("DEBUG: Successfully skipped %u functions\n", function_count);
+    return true;
 }

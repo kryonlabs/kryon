@@ -158,6 +158,11 @@ endif()
 # Link with JSON library for state serialization
 target_link_libraries(kryon_runtime PRIVATE cjson)
 
+# Link with shared property mappings
+if(TARGET kryon_shared)
+    target_link_libraries(kryon_runtime PRIVATE kryon_shared)
+endif()
+
 # Link with events module
 if(TARGET kryon_events)
     target_link_libraries(kryon_runtime PRIVATE kryon_events)

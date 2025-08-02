@@ -1,6 +1,8 @@
 # Kryon Graphics Module
 
 add_library(kryon_graphics OBJECT
+    graphics_core.c
+    color_utils.c
     image/image_loader.c
     fonts/font_manager.c
     shaders/shader_compiler.c

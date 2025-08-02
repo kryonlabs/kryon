@@ -9,6 +9,7 @@
 
 #include "internal/codegen.h"
 #include "internal/memory.h"
+#include "../../shared/kryon_mappings.h"
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
@@ -99,72 +100,7 @@ size_t kryon_codegen_fold_constants(KryonCodeGenerator *codegen, KryonASTNode *a
     return 0; // Placeholder
 }
 
-// =============================================================================
-// CUSTOM ELEMENT/PROPERTY REGISTRATION
-// =============================================================================
 
-// Static arrays for custom mappings (could be made dynamic)
-static struct {
-    char *name;
-    uint16_t hex;
-} custom_elements[256];
-static size_t custom_element_count = 0;
-
-static struct {
-    char *name;
-    uint16_t hex;
-} custom_properties[256];
-static size_t custom_property_count = 0;
-
-bool kryon_codegen_register_element(const char *element_name, uint16_t hex_code) {
-    if (!element_name || custom_element_count >= 256) {
-        return false;
-    }
-    
-    // Check if hex code is already used
-    for (size_t i = 0; i < custom_element_count; i++) {
-        if (custom_elements[i].hex == hex_code) {
-            return false;
-        }
-    }
-    
-    // Add new element
-    custom_elements[custom_element_count].name = kryon_alloc(strlen(element_name) + 1);
-    if (!custom_elements[custom_element_count].name) {
-        return false;
-    }
-    
-    strcpy(custom_elements[custom_element_count].name, element_name);
-    custom_elements[custom_element_count].hex = hex_code;
-    custom_element_count++;
-    
-    return true;
-}
-
-bool kryon_codegen_register_property(const char *property_name, uint16_t hex_code) {
-    if (!property_name || custom_property_count >= 256) {
-        return false;
-    }
-    
-    // Check if hex code is already used
-    for (size_t i = 0; i < custom_property_count; i++) {
-        if (custom_properties[i].hex == hex_code) {
-            return false;
-        }
-    }
-    
-    // Add new property
-    custom_properties[custom_property_count].name = kryon_alloc(strlen(property_name) + 1);
-    if (!custom_properties[custom_property_count].name) {
-        return false;
-    }
-    
-    strcpy(custom_properties[custom_property_count].name, property_name);
-    custom_properties[custom_property_count].hex = hex_code;
-    custom_property_count++;
-    
-    return true;
-}
 
 // =============================================================================
 // BINARY VALIDATION AND INTROSPECTION

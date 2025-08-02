@@ -1,8 +1,8 @@
-# KRB Binary Format Specification v2.0
+# KRB Binary Format Specification v0.1
 ## Smart Hybrid System with Enhanced Theming
 
 ## Overview
-KRB (Kryon Binary) v2.0 is designed for the Smart Hybrid System, supporting CSS-like styling, widget-based layout, style inheritance, and enhanced theming with variable groups.
+KRB (Kryon Binary) v0.1 is designed for the Smart Hybrid System, supporting CSS-like styling, widget-based layout, style inheritance, and enhanced theming with variable groups.
 
 ## File Structure
 
@@ -23,8 +23,8 @@ KRB (Kryon Binary) v2.0 is designed for the Smart Hybrid System, supporting CSS-
 | Offset | Size | Field | Type | Description |
 |--------|------|-------|------|-------------|
 | 0x00 | 4 | Magic | u32 | `0x4B52594E` ("KRYN") |
-| 0x04 | 2 | Version Major | u16 | Format version major (2) |
-| 0x06 | 2 | Version Minor | u16 | Format version minor (0) |
+| 0x04 | 2 | Version Major | u16 | Format version major (0) |
+| 0x06 | 2 | Version Minor | u16 | Format version minor (1) |
 | 0x08 | 2 | Version Patch | u16 | Format version patch (0) |
 | 0x0A | 2 | Flags | u16 | File flags (see below) |
 | 0x0C | 4 | Style Definition Count | u32 | Number of style definitions |
@@ -43,7 +43,7 @@ KRB (Kryon Binary) v2.0 is designed for the Smart Hybrid System, supporting CSS-
 | 0x3D | 4 | Widget Instance Offset | u32 | Offset to widget instances |
 | 0x41 | 4 | Script Offset | u32 | Offset to script section |
 | 0x45 | 4 | Resource Offset | u32 | Offset to resource section |
-| 0x49 | 47 | Reserved | bytes | Reserved for future use |
+| 0x49 | 55 | Reserved | bytes | Reserved for future use |
 
 ### Header Flags
 - `0x0001` - Has styles
@@ -93,6 +93,17 @@ KRB (Kryon Binary) v2.0 is designed for the Smart Hybrid System, supporting CSS-
 
 ### Built-in Style Property IDs
 
+#### Meta & System Properties (0x0000-0x00FF)
+| Property | ID | Type | Description |
+|----------|----|----|-------------|
+| id | 0x0001 | String | Element identifier |
+| class | 0x0002 | String | CSS class name |
+| style | 0x0003 | String | Style reference |
+| theme | 0x0004 | String | Theme reference |
+| extends | 0x0005 | String | Style inheritance |
+| title | 0x0006 | String | Element title |
+| version | 0x0007 | String | Version info |
+
 #### Layout Properties (0x0100-0x01FF)
 | Property | ID | Type | Description |
 |----------|----|----|-------------|
@@ -104,6 +115,19 @@ KRB (Kryon Binary) v2.0 is designed for the Smart Hybrid System, supporting CSS-
 | maxHeight | 0x0105 | Dimension | Maximum height |
 | padding | 0x0106 | Spacing | Inner spacing |
 | margin | 0x0107 | Spacing | Outer spacing |
+| aspectRatio | 0x0109 | Number | Aspect ratio |
+| flex | 0x010A | Number | Flex value |
+| gap | 0x010B | Dimension | Gap spacing |
+| posX | 0x010C | Float | X position |
+| posY | 0x010D | Float | Y position |
+| paddingTop | 0x0110 | Dimension | Top padding |
+| paddingRight | 0x0111 | Dimension | Right padding |
+| paddingBottom | 0x0112 | Dimension | Bottom padding |
+| paddingLeft | 0x0113 | Dimension | Left padding |
+| marginTop | 0x0114 | Dimension | Top margin |
+| marginRight | 0x0115 | Dimension | Right margin |
+| marginBottom | 0x0116 | Dimension | Bottom margin |
+| marginLeft | 0x0117 | Dimension | Left margin |
 
 #### Visual Properties (0x0200-0x02FF)
 | Property | ID | Type | Description |
@@ -114,6 +138,9 @@ KRB (Kryon Binary) v2.0 is designed for the Smart Hybrid System, supporting CSS-
 | borderRadius | 0x0203 | Number | Corner radius |
 | boxShadow | 0x0204 | String | Drop shadow |
 | opacity | 0x0205 | Number | Transparency |
+| borderColor | 0x0206 | Color | Border color |
+| borderWidth | 0x0207 | Number | Border width |
+| visible | 0x0208 | Boolean | Visibility |
 
 #### Typography Properties (0x0300-0x03FF)
 | Property | ID | Type | Description |
@@ -123,6 +150,24 @@ KRB (Kryon Binary) v2.0 is designed for the Smart Hybrid System, supporting CSS-
 | fontFamily | 0x0302 | String | Font family |
 | lineHeight | 0x0303 | Number | Line height |
 | textAlign | 0x0304 | String | Text alignment |
+
+#### Widget-Specific Properties (0x0600-0x06FF)
+| Property | ID | Type | Description |
+|----------|----|----|-------------|
+| src | 0x0600 | String | Image source |
+| value | 0x0601 | String | Input value |
+| child | 0x0602 | Reference | Single child |
+| children | 0x0603 | Array | Multiple children |
+| placeholder | 0x0604 | String | Input placeholder |
+| objectFit | 0x0605 | String | Image fit mode |
+| mainAxis | 0x0606 | String | Main axis alignment |
+| crossAxis | 0x0607 | String | Cross axis alignment |
+| direction | 0x0608 | String | Flex direction |
+| wrap | 0x0609 | String | Flex wrap |
+| align | 0x060A | String | Align items |
+| justify | 0x060B | String | Justify content |
+| contentAlignment | 0x060E | String | Generic content alignment |
+| text | 0x060F | String | Text content for Text widget |
 
 ## Theme Variable Table
 
@@ -199,7 +244,7 @@ KRB (Kryon Binary) v2.0 is designed for the Smart Hybrid System, supporting CSS-
 
 ### Built-in Widget Type IDs
 
-#### Layout Widgets (0x0000-0x00FF)
+#### Layout Widgets (0x0000-0x00FF)  
 | Widget | ID | Description |
 |--------|----|-------------|
 | Widget | 0x0000 | Base widget (abstract) |
@@ -217,6 +262,15 @@ KRB (Kryon Binary) v2.0 is designed for the Smart Hybrid System, supporting CSS-
 | Button | 0x0401 | Interactive button |
 | Image | 0x0402 | Image display |
 | Input | 0x0403 | Text input |
+
+#### Application Widgets (0x1000+)
+| Widget | ID | Description |
+|--------|----|-------------|
+| App | 0x1000 | Application root |
+| Modal | 0x1001 | Modal dialog |
+| Form | 0x1002 | Form container |
+| Grid | 0x1003 | Grid layout |
+| List | 0x1004 | List container |
 
 #### Custom Widgets (0x1000+)
 Reserved for user-defined widgets

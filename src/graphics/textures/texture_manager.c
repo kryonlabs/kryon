@@ -5,7 +5,7 @@
 
 #include "internal/graphics.h"
 #include "internal/memory.h"
-#include "internal/renderer.h"
+#include "internal/renderer_interface.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,8 +40,8 @@ typedef struct {
     size_t memory_usage; // Total texture memory in bytes
     
     // Default textures
-    KryonTexture* white_texture;
-    KryonTexture* black_texture;
+    uint32_t white_texture_id;
+    uint32_t black_texture_id;
     
     // Configuration
     size_t max_texture_size;
@@ -181,61 +181,6 @@ static bool sdl2_update_texture(KryonTexture* texture, const void* pixels, uint3
 }
 #endif
 
-// Software renderer texture implementation
-static KryonTexture* software_create_texture_from_image(const KryonImage* image) {
-    if (!image || !image->data) return NULL;
-    
-    KryonTexture* texture = kryon_alloc(sizeof(KryonTexture));
-    if (!texture) return NULL;
-    
-    texture->width = image->width;
-    texture->height = image->height;
-    texture->format = KRYON_TEXTURE_FORMAT_RGBA8;
-    texture->has_mipmaps = false;
-    
-    // For software renderer, we just store the image data directly
-    size_t data_size = image->width * image->height * 4;
-    texture->renderer_data = kryon_alloc(data_size);
-    if (!texture->renderer_data) {
-        kryon_free(texture);
-        return NULL;
-    }
-    
-    memcpy(texture->renderer_data, image->data, data_size);
-    return texture;
-}
-
-static void software_destroy_texture(KryonTexture* texture) {
-    if (!texture) return;
-    kryon_free(texture->renderer_data);
-}
-
-static bool software_update_texture(KryonTexture* texture, const void* pixels, uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
-    if (!texture || !texture->renderer_data || !pixels) return false;
-    
-    uint8_t* texture_data = (uint8_t*)texture->renderer_data;
-    const uint8_t* pixel_data = (const uint8_t*)pixels;
-    
-    // Copy pixel data to texture
-    for (uint32_t row = 0; row < height; row++) {
-        for (uint32_t col = 0; col < width; col++) {
-            uint32_t dst_x = x + col;
-            uint32_t dst_y = y + row;
-            
-            if (dst_x < texture->width && dst_y < texture->height) {
-                size_t dst_idx = (dst_y * texture->width + dst_x) * 4;
-                size_t src_idx = (row * width + col) * 4;
-                
-                texture_data[dst_idx] = pixel_data[src_idx];         // R
-                texture_data[dst_idx + 1] = pixel_data[src_idx + 1]; // G
-                texture_data[dst_idx + 2] = pixel_data[src_idx + 2]; // B
-                texture_data[dst_idx + 3] = pixel_data[src_idx + 3]; // A
-            }
-        }
-    }
-    
-    return true;
-}
 
 // =============================================================================
 // TEXTURE CACHE MANAGEMENT
@@ -328,10 +273,10 @@ static void remove_from_cache(uint32_t texture_id) {
 // DEFAULT TEXTURE CREATION
 // =============================================================================
 
-static KryonTexture* create_default_texture(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+static uint32_t create_default_texture(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     // Create 1x1 texture with specified color
     KryonImage* image = kryon_image_create(1, 1, KRYON_PIXEL_FORMAT_RGBA8);
-    if (!image) return NULL;
+    if (!image) return 0;
     
     uint8_t* pixel = (uint8_t*)image->data;
     pixel[0] = r;
@@ -339,10 +284,10 @@ static KryonTexture* create_default_texture(uint8_t r, uint8_t g, uint8_t b, uin
     pixel[2] = b;
     pixel[3] = a;
     
-    KryonTexture* texture = kryon_texture_create_from_image(image);
+    uint32_t texture_id = kryon_texture_create_from_image(image);
     kryon_image_destroy(image);
     
-    return texture;
+    return texture_id;
 }
 
 // =============================================================================
@@ -357,10 +302,10 @@ bool kryon_texture_manager_init(void) {
     g_texture_manager.auto_generate_mipmaps = true;
     
     // Create default textures
-    g_texture_manager.white_texture = create_default_texture(255, 255, 255, 255);
-    g_texture_manager.black_texture = create_default_texture(0, 0, 0, 255);
+    g_texture_manager.white_texture_id = create_default_texture(255, 255, 255, 255);
+    g_texture_manager.black_texture_id = create_default_texture(0, 0, 0, 255);
     
-    return g_texture_manager.white_texture && g_texture_manager.black_texture;
+    return g_texture_manager.white_texture_id && g_texture_manager.black_texture_id;
 }
 
 void kryon_texture_manager_shutdown(void) {
@@ -384,8 +329,9 @@ void kryon_texture_manager_shutdown(void) {
                 break;
 #endif
                 
+            case KRYON_RENDERER_HTML:
             default:
-                software_destroy_texture(&cache->kryon_texture);
+                // HTML renderer cleanup - nothing to do for now
                 break;
         }
         
@@ -395,11 +341,11 @@ void kryon_texture_manager_shutdown(void) {
     }
     
     // Clean up default textures
-    if (g_texture_manager.white_texture) {
-        kryon_free(g_texture_manager.white_texture);
+    if (g_texture_manager.white_texture_id) {
+        kryon_texture_destroy(g_texture_manager.white_texture_id);
     }
-    if (g_texture_manager.black_texture) {
-        kryon_free(g_texture_manager.black_texture);
+    if (g_texture_manager.black_texture_id) {
+        kryon_texture_destroy(g_texture_manager.black_texture_id);
     }
     
     memset(&g_texture_manager, 0, sizeof(g_texture_manager));
@@ -420,14 +366,10 @@ uint32_t kryon_texture_load_from_file(const char* file_path) {
     if (!image) return 0;
     
     // Create texture from image
-    KryonTexture* texture = kryon_texture_create_from_image(image);
+    uint32_t texture_id = kryon_texture_create_from_image(image);
     kryon_image_destroy(image);
     
-    if (!texture) return 0;
-    
-    // Add to cache and return ID
-    uint32_t texture_id = add_to_cache(file_path, texture, texture->renderer_data);
-    kryon_free(texture); // Cache holds the actual data
+    if (!texture_id) return 0;
     
     return texture_id;
 }
@@ -457,10 +399,10 @@ uint32_t kryon_texture_create_from_image(const KryonImage* image) {
             break;
 #endif
             
-        case KRYON_RENDERER_SOFTWARE:
         case KRYON_RENDERER_HTML:
         default:
-            texture = software_create_texture_from_image(image);
+            // For HTML renderer, we'll handle textures differently
+            texture = NULL; // TODO: Implement HTML texture creation
             break;
     }
     
@@ -512,8 +454,9 @@ void kryon_texture_destroy(uint32_t texture_id) {
                 break;
 #endif
                 
+            case KRYON_RENDERER_HTML:
             default:
-                software_destroy_texture(&cache->kryon_texture);
+                // HTML renderer cleanup - nothing to do for now
                 break;
         }
         
@@ -547,19 +490,19 @@ bool kryon_texture_update(uint32_t texture_id, const void* pixels, uint32_t x, u
             return sdl2_update_texture(&cache->kryon_texture, pixels, x, y, width, height);
 #endif
             
+        case KRYON_RENDERER_HTML:
         default:
-            return software_update_texture(&cache->kryon_texture, pixels, x, y, width, height);
+            // HTML renderer update - not implemented yet
+            return false;
     }
 }
 
 uint32_t kryon_texture_get_white(void) {
-    // Return ID of white texture (would need to be tracked)
-    return 1; // Simplified - in real implementation, track default texture IDs
+    return g_texture_manager.white_texture_id;
 }
 
 uint32_t kryon_texture_get_black(void) {
-    // Return ID of black texture
-    return 2; // Simplified - in real implementation, track default texture IDs
+    return g_texture_manager.black_texture_id;
 }
 
 size_t kryon_texture_get_memory_usage(void) {

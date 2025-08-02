@@ -11,6 +11,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <stdbool.h>
+
+// For AST validation
+extern size_t kryon_ast_validate(const KryonASTNode *node, char **errors, size_t max_errors);
 
 // Forward declarations
 static KryonASTNode *ensure_app_root_container(const KryonASTNode *original_ast, KryonParser *parser, bool debug);
@@ -19,6 +23,7 @@ static KryonASTNode *find_metadata_node(const KryonASTNode *ast);
 static KryonASTNode *inject_debug_inspector_element(KryonParser *parser);
 static void print_generated_kry_content(const KryonASTNode *ast, const char *title);
 static void print_element_content(const KryonASTNode *element, int indent);
+static void debug_print_ast(const KryonASTNode *node, int depth);
 
 int compile_command(int argc, char *argv[]) {
     const char *input_file = NULL;
@@ -142,6 +147,10 @@ int compile_command(int argc, char *argv[]) {
         printf("Read %ld bytes from %s\n", file_size, input_file);
     }
     
+    if (debug || verbose) {
+        printf("Source preview (first 200 chars): %.200s%s\n", source, file_size > 200 ? "..." : "");
+    }
+    
     // Create lexer
     KryonLexer *lexer = kryon_lexer_create(source, file_size, input_file, NULL);
     if (!lexer) {
@@ -158,6 +167,16 @@ int compile_command(int argc, char *argv[]) {
         return 1;
     }
     
+    if (debug || verbose) {
+        const char *lexer_error = kryon_lexer_get_error(lexer);
+        if (lexer_error && strlen(lexer_error) > 0) {
+            printf("Lexer warning: %s\n", lexer_error);
+        } else {
+            printf("Lexer completed successfully.\n");
+        }
+    }
+    
+    
     // Create parser
     KryonParser *parser = kryon_parser_create(lexer, NULL);
     if (!parser) {
@@ -172,27 +191,53 @@ int compile_command(int argc, char *argv[]) {
         printf("Parsing...\n");
     }
     
-    if (!kryon_parser_parse(parser)) {
-        size_t error_count;
-        const char **errors = kryon_parser_get_errors(parser, &error_count);
-        if (errors && error_count > 0) {
-            for (size_t i = 0; i < error_count; i++) {
-                fprintf(stderr, "Parse error: %s\n", errors[i]);
-            }
+    bool parse_success = kryon_parser_parse(parser);
+    
+    // Always check for parser errors
+    size_t error_count;
+    const char **errors = kryon_parser_get_errors(parser, &error_count);
+    if (errors && error_count > 0) {
+        fprintf(stderr, "Parser errors detected:\n");
+        for (size_t i = 0; i < error_count; i++) {
+            fprintf(stderr, "  %s\n", errors[i]);
         }
-    } else {
-        // Always show parser errors even on successful parse
-        size_t error_count;
-        const char **errors = kryon_parser_get_errors(parser, &error_count);
-        if (errors && error_count > 0) {
-            printf("Parser warnings/errors:\n");
-            for (size_t i = 0; i < error_count; i++) {
-                printf("  %s\n", errors[i]);
-            }
-        }
+        // Fail compilation if there are any parser errors
+        kryon_parser_destroy(parser);
+        kryon_lexer_destroy(lexer);
+        kryon_free(source);
+        return 1;
+    }
+    
+    if (!parse_success) {
+        fprintf(stderr, "Error: Parser failed\n");
+        kryon_parser_destroy(parser);
+        kryon_lexer_destroy(lexer);
+        kryon_free(source);
+        return 1;
+    }
+    
+    if (debug || verbose) {
+        printf("No parser errors detected.\n");
     }
     
     const KryonASTNode *ast = kryon_parser_get_root(parser);
+    
+    // Validate AST structure and properties
+    if (ast) {
+        char *validation_errors[100];
+        size_t validation_count = kryon_ast_validate(ast, validation_errors, 100);
+        if (validation_count > 0) {
+            fprintf(stderr, "Semantic errors detected:\n");
+            for (size_t i = 0; i < validation_count; i++) {
+                fprintf(stderr, "  %s\n", validation_errors[i]);
+                kryon_free(validation_errors[i]);
+            }
+            kryon_parser_destroy(parser);
+            kryon_lexer_destroy(lexer);
+            kryon_free(source);
+            return 1;
+        }
+    }
     if (!ast) {
         fprintf(stderr, "Error: Failed to get AST root\n");
         kryon_parser_destroy(parser);
@@ -205,6 +250,12 @@ int compile_command(int argc, char *argv[]) {
         printf("Parsing completed successfully\n");
     }
     
+    // Debug: Print original AST structure
+    if (debug || verbose) {
+        printf("\n=== ORIGINAL AST STRUCTURE ===\n");
+        debug_print_ast(ast, 0);
+        printf("=== END AST STRUCTURE ===\n\n");
+    }
     
     // Transform AST to ensure App root container
     KryonASTNode *transformed_ast = ensure_app_root_container(ast, parser, debug);
@@ -401,10 +452,24 @@ static KryonASTNode *ensure_app_root_container(const KryonASTNode *original_ast,
     }
     
     
-    // Copy metadata node if it exists
-    KryonASTNode *metadata = find_metadata_node(original_ast);
-    if (metadata) {
-        new_root->data.element.children[new_root->data.element.child_count++] = metadata;
+    // Copy metadata and top-level definitions (styles, functions, etc.) to root
+    for (size_t i = 0; i < original_ast->data.element.child_count; i++) {
+        KryonASTNode *child = original_ast->data.element.children[i];
+        if (child) {
+            switch (child->type) {
+                case KRYON_AST_METADATA_DIRECTIVE:
+                case KRYON_AST_STYLE_BLOCK:
+                case KRYON_AST_THEME_DEFINITION:
+                case KRYON_AST_VARIABLE_DEFINITION:
+                case KRYON_AST_FUNCTION_DEFINITION:
+                    // These should stay at root level
+                    new_root->data.element.children[new_root->data.element.child_count++] = child;
+                    break;
+                default:
+                    // Other nodes will be moved to App element below
+                    break;
+            }
+        }
     }
     
     // Create App element with metadata
@@ -415,17 +480,33 @@ static KryonASTNode *ensure_app_root_container(const KryonASTNode *original_ast,
         return (KryonASTNode*)original_ast;
     }
     
-    // Initialize App element children
-    size_t non_metadata_count = 0;
+    // Count only UI elements that should go into App
+    size_t app_child_count = 0;
     for (size_t i = 0; i < original_ast->data.element.child_count; i++) {
         KryonASTNode *child = original_ast->data.element.children[i];
-        if (child && child->type != KRYON_AST_METADATA_DIRECTIVE) {
-            non_metadata_count++;
+        if (child) {
+            switch (child->type) {
+                case KRYON_AST_ELEMENT:
+                    // Only UI elements go into App
+                    app_child_count++;
+                    break;
+                case KRYON_AST_METADATA_DIRECTIVE:
+                case KRYON_AST_STYLE_BLOCK:
+                case KRYON_AST_THEME_DEFINITION:
+                case KRYON_AST_VARIABLE_DEFINITION:
+                case KRYON_AST_FUNCTION_DEFINITION:
+                    // These stay at root level, don't count them
+                    break;
+                default:
+                    // Other types might need special handling
+                    app_child_count++;
+                    break;
+            }
         }
     }
     
     app_element->data.element.child_count = 0;
-    app_element->data.element.child_capacity = non_metadata_count + 1;
+    app_element->data.element.child_capacity = app_child_count + 1;
     app_element->data.element.children = kryon_alloc(app_element->data.element.child_capacity * sizeof(KryonASTNode*));
     if (!app_element->data.element.children) {
         kryon_free(app_element->data.element.element_type);
@@ -436,11 +517,27 @@ static KryonASTNode *ensure_app_root_container(const KryonASTNode *original_ast,
         return (KryonASTNode*)original_ast;
     }
     
-    // Copy all non-metadata children to App element
+    // Copy only UI elements to App element
     for (size_t i = 0; i < original_ast->data.element.child_count; i++) {
         KryonASTNode *child = original_ast->data.element.children[i];
-        if (child && child->type != KRYON_AST_METADATA_DIRECTIVE) {
-            app_element->data.element.children[app_element->data.element.child_count++] = child;
+        if (child) {
+            switch (child->type) {
+                case KRYON_AST_ELEMENT:
+                    // UI elements go into App
+                    app_element->data.element.children[app_element->data.element.child_count++] = child;
+                    break;
+                case KRYON_AST_METADATA_DIRECTIVE:
+                case KRYON_AST_STYLE_BLOCK:
+                case KRYON_AST_THEME_DEFINITION:
+                case KRYON_AST_VARIABLE_DEFINITION:
+                case KRYON_AST_FUNCTION_DEFINITION:
+                    // These stay at root level, already copied above
+                    break;
+                default:
+                    // Handle other types (may need adjustment)
+                    app_element->data.element.children[app_element->data.element.child_count++] = child;
+                    break;
+            }
         }
     }
     
@@ -589,5 +686,127 @@ static void print_element_content(const KryonASTNode *element, int indent) {
         printf("}\n");
     } else {
         printf(" { }\n");
+    }
+}
+
+static void debug_print_ast(const KryonASTNode *node, int depth) {
+    if (!node) return;
+    
+    // Print indentation
+    for (int i = 0; i < depth; i++) printf("  ");
+    
+    // Print node type and basic info
+    switch (node->type) {
+        case KRYON_AST_ROOT:
+            printf("ROOT (children: %zu)\n", node->data.element.child_count);
+            for (size_t i = 0; i < node->data.element.child_count; i++) {
+                debug_print_ast(node->data.element.children[i], depth + 1);
+            }
+            break;
+            
+        case KRYON_AST_ELEMENT:
+            printf("ELEMENT: %s (props: %zu, children: %zu)\n", 
+                   node->data.element.element_type ? node->data.element.element_type : "NULL",
+                   node->data.element.property_count,
+                   node->data.element.child_count);
+            
+            // Print properties
+            for (size_t i = 0; i < node->data.element.property_count; i++) {
+                if (node->data.element.properties[i]) {
+                    debug_print_ast(node->data.element.properties[i], depth + 1);
+                }
+            }
+            
+            // Print children
+            for (size_t i = 0; i < node->data.element.child_count; i++) {
+                if (node->data.element.children[i]) {
+                    debug_print_ast(node->data.element.children[i], depth + 1);
+                }
+            }
+            break;
+            
+        case KRYON_AST_PROPERTY:
+            printf("PROPERTY: %s = ", node->data.property.name ? node->data.property.name : "NULL");
+            if (node->data.property.value) {
+                debug_print_ast(node->data.property.value, 0);
+            } else {
+                printf("NULL\n");
+            }
+            break;
+            
+        case KRYON_AST_STYLE_BLOCK:
+            printf("STYLE_BLOCK: %s (props: %zu)\n", 
+                   node->data.style.name ? node->data.style.name : "NULL",
+                   node->data.style.property_count);
+            for (size_t i = 0; i < node->data.style.property_count; i++) {
+                if (node->data.style.properties[i]) {
+                    debug_print_ast(node->data.style.properties[i], depth + 1);
+                }
+            }
+            break;
+            
+        case KRYON_AST_FUNCTION_DEFINITION:
+            printf("FUNCTION_DEF: %s (%s)\n", 
+                   node->data.function_def.name ? node->data.function_def.name : "NULL",
+                   node->data.function_def.language ? node->data.function_def.language : "NULL");
+            break;
+            
+        case KRYON_AST_THEME_DEFINITION:
+            printf("THEME_DEF: %s (vars: %zu)\n", 
+                   node->data.theme.group_name ? node->data.theme.group_name : "NULL",
+                   node->data.theme.variable_count);
+            break;
+            
+        case KRYON_AST_VARIABLE_DEFINITION:
+            printf("VAR_DEF: %s = ", node->data.variable_def.name ? node->data.variable_def.name : "NULL");
+            if (node->data.variable_def.value) {
+                debug_print_ast(node->data.variable_def.value, 0);
+            } else {
+                printf("NULL\n");
+            }
+            break;
+            
+        case KRYON_AST_LITERAL:
+            printf("LITERAL: ");
+            switch (node->data.literal.value.type) {
+                case KRYON_VALUE_STRING:
+                    printf("STRING \"%s\"\n", node->data.literal.value.data.string_value ? node->data.literal.value.data.string_value : "NULL");
+                    break;
+                case KRYON_VALUE_INTEGER:
+                    printf("INT %ld\n", node->data.literal.value.data.int_value);
+                    break;
+                case KRYON_VALUE_FLOAT:
+                    printf("FLOAT %f\n", node->data.literal.value.data.float_value);
+                    break;
+                case KRYON_VALUE_BOOLEAN:
+                    printf("BOOL %s\n", node->data.literal.value.data.bool_value ? "true" : "false");
+                    break;
+                case KRYON_VALUE_NULL:
+                    printf("NULL\n");
+                    break;
+                case KRYON_VALUE_COLOR:
+                    printf("COLOR #%08X\n", node->data.literal.value.data.color_value);
+                    break;
+                case KRYON_VALUE_UNIT:
+                    printf("UNIT %f%s\n", node->data.literal.value.data.unit_value.value, node->data.literal.value.data.unit_value.unit);
+                    break;
+                default:
+                    printf("UNKNOWN_VALUE_TYPE\n");
+                    break;
+            }
+            break;
+            
+        case KRYON_AST_METADATA_DIRECTIVE:
+            printf("METADATA_DIRECTIVE (props: %zu)\n", node->data.properties.property_count);
+            for (size_t i = 0; i < node->data.properties.property_count; i++) {
+                if (node->data.properties.properties[i]) {
+                    debug_print_ast(node->data.properties.properties[i], depth + 1);
+                }
+            }
+            break;
+            
+        default:
+            printf("UNKNOWN_NODE_TYPE: %d\n", node->type);
+            break;
     }
 }

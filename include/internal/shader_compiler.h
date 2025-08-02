@@ -19,7 +19,6 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "internal/gpu_renderer.h"
 
 // =============================================================================
 // FORWARD DECLARATIONS
@@ -33,6 +32,15 @@ typedef struct KryonShaderReflection KryonShaderReflection;
 // =============================================================================
 // ENUMERATIONS
 // =============================================================================
+
+/**
+ * @brief Shader types
+ */
+typedef enum {
+    KRYON_SHADER_VERTEX,
+    KRYON_SHADER_FRAGMENT,
+    KRYON_SHADER_PROGRAM
+} KryonShaderType;
 
 /**
  * @brief Shader source languages

@@ -5,7 +5,7 @@
 
 #include "internal/graphics.h"
 #include "internal/memory.h"
-#include "internal/renderer.h"
+#include "internal/renderer_interface.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,17 +27,17 @@
 // SHADER MANAGEMENT STRUCTURES
 // =============================================================================
 
-typedef struct KryonShaderCache {
+typedef struct KryonShaderCacheEntry {
     uint32_t id;
     char* name;
     KryonShaderType type;
     void* renderer_shader; // Renderer-specific shader object
     KryonShader kryon_shader; // Our abstracted shader
-    struct KryonShaderCache* next;
-} KryonShaderCache;
+    struct KryonShaderCacheEntry* next;
+} KryonShaderCacheEntry;
 
 typedef struct {
-    KryonShaderCache* cached_shaders;
+    KryonShaderCacheEntry* cached_shaders;
     uint32_t next_shader_id;
     size_t shader_count;
     
@@ -46,9 +46,9 @@ typedef struct {
     uint32_t default_fragment_shader;
     uint32_t default_program;
     
-} KryonShaderCompiler;
+} KryonShaderManager;
 
-static KryonShaderCompiler g_shader_compiler = {0};
+static KryonShaderManager g_shader_compiler = {0};
 
 // =============================================================================
 // BUILT-IN SHADER SOURCES
@@ -266,8 +266,8 @@ static void software_destroy_shader(uint32_t program_id) {
 // SHADER CACHE MANAGEMENT
 // =============================================================================
 
-static KryonShaderCache* find_cached_shader(uint32_t shader_id) {
-    KryonShaderCache* cache = g_shader_compiler.cached_shaders;
+static KryonShaderCacheEntry* find_cached_shader(uint32_t shader_id) {
+    KryonShaderCacheEntry* cache = g_shader_compiler.cached_shaders;
     while (cache) {
         if (cache->id == shader_id) {
             return cache;
@@ -278,7 +278,7 @@ static KryonShaderCache* find_cached_shader(uint32_t shader_id) {
 }
 
 static uint32_t add_to_cache(const char* name, KryonShaderType type, void* renderer_shader) {
-    KryonShaderCache* cache = kryon_alloc(sizeof(KryonShaderCache));
+    KryonShaderCacheEntry* cache = kryon_alloc(sizeof(KryonShaderCache));
     if (!cache) return 0;
     
     memset(cache, 0, sizeof(KryonShaderCache));
@@ -336,9 +336,9 @@ bool kryon_shader_compiler_init(void) {
 
 void kryon_shader_compiler_shutdown(void) {
     // Clean up all cached shaders
-    KryonShaderCache* cache = g_shader_compiler.cached_shaders;
+    KryonShaderCacheEntry* cache = g_shader_compiler.cached_shaders;
     while (cache) {
-        KryonShaderCache* next = cache->next;
+        KryonShaderCacheEntry* next = cache->next;
         
         // Destroy renderer-specific shader
         KryonRendererType renderer = kryon_renderer_get_type();
@@ -387,10 +387,10 @@ uint32_t kryon_shader_compile(const char* source, KryonShaderType type, const ch
             break;
 #endif
             
-        case KRYON_RENDERER_SOFTWARE:
         case KRYON_RENDERER_HTML:
         default:
-            // Software renderer doesn't really compile shaders
+            // HTML renderer shaders handled by browser
+            // Return fake shader ID
             shader_id = g_shader_compiler.next_shader_id + 1;
             break;
     }
@@ -403,8 +403,8 @@ uint32_t kryon_shader_compile(const char* source, KryonShaderType type, const ch
 uint32_t kryon_shader_create_program(uint32_t vertex_shader, uint32_t fragment_shader, const char* name) {
     if (vertex_shader == 0 || fragment_shader == 0) return 0;
     
-    KryonShaderCache* vs_cache = find_cached_shader(vertex_shader);
-    KryonShaderCache* fs_cache = find_cached_shader(fragment_shader);
+    KryonShaderCacheEntry* vs_cache = find_cached_shader(vertex_shader);
+    KryonShaderCacheEntry* fs_cache = find_cached_shader(fragment_shader);
     
     if (!vs_cache || !fs_cache) return 0;
     
@@ -430,10 +430,10 @@ uint32_t kryon_shader_create_program(uint32_t vertex_shader, uint32_t fragment_s
             break;
 #endif
             
-        case KRYON_RENDERER_SOFTWARE:
-        case KRYON_RENDERER_HTML:
+        case KRYON_RENDERER_HTML:  
         default:
-            program_id = software_create_shader_program();
+            // HTML renderer shader programs handled by browser
+            program_id = g_shader_compiler.next_shader_id++; // Return fake program ID
             break;
     }
     
@@ -445,12 +445,12 @@ uint32_t kryon_shader_create_program(uint32_t vertex_shader, uint32_t fragment_s
 void kryon_shader_destroy(uint32_t shader_id) {
     if (shader_id == 0) return;
     
-    KryonShaderCache* cache = find_cached_shader(shader_id);
+    KryonShaderCacheEntry* cache = find_cached_shader(shader_id);
     if (!cache) return;
     
     // Remove from cache
-    KryonShaderCache* current = g_shader_compiler.cached_shaders;
-    KryonShaderCache* prev = NULL;
+    KryonShaderCacheEntry* current = g_shader_compiler.cached_shaders;
+    KryonShaderCacheEntry* prev = NULL;
     
     while (current) {
         if (current->id == shader_id) {
@@ -493,7 +493,7 @@ void kryon_shader_destroy(uint32_t shader_id) {
 bool kryon_shader_use(uint32_t program_id) {
     if (program_id == 0) return false;
     
-    KryonShaderCache* cache = find_cached_shader(program_id);
+    KryonShaderCacheEntry* cache = find_cached_shader(program_id);
     if (!cache || cache->type != KRYON_SHADER_PROGRAM) return false;
     
     KryonRendererType renderer = kryon_renderer_get_type();
@@ -517,7 +517,7 @@ bool kryon_shader_use(uint32_t program_id) {
 int kryon_shader_get_uniform_location(uint32_t program_id, const char* name) {
     if (program_id == 0 || !name) return -1;
     
-    KryonShaderCache* cache = find_cached_shader(program_id);
+    KryonShaderCacheEntry* cache = find_cached_shader(program_id);
     if (!cache || cache->type != KRYON_SHADER_PROGRAM) return -1;
     
     KryonRendererType renderer = kryon_renderer_get_type();

@@ -14,6 +14,7 @@
 #include "internal/memory.h"
 #include "internal/krb_format.h"
 #include "internal/renderer_interface.h"
+#include "internal/color_utils.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -258,20 +259,28 @@ static bool load_krb_elements(KryonRuntime *runtime, KryonKrbFile *krb_file) {
 // =============================================================================
 
 bool kryon_runtime_start(KryonRuntime *runtime) {
+    printf("🔍 DEBUG: kryon_runtime_start called\n");
+    
     if (!runtime || runtime->is_running) {
+        printf("❌ ERROR: runtime is NULL or already running\n");
         return false;
     }
+    printf("🔍 DEBUG: runtime is valid and not running\n");
     
     if (!runtime->root) {
+        printf("❌ ERROR: No root element loaded\n");
         runtime_error(runtime, "No root element loaded");
         return false;
     }
+    printf("🔍 DEBUG: root element is valid\n");
     
+    printf("🔍 DEBUG: Setting runtime state\n");
     runtime->is_running = true;
     runtime->last_update_time = 0.0;
     runtime->stats.frame_count = 0;
     runtime->stats.total_time = 0.0;
     
+    printf("🔍 DEBUG: Runtime start completed successfully\n");
     // TODO: Initialize renderer
     
     return true;
@@ -317,31 +326,57 @@ bool kryon_runtime_update(KryonRuntime *runtime, double delta_time) {
 }
 
 bool kryon_runtime_render(KryonRuntime *runtime) {
+    printf("🔍 DEBUG: kryon_runtime_render called\n");
+    
     if (!runtime) {
+        printf("❌ ERROR: runtime is NULL\n");
         return false;
     }
+    printf("🔍 DEBUG: runtime is valid\n");
+    
     if (!runtime->is_running) {
+        printf("❌ ERROR: runtime is not running\n");
         return false;
     }
+    printf("🔍 DEBUG: runtime is running\n");
+    
     if (!runtime->root) {
+        printf("❌ ERROR: runtime->root is NULL\n");
         return false;
     }
+    printf("🔍 DEBUG: runtime->root is valid\n");
     
     clock_t start_time = clock();
+    printf("🔍 DEBUG: Got start_time\n");
     
     // Check if we have a renderer attached
+    printf("🔍 DEBUG: Checking renderer: %p\n", runtime->renderer);
     if (runtime->renderer) {
+        printf("🔍 DEBUG: Renderer found, casting\n");
         // Cast renderer and use the minimal interface
         KryonRenderer* renderer = (KryonRenderer*)runtime->renderer;
+        printf("🔍 DEBUG: Renderer cast successful: %p\n", (void*)renderer);
         
         // Begin frame
+        printf("🔍 DEBUG: Creating render context\n");
         KryonRenderContext* context = NULL;
         KryonColor clear_color = {0.1f, 0.1f, 0.1f, 1.0f}; // Dark background
         
-        if (renderer->vtable && renderer->vtable->begin_frame) {
-            KryonRenderResult result = renderer->vtable->begin_frame(&context, clear_color);
-            if (result != KRYON_RENDER_SUCCESS) {
-                return false;
+        printf("🔍 DEBUG: Checking vtable: %p\n", (void*)renderer->vtable);
+        if (renderer->vtable) {
+            printf("🔍 DEBUG: vtable valid, checking begin_frame: %p\n", (void*)renderer->vtable->begin_frame);
+            if (renderer->vtable->begin_frame) {
+                printf("🔍 DEBUG: Calling begin_frame\n");
+                KryonRenderResult result = renderer->vtable->begin_frame(&context, clear_color);
+                printf("🔍 DEBUG: begin_frame returned: %d\n", result);
+                if (result == KRYON_RENDER_ERROR_SURFACE_LOST) {
+                    printf("ℹ️  INFO: Window closed by user - ending render loop gracefully\n");
+                    return false; // Graceful shutdown
+                } else if (result != KRYON_RENDER_SUCCESS) {
+                    printf("❌ ERROR: begin_frame failed with result %d\n", result);
+                    return false;
+                }
+                printf("🔍 DEBUG: begin_frame succeeded\n");
             }
         }
         
@@ -350,6 +385,17 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
             // Create render command array
             KryonRenderCommand commands[256]; // Stack allocation for performance
             size_t command_count = 0;
+            
+            printf("🔍 DEBUG: About to call kryon_element_tree_to_render_commands with root=%p\n", (void*)runtime->root);
+            
+            // Safety checks before calling render function
+            if (!runtime->root->type_name) {
+                printf("❌ ERROR: Root element has null type_name\n");
+                return false;
+            }
+            
+            printf("🔍 DEBUG: Root element type_name='%s', properties=%zu, children=%zu\n", 
+                   runtime->root->type_name, runtime->root->property_count, runtime->root->child_count);
             
             // Generate render commands from element tree
             kryon_element_tree_to_render_commands(runtime->root, commands, &command_count, 256);
@@ -797,6 +843,18 @@ void kryon_runtime_clear_errors(KryonRuntime *runtime) {
 static KryonProperty* find_element_property(KryonElement* element, const char* prop_name) {
     if (!element || !prop_name) return NULL;
     
+    // Critical safety check: verify properties array exists when property_count > 0
+    if (element->property_count > 0 && !element->properties) {
+        printf("❌ ERROR: Element has property_count=%zu but properties array is NULL\n", element->property_count);
+        return NULL;
+    }
+    
+    // Bounds check: prevent excessive property counts
+    if (element->property_count > 1000) {
+        printf("❌ ERROR: Element has suspicious property_count=%zu, possible corruption\n", element->property_count);
+        return NULL;
+    }
+    
     for (size_t i = 0; i < element->property_count; i++) {
         KryonProperty* prop = element->properties[i];
         if (prop && prop->name && strcmp(prop->name, prop_name) == 0) {
@@ -822,15 +880,23 @@ static const char* get_element_property_string(KryonElement* element, const char
             return prop->value.string_value;
             
         case KRYON_RUNTIME_PROP_INTEGER: {
-            static char int_buffer[32];
-            snprintf(int_buffer, sizeof(int_buffer), "%lld", (long long)prop->value.int_value);
-            return int_buffer;
+            // Use rotating buffers to prevent overwriting in concurrent calls
+            static char int_buffers[4][32];
+            static int int_buffer_index = 0;
+            char *buffer = int_buffers[int_buffer_index];
+            int_buffer_index = (int_buffer_index + 1) % 4;
+            snprintf(buffer, 32, "%lld", (long long)prop->value.int_value);
+            return buffer;
         }
         
         case KRYON_RUNTIME_PROP_FLOAT: {
-            static char float_buffer[32];
-            snprintf(float_buffer, sizeof(float_buffer), "%.6f", prop->value.float_value);
-            return float_buffer;
+            // Use rotating buffers to prevent overwriting in concurrent calls
+            static char float_buffers[4][32];
+            static int float_buffer_index = 0;
+            char *buffer = float_buffers[float_buffer_index];
+            float_buffer_index = (float_buffer_index + 1) % 4;
+            snprintf(buffer, 32, "%.6f", prop->value.float_value);
+            return buffer;
         }
         
         case KRYON_RUNTIME_PROP_BOOLEAN:
@@ -847,9 +913,13 @@ static const char* get_element_property_string(KryonElement* element, const char
         }
         
         case KRYON_RUNTIME_PROP_REFERENCE: {
-            static char ref_buffer[32];
-            snprintf(ref_buffer, sizeof(ref_buffer), "ref_%u", prop->value.ref_id);
-            return ref_buffer;
+            // Use rotating buffers to prevent overwriting in concurrent calls
+            static char ref_buffers[4][32];
+            static int ref_buffer_index = 0;
+            char *buffer = ref_buffers[ref_buffer_index];
+            ref_buffer_index = (ref_buffer_index + 1) % 4;
+            snprintf(buffer, 32, "ref_%u", prop->value.ref_id);
+            return buffer;
         }
         
         default:
@@ -1112,10 +1182,22 @@ static void element_container_to_commands(KryonElement* element, KryonRenderComm
     float width = get_element_property_float(element, "width", 100.0f);
     float height = get_element_property_float(element, "height", 100.0f);
     
-    const char* bg_color_str = get_element_property_string(element, "backgroundColor");
+    // Check both "background" and "backgroundColor" since they map to the same property ID
+    const char* bg_color_str = get_element_property_string(element, "background");
+    if (!bg_color_str) {
+        bg_color_str = get_element_property_string(element, "backgroundColor");
+    }
     const char* border_color_str = get_element_property_string(element, "borderColor");
     float border_width = get_element_property_float(element, "borderWidth", 0.0f);
     float border_radius = get_element_property_float(element, "borderRadius", 0.0f);
+    
+    // Safety check for NULL color strings
+    if (bg_color_str && strlen(bg_color_str) == 0) {
+        bg_color_str = NULL;
+    }
+    if (border_color_str && strlen(border_color_str) == 0) {
+        border_color_str = NULL;
+    }
     
     // Debug: Log container properties
     static bool container_debug_logged = false;
@@ -1128,8 +1210,23 @@ static void element_container_to_commands(KryonElement* element, KryonRenderComm
         container_debug_logged = true;
     }
     
-    KryonColor bg_color = parse_color_string(bg_color_str);
-    KryonColor border_color = parse_color_string(border_color_str);
+    // Use the proper color parsing utility instead of the basic one
+    uint32_t bg_color_val = kryon_color_parse_string(bg_color_str ? bg_color_str : "transparent");
+    uint32_t border_color_val = kryon_color_parse_string(border_color_str ? border_color_str : "transparent");
+    
+    // Convert to KryonColor format
+    KryonColor bg_color = {
+        ((bg_color_val >> 24) & 0xFF) / 255.0f,  // R
+        ((bg_color_val >> 16) & 0xFF) / 255.0f,  // G
+        ((bg_color_val >> 8) & 0xFF) / 255.0f,   // B
+        (bg_color_val & 0xFF) / 255.0f           // A
+    };
+    KryonColor border_color = {
+        ((border_color_val >> 24) & 0xFF) / 255.0f,  // R
+        ((border_color_val >> 16) & 0xFF) / 255.0f,  // G
+        ((border_color_val >> 8) & 0xFF) / 255.0f,   // B
+        (border_color_val & 0xFF) / 255.0f           // A
+    };
     
     // Create container background command
     if (bg_color.a > 0.0f || border_width > 0.0f) {
@@ -1185,54 +1282,62 @@ static void element_text_to_commands(KryonElement* element, KryonRenderCommand* 
     
     if (!text) return;
     
-    KryonColor text_color = parse_color_string(color_str);
+    // Use the proper color parsing utility instead of the basic one
+    uint32_t text_color_val = kryon_color_parse_string(color_str ? color_str : "black");
+    KryonColor text_color = {
+        ((text_color_val >> 24) & 0xFF) / 255.0f,  // R
+        ((text_color_val >> 16) & 0xFF) / 255.0f,  // G
+        ((text_color_val >> 8) & 0xFF) / 255.0f,   // B
+        (text_color_val & 0xFF) / 255.0f           // A
+    };
     
-    // Calculate position (relative to parent if needed)
+    // Calculate proper positioning within parent container
     KryonVec2 position = {posX, posY};
+    
+    // If element has a parent and no explicit position, calculate centered position
     if (element->parent && posX == 0.0f && posY == 0.0f) {
-        // Get parent container properties
+        // Get parent properties
         float parent_x = get_element_property_float(element->parent, "posX", 0.0f);
         float parent_y = get_element_property_float(element->parent, "posY", 0.0f);
-        float parent_width = get_element_property_float(element->parent, "width", 100.0f);
+        float parent_width = get_element_property_float(element->parent, "width", 200.0f);
         float parent_height = get_element_property_float(element->parent, "height", 100.0f);
-        float parent_padding = get_element_property_float(element->parent, "padding", 20.0f);
-        const char* content_alignment = get_element_property_string(element->parent, "contentAlignment");
+        float parent_padding = get_element_property_float(element->parent, "padding", 0.0f);
+        const char* parent_alignment = get_element_property_string(element->parent, "contentAlignment");
         
-        // Calculate content area (inside padding)
-        float content_x = parent_x + parent_padding;
-        float content_y = parent_y + parent_padding;
-        float content_width = parent_width - (parent_padding * 2);
-        float content_height = parent_height - (parent_padding * 2);
+        // Calculate available area inside parent (accounting for padding)
+        float available_x = parent_x + parent_padding;
+        float available_y = parent_y + parent_padding;
+        float available_width = parent_width - (parent_padding * 2);
+        float available_height = parent_height - (parent_padding * 2);
         
-        // Apply content alignment
-        printf("🔍 DEBUG: contentAlignment='%s', content_area=(%.1f,%.1f,%.1fx%.1f)\n", 
-               content_alignment ? content_alignment : "NULL",
-               content_x, content_y, content_width, content_height);
-               
-        if (content_alignment && strcmp(content_alignment, "center") == 0) {
-            // Center the text within the content area
-            // For simplicity, assume average character width for text width estimation
-            float estimated_text_width = strlen(text) * font_size * 0.6f; // Rough estimate
-            float estimated_text_height = font_size;
-            
-            position.x = content_x + (content_width - estimated_text_width) / 2.0f;
-            position.y = content_y + (content_height - estimated_text_height) / 2.0f;
-            
-            printf("🎯 DEBUG: Centering text '%s': estimated_size=%.1fx%.1f, centered_pos=(%.1f,%.1f)\n",
-                   text, estimated_text_width, estimated_text_height, position.x, position.y);
+        // Center the text within the available area
+        if (parent_alignment && strcmp(parent_alignment, "center") == 0) {
+            position.x = available_x + (available_width / 2.0f);
+            position.y = available_y + (available_height / 2.0f);
+            printf("🎯 DEBUG: Centered in parent: pos=(%.1f,%.1f) parent=%.1f,%.1f+%.1fx%.1f padding=%.1f\n", 
+                   position.x, position.y, parent_x, parent_y, parent_width, parent_height, parent_padding);
         } else {
-            // Default to top-left with padding
-            position.x = content_x;
-            position.y = content_y;
-            printf("🎯 DEBUG: Default positioning: pos=(%.1f,%.1f)\n", position.x, position.y);
+            // Default to top-left of available area
+            position.x = available_x;
+            position.y = available_y;
+            printf("🎯 DEBUG: Top-left in parent: pos=(%.1f,%.1f)\n", position.x, position.y);
         }
+    } else {
+        printf("🎯 DEBUG: Using explicit positioning: pos=(%.1f,%.1f)\n", position.x, position.y);
     }
     
-    // Parse text alignment
+    // Parse text alignment - check parent's contentAlignment if no explicit textAlignment
     int text_align_code = 0; // 0=left, 1=center, 2=right
     if (text_align) {
         if (strcmp(text_align, "center") == 0) text_align_code = 1;
         else if (strcmp(text_align, "right") == 0) text_align_code = 2;
+    } else if (element->parent) {
+        // Use parent's contentAlignment if no explicit text alignment
+        const char* parent_alignment = get_element_property_string(element->parent, "contentAlignment");
+        if (parent_alignment && strcmp(parent_alignment, "center") == 0) {
+            text_align_code = 1;
+            printf("🎯 DEBUG: Using parent contentAlignment 'center' for text alignment\n");
+        }
     }
     
     // Parse font weight
@@ -1262,33 +1367,72 @@ static void element_text_to_commands(KryonElement* element, KryonRenderCommand* 
 
 // Recursive function to convert element tree to render commands
 static void element_to_commands_recursive(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
-    if (!element || *command_count >= max_commands) return;
+    if (!element || !commands || !command_count || *command_count >= max_commands) return;
     
-    // Debug: Log each element being processed
+    // Additional safety checks
+    if (!element->type_name) {
+        printf("⚠️  WARNING: Element has null type_name, skipping\n");
+        return;
+    }
+    
+    // Critical bounds checking - prevent corruption or infinite loops
+    if (element->property_count > 1000) {
+        printf("❌ ERROR: Element has suspicious property_count=%zu, possible corruption\n", element->property_count);
+        return;
+    }
+    
+    if (element->child_count > 1000) {
+        printf("❌ ERROR: Element has suspicious child_count=%zu, possible corruption\n", element->child_count);
+        return;
+    }
+    
+    // Check properties array validity (always check, not just in debug)
+    if (element->property_count > 0 && !element->properties) {
+        printf("❌ ERROR: Element has property_count=%zu but properties array is NULL\n", element->property_count);
+        return;
+    }
+    
+    // Check children array validity (always check, not just in debug)
+    if (element->child_count > 0 && !element->children) {
+        printf("❌ ERROR: Element has child_count=%zu but children array is NULL\n", element->child_count);
+        return;
+    }
+    
+    // Debug: Log each element being processed (reduced logging)
     static int elements_processed = 0;
-    if (elements_processed++ < 10) { // Only log first 10 elements
+    if (elements_processed++ < 5) { // Only log first 5 elements
         printf("🔍 DEBUG: Processing element %s with %zu properties, %zu children\n", 
-               element->type_name ? element->type_name : "NULL", 
-               element->property_count, 
-               element->child_count);
+               element->type_name, element->property_count, element->child_count);
     }
     
     // Convert this element based on its type
-    if (element->type_name) {
-        if (strcmp(element->type_name, "Container") == 0) {
-            element_container_to_commands(element, commands, command_count, max_commands);
-        } else if (strcmp(element->type_name, "Text") == 0) {
-            element_text_to_commands(element, commands, command_count, max_commands);
-        }
-        // App elements don't render directly, just process children
+    if (strcmp(element->type_name, "Container") == 0) {
+        element_container_to_commands(element, commands, command_count, max_commands);
+    } else if (strcmp(element->type_name, "Text") == 0) {
+        element_text_to_commands(element, commands, command_count, max_commands);
+    }
+    // App elements don't render directly, just process children
+    
+    // Process children with recursive depth protection
+    static int recursive_depth = 0;
+    if (recursive_depth > 100) {
+        printf("❌ ERROR: Recursive depth exceeded 100, possible infinite loop\n");
+        return;
     }
     
-    // Process children
+    recursive_depth++;
     for (size_t i = 0; i < element->child_count && *command_count < max_commands; i++) {
-        if (element->children[i]) {
-            element_to_commands_recursive(element->children[i], commands, command_count, max_commands);
+        KryonElement* child = element->children[i];
+        if (child) {
+            // Verify child pointer is valid before recursion
+            if (child->type_name) { // Basic validity check
+                element_to_commands_recursive(child, commands, command_count, max_commands);
+            } else {
+                printf("⚠️  WARNING: Child element %zu has null type_name, skipping\n", i);
+            }
         }
     }
+    recursive_depth--;
 }
 
 // Main conversion function

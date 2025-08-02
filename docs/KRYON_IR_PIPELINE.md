@@ -1,4 +1,4 @@
-# Kryon IR Pipeline Reference v2.0
+# Kryon IR Pipeline Reference v0.1
 ## Smart Hybrid System Compilation
 
 ## Pipeline Overview

@@ -56,8 +56,14 @@ static const char *token_type_names[] = {
     [KRYON_TOKEN_AT] = "AT",
     [KRYON_TOKEN_HASH] = "HASH",
     [KRYON_TOKEN_DOLLAR] = "DOLLAR",
+    [KRYON_TOKEN_STYLE_KEYWORD] = "STYLE_KEYWORD",
+    [KRYON_TOKEN_EXTENDS_KEYWORD] = "EXTENDS_KEYWORD",
     [KRYON_TOKEN_STYLE_DIRECTIVE] = "STYLE_DIRECTIVE",
     [KRYON_TOKEN_STYLES_DIRECTIVE] = "STYLES_DIRECTIVE",
+    [KRYON_TOKEN_THEME_DIRECTIVE] = "THEME_DIRECTIVE",
+    [KRYON_TOKEN_VARIABLE_DIRECTIVE] = "VARIABLE_DIRECTIVE",
+    [KRYON_TOKEN_VARIABLES_DIRECTIVE] = "VARIABLES_DIRECTIVE",
+    [KRYON_TOKEN_FUNCTION_DIRECTIVE] = "FUNCTION_DIRECTIVE",
     [KRYON_TOKEN_STORE_DIRECTIVE] = "STORE_DIRECTIVE",
     [KRYON_TOKEN_WATCH_DIRECTIVE] = "WATCH_DIRECTIVE",
     [KRYON_TOKEN_ON_MOUNT_DIRECTIVE] = "ON_MOUNT_DIRECTIVE",
@@ -97,7 +103,10 @@ static const KeywordEntry keywords[] = {
     {"true", KRYON_TOKEN_BOOLEAN_TRUE},
     {"false", KRYON_TOKEN_BOOLEAN_FALSE},
     {"null", KRYON_TOKEN_NULL},
+    {"style", KRYON_TOKEN_STYLE_KEYWORD},
+    {"extends", KRYON_TOKEN_EXTENDS_KEYWORD},
     {"px", KRYON_TOKEN_UNIT_PX},
+    {"%", KRYON_TOKEN_UNIT_PERCENT},
     {"em", KRYON_TOKEN_UNIT_EM},
     {"rem", KRYON_TOKEN_UNIT_REM},
     {"vw", KRYON_TOKEN_UNIT_VW},
@@ -111,6 +120,10 @@ static const size_t keywords_count = sizeof(keywords) / sizeof(keywords[0]);
 static const KeywordEntry directives[] = {
     {"style", KRYON_TOKEN_STYLE_DIRECTIVE},
     {"styles", KRYON_TOKEN_STYLES_DIRECTIVE},
+    {"theme", KRYON_TOKEN_THEME_DIRECTIVE},
+    {"var", KRYON_TOKEN_VARIABLE_DIRECTIVE},
+    {"variables", KRYON_TOKEN_VARIABLES_DIRECTIVE},
+    {"function", KRYON_TOKEN_FUNCTION_DIRECTIVE},
     {"store", KRYON_TOKEN_STORE_DIRECTIVE},
     {"watch", KRYON_TOKEN_WATCH_DIRECTIVE},
     {"on_mount", KRYON_TOKEN_ON_MOUNT_DIRECTIVE},
@@ -614,11 +627,11 @@ static bool scan_token(KryonLexer *lexer) {
             }
             break;
             
-        // $ variable
+        // $ variable or theme variable
         case '$':
             if (is_alpha(peek(lexer))) {
-                // Read variable name
-                while (is_alnum(peek(lexer))) {
+                // Read variable name, including dot notation for theme variables
+                while (is_alnum(peek(lexer)) || peek(lexer) == '.') {
                     advance(lexer);
                 }
                 add_token(lexer, KRYON_TOKEN_VARIABLE);
@@ -661,6 +674,26 @@ static bool scan_token(KryonLexer *lexer) {
             } else if (is_alpha(c)) {
                 lexer->current--; // Back up to include letter in lexeme
                 return lex_identifier(lexer);
+            } else if ((unsigned char)c >= 128) {
+                // Handle UTF-8 multi-byte characters
+                // For now, just skip UTF-8 characters gracefully instead of erroring
+                // This allows emojis and other unicode in strings and comments
+                // We advance past the UTF-8 sequence
+                if ((unsigned char)c >= 0xF0) {
+                    // 4-byte UTF-8 sequence (like 🎯)
+                    advance(lexer); // 2nd byte
+                    advance(lexer); // 3rd byte
+                    advance(lexer); // 4th byte
+                } else if ((unsigned char)c >= 0xE0) {
+                    // 3-byte UTF-8 sequence
+                    advance(lexer); // 2nd byte
+                    advance(lexer); // 3rd byte
+                } else if ((unsigned char)c >= 0xC0) {
+                    // 2-byte UTF-8 sequence
+                    advance(lexer); // 2nd byte
+                }
+                // Continue tokenizing after UTF-8 character
+                return true;
             } else {
                 set_error(lexer, "Unexpected character");
                 add_token(lexer, KRYON_TOKEN_ERROR);
@@ -832,7 +865,7 @@ bool kryon_token_is_operator(KryonTokenType type) {
 }
 
 bool kryon_token_is_directive(KryonTokenType type) {
-    return type >= KRYON_TOKEN_STYLE_DIRECTIVE && type <= KRYON_TOKEN_METADATA_DIRECTIVE;
+    return type >= KRYON_TOKEN_STYLE_DIRECTIVE && type <= KRYON_TOKEN_LIFECYCLE_DIRECTIVE;
 }
 
 bool kryon_token_is_unit(KryonTokenType type) {
