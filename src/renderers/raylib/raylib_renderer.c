@@ -765,6 +765,25 @@ static KryonRenderResult raylib_get_input_state(KryonInputState* input_state) {
     
     input_state->mouse.position = (KryonVec2){mouse_pos.x, mouse_pos.y};
     input_state->mouse.delta = (KryonVec2){mouse_delta.x, mouse_delta.y};
+    
+    // Update global mouse position for hover detection (simplified approach)
+    extern KryonVec2 g_mouse_position;
+    g_mouse_position = (KryonVec2){mouse_pos.x, mouse_pos.y};
+    
+    // Update cursor based on global state
+    extern bool g_cursor_should_be_pointer;
+    static bool cursor_is_pointer = false;
+    if (g_cursor_should_be_pointer != cursor_is_pointer) {
+        SetMouseCursor(g_cursor_should_be_pointer ? MOUSE_CURSOR_POINTING_HAND : MOUSE_CURSOR_DEFAULT);
+        cursor_is_pointer = g_cursor_should_be_pointer;
+        printf("👆 DEBUG: Raylib cursor changed to %s\n", g_cursor_should_be_pointer ? "pointer" : "default");
+    }
+    
+    // Debug: Show mouse position updates occasionally
+    static int mouse_debug_counter = 0;
+    if (mouse_debug_counter++ % 120 == 0) { // Every 2 seconds
+        printf("🐭 DEBUG: Raylib captured mouse at (%.1f, %.1f)\n", mouse_pos.x, mouse_pos.y);
+    }
     input_state->mouse.wheel = mouse_wheel;
     input_state->mouse.left_pressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
     input_state->mouse.right_pressed = IsMouseButtonPressed(MOUSE_RIGHT_BUTTON);

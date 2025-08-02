@@ -237,6 +237,7 @@ static KryonToken *add_token(KryonLexer *lexer, KryonTokenType type) {
     token->location.offset = (uint32_t)(lexer->start - lexer->source);
     token->location.length = (uint32_t)token->lexeme_length;
     
+    
     return token;
 }
 
@@ -744,6 +745,7 @@ bool kryon_lexer_tokenize(KryonLexer *lexer) {
     KRYON_LOG_DEBUG("Lexed %zu tokens in %.2fms", 
                    lexer->token_count, lexer->processing_time * 1000.0);
     
+    
     return !lexer->has_error;
 }
 
@@ -790,6 +792,8 @@ const KryonToken *kryon_lexer_get_tokens(const KryonLexer *lexer, size_t *out_co
     if (!lexer || !out_count) return NULL;
     
     *out_count = lexer->token_count;
+    
+    
     return lexer->tokens;
 }
 

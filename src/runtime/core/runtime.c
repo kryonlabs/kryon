@@ -18,8 +18,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 #include <assert.h>
 #include <stdarg.h>
+
+// =============================================================================
+// GLOBAL STATE FOR INPUT (simplified approach)
+// =============================================================================
+
+// Global mouse position updated by renderer for hover detection
+KryonVec2 g_mouse_position = {0.0f, 0.0f};
+
+// Global cursor state for simple cursor management
+bool g_cursor_should_be_pointer = false;
 
 // =============================================================================
 // FORWARD DECLARATIONS
@@ -31,6 +42,12 @@ static bool process_element_properties(KryonElement *element, KryonKrbReader *re
 static void update_element_tree(KryonRuntime *runtime, KryonElement *element, double delta_time);
 static void process_event_queue(KryonRuntime *runtime);
 static void runtime_error(KryonRuntime *runtime, const char *format, ...);
+
+// Element to render command conversion functions
+static void element_container_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_text_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_button_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_center_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 
 // External function from krb_loader.c
 extern bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, size_t size);
@@ -334,76 +351,87 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
     }
     printf("🔍 DEBUG: runtime is valid\n");
     
+    // Update input state from renderer before generating commands
+    if (runtime->renderer) {
+        KryonRenderer* renderer = (KryonRenderer*)runtime->renderer;
+        if (renderer->vtable && renderer->vtable->get_input_state) {
+            KryonInputState input_state = {0};
+            KryonRenderResult result = renderer->vtable->get_input_state(&input_state);
+            if (result == KRYON_RENDER_SUCCESS) {
+                // Update global mouse position for hover detection
+                extern KryonVec2 g_mouse_position;
+                g_mouse_position = input_state.mouse.position;
+            }
+        }
+    }
+    
     if (!runtime->is_running) {
         printf("❌ ERROR: runtime is not running\n");
         return false;
     }
-    printf("🔍 DEBUG: runtime is running\n");
     
     if (!runtime->root) {
         printf("❌ ERROR: runtime->root is NULL\n");
         return false;
     }
-    printf("🔍 DEBUG: runtime->root is valid\n");
     
     clock_t start_time = clock();
-    printf("🔍 DEBUG: Got start_time\n");
     
-    // Check if we have a renderer attached
-    printf("🔍 DEBUG: Checking renderer: %p\n", runtime->renderer);
-    if (runtime->renderer) {
-        printf("🔍 DEBUG: Renderer found, casting\n");
-        // Cast renderer and use the minimal interface
-        KryonRenderer* renderer = (KryonRenderer*)runtime->renderer;
-        printf("🔍 DEBUG: Renderer cast successful: %p\n", (void*)renderer);
-        
-        // Begin frame
-        printf("🔍 DEBUG: Creating render context\n");
-        KryonRenderContext* context = NULL;
-        KryonColor clear_color = {0.1f, 0.1f, 0.1f, 1.0f}; // Dark background
-        
-        printf("🔍 DEBUG: Checking vtable: %p\n", (void*)renderer->vtable);
-        if (renderer->vtable) {
-            printf("🔍 DEBUG: vtable valid, checking begin_frame: %p\n", (void*)renderer->vtable->begin_frame);
-            if (renderer->vtable->begin_frame) {
-                printf("🔍 DEBUG: Calling begin_frame\n");
-                KryonRenderResult result = renderer->vtable->begin_frame(&context, clear_color);
-                printf("🔍 DEBUG: begin_frame returned: %d\n", result);
-                if (result == KRYON_RENDER_ERROR_SURFACE_LOST) {
-                    printf("ℹ️  INFO: Window closed by user - ending render loop gracefully\n");
-                    return false; // Graceful shutdown
-                } else if (result != KRYON_RENDER_SUCCESS) {
-                    printf("❌ ERROR: begin_frame failed with result %d\n", result);
-                    return false;
-                }
-                printf("🔍 DEBUG: begin_frame succeeded\n");
-            }
-        }
+    // Generate render commands from element tree (regardless of renderer)
+    if (runtime->root) {
+        // Create render command array
+        KryonRenderCommand commands[256]; // Stack allocation for performance
+        size_t command_count = 0;
         
         // Generate render commands from element tree
-        if (runtime->root) {
-            // Create render command array
-            KryonRenderCommand commands[256]; // Stack allocation for performance
-            size_t command_count = 0;
+        
+        // Safety checks before calling render function
+        if (!runtime->root->type_name) {
+            printf("❌ ERROR: Root element has null type_name\n");
+            return false;
+        }
+        
+        printf("🔍 DEBUG: Root element type_name='%s', properties=%zu, children=%zu\n", 
+               runtime->root->type_name, runtime->root->property_count, runtime->root->child_count);
+        
+        // Generate render commands from element tree
+        kryon_element_tree_to_render_commands(runtime->root, commands, &command_count, 256);
+        
+        // Debug: Log command count
+        static int debug_frame_count = 0;
+        if (debug_frame_count++ < 5) { // Only log first 5 frames
+            printf("🎨 DEBUG: Generated %zu render commands\n", command_count);
+        }
+        
+        // Check if we have a renderer attached for actual rendering
+        printf("🔍 DEBUG: Checking renderer: %p\n", runtime->renderer);
+        if (runtime->renderer) {
+            printf("🔍 DEBUG: Renderer found, casting\n");
+            // Cast renderer and use the minimal interface
+            KryonRenderer* renderer = (KryonRenderer*)runtime->renderer;
+            printf("🔍 DEBUG: Renderer cast successful: %p\n", (void*)renderer);
             
-            printf("🔍 DEBUG: About to call kryon_element_tree_to_render_commands with root=%p\n", (void*)runtime->root);
+            // Begin frame
+            printf("🔍 DEBUG: Creating render context\n");
+            KryonRenderContext* context = NULL;
+            KryonColor clear_color = {0.1f, 0.1f, 0.1f, 1.0f}; // Dark background
             
-            // Safety checks before calling render function
-            if (!runtime->root->type_name) {
-                printf("❌ ERROR: Root element has null type_name\n");
-                return false;
-            }
-            
-            printf("🔍 DEBUG: Root element type_name='%s', properties=%zu, children=%zu\n", 
-                   runtime->root->type_name, runtime->root->property_count, runtime->root->child_count);
-            
-            // Generate render commands from element tree
-            kryon_element_tree_to_render_commands(runtime->root, commands, &command_count, 256);
-            
-            // Debug: Log command count
-            static int debug_frame_count = 0;
-            if (debug_frame_count++ < 5) { // Only log first 5 frames
-                printf("🎨 DEBUG: Generated %zu render commands\n", command_count);
+            printf("🔍 DEBUG: Checking vtable: %p\n", (void*)renderer->vtable);
+            if (renderer->vtable) {
+                printf("🔍 DEBUG: vtable valid, checking begin_frame: %p\n", (void*)renderer->vtable->begin_frame);
+                if (renderer->vtable->begin_frame) {
+                    printf("🔍 DEBUG: Calling begin_frame\n");
+                    KryonRenderResult result = renderer->vtable->begin_frame(&context, clear_color);
+                    printf("🔍 DEBUG: begin_frame returned: %d\n", result);
+                    if (result == KRYON_RENDER_ERROR_SURFACE_LOST) {
+                        printf("ℹ️  INFO: Window closed by user - ending render loop gracefully\n");
+                        return false; // Graceful shutdown
+                    } else if (result != KRYON_RENDER_SUCCESS) {
+                        printf("❌ ERROR: begin_frame failed with result %d\n", result);
+                        return false;
+                    }
+                    printf("🔍 DEBUG: begin_frame succeeded\n");
+                }
             }
             
             // Execute render commands if we have any
@@ -413,13 +441,13 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
                     return false;
                 }
             }
-        }
-        
-        // End frame
-        if (renderer->vtable && renderer->vtable->end_frame) {
-            KryonRenderResult result = renderer->vtable->end_frame(context);
-            if (result != KRYON_RENDER_SUCCESS) {
-                return false;
+            
+            // End frame
+            if (renderer->vtable && renderer->vtable->end_frame) {
+                KryonRenderResult result = renderer->vtable->end_frame(context);
+                if (result != KRYON_RENDER_SUCCESS) {
+                    return false;
+                }
             }
         }
     }
@@ -1247,6 +1275,225 @@ static void element_container_to_commands(KryonElement* element, KryonRenderComm
     }
 }
 
+// Convert Button element to render commands using proper button widget command
+static void element_button_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+    if (*command_count >= max_commands - 1) return; // Need space for button command
+    
+    // Get button properties with dynamic lookup
+    float posX = get_element_property_float(element, "posX", 0.0f);
+    float posY = get_element_property_float(element, "posY", 0.0f);
+    float width = get_element_property_float(element, "width", 150.0f);
+    float height = get_element_property_float(element, "height", 50.0f);
+    
+    // Use canonical property name from mapping system
+    const char* bg_color_str = get_element_property_string(element, "background");
+    
+    const char* border_color_str = get_element_property_string(element, "borderColor");
+    float border_width = get_element_property_float(element, "borderWidth", 1.0f);
+    float border_radius = get_element_property_float(element, "borderRadius", 8.0f);
+    
+    const char* text = get_element_property_string(element, "text");
+    
+    const char* text_color_str = get_element_property_string(element, "color");
+    
+    // Style inheritance - traverse up the parent chain to find an element with a class,
+    // then resolve the color from that style
+    if (!text_color_str) {
+        KryonElement* ancestor = element;
+        while (ancestor) {
+            // Check if this ancestor has any class names
+            if (ancestor->class_count > 0 && ancestor->class_names) {
+                for (size_t i = 0; i < ancestor->class_count; i++) {
+                    if (ancestor->class_names[i]) {
+                        // For now, hardcode the base style color since KRB styles aren't loaded yet
+                        // TODO: Replace with proper style resolution from KRB style data
+                        if (strcmp(ancestor->class_names[i], "base") == 0) {
+                            text_color_str = "#FF9900FF";  // Orange color from base style
+                            goto color_found;
+                        }
+                    }
+                }
+            }
+            ancestor = ancestor->parent;
+        }
+    }
+    color_found:
+    
+    if (!text_color_str) {
+        text_color_str = "#FFFFFFFF";  // White fallback
+    }
+    const char* text_align = get_element_property_string(element, "textAlign");
+    float font_size = get_element_property_float(element, "fontSize", 16.0f);
+    
+    // Removed verbose debug logging
+    
+    // Parse colors with proper fallbacks
+    uint32_t bg_color_val = kryon_color_parse_string(bg_color_str ? bg_color_str : "#404080FF");
+    uint32_t border_color_val = kryon_color_parse_string(border_color_str ? border_color_str : "#0099FFFF");
+    uint32_t text_color_val = kryon_color_parse_string(text_color_str ? text_color_str : "#FFFFFFFF");
+    
+    // Convert to KryonColor format
+    KryonColor bg_color = {
+        ((bg_color_val >> 24) & 0xFF) / 255.0f,  // R
+        ((bg_color_val >> 16) & 0xFF) / 255.0f,  // G
+        ((bg_color_val >> 8) & 0xFF) / 255.0f,   // B
+        (bg_color_val & 0xFF) / 255.0f           // A
+    };
+    KryonColor border_color = {
+        ((border_color_val >> 24) & 0xFF) / 255.0f,  // R
+        ((border_color_val >> 16) & 0xFF) / 255.0f,  // G
+        ((border_color_val >> 8) & 0xFF) / 255.0f,   // B
+        (border_color_val & 0xFF) / 255.0f           // A
+    };
+    KryonColor text_color = {
+        ((text_color_val >> 24) & 0xFF) / 255.0f,  // R
+        ((text_color_val >> 16) & 0xFF) / 255.0f,  // G
+        ((text_color_val >> 8) & 0xFF) / 255.0f,   // B
+        (text_color_val & 0xFF) / 255.0f           // A
+    };
+    
+    // Check if mouse is hovering over button bounds
+    // For now, get mouse position directly from runtime's renderer if available
+    bool is_hovered = false;
+    
+    // Try to get input state from the renderer
+    // This is a simplified approach - in a full implementation this would be passed as a parameter
+    extern KryonVec2 g_mouse_position; // Global mouse position updated by renderer
+    
+    KryonVec2 mouse_pos = g_mouse_position;
+    
+    // Debug: Show real mouse position and button bounds occasionally
+    // Mouse hover detection (debug output reduced)
+    
+    // Check if mouse is within button bounds
+    if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
+        mouse_pos.y >= posY && mouse_pos.y <= posY + height) {
+        is_hovered = true;
+    }
+    
+    // Apply hover effects
+    KryonColor final_bg_color = bg_color;
+    KryonColor final_text_color = text_color;
+    
+    // Update global cursor state
+    extern bool g_cursor_should_be_pointer;
+    static bool was_hovered = false;
+    if (is_hovered != was_hovered) {
+        g_cursor_should_be_pointer = is_hovered;
+        was_hovered = is_hovered;
+    }
+    
+    if (is_hovered) {
+        // Lighten background color for hover effect
+        final_bg_color.r = fminf(1.0f, bg_color.r + 0.1f);
+        final_bg_color.g = fminf(1.0f, bg_color.g + 0.1f);
+        final_bg_color.b = fminf(1.0f, bg_color.b + 0.1f);
+        
+        // Hover effect active
+    }
+    
+    // Use the proper button widget command instead of separate rect + text
+    KryonRenderCommand cmd = kryon_cmd_draw_button(
+        "button_1",  // TODO: Generate unique widget ID from element
+        (KryonVec2){posX, posY},
+        (KryonVec2){width, height},
+        text ? text : "Button",
+        final_bg_color,
+        final_text_color
+    );
+    
+    // Set the widget state
+    cmd.data.draw_button.state = is_hovered ? KRYON_WIDGET_STATE_HOVERED : KRYON_WIDGET_STATE_NORMAL;
+    cmd.data.draw_button.enabled = true;
+    
+    // Set onClick handler if present
+    const char* onclick = get_element_property_string(element, "onClick");
+    if (onclick) {
+        cmd.data.draw_button.onclick_handler = strdup(onclick);
+    }
+    
+    commands[(*command_count)++] = cmd;
+}
+
+// Convert Center element to render commands (handles child positioning)
+static void element_center_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+    // Center doesn't render itself but positions its children
+    // Calculate center position based on parent or window size
+    
+    float center_x = 300.0f; // Default window center X
+    float center_y = 200.0f; // Default window center Y
+    
+    // If parent exists, use parent dimensions
+    if (element->parent) {
+        float parent_width = get_element_property_float(element->parent, "windowWidth", 600.0f);
+        float parent_height = get_element_property_float(element->parent, "windowHeight", 400.0f);
+        center_x = parent_width / 2.0f;
+        center_y = parent_height / 2.0f;
+        
+        printf("🎯 DEBUG Center: Using parent dimensions %.1fx%.1f -> center at %.1f,%.1f\n", 
+               parent_width, parent_height, center_x, center_y);
+    }
+    
+    // Position children at the center
+    for (size_t i = 0; i < element->child_count; i++) {
+        KryonElement* child = element->children[i];
+        if (child) {
+            // Calculate child position to center it
+            float child_width = get_element_property_float(child, "width", 100.0f);
+            float child_height = get_element_property_float(child, "height", 50.0f);
+            
+            float child_x = center_x - (child_width / 2.0f);
+            float child_y = center_y - (child_height / 2.0f);
+            
+            printf("🎯 DEBUG Center: Positioning child %s at %.1f,%.1f (size %.1fx%.1f)\n", 
+                   child->type_name ? child->type_name : "Unknown", child_x, child_y, child_width, child_height);
+            
+            // Set position properties on child (create property if needed)
+            // Find or create posX property
+            KryonProperty* posX_prop = find_element_property(child, "posX");
+            if (!posX_prop) {
+                // Add new property - need to expand properties array
+                if (child->property_count >= child->property_capacity) {
+                    size_t new_capacity = child->property_capacity ? child->property_capacity * 2 : 4;
+                    KryonProperty **new_props = kryon_realloc(child->properties, new_capacity * sizeof(KryonProperty*));
+                    if (new_props) {
+                        child->properties = new_props;
+                        child->property_capacity = new_capacity;
+                    }
+                }
+                
+                if (child->property_count < child->property_capacity) {
+                    posX_prop = kryon_alloc(sizeof(KryonProperty));
+                    if (posX_prop) {
+                        posX_prop->name = strdup("posX");
+                        posX_prop->type = KRYON_RUNTIME_PROP_FLOAT;
+                        child->properties[child->property_count++] = posX_prop;
+                    }
+                }
+            }
+            if (posX_prop) {
+                posX_prop->value.float_value = child_x;
+            }
+            
+            // Find or create posY property
+            KryonProperty* posY_prop = find_element_property(child, "posY");
+            if (!posY_prop) {
+                if (child->property_count < child->property_capacity) {
+                    posY_prop = kryon_alloc(sizeof(KryonProperty));
+                    if (posY_prop) {
+                        posY_prop->name = strdup("posY");
+                        posY_prop->type = KRYON_RUNTIME_PROP_FLOAT;
+                        child->properties[child->property_count++] = posY_prop;
+                    }
+                }
+            }
+            if (posY_prop) {
+                posY_prop->value.float_value = child_y;
+            }
+        }
+    }
+}
+
 // Convert Text element to render commands  
 static void element_text_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 1) return;
@@ -1405,11 +1652,18 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
                element->type_name, element->property_count, element->child_count);
     }
     
-    // Convert this element based on its type
+    // First run layout elements (Center) to position children
+    if (strcmp(element->type_name, "Center") == 0) {
+        element_center_to_commands(element, commands, command_count, max_commands);
+    }
+    
+    // Then convert visible elements based on their type
     if (strcmp(element->type_name, "Container") == 0) {
         element_container_to_commands(element, commands, command_count, max_commands);
     } else if (strcmp(element->type_name, "Text") == 0) {
         element_text_to_commands(element, commands, command_count, max_commands);
+    } else if (strcmp(element->type_name, "Button") == 0) {
+        element_button_to_commands(element, commands, command_count, max_commands);
     }
     // App elements don't render directly, just process children
     
@@ -1441,13 +1695,7 @@ void kryon_element_tree_to_render_commands(KryonElement* root, KryonRenderComman
     
     *command_count = 0;
     
-    // Debug: Log element tree traversal
-    static bool debug_logged = false;
-    if (!debug_logged) {
-        printf("🔍 DEBUG: Converting element tree to render commands\n");
-        printf("🔍 DEBUG: Root element type: %s\n", root->type_name ? root->type_name : "NULL");
-        debug_logged = true;
-    }
+    // Convert element tree to render commands
     
     element_to_commands_recursive(root, commands, command_count, max_commands);
 }

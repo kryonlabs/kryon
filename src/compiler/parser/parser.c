@@ -105,6 +105,7 @@ KryonParser *kryon_parser_create(KryonLexer *lexer, const KryonParserConfig *con
         return NULL;
     }
     
+    
     KryonParser *parser = kryon_alloc(sizeof(KryonParser));
     if (!parser) {
         return NULL;
@@ -275,6 +276,14 @@ static KryonASTNode *parse_document(KryonParser *parser) {
     
     // Parse top-level declarations  
     printf("[DEBUG] Starting parsing loop, current_token=%zu, token_count=%zu\n", parser->current_token, parser->token_count);
+    
+    // Debug: Show first 10 tokens
+    printf("[DEBUG] First 10 tokens:\n");
+    for (size_t i = 0; i < (parser->token_count < 10 ? parser->token_count : 10); i++) {
+        const KryonToken* tok = &parser->tokens[i];
+        printf("  [%zu] type=%d, lexeme='%.*s'\n", i, tok->type, (int)tok->lexeme_length, tok->lexeme ? tok->lexeme : "NULL");
+    }
+    
     while (!at_end(parser)) {
         KryonASTNode *node = NULL;
         const KryonToken *current = peek(parser);
@@ -994,8 +1003,13 @@ static const KryonToken *previous(KryonParser *parser) {
 }
 
 static bool at_end(KryonParser *parser) {
-    return parser->current_token >= parser->token_count ||
-           peek(parser)->type == KRYON_TOKEN_EOF;
+    bool result = parser->current_token >= parser->token_count ||
+                  peek(parser)->type == KRYON_TOKEN_EOF;
+    printf("[DEBUG] at_end: current_token=%zu, token_count=%zu, peek_type=%d, result=%s\n", 
+           parser->current_token, parser->token_count, 
+           parser->current_token < parser->token_count ? peek(parser)->type : -1,
+           result ? "true" : "false");
+    return result;
 }
 
 // =============================================================================

@@ -471,6 +471,8 @@ static bool load_element_properties(KryonElement *element,
         element->properties[element->property_count++] = property;
     }
     
+    // Properties loaded successfully
+    
     return true;
 }
 
@@ -562,9 +564,14 @@ static bool load_property_value(KryonProperty *property,
             }
             break;
             
+        // case KRYON_RUNTIME_PROP_FUNCTION:
+        //     // Temporarily disabled - will treat as unknown to skip for now
+        //     break;
+            
         default:
-            printf("DEBUG: Unknown property type %d for property '%s'\n", property->type, property->name);
-            return false;
+            printf("DEBUG: Unknown property type %d for property '%s' - skipping\n", property->type, property->name);
+            // Skip unknown properties instead of failing
+            break;
     }
     
     return true;

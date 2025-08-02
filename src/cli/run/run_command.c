@@ -67,7 +67,7 @@ int run_command(int argc, char *argv[]) {
         KryonMemoryConfig config = {
             .initial_heap_size = 16 * 1024 * 1024,    // 16MB
             .max_heap_size = 256 * 1024 * 1024,       // 256MB  
-            .enable_leak_detection = false,
+            .enable_leak_detection = true,
             .enable_bounds_checking = false,
             .enable_statistics = false,
             .use_system_malloc = true,
@@ -135,9 +135,7 @@ int run_command(int argc, char *argv[]) {
     // Simple render loop for now - in future this should be event-driven
     bool running = true;
     int frame_count = 0;
-    printf("🔍 DEBUG: About to start render loop\n");
     while (running) { // Run until window is closed
-        printf("🔍 DEBUG: Frame %d - calling kryon_runtime_render\n", frame_count);
         if (!kryon_runtime_render(runtime)) {
             fprintf(stderr, "❌ Rendering failed at frame %d\n", frame_count);
             break;

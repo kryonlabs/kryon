@@ -116,7 +116,7 @@ int compile_command(int argc, char *argv[]) {
         KryonMemoryConfig config = {
             .initial_heap_size = 16 * 1024 * 1024,    // 16MB
             .max_heap_size = 256 * 1024 * 1024,       // 256MB  
-            .enable_leak_detection = false,
+            .enable_leak_detection = true,
             .enable_bounds_checking = false,
             .enable_statistics = false,
             .use_system_malloc = true,
