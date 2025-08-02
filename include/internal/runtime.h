@@ -24,6 +24,7 @@ extern "C" {
 #include "internal/memory.h"
 #include "internal/events.h"
 #include "internal/renderer_interface.h"
+#include "internal/script_vm.h"
 
 // =============================================================================
 // FORWARD DECLARATIONS
@@ -284,6 +285,14 @@ struct KryonRuntime {
     // Rendering
     KryonRenderContext *render_context; // Rendering context
     void *renderer;               // Platform renderer
+    
+    // Script execution
+    KryonVM *script_vm;           // Script virtual machine
+    
+    // Function registry (for debugging)
+    char **function_names;        // Loaded function names
+    size_t function_count;        // Number of loaded functions
+    size_t function_capacity;     // Function names array capacity
     
     // Resource management
     KryonMemoryManager *memory;   // Memory manager

@@ -20,6 +20,7 @@ target_link_libraries(kryon_cli PRIVATE
     kryon_minimal_memory
     kryon_runtime
     kryon_events
+    kryon_script_engines
     cjson
 )
 

@@ -14,6 +14,7 @@
 #include "internal/events.h"
 #include "internal/memory.h"
 #include "internal/binary_io.h"
+#include "internal/script_vm.h"
 #include "../../shared/kryon_mappings.h"
 #include <string.h>
 #include <stdlib.h>
@@ -91,6 +92,8 @@ static bool load_property_value(KryonProperty *property,
 static bool skip_styles_section(const uint8_t *data, size_t *offset, size_t size, uint32_t style_count);
 static bool skip_functions_section(const uint8_t *data, size_t *offset, size_t size, uint32_t function_count);
 static void register_event_directive_handlers(KryonRuntime *runtime, KryonElement *element);
+static bool load_function_from_binary(KryonRuntime *runtime, const uint8_t *data, size_t *offset, size_t size, char** string_table, uint32_t string_count);
+static void connect_function_handlers(KryonRuntime *runtime, KryonElement *element);
 
 // =============================================================================
 // UTILITY FUNCTIONS
@@ -166,6 +169,8 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     }
     
     size_t offset = 0;
+    char** string_table = NULL;
+    uint32_t string_count = 0;
     
     // Read and validate 128-byte complex header
     uint32_t magic;
@@ -252,18 +257,66 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     // Now we're at the start of the data sections after the 128-byte header
     // First should be the string table, then style definitions, etc.
     
-    // Skip string table (for now)
+    // Load string table
     printf("DEBUG: String table size from header: %u bytes (0x%08X)\n", string_table_size, string_table_size);
     if (string_table_size > 0) {
         if (string_table_size > 1000000) { // If > 1MB, something's wrong
             printf("DEBUG: String table size seems too large, possible endianness issue\n");
             return false;
         }
-        printf("DEBUG: Skipping string table (%u bytes)\n", string_table_size);
-        offset += string_table_size;
-        if (offset > size) {
-            printf("DEBUG: String table extends beyond file size (offset=%zu, size=%zu)\n", offset, size);
+        
+        size_t string_table_start = offset;
+        
+        // Read string count
+        if (!read_uint32_safe(data, &offset, size, &string_count)) {
+            printf("DEBUG: Failed to read string count\n");
             return false;
+        }
+        
+        printf("DEBUG: Loading %u strings from string table\n", string_count);
+        
+        // Allocate string table (handle 0 count case)
+        if (string_count > 0) {
+            string_table = kryon_alloc(string_count * sizeof(char*));
+            if (!string_table) {
+                printf("DEBUG: Failed to allocate string table\n");
+                return false;
+            }
+            memset(string_table, 0, string_count * sizeof(char*));
+        }
+        
+        // Read each string
+        for (uint32_t i = 0; i < string_count; i++) {
+            uint16_t str_len;
+            if (!read_uint16_safe(data, &offset, size, &str_len)) {
+                printf("DEBUG: Failed to read string length\n");
+                goto cleanup;
+            }
+            
+            if (offset + str_len > size) {
+                printf("DEBUG: String data exceeds buffer size\n");
+                goto cleanup;
+            }
+            
+            string_table[i] = kryon_alloc(str_len + 1);
+            if (!string_table[i]) {
+                printf("DEBUG: Failed to allocate string %u\n", i);
+                goto cleanup;
+            }
+            
+            if (str_len > 0) {
+                memcpy(string_table[i], data + offset, str_len);
+            }
+            string_table[i][str_len] = '\0';
+            offset += str_len;
+            
+            printf("DEBUG: String[%u]: '%s'\n", i, string_table[i]);
+        }
+        
+        // Verify we consumed the expected bytes
+        if (offset - string_table_start != string_table_size) {
+            printf("DEBUG: String table size mismatch: expected %u, got %zu\n", 
+                   string_table_size, offset - string_table_start);
         }
     }
     
@@ -285,7 +338,55 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
         printf("DEBUG: No elements found in KRB file\n");
     }
     
+    // Load script section if present
+    if (script_offset > 0) {
+        printf("DEBUG: Loading script section at offset %u\n", script_offset);
+        offset = script_offset;
+        
+        // Read function count
+        uint32_t function_count;
+        if (!read_uint32_safe(data, &offset, size, &function_count)) {
+            printf("DEBUG: Failed to read function count\n");
+            return false;
+        }
+        
+        printf("DEBUG: Found %u functions in script section\n", function_count);
+        
+        // Load each function
+        for (uint32_t i = 0; i < function_count; i++) {
+            if (!load_function_from_binary(runtime, data, &offset, size, string_table, string_count)) {
+                printf("DEBUG: Failed to load function %u\n", i);
+                goto cleanup;
+            }
+        }
+        
+        // List all loaded functions for debugging
+        printf("\n🔍 DEBUG: Available functions (%zu total):\n", runtime->function_count);
+        for (size_t i = 0; i < runtime->function_count; i++) {
+            printf("  [%zu] %s\n", i, runtime->function_names[i]);
+        }
+        printf("\n");
+    }
+    
+    // Cleanup string table
+    if (string_table) {
+        for (uint32_t i = 0; i < string_count; i++) {
+            kryon_free(string_table[i]);
+        }
+        kryon_free(string_table);
+    }
+    
     return true;
+    
+cleanup:
+    // Cleanup string table on error
+    if (string_table) {
+        for (uint32_t i = 0; i < string_count; i++) {
+            kryon_free(string_table[i]);
+        }
+        kryon_free(string_table);
+    }
+    return false;
 }
 
 static KryonElement *load_element_from_binary(KryonRuntime *runtime, 
@@ -353,6 +454,9 @@ static KryonElement *load_element_from_binary(KryonRuntime *runtime,
     if (widget_type_id == KRYON_ELEMENT_EVENT_DIRECTIVE) {
         register_event_directive_handlers(runtime, element);
     }
+    
+    // Connect function handlers for elements with onClick etc.
+    connect_function_handlers(runtime, element);
     
     if (child_count > 0) {
         printf("DEBUG: Element %s has %u children\n", element->type_name, child_count);
@@ -564,9 +668,33 @@ static bool load_property_value(KryonProperty *property,
             }
             break;
             
-        // case KRYON_RUNTIME_PROP_FUNCTION:
-        //     // Temporarily disabled - will treat as unknown to skip for now
-        //     break;
+        case KRYON_RUNTIME_PROP_FUNCTION:
+            {
+                // For function properties (like onClick handlers), read as string (function name)
+                uint16_t string_length;
+                if (!read_uint16_safe(data, offset, size, &string_length)) {
+                    printf("DEBUG: Failed to read function name length\n");
+                    return false;
+                }
+                
+                if (*offset + string_length > size) {
+                    printf("DEBUG: Function name data exceeds buffer size\n");
+                    return false;
+                }
+                
+                property->value.string_value = kryon_alloc(string_length + 1);
+                if (!property->value.string_value) {
+                    printf("DEBUG: Failed to allocate function name string\n");
+                    return false;
+                }
+                
+                memcpy(property->value.string_value, data + *offset, string_length);
+                property->value.string_value[string_length] = '\0';
+                *offset += string_length;
+                
+                printf("DEBUG: Read function property '%s' = '%s'\n", property->name, property->value.string_value);
+            }
+            break;
             
         default:
             printf("DEBUG: Unknown property type %d for property '%s' - skipping\n", property->type, property->name);
@@ -884,4 +1012,203 @@ static bool skip_functions_section(const uint8_t *data, size_t *offset, size_t s
     
     printf("DEBUG: Successfully skipped %u functions\n", function_count);
     return true;
+}
+
+/**
+ * Load a function from the script section
+ */
+static bool load_function_from_binary(KryonRuntime *runtime, const uint8_t *data, size_t *offset, size_t size, char** string_table, uint32_t string_count) {
+    if (!runtime || !data || !offset) {
+        return false;
+    }
+    
+    // Read function header ("FUNC" magic)
+    uint32_t func_magic;
+    if (!read_uint32_safe(data, offset, size, &func_magic)) {
+        printf("DEBUG: Failed to read function magic\n");
+        return false;
+    }
+    if (func_magic != 0x46554E43) { // "FUNC"
+        printf("DEBUG: Invalid function magic: 0x%08X\n", func_magic);
+        return false;
+    }
+    
+    // Read language reference (string table index)
+    uint32_t lang_ref;
+    if (!read_uint32_safe(data, offset, size, &lang_ref)) {
+        printf("DEBUG: Failed to read language reference\n");
+        return false;
+    }
+    
+    // Read function name reference (string table index)
+    uint32_t name_ref;
+    if (!read_uint32_safe(data, offset, size, &name_ref)) {
+        printf("DEBUG: Failed to read name reference\n");
+        return false;
+    }
+    
+    // Read parameter count
+    uint32_t param_count;
+    if (!read_uint32_safe(data, offset, size, &param_count)) {
+        printf("DEBUG: Failed to read parameter count\n");
+        return false;
+    }
+    
+    // Skip parameter references for now
+    for (uint32_t i = 0; i < param_count; i++) {
+        uint32_t param_ref;
+        if (!read_uint32_safe(data, offset, size, &param_ref)) {
+            printf("DEBUG: Failed to read parameter reference\n");
+            return false;
+        }
+    }
+    
+    // Read function code reference (string table index - contains bytecode)
+    uint32_t code_ref;
+    if (!read_uint32_safe(data, offset, size, &code_ref)) {
+        printf("DEBUG: Failed to read code reference\n");
+        return false;
+    }
+    
+    // Get strings from string table (1-based indices)
+    const char* lang_str = (lang_ref > 0 && lang_ref <= string_count) ? string_table[lang_ref - 1] : NULL;
+    const char* name_str = (name_ref > 0 && name_ref <= string_count) ? string_table[name_ref - 1] : NULL;
+    const char* code_str = (code_ref > 0 && code_ref <= string_count) ? string_table[code_ref - 1] : NULL;
+    
+    printf("DEBUG: Found function: lang='%s', name='%s', params=%u\n",
+           lang_str ? lang_str : "(null)",
+           name_str ? name_str : "(null)", 
+           param_count);
+    
+    // Check if this is a Lua function
+    if (lang_str && strcmp(lang_str, "lua") == 0 && code_str) {
+        // Create Lua VM if not exists
+        if (!runtime->script_vm) {
+            printf("DEBUG: Creating Lua VM for runtime\n");
+            runtime->script_vm = kryon_vm_create(KRYON_VM_LUA, NULL);
+            if (!runtime->script_vm) {
+                printf("ERROR: Failed to create Lua VM\n");
+                return false;
+            }
+        }
+        
+        // Convert hex string back to binary bytecode
+        size_t hex_len = strlen(code_str);
+        size_t bytecode_len = hex_len / 2;
+        uint8_t* bytecode = kryon_alloc(bytecode_len);
+        if (!bytecode) {
+            printf("ERROR: Failed to allocate bytecode buffer\n");
+            return false;
+        }
+        
+        // Convert hex string to binary
+        for (size_t i = 0; i < bytecode_len; i++) {
+            char hex_byte[3] = {code_str[i*2], code_str[i*2 + 1], '\0'};
+            bytecode[i] = (uint8_t)strtoul(hex_byte, NULL, 16);
+        }
+        
+        printf("DEBUG: Converted %zu hex chars to %zu bytes of bytecode\n", hex_len, bytecode_len);
+        
+        // Load bytecode into Lua VM
+        char* source_name_copy = name_str ? kryon_alloc(strlen(name_str) + 1) : NULL;
+        if (source_name_copy && name_str) {
+            strcpy(source_name_copy, name_str);
+        }
+        
+        KryonScript script = {
+            .vm_type = KRYON_VM_LUA,
+            .format = KRYON_SCRIPT_BYTECODE,
+            .data = bytecode,
+            .size = bytecode_len,
+            .source_name = source_name_copy,
+            .entry_point = NULL
+        };
+        
+        KryonVMResult result = kryon_vm_load_script(runtime->script_vm, &script);
+        
+        // Clean up bytecode buffer
+        kryon_free(bytecode);
+        kryon_free(source_name_copy);
+        
+        if (result != KRYON_VM_SUCCESS) {
+            printf("ERROR: Failed to load Lua bytecode for function '%s' (result=%d)\n", name_str, result);
+            const char* error = kryon_vm_get_error(runtime->script_vm);
+            if (error) {
+                printf("ERROR: %s\n", error);
+            }
+            return false;
+        }
+        
+        printf("✅ Successfully loaded Lua function '%s' (%zu bytes of bytecode)\n", name_str, bytecode_len);
+        
+        // Add to runtime's function registry for debugging
+        if (!runtime->function_names) {
+            runtime->function_names = kryon_alloc(16 * sizeof(char*));
+            runtime->function_capacity = 16;
+            runtime->function_count = 0;
+        }
+        
+        if (runtime->function_count < runtime->function_capacity && name_str) {
+            runtime->function_names[runtime->function_count] = kryon_alloc(strlen(name_str) + 1);
+            if (runtime->function_names[runtime->function_count]) {
+                strcpy(runtime->function_names[runtime->function_count], name_str);
+                runtime->function_count++;
+            }
+        }
+    }
+    
+    return true;
+}
+
+/**
+ * Connect Lua function handlers to element event properties
+ */
+static void connect_function_handlers(KryonRuntime *runtime, KryonElement *element) {
+    if (!runtime || !element || !runtime->script_vm) {
+        return;
+    }
+    
+    // Look for function properties (onClick, onHover, etc.)
+    for (size_t i = 0; i < element->property_count; i++) {
+        KryonProperty *prop = element->properties[i];
+        if (!prop || prop->type != KRYON_RUNTIME_PROP_FUNCTION) {
+            continue;
+        }
+        
+        // Check if this is an event handler property
+        if (prop->name && strncmp(prop->name, "on", 2) == 0 && prop->value.string_value) {
+            const char* event_name = prop->name + 2; // Skip "on" prefix
+            const char* function_name = prop->value.string_value;
+            
+            printf("DEBUG: Connecting event handler: %s -> %s\n", prop->name, function_name);
+            
+            // Determine event type from property name
+            KryonEventType event_type = 0;
+            if (strcmp(prop->name, "onClick") == 0) {
+                event_type = KRYON_EVENT_MOUSE_BUTTON_DOWN;
+            } else if (strcmp(prop->name, "onHover") == 0) {
+                event_type = KRYON_EVENT_MOUSE_MOVED;
+            } else if (strcmp(prop->name, "onKeyDown") == 0) {
+                event_type = KRYON_EVENT_KEY_DOWN;
+            } else if (strcmp(prop->name, "onKeyUp") == 0) {
+                event_type = KRYON_EVENT_KEY_UP;
+            }
+            
+            if (event_type != 0) {
+                // Create a wrapper event handler that calls the Lua function
+                // For now, just log that we would connect it
+                printf("DEBUG: Would register %s handler for Lua function '%s'\n", 
+                       prop->name, function_name);
+                
+                // TODO: Create actual event handler that:
+                // 1. Receives the event
+                // 2. Calls kryon_vm_call_function(runtime->script_vm, function_name, ...)
+                // 3. Passes element reference and event data to Lua
+                
+                // Example pseudo-code:
+                // kryon_element_add_event_handler(element, event_type, 
+                //                                lua_event_wrapper, function_name);
+            }
+        }
+    }
 }

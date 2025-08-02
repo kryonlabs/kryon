@@ -74,6 +74,9 @@ pkgs.mkShell {
     # Optional: Python (if needed for tools)
     python3
     
+    # Lua scripting engine
+    lua5_4
+    
     # Git (for development)
     git
   ];
@@ -114,6 +117,7 @@ pkgs.mkShell {
     "-I${pkgs.freetype.dev}/include/freetype2"
     "-I${pkgs.libGL.dev}/include"
     "-I${pkgs.xorg.libX11.dev}/include"
+    "-I${pkgs.lua5_4}/include"
   ];
   
   NIX_LDFLAGS = [
@@ -121,5 +125,6 @@ pkgs.mkShell {
     "-L${pkgs.raylib}/lib"
     "-L${pkgs.libGL}/lib"
     "-L${pkgs.xorg.libX11}/lib"
+    "-L${pkgs.lua5_4}/lib"
   ];
 }

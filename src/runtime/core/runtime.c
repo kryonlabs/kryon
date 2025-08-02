@@ -41,6 +41,8 @@ static KryonElement *create_element_from_krb(KryonRuntime *runtime, KryonKrbElem
 static bool process_element_properties(KryonElement *element, KryonKrbReader *reader);
 static void update_element_tree(KryonRuntime *runtime, KryonElement *element, double delta_time);
 static void process_event_queue(KryonRuntime *runtime);
+static void find_and_execute_onclick_handlers(KryonRuntime *runtime, KryonElement *element, KryonVec2 click_pos, const KryonEvent *event);
+static bool is_point_in_element_bounds(KryonElement *element, KryonVec2 point);
 static void runtime_error(KryonRuntime *runtime, const char *format, ...);
 
 // Element to render command conversion functions
@@ -143,6 +145,17 @@ KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config) {
         return NULL;
     }
     
+    // Initialize script VM (prefer Lua if available)
+    runtime->script_vm = NULL;
+    if (kryon_vm_is_available(KRYON_VM_LUA)) {
+        runtime->script_vm = kryon_vm_create(KRYON_VM_LUA, NULL);
+        if (runtime->script_vm) {
+            printf("✅ Created Lua VM for script execution\n");
+        } else {
+            printf("⚠️  Failed to create Lua VM, script execution disabled\n");
+        }
+    }
+    
     // Initialize other fields
     runtime->next_element_id = 1;
     runtime->is_running = false;
@@ -180,6 +193,11 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
     // Destroy global state
     if (runtime->global_state) {
         kryon_state_destroy(runtime->global_state);
+    }
+    
+    // Destroy script VM
+    if (runtime->script_vm) {
+        kryon_vm_destroy(runtime->script_vm);
     }
     
     // Free styles
@@ -343,13 +361,11 @@ bool kryon_runtime_update(KryonRuntime *runtime, double delta_time) {
 }
 
 bool kryon_runtime_render(KryonRuntime *runtime) {
-    printf("🔍 DEBUG: kryon_runtime_render called\n");
     
     if (!runtime) {
         printf("❌ ERROR: runtime is NULL\n");
         return false;
     }
-    printf("🔍 DEBUG: runtime is valid\n");
     
     // Update input state from renderer before generating commands
     if (runtime->renderer) {
@@ -361,6 +377,18 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
                 // Update global mouse position for hover detection
                 extern KryonVec2 g_mouse_position;
                 g_mouse_position = input_state.mouse.position;
+                
+                // Generate mouse click events from input state
+                if (input_state.mouse.left_pressed) {
+                    KryonEvent event = {0};
+                    event.type = KRYON_EVENT_MOUSE_BUTTON_DOWN;
+                    event.data.mouseButton.button = 0; // Left button
+                    event.data.mouseButton.x = input_state.mouse.position.x;
+                    event.data.mouseButton.y = input_state.mouse.position.y;
+                    kryon_runtime_handle_event(runtime, &event);
+                    printf("🐛 DEBUG: Generated mouse click event at (%.1f, %.1f)\n", 
+                           event.data.mouseButton.x, event.data.mouseButton.y);
+                }
             }
         }
     }
@@ -390,47 +418,27 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
             printf("❌ ERROR: Root element has null type_name\n");
             return false;
         }
-        
-        printf("🔍 DEBUG: Root element type_name='%s', properties=%zu, children=%zu\n", 
-               runtime->root->type_name, runtime->root->property_count, runtime->root->child_count);
-        
+                
         // Generate render commands from element tree
         kryon_element_tree_to_render_commands(runtime->root, commands, &command_count, 256);
         
-        // Debug: Log command count
-        static int debug_frame_count = 0;
-        if (debug_frame_count++ < 5) { // Only log first 5 frames
-            printf("🎨 DEBUG: Generated %zu render commands\n", command_count);
-        }
-        
         // Check if we have a renderer attached for actual rendering
-        printf("🔍 DEBUG: Checking renderer: %p\n", runtime->renderer);
         if (runtime->renderer) {
-            printf("🔍 DEBUG: Renderer found, casting\n");
             // Cast renderer and use the minimal interface
             KryonRenderer* renderer = (KryonRenderer*)runtime->renderer;
-            printf("🔍 DEBUG: Renderer cast successful: %p\n", (void*)renderer);
             
             // Begin frame
-            printf("🔍 DEBUG: Creating render context\n");
             KryonRenderContext* context = NULL;
             KryonColor clear_color = {0.1f, 0.1f, 0.1f, 1.0f}; // Dark background
             
-            printf("🔍 DEBUG: Checking vtable: %p\n", (void*)renderer->vtable);
             if (renderer->vtable) {
-                printf("🔍 DEBUG: vtable valid, checking begin_frame: %p\n", (void*)renderer->vtable->begin_frame);
                 if (renderer->vtable->begin_frame) {
-                    printf("🔍 DEBUG: Calling begin_frame\n");
                     KryonRenderResult result = renderer->vtable->begin_frame(&context, clear_color);
-                    printf("🔍 DEBUG: begin_frame returned: %d\n", result);
                     if (result == KRYON_RENDER_ERROR_SURFACE_LOST) {
-                        printf("ℹ️  INFO: Window closed by user - ending render loop gracefully\n");
                         return false; // Graceful shutdown
                     } else if (result != KRYON_RENDER_SUCCESS) {
-                        printf("❌ ERROR: begin_frame failed with result %d\n", result);
                         return false;
                     }
-                    printf("🔍 DEBUG: begin_frame succeeded\n");
                 }
             }
             
@@ -762,10 +770,27 @@ bool kryon_runtime_handle_event(KryonRuntime *runtime, const KryonEvent *event) 
 }
 
 static void process_event_queue(KryonRuntime *runtime) {
+    if (runtime->event_read_pos != runtime->event_write_pos) {
+        printf("🐛 DEBUG: Processing event queue, %zu events pending\n", runtime->event_count);
+    }
+    
     while (runtime->event_read_pos != runtime->event_write_pos) {
         KryonEvent *event = &runtime->event_queue[runtime->event_read_pos];
         
-        // TODO: Implement event dispatch to elements
+        printf("🐛 DEBUG: Processing event type: %d\n", event->type);
+        
+        // Process mouse click events for onClick handlers
+        if (event->type == KRYON_EVENT_MOUSE_BUTTON_DOWN && event->data.mouseButton.button == 0) {
+            // Left mouse button clicked - check for onClick handlers
+            KryonVec2 click_pos = {event->data.mouseButton.x, event->data.mouseButton.y};
+            
+            printf("🔥 DEBUG: Mouse click detected at (%.1f, %.1f)\n", click_pos.x, click_pos.y);
+            
+            // Find elements at click position with onClick handlers
+            if (runtime->root) {
+                find_and_execute_onclick_handlers(runtime, runtime->root, click_pos, event);
+            }
+        }
         
         runtime->event_read_pos = (runtime->event_read_pos + 1) % runtime->event_capacity;
         runtime->event_count--;
@@ -949,6 +974,10 @@ static const char* get_element_property_string(KryonElement* element, const char
             snprintf(buffer, 32, "ref_%u", prop->value.ref_id);
             return buffer;
         }
+        
+        case KRYON_RUNTIME_PROP_FUNCTION:
+            // Function properties are stored as string values (function names)
+            return prop->value.string_value;
         
         default:
             return NULL;
@@ -1430,8 +1459,6 @@ static void element_center_to_commands(KryonElement* element, KryonRenderCommand
         center_x = parent_width / 2.0f;
         center_y = parent_height / 2.0f;
         
-        printf("🎯 DEBUG Center: Using parent dimensions %.1fx%.1f -> center at %.1f,%.1f\n", 
-               parent_width, parent_height, center_x, center_y);
     }
     
     // Position children at the center
@@ -1444,9 +1471,6 @@ static void element_center_to_commands(KryonElement* element, KryonRenderCommand
             
             float child_x = center_x - (child_width / 2.0f);
             float child_y = center_y - (child_height / 2.0f);
-            
-            printf("🎯 DEBUG Center: Positioning child %s at %.1f,%.1f (size %.1fx%.1f)\n", 
-                   child->type_name ? child->type_name : "Unknown", child_x, child_y, child_width, child_height);
             
             // Set position properties on child (create property if needed)
             // Find or create posX property
@@ -1698,4 +1722,73 @@ void kryon_element_tree_to_render_commands(KryonElement* root, KryonRenderComman
     // Convert element tree to render commands
     
     element_to_commands_recursive(root, commands, command_count, max_commands);
+}
+
+// =============================================================================
+// ONCLICK EVENT HANDLING WITH VM INTEGRATION
+// =============================================================================
+
+static void find_and_execute_onclick_handlers(KryonRuntime *runtime, KryonElement *element, KryonVec2 click_pos, const KryonEvent *event) {
+    if (!runtime || !element) {
+        return;
+    }
+    
+    printf("🐛 DEBUG: Checking element '%s' for onClick handlers\n", 
+           element->type_name ? element->type_name : "Unknown");
+    
+    // Check if this element has onClick handler and if click is within bounds
+    const char* onclick_handler = get_element_property_string(element, "onClick");
+    printf("🐛 DEBUG: Element onClick handler: %s\n", onclick_handler ? onclick_handler : "(none)");
+    
+    if (onclick_handler) {
+        bool in_bounds = is_point_in_element_bounds(element, click_pos);
+        printf("🐛 DEBUG: Click (%.1f, %.1f) in bounds: %s\n", click_pos.x, click_pos.y, in_bounds ? "YES" : "NO");
+        
+        if (in_bounds) {
+            printf("🔥 Click detected on element '%s' with handler: %s\n", 
+                   element->type_name ? element->type_name : "Unknown", onclick_handler);
+            
+            // Execute the onClick handler using the script VM
+            if (runtime->script_vm) {
+                KryonVMResult result = kryon_vm_call_function(runtime->script_vm, onclick_handler, element, event);
+                if (result == KRYON_VM_SUCCESS) {
+                    printf("✅ Successfully executed onClick handler: %s\n", onclick_handler);
+                } else {
+                    const char* error = kryon_vm_get_error(runtime->script_vm);
+                    printf("❌ Failed to execute onClick handler '%s': %s\n", 
+                           onclick_handler, error ? error : "Unknown error");
+                }
+            } else {
+                printf("⚠️  No script VM available to execute onClick handler: %s\n", onclick_handler);
+            }
+            
+            // Don't propagate click events after handling (for now)
+            return;
+        }
+    }
+    
+    // Recursively check children
+    printf("🐛 DEBUG: Checking %zu children of element '%s'\n", 
+           element->child_count, element->type_name ? element->type_name : "Unknown");
+    for (size_t i = 0; i < element->child_count; i++) {
+        if (element->children[i]) {
+            find_and_execute_onclick_handlers(runtime, element->children[i], click_pos, event);
+        }
+    }
+}
+
+static bool is_point_in_element_bounds(KryonElement *element, KryonVec2 point) {
+    if (!element) {
+        return false;
+    }
+    
+    // Get element bounds from properties
+    float posX = get_element_property_float(element, "posX", 0.0f);
+    float posY = get_element_property_float(element, "posY", 0.0f);
+    float width = get_element_property_float(element, "width", 100.0f);
+    float height = get_element_property_float(element, "height", 50.0f);
+    
+    // Check if point is within bounds
+    return (point.x >= posX && point.x <= posX + width &&
+            point.y >= posY && point.y <= posY + height);
 }

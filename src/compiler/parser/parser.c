@@ -934,12 +934,45 @@ static KryonASTNode *parse_function_definition(KryonParser *parser) {
         return func_def;
     }
     
-    // For now, we'll just skip the function body tokens
-    // In a real implementation, we might parse the code or store it as raw text
+    // Capture the function body by building the code string from tokens
     int brace_count = 1;
-    const KryonToken *start_token = peek(parser);
+    const char *code_start = peek(parser)->lexeme;
+    size_t total_length = 0;
     
+    // First pass: calculate total length needed
+    const KryonToken *current_token = peek(parser);
+    int temp_brace_count = 1;
+    size_t temp_index = parser->current_token;
+    
+    while (temp_brace_count > 0 && temp_index < parser->token_count) {
+        if (parser->tokens[temp_index].type == KRYON_TOKEN_LEFT_BRACE) {
+            temp_brace_count++;
+        } else if (parser->tokens[temp_index].type == KRYON_TOKEN_RIGHT_BRACE) {
+            temp_brace_count--;
+        }
+        
+        if (temp_brace_count > 0) {
+            total_length += parser->tokens[temp_index].lexeme_length;
+            if (temp_index + 1 < parser->token_count) {
+                // Add space between tokens
+                total_length += 1;
+            }
+        }
+        temp_index++;
+    }
+    
+    // Allocate buffer for function code
+    char *code_buffer = kryon_alloc(total_length + 1);
+    if (!code_buffer) {
+        parser_error(parser, "Failed to allocate memory for function code");
+        return func_def;
+    }
+    
+    // Second pass: build the code string
+    size_t code_pos = 0;
     while (brace_count > 0 && !at_end(parser)) {
+        const KryonToken *token = peek(parser);
+        
         if (check_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
             brace_count++;
         } else if (check_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
@@ -947,16 +980,32 @@ static KryonASTNode *parse_function_definition(KryonParser *parser) {
         }
         
         if (brace_count > 0) {
+            // Copy token lexeme to code buffer
+            memcpy(code_buffer + code_pos, token->lexeme, token->lexeme_length);
+            code_pos += token->lexeme_length;
+            
+            // Add space between tokens (except before closing punctuation)
+            if (!at_end(parser) && parser->current_token + 1 < parser->token_count) {
+                const KryonToken *next_token = &parser->tokens[parser->current_token + 1];
+                if (next_token->type != KRYON_TOKEN_RIGHT_PAREN && 
+                    next_token->type != KRYON_TOKEN_RIGHT_BRACE &&
+                    next_token->type != KRYON_TOKEN_SEMICOLON) {
+                    code_buffer[code_pos++] = ' ';
+                }
+            }
+            
             advance(parser);
         }
     }
     
+    code_buffer[code_pos] = '\0';
+    
     if (brace_count == 0) {
-        // For now, just store a placeholder
-        func_def->data.function_def.code = kryon_strdup("// Function body");
+        func_def->data.function_def.code = code_buffer;
         advance(parser); // consume final '}'
     } else {
         parser_error(parser, "Unterminated function body");
+        kryon_free(code_buffer);
     }
     
     return func_def;
@@ -1005,10 +1054,7 @@ static const KryonToken *previous(KryonParser *parser) {
 static bool at_end(KryonParser *parser) {
     bool result = parser->current_token >= parser->token_count ||
                   peek(parser)->type == KRYON_TOKEN_EOF;
-    printf("[DEBUG] at_end: current_token=%zu, token_count=%zu, peek_type=%d, result=%s\n", 
-           parser->current_token, parser->token_count, 
-           parser->current_token < parser->token_count ? peek(parser)->type : -1,
-           result ? "true" : "false");
+    // Debug removed
     return result;
 }
 

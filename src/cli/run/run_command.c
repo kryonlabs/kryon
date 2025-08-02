@@ -105,6 +105,9 @@ int run_command(int argc, char *argv[]) {
     
     if (debug) {
         printf("🐛 Debug: KRB file loaded successfully into runtime\n");
+        printf("🔍 DEBUG: Function loading completed. Exiting debug mode.\n");
+        kryon_runtime_destroy(runtime);
+        return 0;  // Exit early in debug mode to show function info
     }
     
     // Setup renderer
@@ -132,10 +135,20 @@ int run_command(int argc, char *argv[]) {
     // Execute rendering loop
     printf("🎬 Starting render loop with %s\n", renderer);
     
-    // Simple render loop for now - in future this should be event-driven
+    // Simple render loop for now - in future this should be event-driven  
     bool running = true;
     int frame_count = 0;
+    double last_time = 0.0; // TODO: Get actual time
+    
     while (running) { // Run until window is closed
+        double current_time = frame_count * 0.016666; // Approximate time for now
+        double delta_time = current_time - last_time;
+        last_time = current_time;
+        
+        // Update runtime (process events, update state)
+        kryon_runtime_update(runtime, delta_time);
+        
+        // Render frame
         if (!kryon_runtime_render(runtime)) {
             fprintf(stderr, "❌ Rendering failed at frame %d\n", frame_count);
             break;
@@ -281,9 +294,7 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
                surface.width, surface.height, surface.title);
     }
     
-    printf("🔍 DEBUG: About to call kryon_raylib_renderer_create\n");
     KryonRenderer* renderer = kryon_raylib_renderer_create(&surface);
-    printf("🔍 DEBUG: kryon_raylib_renderer_create returned: %p\n", (void*)renderer);
     
     if (!renderer) {
         fprintf(stderr, "❌ Failed to create raylib renderer\n");
@@ -297,7 +308,6 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
         printf("🐛 Debug: Raylib renderer created successfully\n");
     }
     
-    printf("🔍 DEBUG: About to return renderer from create_raylib_renderer\n");
     return renderer;
 #else
     fprintf(stderr, "❌ RAYLIB NOT AVAILABLE\n");
