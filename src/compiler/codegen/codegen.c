@@ -35,7 +35,9 @@ static bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode 
 static bool write_style_node(KryonCodeGenerator *codegen, const KryonASTNode *style);
 static bool write_theme_node(KryonCodeGenerator *codegen, const KryonASTNode *theme);
 static bool write_variable_node(KryonCodeGenerator *codegen, const KryonASTNode *variable);
+static bool write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode *variable);
 static bool write_function_node(KryonCodeGenerator *codegen, const KryonASTNode *function);
+static bool write_component_node(KryonCodeGenerator *codegen, const KryonASTNode *component);
 static bool write_metadata_node(KryonCodeGenerator *codegen, const KryonASTNode *metadata);
 static bool write_value_node(KryonCodeGenerator *codegen, const KryonASTValue *value);
 static bool write_property_value_node(KryonCodeGenerator *codegen, const KryonASTValue *value, uint16_t property_hex);
@@ -471,9 +473,18 @@ static bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode 
     if (property->data.property.value) {
         if (property->data.property.value->type == KRYON_AST_LITERAL) {
             return write_property_value_node(codegen, &property->data.property.value->data.literal.value, property_hex);
+        } else if (property->data.property.value->type == KRYON_AST_VARIABLE) {
+            // Handle variable references as string values
+            KryonASTValue var_value;
+            var_value.type = KRYON_VALUE_STRING;
+            // Create a variable reference string like "$counterValue"  
+            static char var_ref[256];
+            snprintf(var_ref, sizeof(var_ref), "$%s", property->data.property.value->data.variable.name);
+            var_value.data.string_value = var_ref;
+            return write_property_value_node(codegen, &var_value, property_hex);
         } else {
-            // For now, only handle literals
-            codegen_error(codegen, "Non-literal property values not yet supported");
+            // For now, only handle literals and variables
+            codegen_error(codegen, "Non-literal/non-variable property values not yet supported");
             return false;
         }
     }
@@ -548,8 +559,27 @@ static bool write_variable_node(KryonCodeGenerator *codegen, const KryonASTNode 
         return false;
     }
     
-    // Write variable header
-    if (!write_uint32(codegen, 0x56415253)) { // "VARS"
+    // Check if this is a variables block (contains children) or single variable
+    if (variable->data.variable_def.name && 
+        strcmp(variable->data.variable_def.name, "__variables_block__") == 0) {
+        // Handle @variables { ... } block - write all child variables
+        for (size_t i = 0; i < variable->data.element.child_count; i++) {
+            const KryonASTNode *child_var = variable->data.element.children[i];
+            if (child_var && child_var->type == KRYON_AST_VARIABLE_DEFINITION) {
+                if (!write_single_variable(codegen, child_var)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    } else {
+        // Handle single @var
+        return write_single_variable(codegen, variable);
+    }
+}
+
+static bool write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode *variable) {
+    if (!variable || variable->type != KRYON_AST_VARIABLE_DEFINITION) {
         return false;
     }
     
@@ -559,22 +589,34 @@ static bool write_variable_node(KryonCodeGenerator *codegen, const KryonASTNode 
         return false;
     }
     
-    // Variable type (optional, can be NULL)
-    uint32_t type_ref = variable->data.variable_def.type ? 
-                       add_string_to_table(codegen, variable->data.variable_def.type) : 0;
-    if (!write_uint32(codegen, type_ref)) {
+    // Variable type (for now, infer from value or default to string)
+    uint8_t var_type = 0; // String by default
+    if (variable->data.variable_def.value) {
+        switch (variable->data.variable_def.value->type) {
+            case KRYON_AST_LITERAL:
+                switch (variable->data.variable_def.value->data.literal.value.type) {
+                    case KRYON_VALUE_INTEGER: var_type = 1; break;
+                    case KRYON_VALUE_FLOAT: var_type = 2; break;
+                    case KRYON_VALUE_BOOLEAN: var_type = 3; break;
+                    default: var_type = 0; break; // String
+                }
+                break;
+            default: var_type = 0; break; // String
+        }
+    }
+    if (!write_uint8(codegen, var_type)) {
         return false;
     }
     
     // Variable value
-    if (variable->data.variable_def.value) {
-        if (!write_uint8(codegen, 1)) { // Has value
+    if (variable->data.variable_def.value && variable->data.variable_def.value->type == KRYON_AST_LITERAL) {
+        return write_value_node(codegen, &variable->data.variable_def.value->data.literal.value);
+    } else {
+        // Write null value
+        if (!write_uint8(codegen, KRYON_VALUE_NULL)) {
             return false;
         }
-        // For now, serialize the variable value as an element (recursive)
-        return write_element_node(codegen, variable->data.variable_def.value);
-    } else {
-        return write_uint8(codegen, 0); // No value
+        return write_uint32(codegen, 0); // No data
     }
 }
 
@@ -677,6 +719,85 @@ static bool write_function_node(KryonCodeGenerator *codegen, const KryonASTNode 
     // Clean up bytecode string if it was allocated for hex encoding
     if (bytecode_to_store != function->data.function_def.code) {
         kryon_free((void*)bytecode_to_store);
+    }
+    
+    return true;
+}
+
+static bool write_component_node(KryonCodeGenerator *codegen, const KryonASTNode *component) {
+    if (!component || component->type != KRYON_AST_COMPONENT) {
+        return false;
+    }
+    
+    // Write component header
+    if (!write_uint32(codegen, 0x434F4D50)) { // "COMP"
+        return false;
+    }
+    
+    // Component name (as string reference)
+    uint32_t name_ref = add_string_to_table(codegen, component->data.component.name);
+    if (!write_uint32(codegen, name_ref)) {
+        return false;
+    }
+    
+    // Parameter count
+    if (!write_uint32(codegen, (uint32_t)component->data.component.parameter_count)) {
+        return false;
+    }
+    
+    // Write parameters and their defaults
+    for (size_t i = 0; i < component->data.component.parameter_count; i++) {
+        uint32_t param_ref = add_string_to_table(codegen, component->data.component.parameters[i]);
+        if (!write_uint32(codegen, param_ref)) {
+            return false;
+        }
+        
+        // Write default value (0 if no default)
+        uint32_t default_ref = 0;
+        if (component->data.component.param_defaults[i]) {
+            default_ref = add_string_to_table(codegen, component->data.component.param_defaults[i]);
+        }
+        if (!write_uint32(codegen, default_ref)) {
+            return false;
+        }
+    }
+    
+    // State variable count
+    if (!write_uint32(codegen, (uint32_t)component->data.component.state_count)) {
+        return false;
+    }
+    
+    // Write state variables
+    for (size_t i = 0; i < component->data.component.state_count; i++) {
+        if (!write_variable_node(codegen, component->data.component.state_vars[i])) {
+            return false;
+        }
+    }
+    
+    // Function count
+    if (!write_uint32(codegen, (uint32_t)component->data.component.function_count)) {
+        return false;
+    }
+    
+    // Write component functions
+    for (size_t i = 0; i < component->data.component.function_count; i++) {
+        if (!write_function_node(codegen, component->data.component.functions[i])) {
+            return false;
+        }
+    }
+    
+    // Write component body (UI tree)
+    if (component->data.component.body) {
+        if (!write_uint8(codegen, 1)) { // Has body
+            return false;
+        }
+        if (!write_element_node(codegen, component->data.component.body)) {
+            return false;
+        }
+    } else {
+        if (!write_uint8(codegen, 0)) { // No body
+            return false;
+        }
     }
     
     return true;
@@ -1023,6 +1144,9 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
                     case KRYON_AST_FUNCTION_DEFINITION:
                         // Function definitions will be written to script section
                         break;
+                    case KRYON_AST_VARIABLE_DEFINITION:
+                        // Variable definitions will be handled
+                        break;
                     default:
                         break;
                 }
@@ -1269,6 +1393,52 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
         codegen->stats.output_elements++;
     }
     
+    // Write Variables Section
+    size_t var_section_start = codegen->current_offset;
+    
+    // Count variables first
+    uint32_t total_var_count = 0;
+    if (ast_root->type == KRYON_AST_ROOT) {
+        for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
+            const KryonASTNode *child = ast_root->data.element.children[i];
+            if (child && child->type == KRYON_AST_VARIABLE_DEFINITION) {
+                if (child->data.variable_def.name && 
+                    strcmp(child->data.variable_def.name, "__variables_block__") == 0) {
+                    // Count variables in block
+                    total_var_count += child->data.element.child_count;
+                } else {
+                    // Single variable
+                    total_var_count++;
+                }
+            }
+        }
+    }
+    
+    // Write Variables section header
+    if (!write_uint32(codegen, 0x56415253)) { // "VARS" magic
+        codegen_error(codegen, "Failed to write Variables section magic");
+        return false;
+    }
+    
+    // Write variable count
+    if (!write_uint32(codegen, total_var_count)) {
+        codegen_error(codegen, "Failed to write variable count");
+        return false;
+    }
+    
+    // Write variables
+    if (ast_root->type == KRYON_AST_ROOT) {
+        for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
+            const KryonASTNode *child = ast_root->data.element.children[i];
+            if (child && child->type == KRYON_AST_VARIABLE_DEFINITION) {
+                if (!write_variable_node(codegen, child)) {
+                    codegen_error(codegen, "Failed to write variable definition");
+                    return false;
+                }
+            }
+        }
+    }
+    
     // Write Script Section (functions)
     size_t script_section_start = codegen->current_offset;
     if (!update_header_uint32(codegen, script_offset_pos, (uint32_t)script_section_start)) {
@@ -1276,13 +1446,16 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
         return false;
     }
     
-    // Count and write functions
+    // Count functions and components
     uint32_t function_count = 0;
+    uint32_t component_count = 0;
     if (ast_root->type == KRYON_AST_ROOT) {
         for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
             const KryonASTNode *child = ast_root->data.element.children[i];
             if (child && child->type == KRYON_AST_FUNCTION_DEFINITION) {
                 function_count++;
+            } else if (child && child->type == KRYON_AST_COMPONENT) {
+                component_count++;
             }
         }
     }
@@ -1328,9 +1501,10 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
         function_count++; // Add one for our test function
     }
     
-    // Write function count
-    if (!write_uint32(codegen, function_count)) {
-        codegen_error(codegen, "Failed to write function count");
+    // Write total count (functions + components)
+    uint32_t total_count = function_count + component_count;
+    if (!write_uint32(codegen, total_count)) {
+        codegen_error(codegen, "Failed to write script section count");
         return false;
     }
     
@@ -1341,6 +1515,19 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
             if (child && child->type == KRYON_AST_FUNCTION_DEFINITION) {
                 if (!write_function_node(codegen, child)) {
                     codegen_error(codegen, "Failed to write function definition");
+                    return false;
+                }
+            }
+        }
+    }
+    
+    // Write each component  
+    if (ast_root->type == KRYON_AST_ROOT) {
+        for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
+            const KryonASTNode *child = ast_root->data.element.children[i];
+            if (child && child->type == KRYON_AST_COMPONENT) {
+                if (!write_component_node(codegen, child)) {
+                    codegen_error(codegen, "Failed to write component definition");
                     return false;
                 }
             }

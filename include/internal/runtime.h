@@ -294,6 +294,12 @@ struct KryonRuntime {
     size_t function_count;        // Number of loaded functions
     size_t function_capacity;     // Function names array capacity
     
+    // Variable registry (for reactive variables)
+    char **variable_names;        // Variable names
+    char **variable_values;       // Variable values (as strings)
+    size_t variable_count;        // Number of variables
+    size_t variable_capacity;     // Variable array capacity
+    
     // Resource management
     KryonMemoryManager *memory;   // Memory manager
     
@@ -587,6 +593,23 @@ KryonRuntimeConfig kryon_runtime_dev_config(void);
  * @return Optimized production configuration
  */
 KryonRuntimeConfig kryon_runtime_prod_config(void);
+
+/**
+ * @brief Set a runtime variable value
+ * @param runtime Runtime instance
+ * @param name Variable name
+ * @param value Variable value as string
+ * @return true if successful
+ */
+bool kryon_runtime_set_variable(KryonRuntime *runtime, const char *name, const char *value);
+
+/**
+ * @brief Get a runtime variable value
+ * @param runtime Runtime instance
+ * @param name Variable name
+ * @return Variable value or NULL if not found
+ */
+const char* kryon_runtime_get_variable(KryonRuntime *runtime, const char *name);
 
 #ifdef __cplusplus
 }

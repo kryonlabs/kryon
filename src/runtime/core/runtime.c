@@ -32,6 +32,9 @@ KryonVec2 g_mouse_position = {0.0f, 0.0f};
 // Global cursor state for simple cursor management
 bool g_cursor_should_be_pointer = false;
 
+// Global runtime reference for variable resolution during rendering
+static KryonRuntime* g_current_runtime = NULL;
+
 // =============================================================================
 // FORWARD DECLARATIONS
 // =============================================================================
@@ -44,6 +47,8 @@ static void process_event_queue(KryonRuntime *runtime);
 static void find_and_execute_onclick_handlers(KryonRuntime *runtime, KryonElement *element, KryonVec2 click_pos, const KryonEvent *event);
 static bool is_point_in_element_bounds(KryonElement *element, KryonVec2 point);
 static void runtime_error(KryonRuntime *runtime, const char *format, ...);
+static const char* get_element_property_string_with_runtime(KryonRuntime* runtime, KryonElement* element, const char* prop_name);
+static const char* resolve_variable_reference(KryonRuntime* runtime, const char* value);
 
 // Element to render command conversion functions
 static void element_container_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
@@ -419,8 +424,14 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
             return false;
         }
                 
+        // Set global runtime for variable resolution during rendering
+        g_current_runtime = runtime;
+        
         // Generate render commands from element tree
         kryon_element_tree_to_render_commands(runtime->root, commands, &command_count, 256);
+        
+        // Clear global runtime after rendering
+        g_current_runtime = NULL;
         
         // Check if we have a renderer attached for actual rendering
         if (runtime->renderer) {
@@ -917,8 +928,33 @@ static KryonProperty* find_element_property(KryonElement* element, const char* p
     return NULL;
 }
 
+// Resolve variable references in string values
+static const char* resolve_variable_reference(KryonRuntime* runtime, const char* value) {
+    if (!runtime || !value || value[0] != '$') {
+        return value; // Not a variable reference
+    }
+    
+    // Extract variable name (skip the $ prefix)
+    const char* var_name = value + 1;
+    
+    // Look up variable in runtime registry
+    const char* resolved_value = kryon_runtime_get_variable(runtime, var_name);
+    if (resolved_value) {
+        printf("🔄 DEBUG: Resolved variable '$%s' to '%s'\n", var_name, resolved_value);
+        return resolved_value;
+    }
+    
+    printf("⚠️  DEBUG: Variable '$%s' not found, using literal value\n", var_name);
+    return value; // Return original if not found
+}
+
 // Get property value as string with type conversion
 static const char* get_element_property_string(KryonElement* element, const char* prop_name) {
+    return get_element_property_string_with_runtime(g_current_runtime, element, prop_name);
+}
+
+// Get property value as string with runtime for variable resolution
+static const char* get_element_property_string_with_runtime(KryonRuntime* runtime, KryonElement* element, const char* prop_name) {
     KryonProperty* prop = find_element_property(element, prop_name);
     if (!prop) return NULL;
     
@@ -930,6 +966,10 @@ static const char* get_element_property_string(KryonElement* element, const char
     
     switch (prop->type) {
         case KRYON_RUNTIME_PROP_STRING:
+            // Resolve variable references if runtime is available
+            if (runtime) {
+                return resolve_variable_reference(runtime, prop->value.string_value);
+            }
             return prop->value.string_value;
             
         case KRYON_RUNTIME_PROP_INTEGER: {
@@ -1791,4 +1831,66 @@ static bool is_point_in_element_bounds(KryonElement *element, KryonVec2 point) {
     // Check if point is within bounds
     return (point.x >= posX && point.x <= posX + width &&
             point.y >= posY && point.y <= posY + height);
+}
+
+// Variable management functions
+bool kryon_runtime_set_variable(KryonRuntime *runtime, const char *name, const char *value) {
+    if (!runtime || !name || !value) {
+        return false;
+    }
+    
+    // Initialize variable registry if needed
+    if (!runtime->variable_names) {
+        runtime->variable_names = kryon_alloc(16 * sizeof(char*));
+        runtime->variable_values = kryon_alloc(16 * sizeof(char*));
+        runtime->variable_capacity = 16;
+        runtime->variable_count = 0;
+        if (!runtime->variable_names || !runtime->variable_values) {
+            return false;
+        }
+    }
+    
+    // Look for existing variable
+    for (size_t i = 0; i < runtime->variable_count; i++) {
+        if (runtime->variable_names[i] && strcmp(runtime->variable_names[i], name) == 0) {
+            // Update existing variable
+            kryon_free(runtime->variable_values[i]);
+            runtime->variable_values[i] = kryon_alloc(strlen(value) + 1);
+            if (runtime->variable_values[i]) {
+                strcpy(runtime->variable_values[i], value);
+                return true;
+            }
+            return false;
+        }
+    }
+    
+    // Add new variable if we have space
+    if (runtime->variable_count < runtime->variable_capacity) {
+        runtime->variable_names[runtime->variable_count] = kryon_alloc(strlen(name) + 1);
+        runtime->variable_values[runtime->variable_count] = kryon_alloc(strlen(value) + 1);
+        
+        if (runtime->variable_names[runtime->variable_count] && runtime->variable_values[runtime->variable_count]) {
+            strcpy(runtime->variable_names[runtime->variable_count], name);
+            strcpy(runtime->variable_values[runtime->variable_count], value);
+            runtime->variable_count++;
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+const char* kryon_runtime_get_variable(KryonRuntime *runtime, const char *name) {
+    if (!runtime || !name || !runtime->variable_names) {
+        return NULL;
+    }
+    
+    // Look for variable
+    for (size_t i = 0; i < runtime->variable_count; i++) {
+        if (runtime->variable_names[i] && strcmp(runtime->variable_names[i], name) == 0) {
+            return runtime->variable_values[i];
+        }
+    }
+    
+    return NULL;
 }

@@ -77,6 +77,7 @@ static const char *token_type_names[] = {
     [KRYON_TOKEN_PROPS_DIRECTIVE] = "PROPS_DIRECTIVE",
     [KRYON_TOKEN_SLOTS_DIRECTIVE] = "SLOTS_DIRECTIVE",
     [KRYON_TOKEN_LIFECYCLE_DIRECTIVE] = "LIFECYCLE_DIRECTIVE",
+    [KRYON_TOKEN_STATE_DIRECTIVE] = "STATE_DIRECTIVE",
     [KRYON_TOKEN_TEMPLATE_START] = "TEMPLATE_START",
     [KRYON_TOKEN_TEMPLATE_END] = "TEMPLATE_END",
     [KRYON_TOKEN_UNIT_PX] = "UNIT_PX",
@@ -137,6 +138,7 @@ static const KeywordEntry directives[] = {
     {"props", KRYON_TOKEN_PROPS_DIRECTIVE},
     {"slots", KRYON_TOKEN_SLOTS_DIRECTIVE},
     {"lifecycle", KRYON_TOKEN_LIFECYCLE_DIRECTIVE},
+    {"state", KRYON_TOKEN_STATE_DIRECTIVE},
 };
 
 static const size_t directives_count = sizeof(directives) / sizeof(directives[0]);

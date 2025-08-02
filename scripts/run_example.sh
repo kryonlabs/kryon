@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_example.sh - Run a single Kryon example with specified renderer
 # Usage: ./run_example.sh <example_name> <renderer>
@@ -81,28 +81,12 @@ BIN_DIR="$BUILD_DIR/bin"
 
 print_status "Running Kryon example: $EXAMPLE_NAME with $RENDERER renderer"
 
-# Function to build the project
-build_project() {
-    print_status "Building project to ensure latest version..."
-    
-    # Check if build directory exists
-    if [ ! -d "$BUILD_DIR" ]; then
-        print_error "Build directory not found: $BUILD_DIR"
-        print_error "Please run cmake to configure the project first"
-        exit 1
-    fi
-    
-    # Run make in build directory
-    if ! (cd "$BUILD_DIR" && make -j$(nproc)); then
-        print_error "Failed to build project"
-        exit 1
-    fi
-    
-    print_success "Project built successfully"
-}
-
 # Always build the project to ensure we use the latest version
-build_project
+print_status "Building project to ensure latest version..."
+if ! "$SCRIPT_DIR/build.sh"; then
+    print_error "Failed to build project"
+    exit 1
+fi
 
 # Check if kryon binary exists after build
 KRYON_BIN="$BIN_DIR/kryon"

@@ -7,6 +7,7 @@
 
 #include "internal/script_vm.h"
 #include "internal/memory.h"
+#include "internal/events.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -153,7 +154,7 @@ KryonVMResult kryon_vm_load_script(KryonVM* vm, const KryonScript* script) {
     return vm->vtable->load_script(vm, script);
 }
 
-KryonVMResult kryon_vm_call_function(KryonVM* vm, const char* function_name, KryonElement* element, const struct KryonEvent* event) {
+KryonVMResult kryon_vm_call_function(KryonVM* vm, const char* function_name, KryonElement* element, const KryonEvent* event) {
     if (!vm || !vm->initialized || !vm->vtable || !vm->vtable->call_function) {
         return KRYON_VM_ERROR_INVALID_PARAM;
     }

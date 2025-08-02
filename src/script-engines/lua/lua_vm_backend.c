@@ -247,7 +247,7 @@ static KryonVMResult lua_vm_load_script(KryonVM* vm, const KryonScript* script) 
     return KRYON_VM_SUCCESS;
 }
 
-static KryonVMResult lua_vm_call_function(KryonVM* vm, const char* function_name, KryonElement* element, const struct KryonEvent* event) {
+static KryonVMResult lua_vm_call_function(KryonVM* vm, const char* function_name, KryonElement* element, const KryonEvent* event) {
     if (!vm || !vm->impl_data || !function_name) {
         return KRYON_VM_ERROR_INVALID_PARAM;
     }

@@ -15,6 +15,7 @@
 #include "internal/memory.h"
 #include "internal/binary_io.h"
 #include "internal/script_vm.h"
+#include "internal/parser.h"
 #include "../../shared/kryon_mappings.h"
 #include <string.h>
 #include <stdlib.h>
@@ -45,7 +46,7 @@ static KryonRuntimePropertyType get_runtime_property_type(const char *property_n
         strstr(property_name, "pos") || strstr(property_name, "Size") ||
         strstr(property_name, "padding") || strstr(property_name, "margin") ||
         strstr(property_name, "borderWidth") || strstr(property_name, "borderRadius") ||
-        strcmp(property_name, "fontSize") == 0) {
+        strcmp(property_name, "fontSize") == 0 || strcmp(property_name, "gap") == 0) {
         return KRYON_RUNTIME_PROP_FLOAT;
     }
     
@@ -157,6 +158,20 @@ static bool read_float_safe(const uint8_t *data, size_t *offset, size_t size, fl
 
 static bool read_uint8_safe(const uint8_t *data, size_t *offset, size_t size, uint8_t *value) {
     return kryon_read_uint8(data, offset, size, value);
+}
+
+static bool read_int64_safe(const uint8_t *data, size_t *offset, size_t size, int64_t *value) {
+    if (*offset + sizeof(int64_t) > size) return false;
+    memcpy(value, data + *offset, sizeof(int64_t));
+    *offset += sizeof(int64_t);
+    return true;
+}
+
+static bool read_double_safe(const uint8_t *data, size_t *offset, size_t size, double *value) {
+    if (*offset + sizeof(double) > size) return false;
+    memcpy(value, data + *offset, sizeof(double));
+    *offset += sizeof(double);
+    return true;
 }
 
 // =============================================================================
@@ -336,6 +351,115 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
         printf("DEBUG: Successfully loaded root element: %s\n", runtime->root->type_name ? runtime->root->type_name : "unknown");
     } else {
         printf("DEBUG: No elements found in KRB file\n");
+    }
+    
+    // Load Variables section if present (right before script section)
+    if (script_offset > 0) {
+        size_t vars_offset = script_offset;
+        
+        // Check for Variables section magic "VARS"
+        uint32_t vars_magic;
+        if (read_uint32_safe(data, &vars_offset, size, &vars_magic) && vars_magic == 0x56415253) {
+            printf("DEBUG: Loading Variables section at offset %u\n", script_offset);
+            
+            // Read variable count
+            uint32_t var_count;
+            if (!read_uint32_safe(data, &vars_offset, size, &var_count)) {
+                printf("DEBUG: Failed to read variable count\n");
+                return false;
+            }
+            
+            printf("DEBUG: Found %u variables in Variables section\n", var_count);
+            
+            // Initialize variable registry if needed
+            if (!runtime->variable_names) {
+                runtime->variable_names = kryon_alloc(var_count * sizeof(char*));
+                runtime->variable_values = kryon_alloc(var_count * sizeof(char*));
+                runtime->variable_capacity = var_count;
+                runtime->variable_count = 0;
+            }
+            
+            // Load each variable
+            for (uint32_t i = 0; i < var_count; i++) {
+                // Read variable name (string ref)
+                uint32_t name_ref;
+                if (!read_uint32_safe(data, &vars_offset, size, &name_ref)) {
+                    printf("DEBUG: Failed to read variable name ref\n");
+                    continue;
+                }
+                
+                // Read variable type
+                uint8_t var_type;
+                if (!read_uint8_safe(data, &vars_offset, size, &var_type)) {
+                    printf("DEBUG: Failed to read variable type\n");
+                    continue;
+                }
+                
+                // Read variable value based on type
+                char *var_value = NULL;
+                switch (var_type) {
+                    case 0: { // String
+                        uint8_t value_type;
+                        if (read_uint8_safe(data, &vars_offset, size, &value_type) && value_type == KRYON_VALUE_STRING) {
+                            uint32_t str_ref;
+                            if (read_uint32_safe(data, &vars_offset, size, &str_ref) && str_ref < string_count) {
+                                var_value = kryon_strdup(string_table[str_ref]);
+                            }
+                        }
+                        break;
+                    }
+                    case 1: { // Integer
+                        uint8_t value_type;
+                        int64_t int_val;
+                        if (read_uint8_safe(data, &vars_offset, size, &value_type) && 
+                            value_type == KRYON_VALUE_INTEGER &&
+                            read_int64_safe(data, &vars_offset, size, &int_val)) {
+                            var_value = kryon_alloc(32);
+                            snprintf(var_value, 32, "%lld", (long long)int_val);
+                        }
+                        break;
+                    }
+                    case 2: { // Float
+                        uint8_t value_type;
+                        double float_val;
+                        if (read_uint8_safe(data, &vars_offset, size, &value_type) && 
+                            value_type == KRYON_VALUE_FLOAT &&
+                            read_double_safe(data, &vars_offset, size, &float_val)) {
+                            var_value = kryon_alloc(32);
+                            snprintf(var_value, 32, "%.6g", float_val);
+                        }
+                        break;
+                    }
+                    case 3: { // Boolean
+                        uint8_t value_type;
+                        uint8_t bool_val;
+                        if (read_uint8_safe(data, &vars_offset, size, &value_type) && 
+                            value_type == KRYON_VALUE_BOOLEAN &&
+                            read_uint8_safe(data, &vars_offset, size, &bool_val)) {
+                            var_value = kryon_strdup(bool_val ? "true" : "false");
+                        }
+                        break;
+                    }
+                    default:
+                        // Skip unknown type
+                        vars_offset += 5; // Skip value type + 4 bytes
+                        break;
+                }
+                
+                // Add to runtime variable registry
+                if (name_ref < string_count && var_value && runtime->variable_count < runtime->variable_capacity) {
+                    runtime->variable_names[runtime->variable_count] = kryon_strdup(string_table[name_ref]);
+                    runtime->variable_values[runtime->variable_count] = var_value;
+                    runtime->variable_count++;
+                    printf("DEBUG: Loaded variable '%s' = '%s'\n", string_table[name_ref], var_value);
+                } else {
+                    kryon_free(var_value);
+                }
+            }
+            
+            // Update script_offset to point after Variables section
+            script_offset = (uint32_t)vars_offset;
+        }
     }
     
     // Load script section if present
@@ -1146,6 +1270,14 @@ static bool load_function_from_binary(KryonRuntime *runtime, const uint8_t *data
             runtime->function_names = kryon_alloc(16 * sizeof(char*));
             runtime->function_capacity = 16;
             runtime->function_count = 0;
+        }
+        
+        // Initialize variable registry if needed
+        if (!runtime->variable_names) {
+            runtime->variable_names = kryon_alloc(16 * sizeof(char*));
+            runtime->variable_values = kryon_alloc(16 * sizeof(char*));
+            runtime->variable_capacity = 16;
+            runtime->variable_count = 0;
         }
         
         if (runtime->function_count < runtime->function_capacity && name_str) {

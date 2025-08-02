@@ -27,6 +27,8 @@ static KryonASTNode *parse_style_block(KryonParser *parser);
 static KryonASTNode *parse_theme_definition(KryonParser *parser);
 static KryonASTNode *parse_variable_definition(KryonParser *parser);
 static KryonASTNode *parse_function_definition(KryonParser *parser);
+static KryonASTNode *parse_component_definition(KryonParser *parser);
+static KryonASTNode *parse_state_definition(KryonParser *parser);
 static KryonASTNode *parse_directive(KryonParser *parser);
 static KryonASTNode *parse_property(KryonParser *parser);
 static KryonASTNode *parse_expression(KryonParser *parser);
@@ -303,6 +305,9 @@ static KryonASTNode *parse_document(KryonParser *parser) {
         } else if (check_token(parser, KRYON_TOKEN_FUNCTION_DIRECTIVE)) {
             printf("[DEBUG] Parsing function definition\n");
             node = parse_function_definition(parser);
+        } else if (check_token(parser, KRYON_TOKEN_COMPONENT_DIRECTIVE)) {
+            printf("[DEBUG] Parsing component definition\n");
+            node = parse_component_definition(parser);
         } else if (kryon_token_is_directive(peek(parser)->type)) {
             printf("[DEBUG] Parsing directive\n");
             node = parse_directive(parser);
@@ -794,49 +799,102 @@ static KryonASTNode *parse_theme_definition(KryonParser *parser) {
 static KryonASTNode *parse_variable_definition(KryonParser *parser) {
     const KryonToken *directive_token = advance(parser); // consume @var or @variables
     
-    if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
-        parser_error(parser, "Expected variable name");
-        return NULL;
-    }
+    // Check if this is @variables (block syntax) or @var (single variable)
+    bool is_variables_block = (directive_token->type == KRYON_TOKEN_VARIABLES_DIRECTIVE);
     
-    const KryonToken *name_token = advance(parser);
-    
-    KryonASTNode *var_def = kryon_ast_create_node(parser, KRYON_AST_VARIABLE_DEFINITION,
-                                                 &directive_token->location);
-    if (!var_def) {
-        return NULL;
-    }
-    
-    var_def->data.variable_def.name = kryon_token_copy_lexeme(name_token);
-    var_def->data.variable_def.type = NULL;
-    var_def->data.variable_def.value = NULL;
-    
-    // Optional type annotation
-    if (check_token(parser, KRYON_TOKEN_COLON)) {
-        advance(parser); // consume ':'
+    if (is_variables_block) {
+        // Handle @variables { key: value, key2: value2 } syntax
+        if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
+            parser_error(parser, "Expected '{' after @variables");
+            return NULL;
+        }
         
+        KryonASTNode *variables_block = kryon_ast_create_node(parser, KRYON_AST_VARIABLE_DEFINITION,
+                                                             &directive_token->location);
+        if (!variables_block) {
+            return NULL;
+        }
+        
+        // Initialize as container for multiple variables
+        variables_block->data.variable_def.name = kryon_strdup("__variables_block__");
+        variables_block->data.variable_def.type = NULL;
+        variables_block->data.variable_def.value = NULL;
+        variables_block->data.element.children = NULL;
+        variables_block->data.element.child_count = 0;
+        variables_block->data.element.child_capacity = 0;
+        
+        // Parse variable definitions inside the block
+        while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !check_token(parser, KRYON_TOKEN_EOF)) {
+            if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+                parser_error(parser, "Expected variable name");
+                break;
+            }
+            
+            const KryonToken *name_token = advance(parser);
+            
+            if (!match_token(parser, KRYON_TOKEN_COLON)) {
+                parser_error(parser, "Expected ':' after variable name");
+                break;
+            }
+            
+            // Create individual variable node
+            KryonASTNode *var_node = kryon_ast_create_node(parser, KRYON_AST_VARIABLE_DEFINITION,
+                                                          &name_token->location);
+            if (var_node) {
+                var_node->data.variable_def.name = kryon_token_copy_lexeme(name_token);
+                var_node->data.variable_def.type = NULL;
+                var_node->data.variable_def.value = parse_expression(parser);
+                
+                // Add to variables block
+                if (!kryon_ast_add_child(variables_block, var_node)) {
+                    kryon_free(var_node);
+                }
+            }
+            
+            // Optional comma
+            if (check_token(parser, KRYON_TOKEN_COMMA)) {
+                advance(parser);
+            }
+        }
+        
+        if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
+            parser_error(parser, "Expected '}' after variables block");
+        }
+        
+        return variables_block;
+    } else {
+        // Handle @var key: value syntax
         if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
-            parser_error(parser, "Expected variable type");
+            parser_error(parser, "Expected variable name");
+            return NULL;
+        }
+        
+        const KryonToken *name_token = advance(parser);
+        
+        KryonASTNode *var_def = kryon_ast_create_node(parser, KRYON_AST_VARIABLE_DEFINITION,
+                                                     &directive_token->location);
+        if (!var_def) {
+            return NULL;
+        }
+        
+        var_def->data.variable_def.name = kryon_token_copy_lexeme(name_token);
+        var_def->data.variable_def.type = NULL;
+        var_def->data.variable_def.value = NULL;
+        
+        // Expect colon assignment
+        if (!match_token(parser, KRYON_TOKEN_COLON)) {
+            parser_error(parser, "Expected ':' after variable name");
             return var_def;
         }
         
-        const KryonToken *type_token = advance(parser);
-        var_def->data.variable_def.type = kryon_token_copy_lexeme(type_token);
-    }
-    
-    // Expect assignment
-    if (!match_token(parser, KRYON_TOKEN_EQUALS)) {
-        parser_error(parser, "Expected '=' after variable name");
+        // Parse variable value
+        var_def->data.variable_def.value = parse_expression(parser);
+        if (!var_def->data.variable_def.value) {
+            parser_error(parser, "Expected variable value");
+        }
+        
         return var_def;
     }
-    
-    // Parse variable value
-    var_def->data.variable_def.value = parse_expression(parser);
-    if (!var_def->data.variable_def.value) {
-        parser_error(parser, "Expected variable value");
-    }
-    
-    return var_def;
 }
 
 static KryonASTNode *parse_function_definition(KryonParser *parser) {
@@ -1009,6 +1067,188 @@ static KryonASTNode *parse_function_definition(KryonParser *parser) {
     }
     
     return func_def;
+}
+
+static KryonASTNode *parse_component_definition(KryonParser *parser) {
+    printf("[DEBUG] parse_component_definition: Starting\n");
+    const KryonToken *directive_token = advance(parser); // consume @component
+    
+    if (!check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
+        parser_error(parser, "Expected component name");
+        return NULL;
+    }
+    
+    const KryonToken *name_token = advance(parser);
+    
+    KryonASTNode *component = kryon_ast_create_node(parser, KRYON_AST_COMPONENT,
+                                                    &directive_token->location);
+    if (!component) {
+        return NULL;
+    }
+    
+    component->data.component.name = kryon_token_copy_lexeme(name_token);
+    component->data.component.parameters = NULL;
+    component->data.component.param_defaults = NULL;
+    component->data.component.parameter_count = 0;
+    component->data.component.state_vars = NULL;
+    component->data.component.state_count = 0;
+    component->data.component.functions = NULL;
+    component->data.component.function_count = 0;
+    component->data.component.body = NULL;
+    
+    // Parse parameter list if present
+    if (match_token(parser, KRYON_TOKEN_LEFT_PAREN)) {
+        while (!check_token(parser, KRYON_TOKEN_RIGHT_PAREN) && !at_end(parser)) {
+            if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+                parser_error(parser, "Expected parameter name");
+                break;
+            }
+            
+            const KryonToken *param_token = advance(parser);
+            
+            // Expand parameters arrays
+            size_t new_count = component->data.component.parameter_count + 1;
+            char **new_params = realloc(component->data.component.parameters,
+                                       new_count * sizeof(char*));
+            char **new_defaults = realloc(component->data.component.param_defaults,
+                                         new_count * sizeof(char*));
+            if (!new_params || !new_defaults) {
+                parser_error(parser, "Failed to allocate component parameters");
+                break;
+            }
+            
+            component->data.component.parameters = new_params;
+            component->data.component.param_defaults = new_defaults;
+            component->data.component.parameters[component->data.component.parameter_count] = 
+                kryon_token_copy_lexeme(param_token);
+            
+            // Check for default value
+            if (match_token(parser, KRYON_TOKEN_COLON)) {
+                // Parse default value
+                const KryonToken *default_token = peek(parser);
+                if (default_token) {
+                    advance(parser);
+                    component->data.component.param_defaults[component->data.component.parameter_count] = 
+                        kryon_token_copy_lexeme(default_token);
+                } else {
+                    component->data.component.param_defaults[component->data.component.parameter_count] = NULL;
+                }
+            } else {
+                component->data.component.param_defaults[component->data.component.parameter_count] = NULL;
+            }
+            
+            component->data.component.parameter_count = new_count;
+            
+            if (check_token(parser, KRYON_TOKEN_COMMA)) {
+                advance(parser); // consume comma
+            }
+        }
+        
+        if (!match_token(parser, KRYON_TOKEN_RIGHT_PAREN)) {
+            parser_error(parser, "Expected ')' after component parameters");
+        }
+    }
+    
+    // Parse component body
+    if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
+        parser_error(parser, "Expected '{' before component body");
+        return component;
+    }
+    
+    // Parse component contents (state variables, functions, and UI)
+    while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
+        if (check_token(parser, KRYON_TOKEN_STATE_DIRECTIVE)) {
+            // Parse @state variable
+            KryonASTNode *state_var = parse_state_definition(parser);
+            if (state_var) {
+                // Add to state vars array
+                size_t new_count = component->data.component.state_count + 1;
+                KryonASTNode **new_states = realloc(component->data.component.state_vars,
+                                                   new_count * sizeof(KryonASTNode*));
+                if (new_states) {
+                    component->data.component.state_vars = new_states;
+                    component->data.component.state_vars[component->data.component.state_count] = state_var;
+                    component->data.component.state_count = new_count;
+                }
+            }
+        } else if (check_token(parser, KRYON_TOKEN_FUNCTION_DIRECTIVE)) {
+            // Parse component function
+            KryonASTNode *func = parse_function_definition(parser);
+            if (func) {
+                // Add to functions array
+                size_t new_count = component->data.component.function_count + 1;
+                KryonASTNode **new_funcs = realloc(component->data.component.functions,
+                                                  new_count * sizeof(KryonASTNode*));
+                if (new_funcs) {
+                    component->data.component.functions = new_funcs;
+                    component->data.component.functions[component->data.component.function_count] = func;
+                    component->data.component.function_count = new_count;
+                }
+            }
+        } else if (check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
+            // Parse the UI body (single root element)
+            if (!component->data.component.body) {
+                component->data.component.body = parse_element(parser);
+            } else {
+                parser_error(parser, "Component can only have one root UI element");
+                advance(parser);
+            }
+        } else {
+            parser_error(parser, "Unexpected token in component body");
+            advance(parser);
+        }
+    }
+    
+    if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
+        parser_error(parser, "Expected '}' after component body");
+    }
+    
+    printf("[DEBUG] parse_component_definition: Created component '%s' with %zu parameters, %zu state vars, %zu functions\n",
+           component->data.component.name, 
+           component->data.component.parameter_count,
+           component->data.component.state_count,
+           component->data.component.function_count);
+    
+    return component;
+}
+
+static KryonASTNode *parse_state_definition(KryonParser *parser) {
+    printf("[DEBUG] parse_state_definition: Starting\n");
+    const KryonToken *directive_token = advance(parser); // consume @state
+    
+    if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+        parser_error(parser, "Expected state variable name");
+        return NULL;
+    }
+    
+    const KryonToken *name_token = advance(parser);
+    
+    KryonASTNode *state_def = kryon_ast_create_node(parser, KRYON_AST_STATE_DEFINITION,
+                                                    &directive_token->location);
+    if (!state_def) {
+        return NULL;
+    }
+    
+    state_def->data.variable_def.name = kryon_token_copy_lexeme(name_token);
+    state_def->data.variable_def.type = NULL;
+    state_def->data.variable_def.value = NULL;
+    
+    // Expect colon assignment
+    if (!match_token(parser, KRYON_TOKEN_COLON)) {
+        parser_error(parser, "Expected ':' after state variable name");
+        return state_def;
+    }
+    
+    // Parse state variable value (could be literal or reference to parameter)
+    state_def->data.variable_def.value = parse_expression(parser);
+    if (!state_def->data.variable_def.value) {
+        parser_error(parser, "Expected state variable value");
+    }
+    
+    printf("[DEBUG] parse_state_definition: Created state variable '%s'\n", 
+           state_def->data.variable_def.name);
+    
+    return state_def;
 }
 
 // =============================================================================

@@ -1,0 +1,44 @@
+// Define a reusable Counter component
+@component Counter(initialValue: 0) {
+    // '@state' indicates this is a reactive variable *for this component instance*
+    @state value: initialValue
+
+    @function "lua" increment() {
+        // 'self' refers to this component's state
+        self.value = self.value + 1
+    }
+
+    @function "lua" decrement() {
+        self.value = self.value - 1
+    }
+
+    // The UI for this component
+    Row {
+        mainAxisAlignment: "center"
+        gap: 10
+
+        Button { text: "-", onClick: "decrement" }
+        Text { text: $value, fontSize: 32 } // Binds to the component's state
+        Button { text: "+", onClick: "increment" }
+    }
+}
+
+// --- Now, use your component in the main App ---
+App {
+    windowWidth: 400
+    windowHeight: 200
+    windowTitle: "Counters"
+
+    Center {
+        Column {
+            mainAxisAlignment: "center"
+            gap: 20
+
+            // Create an instance of your Counter component
+            Counter { initialValue: 5 }
+
+            // Create another, completely independent instance
+            Counter { } // Uses the default initialValue of 0
+        }
+    }
+}

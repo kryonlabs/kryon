@@ -105,9 +105,6 @@ int run_command(int argc, char *argv[]) {
     
     if (debug) {
         printf("🐛 Debug: KRB file loaded successfully into runtime\n");
-        printf("🔍 DEBUG: Function loading completed. Exiting debug mode.\n");
-        kryon_runtime_destroy(runtime);
-        return 0;  // Exit early in debug mode to show function info
     }
     
     // Setup renderer
@@ -155,11 +152,23 @@ int run_command(int argc, char *argv[]) {
         }
         frame_count++;
         
+        // Exit after a reasonable number of frames for text renderer or testing
+        if (strcmp(renderer, "text") == 0 && frame_count >= 60) {
+            printf("📝 Text renderer: completed %d frames\n", frame_count);
+            break;
+        }
+        
+        // For raylib, check if window should close
+        if (strcmp(renderer, "raylib") == 0) {
+            // The raylib renderer should set runtime->is_running = false when window closes
+            if (!runtime->is_running) {
+                printf("🔲 Window closed by user\n");
+                break;
+            }
+        }
+        
         // Basic frame limiting (should be handled by renderer)
         usleep(16666); // ~60fps
-        
-        // Check for window close events from raylib renderer
-        // For now, we'll rely on the renderer to handle this via kryon_runtime_render failures
     }
     
     printf("✅ Rendering completed successfully with %s (%d frames)\n", renderer, frame_count);

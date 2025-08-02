@@ -23,7 +23,7 @@ typedef struct KryonVMConfig KryonVMConfig;
 typedef struct KryonScript KryonScript;
 
 // Include events.h to get KryonEvent definition
-struct KryonEvent;  // Forward declare only to avoid circular dependencies
+#include "internal/events.h"
 
 // =============================================================================
 // VM TYPES AND ENUMS
@@ -108,7 +108,7 @@ typedef struct KryonVMInterface {
     KryonVMResult (*load_script)(KryonVM* vm, const KryonScript* script);
     
     // Script Execution
-    KryonVMResult (*call_function)(KryonVM* vm, const char* function_name, KryonElement* element, const struct KryonEvent* event);
+    KryonVMResult (*call_function)(KryonVM* vm, const char* function_name, KryonElement* element, const KryonEvent* event);
     KryonVMResult (*execute_string)(KryonVM* vm, const char* code);
     
     // State Management
@@ -192,7 +192,7 @@ KryonVMResult kryon_vm_load_script(KryonVM* vm, const KryonScript* script);
  * @param event Event context (optional)
  * @return KRYON_VM_SUCCESS on success
  */
-KryonVMResult kryon_vm_call_function(KryonVM* vm, const char* function_name, KryonElement* element, const struct KryonEvent* event);
+KryonVMResult kryon_vm_call_function(KryonVM* vm, const char* function_name, KryonElement* element, const KryonEvent* event);
 
 /**
  * @brief Execute code string directly

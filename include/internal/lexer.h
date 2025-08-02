@@ -112,6 +112,7 @@ typedef enum {
     KRYON_TOKEN_PROPS_DIRECTIVE,     // @props
     KRYON_TOKEN_SLOTS_DIRECTIVE,     // @slots
     KRYON_TOKEN_LIFECYCLE_DIRECTIVE, // @lifecycle
+    KRYON_TOKEN_STATE_DIRECTIVE,     // @state
     
     // Template interpolation
     KRYON_TOKEN_TEMPLATE_START,      // ${

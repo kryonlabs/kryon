@@ -50,6 +50,7 @@ typedef enum {
     KRYON_AST_THEME_DEFINITION,      // @theme groupName { ... }
     KRYON_AST_VARIABLE_DEFINITION,   // @var name = value
     KRYON_AST_FUNCTION_DEFINITION,   // @function language name() { ... }
+    KRYON_AST_STATE_DEFINITION,      // @state name: value
     
     // Directives
     KRYON_AST_STORE_DIRECTIVE,       // @store
@@ -247,6 +248,18 @@ struct KryonASTNode {
             KryonASTNode *value;     // Variable value
             char *type;              // Variable type (String, Int, Boolean, etc.)
         } variable_def;
+        
+        struct {
+            char *name;              // Component name
+            char **parameters;       // Component parameters (e.g., initialValue)
+            char **param_defaults;   // Parameter default values
+            size_t parameter_count;  // Number of parameters
+            KryonASTNode **state_vars; // @state variables
+            size_t state_count;      // Number of state variables
+            KryonASTNode **functions; // Component functions
+            size_t function_count;   // Number of functions
+            KryonASTNode *body;      // Component body (UI elements)
+        } component;
     } data;
     
     // Metadata

@@ -199,6 +199,13 @@ static KryonRenderResult raylib_end_frame(KryonRenderContext* context) {
     // End drawing and present
     EndDrawing();
     
+    // Check if window should close
+    if (WindowShouldClose()) {
+        printf("🔲 Window close requested\n");
+        free(context);
+        return KRYON_RENDER_ERROR_WINDOW_CLOSED;  // Signal window closed
+    }
+    
     free(context);
     return KRYON_RENDER_SUCCESS;
 }
