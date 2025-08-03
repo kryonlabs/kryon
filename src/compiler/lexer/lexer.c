@@ -78,6 +78,9 @@ static const char *token_type_names[] = {
     [KRYON_TOKEN_SLOTS_DIRECTIVE] = "SLOTS_DIRECTIVE",
     [KRYON_TOKEN_LIFECYCLE_DIRECTIVE] = "LIFECYCLE_DIRECTIVE",
     [KRYON_TOKEN_STATE_DIRECTIVE] = "STATE_DIRECTIVE",
+    [KRYON_TOKEN_CONST_DIRECTIVE] = "CONST_DIRECTIVE",
+    [KRYON_TOKEN_CONST_FOR_DIRECTIVE] = "CONST_FOR_DIRECTIVE",
+    [KRYON_TOKEN_IN_KEYWORD] = "IN_KEYWORD",
     [KRYON_TOKEN_TEMPLATE_START] = "TEMPLATE_START",
     [KRYON_TOKEN_TEMPLATE_END] = "TEMPLATE_END",
     [KRYON_TOKEN_UNIT_PX] = "UNIT_PX",
@@ -106,6 +109,7 @@ static const KeywordEntry keywords[] = {
     {"null", KRYON_TOKEN_NULL},
     {"style", KRYON_TOKEN_STYLE_KEYWORD},
     {"extends", KRYON_TOKEN_EXTENDS_KEYWORD},
+    {"in", KRYON_TOKEN_IN_KEYWORD},
     {"px", KRYON_TOKEN_UNIT_PX},
     {"%", KRYON_TOKEN_UNIT_PERCENT},
     {"em", KRYON_TOKEN_UNIT_EM},
@@ -139,6 +143,8 @@ static const KeywordEntry directives[] = {
     {"slots", KRYON_TOKEN_SLOTS_DIRECTIVE},
     {"lifecycle", KRYON_TOKEN_LIFECYCLE_DIRECTIVE},
     {"state", KRYON_TOKEN_STATE_DIRECTIVE},
+    {"const", KRYON_TOKEN_CONST_DIRECTIVE},
+    {"const_for", KRYON_TOKEN_CONST_FOR_DIRECTIVE},
 };
 
 static const size_t directives_count = sizeof(directives) / sizeof(directives[0]);
@@ -580,7 +586,37 @@ static bool scan_token(KryonLexer *lexer) {
         case '+': add_token(lexer, KRYON_TOKEN_PLUS); break;
         case '-': add_token(lexer, KRYON_TOKEN_MINUS); break;
         case '*': add_token(lexer, KRYON_TOKEN_MULTIPLY); break;
-        case '/': add_token(lexer, KRYON_TOKEN_DIVIDE); break;
+        case '/':
+            if (match(lexer, '/')) {
+                // Line comment - skip until end of line
+                while (peek(lexer) != '\n' && !is_at_end(lexer)) {
+                    advance(lexer);
+                }
+                if (lexer->config.preserve_comments) {
+                    add_token(lexer, KRYON_TOKEN_LINE_COMMENT);
+                }
+                // If not preserving comments, just skip them (don't add token)
+            } else if (match(lexer, '*')) {
+                // Block comment - skip until */
+                while (!is_at_end(lexer)) {
+                    if (peek(lexer) == '*' && peek_next(lexer) == '/') {
+                        advance(lexer); // consume *
+                        advance(lexer); // consume /
+                        break;
+                    }
+                    if (peek(lexer) == '\n') {
+                        lexer->line++;
+                    }
+                    advance(lexer);
+                }
+                if (lexer->config.preserve_comments) {
+                    add_token(lexer, KRYON_TOKEN_BLOCK_COMMENT);
+                }
+                // If not preserving comments, just skip them (don't add token)
+            } else {
+                add_token(lexer, KRYON_TOKEN_DIVIDE);
+            }
+            break;
         case '%': add_token(lexer, KRYON_TOKEN_MODULO); break;
         case '?': add_token(lexer, KRYON_TOKEN_QUESTION); break;
         case '#': add_token(lexer, KRYON_TOKEN_HASH); break;

@@ -329,6 +329,12 @@
          .type_hint = KRYON_TYPE_HINT_BOOLEAN
      },
      {
+         .canonical = "password",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0504,
+         .type_hint = KRYON_TYPE_HINT_BOOLEAN
+     },
+     {
          .canonical = "onClick",
          .aliases = (const char*[]){"onTap", NULL},
          .hex_code = 0x0510,
@@ -368,7 +374,7 @@
      // -- Widget-Specific Properties (0x06xx) --
      {
          .canonical = "src",
-         .aliases = (const char*[]){NULL},
+         .aliases = (const char*[]){"source", NULL},
          .hex_code = 0x0600,
          .type_hint = KRYON_TYPE_HINT_STRING
      },
@@ -397,9 +403,15 @@
          .type_hint = KRYON_TYPE_HINT_STRING
      },
      {
-         .canonical = "objectFit",
+         .canonical = "value",
          .aliases = (const char*[]){NULL},
          .hex_code = 0x0605,
+         .type_hint = KRYON_TYPE_HINT_STRING
+     },
+     {
+         .canonical = "objectFit",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0610,
          .type_hint = KRYON_TYPE_HINT_STRING
      },
      {

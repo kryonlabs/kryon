@@ -86,6 +86,7 @@ static bool load_element_properties(KryonElement *element,
                                    size_t *offset,
                                    size_t size,
                                    uint32_t property_count);
+static bool load_components_section(KryonRuntime* runtime, const uint8_t* data, size_t size, size_t* offset);
 static bool load_property_value(KryonProperty *property,
                                const uint8_t *data,
                                size_t *offset,
@@ -121,12 +122,26 @@ static const char *get_element_type_name(uint16_t hex) {
 
 static const char *get_property_name(uint16_t hex) {
     // Use centralized property mappings
-    return kryon_get_property_name(hex);
+    const char *name = kryon_get_property_name(hex);
+    if (name) {
+        return name;
+    }
+    
+    // Handle custom component properties (hex >= 0x9000)
+    if (hex >= 0x9000) {
+        // For now, return a generic custom property name
+        // TODO: In the future, custom property names should be stored in the KRB file
+        static char custom_prop_name[32];
+        snprintf(custom_prop_name, sizeof(custom_prop_name), "customProp_0x%04X", hex);
+        return custom_prop_name;
+    }
+    
+    return NULL;
 }
 
 static KryonRuntimePropertyType get_property_type(uint16_t hex) {
     // Use centralized property mappings with runtime type mapping
-    const char *property_name = kryon_get_property_name(hex);
+    const char *property_name = get_property_name(hex); // Use our updated function that handles custom properties
     if (property_name) {
         return get_runtime_property_type(property_name);
     }
@@ -281,6 +296,7 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
         }
         
         size_t string_table_start = offset;
+        runtime->string_table_offset = string_table_start;
         
         // Read string count
         if (!read_uint32_safe(data, &offset, size, &string_count)) {
@@ -490,6 +506,48 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
             printf("  [%zu] %s\n", i, runtime->function_names[i]);
         }
         printf("\n");
+    }
+    
+    // Load component definitions if present
+    // Components come after the script section in KRB files
+    if (offset < size) {
+        // Check for component magic "COMP"
+        size_t comp_offset = offset;
+        uint32_t comp_magic;
+        if (read_uint32_safe(data, &comp_offset, size, &comp_magic) && comp_magic == 0x434F4D50) {
+            printf("DEBUG: Loading components section at offset %zu\n", offset);
+            
+            // Reset offset to start of components section
+            comp_offset = offset;
+            
+            // Load components until we reach the end or find non-component data
+            while (comp_offset < size) {
+                size_t section_start = comp_offset;
+                
+                // Try to load a component
+                if (!load_components_section(runtime, data, size, &comp_offset)) {
+                    // If component loading fails, we might be at the end of components
+                    // or encountering other data
+                    break;
+                }
+                
+                // Make sure we made progress
+                if (comp_offset <= section_start) {
+                    printf("DEBUG: Component loading made no progress, stopping\n");
+                    break;
+                }
+            }
+            
+            // List all loaded components for debugging
+            printf("\n🔍 DEBUG: Available components (%zu total):\n", runtime->component_count);
+            for (size_t i = 0; i < runtime->component_count; i++) {
+                printf("  [%zu] %s (%zu params, %zu state vars)\n", i, 
+                       runtime->components[i]->name,
+                       runtime->components[i]->parameter_count,
+                       runtime->components[i]->state_count);
+            }
+            printf("\n");
+        }
     }
     
     // Cleanup string table
@@ -1343,4 +1401,209 @@ static void connect_function_handlers(KryonRuntime *runtime, KryonElement *eleme
             }
         }
     }
+}
+
+// =============================================================================
+// COMPONENT LOADING
+// =============================================================================
+
+static bool load_components_section(KryonRuntime* runtime, const uint8_t* data, size_t size, size_t* offset) {
+    uint32_t comp_magic;
+    if (!read_uint32_safe(data, offset, size, &comp_magic)) {
+        return false;
+    }
+    
+    if (comp_magic != 0x434F4D50) { // "COMP"
+        return false;
+    }
+    
+    // Read component name
+    uint32_t name_ref;
+    if (!read_uint32_safe(data, offset, size, &name_ref)) {
+        return false;
+    }
+    
+    // Create component definition
+    KryonComponentDefinition* comp_def = kryon_alloc(sizeof(KryonComponentDefinition));
+    if (!comp_def) {
+        return false;
+    }
+    
+    memset(comp_def, 0, sizeof(KryonComponentDefinition));
+    
+    // Resolve component name from string table
+    const char* string_table = (const char*)(data + runtime->string_table_offset);
+    comp_def->name = kryon_strdup(string_table + name_ref);
+    
+    // Read parameter count
+    uint32_t param_count;
+    if (!read_uint32_safe(data, offset, size, &param_count)) {
+        kryon_free(comp_def->name);
+        kryon_free(comp_def);
+        return false;
+    }
+    
+    comp_def->parameter_count = param_count;
+    
+    // Allocate parameter arrays
+    if (param_count > 0) {
+        comp_def->parameters = kryon_alloc(param_count * sizeof(char*));
+        comp_def->param_defaults = kryon_alloc(param_count * sizeof(char*));
+        
+        if (!comp_def->parameters || !comp_def->param_defaults) {
+            kryon_free(comp_def->name);
+            kryon_free(comp_def->parameters);
+            kryon_free(comp_def->param_defaults);
+            kryon_free(comp_def);
+            return false;
+        }
+        
+        // Read parameters and defaults
+        for (size_t i = 0; i < param_count; i++) {
+            uint32_t param_ref, default_ref;
+            
+            if (!read_uint32_safe(data, offset, size, &param_ref) ||
+                !read_uint32_safe(data, offset, size, &default_ref)) {
+                // Cleanup on error
+                for (size_t j = 0; j < i; j++) {
+                    kryon_free(comp_def->parameters[j]);
+                    kryon_free(comp_def->param_defaults[j]);
+                }
+                kryon_free(comp_def->name);
+                kryon_free(comp_def->parameters);
+                kryon_free(comp_def->param_defaults);
+                kryon_free(comp_def);
+                return false;
+            }
+            
+            comp_def->parameters[i] = kryon_strdup(string_table + param_ref);
+            comp_def->param_defaults[i] = default_ref ? kryon_strdup(string_table + default_ref) : NULL;
+        }
+    }
+    
+    // Read state variable count
+    uint32_t state_count;
+    if (!read_uint32_safe(data, offset, size, &state_count)) {
+        // Cleanup
+        for (size_t i = 0; i < param_count; i++) {
+            kryon_free(comp_def->parameters[i]);
+            kryon_free(comp_def->param_defaults[i]);
+        }
+        kryon_free(comp_def->name);
+        kryon_free(comp_def->parameters);
+        kryon_free(comp_def->param_defaults);
+        kryon_free(comp_def);
+        return false;
+    }
+    
+    comp_def->state_count = state_count;
+    
+    // Allocate state variables array
+    if (state_count > 0) {
+        comp_def->state_vars = kryon_alloc(state_count * sizeof(KryonComponentStateVar));
+        if (!comp_def->state_vars) {
+            // Cleanup
+            for (size_t i = 0; i < param_count; i++) {
+                kryon_free(comp_def->parameters[i]);
+                kryon_free(comp_def->param_defaults[i]);
+            }
+            kryon_free(comp_def->name);
+            kryon_free(comp_def->parameters);
+            kryon_free(comp_def->param_defaults);
+            kryon_free(comp_def);
+            return false;
+        }
+        
+        // Read state variables (assuming they follow the variable format)
+        for (size_t i = 0; i < state_count; i++) {
+            uint32_t var_name_ref;
+            uint8_t var_type;
+            
+            if (!read_uint32_safe(data, offset, size, &var_name_ref) ||
+                !read_uint8_safe(data, offset, size, &var_type)) {
+                // Cleanup
+                for (size_t j = 0; j < i; j++) {
+                    kryon_free(comp_def->state_vars[j].name);
+                    kryon_free(comp_def->state_vars[j].default_value);
+                }
+                for (size_t j = 0; j < param_count; j++) {
+                    kryon_free(comp_def->parameters[j]);
+                    kryon_free(comp_def->param_defaults[j]);
+                }
+                kryon_free(comp_def->name);
+                kryon_free(comp_def->parameters);
+                kryon_free(comp_def->param_defaults);
+                kryon_free(comp_def->state_vars);
+                kryon_free(comp_def);
+                return false;
+            }
+            
+            comp_def->state_vars[i].name = kryon_strdup(string_table + var_name_ref);
+            comp_def->state_vars[i].type = var_type;
+            
+            // Read default value based on type
+            if (var_type == KRYON_VALUE_STRING) {
+                uint32_t value_ref;
+                if (!read_uint32_safe(data, offset, size, &value_ref)) {
+                    comp_def->state_vars[i].default_value = NULL;
+                } else {
+                    comp_def->state_vars[i].default_value = kryon_strdup(string_table + value_ref);
+                }
+            } else if (var_type == KRYON_VALUE_INTEGER) {
+                int64_t int_val;
+                if (!read_int64_safe(data, offset, size, &int_val)) {
+                    comp_def->state_vars[i].default_value = kryon_strdup("0");
+                } else {
+                    char int_str[32];
+                    snprintf(int_str, sizeof(int_str), "%lld", (long long)int_val);
+                    comp_def->state_vars[i].default_value = kryon_strdup(int_str);
+                }
+            } else if (var_type == KRYON_VALUE_FLOAT) {
+                double float_val;
+                if (!read_double_safe(data, offset, size, &float_val)) {
+                    comp_def->state_vars[i].default_value = kryon_strdup("0.0");
+                } else {
+                    char float_str[32];
+                    snprintf(float_str, sizeof(float_str), "%g", float_val);
+                    comp_def->state_vars[i].default_value = kryon_strdup(float_str);
+                }
+            } else {
+                comp_def->state_vars[i].default_value = kryon_strdup("");
+            }
+        }
+    }
+    
+    // Add component to runtime registry
+    if (runtime->component_count >= runtime->component_capacity) {
+        size_t new_capacity = runtime->component_capacity ? runtime->component_capacity * 2 : 4;
+        KryonComponentDefinition** new_components = kryon_realloc(runtime->components, 
+                                                                  new_capacity * sizeof(KryonComponentDefinition*));
+        if (!new_components) {
+            // Cleanup component definition
+            for (size_t i = 0; i < state_count; i++) {
+                kryon_free(comp_def->state_vars[i].name);
+                kryon_free(comp_def->state_vars[i].default_value);
+            }
+            for (size_t i = 0; i < param_count; i++) {
+                kryon_free(comp_def->parameters[i]);
+                kryon_free(comp_def->param_defaults[i]);
+            }
+            kryon_free(comp_def->name);
+            kryon_free(comp_def->parameters);
+            kryon_free(comp_def->param_defaults);
+            kryon_free(comp_def->state_vars);
+            kryon_free(comp_def);
+            return false;
+        }
+        runtime->components = new_components;
+        runtime->component_capacity = new_capacity;
+    }
+    
+    runtime->components[runtime->component_count] = comp_def;
+    runtime->component_count++;
+    
+    printf("✅ Loaded component definition: %s (%zu params, %zu state vars)\n", 
+           comp_def->name, comp_def->parameter_count, comp_def->state_count);
+    
+    return true;
 }

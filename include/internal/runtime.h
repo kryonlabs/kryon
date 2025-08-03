@@ -37,6 +37,8 @@ typedef struct KryonProperty KryonProperty;
 typedef struct KryonStyle KryonStyle;
 typedef struct KryonState KryonState;
 typedef struct KryonRenderContext KryonRenderContext;
+typedef struct KryonComponentDefinition KryonComponentDefinition;
+typedef struct KryonComponentInstance KryonComponentInstance;
 // KryonEventSystem defined in events.h
 
 // =============================================================================
@@ -78,6 +80,71 @@ struct KryonRuntimeConfig {
     size_t max_update_fps;           // Maximum updates per second
     const char *resource_path;       // Path to resource files
     void *platform_context;          // Platform-specific context
+};
+
+// =============================================================================
+// COMPONENT SYSTEM
+// =============================================================================
+
+/**
+ * @brief Component function definition
+ */
+typedef struct {
+    char *name;                   // Function name
+    char *language;              // Language (e.g., "lua")
+    uint8_t *bytecode;           // Compiled bytecode
+    size_t bytecode_size;        // Bytecode size
+} KryonComponentFunction;
+
+/**
+ * @brief Component state variable definition
+ */
+typedef struct {
+    char *name;                  // Variable name
+    char *default_value;         // Default value as string
+    uint8_t type;                // Variable type
+} KryonComponentStateVar;
+
+/**
+ * @brief Component definition loaded from KRB
+ */
+struct KryonComponentDefinition {
+    char *name;                  // Component name
+    
+    // Parameters
+    char **parameters;           // Parameter names
+    char **param_defaults;       // Parameter default values
+    size_t parameter_count;      // Number of parameters
+    
+    // State variables
+    KryonComponentStateVar *state_vars; // State variable definitions
+    size_t state_count;          // Number of state variables
+    
+    // Functions
+    KryonComponentFunction *functions; // Function definitions
+    size_t function_count;       // Number of functions
+    
+    // UI template
+    KryonElement *ui_template;   // UI template element tree
+};
+
+/**
+ * @brief Component instance with isolated state
+ */
+struct KryonComponentInstance {
+    KryonComponentDefinition *definition; // Component definition
+    uint32_t instance_id;        // Unique instance ID
+    
+    // Instance state
+    char **state_values;         // Current state values
+    size_t state_count;          // Number of state variables
+    
+    // Parameter values
+    char **param_values;         // Parameter values for this instance
+    size_t param_count;          // Number of parameters
+    
+    // UI element tree
+    KryonElement *ui_root;       // Root element of instantiated UI
 };
 
 // =============================================================================
@@ -145,6 +212,9 @@ struct KryonElement {
     bool needs_render;               // Render dirty flag
     uint32_t render_order;           // Z-order for rendering
     void *render_data;               // Renderer-specific data
+    
+    // Component instance (if this element is a component)
+    KryonComponentInstance *component_instance; // Component instance data
 };
 
 /**
@@ -299,6 +369,14 @@ struct KryonRuntime {
     char **variable_values;       // Variable values (as strings)
     size_t variable_count;        // Number of variables
     size_t variable_capacity;     // Variable array capacity
+    
+    // Component registry
+    KryonComponentDefinition **components; // Component definitions
+    size_t component_count;       // Number of components
+    size_t component_capacity;    // Component array capacity
+    
+    // KRB loading context
+    size_t string_table_offset;   // Offset to string table in loaded KRB
     
     // Resource management
     KryonMemoryManager *memory;   // Memory manager

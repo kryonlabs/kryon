@@ -149,6 +149,33 @@ static void lua_vm_destroy(KryonVM* vm) {
     vm->impl_data = NULL;
 }
 
+// Helper structure for lua_dump writer
+typedef struct {
+    char** buffer;
+    size_t* size;
+    size_t capacity;
+} DumpData;
+
+// Writer function for lua_dump
+static int lua_dump_writer(lua_State* L, const void* p, size_t sz, void* ud) {
+    (void)L; // Unused
+    DumpData* data = (DumpData*)ud;
+    
+    // Resize buffer if needed
+    if (*data->size + sz > data->capacity) {
+        data->capacity = (*data->size + sz) * 2;
+        *data->buffer = kryon_realloc(*data->buffer, data->capacity);
+        if (!*data->buffer) {
+            return 1; // Error
+        }
+    }
+    
+    // Copy data
+    memcpy(*data->buffer + *data->size, p, sz);
+    *data->size += sz;
+    return 0;
+}
+
 static KryonVMResult lua_vm_compile(KryonVM* vm, const char* source, const char* source_name, KryonScript* out_script) {
     if (!vm || !vm->impl_data || !source || !out_script) {
         return KRYON_VM_ERROR_INVALID_PARAM;
@@ -170,35 +197,9 @@ static KryonVMResult lua_vm_compile(KryonVM* vm, const char* source, const char*
     char* buffer = NULL;
     
     // Use lua_dump to get bytecode
-    typedef struct {
-        char** buffer;
-        size_t* size;
-        size_t capacity;
-    } DumpData;
-    
     DumpData dump_data = {&buffer, &bytecode_size, 0};
     
-    // Writer function for lua_dump
-    int writer(lua_State* L, const void* p, size_t sz, void* ud) {
-        (void)L; // Unused
-        DumpData* data = (DumpData*)ud;
-        
-        // Resize buffer if needed
-        if (*data->size + sz > data->capacity) {
-            data->capacity = (*data->size + sz) * 2;
-            *data->buffer = kryon_realloc(*data->buffer, data->capacity);
-            if (!*data->buffer) {
-                return 1; // Error
-            }
-        }
-        
-        // Copy data
-        memcpy(*data->buffer + *data->size, p, sz);
-        *data->size += sz;
-        return 0;
-    }
-    
-    result = lua_dump(backend->L, writer, &dump_data, 0);
+    result = lua_dump(backend->L, lua_dump_writer, &dump_data, 0);
     lua_pop(backend->L, 1); // Remove function from stack
     
     if (result != 0) {

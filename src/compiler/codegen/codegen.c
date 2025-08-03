@@ -30,7 +30,8 @@
 // =============================================================================
 
 static bool generate_binary_from_ast(KryonCodeGenerator *codegen, const KryonASTNode *node);
-static bool write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *element);
+static bool write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *element, const KryonASTNode *ast_root);
+static KryonASTNode *expand_component_instance(const KryonASTNode *component_instance, const KryonASTNode *ast_root);
 static bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode *property);
 static bool write_style_node(KryonCodeGenerator *codegen, const KryonASTNode *style);
 static bool write_theme_node(KryonCodeGenerator *codegen, const KryonASTNode *theme);
@@ -43,7 +44,13 @@ static bool write_value_node(KryonCodeGenerator *codegen, const KryonASTValue *v
 static bool write_property_value_node(KryonCodeGenerator *codegen, const KryonASTValue *value, uint16_t property_hex);
 static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonASTNode *ast_root);
 static bool write_style_definition(KryonCodeGenerator *codegen, const KryonASTNode *style);
-static bool write_widget_instance(KryonCodeGenerator *codegen, const KryonASTNode *element);
+static bool write_widget_instance(KryonCodeGenerator *codegen, const KryonASTNode *element, const KryonASTNode *ast_root);
+static bool write_const_definition(KryonCodeGenerator *codegen, const KryonASTNode *const_def);
+static bool expand_const_for_loop(KryonCodeGenerator *codegen, const KryonASTNode *const_for, const KryonASTNode *ast_root);
+static uint32_t count_const_for_elements(const KryonASTNode *const_for);
+static bool add_constant_to_table(KryonCodeGenerator *codegen, const char *name, const KryonASTNode *value);
+static const KryonASTNode *find_constant_value(KryonCodeGenerator *codegen, const char *name);
+static KryonASTNode *substitute_template_vars(const KryonASTNode *node, const char *var_name, const KryonASTNode *var_value);
 
 static uint32_t add_string_to_table(KryonCodeGenerator *codegen, const char *str);
 static bool expand_binary_buffer(KryonCodeGenerator *codegen, size_t additional_size);
@@ -71,7 +78,7 @@ static struct {
     uint16_t hex;
 } custom_element_registry[256]; // Support up to 256 custom elements
 static size_t custom_element_count = 0;
-static uint16_t next_custom_element_hex = 0x1000; // Start custom elements at 0x1000
+static uint16_t next_custom_element_hex = 0x2000; // Start custom elements at 0x2000 to avoid conflicts
 
 // Using centralized property mappings
 
@@ -351,9 +358,40 @@ bool kryon_write_elements(KryonCodeGenerator *codegen, const KryonASTNode *ast_r
         for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
             const KryonASTNode *child = ast_root->data.element.children[i];
             if (child && (child->type == KRYON_AST_ELEMENT || child->type == KRYON_AST_EVENT_DIRECTIVE)) {
-                if (write_element_node(codegen, child)) {
+                // Check if this is a custom component instance
+                if (child->type == KRYON_AST_ELEMENT) {
+                    uint16_t element_hex = kryon_codegen_get_element_hex(child->data.element.element_type);
+                    if (element_hex >= 0x2000) {
+                        // This is a custom component - expand it
+                        printf("🔧 Expanding custom component: %s\n", child->data.element.element_type);
+                        KryonASTNode *expanded = expand_component_instance(child, ast_root);
+                        if (expanded) {
+                            if (write_element_node(codegen, expanded, ast_root)) {
+                                element_count++;
+                                codegen->stats.output_elements++;
+                                // TODO: Free expanded node memory
+                            } else {
+                                return false;
+                            }
+                        } else {
+                            printf("❌ Failed to expand component: %s\n", child->data.element.element_type);
+                            return false;
+                        }
+                        continue;
+                    }
+                }
+                
+                // Standard element - write normally
+                if (write_element_node(codegen, child, ast_root)) {
                     element_count++;
                     codegen->stats.output_elements++;
+                } else {
+                    return false;
+                }
+            } else if (child && child->type == KRYON_AST_CONST_FOR_LOOP) {
+                // Expand const_for loops inline
+                if (expand_const_for_loop(codegen, child, ast_root)) {
+                    // Element count is handled within expand_const_for_loop
                 } else {
                     return false;
                 }
@@ -374,12 +412,31 @@ bool kryon_write_elements(KryonCodeGenerator *codegen, const KryonASTNode *ast_r
     return true;
 }
 
-static bool write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *element) {
+static bool write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *element, const KryonASTNode *ast_root) {
     if (!element || (element->type != KRYON_AST_ELEMENT && element->type != KRYON_AST_EVENT_DIRECTIVE)) {
         return false;
     }
     
-    // Get element type hex code
+    // Check if this is a custom component instance that needs expansion
+    if (element->type == KRYON_AST_ELEMENT) {
+        uint16_t element_hex = kryon_codegen_get_element_hex(element->data.element.element_type);
+        printf("🔍 DEBUG: Element '%s' has hex 0x%04X\n", element->data.element.element_type, element_hex);
+        if (element_hex >= 0x2000) {
+            // This is a custom component - expand it
+            printf("🔧 Expanding custom component in recursive call: %s\n", element->data.element.element_type);
+            KryonASTNode *expanded = expand_component_instance(element, ast_root);
+            if (expanded) {
+                bool result = write_element_node(codegen, expanded, ast_root);
+                // TODO: Free expanded node memory
+                return result;
+            } else {
+                printf("❌ Failed to expand component in recursive call: %s\n", element->data.element.element_type);
+                return false;
+            }
+        }
+    }
+    
+    // Get element type hex code for standard elements
     uint16_t element_hex;
     if (element->type == KRYON_AST_EVENT_DIRECTIVE) {
         element_hex = KRYON_ELEMENT_EVENT_DIRECTIVE;
@@ -406,12 +463,15 @@ static bool write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *
         return false;
     }
     
-    // Write properties
+    // Write properties (skip for component instances - they should be expanded first)
     for (size_t i = 0; i < element->data.element.property_count; i++) {
         if (!element->data.element.properties[i]) {
             codegen_error(codegen, "Property array contains NULL pointers - parser memory allocation issue");
             return false;
         }
+        printf("🔍 DEBUG: About to process property '%s' for element '%s'\n", 
+               element->data.element.properties[i]->data.property.name,
+               element->data.element.element_type);
         if (!write_property_node(codegen, element->data.element.properties[i])) {
             return false;
         }
@@ -424,7 +484,7 @@ static bool write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *
     
     // Write child elements recursively
     for (size_t i = 0; i < element->data.element.child_count; i++) {
-        if (!write_element_node(codegen, element->data.element.children[i])) {
+        if (!write_element_node(codegen, element->data.element.children[i], ast_root)) {
             return false;
         }
     }
@@ -457,6 +517,9 @@ static bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode 
     // Get property hex code
     uint16_t property_hex = kryon_codegen_get_property_hex(property->data.property.name);
     if (property_hex == 0) {
+        // Check if this might be a component parameter (should be handled during expansion)
+        printf("⚠️  Detected unknown property '%s' - might be component parameter\n", 
+               property->data.property.name ? property->data.property.name : "NULL");
         char error_msg[256];
         snprintf(error_msg, sizeof(error_msg), "Unknown property type: '%s'", 
                 property->data.property.name ? property->data.property.name : "NULL");
@@ -482,9 +545,21 @@ static bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode 
             snprintf(var_ref, sizeof(var_ref), "$%s", property->data.property.value->data.variable.name);
             var_value.data.string_value = var_ref;
             return write_property_value_node(codegen, &var_value, property_hex);
+        } else if (property->data.property.value->type == KRYON_AST_IDENTIFIER) {
+            // Handle identifier references (component parameters) as string values
+            KryonASTValue id_value;
+            id_value.type = KRYON_VALUE_STRING;
+            // Create a variable reference string like "$paramName"  
+            static char id_ref[256];
+            snprintf(id_ref, sizeof(id_ref), "$%s", property->data.property.value->data.identifier.name);
+            id_value.data.string_value = id_ref;
+            printf("🔧 Converting identifier '%s' to variable reference '%s'\n", 
+                   property->data.property.value->data.identifier.name, id_ref);
+            return write_property_value_node(codegen, &id_value, property_hex);
         } else {
-            // For now, only handle literals and variables
-            codegen_error(codegen, "Non-literal/non-variable property values not yet supported");
+            // For now, only handle literals, variables, and identifiers
+            printf("❌ Unsupported property value type: %d\n", property->data.property.value->type);
+            codegen_error(codegen, "Non-literal/non-variable/non-identifier property values not yet supported");
             return false;
         }
     }
@@ -555,7 +630,7 @@ static bool write_theme_node(KryonCodeGenerator *codegen, const KryonASTNode *th
 }
 
 static bool write_variable_node(KryonCodeGenerator *codegen, const KryonASTNode *variable) {
-    if (!variable || variable->type != KRYON_AST_VARIABLE_DEFINITION) {
+    if (!variable || (variable->type != KRYON_AST_VARIABLE_DEFINITION && variable->type != KRYON_AST_STATE_DEFINITION)) {
         return false;
     }
     
@@ -579,7 +654,7 @@ static bool write_variable_node(KryonCodeGenerator *codegen, const KryonASTNode 
 }
 
 static bool write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode *variable) {
-    if (!variable || variable->type != KRYON_AST_VARIABLE_DEFINITION) {
+    if (!variable || (variable->type != KRYON_AST_VARIABLE_DEFINITION && variable->type != KRYON_AST_STATE_DEFINITION)) {
         return false;
     }
     
@@ -791,7 +866,7 @@ static bool write_component_node(KryonCodeGenerator *codegen, const KryonASTNode
         if (!write_uint8(codegen, 1)) { // Has body
             return false;
         }
-        if (!write_element_node(codegen, component->data.component.body)) {
+        if (!write_element_node(codegen, component->data.component.body, NULL)) {
             return false;
         }
     } else {
@@ -1147,6 +1222,13 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
                     case KRYON_AST_VARIABLE_DEFINITION:
                         // Variable definitions will be handled
                         break;
+                    case KRYON_AST_CONST_DEFINITION:
+                        // Constant definitions will be handled
+                        break;
+                    case KRYON_AST_CONST_FOR_LOOP:
+                        // Const for loops will be expanded inline
+                        element_count += count_const_for_elements(child);
+                        break;
                     default:
                         break;
                 }
@@ -1306,7 +1388,44 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
         }
     }
     
-    // Write String Table first (now includes bytecode strings)
+    // Pre-process components to add their strings to string table
+    if (ast_root->type == KRYON_AST_ROOT) {
+        for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
+            const KryonASTNode *child = ast_root->data.element.children[i];
+            if (child && child->type == KRYON_AST_COMPONENT) {
+                printf("🔍 DEBUG: Pre-processing component '%s' for string table\n", 
+                       child->data.component.name ? child->data.component.name : "(unnamed)");
+                
+                // Add component name to string table
+                if (child->data.component.name) {
+                    add_string_to_table(codegen, child->data.component.name);
+                }
+                
+                // Add parameter names and defaults to string table
+                for (size_t j = 0; j < child->data.component.parameter_count; j++) {
+                    if (child->data.component.parameters[j]) {
+                        add_string_to_table(codegen, child->data.component.parameters[j]);
+                    }
+                    if (child->data.component.param_defaults[j]) {
+                        add_string_to_table(codegen, child->data.component.param_defaults[j]);
+                    }
+                }
+                
+                // Add state variable names to string table
+                for (size_t j = 0; j < child->data.component.state_count; j++) {
+                    if (child->data.component.state_vars[j] && 
+                        child->data.component.state_vars[j]->data.variable_def.name) {
+                        add_string_to_table(codegen, child->data.component.state_vars[j]->data.variable_def.name);
+                    }
+                }
+                
+                printf("✅ Pre-added component '%s' strings to string table\n", 
+                       child->data.component.name ? child->data.component.name : "(unnamed)");
+            }
+        }
+    }
+    
+    // Write String Table first (now includes bytecode and component strings)
     size_t string_table_start = codegen->current_offset;
     if (!kryon_write_string_table(codegen)) {
         return false;
@@ -1377,16 +1496,22 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
         for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
             const KryonASTNode *child = ast_root->data.element.children[i];
             if (child && child->type == KRYON_AST_ELEMENT) {
-                if (!write_widget_instance(codegen, child)) {
+                if (!write_widget_instance(codegen, child, ast_root)) {
                     codegen_error(codegen, "Failed to write widget instance");
                     return false;
                 }
                 codegen->stats.output_elements++;
+            } else if (child && child->type == KRYON_AST_CONST_FOR_LOOP) {
+                // Expand const_for loops inline
+                if (!expand_const_for_loop(codegen, child, ast_root)) {
+                    codegen_error(codegen, "Failed to expand const_for loop");
+                    return false;
+                }
             }
         }
     } else if (ast_root->type == KRYON_AST_ELEMENT) {
         // Handle case where AST root is directly an element (e.g., App)
-        if (!write_widget_instance(codegen, ast_root)) {
+        if (!write_widget_instance(codegen, ast_root, ast_root)) {
             codegen_error(codegen, "Failed to write root widget instance");
             return false;
         }
@@ -1424,6 +1549,19 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
     if (!write_uint32(codegen, total_var_count)) {
         codegen_error(codegen, "Failed to write variable count");
         return false;
+    }
+    
+    // Process constants first (they need to be available for const_for loops)
+    if (ast_root->type == KRYON_AST_ROOT) {
+        for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
+            const KryonASTNode *child = ast_root->data.element.children[i];
+            if (child && child->type == KRYON_AST_CONST_DEFINITION) {
+                if (!write_const_definition(codegen, child)) {
+                    codegen_error(codegen, "Failed to process constant definition");
+                    return false;
+                }
+            }
+        }
     }
     
     // Write variables
@@ -1501,10 +1639,9 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
         function_count++; // Add one for our test function
     }
     
-    // Write total count (functions + components)
-    uint32_t total_count = function_count + component_count;
-    if (!write_uint32(codegen, total_count)) {
-        codegen_error(codegen, "Failed to write script section count");
+    // Write function count only (components are written separately)
+    if (!write_uint32(codegen, function_count)) {
+        codegen_error(codegen, "Failed to write function count");
         return false;
     }
     
@@ -1521,18 +1658,7 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
         }
     }
     
-    // Write each component  
-    if (ast_root->type == KRYON_AST_ROOT) {
-        for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
-            const KryonASTNode *child = ast_root->data.element.children[i];
-            if (child && child->type == KRYON_AST_COMPONENT) {
-                if (!write_component_node(codegen, child)) {
-                    codegen_error(codegen, "Failed to write component definition");
-                    return false;
-                }
-            }
-        }
-    }
+    // Components will be written after all script sections are complete
     
     // TEMPORARY: Write test Lua function if we detected onClick
     if (has_onclick) {
@@ -1622,6 +1748,19 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
         printf("DEBUG: Successfully wrote Lua function to KRB\n");
     }
     
+    // Write components after all script sections are complete
+    if (ast_root->type == KRYON_AST_ROOT) {
+        for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
+            const KryonASTNode *child = ast_root->data.element.children[i];
+            if (child && child->type == KRYON_AST_COMPONENT) {
+                if (!write_component_node(codegen, child)) {
+                    codegen_error(codegen, "Failed to write component definition");
+                    return false;
+                }
+            }
+        }
+    }
+    
     // Update data size in header
     size_t total_data_size = codegen->current_offset;
     if (!update_header_uint32(codegen, data_size_offset, (uint32_t)total_data_size)) {
@@ -1686,9 +1825,39 @@ static bool write_style_definition(KryonCodeGenerator *codegen, const KryonASTNo
     return true;
 }
 
-static bool write_widget_instance(KryonCodeGenerator *codegen, const KryonASTNode *element) {
-    if (!element || element->type != KRYON_AST_ELEMENT) {
+static bool write_widget_instance(KryonCodeGenerator *codegen, const KryonASTNode *element, const KryonASTNode *ast_root) {
+    if (!element) {
         return false;
+    }
+    
+    // Handle const_for loops by expanding them
+    if (element->type == KRYON_AST_CONST_FOR_LOOP) {
+        return expand_const_for_loop(codegen, element, ast_root);
+    }
+    
+    if (element->type != KRYON_AST_ELEMENT) {
+        return false;
+    }
+    
+    // Check if this is a custom component instance that needs expansion
+    uint16_t element_hex = kryon_codegen_get_element_hex(element->data.element.element_type);
+    printf("🔍 DEBUG: write_widget_instance - Element '%s' has hex 0x%04X\n", 
+           element->data.element.element_type, element_hex);
+           
+    if (element_hex >= 0x2000) {
+        // This is a custom component - expand it
+        printf("🔧 Expanding custom component in write_widget_instance: %s\n", element->data.element.element_type);
+        
+        KryonASTNode *expanded = expand_component_instance(element, ast_root);
+        if (expanded) {
+            // Write the expanded component body
+            bool result = write_widget_instance(codegen, expanded, ast_root);
+            // TODO: Free expanded node memory if we implement proper cloning
+            return result;
+        } else {
+            printf("❌ Failed to expand component in write_widget_instance: %s\n", element->data.element.element_type);
+            return false;
+        }
     }
     
     // Widget Instance Structure as per KRB v0.1 spec:
@@ -1739,7 +1908,7 @@ static bool write_widget_instance(KryonCodeGenerator *codegen, const KryonASTNod
     
     // Write child instances recursively
     for (size_t i = 0; i < element->data.element.child_count; i++) {
-        if (!write_widget_instance(codegen, element->data.element.children[i])) {
+        if (!write_widget_instance(codegen, element->data.element.children[i], ast_root)) {
             return false;
         }
     }
@@ -1896,4 +2065,577 @@ static uint32_t count_properties_recursive(const KryonASTNode *node) {
     }
     
     return count;
+}
+
+// =============================================================================
+// COMPONENT EXPANSION
+// =============================================================================
+
+static KryonASTNode *find_component_definition(const char *component_name, const KryonASTNode *ast_root) {
+    if (!component_name || !ast_root) return NULL;
+    
+    // Search through all children in the AST root
+    for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
+        const KryonASTNode *child = ast_root->data.element.children[i];
+        if (child && child->type == KRYON_AST_COMPONENT) {
+            if (child->data.component.name && strcmp(child->data.component.name, component_name) == 0) {
+                return (KryonASTNode*)child; // Found the component definition
+            }
+        }
+    }
+    
+    return NULL; // Component not found
+}
+
+// Parameter substitution context
+typedef struct {
+    const char *param_name;
+    const KryonASTNode *param_value;
+} ParamSubstitution;
+
+typedef struct {
+    ParamSubstitution *substitutions;
+    size_t count;
+    size_t capacity;
+} ParamContext;
+
+// Forward declarations
+static KryonASTNode *clone_and_substitute_node(const KryonASTNode *original, const ParamContext *params);
+static KryonASTNode *create_minimal_ast_node(KryonASTNodeType type);
+
+static KryonASTNode *clone_ast_node(const KryonASTNode *original) {
+    if (!original) return NULL;
+    
+    // For component nodes, return the body for expansion
+    if (original->type == KRYON_AST_COMPONENT && original->data.component.body) {
+        // Clone without substitution for now
+        return clone_and_substitute_node(original->data.component.body, NULL);
+    }
+    
+    return NULL;
+}
+
+// Create a minimal AST node without parser
+static KryonASTNode *create_minimal_ast_node(KryonASTNodeType type) {
+    KryonASTNode *node = calloc(1, sizeof(KryonASTNode));
+    if (!node) return NULL;
+    
+    node->type = type;
+    // Initialize arrays based on type
+    switch (type) {
+        case KRYON_AST_ELEMENT:
+            node->data.element.children = NULL;
+            node->data.element.child_count = 0;
+            node->data.element.child_capacity = 0;
+            node->data.element.properties = NULL;
+            node->data.element.property_count = 0;
+            node->data.element.property_capacity = 0;
+            break;
+        default:
+            break;
+    }
+    return node;
+}
+
+// Add child to element node
+static bool add_child_to_node(KryonASTNode *parent, KryonASTNode *child) {
+    if (!parent || !child || parent->type != KRYON_AST_ELEMENT) return false;
+    
+    // Grow array if needed
+    if (parent->data.element.child_count >= parent->data.element.child_capacity) {
+        size_t new_capacity = parent->data.element.child_capacity == 0 ? 4 : parent->data.element.child_capacity * 2;
+        KryonASTNode **new_children = realloc(parent->data.element.children, 
+                                            new_capacity * sizeof(KryonASTNode*));
+        if (!new_children) return false;
+        parent->data.element.children = new_children;
+        parent->data.element.child_capacity = new_capacity;
+    }
+    
+    parent->data.element.children[parent->data.element.child_count++] = child;
+    child->parent = parent;
+    return true;
+}
+
+// Add property to element node
+static bool add_property_to_node(KryonASTNode *parent, KryonASTNode *property) {
+    if (!parent || !property || parent->type != KRYON_AST_ELEMENT) return false;
+    
+    // Grow array if needed
+    if (parent->data.element.property_count >= parent->data.element.property_capacity) {
+        size_t new_capacity = parent->data.element.property_capacity == 0 ? 4 : parent->data.element.property_capacity * 2;
+        KryonASTNode **new_properties = realloc(parent->data.element.properties, 
+                                               new_capacity * sizeof(KryonASTNode*));
+        if (!new_properties) return false;
+        parent->data.element.properties = new_properties;
+        parent->data.element.property_capacity = new_capacity;
+    }
+    
+    parent->data.element.properties[parent->data.element.property_count++] = property;
+    property->parent = parent;
+    return true;
+}
+
+// Find parameter value in context
+static const KryonASTNode *find_param_value(const ParamContext *params, const char *param_name) {
+    if (!params || !param_name) return NULL;
+    
+    for (size_t i = 0; i < params->count; i++) {
+        if (strcmp(params->substitutions[i].param_name, param_name) == 0) {
+            return params->substitutions[i].param_value;
+        }
+    }
+    return NULL;
+}
+
+// Clone and substitute AST node
+static KryonASTNode *clone_and_substitute_node(const KryonASTNode *original, const ParamContext *params) {
+    if (!original) return NULL;
+    
+    const char* type_names[] = {
+        "ROOT", "ELEMENT", "PROPERTY", "STYLE_BLOCK", "STYLES_BLOCK", "THEME_DEFINITION",
+        "VARIABLE_DEFINITION", "FUNCTION_DEFINITION", "STATE_DEFINITION", "STORE_DIRECTIVE",
+        "WATCH_DIRECTIVE", "ON_MOUNT_DIRECTIVE", "ON_UNMOUNT_DIRECTIVE", "IMPORT_DIRECTIVE",
+        "EXPORT_DIRECTIVE", "INCLUDE_DIRECTIVE", "METADATA_DIRECTIVE", "EVENT_DIRECTIVE",
+        "COMPONENT", "PROPS", "SLOTS", "LIFECYCLE", "DEFINE", "PROPERTIES", "SCRIPT",
+        "LITERAL", "VARIABLE", "IDENTIFIER", "TEMPLATE", "BINARY_OP", "UNARY_OP",
+        "FUNCTION_CALL", "MEMBER_ACCESS", "ARRAY_ACCESS", "ERROR"
+    };
+    printf("🔧 DEBUG: Cloning node type %d (%s)\n", original->type, 
+           original->type < 35 ? type_names[original->type] : "UNKNOWN");
+    
+    KryonASTNode *cloned = create_minimal_ast_node(original->type);
+    if (!cloned) return NULL;
+    
+    cloned->location = original->location;
+    
+    switch (original->type) {
+        case KRYON_AST_ELEMENT:
+            // Clone element type name
+            if (original->data.element.element_type) {
+                cloned->data.element.element_type = strdup(original->data.element.element_type);
+            }
+            
+            // Clone properties
+            for (size_t i = 0; i < original->data.element.property_count; i++) {
+                KryonASTNode *prop_clone = clone_and_substitute_node(original->data.element.properties[i], params);
+                if (prop_clone) {
+                    add_property_to_node(cloned, prop_clone);
+                }
+            }
+            
+            // Clone children
+            for (size_t i = 0; i < original->data.element.child_count; i++) {
+                KryonASTNode *child_clone = clone_and_substitute_node(original->data.element.children[i], params);
+                if (child_clone) {
+                    add_child_to_node(cloned, child_clone);
+                }
+            }
+            break;
+            
+        case KRYON_AST_PROPERTY:
+            // Clone property name and value
+            if (original->data.property.name) {
+                cloned->data.property.name = strdup(original->data.property.name);
+            }
+            if (original->data.property.value) {
+                cloned->data.property.value = clone_and_substitute_node(original->data.property.value, params);
+            }
+            break;
+            
+        case KRYON_AST_IDENTIFIER:
+            // Check if this identifier is a parameter that needs substitution
+            if (params && original->data.identifier.name) {
+                printf("🔍 DEBUG: Checking identifier '%s' for substitution (params has %zu entries)\n", 
+                       original->data.identifier.name, params->count);
+                const KryonASTNode *param_value = find_param_value(params, original->data.identifier.name);
+                if (param_value) {
+                    printf("✅ Substituting identifier '%s' with parameter value\n", original->data.identifier.name);
+                    // Substitute with parameter value
+                    free(cloned);
+                    return clone_and_substitute_node(param_value, NULL); // Clone the substituted value
+                }
+                printf("⚠️  No substitution found for identifier '%s'\n", original->data.identifier.name);
+                for (size_t i = 0; i < params->count; i++) {
+                    printf("    Available param[%zu]: '%s'\n", i, params->substitutions[i].param_name);
+                }
+            } else {
+                printf("🔍 DEBUG: Processing identifier '%s' with no substitution params\n", 
+                       original->data.identifier.name ? original->data.identifier.name : "(null)");
+            }
+            // Otherwise, just clone the identifier
+            if (original->data.identifier.name) {
+                cloned->data.identifier.name = strdup(original->data.identifier.name);
+            }
+            break;
+            
+        case KRYON_AST_LITERAL:
+            // Clone literal value
+            cloned->data.literal.value = original->data.literal.value;
+            if (original->data.literal.value.type == KRYON_VALUE_STRING && 
+                original->data.literal.value.data.string_value) {
+                cloned->data.literal.value.data.string_value = strdup(original->data.literal.value.data.string_value);
+            }
+            break;
+            
+        case KRYON_AST_VARIABLE:
+            // Check if this variable is a parameter that needs substitution
+            if (params && original->data.variable.name) {
+                printf("🔍 DEBUG: Checking variable '$%s' for substitution (params has %zu entries)\n", 
+                       original->data.variable.name, params->count);
+                const KryonASTNode *param_value = find_param_value(params, original->data.variable.name);
+                if (param_value) {
+                    printf("✅ Substituting variable '$%s' with parameter value (type %d)\n", 
+                           original->data.variable.name, param_value->type);
+                    if (param_value->type == KRYON_AST_LITERAL && param_value->data.literal.value.type == KRYON_VALUE_STRING) {
+                        printf("    Parameter value is string: '%s'\n", param_value->data.literal.value.data.string_value);
+                    } else if (param_value->type == KRYON_AST_LITERAL && param_value->data.literal.value.type == KRYON_VALUE_INTEGER) {
+                        printf("    Parameter value is integer: %ld\n", param_value->data.literal.value.data.int_value);
+                    } else if (param_value->type == KRYON_AST_LITERAL && param_value->data.literal.value.type == KRYON_VALUE_FLOAT) {
+                        printf("    Parameter value is float: %f\n", param_value->data.literal.value.data.float_value);
+                    } else {
+                        printf("    Parameter value type: %d (literal type: %d)\n", param_value->type, 
+                               param_value->type == KRYON_AST_LITERAL ? param_value->data.literal.value.type : -1);
+                    }
+                    
+                    // Substitute with parameter value
+                    free(cloned);
+                    
+                    // Special handling: if we're substituting into a text property and the value is a number,
+                    // convert it to a string to avoid type mismatches
+                    if (param_value->type == KRYON_AST_LITERAL && 
+                        (param_value->data.literal.value.type == KRYON_VALUE_INTEGER || 
+                         param_value->data.literal.value.type == KRYON_VALUE_FLOAT)) {
+                        
+                        // Create a new string literal node
+                        KryonASTNode *string_node = create_minimal_ast_node(KRYON_AST_LITERAL);
+                        if (string_node) {
+                            string_node->data.literal.value.type = KRYON_VALUE_STRING;
+                            
+                            // Convert number to string
+                            char buffer[32];
+                            if (param_value->data.literal.value.type == KRYON_VALUE_INTEGER) {
+                                snprintf(buffer, sizeof(buffer), "%ld", param_value->data.literal.value.data.int_value);
+                            } else {
+                                snprintf(buffer, sizeof(buffer), "%g", param_value->data.literal.value.data.float_value);
+                            }
+                            string_node->data.literal.value.data.string_value = strdup(buffer);
+                            
+                            printf("    Converted number to string: '%s'\n", buffer);
+                            return string_node;
+                        }
+                    }
+                    
+                    return clone_and_substitute_node(param_value, NULL); // Clone the substituted value
+                }
+                printf("⚠️  No substitution found for variable '$%s'\n", original->data.variable.name);
+                for (size_t i = 0; i < params->count; i++) {
+                    printf("    Available param[%zu]: '%s'\n", i, params->substitutions[i].param_name);
+                }
+            } else {
+                printf("🔍 DEBUG: Processing variable '$%s' with no substitution params\n", 
+                       original->data.variable.name ? original->data.variable.name : "(null)");
+            }
+            // Otherwise, just clone the variable
+            if (original->data.variable.name) {
+                cloned->data.variable.name = strdup(original->data.variable.name);
+            }
+            break;
+            
+        case KRYON_AST_STATE_DEFINITION:
+            // Clone state variable
+            if (original->data.variable_def.name) {
+                cloned->data.variable_def.name = strdup(original->data.variable_def.name);
+            }
+            if (original->data.variable_def.value) {
+                // Check if the value is an identifier that needs substitution
+                cloned->data.variable_def.value = clone_and_substitute_node(original->data.variable_def.value, params);
+            }
+            break;
+            
+        case KRYON_AST_FUNCTION_DEFINITION:
+            // Clone function definition
+            if (original->data.function_def.language) {
+                cloned->data.function_def.language = strdup(original->data.function_def.language);
+            }
+            if (original->data.function_def.name) {
+                cloned->data.function_def.name = strdup(original->data.function_def.name);
+            }
+            if (original->data.function_def.code) {
+                cloned->data.function_def.code = strdup(original->data.function_def.code);
+            }
+            // Clone parameters
+            cloned->data.function_def.parameter_count = original->data.function_def.parameter_count;
+            if (original->data.function_def.parameter_count > 0) {
+                cloned->data.function_def.parameters = calloc(original->data.function_def.parameter_count, sizeof(char*));
+                for (size_t i = 0; i < original->data.function_def.parameter_count; i++) {
+                    if (original->data.function_def.parameters[i]) {
+                        cloned->data.function_def.parameters[i] = strdup(original->data.function_def.parameters[i]);
+                    }
+                }
+            }
+            break;
+            
+        default:
+            // For other node types, copy as-is
+            break;
+    }
+    
+    return cloned;
+}
+
+static KryonASTNode *expand_component_instance(const KryonASTNode *component_instance, const KryonASTNode *ast_root) {
+    if (!component_instance || !ast_root) {
+        printf("❌ Invalid parameters for component expansion\n");
+        return NULL;
+    }
+    
+    if (component_instance->type != KRYON_AST_ELEMENT) {
+        printf("❌ Component instance is not an element\n");
+        return NULL;
+    }
+    
+    const char *component_name = component_instance->data.element.element_type;
+    printf("🔍 Looking for component definition: %s\n", component_name);
+    
+    // Find the component definition
+    KryonASTNode *component_def = find_component_definition(component_name, ast_root);
+    if (!component_def) {
+        printf("❌ Component definition not found: %s\n", component_name);
+        return NULL;
+    }
+    
+    printf("✅ Found component definition: %s\n", component_name);
+    printf("🔍 Component has %zu parameters, instance has %zu properties\n", 
+           component_def->data.component.parameter_count, 
+           component_instance->data.element.property_count);
+    
+    if (!component_def->data.component.body) {
+        printf("❌ Component has no body to expand\n");
+        return NULL;
+    }
+    
+    // Build parameter substitution context
+    ParamContext params = {0};
+    if (component_def->data.component.parameter_count > 0) {
+        params.capacity = component_def->data.component.parameter_count;
+        params.substitutions = calloc(params.capacity, sizeof(ParamSubstitution));
+        if (!params.substitutions) {
+            printf("❌ Failed to allocate parameter substitutions\n");
+            return NULL;
+        }
+        
+        // Map instance properties to component parameters
+        for (size_t i = 0; i < component_def->data.component.parameter_count; i++) {
+            const char *param_name = component_def->data.component.parameters[i];
+            if (!param_name) continue;
+            
+            // Find corresponding property in instance
+            const KryonASTNode *param_value = NULL;
+            for (size_t j = 0; j < component_instance->data.element.property_count; j++) {
+                const KryonASTNode *prop = component_instance->data.element.properties[j];
+                if (prop && prop->data.property.name && 
+                    strcmp(prop->data.property.name, param_name) == 0) {
+                    param_value = prop->data.property.value;
+                    break;
+                }
+            }
+            
+            // If no value provided, use default
+            if (!param_value && i < component_def->data.component.parameter_count && 
+                component_def->data.component.param_defaults && 
+                component_def->data.component.param_defaults[i]) {
+                // Create a literal node for the default value
+                printf("⚠️  Using default value for parameter '%s': '%s'\n", param_name, component_def->data.component.param_defaults[i]);
+                
+                KryonASTNode *default_node = create_minimal_ast_node(KRYON_AST_LITERAL);
+                if (default_node) {
+                    // Parse the default value as an integer (simple case for now)
+                    const char *default_str = component_def->data.component.param_defaults[i];
+                    char *endptr;
+                    long int_val = strtol(default_str, &endptr, 10);
+                    
+                    if (*endptr == '\0') {
+                        // It's an integer
+                        default_node->data.literal.value.type = KRYON_VALUE_INTEGER;
+                        default_node->data.literal.value.data.int_value = int_val;
+                        printf("✅ Created default integer value: %ld\n", int_val);
+                    } else {
+                        // Treat as string
+                        default_node->data.literal.value.type = KRYON_VALUE_STRING;
+                        default_node->data.literal.value.data.string_value = strdup(default_str);
+                        printf("✅ Created default string value: '%s'\n", default_str);
+                    }
+                    param_value = default_node;
+                }
+            }
+            
+            if (param_value) {
+                params.substitutions[params.count].param_name = param_name;
+                params.substitutions[params.count].param_value = param_value;
+                params.count++;
+                printf("✅ Mapped parameter '%s' to instance value\n", param_name);
+            }
+        }
+    }
+    
+    // Create wrapper element to hold expanded content
+    KryonASTNode *wrapper = create_minimal_ast_node(KRYON_AST_ELEMENT);
+    if (!wrapper) {
+        free(params.substitutions);
+        return NULL;
+    }
+    
+    // Use a generic container type
+    wrapper->data.element.element_type = strdup("Container");
+    
+    // Auto-create state variables from component parameters
+    for (size_t i = 0; i < params.count; i++) {
+        KryonASTNode *state_def = create_minimal_ast_node(KRYON_AST_STATE_DEFINITION);
+        if (state_def) {
+            state_def->data.variable_def.name = strdup(params.substitutions[i].param_name);
+            // Clone the parameter value as the initial state value
+            state_def->data.variable_def.value = clone_and_substitute_node(params.substitutions[i].param_value, NULL);
+            add_child_to_node(wrapper, state_def);
+            printf("✅ Created state variable '%s' from parameter\n", params.substitutions[i].param_name);
+        }
+    }
+    
+    // Clone component state variables
+    for (size_t i = 0; i < component_def->data.component.state_count; i++) {
+        KryonASTNode *state_clone = clone_and_substitute_node(component_def->data.component.state_vars[i], &params);
+        if (state_clone) {
+            add_child_to_node(wrapper, state_clone);
+        }
+    }
+    
+    // Clone component functions
+    for (size_t i = 0; i < component_def->data.component.function_count; i++) {
+        KryonASTNode *func_clone = clone_and_substitute_node(component_def->data.component.functions[i], &params);
+        if (func_clone) {
+            add_child_to_node(wrapper, func_clone);
+        }
+    }
+    
+    // Clone and substitute the component body
+    KryonASTNode *expanded_body = clone_and_substitute_node(component_def->data.component.body, &params);
+    if (expanded_body) {
+        add_child_to_node(wrapper, expanded_body);
+    }
+    
+    free(params.substitutions);
+    
+    printf("✅ Successfully expanded component: %s\n", component_name);
+    
+    // For now, return just the body element (not the wrapper with state/functions)
+    // TODO: Handle state and functions properly in the runtime
+    return expanded_body;
+}
+
+// =============================================================================
+// CONSTANT RESOLUTION AND TEMPLATE EXPANSION
+// =============================================================================
+
+static bool add_constant_to_table(KryonCodeGenerator *codegen, const char *name, const KryonASTNode *value) {
+    // Ensure we have space for the new constant
+    if (codegen->const_count >= codegen->const_capacity) {
+        size_t new_capacity = codegen->const_capacity == 0 ? 8 : codegen->const_capacity * 2;
+        void *new_table = kryon_realloc(codegen->const_table, 
+                                       new_capacity * sizeof(codegen->const_table[0]));
+        if (!new_table) {
+            codegen_error(codegen, "Failed to allocate memory for constant table");
+            return false;
+        }
+        codegen->const_table = new_table;
+        codegen->const_capacity = new_capacity;
+    }
+    
+    // Add the constant
+    codegen->const_table[codegen->const_count].name = strdup(name);
+    codegen->const_table[codegen->const_count].value = value;
+    codegen->const_count++;
+    
+    return true;
+}
+
+static const KryonASTNode *find_constant_value(KryonCodeGenerator *codegen, const char *name) {
+    for (size_t i = 0; i < codegen->const_count; i++) {
+        if (strcmp(codegen->const_table[i].name, name) == 0) {
+            return codegen->const_table[i].value;
+        }
+    }
+    return NULL;
+}
+
+static bool write_const_definition(KryonCodeGenerator *codegen, const KryonASTNode *const_def) {
+    if (!const_def || const_def->type != KRYON_AST_CONST_DEFINITION) {
+        return false;
+    }
+    
+    // Add the constant to the symbol table for later resolution
+    return add_constant_to_table(codegen, const_def->data.const_def.name, const_def->data.const_def.value);
+}
+
+static uint32_t count_const_for_elements(const KryonASTNode *const_for) {
+    if (!const_for || const_for->type != KRYON_AST_CONST_FOR_LOOP) {
+        return 0;
+    }
+    
+    // For now, we can't determine the count without resolving the array
+    // This would need to be determined at runtime or by looking up the constant
+    // For simplicity, let's assume each loop generates at least 1 element per body element
+    return const_for->data.const_for_loop.body_count;
+}
+
+static bool expand_const_for_loop(KryonCodeGenerator *codegen, const KryonASTNode *const_for, const KryonASTNode *ast_root) {
+    if (!const_for || const_for->type != KRYON_AST_CONST_FOR_LOOP) {
+        return false;
+    }
+    
+    // Find the array constant
+    const KryonASTNode *array_const = find_constant_value(codegen, const_for->data.const_for_loop.array_name);
+    if (!array_const || array_const->type != KRYON_AST_ARRAY_LITERAL) {
+        codegen_error(codegen, "Constant array not found or not an array literal");
+        return false;
+    }
+    
+    // Iterate through array elements and expand the loop body for each
+    for (size_t i = 0; i < array_const->data.array_literal.element_count; i++) {
+        const KryonASTNode *array_element = array_const->data.array_literal.elements[i];
+        
+        // For each element in the loop body, substitute template variables and write
+        for (size_t j = 0; j < const_for->data.const_for_loop.body_count; j++) {
+            const KryonASTNode *body_element = const_for->data.const_for_loop.body[j];
+            
+            // Create a substituted version of the body element
+            // This is a simplified version - in a full implementation, we'd need to
+            // recursively substitute all template expressions like ${alignment.name}
+            KryonASTNode *substituted_element = substitute_template_vars(body_element, 
+                                                                        const_for->data.const_for_loop.var_name, 
+                                                                        array_element);
+            
+            if (substituted_element) {
+                // Write the substituted element
+                if (!write_widget_instance(codegen, substituted_element, ast_root)) {
+                    return false;
+                }
+            }
+        }
+    }
+    
+    return true;
+}
+
+// Helper function to substitute template variables in AST nodes
+// This is a simplified version - a full implementation would need to handle
+// all possible AST node types and template expression patterns
+static KryonASTNode *substitute_template_vars(const KryonASTNode *node, const char *var_name, const KryonASTNode *var_value) {
+    // This is a placeholder implementation
+    // In a full implementation, you would:
+    // 1. Clone the node
+    // 2. Recursively traverse all child nodes and properties
+    // 3. Find template expressions like ${var_name.property}
+    // 4. Replace them with actual values from var_value
+    
+    // For now, just return a simple clone
+    return (KryonASTNode*)node; // This is not correct but serves as a placeholder
 }

@@ -126,6 +126,14 @@ struct KryonCodeGenerator {
     size_t string_count;           // Number of strings in table
     size_t string_capacity;        // Capacity of string table
     
+    // Constant symbol table for @const definitions
+    struct {
+        char *name;                // Constant name
+        const KryonASTNode *value; // Constant value (AST node)
+    } *const_table;                // Array of constants
+    size_t const_count;            // Number of constants in table
+    size_t const_capacity;         // Capacity of constant table
+    
     // Element/Property mapping
     uint16_t *element_map;         // Element type to hex mapping
     uint16_t *property_map;        // Property name to hex mapping

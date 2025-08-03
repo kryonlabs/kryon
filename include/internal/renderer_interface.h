@@ -414,6 +414,14 @@ typedef struct {
     bool (*handle_event)(const KryonEvent* event);
     
     /**
+     * Measure text width with current font
+     * @param text Text to measure
+     * @param font_size Font size (ignored if renderer uses fixed size)
+     * @return Text width in pixels
+     */
+    float (*measure_text_width)(const char* text, float font_size);
+    
+    /**
      * Get platform-specific window handle
      * @return Platform window handle or NULL
      */

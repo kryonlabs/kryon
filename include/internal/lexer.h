@@ -113,6 +113,11 @@ typedef enum {
     KRYON_TOKEN_SLOTS_DIRECTIVE,     // @slots
     KRYON_TOKEN_LIFECYCLE_DIRECTIVE, // @lifecycle
     KRYON_TOKEN_STATE_DIRECTIVE,     // @state
+    KRYON_TOKEN_CONST_DIRECTIVE,     // @const
+    KRYON_TOKEN_CONST_FOR_DIRECTIVE, // @const_for
+    
+    // Keywords
+    KRYON_TOKEN_IN_KEYWORD,          // in (for @const_for loops)
     
     // Template interpolation
     KRYON_TOKEN_TEMPLATE_START,      // ${

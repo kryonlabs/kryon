@@ -51,6 +51,8 @@ typedef enum {
     KRYON_AST_VARIABLE_DEFINITION,   // @var name = value
     KRYON_AST_FUNCTION_DEFINITION,   // @function language name() { ... }
     KRYON_AST_STATE_DEFINITION,      // @state name: value
+    KRYON_AST_CONST_DEFINITION,      // @const name: value
+    KRYON_AST_CONST_FOR_LOOP,        // @const_for var in array { ... }
     
     // Directives
     KRYON_AST_STORE_DIRECTIVE,       // @store
@@ -77,12 +79,15 @@ typedef enum {
     // Expressions
     KRYON_AST_LITERAL,               // String, number, boolean literals
     KRYON_AST_VARIABLE,              // $variable
+    KRYON_AST_IDENTIFIER,            // Plain identifier (parameter reference)
     KRYON_AST_TEMPLATE,              // ${expression}
     KRYON_AST_BINARY_OP,             // Binary operations
     KRYON_AST_UNARY_OP,              // Unary operations
     KRYON_AST_FUNCTION_CALL,         // Function calls
     KRYON_AST_MEMBER_ACCESS,         // Object.property
     KRYON_AST_ARRAY_ACCESS,          // array[index]
+    KRYON_AST_ARRAY_LITERAL,         // [item1, item2, ...]
+    KRYON_AST_OBJECT_LITERAL,        // {key1: value1, key2: value2}
     
     // Special
     KRYON_AST_ERROR,                 // Error node for recovery
@@ -170,6 +175,10 @@ struct KryonASTNode {
         } variable;
         
         struct {
+            char *name;              // Identifier name (parameter reference)
+        } identifier;
+        
+        struct {
             KryonASTNode *expression; // Template expression
         } template;
         
@@ -200,6 +209,18 @@ struct KryonASTNode {
             KryonASTNode *array;     // Array being indexed
             KryonASTNode *index;     // Index expression
         } array_access;
+        
+        struct {
+            KryonASTNode **elements; // Array elements
+            size_t element_count;    // Number of elements
+            size_t element_capacity; // Element array capacity
+        } array_literal;
+        
+        struct {
+            KryonASTNode **properties; // Object properties (key-value pairs)
+            size_t property_count;      // Number of properties
+            size_t property_capacity;   // Property array capacity
+        } object_literal;
         
         struct {
             char *message;           // Error message
@@ -248,6 +269,19 @@ struct KryonASTNode {
             KryonASTNode *value;     // Variable value
             char *type;              // Variable type (String, Int, Boolean, etc.)
         } variable_def;
+        
+        struct {
+            char *name;              // Constant name
+            KryonASTNode *value;     // Constant value (can be array, object, or literal)
+        } const_def;
+        
+        struct {
+            char *var_name;          // Loop variable name (e.g., "alignment")
+            char *array_name;        // Array name to iterate over (e.g., "alignments")
+            KryonASTNode **body;     // Loop body elements
+            size_t body_count;       // Number of body elements
+            size_t body_capacity;    // Body array capacity
+        } const_for_loop;
         
         struct {
             char *name;              // Component name

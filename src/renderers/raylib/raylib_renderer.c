@@ -70,6 +70,7 @@ static KryonRenderResult raylib_get_input_state(KryonInputState* input_state);
 static bool raylib_point_in_widget(KryonVec2 point, KryonRect widget_bounds);
 static bool raylib_handle_event(const KryonEvent* event);
 static void* raylib_get_native_window(void);
+static float raylib_measure_text_width(const char* text, float font_size);
 
 static KryonRendererVTable g_raylib_vtable = {
     .initialize = raylib_initialize,
@@ -82,7 +83,8 @@ static KryonRendererVTable g_raylib_vtable = {
     .get_input_state = raylib_get_input_state,
     .point_in_widget = raylib_point_in_widget,
     .handle_event = raylib_handle_event,
-    .get_native_window = raylib_get_native_window
+    .get_native_window = raylib_get_native_window,
+    .measure_text_width = raylib_measure_text_width
 };
 
 // =============================================================================
@@ -862,4 +864,18 @@ static bool raylib_handle_event(const KryonEvent* event) {
 static void* raylib_get_native_window(void) {
     // Raylib doesn't expose the native window handle easily
     return NULL;
+}
+
+// Measure text width using raylib's font system
+static float raylib_measure_text_width(const char* text, float font_size) {
+    if (!text || strlen(text) == 0) {
+        return 0.0f;
+    }
+    
+    // Use the default font (same as what's used in rendering)
+    Font current_font = g_raylib_impl.initialized ? g_raylib_impl.default_font : GetFontDefault();
+    
+    // Raylib uses hardcoded font size 20, so we ignore the font_size parameter
+    Vector2 text_size = MeasureTextEx(current_font, text, 20.0f, 1.0f);
+    return text_size.x;
 }

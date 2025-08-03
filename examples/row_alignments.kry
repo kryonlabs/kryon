@@ -1,0 +1,77 @@
+@const alignments: [
+    {
+        name: "start (flex-start)",
+        value: "start",
+        gap: 20,
+        colors: ["#ef4444", "#dc2626", "#b91c1c"]
+    },
+    {
+        name: "center",
+        value: "center",
+        gap: 20,
+        colors: ["#06b6d4", "#0891b2", "#0e7490"]
+    },
+    {
+        name: "end (flex-end)",
+        value: "end",
+        gap: 20,
+        colors: ["#8b5cf6", "#7c3aed", "#6d28d9"]
+    },
+    {
+        name: "spaceEvenly",
+        value: "spaceEvenly",
+        gap: 0,
+        colors: ["#64748b", "#475569", "#334155"]
+    },
+    {
+        name: "spaceAround",
+        value: "spaceAround",
+        gap: 0,
+        colors: ["#f59e0b", "#d97706", "#b45309"]
+    },
+    {
+        name: "spaceBetween",
+        value: "spaceBetween",
+        gap: 0,
+        colors: ["#10b981", "#059669", "#047857"]
+    }
+]
+
+App {
+    windowWidth: 800
+    windowHeight: 740
+    windowTitle: "Row Alignments Demo"
+    backgroundColor: "#f0f0f0"
+
+    Column {
+        mainAxisAlignment: "start"
+        crossAxisAlignment: "stretch"
+        gap: 20
+        padding: 20
+
+        @const_for alignment in alignments {
+            Container {
+                width: 760
+                height: 100
+                backgroundColor: "#ffffff"
+                borderRadius: 8
+                padding: 10
+
+                Column {
+
+                    Text { text: "mainAxisAlignment: ${alignment.name}", fontSize: 14, fontWeight: "bold" }
+                    
+                    Row {
+                        mainAxisAlignment: "${alignment.value}"
+                        crossAxisAlignment: "center"
+                        gap: ${alignment.gap}
+
+                        Container { width: 80, height: 40, backgroundColor: "${alignment.colors[0]}", borderRadius: 6 }
+                        Container { width: 100, height: 40, backgroundColor: "${alignment.colors[1]}", borderRadius: 6 }
+                        Container { width: 90, height: 40, backgroundColor: "${alignment.colors[2]}", borderRadius: 6 }
+                    }
+                }
+            }
+        }
+    }
+}

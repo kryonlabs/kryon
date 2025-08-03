@@ -29,6 +29,16 @@
 // Global mouse position updated by renderer for hover detection
 KryonVec2 g_mouse_position = {0.0f, 0.0f};
 
+// Global input focus and mouse state management
+static char* g_focused_input_id = NULL;
+static bool g_mouse_pressed_last_frame = false;
+static bool g_mouse_clicked_this_frame = false;
+
+// Global input text storage (simple approach for focused input)
+static char g_input_text_buffer[1024] = {0};
+static size_t g_input_text_length = 0;
+static int g_input_text_scroll_offset = 0; // Character offset for scrolling
+
 // Global cursor state for simple cursor management
 bool g_cursor_should_be_pointer = false;
 
@@ -54,7 +64,11 @@ static const char* resolve_variable_reference(KryonRuntime* runtime, const char*
 static void element_container_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 static void element_text_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 static void element_button_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_input_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_image_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 static void element_center_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_column_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_row_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 
 // External function from krb_loader.c
 extern bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, size_t size);
@@ -145,6 +159,7 @@ KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config) {
     runtime->global_state = kryon_state_create("global", KRYON_STATE_OBJECT);
     if (!runtime->global_state) {
         kryon_free(runtime->event_queue);
+        kryon_event_system_destroy(runtime->event_system);
         kryon_free(runtime->elements);
         kryon_free(runtime);
         return NULL;
@@ -219,6 +234,48 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
             kryon_free(runtime->error_messages[i]);
         }
         kryon_free(runtime->error_messages);
+    }
+    
+    // Free component registry
+    if (runtime->components) {
+        for (size_t i = 0; i < runtime->component_count; i++) {
+            KryonComponentDefinition* comp = runtime->components[i];
+            if (comp) {
+                // Free component name
+                kryon_free(comp->name);
+                
+                // Free parameters
+                for (size_t j = 0; j < comp->parameter_count; j++) {
+                    kryon_free(comp->parameters[j]);
+                    kryon_free(comp->param_defaults[j]);
+                }
+                kryon_free(comp->parameters);
+                kryon_free(comp->param_defaults);
+                
+                // Free state variables
+                for (size_t j = 0; j < comp->state_count; j++) {
+                    kryon_free(comp->state_vars[j].name);
+                    kryon_free(comp->state_vars[j].default_value);
+                }
+                kryon_free(comp->state_vars);
+                
+                // Free functions
+                for (size_t j = 0; j < comp->function_count; j++) {
+                    kryon_free(comp->functions[j].name);
+                    kryon_free(comp->functions[j].language);
+                    kryon_free(comp->functions[j].bytecode);
+                }
+                kryon_free(comp->functions);
+                
+                // Free UI template (if any)
+                if (comp->ui_template) {
+                    kryon_element_destroy(runtime, comp->ui_template);
+                }
+                
+                kryon_free(comp);
+            }
+        }
+        kryon_free(runtime->components);
     }
     
     kryon_free(runtime);
@@ -383,6 +440,11 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
                 extern KryonVec2 g_mouse_position;
                 g_mouse_position = input_state.mouse.position;
                 
+                // Update mouse click state for input focus management
+                bool mouse_pressed_now = input_state.mouse.left_pressed;
+                g_mouse_clicked_this_frame = mouse_pressed_now && !g_mouse_pressed_last_frame;
+                g_mouse_pressed_last_frame = mouse_pressed_now;
+                
                 // Generate mouse click events from input state
                 if (input_state.mouse.left_pressed) {
                     KryonEvent event = {0};
@@ -393,6 +455,29 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
                     kryon_runtime_handle_event(runtime, &event);
                     printf("🐛 DEBUG: Generated mouse click event at (%.1f, %.1f)\n", 
                            event.data.mouseButton.x, event.data.mouseButton.y);
+                }
+                
+                // Handle keyboard input for focused input fields
+                if (g_focused_input_id && input_state.keyboard.text_input_length > 0) {
+                    // Add typed characters to input buffer
+                    for (size_t i = 0; i < input_state.keyboard.text_input_length; i++) {
+                        char c = input_state.keyboard.text_input[i];
+                        if (c >= 32 && c <= 126 && g_input_text_length < sizeof(g_input_text_buffer) - 1) {
+                            g_input_text_buffer[g_input_text_length] = c;
+                            g_input_text_length++;
+                            g_input_text_buffer[g_input_text_length] = '\0';
+                        }
+                    }
+                    printf("🐛 DEBUG: Input text updated: '%s' (length: %zu)\n", g_input_text_buffer, g_input_text_length);
+                }
+                
+                // Handle backspace key
+                if (g_focused_input_id && input_state.keyboard.keys_pressed[259]) { // KEY_BACKSPACE = 259 in raylib
+                    if (g_input_text_length > 0) {
+                        g_input_text_length--;
+                        g_input_text_buffer[g_input_text_length] = '\0';
+                        printf("🐛 DEBUG: Backspace - Input text: '%s' (length: %zu)\n", g_input_text_buffer, g_input_text_length);
+                    }
                 }
             }
         }
@@ -1056,7 +1141,12 @@ static int get_element_property_int(KryonElement* element, const char* prop_name
 // Get property value as float with type conversion
 static float get_element_property_float(KryonElement* element, const char* prop_name, float default_value) {
     KryonProperty* prop = find_element_property(element, prop_name);
-    if (!prop) return default_value;
+    if (!prop) {
+        // if (strcmp(prop_name, "posX") == 0 || strcmp(prop_name, "posY") == 0) {
+        //     printf("🚨 Property '%s' not found! Using default %.1f\n", prop_name, default_value);
+        // }
+        return default_value;
+    }
     
     switch (prop->type) {
         case KRYON_RUNTIME_PROP_FLOAT:
@@ -1266,12 +1356,68 @@ static KryonColor parse_color_string(const char* color_str) {
     return color;
 }
 
+// Helper function to calculate element height based on its type and properties
+static float calculate_element_height(KryonElement* element) {
+    if (!element || !element->type_name) {
+        return 50.0f; // Default fallback
+    }
+    
+    // Check if element has explicit height property
+    KryonProperty* height_prop = find_element_property(element, "height");
+    if (height_prop) {
+        return height_prop->value.float_value;
+    }
+    
+    // Calculate height based on element type
+    if (strcmp(element->type_name, "Text") == 0) {
+        float font_size = get_element_property_float(element, "fontSize", 16.0f);
+        float line_height = get_element_property_float(element, "lineHeight", 1.4f); // Default line-height ratio
+        
+        // If lineHeight is <= 2, treat it as a multiplier; otherwise treat as absolute pixels
+        float calculated_height;
+        if (line_height <= 2.0f) {
+            calculated_height = font_size * line_height;
+        } else {
+            calculated_height = line_height;
+        }
+        
+        // Use just the calculated line height without extra padding
+        return calculated_height;
+    }
+    
+    // For Row elements, calculate height based on tallest child
+    if (strcmp(element->type_name, "Row") == 0) {
+        float max_child_height = 0.0f;
+        for (size_t i = 0; i < element->child_count; i++) {
+            KryonElement* child = element->children[i];
+            if (child) {
+                float child_height = calculate_element_height(child);
+                if (child_height > max_child_height) {
+                    max_child_height = child_height;
+                }
+            }
+        }
+        return max_child_height > 0.0f ? max_child_height : 50.0f;
+    }
+    
+    // For other elements, use explicit height or reasonable defaults
+    if (strcmp(element->type_name, "Container") == 0) {
+        return get_element_property_float(element, "height", 100.0f);
+    } else if (strcmp(element->type_name, "Button") == 0) {
+        return get_element_property_float(element, "height", 40.0f);
+    } else if (strcmp(element->type_name, "Input") == 0) {
+        return get_element_property_float(element, "height", 32.0f);
+    }
+    
+    return 50.0f; // Default for unknown types
+}
+
 // Convert Container element to render commands
 static void element_container_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 1) return;
     
     // Debug: Log all properties for first container
-    debug_log_element_properties(element, "Container");
+    // debug_log_element_properties(element, "Container");
     
     // Get container properties with comprehensive type handling
     float posX = get_element_property_float(element, "posX", 0.0f);
@@ -1279,45 +1425,27 @@ static void element_container_to_commands(KryonElement* element, KryonRenderComm
     float width = get_element_property_float(element, "width", 100.0f);
     float height = get_element_property_float(element, "height", 100.0f);
     
-    // Check both "background" and "backgroundColor" since they map to the same property ID
-    const char* bg_color_str = get_element_property_string(element, "background");
-    if (!bg_color_str) {
-        bg_color_str = get_element_property_string(element, "backgroundColor");
-    }
-    const char* border_color_str = get_element_property_string(element, "borderColor");
+    // printf("🎯 DEBUG Container position: posX=%.1f posY=%.1f (should not be 0,0 if layout worked)\n", posX, posY);
+    
+    // Get color properties directly as color values (not strings)
+    uint32_t bg_color_val = get_element_property_color(element, "background", 0x00000000); // Transparent default
+    uint32_t border_color_val = get_element_property_color(element, "borderColor", 0x000000FF); // Black default
     float border_width = get_element_property_float(element, "borderWidth", 0.0f);
     float border_radius = get_element_property_float(element, "borderRadius", 0.0f);
     
-    // Safety check for NULL color strings
-    if (bg_color_str && strlen(bg_color_str) == 0) {
-        bg_color_str = NULL;
-    }
-    if (border_color_str && strlen(border_color_str) == 0) {
-        border_color_str = NULL;
-    }
-    
-    // Debug: Log container properties
-    static bool container_debug_logged = false;
-    if (!container_debug_logged) {
-        printf("🎨 DEBUG Container: pos=%.1f,%.1f size=%.1fx%.1f bg='%s' border='%s' width=%.1f radius=%.1f\n", 
-               posX, posY, width, height, 
-               bg_color_str ? bg_color_str : "NULL", 
-               border_color_str ? border_color_str : "NULL", 
-               border_width, border_radius);
-        container_debug_logged = true;
-    }
-    
-    // Use the proper color parsing utility instead of the basic one
-    uint32_t bg_color_val = kryon_color_parse_string(bg_color_str ? bg_color_str : "transparent");
-    uint32_t border_color_val = kryon_color_parse_string(border_color_str ? border_color_str : "transparent");
-    
-    // Convert to KryonColor format
+    // Convert RGBA values to KryonColor format
     KryonColor bg_color = {
         ((bg_color_val >> 24) & 0xFF) / 255.0f,  // R
         ((bg_color_val >> 16) & 0xFF) / 255.0f,  // G
         ((bg_color_val >> 8) & 0xFF) / 255.0f,   // B
         (bg_color_val & 0xFF) / 255.0f           // A
     };
+    
+    // Debug: Show color being rendered 
+    if (bg_color_val != 0x00000000) {
+        printf("🎨 Container background: 0x%08X -> RGBA(%.2f,%.2f,%.2f,%.2f) at (%.1f,%.1f) %dx%.0f\n", 
+               bg_color_val, bg_color.r, bg_color.g, bg_color.b, bg_color.a, posX, posY, (int)width, height);
+    }
     KryonColor border_color = {
         ((border_color_val >> 24) & 0xFF) / 255.0f,  // R
         ((border_color_val >> 16) & 0xFF) / 255.0f,  // G
@@ -1354,52 +1482,15 @@ static void element_button_to_commands(KryonElement* element, KryonRenderCommand
     float width = get_element_property_float(element, "width", 150.0f);
     float height = get_element_property_float(element, "height", 50.0f);
     
-    // Use canonical property name from mapping system
-    const char* bg_color_str = get_element_property_string(element, "background");
+    // Get color properties directly as color values (not strings)
+    uint32_t bg_color_val = get_element_property_color(element, "backgroundColor", 0x3B82F6FF); // Blue default
+    uint32_t border_color_val = get_element_property_color(element, "borderColor", 0x0099FFFF); // Light blue default  
+    uint32_t text_color_val = get_element_property_color(element, "color", 0xFFFFFFFF); // White default
     
-    const char* border_color_str = get_element_property_string(element, "borderColor");
     float border_width = get_element_property_float(element, "borderWidth", 1.0f);
     float border_radius = get_element_property_float(element, "borderRadius", 8.0f);
     
     const char* text = get_element_property_string(element, "text");
-    
-    const char* text_color_str = get_element_property_string(element, "color");
-    
-    // Style inheritance - traverse up the parent chain to find an element with a class,
-    // then resolve the color from that style
-    if (!text_color_str) {
-        KryonElement* ancestor = element;
-        while (ancestor) {
-            // Check if this ancestor has any class names
-            if (ancestor->class_count > 0 && ancestor->class_names) {
-                for (size_t i = 0; i < ancestor->class_count; i++) {
-                    if (ancestor->class_names[i]) {
-                        // For now, hardcode the base style color since KRB styles aren't loaded yet
-                        // TODO: Replace with proper style resolution from KRB style data
-                        if (strcmp(ancestor->class_names[i], "base") == 0) {
-                            text_color_str = "#FF9900FF";  // Orange color from base style
-                            goto color_found;
-                        }
-                    }
-                }
-            }
-            ancestor = ancestor->parent;
-        }
-    }
-    color_found:
-    
-    if (!text_color_str) {
-        text_color_str = "#FFFFFFFF";  // White fallback
-    }
-    const char* text_align = get_element_property_string(element, "textAlign");
-    float font_size = get_element_property_float(element, "fontSize", 16.0f);
-    
-    // Removed verbose debug logging
-    
-    // Parse colors with proper fallbacks
-    uint32_t bg_color_val = kryon_color_parse_string(bg_color_str ? bg_color_str : "#404080FF");
-    uint32_t border_color_val = kryon_color_parse_string(border_color_str ? border_color_str : "#0099FFFF");
-    uint32_t text_color_val = kryon_color_parse_string(text_color_str ? text_color_str : "#FFFFFFFF");
     
     // Convert to KryonColor format
     KryonColor bg_color = {
@@ -1422,19 +1513,10 @@ static void element_button_to_commands(KryonElement* element, KryonRenderCommand
     };
     
     // Check if mouse is hovering over button bounds
-    // For now, get mouse position directly from runtime's renderer if available
-    bool is_hovered = false;
-    
-    // Try to get input state from the renderer
-    // This is a simplified approach - in a full implementation this would be passed as a parameter
     extern KryonVec2 g_mouse_position; // Global mouse position updated by renderer
-    
     KryonVec2 mouse_pos = g_mouse_position;
     
-    // Debug: Show real mouse position and button bounds occasionally
-    // Mouse hover detection (debug output reduced)
-    
-    // Check if mouse is within button bounds
+    bool is_hovered = false;
     if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
         mouse_pos.y >= posY && mouse_pos.y <= posY + height) {
         is_hovered = true;
@@ -1442,7 +1524,12 @@ static void element_button_to_commands(KryonElement* element, KryonRenderCommand
     
     // Apply hover effects
     KryonColor final_bg_color = bg_color;
-    KryonColor final_text_color = text_color;
+    if (is_hovered) {
+        // Lighten background color for hover effect
+        final_bg_color.r = fminf(1.0f, bg_color.r + 0.1f);
+        final_bg_color.g = fminf(1.0f, bg_color.g + 0.1f);
+        final_bg_color.b = fminf(1.0f, bg_color.b + 0.1f);
+    }
     
     // Update global cursor state
     extern bool g_cursor_should_be_pointer;
@@ -1452,26 +1539,20 @@ static void element_button_to_commands(KryonElement* element, KryonRenderCommand
         was_hovered = is_hovered;
     }
     
-    if (is_hovered) {
-        // Lighten background color for hover effect
-        final_bg_color.r = fminf(1.0f, bg_color.r + 0.1f);
-        final_bg_color.g = fminf(1.0f, bg_color.g + 0.1f);
-        final_bg_color.b = fminf(1.0f, bg_color.b + 0.1f);
-        
-        // Hover effect active
-    }
-    
-    // Use the proper button widget command instead of separate rect + text
+    // Use the proper button widget command
     KryonRenderCommand cmd = kryon_cmd_draw_button(
         "button_1",  // TODO: Generate unique widget ID from element
         (KryonVec2){posX, posY},
         (KryonVec2){width, height},
         text ? text : "Button",
         final_bg_color,
-        final_text_color
+        text_color
     );
     
-    // Set the widget state
+    // Set additional button properties
+    cmd.data.draw_button.border_color = border_color;
+    cmd.data.draw_button.border_width = border_width;
+    cmd.data.draw_button.border_radius = border_radius;
     cmd.data.draw_button.state = is_hovered ? KRYON_WIDGET_STATE_HOVERED : KRYON_WIDGET_STATE_NORMAL;
     cmd.data.draw_button.enabled = true;
     
@@ -1480,6 +1561,299 @@ static void element_button_to_commands(KryonElement* element, KryonRenderCommand
     if (onclick) {
         cmd.data.draw_button.onclick_handler = strdup(onclick);
     }
+    
+    commands[(*command_count)++] = cmd;
+}
+
+// Helper function to calculate scrolled text for input field using renderer measurement
+static const char* get_scrolled_input_text(const char* full_text, float input_width, float font_size, float padding, KryonRenderer* renderer, int* out_scroll_offset) {
+    if (!full_text || strlen(full_text) == 0) {
+        *out_scroll_offset = 0;
+        return full_text;
+    }
+    
+    // RENDERER-BASED MEASUREMENT - No more guessing!
+    // Use actual text measurement from the renderer for perfect accuracy
+    
+    // Calculate available space for text
+    float left_text_offset = 8.0f;   // Text starts 8px from left edge (hardcoded in renderer)
+    float right_margin = 6.0f;       // Small margin on right
+    float cursor_width = 2.0f;       // Cursor is 2px wide
+    float cursor_margin = 2.0f;      // Small space between text and cursor
+    
+    float total_reserved_space = left_text_offset + right_margin + cursor_width + cursor_margin;
+    float available_width = input_width - total_reserved_space;
+    
+    // Ensure minimum available width
+    if (available_width < 40.0f) available_width = 40.0f;
+    
+    // Use renderer to measure actual text width
+    int max_visible_chars = 0;
+    if (renderer && renderer->vtable && renderer->vtable->measure_text_width) {
+        // Binary search to find maximum characters that fit
+        int text_len = (int)strlen(full_text);
+        int left = 0, right = text_len;
+        
+        while (left <= right) {
+            int mid = (left + right) / 2;
+            
+            // Create substring for measurement
+            static char test_text[1024];
+            int copy_len = (mid < sizeof(test_text) - 1) ? mid : sizeof(test_text) - 1;
+            strncpy(test_text, full_text, copy_len);
+            test_text[copy_len] = '\0';
+            
+            // Measure actual text width using renderer
+            float text_width = renderer->vtable->measure_text_width(test_text, font_size);
+            
+            if (text_width <= available_width) {
+                max_visible_chars = mid;
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+    } else {
+        // Fallback to conservative estimation if renderer measurement unavailable
+        float char_width = 12.0f; // Conservative estimate
+        max_visible_chars = (int)(available_width / char_width);
+    }
+    
+    // Ensure reasonable minimum
+    if (max_visible_chars <= 10) {
+        max_visible_chars = 10;
+    }
+    
+    int text_length = (int)strlen(full_text);
+    
+    // If text fits completely, no scrolling needed
+    if (text_length <= max_visible_chars) {
+        *out_scroll_offset = 0;
+        return full_text;
+    }
+    
+    // Calculate scroll offset to show the end of the text (cursor position)
+    int scroll_offset = text_length - max_visible_chars;
+    if (scroll_offset < 0) scroll_offset = 0;
+    
+    *out_scroll_offset = scroll_offset;
+    
+    // Create a static buffer to hold the visible portion
+    static char visible_text_buffer[256];
+    int copy_length = text_length - scroll_offset;
+    if (copy_length > max_visible_chars) {
+        copy_length = max_visible_chars;
+    }
+    if (copy_length > (int)sizeof(visible_text_buffer) - 1) {
+        copy_length = sizeof(visible_text_buffer) - 1;
+    }
+    
+    strncpy(visible_text_buffer, full_text + scroll_offset, copy_length);
+    visible_text_buffer[copy_length] = '\0';
+    
+    return visible_text_buffer;
+}
+
+// Convert Input element to render commands using proper input widget command
+static void element_input_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+    if (*command_count >= max_commands - 1) return; // Need space for input command
+    
+    // Get input properties with dynamic lookup
+    float posX = get_element_property_float(element, "posX", 0.0f);
+    float posY = get_element_property_float(element, "posY", 0.0f);
+    float width = get_element_property_float(element, "width", 200.0f);
+    float height = get_element_property_float(element, "height", 30.0f);
+    
+    // Get color properties directly as color values (not strings)
+    uint32_t bg_color_val = get_element_property_color(element, "backgroundColor", 0xFFFFFFFF); // White default
+    uint32_t border_color_val = get_element_property_color(element, "borderColor", 0x808080FF); // Gray default  
+    uint32_t text_color_val = get_element_property_color(element, "color", 0x000000FF); // Black default
+    
+    float border_width = get_element_property_float(element, "borderWidth", 1.0f);
+    float border_radius = get_element_property_float(element, "borderRadius", 4.0f);
+    
+    // Check if this input is focused and use global text buffer
+    char current_id[32];
+    snprintf(current_id, sizeof(current_id), "input_%p", (void*)element);
+    bool has_focus = (g_focused_input_id && strcmp(g_focused_input_id, current_id) == 0);
+    
+    // Get font size for text scrolling calculation
+    float font_size = get_element_property_float(element, "fontSize", 14.0f);
+    
+    const char* raw_text;
+    if (has_focus) {
+        // When focused, use the text buffer (which contains typed text)
+        raw_text = g_input_text_buffer;
+    } else {
+        // When not focused, use element's stored value or empty string
+        raw_text = get_element_property_string(element, "value");
+        if (!raw_text) raw_text = "";
+    }
+    
+    // Get padding value for the input
+    float input_padding = get_element_property_float(element, "padding", 12.0f);
+    
+    // Apply text scrolling if needed
+    int scroll_offset = 0;
+    KryonRenderer* renderer = g_current_runtime ? (KryonRenderer*)g_current_runtime->renderer : NULL;
+    const char* text = get_scrolled_input_text(raw_text, width, font_size, input_padding, renderer, &scroll_offset);
+    g_input_text_scroll_offset = scroll_offset; // Update global scroll offset
+    
+    const char* placeholder = get_element_property_string(element, "placeholder");
+    bool is_password = get_element_property_bool(element, "password", false);
+    bool is_disabled = get_element_property_bool(element, "disabled", false);
+    
+    // Convert to KryonColor format
+    KryonColor bg_color = {
+        ((bg_color_val >> 24) & 0xFF) / 255.0f,  // R
+        ((bg_color_val >> 16) & 0xFF) / 255.0f,  // G
+        ((bg_color_val >> 8) & 0xFF) / 255.0f,   // B
+        (bg_color_val & 0xFF) / 255.0f           // A
+    };
+    KryonColor border_color = {
+        ((border_color_val >> 24) & 0xFF) / 255.0f,  // R
+        ((border_color_val >> 16) & 0xFF) / 255.0f,  // G
+        ((border_color_val >> 8) & 0xFF) / 255.0f,   // B
+        (border_color_val & 0xFF) / 255.0f           // A
+    };
+    KryonColor text_color = {
+        ((text_color_val >> 24) & 0xFF) / 255.0f,  // R
+        ((text_color_val >> 16) & 0xFF) / 255.0f,  // G
+        ((text_color_val >> 8) & 0xFF) / 255.0f,   // B
+        (text_color_val & 0xFF) / 255.0f           // A
+    };
+    
+    // Check if mouse is hovering over input bounds and handle click for focus
+    extern KryonVec2 g_mouse_position;
+    KryonVec2 mouse_pos = g_mouse_position;
+    
+    bool is_hovered = false;
+    if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
+        mouse_pos.y >= posY && mouse_pos.y <= posY + height) {
+        is_hovered = true;
+        
+        // Handle mouse click for focus management
+        extern bool g_mouse_clicked_this_frame;
+        if (g_mouse_clicked_this_frame) {
+            // Free previous focused input ID
+            if (g_focused_input_id) {
+                free(g_focused_input_id);
+            }
+            // Set this input as focused (use element pointer as unique ID)
+            char id_buffer[32];
+            snprintf(id_buffer, sizeof(id_buffer), "input_%p", (void*)element);
+            g_focused_input_id = strdup(id_buffer);
+            
+            // Load current value into text buffer for editing
+            const char* current_value = get_element_property_string(element, "value");
+            if (current_value && strlen(current_value) > 0) {
+                strncpy(g_input_text_buffer, current_value, sizeof(g_input_text_buffer) - 1);
+                g_input_text_buffer[sizeof(g_input_text_buffer) - 1] = '\0';
+                g_input_text_length = strlen(g_input_text_buffer);
+            } else {
+                // Start with empty text if no value is set
+                g_input_text_buffer[0] = '\0';
+                g_input_text_length = 0;
+            }
+            g_input_text_scroll_offset = 0; // Reset scroll when gaining focus
+        }
+    } else if (g_mouse_clicked_this_frame) {
+        // Click outside this input - check if this input was focused
+        char current_id[32];
+        snprintf(current_id, sizeof(current_id), "input_%p", (void*)element);
+        if (g_focused_input_id && strcmp(g_focused_input_id, current_id) == 0) {
+            // This input loses focus - clear everything
+            free(g_focused_input_id);
+            g_focused_input_id = NULL;
+            g_input_text_buffer[0] = '\0';
+            g_input_text_length = 0;
+            g_input_text_scroll_offset = 0; // Reset scroll when losing focus
+        }
+    }
+    
+    // We already computed current_id above, use the has_focus variable we calculated earlier
+    
+    // Apply hover/focus effects
+    KryonColor final_bg_color = bg_color;
+    KryonColor final_border_color = border_color;
+    
+    if (has_focus) {
+        // Blue border when focused
+        final_border_color.r = 0.2f;
+        final_border_color.g = 0.6f;
+        final_border_color.b = 1.0f;
+        final_border_color.a = 1.0f;
+    } else if (is_hovered) {
+        // Slightly darken border on hover
+        final_border_color.r = fmaxf(0.0f, border_color.r - 0.1f);
+        final_border_color.g = fmaxf(0.0f, border_color.g - 0.1f);
+        final_border_color.b = fmaxf(0.0f, border_color.b - 0.1f);
+    }
+    
+    // Use the proper input widget command
+    KryonRenderCommand cmd = kryon_cmd_draw_input(
+        "input_1",  // TODO: Generate unique widget ID from element
+        (KryonVec2){posX, posY},
+        (KryonVec2){width, height},
+        text ? text : "",
+        placeholder ? placeholder : ""
+    );
+    
+    // Set additional input properties
+    cmd.data.draw_input.background_color = final_bg_color;
+    cmd.data.draw_input.text_color = text_color;
+    cmd.data.draw_input.border_color = final_border_color;
+    cmd.data.draw_input.border_width = border_width;
+    cmd.data.draw_input.border_radius = border_radius;
+    cmd.data.draw_input.state = is_hovered ? KRYON_WIDGET_STATE_HOVERED : KRYON_WIDGET_STATE_NORMAL;
+    cmd.data.draw_input.enabled = !is_disabled;
+    cmd.data.draw_input.is_password = is_password;
+    // Calculate cursor position relative to visible text (accounting for scroll)
+    int raw_cursor_pos = raw_text ? (int)strlen(raw_text) : 0;
+    int visible_cursor_pos = raw_cursor_pos - scroll_offset;
+    if (visible_cursor_pos < 0) visible_cursor_pos = 0;
+    cmd.data.draw_input.cursor_position = visible_cursor_pos;
+    cmd.data.draw_input.has_focus = has_focus;
+    
+    commands[(*command_count)++] = cmd;
+}
+
+// Convert Image element to render commands
+static void element_image_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+    if (*command_count >= max_commands - 1) return; // Need space for image command
+    
+    // Get image properties with dynamic lookup
+    float posX = get_element_property_float(element, "posX", 0.0f);
+    float posY = get_element_property_float(element, "posY", 0.0f);
+    float width = get_element_property_float(element, "width", 100.0f);
+    float height = get_element_property_float(element, "height", 100.0f);
+    
+    const char* source = get_element_property_string(element, "source");
+    const char* src = get_element_property_string(element, "src"); // Alternative property name
+    float opacity = get_element_property_float(element, "opacity", 1.0f);
+    bool maintain_aspect = get_element_property_bool(element, "keepAspectRatio", true);
+    
+    // Use 'src' if 'source' is not provided (common naming convention)
+    if (!source && src) {
+        source = src;
+    }
+    
+    if (!source) {
+        // No image source provided, skip rendering
+        return;
+    }
+    
+    // Create image render command
+    KryonRenderCommand cmd = {0};
+    cmd.type = KRYON_CMD_DRAW_IMAGE;
+    cmd.z_index = 0;
+    cmd.data.draw_image = (KryonDrawImageData){
+        .position = {posX, posY},
+        .size = {width, height},
+        .source = strdup(source),
+        .opacity = opacity,
+        .maintain_aspect = maintain_aspect
+    };
     
     commands[(*command_count)++] = cmd;
 }
@@ -1558,16 +1932,309 @@ static void element_center_to_commands(KryonElement* element, KryonRenderCommand
     }
 }
 
+// Helper function to set element position
+static void set_element_position(KryonElement* element, float x, float y) {
+    if (!element) return;
+    
+    // Set position properties on the element
+    // printf("🔧 Setting position for element '%s' to (%.1f, %.1f)\n", 
+    //        element->type_name ? element->type_name : "Unknown", x, y);
+    
+    // Find or create posX property (used by text rendering)
+    KryonProperty* x_prop = find_element_property(element, "posX");
+    if (!x_prop) {
+        // Expand capacity if needed
+        if (element->property_count >= element->property_capacity) {
+            size_t new_capacity = element->property_capacity ? element->property_capacity * 2 : 4;
+            KryonProperty **new_properties = kryon_realloc(element->properties,
+                                                          new_capacity * sizeof(KryonProperty*));
+            if (!new_properties) return;
+            element->properties = new_properties;
+            element->property_capacity = new_capacity;
+        }
+        
+        // Add posX property
+        x_prop = kryon_alloc(sizeof(KryonProperty));
+        x_prop->name = kryon_strdup("posX");
+        element->properties[element->property_count++] = x_prop;
+    }
+    x_prop->type = KRYON_RUNTIME_PROP_FLOAT;
+    x_prop->value.float_value = x;
+    // printf("🔧 Set posX to %.1f\n", x_prop->value.float_value);
+    
+    // Find or create posY property (used by text rendering)
+    KryonProperty* y_prop = find_element_property(element, "posY");
+    if (!y_prop) {
+        // Expand capacity if needed
+        if (element->property_count >= element->property_capacity) {
+            size_t new_capacity = element->property_capacity ? element->property_capacity * 2 : 4;
+            KryonProperty **new_properties = kryon_realloc(element->properties,
+                                                          new_capacity * sizeof(KryonProperty*));
+            if (!new_properties) return;
+            element->properties = new_properties;
+            element->property_capacity = new_capacity;
+        }
+        
+        // Add posY property
+        y_prop = kryon_alloc(sizeof(KryonProperty));
+        y_prop->name = kryon_strdup("posY");
+        element->properties[element->property_count++] = y_prop;
+    }
+    y_prop->type = KRYON_RUNTIME_PROP_FLOAT;
+    y_prop->value.float_value = y;
+    // printf("🔧 Set posY to %.1f\n", y_prop->value.float_value);
+    
+    // Position set successfully
+}
+
+// Convert Column element to render commands (arranges children vertically)
+static void element_column_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+    // Column arranges children vertically with optional spacing and alignment
+    
+    // Get layout properties
+    const char* main_axis = get_element_property_string(element, "mainAxis");
+    const char* cross_axis = get_element_property_string(element, "crossAxis"); 
+    float gap = get_element_property_float(element, "gap", 0.0f);
+    
+    // Get container position and dimensions from parent
+    float container_x = 0.0f;
+    float container_y = 0.0f;
+    float container_width = 600.0f;  // Default
+    float container_height = 400.0f; // Default
+    
+    // Column layout inherits position and size from its parent container
+    if (element->parent) {
+        // Get parent's position (where this Column should start)
+        container_x = get_element_property_float(element->parent, "posX", 0.0f);
+        container_y = get_element_property_float(element->parent, "posY", 0.0f);
+        
+        // Get parent's dimensions (Column fills parent's content area)
+        container_width = get_element_property_float(element->parent, "width", 600.0f);
+        container_height = get_element_property_float(element->parent, "height", 400.0f);
+        
+        // Handle window-level parents
+        if (strcmp(element->parent->type_name, "App") == 0) {
+            container_width = get_element_property_float(element->parent, "windowWidth", 600.0f);
+            container_height = get_element_property_float(element->parent, "windowHeight", 400.0f);
+        }
+        
+        // Account for parent's padding
+        float parent_padding = get_element_property_float(element->parent, "padding", 0.0f);
+        container_x += parent_padding;
+        container_y += parent_padding;
+        container_width -= 2 * parent_padding;
+        container_height -= 2 * parent_padding;
+        
+        // printf("🔧 Column inherits from parent '%s': pos=(%.1f,%.1f) size=%.1fx%.1f\n", 
+        //        element->parent->type_name, container_x, container_y, container_width, container_height);
+        
+        // Set position properties on this Column so children can inherit from it
+        set_element_position(element, container_x, container_y);
+    }
+    
+    // Apply this Column's own padding to create content area for children
+    float column_padding = get_element_property_float(element, "padding", 0.0f);
+    container_x += column_padding;
+    container_y += column_padding;
+    container_width -= 2 * column_padding;
+    container_height -= 2 * column_padding;
+    
+    // if (column_padding > 0) {
+    //     printf("🔧 Column applying own padding %.1f, content area: pos=(%.1f,%.1f) size=%.1fx%.1f\n", 
+    //            column_padding, container_x, container_y, container_width, container_height);
+    // }
+    
+    // Calculate total height needed for all children
+    float total_children_height = 0.0f;
+    for (size_t i = 0; i < element->child_count; i++) {
+        KryonElement* child = element->children[i];
+        if (child) {
+            float child_height = calculate_element_height(child);
+            total_children_height += child_height;
+            if (i < element->child_count - 1) {
+                total_children_height += gap; // Add gap between children
+            }
+        }
+    }
+    
+    // Calculate starting Y position based on mainAxisAlignment
+    float start_y = container_y;
+    if (main_axis && strcmp(main_axis, "center") == 0) {
+        start_y = container_y + (container_height - total_children_height) / 2.0f;
+    } else if (main_axis && strcmp(main_axis, "end") == 0) {
+        start_y = container_y + container_height - total_children_height;
+    }
+    // "start" or default uses container_y
+    
+    // Position children vertically
+    float current_y = start_y;
+    for (size_t i = 0; i < element->child_count; i++) {
+        KryonElement* child = element->children[i];
+        if (child) {
+            float child_width = get_element_property_float(child, "width", 100.0f);
+            float child_height = calculate_element_height(child);
+            
+            // Calculate X position based on crossAxisAlignment
+            float child_x = container_x;
+            if (cross_axis && strcmp(cross_axis, "center") == 0) {
+                child_x = container_x + (container_width - child_width) / 2.0f;
+            } else if (cross_axis && strcmp(cross_axis, "end") == 0) {
+                child_x = container_x + container_width - child_width;
+            }
+            // "start" or default uses container_x
+            
+            // Set position properties on child
+            set_element_position(child, child_x, current_y);
+            
+            current_y += child_height + gap;
+        }
+    }
+}
+
+// Convert Row element to render commands (arranges children horizontally)
+static void element_row_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+    // Row arranges children horizontally with optional spacing and alignment
+    
+    // Get layout properties
+    const char* main_axis = get_element_property_string(element, "mainAxis");
+    const char* cross_axis = get_element_property_string(element, "crossAxis");
+    float gap = get_element_property_float(element, "gap", 0.0f);
+    
+    // Get container position and dimensions from parent
+    float container_x = 0.0f;
+    float container_y = 0.0f;
+    float container_width = 600.0f;  // Default
+    float container_height = 400.0f; // Default
+    
+    // Row layout inherits position and size from its parent container
+    if (element->parent) {
+        // Get this Row's position (set by parent's layout)
+        container_x = get_element_property_float(element, "posX", 0.0f);
+        container_y = get_element_property_float(element, "posY", 0.0f);
+        
+        // Find actual container dimensions by walking up the hierarchy
+        // Look for the first parent that has explicit width/height properties
+        KryonElement* size_parent = element->parent;
+        while (size_parent) {
+            // Check if this parent has explicit dimensions
+            KryonProperty* width_prop = find_element_property(size_parent, "width");
+            KryonProperty* height_prop = find_element_property(size_parent, "height");
+            
+            if (width_prop && height_prop) {
+                // Found a parent with explicit dimensions
+                container_width = width_prop->value.float_value;
+                container_height = height_prop->value.float_value;
+                printf("🔍 Row found size parent '%s': %.1fx%.1f\n", 
+                       size_parent->type_name, container_width, container_height);
+                
+                // Account for this parent's padding
+                float size_parent_padding = get_element_property_float(size_parent, "padding", 0.0f);
+                if (size_parent_padding > 0) {
+                    container_width -= 2 * size_parent_padding;
+                    container_height -= 2 * size_parent_padding;
+                    printf("🔍 Applied padding %.1f, usable size: %.1fx%.1f\n", 
+                           size_parent_padding, container_width, container_height);
+                }
+                break;
+            } else if (strcmp(size_parent->type_name, "App") == 0) {
+                // Handle window-level parents
+                container_width = get_element_property_float(size_parent, "windowWidth", 600.0f);
+                container_height = get_element_property_float(size_parent, "windowHeight", 400.0f);
+                printf("🔍 Row found App parent: %.1fx%.1f\n", container_width, container_height);
+                break;
+            }
+            
+            // Move up to the next parent
+            size_parent = size_parent->parent;
+        }
+        
+        // printf("🔧 Row inherits from parent '%s': pos=(%.1f,%.1f) size=%.1fx%.1f\n", 
+        //        element->parent->type_name, container_x, container_y, container_width, container_height);
+        
+        // Set position properties on this Row so children can inherit from it
+        set_element_position(element, container_x, container_y);
+    }
+    
+    // Calculate total width needed for all children
+    float total_children_width = 0.0f;
+    for (size_t i = 0; i < element->child_count; i++) {
+        KryonElement* child = element->children[i];
+        if (child) {
+            float child_width = get_element_property_float(child, "width", 100.0f);
+            total_children_width += child_width;
+            if (i < element->child_count - 1) {
+                total_children_width += gap; // Add gap between children
+            }
+        }
+    }
+    
+    // Calculate starting X position based on mainAxisAlignment
+    float start_x = container_x;
+    if (main_axis && strcmp(main_axis, "center") == 0) {
+        start_x = container_x + (container_width - total_children_width) / 2.0f;
+    } else if (main_axis && strcmp(main_axis, "end") == 0) {
+        start_x = container_x + container_width - total_children_width;
+    } else if (main_axis && strcmp(main_axis, "spaceEvenly") == 0) {
+        // spaceEvenly: equal space before, between, and after all items
+        if (element->child_count > 0) {
+            float available_space = container_width - total_children_width + ((element->child_count - 1) * gap);
+            gap = available_space / (element->child_count + 1);
+            start_x = container_x + gap;
+        }
+    } else if (main_axis && strcmp(main_axis, "spaceAround") == 0) {
+        // spaceAround: equal space around each item (half space at edges)
+        if (element->child_count > 0) {
+            float available_space = container_width - total_children_width + ((element->child_count - 1) * gap);
+            gap = available_space / element->child_count;
+            start_x = container_x + gap / 2.0f;
+        }
+    } else if (main_axis && strcmp(main_axis, "spaceBetween") == 0) {
+        // spaceBetween: equal space between items (no space at edges)
+        if (element->child_count > 1) {
+            float available_space = container_width - total_children_width + ((element->child_count - 1) * gap);
+            gap = available_space / (element->child_count - 1);
+            start_x = container_x;
+        }
+    }
+    // "start" or default uses container_x
+    
+    // Position children horizontally
+    float current_x = start_x;
+    for (size_t i = 0; i < element->child_count; i++) {
+        KryonElement* child = element->children[i];
+        if (child) {
+            float child_width = get_element_property_float(child, "width", 100.0f);
+            float child_height = get_element_property_float(child, "height", 50.0f);
+            
+            // Calculate Y position based on crossAxisAlignment
+            float child_y = container_y;
+            if (cross_axis && strcmp(cross_axis, "center") == 0) {
+                child_y = container_y + (container_height - child_height) / 2.0f;
+            } else if (cross_axis && strcmp(cross_axis, "end") == 0) {
+                child_y = container_y + container_height - child_height;
+            }
+            // "start" or default uses container_y
+            
+            // Set position properties on child
+            printf("📍 Row[%s]: child %zu at (%.1f,%.1f)\n", 
+                   main_axis ? main_axis : "default", i, current_x, child_y);
+            set_element_position(child, current_x, child_y);
+            
+            current_x += child_width + gap;
+        }
+    }
+}
+
 // Convert Text element to render commands  
 static void element_text_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 1) return;
     
     // Debug: Log all properties for first text element
-    debug_log_element_properties(element, "Text");
+    // debug_log_element_properties(element, "Text");
     
     // Get text properties with comprehensive type handling
     const char* text = get_element_property_string(element, "text");
-    const char* color_str = get_element_property_string(element, "color");
+    uint32_t text_color_val = get_element_property_color(element, "color", 0x000000FF); // Black default
     float font_size = get_element_property_float(element, "fontSize", 20.0f);
     const char* font_family = get_element_property_string(element, "fontFamily");
     const char* font_weight = get_element_property_string(element, "fontWeight");
@@ -1578,23 +2245,7 @@ static void element_text_to_commands(KryonElement* element, KryonRenderCommand* 
     float posY = get_element_property_float(element, "posY", 0.0f);
     float max_width = get_element_property_float(element, "maxWidth", 0.0f);
     
-    // Debug: Log text properties
-    static bool text_debug_logged = false;
-    if (!text_debug_logged) {
-        printf("🎨 DEBUG Text: text='%s' color='%s' size=%.1f pos=%.1f,%.1f font='%s' weight='%s' align='%s'\n", 
-               text ? text : "NULL", 
-               color_str ? color_str : "NULL",
-               font_size, posX, posY,
-               font_family ? font_family : "NULL",
-               font_weight ? font_weight : "NULL",
-               text_align ? text_align : "NULL");
-        text_debug_logged = true;
-    }
-    
     if (!text) return;
-    
-    // Use the proper color parsing utility instead of the basic one
-    uint32_t text_color_val = kryon_color_parse_string(color_str ? color_str : "black");
     KryonColor text_color = {
         ((text_color_val >> 24) & 0xFF) / 255.0f,  // R
         ((text_color_val >> 16) & 0xFF) / 255.0f,  // G
@@ -1605,8 +2256,10 @@ static void element_text_to_commands(KryonElement* element, KryonRenderCommand* 
     // Calculate proper positioning within parent container
     KryonVec2 position = {posX, posY};
     
-    // If element has a parent and no explicit position, calculate centered position
-    if (element->parent && posX == 0.0f && posY == 0.0f) {
+    // If element has a parent and no explicit position properties, calculate centered position
+    KryonProperty* posX_prop = find_element_property(element, "posX");
+    KryonProperty* posY_prop = find_element_property(element, "posY");
+    if (element->parent && !posX_prop && !posY_prop) {
         // Get parent properties
         float parent_x = get_element_property_float(element->parent, "posX", 0.0f);
         float parent_y = get_element_property_float(element->parent, "posY", 0.0f);
@@ -1676,62 +2329,82 @@ static void element_text_to_commands(KryonElement* element, KryonRenderCommand* 
     commands[(*command_count)++] = cmd;
 }
 
+// Helper function to render a single element based on its type
+static void render_element(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+    if (!element || !element->type_name) return;
+    
+    // Map element types to their render functions
+    static const struct {
+        const char* type_name;
+        void (*render_func)(KryonElement*, KryonRenderCommand*, size_t*, size_t);
+    } element_renderers[] = {
+        {"Container", element_container_to_commands},
+        {"Text", element_text_to_commands},
+        {"Button", element_button_to_commands},
+        {"Input", element_input_to_commands},
+        {"Image", element_image_to_commands},
+        // Add more element types here
+    };
+    
+    // Find and call the appropriate render function
+    for (size_t i = 0; i < sizeof(element_renderers) / sizeof(element_renderers[0]); i++) {
+        if (strcmp(element->type_name, element_renderers[i].type_name) == 0) {
+            element_renderers[i].render_func(element, commands, command_count, max_commands);
+            break;
+        }
+    }
+}
+
+// Helper function to process layout elements
+static void process_layout(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+    if (!element || !element->type_name) return;
+    
+    // Map layout types to their processing functions
+    static const struct {
+        const char* type_name;
+        void (*layout_func)(KryonElement*, KryonRenderCommand*, size_t*, size_t);
+    } layout_processors[] = {
+        {"Center", element_center_to_commands},
+        {"Column", element_column_to_commands},
+        {"Row", element_row_to_commands},
+        // Add more layout types here
+    };
+    
+    // Find and call the appropriate layout function
+    for (size_t i = 0; i < sizeof(layout_processors) / sizeof(layout_processors[0]); i++) {
+        if (strcmp(element->type_name, layout_processors[i].type_name) == 0) {
+            layout_processors[i].layout_func(element, commands, command_count, max_commands);
+            break;
+        }
+    }
+}
+
 // Recursive function to convert element tree to render commands
 static void element_to_commands_recursive(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (!element || !commands || !command_count || *command_count >= max_commands) return;
     
-    // Additional safety checks
+    // Safety checks
     if (!element->type_name) {
         printf("⚠️  WARNING: Element has null type_name, skipping\n");
         return;
     }
     
-    // Critical bounds checking - prevent corruption or infinite loops
-    if (element->property_count > 1000) {
-        printf("❌ ERROR: Element has suspicious property_count=%zu, possible corruption\n", element->property_count);
+    if (element->property_count > 1000 || element->child_count > 1000) {
+        printf("❌ ERROR: Element has suspicious counts, possible corruption\n");
         return;
     }
     
-    if (element->child_count > 1000) {
-        printf("❌ ERROR: Element has suspicious child_count=%zu, possible corruption\n", element->child_count);
-        return;
-    }
-    
-    // Check properties array validity (always check, not just in debug)
     if (element->property_count > 0 && !element->properties) {
-        printf("❌ ERROR: Element has property_count=%zu but properties array is NULL\n", element->property_count);
+        printf("❌ ERROR: Element has properties but NULL array\n");
         return;
     }
     
-    // Check children array validity (always check, not just in debug)
     if (element->child_count > 0 && !element->children) {
-        printf("❌ ERROR: Element has child_count=%zu but children array is NULL\n", element->child_count);
+        printf("❌ ERROR: Element has children but NULL array\n");
         return;
     }
     
-    // Debug: Log each element being processed (reduced logging)
-    static int elements_processed = 0;
-    if (elements_processed++ < 5) { // Only log first 5 elements
-        printf("🔍 DEBUG: Processing element %s with %zu properties, %zu children\n", 
-               element->type_name, element->property_count, element->child_count);
-    }
-    
-    // First run layout elements (Center) to position children
-    if (strcmp(element->type_name, "Center") == 0) {
-        element_center_to_commands(element, commands, command_count, max_commands);
-    }
-    
-    // Then convert visible elements based on their type
-    if (strcmp(element->type_name, "Container") == 0) {
-        element_container_to_commands(element, commands, command_count, max_commands);
-    } else if (strcmp(element->type_name, "Text") == 0) {
-        element_text_to_commands(element, commands, command_count, max_commands);
-    } else if (strcmp(element->type_name, "Button") == 0) {
-        element_button_to_commands(element, commands, command_count, max_commands);
-    }
-    // App elements don't render directly, just process children
-    
-    // Process children with recursive depth protection
+    // Track recursion depth
     static int recursive_depth = 0;
     if (recursive_depth > 100) {
         printf("❌ ERROR: Recursive depth exceeded 100, possible infinite loop\n");
@@ -1739,19 +2412,24 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
     }
     
     recursive_depth++;
+    
+    // Step 1: Process layout commands (these position children but don't render)
+    process_layout(element, commands, command_count, max_commands);
+    
+    // Step 2: Render the current element (parent renders first = background)
+    render_element(element, commands, command_count, max_commands);
+    
+    // Step 3: Recursively render all children (children render on top of parent)
     for (size_t i = 0; i < element->child_count && *command_count < max_commands; i++) {
         KryonElement* child = element->children[i];
-        if (child) {
-            // Verify child pointer is valid before recursion
-            if (child->type_name) { // Basic validity check
-                element_to_commands_recursive(child, commands, command_count, max_commands);
-            } else {
-                printf("⚠️  WARNING: Child element %zu has null type_name, skipping\n", i);
-            }
+        if (child && child->type_name) {
+            element_to_commands_recursive(child, commands, command_count, max_commands);
         }
     }
+    
     recursive_depth--;
 }
+
 
 // Main conversion function
 void kryon_element_tree_to_render_commands(KryonElement* root, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
@@ -1760,8 +2438,12 @@ void kryon_element_tree_to_render_commands(KryonElement* root, KryonRenderComman
     *command_count = 0;
     
     // Convert element tree to render commands
-    
     element_to_commands_recursive(root, commands, command_count, max_commands);
+    
+    // Assign z-indices based on render order (first command = lowest z-index)
+    for (size_t i = 0; i < *command_count; i++) {
+        commands[i].z_index = (int)i;
+    }
 }
 
 // =============================================================================

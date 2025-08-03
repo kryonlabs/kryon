@@ -29,13 +29,18 @@ static KryonASTNode *parse_variable_definition(KryonParser *parser);
 static KryonASTNode *parse_function_definition(KryonParser *parser);
 static KryonASTNode *parse_component_definition(KryonParser *parser);
 static KryonASTNode *parse_state_definition(KryonParser *parser);
+static KryonASTNode *parse_const_definition(KryonParser *parser);
+static KryonASTNode *parse_const_for_loop(KryonParser *parser);
 static KryonASTNode *parse_directive(KryonParser *parser);
 static KryonASTNode *parse_property(KryonParser *parser);
 static KryonASTNode *parse_expression(KryonParser *parser);
+static KryonASTNode *parse_postfix(KryonParser *parser);
 static KryonASTNode *parse_primary(KryonParser *parser);
 static KryonASTNode *parse_literal(KryonParser *parser);
 static KryonASTNode *parse_variable(KryonParser *parser);
 static KryonASTNode *parse_template(KryonParser *parser);
+static KryonASTNode *parse_array_literal(KryonParser *parser);
+static KryonASTNode *parse_object_literal(KryonParser *parser);
 
 static bool match_token(KryonParser *parser, KryonTokenType type);
 static bool check_token(KryonParser *parser, KryonTokenType type);
@@ -308,6 +313,12 @@ static KryonASTNode *parse_document(KryonParser *parser) {
         } else if (check_token(parser, KRYON_TOKEN_COMPONENT_DIRECTIVE)) {
             printf("[DEBUG] Parsing component definition\n");
             node = parse_component_definition(parser);
+        } else if (check_token(parser, KRYON_TOKEN_CONST_DIRECTIVE)) {
+            printf("[DEBUG] Parsing const definition\n");
+            node = parse_const_definition(parser);
+        } else if (check_token(parser, KRYON_TOKEN_CONST_FOR_DIRECTIVE)) {
+            printf("[DEBUG] Parsing const_for loop\n");
+            node = parse_const_for_loop(parser);
         } else if (kryon_token_is_directive(peek(parser)->type)) {
             printf("[DEBUG] Parsing directive\n");
             node = parse_directive(parser);
@@ -393,12 +404,28 @@ static KryonASTNode *parse_element(KryonParser *parser) {
             if (child && !kryon_ast_add_child(element, child)) {
                 parser_error(parser, "Failed to add child element");
             }
-        } else if (check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
-            // Property
-            KryonASTNode *property = parse_property(parser);
-            if (property && !kryon_ast_add_property(element, property)) {
-                parser_error(parser, "Failed to add property");
+        } else if (check_token(parser, KRYON_TOKEN_CONST_FOR_DIRECTIVE)) {
+            // @const_for loop - expand inline
+            KryonASTNode *const_for = parse_const_for_loop(parser);
+            if (const_for && !kryon_ast_add_child(element, const_for)) {
+                parser_error(parser, "Failed to add const_for loop");
             }
+        } else if (check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+            // Property (potentially comma-separated list)
+            do {
+                KryonASTNode *property = parse_property(parser);
+                if (property && !kryon_ast_add_property(element, property)) {
+                    parser_error(parser, "Failed to add property");
+                }
+                
+                // Check for comma to continue parsing more properties
+                if (check_token(parser, KRYON_TOKEN_COMMA)) {
+                    advance(parser); // consume comma
+                    // Continue loop to parse next property
+                } else {
+                    break; // No comma, exit property parsing loop
+                }
+            } while (check_token(parser, KRYON_TOKEN_IDENTIFIER) && !at_end(parser));
         } else {
             parser_error(parser, "Expected property or child element");
             advance(parser); // Skip invalid token
@@ -508,7 +535,68 @@ static KryonASTNode *parse_property(KryonParser *parser) {
 }
 
 static KryonASTNode *parse_expression(KryonParser *parser) {
-    return parse_primary(parser);
+    return parse_postfix(parser);
+}
+
+static KryonASTNode *parse_postfix(KryonParser *parser) {
+    KryonASTNode *node = parse_primary(parser);
+    if (!node) {
+        return NULL;
+    }
+    
+    // Handle postfix operators: member access (.) and array access ([])
+    while (true) {
+        if (match_token(parser, KRYON_TOKEN_DOT)) {
+            // Member access: object.member
+            if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+                parser_error(parser, "Expected property name after '.'");
+                return node;
+            }
+            
+            const KryonToken *member_token = advance(parser);
+            KryonASTNode *member_access = kryon_ast_create_node(parser, KRYON_AST_MEMBER_ACCESS,
+                                                               &member_token->location);
+            if (!member_access) {
+                return node;
+            }
+            
+            member_access->data.member_access.object = node;
+            member_access->data.member_access.member = kryon_token_copy_lexeme(member_token);
+            node->parent = member_access;
+            node = member_access;
+            
+        } else if (match_token(parser, KRYON_TOKEN_LEFT_BRACKET)) {
+            // Array access: array[index]
+            KryonASTNode *index = parse_expression(parser);
+            if (!index) {
+                parser_error(parser, "Expected array index expression");
+                return node;
+            }
+            
+            if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACKET)) {
+                parser_error(parser, "Expected ']' after array index");
+                return node;
+            }
+            
+            KryonASTNode *array_access = kryon_ast_create_node(parser, KRYON_AST_ARRAY_ACCESS,
+                                                              &previous(parser)->location);
+            if (!array_access) {
+                return node;
+            }
+            
+            array_access->data.array_access.array = node;
+            array_access->data.array_access.index = index;
+            node->parent = array_access;
+            index->parent = array_access;
+            node = array_access;
+            
+        } else {
+            // No more postfix operators
+            break;
+        }
+    }
+    
+    return node;
 }
 
 static KryonASTNode *parse_primary(KryonParser *parser) {
@@ -529,7 +617,29 @@ static KryonASTNode *parse_primary(KryonParser *parser) {
         return parse_template(parser);
     }
     
-    parser_error(parser, "Expected literal, variable, or template expression");
+    // Handle array literals [item1, item2, ...]
+    if (check_token(parser, KRYON_TOKEN_LEFT_BRACKET)) {
+        return parse_array_literal(parser);
+    }
+    
+    // Handle object literals {key: value, ...}
+    if (check_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
+        return parse_object_literal(parser);
+    }
+    
+    // Handle identifiers (for parameter references like 'initialValue')
+    if (check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+        const KryonToken *token = advance(parser);
+        KryonASTNode *identifier = kryon_ast_create_node(parser, KRYON_AST_IDENTIFIER,
+                                                        &token->location);
+        if (!identifier) {
+            return NULL;
+        }
+        identifier->data.identifier.name = kryon_token_copy_lexeme(token);
+        return identifier;
+    }
+    
+    parser_error(parser, "Expected literal, variable, template expression, or identifier");
     return NULL;
 }
 
@@ -644,6 +754,138 @@ static KryonASTNode *parse_template(KryonParser *parser) {
     }
     
     return template_node;
+}
+
+static KryonASTNode *parse_array_literal(KryonParser *parser) {
+    const KryonToken *start_token = advance(parser); // consume '['
+    
+    KryonASTNode *array = kryon_ast_create_node(parser, KRYON_AST_ARRAY_LITERAL,
+                                               &start_token->location);
+    if (!array) {
+        return NULL;
+    }
+    
+    array->data.array_literal.elements = NULL;
+    array->data.array_literal.element_count = 0;
+    array->data.array_literal.element_capacity = 0;
+    
+    // Handle empty array []
+    if (check_token(parser, KRYON_TOKEN_RIGHT_BRACKET)) {
+        advance(parser); // consume ']'
+        return array;
+    }
+    
+    // Parse array elements
+    do {
+        KryonASTNode *element = parse_expression(parser);
+        if (!element) {
+            parser_error(parser, "Expected array element");
+            break;
+        }
+        
+        // Ensure we have space for the new element
+        if (array->data.array_literal.element_count >= array->data.array_literal.element_capacity) {
+            size_t new_capacity = array->data.array_literal.element_capacity == 0 ? 4 : 
+                                  array->data.array_literal.element_capacity * 2;
+            KryonASTNode **new_elements = kryon_realloc(array->data.array_literal.elements, 
+                                                       new_capacity * sizeof(KryonASTNode *));
+            if (!new_elements) {
+                parser_error(parser, "Failed to allocate memory for array elements");
+                return array;
+            }
+            array->data.array_literal.elements = new_elements;
+            array->data.array_literal.element_capacity = new_capacity;
+        }
+        
+        array->data.array_literal.elements[array->data.array_literal.element_count++] = element;
+        element->parent = array;
+        
+    } while (match_token(parser, KRYON_TOKEN_COMMA));
+    
+    if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACKET)) {
+        parser_error(parser, "Expected ']' after array elements");
+    }
+    
+    return array;
+}
+
+static KryonASTNode *parse_object_literal(KryonParser *parser) {
+    const KryonToken *start_token = advance(parser); // consume '{'
+    
+    KryonASTNode *object = kryon_ast_create_node(parser, KRYON_AST_OBJECT_LITERAL,
+                                                &start_token->location);
+    if (!object) {
+        return NULL;
+    }
+    
+    object->data.object_literal.properties = NULL;
+    object->data.object_literal.property_count = 0;
+    object->data.object_literal.property_capacity = 0;
+    
+    // Handle empty object {}
+    if (check_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
+        advance(parser); // consume '}'
+        return object;
+    }
+    
+    // Parse object properties
+    do {
+        // Expect property name (identifier or string)
+        if (!check_token(parser, KRYON_TOKEN_IDENTIFIER) && !check_token(parser, KRYON_TOKEN_STRING)) {
+            parser_error(parser, "Expected property name");
+            break;
+        }
+        
+        const KryonToken *key_token = advance(parser);
+        
+        // Expect colon
+        if (!match_token(parser, KRYON_TOKEN_COLON)) {
+            parser_error(parser, "Expected ':' after property name");
+            break;
+        }
+        
+        // Parse property value
+        KryonASTNode *value = parse_expression(parser);
+        if (!value) {
+            parser_error(parser, "Expected property value");
+            break;
+        }
+        
+        // Create property node
+        KryonASTNode *property = kryon_ast_create_node(parser, KRYON_AST_PROPERTY,
+                                                      &key_token->location);
+        if (!property) {
+            break;
+        }
+        
+        property->data.property.name = kryon_token_copy_lexeme(key_token);
+        property->data.property.value = value;
+        value->parent = property;
+        
+        // Ensure we have space for the new property
+        if (object->data.object_literal.property_count >= object->data.object_literal.property_capacity) {
+            size_t new_capacity = object->data.object_literal.property_capacity == 0 ? 4 : 
+                                  object->data.object_literal.property_capacity * 2;
+            KryonASTNode **new_properties = kryon_realloc(object->data.object_literal.properties, 
+                                                         new_capacity * sizeof(KryonASTNode *));
+            if (!new_properties) {
+                parser_error(parser, "Failed to allocate memory for object properties");
+                return object;
+            }
+            object->data.object_literal.properties = new_properties;
+            object->data.object_literal.property_capacity = new_capacity;
+        }
+        
+        object->data.object_literal.properties[object->data.object_literal.property_count++] = property;
+        property->parent = object;
+        
+    } while (match_token(parser, KRYON_TOKEN_COMMA));
+    
+    if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
+        parser_error(parser, "Expected '}' after object properties");
+    }
+    
+    return object;
 }
 
 static KryonASTNode *parse_directive(KryonParser *parser) {
@@ -1251,6 +1493,131 @@ static KryonASTNode *parse_state_definition(KryonParser *parser) {
     return state_def;
 }
 
+static KryonASTNode *parse_const_definition(KryonParser *parser) {
+    printf("[DEBUG] parse_const_definition: Starting\n");
+    const KryonToken *directive_token = advance(parser); // consume @const
+    
+    if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+        parser_error(parser, "Expected constant name");
+        return NULL;
+    }
+    
+    const KryonToken *name_token = advance(parser);
+    
+    KryonASTNode *const_def = kryon_ast_create_node(parser, KRYON_AST_CONST_DEFINITION,
+                                                    &directive_token->location);
+    if (!const_def) {
+        return NULL;
+    }
+    
+    const_def->data.const_def.name = kryon_token_copy_lexeme(name_token);
+    const_def->data.const_def.value = NULL;
+    
+    // Expect colon assignment
+    if (!match_token(parser, KRYON_TOKEN_COLON)) {
+        parser_error(parser, "Expected ':' after constant name");
+        return const_def;
+    }
+    
+    // Parse constant value (array literal, object literal, or simple literal)
+    const_def->data.const_def.value = parse_expression(parser);
+    if (!const_def->data.const_def.value) {
+        parser_error(parser, "Expected constant value");
+    }
+    
+    printf("[DEBUG] parse_const_definition: Created constant '%s'\n", 
+           const_def->data.const_def.name);
+    
+    return const_def;
+}
+
+static KryonASTNode *parse_const_for_loop(KryonParser *parser) {
+    printf("[DEBUG] parse_const_for_loop: Starting\n");
+    const KryonToken *directive_token = advance(parser); // consume @const_for
+    
+    if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+        parser_error(parser, "Expected loop variable name");
+        return NULL;
+    }
+    
+    const KryonToken *var_token = advance(parser);
+    
+    // Expect 'in' keyword
+    if (!match_token(parser, KRYON_TOKEN_IN_KEYWORD)) {
+        parser_error(parser, "Expected 'in' after loop variable");
+        return NULL;
+    }
+    
+    if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+        parser_error(parser, "Expected array name after 'in'");
+        return NULL;
+    }
+    
+    const KryonToken *array_token = advance(parser);
+    
+    KryonASTNode *const_for = kryon_ast_create_node(parser, KRYON_AST_CONST_FOR_LOOP,
+                                                    &directive_token->location);
+    if (!const_for) {
+        return NULL;
+    }
+    
+    const_for->data.const_for_loop.var_name = kryon_token_copy_lexeme(var_token);
+    const_for->data.const_for_loop.array_name = kryon_token_copy_lexeme(array_token);
+    const_for->data.const_for_loop.body = NULL;
+    const_for->data.const_for_loop.body_count = 0;
+    const_for->data.const_for_loop.body_capacity = 0;
+    
+    // Expect opening brace
+    if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
+        parser_error(parser, "Expected '{' before loop body");
+        return const_for;
+    }
+    
+    // Parse loop body (elements)
+    while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
+        KryonASTNode *body_element = NULL;
+        
+        if (check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
+            body_element = parse_element(parser);
+        } else {
+            parser_error(parser, "Expected element in loop body");
+            synchronize(parser);
+            continue;
+        }
+        
+        if (body_element) {
+            // Ensure we have space for the new element
+            if (const_for->data.const_for_loop.body_count >= const_for->data.const_for_loop.body_capacity) {
+                size_t new_capacity = const_for->data.const_for_loop.body_capacity == 0 ? 4 : 
+                                      const_for->data.const_for_loop.body_capacity * 2;
+                KryonASTNode **new_body = kryon_realloc(const_for->data.const_for_loop.body, 
+                                                        new_capacity * sizeof(KryonASTNode *));
+                if (!new_body) {
+                    parser_error(parser, "Failed to allocate memory for loop body");
+                    return const_for;
+                }
+                const_for->data.const_for_loop.body = new_body;
+                const_for->data.const_for_loop.body_capacity = new_capacity;
+            }
+            
+            const_for->data.const_for_loop.body[const_for->data.const_for_loop.body_count++] = body_element;
+            body_element->parent = const_for;
+        }
+    }
+    
+    // Expect closing brace
+    if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
+        parser_error(parser, "Expected '}' after loop body");
+    }
+    
+    printf("[DEBUG] parse_const_for_loop: Created loop '%s' in '%s' with %zu body elements\n",
+           const_for->data.const_for_loop.var_name,
+           const_for->data.const_for_loop.array_name,
+           const_for->data.const_for_loop.body_count);
+    
+    return const_for;
+}
+
 // =============================================================================
 // TOKEN UTILITIES
 // =============================================================================
@@ -1430,6 +1797,8 @@ bool kryon_ast_add_child(KryonASTNode *parent, KryonASTNode *child) {
             case KRYON_AST_THEME_DEFINITION:
             case KRYON_AST_VARIABLE_DEFINITION:
             case KRYON_AST_FUNCTION_DEFINITION:
+            case KRYON_AST_CONST_DEFINITION:
+            case KRYON_AST_CONST_FOR_LOOP:
             case KRYON_AST_METADATA_DIRECTIVE:
             case KRYON_AST_EVENT_DIRECTIVE:
             case KRYON_AST_STORE_DIRECTIVE:
@@ -1624,9 +1993,15 @@ const char *kryon_ast_node_type_name(KryonASTNodeType type) {
         case KRYON_AST_THEME_DEFINITION: return "ThemeDefinition";
         case KRYON_AST_VARIABLE_DEFINITION: return "VariableDefinition";
         case KRYON_AST_FUNCTION_DEFINITION: return "FunctionDefinition";
+        case KRYON_AST_CONST_DEFINITION: return "ConstDefinition";
+        case KRYON_AST_CONST_FOR_LOOP: return "ConstForLoop";
         case KRYON_AST_LITERAL: return "Literal";
         case KRYON_AST_VARIABLE: return "Variable";
         case KRYON_AST_TEMPLATE: return "Template";
+        case KRYON_AST_ARRAY_LITERAL: return "ArrayLiteral";
+        case KRYON_AST_OBJECT_LITERAL: return "ObjectLiteral";
+        case KRYON_AST_MEMBER_ACCESS: return "MemberAccess";
+        case KRYON_AST_ARRAY_ACCESS: return "ArrayAccess";
         case KRYON_AST_ERROR: return "Error";
         default: return "Unknown";
     }
