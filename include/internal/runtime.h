@@ -689,6 +689,12 @@ bool kryon_runtime_set_variable(KryonRuntime *runtime, const char *name, const c
  */
 const char* kryon_runtime_get_variable(KryonRuntime *runtime, const char *name);
 
+/**
+ * @brief Get the currently active runtime instance
+ * @return Current runtime instance or NULL if none active
+ */
+KryonRuntime* kryon_runtime_get_current(void);
+
 #ifdef __cplusplus
 }
 #endif

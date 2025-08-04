@@ -41,6 +41,11 @@ set(CODEGEN_SOURCES
     codegen/krb_writer.c
     codegen/krb_reader.c
     codegen/krb_file.c
+    codegen/string_table.c
+    codegen/directive_serializer.c
+    codegen/element_serializer.c
+    codegen/ast_expander.c
+    codegen/event_serializer.c
 )
 
 set(CODEGEN_HEADERS

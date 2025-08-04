@@ -144,6 +144,23 @@ struct KryonCodeGenerator {
     size_t current_offset;         // Current write offset in binary
     uint32_t next_element_id;      // Next unique element ID
     
+    // Component functions collected during expansion
+    KryonASTNode **component_functions;    // Array of component functions
+    size_t component_function_count;       // Number of component functions
+    size_t component_function_capacity;    // Capacity of function array
+    
+    // Component instance state tracking
+    struct {
+        char *instance_id;                 // Unique instance ID
+        char *component_name;              // Component type name
+        char **variable_names;             // State variable names
+        char **variable_values;            // State variable values (as strings)
+        size_t variable_count;             // Number of state variables
+    } *component_instances;                // Array of component instances
+    size_t component_instance_count;       // Number of component instances
+    size_t component_instance_capacity;    // Capacity of instance array
+    uint32_t next_component_instance_id;   // Next unique component instance ID
+    
     // Error tracking
     bool has_errors;               // Whether generation failed
     char **error_messages;         // Array of error messages
@@ -343,6 +360,140 @@ bool kryon_codegen_write_styles(KryonCodeGenerator *codegen, const KryonASTNode 
  * @return true on success, false on error
  */
 bool kryon_write_elements(KryonCodeGenerator *codegen, const KryonASTNode *ast_root);
+
+// =============================================================================
+// UTILITY FUNCTIONS (for use by separated modules)
+// =============================================================================
+
+// add_string_to_table moved to string_table.h
+
+/**
+ * @brief Write uint32 to binary
+ * @param codegen Code generator instance  
+ * @param value Value to write
+ * @return true on success, false on error
+ */
+bool write_uint32(KryonCodeGenerator *codegen, uint32_t value);
+
+/**
+ * @brief Write uint16 to binary
+ * @param codegen Code generator instance
+ * @param value Value to write 
+ * @return true on success, false on error
+ */
+bool write_uint16(KryonCodeGenerator *codegen, uint16_t value);
+
+/**
+ * @brief Write uint8 to binary
+ * @param codegen Code generator instance
+ * @param value Value to write
+ * @return true on success, false on error
+ */
+bool write_uint8(KryonCodeGenerator *codegen, uint8_t value);
+
+/**
+ * @brief Write binary data
+ * @param codegen Code generator instance
+ * @param data Data to write
+ * @param size Size of data
+ * @return true on success, false on error
+ */
+bool write_binary_data(KryonCodeGenerator *codegen, const void *data, size_t size);
+
+/**
+ * @brief Report code generation error
+ * @param codegen Code generator instance
+ * @param message Error message
+ */
+void codegen_error(KryonCodeGenerator *codegen, const char *message);
+
+/**
+ * @brief Write value node to binary
+ * @param codegen Code generator instance
+ * @param value Value to write
+ * @return true on success, false on error
+ */
+bool write_value_node(KryonCodeGenerator *codegen, const KryonASTValue *value);
+
+
+/**
+ * @brief Expand component instance
+ * @param codegen Code generator instance
+ * @param component_instance Component instance node
+ * @param ast_root Root AST node
+ * @return Expanded AST node or NULL on error
+ */
+KryonASTNode *expand_component_instance(KryonCodeGenerator *codegen, const KryonASTNode *component_instance, const KryonASTNode *ast_root);
+
+/**
+ * @brief Write property node to binary
+ * @param codegen Code generator instance
+ * @param property Property node to write
+ * @return true on success, false on error
+ */
+bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode *property);
+
+/**
+ * @brief Count expanded children of element
+ * @param codegen Code generator instance
+ * @param element Element node
+ * @return Number of expanded children
+ */
+uint16_t count_expanded_children(KryonCodeGenerator *codegen, const KryonASTNode *element);
+
+/**
+ * @brief Add constant to table
+ * @param codegen Code generator instance
+ * @param name Constant name
+ * @param value Constant value node
+ * @return true on success, false on error
+ */
+bool add_constant_to_table(KryonCodeGenerator *codegen, const char *name, const KryonASTNode *value);
+
+/**
+ * @brief Find constant value by name
+ * @param codegen Code generator instance
+ * @param name Constant name
+ * @return Constant value node or NULL if not found
+ */
+const KryonASTNode *find_constant_value(KryonCodeGenerator *codegen, const char *name);
+
+/**
+ * @brief Write element node to binary
+ * @param codegen Code generator instance
+ * @param element Element node to write
+ * @param ast_root Root AST node
+ * @return true on success, false on error
+ */
+bool write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *element, const KryonASTNode *ast_root);
+
+/**
+ * @brief Write element instance to binary (from element_serializer.c)
+ * @param codegen Code generator instance
+ * @param element Element to write
+ * @param ast_root Root AST node
+ * @return true on success, false on error
+ */
+bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNode *element, const KryonASTNode *ast_root);
+
+/**
+ * @brief Add component instance state to tracking
+ * @param codegen Code generator instance
+ * @param component_name Component type name
+ * @param variable_names Array of state variable names
+ * @param variable_values Array of state variable values
+ * @param variable_count Number of state variables
+ * @return Component instance ID, or NULL on error
+ */
+char *add_component_instance(KryonCodeGenerator *codegen, const char *component_name, 
+                            char **variable_names, char **variable_values, size_t variable_count);
+
+/**
+ * @brief Write component instance state to Variables section
+ * @param codegen Code generator instance
+ * @return true on success, false on error
+ */
+bool write_component_instance_variables(KryonCodeGenerator *codegen);
 
 // =============================================================================
 // VALIDATION

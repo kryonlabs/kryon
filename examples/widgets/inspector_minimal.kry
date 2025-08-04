@@ -1,0 +1,74 @@
+@component DebugInspector {
+    Container {
+        id: "debug_inspector"
+        width: 100%
+        height: 200
+        posY: 480
+        backgroundColor: "#28282870"
+        borderColor: "#646464FF"
+        borderWidth: 1
+        visible: true
+        
+        Text {
+            id: "inspector_title"
+            text: "Widget Inspector"
+            color: "white"
+            fontSize: 16
+            posX: 10
+            posY: 10
+        }
+        
+        Text {
+            id: "inspector_help"
+            text: "Ctrl+I: Toggle"
+            color: "lightgray"
+            fontSize: 12
+            posX: 10
+            posY: 35
+        }
+        
+        Text {
+            id: "widget_type"
+            text: "Type: None Selected"
+            color: "white"
+            fontSize: 14
+            posX: 10
+            posY: 70
+        }
+        
+        Text {
+            id: "widget_position"
+            text: "Position: -"
+            color: "lightgray"
+            fontSize: 12
+            posX: 10
+            posY: 95
+        }
+        
+        Text {
+            id: "widget_size"
+            text: "Size: -"
+            color: "lightgray"
+            fontSize: 12
+            posX: 10
+            posY: 115
+        }
+        
+        Text {
+            id: "click_instruction"
+            text: "Click on a widget to inspect"
+            color: "gray"
+            fontSize: 12
+            posX: 10
+            posY: 140
+        }
+    }
+}
+
+@function "lua" toggleInspector() {
+    local inspector = getElementById("debug_inspector")
+    if inspector then
+        local currentVisible = inspector:getVisible()
+        inspector:setVisible(not currentVisible)
+    end
+}

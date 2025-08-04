@@ -132,6 +132,9 @@ typedef enum {
     KRYON_TOKEN_UNIT_VH,             // vh
     KRYON_TOKEN_UNIT_PT,             // pt
     
+    // Script content
+    KRYON_TOKEN_SCRIPT_CONTENT,      // Raw script content in function bodies
+    
     // Comments
     KRYON_TOKEN_LINE_COMMENT,        // # comment
     KRYON_TOKEN_BLOCK_COMMENT,       // /* comment */
@@ -229,6 +232,9 @@ struct KryonLexer {
     size_t token_count;              ///< Number of tokens
     size_t token_capacity;           ///< Token array capacity
     size_t current_token;            ///< Current token index for parsing
+    
+    // State tracking for context-sensitive parsing
+    bool expecting_script_body;      ///< Whether we're expecting a function body
     
     // Error tracking
     bool has_error;                  ///< Whether lexer encountered errors

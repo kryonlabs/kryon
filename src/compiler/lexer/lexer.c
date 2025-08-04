@@ -90,6 +90,7 @@ static const char *token_type_names[] = {
     [KRYON_TOKEN_UNIT_VW] = "UNIT_VW",
     [KRYON_TOKEN_UNIT_VH] = "UNIT_VH",
     [KRYON_TOKEN_UNIT_PT] = "UNIT_PT",
+    [KRYON_TOKEN_SCRIPT_CONTENT] = "SCRIPT_CONTENT",
     [KRYON_TOKEN_LINE_COMMENT] = "LINE_COMMENT",
     [KRYON_TOKEN_BLOCK_COMMENT] = "BLOCK_COMMENT",
     [KRYON_TOKEN_WHITESPACE] = "WHITESPACE",
@@ -319,7 +320,7 @@ void kryon_lexer_destroy(KryonLexer *lexer) {
     if (lexer->tokens) {
         for (size_t i = 0; i < lexer->token_count; i++) {
             KryonToken *token = &lexer->tokens[i];
-            if (token->has_value && token->type == KRYON_TOKEN_STRING && token->value.string_value) {
+            if (token->has_value && (token->type == KRYON_TOKEN_STRING || token->type == KRYON_TOKEN_SCRIPT_CONTENT) && token->value.string_value) {
                 kryon_free(token->value.string_value);
             }
         }
@@ -557,6 +558,123 @@ static bool lex_identifier(KryonLexer *lexer) {
     return add_token(lexer, type) != NULL;
 }
 
+static bool lex_script_content(KryonLexer *lexer) {
+    // We're at the opening brace, consume it
+    advance(lexer); // consume '{'
+    
+    size_t value_capacity = 256;
+    char *value = kryon_alloc(value_capacity);
+    if (!value) {
+        set_error(lexer, "Failed to allocate script content memory");
+        return false;
+    }
+    
+    size_t value_length = 0;
+    int brace_depth = 1; // We already consumed the opening brace
+    
+    // Capture everything until matching closing brace
+    while (!is_at_end(lexer) && brace_depth > 0) {
+        char c = peek(lexer);
+        
+        if (c == '{') {
+            brace_depth++;
+        } else if (c == '}') {
+            brace_depth--;
+        }
+        
+        // Don't include the final closing brace in the content
+        if (brace_depth > 0) {
+            // Expand buffer if needed
+            if (value_length >= value_capacity) {
+                value_capacity *= 2;
+                char *new_value = kryon_realloc(value, value_capacity);
+                if (!new_value) {
+                    kryon_free(value);
+                    set_error(lexer, "Failed to reallocate script content memory");
+                    return false;
+                }
+                value = new_value;
+            }
+            value[value_length++] = c;
+        }
+        
+        advance(lexer);
+    }
+    
+    if (brace_depth > 0) {
+        kryon_free(value);
+        set_error(lexer, "Unterminated script content");
+        return false;
+    }
+    
+    // Null-terminate value
+    if (value_length >= value_capacity) {
+        char *new_value = kryon_realloc(value, value_length + 1);
+        if (!new_value) {
+            kryon_free(value);
+            set_error(lexer, "Failed to reallocate script content memory");
+            return false;
+        }
+        value = new_value;
+    }
+    value[value_length] = '\0';
+    
+    KryonToken *token = add_token(lexer, KRYON_TOKEN_SCRIPT_CONTENT);
+    if (token) {
+        token->has_value = true;
+        token->value.string_value = value;
+    } else {
+        kryon_free(value);
+        return false;
+    }
+    
+    return true;
+}
+
+static bool is_function_body_start(KryonLexer *lexer) {
+    // Look at the recent tokens to see if we match the pattern:
+    // @function "language" identifier ( [params...] ) {
+    // We need at least 5 tokens for empty params, but could have more with parameters
+    
+    if (lexer->token_count < 5) {
+        return false;
+    }
+    
+    // Look backwards to find the pattern
+    // Last token should be RIGHT_PAREN
+    if (lexer->tokens[lexer->token_count - 1].type != KRYON_TOKEN_RIGHT_PAREN) {
+        return false;
+    }
+    
+    // Search backwards for the matching LEFT_PAREN
+    int paren_depth = 1;
+    int left_paren_index = -1;
+    for (int i = lexer->token_count - 2; i >= 0 && paren_depth > 0; i--) {
+        if (lexer->tokens[i].type == KRYON_TOKEN_RIGHT_PAREN) {
+            paren_depth++;
+        } else if (lexer->tokens[i].type == KRYON_TOKEN_LEFT_PAREN) {
+            paren_depth--;
+            if (paren_depth == 0) {
+                left_paren_index = i;
+                break;
+            }
+        }
+    }
+    
+    if (left_paren_index < 2) {
+        return false; // Need at least 3 tokens before LEFT_PAREN
+    }
+    
+    // Check the tokens before LEFT_PAREN: should be identifier, string, @function
+    KryonToken *identifier = &lexer->tokens[left_paren_index - 1];
+    KryonToken *language_string = &lexer->tokens[left_paren_index - 2];
+    KryonToken *function_directive = &lexer->tokens[left_paren_index - 3];
+    
+    return (function_directive->type == KRYON_TOKEN_FUNCTION_DIRECTIVE &&
+            language_string->type == KRYON_TOKEN_STRING &&
+            identifier->type == KRYON_TOKEN_IDENTIFIER);
+}
+
 // =============================================================================
 // MAIN TOKENIZATION
 // =============================================================================
@@ -576,7 +694,15 @@ static bool scan_token(KryonLexer *lexer) {
         // Single character tokens
         case '(': add_token(lexer, KRYON_TOKEN_LEFT_PAREN); break;
         case ')': add_token(lexer, KRYON_TOKEN_RIGHT_PAREN); break;
-        case '{': add_token(lexer, KRYON_TOKEN_LEFT_BRACE); break;
+        case '{': 
+            // Check if this is the start of a script body
+            if (is_function_body_start(lexer)) {
+                lexer->current--; // Back up to include { in the script content
+                return lex_script_content(lexer);
+            } else {
+                add_token(lexer, KRYON_TOKEN_LEFT_BRACE); 
+            }
+            break;
         case '}': add_token(lexer, KRYON_TOKEN_RIGHT_BRACE); break;
         case '[': add_token(lexer, KRYON_TOKEN_LEFT_BRACKET); break;
         case ']': add_token(lexer, KRYON_TOKEN_RIGHT_BRACKET); break;
@@ -617,7 +743,18 @@ static bool scan_token(KryonLexer *lexer) {
                 add_token(lexer, KRYON_TOKEN_DIVIDE);
             }
             break;
-        case '%': add_token(lexer, KRYON_TOKEN_MODULO); break;
+        case '%': {
+            // Context-aware % lexing: unit vs modulo
+            bool is_unit = false;
+            if (lexer->token_count > 0) {
+                KryonToken *prev = &lexer->tokens[lexer->token_count - 1];
+                bool is_number = (prev->type == KRYON_TOKEN_INTEGER || prev->type == KRYON_TOKEN_FLOAT);
+                bool adjacent = (prev->lexeme + prev->lexeme_length == lexer->current - 1);
+                is_unit = is_number && adjacent;
+            }
+            add_token(lexer, is_unit ? KRYON_TOKEN_UNIT_PERCENT : KRYON_TOKEN_MODULO);
+            break;
+        }
         case '?': add_token(lexer, KRYON_TOKEN_QUESTION); break;
         case '#': add_token(lexer, KRYON_TOKEN_HASH); break;
         
@@ -954,6 +1091,9 @@ void kryon_token_print(const KryonToken *token, FILE *file) {
         switch (token->type) {
             case KRYON_TOKEN_STRING:
                 fprintf(file, " = \"%s\"", token->value.string_value);
+                break;
+            case KRYON_TOKEN_SCRIPT_CONTENT:
+                fprintf(file, " = {%s}", token->value.string_value);
                 break;
             case KRYON_TOKEN_INTEGER:
                 fprintf(file, " = %lld", (long long)token->value.int_value);

@@ -48,13 +48,13 @@
      KryonValueTypeHint type_hint;  // Type hint for validation
  } KryonPropertyGroup;
  
- // Widget group structure - canonical name with aliases  
+ // Element group structure - canonical name with aliases  
  typedef struct {
-     const char *canonical;          // Canonical widget name
+     const char *canonical;          // Canonical element name
      const char **aliases;           // NULL-terminated array of aliases
-     uint16_t hex_code;             // 16-bit widget identifier
+     uint16_t hex_code;             // 16-bit element identifier
      KryonValueTypeHint type_hint;  // Type hint for validation
- } KryonWidgetGroup;
+ } KryonElementGroup;
  
  //==============================================================================
  // External Data Declarations
@@ -63,8 +63,8 @@
  // Centralized property groups - used by both compiler and runtime
  extern const KryonPropertyGroup kryon_property_groups[];
  
- // Centralized widget groups - used by both compiler and runtime
- extern const KryonWidgetGroup kryon_widget_groups[];
+ // Centralized element groups - used by both compiler and runtime
+ extern const KryonElementGroup kryon_element_groups[];
  
  //==============================================================================
  // Core Utility Functions
@@ -96,14 +96,14 @@
   * @param name Widget name to lookup
   * @return 16-bit hex code, or 0 if not found
   */
- uint16_t kryon_get_widget_hex(const char *name);
+ uint16_t kryon_get_element_hex(const char *name);
  
  /**
   * @brief Get canonical widget name from hex code
   * @param hex_code 16-bit widget identifier
   * @return Canonical widget name, or NULL if not found
   */
- const char *kryon_get_widget_name(uint16_t hex_code);
+ const char *kryon_get_element_name(uint16_t hex_code);
  
  //==============================================================================
  // Extended Utility Functions
@@ -121,7 +121,7 @@
   * @param name Widget name (canonical or alias)
   * @return NULL-terminated array of aliases, or NULL if not found
   */
- const char **kryon_get_widget_aliases(const char *name);
+ const char **kryon_get_element_aliases(const char *name);
  
  //==============================================================================
  // Property Range Constants (from KRB Binary Format Specification v0.1)
@@ -249,7 +249,7 @@
  * @param hex_code 16-bit widget hex code
  * @return Widget type name, or NULL if not found
  */
-const char *kryon_get_widget_type_name(uint16_t hex_code);
+const char *kryon_get_element_type_name(uint16_t hex_code);
 
 #endif // KRYON_MAPPINGS_H
  

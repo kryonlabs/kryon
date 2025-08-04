@@ -338,37 +338,37 @@
          .canonical = "onClick",
          .aliases = (const char*[]){"onTap", NULL},
          .hex_code = 0x0510,
-         .type_hint = KRYON_TYPE_HINT_STRING
+         .type_hint = KRYON_TYPE_HINT_REFERENCE
      },
      {
          .canonical = "onChange",
          .aliases = (const char*[]){NULL},
          .hex_code = 0x0511,
-         .type_hint = KRYON_TYPE_HINT_STRING
+         .type_hint = KRYON_TYPE_HINT_REFERENCE
      },
      {
          .canonical = "onFocus",
          .aliases = (const char*[]){NULL},
          .hex_code = 0x0512,
-         .type_hint = KRYON_TYPE_HINT_STRING
+         .type_hint = KRYON_TYPE_HINT_REFERENCE
      },
      {
          .canonical = "onBlur",
          .aliases = (const char*[]){NULL},
          .hex_code = 0x0513,
-         .type_hint = KRYON_TYPE_HINT_STRING
+         .type_hint = KRYON_TYPE_HINT_REFERENCE
      },
      {
          .canonical = "onMouseEnter",
          .aliases = (const char*[]){"onHover", NULL},
          .hex_code = 0x0514,
-         .type_hint = KRYON_TYPE_HINT_STRING
+         .type_hint = KRYON_TYPE_HINT_REFERENCE
      },
      {
          .canonical = "onMouseLeave",
          .aliases = (const char*[]){"onUnhover", NULL},
          .hex_code = 0x0515,
-         .type_hint = KRYON_TYPE_HINT_STRING
+         .type_hint = KRYON_TYPE_HINT_REFERENCE
      },
  
      // -- Widget-Specific Properties (0x06xx) --
@@ -388,7 +388,7 @@
          .canonical = "child",
          .aliases = (const char*[]){NULL},
          .hex_code = 0x0602,
-         .type_hint = KRYON_TYPE_HINT_REFERENCE
+         .type_hint = KRYON_TYPE_HINT_STRING
      },
      {
          .canonical = "children",
@@ -501,7 +501,7 @@
  // Widget types: Container, Text, Button, App, etc.
  //==============================================================================
  
- const KryonWidgetGroup kryon_widget_groups[] = {
+ const KryonElementGroup kryon_element_groups[] = {
      // -- Base Widget (0x0000) --
      {
          .canonical = "Widget",
@@ -648,7 +648,7 @@
      return false;
  }
  
- static bool kryon_widget_name_matches_group(const char *name, const KryonWidgetGroup *group) {
+ static bool kryon_element_name_matches_group(const char *name, const KryonElementGroup *group) {
      // Check canonical name
      if (strcmp(group->canonical, name) == 0) {
          return true;
@@ -702,24 +702,24 @@
      return KRYON_TYPE_HINT_ANY; // Default for unknown properties
  }
  
- uint16_t kryon_get_widget_hex(const char *name) {
-     const int group_count = sizeof(kryon_widget_groups) / sizeof(kryon_widget_groups[0]);
+ uint16_t kryon_get_element_hex(const char *name) {
+     const int group_count = sizeof(kryon_element_groups) / sizeof(kryon_element_groups[0]);
      
      for (int i = 0; i < group_count; i++) {
-         if (kryon_widget_name_matches_group(name, &kryon_widget_groups[i])) {
-             return kryon_widget_groups[i].hex_code;
+         if (kryon_element_name_matches_group(name, &kryon_element_groups[i])) {
+             return kryon_element_groups[i].hex_code;
          }
      }
      
      return 0; // Not found
  }
  
- const char *kryon_get_widget_name(uint16_t hex_code) {
-     const int group_count = sizeof(kryon_widget_groups) / sizeof(kryon_widget_groups[0]);
+ const char *kryon_get_element_name(uint16_t hex_code) {
+     const int group_count = sizeof(kryon_element_groups) / sizeof(kryon_element_groups[0]);
      
      for (int i = 0; i < group_count; i++) {
-         if (kryon_widget_groups[i].hex_code == hex_code) {
-             return kryon_widget_groups[i].canonical; // Always return canonical name
+         if (kryon_element_groups[i].hex_code == hex_code) {
+             return kryon_element_groups[i].canonical; // Always return canonical name
          }
      }
      
@@ -740,12 +740,12 @@
  }
  
  // Get all aliases for a widget (useful for IDE/tooling)
- const char **kryon_get_widget_aliases(const char *name) {
-     const int group_count = sizeof(kryon_widget_groups) / sizeof(kryon_widget_groups[0]);
+ const char **kryon_get_element_aliases(const char *name) {
+     const int group_count = sizeof(kryon_element_groups) / sizeof(kryon_element_groups[0]);
      
      for (int i = 0; i < group_count; i++) {
-         if (kryon_widget_name_matches_group(name, &kryon_widget_groups[i])) {
-             return kryon_widget_groups[i].aliases;
+         if (kryon_element_name_matches_group(name, &kryon_element_groups[i])) {
+             return kryon_element_groups[i].aliases;
          }
      }
      
@@ -755,6 +755,6 @@
 /**
  * @brief Get widget type name from hex code (unified API alias)
  */
-const char *kryon_get_widget_type_name(uint16_t hex_code) {
-    return kryon_get_widget_name(hex_code);
+const char *kryon_get_element_type_name(uint16_t hex_code) {
+    return kryon_get_element_name(hex_code);
 }

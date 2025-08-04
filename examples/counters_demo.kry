@@ -2,7 +2,7 @@
 @component Counter(value: 0) {
 
     @function "lua" increment() {
-        // 'self' refers to this component's state
+        -- 'self' refers to this component's state
         self.value = self.value + 1
     }
 

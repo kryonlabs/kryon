@@ -44,6 +44,7 @@ endif()
 
 add_library(kryon_shared STATIC
     src/shared/kryon_mappings.c
+    src/shared/krb_schema.c
 )
 
 target_include_directories(kryon_shared PUBLIC

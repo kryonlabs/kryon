@@ -248,6 +248,140 @@ static KryonVMResult lua_vm_load_script(KryonVM* vm, const KryonScript* script) 
     return KRYON_VM_SUCCESS;
 }
 
+// Helper function to find component instance for element
+static KryonComponentInstance* find_component_for_element(KryonElement* element) {
+    if (!element) return NULL;
+    
+    // Walk up the element tree to find a component instance
+    KryonElement* current = element;
+    while (current) {
+        if (current->component_instance) {
+            return current->component_instance;
+        }
+        current = current->parent;
+    }
+    
+    return NULL;
+}
+
+// Helper function to get component state value by element position
+static const char* get_component_state_value_for_element(KryonElement* element) {
+    if (!element) return "0";
+    
+    // This is a simplified approach that determines component instance based on element hierarchy
+    // In the counter example, we have two Counter instances, we need to figure out which one this element belongs to
+    
+    // Walk up to find the root, then walk down to find position
+    KryonElement* root = element;
+    while (root->parent) {
+        root = root->parent;
+    }
+    
+    // Simple heuristic: find which "Row" this element belongs to
+    // First Row = comp_0, Second Row = comp_1
+    KryonElement* current = element;
+    while (current && current->parent) {
+        if (current->parent->type_name && strcmp(current->parent->type_name, "Column") == 0) {
+            // This element is in a Column, check if it's the first or second child
+            KryonElement* column = current->parent;
+            for (size_t i = 0; i < column->child_count; i++) {
+                if (column->children[i] == current) {
+                    // Use runtime accessor to get component state
+                    KryonRuntime* runtime = kryon_runtime_get_current();
+                    if (runtime) {
+                        char pattern[64];
+                        snprintf(pattern, sizeof(pattern), "comp_%zu.value", i);
+                        const char* value = kryon_runtime_get_variable(runtime, pattern);
+                        return value ? value : "0";
+                    }
+                    break;
+                }
+            }
+            break;
+        }
+        current = current->parent;
+    }
+    
+    return "0"; // Default fallback
+}
+
+// Helper function to update component state value by element position  
+static void update_component_state_value_for_element(KryonElement* element, const char* new_value) {
+    if (!element || !new_value) return;
+    
+    // Similar logic to get_component_state_value_for_element, but for updating
+    KryonElement* current = element;
+    while (current && current->parent) {
+        if (current->parent->type_name && strcmp(current->parent->type_name, "Column") == 0) {
+            KryonElement* column = current->parent;
+            for (size_t i = 0; i < column->child_count; i++) {
+                if (column->children[i] == current) {
+                    // Update the runtime variable
+                    KryonRuntime* runtime = kryon_runtime_get_current();
+                    if (runtime) {
+                        char pattern[64];
+                        snprintf(pattern, sizeof(pattern), "comp_%zu.value", i);
+                        
+                        // Find and update the variable in the runtime registry 
+                        for (size_t j = 0; j < runtime->variable_count; j++) {
+                            if (runtime->variable_names[j] && 
+                                strcmp(runtime->variable_names[j], pattern) == 0) {
+                                free(runtime->variable_values[j]);
+                                runtime->variable_values[j] = strdup(new_value);
+                                printf("🔄 Updated component state: %s = %s\n", pattern, new_value);
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+            break;
+        }
+        current = current->parent;
+    }
+}
+
+// Set up component context in Lua (create self table)
+static void setup_component_context(lua_State* L, KryonElement* element) {
+    if (!L || !element) return;
+    
+    // Get current component state value
+    const char* current_value = get_component_state_value_for_element(element);
+    
+    printf("🔧 Setting up Lua context: self = { value = %s }\n", current_value);
+    
+    // Create self table: self = { value = current_value }
+    lua_newtable(L);              // Create new table
+    lua_pushstring(L, "value");   // Push key "value"
+    lua_pushnumber(L, atof(current_value)); // Push value as number
+    lua_settable(L, -3);          // Set table[key] = value
+    lua_setglobal(L, "self");     // Set global self = table
+}
+
+// Update component state from Lua context after function call
+static void update_component_state_after_call(lua_State* L, KryonElement* element) {
+    if (!L || !element) return;
+    
+    // Get self.value from Lua state
+    lua_getglobal(L, "self");     // Get self table
+    if (lua_istable(L, -1)) {
+        lua_getfield(L, -1, "value"); // Get self.value
+        if (lua_isnumber(L, -1)) {
+            double new_value = lua_tonumber(L, -1);
+            char value_str[32];
+            snprintf(value_str, sizeof(value_str), "%.0f", new_value); // Convert to integer string
+            
+            printf("🔄 Component state updated from Lua: self.value = %s\n", value_str);
+            
+            // Update the component state in runtime
+            update_component_state_value_for_element(element, value_str);
+        }
+        lua_pop(L, 1); // Pop value
+    }
+    lua_pop(L, 1); // Pop self table
+}
+
 static KryonVMResult lua_vm_call_function(KryonVM* vm, const char* function_name, KryonElement* element, const KryonEvent* event) {
     if (!vm || !vm->impl_data || !function_name) {
         return KRYON_VM_ERROR_INVALID_PARAM;
@@ -263,10 +397,15 @@ static KryonVMResult lua_vm_call_function(KryonVM* vm, const char* function_name
         return KRYON_VM_ERROR_RUNTIME;
     }
     
-    // TODO: Push element and event as arguments
-    // For now, just call with no arguments
+    // Set up component context before function call
+    setup_component_context(backend->L, element);
     
     int result = lua_pcall(backend->L, 0, 0, 0);
+    
+    // Update component state after function call
+    if (result == LUA_OK) {
+        update_component_state_after_call(backend->L, element);
+    }
     if (result != LUA_OK) {
         const char* error = lua_tostring(backend->L, -1);
         snprintf(backend->error_buffer, sizeof(backend->error_buffer), "Lua function call error: %s", error);

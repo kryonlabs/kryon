@@ -31,6 +31,7 @@ static KryonASTNode *parse_component_definition(KryonParser *parser);
 static KryonASTNode *parse_state_definition(KryonParser *parser);
 static KryonASTNode *parse_const_definition(KryonParser *parser);
 static KryonASTNode *parse_const_for_loop(KryonParser *parser);
+static KryonASTNode *parse_event_directive(KryonParser *parser);
 static KryonASTNode *parse_directive(KryonParser *parser);
 static KryonASTNode *parse_property(KryonParser *parser);
 static KryonASTNode *parse_expression(KryonParser *parser);
@@ -321,13 +322,19 @@ static KryonASTNode *parse_document(KryonParser *parser) {
             node = parse_const_for_loop(parser);
         } else if (kryon_token_is_directive(peek(parser)->type)) {
             printf("[DEBUG] Parsing directive\n");
-            node = parse_directive(parser);
+            // Handle specialized directive parsers
+            if (check_token(parser, KRYON_TOKEN_EVENT_DIRECTIVE)) {
+                node = parse_event_directive(parser);
+            } else {
+                node = parse_directive(parser);
+            }
         } else if (check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
             printf("[DEBUG] Parsing element\n");
             node = parse_element(parser);
         } else {
             printf("[DEBUG] Unknown token type %d, error\n", current->type);
-            parser_error(parser, "Expected element, style definition, theme definition, or directive");
+            // Don't fail the entire parse for unknown tokens - just skip them
+            // parser_error(parser, "Expected element, style definition, theme definition, or directive");
             advance(parser); // Skip invalid token
             continue;
         }
@@ -413,9 +420,23 @@ static KryonASTNode *parse_element(KryonParser *parser) {
         } else if (check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
             // Property (potentially comma-separated list)
             do {
+                size_t before_property = parser->current_token;
                 KryonASTNode *property = parse_property(parser);
-                if (property && !kryon_ast_add_property(element, property)) {
-                    parser_error(parser, "Failed to add property");
+                if (property) {
+                    if (!kryon_ast_add_property(element, property)) {
+                        parser_error(parser, "Failed to add property");
+                    }
+                } else {
+                    // Property parsing failed, skip to next property or element
+                    printf("[DEBUG] parse_element: Property parsing failed, skipping to recovery\n");
+                    // Skip until we find a recognizable token
+                    while (!at_end(parser) && 
+                           !check_token(parser, KRYON_TOKEN_IDENTIFIER) &&
+                           !check_token(parser, KRYON_TOKEN_ELEMENT_TYPE) &&
+                           !check_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
+                        advance(parser);
+                    }
+                    break; // Exit property parsing loop
                 }
                 
                 // Check for comma to continue parsing more properties
@@ -427,6 +448,10 @@ static KryonASTNode *parse_element(KryonParser *parser) {
                 }
             } while (check_token(parser, KRYON_TOKEN_IDENTIFIER) && !at_end(parser));
         } else {
+            printf("[DEBUG] parse_element: Unexpected token type %d (lexeme: %.*s) at position %zu - skipping\n", 
+                   peek(parser)->type, (int)peek(parser)->lexeme_length, 
+                   peek(parser)->lexeme, parser->current_token);
+            // Skip unexpected tokens but still mark as error for critical failures
             parser_error(parser, "Expected property or child element");
             advance(parser); // Skip invalid token
         }
@@ -888,6 +913,104 @@ static KryonASTNode *parse_object_literal(KryonParser *parser) {
     return object;
 }
 
+static KryonASTNode *parse_event_directive(KryonParser *parser) {
+    const KryonToken *token = advance(parser); // consume @event
+    
+    KryonASTNode *directive = kryon_ast_create_node(parser, KRYON_AST_EVENT_DIRECTIVE, &token->location);
+    if (!directive) {
+        parser_error(parser, "Failed to create event directive AST node");
+        return NULL;
+    }
+    
+    // Parse event type string (e.g., "keyboard", "mouse")
+    if (!check_token(parser, KRYON_TOKEN_STRING)) {
+        parser_error(parser, "Expected event type string after @event");
+        return directive;
+    }
+    
+    const KryonToken *event_type_token = advance(parser);
+    
+    // Store the event type as the element_type field (reusing existing structure)
+    directive->data.element.element_type = kryon_alloc(strlen(event_type_token->value.string_value) + 1);
+    if (directive->data.element.element_type) {
+        strcpy(directive->data.element.element_type, event_type_token->value.string_value);
+    }
+    
+    // Parse event bindings in braces
+    if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
+        parser_error(parser, "Expected '{' after event type");
+        return directive;
+    }
+    
+    // Parse event bindings (key: value pairs where key is event pattern, value is function call)
+    while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
+        // Parse event binding: "pattern": functionCall()
+        if (!check_token(parser, KRYON_TOKEN_STRING)) {
+            printf("[DEBUG] Event binding parser: Expected STRING, got token type %d\n", peek(parser)->type);
+            parser_error(parser, "Expected event pattern string");
+            break;
+        }
+        
+        const KryonToken *pattern_token = advance(parser);
+        
+        if (!match_token(parser, KRYON_TOKEN_COLON)) {
+            parser_error(parser, "Expected ':' after event pattern");
+            break;
+        }
+        
+        // Parse function call: identifier()
+        if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+            parser_error(parser, "Expected function name after ':'");
+            break;
+        }
+        
+        const KryonToken *function_token = advance(parser);
+        
+        if (!match_token(parser, KRYON_TOKEN_LEFT_PAREN)) {
+            parser_error(parser, "Expected '(' after function name");
+            break;
+        }
+        
+        if (!match_token(parser, KRYON_TOKEN_RIGHT_PAREN)) {
+            parser_error(parser, "Expected ')' after function parameters");
+            break;
+        }
+        
+        // Create a function call expression node
+        KryonASTNode *expression = kryon_ast_create_node(parser, KRYON_AST_FUNCTION_CALL, &function_token->location);
+        if (!expression) {
+            parser_error(parser, "Failed to create function call node");
+            break;
+        }
+        
+        // Store function name
+        expression->data.function_call.function_name = kryon_token_copy_lexeme(function_token);
+        expression->data.function_call.argument_count = 0;  // No parameters for now
+        expression->data.function_call.arguments = NULL;
+        
+        // Create a property node for this event binding
+        KryonASTNode *binding = kryon_ast_create_node(parser, KRYON_AST_PROPERTY, &pattern_token->location);
+        if (binding) {
+            // Use the string content as property name (without quotes)
+            binding->data.property.name = kryon_alloc(strlen(pattern_token->value.string_value) + 1);
+            if (binding->data.property.name) {
+                strcpy(binding->data.property.name, pattern_token->value.string_value);
+            }
+            binding->data.property.value = expression;
+            expression->parent = binding;
+            
+            kryon_ast_add_property(directive, binding);
+            binding->parent = directive;
+        }
+    }
+    
+    if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
+        parser_error(parser, "Expected '}' to close event directive");
+    }
+    
+    return directive;
+}
+
 static KryonASTNode *parse_directive(KryonParser *parser) {
     const KryonToken *token = advance(parser);
     
@@ -917,9 +1040,6 @@ static KryonASTNode *parse_directive(KryonParser *parser) {
             break;
         case KRYON_TOKEN_METADATA_DIRECTIVE:
             ast_type = KRYON_AST_METADATA_DIRECTIVE;
-            break;
-        case KRYON_TOKEN_EVENT_DIRECTIVE:
-            ast_type = KRYON_AST_EVENT_DIRECTIVE;
             break;
         case KRYON_TOKEN_COMPONENT_DIRECTIVE:
             ast_type = KRYON_AST_COMPONENT;
@@ -1228,85 +1348,29 @@ static KryonASTNode *parse_function_definition(KryonParser *parser) {
         return func_def;
     }
     
-    // Parse function body (simple string for now)
-    if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
-        parser_error(parser, "Expected '{' before function body");
+    // Parse function body - now expects SCRIPT_CONTENT token from lexer
+    if (!check_token(parser, KRYON_TOKEN_SCRIPT_CONTENT)) {
+        parser_error(parser, "Expected script content for function body");
         return func_def;
     }
     
-    // Capture the function body by building the code string from tokens
-    int brace_count = 1;
-    const char *code_start = peek(parser)->lexeme;
-    size_t total_length = 0;
+    const KryonToken *script_token = advance(parser);
+    const char *code = script_token->value.string_value;
     
-    // First pass: calculate total length needed
-    const KryonToken *current_token = peek(parser);
-    int temp_brace_count = 1;
-    size_t temp_index = parser->current_token;
-    
-    while (temp_brace_count > 0 && temp_index < parser->token_count) {
-        if (parser->tokens[temp_index].type == KRYON_TOKEN_LEFT_BRACE) {
-            temp_brace_count++;
-        } else if (parser->tokens[temp_index].type == KRYON_TOKEN_RIGHT_BRACE) {
-            temp_brace_count--;
-        }
-        
-        if (temp_brace_count > 0) {
-            total_length += parser->tokens[temp_index].lexeme_length;
-            if (temp_index + 1 < parser->token_count) {
-                // Add space between tokens
-                total_length += 1;
-            }
-        }
-        temp_index++;
+    if (!code) {
+        parser_error(parser, "Function body content is null");
+        return func_def;
     }
     
-    // Allocate buffer for function code
-    char *code_buffer = kryon_alloc(total_length + 1);
+    // Allocate and copy the script content
+    char *code_buffer = kryon_alloc(strlen(code) + 1);
     if (!code_buffer) {
         parser_error(parser, "Failed to allocate memory for function code");
         return func_def;
     }
     
-    // Second pass: build the code string
-    size_t code_pos = 0;
-    while (brace_count > 0 && !at_end(parser)) {
-        const KryonToken *token = peek(parser);
-        
-        if (check_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
-            brace_count++;
-        } else if (check_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
-            brace_count--;
-        }
-        
-        if (brace_count > 0) {
-            // Copy token lexeme to code buffer
-            memcpy(code_buffer + code_pos, token->lexeme, token->lexeme_length);
-            code_pos += token->lexeme_length;
-            
-            // Add space between tokens (except before closing punctuation)
-            if (!at_end(parser) && parser->current_token + 1 < parser->token_count) {
-                const KryonToken *next_token = &parser->tokens[parser->current_token + 1];
-                if (next_token->type != KRYON_TOKEN_RIGHT_PAREN && 
-                    next_token->type != KRYON_TOKEN_RIGHT_BRACE &&
-                    next_token->type != KRYON_TOKEN_SEMICOLON) {
-                    code_buffer[code_pos++] = ' ';
-                }
-            }
-            
-            advance(parser);
-        }
-    }
-    
-    code_buffer[code_pos] = '\0';
-    
-    if (brace_count == 0) {
-        func_def->data.function_def.code = code_buffer;
-        advance(parser); // consume final '}'
-    } else {
-        parser_error(parser, "Unterminated function body");
-        kryon_free(code_buffer);
-    }
+    strcpy(code_buffer, code);
+    func_def->data.function_def.code = code_buffer;
     
     return func_def;
 }
@@ -1397,8 +1461,12 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
         return component;
     }
     
+    printf("[DEBUG] parse_component_definition: Starting component body parsing at token %zu\n", parser->current_token);
+    
     // Parse component contents (state variables, functions, and UI)
     while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
+        printf("[DEBUG] parse_component_definition: Processing token %zu (type %d) in component body\n", 
+               parser->current_token, peek(parser)->type);
         if (check_token(parser, KRYON_TOKEN_STATE_DIRECTIVE)) {
             // Parse @state variable
             KryonASTNode *state_var = parse_state_definition(parser);
@@ -1430,21 +1498,27 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
         } else if (check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
             // Parse the UI body (single root element)
             if (!component->data.component.body) {
+                printf("[DEBUG] parse_component_definition: Parsing component UI body element at token %zu\n", parser->current_token);
                 component->data.component.body = parse_element(parser);
+                printf("[DEBUG] parse_component_definition: Finished parsing UI body, now at token %zu\n", parser->current_token);
             } else {
                 parser_error(parser, "Component can only have one root UI element");
                 advance(parser);
             }
         } else {
+            printf("[DEBUG] parse_component_definition: Unexpected token type %d in component body\n", peek(parser)->type);
             parser_error(parser, "Unexpected token in component body");
             advance(parser);
         }
     }
     
+    printf("[DEBUG] parse_component_definition: Finished component body parsing at token %zu\n", parser->current_token);
+    
     if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
         parser_error(parser, "Expected '}' after component body");
     }
     
+    printf("[DEBUG] parse_component_definition: Component parsing complete at token %zu\n", parser->current_token);
     printf("[DEBUG] parse_component_definition: Created component '%s' with %zu parameters, %zu state vars, %zu functions\n",
            component->data.component.name, 
            component->data.component.parameter_count,

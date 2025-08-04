@@ -59,6 +59,7 @@ static bool is_point_in_element_bounds(KryonElement *element, KryonVec2 point);
 static void runtime_error(KryonRuntime *runtime, const char *format, ...);
 static const char* get_element_property_string_with_runtime(KryonRuntime* runtime, KryonElement* element, const char* prop_name);
 static const char* resolve_variable_reference(KryonRuntime* runtime, const char* value);
+static const char* resolve_component_state_variable(KryonRuntime* runtime, KryonElement* element, const char* var_name);
 
 // Element to render command conversion functions
 static void element_container_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
@@ -1033,6 +1034,62 @@ static const char* resolve_variable_reference(KryonRuntime* runtime, const char*
     return value; // Return original if not found
 }
 
+
+// Resolve component state variable
+static const char* resolve_component_state_variable(KryonRuntime* runtime, KryonElement* element, const char* var_name) {
+    if (!runtime || !element || !var_name) {
+        return NULL;
+    }
+    
+    // First, check if the current element has a component instance
+    KryonElement* current = element;
+    while (current) {
+        
+        if (current->component_instance) {
+            KryonComponentInstance* comp_inst = current->component_instance;
+            
+            // Check state variables
+            if (comp_inst->definition && comp_inst->definition->state_vars) {
+                for (size_t i = 0; i < comp_inst->definition->state_count; i++) {
+                    if (comp_inst->definition->state_vars[i].name && 
+                        strcmp(comp_inst->definition->state_vars[i].name, var_name) == 0) {
+                        
+                        // Found state variable, return current instance value
+                        if (i < comp_inst->state_count && comp_inst->state_values[i]) {
+                            return comp_inst->state_values[i];
+                        } else if (comp_inst->definition->state_vars[i].default_value) {
+                            return comp_inst->definition->state_vars[i].default_value;
+                        }
+                        return "0"; // Default fallback
+                    }
+                }
+            }
+            
+            // Check component parameters
+            if (comp_inst->definition && comp_inst->definition->parameters) {
+                for (size_t i = 0; i < comp_inst->definition->parameter_count; i++) {
+                    if (comp_inst->definition->parameters[i] && 
+                        strcmp(comp_inst->definition->parameters[i], var_name) == 0) {
+                        
+                        // Found parameter, return current instance value
+                        if (i < comp_inst->param_count && comp_inst->param_values[i]) {
+                            return comp_inst->param_values[i];
+                        } else if (comp_inst->definition->param_defaults[i]) {
+                            return comp_inst->definition->param_defaults[i];
+                        }
+                        return ""; // Default fallback
+                    }
+                }
+            }
+        }
+        
+        // Move up the element tree to check parent components
+        current = current->parent;
+    }
+    
+    return NULL; // Not found
+}
+
 // Get property value as string with type conversion
 static const char* get_element_property_string(KryonElement* element, const char* prop_name) {
     return get_element_property_string_with_runtime(g_current_runtime, element, prop_name);
@@ -1051,7 +1108,35 @@ static const char* get_element_property_string_with_runtime(KryonRuntime* runtim
     
     switch (prop->type) {
         case KRYON_RUNTIME_PROP_STRING:
-            // Resolve variable references if runtime is available
+            // Check if property is bound to component state
+            if (prop->is_bound && prop->binding_path && runtime) {
+                // Try to resolve component state variable first
+                const char* resolved = resolve_component_state_variable(runtime, element, prop->binding_path);
+                if (resolved) {
+                    return resolved;
+                }
+                
+                // Fall back to component instance variable pattern matching
+                // Try different component instance patterns: comp_0.value, comp_1.value, etc.
+                char pattern_buffer[128];
+                for (int comp_id = 0; comp_id < 10; comp_id++) { // Try comp_0 through comp_9
+                    snprintf(pattern_buffer, sizeof(pattern_buffer), "comp_%d.%s", comp_id, prop->binding_path);
+                    const char* comp_resolved = kryon_runtime_get_variable(runtime, pattern_buffer);
+                    if (comp_resolved) {
+                        return comp_resolved;
+                    }
+                }
+                
+                // Fall back to global variable resolution
+                const char* global_resolved = kryon_runtime_get_variable(runtime, prop->binding_path);
+                if (global_resolved) {
+                    return global_resolved;
+                }
+                
+                return prop->value.string_value;
+            }
+            
+            // Legacy: Resolve variable references if runtime is available
             if (runtime) {
                 return resolve_variable_reference(runtime, prop->value.string_value);
             }
@@ -2063,6 +2148,27 @@ static void element_column_to_commands(KryonElement* element, KryonRenderCommand
         start_y = container_y + (container_height - total_children_height) / 2.0f;
     } else if (main_axis && strcmp(main_axis, "end") == 0) {
         start_y = container_y + container_height - total_children_height;
+    } else if (main_axis && strcmp(main_axis, "spaceEvenly") == 0) {
+        // spaceEvenly: equal space before, between, and after all items
+        if (element->child_count > 0) {
+            float available_space = container_height - total_children_height + ((element->child_count - 1) * gap);
+            gap = available_space / (element->child_count + 1);
+            start_y = container_y + gap;
+        }
+    } else if (main_axis && strcmp(main_axis, "spaceAround") == 0) {
+        // spaceAround: equal space around each item (half space at edges)
+        if (element->child_count > 0) {
+            float available_space = container_height - total_children_height + ((element->child_count - 1) * gap);
+            gap = available_space / element->child_count;
+            start_y = container_y + gap / 2.0f;
+        }
+    } else if (main_axis && strcmp(main_axis, "spaceBetween") == 0) {
+        // spaceBetween: equal space between items (no space at edges)
+        if (element->child_count > 1) {
+            float available_space = container_height - total_children_height + ((element->child_count - 1) * gap);
+            gap = available_space / (element->child_count - 1);
+            start_y = container_y;
+        }
     }
     // "start" or default uses container_y
     
@@ -2575,4 +2681,8 @@ const char* kryon_runtime_get_variable(KryonRuntime *runtime, const char *name) 
     }
     
     return NULL;
+}
+
+KryonRuntime* kryon_runtime_get_current(void) {
+    return g_current_runtime;
 }
