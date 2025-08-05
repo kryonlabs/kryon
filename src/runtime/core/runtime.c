@@ -420,8 +420,14 @@ bool kryon_runtime_update(KryonRuntime *runtime, double delta_time) {
     runtime->stats.total_time += delta_time;
     runtime->stats.frame_count++;
     
+    // Set global runtime for event processing
+    g_current_runtime = runtime;
+
     // Process event queue
     process_event_queue(runtime);
+
+    // Clear global runtime after event processing
+    g_current_runtime = NULL;
     
     // Update element tree
     if (runtime->needs_update && runtime->root) {
