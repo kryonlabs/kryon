@@ -6,6 +6,7 @@
  */
 
 #include "internal/script_vm.h"
+#include "internal/lua_engine.h"
 #include "internal/memory.h"
 #include "internal/runtime.h"
 #include "internal/events.h"
@@ -503,6 +504,42 @@ static void lua_vm_clear_error(KryonVM* vm) {
     backend->error_buffer[0] = '\0';
 }
 
+static void lua_vm_notify_element_destroyed(KryonVM* vm, KryonElement* element) {
+    if (!vm || !vm->impl_data || !element) {
+        return;
+    }
+
+    KryonLuaBackend* backend = (KryonLuaBackend*)vm->impl_data;
+    lua_State* L = backend->L;
+
+    // Get the element registry from the Lua registry
+    lua_getfield(L, LUA_REGISTRYINDEX, ELEMENT_REGISTRY);
+    if (!lua_istable(L, -1)) {
+        lua_pop(L, 1); // Pop the non-table value
+        return;
+    }
+
+    // Find the userdata associated with the element pointer
+    lua_pushlightuserdata(L, element);
+    lua_gettable(L, -2);
+
+    if (lua_isuserdata(L, -1)) {
+        // Invalidate the userdata's pointer
+        KryonElement** udata = (KryonElement**)lua_touserdata(L, -1);
+        if (udata) {
+            *udata = NULL;
+        }
+    }
+    lua_pop(L, 1); // Pop the userdata or nil
+
+    // Remove the entry from the registry
+    lua_pushlightuserdata(L, element);
+    lua_pushnil(L);
+    lua_settable(L, -3);
+
+    lua_pop(L, 1); // Pop the registry table
+}
+
 // =============================================================================
 // INTERFACE DECLARATION
 // =============================================================================
@@ -519,7 +556,8 @@ static KryonVMInterface lua_vm_interface = {
     .get_version = lua_vm_get_version,
     .supports_feature = lua_vm_supports_feature,
     .get_last_error = lua_vm_get_last_error,
-    .clear_error = lua_vm_clear_error
+    .clear_error = lua_vm_clear_error,
+    .notify_element_destroyed = lua_vm_notify_element_destroyed
 };
 
 // =============================================================================

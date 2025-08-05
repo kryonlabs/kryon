@@ -11,6 +11,8 @@
 
 #include "internal/runtime.h"
 #include "internal/memory.h"
+#include "internal/types.h"
+#include "internal/events.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -211,15 +213,15 @@ bool kryon_element_set_property_by_name(KryonElement *element, const char *name,
 // =============================================================================
 
 void kryon_element_mount(KryonElement *element) {
-    if (!element || element->state != KRYON_ELEMENT_CREATED) {
+    if (!element || element->state != KRYON_ELEMENT_STATE_CREATED) {
         return;
     }
     
-    element->state = KRYON_ELEMENT_MOUNTING;
+    element->state = KRYON_ELEMENT_STATE_MOUNTING;
     
     // TODO: Call lifecycle hooks
     
-    element->state = KRYON_ELEMENT_MOUNTED;
+    element->state = KRYON_ELEMENT_STATE_MOUNTED;
     
     // Mount children
     for (size_t i = 0; i < element->child_count; i++) {
@@ -228,11 +230,11 @@ void kryon_element_mount(KryonElement *element) {
 }
 
 void kryon_element_unmount(KryonElement *element) {
-    if (!element || element->state != KRYON_ELEMENT_MOUNTED) {
+    if (!element || element->state != KRYON_ELEMENT_STATE_MOUNTED) {
         return;
     }
     
-    element->state = KRYON_ELEMENT_UNMOUNTING;
+    element->state = KRYON_ELEMENT_STATE_UNMOUNTING;
     
     // Unmount children first
     for (size_t i = 0; i < element->child_count; i++) {
@@ -241,7 +243,7 @@ void kryon_element_unmount(KryonElement *element) {
     
     // TODO: Call lifecycle hooks
     
-    element->state = KRYON_ELEMENT_UNMOUNTED;
+    element->state = KRYON_ELEMENT_STATE_UNMOUNTED;
 }
 
 // =============================================================================
@@ -372,7 +374,7 @@ bool kryon_element_add_child(KryonElement *parent, KryonElement *child) {
     parent->needs_render = true;
     
     // Mount child if parent is mounted
-    if (parent->state == KRYON_ELEMENT_MOUNTED) {
+    if (parent->state == KRYON_ELEMENT_STATE_MOUNTED) {
         kryon_element_mount(child);
     }
     
@@ -388,7 +390,7 @@ bool kryon_element_remove_child(KryonElement *parent, KryonElement *child) {
     for (size_t i = 0; i < parent->child_count; i++) {
         if (parent->children[i] == child) {
             // Unmount child if mounted
-            if (child->state == KRYON_ELEMENT_MOUNTED) {
+            if (child->state == KRYON_ELEMENT_STATE_MOUNTED) {
                 kryon_element_unmount(child);
             }
             
@@ -446,7 +448,7 @@ bool kryon_element_insert_child(KryonElement *parent, KryonElement *child, size_
     parent->needs_render = true;
     
     // Mount child if parent is mounted
-    if (parent->state == KRYON_ELEMENT_MOUNTED) {
+    if (parent->state == KRYON_ELEMENT_STATE_MOUNTED) {
         kryon_element_mount(child);
     }
     

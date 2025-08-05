@@ -27,7 +27,7 @@ set(SCRIPT_SOURCES
 if(KRYON_SCRIPT_LUA)
     list(APPEND SCRIPT_SOURCES 
         lua/lua_vm_backend.c
-        lua/lua_widget_api.c
+        lua/lua_element_api.c
     )
 endif()
 

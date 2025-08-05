@@ -15,6 +15,7 @@
 #include "internal/krb_format.h"
 #include "internal/renderer_interface.h"
 #include "internal/color_utils.h"
+#include "internal/types.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -275,12 +276,14 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
                 kryon_free(comp->state_vars);
                 
                 // Free functions
-                for (size_t j = 0; j < comp->function_count; j++) {
-                    kryon_free(comp->functions[j].name);
-                    kryon_free(comp->functions[j].language);
-                    kryon_free(comp->functions[j].bytecode);
+                if (comp->functions) {
+                    for (size_t j = 0; j < comp->function_count; j++) {
+                        kryon_free(comp->functions[j].name);
+                        kryon_free(comp->functions[j].language);
+                        kryon_free(comp->functions[j].bytecode);
+                    }
+                    kryon_free(comp->functions);
                 }
-                kryon_free(comp->functions);
                 
                 // Free UI template (if any)
                 if (comp->ui_template) {
@@ -602,7 +605,7 @@ KryonElement *kryon_element_create(KryonRuntime *runtime, uint16_t type, KryonEl
     memset(element, 0, sizeof(KryonElement));
     element->id = runtime->next_element_id++;
     element->type = type;
-    element->state = KRYON_ELEMENT_CREATED;
+    element->state = KRYON_ELEMENT_STATE_CREATED;
     element->visible = true;
     element->enabled = true;
     element->needs_layout = true;
@@ -652,7 +655,7 @@ void kryon_element_destroy(KryonRuntime *runtime, KryonElement *element) {
     }
     
     // Set state to unmounting
-    element->state = KRYON_ELEMENT_UNMOUNTING;
+    element->state = KRYON_ELEMENT_STATE_UNMOUNTING;
     
     // Destroy children first
     while (element->child_count > 0) {
@@ -718,9 +721,14 @@ void kryon_element_destroy(KryonRuntime *runtime, KryonElement *element) {
         }
         kryon_free(element->class_names);
     }
+
+    // Notify the script VM that this element is gone
+    if (runtime->script_vm) {
+        kryon_vm_notify_element_destroyed(runtime->script_vm, element);
+    }
     
     // Set state to destroyed
-    element->state = KRYON_ELEMENT_DESTROYED;
+    element->state = KRYON_ELEMENT_STATE_DESTROYED;
     
     kryon_free(element);
 }
@@ -930,17 +938,17 @@ static void update_element_tree(KryonRuntime *runtime, KryonElement *element, do
     
     // Update element state
     switch (element->state) {
-        case KRYON_ELEMENT_CREATED:
-            element->state = KRYON_ELEMENT_MOUNTING;
+        case KRYON_ELEMENT_STATE_CREATED:
+            element->state = KRYON_ELEMENT_STATE_MOUNTING;
             // TODO: Call onMount lifecycle hook
-            element->state = KRYON_ELEMENT_MOUNTED;
+            element->state = KRYON_ELEMENT_STATE_MOUNTED;
             break;
             
-        case KRYON_ELEMENT_MOUNTED:
+        case KRYON_ELEMENT_STATE_MOUNTED:
             if (element->needs_layout || element->needs_render) {
-                element->state = KRYON_ELEMENT_UPDATING;
+                element->state = KRYON_ELEMENT_STATE_UPDATING;
                 // TODO: Perform layout and render updates
-                element->state = KRYON_ELEMENT_MOUNTED;
+                element->state = KRYON_ELEMENT_STATE_MOUNTED;
             }
             break;
             
@@ -1131,55 +1139,58 @@ static const char* get_element_property_string_with_runtime(KryonRuntime* runtim
         debug_call_count++;
     }
     
+    // Use rotating buffers for all string conversions to prevent overwriting
+    static char string_buffers[4][1024];
+    static int string_buffer_index = 0;
+    char* buffer = string_buffers[string_buffer_index];
+    string_buffer_index = (string_buffer_index + 1) % 4;
+
     switch (prop->type) {
         case KRYON_RUNTIME_PROP_STRING:
             // Check if property is bound to component state
             if (prop->is_bound && prop->binding_path && runtime) {
+                const char* resolved_value = NULL;
+
                 // Try to resolve component state variable first
-                const char* resolved = resolve_component_state_variable(runtime, element, prop->binding_path);
-                if (resolved) {
-                    return resolved;
-                }
+                resolved_value = resolve_component_state_variable(runtime, element, prop->binding_path);
                 
-                // Fall back to component instance variable pattern matching using same logic as Lua system
-                // Find which component instance this element belongs to based on hierarchy
-                KryonElement* current = element;
-                while (current && current->parent) {
-                    if (current->parent->type_name && strcmp(current->parent->type_name, "Column") == 0) {
-                        // This element is in a Column, check if it's the first or second child
-                        KryonElement* column = current->parent;
-                        for (size_t i = 0; i < column->child_count; i++) {
-                            if (column->children[i] == current) {
-                                // Found component instance index, try the variable
-                                char pattern_buffer[128];
-                                snprintf(pattern_buffer, sizeof(pattern_buffer), "comp_%zu.%s", i, prop->binding_path);
-                                const char* comp_resolved = kryon_runtime_get_variable(runtime, pattern_buffer);
-                                if (comp_resolved) {
-                                    printf("🎯 TEXT BINDING: Resolved %s -> %s\n", pattern_buffer, comp_resolved);
-                                    return comp_resolved;
+                // Fallback resolution logic
+                if (!resolved_value) {
+                    KryonElement* current = element;
+                    while (current && current->parent) {
+                        if (current->parent->type_name && strcmp(current->parent->type_name, "Column") == 0) {
+                            KryonElement* column = current->parent;
+                            for (size_t i = 0; i < column->child_count; i++) {
+                                if (column->children[i] == current) {
+                                    char pattern_buffer[128];
+                                    snprintf(pattern_buffer, sizeof(pattern_buffer), "comp_%zu.%s", i, prop->binding_path);
+                                    resolved_value = kryon_runtime_get_variable(runtime, pattern_buffer);
+                                    if (resolved_value) break;
                                 }
-                                break;
                             }
+                            if (resolved_value) break;
                         }
-                        break;
-                    }
-                    current = current->parent;
-                }
-                
-                // Fallback: Try different component instance patterns: comp_0.value, comp_1.value, etc.
-                char pattern_buffer[128];
-                for (int comp_id = 0; comp_id < 10; comp_id++) { // Try comp_0 through comp_9
-                    snprintf(pattern_buffer, sizeof(pattern_buffer), "comp_%d.%s", comp_id, prop->binding_path);
-                    const char* comp_resolved = kryon_runtime_get_variable(runtime, pattern_buffer);
-                    if (comp_resolved) {
-                        return comp_resolved;
+                        current = current->parent;
                     }
                 }
-                
-                // Fall back to global variable resolution
-                const char* global_resolved = kryon_runtime_get_variable(runtime, prop->binding_path);
-                if (global_resolved) {
-                    return global_resolved;
+
+                if (!resolved_value) {
+                    char pattern_buffer[128];
+                    for (int comp_id = 0; comp_id < 10; comp_id++) {
+                        snprintf(pattern_buffer, sizeof(pattern_buffer), "comp_%d.%s", comp_id, prop->binding_path);
+                        resolved_value = kryon_runtime_get_variable(runtime, pattern_buffer);
+                        if (resolved_value) break;
+                    }
+                }
+
+                if (!resolved_value) {
+                    resolved_value = kryon_runtime_get_variable(runtime, prop->binding_path);
+                }
+
+                if (resolved_value) {
+                    strncpy(buffer, resolved_value, 1023);
+                    buffer[1023] = '\0';
+                    return buffer;
                 }
                 
                 return prop->value.string_value;
@@ -1187,61 +1198,40 @@ static const char* get_element_property_string_with_runtime(KryonRuntime* runtim
             
             // Legacy: Resolve variable references if runtime is available
             if (runtime) {
-                return resolve_variable_reference(runtime, prop->value.string_value);
+                const char* resolved = resolve_variable_reference(runtime, prop->value.string_value);
+                strncpy(buffer, resolved, 1023);
+                buffer[1023] = '\0';
+                return buffer;
             }
             return prop->value.string_value;
             
-        case KRYON_RUNTIME_PROP_INTEGER: {
-            // Use rotating buffers to prevent overwriting in concurrent calls
-            static char int_buffers[4][32];
-            static int int_buffer_index = 0;
-            char *buffer = int_buffers[int_buffer_index];
-            int_buffer_index = (int_buffer_index + 1) % 4;
-            snprintf(buffer, 32, "%lld", (long long)prop->value.int_value);
+        case KRYON_RUNTIME_PROP_INTEGER:
+            snprintf(buffer, 1024, "%lld", (long long)prop->value.int_value);
             return buffer;
-        }
         
-        case KRYON_RUNTIME_PROP_FLOAT: {
-            // Use rotating buffers to prevent overwriting in concurrent calls
-            static char float_buffers[4][32];
-            static int float_buffer_index = 0;
-            char *buffer = float_buffers[float_buffer_index];
-            float_buffer_index = (float_buffer_index + 1) % 4;
-            snprintf(buffer, 32, "%.6f", prop->value.float_value);
+        case KRYON_RUNTIME_PROP_FLOAT:
+            snprintf(buffer, 1024, "%.6f", prop->value.float_value);
             return buffer;
-        }
         
         case KRYON_RUNTIME_PROP_BOOLEAN:
             return prop->value.bool_value ? "true" : "false";
             
-        case KRYON_RUNTIME_PROP_COLOR: {
-            // Use rotating buffers to avoid overwriting when called multiple times
-            static char color_buffers[4][16];
-            static int buffer_index = 0;
-            char *buffer = color_buffers[buffer_index];
-            buffer_index = (buffer_index + 1) % 4;
-            snprintf(buffer, 16, "#%08X", prop->value.color_value);
+        case KRYON_RUNTIME_PROP_COLOR:
+            snprintf(buffer, 1024, "#%08X", prop->value.color_value);
             return buffer;
-        }
         
-        case KRYON_RUNTIME_PROP_REFERENCE: {
-            // Use rotating buffers to prevent overwriting in concurrent calls
-            static char ref_buffers[4][32];
-            static int ref_buffer_index = 0;
-            char *buffer = ref_buffers[ref_buffer_index];
-            ref_buffer_index = (ref_buffer_index + 1) % 4;
-            snprintf(buffer, 32, "ref_%u", prop->value.ref_id);
+        case KRYON_RUNTIME_PROP_REFERENCE:
+            snprintf(buffer, 1024, "ref_%u", prop->value.ref_id);
             return buffer;
-        }
         
         case KRYON_RUNTIME_PROP_FUNCTION:
-            // Function properties are stored as string values (function names)
             return prop->value.string_value;
         
         default:
             return NULL;
     }
 }
+
 
 // Get property value as integer with type conversion
 static int get_element_property_int(KryonElement* element, const char* prop_name, int default_value) {
@@ -1687,7 +1677,7 @@ static void element_button_to_commands(KryonElement* element, KryonRenderCommand
     cmd.data.draw_button.border_color = border_color;
     cmd.data.draw_button.border_width = border_width;
     cmd.data.draw_button.border_radius = border_radius;
-    cmd.data.draw_button.state = is_hovered ? KRYON_WIDGET_STATE_HOVERED : KRYON_WIDGET_STATE_NORMAL;
+    cmd.data.draw_button.state = is_hovered ? KRYON_ELEMENT_STATE_HOVERED : KRYON_ELEMENT_STATE_NORMAL;
     cmd.data.draw_button.enabled = true;
     
     // Set onClick handler if present
@@ -1939,7 +1929,7 @@ static void element_input_to_commands(KryonElement* element, KryonRenderCommand*
     cmd.data.draw_input.border_color = final_border_color;
     cmd.data.draw_input.border_width = border_width;
     cmd.data.draw_input.border_radius = border_radius;
-    cmd.data.draw_input.state = is_hovered ? KRYON_WIDGET_STATE_HOVERED : KRYON_WIDGET_STATE_NORMAL;
+    cmd.data.draw_input.state = is_hovered ? KRYON_ELEMENT_STATE_HOVERED : KRYON_ELEMENT_STATE_NORMAL;
     cmd.data.draw_input.enabled = !is_disabled;
     cmd.data.draw_input.is_password = is_password;
     // Calculate cursor position relative to visible text (accounting for scroll)

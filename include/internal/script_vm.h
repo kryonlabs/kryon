@@ -16,9 +16,10 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "internal/elements.h"
+
 // Forward declarations
 typedef struct KryonVM KryonVM;
-typedef struct KryonElement KryonElement;
 typedef struct KryonVMConfig KryonVMConfig;
 typedef struct KryonScript KryonScript;
 
@@ -122,6 +123,9 @@ typedef struct KryonVMInterface {
     // Error Handling
     const char* (*get_last_error)(KryonVM* vm);
     void (*clear_error)(KryonVM* vm);
+
+    // Element Lifecycle
+    void (*notify_element_destroyed)(KryonVM* vm, KryonElement* element);
     
 } KryonVMInterface;
 
@@ -208,6 +212,17 @@ KryonVMResult kryon_vm_execute_string(KryonVM* vm, const char* code);
  * @return Error message or NULL
  */
 const char* kryon_vm_get_error(KryonVM* vm);
+
+/**
+ * @brief Notify the VM that a C-side element has been destroyed.
+ * 
+ * This allows the VM to invalidate any script-side references (e.g., userdata)
+ * to prevent use-after-free errors.
+ * 
+ * @param vm The VM instance.
+ * @param element The element that is being destroyed.
+ */
+void kryon_vm_notify_element_destroyed(KryonVM* vm, KryonElement* element);
 
 // =============================================================================
 // SCRIPT MANAGEMENT

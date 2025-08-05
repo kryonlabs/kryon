@@ -2,13 +2,13 @@
 
 if(KRYON_ENABLE_WIDGETS)
     add_library(kryon_widgets OBJECT
-        dropdown/dropdown_widget.c
+        dropdown/dropdown_element.c
         dropdown/dropdown_renderer.c
         dropdown/dropdown_events.c
-        common/widget_base.c
-        common/widget_state.c
-        common/widget_layout.c
-        common/widget_events.c
+        common/element_base.c
+        common/element_state.c
+        common/element_layout.c
+        common/element_events.c
     )
 
     target_include_directories(kryon_widgets PRIVATE

@@ -12,14 +12,23 @@
 extern "C" {
 #endif
 
-#include <stddef.h>
-#include <stdbool.h>
-#include <stdint.h>
+#include "internal/elements.h"
 
-// Forward declarations
+// =============================================================================
+// LUA CONSTANTS
+// =============================================================================
+
+extern const char* ELEMENT_METATABLE;
+extern const char* ELEMENT_REGISTRY;
+
+// =============================================================================
+// FORWARD DECLARATIONS
+// =============================================================================
+
+typedef struct KryonLuaVM KryonLuaVM;
+typedef struct lua_State lua_State;
 typedef struct KryonLuaEngine KryonLuaEngine;
-typedef struct KryonElement KryonElement;
-typedef struct KryonEvent KryonEvent;
+typedef struct KryonLuaConfig KryonLuaConfig;
 
 // =============================================================================
 // LUA ENGINE TYPES
@@ -45,14 +54,7 @@ typedef struct {
     char* source_name;      // Source filename/identifier
 } KryonLuaBytecode;
 
-/**
- * @brief Lua engine configuration
- */
-typedef struct {
-    bool enable_debug;      // Enable debug hooks
-    size_t memory_limit;    // Memory limit in bytes (0 = unlimited)
-    double time_limit;      // Execution time limit in seconds (0 = unlimited)
-} KryonLuaConfig;
+
 
 // =============================================================================
 // LUA ENGINE API

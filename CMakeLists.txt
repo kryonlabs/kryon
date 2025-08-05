@@ -111,22 +111,7 @@ target_include_directories(kryon_minimal_compiler PUBLIC
 
 target_link_libraries(kryon_minimal_compiler kryon_minimal_memory kryon_shared cjson)
 
-# =============================================================================
-# WIDGET SYSTEM (Core only)
-# =============================================================================
 
-add_library(kryon_minimal_widgets STATIC
-    src/layout/widget_system.c
-    src/layout/widget_transform.c
-    src/layout/widget_layout.c
-)
-
-target_include_directories(kryon_minimal_widgets PUBLIC
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/internal
-)
-
-target_link_libraries(kryon_minimal_widgets kryon_minimal_memory)
 
 # =============================================================================
 # KRYON CLI (Modular Version)

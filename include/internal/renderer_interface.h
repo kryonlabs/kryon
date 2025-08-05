@@ -17,7 +17,10 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include "internal/types.h"
 #include "internal/events.h"
+
+#include "internal/elements.h"
 
 // =============================================================================
 // FORWARD DECLARATIONS
@@ -26,25 +29,8 @@ extern "C" {
 typedef struct KryonRenderer KryonRenderer;
 typedef struct KryonRenderContext KryonRenderContext;
 typedef struct KryonElementTree KryonElementTree;
-typedef struct KryonElement KryonElement;
 
-// =============================================================================
-// BASIC TYPES
-// =============================================================================
 
-typedef struct {
-    float x, y;
-} KryonVec2;
-
-typedef struct {
-    float r, g, b, a;
-} KryonVec4;
-
-typedef KryonVec4 KryonColor;
-
-typedef struct {
-    float x, y, width, height;
-} KryonRect;
 
 // =============================================================================
 // RENDER COMMANDS (Based on kryon-rust architecture)
@@ -68,13 +54,13 @@ typedef enum {
     KRYON_CMD_DRAW_GRADIENT,
     KRYON_CMD_BEGIN_PATH,
     KRYON_CMD_END_PATH,
-    // Widget commands
+    // Element commands
     KRYON_CMD_DRAW_BUTTON,
     KRYON_CMD_DRAW_INPUT,
     KRYON_CMD_DRAW_DROPDOWN,
     KRYON_CMD_DRAW_CHECKBOX,
     KRYON_CMD_DRAW_SLIDER,
-    KRYON_CMD_UPDATE_WIDGET_STATE
+    KRYON_CMD_UPDATE_ELEMENT_STATE
 } KryonRenderCommandType;
 
 typedef struct {
@@ -125,20 +111,10 @@ typedef struct {
     KryonVec2 canvas_size;
 } KryonSetCanvasSizeData;
 
-// =============================================================================
-// WIDGET DATA STRUCTURES
-// =============================================================================
 
-typedef enum {
-    KRYON_WIDGET_STATE_NORMAL,
-    KRYON_WIDGET_STATE_HOVERED,
-    KRYON_WIDGET_STATE_PRESSED,
-    KRYON_WIDGET_STATE_FOCUSED,
-    KRYON_WIDGET_STATE_DISABLED
-} KryonWidgetState;
 
 typedef struct {
-    char* widget_id;
+    char* element_id;
     KryonVec2 position;
     KryonVec2 size;
     char* text;
@@ -147,13 +123,13 @@ typedef struct {
     KryonColor border_color;
     float border_width;
     float border_radius;
-    KryonWidgetState state;
+    KryonElementState state;
     bool enabled;
     char* onclick_handler;
 } KryonDrawButtonData;
 
 typedef struct {
-    char* widget_id;
+    char* element_id;
     KryonVec2 position;
     KryonVec2 size;
     char* text;
@@ -163,20 +139,17 @@ typedef struct {
     KryonColor border_color;
     float border_width;
     float border_radius;
-    KryonWidgetState state;
+    KryonElementState state;
     bool enabled;
     bool is_password;
     int cursor_position;
     bool has_focus;
 } KryonDrawInputData;
 
-typedef struct {
-    char* text;
-    char* value;
-} KryonDropdownItem;
+
 
 typedef struct {
-    char* widget_id;
+    char* element_id;
     KryonVec2 position;
     KryonVec2 size;
     KryonDropdownItem* items;
@@ -191,12 +164,12 @@ typedef struct {
     KryonColor selected_color;
     float border_width;
     float border_radius;
-    KryonWidgetState state;
+    KryonElementState state;
     bool enabled;
 } KryonDrawDropdownData;
 
 typedef struct {
-    char* widget_id;
+    char* element_id;
     KryonVec2 position;
     KryonVec2 size;
     char* label;
@@ -205,12 +178,12 @@ typedef struct {
     KryonColor check_color;
     KryonColor border_color;
     float border_width;
-    KryonWidgetState state;
+    KryonElementState state;
     bool enabled;
 } KryonDrawCheckboxData;
 
 typedef struct {
-    char* widget_id;
+    char* element_id;
     KryonVec2 position;
     KryonVec2 size;
     float min_value;
@@ -220,14 +193,14 @@ typedef struct {
     KryonColor thumb_color;
     KryonColor border_color;
     float border_width;
-    KryonWidgetState state;
+    KryonElementState state;
     bool enabled;
     bool is_dragging;
 } KryonDrawSliderData;
 
 typedef struct {
-    char* widget_id;
-    KryonWidgetState new_state;
+    char* element_id;
+    KryonElementState new_state;
     union {
         struct {
             char* new_text;
@@ -244,7 +217,7 @@ typedef struct {
             float value;
         } slider_data;
     } state_data;
-} KryonUpdateWidgetStateData;
+} KryonUpdateElementStateData;
 
 typedef struct {
     KryonRenderCommandType type;
@@ -256,13 +229,13 @@ typedef struct {
         KryonDrawImageData draw_image;
         KryonBeginContainerData begin_container;
         KryonBeginCanvasData begin_canvas;
-        // Widget commands
+        // Element commands
         KryonDrawButtonData draw_button;
         KryonDrawInputData draw_input;
         KryonDrawDropdownData draw_dropdown;
         KryonDrawCheckboxData draw_checkbox;
         KryonDrawSliderData draw_slider;
-        KryonUpdateWidgetStateData update_widget_state;
+        KryonUpdateElementStateData update_element_state;
     } data;
 } KryonRenderCommand;
 
@@ -399,12 +372,12 @@ typedef struct {
     KryonRenderResult (*get_input_state)(KryonInputState* input_state);
     
     /**
-     * Check if a point is inside a widget
+     * Check if a point is inside a element
      * @param point Point to check
-     * @param widget_bounds Widget bounds
-     * @return true if point is inside widget
+     * @param element_bounds Element bounds
+     * @return true if point is inside element
      */
-    bool (*point_in_widget)(KryonVec2 point, KryonRect widget_bounds);
+    bool (*point_in_element)(KryonVec2 point, KryonRect element_bounds);
     
     /**
      * Handle platform events
@@ -579,14 +552,14 @@ static inline KryonRenderCommand kryon_cmd_draw_text(
  * Create a draw button command
  */
 static inline KryonRenderCommand kryon_cmd_draw_button(
-    const char* widget_id, KryonVec2 pos, KryonVec2 size, const char* text,
+    const char* element_id, KryonVec2 pos, KryonVec2 size, const char* text,
     KryonColor bg_color, KryonColor text_color) {
     
     KryonRenderCommand cmd = {0};
     cmd.type = KRYON_CMD_DRAW_BUTTON;
     cmd.z_index = 0;
     cmd.data.draw_button = (KryonDrawButtonData){
-        .widget_id = strdup(widget_id),
+        .element_id = strdup(element_id),
         .position = pos,
         .size = size,
         .text = strdup(text),
@@ -595,7 +568,7 @@ static inline KryonRenderCommand kryon_cmd_draw_button(
         .border_color = {0.5f, 0.5f, 0.5f, 1.0f},
         .border_width = 1.0f,
         .border_radius = 4.0f,
-        .state = KRYON_WIDGET_STATE_NORMAL,
+        .state = KRYON_ELEMENT_STATE_NORMAL,
         .enabled = true,
         .onclick_handler = NULL
     };
@@ -606,14 +579,14 @@ static inline KryonRenderCommand kryon_cmd_draw_button(
  * Create a draw dropdown command
  */
 static inline KryonRenderCommand kryon_cmd_draw_dropdown(
-    const char* widget_id, KryonVec2 pos, KryonVec2 size,
+    const char* element_id, KryonVec2 pos, KryonVec2 size,
     KryonDropdownItem* items, size_t item_count, int selected_index) {
     
     KryonRenderCommand cmd = {0};
     cmd.type = KRYON_CMD_DRAW_DROPDOWN;
     cmd.z_index = 0;
     cmd.data.draw_dropdown = (KryonDrawDropdownData){
-        .widget_id = strdup(widget_id),
+        .element_id = strdup(element_id),
         .position = pos,
         .size = size,
         .items = items,
@@ -628,7 +601,7 @@ static inline KryonRenderCommand kryon_cmd_draw_dropdown(
         .selected_color = {0.7f, 0.8f, 1.0f, 1.0f},
         .border_width = 1.0f,
         .border_radius = 4.0f,
-        .state = KRYON_WIDGET_STATE_NORMAL,
+        .state = KRYON_ELEMENT_STATE_NORMAL,
         .enabled = true
     };
     return cmd;
@@ -638,14 +611,14 @@ static inline KryonRenderCommand kryon_cmd_draw_dropdown(
  * Create a draw input command
  */
 static inline KryonRenderCommand kryon_cmd_draw_input(
-    const char* widget_id, KryonVec2 pos, KryonVec2 size, 
+    const char* element_id, KryonVec2 pos, KryonVec2 size, 
     const char* text, const char* placeholder) {
     
     KryonRenderCommand cmd = {0};
     cmd.type = KRYON_CMD_DRAW_INPUT;
     cmd.z_index = 0;
     cmd.data.draw_input = (KryonDrawInputData){
-        .widget_id = strdup(widget_id),
+        .element_id = strdup(element_id),
         .position = pos,
         .size = size,
         .text = strdup(text ? text : ""),
@@ -655,7 +628,7 @@ static inline KryonRenderCommand kryon_cmd_draw_input(
         .border_color = {0.5f, 0.5f, 0.5f, 1.0f},
         .border_width = 1.0f,
         .border_radius = 4.0f,
-        .state = KRYON_WIDGET_STATE_NORMAL,
+        .state = KRYON_ELEMENT_STATE_NORMAL,
         .enabled = true,
         .is_password = false,
         .cursor_position = strlen(text ? text : ""),
@@ -668,14 +641,14 @@ static inline KryonRenderCommand kryon_cmd_draw_input(
  * Create a draw checkbox command
  */
 static inline KryonRenderCommand kryon_cmd_draw_checkbox(
-    const char* widget_id, KryonVec2 pos, KryonVec2 size,
+    const char* element_id, KryonVec2 pos, KryonVec2 size,
     const char* label, bool checked) {
     
     KryonRenderCommand cmd = {0};
     cmd.type = KRYON_CMD_DRAW_CHECKBOX;
     cmd.z_index = 0;
     cmd.data.draw_checkbox = (KryonDrawCheckboxData){
-        .widget_id = strdup(widget_id),
+        .element_id = strdup(element_id),
         .position = pos,
         .size = size,
         .label = strdup(label ? label : ""),
@@ -684,7 +657,7 @@ static inline KryonRenderCommand kryon_cmd_draw_checkbox(
         .check_color = {0.0f, 0.6f, 0.0f, 1.0f},
         .border_color = {0.5f, 0.5f, 0.5f, 1.0f},
         .border_width = 1.0f,
-        .state = KRYON_WIDGET_STATE_NORMAL,
+        .state = KRYON_ELEMENT_STATE_NORMAL,
         .enabled = true
     };
     return cmd;

@@ -6,6 +6,7 @@
  */
 
 #include "internal/script_vm.h"
+#include "internal/elements.h"
 #include "internal/memory.h"
 #include "internal/events.h"
 #include <stdio.h>
@@ -176,6 +177,14 @@ const char* kryon_vm_get_error(KryonVM* vm) {
     }
     
     return vm->vtable->get_last_error(vm);
+}
+
+void kryon_vm_notify_element_destroyed(KryonVM* vm, KryonElement* element) {
+    if (!vm || !vm->initialized || !vm->vtable || !vm->vtable->notify_element_destroyed || !element) {
+        return;
+    }
+
+    vm->vtable->notify_element_destroyed(vm, element);
 }
 
 // =============================================================================

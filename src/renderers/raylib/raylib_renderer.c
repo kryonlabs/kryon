@@ -81,7 +81,7 @@ static KryonRendererVTable g_raylib_vtable = {
     .viewport_size = raylib_viewport_size,
     .destroy = raylib_destroy,
     .get_input_state = raylib_get_input_state,
-    .point_in_widget = raylib_point_in_widget,
+    .point_in_element = raylib_point_in_widget,
     .handle_event = raylib_handle_event,
     .get_native_window = raylib_get_native_window,
     .measure_text_width = raylib_measure_text_width
@@ -325,17 +325,17 @@ static KryonRenderResult raylib_execute_commands(KryonRenderContext* context,
                 Color border_color = kryon_color_to_raylib(data->border_color);
                 
                 switch (data->state) {
-                    case KRYON_WIDGET_STATE_HOVERED:
+                    case KRYON_ELEMENT_STATE_HOVERED:
                         bg_color.r = (unsigned char)(bg_color.r * 0.9f);
                         bg_color.g = (unsigned char)(bg_color.g * 0.9f);
                         bg_color.b = (unsigned char)(bg_color.b * 0.9f);
                         break;
-                    case KRYON_WIDGET_STATE_PRESSED:
+                    case KRYON_ELEMENT_STATE_PRESSED:
                         bg_color.r = (unsigned char)(bg_color.r * 0.8f);
                         bg_color.g = (unsigned char)(bg_color.g * 0.8f);
                         bg_color.b = (unsigned char)(bg_color.b * 0.8f);
                         break;
-                    case KRYON_WIDGET_STATE_DISABLED:
+                    case KRYON_ELEMENT_STATE_DISABLED:
                         bg_color.a = 128;
                         text_color.a = 128;
                         break;
@@ -504,9 +504,9 @@ static KryonRenderResult raylib_execute_commands(KryonRenderContext* context,
                 Color border_color = kryon_color_to_raylib(data->border_color);
                 
                 // Adjust colors based on state
-                if (data->state == KRYON_WIDGET_STATE_FOCUSED) {
+                if (data->state == KRYON_ELEMENT_STATE_FOCUSED) {
                     border_color = (Color){100, 150, 255, 255}; // Blue focus border
-                } else if (data->state == KRYON_WIDGET_STATE_DISABLED) {
+                } else if (data->state == KRYON_ELEMENT_STATE_DISABLED) {
                     bg_color.a = 128;
                     text_color.a = 128;
                 }
@@ -667,7 +667,7 @@ static KryonRenderResult raylib_execute_commands(KryonRenderContext* context,
                 break;
             }
             
-            case KRYON_CMD_UPDATE_WIDGET_STATE: {
+            case KRYON_CMD_UPDATE_ELEMENT_STATE: {
                 // Widget state updates would be handled by the widget management system
                 // This is a placeholder for state synchronization
                 break;
