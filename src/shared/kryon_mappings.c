@@ -462,6 +462,18 @@
          .hex_code = 0x060F,
          .type_hint = KRYON_TYPE_HINT_STRING
      },
+     {
+         .canonical = "options",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0611,
+         .type_hint = KRYON_TYPE_HINT_ARRAY
+     },
+     {
+         .canonical = "selectedIndex",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0612,
+         .type_hint = KRYON_TYPE_HINT_INTEGER
+     },
  
      // -- Window Properties (0x07xx) --
      {

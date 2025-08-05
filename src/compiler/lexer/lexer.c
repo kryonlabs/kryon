@@ -730,9 +730,6 @@ static bool scan_token(KryonLexer *lexer) {
                         advance(lexer); // consume /
                         break;
                     }
-                    if (peek(lexer) == '\n') {
-                        lexer->line++;
-                    }
                     advance(lexer);
                 }
                 if (lexer->config.preserve_comments) {

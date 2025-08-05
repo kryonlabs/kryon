@@ -21,6 +21,7 @@
 static bool write_property_value(KryonCodeGenerator *codegen, const KryonASTValue *value, uint16_t property_hex);
 static bool write_variable_reference(KryonCodeGenerator *codegen, const char *variable_name, uint16_t property_hex);
 static KryonValueTypeHint get_property_type_hint(uint16_t property_hex);
+static bool write_array_literal_property(KryonCodeGenerator *codegen, const KryonASTNode *array_node);
 
 bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNode *element, const KryonASTNode *ast_root) {
     if (!element) {
@@ -241,6 +242,13 @@ bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode *proper
             printf("❌ Unresolved template expression in property value\n");
             codegen_error(codegen, "Template expressions should be resolved during const_for expansion");
             return false;
+        } else if (property->data.property.value->type == KRYON_AST_ARRAY_LITERAL) {
+            KryonValueTypeHint type_hint = get_property_type_hint(property_hex);
+            if (type_hint != KRYON_TYPE_HINT_ARRAY) {
+                codegen_error(codegen, "Property does not support array values");
+                return false;
+            }
+            return write_array_literal_property(codegen, property->data.property.value);
         } else {
             // Complex expression - not yet supported in binary format
             printf("❌ Unsupported property expression type: %d\n", property->data.property.value->type);
@@ -381,6 +389,42 @@ static bool write_variable_reference(KryonCodeGenerator *codegen, const char *va
 static KryonValueTypeHint get_property_type_hint(uint16_t property_hex) {
     // Use centralized property type hints
     return kryon_get_property_type_hint(property_hex);
+}
+
+static bool write_array_literal_property(KryonCodeGenerator *codegen, const KryonASTNode *array_node) {
+    if (!array_node || array_node->type != KRYON_AST_ARRAY_LITERAL) {
+        return false;
+    }
+
+    // Write number of elements as u16
+    uint16_t count = (uint16_t)array_node->data.array_literal.element_count;
+    if (!write_uint16(codegen, count)) {
+        return false;
+    }
+
+    // Write each element
+    for (size_t i = 0; i < count; i++) {
+        const KryonASTNode *element_node = array_node->data.array_literal.elements[i];
+        if (!element_node || element_node->type != KRYON_AST_LITERAL) {
+            codegen_error(codegen, "Array elements must be literals for now");
+            return false;
+        }
+
+        const KryonASTValue *value = &element_node->data.literal.value;
+
+        if (value->type != KRYON_VALUE_STRING) {
+            codegen_error(codegen, "Array elements must be strings for 'options' property");
+            return false;
+        }
+
+        // Write string element
+        uint32_t string_ref = add_string_to_table(codegen, value->data.string_value);
+        if (!write_uint32(codegen, string_ref)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 uint16_t count_expanded_children(KryonCodeGenerator *codegen, const KryonASTNode *element) {

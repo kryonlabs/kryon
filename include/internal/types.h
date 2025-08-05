@@ -68,7 +68,8 @@ typedef enum {
     KRYON_RUNTIME_PROP_COLOR,
     KRYON_RUNTIME_PROP_REFERENCE,
     KRYON_RUNTIME_PROP_EXPRESSION,
-    KRYON_RUNTIME_PROP_FUNCTION
+    KRYON_RUNTIME_PROP_FUNCTION,
+    KRYON_RUNTIME_PROP_ARRAY
 } KryonRuntimePropertyType;
 
 typedef enum {
@@ -103,6 +104,10 @@ struct KryonProperty {
         uint32_t ref_id;
         void *expression;
         void *function;
+        struct {
+            size_t count;
+            char **values;
+        } array_value;
     } value;
     bool is_bound;
     char *binding_path;

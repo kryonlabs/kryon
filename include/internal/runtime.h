@@ -80,6 +80,8 @@ typedef struct KryonRuntime {
     KryonComponentDefinition **components;
     size_t component_count;
     size_t component_capacity;
+    char **string_table;
+    size_t string_table_count;
     size_t string_table_offset;
     KryonMemoryManager *memory;
     struct {

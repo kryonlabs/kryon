@@ -117,7 +117,7 @@ static KryonRuntimePropertyType get_property_type(uint16_t hex) {
         case KRYON_TYPE_HINT_DIMENSION:     return KRYON_RUNTIME_PROP_FLOAT; // Dimensions as floats
         case KRYON_TYPE_HINT_SPACING:       return KRYON_RUNTIME_PROP_FLOAT; // Spacing as floats
         case KRYON_TYPE_HINT_REFERENCE:     return KRYON_RUNTIME_PROP_FUNCTION; // Function references
-        case KRYON_TYPE_HINT_ARRAY:         return KRYON_RUNTIME_PROP_STRING; // Arrays as strings for now
+        case KRYON_TYPE_HINT_ARRAY:         return KRYON_RUNTIME_PROP_ARRAY;
         default:                            return KRYON_RUNTIME_PROP_STRING;
     }
 }
@@ -326,6 +326,9 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
                    string_table_size, offset - string_table_start);
         }
     }
+    
+    runtime->string_table = string_table;
+    runtime->string_table_count = string_count;
     
     // Navigate to widget instance section if we have elements
     if (element_count > 0 && widget_inst_offset > 0) {
@@ -548,12 +551,12 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     }
     
     // Cleanup string table
-    if (string_table) {
-        for (uint32_t i = 0; i < string_count; i++) {
-            kryon_free(string_table[i]);
-        }
-        kryon_free(string_table);
-    }
+    //if (string_table) {
+    //    for (uint32_t i = 0; i < string_count; i++) {
+    //        kryon_free(string_table[i]);
+    //    }
+    //    kryon_free(string_table);
+    //}
     
     return true;
     
@@ -1057,6 +1060,35 @@ static bool load_property_value(KryonProperty *property,
             }
             break;
             
+        case KRYON_RUNTIME_PROP_ARRAY:
+            {
+                uint16_t count;
+                if (!read_uint16_safe(data, offset, size, &count)) {
+                    return false;
+                }
+                property->value.array_value.count = count;
+                property->value.array_value.values = kryon_alloc(count * sizeof(char*));
+                for (uint16_t i = 0; i < count; i++) {
+                    uint32_t string_ref;
+                    if (!read_uint32_safe(data, offset, size, &string_ref)) {
+                        // cleanup
+                        for(uint16_t j = 0; j < i; j++) {
+                            kryon_free(property->value.array_value.values[j]);
+                        }
+                        kryon_free(property->value.array_value.values);
+                        return false;
+                    }
+                    
+                    uint32_t string_index = (string_ref > 0) ? string_ref - 1 : 0;
+                    if (string_ref > 0 && string_index < runtime->string_table_count) {
+                        property->value.array_value.values[i] = kryon_strdup(runtime->string_table[string_index]);
+                    } else {
+                        property->value.array_value.values[i] = NULL;
+                    }
+                }
+            }
+            break;
+
         default:
             printf("DEBUG: Unknown property type %d for property '%s' - skipping\n", property->type, property->name);
             // Skip unknown properties instead of failing

@@ -251,6 +251,16 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
         kryon_free(runtime->error_messages);
         runtime->error_messages = NULL;
     }
+
+    // Free string table
+    if (runtime->string_table) {
+        for (size_t i = 0; i < runtime->string_table_count; i++) {
+            kryon_free(runtime->string_table[i]);
+        }
+        kryon_free(runtime->string_table);
+        runtime->string_table = NULL;
+        runtime->string_table_count = 0;
+    }
     
     // Free component registry
     if (runtime->components) {
