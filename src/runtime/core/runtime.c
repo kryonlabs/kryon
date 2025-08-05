@@ -195,46 +195,60 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
         kryon_runtime_stop(runtime);
     }
     
-    // Destroy all elements
+    // Destroy all elements (with null check for safety)
     if (runtime->root) {
         kryon_element_destroy(runtime, runtime->root);
+        runtime->root = NULL;
     }
     
-    // Free element registry
-    kryon_free(runtime->elements);
+    // Free element registry (with null check)
+    if (runtime->elements) {
+        kryon_free(runtime->elements);
+        runtime->elements = NULL;
+    }
     
-    // Destroy event system
+    // Destroy event system (with null check)
     if (runtime->event_system) {
         kryon_event_system_destroy(runtime->event_system);
+        runtime->event_system = NULL;
     }
     
-    // Free event queue (legacy)
-    kryon_free(runtime->event_queue);
+    // Free event queue (legacy) (with null check)
+    if (runtime->event_queue) {
+        kryon_free(runtime->event_queue);
+        runtime->event_queue = NULL;
+    }
     
-    // Destroy global state
+    // Destroy global state (with null check)
     if (runtime->global_state) {
         kryon_state_destroy(runtime->global_state);
+        runtime->global_state = NULL;
     }
     
-    // Destroy script VM
+    // Destroy script VM (with null check)
     if (runtime->script_vm) {
         kryon_vm_destroy(runtime->script_vm);
+        runtime->script_vm = NULL;
     }
     
-    // Free styles
+    // Free styles (with null check)
     if (runtime->styles) {
         for (size_t i = 0; i < runtime->style_count; i++) {
             // TODO: Implement style destruction
         }
         kryon_free(runtime->styles);
+        runtime->styles = NULL;
     }
     
-    // Free error messages
+    // Free error messages (with null check)
     if (runtime->error_messages) {
         for (size_t i = 0; i < runtime->error_count; i++) {
-            kryon_free(runtime->error_messages[i]);
+            if (runtime->error_messages[i]) {
+                kryon_free(runtime->error_messages[i]);
+            }
         }
         kryon_free(runtime->error_messages);
+        runtime->error_messages = NULL;
     }
     
     // Free component registry
@@ -357,28 +371,28 @@ static bool load_krb_elements(KryonRuntime *runtime, KryonKrbFile *krb_file) {
 // =============================================================================
 
 bool kryon_runtime_start(KryonRuntime *runtime) {
-    printf("🔍 DEBUG: kryon_runtime_start called\n");
+    // kryon_runtime_start called
     
     if (!runtime || runtime->is_running) {
         printf("❌ ERROR: runtime is NULL or already running\n");
         return false;
     }
-    printf("🔍 DEBUG: runtime is valid and not running\n");
+    // runtime is valid and not running
     
     if (!runtime->root) {
         printf("❌ ERROR: No root element loaded\n");
         runtime_error(runtime, "No root element loaded");
         return false;
     }
-    printf("🔍 DEBUG: root element is valid\n");
+    // root element is valid
     
-    printf("🔍 DEBUG: Setting runtime state\n");
+    // Setting runtime state
     runtime->is_running = true;
     runtime->last_update_time = 0.0;
     runtime->stats.frame_count = 0;
     runtime->stats.total_time = 0.0;
     
-    printf("🔍 DEBUG: Runtime start completed successfully\n");
+    // Runtime start completed successfully
     // TODO: Initialize renderer
     
     return true;
@@ -446,16 +460,14 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
                 g_mouse_clicked_this_frame = mouse_pressed_now && !g_mouse_pressed_last_frame;
                 g_mouse_pressed_last_frame = mouse_pressed_now;
                 
-                // Generate mouse click events from input state
-                if (input_state.mouse.left_pressed) {
+                // Generate mouse click events from input state (use edge detection)
+                if (g_mouse_clicked_this_frame) {
                     KryonEvent event = {0};
                     event.type = KRYON_EVENT_MOUSE_BUTTON_DOWN;
                     event.data.mouseButton.button = 0; // Left button
                     event.data.mouseButton.x = input_state.mouse.position.x;
                     event.data.mouseButton.y = input_state.mouse.position.y;
                     kryon_runtime_handle_event(runtime, &event);
-                    printf("🐛 DEBUG: Generated mouse click event at (%.1f, %.1f)\n", 
-                           event.data.mouseButton.x, event.data.mouseButton.y);
                 }
                 
                 // Handle keyboard input for focused input fields
@@ -469,7 +481,7 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
                             g_input_text_buffer[g_input_text_length] = '\0';
                         }
                     }
-                    printf("🐛 DEBUG: Input text updated: '%s' (length: %zu)\n", g_input_text_buffer, g_input_text_length);
+                    // Input text updated
                 }
                 
                 // Handle backspace key
@@ -477,7 +489,7 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
                     if (g_input_text_length > 0) {
                         g_input_text_length--;
                         g_input_text_buffer[g_input_text_length] = '\0';
-                        printf("🐛 DEBUG: Backspace - Input text: '%s' (length: %zu)\n", g_input_text_buffer, g_input_text_length);
+                        // Backspace - Input text updated
                     }
                 }
             }
@@ -749,6 +761,21 @@ void kryon_element_invalidate_render(KryonElement *element) {
     }
 }
 
+void mark_elements_for_rerender(KryonElement *element) {
+    if (!element) {
+        return;
+    }
+    
+    element->needs_render = true;
+    
+    // Recursively mark all children
+    for (size_t i = 0; i < element->child_count; i++) {
+        if (element->children[i]) {
+            mark_elements_for_rerender(element->children[i]);
+        }
+    }
+}
+
 // =============================================================================
 // STATE MANAGEMENT
 // =============================================================================
@@ -867,21 +894,13 @@ bool kryon_runtime_handle_event(KryonRuntime *runtime, const KryonEvent *event) 
 }
 
 static void process_event_queue(KryonRuntime *runtime) {
-    if (runtime->event_read_pos != runtime->event_write_pos) {
-        printf("🐛 DEBUG: Processing event queue, %zu events pending\n", runtime->event_count);
-    }
-    
     while (runtime->event_read_pos != runtime->event_write_pos) {
         KryonEvent *event = &runtime->event_queue[runtime->event_read_pos];
-        
-        printf("🐛 DEBUG: Processing event type: %d\n", event->type);
         
         // Process mouse click events for onClick handlers
         if (event->type == KRYON_EVENT_MOUSE_BUTTON_DOWN && event->data.mouseButton.button == 0) {
             // Left mouse button clicked - check for onClick handlers
             KryonVec2 click_pos = {event->data.mouseButton.x, event->data.mouseButton.y};
-            
-            printf("🔥 DEBUG: Mouse click detected at (%.1f, %.1f)\n", click_pos.x, click_pos.y);
             
             // Find elements at click position with onClick handlers
             if (runtime->root) {
@@ -1026,11 +1045,11 @@ static const char* resolve_variable_reference(KryonRuntime* runtime, const char*
     // Look up variable in runtime registry
     const char* resolved_value = kryon_runtime_get_variable(runtime, var_name);
     if (resolved_value) {
-        printf("🔄 DEBUG: Resolved variable '$%s' to '%s'\n", var_name, resolved_value);
+        // Resolved variable
         return resolved_value;
     }
     
-    printf("⚠️  DEBUG: Variable '$%s' not found, using literal value\n", var_name);
+    // Variable not found, using literal value
     return value; // Return original if not found
 }
 
@@ -1116,8 +1135,32 @@ static const char* get_element_property_string_with_runtime(KryonRuntime* runtim
                     return resolved;
                 }
                 
-                // Fall back to component instance variable pattern matching
-                // Try different component instance patterns: comp_0.value, comp_1.value, etc.
+                // Fall back to component instance variable pattern matching using same logic as Lua system
+                // Find which component instance this element belongs to based on hierarchy
+                KryonElement* current = element;
+                while (current && current->parent) {
+                    if (current->parent->type_name && strcmp(current->parent->type_name, "Column") == 0) {
+                        // This element is in a Column, check if it's the first or second child
+                        KryonElement* column = current->parent;
+                        for (size_t i = 0; i < column->child_count; i++) {
+                            if (column->children[i] == current) {
+                                // Found component instance index, try the variable
+                                char pattern_buffer[128];
+                                snprintf(pattern_buffer, sizeof(pattern_buffer), "comp_%zu.%s", i, prop->binding_path);
+                                const char* comp_resolved = kryon_runtime_get_variable(runtime, pattern_buffer);
+                                if (comp_resolved) {
+                                    printf("🎯 TEXT BINDING: Resolved %s -> %s\n", pattern_buffer, comp_resolved);
+                                    return comp_resolved;
+                                }
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                    current = current->parent;
+                }
+                
+                // Fallback: Try different component instance patterns: comp_0.value, comp_1.value, etc.
                 char pattern_buffer[128];
                 for (int comp_id = 0; comp_id < 10; comp_id++) { // Try comp_0 through comp_9
                     snprintf(pattern_buffer, sizeof(pattern_buffer), "comp_%d.%s", comp_id, prop->binding_path);
@@ -1368,7 +1411,7 @@ static void debug_log_element_properties(KryonElement* element, const char* elem
     if (debug_logged) return;
     debug_logged = true;
     
-    printf("🔍 DEBUG: Properties for %s:\n", element_name);
+    // Properties for element
     for (size_t i = 0; i < element->property_count; i++) {
         KryonProperty* prop = element->properties[i];
         if (prop && prop->name) {
@@ -1510,7 +1553,7 @@ static void element_container_to_commands(KryonElement* element, KryonRenderComm
     float width = get_element_property_float(element, "width", 100.0f);
     float height = get_element_property_float(element, "height", 100.0f);
     
-    // printf("🎯 DEBUG Container position: posX=%.1f posY=%.1f (should not be 0,0 if layout worked)\n", posX, posY);
+    // Container position calculated
     
     // Get color properties directly as color values (not strings)
     uint32_t bg_color_val = get_element_property_color(element, "background", 0x00000000); // Transparent default
@@ -2174,6 +2217,7 @@ static void element_column_to_commands(KryonElement* element, KryonRenderCommand
     
     // Position children vertically
     float current_y = start_y;
+    
     for (size_t i = 0; i < element->child_count; i++) {
         KryonElement* child = element->children[i];
         if (child) {
@@ -2230,8 +2274,6 @@ static void element_row_to_commands(KryonElement* element, KryonRenderCommand* c
                 // Found a parent with explicit dimensions
                 container_width = width_prop->value.float_value;
                 container_height = height_prop->value.float_value;
-                printf("🔍 Row found size parent '%s': %.1fx%.1f\n", 
-                       size_parent->type_name, container_width, container_height);
                 
                 // Account for this parent's padding
                 float size_parent_padding = get_element_property_float(size_parent, "padding", 0.0f);
@@ -2246,7 +2288,6 @@ static void element_row_to_commands(KryonElement* element, KryonRenderCommand* c
                 // Handle window-level parents
                 container_width = get_element_property_float(size_parent, "windowWidth", 600.0f);
                 container_height = get_element_property_float(size_parent, "windowHeight", 400.0f);
-                printf("🔍 Row found App parent: %.1fx%.1f\n", container_width, container_height);
                 break;
             }
             
@@ -2322,8 +2363,6 @@ static void element_row_to_commands(KryonElement* element, KryonRenderCommand* c
             // "start" or default uses container_y
             
             // Set position properties on child
-            printf("📍 Row[%s]: child %zu at (%.1f,%.1f)\n", 
-                   main_axis ? main_axis : "default", i, current_x, child_y);
             set_element_position(child, current_x, child_y);
             
             current_x += child_width + gap;
@@ -2384,16 +2423,13 @@ static void element_text_to_commands(KryonElement* element, KryonRenderCommand* 
         if (parent_alignment && strcmp(parent_alignment, "center") == 0) {
             position.x = available_x + (available_width / 2.0f);
             position.y = available_y + (available_height / 2.0f);
-            printf("🎯 DEBUG: Centered in parent: pos=(%.1f,%.1f) parent=%.1f,%.1f+%.1fx%.1f padding=%.1f\n", 
-                   position.x, position.y, parent_x, parent_y, parent_width, parent_height, parent_padding);
+            // Centered in parent
         } else {
             // Default to top-left of available area
             position.x = available_x;
             position.y = available_y;
-            printf("🎯 DEBUG: Top-left in parent: pos=(%.1f,%.1f)\n", position.x, position.y);
         }
     } else {
-        printf("🎯 DEBUG: Using explicit positioning: pos=(%.1f,%.1f)\n", position.x, position.y);
     }
     
     // Parse text alignment - check parent's contentAlignment if no explicit textAlignment
@@ -2406,7 +2442,7 @@ static void element_text_to_commands(KryonElement* element, KryonRenderCommand* 
         const char* parent_alignment = get_element_property_string(element->parent, "contentAlignment");
         if (parent_alignment && strcmp(parent_alignment, "center") == 0) {
             text_align_code = 1;
-            printf("🎯 DEBUG: Using parent contentAlignment 'center' for text alignment\n");
+            // Using parent contentAlignment 'center' for text alignment
         }
     }
     
@@ -2517,6 +2553,7 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
         return;
     }
     
+    
     recursive_depth++;
     
     // Step 1: Process layout commands (these position children but don't render)
@@ -2561,16 +2598,14 @@ static void find_and_execute_onclick_handlers(KryonRuntime *runtime, KryonElemen
         return;
     }
     
-    printf("🐛 DEBUG: Checking element '%s' for onClick handlers\n", 
-           element->type_name ? element->type_name : "Unknown");
     
     // Check if this element has onClick handler and if click is within bounds
     const char* onclick_handler = get_element_property_string(element, "onClick");
-    printf("🐛 DEBUG: Element onClick handler: %s\n", onclick_handler ? onclick_handler : "(none)");
+    // Element onClick handler check
     
     if (onclick_handler) {
         bool in_bounds = is_point_in_element_bounds(element, click_pos);
-        printf("🐛 DEBUG: Click (%.1f, %.1f) in bounds: %s\n", click_pos.x, click_pos.y, in_bounds ? "YES" : "NO");
+        // Click bounds check
         
         if (in_bounds) {
             printf("🔥 Click detected on element '%s' with handler: %s\n", 
@@ -2587,7 +2622,7 @@ static void find_and_execute_onclick_handlers(KryonRuntime *runtime, KryonElemen
                            onclick_handler, error ? error : "Unknown error");
                 }
             } else {
-                printf("⚠️  No script VM available to execute onClick handler: %s\n", onclick_handler);
+                // No script VM available for onClick handler
             }
             
             // Don't propagate click events after handling (for now)
@@ -2596,8 +2631,6 @@ static void find_and_execute_onclick_handlers(KryonRuntime *runtime, KryonElemen
     }
     
     // Recursively check children
-    printf("🐛 DEBUG: Checking %zu children of element '%s'\n", 
-           element->child_count, element->type_name ? element->type_name : "Unknown");
     for (size_t i = 0; i < element->child_count; i++) {
         if (element->children[i]) {
             find_and_execute_onclick_handlers(runtime, element->children[i], click_pos, event);

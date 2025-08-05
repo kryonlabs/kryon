@@ -544,6 +544,7 @@ void kryon_element_invalidate_layout(KryonElement *element);
  * @param element Element
  */
 void kryon_element_invalidate_render(KryonElement *element);
+void mark_elements_for_rerender(KryonElement *element);
 
 // =============================================================================
 // STATE API

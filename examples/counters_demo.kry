@@ -22,21 +22,15 @@
 }
 
 // --- Now, use your component in the main App ---
-App {
-    windowWidth: 400
-    windowHeight: 200
-    windowTitle: "Counters"
+Center {
+    Column {
+        mainAxisAlignment: "center"
+         gap: 20
 
-    Center {
-        Column {
-            mainAxisAlignment: "center"
-            gap: 20
+         // Create an instance of your Counter component
+         Counter { value: 5 }
 
-            // Create an instance of your Counter component
-            Counter { value: 5 }
-
-            // Create another, completely independent instance
-            Counter { } // Uses the default initialValue of 0
-        }
-    }
+         // Create another, completely independent instance
+         Counter { } // Uses the default initialValue of 0
+     }
 }
