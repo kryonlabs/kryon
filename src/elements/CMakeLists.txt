@@ -1,7 +1,7 @@
-# Kryon Widget System
+# Kryon Element System
 
-if(KRYON_ENABLE_WIDGETS)
-    add_library(kryon_widgets OBJECT
+if(KRYON_ENABLE_ELEMENTS)
+    add_library(kryon_elements OBJECT
         dropdown/dropdown_element.c
         dropdown/dropdown_renderer.c
         dropdown/dropdown_events.c
@@ -11,10 +11,10 @@ if(KRYON_ENABLE_WIDGETS)
         common/element_events.c
     )
 
-    target_include_directories(kryon_widgets PRIVATE
+    target_include_directories(kryon_elements PRIVATE
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/include/internal
     )
 
-    target_compile_definitions(kryon_widgets PRIVATE KRYON_WIDGETS_MODULE=1)
+    target_compile_definitions(kryon_elements PRIVATE KRYON_ELEMENTS_MODULE=1)
 endif()

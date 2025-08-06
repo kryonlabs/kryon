@@ -61,7 +61,7 @@ if $SHOW_LIST; then
     
     # Find all .kry files and display them in order
     cd "$PROJECT_ROOT"
-    kry_files=($(find examples -name "*.kry" -type f ! -path "*/widgets/*" ! -path "*/templates/*" | sort))
+    kry_files=($(find examples -name "*.kry" -type f ! -path "*/debug/*" ! -path "*/templates/*" | sort))
     
     if [ ${#kry_files[@]} -eq 0 ]; then
         print_error "No .kry files found!"
@@ -110,7 +110,7 @@ echo ""
 
 # Find all .kry files
 cd "$PROJECT_ROOT"
-kry_files=($(find examples -name "*.kry" -type f ! -path "*/widgets/*" ! -path "*/templates/*" | sort))
+kry_files=($(find examples -name "*.kry" -type f ! -path "*/debug/*" ! -path "*/templates/*" | sort))
 
 if [ ${#kry_files[@]} -eq 0 ]; then
     print_error "No .kry files found!"

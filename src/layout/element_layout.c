@@ -1,9 +1,9 @@
 /**
- * @file widget_layout.c
+ * @file element_layout.c
  * @brief Flutter-inspired layout calculation algorithms
  */
 
-#include "kryon/widget_system.h"
+#include "internal/elements.h"
 #include "internal/memory.h"
 #include <math.h>
 #include <float.h>
@@ -16,12 +16,12 @@
 // LAYOUT UTILITIES
 // =============================================================================
 
-/// Calculate intrinsic size for a widget
-static KryonSize calculate_intrinsic_size(KryonWidget* widget) {
+/// Calculate intrinsic size for an element
+static KryonSize calculate_intrinsic_size(KryonElement* element) {
     KryonSize size = {0, 0};
     
-    switch (widget->type) {
-        case KRYON_WIDGET_TEXT: {
+    switch (element->type) {
+        case KRYON_ELEMENT_TEXT: {
             // Text size calculation
             const char* text = widget->props.text_props.text;
             float font_size = widget->props.text_props.style.font_size;
@@ -40,7 +40,7 @@ static KryonSize calculate_intrinsic_size(KryonWidget* widget) {
             break;
         }
         
-        case KRYON_WIDGET_BUTTON: {
+        case KRYON_ELEMENT_BUTTON: {
             // Button size based on improved text measurement + padding
             const char* label = widget->props.button_props.label;
             if (label) {
@@ -60,14 +60,14 @@ static KryonSize calculate_intrinsic_size(KryonWidget* widget) {
             break;
         }
         
-        case KRYON_WIDGET_INPUT: {
+        case KRYON_ELEMENT_INPUT: {
             // Standard input field size
             size.width = 200;
             size.height = 36;
             break;
         }
         
-        case KRYON_WIDGET_IMAGE: {
+        case KRYON_ELEMENT_IMAGE: {
             // Default image size (would be actual image dimensions in real impl)
             size.width = 100;
             size.height = 100;
@@ -123,7 +123,7 @@ static KryonVec2 get_content_position(KryonWidget* widget, KryonVec2 position) {
 // =============================================================================
 
 void kryon_layout_column(KryonWidget* widget, KryonSize available_space) {
-    if (!widget || widget->type != KRYON_WIDGET_COLUMN) return;
+    if (!widget || widget->type != KRYON_ELEMENT_COLUMN) return;
     
     KryonSize content_size = get_content_size(widget, available_space);
     KryonVec2 content_pos = get_content_position(widget, (KryonVec2){0, 0});
@@ -238,7 +238,7 @@ void kryon_layout_column(KryonWidget* widget, KryonSize available_space) {
 }
 
 void kryon_layout_row(KryonWidget* widget, KryonSize available_space) {
-    if (!widget || widget->type != KRYON_WIDGET_ROW) return;
+    if (!widget || widget->type != KRYON_ELEMENT_ROW) return;
     
     KryonSize content_size = get_content_size(widget, available_space);
     KryonVec2 content_pos = get_content_position(widget, (KryonVec2){0, 0});
@@ -353,7 +353,7 @@ void kryon_layout_row(KryonWidget* widget, KryonSize available_space) {
 }
 
 void kryon_layout_stack(KryonWidget* widget, KryonSize available_space) {
-    if (!widget || widget->type != KRYON_WIDGET_STACK) return;
+    if (!widget || widget->type != KRYON_ELEMENT_STACK) return;
     
     KryonSize content_size = get_content_size(widget, available_space);
     KryonVec2 content_pos = get_content_position(widget, (KryonVec2){0, 0});
@@ -557,7 +557,7 @@ static void apply_content_distribution(KryonWidget* container, KryonSize contain
 }
 
 void kryon_layout_container(KryonWidget* widget, KryonSize available_space) {
-    if (!widget || widget->type != KRYON_WIDGET_CONTAINER) return;
+    if (!widget || widget->type != KRYON_ELEMENT_CONTAINER) return;
     
     // For containers with explicit position (posX/posY), preserve their position
     // Store the original position before any layout calculations
@@ -661,24 +661,24 @@ void kryon_widget_calculate_layout(KryonWidget* root, KryonSize available_space)
     
     // Calculate layout based on widget type
     switch (root->type) {
-        case KRYON_WIDGET_COLUMN:
+        case KRYON_ELEMENT_COLUMN:
             kryon_layout_column(root, available_space);
             break;
             
-        case KRYON_WIDGET_ROW:
+        case KRYON_ELEMENT_ROW:
             kryon_layout_row(root, available_space);
             break;
             
-        case KRYON_WIDGET_STACK:
+        case KRYON_ELEMENT_STACK:
             kryon_layout_stack(root, available_space);
             break;
             
-        case KRYON_WIDGET_CONTAINER:
+        case KRYON_ELEMENT_CONTAINER:
             kryon_layout_container(root, available_space);
             break;
             
-        case KRYON_WIDGET_EXPANDED:
-        case KRYON_WIDGET_FLEXIBLE:
+        case KRYON_ELEMENT_EXPANDED:
+        case KRYON_ELEMENT_FLEXIBLE:
             // These are handled by their parent's layout algorithm
             // They shouldn't be root widgets, but handle gracefully
             root->computed_rect.size = available_space;

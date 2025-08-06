@@ -1,9 +1,9 @@
 /**
  * @file kryon_mappings.h
- * @brief Unified Mapping System - Properties and Widgets for KRY Compiler and Runtime
+ * @brief Unified Mapping System - Properties and Elements for KRY Compiler and Runtime
  * @details This file serves as the single source of truth for ALL hex code assignments:
  *          - Property mappings (0x0000-0x0FFF): posX, width, color, padding, etc.
- *          - Widget mappings (0x1000+): Container, Text, Button, App, etc.
+ *          - Element mappings (0x1000+): Container, Text, Button, App, etc.
  *          Uses grouped structure with canonical names and aliases for maintainability.
  * 
  * 0BSD License
@@ -31,7 +31,7 @@
      KRYON_TYPE_HINT_COLOR,       // Should be parsed as color (#RRGGBB, rgb(), etc.)
      KRYON_TYPE_HINT_DIMENSION,   // Should be treated as dimension (px, %, em, rem, etc.)
      KRYON_TYPE_HINT_SPACING,     // Should be treated as spacing value (TRBL format)
-     KRYON_TYPE_HINT_REFERENCE,   // Should be treated as widget reference
+     KRYON_TYPE_HINT_REFERENCE,   // Should be treated as element reference
      KRYON_TYPE_HINT_ARRAY,       // Should be treated as array of values
      KRYON_TYPE_HINT_UNIT         // Should be treated as unit value (legacy)
  } KryonValueTypeHint;
@@ -92,16 +92,16 @@
  KryonValueTypeHint kryon_get_property_type_hint(uint16_t hex_code);
  
  /**
-  * @brief Get widget hex code from name (canonical or alias)
-  * @param name Widget name to lookup
+  * @brief Get element hex code from name (canonical or alias)
+  * @param name Element name to lookup
   * @return 16-bit hex code, or 0 if not found
   */
  uint16_t kryon_get_element_hex(const char *name);
  
  /**
-  * @brief Get canonical widget name from hex code
-  * @param hex_code 16-bit widget identifier
-  * @return Canonical widget name, or NULL if not found
+  * @brief Get canonical element name from hex code
+  * @param hex_code 16-bit element identifier
+  * @return Canonical element name, or NULL if not found
   */
  const char *kryon_get_element_name(uint16_t hex_code);
  
@@ -117,8 +117,8 @@
  const char **kryon_get_property_aliases(const char *name);
  
  /**
-  * @brief Get all aliases for a widget (useful for IDE/tooling)
-  * @param name Widget name (canonical or alias)
+  * @brief Get all aliases for an element (useful for IDE/tooling)
+  * @param name Element name (canonical or alias)
   * @return NULL-terminated array of aliases, or NULL if not found
   */
  const char **kryon_get_element_aliases(const char *name);
@@ -151,36 +151,36 @@
  #define KRYON_PROPERTY_RANGE_INTERACTION_START 0x0500
  #define KRYON_PROPERTY_RANGE_INTERACTION_END   0x05FF
  
- // Widget-Specific Properties
- #define KRYON_PROPERTY_RANGE_WIDGET_START  0x0600
- #define KRYON_PROPERTY_RANGE_WIDGET_END    0x06FF
+ // Element-Specific Properties
+ #define KRYON_PROPERTY_RANGE_ELEMENT_START 0x0600
+ #define KRYON_PROPERTY_RANGE_ELEMENT_END   0x06FF
  
  // Window Properties
  #define KRYON_PROPERTY_RANGE_WINDOW_START  0x0700
  #define KRYON_PROPERTY_RANGE_WINDOW_END    0x07FF
  
  //==============================================================================
- // Widget Range Constants (from KRB Binary Format Specification v0.1)
+ // Element Range Constants (from KRB Binary Format Specification v0.1)
  //==============================================================================
  
- // Base Widget
- #define KRYON_WIDGET_BASE                  0x0000
+ // Base Element
+ #define KRYON_ELEMENT_BASE                 0x0000
  
- // Layout Widgets
- #define KRYON_WIDGET_RANGE_LAYOUT_START    0x0001
- #define KRYON_WIDGET_RANGE_LAYOUT_END      0x00FF
+ // Layout Elements
+ #define KRYON_ELEMENT_RANGE_LAYOUT_START    0x0001
+ #define KRYON_ELEMENT_RANGE_LAYOUT_END     0x00FF
  
- // Content Widgets  
- #define KRYON_WIDGET_RANGE_CONTENT_START   0x0400
- #define KRYON_WIDGET_RANGE_CONTENT_END     0x04FF
+ // Content Elements  
+ #define KRYON_ELEMENT_RANGE_CONTENT_START  0x0400
+ #define KRYON_ELEMENT_RANGE_CONTENT_END    0x04FF
  
- // Application Widgets
- #define KRYON_WIDGET_RANGE_APPLICATION_START 0x1000
- #define KRYON_WIDGET_RANGE_APPLICATION_END   0x1FFF
+ // Application Elements
+ #define KRYON_ELEMENT_RANGE_APPLICATION_START 0x1000
+ #define KRYON_ELEMENT_RANGE_APPLICATION_END  0x1FFF
  
- // Custom Widgets (user-defined)
- #define KRYON_WIDGET_RANGE_CUSTOM_START    0x2000
- #define KRYON_WIDGET_RANGE_CUSTOM_END      0xFFFF
+ // Custom Elements (user-defined)
+ #define KRYON_ELEMENT_RANGE_CUSTOM_START   0x2000
+ #define KRYON_ELEMENT_RANGE_CUSTOM_END     0xFFFF
  
  //==============================================================================
  // Validation Helpers
@@ -198,13 +198,13 @@
  }
  
  /**
-  * @brief Check if hex code is in a specific widget range
-  * @param hex_code Widget hex code to check
+  * @brief Check if hex code is in a specific element range
+  * @param hex_code Element hex code to check
   * @param range_start Start of range (inclusive)
   * @param range_end End of range (inclusive)
   * @return true if in range, false otherwise
   */
- static inline bool kryon_widget_in_range(uint16_t hex_code, uint16_t range_start, uint16_t range_end) {
+ static inline bool kryon_element_in_range(uint16_t hex_code, uint16_t range_start, uint16_t range_end) {
      return hex_code >= range_start && hex_code <= range_end;
  }
  
@@ -227,27 +227,27 @@
  }
  
  /**
-  * @brief Check if widget is a layout widget
-  * @param hex_code Widget hex code
-  * @return true if layout widget, false otherwise
+  * @brief Check if element is a layout element
+  * @param hex_code Element hex code
+  * @return true if layout element, false otherwise
   */
- static inline bool kryon_is_layout_widget(uint16_t hex_code) {
-     return kryon_widget_in_range(hex_code, KRYON_WIDGET_RANGE_LAYOUT_START, KRYON_WIDGET_RANGE_LAYOUT_END);
+ static inline bool kryon_is_layout_element(uint16_t hex_code) {
+     return kryon_element_in_range(hex_code, KRYON_ELEMENT_RANGE_LAYOUT_START, KRYON_ELEMENT_RANGE_LAYOUT_END);
  }
  
  /**
-  * @brief Check if widget is a content widget
-  * @param hex_code Widget hex code
-  * @return true if content widget, false otherwise
+  * @brief Check if element is a content element
+  * @param hex_code Element hex code
+  * @return true if content element, false otherwise
   */
- static inline bool kryon_is_content_widget(uint16_t hex_code) {
-     return kryon_widget_in_range(hex_code, KRYON_WIDGET_RANGE_CONTENT_START, KRYON_WIDGET_RANGE_CONTENT_END);
+ static inline bool kryon_is_content_element(uint16_t hex_code) {
+     return kryon_element_in_range(hex_code, KRYON_ELEMENT_RANGE_CONTENT_START, KRYON_ELEMENT_RANGE_CONTENT_END);
  }
  
  /**
- * @brief Get widget type name from hex code (unified API)
- * @param hex_code 16-bit widget hex code
- * @return Widget type name, or NULL if not found
+ * @brief Get element type name from hex code (unified API)
+ * @param hex_code 16-bit element hex code
+ * @return Element type name, or NULL if not found
  */
 const char *kryon_get_element_type_name(uint16_t hex_code);
 

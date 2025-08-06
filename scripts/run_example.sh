@@ -104,14 +104,14 @@ KRB_FILE=""
 if [ -f "$EXAMPLES_DIR/${EXAMPLE_NAME}.kry" ]; then
     KRY_FILE="$EXAMPLES_DIR/${EXAMPLE_NAME}.kry"
     KRB_FILE="$EXAMPLES_DIR/${EXAMPLE_NAME}.krb"
-elif [ -f "$EXAMPLES_DIR/widgets/${EXAMPLE_NAME}.kry" ]; then
-    KRY_FILE="$EXAMPLES_DIR/widgets/${EXAMPLE_NAME}.kry"
-    KRB_FILE="$EXAMPLES_DIR/widgets/${EXAMPLE_NAME}.krb"
+elif [ -f "$EXAMPLES_DIR/debug/${EXAMPLE_NAME}.kry" ]; then
+    KRY_FILE="$EXAMPLES_DIR/debug/${EXAMPLE_NAME}.kry"
+    KRB_FILE="$EXAMPLES_DIR/debug/${EXAMPLE_NAME}.krb"
 else
     print_error "Example file not found: ${EXAMPLE_NAME}.kry"
     print_error "Searched in:"
     print_error "  - $EXAMPLES_DIR/${EXAMPLE_NAME}.kry"
-    print_error "  - $EXAMPLES_DIR/widgets/${EXAMPLE_NAME}.kry"
+    print_error "  - $EXAMPLES_DIR/debug/${EXAMPLE_NAME}.kry"
     exit 1
 fi
 

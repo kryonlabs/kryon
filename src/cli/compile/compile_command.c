@@ -639,7 +639,7 @@ static KryonASTNode *ensure_app_root_container(const KryonASTNode *original_ast,
 
 static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
     // Create include directive as if it was parsed from:
-    // @include "widgets/inspector.kry"
+    // @include "debug/inspector.kry"
     
     KryonASTNode *include_directive = kryon_alloc(sizeof(KryonASTNode));
     if (!include_directive) return NULL;
@@ -647,13 +647,13 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
     memset(include_directive, 0, sizeof(KryonASTNode));
     include_directive->type = KRYON_AST_INCLUDE_DIRECTIVE;
     
-    // Set include path to "widgets/inspector.kry"
-    include_directive->data.element.element_type = kryon_alloc(21); // strlen("widgets/inspector.kry") + 1
+    // Set include path to "debug/inspector.kry"
+    include_directive->data.element.element_type = kryon_alloc(20); // strlen("debug/inspector.kry") + 1
     if (!include_directive->data.element.element_type) {
         kryon_free(include_directive);
         return NULL;
     }
-    strcpy(include_directive->data.element.element_type, "widgets/inspector.kry");
+    strcpy(include_directive->data.element.element_type, "debug/inspector.kry");
     
     // Initialize empty properties and children arrays
     include_directive->data.element.property_count = 0;

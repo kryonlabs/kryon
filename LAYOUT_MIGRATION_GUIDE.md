@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide explains the migration from the current CSS Flexbox layout system to the new Flutter-inspired widget system.
+This guide explains the migration from the current CSS Flexbox layout system to the new Flutter-inspired element system.
 
 ## Current System Issues
 
@@ -31,7 +31,7 @@ typedef struct {
 
 ## New Flutter-Inspired System
 
-### Core Widgets
+### Core Elements
 ```c
 typedef enum {
     KRYON_WIDGET_COLUMN,     // Vertical stack
@@ -40,7 +40,7 @@ typedef enum {
     KRYON_WIDGET_CONTAINER,  // Single child with styling
     KRYON_WIDGET_EXPANDED,   // Takes available space
     KRYON_WIDGET_FLEXIBLE,   // Takes proportional space
-} KryonWidgetType;
+} KryonElementType;
 
 // Clear alignment system
 typedef enum {
@@ -81,8 +81,8 @@ Container {
 
 ### Proposed (Flutter-Inspired) - NEW SYSTEM
 ```c
-// This would be handled by the new C widget system internally
-// The .kry syntax stays the same, but internally uses Flutter-inspired widgets
+// This would be handled by the new C element system internally
+// The .kry syntax stays the same, but internally uses Flutter-inspired elements
 ```
 
 ## Dynamic Transformation Examples
@@ -90,17 +90,17 @@ Container {
 ### Responsive Layout Changes
 ```lua
 -- Old system: Required rebuilding entire layout
--- New system: Transform existing widgets
+-- New system: Transform existing elements
 
-local content_area = kryon.get_widget("content")
+local content_area = kryon.get_element("content")
 
 if screen_width < 600 then
     -- Mobile: vertical layout
-    kryon.transform_widget(content_area, "column")
+    kryon.transform_element(content_area, "column")
     kryon.set_property(content_area, "main_axis", "start")
 else
     -- Desktop: horizontal layout  
-    kryon.transform_widget(content_area, "row")
+    kryon.transform_element(content_area, "row")
     kryon.set_property(content_area, "main_axis", "space_between")
 end
 ```
@@ -108,7 +108,7 @@ end
 ### Interactive UI Changes
 ```lua
 -- Transform button into expandable menu
-local menu_button = kryon.get_widget("menu_button")
+local menu_button = kryon.get_element("menu_button")
 
 if menu_expanded then
     -- Transform to column with multiple options

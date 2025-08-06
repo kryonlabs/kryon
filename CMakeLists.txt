@@ -1,9 +1,9 @@
-# Minimal Kryon-C Build for Widget System Only
+# Minimal Kryon-C Build for Element System Only
 cmake_minimum_required(VERSION 3.10)
 
 project(Kryon-Minimal 
     VERSION 1.0.0
-    DESCRIPTION "Kryon UI System - Minimal Widget System"
+    DESCRIPTION "Kryon UI System - Minimal Element System"
     LANGUAGES C
 )
 
