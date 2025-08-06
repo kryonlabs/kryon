@@ -41,11 +41,21 @@ static KryonSize calculate_intrinsic_size(KryonWidget* widget) {
         }
         
         case KRYON_WIDGET_BUTTON: {
-            // Button size based on text + padding
+            // Button size based on improved text measurement + padding
             const char* label = widget->props.button_props.label;
             if (label) {
-                size.width = strlen(label) * 16 * 0.6f + 24; // Text + padding
-                size.height = 40; // Standard button height
+                // Use consistent font size with runtime system, default to 20 for buttons
+                float font_size = 20.0f; // Default button text size
+                
+                // Use improved character width approximation (more accurate than before)
+                // This should match the auto-sizing system in runtime.c
+                float text_width = strlen(label) * font_size * 0.55f; // Refined ratio
+                size.width = text_width + 24.0f; // Text width + padding (12px each side) 
+                size.height = font_size + 20.0f; // Text height + padding (10px top/bottom)
+            } else {
+                // Default button size when no text
+                size.width = 150.0f;
+                size.height = 40.0f;
             }
             break;
         }

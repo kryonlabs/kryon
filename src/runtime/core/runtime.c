@@ -1025,6 +1025,11 @@ void kryon_runtime_clear_errors(KryonRuntime *runtime) {
 }
 
 // =============================================================================
+// AUTO-SIZING SYSTEM
+// =============================================================================
+// Note: auto_size_element function moved after property access functions
+
+// =============================================================================
 // ELEMENT TO RENDER COMMAND CONVERSION
 // =============================================================================
 
@@ -1409,6 +1414,75 @@ static void* get_element_property_function(KryonElement* element, const char* pr
     return NULL;
 }
 
+/// Auto-size an element based on its content (universal sizing system)
+static void auto_size_element(KryonElement* element, float* width, float* height) {
+    if (!element) return;
+    
+    // Get text and font size for sizing calculations
+    const char* text = get_element_property_string(element, "text");
+    float font_size = get_element_property_float(element, "fontSize", 16.0f); // Default base size
+    
+    // Access renderer through global runtime for text measurement
+    KryonRenderer* renderer = g_current_runtime ? (KryonRenderer*)g_current_runtime->renderer : NULL;
+    
+    // Determine element type and calculate appropriate sizes
+    if (element->type_name) {
+        if (strcmp(element->type_name, "Button") == 0) {
+            font_size = get_element_property_float(element, "fontSize", 20.0f); // Buttons default to larger text
+            
+            if (*width < 0 && text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
+                float text_width = renderer->vtable->measure_text_width(text, font_size);
+                *width = text_width + 24.0f; // Text width + padding (12px each side)
+            } else if (*width < 0) {
+                // Fallback sizing if no measurement available
+                *width = text ? strlen(text) * font_size * 0.55f + 24.0f : 150.0f;
+            }
+            
+            if (*height < 0) {
+                *height = font_size + 20.0f; // Font height + padding (10px top/bottom)
+            }
+            
+        } else if (strcmp(element->type_name, "Text") == 0) {
+            font_size = get_element_property_float(element, "fontSize", 16.0f); // Text elements default size
+            
+            if (*width < 0 && text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
+                *width = renderer->vtable->measure_text_width(text, font_size);
+            } else if (*width < 0) {
+                // Fallback sizing
+                *width = text ? strlen(text) * font_size * 0.6f : 100.0f;
+            }
+            
+            if (*height < 0) {
+                *height = font_size * 1.2f; // Font height + small padding
+            }
+            
+        } else if (strcmp(element->type_name, "Input") == 0) {
+            font_size = get_element_property_float(element, "fontSize", 14.0f); // Input elements smaller text
+            
+            if (*width < 0) {
+                *width = 200.0f; // Standard input width
+            }
+            if (*height < 0) {
+                *height = font_size + 16.0f; // Font height + padding
+            }
+            
+        } else if (strcmp(element->type_name, "Image") == 0) {
+            // Images have different sizing logic - use intrinsic image dimensions if available
+            if (*width < 0) *width = 100.0f;   // Default image size
+            if (*height < 0) *height = 100.0f; 
+            
+        } else {
+            // Default sizing for unknown elements
+            if (*width < 0) *width = 100.0f;
+            if (*height < 0) *height = 50.0f;
+        }
+    }
+    
+    // Apply minimum sizes to prevent elements from being too small
+    if (*width > 0 && *width < 20.0f) *width = 20.0f;
+    if (*height > 0 && *height < 16.0f) *height = 16.0f;
+}
+
 // Debug function to log all properties of an element
 static void debug_log_element_properties(KryonElement* element, const char* element_name) {
     if (!element) return;
@@ -1613,8 +1687,16 @@ static void element_button_to_commands(KryonElement* element, KryonRenderCommand
     // Get button properties with dynamic lookup
     float posX = get_element_property_float(element, "posX", 0.0f);
     float posY = get_element_property_float(element, "posY", 0.0f);
-    float width = get_element_property_float(element, "width", 150.0f);
-    float height = get_element_property_float(element, "height", 50.0f);
+    
+    // Get width/height, using -1 to indicate auto-sizing should be used
+    float width = get_element_property_float(element, "width", -1.0f);
+    float height = get_element_property_float(element, "height", -1.0f);
+    
+    // Apply auto-sizing using the centralized system
+    auto_size_element(element, &width, &height);
+    
+    // Get text for the button
+    const char* text = get_element_property_string(element, "text");
     
     // Get color properties directly as color values (not strings)
     uint32_t bg_color_val = get_element_property_color(element, "backgroundColor", 0x3B82F6FF); // Blue default
@@ -1623,8 +1705,6 @@ static void element_button_to_commands(KryonElement* element, KryonRenderCommand
     
     float border_width = get_element_property_float(element, "borderWidth", 1.0f);
     float border_radius = get_element_property_float(element, "borderRadius", 8.0f);
-    
-    const char* text = get_element_property_string(element, "text");
     
     // Convert to KryonColor format
     KryonColor bg_color = {
@@ -1930,7 +2010,8 @@ static void element_input_to_commands(KryonElement* element, KryonRenderCommand*
         (KryonVec2){posX, posY},
         (KryonVec2){width, height},
         text ? text : "",
-        placeholder ? placeholder : ""
+        placeholder ? placeholder : "",
+        font_size  // Pass font_size for consistent text measurement
     );
     
     // Set additional input properties

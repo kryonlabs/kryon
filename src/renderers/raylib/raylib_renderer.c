@@ -380,12 +380,15 @@ static KryonRenderResult raylib_execute_commands(KryonRenderContext* context,
                 
                 // Draw button text
                 if (data->text) {
-                    Vector2 text_size = MeasureTextEx(ctx->current_font, data->text, 20, 1.0f);
+                    // Use dynamic font size from the button data (will be set by element renderer)
+                    // For now, use a reasonable default that can be overridden
+                    float button_font_size = 20.0f; // TODO: Add font_size field to KryonDrawButtonData
+                    Vector2 text_size = MeasureTextEx(ctx->current_font, data->text, button_font_size, 1.0f);
                     Vector2 text_pos = {
                         data->position.x + (data->size.x - text_size.x) / 2,
                         data->position.y + (data->size.y - text_size.y) / 2
                     };
-                    DrawTextEx(ctx->current_font, data->text, text_pos, 20, 1.0f, text_color);
+                    DrawTextEx(ctx->current_font, data->text, text_pos, button_font_size, 1.0f, text_color);
                 }
                 break;
             }
@@ -553,10 +556,10 @@ static KryonRenderResult raylib_execute_commands(KryonRenderContext* context,
                             masked_text[k] = '*';
                         }
                         masked_text[strlen(data->text)] = '\0';
-                        DrawTextEx(ctx->current_font, masked_text, text_pos, 20, 1.0f, display_color);
+                        DrawTextEx(ctx->current_font, masked_text, text_pos, data->font_size, 1.0f, display_color);
                         free(masked_text);
                     } else {
-                        DrawTextEx(ctx->current_font, display_text, text_pos, 20, 1.0f, display_color);
+                        DrawTextEx(ctx->current_font, display_text, text_pos, data->font_size, 1.0f, display_color);
                     }
                 }
                 
@@ -567,7 +570,7 @@ static KryonRenderResult raylib_execute_commands(KryonRenderContext* context,
                     cursor_timer += GetFrameTime();
                     if (fmodf(cursor_timer, 1.0f) < 0.5f) {
                         Vector2 cursor_text_size = MeasureTextEx(ctx->current_font, 
-                            data->text ? data->text : "", 20, 1.0f);
+                            data->text ? data->text : "", data->font_size, 1.0f);
                         float cursor_x = data->position.x + 8 + cursor_text_size.x;
                         float cursor_y = data->position.y + 5;
                         DrawRectangle((int)cursor_x, (int)cursor_y, 2, (int)(data->size.y - 10), text_color);
@@ -875,7 +878,7 @@ static float raylib_measure_text_width(const char* text, float font_size) {
     // Use the default font (same as what's used in rendering)
     Font current_font = g_raylib_impl.initialized ? g_raylib_impl.default_font : GetFontDefault();
     
-    // Raylib uses hardcoded font size 20, so we ignore the font_size parameter
-    Vector2 text_size = MeasureTextEx(current_font, text, 20.0f, 1.0f);
+    // Use the actual font_size parameter for accurate measurement
+    Vector2 text_size = MeasureTextEx(current_font, text, font_size, 1.0f);
     return text_size.x;
 }

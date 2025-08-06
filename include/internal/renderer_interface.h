@@ -139,6 +139,7 @@ typedef struct {
     KryonColor border_color;
     float border_width;
     float border_radius;
+    float font_size;          // Add font size for consistent text measurement
     KryonElementState state;
     bool enabled;
     bool is_password;
@@ -612,7 +613,7 @@ static inline KryonRenderCommand kryon_cmd_draw_dropdown(
  */
 static inline KryonRenderCommand kryon_cmd_draw_input(
     const char* element_id, KryonVec2 pos, KryonVec2 size, 
-    const char* text, const char* placeholder) {
+    const char* text, const char* placeholder, float font_size) {
     
     KryonRenderCommand cmd = {0};
     cmd.type = KRYON_CMD_DRAW_INPUT;
@@ -628,6 +629,7 @@ static inline KryonRenderCommand kryon_cmd_draw_input(
         .border_color = {0.5f, 0.5f, 0.5f, 1.0f},
         .border_width = 1.0f,
         .border_radius = 4.0f,
+        .font_size = font_size,
         .state = KRYON_ELEMENT_STATE_NORMAL,
         .enabled = true,
         .is_password = false,
