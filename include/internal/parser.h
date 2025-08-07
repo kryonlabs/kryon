@@ -72,7 +72,7 @@ typedef enum {
     KRYON_AST_LIFECYCLE,             // @lifecycle block
     
     // Legacy (deprecated)
-    KRYON_AST_DEFINE,                // Define custom widget (deprecated)
+    KRYON_AST_DEFINE,                // Define custom element (deprecated)
     KRYON_AST_PROPERTIES,            // Properties block (deprecated)
     KRYON_AST_SCRIPT,                // @script block
     
@@ -228,7 +228,7 @@ struct KryonASTNode {
         } error;
         
         struct {
-            char *name;              // Define widget name
+            char *name;              // Define element name
             KryonASTNode *properties; // Properties block
             KryonASTNode **children; // Child elements
             size_t child_count;

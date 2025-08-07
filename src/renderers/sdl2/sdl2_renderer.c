@@ -69,7 +69,7 @@ static SDL2RendererImpl g_sdl2_impl = {0};
 
 // Forward declarations for input handling
 static KryonRenderResult sdl2_get_input_state(KryonInputState* input_state);
-static bool sdl2_point_in_widget(KryonVec2 point, KryonRect widget_bounds);
+static bool sdl2_point_in_element(KryonVec2 point, KryonRect element_bounds);
 static bool sdl2_handle_event(const KryonEvent* event);
 static void* sdl2_get_native_window(void);
 
@@ -82,7 +82,7 @@ static KryonRendererVTable g_sdl2_vtable = {
     .viewport_size = sdl2_viewport_size,
     .destroy = sdl2_destroy,
     .get_input_state = sdl2_get_input_state,
-    .point_in_widget = sdl2_point_in_widget,
+    .point_in_element = sdl2_point_in_element,
     .handle_event = sdl2_handle_event,
     .get_native_window = sdl2_get_native_window
 };
@@ -372,17 +372,17 @@ static KryonRenderResult sdl2_execute_commands(KryonRenderContext* context,
                 SDL_Color border_color = kryon_color_to_sdl(data->border_color);
                 
                 switch (data->state) {
-                    case KRYON_WIDGET_STATE_HOVERED:
+                    case KRYON_ELEMENT_STATE_HOVERED:
                         bg_color.r = (Uint8)(bg_color.r * 0.9f);
                         bg_color.g = (Uint8)(bg_color.g * 0.9f);
                         bg_color.b = (Uint8)(bg_color.b * 0.9f);
                         break;
-                    case KRYON_WIDGET_STATE_PRESSED:
+                    case KRYON_ELEMENT_STATE_PRESSED:
                         bg_color.r = (Uint8)(bg_color.r * 0.8f);
                         bg_color.g = (Uint8)(bg_color.g * 0.8f);
                         bg_color.b = (Uint8)(bg_color.b * 0.8f);
                         break;
-                    case KRYON_WIDGET_STATE_DISABLED:
+                    case KRYON_ELEMENT_STATE_DISABLED:
                         bg_color.a = 128;
                         text_color.a = 128;
                         break;
@@ -518,9 +518,9 @@ static KryonRenderResult sdl2_execute_commands(KryonRenderContext* context,
                 SDL_Color border_color = kryon_color_to_sdl(data->border_color);
                 
                 // Adjust colors based on state
-                if (data->state == KRYON_WIDGET_STATE_FOCUSED) {
+                if (data->state == KRYON_ELEMENT_STATE_FOCUSED) {
                     border_color = (SDL_Color){100, 150, 255, 255}; // Blue focus border
-                } else if (data->state == KRYON_WIDGET_STATE_DISABLED) {
+                } else if (data->state == KRYON_ELEMENT_STATE_DISABLED) {
                     bg_color.a = 128;
                     text_color.a = 128;
                 }
@@ -632,7 +632,7 @@ static KryonRenderResult sdl2_execute_commands(KryonRenderContext* context,
             }
             
             case KRYON_CMD_UPDATE_WIDGET_STATE: {
-                // Widget state updates would be handled by the widget management system
+                // Widget state updates would be handled by the element management system
                 // This is a placeholder for state synchronization
                 break;
             }
@@ -800,11 +800,11 @@ static KryonRenderResult sdl2_get_input_state(KryonInputState* input_state) {
     return KRYON_RENDER_SUCCESS;
 }
 
-static bool sdl2_point_in_widget(KryonVec2 point, KryonRect widget_bounds) {
-    return point.x >= widget_bounds.x && 
-           point.x <= widget_bounds.x + widget_bounds.width &&
-           point.y >= widget_bounds.y && 
-           point.y <= widget_bounds.y + widget_bounds.height;
+static bool sdl2_point_in_element(KryonVec2 point, KryonRect element_bounds) {
+    return point.x >= element_bounds.x && 
+           point.x <= element_bounds.x + element_bounds.width &&
+           point.y >= element_bounds.y && 
+           point.y <= element_bounds.y + element_bounds.height;
 }
 
 // =============================================================================

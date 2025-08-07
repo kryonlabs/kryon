@@ -1,9 +1,9 @@
 /**
  * @file kryon_mappings.c
- * @brief Unified Mapping System - Properties and Widgets for the KRY Language
+ * @brief Unified Mapping System - Properties and Elements for the KRY Language
  * @details This file serves as the single source of truth for ALL hex code assignments:
  *          - Property mappings (0x0000-0x0FFF): posX, width, color, padding, etc.
- *          - Widget mappings (0x1000+): Container, Text, Button, App, etc.
+ *          - Element mappings (0x1000+): Container, Text, Button, App, etc.
  *          Includes canonical names and aliases to improve developer experience.
  *
  * 0BSD License
@@ -17,7 +17,7 @@
  
  //==============================================================================
  // PROPERTY MAPPINGS (0x0000 - 0x0FFF)
- // Properties that widgets can have: posX, width, color, padding, etc.
+ // Properties that elements can have: posX, width, color, padding, etc.
  //==============================================================================
  
  const KryonPropertyGroup kryon_property_groups[] = {
@@ -371,7 +371,7 @@
          .type_hint = KRYON_TYPE_HINT_REFERENCE
      },
  
-     // -- Widget-Specific Properties (0x06xx) --
+     // -- Element-Specific Properties (0x06xx) --
      {
          .canonical = "src",
          .aliases = (const char*[]){"source", NULL},
@@ -510,19 +510,19 @@
  
  //==============================================================================
  // WIDGET MAPPINGS (0x1000+)  
- // Widget types: Container, Text, Button, App, etc.
+ // Element types: Container, Text, Button, App, etc.
  //==============================================================================
  
  const KryonElementGroup kryon_element_groups[] = {
-     // -- Base Widget (0x0000) --
+     // -- Base Element (0x0000) --
      {
-         .canonical = "Widget",
+         .canonical = "Element",
          .aliases = (const char*[]){NULL},
          .hex_code = 0x0000,
          .type_hint = KRYON_TYPE_HINT_ANY
      },
  
-     // -- Layout Widgets (0x0001 - 0x00FF) --
+     // -- Layout Elements (0x0001 - 0x00FF) --
      {
          .canonical = "Column",
          .aliases = (const char*[]){"Col", NULL},
@@ -560,7 +560,7 @@
          .type_hint = KRYON_TYPE_HINT_ANY
      },
  
-     // -- Content Widgets (0x0400 - 0x04FF) --
+     // -- Content Elements (0x0400 - 0x04FF) --
      {
          .canonical = "Text",
          .aliases = (const char*[]){NULL},
@@ -586,7 +586,7 @@
          .type_hint = KRYON_TYPE_HINT_ANY
      },
  
-     // -- Application Widgets (0x1000+) --
+     // -- Application Elements (0x1000+) --
      {
          .canonical = "App",
          .aliases = (const char*[]){NULL},
@@ -751,7 +751,7 @@
      return NULL; // Not found
  }
  
- // Get all aliases for a widget (useful for IDE/tooling)
+ // Get all aliases for a element (useful for IDE/tooling)
  const char **kryon_get_element_aliases(const char *name) {
      const int group_count = sizeof(kryon_element_groups) / sizeof(kryon_element_groups[0]);
      
@@ -765,7 +765,7 @@
  }
 
 /**
- * @brief Get widget type name from hex code (unified API alias)
+ * @brief Get element type name from hex code (unified API alias)
  */
 const char *kryon_get_element_type_name(uint16_t hex_code) {
     return kryon_get_element_name(hex_code);

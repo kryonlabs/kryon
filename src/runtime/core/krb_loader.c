@@ -22,17 +22,6 @@
 #include <stdlib.h>
 
 // =============================================================================
-// ELEMENT TYPE MAPPING
-// =============================================================================
-
-// Using centralized element mappings
-
-// =============================================================================
-// PROPERTY TYPE MAPPING
-// =============================================================================
-// Now using centralized property mappings from shared/kryon_mappings.h
-
-// =============================================================================
 // FORWARD DECLARATIONS
 // =============================================================================
 
@@ -205,10 +194,10 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     printf("DEBUG: KRB file v%u.%u.%u, flags: 0x%04X\n", version_major, version_minor, version_patch, flags);
     
     // Read section counts from header
-    uint32_t style_count, theme_count, widget_def_count, element_count, property_count;
+    uint32_t style_count, theme_count, element_def_count, element_count, property_count;
     if (!read_uint32_safe(data, &offset, size, &style_count) ||
         !read_uint32_safe(data, &offset, size, &theme_count) ||
-        !read_uint32_safe(data, &offset, size, &widget_def_count) ||
+        !read_uint32_safe(data, &offset, size, &element_def_count) ||
         !read_uint32_safe(data, &offset, size, &element_count) ||
         !read_uint32_safe(data, &offset, size, &property_count)) {
         printf("DEBUG: Failed to read section counts\n");
@@ -234,12 +223,12 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     }
     
     // Read section offsets
-    uint32_t style_offset, theme_offset, widget_def_offset, widget_inst_offset;
+    uint32_t style_offset, theme_offset, element_def_offset, element_inst_offset;
     uint32_t script_offset, string_table_offset;
     if (!read_uint32_safe(data, &offset, size, &style_offset) ||
         !read_uint32_safe(data, &offset, size, &theme_offset) ||
-        !read_uint32_safe(data, &offset, size, &widget_def_offset) ||
-        !read_uint32_safe(data, &offset, size, &widget_inst_offset) ||
+        !read_uint32_safe(data, &offset, size, &element_def_offset) ||
+        !read_uint32_safe(data, &offset, size, &element_inst_offset) ||
         !read_uint32_safe(data, &offset, size, &script_offset) ||
         !read_uint32_safe(data, &offset, size, &string_table_offset)) {
         printf("DEBUG: Failed to read section offsets\n");
@@ -256,7 +245,7 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     }
     
     printf("DEBUG: Found %u styles, %u themes, %u widget defs, %u elements, %u properties in KRB file\n", 
-           style_count, theme_count, widget_def_count, element_count, property_count);
+           style_count, theme_count, element_def_count, element_count, property_count);
     printf("DEBUG: Section offsets - Style: %u, Script: %u, String table: %u\n", 
            style_offset, script_offset, string_table_offset);
     
@@ -331,9 +320,9 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     runtime->string_table_count = string_count;
     
     // Navigate to widget instance section if we have elements
-    if (element_count > 0 && widget_inst_offset > 0) {
-        printf("DEBUG: Jumping to widget instance section at offset %u\n", widget_inst_offset);
-        offset = widget_inst_offset;
+    if (element_count > 0 && element_inst_offset > 0) {
+        printf("DEBUG: Jumping to widget instance section at offset %u\n", element_inst_offset);
+        offset = element_inst_offset;
     }
     
     // Load root element (should be the first one)

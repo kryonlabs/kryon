@@ -47,13 +47,13 @@ typedef enum {
     KRYON_EVENT_TOUCH_END,
     KRYON_EVENT_TOUCH_CANCEL,
     
-    // Widget events
-    KRYON_EVENT_WIDGET_CLICKED,
-    KRYON_EVENT_WIDGET_VALUE_CHANGED,
-    KRYON_EVENT_WIDGET_FOCUS_GAINED,
-    KRYON_EVENT_WIDGET_FOCUS_LOST,
-    KRYON_EVENT_WIDGET_HOVERED,
-    KRYON_EVENT_WIDGET_UNHOVERED,
+    // Element events
+    KRYON_EVENT_ELEMENT_CLICKED,
+    KRYON_EVENT_ELEMENT_VALUE_CHANGED,
+    KRYON_EVENT_ELEMENT_FOCUS_GAINED,
+    KRYON_EVENT_ELEMENT_FOCUS_LOST,
+    KRYON_EVENT_ELEMENT_HOVERED,
+    KRYON_EVENT_ELEMENT_UNHOVERED,
     
     // Custom events
     KRYON_EVENT_CUSTOM
@@ -115,8 +115,8 @@ typedef struct {
 } KryonTouchEvent;
 
 typedef struct {
-    char* widgetId;
-    char* widgetType;
+    char* elementId;
+    char* elementType;
     union {
         struct {
             bool pressed;
@@ -136,7 +136,7 @@ typedef struct {
             float value;
         } slider;
     } data;
-} KryonWidgetEvent;
+} KryonElementEvent;
 
 typedef struct {
     uint32_t eventId;
@@ -161,7 +161,7 @@ typedef struct {
         KryonKeyEvent key;
         KryonTextInputEvent textInput;
         KryonTouchEvent touch;
-        KryonWidgetEvent widget;
+        KryonElementEvent element;
         KryonCustomEvent custom;
     } data;
 } KryonEvent;

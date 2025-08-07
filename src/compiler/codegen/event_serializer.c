@@ -27,14 +27,14 @@ static KryonEventType parse_event_type(const char *event_name) {
     // Map high-level event names to existing event types
     
     // Mouse events
-    if (strcmp(event_name, "click") == 0) return KRYON_EVENT_WIDGET_CLICKED;
+    if (strcmp(event_name, "click") == 0) return KRYON_EVENT_ELEMENT_CLICKED;
     if (strcmp(event_name, "mousedown") == 0) return KRYON_EVENT_MOUSE_BUTTON_DOWN;
     if (strcmp(event_name, "mouseup") == 0) return KRYON_EVENT_MOUSE_BUTTON_UP;
     if (strcmp(event_name, "mouseenter") == 0) return KRYON_EVENT_MOUSE_ENTER;
     if (strcmp(event_name, "mouseleave") == 0) return KRYON_EVENT_MOUSE_LEAVE;
     if (strcmp(event_name, "mousemove") == 0) return KRYON_EVENT_MOUSE_MOVED;
-    if (strcmp(event_name, "hover") == 0) return KRYON_EVENT_WIDGET_HOVERED;
-    if (strcmp(event_name, "unhover") == 0) return KRYON_EVENT_WIDGET_UNHOVERED;
+    if (strcmp(event_name, "hover") == 0) return KRYON_EVENT_ELEMENT_HOVERED;
+    if (strcmp(event_name, "unhover") == 0) return KRYON_EVENT_ELEMENT_UNHOVERED;
     
     // Keyboard events
     if (strcmp(event_name, "keydown") == 0) return KRYON_EVENT_KEY_DOWN;
@@ -42,12 +42,12 @@ static KryonEventType parse_event_type(const char *event_name) {
     if (strcmp(event_name, "textinput") == 0) return KRYON_EVENT_TEXT_INPUT;
     
     // Focus events
-    if (strcmp(event_name, "focus") == 0) return KRYON_EVENT_WIDGET_FOCUS_GAINED;
-    if (strcmp(event_name, "blur") == 0) return KRYON_EVENT_WIDGET_FOCUS_LOST;
+    if (strcmp(event_name, "focus") == 0) return KRYON_EVENT_ELEMENT_FOCUS_GAINED;
+    if (strcmp(event_name, "blur") == 0) return KRYON_EVENT_ELEMENT_FOCUS_LOST;
     
     // Widget events
-    if (strcmp(event_name, "change") == 0) return KRYON_EVENT_WIDGET_VALUE_CHANGED;
-    if (strcmp(event_name, "input") == 0) return KRYON_EVENT_WIDGET_VALUE_CHANGED;
+    if (strcmp(event_name, "change") == 0) return KRYON_EVENT_ELEMENT_VALUE_CHANGED;
+    if (strcmp(event_name, "input") == 0) return KRYON_EVENT_ELEMENT_VALUE_CHANGED;
     
     // Touch events
     if (strcmp(event_name, "touchstart") == 0) return KRYON_EVENT_TOUCH_BEGIN;

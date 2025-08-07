@@ -67,7 +67,7 @@ static RaylibRendererImpl g_raylib_impl = {0};
 
 // Forward declarations for input handling
 static KryonRenderResult raylib_get_input_state(KryonInputState* input_state);
-static bool raylib_point_in_widget(KryonVec2 point, KryonRect widget_bounds);
+static bool raylib_point_in_element(KryonVec2 point, KryonRect element_bounds);
 static bool raylib_handle_event(const KryonEvent* event);
 static void* raylib_get_native_window(void);
 static float raylib_measure_text_width(const char* text, float font_size);
@@ -81,7 +81,7 @@ static KryonRendererVTable g_raylib_vtable = {
     .viewport_size = raylib_viewport_size,
     .destroy = raylib_destroy,
     .get_input_state = raylib_get_input_state,
-    .point_in_element = raylib_point_in_widget,
+    .point_in_element = raylib_point_in_element,
     .handle_event = raylib_handle_event,
     .get_native_window = raylib_get_native_window,
     .measure_text_width = raylib_measure_text_width
@@ -671,7 +671,7 @@ static KryonRenderResult raylib_execute_commands(KryonRenderContext* context,
             }
             
             case KRYON_CMD_UPDATE_ELEMENT_STATE: {
-                // Widget state updates would be handled by the widget management system
+                // Widget state updates would be handled by the element management system
                 // This is a placeholder for state synchronization
                 break;
             }
@@ -832,11 +832,11 @@ static KryonRenderResult raylib_get_input_state(KryonInputState* input_state) {
     return KRYON_RENDER_SUCCESS;
 }
 
-static bool raylib_point_in_widget(KryonVec2 point, KryonRect widget_bounds) {
-    return point.x >= widget_bounds.x && 
-           point.x <= widget_bounds.x + widget_bounds.width &&
-           point.y >= widget_bounds.y && 
-           point.y <= widget_bounds.y + widget_bounds.height;
+static bool raylib_point_in_element(KryonVec2 point, KryonRect element_bounds) {
+    return point.x >= element_bounds.x && 
+           point.x <= element_bounds.x + element_bounds.width &&
+           point.y >= element_bounds.y && 
+           point.y <= element_bounds.y + element_bounds.height;
 }
 
 // =============================================================================

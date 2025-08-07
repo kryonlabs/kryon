@@ -341,7 +341,7 @@ char *kryon_strdup(const char *str);
 #define KRYON_ALIGN_PAGE 4096
 
 // =============================================================================
-// COMPATIBILITY MACROS FOR WIDGET SYSTEM
+// COMPATIBILITY MACROS FOR ELEMENT SYSTEM
 // =============================================================================
 
 // Simple compatibility macros for basic allocation functions

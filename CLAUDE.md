@@ -50,20 +50,6 @@ NEVER proactively create documentation files (*.md) or README files. Only create
 - **Dependencies**: Standard libraries only
 - **Status**: ✅ Clean
 
-### **Public API Headers** (Have issues, not currently used)
-
-#### **6. kryon/layout_engine.h** - Layout Engine
-- **Conflicts**: ❌ Duplicates geometry types from renderer_interface.h
-- **Status**: Contains conflicts, use renderer_interface.h types instead
-
-#### **7. kryon/widget_system.h** - Widget System  
-- **Conflicts**: ❌ Duplicates geometry types from renderer_interface.h
-- **Status**: Contains conflicts, use renderer_interface.h types instead
-
-#### **8. kryon/renderer.h** - Public Renderer
-- **Conflicts**: ❌ Defines different event system than events.h
-- **Status**: Contains conflicts, use internal headers instead
-
 ## **Current Working Solutions**
 
 ### **Correct Include Order**

@@ -23,14 +23,14 @@ static KryonSize calculate_intrinsic_size(KryonElement* element) {
     switch (element->type) {
         case KRYON_ELEMENT_TEXT: {
             // Text size calculation
-            const char* text = widget->props.text_props.text;
-            float font_size = widget->props.text_props.style.font_size;
+            const char* text = element->props.text_props.text;
+            float font_size = element->props.text_props.style.font_size;
             
             if (text && font_size > 0) {
                 // If explicit width/height are set (by update_text_sizes_with_raylib), use them
-                if (widget->width > 0 && widget->height > 0) {
-                    size.width = widget->width;
-                    size.height = widget->height;
+                if (element->width > 0 && element->height > 0) {
+                    size.width = element->width;
+                    size.height = element->height;
                 } else {
                     // Fallback approximation
                     size.width = strlen(text) * font_size * 0.6f;
@@ -42,7 +42,7 @@ static KryonSize calculate_intrinsic_size(KryonElement* element) {
         
         case KRYON_ELEMENT_BUTTON: {
             // Button size based on improved text measurement + padding
-            const char* label = widget->props.button_props.label;
+            const char* label = element->props.button_props.label;
             if (label) {
                 // Use consistent font size with runtime system, default to 20 for buttons
                 float font_size = 20.0f; // Default button text size
@@ -75,7 +75,7 @@ static KryonSize calculate_intrinsic_size(KryonElement* element) {
         }
         
         default:
-            // For layout widgets and others, size is determined by children
+            // For layout elements and others, size is determined by children
             break;
     }
     
@@ -83,25 +83,25 @@ static KryonSize calculate_intrinsic_size(KryonElement* element) {
 }
 
 /// Apply size constraints to a size
-static KryonSize apply_size_constraints(KryonWidget* widget, KryonSize size) {
+static KryonSize apply_size_constraints(KryonElement* element, KryonSize size) {
     // Apply explicit width/height
-    if (widget->width >= 0) size.width = widget->width;
-    if (widget->height >= 0) size.height = widget->height;
+    if (element->width >= 0) size.width = element->width;
+    if (element->height >= 0) size.height = element->height;
     
     // Apply min/max constraints
-    if (size.width < widget->min_width) size.width = widget->min_width;
-    if (size.height < widget->min_height) size.height = widget->min_height;
-    if (size.width > widget->max_width) size.width = widget->max_width;
-    if (size.height > widget->max_height) size.height = widget->max_height;
+    if (size.width < element->min_width) size.width = element->min_width;
+    if (size.height < element->min_height) size.height = element->min_height;
+    if (size.width > element->max_width) size.width = element->max_width;
+    if (size.height > element->max_height) size.height = element->max_height;
     
     return size;
 }
 
 /// Get available space after padding
-static KryonSize get_content_size(KryonWidget* widget, KryonSize available_space) {
+static KryonSize get_content_size(KryonElement* element, KryonSize available_space) {
     KryonSize content_size;
-    content_size.width = available_space.width - widget->padding.left - widget->padding.right;
-    content_size.height = available_space.height - widget->padding.top - widget->padding.bottom;
+    content_size.width = available_space.width - element->padding.left - element->padding.right;
+    content_size.height = available_space.height - element->padding.top - element->padding.bottom;
     
     // Ensure non-negative
     if (content_size.width < 0) content_size.width = 0;
@@ -110,11 +110,11 @@ static KryonSize get_content_size(KryonWidget* widget, KryonSize available_space
     return content_size;
 }
 
-/// Position widget with padding offset
-static KryonVec2 get_content_position(KryonWidget* widget, KryonVec2 position) {
+/// Position element with padding offset
+static KryonVec2 get_content_position(KryonElement* element, KryonVec2 position) {
     return (KryonVec2){
-        position.x + widget->padding.left,
-        position.y + widget->padding.top
+        position.x + element->padding.left,
+        position.y + element->padding.top
     };
 }
 
@@ -122,8 +122,8 @@ static KryonVec2 get_content_position(KryonWidget* widget, KryonVec2 position) {
 // LAYOUT ALGORITHMS
 // =============================================================================
 
-void kryon_layout_column(KryonWidget* widget, KryonSize available_space) {
-    if (!widget || widget->type != KRYON_ELEMENT_COLUMN) return;
+void kryon_layout_column(KryonElement* element, KryonSize available_space) {
+    if (!element || element->type != KRYON_ELEMENT_COLUMN) return;
     
     KryonSize content_size = get_content_size(widget, available_space);
     KryonVec2 content_pos = get_content_position(widget, (KryonVec2){0, 0});
@@ -131,10 +131,10 @@ void kryon_layout_column(KryonWidget* widget, KryonSize available_space) {
     // Calculate total flex factor and fixed heights
     int total_flex = 0;
     float total_fixed_height = 0;
-    float total_spacing = (widget->child_count > 1) ? (widget->child_count - 1) * widget->spacing : 0;
+    float total_spacing = (element->child_count > 1) ? (element->child_count - 1) * element->spacing : 0;
     
-    for (size_t i = 0; i < widget->child_count; i++) {
-        KryonWidget* child = widget->children[i];
+    for (size_t i = 0; i < element->child_count; i++) {
+        KryonElement* child = element->children[i];
         if (child->flex > 0) {
             total_flex += child->flex;
         } else {
@@ -152,12 +152,12 @@ void kryon_layout_column(KryonWidget* widget, KryonSize available_space) {
     float current_y = content_pos.y;
     
     // Handle main axis alignment for non-flex layouts
-    if (total_flex == 0 && widget->main_axis != KRYON_MAIN_START) {
+    if (total_flex == 0 && element->main_axis != KRYON_MAIN_START) {
         float total_child_height = total_fixed_height + total_spacing;
         float extra_space = content_size.height - total_child_height;
         
         if (extra_space > 0) {
-            switch (widget->main_axis) {
+            switch (element->main_axis) {
                 case KRYON_MAIN_CENTER:
                     current_y += extra_space / 2;
                     break;
@@ -165,22 +165,22 @@ void kryon_layout_column(KryonWidget* widget, KryonSize available_space) {
                     current_y += extra_space;
                     break;
                 case KRYON_MAIN_SPACE_BETWEEN:
-                    if (widget->child_count > 1) {
-                        widget->spacing += extra_space / (widget->child_count - 1);
+                    if (element->child_count > 1) {
+                        element->spacing += extra_space / (element->child_count - 1);
                     }
                     break;
                 case KRYON_MAIN_SPACE_AROUND:
-                    if (widget->child_count > 0) {
-                        float space_per_child = extra_space / widget->child_count;
+                    if (element->child_count > 0) {
+                        float space_per_child = extra_space / element->child_count;
                         current_y += space_per_child / 2;
-                        widget->spacing += space_per_child;
+                        element->spacing += space_per_child;
                     }
                     break;
                 case KRYON_MAIN_SPACE_EVENLY:
-                    if (widget->child_count > 0) {
-                        float space_per_gap = extra_space / (widget->child_count + 1);
+                    if (element->child_count > 0) {
+                        float space_per_gap = extra_space / (element->child_count + 1);
                         current_y += space_per_gap;
-                        widget->spacing += space_per_gap;
+                        element->spacing += space_per_gap;
                     }
                     break;
                 default:
@@ -189,8 +189,8 @@ void kryon_layout_column(KryonWidget* widget, KryonSize available_space) {
         }
     }
     
-    for (size_t i = 0; i < widget->child_count; i++) {
-        KryonWidget* child = widget->children[i];
+    for (size_t i = 0; i < element->child_count; i++) {
+        KryonElement* child = element->children[i];
         
         // Calculate child size
         KryonSize child_size;
@@ -204,7 +204,7 @@ void kryon_layout_column(KryonWidget* widget, KryonSize available_space) {
         
         // Apply cross axis alignment
         float child_x = content_pos.x;
-        switch (widget->cross_axis) {
+        switch (element->cross_axis) {
             case KRYON_CROSS_START:
                 // Already at start
                 break;
@@ -226,19 +226,19 @@ void kryon_layout_column(KryonWidget* widget, KryonSize available_space) {
         };
         
         // Recursively layout child
-        if (kryon_widget_is_layout_type(child->type)) {
-            kryon_widget_calculate_layout(child, child_size);
+        if (kryon_element_is_layout_type(child->type)) {
+            kryon_element_calculate_layout(child, child_size);
         }
         
-        current_y += child_size.height + widget->spacing;
+        current_y += child_size.height + element->spacing;
     }
     
     // Set our own computed rect
-    widget->computed_rect.size = apply_size_constraints(widget, available_space);
+    element->computed_rect.size = apply_size_constraints(widget, available_space);
 }
 
-void kryon_layout_row(KryonWidget* widget, KryonSize available_space) {
-    if (!widget || widget->type != KRYON_ELEMENT_ROW) return;
+void kryon_layout_row(KryonElement* element, KryonSize available_space) {
+    if (!element || element->type != KRYON_ELEMENT_ROW) return;
     
     KryonSize content_size = get_content_size(widget, available_space);
     KryonVec2 content_pos = get_content_position(widget, (KryonVec2){0, 0});
@@ -246,10 +246,10 @@ void kryon_layout_row(KryonWidget* widget, KryonSize available_space) {
     // Calculate total flex factor and fixed widths
     int total_flex = 0;
     float total_fixed_width = 0;
-    float total_spacing = (widget->child_count > 1) ? (widget->child_count - 1) * widget->spacing : 0;
+    float total_spacing = (element->child_count > 1) ? (element->child_count - 1) * element->spacing : 0;
     
-    for (size_t i = 0; i < widget->child_count; i++) {
-        KryonWidget* child = widget->children[i];
+    for (size_t i = 0; i < element->child_count; i++) {
+        KryonElement* child = element->children[i];
         if (child->flex > 0) {
             total_flex += child->flex;
         } else {
@@ -267,12 +267,12 @@ void kryon_layout_row(KryonWidget* widget, KryonSize available_space) {
     float current_x = content_pos.x;
     
     // Handle main axis alignment for non-flex layouts
-    if (total_flex == 0 && widget->main_axis != KRYON_MAIN_START) {
+    if (total_flex == 0 && element->main_axis != KRYON_MAIN_START) {
         float total_child_width = total_fixed_width + total_spacing;
         float extra_space = content_size.width - total_child_width;
         
         if (extra_space > 0) {
-            switch (widget->main_axis) {
+            switch (element->main_axis) {
                 case KRYON_MAIN_CENTER:
                     current_x += extra_space / 2;
                     break;
@@ -280,22 +280,22 @@ void kryon_layout_row(KryonWidget* widget, KryonSize available_space) {
                     current_x += extra_space;
                     break;
                 case KRYON_MAIN_SPACE_BETWEEN:
-                    if (widget->child_count > 1) {
-                        widget->spacing += extra_space / (widget->child_count - 1);
+                    if (element->child_count > 1) {
+                        element->spacing += extra_space / (element->child_count - 1);
                     }
                     break;
                 case KRYON_MAIN_SPACE_AROUND:
-                    if (widget->child_count > 0) {
-                        float space_per_child = extra_space / widget->child_count;
+                    if (element->child_count > 0) {
+                        float space_per_child = extra_space / element->child_count;
                         current_x += space_per_child / 2;
-                        widget->spacing += space_per_child;
+                        element->spacing += space_per_child;
                     }
                     break;
                 case KRYON_MAIN_SPACE_EVENLY:
-                    if (widget->child_count > 0) {
-                        float space_per_gap = extra_space / (widget->child_count + 1);
+                    if (element->child_count > 0) {
+                        float space_per_gap = extra_space / (element->child_count + 1);
                         current_x += space_per_gap;
-                        widget->spacing += space_per_gap;
+                        element->spacing += space_per_gap;
                     }
                     break;
                 default:
@@ -304,8 +304,8 @@ void kryon_layout_row(KryonWidget* widget, KryonSize available_space) {
         }
     }
     
-    for (size_t i = 0; i < widget->child_count; i++) {
-        KryonWidget* child = widget->children[i];
+    for (size_t i = 0; i < element->child_count; i++) {
+        KryonElement* child = element->children[i];
         
         // Calculate child size
         KryonSize child_size;
@@ -319,7 +319,7 @@ void kryon_layout_row(KryonWidget* widget, KryonSize available_space) {
         
         // Apply cross axis alignment
         float child_y = content_pos.y;
-        switch (widget->cross_axis) {
+        switch (element->cross_axis) {
             case KRYON_CROSS_START:
                 // Already at start
                 break;
@@ -341,27 +341,27 @@ void kryon_layout_row(KryonWidget* widget, KryonSize available_space) {
         };
         
         // Recursively layout child
-        if (kryon_widget_is_layout_type(child->type)) {
-            kryon_widget_calculate_layout(child, child_size);
+        if (kryon_element_is_layout_type(child->type)) {
+            kryon_element_calculate_layout(child, child_size);
         }
         
-        current_x += child_size.width + widget->spacing;
+        current_x += child_size.width + element->spacing;
     }
     
     // Set our own computed rect
-    widget->computed_rect.size = apply_size_constraints(widget, available_space);
+    element->computed_rect.size = apply_size_constraints(widget, available_space);
 }
 
-void kryon_layout_stack(KryonWidget* widget, KryonSize available_space) {
-    if (!widget || widget->type != KRYON_ELEMENT_STACK) return;
+void kryon_layout_stack(KryonElement* element, KryonSize available_space) {
+    if (!element || element->type != KRYON_ELEMENT_STACK) return;
     
     KryonSize content_size = get_content_size(widget, available_space);
     KryonVec2 content_pos = get_content_position(widget, (KryonVec2){0, 0});
     
     // In stack layout, all children are positioned at the same location
     // and sized to fit the available space (or their intrinsic size)
-    for (size_t i = 0; i < widget->child_count; i++) {
-        KryonWidget* child = widget->children[i];
+    for (size_t i = 0; i < element->child_count; i++) {
+        KryonElement* child = element->children[i];
         
         KryonSize child_size = calculate_intrinsic_size(child);
         child_size = apply_size_constraints(child, child_size);
@@ -379,7 +379,7 @@ void kryon_layout_stack(KryonWidget* widget, KryonSize available_space) {
         float child_y = content_pos.y;
         
         // Apply main axis alignment (horizontal for stack)
-        switch (widget->main_axis) {
+        switch (element->main_axis) {
             case KRYON_MAIN_START:
                 // Already at start
                 break;
@@ -394,7 +394,7 @@ void kryon_layout_stack(KryonWidget* widget, KryonSize available_space) {
         }
         
         // Apply cross axis alignment (vertical for stack)
-        switch (widget->cross_axis) {
+        switch (element->cross_axis) {
             case KRYON_CROSS_START:
                 // Already at start
                 break;
@@ -417,17 +417,17 @@ void kryon_layout_stack(KryonWidget* widget, KryonSize available_space) {
         };
         
         // Recursively layout child
-        if (kryon_widget_is_layout_type(child->type)) {
-            kryon_widget_calculate_layout(child, child_size);
+        if (kryon_element_is_layout_type(child->type)) {
+            kryon_element_calculate_layout(child, child_size);
         }
     }
     
     // Set our own computed rect
-    widget->computed_rect.size = apply_size_constraints(widget, available_space);
+    element->computed_rect.size = apply_size_constraints(widget, available_space);
 }
 
 /// Apply content alignment to position a child within container
-static KryonVec2 apply_content_alignment(KryonWidget* container, KryonSize container_size, KryonSize child_size, KryonVec2 base_pos) {
+static KryonVec2 apply_content_alignment(KryonElement* container, KryonSize container_size, KryonSize child_size, KryonVec2 base_pos) {
     float child_x = base_pos.x;
     float child_y = base_pos.y;
     
@@ -497,7 +497,7 @@ static KryonVec2 apply_content_alignment(KryonWidget* container, KryonSize conta
 }
 
 /// Apply content distribution for multiple children
-static void apply_content_distribution(KryonWidget* container, KryonSize container_size, KryonVec2 base_pos, bool is_horizontal) {
+static void apply_content_distribution(KryonElement* container, KryonSize container_size, KryonVec2 base_pos, bool is_horizontal) {
     if (container->child_count <= 1 || container->content_distribution == KRYON_DISTRIBUTE_NONE) {
         return;
     }
@@ -505,7 +505,7 @@ static void apply_content_distribution(KryonWidget* container, KryonSize contain
     // Calculate total child size
     float total_child_size = 0;
     for (size_t i = 0; i < container->child_count; i++) {
-        KryonWidget* child = container->children[i];
+        KryonElement* child = container->children[i];
         if (is_horizontal) {
             total_child_size += child->computed_rect.size.width;
         } else {
@@ -544,7 +544,7 @@ static void apply_content_distribution(KryonWidget* container, KryonSize contain
     float current_pos = is_horizontal ? base_pos.x + offset : base_pos.y + offset;
     
     for (size_t i = 0; i < container->child_count; i++) {
-        KryonWidget* child = container->children[i];
+        KryonElement* child = container->children[i];
         
         if (is_horizontal) {
             child->computed_rect.position.x = current_pos;
@@ -556,19 +556,19 @@ static void apply_content_distribution(KryonWidget* container, KryonSize contain
     }
 }
 
-void kryon_layout_container(KryonWidget* widget, KryonSize available_space) {
-    if (!widget || widget->type != KRYON_ELEMENT_CONTAINER) return;
+void kryon_layout_container(KryonElement* element, KryonSize available_space) {
+    if (!element || element->type != KRYON_ELEMENT_CONTAINER) return;
     
     // For containers with explicit position (posX/posY), preserve their position
     // Store the original position before any layout calculations
-    KryonVec2 original_position = widget->computed_rect.position;
+    KryonVec2 original_position = element->computed_rect.position;
     
     KryonSize content_size = get_content_size(widget, available_space);
     KryonVec2 content_pos = get_content_position(widget, original_position);
     
-    if (widget->child_count == 1) {
+    if (element->child_count == 1) {
         // Single child - use content alignment
-        KryonWidget* child = widget->children[0];
+        KryonElement* child = element->children[0];
         
         KryonSize child_size = calculate_intrinsic_size(child);
         child_size = apply_size_constraints(child, child_size);
@@ -597,13 +597,13 @@ void kryon_layout_container(KryonWidget* widget, KryonSize available_space) {
         child->computed_rect = (KryonRect){child_pos, child_size};
         
         // Recursively layout child
-        if (kryon_widget_is_layout_type(child->type)) {
-            kryon_widget_calculate_layout(child, child_size);
+        if (kryon_element_is_layout_type(child->type)) {
+            kryon_element_calculate_layout(child, child_size);
         }
-    } else if (widget->child_count > 1) {
+    } else if (element->child_count > 1) {
         // Multiple children - calculate sizes first, then apply distribution
-        for (size_t i = 0; i < widget->child_count; i++) {
-            KryonWidget* child = widget->children[i];
+        for (size_t i = 0; i < element->child_count; i++) {
+            KryonElement* child = element->children[i];
             
             KryonSize child_size = calculate_intrinsic_size(child);
             child_size = apply_size_constraints(child, child_size);
@@ -624,8 +624,8 @@ void kryon_layout_container(KryonWidget* widget, KryonSize available_space) {
             child->computed_rect = (KryonRect){child_pos, child_size};
             
             // Recursively layout child
-            if (kryon_widget_is_layout_type(child->type)) {
-                kryon_widget_calculate_layout(child, child_size);
+            if (kryon_element_is_layout_type(child->type)) {
+                kryon_element_calculate_layout(child, child_size);
             }
         }
         
@@ -634,15 +634,15 @@ void kryon_layout_container(KryonWidget* widget, KryonSize available_space) {
     }
     
     // Set our own computed rect size, but preserve the original position
-    widget->computed_rect.size = apply_size_constraints(widget, available_space);
-    widget->computed_rect.position = original_position;
+    element->computed_rect.size = apply_size_constraints(widget, available_space);
+    element->computed_rect.position = original_position;
 }
 
 // =============================================================================
 // MAIN LAYOUT FUNCTION
 // =============================================================================
 
-void kryon_widget_calculate_layout(KryonWidget* root, KryonSize available_space) {
+void kryon_element_calculate_layout(KryonElement* root, KryonSize available_space) {
     if (!root) return;
     
     // Skip layout if not dirty and size hasn't changed
@@ -653,7 +653,7 @@ void kryon_widget_calculate_layout(KryonWidget* root, KryonSize available_space)
     }
     
     // Update reactive properties for this widget and all children
-    kryon_widget_update_reactive_properties_recursive(root, root);
+    kryon_element_update_reactive_properties_recursive(root, root);
     
     // Store the original position before layout calculations
     // This preserves explicit positioning (posX/posY) from KRY files

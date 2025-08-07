@@ -1680,7 +1680,7 @@ static void element_container_to_commands(KryonElement* element, KryonRenderComm
     }
 }
 
-// Convert Button element to render commands using proper button widget command
+// Convert Button element to render commands using proper button element command
 static void element_button_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 1) return; // Need space for button command
     
@@ -1753,9 +1753,9 @@ static void element_button_to_commands(KryonElement* element, KryonRenderCommand
         was_hovered = is_hovered;
     }
     
-    // Use the proper button widget command
+    // Use the proper button element command
     KryonRenderCommand cmd = kryon_cmd_draw_button(
-        "button_1",  // TODO: Generate unique widget ID from element
+        "button_1",  // TODO: Generate unique element ID from element
         (KryonVec2){posX, posY},
         (KryonVec2){width, height},
         text ? text : "Button",
@@ -1868,7 +1868,7 @@ static const char* get_scrolled_input_text(const char* full_text, float input_wi
     return visible_text_buffer;
 }
 
-// Convert Input element to render commands using proper input widget command
+// Convert Input element to render commands using proper input element command
 static void element_input_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 1) return; // Need space for input command
     
@@ -2004,9 +2004,9 @@ static void element_input_to_commands(KryonElement* element, KryonRenderCommand*
         final_border_color.b = fmaxf(0.0f, border_color.b - 0.1f);
     }
     
-    // Use the proper input widget command
+    // Use the proper input element command
     KryonRenderCommand cmd = kryon_cmd_draw_input(
-        "input_1",  // TODO: Generate unique widget ID from element
+        "input_1",  // TODO: Generate unique element ID from element
         (KryonVec2){posX, posY},
         (KryonVec2){width, height},
         text ? text : "",
