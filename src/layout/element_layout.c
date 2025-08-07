@@ -125,8 +125,8 @@ static KryonVec2 get_content_position(KryonElement* element, KryonVec2 position)
 void kryon_layout_column(KryonElement* element, KryonSize available_space) {
     if (!element || element->type != KRYON_ELEMENT_COLUMN) return;
     
-    KryonSize content_size = get_content_size(widget, available_space);
-    KryonVec2 content_pos = get_content_position(widget, (KryonVec2){0, 0});
+    KryonSize content_size = get_content_size(element, available_space);
+    KryonVec2 content_pos = get_content_position(element, (KryonVec2){0, 0});
     
     // Calculate total flex factor and fixed heights
     int total_flex = 0;
@@ -234,14 +234,14 @@ void kryon_layout_column(KryonElement* element, KryonSize available_space) {
     }
     
     // Set our own computed rect
-    element->computed_rect.size = apply_size_constraints(widget, available_space);
+    element->computed_rect.size = apply_size_constraints(element, available_space);
 }
 
 void kryon_layout_row(KryonElement* element, KryonSize available_space) {
     if (!element || element->type != KRYON_ELEMENT_ROW) return;
     
-    KryonSize content_size = get_content_size(widget, available_space);
-    KryonVec2 content_pos = get_content_position(widget, (KryonVec2){0, 0});
+    KryonSize content_size = get_content_size(element, available_space);
+    KryonVec2 content_pos = get_content_position(element, (KryonVec2){0, 0});
     
     // Calculate total flex factor and fixed widths
     int total_flex = 0;
@@ -349,14 +349,14 @@ void kryon_layout_row(KryonElement* element, KryonSize available_space) {
     }
     
     // Set our own computed rect
-    element->computed_rect.size = apply_size_constraints(widget, available_space);
+    element->computed_rect.size = apply_size_constraints(element, available_space);
 }
 
 void kryon_layout_stack(KryonElement* element, KryonSize available_space) {
     if (!element || element->type != KRYON_ELEMENT_STACK) return;
     
-    KryonSize content_size = get_content_size(widget, available_space);
-    KryonVec2 content_pos = get_content_position(widget, (KryonVec2){0, 0});
+    KryonSize content_size = get_content_size(element, available_space);
+    KryonVec2 content_pos = get_content_position(element, (KryonVec2){0, 0});
     
     // In stack layout, all children are positioned at the same location
     // and sized to fit the available space (or their intrinsic size)
@@ -423,7 +423,7 @@ void kryon_layout_stack(KryonElement* element, KryonSize available_space) {
     }
     
     // Set our own computed rect
-    element->computed_rect.size = apply_size_constraints(widget, available_space);
+    element->computed_rect.size = apply_size_constraints(element, available_space);
 }
 
 /// Apply content alignment to position a child within container
@@ -563,8 +563,8 @@ void kryon_layout_container(KryonElement* element, KryonSize available_space) {
     // Store the original position before any layout calculations
     KryonVec2 original_position = element->computed_rect.position;
     
-    KryonSize content_size = get_content_size(widget, available_space);
-    KryonVec2 content_pos = get_content_position(widget, original_position);
+    KryonSize content_size = get_content_size(element, available_space);
+    KryonVec2 content_pos = get_content_position(element, original_position);
     
     if (element->child_count == 1) {
         // Single child - use content alignment
@@ -590,7 +590,7 @@ void kryon_layout_container(KryonElement* element, KryonSize available_space) {
             child_pos = child_original_pos;
         } else {
             // Child has no explicit positioning - apply content alignment
-            child_pos = apply_content_alignment(widget, content_size, child_size, content_pos);
+            child_pos = apply_content_alignment(element, content_size, child_size, content_pos);
         }
         
         // Set child position and size
@@ -630,11 +630,11 @@ void kryon_layout_container(KryonElement* element, KryonSize available_space) {
         }
         
         // Apply content distribution (assume vertical by default)
-        apply_content_distribution(widget, content_size, content_pos, false);
+        apply_content_distribution(element, content_size, content_pos, false);
     }
     
     // Set our own computed rect size, but preserve the original position
-    element->computed_rect.size = apply_size_constraints(widget, available_space);
+    element->computed_rect.size = apply_size_constraints(element, available_space);
     element->computed_rect.position = original_position;
 }
 
@@ -652,14 +652,14 @@ void kryon_element_calculate_layout(KryonElement* root, KryonSize available_spac
         return;
     }
     
-    // Update reactive properties for this widget and all children
+    // Update reactive properties for this element and all children
     kryon_element_update_reactive_properties_recursive(root, root);
     
     // Store the original position before layout calculations
     // This preserves explicit positioning (posX/posY) from KRY files
     KryonVec2 original_position = root->computed_rect.position;
     
-    // Calculate layout based on widget type
+    // Calculate layout based on element type
     switch (root->type) {
         case KRYON_ELEMENT_COLUMN:
             kryon_layout_column(root, available_space);
@@ -680,12 +680,12 @@ void kryon_element_calculate_layout(KryonElement* root, KryonSize available_spac
         case KRYON_ELEMENT_EXPANDED:
         case KRYON_ELEMENT_FLEXIBLE:
             // These are handled by their parent's layout algorithm
-            // They shouldn't be root widgets, but handle gracefully
+            // They shouldn't be root elements, but handle gracefully
             root->computed_rect.size = available_space;
             break;
             
         default:
-            // Non-layout widgets: use intrinsic size
+            // Non-layout elements: use intrinsic size
             root->computed_rect.size = calculate_intrinsic_size(root);
             root->computed_rect.size = apply_size_constraints(root, root->computed_rect.size);
             break;
