@@ -76,7 +76,7 @@ if(RAYLIB_FOUND)
     )
     
     target_include_directories(kryon_cli PRIVATE ${RAYLIB_INCLUDE_DIRS})
-    target_compile_definitions(kryon_cli PRIVATE HAVE_RAYLIB=1)
+    target_compile_definitions(kryon_cli PRIVATE KRYON_RENDERER_RAYLIB=1)
     set(RAYLIB_HEADER_FOUND TRUE)
 endif()
 
@@ -123,6 +123,6 @@ if(RAYLIB_FOUND AND RAYLIB_HEADER_FOUND)
     message(STATUS "Raylib found for kryon CLI - real window rendering enabled")
 else()
     message(STATUS "Raylib not found for kryon CLI - using stub renderers")
-    # Don't define HAVE_RAYLIB at all when raylib is not available
-    # This way #ifdef HAVE_RAYLIB will correctly exclude raylib code
+    # Don't define KRYON_RENDERER_RAYLIB at all when raylib is not available
+    # This way #ifdef KRYON_RENDERER_RAYLIB will correctly exclude raylib code
 endif()

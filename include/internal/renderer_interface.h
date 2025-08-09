@@ -30,6 +30,9 @@ typedef struct KryonRenderer KryonRenderer;
 typedef struct KryonRenderContext KryonRenderContext;
 typedef struct KryonElementTree KryonElementTree;
 
+// Event callback function type
+typedef void (*KryonEventCallback)(const KryonEvent* event, void* userData);
+
 
 
 // =============================================================================
@@ -310,6 +313,16 @@ typedef struct {
 } KryonInputState;
 
 // =============================================================================
+// RENDERER CONFIGURATION
+// =============================================================================
+
+typedef struct {
+    KryonEventCallback event_callback;
+    void* callback_data;
+    void* platform_context;  // Window handle, etc.
+} KryonRendererConfig;
+
+// =============================================================================
 // RENDERER INTERFACE (Based on kryon-rust Renderer trait)
 // =============================================================================
 
@@ -365,12 +378,6 @@ typedef struct {
      */
     void (*destroy)(void);
     
-    /**
-     * Get current input state
-     * @param input_state Output input state
-     * @return KRYON_RENDER_SUCCESS on success
-     */
-    KryonRenderResult (*get_input_state)(KryonInputState* input_state);
     
     /**
      * Check if a point is inside a element
@@ -420,24 +427,46 @@ struct KryonRenderer {
 
 /**
  * Create SDL2 renderer
- * @param surface SDL2 surface configuration
+ * @param config Renderer configuration with event callback
  * @return Renderer instance or NULL on failure
  */
-KryonRenderer* kryon_sdl2_renderer_create(void* surface);
+KryonRenderer* kryon_sdl2_renderer_create(const KryonRendererConfig* config);
 
 /**
  * Create Raylib renderer
- * @param surface Raylib surface configuration  
+ * @param config Renderer configuration with event callback  
  * @return Renderer instance or NULL on failure
  */
-KryonRenderer* kryon_raylib_renderer_create(void* surface);
+KryonRenderer* kryon_raylib_renderer_create(const KryonRendererConfig* config);
 
 /**
  * Create HTML renderer
- * @param surface HTML generation configuration
+ * @param config Renderer configuration with event callback
  * @return Renderer instance or NULL on failure
  */
-KryonRenderer* kryon_html_renderer_create(void* surface);
+KryonRenderer* kryon_html_renderer_create(const KryonRendererConfig* config);
+
+// =============================================================================
+// EVENT CALLBACK HELPER FUNCTIONS
+// =============================================================================
+
+/**
+ * Set event callback on existing renderer
+ * @param renderer The renderer instance
+ * @param callback The event callback function
+ * @param userData User data to pass to callback
+ * @return true on success, false on failure
+ */
+bool kryon_renderer_set_event_callback(KryonRenderer* renderer, 
+                                       KryonEventCallback callback, 
+                                       void* userData);
+
+/**
+ * Push an event from renderer to its callback
+ * @param renderer The renderer instance
+ * @param event The event to push
+ */
+void kryon_renderer_push_event(KryonRenderer* renderer, const KryonEvent* event);
 
 // =============================================================================
 // CONVENIENCE FUNCTIONS

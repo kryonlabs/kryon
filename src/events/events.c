@@ -149,10 +149,8 @@ bool kryon_event_parse_keyboard_shortcut(const char* shortcut,
     
     // Parse modifiers
     char* token = strtok(shortcutCopy, "+");
-    char* lastToken = NULL;
     
     while (token) {
-        lastToken = token;
         
         if (strcmp(token, "Ctrl") == 0) {
             *ctrl = true;
@@ -335,4 +333,87 @@ bool kryon_event_wait(KryonEventSystem* system, KryonEvent* event, uint32_t time
     // For now, just do a simple poll - real implementation would use platform-specific waiting
     (void)timeoutMs; // Suppress unused parameter warning
     return kryon_event_poll(system, event);
+}
+
+// =============================================================================
+// EVENT CREATION HELPERS
+// =============================================================================
+
+KryonEvent kryon_event_create_mouse_button(int button, float x, float y, bool pressed) {
+    KryonEvent event = {0};
+    event.type = pressed ? KRYON_EVENT_MOUSE_BUTTON_DOWN : KRYON_EVENT_MOUSE_BUTTON_UP;
+    event.timestamp = 0; // TODO: Add actual timestamp
+    event.data.mouseButton.button = button;
+    event.data.mouseButton.x = x;
+    event.data.mouseButton.y = y;
+    event.data.mouseButton.clickCount = 1;
+    return event;
+}
+
+KryonEvent kryon_event_create_key(int keyCode, bool pressed, bool ctrl, bool shift, bool alt, bool meta) {
+    KryonEvent event = {0};
+    event.type = pressed ? KRYON_EVENT_KEY_DOWN : KRYON_EVENT_KEY_UP;
+    event.timestamp = 0;
+    event.data.key.keyCode = keyCode;
+    event.data.key.scanCode = 0;
+    event.data.key.isRepeat = false;
+    event.data.key.ctrlPressed = ctrl;
+    event.data.key.shiftPressed = shift;
+    event.data.key.altPressed = alt;
+    event.data.key.metaPressed = meta;
+    return event;
+}
+
+KryonEvent kryon_event_create_text_input(const char* text) {
+    KryonEvent event = {0};
+    event.type = KRYON_EVENT_TEXT_INPUT;
+    event.timestamp = 0;
+    
+    size_t len = strlen(text);
+    if (len >= sizeof(event.data.textInput.text)) {
+        len = sizeof(event.data.textInput.text) - 1;
+    }
+    
+    memcpy(event.data.textInput.text, text, len);
+    event.data.textInput.text[len] = '\0';
+    event.data.textInput.length = len;
+    return event;
+}
+
+KryonEvent kryon_event_create_mouse_move(float x, float y, float deltaX, float deltaY) {
+    KryonEvent event = {0};
+    event.type = KRYON_EVENT_MOUSE_MOVE;
+    event.timestamp = 0;
+    event.data.mouseMove.x = x;
+    event.data.mouseMove.y = y;
+    event.data.mouseMove.deltaX = deltaX;
+    event.data.mouseMove.deltaY = deltaY;
+    return event;
+}
+
+KryonEvent kryon_event_create_mouse_scroll(float deltaX, float deltaY, float x, float y) {
+    KryonEvent event = {0};
+    event.type = KRYON_EVENT_MOUSE_SCROLL;
+    event.timestamp = 0;
+    event.data.mouseScroll.deltaX = deltaX;
+    event.data.mouseScroll.deltaY = deltaY;
+    // Note: mouseWheel struct doesn't have x,y so we just store the deltas
+    return event;
+}
+
+KryonEvent kryon_event_create_window_resize(int width, int height) {
+    KryonEvent event = {0};
+    event.type = KRYON_EVENT_WINDOW_RESIZE;
+    event.timestamp = 0;
+    event.data.windowResize.width = width;
+    event.data.windowResize.height = height;
+    return event;
+}
+
+KryonEvent kryon_event_create_window_focus(bool focused) {
+    KryonEvent event = {0};
+    event.type = KRYON_EVENT_WINDOW_FOCUS;
+    event.timestamp = 0;
+    event.data.windowFocus.focused = focused;
+    return event;
 }

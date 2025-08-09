@@ -37,6 +37,14 @@ typedef struct {
     Font default_font;
     bool initialized;
     bool window_should_close;
+    
+    // NEW: Event system integration
+    KryonEventCallback event_callback;
+    void* callback_data;
+    
+    // Mouse tracking for delta calculation
+    Vector2 last_mouse_pos;
+    bool mouse_tracking_initialized;
 } RaylibRendererImpl;
 
 // =============================================================================
@@ -66,7 +74,7 @@ static void draw_text_with_font_raylib(const char* text, KryonVec2 pos,
 static RaylibRendererImpl g_raylib_impl = {0};
 
 // Forward declarations for input handling
-static KryonRenderResult raylib_get_input_state(KryonInputState* input_state);
+static void raylib_process_input(RaylibRendererImpl* data);
 static bool raylib_point_in_element(KryonVec2 point, KryonRect element_bounds);
 static bool raylib_handle_event(const KryonEvent* event);
 static void* raylib_get_native_window(void);
@@ -80,7 +88,6 @@ static KryonRendererVTable g_raylib_vtable = {
     .resize = raylib_resize,
     .viewport_size = raylib_viewport_size,
     .destroy = raylib_destroy,
-    .get_input_state = raylib_get_input_state,
     .point_in_element = raylib_point_in_element,
     .handle_event = raylib_handle_event,
     .get_native_window = raylib_get_native_window,
@@ -91,19 +98,28 @@ static KryonRendererVTable g_raylib_vtable = {
 // PUBLIC API
 // =============================================================================
 
-KryonRenderer* kryon_raylib_renderer_create(void* surface) {
+KryonRenderer* kryon_raylib_renderer_create(const KryonRendererConfig* config) {
+    if (!config) {
+        return NULL;
+    }
+    
     KryonRenderer* renderer = malloc(sizeof(KryonRenderer));
     if (!renderer) {
         return NULL;
     }
+    
+    // Set event callback in global impl
+    g_raylib_impl.event_callback = config->event_callback;
+    g_raylib_impl.callback_data = config->callback_data;
+    g_raylib_impl.mouse_tracking_initialized = false;
     
     renderer->vtable = &g_raylib_vtable;
     renderer->impl_data = &g_raylib_impl;
     renderer->name = strdup("Raylib Renderer");
     renderer->backend = strdup("raylib");
     
-    // Initialize with provided surface
-    if (raylib_initialize(surface) != KRYON_RENDER_SUCCESS) {
+    // Initialize with platform context from config
+    if (raylib_initialize(config->platform_context) != KRYON_RENDER_SUCCESS) {
         free(renderer->name);
         free(renderer->backend);
         free(renderer);
@@ -115,7 +131,13 @@ KryonRenderer* kryon_raylib_renderer_create(void* surface) {
 
 // Factory function for renderer system
 KryonRenderer* kryon_renderer_create_raylib(void) {
-    return kryon_raylib_renderer_create(NULL);
+    // Create default config for backward compatibility
+    KryonRendererConfig config = {
+        .event_callback = NULL,
+        .callback_data = NULL,
+        .platform_context = NULL
+    };
+    return kryon_raylib_renderer_create(&config);
 }
 
 // =============================================================================
@@ -168,6 +190,9 @@ static KryonRenderResult raylib_begin_frame(KryonRenderContext** context, KryonC
     if (!g_raylib_impl.initialized) {
         return KRYON_RENDER_ERROR_BACKEND_INIT_FAILED;
     }
+    
+    // Process input events FIRST
+    raylib_process_input(&g_raylib_impl);
     
     // Check if window should close
     if (WindowShouldClose()) {
@@ -764,72 +789,105 @@ static KryonKey raylib_key_to_kryon(int raylib_key) {
     }
 }
 
-static KryonRenderResult raylib_get_input_state(KryonInputState* input_state) {
-    if (!input_state) return KRYON_RENDER_ERROR_INVALID_PARAM;
-    
-    // Initialize input state
-    memset(input_state, 0, sizeof(KryonInputState));
-    
-    // Mouse state
-    Vector2 mouse_pos = GetMousePosition();
-    Vector2 mouse_delta = GetMouseDelta();
-    float mouse_wheel = GetMouseWheelMove();
-    
-    input_state->mouse.position = (KryonVec2){mouse_pos.x, mouse_pos.y};
-    input_state->mouse.delta = (KryonVec2){mouse_delta.x, mouse_delta.y};
-    
-    // Update global mouse position for hover detection (simplified approach)
-    extern KryonVec2 g_mouse_position;
-    g_mouse_position = (KryonVec2){mouse_pos.x, mouse_pos.y};
-    
-    // Update cursor based on global state
-    extern bool g_cursor_should_be_pointer;
-    static bool cursor_is_pointer = false;
-    if (g_cursor_should_be_pointer != cursor_is_pointer) {
-        SetMouseCursor(g_cursor_should_be_pointer ? MOUSE_CURSOR_POINTING_HAND : MOUSE_CURSOR_DEFAULT);
-        cursor_is_pointer = g_cursor_should_be_pointer;
-        // Cursor state changed
+static void raylib_process_input(RaylibRendererImpl* data) {
+    if (!data->event_callback) {
+        return; // No callback set
     }
     
-    // Mouse position captured
-    input_state->mouse.wheel = mouse_wheel;
-    input_state->mouse.left_pressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
-    input_state->mouse.right_pressed = IsMouseButtonPressed(MOUSE_RIGHT_BUTTON);
-    input_state->mouse.middle_pressed = IsMouseButtonPressed(MOUSE_MIDDLE_BUTTON);
-    input_state->mouse.left_released = IsMouseButtonReleased(MOUSE_LEFT_BUTTON);
-    input_state->mouse.right_released = IsMouseButtonReleased(MOUSE_RIGHT_BUTTON);
-    input_state->mouse.middle_released = IsMouseButtonReleased(MOUSE_MIDDLE_BUTTON);
+    // Mouse button events
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        Vector2 pos = GetMousePosition();
+        KryonEvent event = kryon_event_create_mouse_button(0, pos.x, pos.y, true);
+        data->event_callback(&event, data->callback_data);
+    }
     
-    // Keyboard state - check common keys
-    int raylib_keys[] = {
-        KEY_SPACE, KEY_ENTER, KEY_TAB, KEY_BACKSPACE, KEY_DELETE,
-        KEY_RIGHT, KEY_LEFT, KEY_DOWN, KEY_UP, KEY_ESCAPE,
-        KEY_A, KEY_C, KEY_V, KEY_X, KEY_Z
-    };
+    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+        Vector2 pos = GetMousePosition();
+        KryonEvent event = kryon_event_create_mouse_button(0, pos.x, pos.y, false);
+        data->event_callback(&event, data->callback_data);
+    }
     
-    for (size_t i = 0; i < sizeof(raylib_keys) / sizeof(raylib_keys[0]); i++) {
-        int raylib_key = raylib_keys[i];
-        KryonKey kryon_key = raylib_key_to_kryon(raylib_key);
+    if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
+        Vector2 pos = GetMousePosition();
+        KryonEvent event = kryon_event_create_mouse_button(1, pos.x, pos.y, true);
+        data->event_callback(&event, data->callback_data);
+    }
+    
+    if (IsMouseButtonReleased(MOUSE_RIGHT_BUTTON)) {
+        Vector2 pos = GetMousePosition();
+        KryonEvent event = kryon_event_create_mouse_button(1, pos.x, pos.y, false);
+        data->event_callback(&event, data->callback_data);
+    }
+    
+    // Mouse movement events
+    Vector2 current_pos = GetMousePosition();
+    if (!data->mouse_tracking_initialized) {
+        data->last_mouse_pos = current_pos;
+        data->mouse_tracking_initialized = true;
+    } else if (current_pos.x != data->last_mouse_pos.x || current_pos.y != data->last_mouse_pos.y) {
+        float deltaX = current_pos.x - data->last_mouse_pos.x;
+        float deltaY = current_pos.y - data->last_mouse_pos.y;
         
-        if (kryon_key != KRYON_KEY_UNKNOWN && kryon_key < 512) {
-            input_state->keyboard.keys_pressed[kryon_key] = IsKeyPressed(raylib_key);
-            input_state->keyboard.keys_released[kryon_key] = IsKeyReleased(raylib_key);
-            input_state->keyboard.keys_down[kryon_key] = IsKeyDown(raylib_key);
+        KryonEvent event = kryon_event_create_mouse_move(current_pos.x, current_pos.y, deltaX, deltaY);
+        data->event_callback(&event, data->callback_data);
+        
+        data->last_mouse_pos = current_pos;
+    }
+    
+    // Mouse scroll events
+    float scroll = GetMouseWheelMove();
+    if (scroll != 0.0f) {
+        Vector2 pos = GetMousePosition();
+        KryonEvent event = kryon_event_create_mouse_scroll(0.0f, scroll, pos.x, pos.y);
+        data->event_callback(&event, data->callback_data);
+    }
+    
+    // Keyboard events - key presses
+    int key = GetKeyPressed();
+    while (key != 0) {
+        bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+        bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+        bool alt = IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT);
+        bool meta = IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER);
+        
+        KryonEvent event = kryon_event_create_key(key, true, ctrl, shift, alt, meta);
+        data->event_callback(&event, data->callback_data);
+        
+        key = GetKeyPressed(); // Get next key
+    }
+    
+    // Text input events
+    int codepoint = GetCharPressed();
+    while (codepoint != 0) {
+        // Convert codepoint to UTF-8
+        char text[5] = {0};
+        if (codepoint < 0x80) {
+            text[0] = (char)codepoint;
+        } else if (codepoint < 0x800) {
+            text[0] = (char)(0xC0 | (codepoint >> 6));
+            text[1] = (char)(0x80 | (codepoint & 0x3F));
+        } else if (codepoint < 0x10000) {
+            text[0] = (char)(0xE0 | (codepoint >> 12));
+            text[1] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+            text[2] = (char)(0x80 | (codepoint & 0x3F));
+        } else {
+            text[0] = (char)(0xF0 | (codepoint >> 18));
+            text[1] = (char)(0x80 | ((codepoint >> 12) & 0x3F));
+            text[2] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+            text[3] = (char)(0x80 | (codepoint & 0x3F));
         }
+        
+        KryonEvent event = kryon_event_create_text_input(text);
+        data->event_callback(&event, data->callback_data);
+        
+        codepoint = GetCharPressed(); // Get next character
     }
     
-    // Text input
-    int key = GetCharPressed();
-    if (key > 0) {
-        char text_char[2] = {(char)key, '\0'};
-        strncpy(input_state->keyboard.text_input, text_char, sizeof(input_state->keyboard.text_input) - 1);
-        input_state->keyboard.text_input_length = 1;
-    } else {
-        input_state->keyboard.text_input[0] = '\0';
-        input_state->keyboard.text_input_length = 0;
+    // Window events
+    if (IsWindowResized()) {
+        KryonEvent event = kryon_event_create_window_resize(GetScreenWidth(), GetScreenHeight());
+        data->event_callback(&event, data->callback_data);
     }
-    
-    return KRYON_RENDER_SUCCESS;
 }
 
 static bool raylib_point_in_element(KryonVec2 point, KryonRect element_bounds) {

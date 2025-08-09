@@ -18,30 +18,26 @@
 #include "internal/types.h"
 #include <stdlib.h>
 #include <string.h>
+#ifdef KRYON_RENDERER_RAYLIB
+#include <raylib.h>
+#endif
 #include <time.h>
 #include <math.h>
 #include <assert.h>
 #include <stdarg.h>
 
+// =============================================================================  
+// PHASE B1: DUAL STATE ELIMINATED - All input state now in KryonRuntime
 // =============================================================================
-// GLOBAL STATE FOR INPUT (simplified approach)
-// =============================================================================
-
-// Global mouse position updated by renderer for hover detection
-KryonVec2 g_mouse_position = {0.0f, 0.0f};
-
-// Global input focus and mouse state management
-static char* g_focused_input_id = NULL;
-static bool g_mouse_pressed_last_frame = false;
-static bool g_mouse_clicked_this_frame = false;
-
-// Global input text storage (simple approach for focused input)
-static char g_input_text_buffer[1024] = {0};
-static size_t g_input_text_length = 0;
-static int g_input_text_scroll_offset = 0; // Character offset for scrolling
-
-// Global cursor state for simple cursor management
-bool g_cursor_should_be_pointer = false;
+// OLD GLOBAL VARIABLES REMOVED:
+// - g_mouse_position → runtime->mouse_position  
+// - g_focused_input_id → runtime->focused_input_id
+// - g_mouse_clicked_this_frame → runtime->mouse_clicked_this_frame
+// - g_mouse_pressed_last_frame → runtime->mouse_pressed_last_frame
+// - g_input_text_buffer → runtime->input_text_buffer
+// - g_input_text_length → runtime->input_text_length
+// - g_input_text_scroll_offset → runtime->input_text_scroll_offset
+// - g_cursor_should_be_pointer → runtime->cursor_should_be_pointer
 
 // Global runtime reference for variable resolution during rendering
 static KryonRuntime* g_current_runtime = NULL;
@@ -55,6 +51,7 @@ static KryonElement *create_element_from_krb(KryonRuntime *runtime, KryonKrbElem
 static bool process_element_properties(KryonElement *element, KryonKrbReader *reader);
 static void update_element_tree(KryonRuntime *runtime, KryonElement *element, double delta_time);
 static void process_event_queue(KryonRuntime *runtime);
+static bool runtime_event_handler(const KryonEvent* event, void* userData);
 static void find_and_execute_onclick_handlers(KryonRuntime *runtime, KryonElement *element, KryonVec2 click_pos, const KryonEvent *event);
 static bool is_point_in_element_bounds(KryonElement *element, KryonVec2 point);
 static void runtime_error(KryonRuntime *runtime, const char *format, ...);
@@ -62,15 +59,17 @@ static const char* get_element_property_string_with_runtime(KryonRuntime* runtim
 static const char* resolve_variable_reference(KryonRuntime* runtime, const char* value);
 static const char* resolve_component_state_variable(KryonRuntime* runtime, KryonElement* element, const char* var_name);
 
-// Element to render command conversion functions
-static void element_container_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
-static void element_text_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
-static void element_button_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
-static void element_input_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
-static void element_image_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
-static void element_center_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
-static void element_column_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
-static void element_row_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+// Event callback function for receiving input events from renderer (extern declaration in runtime.h)
+
+// Element to render command conversion functions (Phase 5: added runtime parameter)
+static void element_container_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_text_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_button_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_input_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_image_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_center_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_column_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_row_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 
 // External function from krb_loader.c
 extern bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, size_t size);
@@ -147,20 +146,17 @@ KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config) {
         return NULL;
     }
     
-    // Initialize event queue (legacy)
-    runtime->event_capacity = 256;
-    runtime->event_queue = kryon_alloc(runtime->event_capacity * sizeof(KryonEvent));
-    if (!runtime->event_queue) {
-        kryon_event_system_destroy(runtime->event_system);
-        kryon_free(runtime->elements);
-        kryon_free(runtime);
-        return NULL;
-    }
+    // Register runtime event handlers for all event types
+    kryon_event_add_listener(runtime->event_system, KRYON_EVENT_MOUSE_BUTTON_DOWN, runtime_event_handler, runtime);
+    kryon_event_add_listener(runtime->event_system, KRYON_EVENT_MOUSE_MOVE, runtime_event_handler, runtime);
+    kryon_event_add_listener(runtime->event_system, KRYON_EVENT_TEXT_INPUT, runtime_event_handler, runtime);
+    kryon_event_add_listener(runtime->event_system, KRYON_EVENT_KEY_DOWN, runtime_event_handler, runtime);
+    kryon_event_add_listener(runtime->event_system, KRYON_EVENT_KEY_UP, runtime_event_handler, runtime);
+    kryon_event_add_listener(runtime->event_system, KRYON_EVENT_WINDOW_FOCUS, runtime_event_handler, runtime);
     
     // Initialize global state
     runtime->global_state = kryon_state_create("global", KRYON_STATE_OBJECT);
     if (!runtime->global_state) {
-        kryon_free(runtime->event_queue);
         kryon_event_system_destroy(runtime->event_system);
         kryon_free(runtime->elements);
         kryon_free(runtime);
@@ -182,6 +178,17 @@ KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config) {
     runtime->next_element_id = 1;
     runtime->is_running = false;
     runtime->needs_update = true;
+    
+    // Initialize input state (Phase 5: replaces global variables)
+    runtime->mouse_position.x = 0.0f;
+    runtime->mouse_position.y = 0.0f;
+    runtime->focused_input_id = NULL;
+    runtime->input_text_buffer[0] = '\0';
+    runtime->input_text_length = 0;
+    runtime->input_text_scroll_offset = 0;
+    runtime->mouse_clicked_this_frame = false;
+    runtime->mouse_pressed_last_frame = false;
+    runtime->cursor_should_be_pointer = false;
     
     return runtime;
 }
@@ -212,12 +219,6 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
     if (runtime->event_system) {
         kryon_event_system_destroy(runtime->event_system);
         runtime->event_system = NULL;
-    }
-    
-    // Free event queue (legacy) (with null check)
-    if (runtime->event_queue) {
-        kryon_free(runtime->event_queue);
-        runtime->event_queue = NULL;
     }
     
     // Destroy global state (with null check)
@@ -304,6 +305,12 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
             }
         }
         kryon_free(runtime->components);
+    }
+    
+    // Cleanup input state (Phase 5)
+    if (runtime->focused_input_id) {
+        kryon_free(runtime->focused_input_id);
+        runtime->focused_input_id = NULL;
     }
     
     kryon_free(runtime);
@@ -463,57 +470,13 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
         return false;
     }
     
-    // Update input state from renderer before generating commands
-    if (runtime->renderer) {
-        KryonRenderer* renderer = (KryonRenderer*)runtime->renderer;
-        if (renderer->vtable && renderer->vtable->get_input_state) {
-            KryonInputState input_state = {0};
-            KryonRenderResult result = renderer->vtable->get_input_state(&input_state);
-            if (result == KRYON_RENDER_SUCCESS) {
-                // Update global mouse position for hover detection
-                extern KryonVec2 g_mouse_position;
-                g_mouse_position = input_state.mouse.position;
-                
-                // Update mouse click state for input focus management
-                bool mouse_pressed_now = input_state.mouse.left_pressed;
-                g_mouse_clicked_this_frame = mouse_pressed_now && !g_mouse_pressed_last_frame;
-                g_mouse_pressed_last_frame = mouse_pressed_now;
-                
-                // Generate mouse click events from input state (use edge detection)
-                if (g_mouse_clicked_this_frame) {
-                    KryonEvent event = {0};
-                    event.type = KRYON_EVENT_MOUSE_BUTTON_DOWN;
-                    event.data.mouseButton.button = 0; // Left button
-                    event.data.mouseButton.x = input_state.mouse.position.x;
-                    event.data.mouseButton.y = input_state.mouse.position.y;
-                    kryon_runtime_handle_event(runtime, &event);
-                }
-                
-                // Handle keyboard input for focused input fields
-                if (g_focused_input_id && input_state.keyboard.text_input_length > 0) {
-                    // Add typed characters to input buffer
-                    for (size_t i = 0; i < input_state.keyboard.text_input_length; i++) {
-                        char c = input_state.keyboard.text_input[i];
-                        if (c >= 32 && c <= 126 && g_input_text_length < sizeof(g_input_text_buffer) - 1) {
-                            g_input_text_buffer[g_input_text_length] = c;
-                            g_input_text_length++;
-                            g_input_text_buffer[g_input_text_length] = '\0';
-                        }
-                    }
-                    // Input text updated
-                }
-                
-                // Handle backspace key
-                if (g_focused_input_id && input_state.keyboard.keys_pressed[259]) { // KEY_BACKSPACE = 259 in raylib
-                    if (g_input_text_length > 0) {
-                        g_input_text_length--;
-                        g_input_text_buffer[g_input_text_length] = '\0';
-                        // Backspace - Input text updated
-                    }
-                }
-            }
-        }
-    }
+    // Note: mouse_clicked_this_frame reset moved to end of frame to allow click processing
+    
+    // Reset cursor state at frame start - elements will vote for pointer cursor (Phase 1A)
+    runtime->cursor_should_be_pointer = false;
+    
+    // Note: Input state is now handled via event-driven callbacks (Phase 4)
+    // The renderer pushes events directly to runtime->event_system via runtime_receive_input_event
     
     if (!runtime->is_running) {
         printf("❌ ERROR: runtime is not running\n");
@@ -550,6 +513,16 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
         // Clear global runtime after rendering
         g_current_runtime = NULL;
         
+        // Set cursor state before begin_frame (Phase 1B & 1C: cursor communication)
+        // Apply cursor state based on hover detection from UI elements processed above
+        #ifdef KRYON_RENDERER_RAYLIB
+        if (runtime->cursor_should_be_pointer) {
+            SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+        } else {
+            SetMouseCursor(MOUSE_CURSOR_DEFAULT);  
+        }
+        #endif
+        
         // Check if we have a renderer attached for actual rendering
         if (runtime->renderer) {
             // Cast renderer and use the minimal interface
@@ -578,6 +551,8 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
                 }
             }
             
+            // Cursor state is now set before begin_frame (see line ~516)
+            
             // End frame
             if (renderer->vtable && renderer->vtable->end_frame) {
                 KryonRenderResult result = renderer->vtable->end_frame(context);
@@ -593,6 +568,9 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
     double render_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
     runtime->stats.render_time += render_time;
     runtime->stats.frame_count++;
+    
+    // Reset per-frame input state at end of frame (Phase 5: click detection fix)
+    runtime->mouse_clicked_this_frame = false;
     
     return true;
 }
@@ -879,62 +857,103 @@ void kryon_state_destroy(KryonState *state) {
 // =============================================================================
 
 bool kryon_runtime_handle_event(KryonRuntime *runtime, const KryonEvent *event) {
+    if (!runtime || !event || !runtime->event_system) {
+        return false;
+    }
+    
+    return kryon_event_push(runtime->event_system, event);
+}
+
+void runtime_receive_input_event(const KryonEvent* event, void* userData) {
+    KryonRuntime* runtime = (KryonRuntime*)userData;
+    if (!runtime || !runtime->event_system) {
+        return;
+    }
+    
+    // Push event directly to runtime's event system
+    kryon_event_push(runtime->event_system, event);
+}
+
+static bool runtime_event_handler(const KryonEvent* event, void* userData) {
+    KryonRuntime* runtime = (KryonRuntime*)userData;
     if (!runtime || !event) {
         return false;
     }
     
-    // Add event to queue
-    size_t next_write = (runtime->event_write_pos + 1) % runtime->event_capacity;
-    if (next_write == runtime->event_read_pos) {
-        // Queue is full, expand it
-        size_t new_capacity = runtime->event_capacity * 2;
-        KryonEvent *new_queue = kryon_realloc(runtime->event_queue,
-                                             new_capacity * sizeof(KryonEvent));
-        if (!new_queue) {
-            return false;
-        }
-        
-        // Reorganize queue to be contiguous
-        if (runtime->event_write_pos < runtime->event_read_pos) {
-            // Queue wraps around, need to move tail
-            size_t tail_size = runtime->event_capacity - runtime->event_read_pos;
-            memcpy(new_queue + runtime->event_capacity, 
-                   new_queue + runtime->event_read_pos,
-                   tail_size * sizeof(KryonEvent));
-            runtime->event_read_pos += runtime->event_capacity;
-        }
-        
-        runtime->event_queue = new_queue;
-        runtime->event_capacity = new_capacity;
-        next_write = (runtime->event_write_pos + 1) % runtime->event_capacity;
+    switch (event->type) {
+        case KRYON_EVENT_MOUSE_BUTTON_DOWN:
+            if (event->data.mouseButton.button == 0) {
+                // Left mouse button clicked - update runtime state (Phase 5)
+                KryonVec2 click_pos = {event->data.mouseButton.x, event->data.mouseButton.y};
+                runtime->mouse_clicked_this_frame = true;
+                printf("DEBUG: Mouse clicked! Setting mouse_clicked_this_frame = true at (%.1f,%.1f)\n", 
+                       click_pos.x, click_pos.y);
+                
+                // Find elements at click position with onClick handlers
+                if (runtime->root) {
+                    find_and_execute_onclick_handlers(runtime, runtime->root, click_pos, event);
+                }
+            }
+            break;
+            
+        case KRYON_EVENT_MOUSE_MOVE:
+            // Update runtime mouse position for hover detection (Phase 5)
+            runtime->mouse_position.x = event->data.mouseMove.x;
+            runtime->mouse_position.y = event->data.mouseMove.y;
+            break;
+            
+        case KRYON_EVENT_TEXT_INPUT:
+            // Handle text input for focused input fields (Phase 5)
+            printf("DEBUG: TEXT_INPUT event received - focused_id: %s, text: '%s'\n", 
+                   runtime->focused_input_id ? runtime->focused_input_id : "NULL",
+                   event->data.textInput.text);
+            if (runtime->focused_input_id && event->data.textInput.text[0]) {
+                size_t text_len = strlen(event->data.textInput.text);
+                for (size_t i = 0; i < text_len && runtime->input_text_length < sizeof(runtime->input_text_buffer) - 1; i++) {
+                    char c = event->data.textInput.text[i];
+                    if (c >= 32 && c <= 126) { // Printable ASCII
+                        runtime->input_text_buffer[runtime->input_text_length] = c;
+                        runtime->input_text_length++;
+                    }
+                }
+                runtime->input_text_buffer[runtime->input_text_length] = '\0';
+                printf("DEBUG: Text buffer after input: '%s' (length: %zu)\n", 
+                       runtime->input_text_buffer, runtime->input_text_length);
+            }
+            break;
+            
+        case KRYON_EVENT_KEY_DOWN:
+            // Handle special keys like backspace (Phase 5)
+            if (runtime->focused_input_id && event->data.key.keyCode == 259) { // KEY_BACKSPACE = 259 in raylib
+                if (runtime->input_text_length > 0) {
+                    runtime->input_text_length--;
+                    runtime->input_text_buffer[runtime->input_text_length] = '\0';
+                }
+            }
+            break;
+            
+        case KRYON_EVENT_WINDOW_FOCUS:
+            // Handle window focus changes - could affect input focus (Phase 5)
+            if (!event->data.windowFocus.focused) {
+                // Window lost focus, could clear input focus
+                // if (runtime->focused_input_id) { free(runtime->focused_input_id); runtime->focused_input_id = NULL; }
+            }
+            break;
+            
+        default:
+            // Unhandled event type
+            break;
     }
     
-    // Copy event to queue
-    runtime->event_queue[runtime->event_write_pos] = *event;
-    runtime->event_write_pos = next_write;
-    runtime->event_count++;
-    
-    return true;
+    return false; // Don't stop event propagation
 }
 
 static void process_event_queue(KryonRuntime *runtime) {
-    while (runtime->event_read_pos != runtime->event_write_pos) {
-        KryonEvent *event = &runtime->event_queue[runtime->event_read_pos];
-        
-        // Process mouse click events for onClick handlers
-        if (event->type == KRYON_EVENT_MOUSE_BUTTON_DOWN && event->data.mouseButton.button == 0) {
-            // Left mouse button clicked - check for onClick handlers
-            KryonVec2 click_pos = {event->data.mouseButton.x, event->data.mouseButton.y};
-            
-            // Find elements at click position with onClick handlers
-            if (runtime->root) {
-                find_and_execute_onclick_handlers(runtime, runtime->root, click_pos, event);
-            }
-        }
-        
-        runtime->event_read_pos = (runtime->event_read_pos + 1) % runtime->event_capacity;
-        runtime->event_count--;
+    if (!runtime || !runtime->event_system) {
+        return;
     }
+    
+    kryon_event_process_all(runtime->event_system);
 }
 
 // =============================================================================
@@ -1621,7 +1640,7 @@ static float calculate_element_height(KryonElement* element) {
 }
 
 // Convert Container element to render commands
-static void element_container_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+static void element_container_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 1) return;
     
     // Debug: Log all properties for first container
@@ -1681,7 +1700,7 @@ static void element_container_to_commands(KryonElement* element, KryonRenderComm
 }
 
 // Convert Button element to render commands using proper button element command
-static void element_button_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+static void element_button_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 1) return; // Need space for button command
     
     // Get button properties with dynamic lookup
@@ -1726,9 +1745,8 @@ static void element_button_to_commands(KryonElement* element, KryonRenderCommand
         (text_color_val & 0xFF) / 255.0f           // A
     };
     
-    // Check if mouse is hovering over button bounds
-    extern KryonVec2 g_mouse_position; // Global mouse position updated by renderer
-    KryonVec2 mouse_pos = g_mouse_position;
+    // Check if mouse is hovering over button bounds (Phase 5: use runtime state)
+    KryonVec2 mouse_pos = runtime->mouse_position;
     
     bool is_hovered = false;
     if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
@@ -1745,13 +1763,12 @@ static void element_button_to_commands(KryonElement* element, KryonRenderCommand
         final_bg_color.b = fminf(1.0f, bg_color.b + 0.1f);
     }
     
-    // Update global cursor state
-    extern bool g_cursor_should_be_pointer;
-    static bool was_hovered = false;
-    if (is_hovered != was_hovered) {
-        g_cursor_should_be_pointer = is_hovered;
-        was_hovered = is_hovered;
+    // Update cursor state (Phase 1A: fixed static corruption)
+    // Any button hover requests pointer cursor - no static state needed
+    if (is_hovered) {
+        runtime->cursor_should_be_pointer = true;
     }
+    // Note: runtime->cursor_should_be_pointer reset to false at frame start
     
     // Use the proper button element command
     KryonRenderCommand cmd = kryon_cmd_draw_button(
@@ -1869,7 +1886,8 @@ static const char* get_scrolled_input_text(const char* full_text, float input_wi
 }
 
 // Convert Input element to render commands using proper input element command
-static void element_input_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+static void element_input_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+    printf("DEBUG: element_input_to_commands called for Input element\n");
     if (*command_count >= max_commands - 1) return; // Need space for input command
     
     // Get input properties with dynamic lookup
@@ -1886,10 +1904,10 @@ static void element_input_to_commands(KryonElement* element, KryonRenderCommand*
     float border_width = get_element_property_float(element, "borderWidth", 1.0f);
     float border_radius = get_element_property_float(element, "borderRadius", 4.0f);
     
-    // Check if this input is focused and use global text buffer
+    // Check if this input is focused and use runtime text buffer (Phase 5)
     char current_id[32];
     snprintf(current_id, sizeof(current_id), "input_%p", (void*)element);
-    bool has_focus = (g_focused_input_id && strcmp(g_focused_input_id, current_id) == 0);
+    bool has_focus = (runtime->focused_input_id && strcmp(runtime->focused_input_id, current_id) == 0);
     
     // Get font size for text scrolling calculation
     float font_size = get_element_property_float(element, "fontSize", 14.0f);
@@ -1897,7 +1915,7 @@ static void element_input_to_commands(KryonElement* element, KryonRenderCommand*
     const char* raw_text;
     if (has_focus) {
         // When focused, use the text buffer (which contains typed text)
-        raw_text = g_input_text_buffer;
+        raw_text = runtime->input_text_buffer;
     } else {
         // When not focused, use element's stored value or empty string
         raw_text = get_element_property_string(element, "value");
@@ -1911,7 +1929,7 @@ static void element_input_to_commands(KryonElement* element, KryonRenderCommand*
     int scroll_offset = 0;
     KryonRenderer* renderer = g_current_runtime ? (KryonRenderer*)g_current_runtime->renderer : NULL;
     const char* text = get_scrolled_input_text(raw_text, width, font_size, input_padding, renderer, &scroll_offset);
-    g_input_text_scroll_offset = scroll_offset; // Update global scroll offset
+    runtime->input_text_scroll_offset = scroll_offset; // Update runtime scroll offset (Phase 5)
     
     const char* placeholder = get_element_property_string(element, "placeholder");
     bool is_password = get_element_property_bool(element, "password", false);
@@ -1937,51 +1955,55 @@ static void element_input_to_commands(KryonElement* element, KryonRenderCommand*
         (text_color_val & 0xFF) / 255.0f           // A
     };
     
-    // Check if mouse is hovering over input bounds and handle click for focus
-    extern KryonVec2 g_mouse_position;
-    KryonVec2 mouse_pos = g_mouse_position;
+    // Check if mouse is hovering over input bounds and handle click for focus (Phase 5)
+    KryonVec2 mouse_pos = runtime->mouse_position;
     
     bool is_hovered = false;
     if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
         mouse_pos.y >= posY && mouse_pos.y <= posY + height) {
         is_hovered = true;
+        printf("DEBUG: Input hovered at (%.1f,%.1f) in bounds (%.1f,%.1f,%.1f,%.1f)\n", 
+               mouse_pos.x, mouse_pos.y, posX, posY, posX + width, posY + height);
         
         // Handle mouse click for focus management
-        extern bool g_mouse_clicked_this_frame;
-        if (g_mouse_clicked_this_frame) {
+        printf("DEBUG: Input hover - mouse_clicked_this_frame = %s\n", 
+               runtime->mouse_clicked_this_frame ? "true" : "false");
+        if (runtime->mouse_clicked_this_frame) {
+            printf("DEBUG: Input clicked - setting focus\n");
             // Free previous focused input ID
-            if (g_focused_input_id) {
-                free(g_focused_input_id);
+            if (runtime->focused_input_id) {
+                free(runtime->focused_input_id);
             }
             // Set this input as focused (use element pointer as unique ID)
             char id_buffer[32];
             snprintf(id_buffer, sizeof(id_buffer), "input_%p", (void*)element);
-            g_focused_input_id = strdup(id_buffer);
+            runtime->focused_input_id = strdup(id_buffer);
+            printf("DEBUG: Input focus set to: %s\n", runtime->focused_input_id);
             
             // Load current value into text buffer for editing
             const char* current_value = get_element_property_string(element, "value");
             if (current_value && strlen(current_value) > 0) {
-                strncpy(g_input_text_buffer, current_value, sizeof(g_input_text_buffer) - 1);
-                g_input_text_buffer[sizeof(g_input_text_buffer) - 1] = '\0';
-                g_input_text_length = strlen(g_input_text_buffer);
+                strncpy(runtime->input_text_buffer, current_value, sizeof(runtime->input_text_buffer) - 1);
+                runtime->input_text_buffer[sizeof(runtime->input_text_buffer) - 1] = '\0';
+                runtime->input_text_length = strlen(runtime->input_text_buffer);
             } else {
                 // Start with empty text if no value is set
-                g_input_text_buffer[0] = '\0';
-                g_input_text_length = 0;
+                runtime->input_text_buffer[0] = '\0';
+                runtime->input_text_length = 0;
             }
-            g_input_text_scroll_offset = 0; // Reset scroll when gaining focus
+            runtime->input_text_scroll_offset = 0; // Reset scroll when gaining focus
         }
-    } else if (g_mouse_clicked_this_frame) {
+    } else if (runtime->mouse_clicked_this_frame) {
         // Click outside this input - check if this input was focused
         char current_id[32];
         snprintf(current_id, sizeof(current_id), "input_%p", (void*)element);
-        if (g_focused_input_id && strcmp(g_focused_input_id, current_id) == 0) {
+        if (runtime->focused_input_id && strcmp(runtime->focused_input_id, current_id) == 0) {
             // This input loses focus - clear everything
-            free(g_focused_input_id);
-            g_focused_input_id = NULL;
-            g_input_text_buffer[0] = '\0';
-            g_input_text_length = 0;
-            g_input_text_scroll_offset = 0; // Reset scroll when losing focus
+            free(runtime->focused_input_id);
+            runtime->focused_input_id = NULL;
+            runtime->input_text_buffer[0] = '\0';
+            runtime->input_text_length = 0;
+            runtime->input_text_scroll_offset = 0; // Reset scroll when losing focus
         }
     }
     
@@ -2034,7 +2056,7 @@ static void element_input_to_commands(KryonElement* element, KryonRenderCommand*
 }
 
 // Convert Image element to render commands
-static void element_image_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+static void element_image_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 1) return; // Need space for image command
     
     // Get image properties with dynamic lookup
@@ -2074,7 +2096,7 @@ static void element_image_to_commands(KryonElement* element, KryonRenderCommand*
 }
 
 // Convert Center element to render commands (handles child positioning)
-static void element_center_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+static void element_center_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     // Center doesn't render itself but positions its children
     // Calculate center position based on parent or window size
     
@@ -2203,7 +2225,7 @@ static void set_element_position(KryonElement* element, float x, float y) {
 }
 
 // Convert Column element to render commands (arranges children vertically)
-static void element_column_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+static void element_column_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     // Column arranges children vertically with optional spacing and alignment
     
     // Get layout properties
@@ -2329,7 +2351,7 @@ static void element_column_to_commands(KryonElement* element, KryonRenderCommand
 }
 
 // Convert Row element to render commands (arranges children horizontally)
-static void element_row_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+static void element_row_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     // Row arranges children horizontally with optional spacing and alignment
     
     // Get layout properties
@@ -2458,7 +2480,7 @@ static void element_row_to_commands(KryonElement* element, KryonRenderCommand* c
 }
 
 // Convert Text element to render commands  
-static void element_text_to_commands(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+static void element_text_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 1) return;
     
     // Debug: Log all properties for first text element
@@ -2565,7 +2587,7 @@ static void render_element(KryonElement* element, KryonRenderCommand* commands, 
     // Map element types to their render functions
     static const struct {
         const char* type_name;
-        void (*render_func)(KryonElement*, KryonRenderCommand*, size_t*, size_t);
+        void (*render_func)(KryonRuntime*, KryonElement*, KryonRenderCommand*, size_t*, size_t);
     } element_renderers[] = {
         {"Container", element_container_to_commands},
         {"Text", element_text_to_commands},
@@ -2578,7 +2600,9 @@ static void render_element(KryonElement* element, KryonRenderCommand* commands, 
     // Find and call the appropriate render function
     for (size_t i = 0; i < sizeof(element_renderers) / sizeof(element_renderers[0]); i++) {
         if (strcmp(element->type_name, element_renderers[i].type_name) == 0) {
-            element_renderers[i].render_func(element, commands, command_count, max_commands);
+            // Pass runtime as first parameter (Phase 5)
+            KryonRuntime* runtime = g_current_runtime; // Use global runtime set during rendering
+            element_renderers[i].render_func(runtime, element, commands, command_count, max_commands);
             break;
         }
     }
@@ -2588,10 +2612,10 @@ static void render_element(KryonElement* element, KryonRenderCommand* commands, 
 static void process_layout(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (!element || !element->type_name) return;
     
-    // Map layout types to their processing functions
+    // Map layout types to their processing functions (Phase A1: Fixed signature)
     static const struct {
         const char* type_name;
-        void (*layout_func)(KryonElement*, KryonRenderCommand*, size_t*, size_t);
+        void (*layout_func)(KryonRuntime*, KryonElement*, KryonRenderCommand*, size_t*, size_t);
     } layout_processors[] = {
         {"Center", element_center_to_commands},
         {"Column", element_column_to_commands},
@@ -2602,7 +2626,9 @@ static void process_layout(KryonElement* element, KryonRenderCommand* commands, 
     // Find and call the appropriate layout function
     for (size_t i = 0; i < sizeof(layout_processors) / sizeof(layout_processors[0]); i++) {
         if (strcmp(element->type_name, layout_processors[i].type_name) == 0) {
-            layout_processors[i].layout_func(element, commands, command_count, max_commands);
+            // Pass runtime as first parameter (Phase A1: Fixed crash)
+            KryonRuntime* runtime = g_current_runtime; // Use global runtime set during rendering
+            layout_processors[i].layout_func(runtime, element, commands, command_count, max_commands);
             break;
         }
     }

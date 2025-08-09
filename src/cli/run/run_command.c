@@ -19,6 +19,9 @@ static bool g_debug_mode = false;
 static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, bool debug);
 static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug);
 
+// Forward declaration for runtime event callback function (defined in runtime.c)
+extern void runtime_receive_input_event(const KryonEvent* event, void* userData);
+
 int run_command(int argc, char *argv[]) {
     const char *krb_file_path = NULL;
     const char *renderer = "text";  // Default to text renderer
@@ -189,7 +192,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
     
     // Create renderer based on name
     if (strcmp(renderer_name, "raylib") == 0) {
-#ifdef HAVE_RAYLIB
+#ifdef KRYON_RENDERER_RAYLIB
         renderer = create_raylib_renderer(runtime, debug);
 #else
         fprintf(stderr, "❌ RAYLIB NOT AVAILABLE\n");
@@ -227,7 +230,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
 
 // Create raylib renderer using internal interface
 static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) {
-#ifdef HAVE_RAYLIB
+#ifdef KRYON_RENDERER_RAYLIB
     if (debug) {
         printf("🐛 Debug: Creating raylib renderer\n");
     }
@@ -303,7 +306,14 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
                surface.width, surface.height, surface.title);
     }
     
-    KryonRenderer* renderer = kryon_raylib_renderer_create(&surface);
+    // Create renderer configuration with event callback
+    KryonRendererConfig config = {
+        .event_callback = runtime_receive_input_event,
+        .callback_data = runtime,
+        .platform_context = &surface
+    };
+    
+    KryonRenderer* renderer = kryon_raylib_renderer_create(&config);
     
     if (!renderer) {
         fprintf(stderr, "❌ Failed to create raylib renderer\n");

@@ -8,7 +8,7 @@
 #include <math.h>
 #include <float.h>
 
-#ifdef HAVE_RAYLIB
+#ifdef KRYON_RENDERER_RAYLIB
 #include <raylib.h>
 #endif
 

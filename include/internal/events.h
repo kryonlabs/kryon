@@ -30,15 +30,18 @@ typedef enum {
     
     // Mouse events
     KRYON_EVENT_MOUSE_MOVED,
+    KRYON_EVENT_MOUSE_MOVE = KRYON_EVENT_MOUSE_MOVED, // Alias for consistency with roadmap
     KRYON_EVENT_MOUSE_BUTTON_DOWN,
     KRYON_EVENT_MOUSE_BUTTON_UP,
     KRYON_EVENT_MOUSE_WHEEL,
+    KRYON_EVENT_MOUSE_SCROLL = KRYON_EVENT_MOUSE_WHEEL, // Alias for consistency with roadmap  
     KRYON_EVENT_MOUSE_ENTER,
     KRYON_EVENT_MOUSE_LEAVE,
     
     // Keyboard events
     KRYON_EVENT_KEY_DOWN,
     KRYON_EVENT_KEY_UP,
+    KRYON_EVENT_KEY_REPEAT,     // NEW: For key holding
     KRYON_EVENT_TEXT_INPUT,
     
     // Touch events
@@ -72,6 +75,10 @@ typedef struct {
     int x;
     int y;
 } KryonWindowMoveEvent;
+
+typedef struct {
+    bool focused; // true = gained focus, false = lost focus
+} KryonWindowFocusEvent;
 
 typedef struct {
     float x;
@@ -155,9 +162,11 @@ typedef struct {
     union {
         KryonWindowResizeEvent windowResize;
         KryonWindowMoveEvent windowMove;
+        KryonWindowFocusEvent windowFocus; // NEW
         KryonMouseMoveEvent mouseMove;
         KryonMouseButtonEvent mouseButton;
         KryonMouseWheelEvent mouseWheel;
+        KryonMouseWheelEvent mouseScroll; // Alias for consistency
         KryonKeyEvent key;
         KryonTextInputEvent textInput;
         KryonTouchEvent touch;
@@ -313,6 +322,45 @@ static inline KryonEvent kryon_event_key_down(int keyCode, bool shift, bool ctrl
     event.data.key.altPressed = alt;
     return event;
 }
+
+// =============================================================================
+// EVENT CREATION HELPER FUNCTION DECLARATIONS
+// =============================================================================
+
+/**
+ * Create a mouse button event
+ */
+KryonEvent kryon_event_create_mouse_button(int button, float x, float y, bool pressed);
+
+/**
+ * Create a keyboard key event
+ */
+KryonEvent kryon_event_create_key(int keyCode, bool pressed, bool ctrl, bool shift, bool alt, bool meta);
+
+/**
+ * Create a text input event
+ */
+KryonEvent kryon_event_create_text_input(const char* text);
+
+/**
+ * Create a mouse move event
+ */
+KryonEvent kryon_event_create_mouse_move(float x, float y, float deltaX, float deltaY);
+
+/**
+ * Create a mouse scroll event
+ */
+KryonEvent kryon_event_create_mouse_scroll(float deltaX, float deltaY, float x, float y);
+
+/**
+ * Create a window resize event
+ */
+KryonEvent kryon_event_create_window_resize(int width, int height);
+
+/**
+ * Create a window focus event
+ */
+KryonEvent kryon_event_create_window_focus(bool focused);
 
 #ifdef __cplusplus
 }

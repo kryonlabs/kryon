@@ -57,12 +57,7 @@ typedef struct KryonRuntime {
     KryonStyle **styles;
     size_t style_count;
     size_t style_capacity;
-    KryonEventSystem *event_system;
-    KryonEvent *event_queue;
-    size_t event_count;
-    size_t event_capacity;
-    size_t event_read_pos;
-    size_t event_write_pos;
+    KryonEventSystem* event_system;
     double last_update_time;
     double update_delta;
     bool is_running;
@@ -94,6 +89,16 @@ typedef struct KryonRuntime {
     char **error_messages;
     size_t error_count;
     size_t error_capacity;
+    
+    // Input state (Phase 5: replaces global variables) 
+    KryonVec2 mouse_position;
+    char* focused_input_id;
+    char input_text_buffer[1024];
+    size_t input_text_length;
+    int input_text_scroll_offset;
+    bool mouse_clicked_this_frame;
+    bool mouse_pressed_last_frame; 
+    bool cursor_should_be_pointer;
 } KryonRuntime;
 
 // =============================================================================
@@ -137,6 +142,9 @@ KryonRuntimeConfig kryon_runtime_prod_config(void);
 bool kryon_runtime_set_variable(KryonRuntime *runtime, const char *name, const char *value);
 const char* kryon_runtime_get_variable(KryonRuntime *runtime, const char *name);
 KryonRuntime* kryon_runtime_get_current(void);
+
+// Event callback function for renderer integration (Phase 4)
+void runtime_receive_input_event(const KryonEvent* event, void* userData);
 
 #ifdef __cplusplus
 }
