@@ -18,12 +18,16 @@
 #include "internal/types.h"
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #ifdef KRYON_RENDERER_RAYLIB
 #include <raylib.h>
 #endif
 #include <time.h>
 #include <math.h>
 #include <assert.h>
+
+// Forward declaration from element_manager.c
+bool kryon_element_set_property_by_name(KryonElement *element, const char *name, const void *value);
 #include <stdarg.h>
 
 // =============================================================================  
@@ -66,6 +70,7 @@ static void element_container_to_commands(KryonRuntime* runtime, KryonElement* e
 static void element_text_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 static void element_button_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 static void element_input_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static void element_dropdown_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 static void element_image_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 static void element_center_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 static void element_column_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
@@ -148,7 +153,7 @@ KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config) {
     
     // Register runtime event handlers for all event types
     kryon_event_add_listener(runtime->event_system, KRYON_EVENT_MOUSE_BUTTON_DOWN, runtime_event_handler, runtime);
-    kryon_event_add_listener(runtime->event_system, KRYON_EVENT_MOUSE_MOVE, runtime_event_handler, runtime);
+    kryon_event_add_listener(runtime->event_system, KRYON_EVENT_MOUSE_MOVED, runtime_event_handler, runtime);
     kryon_event_add_listener(runtime->event_system, KRYON_EVENT_TEXT_INPUT, runtime_event_handler, runtime);
     kryon_event_add_listener(runtime->event_system, KRYON_EVENT_KEY_DOWN, runtime_event_handler, runtime);
     kryon_event_add_listener(runtime->event_system, KRYON_EVENT_KEY_UP, runtime_event_handler, runtime);
@@ -311,6 +316,28 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
     if (runtime->focused_input_id) {
         kryon_free(runtime->focused_input_id);
         runtime->focused_input_id = NULL;
+    }
+    
+    // Cleanup dropdown state
+    if (runtime->dropdown_state.dropdown_id) {
+        kryon_free(runtime->dropdown_state.dropdown_id);
+        runtime->dropdown_state.dropdown_id = NULL;
+    }
+    if (runtime->dropdown_state.focused_dropdown_id) {
+        kryon_free(runtime->dropdown_state.focused_dropdown_id);
+        runtime->dropdown_state.focused_dropdown_id = NULL;
+    }
+    if (runtime->dropdown_state.selected_indices) {
+        kryon_free(runtime->dropdown_state.selected_indices);
+        runtime->dropdown_state.selected_indices = NULL;
+    }
+    if (runtime->dropdown_state.filtered_indices) {
+        kryon_free(runtime->dropdown_state.filtered_indices);
+        runtime->dropdown_state.filtered_indices = NULL;
+    }
+    if (runtime->dropdown_state.validation_error) {
+        kryon_free(runtime->dropdown_state.validation_error);
+        runtime->dropdown_state.validation_error = NULL;
     }
     
     kryon_free(runtime);
@@ -886,8 +913,36 @@ static bool runtime_event_handler(const KryonEvent* event, void* userData) {
                 // Left mouse button clicked - update runtime state (Phase 5)
                 KryonVec2 click_pos = {event->data.mouseButton.x, event->data.mouseButton.y};
                 runtime->mouse_clicked_this_frame = true;
-                printf("DEBUG: Mouse clicked! Setting mouse_clicked_this_frame = true at (%.1f,%.1f)\n", 
-                       click_pos.x, click_pos.y);
+                
+                // Check if click is outside any open dropdown - close it if so
+                if (runtime->dropdown_state.is_dropdown_open) {
+                    bool clicked_inside_dropdown = false;
+                    
+                    // Check if click is in dropdown popup area
+                    if (runtime->dropdown_state.dropdown_id) {
+                        float popup_x = runtime->dropdown_state.dropdown_position.x;
+                        float popup_y = runtime->dropdown_state.dropdown_position.y;
+                        float popup_width = runtime->dropdown_state.dropdown_width;
+                        // Estimate popup height based on typical option count (will be refined during rendering)
+                        float popup_height = 160.0f; // Rough estimate for 5 options
+                        
+                        clicked_inside_dropdown = (click_pos.x >= popup_x - runtime->dropdown_state.dropdown_width && 
+                                                 click_pos.x <= popup_x + popup_width &&
+                                                 click_pos.y >= popup_y - 40.0f && // Include main dropdown area
+                                                 click_pos.y <= popup_y + popup_height);
+                    }
+                    
+                    if (!clicked_inside_dropdown) {
+                        // Click outside dropdown - close it
+                        if (runtime->dropdown_state.dropdown_id) {
+                            free(runtime->dropdown_state.dropdown_id);
+                        }
+                        runtime->dropdown_state.dropdown_id = NULL;
+                        runtime->dropdown_state.is_dropdown_open = false;
+                        runtime->dropdown_state.hovered_option_index = -1;
+                        printf("DEBUG: Closed dropdown due to outside click\n");
+                    }
+                }
                 
                 // Find elements at click position with onClick handlers
                 if (runtime->root) {
@@ -896,18 +951,49 @@ static bool runtime_event_handler(const KryonEvent* event, void* userData) {
             }
             break;
             
-        case KRYON_EVENT_MOUSE_MOVE:
+        case KRYON_EVENT_MOUSE_MOVED:
             // Update runtime mouse position for hover detection (Phase 5)
             runtime->mouse_position.x = event->data.mouseMove.x;
             runtime->mouse_position.y = event->data.mouseMove.y;
+            
+            
+            // Reset keyboard selection mode when mouse moves (if dropdown is open)
+            if (runtime->dropdown_state.is_dropdown_open && runtime->dropdown_state.use_keyboard_selection) {
+                // Check if mouse moved significantly (not just tiny movements)
+                static float last_mouse_x = 0, last_mouse_y = 0;
+                float dx = runtime->mouse_position.x - last_mouse_x;
+                float dy = runtime->mouse_position.y - last_mouse_y;
+                if (dx * dx + dy * dy > 4.0f) { // Moved more than 2 pixels
+                    runtime->dropdown_state.use_keyboard_selection = false;
+                }
+                last_mouse_x = runtime->mouse_position.x;
+                last_mouse_y = runtime->mouse_position.y;
+            }
             break;
             
         case KRYON_EVENT_TEXT_INPUT:
-            // Handle text input for focused input fields (Phase 5)
+            // Handle text input for focused input fields and searchable dropdowns (Phase 5)
             printf("DEBUG: TEXT_INPUT event received - focused_id: %s, text: '%s'\n", 
                    runtime->focused_input_id ? runtime->focused_input_id : "NULL",
                    event->data.textInput.text);
-            if (runtime->focused_input_id && event->data.textInput.text[0]) {
+                   
+            // Check if we're typing in a searchable dropdown
+            if (runtime->dropdown_state.is_dropdown_open && runtime->dropdown_state.is_searchable && event->data.textInput.text[0]) {
+                size_t text_len = strlen(event->data.textInput.text);
+                size_t current_len = strlen(runtime->dropdown_state.search_text);
+                
+                for (size_t i = 0; i < text_len && current_len < sizeof(runtime->dropdown_state.search_text) - 1; i++) {
+                    char c = event->data.textInput.text[i];
+                    if (c >= 32 && c <= 126) { // Printable ASCII
+                        runtime->dropdown_state.search_text[current_len] = c;
+                        current_len++;
+                    }
+                }
+                runtime->dropdown_state.search_text[current_len] = '\0';
+                printf("DEBUG: Dropdown search text after input: '%s'\n", runtime->dropdown_state.search_text);
+            }
+            // Handle regular input field text input
+            else if (runtime->focused_input_id && event->data.textInput.text[0]) {
                 size_t text_len = strlen(event->data.textInput.text);
                 for (size_t i = 0; i < text_len && runtime->input_text_length < sizeof(runtime->input_text_buffer) - 1; i++) {
                     char c = event->data.textInput.text[i];
@@ -923,11 +1009,177 @@ static bool runtime_event_handler(const KryonEvent* event, void* userData) {
             break;
             
         case KRYON_EVENT_KEY_DOWN:
-            // Handle special keys like backspace (Phase 5)
-            if (runtime->focused_input_id && event->data.key.keyCode == 259) { // KEY_BACKSPACE = 259 in raylib
-                if (runtime->input_text_length > 0) {
-                    runtime->input_text_length--;
-                    runtime->input_text_buffer[runtime->input_text_length] = '\0';
+            // Handle special keys like backspace for input fields and dropdown search (Phase 5)
+            if (event->data.key.keyCode == 259) { // KEY_BACKSPACE = 259 in raylib
+                // Check if backspace is for dropdown search
+                if (runtime->dropdown_state.is_dropdown_open && runtime->dropdown_state.is_searchable) {
+                    size_t search_len = strlen(runtime->dropdown_state.search_text);
+                    if (search_len > 0) {
+                        runtime->dropdown_state.search_text[search_len - 1] = '\0';
+                        printf("DEBUG: Dropdown search text after backspace: '%s'\n", runtime->dropdown_state.search_text);
+                    }
+                }
+                // Handle regular input field backspace
+                else if (runtime->focused_input_id) {
+                    if (runtime->input_text_length > 0) {
+                        runtime->input_text_length--;
+                        runtime->input_text_buffer[runtime->input_text_length] = '\0';
+                    }
+                }
+            }
+            
+            // Handle dropdown keyboard navigation
+            if (runtime->dropdown_state.is_dropdown_open && runtime->dropdown_state.dropdown_id) {
+                bool handled = true;
+                int keyCode = event->data.key.keyCode;
+                
+                switch (keyCode) {
+                    case 265: // KEY_UP (raylib)
+                        // Move up in dropdown options
+                        runtime->dropdown_state.use_keyboard_selection = true;
+                        if (runtime->dropdown_state.keyboard_selected_index > 0) {
+                            runtime->dropdown_state.keyboard_selected_index--;
+                        } else if (runtime->dropdown_state.option_count > 0) {
+                            // Wrap to bottom
+                            runtime->dropdown_state.keyboard_selected_index = runtime->dropdown_state.option_count - 1;
+                        }
+                        
+                        // Auto-scroll to keep selected item visible
+                        if (runtime->dropdown_state.keyboard_selected_index < runtime->dropdown_state.scroll_offset) {
+                            runtime->dropdown_state.scroll_offset = runtime->dropdown_state.keyboard_selected_index;
+                        }
+                        
+                        runtime->dropdown_state.hovered_option_index = runtime->dropdown_state.keyboard_selected_index;
+                        printf("DEBUG: Keyboard navigation UP - selected index: %d, scroll: %d\n", 
+                               runtime->dropdown_state.keyboard_selected_index, runtime->dropdown_state.scroll_offset);
+                        break;
+                        
+                    case 264: // KEY_DOWN (raylib)
+                        // Move down in dropdown options
+                        runtime->dropdown_state.use_keyboard_selection = true;
+                        if (runtime->dropdown_state.keyboard_selected_index < runtime->dropdown_state.option_count - 1) {
+                            runtime->dropdown_state.keyboard_selected_index++;
+                        } else {
+                            // Wrap to top
+                            runtime->dropdown_state.keyboard_selected_index = 0;
+                        }
+                        
+                        // Auto-scroll to keep selected item visible
+                        int last_visible = runtime->dropdown_state.scroll_offset + runtime->dropdown_state.visible_options - 1;
+                        if (runtime->dropdown_state.keyboard_selected_index > last_visible) {
+                            runtime->dropdown_state.scroll_offset = runtime->dropdown_state.keyboard_selected_index - runtime->dropdown_state.visible_options + 1;
+                        }
+                        if (runtime->dropdown_state.keyboard_selected_index == 0) {
+                            runtime->dropdown_state.scroll_offset = 0; // Reset scroll on wrap to top
+                        }
+                        
+                        runtime->dropdown_state.hovered_option_index = runtime->dropdown_state.keyboard_selected_index;
+                        printf("DEBUG: Keyboard navigation DOWN - selected index: %d, scroll: %d\n", 
+                               runtime->dropdown_state.keyboard_selected_index, runtime->dropdown_state.scroll_offset);
+                        break;
+                        
+                    case 257: // KEY_ENTER (raylib)
+                        // Select the keyboard-highlighted option
+                        if (runtime->dropdown_state.keyboard_selected_index >= 0 && 
+                            runtime->dropdown_state.keyboard_selected_index < runtime->dropdown_state.option_count) {
+                            
+                            if (runtime->dropdown_state.is_multi_select && runtime->dropdown_state.selected_indices) {
+                                // Multi-select mode - toggle selection
+                                int idx = runtime->dropdown_state.keyboard_selected_index;
+                                bool was_selected = runtime->dropdown_state.selected_indices[idx];
+                                runtime->dropdown_state.selected_indices[idx] = !was_selected;
+                                
+                                if (was_selected) {
+                                    runtime->dropdown_state.selected_count--;
+                                } else {
+                                    runtime->dropdown_state.selected_count++;
+                                }
+                                
+                                printf("DEBUG: Keyboard ENTER (multi-select) - option %d is now %s (total: %d)\n", 
+                                       idx, runtime->dropdown_state.selected_indices[idx] ? "selected" : "unselected",
+                                       runtime->dropdown_state.selected_count);
+                                
+                                // Don't close dropdown in multi-select mode
+                            } else {
+                                // Single-select mode - set selection and close
+                                runtime->dropdown_state.selected_option_index = runtime->dropdown_state.keyboard_selected_index;
+                                
+                                // Close dropdown after selection
+                                if (runtime->dropdown_state.dropdown_id) {
+                                    free(runtime->dropdown_state.dropdown_id);
+                                }
+                                runtime->dropdown_state.dropdown_id = NULL;
+                                runtime->dropdown_state.is_dropdown_open = false;
+                                runtime->dropdown_state.hovered_option_index = -1;
+                                runtime->dropdown_state.use_keyboard_selection = false;
+                                
+                                printf("DEBUG: Keyboard ENTER (single-select) - selected option %d\n", 
+                                       runtime->dropdown_state.selected_option_index);
+                            }
+                        }
+                        break;
+                        
+                    case 256: // KEY_ESCAPE (raylib)
+                        // Close dropdown without selection
+                        if (runtime->dropdown_state.dropdown_id) {
+                            free(runtime->dropdown_state.dropdown_id);
+                        }
+                        runtime->dropdown_state.dropdown_id = NULL;
+                        runtime->dropdown_state.is_dropdown_open = false;
+                        runtime->dropdown_state.hovered_option_index = -1;
+                        runtime->dropdown_state.use_keyboard_selection = false;
+                        printf("DEBUG: Keyboard ESCAPE - closed dropdown\n");
+                        break;
+                        
+                    case 32: // KEY_SPACE (raylib) - alternative to enter
+                        // Select the keyboard-highlighted option (same as ENTER)
+                        if (runtime->dropdown_state.keyboard_selected_index >= 0 && 
+                            runtime->dropdown_state.keyboard_selected_index < runtime->dropdown_state.option_count) {
+                            
+                            if (runtime->dropdown_state.is_multi_select && runtime->dropdown_state.selected_indices) {
+                                // Multi-select mode - toggle selection (same as ENTER)
+                                int idx = runtime->dropdown_state.keyboard_selected_index;
+                                bool was_selected = runtime->dropdown_state.selected_indices[idx];
+                                runtime->dropdown_state.selected_indices[idx] = !was_selected;
+                                
+                                if (was_selected) {
+                                    runtime->dropdown_state.selected_count--;
+                                } else {
+                                    runtime->dropdown_state.selected_count++;
+                                }
+                                
+                                printf("DEBUG: Keyboard SPACE (multi-select) - option %d is now %s (total: %d)\n", 
+                                       idx, runtime->dropdown_state.selected_indices[idx] ? "selected" : "unselected",
+                                       runtime->dropdown_state.selected_count);
+                                
+                                // Don't close dropdown in multi-select mode
+                            } else {
+                                // Single-select mode - set selection and close
+                                runtime->dropdown_state.selected_option_index = runtime->dropdown_state.keyboard_selected_index;
+                                
+                                // Close dropdown after selection
+                                if (runtime->dropdown_state.dropdown_id) {
+                                    free(runtime->dropdown_state.dropdown_id);
+                                }
+                                runtime->dropdown_state.dropdown_id = NULL;
+                                runtime->dropdown_state.is_dropdown_open = false;
+                                runtime->dropdown_state.hovered_option_index = -1;
+                                runtime->dropdown_state.use_keyboard_selection = false;
+                                
+                                printf("DEBUG: Keyboard SPACE (single-select) - selected option %d\n", 
+                                       runtime->dropdown_state.selected_option_index);
+                            }
+                        }
+                        break;
+                        
+                    default:
+                        handled = false;
+                        break;
+                }
+                
+                if (handled) {
+                    // Mark event as handled to prevent further processing
+                    // Note: This would require modifying the event structure to support handled flag
                 }
             }
             break;
@@ -1268,6 +1520,28 @@ static const char* get_element_property_string_with_runtime(KryonRuntime* runtim
 
 
 // Get property value as integer with type conversion
+// Get array property helper function
+static const char** get_element_property_array(KryonElement* element, const char* prop_name, size_t* count) {
+    if (!element || !prop_name || !count) {
+        if (count) *count = 0;
+        return NULL;
+    }
+    
+    for (size_t i = 0; i < element->property_count; i++) {
+        KryonProperty* prop = element->properties[i];
+        if (prop && prop->name && strcmp(prop->name, prop_name) == 0) {
+            if (prop->type == KRYON_RUNTIME_PROP_ARRAY) {
+                *count = prop->value.array_value.count;
+                return (const char**)prop->value.array_value.values;
+            }
+            break;
+        }
+    }
+    
+    *count = 0;
+    return NULL;
+}
+
 static int get_element_property_int(KryonElement* element, const char* prop_name, int default_value) {
     KryonProperty* prop = find_element_property(element, prop_name);
     if (!prop) return default_value;
@@ -1659,6 +1933,7 @@ static void element_container_to_commands(KryonRuntime* runtime, KryonElement* e
     uint32_t border_color_val = get_element_property_color(element, "borderColor", 0x000000FF); // Black default
     float border_width = get_element_property_float(element, "borderWidth", 0.0f);
     float border_radius = get_element_property_float(element, "borderRadius", 0.0f);
+    int z_index = get_element_property_int(element, "zIndex", 0); // Default z-index 0
     
     // Convert RGBA values to KryonColor format
     KryonColor bg_color = {
@@ -1694,6 +1969,9 @@ static void element_container_to_commands(KryonRuntime* runtime, KryonElement* e
             cmd.data.draw_rect.border_width = border_width;
             cmd.data.draw_rect.border_color = border_color;
         }
+        
+        // Set z-index for proper layering
+        cmd.z_index = z_index;
         
         commands[(*command_count)++] = cmd;
     }
@@ -2053,6 +2331,706 @@ static void element_input_to_commands(KryonRuntime* runtime, KryonElement* eleme
     cmd.data.draw_input.has_focus = has_focus;
     
     commands[(*command_count)++] = cmd;
+}
+
+// Helper function to check for dynamic dropdown changes and update state
+static bool check_dropdown_dynamic_changes(KryonRuntime* runtime, KryonElement* element) {
+    if (!runtime->dropdown_state.is_dropdown_open) {
+        return false;
+    }
+    
+    // Count current options
+    int current_option_count = 0;
+    for (int i = 0; i < 50; i++) { // Increased from 20 to 50 for more options
+        char option_key[32];
+        snprintf(option_key, sizeof(option_key), "options[%d]", i);
+        const char* option = get_element_property_string(element, option_key);
+        if (option) {
+            current_option_count++;
+        } else {
+            break;
+        }
+    }
+    
+    // Check current selected index
+    int current_selected_index = get_element_property_int(element, "selectedIndex", -1);
+    
+    // Detect changes
+    bool options_changed = (current_option_count != runtime->dropdown_state.cached_option_count);
+    bool selection_changed = (current_selected_index != runtime->dropdown_state.cached_selected_index);
+    
+    if (options_changed || selection_changed) {
+        printf("DEBUG: Dynamic dropdown changes detected - options: %d->%d, selected: %d->%d\n",
+               runtime->dropdown_state.cached_option_count, current_option_count,
+               runtime->dropdown_state.cached_selected_index, current_selected_index);
+        
+        // Update cached values
+        runtime->dropdown_state.cached_option_count = current_option_count;
+        runtime->dropdown_state.cached_selected_index = current_selected_index;
+        runtime->dropdown_state.option_count = current_option_count;
+        runtime->dropdown_state.selected_option_index = current_selected_index;
+        
+        // If options changed, refresh filtered indices for search
+        if (options_changed && runtime->dropdown_state.is_searchable) {
+            if (runtime->dropdown_state.filtered_indices) {
+                kryon_free(runtime->dropdown_state.filtered_indices);
+            }
+            runtime->dropdown_state.filtered_indices = kryon_alloc(current_option_count * sizeof(int));
+            if (runtime->dropdown_state.filtered_indices) {
+                for (int i = 0; i < current_option_count; i++) {
+                    runtime->dropdown_state.filtered_indices[i] = i;
+                }
+                runtime->dropdown_state.filtered_count = current_option_count;
+            }
+        }
+        
+        // If multi-select and options changed, resize selected indices array
+        if (options_changed && runtime->dropdown_state.is_multi_select && current_option_count > 0) {
+            if (runtime->dropdown_state.selected_indices) {
+                kryon_free(runtime->dropdown_state.selected_indices);
+            }
+            runtime->dropdown_state.selected_indices = kryon_alloc(current_option_count * sizeof(bool));
+            if (runtime->dropdown_state.selected_indices) {
+                // Initialize all to false
+                for (int i = 0; i < current_option_count; i++) {
+                    runtime->dropdown_state.selected_indices[i] = false;
+                }
+                // Set selected_index if valid
+                if (current_selected_index >= 0 && current_selected_index < current_option_count) {
+                    runtime->dropdown_state.selected_indices[current_selected_index] = true;
+                    runtime->dropdown_state.selected_count = 1;
+                } else {
+                    runtime->dropdown_state.selected_count = 0;
+                }
+            }
+        }
+        
+        // Reset scroll position when options change
+        if (options_changed) {
+            runtime->dropdown_state.scroll_offset = 0;
+            runtime->dropdown_state.keyboard_selected_index = (current_selected_index >= 0) ? current_selected_index : 0;
+        }
+        
+        return true; // Changes detected
+    }
+    
+    return false; // No changes
+}
+
+
+// Helper function to update filtered options based on search text
+static void update_dropdown_filter(KryonRuntime* runtime, KryonElement* element) {
+    if (!runtime->dropdown_state.is_searchable || !runtime->dropdown_state.filtered_indices) {
+        return;
+    }
+    
+    const char* search_text = runtime->dropdown_state.search_text;
+    int option_count = runtime->dropdown_state.option_count;
+    int filtered_count = 0;
+    
+    // Convert search text to lowercase for case-insensitive search
+    char search_lower[256];
+    strncpy(search_lower, search_text, sizeof(search_lower) - 1);
+    search_lower[sizeof(search_lower) - 1] = '\0';
+    for (char* p = search_lower; *p; ++p) *p = tolower(*p);
+    
+    // Filter options based on search text
+    for (int i = 0; i < option_count; i++) {
+        char option_key[32];
+        snprintf(option_key, sizeof(option_key), "options[%d]", i);
+        const char* option = get_element_property_string(element, option_key);
+        
+        if (option) {
+            // Convert option to lowercase for comparison
+            char option_lower[256];
+            strncpy(option_lower, option, sizeof(option_lower) - 1);
+            option_lower[sizeof(option_lower) - 1] = '\0';
+            for (char* p = option_lower; *p; ++p) *p = tolower(*p);
+            
+            // Check if option contains search text
+            if (strlen(search_text) == 0 || strstr(option_lower, search_lower) != NULL) {
+                runtime->dropdown_state.filtered_indices[filtered_count] = i;
+                filtered_count++;
+            }
+        }
+    }
+    
+    runtime->dropdown_state.filtered_count = filtered_count;
+    
+    // Reset scroll offset if filter changed
+    runtime->dropdown_state.scroll_offset = 0;
+    
+    // Update keyboard selection to first visible item
+    if (filtered_count > 0 && runtime->dropdown_state.use_keyboard_selection) {
+        runtime->dropdown_state.keyboard_selected_index = runtime->dropdown_state.filtered_indices[0];
+    }
+}
+
+// Convert Dropdown element to render commands
+static void element_dropdown_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+    if (*command_count >= max_commands - 10) return; // Need space for dropdown + popup commands
+
+    // Get dropdown properties
+    float posX = get_element_property_float(element, "posX", 0.0f);
+    float posY = get_element_property_float(element, "posY", 0.0f);
+    float width = get_element_property_float(element, "width", 200.0f);
+    float height = get_element_property_float(element, "height", 32.0f);
+    
+    // Get color properties
+    uint32_t bg_color_val = get_element_property_color(element, "backgroundColor", 0xFFFFFFFF);
+    uint32_t border_color_val = get_element_property_color(element, "borderColor", 0xCCCCCCFF);
+    uint32_t text_color_val = get_element_property_color(element, "color", 0x333333FF);
+    
+    float border_width = get_element_property_float(element, "borderWidth", 1.0f);
+    float border_radius = get_element_property_float(element, "borderRadius", 4.0f);
+    float font_size = get_element_property_float(element, "fontSize", 14.0f);
+    
+    // Get dropdown-specific properties
+    const char* placeholder = get_element_property_string(element, "placeholder");
+    if (!placeholder) placeholder = "Select option...";
+    
+    // Get options array once at the beginning
+    size_t options_count = 0;
+    const char** options = get_element_property_array(element, "options", &options_count);
+    
+    int selected_index = get_element_property_int(element, "selectedIndex", -1);
+    bool is_disabled = get_element_property_bool(element, "disabled", false);
+    bool is_multiple = get_element_property_bool(element, "multiple", false);
+    float max_height = get_element_property_float(element, "maxHeight", 200.0f); // Default max height
+    
+    // Create unique dropdown ID
+    char dropdown_id[64];
+    snprintf(dropdown_id, sizeof(dropdown_id), "dropdown_%p", (void*)element);
+    
+    // Check if this dropdown is currently open
+    bool is_open = (runtime->dropdown_state.is_dropdown_open && 
+                   runtime->dropdown_state.dropdown_id && 
+                   strcmp(runtime->dropdown_state.dropdown_id, dropdown_id) == 0);
+    
+    
+    // Check if mouse is hovering over dropdown
+    bool is_hovered = (runtime->mouse_position.x >= posX && 
+                      runtime->mouse_position.x <= posX + width &&
+                      runtime->mouse_position.y >= posY && 
+                      runtime->mouse_position.y <= posY + height);
+    
+    
+    // Handle dropdown click events
+    
+    if (is_hovered && runtime->mouse_clicked_this_frame && !is_disabled) {
+        if (is_open) {
+            // Close dropdown
+            if (runtime->dropdown_state.dropdown_id) {
+                free(runtime->dropdown_state.dropdown_id);
+            }
+            runtime->dropdown_state.dropdown_id = NULL;
+            runtime->dropdown_state.is_dropdown_open = false;
+            runtime->dropdown_state.hovered_option_index = -1;
+        } else {
+            // Open dropdown - get options array
+            size_t option_count = 0;
+            const char** options = get_element_property_array(element, "options", &option_count);
+            
+            if (runtime->dropdown_state.dropdown_id) {
+                free(runtime->dropdown_state.dropdown_id);
+            }
+            runtime->dropdown_state.dropdown_id = strdup(dropdown_id);
+            runtime->dropdown_state.is_dropdown_open = true;
+            runtime->dropdown_state.dropdown_position = (KryonVec2){posX, posY + height};
+            runtime->dropdown_state.dropdown_width = width;
+            runtime->dropdown_state.hovered_option_index = -1;
+            runtime->dropdown_state.option_count = options_count;
+            runtime->dropdown_state.keyboard_selected_index = selected_index >= 0 ? selected_index : 0;
+            runtime->dropdown_state.use_keyboard_selection = false;
+            runtime->dropdown_state.is_multi_select = is_multiple;
+            runtime->dropdown_state.max_dropdown_height = max_height;
+            runtime->dropdown_state.scroll_offset = 0;
+            
+            // Calculate how many options can be visible at once
+            float option_height = height;
+            runtime->dropdown_state.visible_options = (int)(max_height / option_height);
+            if (runtime->dropdown_state.visible_options > options_count) {
+                runtime->dropdown_state.visible_options = options_count;
+            }
+            
+            // Initialize multi-select state
+            if (is_multiple && options_count > 0) {
+                // Allocate selected indices array
+                if (runtime->dropdown_state.selected_indices) {
+                    kryon_free(runtime->dropdown_state.selected_indices);
+                }
+                runtime->dropdown_state.selected_indices = kryon_alloc(options_count * sizeof(bool));
+                if (runtime->dropdown_state.selected_indices) {
+                    // Initialize all to false
+                    for (int i = 0; i < options_count; i++) {
+                        runtime->dropdown_state.selected_indices[i] = false;
+                    }
+                    // Set selected_index if provided
+                    if (selected_index >= 0 && selected_index < options_count) {
+                        runtime->dropdown_state.selected_indices[selected_index] = true;
+                        runtime->dropdown_state.selected_count = 1;
+                    } else {
+                        runtime->dropdown_state.selected_count = 0;
+                    }
+                }
+            } else {
+                runtime->dropdown_state.selected_count = (selected_index >= 0) ? 1 : 0;
+            }
+            
+            // Initialize search functionality
+            bool is_searchable = get_element_property_bool(element, "searchable", false);
+            runtime->dropdown_state.is_searchable = is_searchable;
+            
+            if (is_searchable) {
+                // Clear search text
+                runtime->dropdown_state.search_text[0] = '\0';
+                
+                // Allocate filtered indices array
+                if (runtime->dropdown_state.filtered_indices) {
+                    kryon_free(runtime->dropdown_state.filtered_indices);
+                }
+                runtime->dropdown_state.filtered_indices = kryon_alloc(options_count * sizeof(int));
+                
+                // Initially all options are visible (no filter applied)
+                if (runtime->dropdown_state.filtered_indices) {
+                    for (int i = 0; i < options_count; i++) {
+                        runtime->dropdown_state.filtered_indices[i] = i;
+                    }
+                    runtime->dropdown_state.filtered_count = options_count;
+                } else {
+                    runtime->dropdown_state.filtered_count = 0;
+                }
+            } else {
+                runtime->dropdown_state.filtered_count = option_count;
+            }
+            
+            // Initialize cached values for dynamic change detection
+            runtime->dropdown_state.cached_option_count = option_count;
+            runtime->dropdown_state.cached_selected_index = selected_index;
+            runtime->dropdown_state.needs_refresh = false;
+        }
+    }
+    
+    // Convert colors to KryonColor format
+    KryonColor bg_color = {
+        ((bg_color_val >> 24) & 0xFF) / 255.0f,
+        ((bg_color_val >> 16) & 0xFF) / 255.0f,
+        ((bg_color_val >> 8) & 0xFF) / 255.0f,
+        (bg_color_val & 0xFF) / 255.0f
+    };
+    
+    KryonColor border_color = {
+        ((border_color_val >> 24) & 0xFF) / 255.0f,
+        ((border_color_val >> 16) & 0xFF) / 255.0f,
+        ((border_color_val >> 8) & 0xFF) / 255.0f,
+        (border_color_val & 0xFF) / 255.0f
+    };
+    
+    KryonColor text_color = {
+        ((text_color_val >> 24) & 0xFF) / 255.0f,
+        ((text_color_val >> 16) & 0xFF) / 255.0f,
+        ((text_color_val >> 8) & 0xFF) / 255.0f,
+        (text_color_val & 0xFF) / 255.0f
+    };
+    
+    
+    // Apply hover effects
+    if (is_hovered && !is_disabled) {
+        bg_color.r = fminf(1.0f, bg_color.r + 0.02f);
+        bg_color.g = fminf(1.0f, bg_color.g + 0.02f);
+        bg_color.b = fminf(1.0f, bg_color.b + 0.02f);
+    }
+    
+    // Determine display text
+    const char* display_text = placeholder;
+    static char multi_select_text[256]; // Static buffer for multi-select display
+    
+    if (is_multiple && runtime->dropdown_state.is_dropdown_open && 
+        runtime->dropdown_state.selected_indices && runtime->dropdown_state.selected_count > 0) {
+        // Multi-select mode - show count or first few selected items
+        if (runtime->dropdown_state.selected_count == 1) {
+            // Find the selected item
+            for (int i = 0; i < runtime->dropdown_state.option_count; i++) {
+                if (runtime->dropdown_state.selected_indices[i]) {
+                    if (options && i < options_count) {
+                        display_text = options[i];
+                    }
+                    break;
+                }
+            }
+        } else {
+            // Multiple items selected - show count
+            snprintf(multi_select_text, sizeof(multi_select_text), "%d items selected", 
+                    runtime->dropdown_state.selected_count);
+            display_text = multi_select_text;
+        }
+    } else if (!is_multiple && selected_index >= 0) {
+        // Single-select mode - show selected option
+        if (options && selected_index < options_count) {
+            display_text = options[selected_index];
+        }
+    }
+    
+    // Draw main dropdown background
+    KryonRenderCommand bg_cmd = kryon_cmd_draw_rect(
+        (KryonVec2){posX, posY},
+        (KryonVec2){width, height},
+        bg_color,
+        border_radius
+    );
+    bg_cmd.data.draw_rect.border_width = border_width;
+    bg_cmd.data.draw_rect.border_color = border_color;
+    bg_cmd.data.draw_rect.border_radius = border_radius;
+    bg_cmd.z_index = 10; // Ensure dropdown is visible above basic elements
+    commands[(*command_count)++] = bg_cmd;
+    
+    // Draw display text
+    KryonRenderCommand text_cmd = kryon_cmd_draw_text(
+        (KryonVec2){posX + 12.0f, posY + height/2 - font_size/2},
+        display_text,
+        font_size,
+        text_color
+    );
+    text_cmd.z_index = 11; // Text above dropdown background
+    commands[(*command_count)++] = text_cmd;
+    
+    // Draw dropdown arrow
+    const char* arrow = is_open ? "▲" : "▼";
+    KryonRenderCommand arrow_cmd = kryon_cmd_draw_text(
+        (KryonVec2){posX + width - 24.0f, posY + height/2 - font_size/2},
+        arrow,
+        font_size,
+        text_color
+    );
+    arrow_cmd.z_index = 11; // Arrow above dropdown background
+    commands[(*command_count)++] = arrow_cmd;
+    
+    // If dropdown is open, draw the popup list
+    if (is_open) {
+        // Use the already loaded options array from above
+        size_t option_count = options_count;
+        
+        if (option_count > 0) {
+            float option_height = height;
+            
+            // Calculate visible options and popup height (limited by maxHeight)
+            int visible_options = runtime->dropdown_state.visible_options;
+            float popup_height = visible_options * option_height;
+            float popup_y = runtime->dropdown_state.dropdown_position.y;
+            
+            // Calculate rendering range
+            int start_index = runtime->dropdown_state.scroll_offset;
+            int end_index = start_index + visible_options;
+            if (end_index > option_count) end_index = option_count;
+            
+            // Draw popup background with higher z-index
+            KryonColor popup_bg = {1.0f, 1.0f, 1.0f, 1.0f}; // White background
+            KryonRenderCommand popup_bg_cmd = kryon_cmd_draw_rect(
+                (KryonVec2){posX, popup_y},
+                (KryonVec2){width, popup_height},
+                popup_bg,
+                4.0f
+            );
+            popup_bg_cmd.data.draw_rect.border_width = border_width;
+            popup_bg_cmd.data.draw_rect.border_color = border_color;
+            popup_bg_cmd.data.draw_rect.border_radius = 4.0f;
+            popup_bg_cmd.z_index = 1000; // High z-index for popup
+            commands[(*command_count)++] = popup_bg_cmd;
+            
+            // Check for dynamic changes (options added/removed, selectedIndex changed)
+            bool changes_detected = check_dropdown_dynamic_changes(runtime, element);
+            if (changes_detected) {
+                // Recalculate effective option count and visible options after changes
+                int effective_option_count = runtime->dropdown_state.is_searchable 
+                    ? runtime->dropdown_state.filtered_count 
+                    : runtime->dropdown_state.option_count;
+                
+                // Update visible options calculation
+                visible_options = runtime->dropdown_state.visible_options;
+                if (visible_options > effective_option_count) {
+                    visible_options = effective_option_count;
+                }
+                popup_height = visible_options * option_height;
+            }
+            
+            // Update filtered options if searchable
+            if (runtime->dropdown_state.is_searchable) {
+                update_dropdown_filter(runtime, element);
+            }
+            
+            
+            // Draw search input field if dropdown is searchable
+            float search_height = 0.0f;
+            if (runtime->dropdown_state.is_searchable) {
+                search_height = height * 0.8f; // Slightly smaller than main dropdown
+                
+                // Draw search input background
+                KryonColor search_bg = {0.95f, 0.95f, 0.95f, 1.0f}; // Light gray
+                KryonRenderCommand search_bg_cmd = kryon_cmd_draw_rect(
+                    (KryonVec2){posX + 4.0f, popup_y + 4.0f},
+                    (KryonVec2){width - 8.0f, search_height},
+                    search_bg,
+                    2.0f
+                );
+                search_bg_cmd.data.draw_rect.border_width = 1.0f;
+                search_bg_cmd.data.draw_rect.border_color = (KryonColor){0.8f, 0.8f, 0.8f, 1.0f};
+                search_bg_cmd.z_index = 1001; // Above popup background
+                commands[(*command_count)++] = search_bg_cmd;
+                
+                // Draw search text or placeholder
+                const char* search_display = (strlen(runtime->dropdown_state.search_text) > 0) 
+                    ? runtime->dropdown_state.search_text 
+                    : "Search...";
+                KryonColor search_text_color = (strlen(runtime->dropdown_state.search_text) > 0) 
+                    ? text_color 
+                    : (KryonColor){0.6f, 0.6f, 0.6f, 1.0f}; // Gray for placeholder
+                    
+                KryonRenderCommand search_text_cmd = kryon_cmd_draw_text(
+                    (KryonVec2){posX + 8.0f, popup_y + 4.0f + (search_height - font_size) / 2},
+                    search_display,
+                    font_size * 0.9f,
+                    search_text_color
+                );
+                search_text_cmd.z_index = 1002;
+                commands[(*command_count)++] = search_text_cmd;
+                
+                // Adjust popup_y to account for search field
+                popup_y += search_height + 8.0f; // Add some padding
+            }
+            
+            // Recalculate popup height and positions with search field
+            int effective_option_count = runtime->dropdown_state.is_searchable 
+                ? runtime->dropdown_state.filtered_count 
+                : option_count;
+            visible_options = runtime->dropdown_state.visible_options;
+            if (visible_options > effective_option_count) {
+                visible_options = effective_option_count;
+            }
+            popup_height = visible_options * option_height;
+            
+            // Update dropdown state positions
+            runtime->dropdown_state.dropdown_position.y = popup_y;
+            runtime->dropdown_state.dropdown_height = popup_height + search_height + (search_height > 0 ? 8.0f : 0.0f);
+            
+            // Draw scroll indicators if needed
+            bool can_scroll_up = (runtime->dropdown_state.scroll_offset > 0);
+            bool can_scroll_down = (end_index < option_count);
+            
+            if (can_scroll_up) {
+                // Draw up arrow at top
+                KryonRenderCommand up_arrow_cmd = kryon_cmd_draw_text(
+                    (KryonVec2){posX + width - 16.0f, popup_y + 2.0f},
+                    "▲",
+                    font_size * 0.8f,
+                    (KryonColor){0.5f, 0.5f, 0.5f, 1.0f} // Gray
+                );
+                up_arrow_cmd.z_index = 1003;
+                commands[(*command_count)++] = up_arrow_cmd;
+            }
+            
+            if (can_scroll_down) {
+                // Draw down arrow at bottom
+                KryonRenderCommand down_arrow_cmd = kryon_cmd_draw_text(
+                    (KryonVec2){posX + width - 16.0f, popup_y + popup_height - font_size},
+                    "▼",
+                    font_size * 0.8f,
+                    (KryonColor){0.5f, 0.5f, 0.5f, 1.0f} // Gray
+                );
+                down_arrow_cmd.z_index = 1003;
+                commands[(*command_count)++] = down_arrow_cmd;
+            }
+            
+            // Check for option hover/click (only render visible options)
+            
+            for (int display_idx = start_index; display_idx < end_index && *command_count < max_commands; display_idx++) {
+                // Get the actual option index (may be filtered)
+                int actual_option_idx = runtime->dropdown_state.is_searchable 
+                    ? runtime->dropdown_state.filtered_indices[display_idx]
+                    : display_idx;
+                    
+                // Calculate position relative to popup (not absolute option index)
+                int relative_pos = display_idx - start_index;
+                float option_y = popup_y + relative_pos * option_height;
+                bool option_hovered = (runtime->mouse_position.x >= posX && 
+                                     runtime->mouse_position.x <= posX + width &&
+                                     runtime->mouse_position.y >= option_y && 
+                                     runtime->mouse_position.y <= option_y + option_height);
+                
+                // Update hover state based on mouse movement (but not during keyboard navigation)
+                if (option_hovered && !runtime->dropdown_state.use_keyboard_selection) {
+                    runtime->dropdown_state.hovered_option_index = actual_option_idx;
+                }
+                
+                // Handle option click
+                if (option_hovered && runtime->mouse_clicked_this_frame) {
+                    if (runtime->dropdown_state.is_multi_select && runtime->dropdown_state.selected_indices) {
+                        // Multi-select mode - toggle selection (use actual option index)
+                        bool was_selected = runtime->dropdown_state.selected_indices[actual_option_idx];
+                        runtime->dropdown_state.selected_indices[actual_option_idx] = !was_selected;
+                        
+                        if (was_selected) {
+                            runtime->dropdown_state.selected_count--;
+                        } else {
+                            runtime->dropdown_state.selected_count++;
+                        }
+                        
+                        
+                        // In multi-select mode, don't close dropdown on click
+                    } else {
+                        // Single-select mode - set selected index and close
+                        selected_index = actual_option_idx;
+                        
+                        // Update element property
+                        int64_t new_selected_index = actual_option_idx;
+                        kryon_element_set_property_by_name(element, "selectedIndex", &new_selected_index);
+                        
+                        // Close dropdown
+                        if (runtime->dropdown_state.dropdown_id) {
+                            free(runtime->dropdown_state.dropdown_id);
+                        }
+                        runtime->dropdown_state.dropdown_id = NULL;
+                        runtime->dropdown_state.is_dropdown_open = false;
+                        runtime->dropdown_state.hovered_option_index = -1;
+                        runtime->dropdown_state.use_keyboard_selection = false;
+                        
+                    }
+                }
+                
+                // Determine if this option should be highlighted and if it's selected
+                bool should_highlight = false;
+                bool is_option_selected = false;
+                KryonColor highlight_bg = {0.9f, 0.9f, 0.9f, 1.0f}; // Default hover
+                
+                // Check if this option is selected (different logic for multi vs single select)
+                if (runtime->dropdown_state.is_multi_select && runtime->dropdown_state.selected_indices) {
+                    is_option_selected = runtime->dropdown_state.selected_indices[actual_option_idx];
+                } else {
+                    is_option_selected = (actual_option_idx == selected_index);
+                }
+                
+                if (runtime->dropdown_state.use_keyboard_selection && 
+                    actual_option_idx == runtime->dropdown_state.keyboard_selected_index) {
+                    // Keyboard selection - stronger highlight
+                    should_highlight = true;
+                    highlight_bg = (KryonColor){0.8f, 0.8f, 1.0f, 1.0f}; // Light blue for keyboard
+                } else if (!runtime->dropdown_state.use_keyboard_selection && option_hovered) {
+                    // Mouse hover - lighter highlight
+                    should_highlight = true;
+                    highlight_bg = (KryonColor){0.9f, 0.9f, 0.9f, 1.0f}; // Light gray for mouse
+                } else if (is_option_selected) {
+                    // Currently selected option - subtle highlight
+                    should_highlight = true;
+                    highlight_bg = (KryonColor){0.95f, 0.95f, 0.95f, 1.0f}; // Very light gray
+                }
+                
+                if (should_highlight) {
+                    KryonRenderCommand hover_cmd = kryon_cmd_draw_rect(
+                        (KryonVec2){posX, option_y},
+                        (KryonVec2){width, option_height},
+                        highlight_bg,
+                        0.0f
+                    );
+                    hover_cmd.z_index = 1001; // Above popup background
+                    commands[(*command_count)++] = hover_cmd;
+                }
+                
+                // Draw option with support for icons and custom colors
+                const char* option_text = NULL;
+                if (options && actual_option_idx < option_count) {
+                    option_text = options[actual_option_idx];
+                }
+                if (option_text) {
+                    float text_x_offset = 12.0f;
+                    bool show_icons = get_element_property_bool(element, "showIcons", false);
+                    
+                    // Get custom color for this option if specified
+                    KryonColor option_text_color = text_color; // Default to dropdown text color
+                    char color_key[32];
+                    snprintf(color_key, sizeof(color_key), "optionColors[%d]", actual_option_idx);
+                    const char* color_string = get_element_property_string(element, color_key);
+                    if (color_string) {
+                        uint32_t color_val = kryon_color_parse_string(color_string);
+                        option_text_color = (KryonColor){
+                            ((color_val >> 24) & 0xFF) / 255.0f,
+                            ((color_val >> 16) & 0xFF) / 255.0f,
+                            ((color_val >> 8) & 0xFF) / 255.0f,
+                            (color_val & 0xFF) / 255.0f
+                        };
+                    }
+                    
+                    // Draw checkbox for multi-select mode
+                    if (runtime->dropdown_state.is_multi_select) {
+                        text_x_offset = 32.0f; // Make room for checkbox
+                        
+                        // Draw checkbox background
+                        float checkbox_size = 12.0f;
+                        float checkbox_x = posX + 8.0f;
+                        float checkbox_y = option_y + option_height/2 - checkbox_size/2;
+                        
+                        KryonColor checkbox_bg = {1.0f, 1.0f, 1.0f, 1.0f}; // White background
+                        KryonRenderCommand checkbox_cmd = kryon_cmd_draw_rect(
+                            (KryonVec2){checkbox_x, checkbox_y},
+                            (KryonVec2){checkbox_size, checkbox_size},
+                            checkbox_bg,
+                            2.0f
+                        );
+                        checkbox_cmd.data.draw_rect.border_width = 1.0f;
+                        checkbox_cmd.data.draw_rect.border_color = border_color;
+                        checkbox_cmd.z_index = 1002; // Above hover background
+                        commands[(*command_count)++] = checkbox_cmd;
+                        
+                        // Draw checkmark if selected
+                        if (is_option_selected) {
+                            const char* checkmark = "✓";
+                            KryonRenderCommand check_cmd = kryon_cmd_draw_text(
+                                (KryonVec2){checkbox_x + 2.0f, checkbox_y + 1.0f},
+                                checkmark,
+                                font_size * 0.8f, // Slightly smaller checkmark
+                                (KryonColor){0.0f, 0.6f, 0.0f, 1.0f} // Green checkmark
+                            );
+                            check_cmd.z_index = 1003; // Above checkbox
+                            commands[(*command_count)++] = check_cmd;
+                        }
+                    }
+                    
+                    // Draw icon if enabled and available
+                    if (show_icons) {
+                        char icon_key[32];
+                        snprintf(icon_key, sizeof(icon_key), "optionIcons[%d]", actual_option_idx);
+                        const char* icon_text = get_element_property_string(element, icon_key);
+                        if (icon_text) {
+                            float icon_size = font_size * 1.2f; // Slightly larger than text
+                            float icon_x = posX + text_x_offset;
+                            float icon_y = option_y + option_height/2 - icon_size/2;
+                            
+                            KryonRenderCommand icon_cmd = kryon_cmd_draw_text(
+                                (KryonVec2){icon_x, icon_y},
+                                icon_text,
+                                icon_size,
+                                option_text_color // Use the same color as text (could be customized)
+                            );
+                            icon_cmd.z_index = 1002; // Above hover background
+                            commands[(*command_count)++] = icon_cmd;
+                            
+                            // Adjust text position to make room for icon
+                            text_x_offset += icon_size + 4.0f; // Add spacing after icon
+                        }
+                    }
+                    
+                    // Draw option text (with appropriate offset for checkbox and icon)
+                    KryonRenderCommand option_text_cmd = kryon_cmd_draw_text(
+                        (KryonVec2){posX + text_x_offset, option_y + option_height/2 - font_size/2},
+                        option_text,
+                        font_size,
+                        option_text_color
+                    );
+                    option_text_cmd.z_index = 1002; // Above hover background
+                    commands[(*command_count)++] = option_text_cmd;
+                }
+            }
+        }
+    }
+    
 }
 
 // Convert Image element to render commands
@@ -2493,6 +3471,7 @@ static void element_text_to_commands(KryonRuntime* runtime, KryonElement* elemen
     const char* font_family = get_element_property_string(element, "fontFamily");
     const char* font_weight = get_element_property_string(element, "fontWeight");
     const char* text_align = get_element_property_string(element, "textAlignment");
+    int z_index = get_element_property_int(element, "zIndex", 0); // Default z-index 0
     
     // Get text positioning
     float posX = get_element_property_float(element, "posX", 0.0f);
@@ -2564,7 +3543,7 @@ static void element_text_to_commands(KryonRuntime* runtime, KryonElement* elemen
     // Create text render command with full properties
     KryonRenderCommand cmd = {0};
     cmd.type = KRYON_CMD_DRAW_TEXT;
-    cmd.z_index = 0;
+    cmd.z_index = z_index;
     cmd.data.draw_text = (KryonDrawTextData){
         .position = position,
         .text = strdup(text),
@@ -2593,6 +3572,7 @@ static void render_element(KryonElement* element, KryonRenderCommand* commands, 
         {"Text", element_text_to_commands},
         {"Button", element_button_to_commands},
         {"Input", element_input_to_commands},
+        {"Dropdown", element_dropdown_to_commands},
         {"Image", element_image_to_commands},
         // Add more element types here
     };
@@ -2697,8 +3677,11 @@ void kryon_element_tree_to_render_commands(KryonElement* root, KryonRenderComman
     element_to_commands_recursive(root, commands, command_count, max_commands);
     
     // Assign z-indices based on render order (first command = lowest z-index)
+    // But preserve high z-indices set by elements like dropdown popups
     for (size_t i = 0; i < *command_count; i++) {
-        commands[i].z_index = (int)i;
+        if (commands[i].z_index < 1000) { // Don't overwrite high z-indices set by popups
+            commands[i].z_index = (int)i;
+        }
     }
 }
 

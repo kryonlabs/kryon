@@ -144,6 +144,12 @@
          .hex_code = 0x010D,
          .type_hint = KRYON_TYPE_HINT_FLOAT
      },
+     {
+         .canonical = "zIndex",
+         .aliases = (const char*[]){"z", "layerIndex", NULL},
+         .hex_code = 0x010E,
+         .type_hint = KRYON_TYPE_HINT_INTEGER
+     },
  
      // -- Box Model Shorthands (0x011x) --
      {
@@ -282,6 +288,12 @@
          .hex_code = 0x0304,
          .type_hint = KRYON_TYPE_HINT_STRING
      },
+     {
+         .canonical = "fontStyle",
+         .aliases = (const char*[]){"fStyle", NULL},
+         .hex_code = 0x0305,
+         .type_hint = KRYON_TYPE_HINT_STRING
+     },
  
      // -- Transform & Animation Properties (0x04xx) --
      {
@@ -333,6 +345,60 @@
          .aliases = (const char*[]){NULL},
          .hex_code = 0x0504,
          .type_hint = KRYON_TYPE_HINT_BOOLEAN
+     },
+     {
+         .canonical = "multiple",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0505,
+         .type_hint = KRYON_TYPE_HINT_BOOLEAN
+     },
+     {
+         .canonical = "maxHeight",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0506,
+         .type_hint = KRYON_TYPE_HINT_DIMENSION
+     },
+     {
+         .canonical = "searchable",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0507,
+         .type_hint = KRYON_TYPE_HINT_BOOLEAN
+     },
+     {
+         .canonical = "showIcons",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0508,
+         .type_hint = KRYON_TYPE_HINT_BOOLEAN
+     },
+     {
+         .canonical = "optionIcons",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0509,
+         .type_hint = KRYON_TYPE_HINT_ARRAY
+     },
+     {
+         .canonical = "optionColors",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x050A,
+         .type_hint = KRYON_TYPE_HINT_ARRAY
+     },
+     {
+         .canonical = "required",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x050B,
+         .type_hint = KRYON_TYPE_HINT_BOOLEAN
+     },
+     {
+         .canonical = "minSelections",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x050C,
+         .type_hint = KRYON_TYPE_HINT_INTEGER
+     },
+     {
+         .canonical = "maxSelections",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x050D,
+         .type_hint = KRYON_TYPE_HINT_INTEGER
      },
      {
          .canonical = "onClick",

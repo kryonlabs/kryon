@@ -30,7 +30,6 @@ typedef enum {
     
     // Mouse events
     KRYON_EVENT_MOUSE_MOVED,
-    KRYON_EVENT_MOUSE_MOVE = KRYON_EVENT_MOUSE_MOVED, // Alias for consistency with roadmap
     KRYON_EVENT_MOUSE_BUTTON_DOWN,
     KRYON_EVENT_MOUSE_BUTTON_UP,
     KRYON_EVENT_MOUSE_WHEEL,

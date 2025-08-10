@@ -66,6 +66,7 @@ static Color kryon_color_to_raylib(KryonColor color);
 static void draw_rounded_rect_raylib(KryonRect rect, float radius, Color color);
 static void draw_text_with_font_raylib(const char* text, KryonVec2 pos, 
                                       Font font, float font_size, Color color);
+static int compare_z_index(const void* a, const void* b);
 
 // =============================================================================
 // GLOBAL STATE
@@ -244,8 +245,22 @@ static KryonRenderResult raylib_execute_commands(KryonRenderContext* context,
     
     RaylibRenderContext* ctx = (RaylibRenderContext*)context;
     
+    // Create a copy of commands array for z-index sorting
+    KryonRenderCommand* sorted_commands = malloc(command_count * sizeof(KryonRenderCommand));
+    if (!sorted_commands) {
+        return KRYON_RENDER_ERROR_OUT_OF_MEMORY;
+    }
+    
+    // Copy commands to sortable array
     for (size_t i = 0; i < command_count; i++) {
-        const KryonRenderCommand* cmd = &commands[i];
+        sorted_commands[i] = commands[i];
+    }
+    
+    // Sort by z-index (ascending order - lowest z-index renders first)
+    qsort(sorted_commands, command_count, sizeof(KryonRenderCommand), compare_z_index);
+    
+    for (size_t i = 0; i < command_count; i++) {
+        const KryonRenderCommand* cmd = &sorted_commands[i];
         
         switch (cmd->type) {
             case KRYON_CMD_SET_CANVAS_SIZE: {
@@ -707,6 +722,9 @@ static KryonRenderResult raylib_execute_commands(KryonRenderContext* context,
         }
     }
     
+    // Cleanup sorted commands array
+    free(sorted_commands);
+    
     return KRYON_RENDER_SUCCESS;
 }
 
@@ -790,13 +808,24 @@ static KryonKey raylib_key_to_kryon(int raylib_key) {
 }
 
 static void raylib_process_input(RaylibRendererImpl* data) {
+    printf("DEBUG: raylib_process_input() called\n");
     if (!data->event_callback) {
+        printf("DEBUG: No event_callback set!\n");
         return; // No callback set
     }
+    printf("DEBUG: event_callback is set, processing input...\n");
+    
+    // Debug: Check raw mouse state
+    Vector2 debug_pos = GetMousePosition();
+    bool left_pressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
+    bool left_down = IsMouseButtonDown(MOUSE_LEFT_BUTTON);
+    printf("DEBUG: Mouse pos=(%.1f,%.1f), left_pressed=%s, left_down=%s\n", 
+           debug_pos.x, debug_pos.y, left_pressed?"true":"false", left_down?"true":"false");
     
     // Mouse button events
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         Vector2 pos = GetMousePosition();
+        printf("DEBUG: Mouse LEFT pressed at (%.1f, %.1f)\n", pos.x, pos.y);
         KryonEvent event = kryon_event_create_mouse_button(0, pos.x, pos.y, true);
         data->event_callback(&event, data->callback_data);
     }
@@ -939,4 +968,14 @@ static float raylib_measure_text_width(const char* text, float font_size) {
     // Use the actual font_size parameter for accurate measurement
     Vector2 text_size = MeasureTextEx(current_font, text, font_size, 1.0f);
     return text_size.x;
+}
+
+// Comparison function for z-index sorting
+static int compare_z_index(const void* a, const void* b) {
+    const KryonRenderCommand* cmd_a = (const KryonRenderCommand*)a;
+    const KryonRenderCommand* cmd_b = (const KryonRenderCommand*)b;
+    
+    if (cmd_a->z_index < cmd_b->z_index) return -1;
+    if (cmd_a->z_index > cmd_b->z_index) return 1;
+    return 0;
 }

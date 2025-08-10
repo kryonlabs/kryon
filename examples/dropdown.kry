@@ -49,6 +49,7 @@ App {
             padding: 12
             color: "#2d3748"
             options: ["United States", "Canada", "United Kingdom", "Australia", "Germany", "France"]
+            selectedIndex: 0
         }
     }
 }

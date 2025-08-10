@@ -382,7 +382,7 @@ KryonEvent kryon_event_create_text_input(const char* text) {
 
 KryonEvent kryon_event_create_mouse_move(float x, float y, float deltaX, float deltaY) {
     KryonEvent event = {0};
-    event.type = KRYON_EVENT_MOUSE_MOVE;
+    event.type = KRYON_EVENT_MOUSE_MOVED;
     event.timestamp = 0;
     event.data.mouseMove.x = x;
     event.data.mouseMove.y = y;

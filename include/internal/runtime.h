@@ -99,6 +99,36 @@ typedef struct KryonRuntime {
     bool mouse_clicked_this_frame;
     bool mouse_pressed_last_frame; 
     bool cursor_should_be_pointer;
+    
+    // Dropdown state management
+    struct {
+        char* dropdown_id;           // Which dropdown is open (NULL = none)
+        int selected_option_index;   // Currently selected option (-1 = none)
+        bool is_dropdown_open;       // Is any dropdown open?
+        KryonVec2 dropdown_position; // Position of open dropdown
+        float dropdown_width;        // Width of open dropdown
+        float dropdown_height;       // Height of open dropdown
+        int hovered_option_index;    // Which option is hovered (-1 = none)
+        char* focused_dropdown_id;   // Which dropdown has keyboard focus
+        int keyboard_selected_index; // Index selected via keyboard navigation
+        int option_count;            // Total number of options in current dropdown
+        bool use_keyboard_selection; // Whether to use keyboard or mouse selection
+        bool is_multi_select;        // Whether current dropdown supports multiple selection
+        bool* selected_indices;      // Array of selected states for multi-select (size = option_count)
+        int selected_count;          // Number of selected options in multi-select mode
+        float max_dropdown_height;   // Maximum height for dropdown popup (enables scrolling)
+        int scroll_offset;           // Current scroll offset for long lists
+        int visible_options;         // Number of options visible at once
+        bool is_searchable;          // Whether current dropdown supports search
+        char search_text[256];       // Current search query text
+        int* filtered_indices;       // Array of indices for options matching search (size = option_count)
+        int filtered_count;          // Number of options that match current search
+        bool needs_refresh;          // Whether dropdown needs to refresh its options/state
+        int cached_option_count;     // Last known option count for change detection
+        int cached_selected_index;   // Last known selected index for change detection
+        char* validation_error;      // Current validation error message (NULL = no error)
+        bool has_validation_error;   // Whether dropdown has validation errors
+    } dropdown_state;
 } KryonRuntime;
 
 // =============================================================================
