@@ -3,6 +3,11 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <math.h>
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 
 // Struct to hold a named color and its 32-bit RGBA value
 typedef struct {
@@ -151,4 +156,31 @@ uint32_t kryon_color_parse_string(const char *color_str) {
 
     // 4. Default if no format matches
     return 0x000000FF;
+}
+
+
+
+KryonColor color_u32_to_f32(uint32_t c) {
+    return (KryonColor){
+        ((c >> 24) & 0xFF) / 255.0f,
+        ((c >> 16) & 0xFF) / 255.0f,
+        ((c >>  8) & 0xFF) / 255.0f,
+        ((c >>  0) & 0xFF) / 255.0f
+    };
+}
+
+KryonColor color_lighten(KryonColor color, float factor) {
+    color.r = MIN(1.0f, color.r + color.r * factor);
+    color.g = MIN(1.0f, color.g + color.g * factor);
+    color.b = MIN(1.0f, color.b + color.b * factor);
+    return color;
+}
+
+KryonColor color_desaturate(KryonColor color, float factor) {
+    float gray = color.r * 0.299f + color.g * 0.587f + color.b * 0.114f;
+    float inv_factor = 1.0f - factor;
+    color.r = color.r * inv_factor + gray * factor;
+    color.g = color.g * inv_factor + gray * factor;
+    color.b = color.b * inv_factor + gray * factor;
+    return color;
 }

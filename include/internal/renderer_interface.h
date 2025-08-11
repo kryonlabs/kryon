@@ -20,7 +20,7 @@ extern "C" {
 #include "internal/types.h"
 #include "internal/events.h"
 
-#include "internal/elements.h"
+// Forward declaration to avoid circular dependency
 
 // =============================================================================
 // FORWARD DECLARATIONS
@@ -128,7 +128,6 @@ typedef struct {
     float border_radius;
     KryonElementState state;
     bool enabled;
-    char* onclick_handler;
 } KryonDrawButtonData;
 
 typedef struct {
@@ -600,7 +599,6 @@ static inline KryonRenderCommand kryon_cmd_draw_button(
         .border_radius = 4.0f,
         .state = KRYON_ELEMENT_STATE_NORMAL,
         .enabled = true,
-        .onclick_handler = NULL
     };
     return cmd;
 }

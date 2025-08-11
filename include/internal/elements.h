@@ -1,6 +1,14 @@
 /**
  * @file elements.h
- * @brief Kryon Element System - Complete Element Interface
+ * @brief Consolidated Element System - Clean Architecture
+ * 
+ * Perfect abstractions:
+ * - Generic element registration and dispatch
+ * - Abstract events with mouse position data
+ * - Clean hit testing (no element-specific code)
+ * - Element VTable interface
+ * 
+ * 0BSD License
  */
 
 #ifndef KRYON_INTERNAL_ELEMENTS_H
@@ -10,18 +18,23 @@
 extern "C" {
 #endif
 
-#include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
+#include "events.h"
 #include "internal/types.h"
-#include "internal/events.h"
+#include "internal/renderer_interface.h"
+
+// Forward declarations
+struct KryonRuntime;
+struct KryonElement;
 
 // =============================================================================
-// ELEMENT BASE TYPES
+// ELEMENT BASE STRUCTURE (Keep existing KryonElement)
 // =============================================================================
 
 /**
- * @brief Element structure
+ * @brief Element structure (existing definition preserved)
  */
 struct KryonElement {
     // Identification
@@ -75,6 +88,257 @@ struct KryonElement {
     // Scripting
     void *script_state;
 };
+
+// =============================================================================
+// ELEMENT EVENT TYPES
+// =============================================================================
+
+typedef enum {
+    // Basic interaction events
+    ELEMENT_EVENT_CLICKED,
+    ELEMENT_EVENT_DOUBLE_CLICKED,
+    ELEMENT_EVENT_HOVERED,
+    ELEMENT_EVENT_UNHOVERED,
+    ELEMENT_EVENT_FOCUSED,
+    ELEMENT_EVENT_UNFOCUSED,
+    
+    // Mouse movement with position data
+    ELEMENT_EVENT_MOUSE_MOVED,
+    
+    // Keyboard events  
+    ELEMENT_EVENT_KEY_PRESSED,
+    ELEMENT_EVENT_KEY_TYPED,
+    
+    // State change events
+    ELEMENT_EVENT_SELECTION_CHANGED,
+    ELEMENT_EVENT_VALUE_CHANGED,
+    
+    ELEMENT_EVENT_CUSTOM
+} ElementEventType;
+
+// =============================================================================
+// EVENT DATA STRUCTURES
+// =============================================================================
+
+typedef struct {
+    float x, y;
+} ElementMousePos;
+
+typedef struct {
+    char character;
+    bool shift, ctrl, alt;
+} ElementKeyTyped;
+
+typedef struct {
+    int keyCode;
+    bool shift, ctrl, alt;
+} ElementKeyPressed;
+
+typedef struct {
+    int oldValue, newValue;
+} ElementSelectionChanged;
+
+typedef struct {
+    const char* oldValue;
+    const char* newValue;
+} ElementValueChanged;
+
+typedef struct {
+    uint32_t eventId;
+    void* data;
+} ElementCustomData;
+
+// =============================================================================
+// ELEMENT EVENT STRUCTURE
+// =============================================================================
+
+typedef struct {
+    ElementEventType type;
+    uint64_t timestamp;
+    bool handled;
+    
+    union {
+        ElementMousePos mousePos;        // For MOUSE_MOVED, CLICKED, etc.
+        ElementKeyTyped keyTyped;        // For KEY_TYPED
+        ElementKeyPressed keyPressed;    // For KEY_PRESSED
+        ElementSelectionChanged selectionChanged; // For SELECTION_CHANGED
+        ElementValueChanged valueChanged;     // For VALUE_CHANGED
+        ElementCustomData custom;        // For CUSTOM events
+    } data;
+} ElementEvent;
+
+// =============================================================================
+// ELEMENT BOUNDS
+// =============================================================================
+
+typedef struct {
+    float x, y, width, height;
+} ElementBounds;
+
+// =============================================================================
+// ELEMENT VTABLE INTERFACE
+// =============================================================================
+
+typedef struct {
+    /**
+     * Render element to command buffer
+     */
+    void (*render)(struct KryonRuntime* runtime, 
+                  struct KryonElement* element,
+                  KryonRenderCommand* commands,
+                  size_t* command_count,
+                  size_t max_commands);
+    
+    /**
+     * Handle abstract element event
+     */
+    bool (*handle_event)(struct KryonRuntime* runtime,
+                        struct KryonElement* element,
+                        const ElementEvent* event);
+    
+    /**
+     * Destroy element and cleanup state
+     */
+    void (*destroy)(struct KryonRuntime* runtime,
+                   struct KryonElement* element);
+} ElementVTable;
+
+// =============================================================================
+// HIT TESTING MANAGER
+// =============================================================================
+
+typedef struct HitTestManager {
+    struct KryonElement* hovered_element;
+    struct KryonElement* focused_element;
+    struct KryonElement* clicked_element;
+    
+    uint64_t last_click_time;
+    float last_click_x, last_click_y;
+} HitTestManager;
+
+// =============================================================================
+// ELEMENT SYSTEM FUNCTIONS
+// =============================================================================
+
+/**
+ * Initialize element registry
+ */
+bool element_registry_init(void);
+
+/**
+ * Cleanup element registry
+ */
+void element_registry_cleanup(void);
+
+/**
+ * Register element type with VTable
+ */
+bool element_register_type(const char* type_name, const ElementVTable* vtable);
+
+/**
+ * Get VTable for element type
+ */
+const ElementVTable* element_get_vtable(const char* type_name);
+
+/**
+ * Dispatch event to element via registry
+ */
+bool element_dispatch_event(struct KryonRuntime* runtime, 
+                           struct KryonElement* element, 
+                           const ElementEvent* event);
+
+// =============================================================================
+// HIT TESTING FUNCTIONS (Generic)
+// =============================================================================
+
+/**
+ * Create hit testing manager
+ */
+HitTestManager* hit_test_manager_create(void);
+
+/**
+ * Destroy hit testing manager
+ */
+void hit_test_manager_destroy(HitTestManager* manager);
+
+/**
+ * Get element bounds from properties
+ */
+ElementBounds element_get_bounds(struct KryonElement* element);
+
+/**
+ * Test if point is within bounds
+ */
+bool point_in_bounds(ElementBounds bounds, float x, float y);
+
+/**
+ * Find topmost element at coordinates
+ */
+struct KryonElement* hit_test_find_element_at_point(struct KryonElement* root, float x, float y);
+
+/**
+ * Find dropdown popup at coordinates (highest priority)
+ */
+struct KryonElement* hit_test_find_dropdown_popup_at_point(struct KryonElement* root, float x, float y);
+
+/**
+ * Update hover states and send mouse position to elements
+ */
+void hit_test_update_hover_states(HitTestManager* manager, 
+                                 struct KryonRuntime* runtime,
+                                 struct KryonElement* root, 
+                                 float mouse_x, float mouse_y);
+
+/**
+ * Process input event and convert to abstract element events
+ */
+void hit_test_process_input_event(HitTestManager* manager,
+                                 struct KryonRuntime* runtime,
+                                 struct KryonElement* root,
+                                 const KryonEvent* input_event);
+
+// =============================================================================
+// ELEMENT RENDERING (Generic)
+// =============================================================================
+
+/**
+ * Render element via registry lookup
+ */
+bool element_render_via_registry(struct KryonRuntime* runtime, 
+                                struct KryonElement* element,
+                                KryonRenderCommand* commands,
+                                size_t* command_count,
+                                size_t max_commands);
+
+/**
+ * Destroy element via registry lookup
+ */
+void element_destroy_via_registry(struct KryonRuntime* runtime, 
+                                 struct KryonElement* element);
+
+
+
+/**
+ * @brief A generic, reusable event handler that dispatches events to script functions.
+ * Any element can use this in its VTable to support standard scriptable events
+ * like "onClick", "onHover", etc.
+ */
+ bool generic_script_event_handler(struct KryonRuntime* runtime, struct KryonElement* element, const ElementEvent* event);
+
+// =============================================================================
+// EXTERNAL UTILITY FUNCTIONS (defined elsewhere)
+// =============================================================================
+
+// Element property getters (defined in element_utils or runtime)
+extern float get_element_property_float(struct KryonElement* element, const char* name, float default_val);
+extern int get_element_property_int(struct KryonElement* element, const char* name, int default_val);
+extern bool get_element_property_bool(struct KryonElement* element, const char* name, bool default_val);
+extern const char* get_element_property_string(struct KryonElement* element, const char* name);
+extern uint32_t get_element_property_color(struct KryonElement* element, const char* name, uint32_t default_val);
+extern const char** get_element_property_array(struct KryonElement* element, const char* name, size_t* count);
+
+// Element property setters (defined in runtime)
+extern bool kryon_element_set_property_by_name(struct KryonElement* element, const char* name, const void* value);
 
 #ifdef __cplusplus
 }

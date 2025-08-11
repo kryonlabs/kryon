@@ -20,15 +20,20 @@ set(CORE_HEADERS
 )
 
 # =============================================================================
-# ELEMENT MANAGEMENT COMPONENT
+# ELEMENT MANAGEMENT COMPONENT (Consolidated Clean Architecture)
 # =============================================================================
 
 set(ELEMENTS_SOURCES
-    elements/element_manager.c
+    elements.c                      # Consolidated element infrastructure
+    elements/button.c
+    elements/dropdown.c    
+    elements/input.c
+    elements/checkbox.c
+    elements/slider.c
 )
 
 set(ELEMENTS_HEADERS
-    # Will be added when implemented
+    # Headers moved to include/internal/
 )
 
 # =============================================================================

@@ -2,6 +2,7 @@
 #define KRYON_COLOR_UTILS_H
 
 #include <stdint.h>
+#include "types.h"
 
 /**
  * @file color_utils.h
@@ -29,5 +30,21 @@
  *         Returns 0x000000FF (opaque black) if the string is null or cannot be parsed.
  */
 uint32_t kryon_color_parse_string(const char *color_str);
+
+
+/**
+ * @brief Converts a 32-bit RGBA integer (0xRRGGBBAA) to a KryonColor (4 floats).
+ */
+ KryonColor color_u32_to_f32(uint32_t c);
+
+ /**
+  * @brief Lightens a color by a given factor (0.0 to 1.0).
+  */
+ KryonColor color_lighten(KryonColor color, float factor);
+ 
+ /**
+  * @brief Desaturates a color by a given factor (0.0 to 1.0).
+  */
+ KryonColor color_desaturate(KryonColor color, float factor);
 
 #endif // KRYON_COLOR_UTILS_H

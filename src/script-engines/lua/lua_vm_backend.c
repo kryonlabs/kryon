@@ -425,13 +425,19 @@ static KryonVMResult lua_vm_call_function(KryonVM* vm, const char* function_name
         return KRYON_VM_ERROR_RUNTIME;
     }
     
-    // Set up component context before function call
-    setup_component_context(backend->L, element);
+    // Only set up component state for elements that actually need it
+    // Simple event handlers (like button onClick) don't need component state management
+    bool needs_state = find_component_for_element(element) != NULL;
+    
+    if (needs_state) {
+        // Set up component context before function call
+        setup_component_context(backend->L, element);
+    }
     
     int result = lua_pcall(backend->L, 0, 0, 0);
     
-    // Update component state after function call
-    if (result == LUA_OK) {
+    // Update component state after function call (only if we set it up)
+    if (result == LUA_OK && needs_state) {
         update_component_state_after_call(backend->L, element);
     }
     if (result != LUA_OK) {

@@ -163,27 +163,16 @@ static KryonRenderResult raylib_initialize(void* surface) {
     }
     
     // Set target FPS
-    printf("🔍 DEBUG: Setting target FPS to %d\n", surf->target_fps > 0 ? surf->target_fps : 60);
     // DISABLED: SetTargetFPS(surf->target_fps > 0 ? surf->target_fps : 60);
     // ^ SetTargetFPS causes segfault in this environment - skip it for now
-    printf("🔍 DEBUG: SetTargetFPS skipped (would cause segfault)\n");
     
     // Load default font (Raylib has a built-in default font)
-    printf("🔍 DEBUG: Getting default font\n");
     g_raylib_impl.default_font = GetFontDefault();
-    printf("🔍 DEBUG: GetFontDefault loaded successfully\n");
     
-    printf("🔍 DEBUG: Setting impl variables\n");
     g_raylib_impl.width = surf->width;
     g_raylib_impl.height = surf->height;
     g_raylib_impl.initialized = true;
     g_raylib_impl.window_should_close = false;
-    printf("🔍 DEBUG: Impl variables set\n");
-    
-    printf("Raylib Renderer initialized: %dx%d @ %d FPS\n", 
-           surf->width, surf->height, surf->target_fps > 0 ? surf->target_fps : 60);
-    
-    printf("🔍 DEBUG: About to return KRYON_RENDER_SUCCESS\n");
     return KRYON_RENDER_SUCCESS;
 }
 
@@ -716,6 +705,53 @@ static KryonRenderResult raylib_execute_commands(KryonRenderContext* context,
                 break;
             }
             
+            case KRYON_CMD_PUSH_CLIP: {
+                const KryonDrawRectData* data = &cmd->data.draw_rect;
+                
+                // Push current scissor state and set new one
+                Rectangle clip_rect = {
+                    data->position.x,
+                    data->position.y,
+                    data->size.x,
+                    data->size.y
+                };
+                
+                // Store current clip in stack
+                if (ctx->clip_depth < 31) {
+                    ctx->clip_stack[ctx->clip_depth] = clip_rect;
+                    ctx->clip_depth++;
+                    
+                    // Begin scissor mode for this clip area
+                    BeginScissorMode(
+                        (int)clip_rect.x,
+                        (int)clip_rect.y,
+                        (int)clip_rect.width,
+                        (int)clip_rect.height
+                    );
+                }
+                break;
+            }
+            
+            case KRYON_CMD_POP_CLIP: {
+                // Restore previous scissor state
+                if (ctx->clip_depth > 0) {
+                    EndScissorMode();
+                    ctx->clip_depth--;
+                    
+                    // If there's a previous clip level, restore it
+                    if (ctx->clip_depth > 0) {
+                        Rectangle prev_clip = ctx->clip_stack[ctx->clip_depth - 1];
+                        BeginScissorMode(
+                            (int)prev_clip.x,
+                            (int)prev_clip.y,
+                            (int)prev_clip.width,
+                            (int)prev_clip.height
+                        );
+                    }
+                }
+                break;
+            }
+            
             default:
                 // Unsupported command, skip
                 break;
@@ -808,24 +844,13 @@ static KryonKey raylib_key_to_kryon(int raylib_key) {
 }
 
 static void raylib_process_input(RaylibRendererImpl* data) {
-    printf("DEBUG: raylib_process_input() called\n");
     if (!data->event_callback) {
-        printf("DEBUG: No event_callback set!\n");
         return; // No callback set
     }
-    printf("DEBUG: event_callback is set, processing input...\n");
-    
-    // Debug: Check raw mouse state
-    Vector2 debug_pos = GetMousePosition();
-    bool left_pressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
-    bool left_down = IsMouseButtonDown(MOUSE_LEFT_BUTTON);
-    printf("DEBUG: Mouse pos=(%.1f,%.1f), left_pressed=%s, left_down=%s\n", 
-           debug_pos.x, debug_pos.y, left_pressed?"true":"false", left_down?"true":"false");
     
     // Mouse button events
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         Vector2 pos = GetMousePosition();
-        printf("DEBUG: Mouse LEFT pressed at (%.1f, %.1f)\n", pos.x, pos.y);
         KryonEvent event = kryon_event_create_mouse_button(0, pos.x, pos.y, true);
         data->event_callback(&event, data->callback_data);
     }
