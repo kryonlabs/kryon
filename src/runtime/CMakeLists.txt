@@ -36,6 +36,8 @@ set(ELEMENTS_SOURCES
     elements/column.c
     elements/row.c
     elements/center.c
+    elements/app.c
+    elements/grid.c
 )
 
 set(ELEMENTS_HEADERS

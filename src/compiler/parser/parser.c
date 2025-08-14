@@ -1622,13 +1622,6 @@ static KryonASTNode *parse_const_for_loop(KryonParser *parser) {
         return NULL;
     }
     
-    if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
-        parser_error(parser, "Expected array name after 'in'");
-        return NULL;
-    }
-    
-    const KryonToken *array_token = advance(parser);
-    
     KryonASTNode *const_for = kryon_ast_create_node(parser, KRYON_AST_CONST_FOR_LOOP,
                                                     &directive_token->location);
     if (!const_for) {
@@ -1636,10 +1629,46 @@ static KryonASTNode *parse_const_for_loop(KryonParser *parser) {
     }
     
     const_for->data.const_for_loop.var_name = kryon_token_copy_lexeme(var_token);
-    const_for->data.const_for_loop.array_name = kryon_token_copy_lexeme(array_token);
+    const_for->data.const_for_loop.array_name = NULL;
+    const_for->data.const_for_loop.is_range = false;
+    const_for->data.const_for_loop.range_start = 0;
+    const_for->data.const_for_loop.range_end = 0;
     const_for->data.const_for_loop.body = NULL;
     const_for->data.const_for_loop.body_count = 0;
     const_for->data.const_for_loop.body_capacity = 0;
+    
+    // Parse either array name or range expression
+    if (check_token(parser, KRYON_TOKEN_INTEGER) || check_token(parser, KRYON_TOKEN_FLOAT)) {
+        // Range expression: start..end
+        const KryonToken *start_token = advance(parser);
+        
+        if (!match_token(parser, KRYON_TOKEN_RANGE)) {
+            parser_error(parser, "Expected '..' after range start value");
+            return const_for;
+        }
+        
+        if (!(check_token(parser, KRYON_TOKEN_INTEGER) || check_token(parser, KRYON_TOKEN_FLOAT))) {
+            parser_error(parser, "Expected end value after '..'");
+            return const_for;
+        }
+        
+        const KryonToken *end_token = advance(parser);
+        
+        // Parse the range values
+        const_for->data.const_for_loop.is_range = true;
+        const_for->data.const_for_loop.range_start = (int)strtol(start_token->lexeme, NULL, 10);
+        const_for->data.const_for_loop.range_end = (int)strtol(end_token->lexeme, NULL, 10);
+        
+    } else if (check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+        // Array name
+        const KryonToken *array_token = advance(parser);
+        const_for->data.const_for_loop.is_range = false;
+        const_for->data.const_for_loop.array_name = kryon_token_copy_lexeme(array_token);
+        
+    } else {
+        parser_error(parser, "Expected array name or range expression after 'in'");
+        return const_for;
+    }
     
     // Expect opening brace
     if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
@@ -1684,10 +1713,18 @@ static KryonASTNode *parse_const_for_loop(KryonParser *parser) {
         parser_error(parser, "Expected '}' after loop body");
     }
     
-    printf("[DEBUG] parse_const_for_loop: Created loop '%s' in '%s' with %zu body elements\n",
-           const_for->data.const_for_loop.var_name,
-           const_for->data.const_for_loop.array_name,
-           const_for->data.const_for_loop.body_count);
+    if (const_for->data.const_for_loop.is_range) {
+        printf("[DEBUG] parse_const_for_loop: Created range loop '%s' in %d..%d with %zu body elements\n",
+               const_for->data.const_for_loop.var_name,
+               const_for->data.const_for_loop.range_start,
+               const_for->data.const_for_loop.range_end,
+               const_for->data.const_for_loop.body_count);
+    } else {
+        printf("[DEBUG] parse_const_for_loop: Created array loop '%s' in '%s' with %zu body elements\n",
+               const_for->data.const_for_loop.var_name,
+               const_for->data.const_for_loop.array_name,
+               const_for->data.const_for_loop.body_count);
+    }
     
     return const_for;
 }

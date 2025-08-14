@@ -277,7 +277,10 @@ struct KryonASTNode {
         
         struct {
             char *var_name;          // Loop variable name (e.g., "alignment")
-            char *array_name;        // Array name to iterate over (e.g., "alignments")
+            char *array_name;        // Array name to iterate over (e.g., "alignments") - NULL if using range
+            bool is_range;           // True if using range (e.g., 1..30), false if using array
+            int range_start;         // Range start value (e.g., 1 in "1..30")
+            int range_end;           // Range end value (e.g., 30 in "1..30")
             KryonASTNode **body;     // Loop body elements
             size_t body_count;       // Number of body elements
             size_t body_capacity;    // Body array capacity

@@ -475,16 +475,28 @@ uint16_t count_expanded_children(KryonCodeGenerator *codegen, const KryonASTNode
         
         if (child->type == KRYON_AST_CONST_FOR_LOOP) {
             // Count how many elements this const_for will expand to
-            const char *array_name = child->data.const_for_loop.array_name;
-            const KryonASTNode *array_const = find_constant_value(codegen, array_name);
+            uint32_t iteration_count = 0;
             
-            if (array_const && array_const->type == KRYON_AST_ARRAY_LITERAL) {
-                // Each iteration creates elements from the loop body
-                expanded_count += (uint16_t)array_const->data.array_literal.element_count;
+            if (child->data.const_for_loop.is_range) {
+                // Handle range-based loop
+                int start = child->data.const_for_loop.range_start;
+                int end = child->data.const_for_loop.range_end;
+                iteration_count = (uint32_t)(end - start + 1);
             } else {
-                // Fallback: count as 1 if we can't find the array
-                expanded_count += 1;
+                // Handle array-based loop
+                const char *array_name = child->data.const_for_loop.array_name;
+                const KryonASTNode *array_const = find_constant_value(codegen, array_name);
+                
+                if (array_const && array_const->type == KRYON_AST_ARRAY_LITERAL) {
+                    iteration_count = (uint32_t)array_const->data.array_literal.element_count;
+                } else {
+                    // Fallback: count as 1 if we can't find the array
+                    iteration_count = 1;
+                }
             }
+            
+            // Each iteration creates elements from the loop body
+            expanded_count += (uint16_t)iteration_count;
         } else if (child->type == KRYON_AST_ELEMENT) {
             // Regular element counts as 1
             expanded_count += 1;

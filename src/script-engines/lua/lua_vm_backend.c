@@ -18,6 +18,64 @@
 #include <string.h>
 
 // =============================================================================
+// LUA PATH CONFIGURATION
+// =============================================================================
+
+/**
+ * @brief Configure Lua package paths for standard library support
+ */
+static void configure_lua_paths(lua_State* L) {
+    // Get the current package.path and package.cpath
+    lua_getglobal(L, "package");
+    
+    if (!lua_istable(L, -1)) {
+        printf("[LuaVM] Warning: package table not found\n");
+        lua_pop(L, 1);
+        return;
+    }
+    
+    // Get current paths
+    lua_getfield(L, -1, "path");
+    const char* current_path = lua_tostring(L, -1);
+    lua_pop(L, 1);
+    
+    lua_getfield(L, -1, "cpath");
+    const char* current_cpath = lua_tostring(L, -1);
+    lua_pop(L, 1);
+    
+    // Build new paths with common Lua library locations
+    char new_path[2048];
+    char new_cpath[2048];
+    
+    // Common Lua module paths
+    snprintf(new_path, sizeof(new_path), 
+        "%s;./?.lua;./?/init.lua;"
+        "/usr/local/share/lua/5.4/?.lua;/usr/local/share/lua/5.4/?/init.lua;"
+        "/usr/share/lua/5.4/?.lua;/usr/share/lua/5.4/?/init.lua;"
+        "~/.luarocks/share/lua/5.4/?.lua;~/.luarocks/share/lua/5.4/?/init.lua",
+        current_path ? current_path : "");
+    
+    // Common Lua C module paths
+    snprintf(new_cpath, sizeof(new_cpath),
+        "%s;./?.so;./?/?.so;"
+        "/usr/local/lib/lua/5.4/?.so;/usr/local/lib/lua/5.4/loadall.so;"
+        "/usr/lib/lua/5.4/?.so;/usr/lib/lua/5.4/loadall.so;"
+        "~/.luarocks/lib/lua/5.4/?.so",
+        current_cpath ? current_cpath : "");
+    
+    // Set the new paths
+    lua_pushstring(L, new_path);
+    lua_setfield(L, -2, "path");
+    
+    lua_pushstring(L, new_cpath);
+    lua_setfield(L, -2, "cpath");
+    
+    lua_pop(L, 1); // Pop package table
+    
+    printf("[LuaVM] Configured Lua paths for external library support\n");
+}
+
+// =============================================================================
 // LUA BACKEND STRUCTURE
 // =============================================================================
 
@@ -131,8 +189,12 @@ static KryonVMResult lua_vm_initialize(KryonVM* vm, const KryonVMConfig* config)
     // Open standard libraries
     luaL_openlibs(backend->L);
     
+    // Configure Lua paths for external libraries
+    configure_lua_paths(backend->L);
+    
     // Register Kryon API
     register_kryon_api(backend->L);
+    
     
     return KRYON_VM_SUCCESS;
 }

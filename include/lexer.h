@@ -57,6 +57,7 @@ typedef enum {
     KRYON_TOKEN_COLON,               // :
     KRYON_TOKEN_SEMICOLON,           // ;
     KRYON_TOKEN_DOT,                 // .
+    KRYON_TOKEN_RANGE,               // ..
     KRYON_TOKEN_COMMA,               // ,
     KRYON_TOKEN_EQUALS,              // =
     KRYON_TOKEN_NOT_EQUALS,          // !=

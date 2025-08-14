@@ -337,49 +337,104 @@ bool kryon_expand_const_for_loop(KryonCodeGenerator *codegen, const KryonASTNode
         return false;
     }
     
-    printf("DEBUG: Expanding const_for loop: %s in %s\n", 
-           const_for->data.const_for_loop.var_name,
-           const_for->data.const_for_loop.array_name);
-    
-    // Find the array constant
-    const char *array_name = const_for->data.const_for_loop.array_name;
-    const KryonASTNode *array_const = find_constant_value(codegen, array_name);
-    
-    if (!array_const || array_const->type != KRYON_AST_ARRAY_LITERAL) {
-        printf("DEBUG: ERROR: Array constant '%s' not found or not an array\n", array_name);
-        return false;
-    }
-    
-    printf("DEBUG: Found array constant '%s' with %zu elements\n", 
-           array_name, array_const->data.array_literal.element_count);
-    
-    // Expand loop body for each array element
-    for (size_t i = 0; i < array_const->data.array_literal.element_count; i++) {
-        const KryonASTNode *array_element = array_const->data.array_literal.elements[i];
+    if (const_for->data.const_for_loop.is_range) {
+        // Handle range-based loop
+        int start = const_for->data.const_for_loop.range_start;
+        int end = const_for->data.const_for_loop.range_end;
         
-        printf("DEBUG: Processing array element %zu\n", i);
+        printf("DEBUG: Expanding range const_for loop: %s in %d..%d\n", 
+               const_for->data.const_for_loop.var_name, start, end);
         
-        // Expand each element in the loop body
-        for (size_t j = 0; j < const_for->data.const_for_loop.body_count; j++) {
-            const KryonASTNode *body_element = const_for->data.const_for_loop.body[j];
+        // Expand loop body for each value in range
+        for (int i = start; i <= end; i++) {
+            printf("DEBUG: Processing range value %d\n", i);
             
-            if (body_element && body_element->type == KRYON_AST_ELEMENT) {
-                // Substitute template variables in the element
-                KryonASTNode *substituted_element = kryon_substitute_template_vars(
-                    body_element,
-                    const_for->data.const_for_loop.var_name,
-                    array_element
-                );
+            // Create a literal AST node for the current value
+            KryonASTNode *value_node = kryon_calloc(1, sizeof(KryonASTNode));
+            if (!value_node) {
+                printf("DEBUG: ERROR: Failed to allocate value node\n");
+                return false;
+            }
+            
+            value_node->type = KRYON_AST_LITERAL;
+            value_node->data.literal.value.type = KRYON_VALUE_INTEGER;
+            value_node->data.literal.value.data.int_value = i;
+            
+            // Expand each element in the loop body
+            for (size_t j = 0; j < const_for->data.const_for_loop.body_count; j++) {
+                const KryonASTNode *body_element = const_for->data.const_for_loop.body[j];
                 
-                if (substituted_element) {
-                    printf("DEBUG: Writing substituted element for iteration %zu\n", i);
-                    if (!kryon_write_element_instance(codegen, substituted_element, ast_root)) {
-                        printf("DEBUG: ERROR: Failed to write substituted element\n");
-                        return false;
+                if (body_element && body_element->type == KRYON_AST_ELEMENT) {
+                    // Substitute template variables in the element
+                    KryonASTNode *substituted_element = kryon_substitute_template_vars(
+                        body_element,
+                        const_for->data.const_for_loop.var_name,
+                        value_node
+                    );
+                    
+                    if (substituted_element) {
+                        printf("DEBUG: Writing substituted element for iteration %d\n", i);
+                        if (!kryon_write_element_instance(codegen, substituted_element, ast_root)) {
+                            printf("DEBUG: ERROR: Failed to write substituted element\n");
+                            kryon_free(value_node);
+                            return false;
+                        }
+                        printf("DEBUG: Successfully wrote substituted element\n");
+                    } else {
+                        printf("DEBUG: ERROR: Template substitution returned NULL\n");
                     }
-                    printf("DEBUG: Successfully wrote substituted element\n");
-                } else {
-                    printf("DEBUG: ERROR: Template substitution returned NULL\n");
+                }
+            }
+            
+            kryon_free(value_node);
+        }
+        
+    } else {
+        // Handle array-based loop (existing logic)
+        printf("DEBUG: Expanding array const_for loop: %s in %s\n", 
+               const_for->data.const_for_loop.var_name,
+               const_for->data.const_for_loop.array_name);
+        
+        // Find the array constant
+        const char *array_name = const_for->data.const_for_loop.array_name;
+        const KryonASTNode *array_const = find_constant_value(codegen, array_name);
+        
+        if (!array_const || array_const->type != KRYON_AST_ARRAY_LITERAL) {
+            printf("DEBUG: ERROR: Array constant '%s' not found or not an array\n", array_name);
+            return false;
+        }
+        
+        printf("DEBUG: Found array constant '%s' with %zu elements\n", 
+               array_name, array_const->data.array_literal.element_count);
+        
+        // Expand loop body for each array element
+        for (size_t i = 0; i < array_const->data.array_literal.element_count; i++) {
+            const KryonASTNode *array_element = array_const->data.array_literal.elements[i];
+            
+            printf("DEBUG: Processing array element %zu\n", i);
+            
+            // Expand each element in the loop body
+            for (size_t j = 0; j < const_for->data.const_for_loop.body_count; j++) {
+                const KryonASTNode *body_element = const_for->data.const_for_loop.body[j];
+                
+                if (body_element && body_element->type == KRYON_AST_ELEMENT) {
+                    // Substitute template variables in the element
+                    KryonASTNode *substituted_element = kryon_substitute_template_vars(
+                        body_element,
+                        const_for->data.const_for_loop.var_name,
+                        array_element
+                    );
+                    
+                    if (substituted_element) {
+                        printf("DEBUG: Writing substituted element for iteration %zu\n", i);
+                        if (!kryon_write_element_instance(codegen, substituted_element, ast_root)) {
+                            printf("DEBUG: ERROR: Failed to write substituted element\n");
+                            return false;
+                        }
+                        printf("DEBUG: Successfully wrote substituted element\n");
+                    } else {
+                        printf("DEBUG: ERROR: Template substitution returned NULL\n");
+                    }
                 }
             }
         }
@@ -393,12 +448,23 @@ uint32_t kryon_count_const_for_elements(KryonCodeGenerator *codegen, const Kryon
         return 0;
     }
     
-    // Find the array constant
-    const char *array_name = const_for->data.const_for_loop.array_name;
-    const KryonASTNode *array_const = find_constant_value(codegen, array_name);
+    uint32_t iteration_count = 0;
     
-    if (!array_const || array_const->type != KRYON_AST_ARRAY_LITERAL) {
-        return 1; // Fallback count
+    if (const_for->data.const_for_loop.is_range) {
+        // Calculate range size
+        int start = const_for->data.const_for_loop.range_start;
+        int end = const_for->data.const_for_loop.range_end;
+        iteration_count = (uint32_t)(end - start + 1);
+    } else {
+        // Find the array constant
+        const char *array_name = const_for->data.const_for_loop.array_name;
+        const KryonASTNode *array_const = find_constant_value(codegen, array_name);
+        
+        if (!array_const || array_const->type != KRYON_AST_ARRAY_LITERAL) {
+            return 1; // Fallback count
+        }
+        
+        iteration_count = (uint32_t)array_const->data.array_literal.element_count;
     }
     
     // Count elements in the loop body that will be expanded
@@ -410,8 +476,8 @@ uint32_t kryon_count_const_for_elements(KryonCodeGenerator *codegen, const Kryon
         }
     }
     
-    // Total elements = array size * body elements
-    return (uint32_t)(array_const->data.array_literal.element_count * body_element_count);
+    // Total elements = iteration count * body elements
+    return iteration_count * body_element_count;
 }
 
 KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const char *var_name, const KryonASTNode *var_value) {

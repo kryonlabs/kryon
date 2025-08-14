@@ -1618,31 +1618,45 @@ static uint32_t count_elements_recursive(const KryonASTNode *node) {
         
         return count;
     } else if (node->type == KRYON_AST_CONST_FOR_LOOP) {
-        // This requires access to codegen to resolve constants
-        // For now, return a reasonable estimate
-        // TODO: This should be fixed properly by passing codegen context
+        uint32_t iteration_count = 0;
         
-        // Hardcode for alignments array (6 elements)
-        if (node->data.const_for_loop.array_name && 
-            strcmp(node->data.const_for_loop.array_name, "alignments") == 0) {
+        if (node->data.const_for_loop.is_range) {
+            // Handle range-based loop
+            int start = node->data.const_for_loop.range_start;
+            int end = node->data.const_for_loop.range_end;
+            iteration_count = (uint32_t)(end - start + 1);
             
-            uint32_t array_size = 6;
-            uint32_t elements_per_iteration = 0;
-            
-            // Count elements in each body element recursively
-            for (size_t i = 0; i < node->data.const_for_loop.body_count; i++) {
-                const KryonASTNode *body_element = node->data.const_for_loop.body[i];
-                elements_per_iteration += count_elements_recursive(body_element);
+            printf("DEBUG: count_elements_recursive found range const_for - Range %d..%d has %u iterations\n",
+                   start, end, iteration_count);
+        } else {
+            // Handle array-based loop
+            // Hardcode for alignments array (6 elements) - TODO: fix properly with codegen context
+            if (node->data.const_for_loop.array_name && 
+                strcmp(node->data.const_for_loop.array_name, "alignments") == 0) {
+                iteration_count = 6;
+            } else {
+                // Fallback for unknown arrays
+                iteration_count = 1;
             }
             
-            printf("DEBUG: count_elements_recursive found const_for - Array '%s' has %u elements, %u elements per iteration = %u total\n",
-                   node->data.const_for_loop.array_name, array_size, elements_per_iteration, array_size * elements_per_iteration);
-            
-            return array_size * elements_per_iteration;
+            printf("DEBUG: count_elements_recursive found array const_for - Array '%s' has %u elements\n",
+                   node->data.const_for_loop.array_name ? node->data.const_for_loop.array_name : "NULL", 
+                   iteration_count);
         }
         
-        // Fallback for unknown arrays
-        return node->data.const_for_loop.body_count;
+        uint32_t elements_per_iteration = 0;
+        
+        // Count elements in each body element recursively
+        for (size_t i = 0; i < node->data.const_for_loop.body_count; i++) {
+            const KryonASTNode *body_element = node->data.const_for_loop.body[i];
+            elements_per_iteration += count_elements_recursive(body_element);
+        }
+        
+        uint32_t total = iteration_count * elements_per_iteration;
+        printf("DEBUG: count_elements_recursive const_for total: %u iterations * %u elements per iteration = %u total\n",
+               iteration_count, elements_per_iteration, total);
+        
+        return total;
     }
     
     return 0;

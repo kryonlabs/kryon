@@ -60,6 +60,8 @@ extern bool register_image_element(void);
 extern bool register_column_element(void);
 extern bool register_row_element(void);
 extern bool register_center_element(void);
+extern bool register_app_element(void);
+extern bool register_grid_element(void);
 
 // Forward declarations for position calculation pipeline
 static void calculate_element_position_recursive(struct KryonRuntime* runtime, struct KryonElement* element,
@@ -69,7 +71,9 @@ static void position_children_by_layout_type(struct KryonRuntime* runtime, struc
 static void position_row_children(struct KryonRuntime* runtime, struct KryonElement* row);
 static void position_column_children(struct KryonRuntime* runtime, struct KryonElement* column);
 static void position_container_children(struct KryonRuntime* runtime, struct KryonElement* container);
-static void position_center_children(struct KryonRuntime* runtime, struct KryonElement* center); 
+static void position_center_children(struct KryonRuntime* runtime, struct KryonElement* center);
+static void position_app_children(struct KryonRuntime* runtime, struct KryonElement* app);
+static void position_grid_children(struct KryonRuntime* runtime, struct KryonElement* grid); 
 
 bool element_registry_init_with_all_elements(void) {
     if (g_element_registry.initialized) {
@@ -143,6 +147,18 @@ bool element_registry_init_with_all_elements(void) {
     
     if (!register_center_element()) {
         printf("ERROR: Failed to register Center element\n");
+        element_registry_cleanup();
+        return false;
+    }
+    
+    if (!register_app_element()) {
+        printf("ERROR: Failed to register App element\n");
+        element_registry_cleanup();
+        return false;
+    }
+    
+    if (!register_grid_element()) {
+        printf("ERROR: Failed to register Grid element\n");
         element_registry_cleanup();
         return false;
     }
@@ -470,6 +486,10 @@ static void position_children_by_layout_type(struct KryonRuntime* runtime, struc
         position_container_children(runtime, parent);
     } else if (strcmp(parent->type_name, "Center") == 0) {
         position_center_children(runtime, parent);
+    } else if (strcmp(parent->type_name, "App") == 0) {
+        position_app_children(runtime, parent);
+    } else if (strcmp(parent->type_name, "Grid") == 0) {
+        position_grid_children(runtime, parent);
     } else {
         // Default: position children at same location
         for (size_t i = 0; i < parent->child_count; i++) {
@@ -753,6 +773,128 @@ static void position_center_children(struct KryonRuntime* runtime, struct KryonE
         
         // Recursively position this child
         calculate_element_position_recursive(runtime, child, child_x, child_y, child_width, child_height, center);
+    }
+}
+
+/**
+ * @brief Position children in an App layout (with contentAlignment and padding)
+ * App elements inherit Container-like layout behavior but use window dimensions as base
+ */
+static void position_app_children(struct KryonRuntime* runtime, struct KryonElement* app) {
+    if (!app || app->child_count == 0) return;
+    
+    const char* content_alignment = get_element_property_string(app, "contentAlignment");
+    if (!content_alignment) content_alignment = "start";
+    
+    float padding = get_element_property_float(app, "padding", 0.0f);
+    
+    // For App elements, use the full window dimensions as the base
+    // (these should already be set by calculate_all_element_positions)
+    float window_width = app->width;
+    float window_height = app->height;
+    
+    // Calculate available space inside padding
+    float content_x = app->x + padding;
+    float content_y = app->y + padding;
+    float content_width = window_width - (padding * 2.0f);
+    float content_height = window_height - (padding * 2.0f);
+    
+    // Position all children based on contentAlignment
+    for (size_t i = 0; i < app->child_count; i++) {
+        struct KryonElement* child = app->children[i];
+        
+        // Get child dimensions - handle Text elements specially (they auto-size)
+        float child_width = get_element_property_float(child, "width", 0.0f);
+        float child_height = get_element_property_float(child, "height", 0.0f);
+        
+        // For Text elements without explicit size, use smaller defaults
+        if (child_width == 0.0f) {
+            if (child->type_name && strcmp(child->type_name, "Text") == 0) {
+                child_width = 80.0f; // Reasonable text width
+            } else {
+                child_width = 100.0f; // Default for other elements
+            }
+        }
+        if (child_height == 0.0f) {
+            if (child->type_name && strcmp(child->type_name, "Text") == 0) {
+                child_height = 20.0f; // Reasonable text height
+            } else {
+                child_height = 50.0f; // Default for other elements
+            }
+        }
+        
+        float child_x = content_x;
+        float child_y = content_y;
+        
+        if (strcmp(content_alignment, "center") == 0) {
+            child_x = content_x + (content_width - child_width) / 2.0f;
+            child_y = content_y + (content_height - child_height) / 2.0f;
+        } else if (strcmp(content_alignment, "end") == 0) {
+            child_x = content_x + content_width - child_width;
+            child_y = content_y + content_height - child_height;
+        }
+        // "start" uses child_x = content_x, child_y = content_y (already set)
+        
+        // For layout containers, pass the content area as available space
+        float available_width_for_child = content_width;
+        float available_height_for_child = content_height;
+        
+        // Recursively position this child
+        calculate_element_position_recursive(runtime, child, child_x, child_y, available_width_for_child, available_height_for_child, app);
+    }
+}
+
+/**
+ * @brief Position children in a Grid layout
+ * Grid elements arrange children in a 2D grid with configurable columns and spacing
+ */
+static void position_grid_children(struct KryonRuntime* runtime, struct KryonElement* grid) {
+    if (!grid || grid->child_count == 0) return;
+    
+    // Get grid properties
+    int columns = get_element_property_int(grid, "columns", 3);
+    float gap = get_element_property_float(grid, "gap", 10.0f);
+    float column_spacing = get_element_property_float(grid, "column_spacing", gap);
+    float row_spacing = get_element_property_float(grid, "row_spacing", gap);
+    float padding = get_element_property_float(grid, "padding", 0.0f);
+    
+    // Calculate grid structure
+    int child_count = (int)grid->child_count;
+    int rows = (int)ceil((double)child_count / (double)columns);
+    
+    // Calculate available space inside padding
+    float content_x = grid->x + padding;
+    float content_y = grid->y + padding;
+    float content_width = grid->width - (padding * 2.0f);
+    float content_height = grid->height - (padding * 2.0f);
+    
+    // Calculate cell dimensions
+    float cell_width = (content_width - (column_spacing * (columns - 1))) / columns;
+    float cell_height = (content_height - (row_spacing * (rows - 1))) / rows;
+    
+    // Position each child in the grid
+    for (size_t i = 0; i < grid->child_count; i++) {
+        struct KryonElement* child = grid->children[i];
+        if (!child) continue;
+        
+        // Calculate grid position
+        int row = (int)(i / columns);
+        int col = (int)(i % columns);
+        
+        // Calculate child position
+        float child_x = content_x + (col * (cell_width + column_spacing));
+        float child_y = content_y + (row * (cell_height + row_spacing));
+        
+        // Calculate child dimensions - let child decide or use cell size
+        float child_width = get_element_property_float(child, "width", cell_width);
+        float child_height = get_element_property_float(child, "height", cell_height);
+        
+        // Don't exceed cell size
+        if (child_width > cell_width) child_width = cell_width;
+        if (child_height > cell_height) child_height = cell_height;
+        
+        // Recursively position this child
+        calculate_element_position_recursive(runtime, child, child_x, child_y, child_width, child_height, grid);
     }
 }
 

@@ -30,6 +30,7 @@ static const char *token_type_names[] = {
     [KRYON_TOKEN_COLON] = "COLON",
     [KRYON_TOKEN_SEMICOLON] = "SEMICOLON",
     [KRYON_TOKEN_DOT] = "DOT",
+    [KRYON_TOKEN_RANGE] = "RANGE",
     [KRYON_TOKEN_COMMA] = "COMMA",
     [KRYON_TOKEN_EQUALS] = "EQUALS",
     [KRYON_TOKEN_NOT_EQUALS] = "NOT_EQUALS",
@@ -707,7 +708,13 @@ static bool scan_token(KryonLexer *lexer) {
         case '[': add_token(lexer, KRYON_TOKEN_LEFT_BRACKET); break;
         case ']': add_token(lexer, KRYON_TOKEN_RIGHT_BRACKET); break;
         case ',': add_token(lexer, KRYON_TOKEN_COMMA); break;
-        case '.': add_token(lexer, KRYON_TOKEN_DOT); break;
+        case '.': 
+            if (match(lexer, '.')) {
+                add_token(lexer, KRYON_TOKEN_RANGE);
+            } else {
+                add_token(lexer, KRYON_TOKEN_DOT);
+            }
+            break;
         case ';': add_token(lexer, KRYON_TOKEN_SEMICOLON); break;
         case '+': add_token(lexer, KRYON_TOKEN_PLUS); break;
         case '-': add_token(lexer, KRYON_TOKEN_MINUS); break;

@@ -133,21 +133,39 @@
          .type_hint = KRYON_TYPE_HINT_DIMENSION
      },
      {
+         .canonical = "columns",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x010C,
+         .type_hint = KRYON_TYPE_HINT_INTEGER
+     },
+     {
+         .canonical = "row_spacing",
+         .aliases = (const char*[]){"rowSpacing", NULL},
+         .hex_code = 0x011F,
+         .type_hint = KRYON_TYPE_HINT_DIMENSION
+     },
+     {
+         .canonical = "column_spacing",
+         .aliases = (const char*[]){"columnSpacing", NULL},
+         .hex_code = 0x0120,
+         .type_hint = KRYON_TYPE_HINT_DIMENSION
+     },
+     {
          .canonical = "posX",
          .aliases = (const char*[]){"x", "positionX", NULL},
-         .hex_code = 0x010C,
+         .hex_code = 0x010D,
          .type_hint = KRYON_TYPE_HINT_FLOAT
      },
      {
          .canonical = "posY",
          .aliases = (const char*[]){"y", "positionY", NULL},
-         .hex_code = 0x010D,
+         .hex_code = 0x010E,
          .type_hint = KRYON_TYPE_HINT_FLOAT
      },
      {
          .canonical = "zIndex",
          .aliases = (const char*[]){"z", "layerIndex", NULL},
-         .hex_code = 0x010E,
+         .hex_code = 0x010F,
          .type_hint = KRYON_TYPE_HINT_INTEGER
      },
  

@@ -1,0 +1,331 @@
+@metadata {
+    title: "Database Demo"
+    version: "1.0.0"
+}
+
+// Database connection will be stored here
+@const db: null
+
+@function "lua" initDatabase() {
+    -- Load SQLite module (independent extension)
+    local sqlite = require("sqlite")
+    
+    if not sqlite then
+        print("ERROR: SQLite module not found!")
+        print("Install with: cd modules && make kryon-sqlite.so")
+        return
+    end
+    
+    print("SQLite version:", sqlite.version())
+    
+    -- Connect to database
+    local connection, err = sqlite.connect("demo.db")
+    if not connection then
+        print("Failed to connect to database:", err)
+        return
+    end
+    
+    -- Create table
+    local success, error = connection:execute([[
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            age INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ]])
+    
+    if not success then
+        print("Failed to create table:", error)
+        return
+    end
+    
+    -- Store connection globally for other functions
+    _G.db = connection
+    print("Database initialized successfully!")
+}
+
+@function "lua" addUser() {
+    if not _G.db then
+        print("Database not connected!")
+        return
+    end
+    
+    local name = self.nameInput.text or ""
+    local email = self.emailInput.text or ""
+    local age = tonumber(self.ageInput.text) or 18
+    
+    if name == "" or email == "" then
+        print("Please fill in name and email")
+        return
+    end
+    
+    local success, err = _G.db:execute(
+        "INSERT INTO users (name, email, age) VALUES (?, ?, ?)",
+        {name, email, age}
+    )
+    
+    if success then
+        print("User added:", name)
+        -- Clear inputs
+        self.nameInput.text = ""
+        self.emailInput.text = ""
+        self.ageInput.text = ""
+        
+        -- Refresh user list
+        loadUsers()
+    else
+        print("Failed to add user:", err)
+    end
+}
+
+@function "lua" loadUsers() {
+    if not _G.db then
+        print("Database not connected!")
+        return
+    end
+    
+    local users, err = _G.db:query("SELECT id, name, email, age FROM users ORDER BY created_at DESC")
+    
+    if not users then
+        print("Failed to load users:", err)
+        return
+    end
+    
+    -- TODO: Update UI with user list
+    -- This would typically populate a list/table element
+    print("Loaded", #users, "users:")
+    for i, user in ipairs(users) do
+        print("-", user.name, "(" .. user.email .. "), age:", user.age)
+    end
+}
+
+@function "lua" deleteAllUsers() {
+    if not _G.db then
+        print("Database not connected!")
+        return
+    end
+    
+    local success, err = _G.db:execute("DELETE FROM users")
+    
+    if success then
+        print("All users deleted")
+        loadUsers()
+    else
+        print("Failed to delete users:", err)
+    end
+}
+
+@function "lua" demonstrateTransactions() {
+    if not _G.db then
+        print("Database not connected!")
+        return
+    end
+    
+    print("Demonstrating database transactions...")
+    
+    -- Begin transaction
+    _G.db:begin()
+    
+    -- Add multiple users in a transaction
+    _G.db:execute("INSERT INTO users (name, email, age) VALUES (?, ?, ?)", {"Alice", "alice@example.com", 25})
+    _G.db:execute("INSERT INTO users (name, email, age) VALUES (?, ?, ?)", {"Bob", "bob@example.com", 30})
+    _G.db:execute("INSERT INTO users (name, email, age) VALUES (?, ?, ?)", {"Charlie", "charlie@example.com", 35})
+    
+    -- Commit transaction
+    _G.db:commit()
+    
+    print("Transaction completed - added 3 users")
+    loadUsers()
+}
+
+App {
+    windowWidth: 800
+    windowHeight: 600
+    windowTitle: "Independent Database Module Demo"
+    backgroundColor: "#f0f9ff"
+    padding: 20
+
+    Column {
+        gap: 20
+        mainAxisAlignment: "start"
+        crossAxisAlignment: "stretch"
+
+        // Header
+        Container {
+            backgroundColor: "#1e40af"
+            borderRadius: 8
+            padding: 20
+            
+            Text {
+                text: "Database Module Demo"
+                fontSize: 24
+                fontWeight: "bold"
+                color: "#ffffff"
+                textAlign: "center"
+            }
+        }
+
+        // Control Panel
+        Container {
+            backgroundColor: "#ffffff"
+            borderRadius: 8
+            borderWidth: 1
+            borderColor: "#e5e7eb"
+            padding: 20
+
+            Column {
+                gap: 15
+                crossAxisAlignment: "stretch"
+
+                Text {
+                    text: "Database Operations"
+                    fontSize: 18
+                    fontWeight: "bold"
+                    color: "#374151"
+                }
+
+                Row {
+                    gap: 10
+                    mainAxisAlignment: "spaceAround"
+
+                    Button {
+                        text: "Initialize DB"
+                        backgroundColor: "#10b981"
+                        color: "#ffffff"
+                        onClick: "initDatabase"
+                        borderRadius: 6
+                        padding: 10
+                    }
+
+                    Button {
+                        text: "Load Users"
+                        backgroundColor: "#3b82f6"
+                        color: "#ffffff"
+                        onClick: "loadUsers"
+                        borderRadius: 6
+                        padding: 10
+                    }
+
+                    Button {
+                        text: "Demo Transactions"
+                        backgroundColor: "#8b5cf6"
+                        color: "#ffffff"
+                        onClick: "demonstrateTransactions"
+                        borderRadius: 6
+                        padding: 10
+                    }
+
+                    Button {
+                        text: "Clear All"
+                        backgroundColor: "#ef4444"
+                        color: "#ffffff"
+                        onClick: "deleteAllUsers"
+                        borderRadius: 6
+                        padding: 10
+                    }
+                }
+            }
+        }
+
+        // Add User Form
+        Container {
+            backgroundColor: "#ffffff"
+            borderRadius: 8
+            borderWidth: 1
+            borderColor: "#e5e7eb"
+            padding: 20
+
+            Column {
+                gap: 15
+                crossAxisAlignment: "stretch"
+
+                Text {
+                    text: "Add New User"
+                    fontSize: 18
+                    fontWeight: "bold"
+                    color: "#374151"
+                }
+
+                TextInput {
+                    id: "nameInput"
+                    placeholder: "Full Name"
+                    backgroundColor: "#f9fafb"
+                    borderRadius: 6
+                    padding: 10
+                }
+
+                TextInput {
+                    id: "emailInput"
+                    placeholder: "Email Address"
+                    backgroundColor: "#f9fafb"
+                    borderRadius: 6
+                    padding: 10
+                }
+
+                TextInput {
+                    id: "ageInput"
+                    placeholder: "Age"
+                    backgroundColor: "#f9fafb"
+                    borderRadius: 6
+                    padding: 10
+                }
+
+                Button {
+                    text: "Add User"
+                    backgroundColor: "#059669"
+                    color: "#ffffff"
+                    onClick: "addUser"
+                    borderRadius: 6
+                    padding: 12
+                }
+            }
+        }
+
+        // Instructions
+        Container {
+            backgroundColor: "#fef3c7"
+            borderRadius: 8
+            borderWidth: 1
+            borderColor: "#f59e0b"
+            padding: 15
+
+            Column {
+                gap: 10
+                crossAxisAlignment: "start"
+
+                Text {
+                    text: "Instructions:"
+                    fontSize: 16
+                    fontWeight: "bold"
+                    color: "#92400e"
+                }
+
+                Text {
+                    text: "1. Build the SQLite module: cd modules && make kryon-sqlite.so"
+                    fontSize: 14
+                    color: "#92400e"
+                }
+
+                Text {
+                    text: "2. Click 'Initialize DB' to load the module and create the database"
+                    fontSize: 14
+                    color: "#92400e"
+                }
+
+                Text {
+                    text: "3. Add users using the form or try the demo transactions"
+                    fontSize: 14
+                    color: "#92400e"
+                }
+
+                Text {
+                    text: "4. Check the console output for database operations"
+                    fontSize: 14
+                    color: "#92400e"
+                }
+            }
+        }
+    }
+}
