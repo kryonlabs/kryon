@@ -1,6 +1,7 @@
 # Kryon-C File Hierarchy and Architecture
 
 - do not make .c or other files in examples only .kry files!
+- do not build it for me, do not run it for me, i run examples unless i tell you to run an examlpe for me
 
 ## Important Instructions
 Do what has been asked; nothing more, nothing less.
@@ -91,22 +92,37 @@ NEVER proactively create documentation files (*.md) or README files. Only create
 - **Element Management**: `/src/runtime/elements/element_manager.c`  
 - **Compilation**: `/src/cli/compile/compile_command.c`
 - **Execution**: `/src/cli/run/run_command.c`
-- **Raylib Renderer**: `/src/renderers/raylib/raylib_renderer.c` (exists but not linked)
+- **Raylib Renderer**: `/src/renderers/raylib/raylib_renderer.c` (exists but not fully linked)
 
-### **Build Commands**
-- **Main Build**: `cd build && make -j$(nproc)`
-- **Status**: ✅ Compiles successfully (header conflicts resolved)
-- **Issue**: Raylib renderer not linked in CMake build
+### **Build Commands and Scripts**
+- **Main Build**: `./scripts/build.sh` (recommended) or `cd build && make -j$(nproc)`
+- **Example Scripts**: 
+  - `./scripts/run_example.sh hello-world raylib` - Run single example
+  - `./scripts/run_examples.sh raylib` - Run all examples
+  - `./scripts/run_examples.sh list` - List all examples
+- **Status**: ✅ Compiles successfully with comprehensive build scripts
 
-### **Current Test Status**
-- **KRB Loading**: ✅ Working (loads App element with 1 child)
-- **Element Tree**: ✅ Working (App → Container → Text)
-- **Smart Compiler**: ✅ Working (auto-creates App from metadata)
-- **Rendering**: ❌ Raylib renderer not linked in build system
+### **Current System Status**
+- **KRB Loading**: ✅ Working (loads App element with children)
+- **Element Tree**: ✅ Working (App → Container → Text/Button/etc.)
+- **Smart Compiler**: ✅ Working (auto-creates App from @metadata)
+- **CLI Tools**: ✅ Working (compile and run commands functional)
+- **Examples**: ✅ Working (8+ examples including button, text_input, layouts)
+- **Build Scripts**: ✅ Working (convenient development workflow)
+- **Rendering**: ⚠️ Raylib renderer exists but needs complete CMake integration
 
-## **Next Priority Tasks**
+### **Available Examples**
+- `hello-world.kry` - Basic text display
+- `button.kry` - Interactive button with Lua script
+- `text_input.kry` - Text input field
+- `dropdown.kry` - Dropdown selection
+- `column_alignments.kry` - Column layout examples
+- `row_alignments.kry` - Row layout examples
+- `counters_demo.kry` - Multiple counter elements
+- `z_index_test.kry` - Layer ordering test
 
-1. **Link raylib renderer** in CMake build system
-2. **Verify full element tree loading** (children and properties)
-3. **Test rendering pipeline** with working raylib
-4. **Clean up unused conflicting headers** in public API
+## **Current Priority Tasks**
+
+1. **Complete raylib renderer CMake integration** for full rendering pipeline
+2. **Test full rendering pipeline** with working examples
+3. **Expand element system** with additional UI components as needed

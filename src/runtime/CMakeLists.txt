@@ -169,6 +169,11 @@ endif()
 # Link with JSON library for state serialization
 target_link_libraries(kryon_runtime PRIVATE cjson)
 
+# Link with core utilities (color functions, etc.)
+if(TARGET kryon_minimal_memory)
+    target_link_libraries(kryon_runtime PRIVATE kryon_minimal_memory)
+endif()
+
 # Link with shared property mappings
 if(TARGET kryon_shared)
     target_link_libraries(kryon_runtime PRIVATE kryon_shared)

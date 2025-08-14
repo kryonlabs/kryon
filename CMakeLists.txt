@@ -59,6 +59,7 @@ add_library(kryon_minimal_memory STATIC
     src/core/memory_manager.c
     src/core/binary_io.c
     src/core/arena.c
+    src/core/color_utils.c
 )
 
 target_include_directories(kryon_minimal_memory PUBLIC
@@ -77,11 +78,6 @@ add_subdirectory(src/runtime)
 
 add_subdirectory(src/events)
 
-# =============================================================================
-# GRAPHICS MODULE (for color utils)
-# =============================================================================
-
-add_subdirectory(src/graphics)
 
 # =============================================================================
 # COMPILER MODULE (for lexer and parser)
@@ -97,7 +93,6 @@ add_subdirectory(src/script-engines)
 
 add_library(kryon_minimal_compiler STATIC
     $<TARGET_OBJECTS:kryon_compiler>
-    $<TARGET_OBJECTS:kryon_graphics>
     src/core/error_system.c
 )
 

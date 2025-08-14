@@ -1,0 +1,6 @@
+Kryon Memory Manager initialized
+Configuration:
+  Initial heap: 16777216 bytes
+  Max heap: 268435456 bytes
+  Leak detection: enabled
+  Bounds checking: disabled

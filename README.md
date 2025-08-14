@@ -1,376 +1,119 @@
-# Kryon-C: Complete UI System Implementation in C
+# Kryon-C
 
-A comprehensive, cross-platform UI system implemented in C, featuring the Kryon language for declarative UI development.
+A UI system implemented in C with the Kryon language for declarative UI development.
 
-## 🚀 **Overview**
+## Overview
 
-Kryon-C is a complete implementation of the Kryon UI system, providing:
+Kryon-C provides:
+- **KRY Language Compiler** - Compile .kry source files to .krb binary format
+- **Runtime System** - Execute Kryon applications with element trees
+- **CLI Tools** - Command line interface for compilation and execution  
+- **UI Elements** - Text, Button, Container, Column, Row, Dropdown, etc.
+- **Build Scripts** - Convenient development workflow
 
-- **Kryon Language Compiler** - Compile KRY source to KRB binary format
-- **Cross-Platform Runtime** - Execute Kryon applications on Web, Desktop, Mobile, Terminal
-- **Multi-Backend Rendering** - WebGL, WGPU, Raylib, Terminal, HTML, Software rendering
-- **Multi-Language Scripting** - Lua, JavaScript, Python, Kryon Lisp integration
-- **Flutter-Inspired Layout Engine** - Column/Row/Stack element system with dynamic transformation
-- **Comprehensive Tooling** - CLI, debugger, profiler, formatter, language server
-
-## 📁 **Project Structure**
+## Project Structure
 
 ```
 kryon-c/
 ├── src/                    # Source code
-│   ├── compiler/           # KRY → KRB compiler
-│   ├── runtime/            # Core runtime system
-│   ├── platform/           # Platform abstraction layer
-│   ├── renderers/          # Rendering backends
-│   ├── script-engines/     # Multi-language scripting
-│   ├── layout/             # Layout engine
-│   ├── events/             # Event system
-│   ├── network/            # Network operations
-│   ├── filesystem/         # File system operations
-│   ├── audio/              # Audio system
-│   ├── graphics/           # Graphics utilities
 │   ├── cli/                # Command line interface
-│   └── tools/              # Development tools
-├── include/
-│   ├── kryon/              # Public API headers
-│   └── internal/           # Internal headers
+│   ├── compiler/           # KRY → KRB compiler
+│   ├── runtime/            # Core runtime and elements
+│   ├── core/               # Memory, containers, utilities
+│   ├── events/             # Event system
+│   ├── renderers/          # Raylib, SDL2, HTML renderers
+│   ├── script-engines/     # Lua scripting support
+│   └── shared/             # KRB format utilities
+├── examples/               # KRY example files
+├── scripts/                # Build and run scripts
 ├── tests/                  # Test suite
-├── examples/               # Example applications
-├── docs/                   # Comprehensive documentation
-└── third-party/            # External dependencies
+└── docs/                   # Documentation
 ```
 
-## 🛠️ **Building**
+## Building
 
 ### Prerequisites
+- CMake 3.15+
+- GCC or Clang
+- Git (for submodules)
 
-- **CMake** 3.20 or higher
-- **GCC** 9.0+ or **Clang** 10.0+ or **MSVC** 2019+
-- **Git** for submodules
-
-### Quick Start
-
+### Build Steps
 ```bash
-# Clone repository
-git clone https://github.com/kryonlabs/kryon-c.git
-cd kryon-c
-
-# Initialize submodules
+# Clone and build
+git clone https://github.com/kryonlabs/kryon.git
+cd kryon
 git submodule update --init --recursive
 
-# Create build directory
+# Build (recommended)
+./scripts/build.sh
+
+# Or manually
 mkdir build && cd build
-
-# Configure with CMake
 cmake ..
-
-# Build
-cmake --build .
-
-# Run tests
-ctest
-
-# Install
-cmake --install .
+make -j$(nproc)
 ```
 
-### Build Options
+## Running Examples
 
 ```bash
-# Development build with all features
-cmake -DCMAKE_BUILD_TYPE=Debug \
-      -DKRYON_BUILD_TESTS=ON \
-      -DKRYON_BUILD_EXAMPLES=ON \
-      -DKRYON_BUILD_TOOLS=ON \
-      ..
+# List all examples
+./scripts/run_examples.sh list
 
-# Production build
-cmake -DCMAKE_BUILD_TYPE=Release \
-      -DKRYON_BUILD_TESTS=OFF \
-      -DKRYON_BUILD_EXAMPLES=OFF \
-      ..
+# Run a specific example
+./scripts/run_example.sh hello-world raylib
+./scripts/run_example.sh button raylib
 
-# Web build (requires Emscripten)
-emcmake cmake -DCMAKE_BUILD_TYPE=Release \
-              -DKRYON_RENDERER_WEBGL=ON \
-              -DKRYON_RENDERER_HTML=ON \
-              ..
+# Run with debug output
+./scripts/run_example.sh --debug button raylib
+
+# Run all examples
+./scripts/run_examples.sh raylib
 ```
 
-### Platform-Specific Builds
+## Manual Usage
 
-#### Windows
 ```bash
-cmake -G "Visual Studio 16 2019" -A x64 ..
-cmake --build . --config Release
-```
+# Compile a .kry file to .krb binary
+./build/bin/kryon compile examples/hello-world.kry -o examples/hello-world.krb
 
-#### macOS
-```bash
-cmake -G "Xcode" ..
-cmake --build . --config Release
-```
-
-#### iOS (Cross-compilation)
-```bash
-cmake -G "Xcode" -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/ios.cmake ..
-cmake --build . --config Release
-```
-
-#### Android (Cross-compilation)
-```bash
-cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake \
-      -DANDROID_ABI=arm64-v8a \
-      -DANDROID_PLATFORM=android-21 \
-      ..
-```
-
-## 🎯 **Quick Example**
-
-### Hello World in Kryon
-
-**hello.kry**
-```kry
-App {
-    title: "Hello Kryon"
-    windowWidth: 800
-    windowHeight: 600
-    
-    Container {
-        padding: 20
-        backgroundColor: "#f0f0f0"
-        
-        Text {
-            text: "Hello, World!"
-            fontSize: 24
-            fontWeight: 700
-            textColor: "#333"
-        }
-        
-        Button {
-            text: "Click Me"
-            backgroundColor: "#007bff"
-            textColor: "white"
-            padding: 12
-            borderRadius: 6
-            onClick: "showAlert('Button clicked!')"
-        }
-    }
-}
-```
-
-**Compile and Run**
-```bash
-# Compile KRY to KRB
-./kryon compile hello.kry
-
-# Run the application
-./kryon run hello.krb
+# Run the compiled binary
+./build/bin/kryon run examples/hello-world.krb --renderer raylib
 
 # Or compile and run in one step
-./kryon run hello.kry
+./build/bin/kryon run examples/hello-world.kry --renderer raylib
 ```
 
-### C API Usage
+## Examples
 
-```c
-#include <kryon/kryon.h>
+See the [examples/](examples/) directory for KRY application samples. Use the scripts to run them:
 
-int main() {
-    // Initialize Kryon with default configuration
-    KryonConfig config = kryon_config_default();
-    config.window_title = "My Kryon App";
-    config.debug_mode = true;
-    
-    if (kryon_init(&config) != KRYON_SUCCESS) {
-        return 1;
-    }
-    
-    // Create application from KRY source
-    KryonAppHandle app;
-    if (kryon_app_create_from_kry("hello.kry", &app) != KRYON_SUCCESS) {
-        kryon_shutdown();
-        return 1;
-    }
-    
-    // Run the application (blocking)
-    KryonResult result = kryon_app_run(app);
-    
-    // Cleanup
-    kryon_app_destroy(app);
-    kryon_shutdown();
-    
-    return result == KRYON_SUCCESS ? 0 : 1;
-}
+```bash
+./scripts/run_examples.sh list    # List all examples
+./scripts/run_example.sh hello-world raylib
 ```
 
-## 🔧 **Development**
+## Development
 
 ### Running Tests
-
 ```bash
-# Build and run all tests
 cd build
 ctest --verbose
-
-# Run specific test categories
-ctest -R "compiler.*"     # Compiler tests
-ctest -R "runtime.*"      # Runtime tests
-ctest -R "renderer.*"     # Renderer tests
-
-# Run benchmarks
-ctest -R "benchmark.*"
 ```
 
-### Development Tools
-
+### Build Scripts
 ```bash
-# Format code
-make format
-
-# Static analysis
-make lint
-
-# Generate documentation
-make docs
-
-# Profile performance
-./kryon profile app.krb
-
-# Debug application
-./kryon debug app.krb
+./scripts/build.sh              # Release build
+./scripts/build.sh --debug      # Debug build  
+./scripts/build.sh --clean      # Clean build
 ```
 
-### IDE Setup
+## Documentation
 
-#### VS Code
-1. Install C/C++ extension
-2. Install CMake Tools extension
-3. Open project folder
-4. Use CMake: Configure command
+See the `docs/` directory for:
+- KRY Language Specification  
+- KRB Binary Format
+- Architecture Overview
 
-#### CLion
-1. Open CMakeLists.txt as project
-2. CLion will automatically configure
+## License
 
-#### Visual Studio
-1. File → Open → CMake
-2. Select CMakeLists.txt
-
-**⚠️ Important**: The layout system is being enhanced with a Flutter-inspired element system internally, while maintaining the current .kry syntax. See [LAYOUT_SYSTEM_ROADMAP.md](LAYOUT_SYSTEM_ROADMAP.md) for implementation details.
-
-## 📚 **Documentation**
-
-Comprehensive documentation is available in the `docs/` directory:
-
-- **[Language Specification](docs/language/KRY_LANGUAGE_SPECIFICATION.md)** - Complete KRY syntax reference
-- **[Binary Format](docs/binary-format/KRB_BINARY_FORMAT_SPECIFICATION.md)** - KRB binary format specification
-- **[Runtime Architecture](docs/architecture/KRYON_RUNTIME_ARCHITECTURE.md)** - Runtime system architecture
-- **[Platform Abstraction](docs/architecture/KRYON_PLATFORM_ABSTRACTION_LAYER.md)** - Cross-platform support
-- **[API Reference](docs/reference/)** - Complete API documentation
-
-## 🌟 **Features**
-
-### Core Language
-- ✅ **Declarative Syntax** - Clean, HTML-like element definitions
-- ✅ **Reactive Variables** - Automatic UI updates with `$variable` syntax
-- ✅ **Template System** - Dynamic content generation
-- ✅ **Style System** - CSS-like styling with inheritance
-- ✅ **Component System** - Reusable UI components
-
-### Runtime Features
-- ✅ **Cross-Platform** - Web, Windows, macOS, Linux, iOS, Android, Terminal
-- ✅ **Multi-Renderer** - WebGL, WGPU, Raylib, Terminal, HTML, Software
-- ✅ **Multi-Script** - Lua, JavaScript, Python, Kryon Lisp integration
-- ✅ **Layout Engine** - Flutter-inspired element system with dynamic transformation
-- ✅ **Event System** - Comprehensive input and gesture handling
-- ✅ **State Management** - Global stores and reactive state
-- ✅ **Network Support** - HTTP, WebSocket, fetch API
-- ✅ **Audio Support** - Playback, recording, synthesis
-- ✅ **Performance** - Optimized rendering and memory management
-
-### Development Tools
-- ✅ **CLI Tools** - Compile, run, build, debug commands
-- ✅ **Language Server** - IDE integration with LSP
-- ✅ **Debugger** - Interactive debugging support
-- ✅ **Profiler** - Performance analysis tools
-- ✅ **Hot Reload** - Development server with live updates
-
-## 🚦 **Implementation Status**
-
-| Component | Status | Notes |
-|-----------|--------|-------|
-| **Compiler** | ✅ **Complete** | Full KRY→KRB compilation pipeline |
-| **Parser & AST** | ✅ **Complete** | Recursive descent parser with full AST |
-| **Code Generation** | ✅ **Complete** | Optimized binary generation |
-| **Diagnostics** | ✅ **Complete** | Error reporting with source context |
-| **Element System** | ✅ **Complete** | Dropdown elements with HTML mapping |
-| **Network Layer** | ✅ **Complete** | HTTP, WebSocket, Fetch API |
-| **Memory Management** | ✅ **Complete** | Custom allocators with leak detection |
-| **Build System** | ✅ **Complete** | Cross-platform CMake configuration |
-| **Examples & Tests** | ✅ **Complete** | Comprehensive test suite |
-| **Runtime Core** | 🔴 Not Started | Core runtime execution system |
-| **Platform Abstraction** | 🔴 Not Started | Cross-platform APIs |
-| **Hardware Renderers** | 🔴 Not Started | WebGL, SDL2, Raylib renderers |
-| **Layout Engine** | 🔴 Not Started | Flutter-inspired element system |
-| **Script Integration** | 🔴 Not Started | Lua, JavaScript, Python |
-| **CLI Tools** | 🔴 Not Started | Command line interface |
-
-### 🎉 **Phase 2 Complete! (Weeks 7-12)**
-
-We've successfully completed the entire compiler core implementation:
-
-- ✅ **Complete KRY Language Compiler** - Full lexer, parser, and code generator
-- ✅ **Advanced AST System** - Traversal, validation, and optimization utilities  
-- ✅ **Comprehensive Diagnostics** - Error reporting with colored output and source context
-- ✅ **Element System Foundation** - Complete dropdown element with HTML select mapping
-- ✅ **Network Infrastructure** - HTTP client, WebSocket support, and Fetch API
-- ✅ **Optimization Framework** - Dead code elimination, constant folding, string deduplication
-- ✅ **Production-Ready Build System** - Cross-platform CMake with comprehensive testing
-
-**Next Phase**: Runtime system implementation and basic rendering (Weeks 13-18)
-
-## 🤝 **Contributing**
-
-1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-3. **Follow** the coding standards (run `make format`)
-4. **Add** tests for your changes
-5. **Commit** your changes: `git commit -m 'Add amazing feature'`
-6. **Push** to the branch: `git push origin feature/amazing-feature`
-7. **Open** a Pull Request
-
-### Coding Standards
-
-- **C99** standard compliance
-- **Consistent naming** - `snake_case` for functions, `PascalCase` for types
-- **Error handling** - Always check return codes
-- **Memory safety** - No memory leaks, use valgrind
-- **Documentation** - Doxygen comments for public APIs
-- **Testing** - Unit tests for all public functions
-
-## 📄 **License**
-
-This project is licensed under the **0BSD License** - see the [LICENSE](LICENSE) file for details.
-
-**0BSD License**
-Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted.
-
-## 🙏 **Acknowledgments**
-
-- **Raylib** - Graphics library integration
-- **Lua** - Embedded scripting language  
-- **STB** - Single-file libraries
-- **Emscripten** - Web compilation support
-- **Claude Code** - AI-assisted development
-
-## 📞 **Support**
-
-- **Documentation**: [docs/](docs/)
-- **Issues**: [GitHub Issues](https://github.com/kryonlabs/kryon-c/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/kryonlabs/kryon-c/discussions)
-- **Email**: support@kryonlabs.com
-
----
-
-**Made with ❤️ by the Kryon Labs team**
+0BSD License - see [LICENSE](LICENSE) file for details.

@@ -1,1 +1,0 @@
-env: ‘./bin/kryon’: No such file or directory

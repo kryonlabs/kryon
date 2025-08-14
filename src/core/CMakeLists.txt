@@ -5,6 +5,7 @@ set(CORE_SOURCES
     arena.c
     error_system.c
     containers.c
+    color_utils.c
 )
 
 add_library(kryon_core STATIC ${CORE_SOURCES})
