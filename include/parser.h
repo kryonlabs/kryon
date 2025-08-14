@@ -20,7 +20,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include "internal/lexer.h"
+#include "lexer.h"
 
 // =============================================================================
 // FORWARD DECLARATIONS

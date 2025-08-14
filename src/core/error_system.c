@@ -3,8 +3,8 @@
  * @brief Kryon Error Handling System Implementation
  */
 
-#include "internal/error.h"
-#include "internal/memory.h"
+#include "error.h"
+#include "memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

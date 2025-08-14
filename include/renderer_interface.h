@@ -17,8 +17,8 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "internal/types.h"
-#include "internal/events.h"
+#include "types.h"
+#include "events.h"
 
 // Forward declaration to avoid circular dependency
 

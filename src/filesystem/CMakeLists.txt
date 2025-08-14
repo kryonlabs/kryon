@@ -9,7 +9,6 @@ add_library(kryon_filesystem OBJECT
 
 target_include_directories(kryon_filesystem PRIVATE
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/internal
 )
 
 target_compile_definitions(kryon_filesystem PRIVATE KRYON_FILESYSTEM_MODULE=1)

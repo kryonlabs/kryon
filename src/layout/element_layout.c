@@ -3,8 +3,8 @@
  * @brief Flutter-inspired layout calculation algorithms
  */
 
-#include "internal/elements.h"
-#include "internal/memory.h"
+#include "elements.h"
+#include "memory.h"
 #include <math.h>
 #include <float.h>
 

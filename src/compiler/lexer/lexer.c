@@ -3,9 +3,9 @@
  * @brief Kryon Lexer Implementation
  */
 
-#include "internal/lexer.h"
-#include "internal/memory.h"
-#include "internal/error.h"
+#include "lexer.h"
+#include "memory.h"
+#include "error.h"
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>

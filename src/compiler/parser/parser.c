@@ -10,8 +10,8 @@
  * tokenized input with comprehensive error recovery and validation.
  */
 
-#include "internal/parser.h"
-#include "internal/memory.h"
+#include "parser.h"
+#include "memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>

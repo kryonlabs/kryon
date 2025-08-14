@@ -9,13 +9,13 @@
  * Loads and processes KRB binary files into runtime element trees.
  */
 
-#include "internal/runtime.h"
-#include "internal/krb_format.h"
-#include "internal/events.h"
-#include "internal/memory.h"
-#include "internal/binary_io.h"
-#include "internal/script_vm.h"
-#include "internal/parser.h"
+#include "runtime.h"
+#include "krb_format.h"
+#include "events.h"
+#include "memory.h"
+#include "binary_io.h"
+#include "script_vm.h"
+#include "parser.h"
 #include "../../shared/kryon_mappings.h"
 #include "../../shared/krb_schema.h"
 #include <string.h>
@@ -991,8 +991,49 @@ static bool load_property_value(KryonProperty *property,
                 }
                 float float_value;
                 memcpy(&float_value, &float_bits, sizeof(float));
-                property->value.float_value = (double)float_value;
-                printf("DEBUG: Read float property '%s' = %f\n", property->name, float_value);
+                
+                // Check if this is a sentinel value indicating a reactive variable reference
+                if (float_value == -99999.0f && runtime) {
+                    // This property has a reactive variable reference that needs to be resolved
+                    // For now, we need to implement a mapping from property to variable name
+                    // As a temporary solution, assume common patterns
+                    const char* var_value = NULL;
+                    
+                    if (strcmp(property->name, "posY") == 0) {
+                        // posY with sentinel likely refers to $root.height or similar
+                        var_value = kryon_runtime_get_variable(runtime, "root.height");
+                        if (var_value) {
+                            float resolved_value = (float)atof(var_value);
+                            property->value.float_value = (double)resolved_value;
+                            printf("🔄 Resolved float reactive variable '%s' to %f (from root.height='%s')\n", 
+                                   property->name, resolved_value, var_value);
+                        } else {
+                            property->value.float_value = 0.0; // Default fallback
+                            printf("⚠️  Failed to resolve reactive variable for '%s', using 0.0\n", property->name);
+                        }
+                    } else if (strcmp(property->name, "posX") == 0) {
+                        // posX with sentinel likely refers to $root.width or similar
+                        var_value = kryon_runtime_get_variable(runtime, "root.width");
+                        if (var_value) {
+                            float resolved_value = (float)atof(var_value);
+                            property->value.float_value = (double)resolved_value;
+                            printf("🔄 Resolved float reactive variable '%s' to %f (from root.width='%s')\n", 
+                                   property->name, resolved_value, var_value);
+                        } else {
+                            property->value.float_value = 0.0; // Default fallback
+                            printf("⚠️  Failed to resolve reactive variable for '%s', using 0.0\n", property->name);
+                        }
+                    } else {
+                        // Generic sentinel handling - mark for runtime reactive binding
+                        property->value.float_value = 0.0; // Default fallback
+                        property->is_bound = true;
+                        property->binding_path = kryon_strdup("unknown_float_variable"); // TODO: store actual path
+                        printf("🔗 Float property '%s' marked as reactive (sentinel detected)\n", property->name);
+                    }
+                } else {
+                    property->value.float_value = (double)float_value;
+                    printf("DEBUG: Read float property '%s' = %f\n", property->name, float_value);
+                }
             }
             break;
             
@@ -1161,6 +1202,10 @@ bool kryon_element_set_property(KryonElement *element, uint16_t property_id, con
         prop->name = kryon_alloc(strlen(prop_name) + 1);
         if (prop->name) {
             strcpy(prop->name, prop_name);
+        }
+        // Debug: log property mapping for alignment properties
+        if (property_id == 0x0606 || property_id == 0x0607) {
+            printf("🔍 KRB PROPERTY LOAD: hex=0x%04X → name='%s'\n", property_id, prop_name);
         }
     } else {
         printf("❌ ERROR: Unknown property ID: 0x%04X\n", property_id);

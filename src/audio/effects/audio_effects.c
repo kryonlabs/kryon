@@ -3,8 +3,8 @@
  * @brief Kryon Audio Effects Implementation
  */
 
-#include "internal/audio.h"
-#include "internal/memory.h"
+#include "audio.h"
+#include "memory.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>

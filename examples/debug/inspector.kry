@@ -1,6 +1,6 @@
 @variables {
     selectedWidget: null
-    visible: true
+    visible: false
 }
 
 @event "keyboard" {
@@ -69,17 +69,23 @@
         
         Text {
             id: "click_instruction"
-            text: "Click on a widget to inspect"
+            text: "Click on widgets to inspect • Ctrl+I to toggle"
             color: "gray"
             fontSize: 12
             posX: 10
-            posY: 500
+            posY: 150
         }
     }
 
 }
 
 @function "lua" selectWidget() {
+    -- Only perform widget inspection when inspector is visible
+    local inspector = getElementById("debug_inspector")
+    if not inspector or not inspector:getVisible() then
+        return  -- Inspector is hidden, don't intercept clicks
+    end
+    
     -- Get mouse position from the current event
     local mouseX, mouseY = getMousePosition()
     

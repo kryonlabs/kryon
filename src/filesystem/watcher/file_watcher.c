@@ -3,8 +3,8 @@
  * @brief Kryon File Watcher Implementation (Linux inotify)
  */
 
-#include "internal/filesystem.h"
-#include "internal/memory.h"
+#include "filesystem.h"
+#include "memory.h"
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>

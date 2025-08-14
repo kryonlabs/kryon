@@ -8,10 +8,10 @@
  * 0BSD License
  */
 
- #include "internal/elements.h"
- #include "internal/runtime.h"
- #include "internal/memory.h"
- #include "internal/color_utils.h"
+ #include "elements.h"
+ #include "runtime.h"
+ #include "memory.h"
+ #include "color_utils.h"
  #include <stdio.h>
  #include <string.h>
  #include <math.h>
@@ -52,8 +52,10 @@
      if (*command_count >= max_commands) return;
  
      // --- 1. Get Visual Properties ---
-     float posX = get_element_property_float(element, "posX", 0.0f);
-     float posY = get_element_property_float(element, "posY", 0.0f);
+     float posX = element->x;
+     float posY = element->y;
+     
+     // Use layout-calculated position
      float width = get_element_property_float(element, "width", -1.0f); // -1 triggers auto-sizing
      float height = get_element_property_float(element, "height", -1.0f);
      const char* text = get_element_property_string(element, "text");

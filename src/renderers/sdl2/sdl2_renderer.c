@@ -5,7 +5,7 @@
  * SDL2-based renderer following kryon-rust architecture patterns
  */
 
-#include "internal/renderer_interface.h"
+#include "renderer_interface.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>

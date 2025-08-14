@@ -47,7 +47,7 @@ App {
         mainAxisAlignment: "start"
         crossAxisAlignment: "stretch" 
         gap: 20
-        padding: 20
+        padding: 0
 
         @const_for alignment in alignments {
             Container {

@@ -3,10 +3,10 @@
  * @brief KRB File Management and Utilities Implementation
  */
 
-#include "internal/krb_format.h"
-#include "internal/memory.h"
-#include "internal/error.h"
-#include "internal/containers.h"
+#include "krb_format.h"
+#include "memory.h"
+#include "error.h"
+#include "containers.h"
 #include <string.h>
 #include <stdlib.h>
 

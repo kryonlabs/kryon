@@ -19,10 +19,10 @@
 #include <stddef.h>
 
 // Include the proper headers we actually need
-#include "internal/memory.h"
-#include "internal/color_utils.h"
-#include "internal/renderer_interface.h"
-#include "internal/shader_compiler.h"
+#include "memory.h"
+#include "color_utils.h"
+#include "renderer_interface.h"
+#include "shader_compiler.h"
 
 // Renderer types for specific implementations
 typedef enum {

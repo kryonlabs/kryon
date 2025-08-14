@@ -7,8 +7,8 @@
  * purpose with or without fee is hereby granted.
  */
 
-#include "internal/script_bridge.h"
-#include "internal/memory.h"
+#include "script_bridge.h"
+#include "memory.h"
 #include <stdlib.h>
 #include <string.h>
 

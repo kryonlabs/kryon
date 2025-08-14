@@ -6,7 +6,7 @@
 #ifndef KRYON_EVENT_SERIALIZER_H
 #define KRYON_EVENT_SERIALIZER_H
 
-#include "internal/codegen.h"
+#include "codegen.h"
 
 /**
  * @brief Write event handler to KRB format

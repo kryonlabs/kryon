@@ -10,13 +10,14 @@
  * reactive state, and event handling.
  */
 
-#include "internal/runtime.h"
-#include "internal/memory.h"
-#include "internal/krb_format.h"
-#include "internal/renderer_interface.h"
-#include "internal/color_utils.h"
-#include "internal/types.h"
-#include "internal/elements.h"
+#include "runtime.h"
+#include "memory.h"
+#include "krb_format.h"
+#include "renderer_interface.h"
+#include "color_utils.h"
+#include "types.h"
+#include "elements.h"
+#include "shared/kryon_mappings.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -26,6 +27,9 @@
 #include <time.h>
 #include <math.h>
 #include <assert.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <unistd.h>
 
 // Forward declaration from element_manager.c
 bool kryon_element_set_property_by_name(KryonElement *element, const char *name, const void *value);
@@ -44,20 +48,10 @@ static void update_element_tree(KryonRuntime *runtime, KryonElement *element, do
 static void process_event_queue(KryonRuntime *runtime);
 static bool runtime_event_handler(const KryonEvent* event, void* userData);
 static void runtime_error(KryonRuntime *runtime, const char *format, ...);
-static const char* get_element_property_string_with_runtime(KryonRuntime* runtime, KryonElement* element, const char* prop_name);
+static void kryon_debug_inspector_toggle(KryonRuntime *runtime);
+const char* get_element_property_string_with_runtime(KryonRuntime* runtime, KryonElement* element, const char* prop_name);
 static const char* resolve_variable_reference(KryonRuntime* runtime, const char* value);
 static const char* resolve_component_state_variable(KryonRuntime* runtime, KryonElement* element, const char* var_name);
-
-// Event callback function for receiving input events from renderer (extern declaration in runtime.h)
-
-// Element to render command conversion functions (Phase 5: added runtime parameter)
-static void element_container_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
-static void element_text_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
-static void element_button_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
-static void element_image_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
-static void element_center_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
-static void element_column_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
-static void element_row_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 
 // External function from krb_loader.c
 extern bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, size_t size);
@@ -159,6 +153,7 @@ KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config) {
     kryon_event_add_listener(runtime->event_system, KRYON_EVENT_KEY_DOWN, runtime_event_handler, runtime);
     kryon_event_add_listener(runtime->event_system, KRYON_EVENT_KEY_UP, runtime_event_handler, runtime);
     kryon_event_add_listener(runtime->event_system, KRYON_EVENT_WINDOW_FOCUS, runtime_event_handler, runtime);
+    kryon_event_add_listener(runtime->event_system, KRYON_EVENT_WINDOW_RESIZE, runtime_event_handler, runtime);
     
     // Initialize global state
     runtime->global_state = kryon_state_create("global", KRYON_STATE_OBJECT);
@@ -189,6 +184,16 @@ KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config) {
     runtime->mouse_position.x = 0.0f;
     runtime->mouse_position.y = 0.0f;
     runtime->cursor_should_be_pointer = false;
+    
+    // Initialize root variables with default viewport size
+    if (!kryon_runtime_set_variable(runtime, "root.width", "800")) {
+        printf("⚠️  Failed to initialize root.width variable\n");
+    }
+    if (!kryon_runtime_set_variable(runtime, "root.height", "600")) {
+        printf("⚠️  Failed to initialize root.height variable\n");
+    }
+    
+    printf("✅ Initialized root variables: root.width=800, root.height=600\n");
     
     return runtime;
 }
@@ -508,7 +513,7 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
         g_current_runtime = runtime;
         
         // Generate render commands from element tree
-        kryon_element_tree_to_render_commands(runtime->root, commands, &command_count, 256);
+        kryon_element_tree_to_render_commands(runtime, runtime->root, commands, &command_count, 256);
         
         // Clear global runtime after rendering
         g_current_runtime = NULL;
@@ -887,6 +892,25 @@ static bool runtime_event_handler(const KryonEvent* event, void* userData) {
     if (event->type == KRYON_EVENT_MOUSE_MOVED) {
         runtime->mouse_position.x = event->data.mouseMove.x;
         runtime->mouse_position.y = event->data.mouseMove.y;
+    } else if (event->type == KRYON_EVENT_WINDOW_RESIZE) {
+        // Update root variables when window resizes
+        float new_width = (float)event->data.windowResize.width;
+        float new_height = (float)event->data.windowResize.height;
+        
+        printf("🔄 Window resized to %.0fx%.0f - updating root variables\n", new_width, new_height);
+        
+        if (kryon_runtime_update_viewport_size(runtime, new_width, new_height)) {
+            printf("✅ Successfully updated root variables for new viewport size\n");
+        } else {
+            printf("❌ Failed to update root variables for window resize\n");
+        }
+    } else if (event->type == KRYON_EVENT_KEY_DOWN) {
+        // Handle Ctrl+I for debug inspector
+        if (event->data.key.ctrlPressed && event->data.key.keyCode == 73) { // 73 = 'I' key
+            printf("🔍 Ctrl+I pressed - opening debug inspector\n");
+            kryon_debug_inspector_toggle(runtime);
+            return true; // Event handled
+        }
     }
 
     return false;
@@ -1001,25 +1025,38 @@ void kryon_runtime_clear_errors(KryonRuntime *runtime) {
 // =============================================================================
 
 // Generic property finder
-static KryonProperty* find_element_property(KryonElement* element, const char* prop_name) {
+KryonProperty* find_element_property(KryonElement* element, const char* prop_name) {
     if (!element || !prop_name) return NULL;
     
     // Critical safety check: verify properties array exists when property_count > 0
     if (element->property_count > 0 && !element->properties) {
-        printf("❌ ERROR: Element has property_count=%zu but properties array is NULL\n", element->property_count);
         return NULL;
     }
     
     // Bounds check: prevent excessive property counts
     if (element->property_count > 1000) {
-        printf("❌ ERROR: Element has suspicious property_count=%zu, possible corruption\n", element->property_count);
         return NULL;
     }
     
+    // Use kryon mappings to resolve aliases - get the canonical name from the alias
+    uint16_t prop_hex = kryon_get_property_hex(prop_name);
+    const char* canonical_name = NULL;
+    if (prop_hex != 0) {
+        canonical_name = kryon_get_property_name(prop_hex);
+    }
+    
+    // Search for the property using both the original name and canonical name
     for (size_t i = 0; i < element->property_count; i++) {
         KryonProperty* prop = element->properties[i];
-        if (prop && prop->name && strcmp(prop->name, prop_name) == 0) {
-            return prop;
+        if (prop && prop->name) {
+            // First try exact match with the requested name
+            if (strcmp(prop->name, prop_name) == 0) {
+                return prop;
+            }
+            // Then try canonical name if different
+            if (canonical_name && strcmp(prop->name, canonical_name) == 0) {
+                return prop;
+            }
         }
     }
     return NULL;
@@ -1027,21 +1064,39 @@ static KryonProperty* find_element_property(KryonElement* element, const char* p
 
 // Resolve variable references in string values
 static const char* resolve_variable_reference(KryonRuntime* runtime, const char* value) {
-    if (!runtime || !value || value[0] != '$') {
-        return value; // Not a variable reference
+    if (!runtime || !value) {
+        return value; // Invalid input
     }
     
-    // Extract variable name (skip the $ prefix)
-    const char* var_name = value + 1;
+    const char* var_name;
+    
+    // Handle both $variable and variable formats (compilation may strip $)
+    if (value[0] == '$') {
+        var_name = value + 1; // Skip the $ prefix
+    } else {
+        // Check if it looks like a variable name (contains . for root.width)
+        if (strstr(value, "root.") == value || strstr(value, "comp_") == value) {
+            var_name = value; // Use as-is
+        } else {
+            return value; // Not a variable reference
+        }
+    }
     
     // Look up variable in runtime registry
     const char* resolved_value = kryon_runtime_get_variable(runtime, var_name);
     if (resolved_value) {
-        // Resolved variable
+        // Add basic validation to ensure the pointer is reasonable
+        if (resolved_value < (const char*)0x1000) {
+            printf("❌ ERROR: Variable '%s' resolved to invalid pointer %p\n", var_name, resolved_value);
+            return value; // Return original if pointer is invalid
+        }
+        
+        printf("✅ Resolved variable '%s' to '%s' (ptr=%p)\n", var_name, resolved_value, resolved_value);
         return resolved_value;
     }
     
     // Variable not found, using literal value
+    printf("❌ Variable '%s' not found, using literal\n", var_name);
     return value; // Return original if not found
 }
 
@@ -1103,17 +1158,21 @@ static const char* resolve_component_state_variable(KryonRuntime* runtime, Kryon
 
 // Get property value as string with type conversion
 const char* get_element_property_string(KryonElement* element, const char* prop_name) {
+    if (!g_current_runtime) {
+        printf("⚠️  WARNING: get_element_property_string called without runtime context\n");
+    }
     return get_element_property_string_with_runtime(g_current_runtime, element, prop_name);
 }
 
 // Get property value as string with runtime for variable resolution
-static const char* get_element_property_string_with_runtime(KryonRuntime* runtime, KryonElement* element, const char* prop_name) {
+const char* get_element_property_string_with_runtime(KryonRuntime* runtime, KryonElement* element, const char* prop_name) {
     KryonProperty* prop = find_element_property(element, prop_name);
     if (!prop) return NULL;
     
+    // Simple debug logging to avoid buffer corruption  
     static int debug_call_count = 0;
-    if (debug_call_count < 5) {
-        printf("🔍 Found %s (type=%d)\n", prop_name, prop->type);
+    if (debug_call_count < 3) {
+        printf("🔍 Property type=%d\n", prop->type);
         debug_call_count++;
     }
     
@@ -1122,6 +1181,12 @@ static const char* get_element_property_string_with_runtime(KryonRuntime* runtim
     static int string_buffer_index = 0;
     char* buffer = string_buffers[string_buffer_index];
     string_buffer_index = (string_buffer_index + 1) % 4;
+    
+    // Safety check for buffer integrity
+    if (!buffer) {
+        printf("❌ CRITICAL ERROR: Buffer is null!\n");
+        return "";
+    }
 
     switch (prop->type) {
         case KRYON_RUNTIME_PROP_STRING:
@@ -1166,22 +1231,17 @@ static const char* get_element_property_string_with_runtime(KryonRuntime* runtim
                 }
 
                 if (resolved_value) {
-                    strncpy(buffer, resolved_value, 1023);
-                    buffer[1023] = '\0';
+                    // Safe copy to buffer using snprintf to avoid buffer overruns
+                    snprintf(buffer, 1024, "%s", resolved_value);
                     return buffer;
                 }
                 
                 return prop->value.string_value;
             }
             
-            // Legacy: Resolve variable references if runtime is available
-            if (runtime) {
-                const char* resolved = resolve_variable_reference(runtime, prop->value.string_value);
-                strncpy(buffer, resolved, 1023);
-                buffer[1023] = '\0';
-                return buffer;
-            }
-            return prop->value.string_value;
+            // Variables are resolved during KRB loading, so just return the property value
+            // No additional runtime resolution needed for most cases
+            return prop->value.string_value ? prop->value.string_value : "";
             
         case KRYON_RUNTIME_PROP_INTEGER:
             snprintf(buffer, 1024, "%lld", (long long)prop->value.int_value);
@@ -1605,686 +1665,6 @@ static float calculate_element_height(KryonElement* element) {
     return 50.0f; // Default for unknown types
 }
 
-// Convert Container element to render commands
-static void element_container_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
-    if (*command_count >= max_commands - 1) return;
-    
-    // Debug: Log all properties for first container
-    // debug_log_element_properties(element, "Container");
-    
-    // Get container properties with comprehensive type handling
-    float posX = get_element_property_float(element, "posX", 0.0f);
-    float posY = get_element_property_float(element, "posY", 0.0f);
-    float width = get_element_property_float(element, "width", 100.0f);
-    float height = get_element_property_float(element, "height", 100.0f);
-    
-    // Container position calculated
-    
-    // Get color properties directly as color values (not strings)
-    uint32_t bg_color_val = get_element_property_color(element, "background", 0x00000000); // Transparent default
-    uint32_t border_color_val = get_element_property_color(element, "borderColor", 0x000000FF); // Black default
-    float border_width = get_element_property_float(element, "borderWidth", 0.0f);
-    float border_radius = get_element_property_float(element, "borderRadius", 0.0f);
-    int z_index = get_element_property_int(element, "zIndex", 0); // Default z-index 0
-    
-    // Convert RGBA values to KryonColor format
-    KryonColor bg_color = {
-        ((bg_color_val >> 24) & 0xFF) / 255.0f,  // R
-        ((bg_color_val >> 16) & 0xFF) / 255.0f,  // G
-        ((bg_color_val >> 8) & 0xFF) / 255.0f,   // B
-        (bg_color_val & 0xFF) / 255.0f           // A
-    };
-    
-    // Debug: Show color being rendered 
-    if (bg_color_val != 0x00000000) {
-        printf("🎨 Container background: 0x%08X -> RGBA(%.2f,%.2f,%.2f,%.2f) at (%.1f,%.1f) %dx%.0f\n", 
-               bg_color_val, bg_color.r, bg_color.g, bg_color.b, bg_color.a, posX, posY, (int)width, height);
-    }
-    KryonColor border_color = {
-        ((border_color_val >> 24) & 0xFF) / 255.0f,  // R
-        ((border_color_val >> 16) & 0xFF) / 255.0f,  // G
-        ((border_color_val >> 8) & 0xFF) / 255.0f,   // B
-        (border_color_val & 0xFF) / 255.0f           // A
-    };
-    
-    // Create container background command
-    if (bg_color.a > 0.0f || border_width > 0.0f) {
-        KryonRenderCommand cmd = kryon_cmd_draw_rect(
-            (KryonVec2){posX, posY},
-            (KryonVec2){width, height},
-            bg_color,
-            border_radius
-        );
-        
-        // Set border properties
-        if (border_width > 0.0f) {
-            cmd.data.draw_rect.border_width = border_width;
-            cmd.data.draw_rect.border_color = border_color;
-        }
-        
-        // Set z-index for proper layering
-        cmd.z_index = z_index;
-        
-        commands[(*command_count)++] = cmd;
-    }
-}
-
-// Convert element to render commands using proper button element command
-
-static void element_button_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
-    if (*command_count >= max_commands) return;
-
-    // --- 1. Get Visual Properties ---
-    // Read all visual properties from the element with safe defaults.
-    float posX = get_element_property_float(element, "posX", 0.0f);
-    float posY = get_element_property_float(element, "posY", 0.0f);
-    float width = get_element_property_float(element, "width", -1.0f); // -1 triggers auto-sizing
-    float height = get_element_property_float(element, "height", -1.0f);
-    const char* text = get_element_property_string(element, "text");
-    uint32_t bg_color_val = get_element_property_color(element, "backgroundColor", 0x3B82F6FF); // Blue-500
-    uint32_t text_color_val = get_element_property_color(element, "color", 0xFFFFFFFF); // White
-    uint32_t border_color_val = get_element_property_color(element, "borderColor", 0x2563EBFF); // Blue-600
-    float border_width = get_element_property_float(element, "borderWidth", 1.0f);
-    float border_radius = get_element_property_float(element, "borderRadius", 8.0f);
-    bool enabled = get_element_property_bool(element, "enabled", true);
-
-    // --- 2. Calculate Final Layout ---
-    // Apply auto-sizing if width or height were not explicitly set.
-    auto_size_element(element, &width, &height);
-
-    // --- 3. Determine Visual State based on Interaction ---
-    // This is purely for visual feedback (e.g., hover color, cursor change).
-    bool is_hovered = false;
-    if (enabled) {
-        KryonVec2 mouse_pos = runtime->mouse_position;
-        if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
-            mouse_pos.y >= posY && mouse_pos.y <= posY + height) {
-            is_hovered = true;
-            runtime->cursor_should_be_pointer = true;
-        }
-    }
-
-    // --- 4. Prepare Colors and Final State ---
-    KryonColor bg_color = color_u32_to_f32(bg_color_val);
-    KryonColor text_color = color_u32_to_f32(text_color_val);
-    KryonColor border_color = color_u32_to_f32(border_color_val);
-    
-    // Apply hover/disabled visual effects
-    if (is_hovered) {
-        bg_color = color_lighten(bg_color, 0.15f); // Make button brighter on hover
-    }
-    if (!enabled) {
-        bg_color = color_desaturate(bg_color, 0.5f); // Make button grayish if disabled
-        text_color.a *= 0.7f; // Make text slightly transparent
-    }
-
-    // --- 5. Generate a Unique and Correct ID for the Renderer ---
-    const char* button_id_str = element->element_id;
-    static char id_buffer[4][32];
-    static int buffer_index = 0;
-
-    if (!button_id_str || button_id_str[0] == '\0') {
-        char* current_buffer = id_buffer[buffer_index];
-        buffer_index = (buffer_index + 1) % 4; // Use a rotating buffer for safety
-        snprintf(current_buffer, 32, "kryon-id-%u", element->id);
-        button_id_str = current_buffer;
-    }
-    
-    // --- 6. Create the Render Command ---
-    // This is the final, pure "instruction" for the renderer.
-    KryonRenderCommand cmd = kryon_cmd_draw_button(
-        button_id_str,
-        (KryonVec2){posX, posY},
-        (KryonVec2){width, height},
-        text ? text : "", // Use empty string as default, not "Button"
-        bg_color,
-        text_color
-    );
-    
-    // Set the remaining visual properties on the command
-    cmd.data.draw_button.border_color = border_color;
-    cmd.data.draw_button.border_width = border_width;
-    cmd.data.draw_button.border_radius = border_radius;
-    cmd.data.draw_button.state = is_hovered ? KRYON_ELEMENT_STATE_HOVERED : KRYON_ELEMENT_STATE_NORMAL;
-    cmd.data.draw_button.enabled = enabled;
-    
-    // Add the completed command to the render queue
-    commands[(*command_count)++] = cmd;
-}
-
-
-// Convert Image element to render commands
-static void element_image_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
-    if (*command_count >= max_commands - 1) return; // Need space for image command
-    
-    // Get image properties with dynamic lookup
-    float posX = get_element_property_float(element, "posX", 0.0f);
-    float posY = get_element_property_float(element, "posY", 0.0f);
-    float width = get_element_property_float(element, "width", 100.0f);
-    float height = get_element_property_float(element, "height", 100.0f);
-    
-    const char* source = get_element_property_string(element, "source");
-    const char* src = get_element_property_string(element, "src"); // Alternative property name
-    float opacity = get_element_property_float(element, "opacity", 1.0f);
-    bool maintain_aspect = get_element_property_bool(element, "keepAspectRatio", true);
-    
-    // Use 'src' if 'source' is not provided (common naming convention)
-    if (!source && src) {
-        source = src;
-    }
-    
-    if (!source) {
-        // No image source provided, skip rendering
-        return;
-    }
-    
-    // Create image render command
-    KryonRenderCommand cmd = {0};
-    cmd.type = KRYON_CMD_DRAW_IMAGE;
-    cmd.z_index = 0;
-    cmd.data.draw_image = (KryonDrawImageData){
-        .position = {posX, posY},
-        .size = {width, height},
-        .source = strdup(source),
-        .opacity = opacity,
-        .maintain_aspect = maintain_aspect
-    };
-    
-    commands[(*command_count)++] = cmd;
-}
-
-// Convert Center element to render commands (handles child positioning)
-static void element_center_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
-    // Center doesn't render itself but positions its children
-    // Calculate center position based on parent or window size
-    
-    float center_x = 300.0f; // Default window center X
-    float center_y = 200.0f; // Default window center Y
-    
-    // If parent exists, use parent dimensions
-    if (element->parent) {
-        float parent_width = get_element_property_float(element->parent, "windowWidth", 600.0f);
-        float parent_height = get_element_property_float(element->parent, "windowHeight", 400.0f);
-        center_x = parent_width / 2.0f;
-        center_y = parent_height / 2.0f;
-        
-    }
-    
-    // Position children at the center
-    for (size_t i = 0; i < element->child_count; i++) {
-        KryonElement* child = element->children[i];
-        if (child) {
-            // Calculate child position to center it
-            float child_width = get_element_property_float(child, "width", 100.0f);
-            float child_height = get_element_property_float(child, "height", 50.0f);
-            
-            float child_x = center_x - (child_width / 2.0f);
-            float child_y = center_y - (child_height / 2.0f);
-            
-            // Set position properties on child (create property if needed)
-            // Find or create posX property
-            KryonProperty* posX_prop = find_element_property(child, "posX");
-            if (!posX_prop) {
-                // Add new property - need to expand properties array
-                if (child->property_count >= child->property_capacity) {
-                    size_t new_capacity = child->property_capacity ? child->property_capacity * 2 : 4;
-                    KryonProperty **new_props = kryon_realloc(child->properties, new_capacity * sizeof(KryonProperty*));
-                    if (new_props) {
-                        child->properties = new_props;
-                        child->property_capacity = new_capacity;
-                    }
-                }
-                
-                if (child->property_count < child->property_capacity) {
-                    posX_prop = kryon_alloc(sizeof(KryonProperty));
-                    if (posX_prop) {
-                        posX_prop->name = strdup("posX");
-                        posX_prop->type = KRYON_RUNTIME_PROP_FLOAT;
-                        child->properties[child->property_count++] = posX_prop;
-                    }
-                }
-            }
-            if (posX_prop) {
-                posX_prop->value.float_value = child_x;
-            }
-            
-            // Find or create posY property
-            KryonProperty* posY_prop = find_element_property(child, "posY");
-            if (!posY_prop) {
-                if (child->property_count < child->property_capacity) {
-                    posY_prop = kryon_alloc(sizeof(KryonProperty));
-                    if (posY_prop) {
-                        posY_prop->name = strdup("posY");
-                        posY_prop->type = KRYON_RUNTIME_PROP_FLOAT;
-                        child->properties[child->property_count++] = posY_prop;
-                    }
-                }
-            }
-            if (posY_prop) {
-                posY_prop->value.float_value = child_y;
-            }
-        }
-    }
-}
-
-// Helper function to set element position
-static void set_element_position(KryonElement* element, float x, float y) {
-    if (!element) return;
-    
-    // Set position properties on the element
-    // printf("🔧 Setting position for element '%s' to (%.1f, %.1f)\n", 
-    //        element->type_name ? element->type_name : "Unknown", x, y);
-    
-    // Find or create posX property (used by text rendering)
-    KryonProperty* x_prop = find_element_property(element, "posX");
-    if (!x_prop) {
-        // Expand capacity if needed
-        if (element->property_count >= element->property_capacity) {
-            size_t new_capacity = element->property_capacity ? element->property_capacity * 2 : 4;
-            KryonProperty **new_properties = kryon_realloc(element->properties,
-                                                          new_capacity * sizeof(KryonProperty*));
-            if (!new_properties) return;
-            element->properties = new_properties;
-            element->property_capacity = new_capacity;
-        }
-        
-        // Add posX property
-        x_prop = kryon_alloc(sizeof(KryonProperty));
-        x_prop->name = kryon_strdup("posX");
-        element->properties[element->property_count++] = x_prop;
-    }
-    x_prop->type = KRYON_RUNTIME_PROP_FLOAT;
-    x_prop->value.float_value = x;
-    // printf("🔧 Set posX to %.1f\n", x_prop->value.float_value);
-    
-    // Find or create posY property (used by text rendering)
-    KryonProperty* y_prop = find_element_property(element, "posY");
-    if (!y_prop) {
-        // Expand capacity if needed
-        if (element->property_count >= element->property_capacity) {
-            size_t new_capacity = element->property_capacity ? element->property_capacity * 2 : 4;
-            KryonProperty **new_properties = kryon_realloc(element->properties,
-                                                          new_capacity * sizeof(KryonProperty*));
-            if (!new_properties) return;
-            element->properties = new_properties;
-            element->property_capacity = new_capacity;
-        }
-        
-        // Add posY property
-        y_prop = kryon_alloc(sizeof(KryonProperty));
-        y_prop->name = kryon_strdup("posY");
-        element->properties[element->property_count++] = y_prop;
-    }
-    y_prop->type = KRYON_RUNTIME_PROP_FLOAT;
-    y_prop->value.float_value = y;
-    // printf("🔧 Set posY to %.1f\n", y_prop->value.float_value);
-    
-    // Position set successfully
-}
-
-// Convert Column element to render commands (arranges children vertically)
-static void element_column_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
-    // Column arranges children vertically with optional spacing and alignment
-    
-    // Get layout properties
-    const char* main_axis = get_element_property_string(element, "mainAxis");
-    const char* cross_axis = get_element_property_string(element, "crossAxis"); 
-    float gap = get_element_property_float(element, "gap", 0.0f);
-    
-    // Get container position and dimensions from parent
-    float container_x = 0.0f;
-    float container_y = 0.0f;
-    float container_width = 600.0f;  // Default
-    float container_height = 400.0f; // Default
-    
-    // Column layout inherits position and size from its parent container
-    if (element->parent) {
-        // Get parent's position (where this Column should start)
-        container_x = get_element_property_float(element->parent, "posX", 0.0f);
-        container_y = get_element_property_float(element->parent, "posY", 0.0f);
-        
-        // Get parent's dimensions (Column fills parent's content area)
-        container_width = get_element_property_float(element->parent, "width", 600.0f);
-        container_height = get_element_property_float(element->parent, "height", 400.0f);
-        
-        // Handle window-level parents
-        if (strcmp(element->parent->type_name, "App") == 0) {
-            container_width = get_element_property_float(element->parent, "windowWidth", 600.0f);
-            container_height = get_element_property_float(element->parent, "windowHeight", 400.0f);
-        }
-        
-        // Account for parent's padding
-        float parent_padding = get_element_property_float(element->parent, "padding", 0.0f);
-        container_x += parent_padding;
-        container_y += parent_padding;
-        container_width -= 2 * parent_padding;
-        container_height -= 2 * parent_padding;
-        
-        // printf("🔧 Column inherits from parent '%s': pos=(%.1f,%.1f) size=%.1fx%.1f\n", 
-        //        element->parent->type_name, container_x, container_y, container_width, container_height);
-        
-        // Set position properties on this Column so children can inherit from it
-        set_element_position(element, container_x, container_y);
-    }
-    
-    // Apply this Column's own padding to create content area for children
-    float column_padding = get_element_property_float(element, "padding", 0.0f);
-    container_x += column_padding;
-    container_y += column_padding;
-    container_width -= 2 * column_padding;
-    container_height -= 2 * column_padding;
-    
-    // if (column_padding > 0) {
-    //     printf("🔧 Column applying own padding %.1f, content area: pos=(%.1f,%.1f) size=%.1fx%.1f\n", 
-    //            column_padding, container_x, container_y, container_width, container_height);
-    // }
-    
-    // Calculate total height needed for all children
-    float total_children_height = 0.0f;
-    for (size_t i = 0; i < element->child_count; i++) {
-        KryonElement* child = element->children[i];
-        if (child) {
-            float child_height = calculate_element_height(child);
-            total_children_height += child_height;
-            if (i < element->child_count - 1) {
-                total_children_height += gap; // Add gap between children
-            }
-        }
-    }
-    
-    // Calculate starting Y position based on mainAxisAlignment
-    float start_y = container_y;
-    if (main_axis && strcmp(main_axis, "center") == 0) {
-        start_y = container_y + (container_height - total_children_height) / 2.0f;
-    } else if (main_axis && strcmp(main_axis, "end") == 0) {
-        start_y = container_y + container_height - total_children_height;
-    } else if (main_axis && strcmp(main_axis, "spaceEvenly") == 0) {
-        // spaceEvenly: equal space before, between, and after all items
-        if (element->child_count > 0) {
-            float available_space = container_height - total_children_height + ((element->child_count - 1) * gap);
-            gap = available_space / (element->child_count + 1);
-            start_y = container_y + gap;
-        }
-    } else if (main_axis && strcmp(main_axis, "spaceAround") == 0) {
-        // spaceAround: equal space around each item (half space at edges)
-        if (element->child_count > 0) {
-            float available_space = container_height - total_children_height + ((element->child_count - 1) * gap);
-            gap = available_space / element->child_count;
-            start_y = container_y + gap / 2.0f;
-        }
-    } else if (main_axis && strcmp(main_axis, "spaceBetween") == 0) {
-        // spaceBetween: equal space between items (no space at edges)
-        if (element->child_count > 1) {
-            float available_space = container_height - total_children_height + ((element->child_count - 1) * gap);
-            gap = available_space / (element->child_count - 1);
-            start_y = container_y;
-        }
-    }
-    // "start" or default uses container_y
-    
-    // Position children vertically
-    float current_y = start_y;
-    
-    for (size_t i = 0; i < element->child_count; i++) {
-        KryonElement* child = element->children[i];
-        if (child) {
-            float child_width = get_element_property_float(child, "width", 100.0f);
-            float child_height = calculate_element_height(child);
-            
-            // Calculate X position based on crossAxisAlignment
-            float child_x = container_x;
-            if (cross_axis && strcmp(cross_axis, "center") == 0) {
-                child_x = container_x + (container_width - child_width) / 2.0f;
-            } else if (cross_axis && strcmp(cross_axis, "end") == 0) {
-                child_x = container_x + container_width - child_width;
-            }
-            // "start" or default uses container_x
-            
-            // Set position properties on child
-            set_element_position(child, child_x, current_y);
-            
-            current_y += child_height + gap;
-        }
-    }
-}
-
-// Convert Row element to render commands (arranges children horizontally)
-static void element_row_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
-    // Row arranges children horizontally with optional spacing and alignment
-    
-    // Get layout properties
-    const char* main_axis = get_element_property_string(element, "mainAxis");
-    const char* cross_axis = get_element_property_string(element, "crossAxis");
-    float gap = get_element_property_float(element, "gap", 0.0f);
-    
-    // Get container position and dimensions from parent
-    float container_x = 0.0f;
-    float container_y = 0.0f;
-    float container_width = 600.0f;  // Default
-    float container_height = 400.0f; // Default
-    
-    // Row layout inherits position and size from its parent container
-    if (element->parent) {
-        // Get this Row's position (set by parent's layout)
-        container_x = get_element_property_float(element, "posX", 0.0f);
-        container_y = get_element_property_float(element, "posY", 0.0f);
-        
-        // Find actual container dimensions by walking up the hierarchy
-        // Look for the first parent that has explicit width/height properties
-        KryonElement* size_parent = element->parent;
-        while (size_parent) {
-            // Check if this parent has explicit dimensions
-            KryonProperty* width_prop = find_element_property(size_parent, "width");
-            KryonProperty* height_prop = find_element_property(size_parent, "height");
-            
-            if (width_prop && height_prop) {
-                // Found a parent with explicit dimensions
-                container_width = width_prop->value.float_value;
-                container_height = height_prop->value.float_value;
-                
-                // Account for this parent's padding
-                float size_parent_padding = get_element_property_float(size_parent, "padding", 0.0f);
-                if (size_parent_padding > 0) {
-                    container_width -= 2 * size_parent_padding;
-                    container_height -= 2 * size_parent_padding;
-                    printf("🔍 Applied padding %.1f, usable size: %.1fx%.1f\n", 
-                           size_parent_padding, container_width, container_height);
-                }
-                break;
-            } else if (strcmp(size_parent->type_name, "App") == 0) {
-                // Handle window-level parents
-                container_width = get_element_property_float(size_parent, "windowWidth", 600.0f);
-                container_height = get_element_property_float(size_parent, "windowHeight", 400.0f);
-                break;
-            }
-            
-            // Move up to the next parent
-            size_parent = size_parent->parent;
-        }
-        
-        // printf("🔧 Row inherits from parent '%s': pos=(%.1f,%.1f) size=%.1fx%.1f\n", 
-        //        element->parent->type_name, container_x, container_y, container_width, container_height);
-        
-        // Set position properties on this Row so children can inherit from it
-        set_element_position(element, container_x, container_y);
-    }
-    
-    // Calculate total width needed for all children
-    float total_children_width = 0.0f;
-    for (size_t i = 0; i < element->child_count; i++) {
-        KryonElement* child = element->children[i];
-        if (child) {
-            float child_width = get_element_property_float(child, "width", 100.0f);
-            total_children_width += child_width;
-            if (i < element->child_count - 1) {
-                total_children_width += gap; // Add gap between children
-            }
-        }
-    }
-    
-    // Calculate starting X position based on mainAxisAlignment
-    float start_x = container_x;
-    if (main_axis && strcmp(main_axis, "center") == 0) {
-        start_x = container_x + (container_width - total_children_width) / 2.0f;
-    } else if (main_axis && strcmp(main_axis, "end") == 0) {
-        start_x = container_x + container_width - total_children_width;
-    } else if (main_axis && strcmp(main_axis, "spaceEvenly") == 0) {
-        // spaceEvenly: equal space before, between, and after all items
-        if (element->child_count > 0) {
-            float available_space = container_width - total_children_width + ((element->child_count - 1) * gap);
-            gap = available_space / (element->child_count + 1);
-            start_x = container_x + gap;
-        }
-    } else if (main_axis && strcmp(main_axis, "spaceAround") == 0) {
-        // spaceAround: equal space around each item (half space at edges)
-        if (element->child_count > 0) {
-            float available_space = container_width - total_children_width + ((element->child_count - 1) * gap);
-            gap = available_space / element->child_count;
-            start_x = container_x + gap / 2.0f;
-        }
-    } else if (main_axis && strcmp(main_axis, "spaceBetween") == 0) {
-        // spaceBetween: equal space between items (no space at edges)
-        if (element->child_count > 1) {
-            float available_space = container_width - total_children_width + ((element->child_count - 1) * gap);
-            gap = available_space / (element->child_count - 1);
-            start_x = container_x;
-        }
-    }
-    // "start" or default uses container_x
-    
-    // Position children horizontally
-    float current_x = start_x;
-    for (size_t i = 0; i < element->child_count; i++) {
-        KryonElement* child = element->children[i];
-        if (child) {
-            float child_width = get_element_property_float(child, "width", 100.0f);
-            float child_height = get_element_property_float(child, "height", 50.0f);
-            
-            // Calculate Y position based on crossAxisAlignment
-            float child_y = container_y;
-            if (cross_axis && strcmp(cross_axis, "center") == 0) {
-                child_y = container_y + (container_height - child_height) / 2.0f;
-            } else if (cross_axis && strcmp(cross_axis, "end") == 0) {
-                child_y = container_y + container_height - child_height;
-            }
-            // "start" or default uses container_y
-            
-            // Set position properties on child
-            set_element_position(child, current_x, child_y);
-            
-            current_x += child_width + gap;
-        }
-    }
-}
-
-// Convert Text element to render commands  
-static void element_text_to_commands(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
-    if (*command_count >= max_commands - 1) return;
-    
-    // Debug: Log all properties for first text element
-    // debug_log_element_properties(element, "Text");
-    
-    // Get text properties with comprehensive type handling
-    const char* text = get_element_property_string(element, "text");
-    uint32_t text_color_val = get_element_property_color(element, "color", 0x000000FF); // Black default
-    float font_size = get_element_property_float(element, "fontSize", 20.0f);
-    const char* font_family = get_element_property_string(element, "fontFamily");
-    const char* font_weight = get_element_property_string(element, "fontWeight");
-    const char* text_align = get_element_property_string(element, "textAlignment");
-    int z_index = get_element_property_int(element, "zIndex", 0); // Default z-index 0
-    
-    // Get text positioning
-    float posX = get_element_property_float(element, "posX", 0.0f);
-    float posY = get_element_property_float(element, "posY", 0.0f);
-    float max_width = get_element_property_float(element, "maxWidth", 0.0f);
-    
-    if (!text) return;
-    KryonColor text_color = {
-        ((text_color_val >> 24) & 0xFF) / 255.0f,  // R
-        ((text_color_val >> 16) & 0xFF) / 255.0f,  // G
-        ((text_color_val >> 8) & 0xFF) / 255.0f,   // B
-        (text_color_val & 0xFF) / 255.0f           // A
-    };
-    
-    // Calculate proper positioning within parent container
-    KryonVec2 position = {posX, posY};
-    
-    // If element has a parent and no explicit position properties, calculate centered position
-    KryonProperty* posX_prop = find_element_property(element, "posX");
-    KryonProperty* posY_prop = find_element_property(element, "posY");
-    if (element->parent && !posX_prop && !posY_prop) {
-        // Get parent properties
-        float parent_x = get_element_property_float(element->parent, "posX", 0.0f);
-        float parent_y = get_element_property_float(element->parent, "posY", 0.0f);
-        float parent_width = get_element_property_float(element->parent, "width", 200.0f);
-        float parent_height = get_element_property_float(element->parent, "height", 100.0f);
-        float parent_padding = get_element_property_float(element->parent, "padding", 0.0f);
-        const char* parent_alignment = get_element_property_string(element->parent, "contentAlignment");
-        
-        // Calculate available area inside parent (accounting for padding)
-        float available_x = parent_x + parent_padding;
-        float available_y = parent_y + parent_padding;
-        float available_width = parent_width - (parent_padding * 2);
-        float available_height = parent_height - (parent_padding * 2);
-        
-        // Center the text within the available area
-        if (parent_alignment && strcmp(parent_alignment, "center") == 0) {
-            position.x = available_x + (available_width / 2.0f);
-            position.y = available_y + (available_height / 2.0f);
-            // Centered in parent
-        } else {
-            // Default to top-left of available area
-            position.x = available_x;
-            position.y = available_y;
-        }
-    } else {
-        // Element has explicit posX/posY properties, use them
-        // (position is already set to {posX, posY} at the beginning of function)
-    }
-    
-    // Store calculated position in element for hit testing
-    element->x = position.x;
-    element->y = position.y;
-    
-    // Parse text alignment - check parent's contentAlignment if no explicit textAlignment
-    int text_align_code = 0; // 0=left, 1=center, 2=right
-    if (text_align) {
-        if (strcmp(text_align, "center") == 0) text_align_code = 1;
-        else if (strcmp(text_align, "right") == 0) text_align_code = 2;
-    } else if (element->parent) {
-        // Use parent's contentAlignment if no explicit text alignment
-        const char* parent_alignment = get_element_property_string(element->parent, "contentAlignment");
-        if (parent_alignment && strcmp(parent_alignment, "center") == 0) {
-            text_align_code = 1;
-            // Using parent contentAlignment 'center' for text alignment
-        }
-    }
-    
-    // Parse font weight
-    bool is_bold = false;
-    if (font_weight && (strcmp(font_weight, "bold") == 0 || strcmp(font_weight, "700") == 0)) {
-        is_bold = true;
-    }
-    
-    // Create text render command with full properties
-    KryonRenderCommand cmd = {0};
-    cmd.type = KRYON_CMD_DRAW_TEXT;
-    cmd.z_index = z_index;
-    cmd.data.draw_text = (KryonDrawTextData){
-        .position = position,
-        .text = strdup(text),
-        .font_size = font_size,
-        .color = text_color,
-        .font_family = font_family ? strdup(font_family) : strdup("Arial"),
-        .bold = is_bold,
-        .italic = false,
-        .max_width = max_width,
-        .text_align = text_align_code
-    };
-    
-    commands[(*command_count)++] = cmd;
-}
-
 // Helper function to render a single element based on its type
 static void render_element(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (!element || !element->type_name) return;
@@ -2301,10 +1681,7 @@ static void render_element(KryonElement* element, KryonRenderCommand* commands, 
         const char* type_name;
         void (*render_func)(KryonRuntime*, KryonElement*, KryonRenderCommand*, size_t*, size_t);
     } element_renderers[] = {
-        {"Container", element_container_to_commands},
-        {"Text", element_text_to_commands},
-        {"Image", element_image_to_commands},
-        // Add more element types here
+        // All elements moved to new VTable system
     };
     
     // Find and call the appropriate render function
@@ -2332,10 +1709,7 @@ static void process_layout(KryonElement* element, KryonRenderCommand* commands, 
         const char* type_name;
         void (*layout_func)(KryonRuntime*, KryonElement*, KryonRenderCommand*, size_t*, size_t);
     } layout_processors[] = {
-        {"Center", element_center_to_commands},
-        {"Column", element_column_to_commands},
-        {"Row", element_row_to_commands},
-        // Add more layout types here
+        // All layout elements moved to new VTable system
     };
     
     // Find and call the appropriate layout function
@@ -2401,10 +1775,13 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
 
 
 // Main conversion function
-void kryon_element_tree_to_render_commands(KryonElement* root, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
-    if (!root || !commands || !command_count) return;
+void kryon_element_tree_to_render_commands(KryonRuntime* runtime, KryonElement* root, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+    if (!runtime || !root || !commands || !command_count) return;
     
     *command_count = 0;
+    
+    // New position calculation pipeline - calculates final (x,y) for all elements
+    calculate_all_element_positions(runtime, root);
     
     // Convert element tree to render commands
     element_to_commands_recursive(root, commands, command_count, max_commands);
@@ -2482,4 +1859,94 @@ const char* kryon_runtime_get_variable(KryonRuntime *runtime, const char *name) 
 
 KryonRuntime* kryon_runtime_get_current(void) {
     return g_current_runtime;
+}
+
+// Update root variables when viewport size changes
+bool kryon_runtime_update_viewport_size(KryonRuntime* runtime, float width, float height) {
+    if (!runtime) {
+        return false;
+    }
+    
+    // Convert dimensions to strings
+    char width_str[32];
+    char height_str[32];
+    snprintf(width_str, sizeof(width_str), "%.0f", width);
+    snprintf(height_str, sizeof(height_str), "%.0f", height);
+    
+    // Update root variables
+    bool width_updated = kryon_runtime_set_variable(runtime, "root.width", width_str);
+    bool height_updated = kryon_runtime_set_variable(runtime, "root.height", height_str);
+    
+    if (width_updated && height_updated) {
+        printf("✅ Updated root variables: root.width=%s, root.height=%s\n", width_str, height_str);
+        
+        // Mark elements for re-render since root variables changed
+        if (runtime->root) {
+            mark_elements_for_rerender(runtime->root);
+        }
+        runtime->needs_update = true;
+        
+        return true;
+    } else {
+        printf("⚠️  Failed to update root variables\n");
+        return false;
+    }
+}
+
+// =============================================================================
+// DEBUG INSPECTOR SYSTEM
+// =============================================================================
+
+static void kryon_debug_inspector_toggle(KryonRuntime *runtime) {
+    if (!runtime) {
+        return;
+    }
+    
+    static bool inspector_running = false;
+    static pid_t inspector_pid = -1;
+    
+    const char* inspector_kry_path = "examples/debug/inspector.kry";
+    const char* inspector_krb_path = "/tmp/inspector.krb";
+    
+    if (inspector_running) {
+        // Close inspector - kill the running process
+        printf("🔍 Closing debug inspector\n");
+        if (inspector_pid > 0) {
+            kill(inspector_pid, SIGTERM);
+            waitpid(inspector_pid, NULL, 0);
+            inspector_pid = -1;
+        }
+        inspector_running = false;
+        return;
+    }
+    
+    // Open inspector - compile and run the proper Kryon inspector
+    printf("🔍 Opening debug inspector\n");
+    
+    // First, compile the inspector.kry to inspector.krb
+    char compile_cmd[512];
+    snprintf(compile_cmd, sizeof(compile_cmd), "./build/bin/kryon compile %s %s", 
+             inspector_kry_path, inspector_krb_path);
+    
+    int compile_result = system(compile_cmd);
+    if (compile_result != 0) {
+        printf("❌ Failed to compile debug inspector\n");
+        return;
+    }
+    
+    // Then, launch the inspector as a separate process
+    inspector_pid = fork();
+    if (inspector_pid == 0) {
+        // Child process - run the inspector
+        char run_cmd[256];
+        snprintf(run_cmd, sizeof(run_cmd), "./build/bin/kryon");
+        execl(run_cmd, "kryon", "run", inspector_krb_path, NULL);
+        exit(1); // If execl fails
+    } else if (inspector_pid > 0) {
+        // Parent process - inspector launched successfully
+        inspector_running = true;
+        printf("✅ Debug inspector launched (PID: %d)\n", inspector_pid);
+    } else {
+        printf("❌ Failed to launch debug inspector\n");
+    }
 }

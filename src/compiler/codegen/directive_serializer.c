@@ -6,11 +6,11 @@
  * to the KRB binary format. Manages both compile-time and runtime directives.
  */
 
-#include "internal/codegen.h"
-#include "internal/memory.h"
-#include "internal/krb_format.h"
-#include "internal/binary_io.h"
-#include "internal/script_vm.h"
+#include "codegen.h"
+#include "memory.h"
+#include "krb_format.h"
+#include "binary_io.h"
+#include "script_vm.h"
 #include "../../shared/krb_schema.h"
 #include "krb_sections.h"
 #include "string_table.h"

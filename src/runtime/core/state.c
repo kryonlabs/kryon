@@ -7,8 +7,8 @@
  * purpose with or without fee is hereby granted.
  */
 
-#include "internal/state.h"
-#include "internal/memory.h"
+#include "state.h"
+#include "memory.h"
 #include <string.h>
 
 #define STATE_MANAGER_INITIAL_CAPACITY 16

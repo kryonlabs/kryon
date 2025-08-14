@@ -5,10 +5,10 @@
  * Main implementation of the VM abstraction layer
  */
 
-#include "internal/script_vm.h"
-#include "internal/elements.h"
-#include "internal/memory.h"
-#include "internal/events.h"
+#include "script_vm.h"
+#include "elements.h"
+#include "memory.h"
+#include "events.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

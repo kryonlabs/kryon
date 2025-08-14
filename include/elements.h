@@ -22,8 +22,8 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 #include "events.h"
-#include "internal/types.h"
-#include "internal/renderer_interface.h"
+#include "types.h"
+#include "renderer_interface.h"
 
 // Forward declarations
 struct KryonRuntime;
@@ -60,11 +60,13 @@ struct KryonElement {
     size_t class_count;              // Number of classes
     
     // Layout
-    float x, y;                      // Position
-    float width, height;             // Size
+    float x, y;                      // Current position
+    float width, height;             // Current size
+    float last_x, last_y;            // Previous position for change detection
     float padding[4];                // Top, right, bottom, left
     float margin[4];                 // Top, right, bottom, left
     bool needs_layout;               // Layout dirty flag
+    bool position_changed;           // Position changed since last frame
     
     // State
     KryonElementState state;         // Lifecycle state
@@ -315,6 +317,26 @@ bool element_render_via_registry(struct KryonRuntime* runtime,
  */
 void element_destroy_via_registry(struct KryonRuntime* runtime, 
                                  struct KryonElement* element);
+
+
+// =============================================================================
+// REACTIVE LAYOUT SYSTEM
+// =============================================================================
+
+/**
+ * Check if an element needs layout recalculation
+ */
+bool element_needs_layout(struct KryonElement* element);
+
+/**
+ * Single-pass position calculator - calculates final (x,y) for all elements
+ */
+void calculate_all_element_positions(struct KryonRuntime* runtime, struct KryonElement* root);
+
+/**
+ * Check if any elements changed position and mark them for re-rendering
+ */
+void update_render_flags_for_changed_positions(struct KryonElement* root);
 
 
 

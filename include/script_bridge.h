@@ -15,8 +15,8 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdbool.h>
-#include "internal/events.h"
-#include "internal/runtime.h"
+#include "events.h"
+#include "runtime.h"
 
 // =============================================================================
 // SCRIPT ENGINE INTEGRATION

@@ -3,10 +3,10 @@
  * @brief Kryon Lua Script Engine Implementation
  */
 
-#include "internal/lua_engine.h"
-#include "internal/memory.h"
-#include "internal/runtime.h"
-#include "internal/events.h"
+#include "lua_engine.h"
+#include "memory.h"
+#include "runtime.h"
+#include "events.h"
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>

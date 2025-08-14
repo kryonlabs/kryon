@@ -6,9 +6,9 @@
  * Provides parameter substitution and template processing.
  */
 
-#include "internal/codegen.h"
-#include "internal/memory.h"
-#include "internal/parser.h"
+#include "codegen.h"
+#include "memory.h"
+#include "parser.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

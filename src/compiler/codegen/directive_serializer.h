@@ -6,8 +6,8 @@
 #ifndef KRYON_DIRECTIVE_SERIALIZER_H
 #define KRYON_DIRECTIVE_SERIALIZER_H
 
-#include "internal/codegen.h"
-#include "internal/parser.h"
+#include "codegen.h"
+#include "parser.h"
 #include <stdbool.h>
 
 /**

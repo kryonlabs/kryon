@@ -3,8 +3,8 @@
  * @brief Implementation of Flutter-inspired element system
  */
 
-#include "internal/elements.h"
-#include "internal/memory.h"
+#include "elements.h"
+#include "memory.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

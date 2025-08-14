@@ -3,7 +3,7 @@
  * @brief Kryon Graphics Core Implementation
  */
 
-#include "internal/graphics.h"
+#include "graphics.h"
 #include <string.h>
 
 static KryonRendererType g_current_renderer = KRYON_RENDERER_RAYLIB;

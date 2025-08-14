@@ -36,7 +36,6 @@ add_library(kryon_script_engines STATIC ${SCRIPT_SOURCES})
 
 target_include_directories(kryon_script_engines PUBLIC
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/internal
 )
 
 if(KRYON_SCRIPT_LUA AND LUA_FOUND)

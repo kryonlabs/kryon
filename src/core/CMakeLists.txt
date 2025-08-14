@@ -12,8 +12,6 @@ add_library(kryon_core STATIC ${CORE_SOURCES})
 target_include_directories(kryon_core 
     PUBLIC 
         ${CMAKE_SOURCE_DIR}/include
-    PRIVATE 
-        ${CMAKE_SOURCE_DIR}/include/internal
 )
 
 # Core has no dependencies on other Kryon modules

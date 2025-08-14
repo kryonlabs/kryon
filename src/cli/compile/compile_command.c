@@ -3,10 +3,10 @@
  * @brief Kryon Compile Command Implementation
  */
 
-#include "internal/lexer.h"
-#include "internal/parser.h" 
-#include "internal/codegen.h"
-#include "internal/memory.h"
+#include "lexer.h"
+#include "parser.h" 
+#include "codegen.h"
+#include "memory.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1380,6 +1380,61 @@ static KryonASTNode* deep_copy_ast_node(const KryonASTNode *src) {
                     }
                 }
             }
+            break;
+            
+        case KRYON_AST_BINARY_OP:
+            printf("DEBUG: deep_copy_ast_node - copying binary operation node\n");
+            if (src->data.binary_op.left) {
+                copy->data.binary_op.left = deep_copy_ast_node(src->data.binary_op.left);
+                if (copy->data.binary_op.left) {
+                    copy->data.binary_op.left->parent = copy;
+                }
+            }
+            if (src->data.binary_op.right) {
+                copy->data.binary_op.right = deep_copy_ast_node(src->data.binary_op.right);
+                if (copy->data.binary_op.right) {
+                    copy->data.binary_op.right->parent = copy;
+                }
+            }
+            // operator is copied by memcpy above
+            break;
+            
+        case KRYON_AST_MEMBER_ACCESS:
+            printf("DEBUG: deep_copy_ast_node - copying member access node\n");
+            if (src->data.member_access.object) {
+                copy->data.member_access.object = deep_copy_ast_node(src->data.member_access.object);
+                if (copy->data.member_access.object) {
+                    copy->data.member_access.object->parent = copy;
+                }
+            }
+            if (src->data.member_access.member) {
+                copy->data.member_access.member = kryon_alloc(strlen(src->data.member_access.member) + 1);
+                if (copy->data.member_access.member) {
+                    strcpy(copy->data.member_access.member, src->data.member_access.member);
+                }
+            }
+            break;
+            
+        case KRYON_AST_VARIABLE:
+            printf("DEBUG: deep_copy_ast_node - copying variable node\n");
+            if (src->data.variable.name) {
+                copy->data.variable.name = kryon_alloc(strlen(src->data.variable.name) + 1);
+                if (copy->data.variable.name) {
+                    strcpy(copy->data.variable.name, src->data.variable.name);
+                }
+            }
+            break;
+            
+        case KRYON_AST_LITERAL:
+            printf("DEBUG: deep_copy_ast_node - copying literal node\n");
+            // Copy the literal value
+            if (src->data.literal.value.type == KRYON_VALUE_STRING && src->data.literal.value.data.string_value) {
+                copy->data.literal.value.data.string_value = kryon_alloc(strlen(src->data.literal.value.data.string_value) + 1);
+                if (copy->data.literal.value.data.string_value) {
+                    strcpy(copy->data.literal.value.data.string_value, src->data.literal.value.data.string_value);
+                }
+            }
+            // Other literal types (int, float, bool) are copied by memcpy above
             break;
             
         default:

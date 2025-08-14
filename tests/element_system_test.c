@@ -3,7 +3,7 @@
  * @brief Test suite for the Flutter-inspired element system
  */
 
-#include "internal/elements.h"
+#include "elements.h"
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>

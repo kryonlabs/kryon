@@ -9,7 +9,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "internal/events.h"
+#include "events.h"
 
 // =============================================================================
 // BASIC TYPES

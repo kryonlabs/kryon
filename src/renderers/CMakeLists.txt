@@ -197,7 +197,6 @@ target_include_directories(kryon_renderers PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/terminal
     ${CMAKE_CURRENT_SOURCE_DIR}/html
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/internal
     ${CMAKE_SOURCE_DIR}/src
 )
 

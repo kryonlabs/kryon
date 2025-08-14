@@ -6,8 +6,8 @@
 #ifndef KRYON_ELEMENT_SERIALIZER_H
 #define KRYON_ELEMENT_SERIALIZER_H
 
-#include "internal/codegen.h"
-#include "internal/parser.h"
+#include "codegen.h"
+#include "parser.h"
 #include <stdint.h>
 #include <stdbool.h>
 

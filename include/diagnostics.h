@@ -19,7 +19,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
-#include "internal/lexer.h"
+#include "lexer.h"
 
 // =============================================================================
 // DIAGNOSTIC TYPES

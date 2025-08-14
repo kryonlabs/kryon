@@ -14,7 +14,6 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_SOURCE_DIR}/include/internal)
 
 # =============================================================================
 # THIRD-PARTY DEPENDENCIES
@@ -49,7 +48,6 @@ add_library(kryon_shared STATIC
 
 target_include_directories(kryon_shared PUBLIC
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/internal
     ${CMAKE_SOURCE_DIR}/src
 )
 
@@ -65,7 +63,6 @@ add_library(kryon_minimal_memory STATIC
 
 target_include_directories(kryon_minimal_memory PUBLIC
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/internal
 )
 
 # =============================================================================
@@ -106,7 +103,6 @@ add_library(kryon_minimal_compiler STATIC
 
 target_include_directories(kryon_minimal_compiler PUBLIC
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/internal
 )
 
 target_link_libraries(kryon_minimal_compiler kryon_minimal_memory kryon_shared cjson)

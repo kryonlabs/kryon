@@ -3,11 +3,11 @@
  * @brief Lua bindings for the element system (Userdata-based)
  */
 
-#include "internal/elements.h"
-#include "internal/script_vm.h"
-#include "internal/lua_engine.h"
-#include "internal/memory.h"
-#include "internal/runtime.h"
+#include "elements.h"
+#include "script_vm.h"
+#include "lua_engine.h"
+#include "memory.h"
+#include "runtime.h"
 
 #include <lua.h>
 #include <lauxlib.h>

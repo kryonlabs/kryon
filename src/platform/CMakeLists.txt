@@ -36,7 +36,6 @@ add_library(kryon_platform OBJECT ${PLATFORM_SOURCES})
 # Include directories
 target_include_directories(kryon_platform PRIVATE
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/internal
 )
 
 # Platform-specific compile definitions

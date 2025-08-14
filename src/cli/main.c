@@ -3,11 +3,11 @@
  * @brief Kryon CLI Main Entry Point
  */
 
-#include "internal/memory.h"
-#include "internal/runtime.h"
-#include "internal/parser.h"
-#include "internal/lexer.h"
-#include "internal/codegen.h"
+#include "memory.h"
+#include "runtime.h"
+#include "parser.h"
+#include "lexer.h"
+#include "codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

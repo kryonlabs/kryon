@@ -3,9 +3,9 @@
  * @brief Kryon Run Command Implementation
  */
 
-#include "internal/memory.h"
-#include "internal/runtime.h"
-#include "internal/renderer_interface.h"
+#include "memory.h"
+#include "runtime.h"
+#include "renderer_interface.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,6 +26,12 @@ int run_command(int argc, char *argv[]) {
     const char *krb_file_path = NULL;
     const char *renderer = "text";  // Default to text renderer
     bool debug = false;
+    
+    // Check for KRYON_RENDERER environment variable
+    const char *env_renderer = getenv("KRYON_RENDERER");
+    if (env_renderer) {
+        renderer = env_renderer;
+    }
     
     // Parse command line options
     static struct option long_options[] = {

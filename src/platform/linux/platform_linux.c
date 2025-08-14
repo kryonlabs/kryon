@@ -6,8 +6,8 @@
  * and system integration using X11 as the primary backend.
  */
 
-#include "internal/platform.h"
-#include "internal/memory.h"
+#include "platform.h"
+#include "memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

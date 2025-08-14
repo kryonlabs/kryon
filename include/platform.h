@@ -19,7 +19,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "internal/runtime.h"
+#include "runtime.h"
 
 // =============================================================================
 // PLATFORM DETECTION

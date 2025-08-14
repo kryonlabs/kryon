@@ -3,8 +3,8 @@
  * @brief Kryon Fetch API Implementation (Web-compatible)
  */
 
-#include "internal/network.h"
-#include "internal/memory.h"
+#include "network.h"
+#include "memory.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

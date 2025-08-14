@@ -6,7 +6,7 @@
 #ifndef KRYON_STRING_TABLE_H
 #define KRYON_STRING_TABLE_H
 
-#include "internal/codegen.h"
+#include "codegen.h"
 
 /**
  * Write the string table section to KRB format

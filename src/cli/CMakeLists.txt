@@ -11,7 +11,6 @@ add_executable(kryon_cli
 
 target_include_directories(kryon_cli PRIVATE
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/internal
 )
 
 target_link_libraries(kryon_cli PRIVATE 

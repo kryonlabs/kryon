@@ -1,4 +1,4 @@
-#include "internal/color_utils.h"
+#include "color_utils.h"
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>

@@ -30,6 +30,12 @@ set(ELEMENTS_SOURCES
     elements/input.c
     elements/checkbox.c
     elements/slider.c
+    elements/text.c
+    elements/container.c
+    elements/image.c
+    elements/column.c
+    elements/row.c
+    elements/center.c
 )
 
 set(ELEMENTS_HEADERS
@@ -121,7 +127,6 @@ target_include_directories(kryon_runtime PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/memory
     ${CMAKE_CURRENT_SOURCE_DIR}/profiler
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/internal
     ${CMAKE_SOURCE_DIR}/src
 )
 

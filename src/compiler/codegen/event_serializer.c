@@ -6,11 +6,11 @@
  * Implements Phase 4 event handler section.
  */
 
-#include "internal/codegen.h"
-#include "internal/memory.h"
-#include "internal/krb_format.h"
-#include "internal/binary_io.h"
-#include "internal/events.h"
+#include "codegen.h"
+#include "memory.h"
+#include "krb_format.h"
+#include "binary_io.h"
+#include "events.h"
 #include "krb_sections.h"
 #include "string_table.h"
 #include <string.h>

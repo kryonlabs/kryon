@@ -3,8 +3,8 @@
  * @brief Kryon Virtual Filesystem Implementation
  */
 
-#include "internal/filesystem.h"
-#include "internal/memory.h"
+#include "filesystem.h"
+#include "memory.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

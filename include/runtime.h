@@ -14,12 +14,12 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include "internal/krb_format.h"
-#include "internal/memory.h"
-#include "internal/events.h"
-#include "internal/elements.h"
-#include "internal/script_vm.h"
-#include "internal/renderer_interface.h"
+#include "krb_format.h"
+#include "memory.h"
+#include "events.h"
+#include "elements.h"
+#include "script_vm.h"
+#include "renderer_interface.h"
 
 // Forward declarations
 struct HitTestManager;
@@ -141,7 +141,7 @@ typedef void (*KryonLifecycleHook)(KryonElement *element, void *user_data);
 bool kryon_runtime_add_lifecycle_hook(KryonRuntime *runtime, uint16_t element_type, KryonLifecycleHook hook, void *user_data);
 const char **kryon_runtime_get_errors(const KryonRuntime *runtime, size_t *out_count);
 void kryon_runtime_clear_errors(KryonRuntime *runtime);
-void kryon_element_tree_to_render_commands(KryonElement* root, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+void kryon_element_tree_to_render_commands(KryonRuntime* runtime, KryonElement* root, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 KryonRuntimeConfig kryon_runtime_default_config(void);
 KryonRuntimeConfig kryon_runtime_dev_config(void);
 KryonRuntimeConfig kryon_runtime_prod_config(void);
@@ -149,9 +149,27 @@ bool kryon_runtime_set_variable(KryonRuntime *runtime, const char *name, const c
 const char* kryon_runtime_get_variable(KryonRuntime *runtime, const char *name);
 KryonRuntime* kryon_runtime_get_current(void);
 
+// Update root variables when viewport/window size changes
+bool kryon_runtime_update_viewport_size(KryonRuntime* runtime, float width, float height);
+
 // Event callback function for renderer integration (Phase 4)
 void runtime_receive_input_event(const KryonEvent* event, void* userData);
 
+
+/**
+* @brief Finds a property on an element by its string name.
+* @return A pointer to the KryonProperty, or NULL if not found.
+*/
+KryonProperty* find_element_property(KryonElement* element, const char* prop_name);
+
+/**
+* @brief Get property value as string with runtime context for reactive variable resolution
+* @param runtime Runtime context for variable resolution
+* @param element Element to get property from  
+* @param prop_name Property name
+* @return String value or NULL if not found
+*/
+const char* get_element_property_string_with_runtime(KryonRuntime* runtime, KryonElement* element, const char* prop_name);
 
 /**
  * @brief Calculates the width and height of an element based on its content.

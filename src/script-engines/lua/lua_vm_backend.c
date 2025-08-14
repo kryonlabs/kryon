@@ -5,11 +5,11 @@
  * Lua backend that implements the KryonVMInterface
  */
 
-#include "internal/script_vm.h"
-#include "internal/lua_engine.h"
-#include "internal/memory.h"
-#include "internal/runtime.h"
-#include "internal/events.h"
+#include "script_vm.h"
+#include "lua_engine.h"
+#include "memory.h"
+#include "runtime.h"
+#include "events.h"
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
@@ -360,10 +360,8 @@ static void update_component_state_value_for_element(KryonElement* element, cons
 static void setup_component_context(lua_State* L, KryonElement* element) {
     if (!L || !element) return;
     
-    // Get current component state value
+    // Always try to get component state value
     const char* current_value = get_component_state_value_for_element(element);
-    
-    printf("🔧 SETUP: Setting up Lua context with self.value = %s\n", current_value);
     
     // Create self table: self = { value = current_value }
     lua_newtable(L);              // Create new table
@@ -386,21 +384,11 @@ static void update_component_state_after_call(lua_State* L, KryonElement* elemen
             char value_str[32];
             snprintf(value_str, sizeof(value_str), "%.0f", new_value); // Convert to integer string
             
-            printf("🔄 UPDATE: Found self.value = %s in Lua after function call\n", value_str);
-            
             // Update the component state in runtime
             update_component_state_value_for_element(element, value_str);
             
-            // Debug: Print current state of both counters
-            KryonRuntime* runtime = kryon_runtime_get_current();
-            if (runtime) {
-                printf("💫 STATE UPDATE: comp_0.value = %s, comp_1.value = %s\n", 
-                       kryon_runtime_get_variable(runtime, "comp_0.value") ?: "NULL",
-                       kryon_runtime_get_variable(runtime, "comp_1.value") ?: "NULL");
-            }
-            
             // Trigger re-render so text bindings can pick up the new value
-            // Mark all elements in the component tree for re-render
+            KryonRuntime* runtime = kryon_runtime_get_current();
             if (runtime && runtime->root) {
                 mark_elements_for_rerender(runtime->root);
             }
@@ -425,19 +413,14 @@ static KryonVMResult lua_vm_call_function(KryonVM* vm, const char* function_name
         return KRYON_VM_ERROR_RUNTIME;
     }
     
-    // Only set up component state for elements that actually need it
-    // Simple event handlers (like button onClick) don't need component state management
-    bool needs_state = find_component_for_element(element) != NULL;
-    
-    if (needs_state) {
-        // Set up component context before function call
-        setup_component_context(backend->L, element);
-    }
+    // Always set up component context - the setup function will determine if state is available
+    // This ensures both simple event handlers and component functions work correctly
+    setup_component_context(backend->L, element);
     
     int result = lua_pcall(backend->L, 0, 0, 0);
     
-    // Update component state after function call (only if we set it up)
-    if (result == LUA_OK && needs_state) {
+    // Update component state after function call
+    if (result == LUA_OK) {
         update_component_state_after_call(backend->L, element);
     }
     if (result != LUA_OK) {

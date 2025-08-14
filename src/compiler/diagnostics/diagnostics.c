@@ -7,8 +7,8 @@
  * purpose with or without fee is hereby granted.
  */
 
-#include "internal/diagnostics.h"
-#include "internal/memory.h"
+#include "diagnostics.h"
+#include "memory.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

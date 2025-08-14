@@ -10,12 +10,12 @@
  * element/property hex mapping and cross-platform compatibility.
  */
 
-#include "internal/codegen.h"
-#include "internal/memory.h"
-#include "internal/krb_format.h"
-#include "internal/binary_io.h"
-#include "internal/color_utils.h"    
-#include "internal/script_vm.h"
+#include "codegen.h"
+#include "memory.h"
+#include "krb_format.h"
+#include "binary_io.h"
+#include "color_utils.h"    
+#include "script_vm.h"
 #include "../../shared/kryon_mappings.h"
 #include "string_table.h"
 #include "ast_expander.h"

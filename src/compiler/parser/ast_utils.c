@@ -9,8 +9,8 @@
  * Additional AST functions for traversal, validation, and pretty printing.
  */
 
-#include "internal/parser.h"
-#include "internal/memory.h"
+#include "parser.h"
+#include "memory.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

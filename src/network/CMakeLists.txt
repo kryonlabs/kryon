@@ -10,7 +10,6 @@ if(KRYON_ENABLE_NETWORK)
 
     target_include_directories(kryon_network PRIVATE
         ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/include/internal
     )
 
     target_compile_definitions(kryon_network PRIVATE KRYON_NETWORK_MODULE=1)

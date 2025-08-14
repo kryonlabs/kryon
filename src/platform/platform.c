@@ -6,8 +6,8 @@
  * platform implementation at runtime based on the target system.
  */
 
-#include "internal/platform.h"
-#include "internal/memory.h"
+#include "platform.h"
+#include "memory.h"
 #include <stdlib.h>
 #include <string.h>
 

@@ -5,7 +5,7 @@
  * Raylib-based renderer following kryon-rust architecture patterns
  */
 
-#include "internal/renderer_interface.h"
+#include "renderer_interface.h"
 #include <raylib.h>
 #include <stdio.h>
 #include <stdlib.h>

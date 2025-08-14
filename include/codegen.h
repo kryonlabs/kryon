@@ -20,8 +20,8 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include "internal/parser.h"
-#include "internal/krb_format.h"
+#include "parser.h"
+#include "krb_format.h"
 
 // =============================================================================
 // FORWARD DECLARATIONS

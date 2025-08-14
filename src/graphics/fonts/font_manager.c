@@ -3,9 +3,9 @@
  * @brief Kryon Font Manager Implementation (Thin Abstraction Layer)
  */
 
-#include "internal/graphics.h"
-#include "internal/memory.h"
-#include "internal/renderer_interface.h"
+#include "graphics.h"
+#include "memory.h"
+#include "renderer_interface.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

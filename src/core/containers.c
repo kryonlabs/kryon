@@ -3,8 +3,8 @@
  * @brief Kryon Container Data Structures Implementation
  */
 
-#include "internal/containers.h"
-#include "internal/memory.h"
+#include "containers.h"
+#include "memory.h"
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>

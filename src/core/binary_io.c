@@ -6,7 +6,7 @@
  * for the KRB file format across all platforms.
  */
 
-#include "internal/binary_io.h"
+#include "binary_io.h"
 #include <endian.h>
 #include <string.h>
 

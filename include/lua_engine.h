@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-#include "internal/elements.h"
+#include "elements.h"
 
 // =============================================================================
 // LUA CONSTANTS

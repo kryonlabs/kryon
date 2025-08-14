@@ -3,7 +3,7 @@
  * @brief Unicode Support for Kryon Lexer
  */
 
-#include "internal/lexer.h"
+#include "lexer.h"
 #include <stdint.h>
 
 // =============================================================================

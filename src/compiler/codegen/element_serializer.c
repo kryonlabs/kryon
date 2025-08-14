@@ -6,16 +6,18 @@
  * Includes element instance writing, property serialization, and type management.
  */
 
-#include "internal/codegen.h"
-#include "internal/memory.h"
-#include "internal/krb_format.h"
-#include "internal/binary_io.h"
-#include "internal/color_utils.h"
+#include "codegen.h"
+#include "memory.h"
+#include "krb_format.h"
+#include "binary_io.h"
+#include "color_utils.h"
 #include "../../shared/kryon_mappings.h"
 #include "string_table.h"
+#include "ast_expression_serializer.h"
 #include "ast_expander.h"
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
 // Forward declarations for internal helpers
 static bool write_property_value(KryonCodeGenerator *codegen, const KryonASTValue *value, uint16_t property_hex);
@@ -250,10 +252,19 @@ bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode *proper
             }
             return write_array_literal_property(codegen, property->data.property.value);
         } else {
-            // Complex expression - not yet supported in binary format
-            printf("❌ Unsupported property expression type: %d\n", property->data.property.value->type);
-            codegen_error(codegen, "Complex property expressions not yet supported");
-            return false;
+            // Complex expression - convert to string representation for runtime evaluation
+            printf("🔄 Converting complex expression (type %d) to string for runtime evaluation\n", property->data.property.value->type);
+            char* expression_str = kryon_ast_expression_to_string(property->data.property.value);
+            if (!expression_str) {
+                printf("❌ Failed to serialize expression to string\n");
+                codegen_error(codegen, "Failed to serialize complex expression");
+                return false;
+            }
+            
+            printf("🔄 Writing complex expression as reactive reference: '%s'\n", expression_str);
+            bool result = write_variable_reference(codegen, expression_str, property_hex);
+            kryon_free(expression_str);
+            return result;
         }
     }
     
@@ -370,19 +381,43 @@ static bool write_property_value(KryonCodeGenerator *codegen, const KryonASTValu
 
 static bool write_variable_reference(KryonCodeGenerator *codegen, const char *variable_name, uint16_t property_hex) {
     // Write a reactive variable reference for runtime resolution
-    // Variable references are stored as strings with KRYON_TYPE_HINT_REFERENCE type hint
     
     if (!variable_name) {
         codegen_error(codegen, "Variable reference has null name");
         return false;
     }
     
-    // Write variable name as string
-    uint16_t len = (uint16_t)strlen(variable_name);
-    if (!write_uint16(codegen, len)) return false;
-    if (len > 0 && !write_binary_data(codegen, variable_name, len)) return false;
+    // Get the expected property type to write in the correct format
+    KryonValueTypeHint type_hint = get_property_type_hint(property_hex);
     
-    printf("    Wrote reactive variable reference: '%s' (length=%u)\n", variable_name, len);
+    if (type_hint == KRYON_TYPE_HINT_STRING || type_hint == KRYON_TYPE_HINT_REFERENCE) {
+        // For string properties, write as string (length + data) - this is the existing working case
+        uint16_t len = (uint16_t)strlen(variable_name);
+        if (!write_uint16(codegen, len)) return false;
+        if (len > 0 && !write_binary_data(codegen, variable_name, len)) return false;
+        
+        printf("    Wrote reactive variable reference as string: '%s' (length=%u)\n", variable_name, len);
+    } else if (type_hint == KRYON_TYPE_HINT_FLOAT || type_hint == KRYON_TYPE_HINT_DIMENSION || 
+               type_hint == KRYON_TYPE_HINT_UNIT || type_hint == KRYON_TYPE_HINT_SPACING) {
+        // For float properties, write a special sentinel value to indicate reactive binding
+        // Use -99999.0f as a sentinel value that indicates "resolve this at runtime"
+        float sentinel_value = -99999.0f;
+        uint32_t bits;
+        memcpy(&bits, &sentinel_value, sizeof(uint32_t));
+        if (!write_uint32(codegen, bits)) return false;
+        
+        printf("    Wrote reactive variable reference as float sentinel (-99999.0): '%s'\n", variable_name);
+        
+        // TODO: Store variable name in element metadata for runtime resolution
+        // For now, this will require the runtime to handle NaN values specially
+    } else {
+        // For other property types, default to string format and hope the runtime can handle it
+        printf("⚠️  Unknown property type %d for reactive variable '%s', using string format\n", type_hint, variable_name);
+        uint16_t len = (uint16_t)strlen(variable_name);
+        if (!write_uint16(codegen, len)) return false;
+        if (len > 0 && !write_binary_data(codegen, variable_name, len)) return false;
+    }
+    
     return true;
 }
 

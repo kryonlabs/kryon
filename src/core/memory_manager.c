@@ -5,7 +5,7 @@
  * High-performance memory management with pools, tracking, and debugging.
  */
 
-#include "internal/memory.h"
+#include "memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

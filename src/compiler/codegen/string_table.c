@@ -6,8 +6,8 @@
  * Provides efficient string table operations for the code generator.
  */
 
-#include "internal/codegen.h"
-#include "internal/binary_io.h"
+#include "codegen.h"
+#include "binary_io.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

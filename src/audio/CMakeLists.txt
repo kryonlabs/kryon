@@ -10,7 +10,6 @@ if(KRYON_ENABLE_AUDIO)
 
     target_include_directories(kryon_audio PRIVATE
         ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/include/internal
     )
 
     target_compile_definitions(kryon_audio PRIVATE KRYON_AUDIO_MODULE=1)

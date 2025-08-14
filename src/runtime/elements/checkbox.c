@@ -8,10 +8,10 @@
  * 0BSD License
  */
 
-#include "internal/elements.h"
-#include "internal/runtime.h"
-#include "internal/memory.h"
-#include "internal/color_utils.h"
+#include "elements.h"
+#include "runtime.h"
+#include "memory.h"
+#include "color_utils.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -165,8 +165,8 @@ static void checkbox_render(struct KryonRuntime* runtime, struct KryonElement* e
     if (!state) return;
     
     // Get checkbox properties
-    float posX = get_element_property_float(element, "posX", 0.0f);
-    float posY = get_element_property_float(element, "posY", 0.0f);
+    float posX = element->x;
+    float posY = element->y;
     float width = get_element_property_float(element, "width", 200.0f);
     float height = get_element_property_float(element, "height", 24.0f);
     

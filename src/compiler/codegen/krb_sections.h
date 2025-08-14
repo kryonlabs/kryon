@@ -87,7 +87,7 @@ typedef enum {
 // HELPER FUNCTIONS
 // =============================================================================
 
-#include "internal/events.h"  // For KryonEventType
+#include "events.h"  // For KryonEventType
 
 /**
  * @brief Check if a variable type is reactive

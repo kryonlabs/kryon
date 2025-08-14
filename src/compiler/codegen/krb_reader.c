@@ -3,10 +3,10 @@
  * @brief KRB File Reader Implementation
  */
 
-#include "internal/krb_format.h"
-#include "internal/memory.h"
-#include "internal/error.h"
-#include "internal/binary_io.h"
+#include "krb_format.h"
+#include "memory.h"
+#include "error.h"
+#include "binary_io.h"
 #include <string.h>
 #include <stdlib.h>
 

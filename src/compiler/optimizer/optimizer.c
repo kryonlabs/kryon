@@ -7,8 +7,8 @@
  * purpose with or without fee is hereby granted.
  */
 
-#include "internal/codegen.h"
-#include "internal/memory.h"
+#include "codegen.h"
+#include "memory.h"
 #include "../../shared/kryon_mappings.h"
 #include <string.h>
 #include <stdio.h>

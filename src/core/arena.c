@@ -6,7 +6,7 @@
  * Based on our memory management patterns but optimized for layout engine usage.
  */
 
-#include "internal/memory.h"
+#include "memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

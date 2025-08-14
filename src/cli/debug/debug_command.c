@@ -3,8 +3,8 @@
  * @brief Kryon Debug Command Implementation
  */
 
-#include "internal/memory.h"
-#include "internal/runtime.h"
+#include "memory.h"
+#include "runtime.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

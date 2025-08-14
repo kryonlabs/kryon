@@ -16,7 +16,7 @@ set(LEXER_SOURCES
 )
 
 set(LEXER_HEADERS
-    ../include/internal/lexer.h
+    # Headers available via include directories
 )
 
 # =============================================================================
@@ -29,7 +29,7 @@ set(PARSER_SOURCES
 )
 
 set(PARSER_HEADERS
-    ../include/internal/parser.h
+    # Headers available via include directories
 )
 
 # =============================================================================
@@ -46,11 +46,11 @@ set(CODEGEN_SOURCES
     codegen/element_serializer.c
     codegen/ast_expander.c
     codegen/event_serializer.c
+    codegen/ast_expression_serializer.c
 )
 
 set(CODEGEN_HEADERS
-    ../include/internal/codegen.h
-    ../include/internal/krb_format.h
+    # Headers available via include directories
 )
 
 # =============================================================================
@@ -74,7 +74,7 @@ set(DIAGNOSTICS_SOURCES
 )
 
 set(DIAGNOSTICS_HEADERS
-    ../include/internal/diagnostics.h
+    # Headers available via include directories
 )
 
 # =============================================================================
@@ -126,7 +126,6 @@ target_include_directories(kryon_compiler PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/diagnostics
     ${CMAKE_CURRENT_SOURCE_DIR}/..
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/internal
 )
 
 # Compiler-specific definitions

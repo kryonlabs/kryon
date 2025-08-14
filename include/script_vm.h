@@ -16,7 +16,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "internal/elements.h"
+#include "elements.h"
 
 // Forward declarations
 typedef struct KryonVM KryonVM;
@@ -24,7 +24,7 @@ typedef struct KryonVMConfig KryonVMConfig;
 typedef struct KryonScript KryonScript;
 
 // Include events.h to get KryonEvent definition
-#include "internal/events.h"
+#include "events.h"
 
 // =============================================================================
 // VM TYPES AND ENUMS
