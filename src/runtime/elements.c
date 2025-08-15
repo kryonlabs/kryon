@@ -711,17 +711,28 @@ static void position_container_children(struct KryonRuntime* runtime, struct Kry
         float child_width = get_element_property_float(child, "width", 0.0f);
         float child_height = get_element_property_float(child, "height", 0.0f);
         
-        // For Text elements without explicit size, use smaller defaults
+        // For Text elements without explicit size, measure actual text dimensions
         if (child_width == 0.0f) {
             if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                child_width = 40.0f; // Smaller text width to allow centering
+                // Use actual text measurement for accurate centering
+                const char* text = get_element_property_string(child, "text");
+                float font_size = get_element_property_float(child, "fontSize", 16.0f);
+                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
+                
+                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
+                    child_width = renderer->vtable->measure_text_width(text, font_size);
+                } else {
+                    // Fallback sizing if no measurement available
+                    child_width = text ? strlen(text) * font_size * 0.6f : 100.0f;
+                }
             } else {
                 child_width = 100.0f; // Default for other elements
             }
         }
         if (child_height == 0.0f) {
             if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                child_height = 20.0f; // Reasonable text height
+                float font_size = get_element_property_float(child, "fontSize", 16.0f);
+                child_height = font_size * 1.2f; // Font height + small padding
             } else {
                 child_height = 50.0f; // Default for other elements
             }
@@ -807,17 +818,28 @@ static void position_app_children(struct KryonRuntime* runtime, struct KryonElem
         float child_width = get_element_property_float(child, "width", 0.0f);
         float child_height = get_element_property_float(child, "height", 0.0f);
         
-        // For Text elements without explicit size, use smaller defaults
+        // For Text elements without explicit size, measure actual text dimensions
         if (child_width == 0.0f) {
             if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                child_width = 80.0f; // Reasonable text width
+                // Use actual text measurement for accurate centering
+                const char* text = get_element_property_string(child, "text");
+                float font_size = get_element_property_float(child, "fontSize", 16.0f);
+                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
+                
+                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
+                    child_width = renderer->vtable->measure_text_width(text, font_size);
+                } else {
+                    // Fallback sizing if no measurement available
+                    child_width = text ? strlen(text) * font_size * 0.6f : 100.0f;
+                }
             } else {
                 child_width = 100.0f; // Default for other elements
             }
         }
         if (child_height == 0.0f) {
             if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                child_height = 20.0f; // Reasonable text height
+                float font_size = get_element_property_float(child, "fontSize", 16.0f);
+                child_height = font_size * 1.2f; // Font height + small padding
             } else {
                 child_height = 50.0f; // Default for other elements
             }
