@@ -2,6 +2,7 @@
 
 - do not make .c or other files in examples only .kry files!
 - do not build it for me, do not run it for me, i run examples unless i tell you to run an examlpe for me
+- DO NOT EDIT .kry files UNLESS I SPECIFICALLY TELL YOU TO
 
 ## Important Instructions
 Do what has been asked; nothing more, nothing less.

@@ -30,3 +30,6 @@ Thumbs.db
 *.gcno
 *.gcda
 core.*
+
+
+*.log

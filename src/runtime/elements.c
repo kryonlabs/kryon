@@ -714,7 +714,7 @@ static void position_container_children(struct KryonRuntime* runtime, struct Kry
         // For Text elements without explicit size, use smaller defaults
         if (child_width == 0.0f) {
             if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                child_width = 80.0f; // Reasonable text width
+                child_width = 40.0f; // Smaller text width to allow centering
             } else {
                 child_width = 100.0f; // Default for other elements
             }

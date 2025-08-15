@@ -97,8 +97,8 @@ static void container_render(KryonRuntime* runtime, KryonElement* element, Kryon
     // Child positioning is handled by layout elements (Column, Row, Center) during
     // the layout calculation phase. Container only draws its own background/border.
     //
-    // If you need to center content, use a Center element as a child of Container.
-    // If you need aligned content, use Column/Row elements with alignment properties.
+    // Container DOES support contentAlignment for positioning children - this is
+    // handled in the position_container_children() function in elements.c
 }
 
 // Legacy layout function removed - positioning now handled by calculate_all_element_positions pipeline

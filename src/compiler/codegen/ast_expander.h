@@ -56,6 +56,6 @@ uint32_t kryon_count_const_for_elements(KryonCodeGenerator *codegen,
  * @param var_value The variable value (object literal with properties)
  * @return New AST node with substituted values
  */
-KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const char *var_name, const KryonASTNode *var_value);
+KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const char *var_name, const KryonASTNode *var_value, KryonCodeGenerator *codegen);
 
 #endif // KRYON_AST_EXPANDER_H

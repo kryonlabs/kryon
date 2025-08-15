@@ -27,8 +27,8 @@ static KryonASTNode *create_minimal_ast_node(KryonASTNodeType type);
 static bool add_child_to_node(KryonASTNode *parent, KryonASTNode *child);
 static bool add_property_to_node(KryonASTNode *parent, KryonASTNode *property);
 // Make this function public so codegen.c can use it
-KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const char *var_name, const KryonASTNode *var_value);
-static char *process_string_template(const char *template_string, const char *var_name, const KryonASTNode *var_value);
+KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const char *var_name, const KryonASTNode *var_value, KryonCodeGenerator *codegen);
+static char *process_string_template(const char *template_string, const char *var_name, const KryonASTNode *var_value, KryonCodeGenerator *codegen);
 
 KryonASTNode *kryon_find_component_definition(const char *component_name, const KryonASTNode *ast_root) {
     if (!component_name || !ast_root) return NULL;
@@ -360,6 +360,8 @@ bool kryon_expand_const_for_loop(KryonCodeGenerator *codegen, const KryonASTNode
             value_node->data.literal.value.type = KRYON_VALUE_INTEGER;
             value_node->data.literal.value.data.int_value = i;
             
+            printf("DEBUG: Created value_node for i=%d\n", i);
+            
             // Expand each element in the loop body
             for (size_t j = 0; j < const_for->data.const_for_loop.body_count; j++) {
                 const KryonASTNode *body_element = const_for->data.const_for_loop.body[j];
@@ -369,19 +371,15 @@ bool kryon_expand_const_for_loop(KryonCodeGenerator *codegen, const KryonASTNode
                     KryonASTNode *substituted_element = kryon_substitute_template_vars(
                         body_element,
                         const_for->data.const_for_loop.var_name,
-                        value_node
+                        value_node,
+                        codegen
                     );
                     
                     if (substituted_element) {
-                        printf("DEBUG: Writing substituted element for iteration %d\n", i);
                         if (!kryon_write_element_instance(codegen, substituted_element, ast_root)) {
-                            printf("DEBUG: ERROR: Failed to write substituted element\n");
                             kryon_free(value_node);
                             return false;
                         }
-                        printf("DEBUG: Successfully wrote substituted element\n");
-                    } else {
-                        printf("DEBUG: ERROR: Template substitution returned NULL\n");
                     }
                 }
             }
@@ -422,7 +420,8 @@ bool kryon_expand_const_for_loop(KryonCodeGenerator *codegen, const KryonASTNode
                     KryonASTNode *substituted_element = kryon_substitute_template_vars(
                         body_element,
                         const_for->data.const_for_loop.var_name,
-                        array_element
+                        array_element,
+                        codegen
                     );
                     
                     if (substituted_element) {
@@ -480,7 +479,7 @@ uint32_t kryon_count_const_for_elements(KryonCodeGenerator *codegen, const Kryon
     return iteration_count * body_element_count;
 }
 
-KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const char *var_name, const KryonASTNode *var_value) {
+KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const char *var_name, const KryonASTNode *var_value, KryonCodeGenerator *codegen) {
     if (!node || !var_name || !var_value) {
         return NULL;
     }
@@ -507,7 +506,7 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
             if (node->data.element.property_count > 0) {
                 cloned->data.element.properties = calloc(node->data.element.property_count, sizeof(KryonASTNode*));
                 for (size_t i = 0; i < node->data.element.property_count; i++) {
-                    cloned->data.element.properties[i] = kryon_substitute_template_vars(node->data.element.properties[i], var_name, var_value);
+                    cloned->data.element.properties[i] = kryon_substitute_template_vars(node->data.element.properties[i], var_name, var_value, codegen);
                 }
             }
             
@@ -517,7 +516,7 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
             if (node->data.element.child_count > 0) {
                 cloned->data.element.children = calloc(node->data.element.child_count, sizeof(KryonASTNode*));
                 for (size_t i = 0; i < node->data.element.child_count; i++) {
-                    cloned->data.element.children[i] = kryon_substitute_template_vars(node->data.element.children[i], var_name, var_value);
+                    cloned->data.element.children[i] = kryon_substitute_template_vars(node->data.element.children[i], var_name, var_value, codegen);
                 }
             }
             break;
@@ -531,7 +530,7 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
             
             // Clone and substitute property value
             if (node->data.property.value) {
-                cloned->data.property.value = kryon_substitute_template_vars(node->data.property.value, var_name, var_value);
+                cloned->data.property.value = kryon_substitute_template_vars(node->data.property.value, var_name, var_value, codegen);
             }
             break;
         }
@@ -543,7 +542,7 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
                 
                 // Check if string contains template variables ${...}
                 if (strstr(original_string, "${") != NULL) {
-                    char *processed = process_string_template(original_string, var_name, var_value);
+                    char *processed = process_string_template(original_string, var_name, var_value, codegen);
                     if (processed) {
                         cloned->data.literal.value.type = KRYON_VALUE_STRING;
                         cloned->data.literal.value.data.string_value = processed;
@@ -596,7 +595,7 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
                                     
                                     // Found the property - return a clone of its value
                                     kryon_free(cloned);
-                                    return kryon_substitute_template_vars(prop->data.property.value, var_name, var_value);
+                                    return kryon_substitute_template_vars(prop->data.property.value, var_name, var_value, codegen);
                                 }
                             }
                         }
@@ -637,7 +636,7 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
                                         if (index >= 0 && (size_t)index < array->data.array_literal.element_count) {
                                             // Found the array element - return a clone of it
                                             kryon_free(cloned);
-                                            return kryon_substitute_template_vars(array->data.array_literal.elements[index], var_name, var_value);
+                                            return kryon_substitute_template_vars(array->data.array_literal.elements[index], var_name, var_value, codegen);
                                         }
                                     }
                                 }
@@ -649,7 +648,7 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
             
             // Fallback: clone the template expression
             if (node->data.template.expression) {
-                cloned->data.template.expression = kryon_substitute_template_vars(node->data.template.expression, var_name, var_value);
+                cloned->data.template.expression = kryon_substitute_template_vars(node->data.template.expression, var_name, var_value, codegen);
             }
             break;
         }
@@ -663,10 +662,11 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
     return cloned;
 }
 
-static char *process_string_template(const char *template_string, const char *var_name, const KryonASTNode *var_value) {
+static char *process_string_template(const char *template_string, const char *var_name, const KryonASTNode *var_value, KryonCodeGenerator *codegen) {
     if (!template_string || !var_name || !var_value) {
         return NULL;
     }
+    
     
     // Simple implementation: replace ${var_name.property} with actual values
     char *result = malloc(strlen(template_string) + 512); // Extra space for substitutions
@@ -688,7 +688,148 @@ static char *process_string_template(const char *template_string, const char *va
         strncpy(ref, pos + 2, ref_len);
         ref[ref_len] = '\0';
         
-        // Check if it matches our variable
+        // Check for simple variable match first (e.g., ${i})
+        if (strcmp(ref, var_name) == 0) {
+            // Simple variable substitution - convert var_value to string
+            const char *replacement = NULL;
+            static char num_buf[32];
+            
+            if (var_value->type == KRYON_AST_LITERAL) {
+                if (var_value->data.literal.value.type == KRYON_VALUE_INTEGER) {
+                    int val = (int)var_value->data.literal.value.data.int_value;
+                    snprintf(num_buf, sizeof(num_buf), "%d", val);
+                    replacement = num_buf;
+                } else if (var_value->data.literal.value.type == KRYON_VALUE_FLOAT) {
+                    snprintf(num_buf, sizeof(num_buf), "%.0f", 
+                           var_value->data.literal.value.data.float_value);
+                    replacement = num_buf;
+                } else if (var_value->data.literal.value.type == KRYON_VALUE_STRING) {
+                    replacement = var_value->data.literal.value.data.string_value;
+                }
+            }
+            
+            if (replacement) {
+                // Replace the template
+                size_t template_len = end - pos + 1; // Include the }
+                size_t replacement_len = strlen(replacement);
+                
+                // Shift the remaining string
+                memmove(pos + replacement_len, end + 1, strlen(end + 1) + 1);
+                
+                // Insert the replacement
+                memcpy(pos, replacement, replacement_len);
+                
+                pos += replacement_len; // Move past the replacement
+                continue;
+            }
+        }
+        
+        // Check if it matches an array access pattern (e.g., colors[i % 6])
+        char *bracket = strchr(ref, '[');
+        if (bracket) {
+            // Extract array name
+            size_t array_name_len = bracket - ref;
+            char array_name[256];
+            strncpy(array_name, ref, array_name_len);
+            array_name[array_name_len] = '\0';
+            
+            // Extract index expression
+            char *end_bracket = strchr(bracket + 1, ']');
+            if (end_bracket) {
+                *end_bracket = '\0';
+                const char *index_expr = bracket + 1;
+                
+                // Handle expression evaluation (i % 6, i, etc.)
+                int index = -1;
+                if (strstr(index_expr, "%")) {
+                    // Handle modulo expression like "i % 6"
+                    char *percent = strstr(index_expr, "%");
+                    *percent = '\0';
+                    const char *left_operand = index_expr;
+                    const char *right_operand = percent + 1;
+                    
+                    // Trim leading whitespace
+                    while (*left_operand == ' ') left_operand++;
+                    while (*right_operand == ' ') right_operand++;
+                    
+                    // Trim trailing whitespace
+                    char left_trimmed[64], right_trimmed[64];
+                    strcpy(left_trimmed, left_operand);
+                    strcpy(right_trimmed, right_operand);
+                    
+                    // Remove trailing spaces from left operand
+                    int len = strlen(left_trimmed);
+                    while (len > 0 && left_trimmed[len-1] == ' ') {
+                        left_trimmed[--len] = '\0';
+                    }
+                    
+                    // Remove trailing spaces from right operand  
+                    len = strlen(right_trimmed);
+                    while (len > 0 && right_trimmed[len-1] == ' ') {
+                        right_trimmed[--len] = '\0';
+                    }
+                    
+                    left_operand = left_trimmed;
+                    right_operand = right_trimmed;
+                    
+                    // Evaluate left operand (should be our variable)
+                    int left_val = 0;
+                    if (strcmp(left_operand, var_name) == 0 && var_value->type == KRYON_AST_LITERAL) {
+                        left_val = (int)var_value->data.literal.value.data.int_value;
+                    }
+                    
+                    // Evaluate right operand (should be a number)
+                    int right_val = atoi(right_operand);
+                    
+                    
+                    if (right_val > 0) {
+                        index = left_val % right_val;
+                    }
+                    
+                    *percent = '%'; // Restore
+                } else if (strcmp(index_expr, var_name) == 0) {
+                    // Simple variable reference
+                    if (var_value->type == KRYON_AST_LITERAL) {
+                        index = (int)var_value->data.literal.value.data.int_value;
+                    }
+                } else {
+                    // Literal number
+                    index = atoi(index_expr);
+                }
+                
+                *end_bracket = ']'; // Restore
+                
+                // Now find the array constant and get the element
+                if (index >= 0) {
+                    // Use proper constant lookup now that we have codegen access
+                    const KryonASTNode *array_const = find_constant_value(codegen, array_name);
+                    
+                    if (array_const && array_const->type == KRYON_AST_ARRAY_LITERAL) {
+                        if ((size_t)index < array_const->data.array_literal.element_count) {
+                            const KryonASTNode *element = array_const->data.array_literal.elements[index];
+                            if (element && element->type == KRYON_AST_LITERAL && 
+                                element->data.literal.value.type == KRYON_VALUE_STRING) {
+                                
+                                const char *replacement = element->data.literal.value.data.string_value;
+                                
+                                // Replace the template
+                                size_t template_len = end - pos + 1;
+                                size_t replacement_len = strlen(replacement);
+                                
+                                memmove(pos + replacement_len, end + 1, strlen(end + 1) + 1);
+                                memcpy(pos, replacement, replacement_len);
+                                
+                                pos += replacement_len;
+                                continue;
+                            }
+                        }
+                    } else {
+                    }
+                }
+            }
+        }
+        
+        // Check if it matches our variable for property access
         char pattern[256];
         snprintf(pattern, sizeof(pattern), "%s.", var_name);
         
@@ -777,9 +918,11 @@ static char *process_string_template(const char *template_string, const char *va
             
             // Insert the replacement
             memcpy(pos, replacement, replacement_len);
+            
+            pos += replacement_len; // Move past the replacement
+        } else {
+            pos = end + 1; // No replacement, move past the template
         }
-        
-        pos = end + 1;
     }
     
     return result;

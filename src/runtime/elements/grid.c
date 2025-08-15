@@ -60,9 +60,7 @@ static void calculate_grid_layout(KryonRuntime* runtime, KryonElement* grid) {
     // Calculate grid structure
     int child_count = (int)grid->child_count;
     int rows = (int)ceil((double)child_count / (double)columns);
-    
-    printf("DEBUG: Grid layout - columns: %d, rows: %d, children: %d\n", columns, rows, child_count);
-    
+        
     // Calculate available space inside padding
     float content_x = grid->x + padding;
     float content_y = grid->y + padding;
@@ -72,9 +70,7 @@ static void calculate_grid_layout(KryonRuntime* runtime, KryonElement* grid) {
     // Calculate cell dimensions
     float cell_width = (content_width - (column_spacing * (columns - 1))) / columns;
     float cell_height = (content_height - (row_spacing * (rows - 1))) / rows;
-    
-    printf("DEBUG: Grid cell size - width: %.2f, height: %.2f\n", cell_width, cell_height);
-    
+        
     // Position each child in the grid
     for (size_t i = 0; i < grid->child_count; i++) {
         KryonElement* child = grid->children[i];
@@ -93,9 +89,6 @@ static void calculate_grid_layout(KryonRuntime* runtime, KryonElement* grid) {
         child->y = child_y;
         child->width = cell_width;
         child->height = cell_height;
-        
-        printf("DEBUG: Grid child %zu at (%d,%d) -> position (%.2f, %.2f) size (%.2f, %.2f)\n",
-               i, row, col, child_x, child_y, cell_width, cell_height);
     }
     
     // Update grid's own size based on content
