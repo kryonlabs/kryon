@@ -362,6 +362,15 @@ extern const char** get_element_property_array(struct KryonElement* element, con
 // Element property setters (defined in runtime)
 extern bool kryon_element_set_property_by_name(struct KryonElement* element, const char* name, const void* value);
 
+// =============================================================================
+// ELEMENT STATE MANAGEMENT API
+// =============================================================================
+
+// TabBar state management functions
+extern int tabbar_get_selected_index(struct KryonElement* tabbar_element);
+extern void tabbar_set_selected_index(struct KryonElement* tabbar_element, int index);
+extern bool tabbar_is_tab_active(struct KryonElement* tabbar_element, int tab_index);
+
 #ifdef __cplusplus
 }
 #endif

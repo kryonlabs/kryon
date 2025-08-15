@@ -62,6 +62,10 @@ extern bool register_row_element(void);
 extern bool register_center_element(void);
 extern bool register_app_element(void);
 extern bool register_grid_element(void);
+extern bool register_tabbar_element(void);
+extern bool register_tab_element(void);
+extern bool register_tab_content_element(void);
+extern bool register_link_element(void);
 
 // Forward declarations for position calculation pipeline
 static void calculate_element_position_recursive(struct KryonRuntime* runtime, struct KryonElement* element,
@@ -73,7 +77,8 @@ static void position_column_children(struct KryonRuntime* runtime, struct KryonE
 static void position_container_children(struct KryonRuntime* runtime, struct KryonElement* container);
 static void position_center_children(struct KryonRuntime* runtime, struct KryonElement* center);
 static void position_app_children(struct KryonRuntime* runtime, struct KryonElement* app);
-static void position_grid_children(struct KryonRuntime* runtime, struct KryonElement* grid); 
+static void position_grid_children(struct KryonRuntime* runtime, struct KryonElement* grid);
+static void position_tabbar_children(struct KryonRuntime* runtime, struct KryonElement* tabbar); 
 
 bool element_registry_init_with_all_elements(void) {
     if (g_element_registry.initialized) {
@@ -159,6 +164,30 @@ bool element_registry_init_with_all_elements(void) {
     
     if (!register_grid_element()) {
         printf("ERROR: Failed to register Grid element\n");
+        element_registry_cleanup();
+        return false;
+    }
+    
+    if (!register_tabbar_element()) {
+        printf("ERROR: Failed to register TabBar element\n");
+        element_registry_cleanup();
+        return false;
+    }
+    
+    if (!register_tab_element()) {
+        printf("ERROR: Failed to register Tab element\n");
+        element_registry_cleanup();
+        return false;
+    }
+    
+    if (!register_tab_content_element()) {
+        printf("ERROR: Failed to register TabContent element\n");
+        element_registry_cleanup();
+        return false;
+    }
+    
+    if (!register_link_element()) {
+        printf("ERROR: Failed to register Link element\n");
         element_registry_cleanup();
         return false;
     }
@@ -490,6 +519,8 @@ static void position_children_by_layout_type(struct KryonRuntime* runtime, struc
         position_app_children(runtime, parent);
     } else if (strcmp(parent->type_name, "Grid") == 0) {
         position_grid_children(runtime, parent);
+    } else if (strcmp(parent->type_name, "TabBar") == 0) {
+        position_tabbar_children(runtime, parent);
     } else {
         // Default: position children at same location
         for (size_t i = 0; i < parent->child_count; i++) {
@@ -1260,5 +1291,106 @@ void element_destroy_via_registry(struct KryonRuntime* runtime, struct KryonElem
  */
 bool element_needs_layout(struct KryonElement* element) {
     return element && element->needs_layout;
+}
+
+/**
+ * @brief Position children in a TabBar layout
+ * TabBar divides space between tab headers and content area based on position
+ */
+static void position_tabbar_children(struct KryonRuntime* runtime, struct KryonElement* tabbar) {
+    if (!tabbar || tabbar->child_count == 0) return;
+    
+    // Get TabBar layout properties
+    const char* position = get_element_property_string(tabbar, "position");
+    if (!position) position = "top";
+    
+    float tab_spacing = get_element_property_float(tabbar, "tabSpacing", 5.0f);
+    float tab_area_height = 40.0f; // Default tab header height for top/bottom
+    float tab_area_width = 120.0f; // Default tab header width for left/right
+    
+    // Get TabBar bounds
+    float x = tabbar->x;
+    float y = tabbar->y;
+    float width = tabbar->width;
+    float height = tabbar->height;
+    
+    // Calculate tab header area and content area based on position
+    float tab_area_x, tab_area_y, tab_area_w, tab_area_h;
+    float content_area_x, content_area_y, content_area_w, content_area_h;
+    
+    if (strcmp(position, "top") == 0) {
+        tab_area_x = x; tab_area_y = y; tab_area_w = width; tab_area_h = tab_area_height;
+        content_area_x = x; content_area_y = y + tab_area_height; 
+        content_area_w = width; content_area_h = height - tab_area_height;
+    } else if (strcmp(position, "bottom") == 0) {
+        content_area_x = x; content_area_y = y; content_area_w = width; content_area_h = height - tab_area_height;
+        tab_area_x = x; tab_area_y = y + height - tab_area_height; tab_area_w = width; tab_area_h = tab_area_height;
+    } else if (strcmp(position, "left") == 0) {
+        tab_area_x = x; tab_area_y = y; tab_area_w = tab_area_width; tab_area_h = height;
+        content_area_x = x + tab_area_width; content_area_y = y; 
+        content_area_w = width - tab_area_width; content_area_h = height;
+    } else { // right
+        content_area_x = x; content_area_y = y; content_area_w = width - tab_area_width; content_area_h = height;
+        tab_area_x = x + width - tab_area_width; tab_area_y = y; tab_area_w = tab_area_width; tab_area_h = height;
+    }
+    
+    // Count and position Tab children in header area
+    int tab_count = 0;
+    for (size_t i = 0; i < tabbar->child_count; i++) {
+        if (strcmp(tabbar->children[i]->type_name, "Tab") == 0) {
+            tab_count++;
+        }
+    }
+    
+    if (tab_count > 0) {
+        float tab_width = (strcmp(position, "top") == 0 || strcmp(position, "bottom") == 0) 
+                         ? (tab_area_w - (tab_count - 1) * tab_spacing) / tab_count
+                         : tab_area_w;
+        
+        float tab_height = (strcmp(position, "left") == 0 || strcmp(position, "right") == 0)
+                          ? (tab_area_h - (tab_count - 1) * tab_spacing) / tab_count
+                          : tab_area_h;
+
+        int tab_index = 0;
+        for (size_t i = 0; i < tabbar->child_count; i++) {
+            struct KryonElement* child = tabbar->children[i];
+            if (!child || strcmp(child->type_name, "Tab") != 0) continue;
+
+            // Calculate tab position
+            float child_x, child_y;
+            if (strcmp(position, "top") == 0 || strcmp(position, "bottom") == 0) {
+                child_x = tab_area_x + tab_index * (tab_width + tab_spacing);
+                child_y = tab_area_y;
+            } else {
+                child_x = tab_area_x;
+                child_y = tab_area_y + tab_index * (tab_height + tab_spacing);
+            }
+
+            // Position this Tab child using the global positioning system
+            calculate_element_position_recursive(runtime, child, child_x, child_y, tab_width, tab_height, tabbar);
+            
+            tab_index++;
+        }
+    }
+    
+    // Position TabContent children in content area
+    // Only the selected TabContent should be visible, others should be hidden
+    int selected_index = tabbar_get_selected_index(tabbar);
+    int content_index = 0;
+    
+    for (size_t i = 0; i < tabbar->child_count; i++) {
+        struct KryonElement* child = tabbar->children[i];
+        if (!child || strcmp(child->type_name, "TabContent") != 0) continue;
+
+        if (content_index == selected_index) {
+            // Position active TabContent in content area
+            calculate_element_position_recursive(runtime, child, content_area_x, content_area_y, 
+                                               content_area_w, content_area_h, tabbar);
+        } else {
+            // Hide inactive TabContent by moving off-screen
+            calculate_element_position_recursive(runtime, child, -9999, -9999, 0, 0, tabbar);
+        }
+        content_index++;
+    }
 }
 

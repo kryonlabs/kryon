@@ -312,6 +312,24 @@
          .hex_code = 0x0305,
          .type_hint = KRYON_TYPE_HINT_STRING
      },
+     {
+         .canonical = "to",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0306,
+         .type_hint = KRYON_TYPE_HINT_STRING
+     },
+     {
+         .canonical = "external",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0307,
+         .type_hint = KRYON_TYPE_HINT_BOOLEAN
+     },
+     {
+         .canonical = "underline",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0308,
+         .type_hint = KRYON_TYPE_HINT_BOOLEAN
+     },
  
      // -- Transform & Animation Properties (0x04xx) --
      {
@@ -558,6 +576,54 @@
          .hex_code = 0x0612,
          .type_hint = KRYON_TYPE_HINT_INTEGER
      },
+     {
+         .canonical = "position",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0613,
+         .type_hint = KRYON_TYPE_HINT_STRING
+     },
+     {
+         .canonical = "tabSpacing",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0614,
+         .type_hint = KRYON_TYPE_HINT_INTEGER
+     },
+     {
+         .canonical = "indicatorColor",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0615,
+         .type_hint = KRYON_TYPE_HINT_COLOR
+     },
+     {
+         .canonical = "indicatorThickness",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0616,
+         .type_hint = KRYON_TYPE_HINT_INTEGER
+     },
+     {
+         .canonical = "activeBackgroundColor",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0617,
+         .type_hint = KRYON_TYPE_HINT_COLOR
+     },
+     {
+         .canonical = "activeTextColor",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0618,
+         .type_hint = KRYON_TYPE_HINT_COLOR
+     },
+     {
+         .canonical = "disabledBackgroundColor",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0619,
+         .type_hint = KRYON_TYPE_HINT_COLOR
+     },
+     {
+         .canonical = "disabledTextColor",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x061A,
+         .type_hint = KRYON_TYPE_HINT_COLOR
+     },
  
      // -- Window Properties (0x07xx) --
      {
@@ -717,6 +783,30 @@
          .canonical = "Tabs",
          .aliases = (const char*[]){NULL},
          .hex_code = 0x1007,
+         .type_hint = KRYON_TYPE_HINT_ANY
+     },
+     {
+         .canonical = "TabBar",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x1008,
+         .type_hint = KRYON_TYPE_HINT_ANY
+     },
+     {
+         .canonical = "Tab",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x1009,
+         .type_hint = KRYON_TYPE_HINT_ANY
+     },
+     {
+         .canonical = "TabContent",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x100A,
+         .type_hint = KRYON_TYPE_HINT_ANY
+     },
+     {
+         .canonical = "Link",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x100B,
          .type_hint = KRYON_TYPE_HINT_ANY
      }
  };

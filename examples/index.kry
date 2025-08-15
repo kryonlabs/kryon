@@ -1,0 +1,396 @@
+// Kryon Examples Browser - Smart Index with Navigation
+// This file demonstrates the proposed Link element with overlay navigation
+
+// ============================================================================
+// Lua Functions for Smart Directory Discovery
+// ============================================================================
+
+@function "lua" loadExampleFiles() {
+    local examples = {}
+    
+    -- Read all files in current directory
+    local files = kryon.fs.readdir("./")
+    
+    -- Filter for .kry files (excluding this index)
+    for _, file in ipairs(files) do
+        if file:match("%.kry$") and file ~= "index.kry" then
+            local name = file:gsub("%.kry$", "")
+            
+            -- Convert filename to human-readable title
+            local title = name:gsub("_", " ")
+            title = title:gsub("%-", " ")
+            title = title:gsub("([^%w%s])(%w)", function(sep, letter)
+                return sep .. letter:upper()
+            end)
+            title = title:gsub("^%w", string.upper)
+            
+            -- Add description based on filename patterns
+            local description = getFileDescription(name)
+            
+            table.insert(examples, {
+                file = file,
+                title = title,
+                description = description,
+                category = getFileCategory(name)
+            })
+        end
+    end
+    
+    -- Sort examples alphabetically
+    table.sort(examples, function(a, b) return a.title < b.title end)
+    return examples
+}
+
+@function "lua" getFileDescription(filename) {
+    local descriptions = {
+        ["hello-world"] = "Basic text display and window setup",
+        ["button"] = "Interactive button with Lua event handling",
+        ["text_input"] = "Text input field with user interaction",
+        ["dropdown"] = "Dropdown selection component",
+        ["column_alignments"] = "Column layout and alignment examples",
+        ["row_alignments"] = "Row layout and alignment examples", 
+        ["counters_demo"] = "Custom component example with state management",
+        ["z_index_test"] = "Layer ordering and depth testing",
+        ["grid_demo"] = "Grid layout system demonstration",
+        ["tabbar_demo"] = "Tab navigation and content switching"
+    }
+    
+    return descriptions[filename] or "Kryon example demonstrating UI components"
+end
+
+@function "lua" getFileCategory(filename) {
+    if filename:match("layout") or filename:match("alignment") or filename:match("grid") or filename:match("column") or filename:match("row") then
+        return "Layout"
+    elseif filename:match("button") or filename:match("input") or filename:match("dropdown") or filename:match("tab") then
+        return "Components"
+    elseif filename:match("demo") or filename:match("test") then
+        return "Examples"
+    else
+        return "Basic"
+    end
+end
+
+@function "lua" navigateBack() {
+    -- Navigation history function (will be implemented with Link element)
+    kryon.navigation.goBack()
+    print("🔙 Navigating back to examples index")
+}
+
+@function "lua" openExternal(url) {
+    -- External URL handler
+    kryon.system.openURL(url)
+    print("🌐 Opening external URL: " .. url)
+}
+
+// ============================================================================
+// Custom Components with Inheritance
+// ============================================================================
+
+// BackButton component extending Button with overlay behavior
+@component BackButton(position: "top-left", style: "default") extends Button {
+    // Inherits all Button properties: text, backgroundColor, onClick, etc.
+    text: "← Back"
+    width: 90
+    height: 40
+    backgroundColor: "#1a1a1aCC"  // Semi-transparent dark
+    textColor: "#FFFFFFFF"
+    borderColor: "#00AAFFFF"
+    borderWidth: 1
+    borderRadius: 8
+    fontSize: 14
+    zIndex: 1000                  // Overlay behavior - always on top
+    position: $position           // Custom positioning property
+    style: $style                 // Style variant
+    
+    @function "lua" init() {
+        -- Apply style variants
+        if self.style == "danger" then
+            self.backgroundColor = "#FF444499"
+            self.borderColor = "#FF6666FF"
+        elseif self.style == "success" then
+            self.backgroundColor = "#44AA4499" 
+            self.borderColor = "#66CC66FF"
+        end
+        
+        -- Position button based on position property
+        local margin = 15
+        
+        if self.position == "top-left" then
+            self.x = margin
+            self.y = margin
+        elseif self.position == "top-right" then
+            self.x = window.width - self.width - margin
+            self.y = margin
+        elseif self.position == "bottom-left" then
+            self.x = margin
+            self.y = window.height - self.height - margin
+        elseif self.position == "bottom-right" then
+            self.x = window.width - self.width - margin
+            self.y = window.height - self.height - margin
+        elseif self.position == "center" then
+            self.x = (window.width - self.width) / 2
+            self.y = margin
+        end
+    end
+}
+
+// LinkCard component extending Container for example display
+@component LinkCard(file: "", title: "", description: "", category: "") extends Container {
+    // Inherits Container properties: backgroundColor, borderColor, etc.
+    backgroundColor: "#2a2a2aFF"
+    borderColor: "#00AAFFFF"
+    borderWidth: 1
+    borderRadius: 8
+    padding: 20
+    margin: 8
+    width: 350
+    minHeight: 120
+    
+    // Custom properties
+    file: $file
+    title: $title
+    description: $description
+    category: $category
+    
+    @function "lua" handleCardClick() {
+        print("📂 Opening example: " .. self.title)
+        -- This will be handled by Link element when implemented
+    end
+    
+    // Card layout
+    Column {
+        gap: 8
+        
+        Row {
+            mainAxisAlignment: "space-between"
+            
+            Text {
+                text: $title
+                fontSize: 18
+                fontWeight: "bold"
+                textColor: "#FFFFFFFF"
+            }
+            
+            Text {
+                text: $category
+                fontSize: 12
+                textColor: "#00AAFFFF"
+                backgroundColor: "#404080FF"
+                padding: 4
+                borderRadius: 4
+            }
+        }
+        
+        Text {
+            text: $description
+            fontSize: 14
+            textColor: "#CCCCCCFF"
+            textWrap: true
+        }
+        
+        // This will become a Link element
+        Button {
+            text: "▶ Run Example"
+            backgroundColor: "#404080FF"
+            textColor: "#FFFFFFFF"
+            borderRadius: 5
+            padding: 8
+            onClick: "handleCardClick"
+        }
+    }
+}
+
+// ============================================================================
+// Styling
+// ============================================================================
+
+@style "app_background" {
+    backgroundColor: "#1a1a1aFF"
+    color: "#FFFFFFFF"
+}
+
+@style "header_text" {
+    fontSize: 32
+    fontWeight: "bold"
+    textColor: "#FF9900FF"
+    textAlign: "center"
+    margin: 20
+}
+
+@style "section_title" {
+    fontSize: 20
+    fontWeight: "bold" 
+    textColor: "#00AAFFFF"
+    margin: 15
+}
+
+@style "external_link" {
+    backgroundColor: "#404080FF"
+    borderColor: "#00AAFFFF"
+    borderWidth: 1
+    borderRadius: 8
+    padding: 15
+    margin: 5
+    textColor: "#FFFFFFFF"
+    fontSize: 16
+    width: 250
+}
+
+@style "stats_text" {
+    fontSize: 14
+    textColor: "#CCCCCCFF"
+    textAlign: "center"
+    margin: 10
+}
+
+// ============================================================================
+// Main Application
+// ============================================================================
+
+App {
+    windowTitle: "Kryon Examples Browser"
+    windowWidth: 1000
+    windowHeight: 700
+    windowResizable: true
+    keepAspectRatio: false
+    class: "app_background"
+    
+    // Main content with scrollable area
+    Column {
+        gap: 20
+        padding: 20
+        
+        // Header section
+        Column {
+            gap: 10
+            
+            Text {
+                text: "📚 Kryon Examples Browser"
+                class: "header_text"
+            }
+            
+            Text {
+                text: "Discover and explore Kryon framework examples"
+                fontSize: 16
+                textColor: "#CCCCCCFF"
+                textAlign: "center"
+            }
+            
+            @lua {
+                local examples = loadExampleFiles()
+                local count = #examples
+                Text {
+                    text: count .. " examples available"
+                    class: "stats_text"
+                }
+            }
+        }
+        
+        // Examples grid section
+        Column {
+            gap: 15
+            
+            Text {
+                text: "🎯 Interactive Examples"
+                class: "section_title"
+            }
+            
+            // Grid of example cards
+            Row {
+                mainAxisAlignment: "space-around"
+                gap: 20
+                flexWrap: true
+                
+                @lua {
+                    local examples = loadExampleFiles()
+                    
+                    for _, example in ipairs(examples) do
+                        -- This will become Link with overlay when implemented
+                        LinkCard {
+                            file: example.file,
+                            title: example.title,
+                            description: example.description,
+                            category: example.category
+                        }
+                    end
+                }
+            }
+        }
+        
+        // External resources section
+        Column {
+            gap: 15
+            
+            Text {
+                text: "🔗 External Resources"
+                class: "section_title"
+            }
+            
+            Row {
+                mainAxisAlignment: "center"
+                gap: 20
+                flexWrap: true
+                
+                // These will become Link elements with external: true
+                Button {
+                    text: "📖 Documentation"
+                    class: "external_link"
+                    onClick: "function() openExternal('https://docs.kryon.dev') end"
+                }
+                
+                Button {
+                    text: "🐙 GitHub Repository"
+                    class: "external_link"
+                    onClick: "function() openExternal('https://github.com/kryon') end"
+                }
+                
+                Button {
+                    text: "💬 Community Discord"
+                    class: "external_link"
+                    onClick: "function() openExternal('https://discord.gg/kryon') end"
+                }
+                
+                Button {
+                    text: "🎓 Tutorials"
+                    class: "external_link"
+                    onClick: "function() openExternal('https://tutorials.kryon.dev') end"
+                }
+            }
+        }
+        
+        // Footer
+        Text {
+            text: "Built with Kryon Framework • Smart navigation coming soon!"
+            fontSize: 12
+            textColor: "#666666FF"
+            textAlign: "center"
+            margin: 30
+        }
+    }
+}
+
+// ============================================================================
+// Future Link Element Usage (when implemented)
+// ============================================================================
+
+/*
+When Link element is implemented, the cards will become:
+
+LinkCard content will use:
+Link {
+    to: $file
+    text: "▶ Run " .. $title
+    overlay: BackButton {
+        position: "top-left"
+        onClick: "navigateBack"
+    }
+}
+
+External resources will use:
+Link {
+    to: "https://docs.kryon.dev"
+    text: "📖 Documentation"  
+    external: true
+    class: "external_link"
+}
+*/

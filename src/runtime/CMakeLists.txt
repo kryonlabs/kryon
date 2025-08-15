@@ -38,6 +38,10 @@ set(ELEMENTS_SOURCES
     elements/center.c
     elements/app.c
     elements/grid.c
+    elements/tabbar.c
+    elements/tab.c
+    elements/tab_content.c
+    elements/link.c
 )
 
 set(ELEMENTS_HEADERS
@@ -45,11 +49,35 @@ set(ELEMENTS_HEADERS
 )
 
 # =============================================================================
+# NAVIGATION COMPONENT
+# =============================================================================
+
+set(NAVIGATION_SOURCES
+    navigation/navigation.c
+)
+
+set(NAVIGATION_HEADERS
+    navigation/navigation.h
+)
+
+# =============================================================================
+# COMPILATION COMPONENT
+# =============================================================================
+
+set(COMPILATION_SOURCES
+    compilation/runtime_compiler.c
+)
+
+set(COMPILATION_HEADERS
+    compilation/runtime_compiler.h
+)
+
+# =============================================================================
 # STATE MANAGEMENT COMPONENT
 # =============================================================================
 
 set(STATE_SOURCES
-    # Will be added when implemented
+    core/state.c
 )
 
 set(STATE_HEADERS
@@ -99,6 +127,8 @@ set(PROFILER_HEADERS
 set(RUNTIME_SOURCES
     ${CORE_SOURCES}
     ${ELEMENTS_SOURCES}
+    ${NAVIGATION_SOURCES}
+    ${COMPILATION_SOURCES}
     ${STATE_SOURCES}
     ${LIFECYCLE_SOURCES}
     ${MEMORY_SOURCES}
@@ -124,6 +154,8 @@ add_library(kryon_runtime OBJECT ${RUNTIME_SOURCES})
 target_include_directories(kryon_runtime PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/core
     ${CMAKE_CURRENT_SOURCE_DIR}/elements
+    ${CMAKE_CURRENT_SOURCE_DIR}/navigation
+    ${CMAKE_CURRENT_SOURCE_DIR}/compilation
     ${CMAKE_CURRENT_SOURCE_DIR}/state
     ${CMAKE_CURRENT_SOURCE_DIR}/lifecycle
     ${CMAKE_CURRENT_SOURCE_DIR}/memory
