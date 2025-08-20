@@ -77,26 +77,26 @@ App {
                         padding: 8
 
                         Column {
-                            mainAxisAlignment: "${alignment.value}"
+                            mainAxisAlignment: alignment.value
                             crossAxisAlignment: "center"
-                            gap: ${alignment.gap}
+                            gap: alignment.gap
 
                             Container { 
                                 width: 80, 
                                 height: 60, 
-                                backgroundColor: "${alignment.colors[0]}", 
+                                backgroundColor: alignment.colors[0], 
                                 borderRadius: 8 
                             }
                             Container { 
                                 width: 80, 
                                 height: 80, 
-                                backgroundColor: "${alignment.colors[1]}", 
+                                backgroundColor: alignment.colors[1], 
                                 borderRadius: 8 
                             }
                             Container { 
                                 width: 80, 
                                 height: 70, 
-                                backgroundColor: "${alignment.colors[2]}", 
+                                backgroundColor: alignment.colors[2], 
                                 borderRadius: 8 
                             }
                         }

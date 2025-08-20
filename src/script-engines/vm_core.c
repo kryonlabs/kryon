@@ -71,6 +71,7 @@ KryonVM* kryon_vm_create(KryonVMType type, const KryonVMConfig* config) {
     vm->impl_data = NULL;
     vm->initialized = false;
     vm->last_error = NULL;
+    vm->runtime = NULL;
     
     // Set configuration
     if (config) {

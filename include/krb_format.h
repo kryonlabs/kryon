@@ -29,6 +29,7 @@ typedef struct KryonKrbFile KryonKrbFile;
 typedef struct KryonKrbHeader KryonKrbHeader;
 typedef struct KryonKrbElement KryonKrbElement;
 typedef struct KryonKrbProperty KryonKrbProperty;
+typedef struct KryonKrbTemplate KryonKrbTemplate;
 typedef struct KryonKrbReader KryonKrbReader;
 typedef struct KryonKrbWriter KryonKrbWriter;
 
@@ -53,50 +54,8 @@ typedef enum {
     KRYON_KRB_COMPRESSION_ZSTD = 2
 } KryonKrbCompressionType;
 
-// Element types (matching KRY specification)
-typedef enum {
-    KRYON_ELEMENT_CONTAINER = 0x01,
-    KRYON_ELEMENT_ROW = 0x02,
-    KRYON_ELEMENT_COLUMN = 0x03,
-    KRYON_ELEMENT_GRID = 0x04,
-    KRYON_ELEMENT_STACK = 0x05,
-    KRYON_ELEMENT_EXPANDED = 0x06,
-    KRYON_ELEMENT_FLEXIBLE = 0x07,
-    KRYON_ELEMENT_TEXT = 0x10,
-    KRYON_ELEMENT_IMAGE = 0x11,
-    KRYON_ELEMENT_BUTTON = 0x12,
-    KRYON_ELEMENT_INPUT = 0x13,
-    KRYON_ELEMENT_TEXTAREA = 0x14,
-    KRYON_ELEMENT_CHECKBOX = 0x15,
-    KRYON_ELEMENT_RADIO = 0x16,
-    KRYON_ELEMENT_SELECT = 0x17,
-    KRYON_ELEMENT_SLIDER = 0x18,
-    KRYON_ELEMENT_PROGRESS = 0x19,
-    KRYON_ELEMENT_LIST = 0x20,
-    KRYON_ELEMENT_TREE = 0x21,
-    KRYON_ELEMENT_TABLE = 0x22,
-    KRYON_ELEMENT_CARD = 0x23,
-    KRYON_ELEMENT_TAB = 0x24,
-    KRYON_ELEMENT_MODAL = 0x25,
-    KRYON_ELEMENT_DRAWER = 0x26,
-    KRYON_ELEMENT_DROPDOWN = 0x27,
-    KRYON_ELEMENT_MENU = 0x28,
-    KRYON_ELEMENT_NAVBAR = 0x29,
-    KRYON_ELEMENT_SIDEBAR = 0x2A,
-    KRYON_ELEMENT_HEADER = 0x2B,
-    KRYON_ELEMENT_FOOTER = 0x2C,
-    KRYON_ELEMENT_SECTION = 0x2D,
-    KRYON_ELEMENT_ARTICLE = 0x2E,
-    KRYON_ELEMENT_ASIDE = 0x2F,
-    // Directive elements
-    KRYON_ELEMENT_EVENT_DIRECTIVE = 0x30,
-    KRYON_ELEMENT_COMPONENT = 0x31,
-    KRYON_ELEMENT_PROPS = 0x32,
-    KRYON_ELEMENT_SLOTS = 0x33,
-    KRYON_ELEMENT_LIFECYCLE = 0x34,
-    // Extended elements up to 0xFF
-    KRYON_ELEMENT_CUSTOM = 0xFF
-} KryonElementType;
+// NOTE: Element type IDs are now managed centrally in kryon_mappings.c
+// Use kryon_get_element_hex() and kryon_get_syntax_hex() functions instead of hardcoded constants
 
 // Property types
 typedef enum {
@@ -132,12 +91,14 @@ struct KryonKrbHeader {
     uint16_t flags;                     ///< Format flags
     uint32_t element_count;             ///< Number of elements
     uint32_t property_count;            ///< Number of properties
+    uint32_t template_count;            ///< Number of reactive templates (@for, @if, etc.)
     uint32_t string_table_size;         ///< Size of string table
     uint32_t data_size;                 ///< Size of element data
+    uint32_t template_data_size;        ///< Size of template data
     uint32_t checksum;                  ///< CRC32 checksum
     KryonKrbCompressionType compression; ///< Compression type
     uint32_t uncompressed_size;         ///< Uncompressed data size
-    uint8_t reserved[32];               ///< Reserved bytes
+    uint8_t reserved[28];               ///< Reserved bytes (reduced to fit new fields)
 };
 
 /**
@@ -181,7 +142,7 @@ struct KryonKrbProperty {
  */
 struct KryonKrbElement {
     uint32_t id;                    ///< Unique element ID
-    KryonElementType type;          ///< Element type
+    uint16_t type;                  ///< Element type (hex code from kryon_mappings)
     uint16_t name_id;               ///< String table index for element name (optional)
     uint32_t parent_id;             ///< Parent element ID (0 for root)
     uint16_t property_count;        ///< Number of properties
@@ -192,6 +153,20 @@ struct KryonKrbElement {
 };
 
 /**
+ * @brief KRB template for reactive directives (@for, @if, etc.)
+ */
+struct KryonKrbTemplate {
+    uint32_t id;                    ///< Unique template ID
+    uint16_t directive_type;        ///< Directive type (0x8200 for @for, etc.)
+    uint16_t parent_element_id;     ///< Parent element where template should be expanded
+    uint16_t property_count;        ///< Number of template properties (variable, array, etc.)
+    uint16_t child_template_count;  ///< Number of child elements in template
+    KryonKrbProperty *properties;   ///< Template properties (loop variable, array name, etc.)
+    KryonKrbElement *child_templates; ///< Template elements to be expanded
+    uint32_t flags;                 ///< Template flags
+};
+
+/**
  * @brief KRB file structure
  */
 struct KryonKrbFile {
@@ -199,6 +174,7 @@ struct KryonKrbFile {
     char **string_table;            ///< String table
     uint32_t string_count;          ///< Number of strings
     KryonKrbElement *elements;      ///< Array of elements
+    KryonKrbTemplate *templates;    ///< Array of reactive templates
     uint8_t *raw_data;              ///< Raw file data (for memory mapping)
     size_t file_size;               ///< Total file size
     bool owns_data;                 ///< Whether file owns the data
@@ -390,7 +366,7 @@ KryonKrbElement **kryon_krb_file_get_root_elements(const KryonKrbFile *krb_file,
  * @param parent_id Parent element ID (0 for root)
  * @return Pointer to new element, or NULL on failure
  */
-KryonKrbElement *kryon_krb_element_create(uint32_t id, KryonElementType type, uint32_t parent_id);
+KryonKrbElement *kryon_krb_element_create(uint32_t id, uint16_t type, uint32_t parent_id);
 
 /**
  * @brief Destroy KRB element
@@ -495,7 +471,7 @@ uint32_t kryon_krb_calculate_checksum(const uint8_t *data, size_t size);
  * @param type Element type
  * @return Element type name string
  */
-const char *kryon_krb_element_type_name(KryonElementType type);
+const char *kryon_krb_element_type_name(uint16_t type);
 
 /**
  * @brief Get property type name

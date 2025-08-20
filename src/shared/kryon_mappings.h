@@ -32,6 +32,7 @@
      KRYON_TYPE_HINT_DIMENSION,   // Should be treated as dimension (px, %, em, rem, etc.)
      KRYON_TYPE_HINT_SPACING,     // Should be treated as spacing value (TRBL format)
      KRYON_TYPE_HINT_REFERENCE,   // Should be treated as element reference
+     KRYON_TYPE_HINT_COMPONENT,   // Should be treated as component reference
      KRYON_TYPE_HINT_ARRAY,       // Should be treated as array of values
      KRYON_TYPE_HINT_UNIT         // Should be treated as unit value (legacy)
  } KryonValueTypeHint;
@@ -55,6 +56,14 @@
      uint16_t hex_code;             // 16-bit element identifier
      KryonValueTypeHint type_hint;  // Type hint for validation
  } KryonElementGroup;
+
+// Syntax keyword group structure - for @directives and special syntax
+typedef struct {
+    const char *canonical;          // Canonical syntax keyword name
+    const char **aliases;           // NULL-terminated array of aliases
+    uint16_t hex_code;             // 16-bit syntax identifier
+    KryonValueTypeHint type_hint;  // Type hint for validation
+} KryonSyntaxGroup;
  
  //==============================================================================
  // External Data Declarations
@@ -65,6 +74,9 @@
  
  // Centralized element groups - used by both compiler and runtime
  extern const KryonElementGroup kryon_element_groups[];
+
+// Centralized syntax keyword groups - used by both compiler and runtime
+extern const KryonSyntaxGroup kryon_syntax_groups[];
  
  //==============================================================================
  // Core Utility Functions
@@ -122,6 +134,27 @@
   * @return NULL-terminated array of aliases, or NULL if not found
   */
  const char **kryon_get_element_aliases(const char *name);
+
+/**
+ * @brief Get syntax keyword hex code from name (canonical or alias)
+ * @param name Syntax keyword name to lookup
+ * @return 16-bit hex code, or 0 if not found
+ */
+uint16_t kryon_get_syntax_hex(const char *name);
+
+/**
+ * @brief Get canonical syntax keyword name from hex code
+ * @param hex_code 16-bit syntax identifier
+ * @return Canonical syntax keyword name, or NULL if not found
+ */
+const char *kryon_get_syntax_name(uint16_t hex_code);
+
+/**
+ * @brief Get all aliases for a syntax keyword (useful for IDE/tooling)
+ * @param name Syntax keyword name (canonical or alias)
+ * @return NULL-terminated array of aliases, or NULL if not found
+ */
+const char **kryon_get_syntax_aliases(const char *name);
  
  //==============================================================================
  // Property Range Constants (from KRB Binary Format Specification v0.1)
@@ -180,7 +213,15 @@
  
  // Custom Elements (user-defined)
  #define KRYON_ELEMENT_RANGE_CUSTOM_START   0x2000
- #define KRYON_ELEMENT_RANGE_CUSTOM_END     0xFFFF
+ #define KRYON_ELEMENT_RANGE_CUSTOM_END     0x7FFF
+
+//==============================================================================
+// Syntax Keyword Range Constants
+//==============================================================================
+
+// Syntax Keywords and Directives
+#define KRYON_SYNTAX_RANGE_START           0x8000
+#define KRYON_SYNTAX_RANGE_END             0x8FFF
  
  //==============================================================================
  // Validation Helpers
@@ -250,6 +291,15 @@
  * @return Element type name, or NULL if not found
  */
 const char *kryon_get_element_type_name(uint16_t hex_code);
+
+/**
+ * @brief Check if hex code is a syntax keyword
+ * @param hex_code Syntax hex code
+ * @return true if syntax keyword, false otherwise
+ */
+static inline bool kryon_is_syntax_keyword(uint16_t hex_code) {
+    return hex_code >= KRYON_SYNTAX_RANGE_START && hex_code <= KRYON_SYNTAX_RANGE_END;
+}
 
 #endif // KRYON_MAPPINGS_H
  

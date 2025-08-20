@@ -90,18 +90,7 @@ static void container_render(KryonRuntime* runtime, KryonElement* element, Kryon
         cmd.z_index = z_index;
         commands[(*command_count)++] = cmd;
     }
-    
-    // --- 2. Container Layout Responsibility ---
-    
-    // NOTE: Container elements do NOT position their children during rendering.
-    // Child positioning is handled by layout elements (Column, Row, Center) during
-    // the layout calculation phase. Container only draws its own background/border.
-    //
-    // Container DOES support contentAlignment for positioning children - this is
-    // handled in the position_container_children() function in elements.c
 }
-
-// Legacy layout function removed - positioning now handled by calculate_all_element_positions pipeline
 
 /**
  * @brief Handles events for the Container element.

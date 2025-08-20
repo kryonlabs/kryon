@@ -92,8 +92,18 @@ typedef struct {
  */
 typedef struct {
     uint16_t property_id;     // Property hex code
-    // Value data follows (format depends on property type hint)
+    uint8_t value_type;       // Property value type (from types.h)
+    // Value data follows (format depends on value_type)
 } KRBPropertyHeader;
+
+/**
+ * @brief KRB Event Handler Binary Format
+ */
+typedef struct {
+    uint16_t event_type;      // Event type ID
+    uint32_t handler_ref;     // String table reference to handler code
+    uint16_t flags;           // Event flags (capture, etc.)
+} KRBEventHandler;
 
 // =============================================================================
 // SCHEMA VALIDATION FUNCTIONS
@@ -124,6 +134,53 @@ bool krb_write_function_header(bool (*writer)(void*, const void*, size_t), void 
  * @return Size in bytes
  */
 size_t krb_function_size(uint16_t param_count);
+
+/**
+ * @brief Validate KRB element header format
+ * @param data Binary data
+ * @param size Data size
+ * @param offset Current offset (updated)
+ * @param header Output element header structure
+ * @return true if valid format
+ */
+bool krb_validate_element_header(const uint8_t *data, size_t size, size_t *offset, KRBElementHeader *header);
+
+/**
+ * @brief Write KRB element header with validation
+ * @param writer Writer function (e.g., write_uint32)
+ * @param context Writer context
+ * @param header Element header to write
+ * @return true on success
+ */
+bool krb_write_element_header(bool (*writer)(void*, const void*, size_t), void *context, const KRBElementHeader *header);
+
+/**
+ * @brief Validate KRB property header format
+ * @param data Binary data
+ * @param size Data size
+ * @param offset Current offset (updated)
+ * @param header Output property header structure
+ * @return true if valid format
+ */
+bool krb_validate_property_header(const uint8_t *data, size_t size, size_t *offset, KRBPropertyHeader *header);
+
+/**
+ * @brief Write KRB property header with validation
+ * @param writer Writer function (e.g., write_uint16)
+ * @param context Writer context
+ * @param header Property header to write
+ * @return true on success
+ */
+bool krb_write_property_header(bool (*writer)(void*, const void*, size_t), void *context, const KRBPropertyHeader *header);
+
+/**
+ * @brief Get expected size for KRB element with properties and children
+ * @param property_count Number of properties
+ * @param child_count Number of child elements
+ * @param event_count Number of event handlers
+ * @return Size in bytes for header only (properties/children/events calculated separately)
+ */
+size_t krb_element_header_size(uint16_t property_count, uint16_t child_count, uint16_t event_count);
 
 #ifdef __cplusplus
 }

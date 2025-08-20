@@ -15,6 +15,9 @@ set(CMAKE_C_EXTENSIONS OFF)
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
+# Enable testing
+enable_testing()
+
 # =============================================================================
 # THIRD-PARTY DEPENDENCIES
 # =============================================================================
@@ -112,6 +115,12 @@ target_link_libraries(kryon_minimal_compiler kryon_minimal_memory kryon_shared c
 add_subdirectory(src/cli)
 
 # Raylib detection will be handled by the CLI module itself
+
+# =============================================================================
+# TESTS
+# =============================================================================
+
+add_subdirectory(tests)
 
 # =============================================================================
 # SUMMARY

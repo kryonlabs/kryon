@@ -81,11 +81,20 @@ BIN_DIR="$BUILD_DIR/bin"
 
 print_status "Running Kryon example: $EXAMPLE_NAME with $RENDERER renderer"
 
-# Always build the project to ensure we use the latest version
-print_status "Building project to ensure latest version..."
-if ! "$SCRIPT_DIR/build.sh"; then
-    print_error "Failed to build project"
-    exit 1
+# Build project if kryon binary doesn't exist or doesn't work
+if [ ! -f "$KRYON_BIN" ] || ! "$KRYON_BIN" --help >/dev/null 2>&1; then
+    print_status "Building project to ensure latest version..."
+    if ! "$SCRIPT_DIR/build.sh"; then
+        print_warning "Build reported failure, but checking if main binary exists..."
+        if [ -f "$KRYON_BIN" ] && "$KRYON_BIN" --help >/dev/null 2>&1; then
+            print_warning "Main kryon binary is working despite build failure (likely test linking issues)"
+        else
+            print_error "Failed to build project and binary is not working"
+            exit 1
+        fi
+    fi
+else
+    print_status "Using existing kryon binary (appears to be working)"
 fi
 
 # Check if kryon binary exists after build

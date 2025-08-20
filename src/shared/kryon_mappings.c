@@ -624,6 +624,12 @@
          .hex_code = 0x061A,
          .type_hint = KRYON_TYPE_HINT_COLOR
      },
+     {
+         .canonical = "overlay",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x061B,
+         .type_hint = KRYON_TYPE_HINT_COMPONENT
+     },
  
      // -- Window Properties (0x07xx) --
      {
@@ -655,6 +661,21 @@
          .aliases = (const char*[]){NULL},
          .hex_code = 0x0704,
          .type_hint = KRYON_TYPE_HINT_BOOLEAN
+     },
+
+     // -- Directive Properties (0x8200+) --
+     // Properties specific to @for, @if, @while and other directives
+     {
+         .canonical = "variable",
+         .aliases = (const char*[]){"var", "item", NULL},
+         .hex_code = 0x8201,
+         .type_hint = KRYON_TYPE_HINT_STRING
+     },
+     {
+         .canonical = "array",
+         .aliases = (const char*[]){"list", "items", NULL},
+         .hex_code = 0x8202,
+         .type_hint = KRYON_TYPE_HINT_STRING
      }
  };
  
@@ -815,7 +836,86 @@
  // Utility Functions - Working with Grouped Structure
  //==============================================================================
  
- // Helper function to check if a name matches any alias in a group
+ //==============================================================================
+// SYNTAX KEYWORD MAPPINGS (0x8000+)
+// Special syntax keywords and directives: @onload, @component, @variable, @for, etc.
+//==============================================================================
+
+const KryonSyntaxGroup kryon_syntax_groups[] = {
+    // -- Lifecycle Directives (0x80xx) --
+    {
+        .canonical = "onload",
+        .aliases = (const char*[]){"ready", "startup", "initialize", NULL},
+        .hex_code = 0x8001,
+        .type_hint = KRYON_TYPE_HINT_REFERENCE
+    },
+    {
+        .canonical = "onmount",
+        .aliases = (const char*[]){"mount", NULL},
+        .hex_code = 0x8002,
+        .type_hint = KRYON_TYPE_HINT_REFERENCE
+    },
+    {
+        .canonical = "onunmount",
+        .aliases = (const char*[]){"unmount", "cleanup", NULL},
+        .hex_code = 0x8003,
+        .type_hint = KRYON_TYPE_HINT_REFERENCE
+    },
+
+    // -- Structure Directives (0x81xx) --
+    {
+        .canonical = "component",
+        .aliases = (const char*[]){NULL},
+        .hex_code = 0x8100,
+        .type_hint = KRYON_TYPE_HINT_ANY
+    },
+    {
+        .canonical = "variable",
+        .aliases = (const char*[]){"var", NULL},
+        .hex_code = 0x8101,
+        .type_hint = KRYON_TYPE_HINT_ANY
+    },
+    {
+        .canonical = "function",
+        .aliases = (const char*[]){"func", NULL},
+        .hex_code = 0x8102,
+        .type_hint = KRYON_TYPE_HINT_REFERENCE
+    },
+
+    // -- Control Flow Directives (0x82xx) --
+    {
+        .canonical = "for",
+        .aliases = (const char*[]){"foreach", "loop", NULL},
+        .hex_code = 0x8200,
+        .type_hint = KRYON_TYPE_HINT_ANY
+    },
+    {
+        .canonical = "if",
+        .aliases = (const char*[]){"when", NULL},
+        .hex_code = 0x8300,
+        .type_hint = KRYON_TYPE_HINT_BOOLEAN
+    },
+    {
+        .canonical = "else",
+        .aliases = (const char*[]){"otherwise", NULL},
+        .hex_code = 0x8301,
+        .type_hint = KRYON_TYPE_HINT_ANY
+    },
+    
+    // -- Event Directives (0x85xx) --
+    {
+        .canonical = "event",
+        .aliases = (const char*[]){NULL},
+        .hex_code = 0x8500,
+        .type_hint = KRYON_TYPE_HINT_ANY
+    }
+};
+
+//==============================================================================
+// Utility Functions - Working with Grouped Structure
+//==============================================================================
+
+// Helper function to check if a name matches any alias in a group
  static bool kryon_name_matches_group(const char *name, const KryonPropertyGroup *group) {
      // Check canonical name
      if (strcmp(group->canonical, name) == 0) {
@@ -852,7 +952,25 @@
      return false;
  }
  
- uint16_t kryon_get_property_hex(const char *name) {
+ static bool kryon_syntax_name_matches_group(const char *name, const KryonSyntaxGroup *group) {
+    // Check canonical name
+    if (strcmp(group->canonical, name) == 0) {
+        return true;
+    }
+    
+    // Check aliases
+    if (group->aliases) {
+        for (int i = 0; group->aliases[i] != NULL; i++) {
+            if (strcmp(group->aliases[i], name) == 0) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+uint16_t kryon_get_property_hex(const char *name) {
      const int group_count = sizeof(kryon_property_groups) / sizeof(kryon_property_groups[0]);
      
      for (int i = 0; i < group_count; i++) {
@@ -943,4 +1061,41 @@
  */
 const char *kryon_get_element_type_name(uint16_t hex_code) {
     return kryon_get_element_name(hex_code);
+}
+
+uint16_t kryon_get_syntax_hex(const char *name) {
+    const int group_count = sizeof(kryon_syntax_groups) / sizeof(kryon_syntax_groups[0]);
+    
+    for (int i = 0; i < group_count; i++) {
+        if (kryon_syntax_name_matches_group(name, &kryon_syntax_groups[i])) {
+            return kryon_syntax_groups[i].hex_code;
+        }
+    }
+    
+    return 0; // Not found
+}
+
+const char *kryon_get_syntax_name(uint16_t hex_code) {
+    const int group_count = sizeof(kryon_syntax_groups) / sizeof(kryon_syntax_groups[0]);
+    
+    for (int i = 0; i < group_count; i++) {
+        if (kryon_syntax_groups[i].hex_code == hex_code) {
+            return kryon_syntax_groups[i].canonical; // Always return canonical name
+        }
+    }
+    
+    return NULL; // Not found
+}
+
+// Get all aliases for a syntax keyword (useful for IDE/tooling)
+const char **kryon_get_syntax_aliases(const char *name) {
+    const int group_count = sizeof(kryon_syntax_groups) / sizeof(kryon_syntax_groups[0]);
+    
+    for (int i = 0; i < group_count; i++) {
+        if (kryon_syntax_name_matches_group(name, &kryon_syntax_groups[i])) {
+            return kryon_syntax_groups[i].aliases;
+        }
+    }
+    
+    return NULL; // Not found
 }

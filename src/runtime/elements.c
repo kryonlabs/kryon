@@ -323,8 +323,14 @@ static const EventPropertyMapping event_property_map[] = {
  */
 bool generic_script_event_handler(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
     if (!runtime || !element || !event || !runtime->script_vm) {
+        printf("❌ SCRIPT HANDLER: Invalid parameters (runtime=%p, element=%p, event=%p, script_vm=%p)\n",
+               (void*)runtime, (void*)element, (void*)event, 
+               runtime ? (void*)runtime->script_vm : NULL);
         return false;
     }
+
+    printf("📝 SCRIPT HANDLER: Processing event type=%d for element '%s'\n", 
+           event->type, element->type_name ? element->type_name : "unknown");
 
     // Find the corresponding property name for the received event type
     const char* handler_prop_name = NULL;
@@ -336,8 +342,11 @@ bool generic_script_event_handler(KryonRuntime* runtime, KryonElement* element, 
     }
 
     if (!handler_prop_name) {
+        printf("❌ SCRIPT HANDLER: No property name found for event type %d\n", event->type);
         return false; // This handler doesn't process this event type
     }
+
+    printf("📝 SCRIPT HANDLER: Looking for property '%s' on element\n", handler_prop_name);
 
     // Check if the element has a handler defined for this event
     const char* handler_function_name = get_element_property_string(element, handler_prop_name);
@@ -347,22 +356,30 @@ bool generic_script_event_handler(KryonRuntime* runtime, KryonElement* element, 
         if (event->type == ELEMENT_EVENT_DOUBLE_CLICKED) {
             handler_function_name = get_element_property_string(element, "onClick");
             if (!handler_function_name || handler_function_name[0] == '\0') {
+                printf("❌ SCRIPT HANDLER: No fallback handler found\n");
                 return false; // No fallback handler available
             }
         } else {
+            printf("❌ SCRIPT HANDLER: No handler function found for property '%s'\n", handler_prop_name);
             return false; // No script function assigned to this event property
         }
     }
+
+    printf("🚀 SCRIPT HANDLER: Executing function '%s'\n", handler_function_name);
 
     // Execute the handler using the script VM
     KryonVMResult result = kryon_vm_call_function(runtime->script_vm, handler_function_name, element, (const void*)event);
     
     if (result != KRYON_VM_SUCCESS) {
         const char* error = kryon_vm_get_error(runtime->script_vm);
+        printf("❌ SCRIPT ERROR in handler '%s': %s\n",
+                handler_function_name, error ? error : "Unknown VM error");
         fprintf(stderr, "SCRIPT ERROR in handler '%s': %s\n",
                 handler_function_name, error ? error : "Unknown VM error");
         return false;
     }
+
+    printf("✅ SCRIPT HANDLER: Function '%s' executed successfully\n", handler_function_name);
 
     // The script successfully handled the event.
     ((ElementEvent*)event)->handled = true;
@@ -879,14 +896,29 @@ static void position_app_children(struct KryonRuntime* runtime, struct KryonElem
         float child_x = content_x;
         float child_y = content_y;
         
-        if (strcmp(content_alignment, "center") == 0) {
-            child_x = content_x + (content_width - child_width) / 2.0f;
-            child_y = content_y + (content_height - child_height) / 2.0f;
-        } else if (strcmp(content_alignment, "end") == 0) {
-            child_x = content_x + content_width - child_width;
-            child_y = content_y + content_height - child_height;
+        // For multiple children, stack them vertically with spacing
+        if (app->child_count > 1) {
+            float gap = get_element_property_float(app, "gap", 10.0f); // Default 10px gap
+            child_y = content_y + (i * (child_height + gap));
+            
+            // Apply horizontal alignment only
+            if (strcmp(content_alignment, "center") == 0) {
+                child_x = content_x + (content_width - child_width) / 2.0f;
+            } else if (strcmp(content_alignment, "end") == 0) {
+                child_x = content_x + content_width - child_width;
+            }
+            // "start" uses child_x = content_x (already set)
+        } else {
+            // Single child - use original positioning logic
+            if (strcmp(content_alignment, "center") == 0) {
+                child_x = content_x + (content_width - child_width) / 2.0f;
+                child_y = content_y + (content_height - child_height) / 2.0f;
+            } else if (strcmp(content_alignment, "end") == 0) {
+                child_x = content_x + content_width - child_width;
+                child_y = content_y + content_height - child_height;
+            }
+            // "start" uses child_x = content_x, child_y = content_y (already set)
         }
-        // "start" uses child_x = content_x, child_y = content_y (already set)
         
         // For layout containers, pass the content area as available space
         float available_width_for_child = content_width;
@@ -1143,7 +1175,15 @@ void hit_test_process_input_event(HitTestManager* manager, struct KryonRuntime* 
                 float x = input_event->data.mouseButton.x;
                 float y = input_event->data.mouseButton.y;
                 
+                printf("🎯 HIT TEST: Checking click at (%.1f, %.1f)\n", x, y);
                 struct KryonElement* clicked = hit_test_find_element_at_point(root, x, y);
+                
+                if (clicked) {
+                    printf("🎯 HIT TEST: Found element type='%s' at click position\n", 
+                           clicked->type_name ? clicked->type_name : "unknown");
+                } else {
+                    printf("🎯 HIT TEST: No element found at click position\n");
+                }
 
                 // --- FOCUS MANAGEMENT ---
                 if (clicked != manager->focused_element) {
@@ -1182,6 +1222,9 @@ void hit_test_process_input_event(HitTestManager* manager, struct KryonRuntime* 
                         .data.mousePos = {x, y}
                     };
                     
+                    printf("🚀 ELEMENT EVENT: Dispatching %s event to element '%s'\n", 
+                           is_double_click ? "DOUBLE_CLICKED" : "CLICKED",
+                           clicked->type_name ? clicked->type_name : "unknown");
                     element_dispatch_event(runtime, clicked, &click_event);
                     
                     // Update double-click detection state

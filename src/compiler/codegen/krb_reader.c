@@ -439,7 +439,7 @@ static bool parse_element(KryonKrbReader *reader, KryonKrbElement *element) {
     
     uint8_t type;
     if (!read_uint8(reader, &type)) return false;
-    element->type = (KryonElementType)type;
+    element->type = type;
     
     if (!read_uint16(reader, &element->name_id) ||
         !read_uint32(reader, &element->parent_id) ||

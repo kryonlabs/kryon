@@ -69,8 +69,82 @@ typedef enum {
     KRYON_RUNTIME_PROP_REFERENCE,
     KRYON_RUNTIME_PROP_EXPRESSION,
     KRYON_RUNTIME_PROP_FUNCTION,
-    KRYON_RUNTIME_PROP_ARRAY
+    KRYON_RUNTIME_PROP_ARRAY,
+    KRYON_RUNTIME_PROP_TEMPLATE,
+    KRYON_RUNTIME_PROP_AST_EXPRESSION
 } KryonRuntimePropertyType;
+
+// =============================================================================
+// EXPRESSION EVALUATION TYPES
+// =============================================================================
+
+typedef enum {
+    KRYON_EXPR_VALUE_NUMBER,
+    KRYON_EXPR_VALUE_STRING,
+    KRYON_EXPR_VALUE_BOOLEAN,
+    KRYON_EXPR_VALUE_VARIABLE_REF
+} KryonExpressionValueType;
+
+typedef struct {
+    KryonExpressionValueType type;
+    union {
+        double number_value;
+        char *string_value;
+        bool boolean_value;
+        char *variable_name;
+    } data;
+} KryonExpressionValue;
+
+typedef enum {
+    KRYON_EXPR_OP_ADD,
+    KRYON_EXPR_OP_SUBTRACT,
+    KRYON_EXPR_OP_MULTIPLY,
+    KRYON_EXPR_OP_DIVIDE,
+    KRYON_EXPR_OP_MODULO,
+    KRYON_EXPR_OP_EQUAL,
+    KRYON_EXPR_OP_NOT_EQUAL,
+    KRYON_EXPR_OP_LESS_THAN,
+    KRYON_EXPR_OP_GREATER_THAN,
+    KRYON_EXPR_OP_LESS_EQUAL,
+    KRYON_EXPR_OP_GREATER_EQUAL,
+    KRYON_EXPR_OP_LOGICAL_AND,
+    KRYON_EXPR_OP_LOGICAL_OR,
+    KRYON_EXPR_OP_NEGATE,
+    KRYON_EXPR_OP_NOT
+} KryonExpressionOperator;
+
+typedef struct KryonExpressionNode {
+    enum {
+        KRYON_EXPR_NODE_VALUE,
+        KRYON_EXPR_NODE_BINARY_OP,
+        KRYON_EXPR_NODE_UNARY_OP,
+        KRYON_EXPR_NODE_TERNARY_OP
+    } type;
+    
+    union {
+        KryonExpressionValue value;
+        struct {
+            KryonExpressionOperator operator;
+            struct KryonExpressionNode *left;
+            struct KryonExpressionNode *right;
+        } binary_op;
+        struct {
+            KryonExpressionOperator operator;
+            struct KryonExpressionNode *operand;
+        } unary_op;
+        struct {
+            struct KryonExpressionNode *condition;
+            struct KryonExpressionNode *true_value;
+            struct KryonExpressionNode *false_value;
+        } ternary_op;
+    } data;
+} KryonExpressionNode;
+
+// Template segment types
+typedef enum {
+    KRYON_TEMPLATE_SEGMENT_LITERAL = 0,
+    KRYON_TEMPLATE_SEGMENT_VARIABLE
+} KryonTemplateSegmentType;
 
 typedef enum {
     KRYON_STATE_NULL = 0,
@@ -91,6 +165,15 @@ typedef struct {
     char* value;
 } KryonDropdownItem;
 
+// Template segment structure
+typedef struct {
+    KryonTemplateSegmentType type;
+    union {
+        char *literal_text;      // For LITERAL segments
+        char *variable_name;     // For VARIABLE segments  
+    } data;
+} KryonTemplateSegment;
+
 struct KryonProperty {
     uint16_t id;
     char *name;
@@ -108,6 +191,11 @@ struct KryonProperty {
             size_t count;
             char **values;
         } array_value;
+        struct {
+            size_t segment_count;
+            KryonTemplateSegment *segments;
+        } template_value;
+        KryonExpressionNode *ast_expression;
     } value;
     bool is_bound;
     char *binding_path;

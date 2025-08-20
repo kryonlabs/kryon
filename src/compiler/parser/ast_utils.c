@@ -127,9 +127,11 @@ void kryon_ast_print(const KryonASTNode *node, FILE *file, int indent) {
             break;
             
         case KRYON_AST_TEMPLATE:
-            fprintf(file, "Template:\n");
-            if (node->data.template.expression) {
-                kryon_ast_print(node->data.template.expression, file, indent + 1);
+            fprintf(file, "Template: [%zu segments]\n", node->data.template.segment_count);
+            for (size_t i = 0; i < node->data.template.segment_count; i++) {
+                if (node->data.template.segments[i]) {
+                    kryon_ast_print(node->data.template.segments[i], file, indent + 1);
+                }
             }
             break;
             
@@ -291,10 +293,12 @@ size_t kryon_ast_validate(const KryonASTNode *node, char **errors, size_t max_er
             break;
             
         case KRYON_AST_TEMPLATE:
-            if (node->data.template.expression && error_count < max_errors) {
-                error_count += kryon_ast_validate(node->data.template.expression,
-                                                 errors + error_count,
-                                                 max_errors - error_count);
+            for (size_t i = 0; i < node->data.template.segment_count && error_count < max_errors; i++) {
+                if (node->data.template.segments[i]) {
+                    error_count += kryon_ast_validate(node->data.template.segments[i],
+                                                     errors + error_count,
+                                                     max_errors - error_count);
+                }
             }
             break;
             
@@ -382,8 +386,10 @@ void kryon_ast_traverse(const KryonASTNode *root, KryonASTVisitor visitor, void 
             break;
             
         case KRYON_AST_TEMPLATE:
-            if (root->data.template.expression) {
-                kryon_ast_traverse(root->data.template.expression, visitor, user_data);
+            for (size_t i = 0; i < root->data.template.segment_count; i++) {
+                if (root->data.template.segments[i]) {
+                    kryon_ast_traverse(root->data.template.segments[i], visitor, user_data);
+                }
             }
             break;
             

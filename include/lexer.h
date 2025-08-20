@@ -115,6 +115,8 @@ typedef enum {
     KRYON_TOKEN_LIFECYCLE_DIRECTIVE, // @lifecycle
     KRYON_TOKEN_STATE_DIRECTIVE,     // @state
     KRYON_TOKEN_CONST_DIRECTIVE,     // @const
+    KRYON_TOKEN_ONLOAD_DIRECTIVE,    // @onload
+    KRYON_TOKEN_FOR_DIRECTIVE,       // @for
     KRYON_TOKEN_CONST_FOR_DIRECTIVE, // @const_for
     
     // Keywords

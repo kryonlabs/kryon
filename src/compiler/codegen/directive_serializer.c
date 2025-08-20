@@ -51,6 +51,7 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
     
     // Variable name (as string reference)
     uint32_t name_ref = add_string_to_table(codegen, variable->data.variable_def.name);
+    printf("DEBUG: Variable name '%s' string ref: %u\n", variable->data.variable_def.name, name_ref);
     if (!write_uint32(codegen, name_ref)) {
         return false;
     }
@@ -98,9 +99,108 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
     }
     
     // Variable initial value
-    if (variable->data.variable_def.value && variable->data.variable_def.value->type == KRYON_AST_LITERAL) {
-        if (!write_value_node(codegen, &variable->data.variable_def.value->data.literal.value)) {
-            return false;
+    if (variable->data.variable_def.value) {
+        printf("DEBUG: Variable '%s' has value node type=%d\n", 
+               variable->data.variable_def.name ? variable->data.variable_def.name : "unknown", 
+               variable->data.variable_def.value->type);
+        
+        if (variable->data.variable_def.value->type == KRYON_AST_LITERAL) {
+            // For Variables section, always use string table references for consistency
+            const KryonASTValue* literal_value = &variable->data.variable_def.value->data.literal.value;
+            if (literal_value->type == KRYON_VALUE_STRING) {
+                // Write as string reference for consistency with non-literal values
+                if (!write_uint8(codegen, KRYON_VALUE_STRING)) {
+                    return false;
+                }
+                const char* str_value = literal_value->data.string_value ? literal_value->data.string_value : "";
+                uint32_t str_ref = add_string_to_table(codegen, str_value);
+                printf("DEBUG: Variable literal string value string ref: %u for value '%s'\n", str_ref, str_value);
+                if (!write_uint32(codegen, str_ref)) {
+                    return false;
+                }
+            } else {
+                // For non-string literals, use the original write_value_node but add type tag
+                if (!write_uint8(codegen, (uint8_t)literal_value->type)) {
+                    return false;
+                }
+                if (!write_value_node(codegen, literal_value)) {
+                    return false;
+                }
+            }
+        } else {
+            // For non-literal values (like arrays), convert to string representation
+            printf("DEBUG: Non-literal variable value, writing as string\n");
+            
+            // Try to get the raw value as string from the AST
+            const char* raw_value = NULL;
+            if (variable->data.variable_def.value->type == KRYON_AST_ARRAY_LITERAL) {
+                // Convert array AST to JSON string representation
+                const KryonASTNode* array_node = variable->data.variable_def.value;
+                
+                // Build JSON string from actual AST nodes
+                size_t buffer_size = 1024;
+                char* json_buffer = malloc(buffer_size);
+                size_t json_len = 0;
+                
+                json_buffer[json_len++] = '[';
+                
+                for (size_t i = 0; i < array_node->data.array_literal.element_count; i++) {
+                    if (i > 0) {
+                        json_buffer[json_len++] = ',';
+                        json_buffer[json_len++] = ' ';
+                    }
+                    
+                    const KryonASTNode* element = array_node->data.array_literal.elements[i];
+                    if (element && element->type == KRYON_AST_LITERAL) {
+                        if (element->data.literal.value.type == KRYON_VALUE_STRING) {
+                            // Add quoted string
+                            json_buffer[json_len++] = '"';
+                            const char* str = element->data.literal.value.data.string_value;
+                            size_t str_len = strlen(str);
+                            memcpy(json_buffer + json_len, str, str_len);
+                            json_len += str_len;
+                            json_buffer[json_len++] = '"';
+                        } else if (element->data.literal.value.type == KRYON_VALUE_INTEGER) {
+                            // Add integer
+                            json_len += snprintf(json_buffer + json_len, buffer_size - json_len, 
+                                               "%lld", element->data.literal.value.data.int_value);
+                        } else if (element->data.literal.value.type == KRYON_VALUE_FLOAT) {
+                            // Add float
+                            json_len += snprintf(json_buffer + json_len, buffer_size - json_len, 
+                                               "%f", element->data.literal.value.data.float_value);
+                        }
+                    }
+                }
+                
+                json_buffer[json_len++] = ']';
+                json_buffer[json_len] = '\0';
+                
+                raw_value = json_buffer;
+                printf("DEBUG: Converted array AST to JSON: %s\n", raw_value);
+            }
+            
+            if (raw_value) {
+                // Write as string value
+                if (!write_uint8(codegen, KRYON_VALUE_STRING)) {
+                    return false;
+                }
+                uint32_t str_ref = add_string_to_table(codegen, raw_value);
+                printf("DEBUG: Variable value string ref: %u for value '%s'\n", str_ref, raw_value);
+                
+                // Free the allocated JSON buffer if it was dynamically created
+                if (variable->data.variable_def.value->type == KRYON_AST_ARRAY_LITERAL) {
+                    free((char*)raw_value);
+                }
+                
+                if (!write_uint32(codegen, str_ref)) {
+                    return false;
+                }
+            } else {
+                // Write null value
+                if (!write_uint8(codegen, KRYON_VALUE_NULL)) {
+                    return false;
+                }
+            }
         }
     } else {
         // Write null value

@@ -139,6 +139,7 @@ struct KryonVM {
     KryonVMConfig config;       // VM configuration
     bool initialized;           // Initialization flag
     char* last_error;           // Last error message
+    struct KryonRuntime* runtime; // Runtime context for variable access
 };
 
 // =============================================================================

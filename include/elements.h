@@ -89,6 +89,10 @@ struct KryonElement {
 
     // Scripting
     void *script_state;
+    
+    // @for directive template storage
+    struct KryonElement **template_children;  // Template children for @for directive
+    size_t template_count;                    // Number of template children
 };
 
 // =============================================================================

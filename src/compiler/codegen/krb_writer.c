@@ -123,6 +123,11 @@ static bool ensure_buffer_capacity(KryonKrbWriter *writer, size_t additional_siz
         return false;
     }
     
+    // Zero out the newly allocated memory to prevent garbage data
+    if (new_capacity > writer->buffer_capacity) {
+        memset(new_buffer + writer->buffer_capacity, 0, new_capacity - writer->buffer_capacity);
+    }
+    
     writer->buffer = new_buffer;
     writer->buffer_capacity = new_capacity;
     return true;

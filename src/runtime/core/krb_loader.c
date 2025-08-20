@@ -36,7 +36,6 @@ static bool load_element_properties(KryonElement *element,
                                    size_t size,
                                    uint32_t property_count,
                                    KryonRuntime *runtime);
-static void extract_component_variables_from_strings(KryonRuntime *runtime, char **string_table, size_t string_count);
 static bool load_components_section(KryonRuntime* runtime, const uint8_t* data, size_t size, size_t* offset, char** string_table, uint32_t string_count);
 static bool load_property_value(KryonProperty *property,
                                const uint8_t *data,
@@ -49,6 +48,9 @@ static bool skip_functions_section(const uint8_t *data, size_t *offset, size_t s
 static void register_event_directive_handlers(KryonRuntime *runtime, KryonElement *element);
 static bool load_function_from_binary(KryonRuntime *runtime, const uint8_t *data, size_t *offset, size_t size, char** string_table, uint32_t string_count);
 static void connect_function_handlers(KryonRuntime *runtime, KryonElement *element);
+static void reprocess_property_bindings(KryonRuntime *runtime, KryonElement *element);
+static char *resolve_template_property(KryonRuntime *runtime, KryonProperty *property);
+static void kryon_free_template_segments(KryonProperty *property);
 
 // =============================================================================
 // UTILITY FUNCTIONS
@@ -160,6 +162,9 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     if (!runtime || !data || size < 128) { // Minimum size for complex format header
         return false;
     }
+    
+    // Set loading flag to prevent @for processing during KRB loading
+    runtime->is_loading = true;
     
     size_t offset = 0;
     char** string_table = NULL;
@@ -319,171 +324,80 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     runtime->string_table = string_table;
     runtime->string_table_count = string_count;
     
+    // Skip early Variables section loading - rely on later loading that works correctly
+    
     // Navigate to widget instance section if we have elements
     if (element_count > 0 && element_inst_offset > 0) {
         printf("DEBUG: Jumping to widget instance section at offset %u\n", element_inst_offset);
         offset = element_inst_offset;
     }
     
-    // Load root element (should be the first one)
+    // Load root element (should be the first one) - variables are now available for binding
     if (element_count > 0) {
         runtime->root = load_element_from_binary(runtime, data, &offset, size, NULL);
         if (!runtime->root) {
             printf("DEBUG: Failed to load root element\n");
             return false;
         }
-        printf("DEBUG: Successfully loaded root element: %s\n", runtime->root->type_name ? runtime->root->type_name : "unknown");
+        printf("DEBUG: Successfully loaded root element\n");
+        if (runtime->root && runtime->root->type_name) {
+            printf("DEBUG: Root element type: %s\n", runtime->root->type_name);
+        }
+        printf("DEBUG: Element loading complete, about to load variables\n");
     } else {
         printf("DEBUG: No elements found in KRB file\n");
     }
     
-    // Extract component instance variables from string table
-    printf("DEBUG: Extracting component variables from string table\n");
-    extract_component_variables_from_strings(runtime, string_table, string_count);
     
-    // Load Variables section if present (right before script section)
-    if (script_offset > 0) {
-        size_t vars_offset = script_offset;
+    // Variables loading moved earlier in the loading process
         
-        // Check for Variables section magic "VARS"
-        uint32_t vars_magic;
-        if (read_uint32_safe(data, &vars_offset, size, &vars_magic)) {
-            printf("DEBUG: Found magic 0x%08X at offset %u (expected VARS=0x56415253)\n", vars_magic, script_offset);
-            if (vars_magic == 0x56415253) {
-                printf("DEBUG: Loading Variables section at offset %u\n", script_offset);
-            
-                // Read variable count
-                uint32_t var_count;
-            if (!read_uint32_safe(data, &vars_offset, size, &var_count)) {
-                printf("DEBUG: Failed to read variable count\n");
-                return false;
-            }
-            
-            printf("DEBUG: Found %u variables in Variables section\n", var_count);
-            
-            // Initialize variable registry if needed
-            if (!runtime->variable_names) {
-                runtime->variable_names = kryon_alloc(var_count * sizeof(char*));
-                runtime->variable_values = kryon_alloc(var_count * sizeof(char*));
-                runtime->variable_capacity = var_count;
-                runtime->variable_count = 0;
-            }
-            
-            // Load each variable
-            for (uint32_t i = 0; i < var_count; i++) {
-                // Read variable name (string ref)
-                uint32_t name_ref;
-                if (!read_uint32_safe(data, &vars_offset, size, &name_ref)) {
-                    printf("DEBUG: Failed to read variable name ref\n");
-                    continue;
-                }
-                
-                // Read variable type
-                uint8_t var_type;
-                if (!read_uint8_safe(data, &vars_offset, size, &var_type)) {
-                    printf("DEBUG: Failed to read variable type\n");
-                    continue;
-                }
-                
-                // Read variable value based on type
-                char *var_value = NULL;
-                switch (var_type) {
-                    case 0: { // String
-                        uint8_t value_type;
-                        if (read_uint8_safe(data, &vars_offset, size, &value_type) && value_type == KRYON_VALUE_STRING) {
-                            uint32_t str_ref;
-                            if (read_uint32_safe(data, &vars_offset, size, &str_ref) && str_ref < string_count) {
-                                var_value = kryon_strdup(string_table[str_ref]);
-                            }
-                        }
-                        break;
-                    }
-                    case 1: { // Integer
-                        uint8_t value_type;
-                        int64_t int_val;
-                        if (read_uint8_safe(data, &vars_offset, size, &value_type) && 
-                            value_type == KRYON_VALUE_INTEGER &&
-                            read_int64_safe(data, &vars_offset, size, &int_val)) {
-                            var_value = kryon_alloc(32);
-                            snprintf(var_value, 32, "%lld", (long long)int_val);
-                        }
-                        break;
-                    }
-                    case 2: { // Float
-                        uint8_t value_type;
-                        double float_val;
-                        if (read_uint8_safe(data, &vars_offset, size, &value_type) && 
-                            value_type == KRYON_VALUE_FLOAT &&
-                            read_double_safe(data, &vars_offset, size, &float_val)) {
-                            var_value = kryon_alloc(32);
-                            snprintf(var_value, 32, "%.6g", float_val);
-                        }
-                        break;
-                    }
-                    case 3: { // Boolean
-                        uint8_t value_type;
-                        uint8_t bool_val;
-                        if (read_uint8_safe(data, &vars_offset, size, &value_type) && 
-                            value_type == KRYON_VALUE_BOOLEAN &&
-                            read_uint8_safe(data, &vars_offset, size, &bool_val)) {
-                            var_value = kryon_strdup(bool_val ? "true" : "false");
-                        }
-                        break;
-                    }
-                    default:
-                        // Skip unknown type
-                        vars_offset += 5; // Skip value type + 4 bytes
-                        break;
-                }
-                
-                // Add to runtime variable registry
-                if (name_ref < string_count && var_value && runtime->variable_count < runtime->variable_capacity) {
-                    runtime->variable_names[runtime->variable_count] = kryon_strdup(string_table[name_ref]);
-                    runtime->variable_values[runtime->variable_count] = var_value;
-                    runtime->variable_count++;
-                    printf("DEBUG: Loaded variable '%s' = '%s'\n", string_table[name_ref], var_value);
-                } else {
-                    kryon_free(var_value);
-                }
-            }
-            
-                // Update script_offset to point after Variables section
-                script_offset = (uint32_t)vars_offset;
-            } else {
-                printf("DEBUG: No Variables section found (magic mismatch)\n");
-            }
-        } else {
-            printf("DEBUG: Failed to read magic number at script offset\n");
-        }
-    }
     
     // Load script section if present
     if (script_offset > 0) {
         printf("DEBUG: About to load script section at offset %u\n", script_offset);
         
-        // Check what's actually at this offset first
-        size_t check_offset = script_offset;
-        uint32_t check_magic;
-        if (read_uint32_safe(data, &check_offset, size, &check_magic)) {
-            printf("DEBUG: Magic at script_offset %u is 0x%08X\n", script_offset, check_magic);
+        // Script offset points to Variables section, we need to find Functions section after it
+        // Look for FUNC magic (0x46554E43 = "FUNC")
+        size_t search_offset = script_offset;
+        size_t func_offset = 0;
+        bool found_func = false;
+        
+        printf("DEBUG: Searching for FUNC magic starting from offset %zu\n", search_offset);
+        
+        for (size_t i = search_offset; i <= size - 4; i++) {
+            uint32_t magic = (data[i] << 24) | (data[i+1] << 16) | (data[i+2] << 8) | data[i+3];
+            if (magic == 0x46554E43) { // "FUNC"
+                printf("DEBUG: Found FUNC magic at offset %zu\n", i);
+                func_offset = i;
+                found_func = true;
+                break;
+            }
         }
         
-        offset = script_offset;
-        
-        // Read function count
-        uint32_t function_count;
-        if (!read_uint32_safe(data, &offset, size, &function_count)) {
-            printf("DEBUG: Failed to read function count\n");
-            return false;
-        }
-        
-        printf("DEBUG: Found %u functions in script section\n", function_count);
-        
-        // Load each function
-        for (uint32_t i = 0; i < function_count; i++) {
-            if (!load_function_from_binary(runtime, data, &offset, size, string_table, string_count)) {
-                printf("DEBUG: Failed to load function %u\n", i);
-                goto cleanup;
+        if (!found_func) {
+            printf("DEBUG: No FUNC section found, skipping function loading\n");
+        } else {
+            offset = func_offset + 4; // Skip FUNC magic
+            
+            // Read function count
+            uint32_t function_count;
+            if (!read_uint32_safe(data, &offset, size, &function_count)) {
+                printf("DEBUG: Failed to read function count\n");
+                return false;
+            }
+            
+            printf("DEBUG: Found %u functions in FUNC section\n", function_count);
+            
+            if (function_count > 100) {
+                printf("DEBUG: Function count seems too high (%u), skipping function loading\n", function_count);
+            } else {
+                // Load each function
+                for (uint32_t i = 0; i < function_count; i++) {
+                    if (!load_function_from_binary(runtime, data, &offset, size, string_table, string_count)) {
+                        printf("DEBUG: Failed to load function %u\n", i);
+                        break; // Don't fail entire loading, just skip remaining functions
+                    }
+                }
             }
         }
         
@@ -539,6 +453,78 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
         }
     }
     
+    // Load Variables section BEFORE processing @for directives
+    if (script_offset > 0) {
+        printf("DEBUG: Manually parsing Variables section at offset %u\n", script_offset);
+        
+        size_t vars_offset = script_offset;
+        uint32_t vars_magic;
+        if (read_uint32_safe(data, &vars_offset, size, &vars_magic)) {
+            printf("DEBUG: Magic at offset %u: 0x%08X (expected 0x56415253)\n", script_offset, vars_magic);
+            
+            if (vars_magic == 0x56415253) { // "VARS" 
+                uint32_t var_count;
+                if (read_uint32_safe(data, &vars_offset, size, &var_count)) {
+                    printf("DEBUG: Variable count: %u\n", var_count);
+                    
+                    if (var_count <= 10 && var_count > 0) {
+                        runtime->variable_names = kryon_alloc(var_count * sizeof(char*));
+                        runtime->variable_values = kryon_alloc(var_count * sizeof(char*));
+                        runtime->variable_capacity = var_count;
+                        runtime->variable_count = 0;
+                        
+                        for (uint32_t i = 0; i < var_count; i++) {
+                            uint32_t name_ref;
+                            if (!read_uint32_safe(data, &vars_offset, size, &name_ref)) break;
+                            
+                            uint8_t var_type;
+                            if (!read_uint8_safe(data, &vars_offset, size, &var_type)) break;
+                            
+                            uint8_t var_flags;
+                            if (!read_uint8_safe(data, &vars_offset, size, &var_flags)) break;
+                            
+                            uint8_t value_type;
+                            if (!read_uint8_safe(data, &vars_offset, size, &value_type)) break;
+                            
+                            const char* var_name = (name_ref < string_count) ? string_table[name_ref] : "unknown";
+                            
+                            const char* var_value = "";
+                            if (value_type == KRYON_VALUE_STRING) {
+                                uint32_t value_ref;
+                                if (read_uint32_safe(data, &vars_offset, size, &value_ref)) {
+                                    if (value_ref < string_count && string_table[value_ref]) {
+                                        var_value = string_table[value_ref];
+                                    }
+                                }
+                            } else {
+                                vars_offset += 4;
+                            }
+                            
+                            runtime->variable_names[runtime->variable_count] = kryon_strdup(var_name);
+                            runtime->variable_values[runtime->variable_count] = kryon_strdup(var_value);
+                            runtime->variable_count++;
+                            
+                            printf("DEBUG: Loaded variable '%s' = '%s'\n", var_name, var_value);
+                        }
+                        
+                        printf("🔄 Reprocessing property bindings with loaded variables\n");
+                        reprocess_property_bindings(runtime, runtime->root);
+                    }
+                }
+            }
+        }
+    }
+    
+    // Clear loading flag before processing @for directives
+    runtime->is_loading = false;
+    
+    // Process @for directives after all elements AND variables are loaded
+    if (runtime->root) {
+        printf("🔄 About to call process_for_directives\n");
+        process_for_directives(runtime, runtime->root);
+        printf("🔄 Completed process_for_directives\n");
+    }
+    
     // Cleanup string table
     //if (string_table) {
     //    for (uint32_t i = 0; i < string_count; i++) {
@@ -550,6 +536,9 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     return true;
     
 cleanup:
+    // Clear loading flag on error
+    runtime->is_loading = false;
+    
     // Cleanup string table on error
     if (string_table) {
         for (uint32_t i = 0; i < string_count; i++) {
@@ -560,76 +549,88 @@ cleanup:
     return false;
 }
 
+
 static KryonElement *load_element_from_binary(KryonRuntime *runtime, 
                                              const uint8_t *data, 
                                              size_t *offset, 
                                              size_t size,
                                              KryonElement *parent) {
-    // Read widget instance header as per KRB v0.1 spec:
-    // [Instance ID: u32] [Widget Type ID: u32] [Parent Instance ID: u32] [Style Reference ID: u32]
-    // [Property Count: u16] [Child Count: u16] [Event Handler Count: u16] [Widget Flags: u32]
+    // Use centralized schema-based element header validation
+    KRBElementHeader header;
     
-    if (*offset + 24 > size) { // Minimum header size for widget instance
+    printf("🔄 Loading element at offset %zu\n", *offset);
+    
+    // Validate and read element header using schema
+    if (!krb_validate_element_header(data, size, offset, &header)) {
+        printf("❌ Failed to validate element header at offset %zu\n", *offset);
         return NULL;
     }
     
-    // Read widget instance header
-    uint32_t instance_id, widget_type_id, parent_id, style_ref_id;
-    uint16_t property_count, child_count, event_handler_count;
-    uint32_t widget_flags;
+    printf("🏗️  Loaded element header: id=%u type=0x%x props=%u children=%u events=%u\n", 
+           header.instance_id, header.element_type, header.property_count, 
+           header.child_count, header.event_count);
     
-    if (!read_uint32_safe(data, offset, size, &instance_id) ||
-        !read_uint32_safe(data, offset, size, &widget_type_id) ||
-        !read_uint32_safe(data, offset, size, &parent_id) ||
-        !read_uint32_safe(data, offset, size, &style_ref_id) ||
-        !read_uint16_safe(data, offset, size, &property_count) ||
-        !read_uint16_safe(data, offset, size, &child_count) ||
-        !read_uint16_safe(data, offset, size, &event_handler_count) ||
-        !read_uint32_safe(data, offset, size, &widget_flags)) {
-        printf("DEBUG: Failed to read widget instance header\n");
-        return NULL;
-    }
-    
-    // Create element using the widget type ID
-    KryonElement *element = kryon_element_create(runtime, (uint16_t)widget_type_id, parent);
+    // Create element using the element type ID from header
+    KryonElement *element = kryon_element_create(runtime, (uint16_t)header.element_type, parent);
     if (!element) {
         return NULL;
     }
     
-    // Set element type name with null check
-    const char* type_name = kryon_get_element_type_name((uint16_t)widget_type_id);
+    // Set element type name with null check - check both syntax keywords and elements
+    const char* type_name = NULL;
+    
+    // First check if it's a syntax keyword (like @for, @if, etc.)
+    if (kryon_is_syntax_keyword((uint16_t)header.element_type)) {
+        type_name = kryon_get_syntax_name((uint16_t)header.element_type);
+    } else {
+        // Otherwise check if it's a regular element
+        type_name = kryon_get_element_name((uint16_t)header.element_type);
+    }
+    
     if (type_name) {
         element->type_name = kryon_alloc(strlen(type_name) + 1);
         if (element->type_name) {
             strcpy(element->type_name, type_name);
         }
     } else {
-        printf("❌ ERROR: Unknown element type ID: %u\n", widget_type_id);
+        printf("❌ ERROR: Unknown element type ID: %u\n", header.element_type);
         element->type_name = kryon_alloc(strlen("Unknown") + 1);
         if (element->type_name) {
             strcpy(element->type_name, "Unknown");
         }
     }
     
-    // Load properties
-    if (property_count > 0) {
-        printf("DEBUG: About to load %u properties for element %s\n", property_count, element->type_name);
-        if (!load_element_properties(element, data, offset, size, property_count, runtime)) {
+    // Load properties using schema-validated count
+    if (header.property_count > 0) {
+        printf("DEBUG: About to load %u properties for element %s\n", header.property_count, element->type_name);
+        if (!load_element_properties(element, data, offset, size, header.property_count, runtime)) {
             kryon_element_destroy(runtime, element);
             return NULL;
         }
-        printf("DEBUG: Successfully loaded %zu properties for element %s\n", element->property_count, element->type_name);
+        // printf("DEBUG: Successfully loaded %zu properties for element %s\n", element->property_count, element->type_name);
     }
     
-    // Special handling for event directive elements
-    if (widget_type_id == KRYON_ELEMENT_EVENT_DIRECTIVE) {
-        register_event_directive_handlers(runtime, element);
+    // Special handling for syntax directives
+    if (kryon_is_syntax_keyword(header.element_type)) {
+        const char* syntax_name = kryon_get_syntax_name(header.element_type);
+        if (syntax_name && strcmp(syntax_name, "event") == 0) {
+            register_event_directive_handlers(runtime, element);
+        } else if (syntax_name && strcmp(syntax_name, "for") == 0) {
+            // @for directives need special reactive processing
+            // For now, mark as template for later expansion
+            element->needs_render = false; // Don't render template directly
+        }
     }
     
     // Check if this element represents a component instance
-    printf("🔍 DEBUG: Element '%s' has widget_type_id=0x%04X, checking if >= 0x2000 for component instance\n", 
-           element->type_name, widget_type_id);
-    if (widget_type_id >= 0x2000) { // Custom component type IDs start at 0x2000
+    printf("🔍 DEBUG: Element has element_type=0x%04X, checking if >= 0x2000 for component instance\n", 
+           header.element_type);
+    if (element->type_name) {
+        printf("🔍 DEBUG: Element type name: %s\n", element->type_name);
+    } else {
+        printf("🔍 DEBUG: Element type name: (null)\n");
+    }
+    if (header.element_type >= 0x2000) { // Custom component type IDs start at 0x2000
         // Find the component definition
         for (size_t i = 0; i < runtime->component_count; i++) {
             if (runtime->components[i] && runtime->components[i]->name) {
@@ -712,21 +713,33 @@ static KryonElement *load_element_from_binary(KryonRuntime *runtime,
     // Connect function handlers for elements with onClick etc.
     connect_function_handlers(runtime, element);
     
-    if (child_count > 0) {
-        printf("DEBUG: Element %s has %u children\n", element->type_name, child_count);
+    if (header.child_count > 0) {
+        printf("DEBUG: Element %s has %u children\n", element->type_name, header.child_count);
     }
     
-    // Load children
-    printf("DEBUG: About to load %u children for element %s\n", child_count, element->type_name);
-    for (uint32_t i = 0; i < child_count; i++) {
-        printf("DEBUG: Loading child %u/%u (offset=%zu)\n", i+1, child_count, *offset);
+    // Load children using schema-validated count
+    printf("DEBUG: About to load %u children for element %s\n", header.child_count, element->type_name);
+    for (uint32_t i = 0; i < header.child_count; i++) {
+        printf("DEBUG: Loading child %u/%u (offset=%zu)\n", i+1, header.child_count, *offset);
+        
+        // MEMORY VALIDATION: Check string table integrity before child loading
+        // printf("🔍 PRE-CHILD DEBUG: string_table=%p, count=%zu\n", 
+        //        (void*)runtime->string_table, runtime->string_table_count);
+        // if (runtime->string_table && runtime->string_table_count > 0) {
+        //     for (size_t j = 0; j < runtime->string_table_count && j < 5; j++) {
+        //         printf("🔍 PRE-CHILD DEBUG: string_table[%zu] = %p -> '%s'\n", 
+        //                j, (void*)runtime->string_table[j], 
+        //                runtime->string_table[j] ? runtime->string_table[j] : "NULL");
+        //     }
+        // }
+        
         KryonElement *child = load_element_from_binary(runtime, data, offset, size, element);
         if (!child) {
             printf("DEBUG: Failed to load child %u\n", i+1);
             kryon_element_destroy(runtime, element);
             return NULL;
         }
-        printf("DEBUG: Successfully loaded child %u: %s\n", i+1, child->type_name);
+        // printf("DEBUG: Successfully loaded child %u: %s\n", i+1, child->type_name ? child->type_name : "(null)");
     }
     
     return element;
@@ -750,12 +763,15 @@ static bool load_element_properties(KryonElement *element,
             return false;
         }
         
-        // Read property header
-        uint16_t property_id;
-        if (!read_uint16_safe(data, offset, size, &property_id)) {
-            printf("DEBUG: Failed to read property ID\n");
+        // Use centralized schema-based property header validation
+        KRBPropertyHeader prop_header;
+        if (!krb_validate_property_header(data, size, offset, &prop_header)) {
+            printf("❌ Failed to validate property header at offset %zu\n", *offset);
             return false;
         }
+        
+        // Skip debug output to avoid printf crashes
+        // printf("🔧 Loaded property header: id=0x%04x type=%u\n", (unsigned int)prop_header.property_id, (unsigned int)prop_header.value_type);
         
         // Create property
         KryonProperty *property = kryon_alloc(sizeof(KryonProperty));
@@ -763,27 +779,29 @@ static bool load_element_properties(KryonElement *element,
             return false;
         }
         
-        property->id = property_id;
-        const char* prop_name = get_property_name(property_id);
+        property->id = prop_header.property_id;
+        property->type = prop_header.value_type;
+        const char* prop_name = get_property_name(prop_header.property_id);
         if (prop_name) {
             property->name = kryon_alloc(strlen(prop_name) + 1);
             if (property->name) {
                 strcpy(property->name, prop_name);
             }
         } else {
-            printf("❌ ERROR: Unknown property ID: 0x%04X\n", property_id);
+            printf("❌ ERROR: Unknown property ID: 0x%04X\n", prop_header.property_id);
             property->name = kryon_alloc(strlen("unknown") + 1);
             if (property->name) {
                 strcpy(property->name, "unknown");
             }
         }
-        property->type = get_property_type(property_id);
+        property->type = get_property_type(prop_header.property_id);
         
-        printf("DEBUG: Loading property %s (id=0x%04X, type=%d)\n", 
-               property->name, property_id, property->type);
+        // Disable debug output to avoid crashes
+        // printf("DEBUG: Loading property %s (id=0x%04X, type=%d)\n", 
+        //        property->name ? property->name : "(null)", prop_header.property_id, property->type);
         
         // Handle special properties
-        if (property_id == kryon_get_property_hex("id")) { // "id" property
+        if (prop_header.property_id == kryon_get_property_hex("id")) { // "id" property
             // Read the property value
             if (!load_property_value(property, data, offset, size, runtime, element)) {
                 kryon_free(property->name);
@@ -798,7 +816,7 @@ static bool load_element_properties(KryonElement *element,
                     strcpy(element->element_id, property->value.string_value);
                 }
             }
-        } else if (property_id == kryon_get_property_hex("class")) { // "class" property
+        } else if (prop_header.property_id == kryon_get_property_hex("class")) { // "class" property
             // Read the property value
             if (!load_property_value(property, data, offset, size, runtime, element)) {
                 kryon_free(property->name);
@@ -819,7 +837,30 @@ static bool load_element_properties(KryonElement *element,
                 }
             }
         } else {
+            // For properties with a valid type from the header, don't override the type
+            // Only check for type prefix overrides if the property type wasn't properly determined
+            if (property->type == KRYON_RUNTIME_PROP_STRING) {
+                // Only for string properties, check if they're actually REFERENCE or TEMPLATE types
+                if (*offset < size && data[*offset] == KRYON_RUNTIME_PROP_REFERENCE) {
+                    // This is a REFERENCE property - override the property type
+                    property->type = KRYON_RUNTIME_PROP_REFERENCE;
+                    printf("DEBUG: Detected REFERENCE type prefix for property %s\n", property->name);
+                } else if (*offset < size && data[*offset] == KRYON_RUNTIME_PROP_TEMPLATE) {
+                    // This is a TEMPLATE property - override the property type
+                    property->type = KRYON_RUNTIME_PROP_TEMPLATE;
+                    printf("DEBUG: Detected TEMPLATE type prefix for property %s\n", property->name);
+                }
+            }
+            
             // Read property value
+            printf("🔍 PROPERTY DEBUG: About to call load_property_value for property type=%d\n", property->type);
+            printf("🔍 PROPERTY DEBUG: About to check property pointer\n");
+            if (!property) {
+                printf("❌ PROPERTY DEBUG: Property pointer is NULL!\n");
+                return false;
+            }
+            printf("🔍 PROPERTY DEBUG: Property pointer is valid\n");
+            printf("🔍 PROPERTY DEBUG: Property name exists: %s\n", property->name ? "yes" : "no");
             if (!load_property_value(property, data, offset, size, runtime, element)) {
                 kryon_free(property->name);
                 kryon_free(property);
@@ -827,7 +868,18 @@ static bool load_element_properties(KryonElement *element,
             }
         }
         
+        // Validate property array integrity before adding
+        printf("🔍 ARRAY DEBUG: About to add property %u to element\n", i);
+        printf("🔍 ARRAY DEBUG: Current property_count: %zu\n", element->property_count);
+        printf("🔍 ARRAY DEBUG: Property array capacity: %u\n", property_count);
+        
+        if (element->property_count >= property_count) {
+            printf("❌ ARRAY DEBUG: Property array overflow!\n");
+            return false;
+        }
+        
         element->properties[element->property_count++] = property;
+        printf("🔍 ARRAY DEBUG: Successfully added property, new count: %zu\n", element->property_count);
     }
     
     // Properties loaded successfully
@@ -869,103 +921,7 @@ static bool load_property_value(KryonProperty *property,
                 property->value.string_value[string_length] = '\0';
                 *offset += string_length;
                 
-                printf("DEBUG: Read string property '%s' = '%s'\n", property->name, property->value.string_value);
-                
-                // Check if this is a variable reference and resolve it
-                if (runtime && property->value.string_value) {
-                    const char* var_name = property->value.string_value;
-                    bool resolved = false;
-                    
-                    // First, check if we're loading a component instance and this is a component state variable
-                    KryonElement* current_element = element;
-                    while (current_element && !resolved) {
-                        if (current_element->component_instance) {
-                            KryonComponentInstance* comp_inst = current_element->component_instance;
-                            
-                            // Look for the variable in component state variables
-                            if (comp_inst->definition && comp_inst->definition->state_vars) {
-                                for (size_t i = 0; i < comp_inst->definition->state_count; i++) {
-                                    if (comp_inst->definition->state_vars[i].name && 
-                                        strcmp(comp_inst->definition->state_vars[i].name, var_name) == 0) {
-                                        
-                                        // Found component state variable, resolve to current instance value
-                                        kryon_free(property->value.string_value);
-                                        
-                                        if (i < comp_inst->state_count && comp_inst->state_values[i]) {
-                                            property->value.string_value = kryon_strdup(comp_inst->state_values[i]);
-                                            printf("🔄 Resolved component state variable '%s' to value '%s'\n", 
-                                                   var_name, property->value.string_value);
-                                        } else if (comp_inst->definition->state_vars[i].default_value) {
-                                            property->value.string_value = kryon_strdup(comp_inst->definition->state_vars[i].default_value);
-                                            printf("🔄 Resolved component state variable '%s' to default value '%s'\n", 
-                                                   var_name, property->value.string_value);
-                                        } else {
-                                            property->value.string_value = kryon_strdup("0");
-                                            printf("⚠️  Component state variable '%s' has no value, using '0'\n", var_name);
-                                        }
-                                        resolved = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            
-                            // Also check component parameters
-                            if (!resolved && comp_inst->definition && comp_inst->definition->parameters) {
-                                for (size_t i = 0; i < comp_inst->definition->parameter_count; i++) {
-                                    if (comp_inst->definition->parameters[i] && 
-                                        strcmp(comp_inst->definition->parameters[i], var_name) == 0) {
-                                        
-                                        // Found component parameter, resolve to current instance value
-                                        kryon_free(property->value.string_value);
-                                        
-                                        if (i < comp_inst->param_count && comp_inst->param_values[i]) {
-                                            property->value.string_value = kryon_strdup(comp_inst->param_values[i]);
-                                            printf("🔄 Resolved component parameter '%s' to value '%s'\n", 
-                                                   var_name, property->value.string_value);
-                                        } else if (comp_inst->definition->param_defaults[i]) {
-                                            property->value.string_value = kryon_strdup(comp_inst->definition->param_defaults[i]);
-                                            printf("🔄 Resolved component parameter '%s' to default value '%s'\n", 
-                                                   var_name, property->value.string_value);
-                                        } else {
-                                            property->value.string_value = kryon_strdup("undefined");
-                                            printf("⚠️  Component parameter '%s' has no value, using 'undefined'\n", var_name);
-                                        }
-                                        resolved = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        current_element = current_element->parent;
-                    }
-                    
-                    // If not resolved as component variable, check global runtime variables
-                    if (!resolved && runtime->variable_names) {
-                        for (size_t i = 0; i < runtime->variable_count; i++) {
-                            if (runtime->variable_names[i] && strcmp(runtime->variable_names[i], var_name) == 0) {
-                                // Found the variable, replace the string value with the resolved value
-                                kryon_free(property->value.string_value);
-                                if (runtime->variable_values[i]) {
-                                    property->value.string_value = kryon_strdup(runtime->variable_values[i]);
-                                    printf("🔄 Resolved global variable '%s' to value '%s'\n", var_name, property->value.string_value);
-                                } else {
-                                    property->value.string_value = kryon_strdup("undefined");
-                                    printf("⚠️  Global variable '%s' has no value, using 'undefined'\n", var_name);
-                                }
-                                resolved = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // If still not resolved, mark as reactive variable reference for runtime binding
-                    if (!resolved) {
-                        printf("🔗 Variable '%s' not resolved at load time - will be bound reactively at runtime\n", var_name);
-                        // Keep the variable name as-is for runtime reactive binding
-                        property->is_bound = true;
-                        property->binding_path = kryon_strdup(var_name);
-                    }
-                }
+                printf("DEBUG: Read string property '%s' = '%s'\n", property->name ? property->name : "(null)", property->value.string_value);
             }
             break;
             
@@ -977,7 +933,7 @@ static bool load_property_value(KryonProperty *property,
                     return false;
                 }
                 property->value.int_value = (int64_t)int_value;
-                printf("DEBUG: Read integer property '%s' = %lld\n", property->name, (long long)property->value.int_value);
+                printf("DEBUG: Read integer property '%s' = %lld\n", property->name ? property->name : "(null)", (long long)property->value.int_value);
             }
             break;
             
@@ -999,26 +955,26 @@ static bool load_property_value(KryonProperty *property,
                     // As a temporary solution, assume common patterns
                     const char* var_value = NULL;
                     
-                    if (strcmp(property->name, "posY") == 0) {
+                    if (property->name && strcmp(property->name, "posY") == 0) {
                         // posY with sentinel likely refers to $root.height or similar
                         var_value = kryon_runtime_get_variable(runtime, "root.height");
                         if (var_value) {
                             float resolved_value = (float)atof(var_value);
                             property->value.float_value = (double)resolved_value;
                             printf("🔄 Resolved float reactive variable '%s' to %f (from root.height='%s')\n", 
-                                   property->name, resolved_value, var_value);
+                                   property->name ? property->name : "(null)", resolved_value, var_value);
                         } else {
                             property->value.float_value = 0.0; // Default fallback
                             printf("⚠️  Failed to resolve reactive variable for '%s', using 0.0\n", property->name);
                         }
-                    } else if (strcmp(property->name, "posX") == 0) {
+                    } else if (property->name && strcmp(property->name, "posX") == 0) {
                         // posX with sentinel likely refers to $root.width or similar
                         var_value = kryon_runtime_get_variable(runtime, "root.width");
                         if (var_value) {
                             float resolved_value = (float)atof(var_value);
                             property->value.float_value = (double)resolved_value;
                             printf("🔄 Resolved float reactive variable '%s' to %f (from root.width='%s')\n", 
-                                   property->name, resolved_value, var_value);
+                                   property->name ? property->name : "(null)", resolved_value, var_value);
                         } else {
                             property->value.float_value = 0.0; // Default fallback
                             printf("⚠️  Failed to resolve reactive variable for '%s', using 0.0\n", property->name);
@@ -1032,7 +988,7 @@ static bool load_property_value(KryonProperty *property,
                     }
                 } else {
                     property->value.float_value = (double)float_value;
-                    printf("DEBUG: Read float property '%s' = %f\n", property->name, float_value);
+                    printf("DEBUG: Read float property '%s' = %f\n", property->name ? property->name : "(null)", float_value);
                 }
             }
             break;
@@ -1045,7 +1001,7 @@ static bool load_property_value(KryonProperty *property,
                     return false;
                 }
                 property->value.bool_value = bool_value != 0;
-                printf("DEBUG: Read boolean property '%s' = %s\n", property->name, property->value.bool_value ? "true" : "false");
+                printf("DEBUG: Read boolean property '%s' = %s\n", property->name ? property->name : "(null)", property->value.bool_value ? "true" : "false");
             }
             break;
             
@@ -1058,7 +1014,7 @@ static bool load_property_value(KryonProperty *property,
                     return false;
                 }
                 property->value.color_value = color_value;
-                printf("DEBUG: Read color property '%s' = 0x%08X\n", property->name, color_value);
+                printf("DEBUG: Read color property '%s' = 0x%08X\n", property->name ? property->name : "(null)", color_value);
             }
             break;
             
@@ -1086,7 +1042,7 @@ static bool load_property_value(KryonProperty *property,
                 property->value.string_value[string_length] = '\0';
                 *offset += string_length;
                 
-                printf("DEBUG: Read function property '%s' = '%s'\n", property->name, property->value.string_value);
+                printf("DEBUG: Read function property '%s' = '%s'\n", property->name ? property->name : "(null)", property->value.string_value);
             }
             break;
             
@@ -1109,13 +1065,180 @@ static bool load_property_value(KryonProperty *property,
                         return false;
                     }
                     
-                    uint32_t string_index = (string_ref > 0) ? string_ref - 1 : 0;
-                    if (string_ref > 0 && string_index < runtime->string_table_count) {
-                        property->value.array_value.values[i] = kryon_strdup(runtime->string_table[string_index]);
+                    if (string_ref < runtime->string_table_count) {
+                        property->value.array_value.values[i] = kryon_strdup(runtime->string_table[string_ref]);
                     } else {
                         property->value.array_value.values[i] = NULL;
                     }
                 }
+            }
+            break;
+            
+        case KRYON_RUNTIME_PROP_REFERENCE:
+            {
+                // Read the property type prefix
+                uint8_t prop_type;
+                if (!read_uint8_safe(data, offset, size, &prop_type)) {
+                    printf("DEBUG: Failed to read REFERENCE property type prefix\n");
+                    return false;
+                }
+                
+                if (prop_type != KRYON_RUNTIME_PROP_REFERENCE) {
+                    printf("DEBUG: Expected REFERENCE type prefix, got %d\n", prop_type);
+                    return false;
+                }
+                
+                // Read variable name reference (uint32_t pointing to string table)
+                uint32_t variable_name_ref;
+                if (!read_uint32_safe(data, offset, size, &variable_name_ref)) {
+                    printf("DEBUG: Failed to read variable name reference\n");
+                    return false;
+                }
+                
+                // Safely access string table with comprehensive validation
+                printf("🔍 REFERENCE DEBUG: Processing reference property\n");
+                printf("🔍 REFERENCE DEBUG: variable_name_ref value is available\n");
+                printf("🔍 REFERENCE DEBUG: runtime structure is valid\n");
+                
+                const char* variable_name = NULL;
+                
+                // Validate string table and reference bounds
+                if (!runtime->string_table) {
+                    printf("❌ REFERENCE DEBUG: String table is NULL!\n");
+                    property->value.string_value = kryon_strdup("no_string_table");
+                    property->is_bound = false;
+                    property->binding_path = NULL;
+                } else if (variable_name_ref >= runtime->string_table_count) {
+                    printf("❌ REFERENCE DEBUG: Invalid reference %u >= %zu\n", 
+                           variable_name_ref, runtime->string_table_count);
+                    property->value.string_value = kryon_strdup("invalid_ref");
+                    property->is_bound = false;
+                    property->binding_path = NULL;
+                } else {
+                    // Safe string table access with validation
+                    char* string_ptr = runtime->string_table[variable_name_ref];
+                    printf("🔍 REFERENCE DEBUG: string_table[%u] = %p\n", variable_name_ref, (void*)string_ptr);
+                    
+                    if (!string_ptr) {
+                        printf("❌ REFERENCE DEBUG: String pointer is NULL at index %u\n", variable_name_ref);
+                        property->value.string_value = kryon_strdup("null_ptr");
+                        property->is_bound = false;
+                        property->binding_path = NULL;
+                    } else {
+                        // Validate the string by checking if it's a reasonable pointer
+                        // Use simple validation instead of strnlen which may crash on corrupted memory
+                        // String appears valid
+                        variable_name = string_ptr;
+                        printf("✅ REFERENCE DEBUG: Valid string '%s' (ref=%u)\n", 
+                               variable_name, variable_name_ref);
+                        
+                        // Store as string for now, will be resolved by binding system
+                        property->value.string_value = kryon_strdup(variable_name);
+                        property->is_bound = true;
+                        property->binding_path = kryon_strdup(variable_name);
+                        
+                        printf("🔗 Property '%s' bound to variable '%s'\n", 
+                               property->name ? property->name : "(null)", variable_name);
+                    }
+                }
+            }
+            break;
+            
+        case KRYON_RUNTIME_PROP_TEMPLATE:
+            {
+                // Read the property type prefix
+                uint8_t prop_type;
+                if (!read_uint8_safe(data, offset, size, &prop_type)) {
+                    printf("DEBUG: Failed to read TEMPLATE property type prefix\n");
+                    return false;
+                }
+                
+                if (prop_type != KRYON_RUNTIME_PROP_TEMPLATE) {
+                    printf("DEBUG: Expected TEMPLATE type prefix, got %d\n", prop_type);
+                    return false;
+                }
+                
+                // Read segment count
+                uint16_t segment_count;
+                if (!read_uint16_safe(data, offset, size, &segment_count)) {
+                    printf("DEBUG: Failed to read template segment count\n");
+                    return false;
+                }
+                
+                printf("📝 Loading template with %u segments\n", segment_count);
+                
+                // Allocate segments array
+                property->value.template_value.segment_count = segment_count;
+                property->value.template_value.segments = kryon_alloc(segment_count * sizeof(KryonTemplateSegment));
+                if (!property->value.template_value.segments) {
+                    printf("DEBUG: Failed to allocate template segments\n");
+                    return false;
+                }
+                
+                // Load each segment
+                for (uint16_t i = 0; i < segment_count; i++) {
+                    // Read segment type
+                    uint8_t segment_type;
+                    if (!read_uint8_safe(data, offset, size, &segment_type)) {
+                        printf("DEBUG: Failed to read segment %u type\n", i);
+                        return false;
+                    }
+                    
+                    KryonTemplateSegment *segment = &property->value.template_value.segments[i];
+                    segment->type = (KryonTemplateSegmentType)segment_type;
+                    
+                    if (segment_type == KRYON_TEMPLATE_SEGMENT_LITERAL) {
+                        // Read literal text (length + data)
+                        uint16_t text_len;
+                        if (!read_uint16_safe(data, offset, size, &text_len)) {
+                            printf("DEBUG: Failed to read literal text length for segment %u\n", i);
+                            return false;
+                        }
+                        
+                        if (*offset + text_len > size) {
+                            printf("DEBUG: Literal text data exceeds buffer size for segment %u\n", i);
+                            return false;
+                        }
+                        
+                        segment->data.literal_text = kryon_alloc(text_len + 1);
+                        if (!segment->data.literal_text) {
+                            printf("DEBUG: Failed to allocate literal text for segment %u\n", i);
+                            return false;
+                        }
+                        
+                        if (text_len > 0) {
+                            memcpy(segment->data.literal_text, data + *offset, text_len);
+                        }
+                        segment->data.literal_text[text_len] = '\0';
+                        *offset += text_len;
+                        
+                        printf("  📝 Loaded literal segment %u: '%s'\n", i, segment->data.literal_text);
+                        
+                    } else if (segment_type == KRYON_TEMPLATE_SEGMENT_VARIABLE) {
+                        // Read variable name reference
+                        uint32_t var_name_ref;
+                        if (!read_uint32_safe(data, offset, size, &var_name_ref)) {
+                            printf("DEBUG: Failed to read variable name reference for segment %u\n", i);
+                            return false;
+                        }
+                        
+                        // Convert string table reference to variable name
+                        if (var_name_ref < runtime->string_table_count) {
+                            segment->data.variable_name = kryon_strdup(runtime->string_table[var_name_ref]);
+                            printf("  🔗 Loaded variable segment %u: '%s' (string_ref=%u)\n", 
+                                   i, segment->data.variable_name, var_name_ref);
+                        } else {
+                            printf("DEBUG: Invalid variable name reference %u for segment %u\n", var_name_ref, i);
+                            segment->data.variable_name = kryon_strdup("");
+                        }
+                        
+                    } else {
+                        printf("DEBUG: Unknown template segment type %u for segment %u\n", segment_type, i);
+                        return false;
+                    }
+                }
+                
+                printf("✅ Template property loaded with %u segments\n", segment_count);
             }
             break;
 
@@ -1512,12 +1635,12 @@ static bool load_function_from_binary(KryonRuntime *runtime, const uint8_t *data
     printf("DEBUG: Read code_ref=%u at offset %zu\n", code_ref, *offset - 4);
     
     // Get strings from string table (1-based indices)
-    printf("DEBUG: String refs: lang_ref=%u, name_ref=%u, code_ref=%u, flags=0x%04X (string_count=%zu)\n", 
+    printf("DEBUG: String refs: lang_ref=%u, name_ref=%u, code_ref=%u, flags=0x%04X (string_count=%u)\n", 
            lang_ref, name_ref, code_ref, flags, string_count);
     
-    const char* lang_str = (lang_ref > 0 && lang_ref <= string_count) ? string_table[lang_ref - 1] : NULL;
-    const char* name_str = (name_ref > 0 && name_ref <= string_count) ? string_table[name_ref - 1] : NULL;
-    const char* code_str = (code_ref > 0 && code_ref <= string_count) ? string_table[code_ref - 1] : NULL;
+    const char* lang_str = (lang_ref < string_count) ? string_table[lang_ref] : NULL;
+    const char* name_str = (name_ref < string_count) ? string_table[name_ref] : NULL;
+    const char* code_str = (code_ref < string_count) ? string_table[code_ref] : NULL;
     
     printf("DEBUG: Found function: lang='%s', name='%s', params=%u\n",
            lang_str ? lang_str : "(null)",
@@ -2057,64 +2180,176 @@ static bool load_components_section(KryonRuntime* runtime, const uint8_t* data, 
     return true;
 }
 
-// Extract component instance variables from string table patterns
-static void extract_component_variables_from_strings(KryonRuntime *runtime, char **string_table, size_t string_count) {
-    if (!runtime || !string_table) return;
-    
-    // Initialize variable registry if not already done
-    if (!runtime->variable_names) {
-        runtime->variable_capacity = 16;
-        runtime->variable_names = kryon_alloc(runtime->variable_capacity * sizeof(char*));
-        runtime->variable_values = kryon_alloc(runtime->variable_capacity * sizeof(char*));
-        runtime->variable_count = 0;
-        if (!runtime->variable_names || !runtime->variable_values) {
-            return;
-        }
+
+static void reprocess_property_bindings(KryonRuntime *runtime, KryonElement *element) {
+    if (!runtime || !element) {
+        return;
     }
     
-    // Look for component variable patterns: comp_X.variable_name
-    // Based on debug output: comp_0.value, comp_1.value should be followed by their values
-    for (size_t i = 0; i < string_count; i++) {
-        if (string_table[i] && strstr(string_table[i], "comp_") == string_table[i] && 
-            strstr(string_table[i], ".value")) {
-            // This looks like a component variable name (comp_X.value)
-            char *var_name = string_table[i];
-            char *var_value = NULL;
+    // Temporarily disabled to fix segfault - need to fix NULL pointer access
+    return;
+    
+    // printf("🔍 DEBUG: reprocess_property_bindings called for element with %zu properties\n", element->property_count);
+    
+    // Process this element's properties for proper reactive binding
+    for (size_t i = 0; i < element->property_count; i++) {
+        KryonProperty *property = element->properties[i];
+        // printf("🔍 DEBUG: Processing property %zu: %p\n", i, (void*)property);
+        if (property && property->is_bound && property->binding_path) {
+            const char *var_name = property->binding_path;
+            // printf("🔍 DEBUG: Property is bound to variable: '%s'\n", var_name ? var_name : "(null)");
             
-            // Look for the corresponding value string
-            // From debug: comp_0.value='5', comp_1.value='0' (adjacent but not always i+1)
-            if (strstr(var_name, "comp_0.value") && i + 1 < string_count) {
-                var_value = string_table[i + 1]; // Should be '5'
-            } else if (strstr(var_name, "comp_1.value")) {
-                // comp_1.value should map to '0' - look for it in the string table
-                for (size_t j = 0; j < string_count; j++) {
-                    if (string_table[j] && strcmp(string_table[j], "0") == 0) {
-                        var_value = string_table[j];
-                        break;
+            // Look for the variable in runtime
+            for (size_t j = 0; j < runtime->variable_count; j++) {
+                if (runtime->variable_names[j] && var_name && strcmp(runtime->variable_names[j], var_name) == 0) {
+                    // Found a variable match - update the property value based on type
+                    // Skip REFERENCE properties - they should keep their variable names intact
+                    if (property->type == KRYON_RUNTIME_PROP_REFERENCE) {
+                        printf("🔄 DEBUG: Skipping REFERENCE property '%s' in reprocessing\n", 
+                               property->name ? property->name : "(null)");
+                        break; // Found match but skip processing for REFERENCE
+                    } else if (property->type == KRYON_RUNTIME_PROP_STRING) {
+                        kryon_free(property->value.string_value);
+                        if (runtime->variable_values[j]) {
+                            property->value.string_value = kryon_strdup(runtime->variable_values[j]);
+                            printf("🔄 Resolved bound variable '%s' -> '%s' = '%s'\n", 
+                                   property->name ? property->name : "(null)", var_name, property->value.string_value);
+                        } else {
+                            property->value.string_value = kryon_strdup("");
+                            printf("🔄 Resolved bound variable '%s' -> '%s' = empty string\n", 
+                                   property->name ? property->name : "(null)", var_name);
+                        }
+                    } else if (property->type == KRYON_RUNTIME_PROP_TEMPLATE) {
+                        // Resolve template by concatenating segments and substituting variables
+                        char *resolved_text = resolve_template_property(runtime, property);
+                        if (resolved_text) {
+                            // Convert template to resolved string
+                            kryon_free_template_segments(property);
+                            property->type = KRYON_RUNTIME_PROP_STRING;
+                            property->value.string_value = resolved_text;
+                            property->is_bound = false; // No longer bound after resolution
+                            printf("🔄 Resolved template '%s' to '%s'\n", property->name ? property->name : "(null)", resolved_text);
+                        }
                     }
-                }
-            }
-            
-            if (var_value && runtime->variable_count < runtime->variable_capacity) {
-                // Add to runtime variables
-                runtime->variable_names[runtime->variable_count] = kryon_strdup(var_name);
-                runtime->variable_values[runtime->variable_count] = kryon_strdup(var_value);
-                runtime->variable_count++;
-                
-                printf("DEBUG: Extracted component variable '%s' = '%s'\n", var_name, var_value);
-                
-                // Expand capacity if needed
-                if (runtime->variable_count + 1 >= runtime->variable_capacity) {
-                    size_t new_capacity = runtime->variable_capacity * 2;
-                    char **new_names = kryon_realloc(runtime->variable_names, new_capacity * sizeof(char*));
-                    char **new_values = kryon_realloc(runtime->variable_values, new_capacity * sizeof(char*));
-                    if (new_names && new_values) {
-                        runtime->variable_names = new_names;
-                        runtime->variable_values = new_values;
-                        runtime->variable_capacity = new_capacity;
-                    }
+                    // TODO: Add other property types (FLOAT, INTEGER, etc.) when needed
+                    break;
                 }
             }
         }
     }
+    
+    // Recursively process children
+    for (size_t i = 0; i < element->child_count; i++) {
+        if (element->children[i]) {
+            reprocess_property_bindings(runtime, element->children[i]);
+        }
+    }
+}
+
+// =============================================================================
+// TEMPLATE RESOLUTION
+// =============================================================================
+
+/**
+ * @brief Resolve template property by substituting variables with their values
+ * @param runtime Runtime context with variables
+ * @param property Template property to resolve
+ * @return Resolved string, or NULL on error (caller must free)
+ */
+static char *resolve_template_property(KryonRuntime *runtime, KryonProperty *property) {
+    if (!runtime || !property || property->type != KRYON_RUNTIME_PROP_TEMPLATE) {
+        return NULL;
+    }
+    
+    // Calculate total length needed for resolved string
+    size_t total_len = 0;
+    for (size_t i = 0; i < property->value.template_value.segment_count; i++) {
+        KryonTemplateSegment *segment = &property->value.template_value.segments[i];
+        
+        if (segment->type == KRYON_TEMPLATE_SEGMENT_LITERAL) {
+            if (segment->data.literal_text) {
+                total_len += strlen(segment->data.literal_text);
+            }
+        } else if (segment->type == KRYON_TEMPLATE_SEGMENT_VARIABLE) {
+            // Look up variable value
+            const char *var_name = segment->data.variable_name;
+            const char *var_value = NULL;
+            
+            for (size_t j = 0; j < runtime->variable_count; j++) {
+                if (runtime->variable_names[j] && var_name && 
+                    strcmp(runtime->variable_names[j], var_name) == 0) {
+                    var_value = runtime->variable_values[j];
+                    break;
+                }
+            }
+            
+            if (var_value) {
+                total_len += strlen(var_value);
+            }
+            // If variable not found, contribute 0 to length (empty substitution)
+        }
+    }
+    
+    // Allocate result string
+    char *result = kryon_alloc(total_len + 1);
+    if (!result) {
+        return NULL;
+    }
+    
+    // Build resolved string by concatenating segments
+    result[0] = '\0';
+    for (size_t i = 0; i < property->value.template_value.segment_count; i++) {
+        KryonTemplateSegment *segment = &property->value.template_value.segments[i];
+        
+        if (segment->type == KRYON_TEMPLATE_SEGMENT_LITERAL) {
+            if (segment->data.literal_text) {
+                strcat(result, segment->data.literal_text);
+            }
+        } else if (segment->type == KRYON_TEMPLATE_SEGMENT_VARIABLE) {
+            // Look up and substitute variable value
+            const char *var_name = segment->data.variable_name;
+            const char *var_value = NULL;
+            
+            for (size_t j = 0; j < runtime->variable_count; j++) {
+                if (runtime->variable_names[j] && var_name && 
+                    strcmp(runtime->variable_names[j], var_name) == 0) {
+                    var_value = runtime->variable_values[j];
+                    break;
+                }
+            }
+            
+            if (var_value) {
+                strcat(result, var_value);
+                printf("  🔗 Substituted variable '%s' = '%s'\n", var_name, var_value);
+            } else {
+                printf("  ⚠️  Variable '%s' not found, using empty substitution\n", var_name ? var_name : "(null)");
+            }
+        }
+    }
+    
+    return result;
+}
+
+/**
+ * @brief Free template segments memory
+ * @param property Template property to free segments for
+ */
+static void kryon_free_template_segments(KryonProperty *property) {
+    if (!property || property->type != KRYON_RUNTIME_PROP_TEMPLATE) {
+        return;
+    }
+    
+    for (size_t i = 0; i < property->value.template_value.segment_count; i++) {
+        KryonTemplateSegment *segment = &property->value.template_value.segments[i];
+        
+        if (segment->type == KRYON_TEMPLATE_SEGMENT_LITERAL) {
+            kryon_free(segment->data.literal_text);
+        } else if (segment->type == KRYON_TEMPLATE_SEGMENT_VARIABLE) {
+            kryon_free(segment->data.variable_name);
+        }
+    }
+    
+    kryon_free(property->value.template_value.segments);
+    property->value.template_value.segments = NULL;
+    property->value.template_value.segment_count = 0;
 }

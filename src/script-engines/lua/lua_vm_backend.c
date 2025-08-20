@@ -10,12 +10,14 @@
 #include "memory.h"
 #include "runtime.h"
 #include "events.h"
+#include "../../runtime/navigation/navigation.h"
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 
 // =============================================================================
 // LUA PATH CONFIGURATION
@@ -142,6 +144,63 @@ static int lua_kryon_element_set_text(lua_State* L) {
     return 0;
 }
 
+static int lua_kryon_navigation_navigate_to(lua_State* L) {
+    const char* target = luaL_checkstring(L, 1);
+    
+    // Get runtime from current global context
+    KryonRuntime* runtime = kryon_runtime_get_current();
+    if (!runtime) {
+        luaL_error(L, "Navigation not available: no runtime context");
+        return 0;
+    }
+    
+    // Actually call navigation manager
+    printf("🔀 @onload script: Navigating to '%s'\n", target);
+    
+    if (runtime->navigation_manager) {
+        KryonNavigationResult result = kryon_navigate_to(runtime->navigation_manager, target, false);
+        lua_pushboolean(L, result == KRYON_NAV_SUCCESS);
+        return 1;
+    } else {
+        luaL_error(L, "Navigation manager not available");
+        return 0;
+    }
+}
+
+static int lua_kryon_fs_readdir(lua_State* L) {
+    const char* path = luaL_checkstring(L, 1);
+    
+    printf("🗂️  @onload script: Reading directory '%s'\n", path);
+    
+    // Open directory
+    DIR* dir = opendir(path);
+    if (!dir) {
+        lua_pushnil(L);
+        lua_pushstring(L, "Failed to open directory");
+        return 2;
+    }
+    
+    // Create result table
+    lua_newtable(L);
+    int index = 1;
+    
+    // Read directory entries
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip . and .. entries
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        
+        // Add filename to table
+        lua_pushstring(L, entry->d_name);
+        lua_rawseti(L, -2, index++);
+    }
+    
+    closedir(dir);
+    return 1;
+}
+
 static void register_kryon_api(lua_State* L) {
     // Create kryon table
     lua_newtable(L);
@@ -155,6 +214,18 @@ static void register_kryon_api(lua_State* L) {
     
     lua_pushcfunction(L, lua_kryon_element_set_text);
     lua_setfield(L, -2, "setText");
+    
+    // Create navigation sub-table
+    lua_newtable(L);
+    lua_pushcfunction(L, lua_kryon_navigation_navigate_to);
+    lua_setfield(L, -2, "navigateTo");
+    lua_setfield(L, -2, "navigation");
+    
+    // Create fs sub-table
+    lua_newtable(L);
+    lua_pushcfunction(L, lua_kryon_fs_readdir);
+    lua_setfield(L, -2, "readdir");
+    lua_setfield(L, -2, "fs");
     
     // Set as global
     lua_setglobal(L, "kryon");
@@ -418,19 +489,55 @@ static void update_component_state_value_for_element(KryonElement* element, cons
     }
 }
 
-// Set up component context in Lua (create self table)
-static void setup_component_context(lua_State* L, KryonElement* element) {
+// Find which component instance this element belongs to by examining sibling Text elements
+static const char* find_component_instance_id(KryonElement* element) {
+    if (!element || !element->parent) return NULL;
+    
+    // Look at the parent (usually a Row containing Button, Text, Button)
+    KryonElement* parent = element->parent;
+    
+    // Search through siblings for a Text element with a bound variable
+    for (size_t i = 0; i < parent->child_count; i++) {
+        KryonElement* sibling = parent->children[i];
+        if (sibling && sibling->type_name && strcmp(sibling->type_name, "Text") == 0) {
+            // Check if this Text element has a bound variable reference
+            for (size_t j = 0; j < sibling->property_count; j++) {
+                KryonProperty* prop = sibling->properties[j];
+                if (prop && prop->name && strcmp(prop->name, "text") == 0 && prop->is_bound) {
+                    // Found a bound text property, extract the component instance ID
+                    const char* var_name = prop->binding_path;
+                    if (var_name && strncmp(var_name, "comp_", 5) == 0) {
+                        // Extract "comp_0" from "comp_0.value"
+                        const char* dot = strchr(var_name, '.');
+                        if (dot) {
+                            size_t prefix_len = dot - var_name;
+                            char* instance_id = malloc(prefix_len + 1);
+                            strncpy(instance_id, var_name, prefix_len);
+                            instance_id[prefix_len] = '\0';
+                            printf("🔍 COMPONENT INSTANCE: Found instance '%s' for element\n", instance_id);
+                            return instance_id; // Note: caller should free this
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    printf("❌ COMPONENT INSTANCE: No component instance found for element\n");
+    return NULL;
+}
+
+// Set up component-instance-specific context in Lua (create self table)
+static void setup_component_context(lua_State* L, KryonElement* element, const char* component_instance) {
     if (!L || !element) return;
     
-    // Always try to get component state value
-    const char* current_value = get_component_state_value_for_element(element);
+    printf("🔧 COMPONENT CONTEXT: Setting up context for instance '%s'\n", component_instance ? component_instance : "unknown");
     
-    // Create self table: self = { value = current_value }
+    // Create empty self table
     lua_newtable(L);              // Create new table
-    lua_pushstring(L, "value");   // Push key "value"
-    lua_pushnumber(L, atof(current_value)); // Push value as number
-    lua_settable(L, -3);          // Set table[key] = value
-    lua_setglobal(L, "self");     // Set global self = table
+    lua_setglobal(L, "self");     // Set global self = table (will be populated later with instance-specific variables)
+    
+    printf("✅ COMPONENT CONTEXT: Created empty self table for instance '%s'\n", component_instance ? component_instance : "unknown");
 }
 
 // Update component state from Lua context after function call
@@ -462,8 +569,11 @@ static void update_component_state_after_call(lua_State* L, KryonElement* elemen
 
 static KryonVMResult lua_vm_call_function(KryonVM* vm, const char* function_name, KryonElement* element, const KryonEvent* event) {
     if (!vm || !vm->impl_data || !function_name) {
+        printf("❌ LUA VM: Invalid parameters for function call\n");
         return KRYON_VM_ERROR_INVALID_PARAM;
     }
+    
+    printf("🔥 LUA VM: Calling function '%s'\n", function_name);
     
     KryonLuaBackend* backend = (KryonLuaBackend*)vm->impl_data;
     
@@ -471,20 +581,268 @@ static KryonVMResult lua_vm_call_function(KryonVM* vm, const char* function_name
     lua_getglobal(backend->L, function_name);
     if (!lua_isfunction(backend->L, -1)) {
         lua_pop(backend->L, 1);
+        printf("❌ LUA VM: Function '%s' not found in global table\n", function_name);
         snprintf(backend->error_buffer, sizeof(backend->error_buffer), "Lua function '%s' not found", function_name);
         return KRYON_VM_ERROR_RUNTIME;
     }
     
-    // Always set up component context - the setup function will determine if state is available
-    // This ensures both simple event handlers and component functions work correctly
-    setup_component_context(backend->L, element);
+    printf("✅ LUA VM: Function '%s' found, setting up context\n", function_name);
+    
+    // Find which component instance this element belongs to
+    const char* component_instance = find_component_instance_id(element);
+    
+    // Set up component context for the specific instance
+    setup_component_context(backend->L, element, component_instance);
+    
+    // Sync runtime variables to Lua globals before function execution
+    if (vm->runtime) {
+        printf("🔄 SYNC TO LUA: Starting variable sync (%zu variables)\n", vm->runtime->variable_count);
+        
+        // Get the self table we just created
+        lua_getglobal(backend->L, "self");
+        
+        for (size_t i = 0; i < vm->runtime->variable_count; i++) {
+            if (vm->runtime->variable_names[i] && vm->runtime->variable_values[i]) {
+                const char* name = vm->runtime->variable_names[i];
+                const char* value = vm->runtime->variable_values[i];
+                printf("🔄 SYNC TO LUA: Variable '%s' = '%s'\n", name, value);
+                
+                // Check if this is a component variable (comp_X.variableName)
+                const char* dot = strrchr(name, '.');
+                if (dot && strncmp(name, "comp_", 5) == 0) {
+                    // This is a component variable like "comp_0.value"
+                    
+                    // Only sync variables that belong to the current component instance
+                    if (component_instance) {
+                        size_t instance_len = strlen(component_instance);
+                        if (strncmp(name, component_instance, instance_len) == 0 && name[instance_len] == '.') {
+                            // This variable belongs to the current component instance
+                            const char* var_name = dot + 1; // Get everything after the last dot
+                            printf("🔄 SYNC TO LUA: Adding component variable self.%s = %s (from %s)\n", var_name, value, name);
+                            
+                            // Try to convert to number first
+                            char* endptr;
+                            double num_value = strtod(value, &endptr);
+                            if (*endptr == '\0') {
+                                // Successfully converted to number
+                                lua_pushnumber(backend->L, num_value);
+                                printf("🔄 SYNC TO LUA: Set self.%s = %g (number)\n", var_name, num_value);
+                            } else {
+                                // Keep as string
+                                lua_pushstring(backend->L, value);
+                                printf("🔄 SYNC TO LUA: Set self.%s = '%s' (string)\n", var_name, value);
+                            }
+                            lua_setfield(backend->L, -2, var_name); // Set self[var_name] = value
+                        } else {
+                            printf("🔄 SYNC TO LUA: Skipping variable '%s' (not for instance '%s')\n", name, component_instance);
+                        }
+                    }
+                    continue; // Skip the regular variable handling below
+                }
+                
+                // Check if this is a JSON array format
+                if (value[0] == '[' && value[strlen(value)-1] == ']') {
+                    printf("🔄 SYNC TO LUA: Creating Lua table for array variable '%s'\n", name);
+                    // Create Lua table from JSON array
+                    lua_newtable(backend->L);
+                    
+                    // Parse JSON array - improved implementation
+                    if (strlen(value) > 2) { // Not empty array []
+                        const char* ptr = value + 1; // Skip opening [
+                        int table_index = 1;
+                        char item_buffer[256];
+                        
+                        while (*ptr && *ptr != ']') {
+                            // Skip whitespace and commas
+                            while (*ptr == ' ' || *ptr == ',') ptr++;
+                            if (*ptr == ']') break;
+                            
+                            // Parse string item
+                            if (*ptr == '"') {
+                                ptr++; // Skip opening quote
+                                size_t item_len = 0;
+                                while (*ptr && *ptr != '"' && item_len < sizeof(item_buffer) - 1) {
+                                    item_buffer[item_len++] = *ptr++;
+                                }
+                                item_buffer[item_len] = '\0';
+                                if (*ptr == '"') ptr++; // Skip closing quote
+                                
+                                lua_pushstring(backend->L, item_buffer);
+                                lua_rawseti(backend->L, -2, table_index++);
+                                printf("🔄 SYNC TO LUA: Added array item [%d] = '%s'\n", table_index-1, item_buffer);
+                            } else {
+                                // Skip non-string items for now
+                                while (*ptr && *ptr != ',' && *ptr != ']') ptr++;
+                            }
+                        }
+                    }
+                    lua_setglobal(backend->L, name);
+                } else {
+                    // Regular string variable
+                    lua_pushstring(backend->L, value);
+                    lua_setglobal(backend->L, name);
+                }
+            }
+        }
+        
+        // Set the self table as a global so Lua functions can access it
+        lua_setglobal(backend->L, "self");
+    }
     
     int result = lua_pcall(backend->L, 0, 0, 0);
     
     // Update component state after function call
     if (result == LUA_OK) {
         update_component_state_after_call(backend->L, element);
+        
+        // Sync Lua self table back to component variables after function execution
+        if (vm->runtime) {
+            printf("🔄 SYNC FROM LUA: Starting variable sync back (%zu variables)\n", vm->runtime->variable_count);
+            
+            // Get the self table 
+            lua_getglobal(backend->L, "self");
+            if (lua_istable(backend->L, -1)) {
+                printf("🔄 SYNC FROM LUA: Found self table, checking for component variable updates\n");
+                
+                for (size_t i = 0; i < vm->runtime->variable_count; i++) {
+                    if (vm->runtime->variable_names[i]) {
+                        const char* name = vm->runtime->variable_names[i];
+                        
+                        // Check if this is a component variable (comp_X.variableName)
+                        const char* dot = strrchr(name, '.');
+                        if (dot && strncmp(name, "comp_", 5) == 0) {
+                            // Only sync back variables that belong to the current component instance
+                            if (component_instance) {
+                                size_t instance_len = strlen(component_instance);
+                                if (strncmp(name, component_instance, instance_len) == 0 && name[instance_len] == '.') {
+                                    // This variable belongs to the current component instance
+                                    const char* var_name = dot + 1; // Get everything after the last dot
+                                    
+                                    // Get the value from self table
+                                    lua_getfield(backend->L, -1, var_name); // Get self[var_name]
+                            
+                            char* new_value = NULL;
+                            if (lua_isnumber(backend->L, -1)) {
+                                double num_value = lua_tonumber(backend->L, -1);
+                                char value_str[32];
+                                snprintf(value_str, sizeof(value_str), "%.0f", num_value); // Convert to integer string
+                                new_value = kryon_strdup(value_str);
+                                printf("🔄 SYNC FROM LUA: Component variable '%s' self.%s = %g -> '%s'\n", name, var_name, num_value, new_value);
+                            } else if (lua_isstring(backend->L, -1)) {
+                                const char* str_value = lua_tostring(backend->L, -1);
+                                new_value = kryon_strdup(str_value);
+                                printf("🔄 SYNC FROM LUA: Component variable '%s' self.%s = '%s'\n", name, var_name, new_value);
+                            } else {
+                                printf("🔄 SYNC FROM LUA: Component variable '%s' self.%s is not number or string (type=%d)\n", name, var_name, lua_type(backend->L, -1));
+                            }
+                            
+                            // Update runtime variable if it changed
+                            if (new_value && (!vm->runtime->variable_values[i] || strcmp(vm->runtime->variable_values[i], new_value) != 0)) {
+                                kryon_free(vm->runtime->variable_values[i]);
+                                vm->runtime->variable_values[i] = new_value;
+                                printf("✅ SYNC FROM LUA: Updated component variable '%s' = '%s'\n", vm->runtime->variable_names[i], new_value);
+                                
+                                // Trigger re-render so text bindings can pick up the new value
+                                if (vm->runtime && vm->runtime->root) {
+                                    printf("🔄 TRIGGERING RE-RENDER: Component variable '%s' changed, marking elements for re-render\n", name);
+                                    mark_elements_for_rerender(vm->runtime->root);
+                                }
+                            } else if (new_value) {
+                                printf("🔄 SYNC FROM LUA: Component variable '%s' unchanged, freeing new value\n", name);
+                                kryon_free(new_value);
+                            } else {
+                                printf("🔄 SYNC FROM LUA: Component variable '%s' has no new value\n", name);
+                            }
+                            
+                                    lua_pop(backend->L, 1); // Pop the field value
+                                } else {
+                                    printf("🔄 SYNC FROM LUA: Skipping variable '%s' (not for instance '%s')\n", name, component_instance);
+                                }
+                            }
+                        } else {
+                            // Handle non-component variables (arrays, etc.) from global scope
+                            lua_getglobal(backend->L, name);
+                            
+                            char* new_value = NULL;
+                            if (lua_istable(backend->L, -1)) {
+                                printf("🔄 SYNC FROM LUA: Variable '%s' is a table, converting to JSON\n", name);
+                                // Convert Lua table back to JSON array format
+                                size_t table_len = lua_rawlen(backend->L, -1);
+                                printf("🔄 SYNC FROM LUA: Table length = %zu\n", table_len);
+                                size_t buffer_size = 1024;
+                                char* json_buffer = kryon_alloc(buffer_size);
+                                size_t json_len = 0;
+                                
+                                json_buffer[json_len++] = '[';
+                                for (size_t j = 1; j <= table_len; j++) {
+                                    if (j > 1) {
+                                        json_buffer[json_len++] = ',';
+                                        json_buffer[json_len++] = ' ';
+                                    }
+                                    lua_rawgeti(backend->L, -1, j);
+                                    if (lua_isstring(backend->L, -1)) {
+                                        json_buffer[json_len++] = '"';
+                                        const char* str = lua_tostring(backend->L, -1);
+                                        size_t str_len = strlen(str);
+                                        printf("🔄 SYNC FROM LUA: Table item [%zu] = '%s'\n", j, str);
+                                        if (json_len + str_len + 3 < buffer_size) {
+                                            memcpy(json_buffer + json_len, str, str_len);
+                                            json_len += str_len;
+                                        }
+                                        json_buffer[json_len++] = '"';
+                                    }
+                                    lua_pop(backend->L, 1);
+                                }
+                                json_buffer[json_len++] = ']';
+                                json_buffer[json_len] = '\0';
+                                new_value = json_buffer;
+                                printf("🔄 SYNC FROM LUA: Generated JSON: '%s'\n", new_value);
+                            } else if (lua_isstring(backend->L, -1)) {
+                                const char* str_value = lua_tostring(backend->L, -1);
+                                new_value = kryon_strdup(str_value);
+                                printf("🔄 SYNC FROM LUA: Variable '%s' is string = '%s'\n", name, new_value);
+                            } else {
+                                printf("🔄 SYNC FROM LUA: Variable '%s' is not string or table (type=%d)\n", name, lua_type(backend->L, -1));
+                            }
+                            
+                            // Update runtime variable if it changed
+                            if (new_value && (!vm->runtime->variable_values[i] || strcmp(vm->runtime->variable_values[i], new_value) != 0)) {
+                                kryon_free(vm->runtime->variable_values[i]);
+                                vm->runtime->variable_values[i] = new_value;
+                                printf("✅ SYNC FROM LUA: Updated variable '%s' = '%s'\n", vm->runtime->variable_names[i], new_value);
+                                
+                                // Trigger @for directive re-processing for array variables
+                                if (new_value[0] == '[' && new_value[strlen(new_value)-1] == ']') {
+                                    printf("🔁 SYNC FROM LUA: Array variable '%s' changed, triggering @for re-processing\n", vm->runtime->variable_names[i]);
+                                    
+                                    // Trigger @for re-processing by calling the runtime function
+                                    if (vm->runtime->root) {
+                                        printf("🔄 RE-PROCESSING: Calling @for re-processing for root element\n");
+                                        process_for_directives(vm->runtime, vm->runtime->root);
+                                    }
+                                }
+                            } else if (new_value) {
+                                printf("🔄 SYNC FROM LUA: Variable '%s' unchanged, freeing new value\n", name);
+                                kryon_free(new_value);
+                            } else {
+                                printf("🔄 SYNC FROM LUA: Variable '%s' has no new value\n", name);
+                            }
+                            
+                            lua_pop(backend->L, 1); // Pop the global variable
+                        }
+                    }
+                }
+            } else {
+                printf("🔄 SYNC FROM LUA: No self table found\n");
+            }
+            lua_pop(backend->L, 1); // Pop the self table or nil
+        }
     }
+    // Clean up allocated memory
+    if (component_instance) {
+        free((void*)component_instance);
+    }
+    
     if (result != LUA_OK) {
         const char* error = lua_tostring(backend->L, -1);
         snprintf(backend->error_buffer, sizeof(backend->error_buffer), "Lua function call error: %s", error);

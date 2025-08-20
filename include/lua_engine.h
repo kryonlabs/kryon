@@ -29,6 +29,7 @@ typedef struct KryonLuaVM KryonLuaVM;
 typedef struct lua_State lua_State;
 typedef struct KryonLuaEngine KryonLuaEngine;
 typedef struct KryonLuaConfig KryonLuaConfig;
+typedef struct KryonRuntime KryonRuntime;
 
 // =============================================================================
 // LUA ENGINE TYPES
@@ -126,6 +127,13 @@ KryonLuaConfig kryon_lua_default_config(void);
  * @return KRYON_LUA_SUCCESS on success
  */
 KryonLuaResult kryon_lua_register_api(KryonLuaEngine* engine);
+
+/**
+ * @brief Set the runtime reference for the Lua engine
+ * @param engine Lua engine instance
+ * @param runtime Kryon runtime instance
+ */
+void kryon_lua_engine_set_runtime(KryonLuaEngine* engine, KryonRuntime* runtime);
 
 #ifdef __cplusplus
 }

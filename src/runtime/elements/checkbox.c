@@ -185,6 +185,16 @@ static void checkbox_render(struct KryonRuntime* runtime, struct KryonElement* e
     
     bool is_disabled = get_element_property_bool(element, "disabled", false);
     
+    // Handle cursor management for checkbox
+    if (!is_disabled && runtime && runtime->renderer) {
+        KryonVec2 mouse_pos = runtime->mouse_position;
+        if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
+            mouse_pos.y >= posY && mouse_pos.y <= posY + height) {
+            // Show pointer cursor when hovering over checkbox
+            kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_POINTER);
+        }
+    }
+    
     // Calculate checkbox dimensions
     float checkbox_size = fminf(height - 4.0f, 18.0f); // Max 18px checkbox
     float checkbox_x = posX;

@@ -44,7 +44,6 @@ bool register_center_element(void) {
 /**
  * @brief Calculates layout for the Center element by centering its children.
  */
-// Legacy layout function removed - positioning now handled by calculate_all_element_positions pipeline
 
 /**
  * @brief Renders the Center element by centering its children.

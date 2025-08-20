@@ -29,6 +29,7 @@ static bool add_property_to_node(KryonASTNode *parent, KryonASTNode *property);
 // Make this function public so codegen.c can use it
 KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const char *var_name, const KryonASTNode *var_value, KryonCodeGenerator *codegen);
 static char *process_string_template(const char *template_string, const char *var_name, const KryonASTNode *var_value, KryonCodeGenerator *codegen);
+static bool is_compile_time_resolvable(const char *var_name, KryonCodeGenerator *codegen);
 
 KryonASTNode *kryon_find_component_definition(const char *component_name, const KryonASTNode *ast_root) {
     if (!component_name || !ast_root) return NULL;
@@ -225,39 +226,21 @@ static KryonASTNode *clone_and_substitute_node(const KryonASTNode *original, con
         }
         
         case KRYON_AST_TEMPLATE: {
-            // Template variable substitution (e.g., $value)
-            KryonASTNode *expression = original->data.template.expression;
+            // Template cloning - copy the segments structure
+            cloned->data.template.segment_count = original->data.template.segment_count;
+            cloned->data.template.segment_capacity = original->data.template.segment_capacity;
             
-            // Check if the template expression is a variable that needs substitution
-            if (params && expression && expression->type == KRYON_AST_VARIABLE && expression->data.variable.name) {
-                printf("🔍 DEBUG: Checking template variable '$%s' for substitution (params has %zu entries)\n", 
-                       expression->data.variable.name, param_count);
-                const KryonASTNode *param_value = find_param_value(params, param_count, expression->data.variable.name);
-                if (param_value) {
-                    printf("✅ Found template variable '$%s' - this is a REACTIVE parameter\n", 
-                           expression->data.variable.name);
-                    
-                    // IMPORTANT: Component parameters are REACTIVE variables, not constants!
-                    // They must maintain variable references for runtime updates, not be substituted
-                    // at compile time. Create a variable reference for runtime resolution.
-                    
-                    // Free the cloned template node
-                    kryon_free(cloned);
-                    
-                    // Create a variable reference node that the runtime can resolve dynamically
-                    KryonASTNode *var_ref_node = create_minimal_ast_node(KRYON_AST_VARIABLE);
-                    if (var_ref_node) {
-                        var_ref_node->data.variable.name = strdup(expression->data.variable.name);
-                        printf("    Created reactive variable reference for '$%s'\n", expression->data.variable.name);
-                        return var_ref_node;
+            if (original->data.template.segment_count > 0 && original->data.template.segments) {
+                cloned->data.template.segments = kryon_alloc(original->data.template.segment_count * sizeof(KryonASTNode*));
+                for (size_t i = 0; i < original->data.template.segment_count; i++) {
+                    if (original->data.template.segments[i]) {
+                        cloned->data.template.segments[i] = clone_and_substitute_node(original->data.template.segments[i], params, param_count);
+                    } else {
+                        cloned->data.template.segments[i] = NULL;
                     }
                 }
-                printf("⚠️  No substitution found for template variable '$%s'\n", expression->data.variable.name);
-            }
-            
-            // No substitution, clone the template expression
-            if (original->data.template.expression) {
-                cloned->data.template.expression = clone_and_substitute_node(original->data.template.expression, params, param_count);
+            } else {
+                cloned->data.template.segments = NULL;
             }
             break;
         }
@@ -494,46 +477,7 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
     cloned->location = node->location;
     
     switch (node->type) {
-        case KRYON_AST_ELEMENT: {
-            // Clone element type string
-            if (node->data.element.element_type) {
-                cloned->data.element.element_type = strdup(node->data.element.element_type);
-            }
-            
-            // Clone and substitute properties
-            cloned->data.element.property_count = node->data.element.property_count;
-            cloned->data.element.property_capacity = node->data.element.property_count;
-            if (node->data.element.property_count > 0) {
-                cloned->data.element.properties = calloc(node->data.element.property_count, sizeof(KryonASTNode*));
-                for (size_t i = 0; i < node->data.element.property_count; i++) {
-                    cloned->data.element.properties[i] = kryon_substitute_template_vars(node->data.element.properties[i], var_name, var_value, codegen);
-                }
-            }
-            
-            // Clone and substitute children
-            cloned->data.element.child_count = node->data.element.child_count;
-            cloned->data.element.child_capacity = node->data.element.child_count;
-            if (node->data.element.child_count > 0) {
-                cloned->data.element.children = calloc(node->data.element.child_count, sizeof(KryonASTNode*));
-                for (size_t i = 0; i < node->data.element.child_count; i++) {
-                    cloned->data.element.children[i] = kryon_substitute_template_vars(node->data.element.children[i], var_name, var_value, codegen);
-                }
-            }
-            break;
-        }
         
-        case KRYON_AST_PROPERTY: {
-            // Clone property name
-            if (node->data.property.name) {
-                cloned->data.property.name = strdup(node->data.property.name);
-            }
-            
-            // Clone and substitute property value
-            if (node->data.property.value) {
-                cloned->data.property.value = kryon_substitute_template_vars(node->data.property.value, var_name, var_value, codegen);
-            }
-            break;
-        }
         
         case KRYON_AST_LITERAL: {
             // Clone literal value with template processing for strings
@@ -561,83 +505,140 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
         }
         
         case KRYON_AST_IDENTIFIER: {
-            // Clone identifier name
+            // Check if this identifier matches our loop variable and should be substituted
+            if (node->data.identifier.name && strcmp(node->data.identifier.name, var_name) == 0) {
+                // This is a direct reference to our loop variable
+                // In const_for expansion context (we have var_value), always substitute
+                if (var_value) {
+                    // Substitute with the actual value
+                    kryon_free(cloned);
+                    return kryon_substitute_template_vars(var_value, var_name, var_value, codegen);
+                }
+            }
+            
+            // Clone identifier name (either different variable or runtime variable)
             if (node->data.identifier.name) {
                 cloned->data.identifier.name = strdup(node->data.identifier.name);
             }
             break;
         }
         
-        case KRYON_AST_TEMPLATE: {
-            // Handle template expressions like ${alignment.gap} and ${alignment.colors[0]}
-            if (node->data.template.expression) {
+        case KRYON_AST_MEMBER_ACCESS: {
+            // Handle member access like "alignment.value"
+            printf("🔧 DEBUG: Processing MEMBER_ACCESS: %s.%s\n", 
+                   node->data.member_access.object && node->data.member_access.object->data.identifier.name 
+                       ? node->data.member_access.object->data.identifier.name : "unknown",
+                   node->data.member_access.member ? node->data.member_access.member : "unknown");
+                   
+            if (node->data.member_access.object &&
+                node->data.member_access.object->type == KRYON_AST_IDENTIFIER &&
+                node->data.member_access.object->data.identifier.name &&
+                strcmp(node->data.member_access.object->data.identifier.name, var_name) == 0) {
                 
-                if (node->data.template.expression->type == KRYON_AST_MEMBER_ACCESS) {
-                    // Handle ${alignment.property}
-                    KryonASTNode *member_access = node->data.template.expression;
-                    
-                    // Check if this matches our variable (e.g., "alignment.gap")
-                    if (member_access->data.member_access.object &&
-                        member_access->data.member_access.object->type == KRYON_AST_IDENTIFIER &&
-                        member_access->data.member_access.object->data.identifier.name &&
-                        strcmp(member_access->data.member_access.object->data.identifier.name, var_name) == 0) {
+                printf("✅ DEBUG: Found matching MEMBER_ACCESS for var '%s', substituting...\n", var_name);
+                // This is accessing a property of our loop variable
+                // In const_for expansion context (we have var_value), always substitute
+                if (var_value) {
+                    const char *property_name = node->data.member_access.member;
+                    if (property_name && var_value->type == KRYON_AST_OBJECT_LITERAL) {
                         
-                        // Look up the property in the object literal
+                        // Find the property in the object literal
+                        for (size_t i = 0; i < var_value->data.object_literal.property_count; i++) {
+                            const KryonASTNode *prop = var_value->data.object_literal.properties[i];
+                            if (prop && prop->type == KRYON_AST_PROPERTY &&
+                                prop->data.property.name &&
+                                strcmp(prop->data.property.name, property_name) == 0) {
+                                
+                                // Found the property - return a clone of its value
+                                kryon_free(cloned);
+                                return kryon_substitute_template_vars(prop->data.property.value, var_name, var_value, codegen);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Either not our variable or runtime variable - clone as-is
+            if (node->data.member_access.object) {
+                cloned->data.member_access.object = kryon_substitute_template_vars(node->data.member_access.object, var_name, var_value, codegen);
+            }
+            if (node->data.member_access.member) {
+                cloned->data.member_access.member = strdup(node->data.member_access.member);
+            }
+            break;
+        }
+        
+        case KRYON_AST_ARRAY_ACCESS: {
+            // Handle array access like "alignment.colors[0]"
+            printf("🔧 DEBUG: Processing ARRAY_ACCESS\n");
+            
+            if (node->data.array_access.array &&
+                node->data.array_access.array->type == KRYON_AST_MEMBER_ACCESS) {
+                
+                KryonASTNode *member_access = node->data.array_access.array;
+                
+                printf("🔧 DEBUG: ARRAY_ACCESS on MEMBER_ACCESS: %s.%s[...]\n", 
+                       member_access->data.member_access.object && member_access->data.member_access.object->data.identifier.name 
+                           ? member_access->data.member_access.object->data.identifier.name : "unknown",
+                       member_access->data.member_access.member ? member_access->data.member_access.member : "unknown");
+                
+                if (member_access->data.member_access.object &&
+                    member_access->data.member_access.object->type == KRYON_AST_IDENTIFIER &&
+                    member_access->data.member_access.object->data.identifier.name &&
+                    strcmp(member_access->data.member_access.object->data.identifier.name, var_name) == 0) {
+                    
+                    printf("✅ DEBUG: Found matching ARRAY_ACCESS for var '%s', substituting...\n", var_name);
+                    
+                    // This is accessing an array property of our loop variable
+                    // In const_for expansion context (we have var_value), always substitute
+                    if (var_value) {
                         const char *property_name = member_access->data.member_access.member;
-                        if (property_name && var_value->type == KRYON_AST_OBJECT_LITERAL) {
+                        if (property_name && var_value->type == KRYON_AST_OBJECT_LITERAL &&
+                            node->data.array_access.index &&
+                            node->data.array_access.index->type == KRYON_AST_LITERAL &&
+                            node->data.array_access.index->data.literal.value.type == KRYON_VALUE_INTEGER) {
                             
-                            // Find the property in the object literal
+                            int index = (int)node->data.array_access.index->data.literal.value.data.int_value;
+                            
+                            // Find the array property in the object literal
                             for (size_t i = 0; i < var_value->data.object_literal.property_count; i++) {
                                 const KryonASTNode *prop = var_value->data.object_literal.properties[i];
                                 if (prop && prop->type == KRYON_AST_PROPERTY &&
                                     prop->data.property.name &&
-                                    strcmp(prop->data.property.name, property_name) == 0) {
+                                    strcmp(prop->data.property.name, property_name) == 0 &&
+                                    prop->data.property.value &&
+                                    prop->data.property.value->type == KRYON_AST_ARRAY_LITERAL) {
                                     
-                                    // Found the property - return a clone of its value
-                                    kryon_free(cloned);
-                                    return kryon_substitute_template_vars(prop->data.property.value, var_name, var_value, codegen);
-                                }
-                            }
-                        }
-                    }
-                } else if (node->data.template.expression->type == KRYON_AST_ARRAY_ACCESS) {
-                    // Handle ${alignment.colors[0]}
-                    KryonASTNode *array_access = node->data.template.expression;
-                    
-                    // Check if the array is a member access of our variable
-                    if (array_access->data.array_access.array &&
-                        array_access->data.array_access.array->type == KRYON_AST_MEMBER_ACCESS) {
-                        
-                        KryonASTNode *member_access = array_access->data.array_access.array;
-                        
-                        if (member_access->data.member_access.object &&
-                            member_access->data.member_access.object->type == KRYON_AST_IDENTIFIER &&
-                            member_access->data.member_access.object->data.identifier.name &&
-                            strcmp(member_access->data.member_access.object->data.identifier.name, var_name) == 0) {
-                            
-                            const char *property_name = member_access->data.member_access.member;
-                            if (property_name && var_value->type == KRYON_AST_OBJECT_LITERAL &&
-                                array_access->data.array_access.index &&
-                                array_access->data.array_access.index->type == KRYON_AST_LITERAL &&
-                                array_access->data.array_access.index->data.literal.value.type == KRYON_VALUE_INTEGER) {
-                                
-                                int index = (int)array_access->data.array_access.index->data.literal.value.data.int_value;
-                                
-                                // Find the array property in the object literal
-                                for (size_t i = 0; i < var_value->data.object_literal.property_count; i++) {
-                                    const KryonASTNode *prop = var_value->data.object_literal.properties[i];
-                                    if (prop && prop->type == KRYON_AST_PROPERTY &&
-                                        prop->data.property.name &&
-                                        strcmp(prop->data.property.name, property_name) == 0 &&
-                                        prop->data.property.value &&
-                                        prop->data.property.value->type == KRYON_AST_ARRAY_LITERAL) {
+                                    const KryonASTNode *array = prop->data.property.value;
+                                    if (index >= 0 && (size_t)index < array->data.array_literal.element_count) {
+                                        // Found the array element - return a clone of it
+                                        printf("✅ DEBUG: ARRAY_ACCESS resolved: %s[%d] -> found element\n", property_name, index);
                                         
-                                        const KryonASTNode *array = prop->data.property.value;
-                                        if (index >= 0 && (size_t)index < array->data.array_literal.element_count) {
-                                            // Found the array element - return a clone of it
-                                            kryon_free(cloned);
-                                            return kryon_substitute_template_vars(array->data.array_literal.elements[index], var_name, var_value, codegen);
+                                        // Ensure we have a valid element to substitute
+                                        const KryonASTNode *element = array->data.array_literal.elements[index];
+                                        if (!element) {
+                                            printf("❌ DEBUG: ARRAY_ACCESS element is NULL at index %d\n", index);
+                                            break; // Fall through to clone logic
                                         }
+                                        
+                                        kryon_free(cloned);
+                                        KryonASTNode *substituted = kryon_substitute_template_vars(element, var_name, var_value, codegen);
+                                        if (!substituted) {
+                                            printf("❌ DEBUG: ARRAY_ACCESS substitution returned NULL for %s[%d]\n", property_name, index);
+                                            // Create a safe fallback
+                                            substituted = create_minimal_ast_node(KRYON_AST_LITERAL);
+                                            if (substituted) {
+                                                substituted->data.literal.value.type = KRYON_VALUE_STRING;
+                                                substituted->data.literal.value.data.string_value = strdup("ERROR");
+                                            }
+                                        } else {
+                                            printf("✅ DEBUG: ARRAY_ACCESS substitution successful for %s[%d], node type=%d\n", 
+                                                   property_name, index, substituted->type);
+                                        }
+                                        return substituted;
+                                    } else {
+                                        printf("❌ DEBUG: ARRAY_ACCESS index out of bounds: %s[%d] (array size: %zu)\n", 
+                                               property_name, index, array->data.array_literal.element_count);
                                     }
                                 }
                             }
@@ -646,9 +647,172 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
                 }
             }
             
-            // Fallback: clone the template expression
-            if (node->data.template.expression) {
-                cloned->data.template.expression = kryon_substitute_template_vars(node->data.template.expression, var_name, var_value, codegen);
+            // Either not our variable or runtime variable - clone as-is
+            printf("⚠️ DEBUG: ARRAY_ACCESS not substituted - cloning as-is (var_name=%s)\n", var_name ? var_name : "NULL");
+            
+            // For debugging: check what we're cloning
+            if (node->data.array_access.array && node->data.array_access.array->type == KRYON_AST_MEMBER_ACCESS) {
+                KryonASTNode *member_access = node->data.array_access.array;
+                if (member_access->data.member_access.object && 
+                    member_access->data.member_access.object->type == KRYON_AST_IDENTIFIER) {
+                    printf("⚠️ DEBUG: Cloning ARRAY_ACCESS: %s.%s[...] (looking for var '%s')\n",
+                           member_access->data.member_access.object->data.identifier.name ? member_access->data.member_access.object->data.identifier.name : "NULL",
+                           member_access->data.member_access.member ? member_access->data.member_access.member : "NULL",
+                           var_name ? var_name : "NULL");
+                }
+            }
+            
+            if (node->data.array_access.array) {
+                cloned->data.array_access.array = kryon_substitute_template_vars(node->data.array_access.array, var_name, var_value, codegen);
+            }
+            if (node->data.array_access.index) {
+                cloned->data.array_access.index = kryon_substitute_template_vars(node->data.array_access.index, var_name, var_value, codegen);
+            }
+            break;
+        }
+        
+        case KRYON_AST_TEMPLATE: {
+            // Implement template variable substitution for the segments structure
+            printf("🔄 DEBUG: Processing TEMPLATE with %zu segments for variable substitution\n", node->data.template.segment_count);
+            
+            // Copy template structure
+            cloned->data.template = node->data.template;
+            
+            // Substitute variables in each segment - TEMPLATE uses ASTNode segments, not KryonTemplateSegment
+            if (node->data.template.segments && node->data.template.segment_count > 0) {
+                // Allocate new segments array
+                cloned->data.template.segments = kryon_malloc(node->data.template.segment_count * sizeof(KryonASTNode*));
+                if (!cloned->data.template.segments) {
+                    kryon_free(cloned);
+                    return NULL;
+                }
+                
+                // Process each segment
+                for (size_t i = 0; i < node->data.template.segment_count; i++) {
+                    const KryonASTNode *orig_seg = node->data.template.segments[i];
+                    
+                    if (orig_seg->type == KRYON_AST_VARIABLE) {
+                        // Variable segment - check if it needs substitution
+                        printf("🔍 DEBUG: Processing variable segment: '%s'\n", orig_seg->data.variable.name);
+                        
+                        // Check for MEMBER_ACCESS pattern like "alignment.name"
+                        if (strncmp(orig_seg->data.variable.name, var_name, strlen(var_name)) == 0 && 
+                            orig_seg->data.variable.name[strlen(var_name)] == '.') {
+                            
+                            const char *property_name = orig_seg->data.variable.name + strlen(var_name) + 1;  // Skip "alignment."
+                            printf("🔧 DEBUG: Found template variable '%s' with property '%s'\n", var_name, property_name);
+                            
+                            if (var_value && var_value->type == KRYON_AST_OBJECT_LITERAL) {
+                                // Find the property in the object literal
+                                bool found = false;
+                                for (size_t j = 0; j < var_value->data.object_literal.property_count; j++) {
+                                    const KryonASTNode *prop = var_value->data.object_literal.properties[j];
+                                    if (prop && prop->type == KRYON_AST_PROPERTY && 
+                                        strcmp(prop->data.property.name, property_name) == 0) {
+                                        
+                                        if (prop->data.property.value && prop->data.property.value->type == KRYON_AST_LITERAL) {
+                                            const char *resolved_value = prop->data.property.value->data.literal.value.data.string_value;
+                                            printf("✅ DEBUG: Resolved template variable '%s' to '%s'\n", orig_seg->data.variable.name, resolved_value);
+                                            
+                                            // Create new literal node with resolved value
+                                            KryonASTNode *literal_node = kryon_malloc(sizeof(KryonASTNode));
+                                            literal_node->type = KRYON_AST_LITERAL;
+                                            literal_node->data.literal.value = kryon_ast_value_string(resolved_value);
+                                            literal_node->parent = cloned;
+                                            cloned->data.template.segments[i] = literal_node;
+                                            found = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                if (!found) {
+                                    printf("⚠️  DEBUG: Could not resolve template variable '%s'\n", orig_seg->data.variable.name);
+                                    // Clone original node
+                                    cloned->data.template.segments[i] = kryon_substitute_template_vars(orig_seg, var_name, var_value, codegen);
+                                }
+                            } else {
+                                printf("⚠️  DEBUG: Variable value not an object literal, keeping original\n");
+                                // Clone original node
+                                cloned->data.template.segments[i] = kryon_substitute_template_vars(orig_seg, var_name, var_value, codegen);
+                            }
+                        } else {
+                            // Not our target variable, recursively process
+                            cloned->data.template.segments[i] = kryon_substitute_template_vars(orig_seg, var_name, var_value, codegen);
+                        }
+                    } else {
+                        // Non-variable segment - recursively process
+                        cloned->data.template.segments[i] = kryon_substitute_template_vars(orig_seg, var_name, var_value, codegen);
+                    }
+                }
+                cloned->data.template.segment_capacity = node->data.template.segment_capacity;
+            } else {
+                cloned->data.template.segments = NULL;
+            }
+            break;
+        }
+        
+        case KRYON_AST_ELEMENT: {
+            // Copy all element data first to avoid corruption
+            cloned->data.element = node->data.element;
+            
+            // Copy element type string
+            cloned->data.element.element_type = NULL;
+            if (node->data.element.element_type) {
+                cloned->data.element.element_type = strdup(node->data.element.element_type);
+            }
+            
+            // Clear pointers to prevent double-free, then process recursively
+            cloned->data.element.properties = NULL;
+            cloned->data.element.children = NULL;
+            
+            // Process element properties recursively
+            if (node->data.element.properties && node->data.element.property_count > 0) {
+                cloned->data.element.properties = kryon_calloc(node->data.element.property_count, sizeof(KryonASTNode*));
+                cloned->data.element.property_count = node->data.element.property_count;
+                cloned->data.element.property_capacity = node->data.element.property_count;
+                
+                for (size_t i = 0; i < node->data.element.property_count; i++) {
+                    if (node->data.element.properties[i]) {
+                        cloned->data.element.properties[i] = kryon_substitute_template_vars(
+                            node->data.element.properties[i], var_name, var_value, codegen);
+                    }
+                }
+            }
+            
+            // Process element children recursively
+            if (node->data.element.children && node->data.element.child_count > 0) {
+                cloned->data.element.children = kryon_calloc(node->data.element.child_count, sizeof(KryonASTNode*));
+                cloned->data.element.child_count = node->data.element.child_count;
+                cloned->data.element.child_capacity = node->data.element.child_count;
+                
+                for (size_t i = 0; i < node->data.element.child_count; i++) {
+                    if (node->data.element.children[i]) {
+                        cloned->data.element.children[i] = kryon_substitute_template_vars(
+                            node->data.element.children[i], var_name, var_value, codegen);
+                    }
+                }
+            }
+            break;
+        }
+        
+        case KRYON_AST_PROPERTY: {
+            // Copy all property data first
+            cloned->data.property = node->data.property;
+            
+            // Clear pointers to prevent double-free
+            cloned->data.property.name = NULL;
+            cloned->data.property.value = NULL;
+            
+            // Copy property name
+            if (node->data.property.name) {
+                cloned->data.property.name = strdup(node->data.property.name);
+            }
+            
+            // Process property value recursively
+            if (node->data.property.value) {
+                cloned->data.property.value = kryon_substitute_template_vars(
+                    node->data.property.value, var_name, var_value, codegen);
             }
             break;
         }
@@ -926,4 +1090,14 @@ static char *process_string_template(const char *template_string, const char *va
     }
     
     return result;
+}
+
+static bool is_compile_time_resolvable(const char *var_name, KryonCodeGenerator *codegen) {
+    if (!var_name || !codegen) {
+        return false;
+    }
+    
+    // Check if the variable is in the constant table (compile-time resolvable)
+    const KryonASTNode *const_value = find_constant_value(codegen, var_name);
+    return const_value != NULL;
 }

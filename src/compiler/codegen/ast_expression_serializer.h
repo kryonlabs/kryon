@@ -14,40 +14,48 @@
 
 #include "parser.h"
 
+// Forward declaration
+typedef struct KryonCodeGenerator KryonCodeGenerator;
+
 /**
  * @brief Convert an AST expression node to its string representation
- * @param node The AST node to serialize (should be an expression type)
+ * @param node The AST node to serialize (should be an expression type)  
+ * @param codegen Code generator context for constant resolution
  * @return Allocated string containing the expression, or NULL on error
  * @note Caller must free the returned string
  */
-char* kryon_ast_expression_to_string(const KryonASTNode* node);
+char* kryon_ast_expression_to_string(const KryonASTNode* node, KryonCodeGenerator *codegen);
 
 /**
  * @brief Convert a binary operation node to string
  * @param node Binary operation node
+ * @param codegen Code generator context for constant resolution
  * @return Allocated string with format "left operator right"
  */
-char* kryon_ast_binary_op_to_string(const KryonASTNode* node);
+char* kryon_ast_binary_op_to_string(const KryonASTNode* node, KryonCodeGenerator *codegen);
 
 /**
  * @brief Convert a member access node to string  
  * @param node Member access node
+ * @param codegen Code generator context for constant resolution
  * @return Allocated string with format "object.member"
  */
-char* kryon_ast_member_access_to_string(const KryonASTNode* node);
+char* kryon_ast_member_access_to_string(const KryonASTNode* node, KryonCodeGenerator *codegen);
 
 /**
  * @brief Convert a variable node to string
- * @param node Variable node  
+ * @param node Variable node
+ * @param codegen Code generator context (unused for variables - they remain reactive)  
  * @return Allocated string with format "$variableName"
  */
-char* kryon_ast_variable_to_string(const KryonASTNode* node);
+char* kryon_ast_variable_to_string(const KryonASTNode* node, KryonCodeGenerator *codegen);
 
 /**
  * @brief Convert a literal node to string
  * @param node Literal node
+ * @param codegen Code generator context (unused for literals)
  * @return Allocated string representation of the literal value
  */
-char* kryon_ast_literal_to_string(const KryonASTNode* node);
+char* kryon_ast_literal_to_string(const KryonASTNode* node, KryonCodeGenerator *codegen);
 
 #endif // KRYON_AST_EXPRESSION_SERIALIZER_H

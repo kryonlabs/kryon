@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 bool kryon_write_string_table(KryonCodeGenerator *codegen) {
     if (!codegen) return false;
@@ -53,13 +54,13 @@ bool kryon_write_string_table(KryonCodeGenerator *codegen) {
 
 uint32_t add_string_to_table(KryonCodeGenerator *codegen, const char *str) {
     if (!str) {
-        return 0;
+        return UINT32_MAX; // Error indicator
     }
     
     // Check if string already exists
     for (size_t i = 0; i < codegen->string_count; i++) {
         if (strcmp(codegen->string_table[i], str) == 0) {
-            return (uint32_t)i + 1; // 1-based index
+            return (uint32_t)i; // 0-based index
         }
     }
     
@@ -69,7 +70,7 @@ uint32_t add_string_to_table(KryonCodeGenerator *codegen, const char *str) {
         char **new_table = realloc(codegen->string_table, 
                                         new_capacity * sizeof(char*));
         if (!new_table) {
-            return 0;
+            return UINT32_MAX; // Error indicator
         }
         codegen->string_table = new_table;
         codegen->string_capacity = new_capacity;
@@ -77,10 +78,10 @@ uint32_t add_string_to_table(KryonCodeGenerator *codegen, const char *str) {
     
     codegen->string_table[codegen->string_count] = strdup(str);
     if (!codegen->string_table[codegen->string_count]) {
-        return 0;
+        return UINT32_MAX; // Error indicator
     }
     
-    uint32_t index = (uint32_t)(++codegen->string_count); // 1-based index
+    uint32_t index = (uint32_t)(codegen->string_count++); // 0-based index
     printf("DEBUG: Added string [%u]: '%s'\n", index, str);
-    return index;
+    return index; // Return 0-based index
 }

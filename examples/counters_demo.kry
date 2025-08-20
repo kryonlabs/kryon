@@ -2,7 +2,6 @@
 @component Counter(value: 0) {
 
     @function "lua" increment() {
-        -- 'self' refers to this component's state
         self.value = self.value + 1
     }
 
@@ -10,13 +9,12 @@
         self.value = self.value - 1
     }
 
-    // The UI for this component
     Row {
         mainAxisAlignment: "center"
         gap: 10
 
         Button { text: "-", onClick: "decrement" }
-        Text { text: $value, fontSize: 32 } // Binds to the component's state
+        Text { text: value, fontSize: 32 }
         Button { text: "+", onClick: "increment" }
     }
 }
@@ -27,10 +25,8 @@ Center {
         mainAxisAlignment: "center"
          gap: 20
 
-         // Create an instance of your Counter component
          Counter { value: 5 }
 
-         // Create another, completely independent instance
-         Counter { } // Uses the default initialValue of 0
+         Counter { }
      }
 }

@@ -62,13 +62,13 @@ App {
                     Text { text: "mainAxisAlignment: ${alignment.name}", fontSize: 14, fontWeight: "bold" }
                     
                     Row {
-                        mainAxisAlignment: "${alignment.value}"
+                        mainAxisAlignment: alignment.value
                         crossAxisAlignment: "center"
-                        gap: ${alignment.gap}
+                        gap: alignment.gap
 
-                        Container { width: 80, height: 40, backgroundColor: "${alignment.colors[0]}", borderRadius: 6 }
-                        Container { width: 100, height: 40, backgroundColor: "${alignment.colors[1]}", borderRadius: 6 }
-                        Container { width: 90, height: 40, backgroundColor: "${alignment.colors[2]}", borderRadius: 6 }
+                        Container { width: 80, height: 40, backgroundColor: alignment.colors[0], borderRadius: 6 }
+                        Container { width: 100, height: 40, backgroundColor: alignment.colors[1], borderRadius: 6 }
+                        Container { width: 90, height: 40, backgroundColor: alignment.colors[2], borderRadius: 6 }
                     }
                 }
             }

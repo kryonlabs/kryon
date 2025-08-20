@@ -12,6 +12,8 @@
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
+#include "../navigation/navigation.h"
+#include "../../shared/kryon_mappings.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -25,6 +27,7 @@ static void link_destroy(KryonRuntime* runtime, KryonElement* element);
 static bool is_external_url(const char* path);
 static bool ends_with(const char* str, const char* suffix);
 static void handle_link_navigation(KryonRuntime* runtime, const char* target, bool external);
+static KryonComponentDefinition* find_component_by_name(KryonRuntime* runtime, const char* name);
 
 // The VTable binds the generic element interface to our specific link functions.
 static const ElementVTable g_link_vtable = {
@@ -36,6 +39,20 @@ static const ElementVTable g_link_vtable = {
 // =============================================================================
 //  Public Registration Function
 // =============================================================================
+
+/**
+ * @brief Ensures navigation manager is created when first link element is encountered
+ */
+static void ensure_navigation_manager(KryonRuntime* runtime) {
+    if (!runtime->navigation_manager) {
+        runtime->navigation_manager = kryon_navigation_create(runtime);
+        if (!runtime->navigation_manager) {
+            printf("⚠️  Failed to create navigation manager for link element\n");
+        } else {
+            printf("🧭 Navigation manager created (link element detected)\n");
+        }
+    }
+}
 
 /**
  * @brief Registers the Link element type with the element registry.
@@ -54,6 +71,9 @@ bool register_link_element(void) {
  */
 static void link_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 2) return; // Reserve space for overlay
+    
+    // Ensure navigation manager exists when first link is rendered
+    ensure_navigation_manager(runtime);
     
     // Get link properties
     const char* text = get_element_property_string(element, "text");
@@ -77,6 +97,16 @@ static void link_render(KryonRuntime* runtime, KryonElement* element, KryonRende
     // Use element position from layout engine
     KryonVec2 position = { element->x, element->y };
     KryonVec2 size = { element->width, element->height };
+    
+    // Handle cursor management for link
+    if (runtime && runtime->renderer) {
+        KryonVec2 mouse_pos = runtime->mouse_position;
+        if (mouse_pos.x >= position.x && mouse_pos.x <= position.x + size.x &&
+            mouse_pos.y >= position.y && mouse_pos.y <= position.y + size.y) {
+            // Show pointer cursor when hovering over link
+            kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_POINTER);
+        }
+    }
     
     // Convert colors
     KryonColor text_color = color_u32_to_f32(text_color_val);
@@ -131,13 +161,82 @@ static void link_render(KryonRuntime* runtime, KryonElement* element, KryonRende
     text_cmd.z_index = z_index + 1;
     commands[(*command_count)++] = text_cmd;
     
-    // TODO: Render overlay component when element property system supports it
-    // KryonElement* overlay = get_element_property_element(element, "overlay");
-    // This will be implemented when the property system supports nested elements
+    // Check for overlay content property (supports both component references and text)
+    const char* overlay_content = get_element_property_string(element, "overlay");
+    if (overlay_content && strlen(overlay_content) > 0) {
+        // Check if overlay should be shown (when hovering or on certain conditions)
+        bool show_overlay = get_element_property_bool(element, "showOverlay", false);
+        
+        if (show_overlay && *command_count < max_commands) {
+            // Try to find component by name first
+            KryonComponentDefinition* component = find_component_by_name(runtime, overlay_content);
+            
+            if (component) {
+                // Component overlay - render the component instance
+                printf("🔍 Link: Rendering component overlay '%s'\n", overlay_content);
+                
+                // TODO: Implement component instance rendering for overlays
+                // For now, render the component as positioned element
+                // This would need to create a temporary component instance and render it
+                
+                // Fallback to component name as text for now
+                KryonVec2 overlay_pos = { position.x, position.y - 40.0f };
+                if (overlay_pos.y < 0) {
+                    overlay_pos.y = position.y + size.y + 5.0f;
+                }
+                
+                KryonRenderCommand overlay_text_cmd = kryon_cmd_draw_text(
+                    overlay_pos,
+                    overlay_content,
+                    12.0f,
+                    (KryonColor){ 1.0f, 1.0f, 1.0f, 1.0f }
+                );
+                overlay_text_cmd.z_index = z_index + 11;
+                commands[(*command_count)++] = overlay_text_cmd;
+                
+            } else {
+                // Text overlay - render as before
+                printf("🔍 Link: Rendering text overlay '%s'\n", overlay_content);
+                
+                KryonVec2 overlay_pos = { position.x, position.y - 40.0f };
+                KryonVec2 overlay_size = { size.x + 20.0f, 30.0f };
+                
+                if (overlay_pos.y < 0) {
+                    overlay_pos.y = position.y + size.y + 5.0f;
+                }
+                
+                // Render overlay background
+                KryonColor overlay_bg = { 0.1f, 0.1f, 0.1f, 0.9f };
+                KryonRenderCommand overlay_bg_cmd = kryon_cmd_draw_rect(
+                    overlay_pos,
+                    overlay_size,
+                    overlay_bg,
+                    4.0f
+                );
+                overlay_bg_cmd.z_index = z_index + 10;
+                commands[(*command_count)++] = overlay_bg_cmd;
+                
+                // Render overlay text
+                if (*command_count < max_commands) {
+                    KryonVec2 overlay_text_pos = { overlay_pos.x + 10.0f, overlay_pos.y + 5.0f };
+                    KryonColor overlay_text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
+                    
+                    KryonRenderCommand overlay_text_cmd = kryon_cmd_draw_text(
+                        overlay_text_pos,
+                        overlay_content,
+                        12.0f,
+                        overlay_text_color
+                    );
+                    overlay_text_cmd.z_index = z_index + 11;
+                    commands[(*command_count)++] = overlay_text_cmd;
+                }
+            }
+        }
+    }
 }
 
 /**
- * @brief Handles click events for navigation.
+ * @brief Handles click events for navigation and overlay events.
  */
 static bool link_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
     if (event->type == ELEMENT_EVENT_CLICKED) {
@@ -148,9 +247,33 @@ static bool link_handle_event(KryonRuntime* runtime, KryonElement* element, cons
             handle_link_navigation(runtime, to, external || is_external_url(to));
             return true;
         }
+    } else if (event->type == ELEMENT_EVENT_HOVERED) {
+        // Show overlay on hover if overlay content exists
+        const char* overlay_content = get_element_property_string(element, "overlay");
+        if (overlay_content && strlen(overlay_content) > 0) {
+            // Set showOverlay property to true
+            bool show_overlay = true;
+            kryon_element_set_property(element, kryon_get_property_hex("showOverlay"), &show_overlay);
+            
+            // Mark element for re-render
+            kryon_element_invalidate_render(element);
+            printf("🔍 Link: Showing overlay on hover\n");
+            return true;
+        }
+    } else if (event->type == ELEMENT_EVENT_UNHOVERED) {
+        // Hide overlay when not hovering
+        const char* overlay_content = get_element_property_string(element, "overlay");
+        if (overlay_content && strlen(overlay_content) > 0) {
+            // Set showOverlay property to false
+            bool show_overlay = false;
+            kryon_element_set_property(element, kryon_get_property_hex("showOverlay"), &show_overlay);
+            
+            // Mark element for re-render
+            kryon_element_invalidate_render(element);
+            printf("🔍 Link: Hiding overlay on unhover\n");
+            return true;
+        }
     }
-    
-    // TODO: Handle overlay events when property system supports nested elements
     
     // Fall back to generic script event handler for custom onClick handlers
     return generic_script_event_handler(runtime, element, event);
@@ -201,6 +324,36 @@ static bool ends_with(const char* str, const char* suffix) {
 /**
  * @brief Handles navigation based on target type.
  */
+/**
+ * @brief Finds a component definition by name in the runtime's component registry.
+ */
+static KryonComponentDefinition* find_component_by_name(KryonRuntime* runtime, const char* name) {
+    if (!runtime || !name || strlen(name) == 0) {
+        return NULL;
+    }
+    
+    // Check if runtime has components
+    if (!runtime->components || runtime->component_count == 0) {
+        printf("⚠️  No components available in runtime\n");
+        return NULL;
+    }
+    
+    // Search through registered components
+    for (size_t i = 0; i < runtime->component_count; i++) {
+        KryonComponentDefinition* component = runtime->components[i];
+        if (component && component->name && strcmp(component->name, name) == 0) {
+            printf("✅ Found component: %s\n", name);
+            return component;
+        }
+    }
+    
+    printf("⚠️  Component '%s' not found in registry\n", name);
+    return NULL;
+}
+
+/**
+ * @brief Handles navigation based on target type.
+ */
 static void handle_link_navigation(KryonRuntime* runtime, const char* target, bool external) {
     if (!target || strlen(target) == 0) {
         printf("⚠️  Link: Empty target specified\n");
@@ -227,17 +380,18 @@ static void handle_link_navigation(KryonRuntime* runtime, const char* target, bo
             printf("🌐 External link: %s (Platform not supported)\n", target);
         #endif
     } else {
-        // Handle internal navigation
-        if (ends_with(target, ".krb")) {
-            // Direct KRB loading - will implement with navigation manager
-            printf("📄 Loading KRB file: %s\n", target);
-            // TODO: kryon_navigation_load_krb(runtime, target);
-        } else if (ends_with(target, ".kry")) {
-            // On-the-fly compilation - will implement with runtime compiler
-            printf("⚡ Compiling and loading KRY file: %s\n", target);
-            // TODO: kryon_navigation_compile_and_load(runtime, target);
+        // Handle internal navigation using the navigation manager
+        if (runtime->navigation_manager) {
+            printf("📄 Navigating to internal file: %s\n", target);
+            KryonNavigationResult result = kryon_navigate_to(runtime->navigation_manager, target, false);
+            
+            if (result == KRYON_NAV_SUCCESS) {
+                printf("✅ Navigation successful\n");
+            } else {
+                printf("❌ Navigation failed with result: %d\n", result);
+            }
         } else {
-            printf("❓ Unknown file type: %s\n", target);
+            printf("⚠️  Navigation manager not available for internal navigation\n");
         }
     }
 }

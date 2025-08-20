@@ -359,6 +359,27 @@ static void dropdown_render(struct KryonRuntime* runtime, struct KryonElement* e
     }
     bool is_disabled = get_element_property_bool(element, "disabled", false);
     
+    // Handle cursor management for dropdown
+    if (!is_disabled && runtime && runtime->renderer) {
+        KryonVec2 mouse_pos = runtime->mouse_position;
+        if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
+            mouse_pos.y >= posY && mouse_pos.y <= posY + height) {
+            // Show pointer cursor when hovering over dropdown
+            kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_POINTER);
+        }
+        
+        // Also show pointer cursor when hovering over open options
+        if (state->is_open && options && options_count > 0) {
+            float popup_y = posY + height;
+            float option_height = 32.0f;
+            float popup_height = options_count * option_height;
+            if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
+                mouse_pos.y >= popup_y && mouse_pos.y <= popup_y + popup_height) {
+                kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_POINTER);
+            }
+        }
+    }
+    
     state->option_count = (int)options_count;
     
     // Convert colors

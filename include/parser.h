@@ -64,6 +64,8 @@ typedef enum {
     KRYON_AST_INCLUDE_DIRECTIVE,     // @include
     KRYON_AST_METADATA_DIRECTIVE,    // @metadata
     KRYON_AST_EVENT_DIRECTIVE,       // @event
+    KRYON_AST_ONLOAD_DIRECTIVE,      // @onload
+    KRYON_AST_FOR_DIRECTIVE,         // @for
     
     // Component system
     KRYON_AST_COMPONENT,             // @component directive
@@ -83,6 +85,7 @@ typedef enum {
     KRYON_AST_TEMPLATE,              // ${expression}
     KRYON_AST_BINARY_OP,             // Binary operations
     KRYON_AST_UNARY_OP,              // Unary operations
+    KRYON_AST_TERNARY_OP,            // Ternary operations (? :)
     KRYON_AST_FUNCTION_CALL,         // Function calls
     KRYON_AST_MEMBER_ACCESS,         // Object.property
     KRYON_AST_ARRAY_ACCESS,          // array[index]
@@ -179,7 +182,9 @@ struct KryonASTNode {
         } identifier;
         
         struct {
-            KryonASTNode *expression; // Template expression
+            KryonASTNode **segments;  // Template segments (literals and variables)
+            size_t segment_count;     // Number of segments
+            size_t segment_capacity;  // Segment array capacity
         } template;
         
         struct {
@@ -192,6 +197,12 @@ struct KryonASTNode {
             KryonTokenType operator; // Unary operator token
             KryonASTNode *operand;   // Operand
         } unary_op;
+        
+        struct {
+            KryonASTNode *condition;  // Condition expression
+            KryonASTNode *true_expr;  // True expression  
+            KryonASTNode *false_expr; // False expression
+        } ternary_op;
         
         struct {
             char *function_name;     // Function name
@@ -595,6 +606,25 @@ size_t kryon_ast_find_by_type(const KryonASTNode *root, KryonASTNodeType type,
  */
 size_t kryon_ast_find_elements(const KryonASTNode *root, const char *element_type,
                               const KryonASTNode **results, size_t max_results);
+
+// =============================================================================
+// EXPRESSION PARSING (Internal)
+// =============================================================================
+
+/**
+ * @brief Expression parsing functions - internal use only
+ */
+static KryonASTNode *parse_expression(KryonParser *parser);
+static KryonASTNode *parse_ternary(KryonParser *parser);
+static KryonASTNode *parse_logical_or(KryonParser *parser);
+static KryonASTNode *parse_logical_and(KryonParser *parser);
+static KryonASTNode *parse_equality(KryonParser *parser);
+static KryonASTNode *parse_comparison(KryonParser *parser);
+static KryonASTNode *parse_additive(KryonParser *parser);
+static KryonASTNode *parse_multiplicative(KryonParser *parser);
+static KryonASTNode *parse_unary(KryonParser *parser);
+static KryonASTNode *parse_postfix(KryonParser *parser);
+static KryonASTNode *parse_primary(KryonParser *parser);
 
 #ifdef __cplusplus
 }

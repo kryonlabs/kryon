@@ -43,8 +43,8 @@ Widget {
 - **Array**: `["item1", "item2", "item3"]`, `[1, 2, 3]`
 - **Object**: `{ key: value, key2: value2 }`
 - **Function**: `"functionName"` (quoted function reference)
-- **Variable**: `$variableName`
-- **Expression**: `${expression}`
+- **Variable**: `variableName` (used directly)
+- **String Interpolation**: `"text ${expression} more text"`
 
 ## Style System
 

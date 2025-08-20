@@ -80,6 +80,8 @@ static const char *token_type_names[] = {
     [KRYON_TOKEN_LIFECYCLE_DIRECTIVE] = "LIFECYCLE_DIRECTIVE",
     [KRYON_TOKEN_STATE_DIRECTIVE] = "STATE_DIRECTIVE",
     [KRYON_TOKEN_CONST_DIRECTIVE] = "CONST_DIRECTIVE",
+    [KRYON_TOKEN_ONLOAD_DIRECTIVE] = "ONLOAD_DIRECTIVE",
+    [KRYON_TOKEN_FOR_DIRECTIVE] = "FOR_DIRECTIVE",
     [KRYON_TOKEN_CONST_FOR_DIRECTIVE] = "CONST_FOR_DIRECTIVE",
     [KRYON_TOKEN_IN_KEYWORD] = "IN_KEYWORD",
     [KRYON_TOKEN_TEMPLATE_START] = "TEMPLATE_START",
@@ -146,6 +148,8 @@ static const KeywordEntry directives[] = {
     {"lifecycle", KRYON_TOKEN_LIFECYCLE_DIRECTIVE},
     {"state", KRYON_TOKEN_STATE_DIRECTIVE},
     {"const", KRYON_TOKEN_CONST_DIRECTIVE},
+    {"onload", KRYON_TOKEN_ONLOAD_DIRECTIVE},
+    {"for", KRYON_TOKEN_FOR_DIRECTIVE},
     {"const_for", KRYON_TOKEN_CONST_FOR_DIRECTIVE},
 };
 
@@ -1048,7 +1052,7 @@ bool kryon_token_is_operator(KryonTokenType type) {
 }
 
 bool kryon_token_is_directive(KryonTokenType type) {
-    return type >= KRYON_TOKEN_STYLE_DIRECTIVE && type <= KRYON_TOKEN_LIFECYCLE_DIRECTIVE;
+    return type >= KRYON_TOKEN_STYLE_DIRECTIVE && type <= KRYON_TOKEN_CONST_FOR_DIRECTIVE;
 }
 
 bool kryon_token_is_unit(KryonTokenType type) {

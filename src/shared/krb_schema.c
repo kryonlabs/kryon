@@ -97,3 +97,122 @@ const char* krb_get_section_name(uint32_t magic) {
         default:               return "UNKN";
     }
 }
+
+// =============================================================================
+// ELEMENT SCHEMA VALIDATION FUNCTIONS
+// =============================================================================
+
+bool krb_validate_element_header(const uint8_t *data, size_t size, size_t *offset, KRBElementHeader *header) {
+    if (!data || !offset || !header) {
+        return false;
+    }
+    
+    size_t start_offset = *offset;
+    
+    // Check minimum size for element header
+    if (start_offset + sizeof(KRBElementHeader) > size) {
+        return false;
+    }
+    
+    // Read header fields in exact schema order
+    memcpy(&header->instance_id, data + *offset, sizeof(uint32_t));
+    *offset += sizeof(uint32_t);
+    
+    memcpy(&header->element_type, data + *offset, sizeof(uint32_t));
+    *offset += sizeof(uint32_t);
+    
+    memcpy(&header->parent_id, data + *offset, sizeof(uint32_t));
+    *offset += sizeof(uint32_t);
+    
+    memcpy(&header->style_ref, data + *offset, sizeof(uint32_t));
+    *offset += sizeof(uint32_t);
+    
+    memcpy(&header->property_count, data + *offset, sizeof(uint16_t));
+    *offset += sizeof(uint16_t);
+    
+    memcpy(&header->child_count, data + *offset, sizeof(uint16_t));
+    *offset += sizeof(uint16_t);
+    
+    memcpy(&header->event_count, data + *offset, sizeof(uint16_t));
+    *offset += sizeof(uint16_t);
+    
+    memcpy(&header->flags, data + *offset, sizeof(uint32_t));
+    *offset += sizeof(uint32_t);
+    
+    // Validate reasonable bounds
+    if (header->property_count > 1000 || header->child_count > 1000 || header->event_count > 100) {
+        return false;
+    }
+    
+    // Calculate expected size for properties, children, and events
+    size_t properties_size = header->property_count * sizeof(KRBPropertyHeader);
+    size_t children_size = header->child_count * sizeof(uint32_t);
+    size_t events_size = header->event_count * sizeof(KRBEventHandler);
+    
+    // Ensure we have enough remaining data
+    if (*offset + properties_size + children_size + events_size > size) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool krb_write_element_header(bool (*writer)(void*, const void*, size_t), void *context, const KRBElementHeader *header) {
+    if (!writer || !context || !header) {
+        return false;
+    }
+    
+    // Write in exact schema order
+    if (!writer(context, &header->instance_id, sizeof(uint32_t))) return false;
+    if (!writer(context, &header->element_type, sizeof(uint32_t))) return false;
+    if (!writer(context, &header->parent_id, sizeof(uint32_t))) return false;
+    if (!writer(context, &header->style_ref, sizeof(uint32_t))) return false;
+    if (!writer(context, &header->property_count, sizeof(uint16_t))) return false;
+    if (!writer(context, &header->child_count, sizeof(uint16_t))) return false;
+    if (!writer(context, &header->event_count, sizeof(uint16_t))) return false;
+    if (!writer(context, &header->flags, sizeof(uint32_t))) return false;
+    
+    return true;
+}
+
+bool krb_validate_property_header(const uint8_t *data, size_t size, size_t *offset, KRBPropertyHeader *header) {
+    if (!data || !offset || !header) {
+        return false;
+    }
+    
+    // Check minimum size for property header
+    if (*offset + sizeof(KRBPropertyHeader) > size) {
+        return false;
+    }
+    
+    memcpy(&header->property_id, data + *offset, sizeof(uint16_t));
+    *offset += sizeof(uint16_t);
+    
+    memcpy(&header->value_type, data + *offset, sizeof(uint8_t));
+    *offset += sizeof(uint8_t);
+    
+    // Validate property ID and type are reasonable
+    if (header->property_id == 0 || header->value_type > 20) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool krb_write_property_header(bool (*writer)(void*, const void*, size_t), void *context, const KRBPropertyHeader *header) {
+    if (!writer || !context || !header) {
+        return false;
+    }
+    
+    if (!writer(context, &header->property_id, sizeof(uint16_t))) return false;
+    if (!writer(context, &header->value_type, sizeof(uint8_t))) return false;
+    
+    return true;
+}
+
+size_t krb_element_header_size(uint16_t property_count, uint16_t child_count, uint16_t event_count) {
+    return sizeof(KRBElementHeader) + 
+           (property_count * sizeof(KRBPropertyHeader)) +
+           (child_count * sizeof(uint32_t)) +
+           (event_count * sizeof(KRBEventHandler));
+}

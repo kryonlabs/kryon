@@ -65,4 +65,12 @@ uint32_t kryon_count_elements_recursive(const KryonASTNode *node);
  */
 uint32_t kryon_count_properties_recursive(const KryonASTNode *node);
 
+/**
+ * @brief Serialize @for directive as template metadata
+ * @param codegen Code generator context
+ * @param element @for directive AST node
+ * @return true on success, false on failure
+ */
+bool serialize_for_template(KryonCodeGenerator* codegen, const KryonASTNode* element);
+
 #endif // KRYON_ELEMENT_SERIALIZER_H

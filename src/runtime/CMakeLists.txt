@@ -13,6 +13,7 @@ message(STATUS "Configuring Kryon Runtime module")
 set(CORE_SOURCES
     core/runtime.c
     core/krb_loader.c
+    expression_evaluator.c
 )
 
 set(CORE_HEADERS

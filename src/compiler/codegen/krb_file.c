@@ -7,6 +7,7 @@
 #include "memory.h"
 #include "error.h"
 #include "containers.h"
+#include "../../shared/kryon_mappings.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -308,7 +309,7 @@ KryonKrbElement **kryon_krb_file_get_root_elements(const KryonKrbFile *krb_file,
 // ELEMENT UTILITIES
 // =============================================================================
 
-KryonKrbElement *kryon_krb_element_create(uint32_t id, KryonElementType type, uint32_t parent_id) {
+KryonKrbElement *kryon_krb_element_create(uint32_t id, uint16_t type, uint32_t parent_id) {
     KryonKrbElement *element = kryon_alloc_type(KryonKrbElement);
     if (!element) {
         KRYON_LOG_ERROR("Failed to allocate element");
@@ -543,43 +544,20 @@ bool kryon_krb_file_validate(const KryonKrbFile *krb_file, char *out_error, size
 // TYPE NAME UTILITIES
 // =============================================================================
 
-const char *kryon_krb_element_type_name(KryonElementType type) {
-    switch (type) {
-        case KRYON_ELEMENT_CONTAINER: return "container";
-        case KRYON_ELEMENT_ROW: return "row";
-        case KRYON_ELEMENT_COLUMN: return "column";
-        case KRYON_ELEMENT_GRID: return "grid";
-        case KRYON_ELEMENT_STACK: return "stack";
-        case KRYON_ELEMENT_TEXT: return "text";
-        case KRYON_ELEMENT_IMAGE: return "image";
-        case KRYON_ELEMENT_BUTTON: return "button";
-        case KRYON_ELEMENT_INPUT: return "input";
-        case KRYON_ELEMENT_TEXTAREA: return "textarea";
-        case KRYON_ELEMENT_CHECKBOX: return "checkbox";
-        case KRYON_ELEMENT_RADIO: return "radio";
-        case KRYON_ELEMENT_SELECT: return "select";
-        case KRYON_ELEMENT_SLIDER: return "slider";
-        case KRYON_ELEMENT_PROGRESS: return "progress";
-        case KRYON_ELEMENT_LIST: return "list";
-        case KRYON_ELEMENT_TREE: return "tree";
-        case KRYON_ELEMENT_TABLE: return "table";
-        case KRYON_ELEMENT_CARD: return "card";
-        case KRYON_ELEMENT_TAB: return "tab";
-        case KRYON_ELEMENT_MODAL: return "modal";
-        case KRYON_ELEMENT_DRAWER: return "drawer";
-        case KRYON_ELEMENT_DROPDOWN: return "dropdown";
-        case KRYON_ELEMENT_MENU: return "menu";
-        case KRYON_ELEMENT_NAVBAR: return "navbar";
-        case KRYON_ELEMENT_SIDEBAR: return "sidebar";
-        case KRYON_ELEMENT_HEADER: return "header";
-        case KRYON_ELEMENT_FOOTER: return "footer";
-        case KRYON_ELEMENT_SECTION: return "section";
-        case KRYON_ELEMENT_ARTICLE: return "article";
-        case KRYON_ELEMENT_ASIDE: return "aside";
-        case KRYON_ELEMENT_EVENT_DIRECTIVE: return "event_directive";
-        case KRYON_ELEMENT_CUSTOM: return "custom";
-        default: return "unknown";
+const char *kryon_krb_element_type_name(uint16_t type) {
+    // First check if it's a syntax keyword (directive)
+    const char* syntax_name = kryon_get_syntax_name(type);
+    if (syntax_name) {
+        return syntax_name;
     }
+    
+    // Then check if it's a regular element  
+    const char* element_name = kryon_get_element_name(type);
+    if (element_name) {
+        return element_name;
+    }
+    
+    return "unknown";
 }
 
 const char *kryon_krb_property_type_name(KryonPropertyType type) {

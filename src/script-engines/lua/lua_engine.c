@@ -7,6 +7,7 @@
 #include "memory.h"
 #include "runtime.h"
 #include "events.h"
+#include "../runtime/navigation/navigation.h"
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
@@ -24,6 +25,7 @@ struct KryonLuaEngine {
     bool initialized;               // Initialization flag
     size_t memory_used;             // Current memory usage
     double start_time;              // Execution start time
+    KryonRuntime* runtime;          // Associated runtime for navigation, etc.
 };
 
 // =============================================================================
@@ -79,6 +81,32 @@ static int lua_kryon_element_set_text(lua_State* L) {
     const char* text = luaL_checkstring(L, 1);
     printf("🐛 Lua: Setting element text to '%s'\n", text);
     return 0;
+}
+
+static int lua_kryon_navigation_navigate_to(lua_State* L) {
+    const char* target = luaL_checkstring(L, 1);
+    
+    // Get engine from registry
+    lua_getfield(L, LUA_REGISTRYINDEX, "kryon_engine");
+    KryonLuaEngine* engine = (KryonLuaEngine*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    
+    if (!engine || !engine->runtime) {
+        luaL_error(L, "Navigation not available: no runtime reference");
+        return 0;
+    }
+    
+    // Actually call navigation manager
+    printf("🔀 Lua: Navigating to '%s'\n", target);
+    
+    if (engine->runtime->navigation_manager) {
+        KryonNavigationResult result = kryon_navigate_to(engine->runtime->navigation_manager, target, false);
+        lua_pushboolean(L, result == KRYON_NAV_SUCCESS);
+        return 1;
+    } else {
+        luaL_error(L, "Navigation manager not available");
+        return 0;
+    }
 }
 
 // =============================================================================
@@ -296,8 +324,24 @@ KryonLuaResult kryon_lua_register_api(KryonLuaEngine* engine) {
     lua_pushcfunction(engine->L, lua_kryon_element_set_text);
     lua_setfield(engine->L, -2, "setText");
     
+    // Create navigation sub-table
+    lua_newtable(engine->L);
+    lua_pushcfunction(engine->L, lua_kryon_navigation_navigate_to);
+    lua_setfield(engine->L, -2, "navigateTo");
+    lua_setfield(engine->L, -2, "navigation");
+    
+    // Store engine reference in registry for access by C functions
+    lua_pushlightuserdata(engine->L, engine);
+    lua_setfield(engine->L, LUA_REGISTRYINDEX, "kryon_engine");
+    
     // Set as global
     lua_setglobal(engine->L, "kryon");
     
     return KRYON_LUA_SUCCESS;
+}
+
+void kryon_lua_engine_set_runtime(KryonLuaEngine* engine, KryonRuntime* runtime) {
+    if (engine) {
+        engine->runtime = runtime;
+    }
 }

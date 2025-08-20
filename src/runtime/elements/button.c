@@ -76,7 +76,10 @@
          if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
              mouse_pos.y >= posY && mouse_pos.y <= posY + height) {
              is_hovered = true;
-             runtime->cursor_should_be_pointer = true;
+             // Cursor management moved to renderer layer
+             if (runtime->renderer) {
+                 kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_POINTER);
+             }
          }
      }
  

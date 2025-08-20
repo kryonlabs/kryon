@@ -47,6 +47,12 @@ typedef struct {
 } InputState;
 
 // =============================================================================
+// FORWARD DECLARATIONS
+// =============================================================================
+
+static void update_input_variable_binding(KryonRuntime* runtime, KryonElement* element, InputState* state);
+
+// =============================================================================
 // INPUT STATE MANAGEMENT
 // =============================================================================
 
@@ -296,6 +302,10 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
         case ELEMENT_EVENT_UNFOCUSED: {
             state->has_focus = false;
             input_clear_selection(state);
+            
+            // Update bound variable when input loses focus
+            update_input_variable_binding(runtime, element, state);
+            
             return true;
         }
         
@@ -313,10 +323,12 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
             switch (keyCode) {
                 case 259: // Backspace
                     input_delete_char_backward(state);
+                    update_input_variable_binding(runtime, element, state);
                     return true;
                     
                 case 261: // Delete
                     input_delete_char_forward(state);
+                    update_input_variable_binding(runtime, element, state);
                     return true;
                     
                 case 263: // Left arrow
@@ -438,6 +450,9 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
             state->cursor_blink_timer = 0.0f;
             state->cursor_visible = true;
             
+            // Update bound variable if this input has value binding
+            update_input_variable_binding(runtime, element, state);
+            
             return true;
         }
         
@@ -451,6 +466,64 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
 // =============================================================================
 // INPUT HELPERS
 // =============================================================================
+
+// Update the runtime variable bound to this input's value property
+static void update_input_variable_binding(KryonRuntime* runtime, KryonElement* element, InputState* state) {
+    if (!runtime || !element || !state) return;
+    
+    // Find the value property to check if it has a binding
+    for (size_t i = 0; i < element->property_count; i++) {
+        KryonProperty* prop = element->properties[i];
+        if (prop && prop->type == KRYON_RUNTIME_PROP_STRING && 
+            strcmp(prop->name, "value") == 0 && prop->is_bound && prop->binding_path) {
+            
+            // Found a bound value property - update the runtime variable
+            printf("🔗 INPUT BINDING: Updating variable '%s' = '%s'\n", prop->binding_path, state->text);
+            
+            bool success = kryon_runtime_set_variable(runtime, prop->binding_path, state->text);
+            if (success) {
+                printf("✅ INPUT BINDING: Successfully updated variable '%s'\n", prop->binding_path);
+            } else {
+                printf("❌ INPUT BINDING: Failed to update variable '%s'\n", prop->binding_path);
+            }
+            break;
+        }
+    }
+}
+
+// Update the input's visual state when its bound variable changes
+static void sync_input_from_variable(KryonRuntime* runtime, KryonElement* element, InputState* state) {
+    if (!runtime || !element || !state) return;
+    
+    // Find the value property to check if it has a binding
+    for (size_t i = 0; i < element->property_count; i++) {
+        KryonProperty* prop = element->properties[i];
+        if (prop && prop->type == KRYON_RUNTIME_PROP_STRING && 
+            strcmp(prop->name, "value") == 0 && prop->is_bound && prop->binding_path) {
+            
+            // Get the current variable value
+            const char* var_value = kryon_runtime_get_variable(runtime, prop->binding_path);
+            if (var_value && strcmp(state->text, var_value) != 0) {
+                printf("🔄 INPUT SYNC: Updating input text from variable '%s' = '%s'\n", prop->binding_path, var_value);
+                
+                // Update the input text to match the variable
+                size_t new_len = strlen(var_value);
+                if (new_len >= state->text_capacity) {
+                    // Expand buffer if needed
+                    state->text_capacity = new_len + 1;
+                    state->text = kryon_realloc(state->text, state->text_capacity);
+                }
+                
+                strcpy(state->text, var_value);
+                state->text_length = new_len;
+                state->cursor_pos = new_len; // Move cursor to end
+                
+                printf("✅ INPUT SYNC: Input text updated to '%s'\n", state->text);
+            }
+            break;
+        }
+    }
+}
 
 static const char* get_default_placeholder_for_type(const char* input_type) {
     if (!input_type) return "Enter text...";
@@ -483,6 +556,9 @@ static void input_render(struct KryonRuntime* runtime, struct KryonElement* elem
     InputState* state = ensure_input_state(element);
     if (!state) return;
     
+    // Sync input text from bound variable (in case variable changed externally)
+    sync_input_from_variable(runtime, element, state);
+    
     // Update cursor blink timer
     state->cursor_blink_timer += 0.016f; // Assume ~60 FPS
     if (state->cursor_blink_timer >= 1.0f) {
@@ -511,6 +587,16 @@ static void input_render(struct KryonRuntime* runtime, struct KryonElement* elem
         placeholder = get_default_placeholder_for_type(input_type);
     }
     bool is_disabled = get_element_property_bool(element, "disabled", false);
+    
+    // Handle cursor management for input field
+    if (!is_disabled && runtime && runtime->renderer) {
+        KryonVec2 mouse_pos = runtime->mouse_position;
+        if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
+            mouse_pos.y >= posY && mouse_pos.y <= posY + height) {
+            // Show text cursor when hovering over input field
+            kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_TEXT);
+        }
+    }
     
     // Convert colors
     KryonColor bg_color = color_u32_to_f32(bg_color_val);
