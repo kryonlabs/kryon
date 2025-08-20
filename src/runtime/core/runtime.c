@@ -18,12 +18,10 @@
 #include "types.h"
 #include "elements.h"
 #include "shared/kryon_mappings.h"
+#include "../navigation/navigation.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#ifdef KRYON_RENDERER_RAYLIB
-#include <raylib.h>
-#endif
 #include <time.h>
 #include <math.h>
 #include <assert.h>
@@ -41,6 +39,25 @@ bool kryon_element_set_property_by_name(KryonElement *element, const char *name,
 static KryonRuntime* g_current_runtime = NULL;
 
 // =============================================================================
+// CURSOR MANAGEMENT WITH AUTOMATIC STATE TRACKING
+// =============================================================================
+
+KryonRenderResult kryon_renderer_set_cursor(KryonRenderer* renderer, KryonCursorType cursor_type) {
+    if (!renderer || !renderer->vtable || !renderer->vtable->set_cursor) {
+        return KRYON_RENDER_ERROR_UNSUPPORTED_OPERATION;
+    }
+    
+    KryonRenderResult result = renderer->vtable->set_cursor(cursor_type);
+    
+    // Track that cursor was set this frame (only for non-default cursors)
+    if (result == KRYON_RENDER_SUCCESS && g_current_runtime && cursor_type != KRYON_CURSOR_DEFAULT) {
+        g_current_runtime->cursor_set_this_frame = true;
+    }
+    
+    return result;
+}
+
+// =============================================================================
 // FORWARD DECLARATIONS
 // =============================================================================
 
@@ -52,6 +69,14 @@ static void kryon_debug_inspector_toggle(KryonRuntime *runtime);
 const char* get_element_property_string_with_runtime(KryonRuntime* runtime, KryonElement* element, const char* prop_name);
 static const char* resolve_variable_reference(KryonRuntime* runtime, const char* value);
 static const char* resolve_component_state_variable(KryonRuntime* runtime, KryonElement* element, const char* var_name);
+
+// @for template expansion functions
+static void expand_for_template(KryonRuntime* runtime, KryonElement* for_element);
+static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_element, const char* var_name, const char* var_value, size_t index);
+static void clear_expanded_children(KryonRuntime* runtime, KryonElement* for_element);
+static KryonElement* clone_element_with_substitution(KryonRuntime* runtime, KryonElement* template_element, const char* var_name, const char* var_value, size_t index);
+static char* substitute_template_variable(const char* template_str, const char* var_name, const char* var_value);
+static void add_child_element(KryonRuntime* runtime, KryonElement* parent, KryonElement* child);
 
 // External function from krb_loader.c
 extern bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, size_t size);
@@ -169,31 +194,26 @@ KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config) {
     if (kryon_vm_is_available(KRYON_VM_LUA)) {
         runtime->script_vm = kryon_vm_create(KRYON_VM_LUA, NULL);
         if (runtime->script_vm) {
-            printf("✅ Created Lua VM for script execution\n");
-        } else {
-            printf("⚠️  Failed to create Lua VM, script execution disabled\n");
+            runtime->script_vm->runtime = runtime; // Set runtime reference for variable access
         }
     }
+    
+    // Initialize navigation manager only if needed (when there are link elements)
+    runtime->navigation_manager = NULL; // Will be created lazily when first link is encountered
     
     // Initialize other fields
     runtime->next_element_id = 1;
     runtime->is_running = false;
     runtime->needs_update = true;
+    runtime->is_loading = false;
     
-    // Initialize input state (Phase 5: replaces global variables)
+    // Initialize input state
     runtime->mouse_position.x = 0.0f;
     runtime->mouse_position.y = 0.0f;
-    runtime->cursor_should_be_pointer = false;
     
     // Initialize root variables with default viewport size
-    if (!kryon_runtime_set_variable(runtime, "root.width", "800")) {
-        printf("⚠️  Failed to initialize root.width variable\n");
-    }
-    if (!kryon_runtime_set_variable(runtime, "root.height", "600")) {
-        printf("⚠️  Failed to initialize root.height variable\n");
-    }
-    
-    printf("✅ Initialized root variables: root.width=800, root.height=600\n");
+    kryon_runtime_set_variable(runtime, "root.width", "800");
+    kryon_runtime_set_variable(runtime, "root.height", "600");
     
     return runtime;
 }
@@ -247,11 +267,14 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
         runtime->script_vm = NULL;
     }
     
+    // Destroy navigation manager (with null check)
+    if (runtime->navigation_manager) {
+        kryon_navigation_destroy(runtime->navigation_manager);
+        runtime->navigation_manager = NULL;
+    }
+    
     // Free styles (with null check)
     if (runtime->styles) {
-        for (size_t i = 0; i < runtime->style_count; i++) {
-            // TODO: Implement style destruction
-        }
         kryon_free(runtime->styles);
         runtime->styles = NULL;
     }
@@ -396,29 +419,19 @@ bool kryon_runtime_load_binary(KryonRuntime *runtime, const uint8_t *data, size_
 // =============================================================================
 
 bool kryon_runtime_start(KryonRuntime *runtime) {
-    // kryon_runtime_start called
-    
     if (!runtime || runtime->is_running) {
-        printf("❌ ERROR: runtime is NULL or already running\n");
         return false;
     }
-    // runtime is valid and not running
     
     if (!runtime->root) {
-        printf("❌ ERROR: No root element loaded\n");
         runtime_error(runtime, "No root element loaded");
         return false;
     }
-    // root element is valid
     
-    // Setting runtime state
     runtime->is_running = true;
     runtime->last_update_time = 0.0;
     runtime->stats.frame_count = 0;
     runtime->stats.total_time = 0.0;
-    
-    // Runtime start completed successfully
-    // TODO: Initialize renderer
     
     return true;
 }
@@ -429,8 +442,6 @@ void kryon_runtime_stop(KryonRuntime *runtime) {
     }
     
     runtime->is_running = false;
-    
-    // TODO: Cleanup renderer
 }
 
 bool kryon_runtime_update(KryonRuntime *runtime, double delta_time) {
@@ -469,27 +480,7 @@ bool kryon_runtime_update(KryonRuntime *runtime, double delta_time) {
 }
 
 bool kryon_runtime_render(KryonRuntime *runtime) {
-    
-    if (!runtime) {
-        printf("❌ ERROR: runtime is NULL\n");
-        return false;
-    }
-    
-    // Note: mouse_clicked_this_frame reset moved to end of frame to allow click processing
-    
-    // Reset cursor state at frame start - elements will vote for pointer cursor (Phase 1A)
-    runtime->cursor_should_be_pointer = false;
-    
-    // Note: Input state is now handled via event-driven callbacks (Phase 4)
-    // The renderer pushes events directly to runtime->event_system via runtime_receive_input_event
-    
-    if (!runtime->is_running) {
-        printf("❌ ERROR: runtime is not running\n");
-        return false;
-    }
-    
-    if (!runtime->root) {
-        printf("❌ ERROR: runtime->root is NULL\n");
+    if (!runtime || !runtime->is_running || !runtime->root) {
         return false;
     }
     
@@ -503,30 +494,28 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
         
         // Generate render commands from element tree
         
-        // Safety checks before calling render function
+        // Safety check before calling render function
         if (!runtime->root->type_name) {
-            printf("❌ ERROR: Root element has null type_name\n");
             return false;
         }
                 
+        // Reset cursor tracking flag at start of frame
+        runtime->cursor_set_this_frame = false;
+        
         // Set global runtime for variable resolution during rendering
         g_current_runtime = runtime;
         
         // Generate render commands from element tree
         kryon_element_tree_to_render_commands(runtime, runtime->root, commands, &command_count, 256);
         
+        // Reset cursor to default if no interactive element set it this frame
+        if (!runtime->cursor_set_this_frame && runtime->renderer) {
+            kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_DEFAULT);
+        }
+        
         // Clear global runtime after rendering
         g_current_runtime = NULL;
         
-        // Set cursor state before begin_frame (Phase 1B & 1C: cursor communication)
-        // Apply cursor state based on hover detection from UI elements processed above
-        #ifdef KRYON_RENDERER_RAYLIB
-        if (runtime->cursor_should_be_pointer) {
-            SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
-        } else {
-            SetMouseCursor(MOUSE_CURSOR_DEFAULT);  
-        }
-        #endif
         
         // Check if we have a renderer attached for actual rendering
         if (runtime->renderer) {
@@ -555,9 +544,7 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
                     return false;
                 }
             }
-            
-            // Cursor state is now set before begin_frame (see line ~516)
-            
+                        
             // End frame
             if (renderer->vtable && renderer->vtable->end_frame) {
                 KryonRenderResult result = renderer->vtable->end_frame(context);
@@ -574,7 +561,7 @@ bool kryon_runtime_render(KryonRuntime *runtime) {
     runtime->stats.render_time += render_time;
     runtime->stats.frame_count++;
     
-    // Reset per-frame input state at end of frame (Phase 5: click detection fix)
+    // Reset per-frame input state at end of frame
     runtime->mouse_clicked_this_frame = false;
     
     return true;
@@ -715,6 +702,15 @@ void kryon_element_destroy(KryonRuntime *runtime, KryonElement *element) {
         kryon_free(element->class_names);
     }
 
+    // Free @for directive template storage
+    if (element->template_children) {
+        // Note: template children are references to actual elements that will be freed
+        // through normal element destruction, so we only free the array itself
+        free(element->template_children);
+        element->template_children = NULL;
+        element->template_count = 0;
+    }
+    
     // Notify the script VM that this element is gone
     if (runtime->script_vm) {
         kryon_vm_notify_element_destroyed(runtime->script_vm, element);
@@ -897,17 +893,10 @@ static bool runtime_event_handler(const KryonEvent* event, void* userData) {
         float new_width = (float)event->data.windowResize.width;
         float new_height = (float)event->data.windowResize.height;
         
-        printf("🔄 Window resized to %.0fx%.0f - updating root variables\n", new_width, new_height);
-        
-        if (kryon_runtime_update_viewport_size(runtime, new_width, new_height)) {
-            printf("✅ Successfully updated root variables for new viewport size\n");
-        } else {
-            printf("❌ Failed to update root variables for window resize\n");
-        }
+        kryon_runtime_update_viewport_size(runtime, new_width, new_height);
     } else if (event->type == KRYON_EVENT_KEY_DOWN) {
         // Handle Ctrl+I for debug inspector
         if (event->data.key.ctrlPressed && event->data.key.keyCode == 73) { // 73 = 'I' key
-            printf("🔍 Ctrl+I pressed - opening debug inspector\n");
             kryon_debug_inspector_toggle(runtime);
             return true; // Event handled
         }
@@ -937,14 +926,12 @@ static void update_element_tree(KryonRuntime *runtime, KryonElement *element, do
     switch (element->state) {
         case KRYON_ELEMENT_STATE_CREATED:
             element->state = KRYON_ELEMENT_STATE_MOUNTING;
-            // TODO: Call onMount lifecycle hook
             element->state = KRYON_ELEMENT_STATE_MOUNTED;
             break;
             
         case KRYON_ELEMENT_STATE_MOUNTED:
             if (element->needs_layout || element->needs_render) {
                 element->state = KRYON_ELEMENT_STATE_UPDATING;
-                // TODO: Perform layout and render updates
                 element->state = KRYON_ELEMENT_STATE_MOUNTED;
             }
             break;
@@ -1087,16 +1074,12 @@ static const char* resolve_variable_reference(KryonRuntime* runtime, const char*
     if (resolved_value) {
         // Add basic validation to ensure the pointer is reasonable
         if (resolved_value < (const char*)0x1000) {
-            printf("❌ ERROR: Variable '%s' resolved to invalid pointer %p\n", var_name, resolved_value);
             return value; // Return original if pointer is invalid
         }
         
-        printf("✅ Resolved variable '%s' to '%s' (ptr=%p)\n", var_name, resolved_value, resolved_value);
         return resolved_value;
     }
     
-    // Variable not found, using literal value
-    printf("❌ Variable '%s' not found, using literal\n", var_name);
     return value; // Return original if not found
 }
 
@@ -1158,9 +1141,6 @@ static const char* resolve_component_state_variable(KryonRuntime* runtime, Kryon
 
 // Get property value as string with type conversion
 const char* get_element_property_string(KryonElement* element, const char* prop_name) {
-    if (!g_current_runtime) {
-        printf("⚠️  WARNING: get_element_property_string called without runtime context\n");
-    }
     return get_element_property_string_with_runtime(g_current_runtime, element, prop_name);
 }
 
@@ -1169,78 +1149,22 @@ const char* get_element_property_string_with_runtime(KryonRuntime* runtime, Kryo
     KryonProperty* prop = find_element_property(element, prop_name);
     if (!prop) return NULL;
     
-    // Simple debug logging to avoid buffer corruption  
-    static int debug_call_count = 0;
-    if (debug_call_count < 3) {
-        printf("🔍 Property type=%d\n", prop->type);
-        debug_call_count++;
-    }
+    // Use simple static buffer for string conversions
+    static char buffer[1024];
     
-    // Use rotating buffers for all string conversions to prevent overwriting
-    static char string_buffers[4][1024];
-    static int string_buffer_index = 0;
-    char* buffer = string_buffers[string_buffer_index];
-    string_buffer_index = (string_buffer_index + 1) % 4;
-    
-    // Safety check for buffer integrity
-    if (!buffer) {
-        printf("❌ CRITICAL ERROR: Buffer is null!\n");
-        return "";
-    }
-
     switch (prop->type) {
         case KRYON_RUNTIME_PROP_STRING:
-            // Check if property is bound to component state
-            if (prop->is_bound && prop->binding_path && runtime) {
-                const char* resolved_value = NULL;
-
-                // Try to resolve component state variable first
-                resolved_value = resolve_component_state_variable(runtime, element, prop->binding_path);
-                
-                // Fallback resolution logic
-                if (!resolved_value) {
-                    KryonElement* current = element;
-                    while (current && current->parent) {
-                        if (current->parent->type_name && strcmp(current->parent->type_name, "Column") == 0) {
-                            KryonElement* column = current->parent;
-                            for (size_t i = 0; i < column->child_count; i++) {
-                                if (column->children[i] == current) {
-                                    char pattern_buffer[128];
-                                    snprintf(pattern_buffer, sizeof(pattern_buffer), "comp_%zu.%s", i, prop->binding_path);
-                                    resolved_value = kryon_runtime_get_variable(runtime, pattern_buffer);
-                                    if (resolved_value) break;
-                                }
-                            }
-                            if (resolved_value) break;
-                        }
-                        current = current->parent;
-                    }
-                }
-
-                if (!resolved_value) {
-                    char pattern_buffer[128];
-                    for (int comp_id = 0; comp_id < 10; comp_id++) {
-                        snprintf(pattern_buffer, sizeof(pattern_buffer), "comp_%d.%s", comp_id, prop->binding_path);
-                        resolved_value = kryon_runtime_get_variable(runtime, pattern_buffer);
-                        if (resolved_value) break;
-                    }
-                }
-
-                if (!resolved_value) {
-                    resolved_value = kryon_runtime_get_variable(runtime, prop->binding_path);
-                }
-
-                if (resolved_value) {
-                    // Safe copy to buffer using snprintf to avoid buffer overruns
-                    snprintf(buffer, 1024, "%s", resolved_value);
-                    return buffer;
-                }
-                
-                return prop->value.string_value;
-            }
+            // For literal strings, just return the value directly
+            return prop->value.string_value ? prop->value.string_value : "";
             
-            // Variables are resolved during KRB loading, so just return the property value
-            // No additional runtime resolution needed for most cases
+        case KRYON_RUNTIME_PROP_REFERENCE:
+            // For variable references, try to resolve them
+            if (prop->is_bound && prop->binding_path && runtime) {
+                const char* resolved_value = kryon_runtime_get_variable(runtime, prop->binding_path);
+                if (resolved_value) {
+                    return resolved_value;
+                }
+            }
             return prop->value.string_value ? prop->value.string_value : "";
             
         case KRYON_RUNTIME_PROP_INTEGER:
@@ -1258,12 +1182,23 @@ const char* get_element_property_string_with_runtime(KryonRuntime* runtime, Kryo
             snprintf(buffer, 1024, "#%08X", prop->value.color_value);
             return buffer;
         
-        case KRYON_RUNTIME_PROP_REFERENCE:
-            snprintf(buffer, 1024, "ref_%u", prop->value.ref_id);
-            return buffer;
-        
         case KRYON_RUNTIME_PROP_FUNCTION:
             return prop->value.string_value;
+        
+        case KRYON_RUNTIME_PROP_AST_EXPRESSION:
+            // Evaluate the AST expression and convert to string
+            if (prop->value.ast_expression && runtime) {
+                KryonExpressionValue result = kryon_runtime_evaluate_expression(prop->value.ast_expression, runtime);
+                char *result_str = kryon_expression_value_to_string(&result);
+                if (result_str) {
+                    snprintf(buffer, 1024, "%s", result_str);
+                    free(result_str);
+                    kryon_expression_value_free(&result);
+                    return buffer;
+                }
+                kryon_expression_value_free(&result);
+            }
+            return "";
         
         default:
             return NULL;
@@ -1316,6 +1251,16 @@ int get_element_property_int(KryonElement* element, const char* prop_name, int d
             
         case KRYON_RUNTIME_PROP_COLOR:
             return (int)prop->value.color_value;
+        
+        case KRYON_RUNTIME_PROP_AST_EXPRESSION:
+            // Evaluate expression and convert to integer
+            if (prop->value.ast_expression && g_current_runtime) {
+                KryonExpressionValue result = kryon_runtime_evaluate_expression(prop->value.ast_expression, g_current_runtime);
+                int int_result = (int)kryon_expression_value_to_number(&result);
+                kryon_expression_value_free(&result);
+                return int_result;
+            }
+            return default_value;
             
         default:
             return default_value;
@@ -1347,6 +1292,16 @@ float get_element_property_float(KryonElement* element, const char* prop_name, f
                 return atof(prop->value.string_value);
             }
             return default_value;
+        
+        case KRYON_RUNTIME_PROP_AST_EXPRESSION:
+            // Evaluate expression and convert to float
+            if (prop->value.ast_expression && g_current_runtime) {
+                KryonExpressionValue result = kryon_runtime_evaluate_expression(prop->value.ast_expression, g_current_runtime);
+                float float_result = (float)kryon_expression_value_to_number(&result);
+                kryon_expression_value_free(&result);
+                return float_result;
+            }
+            return default_value;
             
         default:
             return default_value;
@@ -1373,6 +1328,16 @@ bool get_element_property_bool(KryonElement* element, const char* prop_name, boo
                 return strcmp(prop->value.string_value, "true") == 0 ||
                        strcmp(prop->value.string_value, "1") == 0 ||
                        strcmp(prop->value.string_value, "yes") == 0;
+            }
+            return default_value;
+        
+        case KRYON_RUNTIME_PROP_AST_EXPRESSION:
+            // Evaluate expression and convert to boolean
+            if (prop->value.ast_expression && g_current_runtime) {
+                KryonExpressionValue result = kryon_runtime_evaluate_expression(prop->value.ast_expression, g_current_runtime);
+                bool bool_result = kryon_expression_value_to_boolean(&result);
+                kryon_expression_value_free(&result);
+                return bool_result;
             }
             return default_value;
             
@@ -1412,52 +1377,6 @@ uint32_t get_element_property_color(KryonElement* element, const char* prop_name
     }
 }
 
-// Get property reference ID
-static uint32_t get_element_property_ref(KryonElement* element, const char* prop_name, uint32_t default_value) {
-    KryonProperty* prop = find_element_property(element, prop_name);
-    if (!prop) return default_value;
-    
-    switch (prop->type) {
-        case KRYON_RUNTIME_PROP_REFERENCE:
-            return prop->value.ref_id;
-            
-        case KRYON_RUNTIME_PROP_INTEGER:
-            return (uint32_t)prop->value.int_value;
-            
-        case KRYON_RUNTIME_PROP_STRING:
-            if (prop->value.string_value) {
-                return (uint32_t)atoi(prop->value.string_value);
-            }
-            return default_value;
-            
-        default:
-            return default_value;
-    }
-}
-
-// Get property expression (for reactive properties)
-static void* get_element_property_expression(KryonElement* element, const char* prop_name) {
-    KryonProperty* prop = find_element_property(element, prop_name);
-    if (!prop) return NULL;
-    
-    if (prop->type == KRYON_RUNTIME_PROP_EXPRESSION) {
-        return prop->value.expression;
-    }
-    
-    return NULL;
-}
-
-// Get property function pointer
-static void* get_element_property_function(KryonElement* element, const char* prop_name) {
-    KryonProperty* prop = find_element_property(element, prop_name);
-    if (!prop) return NULL;
-    
-    if (prop->type == KRYON_RUNTIME_PROP_FUNCTION) {
-        return prop->value.function;
-    }
-    
-    return NULL;
-}
 
 /// Auto-size an element based on its content (universal sizing system)
 void auto_size_element(KryonElement* element, float* width, float* height) {
@@ -1528,46 +1447,6 @@ void auto_size_element(KryonElement* element, float* width, float* height) {
     if (*height > 0 && *height < 16.0f) *height = 16.0f;
 }
 
-// Debug function to log all properties of an element
-static void debug_log_element_properties(KryonElement* element, const char* element_name) {
-    if (!element) return;
-    
-    static bool debug_logged = false;
-    if (debug_logged) return;
-    debug_logged = true;
-    
-    // Properties for element
-    for (size_t i = 0; i < element->property_count; i++) {
-        KryonProperty* prop = element->properties[i];
-        if (prop && prop->name) {
-            printf("  - %s (type=%d): ", prop->name, prop->type);
-            
-            switch (prop->type) {
-                case KRYON_RUNTIME_PROP_STRING:
-                    printf("'%s'\n", prop->value.string_value ? prop->value.string_value : "NULL");
-                    break;
-                case KRYON_RUNTIME_PROP_INTEGER:
-                    printf("%lld\n", (long long)prop->value.int_value);
-                    break;
-                case KRYON_RUNTIME_PROP_FLOAT:
-                    printf("%.6f\n", prop->value.float_value);
-                    break;
-                case KRYON_RUNTIME_PROP_BOOLEAN:
-                    printf("%s\n", prop->value.bool_value ? "true" : "false");
-                    break;
-                case KRYON_RUNTIME_PROP_COLOR:
-                    printf("#%08X\n", prop->value.color_value);
-                    break;
-                case KRYON_RUNTIME_PROP_REFERENCE:
-                    printf("ref_%u\n", prop->value.ref_id);
-                    break;
-                default:
-                    printf("(unknown type)\n");
-                    break;
-            }
-        }
-    }
-}
 
 // Helper function to parse color string to KryonColor
 static KryonColor parse_color_string(const char* color_str) {
@@ -1726,30 +1605,16 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
     if (!element || !commands || !command_count || *command_count >= max_commands) return;
     
     // Safety checks
-    if (!element->type_name) {
-        printf("⚠️  WARNING: Element has null type_name, skipping\n");
-        return;
-    }
-    
-    if (element->property_count > 1000 || element->child_count > 1000) {
-        printf("❌ ERROR: Element has suspicious counts, possible corruption\n");
-        return;
-    }
-    
-    if (element->property_count > 0 && !element->properties) {
-        printf("❌ ERROR: Element has properties but NULL array\n");
-        return;
-    }
-    
-    if (element->child_count > 0 && !element->children) {
-        printf("❌ ERROR: Element has children but NULL array\n");
+    if (!element->type_name || 
+        element->property_count > 1000 || element->child_count > 1000 ||
+        (element->property_count > 0 && !element->properties) ||
+        (element->child_count > 0 && !element->children)) {
         return;
     }
     
     // Track recursion depth
     static int recursive_depth = 0;
     if (recursive_depth > 100) {
-        printf("❌ ERROR: Recursive depth exceeded 100, possible infinite loop\n");
         return;
     }
     
@@ -1766,6 +1631,10 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
     for (size_t i = 0; i < element->child_count && *command_count < max_commands; i++) {
         KryonElement* child = element->children[i];
         if (child && child->type_name) {
+            // Skip @for directive elements - they are templates, not renderable UI elements
+            if (child->type == 0x8200) { // @for directive hex code
+                    continue;
+            }
             element_to_commands_recursive(child, commands, command_count, max_commands);
         }
     }
@@ -1878,8 +1747,6 @@ bool kryon_runtime_update_viewport_size(KryonRuntime* runtime, float width, floa
     bool height_updated = kryon_runtime_set_variable(runtime, "root.height", height_str);
     
     if (width_updated && height_updated) {
-        printf("✅ Updated root variables: root.width=%s, root.height=%s\n", width_str, height_str);
-        
         // Mark elements for re-render since root variables changed
         if (runtime->root) {
             mark_elements_for_rerender(runtime->root);
@@ -1888,7 +1755,6 @@ bool kryon_runtime_update_viewport_size(KryonRuntime* runtime, float width, floa
         
         return true;
     } else {
-        printf("⚠️  Failed to update root variables\n");
         return false;
     }
 }
@@ -1910,7 +1776,6 @@ static void kryon_debug_inspector_toggle(KryonRuntime *runtime) {
     
     if (inspector_running) {
         // Close inspector - kill the running process
-        printf("🔍 Closing debug inspector\n");
         if (inspector_pid > 0) {
             kill(inspector_pid, SIGTERM);
             waitpid(inspector_pid, NULL, 0);
@@ -1920,9 +1785,6 @@ static void kryon_debug_inspector_toggle(KryonRuntime *runtime) {
         return;
     }
     
-    // Open inspector - compile and run the proper Kryon inspector
-    printf("🔍 Opening debug inspector\n");
-    
     // First, compile the inspector.kry to inspector.krb
     char compile_cmd[512];
     snprintf(compile_cmd, sizeof(compile_cmd), "./build/bin/kryon compile %s %s", 
@@ -1930,7 +1792,6 @@ static void kryon_debug_inspector_toggle(KryonRuntime *runtime) {
     
     int compile_result = system(compile_cmd);
     if (compile_result != 0) {
-        printf("❌ Failed to compile debug inspector\n");
         return;
     }
     
@@ -1945,8 +1806,423 @@ static void kryon_debug_inspector_toggle(KryonRuntime *runtime) {
     } else if (inspector_pid > 0) {
         // Parent process - inspector launched successfully
         inspector_running = true;
-        printf("✅ Debug inspector launched (PID: %d)\n", inspector_pid);
-    } else {
-        printf("❌ Failed to launch debug inspector\n");
     }
+}
+
+// =============================================================================
+// @FOR TEMPLATE EXPANSION
+// =============================================================================
+
+/**
+ * @brief Process @for directives and expand them reactively based on array data
+ * @param runtime Runtime context with variable state
+ * @param element Root element to process (searches for @for templates)
+ */
+void process_for_directives(KryonRuntime* runtime, KryonElement* element) {
+    // Simple entry check without printf to avoid stack corruption
+    if (!runtime || !element) {
+        return;
+    }
+    
+    // Skip processing if KRB loading is in progress to avoid memory corruption
+    if (runtime->is_loading) {
+        return;
+    }
+    
+    
+    // Check if this element is a @for template
+    if (kryon_is_syntax_keyword(element->type)) {
+        const char* syntax_name = kryon_get_syntax_name(element->type);
+        if (syntax_name && strcmp(syntax_name, "for") == 0) {
+            expand_for_template(runtime, element);
+            // Don't process children of @for elements recursively - they are templates
+            return;
+        }
+    }
+    
+    // Process children recursively (but skip children of @for templates)
+    for (size_t i = 0; i < element->child_count; i++) {
+        if (element->children[i]) {
+            process_for_directives(runtime, element->children[i]);
+        }
+    }
+}
+
+/**
+ * @brief Expand a @for template based on current array variable state
+ * @param runtime Runtime context
+ * @param for_element The @for template element
+ */
+static void expand_for_template(KryonRuntime* runtime, KryonElement* for_element) {
+    if (!runtime || !for_element) {
+        return;
+    }
+    
+    // Extract template parameters from @for element properties
+    const char* var_name = NULL;
+    const char* array_name = NULL;
+    
+    // Find variable and array properties
+    for (size_t i = 0; i < for_element->property_count; i++) {
+        KryonProperty* prop = for_element->properties[i];
+        if (strcmp(prop->name, "variable") == 0) {
+            var_name = prop->value.string_value;
+        } else if (strcmp(prop->name, "array") == 0) {
+            array_name = prop->value.string_value;
+            // Debug: Check if array_name is valid
+            if (!array_name || (uintptr_t)array_name < 0x1000) {
+                write(STDERR_FILENO, "ERROR: Corrupted array_name pointer\n", 36);
+                return;
+            }
+        }
+    }
+    
+    if (!var_name || !array_name) {
+        return;
+    }
+    
+    // Get array data - check if it's already resolved JSON or needs variable lookup
+    const char* array_data;
+    if (array_name && array_name[0] == '[') {
+        // Check if this looks like a JSON array
+        array_data = array_name;
+    } else {
+        // Look up as variable name
+        array_data = kryon_runtime_get_variable(runtime, array_name);
+        if (!array_data) {
+            return;
+        }
+    }
+    
+    // Parse array data - simple comma-separated strings
+    char* array_copy = NULL;
+    if (array_data) {
+        array_copy = kryon_strdup(array_data);
+        if (!array_copy) {
+            return;
+        }
+    } else {
+        return;
+    }
+    
+    // Clear existing expanded children
+    clear_expanded_children(runtime, for_element);
+    
+    // Split array and create elements
+    char* token = strtok(array_copy, ",");
+    size_t index = 0;
+    
+    while (token) {
+        // Trim whitespace, brackets, and quotes
+        while (*token == ' ' || *token == '[' || *token == ']' || *token == '"') token++;
+        char* end = token + strlen(token) - 1;
+        while (end > token && (*end == ' ' || *end == '[' || *end == ']' || *end == '"')) {
+            *end = '\0';
+            end--;
+        }
+        
+        if (strlen(token) > 0) {
+            // Create instance of template children for this array item
+            expand_for_iteration(runtime, for_element, var_name, token, index);
+            index++;
+        }
+        
+        token = strtok(NULL, ",");
+    }
+    
+    kryon_free(array_copy);
+}
+
+/**
+ * @brief Create element instances for one iteration of @for loop
+ * @param runtime Runtime context
+ * @param for_element The @for template element
+ * @param var_name Loop variable name
+ * @param var_value Current iteration value
+ * @param index Current iteration index
+ */
+static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_element, 
+                                const char* var_name, const char* var_value, size_t index) {
+    if (!runtime || !for_element || !var_name || !var_value) {
+        return;
+    }
+    
+    // Clone template children and substitute variables
+    for (size_t i = 0; i < for_element->child_count; i++) {
+        KryonElement* template_child = for_element->children[i];
+        if (!template_child) continue;
+        
+        // Clone the template child
+        KryonElement* instance = clone_element_with_substitution(runtime, template_child, 
+                                                               var_name, var_value, index);
+        if (instance) {
+            // Add to parent (the element containing the @for)
+            if (for_element->parent) {
+                add_child_element(runtime, for_element->parent, instance);
+            } else {
+                kryon_element_destroy(runtime, instance);
+            }
+        }
+    }
+}
+
+/**
+ * @brief Clear previously expanded children from @for template
+ * @param runtime Runtime context  
+ * @param for_element The @for template element
+ */
+static void clear_expanded_children(KryonRuntime* runtime, KryonElement* for_element) {
+    // For now, this is a no-op since @for expansion happens during initial load
+    // Future versions could track expanded children for reactive updates
+    (void)runtime;
+    (void)for_element;
+}
+
+/**
+ * @brief Clone element and substitute template variables
+ * @param runtime Runtime context
+ * @param template_element Element to clone
+ * @param var_name Variable name to substitute
+ * @param var_value Variable value to substitute
+ * @param index Iteration index
+ * @return Cloned element with substituted variables
+ */
+static KryonElement* clone_element_with_substitution(KryonRuntime* runtime, 
+                                                   KryonElement* template_element,
+                                                   const char* var_name, 
+                                                   const char* var_value,
+                                                   size_t index) {
+    // Comprehensive safety checks
+    if (!runtime) {
+        return NULL;
+    }
+    if (!template_element) {
+        return NULL;
+    }
+    if (!var_name) {
+        return NULL;
+    }
+    if (!var_value) {
+        return NULL;
+    }
+    
+    // Create new element of same type
+    KryonElement* clone = kryon_element_create(runtime, template_element->type, NULL);
+    if (!clone) {
+        return NULL;
+    }
+    
+    // Copy type_name from template element
+    if (template_element->type_name) {
+        clone->type_name = kryon_strdup(template_element->type_name);
+    }
+    
+    // Copy properties with variable substitution
+    if (template_element->properties && template_element->property_count > 0) {
+        // Allocate properties array for clone
+        clone->property_capacity = template_element->property_count;
+        clone->properties = kryon_alloc(clone->property_capacity * sizeof(KryonProperty*));
+        if (!clone->properties) {
+            kryon_element_destroy(runtime, clone);
+            return NULL;
+        }
+        
+        // Clone each property with comprehensive bounds checking
+        for (size_t i = 0; i < template_element->property_count; i++) {
+            
+            // Validate property array bounds
+            if (i >= template_element->property_count) {
+                break;
+            }
+            
+            KryonProperty* src_prop = template_element->properties[i];
+            if (!src_prop) {
+                continue;
+            }
+            
+            // Validate clone property array capacity
+            if (clone->property_count >= clone->property_capacity) {
+                break;
+            }
+            
+            // Allocate new property
+            KryonProperty* dst_prop = kryon_alloc(sizeof(KryonProperty));
+            if (!dst_prop) {
+                break; // Stop on allocation failure
+            }
+            memset(dst_prop, 0, sizeof(KryonProperty));
+            
+            // Safely add to clone properties array
+            size_t prop_index = clone->property_count;
+            clone->properties[prop_index] = dst_prop;
+            clone->property_count++;
+            
+            
+            // Copy property name
+            if (src_prop->name) {
+                dst_prop->name = kryon_strdup(src_prop->name);
+                if (!dst_prop->name) {
+                    dst_prop->name = kryon_strdup("unknown");
+                }
+            } else {
+                dst_prop->name = NULL;
+            }
+            dst_prop->type = src_prop->type;
+            
+            // Handle property value based on type with safety checks
+            if (src_prop->type == KRYON_RUNTIME_PROP_REFERENCE) {
+                // Check if this REFERENCE property matches our substitution variable
+                const char* ref_var = src_prop->value.string_value ? src_prop->value.string_value : src_prop->binding_path;
+                
+                if (ref_var && strcmp(ref_var, var_name) == 0) {
+                    // Substitute: convert REFERENCE to STRING with the actual value
+                    dst_prop->type = KRYON_RUNTIME_PROP_STRING;
+                    if (var_value) {
+                        dst_prop->value.string_value = kryon_strdup(var_value);
+                        if (!dst_prop->value.string_value) {
+                            dst_prop->value.string_value = kryon_strdup("");
+                        }
+                    } else {
+                        dst_prop->value.string_value = kryon_strdup("");
+                    }
+                    dst_prop->is_bound = false;
+                    dst_prop->binding_path = NULL;
+                } else {
+                    // Copy REFERENCE as-is (different variable)
+                    if (ref_var) {
+                        dst_prop->value.string_value = kryon_strdup(ref_var);
+                        if (!dst_prop->value.string_value) {
+                            dst_prop->value.string_value = NULL;
+                        }
+                    } else {
+                        dst_prop->value.string_value = NULL;
+                    }
+                    dst_prop->is_bound = src_prop->is_bound;
+                    if (src_prop->binding_path) {
+                        dst_prop->binding_path = kryon_strdup(src_prop->binding_path);
+                        if (!dst_prop->binding_path) {
+                            dst_prop->binding_path = NULL;
+                        }
+                    } else {
+                        dst_prop->binding_path = NULL;
+                    }
+                }
+            } else {
+                // Copy literal properties (STRING, FLOAT, INT, etc.) as-is
+                if (src_prop->type == KRYON_RUNTIME_PROP_STRING) {
+                    if (src_prop->value.string_value) {
+                        dst_prop->value.string_value = kryon_strdup(src_prop->value.string_value);
+                        if (!dst_prop->value.string_value) {
+                            dst_prop->value.string_value = kryon_strdup("");
+                        }
+                    } else {
+                        dst_prop->value.string_value = NULL;
+                    }
+                } else {
+                    // For numeric types, shallow copy
+                    dst_prop->value = src_prop->value;
+                }
+                // For literal properties, force correct binding state
+                if (src_prop->type == KRYON_RUNTIME_PROP_STRING || 
+                    src_prop->type == KRYON_RUNTIME_PROP_FLOAT || 
+                    src_prop->type == KRYON_RUNTIME_PROP_INTEGER) {
+                    // Literal properties should never be bound
+                    dst_prop->is_bound = false;
+                    dst_prop->binding_path = NULL;
+                } else {
+                    // For other property types, copy binding state
+                    dst_prop->is_bound = src_prop->is_bound;
+                    if (src_prop->binding_path) {
+                        dst_prop->binding_path = kryon_strdup(src_prop->binding_path);
+                        if (!dst_prop->binding_path) {
+                            dst_prop->binding_path = NULL;
+                        }
+                    } else {
+                        dst_prop->binding_path = NULL;
+                    }
+                }
+            }
+        }
+    }
+    
+    return clone;
+}
+
+/**
+ * @brief Substitute template variables in string
+ * @param template_str String with template variables like "${todo}"
+ * @param var_name Variable name to replace
+ * @param var_value Value to substitute
+ * @return New string with variables substituted
+ */
+static char* substitute_template_variable(const char* template_str, 
+                                        const char* var_name, 
+                                        const char* var_value) {
+    if (!template_str || !var_name || !var_value) {
+        return kryon_strdup(template_str ? template_str : "");
+    }
+    
+    // Create variable pattern like "${todo}"
+    char pattern[256];
+    snprintf(pattern, sizeof(pattern), "${%s}", var_name);
+    
+    // Simple string replacement
+    const char* pos = strstr(template_str, pattern);
+    if (!pos) {
+        // No substitution needed
+        return kryon_strdup(template_str);
+    }
+    
+    // Calculate result length
+    size_t result_len = strlen(template_str) - strlen(pattern) + strlen(var_value) + 1;
+    char* result = kryon_alloc(result_len);
+    if (!result) {
+        return kryon_strdup(template_str);
+    }
+    
+    // Copy prefix
+    size_t prefix_len = pos - template_str;
+    strncpy(result, template_str, prefix_len);
+    result[prefix_len] = '\0';
+    
+    // Add substituted value
+    strcat(result, var_value);
+    
+    // Add suffix
+    strcat(result, pos + strlen(pattern));
+    
+    return result;
+}
+
+/**
+ * @brief Add child element to parent
+ * @param runtime Runtime context
+ * @param parent Parent element
+ * @param child Child element to add
+ */
+static void add_child_element(KryonRuntime* runtime, KryonElement* parent, KryonElement* child) {
+    if (!runtime || !parent || !child) {
+        return;
+    }
+    
+    // Set parent relationship
+    child->parent = parent;
+    
+    // Expand parent children array if needed
+    if (parent->child_count >= parent->child_capacity) {
+        size_t new_capacity = parent->child_capacity == 0 ? 4 : parent->child_capacity * 2;
+        KryonElement** new_children = kryon_realloc(parent->children, 
+                                                  new_capacity * sizeof(KryonElement*));
+        if (!new_children) {
+            return;
+        }
+        parent->children = new_children;
+        parent->child_capacity = new_capacity;
+    }
+    
+    // Add child
+    parent->children[parent->child_count++] = child;
+    
+    // Mark for re-render
+    parent->needs_render = true;
 }

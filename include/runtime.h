@@ -23,6 +23,7 @@ extern "C" {
 
 // Forward declarations
 struct HitTestManager;
+struct KryonNavigationManager;
 
 // =============================================================================
 // RUNTIME CONFIGURATION
@@ -66,6 +67,7 @@ typedef struct KryonRuntime {
     double update_delta;
     bool is_running;
     bool needs_update;
+    bool is_loading; // Flag to prevent @for processing during KRB loading
     KryonRenderContext *render_context;
     void *renderer;
     KryonVM *script_vm;
@@ -99,10 +101,15 @@ typedef struct KryonRuntime {
     char* focused_input_id;
     char input_text_buffer[1024];
     size_t input_text_length;
+    
+    // Cursor management to prevent jittery behavior
+    bool cursor_set_this_frame;
     int input_text_scroll_offset;
     bool mouse_clicked_this_frame;
-    bool mouse_pressed_last_frame; 
-    bool cursor_should_be_pointer;
+    bool mouse_pressed_last_frame;
+    
+    // Navigation system
+    struct KryonNavigationManager* navigation_manager;
     
     // Note: Dropdown state now managed by individual dropdown elements
 } KryonRuntime;
@@ -149,6 +156,9 @@ bool kryon_runtime_set_variable(KryonRuntime *runtime, const char *name, const c
 const char* kryon_runtime_get_variable(KryonRuntime *runtime, const char *name);
 KryonRuntime* kryon_runtime_get_current(void);
 
+// @for directive processing
+void process_for_directives(KryonRuntime* runtime, KryonElement* element);
+
 // Update root variables when viewport/window size changes
 bool kryon_runtime_update_viewport_size(KryonRuntime* runtime, float width, float height);
 
@@ -178,6 +188,51 @@ const char* get_element_property_string_with_runtime(KryonRuntime* runtime, Kryo
  * they are replaced with a calculated size.
  */
  void auto_size_element(KryonElement* element, float* width, float* height);
+
+// =============================================================================
+// EXPRESSION EVALUATION API
+// =============================================================================
+
+/**
+ * @brief Evaluate an expression AST node to get its value
+ * @param expression The expression node to evaluate
+ * @param runtime Runtime context for variable resolution
+ * @return Evaluated value
+ */
+KryonExpressionValue kryon_runtime_evaluate_expression(const KryonExpressionNode *expression, KryonRuntime *runtime);
+
+/**
+ * @brief Convert expression value to string
+ * @param value Expression value to convert
+ * @return Allocated string (caller must free)
+ */
+char *kryon_expression_value_to_string(const KryonExpressionValue *value);
+
+/**
+ * @brief Convert expression value to number
+ * @param value Expression value to convert
+ * @return Numeric value
+ */
+double kryon_expression_value_to_number(const KryonExpressionValue *value);
+
+/**
+ * @brief Convert expression value to boolean
+ * @param value Expression value to convert
+ * @return Boolean value
+ */
+bool kryon_expression_value_to_boolean(const KryonExpressionValue *value);
+
+/**
+ * @brief Free expression value resources
+ * @param value Expression value to free
+ */
+void kryon_expression_value_free(KryonExpressionValue *value);
+
+/**
+ * @brief Free expression AST node
+ * @param node Expression node to free
+ */
+void kryon_expression_node_free(KryonExpressionNode *node);
  
 #ifdef __cplusplus
 }

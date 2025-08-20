@@ -261,30 +261,118 @@ typedef enum {
 // INPUT HANDLING
 // =============================================================================
 
+// Renderer-agnostic KryonKey enum with sequential values
 typedef enum {
     KRYON_KEY_UNKNOWN = 0,
-    KRYON_KEY_SPACE = 32,
-    KRYON_KEY_ENTER = 257,
-    KRYON_KEY_TAB = 258,
-    KRYON_KEY_BACKSPACE = 259,
-    KRYON_KEY_DELETE = 261,
-    KRYON_KEY_RIGHT = 262,
-    KRYON_KEY_LEFT = 263,
-    KRYON_KEY_DOWN = 264,
-    KRYON_KEY_UP = 265,
-    KRYON_KEY_ESCAPE = 256,
-    KRYON_KEY_A = 65,
-    KRYON_KEY_C = 67,
-    KRYON_KEY_V = 86,
-    KRYON_KEY_X = 88,
-    KRYON_KEY_Z = 90
+    KRYON_KEY_SPACE,
+    KRYON_KEY_APOSTROPHE,
+    KRYON_KEY_COMMA,
+    KRYON_KEY_MINUS,
+    KRYON_KEY_PERIOD,
+    KRYON_KEY_SLASH,
+    KRYON_KEY_0,
+    KRYON_KEY_1,
+    KRYON_KEY_2,
+    KRYON_KEY_3,
+    KRYON_KEY_4,
+    KRYON_KEY_5,
+    KRYON_KEY_6,
+    KRYON_KEY_7,
+    KRYON_KEY_8,
+    KRYON_KEY_9,
+    KRYON_KEY_SEMICOLON,
+    KRYON_KEY_EQUAL,
+    KRYON_KEY_A,
+    KRYON_KEY_B,
+    KRYON_KEY_C,
+    KRYON_KEY_D,
+    KRYON_KEY_E,
+    KRYON_KEY_F,
+    KRYON_KEY_G,
+    KRYON_KEY_H,
+    KRYON_KEY_I,
+    KRYON_KEY_J,
+    KRYON_KEY_K,
+    KRYON_KEY_L,
+    KRYON_KEY_M,
+    KRYON_KEY_N,
+    KRYON_KEY_O,
+    KRYON_KEY_P,
+    KRYON_KEY_Q,
+    KRYON_KEY_R,
+    KRYON_KEY_S,
+    KRYON_KEY_T,
+    KRYON_KEY_U,
+    KRYON_KEY_V,
+    KRYON_KEY_W,
+    KRYON_KEY_X,
+    KRYON_KEY_Y,
+    KRYON_KEY_Z,
+    KRYON_KEY_LEFT_BRACKET,
+    KRYON_KEY_BACKSLASH,
+    KRYON_KEY_RIGHT_BRACKET,
+    KRYON_KEY_GRAVE,
+    KRYON_KEY_ESCAPE,
+    KRYON_KEY_ENTER,
+    KRYON_KEY_TAB,
+    KRYON_KEY_BACKSPACE,
+    KRYON_KEY_INSERT,
+    KRYON_KEY_DELETE,
+    KRYON_KEY_RIGHT,
+    KRYON_KEY_LEFT,
+    KRYON_KEY_DOWN,
+    KRYON_KEY_UP,
+    KRYON_KEY_PAGE_UP,
+    KRYON_KEY_PAGE_DOWN,
+    KRYON_KEY_HOME,
+    KRYON_KEY_END,
+    KRYON_KEY_CAPS_LOCK,
+    KRYON_KEY_SCROLL_LOCK,
+    KRYON_KEY_NUM_LOCK,
+    KRYON_KEY_PRINT_SCREEN,
+    KRYON_KEY_PAUSE,
+    KRYON_KEY_F1,
+    KRYON_KEY_F2,
+    KRYON_KEY_F3,
+    KRYON_KEY_F4,
+    KRYON_KEY_F5,
+    KRYON_KEY_F6,
+    KRYON_KEY_F7,
+    KRYON_KEY_F8,
+    KRYON_KEY_F9,
+    KRYON_KEY_F10,
+    KRYON_KEY_F11,
+    KRYON_KEY_F12,
+    KRYON_KEY_LEFT_SHIFT,
+    KRYON_KEY_LEFT_CONTROL,
+    KRYON_KEY_LEFT_ALT,
+    KRYON_KEY_RIGHT_SHIFT,
+    KRYON_KEY_RIGHT_CONTROL,
+    KRYON_KEY_RIGHT_ALT,
+    KRYON_KEY_COUNT
 } KryonKey;
+
+// Macro to define key mappings for a renderer
+#define DEFINE_KEY_MAPPING(renderer, key, kryon_key) [renderer##_##key] = KRYON_KEY_##kryon_key
 
 typedef enum {
     KRYON_MOUSE_LEFT = 0,
     KRYON_MOUSE_RIGHT = 1,
     KRYON_MOUSE_MIDDLE = 2
 } KryonMouseButton;
+
+typedef enum {
+    KRYON_CURSOR_DEFAULT = 0,
+    KRYON_CURSOR_POINTER,
+    KRYON_CURSOR_TEXT,
+    KRYON_CURSOR_CROSSHAIR,
+    KRYON_CURSOR_RESIZE_H,
+    KRYON_CURSOR_RESIZE_V,
+    KRYON_CURSOR_RESIZE_NESW,
+    KRYON_CURSOR_RESIZE_NWSE,
+    KRYON_CURSOR_RESIZE_ALL,
+    KRYON_CURSOR_NOT_ALLOWED
+} KryonCursorType;
 
 typedef struct {
     KryonVec2 position;
@@ -407,6 +495,13 @@ typedef struct {
      */
     void* (*get_native_window)(void);
     
+    /**
+     * Set mouse cursor type
+     * @param cursor_type Cursor type to set
+     * @return KRYON_RENDER_SUCCESS on success
+     */
+    KryonRenderResult (*set_cursor)(KryonCursorType cursor_type);
+    
 } KryonRendererVTable;
 
 // =============================================================================
@@ -466,6 +561,16 @@ bool kryon_renderer_set_event_callback(KryonRenderer* renderer,
  * @param event The event to push
  */
 void kryon_renderer_push_event(KryonRenderer* renderer, const KryonEvent* event);
+
+/**
+ * Set cursor type on renderer with automatic state tracking
+ * @param renderer The renderer instance
+ * @param cursor_type Cursor type to set
+ * @return KRYON_RENDER_SUCCESS on success
+ */
+KryonRenderResult kryon_renderer_set_cursor(
+    KryonRenderer* renderer,
+    KryonCursorType cursor_type);
 
 // =============================================================================
 // CONVENIENCE FUNCTIONS

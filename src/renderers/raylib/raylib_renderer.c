@@ -45,6 +45,10 @@ typedef struct {
     // Mouse tracking for delta calculation
     Vector2 last_mouse_pos;
     bool mouse_tracking_initialized;
+    
+    // Cursor state tracking to prevent jittery behavior
+    KryonCursorType current_cursor;
+    bool cursor_initialized;
 } RaylibRendererImpl;
 
 // =============================================================================
@@ -80,6 +84,7 @@ static bool raylib_point_in_element(KryonVec2 point, KryonRect element_bounds);
 static bool raylib_handle_event(const KryonEvent* event);
 static void* raylib_get_native_window(void);
 static float raylib_measure_text_width(const char* text, float font_size);
+static KryonRenderResult raylib_set_cursor(KryonCursorType cursor_type);
 
 static KryonRendererVTable g_raylib_vtable = {
     .initialize = raylib_initialize,
@@ -92,7 +97,8 @@ static KryonRendererVTable g_raylib_vtable = {
     .point_in_element = raylib_point_in_element,
     .handle_event = raylib_handle_event,
     .get_native_window = raylib_get_native_window,
-    .measure_text_width = raylib_measure_text_width
+    .measure_text_width = raylib_measure_text_width,
+    .set_cursor = raylib_set_cursor
 };
 
 // =============================================================================
@@ -173,6 +179,10 @@ static KryonRenderResult raylib_initialize(void* surface) {
     g_raylib_impl.height = surf->height;
     g_raylib_impl.initialized = true;
     g_raylib_impl.window_should_close = false;
+    
+    // Initialize cursor state
+    g_raylib_impl.current_cursor = KRYON_CURSOR_DEFAULT;
+    g_raylib_impl.cursor_initialized = false;
     return KRYON_RENDER_SUCCESS;
 }
 
@@ -306,9 +316,6 @@ static KryonRenderResult raylib_execute_commands(KryonRenderContext* context,
                     if (data->text_align == 1) { // center
                         final_pos.x -= text_size.x / 2.0f;
                         final_pos.y -= text_size.y / 2.0f;
-                        printf("🎯 TEXT CENTER: size=%.1fx%.1f, orig_pos=%.1f,%.1f, final_pos=%.1f,%.1f\n",
-                               text_size.x, text_size.y, data->position.x, data->position.y,
-                               final_pos.x, final_pos.y);
                     } else if (data->text_align == 2) { // right
                         final_pos.x -= text_size.x;
                     }
@@ -822,25 +829,74 @@ static void draw_text_with_font_raylib(const char* text, KryonVec2 pos,
 // INPUT HANDLING IMPLEMENTATION
 // =============================================================================
 
-static KryonKey raylib_key_to_kryon(int raylib_key) {
-    switch (raylib_key) {
-        case KEY_SPACE: return KRYON_KEY_SPACE;
-        case KEY_ENTER: return KRYON_KEY_ENTER;
-        case KEY_TAB: return KRYON_KEY_TAB;
-        case KEY_BACKSPACE: return KRYON_KEY_BACKSPACE;
-        case KEY_DELETE: return KRYON_KEY_DELETE;
-        case KEY_RIGHT: return KRYON_KEY_RIGHT;
-        case KEY_LEFT: return KRYON_KEY_LEFT;
-        case KEY_DOWN: return KRYON_KEY_DOWN;
-        case KEY_UP: return KRYON_KEY_UP;
-        case KEY_ESCAPE: return KRYON_KEY_ESCAPE;
-        case KEY_A: return KRYON_KEY_A;
-        case KEY_C: return KRYON_KEY_C;
-        case KEY_V: return KRYON_KEY_V;
-        case KEY_X: return KRYON_KEY_X;
-        case KEY_Z: return KRYON_KEY_Z;
-        default: return KRYON_KEY_UNKNOWN;
-    }
+
+static inline KryonKey raylib_key_to_kryon_ascii(int key) {
+    if (key >= KEY_A && key <= KEY_Z) return KRYON_KEY_A + (key - KEY_A);
+    if (key >= KEY_ZERO && key <= KEY_NINE) return KRYON_KEY_0 + (key - KEY_ZERO);
+    if (key == KEY_SPACE) return KRYON_KEY_SPACE;
+    if (key == KEY_APOSTROPHE) return KRYON_KEY_APOSTROPHE;
+    if (key == KEY_COMMA) return KRYON_KEY_COMMA;
+    if (key == KEY_MINUS) return KRYON_KEY_MINUS;
+    if (key == KEY_PERIOD) return KRYON_KEY_PERIOD;
+    if (key == KEY_SLASH) return KRYON_KEY_SLASH;
+    if (key == KEY_SEMICOLON) return KRYON_KEY_SEMICOLON;
+    if (key == KEY_EQUAL) return KRYON_KEY_EQUAL;
+    if (key == KEY_LEFT_BRACKET) return KRYON_KEY_LEFT_BRACKET;
+    if (key == KEY_BACKSLASH) return KRYON_KEY_BACKSLASH;
+    if (key == KEY_RIGHT_BRACKET) return KRYON_KEY_RIGHT_BRACKET;
+    if (key == KEY_GRAVE) return KRYON_KEY_GRAVE;
+    return KRYON_KEY_UNKNOWN;
+}
+
+
+static const KryonKey raylib_to_kryon_map[] = {
+    DEFINE_KEY_MAPPING(KEY, NULL, UNKNOWN),
+    DEFINE_KEY_MAPPING(KEY, ESCAPE, ESCAPE),
+    DEFINE_KEY_MAPPING(KEY, ENTER, ENTER),
+    DEFINE_KEY_MAPPING(KEY, TAB, TAB),
+    DEFINE_KEY_MAPPING(KEY, BACKSPACE, BACKSPACE),
+    DEFINE_KEY_MAPPING(KEY, INSERT, INSERT),
+    DEFINE_KEY_MAPPING(KEY, DELETE, DELETE),
+    DEFINE_KEY_MAPPING(KEY, RIGHT, RIGHT),
+    DEFINE_KEY_MAPPING(KEY, LEFT, LEFT),
+    DEFINE_KEY_MAPPING(KEY, DOWN, DOWN),
+    DEFINE_KEY_MAPPING(KEY, UP, UP),
+    DEFINE_KEY_MAPPING(KEY, PAGE_UP, PAGE_UP),
+    DEFINE_KEY_MAPPING(KEY, PAGE_DOWN, PAGE_DOWN),
+    DEFINE_KEY_MAPPING(KEY, HOME, HOME),
+    DEFINE_KEY_MAPPING(KEY, END, END),
+    DEFINE_KEY_MAPPING(KEY, CAPS_LOCK, CAPS_LOCK),
+    DEFINE_KEY_MAPPING(KEY, SCROLL_LOCK, SCROLL_LOCK),
+    DEFINE_KEY_MAPPING(KEY, NUM_LOCK, NUM_LOCK),
+    DEFINE_KEY_MAPPING(KEY, PRINT_SCREEN, PRINT_SCREEN),
+    DEFINE_KEY_MAPPING(KEY, PAUSE, PAUSE),
+    DEFINE_KEY_MAPPING(KEY, F1, F1),
+    DEFINE_KEY_MAPPING(KEY, F2, F2),
+    DEFINE_KEY_MAPPING(KEY, F3, F3),
+    DEFINE_KEY_MAPPING(KEY, F4, F4),
+    DEFINE_KEY_MAPPING(KEY, F5, F5),
+    DEFINE_KEY_MAPPING(KEY, F6, F6),
+    DEFINE_KEY_MAPPING(KEY, F7, F7),
+    DEFINE_KEY_MAPPING(KEY, F8, F8),
+    DEFINE_KEY_MAPPING(KEY, F9, F9),
+    DEFINE_KEY_MAPPING(KEY, F10, F10),
+    DEFINE_KEY_MAPPING(KEY, F11, F11),
+    DEFINE_KEY_MAPPING(KEY, F12, F12),
+    DEFINE_KEY_MAPPING(KEY, LEFT_SHIFT, LEFT_SHIFT),
+    DEFINE_KEY_MAPPING(KEY, LEFT_CONTROL, LEFT_CONTROL),
+    DEFINE_KEY_MAPPING(KEY, LEFT_ALT, LEFT_ALT),
+    DEFINE_KEY_MAPPING(KEY, RIGHT_SHIFT, RIGHT_SHIFT),
+    DEFINE_KEY_MAPPING(KEY, RIGHT_CONTROL, RIGHT_CONTROL),
+    DEFINE_KEY_MAPPING(KEY, RIGHT_ALT, RIGHT_ALT)
+};
+
+
+static inline KryonKey raylib_key_to_kryon(int raylib_key) {
+    KryonKey key = raylib_key_to_kryon_ascii(raylib_key);
+    if (key != KRYON_KEY_UNKNOWN) return key;
+    return (raylib_key >= 0 && raylib_key < sizeof(raylib_to_kryon_map) / sizeof(raylib_to_kryon_map[0]))
+           ? raylib_to_kryon_map[raylib_key]
+           : KRYON_KEY_UNKNOWN;
 }
 
 static void raylib_process_input(RaylibRendererImpl* data) {
@@ -851,12 +907,14 @@ static void raylib_process_input(RaylibRendererImpl* data) {
     // Mouse button events
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         Vector2 pos = GetMousePosition();
+        printf("🖱️ LEFT MOUSE BUTTON PRESSED at (%.1f, %.1f)\n", pos.x, pos.y);
         KryonEvent event = kryon_event_create_mouse_button(0, pos.x, pos.y, true);
         data->event_callback(&event, data->callback_data);
     }
     
     if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
         Vector2 pos = GetMousePosition();
+        printf("🖱️ LEFT MOUSE BUTTON RELEASED at (%.1f, %.1f)\n", pos.x, pos.y);
         KryonEvent event = kryon_event_create_mouse_button(0, pos.x, pos.y, false);
         data->event_callback(&event, data->callback_data);
     }
@@ -993,6 +1051,64 @@ static float raylib_measure_text_width(const char* text, float font_size) {
     // Use the actual font_size parameter for accurate measurement
     Vector2 text_size = MeasureTextEx(current_font, text, font_size, 1.0f);
     return text_size.x;
+}
+
+// Set cursor implementation
+static KryonRenderResult raylib_set_cursor(KryonCursorType cursor_type) {
+    if (!g_raylib_impl.initialized) {
+        return KRYON_RENDER_ERROR_INVALID_PARAM;
+    }
+    
+    // Only change cursor if it's different from current state (prevents jittery behavior)
+    if (g_raylib_impl.cursor_initialized && g_raylib_impl.current_cursor == cursor_type) {
+        return KRYON_RENDER_SUCCESS;
+    }
+    
+    // Map Kryon cursor types to Raylib cursor types
+    MouseCursor raylib_cursor;
+    switch (cursor_type) {
+        case KRYON_CURSOR_DEFAULT:
+            raylib_cursor = MOUSE_CURSOR_DEFAULT;
+            break;
+        case KRYON_CURSOR_POINTER:
+            raylib_cursor = MOUSE_CURSOR_POINTING_HAND;
+            break;
+        case KRYON_CURSOR_TEXT:
+            raylib_cursor = MOUSE_CURSOR_IBEAM;
+            break;
+        case KRYON_CURSOR_CROSSHAIR:
+            raylib_cursor = MOUSE_CURSOR_CROSSHAIR;
+            break;
+        case KRYON_CURSOR_RESIZE_H:
+            raylib_cursor = MOUSE_CURSOR_RESIZE_EW;
+            break;
+        case KRYON_CURSOR_RESIZE_V:
+            raylib_cursor = MOUSE_CURSOR_RESIZE_NS;
+            break;
+        case KRYON_CURSOR_RESIZE_NESW:
+            raylib_cursor = MOUSE_CURSOR_RESIZE_NESW;
+            break;
+        case KRYON_CURSOR_RESIZE_NWSE:
+            raylib_cursor = MOUSE_CURSOR_RESIZE_NWSE;
+            break;
+        case KRYON_CURSOR_RESIZE_ALL:
+            raylib_cursor = MOUSE_CURSOR_RESIZE_ALL;
+            break;
+        case KRYON_CURSOR_NOT_ALLOWED:
+            raylib_cursor = MOUSE_CURSOR_NOT_ALLOWED;
+            break;
+        default:
+            raylib_cursor = MOUSE_CURSOR_DEFAULT;
+            break;
+    }
+    
+    SetMouseCursor(raylib_cursor);
+    
+    // Update state tracking
+    g_raylib_impl.current_cursor = cursor_type;
+    g_raylib_impl.cursor_initialized = true;
+    
+    return KRYON_RENDER_SUCCESS;
 }
 
 // Comparison function for z-index sorting
