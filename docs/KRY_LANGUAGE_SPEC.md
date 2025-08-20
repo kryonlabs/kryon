@@ -153,11 +153,11 @@ style "card" {
 ### Using Theme Variables
 ```kry
 style "primaryButton" {
-    background: $colors.primary
-    color: $colors.background
-    fontSize: $typography.body
-    padding: "$spacing.sm $spacing.md"
-    borderRadius: $radius.md
+    background: colors.primary
+    color: colors.background
+    fontSize: typography.body
+    padding: spacing.sm spacing.md
+    borderRadius: radius.md
 }
 
 Button {
@@ -190,12 +190,12 @@ App {
     theme: "light"  # or "dark"
     
     Container {
-        background: $background
-        color: $text
+        background: background
+        color: text
         
         Button {
-            background: $primary
-            color: $background
+            background: primary
+            color: background
         }
     }
 }
@@ -250,13 +250,13 @@ Row {
 Container {
     width: 200
     height: 100
-    background: $colors.surface
-    borderRadius: $radius.md
-    padding: $spacing.md
+    background: colors.surface
+    borderRadius: radius.md
+    padding: spacing.md
     
     child: Text { 
         text: "Hello, World!"
-        color: $colors.text
+        color: colors.text
     }
 }
 ```
@@ -292,9 +292,9 @@ Flex {
     gap: 12
     
     children: [
-        Container { flex: 1, background: $colors.primary }
-        Container { flex: 2, background: $colors.secondary }  
-        Container { flex: 1, background: $colors.success }
+        Container { flex: 1, background: colors.primary }
+        Container { flex: 2, background: colors.secondary }  
+        Container { flex: 1, background: colors.success }
     ]
 }
 ```
@@ -305,9 +305,9 @@ Flex {
 ```kry
 Text {
     text: "Hello, World!"
-    fontSize: $typography.body
+    fontSize: typography.body
     fontWeight: 600
-    color: $colors.text
+    color: colors.text
     textAlign: "center"
 }
 ```
@@ -328,7 +328,7 @@ Image {
     src: "avatar.jpg"
     width: 100
     height: 100
-    borderRadius: $radius.xl
+    borderRadius: radius.xl
     objectFit: "cover"  # cover, contain, fill
 }
 ```
@@ -337,7 +337,7 @@ Image {
 ```kry
 Input {
     placeholder: "Enter your name"
-    value: $userName
+    value: userName
     onChange: "handleNameChange"
     style: "inputField"
 }
@@ -363,20 +363,20 @@ Input {
 
 # Styles
 style "card" {
-    background: $colors.surface
+    background: colors.surface
     borderRadius: 12
-    padding: $spacing.lg
-    border: "1px solid $colors.border"
+    padding: spacing.lg
+    border: "1px solid ${colors.border}"
     boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
 }
 
 style "primaryButton" {
-    background: $colors.primary
-    color: $colors.background
+    background: colors.primary
+    color: colors.background
     fontSize: 16
     fontWeight: 600
     borderRadius: 8
-    padding: "$spacing.sm $spacing.md"
+    padding: spacing.sm spacing.md
     border: "none"
     cursor: "pointer"
 }
@@ -385,7 +385,7 @@ style "primaryButton" {
 App {
     windowWidth: 800
     windowHeight: 600
-    background: $colors.background
+    background: colors.background
     
     Center {
         child: Container {
@@ -393,17 +393,17 @@ App {
             width: 400
             
             Column {
-                spacing: $spacing.md
+                spacing: spacing.md
                 
                 Text {
                     text: "User Profile"
                     fontSize: 24
                     fontWeight: 700
-                    color: $colors.text
+                    color: colors.text
                 }
                 
                 Row {
-                    spacing: $spacing.sm
+                    spacing: spacing.sm
                     crossAxis: "center"
                     
                     Image {
@@ -417,7 +417,7 @@ App {
                         spacing: 4
                         
                         Text { text: "John Doe", fontWeight: 600 }
-                        Text { text: "Designer", color: $colors.textSecondary }
+                        Text { text: "Designer", color: colors.textSecondary }
                     }
                     
                     Spacer {}
@@ -447,14 +447,14 @@ style "button" {
 }
 
 style "primaryButton" extends "button" {
-    background: $colors.primary
-    color: $colors.background
+    background: colors.primary
+    color: colors.background
 }
 
 style "secondaryButton" extends "button" {
     background: "transparent"
-    color: $colors.primary
-    border: "1px solid $colors.primary"
+    color: colors.primary
+    border: "1px solid ${colors.primary}"
 }
 ```
 
@@ -467,9 +467,9 @@ Container {
         desktop: 800
     }
     padding: {
-        mobile: $spacing.sm
-        tablet: $spacing.md
-        desktop: $spacing.lg
+        mobile: spacing.sm
+        tablet: spacing.md
+        desktop: spacing.lg
     }
 }
 ```
@@ -478,8 +478,8 @@ Container {
 ```kry
 Button {
     text: "Submit"
-    style: $isValid ? "primaryButton" : "disabledButton"
-    disabled: !$isValid
+    style: isValid ? "primaryButton" : "disabledButton"
+    disabled: !isValid
 }
 ```
 
@@ -516,7 +516,7 @@ Button {
 }
 
 Input {
-    value: $inputValue
+    value: inputValue
     onChange: "handleInputChange"
     onFocus: "handleFocus"
     onBlur: "handleBlur"
@@ -542,7 +542,7 @@ Button {
     text: "Delete Item"
     onClick: {
         handler: "deleteItem"
-        args: [$itemId]
+        args: [itemId]
         confirm: "Are you sure you want to delete this item?"
         async: true
     }
@@ -560,11 +560,11 @@ This hybrid system gives you the familiar styling power of CSS with the structur
         style: "card"
         
         Row {
-            spacing: $spacing.sm
+            spacing: spacing.sm
             crossAxis: "center"
             
             Image {
-                src: $avatar
+                src: avatar
                 width: 60
                 height: 60
                 borderRadius: 30
@@ -573,8 +573,8 @@ This hybrid system gives you the familiar styling power of CSS with the structur
             Column {
                 spacing: 4
                 
-                Text { text: $name, fontWeight: 600 }
-                Text { text: $role, color: $colors.textSecondary }
+                Text { text: name, fontWeight: 600 }
+                Text { text: role, color: colors.textSecondary }
             }
         }
     }
@@ -606,7 +606,7 @@ UserCard {
 }
 
 Button {
-    text: "Count: $count"  # Automatically updates when count changes
+    text: "Count: count"  # Automatically updates when count changes
     onClick: "increment"   # Function directly modifies reactive variable
 }
 ```
@@ -628,11 +628,11 @@ Button {
 
 # App-level theme switching
 App {
-    theme: $currentTheme  # reactive variable controls active theme
+    theme: currentTheme  # reactive variable controls active theme
     
     Container {
-        background: $background  # automatically uses active theme
-        color: $text
+        background: background  # automatically uses active theme
+        color: text
     }
 }
 

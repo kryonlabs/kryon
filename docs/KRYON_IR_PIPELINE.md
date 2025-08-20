@@ -21,7 +21,7 @@ KRY Source → Lexer → Parser → Hybrid AST → Optimizer → Generator → K
 | NUMBER | - | Numeric literals with optional units (px, %, em, rem, vw, vh, etc.) |
 | BOOLEAN | true/false | Boolean literals |
 | COLOR | - | Color values (#RRGGBBAA, rgb(), hsl()) |
-| THEME_VARIABLE | - | Theme variable references ($colors.primary) |
+| VARIABLE_IDENTIFIER | - | Variable names (colors, userName, count) |
 | STYLE | style | Style declaration keyword |
 | THEME | @theme | Theme declaration keyword |
 | EXTENDS | extends | Style inheritance keyword |
@@ -33,8 +33,8 @@ KRY Source → Lexer → Parser → Hybrid AST → Optimizer → Generator → K
 | RPAREN | ) | Right parenthesis |
 | COLON | : | Property separator |
 | COMMA | , | List separator |
-| DOT | . | Member access / theme access |
-| DOLLAR | $ | Theme variable prefix |
+| DOT | . | Member access for variables |
+| DOLLAR_BRACE | ${ | String interpolation start |
 | AT | @ | Directive prefix |
 | COMMENT | #, // | Comments |
 | EOF | - | End of file |
@@ -46,7 +46,7 @@ KRY Source → Lexer → Parser → Hybrid AST → Optimizer → Generator → K
 3. **Strings**: Always quoted with `"`, supports escape sequences
 4. **Numbers**: Integer or float, with optional units (px, %, em, rem, vw, vh, etc.)
 5. **Widget Identifiers**: Widget type names (Button, Column, Text, etc.)
-6. **Theme Variables**: Dot notation for theme access ($colors.primary, $spacing.md)
+6. **Variables**: Direct usage (colors.primary, spacing.md) and string interpolation (${count})
 7. **Style References**: String references to style definitions
 8. **Keywords**: Reserved words (true, false, style, extends, @theme)
 
@@ -103,7 +103,7 @@ HybridASTNode
 3. **Theme**: `@theme groupName { variables }`
 4. **Widget**: `WidgetType { properties and children }`
 5. **Property**: `name: value` with optional responsive values
-6. **Theme Variable**: `$groupName.variableName`
+6. **Variable**: `variableName` or `groupName.variableName` (used directly, no $ prefix)
 
 ## 3. Semantic Analysis
 
@@ -141,7 +141,7 @@ GlobalScope
 
 1. **Theme Variable Resolution**: Resolve theme variables to concrete values where beneficial
    ```
-   background: $colors.primary  →  background: var(--kryon-colors-primary)
+   background: colors.primary  →  background: var(--kryon-colors-primary)
    ```
 
 2. **Style Inheritance Flattening**: Flatten style inheritance chains
@@ -273,11 +273,11 @@ button.kry:15:10: error: Unknown CSS property 'backgroundColor' in style definit
 15 |   style "button" { backgroundColor: "#007AFF" }
    |                    ^^^^^^^^^^^^^^^
 
-theme.kry:8:15: error: Unknown theme variable '$colors.primaryDark'
+theme.kry:8:15: error: Unknown theme variable 'colors.primaryDark'
   Available variables in 'colors': primary, secondary, background, text
-8  |   background: $colors.primaryDark
+8  |   background: colors.primaryDark
    |               ^^^^^^^^^^^^^^^^^^
-   |               Did you mean '$colors.primary'?
+   |               Did you mean 'colors.primary'?
 
 widget.kry:22:5: error: Style 'unknownStyle' not found
   Available styles: button, primaryButton, card

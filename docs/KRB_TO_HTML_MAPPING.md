@@ -118,9 +118,9 @@ Maps to:
 
 ```kry
 style "card" {
-    background: $colors.background
-    color: $colors.text
-    padding: $spacing.md
+    background: colors.background
+    color: colors.text
+    padding: spacing.md
 }
 ```
 
@@ -201,17 +201,17 @@ Maps to:
 }
 
 style "card" {
-    background: $colors.background
+    background: colors.background
     borderRadius: 8
-    padding: $spacing.md
+    padding: spacing.md
     boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
 }
 
 style "primaryButton" {
-    background: $colors.primary
-    color: $colors.background
+    background: colors.primary
+    color: colors.background
     fontSize: 16
-    padding: "$spacing.sm $spacing.md"
+    padding: spacing.sm spacing.md
     borderRadius: 6
     border: "none"
 }
@@ -226,12 +226,12 @@ App {
             width: 400
             
             Column {
-                spacing: $spacing.md
+                spacing: spacing.md
                 
                 Text {
                     text: "Hello, World!"
                     fontSize: 24
-                    color: $colors.text
+                    color: colors.text
                 }
                 
                 Button {
@@ -419,9 +419,9 @@ Container {
         desktop: 800
     }
     padding: {
-        mobile: $spacing.sm
-        tablet: $spacing.md
-        desktop: $spacing.lg
+        mobile: spacing.sm
+        tablet: spacing.md
+        desktop: spacing.lg
     }
 }
 ```

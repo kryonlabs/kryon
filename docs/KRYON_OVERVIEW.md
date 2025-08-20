@@ -127,20 +127,20 @@ Kryon is a cross-platform UI framework that combines the familiar styling power 
 
 # CSS-like styles with theme variables
 style "card" {
-    background: $colors.background
+    background: colors.background
     borderRadius: 12
-    padding: $spacing.lg
-    border: "1px solid $colors.border"
+    padding: spacing.lg
+    border: "1px solid ${colors.border}"
     boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
 }
 
 style "primaryButton" {
-    background: $colors.primary
-    color: $colors.background
+    background: colors.primary
+    color: colors.background
     fontSize: 16
     fontWeight: 600
     borderRadius: 8
-    padding: "$spacing.sm $spacing.md"
+    padding: spacing.sm pacing.md
     border: "none"
     cursor: "pointer"
     transition: "all 0.2s ease"
@@ -150,7 +150,7 @@ style "primaryButton" {
 App {
     windowWidth: 800
     windowHeight: 600
-    background: $colors.background
+    background: colors.background
     
     Center {
         child: Container {
@@ -158,24 +158,24 @@ App {
             width: 400
             
             Column {
-                spacing: $spacing.md
+                spacing: spacing.md
                 
                 Text {
                     text: "Smart Hybrid Demo"
                     fontSize: 24
                     fontWeight: 700
-                    color: $colors.text
+                    color: colors.text
                 }
                 
                 Row {
-                    spacing: $spacing.sm
+                    spacing: spacing.sm
                     mainAxis: "spaceBetween"
                     
                     Button {
                         text: "Cancel"
                         background: "transparent"
-                        color: $colors.text
-                        border: "1px solid $colors.border"
+                        color: colors.text
+                        border: "1px solid ${colors.border}"
                     }
                     
                     Button {
