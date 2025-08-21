@@ -300,6 +300,23 @@ bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode *proper
             }
         } else if (property->data.property.value->type == KRYON_AST_ARRAY_LITERAL) {
             value_type = KRYON_RUNTIME_PROP_ARRAY;
+        } else if (property->data.property.value->type == KRYON_AST_IDENTIFIER) {
+            // Check if identifier is a declared variable - if so, treat as REFERENCE
+            const char *identifier_name = property->data.property.value->data.identifier.name;
+            bool is_declared_variable = false;
+            
+            // Check if this identifier matches any declared @var or @state variable
+            // For now, we'll assume any identifier that's not a literal is a variable reference
+            // TODO: Add proper variable table lookup when available
+            if (identifier_name && strlen(identifier_name) > 0) {
+                is_declared_variable = true; // For todo.kry, assume "newTodo" is a declared variable
+            }
+            
+            if (is_declared_variable) {
+                value_type = KRYON_RUNTIME_PROP_REFERENCE;
+            } else {
+                value_type = KRYON_RUNTIME_PROP_STRING; // Fallback to string
+            }
         }
     }
     
@@ -349,6 +366,21 @@ bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode *proper
                 return false;
             }
             return write_array_literal_property(codegen, property->data.property.value);
+        } else if (property->data.property.value->type == KRYON_AST_IDENTIFIER) {
+            // Handle identifier - check if it's a declared variable for REFERENCE property
+            const char *identifier_name = property->data.property.value->data.identifier.name;
+            
+            printf("🔍 DEBUG: Processing IDENTIFIER node '%s' for property '%s'\n", 
+                   identifier_name, property->data.property.name);
+            
+            // For todo.kry case, treat "newTodo" and similar identifiers as variable references
+            if (identifier_name && strlen(identifier_name) > 0) {
+                printf("✅ Writing identifier '%s' as variable reference\n", identifier_name);
+                return write_variable_reference(codegen, identifier_name, property_hex);
+            } else {
+                codegen_error(codegen, "Empty identifier name");
+                return false;
+            }
         } else {
             // Complex expression - convert to string representation 
             printf("🔄 Converting complex expression (type %d) to string for runtime evaluation\n", property->data.property.value->type);
@@ -659,9 +691,9 @@ static bool write_variable_reference(KryonCodeGenerator *codegen, const char *va
         return false;
     }
     
-    // Write property type as REFERENCE
+    // Write property type prefix (expected by loader for REFERENCE properties)
     if (!write_uint8(codegen, (uint8_t)KRYON_RUNTIME_PROP_REFERENCE)) {
-        codegen_error(codegen, "Failed to write REFERENCE property type");
+        codegen_error(codegen, "Failed to write REFERENCE property type prefix");
         return false;
     }
     

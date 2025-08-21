@@ -1,0 +1,104 @@
+@metadata {
+    title: "Tab System Demo"
+    description: "Interactive tab system demonstration"
+}
+
+@var selectedTab: 0
+@var profileName: "John Doe"
+@var notificationCount: 3
+
+@function "lua" handleTabChange() {
+    print("Tab changed to:", selectedTab)
+}
+
+@function "lua" updateProfile() {
+    profileName = "Jane Smith"
+    print("Profile updated")
+}
+
+@function "lua" clearNotifications() {
+    notificationCount = 0
+    print("Notifications cleared")
+}
+
+App {
+    windowTitle: "Tab System Demo"
+    windowWidth: 600
+    windowHeight: 400
+    backgroundColor: "#ffffff"
+
+    Column {
+        gap: 0
+
+        Text {
+            text: "Tab System Example"
+            fontSize: 20
+            fontWeight: "bold"
+            color: "#333333"
+            padding: 20
+            textAlign: "center"
+            backgroundColor: "#f8f9fa"
+        }
+
+        TabBar {
+            selectedIndex: selectedTab
+            backgroundColor: "#e9ecef"
+            onTabChange: "handleTabChange"
+
+            Tab {
+                title: "Dashboard"
+            }
+
+            Tab {
+                title: "Profile"
+            }
+
+            Tab {
+                title: "Settings"
+            }
+
+            Tab {
+                title: "Help"
+            }
+        }
+
+        Container {
+            padding: 30
+            backgroundColor: "#ffffff"
+
+            Column {
+                gap: 20
+
+                Text {
+                    text: "Tab Content Area"
+                    fontSize: 18
+                    fontWeight: "bold"
+                    color: "#333333"
+                }
+
+                Text {
+                    text: "This demonstrates a working TabBar with different tabs."
+                    fontSize: 14
+                    color: "#666666"
+                }
+
+                Button {
+                    text: "Sample Button"
+                    width: 150
+                    height: 35
+                    backgroundColor: "#007bff"
+                    color: "#ffffff"
+                    fontSize: 14
+                    borderRadius: 4
+                    onClick: "updateProfile"
+                }
+
+                Text {
+                    text: "Check the console output to see tab change events"
+                    fontSize: 14
+                    color: "#333333"
+                }
+            }
+        }
+    }
+}

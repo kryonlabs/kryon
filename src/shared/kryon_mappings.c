@@ -756,6 +756,42 @@
          .hex_code = 0x0403,
          .type_hint = KRYON_TYPE_HINT_ANY
      },
+     {
+         .canonical = "Checkbox",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0404,
+         .type_hint = KRYON_TYPE_HINT_ANY
+     },
+     {
+         .canonical = "Slider",
+         .aliases = (const char*[]){"Range", NULL},
+         .hex_code = 0x0405,
+         .type_hint = KRYON_TYPE_HINT_ANY
+     },
+     {
+         .canonical = "Dropdown",
+         .aliases = (const char*[]){"Select", NULL},
+         .hex_code = 0x0406,
+         .type_hint = KRYON_TYPE_HINT_ANY
+     },
+     {
+         .canonical = "TabBar",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0407,
+         .type_hint = KRYON_TYPE_HINT_ANY
+     },
+     {
+         .canonical = "Tab",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0408,
+         .type_hint = KRYON_TYPE_HINT_ANY
+     },
+     {
+         .canonical = "TabContent",
+         .aliases = (const char*[]){NULL},
+         .hex_code = 0x0409,
+         .type_hint = KRYON_TYPE_HINT_ANY
+     },
  
      // -- Application Elements (0x1000+) --
      {

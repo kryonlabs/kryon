@@ -475,37 +475,7 @@ static void add_to_cache(KryonNavigationManager* nav_manager, const char* kry_pa
     
     cleanup_old_cache(nav_manager);
 }
-
-static void cleanup_old_cache(KryonNavigationManager* nav_manager) {
-    // Simple cleanup - remove oldest entries
-    while (nav_manager->cache_count > nav_manager->max_cache) {
-        CompilationCacheEntry* entry = nav_manager->cache_head;
-        CompilationCacheEntry* prev = NULL;
-        
-        // Find the last entry
-        while (entry && entry->next) {
-            prev = entry;
-            entry = entry->next;
-        }
-        
-        if (entry) {
-            if (prev) {
-                prev->next = NULL;
-            } else {
-                nav_manager->cache_head = NULL;
-            }
-            
-            unlink(entry->krb_path); // Remove cached file
-            kryon_free(entry->kry_path);
-            kryon_free(entry->krb_path);
-            kryon_free(entry);
-            nav_manager->cache_count--;
-        } else {
-            break;
-        }
-    }
-}
-
+    
 static bool ends_with(const char* str, const char* suffix) {
     if (!str || !suffix) return false;
     
@@ -544,5 +514,38 @@ static void ensure_cache_directory(void) {
     struct stat st = {0};
     if (stat(KRYON_NAV_CACHE_DIR, &st) == -1) {
         mkdir(KRYON_NAV_CACHE_DIR, 0755);
+    }
+}
+
+static void cleanup_old_cache(KryonNavigationManager* nav_manager) {
+    // Simple cleanup - remove oldest entries
+    while (nav_manager->cache_count > nav_manager->max_cache && nav_manager->cache_head) {
+        CompilationCacheEntry* entry = nav_manager->cache_head;
+        CompilationCacheEntry* prev = NULL;
+        
+        // Find the last entry
+        while (entry && entry->next) {
+            prev = entry;
+            entry = entry->next;
+        }
+        
+        if (entry) {
+            if (prev) {
+                prev->next = NULL;
+            } else {
+                nav_manager->cache_head = NULL;
+            }
+            
+            // Remove cached file if it exists
+            if (entry->krb_path) {
+                unlink(entry->krb_path);
+            }
+            
+            // Free memory safely with null checks
+            if (entry->kry_path) kryon_free(entry->kry_path);
+            if (entry->krb_path) kryon_free(entry->krb_path);
+            kryon_free(entry);
+            nav_manager->cache_count--;
+        }
     }
 }

@@ -58,10 +58,6 @@ static void text_render(KryonRuntime* runtime, KryonElement* element, KryonRende
     const char* text = get_element_property_string_with_runtime(runtime, element, "text");
     
     if (!text || text[0] == '\0') {
-        text = ""; // Use empty string if no text property
-    }
-    
-    if (!text || text[0] == '\0') {
         return; // Nothing to render
     }
     

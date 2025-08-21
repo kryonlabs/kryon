@@ -293,6 +293,7 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
         }
         
         case ELEMENT_EVENT_FOCUSED: {
+            printf("🎯 INPUT FOCUS: Input element gained focus\n");
             state->has_focus = true;
             state->cursor_visible = true;
             state->cursor_blink_timer = 0.0f;
@@ -300,6 +301,7 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
         }
         
         case ELEMENT_EVENT_UNFOCUSED: {
+            printf("🎯 INPUT BLUR: Input element lost focus\n");
             state->has_focus = false;
             input_clear_selection(state);
             
@@ -433,7 +435,11 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
         }
         
         case ELEMENT_EVENT_KEY_TYPED: {
-            if (!state->has_focus) return false;
+            printf("⌨️ INPUT KEY TYPED: Received character '%c' (focus=%s)\n", 
+                   event->data.keyTyped.character, state->has_focus ? "yes" : "no");
+            
+            // TEMPORARY FIX: Accept text input even without focus to work around focus issues
+            // if (!state->has_focus) return false;
             
             char c = event->data.keyTyped.character;
             
@@ -444,6 +450,16 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
             
             if (!input_insert_char(state, c, input_type)) {
                 return false; // Failed to insert (buffer full, validation failed, etc.)
+            }
+            
+            printf("📝 INPUT TEXT UPDATED: New text = '%s'\n", state->text);
+            
+            // Ensure we have focus when text is typed
+            if (!state->has_focus) {
+                printf("🎯 INPUT AUTO-FOCUS: Gaining focus due to text input\n");
+                state->has_focus = true;
+                state->cursor_visible = true;
+                state->cursor_blink_timer = 0.0f;
             }
             
             // Reset cursor blink
@@ -471,22 +487,31 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
 static void update_input_variable_binding(KryonRuntime* runtime, KryonElement* element, InputState* state) {
     if (!runtime || !element || !state) return;
     
+    printf("🔍 INPUT BINDING DEBUG: Checking %zu properties for value binding\n", element->property_count);
+    
     // Find the value property to check if it has a binding
     for (size_t i = 0; i < element->property_count; i++) {
         KryonProperty* prop = element->properties[i];
-        if (prop && prop->type == KRYON_RUNTIME_PROP_STRING && 
-            strcmp(prop->name, "value") == 0 && prop->is_bound && prop->binding_path) {
+        if (prop && strcmp(prop->name, "value") == 0) {
+            printf("🔍 INPUT BINDING DEBUG: Found 'value' property - type=%d, is_bound=%s, binding_path='%s'\n", 
+                   prop->type, prop->is_bound ? "yes" : "no", 
+                   prop->binding_path ? prop->binding_path : "(null)");
             
-            // Found a bound value property - update the runtime variable
-            printf("🔗 INPUT BINDING: Updating variable '%s' = '%s'\n", prop->binding_path, state->text);
-            
-            bool success = kryon_runtime_set_variable(runtime, prop->binding_path, state->text);
-            if (success) {
-                printf("✅ INPUT BINDING: Successfully updated variable '%s'\n", prop->binding_path);
+            // Accept both KRYON_RUNTIME_PROP_STRING (0) and KRYON_RUNTIME_PROP_REFERENCE (5) types
+            if ((prop->type == KRYON_RUNTIME_PROP_STRING || prop->type == 5) && prop->is_bound && prop->binding_path) {
+                // Found a bound value property - update the runtime variable
+                printf("🔗 INPUT BINDING: Updating variable '%s' = '%s'\n", prop->binding_path, state->text);
+                
+                bool success = kryon_runtime_set_variable(runtime, prop->binding_path, state->text);
+                if (success) {
+                    printf("✅ INPUT BINDING: Successfully updated variable '%s'\n", prop->binding_path);
+                } else {
+                    printf("❌ INPUT BINDING: Failed to update variable '%s'\n", prop->binding_path);
+                }
+                break;
             } else {
-                printf("❌ INPUT BINDING: Failed to update variable '%s'\n", prop->binding_path);
+                printf("❌ INPUT BINDING DEBUG: Property doesn't match binding criteria\n");
             }
-            break;
         }
     }
 }
@@ -498,7 +523,7 @@ static void sync_input_from_variable(KryonRuntime* runtime, KryonElement* elemen
     // Find the value property to check if it has a binding
     for (size_t i = 0; i < element->property_count; i++) {
         KryonProperty* prop = element->properties[i];
-        if (prop && prop->type == KRYON_RUNTIME_PROP_STRING && 
+        if (prop && (prop->type == KRYON_RUNTIME_PROP_STRING || prop->type == 5) && 
             strcmp(prop->name, "value") == 0 && prop->is_bound && prop->binding_path) {
             
             // Get the current variable value

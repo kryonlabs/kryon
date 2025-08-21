@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <time.h>
+#include <stdint.h>
 
 #ifdef _WIN32
     #include <windows.h>
@@ -726,9 +727,23 @@ size_t kryon_memory_compact(KryonMemoryManager *manager) {
 // =============================================================================
 
 char *kryon_strdup(const char *str) {
+    // Check for NULL pointer
     if (!str) return NULL;
     
-    size_t len = strlen(str) + 1;
+    // Check for obviously invalid pointers
+    if ((uintptr_t)str < 0x1000) {
+        return NULL;
+    }
+    
+    // Use original strlen but with try-catch like approach via strnlen first
+    size_t len = strnlen(str, 65536);
+    if (len >= 65536) {
+        // String too long or no null terminator, likely corrupted
+        return NULL;
+    }
+    
+    // Now safe to use normal strlen since we know there's a null terminator within 64k
+    len = strlen(str) + 1;
     char *copy = kryon_alloc(len);
     if (copy) {
         memcpy(copy, str, len);

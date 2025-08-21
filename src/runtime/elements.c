@@ -268,6 +268,27 @@ const ElementVTable* element_get_vtable(const char* type_name) {
 }
 
 // =============================================================================
+// TEXT INPUT FALLBACK
+// =============================================================================
+
+// Helper function to dispatch text events to all Input elements when no element is focused
+static void dispatch_text_event_to_all_inputs(struct KryonRuntime* runtime, struct KryonElement* root, const ElementEvent* text_event) {
+    if (!root || !text_event) return;
+    
+    // Check if this element is an Input
+    if (root->type_name && strcmp(root->type_name, "Input") == 0) {
+        printf("🎯 FALLBACK: Dispatching text event to Input element\n");
+        element_dispatch_event(runtime, root, text_event);
+        return; // Only dispatch to the first Input found
+    }
+    
+    // Recursively check children
+    for (size_t i = 0; i < root->child_count; i++) {
+        dispatch_text_event_to_all_inputs(runtime, root->children[i], text_event);
+    }
+}
+
+// =============================================================================
 // ABSTRACT EVENT SYSTEM
 // =============================================================================
 
@@ -1053,7 +1074,12 @@ struct KryonElement* hit_test_find_element_at_point(struct KryonElement* root, f
     
     // Check this element
     ElementBounds bounds = element_get_bounds(root);
+    printf("🎯 HIT TEST DEBUG: Element '%s' bounds=(%.1f,%.1f,%.1f,%.1f) click=(%.1f,%.1f)\n", 
+           root->type_name ? root->type_name : "unknown", 
+           bounds.x, bounds.y, bounds.width, bounds.height, x, y);
     if (point_in_bounds(bounds, x, y)) {
+        printf("🎯 HIT TEST: Point is inside element '%s'\n", 
+               root->type_name ? root->type_name : "unknown");
         return root;
     }
     
@@ -1214,18 +1240,31 @@ void hit_test_process_input_event(HitTestManager* manager, struct KryonRuntime* 
                                          (pos_diff_x < 5.0f) &&
                                          (pos_diff_y < 5.0f);
                     
-                    // Create the abstract click event
+                    // Always dispatch a CLICKED event first
                     ElementEvent click_event = {
                         .timestamp = now,
                         .handled = false,
-                        .type = is_double_click ? ELEMENT_EVENT_DOUBLE_CLICKED : ELEMENT_EVENT_CLICKED,
+                        .type = ELEMENT_EVENT_CLICKED,
                         .data.mousePos = {x, y}
                     };
                     
-                    printf("🚀 ELEMENT EVENT: Dispatching %s event to element '%s'\n", 
-                           is_double_click ? "DOUBLE_CLICKED" : "CLICKED",
+                    printf("🚀 ELEMENT EVENT: Dispatching CLICKED event to element '%s'\n", 
                            clicked->type_name ? clicked->type_name : "unknown");
                     element_dispatch_event(runtime, clicked, &click_event);
+                    
+                    // If it's a double click, also dispatch a DOUBLE_CLICKED event
+                    if (is_double_click) {
+                        ElementEvent double_click_event = {
+                            .timestamp = now,
+                            .handled = false,
+                            .type = ELEMENT_EVENT_DOUBLE_CLICKED,
+                            .data.mousePos = {x, y}
+                        };
+                        
+                        printf("🚀 ELEMENT EVENT: Dispatching DOUBLE_CLICKED event to element '%s'\n", 
+                               clicked->type_name ? clicked->type_name : "unknown");
+                        element_dispatch_event(runtime, clicked, &double_click_event);
+                    }
                     
                     // Update double-click detection state
                     manager->last_click_time = now;
@@ -1271,20 +1310,31 @@ void hit_test_process_input_event(HitTestManager* manager, struct KryonRuntime* 
         }
         
         case KRYON_EVENT_TEXT_INPUT: {
+            printf("⌨️ TEXT INPUT EVENT: Received text='%s' (focused_element=%p)\n", 
+                   input_event->data.textInput.text, (void*)manager->focused_element);
+            
+            ElementEvent text_event = {
+                .timestamp = input_event->timestamp,
+                .handled = false,
+                .type = ELEMENT_EVENT_KEY_TYPED,
+                .data.keyTyped = {
+                    // Assuming textInput.text is a single UTF-8 char for this event
+                    .character = input_event->data.textInput.text[0], 
+                    .shift = false, // Modifiers not typically available here
+                    .ctrl = false,
+                    .alt = false
+                }
+            };
+            
             if (manager->focused_element) {
-                ElementEvent text_event = {
-                    .timestamp = input_event->timestamp,
-                    .handled = false,
-                    .type = ELEMENT_EVENT_KEY_TYPED,
-                    .data.keyTyped = {
-                        // Assuming textInput.text is a single UTF-8 char for this event
-                        .character = input_event->data.textInput.text[0], 
-                        .shift = false, // Modifiers not typically available here
-                        .ctrl = false,
-                        .alt = false
-                    }
-                };
+                printf("🎯 DISPATCHING: Text event to focused element %s (char='%c')\n", 
+                       manager->focused_element->type_name ? manager->focused_element->type_name : "unknown",
+                       text_event.data.keyTyped.character);
                 element_dispatch_event(runtime, manager->focused_element, &text_event);
+            } else {
+                printf("❌ NO FOCUSED ELEMENT: Broadcasting text event to all Input elements\n");
+                // FALLBACK: If no element is focused, try to find and dispatch to Input elements
+                dispatch_text_event_to_all_inputs(runtime, root, &text_event);
             }
             break;
         }

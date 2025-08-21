@@ -779,6 +779,9 @@ static bool load_element_properties(KryonElement *element,
             return false;
         }
         
+        // Initialize all fields to prevent garbage values
+        memset(property, 0, sizeof(KryonProperty));
+        
         property->id = prop_header.property_id;
         property->type = prop_header.value_type;
         const char* prop_name = get_property_name(prop_header.property_id);
@@ -1096,31 +1099,31 @@ static bool load_property_value(KryonProperty *property,
                 }
                 
                 // Safely access string table with comprehensive validation
-                printf("🔍 REFERENCE DEBUG: Processing reference property\n");
-                printf("🔍 REFERENCE DEBUG: variable_name_ref value is available\n");
-                printf("🔍 REFERENCE DEBUG: runtime structure is valid\n");
+                // printf("🔍 REFERENCE DEBUG: Processing reference property\n");
+                // printf("🔍 REFERENCE DEBUG: variable_name_ref value is available\n");
+                // printf("🔍 REFERENCE DEBUG: runtime structure is valid\n");
                 
                 const char* variable_name = NULL;
                 
                 // Validate string table and reference bounds
                 if (!runtime->string_table) {
-                    printf("❌ REFERENCE DEBUG: String table is NULL!\n");
+                    // printf("❌ REFERENCE DEBUG: String table is NULL!\n");
                     property->value.string_value = kryon_strdup("no_string_table");
                     property->is_bound = false;
                     property->binding_path = NULL;
                 } else if (variable_name_ref >= runtime->string_table_count) {
-                    printf("❌ REFERENCE DEBUG: Invalid reference %u >= %zu\n", 
-                           variable_name_ref, runtime->string_table_count);
+                    // printf("❌ REFERENCE DEBUG: Invalid reference %u >= %zu\n", 
+                    //        variable_name_ref, runtime->string_table_count);
                     property->value.string_value = kryon_strdup("invalid_ref");
                     property->is_bound = false;
                     property->binding_path = NULL;
                 } else {
                     // Safe string table access with validation
                     char* string_ptr = runtime->string_table[variable_name_ref];
-                    printf("🔍 REFERENCE DEBUG: string_table[%u] = %p\n", variable_name_ref, (void*)string_ptr);
+                    // printf("🔍 REFERENCE DEBUG: string_table[%u] = %p\n", variable_name_ref, (void*)string_ptr);
                     
                     if (!string_ptr) {
-                        printf("❌ REFERENCE DEBUG: String pointer is NULL at index %u\n", variable_name_ref);
+                        // printf("❌ REFERENCE DEBUG: String pointer is NULL at index %u\n", variable_name_ref);
                         property->value.string_value = kryon_strdup("null_ptr");
                         property->is_bound = false;
                         property->binding_path = NULL;
@@ -1129,8 +1132,8 @@ static bool load_property_value(KryonProperty *property,
                         // Use simple validation instead of strnlen which may crash on corrupted memory
                         // String appears valid
                         variable_name = string_ptr;
-                        printf("✅ REFERENCE DEBUG: Valid string '%s' (ref=%u)\n", 
-                               variable_name, variable_name_ref);
+                        // printf("✅ REFERENCE DEBUG: Valid string '%s' (ref=%u)\n", 
+                        //        variable_name, variable_name_ref);
                         
                         // Store as string for now, will be resolved by binding system
                         property->value.string_value = kryon_strdup(variable_name);
@@ -1318,6 +1321,9 @@ bool kryon_element_set_property(KryonElement *element, uint16_t property_id, con
     if (!prop) {
         return false;
     }
+    
+    // Initialize all fields to prevent garbage values
+    memset(prop, 0, sizeof(KryonProperty));
     
     prop->id = property_id;
     const char* prop_name = get_property_name(property_id);
