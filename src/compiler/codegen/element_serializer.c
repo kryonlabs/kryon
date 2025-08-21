@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <math.h>
 
 // Forward declarations for internal helpers
@@ -367,19 +368,45 @@ bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode *proper
             }
             return write_array_literal_property(codegen, property->data.property.value);
         } else if (property->data.property.value->type == KRYON_AST_IDENTIFIER) {
-            // Handle identifier - check if it's a declared variable for REFERENCE property
+            // Handle identifier - check if it's a const definition first, then variable
             const char *identifier_name = property->data.property.value->data.identifier.name;
             
             printf("🔍 DEBUG: Processing IDENTIFIER node '%s' for property '%s'\n", 
                    identifier_name, property->data.property.name);
             
-            // For todo.kry case, treat "newTodo" and similar identifiers as variable references
-            if (identifier_name && strlen(identifier_name) > 0) {
-                printf("✅ Writing identifier '%s' as variable reference\n", identifier_name);
-                return write_variable_reference(codegen, identifier_name, property_hex);
-            } else {
+            if (!identifier_name || strlen(identifier_name) == 0) {
                 codegen_error(codegen, "Empty identifier name");
                 return false;
+            }
+            
+            // First check if this identifier is a const definition
+            const char *const_value = lookup_constant_value(codegen, identifier_name);
+            if (const_value) {
+                // Substitute const value at compile time
+                printf("✅ Const resolved: %s = %s - writing as literal\n", identifier_name, const_value);
+                
+                // Create a temporary literal value and write it directly
+                KryonASTValue literal_value = {0};
+                
+                // Try to parse as number first, then fallback to string
+                char *endptr;
+                double num_value = strtod(const_value, &endptr);
+                if (*endptr == '\0') {
+                    // Successfully parsed as number
+                    literal_value.type = KRYON_VALUE_FLOAT;
+                    literal_value.data.float_value = (float)num_value;
+                } else {
+                    // Treat as string
+                    literal_value.type = KRYON_VALUE_STRING;
+                    literal_value.data.string_value = const_value;
+                }
+                
+                // Write the literal value directly
+                return write_property_value(codegen, &literal_value, property_hex);
+            } else {
+                // Not a const, treat as runtime variable reference  
+                printf("✅ Writing identifier '%s' as variable reference\n", identifier_name);
+                return write_variable_reference(codegen, identifier_name, property_hex);
             }
         } else {
             // Complex expression - convert to string representation 

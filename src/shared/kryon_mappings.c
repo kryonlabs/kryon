@@ -938,6 +938,32 @@ const KryonSyntaxGroup kryon_syntax_groups[] = {
         .type_hint = KRYON_TYPE_HINT_ANY
     },
     
+    // -- Checkbox Properties (0x08xx) --
+    {
+        .canonical = "label",
+        .aliases = (const char*[]){"text", NULL},
+        .hex_code = 0x0800,
+        .type_hint = KRYON_TYPE_HINT_STRING
+    },
+    {
+        .canonical = "checked",
+        .aliases = (const char*[]){NULL},
+        .hex_code = 0x0801,
+        .type_hint = KRYON_TYPE_HINT_BOOLEAN
+    },
+    {
+        .canonical = "indeterminate",
+        .aliases = (const char*[]){NULL},
+        .hex_code = 0x0802,
+        .type_hint = KRYON_TYPE_HINT_BOOLEAN
+    },
+    {
+        .canonical = "checkColor",
+        .aliases = (const char*[]){"checkmarkColor", NULL},
+        .hex_code = 0x0803,
+        .type_hint = KRYON_TYPE_HINT_COLOR
+    },
+
     // -- Event Directives (0x85xx) --
     {
         .canonical = "event",
@@ -1009,12 +1035,21 @@ const KryonSyntaxGroup kryon_syntax_groups[] = {
 uint16_t kryon_get_property_hex(const char *name) {
      const int group_count = sizeof(kryon_property_groups) / sizeof(kryon_property_groups[0]);
      
+     printf("🔍 PROPERTY LOOKUP: Searching for '%s' in %d property groups\n", name ? name : "(null)", group_count);
+     
      for (int i = 0; i < group_count; i++) {
+         if (strcmp(name, "label") == 0) {
+             printf("🔍 DEBUG: Checking group %d: '%s' (hex=0x%04X) against 'label'\n", 
+                    i, kryon_property_groups[i].canonical, kryon_property_groups[i].hex_code);
+         }
          if (kryon_name_matches_group(name, &kryon_property_groups[i])) {
+             printf("✅ PROPERTY LOOKUP: Found '%s' -> 0x%04X (canonical: '%s')\n", 
+                    name, kryon_property_groups[i].hex_code, kryon_property_groups[i].canonical);
              return kryon_property_groups[i].hex_code;
          }
      }
      
+     printf("❌ PROPERTY LOOKUP: Property '%s' not found, returning 0\n", name ? name : "(null)");
      return 0; // Not found
  }
  

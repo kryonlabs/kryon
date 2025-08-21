@@ -64,7 +64,7 @@ static char *evaluate_const_node_to_string(const KryonASTNode *node) {
 }
 
 // Helper function to lookup constant value by name
-static const char *lookup_constant_value(KryonCodeGenerator *codegen, const char *name) {
+const char *lookup_constant_value(KryonCodeGenerator *codegen, const char *name) {
     if (!codegen || !name) return NULL;
     
     // Search in constant table

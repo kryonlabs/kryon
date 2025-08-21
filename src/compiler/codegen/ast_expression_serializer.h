@@ -27,6 +27,15 @@ typedef struct KryonCodeGenerator KryonCodeGenerator;
 char* kryon_ast_expression_to_string(const KryonASTNode* node, KryonCodeGenerator *codegen);
 
 /**
+ * @brief Lookup a constant value by name from the const table
+ * @param codegen Code generator context containing const table
+ * @param name Constant name to lookup
+ * @return Constant value as string, or NULL if not found
+ * @note The returned string is managed by the const table and should not be freed
+ */
+const char *lookup_constant_value(KryonCodeGenerator *codegen, const char *name);
+
+/**
  * @brief Convert a binary operation node to string
  * @param node Binary operation node
  * @param codegen Code generator context for constant resolution
