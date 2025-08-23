@@ -595,7 +595,40 @@ static void position_row_children(struct KryonRuntime* runtime, struct KryonElem
     // Calculate total width needed by all children
     float total_child_width = 0.0f;
     for (size_t i = 0; i < row->child_count; i++) {
-        float child_width = get_element_property_float(row->children[i], "width", 100.0f);
+        struct KryonElement* child = row->children[i];
+        float child_width = get_element_property_float(child, "width", 0.0f);
+        
+        // Auto-calculate sizes for elements without explicit widths
+        if (child_width == 0.0f) {
+            if (child->type_name && strcmp(child->type_name, "Button") == 0) {
+                // Size buttons based on their text content
+                const char* text = get_element_property_string(child, "text");
+                float font_size = 20.0f; // Standard button font size
+                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
+                
+                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
+                    child_width = renderer->vtable->measure_text_width(text, font_size) + 24.0f; // Text + padding
+                } else {
+                    // Fallback sizing for buttons
+                    child_width = text ? strlen(text) * font_size * 0.55f + 24.0f : 80.0f;
+                }
+            } else if (child->type_name && strcmp(child->type_name, "Text") == 0) {
+                // Size text elements based on their content
+                const char* text = get_element_property_string(child, "text");
+                float font_size = get_element_property_float(child, "fontSize", 16.0f);
+                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
+                
+                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
+                    child_width = renderer->vtable->measure_text_width(text, font_size);
+                } else {
+                    // Fallback sizing for text
+                    child_width = text ? strlen(text) * font_size * 0.6f : 50.0f;
+                }
+            } else {
+                child_width = 100.0f; // Default for other elements
+            }
+        }
+        
         total_child_width += child_width;
         if (i > 0) total_child_width += gap; // Add gap between children
     }
@@ -632,8 +665,47 @@ static void position_row_children(struct KryonRuntime* runtime, struct KryonElem
     // Position each child
     for (size_t i = 0; i < row->child_count; i++) {
         struct KryonElement* child = row->children[i];
-        float child_width = get_element_property_float(child, "width", 100.0f);
-        float child_height = get_element_property_float(child, "height", 50.0f);
+        float child_width = get_element_property_float(child, "width", 0.0f);
+        float child_height = get_element_property_float(child, "height", 0.0f);
+        
+        // Auto-size elements that don't have explicit dimensions (same logic as total width calculation)
+        if (child_width == 0.0f) {
+            if (child->type_name && strcmp(child->type_name, "Button") == 0) {
+                // Size buttons based on their text content
+                const char* text = get_element_property_string(child, "text");
+                float font_size = 20.0f; // Standard button font size
+                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
+                
+                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
+                    child_width = renderer->vtable->measure_text_width(text, font_size) + 24.0f; // Text + padding
+                } else {
+                    // Fallback sizing for buttons
+                    child_width = text ? strlen(text) * font_size * 0.55f + 24.0f : 80.0f;
+                }
+            } else if (child->type_name && strcmp(child->type_name, "Text") == 0) {
+                // Size text elements based on their content
+                const char* text = get_element_property_string(child, "text");
+                float font_size = get_element_property_float(child, "fontSize", 16.0f);
+                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
+                
+                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
+                    child_width = renderer->vtable->measure_text_width(text, font_size);
+                } else {
+                    // Fallback sizing for text
+                    child_width = text ? strlen(text) * font_size * 0.6f : 50.0f;
+                }
+            } else {
+                child_width = 100.0f; // Default for other elements
+            }
+        }
+        
+        if (child_height == 0.0f) {
+            if (child->type_name && strcmp(child->type_name, "Button") == 0) {
+                child_height = 50.0f; // Standard button height
+            } else {
+                child_height = 50.0f; // Default height
+            }
+        }
         
         // Calculate Y position based on crossAxisAlignment
         float child_y = content_y;

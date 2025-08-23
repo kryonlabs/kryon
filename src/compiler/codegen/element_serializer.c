@@ -74,10 +74,9 @@ bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNod
         
         KryonASTNode *expanded = expand_component_instance(codegen, element, ast_root);
         if (expanded) {
-            // Write the expanded component body
-            bool result = kryon_write_element_instance(codegen, expanded, ast_root);
-            // TODO: Free expanded node memory if we implement proper cloning
-            return result;
+            // Write the expanded component body directly (it's the actual element like Row, not a wrapper)
+            // The expanded node IS the component body element (e.g., Row), so write it as a normal element
+            return kryon_write_element_instance(codegen, expanded, ast_root);
         } else {
             printf("❌ Failed to expand component in write_element_instance: %s\n", element_type_name);
             return false;
@@ -718,8 +717,8 @@ static bool write_variable_reference(KryonCodeGenerator *codegen, const char *va
         return false;
     }
     
-    // Write property type prefix (expected by loader for REFERENCE properties)
-    if (!write_uint8(codegen, (uint8_t)KRYON_RUNTIME_PROP_REFERENCE)) {
+    // Write property type prefix first (required by runtime loader)
+    if (!write_uint8(codegen, KRYON_RUNTIME_PROP_REFERENCE)) {
         codegen_error(codegen, "Failed to write REFERENCE property type prefix");
         return false;
     }
