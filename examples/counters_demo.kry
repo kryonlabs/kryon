@@ -11,7 +11,7 @@
 
     Row {
         mainAxisAlignment: "center"
-        gap: 10
+        gap: 32
 
         Button { text: "-", onClick: "decrement" }
         Text { text: value, fontSize: 32 }

@@ -607,10 +607,10 @@ static void position_row_children(struct KryonRuntime* runtime, struct KryonElem
                 KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
                 
                 if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
-                    child_width = renderer->vtable->measure_text_width(text, font_size) + 24.0f; // Text + padding
+                    child_width = renderer->vtable->measure_text_width(text, font_size) + 24.0f + 2.0f; // Text + padding + border
                 } else {
                     // Fallback sizing for buttons
-                    child_width = text ? strlen(text) * font_size * 0.55f + 24.0f : 80.0f;
+                    child_width = text ? strlen(text) * font_size * 0.55f + 24.0f + 2.0f : 82.0f;
                 }
             } else if (child->type_name && strcmp(child->type_name, "Text") == 0) {
                 // Size text elements based on their content
@@ -677,10 +677,10 @@ static void position_row_children(struct KryonRuntime* runtime, struct KryonElem
                 KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
                 
                 if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
-                    child_width = renderer->vtable->measure_text_width(text, font_size) + 24.0f; // Text + padding
+                    child_width = renderer->vtable->measure_text_width(text, font_size) + 24.0f + 2.0f; // Text + padding + border
                 } else {
                     // Fallback sizing for buttons
-                    child_width = text ? strlen(text) * font_size * 0.55f + 24.0f : 80.0f;
+                    child_width = text ? strlen(text) * font_size * 0.55f + 24.0f + 2.0f : 82.0f;
                 }
             } else if (child->type_name && strcmp(child->type_name, "Text") == 0) {
                 // Size text elements based on their content
