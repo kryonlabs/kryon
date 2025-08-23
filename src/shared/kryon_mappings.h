@@ -15,11 +15,42 @@
  #define KRYON_MAPPINGS_H
  
  #include <stdint.h>
- #include <stdbool.h>
+#include <stdbool.h>
+#include <stddef.h>
  
  //==============================================================================
- // Type Hint System
- //==============================================================================
+// Type Hint System
+//==============================================================================
+
+// Property category indices - use enum for type safety
+typedef enum {
+    KRYON_CATEGORY_BASE = 0,          // Core properties (id, class, style)
+    KRYON_CATEGORY_LAYOUT,            // Layout and positioning (width, height, padding)
+    KRYON_CATEGORY_VISUAL,            // Visual appearance (background, color, border)
+    KRYON_CATEGORY_TYPOGRAPHY,        // Text and font properties (fontSize, textAlign)
+    KRYON_CATEGORY_TRANSFORM,         // Transform and animation properties
+    KRYON_CATEGORY_INTERACTIVE,       // User interaction properties (onClick, cursor)
+    KRYON_CATEGORY_ELEMENT_SPECIFIC,  // Element-specific properties
+    KRYON_CATEGORY_WINDOW,            // Window management properties
+    KRYON_CATEGORY_CHECKBOX,          // Checkbox-specific properties
+    KRYON_CATEGORY_DIRECTIVE,         // Control flow directive properties
+
+    KRYON_CATEGORY_COUNT              // Total number of categories
+} KryonPropertyCategoryIndex;
+
+// Element category indices
+typedef enum {
+    KRYON_ELEM_CATEGORY_BASE = 0,           // Base element
+    KRYON_ELEM_CATEGORY_LAYOUT,             // Layout elements (Column, Row, Container)
+    KRYON_ELEM_CATEGORY_CONTENT,            // Content elements (Text, Button, Image)
+    KRYON_ELEM_CATEGORY_TEXT,               // Text elements
+    KRYON_ELEM_CATEGORY_INTERACTIVE,        // Interactive elements (Button, Input)
+    KRYON_ELEM_CATEGORY_APPLICATION,        // Application elements (App, Modal)
+
+    KRYON_ELEM_CATEGORY_COUNT              // Total number of element categories
+} KryonElementCategoryIndex;
+
+
  
  // Value type hints for property validation and conversion
  typedef enum {
@@ -38,24 +69,44 @@
  } KryonValueTypeHint;
  
  //==============================================================================
- // Grouped Structure Definitions
- //==============================================================================
- 
- // Property group structure - canonical name with aliases
- typedef struct {
-     const char *canonical;          // Canonical property name
-     const char **aliases;           // NULL-terminated array of aliases
-     uint16_t hex_code;             // 16-bit property identifier
-     KryonValueTypeHint type_hint;  // Type hint for validation
- } KryonPropertyGroup;
- 
- // Element group structure - canonical name with aliases  
- typedef struct {
-     const char *canonical;          // Canonical element name
-     const char **aliases;           // NULL-terminated array of aliases
-     uint16_t hex_code;             // 16-bit element identifier
-     KryonValueTypeHint type_hint;  // Type hint for validation
- } KryonElementGroup;
+// Hierarchical Category System (Phase 3 Implementation)
+//==============================================================================
+
+// Property category structure - defines property inheritance
+typedef struct {
+    const char *name;               // Category name (e.g., "Layout", "Visual", "Interactive")
+    uint16_t range_start;          // Hex code range start (e.g., 0x0100)
+    uint16_t range_end;            // Hex code range end (e.g., 0x01FF)
+    uint16_t *inherited_ranges;    // NULL-terminated array of inherited category ranges
+    const char *description;       // Human-readable description
+} KryonPropertyCategory;
+
+// Element category structure - defines element inheritance
+typedef struct {
+    const char *name;               // Category name (e.g., "Layout", "Content", "Interactive")
+    uint16_t range_start;          // Hex code range start (e.g., 0x0001)
+    uint16_t range_end;            // Hex code range end (e.g., 0x00FF)
+    uint16_t *inherited_ranges;    // NULL-terminated array of inherited category ranges
+    uint16_t *valid_properties;    // NULL-terminated array of valid property hex codes
+    const char *description;       // Human-readable description
+} KryonElementCategory;
+
+// Property group structure - simplified without redundant category_index
+typedef struct {
+    const char *canonical;          // Canonical property name
+    const char **aliases;           // NULL-terminated array of aliases
+    uint16_t hex_code;             // 16-bit property identifier
+    KryonValueTypeHint type_hint;  // Type hint for validation
+} KryonPropertyGroup;
+
+// Element group structure - clean property registration system
+typedef struct {
+    const char *canonical;          // Canonical element name
+    const char **aliases;           // NULL-terminated array of aliases
+    uint16_t hex_code;             // 16-bit element identifier
+    KryonValueTypeHint type_hint;  // Type hint for validation
+    KryonPropertyCategoryIndex *allowed_categories; // NULL-terminated array of allowed property categories
+} KryonElementGroup;
 
 // Syntax keyword group structure - for @directives and special syntax
 typedef struct {
@@ -65,15 +116,68 @@ typedef struct {
     KryonValueTypeHint type_hint;  // Type hint for validation
 } KryonSyntaxGroup;
  
+  //==============================================================================
+ // Enhanced Performance System (Phase 1 Implementation)
  //==============================================================================
- // External Data Declarations
- //==============================================================================
- 
- // Centralized property groups - used by both compiler and runtime
- extern const KryonPropertyGroup kryon_property_groups[];
- 
- // Centralized element groups - used by both compiler and runtime
- extern const KryonElementGroup kryon_element_groups[];
+
+// Optimized hash table entry with alias tracking
+typedef struct {
+    const char *name;       // Property name (canonical or alias)
+    uint16_t hex_code;      // Property hex code
+    uint16_t group_index;   // Index to original group for type hints
+    bool is_alias;          // Flag to distinguish aliases from canonical names
+} KryonPropertyHashEntry;
+
+// Internal hash table structure (private to kryon_mappings.c)
+typedef struct {
+    KryonPropertyHashEntry *entries; // Hash table entries
+    uint32_t size;                  // Hash table size (power of 2)
+    uint32_t count;                 // Number of entries
+    bool initialized;              // Initialization flag
+} KryonPropertyHashTable;
+
+// String table for deduplication
+typedef struct {
+    const char **strings;   // Array of unique strings
+    uint32_t count;         // Number of strings
+    uint32_t capacity;      // Capacity of strings array
+} KryonStringTable;
+
+//==============================================================================
+// External Data Declarations
+//==============================================================================
+
+// Property categories - define inheritance hierarchies
+extern const KryonPropertyCategory kryon_property_categories[];
+
+// Element categories - define element inheritance hierarchies
+extern const KryonElementCategory kryon_element_categories[];
+
+// Centralized property groups - used by both compiler and runtime
+extern const KryonPropertyGroup kryon_property_groups[];
+
+// Separated property arrays by category for better organization
+extern const KryonPropertyGroup kryon_base_properties[];
+extern const KryonPropertyGroup kryon_layout_properties[];
+extern const KryonPropertyGroup kryon_visual_properties[];
+extern const KryonPropertyGroup kryon_typography_properties[];
+extern const KryonPropertyGroup kryon_transform_properties[];
+extern const KryonPropertyGroup kryon_interactive_properties[];
+extern const KryonPropertyGroup kryon_element_specific_properties[];
+extern const KryonPropertyGroup kryon_window_properties[];
+extern const KryonPropertyGroup kryon_checkbox_properties[];
+extern const KryonPropertyGroup kryon_directive_properties[];
+
+// Centralized element groups - used by both compiler and runtime
+extern const KryonElementGroup kryon_element_groups[];
+
+// Separated element arrays by category
+extern const KryonElementGroup kryon_base_elements[];
+extern const KryonElementGroup kryon_layout_elements[];
+extern const KryonElementGroup kryon_content_elements[];
+extern const KryonElementGroup kryon_text_elements[];
+extern const KryonElementGroup kryon_interactive_elements[];
+extern const KryonElementGroup kryon_application_elements[];
 
 // Centralized syntax keyword groups - used by both compiler and runtime
 extern const KryonSyntaxGroup kryon_syntax_groups[];
@@ -155,10 +259,101 @@ const char *kryon_get_syntax_name(uint16_t hex_code);
  * @return NULL-terminated array of aliases, or NULL if not found
  */
 const char **kryon_get_syntax_aliases(const char *name);
- 
- //==============================================================================
- // Property Range Constants (from KRB Binary Format Specification v0.1)
- //==============================================================================
+
+//==============================================================================
+// Enhanced Validation Functions (Phase 2 Implementation)
+//==============================================================================
+
+/**
+ * @brief Check if a property name is an alias (for KRY→KRB compilation only)
+ * @param name Property name to check
+ * @return true if alias, false if canonical or not found
+ */
+bool kryon_is_property_alias(const char *name);
+
+/**
+ * @brief Check if a property is valid for a specific element
+ * @param element_hex Element hex code
+ * @param property_hex Property hex code
+ * @return true if property is valid for the element
+ */
+bool kryon_is_valid_property_for_element(uint16_t element_hex, uint16_t property_hex);
+
+/**
+ * @brief Test function to demonstrate the enhanced mappings system
+ */
+void kryon_mappings_test(void);
+
+/**
+ * @brief Quick test of the mappings system (for debugging)
+ */
+void kryon_mappings_quick_test(void);
+
+/**
+ * @brief Test properties specifically used in button example
+ */
+void kryon_mappings_test_button_example(void);
+
+/**
+ * @brief Test the new category-based hierarchical system
+ */
+void kryon_category_system_test(void);
+
+/**
+ * @brief Test checkbox property validation specifically
+ */
+void kryon_test_checkbox_validation(void);
+
+//==============================================================================
+// Category-Based Functions (Phase 3 Implementation)
+//==============================================================================
+
+/**
+ * @brief Check if a property is valid for an element using category inheritance
+ * @param element_hex Element hex code
+ * @param property_hex Property hex code
+ * @return true if property is valid for the element through inheritance
+ */
+bool kryon_is_valid_property_for_element_category(uint16_t element_hex, uint16_t property_hex);
+
+/**
+ * @brief Get all valid properties for an element through category inheritance
+ * @param element_hex Element hex code
+ * @param properties_out Array to store valid property hex codes
+ * @param max_properties Maximum number of properties to return
+ * @return Number of valid properties found
+ */
+size_t kryon_get_element_valid_properties(uint16_t element_hex, uint16_t *properties_out, size_t max_properties);
+
+/**
+ * @brief Get category name for a property
+ * @param property_hex Property hex code
+ * @return Category name string
+ */
+const char *kryon_get_property_category_name(uint16_t property_hex);
+
+//==============================================================================
+// CLEAN PROPERTY REGISTRATION SYSTEM
+//==============================================================================
+
+/**
+ * @brief Check if an element allows a property (simple category-based validation)
+ * @param element_hex Element hex code
+ * @param property_hex Property hex code
+ * @return true if element allows the property based on categories
+ */
+bool kryon_element_allows_property(uint16_t element_hex, uint16_t property_hex);
+
+/**
+ * @brief Get list of allowed categories for an element
+ * @param element_hex Element hex code
+ * @return Array of allowed categories, NULL-terminated with KRYON_CATEGORY_COUNT
+ */
+const KryonPropertyCategoryIndex* kryon_get_element_allowed_categories(uint16_t element_hex);
+
+//==============================================================================
+// Property Range Constants (from KRB Binary Format Specification v0.1)
+//==============================================================================
  
  // Meta & System Properties
  #define KRYON_PROPERTY_RANGE_META_START    0x0000

@@ -14,64 +14,58 @@
     end
 }
 
-App {
-    windowTitle: "Todo App"
-    windowWidth: 600
-    windowHeight: 500
-    backgroundColor: "#f5f5f5"
+    
+Column {
+    gap: 20
+    padding: 30
+    
+    Text {
+        text: "Simple Todo App"
+        fontSize: 28
+        color: "#333333"
+        textAlign: "center"
+    }
+    
+    Row {
+        gap: 10
+        
+        TextInput {
+            placeholder: "Enter a new todo..."
+            value: newTodo
+            width: 400
+            height: 40
+            backgroundColor: "#ffffff"
+            borderColor: "#cccccc"
+            borderWidth: 1
+            borderRadius: 4
+            padding: 10
+        }
+        
+        Button {
+            text: "Add"
+            width: 80
+            height: 40
+            backgroundColor: "#007bff"
+            color: "#ffffff"
+            borderRadius: 4
+            onClick: "addTodo"
+        }
+    }
     
     Column {
-        gap: 20
-        padding: 30
+        gap: 5
         
         Text {
-            text: "Simple Todo App"
-            fontSize: 28
+            text: "Todo List:"
+            fontSize: 18
             color: "#333333"
-            textAlign: "center"
         }
         
-        Row {
-            gap: 10
-            
-            TextInput {
-                placeholder: "Enter a new todo..."
-                value: newTodo
-                width: 400
-                height: 40
-                backgroundColor: "#ffffff"
-                borderColor: "#cccccc"
-                borderWidth: 1
-                borderRadius: 4
-                padding: 10
-            }
-            
-            Button {
-                text: "Add"
-                width: 80
-                height: 40
-                backgroundColor: "#007bff"
-                color: "#ffffff"
-                borderRadius: 4
-                onClick: "addTodo"
-            }
-        }
-        
-        Column {
-            gap: 5
-            
+        @for todo in todos {
             Text {
-                text: "Todo List:"
-                fontSize: 18
+                text: "- ${todo}"
+                fontSize: 16
                 color: "#333333"
-            }
-            
-            @for todo in todos {
-                Text {
-                    text: "- ${todo}"
-                    fontSize: 16
-                    color: "#333333"
-                }
             }
         }
     }
