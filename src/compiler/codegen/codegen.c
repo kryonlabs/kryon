@@ -311,8 +311,6 @@ bool kryon_write_elements(KryonCodeGenerator *codegen, const KryonASTNode *ast_r
         return false;
     }
     
-    uint32_t element_count = 0;
-    
     // Process root children
     if (ast_root->type == KRYON_AST_ROOT) {
         for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
@@ -326,13 +324,10 @@ bool kryon_write_elements(KryonCodeGenerator *codegen, const KryonASTNode *ast_r
                         printf("🔧 Expanding custom component: %s\n", child->data.element.element_type);
                         KryonASTNode *expanded = expand_component_instance(codegen, child, ast_root);
                         if (expanded) {
-                            if (write_element_node(codegen, expanded, ast_root)) {
-                                element_count++;
-                                codegen->stats.output_elements++;
-                                // TODO: Free expanded node memory
-                            } else {
+                            if (!kryon_write_element_node(codegen, expanded, ast_root)) {
                                 return false;
                             }
+                            // TODO: Free expanded node memory
                         } else {
                             printf("❌ Failed to expand component: %s\n", child->data.element.element_type);
                             return false;
@@ -342,10 +337,7 @@ bool kryon_write_elements(KryonCodeGenerator *codegen, const KryonASTNode *ast_r
                 }
                 
                 // Standard element - write normally
-                if (write_element_node(codegen, child, ast_root)) {
-                    element_count++;
-                    codegen->stats.output_elements++;
-                } else {
+                if (!kryon_write_element_node(codegen, child, ast_root)) {
                     return false;
                 }
             } else if (child && child->type == KRYON_AST_CONST_FOR_LOOP) {
@@ -363,8 +355,11 @@ bool kryon_write_elements(KryonCodeGenerator *codegen, const KryonASTNode *ast_r
         }
     }
     
-    // Update element count
-    if (!update_header_uint32(codegen, element_count_offset, element_count)) {
+    // Update element count - use actual count from next_element_id (minus 1 since it starts at 1)
+    uint32_t actual_element_count = codegen->next_element_id - 1;
+    printf("🔧 DEBUG: Setting element count to %u (next_element_id=%u) at offset %zu\n", 
+           actual_element_count, codegen->next_element_id, element_count_offset);
+    if (!update_header_uint32(codegen, element_count_offset, actual_element_count)) {
         codegen_error(codegen, "Failed to write element count to header");
         return false;
     }
@@ -372,85 +367,6 @@ bool kryon_write_elements(KryonCodeGenerator *codegen, const KryonASTNode *ast_r
     return true;
 }
 
-bool write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *element, const KryonASTNode *ast_root) {
-    if (!element || (element->type != KRYON_AST_ELEMENT && element->type != KRYON_AST_EVENT_DIRECTIVE)) {
-        return false;
-    }
-    
-    // Check if this is a custom component instance that needs expansion
-    if (element->type == KRYON_AST_ELEMENT) {
-        uint16_t element_hex = kryon_codegen_get_element_hex(element->data.element.element_type);
-        printf("🔍 DEBUG: Element '%s' has hex 0x%04X\n", element->data.element.element_type, element_hex);
-        if (element_hex >= 0x2000) {
-            // This is a custom component - expand it
-            printf("🔧 Expanding custom component in recursive call: %s\n", element->data.element.element_type);
-            KryonASTNode *expanded = expand_component_instance(codegen, element, ast_root);
-            if (expanded) {
-                bool result = write_element_node(codegen, expanded, ast_root);
-                // TODO: Free expanded node memory
-                return result;
-            } else {
-                printf("❌ Failed to expand component in recursive call: %s\n", element->data.element.element_type);
-                return false;
-            }
-        }
-    }
-    
-    // Get element type hex code for standard elements
-    uint16_t element_hex;
-    if (element->type == KRYON_AST_EVENT_DIRECTIVE) {
-        element_hex = kryon_get_syntax_hex("event");
-    } else {
-        element_hex = kryon_codegen_get_element_hex(element->data.element.element_type);
-        if (element_hex == 0) {
-            codegen_error(codegen, "Unknown element type");
-            return false;
-        }
-    }
-    
-    // Write element header
-    if (!write_uint16(codegen, element_hex)) {
-        return false;
-    }
-    
-    // Element ID
-    if (!write_uint32(codegen, codegen->next_element_id++)) {
-        return false;
-    }
-    
-    // Property count
-    if (!write_uint32(codegen, (uint32_t)element->data.element.property_count)) {
-        return false;
-    }
-    
-    // Write properties (skip for component instances - they should be expanded first)
-    for (size_t i = 0; i < element->data.element.property_count; i++) {
-        if (!element->data.element.properties[i]) {
-            codegen_error(codegen, "Property array contains NULL pointers - parser memory allocation issue");
-            return false;
-        }
-        printf("🔍 DEBUG: About to process property '%s' for element '%s'\n", 
-               element->data.element.properties[i]->data.property.name,
-               element->data.element.element_type);
-        if (!write_property_node(codegen, element->data.element.properties[i])) {
-            return false;
-        }
-    }
-    
-    // Child count
-    if (!write_uint32(codegen, (uint32_t)element->data.element.child_count)) {
-        return false;
-    }
-    
-    // Write child elements recursively
-    for (size_t i = 0; i < element->data.element.child_count; i++) {
-        if (!write_element_node(codegen, element->data.element.children[i], ast_root)) {
-            return false;
-        }
-    }
-    
-    return true;
-}
 
 
 /**
@@ -936,8 +852,9 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
     // 0x14-0x17: Element Definition Count
     if (!write_uint32(codegen, element_def_count)) return false;
     
-    // 0x18-0x1B: Element Instance Count
-    if (!write_uint32(codegen, element_count)) return false;
+    // 0x18-0x1B: Element Instance Count (placeholder, will be updated later)
+    size_t element_count_offset = codegen->current_offset;
+    if (!write_uint32(codegen, 0)) return false;
     
     // 0x1C-0x1F: Property Count
     if (!write_uint32(codegen, total_properties)) return false;
@@ -1497,6 +1414,15 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
     // Update string table offset in header to point to actual location
     if (!update_header_uint32(codegen, string_table_offset_pos, (uint32_t)string_table_start)) {
         codegen_error(codegen, "Failed to write string table offset to header");
+        return false;
+    }
+    
+    // Update element count with actual count (next_element_id - 1 since it starts at 1)
+    uint32_t actual_element_count = codegen->next_element_id - 1;
+    printf("🔧 DEBUG: Updating element count to %u (next_element_id=%u)\n", 
+           actual_element_count, codegen->next_element_id);
+    if (!update_header_uint32(codegen, element_count_offset, actual_element_count)) {
+        codegen_error(codegen, "Failed to write element count to header");
         return false;
     }
     

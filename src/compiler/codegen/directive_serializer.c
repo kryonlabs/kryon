@@ -14,6 +14,7 @@
 #include "../../shared/krb_schema.h"
 #include "krb_sections.h"
 #include "string_table.h"
+#include "element_serializer.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -380,7 +381,7 @@ bool kryon_write_component_node(KryonCodeGenerator *codegen, const KryonASTNode 
         if (!write_uint8(codegen, 1)) { // Has body
             return false;
         }
-        if (!write_element_node(codegen, component->data.component.body, NULL)) {
+        if (!kryon_write_element_node(codegen, component->data.component.body, NULL)) {
             return false;
         }
     } else {
