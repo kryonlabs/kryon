@@ -40,82 +40,17 @@ bool register_grid_element(void) {
     return element_register_type("Grid", &g_grid_vtable);
 }
 
-// =============================================================================
-//  Grid Layout Calculation
-// =============================================================================
-
-/**
- * @brief Calculate and apply grid layout to all children
- */
-static void calculate_grid_layout(KryonRuntime* runtime, KryonElement* grid) {
-    if (!grid || grid->child_count == 0) return;
-    
-    // Get grid properties
-    int columns = get_element_property_int(grid, "columns", 3);
-    float gap = get_element_property_float(grid, "gap", 10.0f);
-    float column_spacing = get_element_property_float(grid, "column_spacing", gap);
-    float row_spacing = get_element_property_float(grid, "row_spacing", gap);
-    float padding = get_element_property_float(grid, "padding", 0.0f);
-    
-    // Calculate grid structure
-    int child_count = (int)grid->child_count;
-    int rows = (int)ceil((double)child_count / (double)columns);
-        
-    // Calculate available space inside padding
-    float content_x = grid->x + padding;
-    float content_y = grid->y + padding;
-    float content_width = grid->width - (padding * 2.0f);
-    float content_height = grid->height - (padding * 2.0f);
-    
-    // Calculate cell dimensions
-    float cell_width = (content_width - (column_spacing * (columns - 1))) / columns;
-    float cell_height = (content_height - (row_spacing * (rows - 1))) / rows;
-        
-    // Position each child in the grid
-    for (size_t i = 0; i < grid->child_count; i++) {
-        KryonElement* child = grid->children[i];
-        if (!child) continue;
-        
-        // Calculate grid position
-        int row = (int)(i / columns);
-        int col = (int)(i % columns);
-        
-        // Calculate child position
-        float child_x = content_x + (col * (cell_width + column_spacing));
-        float child_y = content_y + (row * (cell_height + row_spacing));
-        
-        // Set child dimensions and position
-        child->x = child_x;
-        child->y = child_y;
-        child->width = cell_width;
-        child->height = cell_height;
-    }
-    
-    // Update grid's own size based on content
-    float total_width = (columns * cell_width) + ((columns - 1) * column_spacing) + (padding * 2.0f);
-    float total_height = (rows * cell_height) + ((rows - 1) * row_spacing) + (padding * 2.0f);
-    
-    // Only update grid size if it wasn't explicitly set
-    if (get_element_property_float(grid, "width", 0.0f) == 0.0f) {
-        grid->width = total_width;
-    }
-    if (get_element_property_float(grid, "height", 0.0f) == 0.0f) {
-        grid->height = total_height;
-    }
-}
+// Grid layout calculation is now handled centrally in elements.c:position_grid_children()
 
 // =============================================================================
 //  Element VTable Implementations
 // =============================================================================
 
 /**
- * @brief Renders the Grid element by calculating layout and rendering children
+ * @brief Renders the Grid element background/border only (positioning handled by elements.c)
  */
 static void grid_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 1) return;
-    
-    // Calculate grid layout before rendering
-    calculate_grid_layout(runtime, element);
     
     // Grid itself can have background and border styling
     uint32_t bg_color_val = get_element_property_color(element, "backgroundColor", 0x00000000); // Transparent default

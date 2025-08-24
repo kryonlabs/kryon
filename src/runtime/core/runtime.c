@@ -1375,6 +1375,24 @@ uint32_t get_element_property_color(KryonElement* element, const char* prop_name
             }
             return default_value;
             
+        case KRYON_RUNTIME_PROP_REFERENCE:
+            // For variable references, try to resolve them
+            if (prop->is_bound && prop->binding_path && g_current_runtime) {
+                const char* resolved_value = resolve_variable_reference(g_current_runtime, prop->binding_path);
+                if (resolved_value && resolved_value != prop->binding_path) {
+                    // Parse the resolved color string
+                    const char* str = resolved_value;
+                    if (str[0] == '#') str++;
+                    if (str[0] == '0' && (str[1] == 'x' || str[1] == 'X')) str += 2;
+                    
+                    unsigned int color;
+                    if (sscanf(str, "%x", &color) == 1) {
+                        return (uint32_t)color;
+                    }
+                }
+            }
+            return default_value;
+            
         default:
             return default_value;
     }

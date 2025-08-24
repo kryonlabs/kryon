@@ -500,6 +500,8 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
     if (!node || !var_name || !var_value) {
         return NULL;
     }
+    
+    printf("🔧 SUBSTITUTE DEBUG: Processing node type %d for var '%s'\n", node->type, var_name);
 
     printf("🔍 DEBUG: Substituting templates in node type %d, looking for var '%s'\n", node->type, var_name);
     
@@ -600,16 +602,120 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
         }
 
 
-        case KRYON_AST_ARRAY_ACCESS: {
-            // This handles expressions like `alignment.colors[1]` or `runtime_array[i]`.
+        case KRYON_AST_BINARY_OP: {
+            // Handle binary operations like "i % 6" during @const_for expansion
+            printf("🔧 BINARY_OP DEBUG: Processing binary operation for var '%s'\n", var_name);
             
-            // Add specific debug for element 49 issue
+            // Recursively substitute both operands
+            KryonASTNode *left = kryon_substitute_template_vars(node->data.binary_op.left, var_name, var_value, codegen);
+            KryonASTNode *right = kryon_substitute_template_vars(node->data.binary_op.right, var_name, var_value, codegen);
+            
+            printf("🔧 BINARY_OP DEBUG: Left operand type %d, Right operand type %d\n", 
+                   left ? left->type : -1, right ? right->type : -1);
+            
+            // If both operands are literals, we can evaluate at compile time
+            if (left && left->type == KRYON_AST_LITERAL && left->data.literal.value.type == KRYON_VALUE_INTEGER &&
+                right && right->type == KRYON_AST_LITERAL && right->data.literal.value.type == KRYON_VALUE_INTEGER) {
+                
+                int64_t left_val = left->data.literal.value.data.int_value;
+                int64_t right_val = right->data.literal.value.data.int_value;
+                int64_t result = 0;
+                
+                printf("🔧 BINARY_OP DEBUG: Evaluating %lld %s %lld\n", 
+                       (long long)left_val, 
+                       node->data.binary_op.operator == KRYON_TOKEN_MODULO ? "%" : "?",
+                       (long long)right_val);
+                
+                // Evaluate based on operator type
+                switch (node->data.binary_op.operator) {
+                    case KRYON_TOKEN_MODULO:
+                        if (right_val != 0) {
+                            result = left_val % right_val;
+                        } else {
+                            printf("❌ BINARY_OP DEBUG: Division by zero in modulo operation\n");
+                            result = 0;
+                        }
+                        break;
+                    case KRYON_TOKEN_PLUS:
+                        result = left_val + right_val;
+                        break;
+                    case KRYON_TOKEN_MINUS:
+                        result = left_val - right_val;
+                        break;
+                    case KRYON_TOKEN_MULTIPLY:
+                        result = left_val * right_val;
+                        break;
+                    case KRYON_TOKEN_DIVIDE:
+                        if (right_val != 0) {
+                            result = left_val / right_val;
+                        } else {
+                            printf("❌ BINARY_OP DEBUG: Division by zero\n");
+                            result = 0;
+                        }
+                        break;
+                    default:
+                        printf("❌ BINARY_OP DEBUG: Unsupported operator %d\n", node->data.binary_op.operator);
+                        // Fall back to preserving the structure
+                        cloned->data.binary_op.left = left;
+                        cloned->data.binary_op.right = right;
+                        cloned->data.binary_op.operator = node->data.binary_op.operator;
+                        break;
+                }
+                
+                printf("✅ BINARY_OP DEBUG: Result = %lld\n", (long long)result);
+                
+                // Create a literal node with the result
+                kryon_free(cloned);
+                KryonASTNode *result_node = create_minimal_ast_node(KRYON_AST_LITERAL);
+                if (result_node) {
+                    result_node->data.literal.value.type = KRYON_VALUE_INTEGER;
+                    result_node->data.literal.value.data.int_value = result;
+                }
+                
+                // Free the intermediate nodes
+                if (left) kryon_free(left);
+                if (right) kryon_free(right);
+                
+                return result_node;
+            } else {
+                printf("❌ BINARY_OP DEBUG: Cannot evaluate at compile time - operands are not integer literals\n");
+                // Store the substituted operands for runtime evaluation
+                cloned->data.binary_op.left = left;
+                cloned->data.binary_op.right = right;
+                cloned->data.binary_op.operator = node->data.binary_op.operator;
+            }
+            break;
+        }
+
+        case KRYON_AST_ARRAY_ACCESS: {
+            // This handles expressions like `colors[i % 6]` in @const_for loops
+            
             printf("🔍 ARRAY_ACCESS DEBUG: var_name='%s'\n", var_name);
             
-            // 1. Recursively resolve the "array" part of the expression.
-            KryonASTNode *resolved_array_node = kryon_substitute_template_vars(
-                node->data.array_access.array, var_name, var_value, codegen);
-            printf("🔍 ARRAY_ACCESS DEBUG: Array resolved to type %d\n", resolved_array_node ? resolved_array_node->type : -1);
+            // 1. Resolve the array part - check if it's a constant identifier first
+            KryonASTNode *resolved_array_node = NULL;
+            if (node->data.array_access.array && node->data.array_access.array->type == KRYON_AST_IDENTIFIER) {
+                const char *array_name = node->data.array_access.array->data.identifier.name;
+                printf("🔍 ARRAY_ACCESS DEBUG: Looking up constant array '%s'\n", array_name);
+                
+                // Look up the array as a constant
+                const KryonASTNode *array_const = find_constant_value(codegen, array_name);
+                if (array_const && array_const->type == KRYON_AST_ARRAY_LITERAL) {
+                    printf("🔍 ARRAY_ACCESS DEBUG: Found constant array '%s' with %zu elements\n", 
+                           array_name, array_const->data.array_literal.element_count);
+                    resolved_array_node = (KryonASTNode*)array_const; // Use the constant directly
+                } else {
+                    printf("🔍 ARRAY_ACCESS DEBUG: Constant '%s' not found or not an array\n", array_name);
+                }
+            }
+            
+            // If not a constant identifier, try recursive substitution
+            if (!resolved_array_node) {
+                resolved_array_node = kryon_substitute_template_vars(
+                    node->data.array_access.array, var_name, var_value, codegen);
+                printf("🔍 ARRAY_ACCESS DEBUG: Array resolved via substitution to type %d\n", 
+                       resolved_array_node ? resolved_array_node->type : -1);
+            }
         
             // 2. Recursively resolve the "index" part of the expression.
             KryonASTNode *resolved_index_node = kryon_substitute_template_vars(
@@ -631,16 +737,22 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
         
                  if (index >= 0 && (size_t)index < resolved_array_node->data.array_literal.element_count) {
                     const KryonASTNode *target_element = resolved_array_node->data.array_literal.elements[index];
-                    printf("✅ ARRAY_ACCESS DEBUG: Successfully resolved to element type %d\n", 
-                           target_element ? target_element->type : -1);
+                    printf("✅ ARRAY_ACCESS DEBUG: Successfully resolved colors[%lld] to element type %d\n", 
+                           (long long)index, target_element ? target_element->type : -1);
                     
-                    // TODO: Free intermediate nodes resolved_array_node and resolved_index_node if they were cloned.
+                    if (target_element && target_element->type == KRYON_AST_LITERAL) {
+                        printf("✅ ARRAY_ACCESS DEBUG: Resolved to literal value: '%s'\n", 
+                               target_element->data.literal.value.data.string_value);
+                    }
+                    
+                    // Free the cloned node since we're returning a different result
                     kryon_free(cloned);
         
                     // Return a clone of the final, resolved literal value.
                     return clone_ast_literal(target_element);
                  } else {
-                    printf("❌ ARRAY_ACCESS DEBUG: Index out of bounds!\n");
+                    printf("❌ ARRAY_ACCESS DEBUG: Index %lld out of bounds (array size: %zu)!\n", 
+                           (long long)index, resolved_array_node->data.array_literal.element_count);
                  }
             } else {
                 printf("❌ ARRAY_ACCESS DEBUG: Cannot resolve at compile time\n");
@@ -652,7 +764,14 @@ KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const cha
             }
             
             // 4. If not resolved, this is a RUNTIME expression. Preserve its structure.
-            cloned->data.array_access.array = resolved_array_node;
+            // Only assign if they were created by substitution (not constants)
+            if (resolved_array_node != find_constant_value(codegen, node->data.array_access.array->data.identifier.name)) {
+                cloned->data.array_access.array = resolved_array_node;
+            } else {
+                // Clone the original array node since we can't use the constant directly
+                cloned->data.array_access.array = kryon_substitute_template_vars(
+                    node->data.array_access.array, var_name, var_value, codegen);
+            }
             cloned->data.array_access.index = resolved_index_node;
             break;
         }
