@@ -1036,6 +1036,8 @@ static KryonASTNode *parse_literal(KryonParser *parser) {
     return literal;
 }
 
+
+// THIS IS THE NEW, CORRECTED FUNCTION
 static KryonASTNode *parse_variable(KryonParser *parser) {
     if (!check_token(parser, KRYON_TOKEN_VARIABLE)) {
         parser_error(parser, "Expected variable");
@@ -1050,13 +1052,25 @@ static KryonASTNode *parse_variable(KryonParser *parser) {
         return NULL;
     }
     
-    // Copy variable name (without $)
-    char *lexeme = kryon_token_copy_lexeme(token);
-    if (lexeme && lexeme[0] == '$') {
-        variable->data.variable.name = kryon_strdup(lexeme + 1);
-        kryon_free(lexeme);
+    // Directly allocate a new string for the variable name, skipping the '$'.
+    const char* start = token->lexeme;
+    size_t length = token->lexeme_length;
+
+    if (length > 0 && *start == '$') {
+        start++;    // Move the start pointer past the '$'
+        length--;   // Decrease the length by 1
+    }
+
+    // Allocate memory for the name + a null terminator.
+    char* name_copy = malloc(length + 1);
+    if (!name_copy) {
+        // Handle allocation failure, cleanup node, etc.
+        // For simplicity, we'll just set name to NULL.
+        variable->data.variable.name = NULL; 
     } else {
-        variable->data.variable.name = lexeme;
+        memcpy(name_copy, start, length);
+        name_copy[length] = '\0';
+        variable->data.variable.name = name_copy;
     }
     
     return variable;
@@ -2533,6 +2547,67 @@ void kryon_ast_value_free(KryonASTValue *value) {
     }
 }
 
+
+/**
+ * @brief Creates a property node without a parser context.
+ * @details This is a simplified version of node creation for programmatic use.
+ *          It does not add the node to the parser's tracking list, so the
+ *          caller is responsible for freeing the memory.
+ */
+ static KryonASTNode* create_standalone_ast_node(KryonASTNodeType type) {
+    KryonASTNode* node = calloc(1, sizeof(KryonASTNode));
+    if (!node) return NULL;
+    node->type = type;
+    return node;
+}
+
+KryonASTNode* create_string_property_node(const char* name, const char* value) {
+    // 1. Create the top-level property node
+    KryonASTNode* prop_node = create_standalone_ast_node(KRYON_AST_PROPERTY);
+    if (!prop_node) return NULL;
+    prop_node->data.property.name = strdup(name);
+
+    // 2. Create the literal value node that holds the string
+    KryonASTNode* literal_node = create_standalone_ast_node(KRYON_AST_LITERAL);
+    if (!literal_node) {
+        free(prop_node->data.property.name);
+        free(prop_node);
+        return NULL;
+    }
+    literal_node->data.literal.value.type = KRYON_VALUE_STRING;
+    literal_node->data.literal.value.data.string_value = strdup(value);
+
+    // 3. Link the literal value to the property
+    prop_node->data.property.value = literal_node;
+    literal_node->parent = prop_node;
+    
+    return prop_node;
+}
+
+void add_property_to_element_node(KryonASTNode* element_node, KryonASTNode* property_node) {
+    if (!element_node || element_node->type != KRYON_AST_ELEMENT || !property_node) {
+        return;
+    }
+
+    // Expand the properties array if needed
+    if (element_node->data.element.property_count >= element_node->data.element.property_capacity) {
+        size_t new_capacity = element_node->data.element.property_capacity == 0 ? 4 : element_node->data.element.property_capacity * 2;
+        KryonASTNode** new_props = realloc(element_node->data.element.properties, new_capacity * sizeof(KryonASTNode*));
+        if (!new_props) {
+            // In a real application, you'd handle this error more gracefully
+            fprintf(stderr, "ERROR: Failed to reallocate property array in optimizer.\n");
+            return;
+        }
+        element_node->data.element.properties = new_props;
+        element_node->data.element.property_capacity = new_capacity;
+    }
+
+    // Add the new property
+    element_node->data.element.properties[element_node->data.element.property_count] = property_node;
+    element_node->data.element.property_count++;
+    property_node->parent = element_node;
+}
+
 const char *kryon_ast_node_type_name(KryonASTNodeType type) {
     switch (type) {
         case KRYON_AST_ROOT: return "Root";
@@ -2661,11 +2736,52 @@ static KryonASTNode *parse_template_string(KryonParser *parser, const char* temp
                 strncpy(var_name, var_name_start, var_name_len);
                 var_name[var_name_len] = '\0';
                 
-                // Create variable segment
-                KryonASTNode *var_segment = kryon_ast_create_node(parser, KRYON_AST_VARIABLE, &current_token->location);
-                if (var_segment) {
-                    var_segment->data.variable.name = kryon_strdup(var_name);
+                // Create variable or member access segment based on content
+                KryonASTNode *var_segment = NULL;
+                
+                // Check if this is a member access (contains a dot)
+                char *dot_pos = strchr(var_name, '.');
+                if (dot_pos) {
+                    // This is a member access like "alignment.name"
+                    // Split into object and property parts
+                    size_t object_name_len = dot_pos - var_name;
+                    char *object_name = kryon_alloc(object_name_len + 1);
+                    char *property_name = kryon_strdup(dot_pos + 1);
                     
+                    if (object_name && property_name) {
+                        strncpy(object_name, var_name, object_name_len);
+                        object_name[object_name_len] = '\0';
+                        
+                        // Create member access node
+                        var_segment = kryon_ast_create_node(parser, KRYON_AST_MEMBER_ACCESS, &current_token->location);
+                        if (var_segment) {
+                            // Create object identifier node
+                            KryonASTNode *object_node = kryon_ast_create_node(parser, KRYON_AST_IDENTIFIER, &current_token->location);
+                            if (object_node) {
+                                object_node->data.identifier.name = kryon_strdup(object_name);
+                                var_segment->data.member_access.object = object_node;
+                                var_segment->data.member_access.member = kryon_strdup(property_name);
+                                printf("  🔗 Added member access segment: '%s.%s'\n", object_name, property_name);
+                            } else {
+                                kryon_free(var_segment);
+                                var_segment = NULL;
+                            }
+                        }
+                    }
+                    
+                    if (object_name) kryon_free(object_name);
+                    if (property_name) kryon_free(property_name);
+                } else {
+                    // Simple variable like "someVar"
+                    var_segment = kryon_ast_create_node(parser, KRYON_AST_VARIABLE, &current_token->location);
+                    if (var_segment) {
+                        var_segment->data.variable.name = kryon_strdup(var_name);
+                        printf("  🔗 Added variable segment: '%s'\n", var_name);
+                    }
+                }
+                
+                // Add segment to template
+                if (var_segment) {
                     // Add to template segments
                     if (template_node->data.template.segment_count >= template_node->data.template.segment_capacity) {
                         size_t new_capacity = template_node->data.template.segment_capacity == 0 ? 2 : template_node->data.template.segment_capacity * 2;
@@ -2674,7 +2790,6 @@ static KryonASTNode *parse_template_string(KryonParser *parser, const char* temp
                         template_node->data.template.segment_capacity = new_capacity;
                     }
                     template_node->data.template.segments[template_node->data.template.segment_count++] = var_segment;
-                    printf("  🔗 Added variable segment: '%s'\n", var_name);
                 }
                 kryon_free(var_name);
             }

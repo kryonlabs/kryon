@@ -469,6 +469,24 @@ const char *kryon_ast_node_type_name(KryonASTNodeType type);
 void kryon_ast_print(const KryonASTNode *node, FILE *file, int indent);
 
 /**
+ * @brief Creates a new AST property node with a string literal value.
+ * @details This is a helper for programmatically modifying the AST, used by the optimizer.
+ * @param name The name of the property (e.g., "direction").
+ * @param value The string value for the property (e.g., "column").
+ * @return A pointer to the newly created KRYON_AST_PROPERTY node, or NULL on failure. The caller is responsible for memory management.
+ */
+ KryonASTNode* create_string_property_node(const char* name, const char* value);
+
+ /**
+  * @brief Appends a property node to an element node's list of properties.
+  * @details This is a helper for programmatically modifying the AST, used by the optimizer. It handles reallocating the property array if necessary.
+  * @param element_node The KRYON_AST_ELEMENT node to modify.
+  * @param property_node The KRYON_AST_PROPERTY node to add.
+  */
+ void add_property_to_element_node(KryonASTNode* element_node, KryonASTNode* property_node);
+
+
+/**
  * @brief Validate AST node structure
  * @param node Node to validate
  * @param errors Output buffer for error messages

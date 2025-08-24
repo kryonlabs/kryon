@@ -278,6 +278,11 @@ ElementBounds element_get_bounds(struct KryonElement* element);
 bool point_in_bounds(ElementBounds bounds, float x, float y);
 
 /**
+ * Test if point is within bounds with tolerance margin
+ */
+bool point_in_bounds_with_tolerance(ElementBounds bounds, float x, float y, float tolerance);
+
+/**
  * Find topmost element at coordinates
  */
 struct KryonElement* hit_test_find_element_at_point(struct KryonElement* root, float x, float y);

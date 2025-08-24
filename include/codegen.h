@@ -276,50 +276,6 @@ uint16_t kryon_codegen_get_property_hex(const char *property_name);
 
 
 // =============================================================================
-// OPTIMIZATION PASSES
-// =============================================================================
-
-/**
- * @brief Optimize AST before code generation
- * @param codegen Code generator
- * @param ast_root Root AST node (may be modified)
- * @return true on success, false on error
- */
-bool kryon_codegen_optimize_ast(KryonCodeGenerator *codegen, KryonASTNode *ast_root);
-
-/**
- * @brief Inline style definitions into elements
- * @param codegen Code generator
- * @param ast_root Root AST node
- * @return Number of styles inlined
- */
-size_t kryon_codegen_inline_styles(KryonCodeGenerator *codegen, KryonASTNode *ast_root);
-
-/**
- * @brief Remove unused style definitions
- * @param codegen Code generator
- * @param ast_root Root AST node
- * @return Number of styles removed
- */
-size_t kryon_codegen_remove_unused_styles(KryonCodeGenerator *codegen, KryonASTNode *ast_root);
-
-/**
- * @brief Deduplicate string literals
- * @param codegen Code generator
- * @param ast_root Root AST node
- * @return Number of strings deduplicated
- */
-size_t kryon_codegen_deduplicate_strings(KryonCodeGenerator *codegen, KryonASTNode *ast_root);
-
-/**
- * @brief Fold constant expressions
- * @param codegen Code generator
- * @param ast_root Root AST node
- * @return Number of expressions folded
- */
-size_t kryon_codegen_fold_constants(KryonCodeGenerator *codegen, KryonASTNode *ast_root);
-
-// =============================================================================
 // BINARY GENERATION
 // =============================================================================
 

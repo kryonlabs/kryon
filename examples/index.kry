@@ -33,7 +33,7 @@
     }
     
     Button {
-        text: "← Back to Examples"
+        text: "<-- Back to Examples"
         posX: 20
         posY: 20
         width: 150
@@ -79,8 +79,8 @@ App {
             
             @for example in files {
                 Link {
-                    to: $example.file
-                    text: $example.title
+                    to: example.file
+                    text: example.title
                     overlay: "BackButton"
                 }
             }

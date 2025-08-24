@@ -9,6 +9,7 @@
 #include "codegen.h"
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <stdlib.h>
 #include <math.h>
 
@@ -177,11 +178,33 @@ char* kryon_ast_expression_to_string(const KryonASTNode* node, KryonCodeGenerato
                 
                 if (condition_str) {
                     // Try to evaluate the condition at compile time
-                    if (strcmp(condition_str, "true") == 0) {
+                    // Enhanced boolean detection to handle various formats
+                    bool is_true = false;
+                    bool is_false = false;
+                    
+                    // Check for "true"/"false" (case-insensitive)
+                    if (strcasecmp(condition_str, "true") == 0 || strcmp(condition_str, "1") == 0) {
+                        is_true = true;
+                    } else if (strcasecmp(condition_str, "false") == 0 || strcmp(condition_str, "0") == 0) {
+                        is_false = true;
+                    } else {
+                        // Try to parse as numeric boolean (any non-zero is true)
+                        char *endptr;
+                        double num_value = strtod(condition_str, &endptr);
+                        if (*endptr == '\0') { // Successfully parsed as number
+                            if (num_value != 0.0) {
+                                is_true = true;
+                            } else {
+                                is_false = true;
+                            }
+                        }
+                    }
+                    
+                    if (is_true) {
                         // Condition is true - return the true expression
                         kryon_free(condition_str);
                         return kryon_ast_expression_to_string(node->data.ternary_op.true_expr, codegen);
-                    } else if (strcmp(condition_str, "false") == 0) {
+                    } else if (is_false) {
                         // Condition is false - return the false expression
                         kryon_free(condition_str);
                         return kryon_ast_expression_to_string(node->data.ternary_op.false_expr, codegen);

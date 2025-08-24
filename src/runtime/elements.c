@@ -78,7 +78,8 @@ static void position_container_children(struct KryonRuntime* runtime, struct Kry
 static void position_center_children(struct KryonRuntime* runtime, struct KryonElement* center);
 static void position_app_children(struct KryonRuntime* runtime, struct KryonElement* app);
 static void position_grid_children(struct KryonRuntime* runtime, struct KryonElement* grid);
-static void position_tabbar_children(struct KryonRuntime* runtime, struct KryonElement* tabbar); 
+static void position_tabbar_children(struct KryonRuntime* runtime, struct KryonElement* tabbar);
+static float get_default_element_height(struct KryonElement* element); 
 
 bool element_registry_init_with_all_elements(void) {
     if (g_element_registry.initialized) {
@@ -277,7 +278,6 @@ static void dispatch_text_event_to_all_inputs(struct KryonRuntime* runtime, stru
     
     // Check if this element is an Input
     if (root->type_name && strcmp(root->type_name, "Input") == 0) {
-        printf("🎯 FALLBACK: Dispatching text event to Input element\n");
         element_dispatch_event(runtime, root, text_event);
         return; // Only dispatch to the first Input found
     }
@@ -301,6 +301,7 @@ bool element_dispatch_event(struct KryonRuntime* runtime, struct KryonElement* e
     if (!vtable || !vtable->handle_event) {
         return false; // No event handler for this element type
     }
+    
     
     return vtable->handle_event(runtime, element, event);
 }
@@ -350,8 +351,6 @@ bool generic_script_event_handler(KryonRuntime* runtime, KryonElement* element, 
         return false;
     }
 
-    printf("📝 SCRIPT HANDLER: Processing event type=%d for element '%s'\n", 
-           event->type, element->type_name ? element->type_name : "unknown");
 
     // Find the corresponding property name for the received event type
     const char* handler_prop_name = NULL;
@@ -363,11 +362,8 @@ bool generic_script_event_handler(KryonRuntime* runtime, KryonElement* element, 
     }
 
     if (!handler_prop_name) {
-        printf("❌ SCRIPT HANDLER: No property name found for event type %d\n", event->type);
         return false; // This handler doesn't process this event type
     }
-
-    printf("📝 SCRIPT HANDLER: Looking for property '%s' on element\n", handler_prop_name);
 
     // Check if the element has a handler defined for this event
     const char* handler_function_name = get_element_property_string(element, handler_prop_name);
@@ -377,16 +373,13 @@ bool generic_script_event_handler(KryonRuntime* runtime, KryonElement* element, 
         if (event->type == ELEMENT_EVENT_DOUBLE_CLICKED) {
             handler_function_name = get_element_property_string(element, "onClick");
             if (!handler_function_name || handler_function_name[0] == '\0') {
-                printf("❌ SCRIPT HANDLER: No fallback handler found\n");
                 return false; // No fallback handler available
             }
         } else {
-            printf("❌ SCRIPT HANDLER: No handler function found for property '%s'\n", handler_prop_name);
             return false; // No script function assigned to this event property
         }
     }
 
-    printf("🚀 SCRIPT HANDLER: Executing function '%s'\n", handler_function_name);
 
     // Execute the handler using the script VM
     KryonVMResult result = kryon_vm_call_function(runtime->script_vm, handler_function_name, element, (const void*)event);
@@ -449,7 +442,7 @@ void calculate_all_element_positions(struct KryonRuntime* runtime, struct KryonE
     static size_t current_frame = 0;
     current_frame++;
     
-    if (root == last_calculated_root && (current_frame - last_calculation_frame) < 2) {
+    if (root == last_calculated_root && (current_frame - last_calculation_frame) < 60) {
         return; // Skip if we calculated positions very recently for the same root
     }
     
@@ -498,6 +491,7 @@ static void calculate_element_position_recursive(struct KryonRuntime* runtime, s
     float explicit_width = get_element_property_float(element, "width", 0.0f);
     float explicit_height = get_element_property_float(element, "height", 0.0f);
     
+    
     // Handle size inheritance properly
     if (explicit_width > 0.0f) {
         element->width = explicit_width;
@@ -515,7 +509,14 @@ static void calculate_element_position_recursive(struct KryonRuntime* runtime, s
     } else {
         // Use available space, but ensure layout containers get reasonable defaults
         if (element->type_name && (strcmp(element->type_name, "Column") == 0 || strcmp(element->type_name, "Row") == 0)) {
-            element->height = available_height > 0.0f ? available_height : 300.0f;
+            // For Row elements inside Column layouts, use smaller default height
+            if (strcmp(element->type_name, "Row") == 0 && layout_parent && layout_parent->type_name && 
+                strcmp(layout_parent->type_name, "Column") == 0) {
+                // Row in Column: use much smaller default height 
+                element->height = 40.0f;
+            } else {
+                element->height = available_height > 0.0f ? available_height : 300.0f;
+            }
         } else {
             element->height = available_height > 0.0f ? available_height : 50.0f;
         }
@@ -569,261 +570,360 @@ static void position_children_by_layout_type(struct KryonRuntime* runtime, struc
 }
 
 /**
- * @brief Position children in a Row layout (horizontal arrangement)
+ * @brief ENHANCED Row positioning with complete flexbox alignment support and flex wrapping.
+ * Row elements automatically behave like Container with direction="row"
  */
 static void position_row_children(struct KryonRuntime* runtime, struct KryonElement* row) {
     if (!row || row->child_count == 0) return;
     
-    // Get layout properties
-    const char* main_axis = get_element_property_string(row, "mainAxisAlignment");
-    if (!main_axis) main_axis = get_element_property_string(row, "mainAxis");
+    // Row elements use canonical property names only
+    const char* main_axis = get_element_property_string(row, "mainAxis");
     if (!main_axis) main_axis = "start";
     
-    const char* cross_axis = get_element_property_string(row, "crossAxisAlignment");
-    if (!cross_axis) cross_axis = get_element_property_string(row, "crossAxis");
+    const char* cross_axis = get_element_property_string(row, "crossAxis");
     if (!cross_axis) cross_axis = "start";
     
     float gap = get_element_property_float(row, "gap", 0.0f);
     float padding = get_element_property_float(row, "padding", 0.0f);
     
-    // Calculate available space inside padding
+    
+    // Check for flex wrap support
+    const char* wrap = get_element_property_string(row, "wrap");
+    if (!wrap) wrap = get_element_property_string(row, "flexWrap");
+    bool should_wrap = (wrap && (strcmp(wrap, "wrap") == 0 || strcmp(wrap, "true") == 0));
+    
     float content_x = row->x + padding;
     float content_y = row->y + padding;
     float content_width = row->width - (padding * 2.0f);
     float content_height = row->height - (padding * 2.0f);
-    
-    // Calculate total width needed by all children
-    float total_child_width = 0.0f;
-    for (size_t i = 0; i < row->child_count; i++) {
-        struct KryonElement* child = row->children[i];
-        float child_width = get_element_property_float(child, "width", 0.0f);
+
+    if (should_wrap) {
+        // FLEX WRAP: Multi-line row layout
+        float current_x = content_x;
+        float current_y = content_y;
+        float max_line_height = 0.0f;
         
-        // Auto-calculate sizes for elements without explicit widths
-        if (child_width == 0.0f) {
-            if (child->type_name && strcmp(child->type_name, "Button") == 0) {
-                // Size buttons based on their text content
-                const char* text = get_element_property_string(child, "text");
-                float font_size = 20.0f; // Standard button font size
-                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
+        for (size_t i = 0; i < row->child_count; i++) {
+            struct KryonElement* child = row->children[i];
+            float child_width = get_element_property_float(child, "width", 100.0f);
+            float child_height = get_element_property_float(child, "height", 50.0f);
+            
+            // Check if we need to wrap to next line
+            if (current_x + child_width > content_x + content_width && i > 0) {
+                // Move to next line
+                current_y += max_line_height + gap;
+                current_x = content_x;
+                max_line_height = 0.0f;
+            }
+            
+            // Track maximum height in current line for proper line spacing
+            if (child_height > max_line_height) {
+                max_line_height = child_height;
+            }
+            
+            // Position child in current line
+            float child_y = current_y;
+            
+            // Apply cross-axis alignment within the line
+            if (strcmp(cross_axis, "center") == 0) {
+                child_y = current_y; // Center alignment handled per-line
+            } else if (strcmp(cross_axis, "stretch") == 0) {
+                child_height = max_line_height;
+            }
+            
+            calculate_element_position_recursive(runtime, child, current_x, child_y, child_width, child_height, row);
+            current_x += child_width + gap;
+        }
+    } else {
+        // SINGLE LINE: Enhanced row layout with complete alignment support
+        
+        // Pre-calculate all child dimensions for consistent positioning
+        float* child_widths = malloc(sizeof(float) * row->child_count);
+        float* child_heights = malloc(sizeof(float) * row->child_count);
+        float total_child_width = 0.0f;
+        
+        for (size_t i = 0; i < row->child_count; i++) {
+            child_widths[i] = get_element_property_float(row->children[i], "width", 100.0f);
+            child_heights[i] = get_element_property_float(row->children[i], "height", 50.0f);
+            total_child_width += child_widths[i];
+        }
+        total_child_width += (row->child_count > 1) ? (gap * (row->child_count - 1)) : 0;
+
+        float current_x = content_x;
+        float spacing = gap;
+
+        // Enhanced main axis (horizontal) alignment
+        if (strcmp(main_axis, "spaceBetween") == 0 || strcmp(main_axis, "space-between") == 0) {
+            // Space Between: Equal spacing between items, no space at edges
+            if (row->child_count > 1) {
+                float child_widths_only = total_child_width - (gap * (row->child_count - 1));
+                float remaining_space = content_width - child_widths_only;
+                float space_between = remaining_space / (row->child_count - 1);
                 
-                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
-                    child_width = renderer->vtable->measure_text_width(text, font_size) + 24.0f + 2.0f; // Text + padding + border
-                } else {
-                    // Fallback sizing for buttons
-                    child_width = text ? strlen(text) * font_size * 0.55f + 24.0f + 2.0f : 82.0f;
-                }
-            } else if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                // Size text elements based on their content
-                const char* text = get_element_property_string(child, "text");
-                float font_size = get_element_property_float(child, "fontSize", 16.0f);
-                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
-                
-                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
-                    child_width = renderer->vtable->measure_text_width(text, font_size);
-                } else {
-                    // Fallback sizing for text
-                    child_width = text ? strlen(text) * font_size * 0.6f : 50.0f;
+                for (size_t i = 0; i < row->child_count; i++) {
+                    struct KryonElement* child = row->children[i];
+                    float child_width = child_widths[i];
+                    float child_height = child_heights[i];
+                    float child_y = content_y;
+                    
+                    // Cross-axis alignment
+                    if (strcmp(cross_axis, "center") == 0) {
+                        child_y += (content_height - child_height) / 2.0f;
+                    } else if (strcmp(cross_axis, "end") == 0 || strcmp(cross_axis, "flex-end") == 0) {
+                        child_y += content_height - child_height;
+                    } else if (strcmp(cross_axis, "stretch") == 0) {
+                        child_height = content_height;
+                    }
+                    
+                    calculate_element_position_recursive(runtime, child, current_x, child_y, child_width, child_height, row);
+                    if (i < row->child_count - 1) {
+                        current_x += child_width + space_between;
+                    }
                 }
             } else {
-                child_width = 100.0f; // Default for other elements
+                // Single child - just center it
+                struct KryonElement* child = row->children[0];
+                float child_width = child_widths[0];
+                float child_height = child_heights[0];
+                float child_y = content_y;
+                if (strcmp(cross_axis, "center") == 0) {
+                    child_y += (content_height - child_height) / 2.0f;
+                } else if (strcmp(cross_axis, "stretch") == 0) {
+                    child_height = content_height;
+                }
+                calculate_element_position_recursive(runtime, child, current_x, child_y, child_width, child_height, row);
+            }
+        } else if (strcmp(main_axis, "spaceAround") == 0 || strcmp(main_axis, "space-around") == 0) {
+            // Space Around: Equal space around each item
+            if (row->child_count > 0) {
+                float child_widths_only = total_child_width - (gap * (row->child_count - 1));
+                float remaining_space = content_width - child_widths_only;
+                float space_per_item = remaining_space / row->child_count;
+                current_x += space_per_item / 2.0f;
+                
+                for (size_t i = 0; i < row->child_count; i++) {
+                    struct KryonElement* child = row->children[i];
+                    float child_width = child_widths[i];
+                    float child_height = child_heights[i];
+                    float child_y = content_y;
+                    
+                    // Cross-axis alignment
+                    if (strcmp(cross_axis, "center") == 0) {
+                        child_y += (content_height - child_height) / 2.0f;
+                    } else if (strcmp(cross_axis, "end") == 0 || strcmp(cross_axis, "flex-end") == 0) {
+                        child_y += content_height - child_height;
+                    } else if (strcmp(cross_axis, "stretch") == 0) {
+                        child_height = content_height;
+                    }
+                    
+                    calculate_element_position_recursive(runtime, child, current_x, child_y, child_width, child_height, row);
+                    current_x += child_width + space_per_item;
+                }
+            }
+        } else if (strcmp(main_axis, "spaceEvenly") == 0 || strcmp(main_axis, "space-evenly") == 0) {
+            // Space Evenly: Equal space before, between, and after items
+            if (row->child_count > 0) {
+                float child_widths_only = total_child_width - (gap * (row->child_count - 1));
+                float remaining_space = content_width - child_widths_only;
+                float space_per_gap = remaining_space / (row->child_count + 1);
+                current_x += space_per_gap;
+                
+                for (size_t i = 0; i < row->child_count; i++) {
+                    struct KryonElement* child = row->children[i];
+                    float child_width = child_widths[i];
+                    float child_height = child_heights[i];
+                    float child_y = content_y;
+                    
+                    // Cross-axis alignment
+                    if (strcmp(cross_axis, "center") == 0) {
+                        child_y += (content_height - child_height) / 2.0f;
+                    } else if (strcmp(cross_axis, "end") == 0 || strcmp(cross_axis, "flex-end") == 0) {
+                        child_y += content_height - child_height;
+                    } else if (strcmp(cross_axis, "stretch") == 0) {
+                        child_height = content_height;
+                    }
+                    
+                    calculate_element_position_recursive(runtime, child, current_x, child_y, child_width, child_height, row);
+                    current_x += child_width + space_per_gap;
+                }
+            }
+        } else {
+            // Standard alignments: start, center, end
+            if (strcmp(main_axis, "center") == 0) {
+                current_x += (content_width - total_child_width) / 2.0f;
+            } else if (strcmp(main_axis, "end") == 0 || strcmp(main_axis, "flex-end") == 0) {
+                current_x += content_width - total_child_width;
+            }
+            // "start" and "flex-start" use default current_x = content_x
+            
+            for (size_t i = 0; i < row->child_count; i++) {
+                struct KryonElement* child = row->children[i];
+                float child_width = child_widths[i];
+                float child_height = child_heights[i];
+                float child_y = content_y;
+                
+                // Enhanced cross axis (vertical) alignment
+                if (strcmp(cross_axis, "center") == 0) {
+                    // Fix: Ensure proper centering within Row's content area
+                    child_y = content_y + (content_height - child_height) / 2.0f;
+                } else if (strcmp(cross_axis, "end") == 0 || strcmp(cross_axis, "flex-end") == 0) {
+                    child_y += content_height - child_height;
+                } else if (strcmp(cross_axis, "stretch") == 0) {
+                    child_height = content_height;
+                } else if (strcmp(cross_axis, "baseline") == 0) {
+                    // For baseline alignment, use a simple font-based approach
+                    if (child->type_name && strcmp(child->type_name, "Text") == 0) {
+                        float font_size = get_element_property_float(child, "fontSize", 16.0f);
+                        child_y += font_size * 0.8f; // Approximate baseline offset
+                    } else {
+                        // Non-text elements align to their bottom edge for baseline
+                        child_y += content_height - child_height;
+                    }
+                }
+                // "start" and "flex-start" use default child_y = content_y
+                
+                calculate_element_position_recursive(runtime, child, current_x, child_y, child_width, child_height, row);
+                current_x += child_width + gap; // Use original gap, not modified spacing
             }
         }
         
-        total_child_width += child_width;
-        if (i > 0) total_child_width += gap; // Add gap between children
-    }
-    
-    
-    // Calculate starting X position based on mainAxisAlignment
-    float current_x = content_x;
-    if (strcmp(main_axis, "center") == 0) {
-        current_x = content_x + (content_width - total_child_width) / 2.0f;
-    } else if (strcmp(main_axis, "end") == 0) {
-        current_x = content_x + content_width - total_child_width;
-    } else if (strcmp(main_axis, "spaceEvenly") == 0) {
-        // SpaceEvenly: equal space before, between, and after children
-        float remaining_space = content_width - total_child_width + (gap * (row->child_count - 1));
-        float space = remaining_space / (row->child_count + 1);
-        current_x = content_x + space;
-        gap = space;
-    } else if (strcmp(main_axis, "spaceAround") == 0) {
-        // SpaceAround: half space before/after, full space between
-        float remaining_space = content_width - total_child_width + (gap * (row->child_count - 1));
-        float space = remaining_space / row->child_count;
-        current_x = content_x + space / 2.0f;
-        gap = space;
-    } else if (strcmp(main_axis, "spaceBetween") == 0) {
-        // SpaceBetween: no space before/after, equal space between
-        if (row->child_count > 1) {
-            float remaining_space = content_width - total_child_width + (gap * (row->child_count - 1));
-            gap = remaining_space / (row->child_count - 1);
-        }
-        current_x = content_x;
-    }
-    // "start" uses current_x = content_x (already set)
-    
-    // Position each child
-    for (size_t i = 0; i < row->child_count; i++) {
-        struct KryonElement* child = row->children[i];
-        float child_width = get_element_property_float(child, "width", 0.0f);
-        float child_height = get_element_property_float(child, "height", 0.0f);
-        
-        // Auto-size elements that don't have explicit dimensions (same logic as total width calculation)
-        if (child_width == 0.0f) {
-            if (child->type_name && strcmp(child->type_name, "Button") == 0) {
-                // Size buttons based on their text content
-                const char* text = get_element_property_string(child, "text");
-                float font_size = 20.0f; // Standard button font size
-                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
-                
-                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
-                    child_width = renderer->vtable->measure_text_width(text, font_size) + 24.0f + 2.0f; // Text + padding + border
-                } else {
-                    // Fallback sizing for buttons
-                    child_width = text ? strlen(text) * font_size * 0.55f + 24.0f + 2.0f : 82.0f;
-                }
-            } else if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                // Size text elements based on their content
-                const char* text = get_element_property_string(child, "text");
-                float font_size = get_element_property_float(child, "fontSize", 16.0f);
-                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
-                
-                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
-                    child_width = renderer->vtable->measure_text_width(text, font_size);
-                } else {
-                    // Fallback sizing for text
-                    child_width = text ? strlen(text) * font_size * 0.6f : 50.0f;
-                }
-            } else {
-                child_width = 100.0f; // Default for other elements
-            }
-        }
-        
-        if (child_height == 0.0f) {
-            if (child->type_name && strcmp(child->type_name, "Button") == 0) {
-                child_height = 50.0f; // Standard button height
-            } else {
-                child_height = 50.0f; // Default height
-            }
-        }
-        
-        // Calculate Y position based on crossAxisAlignment
-        float child_y = content_y;
-        if (strcmp(cross_axis, "center") == 0) {
-            child_y = content_y + (content_height - child_height) / 2.0f;
-        } else if (strcmp(cross_axis, "end") == 0) {
-            child_y = content_y + content_height - child_height;
-        }
-        // "start" uses child_y = content_y (already set)
-        
-        // Recursively position this child
-        calculate_element_position_recursive(runtime, child, current_x, child_y, child_width, child_height, row);
-        
-        // Move to next position
-        current_x += child_width + gap;
+        // Clean up allocated memory
+        free(child_widths);
+        free(child_heights);
     }
 }
 
 /**
- * @brief Position children in a Column layout (vertical arrangement)
+ * @brief ENHANCED Column positioning with complete flexbox alignment support and flex wrapping.
+ * Column elements automatically behave like Container with direction="column"
  */
 static void position_column_children(struct KryonRuntime* runtime, struct KryonElement* column) {
     if (!column || column->child_count == 0) return;
     
-    // Get layout properties
-    const char* main_axis = get_element_property_string(column, "mainAxisAlignment");
-    if (!main_axis) main_axis = get_element_property_string(column, "mainAxis");
+    // Column elements use canonical property names only
+    const char* main_axis = get_element_property_string(column, "mainAxis");
     if (!main_axis) main_axis = "start";
     
-    const char* cross_axis = get_element_property_string(column, "crossAxisAlignment");
-    if (!cross_axis) cross_axis = get_element_property_string(column, "crossAxis");
+    const char* cross_axis = get_element_property_string(column, "crossAxis");
     if (!cross_axis) cross_axis = "start";
     
     float gap = get_element_property_float(column, "gap", 0.0f);
     float padding = get_element_property_float(column, "padding", 0.0f);
     
-    // Calculate available space inside padding
+    // Check for flex wrap support
+    const char* wrap = get_element_property_string(column, "wrap");
+    if (!wrap) wrap = get_element_property_string(column, "flexWrap");
+    bool should_wrap = (wrap && (strcmp(wrap, "wrap") == 0 || strcmp(wrap, "true") == 0));
+    
     float content_x = column->x + padding;
     float content_y = column->y + padding;
     float content_width = column->width - (padding * 2.0f);
     float content_height = column->height - (padding * 2.0f);
-    
-    // Calculate total height needed by all children
-    float total_child_height = 0.0f;
-    for (size_t i = 0; i < column->child_count; i++) {
-        float child_height = get_element_property_float(column->children[i], "height", 50.0f);
-        total_child_height += child_height;
-        if (i > 0) total_child_height += gap; // Add gap between children
-    }
-    
-    // Calculate starting Y position based on mainAxisAlignment
-    float current_y = content_y;
-    if (strcmp(main_axis, "center") == 0) {
-        current_y = content_y + (content_height - total_child_height) / 2.0f;
-    } else if (strcmp(main_axis, "end") == 0) {
-        current_y = content_y + content_height - total_child_height;
-    } else if (strcmp(main_axis, "spaceEvenly") == 0) {
-        float space = (content_height - total_child_height + (gap * (column->child_count - 1))) / (column->child_count + 1);
-        current_y = content_y + space;
-        gap = space;
-    } else if (strcmp(main_axis, "spaceAround") == 0) {
-        float space = (content_height - total_child_height + (gap * (column->child_count - 1))) / column->child_count;
-        current_y = content_y + space / 2.0f;
-        gap = space;
-    } else if (strcmp(main_axis, "spaceBetween") == 0) {
-        if (column->child_count > 1) {
-            gap = (content_height - total_child_height + (gap * (column->child_count - 1))) / (column->child_count - 1);
+
+    if (should_wrap) {
+        // FLEX WRAP: Multi-column layout (columns side by side)
+        float current_x = content_x;
+        float current_y = content_y;
+        float max_column_width = 0.0f;
+        
+        for (size_t i = 0; i < column->child_count; i++) {
+            struct KryonElement* child = column->children[i];
+            float child_width = get_element_property_float(child, "width", 100.0f);
+            float child_height = get_element_property_float(child, "height", 50.0f);
+            
+            // Check if we need to wrap to next column
+            if (current_y + child_height > content_y + content_height && i > 0) {
+                // Move to next column
+                current_x += max_column_width + gap;
+                current_y = content_y;
+                max_column_width = 0.0f;
+            }
+            
+            // Track maximum width in current column for proper column spacing
+            if (child_width > max_column_width) {
+                max_column_width = child_width;
+            }
+            
+            // Position child in current column
+            float child_x = current_x;
+            
+            // Apply cross-axis alignment within the column
+            if (strcmp(cross_axis, "center") == 0) {
+                child_x = current_x; // Center alignment handled per-column
+            } else if (strcmp(cross_axis, "stretch") == 0) {
+                child_width = max_column_width;
+            }
+            
+            // Pass Column's content area as available space to children (like Container does) 
+            calculate_element_position_recursive(runtime, child, child_x, current_y, content_width, content_height, column);
+            current_y += child_height + gap;
         }
-        current_y = content_y;
-    }
-    // "start" uses current_y = content_y (already set)
-    
-    // Position each child
-    for (size_t i = 0; i < column->child_count; i++) {
-        struct KryonElement* child = column->children[i];
+    } else {
+        // SINGLE COLUMN: Enhanced column layout with complete alignment support
+        float total_child_height = 0.0f;
+        for (size_t i = 0; i < column->child_count; i++) {
+            total_child_height += get_element_property_float(column->children[i], "height", get_default_element_height(column->children[i]));
+        }
+        total_child_height += (column->child_count > 1) ? (gap * (column->child_count - 1)) : 0;
+
+        float current_y = content_y;
+        float spacing = gap;
         
-        // Get child dimensions - handle Text elements specially (they auto-size)
-        float child_width = get_element_property_float(child, "width", 0.0f);
-        float child_height = get_element_property_float(child, "height", 0.0f);
-        
-        // For Text elements without explicit size, use smaller defaults
-        if (child_width == 0.0f) {
-            if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                child_width = 200.0f; // Reasonable text width
-            } else {
-                child_width = 100.0f; // Default for other elements
+
+        // Enhanced main axis (vertical) alignment
+        if (strcmp(main_axis, "center") == 0) {
+            current_y += (content_height - total_child_height) / 2.0f;
+        } else if (strcmp(main_axis, "end") == 0 || strcmp(main_axis, "flex-end") == 0) {
+            current_y += content_height - total_child_height;
+        } else if (strcmp(main_axis, "spaceBetween") == 0 || strcmp(main_axis, "space-between") == 0) {
+            if (column->child_count > 1) {
+                float child_heights_only = total_child_height - (gap * (column->child_count - 1));
+                spacing = (content_height - child_heights_only) / (column->child_count - 1);
+            }
+        } else if (strcmp(main_axis, "spaceAround") == 0 || strcmp(main_axis, "space-around") == 0) {
+            if (column->child_count > 0) {
+                float child_heights_only = total_child_height - (gap * (column->child_count - 1));
+                float remaining_space = content_height - child_heights_only;
+                float space_per_item = remaining_space / column->child_count;
+                current_y += space_per_item / 2.0f;
+                spacing = gap + space_per_item;
+            }
+        } else if (strcmp(main_axis, "spaceEvenly") == 0 || strcmp(main_axis, "space-evenly") == 0) {
+            if (column->child_count > 0) {
+                float child_heights_only = total_child_height - (gap * (column->child_count - 1));
+                float remaining_space = content_height - child_heights_only;
+                float space_per_gap = remaining_space / (column->child_count + 1);
+                current_y += space_per_gap;
+                spacing = gap + space_per_gap;
             }
         }
-        if (child_height == 0.0f) {
-            if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                child_height = 20.0f; // Reasonable text height (was 50!)
-            } else {
-                child_height = 50.0f; // Default for other elements
+        // "start" and "flex-start" use default current_y = content_y
+
+        for (size_t i = 0; i < column->child_count; i++) {
+            struct KryonElement* child = column->children[i];
+            float child_width = get_element_property_float(child, "width", 100.0f);
+            float child_height = get_element_property_float(child, "height", get_default_element_height(child));
+            
+            float child_x = content_x;
+            
+            // Enhanced cross axis (horizontal) alignment
+            if (strcmp(cross_axis, "center") == 0) {
+                child_x += (content_width - child_width) / 2.0f;
+            } else if (strcmp(cross_axis, "end") == 0 || strcmp(cross_axis, "flex-end") == 0) {
+                child_x += content_width - child_width;
+            } else if (strcmp(cross_axis, "stretch") == 0) {
+                child_width = content_width;
+            } else if (strcmp(cross_axis, "baseline") == 0) {
+                // For column layout, baseline alignment behaves like flex-start
+                // (baseline is primarily meaningful for horizontal text alignment)
+                child_x = content_x;
             }
+            // "start" and "flex-start" use default child_x = content_x
+
+            // Pass Column's content area as available space to children (like Container does)
+            calculate_element_position_recursive(runtime, child, child_x, current_y, content_width, content_height, column);
+            current_y += child_height + spacing;
         }
-        
-        
-        // Calculate X position based on crossAxisAlignment
-        float child_x = content_x;
-        if (strcmp(cross_axis, "center") == 0) {
-            child_x = content_x + (content_width - child_width) / 2.0f;
-        } else if (strcmp(cross_axis, "end") == 0) {
-            child_x = content_x + content_width - child_width;
-        } else if (strcmp(cross_axis, "stretch") == 0) {
-            child_width = content_width; // Stretch to fill available width
-            child_x = content_x;
-        }
-        // "start" uses child_x = content_x (already set)
-        
-        // For layout containers, pass the content area as available space
-        float available_width_for_child = content_width;
-        float available_height_for_child = child_height;
-        
-        // Recursively position this child
-        calculate_element_position_recursive(runtime, child, child_x, current_y, available_width_for_child, available_height_for_child, column);
-        
-        // Move to next position
-        current_y += child_height + gap;
     }
 }
 
@@ -843,6 +943,7 @@ static void position_container_children(struct KryonRuntime* runtime, struct Kry
     float content_y = container->y + padding;
     float content_width = container->width - (padding * 2.0f);
     float content_height = container->height - (padding * 2.0f);
+    
     
     // Position all children based on contentAlignment
     for (size_t i = 0; i < container->child_count; i++) {
@@ -895,16 +996,23 @@ static void position_container_children(struct KryonRuntime* runtime, struct Kry
         float available_width_for_child = content_width;
         float available_height_for_child = content_height;
         
+        
         // Recursively position this child
         calculate_element_position_recursive(runtime, child, child_x, child_y, available_width_for_child, available_height_for_child, container);
     }
 }
 
 /**
- * @brief Position children in a Center layout (centers all children)
+ * @brief ENHANCED Center positioning with complete content alignment support.
+ * Center elements automatically behave like Container with contentAlignment="center"
  */
 static void position_center_children(struct KryonRuntime* runtime, struct KryonElement* center) {
     if (!center || center->child_count == 0) return;
+    
+    // Center elements internally provide contentAlignment="center" behavior
+    // But allow override via contentAlignment property for flexibility
+    const char* content_alignment = get_element_property_string(center, "contentAlignment");
+    if (!content_alignment) content_alignment = "center"; // Force center as default
     
     float padding = get_element_property_float(center, "padding", 0.0f);
     
@@ -914,14 +1022,63 @@ static void position_center_children(struct KryonRuntime* runtime, struct KryonE
     float content_width = center->width - (padding * 2.0f);
     float content_height = center->height - (padding * 2.0f);
     
-    // Center all children
+    // Position all children based on contentAlignment (default: center)
     for (size_t i = 0; i < center->child_count; i++) {
         struct KryonElement* child = center->children[i];
-        float child_width = get_element_property_float(child, "width", 100.0f);
-        float child_height = get_element_property_float(child, "height", 50.0f);
         
-        float child_x = content_x + (content_width - child_width) / 2.0f;
-        float child_y = content_y + (content_height - child_height) / 2.0f;
+        // Enhanced child sizing with smart defaults
+        float child_width = get_element_property_float(child, "width", 0.0f);
+        float child_height = get_element_property_float(child, "height", 0.0f);
+        
+        // For Text elements without explicit size, measure actual text dimensions
+        if (child_width == 0.0f) {
+            if (child->type_name && strcmp(child->type_name, "Text") == 0) {
+                // Use actual text measurement for accurate centering
+                const char* text = get_element_property_string(child, "text");
+                float font_size = get_element_property_float(child, "fontSize", 16.0f);
+                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
+                
+                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
+                    child_width = renderer->vtable->measure_text_width(text, font_size);
+                } else {
+                    // Fallback sizing if no measurement available
+                    child_width = text ? strlen(text) * font_size * 0.6f : 100.0f;
+                }
+            } else {
+                child_width = 100.0f; // Default for other elements
+            }
+        }
+        if (child_height == 0.0f) {
+            if (child->type_name && strcmp(child->type_name, "Text") == 0) {
+                float font_size = get_element_property_float(child, "fontSize", 16.0f);
+                child_height = font_size * 1.2f; // Font height + small padding
+            } else {
+                child_height = 50.0f; // Default for other elements
+            }
+        }
+        
+        float child_x = content_x;
+        float child_y = content_y;
+        
+        // Enhanced content alignment options
+        if (strcmp(content_alignment, "center") == 0) {
+            child_x = content_x + (content_width - child_width) / 2.0f;
+            child_y = content_y + (content_height - child_height) / 2.0f;
+        } else if (strcmp(content_alignment, "start") == 0 || strcmp(content_alignment, "flex-start") == 0) {
+            child_x = content_x;
+            child_y = content_y;
+        } else if (strcmp(content_alignment, "end") == 0 || strcmp(content_alignment, "flex-end") == 0) {
+            child_x = content_x + content_width - child_width;
+            child_y = content_y + content_height - child_height;
+        } else if (strcmp(content_alignment, "centerX") == 0) {
+            // Center horizontally only
+            child_x = content_x + (content_width - child_width) / 2.0f;
+            child_y = content_y;
+        } else if (strcmp(content_alignment, "centerY") == 0) {
+            // Center vertically only
+            child_x = content_x;
+            child_y = content_y + (content_height - child_height) / 2.0f;
+        }
         
         // Recursively position this child
         calculate_element_position_recursive(runtime, child, child_x, child_y, child_width, child_height, center);
@@ -1129,6 +1286,67 @@ bool point_in_bounds(ElementBounds bounds, float x, float y) {
             y >= bounds.y && y <= bounds.y + bounds.height);
 }
 
+bool point_in_bounds_with_tolerance(ElementBounds bounds, float x, float y, float tolerance) {
+    return (x >= bounds.x - tolerance && x <= bounds.x + bounds.width + tolerance &&
+            y >= bounds.y - tolerance && y <= bounds.y + bounds.height + tolerance);
+}
+
+// Helper function to get appropriate default height for element type
+static float get_default_element_height(struct KryonElement* element) {
+    if (!element || !element->type_name) return 50.0f;
+    
+    const char* type = element->type_name;
+    
+    // Text elements should calculate height based on font size
+    if (strcmp(type, "Text") == 0) {
+        float font_size = get_element_property_float(element, "fontSize", 16.0f);
+        return font_size * 1.3f; // Font height + small padding
+    }
+    
+    // Interactive elements have standard sizes
+    if (strcmp(type, "Button") == 0) return 36.0f;
+    if (strcmp(type, "Checkbox") == 0) return 24.0f;  
+    if (strcmp(type, "Input") == 0) return 32.0f;
+    if (strcmp(type, "Dropdown") == 0) return 32.0f;
+    
+    // Layout elements
+    if (strcmp(type, "Column") == 0 || strcmp(type, "Row") == 0) return 200.0f;
+    if (strcmp(type, "Container") == 0) return 100.0f;
+    
+    // Default fallback
+    return 50.0f;
+}
+
+// Helper function to check if element type is interactive
+static bool is_interactive_element(const char* type_name) {
+    return (type_name && 
+            (strcmp(type_name, "Checkbox") == 0 ||
+             strcmp(type_name, "Button") == 0 ||
+             strcmp(type_name, "Input") == 0 ||
+             strcmp(type_name, "Dropdown") == 0));
+}
+
+// Recursive function to find interactive elements only
+static struct KryonElement* find_interactive_element_at_point(struct KryonElement* root, float x, float y) {
+    if (!root) return NULL;
+    
+    // Check children first (render on top)
+    for (size_t i = 0; i < root->child_count; i++) {
+        struct KryonElement* hit_child = find_interactive_element_at_point(root->children[i], x, y);
+        if (hit_child) return hit_child;
+    }
+    
+    // Check this element if it's interactive
+    if (is_interactive_element(root->type_name)) {
+        ElementBounds bounds = element_get_bounds(root);
+        if (point_in_bounds_with_tolerance(bounds, x, y, 5.0f)) {
+            return root;
+        }
+    }
+    
+    return NULL;
+}
+
 struct KryonElement* hit_test_find_element_at_point(struct KryonElement* root, float x, float y) {
     if (!root) return NULL;
     
@@ -1138,6 +1356,13 @@ struct KryonElement* hit_test_find_element_at_point(struct KryonElement* root, f
         return dropdown_hit;
     }
     
+    // PRIORITY 1: Check for interactive elements first
+    struct KryonElement* interactive_hit = find_interactive_element_at_point(root, x, y);
+    if (interactive_hit) {
+        return interactive_hit;
+    }
+    
+    // PRIORITY 2: Check all elements (including non-interactive) using original logic
     // Check children first (they render on top)
     for (size_t i = 0; i < root->child_count; i++) {
         struct KryonElement* hit_child = hit_test_find_element_at_point(root->children[i], x, y);
@@ -1146,12 +1371,9 @@ struct KryonElement* hit_test_find_element_at_point(struct KryonElement* root, f
     
     // Check this element
     ElementBounds bounds = element_get_bounds(root);
-    printf("🎯 HIT TEST DEBUG: Element '%s' bounds=(%.1f,%.1f,%.1f,%.1f) click=(%.1f,%.1f)\n", 
-           root->type_name ? root->type_name : "unknown", 
-           bounds.x, bounds.y, bounds.width, bounds.height, x, y);
-    if (point_in_bounds(bounds, x, y)) {
-        printf("🎯 HIT TEST: Point is inside element '%s'\n", 
-               root->type_name ? root->type_name : "unknown");
+    bool hit = point_in_bounds(bounds, x, y);
+    
+    if (hit) {
         return root;
     }
     
@@ -1273,15 +1495,7 @@ void hit_test_process_input_event(HitTestManager* manager, struct KryonRuntime* 
                 float x = input_event->data.mouseButton.x;
                 float y = input_event->data.mouseButton.y;
                 
-                printf("🎯 HIT TEST: Checking click at (%.1f, %.1f)\n", x, y);
                 struct KryonElement* clicked = hit_test_find_element_at_point(root, x, y);
-                
-                if (clicked) {
-                    printf("🎯 HIT TEST: Found element type='%s' at click position\n", 
-                           clicked->type_name ? clicked->type_name : "unknown");
-                } else {
-                    printf("🎯 HIT TEST: No element found at click position\n");
-                }
 
                 // --- FOCUS MANAGEMENT ---
                 if (clicked != manager->focused_element) {
@@ -1320,8 +1534,6 @@ void hit_test_process_input_event(HitTestManager* manager, struct KryonRuntime* 
                         .data.mousePos = {x, y}
                     };
                     
-                    printf("🚀 ELEMENT EVENT: Dispatching CLICKED event to element '%s'\n", 
-                           clicked->type_name ? clicked->type_name : "unknown");
                     element_dispatch_event(runtime, clicked, &click_event);
                     
                     // If it's a double click, also dispatch a DOUBLE_CLICKED event
@@ -1333,8 +1545,6 @@ void hit_test_process_input_event(HitTestManager* manager, struct KryonRuntime* 
                             .data.mousePos = {x, y}
                         };
                         
-                        printf("🚀 ELEMENT EVENT: Dispatching DOUBLE_CLICKED event to element '%s'\n", 
-                               clicked->type_name ? clicked->type_name : "unknown");
                         element_dispatch_event(runtime, clicked, &double_click_event);
                     }
                     
@@ -1382,9 +1592,6 @@ void hit_test_process_input_event(HitTestManager* manager, struct KryonRuntime* 
         }
         
         case KRYON_EVENT_TEXT_INPUT: {
-            printf("⌨️ TEXT INPUT EVENT: Received text='%s' (focused_element=%p)\n", 
-                   input_event->data.textInput.text, (void*)manager->focused_element);
-            
             ElementEvent text_event = {
                 .timestamp = input_event->timestamp,
                 .handled = false,
@@ -1399,12 +1606,8 @@ void hit_test_process_input_event(HitTestManager* manager, struct KryonRuntime* 
             };
             
             if (manager->focused_element) {
-                printf("🎯 DISPATCHING: Text event to focused element %s (char='%c')\n", 
-                       manager->focused_element->type_name ? manager->focused_element->type_name : "unknown",
-                       text_event.data.keyTyped.character);
                 element_dispatch_event(runtime, manager->focused_element, &text_event);
             } else {
-                printf("❌ NO FOCUSED ELEMENT: Broadcasting text event to all Input elements\n");
                 // FALLBACK: If no element is focused, try to find and dispatch to Input elements
                 dispatch_text_event_to_all_inputs(runtime, root, &text_event);
             }

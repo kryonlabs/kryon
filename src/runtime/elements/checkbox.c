@@ -12,6 +12,7 @@
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
+#include "renderer_interface.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,6 +58,50 @@ static CheckboxState* ensure_checkbox_state(struct KryonElement* element) {
     return state;
 }
 
+static void sync_checkbox_from_variable(struct KryonRuntime* runtime, struct KryonElement* element, CheckboxState* state) {
+    if (!runtime || !element || !state) return;
+    
+    // Check if the checked property is bound to a variable
+    KryonProperty* checked_prop = NULL;
+    for (size_t i = 0; i < element->property_count; i++) {
+        if (element->properties[i] && element->properties[i]->name && 
+            strcmp(element->properties[i]->name, "checked") == 0) {
+            checked_prop = element->properties[i];
+            break;
+        }
+    }
+    
+    if (checked_prop && checked_prop->is_bound && checked_prop->binding_path) {
+        const char* var_value = kryon_runtime_get_variable(runtime, checked_prop->binding_path);
+        if (var_value) {
+            bool new_checked = (strcmp(var_value, "true") == 0 || strcmp(var_value, "1") == 0);
+            if (new_checked != state->is_checked) {
+                state->is_checked = new_checked;
+                state->state_changed = true;
+            }
+        }
+    }
+}
+
+static void sync_variable_from_checkbox(struct KryonRuntime* runtime, struct KryonElement* element, CheckboxState* state) {
+    if (!runtime || !element || !state) return;
+    
+    // Check if the checked property is bound to a variable
+    KryonProperty* checked_prop = NULL;
+    for (size_t i = 0; i < element->property_count; i++) {
+        if (element->properties[i] && element->properties[i]->name && 
+            strcmp(element->properties[i]->name, "checked") == 0) {
+            checked_prop = element->properties[i];
+            break;
+        }
+    }
+    
+    if (checked_prop && checked_prop->is_bound && checked_prop->binding_path) {
+        const char* new_value = state->is_checked ? "true" : "false";
+        kryon_runtime_set_variable(runtime, checked_prop->binding_path, new_value);
+    }
+}
+
 static void destroy_checkbox_state(CheckboxState* state) {
     if (state) {
         kryon_free(state);
@@ -76,8 +121,11 @@ static bool checkbox_handle_event(struct KryonRuntime* runtime, struct KryonElem
     bool is_disabled = get_element_property_bool(element, "disabled", false);
     if (is_disabled && event->type != ELEMENT_EVENT_UNFOCUSED) return false;
     
+    bool handled = false;
+    
     switch (event->type) {
         case ELEMENT_EVENT_CLICKED: {
+            
             // Toggle checkbox state
             if (state->is_indeterminate) {
                 // If indeterminate, first click makes it checked
@@ -89,7 +137,14 @@ static bool checkbox_handle_event(struct KryonRuntime* runtime, struct KryonElem
             }
             
             state->state_changed = true;
-            return true;
+            handled = true;
+            
+            // Sync the new state to any bound variables
+            sync_variable_from_checkbox(runtime, element, state);
+            
+            // Also call the script event handler for onClick events
+            bool script_handled = generic_script_event_handler(runtime, element, event);
+            return handled || script_handled;
         }
         
         // Note: Mouse press/release handled via CLICKED events
@@ -139,7 +194,14 @@ static bool checkbox_handle_event(struct KryonRuntime* runtime, struct KryonElem
                     }
                     
                     state->state_changed = true;
-                    return true;
+                    handled = true;
+                    
+                    // Sync the new state to any bound variables
+                    sync_variable_from_checkbox(runtime, element, state);
+                    
+                    // Also call script event handler for keyboard activation
+                    bool script_handled = generic_script_event_handler(runtime, element, event);
+                    return handled || script_handled;
                     
                 default:
                     return false;
@@ -147,10 +209,11 @@ static bool checkbox_handle_event(struct KryonRuntime* runtime, struct KryonElem
         }
         
         default:
-            return false;
+            // For other events, let the script handler try to handle them
+            return generic_script_event_handler(runtime, element, event);
     }
     
-    return false;
+    return handled;
 }
 
 // =============================================================================
@@ -159,10 +222,17 @@ static bool checkbox_handle_event(struct KryonRuntime* runtime, struct KryonElem
 
 static void checkbox_render(struct KryonRuntime* runtime, struct KryonElement* element,
                            KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
-    if (*command_count >= max_commands - 3) return;
+    if (*command_count >= max_commands - 3) {
+        return;
+    }
     
     CheckboxState* state = ensure_checkbox_state(element);
-    if (!state) return;
+    if (!state) {
+        return;
+    }
+    
+    // Sync checkbox state from bound variables before rendering
+    sync_checkbox_from_variable(runtime, element, state);
     
     // Get checkbox properties
     float posX = element->x;
@@ -177,7 +247,7 @@ static void checkbox_render(struct KryonRuntime* runtime, struct KryonElement* e
     uint32_t bg_color_val = get_element_property_color(element, "backgroundColor", 0xFFFFFFFF);
     uint32_t border_color_val = get_element_property_color(element, "borderColor", 0x999999FF);
     uint32_t text_color_val = get_element_property_color(element, "color", 0x333333FF);
-    uint32_t check_color_val = get_element_property_color(element, "checkColor", 0x0078D4FF);
+    uint32_t check_color_val = get_element_property_color(element, "checkColor", 0x333333FF);
     
     float border_width = get_element_property_float(element, "borderWidth", 1.0f);
     float border_radius = get_element_property_float(element, "borderRadius", 2.0f);
@@ -216,13 +286,13 @@ static void checkbox_render(struct KryonRuntime* runtime, struct KryonElement* e
         check_color.a *= 0.5f;
     } else if (state->is_pressed && state->has_focus) {
         bg_color = color_lighten(bg_color, -0.1f); // Use negative factor to darken
-        border_color = color_lighten(check_color, 0.2f);
+        border_color = color_lighten(border_color, 0.2f);
     } else if (state->is_hovered) {
         bg_color = color_lighten(bg_color, 0.05f);
         border_color = color_lighten(border_color, 0.2f);
     } else if (state->has_focus) {
-        border_color = color_lighten(check_color, 0.3f);
-        border_width *= 1.5f;
+        border_color = color_lighten(border_color, 0.2f);
+        border_width *= 1.2f;
     }
     
     // Draw checkbox background
@@ -253,7 +323,7 @@ static void checkbox_render(struct KryonRuntime* runtime, struct KryonElement* e
         if (state->is_indeterminate) {
             mark_text = "-"; // Indeterminate mark
         } else if (state->is_checked) {
-            mark_text = "✓"; // Check mark (or use "✔" if preferred)
+            mark_text = "X"; // Check mark without Unicode
         }
         
         if (mark_text) {

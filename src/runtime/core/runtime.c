@@ -1061,22 +1061,9 @@ static const char* resolve_variable_reference(KryonRuntime* runtime, const char*
         return value; // Invalid input
     }
     
-    const char* var_name;
-    
-    // Handle both $variable and variable formats (compilation may strip $)
-    if (value[0] == '$') {
-        var_name = value + 1; // Skip the $ prefix
-    } else {
-        // Check if it looks like a variable name (contains . for root.width)
-        if (strstr(value, "root.") == value || strstr(value, "comp_") == value) {
-            var_name = value; // Use as-is
-        } else {
-            return value; // Not a variable reference
-        }
-    }
-    
-    // Look up variable in runtime registry
-    const char* resolved_value = kryon_runtime_get_variable(runtime, var_name);
+    // With the compiler fix, we should now receive clean variable names directly
+    // Just do a direct lookup - no string manipulation needed
+    const char* resolved_value = kryon_runtime_get_variable(runtime, value);
     if (resolved_value) {
         // Add basic validation to ensure the pointer is reasonable
         if (resolved_value < (const char*)0x1000) {
@@ -1169,10 +1156,17 @@ const char* get_element_property_string_with_runtime(KryonRuntime* runtime, Kryo
         case KRYON_RUNTIME_PROP_REFERENCE:
             // For variable references, try to resolve them
             if (prop->is_bound && prop->binding_path && runtime) {
-                const char* resolved_value = kryon_runtime_get_variable(runtime, prop->binding_path);
-                if (resolved_value) {
+                printf("🔍 RESOLVING: Looking up variable '%s'\n", prop->binding_path);
+                const char* resolved_value = resolve_variable_reference(runtime, prop->binding_path);
+                if (resolved_value && resolved_value != prop->binding_path) {  // Check it actually resolved
+                    printf("✅ RESOLVED: Variable '%s' = '%s'\n", prop->binding_path, resolved_value);
                     return resolved_value;
+                } else {
+                    printf("❌ FAILED: Variable '%s' not found, using fallback\n", prop->binding_path);
                 }
+            } else {
+                printf("❌ BINDING: Property not properly bound (is_bound=%d, binding_path=%p, runtime=%p)\n", 
+                       prop->is_bound, (void*)prop->binding_path, (void*)runtime);
             }
             return prop->value.string_value ? prop->value.string_value : "";
             
@@ -1838,15 +1832,14 @@ void process_for_directives(KryonRuntime* runtime, KryonElement* element) {
         return;
     }
     
+    
     // Check if this element is a @for template
-    if (kryon_is_syntax_keyword(element->type)) {
-        const char* syntax_name = kryon_get_syntax_name(element->type);
-        if (syntax_name && strcmp(syntax_name, "for") == 0) {
-            expand_for_template(runtime, element);
-            // Don't process children of @for elements recursively - they are templates
-            return;
-        }
+    if (element->type_name && strcmp(element->type_name, "for") == 0) {
+        expand_for_template(runtime, element);
+        // Don't process children of @for elements recursively; they are templates.
+        return;
     }
+
     
     // Process children recursively (but skip children of @for templates)
     for (size_t i = 0; i < element->child_count; i++) {

@@ -576,17 +576,13 @@ static KryonElement *load_element_from_binary(KryonRuntime *runtime,
         return NULL;
     }
     
-    // Set element type name with null check - check both syntax keywords and elements
-    const char* type_name = NULL;
-    
-    // First check if it's a syntax keyword (like @for, @if, etc.)
-    if (kryon_is_syntax_keyword((uint16_t)header.element_type)) {
-        type_name = kryon_get_syntax_name((uint16_t)header.element_type);
-    } else {
-        // Otherwise check if it's a regular element
+
+    const char* type_name = kryon_get_syntax_name((uint16_t)header.element_type);
+    if (!type_name) {
+        // If it's not a syntax keyword, it must be an element.
         type_name = kryon_get_element_name((uint16_t)header.element_type);
     }
-    
+
     if (type_name) {
         element->type_name = kryon_alloc(strlen(type_name) + 1);
         if (element->type_name) {
@@ -611,15 +607,12 @@ static KryonElement *load_element_from_binary(KryonRuntime *runtime,
     }
     
     // Special handling for syntax directives
-    if (kryon_is_syntax_keyword(header.element_type)) {
-        const char* syntax_name = kryon_get_syntax_name(header.element_type);
-        if (syntax_name && strcmp(syntax_name, "event") == 0) {
-            register_event_directive_handlers(runtime, element);
-        } else if (syntax_name && strcmp(syntax_name, "for") == 0) {
-            // @for directives need special reactive processing
-            // For now, mark as template for later expansion
-            element->needs_render = false; // Don't render template directly
-        }
+
+    if (element->type_name && strcmp(element->type_name, "event") == 0) {
+        register_event_directive_handlers(runtime, element);
+    } else if (element->type_name && strcmp(element->type_name, "for") == 0) {
+        // @for directives need special reactive processing
+        element->needs_render = false; // Don't render template directly
     }
     
     // Check if this element represents a component instance
@@ -783,7 +776,7 @@ static bool load_element_properties(KryonElement *element,
         memset(property, 0, sizeof(KryonProperty));
         
         property->id = prop_header.property_id;
-        property->type = prop_header.value_type;
+        property->type = prop_header.value_type;  // Use actual type from binary header
         const char* prop_name = get_property_name(prop_header.property_id);
         if (prop_name) {
             property->name = kryon_alloc(strlen(prop_name) + 1);
@@ -797,7 +790,9 @@ static bool load_element_properties(KryonElement *element,
                 strcpy(property->name, "unknown");
             }
         }
-        property->type = get_property_type(prop_header.property_id);
+        // DO NOT overwrite property->type here - use the actual type from binary header
+        // The old code: property->type = get_property_type(prop_header.property_id);
+        // This was incorrectly overwriting REFERENCE types with expected types
         
         // Disable debug output to avoid crashes
         // printf("DEBUG: Loading property %s (id=0x%04X, type=%d)\n", 
@@ -840,20 +835,11 @@ static bool load_element_properties(KryonElement *element,
                 }
             }
         } else {
-            // For properties with a valid type from the header, don't override the type
-            // Only check for type prefix overrides if the property type wasn't properly determined
-            if (property->type == KRYON_RUNTIME_PROP_STRING) {
-                // Only for string properties, check if they're actually REFERENCE or TEMPLATE types
-                if (*offset < size && data[*offset] == KRYON_RUNTIME_PROP_REFERENCE) {
-                    // This is a REFERENCE property - override the property type
-                    property->type = KRYON_RUNTIME_PROP_REFERENCE;
-                    printf("DEBUG: Detected REFERENCE type prefix for property %s\n", property->name);
-                } else if (*offset < size && data[*offset] == KRYON_RUNTIME_PROP_TEMPLATE) {
-                    // This is a TEMPLATE property - override the property type
-                    property->type = KRYON_RUNTIME_PROP_TEMPLATE;
-                    printf("DEBUG: Detected TEMPLATE type prefix for property %s\n", property->name);
-                }
-            }
+            // Note: Type prefix overrides are NOT needed here because we already have 
+            // a valid property header with the correct value_type.
+            // The original override logic was incorrectly checking the property VALUE 
+            // (e.g., color 0x059669FF starts with 0x05) and mistaking it for a type prefix.
+            // This caused colors starting with 0x05 to be misidentified as REFERENCE types.
             
             // Read property value
             printf("🔍 PROPERTY DEBUG: About to call load_property_value for property type=%d\n", property->type);
@@ -1135,10 +1121,13 @@ static bool load_property_value(KryonProperty *property,
                         // printf("✅ REFERENCE DEBUG: Valid string '%s' (ref=%u)\n", 
                         //        variable_name, variable_name_ref);
                         
-                        // Store as string for now, will be resolved by binding system
-                        property->value.string_value = kryon_strdup(variable_name);
+                        // Strip template syntax from variable names - compiler should only store clean names
+                        const char* clean_var_name = (variable_name[0] == '$') ? variable_name + 1 : variable_name;
+                        
+                        // Set up reactive binding with clean variable name
+                        property->value.string_value = kryon_strdup(variable_name);  // Temporary fallback for debugging
                         property->is_bound = true;
-                        property->binding_path = kryon_strdup(variable_name);
+                        property->binding_path = kryon_strdup(clean_var_name);  // Store clean name for runtime lookup
                         
                         printf("🔗 Property '%s' bound to variable '%s'\n", 
                                property->name ? property->name : "(null)", variable_name);

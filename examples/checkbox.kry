@@ -1,31 +1,16 @@
 @metadata {
-    title: "Checkbox Demo"
-    description: "Interactive checkboxes demonstration"
+    title: "Simple Checkbox Test"
+    description: "Basic checkbox test with literal values"
 }
 
-@var acceptTerms: false
-@var enableNotifications: true
-@var indeterminateOption: false
-
-@function "lua" handleAcceptTerms() {
-    acceptTerms = not acceptTerms
-    print("Terms accepted:", acceptTerms)
-}
-
-@function "lua" handleNotifications() {
-    enableNotifications = not enableNotifications
-    print("Notifications enabled:", enableNotifications)
-}
-
-@function "lua" handleIndeterminate() {
-    indeterminateOption = not indeterminateOption
-    print("Indeterminate option:", indeterminateOption)
+@function "lua" testClick() {
+    print("Checkbox clicked!")
 }
 
 App {
-    windowTitle: "Checkbox Demo"
-    windowWidth: 500
-    windowHeight: 400
+    windowTitle: "Simple Checkbox Test"
+    windowWidth: 400
+    windowHeight: 300
     backgroundColor: "#f0f0f0"
 
     Column {
@@ -33,64 +18,28 @@ App {
         padding: 30
 
         Text {
-            text: "Checkbox Examples"
-            fontSize: 24
+            text: "Simple Checkbox Test"
+            fontSize: 20
             fontWeight: "bold"
             color: "#333333"
-            textAlign: "center"
         }
 
         Checkbox {
-            label: "I accept the terms and conditions"
-            checked: acceptTerms
-            width: 350
+            label: "Test checkbox"
+            checked: true
+            width: 250
             height: 30
             fontSize: 14
-            onClick: "handleAcceptTerms"
+            onClick: "testClick"
         }
 
         Checkbox {
-            label: "Enable push notifications"
-            checked: enableNotifications
-            width: 350
-            height: 30
-            fontSize: 14
-            checkColor: "#28a745"
-            onClick: "handleNotifications"
-        }
-
-        Checkbox {
-            label: "Indeterminate checkbox (tri-state)"
-            checked: indeterminateOption
-            indeterminate: true
-            width: 350
-            height: 30
-            fontSize: 14
-            checkColor: "#ffc107"
-            onClick: "handleIndeterminate"
-        }
-
-        Checkbox {
-            label: "Disabled checkbox"
+            label: "Unchecked checkbox"
             checked: false
-            disabled: true
-            width: 350
+            width: 250
             height: 30
             fontSize: 14
-        }
-
-        Text {
-            text: "Current Status:"
-            fontSize: 18
-            fontWeight: "bold"
-            color: "#333333"
-            marginTop: 20
-        }
-
-        Text {
-            text: "Current Status: Check the console output for updates"
-            fontSize: 14
-            color: "#666666"
+            onClick: "testClick"
         }
     }
 }

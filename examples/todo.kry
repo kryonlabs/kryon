@@ -18,6 +18,7 @@
 Column {
     gap: 20
     padding: 30
+    backgroundColor: "white"
     
     Text {
         text: "Simple Todo App"

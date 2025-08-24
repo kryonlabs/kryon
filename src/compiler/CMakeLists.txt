@@ -58,7 +58,6 @@ set(CODEGEN_HEADERS
 # =============================================================================
 
 set(OPTIMIZER_SOURCES
-    optimizer/optimizer.c
 )
 
 set(OPTIMIZER_HEADERS

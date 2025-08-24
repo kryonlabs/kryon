@@ -194,8 +194,17 @@ void kryon_codegen_destroy(KryonCodeGenerator *codegen) {
 // MAIN GENERATION FUNCTIONS
 // =============================================================================
 
+// Forward declaration
+static bool process_constants(KryonCodeGenerator *codegen, const KryonASTNode *ast_root);
+
 bool kryon_codegen_generate(KryonCodeGenerator *codegen, const KryonASTNode *ast_root) {
     if (!codegen || !ast_root) {
+        return false;
+    }
+    
+    // Process constants FIRST so they're available during optimization
+    if (!process_constants(codegen, ast_root)) {
+        codegen_error(codegen, "Failed to process constants");
         return false;
     }
     
@@ -759,18 +768,7 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
         return false;
     }
     
-    // First, process constants so they're available for counting
-    if (ast_root->type == KRYON_AST_ROOT) {
-        for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
-            const KryonASTNode *child = ast_root->data.element.children[i];
-            if (child && child->type == KRYON_AST_CONST_DEFINITION) {
-                if (!write_const_definition(codegen, child)) {
-                    codegen_error(codegen, "Failed to process constant definition");
-                    return false;
-                }
-            }
-        }
-    }
+    // Note: Constants are now processed earlier in process_constants()
     
     // Now count sections for header values (constants are available)
     uint32_t style_count = 0;
@@ -2296,11 +2294,59 @@ const KryonASTNode *find_constant_value(KryonCodeGenerator *codegen, const char 
 
 static bool write_const_definition(KryonCodeGenerator *codegen, const KryonASTNode *const_def) {
     if (!const_def || const_def->type != KRYON_AST_CONST_DEFINITION) {
+        printf("❌ write_const_definition: invalid const_def or wrong type\n");
         return false;
     }
     
+    printf("🔧 write_const_definition: processing const '%s'\n", 
+           const_def->data.const_def.name ? const_def->data.const_def.name : "(null)");
+    
     // Add the constant to the symbol table for later resolution
-    return add_constant_to_table(codegen, const_def->data.const_def.name, const_def->data.const_def.value);
+    bool result = add_constant_to_table(codegen, const_def->data.const_def.name, const_def->data.const_def.value);
+    
+    if (result) {
+        printf("✅ write_const_definition: successfully added const '%s' to table\n", 
+               const_def->data.const_def.name);
+    } else {
+        printf("❌ write_const_definition: failed to add const '%s' to table\n", 
+               const_def->data.const_def.name);
+    }
+    
+    return result;
+}
+
+// =============================================================================
+// CONSTANT PROCESSING (EARLY PHASE)
+// =============================================================================
+
+static bool process_constants(KryonCodeGenerator *codegen, const KryonASTNode *ast_root) {
+    if (!codegen || !ast_root) {
+        return false;
+    }
+    
+    // Process constants so they're available during optimization
+    if (ast_root->type == KRYON_AST_ROOT) {
+        printf("🔧 Processing constants before optimization...\n");
+        printf("🔍 Processing AST root with %zu children for constants...\n", ast_root->data.element.child_count);
+        for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
+            const KryonASTNode *child = ast_root->data.element.children[i];
+            if (child) {
+                printf("🔍 Child %zu has type %d\n", i, child->type);
+                if (child->type == KRYON_AST_CONST_DEFINITION) {
+                    printf("🔧 Found const definition, processing...\n");
+                    if (!write_const_definition(codegen, child)) {
+                        codegen_error(codegen, "Failed to process constant definition");
+                        return false;
+                    }
+                }
+            } else {
+                printf("🔍 Child %zu is NULL\n", i);
+            }
+        }
+        printf("🔧 Finished processing constants, table now has %zu entries\n", codegen->const_count);
+    }
+    
+    return true;
 }
 
 
