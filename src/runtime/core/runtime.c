@@ -2088,6 +2088,9 @@ static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_elemen
                        for_element->parent->child_count);
                 add_child_element(runtime, for_element->parent, instance);
                 printf("✅ Added child, parent now has %zu children\n", for_element->parent->child_count);
+                
+                // Immediately recalculate positions for the parent container to prevent flicker
+                position_children_by_layout_type(runtime, for_element->parent);
             } else {
                 printf("❌ WARNING: @for element has no parent, destroying clone\n");
                 kryon_element_destroy(runtime, instance);

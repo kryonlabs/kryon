@@ -33,10 +33,21 @@ static const ElementVTable g_container_vtable = {
 // =============================================================================
 
 /**
- * @brief Registers the Container element type with the element registry.
+ * @brief Registers all container-based element types with the element registry.
+ * This includes Container, Column, Row, and Center which all use the same vtable
+ * but have different layout behaviors handled by the positioning system.
  */
 bool register_container_element(void) {
-    return element_register_type("Container", &g_container_vtable);
+    // Register all layout container types to use the same vtable
+    // The positioning logic in elements.c handles the different layout behaviors
+    bool success = true;
+    
+    success &= element_register_type("Container", &g_container_vtable);
+    success &= element_register_type("Column", &g_container_vtable);
+    success &= element_register_type("Row", &g_container_vtable);  
+    success &= element_register_type("Center", &g_container_vtable);
+    
+    return success;
 }
 
 // =============================================================================
@@ -44,7 +55,9 @@ bool register_container_element(void) {
 // =============================================================================
 
 /**
- * @brief Renders the Container element and positions its children according to contentAlignment.
+ * @brief Renders container elements (Container, Column, Row, Center) with background and borders.
+ * This function handles the visual rendering (background, borders) for all layout container types.
+ * The actual positioning logic is handled separately by the layout system in elements.c.
  */
 static void container_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 1) return;

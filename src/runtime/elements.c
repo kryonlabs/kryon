@@ -57,9 +57,7 @@ extern bool register_slider_element(void);
 extern bool register_text_element(void);
 extern bool register_container_element(void);
 extern bool register_image_element(void);
-extern bool register_column_element(void);
-extern bool register_row_element(void);
-extern bool register_center_element(void);
+// Layout elements (Column, Row, Center) now registered by register_container_element()
 extern bool register_app_element(void);
 extern bool register_grid_element(void);
 extern bool register_tabbar_element(void);
@@ -71,7 +69,6 @@ extern bool register_link_element(void);
 static void calculate_element_position_recursive(struct KryonRuntime* runtime, struct KryonElement* element,
                                                float parent_x, float parent_y, float available_width, float available_height,
                                                struct KryonElement* layout_parent);
-static void position_children_by_layout_type(struct KryonRuntime* runtime, struct KryonElement* parent);
 static void position_row_children(struct KryonRuntime* runtime, struct KryonElement* row);
 static void position_column_children(struct KryonRuntime* runtime, struct KryonElement* column);
 static void position_container_children(struct KryonRuntime* runtime, struct KryonElement* container);
@@ -139,23 +136,7 @@ bool element_registry_init_with_all_elements(void) {
         return false;
     }
     
-    if (!register_column_element()) {
-        printf("ERROR: Failed to register Column element\n");
-        element_registry_cleanup();
-        return false;
-    }
-    
-    if (!register_row_element()) {
-        printf("ERROR: Failed to register Row element\n");
-        element_registry_cleanup();
-        return false;
-    }
-    
-    if (!register_center_element()) {
-        printf("ERROR: Failed to register Center element\n");
-        element_registry_cleanup();
-        return false;
-    }
+    // Layout elements (Column, Row, Center) are now registered by register_container_element()
     
     if (!register_app_element()) {
         printf("ERROR: Failed to register App element\n");
@@ -533,7 +514,7 @@ static void calculate_element_position_recursive(struct KryonRuntime* runtime, s
 /**
  * @brief Position children based on parent's layout type (Row, Column, Container, etc.)
  */
-static void position_children_by_layout_type(struct KryonRuntime* runtime, struct KryonElement* parent) {
+void position_children_by_layout_type(struct KryonRuntime* runtime, struct KryonElement* parent) {
     if (!parent || parent->child_count == 0) return;
     
     if (!parent->type_name) {

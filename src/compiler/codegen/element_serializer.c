@@ -312,8 +312,7 @@ bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode *proper
                    property->data.property.value->type == KRYON_AST_TERNARY_OP ||
                    property->data.property.value->type == KRYON_AST_FUNCTION_CALL ||
                    property->data.property.value->type == KRYON_AST_MEMBER_ACCESS ||
-                   property->data.property.value->type == KRYON_AST_ARRAY_ACCESS ||
-                   property->data.property.value->type == KRYON_AST_TEMPLATE) {
+                   property->data.property.value->type == KRYON_AST_ARRAY_ACCESS) {
             // For complex expressions, check if they can be resolved to literals
             // This matches the logic in write_enhanced_property_value for expressions
             char *expression_str = kryon_ast_expression_to_string(property->data.property.value, codegen);

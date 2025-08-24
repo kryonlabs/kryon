@@ -347,6 +347,12 @@ void calculate_all_element_positions(struct KryonRuntime* runtime, struct KryonE
  */
 void update_render_flags_for_changed_positions(struct KryonElement* root);
 
+/**
+ * Position children based on parent's layout type (Row, Column, Container, etc.)
+ * Called immediately after adding new elements to recalculate layout
+ */
+void position_children_by_layout_type(struct KryonRuntime* runtime, struct KryonElement* parent);
+
 
 
 /**

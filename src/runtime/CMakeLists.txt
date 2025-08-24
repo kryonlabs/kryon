@@ -34,11 +34,8 @@ set(ELEMENTS_SOURCES
     elements/checkbox.c
     elements/slider.c
     elements/text.c
-    elements/container.c
+    elements/container.c            # Handles Container, Column, Row, Center
     elements/image.c
-    elements/column.c
-    elements/row.c
-    elements/center.c
     elements/app.c
     elements/grid.c
     elements/tabbar.c
