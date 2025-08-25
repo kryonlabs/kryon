@@ -1,102 +1,79 @@
 @metadata {
-    title: "Tab System Demo"
-    description: "Interactive tab system demonstration"
+    title: "Simple Tab Demo"
+    description: "Basic TabBar example with simple content"
 }
 
 @var selectedTab: 0
-@var profileName: "John Doe"
-@var notificationCount: 3
 
-@function "lua" handleTabChange() {
-    print("Tab changed to:", selectedTab)
-}
-
-@function "lua" updateProfile() {
-    profileName = "Jane Smith"
-    print("Profile updated")
-}
-
-@function "lua" clearNotifications() {
-    notificationCount = 0
-    print("Notifications cleared")
-}
-
-App {
-    windowTitle: "Tab System Demo"
-    windowWidth: 600
-    windowHeight: 400
+Container {
     backgroundColor: "#ffffff"
 
     Column {
-        gap: 0
+        gap: 20
+        padding: 20
 
         Text {
-            text: "Tab System Example"
-            fontSize: 20
+            text: "Simple TabBar Example"
+            fontSize: 24
             fontWeight: "bold"
             color: "#333333"
-            padding: 20
             textAlign: "center"
-            backgroundColor: "#f8f9fa"
         }
 
         TabBar {
             selectedIndex: selectedTab
-            backgroundColor: "#e9ecef"
-            onTabChange: "handleTabChange"
+            backgroundColor: "#f8f9fa"
 
-            Tab {
-                title: "Dashboard"
-            }
-
-            Tab {
-                title: "Profile"
-            }
-
-            Tab {
-                title: "Settings"
-            }
-
-            Tab {
-                title: "Help"
-            }
+            Tab { title: "Home" } 
+            Tab { title: "About" }
+            Tab { title: "Contact" } 
         }
 
-        Container {
-            padding: 30
-            backgroundColor: "#ffffff"
-
-            Column {
-                gap: 20
-
-                Text {
-                    text: "Tab Content Area"
-                    fontSize: 18
-                    fontWeight: "bold"
-                    color: "#333333"
+        TabContent {
+            activeIndex: selectedTab
+            
+            TabPanel {
+                Container {
+                    backgroundColor: "#e3f2fd"
+                    padding: 30
+                    borderRadius: 8
+                    
+                    Text {
+                        text: "This is the Home tab content"
+                        fontSize: 18
+                        color: "#1976d2"
+                        textAlign: "center"
+                    }
                 }
-
-                Text {
-                    text: "This demonstrates a working TabBar with different tabs."
-                    fontSize: 14
-                    color: "#666666"
+            }
+            
+            TabPanel {
+                Container {
+                    backgroundColor: "#e8f5e8"
+                    padding: 30
+                    borderRadius: 8
+                    
+                    Text {
+                        text: "This is the About tab content"
+                        fontSize: 18
+                        color: "#388e3c"
+                        textAlign: "center"
+                    }
                 }
-
-                Button {
-                    text: "Sample Button"
-                    width: 150
-                    height: 35
-                    backgroundColor: "#007bff"
-                    color: "#ffffff"
-                    fontSize: 14
-                    borderRadius: 4
-                    onClick: "updateProfile"
-                }
-
-                Text {
-                    text: "Check the console output to see tab change events"
-                    fontSize: 14
-                    color: "#333333"
+            }
+            
+            TabPanel { 
+                Container {
+                    backgroundColor: "#fff3e0"
+                    padding: 30
+                    borderRadius: 8
+                    
+                    Text {
+                        text: "This is the Contact tab content"
+                        fontSize: 18
+                        color: "#f57c00"
+                        textAlign: "center"
+                    }
                 }
             }
         }
