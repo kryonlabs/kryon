@@ -12,6 +12,7 @@
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
+#include "element_mixins.h"
 #include "../navigation/navigation.h"
 #include "../../shared/kryon_mappings.h"
 #include <stdio.h>
@@ -98,38 +99,12 @@ static void link_render(KryonRuntime* runtime, KryonElement* element, KryonRende
     KryonVec2 position = { element->x, element->y };
     KryonVec2 size = { element->width, element->height };
     
-    // Handle cursor management for link
-    if (runtime && runtime->renderer) {
-        KryonVec2 mouse_pos = runtime->mouse_position;
-        if (mouse_pos.x >= position.x && mouse_pos.x <= position.x + size.x &&
-            mouse_pos.y >= position.y && mouse_pos.y <= position.y + size.y) {
-            // Show pointer cursor when hovering over link
-            kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_POINTER);
-        }
-    }
+    // Handle cursor management and background rendering using mixins
+    check_hover_and_cursor(runtime, element, true);
+    render_background_and_border(element, commands, command_count, max_commands);
     
-    // Convert colors
+    // Convert remaining colors
     KryonColor text_color = color_u32_to_f32(text_color_val);
-    KryonColor bg_color = color_u32_to_f32(bg_color_val);
-    KryonColor border_color = color_u32_to_f32(border_color_val);
-    
-    // Render background if visible
-    if (bg_color.a > 0.0f || border_width > 0.0f) {
-        KryonRenderCommand bg_cmd = kryon_cmd_draw_rect(
-            position,
-            size,
-            bg_color,
-            border_radius
-        );
-        
-        if (border_width > 0.0f) {
-            bg_cmd.data.draw_rect.border_width = border_width;
-            bg_cmd.data.draw_rect.border_color = border_color;
-        }
-        
-        bg_cmd.z_index = z_index;
-        commands[(*command_count)++] = bg_cmd;
-    }
     
     // Render link text
     KryonRenderCommand text_cmd = kryon_cmd_draw_text(
@@ -276,7 +251,7 @@ static bool link_handle_event(KryonRuntime* runtime, KryonElement* element, cons
     }
     
     // Fall back to generic script event handler for custom onClick handlers
-    return generic_script_event_handler(runtime, element, event);
+    return handle_script_events(runtime, element, event);
 }
 
 /**

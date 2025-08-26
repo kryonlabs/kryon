@@ -13,6 +13,7 @@
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
+#include "element_mixins.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -62,47 +63,8 @@ bool register_container_element(void) {
 static void container_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 1) return;
     
-    // --- 1. Render Container Background and Border ---
-    
-    // Get container visual properties  
-    uint32_t bg_color_val = get_element_property_color(element, "backgroundColor", 0x00000000); // Transparent default
-    // Fallback to "background" property for compatibility
-    if (bg_color_val == 0x00000000) {
-        bg_color_val = get_element_property_color(element, "background", 0x00000000);
-    }
-    uint32_t border_color_val = get_element_property_color(element, "borderColor", 0x000000FF); // Black default
-    float border_width = get_element_property_float(element, "borderWidth", 0.0f);
-    float border_radius = get_element_property_float(element, "borderRadius", 0.0f);
-    int z_index = get_element_property_int(element, "zIndex", 0);
-    
-    // Use element position from layout engine
-    KryonVec2 position = { element->x, element->y };
-    KryonVec2 size = { element->width, element->height };
-    
-    // Convert color values to KryonColor format
-    KryonColor bg_color = color_u32_to_f32(bg_color_val);
-    KryonColor border_color = color_u32_to_f32(border_color_val);
-    
-    // Container background will be rendered if visible
-    
-    // Render container background if visible
-    if (bg_color.a > 0.0f || border_width > 0.0f) {
-        KryonRenderCommand cmd = kryon_cmd_draw_rect(
-            position,
-            size,
-            bg_color,
-            border_radius
-        );
-        
-        // Set border properties
-        if (border_width > 0.0f) {
-            cmd.data.draw_rect.border_width = border_width;
-            cmd.data.draw_rect.border_color = border_color;
-        }
-        
-        cmd.z_index = z_index;
-        commands[(*command_count)++] = cmd;
-    }
+    // --- 1. Render Container Background and Border (using shared mixin) ---
+    render_background_and_border(element, commands, command_count, max_commands);
 }
 
 /**
@@ -110,8 +72,8 @@ static void container_render(KryonRuntime* runtime, KryonElement* element, Kryon
  * Container can handle script-based events like onClick.
  */
 static bool container_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
-    // Use the generic script event handler for standard events
-    return generic_script_event_handler(runtime, element, event);
+    // Use the shared script event handler mixin
+    return handle_script_events(runtime, element, event);
 }
 
 /**

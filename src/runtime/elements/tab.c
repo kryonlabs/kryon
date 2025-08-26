@@ -12,6 +12,7 @@
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
+#include "element_mixins.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -149,19 +150,8 @@ static void tab_render(KryonRuntime* runtime, KryonElement* element, KryonRender
     float width = element->width;
     float height = element->height;
 
-    // Check for hover state
-    bool is_hovered = false;
-    if (!is_disabled && runtime) {
-        KryonVec2 mouse_pos = runtime->mouse_position;
-        if (mouse_pos.x >= x && mouse_pos.x <= x + width &&
-            mouse_pos.y >= y && mouse_pos.y <= y + height) {
-            is_hovered = true;
-            // Cursor management moved to renderer layer
-            if (runtime->renderer) {
-                kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_POINTER);
-            }
-        }
-    }
+    // Check for hover state using mixin
+    bool is_hovered = check_hover_and_cursor(runtime, element, !is_disabled);
 
     // Get colors based on state
     KryonColor bg_color, text_color;
@@ -183,9 +173,9 @@ static void tab_render(KryonRuntime* runtime, KryonElement* element, KryonRender
         text_color = color_u32_to_f32(text_val);
     }
 
-    // Apply hover effects
-    if (is_hovered && !is_disabled) {
-        bg_color = color_lighten(bg_color, 0.1f);
+    // Apply hover effects using mixin (only if not disabled and not special states)
+    if (!is_disabled && !is_active) {
+        apply_interaction_colors(&bg_color, &text_color, is_hovered, true);
     }
 
     // Render tab background

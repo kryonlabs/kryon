@@ -12,6 +12,7 @@
  #include "runtime.h"
  #include "memory.h"
  #include "color_utils.h"
+ #include "element_mixins.h"
  #include <stdio.h>
  #include <string.h>
  #include <math.h>
@@ -66,35 +67,18 @@
      float border_radius = get_element_property_float(element, "borderRadius", 8.0f);
      bool enabled = get_element_property_bool(element, "enabled", true);
  
-     // --- 2. Calculate Final Layout ---
-     auto_size_element(element, &width, &height);
+     // --- 2. Calculate Final Layout (using shared mixin) ---
+     calculate_auto_size_with_text(element, &width, &height, text, 20.0f, 12.0f, 60.0f, 32.0f);
  
-     // --- 3. Determine Visual State based on Interaction ---
-     bool is_hovered = false;
-     if (enabled) {
-         KryonVec2 mouse_pos = runtime->mouse_position;
-         if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
-             mouse_pos.y >= posY && mouse_pos.y <= posY + height) {
-             is_hovered = true;
-             // Cursor management moved to renderer layer
-             if (runtime->renderer) {
-                 kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_POINTER);
-             }
-         }
-     }
+     // --- 3. Determine Visual State based on Interaction (using shared mixin) ---
+     bool is_hovered = check_hover_and_cursor(runtime, element, enabled);
  
-     // --- 4. Prepare Colors and Final State ---
+     // --- 4. Prepare Colors and Final State (using shared mixin) ---
      KryonColor bg_color = color_u32_to_f32(bg_color_val);
      KryonColor text_color = color_u32_to_f32(text_color_val);
      KryonColor border_color = color_u32_to_f32(border_color_val);
      
-     if (is_hovered) {
-         bg_color = color_lighten(bg_color, 0.15f);
-     }
-     if (!enabled) {
-         bg_color = color_desaturate(bg_color, 0.5f);
-         text_color.a *= 0.7f;
-     }
+     apply_interaction_colors(&bg_color, &text_color, is_hovered, enabled);
  
      // --- 5. Generate a Unique and Correct ID for the Renderer ---
      const char* button_id_str = element->element_id;
@@ -132,9 +116,8 @@
   * which will automatically call script functions like "onClick", "onHover", etc.
   */
  static bool button_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
-     // A button's logic is almost always defined in script. We can reuse the
-     // powerful generic handler from the element system.
-     return generic_script_event_handler(runtime, element, event);
+     // A button's logic is almost always defined in script. Use the shared mixin.
+     return handle_script_events(runtime, element, event);
  }
  
  /**

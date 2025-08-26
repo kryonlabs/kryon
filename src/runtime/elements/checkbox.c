@@ -13,6 +13,7 @@
 #include "memory.h"
 #include "color_utils.h"
 #include "renderer_interface.h"
+#include "element_mixins.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -143,7 +144,7 @@ static bool checkbox_handle_event(struct KryonRuntime* runtime, struct KryonElem
             sync_variable_from_checkbox(runtime, element, state);
             
             // Also call the script event handler for onClick events
-            bool script_handled = generic_script_event_handler(runtime, element, event);
+            bool script_handled = handle_script_events(runtime, element, event);
             return handled || script_handled;
         }
         
@@ -200,7 +201,7 @@ static bool checkbox_handle_event(struct KryonRuntime* runtime, struct KryonElem
                     sync_variable_from_checkbox(runtime, element, state);
                     
                     // Also call script event handler for keyboard activation
-                    bool script_handled = generic_script_event_handler(runtime, element, event);
+                    bool script_handled = handle_script_events(runtime, element, event);
                     return handled || script_handled;
                     
                 default:
@@ -210,7 +211,7 @@ static bool checkbox_handle_event(struct KryonRuntime* runtime, struct KryonElem
         
         default:
             // For other events, let the script handler try to handle them
-            return generic_script_event_handler(runtime, element, event);
+            return handle_script_events(runtime, element, event);
     }
     
     return handled;
@@ -255,15 +256,8 @@ static void checkbox_render(struct KryonRuntime* runtime, struct KryonElement* e
     
     bool is_disabled = get_element_property_bool(element, "disabled", false);
     
-    // Handle cursor management for checkbox
-    if (!is_disabled && runtime && runtime->renderer) {
-        KryonVec2 mouse_pos = runtime->mouse_position;
-        if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
-            mouse_pos.y >= posY && mouse_pos.y <= posY + height) {
-            // Show pointer cursor when hovering over checkbox
-            kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_POINTER);
-        }
-    }
+    // Handle cursor management for checkbox using mixin
+    check_hover_and_cursor(runtime, element, !is_disabled);
     
     // Calculate checkbox dimensions
     float checkbox_size = fminf(height - 4.0f, 18.0f); // Max 18px checkbox

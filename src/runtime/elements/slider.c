@@ -12,6 +12,7 @@
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
+#include "element_mixins.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -278,15 +279,8 @@ static void slider_render(struct KryonRuntime* runtime, struct KryonElement* ele
     float font_size = get_element_property_float(element, "fontSize", 12.0f);
     bool is_disabled = get_element_property_bool(element, "disabled", false);
     
-    // Handle cursor management for slider
-    if (!is_disabled && runtime && runtime->renderer) {
-        KryonVec2 mouse_pos = runtime->mouse_position;
-        if (mouse_pos.x >= posX && mouse_pos.x <= posX + width &&
-            mouse_pos.y >= posY && mouse_pos.y <= posY + height) {
-            // Show pointer cursor when hovering over slider
-            kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_POINTER);
-        }
-    }
+    // Handle cursor management for slider using mixin
+    check_hover_and_cursor(runtime, element, !is_disabled);
     
     // Calculate layout
     float thumb_size = 20.0f;

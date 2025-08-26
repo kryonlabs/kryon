@@ -12,6 +12,7 @@
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
+#include "element_mixins.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -575,13 +576,8 @@ static void input_render(struct KryonRuntime* runtime, struct KryonElement* elem
     float width = get_element_property_float(element, "width", 200.0f);
     float height = get_element_property_float(element, "height", 32.0f);
     
-    uint32_t bg_color_val = get_element_property_color(element, "backgroundColor", 0xFFFFFFFF);
-    uint32_t border_color_val = get_element_property_color(element, "borderColor", 0xCCCCCCFF);
     uint32_t text_color_val = get_element_property_color(element, "color", 0x333333FF);
     uint32_t selection_color_val = get_element_property_color(element, "selectionColor", 0x0078D4AA);
-    
-    float border_width = get_element_property_float(element, "borderWidth", 1.0f);
-    float border_radius = get_element_property_float(element, "borderRadius", 4.0f);
     float font_size = get_element_property_float(element, "fontSize", 14.0f);
     
     const char* input_type = get_element_property_string(element, "type");
@@ -601,42 +597,17 @@ static void input_render(struct KryonRuntime* runtime, struct KryonElement* elem
         }
     }
     
-    // Convert colors
-    KryonColor bg_color = color_u32_to_f32(bg_color_val);
-    KryonColor border_color = color_u32_to_f32(border_color_val);
+    // Draw input background and border using mixin
+    render_input_background_and_border(element, commands, command_count, max_commands, 
+                                     state->has_focus, is_disabled);
+    
+    // Convert remaining colors
     KryonColor text_color = color_u32_to_f32(text_color_val);
     KryonColor selection_color = color_u32_to_f32(selection_color_val);
     
-    // Adjust colors based on state
+    // Adjust text color based on disabled state
     if (is_disabled) {
-        bg_color = color_desaturate(bg_color, 0.5f);
         text_color.a *= 0.5f;
-        border_color.a *= 0.5f;
-    } else if (state->has_focus) {
-        border_color = color_lighten(border_color, 0.3f);
-        border_width *= 1.5f;
-    }
-    
-    // Draw input background
-    KryonRenderCommand bg_cmd = kryon_cmd_draw_rect(
-        (KryonVec2){posX, posY},
-        (KryonVec2){width, height},
-        bg_color,
-        border_radius
-    );
-    bg_cmd.z_index = 10;
-    commands[(*command_count)++] = bg_cmd;
-    
-    // Draw border (using a slightly larger background rect)
-    if (border_width > 0.0f && *command_count < max_commands) {
-        KryonRenderCommand border_cmd = kryon_cmd_draw_rect(
-            (KryonVec2){posX - border_width, posY - border_width},
-            (KryonVec2){width + 2*border_width, height + 2*border_width},
-            border_color,
-            border_radius
-        );
-        border_cmd.z_index = 9;
-        commands[(*command_count)++] = border_cmd;
     }
     
     // Prepare display text

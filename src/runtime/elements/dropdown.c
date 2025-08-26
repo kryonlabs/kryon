@@ -15,6 +15,7 @@
 #include "runtime.h"
 #include "memory.h"
 #include "renderer_interface.h"
+#include "element_mixins.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
