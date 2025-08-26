@@ -52,12 +52,32 @@ static TabBarState* ensure_tabbar_state(KryonElement* element) {
  * @brief Helper function for Tab elements to set the selected index
  * This allows Tab elements to communicate with their parent TabBar
  */
-void tabbar_set_selected_index(KryonElement* tabbar_element, int index) {
-    if (!tabbar_element || strcmp(tabbar_element->type_name, "TabBar") != 0) return;
+void tabbar_set_selected_index(KryonRuntime* runtime, KryonElement* tabbar_element, int index) {
+    printf("🔍 TABBAR: tabbar_set_selected_index called with index %d\n", index);
+    
+    if (!tabbar_element || strcmp(tabbar_element->type_name, "TabBar") != 0) {
+        printf("🔍 TABBAR: Invalid TabBar element\n");
+        return;
+    }
     
     TabBarState* state = ensure_tabbar_state(tabbar_element);
     if (state) {
+        printf("🔍 TABBAR: Setting TabBar state selected_tab_index to %d\n", index);
         state->selected_tab_index = index;
+        
+        // Also update the bound variable so TabContent can see the change
+        if (runtime) {
+            // Convert index to string since variables are strings
+            char index_str[32];
+            snprintf(index_str, sizeof(index_str), "%d", index);
+            
+            printf("🔍 TABBAR: Setting selectedTab variable to '%s'\n", index_str);
+            // Update the selectedTab variable (hardcoded for now, but could be made dynamic)
+            bool success = kryon_runtime_set_variable(runtime, "selectedTab", index_str);
+            printf("🔍 TABBAR: Variable update %s\n", success ? "succeeded" : "failed");
+        }
+    } else {
+        printf("🔍 TABBAR: Failed to get/create TabBar state\n");
     }
 }
 

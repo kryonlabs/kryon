@@ -17,7 +17,6 @@ Container {
             fontSize: 24
             fontWeight: "bold"
             color: "#333333"
-            textAlign: "center"
         }
 
         TabBar {
@@ -42,7 +41,6 @@ Container {
                         text: "This is the Home tab content"
                         fontSize: 18
                         color: "#1976d2"
-                        textAlign: "center"
                     }
                 }
             }
@@ -57,7 +55,6 @@ Container {
                         text: "This is the About tab content"
                         fontSize: 18
                         color: "#388e3c"
-                        textAlign: "center"
                     }
                 }
             }
@@ -72,7 +69,6 @@ Container {
                         text: "This is the Contact tab content"
                         fontSize: 18
                         color: "#f57c00"
-                        textAlign: "center"
                     }
                 }
             }

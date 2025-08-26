@@ -20,7 +20,7 @@
 // Forward declarations for TabBar state management  
 // Note: This is a simple approach - in production we'd use proper header sharing
 extern void* ensure_tabbar_state(KryonElement* element);
-extern void tabbar_set_selected_index(KryonElement* tabbar_element, int index);
+extern void tabbar_set_selected_index(KryonRuntime* runtime, KryonElement* tabbar_element, int index);
 extern int tabbar_get_selected_index(KryonElement* tabbar_element);
 
 // Forward declarations for the VTable functions
@@ -150,6 +150,10 @@ static void tab_render(KryonRuntime* runtime, KryonElement* element, KryonRender
     float width = element->width;
     float height = element->height;
 
+    // Debug: Log tab bounds for hit testing analysis
+    printf("🔍 TAB RENDER: Tab '%s' bounds: x=%.1f, y=%.1f, w=%.1f, h=%.1f\n", 
+           title ? title : "?", x, y, width, height);
+
     // Check for hover state using mixin
     bool is_hovered = check_hover_and_cursor(runtime, element, !is_disabled);
 
@@ -223,11 +227,18 @@ static void tab_render(KryonRuntime* runtime, KryonElement* element, KryonRender
 static bool tab_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
     if (!element || !event) return false;
 
+    printf("🔍 TAB EVENT: Tab '%s' received event type %d\n", 
+           get_tab_title(element), event->type);
+
     bool is_disabled = is_tab_disabled(element);
-    if (is_disabled) return false;
+    if (is_disabled) {
+        printf("🔍 TAB EVENT: Tab is disabled, ignoring event\n");
+        return false;
+    }
 
     // Handle click events to notify parent TabBar
     if (event->type == ELEMENT_EVENT_CLICKED) {
+        printf("🔍 TAB CLICK: Tab '%s' processing click event\n", get_tab_title(element));
         // Find parent TabBar
         KryonElement* parent = element->parent;
         if (parent && strcmp(parent->type_name, "TabBar") == 0) {
@@ -237,8 +248,10 @@ static bool tab_handle_event(KryonRuntime* runtime, KryonElement* element, const
                 KryonElement* child = parent->children[i];
                 if (child && strcmp(child->type_name, "Tab") == 0) {
                     if (child == element) {
+                        printf("🔍 TAB CLICK: Found tab at index %d, setting as selected\n", current_tab_index);
                         // Use the helper function to set selected index
-                        tabbar_set_selected_index(parent, current_tab_index);
+                        tabbar_set_selected_index(runtime, parent, current_tab_index);
+                        printf("🔍 TAB CLICK: Tab selection completed\n");
                         return true;
                     }
                     current_tab_index++;

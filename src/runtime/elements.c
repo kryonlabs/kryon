@@ -63,6 +63,7 @@ extern bool register_grid_element(void);
 extern bool register_tabbar_element(void);
 extern bool register_tab_element(void);
 extern bool register_tab_content_element(void);
+extern bool register_tabpanel_element(void);
 extern bool register_link_element(void);
 
 // Forward declarations for position calculation pipeline
@@ -164,6 +165,12 @@ bool element_registry_init_with_all_elements(void) {
     
     if (!register_tab_content_element()) {
         printf("ERROR: Failed to register TabContent element\n");
+        element_registry_cleanup();
+        return false;
+    }
+    
+    if (!register_tabpanel_element()) {
+        printf("ERROR: Failed to register TabPanel element\n");
         element_registry_cleanup();
         return false;
     }
@@ -882,16 +889,29 @@ static void position_column_children(struct KryonRuntime* runtime, struct KryonE
 
         for (size_t i = 0; i < column->child_count; i++) {
             struct KryonElement* child = column->children[i];
-            float child_width = get_element_property_float(child, "width", 100.0f);
-            float child_height = get_element_property_float(child, "height", get_default_element_height(child));
+            
+            // Apply auto-sizing during layout phase to get correct dimensions
+            float child_width = get_element_property_float(child, "width", -1.0f);
+            float child_height = get_element_property_float(child, "height", -1.0f);
+            
+            // Auto-size if needed (especially for text elements)
+            if (child_width < 0 || child_height < 0) {
+                auto_size_element(child, &child_width, &child_height);
+            }
+            
+            // Use defaults only if auto-sizing didn't provide values
+            if (child_width < 0) child_width = 100.0f;
+            if (child_height < 0) child_height = get_default_element_height(child);
             
             float child_x = content_x;
             
-            // Enhanced cross axis (horizontal) alignment
+            // Enhanced cross axis (horizontal) alignment with bounds checking
             if (strcmp(cross_axis, "center") == 0) {
-                child_x += (content_width - child_width) / 2.0f;
+                float centered_x = content_x + (content_width - child_width) / 2.0f;
+                child_x = fmaxf(centered_x, content_x); // Never go left of content area
             } else if (strcmp(cross_axis, "end") == 0 || strcmp(cross_axis, "flex-end") == 0) {
-                child_x += content_width - child_width;
+                float end_x = content_x + content_width - child_width;
+                child_x = fmaxf(end_x, content_x); // Never go left of content area
             } else if (strcmp(cross_axis, "stretch") == 0) {
                 child_width = content_width;
             } else if (strcmp(cross_axis, "baseline") == 0) {
@@ -1304,7 +1324,8 @@ static bool is_interactive_element(const char* type_name) {
             (strcmp(type_name, "Checkbox") == 0 ||
              strcmp(type_name, "Button") == 0 ||
              strcmp(type_name, "Input") == 0 ||
-             strcmp(type_name, "Dropdown") == 0));
+             strcmp(type_name, "Dropdown") == 0 ||
+             strcmp(type_name, "Tab") == 0));
 }
 
 // Recursive function to find interactive elements only

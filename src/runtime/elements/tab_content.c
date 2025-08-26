@@ -16,6 +16,7 @@
 #include "element_mixins.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <math.h>
 
 // Forward declarations for the VTable functions
@@ -93,24 +94,52 @@ static void tab_content_render(KryonRuntime* runtime, KryonElement* element, Kry
         return;
     }
 
-    // Update child element bounds to fit within content area
-    // Child rendering is handled by the main element rendering pipeline
+    // Get the active index from the bound variable with runtime awareness (O(1) direct access)
+    int active_index = 0;
+    const char* active_index_str = get_element_property_string_with_runtime(runtime, element, "activeIndex");
+    if (active_index_str) {
+        active_index = atoi(active_index_str);
+    }
+    
+    printf("🔍 TABCONTENT: activeIndex_str='%s', parsed active_index=%d, child_count=%zu\n", 
+           active_index_str ? active_index_str : "NULL", active_index, element->child_count);
+    
+    // Only render the active TabPanel child
+    if (active_index >= 0 && (size_t)active_index < element->child_count) {
+        KryonElement* active_child = element->children[active_index];
+        printf("🔍 TABCONTENT: Found child at index %d: type='%s'\n", 
+               active_index, active_child ? active_child->type_name : "NULL");
+        if (active_child && strcmp(active_child->type_name, "TabPanel") == 0) {
+            // Update active child bounds to fit within content area
+            active_child->x = content_x;
+            active_child->y = content_y;
+            active_child->width = content_width;
+            active_child->height = content_height;
+            
+            printf("🔍 TABCONTENT: Activated TabPanel %d bounds: x=%.1f, y=%.1f, w=%.1f, h=%.1f\n",
+                   active_index, content_x, content_y, content_width, content_height);
+                   
+            // The active TabPanel will be rendered automatically by the main element system
+            // All other TabPanel children are effectively hidden by not updating their bounds
+        }
+    } else {
+        printf("🔍 TABCONTENT: active_index %d out of bounds (child_count=%zu)\n", active_index, element->child_count);
+    }
+    
+    // Hide all non-active children using visibility property
     for (size_t i = 0; i < element->child_count; i++) {
         KryonElement* child = element->children[i];
-        if (!child) continue;
-
-        // Update child bounds to fit within content area
-        // This is a simplified layout - in a real implementation you might want
-        // to support different layout modes (column, row, grid, etc.)
-        
-        // For now, we'll use a simple stacking approach where each child
-        // takes the full available width and height
-        child->x = content_x;
-        child->y = content_y;
-        child->width = content_width;
-        child->height = content_height;
-
-        // Child elements will be rendered automatically by the main element system
+        if (child && strcmp(child->type_name, "TabPanel") == 0) {
+            if ((int)i == active_index) {
+                // Make active panel visible
+                child->visible = true;
+                printf("🔍 TABCONTENT: Making TabPanel %zu visible\n", i);
+            } else {
+                // Hide inactive panels using visibility property
+                child->visible = false;
+                printf("🔍 TABCONTENT: Hiding TabPanel %zu (visible=false)\n", i);
+            }
+        }
     }
 }
 

@@ -488,23 +488,38 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
                             
                             const char* var_name = (name_ref < string_count) ? string_table[name_ref] : "unknown";
                             
-                            const char* var_value = "";
+                            // Load typed variable values without conversion
                             if (value_type == KRYON_VALUE_STRING) {
                                 uint32_t value_ref;
                                 if (read_uint32_safe(data, &vars_offset, size, &value_ref)) {
                                     if (value_ref < string_count && string_table[value_ref]) {
-                                        var_value = string_table[value_ref];
+                                        const char* string_value = string_table[value_ref];
+                                        // Store as string variable
+                                        runtime->variable_names[runtime->variable_count] = kryon_strdup(var_name);
+                                        runtime->variable_values[runtime->variable_count] = kryon_strdup(string_value);
+                                        runtime->variable_count++;
+                                        printf("DEBUG: Loaded STRING variable '%s' = '%s'\n", var_name, string_value);
                                     }
                                 }
+                            } else if (value_type == KRYON_VALUE_INTEGER) {
+                                uint32_t int_value;
+                                if (read_uint32_safe(data, &vars_offset, size, &int_value)) {
+                                    // TODO: For now, store integer as string until we implement typed variables properly
+                                    // In the future, this should be stored in a typed variable system
+                                    static char int_buffer[32];
+                                    snprintf(int_buffer, sizeof(int_buffer), "%u", int_value);
+                                    runtime->variable_names[runtime->variable_count] = kryon_strdup(var_name);
+                                    runtime->variable_values[runtime->variable_count] = kryon_strdup(int_buffer);
+                                    runtime->variable_count++;
+                                    printf("DEBUG: Loaded INTEGER variable '%s' = %u (stored as '%s')\n", var_name, int_value, int_buffer);
+                                }
                             } else {
+                                // Skip unknown value types
                                 vars_offset += 4;
+                                printf("DEBUG: Skipped unknown variable type %d for '%s'\n", value_type, var_name);
                             }
                             
-                            runtime->variable_names[runtime->variable_count] = kryon_strdup(var_name);
-                            runtime->variable_values[runtime->variable_count] = kryon_strdup(var_value);
-                            runtime->variable_count++;
-                            
-                            printf("DEBUG: Loaded variable '%s' = '%s'\n", var_name, var_value);
+                            // Variable processing completed above
                         }
                         
                         printf("🔄 Reprocessing property bindings with loaded variables\n");

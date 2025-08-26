@@ -1418,10 +1418,8 @@ void auto_size_element(KryonElement* element, float* width, float* height) {
             if (*width < 0 && text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
                 float text_width = renderer->vtable->measure_text_width(text, font_size);
                 *width = text_width + 24.0f; // Text width + padding (12px each side)
-            } else if (*width < 0) {
-                // Fallback sizing if no measurement available
-                *width = text ? strlen(text) * font_size * 0.55f + 24.0f : 150.0f;
             }
+            // No fallback - if width not set and no renderer, leave as-is for parent to handle
             
             if (*height < 0) {
                 *height = font_size + 20.0f; // Font height + padding (10px top/bottom)
@@ -1432,10 +1430,8 @@ void auto_size_element(KryonElement* element, float* width, float* height) {
             
             if (*width < 0 && text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
                 *width = renderer->vtable->measure_text_width(text, font_size);
-            } else if (*width < 0) {
-                // Fallback sizing
-                *width = text ? strlen(text) * font_size * 0.6f : 100.0f;
             }
+            // No fallback - if width not set and no renderer, leave as-is for parent to handle
             
             if (*height < 0) {
                 *height = font_size * 1.2f; // Font height + small padding
@@ -1651,7 +1647,7 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
     // Step 3: Recursively render all children (children render on top of parent)
     for (size_t i = 0; i < element->child_count && *command_count < max_commands; i++) {
         KryonElement* child = element->children[i];
-        if (child && child->type_name) {
+        if (child && child->type_name && child->visible) {
             // Skip @for directive elements - they are templates, not renderable UI elements
             if (child->type == 0x8200) { // @for directive hex code
                     continue;

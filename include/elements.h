@@ -383,7 +383,7 @@ extern bool kryon_element_set_property_by_name(struct KryonElement* element, con
 
 // TabBar state management functions
 extern int tabbar_get_selected_index(struct KryonElement* tabbar_element);
-extern void tabbar_set_selected_index(struct KryonElement* tabbar_element, int index);
+extern void tabbar_set_selected_index(struct KryonRuntime* runtime, struct KryonElement* tabbar_element, int index);
 extern bool tabbar_is_tab_active(struct KryonElement* tabbar_element, int tab_index);
 
 #ifdef __cplusplus
