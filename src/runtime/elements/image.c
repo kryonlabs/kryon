@@ -12,6 +12,7 @@
 #include "elements.h"
 #include "runtime.h"
 #include "memory.h"
+#include "element_mixins.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -46,9 +47,12 @@ bool register_image_element(void) {
  * @brief Renders the Image element by generating a draw_image command.
  */
 static void image_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
-    if (*command_count >= max_commands - 1) return; // Need space for image command
+    if (*command_count >= max_commands - 2) return; // Need space for background + image
     
-    // --- 1. Get Image Properties ---
+    // --- 1. Render background and border using mixin ---
+    render_background_and_border(element, commands, command_count, max_commands);
+    
+    // --- 2. Get Image Properties ---
     const char* source = get_element_property_string(element, "source");
     const char* src = get_element_property_string(element, "src"); // Alternative property name
     float opacity = get_element_property_float(element, "opacity", 1.0f);
@@ -65,16 +69,19 @@ static void image_render(KryonRuntime* runtime, KryonElement* element, KryonRend
         return;
     }
     
-    // --- 2. Use Unified Layout Engine Position ---
+    // --- 3. Use Unified Layout Engine Position ---
     // The unified layout engine has already calculated the correct position and size
     KryonVec2 position = { element->x, element->y };
     KryonVec2 size = { element->width, element->height };
     
-    // Use default size if layout engine didn't set it
-    if (size.x == 0.0f) size.x = 100.0f;
-    if (size.y == 0.0f) size.y = 100.0f;
+    // Auto-size using mixin if needed
+    float width = size.x;
+    float height = size.y;
+    calculate_auto_size_simple(element, &width, &height, 100.0f, 100.0f);
+    size.x = width;
+    size.y = height;
     
-    // --- 3. Create and Add the Render Command ---
+    // --- 4. Create and Add the Render Command ---
     KryonRenderCommand cmd = {0};
     cmd.type = KRYON_CMD_DRAW_IMAGE;
     cmd.z_index = z_index;
@@ -94,8 +101,8 @@ static void image_render(KryonRuntime* runtime, KryonElement* element, KryonRend
  * Images can handle script-based events like onClick.
  */
 static bool image_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
-    // Use the generic script event handler for standard events
-    return generic_script_event_handler(runtime, element, event);
+    // Use the mixin script event handler for consistent behavior
+    return handle_script_events(runtime, element, event);
 }
 
 /**

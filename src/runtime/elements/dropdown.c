@@ -325,6 +325,112 @@ static bool dropdown_handle_event(struct KryonRuntime* runtime, struct KryonElem
 }
 
 // =============================================================================
+// DROPDOWN-SPECIFIC HELPER FUNCTIONS
+// =============================================================================
+
+/**
+ * @brief Renders dropdown popup background with proper layering.
+ */
+static bool render_dropdown_popup_background(KryonRenderCommand* commands,
+                                           size_t* command_count,
+                                           size_t max_commands,
+                                           float popup_x,
+                                           float popup_y,
+                                           float popup_width,
+                                           float popup_height,
+                                           KryonColor bg_color,
+                                           float border_radius) {
+    if (*command_count >= max_commands) return false;
+    
+    // Make popup background slightly more opaque
+    KryonColor popup_bg = bg_color;
+    popup_bg.a = 0.98f;
+    
+    KryonRenderCommand popup_bg_cmd = kryon_cmd_draw_rect(
+        (KryonVec2){popup_x, popup_y},
+        (KryonVec2){popup_width, popup_height},
+        popup_bg,
+        border_radius
+    );
+    popup_bg_cmd.z_index = 1000; // High z-index to appear above other elements
+    commands[(*command_count)++] = popup_bg_cmd;
+    
+    return true;
+}
+
+/**
+ * @brief Determines colors for dropdown option based on its state.
+ */
+static void get_dropdown_option_colors(KryonColor base_bg_color,
+                                     KryonColor base_text_color,
+                                     KryonColor* result_bg_color,
+                                     KryonColor* result_text_color,
+                                     bool is_selected,
+                                     bool is_keyboard_highlighted,
+                                     bool is_mouse_hovered) {
+    if (!result_bg_color || !result_text_color) return;
+    
+    // Default to base colors
+    *result_bg_color = base_bg_color;
+    *result_text_color = base_text_color;
+    
+    // Apply state-based modifications (priority: selected > keyboard > hover)
+    if (is_selected) {
+        // Selected option - blue background (highest priority)
+        *result_bg_color = (KryonColor){0.2f, 0.4f, 0.8f, 1.0f};
+        *result_text_color = (KryonColor){1.0f, 1.0f, 1.0f, 1.0f};
+    } else if (is_keyboard_highlighted) {
+        // Keyboard highlighted option - light blue background
+        *result_bg_color = (KryonColor){0.8f, 0.9f, 1.0f, 1.0f};
+        *result_text_color = (KryonColor){0.0f, 0.0f, 0.0f, 1.0f};
+    } else if (is_mouse_hovered) {
+        // Mouse hovered option - light gray background
+        *result_bg_color = (KryonColor){0.9f, 0.9f, 0.9f, 1.0f};
+        *result_text_color = (KryonColor){0.1f, 0.1f, 0.1f, 1.0f};
+    }
+}
+
+/**
+ * @brief Renders a single dropdown option with background and text.
+ */
+static bool render_dropdown_option(KryonRenderCommand* commands,
+                                 size_t* command_count,
+                                 size_t max_commands,
+                                 float option_x,
+                                 float option_y,
+                                 float option_width,
+                                 float option_height,
+                                 const char* option_text,
+                                 float font_size,
+                                 KryonColor bg_color,
+                                 KryonColor text_color) {
+    if (*command_count >= max_commands - 1) return false; // Need space for bg + text
+    if (!option_text) return false;
+    
+    // Render option background
+    KryonRenderCommand option_bg_cmd = kryon_cmd_draw_rect(
+        (KryonVec2){option_x, option_y},
+        (KryonVec2){option_width, option_height},
+        bg_color,
+        0.0f // No border radius for options
+    );
+    option_bg_cmd.z_index = 1001; // Above popup background
+    commands[(*command_count)++] = option_bg_cmd;
+    
+    // Render option text
+    KryonRenderCommand option_text_cmd = kryon_cmd_draw_text(
+        (KryonVec2){option_x + 8.0f, option_y + (option_height - font_size) / 2},
+        option_text,
+        font_size,
+        text_color
+    );
+    option_text_cmd.z_index = 1002; // Above option background
+    commands[(*command_count)++] = option_text_cmd;
+    
+    return true;
+}
+
+// =============================================================================
 // DROPDOWN RENDERING
 // =============================================================================
 
@@ -400,15 +506,8 @@ static void dropdown_render(struct KryonRuntime* runtime, struct KryonElement* e
         border_color.b = fminf(1.0f, border_color.b + 0.2f);
     }
     
-    // Draw main dropdown button
-    KryonRenderCommand bg_cmd = kryon_cmd_draw_rect(
-        (KryonVec2){posX, posY},
-        (KryonVec2){width, height},
-        bg_color,
-        border_radius
-    );
-    bg_cmd.z_index = 10;
-    commands[(*command_count)++] = bg_cmd;
+    // Draw main dropdown button using mixin
+    render_background_and_border(element, commands, command_count, max_commands);
     
     // Draw dropdown text
     const char* display_text = placeholder;
@@ -451,70 +550,40 @@ static void dropdown_render(struct KryonRuntime* runtime, struct KryonElement* e
         float option_height = 32.0f;
         float popup_height = fminf((float)options_count * option_height, state->max_height);
         
-        // Draw popup background
-        KryonColor popup_bg = bg_color;
-        popup_bg.a = 0.98f;
-        
-        KryonRenderCommand popup_bg_cmd = kryon_cmd_draw_rect(
-            (KryonVec2){popup_x, popup_y},
-            (KryonVec2){popup_width, popup_height},
-            popup_bg,
-            border_radius
-        );
-        popup_bg_cmd.z_index = 1000;
-        commands[(*command_count)++] = popup_bg_cmd;
+        // Draw popup background using mixin
+        render_dropdown_popup_background(commands, command_count, max_commands,
+                                        popup_x, popup_y, popup_width, popup_height,
+                                        bg_color, border_radius);
         
         // Draw options with hover effects
         int visible_count = (int)(popup_height / option_height);
         int end_index = fminf((int)options_count, visible_count);
         
+        // Create base colors for options (match popup background)
+        KryonColor base_option_bg = bg_color;
+        base_option_bg.a = 0.98f;
+        KryonColor base_option_text = text_color;
+        
         for (int i = 0; i < end_index && *command_count < max_commands - 2; i++) {
             float option_y = popup_y + i * option_height;
             const char* option_text = options[i];
             
-            // Determine option colors based on state
+            // Determine option state
             bool is_selected = (i == selected_index);
             bool is_keyboard_highlighted = (state->use_keyboard_selection && i == state->keyboard_selected_index);
             bool is_mouse_hovered = (i == state->hovered_option_index);
             
-            KryonColor option_bg_color = popup_bg;
-            KryonColor option_text_color = text_color;
+            // Get option colors based on state using mixin
+            KryonColor option_bg_color, option_text_color;
+            get_dropdown_option_colors(base_option_bg, base_option_text,
+                                     &option_bg_color, &option_text_color,
+                                     is_selected, is_keyboard_highlighted, is_mouse_hovered);
             
-            if (is_selected) {
-                // Selected option - blue background (highest priority)
-                option_bg_color = (KryonColor){0.2f, 0.4f, 0.8f, 1.0f};
-                option_text_color = (KryonColor){1.0f, 1.0f, 1.0f, 1.0f};
-            } else if (is_keyboard_highlighted) {
-                // Keyboard highlighted option - light blue background
-                option_bg_color = (KryonColor){0.8f, 0.9f, 1.0f, 1.0f};
-                option_text_color = (KryonColor){0.0f, 0.0f, 0.0f, 1.0f};
-            } else if (is_mouse_hovered) {
-                // Mouse hovered option - light gray background
-                option_bg_color = (KryonColor){0.9f, 0.9f, 0.9f, 1.0f};
-                option_text_color = (KryonColor){0.1f, 0.1f, 0.1f, 1.0f};
-            }
-            
-            // Draw option background
-            KryonRenderCommand option_bg_cmd = kryon_cmd_draw_rect(
-                (KryonVec2){popup_x, option_y},
-                (KryonVec2){popup_width, option_height},
-                option_bg_color,
-                0.0f
-            );
-            option_bg_cmd.z_index = 1001;
-            commands[(*command_count)++] = option_bg_cmd;
-            
-            // Draw option text
-            if (*command_count < max_commands) {
-                KryonRenderCommand option_text_cmd = kryon_cmd_draw_text(
-                    (KryonVec2){popup_x + 8.0f, option_y + (option_height - font_size) / 2},
-                    option_text ? option_text : "",
-                    font_size,
-                    option_text_color
-                );
-                option_text_cmd.z_index = 1002;
-                commands[(*command_count)++] = option_text_cmd;
-            }
+            // Render option using mixin
+            render_dropdown_option(commands, command_count, max_commands,
+                                 popup_x, option_y, popup_width, option_height,
+                                 option_text, font_size,
+                                 option_bg_color, option_text_color);
         }
     }
 }

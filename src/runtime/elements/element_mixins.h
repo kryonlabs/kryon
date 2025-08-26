@@ -151,6 +151,7 @@ bool render_input_background_and_border(struct KryonElement* element,
                                        bool has_focus,
                                        bool is_disabled);
 
+
 #ifdef __cplusplus
 }
 #endif

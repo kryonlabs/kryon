@@ -8,12 +8,13 @@
  * 0BSD License
  */
 
- #include "elements.h"
- #include "runtime.h"
- #include "memory.h"
- #include "color_utils.h"
- #include <stdio.h>
- #include <string.h>
+#include "elements.h"
+#include "runtime.h"
+#include "memory.h"
+#include "color_utils.h"
+#include "element_mixins.h"
+#include <stdio.h>
+#include <string.h>
  
  // Forward declarations for the VTable functions
  static void text_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
@@ -39,6 +40,33 @@
  }
  
  // =============================================================================
+ //  Helper Functions
+ // =============================================================================
+
+/**
+ * @brief Calculate appropriate size for text element using mixin.
+ */
+static void calculate_text_auto_size(KryonElement* element) {
+    const char* text = get_element_property_string(element, "text");
+    float font_size = get_element_property_float(element, "fontSize", 16.0f);
+    
+    // Use current width/height as starting point
+    float width = element->width;
+    float height = element->height;
+    
+    // Apply auto-sizing with text-aware calculation
+    calculate_auto_size_with_text(element, &width, &height, text,
+                                 10.0f,  // padding_x (small margin)
+                                 4.0f,   // padding_y (small margin)
+                                 20.0f,  // min_width
+                                 font_size + 4.0f); // min_height (font + padding)
+    
+    // Update element dimensions if auto-sizing was applied
+    if (element->width != width) element->width = width;
+    if (element->height != height) element->height = height;
+}
+
+// =============================================================================
  //  Element VTable Implementations
  // =============================================================================
 
@@ -53,7 +81,10 @@
 static void text_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands) return;
 
-    // --- 1. Get Text Properties ---  
+    // --- 1. Auto-size if needed ---
+    calculate_text_auto_size(element);
+
+    // --- 2. Get Text Properties ---  
     // Use runtime-aware property access for reactive variable support
     const char* text = get_element_property_string_with_runtime(runtime, element, "text");
     
@@ -74,7 +105,7 @@ static void text_render(KryonRuntime* runtime, KryonElement* element, KryonRende
         max_width = element->width - 10.0f; // Leave small margin for readability
     }
 
-    // --- 2. Use Unified Layout Engine Position ---
+    // --- 3. Use Unified Layout Engine Position ---
     // The unified layout engine in elements.c has already calculated the correct position
     // during ensure_layout_positions_calculated(). We simply use those results.
     KryonVec2 position = {
@@ -82,7 +113,7 @@ static void text_render(KryonRuntime* runtime, KryonElement* element, KryonRende
         .y = element->y
     };
 
-    // --- 3. Process Other Properties ---
+    // --- 4. Process Other Properties ---
     KryonColor text_color = color_u32_to_f32(text_color_val);
 
     int align_code = 0; // 0=left, 1=center, 2=right
@@ -93,7 +124,7 @@ static void text_render(KryonRuntime* runtime, KryonElement* element, KryonRende
 
     bool is_bold = (font_weight_str && (strcmp(font_weight_str, "bold") == 0 || strcmp(font_weight_str, "700") == 0));
 
-    // --- 4. Create and Add the Render Command ---
+    // --- 5. Create and Add the Render Command ---
     KryonRenderCommand cmd = {0};
     cmd.type = KRYON_CMD_DRAW_TEXT;
     cmd.z_index = z_index;
@@ -114,13 +145,11 @@ static void text_render(KryonRuntime* runtime, KryonElement* element, KryonRende
  
  /**
   * @brief Handles events for the Text element.
-  * By default, text is not interactive and does not handle events.
+  * Text uses generic script event handler for potential script interactions.
   */
  static bool text_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
-     (void)runtime;
-     (void)element;
-     (void)event;
-     return false; // Text does not handle events, so they can propagate
+     // Text elements can have script event handlers (onClick, etc.)
+     return handle_script_events(runtime, element, event);
  }
  
  /**

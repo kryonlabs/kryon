@@ -12,6 +12,7 @@
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
+#include "element_mixins.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -238,7 +239,8 @@ static bool tabbar_handle_event(KryonRuntime* runtime, KryonElement* element, co
         // For now, let individual Tab elements handle their own hover states
     }
 
-    return false;
+    // Use script event handler for potential TabBar script interactions
+    return handle_script_events(runtime, element, event);
 }
 
 /**
