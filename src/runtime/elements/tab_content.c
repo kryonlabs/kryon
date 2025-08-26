@@ -13,6 +13,7 @@
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
+#include "element_mixins.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -78,32 +79,8 @@ static void tab_content_render(KryonRuntime* runtime, KryonElement* element, Kry
     float width = element->width;
     float height = element->height;
 
-    // Get colors
-    uint32_t bg_color_val = get_element_property_color(element, "backgroundColor", 0xFFFFFFFF);
-    uint32_t border_color_val = get_element_property_color(element, "borderColor", 0x00000000);
-    int border_width = get_element_property_int(element, "borderWidth", 0);
-    
-    KryonColor bg_color = color_u32_to_f32(bg_color_val);
-    KryonColor border_color = color_u32_to_f32(border_color_val);
-
-    // Render background
-    if (*command_count < max_commands) {
-        KryonVec2 position = { x, y };
-        KryonVec2 size = { width, height };
-        commands[*command_count] = kryon_cmd_draw_rect(position, size, bg_color, (float)border_radius);
-        (*command_count)++;
-    }
-
-    // Render border if specified
-    if (border_width > 0 && border_color_val != 0x00000000 && *command_count < max_commands) {
-        KryonVec2 position = { x, y };
-        KryonVec2 size = { width, height };
-        KryonRenderCommand cmd = kryon_cmd_draw_rect(position, size, bg_color, (float)border_radius);
-        cmd.data.draw_rect.border_width = (float)border_width;
-        cmd.data.draw_rect.border_color = border_color;
-        commands[*command_count] = cmd;
-        (*command_count)++;
-    }
+    // Render background and border using mixin
+    render_background_and_border(element, commands, command_count, max_commands);
 
     // Calculate content area with padding
     float content_x = x + padding;

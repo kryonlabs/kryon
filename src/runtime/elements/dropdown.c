@@ -16,6 +16,7 @@
 #include "memory.h"
 #include "renderer_interface.h"
 #include "element_mixins.h"
+#include "color_utils.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -383,27 +384,10 @@ static void dropdown_render(struct KryonRuntime* runtime, struct KryonElement* e
     
     state->option_count = (int)options_count;
     
-    // Convert colors
-    KryonColor bg_color = {
-        .r = (float)((bg_color_val >> 24) & 0xFF) / 255.0f,
-        .g = (float)((bg_color_val >> 16) & 0xFF) / 255.0f,
-        .b = (float)((bg_color_val >> 8) & 0xFF) / 255.0f,
-        .a = (float)(bg_color_val & 0xFF) / 255.0f
-    };
-    
-    KryonColor border_color = {
-        .r = (float)((border_color_val >> 24) & 0xFF) / 255.0f,
-        .g = (float)((border_color_val >> 16) & 0xFF) / 255.0f,
-        .b = (float)((border_color_val >> 8) & 0xFF) / 255.0f,
-        .a = (float)(border_color_val & 0xFF) / 255.0f
-    };
-    
-    KryonColor text_color = {
-        .r = (float)((text_color_val >> 24) & 0xFF) / 255.0f,
-        .g = (float)((text_color_val >> 16) & 0xFF) / 255.0f,
-        .b = (float)((text_color_val >> 8) & 0xFF) / 255.0f,
-        .a = (float)(text_color_val & 0xFF) / 255.0f
-    };
+    // Convert colors using utility functions
+    KryonColor bg_color = color_u32_to_f32(bg_color_val);
+    KryonColor border_color = color_u32_to_f32(border_color_val);
+    KryonColor text_color = color_u32_to_f32(text_color_val);
     
     // Adjust colors based on state
     if (is_disabled) {

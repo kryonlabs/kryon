@@ -13,6 +13,7 @@
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
+#include "element_mixins.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -52,38 +53,8 @@ bool register_grid_element(void) {
 static void grid_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 1) return;
     
-    // Grid itself can have background and border styling
-    uint32_t bg_color_val = get_element_property_color(element, "backgroundColor", 0x00000000); // Transparent default
-    if (bg_color_val == 0x00000000) {
-        bg_color_val = get_element_property_color(element, "background", 0x00000000);
-    }
-    uint32_t border_color_val = get_element_property_color(element, "borderColor", 0x000000FF);
-    float border_width = get_element_property_float(element, "borderWidth", 0.0f);
-    float border_radius = get_element_property_float(element, "borderRadius", 0.0f);
-    int z_index = get_element_property_int(element, "zIndex", 0);
-    
-    // Render grid background if visible
-    if (bg_color_val != 0x00000000 || border_width > 0.0f) {
-        KryonVec2 position = { element->x, element->y };
-        KryonVec2 size = { element->width, element->height };
-        KryonColor bg_color = color_u32_to_f32(bg_color_val);
-        KryonColor border_color = color_u32_to_f32(border_color_val);
-        
-        KryonRenderCommand cmd = kryon_cmd_draw_rect(
-            position,
-            size,
-            bg_color,
-            border_radius
-        );
-        
-        if (border_width > 0.0f) {
-            cmd.data.draw_rect.border_width = border_width;
-            cmd.data.draw_rect.border_color = border_color;
-        }
-        
-        cmd.z_index = z_index;
-        commands[(*command_count)++] = cmd;
-    }
+    // Render grid background and border using mixin
+    render_background_and_border(element, commands, command_count, max_commands);
 }
 
 /**
@@ -91,7 +62,7 @@ static void grid_render(KryonRuntime* runtime, KryonElement* element, KryonRende
  */
 static bool grid_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
     // Use the generic script event handler for standard events
-    return generic_script_event_handler(runtime, element, event);
+    return handle_script_events(runtime, element, event);
 }
 
 /**
