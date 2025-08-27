@@ -82,4 +82,13 @@ bool kryon_write_metadata_node(KryonCodeGenerator *codegen,
 bool kryon_write_const_definition(KryonCodeGenerator *codegen, 
                                   const KryonASTNode *const_def);
 
+/**
+ * @brief Write onload directive to KRB format
+ * @param codegen Code generator context
+ * @param onload Onload directive node to write
+ * @return true on success
+ */
+bool kryon_write_onload_directive(KryonCodeGenerator *codegen, 
+                                  const KryonASTNode *onload);
+
 #endif // KRYON_DIRECTIVE_SERIALIZER_H

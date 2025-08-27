@@ -64,6 +64,7 @@ typedef enum {
     KRB_FUNC_FLAG_ASYNC      = 0x0001,
     KRB_FUNC_FLAG_EXPORTED   = 0x0002,
     KRB_FUNC_FLAG_BYTECODE   = 0x0004,  // Code is bytecode, not source
+    KRB_FUNC_FLAG_ONLOAD     = 0x0008,  // Function should be executed on load
 } KRBFunctionFlags;
 
 // =============================================================================

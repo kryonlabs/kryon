@@ -481,3 +481,97 @@ bool kryon_write_const_definition(KryonCodeGenerator *codegen, const KryonASTNod
     // Add to constant table for use during compilation
     return add_constant_to_table(codegen, const_def->data.const_def.name, const_def->data.const_def.value);
 }
+
+bool kryon_write_onload_directive(KryonCodeGenerator *codegen, const KryonASTNode *onload) {
+    if (!onload || onload->type != KRYON_AST_ONLOAD_DIRECTIVE) {
+        return false;
+    }
+    
+    printf("📝 Writing onload directive\n");
+    
+    // Extract language and code from the script structure
+    const char *language = onload->data.script.language ? onload->data.script.language : "lua";
+    const char *code = onload->data.script.code;
+    
+    if (!code) {
+        printf("⚠️  Onload directive has no code content\n");
+        return false;
+    }
+    
+    printf("📝 Writing onload directive: lang='%s', code_length=%zu\n", 
+           language, strlen(code));
+    
+    // Write onload function header
+    KRBFunctionHeader header = {0};
+    header.magic = KRB_MAGIC_FUNC;
+    header.lang_ref = add_string_to_table(codegen, language);
+    header.name_ref = add_string_to_table(codegen, "__onload__");  // Special name for onload function
+    header.param_count = 0;  // onload functions take no parameters
+    header.flags = KRB_FUNC_FLAG_ONLOAD;  // Mark as onload function
+    
+    // Handle onload code - compile Lua to bytecode
+    uint32_t code_ref = 0;
+    if (language && strcmp(language, "lua") == 0) {
+        // For Lua, compile to bytecode and store as hex string
+        KryonVM* temp_vm = kryon_vm_create(KRYON_VM_LUA, NULL);
+        if (temp_vm) {
+            // Wrap onload code in a function
+            char* wrapped_code = kryon_alloc(strlen(code) + 100);
+            if (wrapped_code) {
+                snprintf(wrapped_code, strlen(code) + 100,
+                        "function __onload__()\n%s\nend", code);
+                
+                KryonScript script = {0};
+                KryonVMResult result = kryon_vm_compile(temp_vm, wrapped_code, 
+                                                       "__onload__", &script);
+                
+                if (result == KRYON_VM_SUCCESS && script.data && script.size > 0) {
+                    // Convert bytecode to hex string for storage
+                    char *hex_string = kryon_alloc(script.size * 2 + 1);
+                    if (hex_string) {
+                        for (size_t i = 0; i < script.size; i++) {
+                            sprintf(hex_string + i * 2, "%02x", ((uint8_t*)script.data)[i]);
+                        }
+                        hex_string[script.size * 2] = '\0';
+                        
+                        code_ref = add_string_to_table(codegen, hex_string);
+                        header.flags |= KRB_FUNC_FLAG_BYTECODE;
+                        
+                        kryon_free(hex_string);
+                    }
+                    if (script.data) kryon_free(script.data);
+                } else {
+                    // Fall back to storing source code
+                    code_ref = add_string_to_table(codegen, code);
+                }
+                kryon_free(wrapped_code);
+            } else {
+                // Fall back to storing source code if wrapped_code allocation failed
+                code_ref = add_string_to_table(codegen, code);
+            }
+            kryon_vm_destroy(temp_vm);
+        } else {
+            // Fall back to storing source code
+            code_ref = add_string_to_table(codegen, code);
+        }
+    } else {
+        // For other languages, store source code as-is
+        code_ref = add_string_to_table(codegen, code);
+    }
+    
+    header.code_ref = code_ref;
+    
+    // Write using schema-defined format
+    if (!write_uint32(codegen, header.magic)) return false;
+    if (!write_uint32(codegen, header.lang_ref)) return false;
+    if (!write_uint32(codegen, header.name_ref)) return false;
+    if (!write_uint16(codegen, header.param_count)) return false;
+    
+    // No parameters for onload
+    
+    // Write flags and code reference
+    if (!write_uint16(codegen, header.flags)) return false;
+    if (!write_uint32(codegen, header.code_ref)) return false;
+    
+    return true;
+}

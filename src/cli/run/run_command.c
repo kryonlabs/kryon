@@ -11,6 +11,8 @@
 #include <string.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <libgen.h>
+#include <limits.h>
 
 // Global for debug mode
 static bool g_debug_mode = false;
@@ -105,12 +107,48 @@ int run_command(int argc, char *argv[]) {
         printf("🐛 Debug: Loading KRB file: %s\n", krb_file_path);
     }
     
-    // Load KRB file into runtime
-    if (!kryon_runtime_load_file(runtime, krb_file_path)) {
-        fprintf(stderr, "❌ Failed to load KRB file: %s\n", krb_file_path);
+    // Save current working directory
+    char original_cwd[PATH_MAX];
+    if (getcwd(original_cwd, sizeof(original_cwd)) == NULL) {
+        fprintf(stderr, "❌ Failed to get current working directory\n");
         kryon_runtime_destroy(runtime);
         return 1;
     }
+    
+    // Extract directory from krb file path and change to it
+    char *krb_path_copy = strdup(krb_file_path);
+    char *krb_dir = dirname(krb_path_copy);
+    char *krb_filename_copy = strdup(krb_file_path);
+    char *krb_filename = basename(krb_filename_copy);
+    
+    if (debug) {
+        printf("🐛 Debug: Changing to directory: %s\n", krb_dir);
+        printf("🐛 Debug: Loading filename: %s\n", krb_filename);
+    }
+    
+    // Change to the KRB file's directory
+    if (chdir(krb_dir) != 0) {
+        fprintf(stderr, "❌ Failed to change to directory: %s\n", krb_dir);
+        free(krb_path_copy);
+        free(krb_filename_copy);
+        kryon_runtime_destroy(runtime);
+        return 1;
+    }
+    
+    // Load KRB file into runtime (now using just the filename since we're in the right directory)
+    if (!kryon_runtime_load_file(runtime, krb_filename)) {
+        fprintf(stderr, "❌ Failed to load KRB file: %s\n", krb_filename);
+        // Restore original directory before cleanup
+        chdir(original_cwd);
+        free(krb_path_copy);
+        free(krb_filename_copy);
+        kryon_runtime_destroy(runtime);
+        return 1;
+    }
+    
+    // Clean up path strings
+    free(krb_path_copy);
+    free(krb_filename_copy);
     
     if (debug) {
         printf("🐛 Debug: KRB file loaded successfully into runtime\n");
@@ -181,6 +219,11 @@ int run_command(int argc, char *argv[]) {
     }
     
     printf("✅ Rendering completed successfully with %s (%d frames)\n", renderer, frame_count);
+    
+    // Restore original working directory
+    if (chdir(original_cwd) != 0) {
+        fprintf(stderr, "⚠️  Warning: Failed to restore original directory: %s\n", original_cwd);
+    }
     
     // Cleanup
     kryon_runtime_destroy(runtime);

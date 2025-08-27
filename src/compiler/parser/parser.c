@@ -33,6 +33,7 @@ static KryonASTNode *parse_const_definition(KryonParser *parser);
 static KryonASTNode *parse_const_for_loop(KryonParser *parser);
 static KryonASTNode *parse_for_directive(KryonParser *parser);
 static KryonASTNode *parse_event_directive(KryonParser *parser);
+static KryonASTNode *parse_onload_directive(KryonParser *parser);
 static KryonASTNode *parse_directive(KryonParser *parser);
 static KryonASTNode *parse_property(KryonParser *parser);
 static KryonASTNode *parse_expression(KryonParser *parser);
@@ -326,7 +327,7 @@ static KryonASTNode *parse_document(KryonParser *parser) {
             node = parse_const_for_loop(parser);
         } else if (check_token(parser, KRYON_TOKEN_ONLOAD_DIRECTIVE)) {
             printf("[DEBUG] Parsing onload directive\n");
-            node = parse_directive(parser);
+            node = parse_onload_directive(parser);
         } else if (check_token(parser, KRYON_TOKEN_FOR_DIRECTIVE)) {
             printf("[DEBUG] Parsing for directive\n");
             node = parse_for_directive(parser);
@@ -1345,6 +1346,127 @@ static KryonASTNode *parse_event_directive(KryonParser *parser) {
     }
     
     return directive;
+}
+
+static KryonASTNode *parse_onload_directive(KryonParser *parser) {
+    printf("[DEBUG] parse_onload_directive: Starting\n");
+    
+    if (!check_token(parser, KRYON_TOKEN_ONLOAD_DIRECTIVE)) {
+        printf("[DEBUG] parse_onload_directive: Not an onload directive\n");
+        parser_error(parser, "Expected '@onload' directive");
+        return NULL;
+    }
+    
+    const KryonToken *onload_token = advance(parser);
+    printf("[DEBUG] parse_onload_directive: Found onload directive\n");
+    
+    // Expect language string
+    if (!check_token(parser, KRYON_TOKEN_STRING)) {
+        printf("[DEBUG] parse_onload_directive: Expected language string\n");
+        parser_error(parser, "Expected language string after @onload");
+        return NULL;
+    }
+    
+    const KryonToken *language_token = advance(parser);
+    printf("[DEBUG] parse_onload_directive: Language: %s\n", language_token->value.string_value);
+    
+    // Expect opening brace for script content
+    if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
+        parser_error(parser, "Expected '{' after language string");
+        return NULL;
+    }
+    
+    // Parse script content until closing brace
+    // We need to capture everything between braces as raw script text
+    size_t start_pos = parser->current_token;
+    int brace_count = 1;
+    
+    while (!at_end(parser) && brace_count > 0) {
+        const KryonToken *current = advance(parser);
+        if (current->type == KRYON_TOKEN_LEFT_BRACE) {
+            brace_count++;
+        } else if (current->type == KRYON_TOKEN_RIGHT_BRACE) {
+            brace_count--;
+        }
+    }
+    
+    if (brace_count > 0) {
+        parser_error(parser, "Expected '}' to close onload script");
+        return NULL;
+    }
+    
+    // Extract script content from tokens
+    size_t end_pos = parser->current_token - 1; // Before the closing brace
+    
+    // Build script text from tokens, preserving original spacing
+    // First, calculate total length needed
+    size_t total_length = 0;
+    for (size_t i = start_pos; i < end_pos; i++) {
+        const KryonToken *tok = &parser->tokens[i];
+        total_length += tok->lexeme_length;
+        // Add space after most tokens except punctuation
+        if (i < end_pos - 1 && tok->type != KRYON_TOKEN_LEFT_PAREN && 
+            tok->type != KRYON_TOKEN_DOT && tok->type != KRYON_TOKEN_LEFT_BRACKET) {
+            total_length++; // for space
+        }
+    }
+    
+    char *script_code = kryon_alloc(total_length + 1);
+    if (!script_code) {
+        parser_error(parser, "Failed to allocate memory for script code");
+        return NULL;
+    }
+    
+    script_code[0] = '\0';
+    for (size_t i = start_pos; i < end_pos; i++) {
+        const KryonToken *tok = &parser->tokens[i];
+        if (tok->lexeme && tok->lexeme_length > 0) {
+            strncat(script_code, tok->lexeme, tok->lexeme_length);
+            
+            // Add space after token based on context
+            if (i < end_pos - 1) {
+                const KryonToken *next_tok = &parser->tokens[i + 1];
+                // Don't add space before/after punctuation that should be joined
+                bool no_space_after = (tok->type == KRYON_TOKEN_DOT || 
+                                      tok->type == KRYON_TOKEN_LEFT_PAREN ||
+                                      tok->type == KRYON_TOKEN_LEFT_BRACKET ||
+                                      tok->type == KRYON_TOKEN_COLON);
+                                      
+                bool no_space_before = (next_tok->type == KRYON_TOKEN_DOT ||
+                                       next_tok->type == KRYON_TOKEN_LEFT_PAREN ||
+                                       next_tok->type == KRYON_TOKEN_RIGHT_PAREN ||
+                                       next_tok->type == KRYON_TOKEN_LEFT_BRACKET ||
+                                       next_tok->type == KRYON_TOKEN_RIGHT_BRACKET ||
+                                       next_tok->type == KRYON_TOKEN_COLON ||
+                                       next_tok->type == KRYON_TOKEN_COMMA);
+                
+                if (!no_space_after && !no_space_before) {
+                    strcat(script_code, " ");
+                }
+            }
+        }
+    }
+    
+    printf("[DEBUG] parse_onload_directive: Extracted script code (%zu chars): %.100s...\n", 
+           strlen(script_code), script_code);
+    
+    // Create onload directive node
+    KryonASTNode *onload_node = kryon_ast_create_node(parser, KRYON_AST_ONLOAD_DIRECTIVE, 
+                                                     &onload_token->location);
+    if (!onload_node) {
+        kryon_free(script_code);
+        parser_error(parser, "Failed to create onload directive node");
+        return NULL;
+    }
+    
+    // Store language and code in script structure
+    onload_node->data.script.language = kryon_strdup(language_token->value.string_value);
+    onload_node->data.script.code = script_code;
+    
+    printf("[DEBUG] parse_onload_directive: Created onload node with lang='%s', code_len=%zu\n",
+           onload_node->data.script.language, strlen(onload_node->data.script.code));
+    
+    return onload_node;
 }
 
 static KryonASTNode *parse_directive(KryonParser *parser) {

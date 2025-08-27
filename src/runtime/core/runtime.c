@@ -78,6 +78,7 @@ static void clear_expanded_children(KryonRuntime* runtime, KryonElement* for_ele
 static KryonElement* clone_element_with_substitution(KryonRuntime* runtime, KryonElement* template_element, const char* var_name, const char* var_value, size_t index);
 static char* substitute_template_variable(const char* template_str, const char* var_name, const char* var_value);
 static void add_child_element(KryonRuntime* runtime, KryonElement* parent, KryonElement* child);
+static char* extract_json_field(const char* json_value, const char* field_name);
 
 // External function from krb_loader.c
 extern bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, size_t size);
@@ -1849,6 +1850,7 @@ void process_for_directives(KryonRuntime* runtime, KryonElement* element) {
     
     // Check if this element is a @for template
     if (element->type_name && strcmp(element->type_name, "for") == 0) {
+        printf("🔄 Found @for template element, calling expand_for_template\n");
         expand_for_template(runtime, element);
         // Don't process children of @for elements recursively; they are templates.
         return;
@@ -1858,6 +1860,9 @@ void process_for_directives(KryonRuntime* runtime, KryonElement* element) {
     // Process children recursively (but skip children of @for templates)
     for (size_t i = 0; i < element->child_count; i++) {
         if (element->children[i]) {
+            if (element->children[i]->type_name) {
+                printf("🔍 Processing child element: %s\n", element->children[i]->type_name);
+            }
             process_for_directives(runtime, element->children[i]);
         }
     }
@@ -1953,68 +1958,111 @@ static void expand_for_template(KryonRuntime* runtime, KryonElement* for_element
         }
     }
     
-    // Parse array data - simple comma-separated strings
-    // printf("🔍 DEBUG: About to strdup array_data: '%s'\n", array_data ? array_data : "(null)");
-    // printf("🔍 DEBUG: array_data pointer: %p\n", array_data);
-    char* array_copy = NULL;
-    if (array_data) {
-        array_copy = kryon_strdup(array_data);
-        if (!array_copy) {
-            return;
-        }
-    } else {
+    // Parse JSON array data properly (handle nested JSON objects)
+    if (!array_data) {
         return;
     }
     
     // Clear existing expanded children
     clear_expanded_children(runtime, for_element);
     
-    // Split array and create elements
-    char* token = strtok(array_copy, ",");
+    // Parse JSON array manually to handle nested objects correctly
+    const char* ptr = array_data;
     size_t index = 0;
     
-    while (token) {
-        // Create a working copy for safe trimming
-        size_t token_len = strlen(token);
-        if (token_len == 0) {
-            token = strtok(NULL, ",");
-            continue;
-        }
+    // Skip leading whitespace and opening bracket
+    while (*ptr && (*ptr == ' ' || *ptr == '\t' || *ptr == '\n')) ptr++;
+    if (*ptr == '[') ptr++;
+    
+    while (*ptr) {
+        // Skip whitespace
+        while (*ptr && (*ptr == ' ' || *ptr == '\t' || *ptr == '\n')) ptr++;
+        if (!*ptr || *ptr == ']') break;
         
-        // Find start position (skip leading whitespace, brackets, quotes)
-        char* start = token;
-        while (*start && (*start == ' ' || *start == '[' || *start == ']' || *start == '"')) {
-            start++;
-        }
-        
-        // Find end position (skip trailing whitespace, brackets, quotes)
-        char* end = token + token_len - 1;
-        while (end > start && (*end == ' ' || *end == '[' || *end == ']' || *end == '"')) {
-            end--;
-        }
-        
-        // Create trimmed string
-        if (end >= start) {
-            size_t trimmed_len = end - start + 1;
-            char* trimmed = kryon_alloc(trimmed_len + 1);
-            if (trimmed) {
-                memcpy(trimmed, start, trimmed_len);
-                trimmed[trimmed_len] = '\0';
-                
-                if (strlen(trimmed) > 0) {
-                    // Create instance of template children for this array item
-                    expand_for_iteration(runtime, for_element, var_name, trimmed, index);
-                    index++;
+        // Find the start of the next array item (object or string)
+        if (*ptr == '{') {
+            // Handle JSON objects like {"file":"button.kry","title":"Button"}
+            const char* obj_start = ptr;
+            int brace_count = 0;
+            bool in_string = false;
+            bool escaped = false;
+            
+            // Find the matching closing brace
+            while (*ptr) {
+                if (escaped) {
+                    escaped = false;
+                } else if (*ptr == '\\') {
+                    escaped = true;
+                } else if (*ptr == '"') {
+                    in_string = !in_string;
+                } else if (!in_string) {
+                    if (*ptr == '{') {
+                        brace_count++;
+                    } else if (*ptr == '}') {
+                        brace_count--;
+                        if (brace_count == 0) {
+                            ptr++; // Include the closing brace
+                            break;
+                        }
+                    }
                 }
+                ptr++;
+            }
+            
+            // Extract the JSON object
+            size_t obj_len = ptr - obj_start;
+            char* json_obj = kryon_alloc(obj_len + 1);
+            if (json_obj) {
+                memcpy(json_obj, obj_start, obj_len);
+                json_obj[obj_len] = '\0';
                 
-                kryon_free(trimmed);
+                printf("🔧 Parsed JSON object %zu: '%s'\n", index, json_obj);
+                
+                // Create instance of template children for this array item
+                expand_for_iteration(runtime, for_element, var_name, json_obj, index);
+                index++;
+                
+                kryon_free(json_obj);
+            }
+        } else if (*ptr == '"') {
+            // Handle simple strings like "Test todo", "Another item"
+            const char* str_start = ptr;
+            ptr++; // Skip opening quote
+            bool escaped = false;
+            
+            // Find the closing quote
+            while (*ptr) {
+                if (escaped) {
+                    escaped = false;
+                } else if (*ptr == '\\') {
+                    escaped = true;
+                } else if (*ptr == '"') {
+                    ptr++; // Include the closing quote
+                    break;
+                }
+                ptr++;
+            }
+            
+            // Extract the string value (without quotes)
+            size_t str_len = ptr - str_start - 2; // Exclude quotes
+            char* str_value = kryon_alloc(str_len + 1);
+            if (str_value) {
+                memcpy(str_value, str_start + 1, str_len); // Skip opening quote
+                str_value[str_len] = '\0';
+                
+                printf("🔧 Parsed string %zu: '%s'\n", index, str_value);
+                
+                // Create instance of template children for this array item
+                expand_for_iteration(runtime, for_element, var_name, str_value, index);
+                index++;
+                
+                kryon_free(str_value);
             }
         }
         
-        token = strtok(NULL, ",");
+        // Skip comma and whitespace
+        while (*ptr && (*ptr == ',' || *ptr == ' ' || *ptr == '\t' || *ptr == '\n')) ptr++;
     }
-    
-    kryon_free(array_copy);
 }
 
 /**
@@ -2229,37 +2277,59 @@ static KryonElement* clone_element_with_substitution(KryonRuntime* runtime,
                 // Check if this REFERENCE property matches our substitution variable
                 const char* ref_var = src_prop->value.string_value ? src_prop->value.string_value : src_prop->binding_path;
                 
-                if (ref_var && strcmp(ref_var, var_name) == 0) {
-                    // Substitute: convert REFERENCE to STRING with the actual value
-                    dst_prop->type = KRYON_RUNTIME_PROP_STRING;
-                    if (var_value) {
-                        dst_prop->value.string_value = kryon_strdup(var_value);
-                        if (!dst_prop->value.string_value) {
-                            dst_prop->value.string_value = kryon_strdup("");
+                // Check for compound variable references like "example.file" or "example.title"
+                if (ref_var) {
+                    size_t var_name_len = strlen(var_name);
+                    bool is_compound_match = (strncmp(ref_var, var_name, var_name_len) == 0 && ref_var[var_name_len] == '.');
+                    bool is_exact_match = (strcmp(ref_var, var_name) == 0);
+                    
+                    if (is_exact_match || is_compound_match) {
+                        // Substitute: convert REFERENCE to STRING with the actual value
+                        dst_prop->type = KRYON_RUNTIME_PROP_STRING;
+                        
+                        if (is_compound_match) {
+                            // Handle compound variables like "example.file" → extract "file" from JSON
+                            const char* field_name = ref_var + var_name_len + 1; // Skip "example."
+                            char* field_value = extract_json_field(var_value, field_name);
+                            
+                            printf("🔧 SUBSTITUTING compound variable: '%s' → field '%s' = '%s'\n", 
+                                   ref_var, field_name, field_value ? field_value : "null");
+                            
+                            if (field_value) {
+                                dst_prop->value.string_value = field_value; // Already allocated by extract_json_field
+                            } else {
+                                dst_prop->value.string_value = kryon_strdup("");
+                            }
+                        } else {
+                            // Handle exact match: "example" → use value directly (string or JSON)
+                            printf("🔧 SUBSTITUTING exact variable: '%s' = '%s'\n", ref_var, var_value);
+                            dst_prop->value.string_value = kryon_strdup(var_value);
+                            if (!dst_prop->value.string_value) {
+                                dst_prop->value.string_value = kryon_strdup("");
+                            }
                         }
+                        
+                        dst_prop->is_bound = false;
+                        dst_prop->binding_path = NULL;
                     } else {
-                        dst_prop->value.string_value = kryon_strdup("");
-                    }
-                    dst_prop->is_bound = false;
-                    dst_prop->binding_path = NULL;
-                } else {
-                    // Copy REFERENCE as-is (different variable) with safety check
-                    if (ref_var && (uintptr_t)ref_var > 0x1000) {
-                        dst_prop->value.string_value = kryon_strdup(ref_var);
-                        if (!dst_prop->value.string_value) {
+                        // Copy REFERENCE as-is (different variable) with safety check
+                        if (ref_var && (uintptr_t)ref_var > 0x1000) {
+                            dst_prop->value.string_value = kryon_strdup(ref_var);
+                            if (!dst_prop->value.string_value) {
+                                dst_prop->value.string_value = NULL;
+                            }
+                        } else {
                             dst_prop->value.string_value = NULL;
                         }
-                    } else {
-                        dst_prop->value.string_value = NULL;
-                    }
-                    dst_prop->is_bound = src_prop->is_bound;
-                    if (src_prop->binding_path) {
-                        dst_prop->binding_path = kryon_strdup(src_prop->binding_path);
-                        if (!dst_prop->binding_path) {
+                        dst_prop->is_bound = src_prop->is_bound;
+                        if (src_prop->binding_path) {
+                            dst_prop->binding_path = kryon_strdup(src_prop->binding_path);
+                            if (!dst_prop->binding_path) {
+                                dst_prop->binding_path = NULL;
+                            }
+                        } else {
                             dst_prop->binding_path = NULL;
                         }
-                    } else {
-                        dst_prop->binding_path = NULL;
                     }
                 }
             } else if (src_prop->type == KRYON_RUNTIME_PROP_TEMPLATE) {
@@ -2517,4 +2587,74 @@ static void add_child_element(KryonRuntime* runtime, KryonElement* parent, Kryon
     
     // Mark for re-render
     parent->needs_render = true;
+}
+
+/**
+ * @brief Extract a field value from a JSON object string
+ * @param json_value JSON object string like '{"file":"button.kry","title":"Button"}'
+ * @param field_name Field name to extract like "file" or "title"
+ * @return Allocated string containing the field value, or NULL if not found
+ */
+static char* extract_json_field(const char* json_value, const char* field_name) {
+    if (!json_value || !field_name) {
+        return NULL;
+    }
+    
+    // Create search pattern: "field_name":"
+    size_t pattern_len = strlen(field_name) + 4; // for quotes, colon, and quotes
+    char* pattern = kryon_alloc(pattern_len);
+    if (!pattern) {
+        return NULL;
+    }
+    snprintf(pattern, pattern_len, "\"%s\":", field_name);
+    
+    // Find the pattern in the JSON string
+    const char* field_start = strstr(json_value, pattern);
+    kryon_free(pattern);
+    
+    if (!field_start) {
+        return NULL;
+    }
+    
+    // Move past the pattern to find the value
+    const char* value_start = field_start + strlen(field_name) + 3; // Skip "field_name":
+    
+    // Skip whitespace
+    while (*value_start && (*value_start == ' ' || *value_start == '\t')) {
+        value_start++;
+    }
+    
+    // Value should start with a quote
+    if (*value_start != '"') {
+        return NULL;
+    }
+    value_start++; // Skip opening quote
+    
+    // Find the closing quote
+    const char* value_end = value_start;
+    while (*value_end && *value_end != '"') {
+        if (*value_end == '\\') {
+            // Skip escaped characters
+            value_end++;
+            if (*value_end) value_end++;
+        } else {
+            value_end++;
+        }
+    }
+    
+    if (*value_end != '"') {
+        return NULL;
+    }
+    
+    // Extract the value
+    size_t value_len = value_end - value_start;
+    char* result = kryon_alloc(value_len + 1);
+    if (!result) {
+        return NULL;
+    }
+    
+    memcpy(result, value_start, value_len);
+    result[value_len] = '\0';
+    
+    return result;
 }

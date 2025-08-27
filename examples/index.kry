@@ -3,23 +3,28 @@
     description: "Browse and navigate through Kryon framework examples"
 }
 
-@variable files: []
+@var files: []
 
 @function "lua" loadExampleFiles() {
     local examples = {}
-    local files = kryon.fs.readdir("./")
     
-    for _, file in ipairs(files) do
-        if file:match("%.kry$") and file ~= "index.kry" then
-            local name = file:gsub("%.kry$", "")
-            local title = name:gsub("_", " "):gsub("%-", " ")
-            title = title:gsub("^%l", string.upper)
-            
-            table.insert(examples, {
-                file = file,
-                title = title
-            })
+    -- Use native Lua to list files in current directory (where index.kry is located)
+    local handle = io.popen("ls *.kry 2>/dev/null")
+    if handle then
+        for line in handle:lines() do
+            local file = line:match("(.+)")
+            if file and file ~= "index.kry" then
+                local name = file:gsub("%.kry$", "")
+                local title = name:gsub("_", " "):gsub("%-", " ")
+                title = title:gsub("^%l", string.upper)
+                
+                table.insert(examples, {
+                    file = file,
+                    title = title
+                })
+            end
         end
+        handle:close()
     end
     
     table.sort(examples, function(a, b) return a.title < b.title end)
@@ -64,14 +69,12 @@ App {
             text: "Kryon Examples"
             fontSize: 32
             color: "#FF9900"
-            textAlign: "center"
         }
         
         Text {
             text: "Click on any example to explore Kryon framework features"
             fontSize: 16
             color: "#CCCCCC"
-            textAlign: "center"
         }
         
         Column {
@@ -90,7 +93,6 @@ App {
             text: "Built with Kryon Framework"
             fontSize: 12
             color: "#666666"
-            textAlign: "center"
         }
     }
 }

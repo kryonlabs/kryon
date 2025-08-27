@@ -352,9 +352,87 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     // Variables loading moved earlier in the loading process
         
     
-    // Load script section if present
+    // ======================================================================
+    // PHASE 1: Load Variables section FIRST (before any functions) 
+    // Variables must be available before @onload functions execute
+    // ======================================================================
     if (script_offset > 0) {
-        printf("DEBUG: About to load script section at offset %u\n", script_offset);
+        printf("🔄 PHASE 1: Loading Variables section BEFORE functions at offset %u\n", script_offset);
+        
+        size_t vars_offset = script_offset;
+        uint32_t vars_magic;
+        if (read_uint32_safe(data, &vars_offset, size, &vars_magic)) {
+            printf("DEBUG: Magic at offset %u: 0x%08X (expected 0x56415253)\n", script_offset, vars_magic);
+            
+            if (vars_magic == 0x56415253) { // "VARS" 
+                uint32_t var_count;
+                if (read_uint32_safe(data, &vars_offset, size, &var_count)) {
+                    printf("DEBUG: Variable count: %u\n", var_count);
+                    
+                    if (var_count <= 10 && var_count > 0) {
+                        runtime->variable_names = kryon_alloc(var_count * sizeof(char*));
+                        runtime->variable_values = kryon_alloc(var_count * sizeof(char*));
+                        runtime->variable_capacity = var_count;
+                        runtime->variable_count = 0;
+                        
+                        for (uint32_t i = 0; i < var_count; i++) {
+                            uint32_t name_ref;
+                            if (!read_uint32_safe(data, &vars_offset, size, &name_ref)) break;
+                            
+                            uint8_t var_type;
+                            if (!read_uint8_safe(data, &vars_offset, size, &var_type)) break;
+                            
+                            uint8_t var_flags;
+                            if (!read_uint8_safe(data, &vars_offset, size, &var_flags)) break;
+                            
+                            uint8_t value_type;
+                            if (!read_uint8_safe(data, &vars_offset, size, &value_type)) break;
+                            
+                            const char* var_name = (name_ref < string_count) ? string_table[name_ref] : "unknown";
+                            
+                            // Load typed variable values without conversion
+                            if (value_type == KRYON_VALUE_STRING) {
+                                uint32_t value_ref;
+                                if (read_uint32_safe(data, &vars_offset, size, &value_ref)) {
+                                    if (value_ref < string_count && string_table[value_ref]) {
+                                        const char* string_value = string_table[value_ref];
+                                        // Store as string variable
+                                        runtime->variable_names[runtime->variable_count] = kryon_strdup(var_name);
+                                        runtime->variable_values[runtime->variable_count] = kryon_strdup(string_value);
+                                        runtime->variable_count++;
+                                        printf("DEBUG: Loaded STRING variable '%s' = '%s'\n", var_name, string_value);
+                                    }
+                                }
+                            } else if (value_type == KRYON_VALUE_INTEGER) {
+                                uint32_t int_value;
+                                if (read_uint32_safe(data, &vars_offset, size, &int_value)) {
+                                    // TODO: For now, store integer as string until we implement typed variables properly
+                                    static char int_buffer[32];
+                                    snprintf(int_buffer, sizeof(int_buffer), "%u", int_value);
+                                    runtime->variable_names[runtime->variable_count] = kryon_strdup(var_name);
+                                    runtime->variable_values[runtime->variable_count] = kryon_strdup(int_buffer);
+                                    runtime->variable_count++;
+                                    printf("DEBUG: Loaded INTEGER variable '%s' = %u\n", var_name, int_value);
+                                }
+                            } else {
+                                printf("DEBUG: Skipped unknown variable type %d for '%s'\n", value_type, var_name);
+                            }
+                        }
+                        
+                        printf("✅ PHASE 1: Loaded %zu variables before function loading\n", runtime->variable_count);
+                        printf("🔄 Reprocessing property bindings with loaded variables\n");
+                        reprocess_property_bindings(runtime, runtime->root);
+                    }
+                }
+            }
+        }
+    }
+    
+    // ======================================================================
+    // PHASE 2: Load script section if present (functions AFTER variables)
+    // ======================================================================
+    if (script_offset > 0) {
+        printf("🔄 PHASE 2: Loading Functions section AFTER variables at offset %u\n", script_offset);
         
         // Script offset points to Variables section, we need to find Functions section after it
         // Look for FUNC magic (0x46554E43 = "FUNC")
@@ -407,6 +485,17 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
             printf("  [%zu] %s\n", i, runtime->function_names[i]);
         }
         printf("\n");
+        
+        // Clear loading flag BEFORE @for processing to allow template expansion
+        runtime->is_loading = false;
+        
+        // Process @for directives AFTER @onload functions have executed
+        // This ensures variables populated by @onload are available for @for processing
+        if (runtime->root) {
+            printf("🔄 Processing @for directives after @onload execution\n");
+            process_for_directives(runtime, runtime->root);
+            printf("🔄 Completed @for directive processing\n");
+        }
     }
     
     // Load component definitions if present
@@ -453,92 +542,8 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
         }
     }
     
-    // Load Variables section BEFORE processing @for directives
-    if (script_offset > 0) {
-        printf("DEBUG: Manually parsing Variables section at offset %u\n", script_offset);
-        
-        size_t vars_offset = script_offset;
-        uint32_t vars_magic;
-        if (read_uint32_safe(data, &vars_offset, size, &vars_magic)) {
-            printf("DEBUG: Magic at offset %u: 0x%08X (expected 0x56415253)\n", script_offset, vars_magic);
-            
-            if (vars_magic == 0x56415253) { // "VARS" 
-                uint32_t var_count;
-                if (read_uint32_safe(data, &vars_offset, size, &var_count)) {
-                    printf("DEBUG: Variable count: %u\n", var_count);
-                    
-                    if (var_count <= 10 && var_count > 0) {
-                        runtime->variable_names = kryon_alloc(var_count * sizeof(char*));
-                        runtime->variable_values = kryon_alloc(var_count * sizeof(char*));
-                        runtime->variable_capacity = var_count;
-                        runtime->variable_count = 0;
-                        
-                        for (uint32_t i = 0; i < var_count; i++) {
-                            uint32_t name_ref;
-                            if (!read_uint32_safe(data, &vars_offset, size, &name_ref)) break;
-                            
-                            uint8_t var_type;
-                            if (!read_uint8_safe(data, &vars_offset, size, &var_type)) break;
-                            
-                            uint8_t var_flags;
-                            if (!read_uint8_safe(data, &vars_offset, size, &var_flags)) break;
-                            
-                            uint8_t value_type;
-                            if (!read_uint8_safe(data, &vars_offset, size, &value_type)) break;
-                            
-                            const char* var_name = (name_ref < string_count) ? string_table[name_ref] : "unknown";
-                            
-                            // Load typed variable values without conversion
-                            if (value_type == KRYON_VALUE_STRING) {
-                                uint32_t value_ref;
-                                if (read_uint32_safe(data, &vars_offset, size, &value_ref)) {
-                                    if (value_ref < string_count && string_table[value_ref]) {
-                                        const char* string_value = string_table[value_ref];
-                                        // Store as string variable
-                                        runtime->variable_names[runtime->variable_count] = kryon_strdup(var_name);
-                                        runtime->variable_values[runtime->variable_count] = kryon_strdup(string_value);
-                                        runtime->variable_count++;
-                                        printf("DEBUG: Loaded STRING variable '%s' = '%s'\n", var_name, string_value);
-                                    }
-                                }
-                            } else if (value_type == KRYON_VALUE_INTEGER) {
-                                uint32_t int_value;
-                                if (read_uint32_safe(data, &vars_offset, size, &int_value)) {
-                                    // TODO: For now, store integer as string until we implement typed variables properly
-                                    // In the future, this should be stored in a typed variable system
-                                    static char int_buffer[32];
-                                    snprintf(int_buffer, sizeof(int_buffer), "%u", int_value);
-                                    runtime->variable_names[runtime->variable_count] = kryon_strdup(var_name);
-                                    runtime->variable_values[runtime->variable_count] = kryon_strdup(int_buffer);
-                                    runtime->variable_count++;
-                                    printf("DEBUG: Loaded INTEGER variable '%s' = %u (stored as '%s')\n", var_name, int_value, int_buffer);
-                                }
-                            } else {
-                                // Skip unknown value types
-                                vars_offset += 4;
-                                printf("DEBUG: Skipped unknown variable type %d for '%s'\n", value_type, var_name);
-                            }
-                            
-                            // Variable processing completed above
-                        }
-                        
-                        printf("🔄 Reprocessing property bindings with loaded variables\n");
-                        reprocess_property_bindings(runtime, runtime->root);
-                    }
-                }
-            }
-        }
-    }
-    
-    // Clear loading flag before processing @for directives
-    runtime->is_loading = false;
-    
-    // Process @for directives after all elements AND variables are loaded
-    if (runtime->root) {
-        printf("🔄 About to call process_for_directives\n");
-        process_for_directives(runtime, runtime->root);
-        printf("🔄 Completed process_for_directives\n");
-    }
+    // Variables are now loaded in PHASE 1 above (before functions)
+    // Loading flag was cleared before @for processing above
     
     // Cleanup string table
     //if (string_table) {
@@ -551,7 +556,7 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     return true;
     
 cleanup:
-    // Clear loading flag on error
+    // Clear loading flag on error (if not already cleared)
     runtime->is_loading = false;
     
     // Cleanup string table on error
@@ -1746,6 +1751,21 @@ static bool load_function_from_binary(KryonRuntime *runtime, const uint8_t *data
                 runtime->function_count++;
             }
         }
+        
+        // Check if this is an onload function and execute it immediately
+        if ((flags & KRB_FUNC_FLAG_ONLOAD) && name_str && strcmp(name_str, "__onload__") == 0) {
+            printf("🚀 Executing onload function '%s'\n", name_str);
+            KryonVMResult exec_result = kryon_vm_call_function(runtime->script_vm, name_str, 0, NULL);
+            if (exec_result == KRYON_VM_SUCCESS) {
+                printf("✅ Onload function executed successfully\n");
+            } else {
+                printf("❌ Failed to execute onload function (result=%d)\n", exec_result);
+                const char* error = kryon_vm_get_error(runtime->script_vm);
+                if (error) {
+                    printf("ERROR: %s\n", error);
+                }
+            }
+        }
     }
     
     return true;
@@ -1841,8 +1861,8 @@ static bool load_components_section(KryonRuntime* runtime, const uint8_t* data, 
     
     memset(comp_def, 0, sizeof(KryonComponentDefinition));
     
-    // Resolve component name from string table (convert from 1-based to 0-based indexing)
-    uint32_t string_index = (name_ref > 0) ? name_ref - 1 : 0;
+    // String table indices are already 0-based (no conversion needed)
+    uint32_t string_index = name_ref;
     if (string_index >= string_count || !string_table[string_index]) {
         printf("❌ Invalid component name reference: ref=%u, string_index=%u, string_count=%u, string_exists=%s\n", 
                name_ref, string_index, string_count, (string_index < string_count && string_table[string_index]) ? "yes" : "no");

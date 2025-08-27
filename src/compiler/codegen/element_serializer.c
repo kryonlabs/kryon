@@ -788,10 +788,17 @@ static bool write_enhanced_property_value(KryonCodeGenerator *codegen, const Kry
             return write_property_value(codegen, &value_node->data.literal.value, property_hex);
             
         case KRYON_AST_VARIABLE:
-            printf("❌ Found unresolved variable reference: '%s' for property (0x%04X)\n", 
-                   value_node->data.variable.name, property_hex);
-            printf("❌ This variable should have been substituted during const evaluation!\n");
-            return write_variable_reference(codegen, value_node->data.variable.name, property_hex);
+            // Check if this is a runtime variable reference (e.g., @for array property)
+            if (property_hex == 0x8202) { // @for array property - runtime variable expected
+                printf("🔗 Property 'array' bound to variable '%s'\n", value_node->data.variable.name);
+                return write_variable_reference(codegen, value_node->data.variable.name, property_hex);
+            } else {
+                // For other properties, this might be an unresolved compile-time constant
+                printf("❌ Found unresolved variable reference: '%s' for property (0x%04X)\n", 
+                       value_node->data.variable.name, property_hex);
+                printf("❌ This variable should have been substituted during const evaluation!\n");
+                return write_variable_reference(codegen, value_node->data.variable.name, property_hex);
+            }
             
         case KRYON_AST_TEMPLATE:
             printf("🔄 Writing structured template with segments\n");

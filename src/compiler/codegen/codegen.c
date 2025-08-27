@@ -16,11 +16,11 @@
 #include "binary_io.h"
 #include "color_utils.h"    
 #include "script_vm.h"
+#include "directive_serializer.h"
 #include "../../shared/kryon_mappings.h"
 #include "../../shared/krb_schema.h"
 #include "string_table.h"
 #include "ast_expander.h"
-#include "directive_serializer.h"
 #include "element_serializer.h"
 #include "event_serializer.h"
 #include <stdlib.h>
@@ -1172,6 +1172,8 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
             const KryonASTNode *child = ast_root->data.element.children[i];
             if (child && child->type == KRYON_AST_FUNCTION_DEFINITION) {
                 function_count++;
+            } else if (child && child->type == KRYON_AST_ONLOAD_DIRECTIVE) {
+                function_count++; // onload directives are compiled as functions
             } else if (child && child->type == KRYON_AST_COMPONENT) {
                 // Count functions in this component
                 component_function_count += child->data.component.function_count;
@@ -1237,13 +1239,18 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
         return false;
     }
     
-    // Write root-level functions first
+    // Write root-level functions and onload directives first
     if (ast_root->type == KRYON_AST_ROOT) {
         for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
             const KryonASTNode *child = ast_root->data.element.children[i];
             if (child && child->type == KRYON_AST_FUNCTION_DEFINITION) {
                 if (!kryon_write_function_node(codegen, child)) {
                     codegen_error(codegen, "Failed to write function definition");
+                    return false;
+                }
+            } else if (child && child->type == KRYON_AST_ONLOAD_DIRECTIVE) {
+                if (!kryon_write_onload_directive(codegen, child)) {
+                    codegen_error(codegen, "Failed to write onload directive");
                     return false;
                 }
             }
