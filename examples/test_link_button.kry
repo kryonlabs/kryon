@@ -1,4 +1,0 @@
-Button {
-    to: "button.kry"    
-    text: "Navigate to Button Example"
-}

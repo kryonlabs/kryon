@@ -83,9 +83,32 @@ static void link_render(KryonRuntime* runtime, KryonElement* element, KryonRende
     KryonVec2 position = { element->x, element->y };
     KryonVec2 size = { element->width, element->height };
     
-    // Handle cursor management and background rendering using mixins
-    check_hover_and_cursor(runtime, element, true);
+    // Handle background rendering first
     render_background_and_border(element, commands, command_count, max_commands);
+    
+    // Calculate text bounds for cursor management (same logic as hit testing)
+    float text_width = strlen(text) * (font_size * 0.6f); // Rough character width estimate
+    float text_height = font_size * 1.2f; // Line height estimate
+    
+    float text_x = position.x;
+    float text_y = position.y;
+    
+    // Handle text alignment within the element bounds
+    if (strcmp(text_align, "center") == 0) {
+        text_x += (size.x - text_width) / 2.0f;
+    } else if (strcmp(text_align, "right") == 0) {
+        text_x += size.x - text_width;
+    }
+    
+    // Custom cursor management for Link text area only
+    KryonVec2 mouse_pos = runtime->mouse_position;
+    bool is_text_hovered = (mouse_pos.x >= text_x && mouse_pos.x <= text_x + text_width &&
+                           mouse_pos.y >= text_y && mouse_pos.y <= text_y + text_height);
+    
+    // Set cursor only when hovering over text area
+    if (is_text_hovered && runtime->renderer) {
+        kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_POINTER);
+    }
     
     // Convert remaining colors
     KryonColor text_color = color_u32_to_f32(text_color_val);

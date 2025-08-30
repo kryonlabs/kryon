@@ -1267,7 +1267,53 @@ static bool is_interactive_element(const char* type_name) {
              strcmp(type_name, "Button") == 0 ||
              strcmp(type_name, "Input") == 0 ||
              strcmp(type_name, "Dropdown") == 0 ||
-             strcmp(type_name, "Tab") == 0));
+             strcmp(type_name, "Tab") == 0 ||
+             strcmp(type_name, "Link") == 0));
+}
+
+// Helper function to calculate text-based bounds for Link elements
+static ElementBounds get_link_text_bounds(struct KryonElement* element) {
+    ElementBounds bounds = {0, 0, 0, 0};
+    if (!element || !element->type_name || strcmp(element->type_name, "Link") != 0) {
+        return bounds;
+    }
+    
+    // Get link text and font size
+    const char* text = get_element_property_string(element, "text");
+    if (!text) text = "Link";
+    float font_size = get_element_property_float(element, "fontSize", 16.0f);
+    const char* text_align = get_element_property_string(element, "textAlign");
+    if (!text_align) text_align = "left";
+    
+    // Calculate approximate text dimensions (simple heuristic)
+    // This is a basic estimation - in a real implementation you'd measure text with the renderer
+    float text_width = strlen(text) * (font_size * 0.6f); // Rough character width estimate
+    float text_height = font_size * 1.2f; // Line height estimate
+    
+    // Use element position as base
+    bounds.x = element->x;
+    bounds.y = element->y;
+    bounds.width = text_width;
+    bounds.height = text_height;
+    
+    // Handle text alignment within the element bounds
+    if (strcmp(text_align, "center") == 0) {
+        bounds.x += (element->width - text_width) / 2.0f;
+    } else if (strcmp(text_align, "right") == 0) {
+        bounds.x += element->width - text_width;
+    }
+    
+    // Ensure bounds are within the element
+    if (bounds.x < element->x) bounds.x = element->x;
+    if (bounds.y < element->y) bounds.y = element->y;
+    if (bounds.x + bounds.width > element->x + element->width) {
+        bounds.width = element->x + element->width - bounds.x;
+    }
+    if (bounds.y + bounds.height > element->y + element->height) {
+        bounds.height = element->y + element->height - bounds.y;
+    }
+    
+    return bounds;
 }
 
 // Recursive function to find interactive elements only
@@ -1282,7 +1328,15 @@ static struct KryonElement* find_interactive_element_at_point(struct KryonElemen
     
     // Check this element if it's interactive
     if (is_interactive_element(root->type_name)) {
-        ElementBounds bounds = element_get_bounds(root);
+        ElementBounds bounds;
+        
+        // Use text-based bounds for Link elements to make only text clickable
+        if (root->type_name && strcmp(root->type_name, "Link") == 0) {
+            bounds = get_link_text_bounds(root);
+        } else {
+            bounds = element_get_bounds(root);
+        }
+        
         if (point_in_bounds_with_tolerance(bounds, x, y, 5.0f)) {
             return root;
         }
@@ -1300,27 +1354,13 @@ struct KryonElement* hit_test_find_element_at_point(struct KryonElement* root, f
         return dropdown_hit;
     }
     
-    // PRIORITY 1: Check for interactive elements first
+    // Only check for interactive elements - no fallback to catch-all behavior
     struct KryonElement* interactive_hit = find_interactive_element_at_point(root, x, y);
     if (interactive_hit) {
         return interactive_hit;
     }
     
-    // PRIORITY 2: Check all elements (including non-interactive) using original logic
-    // Check children first (they render on top)
-    for (size_t i = 0; i < root->child_count; i++) {
-        struct KryonElement* hit_child = hit_test_find_element_at_point(root->children[i], x, y);
-        if (hit_child) return hit_child;
-    }
-    
-    // Check this element
-    ElementBounds bounds = element_get_bounds(root);
-    bool hit = point_in_bounds(bounds, x, y);
-    
-    if (hit) {
-        return root;
-    }
-    
+    // No fallback - only interactive elements should be clickable
     return NULL;
 }
 

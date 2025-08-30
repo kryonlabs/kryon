@@ -77,6 +77,7 @@ static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_elemen
 static void clear_expanded_children(KryonRuntime* runtime, KryonElement* for_element);
 static KryonElement* clone_element_with_substitution(KryonRuntime* runtime, KryonElement* template_element, const char* var_name, const char* var_value, size_t index);
 static char* substitute_template_variable(const char* template_str, const char* var_name, const char* var_value);
+static const char* extract_json_property(const char* json_object, const char* property_name);
 static void add_child_element(KryonRuntime* runtime, KryonElement* parent, KryonElement* child);
 static char* extract_json_field(const char* json_value, const char* field_name);
 
@@ -1253,19 +1254,17 @@ const char* get_element_property_string_with_runtime(KryonRuntime* runtime, Kryo
         case KRYON_RUNTIME_PROP_REFERENCE:
             // For variable references, try to resolve them
             if (prop->is_bound && prop->binding_path && runtime) {
-                printf("🔍 RESOLVING: Looking up variable '%s'\n", prop->binding_path);
                 const char* resolved_value = resolve_variable_reference(runtime, prop->binding_path);
                 if (resolved_value && resolved_value != prop->binding_path) {  // Check it actually resolved
-                    printf("✅ RESOLVED: Variable '%s' = '%s'\n", prop->binding_path, resolved_value);
                     return resolved_value;
                 } else {
-                    printf("❌ FAILED: Variable '%s' not found, using fallback\n", prop->binding_path);
+                    // Variable not found - return NULL instead of fallback
+                    return NULL;
                 }
             } else {
-                printf("❌ BINDING: Property not properly bound (is_bound=%d, binding_path=%p, runtime=%p)\n", 
-                       prop->is_bound, (void*)prop->binding_path, (void*)runtime);
+                // Property not properly bound - return NULL instead of fallback
+                return NULL;
             }
-            return prop->value.string_value ? prop->value.string_value : "";
             
         case KRYON_RUNTIME_PROP_INTEGER:
             snprintf(buffer, 1024, "%lld", (long long)prop->value.int_value);
@@ -2587,25 +2586,39 @@ static char* resolve_for_template_property(KryonRuntime* runtime, KryonProperty*
                 total_len += strlen(segment->data.literal_text);
             }
         } else if (segment->type == KRYON_TEMPLATE_SEGMENT_VARIABLE) {
-            // Check if this variable matches the @for variable
+            // Check if this variable matches the @for variable or is a property access
             const char *seg_var_name = segment->data.variable_name;
             if (seg_var_name && strcmp(seg_var_name, var_name) == 0) {
-                // Use @for variable value
+                // Direct variable match - use @for variable value
                 total_len += strlen(var_value);
-            } else {
-                // Look up in runtime variables as fallback
-                const char *fallback_value = NULL;
-                for (size_t j = 0; j < runtime->variable_count; j++) {
-                    if (runtime->variable_names[j] && seg_var_name &&
-                        strcmp(runtime->variable_names[j], seg_var_name) == 0) {
-                        fallback_value = runtime->variable_values[j];
-                        break;
+            } else if (seg_var_name && var_name) {
+                // Check for property access (e.g., "example.title" where var_name is "example")
+                size_t var_name_len = strlen(var_name);
+                if (strncmp(seg_var_name, var_name, var_name_len) == 0 && seg_var_name[var_name_len] == '.') {
+                    // This is a property access like "example.title"
+                    const char* property_name = seg_var_name + var_name_len + 1; // Skip "example."
+                    
+                    // Calculate length of property value
+                    const char* property_value = extract_json_property(var_value, property_name);
+                    if (property_value) {
+                        total_len += strlen(property_value);
                     }
+                    // If property not found, contribute 0 to length
+                } else {
+                    // Look up in runtime variables (this is legitimate - not a fallback for failed @for vars)
+                    const char *runtime_value = NULL;
+                    for (size_t j = 0; j < runtime->variable_count; j++) {
+                        if (runtime->variable_names[j] && seg_var_name &&
+                            strcmp(runtime->variable_names[j], seg_var_name) == 0) {
+                            runtime_value = runtime->variable_values[j];
+                            break;
+                        }
+                    }
+                    if (runtime_value) {
+                        total_len += strlen(runtime_value);
+                    }
+                    // If not found in runtime variables, contribute 0 to length
                 }
-                if (fallback_value) {
-                    total_len += strlen(fallback_value);
-                }
-                // If no fallback found, variable remains as empty string (contributes 0 to length)
             }
         }
     }
@@ -2626,25 +2639,40 @@ static char* resolve_for_template_property(KryonRuntime* runtime, KryonProperty*
                 strcat(result, segment->data.literal_text);
             }
         } else if (segment->type == KRYON_TEMPLATE_SEGMENT_VARIABLE) {
-            // Check if this variable matches the @for variable
+            // Check if this variable matches the @for variable or is a property access
             const char *seg_var_name = segment->data.variable_name;
             if (seg_var_name && strcmp(seg_var_name, var_name) == 0) {
-                // Use @for variable value
+                // Direct variable match - use @for variable value
                 strcat(result, var_value);
-            } else {
-                // Look up in runtime variables as fallback
-                const char *fallback_value = NULL;
-                for (size_t j = 0; j < runtime->variable_count; j++) {
-                    if (runtime->variable_names[j] && seg_var_name &&
-                        strcmp(runtime->variable_names[j], seg_var_name) == 0) {
-                        fallback_value = runtime->variable_values[j];
-                        break;
+            } else if (seg_var_name && var_name) {
+                // Check for property access (e.g., "example.title" where var_name is "example")
+                size_t var_name_len = strlen(var_name);
+                if (strncmp(seg_var_name, var_name, var_name_len) == 0 && seg_var_name[var_name_len] == '.') {
+                    // This is a property access like "example.title"
+                    const char* property_name = seg_var_name + var_name_len + 1; // Skip "example."
+                    
+                    // Parse the @for variable value as JSON and extract the property
+                    // For now, do a simple JSON property extraction
+                    const char* property_value = extract_json_property(var_value, property_name);
+                    if (property_value) {
+                        strcat(result, property_value);
                     }
+                    // If property not found, add nothing (no fallback)
+                } else {
+                    // Look up in runtime variables (this is legitimate - not a fallback for failed @for vars)
+                    const char *runtime_value = NULL;
+                    for (size_t j = 0; j < runtime->variable_count; j++) {
+                        if (runtime->variable_names[j] && seg_var_name &&
+                            strcmp(runtime->variable_names[j], seg_var_name) == 0) {
+                            runtime_value = runtime->variable_values[j];
+                            break;
+                        }
+                    }
+                    if (runtime_value) {
+                        strcat(result, runtime_value);
+                    }
+                    // If not found in runtime variables, add nothing
                 }
-                if (fallback_value) {
-                    strcat(result, fallback_value);
-                }
-                // If no fallback found, variable remains as empty string (adds nothing)
             }
         }
     }
@@ -2809,4 +2837,32 @@ static void clear_layout_flags_recursive(KryonElement* element) {
             clear_layout_flags_recursive(element->children[i]);
         }
     }
+}
+
+/**
+ * @brief Extract a property from a JSON object for @for loop variable resolution
+ * @param json_object JSON object string like '{"file":"button.kry","title":"Button"}'
+ * @param property_name Property name to extract like "file" or "title"
+ * @return Property value string, or NULL if not found (uses static buffer)
+ */
+static const char* extract_json_property(const char* json_object, const char* property_name) {
+    if (!json_object || !property_name) {
+        return NULL;
+    }
+    
+    // Use the existing extract_json_field function which allocates memory
+    char* allocated_result = extract_json_field(json_object, property_name);
+    if (!allocated_result) {
+        return NULL;
+    }
+    
+    // Copy to static buffer to avoid memory management issues in template resolution
+    static char property_buffer[1024];
+    strncpy(property_buffer, allocated_result, sizeof(property_buffer) - 1);
+    property_buffer[sizeof(property_buffer) - 1] = '\0';
+    
+    // Free the allocated memory
+    kryon_free(allocated_result);
+    
+    return property_buffer;
 }
