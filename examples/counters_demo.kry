@@ -20,13 +20,12 @@
 }
 
 // --- Now, use your component in the main App ---
-Center {
-    Column {
-        mainAxisAlignment: "center"
-         gap: 20
+Column {
+    mainAxisAlignment: "center"
+        gap: 20
 
-         Counter { value: 5 }
+        Counter { value: 5 }
 
-         Counter { }
-     }
+        Counter { }
+    }
 }

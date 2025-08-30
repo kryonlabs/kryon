@@ -1109,8 +1109,8 @@ static void position_container_children(struct KryonRuntime* runtime, struct Kry
  * Center elements automatically behave like Container with contentAlignment="center"
  */
 static void position_center_children(struct KryonRuntime* runtime, struct KryonElement* center) {
-    // Center uses center as default, no multi-child stacking
-    position_children_with_content_alignment(runtime, center, "center", false);
+    // Center should behave identically to App with contentAlignment="center"
+    position_children_with_content_alignment(runtime, center, "center", true);
 }
 
 /**

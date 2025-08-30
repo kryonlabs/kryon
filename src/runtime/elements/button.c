@@ -13,6 +13,8 @@
  #include "memory.h"
  #include "color_utils.h"
  #include "element_mixins.h"
+ #include "../navigation/navigation.h"
+ #include "../../shared/kryon_mappings.h"
  #include <stdio.h>
  #include <string.h>
  #include <math.h>
@@ -21,6 +23,11 @@
  static void button_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
  static bool button_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event);
  static void button_destroy(KryonRuntime* runtime, KryonElement* element);
+
+ // Helper functions for navigation (shared with Link)
+ static bool is_external_url(const char* path);
+ static void handle_button_navigation(KryonRuntime* runtime, const char* target, bool external);
+ static void ensure_navigation_manager(KryonRuntime* runtime);
  
  // The VTable binds the generic element interface to our specific button functions.
  static const ElementVTable g_button_vtable = {
@@ -51,6 +58,12 @@
   */
  static void button_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
      if (*command_count >= max_commands) return;
+
+     // Ensure navigation manager exists if button has navigation properties
+     const char* to = get_element_property_string(element, "to");
+     if (to && strlen(to) > 0) {
+         ensure_navigation_manager(runtime);
+     }
  
      // --- 1. Get Visual Properties ---
      float posX = element->x;
@@ -116,11 +129,20 @@
  
  /**
   * @brief Handles abstract events for the Button.
-  * For a standard button, we can delegate directly to the generic script handler,
-  * which will automatically call script functions like "onClick", "onHover", etc.
+  * Supports both navigation (like Link) and script events.
   */
  static bool button_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
-     // A button's logic is almost always defined in script. Use the shared mixin.
+     if (event->type == ELEMENT_EVENT_CLICKED) {
+         const char* to = get_element_property_string(element, "to");
+         bool external = get_element_property_bool(element, "external", false);
+         
+         if (to && strlen(to) > 0) {
+             handle_button_navigation(runtime, to, external || is_external_url(to));
+             return true;
+         }
+     }
+     
+     // Fall back to generic script event handler for custom onClick handlers
      return handle_script_events(runtime, element, event);
  }
  
@@ -133,5 +155,87 @@
      // No custom data to free for a simple button.
      (void)runtime;
      (void)element;
+ }
+
+ // =============================================================================
+ //  Helper Functions for Navigation (shared logic from Link)
+ // =============================================================================
+
+ /**
+  * @brief Ensures navigation manager is created when first button with navigation is encountered
+  */
+ static void ensure_navigation_manager(KryonRuntime* runtime) {
+     if (!runtime->navigation_manager) {
+         runtime->navigation_manager = kryon_navigation_create(runtime);
+         if (!runtime->navigation_manager) {
+             printf("⚠️  Failed to create navigation manager for button element\n");
+         } else {
+             printf("🧭 Navigation manager created (button element with navigation detected)\n");
+             
+             // Set current path from runtime's loaded file if available
+             if (runtime->current_file_path) {
+                 kryon_navigation_set_current_path(runtime->navigation_manager, runtime->current_file_path);
+                 printf("🧭 Set navigation path from runtime: %s\n", runtime->current_file_path);
+             }
+         }
+     }
+ }
+
+ /**
+  * @brief Checks if a path is an external URL.
+  */
+ static bool is_external_url(const char* path) {
+     if (!path) return false;
+     
+     return (strncmp(path, "http://", 7) == 0 ||
+             strncmp(path, "https://", 8) == 0 ||
+             strncmp(path, "mailto:", 7) == 0 ||
+             strncmp(path, "file://", 7) == 0 ||
+             strncmp(path, "ftp://", 6) == 0);
+ }
+
+ /**
+  * @brief Handles navigation based on target type.
+  */
+ static void handle_button_navigation(KryonRuntime* runtime, const char* target, bool external) {
+     if (!target || strlen(target) == 0) {
+         printf("⚠️  Button: Empty target specified\n");
+         return;
+     }
+     
+     printf("🔗 Button navigation: %s %s\n", target, external ? "(external)" : "(internal)");
+     
+     if (external) {
+         // Handle external URLs
+         #ifdef __linux__
+             char command[1024];
+             snprintf(command, sizeof(command), "xdg-open '%s' 2>/dev/null &", target);
+             system(command);
+         #elif __APPLE__
+             char command[1024];
+             snprintf(command, sizeof(command), "open '%s' &", target);
+             system(command);
+         #elif _WIN32
+             // Will need to include windows.h for ShellExecuteA
+             // ShellExecuteA(NULL, "open", target, NULL, NULL, SW_SHOWNORMAL);
+             printf("🌐 External button link: %s (Windows support coming soon)\n", target);
+         #else
+             printf("🌐 External button link: %s (Platform not supported)\n", target);
+         #endif
+     } else {
+         // Handle internal navigation using the navigation manager
+         if (runtime->navigation_manager) {
+             printf("📄 Button navigating to internal file: %s\n", target);
+             KryonNavigationResult result = kryon_navigate_to(runtime->navigation_manager, target, false);
+             
+             if (result == KRYON_NAV_SUCCESS) {
+                 printf("✅ Button navigation successful\n");
+             } else {
+                 printf("❌ Button navigation failed with result: %d\n", result);
+             }
+         } else {
+             printf("⚠️  Navigation manager not available for button internal navigation\n");
+         }
+     }
  }
  
