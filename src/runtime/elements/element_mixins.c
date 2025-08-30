@@ -12,7 +12,10 @@
 #include "elements.h" 
 #include "runtime.h"
 #include "color_utils.h"
+#include "../navigation/navigation.h"
+#include "../../shared/kryon_mappings.h"
 #include <string.h>
+#include <stdio.h>
 
 // =============================================================================
 // SHARED RENDERING MIXINS
@@ -284,4 +287,5 @@ bool render_input_background_and_border(struct KryonElement* element,
     
     return true;
 }
+
 

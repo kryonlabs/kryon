@@ -29,6 +29,7 @@ set(CORE_HEADERS
 set(ELEMENTS_SOURCES
     elements.c                      # Consolidated element infrastructure
     elements/element_mixins.c       # Shared element functionality mixins
+    elements/navigation_utils.c     # Shared navigation utilities
     elements/button.c
     elements/dropdown.c    
     elements/input.c

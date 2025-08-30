@@ -13,8 +13,7 @@
 #include "memory.h"
 #include "color_utils.h"
 #include "element_mixins.h"
-#include "../navigation/navigation.h"
-#include "../../shared/kryon_mappings.h"
+#include "navigation_utils.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -25,9 +24,7 @@ static bool link_handle_event(KryonRuntime* runtime, KryonElement* element, cons
 static void link_destroy(KryonRuntime* runtime, KryonElement* element);
 
 // Helper functions
-static bool is_external_url(const char* path);
 static bool ends_with(const char* str, const char* suffix);
-static void handle_link_navigation(KryonRuntime* runtime, const char* target, bool external);
 static KryonComponentDefinition* find_component_by_name(KryonRuntime* runtime, const char* name);
 
 // The VTable binds the generic element interface to our specific link functions.
@@ -41,25 +38,6 @@ static const ElementVTable g_link_vtable = {
 //  Public Registration Function
 // =============================================================================
 
-/**
- * @brief Ensures navigation manager is created when first link element is encountered
- */
-static void ensure_navigation_manager(KryonRuntime* runtime) {
-    if (!runtime->navigation_manager) {
-        runtime->navigation_manager = kryon_navigation_create(runtime);
-        if (!runtime->navigation_manager) {
-            printf("⚠️  Failed to create navigation manager for link element\n");
-        } else {
-            printf("🧭 Navigation manager created (link element detected)\n");
-            
-            // Set current path from runtime's loaded file if available
-            if (runtime->current_file_path) {
-                kryon_navigation_set_current_path(runtime->navigation_manager, runtime->current_file_path);
-                printf("🧭 Set navigation path from runtime: %s\n", runtime->current_file_path);
-            }
-        }
-    }
-}
 
 /**
  * @brief Registers the Link element type with the element registry.
@@ -79,8 +57,8 @@ bool register_link_element(void) {
 static void link_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (*command_count >= max_commands - 2) return; // Reserve space for overlay
     
-    // Ensure navigation manager exists when first link is rendered
-    ensure_navigation_manager(runtime);
+    // Ensure navigation manager exists if link has navigation properties
+    navigation_check_and_init(runtime, element, "Link");
     
     // Get link properties
     const char* text = get_element_property_string(element, "text");
@@ -135,7 +113,7 @@ static void link_render(KryonRuntime* runtime, KryonElement* element, KryonRende
     }
     
     // Visual feedback for external links
-    if (external || is_external_url(to)) {
+    if (external || navigation_is_external_url(to)) {
         text_cmd.data.draw_text.italic = true;
     }
     
@@ -221,11 +199,8 @@ static void link_render(KryonRuntime* runtime, KryonElement* element, KryonRende
  */
 static bool link_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
     if (event->type == ELEMENT_EVENT_CLICKED) {
-        const char* to = get_element_property_string(element, "to");
-        bool external = get_element_property_bool(element, "external", false);
-        
-        if (to && strlen(to) > 0) {
-            handle_link_navigation(runtime, to, external || is_external_url(to));
+        // Try navigation first using shared utility
+        if (navigation_handle_click(runtime, element, "Link")) {
             return true;
         }
     } else if (event->type == ELEMENT_EVENT_HOVERED) {
@@ -275,18 +250,6 @@ static void link_destroy(KryonRuntime* runtime, KryonElement* element) {
 //  Helper Functions
 // =============================================================================
 
-/**
- * @brief Checks if a path is an external URL.
- */
-static bool is_external_url(const char* path) {
-    if (!path) return false;
-    
-    return (strncmp(path, "http://", 7) == 0 ||
-            strncmp(path, "https://", 8) == 0 ||
-            strncmp(path, "mailto:", 7) == 0 ||
-            strncmp(path, "file://", 7) == 0 ||
-            strncmp(path, "ftp://", 6) == 0);
-}
 
 /**
  * @brief Checks if string ends with suffix.
@@ -332,47 +295,4 @@ static KryonComponentDefinition* find_component_by_name(KryonRuntime* runtime, c
     return NULL;
 }
 
-/**
- * @brief Handles navigation based on target type.
- */
-static void handle_link_navigation(KryonRuntime* runtime, const char* target, bool external) {
-    if (!target || strlen(target) == 0) {
-        printf("⚠️  Link: Empty target specified\n");
-        return;
-    }
-    
-    printf("🔗 Link navigation: %s %s\n", target, external ? "(external)" : "(internal)");
-    
-    if (external) {
-        // Handle external URLs
-        #ifdef __linux__
-            char command[1024];
-            snprintf(command, sizeof(command), "xdg-open '%s' 2>/dev/null &", target);
-            system(command);
-        #elif __APPLE__
-            char command[1024];
-            snprintf(command, sizeof(command), "open '%s' &", target);
-            system(command);
-        #elif _WIN32
-            // Will need to include windows.h for ShellExecuteA
-            // ShellExecuteA(NULL, "open", target, NULL, NULL, SW_SHOWNORMAL);
-            printf("🌐 External link: %s (Windows support coming soon)\n", target);
-        #else
-            printf("🌐 External link: %s (Platform not supported)\n", target);
-        #endif
-    } else {
-        // Handle internal navigation using the navigation manager
-        if (runtime->navigation_manager) {
-            printf("📄 Navigating to internal file: %s\n", target);
-            KryonNavigationResult result = kryon_navigate_to(runtime->navigation_manager, target, false);
-            
-            if (result == KRYON_NAV_SUCCESS) {
-                printf("✅ Navigation successful\n");
-            } else {
-                printf("❌ Navigation failed with result: %d\n", result);
-            }
-        } else {
-            printf("⚠️  Navigation manager not available for internal navigation\n");
-        }
-    }
-}
+
