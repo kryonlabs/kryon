@@ -235,6 +235,14 @@ void kryon_expression_value_free(KryonExpressionValue *value);
  * @param node Expression node to free
  */
 void kryon_expression_node_free(KryonExpressionNode *node);
+
+/**
+ * @brief Calculate layout positions for all elements in the runtime tree.
+ * This ensures elements have proper x,y positions before rendering begins.
+ * Should be called after loading KRB files but before first render pass.
+ * @param runtime Runtime context with loaded elements
+ */
+void kryon_runtime_calculate_layout(KryonRuntime* runtime);
  
 #ifdef __cplusplus
 }

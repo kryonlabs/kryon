@@ -275,6 +275,10 @@ KryonNavigationResult kryon_navigation_load_krb(KryonNavigationManager* nav_mana
     
     printf("✅ KRB file loaded successfully: %s\n", krb_path);
     
+    // Calculate layout positions before rendering begins
+    printf("🧮 Navigation: Calculating layout after KRB load\n");
+    kryon_runtime_calculate_layout(nav_manager->runtime);
+    
     // Update window properties from new App element
     update_window_from_app_element(nav_manager->runtime);
     

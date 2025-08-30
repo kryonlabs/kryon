@@ -87,6 +87,9 @@ extern bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *da
 static char* resolve_for_template_property(KryonRuntime* runtime, KryonProperty* property, 
                                          const char* var_name, const char* var_value);
 
+// Layout calculation functions  
+static void clear_layout_flags_recursive(KryonElement* element);
+
 // =============================================================================
 // CONFIGURATION
 // =============================================================================
@@ -2750,4 +2753,60 @@ static char* extract_json_field(const char* json_value, const char* field_name) 
     result[value_len] = '\0';
     
     return result;
+}
+
+// =============================================================================
+// LAYOUT CALCULATION
+// =============================================================================
+
+/**
+ * @brief Calculate layout positions for all elements in the runtime tree.
+ * This ensures elements have proper x,y positions before rendering begins.
+ * Should be called after loading KRB files but before first render pass.
+ */
+void kryon_runtime_calculate_layout(KryonRuntime* runtime) {
+    if (!runtime || !runtime->root) {
+        return;
+    }
+    
+    printf("🧮 Calculating layout for entire element tree\n");
+    
+    // Start with root element - typically App element
+    KryonElement* root = runtime->root;
+    
+    // Initialize root position (App element spans full window)
+    root->x = 0.0f;
+    root->y = 0.0f;
+    
+    // Get window size from App element properties or use defaults
+    root->width = get_element_property_float(root, "windowWidth", 800.0f);
+    root->height = get_element_property_float(root, "windowHeight", 600.0f);
+    
+    printf("🧮 Root element (%s) positioned at (%.1f, %.1f) size %.1fx%.1f\n", 
+           root->type_name ? root->type_name : "unknown", 
+           root->x, root->y, root->width, root->height);
+    
+    // Calculate positions for all child elements recursively
+    position_children_by_layout_type(runtime, root);
+    
+    // Clear needs_layout flags throughout the tree
+    clear_layout_flags_recursive(root);
+    
+    printf("✅ Layout calculation complete\n");
+}
+
+/**
+ * @brief Clear needs_layout flags recursively after layout calculation
+ */
+static void clear_layout_flags_recursive(KryonElement* element) {
+    if (!element) return;
+    
+    element->needs_layout = false;
+    
+    // Clear flags for all children
+    for (size_t i = 0; i < element->child_count; i++) {
+        if (element->children[i]) {
+            clear_layout_flags_recursive(element->children[i]);
+        }
+    }
 }
