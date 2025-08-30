@@ -51,6 +51,12 @@ static void ensure_navigation_manager(KryonRuntime* runtime) {
             printf("⚠️  Failed to create navigation manager for link element\n");
         } else {
             printf("🧭 Navigation manager created (link element detected)\n");
+            
+            // Set current path from runtime's loaded file if available
+            if (runtime->current_file_path) {
+                kryon_navigation_set_current_path(runtime->navigation_manager, runtime->current_file_path);
+                printf("🧭 Set navigation path from runtime: %s\n", runtime->current_file_path);
+            }
         }
     }
 }

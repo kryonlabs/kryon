@@ -110,6 +110,7 @@ typedef struct KryonRuntime {
     
     // Navigation system
     struct KryonNavigationManager* navigation_manager;
+    char* current_file_path; // Path of currently loaded file
     
     // Note: Dropdown state now managed by individual dropdown elements
 } KryonRuntime;
@@ -119,6 +120,7 @@ typedef struct KryonRuntime {
 // =============================================================================
 
 KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config);
+void kryon_runtime_clear_all_content(KryonRuntime *runtime);
 void kryon_runtime_destroy(KryonRuntime *runtime);
 bool kryon_runtime_load_file(KryonRuntime *runtime, const char *filename);
 bool kryon_runtime_load_binary(KryonRuntime *runtime, const uint8_t *data, size_t size);

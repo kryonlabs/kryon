@@ -15,6 +15,7 @@
 #include "runtime.h"
 #include "memory.h"
 #include "events.h"
+#include "elements/element_mixins.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,6 +78,60 @@ static void position_center_children(struct KryonRuntime* runtime, struct KryonE
 static void position_app_children(struct KryonRuntime* runtime, struct KryonElement* app);
 static void position_grid_children(struct KryonRuntime* runtime, struct KryonElement* grid);
 static void position_tabbar_children(struct KryonRuntime* runtime, struct KryonElement* tabbar);
+
+// Generic contentAlignment positioning function
+static void position_children_with_content_alignment(struct KryonRuntime* runtime, struct KryonElement* parent, 
+                                                    const char* default_alignment, bool multi_child_stacking);
+
+// Small efficiency helpers
+static inline bool is_text_element(const struct KryonElement* element) {
+    return element && element->type_name && (element->type_name[0] == 'T') && strcmp(element->type_name, "Text") == 0;
+}
+
+static inline bool is_button_element(const struct KryonElement* element) {
+    return element && element->type_name && (element->type_name[0] == 'B') && strcmp(element->type_name, "Button") == 0;
+}
+
+// Efficient text measurement with reduced function calls
+static void get_text_dimensions(struct KryonRuntime* runtime, struct KryonElement* element, 
+                               float* width, float* height) {
+    *width = 100.0f;  // Default
+    *height = 50.0f;  // Default
+    
+    if (is_text_element(element)) {
+        const char* text = get_element_property_string(element, "text");
+        float font_size = get_element_property_float(element, "fontSize", 16.0f);
+        
+        // Calculate height first (cheaper operation)
+        *height = font_size * 1.2f;
+        
+        if (!text) {
+            *width = 100.0f;
+            return;
+        }
+        
+        // Try renderer measurement (more expensive)
+        KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
+        if (renderer && renderer->vtable && renderer->vtable->measure_text_width) {
+            *width = renderer->vtable->measure_text_width(text, font_size);
+        } else {
+            // Fallback calculation
+            *width = strlen(text) * font_size * 0.6f;
+        }
+    } else if (is_button_element(element)) {
+        // Handle Button elements - use EXACT same logic as button_render() does
+        const char* text = get_element_property_string(element, "text");
+        
+        // Get explicit dimensions (use -1 for auto-sizing, matching button.c)
+        *width = get_element_property_float(element, "width", -1.0f);
+        *height = get_element_property_float(element, "height", -1.0f);
+        
+        // Call the exact same function that button_render() uses
+        calculate_auto_size_with_text(element, width, height, text, 20.0f, 12.0f, 60.0f, 32.0f);
+    }
+    // For other elements, keep default 100x50 dimensions
+}
+
 static float get_default_element_height(struct KryonElement* element); 
 
 bool element_registry_init_with_all_elements(void) {
@@ -928,245 +983,105 @@ static void position_column_children(struct KryonRuntime* runtime, struct KryonE
     }
 }
 
-/**
- * @brief Position children in a Container (with contentAlignment)
- */
-static void position_container_children(struct KryonRuntime* runtime, struct KryonElement* container) {
-    if (!container || container->child_count == 0) return;
-    
-    const char* content_alignment = get_element_property_string(container, "contentAlignment");
-    if (!content_alignment) content_alignment = "start";
-    
-    float padding = get_element_property_float(container, "padding", 0.0f);
-    
-    // Calculate available space inside padding
-    float content_x = container->x + padding;
-    float content_y = container->y + padding;
-    float content_width = container->width - (padding * 2.0f);
-    float content_height = container->height - (padding * 2.0f);
-    
-    
-    // Position all children based on contentAlignment
-    for (size_t i = 0; i < container->child_count; i++) {
-        struct KryonElement* child = container->children[i];
-        
-        // Get child dimensions - handle Text elements specially (they auto-size)
-        float child_width = get_element_property_float(child, "width", 0.0f);
-        float child_height = get_element_property_float(child, "height", 0.0f);
-        
-        // For Text elements without explicit size, measure actual text dimensions
-        if (child_width == 0.0f) {
-            if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                // Use actual text measurement for accurate centering
-                const char* text = get_element_property_string(child, "text");
-                float font_size = get_element_property_float(child, "fontSize", 16.0f);
-                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
-                
-                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
-                    child_width = renderer->vtable->measure_text_width(text, font_size);
-                } else {
-                    // Fallback sizing if no measurement available
-                    child_width = text ? strlen(text) * font_size * 0.6f : 100.0f;
-                }
-            } else {
-                child_width = 100.0f; // Default for other elements
-            }
-        }
-        if (child_height == 0.0f) {
-            if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                float font_size = get_element_property_float(child, "fontSize", 16.0f);
-                child_height = font_size * 1.2f; // Font height + small padding
-            } else {
-                child_height = 50.0f; // Default for other elements
-            }
-        }
-        
-        float child_x = content_x;
-        float child_y = content_y;
-        
-        if (strcmp(content_alignment, "center") == 0) {
-            child_x = content_x + (content_width - child_width) / 2.0f;
-            child_y = content_y + (content_height - child_height) / 2.0f;
-        } else if (strcmp(content_alignment, "end") == 0) {
-            child_x = content_x + content_width - child_width;
-            child_y = content_y + content_height - child_height;
-        }
-        // "start" uses child_x = content_x, child_y = content_y (already set)
-        
-        // For layout containers, pass the content area as available space
-        float available_width_for_child = content_width;
-        float available_height_for_child = content_height;
-        
-        
-        // Recursively position this child
-        calculate_element_position_recursive(runtime, child, child_x, child_y, available_width_for_child, available_height_for_child, container);
-    }
-}
 
 /**
- * @brief ENHANCED Center positioning with complete content alignment support.
- * Center elements automatically behave like Container with contentAlignment="center"
+ * @brief Generic function to position children using contentAlignment
+ * Used by Container, Center, App, and other elements that support contentAlignment
  */
-static void position_center_children(struct KryonRuntime* runtime, struct KryonElement* center) {
-    if (!center || center->child_count == 0) return;
+static void position_children_with_content_alignment(struct KryonRuntime* runtime, struct KryonElement* parent, 
+                                                    const char* default_alignment, bool multi_child_stacking) {
+    if (!parent || parent->child_count == 0) return;
     
-    // Center elements internally provide contentAlignment="center" behavior
-    // But allow override via contentAlignment property for flexibility
-    const char* content_alignment = get_element_property_string(center, "contentAlignment");
-    if (!content_alignment) content_alignment = "center"; // Force center as default
+    const char* content_alignment = get_element_property_string(parent, "contentAlignment");
+    if (!content_alignment) content_alignment = default_alignment;
     
-    float padding = get_element_property_float(center, "padding", 0.0f);
+    // Cache commonly used values to avoid repeated lookups
+    const bool is_center_aligned = (strcmp(content_alignment, "center") == 0);
+    
+    float padding = get_element_property_float(parent, "padding", 0.0f);
     
     // Calculate available space inside padding
-    float content_x = center->x + padding;
-    float content_y = center->y + padding;
-    float content_width = center->width - (padding * 2.0f);
-    float content_height = center->height - (padding * 2.0f);
+    float content_x = parent->x + padding;
+    float content_y = parent->y + padding;
+    float content_width = parent->width - (padding * 2.0f);
+    float content_height = parent->height - (padding * 2.0f);
     
-    // Position all children based on contentAlignment (default: center)
-    for (size_t i = 0; i < center->child_count; i++) {
-        struct KryonElement* child = center->children[i];
+    // For multiple children with stacking, calculate total height first
+    float total_height = 0.0f;
+    float gap = 0.0f;
+    if (multi_child_stacking && parent->child_count > 1) {
+        gap = get_element_property_float(parent, "gap", 10.0f);
         
-        // Enhanced child sizing with smart defaults
-        float child_width = get_element_property_float(child, "width", 0.0f);
-        float child_height = get_element_property_float(child, "height", 0.0f);
-        
-        // For Text elements without explicit size, measure actual text dimensions
-        if (child_width == 0.0f) {
-            if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                // Use actual text measurement for accurate centering
-                const char* text = get_element_property_string(child, "text");
-                float font_size = get_element_property_float(child, "fontSize", 16.0f);
-                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
-                
-                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
-                    child_width = renderer->vtable->measure_text_width(text, font_size);
-                } else {
-                    // Fallback sizing if no measurement available
-                    child_width = text ? strlen(text) * font_size * 0.6f : 100.0f;
-                }
-            } else {
-                child_width = 100.0f; // Default for other elements
-            }
-        }
-        if (child_height == 0.0f) {
-            if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                float font_size = get_element_property_float(child, "fontSize", 16.0f);
-                child_height = font_size * 1.2f; // Font height + small padding
-            } else {
-                child_height = 50.0f; // Default for other elements
-            }
-        }
-        
-        float child_x = content_x;
-        float child_y = content_y;
-        
-        // Enhanced content alignment options
-        if (strcmp(content_alignment, "center") == 0) {
-            child_x = content_x + (content_width - child_width) / 2.0f;
-            child_y = content_y + (content_height - child_height) / 2.0f;
-        } else if (strcmp(content_alignment, "start") == 0 || strcmp(content_alignment, "flex-start") == 0) {
-            child_x = content_x;
-            child_y = content_y;
-        } else if (strcmp(content_alignment, "end") == 0 || strcmp(content_alignment, "flex-end") == 0) {
-            child_x = content_x + content_width - child_width;
-            child_y = content_y + content_height - child_height;
-        } else if (strcmp(content_alignment, "centerX") == 0) {
-            // Center horizontally only
-            child_x = content_x + (content_width - child_width) / 2.0f;
-            child_y = content_y;
-        } else if (strcmp(content_alignment, "centerY") == 0) {
-            // Center vertically only
-            child_x = content_x;
-            child_y = content_y + (content_height - child_height) / 2.0f;
-        }
-        
-        // Recursively position this child
-        calculate_element_position_recursive(runtime, child, child_x, child_y, child_width, child_height, center);
-    }
-}
-
-/**
- * @brief Position children in an App layout (with contentAlignment and padding)
- * App elements inherit Container-like layout behavior but use window dimensions as base
- */
-static void position_app_children(struct KryonRuntime* runtime, struct KryonElement* app) {
-    if (!app || app->child_count == 0) return;
-    
-    const char* content_alignment = get_element_property_string(app, "contentAlignment");
-    if (!content_alignment) content_alignment = "start";
-    
-    float padding = get_element_property_float(app, "padding", 0.0f);
-    
-    // For App elements, use the full window dimensions as the base
-    // (these should already be set by calculate_all_element_positions)
-    float window_width = app->width;
-    float window_height = app->height;
-    
-    // Calculate available space inside padding
-    float content_x = app->x + padding;
-    float content_y = app->y + padding;
-    float content_width = window_width - (padding * 2.0f);
-    float content_height = window_height - (padding * 2.0f);
-    
-    // Position all children based on contentAlignment
-    for (size_t i = 0; i < app->child_count; i++) {
-        struct KryonElement* child = app->children[i];
-        
-        // Get child dimensions - handle Text elements specially (they auto-size)
-        float child_width = get_element_property_float(child, "width", 0.0f);
-        float child_height = get_element_property_float(child, "height", 0.0f);
-        
-        // For Text elements without explicit size, measure actual text dimensions
-        if (child_width == 0.0f) {
-            if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                // Use actual text measurement for accurate centering
-                const char* text = get_element_property_string(child, "text");
-                float font_size = get_element_property_float(child, "fontSize", 16.0f);
-                KryonRenderer* renderer = runtime ? (KryonRenderer*)runtime->renderer : NULL;
-                
-                if (text && renderer && renderer->vtable && renderer->vtable->measure_text_width) {
-                    child_width = renderer->vtable->measure_text_width(text, font_size);
-                } else {
-                    // Fallback sizing if no measurement available
-                    child_width = text ? strlen(text) * font_size * 0.6f : 100.0f;
-                }
-            } else {
-                child_width = 100.0f; // Default for other elements
-            }
-        }
-        if (child_height == 0.0f) {
-            if (child->type_name && strcmp(child->type_name, "Text") == 0) {
-                float font_size = get_element_property_float(child, "fontSize", 16.0f);
-                child_height = font_size * 1.2f; // Font height + small padding
-            } else {
-                child_height = 50.0f; // Default for other elements
-            }
-        }
-        
-        float child_x = content_x;
-        float child_y = content_y;
-        
-        // For multiple children, stack them vertically with spacing
-        if (app->child_count > 1) {
-            float gap = get_element_property_float(app, "gap", 10.0f); // Default 10px gap
-            child_y = content_y + (i * (child_height + gap));
+        // Calculate total height of all children plus gaps (optimized)
+        for (size_t j = 0; j < parent->child_count; j++) {
+            struct KryonElement* temp_child = parent->children[j];
+            float temp_height = get_element_property_float(temp_child, "height", 0.0f);
             
-            // Apply horizontal alignment only
-            if (strcmp(content_alignment, "center") == 0) {
+            if (temp_height == 0.0f) {
+                float temp_width;  // Unused but needed for function signature
+                get_text_dimensions(runtime, temp_child, &temp_width, &temp_height);
+            }
+            
+            total_height += temp_height;
+            if (j < parent->child_count - 1) total_height += gap;
+        }
+    }
+    
+    // Position all children based on contentAlignment
+    float stack_start_y = content_y;
+    if (multi_child_stacking && parent->child_count > 1 && is_center_aligned) {
+        stack_start_y = content_y + (content_height - total_height) / 2.0f;
+    }
+    
+    float current_y = stack_start_y;
+    
+    for (size_t i = 0; i < parent->child_count; i++) {
+        struct KryonElement* child = parent->children[i];
+        
+        // Get child dimensions - handle Text elements specially (they auto-size)
+        float child_width = get_element_property_float(child, "width", 0.0f);
+        float child_height = get_element_property_float(child, "height", 0.0f);
+        
+        // Get dimensions efficiently, avoiding redundant calculations
+        if (child_width == 0.0f || child_height == 0.0f) {
+            float measured_width, measured_height;
+            get_text_dimensions(runtime, child, &measured_width, &measured_height);
+            
+            if (child_width == 0.0f) child_width = measured_width;
+            if (child_height == 0.0f) child_height = measured_height;
+        }
+        
+        float child_x = content_x;
+        float child_y = content_y;
+        
+        // Apply contentAlignment positioning
+        if (multi_child_stacking && parent->child_count > 1) {
+            // Multiple children with stacking
+            child_y = current_y;
+            
+            // Apply horizontal alignment for each child individually  
+            if (is_center_aligned) {
                 child_x = content_x + (content_width - child_width) / 2.0f;
             } else if (strcmp(content_alignment, "end") == 0) {
                 child_x = content_x + content_width - child_width;
             }
             // "start" uses child_x = content_x (already set)
+            
+            current_y += child_height + gap;
         } else {
-            // Single child - use original positioning logic
-            if (strcmp(content_alignment, "center") == 0) {
+            // Single child or non-stacking elements
+            if (is_center_aligned) {
                 child_x = content_x + (content_width - child_width) / 2.0f;
                 child_y = content_y + (content_height - child_height) / 2.0f;
             } else if (strcmp(content_alignment, "end") == 0) {
                 child_x = content_x + content_width - child_width;
                 child_y = content_y + content_height - child_height;
+            } else if (strcmp(content_alignment, "centerX") == 0) {
+                child_x = content_x + (content_width - child_width) / 2.0f;
+                child_y = content_y;
+            } else if (strcmp(content_alignment, "centerY") == 0) {
+                child_x = content_x;
+                child_y = content_y + (content_height - child_height) / 2.0f;
             }
             // "start" uses child_x = content_x, child_y = content_y (already set)
         }
@@ -1176,8 +1091,35 @@ static void position_app_children(struct KryonRuntime* runtime, struct KryonElem
         float available_height_for_child = content_height;
         
         // Recursively position this child
-        calculate_element_position_recursive(runtime, child, child_x, child_y, available_width_for_child, available_height_for_child, app);
+        calculate_element_position_recursive(runtime, child, child_x, child_y, 
+                                           available_width_for_child, available_height_for_child, parent);
     }
+}
+
+/**
+ * @brief Position children in a Container (with contentAlignment)
+ */
+static void position_container_children(struct KryonRuntime* runtime, struct KryonElement* container) {
+    // Container uses no multi-child stacking by default
+    position_children_with_content_alignment(runtime, container, "start", false);
+}
+
+/**
+ * @brief ENHANCED Center positioning with complete content alignment support.
+ * Center elements automatically behave like Container with contentAlignment="center"
+ */
+static void position_center_children(struct KryonRuntime* runtime, struct KryonElement* center) {
+    // Center uses center as default, no multi-child stacking
+    position_children_with_content_alignment(runtime, center, "center", false);
+}
+
+/**
+ * @brief Position children in an App layout (with contentAlignment and padding)
+ * App elements inherit Container-like layout behavior but use window dimensions as base
+ */
+static void position_app_children(struct KryonRuntime* runtime, struct KryonElement* app) {
+    // App uses multi-child stacking (vertical layout with gaps)
+    position_children_with_content_alignment(runtime, app, "start", true);
 }
 
 /**

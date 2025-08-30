@@ -69,6 +69,10 @@
  
      // --- 2. Calculate Final Layout (using shared mixin) ---
      calculate_auto_size_with_text(element, &width, &height, text, 20.0f, 12.0f, 60.0f, 32.0f);
+    
+    // Update element dimensions if auto-sizing was applied (similar to text.c)
+    if (element->width != width) element->width = width;
+    if (element->height != height) element->height = height;
  
      // --- 3. Determine Visual State based on Interaction (using shared mixin) ---
      bool is_hovered = check_hover_and_cursor(runtime, element, enabled);

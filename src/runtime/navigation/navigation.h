@@ -125,6 +125,13 @@ KryonNavigationResult kryon_navigate_forward(KryonNavigationManager* nav_manager
 NavigationHistoryItem* kryon_navigation_get_current(KryonNavigationManager* nav_manager);
 
 /**
+ * @brief Sets the current navigation path without adding to history.
+ * @param nav_manager Navigation manager
+ * @param path Current file path
+ */
+void kryon_navigation_set_current_path(KryonNavigationManager* nav_manager, const char* path);
+
+/**
  * @brief Checks if navigation back is possible.
  * @param nav_manager Navigation manager
  * @return true if can navigate back

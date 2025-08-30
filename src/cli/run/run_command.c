@@ -146,9 +146,21 @@ int run_command(int argc, char *argv[]) {
         return 1;
     }
     
+    // Override the runtime's current file path with the original full path for navigation
+    if (runtime->current_file_path) {
+        kryon_free(runtime->current_file_path);
+    }
+    runtime->current_file_path = kryon_strdup(krb_file_path);
+    printf("🧭 Override runtime file path for navigation: %s\n", krb_file_path);
+    
     // Clean up path strings
     free(krb_path_copy);
     free(krb_filename_copy);
+    
+    // Restore original working directory for navigation to work correctly
+    if (chdir(original_cwd) != 0) {
+        fprintf(stderr, "⚠️ Warning: Failed to restore original working directory\n");
+    }
     
     if (debug) {
         printf("🐛 Debug: KRB file loaded successfully into runtime\n");

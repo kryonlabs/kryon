@@ -85,6 +85,8 @@ static bool raylib_handle_event(const KryonEvent* event);
 static void* raylib_get_native_window(void);
 static float raylib_measure_text_width(const char* text, float font_size);
 static KryonRenderResult raylib_set_cursor(KryonCursorType cursor_type);
+static KryonRenderResult raylib_update_window_size(int width, int height);
+static KryonRenderResult raylib_update_window_title(const char* title);
 
 static KryonRendererVTable g_raylib_vtable = {
     .initialize = raylib_initialize,
@@ -98,7 +100,9 @@ static KryonRendererVTable g_raylib_vtable = {
     .handle_event = raylib_handle_event,
     .get_native_window = raylib_get_native_window,
     .measure_text_width = raylib_measure_text_width,
-    .set_cursor = raylib_set_cursor
+    .set_cursor = raylib_set_cursor,
+    .update_window_size = raylib_update_window_size,
+    .update_window_title = raylib_update_window_title
 };
 
 // =============================================================================
@@ -1053,6 +1057,7 @@ static float raylib_measure_text_width(const char* text, float font_size) {
     return text_size.x;
 }
 
+
 // Set cursor implementation
 static KryonRenderResult raylib_set_cursor(KryonCursorType cursor_type) {
     if (!g_raylib_impl.initialized) {
@@ -1107,6 +1112,40 @@ static KryonRenderResult raylib_set_cursor(KryonCursorType cursor_type) {
     // Update state tracking
     g_raylib_impl.current_cursor = cursor_type;
     g_raylib_impl.cursor_initialized = true;
+    
+    return KRYON_RENDER_SUCCESS;
+}
+
+static KryonRenderResult raylib_update_window_size(int width, int height) {
+    if (!g_raylib_impl.initialized) {
+        return KRYON_RENDER_ERROR_BACKEND_INIT_FAILED;
+    }
+    
+    printf("🪟 Raylib: Updating window size to %dx%d\n", width, height);
+    
+    // Update raylib window size
+    SetWindowSize(width, height);
+    
+    // Update our internal tracking
+    g_raylib_impl.width = width;
+    g_raylib_impl.height = height;
+    
+    return KRYON_RENDER_SUCCESS;
+}
+
+static KryonRenderResult raylib_update_window_title(const char* title) {
+    if (!g_raylib_impl.initialized) {
+        return KRYON_RENDER_ERROR_BACKEND_INIT_FAILED;
+    }
+    
+    if (!title) {
+        return KRYON_RENDER_ERROR_INVALID_PARAM;
+    }
+    
+    printf("🪟 Raylib: Updating window title to '%s'\n", title);
+    
+    // Update raylib window title
+    SetWindowTitle(title);
     
     return KRYON_RENDER_SUCCESS;
 }

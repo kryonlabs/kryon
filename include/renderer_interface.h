@@ -20,7 +20,6 @@ extern "C" {
 #include "types.h"
 #include "events.h"
 
-// Forward declaration to avoid circular dependency
 
 // =============================================================================
 // FORWARD DECLARATIONS
@@ -489,6 +488,7 @@ typedef struct {
      */
     float (*measure_text_width)(const char* text, float font_size);
     
+    
     /**
      * Get platform-specific window handle
      * @return Platform window handle or NULL
@@ -501,6 +501,21 @@ typedef struct {
      * @return KRYON_RENDER_SUCCESS on success
      */
     KryonRenderResult (*set_cursor)(KryonCursorType cursor_type);
+    
+    /**
+     * Update window size
+     * @param width New window width
+     * @param height New window height
+     * @return KRYON_RENDER_SUCCESS on success
+     */
+    KryonRenderResult (*update_window_size)(int width, int height);
+    
+    /**
+     * Update window title
+     * @param title New window title
+     * @return KRYON_RENDER_SUCCESS on success
+     */
+    KryonRenderResult (*update_window_title)(const char* title);
     
 } KryonRendererVTable;
 
@@ -571,6 +586,42 @@ void kryon_renderer_push_event(KryonRenderer* renderer, const KryonEvent* event)
 KryonRenderResult kryon_renderer_set_cursor(
     KryonRenderer* renderer,
     KryonCursorType cursor_type);
+
+/**
+ * Update window size on renderer
+ * @param renderer The renderer instance
+ * @param width New window width
+ * @param height New window height
+ * @return KRYON_RENDER_SUCCESS on success
+ */
+static inline KryonRenderResult kryon_renderer_update_window_size(
+    KryonRenderer* renderer,
+    int width,
+    int height) {
+    
+    if (!renderer || !renderer->vtable || !renderer->vtable->update_window_size) {
+        return KRYON_RENDER_ERROR_INVALID_PARAM;
+    }
+    
+    return renderer->vtable->update_window_size(width, height);
+}
+
+/**
+ * Update window title on renderer
+ * @param renderer The renderer instance
+ * @param title New window title
+ * @return KRYON_RENDER_SUCCESS on success
+ */
+static inline KryonRenderResult kryon_renderer_update_window_title(
+    KryonRenderer* renderer,
+    const char* title) {
+    
+    if (!renderer || !renderer->vtable || !renderer->vtable->update_window_title) {
+        return KRYON_RENDER_ERROR_INVALID_PARAM;
+    }
+    
+    return renderer->vtable->update_window_title(title);
+}
 
 // =============================================================================
 // CONVENIENCE FUNCTIONS

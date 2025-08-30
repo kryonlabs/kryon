@@ -224,6 +224,78 @@ KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config) {
     return runtime;
 }
 
+void kryon_runtime_clear_all_content(KryonRuntime *runtime) {
+    if (!runtime) {
+        return;
+    }
+    
+    printf("🧹 Clearing all runtime content for navigation\n");
+    
+    // Destroy all elements (with null check for safety)
+    if (runtime->root) {
+        kryon_element_destroy(runtime, runtime->root);
+        runtime->root = NULL;
+    }
+    
+    // Clear element counter
+    runtime->element_count = 0;
+    runtime->next_element_id = 1;
+    
+    // Clear string table
+    if (runtime->string_table) {
+        for (uint32_t i = 0; i < runtime->string_table_count; i++) {
+            kryon_free(runtime->string_table[i]);
+        }
+        kryon_free(runtime->string_table);
+        runtime->string_table = NULL;
+        runtime->string_table_count = 0;
+    }
+    
+    // Clear variables (keep global state but clear user variables)
+    if (runtime->variable_names) {
+        for (size_t i = 0; i < runtime->variable_count; i++) {
+            kryon_free(runtime->variable_names[i]);
+            kryon_free(runtime->variable_values[i]);
+        }
+        kryon_free(runtime->variable_names);
+        kryon_free(runtime->variable_values);
+        runtime->variable_names = NULL;
+        runtime->variable_values = NULL;
+        runtime->variable_count = 0;
+    }
+    
+    // Clear functions
+    if (runtime->function_names) {
+        for (size_t i = 0; i < runtime->function_count; i++) {
+            kryon_free(runtime->function_names[i]);
+        }
+        kryon_free(runtime->function_names);
+        runtime->function_names = NULL;
+        runtime->function_count = 0;
+    }
+    
+    // Clear components
+    if (runtime->components) {
+        for (size_t i = 0; i < runtime->component_count; i++) {
+            if (runtime->components[i]) {
+                kryon_free(runtime->components[i]->name);
+                // Component body cleanup would go here if needed
+                kryon_free(runtime->components[i]);
+            }
+        }
+        runtime->component_count = 0;
+    }
+    
+    // Clear errors
+    kryon_runtime_clear_errors(runtime);
+    
+    // Reset state flags
+    runtime->needs_update = true;
+    runtime->is_loading = false;
+    
+    printf("✅ Runtime content cleared successfully\n");
+}
+
 void kryon_runtime_destroy(KryonRuntime *runtime) {
     if (!runtime) {
         return;
@@ -277,6 +349,12 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
     if (runtime->navigation_manager) {
         kryon_navigation_destroy(runtime->navigation_manager);
         runtime->navigation_manager = NULL;
+    }
+    
+    // Free current file path (with null check)
+    if (runtime->current_file_path) {
+        kryon_free(runtime->current_file_path);
+        runtime->current_file_path = NULL;
     }
     
     // Free styles (with null check)
@@ -406,6 +484,21 @@ bool kryon_runtime_load_file(KryonRuntime *runtime, const char *filename) {
     // Load from binary
     bool success = kryon_runtime_load_binary(runtime, data, file_size);
     kryon_free(data);
+    
+    // Set current file path for navigation
+    if (success) {
+        // Store the current file path
+        if (runtime->current_file_path) {
+            kryon_free(runtime->current_file_path);
+        }
+        runtime->current_file_path = kryon_strdup(filename);
+        printf("🧭 Stored runtime file path: %s\n", filename);
+        
+        // Set up navigation if navigation manager exists
+        if (runtime->navigation_manager) {
+            kryon_navigation_set_current_path(runtime->navigation_manager, filename);
+        }
+    }
     
     return success;
 }

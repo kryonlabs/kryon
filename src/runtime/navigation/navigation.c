@@ -11,8 +11,10 @@
 #include "navigation.h"
 #include "memory.h"
 #include "../compilation/runtime_compiler.h"
+#include "runtime.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <libgen.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -39,6 +41,7 @@ static void cleanup_old_cache(KryonNavigationManager* nav_manager);
 static bool ends_with(const char* str, const char* suffix);
 static char* get_cache_path(const char* kry_path);
 static void ensure_cache_directory(void);
+static void update_window_from_app_element(KryonRuntime* runtime);
 
 // =============================================================================
 //  Navigation Manager API Implementation
@@ -59,6 +62,13 @@ KryonNavigationManager* kryon_navigation_create(KryonRuntime* runtime) {
     nav_manager->max_cache = KRYON_NAV_DEFAULT_MAX_CACHE;
     
     nav_manager->runtime = runtime;
+    
+    // Initialize runtime compiler for .kry file compilation
+    if (!kryon_runtime_compiler_init()) {
+        printf("⚠️  Failed to initialize runtime compiler\n");
+        kryon_free(nav_manager);
+        return NULL;
+    }
     
     // Ensure cache directory exists
     ensure_cache_directory();
@@ -88,6 +98,9 @@ void kryon_navigation_destroy(KryonNavigationManager* nav_manager) {
         cache_item = next;
     }
     
+    // Shutdown runtime compiler
+    kryon_runtime_compiler_shutdown();
+    
     kryon_free(nav_manager);
     printf("🧭 Navigation manager destroyed\n");
 }
@@ -99,27 +112,70 @@ KryonNavigationResult kryon_navigate_to(KryonNavigationManager* nav_manager, con
     
     printf("🔗 Navigating to: %s %s\n", target, external ? "(external)" : "(internal)");
     
+    // Debug current navigation state
+    if (nav_manager->current && nav_manager->current->path) {
+        printf("🧭 Current navigation path: %s\n", nav_manager->current->path);
+    } else {
+        printf("🧭 No current navigation path set!\n");
+    }
+    
     if (external || kryon_navigation_is_external_url(target)) {
         return kryon_navigation_open_external(target);
     }
     
-    // Handle internal navigation
+    // Handle internal navigation - resolve relative paths
+    char* resolved_path = NULL;
+    if (target[0] == '/') {
+        // Absolute path - use as-is
+        resolved_path = kryon_strdup(target);
+        printf("🔗 Using absolute path: %s\n", resolved_path);
+    } else {
+        // Relative path - resolve based on current location
+        if (nav_manager->current && nav_manager->current->path) {
+            // Get directory of current file
+            char* current_path_copy = kryon_strdup(nav_manager->current->path);
+            char* current_dir = dirname(current_path_copy);
+            
+            printf("🔗 Current file directory: %s\n", current_dir);
+            
+            // Construct resolved path
+            size_t path_len = strlen(current_dir) + strlen(target) + 2; // +2 for '/' and '\0'
+            resolved_path = kryon_alloc(path_len);
+            if (resolved_path) {
+                snprintf(resolved_path, path_len, "%s/%s", current_dir, target);
+            }
+            kryon_free(current_path_copy);
+        } else {
+            // No current location - use target as-is
+            printf("🔗 No current location, using target as-is\n");
+            resolved_path = kryon_strdup(target);
+        }
+    }
+    
+    if (!resolved_path) {
+        return KRYON_NAV_ERROR_MEMORY;
+    }
+    
+    printf("🔗 Resolved path: %s\n", resolved_path);
+    
     KryonNavigationResult result;
     
-    if (ends_with(target, ".krb")) {
-        result = kryon_navigation_load_krb(nav_manager, target);
-    } else if (ends_with(target, ".kry")) {
-        result = kryon_navigation_compile_and_load(nav_manager, target);
+    if (ends_with(resolved_path, ".krb")) {
+        result = kryon_navigation_load_krb(nav_manager, resolved_path);
+    } else if (ends_with(resolved_path, ".kry")) {
+        result = kryon_navigation_compile_and_load(nav_manager, resolved_path);
     } else {
-        printf("❓ Unknown file type: %s\n", target);
+        printf("❓ Unknown file type: %s\n", resolved_path);
+        kryon_free(resolved_path);
         return KRYON_NAV_ERROR_INVALID_PATH;
     }
     
     // Add to history on successful navigation
     if (result == KRYON_NAV_SUCCESS) {
-        add_to_history(nav_manager, target, NULL);
+        add_to_history(nav_manager, resolved_path, NULL);
     }
     
+    kryon_free(resolved_path);
     return result;
 }
 
@@ -163,6 +219,27 @@ NavigationHistoryItem* kryon_navigation_get_current(KryonNavigationManager* nav_
     return nav_manager ? nav_manager->current : NULL;
 }
 
+void kryon_navigation_set_current_path(KryonNavigationManager* nav_manager, const char* path) {
+    if (!nav_manager || !path) return;
+    
+    // Set initial current path without adding to history
+    if (!nav_manager->current) {
+        nav_manager->current = kryon_alloc_type(NavigationHistoryItem);
+        if (nav_manager->current) {
+            nav_manager->current->path = kryon_strdup(path);
+            nav_manager->current->title = NULL; // Will be set later if needed
+            nav_manager->current->next = NULL;
+            nav_manager->current->prev = NULL;
+            printf("🧭 Set initial navigation path: %s\n", path);
+        }
+    } else {
+        // Update existing current path
+        kryon_free(nav_manager->current->path);
+        nav_manager->current->path = kryon_strdup(path);
+        printf("🧭 Updated navigation path: %s\n", path);
+    }
+}
+
 bool kryon_navigation_can_go_back(KryonNavigationManager* nav_manager) {
     return nav_manager && nav_manager->current && nav_manager->current->prev;
 }
@@ -187,14 +264,20 @@ KryonNavigationResult kryon_navigation_load_krb(KryonNavigationManager* nav_mana
     
     printf("📄 Loading KRB file: %s\n", krb_path);
     
-    // TODO: Implement actual KRB loading with runtime
-    // This would call the existing krb_loader.c functions
-    // KryonResult result = kryon_load_krb_file(nav_manager->runtime, krb_path);
-    // if (result != KRYON_SUCCESS) {
-    //     return KRYON_NAV_ERROR_FILE_NOT_FOUND;
-    // }
+    // Clear all existing content before loading new file
+    kryon_runtime_clear_all_content(nav_manager->runtime);
+    
+    // Load KRB file into runtime
+    if (!kryon_runtime_load_file(nav_manager->runtime, krb_path)) {
+        printf("❌ Failed to load KRB file: %s\n", krb_path);
+        return KRYON_NAV_ERROR_FILE_NOT_FOUND;
+    }
     
     printf("✅ KRB file loaded successfully: %s\n", krb_path);
+    
+    // Update window properties from new App element
+    update_window_from_app_element(nav_manager->runtime);
+    
     return KRYON_NAV_SUCCESS;
 }
 
@@ -326,6 +409,57 @@ void kryon_navigation_clear_cache(KryonNavigationManager* nav_manager) {
     nav_manager->cache_count = 0;
     
     printf("🧹 Compilation cache cleared\n");
+}
+
+// =============================================================================
+//  Window Update Implementation
+// =============================================================================
+
+static void update_window_from_app_element(KryonRuntime* runtime) {
+    if (!runtime || !runtime->root) {
+        return;
+    }
+    
+    // Check if root element is an App element
+    if (!runtime->root->type_name || strcmp(runtime->root->type_name, "App") != 0) {
+        return;
+    }
+    
+    printf("🪟 Checking window properties from new App element...\n");
+    
+    // Get window properties from App element
+    float window_width = get_element_property_float(runtime->root, "windowWidth", 800.0f);
+    float window_height = get_element_property_float(runtime->root, "windowHeight", 600.0f);
+    const char* window_title = get_element_property_string(runtime->root, "windowTitle");
+    
+    printf("🪟 New window properties: %gx%g, title: '%s'\n", 
+           window_width, window_height, window_title ? window_title : "null");
+    
+    // Get renderer from runtime (assuming it's available)
+    KryonRenderer* renderer = runtime->renderer;
+    if (!renderer) {
+        printf("⚠️  No renderer available for window updates\n");
+        return;
+    }
+    
+    // Update window size if different using renderer abstraction
+    if (window_width != 800.0f || window_height != 600.0f) {
+        printf("🪟 Updating window size to %gx%g\n", window_width, window_height);
+        KryonRenderResult result = kryon_renderer_update_window_size(
+            renderer, (int)window_width, (int)window_height);
+        if (result != KRYON_RENDER_SUCCESS) {
+            printf("⚠️  Failed to update window size\n");
+        }
+    }
+    
+    // Update window title if provided using renderer abstraction
+    if (window_title && strlen(window_title) > 0) {
+        printf("🪟 Updating window title to: '%s'\n", window_title);
+        KryonRenderResult result = kryon_renderer_update_window_title(renderer, window_title);
+        if (result != KRYON_RENDER_SUCCESS) {
+            printf("⚠️  Failed to update window title\n");
+        }
+    }
 }
 
 // =============================================================================
