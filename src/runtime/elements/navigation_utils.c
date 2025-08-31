@@ -51,6 +51,7 @@ bool navigation_handle_click(struct KryonRuntime* runtime,
                             struct KryonElement* element,
                             const char* element_name) {
     const char* to = get_element_property_string(element, "to");
+    const char* overlay = get_element_property_string(element, "overlay");
     bool external = get_element_property_bool(element, "external", false);
     
     if (!to || strlen(to) == 0) {
@@ -61,6 +62,9 @@ bool navigation_handle_click(struct KryonRuntime* runtime,
     bool is_external = external || navigation_is_external_url(to);
     
     printf("🔗 %s navigation: %s %s\n", element_name, to, is_external ? "(external)" : "(internal)");
+    if (overlay && strlen(overlay) > 0) {
+        printf("🔀 With overlay component: %s\n", overlay);
+    }
     
     if (is_external) {
         // Handle external URLs
@@ -82,6 +86,12 @@ bool navigation_handle_click(struct KryonRuntime* runtime,
     } else {
         // Handle internal navigation using the navigation manager
         if (runtime->navigation_manager) {
+            // Set overlay component if specified
+            if (overlay && strlen(overlay) > 0) {
+                printf("🔀 Setting overlay '%s' for navigation\n", overlay);
+                kryon_navigation_set_overlay(runtime->navigation_manager, overlay, runtime);
+            }
+            
             printf("📄 %s navigating to internal file: %s\n", element_name, to);
             KryonNavigationResult result = kryon_navigate_to(runtime->navigation_manager, to, false);
             

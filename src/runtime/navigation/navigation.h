@@ -48,6 +48,14 @@ typedef struct NavigationHistoryItem {
 } NavigationHistoryItem;
 
 /**
+ * @brief Overlay injection information for navigation.
+ */
+typedef struct {
+    char* component_name;                        // Name of component to inject (owned copy)
+    KryonComponentDefinition* component_def;     // Deep copy of component definition
+} KryonNavigationOverlay;
+
+/**
  * @brief Navigation manager state.
  */
 typedef struct {
@@ -64,6 +72,9 @@ typedef struct {
     
     // Runtime reference
     KryonRuntime* runtime;                       // Associated runtime
+    
+    // Current overlay to inject (if any)
+    KryonNavigationOverlay* pending_overlay;     // Overlay to inject on next navigation
 } KryonNavigationManager;
 
 /**
@@ -102,6 +113,14 @@ void kryon_navigation_destroy(KryonNavigationManager* nav_manager);
  * @return Navigation result code
  */
 KryonNavigationResult kryon_navigate_to(KryonNavigationManager* nav_manager, const char* target, bool external);
+
+/**
+ * @brief Sets an overlay component to inject during the next navigation.
+ * @param nav_manager Navigation manager
+ * @param component_name Name of the component to inject
+ * @param source_runtime Runtime containing the component definition
+ */
+void kryon_navigation_set_overlay(KryonNavigationManager* nav_manager, const char* component_name, KryonRuntime* source_runtime);
 
 /**
  * @brief Navigates back in history.

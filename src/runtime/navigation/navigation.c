@@ -26,6 +26,11 @@
 #define KRYON_NAV_CACHE_DIR "/tmp/kryon_cache"
 
 // =============================================================================
+//  Forward Declarations
+// =============================================================================
+static void inject_pending_overlay(KryonNavigationManager* nav_manager);
+
+// =============================================================================
 //  Private Helper Functions
 // =============================================================================
 
@@ -42,6 +47,8 @@ static bool ends_with(const char* str, const char* suffix);
 static char* get_cache_path(const char* kry_path);
 static void ensure_cache_directory(void);
 static void update_window_from_app_element(KryonRuntime* runtime);
+static KryonComponentDefinition* deep_copy_component(const KryonComponentDefinition* source);
+static void free_component_copy(KryonComponentDefinition* component);
 
 // =============================================================================
 //  Navigation Manager API Implementation
@@ -62,6 +69,7 @@ KryonNavigationManager* kryon_navigation_create(KryonRuntime* runtime) {
     nav_manager->max_cache = KRYON_NAV_DEFAULT_MAX_CACHE;
     
     nav_manager->runtime = runtime;
+    nav_manager->pending_overlay = NULL;
     
     // Initialize runtime compiler for .kry file compilation
     if (!kryon_runtime_compiler_init()) {
@@ -96,6 +104,17 @@ void kryon_navigation_destroy(KryonNavigationManager* nav_manager) {
         kryon_free(cache_item->krb_path);
         kryon_free(cache_item);
         cache_item = next;
+    }
+    
+    // Clean up pending overlay
+    if (nav_manager->pending_overlay) {
+        if (nav_manager->pending_overlay->component_name) {
+            kryon_free(nav_manager->pending_overlay->component_name);
+        }
+        if (nav_manager->pending_overlay->component_def) {
+            free_component_copy(nav_manager->pending_overlay->component_def);
+        }
+        kryon_free(nav_manager->pending_overlay);
     }
     
     // Shutdown runtime compiler
@@ -172,7 +191,10 @@ KryonNavigationResult kryon_navigate_to(KryonNavigationManager* nav_manager, con
     
     // Add to history on successful navigation
     if (result == KRYON_NAV_SUCCESS) {
+        // Inject overlay ONCE after successful navigation
+        inject_pending_overlay(nav_manager);
         add_to_history(nav_manager, resolved_path, NULL);
+        printf("✅ Link navigation successful\n");
     }
     
     kryon_free(resolved_path);
@@ -240,6 +262,57 @@ void kryon_navigation_set_current_path(KryonNavigationManager* nav_manager, cons
     }
 }
 
+void kryon_navigation_set_overlay(KryonNavigationManager* nav_manager, const char* component_name, KryonRuntime* source_runtime) {
+    if (!nav_manager || !component_name || !source_runtime) {
+        return;
+    }
+    
+    // Find the component in the source runtime
+    KryonComponentDefinition* source_component = NULL;
+    if (source_runtime->components) {
+        for (size_t i = 0; i < source_runtime->component_count; i++) {
+            KryonComponentDefinition* comp = source_runtime->components[i];
+            if (comp && comp->name && strcmp(comp->name, component_name) == 0) {
+                source_component = comp;
+                printf("✅ Found source component for overlay: %s\n", comp->name);
+                break;
+            }
+        }
+    }
+    
+    if (!source_component) {
+        printf("⚠️  Component '%s' not found in source runtime for overlay\n", component_name);
+        return;
+    }
+    
+    // Clean up any existing overlay
+    if (nav_manager->pending_overlay) {
+        if (nav_manager->pending_overlay->component_name) {
+            kryon_free(nav_manager->pending_overlay->component_name);
+        }
+        if (nav_manager->pending_overlay->component_def) {
+            free_component_copy(nav_manager->pending_overlay->component_def);
+        }
+        kryon_free(nav_manager->pending_overlay);
+    }
+    
+    // Create new overlay information with deep copy
+    nav_manager->pending_overlay = kryon_alloc_type(KryonNavigationOverlay);
+    if (nav_manager->pending_overlay) {
+        nav_manager->pending_overlay->component_name = kryon_strdup(component_name);
+        nav_manager->pending_overlay->component_def = deep_copy_component(source_component);
+        
+        if (nav_manager->pending_overlay->component_def) {
+            printf("🔀 Overlay set for next navigation with deep copy: %s\n", component_name);
+        } else {
+            printf("⚠️  Failed to create deep copy of component for overlay\n");
+            kryon_free(nav_manager->pending_overlay->component_name);
+            kryon_free(nav_manager->pending_overlay);
+            nav_manager->pending_overlay = NULL;
+        }
+    }
+}
+
 bool kryon_navigation_can_go_back(KryonNavigationManager* nav_manager) {
     return nav_manager && nav_manager->current && nav_manager->current->prev;
 }
@@ -275,14 +348,217 @@ KryonNavigationResult kryon_navigation_load_krb(KryonNavigationManager* nav_mana
     
     printf("✅ KRB file loaded successfully: %s\n", krb_path);
     
-    // Calculate layout positions before rendering begins
-    printf("🧮 Navigation: Calculating layout after KRB load\n");
+    return KRYON_NAV_SUCCESS;
+}
+
+// Helper function to create a property for runtime element
+static KryonProperty* create_string_property(const char* name, const char* value) {
+    KryonProperty* prop = kryon_malloc(sizeof(KryonProperty));
+    if (!prop) return NULL;
+    
+    memset(prop, 0, sizeof(KryonProperty));
+    prop->id = 0; // Will be set if needed
+    prop->name = kryon_strdup(name);
+    prop->type = KRYON_RUNTIME_PROP_STRING;
+    prop->value.string_value = kryon_strdup(value);
+    
+    if (!prop->name || !prop->value.string_value) {
+        kryon_free(prop->name);
+        kryon_free(prop->value.string_value);
+        kryon_free(prop);
+        return NULL;
+    }
+    
+    return prop;
+}
+
+static KryonProperty* create_color_property(const char* name, const char* hex_color) {
+    KryonProperty* prop = kryon_malloc(sizeof(KryonProperty));
+    if (!prop) return NULL;
+    
+    memset(prop, 0, sizeof(KryonProperty));
+    prop->id = 0;
+    prop->name = kryon_strdup(name);
+    prop->type = KRYON_RUNTIME_PROP_COLOR;
+    
+    // Parse hex color like "#404080" to uint32
+    uint32_t color = 0x404080FF; // Default color with full alpha
+    if (hex_color && hex_color[0] == '#') {
+        sscanf(hex_color + 1, "%6x", &color);
+        color = (color << 8) | 0xFF; // Add full alpha
+    }
+    prop->value.color_value = color;
+    
+    if (!prop->name) {
+        kryon_free(prop);
+        return NULL;
+    }
+    
+    return prop;
+}
+
+static KryonProperty* create_float_property(const char* name, float value) {
+    KryonProperty* prop = kryon_malloc(sizeof(KryonProperty));
+    if (!prop) return NULL;
+    
+    memset(prop, 0, sizeof(KryonProperty));
+    prop->id = 0;
+    prop->name = kryon_strdup(name);
+    prop->type = KRYON_RUNTIME_PROP_FLOAT;
+    prop->value.float_value = value;
+    
+    if (!prop->name) {
+        kryon_free(prop);
+        return NULL;
+    }
+    
+    return prop;
+}
+
+// New function to inject overlay after successful file load
+static void inject_pending_overlay(KryonNavigationManager* nav_manager) {
+    if (!nav_manager->pending_overlay || !nav_manager->pending_overlay->component_def) {
+        return;
+    }
+    
+    printf("🔀 Injecting overlay component: %s\n", nav_manager->pending_overlay->component_name);
+    
+    KryonComponentDefinition* overlay_component = nav_manager->pending_overlay->component_def;
+    
+    if (!overlay_component || !nav_manager->runtime || !nav_manager->runtime->root) {
+        printf("⚠️  Invalid overlay component or runtime state\n");
+        return;
+    }
+    
+    printf("🔍 Overlay component found: name='%s'\n", 
+           overlay_component->name ? overlay_component->name : "null");
+    
+    printf("🔀 Creating Button element directly for BackButton overlay\n");
+    printf("🔍 DEBUG: Before Button creation, root has %zu children\n", nav_manager->runtime->root->child_count);
+    // Create element WITHOUT parent to avoid automatic parent addition
+    KryonElement* element = kryon_element_create(nav_manager->runtime, 0x0401, NULL);
+    if (!element) {
+        printf("⚠️  Failed to create Button element for overlay\n");
+        return;
+    }
+    printf("🔍 DEBUG: Button element created with ID=%u\n", element->id);
+    
+    // Set the type name to Button
+    element->type_name = kryon_strdup("Button");
+    
+    // Add Button properties directly (BackButton definition)
+    element->x = 20.0f;
+    element->y = 20.0f;  
+    element->width = 150.0f;
+    element->height = 40.0f;
+    element->visible = true;
+    
+    // Allocate properties array for the Button
+    element->property_capacity = 5; // text, backgroundColor, color, borderRadius, zIndex
+    element->properties = kryon_malloc(element->property_capacity * sizeof(KryonProperty*));
+    element->property_count = 0;
+    
+    if (!element->properties) {
+        printf("⚠️  Failed to allocate properties array for Button\n");
+        kryon_element_destroy(nav_manager->runtime, element);
+        return;
+    }
+    
+    // Create and add Button properties
+    element->properties[element->property_count++] = create_string_property("text", "<-- Back to Examples");
+    element->properties[element->property_count++] = create_color_property("backgroundColor", "#404080");
+    element->properties[element->property_count++] = create_color_property("color", "#FFFFFF");
+    element->properties[element->property_count++] = create_float_property("borderRadius", 8.0f);
+    element->properties[element->property_count++] = create_float_property("zIndex", 1000.0f);
+    
+    // Check if any property creation failed
+    for (size_t i = 0; i < element->property_count; i++) {
+        if (!element->properties[i]) {
+            printf("⚠️  Failed to create property %zu for Button\n", i);
+            kryon_element_destroy(nav_manager->runtime, element);
+            return;
+        }
+    }
+    
+    printf("🔀 Button properties created: %zu properties (text, colors, styling)\n", element->property_count);
+    
+    // Add onClick handler using element system  
+    if (!element->handlers) {
+        element->handlers = kryon_malloc(sizeof(ElementEventHandler*) * 4);
+        element->handler_capacity = 4;
+        element->handler_count = 0;
+    }
+    
+    if (element->handlers && element->handler_count < element->handler_capacity) {
+        ElementEventHandler* handler = kryon_malloc(sizeof(ElementEventHandler));
+        if (handler) {
+            handler->type = KRYON_EVENT_ELEMENT_CLICKED;
+            handler->handler = NULL;  // Will be set up by script system
+            handler->user_data = kryon_strdup("kryon.navigation.navigateTo(\"index.kry\")");
+            handler->capture = false;
+            
+            element->handlers[element->handler_count] = handler;
+            element->handler_count++;
+        }
+    }
+    
+    printf("🔀 Button element configured: %dx%d at (%d,%d)\n", 
+           (int)element->width, (int)element->height, (int)element->x, (int)element->y);
+    
+    // Add to root element as child
+    if (nav_manager->runtime->root->child_count >= nav_manager->runtime->root->child_capacity) {
+        size_t new_capacity = nav_manager->runtime->root->child_capacity == 0 ? 4 : nav_manager->runtime->root->child_capacity * 2;
+        KryonElement** new_children = kryon_realloc(nav_manager->runtime->root->children, 
+                                                  new_capacity * sizeof(KryonElement*));
+        if (new_children) {
+            nav_manager->runtime->root->children = new_children;
+            nav_manager->runtime->root->child_capacity = new_capacity;
+        }
+    }
+    
+    printf("🔍 DEBUG: About to inject Button into root. Current child_count=%zu, capacity=%zu\n", 
+           nav_manager->runtime->root->child_count, nav_manager->runtime->root->child_capacity);
+    
+    if (nav_manager->runtime->root->child_count < nav_manager->runtime->root->child_capacity) {
+        size_t injection_index = nav_manager->runtime->root->child_count;
+        nav_manager->runtime->root->children[injection_index] = element;
+        nav_manager->runtime->root->child_count++;
+        element->parent = nav_manager->runtime->root;
+        nav_manager->runtime->root->needs_render = true;
+        
+        printf("✅ Overlay Button element injected at index %zu (ID=%u)\n", injection_index, element->id);
+        
+        // Debug: Show DETAILED element tree structure after injection
+        printf("🔍 DEBUG: Root element now has %zu children:\n", nav_manager->runtime->root->child_count);
+        for (size_t i = 0; i < nav_manager->runtime->root->child_count; i++) {
+            KryonElement* child = nav_manager->runtime->root->children[i];
+            printf("  [%zu] ID=%u %s (type=0x%04X) ptr=%p\n", i, 
+                   child->id, 
+                   child->type_name ? child->type_name : "unknown",
+                   child->type,
+                   (void*)child);
+        }
+    } else {
+        printf("⚠️  Cannot inject overlay: children array full\n");
+        kryon_element_destroy(nav_manager->runtime, element);
+    }
+    
+    // Clear the pending overlay IMMEDIATELY after injection
+    if (nav_manager->pending_overlay->component_name) {
+        kryon_free(nav_manager->pending_overlay->component_name);
+    }
+    if (nav_manager->pending_overlay->component_def) {
+        free_component_copy(nav_manager->pending_overlay->component_def);
+    }
+    kryon_free(nav_manager->pending_overlay);
+    nav_manager->pending_overlay = NULL;
+    
+    // Calculate layout positions after overlay injection
+    printf("🧮 Navigation: Calculating layout after overlay injection\n");
     kryon_runtime_calculate_layout(nav_manager->runtime);
     
     // Update window properties from new App element
     update_window_from_app_element(nav_manager->runtime);
-    
-    return KRYON_NAV_SUCCESS;
 }
 
 KryonNavigationResult kryon_navigation_compile_and_load(KryonNavigationManager* nav_manager, const char* kry_path) {
@@ -686,4 +962,117 @@ static void cleanup_old_cache(KryonNavigationManager* nav_manager) {
             nav_manager->cache_count--;
         }
     }
+}
+
+// =============================================================================
+//  Component Deep Copy Implementation
+// =============================================================================
+
+static KryonComponentDefinition* deep_copy_component(const KryonComponentDefinition* source) {
+    if (!source) {
+        return NULL;
+    }
+    
+    KryonComponentDefinition* copy = kryon_alloc_type(KryonComponentDefinition);
+    if (!copy) {
+        return NULL;
+    }
+    
+    // Copy name
+    copy->name = source->name ? kryon_strdup(source->name) : NULL;
+    
+    // Copy parameter info
+    copy->parameter_count = source->parameter_count;
+    if (source->parameter_count > 0 && source->parameters) {
+        copy->parameters = kryon_alloc(source->parameter_count * sizeof(char*));
+        if (copy->parameters) {
+            for (size_t i = 0; i < source->parameter_count; i++) {
+                copy->parameters[i] = source->parameters[i] ? kryon_strdup(source->parameters[i]) : NULL;
+            }
+        }
+        
+        if (source->param_defaults) {
+            copy->param_defaults = kryon_alloc(source->parameter_count * sizeof(char*));
+            if (copy->param_defaults) {
+                for (size_t i = 0; i < source->parameter_count; i++) {
+                    copy->param_defaults[i] = source->param_defaults[i] ? kryon_strdup(source->param_defaults[i]) : NULL;
+                }
+            }
+        }
+    } else {
+        copy->parameters = NULL;
+        copy->param_defaults = NULL;
+    }
+    
+    // Copy state variables
+    copy->state_count = source->state_count;
+    if (source->state_count > 0 && source->state_vars) {
+        copy->state_vars = kryon_alloc(source->state_count * sizeof(KryonComponentStateVar));
+        if (copy->state_vars) {
+            memcpy(copy->state_vars, source->state_vars, source->state_count * sizeof(KryonComponentStateVar));
+        }
+    } else {
+        copy->state_vars = NULL;
+    }
+    
+    // Copy functions
+    copy->function_count = source->function_count;
+    if (source->function_count > 0 && source->functions) {
+        copy->functions = kryon_alloc(source->function_count * sizeof(KryonComponentFunction));
+        if (copy->functions) {
+            memcpy(copy->functions, source->functions, source->function_count * sizeof(KryonComponentFunction));
+        }
+    } else {
+        copy->functions = NULL;
+    }
+    
+    // Copy UI template (this is the important part for overlay injection)
+    copy->ui_template = source->ui_template; // Shallow copy for now - elements are shared
+    
+    printf("🔀 Deep copied component: %s\n", copy->name ? copy->name : "unnamed");
+    return copy;
+}
+
+static void free_component_copy(KryonComponentDefinition* component) {
+    if (!component) {
+        return;
+    }
+    
+    // Free name
+    if (component->name) {
+        kryon_free(component->name);
+    }
+    
+    // Free parameters
+    if (component->parameters) {
+        for (size_t i = 0; i < component->parameter_count; i++) {
+            if (component->parameters[i]) {
+                kryon_free(component->parameters[i]);
+            }
+        }
+        kryon_free(component->parameters);
+    }
+    
+    if (component->param_defaults) {
+        for (size_t i = 0; i < component->parameter_count; i++) {
+            if (component->param_defaults[i]) {
+                kryon_free(component->param_defaults[i]);
+            }
+        }
+        kryon_free(component->param_defaults);
+    }
+    
+    // Free state variables
+    if (component->state_vars) {
+        kryon_free(component->state_vars);
+    }
+    
+    // Free functions
+    if (component->functions) {
+        kryon_free(component->functions);
+    }
+    
+    // Note: We don't free ui_template as it's a shallow copy
+    
+    kryon_free(component);
 }

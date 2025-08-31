@@ -1737,8 +1737,28 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
     // Step 1: Process layout commands (these position children but don't render)
     process_layout(element, commands, command_count, max_commands);
     
-    // Step 2: Render the current element (parent renders first = background)
-    render_element(element, commands, command_count, max_commands);
+    // Step 2: Handle component instances by expanding them
+    if (element->component_instance && element->component_instance->definition && element->component_instance->definition->ui_template) {
+        printf("🔄 Expanding component instance: %s\n", element->component_instance->definition->name);
+        
+        // Render the component's UI template instead of the component instance
+        KryonElement* ui_template = element->component_instance->definition->ui_template;
+        
+        // Temporarily set the template's position and properties from the component instance
+        ui_template->x = element->x;
+        ui_template->y = element->y;
+        ui_template->width = element->width;
+        ui_template->height = element->height;
+        ui_template->visible = element->visible;
+        
+        // Recursively render the UI template
+        element_to_commands_recursive(ui_template, commands, command_count, max_commands);
+        
+        printf("✅ Component instance expanded and rendered\n");
+    } else {
+        // Step 2: Render the current element normally (parent renders first = background)
+        render_element(element, commands, command_count, max_commands);
+    }
     
     // Step 3: Recursively render all children (children render on top of parent)
     for (size_t i = 0; i < element->child_count && *command_count < max_commands; i++) {

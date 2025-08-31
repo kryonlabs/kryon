@@ -2170,9 +2170,17 @@ static bool load_components_section(KryonRuntime* runtime, const uint8_t* data, 
     printf("🔍 Component has body: %s\n", has_body ? "yes" : "no");
     
     if (has_body) {
-        // Skip element body for now - we'll expand components at runtime
-        // TODO: Implement proper element body loading if needed
-        printf("⚠️  Skipping component body loading (not implemented yet)\n");
+        // Load component body element as ui_template
+        printf("🔄 Loading component body element as ui_template\n");
+        
+        KryonElement* ui_element = load_element_from_binary(runtime, data, offset, size, NULL);
+        if (ui_element) {
+            comp_def->ui_template = ui_element;
+            printf("✅ Component ui_template loaded successfully: %s\n", 
+                   ui_element->type_name ? ui_element->type_name : "unknown");
+        } else {
+            printf("❌ Failed to load component ui_template\n");
+        }
     }
     
     // Add component to runtime registry
