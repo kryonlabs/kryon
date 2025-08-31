@@ -146,15 +146,20 @@ static int lua_kryon_element_set_text(lua_State* L) {
 static int lua_kryon_navigation_navigate_to(lua_State* L) {
     const char* target = luaL_checkstring(L, 1);
     
-    // Get runtime from current global context
-    KryonRuntime* runtime = kryon_runtime_get_current();
-    if (!runtime) {
-        luaL_error(L, "Navigation not available: no runtime context");
+    // Get VM reference from registry
+    lua_getfield(L, LUA_REGISTRYINDEX, "kryon_vm");
+    KryonVM* vm = (KryonVM*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    
+    if (!vm || !vm->runtime) {
+        luaL_error(L, "Navigation not available: no VM or runtime context");
         return 0;
     }
     
+    KryonRuntime* runtime = vm->runtime;
+    
     // Actually call navigation manager
-    printf("🔀 @onload script: Navigating to '%s'\n", target);
+    printf("🔀 VM script: Navigating to '%s'\n", target);
     
     if (runtime->navigation_manager) {
         KryonNavigationResult result = kryon_navigate_to(runtime->navigation_manager, target, false);
@@ -223,6 +228,10 @@ static KryonVMResult lua_vm_initialize(KryonVM* vm, const KryonVMConfig* config)
     
     // Configure Lua paths for external libraries
     configure_lua_paths(backend->L);
+    
+    // Store VM reference in registry for navigation functions
+    lua_pushlightuserdata(backend->L, vm);
+    lua_setfield(backend->L, LUA_REGISTRYINDEX, "kryon_vm");
     
     // Register Kryon API
     register_kryon_api(backend->L);

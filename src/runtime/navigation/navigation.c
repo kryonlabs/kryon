@@ -447,14 +447,12 @@ static void inject_pending_overlay(KryonNavigationManager* nav_manager) {
     element->type_name = kryon_strdup("Button");
     
     // Add Button properties directly (BackButton definition)
-    element->x = 20.0f;
-    element->y = 20.0f;  
     element->width = 150.0f;
     element->height = 40.0f;
     element->visible = true;
     
     // Allocate properties array for the Button
-    element->property_capacity = 5; // text, backgroundColor, color, borderRadius, zIndex
+    element->property_capacity = 8; // text, posX, posY, backgroundColor, color, borderRadius, zIndex, onClick
     element->properties = kryon_malloc(element->property_capacity * sizeof(KryonProperty*));
     element->property_count = 0;
     
@@ -464,12 +462,15 @@ static void inject_pending_overlay(KryonNavigationManager* nav_manager) {
         return;
     }
     
-    // Create and add Button properties
+    // Create and add Button properties (matching BackButton component)
     element->properties[element->property_count++] = create_string_property("text", "<-- Back to Examples");
+    element->properties[element->property_count++] = create_float_property("posX", 20.0f);
+    element->properties[element->property_count++] = create_float_property("posY", 20.0f);
     element->properties[element->property_count++] = create_color_property("backgroundColor", "#404080");
     element->properties[element->property_count++] = create_color_property("color", "#FFFFFF");
     element->properties[element->property_count++] = create_float_property("borderRadius", 8.0f);
     element->properties[element->property_count++] = create_float_property("zIndex", 1000.0f);
+    element->properties[element->property_count++] = create_string_property("onClick", "navigateBack");
     
     // Check if any property creation failed
     for (size_t i = 0; i < element->property_count; i++) {
@@ -482,28 +483,43 @@ static void inject_pending_overlay(KryonNavigationManager* nav_manager) {
     
     printf("🔀 Button properties created: %zu properties (text, colors, styling)\n", element->property_count);
     
-    // Add onClick handler using element system  
-    if (!element->handlers) {
-        element->handlers = kryon_malloc(sizeof(ElementEventHandler*) * 4);
-        element->handler_capacity = 4;
-        element->handler_count = 0;
-    }
-    
-    if (element->handlers && element->handler_count < element->handler_capacity) {
-        ElementEventHandler* handler = kryon_malloc(sizeof(ElementEventHandler));
-        if (handler) {
-            handler->type = KRYON_EVENT_ELEMENT_CLICKED;
-            handler->handler = NULL;  // Will be set up by script system
-            handler->user_data = kryon_strdup("kryon.navigation.navigateTo(\"index.kry\")");
-            handler->capture = false;
-            
-            element->handlers[element->handler_count] = handler;
-            element->handler_count++;
+    // Load the overlay component's functions into the VM
+    if (nav_manager->runtime && nav_manager->runtime->script_vm && overlay_component) {
+        printf("🔄 Loading overlay component functions into VM\n");
+        
+        // Load each function from the overlay component
+        for (size_t i = 0; i < overlay_component->function_count; i++) {
+            if (overlay_component->functions) {
+                KryonComponentFunction* func = &overlay_component->functions[i];
+                if (func->name && func->bytecode && func->language) {
+                    printf("📝 Loading overlay function: %s (%s)\n", func->name, func->language);
+                    
+                    // Check if it's a Lua function
+                    if (strcmp(func->language, "lua") == 0) {
+                        // Convert bytecode to string for execution
+                        char* code_str = kryon_malloc(func->bytecode_size + 1);
+                        if (code_str) {
+                            memcpy(code_str, func->bytecode, func->bytecode_size);
+                            code_str[func->bytecode_size] = '\0';
+                            
+                            KryonVMResult result = kryon_vm_execute_string(nav_manager->runtime->script_vm, code_str);
+                            if (result == KRYON_VM_SUCCESS) {
+                                printf("✅ Loaded overlay function '%s' into VM\n", func->name);
+                            } else {
+                                printf("❌ Failed to load overlay function '%s': %s\n", 
+                                       func->name, kryon_vm_get_error(nav_manager->runtime->script_vm));
+                            }
+                            
+                            kryon_free(code_str);
+                        }
+                    }
+                }
+            }
         }
     }
     
-    printf("🔀 Button element configured: %dx%d at (%d,%d)\n", 
-           (int)element->width, (int)element->height, (int)element->x, (int)element->y);
+    printf("🔀 Button element configured: %dx%d with posX=20, posY=20\n", 
+           (int)element->width, (int)element->height);
     
     // Add to root element as child
     if (nav_manager->runtime->root->child_count >= nav_manager->runtime->root->child_capacity) {
