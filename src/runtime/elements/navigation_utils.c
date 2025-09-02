@@ -54,7 +54,10 @@ bool navigation_handle_click(struct KryonRuntime* runtime,
     const char* overlay = get_element_property_string(element, "overlay");
     bool external = get_element_property_bool(element, "external", false);
     
+    printf("🐛 CLICK DEBUG: Initial 'to' property = '%s'\n", to ? to : "NULL");
+    
     if (!to || strlen(to) == 0) {
+        printf("🐛 CLICK DEBUG: 'to' property is empty or NULL, not navigating\n");
         return false; // No navigation properties
     }
     
@@ -93,7 +96,16 @@ bool navigation_handle_click(struct KryonRuntime* runtime,
             }
             
             printf("📄 %s navigating to internal file: %s\n", element_name, to);
+            
+            // Check 'to' property before navigation
+            const char* to_before_nav = get_element_property_string(element, "to");
+            printf("🐛 CLICK DEBUG: 'to' property before navigation = '%s'\n", to_before_nav ? to_before_nav : "NULL");
+            
             KryonNavigationResult result = kryon_navigate_to(runtime->navigation_manager, to, false);
+            
+            // Check 'to' property after navigation
+            const char* to_after_nav = get_element_property_string(element, "to");
+            printf("🐛 CLICK DEBUG: 'to' property after navigation = '%s'\n", to_after_nav ? to_after_nav : "NULL");
             
             if (result == KRYON_NAV_SUCCESS) {
                 printf("✅ %s navigation successful\n", element_name);

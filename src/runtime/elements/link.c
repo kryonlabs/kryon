@@ -67,6 +67,16 @@ static void link_render(KryonRuntime* runtime, KryonElement* element, KryonRende
     if (!to) to = "";
     bool external = get_element_property_bool(element, "external", false);
     
+    // Debug output for render - only print once per render cycle to avoid spam
+    static void* last_rendered_element = NULL;
+    static char last_to_value[256] = "";
+    if (element != last_rendered_element || strcmp(to, last_to_value) != 0) {
+        printf("🎨 RENDER DEBUG: Link element %p, text='%s', to='%s'\n", (void*)element, text, to);
+        last_rendered_element = element;
+        strncpy(last_to_value, to, sizeof(last_to_value) - 1);
+        last_to_value[sizeof(last_to_value) - 1] = '\0';
+    }
+    
     // Get styling properties
     uint32_t text_color_val = get_element_property_color(element, "textColor", 0x0099FFFF); // Blue default for links
     uint32_t bg_color_val = get_element_property_color(element, "backgroundColor", 0x00000000); // Transparent default
@@ -222,6 +232,12 @@ static void link_render(KryonRuntime* runtime, KryonElement* element, KryonRende
  */
 static bool link_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
     if (event->type == ELEMENT_EVENT_CLICKED) {
+        // Debug output for click event
+        const char* clicked_text = get_element_property_string(element, "text");
+        const char* clicked_to = get_element_property_string(element, "to");
+        printf("🖱️ CLICK DEBUG: Link element %p clicked, text='%s', to='%s'\n", 
+               (void*)element, clicked_text ? clicked_text : "NULL", clicked_to ? clicked_to : "NULL");
+        
         // Try navigation first using shared utility
         if (navigation_handle_click(runtime, element, "Link")) {
             return true;
@@ -230,12 +246,6 @@ static bool link_handle_event(KryonRuntime* runtime, KryonElement* element, cons
         // Show overlay on hover if overlay content exists
         const char* overlay_content = get_element_property_string(element, "overlay");
         if (overlay_content && strlen(overlay_content) > 0) {
-            // Set showOverlay property to true
-            bool show_overlay = true;
-            kryon_element_set_property(element, kryon_get_property_hex("showOverlay"), &show_overlay);
-            
-            // Mark element for re-render
-            kryon_element_invalidate_render(element);
             printf("🔍 Link: Showing overlay on hover\n");
             return true;
         }
@@ -243,12 +253,6 @@ static bool link_handle_event(KryonRuntime* runtime, KryonElement* element, cons
         // Hide overlay when not hovering
         const char* overlay_content = get_element_property_string(element, "overlay");
         if (overlay_content && strlen(overlay_content) > 0) {
-            // Set showOverlay property to false
-            bool show_overlay = false;
-            kryon_element_set_property(element, kryon_get_property_hex("showOverlay"), &show_overlay);
-            
-            // Mark element for re-render
-            kryon_element_invalidate_render(element);
             printf("🔍 Link: Hiding overlay on unhover\n");
             return true;
         }

@@ -1338,6 +1338,13 @@ static struct KryonElement* find_interactive_element_at_point(struct KryonElemen
         }
         
         if (point_in_bounds_with_tolerance(bounds, x, y, 5.0f)) {
+            // Debug output for Link elements
+            if (root->type_name && strcmp(root->type_name, "Link") == 0) {
+                const char* debug_text = get_element_property_string(root, "text");
+                const char* debug_to = get_element_property_string(root, "to");
+                printf("🎯 HIT TEST: Found Link element %p, text='%s', to='%s'\n", 
+                       (void*)root, debug_text ? debug_text : "NULL", debug_to ? debug_to : "NULL");
+            }
             return root;
         }
     }

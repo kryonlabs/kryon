@@ -1240,7 +1240,20 @@ const char* get_element_property_string_with_runtime(KryonRuntime* runtime, Kryo
     KryonProperty* prop = find_element_property(element, prop_name);
     if (!prop) {
         // Property not found - this is normal for optional properties
+        if (strcmp(prop_name, "to") == 0) {
+            printf("🐛 DEBUG: Property 'to' not found for element %s\n", element->type_name ? element->type_name : "unknown");
+        }
         return NULL;
+    }
+    
+    // Debug output for "to" property specifically
+    if (strcmp(prop_name, "to") == 0) {
+        printf("🐛 DEBUG: Found 'to' property, type=%d, element=%s\n", prop->type, element->type_name ? element->type_name : "unknown");
+        if (prop->type == KRYON_RUNTIME_PROP_STRING) {
+            printf("🐛 DEBUG: 'to' property STRING value: '%s'\n", prop->value.string_value ? prop->value.string_value : "NULL");
+        } else if (prop->type == KRYON_RUNTIME_PROP_TEMPLATE) {
+            printf("🐛 DEBUG: 'to' property is TEMPLATE type with %zu segments\n", prop->value.template_value.segment_count);
+        }
     }
     
     // Use simple static buffer for string conversions
@@ -1249,6 +1262,11 @@ const char* get_element_property_string_with_runtime(KryonRuntime* runtime, Kryo
     switch (prop->type) {
         case KRYON_RUNTIME_PROP_STRING:
             // For literal strings, just return the value directly
+            if (strcmp(prop_name, "to") == 0) {
+                printf("🐛 PROP ACCESS: STRING property 'to' = '%s' (ptr=%p)\n", 
+                       prop->value.string_value ? prop->value.string_value : "NULL", 
+                       (void*)prop->value.string_value);
+            }
             return prop->value.string_value ? prop->value.string_value : "";
             
         case KRYON_RUNTIME_PROP_REFERENCE:
@@ -1298,6 +1316,36 @@ const char* get_element_property_string_with_runtime(KryonRuntime* runtime, Kryo
                 kryon_expression_value_free(&result);
             }
             return "";
+        
+        case KRYON_RUNTIME_PROP_TEMPLATE:
+            // Template properties should have been resolved during @for expansion,
+            // but handle them gracefully by resolving on-demand
+            if (strcmp(prop_name, "to") == 0) {
+                printf("🐛 DEBUG: 'to' property is still TEMPLATE - this shouldn't happen after @for expansion!\n");
+            }
+            
+            // Try to resolve template segments to build a string
+            buffer[0] = '\0'; // Start with empty string
+            for (size_t i = 0; i < prop->value.template_value.segment_count; i++) {
+                KryonTemplateSegment* segment = &prop->value.template_value.segments[i];
+                if (segment->type == KRYON_TEMPLATE_SEGMENT_LITERAL && segment->data.literal_text) {
+                    strncat(buffer, segment->data.literal_text, sizeof(buffer) - strlen(buffer) - 1);
+                } else if (segment->type == KRYON_TEMPLATE_SEGMENT_VARIABLE && runtime) {
+                    // Try to resolve variable from runtime
+                    const char* var_name = segment->data.variable_name;
+                    if (var_name) {
+                        for (size_t j = 0; j < runtime->variable_count; j++) {
+                            if (runtime->variable_names[j] && strcmp(runtime->variable_names[j], var_name) == 0) {
+                                if (runtime->variable_values[j]) {
+                                    strncat(buffer, runtime->variable_values[j], sizeof(buffer) - strlen(buffer) - 1);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            return buffer;
         
         default:
             return NULL;
