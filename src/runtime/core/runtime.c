@@ -1239,10 +1239,6 @@ const char* get_element_property_string(KryonElement* element, const char* prop_
 const char* get_element_property_string_with_runtime(KryonRuntime* runtime, KryonElement* element, const char* prop_name) {
     KryonProperty* prop = find_element_property(element, prop_name);
     if (!prop) {
-        // Property not found - this is normal for optional properties
-        if (strcmp(prop_name, "to") == 0) {
-            printf("🐛 DEBUG: Property 'to' not found for element %s\n", element->type_name ? element->type_name : "unknown");
-        }
         return NULL;
     }
     

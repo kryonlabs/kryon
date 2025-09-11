@@ -2,11 +2,11 @@
 
 add_executable(kryon_cli
     main.c
-    compile/compile_command.c
-    run/run_command.c
-    dev/dev_command.c
-    debug/debug_command.c
-    package/package_command.c
+    compile_command.c
+    run_command.c
+    dev_command.c
+    debug_command.c
+    package_command.c
 )
 
 target_include_directories(kryon_cli PRIVATE
