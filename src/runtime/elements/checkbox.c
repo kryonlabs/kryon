@@ -62,9 +62,15 @@ static CheckboxState* ensure_checkbox_state(struct KryonElement* element) {
 static void sync_checkbox_from_variable(struct KryonRuntime* runtime, struct KryonElement* element, CheckboxState* state) {
     if (!runtime || !element || !state) return;
     
+    // Safety check for properties array
+    if (!element->properties) return;
+    
     // Check if the checked property is bound to a variable
     KryonProperty* checked_prop = NULL;
     for (size_t i = 0; i < element->property_count; i++) {
+        // Additional safety check to prevent accessing invalid memory
+        if (i >= element->property_capacity) break;
+        
         if (element->properties[i] && element->properties[i]->name && 
             strcmp(element->properties[i]->name, "checked") == 0) {
             checked_prop = element->properties[i];

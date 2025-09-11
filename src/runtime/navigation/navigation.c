@@ -554,6 +554,42 @@ static void inject_pending_overlay(KryonNavigationManager* nav_manager) {
                    child->type,
                    (void*)child);
         }
+        
+        // CRITICAL: Validate element tree integrity after injection
+        printf("🔍 VALIDATION: Checking element tree integrity after overlay injection\n");
+        
+        // Validate root element
+        if (!nav_manager->runtime->root) {
+            printf("❌ VALIDATION: Root element is NULL after injection!\n");
+        } else if (!nav_manager->runtime->root->type_name) {
+            printf("❌ VALIDATION: Root element type_name is NULL after injection!\n");
+        } else {
+            printf("✅ VALIDATION: Root element OK: %s\n", nav_manager->runtime->root->type_name);
+        }
+        
+        // Validate all children
+        for (size_t i = 0; i < nav_manager->runtime->root->child_count; i++) {
+            KryonElement* child = nav_manager->runtime->root->children[i];
+            if (!child) {
+                printf("❌ VALIDATION: Child %zu is NULL!\n", i);
+                continue;
+            }
+            if (!child->type_name) {
+                printf("❌ VALIDATION: Child %zu type_name is NULL!\n", i);
+                continue;
+            }
+            if (child->property_count > 0 && !child->properties) {
+                printf("❌ VALIDATION: Child %zu (%s) has properties count %zu but NULL array!\n", 
+                       i, child->type_name, child->property_count);
+                continue;
+            }
+            if (child->child_count > 0 && !child->children) {
+                printf("❌ VALIDATION: Child %zu (%s) has child_count %zu but NULL array!\n", 
+                       i, child->type_name, child->child_count);
+                continue;
+            }
+            printf("✅ VALIDATION: Child %zu (%s) is valid\n", i, child->type_name);
+        }
     } else {
         printf("⚠️  Cannot inject overlay: children array full\n");
         kryon_element_destroy(nav_manager->runtime, element);

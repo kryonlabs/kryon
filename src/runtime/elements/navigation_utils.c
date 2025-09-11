@@ -103,9 +103,9 @@ bool navigation_handle_click(struct KryonRuntime* runtime,
             
             KryonNavigationResult result = kryon_navigate_to(runtime->navigation_manager, to, false);
             
-            // Check 'to' property after navigation
-            const char* to_after_nav = get_element_property_string(element, "to");
-            printf("🐛 CLICK DEBUG: 'to' property after navigation = '%s'\n", to_after_nav ? to_after_nav : "NULL");
+            // CRITICAL FIX: DO NOT access element after navigation!
+            // Navigation destroys the old element tree, making 'element' invalid
+            printf("🔧 NAVIGATION DEBUG: Navigation completed, element is now invalid\n");
             
             if (result == KRYON_NAV_SUCCESS) {
                 printf("✅ %s navigation successful\n", element_name);

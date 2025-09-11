@@ -1763,14 +1763,29 @@ static void process_layout(KryonElement* element, KryonRenderCommand* commands, 
 
 // Recursive function to convert element tree to render commands
 static void element_to_commands_recursive(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
-    if (!element || !commands || !command_count || *command_count >= max_commands) return;
+    if (!element || !commands || !command_count || *command_count >= max_commands) {
+        return;
+    }
     
-    // Safety checks
+    // Enhanced safety checks for overlay injection corruption
     if (!element->type_name || 
         element->property_count > 1000 || element->child_count > 1000 ||
         (element->property_count > 0 && !element->properties) ||
         (element->child_count > 0 && !element->children)) {
         return;
+    }
+    
+    // CRITICAL FIX: Validate all properties before rendering
+    for (size_t i = 0; i < element->property_count; i++) {
+        if (!element->properties[i] || !element->properties[i]->name) {
+            return; // Skip corrupted elements safely
+        }
+        // Additional validation for string properties
+        if (element->properties[i]->type == KRYON_RUNTIME_PROP_STRING) {
+            if (!element->properties[i]->value.string_value) {
+                return; // Skip elements with corrupted string properties
+            }
+        }
     }
     
     // Track recursion depth
