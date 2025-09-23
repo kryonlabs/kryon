@@ -78,6 +78,13 @@ typedef enum {
     KRYON_ERROR_INVALID_KRB_FILE = 305,
     KRYON_ERROR_VERSION_MISMATCH = 306,
     
+    // CodeGen errors (350-399)
+    KRYON_ERROR_CODEGEN_FAILED = 350,            ///< General code generation failure
+    KRYON_ERROR_CODEGEN_UNSUPPORTED_NODE = 351,  ///< Encountered an AST node that cannot be compiled
+    KRYON_ERROR_CODEGEN_BUFFER_ERROR = 352,      ///< Error writing to the output binary buffer
+    KRYON_ERROR_CODEGEN_INVALID_AST = 353,       ///< The AST is malformed or missing required elements
+    KRYON_ERROR_CODEGEN_SYMBOL_CONFLICT = 354,   ///< A symbol (e.g., variable, component) was redefined
+
     // Runtime errors (400-499)
     KRYON_ERROR_RUNTIME_ERROR = 400,
     KRYON_ERROR_STACK_OVERFLOW = 401,

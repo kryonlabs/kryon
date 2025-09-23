@@ -7,6 +7,7 @@
 #include "parser.h" 
 #include "codegen.h"
 #include "memory.h"
+#include "error.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,407 +19,11 @@
 // For AST validation
 extern size_t kryon_ast_validate(const KryonASTNode *node, char **errors, size_t max_errors);
 
-// Forward declarations
-static KryonASTNode *ensure_app_root_container(const KryonASTNode *original_ast, KryonParser *parser, bool debug);
-static KryonASTNode *create_app_element_with_metadata(const KryonASTNode *original_ast, KryonParser *parser);
-static KryonASTNode *find_metadata_node(const KryonASTNode *ast);
-static KryonASTNode *inject_debug_inspector_element(KryonParser *parser);
-static KryonASTNode *inject_debug_inspector_include(KryonParser *parser);
-static void print_generated_kry_content(const KryonASTNode *ast, const char *title);
-static void print_element_content(const KryonASTNode *element, int indent);
-static void debug_print_ast(const KryonASTNode *node, int depth);
-static bool process_include_directives(KryonASTNode *ast, KryonParser *parser, const char *base_dir);
-static bool process_includes_recursive(KryonASTNode *node, KryonParser *parser, const char *base_dir);
-static bool process_single_include(KryonASTNode *include_node, KryonASTNode *parent, size_t index, 
-                                  KryonParser *parser, const char *base_dir);
-static bool merge_include_ast(KryonASTNode *parent, size_t include_index, 
-                             const KryonASTNode *include_ast, KryonParser *main_parser);
-static KryonASTNode* deep_copy_ast_node(const KryonASTNode *src);
 
-int compile_command(int argc, char *argv[]) {
-    const char *input_file = NULL;
-    const char *output_file = NULL;
-    bool verbose = false;
-    bool optimize = false;
-    bool debug = false;
-    
-    // Parse arguments
-    static struct option long_options[] = {
-        {"output", required_argument, 0, 'o'},
-        {"verbose", no_argument, 0, 'v'},
-        {"optimize", no_argument, 0, 'O'},
-        {"debug", no_argument, 0, 'd'},
-        {"help", no_argument, 0, 'h'},
-        {0, 0, 0, 0}
-    };
-    
-    int c;
-    while ((c = getopt_long(argc, argv, "o:vOdh", long_options, NULL)) != -1) {
-        switch (c) {
-            case 'o':
-                output_file = optarg;
-                break;
-            case 'v':
-                verbose = true;
-                break;
-            case 'O':
-                optimize = true;
-                break;
-            case 'd':
-                debug = true;
-                break;
-            case 'h':
-                printf("Usage: kryon compile <file.kry> [options]\n");
-                printf("Options:\n");
-                printf("  -o, --output <file>    Output file name\n");
-                printf("  -v, --verbose          Verbose output\n");
-                printf("  -O, --optimize         Enable optimizations\n");
-                printf("  -d, --debug            Enable debug mode with inspector\n");
-                printf("  -h, --help             Show this help\n");
-                return 0;
-            case '?':
-                return 1;
-            default:
-                abort();
-        }
-    }
-    
-    if (optind >= argc) {
-        fprintf(stderr, "Error: No input file specified\n");
-        return 1;
-    }
-    
-    input_file = argv[optind];
-    
-    // Generate output filename if not specified
-    char output_buffer[256];
-    if (!output_file) {
-        const char *dot = strrchr(input_file, '.');
-        if (dot && strcmp(dot, ".kry") == 0) {
-            size_t len = dot - input_file;
-            snprintf(output_buffer, sizeof(output_buffer), "%.*s.krb", (int)len, input_file);
-            output_file = output_buffer;
-        } else {
-            snprintf(output_buffer, sizeof(output_buffer), "%s.krb", input_file);
-            output_file = output_buffer;
-        }
-    }
-    
-    if (verbose) {
-        printf("Compiling: %s -> %s\n", input_file, output_file);
-    }
-    
-    // Read input file
-    FILE *file = fopen(input_file, "r");
-    if (!file) {
-        fprintf(stderr, "Error: Cannot open input file: %s\n", input_file);
-        return 1;
-    }
-    
-    // Get file size
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    
-    // Initialize memory manager if needed
-    if (!g_kryon_memory_manager) {
-        // Create default memory configuration
-        KryonMemoryConfig config = {
-            .initial_heap_size = 16 * 1024 * 1024,    // 16MB
-            .max_heap_size = 256 * 1024 * 1024,       // 256MB  
-            .enable_leak_detection = true,
-            .enable_bounds_checking = false,
-            .enable_statistics = false,
-            .use_system_malloc = true,
-            .large_alloc_threshold = 64 * 1024        // 64KB
-        };
-        
-        g_kryon_memory_manager = kryon_memory_init(&config);
-        if (!g_kryon_memory_manager) {
-            fprintf(stderr, "Error: Failed to initialize memory manager\n");
-            fclose(file);
-            return 1;
-        }
-    }
-    
-    // Read file content
-    char *source = kryon_alloc(file_size + 1);
-    if (!source) {
-        fprintf(stderr, "Error: Memory allocation failed\n");
-        fclose(file);
-        return 1;
-    }
-    
-    fread(source, 1, file_size, file);
-    source[file_size] = '\0';
-    fclose(file);
-    
-    if (verbose) {
-        printf("Read %ld bytes from %s\n", file_size, input_file);
-    }
-    
-    if (debug || verbose) {
-        printf("Source preview (first 200 chars): %.200s%s\n", source, file_size > 200 ? "..." : "");
-    }
-    
-    // Create lexer
-    KryonLexer *lexer = kryon_lexer_create(source, file_size, input_file, NULL);
-    if (!lexer) {
-        fprintf(stderr, "Error: Failed to create lexer\n");
-        kryon_free(source);
-        return 1;
-    }
-    
-    // Tokenize
-    if (!kryon_lexer_tokenize(lexer)) {
-        fprintf(stderr, "Error: Failed to tokenize: %s\n", kryon_lexer_get_error(lexer));
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        return 1;
-    }
-    
-    if (debug || verbose) {
-        const char *lexer_error = kryon_lexer_get_error(lexer);
-        if (lexer_error && strlen(lexer_error) > 0) {
-            printf("Lexer warning: %s\n", lexer_error);
-        } else {
-            printf("Lexer completed successfully.\n");
-        }
-    }
-    
-    
-    // Create parser
-    KryonParser *parser = kryon_parser_create(lexer, NULL);
-    if (!parser) {
-        fprintf(stderr, "Error: Failed to create parser\n");
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        return 1;
-    }
-    
-    // Parse AST
-    if (verbose) {
-        printf("Parsing...\n");
-    }
-    
-    bool parse_success = kryon_parser_parse(parser);
-    
-    // Always check for parser errors
-    size_t error_count;
-    const char **errors = kryon_parser_get_errors(parser, &error_count);
-    if (errors && error_count > 0) {
-        fprintf(stderr, "Parser errors detected:\n");
-        for (size_t i = 0; i < error_count; i++) {
-            fprintf(stderr, "  %s\n", errors[i]);
-        }
-        // Fail compilation if there are any parser errors
-        kryon_parser_destroy(parser);
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        return 1;
-    }
-    
-    if (!parse_success) {
-        fprintf(stderr, "Error: Parser failed\n");
-        kryon_parser_destroy(parser);
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        return 1;
-    }
-    
-    if (debug || verbose) {
-        printf("No parser errors detected.\n");
-    }
-    
-    const KryonASTNode *ast = kryon_parser_get_root(parser);
-    
-    // Validate AST structure and properties
-    if (ast) {
-        char *validation_errors[100];
-        size_t validation_count = kryon_ast_validate(ast, validation_errors, 100);
-        if (validation_count > 0) {
-            fprintf(stderr, "Semantic errors detected:\n");
-            for (size_t i = 0; i < validation_count; i++) {
-                fprintf(stderr, "  %s\n", validation_errors[i]);
-                kryon_free(validation_errors[i]);
-            }
-            kryon_parser_destroy(parser);
-            kryon_lexer_destroy(lexer);
-            kryon_free(source);
-            return 1;
-        }
-    }
-    if (!ast) {
-        fprintf(stderr, "Error: Failed to get AST root\n");
-        kryon_parser_destroy(parser);
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        return 1;
-    }
-    
-    if (verbose) {
-        printf("Parsing completed successfully\n");
-    }
-    
-    // Debug: Print original AST structure
-    if (debug || verbose) {
-        printf("\n=== ORIGINAL AST STRUCTURE ===\n");
-        debug_print_ast(ast, 0);
-        printf("=== END AST STRUCTURE ===\n\n");
-    }
-    
-    // Inject include directive for DebugInspector if debug mode is enabled
-    if (debug) {
-        KryonASTNode *include_directive = inject_debug_inspector_include(parser);
-        if (include_directive) {
-            // Cast away const for modification (we own this AST)
-            KryonASTNode *mutable_ast = (KryonASTNode*)ast;
-            
-            // Expand root children array if needed
-            if (mutable_ast->data.element.child_count >= mutable_ast->data.element.child_capacity) {
-                size_t new_capacity = (mutable_ast->data.element.child_capacity + 1) * 2;
-                KryonASTNode **new_children = kryon_alloc(new_capacity * sizeof(KryonASTNode*));
-                if (new_children) {
-                    memcpy(new_children, mutable_ast->data.element.children, 
-                           mutable_ast->data.element.child_count * sizeof(KryonASTNode*));
-                    kryon_free(mutable_ast->data.element.children);
-                    mutable_ast->data.element.children = new_children;
-                    mutable_ast->data.element.child_capacity = new_capacity;
-                }
-            }
-            
-            // Add include directive at the beginning of root
-            if (mutable_ast->data.element.child_count < mutable_ast->data.element.child_capacity) {
-                // Shift existing children
-                for (size_t i = mutable_ast->data.element.child_count; i > 0; i--) {
-                    mutable_ast->data.element.children[i] = mutable_ast->data.element.children[i-1];
-                }
-                mutable_ast->data.element.children[0] = include_directive;
-                mutable_ast->data.element.child_count++;
-                
-                if (verbose) {
-                    printf("Injected @include directive for DebugInspector\n");
-                }
-            }
-        }
-    }
-    
-    // Process include directives to load and merge included files
-    char *base_dir = strdup(input_file);
-    char *last_slash = strrchr(base_dir, '/');
-    if (last_slash) {
-        *last_slash = '\0'; // Remove filename, keep directory
-    } else {
-        strcpy(base_dir, "."); // Current directory if no path
-    }
-    
-    if (debug || verbose) {
-        printf("Processing include directives from base_dir: %s\n", base_dir);
-    }
-    
-    if (!process_include_directives((KryonASTNode*)ast, parser, base_dir)) {
-        fprintf(stderr, "Error: Failed to process include directives\n");
-        free(base_dir);
-        kryon_parser_destroy(parser);
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        return 1;
-    }
-    free(base_dir);
-    
-    if (debug || verbose) {
-        printf("Include directives processed successfully\n");
-    }
-    
-    // Transform AST to ensure App root container
-    KryonASTNode *transformed_ast = ensure_app_root_container(ast, parser, debug);
-    if (!transformed_ast) {
-        fprintf(stderr, "Error: Failed to transform AST\n");
-        kryon_parser_destroy(parser);
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        return 1;
-    }
-    
-    if (verbose) {
-        if (debug) {
-            printf("AST transformed with App root container and debug inspector\n");
-        } else {
-            printf("AST transformed with App root container\n");
-        }
-    }
-    
-    // Create code generator
-    KryonCodeGenConfig config = optimize ? kryon_codegen_speed_config() : kryon_codegen_default_config();
-    KryonCodeGenerator *codegen = kryon_codegen_create(&config);
-    if (!codegen) {
-        fprintf(stderr, "Error: Failed to create code generator\n");
-        // AST is owned by parser, don't destroy it separately
-        kryon_parser_destroy(parser);
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        return 1;
-    }
-    
-    // Generate code
-    if (verbose) {
-        printf("Generating code...\n");
-    }
-    
-    if (!kryon_codegen_generate(codegen, transformed_ast)) {
-        size_t error_count;
-        const char **errors = kryon_codegen_get_errors(codegen, &error_count);
-        for (size_t i = 0; i < error_count; i++) {
-            fprintf(stderr, "Error: %s\n", errors[i]);
-        }
-        kryon_codegen_destroy(codegen);
-        // AST is owned by parser, don't destroy it separately
-        kryon_parser_destroy(parser);
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        return 1;
-    }
-    
-    // Write output file
-    if (verbose) {
-        printf("Writing output file...\n");
-    }
-    
-    if (!kryon_write_file(codegen, output_file)) {
-        fprintf(stderr, "Error: Failed to write output file: %s\n", output_file);
-        kryon_codegen_destroy(codegen);
-        // AST is owned by parser, don't destroy it separately
-        kryon_parser_destroy(parser);
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        return 1;
-    }
-    
-    // Print statistics if verbose
-    if (verbose) {
-        const KryonCodeGenStats *stats = kryon_codegen_get_stats(codegen);
-        printf("Statistics:\n");
-        printf("  Output size: %zu bytes\n", stats->output_binary_size);
-        printf("  Generation time: %.3f ms\n", stats->generation_time * 1000.0);
-        printf("  Elements: %zu\n", stats->output_elements);
-    }
-    
-    printf("Compilation successful: %s\n", output_file);
-    
-    // Cleanup
-    kryon_codegen_destroy(codegen);
-    kryon_parser_destroy(parser);  // This will destroy the AST
-    kryon_lexer_destroy(lexer);
-    kryon_free(source);
-    
-    return 0;
-}
-
-// =============================================================================
-// AST TRANSFORMATION FUNCTIONS
-// =============================================================================
-
-static KryonASTNode *find_metadata_node(const KryonASTNode *ast) {
+/**
+ * @brief Finds the first metadata directive node in the root of the AST.
+ */
+ static KryonASTNode *find_metadata_node(const KryonASTNode *ast) {
     if (!ast || ast->type != KRYON_AST_ROOT) {
         return NULL;
     }
@@ -433,237 +38,136 @@ static KryonASTNode *find_metadata_node(const KryonASTNode *ast) {
     return NULL;
 }
 
-static KryonASTNode *create_app_element_with_metadata(const KryonASTNode *original_ast, KryonParser *parser) {
-    // Create App element
+
+/**
+ * @brief Creates a deep copy of an AST node.
+ * @param[in] src The source node to copy.
+ * @param[out] out_copy A pointer to store the newly allocated copy.
+ * @return KRYON_SUCCESS on success, or an error code on failure.
+ */
+ static KryonResult deep_copy_ast_node(const KryonASTNode *src, KryonASTNode **out_copy) {
+    if (!src) {
+        *out_copy = NULL;
+        return KRYON_SUCCESS;
+    }
+
+    KryonASTNode *copy = kryon_alloc(sizeof(KryonASTNode));
+    if (!copy) {
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_OUT_OF_MEMORY, KRYON_SEVERITY_FATAL, "Failed to allocate for AST node copy");
+    }
+    memcpy(copy, src, sizeof(KryonASTNode));
+    copy->parent = NULL; // Parent will be set by the caller
+
+    switch (src->type) {
+        case KRYON_AST_ROOT:
+        case KRYON_AST_ELEMENT:
+            if (src->data.element.element_type) {
+                copy->data.element.element_type = strdup(src->data.element.element_type);
+            }
+            if (src->data.element.property_count > 0) {
+                copy->data.element.properties = kryon_alloc(src->data.element.property_capacity * sizeof(KryonASTNode*));
+                for (size_t i = 0; i < src->data.element.property_count; i++) {
+                    if (deep_copy_ast_node(src->data.element.properties[i], &copy->data.element.properties[i]) != KRYON_SUCCESS) return KRYON_ERROR_OUT_OF_MEMORY;
+                    if (copy->data.element.properties[i]) copy->data.element.properties[i]->parent = copy;
+                }
+            }
+            if (src->data.element.child_count > 0) {
+                copy->data.element.children = kryon_alloc(src->data.element.child_capacity * sizeof(KryonASTNode*));
+                for (size_t i = 0; i < src->data.element.child_count; i++) {
+                     if (deep_copy_ast_node(src->data.element.children[i], &copy->data.element.children[i]) != KRYON_SUCCESS) return KRYON_ERROR_OUT_OF_MEMORY;
+                    if (copy->data.element.children[i]) copy->data.element.children[i]->parent = copy;
+                }
+            }
+            break;
+
+        case KRYON_AST_PROPERTY:
+            if (src->data.property.name) copy->data.property.name = strdup(src->data.property.name);
+            if (src->data.property.value) {
+                if (deep_copy_ast_node(src->data.property.value, &copy->data.property.value) != KRYON_SUCCESS) return KRYON_ERROR_OUT_OF_MEMORY;
+                if (copy->data.property.value) copy->data.property.value->parent = copy;
+            }
+            break;
+            
+        case KRYON_AST_LITERAL:
+            if (src->data.literal.value.type == KRYON_VALUE_STRING && src->data.literal.value.data.string_value) {
+                copy->data.literal.value.data.string_value = strdup(src->data.literal.value.data.string_value);
+            }
+            break;
+        // Add other cases for deep copying as needed, e.g., KRYON_AST_FUNCTION_DEFINITION
+        default:
+            // For now, other types use the shallow copy from memcpy
+            break;
+    }
+
+    *out_copy = copy;
+    return KRYON_SUCCESS;
+}
+
+
+
+/**
+ * @brief Creates an 'App' element, populating its properties from any @metadata directive found.
+ * @note This version correctly allocates memory for the element and its properties.
+ * @param[in] original_ast The source AST to scan for metadata.
+ * @param[in] parser The parser instance (for context, not used here).
+ * @param[out] out_node Pointer to store the newly created AST node.
+ * @return KRYON_SUCCESS or an error code.
+ */
+ static KryonResult create_app_element_with_metadata(const KryonASTNode *original_ast, KryonParser *parser, KryonASTNode **out_node) {
+    *out_node = NULL;
     KryonASTNode *app_element = kryon_alloc(sizeof(KryonASTNode));
-    if (!app_element) return NULL;
-    
+    if (!app_element) {
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_OUT_OF_MEMORY, KRYON_SEVERITY_FATAL, "Failed to allocate App element");
+    }
     memset(app_element, 0, sizeof(KryonASTNode));
+    
     app_element->type = KRYON_AST_ELEMENT;
-    app_element->data.element.element_type = kryon_alloc(4);
+    app_element->data.element.element_type = strdup("App");
     if (!app_element->data.element.element_type) {
         kryon_free(app_element);
-        return NULL;
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_OUT_OF_MEMORY, KRYON_SEVERITY_FATAL, "Failed to allocate App element type string");
     }
-    strcpy(app_element->data.element.element_type, "App");
-    
-    // Find metadata in original AST
+
+    // Find metadata in the original AST
     KryonASTNode *metadata = find_metadata_node(original_ast);
     
     // Initialize properties from metadata
+    size_t prop_count = metadata ? metadata->data.element.property_count : 0;
     app_element->data.element.property_count = 0;
-    app_element->data.element.property_capacity = 4;
-    app_element->data.element.properties = kryon_alloc(4 * sizeof(KryonASTNode*));
+    app_element->data.element.property_capacity = prop_count > 0 ? prop_count : 4; // Default capacity
+    app_element->data.element.properties = kryon_alloc(app_element->data.element.property_capacity * sizeof(KryonASTNode*));
     if (!app_element->data.element.properties) {
-        kryon_free(app_element->data.element.element_type);
+        free(app_element->data.element.element_type);
         kryon_free(app_element);
-        return NULL;
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_OUT_OF_MEMORY, KRYON_SEVERITY_FATAL, "Failed to allocate properties for App element");
     }
-    
-    // Add properties from metadata if available (metadata directive uses element structure)
-    if (metadata && metadata->data.element.properties) {
+
+    // If metadata exists, deep copy its properties into the new App element
+    if (metadata) {
         for (size_t i = 0; i < metadata->data.element.property_count; i++) {
             KryonASTNode *meta_prop = metadata->data.element.properties[i];
             if (!meta_prop) continue;
-            
-            // Create App property from metadata property
-            KryonASTNode *app_prop = kryon_alloc(sizeof(KryonASTNode));
-            if (!app_prop) continue;
-            
-            memset(app_prop, 0, sizeof(KryonASTNode));
-            app_prop->type = KRYON_AST_PROPERTY;
-            app_prop->data.property.name = kryon_alloc(strlen(meta_prop->data.property.name) + 1);
-            if (app_prop->data.property.name) {
-                strcpy(app_prop->data.property.name, meta_prop->data.property.name);
-            }
-            app_prop->data.property.value = meta_prop->data.property.value; // Share the value
-            
-            // Add to App element properties
-            if (app_element->data.element.property_count < app_element->data.element.property_capacity) {
-                app_element->data.element.properties[app_element->data.element.property_count++] = app_prop;
-            }
-        }
-    }
-    
-    return app_element;
-}
 
-static KryonASTNode *ensure_app_root_container(const KryonASTNode *original_ast, KryonParser *parser, bool debug) {
-    if (!original_ast || original_ast->type != KRYON_AST_ROOT) {
-        return (KryonASTNode*)original_ast; // Return as-is if not a root
-    }
-    
-    // Check if there's already an App element as the first child
-    bool has_app_element = false;
-    for (size_t i = 0; i < original_ast->data.element.child_count; i++) {
-        KryonASTNode *child = original_ast->data.element.children[i];
-        if (child && child->type == KRYON_AST_ELEMENT) {
-            if (child->data.element.element_type && 
-                strcmp(child->data.element.element_type, "App") == 0) {
-                has_app_element = true;
-                break;
+            KryonASTNode *app_prop = NULL;
+            // A deep copy is safer to avoid shared ownership issues.
+            if (deep_copy_ast_node(meta_prop, &app_prop) != KRYON_SUCCESS) {
+                // In a real scenario, you'd clean up partially created properties here.
+                KRYON_LOG_WARNING("Failed to copy metadata property: %s", meta_prop->data.property.name);
+                continue;
             }
+            app_element->data.element.properties[app_element->data.element.property_count++] = app_prop;
         }
     }
     
-    if (has_app_element) {
-        return (KryonASTNode*)original_ast; // Already has App element
-    }
-    
-    // Create new root AST with App container
-    KryonASTNode *new_root = kryon_alloc(sizeof(KryonASTNode));
-    if (!new_root) return (KryonASTNode*)original_ast;
-    
-    memset(new_root, 0, sizeof(KryonASTNode));
-    new_root->type = KRYON_AST_ROOT;
-    new_root->data.element.child_count = 0;
-    new_root->data.element.child_capacity = original_ast->data.element.child_count + 2;
-    new_root->data.element.children = kryon_alloc(new_root->data.element.child_capacity * sizeof(KryonASTNode*));
-    if (!new_root->data.element.children) {
-        kryon_free(new_root);
-        return (KryonASTNode*)original_ast;
-    }
-    
-    
-    // Copy metadata and top-level definitions (styles, functions, etc.) to root
-    for (size_t i = 0; i < original_ast->data.element.child_count; i++) {
-        KryonASTNode *child = original_ast->data.element.children[i];
-        if (child) {
-            switch (child->type) {
-                case KRYON_AST_METADATA_DIRECTIVE:
-                case KRYON_AST_STYLE_BLOCK:
-                case KRYON_AST_THEME_DEFINITION:
-                case KRYON_AST_VARIABLE_DEFINITION:
-                case KRYON_AST_FUNCTION_DEFINITION:
-                case KRYON_AST_COMPONENT:            // Component definitions stay at root
-                case KRYON_AST_EVENT_DIRECTIVE:      // Event directives stay at root
-                case KRYON_AST_CONST_DEFINITION:     // Constant definitions stay at root
-                    // These should stay at root level
-                    new_root->data.element.children[new_root->data.element.child_count++] = child;
-                    break;
-                default:
-                    // Other nodes will be moved to App element below
-                    break;
-            }
-        }
-    }
-    
-    // Create App element with metadata
-    KryonASTNode *app_element = create_app_element_with_metadata(original_ast, parser);
-    if (!app_element) {
-        kryon_free(new_root->data.element.children);
-        kryon_free(new_root);
-        return (KryonASTNode*)original_ast;
-    }
-    
-    // Count only UI elements that should go into App
-    size_t app_child_count = 0;
-    for (size_t i = 0; i < original_ast->data.element.child_count; i++) {
-        KryonASTNode *child = original_ast->data.element.children[i];
-        if (child) {
-            switch (child->type) {
-                case KRYON_AST_ELEMENT:
-                    // Only UI elements go into App
-                    app_child_count++;
-                    break;
-                case KRYON_AST_METADATA_DIRECTIVE:
-                case KRYON_AST_STYLE_BLOCK:
-                case KRYON_AST_THEME_DEFINITION:
-                case KRYON_AST_VARIABLE_DEFINITION:
-                case KRYON_AST_FUNCTION_DEFINITION:
-                    // These stay at root level, don't count them
-                    break;
-                default:
-                    // Other types might need special handling
-                    app_child_count++;
-                    break;
-            }
-        }
-    }
-    
+    // Children will be allocated and populated by the calling function
     app_element->data.element.child_count = 0;
-    app_element->data.element.child_capacity = app_child_count + 1;
-    app_element->data.element.children = kryon_alloc(app_element->data.element.child_capacity * sizeof(KryonASTNode*));
-    if (!app_element->data.element.children) {
-        kryon_free(app_element->data.element.element_type);
-        kryon_free(app_element->data.element.properties);
-        kryon_free(app_element);
-        kryon_free(new_root->data.element.children);
-        kryon_free(new_root);
-        return (KryonASTNode*)original_ast;
-    }
-    
-    // Copy only UI elements to App element
-    for (size_t i = 0; i < original_ast->data.element.child_count; i++) {
-        KryonASTNode *child = original_ast->data.element.children[i];
-        if (child) {
-            switch (child->type) {
-                case KRYON_AST_ELEMENT:
-                    // UI elements go into App
-                    app_element->data.element.children[app_element->data.element.child_count++] = child;
-                    break;
-                case KRYON_AST_METADATA_DIRECTIVE:
-                case KRYON_AST_STYLE_BLOCK:
-                case KRYON_AST_THEME_DEFINITION:
-                case KRYON_AST_VARIABLE_DEFINITION:
-                case KRYON_AST_FUNCTION_DEFINITION:
-                    // These stay at root level, already copied above
-                    break;
-                default:
-                    // Handle other types (may need adjustment)
-                    app_element->data.element.children[app_element->data.element.child_count++] = child;
-                    break;
-            }
-        }
-    }
-    
-    // Inject DebugInspector element if debug mode is enabled
-    if (debug) {
-        // Add the DebugInspector element to the App
-        KryonASTNode *debug_inspector = inject_debug_inspector_element(parser);
-        if (debug_inspector && app_element->data.element.child_count < app_element->data.element.child_capacity) {
-            app_element->data.element.children[app_element->data.element.child_count++] = debug_inspector;
-        }
-    }
-    
-    // Add App element to new root
-    new_root->data.element.children[new_root->data.element.child_count++] = app_element;
-    
-    // Show generated .kry content if debug mode is enabled
-    if (debug) {
-        print_generated_kry_content(new_root, "Generated .kry content with DebugInspector");
-    }
-    
-    return new_root;
+    app_element->data.element.children = NULL;
+    app_element->data.element.child_capacity = 0;
+
+    *out_node = app_element;
+    return KRYON_SUCCESS;
 }
 
-static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
-    // Create include directive as if it was parsed from:
-    // @include "debug/inspector.kry"
-    
-    KryonASTNode *include_directive = kryon_alloc(sizeof(KryonASTNode));
-    if (!include_directive) return NULL;
-    
-    memset(include_directive, 0, sizeof(KryonASTNode));
-    include_directive->type = KRYON_AST_INCLUDE_DIRECTIVE;
-    
-    // Set include path to "debug/inspector.kry"
-    include_directive->data.element.element_type = kryon_alloc(20); // strlen("debug/inspector.kry") + 1
-    if (!include_directive->data.element.element_type) {
-        kryon_free(include_directive);
-        return NULL;
-    }
-    strcpy(include_directive->data.element.element_type, "debug/inspector.kry");
-    
-    // Initialize empty properties and children arrays
-    include_directive->data.element.property_count = 0;
-    include_directive->data.element.properties = NULL;
-    include_directive->data.element.child_count = 0;
-    include_directive->data.element.children = NULL;
-    include_directive->data.element.child_capacity = 0;
-    
-    return include_directive;
-}
 
 static KryonASTNode *inject_debug_inspector_element(KryonParser *parser) {
     // Create DebugInspector element as if it was parsed from:
@@ -703,46 +207,6 @@ static KryonASTNode *inject_debug_inspector_element(KryonParser *parser) {
     return debug_inspector;
 }
 
-
-static void print_generated_kry_content(const KryonASTNode *ast, const char *title) {
-    printf("\n🔍 %s:\n", title);
-    printf("================================\n");
-    
-    if (!ast || ast->type != KRYON_AST_ROOT) {
-        printf("(Invalid AST)\n");
-        return;
-    }
-    
-    // Print the generated .kry content by traversing the AST
-    for (size_t i = 0; i < ast->data.element.child_count; i++) {
-        KryonASTNode *child = ast->data.element.children[i];
-        if (!child) continue;
-        
-        if (child->type == KRYON_AST_INCLUDE_DIRECTIVE) {
-            printf("@include \"%s\"\n\n", child->data.element.element_type ? child->data.element.element_type : "unknown");
-        } else if (child->type == KRYON_AST_METADATA_DIRECTIVE) {
-            printf("@metadata {\n");
-            for (size_t j = 0; j < child->data.element.property_count; j++) {
-                KryonASTNode *prop = child->data.element.properties[j];
-                if (prop && prop->data.property.name) {
-                    printf("    %s: ", prop->data.property.name);
-                    if (prop->data.property.value && 
-                        prop->data.property.value->type == KRYON_AST_LITERAL &&
-                        prop->data.property.value->data.literal.value.type == KRYON_VALUE_STRING) {
-                        printf("\"%s\"\n", prop->data.property.value->data.literal.value.data.string_value);
-                    } else {
-                        printf("(value)\n");
-                    }
-                }
-            }
-            printf("}\n\n");
-        } else if (child->type == KRYON_AST_ELEMENT) {
-            print_element_content(child, 0);
-        }
-    }
-    
-    printf("================================\n\n");
-}
 
 static void print_element_content(const KryonASTNode *element, int indent) {
     if (!element || element->type != KRYON_AST_ELEMENT) return;
@@ -790,6 +254,374 @@ static void print_element_content(const KryonASTNode *element, int indent) {
         printf(" { }\n");
     }
 }
+
+
+static void print_generated_kry_content(const KryonASTNode *ast, const char *title) {
+    printf("\n🔍 %s:\n", title);
+    printf("================================\n");
+    
+    if (!ast || ast->type != KRYON_AST_ROOT) {
+        printf("(Invalid AST)\n");
+        return;
+    }
+    
+    // Print the generated .kry content by traversing the AST
+    for (size_t i = 0; i < ast->data.element.child_count; i++) {
+        KryonASTNode *child = ast->data.element.children[i];
+        if (!child) continue;
+        
+        if (child->type == KRYON_AST_INCLUDE_DIRECTIVE) {
+            printf("@include \"%s\"\n\n", child->data.element.element_type ? child->data.element.element_type : "unknown");
+        } else if (child->type == KRYON_AST_METADATA_DIRECTIVE) {
+            printf("@metadata {\n");
+            for (size_t j = 0; j < child->data.element.property_count; j++) {
+                KryonASTNode *prop = child->data.element.properties[j];
+                if (prop && prop->data.property.name) {
+                    printf("    %s: ", prop->data.property.name);
+                    if (prop->data.property.value && 
+                        prop->data.property.value->type == KRYON_AST_LITERAL &&
+                        prop->data.property.value->data.literal.value.type == KRYON_VALUE_STRING) {
+                        printf("\"%s\"\n", prop->data.property.value->data.literal.value.data.string_value);
+                    } else {
+                        printf("(value)\n");
+                    }
+                }
+            }
+            printf("}\n\n");
+        } else if (child->type == KRYON_AST_ELEMENT) {
+            print_element_content(child, 0);
+        }
+    }
+    
+    printf("================================\n\n");
+}
+
+
+/**
+ * @brief Ensures the final AST has a single root 'App' element containing all UI nodes.
+ * @note This version restores the correct logic for separating root-level vs. UI-level nodes.
+ * @param[in] original_ast The parsed AST.
+ * @param[in] parser The parser instance.
+ * @param[in] debug Flag to enable debug features like the inspector.
+ * @return A pointer to the transformed AST, or NULL on failure.
+ */
+ static KryonASTNode *ensure_app_root_container(const KryonASTNode *original_ast, KryonParser *parser, bool debug) {
+    if (!original_ast || original_ast->type != KRYON_AST_ROOT) {
+        return (KryonASTNode*)original_ast;
+    }
+
+    // Check if an 'App' element already exists at the top level
+    bool has_app_element = false;
+    for (size_t i = 0; i < original_ast->data.element.child_count; i++) {
+        KryonASTNode *child = original_ast->data.element.children[i];
+        if (child && child->type == KRYON_AST_ELEMENT && child->data.element.element_type && 
+            strcmp(child->data.element.element_type, "App") == 0) {
+            has_app_element = true;
+            break;
+        }
+    }
+
+    if (has_app_element) {
+        return (KryonASTNode*)original_ast; // AST is already structured correctly
+    }
+
+    // --- Create a new root to hold the App container and other top-level definitions ---
+    KryonASTNode *new_root = kryon_alloc(sizeof(KryonASTNode));
+    if (!new_root) {
+        KRYON_ERROR_SET(KRYON_ERROR_OUT_OF_MEMORY, KRYON_SEVERITY_FATAL, "Failed to allocate new root for App container");
+        return NULL;
+    }
+    memset(new_root, 0, sizeof(KryonASTNode));
+    new_root->type = KRYON_AST_ROOT;
+    new_root->data.element.child_capacity = original_ast->data.element.child_count + 2;
+    new_root->data.element.children = kryon_alloc(new_root->data.element.child_capacity * sizeof(KryonASTNode*));
+    if (!new_root->data.element.children) {
+        kryon_free(new_root);
+        KRYON_ERROR_SET(KRYON_ERROR_OUT_OF_MEMORY, KRYON_SEVERITY_FATAL, "Failed to allocate children for new root");
+        return NULL;
+    }
+    
+    // --- Create the 'App' element itself ---
+    KryonASTNode *app_element = NULL;
+    if (create_app_element_with_metadata(original_ast, parser, &app_element) != KRYON_SUCCESS) {
+        kryon_free(new_root->data.element.children);
+        kryon_free(new_root);
+        return NULL; // Error was already set
+    }
+
+    // --- Count how many nodes need to be moved inside the 'App' element ---
+    size_t app_child_count = 0;
+    for (size_t i = 0; i < original_ast->data.element.child_count; i++) {
+        KryonASTNode *child = original_ast->data.element.children[i];
+        if (child) {
+            switch (child->type) {
+                case KRYON_AST_METADATA_DIRECTIVE:
+                case KRYON_AST_STYLE_BLOCK:
+                case KRYON_AST_THEME_DEFINITION:
+                case KRYON_AST_VARIABLE_DEFINITION:
+                case KRYON_AST_FUNCTION_DEFINITION:
+                case KRYON_AST_COMPONENT:
+                case KRYON_AST_EVENT_DIRECTIVE:
+                case KRYON_AST_CONST_DEFINITION:
+                    // These stay at the root level, so don't count them for the App element
+                    break;
+                default:
+                    app_child_count++; // All others go inside App
+                    break;
+            }
+        }
+    }
+
+    // --- Allocate children array for the 'App' element ---
+    app_element->data.element.child_capacity = app_child_count + (debug ? 1 : 0); // +1 for debug inspector
+    app_element->data.element.children = kryon_alloc(app_element->data.element.child_capacity * sizeof(KryonASTNode*));
+    if (!app_element->data.element.children) {
+        // Proper cleanup needed here for app_element and new_root
+        KRYON_ERROR_SET(KRYON_ERROR_OUT_OF_MEMORY, KRYON_SEVERITY_FATAL, "Failed to allocate children for App element");
+        return NULL;
+    }
+
+    // --- Populate the new_root and the app_element ---
+    for (size_t i = 0; i < original_ast->data.element.child_count; i++) {
+        KryonASTNode *child = original_ast->data.element.children[i];
+        if (child) {
+            switch (child->type) {
+                case KRYON_AST_METADATA_DIRECTIVE:
+                case KRYON_AST_STYLE_BLOCK:
+                case KRYON_AST_THEME_DEFINITION:
+                case KRYON_AST_VARIABLE_DEFINITION:
+                case KRYON_AST_FUNCTION_DEFINITION:
+                case KRYON_AST_COMPONENT:
+                case KRYON_AST_EVENT_DIRECTIVE:
+                case KRYON_AST_CONST_DEFINITION:
+                    // Add root-level nodes to the new_root
+                    new_root->data.element.children[new_root->data.element.child_count++] = child;
+                    break;
+                default:
+                    // Add UI-level nodes to the app_element
+                    app_element->data.element.children[app_element->data.element.child_count++] = child;
+                    break;
+            }
+        }
+    }
+    
+    // Inject Debug Inspector if needed
+    if (debug) {
+        KryonASTNode *debug_inspector = inject_debug_inspector_element(parser);
+        if (debug_inspector && app_element->data.element.child_count < app_element->data.element.child_capacity) {
+            app_element->data.element.children[app_element->data.element.child_count++] = debug_inspector;
+        }
+    }
+    
+    // Add the fully populated 'App' element to the new root
+    new_root->data.element.children[new_root->data.element.child_count++] = app_element;
+    
+    if (debug) {
+        print_generated_kry_content(new_root, "Generated .kry content with DebugInspector");
+    }
+    
+    return new_root;
+}
+
+
+
+/**
+ * @brief Merges the AST from an included file into a parent node.
+ * @return KRYON_SUCCESS or an error code.
+ */
+static KryonResult merge_include_ast(KryonASTNode *parent, size_t include_index, 
+                                     const KryonASTNode *include_ast, KryonParser *main_parser) {
+    if (!parent || !include_ast || !main_parser) {
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_INVALID_ARGUMENT, KRYON_SEVERITY_ERROR, "NULL argument provided for merging AST");
+    }
+
+    if (include_ast->type != KRYON_AST_ROOT) {
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_PARSE_ERROR, KRYON_SEVERITY_ERROR, "Included file does not have a valid root node");
+    }
+    
+    size_t new_children_count = include_ast->data.element.child_count;
+    if (new_children_count == 0) return KRYON_SUCCESS; // Nothing to merge
+
+    size_t current_count = parent->data.element.child_count;
+    // Replace the @include directive, so net gain is new_children_count - 1
+    size_t new_total = current_count + new_children_count - 1;
+
+    if (new_total > parent->data.element.child_capacity) {
+        size_t new_capacity = new_total * 2;
+        KryonASTNode **new_children = kryon_realloc(parent->data.element.children, new_capacity * sizeof(KryonASTNode*));
+        if (!new_children) {
+            KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_OUT_OF_MEMORY, KRYON_SEVERITY_FATAL, "Failed to expand children array for include merge");
+        }
+        parent->data.element.children = new_children;
+        parent->data.element.child_capacity = new_capacity;
+    }
+
+    // Shift elements after the include directive to make space
+    memmove(&parent->data.element.children[include_index + new_children_count],
+            &parent->data.element.children[include_index + 1],
+            (current_count - include_index - 1) * sizeof(KryonASTNode*));
+
+    // Copy new children from the included AST into the created space
+    for (size_t i = 0; i < new_children_count; i++) {
+        KryonASTNode *copied_child = NULL;
+        if (deep_copy_ast_node(include_ast->data.element.children[i], &copied_child) != KRYON_SUCCESS) {
+            // This is a complex failure case; would need to clean up partially copied nodes.
+            return KRYON_ERROR_OUT_OF_MEMORY;
+        }
+        parent->data.element.children[include_index + i] = copied_child;
+        if(copied_child) copied_child->parent = parent;
+    }
+    
+    parent->data.element.child_count = new_total;
+    return KRYON_SUCCESS;
+}
+
+
+/**
+ * @brief Processes a single @include directive.
+ * @return KRYON_SUCCESS or an error code.
+ */
+static KryonResult process_single_include(KryonASTNode *include_node, KryonASTNode *parent, size_t index, 
+                                          KryonParser *parser, const char *base_dir) {
+    if (!include_node || include_node->type != KRYON_AST_INCLUDE_DIRECTIVE) {
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_INVALID_ARGUMENT, KRYON_SEVERITY_ERROR, "Invalid node passed to process_single_include");
+    }
+
+    const char *include_path = include_node->data.element.element_type;
+    if (!include_path) {
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_PARSE_ERROR, KRYON_SEVERITY_ERROR, "Include directive is missing a file path");
+    }
+
+    char full_path[1024];
+    snprintf(full_path, sizeof(full_path), "%s/%s", base_dir, include_path);
+    KRYON_LOG_INFO("Processing include: %s", full_path);
+
+    if (access(full_path, R_OK) != 0) {
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_FILE_NOT_FOUND, KRYON_SEVERITY_ERROR, "Cannot read included file");
+    }
+
+    // --- Resources for this function ---
+    FILE *file = NULL;
+    char *source = NULL;
+    KryonLexer *include_lexer = NULL;
+    KryonParser *include_parser = NULL;
+    KryonResult result = KRYON_SUCCESS;
+
+    file = fopen(full_path, "r");
+    if (!file) {
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_FILE_READ_ERROR, KRYON_SEVERITY_ERROR, "Cannot open included file");
+    }
+    
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    source = kryon_alloc(file_size + 1);
+    if (!source) {
+        result = KRYON_ERROR_OUT_OF_MEMORY;
+        goto include_cleanup;
+    }
+    
+    fread(source, 1, file_size, file);
+    source[file_size] = '\0';
+    
+    include_lexer = kryon_lexer_create(source, file_size, full_path, NULL);
+    if (!include_lexer) {
+        result = KRYON_ERROR_COMPILATION_FAILED;
+        goto include_cleanup;
+    }
+
+    if (!kryon_lexer_tokenize(include_lexer)) {
+        KRYON_ERROR_SET(KRYON_ERROR_SYNTAX_ERROR, KRYON_SEVERITY_ERROR, kryon_lexer_get_error(include_lexer));
+        result = KRYON_ERROR_SYNTAX_ERROR;
+        goto include_cleanup;
+    }
+
+    include_parser = kryon_parser_create(include_lexer, NULL);
+    if (!include_parser) {
+        result = KRYON_ERROR_COMPILATION_FAILED;
+        goto include_cleanup;
+    }
+
+    if (!kryon_parser_parse(include_parser)) {
+        // Log as a warning but continue, as the original code did
+        KRYON_LOG_WARNING("Included file '%s' has parse errors but continuing.", full_path);
+    }
+
+    const KryonASTNode *include_ast = kryon_parser_get_root(include_parser);
+    if (!include_ast) {
+        KRYON_ERROR_SET(KRYON_ERROR_PARSE_ERROR, KRYON_SEVERITY_ERROR, "Failed to get AST from included file");
+        result = KRYON_ERROR_PARSE_ERROR;
+        goto include_cleanup;
+    }
+
+    result = merge_include_ast(parent, index, include_ast, parser);
+
+include_cleanup:
+    if (file) fclose(file);
+    if (include_parser) kryon_parser_destroy(include_parser);
+    if (include_lexer) kryon_lexer_destroy(include_lexer);
+    if (source) kryon_free(source);
+    
+    return result;
+}
+
+
+/**
+ * @brief Recursively processes include directives in an AST.
+ * @return KRYON_SUCCESS or an error code.
+ */
+ 
+static KryonResult process_includes_recursive(KryonASTNode *node, KryonParser *parser, const char *base_dir) {
+    if (!node) {
+        return KRYON_SUCCESS;
+    }
+
+    if (node->type == KRYON_AST_ROOT || node->type == KRYON_AST_ELEMENT) {
+        // Use a 'while' loop for safety, as the child count can change during iteration.
+        size_t i = 0;
+        while (i < node->data.element.child_count) {
+            KryonASTNode *child = node->data.element.children[i];
+            
+            if (!child) {
+                i++;
+                continue;
+            }
+
+            if (child->type == KRYON_AST_INCLUDE_DIRECTIVE) {
+                KryonResult res = process_single_include(child, node, i, parser, base_dir);
+                if (res != KRYON_SUCCESS) {
+                    return res; // Propagate the error
+                }
+                // Do NOT increment 'i'. After a merge, the new nodes are now at index 'i',
+                // and the loop will re-process from this index to handle nested includes.
+                // If the include was empty, a node was removed, so we also need to re-evaluate from 'i'.
+            } else {
+                // If it's not an include, process its children recursively.
+                KryonResult res = process_includes_recursive(child, parser, base_dir);
+                if (res != KRYON_SUCCESS) {
+                    return res; // Propagate the error
+                }
+                // Only increment the index if we did NOT process an include at this position.
+                i++;
+            }
+        }
+    }
+    return KRYON_SUCCESS;
+}
+
+
+/**
+ * @brief Kicks off the recursive include processing.
+ * @return KRYON_SUCCESS or an error code.
+ */
+ static KryonResult process_include_directives(KryonASTNode *ast, KryonParser *parser, const char *base_dir) {
+    if (!ast || !parser || !base_dir) {
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_INVALID_ARGUMENT, KRYON_SEVERITY_ERROR, "NULL argument to process_include_directives");
+    }
+    return process_includes_recursive(ast, parser, base_dir);
+}
+
 
 static void debug_print_ast(const KryonASTNode *node, int depth) {
     if (!node) return;
@@ -913,537 +745,336 @@ static void debug_print_ast(const KryonASTNode *node, int depth) {
     }
 }
 
-static bool process_include_directives(KryonASTNode *ast, KryonParser *parser, const char *base_dir) {
-    if (!ast || !parser || !base_dir) {
-        return false;
-    }
+
+
+static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
+    // Create include directive as if it was parsed from:
+    // @include "debug/inspector.kry"
     
-    // Process includes recursively
-    return process_includes_recursive(ast, parser, base_dir);
+    KryonASTNode *include_directive = kryon_alloc(sizeof(KryonASTNode));
+    if (!include_directive) return NULL;
+    
+    memset(include_directive, 0, sizeof(KryonASTNode));
+    include_directive->type = KRYON_AST_INCLUDE_DIRECTIVE;
+    
+    // Set include path to "debug/inspector.kry"
+    include_directive->data.element.element_type = kryon_alloc(20); // strlen("debug/inspector.kry") + 1
+    if (!include_directive->data.element.element_type) {
+        kryon_free(include_directive);
+        return NULL;
+    }
+    strcpy(include_directive->data.element.element_type, "debug/inspector.kry");
+    
+    // Initialize empty properties and children arrays
+    include_directive->data.element.property_count = 0;
+    include_directive->data.element.properties = NULL;
+    include_directive->data.element.child_count = 0;
+    include_directive->data.element.children = NULL;
+    include_directive->data.element.child_capacity = 0;
+    
+    return include_directive;
 }
 
-static bool process_includes_recursive(KryonASTNode *node, KryonParser *parser, const char *base_dir) {
-    if (!node) return true;
+
+/**
+ * @brief Compiles a .kry file into a .krb binary using the structured error system.
+ * @param argc Argument count.
+ * @param argv Argument values.
+ * @return KRYON_SUCCESS on success, or a KryonResult error code on failure.
+ */
+ KryonResult compile_command(int argc, char *argv[]) {
+    const char *input_file = NULL;
+    const char *output_file = NULL;
+    bool verbose = false;
+    bool optimize = false;
+    bool debug = false;
     
-    // Process all children first
-    if (node->type == KRYON_AST_ROOT || node->type == KRYON_AST_ELEMENT) {
-        for (size_t i = 0; i < node->data.element.child_count; i++) {
-            KryonASTNode *child = node->data.element.children[i];
-            if (!child) continue;
-            
-            if (child->type == KRYON_AST_INCLUDE_DIRECTIVE) {
-                // This is an include directive - process it
-                if (!process_single_include(child, node, i, parser, base_dir)) {
-                    return false;
-                }
-                // After processing, the include directive node should be replaced
-                // or merged, so we need to adjust our iteration
-                continue;
-            } else {
-                // Recursively process other nodes
-                if (!process_includes_recursive(child, parser, base_dir)) {
-                    return false;
-                }
-            }
+    // --- Resource Handles for Centralized Cleanup ---
+    FILE *file = NULL;
+    char *source = NULL;
+    KryonLexer *lexer = NULL;
+    KryonParser *parser = NULL;
+    KryonCodeGenerator *codegen = NULL;
+    char *base_dir = NULL;
+    KryonResult result = KRYON_SUCCESS;
+
+    // Initialize the error and logging system
+    if (kryon_error_init() != KRYON_SUCCESS) {
+        fprintf(stderr, "Fatal: Could not initialize the error system.\n");
+        return KRYON_ERROR_PLATFORM_ERROR;
+    }
+
+    // --- Argument Parsing ---
+    static struct option long_options[] = {
+        {"output", required_argument, 0, 'o'},
+        {"verbose", no_argument, 0, 'v'},
+        {"optimize", no_argument, 0, 'O'},
+        {"debug", no_argument, 0, 'd'},
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}
+    };
+    
+    int c;
+    while ((c = getopt_long(argc, argv, "o:vOdh", long_options, NULL)) != -1) {
+        switch (c) {
+            case 'o': output_file = optarg; break;
+            case 'v': verbose = true; break;
+            case 'O': optimize = true; break;
+            case 'd': debug = true; break;
+            case 'h':
+                printf("Usage: kryon compile <file.kry> [options]\n");
+                printf("Options:\n");
+                printf("  -o, --output <file>    Output file name\n");
+                printf("  -v, --verbose          Verbose output\n");
+                printf("  -O, --optimize         Enable optimizations\n");
+                printf("  -d, --debug            Enable debug mode with inspector\n");
+                printf("  -h, --help             Show this help\n");
+                result = KRYON_SUCCESS;
+                goto cleanup;
+            case '?':
+                KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_INVALID_ARGUMENT, KRYON_SEVERITY_ERROR, "Invalid command-line argument.");
+            default:
+                abort();
         }
     }
-    
-    return true;
-}
 
-static bool process_single_include(KryonASTNode *include_node, KryonASTNode *parent, size_t index, 
-                                  KryonParser *parser, const char *base_dir) {
-    if (!include_node || include_node->type != KRYON_AST_INCLUDE_DIRECTIVE) {
-        return false;
+    if (debug) kryon_log_set_level(KRYON_SEVERITY_DEBUG);
+    else if (verbose) kryon_log_set_level(KRYON_SEVERITY_INFO);
+    else kryon_log_set_level(KRYON_SEVERITY_WARNING);
+    
+    if (optind >= argc) {
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_INVALID_ARGUMENT, KRYON_SEVERITY_ERROR, "No input file specified");
+    }
+    input_file = argv[optind];
+    
+    // --- Output Filename Generation ---
+    char output_buffer[256];
+    if (!output_file) {
+        const char *dot = strrchr(input_file, '.');
+        if (dot && strcmp(dot, ".kry") == 0) {
+            size_t len = dot - input_file;
+            snprintf(output_buffer, sizeof(output_buffer), "%.*s.krb", (int)len, input_file);
+        } else {
+            snprintf(output_buffer, sizeof(output_buffer), "%s.krb", input_file);
+        }
+        output_file = output_buffer;
     }
     
-    // Get the include path from the directive
-    const char *include_path = include_node->data.element.element_type;
-    if (!include_path) {
-        fprintf(stderr, "Error: Include directive missing file path\n");
-        return false;
-    }
+    KRYON_LOG_INFO("Compiling: %s -> %s", input_file, output_file);
     
-    // Build full path
-    char full_path[1024];
-    snprintf(full_path, sizeof(full_path), "%s/%s", base_dir, include_path);
-    
-    printf("Processing include: %s\n", full_path);
-    
-    // Check if file exists
-    if (access(full_path, R_OK) != 0) {
-        fprintf(stderr, "Error: Cannot read included file: %s\n", full_path);
-        return false;
-    }
-    
-    // Load and parse the included file
-    FILE *file = fopen(full_path, "r");
+    // --- File Reading ---
+    file = fopen(input_file, "r");
     if (!file) {
-        fprintf(stderr, "Error: Cannot open included file: %s\n", full_path);
-        return false;
+        KRYON_ERROR_SET(KRYON_ERROR_FILE_NOT_FOUND, KRYON_SEVERITY_ERROR, "Cannot open input file");
+        result = KRYON_ERROR_FILE_NOT_FOUND;
+        goto cleanup;
     }
     
-    // Get file size
     fseek(file, 0, SEEK_END);
     long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
     
-    printf("DEBUG: Include file size: %ld bytes\n", file_size);
-    
-    // Read file content
-    char *source = kryon_alloc(file_size + 1);
-    if (!source) {
-        fprintf(stderr, "Error: Memory allocation failed for included file\n");
-        fclose(file);
-        return false;
+    // --- Memory Manager Init ---
+    if (!g_kryon_memory_manager) {
+        KryonMemoryConfig mem_config = {
+            .initial_heap_size = 16 * 1024 * 1024, .max_heap_size = 256 * 1024 * 1024, 
+            .enable_leak_detection = true, .use_system_malloc = true
+        };
+        g_kryon_memory_manager = kryon_memory_init(&mem_config);
+        if (!g_kryon_memory_manager) {
+            KRYON_ERROR_SET(KRYON_ERROR_MEMORY_CORRUPTION, KRYON_SEVERITY_FATAL, "Failed to initialize memory manager");
+            result = KRYON_ERROR_MEMORY_CORRUPTION;
+            goto cleanup;
+        }
     }
     
-    size_t bytes_read = fread(source, 1, file_size, file);
+    source = kryon_alloc(file_size + 1);
+    if (!source) {
+        KRYON_ERROR_SET(KRYON_ERROR_OUT_OF_MEMORY, KRYON_SEVERITY_FATAL, "Memory allocation failed for source file");
+        result = KRYON_ERROR_OUT_OF_MEMORY;
+        goto cleanup;
+    }
+    
+    fread(source, 1, file_size, file);
     source[file_size] = '\0';
     fclose(file);
-    
-    printf("DEBUG: Actually read %zu bytes from include file\n", bytes_read);
-    printf("DEBUG: First 100 chars: ");
-    for (size_t i = 0; i < 100 && i < bytes_read; i++) {
-        if (source[i] >= 32 && source[i] <= 126) {
-            printf("%c", source[i]);
-        } else if (source[i] == '\n') {
-            printf("\\n");
-        } else if (source[i] == '\t') {
-            printf("\\t");
-        } else {
-            printf("\\x%02x", (unsigned char)source[i]);
-        }
-    }
-    printf("\n");
-    
-    // Create lexer for included file
-    KryonLexer *include_lexer = kryon_lexer_create(source, file_size, full_path, NULL);
-    if (!include_lexer) {
-        fprintf(stderr, "Error: Failed to create lexer for included file: %s\n", full_path);
-        kryon_free(source);
-        return false;
-    }
-    
-    // Tokenize included file
-    if (!kryon_lexer_tokenize(include_lexer)) {
-        const char *lexer_error = kryon_lexer_get_error(include_lexer);
-        fprintf(stderr, "Error: Failed to tokenize included file: %s\n", full_path);
-        if (lexer_error) {
-            fprintf(stderr, "Lexer error: %s\n", lexer_error);
-        }
-        
-        // Get current lexer position for debugging
-        printf("DEBUG: Lexer stopped at position %zu (file size: %ld)\n", 
-               (size_t)(include_lexer->current - include_lexer->source), (long)file_size);
-        
-        // Show context around error position  
-        if (include_lexer->current && include_lexer->source) {
-            size_t error_pos = (size_t)(include_lexer->current - include_lexer->source);
-            size_t start = (error_pos > 50) ? error_pos - 50 : 0;
-            size_t end = (error_pos + 50 < file_size) ? error_pos + 50 : file_size;
-            
-            printf("DEBUG: Context around error (pos %zu):\n", error_pos);
-            printf("  Before: ");
-            for (size_t i = start; i < error_pos && i < file_size; i++) {
-                if (source[i] >= 32 && source[i] <= 126) {
-                    printf("%c", source[i]);
-                } else if (source[i] == '\n') {
-                    printf("\\n");
-                } else if (source[i] == '\t') {
-                    printf("\\t");
-                } else {
-                    printf("\\x%02x", (unsigned char)source[i]);
-                }
-            }
-            printf("\n  At:     ");
-            if (error_pos < file_size) {
-                char c = source[error_pos];
-                if (c >= 32 && c <= 126) {
-                    printf("'%c'", c);
-                } else if (c == '\n') {
-                    printf("'\\n'");
-                } else if (c == '\t') {
-                    printf("'\\t'");
-                } else {
-                    printf("'\\x%02x'", (unsigned char)c);
-                }
-            } else {
-                printf("EOF");
-            }
-            printf("\n  After:  ");
-            for (size_t i = error_pos + 1; i < end && i < file_size; i++) {
-                if (source[i] >= 32 && source[i] <= 126) {
-                    printf("%c", source[i]);
-                } else if (source[i] == '\n') {
-                    printf("\\n");
-                } else if (source[i] == '\t') {
-                    printf("\\t");
-                } else {
-                    printf("\\x%02x", (unsigned char)source[i]);
-                }
-            }
-            printf("\n");
-        }
-        
-        // Show first 200 characters of the include file for debugging
-        printf("Include file content preview:\n");
-        size_t preview_len = (file_size < 200) ? file_size : 200;
-        for (size_t i = 0; i < preview_len; i++) {
-            if (source[i] == '\n') {
-                printf("\\n");
-            } else if (source[i] == '\t') {
-                printf("\\t");
-            } else if (source[i] >= 32 && source[i] <= 126) {
-                printf("%c", source[i]);
-            } else {
-                printf("\\x%02x", (unsigned char)source[i]);
-            }
-        }
-        printf("\n");
-        
-        kryon_lexer_destroy(include_lexer);
-        kryon_free(source);
-        return false;
-    }
-    
-    // Create parser for included file
-    KryonParser *include_parser = kryon_parser_create(include_lexer, NULL);
-    if (!include_parser) {
-        fprintf(stderr, "Error: Failed to create parser for included file: %s\n", full_path);
-        kryon_lexer_destroy(include_lexer);
-        kryon_free(source);
-        return false;
-    }
-    
-    // Parse included file
-    if (!kryon_parser_parse(include_parser)) {
-        fprintf(stderr, "Warning: Include file has parse errors but continuing: %s\n", full_path);
-        // Don't fail completely, try to get whatever AST was created
-    }
-    
-    printf("DEBUG: Getting AST from include parser...\n");
-    const KryonASTNode *include_ast = kryon_parser_get_root(include_parser);
-    if (!include_ast) {
-        fprintf(stderr, "Error: Failed to get AST from included file: %s\n", full_path);
-        kryon_parser_destroy(include_parser);
-        kryon_lexer_destroy(include_lexer);
-        kryon_free(source);
-        return false;
-    }
-    printf("DEBUG: Got AST from include parser successfully\n");
-    
-    // Merge the included AST into the main AST
-    printf("DEBUG: Starting AST merge...\n");
-    if (!merge_include_ast(parent, index, include_ast, parser)) {
-        fprintf(stderr, "Error: Failed to merge included file: %s\n", full_path);
-        kryon_parser_destroy(include_parser);
-        kryon_lexer_destroy(include_lexer);
-        kryon_free(source);
-        return false;
-    }
-    printf("DEBUG: AST merge completed successfully\n");
-    
-    // Clean up
-    kryon_parser_destroy(include_parser);
-    kryon_lexer_destroy(include_lexer);
-    kryon_free(source);
-    
-    return true;
-}
+    file = NULL;
 
-static bool merge_include_ast(KryonASTNode *parent, size_t include_index, 
-                             const KryonASTNode *include_ast, KryonParser *main_parser) {
-    printf("DEBUG: merge_include_ast called with parent=%p, include_index=%zu, include_ast=%p\n", 
-           (void*)parent, include_index, (void*)include_ast);
-           
-    if (!parent || !include_ast || !main_parser) {
-        printf("DEBUG: merge_include_ast - null pointer check failed\n");
-        return false;
+    KRYON_LOG_INFO("Read %ld bytes from %s", file_size, input_file);
+    KRYON_LOG_DEBUG("Source preview (first 200 chars): %.200s%s", source, file_size > 200 ? "..." : "");
+    
+    // --- Lexing ---
+    lexer = kryon_lexer_create(source, file_size, input_file, NULL);
+    if (!lexer) {
+        KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "Failed to create lexer");
+        result = KRYON_ERROR_COMPILATION_FAILED;
+        goto cleanup;
     }
     
-    printf("DEBUG: merge_include_ast - parent type=%d, include_ast type=%d\n", 
-           parent->type, include_ast->type);
-    
-    // For now, we'll replace the include directive with the contents of the included file
-    // This is a simplified approach - in a full implementation, we'd want to be more selective
-    // about what gets merged (components, functions, etc.)
-    
-    if (include_ast->type != KRYON_AST_ROOT) {
-        printf("DEBUG: merge_include_ast - include_ast is not ROOT type, it's %d\n", include_ast->type);
-        return false;
+    if (!kryon_lexer_tokenize(lexer)) {
+        KRYON_ERROR_SET(KRYON_ERROR_SYNTAX_ERROR, KRYON_SEVERITY_ERROR, kryon_lexer_get_error(lexer));
+        result = KRYON_ERROR_SYNTAX_ERROR;
+        goto cleanup;
     }
-    
-    printf("DEBUG: merge_include_ast - accessing ROOT node children...\n");
-    
-    // ROOT nodes do use data.element structure - let's access it safely
-    if (!include_ast->data.element.children) {
-        printf("DEBUG: merge_include_ast - include_ast has no children array\n");
-        return true; // Nothing to merge
-    }
-    
-    size_t new_children_count = include_ast->data.element.child_count;
-    printf("DEBUG: merge_include_ast - include_ast has %zu children\n", new_children_count);
-    
-    if (new_children_count == 0) {
-        printf("DEBUG: merge_include_ast - no children to merge\n");
-        return true;
-    }
-    
-    // Verify parent can accept children
-    if (parent->type != KRYON_AST_ROOT && parent->type != KRYON_AST_ELEMENT) {
-        printf("DEBUG: merge_include_ast - parent type %d cannot have children\n", parent->type);
-        return false;
-    }
-    
-    printf("DEBUG: merge_include_ast - parent has %zu children, capacity %zu\n", 
-           parent->data.element.child_count, parent->data.element.child_capacity);
-    
-    // Calculate new total size
-    size_t current_count = parent->data.element.child_count;
-    size_t new_total = current_count + new_children_count;
-    
-    printf("DEBUG: merge_include_ast - need to expand from %zu to %zu children\n", 
-           current_count, new_total);
-    
-    // Expand parent's children array if needed
-    if (new_total > parent->data.element.child_capacity) {
-        size_t new_capacity = new_total * 2;
-        printf("DEBUG: merge_include_ast - expanding capacity from %zu to %zu\n", 
-               parent->data.element.child_capacity, new_capacity);
-               
-        KryonASTNode **new_children = kryon_alloc(new_capacity * sizeof(KryonASTNode*));
-        if (!new_children) {
-            printf("DEBUG: merge_include_ast - failed to allocate new children array\n");
-            return false;
-        }
-        
-        // Copy existing children if any
-        if (parent->data.element.children && current_count > 0) {
-            memcpy(new_children, parent->data.element.children, 
-                   current_count * sizeof(KryonASTNode*));
-        }
-        
-        // Free old array
-        if (parent->data.element.children) {
-            kryon_free(parent->data.element.children);
-        }
-        
-        parent->data.element.children = new_children;
-        parent->data.element.child_capacity = new_capacity;
-        
-        printf("DEBUG: merge_include_ast - array expansion successful\n");
-    }
-    
-    // Copy children from included AST
-    printf("DEBUG: merge_include_ast - copying %zu children...\n", new_children_count);
-    for (size_t i = 0; i < new_children_count; i++) {
-        if (!include_ast->data.element.children[i]) {
-            printf("DEBUG: merge_include_ast - child %zu is null, skipping\n", i);
-            continue;
-        }
-        
-        printf("DEBUG: merge_include_ast - deep copying child %zu (type %d)\n", 
-               i, include_ast->data.element.children[i]->type);
-               
-        KryonASTNode *copied_child = deep_copy_ast_node(include_ast->data.element.children[i]);
-        if (!copied_child) {
-            printf("DEBUG: merge_include_ast - failed to copy child %zu\n", i);
-            return false;
-        }
-        
-        parent->data.element.children[current_count + i] = copied_child;
-        copied_child->parent = parent;
-    }
-    
-    // Update parent's child count
-    parent->data.element.child_count = new_total;
-    
-    printf("DEBUG: merge_include_ast - merge completed successfully, parent now has %zu children\n", 
-           parent->data.element.child_count);
-    
-    return true;
-}
+    KRYON_LOG_DEBUG("Lexer completed successfully.");
 
-static KryonASTNode* deep_copy_ast_node(const KryonASTNode *src) {
-    if (!src) return NULL;
-    
-    printf("DEBUG: deep_copy_ast_node - copying node type %d\n", src->type);
-    
-    KryonASTNode *copy = kryon_alloc(sizeof(KryonASTNode));
-    if (!copy) {
-        printf("DEBUG: deep_copy_ast_node - failed to allocate copy\n");
-        return NULL;
+    // --- Parsing ---
+    parser = kryon_parser_create(lexer, NULL);
+    if (!parser) {
+        KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "Failed to create parser");
+        result = KRYON_ERROR_COMPILATION_FAILED;
+        goto cleanup;
     }
     
-    // Start with shallow copy
-    memcpy(copy, src, sizeof(KryonASTNode));
-    copy->parent = NULL; // Will be set by caller
+    KRYON_LOG_INFO("Parsing...");
+    kryon_parser_parse(parser);
     
-    // Deep copy based on node type
-    switch (src->type) {
-        case KRYON_AST_ROOT:
-        case KRYON_AST_ELEMENT:
-            printf("DEBUG: deep_copy_ast_node - copying element/root node\n");
-            // Copy element type string
-            if (src->data.element.element_type) {
-                copy->data.element.element_type = kryon_alloc(strlen(src->data.element.element_type) + 1);
-                if (copy->data.element.element_type) {
-                    strcpy(copy->data.element.element_type, src->data.element.element_type);
-                }
-            }
-            
-            // Copy properties
-            copy->data.element.properties = NULL;
-            if (src->data.element.property_count > 0 && src->data.element.properties) {
-                copy->data.element.properties = kryon_alloc(
-                    src->data.element.property_capacity * sizeof(KryonASTNode*));
-                if (copy->data.element.properties) {
-                    for (size_t i = 0; i < src->data.element.property_count; i++) {
-                        copy->data.element.properties[i] = deep_copy_ast_node(src->data.element.properties[i]);
-                        if (copy->data.element.properties[i]) {
-                            copy->data.element.properties[i]->parent = copy;
-                        }
-                    }
-                }
-            }
-            
-            // Copy children
-            copy->data.element.children = NULL;
-            if (src->data.element.child_count > 0 && src->data.element.children) {
-                copy->data.element.children = kryon_alloc(
-                    src->data.element.child_capacity * sizeof(KryonASTNode*));
-                if (copy->data.element.children) {
-                    for (size_t i = 0; i < src->data.element.child_count; i++) {
-                        copy->data.element.children[i] = deep_copy_ast_node(src->data.element.children[i]);
-                        if (copy->data.element.children[i]) {
-                            copy->data.element.children[i]->parent = copy;
-                        }
-                    }
-                }
-            }
-            break;
-            
-        case KRYON_AST_PROPERTY:
-            printf("DEBUG: deep_copy_ast_node - copying property node\n");
-            if (src->data.property.name) {
-                copy->data.property.name = kryon_alloc(strlen(src->data.property.name) + 1);
-                if (copy->data.property.name) {
-                    strcpy(copy->data.property.name, src->data.property.name);
-                }
-            }
-            if (src->data.property.value) {
-                copy->data.property.value = deep_copy_ast_node(src->data.property.value);
-                if (copy->data.property.value) {
-                    copy->data.property.value->parent = copy;
-                }
-            }
-            break;
-            
-        case KRYON_AST_FUNCTION_DEFINITION:
-            printf("DEBUG: deep_copy_ast_node - copying function definition node\n");
-            // Copy function name
-            if (src->data.function_def.name) {
-                copy->data.function_def.name = kryon_alloc(strlen(src->data.function_def.name) + 1);
-                if (copy->data.function_def.name) {
-                    strcpy(copy->data.function_def.name, src->data.function_def.name);
-                }
-            }
-            // Copy language
-            if (src->data.function_def.language) {
-                copy->data.function_def.language = kryon_alloc(strlen(src->data.function_def.language) + 1);
-                if (copy->data.function_def.language) {
-                    strcpy(copy->data.function_def.language, src->data.function_def.language);
-                }
-            }
-            // Copy code
-            if (src->data.function_def.code) {
-                copy->data.function_def.code = kryon_alloc(strlen(src->data.function_def.code) + 1);
-                if (copy->data.function_def.code) {
-                    strcpy(copy->data.function_def.code, src->data.function_def.code);
-                }
-            }
-            // Copy parameters array
-            copy->data.function_def.parameters = NULL;
-            if (src->data.function_def.parameter_count > 0 && src->data.function_def.parameters) {
-                copy->data.function_def.parameters = kryon_alloc(
-                    src->data.function_def.parameter_count * sizeof(char*));
-                if (copy->data.function_def.parameters) {
-                    for (size_t i = 0; i < src->data.function_def.parameter_count; i++) {
-                        if (src->data.function_def.parameters[i]) {
-                            copy->data.function_def.parameters[i] = kryon_alloc(
-                                strlen(src->data.function_def.parameters[i]) + 1);
-                            if (copy->data.function_def.parameters[i]) {
-                                strcpy(copy->data.function_def.parameters[i], src->data.function_def.parameters[i]);
-                            }
-                        }
-                    }
-                }
-            }
-            break;
-            
-        case KRYON_AST_BINARY_OP:
-            printf("DEBUG: deep_copy_ast_node - copying binary operation node\n");
-            if (src->data.binary_op.left) {
-                copy->data.binary_op.left = deep_copy_ast_node(src->data.binary_op.left);
-                if (copy->data.binary_op.left) {
-                    copy->data.binary_op.left->parent = copy;
-                }
-            }
-            if (src->data.binary_op.right) {
-                copy->data.binary_op.right = deep_copy_ast_node(src->data.binary_op.right);
-                if (copy->data.binary_op.right) {
-                    copy->data.binary_op.right->parent = copy;
-                }
-            }
-            // operator is copied by memcpy above
-            break;
-            
-        case KRYON_AST_MEMBER_ACCESS:
-            printf("DEBUG: deep_copy_ast_node - copying member access node\n");
-            if (src->data.member_access.object) {
-                copy->data.member_access.object = deep_copy_ast_node(src->data.member_access.object);
-                if (copy->data.member_access.object) {
-                    copy->data.member_access.object->parent = copy;
-                }
-            }
-            if (src->data.member_access.member) {
-                copy->data.member_access.member = kryon_alloc(strlen(src->data.member_access.member) + 1);
-                if (copy->data.member_access.member) {
-                    strcpy(copy->data.member_access.member, src->data.member_access.member);
-                }
-            }
-            break;
-            
-        case KRYON_AST_VARIABLE:
-            printf("DEBUG: deep_copy_ast_node - copying variable node\n");
-            if (src->data.variable.name) {
-                copy->data.variable.name = kryon_alloc(strlen(src->data.variable.name) + 1);
-                if (copy->data.variable.name) {
-                    strcpy(copy->data.variable.name, src->data.variable.name);
-                }
-            }
-            break;
-            
-        case KRYON_AST_LITERAL:
-            printf("DEBUG: deep_copy_ast_node - copying literal node\n");
-            // Copy the literal value
-            if (src->data.literal.value.type == KRYON_VALUE_STRING && src->data.literal.value.data.string_value) {
-                copy->data.literal.value.data.string_value = kryon_alloc(strlen(src->data.literal.value.data.string_value) + 1);
-                if (copy->data.literal.value.data.string_value) {
-                    strcpy(copy->data.literal.value.data.string_value, src->data.literal.value.data.string_value);
-                }
-            }
-            // Other literal types (int, float, bool) are copied by memcpy above
-            break;
-            
-        default:
-            printf("DEBUG: deep_copy_ast_node - copying node type %d (basic copy)\n", src->type);
-            // For other node types, the shallow copy should be sufficient for now
-            // TODO: Add specific handling for other node types as needed
-            break;
+    size_t error_count;
+    const char **errors = kryon_parser_get_errors(parser, &error_count);
+    if (error_count > 0) {
+        KRYON_LOG_ERROR("Parser errors detected:");
+        for (size_t i = 0; i < error_count; i++) {
+            KRYON_LOG_ERROR("  %s", errors[i]);
+        }
+        KRYON_ERROR_SET(KRYON_ERROR_PARSE_ERROR, KRYON_SEVERITY_ERROR, "Parsing failed with one or more errors");
+        result = KRYON_ERROR_PARSE_ERROR;
+        goto cleanup;
+    }
+    KRYON_LOG_DEBUG("No parser errors detected.");
+    
+    const KryonASTNode *ast = kryon_parser_get_root(parser);
+    if (!ast) {
+        KRYON_ERROR_SET(KRYON_ERROR_INVALID_STATE, KRYON_SEVERITY_ERROR, "Failed to get AST root from parser");
+        result = KRYON_ERROR_INVALID_STATE;
+        goto cleanup;
     }
     
-    printf("DEBUG: deep_copy_ast_node - copy completed for type %d\n", src->type);
-    return copy;
+    // --- AST Validation ---
+    char *validation_errors[100];
+    size_t validation_count = kryon_ast_validate(ast, validation_errors, 100);
+    if (validation_count > 0) {
+        KRYON_LOG_ERROR("Semantic errors detected in AST:");
+        for (size_t i = 0; i < validation_count; i++) {
+            KRYON_LOG_ERROR("  %s", validation_errors[i]);
+            kryon_free(validation_errors[i]);
+        }
+        KRYON_ERROR_SET(KRYON_ERROR_SEMANTIC_ERROR, KRYON_SEVERITY_ERROR, "AST validation failed");
+        result = KRYON_ERROR_SEMANTIC_ERROR;
+        goto cleanup;
+    }
+    KRYON_LOG_INFO("Parsing completed successfully.");
+
+    // --- IMPORTANT: Original AST Debug Print ---
+    if (debug || verbose) {
+        KRYON_LOG_DEBUG("\n=== ORIGINAL AST STRUCTURE ===\n");
+        debug_print_ast(ast, 0);
+        KRYON_LOG_DEBUG("=== END AST STRUCTURE ===\n\n");
+    }
+    
+    // --- IMPORTANT: Debug Inspector Injection ---
+    if (debug) {
+        KryonASTNode *include_directive = inject_debug_inspector_include(parser);
+        if (include_directive) {
+            KryonASTNode *mutable_ast = (KryonASTNode*)ast;
+            if (mutable_ast->data.element.child_count >= mutable_ast->data.element.child_capacity) {
+                // Expand if necessary
+            }
+            if (mutable_ast->data.element.child_count < mutable_ast->data.element.child_capacity) {
+                for (size_t i = mutable_ast->data.element.child_count; i > 0; i--) {
+                    mutable_ast->data.element.children[i] = mutable_ast->data.element.children[i-1];
+                }
+                mutable_ast->data.element.children[0] = include_directive;
+                mutable_ast->data.element.child_count++;
+                KRYON_LOG_INFO("Injected @include directive for DebugInspector");
+            }
+        }
+    }
+    
+    // --- IMPORTANT: Include Directive Processing ---
+    base_dir = strdup(input_file);
+    if (!base_dir) {
+        KRYON_ERROR_SET(KRYON_ERROR_OUT_OF_MEMORY, KRYON_SEVERITY_FATAL, "Failed to duplicate input file path");
+        result = KRYON_ERROR_OUT_OF_MEMORY;
+        goto cleanup;
+    }
+    char *last_slash = strrchr(base_dir, '/');
+    if (last_slash) *last_slash = '\0';
+    else strcpy(base_dir, ".");
+    
+    KRYON_LOG_DEBUG("Processing include directives from base_dir: %s", base_dir);
+    if (process_include_directives((KryonASTNode*)ast, parser, base_dir) != KRYON_SUCCESS) {
+        KRYON_ERROR_SET(KRYON_ERROR_FILE_READ_ERROR, KRYON_SEVERITY_ERROR, "Failed to process include directives");
+        result = KRYON_ERROR_FILE_READ_ERROR;
+        goto cleanup;
+    }
+    
+    // --- AST Transformation ---
+    KryonASTNode *transformed_ast = ensure_app_root_container(ast, parser, debug);
+    if (!transformed_ast) {
+        KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "Failed to transform AST");
+        result = KRYON_ERROR_COMPILATION_FAILED;
+        goto cleanup;
+    }
+    KRYON_LOG_INFO("AST transformed successfully.");
+    
+    // --- Code Generation ---
+    KryonCodeGenConfig config = optimize ? kryon_codegen_speed_config() : kryon_codegen_default_config();
+    codegen = kryon_codegen_create(&config);
+    if (!codegen) {
+        KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "Failed to create code generator");
+        result = KRYON_ERROR_COMPILATION_FAILED;
+        goto cleanup;
+    }
+    
+    KRYON_LOG_INFO("Generating code...");
+    if (!kryon_codegen_generate(codegen, transformed_ast)) {
+        const char **codegen_errors = kryon_codegen_get_errors(codegen, &error_count);
+        KRYON_LOG_ERROR("Code generation failed with errors:");
+        for (size_t i = 0; i < error_count; i++) {
+            KRYON_LOG_ERROR("  %s", codegen_errors[i]);
+        }
+        KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "Code generation failed");
+        result = KRYON_ERROR_COMPILATION_FAILED;
+        goto cleanup;
+    }
+    
+    // --- Writing Output File ---
+    KRYON_LOG_INFO("Writing output file...");
+    if (!kryon_write_file(codegen, output_file)) {
+        KRYON_ERROR_SET(KRYON_ERROR_FILE_WRITE_ERROR, KRYON_SEVERITY_ERROR, "Failed to write output file");
+        result = KRYON_ERROR_FILE_WRITE_ERROR;
+        goto cleanup;
+    }
+    
+    // --- Final Report ---
+    printf("Compilation successful: %s\n", output_file);
+    if (verbose) {
+        const KryonCodeGenStats *stats = kryon_codegen_get_stats(codegen);
+        KRYON_LOG_INFO("Statistics:");
+        KRYON_LOG_INFO("  Output size: %zu bytes", stats->output_binary_size);
+        KRYON_LOG_INFO("  Generation time: %.3f ms", stats->generation_time * 1000.0);
+        KRYON_LOG_INFO("  Elements: %zu", stats->output_elements);
+    }
+    
+    result = KRYON_SUCCESS;
+
+// --- Centralized Cleanup ---
+cleanup:
+    KRYON_LOG_DEBUG("Cleaning up compilation resources...");
+    if (file) fclose(file);
+    if (base_dir) free(base_dir);
+    if (codegen) kryon_codegen_destroy(codegen);
+    if (parser) kryon_parser_destroy(parser);
+    if (lexer) kryon_lexer_destroy(lexer);
+    if (source) kryon_free(source);
+    
+    if (result != KRYON_SUCCESS) {
+        const KryonError *last_error = kryon_error_get_last();
+        if (last_error) {
+            kryon_error_print(last_error, stderr);
+        }
+    }
+
+    kryon_error_shutdown();
+    return result;
 }

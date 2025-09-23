@@ -12,6 +12,7 @@
 #include "memory.h"
 #include "../compilation/runtime_compiler.h"
 #include "runtime.h"
+#include "error.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <libgen.h>
@@ -706,9 +707,10 @@ KryonNavigationResult kryon_compile_kry_to_temp(KryonNavigationManager* nav_mana
     printf("⚡ Compiling %s -> %s\n", kry_path, cache_path);
     
     // Use the runtime compiler to compile the .kry file
-    KryonCompileResult compile_result = kryon_compile_file(kry_path, cache_path, NULL);
-    if (compile_result != KRYON_COMPILE_SUCCESS) {
-        printf("❌ Compilation failed: %s\n", kryon_compile_result_string(compile_result));
+    KryonResult compile_result = kryon_compile_file(kry_path, cache_path, NULL);
+    if (compile_result != KRYON_SUCCESS) {
+        // The error message now comes from the unified error handler
+        printf("❌ Compilation failed: %s\n", kryon_error_get_message(compile_result));
         kryon_free(cache_path);
         return KRYON_NAV_ERROR_COMPILATION_FAILED;
     }

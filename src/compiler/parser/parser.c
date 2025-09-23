@@ -1989,6 +1989,8 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
            component->data.component.state_count,
            component->data.component.function_count);
     
+    component->type = KRYON_AST_COMPONENT;
+
     return component;
 }
 
@@ -2749,6 +2751,7 @@ const char *kryon_ast_node_type_name(KryonASTNodeType type) {
         case KRYON_AST_MEMBER_ACCESS: return "MemberAccess";
         case KRYON_AST_ARRAY_ACCESS: return "ArrayAccess";
         case KRYON_AST_ERROR: return "Error";
+        case KRYON_AST_COMPONENT: return "Component";
         default: return "Unknown";
     }
 }

@@ -80,6 +80,12 @@ static const char *g_error_messages[] = {
     [KRYON_ERROR_INVALID_KRB_FILE] = "Invalid KRB file",
     [KRYON_ERROR_VERSION_MISMATCH] = "Version mismatch",
     
+    [KRYON_ERROR_CODEGEN_FAILED] = "Code generation failed",
+    [KRYON_ERROR_CODEGEN_UNSUPPORTED_NODE] = "Unsupported node type encountered during code generation",
+    [KRYON_ERROR_CODEGEN_BUFFER_ERROR] = "An error occurred while writing to the codegen buffer",
+    [KRYON_ERROR_CODEGEN_INVALID_AST] = "The AST provided for code generation is invalid or malformed",
+    [KRYON_ERROR_CODEGEN_SYMBOL_CONFLICT] = "A symbol conflict was detected during code generation",
+
     // Runtime errors
     [KRYON_ERROR_RUNTIME_ERROR] = "Runtime error",
     [KRYON_ERROR_STACK_OVERFLOW] = "Stack overflow",
