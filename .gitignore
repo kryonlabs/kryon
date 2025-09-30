@@ -4,6 +4,7 @@ build/
 *.so
 *.a
 *.exe
+web_output
 
 # CMake
 CMakeCache.txt

@@ -18,8 +18,9 @@
 static bool g_debug_mode = false;
 
 // Forward declarations for proper renderer integration
-static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, bool debug);
+static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, bool debug, const char* output_dir);
 static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug);
+static KryonRenderer* create_web_renderer(KryonRuntime* runtime, bool debug, const char* output_dir);
 
 // Forward declaration for runtime event callback function (defined in runtime.c)
 extern void runtime_receive_input_event(const KryonEvent* event, void* userData);
@@ -27,27 +28,32 @@ extern void runtime_receive_input_event(const KryonEvent* event, void* userData)
 int run_command(int argc, char *argv[]) {
     const char *krb_file_path = NULL;
     const char *renderer = "text";  // Default to text renderer
+    const char *output_dir = "./web_output"; // Default web output directory
     bool debug = false;
-    
+
     // Check for KRYON_RENDERER environment variable
     const char *env_renderer = getenv("KRYON_RENDERER");
     if (env_renderer) {
         renderer = env_renderer;
     }
-    
+
     // Parse command line options
     static struct option long_options[] = {
         {"renderer", required_argument, 0, 'r'},
+        {"output", required_argument, 0, 'o'},
         {"debug", no_argument, 0, 'd'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
     
     int c;
-    while ((c = getopt_long(argc, argv, "r:dh", long_options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "r:o:dh", long_options, NULL)) != -1) {
         switch (c) {
             case 'r':
                 renderer = optarg;
+                break;
+            case 'o':
+                output_dir = optarg;
                 break;
             case 'd':
                 debug = true;
@@ -55,9 +61,10 @@ int run_command(int argc, char *argv[]) {
             case 'h':
                 printf("Usage: kryon run <file.krb> [options]\n");
                 printf("Options:\n");
-                printf("  -r, --renderer <name>  Renderer to use (text, raylib, debug-raylib)\n");
-                printf("  -d, --debug           Enable debug output\n");
-                printf("  -h, --help            Show this help\n");
+                printf("  -r, --renderer <name>  Renderer to use (text, raylib, web)\n");
+                printf("  -o, --output <dir>     Output directory for web renderer\n");
+                printf("  -d, --debug            Enable debug output\n");
+                printf("  -h, --help             Show this help\n");
                 return 0;
             default:
                 return 1;
@@ -167,7 +174,7 @@ int run_command(int argc, char *argv[]) {
     }
     
     // Setup renderer
-    if (!setup_renderer(runtime, renderer, debug)) {
+    if (!setup_renderer(runtime, renderer, debug, output_dir)) {
         fprintf(stderr, "❌ Failed to setup renderer: %s\n", renderer);
         kryon_runtime_destroy(runtime);
         return 1;
@@ -200,23 +207,36 @@ int run_command(int argc, char *argv[]) {
         double current_time = frame_count * 0.016666; // Approximate time for now
         double delta_time = current_time - last_time;
         last_time = current_time;
-        
+
         // Update runtime (process events, update state)
         kryon_runtime_update(runtime, delta_time);
-        
-        // Render frame
+
+        // For web renderer, skip actual rendering and just generate output once
+        if (strcmp(renderer, "web") == 0) {
+            printf("🌐 Web renderer: Generating HTML/CSS/JS output\n");
+
+            // Call finalize to write files - pass runtime for element tree access
+            extern bool kryon_web_renderer_finalize_with_runtime(KryonRenderer* renderer, KryonRuntime* runtime);
+            if (runtime->renderer) {
+                kryon_web_renderer_finalize_with_runtime((KryonRenderer*)runtime->renderer, runtime);
+            }
+            frame_count++;
+            break;
+        }
+
+        // Render frame (for non-web renderers)
         if (!kryon_runtime_render(runtime)) {
             fprintf(stderr, "❌ Rendering failed at frame %d\n", frame_count);
             break;
         }
         frame_count++;
-        
+
         // Exit after a reasonable number of frames for text renderer or testing
         if (strcmp(renderer, "text") == 0 && frame_count >= 60) {
             printf("📝 Text renderer: completed %d frames\n", frame_count);
             break;
         }
-        
+
         // For raylib, check if window should close
         if (strcmp(renderer, "raylib") == 0) {
             // The raylib renderer should set runtime->is_running = false when window closes
@@ -225,7 +245,7 @@ int run_command(int argc, char *argv[]) {
                 break;
             }
         }
-        
+
         // Basic frame limiting (should be handled by renderer)
         usleep(16666); // ~60fps
     }
@@ -244,21 +264,29 @@ int run_command(int argc, char *argv[]) {
 }
 
 // Setup renderer for the runtime using internal interface
-static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, bool debug) {
+static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, bool debug, const char* output_dir) {
     if (!runtime || !renderer_name) {
         return false;
     }
-    
+
     KryonRenderer* renderer = NULL;
-    
+
     // Create renderer based on name
-    if (strcmp(renderer_name, "raylib") == 0) {
+    if (strcmp(renderer_name, "web") == 0) {
+#ifdef KRYON_RENDERER_WEB
+        renderer = create_web_renderer(runtime, debug, output_dir);
+#else
+        fprintf(stderr, "❌ WEB RENDERER NOT AVAILABLE\n");
+        fprintf(stderr, "❌ This build was compiled without web renderer support\n");
+        return false;
+#endif
+    } else if (strcmp(renderer_name, "raylib") == 0) {
 #ifdef KRYON_RENDERER_RAYLIB
         renderer = create_raylib_renderer(runtime, debug);
 #else
         fprintf(stderr, "❌ RAYLIB NOT AVAILABLE\n");
         fprintf(stderr, "❌ This build was compiled without raylib support\n");
-        fprintf(stderr, "💡 Available renderers: text\n");
+        fprintf(stderr, "💡 Available renderers: text, web\n");
         fprintf(stderr, "💡 To use raylib, install raylib-dev and recompile\n");
         return false;
 #endif
@@ -270,7 +298,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
         return true;
     } else {
         fprintf(stderr, "❌ Unknown renderer: %s\n", renderer_name);
-        fprintf(stderr, "Available renderers: raylib, text\n");
+        fprintf(stderr, "Available renderers: web, raylib, text\n");
         return false;
     }
     
@@ -394,7 +422,48 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
     fprintf(stderr, "❌ This build was compiled without raylib support\n");
     fprintf(stderr, "💡 Available renderers: text\n");
     fprintf(stderr, "💡 To use raylib, install raylib-dev and recompile\n");
-    
+
+    return NULL;
+#endif
+}
+
+// Create web renderer using internal interface
+static KryonRenderer* create_web_renderer(KryonRuntime* runtime, bool debug, const char* output_dir) {
+#ifdef KRYON_RENDERER_WEB
+    // Forward declare from web_renderer.h
+    extern KryonRenderer* kryon_web_renderer_create(const KryonRendererConfig* config);
+
+    if (debug) {
+        printf("🐛 Debug: Creating web renderer\n");
+        printf("🐛 Debug: Output directory: %s\n", output_dir);
+    }
+
+    // Create renderer configuration
+    KryonRendererConfig config = {
+        .event_callback = NULL,  // Web renderer doesn't need event callback
+        .callback_data = runtime,
+        .platform_context = (void*)output_dir  // Pass output directory as context
+    };
+
+    KryonRenderer* renderer = kryon_web_renderer_create(&config);
+
+    if (!renderer) {
+        fprintf(stderr, "❌ Failed to create web renderer\n");
+        if (debug) {
+            printf("🐛 Debug: Web renderer creation failed\n");
+        }
+        return NULL;
+    }
+
+    if (debug) {
+        printf("🐛 Debug: Web renderer created successfully\n");
+    }
+
+    return renderer;
+#else
+    fprintf(stderr, "❌ WEB RENDERER NOT AVAILABLE\n");
+    fprintf(stderr, "❌ This build was compiled without web renderer support\n");
+
     return NULL;
 #endif
 }

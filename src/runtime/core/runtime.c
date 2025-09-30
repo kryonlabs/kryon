@@ -1538,6 +1538,36 @@ uint32_t get_element_property_color(KryonElement* element, const char* prop_name
     }
 }
 
+// Get property value as color with inheritance support
+uint32_t get_element_property_color_inherited(KryonElement* element, const char* prop_name, uint32_t default_value) {
+    if (!element || !prop_name) return default_value;
+
+    // Check if property exists on this element
+    KryonProperty* prop = find_element_property(element, prop_name);
+    if (prop) {
+        // Found on this element, use the existing logic
+        return get_element_property_color(element, prop_name, default_value);
+    }
+
+    // Property not found - check if it's inheritable
+    uint16_t prop_hex = kryon_get_property_hex(prop_name);
+    if (prop_hex != 0 && kryon_is_property_inheritable(prop_hex)) {
+        // Walk up the parent chain
+        KryonElement* current = element->parent;
+        while (current != NULL) {
+            prop = find_element_property(current, prop_name);
+            if (prop) {
+                // Found in parent, return its value
+                return get_element_property_color(current, prop_name, default_value);
+            }
+            current = current->parent;
+        }
+    }
+
+    // Not found anywhere or not inheritable
+    return default_value;
+}
+
 
 /// Auto-size an element based on its content (universal sizing system)
 void auto_size_element(KryonElement* element, float* width, float* height) {

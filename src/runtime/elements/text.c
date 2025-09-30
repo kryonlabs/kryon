@@ -84,15 +84,16 @@ static void text_render(KryonRuntime* runtime, KryonElement* element, KryonRende
     // --- 1. Auto-size if needed ---
     calculate_text_auto_size(element);
 
-    // --- 2. Get Text Properties ---  
+    // --- 2. Get Text Properties ---
     // Use runtime-aware property access for reactive variable support
     const char* text = get_element_property_string_with_runtime(runtime, element, "text");
-    
+
     if (!text || text[0] == '\0') {
         return; // Nothing to render
     }
-    
-    uint32_t text_color_val = get_element_property_color(element, "color", 0x000000FF);
+
+    // Use inherited getter for color - inherits from parent if not set
+    uint32_t text_color_val = get_element_property_color_inherited(element, "color", 0x000000FF);
     float font_size = get_element_property_float(element, "fontSize", 16.0f);
     const char* font_family = get_element_property_string(element, "fontFamily");
     const char* font_weight_str = get_element_property_string(element, "fontWeight");

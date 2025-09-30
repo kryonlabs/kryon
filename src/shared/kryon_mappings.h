@@ -62,6 +62,7 @@
      const char **aliases;
      uint16_t hex_code;
      KryonValueTypeHint type_hint;
+     bool inheritable;  // Whether this property inherits from parent elements (like CSS)
  } KryonPropertyGroup;
  
  // Defines an element and which categories of properties it is allowed to use.
@@ -211,6 +212,13 @@ const KryonPropertyCategoryIndex* kryon_get_element_allowed_categories(uint16_t 
  * @return true if in range, false otherwise
  */
 bool kryon_element_in_range(uint16_t hex_code, uint16_t range_start, uint16_t range_end);
+
+/**
+ * @brief Check if a property is inheritable (like CSS inheritance)
+ * @param property_hex The 16-bit hex code of the property
+ * @return true if the property inherits from parent elements, false otherwise
+ */
+bool kryon_is_property_inheritable(uint16_t property_hex);
 
 /**
  * @brief Runs a comprehensive test suite on the mapping system.

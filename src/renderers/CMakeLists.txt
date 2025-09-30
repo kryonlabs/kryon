@@ -132,9 +132,29 @@ if(KRYON_RENDERER_HTML)
     set(HTML_SOURCES
         html/html_renderer.c
     )
-    
+
     set(HTML_HEADERS
         # Headers would go here if we had public headers
+    )
+endif()
+
+# =============================================================================
+# WEB RENDERER (HTML/CSS/JS output)
+# =============================================================================
+
+option(KRYON_RENDERER_WEB "Enable Web renderer (HTML/CSS/JS)" ON)
+
+if(KRYON_RENDERER_WEB)
+    set(WEB_SOURCES
+        web/web_renderer.c
+        web/css_generator.c
+        web/dom_manager.c
+    )
+
+    set(WEB_HEADERS
+        web/web_renderer.h
+        web/css_generator.h
+        web/dom_manager.h
     )
 endif()
 
@@ -181,6 +201,11 @@ if(KRYON_RENDERER_HTML)
     list(APPEND RENDERERS_HEADERS ${HTML_HEADERS})
 endif()
 
+if(KRYON_RENDERER_WEB)
+    list(APPEND RENDERERS_SOURCES ${WEB_SOURCES})
+    list(APPEND RENDERERS_HEADERS ${WEB_HEADERS})
+endif()
+
 # Create renderers library as object library for linking
 add_library(kryon_renderers OBJECT ${RENDERERS_SOURCES})
 
@@ -196,6 +221,7 @@ target_include_directories(kryon_renderers PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/raylib
     ${CMAKE_CURRENT_SOURCE_DIR}/terminal
     ${CMAKE_CURRENT_SOURCE_DIR}/html
+    ${CMAKE_CURRENT_SOURCE_DIR}/web
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
 )
@@ -235,6 +261,10 @@ endif()
 
 if(KRYON_RENDERER_HTML)
     target_compile_definitions(kryon_renderers PRIVATE KRYON_RENDERER_HTML=1)
+endif()
+
+if(KRYON_RENDERER_WEB)
+    target_compile_definitions(kryon_renderers PRIVATE KRYON_RENDERER_WEB=1)
 endif()
 
 # =============================================================================

@@ -374,6 +374,9 @@ extern const char* get_element_property_string(struct KryonElement* element, con
 extern uint32_t get_element_property_color(struct KryonElement* element, const char* name, uint32_t default_val);
 extern const char** get_element_property_array(struct KryonElement* element, const char* name, size_t* count);
 
+// Element property getters with inheritance support (for inheritable properties like color, fontSize, etc.)
+extern uint32_t get_element_property_color_inherited(struct KryonElement* element, const char* name, uint32_t default_val);
+
 // Element property setters (defined in runtime)
 extern bool kryon_element_set_property_by_name(struct KryonElement* element, const char* name, const void* value);
 

@@ -65,15 +65,24 @@ if(NOT RAYLIB_FOUND)
     endif()
 endif()
 
+# Add web renderer (always available - no dependencies)
+message(STATUS "Adding web renderer (HTML/CSS/JS output)")
+target_sources(kryon_cli PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/renderers/web/web_renderer.c
+    ${CMAKE_SOURCE_DIR}/src/renderers/web/css_generator.c
+    ${CMAKE_SOURCE_DIR}/src/renderers/web/dom_manager.c
+)
+target_compile_definitions(kryon_cli PRIVATE KRYON_RENDERER_WEB=1)
+
 # Link raylib if available - skip header check in Nix environments
 if(RAYLIB_FOUND)
     message(STATUS "Raylib found via pkg-config - enabling raylib renderer")
-    
+
     # Add raylib renderer source
     target_sources(kryon_cli PRIVATE
         ${CMAKE_SOURCE_DIR}/src/renderers/raylib/raylib_renderer.c
     )
-    
+
     target_include_directories(kryon_cli PRIVATE ${RAYLIB_INCLUDE_DIRS})
     target_compile_definitions(kryon_cli PRIVATE KRYON_RENDERER_RAYLIB=1)
     set(RAYLIB_HEADER_FOUND TRUE)

@@ -42,162 +42,162 @@
  
  // Base properties (0x0000-0x00FF)
  const KryonPropertyGroup kryon_base_properties[] = {
-     {"id", (const char*[]){NULL}, 0x0001, KRYON_TYPE_HINT_STRING},
-     {"class", (const char*[]){"className", NULL}, 0x0002, KRYON_TYPE_HINT_STRING},
-     {"style", (const char*[]){NULL}, 0x0003, KRYON_TYPE_HINT_STRING},
-     {"theme", (const char*[]){NULL}, 0x0004, KRYON_TYPE_HINT_STRING},
-     {"extends", (const char*[]){NULL}, 0x0005, KRYON_TYPE_HINT_STRING},
-     {"title", (const char*[]){NULL}, 0x0006, KRYON_TYPE_HINT_STRING},
-     {"version", (const char*[]){NULL}, 0x0007, KRYON_TYPE_HINT_STRING},
-     {"description", (const char*[]){NULL}, 0x0008, KRYON_TYPE_HINT_STRING},
-     {NULL, NULL, 0, 0} // Sentinel
+     {"id", (const char*[]){NULL}, 0x0001, KRYON_TYPE_HINT_STRING, false},
+     {"class", (const char*[]){"className", NULL}, 0x0002, KRYON_TYPE_HINT_STRING, false},
+     {"style", (const char*[]){NULL}, 0x0003, KRYON_TYPE_HINT_STRING, false},
+     {"theme", (const char*[]){NULL}, 0x0004, KRYON_TYPE_HINT_STRING, false},
+     {"extends", (const char*[]){NULL}, 0x0005, KRYON_TYPE_HINT_STRING, false},
+     {"title", (const char*[]){NULL}, 0x0006, KRYON_TYPE_HINT_STRING, false},
+     {"version", (const char*[]){NULL}, 0x0007, KRYON_TYPE_HINT_STRING, false},
+     {"description", (const char*[]){NULL}, 0x0008, KRYON_TYPE_HINT_STRING, false},
+     {NULL, NULL, 0, 0, false} // Sentinel
  };
  
  // Layout properties (0x0100-0x01FF)
  const KryonPropertyGroup kryon_layout_properties[] = {
-     {"width", (const char*[]){NULL}, 0x0100, KRYON_TYPE_HINT_DIMENSION},
-     {"height", (const char*[]){NULL}, 0x0101, KRYON_TYPE_HINT_DIMENSION},
-     {"minWidth", (const char*[]){"minW", NULL}, 0x0102, KRYON_TYPE_HINT_DIMENSION},
-     {"maxWidth", (const char*[]){"maxW", NULL}, 0x0103, KRYON_TYPE_HINT_DIMENSION},
-     {"minHeight", (const char*[]){"minH", NULL}, 0x0104, KRYON_TYPE_HINT_DIMENSION},
-     {"maxHeight", (const char*[]){"maxH", NULL}, 0x0105, KRYON_TYPE_HINT_DIMENSION},
-     {"padding", (const char*[]){"p", NULL}, 0x0106, KRYON_TYPE_HINT_SPACING},
-     {"margin", (const char*[]){"m", NULL}, 0x0107, KRYON_TYPE_HINT_SPACING},
-     {"aspectRatio", (const char*[]){"aspect", NULL}, 0x0109, KRYON_TYPE_HINT_FLOAT},
-     {"flex", (const char*[]){NULL}, 0x010A, KRYON_TYPE_HINT_FLOAT},
-     {"gap", (const char*[]){"spacing", NULL}, 0x010B, KRYON_TYPE_HINT_DIMENSION},
-     {"columns", (const char*[]){NULL}, 0x010C, KRYON_TYPE_HINT_INTEGER},
-     {"posX", (const char*[]){"x", "positionX", NULL}, 0x010D, KRYON_TYPE_HINT_FLOAT},
-     {"posY", (const char*[]){"y", "positionY", NULL}, 0x010E, KRYON_TYPE_HINT_FLOAT},
-     {"zIndex", (const char*[]){"z", "layerIndex", NULL}, 0x010F, KRYON_TYPE_HINT_INTEGER},
-     {"paddingTop", (const char*[]){"pt", NULL}, 0x0110, KRYON_TYPE_HINT_DIMENSION},
-     {"paddingRight", (const char*[]){"pr", NULL}, 0x0111, KRYON_TYPE_HINT_DIMENSION},
-     {"paddingBottom", (const char*[]){"pb", NULL}, 0x0112, KRYON_TYPE_HINT_DIMENSION},
-     {"paddingLeft", (const char*[]){"pl", NULL}, 0x0113, KRYON_TYPE_HINT_DIMENSION},
-     {"marginTop", (const char*[]){"mt", NULL}, 0x0114, KRYON_TYPE_HINT_DIMENSION},
-     {"marginRight", (const char*[]){"mr", NULL}, 0x0115, KRYON_TYPE_HINT_DIMENSION},
-     {"marginBottom", (const char*[]){"mb", NULL}, 0x0116, KRYON_TYPE_HINT_DIMENSION},
-     {"marginLeft", (const char*[]){"ml", NULL}, 0x0117, KRYON_TYPE_HINT_DIMENSION},
-     {"row_spacing", (const char*[]){"rowSpacing", NULL}, 0x011F, KRYON_TYPE_HINT_DIMENSION},
-     {"column_spacing", (const char*[]){"columnSpacing", NULL}, 0x0120, KRYON_TYPE_HINT_DIMENSION},
-     {NULL, NULL, 0, 0} // Sentinel
+     {"width", (const char*[]){NULL}, 0x0100, KRYON_TYPE_HINT_DIMENSION, false},
+     {"height", (const char*[]){NULL}, 0x0101, KRYON_TYPE_HINT_DIMENSION, false},
+     {"minWidth", (const char*[]){"minW", NULL}, 0x0102, KRYON_TYPE_HINT_DIMENSION, false},
+     {"maxWidth", (const char*[]){"maxW", NULL}, 0x0103, KRYON_TYPE_HINT_DIMENSION, false},
+     {"minHeight", (const char*[]){"minH", NULL}, 0x0104, KRYON_TYPE_HINT_DIMENSION, false},
+     {"maxHeight", (const char*[]){"maxH", NULL}, 0x0105, KRYON_TYPE_HINT_DIMENSION, false},
+     {"padding", (const char*[]){"p", NULL}, 0x0106, KRYON_TYPE_HINT_SPACING, false},
+     {"margin", (const char*[]){"m", NULL}, 0x0107, KRYON_TYPE_HINT_SPACING, false},
+     {"aspectRatio", (const char*[]){"aspect", NULL}, 0x0109, KRYON_TYPE_HINT_FLOAT, false},
+     {"flex", (const char*[]){NULL}, 0x010A, KRYON_TYPE_HINT_FLOAT, false},
+     {"gap", (const char*[]){"spacing", NULL}, 0x0108, KRYON_TYPE_HINT_DIMENSION, false},
+     {"columns", (const char*[]){NULL}, 0x010C, KRYON_TYPE_HINT_INTEGER, false},
+     {"posX", (const char*[]){"x", "positionX", NULL}, 0x010D, KRYON_TYPE_HINT_FLOAT, false},
+     {"posY", (const char*[]){"y", "positionY", NULL}, 0x010E, KRYON_TYPE_HINT_FLOAT, false},
+     {"zIndex", (const char*[]){"z", "layerIndex", NULL}, 0x010F, KRYON_TYPE_HINT_INTEGER, false},
+     {"paddingTop", (const char*[]){"pt", NULL}, 0x0110, KRYON_TYPE_HINT_DIMENSION, false},
+     {"paddingRight", (const char*[]){"pr", NULL}, 0x0111, KRYON_TYPE_HINT_DIMENSION, false},
+     {"paddingBottom", (const char*[]){"pb", NULL}, 0x0112, KRYON_TYPE_HINT_DIMENSION, false},
+     {"paddingLeft", (const char*[]){"pl", NULL}, 0x0113, KRYON_TYPE_HINT_DIMENSION, false},
+     {"marginTop", (const char*[]){"mt", NULL}, 0x0114, KRYON_TYPE_HINT_DIMENSION, false},
+     {"marginRight", (const char*[]){"mr", NULL}, 0x0115, KRYON_TYPE_HINT_DIMENSION, false},
+     {"marginBottom", (const char*[]){"mb", NULL}, 0x0116, KRYON_TYPE_HINT_DIMENSION, false},
+     {"marginLeft", (const char*[]){"ml", NULL}, 0x0117, KRYON_TYPE_HINT_DIMENSION, false},
+     {"row_spacing", (const char*[]){"rowSpacing", NULL}, 0x011F, KRYON_TYPE_HINT_DIMENSION, false},
+     {"column_spacing", (const char*[]){"columnSpacing", NULL}, 0x0120, KRYON_TYPE_HINT_DIMENSION, false},
+     {NULL, NULL, 0, 0, false} // Sentinel
  };
  
  // Visual properties (0x0200-0x02FF)
  const KryonPropertyGroup kryon_visual_properties[] = {
-     {"background", (const char*[]){"backgroundColor", "bg", "bgColor", NULL}, 0x0200, KRYON_TYPE_HINT_COLOR},
-     {"color", (const char*[]){"textColor", NULL}, 0x0201, KRYON_TYPE_HINT_COLOR},
-     {"border", (const char*[]){NULL}, 0x0202, KRYON_TYPE_HINT_STRING},
-     {"borderRadius", (const char*[]){"radius", NULL}, 0x0203, KRYON_TYPE_HINT_DIMENSION},
-     {"boxShadow", (const char*[]){"shadow", NULL}, 0x0204, KRYON_TYPE_HINT_STRING},
-     {"opacity", (const char*[]){NULL}, 0x0205, KRYON_TYPE_HINT_FLOAT},
-     {"borderColor", (const char*[]){"bColor", NULL}, 0x0206, KRYON_TYPE_HINT_COLOR},
-     {"borderWidth", (const char*[]){"bWidth", NULL}, 0x0207, KRYON_TYPE_HINT_DIMENSION},
-     {"visible", (const char*[]){NULL}, 0x0208, KRYON_TYPE_HINT_BOOLEAN},
-     {NULL, NULL, 0, 0} // Sentinel
+     {"background", (const char*[]){"backgroundColor", "bg", "bgColor", NULL}, 0x0200, KRYON_TYPE_HINT_COLOR, false},
+     {"color", (const char*[]){"textColor", NULL}, 0x0201, KRYON_TYPE_HINT_COLOR, true},  // INHERITABLE like CSS
+     {"border", (const char*[]){NULL}, 0x0202, KRYON_TYPE_HINT_STRING, false},
+     {"borderRadius", (const char*[]){"radius", NULL}, 0x0203, KRYON_TYPE_HINT_DIMENSION, false},
+     {"boxShadow", (const char*[]){"shadow", NULL}, 0x0204, KRYON_TYPE_HINT_STRING, false},
+     {"opacity", (const char*[]){NULL}, 0x0205, KRYON_TYPE_HINT_FLOAT, false},
+     {"borderColor", (const char*[]){"bColor", NULL}, 0x0206, KRYON_TYPE_HINT_COLOR, false},
+     {"borderWidth", (const char*[]){"bWidth", NULL}, 0x0207, KRYON_TYPE_HINT_DIMENSION, false},
+     {"visible", (const char*[]){NULL}, 0x0208, KRYON_TYPE_HINT_BOOLEAN, true},  // INHERITABLE like CSS
+     {NULL, NULL, 0, 0, false} // Sentinel
  };
  
  // Typography properties (0x0300-0x03FF)
  const KryonPropertyGroup kryon_typography_properties[] = {
-     {"fontSize", (const char*[]){"fSize", NULL}, 0x0300, KRYON_TYPE_HINT_DIMENSION},
-     {"fontWeight", (const char*[]){"fWeight", NULL}, 0x0301, KRYON_TYPE_HINT_STRING},
-     {"fontFamily", (const char*[]){"font", NULL}, 0x0302, KRYON_TYPE_HINT_STRING},
-     {"lineHeight", (const char*[]){"lHeight", NULL}, 0x0303, KRYON_TYPE_HINT_DIMENSION},
-     {"textAlign", (const char*[]){"textAlignment", NULL}, 0x0304, KRYON_TYPE_HINT_STRING},
-     {"fontStyle", (const char*[]){"fStyle", NULL}, 0x0305, KRYON_TYPE_HINT_STRING},
-     {"to", (const char*[]){NULL}, 0x0306, KRYON_TYPE_HINT_STRING},
-     {"external", (const char*[]){NULL}, 0x0307, KRYON_TYPE_HINT_BOOLEAN},
-     {"underline", (const char*[]){NULL}, 0x0308, KRYON_TYPE_HINT_BOOLEAN},
-     {NULL, NULL, 0, 0} // Sentinel
+     {"fontSize", (const char*[]){"fSize", NULL}, 0x0300, KRYON_TYPE_HINT_DIMENSION, true},  // INHERITABLE like CSS
+     {"fontWeight", (const char*[]){"fWeight", NULL}, 0x0301, KRYON_TYPE_HINT_STRING, true},  // INHERITABLE like CSS
+     {"fontFamily", (const char*[]){"font", NULL}, 0x0302, KRYON_TYPE_HINT_STRING, true},  // INHERITABLE like CSS
+     {"lineHeight", (const char*[]){"lHeight", NULL}, 0x0303, KRYON_TYPE_HINT_DIMENSION, true},  // INHERITABLE like CSS
+     {"textAlign", (const char*[]){"textAlignment", NULL}, 0x0304, KRYON_TYPE_HINT_STRING, true},  // INHERITABLE like CSS
+     {"fontStyle", (const char*[]){"fStyle", NULL}, 0x0305, KRYON_TYPE_HINT_STRING, true},  // INHERITABLE like CSS
+     {"to", (const char*[]){NULL}, 0x0306, KRYON_TYPE_HINT_STRING, false},  // Link-specific, not inheritable
+     {"external", (const char*[]){NULL}, 0x0307, KRYON_TYPE_HINT_BOOLEAN, false},  // Link-specific, not inheritable
+     {"underline", (const char*[]){NULL}, 0x0308, KRYON_TYPE_HINT_BOOLEAN, false},  // Text decoration, not typically inherited
+     {NULL, NULL, 0, 0, false} // Sentinel
  };
  
  // Transform properties (0x0400-0x04FF)
  const KryonPropertyGroup kryon_transform_properties[] = {
-     {"transform", (const char*[]){NULL}, 0x0400, KRYON_TYPE_HINT_STRING},
-     {"transition", (const char*[]){NULL}, 0x0401, KRYON_TYPE_HINT_STRING},
-     {"animation", (const char*[]){NULL}, 0x0402, KRYON_TYPE_HINT_STRING},
-     {NULL, NULL, 0, 0} // Sentinel
+     {"transform", (const char*[]){NULL}, 0x0400, KRYON_TYPE_HINT_STRING, false},
+     {"transition", (const char*[]){NULL}, 0x0401, KRYON_TYPE_HINT_STRING, false},
+     {"animation", (const char*[]){NULL}, 0x0402, KRYON_TYPE_HINT_STRING, false},
+     {NULL, NULL, 0, 0, false} // Sentinel
  };
  
  // Interactive properties (0x0500-0x05FF)
  const KryonPropertyGroup kryon_interactive_properties[] = {
-     {"cursor", (const char*[]){NULL}, 0x0500, KRYON_TYPE_HINT_STRING},
-     {"userSelect", (const char*[]){NULL}, 0x0501, KRYON_TYPE_HINT_STRING},
-     {"pointerEvents", (const char*[]){NULL}, 0x0502, KRYON_TYPE_HINT_STRING},
-     {"disabled", (const char*[]){NULL}, 0x0503, KRYON_TYPE_HINT_BOOLEAN},
-     {"password", (const char*[]){NULL}, 0x0504, KRYON_TYPE_HINT_BOOLEAN},
-     {"multiple", (const char*[]){NULL}, 0x0505, KRYON_TYPE_HINT_BOOLEAN},
-     {"searchable", (const char*[]){NULL}, 0x0507, KRYON_TYPE_HINT_BOOLEAN},
-     {"showIcons", (const char*[]){NULL}, 0x0508, KRYON_TYPE_HINT_BOOLEAN},
-     {"optionIcons", (const char*[]){NULL}, 0x0509, KRYON_TYPE_HINT_ARRAY},
-     {"optionColors", (const char*[]){NULL}, 0x050A, KRYON_TYPE_HINT_ARRAY},
-     {"required", (const char*[]){NULL}, 0x050B, KRYON_TYPE_HINT_BOOLEAN},
-     {"minSelections", (const char*[]){NULL}, 0x050C, KRYON_TYPE_HINT_INTEGER},
-     {"maxSelections", (const char*[]){NULL}, 0x050D, KRYON_TYPE_HINT_INTEGER},
-     {"onClick", (const char*[]){"onTap", NULL}, 0x0510, KRYON_TYPE_HINT_REFERENCE},
-     {"onChange", (const char*[]){NULL}, 0x0511, KRYON_TYPE_HINT_REFERENCE},
-     {"onFocus", (const char*[]){NULL}, 0x0512, KRYON_TYPE_HINT_REFERENCE},
-     {"onBlur", (const char*[]){NULL}, 0x0513, KRYON_TYPE_HINT_REFERENCE},
-     {"onMouseEnter", (const char*[]){"onHover", NULL}, 0x0514, KRYON_TYPE_HINT_REFERENCE},
-     {"onMouseLeave", (const char*[]){"onUnhover", NULL}, 0x0515, KRYON_TYPE_HINT_REFERENCE},
-     {NULL, NULL, 0, 0} // Sentinel
+     {"cursor", (const char*[]){NULL}, 0x0500, KRYON_TYPE_HINT_STRING, true},  // INHERITABLE like CSS
+     {"userSelect", (const char*[]){NULL}, 0x0501, KRYON_TYPE_HINT_STRING, false},
+     {"pointerEvents", (const char*[]){NULL}, 0x0502, KRYON_TYPE_HINT_STRING, false},
+     {"disabled", (const char*[]){NULL}, 0x0503, KRYON_TYPE_HINT_BOOLEAN, false},
+     {"password", (const char*[]){NULL}, 0x0504, KRYON_TYPE_HINT_BOOLEAN, false},
+     {"multiple", (const char*[]){NULL}, 0x0505, KRYON_TYPE_HINT_BOOLEAN, false},
+     {"searchable", (const char*[]){NULL}, 0x0507, KRYON_TYPE_HINT_BOOLEAN, false},
+     {"showIcons", (const char*[]){NULL}, 0x0508, KRYON_TYPE_HINT_BOOLEAN, false},
+     {"optionIcons", (const char*[]){NULL}, 0x0509, KRYON_TYPE_HINT_ARRAY, false},
+     {"optionColors", (const char*[]){NULL}, 0x050A, KRYON_TYPE_HINT_ARRAY, false},
+     {"required", (const char*[]){NULL}, 0x050B, KRYON_TYPE_HINT_BOOLEAN, false},
+     {"minSelections", (const char*[]){NULL}, 0x050C, KRYON_TYPE_HINT_INTEGER, false},
+     {"maxSelections", (const char*[]){NULL}, 0x050D, KRYON_TYPE_HINT_INTEGER, false},
+     {"onClick", (const char*[]){"onTap", NULL}, 0x0510, KRYON_TYPE_HINT_REFERENCE, false},
+     {"onChange", (const char*[]){NULL}, 0x0511, KRYON_TYPE_HINT_REFERENCE, false},
+     {"onFocus", (const char*[]){NULL}, 0x0512, KRYON_TYPE_HINT_REFERENCE, false},
+     {"onBlur", (const char*[]){NULL}, 0x0513, KRYON_TYPE_HINT_REFERENCE, false},
+     {"onMouseEnter", (const char*[]){"onHover", NULL}, 0x0514, KRYON_TYPE_HINT_REFERENCE, false},
+     {"onMouseLeave", (const char*[]){"onUnhover", NULL}, 0x0515, KRYON_TYPE_HINT_REFERENCE, false},
+     {NULL, NULL, 0, 0, false} // Sentinel
  };
  
  // Element-specific properties (0x0600-0x06FF)
  const KryonPropertyGroup kryon_element_specific_properties[] = {
-     {"src", (const char*[]){"source", NULL}, 0x0600, KRYON_TYPE_HINT_STRING},
-     {"value", (const char*[]){NULL}, 0x0601, KRYON_TYPE_HINT_STRING},
-     {"child", (const char*[]){NULL}, 0x0602, KRYON_TYPE_HINT_STRING},
-     {"children", (const char*[]){NULL}, 0x0603, KRYON_TYPE_HINT_ARRAY},
-     {"placeholder", (const char*[]){NULL}, 0x0604, KRYON_TYPE_HINT_STRING},
-     {"mainAxis", (const char*[]){"mainAxisAlignment", NULL}, 0x0606, KRYON_TYPE_HINT_STRING},
-     {"crossAxis", (const char*[]){"crossAxisAlignment", NULL}, 0x0607, KRYON_TYPE_HINT_STRING},
-     {"direction", (const char*[]){"flexDir", NULL}, 0x0608, KRYON_TYPE_HINT_STRING},
-     {"wrap", (const char*[]){"flexWrap", NULL}, 0x0609, KRYON_TYPE_HINT_STRING},
-     {"align", (const char*[]){"alignItems", NULL}, 0x060A, KRYON_TYPE_HINT_STRING},
-     {"justify", (const char*[]){"justifyContent", NULL}, 0x060B, KRYON_TYPE_HINT_STRING},
-     {"contentAlignment", (const char*[]){NULL}, 0x060E, KRYON_TYPE_HINT_STRING},
-     {"text", (const char*[]){NULL}, 0x060F, KRYON_TYPE_HINT_STRING},
-     {"objectFit", (const char*[]){NULL}, 0x0610, KRYON_TYPE_HINT_STRING},
-     {"options", (const char*[]){NULL}, 0x0611, KRYON_TYPE_HINT_ARRAY},
-     {"selectedIndex", (const char*[]){NULL}, 0x0612, KRYON_TYPE_HINT_INTEGER},
-     {"activeIndex", (const char*[]){NULL}, 0x0613, KRYON_TYPE_HINT_INTEGER},
-     {"position", (const char*[]){NULL}, 0x0614, KRYON_TYPE_HINT_STRING},
-     {"tabSpacing", (const char*[]){NULL}, 0x0615, KRYON_TYPE_HINT_INTEGER},
-     {"indicatorColor", (const char*[]){NULL}, 0x0616, KRYON_TYPE_HINT_COLOR},
-     {"indicatorThickness", (const char*[]){NULL}, 0x0617, KRYON_TYPE_HINT_INTEGER},
-     {"activeBackgroundColor", (const char*[]){NULL}, 0x0618, KRYON_TYPE_HINT_COLOR},
-     {"activeTextColor", (const char*[]){NULL}, 0x0619, KRYON_TYPE_HINT_COLOR},
-     {"disabledBackgroundColor", (const char*[]){NULL}, 0x0619, KRYON_TYPE_HINT_COLOR},
-     {"disabledTextColor", (const char*[]){NULL}, 0x061A, KRYON_TYPE_HINT_COLOR},
-     {"overlay", (const char*[]){NULL}, 0x061B, KRYON_TYPE_HINT_COMPONENT},
-     {NULL, NULL, 0, 0} // Sentinel
+     {"src", (const char*[]){"source", NULL}, 0x0600, KRYON_TYPE_HINT_STRING, false},
+     {"value", (const char*[]){NULL}, 0x0601, KRYON_TYPE_HINT_STRING, false},
+     {"child", (const char*[]){NULL}, 0x0602, KRYON_TYPE_HINT_STRING, false},
+     {"children", (const char*[]){NULL}, 0x0603, KRYON_TYPE_HINT_ARRAY, false},
+     {"placeholder", (const char*[]){NULL}, 0x0604, KRYON_TYPE_HINT_STRING, false},
+     {"mainAxis", (const char*[]){"mainAxisAlignment", NULL}, 0x0606, KRYON_TYPE_HINT_STRING, false},
+     {"crossAxis", (const char*[]){"crossAxisAlignment", NULL}, 0x0607, KRYON_TYPE_HINT_STRING, false},
+     {"direction", (const char*[]){"flexDir", NULL}, 0x0608, KRYON_TYPE_HINT_STRING, false},
+     {"wrap", (const char*[]){"flexWrap", NULL}, 0x0609, KRYON_TYPE_HINT_STRING, false},
+     {"align", (const char*[]){"alignItems", NULL}, 0x060A, KRYON_TYPE_HINT_STRING, false},
+     {"justify", (const char*[]){"justifyContent", NULL}, 0x060B, KRYON_TYPE_HINT_STRING, false},
+     {"contentAlignment", (const char*[]){NULL}, 0x060E, KRYON_TYPE_HINT_STRING, false},
+     {"text", (const char*[]){NULL}, 0x060F, KRYON_TYPE_HINT_STRING, false},
+     {"objectFit", (const char*[]){NULL}, 0x0610, KRYON_TYPE_HINT_STRING, false},
+     {"options", (const char*[]){NULL}, 0x0611, KRYON_TYPE_HINT_ARRAY, false},
+     {"selectedIndex", (const char*[]){NULL}, 0x0612, KRYON_TYPE_HINT_INTEGER, false},
+     {"activeIndex", (const char*[]){NULL}, 0x0613, KRYON_TYPE_HINT_INTEGER, false},
+     {"position", (const char*[]){NULL}, 0x0614, KRYON_TYPE_HINT_STRING, false},
+     {"tabSpacing", (const char*[]){NULL}, 0x0615, KRYON_TYPE_HINT_INTEGER, false},
+     {"indicatorColor", (const char*[]){NULL}, 0x0616, KRYON_TYPE_HINT_COLOR, false},
+     {"indicatorThickness", (const char*[]){NULL}, 0x0617, KRYON_TYPE_HINT_INTEGER, false},
+     {"activeBackgroundColor", (const char*[]){NULL}, 0x0618, KRYON_TYPE_HINT_COLOR, false},
+     {"activeTextColor", (const char*[]){NULL}, 0x0619, KRYON_TYPE_HINT_COLOR, false},
+     {"disabledBackgroundColor", (const char*[]){NULL}, 0x0619, KRYON_TYPE_HINT_COLOR, false},
+     {"disabledTextColor", (const char*[]){NULL}, 0x061A, KRYON_TYPE_HINT_COLOR, false},
+     {"overlay", (const char*[]){NULL}, 0x061B, KRYON_TYPE_HINT_COMPONENT, false},
+     {NULL, NULL, 0, 0, false} // Sentinel
  };
  
  // Window properties (0x0700-0x07FF)
  const KryonPropertyGroup kryon_window_properties[] = {
-     {"windowWidth", (const char*[]){"winWidth", NULL}, 0x0700, KRYON_TYPE_HINT_DIMENSION},
-     {"windowHeight", (const char*[]){"winHeight", NULL}, 0x0701, KRYON_TYPE_HINT_DIMENSION},
-     {"windowTitle", (const char*[]){"winTitle", NULL}, 0x0702, KRYON_TYPE_HINT_STRING},
-     {"windowResizable", (const char*[]){"resizable", NULL}, 0x0703, KRYON_TYPE_HINT_BOOLEAN},
-     {"keepAspectRatio", (const char*[]){NULL}, 0x0704, KRYON_TYPE_HINT_BOOLEAN},
-     {NULL, NULL, 0, 0} // Sentinel
+     {"windowWidth", (const char*[]){"winWidth", NULL}, 0x0700, KRYON_TYPE_HINT_DIMENSION, false},
+     {"windowHeight", (const char*[]){"winHeight", NULL}, 0x0701, KRYON_TYPE_HINT_DIMENSION, false},
+     {"windowTitle", (const char*[]){"winTitle", NULL}, 0x0702, KRYON_TYPE_HINT_STRING, false},
+     {"windowResizable", (const char*[]){"resizable", NULL}, 0x0703, KRYON_TYPE_HINT_BOOLEAN, false},
+     {"keepAspectRatio", (const char*[]){NULL}, 0x0704, KRYON_TYPE_HINT_BOOLEAN, false},
+     {NULL, NULL, 0, 0, false} // Sentinel
  };
  
  // Checkbox properties (0x0800-0x08FF)
  const KryonPropertyGroup kryon_checkbox_properties[] = {
-     {"label", (const char*[]){"text", NULL}, 0x0800, KRYON_TYPE_HINT_STRING},
-     {"checked", (const char*[]){NULL}, 0x0801, KRYON_TYPE_HINT_BOOLEAN},
-     {"indeterminate", (const char*[]){NULL}, 0x0802, KRYON_TYPE_HINT_BOOLEAN},
-     {"checkColor", (const char*[]){"checkmarkColor", NULL}, 0x0803, KRYON_TYPE_HINT_COLOR},
-     {NULL, NULL, 0, 0} // Sentinel
+     {"label", (const char*[]){"text", NULL}, 0x0800, KRYON_TYPE_HINT_STRING, false},
+     {"checked", (const char*[]){NULL}, 0x0801, KRYON_TYPE_HINT_BOOLEAN, false},
+     {"indeterminate", (const char*[]){NULL}, 0x0802, KRYON_TYPE_HINT_BOOLEAN, false},
+     {"checkColor", (const char*[]){"checkmarkColor", NULL}, 0x0803, KRYON_TYPE_HINT_COLOR, false},
+     {NULL, NULL, 0, 0, false} // Sentinel
  };
  
  // Directive properties (0x8200+)
  const KryonPropertyGroup kryon_directive_properties[] = {
-     {"variable", (const char*[]){"var", "item", NULL}, 0x8201, KRYON_TYPE_HINT_STRING},
-     {"array", (const char*[]){"list", "items", NULL}, 0x8202, KRYON_TYPE_HINT_STRING},
-     {NULL, NULL, 0, 0} // Sentinel
+     {"variable", (const char*[]){"var", "item", NULL}, 0x8201, KRYON_TYPE_HINT_STRING, false},
+     {"array", (const char*[]){"list", "items", NULL}, 0x8202, KRYON_TYPE_HINT_STRING, false},
+     {NULL, NULL, 0, 0, false} // Sentinel
  };
  
  //==============================================================================
@@ -532,6 +532,25 @@ const KryonPropertyCategoryIndex* kryon_get_element_allowed_categories(uint16_t 
  */
 bool kryon_element_in_range(uint16_t hex_code, uint16_t range_start, uint16_t range_end) {
     return hex_code >= range_start && hex_code <= range_end;
+}
+
+/**
+ * @brief Check if a property is inheritable (like CSS inheritance)
+ */
+bool kryon_is_property_inheritable(uint16_t property_hex) {
+    if (property_hex == 0) return false;
+
+    // Search through all property groups to find this property
+    for (int i = 0; kryon_registered_properties[i].properties != NULL; i++) {
+        for (size_t j = 0; j < kryon_registered_properties[i].count; j++) {
+            const KryonPropertyGroup* prop = &kryon_registered_properties[i].properties[j];
+            if (prop->hex_code == property_hex) {
+                return prop->inheritable;
+            }
+        }
+    }
+
+    return false; // Property not found, default to not inheritable
 }
 
 //==============================================================================
