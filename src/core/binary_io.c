@@ -28,10 +28,9 @@ bool kryon_write_uint16(uint8_t **buffer, size_t *offset, size_t buffer_size, ui
     if (!buffer || !*buffer || !offset || *offset + sizeof(uint16_t) > buffer_size) {
         return false;
     }
-    
-    // Convert to big-endian
-    uint16_t big_endian_value = htobe16(value);
-    memcpy(*buffer + *offset, &big_endian_value, sizeof(uint16_t));
+
+    // Write in native byte order (little-endian on x86)
+    memcpy(*buffer + *offset, &value, sizeof(uint16_t));
     *offset += sizeof(uint16_t);
     return true;
 }
@@ -40,7 +39,7 @@ bool kryon_write_uint32(uint8_t **buffer, size_t *offset, size_t buffer_size, ui
     if (!buffer || !*buffer || !offset || *offset + sizeof(uint32_t) > buffer_size) {
         return false;
     }
-    
+
     // Convert to big-endian
     uint32_t big_endian_value = htobe32(value);
     memcpy(*buffer + *offset, &big_endian_value, sizeof(uint32_t));
@@ -88,12 +87,9 @@ bool kryon_read_uint16(const uint8_t *buffer, size_t *offset, size_t buffer_size
     if (!buffer || !offset || !value || *offset + sizeof(uint16_t) > buffer_size) {
         return false;
     }
-    
-    uint16_t big_endian_value;
-    memcpy(&big_endian_value, buffer + *offset, sizeof(uint16_t));
-    
-    // Convert from big-endian to host byte order
-    *value = be16toh(big_endian_value);
+
+    // Read in native byte order (little-endian on x86)
+    memcpy(value, buffer + *offset, sizeof(uint16_t));
     *offset += sizeof(uint16_t);
     return true;
 }
@@ -102,10 +98,10 @@ bool kryon_read_uint32(const uint8_t *buffer, size_t *offset, size_t buffer_size
     if (!buffer || !offset || !value || *offset + sizeof(uint32_t) > buffer_size) {
         return false;
     }
-    
+
     uint32_t big_endian_value;
     memcpy(&big_endian_value, buffer + *offset, sizeof(uint32_t));
-    
+
     // Convert from big-endian to host byte order
     *value = be32toh(big_endian_value);
     *offset += sizeof(uint32_t);

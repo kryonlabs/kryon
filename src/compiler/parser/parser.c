@@ -32,6 +32,7 @@ static KryonASTNode *parse_state_definition(KryonParser *parser);
 static KryonASTNode *parse_const_definition(KryonParser *parser);
 static KryonASTNode *parse_const_for_loop(KryonParser *parser);
 static KryonASTNode *parse_for_directive(KryonParser *parser);
+static KryonASTNode *parse_if_directive(KryonParser *parser, bool is_const);
 static KryonASTNode *parse_event_directive(KryonParser *parser);
 static KryonASTNode *parse_onload_directive(KryonParser *parser);
 static KryonASTNode *parse_directive(KryonParser *parser);
@@ -331,6 +332,12 @@ static KryonASTNode *parse_document(KryonParser *parser) {
         } else if (check_token(parser, KRYON_TOKEN_FOR_DIRECTIVE)) {
             printf("[DEBUG] Parsing for directive\n");
             node = parse_for_directive(parser);
+        } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE)) {
+            printf("[DEBUG] Parsing if directive\n");
+            node = parse_if_directive(parser, false);
+        } else if (check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE)) {
+            printf("[DEBUG] Parsing const_if directive\n");
+            node = parse_if_directive(parser, true);
         } else if (kryon_token_is_directive(peek(parser)->type)) {
             printf("[DEBUG] Parsing directive\n");
             // Handle specialized directive parsers
@@ -427,6 +434,18 @@ static KryonASTNode *parse_element(KryonParser *parser) {
             KryonASTNode *for_directive = parse_for_directive(parser);
             if (for_directive && !kryon_ast_add_child(element, for_directive)) {
                 parser_error(parser, "Failed to add for directive");
+            }
+        } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE)) {
+            // @if directive - parse as conditional directive and add as child
+            KryonASTNode *if_directive = parse_if_directive(parser, false);
+            if (if_directive && !kryon_ast_add_child(element, if_directive)) {
+                parser_error(parser, "Failed to add if directive");
+            }
+        } else if (check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE)) {
+            // @const_if directive - parse as compile-time conditional and add as child
+            KryonASTNode *const_if_directive = parse_if_directive(parser, true);
+            if (const_if_directive && !kryon_ast_add_child(element, const_if_directive)) {
+                parser_error(parser, "Failed to add const_if directive");
             }
         } else if (check_token(parser, KRYON_TOKEN_CONST_FOR_DIRECTIVE)) {
             // @const_for loop - expand inline
@@ -896,20 +915,35 @@ static KryonASTNode *parse_primary(KryonParser *parser) {
         check_token(parser, KRYON_TOKEN_NULL)) {
         return parse_literal(parser);
     }
-    
+
     if (check_token(parser, KRYON_TOKEN_VARIABLE)) {
         return parse_variable(parser);
     }
-    
+
     if (check_token(parser, KRYON_TOKEN_TEMPLATE_START)) {
         return parse_template(parser);
     }
-    
+
+    // Handle parenthesized expressions (expression)
+    if (check_token(parser, KRYON_TOKEN_LEFT_PAREN)) {
+        advance(parser); // consume '('
+        KryonASTNode *expr = parse_expression(parser);
+        if (!expr) {
+            parser_error(parser, "Expected expression after '('");
+            return NULL;
+        }
+        if (!match_token(parser, KRYON_TOKEN_RIGHT_PAREN)) {
+            parser_error(parser, "Expected ')' after expression");
+            return NULL;
+        }
+        return expr;
+    }
+
     // Handle array literals [item1, item2, ...]
     if (check_token(parser, KRYON_TOKEN_LEFT_BRACKET)) {
         return parse_array_literal(parser);
     }
-    
+
     // Handle object literals {key: value, ...}
     if (check_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
         return parse_object_literal(parser);
@@ -2217,42 +2251,17 @@ static KryonASTNode *parse_for_directive(KryonParser *parser) {
     if (!for_directive) {
         return NULL;
     }
-    
-    // Initialize as element-like structure to hold properties
-    for_directive->data.element.element_type = kryon_strdup("@for");
-    for_directive->data.element.children = NULL;
-    for_directive->data.element.child_count = 0;
-    for_directive->data.element.child_capacity = 0;
-    for_directive->data.element.properties = NULL;
-    for_directive->data.element.property_count = 0;
-    for_directive->data.element.property_capacity = 0;
-    
-    // Add loop variable as property
-    KryonASTNode *var_prop = kryon_ast_create_node(parser, KRYON_AST_PROPERTY, &var_token->location);
-    if (var_prop) {
-        var_prop->data.property.name = kryon_strdup("variable");
-        var_prop->data.property.value = kryon_ast_create_node(parser, KRYON_AST_LITERAL, &var_token->location);
-        if (var_prop->data.property.value) {
-            var_prop->data.property.value->data.literal.value.type = KRYON_VALUE_STRING;
-            var_prop->data.property.value->data.literal.value.data.string_value = kryon_token_copy_lexeme(var_token);
-        }
-        kryon_ast_add_property(for_directive, var_prop);
-    }
-    
+
+    // Initialize for_loop structure
+    for_directive->data.for_loop.var_name = kryon_token_copy_lexeme(var_token);
+    for_directive->data.for_loop.body = NULL;
+    for_directive->data.for_loop.body_count = 0;
+    for_directive->data.for_loop.body_capacity = 0;
+
     // Parse array expression
     if (check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
         const KryonToken *array_token = advance(parser);
-        
-        // Add array name as property - create as VARIABLE reference, not literal
-        KryonASTNode *array_prop = kryon_ast_create_node(parser, KRYON_AST_PROPERTY, &array_token->location);
-        if (array_prop) {
-            array_prop->data.property.name = kryon_strdup("array");
-            array_prop->data.property.value = kryon_ast_create_node(parser, KRYON_AST_VARIABLE, &array_token->location);
-            if (array_prop->data.property.value) {
-                array_prop->data.property.value->data.variable.name = kryon_token_copy_lexeme(array_token);
-            }
-            kryon_ast_add_property(for_directive, array_prop);
-        }
+        for_directive->data.for_loop.array_name = kryon_token_copy_lexeme(array_token);
     } else {
         parser_error(parser, "Expected array name after 'in'");
         return for_directive;
@@ -2264,17 +2273,23 @@ static KryonASTNode *parse_for_directive(KryonParser *parser) {
         return for_directive;
     }
     
-    // Parse loop body (elements)
+    // Parse loop body (elements and directives)
     while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
         KryonASTNode *body_element = NULL;
-        
+
         if (check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
             body_element = parse_element(parser);
+        } else if (check_token(parser, KRYON_TOKEN_FOR_DIRECTIVE)) {
+            body_element = parse_for_directive(parser);
+        } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE)) {
+            body_element = parse_if_directive(parser, false);
+        } else if (check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE)) {
+            body_element = parse_if_directive(parser, true);
         } else {
-            parser_error(parser, "Expected element in for loop body");
+            parser_error(parser, "Expected element or directive in for loop body");
             break;
         }
-        
+
         if (body_element) {
             if (!kryon_ast_add_child(for_directive, body_element)) {
                 parser_error(parser, "Failed to add element to for loop body");
@@ -2290,13 +2305,229 @@ static KryonASTNode *parse_for_directive(KryonParser *parser) {
     }
     
     printf("[DEBUG] parse_for_directive: Created for loop '%s' in '%s' with %zu body elements\n",
-           var_token->lexeme,
-           (for_directive->data.element.property_count > 1 && 
-            for_directive->data.element.properties[1]->data.property.value) ? 
-               for_directive->data.element.properties[1]->data.property.value->data.literal.value.data.string_value : "unknown",
-           for_directive->data.element.child_count);
+           for_directive->data.for_loop.var_name,
+           for_directive->data.for_loop.array_name,
+           for_directive->data.for_loop.body_count);
     
     return for_directive;
+}
+
+/**
+ * @brief Parse conditional directive (@if, @elif, @else, @const_if)
+ * @param parser The parser
+ * @param is_const True if this is @const_if (compile-time), false for @if (runtime)
+ * @return AST node for the conditional, or NULL on error
+ */
+static KryonASTNode *parse_if_directive(KryonParser *parser, bool is_const) {
+    printf("[DEBUG] parse_if_directive: Starting (is_const=%d)\n", is_const);
+    const KryonToken *directive_token = advance(parser); // consume @if or @const_if
+
+    // Create the conditional node
+    KryonASTNodeType node_type = is_const ? KRYON_AST_CONST_IF_DIRECTIVE : KRYON_AST_IF_DIRECTIVE;
+    KryonASTNode *conditional = kryon_ast_create_node(parser, node_type, &directive_token->location);
+    if (!conditional) {
+        return NULL;
+    }
+
+    // Initialize conditional structure
+    conditional->data.conditional.is_const = is_const;
+    conditional->data.conditional.condition = NULL;
+    conditional->data.conditional.then_body = NULL;
+    conditional->data.conditional.then_count = 0;
+    conditional->data.conditional.then_capacity = 0;
+    conditional->data.conditional.elif_conditions = NULL;
+    conditional->data.conditional.elif_bodies = NULL;
+    conditional->data.conditional.elif_counts = NULL;
+    conditional->data.conditional.elif_count = 0;
+    conditional->data.conditional.elif_capacity = 0;
+    conditional->data.conditional.else_body = NULL;
+    conditional->data.conditional.else_count = 0;
+    conditional->data.conditional.else_capacity = 0;
+
+    // Parse condition expression
+    conditional->data.conditional.condition = parse_expression(parser);
+    if (!conditional->data.conditional.condition) {
+        parser_error(parser, "Expected condition expression after @if");
+        return conditional;
+    }
+
+    // Expect opening brace
+    if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
+        parser_error(parser, "Expected '{' after condition");
+        return conditional;
+    }
+
+    // Parse then body
+    conditional->data.conditional.then_capacity = 4;
+    conditional->data.conditional.then_body = kryon_calloc(conditional->data.conditional.then_capacity,
+                                                           sizeof(KryonASTNode*));
+
+    while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
+        KryonASTNode *body_element = NULL;
+
+        if (check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
+            body_element = parse_element(parser);
+        } else if (check_token(parser, KRYON_TOKEN_FOR_DIRECTIVE)) {
+            body_element = parse_for_directive(parser);
+        } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE) ||
+                   check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE)) {
+            bool nested_is_const = check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE);
+            body_element = parse_if_directive(parser, nested_is_const);
+        } else {
+            parser_error(parser, "Expected element in conditional body");
+            break;
+        }
+
+        if (body_element) {
+            // Resize if needed
+            if (conditional->data.conditional.then_count >= conditional->data.conditional.then_capacity) {
+                conditional->data.conditional.then_capacity *= 2;
+                conditional->data.conditional.then_body = kryon_realloc(conditional->data.conditional.then_body,
+                    conditional->data.conditional.then_capacity * sizeof(KryonASTNode*));
+            }
+            conditional->data.conditional.then_body[conditional->data.conditional.then_count++] = body_element;
+        }
+    }
+
+    // Expect closing brace
+    if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
+        parser_error(parser, "Expected '}' after conditional body");
+        return conditional;
+    }
+
+    // Parse optional elif/else blocks
+    conditional->data.conditional.elif_capacity = 2;
+    conditional->data.conditional.elif_conditions = kryon_calloc(conditional->data.conditional.elif_capacity,
+                                                                 sizeof(KryonASTNode*));
+    conditional->data.conditional.elif_bodies = kryon_calloc(conditional->data.conditional.elif_capacity,
+                                                             sizeof(KryonASTNode**));
+    conditional->data.conditional.elif_counts = kryon_calloc(conditional->data.conditional.elif_capacity,
+                                                             sizeof(size_t));
+
+    while (check_token(parser, KRYON_TOKEN_ELIF_DIRECTIVE)) {
+        advance(parser); // consume @elif
+
+        // Resize elif arrays if needed
+        if (conditional->data.conditional.elif_count >= conditional->data.conditional.elif_capacity) {
+            conditional->data.conditional.elif_capacity *= 2;
+            conditional->data.conditional.elif_conditions = kryon_realloc(conditional->data.conditional.elif_conditions,
+                conditional->data.conditional.elif_capacity * sizeof(KryonASTNode*));
+            conditional->data.conditional.elif_bodies = kryon_realloc(conditional->data.conditional.elif_bodies,
+                conditional->data.conditional.elif_capacity * sizeof(KryonASTNode**));
+            conditional->data.conditional.elif_counts = kryon_realloc(conditional->data.conditional.elif_counts,
+                conditional->data.conditional.elif_capacity * sizeof(size_t));
+        }
+
+        // Parse elif condition
+        KryonASTNode *elif_condition = parse_expression(parser);
+        if (!elif_condition) {
+            parser_error(parser, "Expected condition expression after @elif");
+            break;
+        }
+
+        conditional->data.conditional.elif_conditions[conditional->data.conditional.elif_count] = elif_condition;
+
+        // Expect opening brace
+        if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
+            parser_error(parser, "Expected '{' after elif condition");
+            break;
+        }
+
+        // Parse elif body
+        size_t elif_capacity = 4;
+        KryonASTNode **elif_body = kryon_calloc(elif_capacity, sizeof(KryonASTNode*));
+        size_t elif_count = 0;
+
+        while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
+            KryonASTNode *body_element = NULL;
+
+            if (check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
+                body_element = parse_element(parser);
+            } else if (check_token(parser, KRYON_TOKEN_FOR_DIRECTIVE)) {
+                body_element = parse_for_directive(parser);
+            } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE) ||
+                       check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE)) {
+                bool nested_is_const = check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE);
+                body_element = parse_if_directive(parser, nested_is_const);
+            } else {
+                parser_error(parser, "Expected element in elif body");
+                break;
+            }
+
+            if (body_element) {
+                if (elif_count >= elif_capacity) {
+                    elif_capacity *= 2;
+                    elif_body = kryon_realloc(elif_body, elif_capacity * sizeof(KryonASTNode*));
+                }
+                elif_body[elif_count++] = body_element;
+            }
+        }
+
+        conditional->data.conditional.elif_bodies[conditional->data.conditional.elif_count] = elif_body;
+        conditional->data.conditional.elif_counts[conditional->data.conditional.elif_count] = elif_count;
+        conditional->data.conditional.elif_count++;
+
+        // Expect closing brace
+        if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
+            parser_error(parser, "Expected '}' after elif body");
+            break;
+        }
+    }
+
+    // Parse optional else block
+    if (check_token(parser, KRYON_TOKEN_ELSE_DIRECTIVE)) {
+        advance(parser); // consume @else
+
+        // Expect opening brace
+        if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
+            parser_error(parser, "Expected '{' after @else");
+            return conditional;
+        }
+
+        // Parse else body
+        conditional->data.conditional.else_capacity = 4;
+        conditional->data.conditional.else_body = kryon_calloc(conditional->data.conditional.else_capacity,
+                                                               sizeof(KryonASTNode*));
+
+        while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
+            KryonASTNode *body_element = NULL;
+
+            if (check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
+                body_element = parse_element(parser);
+            } else if (check_token(parser, KRYON_TOKEN_FOR_DIRECTIVE)) {
+                body_element = parse_for_directive(parser);
+            } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE) ||
+                       check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE)) {
+                bool nested_is_const = check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE);
+                body_element = parse_if_directive(parser, nested_is_const);
+            } else {
+                parser_error(parser, "Expected element in else body");
+                break;
+            }
+
+            if (body_element) {
+                if (conditional->data.conditional.else_count >= conditional->data.conditional.else_capacity) {
+                    conditional->data.conditional.else_capacity *= 2;
+                    conditional->data.conditional.else_body = kryon_realloc(conditional->data.conditional.else_body,
+                        conditional->data.conditional.else_capacity * sizeof(KryonASTNode*));
+                }
+                conditional->data.conditional.else_body[conditional->data.conditional.else_count++] = body_element;
+            }
+        }
+
+        // Expect closing brace
+        if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
+            parser_error(parser, "Expected '}' after else body");
+            return conditional;
+        }
+    }
+
+    printf("[DEBUG] parse_if_directive: Created conditional with %zu then, %zu elif, %zu else elements\n",
+           conditional->data.conditional.then_count,
+           conditional->data.conditional.elif_count,
+           conditional->data.conditional.else_count);
+
+    return conditional;
 }
 
 // =============================================================================
@@ -2466,9 +2697,10 @@ bool kryon_ast_add_child(KryonASTNode *parent, KryonASTNode *child) {
     }
     
     // Only certain node types can have children
-    if (parent->type != KRYON_AST_ROOT && 
-        parent->type != KRYON_AST_ELEMENT && 
-        parent->type != KRYON_AST_FOR_DIRECTIVE) {
+    if (parent->type != KRYON_AST_ROOT &&
+        parent->type != KRYON_AST_ELEMENT &&
+        parent->type != KRYON_AST_FOR_DIRECTIVE &&
+        parent->type != KRYON_AST_IF_DIRECTIVE) {
         return false;
     }
     
@@ -2505,7 +2737,44 @@ bool kryon_ast_add_child(KryonASTNode *parent, KryonASTNode *child) {
         }
     }
     
-    // Expand children array if needed
+    // Handle different parent types with different child array structures
+    if (parent->type == KRYON_AST_FOR_DIRECTIVE) {
+        // @for directive uses data.for_loop.body
+        if (parent->data.for_loop.body_count >= parent->data.for_loop.body_capacity) {
+            size_t new_capacity = parent->data.for_loop.body_capacity ?
+                                 parent->data.for_loop.body_capacity * 2 : 4;
+            KryonASTNode **new_body = realloc(parent->data.for_loop.body,
+                                              new_capacity * sizeof(KryonASTNode*));
+            if (!new_body) {
+                return false;
+            }
+            parent->data.for_loop.body = new_body;
+            parent->data.for_loop.body_capacity = new_capacity;
+        }
+        parent->data.for_loop.body[parent->data.for_loop.body_count++] = child;
+        child->parent = parent;
+        return true;
+    }
+
+    if (parent->type == KRYON_AST_IF_DIRECTIVE) {
+        // @if directive uses data.conditional.then_body
+        if (parent->data.conditional.then_count >= parent->data.conditional.then_capacity) {
+            size_t new_capacity = parent->data.conditional.then_capacity ?
+                                 parent->data.conditional.then_capacity * 2 : 4;
+            KryonASTNode **new_then = realloc(parent->data.conditional.then_body,
+                                              new_capacity * sizeof(KryonASTNode*));
+            if (!new_then) {
+                return false;
+            }
+            parent->data.conditional.then_body = new_then;
+            parent->data.conditional.then_capacity = new_capacity;
+        }
+        parent->data.conditional.then_body[parent->data.conditional.then_count++] = child;
+        child->parent = parent;
+        return true;
+    }
+
+    // ROOT and ELEMENT use data.element.children
     if (parent->data.element.child_count >= parent->data.element.child_capacity) {
         size_t new_capacity = parent->data.element.child_capacity ?
                              parent->data.element.child_capacity * 2 : 4;
@@ -2517,10 +2786,10 @@ bool kryon_ast_add_child(KryonASTNode *parent, KryonASTNode *child) {
         parent->data.element.children = new_children;
         parent->data.element.child_capacity = new_capacity;
     }
-    
+
     parent->data.element.children[parent->data.element.child_count++] = child;
     child->parent = parent;
-    
+
     return true;
 }
 
@@ -2743,6 +3012,11 @@ const char *kryon_ast_node_type_name(KryonASTNodeType type) {
         case KRYON_AST_FUNCTION_DEFINITION: return "FunctionDefinition";
         case KRYON_AST_CONST_DEFINITION: return "ConstDefinition";
         case KRYON_AST_CONST_FOR_LOOP: return "ConstForLoop";
+        case KRYON_AST_FOR_DIRECTIVE: return "ForDirective";
+        case KRYON_AST_IF_DIRECTIVE: return "IfDirective";
+        case KRYON_AST_ELIF_DIRECTIVE: return "ElifDirective";
+        case KRYON_AST_ELSE_DIRECTIVE: return "ElseDirective";
+        case KRYON_AST_CONST_IF_DIRECTIVE: return "ConstIfDirective";
         case KRYON_AST_LITERAL: return "Literal";
         case KRYON_AST_VARIABLE: return "Variable";
         case KRYON_AST_TEMPLATE: return "Template";

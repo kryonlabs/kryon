@@ -44,6 +44,7 @@ set(ELEMENTS_SOURCES
     elements/tab.c
     elements/tab_content.c
     elements/tabpanel.c
+    elements/tabgroup.c
     elements/link.c
 )
 

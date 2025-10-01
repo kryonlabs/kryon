@@ -1,7 +1,7 @@
 /**
  * @file ast_expander.c
  * @brief AST expansion for components and const_for loops
- * 
+ *
  * Handles expansion of custom components and const_for loops during code generation.
  * Provides parameter substitution and template processing.
  */
@@ -9,9 +9,18 @@
 #include "codegen.h"
 #include "memory.h"
 #include "parser.h"
+#include "types.h"
+#include "../../shared/kryon_mappings.h"
+#include "../../shared/krb_schema.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+// Schema writer wrapper
+static bool schema_writer(void *context, const void *data, size_t size) {
+    KryonCodeGenerator *codegen = (KryonCodeGenerator *)context;
+    return write_binary_data(codegen, data, size);
+}
 
 // Parameter substitution context
 typedef struct {
@@ -1187,4 +1196,321 @@ static bool is_compile_time_resolvable(const char *var_name, KryonCodeGenerator 
     // Check if the variable is in the constant table (compile-time resolvable)
     const KryonASTNode *const_value = find_constant_value(codegen, var_name);
     return const_value != NULL;
+}
+// =============================================================================
+// CONDITIONAL DIRECTIVE EXPANSION
+// =============================================================================
+
+/**
+ * @brief Evaluate a condition expression at compile time
+ * @param condition The condition AST node
+ * @param codegen Code generator context
+ * @return true if condition evaluates to true, false otherwise
+ */
+static bool evaluate_condition_compile_time(const KryonASTNode *condition, KryonCodeGenerator *codegen) {
+    if (!condition) {
+        return false;
+    }
+
+    // Handle literal boolean values
+    if (condition->type == KRYON_AST_LITERAL) {
+        if (condition->data.literal.value.type == KRYON_VALUE_BOOLEAN) {
+            return condition->data.literal.value.data.bool_value;
+        }
+        // Non-zero numbers are truthy
+        if (condition->data.literal.value.type == KRYON_VALUE_INTEGER) {
+            return condition->data.literal.value.data.int_value != 0;
+        }
+        return true; // Non-empty strings/values are truthy
+    }
+
+    // Handle variable references - look up in constant table
+    if (condition->type == KRYON_AST_VARIABLE) {
+        const KryonASTNode *const_value = find_constant_value(codegen, condition->data.variable.name);
+        if (const_value) {
+            return evaluate_condition_compile_time(const_value, codegen);
+        }
+        printf("WARNING: Variable '%s' not found in constant table, assuming false\n",
+               condition->data.variable.name);
+        return false;
+    }
+
+    // Handle binary operations
+    if (condition->type == KRYON_AST_BINARY_OP) {
+        bool left = evaluate_condition_compile_time(condition->data.binary_op.left, codegen);
+        bool right = evaluate_condition_compile_time(condition->data.binary_op.right, codegen);
+
+        switch (condition->data.binary_op.operator) {
+            case KRYON_TOKEN_LOGICAL_AND:
+                return left && right;
+            case KRYON_TOKEN_LOGICAL_OR:
+                return left || right;
+            case KRYON_TOKEN_EQUALS:
+                return left == right;
+            case KRYON_TOKEN_NOT_EQUALS:
+                return left != right;
+            default:
+                printf("WARNING: Unsupported operator in compile-time condition\n");
+                return false;
+        }
+    }
+
+    // Handle unary operations
+    if (condition->type == KRYON_AST_UNARY_OP) {
+        bool operand = evaluate_condition_compile_time(condition->data.unary_op.operand, codegen);
+        if (condition->data.unary_op.operator == KRYON_TOKEN_LOGICAL_NOT) {
+            return !operand;
+        }
+    }
+
+    printf("WARNING: Unsupported condition type for compile-time evaluation\n");
+    return false;
+}
+
+/**
+ * @brief Expand @const_if directive by evaluating condition at compile time
+ * @param codegen Code generator context
+ * @param const_if The const_if AST node
+ * @param ast_root Root AST node
+ * @return true on success, false on error
+ */
+bool kryon_expand_const_if(KryonCodeGenerator *codegen, const KryonASTNode *const_if, const KryonASTNode *ast_root) {
+    if (!const_if || (const_if->type != KRYON_AST_CONST_IF_DIRECTIVE && const_if->type != KRYON_AST_IF_DIRECTIVE)) {
+        return false;
+    }
+
+    printf("DEBUG: Expanding @const_if directive\n");
+
+    // Evaluate the main condition
+    bool condition_result = evaluate_condition_compile_time(const_if->data.conditional.condition, codegen);
+    printf("DEBUG: Main condition evaluated to %s\n", condition_result ? "true" : "false");
+
+    // If main condition is true, emit then body
+    if (condition_result) {
+        printf("DEBUG: Emitting then body (%zu elements)\n", const_if->data.conditional.then_count);
+        for (size_t i = 0; i < const_if->data.conditional.then_count; i++) {
+            if (!kryon_write_element_instance(codegen, const_if->data.conditional.then_body[i], ast_root)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Check elif conditions
+    for (size_t i = 0; i < const_if->data.conditional.elif_count; i++) {
+        bool elif_result = evaluate_condition_compile_time(const_if->data.conditional.elif_conditions[i], codegen);
+        printf("DEBUG: Elif %zu condition evaluated to %s\n", i, elif_result ? "true" : "false");
+
+        if (elif_result) {
+            printf("DEBUG: Emitting elif %zu body (%zu elements)\n", i, const_if->data.conditional.elif_counts[i]);
+            for (size_t j = 0; j < const_if->data.conditional.elif_counts[i]; j++) {
+                if (!kryon_write_element_instance(codegen, const_if->data.conditional.elif_bodies[i][j], ast_root)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    // If no conditions matched, emit else body
+    if (const_if->data.conditional.else_count > 0) {
+        printf("DEBUG: Emitting else body (%zu elements)\n", const_if->data.conditional.else_count);
+        for (size_t i = 0; i < const_if->data.conditional.else_count; i++) {
+            if (!kryon_write_element_instance(codegen, const_if->data.conditional.else_body[i], ast_root)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+// Helper function to serialize condition expression to string
+static char *serialize_condition_expression(const KryonASTNode *condition) {
+    if (!condition) {
+        return NULL;
+    }
+
+    // Handle literal boolean values
+    if (condition->type == KRYON_AST_LITERAL) {
+        if (condition->data.literal.value.type == KRYON_VALUE_BOOLEAN) {
+            return kryon_strdup(condition->data.literal.value.data.bool_value ? "true" : "false");
+        }
+        if (condition->data.literal.value.type == KRYON_VALUE_INTEGER) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "%lld", (long long)condition->data.literal.value.data.int_value);
+            return kryon_strdup(buf);
+        }
+        if (condition->data.literal.value.type == KRYON_VALUE_STRING) {
+            // Return quoted string
+            size_t len = strlen(condition->data.literal.value.data.string_value);
+            char *quoted = kryon_alloc(len + 3); // quotes + null
+            if (quoted) {
+                snprintf(quoted, len + 3, "\"%s\"", condition->data.literal.value.data.string_value);
+            }
+            return quoted;
+        }
+    }
+
+    // Handle variable references (most common case for @if with @var)
+    if (condition->type == KRYON_AST_VARIABLE) {
+        return kryon_strdup(condition->data.variable.name);
+    }
+
+    // Handle identifier references (variable names without $ prefix in expressions)
+    if (condition->type == KRYON_AST_IDENTIFIER) {
+        return kryon_strdup(condition->data.identifier.name);
+    }
+
+    // Handle unary operations (e.g., !showMessage)
+    if (condition->type == KRYON_AST_UNARY_OP) {
+        char *operand_str = serialize_condition_expression(condition->data.unary_op.operand);
+        if (!operand_str) return NULL;
+
+        const char *op_str = "!"; // Only logical NOT is common
+        size_t len = strlen(op_str) + strlen(operand_str) + 1;
+        char *result = kryon_alloc(len);
+        if (result) {
+            snprintf(result, len, "%s%s", op_str, operand_str);
+        }
+        kryon_free(operand_str);
+        return result;
+    }
+
+    // Handle binary operations (e.g., count > 0, isEnabled && isVisible)
+    if (condition->type == KRYON_AST_BINARY_OP) {
+        char *left_str = serialize_condition_expression(condition->data.binary_op.left);
+        char *right_str = serialize_condition_expression(condition->data.binary_op.right);
+        if (!left_str || !right_str) {
+            kryon_free(left_str);
+            kryon_free(right_str);
+            return NULL;
+        }
+
+        const char *op_str = "";
+        switch (condition->data.binary_op.operator) {
+            case KRYON_TOKEN_LOGICAL_AND: op_str = " && "; break;
+            case KRYON_TOKEN_LOGICAL_OR: op_str = " || "; break;
+            case KRYON_TOKEN_EQUALS: op_str = " == "; break;
+            case KRYON_TOKEN_NOT_EQUALS: op_str = " != "; break;
+            case KRYON_TOKEN_LESS_THAN: op_str = " < "; break;
+            case KRYON_TOKEN_LESS_EQUAL: op_str = " <= "; break;
+            case KRYON_TOKEN_GREATER_THAN: op_str = " > "; break;
+            case KRYON_TOKEN_GREATER_EQUAL: op_str = " >= "; break;
+            default: op_str = " ??? "; break;
+        }
+
+        size_t len = strlen(left_str) + strlen(op_str) + strlen(right_str) + 1;
+        char *result = kryon_alloc(len);
+        if (result) {
+            snprintf(result, len, "%s%s%s", left_str, op_str, right_str);
+        }
+        kryon_free(left_str);
+        kryon_free(right_str);
+        return result;
+    }
+
+    // Unsupported condition type
+    printf("WARNING: Unsupported condition type %d for serialization\n", condition->type);
+    return kryon_strdup("false");
+}
+
+/**
+ * @brief Write @if directive as runtime conditional element
+ * @param codegen Code generator context
+ * @param if_directive The if AST node
+ * @param ast_root Root AST node
+ * @return true on success, false on error
+ */
+bool kryon_write_if_directive(KryonCodeGenerator *codegen, const KryonASTNode *if_directive, const KryonASTNode *ast_root) {
+    if (!if_directive || if_directive->type != KRYON_AST_IF_DIRECTIVE) {
+        return false;
+    }
+
+    printf("DEBUG: Writing @if directive as runtime conditional element\n");
+
+    // Serialize the condition expression to string
+    char *condition_str = serialize_condition_expression(if_directive->data.conditional.condition);
+    if (!condition_str) {
+        printf("ERROR: Failed to serialize @if condition expression\n");
+        return false;
+    }
+
+    printf("DEBUG: @if condition serialized as: '%s'\n", condition_str);
+
+    // Get element hex for "if" syntax directive
+    uint16_t if_element_hex = kryon_get_syntax_hex("if");
+    printf("DEBUG: @if element hex code: 0x%04X\n", if_element_hex);
+
+    // Create element header using schema format
+    uint32_t instance_id = codegen->next_element_id++;
+    uint16_t child_count = (uint16_t)if_directive->data.conditional.then_count;
+    uint16_t property_count = 1; // Just the "condition" property
+
+    KRBElementHeader header = {
+        .instance_id = instance_id,
+        .element_type = (uint32_t)if_element_hex,
+        .parent_id = 0,
+        .style_ref = 0,
+        .property_count = property_count,
+        .child_count = child_count,
+        .event_count = 0,
+    };
+
+    // Write element header
+    if (!krb_write_element_header(schema_writer, codegen, &header)) {
+        printf("ERROR: Failed to write @if element header\n");
+        kryon_free(condition_str);
+        return false;
+    }
+
+    // Write condition property using schema-based property header
+    uint16_t condition_prop_hex = 0x9100; // Custom property for "condition"
+
+    KRBPropertyHeader prop_header = {
+        .property_id = condition_prop_hex,
+        .value_type = KRYON_RUNTIME_PROP_STRING
+    };
+
+    printf("DEBUG: Writing condition property with hex 0x%04X, value='%s'\n", condition_prop_hex, condition_str);
+
+    // Write property header using schema writer
+    if (!krb_write_property_header(schema_writer, codegen, &prop_header)) {
+        printf("ERROR: Failed to write condition property header\n");
+        kryon_free(condition_str);
+        return false;
+    }
+
+    // Write string value (length + data)
+    uint16_t condition_len = (uint16_t)strlen(condition_str);
+    if (!write_uint16(codegen, condition_len) ||
+        !write_binary_data(codegen, condition_str, condition_len)) {
+        printf("ERROR: Failed to write condition property value\n");
+        kryon_free(condition_str);
+        return false;
+    }
+
+    printf("DEBUG: Successfully wrote condition property (length=%u)\n", condition_len);
+    kryon_free(condition_str);
+
+    // Write then body children recursively
+    printf("DEBUG: Writing %zu children for @if then body\n", if_directive->data.conditional.then_count);
+    for (size_t i = 0; i < if_directive->data.conditional.then_count; i++) {
+        if (!kryon_write_element_instance(codegen, if_directive->data.conditional.then_body[i], ast_root)) {
+            printf("ERROR: Failed to write @if child %zu\n", i);
+            return false;
+        }
+    }
+
+    // TODO: Support elif and else branches
+    // For now, we only support the simple @if (condition) { ... } case
+    if (if_directive->data.conditional.elif_count > 0) {
+        printf("WARNING: @elif branches not yet supported at runtime\n");
+    }
+    if (if_directive->data.conditional.else_count > 0) {
+        printf("WARNING: @else branches not yet supported at runtime\n");
+    }
+
+    printf("DEBUG: @if directive written successfully\n");
+    return true;
 }

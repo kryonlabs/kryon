@@ -48,23 +48,36 @@ bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNod
     if (!element) {
         return false;
     }
-    
+
     // Handle const_for loops by expanding them
     if (element->type == KRYON_AST_CONST_FOR_LOOP) {
         return kryon_expand_const_for_loop(codegen, element, ast_root);
     }
-    
-    if (element->type != KRYON_AST_ELEMENT && element->type != KRYON_AST_FOR_DIRECTIVE) {
+
+    // Handle @const_if by evaluating at compile time and emitting only matching branch
+    if (element->type == KRYON_AST_CONST_IF_DIRECTIVE) {
+        return kryon_expand_const_if(codegen, element, ast_root);
+    }
+
+    // Handle @if as runtime conditional (emit all branches with condition metadata)
+    if (element->type == KRYON_AST_IF_DIRECTIVE) {
+        return kryon_write_if_directive(codegen, element, ast_root);
+    }
+
+    if (element->type != KRYON_AST_ELEMENT && element->type != KRYON_AST_FOR_DIRECTIVE && element->type != KRYON_AST_IF_DIRECTIVE) {
         return false;
     }
-    
+
     // Check if this is a custom component instance that needs expansion
     uint16_t element_hex;
     const char* element_type_name;
-    
+
     if (element->type == KRYON_AST_FOR_DIRECTIVE) {
         element_hex = kryon_get_syntax_hex("for");
         element_type_name = "@for";
+    } else if (element->type == KRYON_AST_IF_DIRECTIVE) {
+        element_hex = kryon_get_syntax_hex("if");
+        element_type_name = "@if";
     } else {
         element_hex = kryon_codegen_get_element_hex(element->data.element.element_type);
         element_type_name = element->data.element.element_type;
@@ -93,47 +106,118 @@ bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNod
     uint16_t child_count = count_expanded_children(codegen, element);
     
     // Create element header using schema format
+    // Get property count based on node type
+    uint16_t property_count = 0;
+    if (element->type == KRYON_AST_ELEMENT) {
+        property_count = (uint16_t)element->data.element.property_count;
+    } else if (element->type == KRYON_AST_FOR_DIRECTIVE || element->type == KRYON_AST_IF_DIRECTIVE) {
+        property_count = 1; // Directives have 1 property (the condition/array)
+    }
+
     KRBElementHeader header = {
         .instance_id = instance_id,
         .element_type = (uint32_t)element_hex,
         .parent_id = 0,  // Root elements for now
         .style_ref = 0,  // No styles for now
-        .property_count = (uint16_t)element->data.element.property_count,
+        .property_count = property_count,
         .child_count = child_count,
         .event_count = 0,  // No events for now
         .flags = 0  // No flags for now
     };
-    
-    printf("🏗️  Writing element header: id=%u type=0x%x props=%u children=%u\n", 
+
+    printf("🏗️  Writing element header: id=%u type=0x%x props=%u children=%u\n",
            instance_id, element_hex, header.property_count, header.child_count);
-    
+
     // Write header using centralized schema validation
     if (!krb_write_element_header(schema_writer, codegen, &header)) {
         codegen_error(codegen, "Failed to write element header using schema");
         return false;
     }
-    
-    // Write properties
-    for (size_t i = 0; i < element->data.element.property_count; i++) {
-        if (!write_property_node(codegen, element->data.element.properties[i])) {
-            return false;
+
+    // Write properties based on node type
+    if (element->type == KRYON_AST_ELEMENT) {
+        for (size_t i = 0; i < element->data.element.property_count; i++) {
+            if (!write_property_node(codegen, element->data.element.properties[i])) {
+                return false;
+            }
+        }
+    } else if (element->type == KRYON_AST_FOR_DIRECTIVE) {
+        // Write @for metadata: variable name and array name as a single property
+        // Format: "variable|array" (e.g., "habit|habits")
+        const char *var_name = element->data.for_loop.var_name;
+        const char *array_name = element->data.for_loop.array_name;
+
+        printf("🔍 DEBUG: Writing @for metadata: var='%s', array='%s'\n",
+               var_name ? var_name : "NULL", array_name ? array_name : "NULL");
+
+        if (var_name && array_name) {
+            // Create combined string
+            size_t buffer_len = strlen(var_name) + strlen(array_name) + 2; // +2 for | and \0
+            char *combined = kryon_malloc(buffer_len);
+            snprintf(combined, buffer_len, "%s|%s", var_name, array_name);
+
+            printf("🔍 DEBUG: Combined string = '%s'\n", combined);
+
+            // Write property header in native byte order (same as other properties)
+            uint16_t prop_id = 0x9000;
+            uint8_t prop_type = KRYON_RUNTIME_PROP_STRING;
+            write_binary_data(codegen, (const char*)&prop_id, sizeof(uint16_t));
+            write_binary_data(codegen, (const char*)&prop_type, sizeof(uint8_t));
+
+            // Write the combined string (length + data)
+            uint16_t str_len = (uint16_t)strlen(combined);
+            write_binary_data(codegen, (const char*)&str_len, sizeof(uint16_t));
+            write_binary_data(codegen, combined, str_len);
+            kryon_free(combined);
+        } else {
+            printf("❌ DEBUG: var_name or array_name is NULL!\n");
+        }
+    } else if (element->type == KRYON_AST_IF_DIRECTIVE) {
+        // Write @if condition as property (hex 0x9100)
+        if (element->data.conditional.condition) {
+            // For simple identifier conditions, just write the variable name
+            const char *condition_str = NULL;
+            if (element->data.conditional.condition->type == KRYON_AST_IDENTIFIER) {
+                condition_str = element->data.conditional.condition->data.identifier.name;
+            } else if (element->data.conditional.condition->type == KRYON_AST_VARIABLE) {
+                condition_str = element->data.conditional.condition->data.variable.name;
+            } else {
+                // For complex expressions, we'd need to serialize them
+                // For now, just use a placeholder
+                condition_str = "true";
+            }
+
+            // Write property header in native byte order (same as other properties)
+            uint16_t prop_id = 0x9100;
+            uint8_t prop_type = KRYON_RUNTIME_PROP_STRING;
+            write_binary_data(codegen, (const char*)&prop_id, sizeof(uint16_t));
+            write_binary_data(codegen, (const char*)&prop_type, sizeof(uint8_t));
+
+            // Write condition string (length + data)
+            uint16_t cond_len = (uint16_t)strlen(condition_str);
+            write_binary_data(codegen, (const char*)&cond_len, sizeof(uint16_t));
+            write_binary_data(codegen, condition_str, cond_len);
         }
     }
-    
-    // Write child instances recursively (elements, const_for loops, and @for directives)
-    for (size_t i = 0; i < element->data.element.child_count; i++) {
-        const KryonASTNode *child = element->data.element.children[i];
-        if (child && (child->type == KRYON_AST_ELEMENT || child->type == KRYON_AST_CONST_FOR_LOOP)) {
-            if (!kryon_write_element_instance(codegen, child, ast_root)) {
-                return false;
+
+    // Write child instances recursively using unified helper
+    size_t children_count = 0;
+    KryonASTNode **children = kryon_ast_get_children(element, &children_count);
+
+    if (children) {
+        for (size_t i = 0; i < children_count; i++) {
+            const KryonASTNode *child = children[i];
+            if (child && (child->type == KRYON_AST_ELEMENT ||
+                         child->type == KRYON_AST_CONST_FOR_LOOP ||
+                         child->type == KRYON_AST_CONST_IF_DIRECTIVE ||
+                         child->type == KRYON_AST_FOR_DIRECTIVE ||
+                         child->type == KRYON_AST_IF_DIRECTIVE)) {
+                if (!kryon_write_element_instance(codegen, child, ast_root)) {
+                    return false;
+                }
             }
-        } else if (child && child->type == KRYON_AST_FOR_DIRECTIVE) {
-            // @for directives need to be written as element instances for consistent loading
-            if (!kryon_write_element_instance(codegen, child, ast_root)) {
-                return false;
-            }
+            // Skip other directive nodes - they are handled in their respective sections
         }
-        // Skip other directive nodes - they are handled in their respective sections
     }
     
     // Event handlers (none for now)
@@ -984,14 +1068,22 @@ static bool write_array_literal_property(KryonCodeGenerator *codegen, const Kryo
 }
 
 uint16_t count_expanded_children(KryonCodeGenerator *codegen, const KryonASTNode *element) {
-    if (!element || (element->type != KRYON_AST_ELEMENT && element->type != KRYON_AST_FOR_DIRECTIVE)) {
+    if (!element) {
         return 0;
     }
-    
+
     uint16_t expanded_count = 0;
-    
-    for (size_t i = 0; i < element->data.element.child_count; i++) {
-        const KryonASTNode *child = element->data.element.children[i];
+
+    // Get children using unified helper function
+    size_t child_count = 0;
+    KryonASTNode **children = kryon_ast_get_children(element, &child_count);
+
+    if (!children) {
+        return 0;
+    }
+
+    for (size_t i = 0; i < child_count; i++) {
+        const KryonASTNode *child = children[i];
         if (!child) continue;
         
         if (child->type == KRYON_AST_CONST_FOR_LOOP) {
@@ -1024,6 +1116,9 @@ uint16_t count_expanded_children(KryonCodeGenerator *codegen, const KryonASTNode
         } else if (child->type == KRYON_AST_FOR_DIRECTIVE) {
             // @for directive counts as 1 element (will be expanded at runtime)
             expanded_count += 1;
+        } else if (child->type == KRYON_AST_IF_DIRECTIVE || child->type == KRYON_AST_CONST_IF_DIRECTIVE) {
+            // @if and @const_if directives count as 1 element
+            expanded_count += 1;
         }
         // Skip other types (constants, etc.)
     }
@@ -1033,13 +1128,13 @@ uint16_t count_expanded_children(KryonCodeGenerator *codegen, const KryonASTNode
 
 uint32_t kryon_count_elements_recursive(const KryonASTNode *node) {
     if (!node) return 0;
-    
+
     uint32_t count = 0;
-    
+
     // Count this node if it's an element
     if (node->type == KRYON_AST_ELEMENT) {
         count = 1;
-        
+
         // Count children recursively
         for (size_t i = 0; i < node->data.element.child_count; i++) {
             count += kryon_count_elements_recursive(node->data.element.children[i]);
@@ -1049,20 +1144,40 @@ uint32_t kryon_count_elements_recursive(const KryonASTNode *node) {
         for (size_t i = 0; i < node->data.element.child_count; i++) {
             count += kryon_count_elements_recursive(node->data.element.children[i]);
         }
+    } else if (node->type == KRYON_AST_FOR_DIRECTIVE) {
+        // Count @for directive as 1 element, plus its body
+        count = 1;
+        for (size_t i = 0; i < node->data.for_loop.body_count; i++) {
+            count += kryon_count_elements_recursive(node->data.for_loop.body[i]);
+        }
+    } else if (node->type == KRYON_AST_IF_DIRECTIVE || node->type == KRYON_AST_CONST_IF_DIRECTIVE) {
+        // Count @if directive as 1 element, plus its branches
+        count = 1;
+        for (size_t i = 0; i < node->data.conditional.then_count; i++) {
+            count += kryon_count_elements_recursive(node->data.conditional.then_body[i]);
+        }
+        for (size_t i = 0; i < node->data.conditional.elif_count; i++) {
+            for (size_t j = 0; j < node->data.conditional.elif_counts[i]; j++) {
+                count += kryon_count_elements_recursive(node->data.conditional.elif_bodies[i][j]);
+            }
+        }
+        for (size_t i = 0; i < node->data.conditional.else_count; i++) {
+            count += kryon_count_elements_recursive(node->data.conditional.else_body[i]);
+        }
     }
-    
+
     return count;
 }
 
 uint32_t kryon_count_properties_recursive(const KryonASTNode *node) {
     if (!node) return 0;
-    
+
     uint32_t count = 0;
-    
+
     if (node->type == KRYON_AST_ELEMENT) {
         // Count this element's properties
         count = (uint32_t)node->data.element.property_count;
-        
+
         // Count children's properties recursively
         for (size_t i = 0; i < node->data.element.child_count; i++) {
             count += kryon_count_properties_recursive(node->data.element.children[i]);
@@ -1072,8 +1187,28 @@ uint32_t kryon_count_properties_recursive(const KryonASTNode *node) {
         for (size_t i = 0; i < node->data.element.child_count; i++) {
             count += kryon_count_properties_recursive(node->data.element.children[i]);
         }
+    } else if (node->type == KRYON_AST_FOR_DIRECTIVE) {
+        // @for directive has 1 property (condition), plus body properties
+        count = 1;
+        for (size_t i = 0; i < node->data.for_loop.body_count; i++) {
+            count += kryon_count_properties_recursive(node->data.for_loop.body[i]);
+        }
+    } else if (node->type == KRYON_AST_IF_DIRECTIVE || node->type == KRYON_AST_CONST_IF_DIRECTIVE) {
+        // @if directive has 1 property (condition), plus body properties
+        count = 1;
+        for (size_t i = 0; i < node->data.conditional.then_count; i++) {
+            count += kryon_count_properties_recursive(node->data.conditional.then_body[i]);
+        }
+        for (size_t i = 0; i < node->data.conditional.elif_count; i++) {
+            for (size_t j = 0; j < node->data.conditional.elif_counts[i]; j++) {
+                count += kryon_count_properties_recursive(node->data.conditional.elif_bodies[i][j]);
+            }
+        }
+        for (size_t i = 0; i < node->data.conditional.else_count; i++) {
+            count += kryon_count_properties_recursive(node->data.conditional.else_body[i]);
+        }
     }
-    
+
     return count;
 }
 

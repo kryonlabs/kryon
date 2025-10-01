@@ -191,10 +191,11 @@ bool krb_validate_property_header(const uint8_t *data, size_t size, size_t *offs
     if (*offset + sizeof(KRBPropertyHeader) > size) {
         return false;
     }
-    
+
+    // Read property ID and value type in native byte order (little-endian)
     memcpy(&header->property_id, data + *offset, sizeof(uint16_t));
     *offset += sizeof(uint16_t);
-    
+
     memcpy(&header->value_type, data + *offset, sizeof(uint8_t));
     *offset += sizeof(uint8_t);
     

@@ -17,6 +17,10 @@
 #include <string.h>
 #include <math.h>
 
+// Forward declarations for TabGroup integration
+extern int tabgroup_get_selected_index(KryonElement* tabgroup_element);
+extern void tabgroup_set_selected_index(KryonRuntime* runtime, KryonElement* tabgroup_element, int index);
+
 // =============================================================================
 // TABBAR STATE (Element-Owned)
 // =============================================================================
@@ -51,26 +55,35 @@ static TabBarState* ensure_tabbar_state(KryonElement* element) {
 /**
  * @brief Helper function for Tab elements to set the selected index
  * This allows Tab elements to communicate with their parent TabBar
+ * Supports both TabGroup parent mode and standalone/ID-based mode
  */
 void tabbar_set_selected_index(KryonRuntime* runtime, KryonElement* tabbar_element, int index) {
     printf("🔍 TABBAR: tabbar_set_selected_index called with index %d\n", index);
-    
+
     if (!tabbar_element || strcmp(tabbar_element->type_name, "TabBar") != 0) {
         printf("🔍 TABBAR: Invalid TabBar element\n");
         return;
     }
-    
+
+    // Mode 1: If we have a TabGroup parent, update its state instead
+    if (tabbar_element->parent && strcmp(tabbar_element->parent->type_name, "TabGroup") == 0) {
+        printf("🔍 TABBAR: Found TabGroup parent, delegating to tabgroup_set_selected_index\n");
+        tabgroup_set_selected_index(runtime, tabbar_element->parent, index);
+        return;
+    }
+
+    // Mode 2: Standalone or ID-based mode - update own state
     TabBarState* state = ensure_tabbar_state(tabbar_element);
     if (state) {
         printf("🔍 TABBAR: Setting TabBar state selected_tab_index to %d\n", index);
         state->selected_tab_index = index;
-        
+
         // Also update the bound variable so TabContent can see the change
         if (runtime) {
             // Convert index to string since variables are strings
             char index_str[32];
             snprintf(index_str, sizeof(index_str), "%d", index);
-            
+
             printf("🔍 TABBAR: Setting selectedTab variable to '%s'\n", index_str);
             // Update the selectedTab variable (hardcoded for now, but could be made dynamic)
             bool success = kryon_runtime_set_variable(runtime, "selectedTab", index_str);
@@ -125,8 +138,17 @@ static const char* get_tabbar_position(KryonElement* element) {
 
 /**
  * @brief Gets the selected tab index from state or property
+ * Checks for TabGroup parent first (auto-mode), falls back to own state
  */
 static int get_selected_index(KryonElement* element) {
+    // Mode 1: Check if we have a TabGroup parent (auto-mode)
+    if (element->parent && strcmp(element->parent->type_name, "TabGroup") == 0) {
+        int index = tabgroup_get_selected_index(element->parent);
+        printf("🔍 TABBAR: Using TabGroup parent, selectedIndex = %d\n", index);
+        return index;
+    }
+
+    // Mode 2: Use own state (ID-based mode or standalone)
     TabBarState* state = get_tabbar_state(element);
     if (state && state->initialized) {
         return state->selected_tab_index;

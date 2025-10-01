@@ -94,6 +94,15 @@ static InputState* ensure_input_state(struct KryonElement* element) {
                 }
             }
             
+            // Check for autoFocus property
+            bool autoFocus = get_element_property_bool(element, "autoFocus", false);
+            if (autoFocus) {
+                state->has_focus = true;
+                state->cursor_visible = true;
+                state->cursor_blink_timer = 0.0f;
+                printf("🔍 INPUT: autoFocus enabled, input will receive focus\n");
+            }
+
             // Check input type for special behavior
             const char* input_type = get_element_property_string(element, "type");
             if (input_type) {
@@ -303,10 +312,18 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
         case ELEMENT_EVENT_UNFOCUSED: {
             state->has_focus = false;
             input_clear_selection(state);
-            
+
             // Update bound variable when input loses focus
             update_input_variable_binding(runtime, element, state);
-            
+
+            // Check for onBlur callback
+            const char* onBlur = get_element_property_string(element, "onBlur");
+            if (onBlur) {
+                printf("🔍 INPUT: Focus lost, calling onBlur: '%s'\n", onBlur);
+                // Call the Lua function
+                generic_script_event_handler(runtime, element, event);
+            }
+
             return true;
         }
         
@@ -385,8 +402,19 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
                     return true;
                     
                 case 257: // Enter
+                    // Update bound variable before triggering onEnter
+                    update_input_variable_binding(runtime, element, state);
+
+                    // Check for onEnter callback
+                    const char* onEnter = get_element_property_string(element, "onEnter");
+                    if (onEnter) {
+                        printf("🔍 INPUT: Enter pressed, calling onEnter: '%s'\n", onEnter);
+                        // Call the Lua function
+                        generic_script_event_handler(runtime, element, event);
+                        return true;
+                    }
+
                     // For single-line input, Enter usually submits or moves focus
-                    // For now, just indicate the event was handled
                     return true;
                     
                 case 256: // Escape

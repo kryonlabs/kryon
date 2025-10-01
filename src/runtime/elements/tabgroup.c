@@ -1,0 +1,178 @@
+/**
+ * @file tabgroup.c
+ * @brief Implementation of the TabGroup element.
+ *
+ * This file contains the rendering, event handling, and lifecycle functions
+ * for the TabGroup element, which manages TabBar and TabContent children
+ * with automatic state scoping and linking.
+ *
+ * 0BSD License
+ */
+
+#include "elements.h"
+#include "runtime.h"
+#include "memory.h"
+#include "color_utils.h"
+#include "element_mixins.h"
+#include <stdio.h>
+#include <string.h>
+
+// =============================================================================
+// TABGROUP STATE (Element-Owned)
+// =============================================================================
+
+typedef struct {
+    int selected_tab_index;        // Currently active tab (0-based)
+    bool initialized;              // Whether state has been initialized
+} TabGroupState;
+
+static TabGroupState* get_tabgroup_state(KryonElement* element) {
+    return (TabGroupState*)element->user_data;
+}
+
+static TabGroupState* ensure_tabgroup_state(KryonElement* element) {
+    TabGroupState* state = get_tabgroup_state(element);
+    if (!state) {
+        state = kryon_alloc(sizeof(TabGroupState));
+        if (state) {
+            memset(state, 0, sizeof(TabGroupState));
+
+            // Initialize with default values
+            state->selected_tab_index = get_element_property_int(element, "selectedIndex", 0);
+            state->initialized = true;
+            element->user_data = state;
+        }
+    }
+    return state;
+}
+
+/**
+ * @brief Public function to get the current selected index from TabGroup
+ * This allows child TabBar/TabContent elements to query the parent's state
+ */
+int tabgroup_get_selected_index(KryonElement* tabgroup_element) {
+    if (!tabgroup_element || strcmp(tabgroup_element->type_name, "TabGroup") != 0) return 0;
+
+    TabGroupState* state = get_tabgroup_state(tabgroup_element);
+    if (state && state->initialized) {
+        return state->selected_tab_index;
+    }
+    return get_element_property_int(tabgroup_element, "selectedIndex", 0);
+}
+
+/**
+ * @brief Public function to set the selected index in TabGroup
+ * This allows child Tab elements to update the parent's state
+ */
+void tabgroup_set_selected_index(KryonRuntime* runtime, KryonElement* tabgroup_element, int index) {
+    printf("🔍 TABGROUP: tabgroup_set_selected_index called with index %d\n", index);
+
+    if (!tabgroup_element || strcmp(tabgroup_element->type_name, "TabGroup") != 0) {
+        printf("🔍 TABGROUP: Invalid TabGroup element\n");
+        return;
+    }
+
+    TabGroupState* state = ensure_tabgroup_state(tabgroup_element);
+    if (state) {
+        printf("🔍 TABGROUP: Setting TabGroup state selected_tab_index to %d\n", index);
+        state->selected_tab_index = index;
+
+        // Also update the bound variable if one exists
+        if (runtime) {
+            const char* selected_index_str = get_element_property_string(tabgroup_element, "selectedIndex");
+            if (selected_index_str) {
+                // If selectedIndex is bound to a variable, update it
+                char index_str[32];
+                snprintf(index_str, sizeof(index_str), "%d", index);
+
+                printf("🔍 TABGROUP: Attempting to update bound variable to '%s'\n", index_str);
+                // Try to extract variable name and update it
+                // This is a simplified approach - the full solution would parse the binding expression
+                bool success = kryon_runtime_set_variable(runtime, selected_index_str, index_str);
+                printf("🔍 TABGROUP: Variable update %s\n", success ? "succeeded" : "failed");
+            }
+        }
+    } else {
+        printf("🔍 TABGROUP: Failed to get/create TabGroup state\n");
+    }
+}
+
+static void destroy_tabgroup_state(TabGroupState* state) {
+    if (state) {
+        kryon_free(state);
+    }
+}
+
+// Forward declarations for the VTable functions
+static void tabgroup_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
+static bool tabgroup_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event);
+static void tabgroup_destroy(KryonRuntime* runtime, KryonElement* element);
+
+// The VTable binds the generic element interface to our specific tabgroup functions.
+static const ElementVTable g_tabgroup_vtable = {
+    .render = tabgroup_render,
+    .handle_event = tabgroup_handle_event,
+    .destroy = tabgroup_destroy
+};
+
+// =============================================================================
+//  Public Registration Function
+// =============================================================================
+
+/**
+ * @brief Registers the TabGroup element type with the element registry.
+ * This is called once at runtime startup.
+ */
+bool register_tabgroup_element(void) {
+    return element_register_type("TabGroup", &g_tabgroup_vtable);
+}
+
+// =============================================================================
+//  Element VTable Implementations
+// =============================================================================
+
+/**
+ * @brief Renders the TabGroup element.
+ * TabGroup is a layout container - positioning is handled by the global layout system.
+ * TabGroup itself doesn't generate render commands - its children render themselves.
+ */
+static void tabgroup_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+    if (*command_count >= max_commands - 1) return;
+
+    // Ensure state is initialized
+    ensure_tabgroup_state(element);
+
+    // TabGroup is primarily a layout container with state management
+    // Render background and border if specified
+    render_background_and_border(element, commands, command_count, max_commands);
+
+    // Children (TabBar, TabContent) render themselves and can query our state
+}
+
+/**
+ * @brief Handles events for the TabGroup element.
+ */
+static bool tabgroup_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
+    if (!element || !event) return false;
+
+    // TabGroup doesn't handle events directly - children handle their own events
+    // Use script event handler for potential TabGroup script interactions
+    return handle_script_events(runtime, element, event);
+}
+
+/**
+ * @brief Destroys the TabGroup element and cleans up resources.
+ */
+static void tabgroup_destroy(KryonRuntime* runtime, KryonElement* element) {
+    if (!element) return;
+
+    // Clean up TabGroup state
+    TabGroupState* state = get_tabgroup_state(element);
+    if (state) {
+        destroy_tabgroup_state(state);
+        element->user_data = NULL;
+    }
+
+    // Child elements are automatically destroyed by the element system
+    (void)runtime; // Unused parameter
+}

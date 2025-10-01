@@ -126,6 +126,21 @@ static int get_tab_min_width(KryonElement* element) {
     return get_element_property_int(element, "minWidth", 80);
 }
 
+/**
+ * @brief Gets custom tab width, returns -1 if not set (auto-size)
+ */
+static int get_tab_custom_width(KryonElement* element) {
+    return get_element_property_int(element, "width", -1);
+}
+
+/**
+ * @brief Checks if tab has a custom onClick handler that overrides default navigation
+ */
+static bool has_custom_click_handler(KryonElement* element) {
+    const char* onClick = get_element_property_string(element, "onClick");
+    return onClick != NULL;
+}
+
 // =============================================================================
 //  Element VTable Implementations
 // =============================================================================
@@ -239,6 +254,14 @@ static bool tab_handle_event(KryonRuntime* runtime, KryonElement* element, const
     // Handle click events to notify parent TabBar
     if (event->type == ELEMENT_EVENT_CLICKED) {
         printf("🔍 TAB CLICK: Tab '%s' processing click event\n", get_tab_title(element));
+
+        // Check if this tab has a custom onClick handler that overrides default navigation
+        if (has_custom_click_handler(element)) {
+            printf("🔍 TAB CLICK: Tab has custom onClick handler, delegating to script handler\n");
+            return generic_script_event_handler(runtime, element, event);
+        }
+
+        // Default behavior: navigate to this tab
         // Find parent TabBar
         KryonElement* parent = element->parent;
         if (parent && strcmp(parent->type_name, "TabBar") == 0) {

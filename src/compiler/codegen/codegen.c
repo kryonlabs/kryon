@@ -1661,19 +1661,47 @@ static uint32_t count_elements_recursive(const KryonASTNode *node) {
         
         return total;
     } else if (node->type == KRYON_AST_FOR_DIRECTIVE) {
-        // Count @for directive itself as 1 element plus its children
+        // Count @for directive itself as 1 element plus its body
         uint32_t count = 1; // Count the @for directive element
-        
-        // Count child elements recursively (the template elements to be repeated)
-        for (size_t i = 0; i < node->data.element.child_count; i++) {
-            if (node->data.element.children[i]) {
-                count += count_elements_recursive(node->data.element.children[i]);
+
+        // Count body elements recursively (the template elements to be repeated)
+        for (size_t i = 0; i < node->data.for_loop.body_count; i++) {
+            if (node->data.for_loop.body[i]) {
+                count += count_elements_recursive(node->data.for_loop.body[i]);
             }
         }
-        
-        printf("DEBUG: count_elements_recursive found @for directive with %zu children, total count: %u\n",
-               node->data.element.child_count, count);
-        
+
+        printf("DEBUG: count_elements_recursive found @for directive with %zu body elements, total count: %u\n",
+               node->data.for_loop.body_count, count);
+
+        return count;
+    } else if (node->type == KRYON_AST_IF_DIRECTIVE || node->type == KRYON_AST_CONST_IF_DIRECTIVE) {
+        // Count @if directive as 1 element plus all its branches
+        uint32_t count = 1;
+
+        // Count then branch
+        for (size_t i = 0; i < node->data.conditional.then_count; i++) {
+            if (node->data.conditional.then_body[i]) {
+                count += count_elements_recursive(node->data.conditional.then_body[i]);
+            }
+        }
+
+        // Count elif branches
+        for (size_t i = 0; i < node->data.conditional.elif_count; i++) {
+            for (size_t j = 0; j < node->data.conditional.elif_counts[i]; j++) {
+                if (node->data.conditional.elif_bodies[i][j]) {
+                    count += count_elements_recursive(node->data.conditional.elif_bodies[i][j]);
+                }
+            }
+        }
+
+        // Count else branch
+        for (size_t i = 0; i < node->data.conditional.else_count; i++) {
+            if (node->data.conditional.else_body[i]) {
+                count += count_elements_recursive(node->data.conditional.else_body[i]);
+            }
+        }
+
         return count;
     }
     

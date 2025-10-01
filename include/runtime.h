@@ -161,6 +161,9 @@ KryonRuntime* kryon_runtime_get_current(void);
 // @for directive processing
 void process_for_directives(KryonRuntime* runtime, KryonElement* element);
 
+// @if directive processing
+void process_if_directives(KryonRuntime* runtime, KryonElement* element);
+
 // Update root variables when viewport/window size changes
 bool kryon_runtime_update_viewport_size(KryonRuntime* runtime, float width, float height);
 

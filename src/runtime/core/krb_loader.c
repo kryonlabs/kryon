@@ -414,6 +414,14 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
                                     runtime->variable_count++;
                                     printf("DEBUG: Loaded INTEGER variable '%s' = %u\n", var_name, int_value);
                                 }
+                            } else if (value_type == KRYON_VALUE_BOOLEAN) {
+                                uint32_t bool_value;
+                                if (read_uint32_safe(data, &vars_offset, size, &bool_value)) {
+                                    runtime->variable_names[runtime->variable_count] = kryon_strdup(var_name);
+                                    runtime->variable_values[runtime->variable_count] = kryon_strdup(bool_value ? "true" : "false");
+                                    runtime->variable_count++;
+                                    printf("DEBUG: Loaded BOOLEAN variable '%s' = %s\n", var_name, bool_value ? "true" : "false");
+                                }
                             } else {
                                 printf("DEBUG: Skipped unknown variable type %d for '%s'\n", value_type, var_name);
                             }
@@ -489,12 +497,16 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
         // Clear loading flag BEFORE @for processing to allow template expansion
         runtime->is_loading = false;
         
-        // Process @for directives AFTER @onload functions have executed
-        // This ensures variables populated by @onload are available for @for processing
+        // Process @for and @if directives AFTER @onload functions have executed
+        // This ensures variables populated by @onload are available for directive processing
         if (runtime->root) {
             printf("🔄 Processing @for directives after @onload execution\n");
             process_for_directives(runtime, runtime->root);
             printf("🔄 Completed @for directive processing\n");
+
+            printf("🔄 Processing @if directives after @onload execution\n");
+            process_if_directives(runtime, runtime->root);
+            printf("🔄 Completed @if directive processing\n");
         }
     }
     
@@ -633,6 +645,10 @@ static KryonElement *load_element_from_binary(KryonRuntime *runtime,
     } else if (element->type_name && strcmp(element->type_name, "for") == 0) {
         // @for directives need special reactive processing
         element->needs_render = false; // Don't render template directly
+    } else if (element->type_name && strcmp(element->type_name, "if") == 0) {
+        // @if directives need special reactive processing
+        element->needs_render = false; // Don't render template directly
+        printf("🔍 DEBUG: Loaded @if directive element with condition\n");
     }
     
     // Check if this element represents a component instance

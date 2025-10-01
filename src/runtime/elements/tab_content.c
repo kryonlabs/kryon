@@ -19,6 +19,9 @@
 #include <stdlib.h>
 #include <math.h>
 
+// Forward declarations for TabGroup integration
+extern int tabgroup_get_selected_index(KryonElement* tabgroup_element);
+
 // Forward declarations for the VTable functions
 static void tab_content_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);
 static bool tab_content_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event);
@@ -94,15 +97,25 @@ static void tab_content_render(KryonRuntime* runtime, KryonElement* element, Kry
         return;
     }
 
-    // Get the active index from the bound variable with runtime awareness (O(1) direct access)
+    // Get the active index - check for TabGroup parent first (auto-mode)
     int active_index = 0;
-    const char* active_index_str = get_element_property_string_with_runtime(runtime, element, "activeIndex");
-    if (active_index_str) {
-        active_index = atoi(active_index_str);
+
+    // Mode 1: Check if we have a TabGroup parent (auto-mode)
+    if (element->parent && strcmp(element->parent->type_name, "TabGroup") == 0) {
+        active_index = tabgroup_get_selected_index(element->parent);
+        printf("🔍 TABCONTENT: Using TabGroup parent, activeIndex = %d\n", active_index);
+    } else {
+        // Mode 2: Use bound variable (standalone or ID-based mode)
+        const char* active_index_str = get_element_property_string_with_runtime(runtime, element, "activeIndex");
+        if (active_index_str) {
+            active_index = atoi(active_index_str);
+        }
+        printf("🔍 TABCONTENT: Using activeIndex property, activeIndex_str='%s', parsed active_index=%d\n",
+               active_index_str ? active_index_str : "NULL", active_index);
     }
-    
-    printf("🔍 TABCONTENT: activeIndex_str='%s', parsed active_index=%d, child_count=%zu\n", 
-           active_index_str ? active_index_str : "NULL", active_index, element->child_count);
+
+    printf("🔍 TABCONTENT: Final active_index=%d, child_count=%zu\n",
+           active_index, element->child_count);
     
     // Only render the active TabPanel child
     if (active_index >= 0 && (size_t)active_index < element->child_count) {

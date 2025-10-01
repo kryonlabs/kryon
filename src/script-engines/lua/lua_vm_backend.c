@@ -693,16 +693,25 @@ static void sync_variables_to_lua(KryonVM* vm, lua_State* L, const char* compone
                 printf("🔄 SYNC TO LUA: Converting array '%s' to Lua table\n", name);
                 convert_json_to_lua_table(L, value);
                 lua_setglobal(L, name);
+            } else if (strcmp(value, "true") == 0 || strcmp(value, "false") == 0) {
+                // Boolean variable
+                lua_pushboolean(L, strcmp(value, "true") == 0);
+                lua_setglobal(L, name);
             } else {
                 // Regular string/number variable
-                char* endptr;
-                double num_value = strtod(value, &endptr);
-                if (*endptr == '\0') {
-                    // Successfully converted to number
-                    lua_pushnumber(L, num_value);
+                // Check for empty string first - empty strings should remain strings, not become 0.0
+                if (value[0] == '\0') {
+                    lua_pushstring(L, value);  // Push empty string as-is
                 } else {
-                    // String value
-                    lua_pushstring(L, value);
+                    char* endptr;
+                    double num_value = strtod(value, &endptr);
+                    if (*endptr == '\0') {
+                        // Successfully converted to number
+                        lua_pushnumber(L, num_value);
+                    } else {
+                        // String value
+                        lua_pushstring(L, value);
+                    }
                 }
                 lua_setglobal(L, name);
             }
@@ -775,6 +784,10 @@ static void sync_variables_from_lua(KryonVM* vm, lua_State* L, const char* compo
                 if (new_value) {
                     printf("🔄 SYNC FROM LUA: Global variable '%s' = '%s'\n", name, new_value);
                 }
+            } else if (lua_isboolean(L, -1)) {
+                int bool_value = lua_toboolean(L, -1);
+                new_value = kryon_strdup(bool_value ? "true" : "false");
+                printf("🔄 SYNC FROM LUA: Global variable '%s' = %s\n", name, new_value);
             } else if (lua_isstring(L, -1)) {
                 const char* str_value = lua_tostring(L, -1);
                 new_value = kryon_strdup(str_value);
@@ -792,19 +805,20 @@ static void sync_variables_from_lua(KryonVM* vm, lua_State* L, const char* compo
                 kryon_free(vm->runtime->variable_values[i]);
                 vm->runtime->variable_values[i] = new_value;
                 printf("✅ SYNC FROM LUA: Updated global variable '%s' = '%s'\n", vm->runtime->variable_names[i], new_value);
-                
-                // Trigger @for directive re-processing for array variables
-                if (new_value[0] == '[' && new_value[strlen(new_value)-1] == ']') {
-                    printf("🔁 SYNC FROM LUA: Array variable '%s' changed, triggering @for re-processing\n", vm->runtime->variable_names[i]);
-                    
-                    // Only trigger @for re-processing if not currently loading
-                    // During loading, @for processing happens at the end of KRB loading
-                    if (vm->runtime->root && !vm->runtime->is_loading) {
-                        printf("🔄 RE-PROCESSING: Calling @for re-processing for root element\n");
+
+                // Trigger directive re-processing when variables change
+                if (vm->runtime->root && !vm->runtime->is_loading) {
+                    // Trigger @for directive re-processing for array variables
+                    if (new_value[0] == '[' && new_value[strlen(new_value)-1] == ']') {
+                        printf("🔁 SYNC FROM LUA: Array variable '%s' changed, triggering @for re-processing\n", vm->runtime->variable_names[i]);
                         process_for_directives(vm->runtime, vm->runtime->root);
-                    } else if (vm->runtime->is_loading) {
-                        printf("🔄 RE-PROCESSING: Deferring @for re-processing until loading complete\n");
                     }
+
+                    // Trigger @if directive re-processing for any variable (since @if can reference any variable)
+                    printf("🔁 SYNC FROM LUA: Variable '%s' changed, triggering @if re-processing\n", vm->runtime->variable_names[i]);
+                    process_if_directives(vm->runtime, vm->runtime->root);
+                } else if (vm->runtime->is_loading) {
+                    printf("🔄 RE-PROCESSING: Deferring directive re-processing until loading complete\n");
                 }
             } else if (new_value) {
                 printf("🔄 SYNC FROM LUA: Global variable '%s' unchanged, freeing new value\n", name);

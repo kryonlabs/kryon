@@ -140,6 +140,7 @@
      {"onBlur", (const char*[]){NULL}, 0x0513, KRYON_TYPE_HINT_REFERENCE, false},
      {"onMouseEnter", (const char*[]){"onHover", NULL}, 0x0514, KRYON_TYPE_HINT_REFERENCE, false},
      {"onMouseLeave", (const char*[]){"onUnhover", NULL}, 0x0515, KRYON_TYPE_HINT_REFERENCE, false},
+     {"onEnter", (const char*[]){"onSubmit", NULL}, 0x0516, KRYON_TYPE_HINT_REFERENCE, false},
      {NULL, NULL, 0, 0, false} // Sentinel
  };
  
@@ -171,6 +172,7 @@
      {"disabledBackgroundColor", (const char*[]){NULL}, 0x0619, KRYON_TYPE_HINT_COLOR, false},
      {"disabledTextColor", (const char*[]){NULL}, 0x061A, KRYON_TYPE_HINT_COLOR, false},
      {"overlay", (const char*[]){NULL}, 0x061B, KRYON_TYPE_HINT_COMPONENT, false},
+     {"autoFocus", (const char*[]){NULL}, 0x061C, KRYON_TYPE_HINT_BOOLEAN, false},
      {NULL, NULL, 0, 0, false} // Sentinel
  };
  
@@ -254,6 +256,7 @@ const KryonElementGroup kryon_element_groups[] = {
     {.canonical = "Tab", .aliases = (const char*[]){NULL}, .hex_code = 0x100D, .type_hint = KRYON_TYPE_HINT_ANY, .allowed_categories = (const KryonPropertyCategoryIndex[]){KRYON_CATEGORY_BASE, KRYON_CATEGORY_LAYOUT, KRYON_CATEGORY_VISUAL, KRYON_CATEGORY_TYPOGRAPHY, KRYON_CATEGORY_INTERACTIVE, KRYON_CATEGORY_ELEMENT_SPECIFIC, KRYON_CATEGORY_COUNT}},
     {.canonical = "TabContent", .aliases = (const char*[]){NULL}, .hex_code = 0x100E, .type_hint = KRYON_TYPE_HINT_ANY, .allowed_categories = (const KryonPropertyCategoryIndex[]){KRYON_CATEGORY_BASE, KRYON_CATEGORY_LAYOUT, KRYON_CATEGORY_VISUAL, KRYON_CATEGORY_ELEMENT_SPECIFIC, KRYON_CATEGORY_COUNT}},
     {.canonical = "TabPanel", .aliases = (const char*[]){NULL}, .hex_code = 0x100F, .type_hint = KRYON_TYPE_HINT_ANY, .allowed_categories = (const KryonPropertyCategoryIndex[]){KRYON_CATEGORY_BASE, KRYON_CATEGORY_LAYOUT, KRYON_CATEGORY_VISUAL, KRYON_CATEGORY_ELEMENT_SPECIFIC, KRYON_CATEGORY_COUNT}},
+    {.canonical = "TabGroup", .aliases = (const char*[]){NULL}, .hex_code = 0x1010, .type_hint = KRYON_TYPE_HINT_ANY, .allowed_categories = (const KryonPropertyCategoryIndex[]){KRYON_CATEGORY_BASE, KRYON_CATEGORY_LAYOUT, KRYON_CATEGORY_VISUAL, KRYON_CATEGORY_INTERACTIVE, KRYON_CATEGORY_ELEMENT_SPECIFIC, KRYON_CATEGORY_COUNT}},
     {.canonical = NULL} // Sentinel
 };
 
@@ -263,6 +266,9 @@ const KryonElementGroup kryon_element_groups[] = {
      {"component", (const char*[]){NULL}, 0x8100, KRYON_TYPE_HINT_ANY},
      {"for", (const char*[]){"foreach", "loop", NULL}, 0x8200, KRYON_TYPE_HINT_ANY},
      {"if", (const char*[]){"when", NULL}, 0x8300, KRYON_TYPE_HINT_BOOLEAN},
+     {"elif", (const char*[]){"elseif", NULL}, 0x8301, KRYON_TYPE_HINT_BOOLEAN},
+     {"else", (const char*[]){NULL}, 0x8302, KRYON_TYPE_HINT_ANY},
+     {"const_if", (const char*[]){NULL}, 0x8303, KRYON_TYPE_HINT_BOOLEAN},
      {NULL, NULL, 0, 0} // Sentinel
  };
  

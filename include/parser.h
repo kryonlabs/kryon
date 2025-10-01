@@ -66,7 +66,11 @@ typedef enum {
     KRYON_AST_EVENT_DIRECTIVE,       // @event
     KRYON_AST_ONLOAD_DIRECTIVE,      // @onload
     KRYON_AST_FOR_DIRECTIVE,         // @for
-    
+    KRYON_AST_IF_DIRECTIVE,          // @if
+    KRYON_AST_ELIF_DIRECTIVE,        // @elif
+    KRYON_AST_ELSE_DIRECTIVE,        // @else
+    KRYON_AST_CONST_IF_DIRECTIVE,    // @const_if
+
     // Component system
     KRYON_AST_COMPONENT,             // @component directive
     KRYON_AST_PROPS,                 // @props block
@@ -296,7 +300,31 @@ struct KryonASTNode {
             size_t body_count;       // Number of body elements
             size_t body_capacity;    // Body array capacity
         } const_for_loop;
-        
+
+        struct {
+            char *var_name;          // Loop variable name
+            char *array_name;        // Array name to iterate over
+            KryonASTNode **body;     // Loop body elements
+            size_t body_count;       // Number of body elements
+            size_t body_capacity;    // Body array capacity
+        } for_loop;
+
+        struct {
+            bool is_const;           // True if this is @const_if, false for @if
+            KryonASTNode *condition; // Condition expression
+            KryonASTNode **then_body; // Body for true condition
+            size_t then_count;       // Number of then body elements
+            size_t then_capacity;    // Then body array capacity
+            KryonASTNode **elif_conditions; // Array of elif condition expressions
+            KryonASTNode ***elif_bodies;    // Array of elif body arrays
+            size_t *elif_counts;            // Array of elif body counts
+            size_t elif_count;              // Number of elif blocks
+            size_t elif_capacity;           // Elif array capacity
+            KryonASTNode **else_body;       // Body for else (NULL if no else)
+            size_t else_count;              // Number of else body elements
+            size_t else_capacity;           // Else body array capacity
+        } conditional;
+
         struct {
             char *name;              // Component name
             char **parameters;       // Component parameters (e.g., initialValue)
@@ -643,6 +671,53 @@ static KryonASTNode *parse_multiplicative(KryonParser *parser);
 static KryonASTNode *parse_unary(KryonParser *parser);
 static KryonASTNode *parse_postfix(KryonParser *parser);
 static KryonASTNode *parse_primary(KryonParser *parser);
+
+// =============================================================================
+// AST NODE HELPER FUNCTIONS - Unified access to children regardless of node type
+// =============================================================================
+
+/**
+ * @brief Get children array from any node type
+ * @param node The AST node
+ * @param out_count Output parameter for child count
+ * @return Pointer to children array, or NULL if node has no children
+ */
+static inline KryonASTNode **kryon_ast_get_children(const KryonASTNode *node, size_t *out_count) {
+    if (!node || !out_count) return NULL;
+
+    switch (node->type) {
+        case KRYON_AST_ROOT:
+        case KRYON_AST_ELEMENT:
+            *out_count = node->data.element.child_count;
+            return node->data.element.children;
+
+        case KRYON_AST_FOR_DIRECTIVE:
+            *out_count = node->data.for_loop.body_count;
+            return node->data.for_loop.body;
+
+        case KRYON_AST_IF_DIRECTIVE:
+        case KRYON_AST_CONST_IF_DIRECTIVE:
+            *out_count = node->data.conditional.then_count;
+            return node->data.conditional.then_body;
+
+        case KRYON_AST_CONST_FOR_LOOP:
+            *out_count = node->data.const_for_loop.body_count;
+            return node->data.const_for_loop.body;
+
+        default:
+            *out_count = 0;
+            return NULL;
+    }
+}
+
+/**
+ * @brief Get child count from any node type
+ */
+static inline size_t kryon_ast_get_child_count(const KryonASTNode *node) {
+    size_t count;
+    kryon_ast_get_children(node, &count);
+    return count;
+}
 
 #ifdef __cplusplus
 }

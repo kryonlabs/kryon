@@ -65,6 +65,7 @@ extern bool register_tabbar_element(void);
 extern bool register_tab_element(void);
 extern bool register_tab_content_element(void);
 extern bool register_tabpanel_element(void);
+extern bool register_tabgroup_element(void);
 extern bool register_link_element(void);
 
 // Forward declarations for position calculation pipeline
@@ -78,6 +79,7 @@ static void position_center_children(struct KryonRuntime* runtime, struct KryonE
 static void position_app_children(struct KryonRuntime* runtime, struct KryonElement* app);
 static void position_grid_children(struct KryonRuntime* runtime, struct KryonElement* grid);
 static void position_tabbar_children(struct KryonRuntime* runtime, struct KryonElement* tabbar);
+static void position_tabgroup_children(struct KryonRuntime* runtime, struct KryonElement* tabgroup);
 
 // Generic contentAlignment positioning function
 static void position_children_with_content_alignment(struct KryonRuntime* runtime, struct KryonElement* parent, 
@@ -229,7 +231,13 @@ bool element_registry_init_with_all_elements(void) {
         element_registry_cleanup();
         return false;
     }
-    
+
+    if (!register_tabgroup_element()) {
+        printf("ERROR: Failed to register TabGroup element\n");
+        element_registry_cleanup();
+        return false;
+    }
+
     if (!register_link_element()) {
         printf("ERROR: Failed to register Link element\n");
         element_registry_cleanup();
@@ -375,7 +383,9 @@ static const EventPropertyMapping event_property_map[] = {
     { (ElementEventType)0, NULL } // End of list
 };
 
-
+// =============================================================================
+// GENERIC SCRIPT EVENT HANDLER
+// =============================================================================
 
 /**
  * @brief A generic event handler for any element that uses script-based callbacks.
@@ -422,7 +432,6 @@ bool generic_script_event_handler(KryonRuntime* runtime, KryonElement* element, 
             return false; // No script function assigned to this event property
         }
     }
-
 
     // Execute the handler using the script VM
     KryonVMResult result = kryon_vm_call_function(runtime->script_vm, handler_function_name, element, (const void*)event);
@@ -603,6 +612,8 @@ void position_children_by_layout_type(struct KryonRuntime* runtime, struct Kryon
         position_grid_children(runtime, parent);
     } else if (strcmp(parent->type_name, "TabBar") == 0) {
         position_tabbar_children(runtime, parent);
+    } else if (strcmp(parent->type_name, "TabGroup") == 0) {
+        position_tabgroup_children(runtime, parent);
     } else {
         // Default: position children at same location
         for (size_t i = 0; i < parent->child_count; i++) {
@@ -1513,30 +1524,32 @@ void hit_test_process_input_event(HitTestManager* manager, struct KryonRuntime* 
                     float pos_diff_y = fabsf(y - manager->last_click_y);
                     
                     bool is_double_click = (manager->last_click_time != 0) &&  // Ignore first click
-                                         (time_diff < 500) && 
+                                         (time_diff < 500) &&
                                          (pos_diff_x < 5.0f) &&
                                          (pos_diff_y < 5.0f);
-                    
-                    // Always dispatch a CLICKED event first
-                    ElementEvent click_event = {
-                        .timestamp = now,
-                        .handled = false,
-                        .type = ELEMENT_EVENT_CLICKED,
-                        .data.mousePos = {x, y}
-                    };
-                    
-                    element_dispatch_event(runtime, clicked, &click_event);
-                    
-                    // If it's a double click, also dispatch a DOUBLE_CLICKED event
-                    if (is_double_click) {
+
+                    // Check if element has onDoubleClick handler
+                    const char* double_click_handler = get_element_property_string(clicked, "onDoubleClick");
+                    bool has_double_click_handler = (double_click_handler && double_click_handler[0] != '\0');
+
+                    // If double-click detected AND element has onDoubleClick handler, send DOUBLE_CLICKED
+                    // Otherwise, always send CLICKED (even for rapid clicks)
+                    if (is_double_click && has_double_click_handler) {
                         ElementEvent double_click_event = {
                             .timestamp = now,
                             .handled = false,
                             .type = ELEMENT_EVENT_DOUBLE_CLICKED,
                             .data.mousePos = {x, y}
                         };
-                        
                         element_dispatch_event(runtime, clicked, &double_click_event);
+                    } else {
+                        ElementEvent click_event = {
+                            .timestamp = now,
+                            .handled = false,
+                            .type = ELEMENT_EVENT_CLICKED,
+                            .data.mousePos = {x, y}
+                        };
+                        element_dispatch_event(runtime, clicked, &click_event);
                     }
                     
                     // Update double-click detection state
@@ -1693,42 +1706,62 @@ static void position_tabbar_children(struct KryonRuntime* runtime, struct KryonE
         tab_area_x = x + width - tab_area_width; tab_area_y = y; tab_area_w = tab_area_width; tab_area_h = height;
     }
     
-    // Count and position Tab children in header area
+    // Count Tab children and calculate total custom widths
     int tab_count = 0;
+    float total_custom_width = 0.0f;
+    int custom_width_count = 0;
+
     for (size_t i = 0; i < tabbar->child_count; i++) {
         if (strcmp(tabbar->children[i]->type_name, "Tab") == 0) {
             tab_count++;
+            // Check if this tab has a custom width
+            int custom_w = get_element_property_int(tabbar->children[i], "width", -1);
+            if (custom_w > 0) {
+                total_custom_width += custom_w;
+                custom_width_count++;
+            }
         }
     }
-    
-    if (tab_count > 0) {
-        float tab_width = (strcmp(position, "top") == 0 || strcmp(position, "bottom") == 0) 
-                         ? (tab_area_w - (tab_count - 1) * tab_spacing) / tab_count
-                         : tab_area_w;
-        
-        float tab_height = (strcmp(position, "left") == 0 || strcmp(position, "right") == 0)
-                          ? (tab_area_h - (tab_count - 1) * tab_spacing) / tab_count
-                          : tab_area_h;
 
-        int tab_index = 0;
+    if (tab_count > 0) {
+        // Calculate default tab size for auto-sized tabs
+        float spacing_total = (tab_count - 1) * tab_spacing;
+        float available_for_auto = tab_area_w - total_custom_width - spacing_total;
+        int auto_tab_count = tab_count - custom_width_count;
+
+        float default_tab_width = (auto_tab_count > 0)
+            ? available_for_auto / auto_tab_count
+            : tab_area_w;
+
+        float default_tab_height = tab_area_h;
+
+        // Position each tab
+        float current_x = tab_area_x;
+        float current_y = tab_area_y;
+
         for (size_t i = 0; i < tabbar->child_count; i++) {
             struct KryonElement* child = tabbar->children[i];
             if (!child || strcmp(child->type_name, "Tab") != 0) continue;
 
-            // Calculate tab position
+            // Get custom width if specified, otherwise use default
+            int custom_width = get_element_property_int(child, "width", -1);
+            float tab_width = (custom_width > 0) ? (float)custom_width : default_tab_width;
+            float tab_height = default_tab_height;
+
+            // Calculate tab position based on orientation
             float child_x, child_y;
             if (strcmp(position, "top") == 0 || strcmp(position, "bottom") == 0) {
-                child_x = tab_area_x + tab_index * (tab_width + tab_spacing);
+                child_x = current_x;
                 child_y = tab_area_y;
+                current_x += tab_width + tab_spacing;
             } else {
                 child_x = tab_area_x;
-                child_y = tab_area_y + tab_index * (tab_height + tab_spacing);
+                child_y = current_y;
+                current_y += tab_height + tab_spacing;
             }
 
             // Position this Tab child using the global positioning system
             calculate_element_position_recursive(runtime, child, child_x, child_y, tab_width, tab_height, tabbar);
-            
-            tab_index++;
         }
     }
     
@@ -1751,5 +1784,18 @@ static void position_tabbar_children(struct KryonRuntime* runtime, struct KryonE
         }
         content_index++;
     }
+}
+
+/**
+ * @brief Position children in a TabGroup layout
+ * TabGroup manages TabBar and TabContent children with automatic state scoping
+ * It uses a Column-like layout (stacks children vertically)
+ */
+static void position_tabgroup_children(struct KryonRuntime* runtime, struct KryonElement* tabgroup) {
+    if (!tabgroup || tabgroup->child_count == 0) return;
+
+    // TabGroup uses a simple vertical stacking layout (like Column)
+    // This allows TabBar to be at the top and TabContent below
+    position_column_children(runtime, tabgroup);
 }
 
