@@ -498,8 +498,13 @@ bool write_value_node(KryonCodeGenerator *codegen, const KryonASTValue *value) {
             return write_binary_data(codegen, str, len);
         }
         
-        case KRYON_VALUE_INTEGER:
-            return write_uint32(codegen, (uint32_t)value->data.int_value);
+        case KRYON_VALUE_INTEGER: {
+            // Write signed integer as uint32 (reinterpret bits to preserve sign)
+            int32_t int_value = (int32_t)value->data.int_value;
+            uint32_t raw_value;
+            memcpy(&raw_value, &int_value, sizeof(uint32_t));
+            return write_uint32(codegen, raw_value);
+        }
         
         case KRYON_VALUE_FLOAT: {
             // Convert double to 32-bit float for binary

@@ -21,6 +21,44 @@
 // Forward declarations
 bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode *variable);
 
+// Helper to evaluate constant unary operations (e.g., -1, !true)
+static bool try_evaluate_constant_unary(const KryonASTNode *node, KryonASTValue *out_value) {
+    if (!node || node->type != KRYON_AST_UNARY_OP) {
+        return false;
+    }
+
+    // Check if operand is a literal
+    if (!node->data.unary_op.operand || node->data.unary_op.operand->type != KRYON_AST_LITERAL) {
+        return false;
+    }
+
+    const KryonASTValue *operand_value = &node->data.unary_op.operand->data.literal.value;
+
+    // Handle negation operator on integers/floats
+    if (node->data.unary_op.operator == KRYON_TOKEN_MINUS) {
+        if (operand_value->type == KRYON_VALUE_INTEGER) {
+            out_value->type = KRYON_VALUE_INTEGER;
+            out_value->data.int_value = -operand_value->data.int_value;
+            return true;
+        } else if (operand_value->type == KRYON_VALUE_FLOAT) {
+            out_value->type = KRYON_VALUE_FLOAT;
+            out_value->data.float_value = -operand_value->data.float_value;
+            return true;
+        }
+    }
+
+    // Handle logical NOT on booleans
+    if (node->data.unary_op.operator == KRYON_TOKEN_LOGICAL_NOT) {
+        if (operand_value->type == KRYON_VALUE_BOOLEAN) {
+            out_value->type = KRYON_VALUE_BOOLEAN;
+            out_value->data.bool_value = !operand_value->data.bool_value;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool kryon_write_variable_node(KryonCodeGenerator *codegen, const KryonASTNode *variable) {
     if (!variable || (variable->type != KRYON_AST_VARIABLE_DEFINITION && variable->type != KRYON_AST_STATE_DEFINITION)) {
         return false;
@@ -60,10 +98,26 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
     // Determine variable type based on value and whether it's reactive
     KryonVariableType var_type = KRYON_VAR_STATIC_STRING; // Default
     bool is_reactive = (variable->type == KRYON_AST_STATE_DEFINITION); // @state is reactive
-    
+
+    // Try to evaluate constant expressions to determine actual type
+    KryonASTValue evaluated_value;
+    const KryonASTValue *value_to_use = NULL;
+
     if (variable->data.variable_def.value) {
         if (variable->data.variable_def.value->type == KRYON_AST_LITERAL) {
-            switch (variable->data.variable_def.value->data.literal.value.type) {
+            value_to_use = &variable->data.variable_def.value->data.literal.value;
+        } else if (try_evaluate_constant_unary(variable->data.variable_def.value, &evaluated_value)) {
+            // Successfully evaluated UNARY_OP to a constant
+            value_to_use = &evaluated_value;
+            printf("DEBUG: Evaluated UNARY_OP for '%s' to type=%d\n",
+                   variable->data.variable_def.name, evaluated_value.type);
+            if (evaluated_value.type == KRYON_VALUE_INTEGER) {
+                printf("DEBUG: Integer value = %lld\n", (long long)evaluated_value.data.int_value);
+            }
+        }
+
+        if (value_to_use) {
+            switch (value_to_use->type) {
                 case KRYON_VALUE_INTEGER:
                     var_type = is_reactive ? KRYON_VAR_REACTIVE_INTEGER : KRYON_VAR_STATIC_INTEGER;
                     break;
@@ -79,7 +133,7 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
                     break;
             }
         } else {
-            // Complex expressions might be computed variables
+            // Complex expressions that can't be evaluated at compile time
             var_type = is_reactive ? KRYON_VAR_REACTIVE_STRING : KRYON_VAR_STATIC_STRING;
         }
     }
@@ -101,15 +155,37 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
     
     // Variable initial value
     if (variable->data.variable_def.value) {
-        printf("DEBUG: Variable '%s' has value node type=%d\n", 
-               variable->data.variable_def.name ? variable->data.variable_def.name : "unknown", 
+        printf("DEBUG: Variable '%s' has value node type=%d\n",
+               variable->data.variable_def.name ? variable->data.variable_def.name : "unknown",
                variable->data.variable_def.value->type);
-        
-        if (variable->data.variable_def.value->type == KRYON_AST_LITERAL) {
-            // For Variables section, always use string table references for consistency
+
+        // Use the evaluated value if we have one (from constant UNARY_OP evaluation)
+        if (value_to_use) {
+            // We have a compile-time constant value (either literal or evaluated UNARY_OP)
+            if (value_to_use->type == KRYON_VALUE_STRING) {
+                // Write as string reference for consistency with non-literal values
+                if (!write_uint8(codegen, KRYON_VALUE_STRING)) {
+                    return false;
+                }
+                const char* str_value = value_to_use->data.string_value ? value_to_use->data.string_value : "";
+                uint32_t str_ref = add_string_to_table(codegen, str_value);
+                printf("DEBUG: Variable literal string value string ref: %u for value '%s'\n", str_ref, str_value);
+                if (!write_uint32(codegen, str_ref)) {
+                    return false;
+                }
+            } else {
+                // For non-string literals, use the original write_value_node but add type tag
+                if (!write_uint8(codegen, (uint8_t)value_to_use->type)) {
+                    return false;
+                }
+                if (!write_value_node(codegen, value_to_use)) {
+                    return false;
+                }
+            }
+        } else if (variable->data.variable_def.value->type == KRYON_AST_LITERAL) {
+            // Fallback to original literal handling (shouldn't normally reach here since value_to_use should be set)
             const KryonASTValue* literal_value = &variable->data.variable_def.value->data.literal.value;
             if (literal_value->type == KRYON_VALUE_STRING) {
-                // Write as string reference for consistency with non-literal values
                 if (!write_uint8(codegen, KRYON_VALUE_STRING)) {
                     return false;
                 }
@@ -120,7 +196,6 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
                     return false;
                 }
             } else {
-                // For non-string literals, use the original write_value_node but add type tag
                 if (!write_uint8(codegen, (uint8_t)literal_value->type)) {
                     return false;
                 }

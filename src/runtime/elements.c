@@ -483,35 +483,40 @@ void kryon_layout_calculate_once(struct KryonRuntime* runtime, struct KryonEleme
 }
 
 /**
+ * @brief Recursively clear needs_layout flags after layout calculation
+ */
+static void clear_needs_layout_recursive(struct KryonElement* element) {
+    if (!element) return;
+
+    element->needs_layout = false;
+
+    // Clear flag for all children
+    for (size_t i = 0; i < element->child_count; i++) {
+        if (element->children[i]) {
+            clear_needs_layout_recursive(element->children[i]);
+        }
+    }
+}
+
+/**
  * @brief Single-pass position calculator - calculates final (x,y) for all elements
  * This replaces the complex VTable + recursive system with a simple pipeline
  */
 void calculate_all_element_positions(struct KryonRuntime* runtime, struct KryonElement* root) {
     if (!root) return;
-    
-    // Simple debouncing: check if we've already calculated positions recently
-    static struct KryonElement* last_calculated_root = NULL;
-    static size_t last_calculation_frame = 0;
-    static size_t current_frame = 0;
-    current_frame++;
-    
-    if (root == last_calculated_root && (current_frame - last_calculation_frame) < 60) {
-        return; // Skip if we calculated positions very recently for the same root
-    }
-    
+
     // Get window dimensions for root positioning
     float window_width = get_element_property_float(root, "windowWidth", 800.0f);
     float window_height = get_element_property_float(root, "windowHeight", 600.0f);
-    
+
     // Start position calculation from root
     calculate_element_position_recursive(runtime, root, 0.0f, 0.0f, window_width, window_height, NULL);
-    
+
     // Update render flags based on position changes
     update_render_flags_for_changed_positions(root);
-    
-    // Track this calculation
-    last_calculated_root = root;
-    last_calculation_frame = current_frame;
+
+    // Clear needs_layout flags now that layout is calculated
+    clear_needs_layout_recursive(root);
 }
 
 /**
@@ -560,18 +565,31 @@ static void calculate_element_position_recursive(struct KryonRuntime* runtime, s
     if (explicit_height > 0.0f) {
         element->height = explicit_height;
     } else {
-        // Use available space, but ensure layout containers get reasonable defaults
-        if (element->type_name && (strcmp(element->type_name, "Column") == 0 || strcmp(element->type_name, "Row") == 0)) {
-            // For Row elements inside Column layouts, use smaller default height
-            if (strcmp(element->type_name, "Row") == 0 && layout_parent && layout_parent->type_name && 
+        // Determine if element is a container/layout element that should fill space
+        bool is_container = element->type_name && (
+            strcmp(element->type_name, "Column") == 0 ||
+            strcmp(element->type_name, "Row") == 0 ||
+            strcmp(element->type_name, "Container") == 0 ||
+            strcmp(element->type_name, "App") == 0 ||
+            strcmp(element->type_name, "TabGroup") == 0 ||
+            strcmp(element->type_name, "TabPanel") == 0 ||
+            strcmp(element->type_name, "TabContent") == 0 ||
+            strcmp(element->type_name, "TabBar") == 0
+        );
+
+        if (is_container) {
+            // Container elements should fill available space
+            if (strcmp(element->type_name, "Row") == 0 && layout_parent && layout_parent->type_name &&
                 strcmp(layout_parent->type_name, "Column") == 0) {
-                // Row in Column: use much smaller default height 
+                // Row in Column: use smaller default height
                 element->height = 40.0f;
             } else {
                 element->height = available_height > 0.0f ? available_height : 300.0f;
             }
         } else {
-            element->height = available_height > 0.0f ? available_height : 50.0f;
+            // Interactive/content elements use their intrinsic default height
+            // This prevents Input/Button/Text from being forced to fill parent
+            element->height = get_default_element_height(element);
         }
     }
     

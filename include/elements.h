@@ -93,6 +93,15 @@ struct KryonElement {
     // @for directive template storage
     struct KryonElement **template_children;  // Template children for @for directive
     size_t template_count;                    // Number of template children
+
+    // Loop context (for elements inside @for loops)
+    char *loop_index_var_name;                // Index variable name (e.g., "i")
+    char *loop_index_var_value;               // Index variable value (e.g., "0")
+    char *loop_var_name;                      // Value variable name (e.g., "habit")
+    char *loop_var_value;                     // Value variable value (e.g., "Meditation")
+
+    // Directive cloning tracking (for @if and @for directives)
+    struct KryonElement *cloned_from_directive; // If non-NULL, points to the @if/@for element that cloned this
 };
 
 // =============================================================================

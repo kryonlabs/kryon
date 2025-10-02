@@ -404,15 +404,19 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
                                     }
                                 }
                             } else if (value_type == KRYON_VALUE_INTEGER) {
-                                uint32_t int_value;
-                                if (read_uint32_safe(data, &vars_offset, size, &int_value)) {
-                                    // TODO: For now, store integer as string until we implement typed variables properly
-                                    static char int_buffer[32];
-                                    snprintf(int_buffer, sizeof(int_buffer), "%u", int_value);
+                                int32_t int_value;
+                                uint32_t raw_value;
+                                if (read_uint32_safe(data, &vars_offset, size, &raw_value)) {
+                                    // Reinterpret as signed integer
+                                    memcpy(&int_value, &raw_value, sizeof(int32_t));
+
+                                    // Store integer as string until we implement typed variables properly
+                                    char int_buffer[32];
+                                    snprintf(int_buffer, sizeof(int_buffer), "%d", int_value);
                                     runtime->variable_names[runtime->variable_count] = kryon_strdup(var_name);
                                     runtime->variable_values[runtime->variable_count] = kryon_strdup(int_buffer);
                                     runtime->variable_count++;
-                                    printf("DEBUG: Loaded INTEGER variable '%s' = %u\n", var_name, int_value);
+                                    printf("DEBUG: Loaded INTEGER variable '%s' = %d\n", var_name, int_value);
                                 }
                             } else if (value_type == KRYON_VALUE_BOOLEAN) {
                                 uint8_t bool_value;

@@ -144,17 +144,29 @@ bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNod
     } else if (element->type == KRYON_AST_FOR_DIRECTIVE) {
         // Write @for metadata: variable name and array name as a single property
         // Format: "variable|array" (e.g., "habit|habits")
+        // Or: "index,variable|array" (e.g., "i,habit|habits") when index is present
+        const char *index_var_name = element->data.for_loop.index_var_name;
         const char *var_name = element->data.for_loop.var_name;
         const char *array_name = element->data.for_loop.array_name;
 
-        printf("🔍 DEBUG: Writing @for metadata: var='%s', array='%s'\n",
-               var_name ? var_name : "NULL", array_name ? array_name : "NULL");
+        printf("🔍 DEBUG: Writing @for metadata: index='%s', var='%s', array='%s'\n",
+               index_var_name ? index_var_name : "NULL",
+               var_name ? var_name : "NULL",
+               array_name ? array_name : "NULL");
 
         if (var_name && array_name) {
             // Create combined string
-            size_t buffer_len = strlen(var_name) + strlen(array_name) + 2; // +2 for | and \0
+            size_t buffer_len = strlen(var_name) + strlen(array_name) + 2; // Base: var|array\0
+            if (index_var_name) {
+                buffer_len += strlen(index_var_name) + 1; // +1 for comma
+            }
+
             char *combined = kryon_malloc(buffer_len);
-            snprintf(combined, buffer_len, "%s|%s", var_name, array_name);
+            if (index_var_name) {
+                snprintf(combined, buffer_len, "%s,%s|%s", index_var_name, var_name, array_name);
+            } else {
+                snprintf(combined, buffer_len, "%s|%s", var_name, array_name);
+            }
 
             printf("🔍 DEBUG: Combined string = '%s'\n", combined);
 

@@ -2232,20 +2232,39 @@ static KryonASTNode *parse_const_for_loop(KryonParser *parser) {
 static KryonASTNode *parse_for_directive(KryonParser *parser) {
     printf("[DEBUG] parse_for_directive: Starting\n");
     const KryonToken *directive_token = advance(parser); // consume @for
-    
+
     if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
         parser_error(parser, "Expected loop variable name");
         return NULL;
     }
-    
-    const KryonToken *var_token = advance(parser);
-    
+
+    const KryonToken *first_var_token = advance(parser);
+
+    // Check for comma (index, value pattern)
+    const KryonToken *index_token = NULL;
+    const KryonToken *value_token = NULL;
+
+    if (match_token(parser, KRYON_TOKEN_COMMA)) {
+        // We have "i, habit" pattern
+        index_token = first_var_token;
+
+        if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+            parser_error(parser, "Expected value variable name after comma");
+            return NULL;
+        }
+
+        value_token = advance(parser);
+    } else {
+        // We have "habit" pattern (no index)
+        value_token = first_var_token;
+    }
+
     // Expect 'in' keyword
     if (!match_token(parser, KRYON_TOKEN_IN_KEYWORD)) {
         parser_error(parser, "Expected 'in' after loop variable");
         return NULL;
     }
-    
+
     KryonASTNode *for_directive = kryon_ast_create_node(parser, KRYON_AST_FOR_DIRECTIVE,
                                                         &directive_token->location);
     if (!for_directive) {
@@ -2253,7 +2272,8 @@ static KryonASTNode *parse_for_directive(KryonParser *parser) {
     }
 
     // Initialize for_loop structure
-    for_directive->data.for_loop.var_name = kryon_token_copy_lexeme(var_token);
+    for_directive->data.for_loop.index_var_name = index_token ? kryon_token_copy_lexeme(index_token) : NULL;
+    for_directive->data.for_loop.var_name = kryon_token_copy_lexeme(value_token);
     for_directive->data.for_loop.body = NULL;
     for_directive->data.for_loop.body_count = 0;
     for_directive->data.for_loop.body_capacity = 0;
@@ -2304,10 +2324,18 @@ static KryonASTNode *parse_for_directive(KryonParser *parser) {
         return for_directive;
     }
     
-    printf("[DEBUG] parse_for_directive: Created for loop '%s' in '%s' with %zu body elements\n",
-           for_directive->data.for_loop.var_name,
-           for_directive->data.for_loop.array_name,
-           for_directive->data.for_loop.body_count);
+    if (for_directive->data.for_loop.index_var_name) {
+        printf("[DEBUG] parse_for_directive: Created for loop '%s, %s' in '%s' with %zu body elements\n",
+               for_directive->data.for_loop.index_var_name,
+               for_directive->data.for_loop.var_name,
+               for_directive->data.for_loop.array_name,
+               for_directive->data.for_loop.body_count);
+    } else {
+        printf("[DEBUG] parse_for_directive: Created for loop '%s' in '%s' with %zu body elements\n",
+               for_directive->data.for_loop.var_name,
+               for_directive->data.for_loop.array_name,
+               for_directive->data.for_loop.body_count);
+    }
     
     return for_directive;
 }

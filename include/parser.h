@@ -302,7 +302,8 @@ struct KryonASTNode {
         } const_for_loop;
 
         struct {
-            char *var_name;          // Loop variable name
+            char *index_var_name;    // Optional index variable name (e.g., "i" in "@for i, item")
+            char *var_name;          // Loop variable name (value)
             char *array_name;        // Array name to iterate over
             KryonASTNode **body;     // Loop body elements
             size_t body_count;       // Number of body elements

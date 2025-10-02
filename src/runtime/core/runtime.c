@@ -73,7 +73,7 @@ static const char* resolve_component_state_variable(KryonRuntime* runtime, Kryon
 
 // @for template expansion functions
 static void expand_for_template(KryonRuntime* runtime, KryonElement* for_element);
-static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_element, const char* var_name, const char* var_value, size_t index, size_t insert_position);
+static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_element, const char* index_var_name, const char* var_name, const char* var_value, size_t index, size_t insert_position);
 static void clear_expanded_children(KryonRuntime* runtime, KryonElement* for_element);
 static KryonElement* clone_element_with_substitution(KryonRuntime* runtime, KryonElement* template_element, const char* var_name, const char* var_value, size_t index);
 static char* substitute_template_variable(const char* template_str, const char* var_name, const char* var_value);
@@ -81,8 +81,10 @@ static const char* extract_json_property(const char* json_object, const char* pr
 static void add_child_element(KryonRuntime* runtime, KryonElement* parent, KryonElement* child);
 static void insert_child_element_at(KryonRuntime* runtime, KryonElement* parent, KryonElement* child, size_t position);
 static char* extract_json_field(const char* json_value, const char* field_name);
+static void set_loop_context_recursive(KryonElement* element, const char* index_var_name, const char* index_var_value, const char* var_name, const char* var_value);
 
 // @if template expansion functions
+static void mark_cloned_from_directive_recursive(KryonElement* element, KryonElement* directive);
 static KryonElement* clone_element_deep(KryonRuntime* runtime, KryonElement* element);
 
 // External function from krb_loader.c
@@ -1796,9 +1798,14 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
     if (!element || !commands || !command_count || *command_count >= max_commands) {
         return;
     }
-    
+
+    // Skip rendering elements that haven't had their layout calculated yet
+    if (element->needs_layout) {
+        return;
+    }
+
     // Enhanced safety checks for overlay injection corruption
-    if (!element->type_name || 
+    if (!element->type_name ||
         element->property_count > 1000 || element->child_count > 1000 ||
         (element->property_count > 0 && !element->properties) ||
         (element->child_count > 0 && !element->children)) {
@@ -2096,6 +2103,39 @@ void process_for_directives(KryonRuntime* runtime, KryonElement* element) {
 }
 
 /**
+ * @brief Recursively set loop context on an element and all its descendants
+ * @param element Element to set context on
+ * @param index_var_name Index variable name (e.g., "i"), or NULL if no index variable
+ * @param index_var_value Index variable value (e.g., "0")
+ * @param var_name Value variable name (e.g., "habit")
+ * @param var_value Value variable value (e.g., "Meditation")
+ */
+static void set_loop_context_recursive(KryonElement* element,
+                                       const char* index_var_name,
+                                       const char* index_var_value,
+                                       const char* var_name,
+                                       const char* var_value) {
+    if (!element) return;
+
+    // Set loop context on this element
+    if (index_var_name && index_var_value) {
+        element->loop_index_var_name = kryon_strdup(index_var_name);
+        element->loop_index_var_value = kryon_strdup(index_var_value);
+    }
+    if (var_name && var_value) {
+        element->loop_var_name = kryon_strdup(var_name);
+        element->loop_var_value = kryon_strdup(var_value);
+    }
+
+    // Recursively set on all children
+    for (size_t i = 0; i < element->child_count; i++) {
+        if (element->children[i]) {
+            set_loop_context_recursive(element->children[i], index_var_name, index_var_value, var_name, var_value);
+        }
+    }
+}
+
+/**
  * @brief Expand a @for template based on current array variable state
  * @param runtime Runtime context
  * @param for_element The @for template element
@@ -2149,35 +2189,62 @@ static void expand_for_template(KryonRuntime* runtime, KryonElement* for_element
     }
     
     // Extract template parameters from @for element properties
+    const char* index_var_name = NULL;
     const char* var_name = NULL;
     const char* array_name = NULL;
 
     // Find the @for metadata property (hex 0x9000, name "customProp_0x9000")
-    // Format: "variable|array" (e.g., "todo|todos")
+    // Format: "variable|array" (e.g., "habit|habits")
+    // Or: "index,variable|array" (e.g., "i,habit|habits")
     for (size_t i = 0; i < for_element->property_count; i++) {
         KryonProperty* prop = for_element->properties[i];
 
         if (prop->name && strcmp(prop->name, "customProp_0x9000") == 0) {
-            // Parse the combined string "variable|array"
+            // Parse the combined string
             const char* combined = prop->value.string_value;
             if (combined) {
-                // Find the | separator
-                const char* separator = strchr(combined, '|');
-                if (separator) {
-                    // Extract variable name (before |)
-                    size_t var_len = separator - combined;
-                    char* var_buf = malloc(var_len + 1);
-                    if (var_buf) {
-                        memcpy(var_buf, combined, var_len);
-                        var_buf[var_len] = '\0';
-                        var_name = var_buf; // Note: this leaks, but it's temporary
+                // First, find the | separator between variables and array
+                const char* pipe_sep = strchr(combined, '|');
+                if (pipe_sep) {
+                    // Extract array name (after |)
+                    array_name = pipe_sep + 1;
+
+                    // Now check if there's a comma in the variables part (index,var pattern)
+                    const char* comma_sep = strchr(combined, ',');
+                    if (comma_sep && comma_sep < pipe_sep) {
+                        // We have "index,variable|array" pattern
+                        // Extract index variable name (before comma)
+                        size_t index_len = comma_sep - combined;
+                        char* index_buf = malloc(index_len + 1);
+                        if (index_buf) {
+                            memcpy(index_buf, combined, index_len);
+                            index_buf[index_len] = '\0';
+                            index_var_name = index_buf;
+                        }
+
+                        // Extract value variable name (between comma and pipe)
+                        size_t var_len = pipe_sep - (comma_sep + 1);
+                        char* var_buf = malloc(var_len + 1);
+                        if (var_buf) {
+                            memcpy(var_buf, comma_sep + 1, var_len);
+                            var_buf[var_len] = '\0';
+                            var_name = var_buf;
+                        }
+                    } else {
+                        // We have "variable|array" pattern (no index)
+                        size_t var_len = pipe_sep - combined;
+                        char* var_buf = malloc(var_len + 1);
+                        if (var_buf) {
+                            memcpy(var_buf, combined, var_len);
+                            var_buf[var_len] = '\0';
+                            var_name = var_buf;
+                        }
                     }
 
-                    // Extract array name (after |)
-                    array_name = separator + 1;
-
-                    printf("🔍 DEBUG: Parsed @for metadata: variable='%s', array='%s'\n",
-                           var_name ? var_name : "(null)", array_name ? array_name : "(null)");
+                    printf("🔍 DEBUG: Parsed @for metadata: index='%s', variable='%s', array='%s'\n",
+                           index_var_name ? index_var_name : "(none)",
+                           var_name ? var_name : "(null)",
+                           array_name ? array_name : "(null)");
                 }
             }
             break;
@@ -2282,7 +2349,7 @@ static void expand_for_template(KryonRuntime* runtime, KryonElement* for_element
 
                 // Create instance of template children for this array item
                 // Insert at position: for_position + 1 (after @for) + index (already inserted items)
-                expand_for_iteration(runtime, for_element, var_name, json_obj, index, for_position + 1 + index);
+                expand_for_iteration(runtime, for_element, index_var_name, var_name, json_obj, index, for_position + 1 + index);
                 index++;
                 
                 kryon_free(json_obj);
@@ -2317,7 +2384,7 @@ static void expand_for_template(KryonRuntime* runtime, KryonElement* for_element
 
                 // Create instance of template children for this array item
                 // Insert at position: for_position + 1 (after @for) + index (already inserted items)
-                expand_for_iteration(runtime, for_element, var_name, str_value, index, for_position + 1 + index);
+                expand_for_iteration(runtime, for_element, index_var_name, var_name, str_value, index, for_position + 1 + index);
                 index++;
                 
                 kryon_free(str_value);
@@ -2337,12 +2404,13 @@ static void expand_for_template(KryonRuntime* runtime, KryonElement* for_element
  * @brief Create element instances for one iteration of @for loop
  * @param runtime Runtime context
  * @param for_element The @for template element
- * @param var_name Loop variable name
+ * @param index_var_name Optional index variable name (can be NULL)
+ * @param var_name Loop variable name (value variable)
  * @param var_value Current iteration value
  * @param index Current iteration index
  */
 static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_element,
-                                const char* var_name, const char* var_value, size_t index, size_t insert_position) {
+                                const char* index_var_name, const char* var_name, const char* var_value, size_t index, size_t insert_position) {
     if (!runtime || !for_element || !var_name || !var_value) {
         return;
     }
@@ -2364,16 +2432,51 @@ static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_elemen
         
         printf("✅ Template child %zu validated successfully\n", i);
         
-        printf("🔧 DEBUG: About to clone template child %zu with var_name='%s' var_value='%s'\n", 
-               i, var_name, var_value);
-        
-        // Clone the template child
-        KryonElement* instance = clone_element_with_substitution(runtime, template_child, 
-                                                               var_name, var_value, index);
+        printf("🔧 DEBUG: About to clone template child %zu with index_var='%s', var_name='%s' var_value='%s'\n",
+               i, index_var_name ? index_var_name : "(none)", var_name, var_value);
+
+        // Clone the template child - first with index substitution if needed, then value substitution
+        KryonElement* instance = template_child;
+
+        // If we have an index variable, substitute it first
+        if (index_var_name) {
+            char index_str[32];
+            snprintf(index_str, sizeof(index_str), "%zu", index);
+            instance = clone_element_with_substitution(runtime, template_child, index_var_name, index_str, index);
+            if (!instance) {
+                printf("❌ Failed to clone with index substitution\n");
+                continue;
+            }
+        }
+
+        // Now substitute the value variable
+        KryonElement* final_instance = clone_element_with_substitution(runtime, instance, var_name, var_value, index);
+
+        // If we did index substitution first, we need to free the intermediate clone
+        if (index_var_name && instance != template_child) {
+            kryon_element_destroy(runtime, instance);
+        }
+
+        instance = final_instance;
         if (instance) {
-            printf("✅ Successfully cloned element, type='%s'\n", 
+            printf("✅ Successfully cloned element, type='%s'\n",
                    instance->type_name ? instance->type_name : "unknown");
-            
+
+            // Set loop context on the cloned element and all its descendants
+            // so child @if directives can access the loop variables
+            char index_str[32];
+            const char* index_str_ptr = NULL;
+            if (index_var_name) {
+                snprintf(index_str, sizeof(index_str), "%zu", index);
+                index_str_ptr = index_str;
+            }
+            set_loop_context_recursive(instance, index_var_name, index_str_ptr, var_name, var_value);
+            printf("🔧 Set loop context recursively: %s=%s, %s=%s\n",
+                   index_var_name ? index_var_name : "(none)",
+                   index_str_ptr ? index_str_ptr : "(none)",
+                   var_name,
+                   var_value);
+
             // Resolve template properties with @for variable context
             printf("🔧 Resolving template properties for @for variable '%s'='%s'\n", var_name, var_value);
             for (size_t prop_i = 0; prop_i < instance->property_count; prop_i++) {
@@ -2648,9 +2751,20 @@ static KryonElement* clone_element_with_substitution(KryonRuntime* runtime,
                 // Copy literal properties (STRING, FLOAT, INT, etc.) as-is
                 if (src_prop->type == KRYON_RUNTIME_PROP_STRING) {
                     if (src_prop->value.string_value) {
-                        dst_prop->value.string_value = kryon_strdup(src_prop->value.string_value);
-                        if (!dst_prop->value.string_value) {
-                            dst_prop->value.string_value = kryon_strdup("");
+                        // Check if the string contains the loop variable and substitute it
+                        const char* original_str = src_prop->value.string_value;
+                        char* substituted_str = substitute_template_variable(original_str, var_name, var_value);
+
+                        if (substituted_str && substituted_str != original_str) {
+                            // Variable was substituted
+                            printf("🔧 STRING property substitution: '%s' → '%s'\n", original_str, substituted_str);
+                            dst_prop->value.string_value = substituted_str;
+                        } else {
+                            // No substitution needed, just copy
+                            dst_prop->value.string_value = kryon_strdup(original_str);
+                            if (!dst_prop->value.string_value) {
+                                dst_prop->value.string_value = kryon_strdup("");
+                            }
                         }
                     } else {
                         dst_prop->value.string_value = NULL;
@@ -2660,8 +2774,8 @@ static KryonElement* clone_element_with_substitution(KryonRuntime* runtime,
                     dst_prop->value = src_prop->value;
                 }
                 // For literal properties, force correct binding state
-                if (src_prop->type == KRYON_RUNTIME_PROP_STRING || 
-                    src_prop->type == KRYON_RUNTIME_PROP_FLOAT || 
+                if (src_prop->type == KRYON_RUNTIME_PROP_STRING ||
+                    src_prop->type == KRYON_RUNTIME_PROP_FLOAT ||
                     src_prop->type == KRYON_RUNTIME_PROP_INTEGER) {
                     // Literal properties should never be bound
                     dst_prop->is_bound = false;
@@ -2727,43 +2841,82 @@ static KryonElement* clone_element_with_substitution(KryonRuntime* runtime,
  * @param var_value Value to substitute
  * @return New string with variables substituted
  */
-static char* substitute_template_variable(const char* template_str, 
-                                        const char* var_name, 
+static char* substitute_template_variable(const char* template_str,
+                                        const char* var_name,
                                         const char* var_value) {
     if (!template_str || !var_name || !var_value) {
         return kryon_strdup(template_str ? template_str : "");
     }
-    
-    // Create variable pattern like "${todo}"
+
+    // First check for ${variable} pattern
     char pattern[256];
     snprintf(pattern, sizeof(pattern), "${%s}", var_name);
-    
-    // Simple string replacement
+
     const char* pos = strstr(template_str, pattern);
-    if (!pos) {
-        // No substitution needed
-        return kryon_strdup(template_str);
+    if (pos) {
+        // Calculate result length
+        size_t result_len = strlen(template_str) - strlen(pattern) + strlen(var_value) + 1;
+        char* result = kryon_alloc(result_len);
+        if (!result) {
+            return kryon_strdup(template_str);
+        }
+
+        // Copy prefix
+        size_t prefix_len = pos - template_str;
+        strncpy(result, template_str, prefix_len);
+        result[prefix_len] = '\0';
+
+        // Add substituted value
+        strcat(result, var_value);
+
+        // Add suffix
+        strcat(result, pos + strlen(pattern));
+
+        return result;
     }
-    
-    // Calculate result length
-    size_t result_len = strlen(template_str) - strlen(pattern) + strlen(var_value) + 1;
-    char* result = kryon_alloc(result_len);
-    if (!result) {
-        return kryon_strdup(template_str);
+
+    // Also check for bare variable name in expressions (e.g., "currentlyEditing == habit")
+    // We need to be careful to only match whole words, not substrings
+    size_t var_name_len = strlen(var_name);
+    const char* search_pos = template_str;
+    char* result = NULL;
+
+    while ((search_pos = strstr(search_pos, var_name)) != NULL) {
+        // Check if this is a whole word match (not part of a larger identifier)
+        bool is_start_boundary = (search_pos == template_str ||
+                                  !isalnum(search_pos[-1]) && search_pos[-1] != '_');
+        bool is_end_boundary = (!isalnum(search_pos[var_name_len]) &&
+                                search_pos[var_name_len] != '_');
+
+        if (is_start_boundary && is_end_boundary) {
+            // Found a whole word match - perform substitution
+            size_t prefix_len = search_pos - template_str;
+            size_t suffix_len = strlen(search_pos + var_name_len);
+            size_t result_len = prefix_len + strlen(var_value) + suffix_len + 1;
+
+            result = kryon_alloc(result_len);
+            if (!result) {
+                return kryon_strdup(template_str);
+            }
+
+            // Copy prefix
+            strncpy(result, template_str, prefix_len);
+            result[prefix_len] = '\0';
+
+            // Add substituted value
+            strcat(result, var_value);
+
+            // Add suffix
+            strcat(result, search_pos + var_name_len);
+
+            return result;
+        }
+
+        search_pos++;
     }
-    
-    // Copy prefix
-    size_t prefix_len = pos - template_str;
-    strncpy(result, template_str, prefix_len);
-    result[prefix_len] = '\0';
-    
-    // Add substituted value
-    strcat(result, var_value);
-    
-    // Add suffix
-    strcat(result, pos + strlen(pattern));
-    
-    return result;
+
+    // No substitution needed
+    return kryon_strdup(template_str);
 }
 
 /**
@@ -3057,9 +3210,13 @@ void process_if_directives(KryonRuntime* runtime, KryonElement* element) {
 
     // Check if this element is an @if template
     if (element->type_name && strcmp(element->type_name, "if") == 0) {
-        printf("🔄 Found @if template element, calling expand_if_template\n");
         expand_if_template(runtime, element);
         // Don't process children of @if elements recursively; they are templates
+        return;
+    }
+
+    // Skip processing children of @for elements - they are templates, not live elements
+    if (element->type_name && strcmp(element->type_name, "for") == 0) {
         return;
     }
 
@@ -3097,10 +3254,95 @@ static bool evaluate_runtime_condition(KryonRuntime* runtime, const char* condit
         while (*trimmed == ' ' || *trimmed == '\t') trimmed++;
     }
 
-    // For now, support simple variable references
-    // TODO: Add support for binary operators (&&, ||, ==, !=, <, >, etc.)
+    // Check for binary operators (==, !=, <, >, <=, >=)
+    const char* op_pos = NULL;
+    const char* op_str = NULL;
+    int op_len = 0;
 
-    // Look up variable value
+    // Search for == operator
+    const char* eq_pos = strstr(trimmed, "==");
+    if (eq_pos) {
+        op_pos = eq_pos;
+        op_str = "==";
+        op_len = 2;
+    }
+
+    // Search for != operator
+    const char* neq_pos = strstr(trimmed, "!=");
+    if (neq_pos && (!op_pos || neq_pos < op_pos)) {
+        op_pos = neq_pos;
+        op_str = "!=";
+        op_len = 2;
+    }
+
+    // If we found a binary operator, parse and evaluate
+    if (op_pos) {
+        printf("🔍 Found binary operator '%s'\n", op_str);
+
+        // Extract left operand
+        size_t left_len = op_pos - trimmed;
+        char left_operand[256];
+        strncpy(left_operand, trimmed, left_len);
+        left_operand[left_len] = '\0';
+
+        // Trim whitespace from left operand
+        char* left_trim = left_operand;
+        while (*left_trim == ' ' || *left_trim == '\t') left_trim++;
+        size_t left_actual_len = strlen(left_trim);
+        while (left_actual_len > 0 && (left_trim[left_actual_len-1] == ' ' || left_trim[left_actual_len-1] == '\t')) {
+            left_trim[--left_actual_len] = '\0';
+        }
+
+        // Extract right operand
+        const char* right_start = op_pos + op_len;
+        while (*right_start == ' ' || *right_start == '\t') right_start++;
+        char right_operand[256];
+        strncpy(right_operand, right_start, sizeof(right_operand) - 1);
+        right_operand[sizeof(right_operand) - 1] = '\0';
+
+        // Trim whitespace from right operand
+        size_t right_len = strlen(right_operand);
+        while (right_len > 0 && (right_operand[right_len-1] == ' ' || right_operand[right_len-1] == '\t')) {
+            right_operand[--right_len] = '\0';
+        }
+
+        printf("🔍 Left operand: '%s', Right operand: '%s'\n", left_trim, right_operand);
+
+        // Resolve left operand (could be variable or literal)
+        const char* left_value = kryon_runtime_get_variable(runtime, left_trim);
+        if (!left_value) {
+            // Not a variable, treat as literal
+            left_value = left_trim;
+        }
+
+        // Resolve right operand (could be variable or literal)
+        const char* right_value = kryon_runtime_get_variable(runtime, right_operand);
+        if (!right_value) {
+            // Not a variable, treat as literal
+            right_value = right_operand;
+        }
+
+        printf("🔍 Resolved: '%s' %s '%s'\n", left_value, op_str, right_value);
+
+        // Perform comparison
+        bool result = false;
+        if (strcmp(op_str, "==") == 0) {
+            result = (strcmp(left_value, right_value) == 0);
+        } else if (strcmp(op_str, "!=") == 0) {
+            result = (strcmp(left_value, right_value) != 0);
+        }
+
+        printf("🔍 Comparison result: %s\n", result ? "true" : "false");
+
+        if (negate) {
+            result = !result;
+            printf("🔍 After negation: %s\n", result ? "true" : "false");
+        }
+
+        return result;
+    }
+
+    // No binary operator - handle as simple variable reference
     const char* var_value = kryon_runtime_get_variable(runtime, trimmed);
     if (!var_value) {
         printf("⚠️  Variable '%s' not found, assuming false\n", trimmed);
@@ -3140,8 +3382,6 @@ static void expand_if_template(KryonRuntime* runtime, KryonElement* if_element) 
     if (!runtime || !if_element) {
         return;
     }
-
-    printf("🔄 Expanding @if template\n");
 
     // Get condition property (customProp_0x9100)
     const char* condition_expr = NULL;
@@ -3186,32 +3426,45 @@ static void expand_if_template(KryonRuntime* runtime, KryonElement* if_element) 
         }
     }
 
-    // Check if cloned children already exist (they would be right after the @if element)
-    size_t existing_clones_start = if_position + 1;
-    size_t existing_clones_count = 0;
-    for (size_t i = existing_clones_start; i < parent->child_count; i++) {
-        KryonElement* child = parent->children[i];
-        // Stop counting when we hit another @if template or end of children
-        if (!child || child->type == 0x8300) break;
-        existing_clones_count++;
-    }
+    // Check if cloned children already exist
+    // Clones could be anywhere in the children array (not necessarily right after @if)
+    // We need to find ALL children that were cloned from ANY @if directive
+    size_t* clone_indices = kryon_alloc(parent->child_count * sizeof(size_t));
+    size_t clone_count = 0;
 
-    // If cloned children exist, remove them (we'll recreate based on current branch)
-    if (existing_clones_count > 0) {
-        printf("🗑️  Removing %zu existing cloned children to recreate for current branch\n", existing_clones_count);
-        // Remove from parent's children array
-        for (size_t i = 0; i < existing_clones_count; i++) {
-            KryonElement* child = parent->children[existing_clones_start];
-            if (child) {
-                // TODO: properly free element memory
-                // For now, just remove from parent
+    if (clone_indices) {
+        for (size_t i = if_position + 1; i < parent->child_count; i++) {
+            KryonElement* child = parent->children[i];
+            if (!child) continue;
+
+            // Check if this child was cloned from an @if directive (type 0x8300)
+            if (child->cloned_from_directive &&
+                child->cloned_from_directive->type == 0x8300) {
+                clone_indices[clone_count++] = i;
             }
-            // Shift remaining children down
-            for (size_t j = existing_clones_start; j < parent->child_count - 1; j++) {
-                parent->children[j] = parent->children[j + 1];
-            }
-            parent->child_count--;
         }
+
+        // If cloned children exist, remove them (we'll recreate based on current branch)
+        if (clone_count > 0) {
+            // Remove clones in reverse order to avoid index shifting issues
+            for (size_t i = clone_count; i > 0; i--) {
+                size_t remove_idx = clone_indices[i - 1];
+                KryonElement* child = parent->children[remove_idx];
+
+                // Remove from parent array by shifting remaining elements
+                for (size_t j = remove_idx; j < parent->child_count - 1; j++) {
+                    parent->children[j] = parent->children[j + 1];
+                }
+                parent->child_count--;
+
+                // Destroy the removed element
+                if (child) {
+                    kryon_element_destroy(runtime, child);
+                }
+            }
+        }
+
+        kryon_free(clone_indices);
     }
 
     // Determine which children to clone based on condition
@@ -3242,12 +3495,49 @@ static void expand_if_template(KryonRuntime* runtime, KryonElement* if_element) 
             printf("🔧 Cloning @if child %zu of type '%s'\n", i,
                    template_child->type_name ? template_child->type_name : "unknown");
 
-            // Clone the template child (no variable substitution needed for @if)
-            // We use a simpler clone since @if doesn't have loop variables
-            KryonElement* instance = clone_element_deep(runtime, template_child);
+            KryonElement* instance = NULL;
+
+            // Check if @if is inside a @for loop (has loop context)
+            if (if_element->loop_var_name && if_element->loop_var_value) {
+                printf("🔧 @if has loop context: %s=%s, %s=%s\n",
+                       if_element->loop_index_var_name ? if_element->loop_index_var_name : "(none)",
+                       if_element->loop_index_var_value ? if_element->loop_index_var_value : "(none)",
+                       if_element->loop_var_name,
+                       if_element->loop_var_value);
+
+                // Clone with variable substitution (like @for does)
+                // First substitute index variable if present, then value variable
+                KryonElement* temp_instance = template_child;
+
+                if (if_element->loop_index_var_name && if_element->loop_index_var_value) {
+                    temp_instance = clone_element_with_substitution(runtime, template_child,
+                                                                    if_element->loop_index_var_name,
+                                                                    if_element->loop_index_var_value,
+                                                                    0);
+                    if (!temp_instance) {
+                        printf("❌ Failed to clone with index substitution\n");
+                        continue;
+                    }
+                }
+
+                // Now substitute the value variable
+                instance = clone_element_with_substitution(runtime, temp_instance,
+                                                          if_element->loop_var_name,
+                                                          if_element->loop_var_value,
+                                                          0);
+
+                // Free intermediate clone if we did index substitution
+                if (if_element->loop_index_var_name && temp_instance != template_child) {
+                    kryon_element_destroy(runtime, temp_instance);
+                }
+            } else {
+                // No loop context - use simple deep clone
+                instance = clone_element_deep(runtime, template_child);
+            }
 
             if (instance) {
-                printf("✅ Successfully cloned @if child\n");
+                // Mark this element and all its descendants as cloned from this @if directive
+                mark_cloned_from_directive_recursive(instance, if_element);
 
                 // Add to parent element right after the @if template
                 if (parent->child_count >= parent->child_capacity) {
@@ -3272,14 +3562,30 @@ static void expand_if_template(KryonRuntime* runtime, KryonElement* if_element) 
                 // Mark parent for re-layout and re-render
                 parent->needs_layout = true;
                 parent->needs_render = true;
-
-                printf("✅ Added cloned element to parent\n");
-            } else {
-                printf("❌ Failed to clone @if child %zu\n", i);
             }
         }
     } else {
         printf("❌ Condition is false, not instantiating children\n");
+    }
+}
+
+/**
+ * @brief Recursively mark element and all descendants as cloned from a directive
+ * @param element Element to mark
+ * @param directive The @if or @for directive element that cloned this
+ */
+static void mark_cloned_from_directive_recursive(KryonElement* element, KryonElement* directive) {
+    if (!element || !directive) {
+        return;
+    }
+
+    element->cloned_from_directive = directive;
+
+    // Recursively mark all children
+    for (size_t i = 0; i < element->child_count; i++) {
+        if (element->children[i]) {
+            mark_cloned_from_directive_recursive(element->children[i], directive);
+        }
     }
 }
 
