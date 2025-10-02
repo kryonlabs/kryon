@@ -16,13 +16,15 @@
 #include "element_mixins.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 // =============================================================================
 // TABGROUP STATE (Element-Owned)
 // =============================================================================
 
 typedef struct {
-    int selected_tab_index;        // Currently active tab (0-based)
+    int selected_tab_index;        // Currently active tab (0-based) - SOURCE OF TRUTH
+    int last_synced_value;         // Last value we synced to the bound variable
     bool initialized;              // Whether state has been initialized
 } TabGroupState;
 
@@ -39,6 +41,7 @@ static TabGroupState* ensure_tabgroup_state(KryonElement* element) {
 
             // Initialize with default values
             state->selected_tab_index = get_element_property_int(element, "selectedIndex", 0);
+            state->last_synced_value = state->selected_tab_index;  // Track initial value
             state->initialized = true;
             element->user_data = state;
         }
@@ -77,7 +80,7 @@ void tabgroup_set_selected_index(KryonRuntime* runtime, KryonElement* tabgroup_e
         printf("🔍 TABGROUP: Setting TabGroup state selected_tab_index to %d\n", index);
         state->selected_tab_index = index;
 
-        // Also update the bound variable if one exists
+        // Update the bound variable if one exists
         if (runtime) {
             const char* selected_index_str = get_element_property_string(tabgroup_element, "selectedIndex");
             if (selected_index_str) {
@@ -85,11 +88,15 @@ void tabgroup_set_selected_index(KryonRuntime* runtime, KryonElement* tabgroup_e
                 char index_str[32];
                 snprintf(index_str, sizeof(index_str), "%d", index);
 
-                printf("🔍 TABGROUP: Attempting to update bound variable to '%s'\n", index_str);
-                // Try to extract variable name and update it
-                // This is a simplified approach - the full solution would parse the binding expression
+                printf("🔍 TABGROUP: Attempting to update bound variable '%s' to '%s'\n",
+                       selected_index_str, index_str);
                 bool success = kryon_runtime_set_variable(runtime, selected_index_str, index_str);
                 printf("🔍 TABGROUP: Variable update %s\n", success ? "succeeded" : "failed");
+
+                // Track this value - we know we set it, so don't sync back from it
+                if (success) {
+                    state->last_synced_value = index;
+                }
             }
         }
     } else {
@@ -140,7 +147,29 @@ static void tabgroup_render(KryonRuntime* runtime, KryonElement* element, KryonR
     if (*command_count >= max_commands - 1) return;
 
     // Ensure state is initialized
-    ensure_tabgroup_state(element);
+    TabGroupState* state = ensure_tabgroup_state(element);
+
+    // Sync with selectedIndex property ONLY if it changed externally (e.g. from Lua script)
+    // We track last_synced_value to distinguish "we changed it" vs "external change"
+    if (state && runtime) {
+        const char* selected_index_str = get_element_property_string_with_runtime(runtime, element, "selectedIndex");
+        if (selected_index_str) {
+            int property_value = atoi(selected_index_str);
+
+            // Only sync if property changed AND it's not the value we just set
+            if (property_value != state->last_synced_value) {
+                printf("🔧 TABGROUP: External change detected! Property: %d, Last synced: %d, Current state: %d\n",
+                       property_value, state->last_synced_value, state->selected_tab_index);
+                printf("🔧 TABGROUP: Syncing state from external property change: %d -> %d\n",
+                       state->selected_tab_index, property_value);
+
+                // External change - sync property -> state
+                state->selected_tab_index = property_value;
+                state->last_synced_value = property_value;
+            }
+            // else: property == last_synced_value means we set it ourselves, don't sync back
+        }
+    }
 
     // TabGroup is primarily a layout container with state management
     // Render background and border if specified

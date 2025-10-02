@@ -116,42 +116,60 @@ static void tab_content_render(KryonRuntime* runtime, KryonElement* element, Kry
 
     printf("🔍 TABCONTENT: Final active_index=%d, child_count=%zu\n",
            active_index, element->child_count);
-    
-    // Only render the active TabPanel child
-    if (active_index >= 0 && (size_t)active_index < element->child_count) {
-        KryonElement* active_child = element->children[active_index];
-        printf("🔍 TABCONTENT: Found child at index %d: type='%s'\n", 
-               active_index, active_child ? active_child->type_name : "NULL");
-        if (active_child && strcmp(active_child->type_name, "TabPanel") == 0) {
-            // Update active child bounds to fit within content area
-            active_child->x = content_x;
-            active_child->y = content_y;
-            active_child->width = content_width;
-            active_child->height = content_height;
-            
-            printf("🔍 TABCONTENT: Activated TabPanel %d bounds: x=%.1f, y=%.1f, w=%.1f, h=%.1f\n",
-                   active_index, content_x, content_y, content_width, content_height);
-                   
-            // The active TabPanel will be rendered automatically by the main element system
-            // All other TabPanel children are effectively hidden by not updating their bounds
+
+    // Debug: list ALL children
+    for (size_t i = 0; i < element->child_count; i++) {
+        KryonElement* child = element->children[i];
+        if (child) {
+            printf("  Child %zu: %s [%p], child_count=%zu\n", i, child->type_name, (void*)child, child->child_count);
         }
-    } else {
-        printf("🔍 TABCONTENT: active_index %d out of bounds (child_count=%zu)\n", active_index, element->child_count);
     }
-    
-    // Hide all non-active children using visibility property
+
+    // Find the Nth TabPanel child (skip @for templates and other non-TabPanel elements)
+    int panel_index = 0;
+    KryonElement* active_panel = NULL;
     for (size_t i = 0; i < element->child_count; i++) {
         KryonElement* child = element->children[i];
         if (child && strcmp(child->type_name, "TabPanel") == 0) {
-            if ((int)i == active_index) {
+            printf("🔍 TABCONTENT: Found TabPanel [%p] at array index %zu, child_count=%zu\n",
+                   (void*)child, i, child->child_count);
+            if (panel_index == active_index) {
+                active_panel = child;
+                printf("🔍 TABCONTENT: Found active TabPanel at array index %zu (panel_index=%d)\n", i, panel_index);
+                break;
+            }
+            panel_index++;
+        }
+    }
+
+    // Update active panel bounds
+    if (active_panel) {
+        active_panel->x = content_x;
+        active_panel->y = content_y;
+        active_panel->width = content_width;
+        active_panel->height = content_height;
+
+        printf("🔍 TABCONTENT: Activated TabPanel %d bounds: x=%.1f, y=%.1f, w=%.1f, h=%.1f\n",
+               active_index, content_x, content_y, content_width, content_height);
+    } else {
+        printf("🔍 TABCONTENT: active_index %d not found (found %d panels)\n", active_index, panel_index);
+    }
+
+    // Hide all non-active TabPanel children using visibility property
+    panel_index = 0;
+    for (size_t i = 0; i < element->child_count; i++) {
+        KryonElement* child = element->children[i];
+        if (child && strcmp(child->type_name, "TabPanel") == 0) {
+            if (panel_index == active_index) {
                 // Make active panel visible
                 child->visible = true;
-                printf("🔍 TABCONTENT: Making TabPanel %zu visible\n", i);
+                printf("🔍 TABCONTENT: Making TabPanel %d visible\n", panel_index);
             } else {
                 // Hide inactive panels using visibility property
                 child->visible = false;
-                printf("🔍 TABCONTENT: Hiding TabPanel %zu (visible=false)\n", i);
+                printf("🔍 TABCONTENT: Hiding TabPanel %d (visible=false)\n", panel_index);
             }
+            panel_index++;
         }
     }
 }

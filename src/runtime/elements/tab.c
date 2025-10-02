@@ -52,6 +52,36 @@ bool register_tab_element(void) {
 // =============================================================================
 
 /**
+ * @brief Handle Tab cursor behavior (always pointer unless explicitly overridden)
+ */
+static void handle_tab_cursor(KryonRuntime* runtime, KryonElement* element, bool is_disabled) {
+    if (!runtime || !element || !runtime->renderer) return;
+
+    KryonVec2 mouse_pos = runtime->mouse_position;
+    bool is_hovered = (mouse_pos.x >= element->x && mouse_pos.x <= element->x + element->width &&
+                       mouse_pos.y >= element->y && mouse_pos.y <= element->y + element->height);
+
+    if (is_hovered && !is_disabled) {
+        // Check if element has explicit cursor property
+        const char* explicit_cursor = get_element_property_string(element, "cursor");
+
+        if (explicit_cursor) {
+            // User explicitly set cursor - use that instead of default
+            if (strcmp(explicit_cursor, "pointer") == 0) {
+                kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_POINTER);
+            } else if (strcmp(explicit_cursor, "text") == 0) {
+                kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_TEXT);
+            } else if (strcmp(explicit_cursor, "default") == 0) {
+                kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_DEFAULT);
+            }
+        } else {
+            // No explicit cursor set - use Tab default (pointer)
+            kryon_renderer_set_cursor((KryonRenderer*)runtime->renderer, KRYON_CURSOR_POINTER);
+        }
+    }
+}
+
+/**
  * @brief Gets the tab title, defaults to "Tab"
  */
 static const char* get_tab_title(KryonElement* element) {
@@ -151,14 +181,33 @@ static bool has_custom_click_handler(KryonElement* element) {
 static void tab_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (!element || !commands || !command_count) return;
 
+    // If Tab has children, act as a simple container (don't render tab header graphics)
+    if (element->child_count > 0) {
+        // Handle cursor (Tab always shows pointer by default)
+        handle_tab_cursor(runtime, element, is_tab_disabled(element));
+
+        // Tab is being used as a container - just render background if specified
+        uint32_t bg_val = get_element_property_color(element, "backgroundColor", 0x00000000);
+        if (bg_val != 0x00000000 && *command_count < max_commands) {
+            KryonColor bg_color = color_u32_to_f32(bg_val);
+            KryonVec2 position = { element->x, element->y };
+            KryonVec2 size = { element->width, element->height };
+            commands[*command_count] = kryon_cmd_draw_rect(position, size, bg_color, 0.0f);
+            (*command_count)++;
+        }
+        // Children will be rendered automatically by the rendering system
+        return;
+    }
+
+    // Original tab header rendering (when used in TabBar with no children)
     bool is_active = is_tab_active(element);
     bool is_disabled = is_tab_disabled(element);
     const char* title = get_tab_title(element);
     int font_size = get_tab_font_size(element);
     int padding = get_tab_padding(element);
     int border_radius = get_tab_border_radius(element);
-    
-    
+
+
     // Get element bounds
     float x = element->x;
     float y = element->y;
@@ -166,15 +215,20 @@ static void tab_render(KryonRuntime* runtime, KryonElement* element, KryonRender
     float height = element->height;
 
     // Debug: Log tab bounds for hit testing analysis
-    printf("🔍 TAB RENDER: Tab '%s' bounds: x=%.1f, y=%.1f, w=%.1f, h=%.1f\n", 
+    printf("🔍 TAB RENDER: Tab '%s' bounds: x=%.1f, y=%.1f, w=%.1f, h=%.1f\n",
            title ? title : "?", x, y, width, height);
 
-    // Check for hover state using mixin
-    bool is_hovered = check_hover_and_cursor(runtime, element, !is_disabled);
+    // Handle cursor (Tab always shows pointer by default)
+    handle_tab_cursor(runtime, element, is_disabled);
+
+    // Check for hover state for visual effects
+    KryonVec2 mouse_pos = runtime->mouse_position;
+    bool is_hovered = (mouse_pos.x >= x && mouse_pos.x <= x + width &&
+                       mouse_pos.y >= y && mouse_pos.y <= y + height);
 
     // Get colors based on state
     KryonColor bg_color, text_color;
-    
+
     if (is_disabled) {
         uint32_t bg_val = get_element_property_color(element, "disabledBackgroundColor", 0xF5F5F5FF);
         uint32_t text_val = get_element_property_color(element, "disabledTextColor", 0x9CA3AFFF);
@@ -208,7 +262,7 @@ static void tab_render(KryonRuntime* runtime, KryonElement* element, KryonRender
     // Render tab border if specified
     uint32_t border_color_val = get_element_property_color(element, "borderColor", 0x00000000);
     int border_width = get_element_property_int(element, "borderWidth", 0);
-    
+
     if (border_width > 0 && border_color_val != 0x00000000 && *command_count < max_commands) {
         KryonColor border_color = color_u32_to_f32(border_color_val);
         KryonVec2 position = { x, y };

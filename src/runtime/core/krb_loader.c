@@ -415,8 +415,8 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
                                     printf("DEBUG: Loaded INTEGER variable '%s' = %u\n", var_name, int_value);
                                 }
                             } else if (value_type == KRYON_VALUE_BOOLEAN) {
-                                uint32_t bool_value;
-                                if (read_uint32_safe(data, &vars_offset, size, &bool_value)) {
+                                uint8_t bool_value;
+                                if (read_uint8_safe(data, &vars_offset, size, &bool_value)) {
                                     runtime->variable_names[runtime->variable_count] = kryon_strdup(var_name);
                                     runtime->variable_values[runtime->variable_count] = kryon_strdup(bool_value ? "true" : "false");
                                     runtime->variable_count++;

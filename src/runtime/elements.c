@@ -80,6 +80,7 @@ static void position_app_children(struct KryonRuntime* runtime, struct KryonElem
 static void position_grid_children(struct KryonRuntime* runtime, struct KryonElement* grid);
 static void position_tabbar_children(struct KryonRuntime* runtime, struct KryonElement* tabbar);
 static void position_tabgroup_children(struct KryonRuntime* runtime, struct KryonElement* tabgroup);
+static void position_tab_children(struct KryonRuntime* runtime, struct KryonElement* tab);
 
 // Generic contentAlignment positioning function
 static void position_children_with_content_alignment(struct KryonRuntime* runtime, struct KryonElement* parent, 
@@ -614,10 +615,18 @@ void position_children_by_layout_type(struct KryonRuntime* runtime, struct Kryon
         position_tabbar_children(runtime, parent);
     } else if (strcmp(parent->type_name, "TabGroup") == 0) {
         position_tabgroup_children(runtime, parent);
+    } else if (strcmp(parent->type_name, "Tab") == 0) {
+        // Tab can contain children - center by default
+        position_tab_children(runtime, parent);
+    } else if (strcmp(parent->type_name, "TabPanel") == 0) {
+        // TabPanel behaves like Container - uses contentAlignment
+        printf("🔧 TABPANEL [%p]: Positioning %zu children (bounds: x=%.1f, y=%.1f, w=%.1f, h=%.1f)\n",
+               (void*)parent, parent->child_count, parent->x, parent->y, parent->width, parent->height);
+        position_container_children(runtime, parent);
     } else {
         // Default: position children at same location
         for (size_t i = 0; i < parent->child_count; i++) {
-            calculate_element_position_recursive(runtime, parent->children[i], 
+            calculate_element_position_recursive(runtime, parent->children[i],
                                                parent->x, parent->y, parent->width, parent->height, parent);
         }
     }
@@ -1026,6 +1035,12 @@ static void position_children_with_content_alignment(struct KryonRuntime* runtim
         // Calculate total height of all children plus gaps (optimized)
         for (size_t j = 0; j < parent->child_count; j++) {
             struct KryonElement* temp_child = parent->children[j];
+
+            // Skip null or directive elements
+            if (!temp_child || temp_child->type == 0x8200 || temp_child->type == 0x8300) {
+                continue;
+            }
+
             float temp_height = get_element_property_float(temp_child, "height", 0.0f);
             
             if (temp_height == 0.0f) {
@@ -1048,7 +1063,12 @@ static void position_children_with_content_alignment(struct KryonRuntime* runtim
     
     for (size_t i = 0; i < parent->child_count; i++) {
         struct KryonElement* child = parent->children[i];
-        
+
+        // Skip null or directive elements (they are templates, not UI elements)
+        if (!child || child->type == 0x8200 || child->type == 0x8300) {
+            continue;
+        }
+
         // Get child dimensions - handle Text elements specially (they auto-size)
         float child_width = get_element_property_float(child, "width", 0.0f);
         float child_height = get_element_property_float(child, "height", 0.0f);
@@ -1112,7 +1132,26 @@ static void position_children_with_content_alignment(struct KryonRuntime* runtim
  */
 static void position_container_children(struct KryonRuntime* runtime, struct KryonElement* container) {
     // Container uses no multi-child stacking by default
+    printf("🔧 CONTAINER: Positioning %zu children for %s (x=%.1f, y=%.1f, w=%.1f, h=%.1f)\n",
+           container->child_count, container->type_name, container->x, container->y, container->width, container->height);
     position_children_with_content_alignment(runtime, container, "start", false);
+
+    // Debug: show first child's bounds after positioning
+    if (container->child_count > 0 && container->children[0]) {
+        printf("🔧 CONTAINER: First child '%s' positioned at (x=%.1f, y=%.1f, w=%.1f, h=%.1f), visible=%d\n",
+               container->children[0]->type_name,
+               container->children[0]->x, container->children[0]->y,
+               container->children[0]->width, container->children[0]->height,
+               container->children[0]->visible);
+    }
+}
+
+/**
+ * @brief Position children in a Tab layout (centered by default)
+ */
+static void position_tab_children(struct KryonRuntime* runtime, struct KryonElement* tab) {
+    // Tab centers children by default
+    position_children_with_content_alignment(runtime, tab, "center", false);
 }
 
 /**

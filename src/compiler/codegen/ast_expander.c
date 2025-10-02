@@ -1444,8 +1444,8 @@ bool kryon_write_if_directive(KryonCodeGenerator *codegen, const KryonASTNode *i
 
     // Create element header using schema format
     uint32_t instance_id = codegen->next_element_id++;
-    uint16_t child_count = (uint16_t)if_directive->data.conditional.then_count;
-    uint16_t property_count = 1; // Just the "condition" property
+    uint16_t child_count = (uint16_t)(if_directive->data.conditional.then_count + if_directive->data.conditional.else_count);
+    uint16_t property_count = 2; // condition property + then_count property
 
     KRBElementHeader header = {
         .instance_id = instance_id,
@@ -1493,22 +1493,44 @@ bool kryon_write_if_directive(KryonCodeGenerator *codegen, const KryonASTNode *i
     printf("DEBUG: Successfully wrote condition property (length=%u)\n", condition_len);
     kryon_free(condition_str);
 
+    // Write then_count property to mark where "then" ends and "else" begins
+    // Property 0x9101 = then_count (helps runtime split children correctly)
+    uint16_t then_count_prop_id = 0x9101;
+    uint8_t then_count_type = KRYON_RUNTIME_PROP_INTEGER;
+    uint32_t then_count_value = (uint32_t)if_directive->data.conditional.then_count;
+
+    write_binary_data(codegen, (const char*)&then_count_prop_id, sizeof(uint16_t));
+    write_binary_data(codegen, (const char*)&then_count_type, sizeof(uint8_t));
+    if (!write_uint32(codegen, then_count_value)) {
+        printf("ERROR: Failed to write then_count value\n");
+        return false;
+    }
+
+    printf("DEBUG: Wrote then_count property: %u\n", then_count_value);
+
     // Write then body children recursively
     printf("DEBUG: Writing %zu children for @if then body\n", if_directive->data.conditional.then_count);
     for (size_t i = 0; i < if_directive->data.conditional.then_count; i++) {
         if (!kryon_write_element_instance(codegen, if_directive->data.conditional.then_body[i], ast_root)) {
-            printf("ERROR: Failed to write @if child %zu\n", i);
+            printf("ERROR: Failed to write @if then child %zu\n", i);
             return false;
         }
     }
 
-    // TODO: Support elif and else branches
-    // For now, we only support the simple @if (condition) { ... } case
+    // Write else body children (if any)
+    if (if_directive->data.conditional.else_count > 0) {
+        printf("DEBUG: Writing %zu children for @else body\n", if_directive->data.conditional.else_count);
+        for (size_t i = 0; i < if_directive->data.conditional.else_count; i++) {
+            if (!kryon_write_element_instance(codegen, if_directive->data.conditional.else_body[i], ast_root)) {
+                printf("ERROR: Failed to write @if else child %zu\n", i);
+                return false;
+            }
+        }
+    }
+
+    // TODO: Support elif branches
     if (if_directive->data.conditional.elif_count > 0) {
         printf("WARNING: @elif branches not yet supported at runtime\n");
-    }
-    if (if_directive->data.conditional.else_count > 0) {
-        printf("WARNING: @else branches not yet supported at runtime\n");
     }
 
     printf("DEBUG: @if directive written successfully\n");
