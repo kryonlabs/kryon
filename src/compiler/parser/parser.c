@@ -1894,10 +1894,15 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
     component->data.component.parameters = NULL;
     component->data.component.param_defaults = NULL;
     component->data.component.parameter_count = 0;
+    component->data.component.parent_component = NULL;
+    component->data.component.override_props = NULL;
+    component->data.component.override_count = 0;
     component->data.component.state_vars = NULL;
     component->data.component.state_count = 0;
     component->data.component.functions = NULL;
     component->data.component.function_count = 0;
+    component->data.component.on_mount = NULL;
+    component->data.component.on_unmount = NULL;
     component->data.component.body = NULL;
     
     // Parse parameter list if present
@@ -1952,22 +1957,101 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
             parser_error(parser, "Expected ')' after component parameters");
         }
     }
-    
-    // Parse component body
+
+    // Parse 'extend' keyword if present
+    if (match_token(parser, KRYON_TOKEN_EXTENDS_KEYWORD)) {
+        if (!check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
+            parser_error(parser, "Expected parent component name after extend");
+        } else {
+            const KryonToken *parent_token = advance(parser);
+            component->data.component.parent_component = kryon_token_copy_lexeme(parent_token);
+            printf("[DEBUG] parse_component_definition: Component extends '%s'\n",
+                   component->data.component.parent_component);
+        }
+    }
+
+    // Parse component body (contains both parent overrides and component content)
     if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
-        parser_error(parser, "Expected '{' before component body");
+        parser_error(parser, "Expected '{' to start component body");
         return component;
     }
-    
+
+    // If we have a parent, first parse parent property overrides
+    if (component->data.component.parent_component) {
+        // Parse override properties until we hit @var/@state/@function or an element
+        while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
+            // Stop parsing overrides when we hit directives or elements
+            if (check_token(parser, KRYON_TOKEN_STATE_DIRECTIVE) ||
+                check_token(parser, KRYON_TOKEN_VARIABLE_DIRECTIVE) ||
+                check_token(parser, KRYON_TOKEN_FUNCTION_DIRECTIVE) ||
+                check_token(parser, KRYON_TOKEN_ONLOAD_DIRECTIVE) ||
+                check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
+                break;
+            }
+
+            if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+                parser_error(parser, "Expected property name or directive in component body");
+                break;
+            }
+
+            const KryonToken *prop_name_token = advance(parser);
+
+            if (!match_token(parser, KRYON_TOKEN_COLON)) {
+                parser_error(parser, "Expected ':' after property name");
+                break;
+            }
+
+            // Parse property value
+            KryonASTNode *prop_value = parse_expression(parser);
+            if (!prop_value) {
+                parser_error(parser, "Expected property value");
+                break;
+            }
+
+            // Create a property node for this override
+            KryonASTNode *prop_node = kryon_ast_create_node(parser, KRYON_AST_PROPERTY,
+                                                            &prop_name_token->location);
+            if (prop_node) {
+                prop_node->data.property.name = kryon_token_copy_lexeme(prop_name_token);
+                prop_node->data.property.value = prop_value;
+
+                // Add to override_props array
+                size_t new_count = component->data.component.override_count + 1;
+                KryonASTNode **new_overrides = realloc(component->data.component.override_props,
+                                                      new_count * sizeof(KryonASTNode*));
+                if (new_overrides) {
+                    component->data.component.override_props = new_overrides;
+                    component->data.component.override_props[component->data.component.override_count] = prop_node;
+                    component->data.component.override_count = new_count;
+                }
+            }
+
+            // Optional comma or newline
+            if (check_token(parser, KRYON_TOKEN_COMMA)) {
+                advance(parser);
+            }
+        }
+    }
+
     printf("[DEBUG] parse_component_definition: Starting component body parsing at token %zu\n", parser->current_token);
     
     // Parse component contents (state variables, functions, and UI)
     while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
-        printf("[DEBUG] parse_component_definition: Processing token %zu (type %d) in component body\n", 
+        printf("[DEBUG] parse_component_definition: Processing token %zu (type %d) in component body\n",
                parser->current_token, peek(parser)->type);
-        if (check_token(parser, KRYON_TOKEN_STATE_DIRECTIVE)) {
-            // Parse @state variable
-            KryonASTNode *state_var = parse_state_definition(parser);
+        if (check_token(parser, KRYON_TOKEN_STATE_DIRECTIVE) || check_token(parser, KRYON_TOKEN_VARIABLE_DIRECTIVE)) {
+            // Parse @state or @var variable (they're aliases inside components)
+            KryonASTNode *state_var = NULL;
+            if (check_token(parser, KRYON_TOKEN_STATE_DIRECTIVE)) {
+                state_var = parse_state_definition(parser);
+            } else {
+                // @var inside component is treated as @state
+                state_var = parse_variable_definition(parser);
+                // Convert the variable to a state variable
+                if (state_var && state_var->type == KRYON_AST_VARIABLE_DEFINITION) {
+                    state_var->type = KRYON_AST_STATE_DEFINITION;
+                }
+            }
             if (state_var) {
                 // Add to state vars array
                 size_t new_count = component->data.component.state_count + 1;
@@ -1991,6 +2075,88 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
                     component->data.component.functions = new_funcs;
                     component->data.component.functions[component->data.component.function_count] = func;
                     component->data.component.function_count = new_count;
+                }
+            }
+        } else if (check_token(parser, KRYON_TOKEN_ON_MOUNT_DIRECTIVE) || check_token(parser, KRYON_TOKEN_ONLOAD_DIRECTIVE)) {
+            // Parse @mount (or @onload) lifecycle hook
+            KryonASTNode *mount_hook = parse_onload_directive(parser);
+            if (mount_hook) {
+                if (component->data.component.on_mount) {
+                    parser_error(parser, "Component can only have one @mount hook");
+                } else {
+                    component->data.component.on_mount = mount_hook;
+                }
+            }
+        } else if (check_token(parser, KRYON_TOKEN_ON_UNMOUNT_DIRECTIVE)) {
+            // Parse @unmount lifecycle hook
+            // Reuse the parse_onload_directive logic but for unmount
+            const KryonToken *unmount_token = advance(parser);
+
+            // Expect language string
+            if (!check_token(parser, KRYON_TOKEN_STRING)) {
+                parser_error(parser, "Expected language string after @unmount");
+            } else {
+                const KryonToken *language_token = advance(parser);
+
+                // Expect opening brace for script content
+                if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
+                    parser_error(parser, "Expected '{' after @unmount language");
+                } else {
+                    // Extract script code (same logic as parse_onload_directive)
+                    size_t brace_count = 1;
+                    size_t start_index = parser->current_token;
+
+                    while (brace_count > 0 && !at_end(parser)) {
+                        if (check_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
+                            brace_count++;
+                        } else if (check_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
+                            brace_count--;
+                        }
+                        if (brace_count > 0) {
+                            advance(parser);
+                        }
+                    }
+
+                    if (brace_count > 0) {
+                        parser_error(parser, "Expected '}' to close unmount script");
+                    } else {
+                        size_t end_index = parser->current_token;
+
+                        // Build script code from tokens
+                        size_t total_length = 0;
+                        for (size_t i = start_index; i < end_index; i++) {
+                            total_length += strlen(parser->tokens[i].lexeme) + 1;
+                        }
+
+                        char *script_code = kryon_alloc(total_length + 1);
+                        script_code[0] = '\0';
+
+                        for (size_t i = start_index; i < end_index; i++) {
+                            if (i > start_index) {
+                                strcat(script_code, " ");
+                            }
+                            strcat(script_code, parser->tokens[i].lexeme);
+                        }
+
+                        // Create unmount node
+                        KryonASTNode *unmount_node = kryon_ast_create_node(parser, KRYON_AST_ONLOAD_DIRECTIVE,
+                                                                           &unmount_token->location);
+                        if (unmount_node) {
+                            unmount_node->data.script.language = kryon_strdup(language_token->value.string_value);
+                            unmount_node->data.script.code = script_code;
+
+                            if (component->data.component.on_unmount) {
+                                parser_error(parser, "Component can only have one @unmount hook");
+                            } else {
+                                component->data.component.on_unmount = unmount_node;
+                            }
+                        } else {
+                            kryon_free(script_code);
+                        }
+
+                        // Consume closing brace
+                        match_token(parser, KRYON_TOKEN_RIGHT_BRACE);
+                    }
                 }
             }
         } else if (check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
@@ -2108,27 +2274,46 @@ static KryonASTNode *parse_const_definition(KryonParser *parser) {
 static KryonASTNode *parse_const_for_loop(KryonParser *parser) {
     printf("[DEBUG] parse_const_for_loop: Starting\n");
     const KryonToken *directive_token = advance(parser); // consume @const_for
-    
+
     if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
         parser_error(parser, "Expected loop variable name");
         return NULL;
     }
-    
-    const KryonToken *var_token = advance(parser);
-    
+
+    const KryonToken *first_var_token = advance(parser);
+    const KryonToken *index_token = NULL;
+    const KryonToken *value_token = NULL;
+
+    // Check for comma - indicates index, value syntax
+    if (match_token(parser, KRYON_TOKEN_COMMA)) {
+        // First token is index, parse value token
+        index_token = first_var_token;
+
+        if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
+            parser_error(parser, "Expected value variable name after comma");
+            return NULL;
+        }
+
+        value_token = advance(parser);
+    } else {
+        // Only one variable - it's the value
+        value_token = first_var_token;
+    }
+
     // Expect 'in' keyword
     if (!match_token(parser, KRYON_TOKEN_IN_KEYWORD)) {
-        parser_error(parser, "Expected 'in' after loop variable");
+        parser_error(parser, "Expected 'in' after loop variable(s)");
         return NULL;
     }
-    
+
     KryonASTNode *const_for = kryon_ast_create_node(parser, KRYON_AST_CONST_FOR_LOOP,
                                                     &directive_token->location);
     if (!const_for) {
         return NULL;
     }
-    
-    const_for->data.const_for_loop.var_name = kryon_token_copy_lexeme(var_token);
+
+    const_for->data.const_for_loop.index_var_name = index_token ? kryon_token_copy_lexeme(index_token) : NULL;
+    const_for->data.const_for_loop.var_name = kryon_token_copy_lexeme(value_token);
     const_for->data.const_for_loop.array_name = NULL;
     const_for->data.const_for_loop.is_range = false;
     const_for->data.const_for_loop.range_start = 0;
@@ -2213,17 +2398,34 @@ static KryonASTNode *parse_const_for_loop(KryonParser *parser) {
         parser_error(parser, "Expected '}' after loop body");
     }
     
-    if (const_for->data.const_for_loop.is_range) {
-        printf("[DEBUG] parse_const_for_loop: Created range loop '%s' in %d..%d with %zu body elements\n",
-               const_for->data.const_for_loop.var_name,
-               const_for->data.const_for_loop.range_start,
-               const_for->data.const_for_loop.range_end,
-               const_for->data.const_for_loop.body_count);
+    if (const_for->data.const_for_loop.index_var_name) {
+        if (const_for->data.const_for_loop.is_range) {
+            printf("[DEBUG] parse_const_for_loop: Created range loop '%s, %s' in %d..%d with %zu body elements\n",
+                   const_for->data.const_for_loop.index_var_name,
+                   const_for->data.const_for_loop.var_name,
+                   const_for->data.const_for_loop.range_start,
+                   const_for->data.const_for_loop.range_end,
+                   const_for->data.const_for_loop.body_count);
+        } else {
+            printf("[DEBUG] parse_const_for_loop: Created array loop '%s, %s' in '%s' with %zu body elements\n",
+                   const_for->data.const_for_loop.index_var_name,
+                   const_for->data.const_for_loop.var_name,
+                   const_for->data.const_for_loop.array_name,
+                   const_for->data.const_for_loop.body_count);
+        }
     } else {
-        printf("[DEBUG] parse_const_for_loop: Created array loop '%s' in '%s' with %zu body elements\n",
-               const_for->data.const_for_loop.var_name,
-               const_for->data.const_for_loop.array_name,
-               const_for->data.const_for_loop.body_count);
+        if (const_for->data.const_for_loop.is_range) {
+            printf("[DEBUG] parse_const_for_loop: Created range loop '%s' in %d..%d with %zu body elements\n",
+                   const_for->data.const_for_loop.var_name,
+                   const_for->data.const_for_loop.range_start,
+                   const_for->data.const_for_loop.range_end,
+                   const_for->data.const_for_loop.body_count);
+        } else {
+            printf("[DEBUG] parse_const_for_loop: Created array loop '%s' in '%s' with %zu body elements\n",
+                   const_for->data.const_for_loop.var_name,
+                   const_for->data.const_for_loop.array_name,
+                   const_for->data.const_for_loop.body_count);
+        }
     }
     
     return const_for;

@@ -138,17 +138,20 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
         }
     }
     
+    printf("DEBUG: Writing variable '%s': type=%u, reactive=%d\n",
+           variable->data.variable_def.name, (uint8_t)var_type, is_reactive);
     if (!write_uint8(codegen, (uint8_t)var_type)) {
         return false;
     }
-    
+
     // Variable flags based on directive type
     uint8_t flags = KRYON_VAR_FLAG_NONE;
     if (is_reactive) {
         flags |= KRYON_VAR_FLAG_REACTIVE;
     }
     // TODO: Add more flags based on variable modifiers (@private, @readonly, etc.)
-    
+
+    printf("DEBUG: Writing flags=%u for variable '%s'\n", flags, variable->data.variable_def.name);
     if (!write_uint8(codegen, flags)) {
         return false;
     }
@@ -427,12 +430,15 @@ bool kryon_write_component_node(KryonCodeGenerator *codegen, const KryonASTNode 
     
     // State variable count
     uint16_t state_count = (uint16_t)component->data.component.state_count;
+    printf("📝 Writing state_count=%u for component '%s'\n",
+           state_count, component->data.component.name);
     if (!write_uint16(codegen, state_count)) {
         return false;
     }
-    
+
     // Write state variables
     for (size_t i = 0; i < component->data.component.state_count; i++) {
+        printf("📝 Writing state variable %zu\n", i);
         if (!kryon_write_single_variable(codegen, component->data.component.state_vars[i])) {
             return false;
         }
@@ -444,9 +450,27 @@ bool kryon_write_component_node(KryonCodeGenerator *codegen, const KryonASTNode 
         return false;
     }
     
-    // Write functions
+    // Write functions metadata (not full FUNC sections - those go in script section)
     for (size_t i = 0; i < component->data.component.function_count; i++) {
-        if (!kryon_write_function_node(codegen, component->data.component.functions[i])) {
+        const KryonASTNode *func = component->data.component.functions[i];
+        if (!func || func->type != KRYON_AST_FUNCTION_DEFINITION) {
+            return false;
+        }
+
+        // Write function name reference
+        uint32_t func_name_ref = add_string_to_table(codegen, func->data.function_def.name);
+        if (!write_uint32(codegen, func_name_ref)) {
+            return false;
+        }
+
+        // Write function language reference
+        uint32_t func_lang_ref = add_string_to_table(codegen, func->data.function_def.language);
+        if (!write_uint32(codegen, func_lang_ref)) {
+            return false;
+        }
+
+        // Write has_default flag (always 0 for now - functions written in script section)
+        if (!write_uint8(codegen, 0)) {
             return false;
         }
     }
@@ -456,9 +480,12 @@ bool kryon_write_component_node(KryonCodeGenerator *codegen, const KryonASTNode 
         if (!write_uint8(codegen, 1)) { // Has body
             return false;
         }
+        printf("📝 Writing component body element\n");
         if (!kryon_write_element_node(codegen, component->data.component.body, NULL)) {
+            printf("❌ Failed to write component body element\n");
             return false;
         }
+        printf("✅ Successfully wrote component body element\n");
     } else {
         if (!write_uint8(codegen, 0)) { // No body
             return false;

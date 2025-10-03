@@ -238,10 +238,10 @@ bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNod
 }
 
 bool kryon_write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *element, const KryonASTNode *ast_root) {
-    if (!element || (element->type != KRYON_AST_ELEMENT && element->type != KRYON_AST_EVENT_DIRECTIVE && element->type != KRYON_AST_FOR_DIRECTIVE)) {
+    if (!element || (element->type != KRYON_AST_ELEMENT && element->type != KRYON_AST_EVENT_DIRECTIVE && element->type != KRYON_AST_FOR_DIRECTIVE && element->type != KRYON_AST_IF_DIRECTIVE)) {
         return false;
     }
-    
+
     // Check if this is a custom component instance that needs expansion
     if (element->type == KRYON_AST_ELEMENT) {
         uint16_t element_hex = kryon_codegen_get_element_hex(element->data.element.element_type);
@@ -260,12 +260,80 @@ bool kryon_write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *e
             }
         }
     }
-    
+
     // Get element type hex code for standard elements
     // Handle @for directives as templates, not elements
     if (element->type == KRYON_AST_FOR_DIRECTIVE) {
         printf("🔄 Skipping @for directive serialization for now\n");
         // TODO: Implement proper @for template storage
+        return true;
+    }
+
+    // Handle @if directives as conditional structures in component templates
+    if (element->type == KRYON_AST_IF_DIRECTIVE) {
+        printf("🔄 Writing @if directive in component definition\n");
+
+        // Get @if element hex
+        uint16_t if_hex = kryon_get_syntax_hex("if");
+        if (!write_uint16(codegen, if_hex)) {
+            return false;
+        }
+
+        // For component definitions, we need to store the structure differently
+        // Write a simplified representation: condition string + then branch + else branch
+
+        // Write condition as serialized expression string
+        char *condition_str = serialize_condition_expression(element->data.conditional.condition);
+        if (!condition_str) {
+            printf("ERROR: Failed to serialize @if condition in component definition\n");
+            return false;
+        }
+
+        printf("DEBUG: Serialized @if condition: '%s'\n", condition_str);
+
+        // Write condition as a property
+        uint32_t condition_ref = add_string_to_table(codegen, condition_str);
+
+        // Free the condition string (add_string_to_table makes its own copy)
+        if (condition_str) {
+            kryon_free(condition_str);
+            condition_str = NULL;
+        }
+
+        // Property count = 1 (the condition)
+        if (!write_uint16(codegen, 1)) {
+            return false;
+        }
+
+        // Write condition property (using a special property ID for @if condition)
+        if (!write_uint16(codegen, 0x9100)) { // Special property ID for @if condition
+            return false;
+        }
+        if (!write_uint32(codegen, condition_ref)) {
+            return false;
+        }
+
+        // Write child count (then branch + else branch elements)
+        uint16_t child_count = (uint16_t)(element->data.conditional.then_count + element->data.conditional.else_count);
+        if (!write_uint16(codegen, child_count)) {
+            return false;
+        }
+
+        // Write then branch elements
+        for (size_t i = 0; i < element->data.conditional.then_count; i++) {
+            if (!kryon_write_element_node(codegen, element->data.conditional.then_body[i], ast_root)) {
+                return false;
+            }
+        }
+
+        // Write else branch elements
+        for (size_t i = 0; i < element->data.conditional.else_count; i++) {
+            if (!kryon_write_element_node(codegen, element->data.conditional.else_body[i], ast_root)) {
+                return false;
+            }
+        }
+
+        printf("✅ @if directive written to component definition\n");
         return true;
     }
     

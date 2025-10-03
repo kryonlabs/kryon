@@ -570,6 +570,8 @@ static void calculate_element_position_recursive(struct KryonRuntime* runtime, s
             strcmp(element->type_name, "Column") == 0 ||
             strcmp(element->type_name, "Row") == 0 ||
             strcmp(element->type_name, "Container") == 0 ||
+            strcmp(element->type_name, "Center") == 0 ||
+            strcmp(element->type_name, "Grid") == 0 ||
             strcmp(element->type_name, "App") == 0 ||
             strcmp(element->type_name, "TabGroup") == 0 ||
             strcmp(element->type_name, "TabPanel") == 0 ||
@@ -1177,8 +1179,8 @@ static void position_tab_children(struct KryonRuntime* runtime, struct KryonElem
  * Center elements automatically behave like Container with contentAlignment="center"
  */
 static void position_center_children(struct KryonRuntime* runtime, struct KryonElement* center) {
-    // Center should behave identically to App with contentAlignment="center"
-    position_children_with_content_alignment(runtime, center, "center", true);
+    // Center uses center as default, no multi-child stacking
+    position_children_with_content_alignment(runtime, center, "center", false);
 }
 
 /**

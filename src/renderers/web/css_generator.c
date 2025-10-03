@@ -101,9 +101,6 @@ size_t kryon_css_generate_button(const KryonDrawButtonData* data,
 
     return snprintf(out_buffer, buffer_size,
                    "#%s {\n"
-                   "  position: absolute;\n"
-                   "  left: %.2fpx;\n"
-                   "  top: %.2fpx;\n"
                    "  width: %.2fpx;\n"
                    "  height: %.2fpx;\n"
                    "  background-color: %s;\n"
@@ -125,7 +122,6 @@ size_t kryon_css_generate_button(const KryonDrawButtonData* data,
                    "  filter: brightness(0.8);\n"
                    "}\n",
                    element_id,
-                   data->position.x, data->position.y,
                    data->size.x, data->size.y,
                    bg_color, text_color,
                    data->border_width, border_color,

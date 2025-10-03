@@ -80,4 +80,19 @@ uint32_t kryon_count_const_for_elements(KryonCodeGenerator *codegen,
  */
 KryonASTNode *kryon_substitute_template_vars(const KryonASTNode *node, const char *var_name, const KryonASTNode *var_value, KryonCodeGenerator *codegen);
 
+/**
+ * @brief Serialize condition expression to string for @if directives
+ * @param condition The condition AST node to serialize
+ * @return Serialized condition string (caller must free) or NULL on error
+ */
+char *serialize_condition_expression(const KryonASTNode *condition);
+
+/**
+ * @brief Resolve component inheritance by merging parent and child components
+ * @param component_def The child component definition (with parent_component set)
+ * @param ast_root The AST root to search for parent definitions
+ * @return A new merged component definition, or the original if no parent
+ */
+KryonASTNode *kryon_resolve_component_inheritance(const KryonASTNode *component_def, const KryonASTNode *ast_root);
+
 #endif // KRYON_AST_EXPANDER_H

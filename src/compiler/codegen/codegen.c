@@ -2048,7 +2048,72 @@ static KryonASTNode *clone_and_substitute_node(const KryonASTNode *original, con
                 }
             }
             break;
-            
+
+        case KRYON_AST_IF_DIRECTIVE:
+            // Clone conditional structure
+            cloned->data.conditional.is_const = original->data.conditional.is_const;
+
+            // Clone condition expression
+            if (original->data.conditional.condition) {
+                cloned->data.conditional.condition = clone_and_substitute_node(original->data.conditional.condition, params, instance_id);
+            } else {
+                cloned->data.conditional.condition = NULL;
+            }
+
+            // Clone then body
+            cloned->data.conditional.then_count = original->data.conditional.then_count;
+            cloned->data.conditional.then_capacity = original->data.conditional.then_capacity;
+            if (original->data.conditional.then_count > 0 && original->data.conditional.then_body) {
+                cloned->data.conditional.then_body = calloc(original->data.conditional.then_count, sizeof(KryonASTNode*));
+                for (size_t i = 0; i < original->data.conditional.then_count; i++) {
+                    cloned->data.conditional.then_body[i] = clone_and_substitute_node(original->data.conditional.then_body[i], params, instance_id);
+                }
+            } else {
+                cloned->data.conditional.then_body = NULL;
+            }
+
+            // Clone elif conditions and bodies
+            cloned->data.conditional.elif_count = original->data.conditional.elif_count;
+            cloned->data.conditional.elif_capacity = original->data.conditional.elif_capacity;
+            if (original->data.conditional.elif_count > 0) {
+                cloned->data.conditional.elif_conditions = calloc(original->data.conditional.elif_count, sizeof(KryonASTNode*));
+                cloned->data.conditional.elif_bodies = calloc(original->data.conditional.elif_count, sizeof(KryonASTNode**));
+                cloned->data.conditional.elif_counts = calloc(original->data.conditional.elif_count, sizeof(size_t));
+
+                for (size_t i = 0; i < original->data.conditional.elif_count; i++) {
+                    // Clone elif condition
+                    cloned->data.conditional.elif_conditions[i] = clone_and_substitute_node(original->data.conditional.elif_conditions[i], params, instance_id);
+
+                    // Clone elif body
+                    cloned->data.conditional.elif_counts[i] = original->data.conditional.elif_counts[i];
+                    if (original->data.conditional.elif_counts[i] > 0) {
+                        cloned->data.conditional.elif_bodies[i] = calloc(original->data.conditional.elif_counts[i], sizeof(KryonASTNode*));
+                        for (size_t j = 0; j < original->data.conditional.elif_counts[i]; j++) {
+                            cloned->data.conditional.elif_bodies[i][j] = clone_and_substitute_node(original->data.conditional.elif_bodies[i][j], params, instance_id);
+                        }
+                    } else {
+                        cloned->data.conditional.elif_bodies[i] = NULL;
+                    }
+                }
+            } else {
+                cloned->data.conditional.elif_conditions = NULL;
+                cloned->data.conditional.elif_bodies = NULL;
+                cloned->data.conditional.elif_counts = NULL;
+            }
+
+            // Clone else body
+            cloned->data.conditional.else_count = original->data.conditional.else_count;
+            cloned->data.conditional.else_capacity = original->data.conditional.else_capacity;
+            if (original->data.conditional.else_count > 0 && original->data.conditional.else_body) {
+                cloned->data.conditional.else_body = calloc(original->data.conditional.else_count, sizeof(KryonASTNode*));
+                for (size_t i = 0; i < original->data.conditional.else_count; i++) {
+                    cloned->data.conditional.else_body[i] = clone_and_substitute_node(original->data.conditional.else_body[i], params, instance_id);
+                }
+            } else {
+                cloned->data.conditional.else_body = NULL;
+            }
+            break;
+
         default:
             // For other node types, copy as-is
             break;
@@ -2087,12 +2152,15 @@ KryonASTNode *expand_component_instance(KryonCodeGenerator *codegen, const Kryon
         printf("❌ Component definition not found: %s\n", component_name);
         return NULL;
     }
-    
+
+    // Resolve component inheritance if present
+    component_def = kryon_resolve_component_inheritance(component_def, ast_root);
+
     printf("✅ Found component definition: %s\n", component_name);
-    printf("🔍 Component has %zu parameters, instance has %zu properties\n", 
-           component_def->data.component.parameter_count, 
+    printf("🔍 Component has %zu parameters, instance has %zu properties\n",
+           component_def->data.component.parameter_count,
            component_instance->data.element.property_count);
-    
+
     if (!component_def->data.component.body) {
         printf("❌ Component has no body to expand\n");
         return NULL;

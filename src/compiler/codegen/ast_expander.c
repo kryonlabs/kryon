@@ -69,6 +69,252 @@ static KryonASTNode *find_component_definition(const char *component_name, const
     return kryon_find_component_definition(component_name, ast_root);
 }
 
+/**
+ * @brief Resolve component inheritance by merging parent and child components
+ *
+ * Creates a new component definition that combines:
+ * - Parent component's body (as the base element)
+ * - Override properties from the @extends block
+ * - Child component's state variables, functions, and body
+ *
+ * @param component_def The child component definition (with parent_component set)
+ * @param ast_root The AST root to search for parent definitions
+ * @return A new merged component definition, or the original if no parent
+ */
+KryonASTNode *kryon_resolve_component_inheritance(const KryonASTNode *component_def, const KryonASTNode *ast_root) {
+    if (!component_def || component_def->type != KRYON_AST_COMPONENT) {
+        return (KryonASTNode*)component_def;
+    }
+
+    // If no parent component, return as-is
+    if (!component_def->data.component.parent_component) {
+        return (KryonASTNode*)component_def;
+    }
+
+    printf("🔗 Resolving inheritance: %s extends %s\n",
+           component_def->data.component.name,
+           component_def->data.component.parent_component);
+
+    // Find parent component definition
+    KryonASTNode *parent_def = find_component_definition(component_def->data.component.parent_component, ast_root);
+    if (!parent_def) {
+        // Check if parent is a built-in element (not a custom component)
+        uint16_t element_hex = kryon_codegen_get_element_hex(component_def->data.component.parent_component);
+        if (element_hex != 0) {
+            printf("✅ Parent '%s' is a built-in element (0x%04X), creating synthetic parent\n",
+                   component_def->data.component.parent_component, element_hex);
+
+            // Create a synthetic parent element
+            KryonASTNode *parent_element = create_minimal_ast_node(KRYON_AST_ELEMENT);
+            if (!parent_element) {
+                printf("❌ Failed to create synthetic parent element\n");
+                return (KryonASTNode*)component_def;
+            }
+
+            parent_element->data.element.element_type = strdup(component_def->data.component.parent_component);
+
+            // Apply override properties to the parent element
+            if (component_def->data.component.override_count > 0) {
+                printf("🔧 Applying %zu override properties to built-in parent element\n",
+                       component_def->data.component.override_count);
+
+                for (size_t i = 0; i < component_def->data.component.override_count; i++) {
+                    const KryonASTNode *override_prop = component_def->data.component.override_props[i];
+                    if (override_prop && override_prop->type == KRYON_AST_PROPERTY) {
+                        printf("  🔧 Adding property: %s\n", override_prop->data.property.name);
+                        add_property_to_node(parent_element, clone_and_substitute_node(override_prop, NULL, 0));
+                    }
+                }
+            }
+
+            // Make child body the children of this parent element
+            if (component_def->data.component.body) {
+                printf("🔧 Adding child body as children of built-in parent element\n");
+                add_child_to_node(parent_element, component_def->data.component.body);
+            }
+
+            // Create merged component with this parent element as the body
+            KryonASTNode *merged = create_minimal_ast_node(KRYON_AST_COMPONENT);
+            if (!merged) {
+                printf("❌ Failed to create merged component node\n");
+                return (KryonASTNode*)component_def;
+            }
+
+            merged->location = component_def->location;
+            merged->data.component.name = component_def->data.component.name ? strdup(component_def->data.component.name) : NULL;
+
+            // Copy parameters
+            merged->data.component.parameter_count = component_def->data.component.parameter_count;
+            if (component_def->data.component.parameter_count > 0) {
+                merged->data.component.parameters = calloc(component_def->data.component.parameter_count, sizeof(char*));
+                merged->data.component.param_defaults = calloc(component_def->data.component.parameter_count, sizeof(char*));
+                for (size_t i = 0; i < component_def->data.component.parameter_count; i++) {
+                    merged->data.component.parameters[i] = component_def->data.component.parameters[i] ?
+                        strdup(component_def->data.component.parameters[i]) : NULL;
+                    merged->data.component.param_defaults[i] = component_def->data.component.param_defaults[i] ?
+                        strdup(component_def->data.component.param_defaults[i]) : NULL;
+                }
+            }
+
+            // Copy state variables
+            merged->data.component.state_count = component_def->data.component.state_count;
+            if (component_def->data.component.state_count > 0) {
+                merged->data.component.state_vars = calloc(component_def->data.component.state_count, sizeof(KryonASTNode*));
+                for (size_t i = 0; i < component_def->data.component.state_count; i++) {
+                    merged->data.component.state_vars[i] = component_def->data.component.state_vars[i];
+                }
+            }
+
+            // Copy functions
+            merged->data.component.function_count = component_def->data.component.function_count;
+            if (component_def->data.component.function_count > 0) {
+                merged->data.component.functions = calloc(component_def->data.component.function_count, sizeof(KryonASTNode*));
+                for (size_t i = 0; i < component_def->data.component.function_count; i++) {
+                    merged->data.component.functions[i] = component_def->data.component.functions[i];
+                }
+            }
+
+            // Set the parent element as the body
+            merged->data.component.body = parent_element;
+
+            // No parent for merged component (inheritance is resolved)
+            merged->data.component.parent_component = NULL;
+            merged->data.component.override_props = NULL;
+            merged->data.component.override_count = 0;
+
+            printf("✅ Built-in parent inheritance resolved: %s extends %s\n",
+                   merged->data.component.name, component_def->data.component.parent_component);
+
+            return merged;
+        }
+
+        printf("❌ Parent component '%s' not found (not a built-in element or custom component)\n",
+               component_def->data.component.parent_component);
+        return (KryonASTNode*)component_def;
+    }
+
+    // Recursively resolve parent's inheritance first (for custom component parents)
+    parent_def = kryon_resolve_component_inheritance(parent_def, ast_root);
+
+    // Create a merged component definition
+    KryonASTNode *merged = create_minimal_ast_node(KRYON_AST_COMPONENT);
+    if (!merged) {
+        printf("❌ Failed to create merged component node\n");
+        return (KryonASTNode*)component_def;
+    }
+
+    // Copy child component metadata
+    merged->location = component_def->location;
+    merged->data.component.name = component_def->data.component.name ? strdup(component_def->data.component.name) : NULL;
+
+    // Copy parameters from child (child's parameters take precedence)
+    merged->data.component.parameter_count = component_def->data.component.parameter_count;
+    if (component_def->data.component.parameter_count > 0) {
+        merged->data.component.parameters = calloc(component_def->data.component.parameter_count, sizeof(char*));
+        merged->data.component.param_defaults = calloc(component_def->data.component.parameter_count, sizeof(char*));
+        for (size_t i = 0; i < component_def->data.component.parameter_count; i++) {
+            merged->data.component.parameters[i] = component_def->data.component.parameters[i] ?
+                strdup(component_def->data.component.parameters[i]) : NULL;
+            merged->data.component.param_defaults[i] = component_def->data.component.param_defaults[i] ?
+                strdup(component_def->data.component.param_defaults[i]) : NULL;
+        }
+    }
+
+    // No parent for merged component (inheritance is resolved)
+    merged->data.component.parent_component = NULL;
+    merged->data.component.override_props = NULL;
+    merged->data.component.override_count = 0;
+
+    // Merge state variables (parent + child)
+    size_t total_state_count = (parent_def->data.component.state_count + component_def->data.component.state_count);
+    if (total_state_count > 0) {
+        merged->data.component.state_vars = calloc(total_state_count, sizeof(KryonASTNode*));
+        merged->data.component.state_count = 0;
+
+        // Copy parent state vars
+        for (size_t i = 0; i < parent_def->data.component.state_count; i++) {
+            merged->data.component.state_vars[merged->data.component.state_count++] = parent_def->data.component.state_vars[i];
+        }
+
+        // Copy child state vars
+        for (size_t i = 0; i < component_def->data.component.state_count; i++) {
+            merged->data.component.state_vars[merged->data.component.state_count++] = component_def->data.component.state_vars[i];
+        }
+    }
+
+    // Merge functions (parent + child)
+    size_t total_func_count = (parent_def->data.component.function_count + component_def->data.component.function_count);
+    if (total_func_count > 0) {
+        merged->data.component.functions = calloc(total_func_count, sizeof(KryonASTNode*));
+        merged->data.component.function_count = 0;
+
+        // Copy parent functions
+        for (size_t i = 0; i < parent_def->data.component.function_count; i++) {
+            merged->data.component.functions[merged->data.component.function_count++] = parent_def->data.component.functions[i];
+        }
+
+        // Copy child functions
+        for (size_t i = 0; i < component_def->data.component.function_count; i++) {
+            merged->data.component.functions[merged->data.component.function_count++] = component_def->data.component.functions[i];
+        }
+    }
+
+    // Clone parent body as the base
+    if (parent_def->data.component.body) {
+        merged->data.component.body = clone_and_substitute_node(parent_def->data.component.body, NULL, 0);
+
+        // Apply override properties to the cloned parent body
+        if (component_def->data.component.override_count > 0 && merged->data.component.body) {
+            printf("🔧 Applying %zu override properties to parent body\n", component_def->data.component.override_count);
+
+            // Add or replace properties in the parent body
+            for (size_t i = 0; i < component_def->data.component.override_count; i++) {
+                const KryonASTNode *override_prop = component_def->data.component.override_props[i];
+                if (!override_prop || override_prop->type != KRYON_AST_PROPERTY) continue;
+
+                const char *prop_name = override_prop->data.property.name;
+                printf("  🔧 Override property: %s\n", prop_name);
+
+                // Find and replace existing property, or add if not found
+                bool found = false;
+                for (size_t j = 0; j < merged->data.component.body->data.element.property_count; j++) {
+                    KryonASTNode *existing_prop = merged->data.component.body->data.element.properties[j];
+                    if (existing_prop && existing_prop->type == KRYON_AST_PROPERTY &&
+                        existing_prop->data.property.name &&
+                        strcmp(existing_prop->data.property.name, prop_name) == 0) {
+                        // Replace existing property
+                        printf("    ✅ Replaced existing property '%s'\n", prop_name);
+                        merged->data.component.body->data.element.properties[j] =
+                            clone_and_substitute_node(override_prop, NULL, 0);
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    // Add new property
+                    printf("    ✅ Added new property '%s'\n", prop_name);
+                    add_property_to_node(merged->data.component.body,
+                                        clone_and_substitute_node(override_prop, NULL, 0));
+                }
+            }
+        }
+    }
+
+    // If child has its own body, replace the merged body with child's body
+    // (child body takes full precedence over parent body)
+    if (component_def->data.component.body) {
+        merged->data.component.body = component_def->data.component.body;
+    }
+
+    printf("✅ Inheritance resolved: %s (merged %zu state vars, %zu functions)\n",
+           merged->data.component.name,
+           merged->data.component.state_count,
+           merged->data.component.function_count);
+
+    return merged;
+}
+
 KryonASTNode *kryon_expand_component_instance(const KryonASTNode *component_instance, const KryonASTNode *ast_root) {
     if (!component_instance || component_instance->type != KRYON_AST_ELEMENT) {
         return NULL;
@@ -82,12 +328,15 @@ KryonASTNode *kryon_expand_component_instance(const KryonASTNode *component_inst
         printf("❌ Component definition not found: %s\n", component_name);
         return NULL;
     }
-    
+
+    // Resolve component inheritance if present
+    component_def = kryon_resolve_component_inheritance(component_def, ast_root);
+
     printf("✅ Found component definition: %s\n", component_name);
-    printf("🔍 Component has %zu parameters, instance has %zu properties\n", 
-           component_def->data.component.parameter_count, 
+    printf("🔍 Component has %zu parameters, instance has %zu properties\n",
+           component_def->data.component.parameter_count,
            component_instance->data.element.property_count);
-    
+
     if (!component_def->data.component.body) {
         printf("❌ Component has no body to expand\n");
         return NULL;
@@ -149,7 +398,12 @@ static KryonASTNode *clone_and_substitute_node(const KryonASTNode *original, con
             if (original->data.element.element_type) {
                 cloned->data.element.element_type = strdup(original->data.element.element_type);
             }
-            
+
+            printf("🔍 DEBUG: Cloning element '%s' with %zu properties and %zu children\n",
+                   original->data.element.element_type ? original->data.element.element_type : "(null)",
+                   original->data.element.property_count,
+                   original->data.element.child_count);
+
             // Clone properties
             cloned->data.element.property_count = original->data.element.property_count;
             if (original->data.element.property_count > 0) {
@@ -158,12 +412,14 @@ static KryonASTNode *clone_and_substitute_node(const KryonASTNode *original, con
                     cloned->data.element.properties[i] = clone_and_substitute_node(original->data.element.properties[i], params, param_count);
                 }
             }
-            
+
             // Clone children
             cloned->data.element.child_count = original->data.element.child_count;
             if (original->data.element.child_count > 0) {
                 cloned->data.element.children = calloc(original->data.element.child_count, sizeof(KryonASTNode*));
                 for (size_t i = 0; i < original->data.element.child_count; i++) {
+                    printf("🔍 DEBUG: Cloning child %zu of %zu (type %d)\n", i, original->data.element.child_count,
+                           original->data.element.children[i] ? original->data.element.children[i]->type : -1);
                     cloned->data.element.children[i] = clone_and_substitute_node(original->data.element.children[i], params, param_count);
                 }
             }
@@ -239,7 +495,7 @@ static KryonASTNode *clone_and_substitute_node(const KryonASTNode *original, con
             // Template cloning - copy the segments structure
             cloned->data.template.segment_count = original->data.template.segment_count;
             cloned->data.template.segment_capacity = original->data.template.segment_capacity;
-            
+
             if (original->data.template.segment_count > 0 && original->data.template.segments) {
                 cloned->data.template.segments = kryon_alloc(original->data.template.segment_count * sizeof(KryonASTNode*));
                 for (size_t i = 0; i < original->data.template.segment_count; i++) {
@@ -254,7 +510,73 @@ static KryonASTNode *clone_and_substitute_node(const KryonASTNode *original, con
             }
             break;
         }
-        
+
+        case KRYON_AST_IF_DIRECTIVE: {
+            // Clone conditional structure
+            cloned->data.conditional.is_const = original->data.conditional.is_const;
+
+            // Clone condition expression
+            if (original->data.conditional.condition) {
+                cloned->data.conditional.condition = clone_and_substitute_node(original->data.conditional.condition, params, param_count);
+            } else {
+                cloned->data.conditional.condition = NULL;
+            }
+
+            // Clone then body
+            cloned->data.conditional.then_count = original->data.conditional.then_count;
+            cloned->data.conditional.then_capacity = original->data.conditional.then_capacity;
+            if (original->data.conditional.then_count > 0 && original->data.conditional.then_body) {
+                cloned->data.conditional.then_body = calloc(original->data.conditional.then_count, sizeof(KryonASTNode*));
+                for (size_t i = 0; i < original->data.conditional.then_count; i++) {
+                    cloned->data.conditional.then_body[i] = clone_and_substitute_node(original->data.conditional.then_body[i], params, param_count);
+                }
+            } else {
+                cloned->data.conditional.then_body = NULL;
+            }
+
+            // Clone elif conditions and bodies
+            cloned->data.conditional.elif_count = original->data.conditional.elif_count;
+            cloned->data.conditional.elif_capacity = original->data.conditional.elif_capacity;
+            if (original->data.conditional.elif_count > 0) {
+                cloned->data.conditional.elif_conditions = calloc(original->data.conditional.elif_count, sizeof(KryonASTNode*));
+                cloned->data.conditional.elif_bodies = calloc(original->data.conditional.elif_count, sizeof(KryonASTNode**));
+                cloned->data.conditional.elif_counts = calloc(original->data.conditional.elif_count, sizeof(size_t));
+
+                for (size_t i = 0; i < original->data.conditional.elif_count; i++) {
+                    // Clone elif condition
+                    cloned->data.conditional.elif_conditions[i] = clone_and_substitute_node(original->data.conditional.elif_conditions[i], params, param_count);
+
+                    // Clone elif body
+                    cloned->data.conditional.elif_counts[i] = original->data.conditional.elif_counts[i];
+                    if (original->data.conditional.elif_counts[i] > 0) {
+                        cloned->data.conditional.elif_bodies[i] = calloc(original->data.conditional.elif_counts[i], sizeof(KryonASTNode*));
+                        for (size_t j = 0; j < original->data.conditional.elif_counts[i]; j++) {
+                            cloned->data.conditional.elif_bodies[i][j] = clone_and_substitute_node(original->data.conditional.elif_bodies[i][j], params, param_count);
+                        }
+                    } else {
+                        cloned->data.conditional.elif_bodies[i] = NULL;
+                    }
+                }
+            } else {
+                cloned->data.conditional.elif_conditions = NULL;
+                cloned->data.conditional.elif_bodies = NULL;
+                cloned->data.conditional.elif_counts = NULL;
+            }
+
+            // Clone else body
+            cloned->data.conditional.else_count = original->data.conditional.else_count;
+            cloned->data.conditional.else_capacity = original->data.conditional.else_capacity;
+            if (original->data.conditional.else_count > 0 && original->data.conditional.else_body) {
+                cloned->data.conditional.else_body = calloc(original->data.conditional.else_count, sizeof(KryonASTNode*));
+                for (size_t i = 0; i < original->data.conditional.else_count; i++) {
+                    cloned->data.conditional.else_body[i] = clone_and_substitute_node(original->data.conditional.else_body[i], params, param_count);
+                }
+            } else {
+                cloned->data.conditional.else_body = NULL;
+            }
+            break;
+        }
+
         default:
             // For other types, do basic copy
             memcpy(&cloned->data, &original->data, sizeof(original->data));
@@ -363,88 +685,162 @@ bool kryon_expand_const_for_loop(KryonCodeGenerator *codegen, const KryonASTNode
         // Handle range-based loop
         int start = const_for->data.const_for_loop.range_start;
         int end = const_for->data.const_for_loop.range_end;
-        
-        printf("DEBUG: Expanding range const_for loop: %s in %d..%d\n", 
-               const_for->data.const_for_loop.var_name, start, end);
-        
+
+        if (const_for->data.const_for_loop.index_var_name) {
+            printf("DEBUG: Expanding range const_for loop: %s, %s in %d..%d\n",
+                   const_for->data.const_for_loop.index_var_name,
+                   const_for->data.const_for_loop.var_name, start, end);
+        } else {
+            printf("DEBUG: Expanding range const_for loop: %s in %d..%d\n",
+                   const_for->data.const_for_loop.var_name, start, end);
+        }
+
         // Expand loop body for each value in range
-        for (int i = start; i <= end; i++) {
-            printf("DEBUG: Processing range value %d\n", i);
-            
+        int iteration_index = 0;
+        for (int i = start; i <= end; i++, iteration_index++) {
+            printf("DEBUG: Processing range value %d (index %d)\n", i, iteration_index);
+
             // Create a literal AST node for the current value
             KryonASTNode *value_node = kryon_calloc(1, sizeof(KryonASTNode));
             if (!value_node) {
                 printf("DEBUG: ERROR: Failed to allocate value node\n");
                 return false;
             }
-            
+
             value_node->type = KRYON_AST_LITERAL;
             value_node->data.literal.value.type = KRYON_VALUE_INTEGER;
             value_node->data.literal.value.data.int_value = i;
-            
+
+            // Create index node if index variable is present
+            KryonASTNode *index_node = NULL;
+            if (const_for->data.const_for_loop.index_var_name) {
+                index_node = kryon_calloc(1, sizeof(KryonASTNode));
+                if (!index_node) {
+                    printf("DEBUG: ERROR: Failed to allocate index node\n");
+                    kryon_free(value_node);
+                    return false;
+                }
+
+                index_node->type = KRYON_AST_LITERAL;
+                index_node->data.literal.value.type = KRYON_VALUE_INTEGER;
+                index_node->data.literal.value.data.int_value = iteration_index;
+            }
+
             printf("DEBUG: Created value_node for i=%d\n", i);
-            
+
             // Expand each element in the loop body
             for (size_t j = 0; j < const_for->data.const_for_loop.body_count; j++) {
                 const KryonASTNode *body_element = const_for->data.const_for_loop.body[j];
-                
+
                 if (body_element && body_element->type == KRYON_AST_ELEMENT) {
-                    // Substitute template variables in the element
+                    // First substitute index variable if present
+                    KryonASTNode *element_with_index = (KryonASTNode*)body_element;
+                    if (index_node) {
+                        element_with_index = kryon_substitute_template_vars(
+                            body_element,
+                            const_for->data.const_for_loop.index_var_name,
+                            index_node,
+                            codegen
+                        );
+                        if (!element_with_index) {
+                            element_with_index = (KryonASTNode*)body_element;
+                        }
+                    }
+
+                    // Then substitute value variable
                     KryonASTNode *substituted_element = kryon_substitute_template_vars(
-                        body_element,
+                        element_with_index,
                         const_for->data.const_for_loop.var_name,
                         value_node,
                         codegen
                     );
-                    
+
                     if (substituted_element) {
                         if (!kryon_write_element_instance(codegen, substituted_element, ast_root)) {
                             kryon_free(value_node);
+                            if (index_node) kryon_free(index_node);
                             return false;
                         }
                     }
                 }
             }
-            
+
             kryon_free(value_node);
+            if (index_node) kryon_free(index_node);
         }
         
     } else {
         // Handle array-based loop (existing logic)
-        printf("DEBUG: Expanding array const_for loop: %s in %s\n", 
-               const_for->data.const_for_loop.var_name,
-               const_for->data.const_for_loop.array_name);
-        
+        if (const_for->data.const_for_loop.index_var_name) {
+            printf("DEBUG: Expanding array const_for loop: %s, %s in %s\n",
+                   const_for->data.const_for_loop.index_var_name,
+                   const_for->data.const_for_loop.var_name,
+                   const_for->data.const_for_loop.array_name);
+        } else {
+            printf("DEBUG: Expanding array const_for loop: %s in %s\n",
+                   const_for->data.const_for_loop.var_name,
+                   const_for->data.const_for_loop.array_name);
+        }
+
         // Find the array constant
         const char *array_name = const_for->data.const_for_loop.array_name;
         const KryonASTNode *array_const = find_constant_value(codegen, array_name);
-        
+
         if (!array_const || array_const->type != KRYON_AST_ARRAY_LITERAL) {
             printf("DEBUG: ERROR: Array constant '%s' not found or not an array\n", array_name);
             return false;
         }
-        
-        printf("DEBUG: Found array constant '%s' with %zu elements\n", 
+
+        printf("DEBUG: Found array constant '%s' with %zu elements\n",
                array_name, array_const->data.array_literal.element_count);
-        
+
         // Expand loop body for each array element
         for (size_t i = 0; i < array_const->data.array_literal.element_count; i++) {
             const KryonASTNode *array_element = array_const->data.array_literal.elements[i];
-            
+
             printf("DEBUG: Processing array element %zu\n", i);
-    
-                        // Expand each element in the loop body
+
+            // Create index node if index variable is present
+            KryonASTNode *index_node = NULL;
+            if (const_for->data.const_for_loop.index_var_name) {
+                index_node = kryon_calloc(1, sizeof(KryonASTNode));
+                if (!index_node) {
+                    printf("DEBUG: ERROR: Failed to allocate index node\n");
+                    return false;
+                }
+
+                index_node->type = KRYON_AST_LITERAL;
+                index_node->data.literal.value.type = KRYON_VALUE_INTEGER;
+                index_node->data.literal.value.data.int_value = (int)i;
+            }
+
+            // Expand each element in the loop body
             for (size_t j = 0; j < const_for->data.const_for_loop.body_count; j++) {
                 const KryonASTNode *body_element = const_for->data.const_for_loop.body[j];
 
                 if (body_element && body_element->type == KRYON_AST_ELEMENT) {
                     printf("🔄 DEBUG: About to substitute template vars for element, var_name='%s', iteration=%zu\n", const_for->data.const_for_loop.var_name, i);
-                    printf("🔄 DEBUG: Array element type: %d, object property count: %zu\n", 
+                    printf("🔄 DEBUG: Array element type: %d, object property count: %zu\n",
                             array_element ? array_element->type : -1,
                             array_element && array_element->type == KRYON_AST_OBJECT_LITERAL ? array_element->data.object_literal.property_count : 0);
-                    // Substitute template variables in the element
+
+                    // First substitute index variable if present
+                    KryonASTNode *element_with_index = (KryonASTNode*)body_element;
+                    if (index_node) {
+                        element_with_index = kryon_substitute_template_vars(
+                            body_element,
+                            const_for->data.const_for_loop.index_var_name,
+                            index_node,
+                            codegen
+                        );
+                        if (!element_with_index) {
+                            element_with_index = (KryonASTNode*)body_element;
+                        }
+                    }
+
+                    // Then substitute value variable
                     KryonASTNode *substituted_element = kryon_substitute_template_vars(
-                        body_element,
+                        element_with_index,
                         const_for->data.const_for_loop.var_name,
                         array_element,
                         codegen
@@ -454,6 +850,7 @@ bool kryon_expand_const_for_loop(KryonCodeGenerator *codegen, const KryonASTNode
                         printf("✅ DEBUG: Template substitution completed for iteration %zu\n", i);
                         if (!kryon_write_element_instance(codegen, substituted_element, ast_root)) {
                             printf("❌ DEBUG: Failed to write substituted element\n");
+                            if (index_node) kryon_free(index_node);
                             return false;
                         }
                         printf("✅ DEBUG: Successfully wrote substituted element\n");
@@ -462,9 +859,11 @@ bool kryon_expand_const_for_loop(KryonCodeGenerator *codegen, const KryonASTNode
                     }
                 }
             }
+
+            if (index_node) kryon_free(index_node);
         }
     }
-    
+
     return true;
 }
 
@@ -1326,10 +1725,12 @@ bool kryon_expand_const_if(KryonCodeGenerator *codegen, const KryonASTNode *cons
 }
 
 // Helper function to serialize condition expression to string
-static char *serialize_condition_expression(const KryonASTNode *condition) {
+char *serialize_condition_expression(const KryonASTNode *condition) {
     if (!condition) {
         return NULL;
     }
+
+    printf("DEBUG: serialize_condition_expression called with node type=%d\n", condition->type);
 
     // Handle literal boolean values
     if (condition->type == KRYON_AST_LITERAL) {
@@ -1428,11 +1829,16 @@ bool kryon_write_if_directive(KryonCodeGenerator *codegen, const KryonASTNode *i
     }
 
     printf("DEBUG: Writing @if directive as runtime conditional element\n");
+    printf("DEBUG: @if condition pointer: %p\n", (void*)if_directive->data.conditional.condition);
+    if (if_directive->data.conditional.condition) {
+        printf("DEBUG: @if condition node type: %d\n", if_directive->data.conditional.condition->type);
+    }
 
     // Serialize the condition expression to string
     char *condition_str = serialize_condition_expression(if_directive->data.conditional.condition);
     if (!condition_str) {
-        printf("ERROR: Failed to serialize @if condition expression\n");
+        printf("ERROR: Failed to serialize @if condition expression (condition was %s)\n",
+               if_directive->data.conditional.condition ? "non-NULL" : "NULL");
         return false;
     }
 

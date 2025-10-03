@@ -291,6 +291,7 @@ struct KryonASTNode {
         } const_def;
         
         struct {
+            char *index_var_name;    // Optional index variable (e.g., "i" in "@const_for i, item")
             char *var_name;          // Loop variable name (e.g., "alignment")
             char *array_name;        // Array name to iterate over (e.g., "alignments") - NULL if using range
             bool is_range;           // True if using range (e.g., 1..30), false if using array
@@ -331,10 +332,15 @@ struct KryonASTNode {
             char **parameters;       // Component parameters (e.g., initialValue)
             char **param_defaults;   // Parameter default values
             size_t parameter_count;  // Number of parameters
+            char *parent_component;  // Parent component to extend (NULL if not extending)
+            KryonASTNode **override_props; // Properties that override parent defaults
+            size_t override_count;   // Number of override properties
             KryonASTNode **state_vars; // @state variables
             size_t state_count;      // Number of state variables
             KryonASTNode **functions; // Component functions
             size_t function_count;   // Number of functions
+            KryonASTNode *on_mount;  // @mount lifecycle hook (same as @onload)
+            KryonASTNode *on_unmount; // @unmount lifecycle hook
             KryonASTNode *body;      // Component body (UI elements)
         } component;
     } data;
