@@ -1310,16 +1310,30 @@ static bool write_template_property(KryonCodeGenerator *codegen, const KryonASTN
     }
     
     // Check if all segments are literals (fully resolved template)
+    // Templates with VARIABLE segments need to be kept as templates for runtime resolution
     bool all_literals = true;
+    bool has_variables = false;
     size_t total_length = 0;
-    
+
     for (size_t i = 0; i < template_node->data.template.segment_count; i++) {
         const KryonASTNode *segment = template_node->data.template.segments[i];
-        if (!segment || segment->type != KRYON_AST_LITERAL) {
+        if (!segment) {
             all_literals = false;
             break;
         }
-        
+
+        if (segment->type == KRYON_AST_VARIABLE || segment->type == KRYON_AST_IDENTIFIER) {
+            // Variable or identifier segment - must keep as template for runtime resolution
+            all_literals = false;
+            has_variables = true;
+            break;
+        }
+
+        if (segment->type != KRYON_AST_LITERAL) {
+            all_literals = false;
+            break;
+        }
+
         const char *text = segment->data.literal.value.data.string_value;
         if (text) {
             total_length += strlen(text);
@@ -1412,30 +1426,32 @@ static bool write_template_property(KryonCodeGenerator *codegen, const KryonASTN
             printf("  📝 Literal segment: '%s' (%u bytes)\n", text ? text : "", text_len);
             
         } else if (segment->type == KRYON_AST_VARIABLE) {
-            // Write VARIABLE segment type  
+            // Write VARIABLE segment type
             if (!write_uint8(codegen, (uint8_t)KRYON_TEMPLATE_SEGMENT_VARIABLE)) {
                 codegen_error(codegen, "Failed to write VARIABLE segment type");
                 return false;
             }
-            
+
             // Add variable name to string table and write reference
             const char *var_name = segment->data.variable.name;
             if (!var_name) {
                 codegen_error(codegen, "Variable segment has null name");
                 return false;
             }
-            
+
+            printf("  🔗 DEBUG: VARIABLE segment has name='%s' (ptr=%p)\n", var_name, (void*)var_name);
+
             uint32_t var_name_ref = add_string_to_table(codegen, var_name);
             if (var_name_ref == UINT32_MAX) {
                 codegen_error(codegen, "Failed to add variable name to string table");
                 return false;
             }
-            
+
             if (!write_uint32(codegen, var_name_ref)) {
                 codegen_error(codegen, "Failed to write variable name reference");
                 return false;
             }
-            
+
             printf("  🔗 Variable segment: '%s' (string_ref=%u)\n", var_name, var_name_ref);
             
         } else {

@@ -475,17 +475,24 @@ bool kryon_write_component_node(KryonCodeGenerator *codegen, const KryonASTNode 
         }
     }
     
-    // Component body (UI definition) - write as element
-    if (component->data.component.body) {
+    // Component body (UI definition) - write body elements count and elements
+    if (component->data.component.body_count > 0) {
         if (!write_uint8(codegen, 1)) { // Has body
             return false;
         }
-        printf("📝 Writing component body element\n");
-        if (!kryon_write_element_node(codegen, component->data.component.body, NULL)) {
-            printf("❌ Failed to write component body element\n");
+        printf("📝 Writing %zu component body elements\n", component->data.component.body_count);
+        // Write count of body elements
+        if (!write_uint16(codegen, (uint16_t)component->data.component.body_count)) {
             return false;
         }
-        printf("✅ Successfully wrote component body element\n");
+        // Write each body element
+        for (size_t i = 0; i < component->data.component.body_count; i++) {
+            if (!kryon_write_element_node(codegen, component->data.component.body_elements[i], NULL)) {
+                printf("❌ Failed to write component body element %zu\n", i);
+                return false;
+            }
+        }
+        printf("✅ Successfully wrote %zu component body elements\n", component->data.component.body_count);
     } else {
         if (!write_uint8(codegen, 0)) { // No body
             return false;

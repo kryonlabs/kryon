@@ -339,9 +339,12 @@ struct KryonASTNode {
             size_t state_count;      // Number of state variables
             KryonASTNode **functions; // Component functions
             size_t function_count;   // Number of functions
+            KryonASTNode *on_create; // @oncreate lifecycle hook (runs once on creation)
             KryonASTNode *on_mount;  // @mount lifecycle hook (same as @onload)
             KryonASTNode *on_unmount; // @unmount lifecycle hook
-            KryonASTNode *body;      // Component body (UI elements)
+            KryonASTNode **body_elements; // Component body elements (UI elements array)
+            size_t body_count;       // Number of body elements
+            size_t body_capacity;    // Body elements array capacity
         } component;
     } data;
     

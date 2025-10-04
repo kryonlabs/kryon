@@ -1384,15 +1384,17 @@ static KryonASTNode *parse_event_directive(KryonParser *parser) {
 
 static KryonASTNode *parse_onload_directive(KryonParser *parser) {
     printf("[DEBUG] parse_onload_directive: Starting\n");
-    
-    if (!check_token(parser, KRYON_TOKEN_ONLOAD_DIRECTIVE)) {
-        printf("[DEBUG] parse_onload_directive: Not an onload directive\n");
-        parser_error(parser, "Expected '@onload' directive");
+
+    if (!check_token(parser, KRYON_TOKEN_ONLOAD_DIRECTIVE) &&
+        !check_token(parser, KRYON_TOKEN_ON_MOUNT_DIRECTIVE) &&
+        !check_token(parser, KRYON_TOKEN_ON_CREATE_DIRECTIVE)) {
+        printf("[DEBUG] parse_onload_directive: Not a lifecycle directive\n");
+        parser_error(parser, "Expected '@onload', '@mount', or '@oncreate' directive");
         return NULL;
     }
-    
+
     const KryonToken *onload_token = advance(parser);
-    printf("[DEBUG] parse_onload_directive: Found onload directive\n");
+    printf("[DEBUG] parse_onload_directive: Found lifecycle directive\n");
     
     // Expect language string
     if (!check_token(parser, KRYON_TOKEN_STRING)) {
@@ -1901,9 +1903,12 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
     component->data.component.state_count = 0;
     component->data.component.functions = NULL;
     component->data.component.function_count = 0;
+    component->data.component.on_create = NULL;
     component->data.component.on_mount = NULL;
     component->data.component.on_unmount = NULL;
-    component->data.component.body = NULL;
+    component->data.component.body_elements = NULL;
+    component->data.component.body_count = 0;
+    component->data.component.body_capacity = 0;
     
     // Parse parameter list if present
     if (match_token(parser, KRYON_TOKEN_LEFT_PAREN)) {
@@ -2077,6 +2082,16 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
                     component->data.component.function_count = new_count;
                 }
             }
+        } else if (check_token(parser, KRYON_TOKEN_ON_CREATE_DIRECTIVE)) {
+            // Parse @oncreate lifecycle hook
+            KryonASTNode *create_hook = parse_onload_directive(parser);
+            if (create_hook) {
+                if (component->data.component.on_create) {
+                    parser_error(parser, "Component can only have one @oncreate hook");
+                } else {
+                    component->data.component.on_create = create_hook;
+                }
+            }
         } else if (check_token(parser, KRYON_TOKEN_ON_MOUNT_DIRECTIVE) || check_token(parser, KRYON_TOKEN_ONLOAD_DIRECTIVE)) {
             // Parse @mount (or @onload) lifecycle hook
             KryonASTNode *mount_hook = parse_onload_directive(parser);
@@ -2160,15 +2175,29 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
                 }
             }
         } else if (check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
-            // Parse the UI body (single root element)
-            if (!component->data.component.body) {
-                printf("[DEBUG] parse_component_definition: Parsing component UI body element at token %zu\n", parser->current_token);
-                component->data.component.body = parse_element(parser);
-                printf("[DEBUG] parse_component_definition: Finished parsing UI body, now at token %zu\n", parser->current_token);
-            } else {
-                parser_error(parser, "Component can only have one root UI element");
-                advance(parser);
+            // Parse UI body element
+            printf("[DEBUG] parse_component_definition: Parsing component UI body element at token %zu\n", parser->current_token);
+            KryonASTNode *element = parse_element(parser);
+            if (element) {
+                // Expand body_elements array if needed
+                if (component->data.component.body_count >= component->data.component.body_capacity) {
+                    size_t new_capacity = component->data.component.body_capacity == 0 ? 4 : component->data.component.body_capacity * 2;
+                    KryonASTNode **new_elements = realloc(component->data.component.body_elements, new_capacity * sizeof(KryonASTNode*));
+                    if (!new_elements) {
+                        parser_error(parser, "Failed to allocate memory for component body elements");
+                    } else {
+                        component->data.component.body_elements = new_elements;
+                        component->data.component.body_capacity = new_capacity;
+                    }
+                }
+
+                // Add element to body_elements array
+                if (component->data.component.body_count < component->data.component.body_capacity) {
+                    component->data.component.body_elements[component->data.component.body_count++] = element;
+                    printf("[DEBUG] parse_component_definition: Added body element %zu\n", component->data.component.body_count);
+                }
             }
+            printf("[DEBUG] parse_component_definition: Finished parsing UI body, now at token %zu\n", parser->current_token);
         } else {
             printf("[DEBUG] parse_component_definition: Unexpected token type %d in component body\n", peek(parser)->type);
             parser_error(parser, "Unexpected token in component body");

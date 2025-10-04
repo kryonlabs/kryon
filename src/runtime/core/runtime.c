@@ -68,7 +68,7 @@ static bool runtime_event_handler(const KryonEvent* event, void* userData);
 static void runtime_error(KryonRuntime *runtime, const char *format, ...);
 static void kryon_debug_inspector_toggle(KryonRuntime *runtime);
 const char* get_element_property_string_with_runtime(KryonRuntime* runtime, KryonElement* element, const char* prop_name);
-static const char* resolve_variable_reference(KryonRuntime* runtime, const char* value);
+static const char* resolve_variable_reference(KryonRuntime* runtime, KryonElement* element, const char* value);
 static const char* resolve_component_state_variable(KryonRuntime* runtime, KryonElement* element, const char* var_name);
 
 // @for template expansion functions
@@ -1160,23 +1160,41 @@ KryonProperty* find_element_property(KryonElement* element, const char* prop_nam
 }
 
 // Resolve variable references in string values
-static const char* resolve_variable_reference(KryonRuntime* runtime, const char* value) {
+static const char* resolve_variable_reference(KryonRuntime* runtime, KryonElement* element, const char* value) {
     if (!runtime || !value) {
         return value; // Invalid input
     }
-    
-    // With the compiler fix, we should now receive clean variable names directly
-    // Just do a direct lookup - no string manipulation needed
+
+    // First, check if this is a loop context variable on the element or its ancestors
+    KryonElement* current = element;
+    while (current) {
+        // Check loop iteration variable
+        if (current->loop_var_name && strcmp(current->loop_var_name, value) == 0) {
+            return current->loop_var_value;
+        }
+        // Check loop index variable
+        if (current->loop_index_var_name && strcmp(current->loop_index_var_name, value) == 0) {
+            return current->loop_index_var_value;
+        }
+        current = current->parent;
+    }
+
+    // Fall back to global runtime variables
     const char* resolved_value = kryon_runtime_get_variable(runtime, value);
     if (resolved_value) {
         // Add basic validation to ensure the pointer is reasonable
         if (resolved_value < (const char*)0x1000) {
             return value; // Return original if pointer is invalid
         }
-        
+
+        // If the resolved value is itself a @ref, recursively resolve it
+        if (strncmp(resolved_value, "@ref:", 5) == 0) {
+            return resolve_variable_reference(runtime, element, resolved_value + 5);
+        }
+
         return resolved_value;
     }
-    
+
     return value; // Return original if not found
 }
 
@@ -1274,7 +1292,7 @@ const char* get_element_property_string_with_runtime(KryonRuntime* runtime, Kryo
         case KRYON_RUNTIME_PROP_REFERENCE:
             // For variable references, try to resolve them
             if (prop->is_bound && prop->binding_path && runtime) {
-                const char* resolved_value = resolve_variable_reference(runtime, prop->binding_path);
+                const char* resolved_value = resolve_variable_reference(runtime, element, prop->binding_path);
                 if (resolved_value && resolved_value != prop->binding_path) {  // Check it actually resolved
                     return resolved_value;
                 } else {
@@ -1524,13 +1542,13 @@ uint32_t get_element_property_color(KryonElement* element, const char* prop_name
         case KRYON_RUNTIME_PROP_REFERENCE:
             // For variable references, try to resolve them
             if (prop->is_bound && prop->binding_path && g_current_runtime) {
-                const char* resolved_value = resolve_variable_reference(g_current_runtime, prop->binding_path);
+                const char* resolved_value = resolve_variable_reference(g_current_runtime, element, prop->binding_path);
                 if (resolved_value && resolved_value != prop->binding_path) {
                     // Parse the resolved color string
                     const char* str = resolved_value;
                     if (str[0] == '#') str++;
                     if (str[0] == '0' && (str[1] == 'x' || str[1] == 'X')) str += 2;
-                    
+
                     unsigned int color;
                     if (sscanf(str, "%x", &color) == 1) {
                         return (uint32_t)color;
@@ -1865,8 +1883,18 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
         printf("🔧 RENDER TABPANEL [%p]: %zu children, visible=%d\n", (void*)element, element->child_count, element->visible);
         for (size_t i = 0; i < element->child_count; i++) {
             if (element->children[i]) {
-                printf("  Child %zu: %s, visible=%d, child_count=%zu\n", i, element->children[i]->type_name,
-                       element->children[i]->visible, element->children[i]->child_count);
+                printf("  Child %zu: %s, visible=%d, child_count=%zu, type=0x%04X\n", i, element->children[i]->type_name,
+                       element->children[i]->visible, element->children[i]->child_count, element->children[i]->type);
+                // Show grandchildren if this is a Column
+                if (strcmp(element->children[i]->type_name, "Column") == 0) {
+                    for (size_t j = 0; j < element->children[i]->child_count; j++) {
+                        KryonElement* grandchild = element->children[i]->children[j];
+                        if (grandchild) {
+                            printf("    Grandchild %zu: %s, visible=%d, type=0x%04X\n", j,
+                                   grandchild->type_name, grandchild->visible, grandchild->type);
+                        }
+                    }
+                }
             }
         }
     }
@@ -1967,14 +1995,23 @@ const char* kryon_runtime_get_variable(KryonRuntime *runtime, const char *name) 
     if (!runtime || !name || !runtime->variable_names) {
         return NULL;
     }
-    
+
     // Look for variable
     for (size_t i = 0; i < runtime->variable_count; i++) {
         if (runtime->variable_names[i] && strcmp(runtime->variable_names[i], name) == 0) {
-            return runtime->variable_values[i];
+            const char* value = runtime->variable_values[i];
+
+            // If value is a variable reference (@ref:variableName), resolve it recursively
+            if (value && strncmp(value, "@ref:", 5) == 0) {
+                const char* ref_var_name = value + 5;
+                const char* resolved = kryon_runtime_get_variable(runtime, ref_var_name);
+                return resolved ? resolved : value; // Return original if resolution fails
+            }
+
+            return value;
         }
     }
-    
+
     return NULL;
 }
 
@@ -2517,6 +2554,12 @@ static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_elemen
             // Add to parent at the specified insertion position (right after @for template)
             if (for_element->parent) {
                 insert_child_element_at(runtime, for_element->parent, instance, insert_position);
+
+                // Process @if directives in the cloned instance (component instances may have @if directives)
+                printf("🔍 Calling process_if_directives on cloned instance [%p] type=%s\n",
+                       (void*)instance, instance->type_name ? instance->type_name : "NULL");
+                process_if_directives(runtime, instance);
+                printf("✅ Finished process_if_directives on cloned instance\n");
 
                 // Immediately recalculate positions for the parent container to prevent flicker
                 position_children_by_layout_type(runtime, for_element->parent);
@@ -3210,6 +3253,7 @@ void process_if_directives(KryonRuntime* runtime, KryonElement* element) {
 
     // Check if this element is an @if template
     if (element->type_name && strcmp(element->type_name, "if") == 0) {
+        printf("🔍 Found @if directive, expanding template\n");
         expand_if_template(runtime, element);
         // Don't process children of @if elements recursively; they are templates
         return;

@@ -1776,13 +1776,13 @@ static KryonASTNode *create_minimal_ast_node(KryonASTNodeType type);
 
 static KryonASTNode *clone_ast_node(const KryonASTNode *original) {
     if (!original) return NULL;
-    
-    // For component nodes, return the body for expansion
-    if (original->type == KRYON_AST_COMPONENT && original->data.component.body) {
+
+    // For component nodes, return the first body element for expansion
+    if (original->type == KRYON_AST_COMPONENT && original->data.component.body_count > 0) {
         // Clone without substitution for now
-        return clone_and_substitute_node(original->data.component.body, NULL, NULL);
+        return clone_and_substitute_node(original->data.component.body_elements[0], NULL, NULL);
     }
-    
+
     return NULL;
 }
 
@@ -1950,8 +1950,27 @@ static KryonASTNode *clone_and_substitute_node(const KryonASTNode *original, con
                 for (size_t i = 0; i < params->count; i++) {
                     printf("    Available param[%zu]: '%s'\n", i, params->substitutions[i].param_name);
                 }
+
+                // If we're in a component instance (instance_id set), this might be a state variable
+                // Convert it to a component-scoped variable reference
+                if (instance_id && original->data.identifier.name) {
+                    printf("🔗 Converting identifier '%s' to component variable: %s.%s\n",
+                           original->data.identifier.name, instance_id, original->data.identifier.name);
+
+                    free(cloned);
+                    cloned = create_minimal_ast_node(KRYON_AST_VARIABLE);
+                    if (!cloned) return NULL;
+
+                    char *var_name = malloc(64);
+                    if (var_name) {
+                        snprintf(var_name, 64, "%s.%s", instance_id, original->data.identifier.name);
+                        cloned->data.variable.name = var_name;
+                        printf("🔗 Created component variable reference: '%s'\n", var_name);
+                    }
+                    return cloned;
+                }
             } else {
-                printf("🔍 DEBUG: Processing identifier '%s' with no substitution params\n", 
+                printf("🔍 DEBUG: Processing identifier '%s' with no substitution params\n",
                        original->data.identifier.name ? original->data.identifier.name : "(null)");
             }
             // Otherwise, just clone the identifier
@@ -1963,12 +1982,34 @@ static KryonASTNode *clone_and_substitute_node(const KryonASTNode *original, con
         case KRYON_AST_LITERAL:
             // Clone literal value
             cloned->data.literal.value = original->data.literal.value;
-            if (original->data.literal.value.type == KRYON_VALUE_STRING && 
+            if (original->data.literal.value.type == KRYON_VALUE_STRING &&
                 original->data.literal.value.data.string_value) {
                 cloned->data.literal.value.data.string_value = strdup(original->data.literal.value.data.string_value);
             }
             break;
-            
+
+        case KRYON_AST_TEMPLATE:
+            // Clone template segments recursively with substitution
+            printf("🔧 DEBUG: Cloning template with %zu segments (instance_id=%s)\n",
+                   original->data.template.segment_count, instance_id ? instance_id : "NULL");
+            cloned->data.template.segment_count = original->data.template.segment_count;
+            if (original->data.template.segment_count > 0) {
+                cloned->data.template.segments = calloc(original->data.template.segment_count, sizeof(KryonASTNode*));
+                if (cloned->data.template.segments) {
+                    for (size_t i = 0; i < original->data.template.segment_count; i++) {
+                        printf("🔧 DEBUG: Cloning template segment %zu (type=%d)\n", i,
+                               original->data.template.segments[i] ? original->data.template.segments[i]->type : -1);
+                        // Recursively clone each segment with parameter substitution
+                        cloned->data.template.segments[i] = clone_and_substitute_node(
+                            original->data.template.segments[i], params, instance_id);
+                        if (cloned->data.template.segments[i]) {
+                            printf("🔧 DEBUG: Cloned segment %zu result type=%d\n", i, cloned->data.template.segments[i]->type);
+                        }
+                    }
+                }
+            }
+            break;
+
         case KRYON_AST_VARIABLE:
             // Check if this variable is a parameter that needs substitution
             if (params && original->data.variable.name) {
@@ -2005,8 +2046,22 @@ static KryonASTNode *clone_and_substitute_node(const KryonASTNode *original, con
                 for (size_t i = 0; i < params->count; i++) {
                     printf("    Available param[%zu]: '%s'\n", i, params->substitutions[i].param_name);
                 }
+
+                // If we're in a component instance (instance_id set), prefix with component instance ID
+                if (instance_id && original->data.variable.name) {
+                    printf("🔗 Prefixing variable '%s' with component ID: %s.%s\n",
+                           original->data.variable.name, instance_id, original->data.variable.name);
+
+                    char *var_name = malloc(64);
+                    if (var_name) {
+                        snprintf(var_name, 64, "%s.%s", instance_id, original->data.variable.name);
+                        cloned->data.variable.name = var_name;
+                        printf("🔗 Created component-scoped variable: '%s'\n", var_name);
+                    }
+                    return cloned;
+                }
             } else {
-                printf("🔍 DEBUG: Processing variable '$%s' with no substitution params\n", 
+                printf("🔍 DEBUG: Processing variable '$%s' with no substitution params\n",
                        original->data.variable.name ? original->data.variable.name : "(null)");
             }
             // Otherwise, just clone the variable
@@ -2122,6 +2177,68 @@ static KryonASTNode *clone_and_substitute_node(const KryonASTNode *original, con
     return cloned;
 }
 
+// Helper function to substitute Slot elements with instance children
+static void substitute_slots_recursive(KryonASTNode *node, const KryonASTNode **instance_children, size_t instance_child_count) {
+    if (!node || instance_child_count == 0) return;
+
+    // If this node is an element, check its children for Slot elements
+    if (node->type == KRYON_AST_ELEMENT && node->data.element.children) {
+        for (size_t i = 0; i < node->data.element.child_count; i++) {
+            KryonASTNode *child = node->data.element.children[i];
+            if (!child) continue;
+
+            // Check if this child is a Slot element
+            if (child->type == KRYON_AST_ELEMENT &&
+                child->data.element.element_type &&
+                strcmp(child->data.element.element_type, "Slot") == 0) {
+
+                printf("🎯 Found Slot element, substituting with %zu instance children\n", instance_child_count);
+
+                // Replace this Slot with instance children
+                // We need to expand the children array and insert instance children
+                size_t new_child_count = node->data.element.child_count - 1 + instance_child_count;
+                size_t new_capacity = new_child_count;
+                KryonASTNode **new_children = calloc(new_capacity, sizeof(KryonASTNode*));
+
+                if (new_children) {
+                    // Copy children before the Slot
+                    for (size_t j = 0; j < i; j++) {
+                        new_children[j] = node->data.element.children[j];
+                    }
+
+                    // Insert instance children
+                    for (size_t j = 0; j < instance_child_count; j++) {
+                        new_children[i + j] = (KryonASTNode*)instance_children[j];
+                    }
+
+                    // Copy children after the Slot
+                    for (size_t j = i + 1; j < node->data.element.child_count; j++) {
+                        new_children[j - 1 + instance_child_count] = node->data.element.children[j];
+                    }
+
+                    // Replace children array
+                    free(node->data.element.children);
+                    node->data.element.children = new_children;
+                    node->data.element.child_count = new_child_count;
+                    node->data.element.child_capacity = new_capacity;
+
+                    printf("✅ Substituted Slot with %zu children\n", instance_child_count);
+
+                    // Free the Slot node itself (we've removed it from the array)
+                    // Note: Don't recursively free it, just the node itself
+                    free(child->data.element.element_type);
+                    free(child);
+
+                    return; // Slot found and substituted, done
+                }
+            } else {
+                // Recursively search in this child
+                substitute_slots_recursive(child, instance_children, instance_child_count);
+            }
+        }
+    }
+}
+
 KryonASTNode *expand_component_instance(KryonCodeGenerator *codegen, const KryonASTNode *component_instance, const KryonASTNode *ast_root) {
     if (!component_instance || !ast_root) {
         printf("❌ Invalid parameters for component expansion\n");
@@ -2161,7 +2278,7 @@ KryonASTNode *expand_component_instance(KryonCodeGenerator *codegen, const Kryon
            component_def->data.component.parameter_count,
            component_instance->data.element.property_count);
 
-    if (!component_def->data.component.body) {
+    if (component_def->data.component.body_count == 0) {
         printf("❌ Component has no body to expand\n");
         return NULL;
     }
@@ -2266,25 +2383,37 @@ KryonASTNode *expand_component_instance(KryonCodeGenerator *codegen, const Kryon
                 variable_names[variable_index] = strdup(params.substitutions[i].param_name);
                 
                 // Convert parameter value to string for storage
-                if (params.substitutions[i].param_value && params.substitutions[i].param_value->type == KRYON_AST_LITERAL) {
-                    const KryonASTValue *value = &params.substitutions[i].param_value->data.literal.value;
-                    char value_str[64];
-                    switch (value->type) {
-                        case KRYON_VALUE_INTEGER:
-                            snprintf(value_str, sizeof(value_str), "%lld", (long long)value->data.int_value);
-                            break;
-                        case KRYON_VALUE_FLOAT:
-                            snprintf(value_str, sizeof(value_str), "%f", value->data.float_value);
-                            break;
-                        case KRYON_VALUE_STRING:
-                            snprintf(value_str, sizeof(value_str), "%s", value->data.string_value ? value->data.string_value : "");
-                            break;
-                        case KRYON_VALUE_BOOLEAN:
-                            snprintf(value_str, sizeof(value_str), "%s", value->data.bool_value ? "true" : "false");
-                            break;
-                        default:
-                            snprintf(value_str, sizeof(value_str), "undefined");
-                            break;
+                if (params.substitutions[i].param_value) {
+                    const KryonASTNode *param_val = params.substitutions[i].param_value;
+                    char value_str[128];
+
+                    if (param_val->type == KRYON_AST_LITERAL) {
+                        const KryonASTValue *value = &param_val->data.literal.value;
+                        switch (value->type) {
+                            case KRYON_VALUE_INTEGER:
+                                snprintf(value_str, sizeof(value_str), "%lld", (long long)value->data.int_value);
+                                break;
+                            case KRYON_VALUE_FLOAT:
+                                snprintf(value_str, sizeof(value_str), "%f", value->data.float_value);
+                                break;
+                            case KRYON_VALUE_STRING:
+                                snprintf(value_str, sizeof(value_str), "%s", value->data.string_value ? value->data.string_value : "");
+                                break;
+                            case KRYON_VALUE_BOOLEAN:
+                                snprintf(value_str, sizeof(value_str), "%s", value->data.bool_value ? "true" : "false");
+                                break;
+                            default:
+                                snprintf(value_str, sizeof(value_str), "undefined");
+                                break;
+                        }
+                    } else if (param_val->type == KRYON_AST_IDENTIFIER) {
+                        // Store as variable reference for runtime resolution
+                        snprintf(value_str, sizeof(value_str), "@ref:%s", param_val->data.identifier.name);
+                    } else if (param_val->type == KRYON_AST_VARIABLE) {
+                        // Store reactive variable reference
+                        snprintf(value_str, sizeof(value_str), "@ref:%s", param_val->data.variable.name);
+                    } else {
+                        snprintf(value_str, sizeof(value_str), "undefined");
                     }
                     variable_values[variable_index] = strdup(value_str);
                 } else {
@@ -2308,9 +2437,22 @@ KryonASTNode *expand_component_instance(KryonCodeGenerator *codegen, const Kryon
                 const char *var_name = component_def->data.component.state_vars[i]->data.variable_def.name;
                 if (var_name) {
                     variable_names[variable_index] = strdup(var_name);
-                    
-                    // Get default value (for now, just mark as state variable)
-                    variable_values[variable_index] = strdup("@state");
+
+                    // Extract state variable's initial value for serialization
+                    KryonASTNode *state_value = component_def->data.component.state_vars[i]->data.variable_def.value;
+                    if (state_value && state_value->type == KRYON_AST_LITERAL) {
+                        const KryonASTValue *value = &state_value->data.literal.value;
+                        if (value->type == KRYON_VALUE_BOOLEAN) {
+                            // Store boolean as "true" or "false" string - will be written as BOOLEAN type
+                            variable_values[variable_index] = strdup(value->data.bool_value ? "true" : "false");
+                        } else {
+                            // For other literal types, mark as @state for now
+                            variable_values[variable_index] = strdup("@state");
+                        }
+                    } else {
+                        // Non-literal initial values need runtime resolution
+                        variable_values[variable_index] = strdup("@state");
+                    }
                     variable_index++;
                 }
             }
@@ -2327,13 +2469,32 @@ KryonASTNode *expand_component_instance(KryonCodeGenerator *codegen, const Kryon
     }
     
     // Instance ID already pre-calculated at function start
-    
-    // Clone and substitute the component body with reactive context
-    KryonASTNode *expanded_body = clone_and_substitute_node(component_def->data.component.body, &params, instance_id);
-    if (expanded_body) {
-        add_child_to_node(wrapper, expanded_body);
+
+    // Inject @oncreate script if it exists (executes first, before body elements)
+    if (component_def->data.component.on_create) {
+        printf("🔥 Injecting @oncreate script for component: %s\n", component_name);
+        KryonASTNode *on_create_script = clone_and_substitute_node(component_def->data.component.on_create, &params, instance_id);
+        if (on_create_script) {
+            add_child_to_node(wrapper, on_create_script);
+        }
     }
-    
+
+    // Clone and substitute the component body elements with reactive context
+    for (size_t i = 0; i < component_def->data.component.body_count; i++) {
+        KryonASTNode *expanded_body = clone_and_substitute_node(component_def->data.component.body_elements[i], &params, instance_id);
+        if (expanded_body) {
+            // Substitute Slot elements with instance children
+            if (component_instance->data.element.child_count > 0) {
+                printf("🎯 Component instance has %zu children, searching for Slot\n", component_instance->data.element.child_count);
+                substitute_slots_recursive(expanded_body,
+                    (const KryonASTNode**)component_instance->data.element.children,
+                    component_instance->data.element.child_count);
+            }
+
+            add_child_to_node(wrapper, expanded_body);
+        }
+    }
+
     free(params.substitutions);
     
     // Register component instance with state tracking (will increment next_component_instance_id)
@@ -2358,11 +2519,11 @@ KryonASTNode *expand_component_instance(KryonCodeGenerator *codegen, const Kryon
     
     // Clean up pre-calculated instance ID
     free(instance_id);
-    
+
     printf("✅ Successfully expanded component: %s\n", component_name);
-    
-    // Return just the body element (component state is now tracked separately)
-    return expanded_body;
+
+    // Return the wrapper element containing all body elements
+    return wrapper;
 }
 
 // =============================================================================
@@ -2548,17 +2709,31 @@ bool write_component_instance_variables(KryonCodeGenerator *codegen) {
                 char scoped_name[128];
                 snprintf(scoped_name, sizeof(scoped_name), "%s.%s", instance_id, variable_names[j]);
                 
-                // Add the scoped variable to the string table and write to Variables section
+                // Determine the value type and write accordingly
+                const char* var_value = variable_values[j];
                 uint32_t name_ref = add_string_to_table(codegen, scoped_name);
-                uint32_t value_ref = add_string_to_table(codegen, variable_values[j]);
-                
-                // Write variable entry to Variables section
-                if (!write_uint32(codegen, name_ref) || 
-                    !write_uint8(codegen, 0) ||              // var_type (0 for component variables)
-                    !write_uint8(codegen, 0) ||              // var_flags (0 for simple variables)
-                    !write_uint8(codegen, KRYON_VALUE_STRING) ||  // value_type
-                    !write_uint32(codegen, value_ref)) {
-                    return false;
+
+                // Detect value type from string representation
+                if (strcmp(var_value, "true") == 0 || strcmp(var_value, "false") == 0) {
+                    // Boolean value
+                    uint8_t bool_val = (strcmp(var_value, "true") == 0) ? 1 : 0;
+                    if (!write_uint32(codegen, name_ref) ||
+                        !write_uint8(codegen, 0) ||  // var_type
+                        !write_uint8(codegen, 0) ||  // var_flags
+                        !write_uint8(codegen, KRYON_VALUE_BOOLEAN) ||
+                        !write_uint8(codegen, bool_val)) {
+                        return false;
+                    }
+                } else {
+                    // String value (including @state, @ref:, etc.)
+                    uint32_t value_ref = add_string_to_table(codegen, var_value);
+                    if (!write_uint32(codegen, name_ref) ||
+                        !write_uint8(codegen, 0) ||  // var_type
+                        !write_uint8(codegen, 0) ||  // var_flags
+                        !write_uint8(codegen, KRYON_VALUE_STRING) ||
+                        !write_uint32(codegen, value_ref)) {
+                        return false;
+                    }
                 }
                 
                 printf("   Wrote variable '%s' = '%s'\n", scoped_name, variable_values[j]);

@@ -104,6 +104,7 @@ typedef enum {
     KRYON_TOKEN_WATCH_DIRECTIVE,     // @watch
     KRYON_TOKEN_ON_MOUNT_DIRECTIVE,  // @on_mount
     KRYON_TOKEN_ON_UNMOUNT_DIRECTIVE,// @on_unmount
+    KRYON_TOKEN_ON_CREATE_DIRECTIVE, // @on_create
     KRYON_TOKEN_IMPORT_DIRECTIVE,    // @import
     KRYON_TOKEN_EXPORT_DIRECTIVE,    // @export
     KRYON_TOKEN_INCLUDE_DIRECTIVE,   // @include

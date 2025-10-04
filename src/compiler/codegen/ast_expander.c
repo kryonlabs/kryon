@@ -127,10 +127,13 @@ KryonASTNode *kryon_resolve_component_inheritance(const KryonASTNode *component_
                 }
             }
 
-            // Make child body the children of this parent element
-            if (component_def->data.component.body) {
-                printf("🔧 Adding child body as children of built-in parent element\n");
-                add_child_to_node(parent_element, component_def->data.component.body);
+            // Make child body elements the children of this parent element
+            if (component_def->data.component.body_count > 0) {
+                printf("🔧 Adding %zu child body elements as children of built-in parent element\n",
+                       component_def->data.component.body_count);
+                for (size_t i = 0; i < component_def->data.component.body_count; i++) {
+                    add_child_to_node(parent_element, component_def->data.component.body_elements[i]);
+                }
             }
 
             // Create merged component with this parent element as the body
@@ -174,8 +177,16 @@ KryonASTNode *kryon_resolve_component_inheritance(const KryonASTNode *component_
                 }
             }
 
-            // Set the parent element as the body
-            merged->data.component.body = parent_element;
+            // Copy lifecycle hooks
+            merged->data.component.on_create = component_def->data.component.on_create;
+            merged->data.component.on_mount = component_def->data.component.on_mount;
+            merged->data.component.on_unmount = component_def->data.component.on_unmount;
+
+            // Set the parent element as the single body element
+            merged->data.component.body_elements = calloc(1, sizeof(KryonASTNode*));
+            merged->data.component.body_elements[0] = parent_element;
+            merged->data.component.body_count = 1;
+            merged->data.component.body_capacity = 1;
 
             // No parent for merged component (inheritance is resolved)
             merged->data.component.parent_component = NULL;
@@ -259,14 +270,29 @@ KryonASTNode *kryon_resolve_component_inheritance(const KryonASTNode *component_
         }
     }
 
-    // Clone parent body as the base
-    if (parent_def->data.component.body) {
-        merged->data.component.body = clone_and_substitute_node(parent_def->data.component.body, NULL, 0);
+    // Copy lifecycle hooks (child overrides parent)
+    merged->data.component.on_create = component_def->data.component.on_create ?
+        component_def->data.component.on_create : parent_def->data.component.on_create;
+    merged->data.component.on_mount = component_def->data.component.on_mount ?
+        component_def->data.component.on_mount : parent_def->data.component.on_mount;
+    merged->data.component.on_unmount = component_def->data.component.on_unmount ?
+        component_def->data.component.on_unmount : parent_def->data.component.on_unmount;
 
-        // Apply override properties to the cloned parent body
-        if (component_def->data.component.override_count > 0 && merged->data.component.body) {
+    // Clone parent body elements as the base
+    if (parent_def->data.component.body_count > 0) {
+        merged->data.component.body_count = parent_def->data.component.body_count;
+        merged->data.component.body_capacity = parent_def->data.component.body_count;
+        merged->data.component.body_elements = calloc(merged->data.component.body_count, sizeof(KryonASTNode*));
+
+        for (size_t i = 0; i < parent_def->data.component.body_count; i++) {
+            merged->data.component.body_elements[i] = clone_and_substitute_node(parent_def->data.component.body_elements[i], NULL, 0);
+        }
+
+        // Apply override properties to the first cloned parent body element
+        if (component_def->data.component.override_count > 0 && merged->data.component.body_count > 0) {
             printf("🔧 Applying %zu override properties to parent body\n", component_def->data.component.override_count);
 
+            KryonASTNode *first_body = merged->data.component.body_elements[0];
             // Add or replace properties in the parent body
             for (size_t i = 0; i < component_def->data.component.override_count; i++) {
                 const KryonASTNode *override_prop = component_def->data.component.override_props[i];
@@ -277,14 +303,14 @@ KryonASTNode *kryon_resolve_component_inheritance(const KryonASTNode *component_
 
                 // Find and replace existing property, or add if not found
                 bool found = false;
-                for (size_t j = 0; j < merged->data.component.body->data.element.property_count; j++) {
-                    KryonASTNode *existing_prop = merged->data.component.body->data.element.properties[j];
+                for (size_t j = 0; j < first_body->data.element.property_count; j++) {
+                    KryonASTNode *existing_prop = first_body->data.element.properties[j];
                     if (existing_prop && existing_prop->type == KRYON_AST_PROPERTY &&
                         existing_prop->data.property.name &&
                         strcmp(existing_prop->data.property.name, prop_name) == 0) {
                         // Replace existing property
                         printf("    ✅ Replaced existing property '%s'\n", prop_name);
-                        merged->data.component.body->data.element.properties[j] =
+                        first_body->data.element.properties[j] =
                             clone_and_substitute_node(override_prop, NULL, 0);
                         found = true;
                         break;
@@ -294,17 +320,19 @@ KryonASTNode *kryon_resolve_component_inheritance(const KryonASTNode *component_
                 if (!found) {
                     // Add new property
                     printf("    ✅ Added new property '%s'\n", prop_name);
-                    add_property_to_node(merged->data.component.body,
+                    add_property_to_node(first_body,
                                         clone_and_substitute_node(override_prop, NULL, 0));
                 }
             }
         }
     }
 
-    // If child has its own body, replace the merged body with child's body
+    // If child has its own body elements, replace the merged body with child's body
     // (child body takes full precedence over parent body)
-    if (component_def->data.component.body) {
-        merged->data.component.body = component_def->data.component.body;
+    if (component_def->data.component.body_count > 0) {
+        merged->data.component.body_elements = component_def->data.component.body_elements;
+        merged->data.component.body_count = component_def->data.component.body_count;
+        merged->data.component.body_capacity = component_def->data.component.body_capacity;
     }
 
     printf("✅ Inheritance resolved: %s (merged %zu state vars, %zu functions)\n",
@@ -337,7 +365,7 @@ KryonASTNode *kryon_expand_component_instance(const KryonASTNode *component_inst
            component_def->data.component.parameter_count,
            component_instance->data.element.property_count);
 
-    if (!component_def->data.component.body) {
+    if (component_def->data.component.body_count == 0) {
         printf("❌ Component has no body to expand\n");
         return NULL;
     }
@@ -362,15 +390,20 @@ KryonASTNode *kryon_expand_component_instance(const KryonASTNode *component_inst
         }
     }
     
-    // Clone the component body with parameter substitution
-    KryonASTNode *expanded = clone_and_substitute_node(component_def->data.component.body, params, param_count);
-    
+    // Clone the component body elements with parameter substitution
+    // For components with multiple body elements, we need to return the first one
+    // and the caller will handle the rest
+    KryonASTNode *expanded = clone_and_substitute_node(component_def->data.component.body_elements[0], params, param_count);
+
     // Clean up parameter context
     kryon_free(params);
     if (!expanded) {
         printf("❌ Failed to clone component body\n");
         return NULL;
     }
+
+    // TODO: Handle multiple body elements - for now we only return the first one
+    // This maintains backwards compatibility but doesn't fully support multiple roots yet
     
     printf("✅ Successfully expanded component: %s\n", component_name);
     return expanded;

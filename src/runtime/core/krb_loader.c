@@ -404,7 +404,9 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
                                 if (read_uint32_safe(data, &vars_offset, size, &value_ref)) {
                                     if (value_ref < string_count && string_table[value_ref]) {
                                         const char* string_value = string_table[value_ref];
-                                        // Store as string variable
+
+                                        // Store variable as-is (including @ref: references)
+                                        // Resolution will happen dynamically in kryon_runtime_get_variable()
                                         runtime->variable_names[runtime->variable_count] = kryon_strdup(var_name);
                                         runtime->variable_values[runtime->variable_count] = kryon_strdup(string_value);
                                         runtime->variable_count++;
