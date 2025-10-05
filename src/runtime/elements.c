@@ -81,6 +81,7 @@ static void position_grid_children(struct KryonRuntime* runtime, struct KryonEle
 static void position_tabbar_children(struct KryonRuntime* runtime, struct KryonElement* tabbar);
 static void position_tabgroup_children(struct KryonRuntime* runtime, struct KryonElement* tabgroup);
 static void position_tab_children(struct KryonRuntime* runtime, struct KryonElement* tab);
+static void position_tabpanel_children(struct KryonRuntime* runtime, struct KryonElement* tabpanel);
 
 // Generic contentAlignment positioning function
 static void position_children_with_content_alignment(struct KryonRuntime* runtime, struct KryonElement* parent, 
@@ -639,10 +640,8 @@ void position_children_by_layout_type(struct KryonRuntime* runtime, struct Kryon
         // Tab can contain children - center by default
         position_tab_children(runtime, parent);
     } else if (strcmp(parent->type_name, "TabPanel") == 0) {
-        // TabPanel behaves like Container - uses contentAlignment
-        printf("🔧 TABPANEL [%p]: Positioning %zu children (bounds: x=%.1f, y=%.1f, w=%.1f, h=%.1f)\n",
-               (void*)parent, parent->child_count, parent->x, parent->y, parent->width, parent->height);
-        position_container_children(runtime, parent);
+        // TabPanel behaves like a vertical stack of children
+        position_tabpanel_children(runtime, parent);
     } else {
         // Default: position children at same location
         for (size_t i = 0; i < parent->child_count; i++) {
@@ -1050,7 +1049,12 @@ static void position_children_with_content_alignment(struct KryonRuntime* runtim
     float total_height = 0.0f;
     float gap = 0.0f;
     if (multi_child_stacking && parent->child_count > 1) {
-        gap = get_element_property_float(parent, "gap", 10.0f);
+        float gap_default = 10.0f;
+        if (parent->type_name && strcmp(parent->type_name, "TabPanel") == 0) {
+            gap_default = 0.0f;
+        }
+
+        gap = get_element_property_float(parent, "gap", gap_default);
         
         // Calculate total height of all children plus gaps (optimized)
         for (size_t j = 0; j < parent->child_count; j++) {
@@ -1172,6 +1176,18 @@ static void position_container_children(struct KryonRuntime* runtime, struct Kry
 static void position_tab_children(struct KryonRuntime* runtime, struct KryonElement* tab) {
     // Tab centers children by default
     position_children_with_content_alignment(runtime, tab, "center", false);
+}
+
+/**
+ * @brief Position children inside a TabPanel.
+ * TabPanel should stack multiple children vertically (similar to Column) so
+ * titles, subtitles, and content do not overlap when authored sequentially.
+ */
+static void position_tabpanel_children(struct KryonRuntime* runtime, struct KryonElement* tabpanel) {
+    if (!tabpanel) return;
+
+    // TabPanel uses Container-like alignment but enables multi-child stacking
+    position_children_with_content_alignment(runtime, tabpanel, "start", true);
 }
 
 /**
@@ -1857,4 +1873,3 @@ static void position_tabgroup_children(struct KryonRuntime* runtime, struct Kryo
     // This allows TabBar to be at the top and TabContent below
     position_column_children(runtime, tabgroup);
 }
-

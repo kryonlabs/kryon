@@ -287,5 +287,3 @@ bool render_input_background_and_border(struct KryonElement* element,
     
     return true;
 }
-
-
