@@ -376,7 +376,7 @@ Reserved for user-defined widgets
 
 ```
 [Script ID: u32]
-[Script Language String ID: u16]   # "javascript", "lua"
+[Script Language String ID: u16]   # Reserved for future scripting engines (empty when unused)
 [Function Count: u16]
 [Functions]
 ```

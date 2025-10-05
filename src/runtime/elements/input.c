@@ -320,7 +320,7 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
             const char* onBlur = get_element_property_string(element, "onBlur");
             if (onBlur) {
                 printf("🔍 INPUT: Focus lost, calling onBlur: '%s'\n", onBlur);
-                // Call the Lua function
+                // Invoke the configured script handler (no-op when scripting disabled)
                 generic_script_event_handler(runtime, element, event);
             }
 
@@ -409,7 +409,7 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
                     const char* onEnter = get_element_property_string(element, "onEnter");
                     if (onEnter) {
                         printf("🔍 INPUT: Enter pressed, calling onEnter: '%s'\n", onEnter);
-                        // Call the Lua function
+                        // Invoke the configured script handler (no-op when scripting disabled)
                         generic_script_event_handler(runtime, element, event);
                         return true;
                     }

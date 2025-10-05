@@ -101,7 +101,6 @@ WebRendererConfig kryon_web_renderer_default_config(void) {
     config.title = strdup("Kryon Application");
     config.inline_styles = false;
     config.inline_scripts = false;
-    config.include_fengari = true;
     config.minify = false;
     config.standalone = false;
     return config;
@@ -757,10 +756,6 @@ static KryonRenderResult web_end_frame(KryonRenderContext* context) {
         append_to_buffer(&g_web_impl.html_buffer, &g_web_impl.html_capacity, &g_web_impl.html_size,
                         "</script>\n");
     } else {
-        if (g_web_impl.config.include_fengari) {
-            append_to_buffer(&g_web_impl.html_buffer, &g_web_impl.html_capacity, &g_web_impl.html_size,
-                            "<script src=\"https://cdn.jsdelivr.net/npm/fengari-web@0.1.4/dist/fengari-web.js\"></script>\n");
-        }
         append_to_buffer(&g_web_impl.html_buffer, &g_web_impl.html_capacity, &g_web_impl.html_size,
                         "<script src=\"runtime.js\"></script>\n");
     }

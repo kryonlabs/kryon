@@ -259,7 +259,7 @@ static bool link_handle_event(KryonRuntime* runtime, KryonElement* element, cons
     }
     
     // Fall back to generic script event handler for custom onClick handlers
-    return handle_script_events(runtime, element, event);
+    return generic_script_event_handler(runtime, element, event);
 }
 
 /**

@@ -18,7 +18,6 @@ extern "C" {
 #include "memory.h"
 #include "events.h"
 #include "elements.h"
-#include "script_vm.h"
 #include "renderer_interface.h"
 
 // Forward declarations
@@ -50,6 +49,14 @@ typedef struct {
 // RUNTIME STRUCTURE
 // =============================================================================
 
+typedef struct {
+    char *name;
+    char *language;
+    char *code;
+    uint16_t param_count;
+    char **parameters;
+} KryonScriptFunction;
+
 typedef struct KryonRuntime {
     KryonRuntimeConfig config;
     KryonElement *root;
@@ -70,8 +77,7 @@ typedef struct KryonRuntime {
     bool is_loading; // Flag to prevent @for processing during KRB loading
     KryonRenderContext *render_context;
     void *renderer;
-    KryonVM *script_vm;
-    char **function_names;
+    KryonScriptFunction *script_functions;
     size_t function_count;
     size_t function_capacity;
     char **variable_names;

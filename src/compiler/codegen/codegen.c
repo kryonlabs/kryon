@@ -15,7 +15,6 @@
 #include "krb_format.h"
 #include "binary_io.h"
 #include "color_utils.h"    
-#include "script_vm.h"
 #include "directive_serializer.h"
 #include "../../shared/kryon_mappings.h"
 #include "../../shared/krb_schema.h"
@@ -926,18 +925,11 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
         for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
             const KryonASTNode *child = ast_root->data.element.children[i];
             if (child && child->type == KRYON_AST_FUNCTION_DEFINITION) {
-                // Pre-compile Lua functions to add bytecode strings to string table
-                if (child->data.function_def.language && 
-                    strcmp(child->data.function_def.language, "lua") == 0 &&
-                    child->data.function_def.code) {
-                    
-                    printf("🔍 DEBUG: Pre-processing Lua function '%s' for string table\n", 
-                           child->data.function_def.name);
-                    
-                    // Pre-add function metadata strings to string table (but not bytecode)
-                    add_string_to_table(codegen, child->data.function_def.language);  // "lua"
-                    add_string_to_table(codegen, child->data.function_def.name);     // function name
-                    // Bytecode compilation moved to directive_serializer.c to avoid duplication
+                if (child->data.function_def.language) {
+                    add_string_to_table(codegen, child->data.function_def.language);
+                }
+                if (child->data.function_def.name) {
+                    add_string_to_table(codegen, child->data.function_def.name);
                 }
             }
         }
@@ -1186,47 +1178,6 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
         }
     }
     
-    // TEMPORARY: Add a test Lua function if we have an onClick handler
-    bool has_onclick = false;
-    // Disable test function for now due to segfault
-    has_onclick = false;
-    
-    if (false && ast_root->type == KRYON_AST_ROOT) {
-        for (size_t i = 0; i < ast_root->data.element.child_count; i++) {
-            const KryonASTNode *elem = ast_root->data.element.children[i];
-            if (elem && elem->type == KRYON_AST_ELEMENT) {
-                for (size_t j = 0; j < elem->data.element.property_count; j++) {
-                    const KryonASTNode *prop = elem->data.element.properties[j];
-                    if (prop && prop->type == KRYON_AST_PROPERTY && 
-                        prop->data.property.name && 
-                        strcmp(prop->data.property.name, "onClick") == 0) {
-                        has_onclick = true;
-                        break;
-                    }
-                }
-                // Check children recursively
-                for (size_t j = 0; j < elem->data.element.child_count; j++) {
-                    const KryonASTNode *child = elem->data.element.children[j];
-                    if (child && child->type == KRYON_AST_ELEMENT) {
-                        for (size_t k = 0; k < child->data.element.property_count; k++) {
-                            const KryonASTNode *prop = child->data.element.properties[k];
-                            if (prop && prop->type == KRYON_AST_PROPERTY && 
-                                prop->data.property.name && 
-                                strcmp(prop->data.property.name, "onClick") == 0) {
-                                has_onclick = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    if (has_onclick) {
-        function_count++; // Add one for our test function
-    }
-    
     // Include component functions in the count
     uint32_t total_function_count = function_count + component_function_count;
     printf("DEBUG: Writing %u functions (%u root + %u component)\n", 
@@ -1284,94 +1235,6 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
     }
     
     // Components will be written after all script sections are complete
-    
-    // Temporary test function removed - using proper directive serialization
-    if (false && has_onclick) {
-        printf("DEBUG: Writing test Lua function to KRB\n");
-        
-        // Add required strings to string table
-        uint32_t lang_ref = add_string_to_table(codegen, "lua");
-        uint32_t name_ref = add_string_to_table(codegen, "handleClick");
-        const char* lua_code = "kryon.log('Button clicked!')\nlocal text = kryon.getText()\nkryon.setText('Clicked: ' .. text)";
-        
-        // Write function header ("FUNC" magic)
-        if (!write_uint32(codegen, 0x46554E43)) { // "FUNC"
-            codegen_error(codegen, "Failed to write function magic");
-            return false;
-        }
-        
-        // Write language reference (string table index)
-        if (!write_uint32(codegen, lang_ref)) {
-            codegen_error(codegen, "Failed to write language reference");
-            return false;
-        }
-        
-        // Write function name reference (string table index)
-        if (!write_uint32(codegen, name_ref)) {
-            codegen_error(codegen, "Failed to write name reference");
-            return false;
-        }
-        
-        // Write parameter count (0 for this test function)
-        if (!write_uint32(codegen, 0)) {
-            codegen_error(codegen, "Failed to write parameter count");
-            return false;
-        }
-        
-        // Compile Lua code to bytecode
-        KryonVM* temp_vm = kryon_vm_create(KRYON_VM_LUA, NULL);
-        if (!temp_vm) {
-            codegen_error(codegen, "Failed to create temporary Lua VM");
-            return false;
-        }
-        
-        KryonScript bytecode_script;
-        KryonVMResult result = kryon_vm_compile(temp_vm, lua_code, "handleClick", &bytecode_script);
-        if (result != KRYON_VM_SUCCESS) {
-            kryon_vm_destroy(temp_vm);
-            codegen_error(codegen, "Failed to compile Lua function to bytecode");
-            return false;
-        }
-        
-        // Convert bytecode to hex string
-        size_t hex_len = bytecode_script.size * 2;
-        char* hex_string = malloc(hex_len + 1);
-        if (!hex_string) {
-            kryon_vm_destroy(temp_vm);
-            codegen_error(codegen, "Failed to allocate hex string buffer");
-            return false;
-        }
-        
-        for (size_t i = 0; i < bytecode_script.size; i++) {
-            sprintf(hex_string + i * 2, "%02x", bytecode_script.data[i]);
-        }
-        hex_string[hex_len] = '\0';
-        
-        printf("DEBUG: Compiled Lua function to %zu bytes of bytecode\n", bytecode_script.size);
-        
-        // Add bytecode hex string to string table
-        uint32_t code_ref = add_string_to_table(codegen, hex_string);
-        
-        // Write function code reference (string table index)
-        if (!write_uint32(codegen, code_ref)) {
-            free(hex_string);
-            kryon_vm_destroy(temp_vm);
-            codegen_error(codegen, "Failed to write code reference");
-            return false;
-        }
-        
-        // Cleanup
-        free(hex_string);
-        if (bytecode_script.data) {
-            free((void*)bytecode_script.data);
-        }
-        if (bytecode_script.source_name) {
-            free((void*)bytecode_script.source_name);
-        }
-        kryon_vm_destroy(temp_vm);
-        
-        printf("DEBUG: Successfully wrote Lua function to KRB\n");
-    }
     
     // Write components after all script sections are complete
     if (ast_root->type == KRYON_AST_ROOT) {

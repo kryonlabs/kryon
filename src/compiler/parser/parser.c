@@ -1397,19 +1397,17 @@ static KryonASTNode *parse_onload_directive(KryonParser *parser) {
     const KryonToken *onload_token = advance(parser);
     printf("[DEBUG] parse_onload_directive: Found lifecycle directive\n");
     
-    // Expect language string
-    if (!check_token(parser, KRYON_TOKEN_STRING)) {
-        printf("[DEBUG] parse_onload_directive: Expected language string\n");
-        parser_error(parser, "Expected language string after onload");
-        return NULL;
+    const KryonToken *language_token = NULL;
+    if (check_token(parser, KRYON_TOKEN_STRING)) {
+        language_token = advance(parser);
+        printf("[DEBUG] parse_onload_directive: Language: %s\n", language_token->value.string_value);
+    } else {
+        printf("[DEBUG] parse_onload_directive: No language specified (default)\n");
     }
-    
-    const KryonToken *language_token = advance(parser);
-    printf("[DEBUG] parse_onload_directive: Language: %s\n", language_token->value.string_value);
-    
+
     // Expect opening brace for script content
     if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
-        parser_error(parser, "Expected '{' after language string");
+        parser_error(parser, "Expected '{' to start onload body");
         return NULL;
     }
     
@@ -1499,11 +1497,12 @@ static KryonASTNode *parse_onload_directive(KryonParser *parser) {
     }
     
     // Store language and code in script structure
-    onload_node->data.script.language = kryon_strdup(language_token->value.string_value);
+    onload_node->data.script.language = kryon_strdup(language_token ? language_token->value.string_value : "");
     onload_node->data.script.code = script_code;
     
     printf("[DEBUG] parse_onload_directive: Created onload node with lang='%s', code_len=%zu\n",
-           onload_node->data.script.language, strlen(onload_node->data.script.code));
+           onload_node->data.script.language ? onload_node->data.script.language : "",
+           strlen(onload_node->data.script.code));
     
     return onload_node;
 }
@@ -1774,7 +1773,7 @@ static KryonASTNode *parse_function_definition(KryonParser *parser) {
     const KryonToken *function_token = advance(parser);
     printf("[DEBUG] parse_function_definition: Found function directive\n");
     
-    // Optional language string (defaults to "javascript" if omitted)
+    // Optional language string (defaults to empty if omitted)
     const KryonToken *language_token = NULL;
     if (check_token(parser, KRYON_TOKEN_STRING)) {
         language_token = advance(parser);
@@ -1803,7 +1802,7 @@ static KryonASTNode *parse_function_definition(KryonParser *parser) {
     if (language_token) {
         func_def->data.function_def.language = kryon_strdup(language_token->value.string_value);
     } else {
-        func_def->data.function_def.language = kryon_strdup("javascript");
+        func_def->data.function_def.language = kryon_strdup("");
     }
     func_def->data.function_def.name = kryon_token_copy_lexeme(name_token);
     func_def->data.function_def.parameters = NULL;

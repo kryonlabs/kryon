@@ -260,7 +260,7 @@ struct KryonASTNode {
         } properties;
         
         struct {
-            char *language;          // Script language (e.g., "lua")
+            char *language;          // Optional script language identifier
             char *code;              // Script code
         } script;
         
@@ -272,7 +272,7 @@ struct KryonASTNode {
         } theme;
         
         struct {
-            char *language;          // Function language ("javascript", "lua", etc.)
+            char *language;          // Optional function language identifier
             char *name;              // Function name
             char **parameters;       // Function parameters
             size_t parameter_count;

@@ -1,38 +1,6 @@
 # Third-party Dependencies CMake Configuration
 
 # =============================================================================
-# LUA SCRIPTING ENGINE
-# =============================================================================
-
-if(KRYON_SCRIPT_LUA)
-    message(STATUS "Building Lua scripting engine")
-    
-    # Lua source files (we'll embed Lua directly)
-    set(LUA_SOURCES
-        lua/lapi.c lua/lcode.c lua/lctype.c lua/ldebug.c lua/ldo.c lua/ldump.c
-        lua/lfunc.c lua/lgc.c lua/llex.c lua/lmem.c lua/lobject.c lua/lopcodes.c
-        lua/lparser.c lua/lstate.c lua/lstring.c lua/ltable.c lua/ltm.c
-        lua/lundump.c lua/lvm.c lua/lzio.c lua/lauxlib.c lua/lbaselib.c
-        lua/lcorolib.c lua/ldblib.c lua/liolib.c lua/lmathlib.c lua/loslib.c
-        lua/lstrlib.c lua/ltablib.c lua/lutf8lib.c lua/loadlib.c lua/linit.c
-    )
-    
-    add_library(lua STATIC ${LUA_SOURCES})
-    target_include_directories(lua PUBLIC lua/)
-    target_compile_definitions(lua PRIVATE LUA_COMPAT_5_3)
-    
-    # Platform-specific configurations
-    if(UNIX)
-        target_compile_definitions(lua PRIVATE LUA_USE_POSIX)
-    endif()
-    
-    if(LINUX)
-        target_compile_definitions(lua PRIVATE LUA_USE_LINUX)
-        target_link_libraries(lua m dl)
-    endif()
-endif()
-
-# =============================================================================
 # QUICKJS JAVASCRIPT ENGINE
 # =============================================================================
 
@@ -184,7 +152,6 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake-modules)
 
 message(STATUS "")
 message(STATUS "=== Third-party Dependencies Summary ===")
-message(STATUS "Lua: ${KRYON_SCRIPT_LUA}")
 message(STATUS "QuickJS: ${KRYON_SCRIPT_JAVASCRIPT}")
 message(STATUS "STB Libraries: ON")
 message(STATUS "Raylib: ${KRYON_RENDERER_RAYLIB}")

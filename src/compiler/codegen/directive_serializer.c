@@ -10,7 +10,6 @@
 #include "memory.h"
 #include "krb_format.h"
 #include "binary_io.h"
-#include "script_vm.h"
 #include "../../shared/krb_schema.h"
 #include "krb_sections.h"
 #include "string_table.h"
@@ -304,59 +303,9 @@ bool kryon_write_function_node(KryonCodeGenerator *codegen, const KryonASTNode *
     header.param_count = (uint16_t)function->data.function_def.parameter_count;
     header.flags = KRB_FUNC_FLAG_NONE;
     
-    // Handle function code - compile Lua to bytecode, store others as source
-    uint32_t code_ref = 0;
-    if (strcmp(function->data.function_def.language, "lua") == 0) {
-        // For Lua, compile to bytecode and store as hex string
-        KryonVM* temp_vm = kryon_vm_create(KRYON_VM_LUA, NULL);
-        if (temp_vm) {
-            // Wrap function code to match preprocessing format
-            char* wrapped_code = kryon_alloc(strlen(function->data.function_def.code) + 
-                                           strlen(function->data.function_def.name) + 50);
-            if (wrapped_code) {
-                snprintf(wrapped_code, strlen(function->data.function_def.code) + 
-                        strlen(function->data.function_def.name) + 50,
-                        "function %s()\n%s\nend", 
-                        function->data.function_def.name, 
-                        function->data.function_def.code);
-                
-                KryonScript script = {0};
-                KryonVMResult result = kryon_vm_compile(temp_vm, wrapped_code, 
-                                                       function->data.function_def.name, &script);
-                
-                if (result == KRYON_VM_SUCCESS && script.data && script.size > 0) {
-                    // Convert bytecode to hex string for storage
-                    char *hex_string = kryon_alloc(script.size * 2 + 1);
-                    if (hex_string) {
-                        for (size_t i = 0; i < script.size; i++) {
-                            sprintf(hex_string + i * 2, "%02x", ((uint8_t*)script.data)[i]);
-                        }
-                        hex_string[script.size * 2] = '\0';
-                        
-                        code_ref = add_string_to_table(codegen, hex_string);
-                        header.flags |= KRB_FUNC_FLAG_BYTECODE;
-                        
-                        kryon_free(hex_string);
-                    }
-                    if (script.data) kryon_free(script.data);
-                } else {
-                    // Fall back to storing source code
-                    code_ref = add_string_to_table(codegen, function->data.function_def.code);
-                }
-            } else {
-                // Fall back to storing source code if wrapped_code allocation failed
-                code_ref = add_string_to_table(codegen, function->data.function_def.code);
-            }
-            kryon_vm_destroy(temp_vm);
-        } else {
-            // Fall back to storing source code
-            code_ref = add_string_to_table(codegen, function->data.function_def.code);
-        }
-    } else {
-        // For other languages, store source code as-is
-        code_ref = add_string_to_table(codegen, function->data.function_def.code);
-    }
-    
+    // Script engines are disabled; store function source as-is
+    uint32_t code_ref = add_string_to_table(codegen, function->data.function_def.code);
+
     header.code_ref = code_ref;
     
     // Write using schema-defined format
@@ -599,7 +548,7 @@ bool kryon_write_onload_directive(KryonCodeGenerator *codegen, const KryonASTNod
     printf("📝 Writing onload directive\n");
     
     // Extract language and code from the script structure
-    const char *language = onload->data.script.language ? onload->data.script.language : "lua";
+    const char *language = onload->data.script.language ? onload->data.script.language : "";
     const char *code = onload->data.script.code;
     
     if (!code) {
@@ -618,55 +567,8 @@ bool kryon_write_onload_directive(KryonCodeGenerator *codegen, const KryonASTNod
     header.param_count = 0;  // onload functions take no parameters
     header.flags = KRB_FUNC_FLAG_ONLOAD;  // Mark as onload function
     
-    // Handle onload code - compile Lua to bytecode
-    uint32_t code_ref = 0;
-    if (language && strcmp(language, "lua") == 0) {
-        // For Lua, compile to bytecode and store as hex string
-        KryonVM* temp_vm = kryon_vm_create(KRYON_VM_LUA, NULL);
-        if (temp_vm) {
-            // Wrap onload code in a function
-            char* wrapped_code = kryon_alloc(strlen(code) + 100);
-            if (wrapped_code) {
-                snprintf(wrapped_code, strlen(code) + 100,
-                        "function __onload__()\n%s\nend", code);
-                
-                KryonScript script = {0};
-                KryonVMResult result = kryon_vm_compile(temp_vm, wrapped_code, 
-                                                       "__onload__", &script);
-                
-                if (result == KRYON_VM_SUCCESS && script.data && script.size > 0) {
-                    // Convert bytecode to hex string for storage
-                    char *hex_string = kryon_alloc(script.size * 2 + 1);
-                    if (hex_string) {
-                        for (size_t i = 0; i < script.size; i++) {
-                            sprintf(hex_string + i * 2, "%02x", ((uint8_t*)script.data)[i]);
-                        }
-                        hex_string[script.size * 2] = '\0';
-                        
-                        code_ref = add_string_to_table(codegen, hex_string);
-                        header.flags |= KRB_FUNC_FLAG_BYTECODE;
-                        
-                        kryon_free(hex_string);
-                    }
-                    if (script.data) kryon_free(script.data);
-                } else {
-                    // Fall back to storing source code
-                    code_ref = add_string_to_table(codegen, code);
-                }
-                kryon_free(wrapped_code);
-            } else {
-                // Fall back to storing source code if wrapped_code allocation failed
-                code_ref = add_string_to_table(codegen, code);
-            }
-            kryon_vm_destroy(temp_vm);
-        } else {
-            // Fall back to storing source code
-            code_ref = add_string_to_table(codegen, code);
-        }
-    } else {
-        // For other languages, store source code as-is
-        code_ref = add_string_to_table(codegen, code);
-    }
+    // Script engines are disabled; store onload source as-is
+    uint32_t code_ref = add_string_to_table(codegen, code);
     
     header.code_ref = code_ref;
     

@@ -4,7 +4,7 @@
  *
  * Implements the Kryon renderer interface to generate static web pages
  * from KRB files. Outputs HTML structure, CSS styles, and JavaScript
- * for interactivity with optional Lua support via fengari.
+ * for interactivity via lightweight runtime helpers.
  */
 
 #ifndef KRYON_WEB_RENDERER_H
@@ -31,7 +31,6 @@ typedef struct {
     char* title;                ///< Page title
     bool inline_styles;         ///< Inline CSS vs external stylesheet
     bool inline_scripts;        ///< Inline JS vs external script
-    bool include_fengari;       ///< Include fengari Lua VM
     bool minify;                ///< Minify output
     bool standalone;            ///< Single-file HTML output
 } WebRendererConfig;

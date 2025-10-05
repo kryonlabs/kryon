@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <ctype.h>
 
 // =============================================================================
 // TIMING UTILITIES
@@ -385,6 +386,181 @@ static const EventPropertyMapping event_property_map[] = {
     { (ElementEventType)0, NULL } // End of list
 };
 
+static bool is_identifier_char(char c) {
+    unsigned char uc = (unsigned char)c;
+    return (c == '_') || isalnum(uc);
+}
+
+static void skip_inline_whitespace(const char **cursor) {
+    if (!cursor || !*cursor) {
+        return;
+    }
+    while (**cursor && isspace((unsigned char)**cursor)) {
+        (*cursor)++;
+    }
+}
+
+static bool parse_string_literal(const char **cursor, char **out_string) {
+    if (!cursor || !*cursor || !out_string) {
+        return false;
+    }
+
+    const char *p = *cursor;
+    if (*p != '"') {
+        return false;
+    }
+    p++; // Skip opening quote
+
+    size_t capacity = 64;
+    size_t length = 0;
+    char *buffer = kryon_alloc(capacity);
+    if (!buffer) {
+        return false;
+    }
+
+    while (*p && *p != '"') {
+        char ch = *p;
+        if (ch == '\\') {
+            p++;
+            if (!*p) {
+                kryon_free(buffer);
+                return false;
+            }
+            switch (*p) {
+                case 'n': ch = '\n'; break;
+                case 't': ch = '\t'; break;
+                case 'r': ch = '\r'; break;
+                case '\\': ch = '\\'; break;
+                case '"': ch = '"'; break;
+                case '0': ch = '\0'; break;
+                default:  ch = *p; break;
+            }
+        }
+
+        if (length + 1 >= capacity) {
+            size_t new_capacity = capacity * 2;
+            char *new_buffer = kryon_realloc(buffer, new_capacity);
+            if (!new_buffer) {
+                kryon_free(buffer);
+                return false;
+            }
+            buffer = new_buffer;
+            capacity = new_capacity;
+        }
+
+        buffer[length++] = ch;
+        p++;
+    }
+
+    if (*p != '"') {
+        kryon_free(buffer);
+        return false;
+    }
+
+    buffer[length] = '\0';
+    p++; // Skip closing quote
+
+    *out_string = buffer;
+    *cursor = p;
+    return true;
+}
+
+static bool execute_print_call(const char **cursor, KryonScriptFunction *function) {
+    if (!cursor || !*cursor) {
+        return false;
+    }
+
+    const char *p = *cursor;
+    p += 5; // skip "print"
+    skip_inline_whitespace(&p);
+
+    if (*p != '(') {
+        return false;
+    }
+    p++; // skip '('
+    skip_inline_whitespace(&p);
+
+    if (*p != '"') {
+        return false;
+    }
+
+    char *message = NULL;
+    if (!parse_string_literal(&p, &message)) {
+        return false;
+    }
+
+    skip_inline_whitespace(&p);
+    if (*p != ')') {
+        kryon_free(message);
+        return false;
+    }
+    p++; // skip ')'
+    skip_inline_whitespace(&p);
+    if (*p == ';') {
+        p++;
+    }
+
+    printf("%s\n", message);
+    fflush(stdout);
+    kryon_free(message);
+
+    *cursor = p;
+    (void)function; // Reserved for future use (e.g., logging context)
+    return true;
+}
+
+static KryonScriptFunction* find_script_function(KryonRuntime* runtime, const char* name) {
+    if (!runtime || !name || name[0] == '\0') {
+        return NULL;
+    }
+
+    for (size_t i = 0; i < runtime->function_count; i++) {
+        KryonScriptFunction *fn = &runtime->script_functions[i];
+        if (fn->name && strcmp(fn->name, name) == 0) {
+            return fn;
+        }
+    }
+    return NULL;
+}
+
+static bool execute_script_function(KryonRuntime* runtime, KryonScriptFunction* function) {
+    (void)runtime; // Placeholder for future runtime-aware features
+    if (!function || !function->code) {
+        return false;
+    }
+
+    const char *p = function->code;
+    bool executed = false;
+
+    while (*p) {
+        if (isspace((unsigned char)*p)) {
+            p++;
+            continue;
+        }
+
+        if (strncmp(p, "print", 5) == 0) {
+            char prev = (p > function->code) ? p[-1] : '\0';
+            char next = p[5];
+            if (!is_identifier_char(prev) && !is_identifier_char(next)) {
+                const char *call_start = p;
+                if (execute_print_call(&p, function)) {
+                    executed = true;
+                    continue;
+                } else {
+                    printf("⚠️ SCRIPT: Failed to execute print statement in function '%s'\n",
+                           function->name ? function->name : "<unnamed>");
+                    p = call_start + 5;
+                    continue;
+                }
+            }
+        }
+
+        p++;
+    }
+
+    return executed;
+}
+
 // =============================================================================
 // GENERIC SCRIPT EVENT HANDLER
 // =============================================================================
@@ -399,64 +575,45 @@ static const EventPropertyMapping event_property_map[] = {
  * register this function in its VTable to become scriptable.
  */
 bool generic_script_event_handler(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
-    if (!runtime || !element || !event || !runtime->script_vm) {
-        printf("❌ SCRIPT HANDLER: Invalid parameters (runtime=%p, element=%p, event=%p, script_vm=%p)\n",
-               (void*)runtime, (void*)element, (void*)event, 
-               runtime ? (void*)runtime->script_vm : NULL);
+    if (!runtime || !element || !event) {
         return false;
     }
 
-
-    // Find the corresponding property name for the received event type
-    const char* handler_prop_name = NULL;
-    for (int i = 0; event_property_map[i].property_name != NULL; i++) {
-        if (event_property_map[i].event_type == event->type) {
-            handler_prop_name = event_property_map[i].property_name;
+    const char* property_name = NULL;
+    for (const EventPropertyMapping* mapping = event_property_map; mapping->property_name; ++mapping) {
+        if (mapping->event_type == event->type) {
+            property_name = mapping->property_name;
             break;
         }
     }
 
-    if (!handler_prop_name) {
-        return false; // This handler doesn't process this event type
-    }
-
-    // Check if the element has a handler defined for this event
-    const char* handler_function_name = get_element_property_string(element, handler_prop_name);
-    if (!handler_function_name || handler_function_name[0] == '\0') {
-        // FALLBACK: If this is a double-click event with no onDoubleClick handler,
-        // try to use the onClick handler instead (common UX expectation for buttons)
-        if (event->type == ELEMENT_EVENT_DOUBLE_CLICKED) {
-            handler_function_name = get_element_property_string(element, "onClick");
-            if (!handler_function_name || handler_function_name[0] == '\0') {
-                return false; // No fallback handler available
-            }
-        } else {
-            return false; // No script function assigned to this event property
-        }
-    }
-
-    // Execute the handler using the script VM
-    KryonVMResult result = kryon_vm_call_function(runtime->script_vm, handler_function_name, element, (const void*)event);
-    
-    if (result != KRYON_VM_SUCCESS) {
-        const char* error = kryon_vm_get_error(runtime->script_vm);
-        printf("❌ SCRIPT ERROR in handler '%s': %s\n",
-                handler_function_name, error ? error : "Unknown VM error");
-        fprintf(stderr, "SCRIPT ERROR in handler '%s': %s\n",
-                handler_function_name, error ? error : "Unknown VM error");
+    if (!property_name) {
         return false;
     }
 
-    printf("✅ SCRIPT HANDLER: Function '%s' executed successfully\n", handler_function_name);
+    const char* handler_name = get_element_property_string_with_runtime(runtime, element, property_name);
+    if (!handler_name || handler_name[0] == '\0') {
+        return false;
+    }
 
-    // The script successfully handled the event.
-    ((ElementEvent*)event)->handled = true;
-    
-    // Invalidate the UI as the script might have changed state
-    runtime->needs_update = true;
-    mark_elements_for_rerender(runtime->root);
+    KryonScriptFunction* function = find_script_function(runtime, handler_name);
+    if (!function) {
+        printf("⚠️ SCRIPT: Handler '%s' not found in runtime\n", handler_name);
+        return false;
+    }
 
-    return true;
+    if (!function->code || function->code[0] == '\0') {
+        printf("⚠️ SCRIPT: Function '%s' has no executable code\n", function->name ? function->name : handler_name);
+        return false;
+    }
+
+    bool handled = execute_script_function(runtime, function);
+    if (!handled) {
+        printf("⚠️ SCRIPT: Function '%s' executed without supported operations\n",
+               function->name ? function->name : handler_name);
+    }
+
+    return handled;
 }
 
 // =============================================================================

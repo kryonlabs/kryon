@@ -14,7 +14,6 @@
 #include "events.h"
 #include "memory.h"
 #include "binary_io.h"
-#include "script_vm.h"
 #include "parser.h"
 #include "../../shared/kryon_mappings.h"
 #include "../../shared/krb_schema.h"
@@ -59,6 +58,54 @@ static void connect_function_handlers(KryonRuntime *runtime, KryonElement *eleme
 static void reprocess_property_bindings(KryonRuntime *runtime, KryonElement *element);
 static char *resolve_template_property(KryonRuntime *runtime, KryonProperty *property);
 static void kryon_free_template_segments(KryonProperty *property);
+
+static bool ensure_script_function_capacity(KryonRuntime* runtime, size_t required_count) {
+    if (!runtime) {
+        return false;
+    }
+
+    if (required_count <= runtime->function_capacity) {
+        return true;
+    }
+
+    size_t new_capacity = runtime->function_capacity ? runtime->function_capacity * 2 : 8;
+    while (new_capacity < required_count) {
+        new_capacity *= 2;
+    }
+
+    KryonScriptFunction* new_storage = kryon_realloc(runtime->script_functions, new_capacity * sizeof(KryonScriptFunction));
+    if (!new_storage) {
+        printf("❌ Failed to allocate script function storage (requested %zu entries)\n", new_capacity);
+        return false;
+    }
+
+    // Zero-initialize new slots to keep cleanup logic simple
+    if (new_capacity > runtime->function_capacity) {
+        size_t old_capacity = runtime->function_capacity;
+        memset(new_storage + old_capacity, 0, (new_capacity - old_capacity) * sizeof(KryonScriptFunction));
+    }
+
+    runtime->script_functions = new_storage;
+    runtime->function_capacity = new_capacity;
+    return true;
+}
+
+static void reset_script_function(KryonScriptFunction* fn) {
+    if (!fn) {
+        return;
+    }
+
+    kryon_free(fn->name);
+    kryon_free(fn->language);
+    kryon_free(fn->code);
+    if (fn->parameters) {
+        for (uint16_t i = 0; i < fn->param_count; i++) {
+            kryon_free(fn->parameters[i]);
+        }
+        kryon_free(fn->parameters);
+    }
+    memset(fn, 0, sizeof(*fn));
+}
 
 // =============================================================================
 // UTILITY FUNCTIONS
@@ -504,7 +551,8 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
         // List all loaded functions for debugging
         printf("\n🔍 DEBUG: Available functions (%zu total):\n", runtime->function_count);
         for (size_t i = 0; i < runtime->function_count; i++) {
-            printf("  [%zu] %s\n", i, runtime->function_names[i]);
+            KryonScriptFunction* fn = &runtime->script_functions[i];
+            printf("  [%zu] %s\n", i, fn->name ? fn->name : "<unnamed>");
         }
         printf("\n");
         
@@ -1744,7 +1792,7 @@ static bool load_function_from_binary(KryonRuntime *runtime, const uint8_t *data
     if (!runtime || !data || !offset) {
         return false;
     }
-    
+
     // Read function header using KRB schema format
     uint32_t func_magic;
     if (!read_uint32_safe(data, offset, size, &func_magic)) {
@@ -1762,7 +1810,7 @@ static bool load_function_from_binary(KryonRuntime *runtime, const uint8_t *data
         printf("DEBUG: Failed to read language reference\n");
         return false;
     }
-    
+
     uint32_t name_ref;
     if (!read_uint32_safe(data, offset, size, &name_ref)) {
         printf("DEBUG: Failed to read name reference\n");
@@ -1778,208 +1826,83 @@ static bool load_function_from_binary(KryonRuntime *runtime, const uint8_t *data
     
     printf("DEBUG: Function header - magic=0x%08X, lang_ref=%u, name_ref=%u, param_count=%u (offset now %zu)\n", 
            func_magic, lang_ref, name_ref, param_count, *offset);
-    
-    // Skip parameter references for now
+
+    // Ensure capacity for the new function entry
+    size_t function_index = runtime->function_count;
+    if (!ensure_script_function_capacity(runtime, function_index + 1)) {
+        printf("❌ Failed to reserve slot for function index %zu\n", function_index);
+        return false;
+    }
+
+    KryonScriptFunction* function = &runtime->script_functions[function_index];
+    memset(function, 0, sizeof(*function));
+    function->param_count = param_count;
+
+    const char* language_str = (lang_ref < string_count && string_table && string_table[lang_ref]) ? string_table[lang_ref] : "";
+    const char* name_str = (name_ref < string_count && string_table && string_table[name_ref]) ? string_table[name_ref] : NULL;
+
+    function->language = language_str ? kryon_strdup(language_str) : NULL;
+    function->name = name_str ? kryon_strdup(name_str) : kryon_strdup("anonymous");
+
+    if (param_count > 0) {
+        function->parameters = kryon_alloc(param_count * sizeof(char*));
+        if (!function->parameters) {
+            printf("❌ Failed to allocate parameter list for function '%s' (%u params)\n", function->name ? function->name : "<null>", param_count);
+            reset_script_function(function);
+            return false;
+        }
+        memset(function->parameters, 0, param_count * sizeof(char*));
+    }
+
     for (uint16_t i = 0; i < param_count; i++) {
         uint32_t param_ref;
         if (!read_uint32_safe(data, offset, size, &param_ref)) {
             printf("DEBUG: Failed to read parameter reference %u\n", i);
+            reset_script_function(function);
             return false;
         }
+
+        if (function->parameters) {
+            const char* param_name = (param_ref < string_count && string_table && string_table[param_ref]) ? string_table[param_ref] : NULL;
+            function->parameters[i] = param_name ? kryon_strdup(param_name) : kryon_strdup("param");
+        }
     }
-    
+
     // Read flags field (KRB schema format)
     uint16_t flags;
     if (!read_uint16_safe(data, offset, size, &flags)) {
         printf("DEBUG: Failed to read function flags\n");
+        reset_script_function(function);
         return false;
     }
     printf("DEBUG: Read flags=0x%04X at offset %zu\n", flags, *offset - 2);
-    
-    // Read function code reference (string table index - contains bytecode)
+
+    // Read function code reference (string table index - contains script source)
     uint32_t code_ref;
     printf("DEBUG: About to read code_ref at offset %zu\n", *offset);
-    printf("DEBUG: Raw bytes at offset %zu: %02X %02X %02X %02X\n", *offset, 
-           data[*offset], data[*offset+1], data[*offset+2], data[*offset+3]);
     if (!read_uint32_safe(data, offset, size, &code_ref)) {
         printf("DEBUG: Failed to read code reference\n");
+        reset_script_function(function);
         return false;
     }
     printf("DEBUG: Read code_ref=%u at offset %zu\n", code_ref, *offset - 4);
-    
-    // Get strings from string table (1-based indices)
-    printf("DEBUG: String refs: lang_ref=%u, name_ref=%u, code_ref=%u, flags=0x%04X (string_count=%u)\n", 
-           lang_ref, name_ref, code_ref, flags, string_count);
-    
-    const char* lang_str = (lang_ref < string_count) ? string_table[lang_ref] : NULL;
-    const char* name_str = (name_ref < string_count) ? string_table[name_ref] : NULL;
-    const char* code_str = (code_ref < string_count) ? string_table[code_ref] : NULL;
-    
-    printf("DEBUG: Found function: lang='%s', name='%s', params=%u\n",
-           lang_str ? lang_str : "(null)",
-           name_str ? name_str : "(null)", 
-           param_count);
-    
-    printf("DEBUG: Checking if this is a Lua function: lang_str=%s, code_str=%s\n",
-           lang_str ? lang_str : "(null)",
-           code_str ? "(has code)" : "(null)");
-    
-    // Check if this is a Lua function
-    if (lang_str && strcmp(lang_str, "lua") == 0 && code_str) {
-        // Create Lua VM if not exists
-        if (!runtime->script_vm) {
-            printf("DEBUG: Creating Lua VM for runtime\n");
-            runtime->script_vm = kryon_vm_create(KRYON_VM_LUA, NULL);
-            if (!runtime->script_vm) {
-                printf("ERROR: Failed to create Lua VM\n");
-                return false;
-            }
-        }
-        
-        // Convert hex string back to binary bytecode
-        size_t hex_len = strlen(code_str);
-        size_t bytecode_len = hex_len / 2;
-        uint8_t* bytecode = kryon_alloc(bytecode_len);
-        if (!bytecode) {
-            printf("ERROR: Failed to allocate bytecode buffer\n");
-            return false;
-        }
-        
-        // Convert hex string to binary
-        for (size_t i = 0; i < bytecode_len; i++) {
-            char hex_byte[3] = {code_str[i*2], code_str[i*2 + 1], '\0'};
-            bytecode[i] = (uint8_t)strtoul(hex_byte, NULL, 16);
-        }
-        
-        printf("DEBUG: Converted %zu hex chars to %zu bytes of bytecode\n", hex_len, bytecode_len);
-        printf("DEBUG: About to load bytecode into Lua VM for function '%s'\n", name_str ? name_str : "(null)");
-        
-        // Load bytecode into Lua VM
-        char* source_name_copy = name_str ? kryon_alloc(strlen(name_str) + 1) : NULL;
-        if (source_name_copy && name_str) {
-            strcpy(source_name_copy, name_str);
-        }
-        
-        KryonScript script = {
-            .vm_type = KRYON_VM_LUA,
-            .format = KRYON_SCRIPT_BYTECODE,
-            .data = bytecode,
-            .size = bytecode_len,
-            .source_name = source_name_copy,
-            .entry_point = NULL
-        };
-        
-        KryonVMResult result = kryon_vm_load_script(runtime->script_vm, &script);
-        printf("DEBUG: kryon_vm_load_script returned result=%d\n", result);
-        
-        // Clean up bytecode buffer
-        kryon_free(bytecode);
-        kryon_free(source_name_copy);
-        
-        if (result != KRYON_VM_SUCCESS) {
-            printf("ERROR: Failed to load Lua bytecode for function '%s' (result=%d)\n", name_str, result);
-            const char* error = kryon_vm_get_error(runtime->script_vm);
-            if (error) {
-                printf("ERROR: %s\n", error);
-            }
-            return false;
-        }
-        
-        printf("✅ Successfully loaded Lua function '%s' (%zu bytes of bytecode)\n", name_str, bytecode_len);
-        
-        // Add to runtime's function registry for debugging
-        if (!runtime->function_names) {
-            runtime->function_names = kryon_alloc(16 * sizeof(char*));
-            runtime->function_capacity = 16;
-            runtime->function_count = 0;
-        }
-        
-        // Initialize variable registry if needed
-        if (!runtime->variable_names) {
-            runtime->variable_names = kryon_alloc(16 * sizeof(char*));
-            runtime->variable_values = kryon_alloc(16 * sizeof(char*));
-            runtime->variable_capacity = 16;
-            runtime->variable_count = 0;
-        }
-        
-        if (runtime->function_count < runtime->function_capacity && name_str) {
-            runtime->function_names[runtime->function_count] = kryon_alloc(strlen(name_str) + 1);
-            if (runtime->function_names[runtime->function_count]) {
-                strcpy(runtime->function_names[runtime->function_count], name_str);
-                runtime->function_count++;
-            }
-        }
-        
-        // Check if this is an onload function and execute it immediately
-        if ((flags & KRB_FUNC_FLAG_ONLOAD) && name_str && strcmp(name_str, "__onload__") == 0) {
-            printf("🚀 Executing onload function '%s'\n", name_str);
-            KryonVMResult exec_result = kryon_vm_call_function(runtime->script_vm, name_str, 0, NULL);
-            if (exec_result == KRYON_VM_SUCCESS) {
-                printf("✅ Onload function executed successfully\n");
-            } else {
-                printf("❌ Failed to execute onload function (result=%d)\n", exec_result);
-                const char* error = kryon_vm_get_error(runtime->script_vm);
-                if (error) {
-                    printf("ERROR: %s\n", error);
-                }
-            }
-        }
+
+    const char* code_str = (code_ref < string_count && string_table && string_table[code_ref]) ? string_table[code_ref] : NULL;
+    function->code = code_str ? kryon_strdup(code_str) : kryon_strdup("");
+
+    if (!function->name || !function->language || !function->code) {
+        printf("❌ Failed to duplicate strings for function (name_ref=%u, code_ref=%u)\n", name_ref, code_ref);
+        reset_script_function(function);
+        return false;
     }
-    
+
+    runtime->function_count++;
     return true;
 }
 
-/**
- * Connect Lua function handlers to element event properties
- */
 static void connect_function_handlers(KryonRuntime *runtime, KryonElement *element) {
-    if (!runtime || !element || !runtime->script_vm) {
-        return;
-    }
-    
-    // Look for function properties (onClick, onHover, etc.)
-    for (size_t i = 0; i < element->property_count; i++) {
-        KryonProperty *prop = element->properties[i];
-        if (!prop || prop->type != KRYON_RUNTIME_PROP_FUNCTION) {
-            continue;
-        }
-        
-        // Check if this is an event handler property
-        if (prop->name && strncmp(prop->name, "on", 2) == 0 && prop->value.string_value) {
-            const char* event_name = prop->name + 2; // Skip "on" prefix
-            const char* function_name = prop->value.string_value;
-            
-            printf("DEBUG: Connecting event handler: %s -> %s\n", prop->name, function_name);
-            
-            // Determine event type from property name
-            KryonEventType event_type = 0;
-            if (strcmp(prop->name, "onClick") == 0) {
-                event_type = KRYON_EVENT_MOUSE_BUTTON_DOWN;
-            } else if (strcmp(prop->name, "onHover") == 0) {
-                event_type = KRYON_EVENT_MOUSE_MOVED;
-            } else if (strcmp(prop->name, "onKeyDown") == 0) {
-                event_type = KRYON_EVENT_KEY_DOWN;
-            } else if (strcmp(prop->name, "onKeyUp") == 0) {
-                event_type = KRYON_EVENT_KEY_UP;
-            }
-            
-            if (event_type != 0) {
-                // Create a wrapper event handler that calls the Lua function
-                // For now, just log that we would connect it
-                printf("DEBUG: Would register %s handler for Lua function '%s'\n", 
-                       prop->name, function_name);
-                
-                // TODO: Create actual event handler that:
-                // 1. Receives the event
-                // 2. Calls kryon_vm_call_function(runtime->script_vm, function_name, ...)
-                // 3. Passes element reference and event data to Lua
-                
-                // Example pseudo-code:
-                // kryon_element_add_event_handler(element, event_type, 
-                //                                lua_event_wrapper, function_name);
-            }
-        }
-    }
+    (void)runtime;
+    (void)element;
 }
 
 // =============================================================================

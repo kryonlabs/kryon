@@ -27,8 +27,8 @@ src/cli/main.c -> src/cli/run/run_command.c -> src/runtime/core/runtime.c -> src
     -> src/events/events.c
     -> src/runtime/core/runtime.c
     -> src/runtime/behavior_integration.c
-    -> src/runtime/script/expression_evaluator.c
-    -> src/script-engines/lua/lua_engine.c
+    -> src/runtime/expression_evaluator.c
+    -> (custom scripting engine pending)
     -> src/runtime/elements/elements.c
     -> src/renderers/raylib/raylib_renderer.c
 [RENDER LOOP END]

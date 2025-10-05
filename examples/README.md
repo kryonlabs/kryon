@@ -6,7 +6,7 @@ This directory contains example applications written in the Kryon language (.kry
 
 ### Basic Examples
 - **`hello-world.kry`** - Simple text display with container styling
-- **`button.kry`** - Interactive button with Lua event handling
+- **`button.kry`** - Interactive button with placeholder event hooks
 - **`text_input.kry`** - Text input field with validation
 - **`dropdown.kry`** - Dropdown/select element
 
@@ -66,7 +66,7 @@ style "base" {
 }
 
 // Script functions (optional)
-function "lua" handleClick() {
+function handleClick() {
     print("Button clicked!")
 }
 

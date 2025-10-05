@@ -89,12 +89,6 @@ add_subdirectory(src/events)
 add_subdirectory(src/compiler)
 
 
-# =============================================================================
-# SCRIPT ENGINES MODULE (for Lua support)
-# =============================================================================
-
-add_subdirectory(src/script-engines)
-
 add_library(kryon_minimal_compiler STATIC
     $<TARGET_OBJECTS:kryon_compiler>
     src/core/error_system.c

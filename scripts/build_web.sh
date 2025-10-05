@@ -94,16 +94,8 @@ build_web_example() {
     fi
     print_success "  Compiled successfully"
 
-    # Step 2: Check if example uses Lua scripts
-    print_status "  2️⃣  Checking for Lua scripts..."
-
-    local has_lua_scripts=false
-    if grep -q "@function \"lua\"" "$kry_file"; then
-        has_lua_scripts=true
-        print_status "  Found Lua scripts - will include fengari"
-    else
-        print_status "  No Lua scripts found - skipping fengari"
-    fi
+    # Step 2: Scripting currently disabled for web builds
+    print_status "  2️⃣  Scripting support disabled for web targets"
 
     # Step 3: Generate HTML/CSS/JS from KRB (using web renderer)
     # NOTE: This requires web renderer integration in the runtime
@@ -114,20 +106,7 @@ build_web_example() {
     # Copy runtime JavaScript
     cp "$PROJECT_ROOT/web/runtime/kryon-runtime.js" "$output_dir/runtime.js"
 
-    # Create index.html with conditional fengari loading
-    if [ "$has_lua_scripts" = true ]; then
-        local fengari_script='<!-- Fengari Lua VM -->
-    <script src="https://cdn.jsdelivr.net/npm/fengari-web@0.1.4/dist/fengari-web.js"></script>'
-        local lua_scripts='<!-- Lua Scripts -->
-    <script type="text/lua">
-        -- Lua scripts from the KRB file will be injected here
-        print("🐚 Lua VM initialized for '"$example_name"'")
-    </script>'
-    else
-        local fengari_script='<!-- No Lua scripts - fengari not included -->'
-        local lua_scripts=''
-    fi
-
+    # Create index.html with conditional placeholder scripting loading
     cat > "$output_dir/index.html" << EOF
 <!DOCTYPE html>
 <html lang="en">
@@ -172,12 +151,8 @@ build_web_example() {
         <p>KRB file available at: <code>$example_name.krb</code></p>
     </div>
 
-    $fengari_script
-
     <!-- Kryon Runtime -->
     <script src="runtime.js"></script>
-
-    $lua_scripts
 </body>
 </html>
 EOF

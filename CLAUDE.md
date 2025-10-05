@@ -114,7 +114,7 @@ NEVER proactively create documentation files (*.md) or README files. Only create
 
 ### **Available Examples**
 - `hello-world.kry` - Basic text display
-- `button.kry` - Interactive button with Lua script
+- `button.kry` - Interactive button demonstrating runtime event hooks
 - `text_input.kry` - Text input field
 - `dropdown.kry` - Dropdown selection
 - `column_alignments.kry` - Column layout examples

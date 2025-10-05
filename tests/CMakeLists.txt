@@ -11,7 +11,6 @@ target_link_libraries(test_for_directive
     kryon_runtime
     kryon_minimal_memory
     kryon_events
-    kryon_script_engines
     kryon_shared
 )
 

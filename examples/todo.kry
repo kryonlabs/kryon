@@ -6,7 +6,7 @@ metadata {
 var todos = ["Test todo", "Another item"]
 var newTodo = ""
 
-function "lua" addTodo() {
+function addTodo() {
     if newTodo and newTodo ~= "" then
         print("Adding todo: " .. newTodo)
         table.insert(todos, newTodo)

@@ -22,7 +22,6 @@ kryon-c/
 │   ├── core/               # Memory, containers, utilities
 │   ├── events/             # Event system
 │   ├── renderers/          # Raylib, SDL2, HTML renderers
-│   ├── script-engines/     # Lua scripting support
 │   └── shared/             # KRB format utilities
 ├── examples/               # KRY example files
 ├── scripts/                # Build and run scripts

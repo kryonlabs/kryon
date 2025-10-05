@@ -158,9 +158,6 @@ endif()
 # Link with cJSON for metadata processing
 target_link_libraries(kryon_compiler PRIVATE cjson)
 
-# Link with script engines for Lua bytecode compilation during codegen
-target_link_libraries(kryon_compiler PRIVATE kryon_script_engines)
-
 # Platform-specific dependencies
 if(WIN32)
     target_link_libraries(kryon_compiler PRIVATE ws2_32)

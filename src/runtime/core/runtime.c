@@ -205,15 +205,6 @@ KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config) {
         return NULL;
     }
     
-    // Initialize script VM (prefer Lua if available)
-    runtime->script_vm = NULL;
-    if (kryon_vm_is_available(KRYON_VM_LUA)) {
-        runtime->script_vm = kryon_vm_create(KRYON_VM_LUA, NULL);
-        if (runtime->script_vm) {
-            runtime->script_vm->runtime = runtime; // Set runtime reference for variable access
-        }
-    }
-    
     // Initialize navigation manager only if needed (when there are link elements)
     runtime->navigation_manager = NULL; // Will be created lazily when first link is encountered
     
@@ -275,13 +266,23 @@ void kryon_runtime_clear_all_content(KryonRuntime *runtime) {
     }
     
     // Clear functions
-    if (runtime->function_names) {
+    if (runtime->script_functions) {
         for (size_t i = 0; i < runtime->function_count; i++) {
-            kryon_free(runtime->function_names[i]);
+            KryonScriptFunction *fn = &runtime->script_functions[i];
+            kryon_free(fn->name);
+            kryon_free(fn->language);
+            kryon_free(fn->code);
+            if (fn->parameters) {
+                for (uint16_t p = 0; p < fn->param_count; p++) {
+                    kryon_free(fn->parameters[p]);
+                }
+                kryon_free(fn->parameters);
+            }
         }
-        kryon_free(runtime->function_names);
-        runtime->function_names = NULL;
+        kryon_free(runtime->script_functions);
+        runtime->script_functions = NULL;
         runtime->function_count = 0;
+        runtime->function_capacity = 0;
     }
     
     // Clear components
@@ -350,11 +351,6 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
     }
     
     // Destroy script VM (with null check)
-    if (runtime->script_vm) {
-        kryon_vm_destroy(runtime->script_vm);
-        runtime->script_vm = NULL;
-    }
-    
     // Destroy navigation manager (with null check)
     if (runtime->navigation_manager) {
         kryon_navigation_destroy(runtime->navigation_manager);
@@ -821,10 +817,6 @@ void kryon_element_destroy(KryonRuntime *runtime, KryonElement *element) {
     }
     
     // Notify the script VM that this element is gone
-    if (runtime->script_vm) {
-        kryon_vm_notify_element_destroyed(runtime->script_vm, element);
-    }
-    
     // Set state to destroyed
     element->state = KRYON_ELEMENT_STATE_DESTROYED;
     

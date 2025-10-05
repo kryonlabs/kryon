@@ -3,7 +3,7 @@ metadata {
     description = "Basic checkbox test with literal values"
 }
 
-function "lua" testClick() {
+function testClick() {
     print("Checkbox clicked!")
 }
 

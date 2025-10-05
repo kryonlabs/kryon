@@ -487,11 +487,11 @@ Button {
 
 ### Function Definitions
 ```kry
-function "javascript" handleClick() {
+function handleClick() {
     console.log("Button clicked!");
 }
 
-function "lua" calculateTotal(items) {
+function calculateTotal(items) {
     local total = 0
     for i, item in ipairs(items) do
         total = total + item.price

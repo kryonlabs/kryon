@@ -5,10 +5,10 @@ metadata {
 
 var files = []
 
-function "lua" loadExampleFiles() {
+function loadExampleFiles() {
     local examples = {}
     
-    -- Use native Lua to list files in current directory (where index.kry is located)
+    -- Use the scripting runtime to list files in current directory (where index.kry is located)
     local handle = io.popen("ls *.kry 2>/dev/null")
     if handle then
         for line in handle:lines() do
@@ -32,7 +32,7 @@ function "lua" loadExampleFiles() {
 }
 
 component BackButton() {
-    function "lua" navigateBack() {
+    function navigateBack() {
         kryon.navigation.navigateTo("index.kry")
         print("🔙 Navigating back to examples index")
     }
@@ -51,7 +51,7 @@ component BackButton() {
     }
 }
 
-onload "lua" {
+onload {
     files = loadExampleFiles()
 }
 

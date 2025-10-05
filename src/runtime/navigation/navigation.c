@@ -484,41 +484,6 @@ static void inject_pending_overlay(KryonNavigationManager* nav_manager) {
     
     printf("🔀 Button properties created: %zu properties (text, colors, styling)\n", element->property_count);
     
-    // Load the overlay component's functions into the VM
-    if (nav_manager->runtime && nav_manager->runtime->script_vm && overlay_component) {
-        printf("🔄 Loading overlay component functions into VM\n");
-        
-        // Load each function from the overlay component
-        for (size_t i = 0; i < overlay_component->function_count; i++) {
-            if (overlay_component->functions) {
-                KryonComponentFunction* func = &overlay_component->functions[i];
-                if (func->name && func->bytecode && func->language) {
-                    printf("📝 Loading overlay function: %s (%s)\n", func->name, func->language);
-                    
-                    // Check if it's a Lua function
-                    if (strcmp(func->language, "lua") == 0) {
-                        // Convert bytecode to string for execution
-                        char* code_str = kryon_malloc(func->bytecode_size + 1);
-                        if (code_str) {
-                            memcpy(code_str, func->bytecode, func->bytecode_size);
-                            code_str[func->bytecode_size] = '\0';
-                            
-                            KryonVMResult result = kryon_vm_execute_string(nav_manager->runtime->script_vm, code_str);
-                            if (result == KRYON_VM_SUCCESS) {
-                                printf("✅ Loaded overlay function '%s' into VM\n", func->name);
-                            } else {
-                                printf("❌ Failed to load overlay function '%s': %s\n", 
-                                       func->name, kryon_vm_get_error(nav_manager->runtime->script_vm));
-                            }
-                            
-                            kryon_free(code_str);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
     printf("🔀 Button element configured: %dx%d with posX=20, posY=20\n", 
            (int)element->width, (int)element->height);
     

@@ -149,7 +149,7 @@ static void tabgroup_render(KryonRuntime* runtime, KryonElement* element, KryonR
     // Ensure state is initialized
     TabGroupState* state = ensure_tabgroup_state(element);
 
-    // Sync with selectedIndex property ONLY if it changed externally (e.g. from Lua script)
+    // Sync with selectedIndex property ONLY if it changed externally (e.g. from script updates)
     // We track last_synced_value to distinguish "we changed it" vs "external change"
     if (state && runtime) {
         const char* selected_index_str = get_element_property_string_with_runtime(runtime, element, "selectedIndex");

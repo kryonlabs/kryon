@@ -5,8 +5,8 @@ style "base" {
     borderWidth = 1
 }
 
-function "lua" handleButtonClick() {
-    print("🎯 Button clicked! Hello from Lua script!")
+function handleButtonClick() {
+    print("🎯 Button clicked! Hello from the scripting runtime!")
 }
 
 App {

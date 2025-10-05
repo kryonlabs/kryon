@@ -5,7 +5,7 @@ metadata {
 
 var showMessage = true
 
-function "lua" toggleMessage() {
+function toggleMessage() {
     showMessage = not showMessage
     print("Toggled showMessage to: " .. tostring(showMessage))
 }

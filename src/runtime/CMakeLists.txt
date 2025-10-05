@@ -223,10 +223,6 @@ if(TARGET kryon_events)
 endif()
 
 # Link with script engines module
-if(TARGET kryon_script_engines)
-    target_link_libraries(kryon_runtime PRIVATE kryon_script_engines)
-endif()
-
 # Platform-specific dependencies
 if(WIN32)
     target_link_libraries(kryon_runtime PRIVATE 

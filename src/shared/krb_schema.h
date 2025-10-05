@@ -48,7 +48,7 @@ extern "C" {
  */
 typedef struct {
     uint32_t magic;           // KRB_MAGIC_FUNC (0x46554E43)
-    uint32_t lang_ref;        // String table index for language ("lua", "js", etc.)
+    uint32_t lang_ref;        // String table index for language identifier (optional)
     uint32_t name_ref;        // String table index for function name
     uint16_t param_count;     // Number of parameters
     // uint32_t param_refs[param_count];  // String table indices for parameter names
