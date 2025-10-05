@@ -1,10 +1,10 @@
 @metadata {
-    title: "Simple Todo App"
-    description: "A simple todo application demonstrating @for directive with reactive variables"
+    title = "Simple Todo App"
+    description = "A simple todo application demonstrating @for directive with reactive variables"
 }
 
-@var todos: ["Test todo", "Another item"]
-@var newTodo: ""
+@var todos = ["Test todo", "Another item"]
+@var newTodo = ""
 
 @function "lua" addTodo() {
     if newTodo and newTodo ~= "" then
@@ -16,57 +16,57 @@
 
     
 Column {
-    gap: 20
-    padding: 30
-    backgroundColor: "white"
+    gap = 20
+    padding = 30
+    backgroundColor = "white"
     
     Text {
-        text: "Simple Todo App"
-        fontSize: 28
-        color: "#333333"
-        textAlign: "center"
+        text = "Simple Todo App"
+        fontSize = 28
+        color = "#333333"
+        textAlign = "center"
     }
     
     Row {
-        gap: 10
+        gap = 10
         
         TextInput {
-            placeholder: "Enter a new todo..."
-            value: newTodo
-            width: 400
-            height: 40
-            backgroundColor: "#ffffff"
-            borderColor: "#cccccc"
-            borderWidth: 1
-            borderRadius: 4
-            padding: 10
+            placeholder = "Enter a new todo..."
+            value = newTodo
+            width = 400
+            height = 40
+            backgroundColor = "#ffffff"
+            borderColor = "#cccccc"
+            borderWidth = 1
+            borderRadius = 4
+            padding = 10
         }
         
         Button {
-            text: "Add"
-            width: 80
-            height: 40
-            backgroundColor: "#007bff"
-            color: "#ffffff"
-            borderRadius: 4
-            onClick: "addTodo"
+            text = "Add"
+            width = 80
+            height = 40
+            backgroundColor = "#007bff"
+            color = "#ffffff"
+            borderRadius = 4
+            onClick = "addTodo"
         }
     }
     
     Column {
-        gap: 5
+        gap = 5
         
         Text {
-            text: "Todo List:"
-            fontSize: 18
-            color: "#333333"
+            text = "Todo List:"
+            fontSize = 18
+            color = "#333333"
         }
         
         @for todo in todos {
             Text {
-                text: "- ${todo}"
-                fontSize: 16
-                color: "#333333"
+                text = "- ${todo}"
+                fontSize = 16
+                color = "#333333"
             }
         }
     }

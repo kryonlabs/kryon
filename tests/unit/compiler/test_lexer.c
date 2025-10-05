@@ -46,7 +46,7 @@ static int tests_passed = 0;
 
 // Test basic tokenization
 TEST(basic_tokenization) {
-    const char *source = "Button { text: \"Hello\" }";
+    const char *source = "Button { text = \"Hello\" }";
     
     KryonLexer *lexer = kryon_lexer_create(source, 0, "test.kry", NULL);
     ASSERT(lexer != NULL);
@@ -65,7 +65,7 @@ TEST(basic_tokenization) {
     ASSERT(tokens[2].type == KRYON_TOKEN_IDENTIFIER);
     ASSERT(kryon_token_lexeme_equals(&tokens[2], "text"));
     
-    ASSERT(tokens[3].type == KRYON_TOKEN_COLON);
+    ASSERT(tokens[3].type == KRYON_TOKEN_ASSIGN);
     
     ASSERT(tokens[4].type == KRYON_TOKEN_STRING);
     ASSERT(tokens[4].has_value);
@@ -186,16 +186,16 @@ TEST(string_escapes) {
 TEST(complete_kry_example) {
     const char *source = 
         "@style \"button_primary\" {\n"
-        "    backgroundColor: \"#0066cc\"\n"
-        "    color: \"white\"\n"
+        "    backgroundColor = \"#0066cc\"\n"
+        "    color = \"white\"\n"
         "}\n"
         "\n"
         "Button {\n"
-        "    text: \"Click me\"\n"
-        "    class: \"button_primary\"\n"
-        "    onClick: \"handle_click\"\n"
-        "    enabled: true\n"
-        "    count: $counter\n"
+        "    text = \"Click me\"\n"
+        "    class = \"button_primary\"\n"
+        "    onClick = \"handle_click\"\n"
+        "    enabled = true\n"
+        "    count = $counter\n"
         "}\n";
     
     KryonLexer *lexer = kryon_lexer_create(source, 0, "test.kry", NULL);

@@ -1,21 +1,21 @@
 @metadata {
-    title: "Hello World Example"
-    version: "1.0.0"
+    title = "Hello World Example"
+    version = "1.0.0"
 }
 
 Container { 
-    posX: 200
-    posY: 100
-    width: 200
-    height: 100
-    backgroundColor: "#191970FF"
-    borderColor: "#0099FFFF"
-    borderWidth: 1
-    padding: 20px
-    contentAlignment: "center"
+    posX = 200
+    posY = 100
+    width = 200
+    height = 100
+    backgroundColor = "#191970FF"
+    borderColor = "#0099FFFF"
+    borderWidth = 1
+    padding = 20px
+    contentAlignment = "center"
 
     Text {
-        text: "Hello World"
-        color: "yellow"
+        text = "Hello World"
+        color = "yellow"
     }
 }

@@ -1,57 +1,57 @@
-@const containerWidth: 800
-@const baseHeight: 60
-@const margin: 10
-@const isEnabled: true
+@const containerWidth = 800
+@const baseHeight = 60
+@const margin = 10
+@const isEnabled = true
 
 App {
-    windowWidth: containerWidth
-    windowHeight: 400
-    windowTitle: "Expression Evaluation Test"
-    backgroundColor: "#f0f0f0"
+    windowWidth = containerWidth
+    windowHeight = 400
+    windowTitle = "Expression Evaluation Test"
+    backgroundColor = "#f0f0f0"
 
     Column {
-        gap: 20
-        padding: margin
+        gap = 20
+        padding = margin
 
         Text {
-            text: "Testing Arithmetic Expressions"
-            fontSize: 18
-            fontWeight: "bold"
+            text = "Testing Arithmetic Expressions"
+            fontSize = 18
+            fontWeight = "bold"
         }
 
         Container {
-            width: containerWidth - 40
-            height: baseHeight + 20
-            backgroundColor: "#e0e0e0"
-            padding: margin
+            width = containerWidth - 40
+            height = baseHeight + 20
+            backgroundColor = "#e0e0e0"
+            padding = margin
 
             Text {
-                text: "Width calculated as: containerWidth - 40"
-                fontSize: 14
+                text = "Width calculated as: containerWidth - 40"
+                fontSize = 14
             }
         }
 
         Container {
-            width: containerWidth / 2
-            height: baseHeight * 2
-            backgroundColor: "#d0d0d0"
-            padding: margin + 5
+            width = containerWidth / 2
+            height = baseHeight * 2
+            backgroundColor = "#d0d0d0"
+            padding = margin + 5
 
             Text {
-                text: "Width: containerWidth / 2, Height: baseHeight * 2"
-                fontSize: 14
+                text = "Width: containerWidth / 2, Height = baseHeight * 2"
+                fontSize = 14
             }
         }
 
         Container {
-            width: 300
-            height: baseHeight
-            backgroundColor: isEnabled ? "#90EE90" : "#FFB6C1"
-            padding: margin
+            width = 300
+            height = baseHeight
+            backgroundColor = isEnabled ? "#90EE90" : "#FFB6C1"
+            padding = margin
 
             Text {
-                text: isEnabled ? "Enabled (green)" : "Disabled (pink)"
-                fontSize: 14
+                text = isEnabled ? "Enabled (green)" : "Disabled (pink)"
+                fontSize = 14
             }
         }
     }

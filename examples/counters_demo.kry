@@ -1,5 +1,5 @@
 // Define a reusable Counter component
-@component Counter(value: 0) {
+@component Counter(value = 0) {
 
     @function "lua" increment() {
         self.value = self.value + 1
@@ -10,21 +10,21 @@
     }
 
     Row {
-        mainAxisAlignment: "center"
-        gap: 32
+        mainAxisAlignment = "center"
+        gap = 32
 
-        Button { text: "-", onClick: "decrement" }
-        Text { text: value, fontSize: 32 }
-        Button { text: "+", onClick: "increment" }
+        Button { text = "-", onClick = "decrement" }
+        Text { text = value, fontSize = 32 }
+        Button { text = "+", onClick = "increment" }
     }
 }
 
 // --- Now, use your component in the main App ---
 Column {
-    mainAxisAlignment: "center"
-    gap: 20
+    mainAxisAlignment = "center"
+    gap = 20
 
-    Counter { value: 5 }
+    Counter { value = 5 }
 
     Counter { }
 

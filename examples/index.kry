@@ -1,9 +1,9 @@
 @metadata {
-    title: "Kryon Examples Browser"
-    description: "Browse and navigate through Kryon framework examples"
+    title = "Kryon Examples Browser"
+    description = "Browse and navigate through Kryon framework examples"
 }
 
-@var files: []
+@var files = []
 
 @function "lua" loadExampleFiles() {
     local examples = {}
@@ -24,7 +24,7 @@
                 })
             end
         end
-        handle:close()
+        handle = close()
     end
     
     table.sort(examples, function(a, b) return a.title < b.title end)
@@ -38,16 +38,16 @@
     }
     
     Button {
-        text: "<-- Back to Examples"
-        posX: 20
-        posY: 20
-        width: 150
-        height: 40
-        backgroundColor: "#404080"
-        color: "#FFFFFF"
-        borderRadius: 8
-        zIndex: 1000
-        onClick: "navigateBack"
+        text = "<-- Back to Examples"
+        posX = 20
+        posY = 20
+        width = 150
+        height = 40
+        backgroundColor = "#404080"
+        color = "#FFFFFF"
+        borderRadius = 8
+        zIndex = 1000
+        onClick = "navigateBack"
     }
 }
 
@@ -56,43 +56,43 @@
 }
 
 App {
-    windowTitle: "Kryon Examples Browser"
-    windowWidth: 800
-    windowHeight: 600
-    backgroundColor: "#1a1a1a"
+    windowTitle = "Kryon Examples Browser"
+    windowWidth = 800
+    windowHeight = 600
+    backgroundColor = "#1a1a1a"
     
     Column {
-        gap: 20
-        padding: 30
+        gap = 20
+        padding = 30
         
         Text {
-            text: "Kryon Examples"
-            fontSize: 32
-            color: "#FF9900"
+            text = "Kryon Examples"
+            fontSize = 32
+            color = "#FF9900"
         }
         
         Text {
-            text: "Click on any example to explore Kryon framework features"
-            fontSize: 16
-            color: "#CCCCCC"
+            text = "Click on any example to explore Kryon framework features"
+            fontSize = 16
+            color = "#CCCCCC"
         }
         
         Column {
-            gap: 10
+            gap = 10
             
             @for example in files {
                 Link {
-                    to: example.file
-                    text: example.title
-                    overlay: "BackButton"
+                    to = example.file
+                    text = example.title
+                    overlay = "BackButton"
                 }
             }
         }
         
         Text {
-            text: "Built with Kryon Framework"
-            fontSize: 12
-            color: "#666666"
+            text = "Built with Kryon Framework"
+            fontSize = 12
+            color = "#666666"
         }
     }
 }

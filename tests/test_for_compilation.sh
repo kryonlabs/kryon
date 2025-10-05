@@ -49,15 +49,15 @@ test_basic_for() {
     
     cat > "$TEST_DIR/basic_for.kry" << 'EOF'
 @metadata {
-    title: "Basic For Test"
+    title = "Basic For Test"
 }
 
-@var fruits: ["apple", "banana", "cherry"]
+@var fruits = ["apple", "banana", "cherry"]
 
 Column {
     @for fruit in fruits {
         Text {
-            text: fruit
+            text = fruit
         }
     }
 }
@@ -84,17 +84,17 @@ test_empty_array_for() {
     
     cat > "$TEST_DIR/empty_for.kry" << 'EOF'
 @metadata {
-    title: "Empty Array Test"
+    title = "Empty Array Test"
 }
 
-@var empty_list: []
+@var empty_list = []
 
 Column {
-    Text { text: "Before" }
+    Text { text = "Before" }
     @for item in empty_list {
-        Text { text: item }
+        Text { text = item }
     }
-    Text { text: "After" }
+    Text { text = "After" }
 }
 EOF
 
@@ -119,21 +119,21 @@ test_complex_for() {
     
     cat > "$TEST_DIR/complex_for.kry" << 'EOF'
 @metadata {
-    title: "Complex For Test"
+    title = "Complex For Test"
 }
 
-@var colors: ["red", "green", "blue"]
+@var colors = ["red", "green", "blue"]
 
 Column {
-    gap: 10
+    gap = 10
     @for color in colors {
         Container {
-            padding: 15
-            background: "#FFFFFF"
+            padding = 15
+            background = "#FFFFFF"
             Text {
-                text: color
-                fontSize: 16
-                color: "#333333"
+                text = color
+                fontSize = 16
+                color = "#333333"
             }
         }
     }
@@ -161,18 +161,18 @@ test_nested_for() {
     
     cat > "$TEST_DIR/nested_for.kry" << 'EOF'
 @metadata {
-    title: "Nested For Test"
+    title = "Nested For Test"
 }
 
-@var rows: ["A", "B"]
-@var cols: ["1", "2"]
+@var rows = ["A", "B"]
+@var cols = ["1", "2"]
 
 Column {
     @for row in rows {
         Row {
-            Text { text: row }
+            Text { text = row }
             @for col in cols {
-                Text { text: col }
+                Text { text = col }
             }
         }
     }
@@ -200,23 +200,23 @@ test_for_with_elements() {
     
     cat > "$TEST_DIR/elements_for.kry" << 'EOF'
 @metadata {
-    title: "Elements For Test"
+    title = "Elements For Test"
 }
 
-@var items: ["Button", "Input", "Text"]
+@var items = ["Button", "Input", "Text"]
 
 Column {
     @for item in items {
         Button {
-            text: item
-            width: 120
-            height: 40
+            text = item
+            width = 120
+            height = 40
         }
     }
     @for item in items {
         Text {
-            text: item
-            fontSize: 14
+            text = item
+            fontSize = 14
         }
     }
 }
@@ -243,15 +243,15 @@ test_single_item_for() {
     
     cat > "$TEST_DIR/single_for.kry" << 'EOF'
 @metadata {
-    title: "Single Item Test"  
+    title = "Single Item Test"  
 }
 
-@var single: ["apple"]
+@var single = ["apple"]
 
 Column {
-    Text { text: "Item:" }
+    Text { text = "Item:" }
     @for item in single {
-        Text { text: item }
+        Text { text = item }
     }
 }
 EOF

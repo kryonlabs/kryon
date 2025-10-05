@@ -28,6 +28,7 @@ static const char *token_type_names[] = {
     [KRYON_TOKEN_VARIABLE] = "VARIABLE",
     [KRYON_TOKEN_ELEMENT_TYPE] = "ELEMENT_TYPE",
     [KRYON_TOKEN_COLON] = "COLON",
+    [KRYON_TOKEN_ASSIGN] = "ASSIGN",
     [KRYON_TOKEN_SEMICOLON] = "SEMICOLON",
     [KRYON_TOKEN_DOT] = "DOT",
     [KRYON_TOKEN_RANGE] = "RANGE",
@@ -783,7 +784,7 @@ static bool scan_token(KryonLexer *lexer) {
             add_token(lexer, match(lexer, '=') ? KRYON_TOKEN_NOT_EQUALS : KRYON_TOKEN_LOGICAL_NOT);
             break;
         case '=':
-            add_token(lexer, match(lexer, '=') ? KRYON_TOKEN_EQUALS : KRYON_TOKEN_ERROR);
+            add_token(lexer, match(lexer, '=') ? KRYON_TOKEN_EQUALS : KRYON_TOKEN_ASSIGN);
             break;
         case '<':
             add_token(lexer, match(lexer, '=') ? KRYON_TOKEN_LESS_EQUAL : KRYON_TOKEN_LESS_THAN);

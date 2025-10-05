@@ -47,7 +47,7 @@ static int tests_passed = 0;
 
 // Test basic element parsing
 TEST(basic_element_parsing) {
-    const char *source = "Button { text: \"Hello\" }";
+    const char *source = "Button { text = \"Hello\" }";
     
     KryonLexer *lexer = kryon_lexer_create(source, 0, "test.kry", NULL);
     ASSERT(lexer != NULL);
@@ -92,10 +92,10 @@ TEST(basic_element_parsing) {
 TEST(nested_elements) {
     const char *source = 
         "Container {\n"
-        "    posX: 100\n"
-        "    posY: 200\n"
+        "    posX = 100\n"
+        "    posY = 200\n"
         "    Button {\n"
-        "        text: \"Click me\"\n"
+        "        text = \"Click me\"\n"
         "    }\n"
         "}";
     
@@ -143,13 +143,13 @@ TEST(nested_elements) {
 TEST(style_block_parsing) {
     const char *source = 
         "@style \"button_primary\" {\n"
-        "    backgroundColor: \"#0066cc\"\n"
-        "    color: \"white\"\n"
+        "    backgroundColor = \"#0066cc\"\n"
+        "    color = \"white\"\n"
         "}\n"
         "\n"
         "Button {\n"
-        "    text: \"Styled button\"\n"
-        "    class: \"button_primary\"\n"
+        "    text = \"Styled button\"\n"
+        "    class = \"button_primary\"\n"
         "}";
     
     KryonLexer *lexer = kryon_lexer_create(source, 0, "test.kry", NULL);
@@ -194,7 +194,7 @@ TEST(style_block_parsing) {
 
 // Test variable parsing
 TEST(variable_parsing) {
-    const char *source = "Text { text: $userName }";
+    const char *source = "Text { text = $userName }";
     
     KryonLexer *lexer = kryon_lexer_create(source, 0, "test.kry", NULL);
     ASSERT(lexer != NULL);
@@ -224,7 +224,7 @@ TEST(variable_parsing) {
 
 // Test error handling
 TEST(error_handling) {
-    const char *source = "Button { text: }"; // Missing value
+    const char *source = "Button { text = }"; // Missing value
     
     KryonLexer *lexer = kryon_lexer_create(source, 0, "test.kry", NULL);
     ASSERT(lexer != NULL);
@@ -251,11 +251,11 @@ TEST(error_handling) {
 TEST(literal_types) {
     const char *source = 
         "Element {\n"
-        "    stringProp: \"hello\"\n"
-        "    intProp: 42\n"
-        "    floatProp: 3.14\n"
-        "    boolProp: true\n"
-        "    nullProp: null\n"
+        "    stringProp = \"hello\"\n"
+        "    intProp = 42\n"
+        "    floatProp = 3.14\n"
+        "    boolProp = true\n"
+        "    nullProp = null\n"
         "}";
     
     KryonLexer *lexer = kryon_lexer_create(source, 0, "test.kry", NULL);

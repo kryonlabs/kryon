@@ -1,9 +1,9 @@
 @metadata {
-    title: "Runtime If/Else Test"
-    description: "Testing reactive conditional rendering with @var and @if"
+    title = "Runtime If/Else Test"
+    description = "Testing reactive conditional rendering with @var and @if"
 }
 
-@var showMessage: true
+@var showMessage = true
 
 @function "lua" toggleMessage() {
     showMessage = not showMessage
@@ -11,36 +11,36 @@
 }
 
 App {
-    background: "#f0f0f0"
+    background = "#f0f0f0"
 
     Column {
-        padding: 20
-        gap: 15
+        padding = 20
+        gap = 15
 
         Text {
-            text: "Runtime @if Test with @var"
-            fontSize: 24
-            color: "#333"
+            text = "Runtime @if Test with @var"
+            fontSize = 24
+            color = "#333"
         }
 
         Button {
-            text: "Toggle Message"
-            width: 200
-            height: 40
-            background: "#2196F3"
-            color: "white"
-            onClick: "toggleMessage"
+            text = "Toggle Message"
+            width = 200
+            height = 40
+            background = "#2196F3"
+            color = "white"
+            onClick = "toggleMessage"
         }
 
         @if showMessage {
             Container {
-                background: "#4CAF50"
-                padding: 15
+                background = "#4CAF50"
+                padding = 15
 
                 Text {
-                    text: "Message is VISIBLE"
-                    color: "white"
-                    fontSize: 16
+                    text = "Message is VISIBLE"
+                    color = "white"
+                    fontSize = 16
                 }
             }
         }

@@ -144,7 +144,7 @@ TEST(generation_with_null_ast) {
 
 // Test end-to-end compilation from source to binary
 TEST(end_to_end_compilation) {
-    const char *source = "Button { text: \"Hello World\" }";
+    const char *source = "Button { text = \"Hello World\" }";
     
     // Tokenize
     KryonLexer *lexer = kryon_lexer_create(source, 0, "test.kry", NULL);

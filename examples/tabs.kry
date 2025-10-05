@@ -1,74 +1,74 @@
 @metadata {
-    title: "Simple Tab Demo"
-    description: "Basic TabBar example with simple content"
+    title = "Simple Tab Demo"
+    description = "Basic TabBar example with simple content"
 }
 
-@var selectedTab: 0
+@var selectedTab = 0
 
 Container {
-    backgroundColor: "#ffffff"
+    backgroundColor = "#ffffff"
 
     Column {
-        gap: 20
-        padding: 20
+        gap = 20
+        padding = 20
 
         Text {
-            text: "Simple TabBar Example"
-            fontSize: 24
-            fontWeight: "bold"
-            color: "#333333"
+            text = "Simple TabBar Example"
+            fontSize = 24
+            fontWeight = "bold"
+            color = "#333333"
         }
 
         TabBar {
-            selectedIndex: selectedTab
-            backgroundColor: "#f8f9fa"
+            selectedIndex = selectedTab
+            backgroundColor = "#f8f9fa"
 
-            Tab { title: "Home" } 
-            Tab { title: "About" }
-            Tab { title: "Contact" } 
+            Tab { title = "Home" } 
+            Tab { title = "About" }
+            Tab { title = "Contact" } 
         }
 
         TabContent {
-            activeIndex: selectedTab
+            activeIndex = selectedTab
             
             TabPanel {
                 Container {
-                    backgroundColor: "#e3f2fd"
-                    padding: 30
-                    borderRadius: 8
+                    backgroundColor = "#e3f2fd"
+                    padding = 30
+                    borderRadius = 8
                     
                     Text {
-                        text: "This is the Home tab content"
-                        fontSize: 18
-                        color: "#1976d2"
+                        text = "This is the Home tab content"
+                        fontSize = 18
+                        color = "#1976d2"
                     }
                 }
             }
             
             TabPanel {
                 Container {
-                    backgroundColor: "#e8f5e8"
-                    padding: 30
-                    borderRadius: 8
+                    backgroundColor = "#e8f5e8"
+                    padding = 30
+                    borderRadius = 8
                     
                     Text {
-                        text: "This is the About tab content"
-                        fontSize: 18
-                        color: "#388e3c"
+                        text = "This is the About tab content"
+                        fontSize = 18
+                        color = "#388e3c"
                     }
                 }
             }
             
             TabPanel { 
                 Container {
-                    backgroundColor: "#fff3e0"
-                    padding: 30
-                    borderRadius: 8
+                    backgroundColor = "#fff3e0"
+                    padding = 30
+                    borderRadius = 8
                     
                     Text {
-                        text: "This is the Contact tab content"
-                        fontSize: 18
-                        color: "#f57c00"
+                        text = "This is the Contact tab content"
+                        fontSize = 18
+                        color = "#f57c00"
                     }
                 }
             }

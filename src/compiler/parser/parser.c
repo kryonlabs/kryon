@@ -581,8 +581,8 @@ static KryonASTNode *parse_property(KryonParser *parser) {
     
     property->data.property.name = kryon_token_copy_lexeme(name_token);
     
-    if (!match_token(parser, KRYON_TOKEN_COLON)) {
-        parser_error(parser, "Expected ':' after property name");
+    if (!match_token(parser, KRYON_TOKEN_ASSIGN)) {
+        parser_error(parser, "Expected '=' after property name");
         return property;
     }
     
@@ -1235,8 +1235,8 @@ static KryonASTNode *parse_object_literal(KryonParser *parser) {
         const KryonToken *key_token = advance(parser);
         
         // Expect colon
-        if (!match_token(parser, KRYON_TOKEN_COLON)) {
-            parser_error(parser, "Expected ':' after property name");
+        if (!match_token(parser, KRYON_TOKEN_ASSIGN)) {
+            parser_error(parser, "Expected '=' after property name");
             break;
         }
         
@@ -1324,8 +1324,8 @@ static KryonASTNode *parse_event_directive(KryonParser *parser) {
         
         const KryonToken *pattern_token = advance(parser);
         
-        if (!match_token(parser, KRYON_TOKEN_COLON)) {
-            parser_error(parser, "Expected ':' after event pattern");
+        if (!match_token(parser, KRYON_TOKEN_ASSIGN)) {
+            parser_error(parser, "Expected '=' after event pattern");
             break;
         }
         
@@ -1466,14 +1466,16 @@ static KryonASTNode *parse_onload_directive(KryonParser *parser) {
                 bool no_space_after = (tok->type == KRYON_TOKEN_DOT || 
                                       tok->type == KRYON_TOKEN_LEFT_PAREN ||
                                       tok->type == KRYON_TOKEN_LEFT_BRACKET ||
-                                      tok->type == KRYON_TOKEN_COLON);
-                                      
+                                      tok->type == KRYON_TOKEN_COLON ||
+                                      tok->type == KRYON_TOKEN_ASSIGN);
+                
                 bool no_space_before = (next_tok->type == KRYON_TOKEN_DOT ||
                                        next_tok->type == KRYON_TOKEN_LEFT_PAREN ||
                                        next_tok->type == KRYON_TOKEN_RIGHT_PAREN ||
                                        next_tok->type == KRYON_TOKEN_LEFT_BRACKET ||
                                        next_tok->type == KRYON_TOKEN_RIGHT_BRACKET ||
                                        next_tok->type == KRYON_TOKEN_COLON ||
+                                       next_tok->type == KRYON_TOKEN_ASSIGN ||
                                        next_tok->type == KRYON_TOKEN_COMMA);
                 
                 if (!no_space_after && !no_space_before) {
@@ -1694,8 +1696,8 @@ static KryonASTNode *parse_variable_definition(KryonParser *parser) {
             
             const KryonToken *name_token = advance(parser);
             
-            if (!match_token(parser, KRYON_TOKEN_COLON)) {
-                parser_error(parser, "Expected ':' after variable name");
+            if (!match_token(parser, KRYON_TOKEN_ASSIGN)) {
+                parser_error(parser, "Expected '=' after variable name");
                 break;
             }
             
@@ -1744,8 +1746,8 @@ static KryonASTNode *parse_variable_definition(KryonParser *parser) {
         var_def->data.variable_def.value = NULL;
         
         // Expect colon assignment
-        if (!match_token(parser, KRYON_TOKEN_COLON)) {
-            parser_error(parser, "Expected ':' after variable name");
+        if (!match_token(parser, KRYON_TOKEN_ASSIGN)) {
+            parser_error(parser, "Expected '=' after variable name");
             return var_def;
         }
         
@@ -1937,7 +1939,7 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
                 kryon_token_copy_lexeme(param_token);
             
             // Check for default value
-            if (match_token(parser, KRYON_TOKEN_COLON)) {
+            if (match_token(parser, KRYON_TOKEN_ASSIGN)) {
                 // Parse default value
                 const KryonToken *default_token = peek(parser);
                 if (default_token) {
@@ -2001,8 +2003,8 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
 
             const KryonToken *prop_name_token = advance(parser);
 
-            if (!match_token(parser, KRYON_TOKEN_COLON)) {
-                parser_error(parser, "Expected ':' after property name");
+            if (!match_token(parser, KRYON_TOKEN_ASSIGN)) {
+                parser_error(parser, "Expected '=' after property name");
                 break;
             }
 
@@ -2245,8 +2247,8 @@ static KryonASTNode *parse_state_definition(KryonParser *parser) {
     state_def->data.variable_def.value = NULL;
     
     // Expect colon assignment
-    if (!match_token(parser, KRYON_TOKEN_COLON)) {
-        parser_error(parser, "Expected ':' after state variable name");
+    if (!match_token(parser, KRYON_TOKEN_ASSIGN)) {
+        parser_error(parser, "Expected '=' after state variable name");
         return state_def;
     }
     
@@ -2283,8 +2285,8 @@ static KryonASTNode *parse_const_definition(KryonParser *parser) {
     const_def->data.const_def.value = NULL;
     
     // Expect colon assignment
-    if (!match_token(parser, KRYON_TOKEN_COLON)) {
-        parser_error(parser, "Expected ':' after constant name");
+    if (!match_token(parser, KRYON_TOKEN_ASSIGN)) {
+        parser_error(parser, "Expected '=' after constant name");
         return const_def;
     }
     

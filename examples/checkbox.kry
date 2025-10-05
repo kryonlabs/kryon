@@ -1,6 +1,6 @@
 @metadata {
-    title: "Simple Checkbox Test"
-    description: "Basic checkbox test with literal values"
+    title = "Simple Checkbox Test"
+    description = "Basic checkbox test with literal values"
 }
 
 @function "lua" testClick() {
@@ -8,38 +8,38 @@
 }
 
 App {
-    windowTitle: "Simple Checkbox Test"
-    windowWidth: 400
-    windowHeight: 300
-    backgroundColor: "#f0f0f0"
+    windowTitle = "Simple Checkbox Test"
+    windowWidth = 400
+    windowHeight = 300
+    backgroundColor = "#f0f0f0"
 
     Column {
-        gap: 20
-        padding: 30
+        gap = 20
+        padding = 30
 
         Text {
-            text: "Simple Checkbox Test"
-            fontSize: 20
-            fontWeight: "bold"
-            color: "#333333"
+            text = "Simple Checkbox Test"
+            fontSize = 20
+            fontWeight = "bold"
+            color = "#333333"
         }
 
         Checkbox {
-            label: "Test checkbox"
-            checked: true
-            width: 250
-            height: 30
-            fontSize: 14
-            onClick: "testClick"
+            label = "Test checkbox"
+            checked = true
+            width = 250
+            height = 30
+            fontSize = 14
+            onClick = "testClick"
         }
 
         Checkbox {
-            label: "Unchecked checkbox"
-            checked: false
-            width: 250
-            height: 30
-            fontSize: 14
-            onClick: "testClick"
+            label = "Unchecked checkbox"
+            checked = false
+            width = 250
+            height = 30
+            fontSize = 14
+            onClick = "testClick"
         }
     }
 }
