@@ -2,11 +2,11 @@
 component Counter(value = 0) {
 
     function increment() {
-        self.value = self.value + 1
+        value += 1
     }
 
     function decrement() {
-        self.value = self.value - 1
+        value -= 1
     }
 
     Row {

@@ -51,7 +51,6 @@ static bool load_property_value(KryonProperty *property,
                                KryonRuntime *runtime,
                                KryonElement *element);
 static bool skip_styles_section(const uint8_t *data, size_t *offset, size_t size, uint32_t style_count);
-static bool skip_functions_section(const uint8_t *data, size_t *offset, size_t size, uint32_t function_count);
 static void register_event_directive_handlers(KryonRuntime *runtime, KryonElement *element);
 static bool load_function_from_binary(KryonRuntime *runtime, const uint8_t *data, size_t *offset, size_t size, char** string_table, uint32_t string_count);
 static void connect_function_handlers(KryonRuntime *runtime, KryonElement *element);
@@ -1744,44 +1743,6 @@ static bool skip_styles_section(const uint8_t *data, size_t *offset, size_t size
     }
     
     printf("DEBUG: Successfully skipped %u styles\n", style_count);
-    return true;
-}
-
-/**
- * Skip functions section by reading and discarding function data
- */
-static bool skip_functions_section(const uint8_t *data, size_t *offset, size_t size, uint32_t function_count) {
-    for (uint32_t i = 0; i < function_count; i++) {
-        // Skip function header ("FUNC" magic)
-        if (*offset + 4 > size) return false;
-        *offset += 4;
-        
-        // Skip language reference
-        if (*offset + 4 > size) return false;
-        *offset += 4;
-        
-        // Skip function name reference
-        if (*offset + 4 > size) return false;
-        *offset += 4;
-        
-        // Read parameter count
-        uint32_t param_count;
-        if (!read_uint32_safe(data, offset, size, &param_count)) {
-            return false;
-        }
-        
-        // Skip parameter references
-        for (uint32_t j = 0; j < param_count; j++) {
-            if (*offset + 4 > size) return false;
-            *offset += 4;
-        }
-        
-        // Skip function code reference
-        if (*offset + 4 > size) return false;
-        *offset += 4;
-    }
-    
-    printf("DEBUG: Successfully skipped %u functions\n", function_count);
     return true;
 }
 

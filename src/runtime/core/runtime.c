@@ -137,6 +137,24 @@ KryonRuntimeConfig kryon_runtime_prod_config(void) {
 // RUNTIME LIFECYCLE
 // =============================================================================
 
+static void free_script_function(KryonScriptFunction* fn) {
+    if (!fn) {
+        return;
+    }
+
+    kryon_free(fn->name);
+    kryon_free(fn->language);
+    kryon_free(fn->code);
+    if (fn->parameters) {
+        for (uint16_t i = 0; i < fn->param_count; i++) {
+            kryon_free(fn->parameters[i]);
+        }
+        kryon_free(fn->parameters);
+    }
+
+    memset(fn, 0, sizeof(*fn));
+}
+
 KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config) {
     KryonRuntime *runtime = kryon_alloc(sizeof(KryonRuntime));
     if (!runtime) {
@@ -268,16 +286,7 @@ void kryon_runtime_clear_all_content(KryonRuntime *runtime) {
     // Clear functions
     if (runtime->script_functions) {
         for (size_t i = 0; i < runtime->function_count; i++) {
-            KryonScriptFunction *fn = &runtime->script_functions[i];
-            kryon_free(fn->name);
-            kryon_free(fn->language);
-            kryon_free(fn->code);
-            if (fn->parameters) {
-                for (uint16_t p = 0; p < fn->param_count; p++) {
-                    kryon_free(fn->parameters[p]);
-                }
-                kryon_free(fn->parameters);
-            }
+            free_script_function(&runtime->script_functions[i]);
         }
         kryon_free(runtime->script_functions);
         runtime->script_functions = NULL;
@@ -337,7 +346,17 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
         kryon_event_system_destroy(runtime->event_system);
         runtime->event_system = NULL;
     }
-    
+
+    if (runtime->script_functions) {
+        for (size_t i = 0; i < runtime->function_count; i++) {
+            free_script_function(&runtime->script_functions[i]);
+        }
+        kryon_free(runtime->script_functions);
+        runtime->script_functions = NULL;
+        runtime->function_count = 0;
+        runtime->function_capacity = 0;
+    }
+
     // Destroy hit testing manager (with null check)
     if (runtime->hit_test_manager) {
         hit_test_manager_destroy(runtime->hit_test_manager);
@@ -350,7 +369,6 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
         runtime->global_state = NULL;
     }
     
-    // Destroy script VM (with null check)
     // Destroy navigation manager (with null check)
     if (runtime->navigation_manager) {
         kryon_navigation_destroy(runtime->navigation_manager);
@@ -816,7 +834,6 @@ void kryon_element_destroy(KryonRuntime *runtime, KryonElement *element) {
         element->template_count = 0;
     }
     
-    // Notify the script VM that this element is gone
     // Set state to destroyed
     element->state = KRYON_ELEMENT_STATE_DESTROYED;
     

@@ -571,7 +571,8 @@ static bool execute_script_function(KryonRuntime* runtime, KryonScriptFunction* 
  * This function is the core of the new data-driven event system. It receives
  * an abstract ElementEvent, finds the corresponding property name (e.g., "onClick"),
  * retrieves the function name from the element's properties, and executes it
- * using the script VM. Any interactive element (Button, Container, etc.) can
+ * using the embedded scripting interpreter. Any interactive element (Button,
+ * Container, etc.) can
  * register this function in its VTable to become scriptable.
  */
 bool generic_script_event_handler(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
@@ -611,9 +612,13 @@ bool generic_script_event_handler(KryonRuntime* runtime, KryonElement* element, 
     if (!handled) {
         printf("⚠️ SCRIPT: Function '%s' executed without supported operations\n",
                function->name ? function->name : handler_name);
+        return false;
     }
 
-    return handled;
+    ((ElementEvent*)event)->handled = true;
+    runtime->needs_update = true;
+    mark_elements_for_rerender(runtime->root);
+    return true;
 }
 
 // =============================================================================
