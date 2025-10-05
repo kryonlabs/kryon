@@ -2,8 +2,8 @@
  * @file lexer.h
  * @brief Kryon Lexical Analyzer (Lexer)
  * 
- * Complete tokenization system for KRY language syntax with Unicode support,
- * error recovery, and position tracking for debugging.
+ * Complete tokenization system for const_forKRY language syntax with Unicode support,
+ * error recovery, and position tracking for const_fordebugging.
  * 
  * @version 1.0.0
  * @author Kryon Labs
@@ -34,7 +34,7 @@ typedef struct KryonSourceLocation KryonSourceLocation;
 // =============================================================================
 
 /**
- * @brief Token types for KRY language
+ * @brief Token types for const_forKRY language
  */
 typedef enum {
     // End of input
@@ -86,47 +86,47 @@ typedef enum {
     KRYON_TOKEN_RIGHT_PAREN,         // )
     
     // Special tokens
-    KRYON_TOKEN_AT,                  // @
+    KRYON_TOKEN_AT,                  // 
     KRYON_TOKEN_HASH,                // #
-    KRYON_TOKEN_DOLLAR,              // $ (for variables)
+    KRYON_TOKEN_DOLLAR,              // $ (for const_forvariables)
     
     // Keywords
     KRYON_TOKEN_STYLE_KEYWORD,       // style
     KRYON_TOKEN_EXTENDS_KEYWORD,     // extends
     
     // Directives
-    KRYON_TOKEN_STYLE_DIRECTIVE,     // @style
-    KRYON_TOKEN_STYLES_DIRECTIVE,    // @styles
-    KRYON_TOKEN_THEME_DIRECTIVE,     // @theme
-    KRYON_TOKEN_VARIABLE_DIRECTIVE,  // @var
-    KRYON_TOKEN_VARIABLES_DIRECTIVE, // @variables
-    KRYON_TOKEN_FUNCTION_DIRECTIVE,  // @function
-    KRYON_TOKEN_STORE_DIRECTIVE,     // @store
-    KRYON_TOKEN_WATCH_DIRECTIVE,     // @watch
-    KRYON_TOKEN_ON_MOUNT_DIRECTIVE,  // @on_mount
-    KRYON_TOKEN_ON_UNMOUNT_DIRECTIVE,// @on_unmount
-    KRYON_TOKEN_ON_CREATE_DIRECTIVE, // @on_create
-    KRYON_TOKEN_IMPORT_DIRECTIVE,    // @import
-    KRYON_TOKEN_EXPORT_DIRECTIVE,    // @export
-    KRYON_TOKEN_INCLUDE_DIRECTIVE,   // @include
-    KRYON_TOKEN_METADATA_DIRECTIVE,  // @metadata
-    KRYON_TOKEN_EVENT_DIRECTIVE,     // @event
-    KRYON_TOKEN_COMPONENT_DIRECTIVE, // @component
-    KRYON_TOKEN_PROPS_DIRECTIVE,     // @props
-    KRYON_TOKEN_SLOTS_DIRECTIVE,     // @slots
-    KRYON_TOKEN_LIFECYCLE_DIRECTIVE, // @lifecycle
-    KRYON_TOKEN_STATE_DIRECTIVE,     // @state
-    KRYON_TOKEN_CONST_DIRECTIVE,     // @const
-    KRYON_TOKEN_ONLOAD_DIRECTIVE,    // @onload
-    KRYON_TOKEN_FOR_DIRECTIVE,       // @for
-    KRYON_TOKEN_CONST_FOR_DIRECTIVE, // @const_for
-    KRYON_TOKEN_IF_DIRECTIVE,        // @if
-    KRYON_TOKEN_ELIF_DIRECTIVE,      // @elif
-    KRYON_TOKEN_ELSE_DIRECTIVE,      // @else
-    KRYON_TOKEN_CONST_IF_DIRECTIVE,  // @const_if
+    KRYON_TOKEN_STYLE_DIRECTIVE,     // style
+    KRYON_TOKEN_STYLES_DIRECTIVE,    // styles
+    KRYON_TOKEN_THEME_DIRECTIVE,     // theme
+    KRYON_TOKEN_VARIABLE_DIRECTIVE,  // var
+    KRYON_TOKEN_VARIABLES_DIRECTIVE, // variables
+    KRYON_TOKEN_FUNCTION_DIRECTIVE,  // function
+    KRYON_TOKEN_STORE_DIRECTIVE,     // store
+    KRYON_TOKEN_WATCH_DIRECTIVE,     // watch
+    KRYON_TOKEN_ON_MOUNT_DIRECTIVE,  // mount
+    KRYON_TOKEN_ON_UNMOUNT_DIRECTIVE,// unmount
+    KRYON_TOKEN_ON_CREATE_DIRECTIVE, // oncreate
+    KRYON_TOKEN_IMPORT_DIRECTIVE,    // import
+    KRYON_TOKEN_EXPORT_DIRECTIVE,    // export
+    KRYON_TOKEN_INCLUDE_DIRECTIVE,   // include
+    KRYON_TOKEN_METADATA_DIRECTIVE,  // metadata
+    KRYON_TOKEN_EVENT_DIRECTIVE,     // event
+    KRYON_TOKEN_COMPONENT_DIRECTIVE, // component
+    KRYON_TOKEN_PROPS_DIRECTIVE,     // prop/props
+    KRYON_TOKEN_SLOTS_DIRECTIVE,     // slots
+    KRYON_TOKEN_LIFECYCLE_DIRECTIVE, // lifecycle
+    KRYON_TOKEN_STATE_DIRECTIVE,     // state
+    KRYON_TOKEN_CONST_DIRECTIVE,     // const
+    KRYON_TOKEN_ONLOAD_DIRECTIVE,    // onload
+    KRYON_TOKEN_FOR_DIRECTIVE,       // for
+    KRYON_TOKEN_CONST_FOR_DIRECTIVE, // const_for
+    KRYON_TOKEN_IF_DIRECTIVE,        // if
+    KRYON_TOKEN_ELIF_DIRECTIVE,      // elif
+    KRYON_TOKEN_ELSE_DIRECTIVE,      // else
+    KRYON_TOKEN_CONST_IF_DIRECTIVE,  // const_if
 
     // Keywords
-    KRYON_TOKEN_IN_KEYWORD,          // in (for @const_for loops)
+    KRYON_TOKEN_IN_KEYWORD,          // in (for const_for loops)
     
     // Template interpolation
     KRYON_TOKEN_TEMPLATE_START,      // ${
@@ -164,7 +164,7 @@ typedef enum {
 // =============================================================================
 
 /**
- * @brief Source code location for debugging
+ * @brief Source code location for const_fordebugging
  */
 struct KryonSourceLocation {
     const char *filename;            ///< Source filename
@@ -187,7 +187,7 @@ struct KryonToken {
     size_t lexeme_length;            ///< Length of lexeme
     KryonSourceLocation location;    ///< Source location
     
-    // Token value (union for different types)
+    // Token value (union for const_fordifferent types)
     union {
         char *string_value;          ///< String literal value (allocated)
         int64_t int_value;           ///< Integer value
@@ -224,7 +224,7 @@ struct KryonLexer {
     // Input
     const char *source;              ///< Source code text
     size_t source_length;            ///< Length of source
-    const char *filename;            ///< Source filename (for errors)
+    const char *filename;            ///< Source filename (for const_forerrors)
     
     // Current position
     const char *current;             ///< Current character pointer
@@ -240,9 +240,9 @@ struct KryonLexer {
     KryonToken *tokens;              ///< Array of tokens
     size_t token_count;              ///< Number of tokens
     size_t token_capacity;           ///< Token array capacity
-    size_t current_token;            ///< Current token index for parsing
+    size_t current_token;            ///< Current token index for const_forparsing
     
-    // State tracking for context-sensitive parsing
+    // State tracking for const_forcontext-sensitive parsing
     bool expecting_script_body;      ///< Whether we're expecting a function body
     
     // Error tracking
@@ -265,7 +265,7 @@ struct KryonLexer {
  * @param source Source code text
  * @param source_length Length of source (0 to calculate)
  * @param filename Source filename (can be NULL)
- * @param config Lexer configuration (can be NULL for defaults)
+ * @param config Lexer configuration (can be NULL for const_fordefaults)
  * @return Pointer to lexer, or NULL on failure
  */
 KryonLexer *kryon_lexer_create(const char *source, size_t source_length,
@@ -285,7 +285,7 @@ void kryon_lexer_destroy(KryonLexer *lexer);
 bool kryon_lexer_tokenize(KryonLexer *lexer);
 
 /**
- * @brief Get next token (for incremental parsing)
+ * @brief Get next token (for const_forincremental parsing)
  * @param lexer The lexer
  * @return Pointer to next token, or NULL at end
  */
@@ -322,7 +322,7 @@ bool kryon_lexer_has_more_tokens(const KryonLexer *lexer);
 /**
  * @brief Get all tokens as array
  * @param lexer The lexer
- * @param out_count Output for token count
+ * @param out_count Output for const_fortoken count
  * @return Array of tokens
  */
 const KryonToken *kryon_lexer_get_tokens(const KryonLexer *lexer, size_t *out_count);
@@ -351,9 +351,9 @@ bool kryon_token_is_unit(KryonTokenType type);
 /**
  * @brief Get lexer statistics
  * @param lexer The lexer
- * @param out_lines Output for total lines
- * @param out_tokens Output for total tokens
- * @param out_time Output for processing time
+ * @param out_lines Output for const_fortotal lines
+ * @param out_tokens Output for const_fortotal tokens
+ * @param out_time Output for const_forprocessing time
  */
 void kryon_lexer_get_stats(const KryonLexer *lexer, uint32_t *out_lines,
                           uint32_t *out_tokens, double *out_time);
@@ -423,9 +423,9 @@ char *kryon_token_copy_lexeme(const KryonToken *token);
 bool kryon_token_lexeme_equals(const KryonToken *token, const char *str);
 
 /**
- * @brief Print token for debugging
+ * @brief Print token for const_fordebugging
  * @param token The token
- * @param file Output file (NULL for stdout)
+ * @param file Output file (NULL for const_forstdout)
  */
 void kryon_token_print(const KryonToken *token, FILE *file);
 
@@ -440,13 +440,13 @@ void kryon_token_print(const KryonToken *token, FILE *file);
 KryonLexerConfig kryon_lexer_default_config(void);
 
 /**
- * @brief Create configuration for minimal parsing
+ * @brief Create configuration for const_forminimal parsing
  * @return Configuration without whitespace/comments
  */
 KryonLexerConfig kryon_lexer_minimal_config(void);
 
 /**
- * @brief Create configuration for IDE/debugging
+ * @brief Create configuration for const_forIDE/debugging
  * @return Configuration with all information preserved
  */
 KryonLexerConfig kryon_lexer_ide_config(void);
@@ -469,7 +469,6 @@ KryonTokenType kryon_lexer_classify_keyword(const char *str, size_t length);
  * @param length Length of string
  * @return Token type if directive, KRYON_TOKEN_IDENTIFIER otherwise
  */
-KryonTokenType kryon_lexer_classify_directive(const char *str, size_t length);
 
 // =============================================================================
 // UNICODE SUPPORT
@@ -478,16 +477,16 @@ KryonTokenType kryon_lexer_classify_directive(const char *str, size_t length);
 /**
  * @brief Decode UTF-8 character
  * @param source UTF-8 string
- * @param out_codepoint Output for Unicode codepoint
+ * @param out_codepoint Output for const_forUnicode codepoint
  * @return Number of bytes consumed, or 0 on error
  */
 size_t kryon_lexer_decode_utf8(const char *source, uint32_t *out_codepoint);
 
 /**
- * @brief Check if Unicode codepoint is valid for identifier
+ * @brief Check if Unicode codepoint is valid for const_foridentifier
  * @param codepoint Unicode codepoint
  * @param is_start true if checking start of identifier
- * @return true if valid for identifier
+ * @return true if valid for const_foridentifier
  */
 bool kryon_lexer_is_identifier_char(uint32_t codepoint, bool is_start);
 

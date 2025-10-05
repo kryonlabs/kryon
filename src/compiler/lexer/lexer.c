@@ -117,10 +117,44 @@ static const KeywordEntry keywords[] = {
     {"true", KRYON_TOKEN_BOOLEAN_TRUE},
     {"false", KRYON_TOKEN_BOOLEAN_FALSE},
     {"null", KRYON_TOKEN_NULL},
-    {"style", KRYON_TOKEN_STYLE_KEYWORD},
     {"extend", KRYON_TOKEN_EXTENDS_KEYWORD},
     {"extends", KRYON_TOKEN_EXTENDS_KEYWORD},
     {"in", KRYON_TOKEN_IN_KEYWORD},
+
+    // Directive-style keywords (no '@' prefix)
+    {"style", KRYON_TOKEN_STYLE_DIRECTIVE},
+    {"styles", KRYON_TOKEN_STYLES_DIRECTIVE},
+    {"theme", KRYON_TOKEN_THEME_DIRECTIVE},
+    {"var", KRYON_TOKEN_VARIABLE_DIRECTIVE},
+    {"variables", KRYON_TOKEN_VARIABLES_DIRECTIVE},
+    {"function", KRYON_TOKEN_FUNCTION_DIRECTIVE},
+    {"func", KRYON_TOKEN_FUNCTION_DIRECTIVE},
+    {"store", KRYON_TOKEN_STORE_DIRECTIVE},
+    {"watch", KRYON_TOKEN_WATCH_DIRECTIVE},
+    {"mount", KRYON_TOKEN_ON_MOUNT_DIRECTIVE},
+    {"unmount", KRYON_TOKEN_ON_UNMOUNT_DIRECTIVE},
+    {"oncreate", KRYON_TOKEN_ON_CREATE_DIRECTIVE},
+    {"import", KRYON_TOKEN_IMPORT_DIRECTIVE},
+    {"export", KRYON_TOKEN_EXPORT_DIRECTIVE},
+    {"include", KRYON_TOKEN_INCLUDE_DIRECTIVE},
+    {"metadata", KRYON_TOKEN_METADATA_DIRECTIVE},
+    {"event", KRYON_TOKEN_EVENT_DIRECTIVE},
+    {"component", KRYON_TOKEN_COMPONENT_DIRECTIVE},
+    {"prop", KRYON_TOKEN_PROPS_DIRECTIVE},
+    {"props", KRYON_TOKEN_PROPS_DIRECTIVE},
+    {"slots", KRYON_TOKEN_SLOTS_DIRECTIVE},
+    {"lifecycle", KRYON_TOKEN_LIFECYCLE_DIRECTIVE},
+    {"state", KRYON_TOKEN_STATE_DIRECTIVE},
+    {"const", KRYON_TOKEN_CONST_DIRECTIVE},
+    {"onload", KRYON_TOKEN_ONLOAD_DIRECTIVE},
+    {"for", KRYON_TOKEN_FOR_DIRECTIVE},
+    {"const_for", KRYON_TOKEN_CONST_FOR_DIRECTIVE},
+    {"if", KRYON_TOKEN_IF_DIRECTIVE},
+    {"elif", KRYON_TOKEN_ELIF_DIRECTIVE},
+    {"else", KRYON_TOKEN_ELSE_DIRECTIVE},
+    {"const_if", KRYON_TOKEN_CONST_IF_DIRECTIVE},
+
+    // Units
     {"px", KRYON_TOKEN_UNIT_PX},
     {"%", KRYON_TOKEN_UNIT_PERCENT},
     {"em", KRYON_TOKEN_UNIT_EM},
@@ -131,42 +165,6 @@ static const KeywordEntry keywords[] = {
 };
 
 static const size_t keywords_count = sizeof(keywords) / sizeof(keywords[0]);
-
-// Directive keywords (without @)
-static const KeywordEntry directives[] = {
-    {"style", KRYON_TOKEN_STYLE_DIRECTIVE},
-    {"styles", KRYON_TOKEN_STYLES_DIRECTIVE},
-    {"theme", KRYON_TOKEN_THEME_DIRECTIVE},
-    {"var", KRYON_TOKEN_VARIABLE_DIRECTIVE},
-    {"variables", KRYON_TOKEN_VARIABLES_DIRECTIVE},
-    {"function", KRYON_TOKEN_FUNCTION_DIRECTIVE},
-    {"store", KRYON_TOKEN_STORE_DIRECTIVE},
-    {"watch", KRYON_TOKEN_WATCH_DIRECTIVE},
-    {"mount", KRYON_TOKEN_ON_MOUNT_DIRECTIVE},     // Primary - same as @onload
-    {"unmount", KRYON_TOKEN_ON_UNMOUNT_DIRECTIVE}, // Primary
-    {"oncreate", KRYON_TOKEN_ON_CREATE_DIRECTIVE}, // Primary - runs once on creation
-    {"import", KRYON_TOKEN_IMPORT_DIRECTIVE},
-    {"export", KRYON_TOKEN_EXPORT_DIRECTIVE},
-    {"include", KRYON_TOKEN_INCLUDE_DIRECTIVE},
-    {"metadata", KRYON_TOKEN_METADATA_DIRECTIVE},
-    {"event", KRYON_TOKEN_EVENT_DIRECTIVE},
-    {"component", KRYON_TOKEN_COMPONENT_DIRECTIVE},
-    {"extends", KRYON_TOKEN_EXTENDS_KEYWORD},
-    {"props", KRYON_TOKEN_PROPS_DIRECTIVE},
-    {"slots", KRYON_TOKEN_SLOTS_DIRECTIVE},
-    {"lifecycle", KRYON_TOKEN_LIFECYCLE_DIRECTIVE},
-    {"state", KRYON_TOKEN_STATE_DIRECTIVE},
-    {"const", KRYON_TOKEN_CONST_DIRECTIVE},
-    {"onload", KRYON_TOKEN_ONLOAD_DIRECTIVE},      // Deprecated - use @mount
-    {"for", KRYON_TOKEN_FOR_DIRECTIVE},
-    {"const_for", KRYON_TOKEN_CONST_FOR_DIRECTIVE},
-    {"if", KRYON_TOKEN_IF_DIRECTIVE},
-    {"elif", KRYON_TOKEN_ELIF_DIRECTIVE},
-    {"else", KRYON_TOKEN_ELSE_DIRECTIVE},
-    {"const_if", KRYON_TOKEN_CONST_IF_DIRECTIVE},
-};
-
-static const size_t directives_count = sizeof(directives) / sizeof(directives[0]);
 
 // =============================================================================
 // UTILITY FUNCTIONS
@@ -357,16 +355,6 @@ KryonTokenType kryon_lexer_classify_keyword(const char *str, size_t length) {
         if (strlen(keywords[i].keyword) == length &&
             memcmp(keywords[i].keyword, str, length) == 0) {
             return keywords[i].type;
-        }
-    }
-    return KRYON_TOKEN_IDENTIFIER;
-}
-
-KryonTokenType kryon_lexer_classify_directive(const char *str, size_t length) {
-    for (size_t i = 0; i < directives_count; i++) {
-        if (strlen(directives[i].keyword) == length &&
-            memcmp(directives[i].keyword, str, length) == 0) {
-            return directives[i].type;
         }
     }
     return KRYON_TOKEN_IDENTIFIER;
@@ -650,20 +638,18 @@ static bool lex_script_content(KryonLexer *lexer) {
 }
 
 static bool is_function_body_start(KryonLexer *lexer) {
-    // Look at the recent tokens to see if we match the pattern:
-    // @function "language" identifier ( [params...] ) {
-    // We need at least 5 tokens for empty params, but could have more with parameters
-    
-    if (lexer->token_count < 5) {
+    // Look at recent tokens to see if we match one of the function declaration patterns:
+    //   function "language" name ( ... ) {
+    //   function name ( ... ) {
+    if (lexer->token_count < 4) {
         return false;
     }
-    
-    // Look backwards to find the pattern
-    // Last token should be RIGHT_PAREN
+
+    // Last emitted token before '{' should be RIGHT_PAREN
     if (lexer->tokens[lexer->token_count - 1].type != KRYON_TOKEN_RIGHT_PAREN) {
         return false;
     }
-    
+
     // Search backwards for the matching LEFT_PAREN
     int paren_depth = 1;
     int left_paren_index = -1;
@@ -678,19 +664,31 @@ static bool is_function_body_start(KryonLexer *lexer) {
             }
         }
     }
-    
-    if (left_paren_index < 2) {
-        return false; // Need at least 3 tokens before LEFT_PAREN
+
+    if (left_paren_index < 1) {
+        return false;
     }
-    
-    // Check the tokens before LEFT_PAREN: should be identifier, string, @function
-    KryonToken *identifier = &lexer->tokens[left_paren_index - 1];
-    KryonToken *language_string = &lexer->tokens[left_paren_index - 2];
-    KryonToken *function_directive = &lexer->tokens[left_paren_index - 3];
-    
-    return (function_directive->type == KRYON_TOKEN_FUNCTION_DIRECTIVE &&
-            language_string->type == KRYON_TOKEN_STRING &&
-            identifier->type == KRYON_TOKEN_IDENTIFIER);
+
+    // Token immediately before '(' must be the function name
+    if (lexer->tokens[left_paren_index - 1].type != KRYON_TOKEN_IDENTIFIER) {
+        return false;
+    }
+
+    int check_index = left_paren_index - 2;
+    if (check_index < 0) {
+        return false;
+    }
+
+    // Optional language string preceding the name
+    if (lexer->tokens[check_index].type == KRYON_TOKEN_STRING) {
+        check_index--;
+    }
+
+    if (check_index < 0) {
+        return false;
+    }
+
+    return lexer->tokens[check_index].type == KRYON_TOKEN_FUNCTION_DIRECTIVE;
 }
 
 // =============================================================================
@@ -808,20 +806,9 @@ static bool scan_token(KryonLexer *lexer) {
             add_token(lexer, KRYON_TOKEN_COLON);
             break;
             
-        // @ directive
+        // Legacy '@' prefix (kept for diagnostics)
         case '@':
-            if (is_alpha(peek(lexer))) {
-                // Read directive name
-                while (is_alnum(peek(lexer))) {
-                    advance(lexer);
-                }
-                
-                size_t length = (size_t)(lexer->current - lexer->start - 1); // -1 for @
-                KryonTokenType type = kryon_lexer_classify_directive(lexer->start + 1, length);
-                add_token(lexer, type);
-            } else {
-                add_token(lexer, KRYON_TOKEN_AT);
-            }
+            add_token(lexer, KRYON_TOKEN_AT);
             break;
             
         // $ variable or theme variable

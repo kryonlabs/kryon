@@ -1,11 +1,11 @@
 // Define a reusable Counter component
-@component Counter(value = 0) {
+component Counter(value = 0) {
 
-    @function "lua" increment() {
+    function "lua" increment() {
         self.value = self.value + 1
     }
 
-    @function "lua" decrement() {
+    function "lua" decrement() {
         self.value = self.value - 1
     }
 

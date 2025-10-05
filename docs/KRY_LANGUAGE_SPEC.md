@@ -111,7 +111,7 @@ style "card" {
 ### Theme Variables (Enhanced Variables)
 ```kry
 # Theme as organized variable groups
-@theme colors {
+theme colors {
     primary: "#007AFF"
     secondary: "#34C759"
     success: "#30D158"
@@ -124,7 +124,7 @@ style "card" {
     border: "#C6C6C8"
 }
 
-@theme spacing {
+theme spacing {
     xs: 4
     sm: 8
     md: 16
@@ -133,7 +133,7 @@ style "card" {
     xxl: 48
 }
 
-@theme typography {
+theme typography {
     caption: 12
     body: 16
     subheading: 18
@@ -142,7 +142,7 @@ style "card" {
     h1: 48
 }
 
-@theme radius {
+theme radius {
     sm: 4
     md: 8
     lg: 16
@@ -169,7 +169,7 @@ Button {
 ### Theme Switching
 ```kry
 # Define multiple themes
-@theme light {
+theme light {
     background: "#ffffff"
     surface: "#f2f2f7"
     text: "#000000"
@@ -177,7 +177,7 @@ Button {
     primary: "#007AFF"
 }
 
-@theme dark {
+theme dark {
     background: "#000000"
     surface: "#1C1C1E"
     text: "#ffffff"
@@ -203,15 +203,15 @@ App {
 
 ### Regular Variables (Existing)
 ```kry
-@variables {
+variables {
     userName: String = "John Doe"
     count: Int = 0
     isLoggedIn: Boolean = false
 }
 
 # Shorthand syntax
-@var apiUrl = "https://api.example.com"
-@var maxItems = 10
+var apiUrl = "https://api.example.com"
+var maxItems = 10
 ```
 
 ## Layout Widgets
@@ -347,7 +347,7 @@ Input {
 
 ```kry
 # Theme variables
-@theme colors {
+theme colors {
     primary: "#007AFF"
     background: "#ffffff"
     surface: "#f2f2f7"
@@ -355,7 +355,7 @@ Input {
     border: "#e5e5e7"
 }
 
-@theme spacing {
+theme spacing {
     sm: 8
     md: 16
     lg: 24
@@ -487,11 +487,11 @@ Button {
 
 ### Function Definitions
 ```kry
-@function "javascript" handleClick() {
+function "javascript" handleClick() {
     console.log("Button clicked!");
 }
 
-@function "lua" calculateTotal(items) {
+function "lua" calculateTotal(items) {
     local total = 0
     for i, item in ipairs(items) do
         total = total + item.price
@@ -553,28 +553,32 @@ This hybrid system gives you the familiar styling power of CSS with the structur
 
 ## Component System
 
-### @component Syntax
+### component Syntax
 ```kry
-@component UserCard(name: String, avatar: String, role: String) {
+component UserCard {
+    prop name
+    prop avatar
+    prop role
+
     Container {
-        style: "card"
-        
+        style = "card"
+
         Row {
-            spacing: spacing.sm
-            crossAxis: "center"
-            
+            spacing = spacing.sm
+            crossAxis = "center"
+
             Image {
-                src: avatar
-                width: 60
-                height: 60
-                borderRadius: 30
+                src = avatar
+                width = 60
+                height = 60
+                borderRadius = 30
             }
-            
+
             Column {
-                spacing: 4
-                
-                Text { text: name, fontWeight: 600 }
-                Text { text: role, color: colors.textSecondary }
+                spacing = 4
+
+                Text { text = name, fontWeight = 600 }
+                Text { text = role, color = colors.textSecondary }
             }
         }
     }
@@ -582,9 +586,9 @@ This hybrid system gives you the familiar styling power of CSS with the structur
 
 # Usage
 UserCard {
-    name: "John Doe"
-    avatar: "avatar.jpg" 
-    role: "Designer"
+    name = "John Doe"
+    avatar = "avatar.jpg"
+    role = "Designer"
 }
 ```
 
@@ -592,35 +596,35 @@ UserCard {
 
 ### Reactive Variables & Functions
 ```kry
-@variables {
-    count: 0           # Reactive - changing triggers re-render
-    currentTheme: "light"  # Reactive theme switcher
+variables {
+    count = 0           # Reactive - changing triggers re-render
+    currentTheme = "light"  # Reactive theme switcher
 }
 
-@function increment() {
+function increment() {
     count = count + 1  # Direct assignment updates reactive variable
 }
 
-@function toggleTheme() {
+function toggleTheme() {
     currentTheme = currentTheme == "light" ? "dark" : "light"
 }
 
 Button {
-    text: "Count: count"  # Automatically updates when count changes
-    onClick: "increment"   # Function directly modifies reactive variable
+    text = "Count: count"  # Automatically updates when count changes
+    onClick = "increment"   # Function directly modifies reactive variable
 }
 ```
 
 ### Advanced Theme Switching
 ```kry
 # Define themes
-@theme light {
+theme light {
     background: "#ffffff"
     text: "#000000" 
     primary: "#007AFF"
 }
 
-@theme dark {
+theme dark {
     background: "#000000"
     text: "#ffffff"
     primary: "#0A84FF" 
@@ -637,7 +641,7 @@ App {
 }
 
 # Theme switching function
-@function setTheme(themeName) {
+function setTheme(themeName) {
     currentTheme = themeName  # Updates reactive variable, triggers re-render
 }
 ```
@@ -661,7 +665,7 @@ Button {
 ```
 
 ### Key Points:
-- **@variables are reactive by default** - any change triggers re-render
+- **variables are reactive by default** - any change triggers re-render
 - **Functions directly modify variables** - no setState needed
 - **Theme switching via reactive theme property** on App
 - **Widget properties override style properties**

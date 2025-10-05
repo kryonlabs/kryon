@@ -1,4 +1,4 @@
-@const colors = [
+const colors = [
     "#0284c7",
     "#0369a1",
     "#0891b2",
@@ -19,7 +19,7 @@ App {
         columns = 6
         gap = 10
 
-        @const_for i in 1..30 {
+        const_for i in 1..30 {
             Container {
                 backgroundColor = colors[i % 6]
                 borderRadius = 12                        

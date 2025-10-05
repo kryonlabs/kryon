@@ -23,7 +23,7 @@ KRY Source → Lexer → Parser → Hybrid AST → Optimizer → Generator → K
 | COLOR | - | Color values (#RRGGBBAA, rgb(), hsl()) |
 | VARIABLE_IDENTIFIER | - | Variable names (colors, userName, count) |
 | STYLE | style | Style declaration keyword |
-| THEME | @theme | Theme declaration keyword |
+| THEME | theme | Theme declaration keyword |
 | EXTENDS | extends | Style inheritance keyword |
 | LBRACE | { | Left brace |
 | RBRACE | } | Right brace |
@@ -35,7 +35,6 @@ KRY Source → Lexer → Parser → Hybrid AST → Optimizer → Generator → K
 | COMMA | , | List separator |
 | DOT | . | Member access for variables |
 | DOLLAR_BRACE | ${ | String interpolation start |
-| AT | @ | Directive prefix |
 | COMMENT | #, // | Comments |
 | EOF | - | End of file |
 
@@ -48,7 +47,7 @@ KRY Source → Lexer → Parser → Hybrid AST → Optimizer → Generator → K
 5. **Widget Identifiers**: Widget type names (Button, Column, Text, etc.)
 6. **Variables**: Direct usage (colors.primary, spacing.md) and string interpolation (${count})
 7. **Style References**: String references to style definitions
-8. **Keywords**: Reserved words (true, false, style, extends, @theme)
+8. **Keywords**: Reserved words (true, false, component, theme, style, extends, for, if, variables, etc.)
 
 ## 2. Parser Phase
 
@@ -100,7 +99,7 @@ HybridASTNode
 
 1. **Program**: Collection of style definitions, theme definitions, and widget declarations
 2. **Style**: `style "name" { properties }` or `style "name" extends "parent" { properties }`
-3. **Theme**: `@theme groupName { variables }`
+3. **Theme**: `theme groupName { variables }`
 4. **Widget**: `WidgetType { properties and children }`
 5. **Property**: `name: value` with optional responsive values
 6. **Variable**: `variableName` or `groupName.variableName` (used directly, no $ prefix)

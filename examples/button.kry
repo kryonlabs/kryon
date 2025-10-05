@@ -1,11 +1,11 @@
-@style "base" {
+style "base" {
     backgroundColor = "#191919FF"
     color = "#FF9900FF"
     borderColor = "#00AAFFFF"
     borderWidth = 1
 }
 
-@function "lua" handleButtonClick() {
+function "lua" handleButtonClick() {
     print("🎯 Button clicked! Hello from Lua script!")
 }
 

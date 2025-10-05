@@ -111,7 +111,7 @@ Kryon is a cross-platform UI framework that combines the familiar styling power 
 
 ```kry
 # Enhanced theme variables (organized variable groups)
-@theme colors {
+theme colors {
     primary: "#007AFF"
     secondary: "#34C759"
     background: "#ffffff"
@@ -119,7 +119,7 @@ Kryon is a cross-platform UI framework that combines the familiar styling power 
     border: "#e5e5e7"
 }
 
-@theme spacing {
+theme spacing {
     sm: 8
     md: 16
     lg: 24

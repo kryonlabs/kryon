@@ -1,12 +1,12 @@
-@metadata {
+metadata {
     title = "Simple Todo App"
-    description = "A simple todo application demonstrating @for directive with reactive variables"
+    description = "A simple todo application demonstrating for directive with reactive variables"
 }
 
-@var todos = ["Test todo", "Another item"]
-@var newTodo = ""
+var todos = ["Test todo", "Another item"]
+var newTodo = ""
 
-@function "lua" addTodo() {
+function "lua" addTodo() {
     if newTodo and newTodo ~= "" then
         print("Adding todo: " .. newTodo)
         table.insert(todos, newTodo)
@@ -62,7 +62,7 @@ Column {
             color = "#333333"
         }
         
-        @for todo in todos {
+        for todo in todos {
             Text {
                 text = "- ${todo}"
                 fontSize = 16

@@ -54,7 +54,7 @@ Container {
     Button {
         text: "Test Libraries"
         
-        @function onClick() {
+        function onClick() {
             -- Use OS library
             local os = require('os')
             print("Current time:", os.time())
@@ -122,7 +122,7 @@ Container {
     Button {
         text: "Test Database"
         
-        @function onClick() {
+        function onClick() {
             -- Load SQLite library
             local sqlite3 = require('lsqlite3')
             

@@ -54,19 +54,19 @@ Examples use the `.kry` format with the following syntax:
 
 ```kry
 // Metadata (optional)
-@metadata {
+metadata {
     title: "Example App"
     version: "1.0.0"
 }
 
 // Styling (optional)
-@style "base" {
+style "base" {
     backgroundColor: "#191919FF"
     color: "#FF9900FF"
 }
 
 // Script functions (optional)
-@function "lua" handleClick() {
+function "lua" handleClick() {
     print("Button clicked!")
 }
 

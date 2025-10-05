@@ -1,7 +1,7 @@
-@const containerWidth = 800
-@const baseHeight = 60
-@const margin = 10
-@const isEnabled = true
+const containerWidth = 800
+const baseHeight = 60
+const margin = 10
+const isEnabled = true
 
 App {
     windowWidth = containerWidth

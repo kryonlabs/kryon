@@ -1,11 +1,11 @@
-@metadata {
+metadata {
     title = "Kryon Examples Browser"
     description = "Browse and navigate through Kryon framework examples"
 }
 
-@var files = []
+var files = []
 
-@function "lua" loadExampleFiles() {
+function "lua" loadExampleFiles() {
     local examples = {}
     
     -- Use native Lua to list files in current directory (where index.kry is located)
@@ -31,8 +31,8 @@
     return examples
 }
 
-@component BackButton() {
-    @function "lua" navigateBack() {
+component BackButton() {
+    function "lua" navigateBack() {
         kryon.navigation.navigateTo("index.kry")
         print("🔙 Navigating back to examples index")
     }
@@ -51,7 +51,7 @@
     }
 }
 
-@onload "lua" {
+onload "lua" {
     files = loadExampleFiles()
 }
 
@@ -80,7 +80,7 @@ App {
         Column {
             gap = 10
             
-            @for example in files {
+            for example in files {
                 Link {
                     to = example.file
                     text = example.title

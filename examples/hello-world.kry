@@ -1,4 +1,4 @@
-@metadata {
+metadata {
     title = "Hello World Example"
     version = "1.0.0"
 }

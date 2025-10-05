@@ -86,14 +86,14 @@ Maps to:
 ### Theme Variables to CSS Custom Properties
 
 ```kry
-@theme colors {
+theme colors {
     primary: "#007AFF"
     secondary: "#34C759"
     background: "#ffffff"
     text: "#000000"
 }
 
-@theme spacing {
+theme spacing {
     sm: 8
     md: 16
     lg: 24
@@ -137,12 +137,12 @@ Maps to:
 ### Theme Switching
 
 ```kry
-@theme light {
+theme light {
     background: "#ffffff"
     text: "#000000"
 }
 
-@theme dark {
+theme dark {
     background: "#000000"
     text: "#ffffff"
 }
@@ -189,13 +189,13 @@ Maps to:
 ### KRY Source
 
 ```kry
-@theme colors {
+theme colors {
     primary: "#007AFF"
     background: "#ffffff"
     text: "#000000"
 }
 
-@theme spacing {
+theme spacing {
     sm: 8
     md: 16
 }

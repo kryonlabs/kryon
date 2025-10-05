@@ -1,9 +1,9 @@
-@metadata {
+metadata {
     title = "Simple Tab Demo"
     description = "Basic TabBar example with simple content"
 }
 
-@var selectedTab = 0
+var selectedTab = 0
 
 Container {
     backgroundColor = "#ffffff"

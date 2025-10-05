@@ -1,11 +1,11 @@
-@metadata {
+metadata {
     title = "Runtime If/Else Test"
-    description = "Testing reactive conditional rendering with @var and @if"
+    description = "Testing reactive conditional rendering with var and if"
 }
 
-@var showMessage = true
+var showMessage = true
 
-@function "lua" toggleMessage() {
+function "lua" toggleMessage() {
     showMessage = not showMessage
     print("Toggled showMessage to: " .. tostring(showMessage))
 }
@@ -18,7 +18,7 @@ App {
         gap = 15
 
         Text {
-            text = "Runtime @if Test with @var"
+            text = "Runtime if Test with var"
             fontSize = 24
             color = "#333"
         }
@@ -32,7 +32,7 @@ App {
             onClick = "toggleMessage"
         }
 
-        @if showMessage {
+        if showMessage {
             Container {
                 background = "#4CAF50"
                 padding = 15

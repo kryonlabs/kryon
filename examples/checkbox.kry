@@ -1,9 +1,9 @@
-@metadata {
+metadata {
     title = "Simple Checkbox Test"
     description = "Basic checkbox test with literal values"
 }
 
-@function "lua" testClick() {
+function "lua" testClick() {
     print("Checkbox clicked!")
 }
 
