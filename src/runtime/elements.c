@@ -509,6 +509,732 @@ static bool execute_print_call(const char **cursor, KryonScriptFunction *functio
     return true;
 }
 
+static bool append_string(char** buffer, size_t* length, size_t* capacity, const char* fragment) {
+    if (!buffer || !length || !capacity || !fragment) {
+        return false;
+    }
+
+    size_t fragment_len = strlen(fragment);
+    size_t required = *length + fragment_len + 1;
+    if (required > *capacity) {
+        size_t new_capacity = (*capacity == 0) ? 64 : *capacity;
+        while (new_capacity < required) {
+            new_capacity *= 2;
+        }
+        char* enlarged = kryon_realloc(*buffer, new_capacity);
+        if (!enlarged) {
+            return false;
+        }
+        *buffer = enlarged;
+        *capacity = new_capacity;
+    }
+
+    if (fragment_len > 0) {
+        memcpy(*buffer + *length, fragment, fragment_len);
+        *length += fragment_len;
+    }
+    (*buffer)[*length] = '\0';
+    return true;
+}
+
+typedef struct {
+    const char* scope_id;
+    const char* variable_name;
+} ComponentBinding;
+
+static bool find_component_binding(KryonRuntime* runtime, KryonElement* element, const char* name, ComponentBinding* out_binding) {
+    (void)runtime;
+    if (!element || !name || !out_binding) {
+        return false;
+    }
+
+    for (KryonElement* current = element; current; current = current->parent) {
+        if (current->component_scope_id) {
+            out_binding->scope_id = current->component_scope_id;
+            out_binding->variable_name = name;
+            printf("[binding] element=%s scope=%s variable=%s\n",
+                   current->type_name ? current->type_name : "<anon>",
+                   current->component_scope_id,
+                   name);
+            return true;
+        }
+    }
+
+    out_binding->scope_id = NULL;
+    out_binding->variable_name = name;
+    return true;
+}
+
+static bool compose_component_variable_name(const ComponentBinding* binding, char* buffer, size_t buffer_size) {
+    if (!binding || !buffer || buffer_size == 0 || !binding->variable_name) {
+        return false;
+    }
+
+    if (!binding->scope_id) {
+        size_t name_len = strlen(binding->variable_name);
+        if (name_len >= buffer_size) {
+            return false;
+        }
+        memcpy(buffer, binding->variable_name, name_len + 1);
+        return true;
+    }
+
+    int written = snprintf(buffer, buffer_size, "%s.%s", binding->scope_id, binding->variable_name);
+    if (written < 0 || (size_t)written >= buffer_size) {
+        return false;
+    }
+    return true;
+}
+
+static const char* get_binding_string(KryonRuntime* runtime, const ComponentBinding* binding) {
+    if (!runtime || !binding) {
+        return NULL;
+    }
+
+    char variable_name[128];
+    if (!compose_component_variable_name(binding, variable_name, sizeof(variable_name))) {
+        return NULL;
+    }
+    return kryon_runtime_get_variable(runtime, variable_name);
+}
+
+static bool set_binding_string(KryonRuntime* runtime, const ComponentBinding* binding, const char* new_value) {
+    if (!runtime || !binding || !new_value) {
+        return false;
+    }
+
+    char variable_name[128];
+    if (!compose_component_variable_name(binding, variable_name, sizeof(variable_name))) {
+        return false;
+    }
+    return kryon_runtime_set_variable(runtime, variable_name, new_value);
+}
+
+static char* trim_statement_copy(const char* str, size_t length) {
+    if (!str) {
+        return NULL;
+    }
+
+    const char* start = str;
+    const char* end = str + length;
+
+    while (start < end && isspace((unsigned char)*start)) {
+        start++;
+    }
+    while (end > start && isspace((unsigned char)*(end - 1))) {
+        end--;
+    }
+
+    size_t trimmed_len = (size_t)(end - start);
+    char* buffer = kryon_alloc(trimmed_len + 1);
+    if (!buffer) {
+        return NULL;
+    }
+    if (trimmed_len > 0) {
+        memcpy(buffer, start, trimmed_len);
+    }
+    buffer[trimmed_len] = '\0';
+    return buffer;
+}
+
+static bool is_identifier(const char* text) {
+    if (!text || text[0] == '\0') {
+        return false;
+    }
+
+    if (!(isalpha((unsigned char)text[0]) || text[0] == '_')) {
+        return false;
+    }
+
+    for (size_t i = 1; text[i] != '\0'; i++) {
+        if (!is_identifier_char(text[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool parse_numeric_token(KryonRuntime* runtime, KryonElement* element, const char* token, double* out_value) {
+    if (!token || !out_value) {
+        return false;
+    }
+
+    if (is_identifier(token)) {
+        ComponentBinding binding;
+        if (!find_component_binding(runtime, element, token, &binding)) {
+            printf("[script] unknown identifier '%s'\n", token);
+            return false;
+        }
+
+        const char* value_str = get_binding_string(runtime, &binding);
+        if (!value_str) {
+            *out_value = 0.0;
+            return true;
+        }
+
+        char* end_ptr = NULL;
+        double parsed = strtod(value_str, &end_ptr);
+        if (end_ptr == value_str) {
+            printf("[script] value '%s' for '%s' not numeric, treating as 0\n", value_str, token);
+            parsed = 0.0;
+        }
+        *out_value = parsed;
+        return true;
+    }
+
+    char* end_ptr = NULL;
+    double parsed = strtod(token, &end_ptr);
+    if (end_ptr == token || *end_ptr != '\0') {
+        printf("[script] unable to parse numeric token '%s'\n", token);
+        return false;
+    }
+
+    *out_value = parsed;
+    return true;
+}
+
+static const char* skip_inline_ws_const(const char* cursor) {
+    while (cursor && *cursor && isspace((unsigned char)*cursor)) {
+        cursor++;
+    }
+    return cursor;
+}
+
+static bool parse_factor(KryonRuntime* runtime, KryonElement* element, const char** cursor, double* out_value);
+static bool parse_term(KryonRuntime* runtime, KryonElement* element, const char** cursor, double* out_value);
+static bool parse_arithmetic_expression(KryonRuntime* runtime, KryonElement* element, const char** cursor, double* out_value);
+
+static bool parse_factor(KryonRuntime* runtime, KryonElement* element, const char** cursor, double* out_value) {
+    if (!cursor || !*cursor || !out_value) {
+        return false;
+    }
+
+    const char* p = skip_inline_ws_const(*cursor);
+    int sign = 1;
+
+    while (*p == '+' || *p == '-') {
+        if (*p == '-') {
+            sign = -sign;
+        }
+        p++;
+        p = skip_inline_ws_const(p);
+    }
+
+    if (*p == '(') {
+        p++;
+        double nested_value = 0.0;
+        if (!parse_arithmetic_expression(runtime, element, &p, &nested_value)) {
+            return false;
+        }
+        p = skip_inline_ws_const(p);
+        if (*p != ')') {
+            return false;
+        }
+        p++;
+        *out_value = sign * nested_value;
+        *cursor = p;
+        return true;
+    }
+
+    if (isdigit((unsigned char)*p) || *p == '.') {
+        char* end_ptr = NULL;
+        double value = strtod(p, &end_ptr);
+        if (end_ptr == p) {
+            return false;
+        }
+        *out_value = sign * value;
+        *cursor = end_ptr;
+        return true;
+    }
+
+    if (isalpha((unsigned char)*p) || *p == '_') {
+        const char* start = p;
+        while (*p && is_identifier_char(*p)) {
+            p++;
+        }
+        size_t token_len = (size_t)(p - start);
+        char* token = kryon_alloc(token_len + 1);
+        if (!token) {
+            return false;
+        }
+        memcpy(token, start, token_len);
+        token[token_len] = '\0';
+
+        double resolved = 0.0;
+        bool success = parse_numeric_token(runtime, element, token, &resolved);
+        kryon_free(token);
+        if (!success) {
+            return false;
+        }
+
+        *out_value = sign * resolved;
+        *cursor = p;
+        return true;
+    }
+
+    return false;
+}
+
+static bool parse_term(KryonRuntime* runtime, KryonElement* element, const char** cursor, double* out_value) {
+    if (!parse_factor(runtime, element, cursor, out_value)) {
+        return false;
+    }
+
+    const char* p = skip_inline_ws_const(*cursor);
+
+    while (*p == '*' || *p == '/') {
+        char op = *p++;
+        double rhs = 0.0;
+        if (!parse_factor(runtime, element, &p, &rhs)) {
+            return false;
+        }
+
+        if (op == '*') {
+            *out_value *= rhs;
+        } else {
+            *out_value = rhs != 0.0 ? (*out_value / rhs) : 0.0;
+        }
+
+        p = skip_inline_ws_const(p);
+    }
+
+    *cursor = p;
+    return true;
+}
+
+static bool parse_arithmetic_expression(KryonRuntime* runtime, KryonElement* element, const char** cursor, double* out_value) {
+    if (!parse_term(runtime, element, cursor, out_value)) {
+        return false;
+    }
+
+    const char* p = skip_inline_ws_const(*cursor);
+
+    while (*p == '+' || *p == '-') {
+        char op = *p++;
+        double rhs = 0.0;
+        if (!parse_term(runtime, element, &p, &rhs)) {
+            return false;
+        }
+
+        if (op == '+') {
+            *out_value += rhs;
+        } else {
+            *out_value -= rhs;
+        }
+
+        p = skip_inline_ws_const(p);
+    }
+
+    *cursor = p;
+    return true;
+}
+
+static bool evaluate_expression(KryonRuntime* runtime, KryonElement* element, const char* expr, double* out_value) {
+    if (!expr || !out_value) {
+        return false;
+    }
+
+    char* clean = trim_statement_copy(expr, strlen(expr));
+    if (!clean) {
+        return false;
+    }
+
+    const char* cursor = clean;
+    double value = 0.0;
+    bool success = false;
+
+    if (parse_arithmetic_expression(runtime, element, &cursor, &value)) {
+        cursor = skip_inline_ws_const(cursor);
+        if (*cursor == '\0') {
+            *out_value = value;
+            success = true;
+        }
+    }
+
+    if (!success) {
+        success = parse_numeric_token(runtime, element, clean, out_value);
+    }
+
+    kryon_free(clean);
+    return success;
+}
+
+static bool evaluate_boolean_expression(KryonRuntime* runtime, KryonElement* element, const char* expr, bool* out_value) {
+    if (!expr || !out_value) {
+        return false;
+    }
+
+    char* clean = trim_statement_copy(expr, strlen(expr));
+    if (!clean) {
+        return false;
+    }
+
+    char* cursor = clean;
+    bool negate = false;
+    while (*cursor == '!') {
+        negate = !negate;
+        cursor++;
+        while (isspace((unsigned char)*cursor)) {
+            cursor++;
+        }
+    }
+
+    char* operand = trim_statement_copy(cursor, strlen(cursor));
+    bool success = false;
+    bool value = false;
+
+    if (operand) {
+        if (strcmp(operand, "true") == 0) {
+            value = true;
+            success = true;
+        } else if (strcmp(operand, "false") == 0) {
+            value = false;
+            success = true;
+        } else if (is_identifier(operand)) {
+            ComponentBinding binding;
+            if (find_component_binding(runtime, element, operand, &binding)) {
+                const char* str = get_binding_string(runtime, &binding);
+                if (str) {
+                    if (strcmp(str, "true") == 0) {
+                        value = true;
+                        success = true;
+                    } else if (strcmp(str, "false") == 0) {
+                        value = false;
+                        success = true;
+                    } else {
+                        char* end_ptr = NULL;
+                        double parsed = strtod(str, &end_ptr);
+                        if (end_ptr != str) {
+                            value = (parsed != 0.0);
+                            success = true;
+                        }
+                    }
+                }
+            }
+        } else if (strcmp(operand, "1") == 0 || strcmp(operand, "0") == 0) {
+            value = (operand[0] == '1');
+            success = true;
+        }
+    }
+
+    if (operand) {
+        kryon_free(operand);
+    }
+    kryon_free(clean);
+
+    if (!success) {
+        return false;
+    }
+
+    if (negate) {
+        value = !value;
+    }
+    *out_value = value;
+    return true;
+}
+
+static char* evaluate_string_expression(KryonRuntime* runtime, KryonElement* element, const char* expr, size_t length) {
+    const char* cursor = expr;
+    const char* end = expr + length;
+
+    size_t capacity = 64;
+    size_t len = 0;
+    char* result = kryon_alloc(capacity);
+    if (!result) {
+        return NULL;
+    }
+    result[0] = '\0';
+
+    while (cursor < end) {
+        while (cursor < end && isspace((unsigned char)*cursor)) {
+            cursor++;
+        }
+        if (cursor >= end) {
+            break;
+        }
+
+        if (*cursor == '"') {
+            const char* parser = cursor;
+            char* literal = NULL;
+            if (!parse_string_literal(&parser, &literal)) {
+                kryon_free(result);
+                return NULL;
+            }
+            cursor = parser;
+            if (!append_string(&result, &len, &capacity, literal)) {
+                kryon_free(literal);
+                kryon_free(result);
+                return NULL;
+            }
+            kryon_free(literal);
+        } else {
+            const char* token_start = cursor;
+            while (cursor < end && !isspace((unsigned char)*cursor) &&
+                   !(cursor + 1 < end && cursor[0] == '.' && cursor[1] == '.') &&
+                   cursor[0] != ')') {
+                cursor++;
+            }
+            size_t token_len = cursor - token_start;
+            char* token = trim_statement_copy(token_start, token_len);
+            if (!token) {
+                kryon_free(result);
+                return NULL;
+            }
+
+            const char* value = NULL;
+            bool append_token_itself = false;
+
+            if (strcmp(token, "true") == 0 || strcmp(token, "false") == 0) {
+                value = token;
+                append_token_itself = true;
+            } else {
+                ComponentBinding binding;
+                if (find_component_binding(runtime, element, token, &binding)) {
+                    value = get_binding_string(runtime, &binding);
+                    if (!value) {
+                        value = "";
+                    }
+                } else {
+                    value = token;
+                    append_token_itself = true;
+                }
+            }
+
+            if (!append_string(&result, &len, &capacity, value)) {
+                kryon_free(token);
+                kryon_free(result);
+                return NULL;
+            }
+
+            if (!append_token_itself) {
+                kryon_free(token);
+            } else {
+                kryon_free(token);
+            }
+        }
+
+        while (cursor < end && isspace((unsigned char)*cursor)) {
+            cursor++;
+        }
+        if (cursor + 1 < end && cursor[0] == '.' && cursor[1] == '.') {
+            cursor += 2;
+            continue;
+        }
+        break;
+    }
+
+    return result;
+}
+
+static bool execute_assignment_statement(KryonRuntime* runtime, KryonElement* element, const char* statement) {
+    if (!runtime || !element || !statement) {
+        return false;
+    }
+
+    const char* equals_pos = strchr(statement, '=');
+    if (!equals_pos) {
+        return false;
+    }
+
+    const char* left_end = equals_pos;
+    const char* op_scan = left_end;
+    while (op_scan > statement && isspace((unsigned char)*(op_scan - 1))) {
+        op_scan--;
+    }
+
+    char compound_op = '\0';
+    if (op_scan > statement) {
+        char maybe_op = *(op_scan - 1);
+        if (maybe_op == '+' || maybe_op == '-' || maybe_op == '*' || maybe_op == '/') {
+            compound_op = maybe_op;
+            op_scan--;
+            while (op_scan > statement && isspace((unsigned char)*(op_scan - 1))) {
+                op_scan--;
+            }
+            left_end = op_scan;
+        }
+    }
+
+    char* target_part = trim_statement_copy(statement, (size_t)(left_end - statement));
+    if (!target_part) {
+        return false;
+    }
+
+    char* target_name = target_part;
+    if (strncmp(target_name, "var", 3) == 0) {
+        target_name += 3;
+    } else if (strncmp(target_name, "let", 3) == 0) {
+        target_name += 3;
+    } else if (strncmp(target_name, "const", 5) == 0) {
+        target_name += 5;
+    }
+
+    while (isspace((unsigned char)*target_name)) {
+        target_name++;
+    }
+
+    if (!is_identifier(target_name)) {
+        kryon_free(target_part);
+        return false;
+    }
+
+    const char* expr_start = equals_pos + 1;
+    const char* expr_end = statement + strlen(statement);
+
+    while (expr_end > expr_start && isspace((unsigned char)*(expr_end - 1))) {
+        expr_end--;
+    }
+    if (expr_end > expr_start && *(expr_end - 1) == ';') {
+        expr_end--;
+        while (expr_end > expr_start && isspace((unsigned char)*(expr_end - 1))) {
+            expr_end--;
+        }
+    }
+
+    size_t expr_len = (size_t)(expr_end - expr_start);
+    if (expr_len == 0) {
+        kryon_free(target_part);
+        return false;
+    }
+
+    char* expression = trim_statement_copy(expr_start, expr_len);
+    if (!expression) {
+        kryon_free(target_part);
+        return false;
+    }
+
+    ComponentBinding binding;
+    if (!find_component_binding(runtime, element, target_name, &binding)) {
+        kryon_free(expression);
+        kryon_free(target_part);
+        return false;
+    }
+
+    bool assigned = false;
+
+    bool bool_value = false;
+    if (compound_op == '\0' && evaluate_boolean_expression(runtime, element, expression, &bool_value)) {
+        assigned = set_binding_string(runtime, &binding, bool_value ? "true" : "false");
+    } else {
+        double number_value = 0.0;
+        bool number_ok = evaluate_expression(runtime, element, expression, &number_value);
+
+        if (compound_op != '\0' && number_ok) {
+            double base_value = 0.0;
+            if (parse_numeric_token(runtime, element, target_name, &base_value)) {
+                double result_number = base_value;
+                switch (compound_op) {
+                    case '+': result_number = base_value + number_value; break;
+                    case '-': result_number = base_value - number_value; break;
+                    case '*': result_number = base_value * number_value; break;
+                    case '/': result_number = (number_value != 0.0) ? base_value / number_value : 0.0; break;
+                    default: number_ok = false; break;
+                }
+
+                if (number_ok) {
+                    char buffer[64];
+                    snprintf(buffer, sizeof(buffer), "%.15g", result_number);
+                    assigned = set_binding_string(runtime, &binding, buffer);
+                }
+            } else {
+                number_ok = false;
+            }
+        }
+
+        if (!assigned && number_ok && compound_op == '\0') {
+            char buffer[64];
+            snprintf(buffer, sizeof(buffer), "%.15g", number_value);
+            assigned = set_binding_string(runtime, &binding, buffer);
+        }
+
+        if (!assigned) {
+            const char* current_str = get_binding_string(runtime, &binding);
+            if (!current_str) current_str = "";
+
+            char* expr_string = evaluate_string_expression(runtime, element, expression, strlen(expression));
+
+            if (compound_op == '+' && expr_string) {
+                size_t len_a = strlen(current_str);
+                size_t len_b = strlen(expr_string);
+                char* appended = kryon_alloc(len_a + len_b + 1);
+                if (appended) {
+                    memcpy(appended, current_str, len_a);
+                    memcpy(appended + len_a, expr_string, len_b + 1);
+                    assigned = set_binding_string(runtime, &binding, appended);
+                    kryon_free(appended);
+                }
+                kryon_free(expr_string);
+            } else {
+                if (!expr_string && compound_op == '\0') {
+                    expr_string = evaluate_string_expression(runtime, element, expression, strlen(expression));
+                }
+                if (expr_string) {
+                    assigned = set_binding_string(runtime, &binding, expr_string);
+                    kryon_free(expr_string);
+                } else if (compound_op == '\0') {
+                    assigned = set_binding_string(runtime, &binding, expression);
+                }
+            }
+        }
+    }
+
+    if (assigned) {
+        runtime->needs_update = true;
+        if (runtime->root) {
+            process_if_directives(runtime, runtime->root);
+        }
+    }
+
+    kryon_free(expression);
+    kryon_free(target_part);
+    return assigned;
+}
+
+static bool execute_print_statement(KryonRuntime* runtime, KryonElement* element, const char* statement) {
+    const char* cursor = statement;
+    if (!execute_print_call(&cursor, NULL)) {
+        return false;
+    }
+
+    while (isspace((unsigned char)*cursor)) {
+        cursor++;
+    }
+
+    if (cursor[0] != '.' || cursor[1] != '.') {
+        return true;
+    }
+
+    cursor += 2;
+    size_t expr_len = strlen(cursor);
+    char* evaluated = evaluate_string_expression(runtime, element, cursor, expr_len);
+    if (!evaluated) {
+        return false;
+    }
+
+    printf("%s\n", evaluated);
+    fflush(stdout);
+    kryon_free(evaluated);
+    return true;
+}
+
+static bool execute_statement(KryonRuntime* runtime, KryonElement* element, KryonScriptFunction* function, const char* statement) {
+    if (!statement) {
+        return false;
+    }
+
+    if (strncmp(statement, "print", 5) == 0 && !is_identifier_char(statement[5])) {
+        (void)function;
+        return execute_print_statement(runtime, element, statement);
+    }
+
+    if (execute_assignment_statement(runtime, element, statement)) {
+        return true;
+    }
+
+    printf("⚠️ SCRIPT: Unsupported statement '%s'\n", statement);
+    return false;
+}
+
 static KryonScriptFunction* find_script_function(KryonRuntime* runtime, const char* name) {
     if (!runtime || !name || name[0] == '\0') {
         return NULL;
@@ -523,42 +1249,41 @@ static KryonScriptFunction* find_script_function(KryonRuntime* runtime, const ch
     return NULL;
 }
 
-static bool execute_script_function(KryonRuntime* runtime, KryonScriptFunction* function) {
-    (void)runtime; // Placeholder for future runtime-aware features
-    if (!function || !function->code) {
+static bool execute_script_function(KryonRuntime* runtime, KryonElement* element, KryonScriptFunction* function) {
+    if (!runtime || !function || !function->code) {
         return false;
     }
 
-    const char *p = function->code;
-    bool executed = false;
+    const char* cursor = function->code;
+    bool executed_any = false;
 
-    while (*p) {
-        if (isspace((unsigned char)*p)) {
-            p++;
-            continue;
+    while (*cursor) {
+        const char* line_start = cursor;
+        size_t line_length = 0;
+        while (cursor[line_length] && cursor[line_length] != '\n' && cursor[line_length] != '\r') {
+            line_length++;
         }
 
-        if (strncmp(p, "print", 5) == 0) {
-            char prev = (p > function->code) ? p[-1] : '\0';
-            char next = p[5];
-            if (!is_identifier_char(prev) && !is_identifier_char(next)) {
-                const char *call_start = p;
-                if (execute_print_call(&p, function)) {
-                    executed = true;
-                    continue;
-                } else {
-                    printf("⚠️ SCRIPT: Failed to execute print statement in function '%s'\n",
-                           function->name ? function->name : "<unnamed>");
-                    p = call_start + 5;
-                    continue;
-                }
+        char* statement = trim_statement_copy(line_start, line_length);
+        if (statement && statement[0] != '\0') {
+            if (execute_statement(runtime, element, function, statement)) {
+                executed_any = true;
             }
         }
+        if (statement) {
+            kryon_free(statement);
+        }
 
-        p++;
+        cursor += line_length;
+        if (*cursor == '\r') {
+            cursor++;
+        }
+        if (*cursor == '\n') {
+            cursor++;
+        }
     }
 
-    return executed;
+    return executed_any;
 }
 
 // =============================================================================
@@ -608,7 +1333,7 @@ bool generic_script_event_handler(KryonRuntime* runtime, KryonElement* element, 
         return false;
     }
 
-    bool handled = execute_script_function(runtime, function);
+    bool handled = execute_script_function(runtime, element, function);
     if (!handled) {
         printf("⚠️ SCRIPT: Function '%s' executed without supported operations\n",
                function->name ? function->name : handler_name);

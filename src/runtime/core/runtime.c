@@ -824,6 +824,9 @@ void kryon_element_destroy(KryonRuntime *runtime, KryonElement *element) {
         }
         kryon_free(element->class_names);
     }
+    if (element->component_scope_id) {
+        kryon_free(element->component_scope_id);
+    }
 
     // Free @for directive template storage
     if (element->template_children) {

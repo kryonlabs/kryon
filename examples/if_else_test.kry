@@ -6,8 +6,8 @@ metadata {
 var showMessage = true
 
 function toggleMessage() {
-    showMessage = not showMessage
-    print("Toggled showMessage to: " .. tostring(showMessage))
+    showMessage = !showMessage
+    print("Toggled showMessage to: " .. showMessage)
 }
 
 App {

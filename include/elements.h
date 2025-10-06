@@ -89,6 +89,7 @@ struct KryonElement {
 
     // Scripting
     void *script_state;
+    char *component_scope_id;
     
     // @for directive template storage
     struct KryonElement **template_children;  // Template children for @for directive

@@ -57,6 +57,9 @@ static void connect_function_handlers(KryonRuntime *runtime, KryonElement *eleme
 static void reprocess_property_bindings(KryonRuntime *runtime, KryonElement *element);
 static char *resolve_template_property(KryonRuntime *runtime, KryonProperty *property);
 static void kryon_free_template_segments(KryonProperty *property);
+static void propagate_component_scope_up(KryonElement* element, const char* scope_id);
+static void assign_component_scope_to_element(KryonElement* element, const char* binding_path);
+
 
 static bool ensure_script_function_capacity(KryonRuntime* runtime, size_t required_count) {
     if (!runtime) {
@@ -104,6 +107,54 @@ static void reset_script_function(KryonScriptFunction* fn) {
         kryon_free(fn->parameters);
     }
     memset(fn, 0, sizeof(*fn));
+}
+
+
+
+static void propagate_component_scope_up(KryonElement* element, const char* scope_id) {
+    if (!scope_id) {
+        return;
+    }
+
+    for (KryonElement* current = element; current; current = current->parent) {
+        if (!current->component_scope_id) {
+            current->component_scope_id = kryon_strdup(scope_id);
+        } else if (strcmp(current->component_scope_id, scope_id) != 0) {
+            break;
+        }
+    }
+}
+
+static void assign_component_scope_to_element(KryonElement* element, const char* binding_path) {
+    if (!element || !binding_path) {
+        return;
+    }
+
+    const char prefix[] = "comp_";
+    if (strncmp(binding_path, prefix, sizeof(prefix) - 1) != 0) {
+        return;
+    }
+
+    const char* dot = strchr(binding_path, '.');
+    if (!dot || dot == binding_path) {
+        return;
+    }
+
+    size_t prefix_len = (size_t)(dot - binding_path);
+    char* scope_id = kryon_alloc(prefix_len + 1);
+    if (!scope_id) {
+        return;
+    }
+    memcpy(scope_id, binding_path, prefix_len);
+    scope_id[prefix_len] = '\0';
+
+    if (!element->component_scope_id) {
+        element->component_scope_id = scope_id;
+    } else {
+        kryon_free(scope_id);
+    }
+
+    propagate_component_scope_up(element->parent, element->component_scope_id);
 }
 
 // =============================================================================
@@ -934,6 +985,10 @@ static KryonElement *load_element_from_binary(KryonRuntime *runtime,
     if (header.child_count > 0) {
         printf("DEBUG: Element %s has %u children\n", element->type_name, header.child_count);
     }
+
+    if (element->type_name) {
+        printf("   element %s component_instance=%p parent=%p\n", element->type_name, (void*)element->component_instance, (void*)parent);
+    }
     
     // Load children using schema-validated count
     printf("DEBUG: About to load %u children for element %s\n", header.child_count, element->type_name);
@@ -956,6 +1011,13 @@ static KryonElement *load_element_from_binary(KryonRuntime *runtime,
             printf("DEBUG: Failed to load child %u\n", i+1);
             kryon_element_destroy(runtime, element);
             return NULL;
+        }
+
+        if (element->component_instance && !child->component_instance) {
+            child->component_instance = element->component_instance;
+        }
+        if (!child->component_scope_id && element->component_scope_id) {
+            child->component_scope_id = kryon_strdup(element->component_scope_id);
         }
         // printf("DEBUG: Successfully loaded child %u: %s\n", i+1, child->type_name ? child->type_name : "(null)");
     }
@@ -1354,6 +1416,10 @@ static bool load_property_value(KryonProperty *property,
                         property->is_bound = true;
                         property->binding_path = kryon_strdup(clean_var_name);  // Store clean name for runtime lookup
                         
+                        printf("🔗 Property '%s' bound to variable '%s'\n", 
+                               property->name ? property->name : "(null)", variable_name);
+                        assign_component_scope_to_element(element, property->binding_path);
+
                         printf("🔗 Property '%s' bound to variable '%s'\n", 
                                property->name ? property->name : "(null)", variable_name);
                     }
@@ -2357,6 +2423,8 @@ static void reprocess_property_bindings(KryonRuntime *runtime, KryonElement *ele
                     // Found a variable match - update the property value based on type
                     // Skip REFERENCE properties - they should keep their variable names intact
                     if (property->type == KRYON_RUNTIME_PROP_REFERENCE) {
+            printf("   REF property %s binding=%s\n", property->name ? property->name : "<noname>", property->binding_path ? property->binding_path : "(null)");
+
                         printf("🔄 DEBUG: Skipping REFERENCE property '%s' in reprocessing\n", 
                                property->name ? property->name : "(null)");
                         break; // Found match but skip processing for REFERENCE
