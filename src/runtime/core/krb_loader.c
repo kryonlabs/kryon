@@ -15,6 +15,7 @@
 #include "memory.h"
 #include "binary_io.h"
 #include "parser.h"
+#include "component_state.h"
 #include "../../shared/kryon_mappings.h"
 #include "../../shared/krb_schema.h"
 #include <string.h>
@@ -907,69 +908,25 @@ static KryonElement *load_element_from_binary(KryonRuntime *runtime,
                 if (element->type_name && strstr(element->type_name, runtime->components[i]->name)) {
                     printf("🔗 Creating component instance for '%s'\n", runtime->components[i]->name);
                     
-                    // Create component instance
-                    KryonComponentInstance *comp_inst = kryon_alloc(sizeof(KryonComponentInstance));
+                    // Create component instance using the new state system
+                    char element_id_str[32];
+                    snprintf(element_id_str, sizeof(element_id_str), "%u", element->id);
+                    KryonComponentInstance *comp_inst = kryon_component_instance_create(runtime, runtime->components[i], element_id_str, NULL);
                     if (comp_inst) {
-                        memset(comp_inst, 0, sizeof(KryonComponentInstance));
-                        comp_inst->definition = runtime->components[i];
-                        comp_inst->instance_id = element->id;
-                        
-                        // Initialize state values from defaults
-                        if (comp_inst->definition->state_count > 0) {
-                            comp_inst->state_count = comp_inst->definition->state_count;
-                            comp_inst->state_values = kryon_alloc(comp_inst->state_count * sizeof(char*));
-                            if (comp_inst->state_values) {
-                                for (size_t j = 0; j < comp_inst->state_count; j++) {
-                                    if (comp_inst->definition->state_vars[j].default_value) {
-                                        comp_inst->state_values[j] = kryon_strdup(comp_inst->definition->state_vars[j].default_value);
-                                        printf("    Initialized state '%s' to default '%s'\n", 
-                                               comp_inst->definition->state_vars[j].name,
-                                               comp_inst->state_values[j]);
-                                    } else {
-                                        comp_inst->state_values[j] = kryon_strdup("0");
-                                    }
-                                }
-                            }
+                        printf("    Created component instance with ID: %s\n", comp_inst->component_id);
+
+                        // Initialize state variables in the new typed system
+                        for (size_t j = 0; j < comp_inst->definition->state_count; j++) {
+                            const char* default_val = comp_inst->definition->state_vars[j].default_value ?
+                                                     comp_inst->definition->state_vars[j].default_value : "0";
+                            kryon_component_state_set_string(comp_inst->state_table,
+                                                             comp_inst->definition->state_vars[j].name,
+                                                             default_val);
+                            printf("    Initialized state '%s' to '%s'\n",
+                                   comp_inst->definition->state_vars[j].name, default_val);
                         }
                         
-                        // Initialize parameter values from element properties
-                        if (comp_inst->definition->parameter_count > 0) {
-                            comp_inst->param_count = comp_inst->definition->parameter_count;
-                            comp_inst->param_values = kryon_alloc(comp_inst->param_count * sizeof(char*));
-                            if (comp_inst->param_values) {
-                                for (size_t j = 0; j < comp_inst->param_count; j++) {
-                                    const char* param_name = comp_inst->definition->parameters[j];
-                                    
-                                    // Find matching property
-                                    bool found = false;
-                                    for (size_t k = 0; k < element->property_count; k++) {
-                                        if (element->properties[k]->name && 
-                                            strcmp(element->properties[k]->name, param_name) == 0) {
-                                            // Copy property value as parameter value
-                                            if (element->properties[k]->value.string_value) {
-                                                comp_inst->param_values[j] = kryon_strdup(element->properties[k]->value.string_value);
-                                            } else {
-                                                comp_inst->param_values[j] = kryon_strdup("");
-                                            }
-                                            found = true;
-                                            printf("    Set parameter '%s' to '%s'\n", param_name, comp_inst->param_values[j]);
-                                            break;
-                                        }
-                                    }
-                                    
-                                    // Use default if not found
-                                    if (!found) {
-                                        if (comp_inst->definition->param_defaults[j]) {
-                                            comp_inst->param_values[j] = kryon_strdup(comp_inst->definition->param_defaults[j]);
-                                        } else {
-                                            comp_inst->param_values[j] = kryon_strdup("");
-                                        }
-                                        printf("    Set parameter '%s' to default '%s'\n", param_name, comp_inst->param_values[j]);
-                                    }
-                                }
-                            }
-                        }
-                        
+                                                
                         element->component_instance = comp_inst;
                         printf("✅ Successfully created component instance for '%s'\n", runtime->components[i]->name);
                     }

@@ -240,6 +240,34 @@ typedef struct {
     uint8_t type;
 } KryonComponentStateVar;
 
+typedef enum {
+    KRYON_COMPONENT_STATE_STRING = 0,
+    KRYON_COMPONENT_STATE_INTEGER,
+    KRYON_COMPONENT_STATE_FLOAT,
+    KRYON_COMPONENT_STATE_BOOLEAN
+} KryonComponentStateType;
+
+typedef union {
+    char *string_value;
+    int64_t int_value;
+    double float_value;
+    bool bool_value;
+} KryonComponentStateValue;
+
+typedef struct KryonComponentStateVariable {
+    char *name;                                    // State variable name
+    KryonComponentStateType type;                  // Variable type
+    KryonComponentStateValue value;                // Current value
+    struct KryonComponentStateVariable *next;      // Hash table chaining
+} KryonComponentStateVariable;
+
+typedef struct {
+    KryonComponentStateVariable **variables;       // Hash table buckets
+    size_t capacity;                               // Hash table capacity
+    size_t count;                                  // Number of variables
+    char *component_id;                            // Unique component instance ID
+} KryonComponentStateTable;
+
 struct KryonComponentDefinition {
     char *name;
     char **parameters;
@@ -255,10 +283,8 @@ struct KryonComponentDefinition {
 struct KryonComponentInstance {
     KryonComponentDefinition *definition;
     uint32_t instance_id;
-    char **state_values;
-    size_t state_count;
-    char **param_values;
-    size_t param_count;
+    char *component_id;                              // Unique component instance identifier
+    KryonComponentStateTable *state_table;           // Component-specific state
     KryonElement *ui_root;
 };
 

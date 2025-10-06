@@ -17,6 +17,7 @@
 #include "color_utils.h"
 #include "types.h"
 #include "elements.h"
+#include "component_state.h"
 #include "shared/kryon_mappings.h"
 #include "validation.h"
 #include "../navigation/navigation.h"
@@ -1216,53 +1217,14 @@ static const char* resolve_component_state_variable(KryonRuntime* runtime, Kryon
     if (!runtime || !element || !var_name) {
         return NULL;
     }
-    
-    // First, check if the current element has a component instance
-    KryonElement* current = element;
-    while (current) {
-        
-        if (current->component_instance) {
-            KryonComponentInstance* comp_inst = current->component_instance;
-            
-            // Check state variables
-            if (comp_inst->definition && comp_inst->definition->state_vars) {
-                for (size_t i = 0; i < comp_inst->definition->state_count; i++) {
-                    if (comp_inst->definition->state_vars[i].name && 
-                        strcmp(comp_inst->definition->state_vars[i].name, var_name) == 0) {
-                        
-                        // Found state variable, return current instance value
-                        if (i < comp_inst->state_count && comp_inst->state_values[i]) {
-                            return comp_inst->state_values[i];
-                        } else if (comp_inst->definition->state_vars[i].default_value) {
-                            return comp_inst->definition->state_vars[i].default_value;
-                        }
-                        return "0"; // Default fallback
-                    }
-                }
-            }
-            
-            // Check component parameters
-            if (comp_inst->definition && comp_inst->definition->parameters) {
-                for (size_t i = 0; i < comp_inst->definition->parameter_count; i++) {
-                    if (comp_inst->definition->parameters[i] && 
-                        strcmp(comp_inst->definition->parameters[i], var_name) == 0) {
-                        
-                        // Found parameter, return current instance value
-                        if (i < comp_inst->param_count && comp_inst->param_values[i]) {
-                            return comp_inst->param_values[i];
-                        } else if (comp_inst->definition->param_defaults[i]) {
-                            return comp_inst->definition->param_defaults[i];
-                        }
-                        return ""; // Default fallback
-                    }
-                }
-            }
-        }
-        
-        // Move up the element tree to check parent components
-        current = current->parent;
+
+    // First, try the new scoped state resolution system
+    const char* scoped_result = kryon_resolve_scoped_state_variable(runtime, element, var_name);
+    if (scoped_result) {
+        return scoped_result;
     }
-    
+
+        
     return NULL; // Not found
 }
 

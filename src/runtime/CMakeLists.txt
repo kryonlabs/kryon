@@ -82,6 +82,7 @@ set(COMPILATION_HEADERS
 
 set(STATE_SOURCES
     core/state.c
+    core/component_state.c
 )
 
 set(STATE_HEADERS
