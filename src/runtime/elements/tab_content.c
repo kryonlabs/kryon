@@ -103,25 +103,11 @@ static void tab_content_render(KryonRuntime* runtime, KryonElement* element, Kry
     // Mode 1: Check if we have a TabGroup parent (auto-mode)
     if (element->parent && strcmp(element->parent->type_name, "TabGroup") == 0) {
         active_index = tabgroup_get_selected_index(element->parent);
-        printf("🔍 TABCONTENT: Using TabGroup parent, activeIndex = %d\n", active_index);
     } else {
         // Mode 2: Use bound variable (standalone or ID-based mode)
         const char* active_index_str = get_element_property_string_with_runtime(runtime, element, "activeIndex");
         if (active_index_str) {
             active_index = atoi(active_index_str);
-        }
-        printf("🔍 TABCONTENT: Using activeIndex property, activeIndex_str='%s', parsed active_index=%d\n",
-               active_index_str ? active_index_str : "NULL", active_index);
-    }
-
-    printf("🔍 TABCONTENT: Final active_index=%d, child_count=%zu\n",
-           active_index, element->child_count);
-
-    // Debug: list ALL children
-    for (size_t i = 0; i < element->child_count; i++) {
-        KryonElement* child = element->children[i];
-        if (child) {
-            printf("  Child %zu: %s [%p], child_count=%zu\n", i, child->type_name, (void*)child, child->child_count);
         }
     }
 
@@ -131,11 +117,8 @@ static void tab_content_render(KryonRuntime* runtime, KryonElement* element, Kry
     for (size_t i = 0; i < element->child_count; i++) {
         KryonElement* child = element->children[i];
         if (child && strcmp(child->type_name, "TabPanel") == 0) {
-            printf("🔍 TABCONTENT: Found TabPanel [%p] at array index %zu, child_count=%zu\n",
-                   (void*)child, i, child->child_count);
             if (panel_index == active_index) {
                 active_panel = child;
-                printf("🔍 TABCONTENT: Found active TabPanel at array index %zu (panel_index=%d)\n", i, panel_index);
                 break;
             }
             panel_index++;
@@ -149,10 +132,6 @@ static void tab_content_render(KryonRuntime* runtime, KryonElement* element, Kry
         active_panel->width = content_width;
         active_panel->height = content_height;
 
-        printf("🔍 TABCONTENT: Activated TabPanel %d bounds: x=%.1f, y=%.1f, w=%.1f, h=%.1f\n",
-               active_index, content_x, content_y, content_width, content_height);
-    } else {
-        printf("🔍 TABCONTENT: active_index %d not found (found %d panels)\n", active_index, panel_index);
     }
 
     // Hide all non-active TabPanel children using visibility property
@@ -163,11 +142,9 @@ static void tab_content_render(KryonRuntime* runtime, KryonElement* element, Kry
             if (panel_index == active_index) {
                 // Make active panel visible
                 child->visible = true;
-                printf("🔍 TABCONTENT: Making TabPanel %d visible\n", panel_index);
             } else {
                 // Hide inactive panels using visibility property
                 child->visible = false;
-                printf("🔍 TABCONTENT: Hiding TabPanel %d (visible=false)\n", panel_index);
             }
             panel_index++;
         }

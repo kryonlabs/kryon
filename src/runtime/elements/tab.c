@@ -214,10 +214,6 @@ static void tab_render(KryonRuntime* runtime, KryonElement* element, KryonRender
     float width = element->width;
     float height = element->height;
 
-    // Debug: Log tab bounds for hit testing analysis
-    printf("🔍 TAB RENDER: Tab '%s' bounds: x=%.1f, y=%.1f, w=%.1f, h=%.1f\n",
-           title ? title : "?", x, y, width, height);
-
     // Handle cursor (Tab always shows pointer by default)
     handle_tab_cursor(runtime, element, is_disabled);
 

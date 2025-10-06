@@ -592,10 +592,20 @@ static const char* get_binding_string(KryonRuntime* runtime, const ComponentBind
     }
 
     char variable_name[128];
-    if (!compose_component_variable_name(binding, variable_name, sizeof(variable_name))) {
-        return NULL;
+    const char* value = NULL;
+
+    if (compose_component_variable_name(binding, variable_name, sizeof(variable_name))) {
+        value = kryon_runtime_get_variable(runtime, variable_name);
     }
-    return kryon_runtime_get_variable(runtime, variable_name);
+
+    if (!value && binding->variable_name) {
+        const char* global_value = kryon_runtime_get_variable(runtime, binding->variable_name);
+        if (global_value) {
+            value = global_value;
+        }
+    }
+
+    return value;
 }
 
 static bool set_binding_string(KryonRuntime* runtime, const ComponentBinding* binding, const char* new_value) {
@@ -604,10 +614,505 @@ static bool set_binding_string(KryonRuntime* runtime, const ComponentBinding* bi
     }
 
     char variable_name[128];
-    if (!compose_component_variable_name(binding, variable_name, sizeof(variable_name))) {
+    const char* target_name = NULL;
+
+    if (compose_component_variable_name(binding, variable_name, sizeof(variable_name))) {
+        target_name = variable_name;
+
+        if (binding->scope_id) {
+            const char* scoped_existing = kryon_runtime_get_variable(runtime, variable_name);
+            if (!scoped_existing && binding->variable_name) {
+                const char* global_existing = kryon_runtime_get_variable(runtime, binding->variable_name);
+                if (global_existing) {
+                    target_name = binding->variable_name;
+                }
+            }
+        }
+    }
+
+    if (!target_name && binding->variable_name) {
+        target_name = binding->variable_name;
+    }
+
+    if (!target_name) {
         return false;
     }
-    return kryon_runtime_set_variable(runtime, variable_name, new_value);
+
+    return kryon_runtime_set_variable(runtime, target_name, new_value);
+}
+
+static void trigger_runtime_update(KryonRuntime* runtime) {
+    if (!runtime) {
+        return;
+    }
+
+    runtime->needs_update = true;
+    if (runtime->root) {
+        process_for_directives(runtime, runtime->root);
+        process_if_directives(runtime, runtime->root);
+    }
+}
+
+typedef struct {
+    size_t start;
+    size_t end;
+} JsonSlice;
+
+static void trim_json_slice(const char* json, size_t* start, size_t* end) {
+    if (!json || !start || !end) {
+        return;
+    }
+
+    while (*start < *end && isspace((unsigned char)json[*start])) {
+        (*start)++;
+    }
+
+    while (*end > *start && isspace((unsigned char)json[*end - 1])) {
+        (*end)--;
+    }
+}
+
+static bool append_json_slice(JsonSlice** slices, size_t* count, size_t* capacity,
+                              const char* json, size_t start, size_t end) {
+    trim_json_slice(json, &start, &end);
+    if (end <= start) {
+        return true; // Ignore empty entries
+    }
+
+    if (*count >= *capacity) {
+        size_t new_capacity = (*capacity == 0) ? 4 : (*capacity * 2);
+        JsonSlice* resized = kryon_realloc(*slices, new_capacity * sizeof(JsonSlice));
+        if (!resized) {
+            if (*slices) {
+                kryon_free(*slices);
+                *slices = NULL;
+            }
+            *count = 0;
+            *capacity = 0;
+            return false;
+        }
+        *slices = resized;
+        *capacity = new_capacity;
+    }
+
+    (*slices)[*count].start = start;
+    (*slices)[*count].end = end;
+    (*count)++;
+    return true;
+}
+
+static bool collect_json_array_slices(const char* json, JsonSlice** out_slices, size_t* out_count) {
+    if (!out_slices || !out_count) {
+        return false;
+    }
+
+    *out_slices = NULL;
+    *out_count = 0;
+
+    if (!json) {
+        return true; // Treat null as empty array
+    }
+
+    size_t len = strlen(json);
+    size_t index = 0;
+
+    while (index < len && isspace((unsigned char)json[index])) {
+        index++;
+    }
+
+    if (index >= len || json[index] != '[') {
+        return true; // Not an array representation
+    }
+
+    index++; // Skip opening bracket
+
+    int bracket_depth = 1;
+    int object_depth = 0;
+    int paren_depth = 0;
+    bool in_string = false;
+    bool escaped = false;
+    ssize_t item_start = -1;
+    size_t capacity = 0;
+    bool done = false;
+
+    while (index < len && !done) {
+        char c = json[index];
+
+        if (in_string) {
+            if (escaped) {
+                escaped = false;
+            } else if (c == '\\') {
+                escaped = true;
+            } else if (c == '"') {
+                in_string = false;
+            }
+            index++;
+            continue;
+        }
+
+        switch (c) {
+            case '"':
+                in_string = true;
+                if (bracket_depth == 1 && item_start < 0) {
+                    item_start = (ssize_t)index;
+                }
+                index++;
+                break;
+
+            case '[':
+                if (bracket_depth >= 1 && item_start < 0) {
+                    item_start = (ssize_t)index;
+                }
+                bracket_depth++;
+                index++;
+                break;
+
+            case ']':
+                if (bracket_depth == 1) {
+                    if (item_start >= 0) {
+                        size_t start = (size_t)item_start;
+                        if (!append_json_slice(out_slices, out_count, &capacity, json, start, index)) {
+                            return false;
+                        }
+                    }
+                    item_start = -1;
+                    bracket_depth--;
+                    index++;
+                    done = true;
+                } else {
+                    bracket_depth--;
+                    index++;
+                }
+                break;
+
+            case '{':
+                if (bracket_depth >= 1 && item_start < 0) {
+                    item_start = (ssize_t)index;
+                }
+                object_depth++;
+                index++;
+                break;
+
+            case '}':
+                if (object_depth > 0) {
+                    object_depth--;
+                }
+                index++;
+                break;
+
+            case '(':
+                if (bracket_depth >= 1 && item_start < 0) {
+                    item_start = (ssize_t)index;
+                }
+                paren_depth++;
+                index++;
+                break;
+
+            case ')':
+                if (paren_depth > 0) {
+                    paren_depth--;
+                }
+                index++;
+                break;
+
+            case ',':
+                if (bracket_depth == 1 && object_depth == 0 && paren_depth == 0) {
+                    if (item_start >= 0) {
+                        size_t start = (size_t)item_start;
+                        if (!append_json_slice(out_slices, out_count, &capacity, json, start, index)) {
+                            return false;
+                        }
+                        item_start = -1;
+                    }
+                }
+                index++;
+                break;
+
+            default:
+                if (!isspace((unsigned char)c) && bracket_depth == 1 && item_start < 0) {
+                    item_start = (ssize_t)index;
+                }
+                index++;
+                break;
+        }
+    }
+
+    return true;
+}
+
+static size_t count_json_array_items(const char* json) {
+    JsonSlice* slices = NULL;
+    size_t count = 0;
+    if (!collect_json_array_slices(json, &slices, &count)) {
+        if (slices) {
+            kryon_free(slices);
+        }
+        return 0;
+    }
+    if (slices) {
+        kryon_free(slices);
+    }
+    return count;
+}
+
+static char* json_quote_string(const char* str) {
+    if (!str) {
+        str = "";
+    }
+
+    size_t required = 2; // Quotes
+    for (const char* p = str; *p; ++p) {
+        switch (*p) {
+            case '\\':
+            case '"':
+            case '\b':
+            case '\f':
+            case '\n':
+            case '\r':
+            case '\t':
+                required += 2;
+                break;
+            default:
+                required += 1;
+                break;
+        }
+    }
+
+    char* result = kryon_alloc(required + 1);
+    if (!result) {
+        return NULL;
+    }
+
+    size_t pos = 0;
+    result[pos++] = '"';
+    for (const char* p = str; *p; ++p) {
+        switch (*p) {
+            case '\\':
+                result[pos++] = '\\';
+                result[pos++] = '\\';
+                break;
+            case '"':
+                result[pos++] = '\\';
+                result[pos++] = '"';
+                break;
+            case '\b':
+                result[pos++] = '\\';
+                result[pos++] = 'b';
+                break;
+            case '\f':
+                result[pos++] = '\\';
+                result[pos++] = 'f';
+                break;
+            case '\n':
+                result[pos++] = '\\';
+                result[pos++] = 'n';
+                break;
+            case '\r':
+                result[pos++] = '\\';
+                result[pos++] = 'r';
+                break;
+            case '\t':
+                result[pos++] = '\\';
+                result[pos++] = 't';
+                break;
+            default:
+                result[pos++] = *p;
+                break;
+        }
+    }
+    result[pos++] = '"';
+    result[pos] = '\0';
+    return result;
+}
+
+static char* json_array_push_value(const char* array_json, const char* value_json) {
+    if (!value_json) {
+        return NULL;
+    }
+
+    JsonSlice* slices = NULL;
+    size_t count = 0;
+    if (!collect_json_array_slices(array_json, &slices, &count)) {
+        if (slices) {
+            kryon_free(slices);
+        }
+        return NULL;
+    }
+
+    const char* source = array_json ? array_json : "[]";
+    size_t value_len = strlen(value_json);
+
+    size_t total_length = 2; // [ ]
+    bool need_separator = false;
+    for (size_t i = 0; i < count; ++i) {
+        size_t slice_len = slices[i].end - slices[i].start;
+        if (slice_len == 0) {
+            continue;
+        }
+        if (need_separator) {
+            total_length += 2;
+        }
+        total_length += slice_len;
+        need_separator = true;
+    }
+    if (value_len > 0) {
+        if (need_separator) {
+            total_length += 2;
+        }
+        total_length += value_len;
+    }
+
+    char* result = kryon_alloc(total_length + 1);
+    if (!result) {
+        if (slices) {
+            kryon_free(slices);
+        }
+        return NULL;
+    }
+
+    size_t pos = 0;
+    result[pos++] = '[';
+    need_separator = false;
+    for (size_t i = 0; i < count; ++i) {
+        size_t slice_len = slices[i].end - slices[i].start;
+        if (slice_len == 0) {
+            continue;
+        }
+        if (need_separator) {
+            result[pos++] = ',';
+            result[pos++] = ' ';
+        }
+        memcpy(result + pos, source + slices[i].start, slice_len);
+        pos += slice_len;
+        need_separator = true;
+    }
+    if (value_len > 0) {
+        if (need_separator) {
+            result[pos++] = ',';
+            result[pos++] = ' ';
+        }
+        memcpy(result + pos, value_json, value_len);
+        pos += value_len;
+    }
+    result[pos++] = ']';
+    result[pos] = '\0';
+
+    if (slices) {
+        kryon_free(slices);
+    }
+    return result;
+}
+
+static char* json_array_remove_last(const char* array_json) {
+    JsonSlice* slices = NULL;
+    size_t count = 0;
+    if (!collect_json_array_slices(array_json, &slices, &count)) {
+        if (slices) {
+            kryon_free(slices);
+        }
+        return NULL;
+    }
+
+    if (count == 0) {
+        if (slices) {
+            kryon_free(slices);
+        }
+        char* empty_array = kryon_alloc(3);
+        if (!empty_array) {
+            return NULL;
+        }
+        strcpy(empty_array, "[]");
+        return empty_array;
+    }
+
+    const char* source = array_json ? array_json : "[]";
+    size_t new_count = count - 1;
+    size_t total_length = 2; // [ ]
+    bool need_separator = false;
+    for (size_t i = 0; i < new_count; ++i) {
+        size_t slice_len = slices[i].end - slices[i].start;
+        if (slice_len == 0) {
+            continue;
+        }
+        if (need_separator) {
+            total_length += 2;
+        }
+        total_length += slice_len;
+        need_separator = true;
+    }
+
+    char* result = kryon_alloc(total_length + 1);
+    if (!result) {
+        if (slices) {
+            kryon_free(slices);
+        }
+        return NULL;
+    }
+
+    size_t pos = 0;
+    result[pos++] = '[';
+    need_separator = false;
+    for (size_t i = 0; i < new_count; ++i) {
+        size_t slice_len = slices[i].end - slices[i].start;
+        if (slice_len == 0) {
+            continue;
+        }
+        if (need_separator) {
+            result[pos++] = ',';
+            result[pos++] = ' ';
+        }
+        memcpy(result + pos, source + slices[i].start, slice_len);
+        pos += slice_len;
+        need_separator = true;
+    }
+    result[pos++] = ']';
+    result[pos] = '\0';
+
+    if (slices) {
+        kryon_free(slices);
+    }
+    return result;
+}
+
+static char* trim_statement_copy(const char* str, size_t length);
+static bool evaluate_expression(KryonRuntime* runtime, KryonElement* element, const char* expr, double* out_value);
+static bool evaluate_boolean_expression(KryonRuntime* runtime, KryonElement* element, const char* expr, bool* out_value);
+static char* evaluate_string_expression(KryonRuntime* runtime, KryonElement* element, const char* expr, size_t length);
+
+static char* evaluate_expression_to_string(KryonRuntime* runtime, KryonElement* element,
+                                           const char* expr_start, size_t expr_length) {
+    if (!expr_start) {
+        return NULL;
+    }
+
+    char* string_result = evaluate_string_expression(runtime, element, expr_start, expr_length);
+    if (string_result) {
+        return string_result;
+    }
+
+    char* trimmed = trim_statement_copy(expr_start, expr_length);
+    if (!trimmed) {
+        return NULL;
+    }
+
+    double number_value = 0.0;
+    if (evaluate_expression(runtime, element, trimmed, &number_value)) {
+        char buffer[64];
+        snprintf(buffer, sizeof(buffer), "%.15g", number_value);
+        char* number_string = kryon_strdup(buffer);
+        kryon_free(trimmed);
+        return number_string;
+    }
+
+    bool bool_value = false;
+    if (evaluate_boolean_expression(runtime, element, trimmed, &bool_value)) {
+        const char* bool_text = bool_value ? "true" : "false";
+        char* bool_string = kryon_strdup(bool_text);
+        kryon_free(trimmed);
+        return bool_string;
+    }
+
+    return trimmed; // Already a trimmed allocation
 }
 
 static char* trim_statement_copy(const char* str, size_t length) {
@@ -718,6 +1223,41 @@ static bool parse_factor(KryonRuntime* runtime, KryonElement* element, const cha
         }
         p++;
         p = skip_inline_ws_const(p);
+    }
+
+    if (*p == '#') {
+        p++;
+        p = skip_inline_ws_const(p);
+
+        if (!(isalpha((unsigned char)*p) || *p == '_')) {
+            return false;
+        }
+
+        const char* start = p;
+        while (*p && is_identifier_char(*p)) {
+            p++;
+        }
+
+        size_t token_len = (size_t)(p - start);
+        char* token = kryon_alloc(token_len + 1);
+        if (!token) {
+            return false;
+        }
+        memcpy(token, start, token_len);
+        token[token_len] = '\0';
+
+        ComponentBinding binding;
+        bool binding_found = find_component_binding(runtime, element, token, &binding);
+        kryon_free(token);
+        if (!binding_found) {
+            return false;
+        }
+
+        const char* array_value = get_binding_string(runtime, &binding);
+        size_t length = count_json_array_items(array_value);
+        *out_value = sign * (double)length;
+        *cursor = p;
+        return true;
     }
 
     if (*p == '(') {
@@ -1179,15 +1719,187 @@ static bool execute_assignment_statement(KryonRuntime* runtime, KryonElement* el
     }
 
     if (assigned) {
-        runtime->needs_update = true;
-        if (runtime->root) {
-            process_if_directives(runtime, runtime->root);
-        }
+        trigger_runtime_update(runtime);
     }
 
     kryon_free(expression);
     kryon_free(target_part);
     return assigned;
+}
+
+static bool execute_array_method_call(KryonRuntime* runtime, KryonElement* element, const char* statement) {
+    if (!runtime || !element || !statement) {
+        return false;
+    }
+
+    const char* cursor = skip_inline_ws_const(statement);
+    if (!(isalpha((unsigned char)*cursor) || *cursor == '_')) {
+        return false;
+    }
+
+    const char* target_start = cursor;
+    while (*cursor && is_identifier_char(*cursor)) {
+        cursor++;
+    }
+    size_t target_len = (size_t)(cursor - target_start);
+    if (target_len == 0) {
+        return false;
+    }
+
+    char* target_name = kryon_alloc(target_len + 1);
+    if (!target_name) {
+        return false;
+    }
+    memcpy(target_name, target_start, target_len);
+    target_name[target_len] = '\0';
+
+    cursor = skip_inline_ws_const(cursor);
+    if (*cursor != '.') {
+        kryon_free(target_name);
+        return false;
+    }
+    cursor++;
+    cursor = skip_inline_ws_const(cursor);
+
+    if (!(isalpha((unsigned char)*cursor) || *cursor == '_')) {
+        kryon_free(target_name);
+        return false;
+    }
+
+    const char* method_start = cursor;
+    while (*cursor && isalpha((unsigned char)*cursor)) {
+        cursor++;
+    }
+    size_t method_len = (size_t)(cursor - method_start);
+    if (method_len == 0 || method_len >= 16) {
+        kryon_free(target_name);
+        return false;
+    }
+
+    char method_name[16];
+    for (size_t i = 0; i < method_len; ++i) {
+        method_name[i] = (char)tolower((unsigned char)method_start[i]);
+    }
+    method_name[method_len] = '\0';
+
+    cursor = skip_inline_ws_const(cursor);
+    if (*cursor != '(') {
+        kryon_free(target_name);
+        return false;
+    }
+    cursor++;
+    const char* args_start = cursor;
+    int paren_depth = 1;
+    bool in_string = false;
+    bool escaped = false;
+
+    while (*cursor) {
+        char c = *cursor;
+        if (in_string) {
+            if (escaped) {
+                escaped = false;
+            } else if (c == '\\') {
+                escaped = true;
+            } else if (c == '"') {
+                in_string = false;
+            }
+        } else {
+            if (c == '"') {
+                in_string = true;
+            } else if (c == '(') {
+                paren_depth++;
+            } else if (c == ')') {
+                paren_depth--;
+                if (paren_depth == 0) {
+                    break;
+                }
+            }
+        }
+        cursor++;
+    }
+
+    if (paren_depth != 0) {
+        kryon_free(target_name);
+        return false;
+    }
+
+    const char* args_end = cursor;
+    cursor++; // Skip ')'
+    cursor = skip_inline_ws_const(cursor);
+    if (*cursor == ';') {
+        cursor++;
+        cursor = skip_inline_ws_const(cursor);
+    }
+    if (*cursor != '\0') {
+        kryon_free(target_name);
+        return false;
+    }
+
+    ComponentBinding binding;
+    bool binding_found = find_component_binding(runtime, element, target_name, &binding);
+    if (!binding_found) {
+        kryon_free(target_name);
+        return false;
+    }
+
+    bool handled = false;
+
+    if (strcmp(method_name, "push") == 0) {
+        size_t arg_len = (size_t)(args_end - args_start);
+        char* value_string = evaluate_expression_to_string(runtime, element, args_start, arg_len);
+        if (!value_string) {
+            kryon_free(target_name);
+            return false;
+        }
+
+        char* quoted_value = json_quote_string(value_string);
+        if (!quoted_value) {
+            kryon_free(value_string);
+            kryon_free(target_name);
+            return false;
+        }
+
+        const char* current_array = get_binding_string(runtime, &binding);
+        char* updated_array = json_array_push_value(current_array, quoted_value);
+        if (updated_array) {
+            handled = set_binding_string(runtime, &binding, updated_array);
+            if (handled) {
+                trigger_runtime_update(runtime);
+            }
+            kryon_free(updated_array);
+        }
+
+        kryon_free(quoted_value);
+        kryon_free(value_string);
+    } else if (strcmp(method_name, "pop") == 0) {
+        bool has_content = false;
+        for (const char* scan = args_start; scan < args_end; ++scan) {
+            if (!isspace((unsigned char)*scan)) {
+                has_content = true;
+                break;
+            }
+        }
+        if (has_content) {
+            kryon_free(target_name);
+            return false;
+        }
+
+        const char* current_array = get_binding_string(runtime, &binding);
+        char* updated_array = json_array_remove_last(current_array);
+        if (updated_array) {
+            handled = set_binding_string(runtime, &binding, updated_array);
+            if (handled) {
+                trigger_runtime_update(runtime);
+            }
+            kryon_free(updated_array);
+        }
+    } else {
+        kryon_free(target_name);
+        return false;
+    }
+
+    kryon_free(target_name);
+    return handled;
 }
 
 static bool execute_print_statement(KryonRuntime* runtime, KryonElement* element, const char* statement) {
@@ -1225,6 +1937,10 @@ static bool execute_statement(KryonRuntime* runtime, KryonElement* element, Kryo
     if (strncmp(statement, "print", 5) == 0 && !is_identifier_char(statement[5])) {
         (void)function;
         return execute_print_statement(runtime, element, statement);
+    }
+
+    if (execute_array_method_call(runtime, element, statement)) {
+        return true;
     }
 
     if (execute_assignment_statement(runtime, element, statement)) {
@@ -2043,18 +2759,7 @@ static void position_children_with_content_alignment(struct KryonRuntime* runtim
  */
 static void position_container_children(struct KryonRuntime* runtime, struct KryonElement* container) {
     // Container uses no multi-child stacking by default
-    printf("🔧 CONTAINER: Positioning %zu children for %s (x=%.1f, y=%.1f, w=%.1f, h=%.1f)\n",
-           container->child_count, container->type_name, container->x, container->y, container->width, container->height);
     position_children_with_content_alignment(runtime, container, "start", false);
-
-    // Debug: show first child's bounds after positioning
-    if (container->child_count > 0 && container->children[0]) {
-        printf("🔧 CONTAINER: First child '%s' positioned at (x=%.1f, y=%.1f, w=%.1f, h=%.1f), visible=%d\n",
-               container->children[0]->type_name,
-               container->children[0]->x, container->children[0]->y,
-               container->children[0]->width, container->children[0]->height,
-               container->children[0]->visible);
-    }
 }
 
 /**

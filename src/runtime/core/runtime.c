@@ -1892,11 +1892,8 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
     
     // Step 3: Recursively render all children (children render on top of parent)
     if (strcmp(element->type_name, "TabPanel") == 0) {
-        printf("🔧 RENDER TABPANEL [%p]: %zu children, visible=%d\n", (void*)element, element->child_count, element->visible);
         for (size_t i = 0; i < element->child_count; i++) {
             if (element->children[i]) {
-                printf("  Child %zu: %s, visible=%d, child_count=%zu, type=0x%04X\n", i, element->children[i]->type_name,
-                       element->children[i]->visible, element->children[i]->child_count, element->children[i]->type);
                 // Show grandchildren if this is a Column
                 if (strcmp(element->children[i]->type_name, "Column") == 0) {
                     for (size_t j = 0; j < element->children[i]->child_count; j++) {
@@ -1914,11 +1911,6 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
     for (size_t i = 0; i < element->child_count && *command_count < max_commands; i++) {
         KryonElement* child = element->children[i];
         if (child && child->type_name) {
-            // Debug: log Text elements specifically
-            if (strcmp(child->type_name, "Text") == 0) {
-                printf("🔍 RENDER: Found Text child '%s', visible=%d, parent='%s'\n",
-                       child->type_name, child->visible, element->type_name);
-            }
 
             if (child->visible) {
                 // Skip directive elements - they are templates, not renderable UI elements
@@ -2479,11 +2471,6 @@ static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_elemen
             continue;
         }
         
-        printf("✅ Template child %zu validated successfully\n", i);
-        
-        printf("🔧 DEBUG: About to clone template child %zu with index_var='%s', var_name='%s' var_value='%s'\n",
-               i, index_var_name ? index_var_name : "(none)", var_name, var_value);
-
         // Clone the template child - first with index substitution if needed, then value substitution
         KryonElement* instance = template_child;
 
@@ -2878,7 +2865,6 @@ static KryonElement* clone_element_with_substitution(KryonRuntime* runtime,
             // Add child to clone
             clone->children[clone->child_count++] = child_clone;
             child_clone->parent = clone;
-            printf("✅ Cloned child %zu: %s\n", i, child_clone->type_name ? child_clone->type_name : "unknown");
         } else {
             printf("❌ Failed to clone child %zu\n", i);
         }
