@@ -1790,7 +1790,7 @@ static void process_layout(KryonElement* element, KryonRenderCommand* commands, 
 }
 
 // Recursive function to convert element tree to render commands
-static void element_to_commands_recursive(KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
+static void element_to_commands_recursive(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands) {
     if (!element || !commands || !command_count || *command_count >= max_commands) {
         return;
     }
@@ -1836,20 +1836,31 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
     // Step 2: Handle component instances by expanding them
     if (element->component_instance && element->component_instance->definition && element->component_instance->definition->ui_template) {
         printf("🔄 Expanding component instance: %s\n", element->component_instance->definition->name);
-        
-        // Render the component's UI template instead of the component instance
-        KryonElement* ui_template = element->component_instance->definition->ui_template;
-        
-        // Temporarily set the template's position and properties from the component instance
+
+        // Clone the component's UI template for this instance to avoid modifying the shared template
+        KryonElement* ui_template = clone_element_deep(runtime, element->component_instance->definition->ui_template);
+        if (!ui_template) {
+            printf("❌ Failed to clone component UI template\n");
+            return;
+        }
+
+        // Process @if directives inside the cloned component template before rendering
+        printf("🔍 Processing @if directives in cloned component template: %s\n", element->component_instance->definition->name);
+        process_if_directives(runtime, ui_template);
+
+        // Set the cloned template's position and properties from the component instance
         ui_template->x = element->x;
         ui_template->y = element->y;
         ui_template->width = element->width;
         ui_template->height = element->height;
         ui_template->visible = element->visible;
-        
-        // Recursively render the UI template
-        element_to_commands_recursive(ui_template, commands, command_count, max_commands);
-        
+
+        // Recursively render the cloned UI template
+        element_to_commands_recursive(runtime, ui_template, commands, command_count, max_commands);
+
+        // Clean up the cloned template
+        kryon_element_destroy(runtime, ui_template);
+
         printf("✅ Component instance expanded and rendered\n");
     } else {
         // Step 2: Render the current element normally (parent renders first = background)
@@ -1884,7 +1895,7 @@ static void element_to_commands_recursive(KryonElement* element, KryonRenderComm
                     child->type == 0x8300) { // @if directive hex code
                         continue;
                 }
-                element_to_commands_recursive(child, commands, command_count, max_commands);
+                element_to_commands_recursive(runtime, child, commands, command_count, max_commands);
             }
         }
     }
@@ -1903,7 +1914,7 @@ void kryon_element_tree_to_render_commands(KryonRuntime* runtime, KryonElement* 
     calculate_all_element_positions(runtime, root);
     
     // Convert element tree to render commands
-    element_to_commands_recursive(root, commands, command_count, max_commands);
+    element_to_commands_recursive(runtime, root, commands, command_count, max_commands);
     
     // Assign z-indices based on render order (first command = lowest z-index)
     // But preserve high z-indices set by elements like dropdown popups

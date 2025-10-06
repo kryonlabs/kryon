@@ -23,6 +23,9 @@
 #include <time.h>
 #include <ctype.h>
 
+// Forward declarations
+static float calculate_element_height(struct KryonElement* element);
+
 // =============================================================================
 // TIMING UTILITIES
 // =============================================================================
@@ -2669,10 +2672,16 @@ static void position_children_with_content_alignment(struct KryonRuntime* runtim
             }
 
             float temp_height = get_element_property_float(temp_child, "height", 0.0f);
-            
+
             if (temp_height == 0.0f) {
-                float temp_width;  // Unused but needed for function signature
-                get_text_dimensions(runtime, temp_child, &temp_width, &temp_height);
+                // For elements without explicit height, calculate based on their type and content
+                temp_height = calculate_element_height(temp_child);
+
+                // If still 0, try text dimensions as fallback for Text elements
+                if (temp_height == 0.0f) {
+                    float temp_width;  // Unused but needed for function signature
+                    get_text_dimensions(runtime, temp_child, &temp_width, &temp_height);
+                }
             }
             
             total_height += temp_height;
@@ -2696,17 +2705,25 @@ static void position_children_with_content_alignment(struct KryonRuntime* runtim
             continue;
         }
 
-        // Get child dimensions - handle Text elements specially (they auto-size)
+        // Get child dimensions - handle elements specially (they may auto-size)
         float child_width = get_element_property_float(child, "width", 0.0f);
         float child_height = get_element_property_float(child, "height", 0.0f);
-        
+
         // Get dimensions efficiently, avoiding redundant calculations
         if (child_width == 0.0f || child_height == 0.0f) {
-            float measured_width, measured_height;
-            get_text_dimensions(runtime, child, &measured_width, &measured_height);
-            
-            if (child_width == 0.0f) child_width = measured_width;
-            if (child_height == 0.0f) child_height = measured_height;
+            // For elements without explicit dimensions, calculate based on type and content
+            if (child_height == 0.0f) {
+                child_height = calculate_element_height(child);
+            }
+
+            // Fall back to text dimensions for Text elements or if still 0
+            if (child_width == 0.0f || child_height == 0.0f) {
+                float measured_width, measured_height;
+                get_text_dimensions(runtime, child, &measured_width, &measured_height);
+
+                if (child_width == 0.0f) child_width = measured_width;
+                if (child_height == 0.0f) child_height = measured_height;
+            }
         }
         
         float child_x = content_x;
@@ -2757,6 +2774,78 @@ static void position_children_with_content_alignment(struct KryonRuntime* runtim
 /**
  * @brief Position children in a Container (with contentAlignment)
  */
+// Helper function to calculate element height based on its type and properties
+static float calculate_element_height(struct KryonElement* element) {
+    if (!element || !element->type_name) {
+        return 50.0f; // Default fallback
+    }
+
+    // Check if element has explicit height property
+    struct KryonProperty* height_prop = find_element_property(element, "height");
+    if (height_prop) {
+        return height_prop->value.float_value;
+    }
+
+    // Calculate height based on element type
+    if (strcmp(element->type_name, "Text") == 0) {
+        float font_size = get_element_property_float(element, "fontSize", 16.0f);
+        float line_height = get_element_property_float(element, "lineHeight", 1.4f); // Default line-height ratio
+
+        // If lineHeight is <= 2, treat it as a multiplier; otherwise treat as absolute pixels
+        float calculated_height;
+        if (line_height <= 2.0f) {
+            calculated_height = font_size * line_height;
+        } else {
+            calculated_height = line_height;
+        }
+
+        // Use just the calculated line height without extra padding
+        return calculated_height;
+    }
+
+    // For Row elements, calculate height based on tallest child
+    if (strcmp(element->type_name, "Row") == 0) {
+        float max_child_height = 0.0f;
+        for (size_t i = 0; i < element->child_count; i++) {
+            struct KryonElement* child = element->children[i];
+            if (child) {
+                float child_height = calculate_element_height(child);
+                if (child_height > max_child_height) {
+                    max_child_height = child_height;
+                }
+            }
+        }
+        return max_child_height > 0.0f ? max_child_height : 50.0f;
+    }
+
+    // For Column elements, calculate height based on sum of children
+    if (strcmp(element->type_name, "Column") == 0) {
+        float total_child_height = 0.0f;
+        float gap = get_element_property_float(element, "gap", 10.0f);
+
+        for (size_t i = 0; i < element->child_count; i++) {
+            struct KryonElement* child = element->children[i];
+            if (child) {
+                float child_height = calculate_element_height(child);
+                total_child_height += child_height;
+                if (i < element->child_count - 1) total_child_height += gap;
+            }
+        }
+        return total_child_height > 0.0f ? total_child_height : 50.0f;
+    }
+
+    // For other elements, use explicit height or reasonable defaults
+    if (strcmp(element->type_name, "Container") == 0) {
+        return get_element_property_float(element, "height", 100.0f);
+    } else if (strcmp(element->type_name, "Button") == 0) {
+        return get_element_property_float(element, "height", 40.0f);
+    } else if (strcmp(element->type_name, "Input") == 0) {
+        return get_element_property_float(element, "height", 32.0f);
+    }
+
+    return 50.0f; // Default for unknown types
+}
+
 static void position_container_children(struct KryonRuntime* runtime, struct KryonElement* container) {
     // Container uses multi-child stacking by default to automatically position children vertically
     position_children_with_content_alignment(runtime, container, "start", true);
