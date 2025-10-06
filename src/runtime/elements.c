@@ -2758,8 +2758,8 @@ static void position_children_with_content_alignment(struct KryonRuntime* runtim
  * @brief Position children in a Container (with contentAlignment)
  */
 static void position_container_children(struct KryonRuntime* runtime, struct KryonElement* container) {
-    // Container uses no multi-child stacking by default
-    position_children_with_content_alignment(runtime, container, "start", false);
+    // Container uses multi-child stacking by default to automatically position children vertically
+    position_children_with_content_alignment(runtime, container, "start", true);
 }
 
 /**

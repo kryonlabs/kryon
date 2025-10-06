@@ -74,9 +74,13 @@ static const char* resolve_component_state_variable(KryonRuntime* runtime, Kryon
 
 // @for template expansion functions
 static void expand_for_template(KryonRuntime* runtime, KryonElement* for_element);
-static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_element, const char* index_var_name, const char* var_name, const char* var_value, size_t index, size_t insert_position);
+static size_t expand_for_iteration(KryonRuntime* runtime, KryonElement* for_element, const char* index_var_name, const char* var_name, const char* var_value, size_t index, size_t insert_position);
 static void clear_expanded_children(KryonRuntime* runtime, KryonElement* for_element);
 static KryonElement* clone_element_with_substitution(KryonRuntime* runtime, KryonElement* template_element, const char* var_name, const char* var_value, size_t index);
+
+// @if template expansion functions
+static void expand_if_template(KryonRuntime* runtime, KryonElement* if_element);
+static bool evaluate_runtime_condition(KryonRuntime* runtime, const char* condition_expr);
 static char* substitute_template_variable(const char* template_str, const char* var_name, const char* var_value);
 static const char* extract_json_property(const char* json_object, const char* property_name);
 static void add_child_element(KryonRuntime* runtime, KryonElement* parent, KryonElement* child);
@@ -2301,6 +2305,7 @@ static void expand_for_template(KryonRuntime* runtime, KryonElement* for_element
     // Parse JSON array manually to handle nested objects correctly
     const char* ptr = array_data;
     size_t index = 0;
+    size_t total_inserted = 0; // Track total children inserted so far
 
     // Skip leading whitespace and opening bracket
     while (*ptr && (*ptr == ' ' || *ptr == '\t' || *ptr == '\n')) ptr++;
@@ -2351,8 +2356,9 @@ static void expand_for_template(KryonRuntime* runtime, KryonElement* for_element
                 printf("🔧 Parsed JSON object %zu: '%s'\n", index, json_obj);
 
                 // Create instance of template children for this array item
-                // Insert at position: for_position + 1 (after @for) + index (already inserted items)
-                expand_for_iteration(runtime, for_element, index_var_name, var_name, json_obj, index, for_position + 1 + index);
+                // Insert at position: for_position + 1 (after @for) + total_inserted (already inserted items)
+                size_t inserted = expand_for_iteration(runtime, for_element, index_var_name, var_name, json_obj, index, for_position + 1 + total_inserted);
+                total_inserted += inserted;
                 index++;
                 
                 kryon_free(json_obj);
@@ -2386,8 +2392,9 @@ static void expand_for_template(KryonRuntime* runtime, KryonElement* for_element
                 printf("🔧 Parsed string %zu: '%s'\n", index, str_value);
 
                 // Create instance of template children for this array item
-                // Insert at position: for_position + 1 (after @for) + index (already inserted items)
-                expand_for_iteration(runtime, for_element, index_var_name, var_name, str_value, index, for_position + 1 + index);
+                // Insert at position: for_position + 1 (after @for) + total_inserted (already inserted items)
+                size_t inserted = expand_for_iteration(runtime, for_element, index_var_name, var_name, str_value, index, for_position + 1 + total_inserted);
+                total_inserted += inserted;
                 index++;
                 
                 kryon_free(str_value);
@@ -2412,11 +2419,13 @@ static void expand_for_template(KryonRuntime* runtime, KryonElement* for_element
  * @param var_value Current iteration value
  * @param index Current iteration index
  */
-static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_element,
-                                const char* index_var_name, const char* var_name, const char* var_value, size_t index, size_t insert_position) {
+static size_t expand_for_iteration(KryonRuntime* runtime, KryonElement* for_element,
+                                   const char* index_var_name, const char* var_name, const char* var_value, size_t index, size_t insert_position) {
     if (!runtime || !for_element || !var_name || !var_value) {
-        return;
+        return 0;
     }
+
+    size_t children_inserted = 0;
     
     // Clone template children and substitute variables
     for (size_t i = 0; i < for_element->child_count; i++) {
@@ -2514,13 +2523,79 @@ static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_elemen
             
             // Add to parent at the specified insertion position (right after @for template)
             if (for_element->parent) {
-                insert_child_element_at(runtime, for_element->parent, instance, insert_position);
+                insert_child_element_at(runtime, for_element->parent, instance, insert_position + children_inserted);
+                children_inserted++;
 
                 // Process @if directives in the cloned instance (component instances may have @if directives)
                 printf("🔍 Calling process_if_directives on cloned instance [%p] type=%s\n",
                        (void*)instance, instance->type_name ? instance->type_name : "NULL");
                 process_if_directives(runtime, instance);
                 printf("✅ Finished process_if_directives on cloned instance\n");
+
+                // Special handling for @if directives: evaluate condition immediately and clone appropriate children
+                if (instance->type_name && strcmp(instance->type_name, "if") == 0) {
+                    printf("🔍 Processing @if directive inside for loop with loop context available\n");
+
+                    // Get condition property (customProp_0x9100)
+                    const char* condition_expr = NULL;
+                    size_t then_count = 0;
+                    for (size_t prop_i = 0; prop_i < instance->property_count; prop_i++) {
+                        KryonProperty* prop = instance->properties[prop_i];
+                        if (!prop) continue;
+
+                        if (strcmp(prop->name, "customProp_0x9100") == 0) {
+                            condition_expr = prop->value.string_value;
+                        } else if (strcmp(prop->name, "customProp_0x9101") == 0) {
+                            then_count = (size_t)prop->value.int_value;
+                        }
+                    }
+
+                    if (condition_expr) {
+                        printf("🔍 @if condition: '%s', then_count: %zu\n", condition_expr, then_count);
+
+                        // Evaluate condition
+                        bool condition_result = evaluate_runtime_condition(runtime, condition_expr);
+                        printf("🔍 Condition result: %s\n", condition_result ? "true" : "false");
+
+                        // Determine which children to clone based on condition
+                        size_t start_idx = condition_result ? 0 : then_count;
+                        size_t end_idx = condition_result ? then_count : instance->child_count;
+
+                        printf("🔧 Instantiating %zu children from @if branch\n", end_idx - start_idx);
+
+                        // Clone the appropriate children (then or else branch)
+                        for (size_t if_child_idx = start_idx; if_child_idx < end_idx; if_child_idx++) {
+                            KryonElement* if_template_child = instance->children[if_child_idx];
+                            if (!if_template_child) continue;
+
+                            printf("🔧 Cloning @if child %zu of type '%s'\n", if_child_idx,
+                                   if_template_child->type_name ? if_template_child->type_name : "unknown");
+
+                            KryonElement* if_instance = clone_element_with_substitution(runtime, if_template_child,
+                                                                                      index_var_name, index_str_ptr, index);
+                            if_instance = clone_element_with_substitution(runtime, if_instance, var_name, var_value, index);
+
+                            if (if_instance) {
+                                // Set loop context on the if_instance children
+                                set_loop_context_recursive(if_instance, index_var_name, index_str_ptr, var_name, var_value);
+
+                                // Mark as cloned from @if directive for proper cleanup
+                                if_instance->cloned_from_directive = instance;
+
+                                // Insert into parent (same level as @if would have been)
+                                insert_child_element_at(runtime, for_element->parent, if_instance, insert_position + children_inserted);
+                                children_inserted++;
+                            }
+                        }
+                    }
+
+                    // Destroy the @if template instance since we've processed it
+                    kryon_element_destroy(runtime, instance);
+                } else {
+                    // Regular element processing - instance is already added to parent above
+                    // Mark as cloned from @for directive for proper cleanup
+                    instance->cloned_from_directive = for_element;
+                }
 
                 // Immediately recalculate positions for the parent container to prevent flicker
                 position_children_by_layout_type(runtime, for_element->parent);
@@ -2532,6 +2607,8 @@ static void expand_for_iteration(KryonRuntime* runtime, KryonElement* for_elemen
             printf("❌ WARNING: Failed to clone template child %zu\n", i);
         }
     }
+
+    return children_inserted;
 }
 
 /**
@@ -3213,6 +3290,60 @@ void process_if_directives(KryonRuntime* runtime, KryonElement* element) {
 
     // Check if this element is an @if template
     if (element->type_name && strcmp(element->type_name, "if") == 0) {
+        // Skip @if directives that are inside @for templates - they will be processed during for loop expansion
+        bool has_for_parent = false;
+        KryonElement* parent = element->parent;
+        while (parent) {
+            if (parent->type_name && strcmp(parent->type_name, "for") == 0) {
+                has_for_parent = true;
+                break;
+            }
+            parent = parent->parent;
+        }
+
+        // Enhanced check: see if this @if element has already been processed (has cloned children)
+        bool already_processed = false;
+        if (element->parent && element->parent->children) {
+            size_t if_position = 0;
+            // Find position of @if element in parent
+            for (size_t i = 0; i < element->parent->child_count; i++) {
+                if (element->parent->children[i] == element) {
+                    if_position = i;
+                    break;
+                }
+            }
+
+            // Check if there are already cloned children after this @if element
+            // Look for elements that were cloned from this specific @if directive
+            for (size_t i = if_position + 1; i < element->parent->child_count; i++) {
+                KryonElement* child = element->parent->children[i];
+                if (child && child->cloned_from_directive == element) {
+                    already_processed = true;
+                    break;
+                }
+            }
+        }
+
+        // Check if this @if element has loop context (was cloned from a @for loop)
+        bool has_loop_context = (element->loop_var_name != NULL && element->loop_var_value != NULL);
+
+        if (has_for_parent || has_loop_context) {
+            // Always skip @if directives that have @for parents OR loop context during global processing
+            // They will be processed during for loop expansion
+            if (has_for_parent) {
+                printf("🔍 Skipping @if directive inside @for template - will be processed during for loop expansion\n");
+            } else {
+                printf("🔍 Skipping @if directive with loop context - already processed during for loop expansion\n");
+            }
+            return;
+        }
+
+        // For @if directives not inside @for templates, check if they were already processed
+        if (already_processed) {
+            printf("🔍 Skipping @if directive - already processed\n");
+            return;
+        }
+
         printf("🔍 Found @if directive, expanding template\n");
         expand_if_template(runtime, element);
         // Don't process children of @if elements recursively; they are templates
