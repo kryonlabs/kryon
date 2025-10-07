@@ -246,6 +246,14 @@ void kryon_expression_value_free(KryonExpressionValue *value);
 void kryon_expression_node_free(KryonExpressionNode *node);
 
 /**
+ * @brief Evaluate runtime condition expression (supports ==, !=, &&, ||, !)
+ * @param runtime Runtime instance
+ * @param condition_expr Condition expression to evaluate
+ * @return True if condition is true, false otherwise
+ */
+bool kryon_evaluate_runtime_condition(KryonRuntime *runtime, const char *condition_expr);
+
+/**
  * @brief Calculate layout positions for all elements in the runtime tree.
  * This ensures elements have proper x,y positions before rendering begins.
  * Should be called after loading KRB files but before first render pass.

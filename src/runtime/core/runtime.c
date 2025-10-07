@@ -80,7 +80,7 @@ static KryonElement* clone_element_with_substitution(KryonRuntime* runtime, Kryo
 
 // @if template expansion functions
 static void expand_if_template(KryonRuntime* runtime, KryonElement* if_element);
-static bool evaluate_runtime_condition(KryonRuntime* runtime, const char* condition_expr);
+bool kryon_evaluate_runtime_condition(KryonRuntime* runtime, const char* condition_expr);
 static char* substitute_template_variable(const char* template_str, const char* var_name, const char* var_value);
 static const char* extract_json_property(const char* json_object, const char* property_name);
 static void add_child_element(KryonRuntime* runtime, KryonElement* parent, KryonElement* child);
@@ -2570,7 +2570,7 @@ static size_t expand_for_iteration(KryonRuntime* runtime, KryonElement* for_elem
                         printf("🔍 @if condition: '%s', then_count: %zu\n", condition_expr, then_count);
 
                         // Evaluate condition
-                        bool condition_result = evaluate_runtime_condition(runtime, condition_expr);
+                        bool condition_result = kryon_evaluate_runtime_condition(runtime, condition_expr);
                         printf("🔍 Condition result: %s\n", condition_result ? "true" : "false");
 
                         // Determine which children to clone based on condition
@@ -3287,7 +3287,7 @@ static char* extract_json_field(const char* json_value, const char* field_name) 
 
 // Forward declarations for @if helpers
 static void expand_if_template(KryonRuntime* runtime, KryonElement* if_element);
-static bool evaluate_runtime_condition(KryonRuntime* runtime, const char* condition_expr);
+bool kryon_evaluate_runtime_condition(KryonRuntime* runtime, const char* condition_expr);
 
 /**
  * @brief Process @if directives recursively in element tree
@@ -3402,7 +3402,7 @@ void process_if_directives(KryonRuntime* runtime, KryonElement* element) {
  * @param condition_expr Condition string (e.g., "showMessage", "!isHidden", "count > 0")
  * @return true if condition evaluates to true, false otherwise
  */
-static bool evaluate_runtime_condition(KryonRuntime* runtime, const char* condition_expr) {
+bool kryon_evaluate_runtime_condition(KryonRuntime* runtime, const char* condition_expr) {
     if (!runtime || !condition_expr) {
         return false;
     }
@@ -3480,14 +3480,26 @@ static bool evaluate_runtime_condition(KryonRuntime* runtime, const char* condit
         const char* left_value = kryon_runtime_get_variable(runtime, left_trim);
         if (!left_value) {
             // Not a variable, treat as literal
-            left_value = left_trim;
+            // Handle string literals like "" which should become empty strings
+            if (strlen(left_trim) >= 2 && left_trim[0] == '"' && left_trim[strlen(left_trim)-1] == '"') {
+                // Empty string literal
+                left_value = "";
+            } else {
+                left_value = left_trim;
+            }
         }
 
         // Resolve right operand (could be variable or literal)
         const char* right_value = kryon_runtime_get_variable(runtime, right_operand);
         if (!right_value) {
             // Not a variable, treat as literal
-            right_value = right_operand;
+            // Handle string literals like "" which should become empty strings
+            if (strlen(right_operand) >= 2 && right_operand[0] == '"' && right_operand[strlen(right_operand)-1] == '"') {
+                // Empty string literal
+                right_value = "";
+            } else {
+                right_value = right_operand;
+            }
         }
 
         printf("🔍 Resolved: '%s' %s '%s'\n", left_value, op_str, right_value);
@@ -3574,7 +3586,7 @@ static void expand_if_template(KryonRuntime* runtime, KryonElement* if_element) 
     printf("🔍 @if condition: '%s', then_count: %zu\n", condition_expr, then_count);
 
     // Evaluate condition
-    bool condition_result = evaluate_runtime_condition(runtime, condition_expr);
+    bool condition_result = kryon_evaluate_runtime_condition(runtime, condition_expr);
 
     printf("🔍 Condition result: %s\n", condition_result ? "true" : "false");
 

@@ -87,6 +87,10 @@ static void position_tabgroup_children(struct KryonRuntime* runtime, struct Kryo
 static void position_tab_children(struct KryonRuntime* runtime, struct KryonElement* tab);
 static void position_tabpanel_children(struct KryonRuntime* runtime, struct KryonElement* tabpanel);
 
+// Forward declarations for script execution
+static bool execute_statement(KryonRuntime* runtime, KryonElement* element, KryonScriptFunction* function, const char* statement);
+static bool execute_if_statement(KryonRuntime* runtime, KryonElement* element, KryonScriptFunction* function, const char* statement);
+
 // Generic contentAlignment positioning function
 static void position_children_with_content_alignment(struct KryonRuntime* runtime, struct KryonElement* parent, 
                                                     const char* default_alignment, bool multi_child_stacking);
@@ -1932,6 +1936,7 @@ static bool execute_print_statement(KryonRuntime* runtime, KryonElement* element
     return true;
 }
 
+
 static bool execute_statement(KryonRuntime* runtime, KryonElement* element, KryonScriptFunction* function, const char* statement) {
     if (!statement) {
         return false;
@@ -1950,8 +1955,204 @@ static bool execute_statement(KryonRuntime* runtime, KryonElement* element, Kryo
         return true;
     }
 
+    if (strncmp(statement, "if", 2) == 0 && isspace((unsigned char)statement[2])) {
+        return execute_if_statement(runtime, element, function, statement);
+    }
+
     printf("⚠️ SCRIPT: Unsupported statement '%s'\n", statement);
     return false;
+}
+
+static bool execute_if_statement(KryonRuntime* runtime, KryonElement* element, KryonScriptFunction* function, const char* statement) {
+    if (!runtime || !statement) {
+        return false;
+    }
+
+    printf("🔍 SCRIPT: Parsing if statement: '%s'\n", statement);
+
+    // Parse "if (condition) { ... }" format
+    const char* cursor = statement;
+
+    // Skip "if"
+    cursor += 2;
+
+    // Skip whitespace
+    while (isspace((unsigned char)*cursor)) {
+        cursor++;
+    }
+
+    // Expect '('
+    if (*cursor != '(') {
+        printf("⚠️ SCRIPT: Expected '(' after 'if'\n");
+        return false;
+    }
+    cursor++;
+
+    // Find closing ')'
+    const char* condition_start = cursor;
+    while (*cursor && *cursor != ')') {
+        cursor++;
+    }
+
+    if (!*cursor) {
+        printf("⚠️ SCRIPT: Unterminated if condition\n");
+        return false;
+    }
+
+    // Extract condition
+    size_t condition_len = cursor - condition_start;
+    char* condition = kryon_alloc(condition_len + 1);
+    if (!condition) {
+        return false;
+    }
+    memcpy(condition, condition_start, condition_len);
+    condition[condition_len] = '\0';
+
+    // Skip ')'
+    cursor++;
+
+    // Skip whitespace
+    while (isspace((unsigned char)*cursor)) {
+        cursor++;
+    }
+
+    // Check if there's a block (starts with '{')
+    bool has_block = (*cursor == '{');
+    if (has_block) {
+        cursor++; // Skip '{'
+
+        // Skip whitespace after '{'
+        while (isspace((unsigned char)*cursor)) {
+            cursor++;
+        }
+    }
+
+    // Evaluate condition using the unified runtime condition evaluator
+    bool condition_result = kryon_evaluate_runtime_condition(runtime, condition);
+
+    printf("🔍 SCRIPT: if (%s) = %s\n", condition, condition_result ? "true" : "false");
+
+    kryon_free(condition);
+
+    if (condition_result) {
+        // Execute the if body
+        if (has_block) {
+            // Execute statements until closing '}'
+            const char* body_start = cursor;
+            int brace_level = 1;
+
+            while (*cursor && brace_level > 0) {
+                if (*cursor == '{') {
+                    brace_level++;
+                } else if (*cursor == '}') {
+                    brace_level--;
+                }
+                cursor++;
+            }
+
+            if (brace_level == 0) {
+                // Execute the body
+                size_t body_len = cursor - body_start - 1; // Exclude closing '}'
+                char* body_copy = kryon_alloc(body_len + 1);
+                if (body_copy) {
+                    memcpy(body_copy, body_start, body_len);
+                    body_copy[body_len] = '\0';
+
+                    // Execute each statement in the body
+                    const char* body_cursor = body_copy;
+                    while (*body_cursor) {
+                        // Skip whitespace and empty lines first
+                        while (*body_cursor && isspace((unsigned char)*body_cursor)) {
+                            if (*body_cursor == '\n' || *body_cursor == '\r') {
+                                // Skip line endings
+                                if (*body_cursor == '\r') body_cursor++;
+                                if (*body_cursor == '\n') body_cursor++;
+                            } else {
+                                body_cursor++;
+                            }
+                        }
+
+                        if (!*body_cursor) {
+                            break; // End of body
+                        }
+
+                        // Find next statement (line-separated or semicolon-separated)
+                        const char* stmt_start = body_cursor;
+                        size_t stmt_len = 0;
+
+                        // Look for end of statement (semicolon or newline)
+                        while (body_cursor[stmt_len] &&
+                               body_cursor[stmt_len] != ';' &&
+                               body_cursor[stmt_len] != '\n' &&
+                               body_cursor[stmt_len] != '\r') {
+                            stmt_len++;
+                        }
+
+                        if (stmt_len > 0) {
+                            char* stmt = kryon_alloc(stmt_len + 1);
+                            if (stmt) {
+                                memcpy(stmt, stmt_start, stmt_len);
+                                stmt[stmt_len] = '\0';
+
+                                // Trim whitespace
+                                char* trimmed = trim_statement_copy(stmt, stmt_len);
+                                if (trimmed && trimmed[0] != '\0') {
+                                    printf("🔍 SCRIPT: Executing statement inside if: '%s'\n", trimmed);
+                                    execute_statement(runtime, element, function, trimmed);
+                                }
+                                if (trimmed) {
+                                    kryon_free(trimmed);
+                                }
+                                kryon_free(stmt);
+                            }
+                        }
+
+                        // Skip terminator (semicolon or line ending)
+                        if (body_cursor[stmt_len] == ';') {
+                            body_cursor += stmt_len + 1;
+                        } else if (body_cursor[stmt_len] == '\n' || body_cursor[stmt_len] == '\r') {
+                            body_cursor += stmt_len;
+                            // Skip complete line ending
+                            if (*body_cursor == '\r') body_cursor++;
+                            if (*body_cursor == '\n') body_cursor++;
+                        } else {
+                            body_cursor += stmt_len;
+                        }
+                    }
+
+                    kryon_free(body_copy);
+                }
+            } else {
+                printf("⚠️ SCRIPT: Unterminated if block\n");
+                return false;
+            }
+        } else {
+            // Single statement after if
+            size_t stmt_len = 0;
+            while (cursor[stmt_len] && cursor[stmt_len] != ';') {
+                stmt_len++;
+            }
+
+            if (stmt_len > 0) {
+                char* stmt = kryon_alloc(stmt_len + 1);
+                if (stmt) {
+                    memcpy(stmt, cursor, stmt_len);
+                    stmt[stmt_len] = '\0';
+
+                    char* trimmed = trim_statement_copy(stmt, stmt_len);
+                    if (trimmed && trimmed[0] != '\0') {
+                        execute_statement(runtime, element, function, trimmed);
+                    }
+                    if (trimmed) {
+                        kryon_free(trimmed);
+                    }
+                    kryon_free(stmt);
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
 static KryonScriptFunction* find_script_function(KryonRuntime* runtime, const char* name) {
@@ -1968,6 +2169,205 @@ static KryonScriptFunction* find_script_function(KryonRuntime* runtime, const ch
     return NULL;
 }
 
+/**
+ * @brief Extract a complete multi-line if statement including its braces
+ * @param cursor Pointer to cursor pointer, will be advanced past the statement
+ * @return Allocated string containing the complete if statement (caller must free)
+ */
+static char* extract_multiline_if_statement(const char** cursor) {
+    if (!cursor || !*cursor) {
+        return NULL;
+    }
+
+    const char* start = *cursor;
+    const char* current = start;
+
+    // Skip "if"
+    current += 2;
+
+    // Skip whitespace after "if"
+    while (isspace((unsigned char)*current)) {
+        current++;
+    }
+
+    // Find opening parenthesis
+    if (*current != '(') {
+        return NULL;
+    }
+    current++;
+
+    // Find matching closing parenthesis, handling nested parentheses
+    int paren_level = 1;
+    while (*current && paren_level > 0) {
+        if (*current == '(') {
+            paren_level++;
+        } else if (*current == ')') {
+            paren_level--;
+        }
+        current++;
+    }
+
+    if (paren_level > 0) {
+        return NULL; // Unterminated parentheses
+    }
+
+    // Skip whitespace after closing parenthesis
+    while (isspace((unsigned char)*current)) {
+        current++;
+    }
+
+    // Check if there's an opening brace
+    if (*current != '{') {
+        // Single-line if statement - find until semicolon or end of line
+        const char* end = current;
+        while (*end && *end != '\n' && *end != '\r' && *end != ';') {
+            end++;
+        }
+
+        size_t total_len = end - start;
+        char* result = kryon_alloc(total_len + 1);
+        if (result) {
+            memcpy(result, start, total_len);
+            result[total_len] = '\0';
+        }
+
+        *cursor = end;
+        if (**cursor == ';') {
+            (*cursor)++;
+        }
+
+        return result;
+    }
+
+    // Multi-line if statement with braces
+    current++; // Skip opening brace
+    int brace_level = 1;
+
+    while (*current && brace_level > 0) {
+        if (*current == '{') {
+            brace_level++;
+        } else if (*current == '}') {
+            brace_level--;
+        }
+        current++;
+    }
+
+    if (brace_level > 0) {
+        return NULL; // Unterminated braces
+    }
+
+    // Extract the complete if statement
+    size_t total_len = current - start;
+    char* result = kryon_alloc(total_len + 1);
+    if (result) {
+        memcpy(result, start, total_len);
+        result[total_len] = '\0';
+    }
+
+    *cursor = current;
+    return result;
+}
+
+/**
+ * @brief Extract a complete multi-line block statement (while, for, etc.)
+ * @param cursor Pointer to cursor pointer, will be advanced past the statement
+ * @param keyword The keyword that starts the statement
+ * @return Allocated string containing the complete statement (caller must free)
+ */
+static char* extract_multiline_block_statement(const char** cursor, const char* keyword) {
+    if (!cursor || !*cursor || !keyword) {
+        return NULL;
+    }
+
+    const char* start = *cursor;
+    const char* current = start;
+
+    // Skip the keyword
+    current += strlen(keyword);
+
+    // Skip whitespace after keyword
+    while (isspace((unsigned char)*current)) {
+        current++;
+    }
+
+    // Find opening parenthesis
+    if (*current != '(') {
+        return NULL;
+    }
+    current++;
+
+    // Find matching closing parenthesis
+    int paren_level = 1;
+    while (*current && paren_level > 0) {
+        if (*current == '(') {
+            paren_level++;
+        } else if (*current == ')') {
+            paren_level--;
+        }
+        current++;
+    }
+
+    if (paren_level > 0) {
+        return NULL; // Unterminated parentheses
+    }
+
+    // Skip whitespace after closing parenthesis
+    while (isspace((unsigned char)*current)) {
+        current++;
+    }
+
+    // Check if there's an opening brace
+    if (*current != '{') {
+        // Single-line statement - find until semicolon or end of line
+        const char* end = current;
+        while (*end && *end != '\n' && *end != '\r' && *end != ';') {
+            end++;
+        }
+
+        size_t total_len = end - start;
+        char* result = kryon_alloc(total_len + 1);
+        if (result) {
+            memcpy(result, start, total_len);
+            result[total_len] = '\0';
+        }
+
+        *cursor = end;
+        if (**cursor == ';') {
+            (*cursor)++;
+        }
+
+        return result;
+    }
+
+    // Multi-line statement with braces
+    current++; // Skip opening brace
+    int brace_level = 1;
+
+    while (*current && brace_level > 0) {
+        if (*current == '{') {
+            brace_level++;
+        } else if (*current == '}') {
+            brace_level--;
+        }
+        current++;
+    }
+
+    if (brace_level > 0) {
+        return NULL; // Unterminated braces
+    }
+
+    // Extract the complete statement
+    size_t total_len = current - start;
+    char* result = kryon_alloc(total_len + 1);
+    if (result) {
+        memcpy(result, start, total_len);
+        result[total_len] = '\0';
+    }
+
+    *cursor = current;
+    return result;
+}
+
 static bool execute_script_function(KryonRuntime* runtime, KryonElement* element, KryonScriptFunction* function) {
     if (!runtime || !function || !function->code) {
         return false;
@@ -1977,28 +2377,70 @@ static bool execute_script_function(KryonRuntime* runtime, KryonElement* element
     bool executed_any = false;
 
     while (*cursor) {
-        const char* line_start = cursor;
-        size_t line_length = 0;
-        while (cursor[line_length] && cursor[line_length] != '\n' && cursor[line_length] != '\r') {
-            line_length++;
+        // Skip whitespace and empty lines
+        while (*cursor && isspace((unsigned char)*cursor)) {
+            if (*cursor == '\n' || *cursor == '\r') {
+                // Skip line endings
+                if (*cursor == '\r') cursor++;
+                if (*cursor == '\n') cursor++;
+            } else {
+                cursor++;
+            }
         }
 
-        char* statement = trim_statement_copy(line_start, line_length);
-        if (statement && statement[0] != '\0') {
-            if (execute_statement(runtime, element, function, statement)) {
+        if (!*cursor) {
+            break; // End of code
+        }
+
+        const char* statement_start = cursor;
+        char* full_statement = NULL;
+
+        // Check if this starts a multi-line construct
+        if (strncmp(cursor, "if", 2) == 0 && isspace((unsigned char)cursor[2])) {
+            // Find the complete if block including braces
+            full_statement = extract_multiline_if_statement(&cursor);
+        } else if (strncmp(cursor, "while", 5) == 0 && isspace((unsigned char)cursor[5])) {
+            // Could add while loop support here
+            full_statement = extract_multiline_block_statement(&cursor, "while");
+        } else if (strncmp(cursor, "for", 3) == 0 && isspace((unsigned char)cursor[3])) {
+            // Could add for loop support here
+            full_statement = extract_multiline_block_statement(&cursor, "for");
+        } else {
+            // Single-line statement - find until semicolon or end of line
+            const char* line_end = cursor;
+            while (*line_end && *line_end != '\n' && *line_end != '\r' && *line_end != ';') {
+                line_end++;
+            }
+
+            size_t stmt_len = line_end - cursor;
+            full_statement = trim_statement_copy(cursor, stmt_len);
+
+            // Move cursor past the statement
+            cursor = line_end;
+            if (*cursor == ';') {
+                cursor++; // Skip semicolon
+            }
+            // Skip to end of line
+            while (*cursor && *cursor != '\n' && *cursor != '\r') {
+                cursor++;
+            }
+        }
+
+        if (full_statement && full_statement[0] != '\0') {
+            printf("🔍 SCRIPT: Executing statement: '%s'\n", full_statement);
+            if (execute_statement(runtime, element, function, full_statement)) {
                 executed_any = true;
             }
         }
-        if (statement) {
-            kryon_free(statement);
+
+        if (full_statement) {
+            kryon_free(full_statement);
         }
 
-        cursor += line_length;
-        if (*cursor == '\r') {
-            cursor++;
-        }
-        if (*cursor == '\n') {
-            cursor++;
+        // Skip any remaining line endings
+        while (*cursor && (*cursor == '\n' || *cursor == '\r')) {
+            if (*cursor == '\r') cursor++;
+            if (*cursor == '\n') cursor++;
         }
     }
 

@@ -7,7 +7,7 @@ var todos = ["Test todo", "Another item"]
 var newTodo = ""
 
 function addTodo() {
-    if (newTodo && newTodo != "") {
+    if (newTodo != "") {
         print("Adding todo: " .. newTodo)
         todos.push(newTodo)
         newTodo = ""
