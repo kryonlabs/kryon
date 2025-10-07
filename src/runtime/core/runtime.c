@@ -99,8 +99,13 @@ extern bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *da
 static char* resolve_for_template_property(KryonRuntime* runtime, KryonProperty* property, 
                                          const char* var_name, const char* var_value);
 
-// Layout calculation functions  
+// Layout calculation functions
 static void clear_layout_flags_recursive(KryonElement* element);
+
+// Component instance management functions for for loops
+static void clone_component_variables(KryonRuntime* runtime, const char* base_comp_id, const char* target_comp_id, size_t iteration_index);
+static void apply_component_instance_substitution(KryonElement* element, const char* target_comp_id, size_t iteration_index);
+static void create_component_instance_for_iteration(KryonRuntime* runtime, KryonElement* element, const char* component_id);
 
 // =============================================================================
 // CONFIGURATION
@@ -1868,23 +1873,6 @@ static void element_to_commands_recursive(KryonRuntime* runtime, KryonElement* e
     }
     
     // Step 3: Recursively render all children (children render on top of parent)
-    if (strcmp(element->type_name, "TabPanel") == 0) {
-        for (size_t i = 0; i < element->child_count; i++) {
-            if (element->children[i]) {
-                // Show grandchildren if this is a Column
-                if (strcmp(element->children[i]->type_name, "Column") == 0) {
-                    for (size_t j = 0; j < element->children[i]->child_count; j++) {
-                        KryonElement* grandchild = element->children[i]->children[j];
-                        if (grandchild) {
-                            printf("    Grandchild %zu: %s, visible=%d, type=0x%04X\n", j,
-                                   grandchild->type_name, grandchild->visible, grandchild->type);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     for (size_t i = 0; i < element->child_count && *command_count < max_commands; i++) {
         KryonElement* child = element->children[i];
         if (child && child->type_name) {
@@ -2467,8 +2455,25 @@ static size_t expand_for_iteration(KryonRuntime* runtime, KryonElement* for_elem
             }
         }
 
+        // Create a unique component instance for this iteration
+        char iteration_comp_id[32];
+        snprintf(iteration_comp_id, sizeof(iteration_comp_id), "comp_%zu", index);
+
+        // Clone component variables for this iteration (except for iteration 0 which uses the originals)
+        if (index > 0) {
+            clone_component_variables(runtime, "comp_0", iteration_comp_id, index);
+        }
+
         // Now substitute the value variable
         KryonElement* final_instance = clone_element_with_substitution(runtime, instance, var_name, var_value, index);
+
+        // Create component instance with state table for this iteration if needed
+        if (final_instance->component_instance && index > 0) {
+            create_component_instance_for_iteration(runtime, final_instance, iteration_comp_id);
+        }
+
+        // Apply component instance ID substitution AFTER variable substitution
+        apply_component_instance_substitution(final_instance, iteration_comp_id, index);
 
         // If we did index substitution first, we need to free the intermediate clone
         if (index_var_name && instance != template_child) {
@@ -3898,4 +3903,136 @@ static const char* extract_json_property(const char* json_object, const char* pr
     kryon_free(allocated_result);
     
     return property_buffer;
+}
+
+// =============================================================================
+// COMPONENT INSTANCE MANAGEMENT FOR FOR LOOPS
+// =============================================================================
+
+/**
+ * @brief Clone component variables from a base component to a new component instance
+ *
+ * This function copies all component-scoped variables from comp_0 to a new component
+ * instance (comp_N) for use in for loop iterations. This ensures each component
+ * instance has its own isolated state.
+ *
+ * @param runtime Runtime context
+ * @param base_comp_id Base component ID (e.g., "comp_0")
+ * @param target_comp_id Target component ID (e.g., "comp_1", "comp_2", etc.)
+ * @param iteration_index The iteration index for debugging
+ */
+static void clone_component_variables(KryonRuntime* runtime, const char* base_comp_id, const char* target_comp_id, size_t iteration_index) {
+    if (!runtime || !base_comp_id || !target_comp_id) {
+        return;
+    }
+
+    printf("🔄 Cloning component variables from %s to %s (iteration %zu)\n",
+           base_comp_id, target_comp_id, iteration_index);
+
+    // Find all variables that belong to the base component and clone them
+    for (size_t i = 0; i < runtime->variable_count; i++) {
+        if (i >= runtime->variable_capacity || !runtime->variable_names[i]) continue;
+
+        const char* var_name = runtime->variable_names[i];
+        const char* var_value = runtime->variable_values[i];
+
+        // Check if this variable belongs to the base component (comp_0.variable_name)
+        size_t base_id_len = strlen(base_comp_id);
+        if (strncmp(var_name, base_comp_id, base_id_len) == 0 && var_name[base_id_len] == '.') {
+            // Extract the variable name without the component prefix
+            const char* actual_var_name = var_name + base_id_len + 1;
+
+            // Create new variable name for target component (comp_N.variable_name)
+            char new_var_name[256];
+            snprintf(new_var_name, sizeof(new_var_name), "%s.%s", target_comp_id, actual_var_name);
+
+            // Clone the variable value
+            if (var_value) {
+                kryon_runtime_set_variable(runtime, new_var_name, var_value);
+                printf("   ✅ Cloned variable: %s = %s\n", new_var_name, var_value);
+            }
+        }
+    }
+}
+
+/**
+ * @brief Apply component instance ID substitution to an element tree
+ *
+ * This function replaces all references to comp_0.xxx with comp_N.xxx where N is
+ * the iteration index, ensuring each component instance uses its own state.
+ *
+ * @param element Root element to apply substitution to
+ * @param target_comp_id Target component ID (e.g., "comp_1", "comp_2", etc.)
+ * @param iteration_index The iteration index for debugging
+ */
+static void apply_component_instance_substitution(KryonElement* element, const char* target_comp_id, size_t iteration_index) {
+    if (!element || !target_comp_id) {
+        return;
+    }
+
+    // Substitute in component instance reference if present
+    if (element->component_instance && element->component_instance->component_id) {
+        // Replace the component ID with the target one
+        kryon_free(element->component_instance->component_id);
+        element->component_instance->component_id = kryon_strdup(target_comp_id);
+        printf("   🔄 Updated component instance ID to %s\n", target_comp_id);
+    }
+
+    // Recursively apply to children
+    for (size_t i = 0; i < element->child_count; i++) {
+        apply_component_instance_substitution(element->children[i], target_comp_id, iteration_index);
+    }
+}
+
+/**
+ * @brief Create a component instance with state table for a specific iteration
+ *
+ * This function creates a proper component instance with its own state table
+ * for each iteration of a for loop, ensuring proper state isolation.
+ *
+ * @param runtime Runtime context
+ * @param element Element that contains the component instance
+ * @param component_id Component ID for this iteration (e.g., "comp_1", "comp_2", etc.)
+ */
+static void create_component_instance_for_iteration(KryonRuntime* runtime, KryonElement* element, const char* component_id) {
+    if (!runtime || !element || !component_id || !element->component_instance) {
+        return;
+    }
+
+    printf("   🏗️ Creating component instance with state for %s\n", component_id);
+
+    // Update the component instance ID
+    if (element->component_instance->component_id) {
+        kryon_free(element->component_instance->component_id);
+    }
+    element->component_instance->component_id = kryon_strdup(component_id);
+
+    // Create a new state table for this component instance
+    if (element->component_instance->state_table) {
+        kryon_component_state_table_destroy(element->component_instance->state_table);
+    }
+    element->component_instance->state_table = kryon_component_state_table_create(component_id);
+
+    if (!element->component_instance->state_table) {
+        printf("   ❌ Failed to create state table for component %s\n", component_id);
+        return;
+    }
+
+    // Initialize state from component definition defaults
+    if (element->component_instance->definition) {
+        KryonComponentDefinition* def = element->component_instance->definition;
+
+        // Copy default state values from definition
+        for (size_t i = 0; i < def->state_count; i++) {
+            if (def->state_vars[i].name && def->state_vars[i].default_value) {
+                kryon_component_state_set_string(element->component_instance->state_table,
+                                                def->state_vars[i].name,
+                                                def->state_vars[i].default_value);
+                printf("   ✅ Initialized state: %s = %s\n",
+                       def->state_vars[i].name, def->state_vars[i].default_value);
+            }
+        }
+    }
+
+    printf("   ✅ Component instance with state created successfully\n");
 }
