@@ -7,11 +7,11 @@ var todos = ["Test todo", "Another item"]
 var newTodo = ""
 
 function addTodo() {
-    if newTodo and newTodo ~= "" then
+    if (newTodo && newTodo != "") {
         print("Adding todo: " .. newTodo)
-        table.insert(todos, newTodo)
+        todos.push(newTodo)
         newTodo = ""
-    end
+    }
 }
 
     

@@ -2133,8 +2133,21 @@ KryonASTNode *expand_component_instance(KryonCodeGenerator *codegen, const Kryon
         return NULL;
     }
 
+    // Check if original component has inheritance before resolving
+    bool original_has_inheritance = (component_def->data.component.parent_component != NULL);
+
     // Resolve component inheritance if present
     component_def = kryon_resolve_component_inheritance(component_def, ast_root);
+
+    // Check if this component now has resolved built-in inheritance
+    bool has_resolved_builtin_inheritance = false;
+    if (original_has_inheritance &&
+        component_def->data.component.body_count == 1 &&
+        component_def->data.component.body_elements[0] &&
+        component_def->data.component.body_elements[0]->type == KRYON_AST_ELEMENT) {
+        // Component had inheritance and now has single element - likely resolved built-in inheritance
+        has_resolved_builtin_inheritance = true;
+    }
 
     printf("✅ Found component definition: %s\n", component_name);
     printf("🔍 Component has %zu parameters, instance has %zu properties\n",
@@ -2217,19 +2230,19 @@ KryonASTNode *expand_component_instance(KryonCodeGenerator *codegen, const Kryon
         return NULL;
     }
     
-    // Determine the effective element type from the resolved component
-    // If the component extends a built-in element, use that type
-    if (component_def->data.component.body_count == 1 &&
-        component_def->data.component.body_elements[0] &&
-        component_def->data.component.body_elements[0]->type == KRYON_AST_ELEMENT) {
-        // This component extends a built-in element, use that type
-        const char *parent_type = component_def->data.component.body_elements[0]->data.element.element_type;
-        wrapper->data.element.element_type = strdup(parent_type);
-        printf("🔧 Using parent element type: %s\n", parent_type);
+    // Determine wrapper type based on inheritance
+    const char *parent_type = "Container";
+
+    if (has_resolved_builtin_inheritance) {
+        // Component extends a built-in element, use the resolved parent type
+        parent_type = component_def->data.component.body_elements[0]->data.element.element_type;
+        printf("🔧 Component extends built-in element: %s\n", parent_type);
     } else {
-        // Regular custom component, use Container
-        wrapper->data.element.element_type = strdup("Container");
+        // Regular custom component with no inheritance
+        printf("🔧 Regular custom component with no inheritance - using Container wrapper\n");
     }
+
+    wrapper->data.element.element_type = strdup(parent_type);
     
     // Prepare arrays for component instance state tracking
     char **variable_names = NULL;

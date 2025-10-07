@@ -3354,10 +3354,27 @@ void process_if_directives(KryonRuntime* runtime, KryonElement* element) {
             return;
         }
 
-        // For @if directives not inside @for templates, check if they were already processed
+        // For @if directives not inside @for templates, always re-evaluate to support reactive updates
         if (already_processed) {
-            printf("🔍 Skipping @if directive - already processed\n");
-            return;
+            printf("🔍 @if directive was already processed, re-evaluating for reactive update\n");
+
+            // Clean up previously expanded children
+            if (element->parent) {
+                // Find and remove children that were cloned from this @if directive
+                for (int i = element->parent->child_count - 1; i >= 0; i--) {
+                    KryonElement* child = element->parent->children[i];
+                    if (child && child->cloned_from_directive == element) {
+                        printf("🔧 Removing previously expanded @if child\n");
+                        // Remove from parent array
+                        for (size_t j = i; j < element->parent->child_count - 1; j++) {
+                            element->parent->children[j] = element->parent->children[j + 1];
+                        }
+                        element->parent->child_count--;
+                        // Destroy the child element
+                        kryon_element_destroy(runtime, child);
+                    }
+                }
+            }
         }
 
         printf("🔍 Found @if directive, expanding template\n");
