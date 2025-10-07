@@ -2217,8 +2217,19 @@ KryonASTNode *expand_component_instance(KryonCodeGenerator *codegen, const Kryon
         return NULL;
     }
     
-    // Use a generic container type
-    wrapper->data.element.element_type = strdup("Container");
+    // Determine the effective element type from the resolved component
+    // If the component extends a built-in element, use that type
+    if (component_def->data.component.body_count == 1 &&
+        component_def->data.component.body_elements[0] &&
+        component_def->data.component.body_elements[0]->type == KRYON_AST_ELEMENT) {
+        // This component extends a built-in element, use that type
+        const char *parent_type = component_def->data.component.body_elements[0]->data.element.element_type;
+        wrapper->data.element.element_type = strdup(parent_type);
+        printf("🔧 Using parent element type: %s\n", parent_type);
+    } else {
+        // Regular custom component, use Container
+        wrapper->data.element.element_type = strdup("Container");
+    }
     
     // Prepare arrays for component instance state tracking
     char **variable_names = NULL;
