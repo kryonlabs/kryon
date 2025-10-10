@@ -173,20 +173,122 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
       currentY += child.height + gap
 
   of ekColumn:
-    var currentY = elem.y
     let gap = elem.getProp("gap").get(val(0)).getFloat()
+    let mainAxisAlignment = elem.getProp("mainAxisAlignment")
+    let crossAxisAlignment = elem.getProp("crossAxisAlignment")
 
+    # For Column: mainAxis = vertical (Y), crossAxis = horizontal (X)
+
+    # First pass: Calculate all children sizes (give them full width but not full height)
+    var childSizes: seq[tuple[w, h: float]] = @[]
     for child in elem.children:
-      calculateLayout(child, elem.x, currentY, elem.width, elem.height)
-      currentY += child.height + gap
+      # Pass elem.width for width, but don't constrain height
+      calculateLayout(child, 0, 0, elem.width, 0)
+      childSizes.add((w: child.width, h: child.height))
+
+    # Calculate total height and max width
+    var totalHeight = 0.0
+    var maxWidth = 0.0
+    for size in childSizes:
+      totalHeight += size.h
+      maxWidth = max(maxWidth, size.w)
+    if elem.children.len > 1:
+      totalHeight += gap * (elem.children.len - 1).float
+
+    # Column uses parent size by default (unless explicitly sized)
+    # This allows mainAxisAlignment/crossAxisAlignment to center children in available space
+    let widthOpt = elem.getProp("width")
+    let heightOpt = elem.getProp("height")
+    if widthOpt.isSome:
+      elem.width = widthOpt.get.getFloat()
+    else:
+      elem.width = if parentWidth > 0: parentWidth else: maxWidth
+    if heightOpt.isSome:
+      elem.height = heightOpt.get.getFloat()
+    else:
+      elem.height = if parentHeight > 0: parentHeight else: totalHeight
+
+    # Determine starting Y position based on mainAxisAlignment
+    var currentY = elem.y
+    if mainAxisAlignment.isSome and mainAxisAlignment.get.getString() == "center":
+      currentY = elem.y + (elem.height - totalHeight) / 2.0
+
+    # Second pass: Position children
+    for i, child in elem.children:
+      if i > 0:
+        currentY += gap
+
+      # Determine X position based on crossAxisAlignment
+      var childX = elem.x
+      if crossAxisAlignment.isSome:
+        let align = crossAxisAlignment.get.getString()
+        if align == "center":
+          childX = elem.x + (elem.width - childSizes[i].w) / 2.0
+        elif align == "end":
+          childX = elem.x + elem.width - childSizes[i].w
+
+      # Layout child at final position
+      calculateLayout(child, childX, currentY, elem.width, 0)
+      currentY += childSizes[i].h
 
   of ekRow:
-    var currentX = elem.x
     let gap = elem.getProp("gap").get(val(0)).getFloat()
+    let mainAxisAlignment = elem.getProp("mainAxisAlignment")
+    let crossAxisAlignment = elem.getProp("crossAxisAlignment")
 
+    # For Row: mainAxis = horizontal (X), crossAxis = vertical (Y)
+
+    # First pass: Calculate all children sizes (give them full height but not full width)
+    var childSizes: seq[tuple[w, h: float]] = @[]
     for child in elem.children:
-      calculateLayout(child, currentX, elem.y, elem.width, elem.height)
-      currentX += child.width + gap
+      # Pass elem.height for height, but don't constrain width
+      calculateLayout(child, 0, 0, 0, elem.height)
+      childSizes.add((w: child.width, h: child.height))
+
+    # Calculate total width and max height
+    var totalWidth = 0.0
+    var maxHeight = 0.0
+    for size in childSizes:
+      totalWidth += size.w
+      maxHeight = max(maxHeight, size.h)
+    if elem.children.len > 1:
+      totalWidth += gap * (elem.children.len - 1).float
+
+    # Row uses parent size by default (unless explicitly sized)
+    # This allows mainAxisAlignment/crossAxisAlignment to center children in available space
+    let widthOpt = elem.getProp("width")
+    let heightOpt = elem.getProp("height")
+    if widthOpt.isSome:
+      elem.width = widthOpt.get.getFloat()
+    else:
+      elem.width = if parentWidth > 0: parentWidth else: totalWidth
+    if heightOpt.isSome:
+      elem.height = heightOpt.get.getFloat()
+    else:
+      elem.height = if parentHeight > 0: parentHeight else: maxHeight
+
+    # Determine starting X position based on mainAxisAlignment
+    var currentX = elem.x
+    if mainAxisAlignment.isSome and mainAxisAlignment.get.getString() == "center":
+      currentX = elem.x + (elem.width - totalWidth) / 2.0
+
+    # Second pass: Position children
+    for i, child in elem.children:
+      if i > 0:
+        currentX += gap
+
+      # Determine Y position based on crossAxisAlignment
+      var childY = elem.y
+      if crossAxisAlignment.isSome:
+        let align = crossAxisAlignment.get.getString()
+        if align == "center":
+          childY = elem.y + (elem.height - childSizes[i].h) / 2.0
+        elif align == "end":
+          childY = elem.y + elem.height - childSizes[i].h
+
+      # Layout child at final position
+      calculateLayout(child, currentX, childY, 0, elem.height)
+      currentX += childSizes[i].w
 
   of ekCenter:
     # Center multiple children as a group - needs multi-pass layout

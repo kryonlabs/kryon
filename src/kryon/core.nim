@@ -41,7 +41,7 @@ type
 
   ValueKind* = enum
     ## Value types for properties
-    vkInt, vkFloat, vkString, vkBool, vkColor, vkAlignment, vkNil
+    vkInt, vkFloat, vkString, vkBool, vkColor, vkAlignment, vkGetter, vkNil
 
   Value* = object
     ## Dynamic value type for properties
@@ -52,6 +52,7 @@ type
     of vkBool: boolVal*: bool
     of vkColor: colorVal*: Color
     of vkAlignment: alignVal*: Alignment
+    of vkGetter: getter*: proc(): Value {.closure.}
     of vkNil: discard
 
   Property* = tuple
@@ -194,6 +195,10 @@ proc val*(x: bool): Value = Value(kind: vkBool, boolVal: x)
 proc val*(x: Color): Value = Value(kind: vkColor, colorVal: x)
 proc val*(x: Alignment): Value = Value(kind: vkAlignment, alignVal: x)
 
+proc valGetter*(getter: proc(): Value {.closure.}): Value =
+  ## Create a reactive getter value that re-evaluates on each access
+  Value(kind: vkGetter, getter: getter)
+
 proc `$`*(v: Value): string =
   ## Convert Value to string representation
   case v.kind:
@@ -203,30 +208,59 @@ proc `$`*(v: Value): string =
   of vkBool: $v.boolVal
   of vkColor: v.colorVal.toHex()
   of vkAlignment: $v.alignVal
+  of vkGetter: "<getter>"
   of vkNil: "nil"
 
 proc getInt*(v: Value, default: int = 0): int =
-  if v.kind == vkInt: v.intVal else: default
+  if v.kind == vkGetter:
+    v.getter().getInt(default)
+  elif v.kind == vkInt:
+    v.intVal
+  else:
+    default
 
 proc getFloat*(v: Value, default: float = 0.0): float =
-  case v.kind:
-  of vkFloat: v.floatVal
-  of vkInt: v.intVal.float
-  else: default
+  if v.kind == vkGetter:
+    v.getter().getFloat(default)
+  else:
+    case v.kind:
+    of vkFloat: v.floatVal
+    of vkInt: v.intVal.float
+    else: default
 
 proc getString*(v: Value, default: string = ""): string =
-  if v.kind == vkString: v.strVal else: default
+  if v.kind == vkGetter:
+    v.getter().getString(default)
+  elif v.kind == vkString:
+    v.strVal
+  else:
+    default
 
 proc getBool*(v: Value, default: bool = false): bool =
-  if v.kind == vkBool: v.boolVal else: default
+  if v.kind == vkGetter:
+    v.getter().getBool(default)
+  elif v.kind == vkBool:
+    v.boolVal
+  else:
+    default
 
 proc getColor*(v: Value): Color =
-  if v.kind == vkColor: v.colorVal
-  elif v.kind == vkString: parseColor(v.strVal)
-  else: rgba(0, 0, 0, 255)
+  if v.kind == vkGetter:
+    v.getter().getColor()
+  elif v.kind == vkColor:
+    v.colorVal
+  elif v.kind == vkString:
+    parseColor(v.strVal)
+  else:
+    rgba(0, 0, 0, 255)
 
 proc getAlignment*(v: Value, default: Alignment = alStart): Alignment =
-  if v.kind == vkAlignment: v.alignVal else: default
+  if v.kind == vkGetter:
+    v.getter().getAlignment(default)
+  elif v.kind == vkAlignment:
+    v.alignVal
+  else:
+    default
 
 # ============================================================================
 # Element constructors and utilities
@@ -261,15 +295,30 @@ proc setProp*(elem: Element, name: string, value: Color) =
   elem.setProp(name, val(value))
 
 proc getProp*(elem: Element, name: string): Option[Value] =
-  ## Get a property from an element
+  ## Get a property from an element (evaluates getters)
   if name in elem.properties:
-    some(elem.properties[name])
+    let propVal = elem.properties[name]
+    if propVal.kind == vkGetter:
+      # Evaluate getter to get current value
+      some(propVal.getter())
+    else:
+      # Static value
+      some(propVal)
   else:
     none(Value)
 
 proc getProp*(elem: Element, name: string, default: Value): Value =
-  ## Get a property with a default value
-  elem.properties.getOrDefault(name, default)
+  ## Get a property with a default value (evaluates getters)
+  if name in elem.properties:
+    let propVal = elem.properties[name]
+    if propVal.kind == vkGetter:
+      # Evaluate getter to get current value
+      propVal.getter()
+    else:
+      # Static value
+      propVal
+  else:
+    default
 
 proc addChild*(parent, child: Element) =
   ## Add a child element

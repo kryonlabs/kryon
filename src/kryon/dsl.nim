@@ -23,32 +23,34 @@ import core
 # ============================================================================
 
 proc parsePropertyValue(node: NimNode): NimNode =
-  ## Convert a property value node to a Value
+  ## Convert a property value node to a Value (wraps dynamic expressions in getters)
   case node.kind:
   of nnkIntLit:
+    # Static integer literal
     result = quote do: val(`node`)
   of nnkFloatLit:
+    # Static float literal
     result = quote do: val(`node`)
   of nnkStrLit:
-    # Check if it's a color
+    # Static string literal (check if it's a color)
     let strVal = node.strVal
     if strVal.startsWith("#"):
       result = quote do: val(parseColor(`node`))
     else:
       result = quote do: val(`node`)
   of nnkIdent:
-    # Could be true/false or a variable reference
+    # Could be true/false (static) or a variable reference (dynamic)
     let identStr = node.strVal
     if identStr == "true":
       result = quote do: val(true)
     elif identStr == "false":
       result = quote do: val(false)
     else:
-      # Variable reference - evaluate at runtime
-      result = quote do: val(`node`)
+      # Variable reference - wrap in getter for reactivity!
+      result = quote do: valGetter(proc(): Value = val(`node`))
   of nnkInfix, nnkPrefix, nnkCall, nnkDotExpr:
-    # Complex expression - evaluate at runtime
-    result = quote do: val(`node`)
+    # Complex expression - wrap in getter for reactivity!
+    result = quote do: valGetter(proc(): Value = val(`node`))
   else:
     # Default: try to convert to Value
     result = quote do: val(`node`)
