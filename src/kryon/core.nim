@@ -13,6 +13,7 @@ type
     ## All supported UI element types
     ekHeader = "Header"       # Window metadata (non-rendering)
     ekBody = "Body"           # Main UI content wrapper (non-rendering)
+    ekConditional = "Conditional"  # Conditional rendering (non-rendering)
     ekContainer = "Container"
     ekText = "Text"
     ekButton = "Button"
@@ -75,6 +76,11 @@ type
     # Computed layout (filled by layout engine)
     x*, y*: float
     width*, height*: float
+
+    # Conditional rendering properties (for ekConditional)
+    condition*: proc(): bool {.closure.}  # Function that evaluates the condition
+    trueBranch*: Element                  # Element to render when condition is true
+    falseBranch*: Element                 # Element to render when condition is false (optional)
 
 # ============================================================================
 # Color utilities
@@ -273,6 +279,18 @@ proc newElement*(kind: ElementKind): Element =
     properties: initTable[string, Value](),
     children: @[],
     eventHandlers: initTable[string, EventHandler]()
+  )
+
+proc newConditionalElement*(condition: proc(): bool {.closure.}, trueBranch: Element, falseBranch: Element = nil): Element =
+  ## Create a conditional element that renders different content based on a condition
+  result = Element(
+    kind: ekConditional,
+    properties: initTable[string, Value](),
+    children: @[],
+    eventHandlers: initTable[string, EventHandler](),
+    condition: condition,
+    trueBranch: trueBranch,
+    falseBranch: falseBranch
   )
 
 proc setProp*(elem: Element, name: string, value: Value) =

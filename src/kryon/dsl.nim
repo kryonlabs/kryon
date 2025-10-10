@@ -153,6 +153,59 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         result.add quote do:
           `elemVar`.setProp(`propName`, `propValue`)
 
+    of nnkIfStmt:
+      # Handle if statements for conditional rendering
+      # Convert if statement to a conditional element
+      let ifStmt = stmt
+
+      # Extract condition and branches
+      var conditionExpr: NimNode = nil
+      var trueBranchContent: NimNode = nil
+      var falseBranchContent: NimNode = nil
+
+      # Process the if statement branches
+      for branch in ifStmt:
+        if branch.kind == nnkElifBranch:
+          # elif branch - take the condition and body
+          conditionExpr = branch[0]
+          trueBranchContent = branch[1]
+          # For simplicity, we'll treat elif as if for now
+          break
+        elif branch.kind == nnkElse:
+          # else branch
+          falseBranchContent = branch[0]
+        elif branch.kind == nnkElifExpr:
+          # This shouldn't happen in a properly formed if statement
+          discard
+        else:
+          # Regular if branch
+          conditionExpr = branch[0]
+          trueBranchContent = branch[1]
+
+      if conditionExpr != nil and trueBranchContent != nil:
+        # Wrap the condition in a getter function for reactivity
+        let conditionGetter = quote do:
+          proc(): bool = `conditionExpr`
+
+        # Create a Container element for the true branch
+        # We'll manually process the true branch content by calling processElementBody
+        let trueContainerCode = processElementBody(ekContainer, trueBranchContent)
+
+        # Same for false branch if it exists
+        var falseContainerCode: NimNode
+        if falseBranchContent != nil:
+          falseContainerCode = processElementBody(ekContainer, falseBranchContent)
+        else:
+          falseContainerCode = quote do:
+            nil
+
+        # Create the conditional element and add it as a child
+        result.add quote do:
+          `elemVar`.addChild(newConditionalElement(`conditionGetter`, `trueContainerCode`, `falseContainerCode`))
+
+        # Debug: Print that we found an if statement
+        echo "=== DSL: Found if statement, creating conditional element ==="
+
     else:
       # Skip other node types
       discard

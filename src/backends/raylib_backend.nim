@@ -163,6 +163,21 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     elem.width = 0
     elem.height = 0
 
+  of ekConditional:
+    # Conditional elements evaluate their condition and only include the active branch
+    if elem.condition != nil:
+      let conditionResult = elem.condition()
+      let activeBranch = if conditionResult: elem.trueBranch else: elem.falseBranch
+
+      # Set conditional element size to 0 (it doesn't render itself)
+      elem.width = 0
+      elem.height = 0
+
+      # Layout the active branch at the same position as the conditional element
+      # Use the parent dimensions that were passed to this element
+      if activeBranch != nil:
+        calculateLayout(activeBranch, elem.x, elem.y, parentWidth, parentHeight)
+
   of ekBody:
     # Body implements natural document flow - stack children vertically
     var currentY = elem.y
@@ -364,6 +379,16 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
     # Header is metadata only - don't render it
     discard
 
+  of ekConditional:
+    # Conditional elements don't render themselves, only their active branch
+    if elem.condition != nil:
+      let conditionResult = elem.condition()
+      let activeBranch = if conditionResult: elem.trueBranch else: elem.falseBranch
+
+      # Render the active branch if it exists
+      if activeBranch != nil:
+        backend.renderElement(activeBranch, inheritedColor)
+
   of ekBody:
     # Body is a wrapper - render its children with inherited color
     let bodyColor = elem.getProp("color")
@@ -546,6 +571,17 @@ proc checkHoverCursor*(elem: Element): bool =
   ## Returns true if pointer cursor should be shown
 
   case elem.kind:
+  of ekConditional:
+    # Only check hover cursor for the active branch
+    if elem.condition != nil:
+      let conditionResult = elem.condition()
+      let activeBranch = if conditionResult: elem.trueBranch else: elem.falseBranch
+
+      # Check hover cursor for the active branch if it exists
+      if activeBranch != nil:
+        if checkHoverCursor(activeBranch):
+          return true
+
   of ekButton:
     let mousePos = GetMousePosition()
     let rect = rrect(elem.x, elem.y, elem.width, elem.height)
@@ -568,6 +604,16 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
   of ekHeader:
     # Header is metadata only - no input handling
     discard
+
+  of ekConditional:
+    # Conditional elements only handle input for their active branch
+    if elem.condition != nil:
+      let conditionResult = elem.condition()
+      let activeBranch = if conditionResult: elem.trueBranch else: elem.falseBranch
+
+      # Handle input for the active branch if it exists
+      if activeBranch != nil:
+        backend.handleInput(activeBranch)
 
   of ekBody:
     # Body is a wrapper - handle children's input
