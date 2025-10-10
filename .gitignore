@@ -1,0 +1,41 @@
+# Nim compiler output
+nimcache/
+*.exe
+*.so
+*.dylib
+*.dll
+*.a
+*.lib
+
+# Build artifacts
+bin/kryon
+build/
+dist/
+*.out
+
+# Nim cache
+.nimcache/
+*.d
+
+# Editor files
+*.swp
+*.swo
+*~
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# Test artifacts
+tests/*.out
+
+# Temporary files
+*.tmp
+*.bak
+/tmp/
+
+# Nimble
+nimbledeps/
+.nimble/
