@@ -13,6 +13,11 @@ build/
 dist/
 *.out
 
+# Examples - only include .nim source files, exclude compiled binaries
+examples/build/
+examples/*
+!examples/*.nim
+
 # Nim cache
 .nimcache/
 *.d
