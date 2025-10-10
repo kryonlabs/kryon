@@ -22,6 +22,10 @@ type
     cursorBlink*: float     # Timer for cursor blinking
     inputValues*: Table[Element, string]  # Store current text for each input
     checkboxStates*: Table[Element, bool]  # Store checked state for each checkbox
+    inputScrollOffsets*: Table[Element, float]  # Store scroll offset for each input
+    backspaceHoldTimer*: float  # Timer for backspace repeat
+    backspaceRepeatDelay*: float  # Initial delay before repeat starts
+    backspaceRepeatRate*: float   # Rate of repeat deletion
 
 proc newRaylibBackend*(width, height: int, title: string): RaylibBackend =
   ## Create a new Raylib backend
@@ -32,7 +36,11 @@ proc newRaylibBackend*(width, height: int, title: string): RaylibBackend =
     backgroundColor: rgba(30, 30, 30, 255),
     running: false,
     inputValues: initTable[Element, string](),
-    checkboxStates: initTable[Element, bool]()
+    checkboxStates: initTable[Element, bool](),
+    inputScrollOffsets: initTable[Element, float](),
+    backspaceHoldTimer: 0.0,
+    backspaceRepeatDelay: 0.5,  # 500ms initial delay
+    backspaceRepeatRate: 0.05    # 50ms repeat rate
   )
 
 proc newRaylibBackendFromApp*(app: Element): RaylibBackend =
@@ -75,7 +83,11 @@ proc newRaylibBackendFromApp*(app: Element): RaylibBackend =
     backgroundColor: if bgColor.isSome: bgColor.get.getColor() else: rgba(30, 30, 30, 255),
     running: false,
     inputValues: initTable[Element, string](),
-    checkboxStates: initTable[Element, bool]()
+    checkboxStates: initTable[Element, bool](),
+    inputScrollOffsets: initTable[Element, float](),
+    backspaceHoldTimer: 0.0,
+    backspaceRepeatDelay: 0.5,  # 500ms initial delay
+    backspaceRepeatRate: 0.05    # 50ms repeat rate
   )
 
 # ============================================================================
@@ -157,17 +169,35 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
       currentX += child.width + gap
 
   of ekCenter:
-    # Center children - needs two-pass layout
-    for child in elem.children:
-      # First pass: Calculate child layout at (0, 0) to determine its size
-      calculateLayout(child, 0, 0, elem.width, elem.height)
+    # Center multiple children as a group - needs multi-pass layout
+    if elem.children.len > 0:
+      # First pass: Calculate all children sizes at (0, 0) to determine dimensions
+      var totalHeight = 0.0
+      var maxWidth = 0.0
+      var childSizes: seq[tuple[w, h: float]] = @[]
 
-      # Second pass: Now we know child.width and child.height, so center it
-      let centerX = elem.x + (elem.width - child.width) / 2.0
-      let centerY = elem.y + (elem.height - child.height) / 2.0
+      for child in elem.children:
+        calculateLayout(child, 0, 0, elem.width, elem.height)
+        childSizes.add((w: child.width, h: child.height))
+        totalHeight += child.height
+        maxWidth = max(maxWidth, child.width)
 
-      # Recalculate at centered position
-      calculateLayout(child, centerX, centerY, child.width, child.height)
+      # Calculate starting Y position to center the group vertically
+      let startY = elem.y + (elem.height - totalHeight) / 2.0
+
+      # Second pass: Position children centered horizontally and stacked vertically
+      var currentY = startY
+      let gap = elem.getProp("gap").get(val(10)).getFloat()  # Default gap of 10
+
+      for i, child in elem.children:
+        let centerX = elem.x + (elem.width - childSizes[i].w) / 2.0
+
+        # Apply gap between elements (but not after the last one)
+        if i > 0:
+          currentY += gap
+
+        calculateLayout(child, centerX, currentY, childSizes[i].w, childSizes[i].h)
+        currentY += childSizes[i].h
 
   of ekContainer:
     # Check for contentAlignment property
@@ -276,25 +306,81 @@ proc renderElement*(backend: var RaylibBackend, elem: Element) =
     let borderWidth = if backend.focusedInput == elem: 2.0 else: 1.0
     DrawRectangleLinesEx(rect, borderWidth, borderColor.toRaylibColor())
 
-    # Draw text or placeholder
+    # Text rendering with scrolling and clipping
+    let padding = 8.0
     let displayText = if value.len > 0: value else: placeholder
     let displayColor = if value.len > 0: textColor else: parseColor("#999999")
 
-    if displayText.len > 0:
-      let padding = 8.0
-      DrawText(displayText.cstring, (elem.x + padding).cint, (elem.y + padding).cint,
-               fontSize.cint, displayColor.toRaylibColor())
+    # Calculate text dimensions (textWidth not needed for scrolling logic)
+    # let textWidth = if displayText.len > 0:
+    #   MeasureText(displayText.cstring, fontSize.cint).float
+    # else:
+    #   0.0
 
-    # Draw cursor if focused
-    if backend.focusedInput == elem and backend.cursorBlink < 0.5:
-      let padding = 8.0
-      let textWidth = if value.len > 0:
+    # Calculate cursor position in text (for focused input)
+    let cursorTextPos = if value.len > 0 and backend.focusedInput == elem:
+      # Measure text up to cursor position (cursor is at end for now)
+      MeasureText(value.cstring, fontSize.cint).float
+    else:
+      0.0
+
+    # Get or initialize scroll offset for this input
+    var scrollOffset = backend.inputScrollOffsets.getOrDefault(elem, 0.0)
+
+    # Calculate visible text area
+    let visibleWidth = elem.width - (padding * 2.0)
+
+    # Adjust scroll offset to keep cursor visible
+    if backend.focusedInput == elem:
+      # Calculate total text width to ensure we don't scroll past the end
+      let totalTextWidth = if value.len > 0:
         MeasureText(value.cstring, fontSize.cint).float
       else:
         0.0
-      let cursorX = elem.x + padding + textWidth
-      let cursorY = elem.y + padding
-      DrawRectangle(cursorX.cint, cursorY.cint, 2, fontSize.cint, textColor.toRaylibColor())
+
+      # If cursor is approaching right edge, scroll to keep it visible
+      if cursorTextPos - scrollOffset > visibleWidth - 20.0:
+        scrollOffset = cursorTextPos - visibleWidth + 20.0
+
+      # If cursor is approaching left edge, scroll left
+      if cursorTextPos < scrollOffset + 20.0:
+        scrollOffset = max(0.0, cursorTextPos - 20.0)
+
+      # Don't scroll past the beginning or allow scrolling beyond text end
+      scrollOffset = max(0.0, scrollOffset)
+
+      # If text is shorter than visible area, reset scroll to 0
+      if totalTextWidth <= visibleWidth:
+        scrollOffset = 0.0
+      else:
+        # Don't allow scrolling past the end of the text
+        let maxScrollOffset = max(0.0, totalTextWidth - visibleWidth)
+        scrollOffset = min(scrollOffset, maxScrollOffset)
+
+      # Store updated scroll offset
+      backend.inputScrollOffsets[elem] = scrollOffset
+
+    # Set up clipping to prevent text overflow
+    let clipRect = rrect(elem.x + padding, elem.y + 2.0, elem.width - (padding * 2.0), elem.height - 4.0)
+    BeginScissorMode(clipRect.x.cint, clipRect.y.cint, clipRect.width.cint, clipRect.height.cint)
+
+    # Draw text with scroll offset
+    if displayText.len > 0:
+      let textX = elem.x + padding - scrollOffset
+      let textY = elem.y + (elem.height - fontSize.float) / 2.0
+      DrawText(displayText.cstring, textX.cint, textY.cint, fontSize.cint, displayColor.toRaylibColor())
+
+    # End clipping
+    EndScissorMode()
+
+    # Draw cursor if focused and visible
+    if backend.focusedInput == elem and backend.cursorBlink < 0.5:
+      let cursorX = elem.x + padding + cursorTextPos - scrollOffset
+      let cursorY = elem.y + 4.0
+
+      # Only draw cursor if it's within the visible area
+      if cursorX >= elem.x + padding and cursorX <= elem.x + elem.width - padding:
+        DrawRectangle(cursorX.cint, cursorY.cint, 1, fontSize.cint - 2, textColor.toRaylibColor())
 
   of ekColumn, ekRow, ekCenter:
     # Layout containers don't render themselves, just their children

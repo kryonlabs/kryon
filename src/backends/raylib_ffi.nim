@@ -150,6 +150,13 @@ const
   KEY_LEFT_ALT* = 342.cint
 
 # ============================================================================
+# Scissor Mode (Clipping)
+# ============================================================================
+
+proc BeginScissorMode*(x, y, width, height: cint) {.importc: "BeginScissorMode", header: "raylib.h".}
+proc EndScissorMode*() {.importc: "EndScissorMode", header: "raylib.h".}
+
+# ============================================================================
 # Collision Detection
 # ============================================================================
 
