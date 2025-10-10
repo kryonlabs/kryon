@@ -473,10 +473,12 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
 proc handleKeyboardInput*(backend: var RaylibBackend) =
   ## Handle keyboard input for focused input element
   if backend.focusedInput == nil:
+    backend.backspaceHoldTimer = 0.0  # Reset timer when no focus
     return
 
   # Get current value
   var currentValue = backend.inputValues.getOrDefault(backend.focusedInput, "")
+  var textChanged = false
 
   # Handle character input
   while true:
@@ -486,21 +488,49 @@ proc handleKeyboardInput*(backend: var RaylibBackend) =
     # Add printable characters
     if char >= 32 and char < 127:
       currentValue.add(char.chr)
+      textChanged = true
+      backend.backspaceHoldTimer = 0.0  # Reset backspace timer when typing
 
-  # Handle special keys
-  if IsKeyPressed(KEY_BACKSPACE) and currentValue.len > 0:
-    currentValue.setLen(currentValue.len - 1)
+  # Handle backspace with repeat logic
+  let backspacePressed = IsKeyDown(KEY_BACKSPACE)
+  if backspacePressed and currentValue.len > 0:
+    if IsKeyPressed(KEY_BACKSPACE):
+      # First press - delete one character immediately
+      currentValue.setLen(currentValue.len - 1)
+      textChanged = true
+      backend.backspaceHoldTimer = 0.0  # Start the hold timer
+    else:
+      # Key is being held down
+      backend.backspaceHoldTimer += 1.0 / 60.0  # Increment by frame time (~16ms at 60fps)
 
+      # Check if we should delete more characters
+      if backend.backspaceHoldTimer >= backend.backspaceRepeatDelay:
+        # Calculate how many characters to delete based on hold time
+        let holdBeyondDelay = backend.backspaceHoldTimer - backend.backspaceRepeatDelay
+        let charsToDelete = min(int(holdBeyondDelay / backend.backspaceRepeatRate), currentValue.len)
+
+        if charsToDelete > 0:
+          currentValue.setLen(currentValue.len - charsToDelete)
+          textChanged = true
+          # Adjust timer to maintain repeat rate
+          backend.backspaceHoldTimer = backend.backspaceRepeatDelay +
+                                      (charsToDelete.float * backend.backspaceRepeatRate)
+  else:
+    # Backspace not pressed - reset timer
+    backend.backspaceHoldTimer = 0.0
+
+  # Handle other special keys
   if IsKeyPressed(KEY_ENTER):
     # Trigger onSubmit handler if present
     if backend.focusedInput.eventHandlers.hasKey("onSubmit"):
       backend.focusedInput.eventHandlers["onSubmit"]()
 
-  # Update stored value
-  backend.inputValues[backend.focusedInput] = currentValue
+  # Update stored value if changed
+  if textChanged:
+    backend.inputValues[backend.focusedInput] = currentValue
 
   # Trigger onChange handler if present
-  if backend.focusedInput.eventHandlers.hasKey("onChange"):
+  if textChanged and backend.focusedInput.eventHandlers.hasKey("onChange"):
     backend.focusedInput.eventHandlers["onChange"]()
 
 # ============================================================================
