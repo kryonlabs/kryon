@@ -1,6 +1,7 @@
-## Hello World Example - Kryon Nim
+## Hello World Example
 ##
-## A simple example showing a container with text
+## Matches the original hello-world.kry example
+## Uses absolute positioning (posX, posY) and = syntax
 
 import ../src/kryon
 import ../src/backends/raylib_backend
@@ -8,16 +9,17 @@ import ../src/backends/raylib_backend
 # Define the UI
 let app = kryonApp:
   Container:
-    width: 400
-    height: 300
-    backgroundColor: "#191970FF"
+    posX = 200
+    posY = 100
+    width = 200
+    height = 100
+    backgroundColor = "#191970FF"
 
-    Center:
-      Text:
-        text: "Hello World from Kryon-Nim!"
-        color: "#FFD700"
+    Text:
+      text = "Hello World"
+      color = "yellow"
 
 # Run the application
 when isMainModule:
-  var backend = newRaylibBackend(400, 300, "Hello World - Kryon")
+  var backend = newRaylibBackend(600, 400, "Hello World Example")
   backend.run(app)

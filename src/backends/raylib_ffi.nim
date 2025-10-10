@@ -91,7 +91,7 @@ proc MeasureTextEx*(font: RFont, text: cstring, fontSize, spacing: cfloat): RVec
 proc GetFontDefault*(): RFont {.importc: "GetFontDefault", header: "raylib.h".}
 
 # ============================================================================
-# Input Handling
+# Input Handling - Mouse
 # ============================================================================
 
 proc GetMousePosition*(): RVector2 {.importc: "GetMousePosition", header: "raylib.h".}
@@ -104,6 +104,33 @@ const
   MOUSE_BUTTON_LEFT* = 0.cint
   MOUSE_BUTTON_RIGHT* = 1.cint
   MOUSE_BUTTON_MIDDLE* = 2.cint
+
+# ============================================================================
+# Input Handling - Keyboard
+# ============================================================================
+
+proc GetCharPressed*(): cint {.importc: "GetCharPressed", header: "raylib.h".}
+proc IsKeyPressed*(key: cint): bool {.importc: "IsKeyPressed", header: "raylib.h".}
+proc IsKeyDown*(key: cint): bool {.importc: "IsKeyDown", header: "raylib.h".}
+proc IsKeyReleased*(key: cint): bool {.importc: "IsKeyReleased", header: "raylib.h".}
+
+# Key constants (commonly used)
+const
+  KEY_NULL* = 0.cint
+  KEY_BACKSPACE* = 259.cint
+  KEY_ENTER* = 257.cint
+  KEY_TAB* = 258.cint
+  KEY_ESCAPE* = 256.cint
+  KEY_DELETE* = 261.cint
+  KEY_LEFT* = 263.cint
+  KEY_RIGHT* = 262.cint
+  KEY_UP* = 265.cint
+  KEY_DOWN* = 264.cint
+  KEY_HOME* = 268.cint
+  KEY_END* = 269.cint
+  KEY_LEFT_CONTROL* = 341.cint
+  KEY_LEFT_SHIFT* = 340.cint
+  KEY_LEFT_ALT* = 342.cint
 
 # ============================================================================
 # Collision Detection

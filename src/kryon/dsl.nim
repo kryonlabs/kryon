@@ -1,17 +1,18 @@
 ## Kryon DSL - Declarative UI macro system
 ##
 ## This module provides the macros that enable writing declarative UI in Nim syntax.
+## Matches the original Kryon syntax using `=` for properties.
 ##
 ## Example:
 ## ```nim
 ## Container:
-##   width: 200
-##   height: 100
-##   backgroundColor: "#191970FF"
+##   width = 200
+##   height = 100
+##   backgroundColor = "#191970FF"
 ##
 ##   Text:
-##     text: "Hello World"
-##     color: "yellow"
+##     text = "Hello World"
+##     color = "yellow"
 ## ```
 
 import macros, strutils
@@ -68,14 +69,30 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
   # Process body statements
   for stmt in body:
     case stmt.kind:
+    of nnkExprEqExpr:
+      # Property or event handler assignment: width = 200 or onClick = handler
+      let propName = stmt[0].strVal
+
+      # Check if this is an event handler (starts with "on")
+      if propName.startsWith("on"):
+        # Event handler: onClick = myHandler
+        let handler = stmt[1]
+        result.add quote do:
+          `elemVar`.setEventHandler(`propName`, `handler`)
+      else:
+        # Regular property
+        let propValue = parsePropertyValue(stmt[1])
+        result.add quote do:
+          `elemVar`.setProp(`propName`, `propValue`)
+
     of nnkCall:
-      # This is either a property (width: 400) or child element (Text: ...)
+      # This is either an event handler or child element (Text: ...)
       let name = stmt[0]
       let nameStr = name.strVal
 
       # Check if this looks like an event handler
       if nameStr.startsWith("on"):
-        # Event handler
+        # Event handler: onClick = myHandler or onClick: <body>
         if stmt.len > 1 and stmt[1].kind == nnkStmtList:
           let handler = stmt[1]
           result.add quote do:
@@ -85,19 +102,9 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           result.add quote do:
             `elemVar`.setEventHandler(`nameStr`, `handler`)
       elif stmt.len > 1 and stmt[1].kind == nnkStmtList:
-        # Could be either a property value or a child element
-        # Check if the StmtList contains a single expression (property) or multiple statements (child)
-        if stmt[1].len == 1 and not (stmt[1][0].kind == nnkCall and stmt[1][0][0].kind == nnkIdent):
-          # Property assignment: width: 400 or text: "Count: " & $count
-          # Single expression in StmtList = property value
-          let propValue = parsePropertyValue(stmt[1][0])
-          result.add quote do:
-            `elemVar`.setProp(`nameStr`, `propValue`)
-        else:
-          # Child element with body: Text: <body>
-          # Process the child by recursively calling this logic
-          result.add quote do:
-            `elemVar`.addChild(`stmt`)
+        # Child element with body: Text: <body>
+        result.add quote do:
+          `elemVar`.addChild(`stmt`)
       else:
         # Unknown - skip
         discard
@@ -109,12 +116,19 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         result.add quote do:
           `elemVar`.addChild(`childStmt`)
 
-    of nnkAsgn, nnkExprEqExpr:
-      # Direct assignment (shouldn't happen with colon syntax, but handle it)
+    of nnkAsgn:
+      # Also handle nnkAsgn (rare, but valid)
       let propName = stmt[0].strVal
-      let propValue = parsePropertyValue(stmt[1])
-      result.add quote do:
-        `elemVar`.setProp(`propName`, `propValue`)
+
+      # Check if this is an event handler
+      if propName.startsWith("on"):
+        let handler = stmt[1]
+        result.add quote do:
+          `elemVar`.setEventHandler(`propName`, `handler`)
+      else:
+        let propValue = parsePropertyValue(stmt[1])
+        result.add quote do:
+          `elemVar`.setProp(`propName`, `propValue`)
 
     else:
       # Skip other node types
@@ -219,13 +233,13 @@ template component*(definition: untyped): untyped =
 when isMainModule:
   # Test the DSL
   let ui = Container:
-    width: 200
-    height: 100
-    backgroundColor: "#191970FF"
+    width = 200
+    height = 100
+    backgroundColor = "#191970FF"
 
     Text:
-      text: "Hello World"
-      color: "yellow"
+      text = "Hello World"
+      color = "yellow"
 
   echo "Created UI element:"
   ui.printTree()
