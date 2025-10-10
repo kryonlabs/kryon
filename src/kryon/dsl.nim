@@ -106,8 +106,15 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         result.add quote do:
           `elemVar`.addChild(`stmt`)
       else:
-        # Unknown - skip
-        discard
+        # This might be a function call that returns Element (custom component)
+        # Check if it's a function call like Counter(0)
+        if stmt.len > 1 or (stmt.len == 1 and stmt[0].kind == nnkIdent):
+          # Treat as a function call that returns Element
+          result.add quote do:
+            `elemVar`.addChild(`stmt`)
+        else:
+          # Unknown - skip
+          discard
 
     of nnkCommand:
       # Command syntax: might be a child element

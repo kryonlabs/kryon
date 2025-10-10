@@ -128,8 +128,23 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
 
     elem.width = if widthOpt.isSome: widthOpt.get.getFloat() else: textWidth
     elem.height = if heightOpt.isSome: heightOpt.get.getFloat() else: textHeight
+
+  elif elem.kind == ekButton:
+    # Special handling for Button elements - size based on text content with padding
+    let text = elem.getProp("text").get(val("Button")).getString()
+    let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
+
+    # Measure text dimensions and add padding
+    let textWidth = MeasureText(text.cstring, fontSize.cint).float
+    let textHeight = fontSize.float
+    let padding = 20.0  # Horizontal padding
+    let verticalPadding = 10.0  # Vertical padding
+
+    elem.width = if widthOpt.isSome: widthOpt.get.getFloat() else: textWidth + (padding * 2.0)
+    elem.height = if heightOpt.isSome: heightOpt.get.getFloat() else: textHeight + (verticalPadding * 2.0)
+
   else:
-    # Regular element dimension handling
+    # Regular element dimension handling (containers, etc.)
     if widthOpt.isSome:
       elem.width = widthOpt.get.getFloat()
     else:
@@ -144,13 +159,18 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
   # Children should be positioned relative to THIS element's calculated position
   case elem.kind:
   of ekHeader:
-    # Header is metadata only - skip layout
-    discard
+    # Header is metadata only - set size to 0 so it doesn't take up space
+    elem.width = 0
+    elem.height = 0
 
   of ekBody:
-    # Body is a wrapper - layout children in same space
+    # Body implements natural document flow - stack children vertically
+    var currentY = elem.y
+    let gap = elem.getProp("gap").get(val(5)).getFloat()  # Default gap between elements
+
     for child in elem.children:
-      calculateLayout(child, elem.x, elem.y, elem.width, elem.height)
+      calculateLayout(child, elem.x, currentY, elem.width, elem.height)
+      currentY += child.height + gap
 
   of ekColumn:
     var currentY = elem.y
@@ -200,6 +220,10 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
         currentY += childSizes[i].h
 
   of ekContainer:
+    # Container is a normal wrapper - relative positioning by default
+    var currentY = elem.y
+    let gap = elem.getProp("gap").get(val(0)).getFloat()  # No gap by default
+
     # Check for contentAlignment property
     let alignment = elem.getProp("contentAlignment")
     if alignment.isSome and alignment.get.getString() == "center":
@@ -215,9 +239,10 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
         # Recalculate at centered position
         calculateLayout(child, centerX, centerY, child.width, child.height)
     else:
-      # Default: layout children in same space as parent (inside the container)
+      # Default: normal relative positioning layout
       for child in elem.children:
-        calculateLayout(child, elem.x, elem.y, elem.width, elem.height)
+        calculateLayout(child, elem.x, currentY, elem.width, elem.height)
+        currentY += child.height + gap
 
   else:
     # Default: just layout children in same space as parent
