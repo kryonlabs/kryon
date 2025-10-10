@@ -6,7 +6,7 @@
 ## - ElementKind: Enumeration of all element types
 ## - Color: Color representation
 
-import tables, strutils, options, hashes
+import tables, strutils, options, hashes, sets
 
 type
   ElementKind* = enum
@@ -14,6 +14,7 @@ type
     ekHeader = "Header"       # Window metadata (non-rendering)
     ekBody = "Body"           # Main UI content wrapper (non-rendering)
     ekConditional = "Conditional"  # Conditional rendering (non-rendering)
+    ekForLoop = "ForLoop"     # Dynamic for loop rendering (non-rendering)
     ekContainer = "Container"
     ekText = "Text"
     ekButton = "Button"
@@ -61,8 +62,8 @@ type
     name: string
     value: Value
 
-  EventHandler* = proc () {.closure.}
-    ## Event handler callback type
+  EventHandler* = proc (data: string = "") {.closure.}
+    ## Event handler callback type - accepts optional data parameter
 
   Element* = ref object
     ## Base UI element type
@@ -82,8 +83,24 @@ type
     trueBranch*: Element                  # Element to render when condition is true
     falseBranch*: Element                 # Element to render when condition is false (optional)
 
+    # For loop properties (for ekForLoop)
+    forIterable*: proc(): seq[string] {.closure.}  # Function that returns the iterable data
+    forBodyTemplate*: proc(item: string): Element {.closure.}  # Function to create element for each item
+
+    # Variable binding for two-way data binding (primarily for Input elements)
+    boundVarName*: Option[string]  # Name of the bound variable for two-way binding
+
+    # Reactivity system - dirty flag for selective updates
+    dirty*: bool  # Whether this element needs layout recalculation
+
 # ============================================================================
-# Color utilities
+# Forward Declarations for Reactive System
+# ============================================================================
+
+proc registerDependency*(valueIdentifier: string)  # Forward declaration
+
+# ============================================================================
+# Color Utilities
 # ============================================================================
 
 proc rgba*(r, g, b: uint8, a: uint8 = 255): Color =
@@ -203,6 +220,7 @@ proc val*(x: Alignment): Value = Value(kind: vkAlignment, alignVal: x)
 
 proc valGetter*(getter: proc(): Value {.closure.}): Value =
   ## Create a reactive getter value that re-evaluates on each access
+  ## Note: Dependency tracking for generic getters is handled at the DSL level
   Value(kind: vkGetter, getter: getter)
 
 proc `$`*(v: Value): string =
@@ -278,7 +296,8 @@ proc newElement*(kind: ElementKind): Element =
     kind: kind,
     properties: initTable[string, Value](),
     children: @[],
-    eventHandlers: initTable[string, EventHandler]()
+    eventHandlers: initTable[string, EventHandler](),
+    dirty: true  # New elements start as dirty to ensure initial layout
   )
 
 proc newConditionalElement*(condition: proc(): bool {.closure.}, trueBranch: Element, falseBranch: Element = nil): Element =
@@ -291,6 +310,17 @@ proc newConditionalElement*(condition: proc(): bool {.closure.}, trueBranch: Ele
     condition: condition,
     trueBranch: trueBranch,
     falseBranch: falseBranch
+  )
+
+proc newForLoopElement*(iterable: proc(): seq[string] {.closure.}, bodyTemplate: proc(item: string): Element {.closure.}): Element =
+  ## Create a for loop element that renders content for each item in a sequence
+  result = Element(
+    kind: ekForLoop,
+    properties: initTable[string, Value](),
+    children: @[],
+    eventHandlers: initTable[string, EventHandler](),
+    forIterable: iterable,
+    forBodyTemplate: bodyTemplate
   )
 
 proc setProp*(elem: Element, name: string, value: Value) =
@@ -347,6 +377,14 @@ proc setEventHandler*(elem: Element, event: string, handler: EventHandler) =
   ## Set an event handler
   elem.eventHandlers[event] = handler
 
+proc setBoundVarName*(elem: Element, varName: string) =
+  ## Set the bound variable name for two-way data binding
+  elem.boundVarName = some(varName)
+
+proc getBoundVarName*(elem: Element): Option[string] =
+  ## Get the bound variable name for two-way data binding
+  elem.boundVarName
+
 # ============================================================================
 # Debugging utilities
 # ============================================================================
@@ -369,6 +407,7 @@ proc `$`*(elem: Element, indent: int = 0): string =
   for event, _ in elem.eventHandlers:
     result.add ind & "  " & event & ": <handler>\n"
 
+  
   # Print children
   for child in elem.children:
     result.add `$`(child, indent + 1)
@@ -390,3 +429,75 @@ proc printTree*(elem: Element) =
 proc hash*(elem: Element): Hash =
   ## Hash element by its address (reference identity)
   hash(cast[pointer](elem))
+
+# ============================================================================
+# Global Reactive State (defined after hash function is available)
+# ============================================================================
+
+# Global dirty elements set for tracking elements that need updates
+var dirtyElements*: HashSet[Element] = initHashSet[Element]()
+var dirtyElementsCount*: int = 0  # Simple counter for performance
+
+# Thread-local variable to track the current element being processed during layout
+# This allows us to establish dependencies between elements and reactive values
+var currentElementBeingProcessed*: Element = nil
+
+# Map from reactive value identifiers to dependent elements for targeted invalidation
+var reactiveDependencies*: Table[string, HashSet[Element]] = initTable[string, HashSet[Element]]()
+
+# Reactive System Helper Function Implementations
+
+proc markDirty*(elem: Element) =
+  ## Mark an element as needing layout recalculation
+  if elem != nil and not elem.dirty:
+    elem.dirty = true
+    dirtyElements.incl(elem)
+    dirtyElementsCount += 1
+
+    # Also mark parent as dirty since layout may need to adjust
+    if elem.parent != nil:
+      markDirty(elem.parent)
+
+proc isDirty*(elem: Element): bool =
+  ## Check if an element is marked as dirty
+  elem != nil and elem.dirty
+
+proc markClean*(elem: Element) =
+  ## Mark an element as clean (no layout recalculation needed)
+  if elem != nil and elem.dirty:
+    elem.dirty = false
+    dirtyElements.excl(elem)
+    dirtyElementsCount = max(0, dirtyElementsCount - 1)
+
+proc hasDirtyElements*(): bool =
+  ## Check if there are any dirty elements that need processing
+  dirtyElementsCount > 0
+
+proc clearDirtyElements*() =
+  ## Clear all dirty flags and the global dirty set
+  for elem in dirtyElements:
+    if elem != nil:
+      elem.dirty = false
+  dirtyElements.clear()
+  dirtyElementsCount = 0
+
+proc registerDependency*(valueIdentifier: string) =
+  ## Register the current element as dependent on a reactive value
+  if currentElementBeingProcessed != nil:
+    if valueIdentifier notin reactiveDependencies:
+      reactiveDependencies[valueIdentifier] = initHashSet[Element]()
+    reactiveDependencies[valueIdentifier].incl(currentElementBeingProcessed)
+
+proc invalidateReactiveValue*(valueIdentifier: string) =
+  ## Mark all elements dependent on a reactive value as dirty
+  if valueIdentifier in reactiveDependencies:
+    for elem in reactiveDependencies[valueIdentifier]:
+      markDirty(elem)
+
+proc createReactiveEventHandler*(handler: proc(), invalidatedVars: seq[string]): EventHandler =
+  ## Create an event handler that automatically invalidates reactive variables and marks elements dirty
+  result = proc(data: string = "") {.closure.} =
+    handler()
+    # Invalidate all specified reactive variables
+    for varName in invalidatedVars:
+      invalidateReactiveValue(varName)

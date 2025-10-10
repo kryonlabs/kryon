@@ -23,7 +23,7 @@ let app = kryonApp:
       Text:
         text = "Runtime if Test with var"
         fontSize = 24
-        color = "#333"
+        color = "#999"
 
       Button:
         text = "Toggle Message"
@@ -45,9 +45,6 @@ let app = kryonApp:
 
 
 
-# Debug: Print the app structure
-echo "=== App Structure ==="
-app.printTree()
 
 # Run the application
 when isMainModule:

@@ -15,45 +15,59 @@
 ##     color = "yellow"
 ## ```
 
-import macros, strutils
+import macros, strutils, options
 import core
 
 # ============================================================================
 # Helper procs for macro processing
 # ============================================================================
 
-proc parsePropertyValue(node: NimNode): NimNode =
+proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[NimNode]] =
   ## Convert a property value node to a Value (wraps dynamic expressions in getters)
+  ## Returns both the value code and optionally the bound variable name
   case node.kind:
   of nnkIntLit:
     # Static integer literal
-    result = quote do: val(`node`)
+    result.value = quote do: val(`node`)
+    result.boundVar = none(NimNode)
   of nnkFloatLit:
     # Static float literal
-    result = quote do: val(`node`)
+    result.value = quote do: val(`node`)
+    result.boundVar = none(NimNode)
   of nnkStrLit:
     # Static string literal (check if it's a color)
     let strVal = node.strVal
     if strVal.startsWith("#"):
-      result = quote do: val(parseColor(`node`))
+      result.value = quote do: val(parseColor(`node`))
     else:
-      result = quote do: val(`node`)
+      result.value = quote do: val(`node`)
+    result.boundVar = none(NimNode)
   of nnkIdent:
     # Could be true/false (static) or a variable reference (dynamic)
     let identStr = node.strVal
     if identStr == "true":
-      result = quote do: val(true)
+      result.value = quote do: val(true)
+      result.boundVar = none(NimNode)
     elif identStr == "false":
-      result = quote do: val(false)
+      result.value = quote do: val(false)
+      result.boundVar = none(NimNode)
     else:
       # Variable reference - wrap in getter for reactivity!
-      result = quote do: valGetter(proc(): Value = val(`node`))
+      let varName = node.strVal
+      result.value = quote do: valGetter(proc(): Value =
+        # Register dependency using variable name as identifier
+        registerDependency(`varName`)
+        val(`node`)
+      )
+      result.boundVar = some(node)  # Return the variable name for binding
   of nnkInfix, nnkPrefix, nnkCall, nnkDotExpr:
     # Complex expression - wrap in getter for reactivity!
-    result = quote do: valGetter(proc(): Value = val(`node`))
+    result.value = quote do: valGetter(proc(): Value = val(`node`))
+    result.boundVar = none(NimNode)
   else:
     # Default: try to convert to Value
-    result = quote do: val(`node`)
+    result.value = quote do: val(`node`)
+    result.boundVar = none(NimNode)
 
 proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
   ## Process the body of an element definition
@@ -83,9 +97,23 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           `elemVar`.setEventHandler(`propName`, `handler`)
       else:
         # Regular property
-        let propValue = parsePropertyValue(stmt[1])
+        let parseResult = parsePropertyValue(stmt[1])
+        let propValue = parseResult.value
         result.add quote do:
           `elemVar`.setProp(`propName`, `propValue`)
+
+        # If this is an Input element and we have a bound variable, store it and create setter
+        if kind == ekInput and parseResult.boundVar.isSome:
+          let varNode = parseResult.boundVar.get()
+          let varName = varNode.strVal
+          result.add quote do:
+            `elemVar`.setBoundVarName(`varName`)
+            # Create a setter function for two-way binding that invalidates dependent elements
+            `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
+              `varNode` = data
+              # Invalidate all elements that depend on this variable
+              invalidateReactiveValue(`varName`)
+            )
 
     of nnkCall:
       # This is either an event handler or child element (Text: ...)
@@ -135,9 +163,23 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         result.add quote do:
           `elemVar`.setEventHandler(`propName`, `handler`)
       else:
-        let propValue = parsePropertyValue(stmt[1])
+        let parseResult = parsePropertyValue(stmt[1])
+        let propValue = parseResult.value
         result.add quote do:
           `elemVar`.setProp(`propName`, `propValue`)
+
+        # If this is an Input element and we have a bound variable, store it and create setter
+        if kind == ekInput and parseResult.boundVar.isSome:
+          let varNode = parseResult.boundVar.get()
+          let varName = varNode.strVal
+          result.add quote do:
+            `elemVar`.setBoundVarName(`varName`)
+            # Create a setter function for two-way binding that invalidates dependent elements
+            `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
+              `varNode` = data
+              # Invalidate all elements that depend on this variable
+              invalidateReactiveValue(`varName`)
+            )
 
     of nnkExprColonExpr:
       # Colon syntax: width: 800 (same as width = 800)
@@ -149,9 +191,23 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         result.add quote do:
           `elemVar`.setEventHandler(`propName`, `handler`)
       else:
-        let propValue = parsePropertyValue(stmt[1])
+        let parseResult = parsePropertyValue(stmt[1])
+        let propValue = parseResult.value
         result.add quote do:
           `elemVar`.setProp(`propName`, `propValue`)
+
+        # If this is an Input element and we have a bound variable, store it and create setter
+        if kind == ekInput and parseResult.boundVar.isSome:
+          let varNode = parseResult.boundVar.get()
+          let varName = varNode.strVal
+          result.add quote do:
+            `elemVar`.setBoundVarName(`varName`)
+            # Create a setter function for two-way binding that invalidates dependent elements
+            `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
+              `varNode` = data
+              # Invalidate all elements that depend on this variable
+              invalidateReactiveValue(`varName`)
+            )
 
     of nnkIfStmt:
       # Handle if statements for conditional rendering
@@ -184,8 +240,10 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
 
       if conditionExpr != nil and trueBranchContent != nil:
         # Wrap the condition in a getter function for reactivity
+        # Use valGetter to make it reactive like other properties
         let conditionGetter = quote do:
-          proc(): bool = `conditionExpr`
+          proc(): bool =
+            `conditionExpr`
 
         # Create a Container element for the true branch
         # We'll manually process the true branch content by calling processElementBody
@@ -203,8 +261,48 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         result.add quote do:
           `elemVar`.addChild(newConditionalElement(`conditionGetter`, `trueContainerCode`, `falseContainerCode`))
 
-        # Debug: Print that we found an if statement
-        echo "=== DSL: Found if statement, creating conditional element ==="
+    of nnkForStmt:
+      # Handle for loops for generating repeated elements
+      # Extract loop variable and iterable
+      let loopVar = stmt[0]
+      let iterable = stmt[1]
+      let loopBody = stmt[2]
+
+      # Check if iterable is a simple variable reference that needs reactive binding
+      let iterableParseResult = parsePropertyValue(iterable)
+      let iterableGetter = if iterableParseResult.boundVar.isSome:
+        # Variable reference - create reactive getter that calls on every frame
+        # For seq[string], we need to access it directly
+        let varName = iterable.strVal
+        quote do:
+          proc(): seq[string] =
+            # Register dependency on the iterable variable
+            registerDependency(`varName`)
+            # Access the current state of the iterable variable reactively
+            `iterable`
+      else:
+        # Complex expression - use getter
+        quote do:
+          proc(): seq[string] =
+            # Access the current state of the iterable variable
+            `iterable`
+
+      # Process the loop body to create a template function
+      # We need to replace all instances of the loop variable with the parameter
+      var loopBodyForTemplate = copy(loopBody)
+
+      # Replace all occurrences of the loop variable with 'item' parameter
+      # This is a simple replacement approach
+      let bodyTemplate = quote do:
+        proc(item: string): Element =
+          # Create the elements from the processed loop body
+          # Note: loopVar is replaced with 'item' parameter
+          let `loopVar` = item  # Create local variable substitution
+          `loopBodyForTemplate`
+
+      # Create the for loop element and add it as a child
+      result.add quote do:
+        `elemVar`.addChild(newForLoopElement(`iterableGetter`, `bodyTemplate`))
 
     else:
       # Skip other node types

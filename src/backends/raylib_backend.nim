@@ -104,6 +104,11 @@ proc toRaylibColor*(c: Color): RColor {.inline.} =
 
 proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
   ## Recursively calculate layout for all elements
+  ## Normal layout calculation - reactivity is handled by dirty flags triggering recalculation
+
+  # Set current element for dependency tracking
+  let previousElement = currentElementBeingProcessed
+  currentElementBeingProcessed = elem
 
   # Check for absolute positioning (posX, posY)
   let posXOpt = elem.getProp("posX")
@@ -177,6 +182,35 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
       # Use the parent dimensions that were passed to this element
       if activeBranch != nil:
         calculateLayout(activeBranch, elem.x, elem.y, parentWidth, parentHeight)
+
+  of ekForLoop:
+    # For loop elements generate dynamic content and layout their children
+    if elem.forIterable != nil and elem.forBodyTemplate != nil:
+      let items = elem.forIterable()
+      echo "🔥 ForLoop layout: got " & $items.len & " items: " & $items
+
+      # Clear previous children (if any)
+      elem.children.setLen(0)
+
+      # Generate elements for each item in the iterable
+      var currentY = elem.y
+      let gap = 5.0  # Gap between items
+
+      for item in items:
+        echo "🔥 Creating element for item: '" & item & "'"
+        let childElement = elem.forBodyTemplate(item)
+        if childElement != nil:
+          elem.children.add(childElement)
+          # Layout the child element
+          calculateLayout(childElement, elem.x, currentY, elem.width, 0)
+          currentY += childElement.height + gap
+        else:
+          echo "🔥 Template returned nil for item: '" & item & "'"
+
+      # Set for loop element size based on its children
+      elem.width = parentWidth
+      elem.height = currentY - elem.y - gap
+      echo "🔥 ForLoop complete: " & $elem.children.len & " children created"
 
   of ekBody:
     # Body implements natural document flow - stack children vertically
@@ -366,6 +400,10 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     for child in elem.children:
       calculateLayout(child, elem.x, elem.y, elem.width, elem.height)
 
+  # Restore previous element and mark this element as clean
+  currentElementBeingProcessed = previousElement
+  markClean(elem)
+
 # ============================================================================
 # Rendering with Real Raylib
 # ============================================================================
@@ -385,9 +423,19 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
       let conditionResult = elem.condition()
       let activeBranch = if conditionResult: elem.trueBranch else: elem.falseBranch
 
+
       # Render the active branch if it exists
       if activeBranch != nil:
         backend.renderElement(activeBranch, inheritedColor)
+
+  of ekForLoop:
+    # For loop elements don't render themselves, only their generated children
+    # The actual rendering and layout is handled in the layout calculation
+    # So this just needs to render the children
+    echo "🔥 Rendering ForLoop with " & $elem.children.len & " children"
+
+    for child in elem.children:
+      backend.renderElement(child, inheritedColor)
 
   of ekBody:
     # Body is a wrapper - render its children with inherited color
@@ -449,28 +497,53 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
     DrawText(text.cstring, textX.cint, textY.cint, fontSize.cint, textColor.toRaylibColor())
 
   of ekInput:
-    # Get current value from backend state, or use initial value from property
-    let value = if backend.inputValues.hasKey(elem):
-      backend.inputValues[elem]
+    # Get current value from backend state (for user input), or use bound variable value, or use initial value from property
+    let reactiveValue = elem.getProp("value").get(val("")).getString()
+
+    # Priority: backend state (user typing) > bound variable value > empty string
+    # BUT: sync backend state with reactive value when reactive value changes (for two-way binding)
+    var value: string
+    if backend.inputValues.hasKey(elem):
+      value = backend.inputValues[elem]
+      # If reactive value changed (e.g., was cleared programmatically), sync backend state
+      if reactiveValue != value and (reactiveValue == "" or backend.focusedInput != elem):
+        # Sync with reactive value when:
+        # 1. Reactive value is empty (programmatic clear)
+        # 2. Input is not focused (not actively being typed in)
+        value = reactiveValue
+        backend.inputValues[elem] = reactiveValue
     else:
-      elem.getProp("value").get(val("")).getString()
+      value = reactiveValue
 
     let placeholder = elem.getProp("placeholder").get(val("")).getString()
     let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
     let bgColor = elem.getProp("backgroundColor").get(val("#FFFFFF"))
     let textColor = elem.getProp("color").get(val("#000000")).getColor()
-    let borderColor = if backend.focusedInput == elem:
-      parseColor("#4A90E2")  # Blue when focused
+
+    # Get border properties with defaults
+    let borderWidthProp = elem.getProp("borderWidth")
+    let borderWidth = if borderWidthProp.isSome:
+      borderWidthProp.get.getFloat()
     else:
-      parseColor("#CCCCCC")  # Gray when not focused
+      1.0  # Default border width
+
+    let borderColorProp = elem.getProp("borderColor")
+    let borderColor = if borderColorProp.isSome:
+      borderColorProp.get.getColor()
+    else:
+      if backend.focusedInput == elem:
+        parseColor("#4A90E2")  # Blue when focused
+      else:
+        parseColor("#CCCCCC")  # Gray when not focused
 
     # Draw input background
     let rect = rrect(elem.x, elem.y, elem.width, elem.height)
     DrawRectangleRec(rect, bgColor.getColor().toRaylibColor())
 
-    # Draw border (thicker if focused)
-    let borderWidth = if backend.focusedInput == elem: 2.0 else: 1.0
-    DrawRectangleLinesEx(rect, borderWidth, borderColor.toRaylibColor())
+    # Draw border (thicker if focused or custom width)
+    let actualBorderWidth = if backend.focusedInput == elem and borderWidth == 1.0: 2.0 else: borderWidth
+    if actualBorderWidth > 0:
+      DrawRectangleLinesEx(rect, actualBorderWidth, borderColor.toRaylibColor())
 
     # Text rendering with scrolling and clipping
     let padding = 8.0
@@ -626,9 +699,13 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
       let rect = rrect(elem.x, elem.y, elem.width, elem.height)
 
       if CheckCollisionPointRec(mousePos, rect):
+        echo "🔥 BUTTON CLICKED! Checking handlers..."
         # Button was clicked - trigger onClick handler
         if elem.eventHandlers.hasKey("onClick"):
+          echo "🔥 Found onClick handler, calling it!"
           elem.eventHandlers["onClick"]()
+        else:
+          echo "🔥 No onClick handler found!"
 
   of ekInput:
     if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
@@ -720,7 +797,13 @@ proc handleKeyboardInput*(backend: var RaylibBackend) =
 
   # Trigger onChange handler if present
   if textChanged and backend.focusedInput.eventHandlers.hasKey("onChange"):
-    backend.focusedInput.eventHandlers["onChange"]()
+    let handler = backend.focusedInput.eventHandlers["onChange"]
+    handler(currentValue)
+
+  # Trigger onValueChange handler for two-way binding
+  if textChanged and backend.focusedInput.eventHandlers.hasKey("onValueChange"):
+    let handler = backend.focusedInput.eventHandlers["onValueChange"]
+    handler(currentValue)
 
 # ============================================================================
 # Main Loop
@@ -758,9 +841,33 @@ proc run*(backend: var RaylibBackend, root: Element) =
     # Handle keyboard input
     backend.handleKeyboardInput()
 
+    # Only recalculate layout when there are dirty elements (intelligent updates)
+    if hasDirtyElements():
+      echo "🔥 Layout update triggered - " & $dirtyElementsCount & " dirty elements"
+      calculateLayout(root, 0, 0, backend.windowWidth.float, backend.windowHeight.float)
+
     # Render
     BeginDrawing()
-    ClearBackground(backend.backgroundColor.toRaylibColor())
+
+    # Find the actual Body element (child of root) and check for background color
+    var actualBody: Element = nil
+    for child in root.children:
+      if child.kind == ekBody:
+        actualBody = child
+        break
+
+    # Check for both "background" and "backgroundColor" properties
+    var bodyBg: Option[Value] = none(Value)
+    if actualBody != nil:
+      bodyBg = actualBody.getProp("backgroundColor")
+      if bodyBg.isNone:
+        bodyBg = actualBody.getProp("background")
+
+    if bodyBg.isSome:
+      let bgColor = bodyBg.get.getColor()
+      ClearBackground(bgColor.toRaylibColor())
+    else:
+      ClearBackground(backend.backgroundColor.toRaylibColor())
 
     backend.renderElement(root)
 
