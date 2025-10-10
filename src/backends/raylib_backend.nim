@@ -312,6 +312,26 @@ proc renderElement*(backend: var RaylibBackend, elem: Element) =
 # Input Handling
 # ============================================================================
 
+proc checkHoverCursor*(elem: Element): bool =
+  ## Check if mouse is hovering over any interactive element that needs pointer cursor
+  ## Returns true if pointer cursor should be shown
+
+  case elem.kind:
+  of ekButton:
+    let mousePos = GetMousePosition()
+    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
+    if CheckCollisionPointRec(mousePos, rect):
+      return true
+  else:
+    discard
+
+  # Check children recursively
+  for child in elem.children:
+    if checkHoverCursor(child):
+      return true
+
+  return false
+
 proc handleInput*(backend: var RaylibBackend, elem: Element) =
   ## Handle mouse input for interactive elements
 
@@ -354,12 +374,15 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
         if backend.focusedInput == elem:
           backend.focusedInput = nil
 
-  else:
-    discard
+  of ekColumn, ekRow, ekCenter, ekContainer:
+    # Layout containers - only handle children's input, don't process children twice
+    for child in elem.children:
+      backend.handleInput(child)
 
-  # Check children for input
-  for child in elem.children:
-    backend.handleInput(child)
+  else:
+    # Other element types - just check children
+    for child in elem.children:
+      backend.handleInput(child)
 
 proc handleKeyboardInput*(backend: var RaylibBackend) =
   ## Handle keyboard input for focused input element
@@ -417,6 +440,12 @@ proc run*(backend: var RaylibBackend, root: Element) =
     backend.cursorBlink += 1.0 / 60.0  # Assuming 60 FPS
     if backend.cursorBlink >= 1.0:
       backend.cursorBlink = 0.0
+
+    # Update mouse cursor based on hover state
+    if checkHoverCursor(root):
+      SetMouseCursor(MOUSE_CURSOR_POINTING_HAND)
+    else:
+      SetMouseCursor(MOUSE_CURSOR_DEFAULT)
 
     # Handle mouse input
     backend.handleInput(root)

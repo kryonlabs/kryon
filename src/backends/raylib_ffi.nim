@@ -105,6 +105,23 @@ const
   MOUSE_BUTTON_RIGHT* = 1.cint
   MOUSE_BUTTON_MIDDLE* = 2.cint
 
+# Mouse cursor functions
+proc SetMouseCursor*(cursor: cint) {.importc: "SetMouseCursor", header: "raylib.h".}
+
+# Mouse cursor constants
+const
+  MOUSE_CURSOR_DEFAULT* = 0.cint
+  MOUSE_CURSOR_ARROW* = 1.cint
+  MOUSE_CURSOR_IBEAM* = 2.cint
+  MOUSE_CURSOR_CROSSHAIR* = 3.cint
+  MOUSE_CURSOR_POINTING_HAND* = 4.cint
+  MOUSE_CURSOR_RESIZE_EW* = 5.cint
+  MOUSE_CURSOR_RESIZE_NS* = 6.cint
+  MOUSE_CURSOR_RESIZE_NWSE* = 7.cint
+  MOUSE_CURSOR_RESIZE_NESW* = 8.cint
+  MOUSE_CURSOR_RESIZE_ALL* = 9.cint
+  MOUSE_CURSOR_NOT_ALLOWED* = 10.cint
+
 # ============================================================================
 # Input Handling - Keyboard
 # ============================================================================
