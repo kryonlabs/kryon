@@ -355,8 +355,9 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
 # Rendering with Real Raylib
 # ============================================================================
 
-proc renderElement*(backend: var RaylibBackend, elem: Element) =
+proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: Option[Color] = none(Color)) =
   ## Render an element using Raylib
+  ## inheritedColor: color to use for text if not explicitly set
 
   case elem.kind:
   of ekHeader:
@@ -364,9 +365,15 @@ proc renderElement*(backend: var RaylibBackend, elem: Element) =
     discard
 
   of ekBody:
-    # Body is a wrapper - render its children
+    # Body is a wrapper - render its children with inherited color
+    let bodyColor = elem.getProp("color")
+    let colorToInherit = if bodyColor.isSome:
+      some(bodyColor.get.getColor())
+    else:
+      inheritedColor
+
     for child in elem.children:
-      backend.renderElement(child)
+      backend.renderElement(child, colorToInherit)
 
   of ekContainer:
     let rect = rrect(elem.x, elem.y, elem.width, elem.height)
@@ -384,7 +391,14 @@ proc renderElement*(backend: var RaylibBackend, elem: Element) =
 
   of ekText:
     let text = elem.getProp("text").get(val("")).getString()
-    let color = elem.getProp("color").get(val("#FFFFFF")).getColor()
+    # Use inherited color if no explicit color is set
+    let explicitColor = elem.getProp("color")
+    let color = if explicitColor.isSome:
+      explicitColor.get.getColor()
+    elif inheritedColor.isSome:
+      inheritedColor.get
+    else:
+      parseColor("#FFFFFF")  # Default to white
     let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
 
     DrawText(text.cstring, elem.x.cint, elem.y.cint, fontSize.cint, color.toRaylibColor())
@@ -510,16 +524,18 @@ proc renderElement*(backend: var RaylibBackend, elem: Element) =
         DrawRectangle(cursorX.cint, cursorY.cint, 1, fontSize.cint - 2, textColor.toRaylibColor())
 
   of ekColumn, ekRow, ekCenter:
-    # Layout containers don't render themselves, just their children
-    discard
+    # Layout containers don't render themselves, just their children with inherited color
+    for child in elem.children:
+      backend.renderElement(child, inheritedColor)
 
   else:
     # Unsupported element - skip
     discard
 
-  # Render children
-  for child in elem.children:
-    backend.renderElement(child)
+  # Render children for other elements (like Container)
+  if elem.kind != ekColumn and elem.kind != ekRow and elem.kind != ekCenter and elem.kind != ekBody:
+    for child in elem.children:
+      backend.renderElement(child, inheritedColor)
 
 # ============================================================================
 # Input Handling
