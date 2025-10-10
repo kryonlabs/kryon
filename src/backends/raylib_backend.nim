@@ -47,10 +47,23 @@ proc newRaylibBackendFromApp*(app: Element): RaylibBackend =
   # Look for Header and Body children in app
   for child in app.children:
     if child.kind == ekHeader:
-      # Extract window config from Header
-      width = child.getProp("windowWidth").get(val(800)).getInt()
-      height = child.getProp("windowHeight").get(val(600)).getInt()
-      title = child.getProp("windowTitle").get(val("Kryon App")).getString()
+      # Extract window config from Header (support both full names and aliases)
+      # Try windowWidth first, then width
+      var widthProp = child.getProp("windowWidth")
+      if widthProp.isNone:
+        widthProp = child.getProp("width")
+
+      var heightProp = child.getProp("windowHeight")
+      if heightProp.isNone:
+        heightProp = child.getProp("height")
+
+      var titleProp = child.getProp("windowTitle")
+      if titleProp.isNone:
+        titleProp = child.getProp("title")
+
+      width = widthProp.get(val(800)).getInt()
+      height = heightProp.get(val(600)).getInt()
+      title = titleProp.get(val("Kryon App")).getString()
     elif child.kind == ekBody:
       # Extract window background from Body
       bgColor = child.getProp("backgroundColor")
@@ -92,15 +105,28 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
   elem.x = if posXOpt.isSome: posXOpt.get.getFloat() else: x
   elem.y = if posYOpt.isSome: posYOpt.get.getFloat() else: y
 
-  if widthOpt.isSome:
-    elem.width = widthOpt.get.getFloat()
-  else:
-    elem.width = parentWidth
+  # Special handling for Text elements - measure actual text size
+  if elem.kind == ekText:
+    let text = elem.getProp("text").get(val("")).getString()
+    let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
 
-  if heightOpt.isSome:
-    elem.height = heightOpt.get.getFloat()
+    # Measure text dimensions
+    let textWidth = MeasureText(text.cstring, fontSize.cint).float
+    let textHeight = fontSize.float
+
+    elem.width = if widthOpt.isSome: widthOpt.get.getFloat() else: textWidth
+    elem.height = if heightOpt.isSome: heightOpt.get.getFloat() else: textHeight
   else:
-    elem.height = parentHeight
+    # Regular element dimension handling
+    if widthOpt.isSome:
+      elem.width = widthOpt.get.getFloat()
+    else:
+      elem.width = parentWidth
+
+    if heightOpt.isSome:
+      elem.height = heightOpt.get.getFloat()
+    else:
+      elem.height = parentHeight
 
   # Layout children based on container type
   # Children should be positioned relative to THIS element's calculated position
@@ -143,8 +169,28 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
       # Recalculate at centered position
       calculateLayout(child, centerX, centerY, child.width, child.height)
 
+  of ekContainer:
+    # Check for contentAlignment property
+    let alignment = elem.getProp("contentAlignment")
+    if alignment.isSome and alignment.get.getString() == "center":
+      # Center children - needs two-pass layout
+      for child in elem.children:
+        # First pass: Calculate child layout at (0, 0) to determine its size
+        calculateLayout(child, 0, 0, elem.width, elem.height)
+
+        # Second pass: Now we know child.width and child.height, so center it
+        let centerX = elem.x + (elem.width - child.width) / 2.0
+        let centerY = elem.y + (elem.height - child.height) / 2.0
+
+        # Recalculate at centered position
+        calculateLayout(child, centerX, centerY, child.width, child.height)
+    else:
+      # Default: layout children in same space as parent (inside the container)
+      for child in elem.children:
+        calculateLayout(child, elem.x, elem.y, elem.width, elem.height)
+
   else:
-    # Default: just layout children in same space as parent (inside the container)
+    # Default: just layout children in same space as parent
     for child in elem.children:
       calculateLayout(child, elem.x, elem.y, elem.width, elem.height)
 
@@ -166,10 +212,18 @@ proc renderElement*(backend: var RaylibBackend, elem: Element) =
       backend.renderElement(child)
 
   of ekContainer:
+    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
+
+    # Draw background
     let bgColor = elem.getProp("backgroundColor")
     if bgColor.isSome:
-      let rect = rrect(elem.x, elem.y, elem.width, elem.height)
       DrawRectangleRec(rect, bgColor.get.getColor().toRaylibColor())
+
+    # Draw border
+    let borderColor = elem.getProp("borderColor")
+    if borderColor.isSome:
+      let borderWidth = elem.getProp("borderWidth").get(val(1)).getFloat()
+      DrawRectangleLinesEx(rect, borderWidth, borderColor.get.getColor().toRaylibColor())
 
   of ekText:
     let text = elem.getProp("text").get(val("")).getString()

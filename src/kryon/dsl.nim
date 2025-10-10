@@ -130,6 +130,20 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         result.add quote do:
           `elemVar`.setProp(`propName`, `propValue`)
 
+    of nnkExprColonExpr:
+      # Colon syntax: width: 800 (same as width = 800)
+      let propName = stmt[0].strVal
+
+      # Check if this is an event handler
+      if propName.startsWith("on"):
+        let handler = stmt[1]
+        result.add quote do:
+          `elemVar`.setEventHandler(`propName`, `handler`)
+      else:
+        let propValue = parsePropertyValue(stmt[1])
+        result.add quote do:
+          `elemVar`.setProp(`propName`, `propValue`)
+
     else:
       # Skip other node types
       discard
@@ -276,9 +290,11 @@ macro kryonApp*(body: untyped): Element =
     let bodyStmtList = newStmtList()
     for child in bodyChildren:
       bodyStmtList.add(child)
-    bodyNode = quote do:
-      Body:
-        `bodyStmtList`
+    # Manually construct nnkCall for Body with proper children
+    bodyNode = nnkCall.newTree(
+      newIdentNode("Body"),
+      bodyStmtList
+    )
   else:
     # No body children - create empty Body
     bodyNode = quote do:
