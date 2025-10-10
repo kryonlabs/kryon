@@ -190,23 +190,110 @@ macro ScrollView*(body: untyped): Element =
   ## Create a ScrollView element
   result = processElementBody(ekScrollView, body)
 
+macro Header*(body: untyped): Element =
+  ## Create a Header element (window metadata)
+  result = processElementBody(ekHeader, body)
+
+macro Body*(body: untyped): Element =
+  ## Create a Body element (UI content wrapper)
+  result = processElementBody(ekBody, body)
+
 # ============================================================================
 # Application macro
 # ============================================================================
 
 macro kryonApp*(body: untyped): Element =
-  ## Main application macro
+  ## Main application macro with smart Header/Body detection
   ##
-  ## Example:
+  ## Examples:
   ## ```nim
-  ## let app = kryonApp:
-  ##   Container:
+  ## # Full syntax:
+  ## kryonApp:
+  ##   Header:
+  ##     windowWidth = 800
+  ##     windowTitle = "My App"
+  ##   Body:
+  ##     Container:
+  ##       Text:
+  ##         text = "Hello"
+  ##
+  ## # Header optional (uses defaults):
+  ## kryonApp:
+  ##   Body:
+  ##     Container:
+  ##       Text:
+  ##         text = "Hello"
+  ##
+  ## # Body optional (auto-wraps children):
+  ## kryonApp:
+  ##   Header:
+  ##     windowTitle = "My App"
+  ##   Container:  # Auto-wrapped in Body
   ##     Text:
-  ##       text: "Hello"
+  ##       text = "Hello"
+  ##
+  ## # Both optional (minimal):
+  ## kryonApp:
+  ##   Container:  # Auto-wrapped in Body, default Header created
+  ##     Text:
+  ##       text = "Hello"
   ## ```
 
-  # The body should be a single root element
-  result = body
+  result = newStmtList()
+
+  var headerNode: NimNode = nil
+  var bodyChildren = newSeq[NimNode]()
+
+  # Parse body to find Header and/or Body elements
+  for stmt in body:
+    if stmt.kind == nnkCall:
+      let name = stmt[0].strVal
+      if name == "Header":
+        headerNode = stmt
+      elif name == "Body":
+        # Body found - collect its children
+        if stmt.len > 1 and stmt[1].kind == nnkStmtList:
+          for child in stmt[1]:
+            bodyChildren.add(child)
+      else:
+        # Regular UI element - add to body children
+        bodyChildren.add(stmt)
+    else:
+      # Other statement - add to body children
+      bodyChildren.add(stmt)
+
+  # Create default Header if not provided
+  if headerNode == nil:
+    headerNode = quote do:
+      Header:
+        windowWidth = 800
+        windowHeight = 600
+        windowTitle = "Kryon App"
+
+  # Wrap body children in Body if needed
+  var bodyNode: NimNode
+  if bodyChildren.len > 0:
+    let bodyStmtList = newStmtList()
+    for child in bodyChildren:
+      bodyStmtList.add(child)
+    bodyNode = quote do:
+      Body:
+        `bodyStmtList`
+  else:
+    # No body children - create empty Body
+    bodyNode = quote do:
+      Body:
+        Container:
+          width = 800
+          height = 600
+
+  # Create app structure with Header and Body
+  let appVar = genSym(nskVar, "app")
+  result.add quote do:
+    var `appVar` = newElement(ekBody)
+    `appVar`.addChild(`headerNode`)
+    `appVar`.addChild(`bodyNode`)
+    `appVar`
 
 # ============================================================================
 # Component helpers

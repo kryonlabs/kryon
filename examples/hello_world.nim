@@ -1,7 +1,4 @@
 ## Hello World Example
-##
-## Matches the original hello-world.kry example
-## Uses absolute positioning (posX, posY) and = syntax
 
 import ../src/kryon
 import ../src/backends/raylib_backend

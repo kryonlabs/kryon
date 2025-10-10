@@ -36,11 +36,24 @@ proc newRaylibBackend*(width, height: int, title: string): RaylibBackend =
   )
 
 proc newRaylibBackendFromApp*(app: Element): RaylibBackend =
-  ## Create backend from app element (extracts windowWidth, windowHeight, windowTitle, etc.)
-  let width = app.getProp("windowWidth").get(val(800)).getInt()
-  let height = app.getProp("windowHeight").get(val(600)).getInt()
-  let title = app.getProp("windowTitle").get(val("Kryon App")).getString()
-  let bgColor = app.getProp("backgroundColor")
+  ## Create backend from app element (extracts config from Header and Body)
+  ## App structure: Body -> [Header, Body]
+
+  var width = 800
+  var height = 600
+  var title = "Kryon App"
+  var bgColor: Option[Value] = none(Value)
+
+  # Look for Header and Body children in app
+  for child in app.children:
+    if child.kind == ekHeader:
+      # Extract window config from Header
+      width = child.getProp("windowWidth").get(val(800)).getInt()
+      height = child.getProp("windowHeight").get(val(600)).getInt()
+      title = child.getProp("windowTitle").get(val("Kryon App")).getString()
+    elif child.kind == ekBody:
+      # Extract window background from Body
+      bgColor = child.getProp("backgroundColor")
 
   result = RaylibBackend(
     windowWidth: width,
@@ -92,6 +105,15 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
   # Layout children based on container type
   # Children should be positioned relative to THIS element's calculated position
   case elem.kind:
+  of ekHeader:
+    # Header is metadata only - skip layout
+    discard
+
+  of ekBody:
+    # Body is a wrapper - layout children in same space
+    for child in elem.children:
+      calculateLayout(child, elem.x, elem.y, elem.width, elem.height)
+
   of ekColumn:
     var currentY = elem.y
     let gap = elem.getProp("gap").get(val(0)).getFloat()
@@ -134,6 +156,15 @@ proc renderElement*(backend: var RaylibBackend, elem: Element) =
   ## Render an element using Raylib
 
   case elem.kind:
+  of ekHeader:
+    # Header is metadata only - don't render it
+    discard
+
+  of ekBody:
+    # Body is a wrapper - render its children
+    for child in elem.children:
+      backend.renderElement(child)
+
   of ekContainer:
     let bgColor = elem.getProp("backgroundColor")
     if bgColor.isSome:
@@ -231,6 +262,15 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
   ## Handle mouse input for interactive elements
 
   case elem.kind:
+  of ekHeader:
+    # Header is metadata only - no input handling
+    discard
+
+  of ekBody:
+    # Body is a wrapper - handle children's input
+    for child in elem.children:
+      backend.handleInput(child)
+
   of ekButton:
     if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
       let mousePos = GetMousePosition()

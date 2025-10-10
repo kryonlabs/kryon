@@ -1,7 +1,7 @@
 ## Interactive Button Demo
 ##
-## Matches the original button.kry example
-## Shows button with click handler
+## Shows explicit Header/Body syntax
+## Demonstrates window configuration in Header
 
 import ../src/kryon
 import ../src/backends/raylib_backend
@@ -9,13 +9,15 @@ import ../src/backends/raylib_backend
 proc handleButtonClick() =
   echo "🎯 Button clicked! Hello from Kryon-Nim!"
 
-# Define the UI (matches original button.kry)
+# Define the UI with explicit Header and Body
 let app = kryonApp:
-  Container:
+  Header:
     windowWidth = 600
     windowHeight = 400
     windowTitle = "Interactive Button Demo"
-    backgroundColor = "#191919FF"
+
+  Body:
+    backgroundColor = "#191919FF"  # Window background
 
     Center:
       Button:

@@ -11,6 +11,8 @@ import tables, strutils, options, hashes
 type
   ElementKind* = enum
     ## All supported UI element types
+    ekHeader = "Header"       # Window metadata (non-rendering)
+    ekBody = "Body"           # Main UI content wrapper (non-rendering)
     ekContainer = "Container"
     ekText = "Text"
     ekButton = "Button"
