@@ -384,11 +384,11 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
 
     # For Row: mainAxis = horizontal (X), crossAxis = vertical (Y)
 
-    # First pass: Calculate all children sizes (give them full height but not full width)
+    # First pass: Calculate all children sizes (give them full height and let them size themselves naturally)
     var childSizes: seq[tuple[w, h: float]] = @[]
     for child in elem.children:
-      # Pass elem.height for height, but don't constrain width
-      calculateLayout(child, 0, 0, 0, elem.height)
+      # Let children size themselves naturally (don't constrain width)
+      calculateLayout(child, elem.x, elem.y, parentWidth, elem.height)
       childSizes.add((w: child.width, h: child.height))
 
     # Calculate total width and max height

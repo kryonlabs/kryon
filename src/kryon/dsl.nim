@@ -583,7 +583,7 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
 
       let iterableGetter = if iterableParseResult.boundVar.isSome:
         # Variable reference - create reactive getter that calls on every frame
-        # For seq[string], we need to access it directly
+        # Smart type detection and conversion
         let varName = iterable.strVal
         when defined(debugTabs):
           echo "Debug: Creating reactive getter for variable: ", varName
@@ -592,11 +592,23 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
             # Register dependency on the iterable variable
             registerDependency(`varName`)
             # Access the current state of the iterable variable reactively
+            # Auto-convert to seq[string] based on type
             when defined(debugTabs):
               echo "Debug: iterableGetter called, returning: ", `iterable`.len, " items"
-            `iterable`
+            # Convert the iterable to seq[string] for universal compatibility
+            when compiles(`iterable` is seq[int]):
+              result = newSeq[string]()
+              for item in `iterable`:
+                result.add($item)
+            elif compiles(`iterable` is seq[string]):
+              result = `iterable`
+            else:
+              # Fallback: try to convert any sequence to string representation
+              result = newSeq[string]()
+              for item in `iterable`:
+                result.add($item)
       else:
-        # Complex expression - use getter
+        # Complex expression - use getter with type detection
         when defined(debugTabs):
           echo "Debug: Creating getter for complex expression"
         quote do:
@@ -604,7 +616,18 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
             # Access the current state of the iterable variable
             when defined(debugTabs):
               echo "Debug: complex iterableGetter called"
-            `iterable`
+            # Convert the iterable to seq[string] for universal compatibility
+            when compiles(`iterable` is seq[int]):
+              result = newSeq[string]()
+              for item in `iterable`:
+                result.add($item)
+            elif compiles(`iterable` is seq[string]):
+              result = `iterable`
+            else:
+              # Fallback: try to convert any sequence to string representation
+              result = newSeq[string]()
+              for item in `iterable`:
+                result.add($item)
 
       # Process the loop body to create a template function
       # Use the loop variable directly as the parameter name so symbol references resolve correctly
