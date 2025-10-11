@@ -78,6 +78,17 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
   let elemVar = genSym(nskVar, "elem")
   let kindLit = newLit(kind)
 
+  # Debug: print the kind
+  when defined(debugDropdown):
+    result.add quote do:
+      echo "Debug: Creating element with kind = ", `kindLit`
+
+  # Debug: print all statements in body
+  when defined(debugDropdown):
+    echo "Debug: Processing body with ", body.len, " statements"
+    for i, stmt in body:
+      echo "Debug: Statement ", i, " kind: ", stmt.kind, " repr: ", stmt.repr
+
   # Create element
   result.add quote do:
     var `elemVar` = newElement(`kindLit`)
@@ -87,7 +98,11 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
     case stmt.kind:
     of nnkExprEqExpr:
       # Property or event handler assignment: width = 200 or onClick = handler
+      when defined(debugDropdown):
+        echo "Debug: nnkExprEqExpr: stmt[0] = ", stmt[0].repr, " kind = ", stmt[0].kind
       let propName = stmt[0].strVal
+      when defined(debugDropdown):
+        echo "Debug: nnkExprEqExpr: propName = ", propName
 
       # Check if this is an event handler (starts with "on")
       if propName.startsWith("on"):
@@ -96,27 +111,61 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         result.add quote do:
           `elemVar`.setEventHandler(`propName`, `handler`)
       else:
-        # Regular property
-        let parseResult = parsePropertyValue(stmt[1])
-        let propValue = parseResult.value
-        result.add quote do:
-          `elemVar`.setProp(`propName`, `propValue`)
-
-        # If this is an Input element and we have a bound variable, store it and create setter
-        if kind == ekInput and parseResult.boundVar.isSome:
-          let varNode = parseResult.boundVar.get()
-          let varName = varNode.strVal
+        # Handle dropdown-specific properties
+        if kind == ekDropdown:
+          if propName == "options":
+            # Handle options array for dropdown
+            if stmt[1].kind == nnkBracket:
+              # Direct array syntax: options = ["Red", "Green", "Blue"]
+              var optionsCode = newNimNode(nnkBracket)
+              for child in stmt[1]:
+                optionsCode.add(child)
+              result.add quote do:
+                `elemVar`.dropdownOptions = `optionsCode`
+            elif stmt[1].kind == nnkPrefix and stmt[1][0].strVal == "@":
+              # Array constructor syntax: options = @["Red", "Green", "Blue"]
+              let optionsValue = stmt[1]
+              result.add quote do:
+                `elemVar`.dropdownOptions = `optionsValue`
+          elif propName == "selectedIndex":
+            # Handle selectedIndex for dropdown
+            when defined(debugDropdown):
+              echo "Debug: Handling selectedIndex, stmt[1] = ", stmt[1].repr, " kind = ", stmt[1].kind
+            let indexValue = stmt[1]
+            result.add quote do:
+              `elemVar`.dropdownSelectedIndex = `indexValue`
+          else:
+            # Regular property
+            let parseResult = parsePropertyValue(stmt[1])
+            let propValue = parseResult.value
+            result.add quote do:
+              `elemVar`.setProp(`propName`, `propValue`)
+        else:
+          # Regular property
+          let parseResult = parsePropertyValue(stmt[1])
+          let propValue = parseResult.value
           result.add quote do:
-            `elemVar`.setBoundVarName(`varName`)
-            # Create a setter function for two-way binding that invalidates dependent elements
-            `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
-              `varNode` = data
-              # Invalidate all elements that depend on this variable
-              invalidateReactiveValue(`varName`)
-            )
+            `elemVar`.setProp(`propName`, `propValue`)
+
+          # If this is an Input element and we have a bound variable, store it and create setter
+          if kind == ekInput and parseResult.boundVar.isSome:
+            let varNode = parseResult.boundVar.get()
+            let varName = varNode.strVal
+            result.add quote do:
+              `elemVar`.setBoundVarName(`varName`)
+              # Create a setter function for two-way binding that invalidates dependent elements
+              `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
+                `varNode` = data
+                # Invalidate all elements that depend on this variable
+                invalidateReactiveValue(`varName`)
+              )
 
     of nnkCall:
-      # This is either an event handler or child element (Text: ...)
+      # This could be:
+      # 1. Property assignment with colon syntax: selectedIndex: 0
+      # 2. Event handler with colon syntax: onClick: <body>
+      # 3. Child element with body: Text: <body>
+      # 4. Function call that returns Element (custom component)
       let name = stmt[0]
       let nameStr = name.strVal
 
@@ -132,9 +181,83 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           result.add quote do:
             `elemVar`.setEventHandler(`nameStr`, `handler`)
       elif stmt.len > 1 and stmt[1].kind == nnkStmtList:
-        # Child element with body: Text: <body>
-        result.add quote do:
-          `elemVar`.addChild(`stmt`)
+        # Check if this is a property assignment (colon syntax)
+        # Property: selectedIndex: 0 -> StmtList contains just the value
+        let stmtList = stmt[1]
+        if stmtList.len == 1:
+          # This looks like a property assignment with colon syntax
+          let propValue = stmtList[0]
+
+          # Handle dropdown-specific properties
+          if kind == ekDropdown:
+            if nameStr == "options":
+              # Handle options array for dropdown
+              if propValue.kind == nnkBracket:
+                # Direct array syntax: options: ["Red", "Green", "Blue"]
+                var optionsCode = newNimNode(nnkBracket)
+                for child in propValue:
+                  optionsCode.add(child)
+                result.add quote do:
+                  `elemVar`.dropdownOptions = `optionsCode`
+              elif propValue.kind == nnkPrefix and propValue[0].strVal == "@":
+                # Array constructor syntax: options: @["Red", "Green", "Blue"]
+                result.add quote do:
+                  `elemVar`.dropdownOptions = `propValue`
+              else:
+                # Regular property
+                let parseResult = parsePropertyValue(propValue)
+                let propValueNode = parseResult.value
+                result.add quote do:
+                  `elemVar`.setProp(`nameStr`, `propValueNode`)
+            elif nameStr == "selectedIndex":
+              # Handle selectedIndex for dropdown
+              when defined(debugDropdown):
+                echo "Debug: Handling selectedIndex property, propValue = ", propValue.repr, " kind = ", propValue.kind
+              let indexValue = propValue
+              result.add quote do:
+                `elemVar`.dropdownSelectedIndex = `indexValue`
+            else:
+              # Regular property
+              let parseResult = parsePropertyValue(propValue)
+              let propValueNode = parseResult.value
+              result.add quote do:
+                `elemVar`.setProp(`nameStr`, `propValueNode`)
+
+              # If this is an Input element and we have a bound variable, store it and create setter
+              if kind == ekInput and parseResult.boundVar.isSome:
+                let varNode = parseResult.boundVar.get()
+                let varName = varNode.strVal
+                result.add quote do:
+                  `elemVar`.setBoundVarName(`varName`)
+                  # Create a setter function for two-way binding that invalidates dependent elements
+                  `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
+                    `varNode` = data
+                    # Invalidate all elements that depend on this variable
+                    invalidateReactiveValue(`varName`)
+                  )
+          else:
+            # Regular property for non-dropdown elements
+            let parseResult = parsePropertyValue(propValue)
+            let propValueNode = parseResult.value
+            result.add quote do:
+              `elemVar`.setProp(`nameStr`, `propValueNode`)
+
+            # If this is an Input element and we have a bound variable, store it and create setter
+            if kind == ekInput and parseResult.boundVar.isSome:
+              let varNode = parseResult.boundVar.get()
+              let varName = varNode.strVal
+              result.add quote do:
+                `elemVar`.setBoundVarName(`varName`)
+                # Create a setter function for two-way binding that invalidates dependent elements
+                `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
+                  `varNode` = data
+                  # Invalidate all elements that depend on this variable
+                  invalidateReactiveValue(`varName`)
+                )
+        else:
+          # Child element with body: Text: <body>
+          result.add quote do:
+            `elemVar`.addChild(`stmt`)
       else:
         # This might be a function call that returns Element (custom component)
         # Check if it's a function call like Counter(0)
@@ -155,7 +278,11 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
 
     of nnkAsgn:
       # Also handle nnkAsgn (rare, but valid)
+      when defined(debugDropdown):
+        echo "Debug: nnkAsgn: stmt[0] = ", stmt[0].repr, " kind = ", stmt[0].kind
       let propName = stmt[0].strVal
+      when defined(debugDropdown):
+        echo "Debug: nnkAsgn: propName = ", propName
 
       # Check if this is an event handler
       if propName.startsWith("on"):
@@ -163,23 +290,66 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         result.add quote do:
           `elemVar`.setEventHandler(`propName`, `handler`)
       else:
-        let parseResult = parsePropertyValue(stmt[1])
-        let propValue = parseResult.value
-        result.add quote do:
-          `elemVar`.setProp(`propName`, `propValue`)
+        # Handle dropdown-specific properties
+        if kind == ekDropdown:
+          if propName == "options":
+            # Handle options array for dropdown
+            if stmt[1].kind == nnkBracket:
+              # Direct array syntax: options = ["Red", "Green", "Blue"]
+              var optionsCode = newNimNode(nnkBracket)
+              for child in stmt[1]:
+                optionsCode.add(child)
+              result.add quote do:
+                `elemVar`.dropdownOptions = `optionsCode`
+            elif stmt[1].kind == nnkPrefix and stmt[1][0].strVal == "@":
+              # Array constructor syntax: options = @["Red", "Green", "Blue"]
+              let optionsValue = stmt[1]
+              result.add quote do:
+                `elemVar`.dropdownOptions = `optionsValue`
+          elif propName == "selectedIndex":
+            # Handle selectedIndex for dropdown
+            when defined(debugDropdown):
+              echo "Debug: Handling selectedIndex, stmt[1] = ", stmt[1].repr, " kind = ", stmt[1].kind
+            let indexValue = stmt[1]
+            result.add quote do:
+              `elemVar`.dropdownSelectedIndex = `indexValue`
+          else:
+            # Regular property
+            let parseResult = parsePropertyValue(stmt[1])
+            let propValue = parseResult.value
+            result.add quote do:
+              `elemVar`.setProp(`propName`, `propValue`)
 
-        # If this is an Input element and we have a bound variable, store it and create setter
-        if kind == ekInput and parseResult.boundVar.isSome:
-          let varNode = parseResult.boundVar.get()
-          let varName = varNode.strVal
+            # If this is an Input element and we have a bound variable, store it and create setter
+            if kind == ekInput and parseResult.boundVar.isSome:
+              let varNode = parseResult.boundVar.get()
+              let varName = varNode.strVal
+              result.add quote do:
+                `elemVar`.setBoundVarName(`varName`)
+                # Create a setter function for two-way binding that invalidates dependent elements
+                `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
+                  `varNode` = data
+                  # Invalidate all elements that depend on this variable
+                  invalidateReactiveValue(`varName`)
+                )
+        else:
+          let parseResult = parsePropertyValue(stmt[1])
+          let propValue = parseResult.value
           result.add quote do:
-            `elemVar`.setBoundVarName(`varName`)
-            # Create a setter function for two-way binding that invalidates dependent elements
-            `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
-              `varNode` = data
-              # Invalidate all elements that depend on this variable
-              invalidateReactiveValue(`varName`)
-            )
+            `elemVar`.setProp(`propName`, `propValue`)
+
+          # If this is an Input element and we have a bound variable, store it and create setter
+          if kind == ekInput and parseResult.boundVar.isSome:
+            let varNode = parseResult.boundVar.get()
+            let varName = varNode.strVal
+            result.add quote do:
+              `elemVar`.setBoundVarName(`varName`)
+              # Create a setter function for two-way binding that invalidates dependent elements
+              `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
+                `varNode` = data
+                # Invalidate all elements that depend on this variable
+                invalidateReactiveValue(`varName`)
+              )
 
     of nnkExprColonExpr:
       # Colon syntax: width: 800 (same as width = 800)
@@ -191,23 +361,66 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         result.add quote do:
           `elemVar`.setEventHandler(`propName`, `handler`)
       else:
-        let parseResult = parsePropertyValue(stmt[1])
-        let propValue = parseResult.value
-        result.add quote do:
-          `elemVar`.setProp(`propName`, `propValue`)
+        # Handle dropdown-specific properties
+        if kind == ekDropdown:
+          if propName == "options":
+            # Handle options array for dropdown
+            if stmt[1].kind == nnkBracket:
+              # Direct array syntax: options = ["Red", "Green", "Blue"]
+              var optionsCode = newNimNode(nnkBracket)
+              for child in stmt[1]:
+                optionsCode.add(child)
+              result.add quote do:
+                `elemVar`.dropdownOptions = `optionsCode`
+            elif stmt[1].kind == nnkPrefix and stmt[1][0].strVal == "@":
+              # Array constructor syntax: options = @["Red", "Green", "Blue"]
+              let optionsValue = stmt[1]
+              result.add quote do:
+                `elemVar`.dropdownOptions = `optionsValue`
+          elif propName == "selectedIndex":
+            # Handle selectedIndex for dropdown
+            when defined(debugDropdown):
+              echo "Debug: Handling selectedIndex, stmt[1] = ", stmt[1].repr, " kind = ", stmt[1].kind
+            let indexValue = stmt[1]
+            result.add quote do:
+              `elemVar`.dropdownSelectedIndex = `indexValue`
+          else:
+            # Regular property
+            let parseResult = parsePropertyValue(stmt[1])
+            let propValue = parseResult.value
+            result.add quote do:
+              `elemVar`.setProp(`propName`, `propValue`)
 
-        # If this is an Input element and we have a bound variable, store it and create setter
-        if kind == ekInput and parseResult.boundVar.isSome:
-          let varNode = parseResult.boundVar.get()
-          let varName = varNode.strVal
+            # If this is an Input element and we have a bound variable, store it and create setter
+            if kind == ekInput and parseResult.boundVar.isSome:
+              let varNode = parseResult.boundVar.get()
+              let varName = varNode.strVal
+              result.add quote do:
+                `elemVar`.setBoundVarName(`varName`)
+                # Create a setter function for two-way binding that invalidates dependent elements
+                `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
+                  `varNode` = data
+                  # Invalidate all elements that depend on this variable
+                  invalidateReactiveValue(`varName`)
+                )
+        else:
+          let parseResult = parsePropertyValue(stmt[1])
+          let propValue = parseResult.value
           result.add quote do:
-            `elemVar`.setBoundVarName(`varName`)
-            # Create a setter function for two-way binding that invalidates dependent elements
-            `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
-              `varNode` = data
-              # Invalidate all elements that depend on this variable
-              invalidateReactiveValue(`varName`)
-            )
+            `elemVar`.setProp(`propName`, `propValue`)
+
+          # If this is an Input element and we have a bound variable, store it and create setter
+          if kind == ekInput and parseResult.boundVar.isSome:
+            let varNode = parseResult.boundVar.get()
+            let varName = varNode.strVal
+            result.add quote do:
+              `elemVar`.setBoundVarName(`varName`)
+              # Create a setter function for two-way binding that invalidates dependent elements
+              `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
+                `varNode` = data
+                # Invalidate all elements that depend on this variable
+                invalidateReactiveValue(`varName`)
+              )
 
     of nnkIfStmt:
       # Handle if statements for conditional rendering

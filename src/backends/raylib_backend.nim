@@ -3,7 +3,7 @@
 ## This backend renders Kryon UI elements using Raylib for native desktop applications.
 
 import ../kryon/core
-import options, tables
+import options, tables, algorithm
 import raylib_ffi
 
 # ============================================================================
@@ -19,6 +19,7 @@ type
     running*: bool
     rootElement*: Element
     focusedInput*: Element  # Currently focused input element
+    focusedDropdown*: Element  # Currently focused dropdown element
     cursorBlink*: float     # Timer for cursor blinking
     inputValues*: Table[Element, string]  # Store current text for each input
     checkboxStates*: Table[Element, bool]  # Store checked state for each checkbox
@@ -35,6 +36,7 @@ proc newRaylibBackend*(width, height: int, title: string): RaylibBackend =
     windowTitle: title,
     backgroundColor: rgba(30, 30, 30, 255),
     running: false,
+    focusedDropdown: nil,
     inputValues: initTable[Element, string](),
     checkboxStates: initTable[Element, bool](),
     inputScrollOffsets: initTable[Element, float](),
@@ -82,6 +84,7 @@ proc newRaylibBackendFromApp*(app: Element): RaylibBackend =
     windowTitle: title,
     backgroundColor: if bgColor.isSome: bgColor.get.getColor() else: rgba(30, 30, 30, 255),
     running: false,
+    focusedDropdown: nil,
     inputValues: initTable[Element, string](),
     checkboxStates: initTable[Element, bool](),
     inputScrollOffsets: initTable[Element, float](),
@@ -408,6 +411,17 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
 # Rendering with Real Raylib
 # ============================================================================
 
+proc sortChildrenByZIndex(children: seq[Element]): seq[Element] =
+  ## Sort children by z-index for correct layered rendering
+  ## Elements with lower z-index are rendered first (behind)
+  ## Elements with higher z-index are rendered last (on top)
+  result = children
+  result.sort(proc(a, b: Element): int =
+    let aZIndex = a.getProp("zIndex").get(val(0)).getInt()
+    let bZIndex = b.getProp("zIndex").get(val(0)).getInt()
+    result = cmp(aZIndex, bZIndex)
+  )
+
 proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: Option[Color] = none(Color)) =
   ## Render an element using Raylib
   ## inheritedColor: color to use for text if not explicitly set
@@ -432,20 +446,21 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
     # For loop elements don't render themselves, only their generated children
     # The actual rendering and layout is handled in the layout calculation
     # So this just needs to render the children
-    echo "🔥 Rendering ForLoop with " & $elem.children.len & " children"
-
+    
     for child in elem.children:
       backend.renderElement(child, inheritedColor)
 
   of ekBody:
-    # Body is a wrapper - render its children with inherited color
+    # Body is a wrapper - render its children with inherited color (sorted by z-index)
     let bodyColor = elem.getProp("color")
     let colorToInherit = if bodyColor.isSome:
       some(bodyColor.get.getColor())
     else:
       inheritedColor
 
-    for child in elem.children:
+    # Sort children by z-index before rendering
+    let sortedChildren = sortChildrenByZIndex(elem.children)
+    for child in sortedChildren:
       backend.renderElement(child, colorToInherit)
 
   of ekContainer:
@@ -621,23 +636,176 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
       if cursorX >= elem.x + padding and cursorX <= elem.x + elem.width - padding:
         DrawRectangle(cursorX.cint, cursorY.cint, 1, fontSize.cint - 2, textColor.toRaylibColor())
 
+  of ekDropdown:
+    # Get dropdown properties
+    let selectedIndex = elem.dropdownSelectedIndex
+    let isOpen = elem.dropdownIsOpen
+
+    # Get styling properties
+    let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
+    let bgColor = elem.getProp("backgroundColor").get(val("#FFFFFF"))
+    let textColor = elem.getProp("color").get(val("#000000")).getColor()
+    let borderColor = elem.getProp("borderColor").get(val("#CCCCCC")).getColor()
+    let borderWidth = elem.getProp("borderWidth").get(val(1)).getFloat()
+    let placeholder = elem.getProp("placeholder").get(val("Select...")).getString()
+
+    # Draw the main dropdown button
+    let mainRect = rrect(elem.x, elem.y, elem.width, elem.height)
+    DrawRectangleRec(mainRect, bgColor.getColor().toRaylibColor())
+    DrawRectangleLinesEx(mainRect, borderWidth, borderColor.toRaylibColor())
+
+    # Draw dropdown arrow on the right side
+    let arrowSize = 8.0
+    let arrowX = elem.x + elem.width - 15.0
+    let arrowY = elem.y + (elem.height - arrowSize) / 2.0
+
+    # Draw arrow using ASCII characters
+    let arrowChar = if isOpen: "^" else: "v"
+    DrawText(arrowChar.cstring, arrowX.cint, arrowY.cint, fontSize.cint, textColor.toRaylibColor())
+
+    # Draw selected text or placeholder
+    let displayText = if selectedIndex >= 0 and selectedIndex < elem.dropdownOptions.len:
+      elem.dropdownOptions[selectedIndex]
+    else:
+      placeholder
+
+    let displayColor = if selectedIndex >= 0:
+      textColor
+    else:
+      parseColor("#999999")  # Gray for placeholder
+
+    let textPadding = 10.0
+    let textX = elem.x + textPadding
+    let textY = elem.y + (elem.height - fontSize.float) / 2.0
+    let maxTextWidth = elem.width - (textPadding * 2.0) - 20.0  # Leave space for arrow
+
+    # Set up clipping for text to prevent overflow
+    BeginScissorMode(textX.cint, textY.cint, maxTextWidth.cint, fontSize.cint)
+    DrawText(displayText.cstring, textX.cint, textY.cint, fontSize.cint, displayColor.toRaylibColor())
+    EndScissorMode()
+
+    # NOTE: Dropdown menus are rendered separately in renderDropdownMenus() to ensure they appear on top
+
   of ekColumn, ekRow, ekCenter:
-    # Layout containers don't render themselves, just their children with inherited color
-    for child in elem.children:
+    # Layout containers don't render themselves, just their children with inherited color (sorted by z-index)
+    let sortedChildren = sortChildrenByZIndex(elem.children)
+    for child in sortedChildren:
       backend.renderElement(child, inheritedColor)
 
   else:
     # Unsupported element - skip
     discard
 
-  # Render children for other elements (like Container)
+  # Render children for other elements (like Container) sorted by z-index
   if elem.kind != ekColumn and elem.kind != ekRow and elem.kind != ekCenter and elem.kind != ekBody:
-    for child in elem.children:
+    let sortedChildren = sortChildrenByZIndex(elem.children)
+    for child in sortedChildren:
       backend.renderElement(child, inheritedColor)
+
+proc renderDropdownMenus*(backend: var RaylibBackend, elem: Element) =
+  ## Render all open dropdown menus on top of everything else
+  ## This is called AFTER renderElement to ensure dropdowns appear above all other content
+
+  case elem.kind:
+  of ekDropdown:
+    # Only render the menu if the dropdown is open
+    if elem.dropdownIsOpen and elem.dropdownOptions.len > 0:
+      let options = elem.dropdownOptions
+      let selectedIndex = elem.dropdownSelectedIndex
+      let hoveredIndex = elem.dropdownHoveredIndex
+
+      # Get styling properties
+      let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
+      let bgColor = elem.getProp("backgroundColor").get(val("#FFFFFF"))
+      let textColor = elem.getProp("color").get(val("#000000")).getColor()
+      let borderColor = elem.getProp("borderColor").get(val("#CCCCCC")).getColor()
+      let borderWidth = elem.getProp("borderWidth").get(val(1)).getFloat()
+
+      # Calculate dropdown item height
+      let itemHeight = fontSize.float + 10.0  # Text height + padding
+      let textPadding = 10.0
+
+      # Calculate dropdown menu dimensions and position
+      let dropdownWidth = elem.width
+      let dropdownHeight = min(options.len.float * itemHeight, 200.0)  # Max height of 200px
+      let dropdownX = elem.x
+      let dropdownY = elem.y + elem.height  # Position below main button
+
+      # Draw dropdown background
+      let dropdownRect = rrect(dropdownX, dropdownY, dropdownWidth, dropdownHeight)
+      DrawRectangleRec(dropdownRect, bgColor.getColor().toRaylibColor())
+      DrawRectangleLinesEx(dropdownRect, borderWidth, borderColor.toRaylibColor())
+
+      # Calculate visible range (for scrolling if needed)
+      let maxVisibleItems = int(dropdownHeight / itemHeight)
+      let startIndex = 0  # Simple implementation - no scrolling for now
+      let endIndex = min(options.len, startIndex + maxVisibleItems)
+
+      # Draw visible options
+      for i in startIndex..<endIndex:
+        let optionY = dropdownY + (i - startIndex).float * itemHeight
+        let optionRect = rrect(dropdownX, optionY, dropdownWidth, itemHeight)
+
+        # Highlight hovered option
+        if i == hoveredIndex:
+          DrawRectangleRec(optionRect, parseColor("#E3F2FD").toRaylibColor())  # Light blue
+
+        # Highlight selected option
+        if i == selectedIndex:
+          DrawRectangleRec(optionRect, parseColor("#BBDEFB").toRaylibColor())  # Medium blue
+
+        # Draw option text
+        let optionText = options[i]
+        let optionTextX = dropdownX + textPadding
+        let optionTextY = optionY + (itemHeight - fontSize.float) / 2.0
+        let optionMaxWidth = dropdownWidth - (textPadding * 2.0)
+
+        # Clip text to prevent overflow
+        BeginScissorMode(optionTextX.cint, optionTextY.cint, optionMaxWidth.cint, fontSize.cint)
+        DrawText(optionText.cstring, optionTextX.cint, optionTextY.cint, fontSize.cint, textColor.toRaylibColor())
+        EndScissorMode()
+
+  of ekConditional:
+    # Only check the active branch
+    if elem.condition != nil:
+      let conditionResult = elem.condition()
+      let activeBranch = if conditionResult: elem.trueBranch else: elem.falseBranch
+
+      if activeBranch != nil:
+        backend.renderDropdownMenus(activeBranch)
+
+  else:
+    # Recursively check all children for open dropdowns
+    for child in elem.children:
+      backend.renderDropdownMenus(child)
 
 # ============================================================================
 # Input Handling
 # ============================================================================
+
+proc sortChildrenByZIndexReverse(children: seq[Element]): seq[Element] =
+  ## Sort children by z-index in reverse order for input handling
+  ## Elements with higher z-index should receive input first (on top)
+  result = children
+  result.sort(proc(a, b: Element): int =
+    let aZIndex = a.getProp("zIndex").get(val(0)).getInt()
+    let bZIndex = b.getProp("zIndex").get(val(0)).getInt()
+    result = cmp(bZIndex, aZIndex)  # Reverse order
+  )
+
+proc closeOtherDropdowns*(backend: var RaylibBackend, keepOpen: Element) =
+  ## Close all dropdowns except the specified one
+  proc closeDropdownsRecursive(elem: Element) =
+    case elem.kind:
+    of ekDropdown:
+      if elem != keepOpen:
+        elem.dropdownIsOpen = false
+        elem.dropdownHoveredIndex = -1
+    else:
+      for child in elem.children:
+        closeDropdownsRecursive(child)
+
+  closeDropdownsRecursive(backend.rootElement)
 
 proc checkHoverCursor*(elem: Element): bool =
   ## Check if mouse is hovering over any interactive element that needs pointer cursor
@@ -660,6 +828,24 @@ proc checkHoverCursor*(elem: Element): bool =
     let rect = rrect(elem.x, elem.y, elem.width, elem.height)
     if CheckCollisionPointRec(mousePos, rect):
       return true
+
+  of ekDropdown:
+    let mousePos = GetMousePosition()
+    let mainRect = rrect(elem.x, elem.y, elem.width, elem.height)
+
+    # Check if hovering over main dropdown button
+    if CheckCollisionPointRec(mousePos, mainRect):
+      return true
+
+    # Check if hovering over dropdown options (when open)
+    if elem.dropdownIsOpen and elem.dropdownOptions.len > 0:
+      let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
+      let itemHeight = fontSize.float + 10.0  # Match rendering code
+      let dropdownHeight = min(elem.dropdownOptions.len.float * itemHeight, 200.0)
+      let dropdownRect = rrect(elem.x, elem.y + elem.height, elem.width, dropdownHeight)
+      if CheckCollisionPointRec(mousePos, dropdownRect):
+        return true
+
   else:
     discard
 
@@ -689,8 +875,9 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
         backend.handleInput(activeBranch)
 
   of ekBody:
-    # Body is a wrapper - handle children's input
-    for child in elem.children:
+    # Body is a wrapper - handle children's input (reverse z-index order, highest first)
+    let sortedChildren = sortChildrenByZIndexReverse(elem.children)
+    for child in sortedChildren:
       backend.handleInput(child)
 
   of ekButton:
@@ -726,18 +913,165 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
         if backend.focusedInput == elem:
           backend.focusedInput = nil
 
+  of ekDropdown:
+    if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
+      let mousePos = GetMousePosition()
+      let mainRect = rrect(elem.x, elem.y, elem.width, elem.height)
+
+      if CheckCollisionPointRec(mousePos, mainRect):
+        # Main dropdown button was clicked
+        if elem.dropdownIsOpen:
+          # Close the dropdown
+          elem.dropdownIsOpen = false
+          elem.dropdownHoveredIndex = -1
+          backend.focusedDropdown = nil
+        else:
+          # Open the dropdown
+          elem.dropdownIsOpen = true
+          elem.dropdownHoveredIndex = elem.dropdownSelectedIndex  # Start with current selection
+          backend.focusedDropdown = elem
+
+          # Close any other dropdowns
+          backend.closeOtherDropdowns(elem)
+
+      elif elem.dropdownIsOpen:
+        # Check if clicked on dropdown options
+        if elem.dropdownOptions.len > 0:
+          let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
+          let itemHeight = fontSize.float + 10.0  # Match rendering code
+          let dropdownHeight = min(elem.dropdownOptions.len.float * itemHeight, 200.0)
+          let dropdownRect = rrect(elem.x, elem.y + elem.height, elem.width, dropdownHeight)
+
+          if CheckCollisionPointRec(mousePos, dropdownRect):
+            # Calculate which option was clicked
+            let relativeY = mousePos.y - dropdownRect.y
+            let clickedIndex = int(relativeY / itemHeight)
+
+            if clickedIndex >= 0 and clickedIndex < elem.dropdownOptions.len:
+              # Select the clicked option
+              elem.dropdownSelectedIndex = clickedIndex
+              elem.dropdownIsOpen = false
+              elem.dropdownHoveredIndex = -1
+              backend.focusedDropdown = nil
+
+              # Trigger onChange handler if present
+              if elem.eventHandlers.hasKey("onChange"):
+                let handler = elem.eventHandlers["onChange"]
+                handler(elem.dropdownOptions[clickedIndex])
+
+              # For onSelectionChange, we pass the selected value as data (index can be parsed if needed)
+              if elem.eventHandlers.hasKey("onSelectionChange"):
+                let handler = elem.eventHandlers["onSelectionChange"]
+                handler(elem.dropdownOptions[clickedIndex])
+          else:
+            # Clicked outside dropdown - close it
+            elem.dropdownIsOpen = false
+            elem.dropdownHoveredIndex = -1
+            backend.focusedDropdown = nil
+        else:
+          # No options - close dropdown
+          elem.dropdownIsOpen = false
+          elem.dropdownHoveredIndex = -1
+          backend.focusedDropdown = nil
+      else:
+        # Clicked outside while closed - just ensure it's not focused
+        if backend.focusedDropdown == elem:
+          backend.focusedDropdown = nil
+
+    # Handle hover state for dropdown options
+    if elem.dropdownIsOpen and elem.dropdownOptions.len > 0:
+      let mousePos = GetMousePosition()
+      let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
+      let itemHeight = fontSize.float + 10.0  # Match rendering code
+      let dropdownHeight = min(elem.dropdownOptions.len.float * itemHeight, 200.0)
+      let dropdownRect = rrect(elem.x, elem.y + elem.height, elem.width, dropdownHeight)
+
+      if CheckCollisionPointRec(mousePos, dropdownRect):
+        let relativeY = mousePos.y - dropdownRect.y
+        let hoveredIndex = int(relativeY / itemHeight)
+
+        if hoveredIndex >= 0 and hoveredIndex < elem.dropdownOptions.len:
+          elem.dropdownHoveredIndex = hoveredIndex
+        else:
+          elem.dropdownHoveredIndex = -1
+      else:
+        elem.dropdownHoveredIndex = -1
+
   of ekColumn, ekRow, ekCenter, ekContainer:
-    # Layout containers - only handle children's input, don't process children twice
-    for child in elem.children:
+    # Layout containers - only handle children's input (reverse z-index order, highest first)
+    let sortedChildren = sortChildrenByZIndexReverse(elem.children)
+    for child in sortedChildren:
       backend.handleInput(child)
 
   else:
-    # Other element types - just check children
-    for child in elem.children:
+    # Other element types - check children (reverse z-index order, highest first)
+    let sortedChildren = sortChildrenByZIndexReverse(elem.children)
+    for child in sortedChildren:
       backend.handleInput(child)
 
 proc handleKeyboardInput*(backend: var RaylibBackend) =
-  ## Handle keyboard input for focused input element
+  ## Handle keyboard input for focused input and dropdown elements
+
+  # Handle dropdown keyboard input
+  if backend.focusedDropdown != nil:
+    let dropdown = backend.focusedDropdown
+
+    if IsKeyPressed(KEY_ESCAPE):
+      # Close dropdown on ESC
+      dropdown.dropdownIsOpen = false
+      dropdown.dropdownHoveredIndex = -1
+      backend.focusedDropdown = nil
+
+    elif dropdown.dropdownIsOpen:
+      if dropdown.dropdownOptions.len > 0:
+        var handled = false
+
+        if IsKeyPressed(KEY_UP):
+          # Move selection up
+          dropdown.dropdownHoveredIndex = if dropdown.dropdownHoveredIndex <= 0:
+            dropdown.dropdownOptions.len - 1  # Wrap to bottom
+          else:
+            dropdown.dropdownHoveredIndex - 1
+          handled = true
+
+        elif IsKeyPressed(KEY_DOWN):
+          # Move selection down
+          dropdown.dropdownHoveredIndex = if dropdown.dropdownHoveredIndex >= dropdown.dropdownOptions.len - 1:
+            0  # Wrap to top
+          else:
+            dropdown.dropdownHoveredIndex + 1
+          handled = true
+
+        elif IsKeyPressed(KEY_ENTER):
+          # Select current hover item
+          if dropdown.dropdownHoveredIndex >= 0 and dropdown.dropdownHoveredIndex < dropdown.dropdownOptions.len:
+            dropdown.dropdownSelectedIndex = dropdown.dropdownHoveredIndex
+            dropdown.dropdownIsOpen = false
+            dropdown.dropdownHoveredIndex = -1
+            backend.focusedDropdown = nil
+
+            # Trigger onChange handler if present
+            if dropdown.eventHandlers.hasKey("onChange"):
+              let handler = dropdown.eventHandlers["onChange"]
+              handler(dropdown.dropdownOptions[dropdown.dropdownSelectedIndex])
+
+            # Trigger onSelectionChange handler if present
+            if dropdown.eventHandlers.hasKey("onSelectionChange"):
+              let handler = dropdown.eventHandlers["onSelectionChange"]
+              handler(dropdown.dropdownOptions[dropdown.dropdownSelectedIndex])
+          handled = true
+
+        elif IsKeyPressed(KEY_TAB):
+          # Close dropdown on TAB (don't select)
+          dropdown.dropdownIsOpen = false
+          dropdown.dropdownHoveredIndex = -1
+          backend.focusedDropdown = nil
+          handled = true
+
+      # If no dropdown-specific key was pressed, don't handle further
+      return
+
+  # Handle input field keyboard input
   if backend.focusedInput == nil:
     backend.backspaceHoldTimer = 0.0  # Reset timer when no focus
     return
@@ -869,7 +1203,11 @@ proc run*(backend: var RaylibBackend, root: Element) =
     else:
       ClearBackground(backend.backgroundColor.toRaylibColor())
 
+    # Render all elements with normal z-index sorting
     backend.renderElement(root)
+
+    # Render dropdown menus on top of everything else
+    backend.renderDropdownMenus(root)
 
     EndDrawing()
 

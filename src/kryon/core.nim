@@ -93,6 +93,12 @@ type
     # Reactivity system - dirty flag for selective updates
     dirty*: bool  # Whether this element needs layout recalculation
 
+    # Dropdown-specific properties (for ekDropdown)
+    dropdownOptions*: seq[string]  # Available options
+    dropdownSelectedIndex*: int    # Currently selected index (-1 for no selection)
+    dropdownIsOpen*: bool           # Whether dropdown is currently open
+    dropdownHoveredIndex*: int    # Index of currently hovered option
+
 # ============================================================================
 # Forward Declarations for Reactive System
 # ============================================================================
@@ -299,6 +305,13 @@ proc newElement*(kind: ElementKind): Element =
     eventHandlers: initTable[string, EventHandler](),
     dirty: true  # New elements start as dirty to ensure initial layout
   )
+
+  # Initialize dropdown-specific properties
+  if kind == ekDropdown:
+    result.dropdownOptions = @[]
+    result.dropdownSelectedIndex = -1
+    result.dropdownIsOpen = false
+    result.dropdownHoveredIndex = -1
 
 proc newConditionalElement*(condition: proc(): bool {.closure.}, trueBranch: Element, falseBranch: Element = nil): Element =
   ## Create a conditional element that renders different content based on a condition
