@@ -305,7 +305,7 @@ when isMainModule:
 
   # Configure CLI
   dispatchMulti(
-    [runKryon,
+    [runKryon, cmdName = "run",
      help = {
        "filename": "Path to .nim file to run",
        "renderer": "Renderer to use (auto, raylib, html, terminal)",

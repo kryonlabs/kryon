@@ -8,7 +8,7 @@ nimcache/
 *.lib
 
 # Build artifacts
-bin/kryon
+bin
 build/
 dist/
 *.out

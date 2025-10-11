@@ -196,7 +196,6 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     # For loop elements generate dynamic content and layout their children
     if elem.forIterable != nil and elem.forBodyTemplate != nil:
       let items = elem.forIterable()
-      echo "🔥 ForLoop layout: got " & $items.len & " items: " & $items
 
       # Clear previous children (if any)
       elem.children.setLen(0)
@@ -206,20 +205,16 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
       let gap = 5.0  # Gap between items
 
       for item in items:
-        echo "🔥 Creating element for item: '" & item & "'"
         let childElement = elem.forBodyTemplate(item)
         if childElement != nil:
           elem.children.add(childElement)
           # Layout the child element
           calculateLayout(childElement, elem.x, currentY, elem.width, 0)
           currentY += childElement.height + gap
-        else:
-          echo "🔥 Template returned nil for item: '" & item & "'"
 
       # Set for loop element size based on its children
       elem.width = parentWidth
       elem.height = currentY - elem.y - gap
-      echo "🔥 ForLoop complete: " & $elem.children.len & " children created"
 
   of ekBody:
     # Body implements natural document flow - stack children vertically
@@ -613,8 +608,6 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
     if bgColor.isNone:
       bgColor = elem.getProp("background")
     if bgColor.isSome:
-      if bgColor.get().getString() == "blue":
-        echo "🔥 Blue Container: rect(", elem.x, ",", elem.y, ",", elem.width, ",", elem.height, ")"
       DrawRectangleRec(rect, bgColor.get.getColor().toRaylibColor())
 
     # Draw border
@@ -1136,13 +1129,9 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
       let rect = rrect(elem.x, elem.y, elem.width, elem.height)
 
       if CheckCollisionPointRec(mousePos, rect):
-        echo "🔥 BUTTON CLICKED! Checking handlers..."
         # Button was clicked - trigger onClick handler
         if elem.eventHandlers.hasKey("onClick"):
-          echo "🔥 Found onClick handler, calling it!"
           elem.eventHandlers["onClick"]()
-        else:
-          echo "🔥 No onClick handler found!"
 
   of ekInput:
     if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
@@ -1189,14 +1178,9 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
         currentState = not currentState
         backend.checkboxStates[elem] = currentState
 
-        echo "🔥 CHECKBOX CLICKED! New state: ", currentState
-
         # Trigger onClick handler if present
         if elem.eventHandlers.hasKey("onClick"):
-          echo "🔥 Found onClick handler, calling it!"
           elem.eventHandlers["onClick"]()
-        else:
-          echo "🔥 No onClick handler found!"
 
         # Trigger onChange handler if present (pass the new state as data)
         if elem.eventHandlers.hasKey("onChange"):
@@ -1346,11 +1330,8 @@ proc handleKeyboardInput*(backend: var RaylibBackend, root: Element) =
       currentState = not currentState
       backend.checkboxStates[hoveredCheckbox] = currentState
 
-      echo "🔥 CHECKBOX TOGGLED VIA KEYBOARD! New state: ", currentState
-
       # Trigger onClick handler if present
       if hoveredCheckbox.eventHandlers.hasKey("onClick"):
-        echo "🔥 Found onClick handler, calling it!"
         hoveredCheckbox.eventHandlers["onClick"]()
 
       # Trigger onChange handler if present (pass the new state as data)
@@ -1523,7 +1504,6 @@ proc run*(backend: var RaylibBackend, root: Element) =
 
     # Only recalculate layout when there are dirty elements (intelligent updates)
     if hasDirtyElements():
-      echo "🔥 Layout update triggered - " & $dirtyElementsCount & " dirty elements"
       calculateLayout(root, 0, 0, backend.windowWidth.float, backend.windowHeight.float)
 
     # Render

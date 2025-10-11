@@ -15,10 +15,13 @@ pkgs.mkShell {
     echo "Nimble version: $(nimble --version | head -1)"
     echo ""
     echo "Quick start:"
-    echo "  mkdir -p build"
-    echo "  nim c -o:build/hello_world -r examples/hello_world.nim"
-    echo "  nim c -o:build/button_demo -r examples/button_demo.nim"
-    echo "  nim c -o:build/counter -r examples/counter.nim"
+    echo "  Build CLI: nimble build"
+    echo "  Run examples with Kryon CLI:"
+    echo "    ./bin/kryon run -f examples/hello_world.nim"
+    echo "    ./bin/kryon run -f examples/button_demo.nim"
+    echo "    ./bin/kryon run -f examples/dropdown.nim"
+    echo "  Or compile manually:"
+    echo "    nim c -r examples/hello_world.nim"
     echo ""
   '';
 }

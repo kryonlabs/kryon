@@ -111,10 +111,5 @@ let app = kryonApp:
 
 # Run the application
 when isMainModule:
-  echo "=== COLUMN ALIGNMENTS DEMO ==="
-  echo "Demonstrates different Column mainAxisAlignment values"
-  echo "Each column shows a different alignment behavior"
-  echo ""
-
   var backend = newRaylibBackendFromApp(app)
   backend.run(app)
