@@ -572,39 +572,56 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
       let iterable = stmt[1]
       let loopBody = stmt[2]
 
+      # Debug: Print for loop processing
+      when defined(debugTabs):
+        echo "Debug: Processing for loop with iterable: ", iterable.repr, " kind: ", iterable.kind
+
       # Check if iterable is a simple variable reference that needs reactive binding
       let iterableParseResult = parsePropertyValue(iterable)
+      when defined(debugTabs):
+        echo "Debug: iterableParseResult.boundVar.isSome: ", iterableParseResult.boundVar.isSome
+
       let iterableGetter = if iterableParseResult.boundVar.isSome:
         # Variable reference - create reactive getter that calls on every frame
         # For seq[string], we need to access it directly
         let varName = iterable.strVal
+        when defined(debugTabs):
+          echo "Debug: Creating reactive getter for variable: ", varName
         quote do:
           proc(): seq[string] =
             # Register dependency on the iterable variable
             registerDependency(`varName`)
             # Access the current state of the iterable variable reactively
+            when defined(debugTabs):
+              echo "Debug: iterableGetter called, returning: ", `iterable`.len, " items"
             `iterable`
       else:
         # Complex expression - use getter
+        when defined(debugTabs):
+          echo "Debug: Creating getter for complex expression"
         quote do:
           proc(): seq[string] =
             # Access the current state of the iterable variable
+            when defined(debugTabs):
+              echo "Debug: complex iterableGetter called"
             `iterable`
 
       # Process the loop body to create a template function
-      # We need to replace all instances of the loop variable with the parameter
+      # Use the loop variable directly as the parameter name so symbol references resolve correctly
       var loopBodyForTemplate = copy(loopBody)
 
-      # Replace all occurrences of the loop variable with 'item' parameter
-      # This is a simple replacement approach
+      # Use loopVar directly as the parameter name instead of aliasing
+      # This ensures all symbol references in the loop body resolve to the parameter
       let bodyTemplate = quote do:
-        proc(item: string): Element =
+        proc(`loopVar`: string): Element =
           # Create the elements from the processed loop body
-          # Note: loopVar is replaced with 'item' parameter
-          let `loopVar` = item  # Create local variable substitution
+          when defined(debugTabs):
+            echo "Debug: bodyTemplate called with ", `loopVar`, ": ", `loopVar`
           `loopBodyForTemplate`
 
       # Create the for loop element and add it as a child
+      when defined(debugTabs):
+        echo "Debug: Creating newForLoopElement"
       result.add quote do:
         `elemVar`.addChild(newForLoopElement(`iterableGetter`, `bodyTemplate`))
 

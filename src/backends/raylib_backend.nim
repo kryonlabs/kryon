@@ -197,6 +197,11 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     if elem.forIterable != nil and elem.forBodyTemplate != nil:
       let items = elem.forIterable()
 
+      when defined(debugTabs):
+        echo "Debug: ekForLoop layout - got ", items.len, " items"
+        for i, item in items:
+          echo "Debug:  [", i, "] ", item
+
       # Clear previous children (if any)
       elem.children.setLen(0)
 
@@ -207,7 +212,9 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
       for item in items:
         let childElement = elem.forBodyTemplate(item)
         if childElement != nil:
-          elem.children.add(childElement)
+          when defined(debugTabs):
+            echo "Debug: Created child element of kind: ", childElement.kind
+          addChild(elem, childElement)  # Use addChild to properly set parent pointer
           # Layout the child element
           calculateLayout(childElement, elem.x, currentY, elem.width, 0)
           currentY += childElement.height + gap
@@ -215,6 +222,9 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
       # Set for loop element size based on its children
       elem.width = parentWidth
       elem.height = currentY - elem.y - gap
+    else:
+      when defined(debugTabs):
+        echo "Debug: ekForLoop with nil forIterable or forBodyTemplate"
 
   of ekBody:
     # Body implements natural document flow - stack children vertically
@@ -543,9 +553,11 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
       elem.tabSelectedIndex = selectedIndexProp.get.getInt()
 
     var currentY = elem.y
+    # Only layout structural children (TabBar, TabContent), skip control flow elements
     for child in elem.children:
-      calculateLayout(child, elem.x, currentY, elem.width, 0)
-      currentY += child.height
+      if child.kind != ekConditional and child.kind != ekForLoop:
+        calculateLayout(child, elem.x, currentY, elem.width, 0)
+        currentY += child.height
 
   of ekTabBar:
     # TabBar lays out Tab children horizontally like a Row
@@ -562,20 +574,52 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     var tabIndex = 0
 
     # Assign indices to tabs and layout horizontally
-    for child in elem.children:
-      if child.kind == ekTab:
-        child.tabIndex = tabIndex
-        tabIndex += 1
-        # Calculate tab width based on title if not explicitly set
-        let title = child.getProp("title").get(val("Tab")).getString()
-        let fontSize = child.getProp("fontSize").get(val(16)).getInt()
-        let textWidth = MeasureText(title.cstring, fontSize.cint).float
-        let tabWidth = child.getProp("width").get(val(textWidth + 40.0)).getFloat()
-        let tabHeight = child.getProp("height").get(val(40.0)).getFloat()
-        maxHeight = max(maxHeight, tabHeight)
+    # Look for Tab elements in both direct children and grandchildren through ekForLoop
+    var allTabs: seq[Element] = @[]
 
-        calculateLayout(child, currentX, elem.y, tabWidth, tabHeight)
-        currentX += tabWidth
+    # First pass: collect all Tab elements
+    # IMPORTANT: For ekForLoop children, we need to trigger child generation first
+    when defined(debugTabs):
+      echo "Debug: TabBar collecting tabs, have ", elem.children.len, " children"
+    for child in elem.children:
+      when defined(debugTabs):
+        echo "Debug: TabBar child of kind: ", child.kind
+      if child.kind == ekTab:
+        when defined(debugTabs):
+          echo "Debug: Found direct Tab child"
+        allTabs.add(child)
+      elif child.kind == ekForLoop:
+        # Trigger for loop child generation by calling its layout
+        # This populates child.children with the generated elements
+        when defined(debugTabs):
+          echo "Debug: Found ekForLoop, triggering child generation"
+        calculateLayout(child, elem.x, elem.y, elem.width, 0)
+
+        when defined(debugTabs):
+          echo "Debug: ekForLoop now has ", child.children.len, " generated children"
+        # Look for Tab elements inside the for loop
+        for grandchild in child.children:
+          when defined(debugTabs):
+            echo "Debug: Checking grandchild of kind: ", grandchild.kind
+          if grandchild.kind == ekTab:
+            when defined(debugTabs):
+              echo "Debug: Found Tab grandchild in for loop"
+            allTabs.add(grandchild)
+
+    # Second pass: assign indices and layout all tabs
+    for tab in allTabs:
+      tab.tabIndex = tabIndex
+      tabIndex += 1
+      # Calculate tab width based on title if not explicitly set
+      let title = tab.getProp("title").get(val("Tab")).getString()
+      let fontSize = tab.getProp("fontSize").get(val(16)).getInt()
+      let textWidth = MeasureText(title.cstring, fontSize.cint).float
+      let tabWidth = tab.getProp("width").get(val(textWidth + 40.0)).getFloat()
+      let tabHeight = tab.getProp("height").get(val(40.0)).getFloat()
+      maxHeight = max(maxHeight, tabHeight)
+
+      calculateLayout(tab, currentX, elem.y, tabWidth, tabHeight)
+      currentX += tabWidth
 
     # Set TabBar size
     elem.height = maxHeight
@@ -595,15 +639,32 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
         break
       parent = parent.parent
 
-    # Layout all TabPanel children but assign indices
+    # Collect TabPanel elements from both direct children and grandchildren through ekForLoop
+    # IMPORTANT: For ekForLoop children, we need to trigger child generation first
+    var allTabPanels: seq[Element] = @[]
     var panelIndex = 0
+
+    # First pass: collect all TabPanel elements
     for child in elem.children:
       if child.kind == ekTabPanel:
-        child.tabIndex = panelIndex
-        panelIndex += 1
-        # Only layout the active panel
-        if child.tabIndex == selectedIndex:
-          calculateLayout(child, elem.x, elem.y, elem.width, elem.height)
+        allTabPanels.add(child)
+      elif child.kind == ekForLoop:
+        # Trigger for loop child generation by calling its layout
+        # This populates child.children with the generated elements
+        calculateLayout(child, elem.x, elem.y, elem.width, elem.height)
+
+        # Look for TabPanel elements inside the for loop
+        for grandchild in child.children:
+          if grandchild.kind == ekTabPanel:
+            allTabPanels.add(grandchild)
+
+    # Second pass: assign indices and layout only the active panel
+    for panel in allTabPanels:
+      panel.tabIndex = panelIndex
+      panelIndex += 1
+      # Only layout the active panel
+      if panel.tabIndex == selectedIndex:
+        calculateLayout(panel, elem.x, elem.y, elem.width, elem.height)
 
   of ekTabPanel:
     # TabPanel fills its parent space and lays out children vertically
@@ -1000,10 +1061,12 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
       backend.renderElement(child, inheritedColor)
 
   of ekTabGroup:
-    # TabGroup is a container that manages tab state - render its children (TabBar and TabContent)
+    # TabGroup is a container that manages tab state - render its structural children (TabBar and TabContent)
+    # Skip control flow elements (ekConditional, ekForLoop) as they handle their own rendering
     let sortedChildren = sortChildrenByZIndex(elem.children)
     for child in sortedChildren:
-      backend.renderElement(child, inheritedColor)
+      if child.kind != ekConditional and child.kind != ekForLoop:
+        backend.renderElement(child, inheritedColor)
 
   of ekTabBar:
     # TabBar renders tab buttons horizontally - render its children (Tab elements)
@@ -1071,10 +1134,26 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
         break
       parent = parent.parent
 
-    # Only render the TabPanel that matches the selected index
+    # Collect TabPanel elements from both direct children and grandchildren through ekForLoop
+    # IMPORTANT: For ekForLoop children, we need to trigger child generation first
+    var allTabPanels: seq[Element] = @[]
+
+    # First pass: collect all TabPanel elements
     for child in elem.children:
-      if child.kind == ekTabPanel and child.tabIndex == selectedIndex:
-        backend.renderElement(child, inheritedColor)
+      if child.kind == ekTabPanel:
+        allTabPanels.add(child)
+      elif child.kind == ekForLoop:
+        # NOTE: The children should already be generated from the layout phase,
+        # but during first render we may need to ensure they exist
+        # Look for TabPanel elements inside the for loop
+        for grandchild in child.children:
+          if grandchild.kind == ekTabPanel:
+            allTabPanels.add(grandchild)
+
+    # Only render the TabPanel that matches the selected index
+    for panel in allTabPanels:
+      if panel.tabIndex == selectedIndex:
+        backend.renderElement(panel, inheritedColor)
         break
 
   of ekTabPanel:
@@ -1359,10 +1438,18 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
           handler($currentState)  # Pass boolean state as string
 
   of ekTabGroup, ekTabBar, ekTabContent:
-    # Tab containers - explicitly handle children's input (reverse z-index order)
+    # Tab containers - explicitly handle structural children's input (reverse z-index order)
     let sortedChildren = sortChildrenByZIndexReverse(elem.children)
     for child in sortedChildren:
-      backend.handleInput(child)
+      if child.kind == ekConditional:
+        # Conditionals handle their own input (see ekConditional case)
+        backend.handleInput(child)
+      elif child.kind == ekForLoop:
+        # For loops contain dynamic children - recurse into them
+        for grandchild in child.children:
+          backend.handleInput(grandchild)
+      else:
+        backend.handleInput(child)
 
   of ekTab:
     let mousePos = GetMousePosition()
