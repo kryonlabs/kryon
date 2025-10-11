@@ -3,7 +3,7 @@
 ## This backend renders Kryon UI elements using Raylib for native desktop applications.
 
 import ../kryon/core
-import options, tables, algorithm
+import options, tables, algorithm, math
 import raylib_ffi
 
 # ============================================================================
@@ -774,6 +774,88 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
 
     # NOTE: Dropdown menus are rendered separately in renderDropdownMenus() to ensure they appear on top
 
+  of ekCheckbox:
+    # Get checkbox properties
+    let label = elem.getProp("label").get(val("")).getString()
+    let checkedProp = elem.getProp("checked").get(val(false))
+    let initialChecked = checkedProp.getBool()
+
+    # Get current checkbox state from backend, or initialize from property
+    var isChecked = initialChecked
+    if backend.checkboxStates.hasKey(elem):
+      isChecked = backend.checkboxStates[elem]
+    else:
+      # Initialize checkbox state from property
+      backend.checkboxStates[elem] = initialChecked
+
+    # Get styling properties
+    let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
+    let bgColor = elem.getProp("backgroundColor").get(val("#FFFFFF"))
+    let textColor = elem.getProp("color").get(val("#000000")).getColor()
+    let borderColor = elem.getProp("borderColor").get(val("#CCCCCC")).getColor()
+    let borderWidth = elem.getProp("borderWidth").get(val(1)).getFloat()
+    let checkboxSize = min(elem.height, fontSize.float + 8.0)  # Keep checkbox proportional to height
+    let labelColor = if elem.getProp("labelColor").isSome:
+      elem.getProp("labelColor").get.getColor()
+    else:
+      textColor
+
+    # Calculate checkbox square position and size
+    let checkboxX = elem.x
+    let checkboxY = elem.y + (elem.height - checkboxSize) / 2.0
+    let checkboxRect = rrect(checkboxX, checkboxY, checkboxSize, checkboxSize)
+
+    # Draw checkbox background
+    DrawRectangleRec(checkboxRect, bgColor.getColor().toRaylibColor())
+
+    # Draw checkbox border
+    if borderWidth > 0:
+      DrawRectangleLinesEx(checkboxRect, borderWidth, borderColor.toRaylibColor())
+
+    # Draw checkmark if checked
+    if isChecked:
+      let checkColor = elem.getProp("checkColor").get(val("#4A90E2")).getColor()
+      let padding = checkboxSize * 0.2  # Padding around the checkmark
+
+      # Draw checkmark as lines forming a ✓ shape
+      let startX = checkboxX + padding
+      let startY = checkboxY + checkboxSize / 2.0
+      let middleX = checkboxX + checkboxSize / 2.5
+      let middleY = checkboxY + checkboxSize - padding
+      let endX = checkboxX + checkboxSize - padding
+      let endY = checkboxY + padding
+
+      # Draw checkmark using rectangles to simulate lines
+      let checkThickness = max(1.0, checkboxSize / 8.0)
+
+      # First part of checkmark (diagonal from bottom-left to middle)
+      let line1Length = sqrt(pow(middleX - startX, 2) + pow(middleY - startY, 2))
+
+      # Draw first line as a series of small rectangles
+      let segments1 = int(line1Length / 2.0)
+      for i in 0..<segments1:
+        let t = i.float / segments1.float
+        let x = startX + t * (middleX - startX) - checkThickness / 2
+        let y = startY + t * (middleY - startY) - checkThickness / 2
+        DrawRectangle(x.cint, y.cint, checkThickness.cint, checkThickness.cint, checkColor.toRaylibColor())
+
+      # Second part of checkmark (diagonal from middle to top-right)
+      let line2Length = sqrt(pow(endX - middleX, 2) + pow(endY - middleY, 2))
+
+      # Draw second line as a series of small rectangles
+      let segments2 = int(line2Length / 2.0)
+      for i in 0..<segments2:
+        let t = i.float / segments2.float
+        let x = middleX + t * (endX - middleX) - checkThickness / 2
+        let y = middleY + t * (endY - middleY) - checkThickness / 2
+        DrawRectangle(x.cint, y.cint, checkThickness.cint, checkThickness.cint, checkColor.toRaylibColor())
+
+    # Draw label text if provided
+    if label.len > 0:
+      let textX = checkboxX + checkboxSize + 10.0  # 10px spacing between checkbox and label
+      let textY = elem.y + (elem.height - fontSize.float) / 2.0
+      DrawText(label.cstring, textX.cint, textY.cint, fontSize.cint, labelColor.toRaylibColor())
+
   of ekColumn, ekRow, ekCenter:
     # Layout containers don't render themselves, just their children with inherited color (sorted by z-index)
     let sortedChildren = sortChildrenByZIndex(elem.children)
@@ -934,6 +1016,28 @@ proc checkHoverCursor*(elem: Element): bool =
       if CheckCollisionPointRec(mousePos, dropdownRect):
         return true
 
+  of ekCheckbox:
+    let mousePos = GetMousePosition()
+
+    # Calculate checkbox clickable area (including label)
+    let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
+    let checkboxSize = min(elem.height, fontSize.float + 8.0)
+    let checkboxRect = rrect(elem.x, elem.y + (elem.height - checkboxSize) / 2.0, checkboxSize, checkboxSize)
+
+    # Check if hovering over checkbox or label
+    let label = elem.getProp("label").get(val("")).getString()
+    var hoverArea = checkboxRect
+
+    if label.len > 0:
+      # Extend hover area to include label text
+      let textWidth = MeasureText(label.cstring, fontSize.cint).float
+      hoverArea.width = checkboxSize + 10.0 + textWidth  # checkbox + spacing + text
+      hoverArea.y = elem.y  # Use full element height for hover area
+      hoverArea.height = elem.height
+
+    if CheckCollisionPointRec(mousePos, hoverArea):
+      return true
+
   else:
     discard
 
@@ -1000,6 +1104,46 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
         # Clicked outside - unfocus if this was focused
         if backend.focusedInput == elem:
           backend.focusedInput = nil
+
+  of ekCheckbox:
+    if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
+      let mousePos = GetMousePosition()
+
+      # Calculate checkbox clickable area (including label)
+      let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
+      let checkboxSize = min(elem.height, fontSize.float + 8.0)
+      let checkboxRect = rrect(elem.x, elem.y + (elem.height - checkboxSize) / 2.0, checkboxSize, checkboxSize)
+
+      # Check if click is on checkbox or label
+      let label = elem.getProp("label").get(val("")).getString()
+      var clickArea = checkboxRect
+
+      if label.len > 0:
+        # Extend clickable area to include label text
+        let textWidth = MeasureText(label.cstring, fontSize.cint).float
+        clickArea.width = checkboxSize + 10.0 + textWidth  # checkbox + spacing + text
+        clickArea.y = elem.y  # Use full element height for click area
+        clickArea.height = elem.height
+
+      if CheckCollisionPointRec(mousePos, clickArea):
+        # Checkbox was clicked - toggle state
+        var currentState = backend.checkboxStates.getOrDefault(elem, false)
+        currentState = not currentState
+        backend.checkboxStates[elem] = currentState
+
+        echo "🔥 CHECKBOX CLICKED! New state: ", currentState
+
+        # Trigger onClick handler if present
+        if elem.eventHandlers.hasKey("onClick"):
+          echo "🔥 Found onClick handler, calling it!"
+          elem.eventHandlers["onClick"]()
+        else:
+          echo "🔥 No onClick handler found!"
+
+        # Trigger onChange handler if present (pass the new state as data)
+        if elem.eventHandlers.hasKey("onChange"):
+          let handler = elem.eventHandlers["onChange"]
+          handler($currentState)  # Pass boolean state as string
 
   of ekDropdown:
     if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
@@ -1097,8 +1241,58 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
     for child in sortedChildren:
       backend.handleInput(child)
 
-proc handleKeyboardInput*(backend: var RaylibBackend) =
+proc handleKeyboardInput*(backend: var RaylibBackend, root: Element) =
   ## Handle keyboard input for focused input and dropdown elements
+
+  # Handle checkbox keyboard input
+  # For simplicity, we'll handle basic checkbox toggling with a focused element state
+  # Note: This is a basic implementation. A full implementation would need checkbox focus management
+  let mousePos = GetMousePosition()
+  proc findCheckboxUnderMouse(elem: Element): Element =
+    if elem.kind == ekCheckbox:
+      let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
+      let checkboxSize = min(elem.height, fontSize.float + 8.0)
+      let checkboxRect = rrect(elem.x, elem.y + (elem.height - checkboxSize) / 2.0, checkboxSize, checkboxSize)
+
+      let label = elem.getProp("label").get(val("")).getString()
+      var clickArea = checkboxRect
+
+      if label.len > 0:
+        let textWidth = MeasureText(label.cstring, fontSize.cint).float
+        clickArea.width = checkboxSize + 10.0 + textWidth
+        clickArea.y = elem.y
+        clickArea.height = elem.height
+
+      if CheckCollisionPointRec(mousePos, clickArea):
+        return elem
+
+    # Check children
+    for child in elem.children:
+      let found = findCheckboxUnderMouse(child)
+      if found != nil:
+        return found
+
+    return nil
+
+  let hoveredCheckbox = findCheckboxUnderMouse(root)
+  if hoveredCheckbox != nil:
+    if IsKeyPressed(KEY_ENTER):
+      # Toggle checkbox state
+      var currentState = backend.checkboxStates.getOrDefault(hoveredCheckbox, false)
+      currentState = not currentState
+      backend.checkboxStates[hoveredCheckbox] = currentState
+
+      echo "🔥 CHECKBOX TOGGLED VIA KEYBOARD! New state: ", currentState
+
+      # Trigger onClick handler if present
+      if hoveredCheckbox.eventHandlers.hasKey("onClick"):
+        echo "🔥 Found onClick handler, calling it!"
+        hoveredCheckbox.eventHandlers["onClick"]()
+
+      # Trigger onChange handler if present (pass the new state as data)
+      if hoveredCheckbox.eventHandlers.hasKey("onChange"):
+        let handler = hoveredCheckbox.eventHandlers["onChange"]
+        handler($currentState)  # Pass boolean state as string
 
   # Handle dropdown keyboard input
   if backend.focusedDropdown != nil:
@@ -1261,7 +1455,7 @@ proc run*(backend: var RaylibBackend, root: Element) =
     backend.handleInput(root)
 
     # Handle keyboard input
-    backend.handleKeyboardInput()
+    backend.handleKeyboardInput(root)
 
     # Only recalculate layout when there are dirty elements (intelligent updates)
     if hasDirtyElements():

@@ -109,7 +109,8 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         # Event handler: onClick = myHandler
         let handler = stmt[1]
         result.add quote do:
-          `elemVar`.setEventHandler(`propName`, `handler`)
+          `elemVar`.setEventHandler(`propName`, proc(data: string = "") {.closure.} =
+            `handler`())
       else:
         # Handle dropdown-specific properties
         if kind == ekDropdown:
@@ -179,7 +180,8 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         elif stmt.len > 1:
           let handler = stmt[1]
           result.add quote do:
-            `elemVar`.setEventHandler(`nameStr`, `handler`)
+            `elemVar`.setEventHandler(`nameStr`, proc(data: string = "") {.closure.} =
+              `handler`())
       elif stmt.len > 1 and stmt[1].kind == nnkStmtList:
         # Check if this is a property assignment (colon syntax)
         # Property: selectedIndex: 0 -> StmtList contains just the value
@@ -288,7 +290,8 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
       if propName.startsWith("on"):
         let handler = stmt[1]
         result.add quote do:
-          `elemVar`.setEventHandler(`propName`, `handler`)
+          `elemVar`.setEventHandler(`propName`, proc(data: string = "") {.closure.} =
+            `handler`())
       else:
         # Handle dropdown-specific properties
         if kind == ekDropdown:
@@ -359,7 +362,8 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
       if propName.startsWith("on"):
         let handler = stmt[1]
         result.add quote do:
-          `elemVar`.setEventHandler(`propName`, `handler`)
+          `elemVar`.setEventHandler(`propName`, proc(data: string = "") {.closure.} =
+            `handler`())
       else:
         # Handle dropdown-specific properties
         if kind == ekDropdown:
