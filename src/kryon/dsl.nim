@@ -517,6 +517,37 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
       result.add quote do:
         `elemVar`.addChild(newForLoopElement(`iterableGetter`, `bodyTemplate`))
 
+    of nnkStaticStmt:
+      # Handle static blocks for compile-time evaluation
+      # The body is in stmt[0], which should be a StmtList
+      let staticBody = stmt[0]
+
+      # Process each statement in the static block
+      for staticStmt in staticBody:
+        case staticStmt.kind:
+        of nnkForStmt:
+          # For loop inside static block
+          let loopVar = staticStmt[0]
+          let iterable = staticStmt[1]
+          let loopBody = staticStmt[2]
+
+          # Use immediately-invoked proc to create new scope for each iteration
+          # This ensures each iteration captures its own copy of the loop variable
+          let indexVar = genSym(nskForVar, "i")
+          result.add quote do:
+            for `indexVar` in 0..<`iterable`.len:
+              # Immediately invoke a proc to create a new scope
+              # This captures the loop variable by value, not reference
+              (proc() =
+                let `loopVar` = `iterable`[`indexVar`]
+                `elemVar`.addChild:
+                  `loopBody`
+              )()
+        else:
+          # Other statement in static block - just add as child
+          result.add quote do:
+            `elemVar`.addChild(`staticStmt`)
+
     else:
       # Skip other node types
       discard

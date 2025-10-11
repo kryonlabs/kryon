@@ -260,15 +260,59 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     else:
       elem.height = if parentHeight > 0: parentHeight else: totalHeight
 
-    # Determine starting Y position based on mainAxisAlignment
+    # Determine starting Y position and gaps based on mainAxisAlignment
     var currentY = elem.y
-    if mainAxisAlignment.isSome and mainAxisAlignment.get.getString() == "center":
-      currentY = elem.y + (elem.height - totalHeight) / 2.0
+    var dynamicGap = gap  # This might be modified by space distribution modes
+
+    if mainAxisAlignment.isSome:
+      let align = mainAxisAlignment.get.getString()
+      case align:
+      of "start", "flex-start":
+        # Default: start from the top
+        currentY = elem.y
+      of "center":
+        # Center children vertically
+        currentY = elem.y + (elem.height - totalHeight) / 2.0
+      of "end", "flex-end":
+        # Align children to the bottom
+        currentY = elem.y + elem.height - totalHeight
+      of "spaceEvenly":
+        # Distribute children evenly with equal space before, between, and after
+        # Total available space minus all child heights
+        var totalChildHeight = 0.0
+        for size in childSizes:
+          totalChildHeight += size.h
+        let availableSpace = elem.height - totalChildHeight
+        let spaceUnit = availableSpace / (childSizes.len + 1).float
+        dynamicGap = spaceUnit
+        currentY = elem.y + spaceUnit
+      of "spaceAround":
+        # Distribute children with equal space around each child (half space at edges)
+        var totalChildHeight = 0.0
+        for size in childSizes:
+          totalChildHeight += size.h
+        let availableSpace = elem.height - totalChildHeight
+        let spaceUnit = availableSpace / childSizes.len.float
+        dynamicGap = spaceUnit
+        currentY = elem.y + (spaceUnit / 2.0)
+      of "spaceBetween":
+        # Distribute children with space only between them
+        if childSizes.len > 1:
+          var totalChildHeight = 0.0
+          for size in childSizes:
+            totalChildHeight += size.h
+          let availableSpace = elem.height - totalChildHeight
+          let spaceUnit = availableSpace / (childSizes.len - 1).float
+          dynamicGap = spaceUnit
+        currentY = elem.y
+      else:
+        # Default to start
+        currentY = elem.y
 
     # Second pass: Position children
     for i, child in elem.children:
       if i > 0:
-        currentY += gap
+        currentY += dynamicGap
 
       # Determine X position based on crossAxisAlignment
       var childX = elem.x
@@ -319,15 +363,59 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     else:
       elem.height = if parentHeight > 0: parentHeight else: maxHeight
 
-    # Determine starting X position based on mainAxisAlignment
+    # Determine starting X position and gaps based on mainAxisAlignment
     var currentX = elem.x
-    if mainAxisAlignment.isSome and mainAxisAlignment.get.getString() == "center":
-      currentX = elem.x + (elem.width - totalWidth) / 2.0
+    var dynamicGap = gap  # This might be modified by space distribution modes
+
+    if mainAxisAlignment.isSome:
+      let align = mainAxisAlignment.get.getString()
+      case align:
+      of "start", "flex-start":
+        # Default: start from the left
+        currentX = elem.x
+      of "center":
+        # Center children horizontally
+        currentX = elem.x + (elem.width - totalWidth) / 2.0
+      of "end", "flex-end":
+        # Align children to the right
+        currentX = elem.x + elem.width - totalWidth
+      of "spaceEvenly":
+        # Distribute children evenly with equal space before, between, and after
+        # Total available space minus all child widths
+        var totalChildWidth = 0.0
+        for size in childSizes:
+          totalChildWidth += size.w
+        let availableSpace = elem.width - totalChildWidth
+        let spaceUnit = availableSpace / (childSizes.len + 1).float
+        dynamicGap = spaceUnit
+        currentX = elem.x + spaceUnit
+      of "spaceAround":
+        # Distribute children with equal space around each child (half space at edges)
+        var totalChildWidth = 0.0
+        for size in childSizes:
+          totalChildWidth += size.w
+        let availableSpace = elem.width - totalChildWidth
+        let spaceUnit = availableSpace / childSizes.len.float
+        dynamicGap = spaceUnit
+        currentX = elem.x + (spaceUnit / 2.0)
+      of "spaceBetween":
+        # Distribute children with space only between them
+        if childSizes.len > 1:
+          var totalChildWidth = 0.0
+          for size in childSizes:
+            totalChildWidth += size.w
+          let availableSpace = elem.width - totalChildWidth
+          let spaceUnit = availableSpace / (childSizes.len - 1).float
+          dynamicGap = spaceUnit
+        currentX = elem.x
+      else:
+        # Default to start
+        currentX = elem.x
 
     # Second pass: Position children
     for i, child in elem.children:
       if i > 0:
-        currentX += gap
+        currentX += dynamicGap
 
       # Determine Y position based on crossAxisAlignment
       var childY = elem.y
