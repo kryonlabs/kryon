@@ -535,6 +535,92 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
         let paddingValue = elem.getProp("padding").get(val(0)).getFloat()
         elem.height = (currentY - elem.y - gap) + (paddingValue * 2.0)
 
+  of ekTabGroup:
+    # TabGroup lays out TabBar and TabContent vertically
+    # Get selectedIndex from property if set
+    let selectedIndexProp = elem.getProp("selectedIndex")
+    if selectedIndexProp.isSome:
+      elem.tabSelectedIndex = selectedIndexProp.get.getInt()
+
+    var currentY = elem.y
+    for child in elem.children:
+      calculateLayout(child, elem.x, currentY, elem.width, 0)
+      currentY += child.height
+
+  of ekTabBar:
+    # TabBar lays out Tab children horizontally like a Row
+    # Copy selectedIndex from parent TabGroup
+    var parent = elem.parent
+    while parent != nil:
+      if parent.kind == ekTabGroup:
+        elem.tabSelectedIndex = parent.tabSelectedIndex
+        break
+      parent = parent.parent
+
+    var currentX = elem.x
+    var maxHeight = 40.0  # Default tab height
+    var tabIndex = 0
+
+    # Assign indices to tabs and layout horizontally
+    for child in elem.children:
+      if child.kind == ekTab:
+        child.tabIndex = tabIndex
+        tabIndex += 1
+        # Calculate tab width based on title if not explicitly set
+        let title = child.getProp("title").get(val("Tab")).getString()
+        let fontSize = child.getProp("fontSize").get(val(16)).getInt()
+        let textWidth = MeasureText(title.cstring, fontSize.cint).float
+        let tabWidth = child.getProp("width").get(val(textWidth + 40.0)).getFloat()
+        let tabHeight = child.getProp("height").get(val(40.0)).getFloat()
+        maxHeight = max(maxHeight, tabHeight)
+
+        calculateLayout(child, currentX, elem.y, tabWidth, tabHeight)
+        currentX += tabWidth
+
+    # Set TabBar size
+    elem.height = maxHeight
+
+  of ekTab:
+    # Tab is sized by parent (TabBar) - just set dimensions
+    discard  # Already handled in TabBar layout
+
+  of ekTabContent:
+    # TabContent lays out only the active TabPanel
+    # Get selectedIndex from parent TabGroup
+    var selectedIndex = 0
+    var parent = elem.parent
+    while parent != nil:
+      if parent.kind == ekTabGroup:
+        selectedIndex = parent.tabSelectedIndex
+        break
+      parent = parent.parent
+
+    # Layout all TabPanel children but assign indices
+    var panelIndex = 0
+    for child in elem.children:
+      if child.kind == ekTabPanel:
+        child.tabIndex = panelIndex
+        panelIndex += 1
+        # Only layout the active panel
+        if child.tabIndex == selectedIndex:
+          calculateLayout(child, elem.x, elem.y, elem.width, elem.height)
+
+  of ekTabPanel:
+    # TabPanel fills its parent space and lays out children vertically
+    var currentY = elem.y
+    let gap = elem.getProp("gap").get(val(10)).getFloat()
+    let padding = elem.getProp("padding").get(val(0)).getFloat()
+
+    # Apply padding
+    let contentX = elem.x + padding
+    let contentY = elem.y + padding
+    let contentWidth = elem.width - (padding * 2.0)
+
+    currentY = contentY
+    for child in elem.children:
+      calculateLayout(child, contentX, currentY, contentWidth, 0)
+      currentY += child.height + gap
+
   else:
     # Default: just layout children in same space as parent
     for child in elem.children:
@@ -913,12 +999,97 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
     for child in sortedChildren:
       backend.renderElement(child, inheritedColor)
 
+  of ekTabGroup:
+    # TabGroup is a container that manages tab state - render its children (TabBar and TabContent)
+    let sortedChildren = sortChildrenByZIndex(elem.children)
+    for child in sortedChildren:
+      backend.renderElement(child, inheritedColor)
+
+  of ekTabBar:
+    # TabBar renders tab buttons horizontally - render its children (Tab elements)
+    let sortedChildren = sortChildrenByZIndex(elem.children)
+    for child in sortedChildren:
+      backend.renderElement(child, inheritedColor)
+
+  of ekTab:
+    # Tab renders as a button with title text
+    let title = elem.getProp("title").get(val(elem.tabTitle)).getString()
+    let tabIndex = elem.tabIndex
+
+    # Get parent TabGroup to check if this tab is selected
+    var isSelected = false
+    var parent = elem.parent
+    while parent != nil:
+      if parent.kind == ekTabGroup or parent.kind == ekTabBar:
+        isSelected = (parent.tabSelectedIndex == tabIndex)
+        break
+      parent = parent.parent
+
+    # Get colors (support both active and inactive states)
+    let bgColor = if isSelected:
+      elem.getProp("activeBackgroundColor").get(val("#4a90e2")).getColor()
+    else:
+      elem.getProp("backgroundColor").get(val("#3d3d3d")).getColor()
+
+    let textColor = if isSelected:
+      elem.getProp("activeTextColor").get(val("#ffffff")).getColor()
+    else:
+      elem.getProp("textColor").get(val("#ffffff")).getColor()
+
+    let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
+
+    # Draw tab background
+    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
+    DrawRectangleRec(rect, bgColor.toRaylibColor())
+
+    # Draw tab border (optional)
+    let borderColor = elem.getProp("borderColor")
+    if borderColor.isSome:
+      let borderWidth = elem.getProp("borderWidth").get(val(1)).getFloat()
+      DrawRectangleLinesEx(rect, borderWidth, borderColor.get.getColor().toRaylibColor())
+
+    # Center text in tab
+    if title.len > 0:
+      let textWidth = MeasureText(title.cstring, fontSize.cint)
+      let textX = elem.x + (elem.width - textWidth.float) / 2.0
+      let textY = elem.y + (elem.height - fontSize.float) / 2.0
+      DrawText(title.cstring, textX.cint, textY.cint, fontSize.cint, textColor.toRaylibColor())
+
+    # Render children (if any - for custom content like icons)
+    let sortedChildren = sortChildrenByZIndex(elem.children)
+    for child in sortedChildren:
+      backend.renderElement(child, inheritedColor)
+
+  of ekTabContent:
+    # TabContent only renders the active TabPanel based on parent's selectedIndex
+    # Find parent TabGroup to get selectedIndex
+    var selectedIndex = 0
+    var parent = elem.parent
+    while parent != nil:
+      if parent.kind == ekTabGroup:
+        selectedIndex = parent.tabSelectedIndex
+        break
+      parent = parent.parent
+
+    # Only render the TabPanel that matches the selected index
+    for child in elem.children:
+      if child.kind == ekTabPanel and child.tabIndex == selectedIndex:
+        backend.renderElement(child, inheritedColor)
+        break
+
+  of ekTabPanel:
+    # TabPanel renders like a container - just render its children
+    let sortedChildren = sortChildrenByZIndex(elem.children)
+    for child in sortedChildren:
+      backend.renderElement(child, inheritedColor)
+
   else:
     # Unsupported element - skip
     discard
 
   # Render children for other elements (like Container) sorted by z-index
-  if elem.kind != ekColumn and elem.kind != ekRow and elem.kind != ekCenter and elem.kind != ekBody:
+  if elem.kind != ekColumn and elem.kind != ekRow and elem.kind != ekCenter and elem.kind != ekBody and
+     elem.kind != ekTabGroup and elem.kind != ekTabBar and elem.kind != ekTabContent and elem.kind != ekTabPanel:
     let sortedChildren = sortChildrenByZIndex(elem.children)
     for child in sortedChildren:
       backend.renderElement(child, inheritedColor)
@@ -1044,7 +1215,7 @@ proc checkHoverCursor*(elem: Element): bool =
         if checkHoverCursor(activeBranch):
           return true
 
-  of ekButton:
+  of ekButton, ekTab:
     let mousePos = GetMousePosition()
     let rect = rrect(elem.x, elem.y, elem.width, elem.height)
     if CheckCollisionPointRec(mousePos, rect):
@@ -1186,6 +1357,48 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
         if elem.eventHandlers.hasKey("onChange"):
           let handler = elem.eventHandlers["onChange"]
           handler($currentState)  # Pass boolean state as string
+
+  of ekTabGroup, ekTabBar, ekTabContent:
+    # Tab containers - explicitly handle children's input (reverse z-index order)
+    let sortedChildren = sortChildrenByZIndexReverse(elem.children)
+    for child in sortedChildren:
+      backend.handleInput(child)
+
+  of ekTab:
+    let mousePos = GetMousePosition()
+    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
+    let isPressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT)
+    let isDown = IsMouseButtonDown(MOUSE_BUTTON_LEFT)
+
+    if isPressed:
+      if CheckCollisionPointRec(mousePos, rect):
+        # Tab was clicked - find and update parent TabGroup's selectedIndex
+        var parent = elem.parent
+        var tabGroup: Element = nil
+
+        # Find the TabGroup (not just TabBar)
+        while parent != nil:
+          if parent.kind == ekTabGroup:
+            tabGroup = parent
+            break
+          parent = parent.parent
+
+        if tabGroup != nil:
+          # Update the selected index
+          tabGroup.tabSelectedIndex = elem.tabIndex
+
+          # Mark the TabGroup and all its children as dirty to trigger full re-render
+          markDirty(tabGroup)
+          for child in tabGroup.children:
+            markDirty(child)
+            # Also mark TabContent's children (TabPanels)
+            if child.kind == ekTabContent:
+              for panel in child.children:
+                markDirty(panel)
+
+        # Trigger onClick handler if present
+        if elem.eventHandlers.hasKey("onClick"):
+          elem.eventHandlers["onClick"]()
 
   of ekDropdown:
     if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):

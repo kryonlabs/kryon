@@ -27,6 +27,11 @@ type
     ekImage = "Image"
     ekCenter = "Center"
     ekScrollView = "ScrollView"
+    ekTabGroup = "TabGroup"
+    ekTabBar = "TabBar"
+    ekTab = "Tab"
+    ekTabContent = "TabContent"
+    ekTabPanel = "TabPanel"
 
   Alignment* = enum
     ## Alignment options for layout
@@ -98,6 +103,11 @@ type
     dropdownSelectedIndex*: int    # Currently selected index (-1 for no selection)
     dropdownIsOpen*: bool           # Whether dropdown is currently open
     dropdownHoveredIndex*: int    # Index of currently hovered option
+
+    # Tab-specific properties (for ekTabGroup, ekTabBar, ekTab, ekTabContent, ekTabPanel)
+    tabSelectedIndex*: int         # Currently selected tab index (for TabGroup/TabBar)
+    tabTitle*: string              # Title text for Tab
+    tabIndex*: int                 # Index of this tab (for Tab) or panel (for TabPanel)
 
 # ============================================================================
 # Forward Declarations for Reactive System
