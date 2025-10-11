@@ -22,6 +22,16 @@ import core
 # Helper procs for macro processing
 # ============================================================================
 
+proc resolvePropertyAlias*(propName: string): string =
+  ## Resolve property aliases to canonical names
+  ## Add new aliases here without touching other code
+  case propName:
+  of "background": "backgroundColor"
+  # Future aliases can be added here:
+  # of "color": "textColor"
+  # of "size": "fontSize"
+  else: propName
+
 proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[NimNode]] =
   ## Convert a property value node to a Value (wraps dynamic expressions in getters)
   ## Returns both the value code and optionally the bound variable name
@@ -124,7 +134,7 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         # Event handler: onClick = myHandler
         let handler = stmt[1]
         result.add quote do:
-          `elemVar`.setEventHandler(`propName`, proc(data: string = "") {.closure.} =
+          `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), proc(data: string = "") {.closure.} =
             `handler`())
       else:
         # Handle dropdown-specific properties
@@ -155,13 +165,13 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
             let parseResult = parsePropertyValue(stmt[1])
             let propValue = parseResult.value
             result.add quote do:
-              `elemVar`.setProp(`propName`, `propValue`)
+              `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
         else:
           # Regular property
           let parseResult = parsePropertyValue(stmt[1])
           let propValue = parseResult.value
           result.add quote do:
-            `elemVar`.setProp(`propName`, `propValue`)
+            `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
 
           # If this is an Input element and we have a bound variable, store it and create setter
           if kind == ekInput and parseResult.boundVar.isSome:
@@ -196,11 +206,11 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         if stmt.len > 1 and stmt[1].kind == nnkStmtList:
           let handler = stmt[1]
           result.add quote do:
-            `elemVar`.setEventHandler(`nameStr`, `handler`)
+            `elemVar`.setEventHandler(resolvePropertyAlias(`nameStr`), `handler`)
         elif stmt.len > 1:
           let handler = stmt[1]
           result.add quote do:
-            `elemVar`.setEventHandler(`nameStr`, proc(data: string = "") {.closure.} =
+            `elemVar`.setEventHandler(resolvePropertyAlias(`nameStr`), proc(data: string = "") {.closure.} =
               `handler`())
       elif stmt.len > 1 and stmt[1].kind == nnkStmtList:
         # Check if this is a property assignment (colon syntax)
@@ -230,7 +240,7 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
                 let parseResult = parsePropertyValue(propValue)
                 let propValueNode = parseResult.value
                 result.add quote do:
-                  `elemVar`.setProp(`nameStr`, `propValueNode`)
+                  `elemVar`.setProp(resolvePropertyAlias(`nameStr`), `propValueNode`)
             elif nameStr == "selectedIndex":
               # Handle selectedIndex for dropdown
               when defined(debugDropdown):
@@ -243,7 +253,7 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
               let parseResult = parsePropertyValue(propValue)
               let propValueNode = parseResult.value
               result.add quote do:
-                `elemVar`.setProp(`nameStr`, `propValueNode`)
+                `elemVar`.setProp(resolvePropertyAlias(`nameStr`), `propValueNode`)
 
               # If this is an Input element and we have a bound variable, store it and create setter
               if kind == ekInput and parseResult.boundVar.isSome:
@@ -291,7 +301,7 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
       if propName.startsWith("on"):
         let handler = stmt[1]
         result.add quote do:
-          `elemVar`.setEventHandler(`propName`, proc(data: string = "") {.closure.} =
+          `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), proc(data: string = "") {.closure.} =
             `handler`())
       else:
         # Handle dropdown-specific properties
@@ -322,7 +332,7 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
             let parseResult = parsePropertyValue(stmt[1])
             let propValue = parseResult.value
             result.add quote do:
-              `elemVar`.setProp(`propName`, `propValue`)
+              `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
 
             # If this is an Input element and we have a bound variable, store it and create setter
             if kind == ekInput and parseResult.boundVar.isSome:
@@ -340,7 +350,7 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           let parseResult = parsePropertyValue(stmt[1])
           let propValue = parseResult.value
           result.add quote do:
-            `elemVar`.setProp(`propName`, `propValue`)
+            `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
 
           # If this is an Input element and we have a bound variable, store it and create setter
           if kind == ekInput and parseResult.boundVar.isSome:
@@ -363,7 +373,7 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
       if propName.startsWith("on"):
         let handler = stmt[1]
         result.add quote do:
-          `elemVar`.setEventHandler(`propName`, proc(data: string = "") {.closure.} =
+          `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), proc(data: string = "") {.closure.} =
             `handler`())
       else:
         # Handle dropdown-specific properties
@@ -394,7 +404,7 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
             let parseResult = parsePropertyValue(stmt[1])
             let propValue = parseResult.value
             result.add quote do:
-              `elemVar`.setProp(`propName`, `propValue`)
+              `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
 
             # If this is an Input element and we have a bound variable, store it and create setter
             if kind == ekInput and parseResult.boundVar.isSome:
@@ -412,7 +422,7 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           let parseResult = parsePropertyValue(stmt[1])
           let propValue = parseResult.value
           result.add quote do:
-            `elemVar`.setProp(`propName`, `propValue`)
+            `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
 
           # If this is an Input element and we have a bound variable, store it and create setter
           if kind == ekInput and parseResult.boundVar.isSome:

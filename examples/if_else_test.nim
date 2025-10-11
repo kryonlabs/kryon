@@ -35,12 +35,12 @@ let app = kryonApp:
 
       if showMessage:
         Container:
-          background = "#4CAF50"
+          background = "blue"
           padding = 15
 
           Text:
             text = "Message is VISIBLE"
-            color = "white"
+            color = "yellow"
             fontSize = 16
 
 

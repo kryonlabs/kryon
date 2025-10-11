@@ -10,7 +10,7 @@ import ../src/backends/raylib_backend
 const containerWidth = 800
 const baseHeight = 60
 const margin = 10
-const isEnabled = false
+const isEnabled = true
 
 # Define the UI
 let app = kryonApp:

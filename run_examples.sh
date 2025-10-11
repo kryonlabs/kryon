@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Build and Test Script for Kryon Examples
-# This script compiles and runs each example one by one
+# This script compiles all examples in parallel, then runs them sequentially
 
 set -e  # Exit on any error
 

@@ -121,6 +121,10 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
   let widthOpt = elem.getProp("width")
   let heightOpt = elem.getProp("height")
 
+  # Track whether dimensions were explicitly set (for auto-sizing later)
+  let hasExplicitWidth = widthOpt.isSome
+  let hasExplicitHeight = heightOpt.isSome
+
   # Set position (use posX/posY if provided, otherwise use x/y)
   elem.x = if posXOpt.isSome: posXOpt.get.getFloat() else: x
   elem.y = if posYOpt.isSome: posYOpt.get.getFloat() else: y
@@ -163,6 +167,7 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     else:
       elem.height = parentHeight
 
+    
   # Layout children based on container type
   # Children should be positioned relative to THIS element's calculated position
   case elem.kind:
@@ -177,12 +182,13 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
       let conditionResult = elem.condition()
       let activeBranch = if conditionResult: elem.trueBranch else: elem.falseBranch
 
+      
       # Set conditional element size to 0 (it doesn't render itself)
       elem.width = 0
       elem.height = 0
 
-      # Layout the active branch at the same position as the conditional element
-      # Use the parent dimensions that were passed to this element
+      # Layout the active branch at the conditional's position with full parent dimensions
+      # This ensures the active branch gets proper space for layout and rendering
       if activeBranch != nil:
         calculateLayout(activeBranch, elem.x, elem.y, parentWidth, parentHeight)
 
@@ -363,7 +369,7 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
           childX = elem.x + elem.width - childSizes[i].w
 
       # Layout child at final position
-      calculateLayout(child, childX, currentY, elem.width, 0)
+      calculateLayout(child, childX, currentY, elem.width, childSizes[i].h)
       currentY += childSizes[i].h
 
   of ekRow:
@@ -514,11 +520,25 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
 
         # Recalculate at centered position
         calculateLayout(child, centerX, centerY, child.width, child.height)
+
+      # Auto-size height if not explicitly set (use max child height + padding)
+      if not hasExplicitHeight and elem.children.len > 0:
+        var maxHeight = 0.0
+        for child in elem.children:
+          maxHeight = max(maxHeight, child.height)
+        let paddingValue = elem.getProp("padding").get(val(0)).getFloat()
+        elem.height = maxHeight + (paddingValue * 2.0)
     else:
       # Default: normal relative positioning layout
       for child in elem.children:
         calculateLayout(child, elem.x, currentY, elem.width, elem.height)
         currentY += child.height + gap
+
+      # Auto-size height if not explicitly set (use total stacked height)
+      if not hasExplicitHeight and elem.children.len > 0:
+        # Account for padding if present
+        let paddingValue = elem.getProp("padding").get(val(0)).getFloat()
+        elem.height = (currentY - elem.y - gap) + (paddingValue * 2.0)
 
   else:
     # Default: just layout children in same space as parent
@@ -588,9 +608,13 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
   of ekContainer:
     let rect = rrect(elem.x, elem.y, elem.width, elem.height)
 
-    # Draw background
-    let bgColor = elem.getProp("backgroundColor")
+    # Draw background (check both "backgroundColor" and "background" alias)
+    var bgColor = elem.getProp("backgroundColor")
+    if bgColor.isNone:
+      bgColor = elem.getProp("background")
     if bgColor.isSome:
+      if bgColor.get().getString() == "blue":
+        echo "🔥 Blue Container: rect(", elem.x, ",", elem.y, ",", elem.width, ",", elem.height, ")"
       DrawRectangleRec(rect, bgColor.get.getColor().toRaylibColor())
 
     # Draw border
@@ -1200,6 +1224,9 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
           # Close any other dropdowns
           backend.closeOtherDropdowns(elem)
 
+        # Early return to prevent click-through to underlying elements
+        return
+
       elif elem.dropdownIsOpen:
         # Check if clicked on dropdown options
         if elem.dropdownOptions.len > 0:
@@ -1229,6 +1256,9 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
               if elem.eventHandlers.hasKey("onSelectionChange"):
                 let handler = elem.eventHandlers["onSelectionChange"]
                 handler(elem.dropdownOptions[clickedIndex])
+
+              # Early return to prevent click-through to underlying elements
+              return
           else:
             # Clicked outside dropdown - close it
             elem.dropdownIsOpen = false
