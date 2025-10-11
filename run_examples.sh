@@ -30,7 +30,7 @@ compile_example() {
     local build_path="$BUILD_DIR/$example_name"
 
     echo -e "${BLUE}Compiling ${CYAN}$example_name${NC}..."
-    if nim c -o:"$build_path" "$example_file"; then
+    if nim c --parallelBuild:1 -o:"$build_path" "$example_file"; then
         echo -e "${GREEN}✓ $example_name compiled successfully${NC}"
         return 0
     else
@@ -81,20 +81,67 @@ echo ""
 total_examples=${#examples[@]}
 current_example=0
 
-# Process each example
+# Phase 1: Compile all examples
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}  PHASE 1: COMPILING ALL EXAMPLES${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+
+failed_compilations=()
+successful_compilations=()
+
 for example_file in "${examples[@]}"; do
     current_example=$((current_example + 1))
+    example_name=$(basename "$example_file" .nim)
 
-    echo -e "${BLUE}[${current_example}/${total_examples}]${NC} Starting build process..."
+    echo -e "${YELLOW}[${current_example}/${total_examples}]${NC} "
 
-    if build_and_run_example "$example_file"; then
-        echo -e "${GREEN}=== SUCCESS: $(basename "$example_file" .nim) ===${NC}"
+    if compile_example "$example_file"; then
+        successful_compilations+=("$example_name")
     else
-        echo -e "${RED}=== FAILED: $(basename "$example_file" .nim) ===${NC}"
+        failed_compilations+=("$example_name")
     fi
-
-    echo ""
 done
+
+# Compilation summary
+echo ""
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}  COMPILATION SUMMARY${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo -e "${GREEN}Successfully compiled: ${#successful_compilations[@]}${NC}"
+for name in "${successful_compilations[@]}"; do
+    echo -e "  ${GREEN}✓${NC} $name"
+done
+
+if [ ${#failed_compilations[@]} -gt 0 ]; then
+    echo -e "${RED}Failed to compile: ${#failed_compilations[@]}${NC}"
+    for name in "${failed_compilations[@]}"; do
+        echo -e "  ${RED}✗${NC} $name"
+    done
+fi
+
+echo ""
+
+# Phase 2: Run all successfully compiled examples
+if [ ${#successful_compilations[@]} -gt 0 ]; then
+    echo -e "${BLUE}========================================${NC}"
+    echo -e "${BLUE}  PHASE 2: RUNNING ALL EXAMPLES${NC}"
+    echo -e "${BLUE}========================================${NC}"
+    echo ""
+
+    counter=0
+    for example_name in "${successful_compilations[@]}"; do
+        echo -e "${GREEN}[$((counter + 1))/${#successful_compilations[@]}]${NC} "
+        if run_example "$example_name"; then
+            echo -e "${GREEN}=== SUCCESS: $example_name ===${NC}"
+        else
+            echo -e "${RED}=== FAILED TO RUN: $example_name ===${NC}"
+        fi
+        counter=$((counter + 1))
+    done
+else
+    echo -e "${RED}No examples to run - all compilations failed!${NC}"
+fi
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  All examples processed!${NC}"
