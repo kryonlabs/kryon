@@ -83,6 +83,13 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
           result.value = node
           result.boundVar = none(NimNode)
           return
+        else:
+          # Check if this might be a function call that returns an Element
+          # We'll treat it as a UI element creation call and let it be resolved at runtime
+          result.value = node
+          result.boundVar = none(NimNode)
+          return
+
     # Complex expression - wrap in getter for reactivity!
     result.value = quote do: valGetter(proc(): Value = val(`node`))
     result.boundVar = none(NimNode)
@@ -576,71 +583,35 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
       when defined(debugTabs):
         echo "Debug: Processing for loop with iterable: ", iterable.repr, " kind: ", iterable.kind
 
-      # Check if iterable is a simple variable reference that needs reactive binding
-      let iterableParseResult = parsePropertyValue(iterable)
-      when defined(debugTabs):
-        echo "Debug: iterableParseResult.boundVar.isSome: ", iterableParseResult.boundVar.isSome
+      # Create a generic getter that returns seq[Value] for any iterable type
+      let iterableGetter = quote do:
+        proc(): seq[Value] =
+          result = newSeq[Value]()
+          # Register dependency on the iterable if it's a variable
+          when compiles(registerDependency($`iterable`)):
+            registerDependency($`iterable`)
 
-      let iterableGetter = if iterableParseResult.boundVar.isSome:
-        # Variable reference - create reactive getter that calls on every frame
-        # Smart type detection and conversion
-        let varName = iterable.strVal
-        when defined(debugTabs):
-          echo "Debug: Creating reactive getter for variable: ", varName
-        quote do:
-          proc(): seq[string] =
-            # Register dependency on the iterable variable
-            registerDependency(`varName`)
-            # Access the current state of the iterable variable reactively
-            # Auto-convert to seq[string] based on type
-            when defined(debugTabs):
-              echo "Debug: iterableGetter called, returning: ", `iterable`.len, " items"
-            # Convert the iterable to seq[string] for universal compatibility
-            when compiles(`iterable` is seq[int]):
-              result = newSeq[string]()
-              for item in `iterable`:
-                result.add($item)
-            elif compiles(`iterable` is seq[string]):
-              result = `iterable`
+          # Convert any iterable to seq[Value]
+          for item in `iterable`:
+            when compiles(item is int):
+              result.add(val(item))
+            elif compiles(item is float):
+              result.add(val(item))
+            elif compiles(item is string):
+              result.add(val(item))
+            elif compiles(item is bool):
+              result.add(val(item))
             else:
-              # Fallback: try to convert any sequence to string representation
-              result = newSeq[string]()
-              for item in `iterable`:
-                result.add($item)
-      else:
-        # Complex expression - use getter with type detection
-        when defined(debugTabs):
-          echo "Debug: Creating getter for complex expression"
-        quote do:
-          proc(): seq[string] =
-            # Access the current state of the iterable variable
-            when defined(debugTabs):
-              echo "Debug: complex iterableGetter called"
-            # Convert the iterable to seq[string] for universal compatibility
-            when compiles(`iterable` is seq[int]):
-              result = newSeq[string]()
-              for item in `iterable`:
-                result.add($item)
-            elif compiles(`iterable` is seq[string]):
-              result = `iterable`
-            else:
-              # Fallback: try to convert any sequence to string representation
-              result = newSeq[string]()
-              for item in `iterable`:
-                result.add($item)
+              # Fallback: convert to string
+              result.add(val($item))
 
-      # Process the loop body to create a template function
-      # Use the loop variable directly as the parameter name so symbol references resolve correctly
-      var loopBodyForTemplate = copy(loopBody)
-
-      # Use loopVar directly as the parameter name instead of aliasing
-      # This ensures all symbol references in the loop body resolve to the parameter
+      # Create a generic body template that accepts Value
       let bodyTemplate = quote do:
-        proc(`loopVar`: string): Element =
+        proc(`loopVar`: Value): Element =
           # Create the elements from the processed loop body
           when defined(debugTabs):
             echo "Debug: bodyTemplate called with ", `loopVar`, ": ", `loopVar`
-          `loopBodyForTemplate`
+          `loopBody`
 
       # Create the for loop element and add it as a child
       when defined(debugTabs):

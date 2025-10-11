@@ -89,8 +89,8 @@ type
     falseBranch*: Element                 # Element to render when condition is false (optional)
 
     # For loop properties (for ekForLoop)
-    forIterable*: proc(): seq[string] {.closure.}  # Function that returns the iterable data
-    forBodyTemplate*: proc(item: string): Element {.closure.}  # Function to create element for each item
+    forIterable*: proc(): seq[Value] {.closure.}  # Function that returns the iterable data (generic sequence)
+    forBodyTemplate*: proc(item: Value): Element {.closure.}  # Function to create element for each item (generic)
 
     # Variable binding for two-way data binding (primarily for Input elements)
     boundVarName*: Option[string]  # Name of the bound variable for two-way binding
@@ -335,8 +335,8 @@ proc newConditionalElement*(condition: proc(): bool {.closure.}, trueBranch: Ele
     falseBranch: falseBranch
   )
 
-proc newForLoopElement*(iterable: proc(): seq[string] {.closure.}, bodyTemplate: proc(item: string): Element {.closure.}): Element =
-  ## Create a for loop element that renders content for each item in a sequence
+proc newForLoopElement*(iterable: proc(): seq[Value] {.closure.}, bodyTemplate: proc(item: Value): Element {.closure.}): Element =
+  ## Create a for loop element that renders content for each item in a generic sequence
   result = Element(
     kind: ekForLoop,
     properties: initTable[string, Value](),
