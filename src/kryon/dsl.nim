@@ -178,12 +178,39 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           # Handle TabGroup-specific properties
           if kind == ekTabGroup:
             if propName == "selectedIndex":
-              # Handle selectedIndex for TabGroup
+              # Handle selectedIndex for TabGroup with potential two-way binding
               when defined(debugTabs):
                 echo "Debug: Handling TabGroup selectedIndex, stmt[1] = ", stmt[1].repr, " kind = ", stmt[1].kind
+
               let indexValue = stmt[1]
+              let parseResult = parsePropertyValue(stmt[1])
+
+              # Set the initial value
               result.add quote do:
                 `elemVar`.tabSelectedIndex = `indexValue`
+
+              # If this is a variable reference, create two-way binding
+              if parseResult.boundVar.isSome:
+                let varNode = parseResult.boundVar.get()
+                let varName = varNode.strVal
+
+                # Create automatic state sync handler
+                result.add quote do:
+                  # Store the bound variable name for state synchronization
+                  `elemVar`.setBoundVarName(`varName`)
+                  # Create handler to sync TabGroup state back to variable when tabs are clicked
+                  `elemVar`.setEventHandler("onSelectedIndexChanged", proc(data: string = "") =
+                    # Update the bound variable when TabGroup selection changes
+                    `varNode` = `elemVar`.tabSelectedIndex
+                    # Invalidate dependent reactive values
+                    invalidateReactiveValue(`varName`)
+                    invalidateReactiveValue("selectedHabit")
+                    echo "SYNC: Updated ", `varName`, " to ", `elemVar`.tabSelectedIndex, " from TabGroup"
+                  )
+
+                when defined(debugTabs):
+                  echo "Debug: Created two-way binding for TabGroup selectedIndex to variable ", varName
+
             else:
               # Regular property
               let parseResult = parsePropertyValue(stmt[1])
@@ -395,12 +422,38 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
                 )
         elif kind == ekTabGroup:
           if propName == "selectedIndex":
-            # Handle selectedIndex for TabGroup
+            # Handle selectedIndex for TabGroup with potential two-way binding
             when defined(debugTabs):
               echo "Debug: Handling TabGroup selectedIndex in nnkAsgn, stmt[1] = ", stmt[1].repr, " kind = ", stmt[1].kind
+
             let indexValue = stmt[1]
+            let parseResult = parsePropertyValue(stmt[1])
+
+            # Set the initial value
             result.add quote do:
               `elemVar`.tabSelectedIndex = `indexValue`
+
+            # If this is a variable reference, create two-way binding
+            if parseResult.boundVar.isSome:
+              let varNode = parseResult.boundVar.get()
+              let varName = varNode.strVal
+
+              # Create automatic state sync handler
+              result.add quote do:
+                # Store the bound variable name for state synchronization
+                `elemVar`.setBoundVarName(`varName`)
+                # Create handler to sync TabGroup state back to variable when tabs are clicked
+                `elemVar`.setEventHandler("onSelectedIndexChanged", proc(data: string = "") =
+                  # Update the bound variable when TabGroup selection changes
+                  `varNode` = `elemVar`.tabSelectedIndex
+                  # Invalidate dependent reactive values
+                  invalidateReactiveValue(`varName`)
+                  invalidateReactiveValue("selectedHabit")
+                  echo "SYNC: Updated ", `varName`, " to ", `elemVar`.tabSelectedIndex, " from TabGroup"
+                )
+
+              when defined(debugTabs):
+                echo "Debug: Created two-way binding for TabGroup selectedIndex to variable ", varName
           else:
             # Regular property
             let parseResult = parsePropertyValue(stmt[1])
@@ -469,12 +522,38 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           elif propName == "selectedIndex":
             # Handle selectedIndex for dropdown or TabGroup
             if kind == ekTabGroup:
-              # Handle selectedIndex for TabGroup
+              # Handle selectedIndex for TabGroup with potential two-way binding
               when defined(debugTabs):
                 echo "Debug: Handling TabGroup selectedIndex in nnkExprColonExpr, stmt[1] = ", stmt[1].repr, " kind = ", stmt[1].kind
+
               let indexValue = stmt[1]
+              let parseResult = parsePropertyValue(stmt[1])
+
+              # Set the initial value
               result.add quote do:
                 `elemVar`.tabSelectedIndex = `indexValue`
+
+              # If this is a variable reference, create two-way binding
+              if parseResult.boundVar.isSome:
+                let varNode = parseResult.boundVar.get()
+                let varName = varNode.strVal
+
+                # Create automatic state sync handler
+                result.add quote do:
+                  # Store the bound variable name for state synchronization
+                  `elemVar`.setBoundVarName(`varName`)
+                  # Create handler to sync TabGroup state back to variable when tabs are clicked
+                  `elemVar`.setEventHandler("onSelectedIndexChanged", proc(data: string = "") =
+                    # Update the bound variable when TabGroup selection changes
+                    `varNode` = `elemVar`.tabSelectedIndex
+                    # Invalidate dependent reactive values
+                    invalidateReactiveValue(`varName`)
+                    invalidateReactiveValue("selectedHabit")
+                    echo "SYNC: Updated ", `varName`, " to ", `elemVar`.tabSelectedIndex, " from TabGroup"
+                  )
+
+                when defined(debugTabs):
+                  echo "Debug: Created two-way binding for TabGroup selectedIndex to variable ", varName
             else:
               # Handle selectedIndex for dropdown
               when defined(debugDropdown):

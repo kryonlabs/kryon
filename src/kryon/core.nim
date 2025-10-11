@@ -481,6 +481,14 @@ proc markDirty*(elem: Element) =
     if elem.parent != nil:
       markDirty(elem.parent)
 
+proc markAllDescendantsDirty*(elem: Element) =
+  ## Mark an element and all its descendants as dirty
+  ## Useful for ensuring complete re-render of complex UI components
+  if elem != nil:
+    markDirty(elem)
+    for child in elem.children:
+      markAllDescendantsDirty(child)
+
 proc isDirty*(elem: Element): bool =
   ## Check if an element is marked as dirty
   elem != nil and elem.dirty
@@ -516,6 +524,27 @@ proc invalidateReactiveValue*(valueIdentifier: string) =
   if valueIdentifier in reactiveDependencies:
     for elem in reactiveDependencies[valueIdentifier]:
       markDirty(elem)
+
+proc invalidateReactiveValues*(valueIdentifiers: openArray[string]) =
+  ## Mark all elements dependent on multiple reactive values as dirty
+  ## More efficient than calling invalidateReactiveValue multiple times
+  for valueIdentifier in valueIdentifiers:
+    if valueIdentifier in reactiveDependencies:
+      for elem in reactiveDependencies[valueIdentifier]:
+        markDirty(elem)
+
+proc invalidateRelatedValues*(baseIdentifier: string) =
+  ## Invalidate reactive values that are commonly related to the base identifier
+  ## This helps with cross-element dependencies like tab selection affecting content
+  let relatedValues = case baseIdentifier:
+    of "selectedIndex": @["tabSelectedIndex", "selectedTab", "activeTab"]
+    of "tabSelectedIndex": @["selectedIndex", "selectedTab", "activeTab"]
+    of "forLoopIterable": @["forLoopData", "iterableContent"]
+    else: @[]
+
+  # Invalidate the base identifier and all related values
+  invalidateReactiveValue(baseIdentifier)
+  invalidateReactiveValues(relatedValues)
 
 proc createReactiveEventHandler*(handler: proc(), invalidatedVars: seq[string]): EventHandler =
   ## Create an event handler that automatically invalidates reactive variables and marks elements dirty

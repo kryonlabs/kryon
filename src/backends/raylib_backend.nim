@@ -195,6 +195,10 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
   of ekForLoop:
     # For loop elements generate dynamic content - let parent handle layout
     if elem.forIterable != nil and elem.forBodyTemplate != nil:
+      # Register dependency on the iterable for automatic regeneration
+      # This is crucial for reactive updates when the underlying data changes
+      registerDependency("forLoopIterable")
+
       let items = elem.forIterable()
 
       when defined(debugTabs):
@@ -202,7 +206,8 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
         for i, item in items:
           echo "Debug:  [", i, "] ", item
 
-      # Clear previous children (if any)
+      # Clear previous children (if any) before regenerating
+      # This ensures we always reflect the current state of the iterable
       elem.children.setLen(0)
 
       # Generate elements for each item in the iterable
@@ -610,6 +615,11 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     if selectedIndexProp.isSome:
       elem.tabSelectedIndex = selectedIndexProp.get.getInt()
 
+    # Register dependency on tab selection for reactive updates
+    # This allows elements to automatically update when tab selection changes
+    registerDependency("tabSelectedIndex")
+    registerDependency("selectedIndex")
+
     var currentY = elem.y
     # Only layout structural children (TabBar, TabContent), skip control flow elements
     for child in elem.children:
@@ -696,6 +706,11 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
         selectedIndex = parent.tabSelectedIndex
         break
       parent = parent.parent
+
+    # Register dependency on tab selection for reactive updates
+    # This ensures TabContent recalculates when tab selection changes
+    registerDependency("tabSelectedIndex")
+    registerDependency("selectedIndex")
 
     # Collect TabPanel elements from both direct children and grandchildren through ekForLoop
     # IMPORTANT: For ekForLoop children, we need to trigger child generation first
@@ -1530,16 +1545,35 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
 
         if tabGroup != nil:
           # Update the selected index
+          let oldSelectedIndex = tabGroup.tabSelectedIndex
           tabGroup.tabSelectedIndex = elem.tabIndex
 
-          # Mark the TabGroup and all its children as dirty to trigger full re-render
-          markDirty(tabGroup)
-          for child in tabGroup.children:
-            markDirty(child)
-            # Also mark TabContent's children (TabPanels)
-            if child.kind == ekTabContent:
-              for panel in child.children:
-                markDirty(panel)
+          # Enhanced reactivity: invalidate reactive values that depend on tab selection
+          # This triggers automatic updates for any element that depends on tab state
+          if oldSelectedIndex != tabGroup.tabSelectedIndex:
+            # Log the tab change for debugging
+            echo "TAB CHANGED: from index ", oldSelectedIndex, " to index ", tabGroup.tabSelectedIndex
+
+            # Trigger the onSelectedIndexChanged event for two-way binding
+            if tabGroup.eventHandlers.hasKey("onSelectedIndexChanged"):
+              echo "TRIGGERING: onSelectedIndexChanged event for TabGroup"
+              tabGroup.eventHandlers["onSelectedIndexChanged"]()
+
+            # Use the improved reactive system to invalidate related values
+            # This automatically handles cross-element dependencies
+            invalidateRelatedValues("tabSelectedIndex")
+
+            # Also mark TabGroup and related elements as dirty for immediate visual updates
+            markDirty(tabGroup)
+            for child in tabGroup.children:
+              markDirty(child)
+              # Also mark TabContent's children (TabPanels) for complete re-render
+              if child.kind == ekTabContent:
+                echo "Marking TabContent children as dirty for tab change"
+                for panel in child.children:
+                  markDirty(panel)
+                  # Recursively mark all descendants as dirty to ensure calendar updates
+                  markAllDescendantsDirty(panel)
 
         # Trigger onClick handler if present
         if elem.eventHandlers.hasKey("onClick"):
