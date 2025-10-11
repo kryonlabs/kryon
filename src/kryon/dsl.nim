@@ -60,7 +60,22 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
         val(`node`)
       )
       result.boundVar = some(node)  # Return the variable name for binding
-  of nnkInfix, nnkPrefix, nnkCall, nnkDotExpr:
+  of nnkCall:
+    # Check if this is a UI element creation call
+    if node.len > 0:
+      let nodeName = node[0]
+      if nodeName.kind == nnkIdent:
+        let nameStr = nodeName.strVal
+        if nameStr in ["Container", "Text", "Button", "Column", "Row", "Input", "Checkbox",
+                      "Dropdown", "Grid", "Image", "Center", "ScrollView", "Header", "Body"]:
+          # This is a UI element creation call, return it directly
+          result.value = node
+          result.boundVar = none(NimNode)
+          return
+    # Complex expression - wrap in getter for reactivity!
+    result.value = quote do: valGetter(proc(): Value = val(`node`))
+    result.boundVar = none(NimNode)
+  of nnkInfix, nnkPrefix, nnkDotExpr:
     # Complex expression - wrap in getter for reactivity!
     result.value = quote do: valGetter(proc(): Value = val(`node`))
     result.boundVar = none(NimNode)
@@ -170,8 +185,13 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
       let name = stmt[0]
       let nameStr = name.strVal
 
+      # Check if this is a UI element creation call
+      if nameStr in ["Container", "Text", "Button", "Column", "Row", "Input", "Checkbox",
+                     "Dropdown", "Grid", "Image", "Center", "ScrollView", "Header", "Body"]:
+        result.add quote do:
+          `elemVar`.addChild(`stmt`)
       # Check if this looks like an event handler
-      if nameStr.startsWith("on"):
+      elif nameStr.startsWith("on"):
         # Event handler: onClick = myHandler or onClick: <body>
         if stmt.len > 1 and stmt[1].kind == nnkStmtList:
           let handler = stmt[1]
@@ -237,25 +257,6 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
                     # Invalidate all elements that depend on this variable
                     invalidateReactiveValue(`varName`)
                   )
-          else:
-            # Regular property for non-dropdown elements
-            let parseResult = parsePropertyValue(propValue)
-            let propValueNode = parseResult.value
-            result.add quote do:
-              `elemVar`.setProp(`nameStr`, `propValueNode`)
-
-            # If this is an Input element and we have a bound variable, store it and create setter
-            if kind == ekInput and parseResult.boundVar.isSome:
-              let varNode = parseResult.boundVar.get()
-              let varName = varNode.strVal
-              result.add quote do:
-                `elemVar`.setBoundVarName(`varName`)
-                # Create a setter function for two-way binding that invalidates dependent elements
-                `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
-                  `varNode` = data
-                  # Invalidate all elements that depend on this variable
-                  invalidateReactiveValue(`varName`)
-                )
         else:
           # Child element with body: Text: <body>
           result.add quote do:

@@ -217,12 +217,51 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
 
   of ekBody:
     # Body implements natural document flow - stack children vertically
-    var currentY = elem.y
-    let gap = elem.getProp("gap").get(val(5)).getFloat()  # Default gap between elements
+    # Check for contentAlignment property
+    let alignment = elem.getProp("contentAlignment")
+    if alignment.isSome and alignment.get.getString() == "center":
+      # Center children - needs two-pass layout
+      var currentY = elem.y
+      let gap = elem.getProp("gap").get(val(5)).getFloat()  # Default gap between elements
 
-    for child in elem.children:
-      calculateLayout(child, elem.x, currentY, elem.width, elem.height)
-      currentY += child.height + gap
+      # First pass: Calculate all children sizes and total height
+      var totalHeight = 0.0
+      var maxWidth = 0.0
+      var childSizes: seq[tuple[w, h: float]] = @[]
+
+      for child in elem.children:
+        # First pass: Calculate child layout at (0, 0) to determine its size
+        calculateLayout(child, 0, 0, elem.width, elem.height)
+        childSizes.add((w: child.width, h: child.height))
+        totalHeight += child.height
+        maxWidth = max(maxWidth, child.width)
+
+      if elem.children.len > 1:
+        totalHeight += gap * (elem.children.len - 1).float
+
+      # Calculate starting Y position to center the group vertically
+      let startY = elem.y + (elem.height - totalHeight) / 2.0
+
+      # Second pass: Position children centered horizontally and stacked vertically
+      currentY = startY
+      for i, child in elem.children:
+        let centerX = elem.x + (elem.width - childSizes[i].w) / 2.0
+
+        # Apply gap between elements (but not after the last one)
+        if i > 0:
+          currentY += gap
+
+        # Recalculate at centered position
+        calculateLayout(child, centerX, currentY, childSizes[i].w, childSizes[i].h)
+        currentY += childSizes[i].h
+    else:
+      # Default: normal relative positioning layout
+      var currentY = elem.y
+      let gap = elem.getProp("gap").get(val(5)).getFloat()  # Default gap between elements
+
+      for child in elem.children:
+        calculateLayout(child, elem.x, currentY, elem.width, elem.height)
+        currentY += child.height + gap
 
   of ekColumn:
     let gap = elem.getProp("gap").get(val(0)).getFloat()
@@ -431,35 +470,30 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
       currentX += childSizes[i].w
 
   of ekCenter:
-    # Center multiple children as a group - needs multi-pass layout
-    if elem.children.len > 0:
-      # First pass: Calculate all children sizes at (0, 0) to determine dimensions
-      var totalHeight = 0.0
-      var maxWidth = 0.0
-      var childSizes: seq[tuple[w, h: float]] = @[]
+    # Center is just like a Container but with contentAlignment = "center" by default
+    let gap = elem.getProp("gap").get(val(0)).getFloat()
 
+    # Check for contentAlignment property (default to center)
+    let alignment = elem.getProp("contentAlignment").get(val("center"))
+
+    if alignment.getString() == "center":
+      # Center children - needs two-pass layout
       for child in elem.children:
+        # First pass: Calculate child layout at (0, 0) to determine its size
         calculateLayout(child, 0, 0, elem.width, elem.height)
-        childSizes.add((w: child.width, h: child.height))
-        totalHeight += child.height
-        maxWidth = max(maxWidth, child.width)
 
-      # Calculate starting Y position to center the group vertically
-      let startY = elem.y + (elem.height - totalHeight) / 2.0
+        # Second pass: Now we know child.width and child.height, so center it
+        let centerX = elem.x + (elem.width - child.width) / 2.0
+        let centerY = elem.y + (elem.height - child.height) / 2.0
 
-      # Second pass: Position children centered horizontally and stacked vertically
-      var currentY = startY
-      let gap = elem.getProp("gap").get(val(10)).getFloat()  # Default gap of 10
-
-      for i, child in elem.children:
-        let centerX = elem.x + (elem.width - childSizes[i].w) / 2.0
-
-        # Apply gap between elements (but not after the last one)
-        if i > 0:
-          currentY += gap
-
-        calculateLayout(child, centerX, currentY, childSizes[i].w, childSizes[i].h)
-        currentY += childSizes[i].h
+        # Recalculate at centered position
+        calculateLayout(child, centerX, centerY, child.width, child.height)
+    else:
+      # Default: normal relative positioning layout
+      var currentY = elem.y
+      for child in elem.children:
+        calculateLayout(child, elem.x, currentY, elem.width, elem.height)
+        currentY += child.height + gap
 
   of ekContainer:
     # Container is a normal wrapper - relative positioning by default
