@@ -193,7 +193,7 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
         calculateLayout(activeBranch, elem.x, elem.y, parentWidth, parentHeight)
 
   of ekForLoop:
-    # For loop elements generate dynamic content and layout their children
+    # For loop elements generate dynamic content - let parent handle layout
     if elem.forIterable != nil and elem.forBodyTemplate != nil:
       let items = elem.forIterable()
 
@@ -206,22 +206,16 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
       elem.children.setLen(0)
 
       # Generate elements for each item in the iterable
-      var currentY = elem.y
-      let gap = 5.0  # Gap between items
-
       for item in items:
         let childElement = elem.forBodyTemplate(item)
         if childElement != nil:
           when defined(debugTabs):
             echo "Debug: Created child element of kind: ", childElement.kind
           addChild(elem, childElement)  # Use addChild to properly set parent pointer
-          # Layout the child element
-          calculateLayout(childElement, elem.x, currentY, elem.width, 0)
-          currentY += childElement.height + gap
 
-      # Set for loop element size based on its children
+      # For loop is transparent to layout - use parent size
       elem.width = parentWidth
-      elem.height = currentY - elem.y - gap
+      elem.height = parentHeight
     else:
       when defined(debugTabs):
         echo "Debug: ekForLoop with nil forIterable or forBodyTemplate"
@@ -284,9 +278,18 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     # First pass: Calculate all children sizes (give them full width but not full height)
     var childSizes: seq[tuple[w, h: float]] = @[]
     for child in elem.children:
-      # Pass elem.width for width, but don't constrain height
-      calculateLayout(child, 0, 0, elem.width, 0)
-      childSizes.add((w: child.width, h: child.height))
+      # Special handling for ForLoop children - trigger child generation first
+      if child.kind == ekForLoop:
+        # Trigger for loop to generate its children by calling layout with dummy coordinates
+        calculateLayout(child, 0, 0, elem.width, 0)
+        # Now calculate sizes for the generated children
+        for grandchild in child.children:
+          calculateLayout(grandchild, 0, 0, elem.width, 0)
+          childSizes.add((w: grandchild.width, h: grandchild.height))
+      else:
+        # Pass elem.width for width, but don't constrain height
+        calculateLayout(child, 0, 0, elem.width, 0)
+        childSizes.add((w: child.width, h: child.height))
 
     # Calculate total height and max width
     var totalHeight = 0.0
@@ -360,22 +363,45 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
         currentY = elem.y
 
     # Second pass: Position children
-    for i, child in elem.children:
-      if i > 0:
+    var childIndex = 0
+    for child in elem.children:
+      if childIndex > 0:
         currentY += dynamicGap
 
-      # Determine X position based on crossAxisAlignment
-      var childX = elem.x
-      if crossAxisAlignment.isSome:
-        let align = crossAxisAlignment.get.getString()
-        if align == "center":
-          childX = elem.x + (elem.width - childSizes[i].w) / 2.0
-        elif align == "end":
-          childX = elem.x + elem.width - childSizes[i].w
+      if child.kind == ekForLoop:
+        # For loop - position all its generated children vertically
+        for grandchild in child.children:
+          if childIndex > 0:
+            currentY += dynamicGap
 
-      # Layout child at final position
-      calculateLayout(child, childX, currentY, elem.width, childSizes[i].h)
-      currentY += childSizes[i].h
+          # Determine X position based on crossAxisAlignment
+          var childX = elem.x
+          if crossAxisAlignment.isSome:
+            let align = crossAxisAlignment.get.getString()
+            if align == "center":
+              childX = elem.x + (elem.width - childSizes[childIndex].w) / 2.0
+            elif align == "end":
+              childX = elem.x + elem.width - childSizes[childIndex].w
+
+          # Layout grandchild at final position
+          calculateLayout(grandchild, childX, currentY, elem.width, childSizes[childIndex].h)
+          currentY += childSizes[childIndex].h
+          inc childIndex
+      else:
+        # Regular child - position it
+        # Determine X position based on crossAxisAlignment
+        var childX = elem.x
+        if crossAxisAlignment.isSome:
+          let align = crossAxisAlignment.get.getString()
+          if align == "center":
+            childX = elem.x + (elem.width - childSizes[childIndex].w) / 2.0
+          elif align == "end":
+            childX = elem.x + elem.width - childSizes[childIndex].w
+
+        # Layout child at final position
+        calculateLayout(child, childX, currentY, elem.width, childSizes[childIndex].h)
+        currentY += childSizes[childIndex].h
+        inc childIndex
 
   of ekRow:
     let gap = elem.getProp("gap").get(val(0)).getFloat()
@@ -387,9 +413,18 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     # First pass: Calculate all children sizes (give them full height and let them size themselves naturally)
     var childSizes: seq[tuple[w, h: float]] = @[]
     for child in elem.children:
-      # Let children size themselves naturally (don't constrain width)
-      calculateLayout(child, elem.x, elem.y, parentWidth, elem.height)
-      childSizes.add((w: child.width, h: child.height))
+      # Special handling for ForLoop children - trigger child generation first
+      if child.kind == ekForLoop:
+        # Trigger for loop to generate its children by calling layout with dummy coordinates
+        calculateLayout(child, 0, 0, parentWidth, elem.height)
+        # Now calculate sizes for the generated children
+        for grandchild in child.children:
+          calculateLayout(grandchild, 0, 0, parentWidth, elem.height)
+          childSizes.add((w: grandchild.width, h: grandchild.height))
+      else:
+        # Let children size themselves naturally (don't constrain width)
+        calculateLayout(child, elem.x, elem.y, parentWidth, elem.height)
+        childSizes.add((w: child.width, h: child.height))
 
     # Calculate total width and max height
     var totalWidth = 0.0
@@ -463,22 +498,45 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
         currentX = elem.x
 
     # Second pass: Position children
-    for i, child in elem.children:
-      if i > 0:
+    var childIndex = 0
+    for child in elem.children:
+      if childIndex > 0:
         currentX += dynamicGap
 
-      # Determine Y position based on crossAxisAlignment
-      var childY = elem.y
-      if crossAxisAlignment.isSome:
-        let align = crossAxisAlignment.get.getString()
-        if align == "center":
-          childY = elem.y + (elem.height - childSizes[i].h) / 2.0
-        elif align == "end":
-          childY = elem.y + elem.height - childSizes[i].h
+      if child.kind == ekForLoop:
+        # For loop - position all its generated children horizontally
+        for grandchild in child.children:
+          if childIndex > 0:
+            currentX += dynamicGap
 
-      # Layout child at final position
-      calculateLayout(child, currentX, childY, 0, elem.height)
-      currentX += childSizes[i].w
+          # Determine Y position based on crossAxisAlignment
+          var childY = elem.y
+          if crossAxisAlignment.isSome:
+            let align = crossAxisAlignment.get.getString()
+            if align == "center":
+              childY = elem.y + (elem.height - childSizes[childIndex].h) / 2.0
+            elif align == "end":
+              childY = elem.y + elem.height - childSizes[childIndex].h
+
+          # Layout grandchild at final position
+          calculateLayout(grandchild, currentX, childY, childSizes[childIndex].w, childSizes[childIndex].h)
+          currentX += childSizes[childIndex].w
+          inc childIndex
+      else:
+        # Regular child - position it
+        # Determine Y position based on crossAxisAlignment
+        var childY = elem.y
+        if crossAxisAlignment.isSome:
+          let align = crossAxisAlignment.get.getString()
+          if align == "center":
+            childY = elem.y + (elem.height - childSizes[childIndex].h) / 2.0
+          elif align == "end":
+            childY = elem.y + elem.height - childSizes[childIndex].h
+
+        # Layout child at final position
+        calculateLayout(child, currentX, childY, childSizes[childIndex].w, childSizes[childIndex].h)
+        currentX += childSizes[childIndex].w
+        inc childIndex
 
   of ekCenter:
     # Center is just like a Container but with contentAlignment = "center" by default
