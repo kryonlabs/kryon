@@ -33,10 +33,6 @@ let app = kryonApp:
         fontSize = 16
         color = "#aaaaaa"
 
-      Button:
-        text = "TEST BUTTON - Click me!"
-        onClick = proc() = echo "🔥🔥🔥 TEST BUTTON CLICKED! Clicks DO work in this app! 🔥🔥🔥"
-
       TabGroup:
         selectedIndex = selectedTab
         width = 760
