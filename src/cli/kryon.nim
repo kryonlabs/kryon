@@ -96,6 +96,9 @@ proc createWrapperFile*(filename: string, renderer: Renderer): string =
     wrapperContent &= "import \"" & (basePath / "backends" / "raylib_backend") & "\"\n"
   of rSDL2:
     wrapperContent &= "import \"" & (basePath / "backends" / "sdl2_backend") & "\"\n"
+  of rHTML:
+    wrapperContent &= "import \"" & (basePath / "backends" / "html_backend") & "\"\n"
+    wrapperContent &= "import os\n"
   else:
     discard
 
@@ -114,13 +117,21 @@ proc createWrapperFile*(filename: string, renderer: Renderer): string =
   of rRaylib:
     wrapperContent &= "\n  var backend: RaylibBackend\n"
     wrapperContent &= "  backend = newRaylibBackendFromApp(app)\n"
+    wrapperContent &= "  backend.run(app)\n"
   of rSDL2:
     wrapperContent &= "\n  var backend: SDL2Backend\n"
     wrapperContent &= "  backend = newSDL2BackendFromApp(app)\n"
+    wrapperContent &= "  backend.run(app)\n"
+  of rHTML:
+    wrapperContent &= "\n  var backend: HTMLBackend\n"
+    wrapperContent &= "  backend = newHTMLBackendFromApp(app)\n"
+    wrapperContent &= "  let outputDir = if defined(outputDir):\n"
+    wrapperContent &= "    getEnv(\"OUTPUT_DIR\")\n"
+    wrapperContent &= "  else:\n"
+    wrapperContent &= "    \".\"\n"
+    wrapperContent &= "  backend.run(app, outputDir)\n"
   else:
     discard
-
-  wrapperContent &= "  backend.run(app)\n"
 
   writeFile(wrapperFile, wrapperContent)
   return wrapperFile
@@ -165,6 +176,9 @@ proc compileKryon*(
   case renderer:
   of rSDL2:
     nimCmd.add(" --passL:\"-lSDL2 -lSDL2_ttf\"")
+  of rHTML:
+    # For HTML, no special linking needed
+    discard
   else:
     discard
 
@@ -238,8 +252,86 @@ proc runKryon*(
   # Check renderer support
   case detectedRenderer:
   of rHTML:
-    echo "Error: HTML renderer not yet implemented"
-    return 1
+    # HTML renderer generates files directly
+    echo "Generating HTML web app..."
+    echo "Renderer: HTML"
+
+    # Determine output directory
+    let outputDir = if defined(outputDir):
+      getEnv("OUTPUT_DIR")
+    else:
+      filename.splitFile.dir / (filename.splitFile.name & "_html")
+
+    echo "Output directory: " & outputDir
+
+    # Create and run HTML generator
+    let currentDir = getCurrentDir()
+    let absoluteFilename = if filename.isAbsolute():
+      filename
+    else:
+      currentDir / filename
+
+    # Read and parse the user file content
+    let userContent = readFile(absoluteFilename)
+    let lines = userContent.split('\n')
+    var appContent = ""
+    var importsContent = ""
+    var inAppBlock = false
+
+    for line in lines:
+      if line.startsWith("let app = kryonApp:"):
+        inAppBlock = true
+        continue
+      elif inAppBlock:
+        # Collect app content (preserve indentation)
+        if line.strip().len > 0:
+          appContent &= line & "\n"
+        else:
+          appContent &= "\n"
+      else:
+        # Add imports and other non-app code
+        importsContent &= line & "\n"
+
+    # Fix import paths to be absolute
+    let kryonPath = currentDir / "src" / "kryon"
+    var fixedImports = importsContent
+    fixedImports = fixedImports.replace("import ../src/kryon", "import \"" & kryonPath & "\"")
+
+    var htmlGeneratorCode = "import os, strformat\n"
+    htmlGeneratorCode &= "import \"" & currentDir & "/src/kryon\"\n"
+    htmlGeneratorCode &= "import \"" & currentDir & "/src/backends/html_backend\"\n"
+    htmlGeneratorCode &= "\n"
+    htmlGeneratorCode &= fixedImports
+    htmlGeneratorCode &= "\n"
+    htmlGeneratorCode &= "var app = kryonApp:\n"
+    htmlGeneratorCode &= appContent
+    htmlGeneratorCode &= "\n"
+    htmlGeneratorCode &= "var backend: HTMLBackend\n"
+    htmlGeneratorCode &= "backend = newHTMLBackendFromApp(app)\n"
+    htmlGeneratorCode &= "backend.run(app, \"" & outputDir & "\")\n"
+
+    let tempFile = getTempDir() / "html_gen.nim"
+    writeFile(tempFile, htmlGeneratorCode)
+
+    let genCmd = "nim c -r " & tempFile
+    let (output, exitCode) = execCmdEx(genCmd)
+
+    # Cleanup
+    if fileExists(tempFile):
+      removeFile(tempFile)
+
+    if exitCode == 0:
+      echo ""
+      echo "✓ HTML web app generated successfully!"
+      echo "Open " & outputDir / "index.html" & " in your browser to view the app."
+      if verbose:
+        echo output
+    else:
+      echo "HTML generation failed:"
+      echo output
+
+    return exitCode
+
   of rTerminal:
     echo "Error: Terminal renderer not yet implemented"
     return 1
@@ -315,8 +407,86 @@ proc buildKryon*(
   # Check renderer support
   case detectedRenderer:
   of rHTML:
-    echo "Error: HTML renderer not yet implemented"
-    return 1
+    # HTML renderer generates files directly
+    echo "Building HTML web app..."
+    echo "Renderer: HTML"
+
+    # Determine output directory
+    let outputDir = if output.len > 0:
+      output
+    else:
+      filename.splitFile.dir / (filename.splitFile.name & "_html")
+
+    echo "Output directory: " & outputDir
+
+    # Create and run HTML generator
+    let currentDir = getCurrentDir()
+    let absoluteFilename = if filename.isAbsolute():
+      filename
+    else:
+      currentDir / filename
+
+    # Read and parse the user file content
+    let userContent = readFile(absoluteFilename)
+    let lines = userContent.split('\n')
+    var appContent = ""
+    var importsContent = ""
+    var inAppBlock = false
+
+    for line in lines:
+      if line.startsWith("let app = kryonApp:"):
+        inAppBlock = true
+        continue
+      elif inAppBlock:
+        # Collect app content (preserve indentation)
+        if line.strip().len > 0:
+          appContent &= line & "\n"
+        else:
+          appContent &= "\n"
+      else:
+        # Add imports and other non-app code
+        importsContent &= line & "\n"
+
+    # Fix import paths to be absolute
+    let kryonPath = currentDir / "src" / "kryon"
+    var fixedImports = importsContent
+    fixedImports = fixedImports.replace("import ../src/kryon", "import \"" & kryonPath & "\"")
+
+    var htmlGeneratorCode = "import os, strformat\n"
+    htmlGeneratorCode &= "import \"" & currentDir & "/src/kryon\"\n"
+    htmlGeneratorCode &= "import \"" & currentDir & "/src/backends/html_backend\"\n"
+    htmlGeneratorCode &= "\n"
+    htmlGeneratorCode &= fixedImports
+    htmlGeneratorCode &= "\n"
+    htmlGeneratorCode &= "var app = kryonApp:\n"
+    htmlGeneratorCode &= appContent
+    htmlGeneratorCode &= "\n"
+    htmlGeneratorCode &= "var backend: HTMLBackend\n"
+    htmlGeneratorCode &= "backend = newHTMLBackendFromApp(app)\n"
+    htmlGeneratorCode &= "backend.run(app, \"" & outputDir & "\")\n"
+
+    let tempFile = getTempDir() / "html_gen.nim"
+    writeFile(tempFile, htmlGeneratorCode)
+
+    let genCmd = "nim c -r " & tempFile
+    let (genOutput, exitCode) = execCmdEx(genCmd)
+
+    # Cleanup
+    if fileExists(tempFile):
+      removeFile(tempFile)
+
+    if exitCode == 0:
+      echo ""
+      echo "✓ HTML web app built successfully!"
+      echo "Open " & outputDir / "index.html" & " in your browser to view the app."
+      if verbose:
+        echo genOutput
+    else:
+      echo "HTML build failed:"
+      echo genOutput
+
+    return exitCode
+
   of rTerminal:
     echo "Error: Terminal renderer not yet implemented"
     return 1
@@ -387,7 +557,7 @@ proc versionCmd*(): int =
   echo "Supported renderers:"
   echo "  - raylib (desktop, 60 FPS)"
   echo "  - sdl2 (desktop, cross-platform)"
-  echo "  - html (coming soon)"
+  echo "  - html (web, generates HTML/CSS/JS)"
   echo "  - terminal (coming soon)"
   return 0
 
