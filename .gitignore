@@ -44,3 +44,8 @@ tests/*.out
 # Nimble
 nimbledeps/
 .nimble/
+
+# Benchmark results (hardware-dependent)
+benchmarks/*.log
+benchmarks/hello_world
+benchmarks/hello_world.exe

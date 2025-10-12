@@ -30,7 +30,7 @@ compile_example() {
     local build_path="$BUILD_DIR/$example_name"
 
     echo -e "${BLUE}Compiling ${CYAN}$example_name${NC}..."
-    if nim c --parallelBuild:1 -o:"$build_path" "$example_file"; then
+    if nim c --parallelBuild:$(nproc) -o:"$build_path" "$example_file"; then
         echo -e "${GREEN}✓ $example_name compiled successfully${NC}"
         return 0
     else
