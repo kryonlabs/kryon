@@ -1461,7 +1461,7 @@ proc handleInput*(backend: var SDL2Backend, elem: Element) =
       if mousePoint.x >= dropdownRect.x and mousePoint.x < dropdownRect.x + dropdownRect.w and
          mousePoint.y >= dropdownRect.y and mousePoint.y < dropdownRect.y + dropdownRect.h:
         # Calculate which option was clicked
-        let relativeY = mousePos.y - dropdownRect.y
+        let relativeY = mousePos.y - dropdownRect.y.float
         let clickedIndex = int(relativeY / itemHeight)
 
         if clickedIndex >= 0 and clickedIndex < elem.dropdownOptions.len:
@@ -1494,7 +1494,7 @@ proc handleInput*(backend: var SDL2Backend, elem: Element) =
 
       if mousePoint.x >= dropdownRect.x and mousePoint.x < dropdownRect.x + dropdownRect.w and
          mousePoint.y >= dropdownRect.y and mousePoint.y < dropdownRect.y + dropdownRect.h:
-        let relativeY = mousePos.y - dropdownRect.y
+        let relativeY = mousePos.y - dropdownRect.y.float
         let hoveredIndex = int(relativeY / itemHeight)
 
         if hoveredIndex >= 0 and hoveredIndex < elem.dropdownOptions.len:
@@ -1529,8 +1529,8 @@ proc handleKeyboardInput*(backend: var SDL2Backend, root: Element) =
       var clickArea = checkboxRect
 
       if label.len > 0:
-        let textMetrics = approximateTextWidth( label, fontSize)  # Approximation
-        clickArea.w = (checkboxSize + 10.0 + textMetrics.w.float).cint
+        let textWidth = approximateTextWidth(label, fontSize)  # Approximation
+        clickArea.w = (checkboxSize + 10.0 + textWidth.float).cint
         clickArea.y = elem.y.cint
         clickArea.h = elem.height.cint
 
@@ -1738,13 +1738,13 @@ proc run*(backend: var SDL2Backend, root: Element) =
 
       of SDL_EVENT_KEYDOWN:
         let keyEvent = getKeyEvent(addr event)
-        if keyEvent.scancode < 512:
-          backend.keyStates[keyEvent.scancode] = true
+        if keyEvent.keysym.scancode < 512:
+          backend.keyStates[keyEvent.keysym.scancode] = true
 
       of SDL_EVENT_KEYUP:
         let keyEvent = getKeyEvent(addr event)
-        if keyEvent.scancode < 512:
-          backend.keyStates[keyEvent.scancode] = false
+        if keyEvent.keysym.scancode < 512:
+          backend.keyStates[keyEvent.keysym.scancode] = false
 
       of SDL_EVENT_MOUSEBUTTONDOWN:
         let buttonEvent = getMouseButtonEvent(addr event)
@@ -1821,7 +1821,7 @@ proc run*(backend: var SDL2Backend, root: Element) =
     # Render dropdown menus on top
     backend.renderDropdownMenus(root)
 
-    discard SDL_RenderPresent(backend.renderer)
+    SDL_RenderPresent(backend.renderer)
 
   # Cleanup
   if backend.font != nil:

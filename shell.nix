@@ -1,3 +1,4 @@
+# shell.nix (Corrected)
 { pkgs ? import <nixpkgs> {} }:
 
 pkgs.mkShell {
@@ -6,9 +7,9 @@ pkgs.mkShell {
     nimble
     gcc
     raylib
-    # SDL2 dependencies
-    SDL2
-    SDL2_ttf
+    # SDL2 dependencies (include dev headers)
+    SDL2.dev        # SDL2 itself DOES have a .dev output
+    SDL2_ttf        # FIX: SDL2_ttf does NOT, so just use the main package
     pkg-config
   ];
 

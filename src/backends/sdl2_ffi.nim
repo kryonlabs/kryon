@@ -3,7 +3,7 @@
 ## This module provides Nim FFI bindings to the SDL2 C library.
 ## Using SDL2 for cross-platform window management, rendering, and input.
 
-{.passL: "-lSDL2".}
+{.passL: "-lSDL2 -lSDL2_ttf".}
 
 # ============================================================================
 # Core Types
@@ -69,8 +69,8 @@ proc TTF_Quit*() {.importc: "TTF_Quit", header: "SDL_ttf.h".}
 # Window Management
 # ============================================================================
 
-proc SDL_CreateWindow*(title: cstring; x, y, w, h: cint; flags: uint32): ptr SDL_Window {.importc: "SDL_CreateWindow", header: "SDL_video.h".}
-proc SDL_DestroyWindow*(window: ptr SDL_Window) {.importc: "SDL_DestroyWindow", header: "SDL_video.h".}
+proc SDL_CreateWindow*(title: cstring; x, y, w, h: cint; flags: uint32): ptr SDL_Window {.importc: "SDL_CreateWindow".}
+proc SDL_DestroyWindow*(window: ptr SDL_Window) {.importc: "SDL_DestroyWindow".}
 
 # Window flags
 const
@@ -81,8 +81,8 @@ const
 # Renderer Management
 # ============================================================================
 
-proc SDL_CreateRenderer*(window: ptr SDL_Window; index: cint; flags: uint32): ptr SDL_Renderer {.importc: "SDL_CreateRenderer", header: "SDL_render.h".}
-proc SDL_DestroyRenderer*(renderer: ptr SDL_Renderer) {.importc: "SDL_DestroyRenderer", header: "SDL_render.h".}
+proc SDL_CreateRenderer*(window: ptr SDL_Window; index: cint; flags: uint32): ptr SDL_Renderer {.importc: "SDL_CreateRenderer".}
+proc SDL_DestroyRenderer*(renderer: ptr SDL_Renderer) {.importc: "SDL_DestroyRenderer".}
 
 # Renderer flags
 const
@@ -93,11 +93,11 @@ const
 # Drawing and Rendering
 # ============================================================================
 
-proc SDL_SetRenderDrawColor*(renderer: ptr SDL_Renderer; r, g, b, a: uint8): cint {.importc: "SDL_SetRenderDrawColor", header: "SDL_render.h".}
-proc SDL_RenderClear*(renderer: ptr SDL_Renderer): cint {.importc: "SDL_RenderClear", header: "SDL_render.h".}
-proc SDL_RenderPresent*(renderer: ptr SDL_Renderer) {.importc: "SDL_RenderPresent", header: "SDL_render.h".}
-proc SDL_RenderFillRect*(renderer: ptr SDL_Renderer; rect: ptr SDL_Rect): cint {.importc: "SDL_RenderFillRect", header: "SDL_render.h".}
-proc SDL_RenderDrawRect*(renderer: ptr SDL_Renderer; rect: ptr SDL_Rect): cint {.importc: "SDL_RenderDrawRect", header: "SDL_render.h".}
+proc SDL_SetRenderDrawColor*(renderer: ptr SDL_Renderer; r, g, b, a: uint8): cint {.importc: "SDL_SetRenderDrawColor".}
+proc SDL_RenderClear*(renderer: ptr SDL_Renderer): cint {.importc: "SDL_RenderClear".}
+proc SDL_RenderPresent*(renderer: ptr SDL_Renderer) {.importc: "SDL_RenderPresent".}
+proc SDL_RenderFillRect*(renderer: ptr SDL_Renderer; rect: ptr SDL_Rect): cint {.importc: "SDL_RenderFillRect".}
+proc SDL_RenderDrawRect*(renderer: ptr SDL_Renderer; rect: ptr SDL_Rect): cint {.importc: "SDL_RenderDrawRect".}
 
 # ============================================================================
 # Event Handling
@@ -106,7 +106,7 @@ proc SDL_RenderDrawRect*(renderer: ptr SDL_Renderer; rect: ptr SDL_Rect): cint {
 type
   SDL_EventType* = uint32
 
-  SDL_KeyboardEvent* {.importc: "SDL_KeyboardEvent", header: "SDL_events.h", bycopy.} = object
+  SDL_KeyboardEvent* {.importc: "SDL_KeyboardEvent", bycopy.} = object
     eventType*: SDL_EventType
     timestamp*: uint32
     windowID*: uint32
@@ -116,7 +116,7 @@ type
     padding3*: uint8
     keysym*: SDL_Keysym
 
-  SDL_MouseButtonEvent* {.importc: "SDL_MouseButtonEvent", header: "SDL_events.h", bycopy.} = object
+  SDL_MouseButtonEvent* {.importc: "SDL_MouseButtonEvent", bycopy.} = object
     eventType*: SDL_EventType
     timestamp*: uint32
     windowID*: uint32
@@ -128,7 +128,7 @@ type
     x*: cint
     y*: cint
 
-  SDL_MouseMotionEvent* {.importc: "SDL_MouseMotionEvent", header: "SDL_events.h", bycopy.} = object
+  SDL_MouseMotionEvent* {.importc: "SDL_MouseMotionEvent", bycopy.} = object
     eventType*: SDL_EventType
     timestamp*: uint32
     windowID*: uint32
@@ -139,19 +139,19 @@ type
     xrel*: cint
     yrel*: cint
 
-  SDL_TextInputEvent* {.importc: "SDL_TextInputEvent", header: "SDL_events.h", bycopy.} = object
+  SDL_TextInputEvent* {.importc: "SDL_TextInputEvent", bycopy.} = object
     eventType*: SDL_EventType
     timestamp*: uint32
     windowID*: uint32
     text*: array[32, char]
 
-  SDL_Keysym* {.importc: "SDL_Keysym", header: "SDL_scancode.h", bycopy.} = object
+  SDL_Keysym* {.importc: "SDL_Keysym", bycopy.} = object
     scancode*: cint
     sym*: cint
     modifiers*: uint16
     unused*: uint32
 
-  SDL_Event* {.importc: "SDL_Event", header: "SDL_events.h", bycopy.} = object
+  SDL_Event* {.importc: "SDL_Event", bycopy.} = object
     data*: array[56, byte]
 
 # Event types
@@ -170,7 +170,7 @@ const
   SDL_RELEASED* = 0'u8
 
 # Key codes (matching Raylib's key codes)
-proc SDL_GetScancodeFromKey*(key: cint): cint {.importc: "SDL_GetScancodeFromKey", header: "SDL_scancode.h".}
+proc SDL_GetScancodeFromKey*(key: cint): cint {.importc: "SDL_GetScancodeFromKey".}
 
 # Scancodes
 const
@@ -194,31 +194,31 @@ const
   SDL_BUTTON_MIDDLE* = 3'u8
 
 # Event handling functions
-proc SDL_PollEvent*(event: ptr SDL_Event): cint {.importc: "SDL_PollEvent", header: "SDL_events.h".}
-proc SDL_GetMouseState*(x: ptr cint; y: ptr cint): uint32 {.importc: "SDL_GetMouseState", header: "SDL_mouse.h".}
+proc SDL_PollEvent*(event: ptr SDL_Event): cint {.importc: "SDL_PollEvent".}
+proc SDL_GetMouseState*(x: ptr cint; y: ptr cint): uint32 {.importc: "SDL_GetMouseState".}
 
 # ============================================================================
 # Text Rendering with SDL_ttf
 # ============================================================================
 
-proc TTF_OpenFont*(file: cstring; ptsize: cint): ptr TTF_Font {.importc: "TTF_OpenFont", header: "SDL_ttf.h".}
-proc TTF_CloseFont*(font: ptr TTF_Font) {.importc: "TTF_CloseFont", header: "SDL_ttf.h".}
+proc TTF_OpenFont*(file: cstring; ptsize: cint): ptr TTF_Font {.importc: "TTF_OpenFont".}
+proc TTF_CloseFont*(font: ptr TTF_Font) {.importc: "TTF_CloseFont".}
 
-proc TTF_RenderUTF8_Blended*(font: ptr TTF_Font; text: cstring; fg: SDL_Color): ptr SDL_Surface {.importc: "TTF_RenderUTF8_Blended", header: "SDL_ttf.h".}
-proc TTF_SizeUTF8*(font: ptr TTF_Font; text: cstring; w: ptr cint; h: ptr cint): cint {.importc: "TTF_SizeUTF8", header: "SDL_ttf.h".}
+proc TTF_RenderUTF8_Blended*(font: ptr TTF_Font; text: cstring; fg: SDL_Color): ptr SDL_Surface {.importc: "TTF_RenderUTF8_Blended".}
+proc TTF_SizeUTF8*(font: ptr TTF_Font; text: cstring; w: ptr cint; h: ptr cint): cint {.importc: "TTF_SizeUTF8".}
 
-proc SDL_CreateTextureFromSurface*(renderer: ptr SDL_Renderer; surface: ptr SDL_Surface): ptr SDL_Texture {.importc: "SDL_CreateTextureFromSurface", header: "SDL_render.h".}
-proc SDL_FreeSurface*(surface: ptr SDL_Surface) {.importc: "SDL_FreeSurface", header: "SDL_surface.h".}
-proc SDL_DestroyTexture*(texture: ptr SDL_Texture) {.importc: "SDL_DestroyTexture", header: "SDL_render.h".}
+proc SDL_CreateTextureFromSurface*(renderer: ptr SDL_Renderer; surface: ptr SDL_Surface): ptr SDL_Texture {.importc: "SDL_CreateTextureFromSurface".}
+proc SDL_FreeSurface*(surface: ptr SDL_Surface) {.importc: "SDL_FreeSurface".}
+proc SDL_DestroyTexture*(texture: ptr SDL_Texture) {.importc: "SDL_DestroyTexture".}
 
-proc SDL_RenderCopy*(renderer: ptr SDL_Renderer; texture: ptr SDL_Texture; srcrect, dstrect: ptr SDL_Rect): cint {.importc: "SDL_RenderCopy", header: "SDL_render.h".}
+proc SDL_RenderCopy*(renderer: ptr SDL_Renderer; texture: ptr SDL_Texture; srcrect, dstrect: ptr SDL_Rect): cint {.importc: "SDL_RenderCopy".}
 
 # ============================================================================
 # Clipping (Scissor Mode)
 # ============================================================================
 
-proc SDL_RenderSetClipRect*(renderer: ptr SDL_Renderer; rect: ptr SDL_Rect): cint {.importc: "SDL_RenderSetClipRect", header: "SDL_render.h".}
-proc SDL_RenderGetClipRect*(renderer: ptr SDL_Renderer; rect: ptr SDL_Rect) {.importc: "SDL_RenderGetClipRect", header: "SDL_render.h".}
+proc SDL_RenderSetClipRect*(renderer: ptr SDL_Renderer; rect: ptr SDL_Rect): cint {.importc: "SDL_RenderSetClipRect".}
+proc SDL_RenderGetClipRect*(renderer: ptr SDL_Renderer; rect: ptr SDL_Rect) {.importc: "SDL_RenderGetClipRect".}
 
 # ============================================================================
 # Cursor Management
@@ -227,9 +227,9 @@ proc SDL_RenderGetClipRect*(renderer: ptr SDL_Renderer; rect: ptr SDL_Rect) {.im
 type
   SDL_SystemCursor* = cint
 
-proc SDL_CreateSystemCursor*(id: SDL_SystemCursor): pointer {.importc: "SDL_CreateSystemCursor", header: "SDL_mouse.h".}
-proc SDL_FreeCursor*(cursor: pointer) {.importc: "SDL_FreeCursor", header: "SDL_mouse.h".}
-proc SDL_SetCursor*(cursor: pointer) {.importc: "SDL_SetCursor", header: "SDL_mouse.h".}
+proc SDL_CreateSystemCursor*(id: SDL_SystemCursor): pointer {.importc: "SDL_CreateSystemCursor".}
+proc SDL_FreeCursor*(cursor: pointer) {.importc: "SDL_FreeCursor".}
+proc SDL_SetCursor*(cursor: pointer) {.importc: "SDL_SetCursor".}
 
 # System cursor IDs
 const
