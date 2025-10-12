@@ -4,7 +4,6 @@
 ## Shows how to create a tabbed interface with different content panels
 
 import ../src/kryon
-import ../src/backends/raylib_backend
 
 # Application state
 var selectedTab = 0
@@ -178,8 +177,3 @@ let app = kryonApp:
                 text = "Built with Nim and Raylib"
                 fontSize = 14
                 color = "#888888"
-
-# Run the application
-when isMainModule:
-  var backend = newRaylibBackendFromApp(app)
-  backend.run(app)

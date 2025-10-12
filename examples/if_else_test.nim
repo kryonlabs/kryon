@@ -1,6 +1,5 @@
 
 import ../src/kryon
-import ../src/backends/raylib_backend
 
 var showMessage = true
 
@@ -46,7 +45,3 @@ let app = kryonApp:
 
 
 
-# Run the application
-when isMainModule:
-  var backend = newRaylibBackendFromApp(app)
-  backend.run(app)

@@ -4,7 +4,6 @@
 ## Uses staticFor to generate multiple alignment examples from data
 
 import ../src/kryon
-import ../src/backends/raylib_backend
 
 # Define alignment configurations using named tuples
 const alignments = [
@@ -109,7 +108,3 @@ let app = kryonApp:
                     height = 70
                     backgroundColor = alignment.colors[2]
 
-# Run the application
-when isMainModule:
-  var backend = newRaylibBackendFromApp(app)
-  backend.run(app)

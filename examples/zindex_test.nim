@@ -1,5 +1,4 @@
 import ../src/kryon
-import ../src/backends/raylib_backend
 
 let app = kryonApp:
   Header:
@@ -87,7 +86,3 @@ let app = kryonApp:
         posX = 270
         posY = 290
 
-# Run the application
-when isMainModule:
-  var backend = newRaylibBackendFromApp(app)
-  backend.run(app)

@@ -4,7 +4,6 @@
 ## Uses static for to generate multiple alignment examples from data
 
 import ../src/kryon
-import ../src/backends/raylib_backend
 
 # Define alignment configurations using named tuples
 const alignments = [
@@ -108,12 +107,3 @@ let app = kryonApp:
                     height = 40
                     backgroundColor = alignment.colors[2]
 
-# Run the application
-when isMainModule:
-  echo "=== ROW ALIGNMENTS DEMO ==="
-  echo "Demonstrates different Row mainAxisAlignment values"
-  echo "Each row shows a different alignment behavior"
-  echo ""
-
-  var backend = newRaylibBackendFromApp(app)
-  backend.run(app)

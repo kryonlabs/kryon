@@ -4,7 +4,6 @@
 ## Demonstrates window configuration in Header
 
 import ../src/kryon
-import ../src/backends/raylib_backend
 
 proc handleButtonClick() =
   echo "🎯 Button clicked! Hello from Kryon-Nim!"
@@ -27,7 +26,3 @@ let app = kryonApp:
         backgroundColor = "#404080FF"
         onClick = handleButtonClick
 
-# Run the application
-when isMainModule:
-  var backend = newRaylibBackendFromApp(app)
-  backend.run(app)

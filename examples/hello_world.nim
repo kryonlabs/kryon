@@ -1,7 +1,6 @@
 ## Hello World Example
 
 import ../src/kryon
-import ../src/backends/raylib_backend
 
 # Define the UI
 let app = kryonApp:
@@ -23,8 +22,3 @@ let app = kryonApp:
     Text:
       text = "Hello World"
       color = "yellow"
-
-# Run the application
-when isMainModule:
-  var backend = newRaylibBackendFromApp(app)
-  backend.run(app)

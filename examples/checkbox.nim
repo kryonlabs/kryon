@@ -1,7 +1,6 @@
 ## Hello World Example
 
 import ../src/kryon
-import ../src/backends/raylib_backend
 
 
 proc testClick() =
@@ -38,7 +37,3 @@ let app = kryonApp:
       fontSize = 14
       onClick = testClick
   
-# Run the application
-when isMainModule:
-  var backend = newRaylibBackendFromApp(app)
-  backend.run(app)

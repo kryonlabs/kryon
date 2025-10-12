@@ -11,6 +11,7 @@ type
   Renderer* = enum
     ## Supported renderers
     rRaylib = "raylib"
+    rSDL2 = "sdl2"
     rHTML = "html"      # Future
     rTerminal = "terminal"  # Future
 
@@ -30,7 +31,9 @@ proc detectRenderer*(filename: string): Renderer =
 
   let content = readFile(filename)
 
-  if "raylib_backend" in content:
+  if "sdl2_backend" in content:
+    return rSDL2
+  elif "raylib_backend" in content:
     return rRaylib
   elif "html_backend" in content:
     return rHTML
@@ -44,6 +47,83 @@ proc detectRenderer*(filename: string): Renderer =
 # ============================================================================
 # Compilation
 # ============================================================================
+
+proc createWrapperFile*(filename: string, renderer: Renderer): string =
+  ## Create a wrapper file that includes the user code and backend initialization
+  ## Returns: Path to the wrapper file
+
+  let wrapperFile = getTempDir() / "kryon_wrapper.nim"
+  let userContent = readFile(filename)
+
+  var wrapperContent = ""
+
+  # Add imports and other non-app code from user file
+  let lines = userContent.split('\n')
+  var inAppBlock = false
+  var appContent = ""
+  var importsContent = ""
+
+  for line in lines:
+    if line.startsWith("let app = kryonApp:"):
+      inAppBlock = true
+      continue
+    elif inAppBlock:
+      # Collect app content (preserve indentation)
+      if line.strip().len > 0:
+        appContent &= line & "\n"
+      else:
+        appContent &= "\n"
+    else:
+      # Add imports and other non-app code
+      importsContent &= line & "\n"
+
+  # Start wrapper file
+  wrapperContent &= "# Auto-generated wrapper for Kryon application\n"
+
+  # Fix import paths to be absolute
+  let basePath = getCurrentDir() / "src"
+  let kryonPath = getCurrentDir() / "src" / "kryon"
+
+  # Replace relative imports with absolute paths
+  var fixedImports = importsContent
+  fixedImports = fixedImports.replace("import ../src/kryon", "import \"" & kryonPath & "\"")
+
+  wrapperContent &= fixedImports & "\n"
+
+  # Add backend import with absolute path
+  case renderer:
+  of rRaylib:
+    wrapperContent &= "import \"" & (basePath / "backends" / "raylib_backend") & "\"\n"
+  of rSDL2:
+    wrapperContent &= "import \"" & (basePath / "backends" / "sdl2_backend") & "\"\n"
+  else:
+    discard
+
+  # Add main block with backend initialization
+  wrapperContent &= "\nwhen isMainModule:\n"
+  wrapperContent &= "  var app = kryonApp:\n"
+
+  # Add the user's app content with proper indentation
+  for line in appContent.split('\n'):
+    if line.strip().len > 0:
+      wrapperContent &= "    " & line & "\n"
+    else:
+      wrapperContent &= "\n"
+
+  case renderer:
+  of rRaylib:
+    wrapperContent &= "\n  var backend: RaylibBackend\n"
+    wrapperContent &= "  backend = newRaylibBackendFromApp(app)\n"
+  of rSDL2:
+    wrapperContent &= "\n  var backend: SDL2Backend\n"
+    wrapperContent &= "  backend = newSDL2BackendFromApp(app)\n"
+  else:
+    discard
+
+  wrapperContent &= "  backend.run(app)\n"
+
+  writeFile(wrapperFile, wrapperContent)
+  return wrapperFile
 
 proc compileKryon*(
   filename: string,
@@ -59,6 +139,9 @@ proc compileKryon*(
   if not fileExists(filename):
     echo &"Error: File not found: {filename}"
     return 1
+
+  # Create wrapper file with backend code
+  let wrapperFile = createWrapperFile(filename, renderer)
 
   # Determine output filename
   let outFile = if output.len > 0:
@@ -78,8 +161,15 @@ proc compileKryon*(
   # Add output path
   nimCmd.add(&" -o:{outFile}")
 
-  # Add source file
-  nimCmd.add(&" {filename}")
+  # Add renderer-specific linking flags
+  case renderer:
+  of rSDL2:
+    nimCmd.add(" --passL:\"-lSDL2 -lSDL2_ttf\"")
+  else:
+    discard
+
+  # Add wrapper source file
+  nimCmd.add(&" {wrapperFile}")
 
   # Show compilation info
   echo &"Compiling: {filename}"
@@ -94,6 +184,10 @@ proc compileKryon*(
     echo &"Command: {nimCmd}"
 
   let (output, exitCode) = execCmdEx(nimCmd)
+
+  # Cleanup wrapper file
+  if fileExists(wrapperFile):
+    removeFile(wrapperFile)
 
   if exitCode != 0:
     echo "Compilation failed:"
@@ -120,7 +214,7 @@ proc runKryon*(
   ##
   ## Args:
   ##   filename: Path to .nim file to run
-  ##   renderer: Renderer to use ("auto", "raylib", "html", "terminal")
+  ##   renderer: Renderer to use ("auto", "raylib", "sdl2", "html", "terminal")
   ##   release: Compile in release mode (optimized)
   ##   verbose: Show detailed output
   ##
@@ -138,7 +232,7 @@ proc runKryon*(
       parseEnum[Renderer](renderer)
     except ValueError:
       echo &"Error: Unknown renderer: {renderer}"
-      echo &"Available renderers: auto, raylib, html, terminal"
+      echo &"Available renderers: auto, raylib, sdl2, html, terminal"
       return 1
 
   # Check renderer support
@@ -196,7 +290,7 @@ proc buildKryon*(
   ##
   ## Args:
   ##   filename: Path to .nim file to compile
-  ##   renderer: Renderer to use ("auto", "raylib", "html", "terminal")
+  ##   renderer: Renderer to use ("auto", "raylib", "sdl2", "html", "terminal")
   ##   output: Output executable path (default: same name as input)
   ##   release: Compile in release mode (default: true)
   ##   verbose: Show detailed compilation output
@@ -215,7 +309,7 @@ proc buildKryon*(
       parseEnum[Renderer](renderer)
     except ValueError:
       echo &"Error: Unknown renderer: {renderer}"
-      echo &"Available renderers: auto, raylib, html, terminal"
+      echo &"Available renderers: auto, raylib, sdl2, html, terminal"
       return 1
 
   # Check renderer support
@@ -292,6 +386,7 @@ proc versionCmd*(): int =
   echo ""
   echo "Supported renderers:"
   echo "  - raylib (desktop, 60 FPS)"
+  echo "  - sdl2 (desktop, cross-platform)"
   echo "  - html (coming soon)"
   echo "  - terminal (coming soon)"
   return 0
@@ -308,7 +403,7 @@ when isMainModule:
     [runKryon, cmdName = "run",
      help = {
        "filename": "Path to .nim file to run",
-       "renderer": "Renderer to use (auto, raylib, html, terminal)",
+       "renderer": "Renderer to use (auto, raylib, sdl2, html, terminal)",
        "release": "Compile in release mode (optimized)",
        "verbose": "Show detailed compilation output"
      },
@@ -321,7 +416,7 @@ when isMainModule:
     [buildKryon, cmdName = "build",
      help = {
        "filename": "Path to .nim file to compile",
-       "renderer": "Renderer to use (auto, raylib, html, terminal)",
+       "renderer": "Renderer to use (auto, raylib, sdl2, html, terminal)",
        "output": "Output executable path",
        "release": "Compile in release mode (default: true)",
        "verbose": "Show detailed compilation output"

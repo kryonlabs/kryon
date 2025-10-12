@@ -1,5 +1,4 @@
 import ../src/kryon
-import ../src/backends/raylib_backend
 
 var todos = @["Test todo", "Another item"]
 var newTodo = ""
@@ -81,7 +80,3 @@ let app = kryonApp:
             fontSize = 16
             color = "#333333"
 
-# Run the application
-when isMainModule:
-  var backend = newRaylibBackendFromApp(app)
-  backend.run(app)

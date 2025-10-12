@@ -4,7 +4,6 @@
 ## Each counter maintains its own value and can be incremented/decremented independently
 
 import ../src/kryon
-import ../src/backends/raylib_backend
 
 # Define a reusable Counter component
 # Each counter gets its own state (value) captured in a closure
@@ -65,12 +64,3 @@ let app = kryonApp:
 
       Counter()
 
-# Run the application
-when isMainModule:
-  echo "=== COUNTERS DEMO ==="
-  echo "Two independent counters with their own state"
-  echo "Click +/- buttons to increment/decrement each counter"
-  echo ""
-
-  var backend = newRaylibBackendFromApp(app)
-  backend.run(app)

@@ -1,5 +1,4 @@
 import ../src/kryon
-import ../src/backends/raylib_backend
 
 let app = kryonApp:
   Header:
@@ -49,7 +48,3 @@ let app = kryonApp:
         options = @["United States", "Canada", "United Kingdom", "Australia", "Germany", "France"]
         selectedIndex = 0
 
-# Run the application
-when isMainModule:
-  var backend = newRaylibBackendFromApp(app)
-  backend.run(app)

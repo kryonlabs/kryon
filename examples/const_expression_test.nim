@@ -4,7 +4,6 @@
 ## Tests arithmetic operations (+, -, *, /) and conditional expressions
 
 import ../src/kryon
-import ../src/backends/raylib_backend
 
 # Define const values
 const containerWidth = 800
@@ -61,15 +60,3 @@ let app = kryonApp:
           text = (if isEnabled: "Enabled (green)" else: "Disabled (pink)")
           fontSize = 14
 
-# Run the application
-when isMainModule:
-  echo "=== CONST EXPRESSION TEST ==="
-  echo "Tests const variables and arithmetic expressions"
-  echo "- containerWidth = ", containerWidth
-  echo "- baseHeight = ", baseHeight
-  echo "- margin = ", margin
-  echo "- isEnabled = ", isEnabled
-  echo ""
-
-  var backend = newRaylibBackendFromApp(app)
-  backend.run(app)
