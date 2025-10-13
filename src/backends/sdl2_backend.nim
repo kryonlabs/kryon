@@ -1730,7 +1730,7 @@ proc run*(backend: var SDL2Backend, root: Element) =
   while running:
     # Handle events
     while SDL_PollEvent(addr event) != 0:
-      let eventType = (cast[ptr SDL_Event](addr event)).data[0].uint32
+      let eventType = getEventType(addr event)
 
       case eventType:
       of SDL_EVENT_QUIT:
