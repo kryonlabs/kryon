@@ -879,11 +879,8 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
     var value: string
     if backend.inputValues.hasKey(elem):
       value = backend.inputValues[elem]
-      # If reactive value changed (e.g., was cleared programmatically), sync backend state
-      if reactiveValue != value and (reactiveValue == "" or backend.focusedInput != elem):
-        # Sync with reactive value when:
-        # 1. Reactive value is empty (programmatic clear)
-        # 2. Input is not focused (not actively being typed in)
+      # If reactive value changed (e.g., programmatic update), sync backend state when not focused
+      if reactiveValue != value and backend.focusedInput != elem:
         value = reactiveValue
         backend.inputValues[elem] = reactiveValue
     else:

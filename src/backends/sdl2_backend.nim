@@ -793,7 +793,7 @@ proc renderElement*(backend: var SDL2Backend, elem: Element, inheritedColor: Opt
     var value: string
     if backend.inputValues.hasKey(elem):
       value = backend.inputValues[elem]
-      if reactiveValue != value and (reactiveValue == "" or backend.focusedInput != elem):
+      if reactiveValue != value and backend.focusedInput != elem:
         value = reactiveValue
         backend.inputValues[elem] = reactiveValue
     else:
