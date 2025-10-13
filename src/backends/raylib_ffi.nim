@@ -89,6 +89,8 @@ proc MeasureTextEx*(font: RFont, text: cstring, fontSize, spacing: cfloat): RVec
 # ============================================================================
 
 proc GetFontDefault*(): RFont {.importc: "GetFontDefault", header: "raylib.h".}
+proc LoadFont*(fileName: cstring): RFont {.importc: "LoadFont", header: "raylib.h".}
+proc UnloadFont*(font: RFont) {.importc: "UnloadFont", header: "raylib.h".}
 
 # ============================================================================
 # Input Handling - Mouse

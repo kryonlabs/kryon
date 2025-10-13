@@ -3,6 +3,7 @@
 ## This backend renders Kryon UI elements using Raylib for native desktop applications.
 
 import ../kryon/core
+import ../kryon/fonts
 import options, tables, algorithm, math
 import raylib_ffi
 
@@ -18,6 +19,7 @@ type
     backgroundColor*: Color
     running*: bool
     rootElement*: Element
+    font*: RFont           # Custom font for consistent rendering
     focusedInput*: Element  # Currently focused input element
     focusedDropdown*: Element  # Currently focused dropdown element
     cursorBlink*: float     # Timer for cursor blinking
@@ -848,7 +850,9 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
       parseColor("#FFFFFF")  # Default to white
     let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
 
-    DrawText(text.cstring, elem.x.cint, elem.y.cint, fontSize.cint, color.toRaylibColor())
+    # Use custom font with DrawTextEx for better rendering
+    let position = rvec2(elem.x, elem.y)
+    DrawTextEx(backend.font, text.cstring, position, fontSize.cfloat, 0.0, color.toRaylibColor())
 
   of ekButton:
     let text = elem.getProp("text").get(val("Button")).getString()
@@ -864,11 +868,12 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
     DrawRectangleLinesEx(rect, 2.0, DARKGRAY)
 
     # Center text in button
-    let textWidth = MeasureText(text.cstring, fontSize.cint)
-    let textX = elem.x + (elem.width - textWidth.float) / 2.0
-    let textY = elem.y + (elem.height - fontSize.float) / 2.0
+    let textMeasurements = MeasureTextEx(backend.font, text.cstring, fontSize.cfloat, 0.0)
+    let textX = elem.x + (elem.width - textMeasurements.x) / 2.0
+    let textY = elem.y + (elem.height - textMeasurements.y) / 2.0
+    let position = rvec2(textX, textY)
 
-    DrawText(text.cstring, textX.cint, textY.cint, fontSize.cint, textColor.toRaylibColor())
+    DrawTextEx(backend.font, text.cstring, position, fontSize.cfloat, 0.0, textColor.toRaylibColor())
 
   of ekInput:
     # Get current value from backend state (for user input), or use bound variable value, or use initial value from property
@@ -978,7 +983,8 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
     if displayText.len > 0:
       let textX = elem.x + padding - scrollOffset
       let textY = elem.y + (elem.height - fontSize.float) / 2.0
-      DrawText(displayText.cstring, textX.cint, textY.cint, fontSize.cint, displayColor.toRaylibColor())
+      let position = rvec2(textX, textY)
+      DrawTextEx(backend.font, displayText.cstring, position, fontSize.cfloat, 0.0, displayColor.toRaylibColor())
 
     # End clipping
     EndScissorMode()
@@ -1017,7 +1023,8 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
 
     # Draw arrow using ASCII characters
     let arrowChar = if isOpen: "^" else: "v"
-    DrawText(arrowChar.cstring, arrowX.cint, arrowY.cint, fontSize.cint, textColor.toRaylibColor())
+    let arrowPos = rvec2(arrowX, arrowY)
+    DrawTextEx(backend.font, arrowChar.cstring, arrowPos, fontSize.cfloat, 0.0, textColor.toRaylibColor())
 
     # Draw selected text or placeholder
     let displayText = if selectedIndex >= 0 and selectedIndex < elem.dropdownOptions.len:
@@ -1037,7 +1044,8 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
 
     # Set up clipping for text to prevent overflow
     BeginScissorMode(textX.cint, textY.cint, maxTextWidth.cint, fontSize.cint)
-    DrawText(displayText.cstring, textX.cint, textY.cint, fontSize.cint, displayColor.toRaylibColor())
+    let textPos = rvec2(textX, textY)
+    DrawTextEx(backend.font, displayText.cstring, textPos, fontSize.cfloat, 0.0, displayColor.toRaylibColor())
     EndScissorMode()
 
     # NOTE: Dropdown menus are rendered separately in renderDropdownMenus() to ensure they appear on top
@@ -1122,7 +1130,8 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
     if label.len > 0:
       let textX = checkboxX + checkboxSize + 10.0  # 10px spacing between checkbox and label
       let textY = elem.y + (elem.height - fontSize.float) / 2.0
-      DrawText(label.cstring, textX.cint, textY.cint, fontSize.cint, labelColor.toRaylibColor())
+      let position = rvec2(textX, textY)
+      DrawTextEx(backend.font, label.cstring, position, fontSize.cfloat, 0.0, labelColor.toRaylibColor())
 
   of ekColumn, ekRow, ekCenter:
     # Layout containers don't render themselves, just their children with inherited color (sorted by z-index)
@@ -1183,10 +1192,11 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
 
     # Center text in tab
     if title.len > 0:
-      let textWidth = MeasureText(title.cstring, fontSize.cint)
-      let textX = elem.x + (elem.width - textWidth.float) / 2.0
-      let textY = elem.y + (elem.height - fontSize.float) / 2.0
-      DrawText(title.cstring, textX.cint, textY.cint, fontSize.cint, textColor.toRaylibColor())
+      let textMeasurements = MeasureTextEx(backend.font, title.cstring, fontSize.cfloat, 0.0)
+      let textX = elem.x + (elem.width - textMeasurements.x) / 2.0
+      let textY = elem.y + (elem.height - textMeasurements.y) / 2.0
+      let position = rvec2(textX, textY)
+      DrawTextEx(backend.font, title.cstring, position, fontSize.cfloat, 0.0, textColor.toRaylibColor())
 
     # Render children (if any - for custom content like icons)
     let sortedChildren = sortChildrenByZIndex(elem.children)
@@ -1303,7 +1313,8 @@ proc renderDropdownMenus*(backend: var RaylibBackend, elem: Element) =
 
         # Clip text to prevent overflow
         BeginScissorMode(optionTextX.cint, optionTextY.cint, optionMaxWidth.cint, fontSize.cint)
-        DrawText(optionText.cstring, optionTextX.cint, optionTextY.cint, fontSize.cint, textColor.toRaylibColor())
+        let optionPos = rvec2(optionTextX, optionTextY)
+        DrawTextEx(backend.font, optionText.cstring, optionPos, fontSize.cfloat, 0.0, textColor.toRaylibColor())
         EndScissorMode()
 
   of ekConditional:
@@ -1869,6 +1880,20 @@ proc run*(backend: var RaylibBackend, root: Element) =
   InitWindow(backend.windowWidth.cint, backend.windowHeight.cint, backend.windowTitle.cstring)
   SetTargetFPS(60)
 
+  # Load default font
+  let fontInfo = getDefaultFontInfo()
+  if fontInfo.path.len > 0:
+    echo "Loading default font: " & fontInfo.path
+    backend.font = LoadFont(fontInfo.path.cstring)
+    if backend.font.baseSize > 0:  # Check if font loaded successfully
+      echo "Successfully loaded " & fontInfo.name & " (" & fontInfo.format & ")"
+    else:
+      echo "Warning: Failed to load default font, using system font"
+      backend.font = GetFontDefault()
+  else:
+    echo "Using system default font"
+    backend.font = GetFontDefault()
+
   # Calculate initial layout
   calculateLayout(root, 0, 0, backend.windowWidth.float, backend.windowHeight.float)
 
@@ -1927,5 +1952,6 @@ proc run*(backend: var RaylibBackend, root: Element) =
     EndDrawing()
 
   # Cleanup
+  UnloadFont(backend.font)
   CloseWindow()
   backend.running = false

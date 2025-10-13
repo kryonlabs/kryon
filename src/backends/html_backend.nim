@@ -4,6 +4,7 @@
 ## DSL elements are converted to web standards with CSS handling layout and styling.
 
 import ../kryon/core
+import ../kryon/fonts
 import options, tables, strutils, os, re
 
 # ============================================================================
@@ -376,7 +377,7 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
   if elem.kind == ekText:
     let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
     css.add("  font-size: " & $fontSize & "px;\n")
-    css.add("  font-family: system-ui, -apple-system, sans-serif;\n")
+    css.add("  font-family: " & getFontStack() & ";\n")
 
     # Text alignment
     let textAlign = elem.getProp("textAlign")
@@ -390,7 +391,7 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
     css.add("  justify-content: center;\n")
     css.add("  cursor: pointer;\n")
     css.add("  border: none;\n")
-    css.add("  font-family: system-ui, -apple-system, sans-serif;\n")
+    css.add("  font-family: " & getFontStack() & ";\n")
     css.add("  user-select: none;\n")
     css.add("  text-decoration: none;\n")  # For navigation links
     css.add("  color: inherit;\n")           # For navigation links
@@ -407,7 +408,7 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
     css.add("  display: inline-block;\n")
     css.add("  border: 1px solid #ccc;\n")
     css.add("  padding: 8px;\n")
-    css.add("  font-family: system-ui, -apple-system, sans-serif;\n")
+    css.add("  font-family: " & getFontStack() & ";\n")
     css.add("  font-size: 16px;\n")
     css.add("  border-radius: 4px;\n")
     css.add("  outline: none;\n")
@@ -420,7 +421,7 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
     css.add("  align-items: center;\n")
     css.add("  gap: 8px;\n")
     css.add("  cursor: pointer;\n")
-    css.add("  font-family: system-ui, -apple-system, sans-serif;\n")
+    css.add("  font-family: " & getFontStack() & ";\n")
     css.add("  font-size: 16px;\n")
 
   css.add("}\n")
@@ -659,7 +660,20 @@ proc generateSharedAssets*(backend: var HTMLBackend, root: Element, outputDir: s
   let sharedDir = outputDir / "shared"
   createDir(sharedDir)
 
+  # Copy font files to shared directory
+  let fontInfo = getDefaultFontInfo()
+  if fontInfo.path.len > 0:
+    let fontFileName = fontInfo.path.splitFile().name & "." & fontInfo.path.splitFile().ext
+    let destFontPath = sharedDir / fontFileName
+    copyFile(fontInfo.path, destFontPath)
+    echo "Copied font to shared assets: " & destFontPath
+
   # Generate shared CSS
+  let fontFaceCSS = if fontInfo.path.len > 0:
+    generateFontFaceCSS("shared/" & fontInfo.path.splitFile().name & "." & fontInfo.path.splitFile().ext)
+  else:
+    "/* No default font found */"
+
   backend.sharedCSS = """
     * {
       margin: 0;
@@ -667,8 +681,10 @@ proc generateSharedAssets*(backend: var HTMLBackend, root: Element, outputDir: s
       box-sizing: border-box;
     }
 
+    """ & fontFaceCSS & """
+
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: """ & getFontStack() & """;
       background-color: """ & backend.backgroundColor.toCSSColor() & """;
       width: """ & $backend.windowWidth & """px;
       height: """ & $backend.windowHeight & """px;
@@ -845,6 +861,12 @@ proc generateHTMLFile*(backend: var HTMLBackend, root: Element): string =
 """
 
   # Add base styles
+  let fontInfo = getDefaultFontInfo()
+  let fontFaceCSS = if fontInfo.path.len > 0:
+    generateFontFaceCSS(fontInfo.path)
+  else:
+    "/* No default font found */"
+
   html.add("""
     * {
       margin: 0;
@@ -852,8 +874,10 @@ proc generateHTMLFile*(backend: var HTMLBackend, root: Element): string =
       box-sizing: border-box;
     }
 
+    """ & fontFaceCSS & """
+
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: """ & getFontStack() & """;
       background-color: """ & backend.backgroundColor.toCSSColor() & """;
       width: """ & $backend.windowWidth & """px;
       height: """ & $backend.windowHeight & """px;

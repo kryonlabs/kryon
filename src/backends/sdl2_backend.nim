@@ -4,7 +4,8 @@
 ## Provides identical functionality to the Raylib backend.
 
 import ../kryon/core
-import options, tables, algorithm, math, strutils
+import ../kryon/fonts
+import options, tables, algorithm, strutils
 import sdl2_ffi
 
 # ============================================================================
@@ -1696,20 +1697,23 @@ proc run*(backend: var SDL2Backend, root: Element) =
     SDL_Quit()
     return
 
-  # Load font (try to find a system font)
-  const fontPaths = [
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    "/System/Library/Fonts/Arial.ttf",
-    "C:/Windows/Fonts/arial.ttf",
-    "/usr/share/fonts/TTF/DejaVuSans.ttf",
-    "DejaVuSans.ttf",
-    "arial.ttf"
-  ]
-
-  for fontPath in fontPaths:
-    backend.font = TTF_OpenFont(fontPath, 20)
+  # Load default font
+  let fontInfo = getDefaultFontInfo()
+  if fontInfo.path.len > 0:
+    echo "Loading default font: " & fontInfo.path
+    backend.font = TTF_OpenFont(fontInfo.path.cstring, 20)
     if backend.font != nil:
-      break
+      echo "Successfully loaded " & fontInfo.name & " (" & fontInfo.format & ")"
+    else:
+      echo "Warning: Failed to load default font, trying fallbacks"
+
+  # Fallback to system fonts if default font fails
+  if backend.font == nil:
+    for fontPath in FALLBACK_FONTS:
+      backend.font = TTF_OpenFont(fontPath.cstring, 20)
+      if backend.font != nil:
+        echo "Loaded fallback font: " & fontPath
+        break
 
   if backend.font == nil:
     echo "Warning: Could not load any font, text rendering may not work"
