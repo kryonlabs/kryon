@@ -78,7 +78,7 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
         let nameStr = nodeName.strVal
         if nameStr in ["Container", "Text", "Button", "Column", "Row", "Input", "Checkbox",
                       "Dropdown", "Grid", "Image", "Center", "ScrollView", "Header", "Body",
-                      "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel"]:
+                      "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel", "Link"]:
           # This is a UI element creation call, return it directly
           result.value = node
           result.boundVar = none(NimNode)
@@ -105,7 +105,7 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
 const builtinElementNames = [
   "Container", "Text", "Button", "Column", "Row", "Input", "Checkbox",
   "Dropdown", "Grid", "Image", "Center", "ScrollView", "Header", "Body",
-  "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel"
+  "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel", "Link"
 ]
 
 proc isEventName(name: string): bool {.inline.} =
@@ -454,10 +454,12 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
               # Fallback: convert to string
               result.add(val($item))
 
-      # Create a generic body template that accepts Value
+      # Create a generic body template that accepts Value and properly unpacks it
       let bodyTemplate = quote do:
         proc(`loopVar`: Value): Element =
           # Create the elements from the processed loop body
+          # Unpack the Value back to string for use in the loop body
+          let `loopVar` = `loopVar`.getString()
           when defined(debugTabs):
             echo "Debug: bodyTemplate called with ", `loopVar`, ": ", `loopVar`
           `loopBody`
@@ -680,6 +682,10 @@ macro TabContent*(body: untyped): Element =
 macro TabPanel*(body: untyped): Element =
   ## Create a TabPanel element
   result = processElementBody(ekTabPanel, body)
+
+macro Link*(body: untyped): Element =
+  ## Create a Link element for navigation
+  result = processElementBody(ekLink, body)
 
 # ============================================================================
 # Application macro

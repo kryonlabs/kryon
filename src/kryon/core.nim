@@ -32,6 +32,7 @@ type
     ekTab = "Tab"
     ekTabContent = "TabContent"
     ekTabPanel = "TabPanel"
+    ekLink = "Link"
 
   Alignment* = enum
     ## Alignment options for layout

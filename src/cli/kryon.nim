@@ -48,14 +48,86 @@ proc detectRenderer*(filename: string): Renderer =
 # Compilation
 # ============================================================================
 
+proc ensureTrailingNewline(s: string): string =
+  ## Append a newline to the string unless it already ends with one
+  if s.len > 0 and s[^1] != '\n':
+    result = s & "\n"
+  else:
+    result = s
+
+proc indentText(content: string, spaces: int): string =
+  ## Indent a block of text by the requested number of spaces.
+  ## Keeps empty lines untouched so layout is preserved.
+  let indent = repeat(" ", spaces)
+  for line in content.splitLines(true):
+    case line
+    of "", "\n":
+      result.add(line)
+    else:
+      if line[^1] == '\n':
+        result.add(indent & line)
+      else:
+        result.add(indent & line & "\n")
+
+proc renderIndentedBlock(lines: openArray[string], baseIndent: int): string =
+  ## Render an array of lines using a shared base indentation.
+  let indent = repeat(" ", baseIndent)
+  for line in lines:
+    if line.len == 0:
+      result.add("\n")
+    else:
+      result.add(indent & line & "\n")
+
+proc buildRendererImports(renderer: Renderer, basePath: string): string =
+  ## Produce the backend-specific import statements.
+  case renderer
+  of rRaylib:
+    result = &"""import "{basePath / "backends" / "raylib_backend"}"
+"""
+  of rSDL2:
+    result = &"""import "{basePath / "backends" / "sdl2_backend"}"
+"""
+  of rHTML:
+    result = &"""import "{basePath / "backends" / "html_backend"}"
+import os
+"""
+  else:
+    result = ""
+
+proc buildRendererBody(renderer: Renderer): string =
+  ## Emit the `when isMainModule` body that boots the chosen renderer.
+  case renderer
+  of rRaylib:
+    result = renderIndentedBlock([
+      "var backend: RaylibBackend",
+      "backend = newRaylibBackendFromApp(app)",
+      "backend.run(app)"
+    ], 2)
+  of rSDL2:
+    result = renderIndentedBlock([
+      "var backend: SDL2Backend",
+      "backend = newSDL2BackendFromApp(app)",
+      "backend.run(app)"
+    ], 2)
+  of rHTML:
+    result = renderIndentedBlock([
+      "var backend: HTMLBackend",
+      "backend = newHTMLBackendFromApp(app)",
+      "let outputDir = if defined(outputDir):",
+      "  getEnv(\"OUTPUT_DIR\")",
+      "else:",
+      "  \".\"",
+      "backend.run(app, outputDir)"
+    ], 2)
+  else:
+    result = ""
+
 proc createWrapperFile*(filename: string, renderer: Renderer): string =
   ## Create a wrapper file that includes the user code and backend initialization
   ## Returns: Path to the wrapper file
 
   let wrapperFile = getTempDir() / "kryon_wrapper.nim"
   let userContent = readFile(filename)
-
-  var wrapperContent = ""
 
   # Add imports and other non-app code from user file
   let lines = userContent.split('\n')
@@ -78,7 +150,7 @@ proc createWrapperFile*(filename: string, renderer: Renderer): string =
       importsContent &= line & "\n"
 
   # Start wrapper file
-  wrapperContent &= "# Auto-generated wrapper for Kryon application\n"
+  var wrapperBuilder = "# Auto-generated wrapper for Kryon application\n"
 
   # Fix import paths to be absolute
   let basePath = getCurrentDir() / "src"
@@ -88,52 +160,28 @@ proc createWrapperFile*(filename: string, renderer: Renderer): string =
   var fixedImports = importsContent
   fixedImports = fixedImports.replace("import ../src/kryon", "import \"" & kryonPath & "\"")
 
-  wrapperContent &= fixedImports & "\n"
+  if fixedImports.strip.len > 0:
+    wrapperBuilder.add(ensureTrailingNewline(fixedImports))
 
-  # Add backend import with absolute path
-  case renderer:
-  of rRaylib:
-    wrapperContent &= "import \"" & (basePath / "backends" / "raylib_backend") & "\"\n"
-  of rSDL2:
-    wrapperContent &= "import \"" & (basePath / "backends" / "sdl2_backend") & "\"\n"
-  of rHTML:
-    wrapperContent &= "import \"" & (basePath / "backends" / "html_backend") & "\"\n"
-    wrapperContent &= "import os\n"
-  else:
-    discard
+  let backendImports = buildRendererImports(renderer, basePath)
+  if backendImports.len > 0:
+    wrapperBuilder.add(ensureTrailingNewline(backendImports))
 
   # Add main block with backend initialization
-  wrapperContent &= "\nwhen isMainModule:\n"
-  wrapperContent &= "  var app = kryonApp:\n"
+  wrapperBuilder.add("\nwhen isMainModule:\n")
+  wrapperBuilder.add("  var app = kryonApp:\n")
 
-  # Add the user's app content with proper indentation
-  for line in appContent.split('\n'):
-    if line.strip().len > 0:
-      wrapperContent &= "    " & line & "\n"
-    else:
-      wrapperContent &= "\n"
-
-  case renderer:
-  of rRaylib:
-    wrapperContent &= "\n  var backend: RaylibBackend\n"
-    wrapperContent &= "  backend = newRaylibBackendFromApp(app)\n"
-    wrapperContent &= "  backend.run(app)\n"
-  of rSDL2:
-    wrapperContent &= "\n  var backend: SDL2Backend\n"
-    wrapperContent &= "  backend = newSDL2BackendFromApp(app)\n"
-    wrapperContent &= "  backend.run(app)\n"
-  of rHTML:
-    wrapperContent &= "\n  var backend: HTMLBackend\n"
-    wrapperContent &= "  backend = newHTMLBackendFromApp(app)\n"
-    wrapperContent &= "  let outputDir = if defined(outputDir):\n"
-    wrapperContent &= "    getEnv(\"OUTPUT_DIR\")\n"
-    wrapperContent &= "  else:\n"
-    wrapperContent &= "    \".\"\n"
-    wrapperContent &= "  backend.run(app, outputDir)\n"
+  if appContent.strip.len > 0:
+    wrapperBuilder.add(indentText(appContent, 4))
   else:
-    discard
+    wrapperBuilder.add("    # Empty kryonApp block\n")
 
-  writeFile(wrapperFile, wrapperContent)
+  let rendererBody = buildRendererBody(renderer)
+  if rendererBody.len > 0:
+    wrapperBuilder.add("\n")
+    wrapperBuilder.add(rendererBody)
+
+  writeFile(wrapperFile, wrapperBuilder)
   return wrapperFile
 
 proc compileKryon*(
