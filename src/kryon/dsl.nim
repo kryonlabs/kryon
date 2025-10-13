@@ -102,6 +102,18 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
     result.value = quote do: val(`node`)
     result.boundVar = none(NimNode)
 
+proc combineConditions(condNodes: seq[NimNode]): NimNode =
+  ## Combine a sequence of boolean expressions using logical OR
+  if condNodes.len == 0:
+    return nil
+
+  result = copyNimTree(condNodes[0])
+  for i in 1..<condNodes.len:
+    let left = copyNimTree(result)
+    let right = copyNimTree(condNodes[i])
+    result = quote do:
+      `left` or `right`
+
 proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
   ## Process the body of an element definition
   ## Returns code that creates the element with properties and children
@@ -697,6 +709,100 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         echo "Debug: Creating newForLoopElement"
       result.add quote do:
         `elemVar`.addChild(newForLoopElement(`iterableGetter`, `bodyTemplate`))
+
+    of nnkCaseStmt:
+      # Handle case statements for conditional rendering
+      let caseStmt = stmt
+      if caseStmt.len < 2:
+        continue
+
+      let caseExpression = caseStmt[0]
+      let dependencyIdentifier =
+        if caseExpression.kind == nnkIdent:
+          newLit(caseExpression.strVal)
+        else:
+          newLit(caseExpression.repr)
+
+      var branchConditions = newSeq[NimNode]()
+      var elseBranch: NimNode = nil
+
+      for i in 1..<caseStmt.len:
+        let branch = caseStmt[i]
+        case branch.kind:
+        of nnkOfBranch:
+          let lastIndex = branch.len - 1
+          if lastIndex < 0:
+            continue
+
+          var equalityNodes = newSeq[NimNode]()
+          for j in 0..<lastIndex:
+            let caseExprCopy = copyNimTree(caseExpression)
+            let branchValueCopy = copyNimTree(branch[j])
+            let equality = quote do:
+              `caseExprCopy` == `branchValueCopy`
+            equalityNodes.add(equality)
+
+          if equalityNodes.len == 0:
+            continue
+
+          let branchCondition = combineConditions(equalityNodes)
+          let branchConditionForProc = copyNimTree(branchCondition)
+          branchConditions.add(copyNimTree(branchCondition))
+
+          let branchBodyNode = branch[lastIndex]
+          let branchBody =
+            if branchBodyNode.kind == nnkStmtList:
+              branchBodyNode
+            else:
+              newStmtList(branchBodyNode)
+
+          let processedBranch = processElementBody(ekContainer, branchBody)
+          let conditionProc = quote do:
+            proc(): bool =
+              registerDependency(`dependencyIdentifier`)
+              `branchConditionForProc`
+
+          let conditional = quote do:
+            newConditionalElement(`conditionProc`, `processedBranch`, nil)
+
+          result.add quote do:
+            `elemVar`.addChild(`conditional`)
+
+        of nnkElse:
+          if branch.len >= 1:
+            elseBranch = branch[0]
+        else:
+          discard
+
+      if elseBranch != nil:
+        let elseBody =
+          if elseBranch.kind == nnkStmtList:
+            elseBranch
+          else:
+            newStmtList(elseBranch)
+
+        let processedElse = processElementBody(ekContainer, elseBody)
+        let combinedBranches = combineConditions(branchConditions)
+
+        var elseConditionExpr: NimNode
+        if combinedBranches == nil:
+          elseConditionExpr = quote do:
+            true
+        else:
+          let combinedCopy = copyNimTree(combinedBranches)
+          elseConditionExpr = quote do:
+            not (`combinedCopy`)
+
+        let elseConditionProc = quote do:
+          proc(): bool =
+            registerDependency(`dependencyIdentifier`)
+            `elseConditionExpr`
+
+        let elseConditional = quote do:
+          newConditionalElement(`elseConditionProc`, `processedElse`, nil)
+
+        result.add quote do:
+          `elemVar`.addChild(`elseConditional`)
 
     of nnkStaticStmt:
       # Handle static blocks for compile-time evaluation
