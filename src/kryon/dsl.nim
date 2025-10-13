@@ -432,13 +432,20 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
       when defined(debugTabs):
         echo "Debug: Processing for loop with iterable: ", iterable.repr, " kind: ", iterable.kind
 
+      # Get the variable name for dependency registration
+      let iterableName = if iterable.kind == nnkIdent:
+        iterable.strVal
+      else:
+        "iterable"  # Fallback for complex expressions
+
       # Create a generic getter that returns seq[Value] for any iterable type
       let iterableGetter = quote do:
         proc(): seq[Value] =
           result = newSeq[Value]()
-          # Register dependency on the iterable if it's a variable
-          when compiles(registerDependency($`iterable`)):
-            registerDependency($`iterable`)
+          # Register dependency on the iterable for automatic regeneration
+          # This is crucial for reactive updates when the underlying data changes
+          echo "🔥 REGISTERING DEPENDENCY ON: ", `iterableName`
+          registerDependency(`iterableName`)
 
           # Convert any iterable to seq[Value]
           for item in `iterable`:

@@ -197,10 +197,8 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
   of ekForLoop:
     # For loop elements generate dynamic content - let parent handle layout
     if elem.forIterable != nil and elem.forBodyTemplate != nil:
-      # Register dependency on the iterable for automatic regeneration
-      # This is crucial for reactive updates when the underlying data changes
-      registerDependency("forLoopIterable")
-
+      # The dependency on the iterable is already registered in the for loop template
+      # This ensures proper reactive updates when the underlying data changes
       let items = elem.forIterable()
 
       when defined(debugTabs):

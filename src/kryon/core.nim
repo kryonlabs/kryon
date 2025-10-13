@@ -522,9 +522,14 @@ proc registerDependency*(valueIdentifier: string) =
 
 proc invalidateReactiveValue*(valueIdentifier: string) =
   ## Mark all elements dependent on a reactive value as dirty
+  echo "🔥 INVALIDATING REACTIVE VALUE: ", valueIdentifier
   if valueIdentifier in reactiveDependencies:
+    echo "🔥 Found ", reactiveDependencies[valueIdentifier].len, " dependent elements"
     for elem in reactiveDependencies[valueIdentifier]:
+      echo "🔥 Marking element as dirty: ", elem.kind
       markDirty(elem)
+  else:
+    echo "🔥 No dependent elements found for: ", valueIdentifier
 
 proc invalidateReactiveValues*(valueIdentifiers: openArray[string]) =
   ## Mark all elements dependent on multiple reactive values as dirty
