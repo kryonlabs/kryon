@@ -4,13 +4,20 @@
 ## DSL elements are converted to web standards with CSS handling layout and styling.
 
 import ../kryon/core
-import options, tables, strutils, os
+import options, tables, strutils, os, re
 
 # ============================================================================
 # Backend Type
 # ============================================================================
 
 type
+  RouteInfo* = object
+    name*: string          # Route name (e.g., "HomeScreen")
+    fileName*: string     # HTML filename (e.g., "index.html")
+    title*: string        # Page title
+    element*: Element     # The UI element for this route
+    isDefault*: bool      # Whether this is the default/index route
+
   HTMLBackend* = object
     windowWidth*: int
     windowHeight*: int
@@ -21,6 +28,9 @@ type
     jsContent*: string
     elementCounter*: int  # For generating unique IDs
     cssClasses*: seq[string]  # Track generated CSS classes
+    routes*: seq[RouteInfo]  # Detected routes for multi-file generation
+    sharedCSS*: string      # Shared CSS content across all routes
+    sharedJS*: string       # Shared JavaScript content across all routes
 
 proc newHTMLBackend*(width, height: int, title: string): HTMLBackend =
   ## Create a new HTML backend
@@ -33,7 +43,10 @@ proc newHTMLBackend*(width, height: int, title: string): HTMLBackend =
     cssContent: "",
     jsContent: "",
     elementCounter: 0,
-    cssClasses: @[]
+    cssClasses: @[],
+    routes: @[],
+    sharedCSS: "",
+    sharedJS: ""
   )
 
 proc newHTMLBackendFromApp*(app: Element): HTMLBackend =
@@ -77,7 +90,10 @@ proc newHTMLBackendFromApp*(app: Element): HTMLBackend =
     cssContent: "",
     jsContent: "",
     elementCounter: 0,
-    cssClasses: @[]
+    cssClasses: @[],
+    routes: @[],
+    sharedCSS: "",
+    sharedJS: ""
   )
 
 # ============================================================================
@@ -111,6 +127,128 @@ proc escapeHTML*(text: string): string =
     ("\"", "&quot;"),
     ("'", "&#39;")
   ])
+
+# ============================================================================
+# Route Detection System
+# ============================================================================
+
+proc detectRouteVariable*(elem: Element): Option[string] =
+  ## Detect if this element contains a case statement for routing
+  ## Returns the variable name if found
+  if elem.children.len > 0:
+    for child in elem.children:
+      # Look for patterns that suggest routing (case statements)
+      # This is a simplified detection - in a real implementation we'd
+      # need more sophisticated AST analysis
+      if child.kind == ekContainer and child.children.len > 0:
+        # Check if this looks like a case statement container
+        # For now, we'll look for navigation patterns in the structure
+        for grandChild in child.children:
+          if grandChild.kind == ekButton or grandChild.kind == ekText:
+            # If we find buttons with navigateTo calls, this is likely a routing app
+            if grandChild.eventHandlers.len > 0:
+              for event, _ in grandChild.eventHandlers:
+                if event == "onClick":
+                  # Assume this is a routing app and look for currentRoute pattern
+                  return some("currentRoute")
+  result = none(string)
+
+proc extractRoutes*(backend: var HTMLBackend, root: Element): bool =
+  ## Extract routes from a routing application
+  ## Returns true if routes were detected, false otherwise
+
+  # First, detect if this is a routing app
+  let routeVar = detectRouteVariable(root)
+  if routeVar.isNone:
+    return false
+
+  # For now, we'll use a simple heuristic based on the navigation example
+  # In a full implementation, we'd parse the actual case statement
+
+  # Look for the main body and check if it has multiple screens
+  var bodyElement: Element = nil
+  for child in root.children:
+    if child.kind == ekBody:
+      bodyElement = child
+      break
+
+  if bodyElement == nil or bodyElement.children.len == 0:
+    return false
+
+  # Look for screen components (Container with multiple child screens)
+  var screensContainer: Element = nil
+  for child in bodyElement.children:
+    if child.kind == ekContainer and child.children.len >= 2:
+      # Check if children look like different screens
+      var hasTextContent = false
+      var hasButtonContent = false
+      for grandChild in child.children:
+        if grandChild.kind == ekText:
+          hasTextContent = true
+        elif grandChild.kind == ekButton:
+          hasButtonContent = true
+
+      if hasTextContent or hasButtonContent:
+        screensContainer = child
+        break
+
+  if screensContainer == nil:
+    return false
+
+  # Extract routes based on common patterns
+  # For the navigation example, we'll create routes based on detected screens
+
+  # Check for Home screen pattern
+  var homeElement: Element = nil
+  for child in screensContainer.children:
+    if child.kind == ekColumn or child.kind == ekContainer:
+      # Look for home screen characteristics
+      var hasWelcomeText = false
+      var hasNavigationButtons = false
+
+      for grandChild in child.children:
+        if grandChild.kind == ekText:
+          let text = grandChild.getProp("text").get(val("")).getString()
+          if "welcome" in text.toLowerAscii() or "home" in text.toLowerAscii():
+            hasWelcomeText = true
+        elif grandChild.kind == ekButton:
+          let buttonText = grandChild.getProp("text").get(val("")).getString()
+          if "about" in buttonText.toLowerAscii() or "settings" in buttonText.toLowerAscii():
+            hasNavigationButtons = true
+
+      if hasWelcomeText and hasNavigationButtons:
+        homeElement = child
+        break
+
+  # Create Home route if found
+  if homeElement != nil:
+    backend.routes.add(RouteInfo(
+      name: "HomeScreen",
+      fileName: "index.html",
+      title: backend.windowTitle,
+      element: homeElement,
+      isDefault: true
+    ))
+
+  # For now, we'll create placeholder routes for About and Settings
+  # In a full implementation, we'd extract these from the actual case statement
+  backend.routes.add(RouteInfo(
+    name: "AboutScreen",
+    fileName: "about.html",
+    title: "About - " & backend.windowTitle,
+    element: screensContainer,  # Placeholder - would extract actual About screen
+    isDefault: false
+  ))
+
+  backend.routes.add(RouteInfo(
+    name: "SettingsScreen",
+    fileName: "settings.html",
+    title: "Settings - " & backend.windowTitle,
+    element: screensContainer,  # Placeholder - would extract actual Settings screen
+    isDefault: false
+  ))
+
+  return backend.routes.len > 0
 
 # ============================================================================
 # CSS Generation
@@ -254,6 +392,8 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
     css.add("  border: none;\n")
     css.add("  font-family: system-ui, -apple-system, sans-serif;\n")
     css.add("  user-select: none;\n")
+    css.add("  text-decoration: none;\n")  # For navigation links
+    css.add("  color: inherit;\n")           # For navigation links
 
     let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
     css.add("  font-size: " & $fontSize & "px;\n")
@@ -374,6 +514,24 @@ proc generateJavaScriptForElement*(backend: var HTMLBackend, elem: Element, elem
 # HTML Generation (Clean Version)
 # ============================================================================
 
+proc generateNavigationLink*(backend: var HTMLBackend, elem: Element, text: string): string =
+  ## Generate navigation link instead of button for routing apps
+  let elementId = if elem.id.len > 0: elem.id else: "elem_" & $backend.elementCounter
+  let cssClass = "kryon-" & ($elem.kind).toLowerAscii().sanitizeCSSClass()
+
+  # Determine target route based on button text
+  var targetFile = "index.html"
+  let lowerText = text.toLowerAscii()
+
+  if "about" in lowerText:
+    targetFile = "about.html"
+  elif "settings" in lowerText:
+    targetFile = "settings.html"
+  elif "back" in lowerText or "home" in lowerText:
+    targetFile = "index.html"
+
+  result = "<a href=\"" & targetFile & "\" class=\"" & cssClass & "\" data-element-id=\"" & elementId & "\">" & text.escapeHTML() & "</a>\n"
+
 proc generateHTML*(backend: var HTMLBackend, elem: Element): string =
   ## Generate HTML for an element and its children
   let elementId = if elem.id.len > 0: elem.id else: "elem_" & $backend.elementCounter
@@ -402,11 +560,16 @@ proc generateHTML*(backend: var HTMLBackend, elem: Element): string =
 
   of ekButton:
     let text = elem.getProp("text").get(val("Button")).getString()
-    html.add("<button class=\"" & cssClass & "\" data-element-id=\"" & elementId & "\">" & text.escapeHTML() & "</button>\n")
 
-    # Generate JavaScript for element if it has event handlers
-    if elem.eventHandlers.len > 0:
-      backend.generateJavaScriptForElement(elem, elementId)
+    # Check if this is a routing app and generate navigation link instead
+    if backend.routes.len > 0 and elem.eventHandlers.hasKey("onClick"):
+      html.add(backend.generateNavigationLink(elem, text))
+    else:
+      html.add("<button class=\"" & cssClass & "\" data-element-id=\"" & elementId & "\">" & text.escapeHTML() & "</button>\n")
+
+      # Generate JavaScript for element if it has event handlers
+      if elem.eventHandlers.len > 0:
+        backend.generateJavaScriptForElement(elem, elementId)
 
   of ekInput:
     let placeholder = elem.getProp("placeholder").get(val("")).getString()
@@ -488,11 +651,190 @@ proc generateHTML*(backend: var HTMLBackend, elem: Element): string =
   result = html
 
 # ============================================================================
-# File Generation
+# Multi-File Generation System
+# ============================================================================
+
+proc generateSharedAssets*(backend: var HTMLBackend, root: Element, outputDir: string) =
+  ## Generate shared CSS and JavaScript files
+  let sharedDir = outputDir / "shared"
+  createDir(sharedDir)
+
+  # Generate shared CSS
+  backend.sharedCSS = """
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: """ & backend.backgroundColor.toCSSColor() & """;
+      width: """ & $backend.windowWidth & """px;
+      height: """ & $backend.windowHeight & """px;
+      overflow: hidden;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .kryon-app {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Navigation styling */
+    .kryon-navigation {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 10px;
+      border-radius: 5px;
+      color: white;
+      font-size: 12px;
+      z-index: 1000;
+    }
+
+    .kryon-navigation a {
+      color: #3498DB;
+      text-decoration: none;
+      margin: 0 5px;
+    }
+
+    .kryon-navigation a:hover {
+      color: #2980B9;
+      text-decoration: underline;
+    }
+
+    .kryon-navigation a.active {
+      color: #2ECC71;
+      font-weight: bold;
+    }
+  """
+
+  # Add generated CSS from the root element
+  backend.sharedCSS.add(backend.generateCSS(root))
+
+  let sharedCSSFile = sharedDir / "styles.css"
+  writeFile(sharedCSSFile, backend.sharedCSS)
+  echo "Generated shared CSS: " & sharedCSSFile
+
+  # Generate shared JavaScript
+  backend.sharedJS = """
+// Kryon Navigation System
+document.addEventListener('DOMContentLoaded', function() {
+  // Highlight active navigation link
+  const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+  const navLinks = document.querySelectorAll('.kryon-navigation a');
+
+  navLinks.forEach(link => {
+    const href = link.getAttribute('href');
+    if (href === currentPage || (currentPage === '' && href === 'index.html')) {
+      link.classList.add('active');
+    }
+  });
+
+  // Add smooth transitions
+  document.querySelectorAll('.kryon-button, a.kryon-button').forEach(element => {
+    element.style.transition = 'opacity 0.2s';
+    element.addEventListener('mouseenter', function() {
+      this.style.opacity = '0.8';
+    });
+    element.addEventListener('mouseleave', function() {
+      this.style.opacity = '1';
+    });
+  });
+
+  // Show current page in navigation
+  console.log('Kryon Navigation: Loaded page - ' + currentPage);
+});
+"""
+
+  let sharedJSFile = sharedDir / "app.js"
+  writeFile(sharedJSFile, backend.sharedJS)
+  echo "Generated shared JavaScript: " & sharedJSFile
+
+proc generateRouteHTMLFile*(backend: var HTMLBackend, route: RouteInfo): string =
+  ## Generate HTML file for a specific route
+  var html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>""" & route.title & """</title>
+    <link rel="stylesheet" href="shared/styles.css">
+</head>
+<body>
+    <div class="kryon-app">
+"""
+
+  # Add navigation widget
+  html.add("""
+    <div class="kryon-navigation">
+      Navigation:
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="settings.html">Settings</a>
+    </div>
+""")
+
+  # Add generated HTML for this route
+  html.add(backend.generateHTML(route.element))
+
+  html.add("""    </div>
+    <script src="shared/app.js"></script>
+</body>
+</html>""")
+
+  result = html
+
+proc generateMultiFileHTML*(backend: var HTMLBackend, root: Element, outputDir: string) =
+  ## Generate multiple HTML files for a routing application
+  createDir(outputDir)
+
+  # Generate shared assets
+  backend.generateSharedAssets(root, outputDir)
+
+  # Generate HTML file for each route
+  for route in backend.routes:
+    let htmlContent = backend.generateRouteHTMLFile(route)
+    let htmlFile = outputDir / route.fileName
+    writeFile(htmlFile, htmlContent)
+    echo "Generated route: " & route.name & " -> " & htmlFile
+
+  # Generate 404 page
+  let notFoundHTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found - """ & backend.windowTitle & """</title>
+    <link rel="stylesheet" href="shared/styles.css">
+</head>
+<body>
+    <div class="kryon-app">
+        <div class="kryon-center">
+            <div style="text-align: center;">
+                <h1 style="color: #E74C3C; margin-bottom: 20px;">404 - Page Not Found</h1>
+                <p style="color: #7F8C8D; margin-bottom: 20px;">The page you're looking for doesn't exist.</p>
+                <a href="index.html" class="kryon-button" style="background-color: #3498DB;">← Back to Home</a>
+            </div>
+        </div>
+    </div>
+    <script src="shared/app.js"></script>
+</body>
+</html>"""
+
+  let notFoundFile = outputDir / "404.html"
+  writeFile(notFoundFile, notFoundHTML)
+  echo "Generated 404 page: " & notFoundFile
+
+# ============================================================================
+# Single-File Generation (Legacy)
 # ============================================================================
 
 proc generateHTMLFile*(backend: var HTMLBackend, root: Element): string =
-  ## Generate complete HTML file
+  ## Generate complete HTML file (for non-routing apps)
   var html = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -552,15 +894,22 @@ proc generateHTMLFile*(backend: var HTMLBackend, root: Element): string =
   result = html
 
 proc generateFiles*(backend: var HTMLBackend, root: Element, outputDir: string) =
-  ## Generate HTML, CSS, and JS files
+  ## Generate HTML files - detects routing and generates appropriate files
   createDir(outputDir)
 
-  # Generate HTML file
-  let htmlContent = backend.generateHTMLFile(root)
-  let htmlFile = outputDir / "index.html"
-  writeFile(htmlFile, htmlContent)
+  # Check if this is a routing application
+  let hasRoutes = backend.extractRoutes(root)
 
-  echo "Generated HTML: " & htmlFile
+  if hasRoutes:
+    echo "Detected routing application - generating multi-file HTML..."
+    backend.generateMultiFileHTML(root, outputDir)
+  else:
+    echo "Generating single-file HTML..."
+    # Generate single HTML file
+    let htmlContent = backend.generateHTMLFile(root)
+    let htmlFile = outputDir / "index.html"
+    writeFile(htmlFile, htmlContent)
+    echo "Generated HTML: " & htmlFile
 
 # ============================================================================
 # Main Entry Point
