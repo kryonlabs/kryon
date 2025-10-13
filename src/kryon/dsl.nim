@@ -102,6 +102,142 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
     result.value = quote do: val(`node`)
     result.boundVar = none(NimNode)
 
+const builtinElementNames = [
+  "Container", "Text", "Button", "Column", "Row", "Input", "Checkbox",
+  "Dropdown", "Grid", "Image", "Center", "ScrollView", "Header", "Body",
+  "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel"
+]
+
+proc isEventName(name: string): bool {.inline.} =
+  ## Determine whether the identifier represents an event handler
+  name.startsWith("on")
+
+proc toInvocation(node: NimNode): NimNode =
+  ## Ensure the node is an invocation expression (call with parentheses) when needed
+  case node.kind
+  of nnkCall, nnkCommand:
+    copyNimTree(node)
+  else:
+    newCall(copyNimTree(node))
+
+proc ensureEventHandler(node: NimNode): NimNode =
+  ## Wrap the node in a zero-arg proc to use as an event handler
+  let invocation = toInvocation(node)
+  quote do:
+    proc(data: string = "") {.closure.} =
+      `invocation`
+
+proc emitEventAssignment(elemVar: NimNode, propName: string, handlerNode: NimNode): seq[NimNode] =
+  ## Generate statements to attach an event handler to an element
+  var handlerExpr = handlerNode
+
+  if handlerExpr.kind == nnkStmtList:
+    if handlerExpr.len == 1:
+      handlerExpr = handlerExpr[0]
+    elif handlerExpr.len > 1:
+      let body = copyNimTree(handlerExpr)
+      let closureProc = quote do:
+        proc(data: string = "") {.closure.} =
+          `body`
+      return @[
+        quote do:
+          `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `closureProc`)
+      ]
+
+  let cleanHandler = ensureEventHandler(copyNimTree(handlerExpr))
+  @[
+    quote do:
+      `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `cleanHandler`)
+  ]
+
+proc handleDropdownProperty(kind: ElementKind, elemVar: NimNode, propName: string, valueNode: NimNode): seq[NimNode] =
+  ## Handle dropdown-specific properties (options/selectedIndex)
+  result = @[]
+
+  if kind != ekDropdown:
+    return
+
+  case propName
+  of "options":
+    when defined(debugDropdown):
+      echo "Debug: Handling dropdown options, value kind = ", valueNode.kind
+
+    if valueNode.kind == nnkBracket:
+      var optionsCode = newNimNode(nnkBracket)
+      for child in valueNode:
+        optionsCode.add(copyNimTree(child))
+      result.add quote do:
+        `elemVar`.dropdownOptions = `optionsCode`
+    elif valueNode.kind == nnkPrefix and valueNode.len >= 2 and
+         valueNode[0].kind == nnkIdent and valueNode[0].strVal == "@":
+      let optionsValue = copyNimTree(valueNode)
+      result.add quote do:
+        `elemVar`.dropdownOptions = `optionsValue`
+  of "selectedIndex":
+    when defined(debugDropdown):
+      echo "Debug: Handling dropdown selectedIndex, value kind = ", valueNode.kind
+    let indexValue = copyNimTree(valueNode)
+    result.add quote do:
+      `elemVar`.dropdownSelectedIndex = `indexValue`
+  else:
+    discard
+
+proc handleTabGroupProperty(kind: ElementKind, elemVar: NimNode, propName: string, valueNode: NimNode): seq[NimNode] =
+  ## Handle tab group specific properties, including optional bindings
+  result = @[]
+
+  if kind != ekTabGroup or propName != "selectedIndex":
+    return
+
+  when defined(debugTabs):
+    echo "Debug: Handling TabGroup selectedIndex property, value kind = ", valueNode.kind
+
+  let valueCopy = copyNimTree(valueNode)
+  result.add quote do:
+    `elemVar`.tabSelectedIndex = `valueCopy`
+
+  let parseResult = parsePropertyValue(valueNode)
+  if parseResult.boundVar.isSome:
+    let varNode = parseResult.boundVar.get()
+    let varName = varNode.strVal
+    let varNodeCopy = copyNimTree(varNode)
+
+    result.add quote do:
+      `elemVar`.setBoundVarName(`varName`)
+      `elemVar`.setEventHandler("onSelectedIndexChanged", proc(data: string = "") =
+        `varNodeCopy` = `elemVar`.tabSelectedIndex
+        invalidateReactiveValue(`varName`)
+        invalidateReactiveValue("selectedHabit")
+        echo "SYNC: Updated ", `varName`, " to ", `elemVar`.tabSelectedIndex, " from TabGroup"
+      )
+
+proc emitPropertyAssignment(kind: ElementKind, elemVar: NimNode, propName: string, valueNode: NimNode): seq[NimNode] =
+  ## Generate statements to assign a property to an element, handling special cases
+  result = handleDropdownProperty(kind, elemVar, propName, valueNode)
+  if result.len > 0:
+    return
+
+  result = handleTabGroupProperty(kind, elemVar, propName, valueNode)
+  if result.len > 0:
+    return
+
+  let parseResult = parsePropertyValue(valueNode)
+  let propValue = parseResult.value
+
+  result.add quote do:
+    `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
+
+  if kind == ekInput and parseResult.boundVar.isSome:
+    let varNode = parseResult.boundVar.get()
+    let varName = varNode.strVal
+    let varNodeCopy = copyNimTree(varNode)
+    result.add quote do:
+      `elemVar`.setBoundVarName(`varName`)
+      `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
+        `varNodeCopy` = data
+        invalidateReactiveValue(`varName`)
+      )
+
 proc combineConditions(condNodes: seq[NimNode]): NimNode =
   ## Combine a sequence of boolean expressions using logical OR
   if condNodes.len == 0:
@@ -150,117 +286,12 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         echo "Debug: nnkExprEqExpr: propName = ", propName
 
       # Check if this is an event handler (starts with "on")
-      if propName.startsWith("on"):
-        # Event handler: onClick = myHandler
-        let handler = stmt[1]
-        result.add quote do:
-          `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), proc(data: string = "") {.closure.} =
-            `handler`())
+      if isEventName(propName):
+        for eventStmt in emitEventAssignment(elemVar, propName, stmt[1]):
+          result.add(eventStmt)
       else:
-        # Handle dropdown-specific properties
-        if kind == ekDropdown:
-          if propName == "options":
-            # Handle options array for dropdown
-            if stmt[1].kind == nnkBracket:
-              # Direct array syntax: options = ["Red", "Green", "Blue"]
-              var optionsCode = newNimNode(nnkBracket)
-              for child in stmt[1]:
-                optionsCode.add(child)
-              result.add quote do:
-                `elemVar`.dropdownOptions = `optionsCode`
-            elif stmt[1].kind == nnkPrefix and stmt[1][0].strVal == "@":
-              # Array constructor syntax: options = @["Red", "Green", "Blue"]
-              let optionsValue = stmt[1]
-              result.add quote do:
-                `elemVar`.dropdownOptions = `optionsValue`
-          elif propName == "selectedIndex":
-            # Handle selectedIndex for dropdown
-            when defined(debugDropdown):
-              echo "Debug: Handling selectedIndex, stmt[1] = ", stmt[1].repr, " kind = ", stmt[1].kind
-            let indexValue = stmt[1]
-            result.add quote do:
-              `elemVar`.dropdownSelectedIndex = `indexValue`
-          else:
-            # Regular property
-            let parseResult = parsePropertyValue(stmt[1])
-            let propValue = parseResult.value
-            result.add quote do:
-              `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
-        else:
-          # Handle TabGroup-specific properties
-          if kind == ekTabGroup:
-            if propName == "selectedIndex":
-              # Handle selectedIndex for TabGroup with potential two-way binding
-              when defined(debugTabs):
-                echo "Debug: Handling TabGroup selectedIndex, stmt[1] = ", stmt[1].repr, " kind = ", stmt[1].kind
-
-              let indexValue = stmt[1]
-              let parseResult = parsePropertyValue(stmt[1])
-
-              # Set the initial value
-              result.add quote do:
-                `elemVar`.tabSelectedIndex = `indexValue`
-
-              # If this is a variable reference, create two-way binding
-              if parseResult.boundVar.isSome:
-                let varNode = parseResult.boundVar.get()
-                let varName = varNode.strVal
-
-                # Create automatic state sync handler
-                result.add quote do:
-                  # Store the bound variable name for state synchronization
-                  `elemVar`.setBoundVarName(`varName`)
-                  # Create handler to sync TabGroup state back to variable when tabs are clicked
-                  `elemVar`.setEventHandler("onSelectedIndexChanged", proc(data: string = "") =
-                    # Update the bound variable when TabGroup selection changes
-                    `varNode` = `elemVar`.tabSelectedIndex
-                    # Invalidate dependent reactive values
-                    invalidateReactiveValue(`varName`)
-                    invalidateReactiveValue("selectedHabit")
-                    echo "SYNC: Updated ", `varName`, " to ", `elemVar`.tabSelectedIndex, " from TabGroup"
-                  )
-
-                when defined(debugTabs):
-                  echo "Debug: Created two-way binding for TabGroup selectedIndex to variable ", varName
-
-            else:
-              # Regular property
-              let parseResult = parsePropertyValue(stmt[1])
-              let propValue = parseResult.value
-              result.add quote do:
-                `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
-
-              # If this is an Input element and we have a bound variable, store it and create setter
-              if kind == ekInput and parseResult.boundVar.isSome:
-                let varNode = parseResult.boundVar.get()
-                let varName = varNode.strVal
-                result.add quote do:
-                  `elemVar`.setBoundVarName(`varName`)
-                  # Create a setter function for two-way binding that invalidates dependent elements
-                  `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
-                    `varNode` = data
-                    # Invalidate all elements that depend on this variable
-                    invalidateReactiveValue(`varName`)
-                  )
-          else:
-            # Regular property
-            let parseResult = parsePropertyValue(stmt[1])
-            let propValue = parseResult.value
-            result.add quote do:
-              `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
-
-            # If this is an Input element and we have a bound variable, store it and create setter
-            if kind == ekInput and parseResult.boundVar.isSome:
-              let varNode = parseResult.boundVar.get()
-              let varName = varNode.strVal
-              result.add quote do:
-                `elemVar`.setBoundVarName(`varName`)
-                # Create a setter function for two-way binding that invalidates dependent elements
-                `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
-                  `varNode` = data
-                  # Invalidate all elements that depend on this variable
-                  invalidateReactiveValue(`varName`)
-                )
+        for propStmt in emitPropertyAssignment(kind, elemVar, propName, stmt[1]):
+          result.add(propStmt)
 
     of nnkCall:
       # This could be:
@@ -272,23 +303,13 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
       let nameStr = name.strVal
 
       # Check if this is a UI element creation call
-      if nameStr in ["Container", "Text", "Button", "Column", "Row", "Input", "Checkbox",
-                     "Dropdown", "Grid", "Image", "Center", "ScrollView", "Header", "Body",
-                     "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel"]:
+      if nameStr in builtinElementNames:
         result.add quote do:
           `elemVar`.addChild(`stmt`)
       # Check if this looks like an event handler
-      elif nameStr.startsWith("on"):
-        # Event handler: onClick = myHandler or onClick: <body>
-        if stmt.len > 1 and stmt[1].kind == nnkStmtList:
-          let handler = stmt[1]
-          result.add quote do:
-            `elemVar`.setEventHandler(resolvePropertyAlias(`nameStr`), `handler`)
-        elif stmt.len > 1:
-          let handler = stmt[1]
-          result.add quote do:
-            `elemVar`.setEventHandler(resolvePropertyAlias(`nameStr`), proc(data: string = "") {.closure.} =
-              `handler`())
+      elif isEventName(nameStr) and stmt.len > 1:
+        for eventStmt in emitEventAssignment(elemVar, nameStr, stmt[1]):
+          result.add(eventStmt)
       elif stmt.len > 1 and stmt[1].kind == nnkStmtList:
         # Check if this is a property assignment (colon syntax)
         # Property: selectedIndex: 0 -> StmtList contains just the value
@@ -296,63 +317,8 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         if stmtList.len == 1:
           # This looks like a property assignment with colon syntax
           let propValue = stmtList[0]
-
-          # Handle dropdown-specific properties
-          if kind == ekDropdown:
-            if nameStr == "options":
-              # Handle options array for dropdown
-              if propValue.kind == nnkBracket:
-                # Direct array syntax: options: ["Red", "Green", "Blue"]
-                var optionsCode = newNimNode(nnkBracket)
-                for child in propValue:
-                  optionsCode.add(child)
-                result.add quote do:
-                  `elemVar`.dropdownOptions = `optionsCode`
-              elif propValue.kind == nnkPrefix and propValue[0].strVal == "@":
-                # Array constructor syntax: options: @["Red", "Green", "Blue"]
-                result.add quote do:
-                  `elemVar`.dropdownOptions = `propValue`
-              else:
-                # Regular property
-                let parseResult = parsePropertyValue(propValue)
-                let propValueNode = parseResult.value
-                result.add quote do:
-                  `elemVar`.setProp(resolvePropertyAlias(`nameStr`), `propValueNode`)
-            elif nameStr == "selectedIndex":
-              # Handle selectedIndex for dropdown or TabGroup
-              if kind == ekTabGroup:
-                # Handle selectedIndex for TabGroup
-                when defined(debugTabs):
-                  echo "Debug: Handling TabGroup selectedIndex property, propValue = ", propValue.repr, " kind = ", propValue.kind
-                let indexValue = propValue
-                result.add quote do:
-                  `elemVar`.tabSelectedIndex = `indexValue`
-              else:
-                # Handle selectedIndex for dropdown
-                when defined(debugDropdown):
-                  echo "Debug: Handling selectedIndex property, propValue = ", propValue.repr, " kind = ", propValue.kind
-                let indexValue = propValue
-                result.add quote do:
-                  `elemVar`.dropdownSelectedIndex = `indexValue`
-            else:
-              # Regular property
-              let parseResult = parsePropertyValue(propValue)
-              let propValueNode = parseResult.value
-              result.add quote do:
-                `elemVar`.setProp(resolvePropertyAlias(`nameStr`), `propValueNode`)
-
-              # If this is an Input element and we have a bound variable, store it and create setter
-              if kind == ekInput and parseResult.boundVar.isSome:
-                let varNode = parseResult.boundVar.get()
-                let varName = varNode.strVal
-                result.add quote do:
-                  `elemVar`.setBoundVarName(`varName`)
-                  # Create a setter function for two-way binding that invalidates dependent elements
-                  `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
-                    `varNode` = data
-                    # Invalidate all elements that depend on this variable
-                    invalidateReactiveValue(`varName`)
-                  )
+          for propStmt in emitPropertyAssignment(kind, elemVar, nameStr, propValue):
+            result.add(propStmt)
         else:
           # Child element with body: Text: <body>
           result.add quote do:
@@ -384,232 +350,24 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
         echo "Debug: nnkAsgn: propName = ", propName
 
       # Check if this is an event handler
-      if propName.startsWith("on"):
-        let handler = stmt[1]
-        result.add quote do:
-          `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), proc(data: string = "") {.closure.} =
-            `handler`())
+      if isEventName(propName):
+        for eventStmt in emitEventAssignment(elemVar, propName, stmt[1]):
+          result.add(eventStmt)
       else:
-        # Handle dropdown-specific properties
-        if kind == ekDropdown:
-          if propName == "options":
-            # Handle options array for dropdown
-            if stmt[1].kind == nnkBracket:
-              # Direct array syntax: options = ["Red", "Green", "Blue"]
-              var optionsCode = newNimNode(nnkBracket)
-              for child in stmt[1]:
-                optionsCode.add(child)
-              result.add quote do:
-                `elemVar`.dropdownOptions = `optionsCode`
-            elif stmt[1].kind == nnkPrefix and stmt[1][0].strVal == "@":
-              # Array constructor syntax: options = @["Red", "Green", "Blue"]
-              let optionsValue = stmt[1]
-              result.add quote do:
-                `elemVar`.dropdownOptions = `optionsValue`
-          elif propName == "selectedIndex":
-            # Handle selectedIndex for dropdown
-            when defined(debugDropdown):
-              echo "Debug: Handling selectedIndex, stmt[1] = ", stmt[1].repr, " kind = ", stmt[1].kind
-            let indexValue = stmt[1]
-            result.add quote do:
-              `elemVar`.dropdownSelectedIndex = `indexValue`
-          else:
-            # Regular property
-            let parseResult = parsePropertyValue(stmt[1])
-            let propValue = parseResult.value
-            result.add quote do:
-              `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
-
-            # If this is an Input element and we have a bound variable, store it and create setter
-            if kind == ekInput and parseResult.boundVar.isSome:
-              let varNode = parseResult.boundVar.get()
-              let varName = varNode.strVal
-              result.add quote do:
-                `elemVar`.setBoundVarName(`varName`)
-                # Create a setter function for two-way binding that invalidates dependent elements
-                `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
-                  `varNode` = data
-                  # Invalidate all elements that depend on this variable
-                  invalidateReactiveValue(`varName`)
-                )
-        elif kind == ekTabGroup:
-          if propName == "selectedIndex":
-            # Handle selectedIndex for TabGroup with potential two-way binding
-            when defined(debugTabs):
-              echo "Debug: Handling TabGroup selectedIndex in nnkAsgn, stmt[1] = ", stmt[1].repr, " kind = ", stmt[1].kind
-
-            let indexValue = stmt[1]
-            let parseResult = parsePropertyValue(stmt[1])
-
-            # Set the initial value
-            result.add quote do:
-              `elemVar`.tabSelectedIndex = `indexValue`
-
-            # If this is a variable reference, create two-way binding
-            if parseResult.boundVar.isSome:
-              let varNode = parseResult.boundVar.get()
-              let varName = varNode.strVal
-
-              # Create automatic state sync handler
-              result.add quote do:
-                # Store the bound variable name for state synchronization
-                `elemVar`.setBoundVarName(`varName`)
-                # Create handler to sync TabGroup state back to variable when tabs are clicked
-                `elemVar`.setEventHandler("onSelectedIndexChanged", proc(data: string = "") =
-                  # Update the bound variable when TabGroup selection changes
-                  `varNode` = `elemVar`.tabSelectedIndex
-                  # Invalidate dependent reactive values
-                  invalidateReactiveValue(`varName`)
-                  invalidateReactiveValue("selectedHabit")
-                  echo "SYNC: Updated ", `varName`, " to ", `elemVar`.tabSelectedIndex, " from TabGroup"
-                )
-
-              when defined(debugTabs):
-                echo "Debug: Created two-way binding for TabGroup selectedIndex to variable ", varName
-          else:
-            # Regular property
-            let parseResult = parsePropertyValue(stmt[1])
-            let propValue = parseResult.value
-            result.add quote do:
-              `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
-
-            # If this is an Input element and we have a bound variable, store it and create setter
-            if kind == ekInput and parseResult.boundVar.isSome:
-              let varNode = parseResult.boundVar.get()
-              let varName = varNode.strVal
-              result.add quote do:
-                `elemVar`.setBoundVarName(`varName`)
-                # Create a setter function for two-way binding that invalidates dependent elements
-                `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
-                  `varNode` = data
-                  # Invalidate all elements that depend on this variable
-                  invalidateReactiveValue(`varName`)
-                )
-        else:
-          let parseResult = parsePropertyValue(stmt[1])
-          let propValue = parseResult.value
-          result.add quote do:
-            `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
-
-          # If this is an Input element and we have a bound variable, store it and create setter
-          if kind == ekInput and parseResult.boundVar.isSome:
-            let varNode = parseResult.boundVar.get()
-            let varName = varNode.strVal
-            result.add quote do:
-              `elemVar`.setBoundVarName(`varName`)
-              # Create a setter function for two-way binding that invalidates dependent elements
-              `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
-                `varNode` = data
-                # Invalidate all elements that depend on this variable
-                invalidateReactiveValue(`varName`)
-              )
+        for propStmt in emitPropertyAssignment(kind, elemVar, propName, stmt[1]):
+          result.add(propStmt)
 
     of nnkExprColonExpr:
       # Colon syntax: width: 800 (same as width = 800)
       let propName = stmt[0].strVal
 
       # Check if this is an event handler
-      if propName.startsWith("on"):
-        let handler = stmt[1]
-        result.add quote do:
-          `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), proc(data: string = "") {.closure.} =
-            `handler`())
+      if isEventName(propName):
+        for eventStmt in emitEventAssignment(elemVar, propName, stmt[1]):
+          result.add(eventStmt)
       else:
-        # Handle dropdown-specific properties
-        if kind == ekDropdown:
-          if propName == "options":
-            # Handle options array for dropdown
-            if stmt[1].kind == nnkBracket:
-              # Direct array syntax: options = ["Red", "Green", "Blue"]
-              var optionsCode = newNimNode(nnkBracket)
-              for child in stmt[1]:
-                optionsCode.add(child)
-              result.add quote do:
-                `elemVar`.dropdownOptions = `optionsCode`
-            elif stmt[1].kind == nnkPrefix and stmt[1][0].strVal == "@":
-              # Array constructor syntax: options = @["Red", "Green", "Blue"]
-              let optionsValue = stmt[1]
-              result.add quote do:
-                `elemVar`.dropdownOptions = `optionsValue`
-          elif propName == "selectedIndex":
-            # Handle selectedIndex for dropdown or TabGroup
-            if kind == ekTabGroup:
-              # Handle selectedIndex for TabGroup with potential two-way binding
-              when defined(debugTabs):
-                echo "Debug: Handling TabGroup selectedIndex in nnkExprColonExpr, stmt[1] = ", stmt[1].repr, " kind = ", stmt[1].kind
-
-              let indexValue = stmt[1]
-              let parseResult = parsePropertyValue(stmt[1])
-
-              # Set the initial value
-              result.add quote do:
-                `elemVar`.tabSelectedIndex = `indexValue`
-
-              # If this is a variable reference, create two-way binding
-              if parseResult.boundVar.isSome:
-                let varNode = parseResult.boundVar.get()
-                let varName = varNode.strVal
-
-                # Create automatic state sync handler
-                result.add quote do:
-                  # Store the bound variable name for state synchronization
-                  `elemVar`.setBoundVarName(`varName`)
-                  # Create handler to sync TabGroup state back to variable when tabs are clicked
-                  `elemVar`.setEventHandler("onSelectedIndexChanged", proc(data: string = "") =
-                    # Update the bound variable when TabGroup selection changes
-                    `varNode` = `elemVar`.tabSelectedIndex
-                    # Invalidate dependent reactive values
-                    invalidateReactiveValue(`varName`)
-                    invalidateReactiveValue("selectedHabit")
-                    echo "SYNC: Updated ", `varName`, " to ", `elemVar`.tabSelectedIndex, " from TabGroup"
-                  )
-
-                when defined(debugTabs):
-                  echo "Debug: Created two-way binding for TabGroup selectedIndex to variable ", varName
-            else:
-              # Handle selectedIndex for dropdown
-              when defined(debugDropdown):
-                echo "Debug: Handling selectedIndex, stmt[1] = ", stmt[1].repr, " kind = ", stmt[1].kind
-              let indexValue = stmt[1]
-              result.add quote do:
-                `elemVar`.dropdownSelectedIndex = `indexValue`
-          else:
-            # Regular property
-            let parseResult = parsePropertyValue(stmt[1])
-            let propValue = parseResult.value
-            result.add quote do:
-              `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
-
-            # If this is an Input element and we have a bound variable, store it and create setter
-            if kind == ekInput and parseResult.boundVar.isSome:
-              let varNode = parseResult.boundVar.get()
-              let varName = varNode.strVal
-              result.add quote do:
-                `elemVar`.setBoundVarName(`varName`)
-                # Create a setter function for two-way binding that invalidates dependent elements
-                `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
-                  `varNode` = data
-                  # Invalidate all elements that depend on this variable
-                  invalidateReactiveValue(`varName`)
-                )
-        else:
-          let parseResult = parsePropertyValue(stmt[1])
-          let propValue = parseResult.value
-          result.add quote do:
-            `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
-
-          # If this is an Input element and we have a bound variable, store it and create setter
-          if kind == ekInput and parseResult.boundVar.isSome:
-            let varNode = parseResult.boundVar.get()
-            let varName = varNode.strVal
-            result.add quote do:
-              `elemVar`.setBoundVarName(`varName`)
-              # Create a setter function for two-way binding that invalidates dependent elements
-              `elemVar`.setEventHandler("onValueChange", proc(data: string = "") =
-                `varNode` = data
-                # Invalidate all elements that depend on this variable
-                invalidateReactiveValue(`varName`)
-              )
+        for propStmt in emitPropertyAssignment(kind, elemVar, propName, stmt[1]):
+          result.add(propStmt)
 
     of nnkIfStmt:
       # Handle if statements for conditional rendering
