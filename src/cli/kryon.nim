@@ -132,6 +132,68 @@ proc buildRendererBody(renderer: Renderer): string =
   else:
     result = ""
 
+proc locateKryonPaths(appDir: string): tuple[basePath: string, kryonPath: string] =
+  ## Find the Kryon source directory relative to the app location.
+  ## Supports:
+  ##   - Environment vars pointing to the repo (KRYON_ROOT/KRYON_HOME/KRYON_PATH)
+  ##   - Environment var pointing directly at the src directory (KRYON_SRC)
+  ##   - Walking up from the app directory to locate either src/kryon or kryon/src/kryon
+
+  proc normalize(path: string): string =
+    var tmp = absolutePath(path)
+    normalizePath(tmp)
+    result = tmp
+
+  proc checkCandidate(base: string, basePath: var string, kryonPath: var string): bool =
+    if base.len == 0:
+      return false
+
+    let normalizedBase = normalize(base)
+    let direct = normalizedBase / "src" / "kryon"
+    if dirExists(direct):
+      basePath = normalizedBase / "src"
+      kryonPath = direct
+      return true
+
+    let nested = normalizedBase / "kryon" / "src" / "kryon"
+    if dirExists(nested):
+      basePath = normalizedBase / "kryon" / "src"
+      kryonPath = nested
+      return true
+
+    return false
+
+  let envSrc = getEnv("KRYON_SRC")
+  if envSrc.len > 0:
+    var basePath, kryonPath: string
+    let normalizedSrc = normalize(envSrc)
+    if dirExists(normalizedSrc / "kryon"):
+      return (basePath: normalizedSrc, kryonPath: normalizedSrc / "kryon")
+    elif checkCandidate(envSrc, basePath, kryonPath):
+      return (basePath: basePath, kryonPath: kryonPath)
+
+  for key in ["KRYON_ROOT", "KRYON_HOME", "KRYON_PATH"]:
+    let value = getEnv(key)
+    if value.len > 0:
+      var basePath, kryonPath: string
+      if checkCandidate(value, basePath, kryonPath):
+        return (basePath: basePath, kryonPath: kryonPath)
+
+  var searchDir = if appDir.len > 0: normalize(appDir) else: getCurrentDir()
+  while true:
+    var basePath, kryonPath: string
+    if checkCandidate(searchDir, basePath, kryonPath):
+      return (basePath: basePath, kryonPath: kryonPath)
+
+    let parent = parentDir(searchDir)
+    if parent.len == 0 or parent == searchDir:
+      break
+    searchDir = parent
+
+  echo "Error: Unable to locate Kryon library sources."
+  echo "Set KRYON_ROOT (or KRYON_SRC) so the CLI can find the Kryon repo."
+  quit(1)
+
 proc createWrapperFile*(filename: string, renderer: Renderer): string =
   ## Create a wrapper file that includes the user code and backend initialization
   ## Returns: Path to the wrapper file
@@ -144,6 +206,7 @@ proc createWrapperFile*(filename: string, renderer: Renderer): string =
     getCurrentDir() / filename
   let (appDir, _, _) = absoluteFilename.splitFile
   let assetsDir = if appDir.len > 0: appDir / "assets" else: ""
+  let (basePath, kryonPath) = locateKryonPaths(appDir)
 
   # Add imports and other non-app code from user file
   let lines = userContent.split('\n')
@@ -168,13 +231,26 @@ proc createWrapperFile*(filename: string, renderer: Renderer): string =
   # Start wrapper file
   var wrapperBuilder = "# Auto-generated wrapper for Kryon application\n"
 
-  # Fix import paths to be absolute
-  let basePath = getCurrentDir() / "src"
-  let kryonPath = getCurrentDir() / "src" / "kryon"
-
   # Replace relative imports with absolute paths
   var fixedImports = importsContent
-  fixedImports = fixedImports.replace("import ../src/kryon", "import \"" & kryonPath & "\"")
+  for pattern in [
+    "import ../src/kryon",
+    "import \"../src/kryon\"",
+    "import '../src/kryon'",
+    "import ../kryon/src/kryon",
+    "import \"../kryon/src/kryon\"",
+    "import '../kryon/src/kryon'"
+  ]:
+    fixedImports = fixedImports.replace(pattern, "import \"" & kryonPath & "\"")
+  for pattern in [
+    "from ../src/kryon",
+    "from \"../src/kryon\"",
+    "from '../src/kryon'",
+    "from ../kryon/src/kryon",
+    "from \"../kryon/src/kryon\"",
+    "from '../kryon/src/kryon'"
+  ]:
+    fixedImports = fixedImports.replace(pattern, "from \"" & kryonPath & "\"")
 
   if fixedImports.strip.len > 0:
     wrapperBuilder.add(ensureTrailingNewline(fixedImports))
