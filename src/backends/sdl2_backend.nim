@@ -211,7 +211,13 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
 
   of ekForLoop:
     # For loop elements generate dynamic content
-    if elem.forIterable != nil and elem.forBodyTemplate != nil:
+    if elem.forBuilder != nil:
+      elem.children.setLen(0)
+      elem.forBuilder(elem)
+      elem.width = parentWidth
+      elem.height = parentHeight
+
+    elif elem.forIterable != nil and elem.forBodyTemplate != nil:
       registerDependency("forLoopIterable")
       let items = elem.forIterable()
 

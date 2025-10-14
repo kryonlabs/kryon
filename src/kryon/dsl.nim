@@ -22,6 +22,79 @@ import core
 # Helper procs for macro processing
 # ============================================================================
 
+type
+  IterationKind* = enum
+    ## Different types of iteration patterns for for loops
+    ikIndexRange,      # for i in 0..<seq.len (preserve int type)
+    ikDirectSequence,  # for item in habits (preserve element type)
+    ikCountUpRange,    # for i in countup(0, 10) (preserve int type)
+    ikGeneric          # Fallback to Value-based system
+
+proc detectIterationPattern*(iterable: NimNode): IterationKind =
+  ## Detect the type of iteration pattern from the iterable AST
+  case iterable.kind:
+  of nnkInfix:
+    # Handle infix patterns like 0..<habits.len or 0..10
+    if iterable.len == 3:
+      let op = iterable[0]
+      if op.kind == nnkIdent:
+        let opStr = op.strVal
+        case opStr
+        of "..<", "<..": return ikIndexRange      # 0..<seq.len
+        of "..": return ikCountUpRange    # 0..10 (treat as countup-style)
+        else: return ikGeneric
+      else: return ikGeneric
+    else: return ikGeneric
+
+  of nnkCall:
+    # Handle function calls like countup(0, 10) or items(seq)
+    if iterable.len > 0:
+      let funcName = iterable[0]
+      if funcName.kind == nnkIdent:
+        case funcName.strVal:
+        of "countup", "countdown": return ikCountUpRange
+        of "items", "pairs", "mpairs": return ikDirectSequence
+        else: return ikGeneric
+      else: return ikGeneric
+    else: return ikGeneric
+
+  of nnkIdent:
+    # Direct sequence/variable reference: for habit in habits
+    return ikDirectSequence
+
+  of nnkDotExpr:
+    # Support dotted access like data.habits or habits.items
+    return ikDirectSequence
+
+  else:
+    # Default to generic for complex expressions
+    return ikGeneric
+
+proc extractIterableName*(iterable: NimNode): string =
+  ## Extract the base variable name for dependency registration
+  case iterable.kind:
+  of nnkIdent:
+    iterable.strVal
+  of nnkInfix:
+    # For 0..<habits.len, extract "habits"
+    if iterable.len == 3:
+      extractIterableName(iterable[2])  # Right side of infix
+    else: "iterable"
+  of nnkCall:
+    # For countup(0, habits.len), extract from second argument
+    if iterable.len > 2:
+      extractIterableName(iterable[2])
+    elif iterable.len > 1:
+      extractIterableName(iterable[1])
+    else: "iterable"
+  of nnkDotExpr:
+    # Walk left side of dotted expressions to reach the base identifier
+    if iterable.len > 0:
+      extractIterableName(iterable[0])
+    else:
+      "iterable"
+  else: "iterable"
+
 proc resolvePropertyAlias*(propName: string): string =
   ## Resolve property aliases to canonical names
   ## Add new aliases here without touching other code
@@ -126,6 +199,7 @@ proc ensureEventHandler(node: NimNode): NimNode =
   quote do:
     proc(data: string = "") {.closure.} =
       `invocation`
+      invalidateAllReactiveValues()
 
 proc emitEventAssignment(elemVar: NimNode, propName: string, handlerNode: NimNode): seq[NimNode] =
   ## Generate statements to attach an event handler to an element
@@ -139,6 +213,7 @@ proc emitEventAssignment(elemVar: NimNode, propName: string, handlerNode: NimNod
       let closureProc = quote do:
         proc(data: string = "") {.closure.} =
           `body`
+          invalidateAllReactiveValues()
       return @[
         quote do:
           `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `closureProc`)
@@ -181,6 +256,65 @@ proc handleDropdownProperty(kind: ElementKind, elemVar: NimNode, propName: strin
       `elemVar`.dropdownSelectedIndex = `indexValue`
   else:
     discard
+
+proc generateTypePreservingForLoop*(elemVar: NimNode, loopVar: NimNode, iterable: NimNode, loopBody: NimNode, iterationKind: IterationKind, iterableName: string): seq[NimNode] =
+  ## Generate reactive for loop code that keeps the loop variable's original type
+  result = @[]
+  let iterableNameNode = newLit(iterableName)
+  let loopBodyCopy = copyNimTree(loopBody)
+  let loopVarCopy = copyNimTree(loopVar)
+  let iterableCopy = copyNimTree(iterable)
+  let forLoopSym = genSym(nskVar, "forLoop")
+  let storageName =
+    if loopVar.kind == nnkIdent:
+      loopVar.strVal & "Item"
+    else:
+      "loopItem"
+  let loopStorageSym = genSym(nskForVar, storageName)
+  let capturedParamSym = genSym(nskParam, storageName & "Captured")
+  let seqValueSym = genSym(nskLet, storageName & "Seq")
+  let indexSym = genSym(nskForVar, storageName & "Index")
+
+  when defined(debugTabs):
+    echo "Debug: Using iteration kind ", $iterationKind, " for iterable ", iterableCopy.repr
+
+  var builderProc: NimNode
+
+  case iterationKind
+  of ikDirectSequence:
+    builderProc = quote do:
+      proc(forElem: Element) =
+        registerDependency("forLoopIterable")
+        registerDependency(`iterableNameNode`)
+        forElem.children.setLen(0)
+        let `seqValueSym` = `iterableCopy`
+        for `indexSym` in 0 ..< len(`seqValueSym`):
+          let child = (proc(`capturedParamSym` = `seqValueSym`[`indexSym`]): Element =
+            let `loopVarCopy` = `capturedParamSym`
+            `loopBodyCopy`
+          )()
+          if child != nil:
+            forElem.addChild(child)
+  else:
+    builderProc = quote do:
+      proc(forElem: Element) =
+        registerDependency("forLoopIterable")
+        registerDependency(`iterableNameNode`)
+        forElem.children.setLen(0)
+        for `loopStorageSym` in `iterableCopy`:
+          let child = (proc(`capturedParamSym` = `loopStorageSym`): Element =
+            let `loopVarCopy` = `capturedParamSym`
+            `loopBodyCopy`
+          )()
+          if child != nil:
+            forElem.addChild(child)
+
+  result.add quote do:
+    var `forLoopSym` = newElement(ekForLoop)
+    `forLoopSym`.forBuilder = `builderProc`
+    `forLoopSym`.forIterable = nil
+    `forLoopSym`.forBodyTemplate = nil
+    `elemVar`.addChild(`forLoopSym`)
 
 proc handleTabGroupProperty(kind: ElementKind, elemVar: NimNode, propName: string, valueNode: NimNode): seq[NimNode] =
   ## Handle tab group specific properties, including optional bindings
@@ -456,7 +590,7 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           `elemVar`.addChild(newConditionalElement(`conditionGetter`, `trueContainerCode`, `falseContainerCode`))
 
     of nnkForStmt:
-      # Handle for loops for generating repeated elements
+      # Handle for loops for generating repeated elements with type preservation
       # Extract loop variable and iterable
       let loopVar = stmt[0]
       let iterable = stmt[1]
@@ -464,47 +598,18 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
 
       # Debug: Print for loop processing
       when defined(debugTabs):
-        echo "Debug: Processing for loop with iterable: ", iterable.repr, " kind: ", iterable.kind
+        echo "Debug: Processing type-aware for loop with iterable: ", iterable.repr, " kind: ", iterable.kind
 
-      # Get the variable name for dependency registration
-      let iterableName = if iterable.kind == nnkIdent:
-        iterable.strVal
-      else:
-        "iterable"  # Fallback for complex expressions
+      # Detect the iteration pattern to determine the best approach
+      let iterationKind = detectIterationPattern(iterable)
+      let iterableName = extractIterableName(iterable)
 
-      # Create a generic getter that returns seq[Value] for any iterable type
-      let iterableGetter = quote do:
-        proc(): seq[Value] =
-          result = newSeq[Value]()
-          # Register dependency on the iterable for automatic regeneration
-          # This is crucial for reactive updates when the underlying data changes
-          echo "🔥 REGISTERING DEPENDENCY ON: ", `iterableName`
-          registerDependency(`iterableName`)
+      # Generate type-preserving for loop code based on the pattern
+      let forLoopCode = generateTypePreservingForLoop(elemVar, loopVar, iterable, loopBody, iterationKind, iterableName)
 
-          # Convert any iterable to seq[Value], preserving original types
-          for item in `iterable`:
-            result.add(val(item))
-
-      # Create a generic body template that accepts Value and properly unpacks it
-      let bodyTemplate = quote do:
-        proc(`loopVar`: Value): Element =
-          # Create the elements from the processed loop body
-          # Unpack the Value back to its original type for use in the loop body
-          let `loopVar` = case `loopVar`.kind:
-            of vkInt: $`loopVar`.getInt()
-            of vkFloat: $`loopVar`.getFloat()
-            of vkString: `loopVar`.getString()
-            of vkBool: $`loopVar`.getBool()
-            else: `loopVar`.getString()  # Fallback to string
-          when defined(debugTabs):
-            echo "Debug: bodyTemplate called with ", `loopVar`, ": ", `loopVar`
-          `loopBody`
-
-      # Create the for loop element and add it as a child
-      when defined(debugTabs):
-        echo "Debug: Creating newForLoopElement"
-      result.add quote do:
-        `elemVar`.addChild(newForLoopElement(`iterableGetter`, `bodyTemplate`))
+      # Add all generated statements to the result
+      for codeStmt in forLoopCode:
+        result.add(codeStmt)
 
     of nnkCaseStmt:
       # Handle case statements for conditional rendering

@@ -104,6 +104,7 @@ type
     # For loop properties (for ekForLoop)
     forIterable*: proc(): seq[Value] {.closure.}  # Function that returns the iterable data (generic sequence)
     forBodyTemplate*: proc(item: Value): Element {.closure.}  # Function to create element for each item (generic)
+    forBuilder*: proc(elem: Element) {.closure.}  # Alternative builder for type-preserving loops
 
     # Variable binding for two-way data binding (primarily for Input elements)
     boundVarName*: Option[string]  # Name of the bound variable for two-way binding
@@ -373,7 +374,8 @@ proc newForLoopElement*(iterable: proc(): seq[Value] {.closure.}, bodyTemplate: 
     children: @[],
     eventHandlers: initTable[string, EventHandler](),
     forIterable: iterable,
-    forBodyTemplate: bodyTemplate
+    forBodyTemplate: bodyTemplate,
+    forBuilder: nil
   )
 
 proc setProp*(elem: Element, name: string, value: Value) =
@@ -569,6 +571,15 @@ proc invalidateReactiveValues*(valueIdentifiers: openArray[string]) =
   for valueIdentifier in valueIdentifiers:
     if valueIdentifier in reactiveDependencies:
       for elem in reactiveDependencies[valueIdentifier]:
+        markDirty(elem)
+
+proc invalidateAllReactiveValues*() =
+  ## Mark all reactive elements as dirty (fallback when specific dependencies are unknown)
+  var processed = initHashSet[Element]()
+  for _, elemSet in reactiveDependencies:
+    for elem in elemSet:
+      if elem != nil and elem notin processed:
+        processed.incl(elem)
         markDirty(elem)
 
 proc invalidateRelatedValues*(baseIdentifier: string) =

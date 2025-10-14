@@ -225,7 +225,16 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
 
   of ekForLoop:
     # For loop elements generate dynamic content - let parent handle layout
-    if elem.forIterable != nil and elem.forBodyTemplate != nil:
+    if elem.forBuilder != nil:
+      # Use custom builder for type-preserving loops
+      elem.children.setLen(0)
+      elem.forBuilder(elem)
+
+      # For loop is transparent to layout - use parent size
+      elem.width = parentWidth
+      elem.height = parentHeight
+
+    elif elem.forIterable != nil and elem.forBodyTemplate != nil:
       # The dependency on the iterable is already registered in the for loop template
       # This ensures proper reactive updates when the underlying data changes
       let items = elem.forIterable()
@@ -252,7 +261,7 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
       elem.height = parentHeight
     else:
       when defined(debugTabs):
-        echo "Debug: ekForLoop with nil forIterable or forBodyTemplate"
+        echo "Debug: ekForLoop with no builder and nil iterable/bodyTemplate"
 
   of ekBody:
     # Body implements natural document flow - stack children vertically

@@ -18,15 +18,11 @@ proc addTodoHandler() =
     newTodo = ""
     echo "newTodo after clearing: '" & newTodo & "'"
 
-    # The reactive system will automatically invalidate dependent elements
-    # through the createReactiveEventHandler wrapper
+    # Reactive system now auto-invalidates affected UI after event handlers run
   else:
     echo "newTodo is empty, not adding"
 
   echo "=== end addTodo ==="
-
-# Create a reactive version that automatically invalidates "todos" and "newTodo" variables
-let addTodo = createReactiveEventHandler(addTodoHandler, @["todos", "newTodo"])
 
 let app = kryonApp:
   Header:
@@ -64,7 +60,7 @@ let app = kryonApp:
           height = 40
           background = "#007bff"
           color = "#ffffff"
-          onClick = addTodo
+          onClick = addTodoHandler
 
       Column:
         gap = 5
@@ -79,4 +75,3 @@ let app = kryonApp:
             text = "- " & todo & " (len=" & $todos.len & ")"
             fontSize = 16
             color = "#333333"
-
