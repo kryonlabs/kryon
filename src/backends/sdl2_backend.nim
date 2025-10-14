@@ -5,7 +5,7 @@
 
 import ../kryon/core
 import ../kryon/fonts
-import options, tables, algorithm, strutils
+import options, tables, algorithm
 import sdl2_ffi
 
 # ============================================================================
@@ -187,6 +187,11 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
   case elem.kind:
   of ekHeader:
     # Header is metadata only - set size to 0 so it doesn't take up space
+    elem.width = 0
+    elem.height = 0
+
+  of ekResources, ekFont:
+    # Resource declarations do not participate in layout
     elem.width = 0
     elem.height = 0
 
@@ -708,6 +713,9 @@ proc renderElement*(backend: var SDL2Backend, elem: Element, inheritedColor: Opt
 
   case elem.kind:
   of ekHeader:
+    discard
+
+  of ekResources, ekFont:
     discard
 
   of ekConditional:
@@ -1697,22 +1705,37 @@ proc run*(backend: var SDL2Backend, root: Element) =
     SDL_Quit()
     return
 
-  # Load default font
-  let fontInfo = getDefaultFontInfo()
-  if fontInfo.path.len > 0:
-    echo "Loading default font: " & fontInfo.path
-    backend.font = TTF_OpenFont(fontInfo.path.cstring, 20)
-    if backend.font != nil:
-      echo "Successfully loaded " & fontInfo.name & " (" & fontInfo.format & ")"
-    else:
-      echo "Warning: Failed to load default font, trying fallbacks"
+  # Attempt to load font declared via fontFamily/resources
+  var fontName = resolvePreferredFont(root)
+  var fontPath = ""
 
-  # Fallback to system fonts if default font fails
-  if backend.font == nil:
-    for fontPath in FALLBACK_FONTS:
-      backend.font = TTF_OpenFont(fontPath.cstring, 20)
+  if fontName.len > 0:
+    fontPath = findFontByName(fontName)
+    if fontPath.len > 0:
+      echo "Loading font: " & fontPath
+      backend.font = TTF_OpenFont(fontPath.cstring, DEFAULT_FONT_SIZE.cint)
       if backend.font != nil:
-        echo "Loaded fallback font: " & fontPath
+        echo "Successfully loaded font family: " & fontName
+      else:
+        echo "Warning: Failed to load font family '" & fontName & "'"
+
+  # Load default configured font if no resource font was loaded
+  if backend.font == nil:
+    let fontInfo = getDefaultFontInfo()
+    if fontInfo.path.len > 0:
+      echo "Loading default font: " & fontInfo.path
+      backend.font = TTF_OpenFont(fontInfo.path.cstring, fontInfo.size.cint)
+      if backend.font != nil:
+        echo "Successfully loaded " & fontInfo.name & " (" & fontInfo.format & ")"
+      else:
+        echo "Warning: Failed to load default font, trying fallbacks"
+
+  # Fallback to system fonts if no custom font was loaded
+  if backend.font == nil:
+    for fallbackPath in FALLBACK_FONTS:
+      backend.font = TTF_OpenFont(fallbackPath.cstring, DEFAULT_FONT_SIZE.cint)
+      if backend.font != nil:
+        echo "Loaded fallback font: " & fallbackPath
         break
 
   if backend.font == nil:

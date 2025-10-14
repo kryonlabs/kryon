@@ -18,13 +18,14 @@
 
 import kryon/core
 import kryon/dsl
+import kryon/fonts
 
 # Re-export public API
 export core
 export dsl
+export fonts
 
 # Version information
 const
   kryonVersion* = "0.1.0"
   kryonAuthor* = "Kryon Labs"
-

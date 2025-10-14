@@ -105,7 +105,7 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
 const builtinElementNames = [
   "Container", "Text", "Button", "Column", "Row", "Input", "Checkbox",
   "Dropdown", "Grid", "Image", "Center", "ScrollView", "Header", "Body",
-  "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel", "Link"
+  "Resources", "Font", "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel", "Link"
 ]
 
 proc isEventName(name: string): bool {.inline.} =
@@ -211,6 +211,36 @@ proc handleTabGroupProperty(kind: ElementKind, elemVar: NimNode, propName: strin
         echo "SYNC: Updated ", `varName`, " to ", `elemVar`.tabSelectedIndex, " from TabGroup"
       )
 
+proc handleFontProperty(kind: ElementKind, elemVar: NimNode, propName: string, valueNode: NimNode): seq[NimNode] =
+  ## Handle Font resource properties (name, sources)
+  result = @[]
+
+  if kind != ekFont:
+    return
+
+  case propName
+  of "name":
+    let nameValue = copyNimTree(valueNode)
+    result.add quote do:
+      `elemVar`.setProp("name", `nameValue`)
+  of "sources":
+    if valueNode.kind == nnkBracket:
+      var sourcesCode = newNimNode(nnkBracket)
+      for child in valueNode:
+        sourcesCode.add(copyNimTree(child))
+      result.add quote do:
+        var sourcesSeq: seq[string] = @[]
+        for item in `sourcesCode`:
+          sourcesSeq.add(item)
+        `elemVar`.setProp("sources", val(sourcesSeq))
+    else:
+      # Handle single source string
+      let sourceValue = copyNimTree(valueNode)
+      result.add quote do:
+        `elemVar`.setProp("sources", val(@[`sourceValue`]))
+  else:
+    discard
+
 proc emitPropertyAssignment(kind: ElementKind, elemVar: NimNode, propName: string, valueNode: NimNode): seq[NimNode] =
   ## Generate statements to assign a property to an element, handling special cases
   result = handleDropdownProperty(kind, elemVar, propName, valueNode)
@@ -218,6 +248,10 @@ proc emitPropertyAssignment(kind: ElementKind, elemVar: NimNode, propName: strin
     return
 
   result = handleTabGroupProperty(kind, elemVar, propName, valueNode)
+  if result.len > 0:
+    return
+
+  result = handleFontProperty(kind, elemVar, propName, valueNode)
   if result.len > 0:
     return
 
@@ -447,26 +481,21 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           echo "🔥 REGISTERING DEPENDENCY ON: ", `iterableName`
           registerDependency(`iterableName`)
 
-          # Convert any iterable to seq[Value]
+          # Convert any iterable to seq[Value], preserving original types
           for item in `iterable`:
-            when compiles(item is int):
-              result.add(val(item))
-            elif compiles(item is float):
-              result.add(val(item))
-            elif compiles(item is string):
-              result.add(val(item))
-            elif compiles(item is bool):
-              result.add(val(item))
-            else:
-              # Fallback: convert to string
-              result.add(val($item))
+            result.add(val(item))
 
       # Create a generic body template that accepts Value and properly unpacks it
       let bodyTemplate = quote do:
         proc(`loopVar`: Value): Element =
           # Create the elements from the processed loop body
-          # Unpack the Value back to string for use in the loop body
-          let `loopVar` = `loopVar`.getString()
+          # Unpack the Value back to its original type for use in the loop body
+          let `loopVar` = case `loopVar`.kind:
+            of vkInt: $`loopVar`.getInt()
+            of vkFloat: $`loopVar`.getFloat()
+            of vkString: `loopVar`.getString()
+            of vkBool: $`loopVar`.getBool()
+            else: `loopVar`.getString()  # Fallback to string
           when defined(debugTabs):
             echo "Debug: bodyTemplate called with ", `loopVar`, ": ", `loopVar`
           `loopBody`
@@ -606,6 +635,20 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
       # Skip other node types
       discard
 
+  # Special handling for Font elements - register them as resources
+  if kind == ekFont:
+    result.add quote do:
+      # Extract font properties and register as resource
+      let nameProp = `elemVar`.getProp("name")
+      let sourcesProp = `elemVar`.getProp("sources")
+
+      if nameProp.isSome() and sourcesProp.isSome():
+        let fontName = nameProp.get().getString()
+        let fontSources = sourcesProp.get().getStringSeq()
+
+        if fontName.len > 0 and fontSources.len > 0:
+          addFontResource(fontName, fontSources)
+
   # Return the element
   result.add quote do:
     `elemVar`
@@ -694,6 +737,14 @@ macro Link*(body: untyped): Element =
   ## Create a Link element for navigation
   result = processElementBody(ekLink, body)
 
+macro Resources*(body: untyped): Element =
+  ## Create a Resources element (application resources)
+  result = processElementBody(ekResources, body)
+
+macro Font*(body: untyped): Element =
+  ## Create a Font resource element
+  result = processElementBody(ekFont, body)
+
 # ============================================================================
 # Application macro
 # ============================================================================
@@ -738,14 +789,19 @@ macro kryonApp*(body: untyped): Element =
   result = newStmtList()
 
   var headerNode: NimNode = nil
+  result.add quote do:
+    clearFontResources()
+  var resourcesNode: NimNode = nil
   var bodyChildren = newSeq[NimNode]()
 
-  # Parse body to find Header and/or Body elements
+  # Parse body to find Header, Resources, and/or Body elements
   for stmt in body:
     if stmt.kind == nnkCall:
       let name = stmt[0].strVal
       if name == "Header":
         headerNode = stmt
+      elif name == "Resources":
+        resourcesNode = stmt
       elif name == "Body":
         # Body found - collect its children
         if stmt.len > 1 and stmt[1].kind == nnkStmtList:
@@ -785,13 +841,21 @@ macro kryonApp*(body: untyped): Element =
           width = 800
           height = 600
 
-  # Create app structure with Header and Body
+  # Create app structure with Header, Resources, and Body
   let appVar = genSym(nskVar, "app")
-  result.add quote do:
-    var `appVar` = newElement(ekBody)
-    `appVar`.addChild(`headerNode`)
-    `appVar`.addChild(`bodyNode`)
-    `appVar`
+  if resourcesNode != nil:
+    result.add quote do:
+      var `appVar` = newElement(ekBody)
+      `appVar`.addChild(`headerNode`)
+      `appVar`.addChild(`resourcesNode`)
+      `appVar`.addChild(`bodyNode`)
+      `appVar`
+  else:
+    result.add quote do:
+      var `appVar` = newElement(ekBody)
+      `appVar`.addChild(`headerNode`)
+      `appVar`.addChild(`bodyNode`)
+      `appVar`
 
 # ============================================================================
 # Component helpers

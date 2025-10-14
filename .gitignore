@@ -17,6 +17,8 @@ dist/
 examples/build/
 examples/*
 !examples/*.nim
+!examples/assets/
+!examples/assets/**
 
 # Nim cache
 .nimcache/

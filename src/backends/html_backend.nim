@@ -5,7 +5,7 @@
 
 import ../kryon/core
 import ../kryon/fonts
-import options, tables, strutils, os, re
+import options, tables, strutils, os, sets
 
 # ============================================================================
 # Backend Type
@@ -49,6 +49,7 @@ proc newHTMLBackend*(width, height: int, title: string): HTMLBackend =
     sharedCSS: "",
     sharedJS: ""
   )
+
 
 proc newHTMLBackendFromApp*(app: Element): HTMLBackend =
   ## Create backend from app element (extracts config from Header and Body)
@@ -369,7 +370,7 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
       css.add("  justify-content: center;\n")
       css.add("  align-items: center;\n")
 
-  of ekHeader, ekBody, ekConditional, ekForLoop, ekText, ekButton, ekInput, ekCheckbox, ekDropdown, ekGrid, ekImage, ekScrollView, ekTabGroup, ekTabBar, ekTab, ekTabContent, ekTabPanel:
+  of ekHeader, ekBody, ekConditional, ekForLoop, ekText, ekButton, ekInput, ekCheckbox, ekDropdown, ekGrid, ekImage, ekScrollView, ekTabGroup, ekTabBar, ekTab, ekTabContent, ekTabPanel, ekResources, ekFont, ekLink:
     # These elements either don't need special CSS layout or are handled elsewhere
     discard
 
@@ -377,7 +378,6 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
   if elem.kind == ekText:
     let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
     css.add("  font-size: " & $fontSize & "px;\n")
-    css.add("  font-family: " & getFontStack() & ";\n")
 
     # Text alignment
     let textAlign = elem.getProp("textAlign")
@@ -391,7 +391,6 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
     css.add("  justify-content: center;\n")
     css.add("  cursor: pointer;\n")
     css.add("  border: none;\n")
-    css.add("  font-family: " & getFontStack() & ";\n")
     css.add("  user-select: none;\n")
     css.add("  text-decoration: none;\n")  # For navigation links
     css.add("  color: inherit;\n")           # For navigation links
@@ -408,7 +407,6 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
     css.add("  display: inline-block;\n")
     css.add("  border: 1px solid #ccc;\n")
     css.add("  padding: 8px;\n")
-    css.add("  font-family: " & getFontStack() & ";\n")
     css.add("  font-size: 16px;\n")
     css.add("  border-radius: 4px;\n")
     css.add("  outline: none;\n")
@@ -421,7 +419,6 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
     css.add("  align-items: center;\n")
     css.add("  gap: 8px;\n")
     css.add("  cursor: pointer;\n")
-    css.add("  font-family: " & getFontStack() & ";\n")
     css.add("  font-size: 16px;\n")
 
   css.add("}\n")
@@ -660,19 +657,40 @@ proc generateSharedAssets*(backend: var HTMLBackend, root: Element, outputDir: s
   let sharedDir = outputDir / "shared"
   createDir(sharedDir)
 
-  # Copy font files to shared directory
+  # Determine default font family from Body (if specified)
+  let bodyFontFamily = resolvePreferredFont(root)
+
+  # Copy font files to shared directory (custom + resources)
+  var copiedFontFiles = initHashSet[string]()
+  var fontFaceSegments: seq[string] = @[]
+
   let fontInfo = getDefaultFontInfo()
   if fontInfo.path.len > 0:
-    let fontFileName = fontInfo.path.splitFile().name & "." & fontInfo.path.splitFile().ext
+    let fontSplit = fontInfo.path.splitFile()
+    let fontFileName = fontSplit.name & fontSplit.ext
     let destFontPath = sharedDir / fontFileName
-    copyFile(fontInfo.path, destFontPath)
-    echo "Copied font to shared assets: " & destFontPath
+    if fontFileName notin copiedFontFiles:
+      copyFile(fontInfo.path, destFontPath)
+      copiedFontFiles.incl(fontFileName)
+      echo "Copied font to shared assets: " & destFontPath
+    fontFaceSegments.add(generateFontFaceCSS(fontInfo.name, "shared/" & fontFileName))
 
-  # Generate shared CSS
-  let fontFaceCSS = if fontInfo.path.len > 0:
-    generateFontFaceCSS("shared/" & fontInfo.path.splitFile().name & "." & fontInfo.path.splitFile().ext)
+  for fontName in getRegisteredFontNames():
+    let resourceInfo = getResourceFontInfo(fontName)
+    if resourceInfo.path.len > 0:
+      let split = resourceInfo.path.splitFile()
+      let fontFileName = split.name & split.ext
+      if fontFileName notin copiedFontFiles:
+        let destFontPath = sharedDir / fontFileName
+        copyFile(resourceInfo.path, destFontPath)
+        copiedFontFiles.incl(fontFileName)
+        echo "Copied resource font to shared assets: " & destFontPath
+      fontFaceSegments.add(generateFontFaceCSS(resourceInfo.name, "shared/" & fontFileName))
+
+  let fontFaceCSS = if fontFaceSegments.len > 0:
+    fontFaceSegments.join("\n")
   else:
-    "/* No default font found */"
+    "/* No custom fonts configured */"
 
   backend.sharedCSS = """
     * {
@@ -684,7 +702,7 @@ proc generateSharedAssets*(backend: var HTMLBackend, root: Element, outputDir: s
     """ & fontFaceCSS & """
 
     body {
-      font-family: """ & getFontStack() & """;
+      font-family: """ & (if bodyFontFamily.len > 0: getFontStackFor(bodyFontFamily) else: getFontStack()) & """;
       background-color: """ & backend.backgroundColor.toCSSColor() & """;
       width: """ & $backend.windowWidth & """px;
       height: """ & $backend.windowHeight & """px;
@@ -861,11 +879,28 @@ proc generateHTMLFile*(backend: var HTMLBackend, root: Element): string =
 """
 
   # Add base styles
+  let bodyFontFamily = resolvePreferredFont(root)
   let fontInfo = getDefaultFontInfo()
-  let fontFaceCSS = if fontInfo.path.len > 0:
-    generateFontFaceCSS(fontInfo.path)
+
+  var fontFaceSegments: seq[string] = @[]
+  var seenFonts = initHashSet[string]()
+
+  if fontInfo.path.len > 0:
+    fontFaceSegments.add(generateFontFaceCSS(fontInfo.name, fontInfo.path))
+    seenFonts.incl(fontInfo.name)
+
+  for fontName in getRegisteredFontNames():
+    if fontName in seenFonts:
+      continue
+    let resourceInfo = getResourceFontInfo(fontName)
+    if resourceInfo.path.len > 0:
+      fontFaceSegments.add(generateFontFaceCSS(resourceInfo.name, resourceInfo.path))
+      seenFonts.incl(resourceInfo.name)
+
+  let fontFaceCSS = if fontFaceSegments.len > 0:
+    fontFaceSegments.join("\n")
   else:
-    "/* No default font found */"
+    "/* No custom fonts configured */"
 
   html.add("""
     * {
@@ -877,7 +912,7 @@ proc generateHTMLFile*(backend: var HTMLBackend, root: Element): string =
     """ & fontFaceCSS & """
 
     body {
-      font-family: """ & getFontStack() & """;
+      font-family: """ & (if bodyFontFamily.len > 0: getFontStackFor(bodyFontFamily) else: getFontStack()) & """;
       background-color: """ & backend.backgroundColor.toCSSColor() & """;
       width: """ & $backend.windowWidth & """px;
       height: """ & $backend.windowHeight & """px;

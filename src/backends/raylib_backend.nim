@@ -4,7 +4,7 @@
 
 import ../kryon/core
 import ../kryon/fonts
-import options, tables, algorithm, math
+import options, tables, algorithm, math, os
 import raylib_ffi
 
 # ============================================================================
@@ -95,6 +95,30 @@ proc newRaylibBackendFromApp*(app: Element): RaylibBackend =
     backspaceRepeatRate: 0.05    # 50ms repeat rate
   )
 
+var
+  layoutFont: RFont
+  layoutFontInitialized = false
+
+proc setLayoutFont*(font: RFont) =
+  ## Cache the active font for layout measurements.
+  layoutFont = font
+  layoutFontInitialized = true
+
+proc measureLayoutTextWidth(text: string, fontSize: int): float =
+  ## Measure text width for layout calculations using the cached font.
+  if text.len == 0:
+    return 0.0
+  if layoutFontInitialized:
+    return MeasureTextEx(layoutFont, text.cstring, fontSize.cfloat, 0.0).x
+  else:
+    return MeasureText(text.cstring, fontSize.cint).float
+
+proc measureTextWidth*(backend: RaylibBackend, text: string, fontSize: int): float =
+  ## Measure text width using the backend's active font.
+  if text.len == 0:
+    return 0.0
+  return MeasureTextEx(backend.font, text.cstring, fontSize.cfloat, 0.0).x
+
 # ============================================================================
 # Color Conversion
 # ============================================================================
@@ -137,7 +161,7 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
 
     # Measure text dimensions
-    let textWidth = MeasureText(text.cstring, fontSize.cint).float
+    let textWidth = measureLayoutTextWidth(text, fontSize)
     let textHeight = fontSize.float
 
     elem.width = if widthOpt.isSome: widthOpt.get.getFloat() else: textWidth
@@ -149,7 +173,7 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
 
     # Measure text dimensions and add padding
-    let textWidth = MeasureText(text.cstring, fontSize.cint).float
+    let textWidth = measureLayoutTextWidth(text, fontSize)
     let textHeight = fontSize.float
     let padding = 20.0  # Horizontal padding
     let verticalPadding = 10.0  # Vertical padding
@@ -175,6 +199,11 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
   case elem.kind:
   of ekHeader:
     # Header is metadata only - set size to 0 so it doesn't take up space
+    elem.width = 0
+    elem.height = 0
+
+  of ekResources, ekFont:
+    # Resource elements do not participate in layout
     elem.width = 0
     elem.height = 0
 
@@ -681,7 +710,7 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
       # Calculate tab width based on title if not explicitly set
       let title = tab.getProp("title").get(val("Tab")).getString()
       let fontSize = tab.getProp("fontSize").get(val(16)).getInt()
-      let textWidth = MeasureText(title.cstring, fontSize.cint).float
+      let textWidth = measureLayoutTextWidth(title, fontSize)
       let tabWidth = tab.getProp("width").get(val(textWidth + 40.0)).getFloat()
       let tabHeight = tab.getProp("height").get(val(40.0)).getFloat()
       maxHeight = max(maxHeight, tabHeight)
@@ -786,6 +815,10 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
   case elem.kind:
   of ekHeader:
     # Header is metadata only - don't render it
+    discard
+
+  of ekResources, ekFont:
+    # Resource declarations are non-visual
     discard
 
   of ekConditional:
@@ -932,8 +965,7 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
 
     # Calculate cursor position in text (for focused input)
     let cursorTextPos = if value.len > 0 and backend.focusedInput == elem:
-      # Measure text up to cursor position (cursor is at end for now)
-      MeasureText(value.cstring, fontSize.cint).float
+      measureTextWidth(backend, value, fontSize)
     else:
       0.0
 
@@ -947,7 +979,7 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
     if backend.focusedInput == elem:
       # Calculate total text width to ensure we don't scroll past the end
       let totalTextWidth = if value.len > 0:
-        MeasureText(value.cstring, fontSize.cint).float
+        measureTextWidth(backend, value, fontSize)
       else:
         0.0
 
@@ -1409,10 +1441,10 @@ proc checkHoverCursor*(elem: Element): bool =
     var hoverArea = checkboxRect
 
     if label.len > 0:
-      # Extend hover area to include label text
-      let textWidth = MeasureText(label.cstring, fontSize.cint).float
-      hoverArea.width = checkboxSize + 10.0 + textWidth  # checkbox + spacing + text
-      hoverArea.y = elem.y  # Use full element height for hover area
+      # Extend hover area to include the entire element bounds (checkbox + label)
+      hoverArea.x = elem.x
+      hoverArea.y = elem.y
+      hoverArea.width = elem.width
       hoverArea.height = elem.height
 
     if CheckCollisionPointRec(mousePos, hoverArea):
@@ -1495,10 +1527,10 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
       var clickArea = checkboxRect
 
       if label.len > 0:
-        # Extend clickable area to include label text
-        let textWidth = MeasureText(label.cstring, fontSize.cint).float
-        clickArea.width = checkboxSize + 10.0 + textWidth  # checkbox + spacing + text
-        clickArea.y = elem.y  # Use full element height for click area
+        # Extend clickable area to include the full element bounds
+        clickArea.x = elem.x
+        clickArea.y = elem.y
+        clickArea.width = elem.width
         clickArea.height = elem.height
 
       if CheckCollisionPointRec(mousePos, clickArea):
@@ -1704,9 +1736,9 @@ proc handleKeyboardInput*(backend: var RaylibBackend, root: Element) =
       var clickArea = checkboxRect
 
       if label.len > 0:
-        let textWidth = MeasureText(label.cstring, fontSize.cint).float
-        clickArea.width = checkboxSize + 10.0 + textWidth
+        clickArea.x = elem.x
         clickArea.y = elem.y
+        clickArea.width = elem.width
         clickArea.height = elem.height
 
       if CheckCollisionPointRec(mousePos, clickArea):
@@ -1878,19 +1910,40 @@ proc run*(backend: var RaylibBackend, root: Element) =
   InitWindow(backend.windowWidth.cint, backend.windowHeight.cint, backend.windowTitle.cstring)
   SetTargetFPS(60)
 
-  # Load default font
-  let fontInfo = getDefaultFontInfo()
-  if fontInfo.path.len > 0:
-    echo "Loading default font: " & fontInfo.path
-    backend.font = LoadFont(fontInfo.path.cstring)
-    if backend.font.baseSize > 0:  # Check if font loaded successfully
-      echo "Successfully loaded " & fontInfo.name & " (" & fontInfo.format & ")"
+  # Load font based on fontFamily property or default font
+  var fontPath = ""
+  var fontName = resolvePreferredFont(root)
+
+  if fontName.len > 0:
+    fontPath = findFontByName(fontName)
+
+  # If no specific font found, try default font configuration
+  if fontPath.len == 0:
+    let fontInfo = getDefaultFontInfo()
+    if fontInfo.path.len > 0:
+      fontPath = fontInfo.path
+      fontName = fontInfo.name
+      echo "Using default font: " & fontName & " at " & fontPath
+
+  # Load the font
+  if fontPath.len > 0:
+    echo "Loading font: " & fontPath
+    if fileExists(fontPath):
+      echo "Font file exists on disk"
+      backend.font = LoadFont(fontPath.cstring)
+      if backend.font.baseSize > 0:  # Check if font loaded successfully
+        echo "Successfully loaded font: " & fontName & " (baseSize: " & $backend.font.baseSize & ")"
+      else:
+        echo "Warning: Failed to load font (baseSize=0), using Raylib default font"
+        backend.font = GetFontDefault()
     else:
-      echo "Warning: Failed to load default font, using system font"
+      echo "Error: Font file does not exist: " & fontPath
       backend.font = GetFontDefault()
   else:
-    echo "Using system default font"
+    echo "No font found, using Raylib default font"
     backend.font = GetFontDefault()
+
+  setLayoutFont(backend.font)
 
   # Calculate initial layout
   calculateLayout(root, 0, 0, backend.windowWidth.float, backend.windowHeight.float)
@@ -1951,5 +2004,6 @@ proc run*(backend: var RaylibBackend, root: Element) =
 
   # Cleanup
   UnloadFont(backend.font)
+  layoutFontInitialized = false
   CloseWindow()
   backend.running = false

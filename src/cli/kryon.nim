@@ -55,6 +55,16 @@ proc ensureTrailingNewline(s: string): string =
   else:
     result = s
 
+proc nimStringLiteral(s: string): string =
+  ## Convert a raw string into a Nim string literal with proper escaping.
+  result.add('"')
+  for ch in s:
+    case ch
+    of '\\': result.add("\\\\")
+    of '\"': result.add("\\\"")
+    else: result.add(ch)
+  result.add('"')
+
 proc indentText(content: string, spaces: int): string =
   ## Indent a block of text by the requested number of spaces.
   ## Keeps empty lines untouched so layout is preserved.
@@ -128,6 +138,12 @@ proc createWrapperFile*(filename: string, renderer: Renderer): string =
 
   let wrapperFile = getTempDir() / "kryon_wrapper.nim"
   let userContent = readFile(filename)
+  let absoluteFilename = if filename.isAbsolute():
+    filename
+  else:
+    getCurrentDir() / filename
+  let (appDir, _, _) = absoluteFilename.splitFile
+  let assetsDir = if appDir.len > 0: appDir / "assets" else: ""
 
   # Add imports and other non-app code from user file
   let lines = userContent.split('\n')
@@ -169,6 +185,10 @@ proc createWrapperFile*(filename: string, renderer: Renderer): string =
 
   # Add main block with backend initialization
   wrapperBuilder.add("\nwhen isMainModule:\n")
+  if appDir.len > 0:
+    wrapperBuilder.add("  addFontSearchDir(" & nimStringLiteral(appDir) & ")\n")
+  if dirExists(assetsDir):
+    wrapperBuilder.add("  addFontSearchDir(" & nimStringLiteral(assetsDir) & ")\n")
   wrapperBuilder.add("  var app = kryonApp:\n")
 
   if appContent.strip.len > 0:

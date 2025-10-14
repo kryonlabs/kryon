@@ -13,6 +13,8 @@ type
     ## All supported UI element types
     ekHeader = "Header"       # Window metadata (non-rendering)
     ekBody = "Body"           # Main UI content wrapper (non-rendering)
+    ekResources = "Resources" # Application resources (fonts, assets) (non-rendering)
+    ekFont = "Font"           # Font resource definition (non-rendering)
     ekConditional = "Conditional"  # Conditional rendering (non-rendering)
     ekForLoop = "ForLoop"     # Dynamic for loop rendering (non-rendering)
     ekContainer = "Container"
@@ -49,7 +51,7 @@ type
 
   ValueKind* = enum
     ## Value types for properties
-    vkInt, vkFloat, vkString, vkBool, vkColor, vkAlignment, vkGetter, vkNil
+    vkInt, vkFloat, vkString, vkStringSeq, vkBool, vkColor, vkAlignment, vkGetter, vkNil
 
   Value* = object
     ## Dynamic value type for properties
@@ -57,6 +59,7 @@ type
     of vkInt: intVal*: int
     of vkFloat: floatVal*: float
     of vkString: strVal*: string
+    of vkStringSeq: strSeqVal*: seq[string]
     of vkBool: boolVal*: bool
     of vkColor: colorVal*: Color
     of vkAlignment: alignVal*: Alignment
@@ -70,6 +73,15 @@ type
 
   EventHandler* = proc (data: string = "") {.closure.}
     ## Event handler callback type - accepts optional data parameter
+
+  FontResource* = object
+    ## Font resource definition for DSL
+    name*: string
+    sources*: seq[string]
+
+  AppResources* = object
+    ## Application resources container
+    fonts*: seq[FontResource]
 
   Element* = ref object
     ## Base UI element type
@@ -235,6 +247,10 @@ proc val*(x: bool): Value = Value(kind: vkBool, boolVal: x)
 proc val*(x: Color): Value = Value(kind: vkColor, colorVal: x)
 proc val*(x: Alignment): Value = Value(kind: vkAlignment, alignVal: x)
 
+proc val*(x: seq[string]): Value =
+  ## Convert a sequence of strings to a Value (for font sources)
+  Value(kind: vkStringSeq, strSeqVal: @x)
+
 proc valGetter*(getter: proc(): Value {.closure.}): Value =
   ## Create a reactive getter value that re-evaluates on each access
   ## Note: Dependency tracking for generic getters is handled at the DSL level
@@ -246,6 +262,7 @@ proc `$`*(v: Value): string =
   of vkInt: $v.intVal
   of vkFloat: $v.floatVal
   of vkString: v.strVal
+  of vkStringSeq: "[" & v.strSeqVal.join(", ") & "]"
   of vkBool: $v.boolVal
   of vkColor: v.colorVal.toHex()
   of vkAlignment: $v.alignVal
@@ -276,6 +293,18 @@ proc getString*(v: Value, default: string = ""): string =
     v.strVal
   else:
     default
+
+proc getStringSeq*(v: Value): seq[string] =
+  ## Extract a sequence of strings from a Value.
+  case v.kind
+  of vkGetter:
+    v.getter().getStringSeq()
+  of vkStringSeq:
+    v.strSeqVal
+  of vkString:
+    @[v.strVal]
+  else:
+    @[]
 
 proc getBool*(v: Value, default: bool = false): bool =
   if v.kind == vkGetter:
@@ -469,6 +498,9 @@ var currentElementBeingProcessed*: Element = nil
 # Map from reactive value identifiers to dependent elements for targeted invalidation
 var reactiveDependencies*: Table[string, HashSet[Element]] = initTable[string, HashSet[Element]]()
 
+# Global application resources
+var appResources*: AppResources = AppResources(fonts: @[])
+
 # Reactive System Helper Function Implementations
 
 proc markDirty*(elem: Element) =
@@ -559,3 +591,38 @@ proc createReactiveEventHandler*(handler: proc(), invalidatedVars: seq[string]):
     # Invalidate all specified reactive variables
     for varName in invalidatedVars:
       invalidateReactiveValue(varName)
+
+# ============================================================================
+# Resource Management
+# ============================================================================
+
+proc addFontResource*(name: string, sources: seq[string]) =
+  ## Add a font resource to the global application resources
+  let fontResource = FontResource(name: name, sources: sources)
+  # Replace existing resource with the same name
+  for i, existing in appResources.fonts.mpairs:
+    if existing.name == name:
+      appResources.fonts[i] = fontResource
+      return
+  appResources.fonts.add(fontResource)
+
+proc getFontResource*(name: string): Option[FontResource] =
+  ## Get a font resource by name
+  for font in appResources.fonts:
+    if font.name == name:
+      return some(font)
+  none(FontResource)
+
+proc clearFontResources*() =
+  ## Clear all font resources
+  appResources.fonts = @[]
+
+proc getRegisteredFontNames*(): seq[string] =
+  ## Get all registered font names
+  result = @[]
+  for font in appResources.fonts:
+    result.add(font.name)
+
+proc getRegisteredFonts*(): seq[FontResource] =
+  ## Get a copy of all registered font resources
+  appResources.fonts
