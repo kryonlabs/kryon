@@ -6,7 +6,7 @@
 ## - ElementKind: Enumeration of all element types
 ## - Color: Color representation
 
-import tables, strutils, options, hashes, sets
+import tables, strutils, options, hashes, sets, macros
 
 type
   ElementKind* = enum
@@ -82,6 +82,27 @@ type
   AppResources* = object
     ## Application resources container
     fonts*: seq[FontResource]
+
+  StyleParameter* = object
+    ## Parameter definition for parameterized styles
+    name*: string
+    typeNode*: NimNode  # Store the type for compile-time checking
+
+  StyleRule* = object
+    ## Individual style rule with optional condition
+    properties*: seq[Property]
+    condition*: Option[proc(): bool {.closure.}]  # For conditional styles
+
+  Style* = object
+    ## Style definition for reusable styling
+    name*: string
+    parameters*: seq[StyleParameter]  # Empty for parameterless styles
+    rules*: seq[StyleRule]            # Style rules (can have conditions)
+    isParameterized*: bool
+
+  Stylesheet* = object
+    ## Collection of defined styles
+    styles*: TableRef[string, Style]
 
   Element* = ref object
     ## Base UI element type
@@ -503,6 +524,25 @@ var reactiveDependencies*: Table[string, HashSet[Element]] = initTable[string, H
 # Global application resources
 var appResources*: AppResources = AppResources(fonts: @[])
 
+# Simple style registry using a sequence
+var registeredStyles*: seq[Style] = @[]
+
+# Global style registry for direct property access (used by DSL)
+var globalStyleRegistry*: Table[string, seq[Property]] = initTable[string, seq[Property]]()
+
+# Simple style registration function
+proc registerStyle*(style: Style) =
+  ## Register a style in the simple registry
+  registeredStyles.add(style)
+
+# Simple style lookup function
+proc getStyle*(name: string): Option[Style] =
+  ## Get a style by name from the simple registry
+  for style in registeredStyles:
+    if style.name == name:
+      return some(style)
+  none(Style)
+
 # Reactive System Helper Function Implementations
 
 proc markDirty*(elem: Element) =
@@ -637,3 +677,80 @@ proc getRegisteredFontNames*(): seq[string] =
 proc getRegisteredFonts*(): seq[FontResource] =
   ## Get a copy of all registered font resources
   appResources.fonts
+
+# ============================================================================
+# Style Management (simple implementation)
+# ============================================================================
+
+proc clearStyles*() =
+  ## Clear all registered styles
+  registeredStyles.setLen(0)
+
+proc getRegisteredStyleNames*(): seq[string] =
+  ## Get all registered style names
+  result = @[]
+  for style in registeredStyles:
+    result.add(style.name)
+
+proc applyStyleToElement*(elem: Element, styleName: string, params: seq[Value] = @[]) =
+  ## Apply a style to an element by name
+  let styleOpt = getStyle(styleName)
+  if styleOpt.isNone:
+    echo "Warning: Style '" & styleName & "' not found"
+    return
+
+  let style = styleOpt.get()
+
+  # Check parameter count
+  if style.isParameterized and params.len != style.parameters.len:
+    echo "Warning: Style '" & styleName & "' expects " & $style.parameters.len & " parameters, got " & $params.len
+    return
+
+  if not style.isParameterized and params.len > 0:
+    echo "Warning: Style '" & styleName & "' is parameterless but parameters were provided"
+    return
+
+  # Apply style rules
+  for rule in style.rules:
+    # Check condition if present
+    if rule.condition.isSome:
+      if not rule.condition.get()():
+        continue
+
+    # Apply properties
+    for prop in rule.properties:
+      elem.setProp(prop.name, prop.value)
+
+proc createParameterizedStyleApplication*(styleName: string, params: seq[NimNode]): NimNode =
+  ## Create a style application with parameters for compile-time generation
+  let styleOpt = getStyle(styleName)
+  if styleOpt.isNone:
+    error("Style '" & styleName & "' not found at compile time")
+
+  let style = styleOpt.get()
+  var propertyAssignments = newStmtList()
+
+  # Generate property assignments for each rule
+  for rule in style.rules:
+    # For parameterized styles, we'll handle conditions in the generated code
+    var conditionCheck: NimNode = nil
+    if rule.condition.isSome:
+      # This is a simplified approach - in a full implementation,
+      # we'd need to generate proper condition checking
+      conditionCheck = quote do:
+        true
+
+    # Apply properties
+    for prop in rule.properties:
+      let propName = newLit(prop.name)
+      let propValue = prop.value
+
+      if conditionCheck != nil:
+        propertyAssignments.add quote do:
+          if `conditionCheck`:
+            elem.setProp(`propName`, `propValue`)
+      else:
+        propertyAssignments.add quote do:
+          elem.setProp(`propName`, `propValue`)
+
+  result = propertyAssignments

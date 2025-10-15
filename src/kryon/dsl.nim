@@ -15,7 +15,7 @@
 ##     color = "yellow"
 ## ```
 
-import macros, strutils, options, unicode
+import macros, strutils, options, unicode, tables
 import core
 
 # ============================================================================
@@ -100,8 +100,8 @@ proc resolvePropertyAlias*(propName: string): string =
   ## Add new aliases here without touching other code
   case propName:
   of "background": "backgroundColor"
+  of "textColor": "color"
   # Future aliases can be added here:
-  # of "color": "textColor"
   # of "size": "fontSize"
   else: propName
 
@@ -408,6 +408,48 @@ proc emitPropertyAssignment(kind: ElementKind, elemVar: NimNode, propName: strin
 
   result = handleFontProperty(kind, elemVar, propName, valueNode)
   if result.len > 0:
+    return
+
+  # Handle style property
+  if propName == "style":
+    # Check if this is a simple style reference (parameterless)
+    # or a function call (parameterized)
+    if valueNode.kind == nnkIdent:
+      # Parameterless style: style = primaryButton
+      let styleName = valueNode.strVal
+      result.add quote do:
+        # Look up the style in the global registry
+        if globalStyleRegistry.hasKey(`styleName`):
+          let styleProperties = globalStyleRegistry[`styleName`]
+          # Apply all style properties first
+          for prop in styleProperties:
+            `elemVar`.setProp(resolvePropertyAlias(prop.name), prop.value)
+          echo "Applied style: ", `styleName`, " with ", styleProperties.len, " properties"
+        else:
+          echo "Warning: Style '", `styleName`, "' not found in registry"
+
+    elif valueNode.kind == nnkCall:
+      # Parameterized style: style = calendarDay(day)
+      let styleNameNode = valueNode[0]
+      let styleName = styleNameNode.strVal
+
+      # Extract parameters
+      var params: seq[NimNode] = @[]
+      for i in 1..<valueNode.len:
+        params.add(valueNode[i])
+
+      # Generate parameterized style application
+      let paramsList = newNimNode(nnkBracket)
+      for param in params:
+        paramsList.add(param)
+
+      result.add quote do:
+        # For now, just show a warning that parameterized style lookup is not implemented
+        echo "Warning: Parameterized style lookup not yet implemented for style: ", `styleName`
+        # TODO: Implement proper parameterized style lookup and application
+
+    else:
+      echo "Warning: Invalid style syntax"
     return
 
   let parseResult = parsePropertyValue(valueNode)
@@ -877,6 +919,171 @@ macro Resources*(body: untyped): Element =
 macro Font*(body: untyped): Element =
   ## Create a Font resource element
   result = processElementBody(ekFont, body)
+
+# ============================================================================
+# Style macros
+# ============================================================================
+
+
+macro style*(styleName: untyped, body: untyped): untyped =
+  ## Define a reusable style
+  ## Syntax:
+  ##   style primaryButton:
+  ##     backgroundColor = "#4a90e2"
+  ##     textColor = "#ffffff"
+
+  result = newStmtList()
+
+  # Extract style name (first argument)
+  if styleName.kind != nnkIdent:
+    error("Style name must be an identifier")
+
+  let styleNameStr = styleName.strVal
+  let styleNameLit = newLit(styleNameStr)
+
+  # Extract style body (second argument)
+  var styleBody: NimNode
+  if body.kind == nnkStmtList:
+    # Multiple properties: style testStyle: { prop1 = value1; prop2 = value2 }
+    styleBody = body
+  elif body.kind == nnkExprEqExpr:
+    # Single property: style testStyle: prop = value
+    styleBody = newStmtList(body)
+  else:
+    # Command syntax: style testStyle: prop1: value1; prop2: value2
+    styleBody = newStmtList(body)
+
+  # Process all property assignments
+  var properties = newSeq[NimNode]()
+
+  for stmt in styleBody:
+    if stmt.kind == nnkStmtList:
+      # If it's a statement list, process each statement
+      for s in stmt:
+        if s.kind == nnkExprEqExpr or s.kind == nnkAsgn:
+          # Property assignment: prop = value
+          let propName = s[0].strVal
+          let propValue = s[1]
+          let propNameLit = newLit(propName)
+
+          # Use the simpler val() constructors directly for known types
+          if propValue.kind == nnkStrLit:
+            let strVal = propValue.strVal
+            if strVal.startsWith("#"):
+              properties.add quote do:
+                (name: `propNameLit`, value: val(parseColor(`propValue`)))
+            else:
+              properties.add quote do:
+                (name: `propNameLit`, value: val(`propValue`))
+          elif propValue.kind == nnkIntLit:
+            properties.add quote do:
+              (name: `propNameLit`, value: val(`propValue`))
+          elif propValue.kind == nnkFloatLit:
+            properties.add quote do:
+              (name: `propNameLit`, value: val(`propValue`))
+          else:
+            # For complex expressions, use val()
+            properties.add quote do:
+              (name: `propNameLit`, value: val(`propValue`))
+
+        elif s.kind == nnkExprColonExpr:
+          # Property assignment with colon: prop: value
+          let propName = s[0].strVal
+          let propValue = s[1]
+          let propNameLit = newLit(propName)
+
+          # Use the simpler val() constructors directly for known types
+          if propValue.kind == nnkStrLit:
+            let strVal = propValue.strVal
+            if strVal.startsWith("#"):
+              properties.add quote do:
+                (name: `propNameLit`, value: val(parseColor(`propValue`)))
+            else:
+              properties.add quote do:
+                (name: `propNameLit`, value: val(`propValue`))
+          elif propValue.kind == nnkIntLit:
+            properties.add quote do:
+              (name: `propNameLit`, value: val(`propValue`))
+          elif propValue.kind == nnkFloatLit:
+            properties.add quote do:
+              (name: `propNameLit`, value: val(`propValue`))
+          else:
+            # For complex expressions, use val()
+            properties.add quote do:
+              (name: `propNameLit`, value: val(`propValue`))
+
+    elif stmt.kind == nnkExprEqExpr or stmt.kind == nnkAsgn:
+      # Property assignment: prop = value
+      let propName = stmt[0].strVal
+      let propValue = stmt[1]
+      let propNameLit = newLit(propName)
+
+      # Use the simpler val() constructors directly for known types
+      if propValue.kind == nnkStrLit:
+        let strVal = propValue.strVal
+        if strVal.startsWith("#"):
+          properties.add quote do:
+            (name: `propNameLit`, value: val(parseColor(`propValue`)))
+        else:
+          properties.add quote do:
+            (name: `propNameLit`, value: val(`propValue`))
+      elif propValue.kind == nnkIntLit:
+        properties.add quote do:
+          (name: `propNameLit`, value: val(`propValue`))
+      elif propValue.kind == nnkFloatLit:
+        properties.add quote do:
+          (name: `propNameLit`, value: val(`propValue`))
+      else:
+        # For complex expressions, use val()
+        properties.add quote do:
+          (name: `propNameLit`, value: val(`propValue`))
+
+    elif stmt.kind == nnkExprColonExpr:
+      # Property assignment with colon: prop: value
+      let propName = stmt[0].strVal
+      let propValue = stmt[1]
+      let propNameLit = newLit(propName)
+
+      # Use the simpler val() constructors directly for known types
+      if propValue.kind == nnkStrLit:
+        let strVal = propValue.strVal
+        if strVal.startsWith("#"):
+          properties.add quote do:
+            (name: `propNameLit`, value: val(parseColor(`propValue`)))
+        else:
+          properties.add quote do:
+            (name: `propNameLit`, value: val(`propValue`))
+      elif propValue.kind == nnkIntLit:
+        properties.add quote do:
+          (name: `propNameLit`, value: val(`propValue`))
+      elif propValue.kind == nnkFloatLit:
+        properties.add quote do:
+          (name: `propNameLit`, value: val(`propValue`))
+      else:
+        # For complex expressions, use val()
+        properties.add quote do:
+          (name: `propNameLit`, value: val(`propValue`))
+
+    else:
+      # Skip other node types
+      continue
+
+  
+  # Create the properties sequence directly
+  let propertiesList = newNimNode(nnkBracket)
+  for prop in properties:
+    propertiesList.add(prop)
+
+  # Create a runtime style registry and populate it with the style
+  result.add quote do:
+    # Create properties sequence from the generated list
+    var propertiesSeq: seq[Property] = @[]
+    for prop in `propertiesList`:
+      propertiesSeq.add(prop)
+
+    # Store the style in the global registry (from core module)
+    globalStyleRegistry[`styleNameLit`] = propertiesSeq
+    echo "Style registered: ", `styleNameLit`, " with ", propertiesSeq.len, " properties"
 
 # ============================================================================
 # Application macro
