@@ -787,11 +787,21 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
     let contentX = elem.x + padding
     let contentY = elem.y + padding
     let contentWidth = elem.width - (padding * 2.0)
-
+  
     currentY = contentY
     for child in elem.children:
-      calculateLayout(child, contentX, currentY, contentWidth, 0)
-      currentY += child.height + gap
+      # THE FIX: Check for for-loop placeholders and expand them before layout.
+      if child.kind == ekForLoop:
+        # First, trigger the for-loop to generate its actual children.
+        calculateLayout(child, contentX, currentY, contentWidth, 0)
+        # Now, loop through the newly generated children and lay them out.
+        for grandchild in child.children:
+          calculateLayout(grandchild, contentX, currentY, contentWidth, 0)
+          currentY += grandchild.height + gap
+      else:
+        # This is a regular child, lay it out normally.
+        calculateLayout(child, contentX, currentY, contentWidth, 0)
+        currentY += child.height + gap
 
   else:
     # Default: just layout children in same space as parent

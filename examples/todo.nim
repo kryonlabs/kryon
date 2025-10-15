@@ -4,25 +4,9 @@ var todos = @["Test todo", "Another item"]
 var newTodo = ""
 
 proc addTodoHandler() =
-  echo "🔥🔥🔥 addTodo called!"
-  echo "=== addTodo called ==="
-  echo "newTodo before: '" & newTodo & "'"
-  echo "todos before: " & $todos
-  echo "todos length: " & $todos.len
-
   if newTodo != "":
-    echo "Adding todo: " & newTodo
     todos.add(newTodo)
-    echo "Added! New todos length: " & $todos.len
-    echo "todos after add: " & $todos
     newTodo = ""
-    echo "newTodo after clearing: '" & newTodo & "'"
-
-    # Reactive system now auto-invalidates affected UI after event handlers run
-  else:
-    echo "newTodo is empty, not adding"
-
-  echo "=== end addTodo ==="
 
 let app = kryonApp:
   Header:

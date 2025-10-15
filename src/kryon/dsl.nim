@@ -15,7 +15,7 @@
 ##     color = "yellow"
 ## ```
 
-import macros, strutils, options
+import macros, strutils, options, unicode
 import core
 
 # ============================================================================
@@ -257,65 +257,86 @@ proc handleDropdownProperty(kind: ElementKind, elemVar: NimNode, propName: strin
   else:
     discard
 
+proc isUiComponentNode(node: NimNode): bool {.compileTime.} =
+  ## Helper to determine if a NimNode is a UI component macro call.
+  ## This is based on the convention that components start with a capital letter.
+  case node.kind
+  of nnkCall, nnkCommand:
+    if node.len > 0 and node[0].kind == nnkIdent:
+      let name = node[0].strVal
+      # Check if name is in built-ins or just capitalized (for custom components)
+      if name in builtinElementNames or (name.len > 0 and name[0] in 'A'..'Z'):
+        return true
+  else:
+    discard
+  return false
 proc generateTypePreservingForLoop*(elemVar: NimNode, loopVar: NimNode, iterable: NimNode, loopBody: NimNode, iterationKind: IterationKind, iterableName: string): seq[NimNode] =
   ## Generate reactive for loop code that keeps the loop variable's original type
+  ## and supports multiple statements/elements in the loop body.
   result = @[]
   let iterableNameNode = newLit(iterableName)
   let loopBodyCopy = copyNimTree(loopBody)
   let loopVarCopy = copyNimTree(loopVar)
   let iterableCopy = copyNimTree(iterable)
   let forLoopSym = genSym(nskVar, "forLoop")
-  let storageName =
-    if loopVar.kind == nnkIdent:
-      loopVar.strVal & "Item"
+
+  # THE FIX: Create a symbol for the 'forElem' parameter BEFORE using it.
+  # This ensures the symbol is available in the correct scope for the quote block.
+  let forElemParam = genSym(nskParam, "forElem")
+
+  # Process the loop body to wrap UI components in addChild calls.
+  let processedLoopBody = newStmtList()
+  let bodyStmts = if loopBodyCopy.kind == nnkStmtList: loopBodyCopy else: newStmtList(loopBodyCopy)
+
+  for stmt in bodyStmts:
+    if isUiComponentNode(stmt):
+      # This is a UI component, so wrap it in `addChild`.
+      # We use our new symbol 'forElemParam' here.
+      processedLoopBody.add(quote do:
+        let childElement = `stmt`
+        if childElement != nil:
+          `forElemParam`.addChild(childElement)
+      )
     else:
-      "loopItem"
-  let loopStorageSym = genSym(nskForVar, storageName)
-  let capturedParamSym = genSym(nskParam, storageName & "Captured")
-  let seqValueSym = genSym(nskLet, storageName & "Seq")
-  let indexSym = genSym(nskForVar, storageName & "Index")
+      # This is a regular statement (like `echo` or `let`), so add it directly.
+      processedLoopBody.add(stmt)
 
-  when defined(debugTabs):
-    echo "Debug: Using iteration kind ", $iterationKind, " for iterable ", iterableCopy.repr
-
+  # Generate the builder proc.
+  # This is a procedure that the runtime will call to build or update
+  # the contents of the for loop.
   var builderProc: NimNode
-
   case iterationKind
-  of ikDirectSequence:
+  of ikDirectSequence: # Optimized for `for item in items`
     builderProc = quote do:
-      proc(forElem: Element) =
+      proc(`forElemParam`: Element) = # We use the SAME symbol here for the parameter name.
         registerDependency("forLoopIterable")
         registerDependency(`iterableNameNode`)
-        forElem.children.setLen(0)
-        let `seqValueSym` = `iterableCopy`
-        for `indexSym` in 0 ..< len(`seqValueSym`):
-          let child = (proc(`capturedParamSym` = `seqValueSym`[`indexSym`]): Element =
-            let `loopVarCopy` = `capturedParamSym`
-            `loopBodyCopy`
+        `forElemParam`.children.setLen(0)
+        let seqValue = `iterableCopy`
+        for index in 0 ..< len(seqValue):
+          # Use an immediately-invoked proc to capture the loop variable correctly.
+          (proc(capturedParam = seqValue[index]) =
+            let `loopVarCopy` = capturedParam
+            `processedLoopBody` # Inject our processed body here.
           )()
-          if child != nil:
-            forElem.addChild(child)
-  else:
+  else: # Handles countup, ranges, etc.
     builderProc = quote do:
-      proc(forElem: Element) =
+      proc(`forElemParam`: Element) = # And we use the SAME symbol here too.
         registerDependency("forLoopIterable")
         registerDependency(`iterableNameNode`)
-        forElem.children.setLen(0)
-        for `loopStorageSym` in `iterableCopy`:
-          let child = (proc(`capturedParamSym` = `loopStorageSym`): Element =
-            let `loopVarCopy` = `capturedParamSym`
-            `loopBodyCopy`
+        `forElemParam`.children.setLen(0)
+        for loopItem in `iterableCopy`:
+          # Use an immediately-invoked proc to capture the loop variable correctly.
+          (proc(capturedParam = loopItem) =
+            let `loopVarCopy` = capturedParam
+            `processedLoopBody` # Inject our processed body here.
           )()
-          if child != nil:
-            forElem.addChild(child)
 
   result.add quote do:
     var `forLoopSym` = newElement(ekForLoop)
     `forLoopSym`.forBuilder = `builderProc`
-    `forLoopSym`.forIterable = nil
-    `forLoopSym`.forBodyTemplate = nil
     `elemVar`.addChild(`forLoopSym`)
-
+    
 proc handleTabGroupProperty(kind: ElementKind, elemVar: NimNode, propName: string, valueNode: NimNode): seq[NimNode] =
   ## Handle tab group specific properties, including optional bindings
   result = @[]
@@ -417,7 +438,6 @@ proc combineConditions(condNodes: seq[NimNode]): NimNode =
     let right = copyNimTree(condNodes[i])
     result = quote do:
       `left` or `right`
-
 proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
   ## Process the body of an element definition
   ## Returns code that creates the element with properties and children
@@ -492,22 +512,26 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           result.add quote do:
             `elemVar`.addChild(`stmt`)
       else:
-        # This might be a function call that returns Element (custom component)
-        # Check if it's a function call like Counter(0)
-        if stmt.len > 1 or (stmt.len == 1 and stmt[0].kind == nnkIdent):
-          # Treat as a function call that returns Element
+        # This might be a function call that returns Element (custom component).
+        # We use a heuristic: component names are expected to be capitalized.
+        if nameStr.len > 0 and nameStr[0] in 'A'..'Z':
+          # Treat as a function call that returns an Element (custom component)
           result.add quote do:
             `elemVar`.addChild(`stmt`)
         else:
-          # Unknown - skip
+          # This is likely a regular procedure call like `echo`.
+          # It should not be added to the UI tree. We discard it.
+          # The user should place such calls inside event handlers if needed.
           discard
-
     of nnkCommand:
-      # Command syntax: might be a child element
-      if stmt.len >= 2:
-        let childStmt = stmt
-        result.add quote do:
-          `elemVar`.addChild(`childStmt`)
+      # Command syntax: might be a UI component or a regular procedure call.
+      # We check if it's a capitalized component name.
+      if stmt.len > 0 and stmt[0].kind == nnkIdent:
+        let nameStr = stmt[0].strVal
+        if nameStr.len > 0 and nameStr[0] in 'A'..'Z':
+          # Assumed to be a UI component, add it as a child.
+          result.add quote do:
+            `elemVar`.addChild(`stmt`)
 
     of nnkAsgn:
       # Also handle nnkAsgn (rare, but valid)
@@ -536,7 +560,11 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
       else:
         for propStmt in emitPropertyAssignment(kind, elemVar, propName, stmt[1]):
           result.add(propStmt)
-
+    of nnkLetSection, nnkVarSection:
+          # Handle let/var declarations by adding them directly
+          # to the generated code. This makes the variable available
+          # in the current scope for subsequent elements and properties.
+          result.add(copyNimTree(stmt))
     of nnkIfStmt:
       # Handle if statements for conditional rendering
       # Convert if statement to a conditional element
