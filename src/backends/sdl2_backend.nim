@@ -5,6 +5,17 @@
 
 import ../kryon/core
 import ../kryon/fonts
+import ../kryon/layout/layoutEngine
+import ../kryon/layout/zindexSort
+import ../kryon/state/backendState
+import ../kryon/components/button
+import ../kryon/components/text
+import ../kryon/components/input
+import ../kryon/components/checkbox
+import ../kryon/components/dropdown
+import ../kryon/components/container
+import ../kryon/components/containers
+import ../kryon/components/tabs
 import options, tables, algorithm
 import sdl2_ffi
 
@@ -31,15 +42,7 @@ type
     backgroundColor*: SDL_Color
     running*: bool
     rootElement*: Element
-    focusedInput*: Element  # Currently focused input element
-    focusedDropdown*: Element  # Currently focused dropdown element
-    cursorBlink*: float     # Timer for cursor blinking
-    inputValues*: Table[Element, string]  # Store current text for each input
-    checkboxStates*: Table[Element, bool]  # Store checked state for each checkbox
-    inputScrollOffsets*: Table[Element, float]  # Store scroll offset for each input
-    backspaceHoldTimer*: float  # Timer for backspace repeat
-    backspaceRepeatDelay*: float  # Initial delay before repeat starts
-    backspaceRepeatRate*: float   # Rate of repeat deletion
+    state*: BackendState  # Centralized state management
     textInputEnabled*: bool  # Whether text input is currently enabled
     keyStates*: array[512, bool]  # Track keyboard state
 
@@ -54,13 +57,7 @@ proc newSDL2Backend*(width, height: int, title: string): SDL2Backend =
     windowTitle: title,
     backgroundColor: rcolor(30, 30, 30, 255),
     running: false,
-    focusedDropdown: nil,
-    inputValues: initTable[Element, string](),
-    checkboxStates: initTable[Element, bool](),
-    inputScrollOffsets: initTable[Element, float](),
-    backspaceHoldTimer: 0.0,
-    backspaceRepeatDelay: 0.5,  # 500ms initial delay
-    backspaceRepeatRate: 0.05,   # 50ms repeat rate
+    state: newBackendState(),
     textInputEnabled: false
   )
 
@@ -106,13 +103,7 @@ proc newSDL2BackendFromApp*(app: Element): SDL2Backend =
     windowTitle: title,
     backgroundColor: if bgColor.isSome: bgColor.get.getColor().toSDLColor() else: rcolor(30, 30, 30, 255),
     running: false,
-    focusedDropdown: nil,
-    inputValues: initTable[Element, string](),
-    checkboxStates: initTable[Element, bool](),
-    inputScrollOffsets: initTable[Element, float](),
-    backspaceHoldTimer: 0.0,
-    backspaceRepeatDelay: 0.5,  # 500ms initial delay
-    backspaceRepeatRate: 0.05,   # 50ms repeat rate
+    state: newBackendState(),
     textInputEnabled: false
   )
 
@@ -663,15 +654,6 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
 # Rendering with SDL2
 # ============================================================================
 
-proc sortChildrenByZIndex(children: seq[Element]): seq[Element] =
-  ## Sort children by z-index for correct layered rendering
-  result = children
-  result.sort(proc(a, b: Element): int =
-    let aZIndex = a.getProp("zIndex").get(val(0)).getInt()
-    let bZIndex = b.getProp("zIndex").get(val(0)).getInt()
-    result = cmp(aZIndex, bZIndex)
-  )
-
 proc renderText*(backend: SDL2Backend, text: string, x, y: float, fontSize: int, color: SDL_Color) =
   ## Render text using SDL_ttf
   if backend.font == nil or text.len == 0:
@@ -736,403 +718,303 @@ proc renderElement*(backend: var SDL2Backend, elem: Element, inheritedColor: Opt
       backend.renderElement(child, inheritedColor)
 
   of ekBody:
-    let bodyColor = elem.getProp("color")
-    let colorToInherit = if bodyColor.isSome:
-      some(bodyColor.get.getColor())
-    else:
-      inheritedColor
-
-    let sortedChildren = sortChildrenByZIndex(elem.children)
-    for child in sortedChildren:
-      backend.renderElement(child, colorToInherit)
+    # Extract body data and render children with inherited color
+    let data = extractBodyData(elem, inheritedColor)
+    # Render children with inherited color (sorted by z-index)
+    for child in data.sortedChildren:
+      backend.renderElement(child, data.colorToInherit)
 
   of ekContainer:
-    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
+    # Extract container data and render it
+    let data = extractContainerData(elem, inheritedColor)
 
     # Draw background
-    var bgColor = elem.getProp("backgroundColor")
-    if bgColor.isNone:
-      bgColor = elem.getProp("background")
-    if bgColor.isSome:
-      let sdlColor = bgColor.get.getColor().toSDLColor()
+    if data.hasBackground:
+      let rect = rrect(data.x, data.y, data.width, data.height)
+      let sdlColor = data.backgroundColor.toSDLColor()
       discard SDL_SetRenderDrawColor(backend.renderer, sdlColor.r, sdlColor.g, sdlColor.b, sdlColor.a)
       discard SDL_RenderFillRect(backend.renderer, addr rect)
 
     # Draw border
-    let borderColor = elem.getProp("borderColor")
-    if borderColor.isSome:
-      let borderWidth = elem.getProp("borderWidth").get(val(1)).getFloat()
-      let sdlBorderColor = borderColor.get.getColor().toSDLColor()
+    if data.hasBorder:
+      let rect = rrect(data.x, data.y, data.width, data.height)
+      let sdlBorderColor = data.borderColor.toSDLColor()
       discard SDL_SetRenderDrawColor(backend.renderer, sdlBorderColor.r, sdlBorderColor.g, sdlBorderColor.b, sdlBorderColor.a)
       discard SDL_RenderDrawRect(backend.renderer, addr rect)
 
-  of ekText:
-    let text = elem.getProp("text").get(val("")).getString()
-    let explicitColor = elem.getProp("color")
-    let color = if explicitColor.isSome:
-      explicitColor.get.getColor()
-    elif inheritedColor.isSome:
-      inheritedColor.get
-    else:
-      parseColor("#FFFFFF")
-    let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
+    # Render children (sorted by z-index)
+    for child in data.sortedChildren:
+      backend.renderElement(child, inheritedColor)
 
-    backend.renderText(text, elem.x, elem.y, fontSize, color.toSDLColor())
+  of ekText:
+    # Extract text data and render it
+    let data = extractTextData(elem, inheritedColor)
+    backend.renderText(data.text, data.x, data.y, data.fontSize, data.color.toSDLColor())
 
   of ekButton:
-    let text = elem.getProp("text").get(val("Button")).getString()
-    let bgColor = elem.getProp("backgroundColor").get(val("#4A90E2"))
-    let textColor = elem.getProp("color").get(val("#FFFFFF")).getColor()
-    let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
-
-    # Get border properties with defaults
-    let borderWidthProp = elem.getProp("borderWidth")
-    let borderWidth = if borderWidthProp.isSome:
-      borderWidthProp.get.getFloat()
-    else:
-      2.0  # Default border width for buttons
-
-    let borderColorProp = elem.getProp("borderColor")
-    let borderColor = if borderColorProp.isSome:
-      borderColorProp.get.getColor()
-    else:
-      parseColor("#D1D5DB")  # Default border color for buttons
+    # Extract button data and render it
+    let data = extractButtonData(elem, inheritedColor)
 
     # Draw button background
-    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
-    let sdlBgColor = bgColor.getColor().toSDLColor()
+    let rect = rrect(data.x, data.y, data.width, data.height)
+    let sdlBgColor = data.backgroundColor.toSDLColor()
     discard SDL_SetRenderDrawColor(backend.renderer, sdlBgColor.r, sdlBgColor.g, sdlBgColor.b, sdlBgColor.a)
     discard SDL_RenderFillRect(backend.renderer, addr rect)
 
     # Draw button border
-    if borderWidth > 0:
-      let sdlBorderColor = borderColor.toSDLColor()
+    if data.borderWidth > 0:
+      let sdlBorderColor = data.borderColor.toSDLColor()
       discard SDL_SetRenderDrawColor(backend.renderer, sdlBorderColor.r, sdlBorderColor.g, sdlBorderColor.b, sdlBorderColor.a)
       discard SDL_RenderDrawRect(backend.renderer, addr rect)
 
     # Center text in button
-    let textMetrics = backend.measureText(text, fontSize)
-    let textX = elem.x + (elem.width - textMetrics.w.float) / 2.0
-    let textY = elem.y + (elem.height - textMetrics.h.float) / 2.0
+    let textMetrics = backend.measureText(data.text, data.fontSize)
+    let textX = data.x + (data.width - textMetrics.w.float) / 2.0
+    let textY = data.y + (data.height - textMetrics.h.float) / 2.0
 
-    backend.renderText(text, textX, textY, fontSize, textColor.toSDLColor())
+    backend.renderText(data.text, textX, textY, data.fontSize, data.textColor.toSDLColor())
 
   of ekInput:
-    let reactiveValue = elem.getProp("value").get(val("")).getString()
-
-    var value: string
-    if backend.inputValues.hasKey(elem):
-      value = backend.inputValues[elem]
-      if reactiveValue != value and backend.focusedInput != elem:
-        value = reactiveValue
-        backend.inputValues[elem] = reactiveValue
-    else:
-      value = reactiveValue
-
-    let placeholder = elem.getProp("placeholder").get(val("")).getString()
-    let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
-    let bgColor = elem.getProp("backgroundColor").get(val("#FFFFFF"))
-    let textColor = elem.getProp("color").get(val("#000000")).getColor()
-
-    let borderWidthProp = elem.getProp("borderWidth")
-    let borderWidth = if borderWidthProp.isSome:
-      borderWidthProp.get.getFloat()
-    else:
-      1.0
-
-    let borderColorProp = elem.getProp("borderColor")
-    let borderColor = if borderColorProp.isSome:
-      borderColorProp.get.getColor()
-    else:
-      if backend.focusedInput == elem:
-        parseColor("#4A90E2")
-      else:
-        parseColor("#CCCCCC")
+    # Extract input data
+    let data = extractInputData(elem, backend.state, inheritedColor)
 
     # Draw input background
-    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
-    let sdlBgColor = bgColor.getColor().toSDLColor()
+    let rect = rrect(data.x, data.y, data.width, data.height)
+    let sdlBgColor = data.backgroundColor.toSDLColor()
     discard SDL_SetRenderDrawColor(backend.renderer, sdlBgColor.r, sdlBgColor.g, sdlBgColor.b, sdlBgColor.a)
     discard SDL_RenderFillRect(backend.renderer, addr rect)
 
     # Draw border
-    let actualBorderWidth = if backend.focusedInput == elem and borderWidth == 1.0: 2.0 else: borderWidth
-    if actualBorderWidth > 0:
-      let sdlBorderColor = borderColor.toSDLColor()
+    if data.borderWidth > 0:
+      let sdlBorderColor = data.borderColor.toSDLColor()
       discard SDL_SetRenderDrawColor(backend.renderer, sdlBorderColor.r, sdlBorderColor.g, sdlBorderColor.b, sdlBorderColor.a)
       discard SDL_RenderDrawRect(backend.renderer, addr rect)
 
-    # Text rendering with clipping
-    let padding = 8.0
-    let displayText = if value.len > 0: value else: placeholder
-    let displayColor = if value.len > 0: textColor else: parseColor("#999999")
-
-    # Calculate cursor position
-    let cursorTextPos = if value.len > 0 and backend.focusedInput == elem:
-      backend.measureText(value, fontSize).w.float
+    # Calculate cursor position and scroll offset (backend-specific, requires text measurement)
+    let cursorTextPos = if data.value.len > 0 and data.isFocused:
+      backend.measureText(data.value, data.fontSize).w.float
     else:
       0.0
 
-    var scrollOffset = backend.inputScrollOffsets.getOrDefault(elem, 0.0)
-    let visibleWidth = elem.width - (padding * 2.0)
+    var scrollOffset = data.scrollOffset
 
     # Adjust scroll offset to keep cursor visible
-    if backend.focusedInput == elem:
-      let totalTextWidth = if value.len > 0:
-        backend.measureText(value, fontSize).w.float
+    if data.isFocused:
+      let totalTextWidth = if data.value.len > 0:
+        backend.measureText(data.value, data.fontSize).w.float
       else:
         0.0
 
-      if cursorTextPos - scrollOffset > visibleWidth - 20.0:
-        scrollOffset = cursorTextPos - visibleWidth + 20.0
+      if cursorTextPos - scrollOffset > data.visibleWidth - 20.0:
+        scrollOffset = cursorTextPos - data.visibleWidth + 20.0
 
       if cursorTextPos < scrollOffset + 20.0:
         scrollOffset = max(0.0, cursorTextPos - 20.0)
 
       scrollOffset = max(0.0, scrollOffset)
 
-      if totalTextWidth <= visibleWidth:
+      if totalTextWidth <= data.visibleWidth:
         scrollOffset = 0.0
       else:
-        let maxScrollOffset = max(0.0, totalTextWidth - visibleWidth)
+        let maxScrollOffset = max(0.0, totalTextWidth - data.visibleWidth)
         scrollOffset = min(scrollOffset, maxScrollOffset)
 
-      backend.inputScrollOffsets[elem] = scrollOffset
+      backend.state.inputScrollOffsets[elem] = scrollOffset
 
-    # Set up clipping
-    let clipRect = rrect(elem.x + padding, elem.y + 2.0, elem.width - (padding * 2.0), elem.height - 4.0)
+    # Set up clipping for text
+    let clipRect = rrect(data.x + data.padding, data.y + 2.0, data.visibleWidth, data.height - 4.0)
     discard SDL_RenderSetClipRect(backend.renderer, addr clipRect)
 
     # Draw text with scroll offset
-    if displayText.len > 0:
-      let textX = elem.x + padding - scrollOffset
-      let textY = elem.y + (elem.height - fontSize.float) / 2.0
-      backend.renderText(displayText, textX, textY, fontSize, displayColor.toSDLColor())
+    if data.displayText.len > 0:
+      let textX = data.x + data.padding - scrollOffset
+      let textY = data.y + (data.height - data.fontSize.float) / 2.0
+      backend.renderText(data.displayText, textX, textY, data.fontSize, data.displayColor.toSDLColor())
 
     # Reset clipping
     discard SDL_RenderSetClipRect(backend.renderer, nil)
 
     # Draw cursor if focused and visible
-    if backend.focusedInput == elem and backend.cursorBlink < 0.5:
-      let cursorX = elem.x + padding + cursorTextPos - scrollOffset
-      let cursorY = elem.y + 4.0
+    if data.showCursor:
+      let cursorX = data.x + data.padding + cursorTextPos - scrollOffset
+      let cursorY = data.cursorY
 
-      if cursorX >= elem.x + padding and cursorX <= elem.x + elem.width - padding:
-        let cursorRect = rrect(cursorX, cursorY, 1.0, fontSize.float - 2.0)
-        let sdlTextColor = textColor.toSDLColor()
+      if cursorX >= data.x + data.padding and cursorX <= data.x + data.width - data.padding:
+        let cursorRect = rrect(cursorX, cursorY, 1.0, data.fontSize.float - 2.0)
+        let sdlTextColor = data.textColor.toSDLColor()
         discard SDL_SetRenderDrawColor(backend.renderer, sdlTextColor.r, sdlTextColor.g, sdlTextColor.b, sdlTextColor.a)
         discard SDL_RenderFillRect(backend.renderer, addr cursorRect)
 
   of ekCheckbox:
-    let label = elem.getProp("label").get(val("")).getString()
-    let checkedProp = elem.getProp("checked").get(val(false))
-    let initialChecked = checkedProp.getBool()
-
-    var isChecked = initialChecked
-    if backend.checkboxStates.hasKey(elem):
-      isChecked = backend.checkboxStates[elem]
-    else:
-      backend.checkboxStates[elem] = initialChecked
-
-    let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
-    let bgColor = elem.getProp("backgroundColor").get(val("#FFFFFF"))
-    let textColor = elem.getProp("color").get(val("#000000")).getColor()
-    let borderColor = elem.getProp("borderColor").get(val("#CCCCCC")).getColor()
-    let borderWidth = elem.getProp("borderWidth").get(val(1)).getFloat()
-    let checkboxSize = min(elem.height, fontSize.float + 8.0)
-    let labelColor = if elem.getProp("labelColor").isSome:
-      elem.getProp("labelColor").get.getColor()
-    else:
-      textColor
-
-    let checkboxX = elem.x
-    let checkboxY = elem.y + (elem.height - checkboxSize) / 2.0
-    let checkboxRect = rrect(checkboxX, checkboxY, checkboxSize, checkboxSize)
+    # Extract checkbox data
+    let data = extractCheckboxData(elem, backend.state, inheritedColor)
 
     # Draw checkbox background
-    let sdlBgColor = bgColor.getColor().toSDLColor()
+    let checkboxRect = rrect(data.checkboxX, data.checkboxY, data.checkboxSize, data.checkboxSize)
+    let sdlBgColor = data.backgroundColor.toSDLColor()
     discard SDL_SetRenderDrawColor(backend.renderer, sdlBgColor.r, sdlBgColor.g, sdlBgColor.b, sdlBgColor.a)
     discard SDL_RenderFillRect(backend.renderer, addr checkboxRect)
 
     # Draw checkbox border
-    if borderWidth > 0:
-      let sdlBorderColor = borderColor.toSDLColor()
+    if data.borderWidth > 0:
+      let sdlBorderColor = data.borderColor.toSDLColor()
       discard SDL_SetRenderDrawColor(backend.renderer, sdlBorderColor.r, sdlBorderColor.g, sdlBorderColor.b, sdlBorderColor.a)
       discard SDL_RenderDrawRect(backend.renderer, addr checkboxRect)
 
-    # Draw checkmark if checked
-    if isChecked:
-      let checkColor = elem.getProp("checkColor").get(val("#4A90E2")).getColor()
-      let padding = checkboxSize * 0.2
-      let sdlCheckColor = checkColor.toSDLColor()
+    # Draw checkmark if checked (using pre-calculated segments)
+    if data.checked:
+      let sdlCheckColor = data.checkColor.toSDLColor()
       discard SDL_SetRenderDrawColor(backend.renderer, sdlCheckColor.r, sdlCheckColor.g, sdlCheckColor.b, sdlCheckColor.a)
 
-      # Draw checkmark lines
-      let startX = checkboxX + padding
-      let startY = checkboxY + checkboxSize / 2.0
-      let middleX = checkboxX + checkboxSize / 2.5
-      let middleY = checkboxY + checkboxSize - padding
-      let endX = checkboxX + checkboxSize - padding
-      let endY = checkboxY + padding
-      let checkThickness = max(1.0, checkboxSize / 8.0)
+      # Draw first line segments
+      for segment in data.checkmarkSegments1:
+        var lineRect = rrect(segment.x, segment.y, segment.thickness, segment.thickness)
+        discard SDL_RenderFillRect(backend.renderer, addr lineRect)
 
-      # First line
-      var lineRect = rrect(startX, startY - checkThickness/2, middleX - startX, checkThickness)
-      discard SDL_RenderFillRect(backend.renderer, addr lineRect)
-
-      # Second line
-      lineRect = rrect(middleX - checkThickness/2, middleY - (endY - middleY), checkThickness, endY - middleY)
-      discard SDL_RenderFillRect(backend.renderer, addr lineRect)
+      # Draw second line segments
+      for segment in data.checkmarkSegments2:
+        var lineRect = rrect(segment.x, segment.y, segment.thickness, segment.thickness)
+        discard SDL_RenderFillRect(backend.renderer, addr lineRect)
 
     # Draw label text if provided
-    if label.len > 0:
-      let textX = checkboxX + checkboxSize + 10.0
-      let textY = elem.y + (elem.height - fontSize.float) / 2.0
-      backend.renderText(label, textX, textY, fontSize, labelColor.toSDLColor())
+    if data.hasLabel:
+      backend.renderText(data.label, data.labelX, data.labelY, data.fontSize, data.labelColor.toSDLColor())
 
   of ekDropdown:
-    let selectedIndex = elem.dropdownSelectedIndex
-    let isOpen = elem.dropdownIsOpen
-
-    let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
-    let bgColor = elem.getProp("backgroundColor").get(val("#FFFFFF"))
-    let textColor = elem.getProp("color").get(val("#000000")).getColor()
-    let borderColor = elem.getProp("borderColor").get(val("#CCCCCC")).getColor()
-    let borderWidth = elem.getProp("borderWidth").get(val(1)).getFloat()
-    let placeholder = elem.getProp("placeholder").get(val("Select...")).getString()
+    # Extract dropdown button data and render it
+    let data = extractDropdownButtonData(elem, backend.state, inheritedColor)
 
     # Draw the main dropdown button
-    let mainRect = rrect(elem.x, elem.y, elem.width, elem.height)
-    let sdlBgColor = bgColor.getColor().toSDLColor()
+    let mainRect = rrect(data.x, data.y, data.width, data.height)
+    let sdlBgColor = data.backgroundColor.toSDLColor()
     discard SDL_SetRenderDrawColor(backend.renderer, sdlBgColor.r, sdlBgColor.g, sdlBgColor.b, sdlBgColor.a)
     discard SDL_RenderFillRect(backend.renderer, addr mainRect)
 
-    let sdlBorderColor = borderColor.toSDLColor()
+    let sdlBorderColor = data.borderColor.toSDLColor()
     discard SDL_SetRenderDrawColor(backend.renderer, sdlBorderColor.r, sdlBorderColor.g, sdlBorderColor.b, sdlBorderColor.a)
     discard SDL_RenderDrawRect(backend.renderer, addr mainRect)
 
     # Draw dropdown arrow
-    let arrowSize = 8.0
-    let arrowX = elem.x + elem.width - 15.0
-    let arrowY = elem.y + (elem.height - arrowSize) / 2.0
-    let arrowChar = if isOpen: "^" else: "v"
-    backend.renderText(arrowChar, arrowX, arrowY, fontSize, textColor.toSDLColor())
+    backend.renderText(data.arrowChar, data.arrowX, data.arrowY, data.fontSize, data.textColor.toSDLColor())
 
-    # Draw selected text or placeholder
-    let displayText = if selectedIndex >= 0 and selectedIndex < elem.dropdownOptions.len:
-      elem.dropdownOptions[selectedIndex]
-    else:
-      placeholder
-
-    let displayColor = if selectedIndex >= 0:
-      textColor
-    else:
-      parseColor("#999999")
-
-    let textPadding = 10.0
-    let textX = elem.x + textPadding
-    let textY = elem.y + (elem.height - fontSize.float) / 2.0
-    let maxTextWidth = elem.width - (textPadding * 2.0) - 20.0
-
-    # Set up clipping for text
-    let clipRect = rrect(textX, textY, maxTextWidth, fontSize.float)
+    # Draw selected text or placeholder with clipping
+    let clipRect = rrect(data.textX, data.textY, data.maxTextWidth, data.fontSize.float)
     discard SDL_RenderSetClipRect(backend.renderer, addr clipRect)
-    backend.renderText(displayText, textX, textY, fontSize, displayColor.toSDLColor())
+    backend.renderText(data.displayText, data.textX, data.textY, data.fontSize, data.displayColor.toSDLColor())
     discard SDL_RenderSetClipRect(backend.renderer, nil)
 
-  of ekColumn, ekRow, ekCenter:
-    let sortedChildren = sortChildrenByZIndex(elem.children)
-    for child in sortedChildren:
+  of ekColumn:
+    # Extract column data and render children
+    let data = extractColumnData(elem, inheritedColor)
+    for child in data.sortedChildren:
+      backend.renderElement(child, inheritedColor)
+
+  of ekRow:
+    # Extract row data and render children
+    let data = extractRowData(elem, inheritedColor)
+    for child in data.sortedChildren:
+      backend.renderElement(child, inheritedColor)
+
+  of ekCenter:
+    # Extract center data and render children
+    let data = extractCenterData(elem, inheritedColor)
+    for child in data.sortedChildren:
       backend.renderElement(child, inheritedColor)
 
   of ekTabGroup:
-    let sortedChildren = sortChildrenByZIndex(elem.children)
-    for child in sortedChildren:
+    # Extract tab group data and render children
+    let data = extractTabGroupData(elem, inheritedColor)
+
+    # Draw background if present
+    if data.hasBackground:
+      let rect = rrect(data.x, data.y, data.width, data.height)
+      let sdlColor = data.backgroundColor.toSDLColor()
+      discard SDL_SetRenderDrawColor(backend.renderer, sdlColor.r, sdlColor.g, sdlColor.b, sdlColor.a)
+      discard SDL_RenderFillRect(backend.renderer, addr rect)
+
+    # Render children (TabBar and TabContent) sorted by z-index
+    for child in data.sortedChildren:
       if child.kind != ekConditional and child.kind != ekForLoop:
         backend.renderElement(child, inheritedColor)
 
   of ekTabBar:
-    let sortedChildren = sortChildrenByZIndex(elem.children)
-    for child in sortedChildren:
+    # Extract tab bar data and render it
+    let data = extractTabBarData(elem, inheritedColor)
+
+    # Draw background if present
+    if data.hasBackground:
+      let rect = rrect(data.x, data.y, data.width, data.height)
+      let sdlColor = data.backgroundColor.toSDLColor()
+      discard SDL_SetRenderDrawColor(backend.renderer, sdlColor.r, sdlColor.g, sdlColor.b, sdlColor.a)
+      discard SDL_RenderFillRect(backend.renderer, addr rect)
+
+    # Draw bottom border if present
+    if data.hasBorder:
+      let borderRect = rrect(data.x, data.borderY, data.width, data.borderWidth)
+      let sdlBorderColor = data.borderColor.toSDLColor()
+      discard SDL_SetRenderDrawColor(backend.renderer, sdlBorderColor.r, sdlBorderColor.g, sdlBorderColor.b, sdlBorderColor.a)
+      discard SDL_RenderFillRect(backend.renderer, addr borderRect)
+
+    # Render children (Tab elements) sorted by z-index
+    for child in data.sortedChildren:
       backend.renderElement(child, inheritedColor)
 
   of ekTab:
-    let title = elem.getProp("title").get(val(elem.tabTitle)).getString()
-    let tabIndex = elem.tabIndex
-
-    var isSelected = false
-    var parent = elem.parent
-    while parent != nil:
-      if parent.kind == ekTabGroup or parent.kind == ekTabBar:
-        isSelected = (parent.tabSelectedIndex == tabIndex)
-        break
-      parent = parent.parent
-
-    let bgColor = if isSelected:
-      elem.getProp("activeBackgroundColor").get(val("#4a90e2")).getColor()
-    else:
-      elem.getProp("backgroundColor").get(val("#3d3d3d")).getColor()
-
-    let textColor = if isSelected:
-      elem.getProp("activeTextColor").get(val("#ffffff")).getColor()
-    else:
-      elem.getProp("textColor").get(val("#ffffff")).getColor()
-
-    let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
+    # Extract tab data and render it
+    let data = extractTabData(elem, inheritedColor)
 
     # Draw tab background
-    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
-    let sdlBgColor = bgColor.toSDLColor()
+    let rect = rrect(data.x, data.y, data.width, data.height)
+    let sdlBgColor = data.backgroundColor.toSDLColor()
     discard SDL_SetRenderDrawColor(backend.renderer, sdlBgColor.r, sdlBgColor.g, sdlBgColor.b, sdlBgColor.a)
     discard SDL_RenderFillRect(backend.renderer, addr rect)
 
     # Draw tab border
-    let borderColor = elem.getProp("borderColor")
-    if borderColor.isSome:
-      let borderWidth = elem.getProp("borderWidth").get(val(1)).getFloat()
-      let sdlBorderColor = borderColor.get.getColor().toSDLColor()
-      discard SDL_SetRenderDrawColor(backend.renderer, sdlBorderColor.r, sdlBorderColor.g, sdlBorderColor.b, sdlBorderColor.a)
-      discard SDL_RenderDrawRect(backend.renderer, addr rect)
+    let sdlBorderColor = data.borderColor.toSDLColor()
+    discard SDL_SetRenderDrawColor(backend.renderer, sdlBorderColor.r, sdlBorderColor.g, sdlBorderColor.b, sdlBorderColor.a)
+    discard SDL_RenderDrawRect(backend.renderer, addr rect)
+
+    # Draw bottom border (active or inactive) as a horizontal line
+    let bottomBorderRect = rrect(data.x, data.bottomBorderY, data.width, data.bottomBorderWidth)
+    let sdlBottomBorderColor = data.bottomBorderColor.toSDLColor()
+    discard SDL_SetRenderDrawColor(backend.renderer, sdlBottomBorderColor.r, sdlBottomBorderColor.g, sdlBottomBorderColor.b, sdlBottomBorderColor.a)
+    discard SDL_RenderFillRect(backend.renderer, addr bottomBorderRect)
 
     # Center text in tab
-    if title.len > 0:
-      let textMetrics = backend.measureText(title, fontSize)
-      let textX = elem.x + (elem.width - textMetrics.w.float) / 2.0
-      let textY = elem.y + (elem.height - textMetrics.h.float) / 2.0
-      backend.renderText(title, textX, textY, fontSize, textColor.toSDLColor())
-
-    # Render children
-    let sortedChildren = sortChildrenByZIndex(elem.children)
-    for child in sortedChildren:
-      backend.renderElement(child, inheritedColor)
+    if data.label.len > 0:
+      let textMetrics = backend.measureText(data.label, data.fontSize)
+      let textX = data.x + (data.width - textMetrics.w.float) / 2.0
+      let textY = data.y + (data.height - textMetrics.h.float) / 2.0
+      backend.renderText(data.label, textX, textY, data.fontSize, data.labelColor.toSDLColor())
 
   of ekTabContent:
-    var selectedIndex = 0
-    var parent = elem.parent
-    while parent != nil:
-      if parent.kind == ekTabGroup:
-        selectedIndex = parent.tabSelectedIndex
-        break
-      parent = parent.parent
+    # Extract tab content data and render active panel
+    let data = extractTabContentData(elem, inheritedColor)
 
-    var allTabPanels: seq[Element] = @[]
+    # Draw background if present
+    if data.hasBackground:
+      let rect = rrect(data.x, data.y, data.width, data.height)
+      let sdlColor = data.backgroundColor.toSDLColor()
+      discard SDL_SetRenderDrawColor(backend.renderer, sdlColor.r, sdlColor.g, sdlColor.b, sdlColor.a)
+      discard SDL_RenderFillRect(backend.renderer, addr rect)
 
-    for child in elem.children:
-      if child.kind == ekTabPanel:
-        allTabPanels.add(child)
-      elif child.kind == ekForLoop:
-        for grandchild in child.children:
-          if grandchild.kind == ekTabPanel:
-            allTabPanels.add(grandchild)
-
-    for panel in allTabPanels:
-      if panel.tabIndex == selectedIndex:
-        backend.renderElement(panel, inheritedColor)
-        break
+    # Render only the active panel
+    if data.hasActivePanel:
+      backend.renderElement(data.activePanel, inheritedColor)
 
   of ekTabPanel:
-    let sortedChildren = sortChildrenByZIndex(elem.children)
-    for child in sortedChildren:
+    # Extract tab panel data and render children
+    let data = extractTabPanelData(elem, inheritedColor)
+
+    # Draw background if present
+    if data.hasBackground:
+      let rect = rrect(data.x, data.y, data.width, data.height)
+      let sdlColor = data.backgroundColor.toSDLColor()
+      discard SDL_SetRenderDrawColor(backend.renderer, sdlColor.r, sdlColor.g, sdlColor.b, sdlColor.a)
+      discard SDL_RenderFillRect(backend.renderer, addr rect)
+
+    # Render children (sorted by z-index)
+    for child in data.sortedChildren:
       backend.renderElement(child, inheritedColor)
 
   else:
@@ -1150,65 +1032,42 @@ proc renderDropdownMenus*(backend: var SDL2Backend, elem: Element) =
 
   case elem.kind:
   of ekDropdown:
-    if elem.dropdownIsOpen and elem.dropdownOptions.len > 0:
-      let options = elem.dropdownOptions
-      let selectedIndex = elem.dropdownSelectedIndex
-      let hoveredIndex = elem.dropdownHoveredIndex
+    # Extract dropdown menu data and render if open
+    let data = extractDropdownMenuData(elem, backend.state, none(Color))
+    if not data.isOpen:
+      return
 
-      let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
-      let bgColor = elem.getProp("backgroundColor").get(val("#FFFFFF"))
-      let textColor = elem.getProp("color").get(val("#000000")).getColor()
-      let borderColor = elem.getProp("borderColor").get(val("#CCCCCC")).getColor()
-      let borderWidth = elem.getProp("borderWidth").get(val(1)).getFloat()
+    # Draw dropdown menu background
+    let dropdownRect = rrect(data.x, data.y, data.width, data.height)
+    let sdlBgColor = data.backgroundColor.toSDLColor()
+    discard SDL_SetRenderDrawColor(backend.renderer, sdlBgColor.r, sdlBgColor.g, sdlBgColor.b, sdlBgColor.a)
+    discard SDL_RenderFillRect(backend.renderer, addr dropdownRect)
 
-      let itemHeight = fontSize.float + 10.0
-      let textPadding = 10.0
+    let sdlBorderColor = data.borderColor.toSDLColor()
+    discard SDL_SetRenderDrawColor(backend.renderer, sdlBorderColor.r, sdlBorderColor.g, sdlBorderColor.b, sdlBorderColor.a)
+    discard SDL_RenderDrawRect(backend.renderer, addr dropdownRect)
 
-      let dropdownWidth = elem.width
-      let dropdownHeight = min(options.len.float * itemHeight, 200.0)
-      let dropdownX = elem.x
-      let dropdownY = elem.y + elem.height
+    # Draw visible options
+    for opt in data.options:
+      # Highlight hovered option
+      if opt.isHovered:
+        let optionRect = rrect(opt.x, opt.y, opt.width, opt.height)
+        let hoverColor = data.hoveredHighlightColor.toSDLColor()
+        discard SDL_SetRenderDrawColor(backend.renderer, hoverColor.r, hoverColor.g, hoverColor.b, hoverColor.a)
+        discard SDL_RenderFillRect(backend.renderer, addr optionRect)
 
-      # Draw dropdown background
-      let dropdownRect = rrect(dropdownX, dropdownY, dropdownWidth, dropdownHeight)
-      let sdlBgColor = bgColor.getColor().toSDLColor()
-      discard SDL_SetRenderDrawColor(backend.renderer, sdlBgColor.r, sdlBgColor.g, sdlBgColor.b, sdlBgColor.a)
-      discard SDL_RenderFillRect(backend.renderer, addr dropdownRect)
+      # Highlight selected option
+      if opt.isSelected:
+        let optionRect = rrect(opt.x, opt.y, opt.width, opt.height)
+        let selectedColor = data.selectedHighlightColor.toSDLColor()
+        discard SDL_SetRenderDrawColor(backend.renderer, selectedColor.r, selectedColor.g, selectedColor.b, selectedColor.a)
+        discard SDL_RenderFillRect(backend.renderer, addr optionRect)
 
-      let sdlBorderColor = borderColor.toSDLColor()
-      discard SDL_SetRenderDrawColor(backend.renderer, sdlBorderColor.r, sdlBorderColor.g, sdlBorderColor.b, sdlBorderColor.a)
-      discard SDL_RenderDrawRect(backend.renderer, addr dropdownRect)
-
-      # Draw visible options
-      let maxVisibleItems = int(dropdownHeight / itemHeight)
-      let endIndex = min(options.len, maxVisibleItems)
-
-      for i in 0..<endIndex:
-        let optionY = dropdownY + i.float * itemHeight
-        let optionRect = rrect(dropdownX, optionY, dropdownWidth, itemHeight)
-
-        # Highlight hovered option
-        if i == hoveredIndex:
-          let hoverColor = parseColor("#E3F2FD").toSDLColor()
-          discard SDL_SetRenderDrawColor(backend.renderer, hoverColor.r, hoverColor.g, hoverColor.b, hoverColor.a)
-          discard SDL_RenderFillRect(backend.renderer, addr optionRect)
-
-        # Highlight selected option
-        if i == selectedIndex:
-          let selectedColor = parseColor("#BBDEFB").toSDLColor()
-          discard SDL_SetRenderDrawColor(backend.renderer, selectedColor.r, selectedColor.g, selectedColor.b, selectedColor.a)
-          discard SDL_RenderFillRect(backend.renderer, addr optionRect)
-
-        # Draw option text
-        let optionText = options[i]
-        let optionTextX = dropdownX + textPadding
-        let optionTextY = optionY + (itemHeight - fontSize.float) / 2.0
-        let optionMaxWidth = dropdownWidth - (textPadding * 2.0)
-
-        let clipRect = rrect(optionTextX, optionTextY, optionMaxWidth, fontSize.float)
-        discard SDL_RenderSetClipRect(backend.renderer, addr clipRect)
-        backend.renderText(optionText, optionTextX, optionTextY, fontSize, textColor.toSDLColor())
-        discard SDL_RenderSetClipRect(backend.renderer, nil)
+      # Draw option text with clipping
+      let clipRect = rrect(opt.textX, opt.textY, opt.maxTextWidth, data.fontSize.float)
+      discard SDL_RenderSetClipRect(backend.renderer, addr clipRect)
+      backend.renderText(opt.text, opt.textX, opt.textY, data.fontSize, data.textColor.toSDLColor())
+      discard SDL_RenderSetClipRect(backend.renderer, nil)
 
   of ekConditional:
     if elem.condition != nil:
@@ -1373,17 +1232,17 @@ proc handleInput*(backend: var SDL2Backend, elem: Element) =
     if mousePoint.x >= rect.x and mousePoint.x < rect.x + rect.w and
        mousePoint.y >= rect.y and mousePoint.y < rect.y + rect.h:
       # Input was clicked - focus it
-      backend.focusedInput = elem
-      backend.cursorBlink = 0.0
+      backend.state.focusedInput = elem
+      backend.state.cursorBlink = 0.0
       backend.textInputEnabled = true
 
-      if not backend.inputValues.hasKey(elem):
+      if not backend.state.inputValues.hasKey(elem):
         let initialValue = elem.getProp("value").get(val("")).getString()
-        backend.inputValues[elem] = initialValue
+        backend.state.inputValues[elem] = initialValue
     else:
       # Clicked outside - unfocus if this was focused
-      if backend.focusedInput == elem:
-        backend.focusedInput = nil
+      if backend.state.focusedInput == elem:
+        backend.state.focusedInput = nil
         backend.textInputEnabled = false
 
   of ekCheckbox:
@@ -1405,9 +1264,9 @@ proc handleInput*(backend: var SDL2Backend, elem: Element) =
     if mousePoint.x >= clickArea.x and mousePoint.x < clickArea.x + clickArea.w and
        mousePoint.y >= clickArea.y and mousePoint.y < clickArea.y + clickArea.h:
       # Checkbox was clicked - toggle state
-      var currentState = backend.checkboxStates.getOrDefault(elem, false)
+      var currentState = backend.state.checkboxStates.getOrDefault(elem, false)
       currentState = not currentState
-      backend.checkboxStates[elem] = currentState
+      backend.state.checkboxStates[elem] = currentState
 
       if elem.eventHandlers.hasKey("onClick"):
         elem.eventHandlers["onClick"]()
@@ -1475,11 +1334,11 @@ proc handleInput*(backend: var SDL2Backend, elem: Element) =
       if elem.dropdownIsOpen:
         elem.dropdownIsOpen = false
         elem.dropdownHoveredIndex = -1
-        backend.focusedDropdown = nil
+        backend.state.focusedDropdown = nil
       else:
         elem.dropdownIsOpen = true
         elem.dropdownHoveredIndex = elem.dropdownSelectedIndex
-        backend.focusedDropdown = elem
+        backend.state.focusedDropdown = elem
         backend.closeOtherDropdowns(elem)
 
     elif elem.dropdownIsOpen and elem.dropdownOptions.len > 0:
@@ -1498,7 +1357,7 @@ proc handleInput*(backend: var SDL2Backend, elem: Element) =
           elem.dropdownSelectedIndex = clickedIndex
           elem.dropdownIsOpen = false
           elem.dropdownHoveredIndex = -1
-          backend.focusedDropdown = nil
+          backend.state.focusedDropdown = nil
 
           if elem.eventHandlers.hasKey("onChange"):
             let handler = elem.eventHandlers["onChange"]
@@ -1510,10 +1369,10 @@ proc handleInput*(backend: var SDL2Backend, elem: Element) =
       else:
         elem.dropdownIsOpen = false
         elem.dropdownHoveredIndex = -1
-        backend.focusedDropdown = nil
+        backend.state.focusedDropdown = nil
     else:
-      if backend.focusedDropdown == elem:
-        backend.focusedDropdown = nil
+      if backend.state.focusedDropdown == elem:
+        backend.state.focusedDropdown = nil
 
     # Handle hover state for dropdown options
     if elem.dropdownIsOpen and elem.dropdownOptions.len > 0:
@@ -1578,9 +1437,9 @@ proc handleKeyboardInput*(backend: var SDL2Backend, root: Element) =
 
   let hoveredCheckbox = findCheckboxUnderMouse(root)
   if hoveredCheckbox != nil and backend.keyStates[KEY_ENTER]:
-    var currentState = backend.checkboxStates.getOrDefault(hoveredCheckbox, false)
+    var currentState = backend.state.checkboxStates.getOrDefault(hoveredCheckbox, false)
     currentState = not currentState
-    backend.checkboxStates[hoveredCheckbox] = currentState
+    backend.state.checkboxStates[hoveredCheckbox] = currentState
 
     if hoveredCheckbox.eventHandlers.hasKey("onClick"):
       hoveredCheckbox.eventHandlers["onClick"]()
@@ -1590,13 +1449,13 @@ proc handleKeyboardInput*(backend: var SDL2Backend, root: Element) =
       handler($currentState)
 
   # Handle dropdown keyboard input
-  if backend.focusedDropdown != nil:
-    let dropdown = backend.focusedDropdown
+  if backend.state.focusedDropdown != nil:
+    let dropdown = backend.state.focusedDropdown
 
     if backend.keyStates[KEY_ESCAPE]:
       dropdown.dropdownIsOpen = false
       dropdown.dropdownHoveredIndex = -1
-      backend.focusedDropdown = nil
+      backend.state.focusedDropdown = nil
 
     elif dropdown.dropdownIsOpen and dropdown.dropdownOptions.len > 0:
       if backend.keyStates[KEY_UP]:
@@ -1616,7 +1475,7 @@ proc handleKeyboardInput*(backend: var SDL2Backend, root: Element) =
           dropdown.dropdownSelectedIndex = dropdown.dropdownHoveredIndex
           dropdown.dropdownIsOpen = false
           dropdown.dropdownHoveredIndex = -1
-          backend.focusedDropdown = nil
+          backend.state.focusedDropdown = nil
 
           if dropdown.eventHandlers.hasKey("onChange"):
             let handler = dropdown.eventHandlers["onChange"]
@@ -1629,14 +1488,14 @@ proc handleKeyboardInput*(backend: var SDL2Backend, root: Element) =
       elif backend.keyStates[KEY_TAB]:
         dropdown.dropdownIsOpen = false
         dropdown.dropdownHoveredIndex = -1
-        backend.focusedDropdown = nil
+        backend.state.focusedDropdown = nil
 
   # Handle input field keyboard input
-  if backend.focusedInput == nil:
-    backend.backspaceHoldTimer = 0.0
+  if backend.state.focusedInput == nil:
+    backend.state.backspaceHoldTimer = 0.0
     return
 
-  var currentValue = backend.inputValues.getOrDefault(backend.focusedInput, "")
+  var currentValue = backend.state.inputValues.getOrDefault(backend.state.focusedInput, "")
   var textChanged = false
 
   # Handle backspace with repeat logic
@@ -1644,37 +1503,37 @@ proc handleKeyboardInput*(backend: var SDL2Backend, root: Element) =
     if backend.keyStates[KEY_BACKSPACE]:  # First press
       currentValue.setLen(currentValue.len - 1)
       textChanged = true
-      backend.backspaceHoldTimer = 0.0
+      backend.state.backspaceHoldTimer = 0.0
     else:
       # Key is being held down
-      backend.backspaceHoldTimer += 1.0 / 60.0
+      backend.state.backspaceHoldTimer += 1.0 / 60.0
 
-      if backend.backspaceHoldTimer >= backend.backspaceRepeatDelay:
-        let holdBeyondDelay = backend.backspaceHoldTimer - backend.backspaceRepeatDelay
-        let charsToDelete = min(int(holdBeyondDelay / backend.backspaceRepeatRate), currentValue.len)
+      if backend.state.backspaceHoldTimer >= backend.state.backspaceRepeatDelay:
+        let holdBeyondDelay = backend.state.backspaceHoldTimer - backend.state.backspaceRepeatDelay
+        let charsToDelete = min(int(holdBeyondDelay / backend.state.backspaceRepeatRate), currentValue.len)
 
         if charsToDelete > 0:
           currentValue.setLen(currentValue.len - charsToDelete)
           textChanged = true
-          backend.backspaceHoldTimer = backend.backspaceRepeatDelay + (charsToDelete.float * backend.backspaceRepeatRate)
+          backend.state.backspaceHoldTimer = backend.state.backspaceRepeatDelay + (charsToDelete.float * backend.state.backspaceRepeatRate)
   else:
-    backend.backspaceHoldTimer = 0.0
+    backend.state.backspaceHoldTimer = 0.0
 
   # Handle other special keys
   if backend.keyStates[KEY_ENTER]:
-    if backend.focusedInput.eventHandlers.hasKey("onSubmit"):
-      backend.focusedInput.eventHandlers["onSubmit"]()
+    if backend.state.focusedInput.eventHandlers.hasKey("onSubmit"):
+      backend.state.focusedInput.eventHandlers["onSubmit"]()
 
   # Update stored value if changed
   if textChanged:
-    backend.inputValues[backend.focusedInput] = currentValue
+    backend.state.inputValues[backend.state.focusedInput] = currentValue
 
-  if textChanged and backend.focusedInput.eventHandlers.hasKey("onChange"):
-    let handler = backend.focusedInput.eventHandlers["onChange"]
+  if textChanged and backend.state.focusedInput.eventHandlers.hasKey("onChange"):
+    let handler = backend.state.focusedInput.eventHandlers["onChange"]
     handler(currentValue)
 
-  if textChanged and backend.focusedInput.eventHandlers.hasKey("onValueChange"):
-    let handler = backend.focusedInput.eventHandlers["onValueChange"]
+  if textChanged and backend.state.focusedInput.eventHandlers.hasKey("onValueChange"):
+    let handler = backend.state.focusedInput.eventHandlers["onValueChange"]
     handler(currentValue)
 
 # ============================================================================
@@ -1811,28 +1670,28 @@ proc run*(backend: var SDL2Backend, root: Element) =
             currentCursor = defaultCursor
 
       of SDL_EVENT_TEXTINPUT:
-        if backend.textInputEnabled and backend.focusedInput != nil:
+        if backend.textInputEnabled and backend.state.focusedInput != nil:
           let textEvent = getTextInputEvent(addr event)
           let text = $textEvent.text
-          var currentValue = backend.inputValues.getOrDefault(backend.focusedInput, "")
+          var currentValue = backend.state.inputValues.getOrDefault(backend.state.focusedInput, "")
           currentValue.add(text)
-          backend.inputValues[backend.focusedInput] = currentValue
+          backend.state.inputValues[backend.state.focusedInput] = currentValue
 
-          if backend.focusedInput.eventHandlers.hasKey("onChange"):
-            let handler = backend.focusedInput.eventHandlers["onChange"]
+          if backend.state.focusedInput.eventHandlers.hasKey("onChange"):
+            let handler = backend.state.focusedInput.eventHandlers["onChange"]
             handler(currentValue)
 
-          if backend.focusedInput.eventHandlers.hasKey("onValueChange"):
-            let handler = backend.focusedInput.eventHandlers["onValueChange"]
+          if backend.state.focusedInput.eventHandlers.hasKey("onValueChange"):
+            let handler = backend.state.focusedInput.eventHandlers["onValueChange"]
             handler(currentValue)
 
       else:
         discard
 
     # Update cursor blink timer
-    backend.cursorBlink += 1.0 / 60.0
-    if backend.cursorBlink >= 1.0:
-      backend.cursorBlink = 0.0
+    backend.state.cursorBlink += 1.0 / 60.0
+    if backend.state.cursorBlink >= 1.0:
+      backend.state.cursorBlink = 0.0
 
     # Handle keyboard input
     backend.handleKeyboardInput(root)
