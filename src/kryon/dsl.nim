@@ -914,6 +914,91 @@ macro Font*(body: untyped): Element =
 # Style macros
 # ============================================================================
 
+proc convertStmtToPropertyAdd(stmt: NimNode): NimNode {.compileTime.} =
+  ## Recursively convert property assignments and control flow to runtime code
+  ## that builds the seq[Property] result
+  case stmt.kind:
+  of nnkExprEqExpr, nnkAsgn:
+    # Property assignment: backgroundColor = "value"
+    let propName = stmt[0].strVal
+    let propValue = stmt[1]
+    let propNameLit = newLit(propName)
+
+    # Generate code to add property to result
+    if propValue.kind == nnkStrLit:
+      let strVal = propValue.strVal
+      if strVal.startsWith("#"):
+        result = quote do:
+          result.add((name: `propNameLit`, value: val(parseColor(`propValue`))))
+      else:
+        result = quote do:
+          result.add((name: `propNameLit`, value: val(`propValue`)))
+    elif propValue.kind == nnkIntLit:
+      result = quote do:
+        result.add((name: `propNameLit`, value: val(`propValue`)))
+    elif propValue.kind == nnkFloatLit:
+      result = quote do:
+        result.add((name: `propNameLit`, value: val(`propValue`)))
+    else:
+      # For complex expressions, use val()
+      result = quote do:
+        result.add((name: `propNameLit`, value: val(`propValue`)))
+
+  of nnkIfStmt:
+    # If statement - recursively process branches
+    result = newStmtList()
+
+    for i, branch in stmt:
+      case branch.kind:
+      of nnkElifBranch:
+        # elif or if branch: branch[0] is condition, branch[1] is body
+        let condition = branch[0]
+        let branchBody = branch[1]
+
+        # Process the body statements
+        var processedBody = newStmtList()
+        if branchBody.kind == nnkStmtList:
+          for s in branchBody:
+            processedBody.add(convertStmtToPropertyAdd(s))
+        else:
+          processedBody.add(convertStmtToPropertyAdd(branchBody))
+
+        if i == 0:
+          # First branch - use if
+          result = nnkIfStmt.newTree(
+            nnkElifBranch.newTree(condition, processedBody)
+          )
+        else:
+          # Subsequent branches - add as elif
+          result.add(nnkElifBranch.newTree(condition, processedBody))
+
+      of nnkElse:
+        # else branch: branch[0] is body
+        let branchBody = branch[0]
+
+        # Process the body statements
+        var processedBody = newStmtList()
+        if branchBody.kind == nnkStmtList:
+          for s in branchBody:
+            processedBody.add(convertStmtToPropertyAdd(s))
+        else:
+          processedBody.add(convertStmtToPropertyAdd(branchBody))
+
+        result.add(nnkElse.newTree(processedBody))
+
+      else:
+        discard
+
+  of nnkStmtList:
+    # Statement list - process each statement
+    result = newStmtList()
+    for s in stmt:
+      result.add(convertStmtToPropertyAdd(s))
+
+  else:
+    # For other node types, just pass them through
+    result = stmt
+
 
 macro style*(styleCall: untyped, body: untyped): untyped =
   ## Macro to define style procs that return seq[Property]
@@ -928,20 +1013,78 @@ macro style*(styleCall: untyped, body: untyped): untyped =
 
   case styleCall.kind:
   of nnkCall:
-    # containerStyle() or containerStyle(param: Type)
+    # containerStyle() - no parameters
     funcName = styleCall[0]
     for i in 1..<styleCall.len:
       funcParams.add(styleCall[i])
+  of nnkObjConstr:
+    # containerStyle(param: Type) - with type-annotated parameters
+    # nnkObjConstr has the function name at [0] and parameters as nnkExprColonExpr nodes
+    funcName = styleCall[0]
+    for i in 1..<styleCall.len:
+      # Each parameter is an nnkExprColonExpr: day: int
+      # We need to convert it to nnkIdentDefs for the proc signature
+      let paramNode = styleCall[i]
+      if paramNode.kind == nnkExprColonExpr:
+        # paramNode[0] is the parameter name (e.g., day)
+        # paramNode[1] is the type (e.g., int)
+        let paramName = paramNode[0]
+        let paramType = paramNode[1]
+        # Create an nnkIdentDefs node for the parameter
+        funcParams.add(nnkIdentDefs.newTree(
+          paramName,
+          paramType,
+          newEmptyNode()  # No default value
+        ))
   of nnkIdent:
     # Just containerStyle (no parens)
     funcName = styleCall
   else:
     error("style expects function call syntax: styleName() or styleName(params)", styleCall)
 
-  # Process the body to extract properties
+  # Process the body
   let styleBody = if body.kind == nnkStmtList: body else: newStmtList(body)
 
-  # Process all property assignments
+  # Check if the style has parameters - if so, we need runtime evaluation
+  # For parameterless styles, we can extract properties at compile time
+  # For parameterized styles, we need to generate runtime code
+  let hasParameters = funcParams.len > 0
+
+  # Check if the body contains if statements or other complex logic
+  var hasConditionalLogic = false
+  for stmt in styleBody:
+    if stmt.kind == nnkIfStmt or stmt.kind == nnkCaseStmt:
+      hasConditionalLogic = true
+      break
+
+  if hasParameters or hasConditionalLogic:
+    # Generate a proc that builds properties at runtime
+    # This allows if statements and parameter usage
+    var procBodyStmts = newStmtList()
+    procBodyStmts.add quote do:
+      result = @[]
+
+    # Add the body statements directly, but convert property assignments to result.add calls
+    for stmt in styleBody:
+      procBodyStmts.add(convertStmtToPropertyAdd(stmt))
+
+    # Build params
+    var params: seq[NimNode] = @[]
+    params.add(nnkBracketExpr.newTree(
+      newIdentNode("seq"),
+      newIdentNode("Property")
+    ))
+    for param in funcParams:
+      params.add(param)
+
+    result = newProc(
+      name = funcName,
+      params = params,
+      body = procBodyStmts
+    )
+    return
+
+  # For simple parameterless styles, extract properties at compile time
   var properties = newSeq[NimNode]()
 
   for stmt in styleBody:

@@ -14,6 +14,7 @@ style buttonStyle():
   textColor = "red"
   padding = 10
 
+
 # Test application with styles
 let app = kryonApp:
   Container:
