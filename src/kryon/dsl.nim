@@ -412,41 +412,31 @@ proc emitPropertyAssignment(kind: ElementKind, elemVar: NimNode, propName: strin
 
   # Handle style property
   if propName == "style":
-    # Check if this is a simple style reference (parameterless)
-    # or a function call (parameterized)
-    if valueNode.kind == nnkIdent:
-      # Parameterless style: style = primaryButton
+    # Check if this is a function call: style = styleName()
+    if valueNode.kind == nnkCall:
+      # Function-style: style = containerStyle() or style = buttonStyle(param)
+      # The valueNode is already the function call, so we just call it
+      let styleCallCopy = copyNimTree(valueNode)
+
+      result.add quote do:
+        # Call the style function to get properties
+        let styleProperties = `styleCallCopy`
+        # Apply all style properties
+        for prop in styleProperties:
+          `elemVar`.setProp(resolvePropertyAlias(prop.name), prop.value)
+
+    elif valueNode.kind == nnkIdent:
+      # Old syntax fallback: style = styleName (without parentheses)
+      # Treat it as a zero-argument function call
       let styleName = valueNode.strVal
-      result.add quote do:
-        # Look up the style in the global registry
-        if globalStyleRegistry.hasKey(`styleName`):
-          let styleProperties = globalStyleRegistry[`styleName`]
-          # Apply all style properties first
-          for prop in styleProperties:
-            `elemVar`.setProp(resolvePropertyAlias(prop.name), prop.value)
-          echo "Applied style: ", `styleName`, " with ", styleProperties.len, " properties"
-        else:
-          echo "Warning: Style '", `styleName`, "' not found in registry"
-
-    elif valueNode.kind == nnkCall:
-      # Parameterized style: style = calendarDay(day)
-      let styleNameNode = valueNode[0]
-      let styleName = styleNameNode.strVal
-
-      # Extract parameters
-      var params: seq[NimNode] = @[]
-      for i in 1..<valueNode.len:
-        params.add(valueNode[i])
-
-      # Generate parameterized style application
-      let paramsList = newNimNode(nnkBracket)
-      for param in params:
-        paramsList.add(param)
+      let styleCall = newCall(newIdentNode(styleName))
 
       result.add quote do:
-        # For now, just show a warning that parameterized style lookup is not implemented
-        echo "Warning: Parameterized style lookup not yet implemented for style: ", `styleName`
-        # TODO: Implement proper parameterized style lookup and application
+        # Call the style function to get properties
+        let styleProperties = `styleCall`
+        # Apply all style properties
+        for prop in styleProperties:
+          `elemVar`.setProp(resolvePropertyAlias(prop.name), prop.value)
 
     else:
       echo "Warning: Invalid style syntax"
@@ -925,33 +915,31 @@ macro Font*(body: untyped): Element =
 # ============================================================================
 
 
-macro style*(styleName: untyped, body: untyped): untyped =
-  ## Define a reusable style
+macro style*(styleCall: untyped, body: untyped): untyped =
+  ## Macro to define style procs that return seq[Property]
   ## Syntax:
-  ##   style primaryButton:
-  ##     backgroundColor = "#4a90e2"
-  ##     textColor = "#ffffff"
+  ##   style containerStyle():
+  ##     backgroundColor = "violet"
+  ##     padding = 20
 
-  result = newStmtList()
+  # Parse the function call to get name and parameters
+  var funcName: NimNode
+  var funcParams: seq[NimNode] = @[]
 
-  # Extract style name (first argument)
-  if styleName.kind != nnkIdent:
-    error("Style name must be an identifier")
-
-  let styleNameStr = styleName.strVal
-  let styleNameLit = newLit(styleNameStr)
-
-  # Extract style body (second argument)
-  var styleBody: NimNode
-  if body.kind == nnkStmtList:
-    # Multiple properties: style testStyle: { prop1 = value1; prop2 = value2 }
-    styleBody = body
-  elif body.kind == nnkExprEqExpr:
-    # Single property: style testStyle: prop = value
-    styleBody = newStmtList(body)
+  case styleCall.kind:
+  of nnkCall:
+    # containerStyle() or containerStyle(param: Type)
+    funcName = styleCall[0]
+    for i in 1..<styleCall.len:
+      funcParams.add(styleCall[i])
+  of nnkIdent:
+    # Just containerStyle (no parens)
+    funcName = styleCall
   else:
-    # Command syntax: style testStyle: prop1: value1; prop2: value2
-    styleBody = newStmtList(body)
+    error("style expects function call syntax: styleName() or styleName(params)", styleCall)
+
+  # Process the body to extract properties
+  let styleBody = if body.kind == nnkStmtList: body else: newStmtList(body)
 
   # Process all property assignments
   var properties = newSeq[NimNode]()
@@ -1068,22 +1056,35 @@ macro style*(styleName: untyped, body: untyped): untyped =
       # Skip other node types
       continue
 
-  
-  # Create the properties sequence directly
+
+  # Create the properties list
   let propertiesList = newNimNode(nnkBracket)
   for prop in properties:
     propertiesList.add(prop)
 
-  # Create a runtime style registry and populate it with the style
-  result.add quote do:
-    # Create properties sequence from the generated list
+  # Generate a proc that returns seq[Property]
+  # Build the proc body
+  let procBody = quote do:
     var propertiesSeq: seq[Property] = @[]
     for prop in `propertiesList`:
       propertiesSeq.add(prop)
+    result = propertiesSeq
 
-    # Store the style in the global registry (from core module)
-    globalStyleRegistry[`styleNameLit`] = propertiesSeq
-    echo "Style registered: ", `styleNameLit`, " with ", propertiesSeq.len, " properties"
+  # Build params as seq[NimNode] - return type first, then parameters
+  var params: seq[NimNode] = @[]
+  params.add(nnkBracketExpr.newTree(
+    newIdentNode("seq"),
+    newIdentNode("Property")
+  ))
+  for param in funcParams:
+    params.add(param)
+
+  # Create the proc definition
+  result = newProc(
+    name = funcName,
+    params = params,
+    body = procBody
+  )
 
 # ============================================================================
 # Application macro
