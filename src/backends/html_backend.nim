@@ -405,7 +405,7 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
   # Input styling
   if elem.kind == ekInput:
     css.add("  display: inline-block;\n")
-    css.add("  border: 1px solid #ccc;\n")
+    # Border styling will be handled by the generic border properties above
     css.add("  padding: 8px;\n")
     css.add("  font-size: 16px;\n")
     css.add("  border-radius: 4px;\n")

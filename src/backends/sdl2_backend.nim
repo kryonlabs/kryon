@@ -785,6 +785,19 @@ proc renderElement*(backend: var SDL2Backend, elem: Element, inheritedColor: Opt
     let textColor = elem.getProp("color").get(val("#FFFFFF")).getColor()
     let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
 
+    # Get border properties with defaults
+    let borderWidthProp = elem.getProp("borderWidth")
+    let borderWidth = if borderWidthProp.isSome:
+      borderWidthProp.get.getFloat()
+    else:
+      2.0  # Default border width for buttons
+
+    let borderColorProp = elem.getProp("borderColor")
+    let borderColor = if borderColorProp.isSome:
+      borderColorProp.get.getColor()
+    else:
+      parseColor("#D1D5DB")  # Default border color for buttons
+
     # Draw button background
     let rect = rrect(elem.x, elem.y, elem.width, elem.height)
     let sdlBgColor = bgColor.getColor().toSDLColor()
@@ -792,8 +805,10 @@ proc renderElement*(backend: var SDL2Backend, elem: Element, inheritedColor: Opt
     discard SDL_RenderFillRect(backend.renderer, addr rect)
 
     # Draw button border
-    discard SDL_SetRenderDrawColor(backend.renderer, DARKGRAY.r, DARKGRAY.g, DARKGRAY.b, DARKGRAY.a)
-    discard SDL_RenderDrawRect(backend.renderer, addr rect)
+    if borderWidth > 0:
+      let sdlBorderColor = borderColor.toSDLColor()
+      discard SDL_SetRenderDrawColor(backend.renderer, sdlBorderColor.r, sdlBorderColor.g, sdlBorderColor.b, sdlBorderColor.a)
+      discard SDL_RenderDrawRect(backend.renderer, addr rect)
 
     # Center text in button
     let textMetrics = backend.measureText(text, fontSize)

@@ -910,12 +910,26 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
     let textColor = elem.getProp("color").get(val("#FFFFFF")).getColor()
     let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
 
+    # Get border properties with defaults
+    let borderWidthProp = elem.getProp("borderWidth")
+    let borderWidth = if borderWidthProp.isSome:
+      borderWidthProp.get.getFloat()
+    else:
+      2.0  # Default border width for buttons
+
+    let borderColorProp = elem.getProp("borderColor")
+    let borderColor = if borderColorProp.isSome:
+      borderColorProp.get.getColor()
+    else:
+      parseColor("#D1D5DB")  # Default border color for buttons
+
     # Draw button background
     let rect = rrect(elem.x, elem.y, elem.width, elem.height)
     DrawRectangleRec(rect, bgColor.getColor().toRaylibColor())
 
     # Draw button border
-    DrawRectangleLinesEx(rect, 2.0, DARKGRAY)
+    if borderWidth > 0:
+      DrawRectangleLinesEx(rect, borderWidth, borderColor.toRaylibColor())
 
     # Center text in button
     let textMeasurements = MeasureTextEx(backend.font, text.cstring, fontSize.cfloat, 0.0)
