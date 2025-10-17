@@ -95,6 +95,41 @@ proc extractIterableName*(iterable: NimNode): string =
       "iterable"
   else: "iterable"
 
+proc extractConditionDependencies*(condition: NimNode): seq[string] =
+  ## Extract all variable names from a condition expression for dependency tracking
+  ## This recursively walks the AST to find all identifiers that are variables
+  result = @[]
+  case condition.kind:
+  of nnkIdent:
+    # Single identifier - could be a variable or a boolean literal
+    let identStr = condition.strVal
+    if identStr notin ["true", "false", "nil"]:
+      result.add(identStr)
+  of nnkInfix, nnkPrefix:
+    # Binary operators (==, !=, <, >, and, or) or unary operators (not)
+    # Recursively extract from all operands
+    for i in 0..<condition.len:
+      result.add(extractConditionDependencies(condition[i]))
+  of nnkCall:
+    # Function call - extract dependencies from arguments
+    for i in 1..<condition.len:  # Skip the function name at index 0
+      result.add(extractConditionDependencies(condition[i]))
+  of nnkDotExpr:
+    # Dotted access like obj.field - extract the base identifier
+    if condition.len > 0:
+      result.add(extractConditionDependencies(condition[0]))
+  of nnkBracketExpr:
+    # Array/table access like arr[i] - extract from both parts
+    for i in 0..<condition.len:
+      result.add(extractConditionDependencies(condition[i]))
+  of nnkPar:
+    # Parenthesized expression - extract from inside
+    if condition.len > 0:
+      result.add(extractConditionDependencies(condition[0]))
+  else:
+    # Literals and other node types - no dependencies
+    discard
+
 proc resolvePropertyAlias*(propName: string): string =
   ## Resolve property aliases to canonical names
   ## Add new aliases here without touching other code
@@ -201,6 +236,68 @@ proc ensureEventHandler(node: NimNode): NimNode =
       `invocation`
       invalidateAllReactiveValues()
 
+proc convertInlineProcToEventHandler(procNode: NimNode): NimNode =
+  ## Convert an inline proc definition to EventHandler signature
+  ## Extracts parameters and body, creates wrapper with expected signature
+
+  # Handle both nnkProcDef and nnkLambda
+  var params: NimNode
+  var body: NimNode
+
+  case procNode.kind:
+  of nnkProcDef:
+    params = procNode[3]  # Parameter list
+    body = procNode[6]    # Procedure body
+  of nnkLambda:
+    params = procNode[3]  # Parameter list
+    body = procNode[6]    # Procedure body
+  else:
+    error("Expected proc definition or lambda", procNode)
+
+  # Extract parameter names and types (skip first param which is return type)
+  var paramNames: seq[NimNode] = @[]
+  var paramTypes: seq[NimNode] = @[]
+
+  for i in 1..<params.len:
+    let param = params[i]
+    if param.kind == nnkIdentDefs:
+      let paramName = param[0]
+      let paramType = param[1]
+      paramNames.add(paramName)
+      paramTypes.add(paramType)
+
+  # Create a parameter symbol for the wrapper proc
+  let dataParam = genSym(nskParam, "data")
+
+  # Create variable declarations for parameters in the wrapper body
+  var paramDecls = newStmtList()
+  var paramAssignments = newStmtList()
+
+  # For common event patterns, we can extract values from the data string
+  # This is a simple approach - could be enhanced with more sophisticated parsing
+  if paramNames.len == 1:
+    let paramName = paramNames[0]
+    paramAssignments.add quote do:
+      let `paramName` = `dataParam`
+
+  elif paramNames.len > 1:
+    # For multiple parameters, we'll attempt to parse the data string
+    # This is a basic implementation - could be improved
+    for i, paramName in paramNames:
+      paramAssignments.add quote do:
+        let `paramName` = `dataParam`
+
+  # Create the event handler wrapper
+  let wrapperBody = newStmtList()
+  wrapperBody.add(paramAssignments)
+  wrapperBody.add(body)  # Add original proc body
+  wrapperBody.add quote do:
+    invalidateAllReactiveValues()
+
+  result = quote do:
+    proc(`dataParam`: string = "") {.closure.} =
+      `wrapperBody`
+
 proc emitEventAssignment(elemVar: NimNode, propName: string, handlerNode: NimNode): seq[NimNode] =
   ## Generate statements to attach an event handler to an element
   var handlerExpr = handlerNode
@@ -218,6 +315,37 @@ proc emitEventAssignment(elemVar: NimNode, propName: string, handlerNode: NimNod
         quote do:
           `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `closureProc`)
       ]
+
+  # Check for inline proc definition: proc(param: Type) = body
+  if handlerExpr.kind == nnkProcDef or handlerExpr.kind == nnkLambda:
+    let eventHandler = convertInlineProcToEventHandler(handlerExpr)
+    return @[
+      quote do:
+        `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `eventHandler`)
+    ]
+
+  # Check for proc assignment: onTextChange = proc(newName: string) = ...
+  if handlerExpr.kind == nnkCall and handlerExpr.len > 0:
+    let funcName = handlerExpr[0]
+    if funcName.kind == nnkIdent and funcName.strVal == "proc":
+      # This is a proc definition inline - need to convert to proper proc definition
+      # For now, we'll handle it as a statement list
+      if handlerExpr.len > 1:
+        let procContent = handlerExpr[1]
+        if procContent.kind == nnkStmtList:
+          # Try to extract proc signature and body
+          if procContent.len >= 2:
+            # Assume format: proc(params): returnType = body
+            # We need to handle this more carefully in the DSL processing
+            let body = if procContent[^1].kind == nnkStmtList: procContent[^1] else: newStmtList(procContent[^1])
+            let closureProc = quote do:
+              proc(data: string = "") {.closure.} =
+                `body`
+                invalidateAllReactiveValues()
+            return @[
+              quote do:
+                `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `closureProc`)
+            ]
 
   let cleanHandler = ensureEventHandler(copyNimTree(handlerExpr))
   @[
@@ -551,10 +679,9 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           result.add quote do:
             `elemVar`.addChild(`stmt`)
         else:
-          # This is likely a regular procedure call like `echo`.
-          # It should not be added to the UI tree. We discard it.
-          # The user should place such calls inside event handlers if needed.
-          discard
+          # This is a regular procedure call like `echo`.
+          # Execute it directly rather than discarding it.
+          result.add(stmt)
     of nnkCommand:
       # Command syntax: might be a UI component or a regular procedure call.
       # We check if it's a capitalized component name.
@@ -564,6 +691,9 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           # Assumed to be a UI component, add it as a child.
           result.add quote do:
             `elemVar`.addChild(`stmt`)
+        else:
+          # This is a regular procedure call, execute it directly
+          result.add(stmt)
 
     of nnkAsgn:
       # Also handle nnkAsgn (rare, but valid)
@@ -610,11 +740,12 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
       # Process the if statement branches
       for branch in ifStmt:
         if branch.kind == nnkElifBranch:
-          # elif branch - take the condition and body
-          conditionExpr = branch[0]
-          trueBranchContent = branch[1]
-          # For simplicity, we'll treat elif as if for now
-          break
+          # if or elif branch - take the condition and body
+          # For now, we only handle the first if branch and else
+          # TODO: Support elif chains by creating nested conditionals
+          if conditionExpr == nil:  # Only process the first if/elif
+            conditionExpr = branch[0]
+            trueBranchContent = branch[1]
         elif branch.kind == nnkElse:
           # else branch
           falseBranchContent = branch[0]
@@ -622,15 +753,26 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           # This shouldn't happen in a properly formed if statement
           discard
         else:
-          # Regular if branch
-          conditionExpr = branch[0]
-          trueBranchContent = branch[1]
+          # Regular if branch (should not happen, if branches are nnkElifBranch)
+          if conditionExpr == nil:
+            conditionExpr = branch[0]
+            trueBranchContent = branch[1]
 
       if conditionExpr != nil and trueBranchContent != nil:
-        # Wrap the condition in a getter function for reactivity
-        # Use valGetter to make it reactive like other properties
+        # Extract all variable dependencies from the condition
+        let dependencies = extractConditionDependencies(conditionExpr)
+
+        # Create dependency registration statements
+        var depRegistrations = newStmtList()
+        for dep in dependencies:
+          let depLit = newLit(dep)
+          depRegistrations.add quote do:
+            registerDependency(`depLit`)
+
+        # Wrap the condition in a getter function with dependency tracking
         let conditionGetter = quote do:
           proc(): bool =
+            `depRegistrations`
             `conditionExpr`
 
         # Create a Container element for the true branch

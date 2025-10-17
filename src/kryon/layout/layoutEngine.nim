@@ -167,11 +167,23 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
       var childSizes: seq[tuple[w, h: float]] = @[]
 
       for child in elem.children:
-        # First pass: Calculate child layout at (0, 0) to determine its size
-        calculateLayout(measurer, child, 0, 0, elem.width, elem.height)
-        childSizes.add((w: child.width, h: child.height))
-        totalHeight += child.height
-        maxWidth = max(maxWidth, child.width)
+        if child.kind == ekConditional:
+          # Conditional elements are transparent - evaluate and measure active branch
+          if child.condition != nil:
+            let conditionResult = child.condition()
+            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
+            if activeBranch != nil:
+              # First pass: Calculate active branch layout at (0, 0) to determine its size
+              calculateLayout(measurer, activeBranch, 0, 0, elem.width, elem.height)
+              childSizes.add((w: activeBranch.width, h: activeBranch.height))
+              totalHeight += activeBranch.height
+              maxWidth = max(maxWidth, activeBranch.width)
+        else:
+          # First pass: Calculate child layout at (0, 0) to determine its size
+          calculateLayout(measurer, child, 0, 0, elem.width, elem.height)
+          childSizes.add((w: child.width, h: child.height))
+          totalHeight += child.height
+          maxWidth = max(maxWidth, child.width)
 
       if elem.children.len > 1:
         totalHeight += gap * (elem.children.len - 1).float
@@ -181,24 +193,52 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
 
       # Second pass: Position children centered horizontally and stacked vertically
       currentY = startY
-      for i, child in elem.children:
-        let centerX = elem.x + (elem.width - childSizes[i].w) / 2.0
+      var childIndex = 0
+      for child in elem.children:
+        if child.kind == ekConditional:
+          # Conditional elements are transparent - evaluate and position active branch
+          if child.condition != nil:
+            let conditionResult = child.condition()
+            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
+            if activeBranch != nil:
+              let centerX = elem.x + (elem.width - childSizes[childIndex].w) / 2.0
 
-        # Apply gap between elements (but not after the last one)
-        if i > 0:
-          currentY += gap
+              # Apply gap between elements (but not after the last one)
+              if childIndex > 0:
+                currentY += gap
 
-        # Recalculate at centered position
-        calculateLayout(measurer, child, centerX, currentY, childSizes[i].w, childSizes[i].h)
-        currentY += childSizes[i].h
+              # Recalculate at centered position
+              calculateLayout(measurer, activeBranch, centerX, currentY, childSizes[childIndex].w, childSizes[childIndex].h)
+              currentY += childSizes[childIndex].h
+              inc childIndex
+        else:
+          let centerX = elem.x + (elem.width - childSizes[childIndex].w) / 2.0
+
+          # Apply gap between elements (but not after the last one)
+          if childIndex > 0:
+            currentY += gap
+
+          # Recalculate at centered position
+          calculateLayout(measurer, child, centerX, currentY, childSizes[childIndex].w, childSizes[childIndex].h)
+          currentY += childSizes[childIndex].h
+          inc childIndex
     else:
       # Default: normal relative positioning layout
       var currentY = elem.y
       let gap = elem.getProp("gap").get(val(5)).getFloat()  # Default gap between elements
 
       for child in elem.children:
-        calculateLayout(measurer, child, elem.x, currentY, elem.width, elem.height)
-        currentY += child.height + gap
+        if child.kind == ekConditional:
+          # Conditional elements are transparent - evaluate and layout active branch
+          if child.condition != nil:
+            let conditionResult = child.condition()
+            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
+            if activeBranch != nil:
+              calculateLayout(measurer, activeBranch, elem.x, currentY, elem.width, elem.height)
+              currentY += activeBranch.height + gap
+        else:
+          calculateLayout(measurer, child, elem.x, currentY, elem.width, elem.height)
+          currentY += child.height + gap
 
   of ekColumn:
     let gap = elem.getProp("gap").get(val(0)).getFloat()
@@ -218,6 +258,14 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
         for grandchild in child.children:
           calculateLayout(measurer, grandchild, 0, 0, elem.width, 0)
           childSizes.add((w: grandchild.width, h: grandchild.height))
+      elif child.kind == ekConditional:
+        # Conditional elements are transparent - evaluate and measure active branch
+        if child.condition != nil:
+          let conditionResult = child.condition()
+          let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
+          if activeBranch != nil:
+            calculateLayout(measurer, activeBranch, 0, 0, elem.width, 0)
+            childSizes.add((w: activeBranch.width, h: activeBranch.height))
       else:
         # Pass elem.width for width, but don't constrain height
         calculateLayout(measurer, child, 0, 0, elem.width, 0)
@@ -319,6 +367,28 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
           calculateLayout(measurer, grandchild, childX, currentY, elem.width, childSizes[childIndex].h)
           currentY += childSizes[childIndex].h
           inc childIndex
+      elif child.kind == ekConditional:
+        # Conditional - position the active branch
+        if child.condition != nil:
+          let conditionResult = child.condition()
+          let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
+          if activeBranch != nil:
+            if childIndex > 0:
+              currentY += dynamicGap
+
+            # Determine X position based on crossAxisAlignment
+            var childX = elem.x
+            if crossAxisAlignment.isSome:
+              let align = crossAxisAlignment.get.getString()
+              if align == "center":
+                childX = elem.x + (elem.width - childSizes[childIndex].w) / 2.0
+              elif align == "end":
+                childX = elem.x + elem.width - childSizes[childIndex].w
+
+            # Layout active branch at final position
+            calculateLayout(measurer, activeBranch, childX, currentY, elem.width, childSizes[childIndex].h)
+            currentY += childSizes[childIndex].h
+            inc childIndex
       else:
         # Regular child - position it
         # Determine X position based on crossAxisAlignment
@@ -353,6 +423,14 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
         for grandchild in child.children:
           calculateLayout(measurer, grandchild, 0, 0, parentWidth, elem.height)
           childSizes.add((w: grandchild.width, h: grandchild.height))
+      elif child.kind == ekConditional:
+        # Conditional elements are transparent - evaluate and measure active branch
+        if child.condition != nil:
+          let conditionResult = child.condition()
+          let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
+          if activeBranch != nil:
+            calculateLayout(measurer, activeBranch, elem.x, elem.y, parentWidth, elem.height)
+            childSizes.add((w: activeBranch.width, h: activeBranch.height))
       else:
         # Let children size themselves naturally (don't constrain width)
         calculateLayout(measurer, child, elem.x, elem.y, parentWidth, elem.height)
@@ -454,6 +532,28 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
           calculateLayout(measurer, grandchild, currentX, childY, childSizes[childIndex].w, childSizes[childIndex].h)
           currentX += childSizes[childIndex].w
           inc childIndex
+      elif child.kind == ekConditional:
+        # Conditional - position the active branch
+        if child.condition != nil:
+          let conditionResult = child.condition()
+          let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
+          if activeBranch != nil:
+            if childIndex > 0:
+              currentX += dynamicGap
+
+            # Determine Y position based on crossAxisAlignment
+            var childY = elem.y
+            if crossAxisAlignment.isSome:
+              let align = crossAxisAlignment.get.getString()
+              if align == "center":
+                childY = elem.y + (elem.height - childSizes[childIndex].h) / 2.0
+              elif align == "end":
+                childY = elem.y + elem.height - childSizes[childIndex].h
+
+            # Layout active branch at final position
+            calculateLayout(measurer, activeBranch, currentX, childY, childSizes[childIndex].w, childSizes[childIndex].h)
+            currentX += childSizes[childIndex].w
+            inc childIndex
       else:
         # Regular child - position it
         # Determine Y position based on crossAxisAlignment
@@ -480,21 +580,46 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     if alignment.getString() == "center":
       # Center children - needs two-pass layout
       for child in elem.children:
-        # First pass: Calculate child layout at (0, 0) to determine its size
-        calculateLayout(measurer, child, 0, 0, elem.width, elem.height)
+        if child.kind == ekConditional:
+          # Conditional elements are transparent - evaluate and layout active branch
+          if child.condition != nil:
+            let conditionResult = child.condition()
+            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
+            if activeBranch != nil:
+              # First pass: Calculate active branch layout at (0, 0) to determine its size
+              calculateLayout(measurer, activeBranch, 0, 0, elem.width, elem.height)
 
-        # Second pass: Now we know child.width and child.height, so center it
-        let centerX = elem.x + (elem.width - child.width) / 2.0
-        let centerY = elem.y + (elem.height - child.height) / 2.0
+              # Second pass: Now we know width and height, so center it
+              let centerX = elem.x + (elem.width - activeBranch.width) / 2.0
+              let centerY = elem.y + (elem.height - activeBranch.height) / 2.0
 
-        # Recalculate at centered position
-        calculateLayout(measurer, child, centerX, centerY, child.width, child.height)
+              # Recalculate at centered position
+              calculateLayout(measurer, activeBranch, centerX, centerY, activeBranch.width, activeBranch.height)
+        else:
+          # First pass: Calculate child layout at (0, 0) to determine its size
+          calculateLayout(measurer, child, 0, 0, elem.width, elem.height)
+
+          # Second pass: Now we know child.width and child.height, so center it
+          let centerX = elem.x + (elem.width - child.width) / 2.0
+          let centerY = elem.y + (elem.height - child.height) / 2.0
+
+          # Recalculate at centered position
+          calculateLayout(measurer, child, centerX, centerY, child.width, child.height)
     else:
       # Default: normal relative positioning layout
       var currentY = elem.y
       for child in elem.children:
-        calculateLayout(measurer, child, elem.x, currentY, elem.width, elem.height)
-        currentY += child.height + gap
+        if child.kind == ekConditional:
+          # Conditional elements are transparent - evaluate and layout active branch
+          if child.condition != nil:
+            let conditionResult = child.condition()
+            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
+            if activeBranch != nil:
+              calculateLayout(measurer, activeBranch, elem.x, currentY, elem.width, elem.height)
+              currentY += activeBranch.height + gap
+        else:
+          calculateLayout(measurer, child, elem.x, currentY, elem.width, elem.height)
+          currentY += child.height + gap
 
   of ekContainer:
     # Container is a normal wrapper - relative positioning by default
@@ -506,15 +631,31 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     if alignment.isSome and alignment.get.getString() == "center":
       # Center children - needs two-pass layout
       for child in elem.children:
-        # First pass: Calculate child layout at (0, 0) to determine its size
-        calculateLayout(measurer, child, 0, 0, elem.width, elem.height)
+        if child.kind == ekConditional:
+          # Conditional elements are transparent - evaluate and layout active branch
+          if child.condition != nil:
+            let conditionResult = child.condition()
+            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
+            if activeBranch != nil:
+              # First pass: Calculate active branch layout at (0, 0) to determine its size
+              calculateLayout(measurer, activeBranch, 0, 0, elem.width, elem.height)
 
-        # Second pass: Now we know child.width and child.height, so center it
-        let centerX = elem.x + (elem.width - child.width) / 2.0
-        let centerY = elem.y + (elem.height - child.height) / 2.0
+              # Second pass: Now we know width and height, so center it
+              let centerX = elem.x + (elem.width - activeBranch.width) / 2.0
+              let centerY = elem.y + (elem.height - activeBranch.height) / 2.0
 
-        # Recalculate at centered position
-        calculateLayout(measurer, child, centerX, centerY, child.width, child.height)
+              # Recalculate at centered position
+              calculateLayout(measurer, activeBranch, centerX, centerY, activeBranch.width, activeBranch.height)
+        else:
+          # First pass: Calculate child layout at (0, 0) to determine its size
+          calculateLayout(measurer, child, 0, 0, elem.width, elem.height)
+
+          # Second pass: Now we know child.width and child.height, so center it
+          let centerX = elem.x + (elem.width - child.width) / 2.0
+          let centerY = elem.y + (elem.height - child.height) / 2.0
+
+          # Recalculate at centered position
+          calculateLayout(measurer, child, centerX, centerY, child.width, child.height)
 
       # Auto-size height if not explicitly set (use max child height + padding)
       if not hasExplicitHeight and elem.children.len > 0:
@@ -526,8 +667,17 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     else:
       # Default: normal relative positioning layout
       for child in elem.children:
-        calculateLayout(measurer, child, elem.x, currentY, elem.width, elem.height)
-        currentY += child.height + gap
+        if child.kind == ekConditional:
+          # Conditional elements are transparent - evaluate and layout active branch
+          if child.condition != nil:
+            let conditionResult = child.condition()
+            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
+            if activeBranch != nil:
+              calculateLayout(measurer, activeBranch, elem.x, currentY, elem.width, elem.height)
+              currentY += activeBranch.height + gap
+        else:
+          calculateLayout(measurer, child, elem.x, currentY, elem.width, elem.height)
+          currentY += child.height + gap
 
       # Auto-size height if not explicitly set (use total stacked height)
       if not hasExplicitHeight and elem.children.len > 0:
@@ -687,6 +837,14 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
         for grandchild in child.children:
           calculateLayout(measurer, grandchild, contentX, currentY, contentWidth, 0)
           currentY += grandchild.height + gap
+      elif child.kind == ekConditional:
+        # Conditional elements are transparent - evaluate and layout active branch
+        if child.condition != nil:
+          let conditionResult = child.condition()
+          let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
+          if activeBranch != nil:
+            calculateLayout(measurer, activeBranch, contentX, currentY, contentWidth, 0)
+            currentY += activeBranch.height + gap
       else:
         # This is a regular child, lay it out normally.
         calculateLayout(measurer, child, contentX, currentY, contentWidth, 0)
