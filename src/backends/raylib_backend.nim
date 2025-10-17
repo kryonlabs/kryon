@@ -15,6 +15,7 @@ import ../kryon/components/dropdown
 import ../kryon/components/container
 import ../kryon/components/containers
 import ../kryon/components/tabs
+import ../kryon/rendering/renderingContext
 import options, tables, math, os
 import raylib_ffi
 
@@ -295,15 +296,21 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
   of ekButton:
     # Extract button data and render it
     let data = extractButtonData(elem, inheritedColor)
+
+    # Apply disabled styling if button is disabled
+    let bgColor = if data.disabled: getDisabledColor(data.backgroundColor) else: data.backgroundColor
+    let textColor = if data.disabled: getDisabledColor(data.textColor) else: data.textColor
+    let borderColor = if data.disabled: getDisabledColor(data.borderColor) else: data.borderColor
+
     # Draw background
-    backend.drawRectangle(data.x, data.y, data.width, data.height, data.backgroundColor)
+    backend.drawRectangle(data.x, data.y, data.width, data.height, bgColor)
     # Draw border
-    backend.drawRectangleBorder(data.x, data.y, data.width, data.height, data.borderWidth, data.borderColor)
+    backend.drawRectangleBorder(data.x, data.y, data.width, data.height, data.borderWidth, borderColor)
     # Draw centered text
     let textMeasurements = backend.measureText(data.text, data.fontSize)
     let textX = data.x + (data.width - textMeasurements.width) / 2.0
     let textY = data.y + (data.height - textMeasurements.height) / 2.0
-    backend.drawText(data.text, textX, textY, data.fontSize, data.textColor)
+    backend.drawText(data.text, textX, textY, data.fontSize, textColor)
 
   of ekInput:
     # Extract input data
@@ -589,7 +596,16 @@ proc checkHoverCursor*(elem: Element): bool =
         if checkHoverCursor(activeBranch):
           return true
 
-  of ekButton, ekTab:
+  of ekButton:
+    # Check if button is disabled - if so, don't show pointer cursor
+    if isDisabled(elem):
+      return false
+    let mousePos = GetMousePosition()
+    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
+    if CheckCollisionPointRec(mousePos, rect):
+      return true
+
+  of ekTab:
     let mousePos = GetMousePosition()
     let rect = rrect(elem.x, elem.y, elem.width, elem.height)
     if CheckCollisionPointRec(mousePos, rect):
@@ -669,14 +685,16 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
       backend.handleInput(child)
 
   of ekButton:
-    if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
-      let mousePos = GetMousePosition()
-      let rect = rrect(elem.x, elem.y, elem.width, elem.height)
+    # Check if button is disabled - if so, don't handle clicks
+    if not isDisabled(elem):
+      if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
+        let mousePos = GetMousePosition()
+        let rect = rrect(elem.x, elem.y, elem.width, elem.height)
 
-      if CheckCollisionPointRec(mousePos, rect):
-        # Button was clicked - trigger onClick handler
-        if elem.eventHandlers.hasKey("onClick"):
-          elem.eventHandlers["onClick"]()
+        if CheckCollisionPointRec(mousePos, rect):
+          # Button was clicked - trigger onClick handler
+          if elem.eventHandlers.hasKey("onClick"):
+            elem.eventHandlers["onClick"]()
 
   of ekInput:
     if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):

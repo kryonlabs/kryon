@@ -16,6 +16,7 @@ type
     fontSize*: int
     borderWidth*: float
     borderColor*: Color
+    disabled*: bool
 
 proc extractButtonData*(elem: Element, inheritedColor: Option[Color] = none(Color)): ButtonData =
   ## Extract button properties from element
@@ -27,6 +28,7 @@ proc extractButtonData*(elem: Element, inheritedColor: Option[Color] = none(Colo
   ##   - fontSize: Text size (default: 20)
   ##   - borderWidth: Border thickness (default: 2.0)
   ##   - borderColor: Border color (default: #D1D5DB)
+  ##   - disabled: Whether button is disabled (default: false)
 
   result.text = elem.getProp("text").get(val("Button")).getString()
   result.backgroundColor = elem.getProp("backgroundColor").get(val("#4A90E2")).getColor()
@@ -34,6 +36,7 @@ proc extractButtonData*(elem: Element, inheritedColor: Option[Color] = none(Colo
   result.fontSize = getFontSize(elem, 20)
   result.borderWidth = getBorderWidth(elem, 2.0)
   result.borderColor = getBorderColor(elem, "#D1D5DB")
+  result.disabled = elem.getProp("disabled").get(val(false)).getBool()
   result.x = elem.x
   result.y = elem.y
   result.width = elem.width

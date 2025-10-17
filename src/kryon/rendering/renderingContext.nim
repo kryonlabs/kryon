@@ -121,3 +121,22 @@ proc drawCenteredText*[R](renderer: var R, text: string, rect: Rect, fontSize: i
   let (textWidth, textHeight) = renderer.measureText(text, fontSize)
   let (textX, textY) = centerTextInRect(textWidth, textHeight, rect.x, rect.y, rect.width, rect.height)
   renderer.drawText(text, textX, textY, fontSize, color)
+
+# ============================================================================
+# Disabled State Helpers
+# ============================================================================
+
+proc isDisabled*(elem: Element): bool =
+  ## Check if an element is disabled
+  elem.getProp("disabled").get(val(false)).getBool()
+
+proc applyDisabledAlpha*(color: Color, alphaMultiplier: float = 0.5): Color =
+  ## Apply disabled state alpha to a color
+  result = color
+  result.a = uint8(float(color.a) * alphaMultiplier)
+
+proc getDisabledColor*(color: Color): Color =
+  ## Get disabled version of a color (grayed out)
+  # Convert to grayscale and reduce intensity
+  let gray = uint8(0.299 * float(color.r) + 0.587 * float(color.g) + 0.114 * float(color.b))
+  result = Color(r: gray, g: gray, b: gray, a: uint8(float(color.a) * 0.6))

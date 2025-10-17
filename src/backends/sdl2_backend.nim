@@ -16,6 +16,7 @@ import ../kryon/components/dropdown
 import ../kryon/components/container
 import ../kryon/components/containers
 import ../kryon/components/tabs
+import ../kryon/rendering/renderingContext
 import options, tables, algorithm
 import sdl2_ffi
 
@@ -755,15 +756,20 @@ proc renderElement*(backend: var SDL2Backend, elem: Element, inheritedColor: Opt
     # Extract button data and render it
     let data = extractButtonData(elem, inheritedColor)
 
+    # Apply disabled styling if button is disabled
+    let bgColor = if data.disabled: getDisabledColor(data.backgroundColor) else: data.backgroundColor
+    let textColor = if data.disabled: getDisabledColor(data.textColor) else: data.textColor
+    let borderColor = if data.disabled: getDisabledColor(data.borderColor) else: data.borderColor
+
     # Draw button background
     let rect = rrect(data.x, data.y, data.width, data.height)
-    let sdlBgColor = data.backgroundColor.toSDLColor()
+    let sdlBgColor = bgColor.toSDLColor()
     discard SDL_SetRenderDrawColor(backend.renderer, sdlBgColor.r, sdlBgColor.g, sdlBgColor.b, sdlBgColor.a)
     discard SDL_RenderFillRect(backend.renderer, addr rect)
 
     # Draw button border
     if data.borderWidth > 0:
-      let sdlBorderColor = data.borderColor.toSDLColor()
+      let sdlBorderColor = borderColor.toSDLColor()
       discard SDL_SetRenderDrawColor(backend.renderer, sdlBorderColor.r, sdlBorderColor.g, sdlBorderColor.b, sdlBorderColor.a)
       discard SDL_RenderDrawRect(backend.renderer, addr rect)
 
@@ -772,7 +778,7 @@ proc renderElement*(backend: var SDL2Backend, elem: Element, inheritedColor: Opt
     let textX = data.x + (data.width - textMetrics.w.float) / 2.0
     let textY = data.y + (data.height - textMetrics.h.float) / 2.0
 
-    backend.renderText(data.text, textX, textY, data.fontSize, data.textColor.toSDLColor())
+    backend.renderText(data.text, textX, textY, data.fontSize, textColor.toSDLColor())
 
   of ekInput:
     # Extract input data
@@ -1127,7 +1133,21 @@ proc checkHoverCursor*(elem: Element): bool =
         if checkHoverCursor(activeBranch):
           return true
 
-  of ekButton, ekTab:
+  of ekButton:
+    # Check if button is disabled - if so, don't show pointer cursor
+    if isDisabled(elem):
+      return false
+    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
+    let mousePoint = SDL_Point(x: mousePos.x.cint, y: mousePos.y.cint)
+    var contains = false
+    # Simple point-in-rect check
+    if mousePoint.x >= rect.x and mousePoint.x < rect.x + rect.w and
+       mousePoint.y >= rect.y and mousePoint.y < rect.y + rect.h:
+      contains = true
+    if contains:
+      return true
+
+  of ekTab:
     let rect = rrect(elem.x, elem.y, elem.width, elem.height)
     let mousePoint = SDL_Point(x: mousePos.x.cint, y: mousePos.y.cint)
     var contains = false
@@ -1214,15 +1234,17 @@ proc handleInput*(backend: var SDL2Backend, elem: Element) =
       backend.handleInput(child)
 
   of ekButton:
-    let mousePos = getMousePosition()
-    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
-    let mousePoint = SDL_Point(x: mousePos.x.cint, y: mousePos.y.cint)
+    # Check if button is disabled - if so, don't handle clicks
+    if not isDisabled(elem):
+      let mousePos = getMousePosition()
+      let rect = rrect(elem.x, elem.y, elem.width, elem.height)
+      let mousePoint = SDL_Point(x: mousePos.x.cint, y: mousePos.y.cint)
 
-    if mousePoint.x >= rect.x and mousePoint.x < rect.x + rect.w and
-       mousePoint.y >= rect.y and mousePoint.y < rect.y + rect.h:
-      # Button was clicked - trigger onClick handler
-      if elem.eventHandlers.hasKey("onClick"):
-        elem.eventHandlers["onClick"]()
+      if mousePoint.x >= rect.x and mousePoint.x < rect.x + rect.w and
+         mousePoint.y >= rect.y and mousePoint.y < rect.y + rect.h:
+        # Button was clicked - trigger onClick handler
+        if elem.eventHandlers.hasKey("onClick"):
+          elem.eventHandlers["onClick"]()
 
   of ekInput:
     let mousePos = getMousePosition()
