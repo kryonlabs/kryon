@@ -1093,6 +1093,11 @@ proc handleKeyboardInput*(backend: var RaylibBackend, root: Element) =
     let handler = backend.state.focusedInput.eventHandlers["onChange"]
     handler(currentValue)
 
+  # Trigger onTextChange handler for real-time text updates
+  if textChanged and backend.state.focusedInput.eventHandlers.hasKey("onTextChange"):
+    let handler = backend.state.focusedInput.eventHandlers["onTextChange"]
+    handler(currentValue)
+
   # Trigger onValueChange handler for two-way binding
   if textChanged and backend.state.focusedInput.eventHandlers.hasKey("onValueChange"):
     let handler = backend.state.focusedInput.eventHandlers["onValueChange"]

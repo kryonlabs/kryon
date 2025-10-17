@@ -1550,6 +1550,11 @@ proc handleKeyboardInput*(backend: var SDL2Backend, root: Element) =
   if textChanged:
     backend.state.inputValues[backend.state.focusedInput] = currentValue
 
+  # Trigger onTextChange handler for real-time text updates
+  if textChanged and backend.state.focusedInput.eventHandlers.hasKey("onTextChange"):
+    let handler = backend.state.focusedInput.eventHandlers["onTextChange"]
+    handler(currentValue)
+
   if textChanged and backend.state.focusedInput.eventHandlers.hasKey("onChange"):
     let handler = backend.state.focusedInput.eventHandlers["onChange"]
     handler(currentValue)
@@ -1698,6 +1703,11 @@ proc run*(backend: var SDL2Backend, root: Element) =
           var currentValue = backend.state.inputValues.getOrDefault(backend.state.focusedInput, "")
           currentValue.add(text)
           backend.state.inputValues[backend.state.focusedInput] = currentValue
+
+          # Trigger onTextChange handler for real-time text updates
+          if backend.state.focusedInput.eventHandlers.hasKey("onTextChange"):
+            let handler = backend.state.focusedInput.eventHandlers["onTextChange"]
+            handler(currentValue)
 
           if backend.state.focusedInput.eventHandlers.hasKey("onChange"):
             let handler = backend.state.focusedInput.eventHandlers["onChange"]
