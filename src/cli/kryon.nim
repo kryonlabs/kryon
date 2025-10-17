@@ -12,6 +12,7 @@ type
     ## Supported renderers
     rRaylib = "raylib"
     rSDL2 = "sdl2"
+    rSkia = "skia"
     rHTML = "html"      # Future
     rTerminal = "terminal"  # Future
 
@@ -31,7 +32,9 @@ proc detectRenderer*(filename: string): Renderer =
 
   let content = readFile(filename)
 
-  if "sdl2_backend" in content:
+  if "skia_backend" in content:
+    return rSkia
+  elif "sdl2_backend" in content:
     return rSDL2
   elif "raylib_backend" in content:
     return rRaylib
@@ -97,6 +100,9 @@ proc buildRendererImports(renderer: Renderer, basePath: string): string =
   of rSDL2:
     result = &"""import "{basePath / "backends" / "sdl2_backend"}"
 """
+  of rSkia:
+    result = &"""import "{basePath / "backends" / "skia_backend"}"
+"""
   of rHTML:
     result = &"""import "{basePath / "backends" / "html_backend"}"
 import os
@@ -117,6 +123,12 @@ proc buildRendererBody(renderer: Renderer): string =
     result = renderIndentedBlock([
       "var backend: SDL2Backend",
       "backend = newSDL2BackendFromApp(app)",
+      "backend.run(app)"
+    ], 2)
+  of rSkia:
+    result = renderIndentedBlock([
+      "var backend: SkiaBackend",
+      "backend = newSkiaBackendFromApp(app)",
       "backend.run(app)"
     ], 2)
   of rHTML:
@@ -320,6 +332,8 @@ proc compileKryon*(
   case renderer:
   of rSDL2:
     nimCmd.add(" --passL:\"-lSDL2 -lSDL2_ttf\"")
+  of rSkia:
+    nimCmd.add(" --passL:\"-lSDL2 -lskia\"")
   of rHTML:
     # For HTML, no special linking needed
     discard
@@ -390,7 +404,7 @@ proc runKryon*(
       parseEnum[Renderer](renderer)
     except ValueError:
       echo &"Error: Unknown renderer: {renderer}"
-      echo &"Available renderers: auto, raylib, sdl2, html, terminal"
+      echo &"Available renderers: auto, raylib, sdl2, skia, html, terminal"
       return 1
 
   # Check renderer support
@@ -545,7 +559,7 @@ proc buildKryon*(
       parseEnum[Renderer](renderer)
     except ValueError:
       echo &"Error: Unknown renderer: {renderer}"
-      echo &"Available renderers: auto, raylib, sdl2, html, terminal"
+      echo &"Available renderers: auto, raylib, sdl2, skia, html, terminal"
       return 1
 
   # Check renderer support
@@ -701,6 +715,7 @@ proc versionCmd*(): int =
   echo "Supported renderers:"
   echo "  - raylib (desktop, 60 FPS)"
   echo "  - sdl2 (desktop, cross-platform)"
+  echo "  - skia (desktop, high-quality 2D graphics)"
   echo "  - html (web, generates HTML/CSS/JS)"
   echo "  - terminal (coming soon)"
   return 0
@@ -717,7 +732,7 @@ when isMainModule:
     [runKryon, cmdName = "run",
      help = {
        "filename": "Path to .nim file to run",
-       "renderer": "Renderer to use (auto, raylib, sdl2, html, terminal)",
+       "renderer": "Renderer to use (auto, raylib, sdl2, skia, html, terminal)",
        "release": "Compile in release mode (optimized)",
        "verbose": "Show detailed compilation output"
      },
@@ -730,7 +745,7 @@ when isMainModule:
     [buildKryon, cmdName = "build",
      help = {
        "filename": "Path to .nim file to compile",
-       "renderer": "Renderer to use (auto, raylib, sdl2, html, terminal)",
+       "renderer": "Renderer to use (auto, raylib, sdl2, skia, html, terminal)",
        "output": "Output executable path",
        "release": "Compile in release mode (default: true)",
        "verbose": "Show detailed compilation output"

@@ -269,6 +269,8 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
 
     # First pass: Calculate all children sizes (give them full width but not full height)
     var childSizes: seq[tuple[w, h: float]] = @[]
+    var actualChildren: seq[Element] = @[]  # Store the actual children to be laid out
+
     for child in elem.children:
       # Special handling for ForLoop children - trigger child generation first
       if child.kind == ekForLoop:
@@ -278,18 +280,23 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
         for grandchild in child.children:
           calculateLayout(measurer, grandchild, 0, 0, elem.width, 0)
           childSizes.add((w: grandchild.width, h: grandchild.height))
+          actualChildren.add(grandchild)
       elif child.kind == ekConditional:
-        # Conditional elements are transparent - evaluate and measure active branch
+        # Conditional elements are transparent - extract active branch children directly
         if child.condition != nil:
           let conditionResult = child.condition()
           let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
           if activeBranch != nil:
-            calculateLayout(measurer, activeBranch, 0, 0, elem.width, 0)
-            childSizes.add((w: activeBranch.width, h: activeBranch.height))
+            # Calculate sizes for all children of the active branch
+            for branchChild in activeBranch.children:
+              calculateLayout(measurer, branchChild, 0, 0, elem.width, 0)
+              childSizes.add((w: branchChild.width, h: branchChild.height))
+              actualChildren.add(branchChild)
       else:
         # Pass elem.width for width, but don't constrain height
         calculateLayout(measurer, child, 0, 0, elem.width, 0)
         childSizes.add((w: child.width, h: child.height))
+        actualChildren.add(child)
 
     # Calculate total height and max width
     var totalHeight = 0.0
@@ -297,8 +304,8 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     for size in childSizes:
       totalHeight += size.h
       maxWidth = max(maxWidth, size.w)
-    if elem.children.len > 1:
-      totalHeight += gap * (elem.children.len - 1).float
+    if actualChildren.len > 1:
+      totalHeight += gap * (actualChildren.len - 1).float
 
     # Column uses parent size by default (unless explicitly sized)
     # This allows mainAxisAlignment/crossAxisAlignment to center children in available space
@@ -364,66 +371,23 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
 
     # Second pass: Position children
     var childIndex = 0
-    for child in elem.children:
+    for child in actualChildren:
       if childIndex > 0:
         currentY += dynamicGap
 
-      if child.kind == ekForLoop:
-        # For loop - position all its generated children vertically
-        for grandchild in child.children:
-          if childIndex > 0:
-            currentY += dynamicGap
+      # Determine X position based on crossAxisAlignment
+      var childX = elem.x
+      if crossAxisAlignment.isSome:
+        let align = crossAxisAlignment.get.getString()
+        if align == "center":
+          childX = elem.x + (elem.width - childSizes[childIndex].w) / 2.0
+        elif align == "end":
+          childX = elem.x + elem.width - childSizes[childIndex].w
 
-          # Determine X position based on crossAxisAlignment
-          var childX = elem.x
-          if crossAxisAlignment.isSome:
-            let align = crossAxisAlignment.get.getString()
-            if align == "center":
-              childX = elem.x + (elem.width - childSizes[childIndex].w) / 2.0
-            elif align == "end":
-              childX = elem.x + elem.width - childSizes[childIndex].w
-
-          # Layout grandchild at final position
-          calculateLayout(measurer, grandchild, childX, currentY, elem.width, childSizes[childIndex].h)
-          currentY += childSizes[childIndex].h
-          inc childIndex
-      elif child.kind == ekConditional:
-        # Conditional - position the active branch
-        if child.condition != nil:
-          let conditionResult = child.condition()
-          let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
-          if activeBranch != nil:
-            if childIndex > 0:
-              currentY += dynamicGap
-
-            # Determine X position based on crossAxisAlignment
-            var childX = elem.x
-            if crossAxisAlignment.isSome:
-              let align = crossAxisAlignment.get.getString()
-              if align == "center":
-                childX = elem.x + (elem.width - childSizes[childIndex].w) / 2.0
-              elif align == "end":
-                childX = elem.x + elem.width - childSizes[childIndex].w
-
-            # Layout active branch at final position
-            calculateLayout(measurer, activeBranch, childX, currentY, elem.width, childSizes[childIndex].h)
-            currentY += childSizes[childIndex].h
-            inc childIndex
-      else:
-        # Regular child - position it
-        # Determine X position based on crossAxisAlignment
-        var childX = elem.x
-        if crossAxisAlignment.isSome:
-          let align = crossAxisAlignment.get.getString()
-          if align == "center":
-            childX = elem.x + (elem.width - childSizes[childIndex].w) / 2.0
-          elif align == "end":
-            childX = elem.x + elem.width - childSizes[childIndex].w
-
-        # Layout child at final position
-        calculateLayout(measurer, child, childX, currentY, elem.width, childSizes[childIndex].h)
-        currentY += childSizes[childIndex].h
-        inc childIndex
+      # Layout child at final position
+      calculateLayout(measurer, child, childX, currentY, elem.width, childSizes[childIndex].h)
+      currentY += childSizes[childIndex].h
+      inc childIndex
 
   of ekRow:
     let gap = elem.getProp("gap").get(val(0)).getFloat()
@@ -434,6 +398,8 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
 
     # First pass: Calculate all children sizes (give them full height and let them size themselves naturally)
     var childSizes: seq[tuple[w, h: float]] = @[]
+    var actualChildren: seq[Element] = @[]  # Store the actual children to be laid out
+
     for child in elem.children:
       # Special handling for ForLoop children - trigger child generation first
       if child.kind == ekForLoop:
@@ -443,18 +409,23 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
         for grandchild in child.children:
           calculateLayout(measurer, grandchild, 0, 0, parentWidth, elem.height)
           childSizes.add((w: grandchild.width, h: grandchild.height))
+          actualChildren.add(grandchild)
       elif child.kind == ekConditional:
-        # Conditional elements are transparent - evaluate and measure active branch
+        # Conditional elements are transparent - extract active branch children directly
         if child.condition != nil:
           let conditionResult = child.condition()
           let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
           if activeBranch != nil:
-            calculateLayout(measurer, activeBranch, elem.x, elem.y, parentWidth, elem.height)
-            childSizes.add((w: activeBranch.width, h: activeBranch.height))
+            # Calculate sizes for all children of the active branch
+            for branchChild in activeBranch.children:
+              calculateLayout(measurer, branchChild, elem.x, elem.y, parentWidth, elem.height)
+              childSizes.add((w: branchChild.width, h: branchChild.height))
+              actualChildren.add(branchChild)
       else:
         # Let children size themselves naturally (don't constrain width)
         calculateLayout(measurer, child, elem.x, elem.y, parentWidth, elem.height)
         childSizes.add((w: child.width, h: child.height))
+        actualChildren.add(child)
 
     # Calculate total width and max height
     var totalWidth = 0.0
@@ -462,8 +433,8 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     for size in childSizes:
       totalWidth += size.w
       maxHeight = max(maxHeight, size.h)
-    if elem.children.len > 1:
-      totalWidth += gap * (elem.children.len - 1).float
+    if actualChildren.len > 1:
+      totalWidth += gap * (actualChildren.len - 1).float
 
     # Row uses parent size by default (unless explicitly sized)
     # This allows mainAxisAlignment/crossAxisAlignment to center children in available space
@@ -529,66 +500,23 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
 
     # Second pass: Position children
     var childIndex = 0
-    for child in elem.children:
+    for child in actualChildren:
       if childIndex > 0:
         currentX += dynamicGap
 
-      if child.kind == ekForLoop:
-        # For loop - position all its generated children horizontally
-        for grandchild in child.children:
-          if childIndex > 0:
-            currentX += dynamicGap
+      # Determine Y position based on crossAxisAlignment
+      var childY = elem.y
+      if crossAxisAlignment.isSome:
+        let align = crossAxisAlignment.get.getString()
+        if align == "center":
+          childY = elem.y + (elem.height - childSizes[childIndex].h) / 2.0
+        elif align == "end":
+          childY = elem.y + elem.height - childSizes[childIndex].h
 
-          # Determine Y position based on crossAxisAlignment
-          var childY = elem.y
-          if crossAxisAlignment.isSome:
-            let align = crossAxisAlignment.get.getString()
-            if align == "center":
-              childY = elem.y + (elem.height - childSizes[childIndex].h) / 2.0
-            elif align == "end":
-              childY = elem.y + elem.height - childSizes[childIndex].h
-
-          # Layout grandchild at final position
-          calculateLayout(measurer, grandchild, currentX, childY, childSizes[childIndex].w, childSizes[childIndex].h)
-          currentX += childSizes[childIndex].w
-          inc childIndex
-      elif child.kind == ekConditional:
-        # Conditional - position the active branch
-        if child.condition != nil:
-          let conditionResult = child.condition()
-          let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
-          if activeBranch != nil:
-            if childIndex > 0:
-              currentX += dynamicGap
-
-            # Determine Y position based on crossAxisAlignment
-            var childY = elem.y
-            if crossAxisAlignment.isSome:
-              let align = crossAxisAlignment.get.getString()
-              if align == "center":
-                childY = elem.y + (elem.height - childSizes[childIndex].h) / 2.0
-              elif align == "end":
-                childY = elem.y + elem.height - childSizes[childIndex].h
-
-            # Layout active branch at final position
-            calculateLayout(measurer, activeBranch, currentX, childY, childSizes[childIndex].w, childSizes[childIndex].h)
-            currentX += childSizes[childIndex].w
-            inc childIndex
-      else:
-        # Regular child - position it
-        # Determine Y position based on crossAxisAlignment
-        var childY = elem.y
-        if crossAxisAlignment.isSome:
-          let align = crossAxisAlignment.get.getString()
-          if align == "center":
-            childY = elem.y + (elem.height - childSizes[childIndex].h) / 2.0
-          elif align == "end":
-            childY = elem.y + elem.height - childSizes[childIndex].h
-
-        # Layout child at final position
-        calculateLayout(measurer, child, currentX, childY, childSizes[childIndex].w, childSizes[childIndex].h)
-        currentX += childSizes[childIndex].w
-        inc childIndex
+      # Layout child at final position
+      calculateLayout(measurer, child, currentX, childY, childSizes[childIndex].w, childSizes[childIndex].h)
+      currentX += childSizes[childIndex].w
+      inc childIndex
 
   of ekCenter:
     # Center is just like a Container but with contentAlignment = "center" by default
