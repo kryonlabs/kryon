@@ -178,10 +178,26 @@ proc extractTabContentData*(elem: Element, inheritedColor: Option[Color] = none(
     parent = parent.parent
   result.activeTab = selectedIndex
 
-  # Only provide the active TabPanel
-  if result.activeTab >= 0 and result.activeTab < elem.children.len:
-    result.hasActivePanel = true
-    result.activePanel = elem.children[result.activeTab]
+  # Collect TabPanel elements from both direct children and ForLoop grandchildren
+  var allTabPanels: seq[Element] = @[]
+  var panelIndex = 0
+
+  for child in elem.children:
+    if child.kind == ekTabPanel:
+      allTabPanels.add(child)
+    elif child.kind == ekForLoop:
+      # ForLoop children were already generated during layout
+      for grandchild in child.children:
+        if grandchild.kind == ekTabPanel:
+          allTabPanels.add(grandchild)
+
+  # Assign indices and find the active panel
+  for panel in allTabPanels:
+    panel.tabIndex = panelIndex
+    if panelIndex == selectedIndex:
+      result.hasActivePanel = true
+      result.activePanel = panel
+    panelIndex += 1
 
 proc extractTabPanelData*(elem: Element, inheritedColor: Option[Color] = none(Color)): TabPanelData =
   ## Extract tab panel properties from element
