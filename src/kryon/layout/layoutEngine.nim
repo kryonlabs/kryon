@@ -70,6 +70,26 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     elem.width = if widthOpt.isSome: widthOpt.get.getFloat() else: textWidth + (padding * 2.0)
     elem.height = if heightOpt.isSome: heightOpt.get.getFloat() else: textHeight + (verticalPadding * 2.0)
 
+  elif elem.kind == ekInput:
+    # Special handling for Input elements - size based on fontSize with padding
+    let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
+    let value = elem.getProp("value").get(val("")).getString()
+
+    # Calculate default dimensions based on fontSize
+    let textHeight = fontSize.float
+    let padding = 8.0  # Padding inside the input (matches input.nim)
+    let verticalPadding = 8.0  # Vertical padding
+    let minWidth = 200.0  # Minimum width for usability
+
+    # If value is provided and no explicit width, size to fit content (with some extra space)
+    let contentWidth = if value.len > 0:
+      measurer.measureTextWidth(value, fontSize) + (padding * 2.0) + 20.0  # Extra space for typing
+    else:
+      minWidth
+
+    elem.width = if widthOpt.isSome: widthOpt.get.getFloat() else: max(minWidth, contentWidth)
+    elem.height = if heightOpt.isSome: heightOpt.get.getFloat() else: textHeight + (verticalPadding * 2.0)
+
   else:
     # Regular element dimension handling (containers, etc.)
     if widthOpt.isSome:
