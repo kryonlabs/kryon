@@ -3,23 +3,23 @@
 ## This backend renders Kryon UI elements using Skia for high-quality 2D graphics.
 ## Uses SDL2 for windowing and event handling, with Skia for rendering.
 
-import ../kryon/core
-import ../kryon/fonts
-import ../kryon/layout/layoutEngine
-import ../kryon/layout/zindexSort
-import ../kryon/state/backendState
-import ../kryon/components/button
-import ../kryon/components/text
-import ../kryon/components/input
-import ../kryon/components/checkbox
-import ../kryon/components/dropdown
-import ../kryon/components/container
-import ../kryon/components/containers
-import ../kryon/components/tabs
-import ../kryon/rendering/renderingContext
+import ../../kryon/core
+import ../../kryon/fonts
+import ../../kryon/layout/layoutEngine
+import ../../kryon/layout/zindexSort
+import ../../kryon/state/backendState
+import ../../kryon/components/button
+import ../../kryon/components/text
+import ../../kryon/components/input
+import ../../kryon/components/checkbox
+import ../../kryon/components/dropdown
+import ../../kryon/components/container
+import ../../kryon/components/containers
+import ../../kryon/components/tabs
+import ../../kryon/rendering/renderingContext
 import options, tables, math, os
-import skia_ffi
-import sdl2_ffi  # For windowing only
+import ../rendering/skia/skia_ffi
+import ../windowing/sdl2/sdl2_ffi  # For windowing only
 
 # ============================================================================
 # Backend Type

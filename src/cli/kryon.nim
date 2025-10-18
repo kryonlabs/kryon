@@ -32,13 +32,14 @@ proc detectRenderer*(filename: string): Renderer =
 
   let content = readFile(filename)
 
-  if "skia_backend" in content:
+  # Check for new integration-based backend imports
+  if "integration/sdl2_skia" in content or "skia_backend" in content:
     return rSkia
-  elif "sdl2_backend" in content:
+  elif "integration/sdl2" in content or "sdl2_backend" in content:
     return rSDL2
-  elif "raylib_backend" in content:
+  elif "integration/raylib" in content or "raylib_backend" in content:
     return rRaylib
-  elif "html_backend" in content:
+  elif "integration/html" in content or "html_backend" in content:
     return rHTML
   elif "terminal_backend" in content:
     return rTerminal
@@ -95,16 +96,16 @@ proc buildRendererImports(renderer: Renderer, basePath: string): string =
   ## Produce the backend-specific import statements.
   case renderer
   of rRaylib:
-    result = &"""import "{basePath / "backends" / "raylib_backend"}"
+    result = &"""import "{basePath / "backends" / "integration" / "raylib"}"
 """
   of rSDL2:
-    result = &"""import "{basePath / "backends" / "sdl2_backend"}"
+    result = &"""import "{basePath / "backends" / "integration" / "sdl2"}"
 """
   of rSkia:
-    result = &"""import "{basePath / "backends" / "skia_backend"}"
+    result = &"""import "{basePath / "backends" / "integration" / "sdl2_skia"}"
 """
   of rHTML:
-    result = &"""import "{basePath / "backends" / "html_backend"}"
+    result = &"""import "{basePath / "backends" / "integration" / "html"}"
 import os
 """
   else:
@@ -457,7 +458,7 @@ proc runKryon*(
 
     var htmlGeneratorCode = "import os, strformat\n"
     htmlGeneratorCode &= "import \"" & currentDir & "/src/kryon\"\n"
-    htmlGeneratorCode &= "import \"" & currentDir & "/src/backends/html_backend\"\n"
+    htmlGeneratorCode &= "import \"" & currentDir & "/src/backends/integration/html\"\n"
     htmlGeneratorCode &= "\n"
     htmlGeneratorCode &= fixedImports
     htmlGeneratorCode &= "\n"
@@ -612,7 +613,7 @@ proc buildKryon*(
 
     var htmlGeneratorCode = "import os, strformat\n"
     htmlGeneratorCode &= "import \"" & currentDir & "/src/kryon\"\n"
-    htmlGeneratorCode &= "import \"" & currentDir & "/src/backends/html_backend\"\n"
+    htmlGeneratorCode &= "import \"" & currentDir & "/src/backends/integration/html\"\n"
     htmlGeneratorCode &= "\n"
     htmlGeneratorCode &= fixedImports
     htmlGeneratorCode &= "\n"

@@ -3,22 +3,22 @@
 ## This backend renders Kryon UI elements using SDL2 for native desktop applications.
 ## Provides identical functionality to the Raylib backend.
 
-import ../kryon/core
-import ../kryon/fonts
-import ../kryon/layout/layoutEngine
-import ../kryon/layout/zindexSort
-import ../kryon/state/backendState
-import ../kryon/components/button
-import ../kryon/components/text
-import ../kryon/components/input
-import ../kryon/components/checkbox
-import ../kryon/components/dropdown
-import ../kryon/components/container
-import ../kryon/components/containers
-import ../kryon/components/tabs
-import ../kryon/rendering/renderingContext
+import ../../kryon/core
+import ../../kryon/fonts
+import ../../kryon/layout/layoutEngine
+import ../../kryon/layout/zindexSort
+import ../../kryon/state/backendState
+import ../../kryon/components/button
+import ../../kryon/components/text
+import ../../kryon/components/input
+import ../../kryon/components/checkbox
+import ../../kryon/components/dropdown
+import ../../kryon/components/container
+import ../../kryon/components/containers
+import ../../kryon/components/tabs
+import ../../kryon/rendering/renderingContext
 import options, tables, algorithm
-import sdl2_ffi
+import ../windowing/sdl2/sdl2_ffi
 
 # ============================================================================
 # Color Conversion

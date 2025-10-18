@@ -1,90 +1,83 @@
 # Kryon CLI Tool
 
-The Kryon CLI provides a convenient way to run and build Kryon applications with support for multiple renderers.
-
----
+The Kryon CLI provides commands for running and building Kryon applications.
 
 ## Installation
-
-Build the CLI tool:
 
 ```bash
 nimble build
 ```
 
-This creates `./bin/kryon` executable.
-
----
+Creates `./build/bin/kryon` executable.
 
 ## Commands
 
-### `runKryon` - Run an Application
+### run - Run an Application
 
 Compile and run a Kryon application:
 
 ```bash
-nix-shell --run "./bin/kryon runKryon --filename=examples/hello_world.nim"
+./build/bin/kryon run examples/button_demo.nim
 ```
 
 **Options**:
-- `--filename=FILE` (required) - Path to .nim file to run
-- `--renderer=RENDERER` (default: auto) - Renderer to use (auto, raylib, html, terminal)
-- `--release` - Compile in release mode (optimized)
-- `--verbose` - Show detailed compilation output
+- `--filename=FILE` (required) - Path to .nim file
+- `--renderer=RENDERER` (default: auto) - Backend to use
+- `--release` - Optimize for performance
+- `--verbose` - Show compilation details
 
 **Examples**:
 
 ```bash
-# Run with autodetected renderer
-nix-shell --run "./bin/kryon runKryon --filename=my_app.nim"
+# Auto-detect backend
+./build/bin/kryon run examples/counter.nim
 
-# Run with specific renderer
-nix-shell --run "./bin/kryon runKryon --filename=my_app.nim --renderer=raylib"
+# Specify backend
+./build/bin/kryon run examples/counter.nim --renderer=raylib
+./build/bin/kryon run examples/counter.nim --renderer=sdl2
+./build/bin/kryon run examples/counter.nim --renderer=skia
 
-# Run in release mode (faster, but slower to compile)
-nix-shell --run "./bin/kryon runKryon --filename=my_app.nim --release"
-
-# Run with verbose output
-nix-shell --run "./bin/kryon runKryon --filename=my_app.nim --verbose"
+# Release mode
+./build/bin/kryon run my_app.nim --release
 ```
 
-### `build` - Build an Executable
+### build - Build an Executable
 
-Compile a Kryon application to an executable:
+Compile a Kryon application to a standalone executable:
 
 ```bash
-nix-shell --run "./bin/kryon build --filename=my_app.nim --output=my_app"
+./build/bin/kryon build --filename=my_app.nim --output=my_app
 ```
 
 **Options**:
-- `--filename=FILE` (required) - Path to .nim file to compile
-- `--output=FILE` (optional) - Output executable path (default: same name as input)
-- `--renderer=RENDERER` (default: auto) - Renderer to use (auto, raylib, html, terminal)
-- `--release` (default: true) - Compile in release mode
-- `--verbose` - Show detailed compilation output
+- `--filename=FILE` (required) - Path to .nim file
+- `--output=FILE` (optional) - Output executable path
+- `--renderer=RENDERER` (default: auto) - Backend to use
+- `--release` (default: true) - Optimize for performance
+- `--verbose` - Show compilation details
 
 **Examples**:
 
 ```bash
-# Build with default options (release mode)
-nix-shell --run "./bin/kryon build --filename=my_app.nim"
+# Build with default options
+./build/bin/kryon build --filename=my_app.nim
 
-# Build with custom output path
-nix-shell --run "./bin/kryon build --filename=my_app.nim --output=bin/myapp"
+# Custom output path
+./build/bin/kryon build --filename=my_app.nim --output=bin/app
 
-# Build in debug mode
-nix-shell --run "./bin/kryon build --filename=my_app.nim --release=false"
+# Debug mode
+./build/bin/kryon build --filename=my_app.nim --release=false
 
-# Build for specific renderer
-nix-shell --run "./bin/kryon build --filename=my_app.nim --renderer=raylib"
+# Specific backend
+./build/bin/kryon build --filename=my_app.nim --renderer=skia
 ```
 
-### `info` - Show File Information
+### info - Show File Information
 
 Display information about a Kryon file:
 
 ```bash
-nix-shell --run "./bin/kryon info --filename=examples/counter.nim"
+./build/bin/kryon info --filename=examples/counter.nim
 ```
 
 **Output**:
@@ -99,18 +92,15 @@ Elements used:
   Container: 1
   Text: 2
   Button: 2
-  Column: 1
-  Row: 1
-  Center: 1
   onClick handlers: 2
 ```
 
-### `version` - Show Version
+### version - Show Version
 
-Display Kryon version and supported renderers:
+Display Kryon version:
 
 ```bash
-./bin/kryon version
+./build/bin/kryon version
 ```
 
 **Output**:
@@ -120,152 +110,64 @@ A declarative UI framework for Nim
 
 Supported renderers:
   - raylib (desktop, 60 FPS)
-  - html (coming soon)
+  - sdl2 (desktop, cross-platform)
+  - skia (desktop, high-quality 2D graphics)
+  - html (web, generates HTML/CSS/JS)
   - terminal (coming soon)
 ```
 
----
-
-## Renderer Selection
-
-The CLI supports multiple rendering backends:
+## Backend Selection
 
 ### Auto Detection (Default)
 
-By default (`--renderer=auto`), the CLI detects which renderer to use based on imports in your file:
+The CLI detects which backend to use based on imports:
 
 ```nim
-import backends/raylib_backend  # → raylib renderer
-import backends/html_backend    # → html renderer  (coming soon)
-import backends/terminal_backend # → terminal renderer (coming soon)
+import ../src/backends/integration/raylib      # → raylib
+import ../src/backends/integration/sdl2        # → sdl2
+import ../src/backends/integration/sdl2_skia   # → skia
+import ../src/backends/integration/html        # → html
 ```
 
 ### Manual Selection
 
-Force a specific renderer:
+Force a specific backend:
 
 ```bash
-# Force Raylib
-nix-shell --run "./bin/kryon build --filename=my_app.nim --renderer=raylib"
-
-# Force HTML (not yet implemented)
-nix-shell --run "./bin/kryon build --filename=my_app.nim --renderer=html"
+./build/bin/kryon build --filename=my_app.nim --renderer=raylib
+./build/bin/kryon build --filename=my_app.nim --renderer=sdl2
+./build/bin/kryon build --filename=my_app.nim --renderer=skia
 ```
 
----
+## Workflow
 
-## Development Workflow
+### Development
 
-### Quick Iteration
-
-Use `runKryon` for fast development:
+For rapid iteration during development:
 
 ```bash
 # Edit my_app.nim
-# Run it immediately
-nix-shell --run "./bin/kryon runKryon --filename=my_app.nim"
+./build/bin/kryon run my_app.nim
+
+# Make changes, run again
+./build/bin/kryon run my_app.nim
 ```
 
-### Production Builds
+### Production
 
-Use `build` with release mode for optimized executables:
+Build optimized executable for distribution:
 
 ```bash
-# Build optimized executable
-nix-shell --run "./bin/kryon build --filename=my_app.nim --output=dist/myapp"
-
-# Run the standalone executable
-./dist/myapp
+./build/bin/kryon build --filename=my_app.nim --output=dist/app
+./dist/app
 ```
-
----
-
-## Troubleshooting
-
-### "nim: command not found"
-
-The CLI requires Nim to be in PATH. Always run inside `nix-shell`:
-
-```bash
-# ❌ Wrong
-./bin/kryon build --filename=my_app.nim
-
-# ✅ Correct
-nix-shell --run "./bin/kryon build --filename=my_app.nim"
-```
-
-### "File not found"
-
-Make sure to provide the full path or relative path:
-
-```bash
-# ❌ Wrong
-nix-shell --run "./bin/kryon build --filename=my_app"
-
-# ✅ Correct
-nix-shell --run "./bin/kryon build --filename=my_app.nim"
-nix-shell --run "./bin/kryon build --filename=./examples/counter.nim"
-```
-
-### Compilation Errors
-
-Use `--verbose` to see detailed error messages:
-
-```bash
-nix-shell --run "./bin/kryon build --filename=my_app.nim --verbose"
-```
-
----
-
-## Advanced Usage
-
-### Shell Alias
-
-Add to your `~/.bashrc` or `~/.zshrc`:
-
-```bash
-alias kryon='nix-shell /path/to/kryon-nim --run "./bin/kryon"'
-```
-
-Then use it like:
-
-```bash
-kryon build --filename=my_app.nim
-kryon runKryon --filename=my_app.nim
-kryon version
-```
-
-### Makefile Integration
-
-```makefile
-.PHONY: build run clean
-
-build:
-	nix-shell --run "./bin/kryon build --filename=src/main.nim --output=dist/app"
-
-run:
-	nix-shell --run "./bin/kryon runKryon --filename=src/main.nim"
-
-clean:
-	rm -rf dist/
-```
-
----
 
 ## Help
 
 Get help for any command:
 
 ```bash
-# General help
-./bin/kryon --help
-
-# Command-specific help
-./bin/kryon runKryon --help
-./bin/kryon build --help
-./bin/kryon info --help
+./build/bin/kryon --help
+./build/bin/kryon run --help
+./build/bin/kryon build --help
 ```
-
----
-
-**Built with ❤️ using Nim and cligen**
