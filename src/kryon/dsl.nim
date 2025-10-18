@@ -136,6 +136,8 @@ proc resolvePropertyAlias*(propName: string): string =
   case propName:
   of "background": "backgroundColor"
   of "textColor": "color"
+  of "justifyContent": "mainAxisAlignment"
+  of "alignItems": "crossAxisAlignment"
   # Future aliases can be added here:
   # of "size": "fontSize"
   else: propName
@@ -571,7 +573,23 @@ proc emitPropertyAssignment(kind: ElementKind, elemVar: NimNode, propName: strin
     return
 
   let parseResult = parsePropertyValue(valueNode)
-  let propValue = parseResult.value
+  var propValue = parseResult.value
+
+  # Special handling for alignment properties with string literals
+  # Normalize kebab-case to camelCase at compile time for better performance
+  let resolvedPropName = resolvePropertyAlias(propName)
+  if resolvedPropName in ["mainAxisAlignment", "crossAxisAlignment"] and valueNode.kind == nnkStrLit:
+    let strVal = valueNode.strVal
+    let normalizedVal = case strVal:
+      of "space-between": "spaceBetween"
+      of "space-around": "spaceAround"
+      of "space-evenly": "spaceEvenly"
+      of "flex-start": "start"
+      of "flex-end": "end"
+      else: strVal
+    if normalizedVal != strVal:
+      # Replace with normalized value
+      propValue = quote do: val(`normalizedVal`)
 
   result.add quote do:
     `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)

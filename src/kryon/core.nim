@@ -259,6 +259,21 @@ proc toHex*(c: Color): string =
   result.add toHex(c.a.int, 2)
 
 # ============================================================================
+# Alignment Value Normalization
+# ============================================================================
+
+proc normalizeAlignmentValue*(s: string): string =
+  ## Normalize alignment values to support both camelCase and kebab-case
+  ## Converts "space-between" to "spaceBetween", "flex-start" to "start", etc.
+  case s:
+  of "space-between": "spaceBetween"
+  of "space-around": "spaceAround"
+  of "space-evenly": "spaceEvenly"
+  of "flex-start": "start"
+  of "flex-end": "end"
+  else: s
+
+# ============================================================================
 # Value constructors and utilities
 # ============================================================================
 
@@ -410,7 +425,14 @@ proc setProp*(elem: Element, name: string, value: float) =
   elem.setProp(name, val(value))
 
 proc setProp*(elem: Element, name: string, value: string) =
-  elem.setProp(name, val(value))
+  ## Set a property with a string value
+  ## Automatically normalizes alignment values for alignment-related properties
+  let normalizedValue =
+    if name in ["mainAxisAlignment", "crossAxisAlignment", "justifyContent", "alignItems"]:
+      normalizeAlignmentValue(value)
+    else:
+      value
+  elem.setProp(name, val(normalizedValue))
 
 proc setProp*(elem: Element, name: string, value: bool) =
   elem.setProp(name, val(value))
