@@ -28,6 +28,13 @@ type
     # Checkbox state
     checkboxStates*: Table[Element, bool] ## Checked state for each checkbox
 
+    # Drag-and-drop state
+    draggedElement*: Element            ## Currently dragging element (the visual element being dragged)
+    dragSource*: Element                ## Original source element that initiated the drag
+    potentialDropTarget*: Element       ## Element currently under the dragged item
+    dragOffsetX*, dragOffsetY*: float   ## Offset from element origin to mouse position
+    dragStartTime*: float               ## Timestamp when drag started
+
 proc newBackendState*(): BackendState =
   ## Create a new backend state with default values
   result = BackendState(
@@ -39,7 +46,14 @@ proc newBackendState*(): BackendState =
     backspaceRepeatDelay: 0.5,  # 500ms initial delay
     backspaceRepeatRate: 0.05,   # 50ms repeat rate
     focusedDropdown: nil,
-    checkboxStates: initTable[Element, bool]()
+    checkboxStates: initTable[Element, bool](),
+    # Drag-and-drop state
+    draggedElement: nil,
+    dragSource: nil,
+    potentialDropTarget: nil,
+    dragOffsetX: 0.0,
+    dragOffsetY: 0.0,
+    dragStartTime: 0.0
   )
 
 proc updateCursorBlink*(state: var BackendState, deltaTime: float) =

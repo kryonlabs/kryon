@@ -728,7 +728,13 @@ proc versionCmd*(): int =
 when isMainModule:
   import cligen
 
-  # Configure CLI
+  # Note: cligen 1.9.3 doesn't easily support making --filename positional
+  # The workaround is to make filename the first required parameter with a short -f flag
+  # Users can use: kryon run -f main.nim or kryon run main.nim (if we suppress the flag)
+
+  # Configure to allow bare arguments
+  clCfg.reqSep = false
+
   dispatchMulti(
     [runKryon, cmdName = "run",
      help = {
@@ -738,6 +744,7 @@ when isMainModule:
        "verbose": "Show detailed compilation output"
      },
      short = {
+       "filename": 'f',
        "renderer": 'r',
        "release": 'R',
        "verbose": 'v'
@@ -752,6 +759,7 @@ when isMainModule:
        "verbose": "Show detailed compilation output"
      },
      short = {
+       "filename": 'f',
        "renderer": 'r',
        "output": 'o',
        "release": 'R',
@@ -761,6 +769,9 @@ when isMainModule:
     [infoKryon, cmdName = "info",
      help = {
        "filename": "Path to .nim file to analyze"
+     },
+     short = {
+       "filename": 'f'
      }
     ],
     [versionCmd, cmdName = "version"]

@@ -188,7 +188,8 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
         let nameStr = nodeName.strVal
         if nameStr in ["Container", "Text", "Button", "Column", "Row", "Input", "Checkbox",
                       "Dropdown", "Grid", "Image", "Center", "ScrollView", "Header", "Body",
-                      "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel", "Link"]:
+                      "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel", "Link",
+                      "Draggable", "DropTarget"]:
           # This is a UI element creation call, return it directly
           result.value = node
           result.boundVar = none(NimNode)
@@ -215,7 +216,8 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
 const builtinElementNames = [
   "Container", "Text", "Button", "Column", "Row", "Input", "Checkbox",
   "Dropdown", "Grid", "Image", "Center", "ScrollView", "Header", "Body",
-  "Resources", "Font", "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel", "Link"
+  "Resources", "Font", "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel", "Link",
+  "Draggable", "DropTarget"
 ]
 
 proc isEventName(name: string): bool {.inline.} =
@@ -230,17 +232,65 @@ proc toInvocation(node: NimNode): NimNode =
   else:
     newCall(copyNimTree(node))
 
-proc ensureEventHandler(node: NimNode): NimNode =
-  ## Wrap the node in a zero-arg proc to use as an event handler
-  let invocation = toInvocation(node)
-  quote do:
-    proc(data: string = "") {.closure.} =
-      `invocation`
-      invalidateAllReactiveValues()
+proc isInteractiveEvent*(eventName: string): bool {.inline.} =
+  ## Determine if an event should automatically trigger reactivity
+  ## Interactive events typically modify application state
+  case eventName:
+  of "onClick", "onDrop", "onChange", "onValueChange", "onTextChange",
+     "onSelectedIndexChanged", "onHover", "onPress", "onRelease": true
+  else: false
 
-proc convertInlineProcToEventHandler(procNode: NimNode): NimNode =
+proc ensureEventHandler(node: NimNode, eventName: string = ""): NimNode =
+  ## Wrap the node in a zero-arg proc to use as an event handler
+  ## If it's an identifier, wrap it with a closure that calls it
+  ## Automatically adds reactivity invalidation for interactive events
+  if node.kind == nnkIdent:
+    # This is a function identifier like `handleDrop` or `resetDropZone`
+    # We need to wrap it in a closure to match EventHandler signature
+    let funcIdent = node
+
+    # For onClick events that don't take data, don't pass the data parameter
+    if eventName == "onClick":
+      # Check if this is an interactive event that should auto-invalidate
+      if isInteractiveEvent(eventName):
+        quote do:
+          proc(data: string = "") {.closure.} =
+            `funcIdent`()
+            invalidateAllReactiveValues()  # Auto-add for interactive events
+      else:
+        quote do:
+          proc(data: string = "") {.closure.} =
+            `funcIdent`()
+    else:
+      # For events that expect data (like onDrop), pass the data parameter
+      # Check if this is an interactive event that should auto-invalidate
+      if isInteractiveEvent(eventName):
+        quote do:
+          proc(data: string = "") {.closure.} =
+            `funcIdent`(data)
+            invalidateAllReactiveValues()  # Auto-add for interactive events
+      else:
+        quote do:
+          proc(data: string = "") {.closure.} =
+            `funcIdent`(data)
+  else:
+    let invocation = toInvocation(node)
+
+    # Check if this is an interactive event that should auto-invalidate
+    if isInteractiveEvent(eventName):
+      quote do:
+        proc(data: string = "") {.closure.} =
+          `invocation`
+          invalidateAllReactiveValues()  # Auto-add for interactive events
+    else:
+      quote do:
+        proc(data: string = "") {.closure.} =
+          `invocation`
+
+proc convertInlineProcToEventHandler(procNode: NimNode, eventName: string = ""): NimNode =
   ## Convert an inline proc definition to EventHandler signature
   ## Extracts parameters and body, creates wrapper with expected signature
+  ## Automatically adds reactivity invalidation for interactive events
 
   # Handle both nnkProcDef and nnkLambda
   var params: NimNode
@@ -293,8 +343,11 @@ proc convertInlineProcToEventHandler(procNode: NimNode): NimNode =
   let wrapperBody = newStmtList()
   wrapperBody.add(paramAssignments)
   wrapperBody.add(body)  # Add original proc body
-  wrapperBody.add quote do:
-    invalidateAllReactiveValues()
+
+  # Add automatic invalidation for interactive events
+  if isInteractiveEvent(eventName):
+    wrapperBody.add quote do:
+      invalidateAllReactiveValues()  # Auto-add for interactive events
 
   result = quote do:
     proc(`dataParam`: string = "") {.closure.} =
@@ -312,7 +365,6 @@ proc emitEventAssignment(elemVar: NimNode, propName: string, handlerNode: NimNod
       let closureProc = quote do:
         proc(data: string = "") {.closure.} =
           `body`
-          invalidateAllReactiveValues()
       return @[
         quote do:
           `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `closureProc`)
@@ -320,7 +372,7 @@ proc emitEventAssignment(elemVar: NimNode, propName: string, handlerNode: NimNod
 
   # Check for inline proc definition: proc(param: Type) = body
   if handlerExpr.kind == nnkProcDef or handlerExpr.kind == nnkLambda:
-    let eventHandler = convertInlineProcToEventHandler(handlerExpr)
+    let eventHandler = convertInlineProcToEventHandler(handlerExpr, propName)
     return @[
       quote do:
         `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `eventHandler`)
@@ -343,13 +395,12 @@ proc emitEventAssignment(elemVar: NimNode, propName: string, handlerNode: NimNod
             let closureProc = quote do:
               proc(data: string = "") {.closure.} =
                 `body`
-                invalidateAllReactiveValues()
             return @[
               quote do:
                 `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `closureProc`)
             ]
 
-  let cleanHandler = ensureEventHandler(copyNimTree(handlerExpr))
+  let cleanHandler = ensureEventHandler(copyNimTree(handlerExpr), propName)
   @[
     quote do:
       `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `cleanHandler`)
@@ -700,10 +751,45 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           # This is a regular procedure call like `echo`.
           # Execute it directly rather than discarding it.
           result.add(stmt)
+
+    of nnkIdent:
+      # Handle "with" keyword for behavior attachment
+      let identStr = stmt.strVal
+      if identStr == "with":
+        # This should be followed by behavior elements in the next iteration
+        # The actual behavior elements will be processed as separate statements
+        discard
+      else:
+        # Regular identifier - treat as procedure call
+        result.add(stmt)
+
     of nnkCommand:
-      # Command syntax: might be a UI component or a regular procedure call.
-      # We check if it's a capitalized component name.
-      if stmt.len > 0 and stmt[0].kind == nnkIdent:
+      # Command syntax: with Draggable: properties...
+      # Check if this is a "with" statement for behavior attachment
+      if stmt.len > 0 and stmt[0].kind == nnkIdent and stmt[0].strVal == "with":
+        # This is a "with" statement - process the behavior attachment
+        if stmt.len > 1:
+          let behaviorCall = stmt[1]
+          if behaviorCall.kind == nnkIdent:
+            let behaviorName = behaviorCall.strVal
+            if behaviorName in ["Draggable", "DropTarget"]:
+              # Create the behavior element with properties
+              let behaviorKind = if behaviorName == "Draggable": ekDraggable else: ekDropTarget
+              let behaviorBody = if stmt.len > 2 and stmt[2].kind == nnkStmtList: stmt[2] else: newStmtList()
+
+              # Process the behavior element
+              let behaviorCode = processElementBody(behaviorKind, behaviorBody)
+              result.add quote do:
+                let behaviorElem = `behaviorCode`
+                `elemVar`.withBehaviors.add(behaviorElem)
+                behaviorElem.parent = `elemVar`
+            else:
+              error("Unsupported behavior: " & behaviorName, stmt)
+          else:
+            error("Expected behavior identifier after 'with'", stmt)
+        else:
+          error("Expected behavior after 'with'", stmt)
+      elif stmt.len > 0 and stmt[0].kind == nnkIdent:
         let nameStr = stmt[0].strVal
         if nameStr.len > 0 and nameStr[0] in 'A'..'Z':
           # Assumed to be a UI component, add it as a child.
@@ -1069,6 +1155,14 @@ macro Resources*(body: untyped): Element =
 macro Font*(body: untyped): Element =
   ## Create a Font resource element
   result = processElementBody(ekFont, body)
+
+macro Draggable*(body: untyped): Element =
+  ## Create a Draggable behavior element (used within "with" blocks)
+  result = processElementBody(ekDraggable, body)
+
+macro DropTarget*(body: untyped): Element =
+  ## Create a DropTarget behavior element (used within "with" blocks)
+  result = processElementBody(ekDropTarget, body)
 
 # ============================================================================
 # Style macros

@@ -16,7 +16,7 @@ import ../../kryon/components/container
 import ../../kryon/components/containers
 import ../../kryon/components/tabs
 import ../../kryon/rendering/renderingContext
-import options, tables, math, os
+import options, tables, math, os, times
 import ../windowing/raylib/raylib_ffi
 
 # ============================================================================
@@ -563,6 +563,156 @@ proc renderDropdownMenus*(backend: var RaylibBackend, elem: Element) =
       backend.renderDropdownMenus(child)
 
 # ============================================================================
+# Drag-and-Drop Helpers
+# ============================================================================
+
+proc hasDraggableBehavior*(elem: Element): bool =
+  ## Check if element has a Draggable behavior attached
+  if elem.withBehaviors.len == 0:
+    return false
+  for behavior in elem.withBehaviors:
+    if behavior.kind == ekDraggable:
+      return true
+  return false
+
+proc hasDropTargetBehavior*(elem: Element): bool =
+  ## Check if element has a DropTarget behavior attached
+  if elem.withBehaviors.len == 0:
+    return false
+  for behavior in elem.withBehaviors:
+    if behavior.kind == ekDropTarget:
+      return true
+  return false
+
+proc getDraggableBehavior*(elem: Element): Element =
+  ## Get the Draggable behavior element from an element
+  if elem.withBehaviors.len > 0:
+    for behavior in elem.withBehaviors:
+      if behavior.kind == ekDraggable:
+        return behavior
+  return nil
+
+proc getDropTargetBehavior*(elem: Element): Element =
+  ## Get the DropTarget behavior element from an element
+  if elem.withBehaviors.len > 0:
+    for behavior in elem.withBehaviors:
+      if behavior.kind == ekDropTarget:
+        return behavior
+  return nil
+
+proc isMouseOverElement*(elem: Element, mousePos: RVector2): bool =
+  ## Check if mouse position is over the element's bounds
+  let rect = rrect(elem.x, elem.y, elem.width, elem.height)
+  return CheckCollisionPointRec(mousePos, rect)
+
+proc findDraggableElementAtPoint*(elem: Element, mousePos: RVector2): Element =
+  ## Recursively find a draggable element at the given mouse position
+  ## Returns the topmost draggable element at that position
+
+  # Check children first (reverse z-order, highest first)
+  let sortedChildren = sortChildrenByZIndexReverse(elem.children)
+  for child in sortedChildren:
+    let found = findDraggableElementAtPoint(child, mousePos)
+    if found != nil:
+      return found
+
+  # Then check this element
+  if hasDraggableBehavior(elem) and isMouseOverElement(elem, mousePos):
+    return elem
+
+  return nil
+
+proc findDropTargetAtPoint*(elem: Element, mousePos: RVector2, itemType: string): Element =
+  ## Recursively find a drop target element at the given mouse position
+  ## that accepts the given itemType
+  ## Returns the topmost matching drop target
+
+  # Check children first (reverse z-order, highest first)
+  let sortedChildren = sortChildrenByZIndexReverse(elem.children)
+  for child in sortedChildren:
+    let found = findDropTargetAtPoint(child, mousePos, itemType)
+    if found != nil:
+      return found
+
+  # Then check this element
+  if hasDropTargetBehavior(elem) and isMouseOverElement(elem, mousePos):
+    # Check if itemType matches
+    let dropBehavior = getDropTargetBehavior(elem)
+    let targetItemType = dropBehavior.getProp("itemType").get(val("")).getString()
+    if targetItemType.len == 0 or targetItemType == itemType:
+      return elem
+
+  return nil
+
+proc renderDropTargetHighlights*(backend: var RaylibBackend, elem: Element) =
+  ## Recursively render drop target highlights for a single element and its children
+  if hasDropTargetBehavior(elem) and elem.dropTargetState.isHovered:
+    # Draw a semi-transparent green overlay to indicate valid drop target
+    let highlightColor = rgba(82, 196, 26, 60)  # Green with transparency
+    backend.drawRectangle(elem.x, elem.y, elem.width, elem.height, highlightColor)
+
+    # Draw a bright border to make it more visible
+    let borderColor = rgba(82, 196, 26, 200)
+    backend.drawRectangleBorder(elem.x, elem.y, elem.width, elem.height, 3.0, borderColor)
+
+  # Check children recursively
+  for child in elem.children:
+    renderDropTargetHighlights(backend, child)
+
+proc renderDraggedElement*(backend: var RaylibBackend, elem: Element, offsetX, offsetY: float) =
+  ## Render a dragged element at the specified offset with transparency
+  # For containers, render background and border with transparency
+  if elem.kind == ekContainer:
+    let bgColor = elem.getProp("backgroundColor").get(val("#2a2a2a")).getColor()
+    let transparentBg = rgba(bgColor.r, bgColor.g, bgColor.b, 180)
+    backend.drawRectangle(elem.x + offsetX, elem.y + offsetY, elem.width, elem.height, transparentBg)
+
+    let borderWidth = elem.getProp("borderWidth").get(val(2)).getFloat()
+    if borderWidth > 0:
+      let borderColor = elem.getProp("borderColor").get(val("#4a4a4a")).getColor()
+      let transparentBorder = rgba(borderColor.r, borderColor.g, borderColor.b, 180)
+      backend.drawRectangleBorder(elem.x + offsetX, elem.y + offsetY, elem.width, elem.height, borderWidth, transparentBorder)
+
+  # Render children recursively
+  for child in elem.children:
+    renderDraggedElement(backend, child, offsetX, offsetY)
+
+  # Render text elements with transparency
+  if elem.kind == ekText:
+    let textColor = elem.getProp("color").get(val("#ffffff")).getColor()
+    let transparentText = rgba(textColor.r, textColor.g, textColor.b, 180)
+    let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
+    let text = elem.getProp("text").get(val("")).getString()
+    backend.drawText(text, elem.x + offsetX, elem.y + offsetY, fontSize, transparentText)
+
+proc renderDragAndDropEffects*(backend: var RaylibBackend, elem: Element) =
+  ## Render drag-and-drop visual effects (highlights and dragged element)
+  ## This is called AFTER all normal rendering to ensure effects appear on top
+
+  # Render drop target highlights first
+  renderDropTargetHighlights(backend, elem)
+
+  # Render the dragged element last (on top of everything)
+  if backend.state.draggedElement != nil:
+    let draggedElem = backend.state.draggedElement
+    let mousePos = GetMousePosition()
+
+    # Calculate dragged element position (follow mouse with offset)
+    let dragX = mousePos.x - backend.state.dragOffsetX
+    let dragY = mousePos.y - backend.state.dragOffsetY
+
+    # Draw semi-transparent overlay at original position to show "ghost"
+    let ghostColor = rgba(100, 100, 100, 80)
+    backend.drawRectangle(draggedElem.x, draggedElem.y, draggedElem.width, draggedElem.height, ghostColor)
+
+    # Calculate offset from original position to mouse position
+    let offsetX = dragX - draggedElem.x
+    let offsetY = dragY - draggedElem.y
+
+    # Render the dragged element with offset
+    renderDraggedElement(backend, draggedElem, offsetX, offsetY)
+
+# ============================================================================
 # Input Handling
 # ============================================================================
 
@@ -662,6 +812,106 @@ proc checkHoverCursor*(elem: Element): bool =
 
 proc handleInput*(backend: var RaylibBackend, elem: Element) =
   ## Handle mouse input for interactive elements
+
+  # ============================================================================
+  # Drag-and-Drop Input Handling (global, before element-specific handling)
+  # ============================================================================
+
+  let mousePos = GetMousePosition()
+
+  # Handle drag start (mouse down on draggable element)
+  if IsMouseButtonPressed(MOUSE_BUTTON_LEFT) and backend.state.draggedElement == nil:
+    let draggableElem = findDraggableElementAtPoint(elem, mousePos)
+    if draggableElem != nil:
+      # Start dragging
+      backend.state.draggedElement = draggableElem
+      backend.state.dragSource = draggableElem
+      backend.state.dragOffsetX = mousePos.x - draggableElem.x
+      backend.state.dragOffsetY = mousePos.y - draggableElem.y
+      backend.state.dragStartTime = epochTime()
+
+      # Store drag data from the Draggable behavior
+      let dragBehavior = getDraggableBehavior(draggableElem)
+      if dragBehavior != nil:
+        let dragDataValue = dragBehavior.getProp("data").get(val(""))
+        draggableElem.dragState.dragData = dragDataValue
+        draggableElem.dragState.isDragging = true
+        draggableElem.dragState.dragStartX = mousePos.x
+        draggableElem.dragState.dragStartY = mousePos.y
+
+      echo "[DRAG START] Started dragging element at (", draggableElem.x, ", ", draggableElem.y, ")"
+
+  # Handle drag movement
+  if backend.state.draggedElement != nil and IsMouseButtonDown(MOUSE_BUTTON_LEFT):
+    let draggedElem = backend.state.draggedElement
+
+    # Update drag state
+    draggedElem.dragState.currentOffsetX = mousePos.x - draggedElem.dragState.dragStartX
+    draggedElem.dragState.currentOffsetY = mousePos.y - draggedElem.dragState.dragStartY
+
+    # Find potential drop target under mouse
+    let dragBehavior = getDraggableBehavior(draggedElem)
+    if dragBehavior != nil:
+      let itemType = dragBehavior.getProp("itemType").get(val("")).getString()
+      let dropTarget = findDropTargetAtPoint(backend.rootElement, mousePos, itemType)
+
+      # Update hover states
+      if backend.state.potentialDropTarget != dropTarget:
+        # Clear old target hover state
+        if backend.state.potentialDropTarget != nil:
+          backend.state.potentialDropTarget.dropTargetState.isHovered = false
+
+        # Set new target hover state
+        backend.state.potentialDropTarget = dropTarget
+        if dropTarget != nil:
+          dropTarget.dropTargetState.isHovered = true
+          dropTarget.dropTargetState.canAcceptDrop = true
+          echo "[HOVER] Hovering over drop target"
+
+  # Handle drag end (mouse release)
+  if backend.state.draggedElement != nil and IsMouseButtonReleased(MOUSE_BUTTON_LEFT):
+    let draggedElem = backend.state.draggedElement
+    let dropTarget = backend.state.potentialDropTarget
+
+    # Check if we're over a valid drop target
+    if dropTarget != nil:
+      let dropBehavior = getDropTargetBehavior(dropTarget)
+      if dropBehavior != nil and dropBehavior.eventHandlers.hasKey("onDrop"):
+        # Trigger the onDrop event with the drag data
+        let dragData = draggedElem.dragState.dragData
+        let dataStr = if dragData.kind == vkString:
+          dragData.getString()
+        elif dragData.kind == vkInt:
+          $dragData.getInt()
+        elif dragData.kind == vkFloat:
+          $dragData.getFloat()
+        else:
+          ""
+
+        echo "[DROP] Drop successful! Data: ", dataStr
+        let handler = dropBehavior.eventHandlers["onDrop"]
+        handler(dataStr)
+
+    # Clean up drag state
+    draggedElem.dragState.isDragging = false
+    draggedElem.dragState.currentOffsetX = 0.0
+    draggedElem.dragState.currentOffsetY = 0.0
+
+    if dropTarget != nil:
+      dropTarget.dropTargetState.isHovered = false
+      dropTarget.dropTargetState.canAcceptDrop = false
+
+    backend.state.draggedElement = nil
+    backend.state.dragSource = nil
+    backend.state.potentialDropTarget = nil
+    backend.state.dragOffsetX = 0.0
+    backend.state.dragOffsetY = 0.0
+
+    echo "[DRAG END] Drag ended"
+
+  # ============================================================================
+  # Element-Specific Input Handling
+  # ============================================================================
 
   case elem.kind:
   of ekHeader:
@@ -1206,6 +1456,9 @@ proc run*(backend: var RaylibBackend, root: Element) =
 
     # Render dropdown menus on top of everything else
     backend.renderDropdownMenus(root)
+
+    # Render drag-and-drop visual effects on top
+    backend.renderDragAndDropEffects(root)
 
     EndDrawing()
 

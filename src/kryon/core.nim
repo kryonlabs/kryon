@@ -17,6 +17,8 @@ type
     ekFont = "Font"           # Font resource definition (non-rendering)
     ekConditional = "Conditional"  # Conditional rendering (non-rendering)
     ekForLoop = "ForLoop"     # Dynamic for loop rendering (non-rendering)
+    ekDraggable = "Draggable" # Drag behavior extension (non-rendering)
+    ekDropTarget = "DropTarget"  # Drop target behavior extension (non-rendering)
     ekContainer = "Container"
     ekText = "Text"
     ekButton = "Button"
@@ -104,6 +106,19 @@ type
     ## Collection of defined styles
     styles*: TableRef[string, Style]
 
+  DragState* = object
+    ## State for drag operations
+    isDragging*: bool              # Whether this element is currently being dragged
+    dragStartX*, dragStartY*: float  # Original mouse position when drag started
+    currentOffsetX*, currentOffsetY*: float  # Current drag offset from original position
+    dragData*: Value               # Data payload for the drag operation
+
+  DropTargetState* = object
+    ## State for drop target elements
+    isHovered*: bool               # Is a valid draggable currently hovering over this target?
+    canAcceptDrop*: bool           # Can this target accept the current drag?
+    lastHoverCheck*: float         # Timestamp of last hover check
+
   Element* = ref object
     ## Base UI element type
     kind*: ElementKind
@@ -143,6 +158,15 @@ type
     tabSelectedIndex*: int         # Currently selected tab index (for TabGroup/TabBar)
     tabTitle*: string              # Title text for Tab
     tabIndex*: int                 # Index of this tab (for Tab) or panel (for TabPanel)
+
+    # Drag-and-drop behavior extensions (for "with" blocks)
+    withBehaviors*: seq[Element]   # Attached behavior elements (Draggable, DropTarget, etc.)
+
+    # Drag state (for elements with Draggable behavior)
+    dragState*: DragState          # Drag operation state
+
+    # Drop target state (for elements with DropTarget behavior)
+    dropTargetState*: DropTargetState  # Drop target state
 
 # ============================================================================
 # Forward Declarations for Reactive System
@@ -380,7 +404,11 @@ proc newElement*(kind: ElementKind): Element =
     properties: initTable[string, Value](),
     children: @[],
     eventHandlers: initTable[string, EventHandler](),
-    dirty: true  # New elements start as dirty to ensure initial layout
+    dirty: true,  # New elements start as dirty to ensure initial layout
+    withBehaviors: @[],  # Initialize empty behaviors list
+    dragState: DragState(isDragging: false, dragStartX: 0.0, dragStartY: 0.0,
+                        currentOffsetX: 0.0, currentOffsetY: 0.0, dragData: Value(kind: vkNil)),
+    dropTargetState: DropTargetState(isHovered: false, canAcceptDrop: false, lastHoverCheck: 0.0)
   )
 
   # Initialize dropdown-specific properties
