@@ -9,6 +9,65 @@ import ../core
 import options, algorithm, math
 
 # ============================================================================
+# Child Resolution Helpers
+# ============================================================================
+
+proc triggerControlFlowGeneration*[T](measurer: T, elem: Element, parentWidth, parentHeight: float) =
+  ## Trigger generation of control flow children without laying them out
+  ## This is used to populate for-loop children before collecting them
+  case elem.kind:
+  of ekForLoop:
+    if elem.forBuilder != nil:
+      # Use custom builder for type-preserving loops
+      elem.children.setLen(0)
+      elem.forBuilder(elem)
+    elif elem.forIterable != nil and elem.forBodyTemplate != nil:
+      # Generate elements for each item in the iterable
+      let items = elem.forIterable()
+      elem.children.setLen(0)
+      for item in items:
+        let childElement = elem.forBodyTemplate(item)
+        if childElement != nil:
+          addChild(elem, childElement)
+  of ekConditional:
+    # Conditionals don't need generation, they already have branches
+    discard
+  else:
+    discard
+
+proc getActualChildren*[T](measurer: T, elem: Element, parentWidth, parentHeight: float): seq[Element] =
+  ## Recursively resolve children, expanding control flow elements
+  ## This provides a unified way to handle control flow across all containers
+  ##
+  ## Returns a flat list of actual renderable children, expanding:
+  ## - ekForLoop -> generated children
+  ## - ekConditional -> active branch children
+  ## - Regular elements -> themselves
+  result = @[]
+
+  for child in elem.children:
+    case child.kind:
+    of ekForLoop:
+      # Trigger for loop generation first
+      triggerControlFlowGeneration(measurer, child, parentWidth, parentHeight)
+      # Add all generated children (recursively handle nested control flow)
+      for grandchild in child.children:
+        result.add(grandchild)
+
+    of ekConditional:
+      # Evaluate condition and get active branch
+      if child.condition != nil:
+        let conditionResult = child.condition()
+        let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
+        if activeBranch != nil:
+          # Recursively get actual children from the active branch
+          # This handles nested control flow (if inside for, for inside if, etc.)
+          result.add(getActualChildren(measurer, activeBranch, parentWidth, parentHeight))
+    else:
+      # Regular element - add directly
+      result.add(child)
+
+# ============================================================================
 # Layout Calculation
 # ============================================================================
 
@@ -176,89 +235,53 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     # Body implements natural document flow - stack children vertically
     # Check for contentAlignment property
     let alignment = elem.getProp("contentAlignment")
+    let gap = elem.getProp("gap").get(val(5)).getFloat()  # Default gap between elements
+
+    # Get all actual children (expanding control flow)
+    let actualChildren = getActualChildren(measurer, elem, elem.width, elem.height)
+
     if alignment.isSome and alignment.get.getString() == "center":
       # Center children - needs two-pass layout
-      var currentY = elem.y
-      let gap = elem.getProp("gap").get(val(5)).getFloat()  # Default gap between elements
 
       # First pass: Calculate all children sizes and total height
       var totalHeight = 0.0
       var maxWidth = 0.0
       var childSizes: seq[tuple[w, h: float]] = @[]
 
-      for child in elem.children:
-        if child.kind == ekConditional:
-          # Conditional elements are transparent - evaluate and measure active branch
-          if child.condition != nil:
-            let conditionResult = child.condition()
-            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
-            if activeBranch != nil:
-              # First pass: Calculate active branch layout at (0, 0) to determine its size
-              calculateLayout(measurer, activeBranch, 0, 0, elem.width, elem.height)
-              childSizes.add((w: activeBranch.width, h: activeBranch.height))
-              totalHeight += activeBranch.height
-              maxWidth = max(maxWidth, activeBranch.width)
-        else:
-          # First pass: Calculate child layout at (0, 0) to determine its size
-          calculateLayout(measurer, child, 0, 0, elem.width, elem.height)
-          childSizes.add((w: child.width, h: child.height))
-          totalHeight += child.height
-          maxWidth = max(maxWidth, child.width)
+      for child in actualChildren:
+        # First pass: Calculate child layout at (0, 0) to determine its size
+        calculateLayout(measurer, child, 0, 0, elem.width, elem.height)
+        childSizes.add((w: child.width, h: child.height))
+        totalHeight += child.height
+        maxWidth = max(maxWidth, child.width)
 
-      if elem.children.len > 1:
-        totalHeight += gap * (elem.children.len - 1).float
+      if actualChildren.len > 1:
+        totalHeight += gap * (actualChildren.len - 1).float
 
       # Calculate starting Y position to center the group vertically
       let startY = elem.y + (elem.height - totalHeight) / 2.0
 
       # Second pass: Position children centered horizontally and stacked vertically
-      currentY = startY
+      var currentY = startY
       var childIndex = 0
-      for child in elem.children:
-        if child.kind == ekConditional:
-          # Conditional elements are transparent - evaluate and position active branch
-          if child.condition != nil:
-            let conditionResult = child.condition()
-            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
-            if activeBranch != nil:
-              let centerX = elem.x + (elem.width - childSizes[childIndex].w) / 2.0
+      for child in actualChildren:
+        let centerX = elem.x + (elem.width - childSizes[childIndex].w) / 2.0
 
-              # Apply gap between elements (but not after the last one)
-              if childIndex > 0:
-                currentY += gap
+        # Apply gap between elements (but not after the last one)
+        if childIndex > 0:
+          currentY += gap
 
-              # Recalculate at centered position
-              calculateLayout(measurer, activeBranch, centerX, currentY, childSizes[childIndex].w, childSizes[childIndex].h)
-              currentY += childSizes[childIndex].h
-              inc childIndex
-        else:
-          let centerX = elem.x + (elem.width - childSizes[childIndex].w) / 2.0
-
-          # Apply gap between elements (but not after the last one)
-          if childIndex > 0:
-            currentY += gap
-
-          # Recalculate at centered position
-          calculateLayout(measurer, child, centerX, currentY, childSizes[childIndex].w, childSizes[childIndex].h)
-          currentY += childSizes[childIndex].h
-          inc childIndex
+        # Recalculate at centered position
+        calculateLayout(measurer, child, centerX, currentY, childSizes[childIndex].w, childSizes[childIndex].h)
+        currentY += childSizes[childIndex].h
+        inc childIndex
     else:
       # Default: normal relative positioning layout
       var currentY = elem.y
-      let gap = elem.getProp("gap").get(val(5)).getFloat()  # Default gap between elements
 
-      for child in elem.children:
-        if child.kind == ekConditional:
-          # Conditional elements are transparent - evaluate and layout active branch
-          if child.condition != nil:
-            let conditionResult = child.condition()
-            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
-            if activeBranch != nil:
-              calculateLayout(measurer, activeBranch, elem.x, currentY, elem.width, elem.height)
-              currentY += activeBranch.height + gap
-        else:
-          calculateLayout(measurer, child, elem.x, currentY, elem.width, elem.height)
-          currentY += child.height + gap
+      for child in actualChildren:
+        calculateLayout(measurer, child, elem.x, currentY, elem.width, elem.height)
+        currentY += child.height + gap
 
   of ekColumn:
     let gap = elem.getProp("gap").get(val(0)).getFloat()
@@ -267,36 +290,15 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
 
     # For Column: mainAxis = vertical (Y), crossAxis = horizontal (X)
 
-    # First pass: Calculate all children sizes (give them full width but not full height)
+    # First pass: Get actual children (expanding control flow) and calculate sizes
     var childSizes: seq[tuple[w, h: float]] = @[]
-    var actualChildren: seq[Element] = @[]  # Store the actual children to be laid out
+    let actualChildren = getActualChildren(measurer, elem, elem.width, 0)
 
-    for child in elem.children:
-      # Special handling for ForLoop children - trigger child generation first
-      if child.kind == ekForLoop:
-        # Trigger for loop to generate its children by calling layout with dummy coordinates
-        calculateLayout(measurer, child, 0, 0, elem.width, 0)
-        # Now calculate sizes for the generated children
-        for grandchild in child.children:
-          calculateLayout(measurer, grandchild, 0, 0, elem.width, 0)
-          childSizes.add((w: grandchild.width, h: grandchild.height))
-          actualChildren.add(grandchild)
-      elif child.kind == ekConditional:
-        # Conditional elements are transparent - extract active branch children directly
-        if child.condition != nil:
-          let conditionResult = child.condition()
-          let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
-          if activeBranch != nil:
-            # Calculate sizes for all children of the active branch
-            for branchChild in activeBranch.children:
-              calculateLayout(measurer, branchChild, 0, 0, elem.width, 0)
-              childSizes.add((w: branchChild.width, h: branchChild.height))
-              actualChildren.add(branchChild)
-      else:
-        # Pass elem.width for width, but don't constrain height
-        calculateLayout(measurer, child, 0, 0, elem.width, 0)
-        childSizes.add((w: child.width, h: child.height))
-        actualChildren.add(child)
+    # Calculate sizes for all actual children
+    for child in actualChildren:
+      # Pass elem.width for width, but don't constrain height
+      calculateLayout(measurer, child, 0, 0, elem.width, 0)
+      childSizes.add((w: child.width, h: child.height))
 
     # Calculate total height and max width
     var totalHeight = 0.0
@@ -396,36 +398,15 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
 
     # For Row: mainAxis = horizontal (X), crossAxis = vertical (Y)
 
-    # First pass: Calculate all children sizes (give them full height and let them size themselves naturally)
+    # First pass: Get actual children (expanding control flow) and calculate sizes
     var childSizes: seq[tuple[w, h: float]] = @[]
-    var actualChildren: seq[Element] = @[]  # Store the actual children to be laid out
+    let actualChildren = getActualChildren(measurer, elem, parentWidth, elem.height)
 
-    for child in elem.children:
-      # Special handling for ForLoop children - trigger child generation first
-      if child.kind == ekForLoop:
-        # Trigger for loop to generate its children by calling layout with dummy coordinates
-        calculateLayout(measurer, child, 0, 0, parentWidth, elem.height)
-        # Now calculate sizes for the generated children
-        for grandchild in child.children:
-          calculateLayout(measurer, grandchild, 0, 0, parentWidth, elem.height)
-          childSizes.add((w: grandchild.width, h: grandchild.height))
-          actualChildren.add(grandchild)
-      elif child.kind == ekConditional:
-        # Conditional elements are transparent - extract active branch children directly
-        if child.condition != nil:
-          let conditionResult = child.condition()
-          let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
-          if activeBranch != nil:
-            # Calculate sizes for all children of the active branch
-            for branchChild in activeBranch.children:
-              calculateLayout(measurer, branchChild, elem.x, elem.y, parentWidth, elem.height)
-              childSizes.add((w: branchChild.width, h: branchChild.height))
-              actualChildren.add(branchChild)
-      else:
-        # Let children size themselves naturally (don't constrain width)
-        calculateLayout(measurer, child, elem.x, elem.y, parentWidth, elem.height)
-        childSizes.add((w: child.width, h: child.height))
-        actualChildren.add(child)
+    # Calculate sizes for all actual children
+    for child in actualChildren:
+      # Let children size themselves naturally (don't constrain width)
+      calculateLayout(measurer, child, elem.x, elem.y, parentWidth, elem.height)
+      childSizes.add((w: child.width, h: child.height))
 
     # Calculate total width and max height
     var totalWidth = 0.0
@@ -525,110 +506,67 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     # Check for contentAlignment property (default to center)
     let alignment = elem.getProp("contentAlignment").get(val("center"))
 
+    # Get all actual children (expanding control flow)
+    let actualChildren = getActualChildren(measurer, elem, elem.width, elem.height)
+
     if alignment.getString() == "center":
       # Center children - needs two-pass layout
-      for child in elem.children:
-        if child.kind == ekConditional:
-          # Conditional elements are transparent - evaluate and layout active branch
-          if child.condition != nil:
-            let conditionResult = child.condition()
-            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
-            if activeBranch != nil:
-              # First pass: Calculate active branch layout at (0, 0) to determine its size
-              calculateLayout(measurer, activeBranch, 0, 0, elem.width, elem.height)
+      for child in actualChildren:
+        # First pass: Calculate child layout at (0, 0) to determine its size
+        calculateLayout(measurer, child, 0, 0, elem.width, elem.height)
 
-              # Second pass: Now we know width and height, so center it
-              let centerX = elem.x + (elem.width - activeBranch.width) / 2.0
-              let centerY = elem.y + (elem.height - activeBranch.height) / 2.0
+        # Second pass: Now we know child.width and child.height, so center it
+        let centerX = elem.x + (elem.width - child.width) / 2.0
+        let centerY = elem.y + (elem.height - child.height) / 2.0
 
-              # Recalculate at centered position
-              calculateLayout(measurer, activeBranch, centerX, centerY, activeBranch.width, activeBranch.height)
-        else:
-          # First pass: Calculate child layout at (0, 0) to determine its size
-          calculateLayout(measurer, child, 0, 0, elem.width, elem.height)
-
-          # Second pass: Now we know child.width and child.height, so center it
-          let centerX = elem.x + (elem.width - child.width) / 2.0
-          let centerY = elem.y + (elem.height - child.height) / 2.0
-
-          # Recalculate at centered position
-          calculateLayout(measurer, child, centerX, centerY, child.width, child.height)
+        # Recalculate at centered position
+        calculateLayout(measurer, child, centerX, centerY, child.width, child.height)
     else:
       # Default: normal relative positioning layout
       var currentY = elem.y
-      for child in elem.children:
-        if child.kind == ekConditional:
-          # Conditional elements are transparent - evaluate and layout active branch
-          if child.condition != nil:
-            let conditionResult = child.condition()
-            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
-            if activeBranch != nil:
-              calculateLayout(measurer, activeBranch, elem.x, currentY, elem.width, elem.height)
-              currentY += activeBranch.height + gap
-        else:
-          calculateLayout(measurer, child, elem.x, currentY, elem.width, elem.height)
-          currentY += child.height + gap
+      for child in actualChildren:
+        calculateLayout(measurer, child, elem.x, currentY, elem.width, elem.height)
+        currentY += child.height + gap
 
   of ekContainer:
     # Container is a normal wrapper - relative positioning by default
-    var currentY = elem.y
     let gap = elem.getProp("gap").get(val(0)).getFloat()  # No gap by default
 
     # Check for contentAlignment property
     let alignment = elem.getProp("contentAlignment")
+
+    # Get all actual children (expanding control flow)
+    let actualChildren = getActualChildren(measurer, elem, elem.width, elem.height)
+
     if alignment.isSome and alignment.get.getString() == "center":
       # Center children - needs two-pass layout
-      for child in elem.children:
-        if child.kind == ekConditional:
-          # Conditional elements are transparent - evaluate and layout active branch
-          if child.condition != nil:
-            let conditionResult = child.condition()
-            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
-            if activeBranch != nil:
-              # First pass: Calculate active branch layout at (0, 0) to determine its size
-              calculateLayout(measurer, activeBranch, 0, 0, elem.width, elem.height)
+      for child in actualChildren:
+        # First pass: Calculate child layout at (0, 0) to determine its size
+        calculateLayout(measurer, child, 0, 0, elem.width, elem.height)
 
-              # Second pass: Now we know width and height, so center it
-              let centerX = elem.x + (elem.width - activeBranch.width) / 2.0
-              let centerY = elem.y + (elem.height - activeBranch.height) / 2.0
+        # Second pass: Now we know child.width and child.height, so center it
+        let centerX = elem.x + (elem.width - child.width) / 2.0
+        let centerY = elem.y + (elem.height - child.height) / 2.0
 
-              # Recalculate at centered position
-              calculateLayout(measurer, activeBranch, centerX, centerY, activeBranch.width, activeBranch.height)
-        else:
-          # First pass: Calculate child layout at (0, 0) to determine its size
-          calculateLayout(measurer, child, 0, 0, elem.width, elem.height)
-
-          # Second pass: Now we know child.width and child.height, so center it
-          let centerX = elem.x + (elem.width - child.width) / 2.0
-          let centerY = elem.y + (elem.height - child.height) / 2.0
-
-          # Recalculate at centered position
-          calculateLayout(measurer, child, centerX, centerY, child.width, child.height)
+        # Recalculate at centered position
+        calculateLayout(measurer, child, centerX, centerY, child.width, child.height)
 
       # Auto-size height if not explicitly set (use max child height + padding)
-      if not hasExplicitHeight and elem.children.len > 0:
+      if not hasExplicitHeight and actualChildren.len > 0:
         var maxHeight = 0.0
-        for child in elem.children:
+        for child in actualChildren:
           maxHeight = max(maxHeight, child.height)
         let paddingValue = elem.getProp("padding").get(val(0)).getFloat()
         elem.height = maxHeight + (paddingValue * 2.0)
     else:
       # Default: normal relative positioning layout
-      for child in elem.children:
-        if child.kind == ekConditional:
-          # Conditional elements are transparent - evaluate and layout active branch
-          if child.condition != nil:
-            let conditionResult = child.condition()
-            let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
-            if activeBranch != nil:
-              calculateLayout(measurer, activeBranch, elem.x, currentY, elem.width, elem.height)
-              currentY += activeBranch.height + gap
-        else:
-          calculateLayout(measurer, child, elem.x, currentY, elem.width, elem.height)
-          currentY += child.height + gap
+      var currentY = elem.y
+      for child in actualChildren:
+        calculateLayout(measurer, child, elem.x, currentY, elem.width, elem.height)
+        currentY += child.height + gap
 
       # Auto-size height if not explicitly set (use total stacked height)
-      if not hasExplicitHeight and elem.children.len > 0:
+      if not hasExplicitHeight and actualChildren.len > 0:
         # Account for padding if present
         let paddingValue = elem.getProp("padding").get(val(0)).getFloat()
         elem.height = (currentY - elem.y - gap) + (paddingValue * 2.0)
@@ -666,38 +604,14 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     var maxHeight = 40.0  # Default tab height
     var tabIndex = 0
 
-    # Assign indices to tabs and layout horizontally
-    # Look for Tab elements in both direct children and grandchildren through ekForLoop
+    # Get all actual children (expanding control flow)
+    let allChildren = getActualChildren(measurer, elem, elem.width, 0)
+
+    # Filter for Tab elements only
     var allTabs: seq[Element] = @[]
-
-    # First pass: collect all Tab elements
-    # IMPORTANT: For ekForLoop children, we need to trigger child generation first
-    when defined(debugTabs):
-      echo "Debug: TabBar collecting tabs, have ", elem.children.len, " children"
-    for child in elem.children:
-      when defined(debugTabs):
-        echo "Debug: TabBar child of kind: ", child.kind
+    for child in allChildren:
       if child.kind == ekTab:
-        when defined(debugTabs):
-          echo "Debug: Found direct Tab child"
         allTabs.add(child)
-      elif child.kind == ekForLoop:
-        # Trigger for loop child generation by calling its layout
-        # This populates child.children with the generated elements
-        when defined(debugTabs):
-          echo "Debug: Found ekForLoop, triggering child generation"
-        calculateLayout(measurer, child, elem.x, elem.y, elem.width, 0)
-
-        when defined(debugTabs):
-          echo "Debug: ekForLoop now has ", child.children.len, " generated children"
-        # Look for Tab elements inside the for loop
-        for grandchild in child.children:
-          when defined(debugTabs):
-            echo "Debug: Checking grandchild of kind: ", grandchild.kind
-          if grandchild.kind == ekTab:
-            when defined(debugTabs):
-              echo "Debug: Found Tab grandchild in for loop"
-            allTabs.add(grandchild)
 
     # Second pass: assign indices and layout all tabs
     for tab in allTabs:
@@ -737,24 +651,16 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     registerDependency("tabSelectedIndex")
     registerDependency("selectedIndex")
 
-    # Collect TabPanel elements from both direct children and grandchildren through ekForLoop
-    # IMPORTANT: For ekForLoop children, we need to trigger child generation first
-    var allTabPanels: seq[Element] = @[]
-    var panelIndex = 0
+    # Get all actual children (expanding control flow)
+    let allChildren = getActualChildren(measurer, elem, elem.width, elem.height)
 
-    # First pass: collect all TabPanel elements
-    for child in elem.children:
+    # Filter for TabPanel elements only
+    var allTabPanels: seq[Element] = @[]
+    for child in allChildren:
       if child.kind == ekTabPanel:
         allTabPanels.add(child)
-      elif child.kind == ekForLoop:
-        # Trigger for loop child generation by calling its layout
-        # This populates child.children with the generated elements
-        calculateLayout(measurer, child, elem.x, elem.y, elem.width, elem.height)
 
-        # Look for TabPanel elements inside the for loop
-        for grandchild in child.children:
-          if grandchild.kind == ekTabPanel:
-            allTabPanels.add(grandchild)
+    var panelIndex = 0
 
     # Second pass: assign indices and layout only the active panel
     for panel in allTabPanels:
@@ -766,7 +672,6 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
 
   of ekTabPanel:
     # TabPanel fills its parent space and lays out children vertically
-    var currentY = elem.y
     let gap = elem.getProp("gap").get(val(10)).getFloat()
     let padding = elem.getProp("padding").get(val(0)).getFloat()
 
@@ -775,28 +680,14 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     let contentY = elem.y + padding
     let contentWidth = elem.width - (padding * 2.0)
 
-    currentY = contentY
-    for child in elem.children:
-      # THE FIX: Check for for-loop placeholders and expand them before layout.
-      if child.kind == ekForLoop:
-        # First, trigger the for-loop to generate its actual children.
-        calculateLayout(measurer, child, contentX, currentY, contentWidth, 0)
-        # Now, loop through the newly generated children and lay them out.
-        for grandchild in child.children:
-          calculateLayout(measurer, grandchild, contentX, currentY, contentWidth, 0)
-          currentY += grandchild.height + gap
-      elif child.kind == ekConditional:
-        # Conditional elements are transparent - evaluate and layout active branch
-        if child.condition != nil:
-          let conditionResult = child.condition()
-          let activeBranch = if conditionResult: child.trueBranch else: child.falseBranch
-          if activeBranch != nil:
-            calculateLayout(measurer, activeBranch, contentX, currentY, contentWidth, 0)
-            currentY += activeBranch.height + gap
-      else:
-        # This is a regular child, lay it out normally.
-        calculateLayout(measurer, child, contentX, currentY, contentWidth, 0)
-        currentY += child.height + gap
+    # Get all actual children (expanding control flow)
+    let actualChildren = getActualChildren(measurer, elem, contentWidth, 0)
+
+    # Layout children vertically
+    var currentY = contentY
+    for child in actualChildren:
+      calculateLayout(measurer, child, contentX, currentY, contentWidth, 0)
+      currentY += child.height + gap
 
   else:
     # Default: just layout children in same space as parent
