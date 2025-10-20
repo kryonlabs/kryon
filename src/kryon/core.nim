@@ -804,3 +804,48 @@ proc createParameterizedStyleApplication*(styleName: string, params: seq[NimNode
           elem.setProp(`propName`, `propValue`)
 
   result = propertyAssignments
+
+# ============================================================================
+# Reorderable Tabs Setup
+# ============================================================================
+
+proc setupReorderableTabs*(root: Element) =
+  ## Automatically attach drag-and-drop behaviors to TabBars with reorderable=true
+  ## Recursively walks the element tree and sets up all child Tabs as draggable
+  ## Call this once after the app element tree is created
+
+  if root == nil:
+    return
+
+  # Check if this is a TabBar with reorderable=true
+  if root.kind == ekTabBar:
+    let reorderableProp = root.getProp("reorderable")
+    if reorderableProp.isSome and reorderableProp.get().getBool(false):
+      echo "[REORDERABLE TABS] Setting up TabBar with ", root.children.len, " tabs"
+
+      # Create and attach DropTarget behavior to the TabBar
+      let dropTargetBehavior = newElement(ekDropTarget)
+      dropTargetBehavior.setProp("itemType", "tab")
+      dropTargetBehavior.parent = root
+      root.withBehaviors.add(dropTargetBehavior)
+
+      # Create and attach Draggable behavior to each child Tab
+      for i, child in root.children:
+        if child.kind == ekTab:
+          # Get the tab title for use as drag data
+          let tabTitle = child.getProp("title").get(val("")).getString()
+          let tabData = if tabTitle.len > 0: tabTitle else: "tab" & $i
+
+          # Create Draggable behavior
+          let draggableBehavior = newElement(ekDraggable)
+          draggableBehavior.setProp("itemType", "tab")
+          draggableBehavior.setProp("data", tabData)
+          draggableBehavior.setProp("lockAxis", "x")  # Lock to horizontal movement
+          draggableBehavior.parent = child
+          child.withBehaviors.add(draggableBehavior)
+
+          echo "[REORDERABLE TABS] Made Tab '", tabData, "' draggable"
+
+  # Recursively process all children
+  for child in root.children:
+    setupReorderableTabs(child)

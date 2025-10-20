@@ -34,6 +34,14 @@ type
     potentialDropTarget*: Element       ## Element currently under the dragged item
     dragOffsetX*, dragOffsetY*: float   ## Offset from element origin to mouse position
     dragStartTime*: float               ## Timestamp when drag started
+    dragInsertIndex*: int               ## Calculated insert position for reordering (e.g., tab index)
+
+    # Live reordering state
+    reorderableContainer*: Element      ## Container being reordered (TabBar, Row, etc.)
+    originalChildOrder*: seq[Element]   ## Original child order before drag started
+    liveChildOrder*: seq[Element]       ## Live order during drag (for rendering)
+    draggedChildIndex*: int             ## Index of child being dragged
+    isLiveReordering*: bool             ## Flag indicating live reordering is active
 
 proc newBackendState*(): BackendState =
   ## Create a new backend state with default values
@@ -53,7 +61,14 @@ proc newBackendState*(): BackendState =
     potentialDropTarget: nil,
     dragOffsetX: 0.0,
     dragOffsetY: 0.0,
-    dragStartTime: 0.0
+    dragStartTime: 0.0,
+    dragInsertIndex: -1,
+    # Live reordering state
+    reorderableContainer: nil,
+    originalChildOrder: @[],
+    liveChildOrder: @[],
+    draggedChildIndex: -1,
+    isLiveReordering: false
   )
 
 proc updateCursorBlink*(state: var BackendState, deltaTime: float) =

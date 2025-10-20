@@ -460,8 +460,10 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
       # Draw a horizontal line for the bottom border
       backend.drawRectangle(data.x, data.borderY, data.width, data.borderWidth, data.borderColor)
     # Render children (Tab elements) sorted by z-index
+    # Skip the dragged element - it will be rendered at mouse position in drag effects
     for child in data.sortedChildren:
-      backend.renderElement(child, inheritedColor)
+      if child != backend.state.draggedElement:
+        backend.renderElement(child, inheritedColor)
 
   of ekTab:
     # Extract tab data and render it
@@ -673,6 +675,28 @@ proc renderDraggedElement*(backend: var RaylibBackend, elem: Element, offsetX, o
       let transparentBorder = rgba(borderColor.r, borderColor.g, borderColor.b, 180)
       backend.drawRectangleBorder(elem.x + offsetX, elem.y + offsetY, elem.width, elem.height, borderWidth, transparentBorder)
 
+  # For tabs, render with transparency
+  elif elem.kind == ekTab:
+    # Extract tab styling
+    let bgColor = elem.getProp("backgroundColor").get(val("#3d3d3d")).getColor()
+    let transparentBg = rgba(bgColor.r, bgColor.g, bgColor.b, 180)
+    backend.drawRectangle(elem.x + offsetX, elem.y + offsetY, elem.width, elem.height, transparentBg)
+
+    # Draw tab border with transparency
+    let borderWidth = 1.0
+    let borderColor = rgba(74, 74, 74, 180)  # Semi-transparent border
+    backend.drawRectangleBorder(elem.x + offsetX, elem.y + offsetY, elem.width, elem.height, borderWidth, borderColor)
+
+    # Draw tab text (title)
+    let title = elem.getProp("title").get(val("Tab")).getString()
+    let textColor = elem.getProp("textColor").get(val("#cccccc")).getColor()
+    let transparentText = rgba(textColor.r, textColor.g, textColor.b, 180)
+    let fontSize = 16
+    let textMeasurements = backend.measureText(title, fontSize)
+    let textX = elem.x + offsetX + (elem.width - textMeasurements.width) / 2.0
+    let textY = elem.y + offsetY + (elem.height - textMeasurements.height) / 2.0
+    backend.drawText(title, textX, textY, fontSize, transparentText)
+
   # Render children recursively
   for child in elem.children:
     renderDraggedElement(backend, child, offsetX, offsetY)
@@ -698,19 +722,59 @@ proc renderDragAndDropEffects*(backend: var RaylibBackend, elem: Element) =
     let mousePos = GetMousePosition()
 
     # Calculate dragged element position (follow mouse with offset)
-    let dragX = mousePos.x - backend.state.dragOffsetX
-    let dragY = mousePos.y - backend.state.dragOffsetY
+    var dragX = mousePos.x - backend.state.dragOffsetX
+    var dragY = mousePos.y - backend.state.dragOffsetY
 
-    # Draw semi-transparent overlay at original position to show "ghost"
-    let ghostColor = rgba(100, 100, 100, 80)
-    backend.drawRectangle(draggedElem.x, draggedElem.y, draggedElem.width, draggedElem.height, ghostColor)
+    # Apply axis locking to rendered position
+    let dragBehavior = getDraggableBehavior(draggedElem)
+    if dragBehavior != nil:
+      let lockAxis = dragBehavior.getProp("lockAxis").get(val("none")).getString()
+      if lockAxis == "x":
+        # Lock to horizontal movement - keep original Y position
+        dragY = draggedElem.y
+      elif lockAxis == "y":
+        # Lock to vertical movement - keep original X position
+        dragX = draggedElem.x
 
+    # Don't draw ghost - other tabs will slide into position creating a gap
     # Calculate offset from original position to mouse position
     let offsetX = dragX - draggedElem.x
     let offsetY = dragY - draggedElem.y
 
     # Render the dragged element with offset
     renderDraggedElement(backend, draggedElem, offsetX, offsetY)
+
+    # Draw insert indicator if we have a valid insert position (for tab reordering)
+    if backend.state.dragInsertIndex >= 0 and backend.state.potentialDropTarget != nil:
+      let dropTarget = backend.state.potentialDropTarget
+      if dropTarget.kind == ekTabBar:
+        # Calculate X position for the insert indicator
+        var insertX = dropTarget.x
+        var tabIndex = 0
+        for child in dropTarget.children:
+          if child.kind == ekTab:
+            if tabIndex == backend.state.dragInsertIndex:
+              insertX = child.x
+              break
+            elif tabIndex == backend.state.dragInsertIndex - 1:
+              # Insert after this tab
+              insertX = child.x + child.width
+              break
+            tabIndex += 1
+
+        # If insert index is at the end, position after the last tab
+        if backend.state.dragInsertIndex >= tabIndex:
+          var lastTab: Element = nil
+          for child in dropTarget.children:
+            if child.kind == ekTab:
+              lastTab = child
+          if lastTab != nil:
+            insertX = lastTab.x + lastTab.width
+
+        # Draw a bright vertical line at the insert position
+        let indicatorColor = rgba(74, 144, 226, 255)  # Bright blue
+        let indicatorWidth = 3.0
+        backend.drawRectangle(insertX - indicatorWidth / 2.0, dropTarget.y, indicatorWidth, dropTarget.height, indicatorColor)
 
 # ============================================================================
 # Input Handling
@@ -839,18 +903,52 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
         draggableElem.dragState.dragStartX = mousePos.x
         draggableElem.dragState.dragStartY = mousePos.y
 
+      # Check if parent is a reorderable container (has DropTarget behavior)
+      if draggableElem.parent != nil and hasDropTargetBehavior(draggableElem.parent):
+        let container = draggableElem.parent
+        # Enable live reordering mode
+        backend.state.isLiveReordering = true
+        backend.state.reorderableContainer = container
+        backend.state.originalChildOrder = @[]
+
+        # Copy children order (save for potential restore if needed)
+        for child in container.children:
+          backend.state.originalChildOrder.add(child)
+
+        # Find dragged child index
+        backend.state.draggedChildIndex = -1
+        for i, child in backend.state.originalChildOrder:
+          if child == draggableElem:
+            backend.state.draggedChildIndex = i
+            break
+
+        echo "[LIVE REORDER] Enabled for container kind: ", container.kind, ", dragged child index: ", backend.state.draggedChildIndex
+
       echo "[DRAG START] Started dragging element at (", draggableElem.x, ", ", draggableElem.y, ")"
 
   # Handle drag movement
   if backend.state.draggedElement != nil and IsMouseButtonDown(MOUSE_BUTTON_LEFT):
     let draggedElem = backend.state.draggedElement
 
-    # Update drag state
-    draggedElem.dragState.currentOffsetX = mousePos.x - draggedElem.dragState.dragStartX
-    draggedElem.dragState.currentOffsetY = mousePos.y - draggedElem.dragState.dragStartY
+    # Update drag state (apply axis locking if specified)
+    let dragBehavior = getDraggableBehavior(draggedElem)
+    var currentOffsetX = mousePos.x - draggedElem.dragState.dragStartX
+    var currentOffsetY = mousePos.y - draggedElem.dragState.dragStartY
+
+    # Apply axis locking
+    if dragBehavior != nil:
+      let lockAxis = dragBehavior.getProp("lockAxis").get(val("none")).getString()
+      if lockAxis == "x":
+        # Lock to horizontal movement only
+        currentOffsetY = 0.0
+      elif lockAxis == "y":
+        # Lock to vertical movement only
+        currentOffsetX = 0.0
+
+    draggedElem.dragState.currentOffsetX = currentOffsetX
+    draggedElem.dragState.currentOffsetY = currentOffsetY
 
     # Find potential drop target under mouse
-    let dragBehavior = getDraggableBehavior(draggedElem)
     if dragBehavior != nil:
       let itemType = dragBehavior.getProp("itemType").get(val("")).getString()
       let dropTarget = findDropTargetAtPoint(backend.rootElement, mousePos, itemType)
@@ -868,6 +966,69 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
           dropTarget.dropTargetState.canAcceptDrop = true
           echo "[HOVER] Hovering over drop target"
 
+      # Calculate insert position for tab reordering
+      if dropTarget != nil and dropTarget.kind == ekTabBar:
+        # Calculate which tab position the mouse is over
+        let relativeX = mousePos.x - dropTarget.x
+
+        # Count visible tabs to calculate insert position
+        var tabCount = 0
+        var totalTabWidth = 0.0
+        for child in dropTarget.children:
+          if child.kind == ekTab:
+            tabCount += 1
+            totalTabWidth += child.width
+
+        if tabCount > 0:
+          let avgTabWidth = totalTabWidth / tabCount.float
+          # Calculate insert index based on relative X position
+          var insertIdx = int(relativeX / avgTabWidth)
+          # Clamp to valid range [0, tabCount]
+          insertIdx = max(0, min(tabCount, insertIdx))
+          backend.state.dragInsertIndex = insertIdx
+          echo "[INSERT CALC] Mouse at X=", relativeX, ", calculated insert index: ", insertIdx
+        else:
+          backend.state.dragInsertIndex = 0
+      else:
+        backend.state.dragInsertIndex = -1
+
+      # Update container children directly for immediate visual reordering
+      if backend.state.isLiveReordering and backend.state.dragInsertIndex >= 0:
+        let fromIdx = backend.state.draggedChildIndex
+        var toIdx = backend.state.dragInsertIndex
+
+        # Only update if indices are different
+        if fromIdx >= 0 and fromIdx != toIdx:
+          let container = backend.state.reorderableContainer
+
+          # Build new reordered visual children
+          var reorderedVisualChildren: seq[Element] = @[]
+          var insertedDragged = false
+
+          for i in 0..<backend.state.originalChildOrder.len:
+            # Skip the dragged element at its original position
+            if i == fromIdx:
+              continue
+
+            # Insert dragged element at the target position
+            if reorderedVisualChildren.len == toIdx and not insertedDragged:
+              reorderedVisualChildren.add(backend.state.originalChildOrder[fromIdx])
+              insertedDragged = true
+
+            reorderedVisualChildren.add(backend.state.originalChildOrder[i])
+
+          # If we haven't inserted yet (inserting at end), add it now
+          if not insertedDragged:
+            reorderedVisualChildren.add(backend.state.originalChildOrder[fromIdx])
+
+          # Update container.children directly with reordered visual elements
+          # (behaviors like DropTarget are in withBehaviors, not children, so this is safe)
+          container.children = reorderedVisualChildren
+
+          # Mark container as dirty to trigger layout recalculation
+          markDirty(container)
+          echo "[LIVE REORDER] Updated container.children directly, dragged from ", fromIdx, " to ", toIdx
+
   # Handle drag end (mouse release)
   if backend.state.draggedElement != nil and IsMouseButtonReleased(MOUSE_BUTTON_LEFT):
     let draggedElem = backend.state.draggedElement
@@ -879,7 +1040,7 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
       if dropBehavior != nil and dropBehavior.eventHandlers.hasKey("onDrop"):
         # Trigger the onDrop event with the drag data
         let dragData = draggedElem.dragState.dragData
-        let dataStr = if dragData.kind == vkString:
+        var dataStr = if dragData.kind == vkString:
           dragData.getString()
         elif dragData.kind == vkInt:
           $dragData.getInt()
@@ -888,9 +1049,27 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
         else:
           ""
 
-        echo "[DROP] Drop successful! Data: ", dataStr
+        # If we have a calculated insert index, append it to the data
+        # Format: "originalData|insertIndex"
+        if backend.state.dragInsertIndex >= 0:
+          dataStr = dataStr & "|" & $backend.state.dragInsertIndex
+          echo "[DROP] Drop successful! Data: ", dataStr, " (insert index: ", backend.state.dragInsertIndex, ")"
+        else:
+          echo "[DROP] Drop successful! Data: ", dataStr
+
         let handler = dropBehavior.eventHandlers["onDrop"]
         handler(dataStr)
+
+    # Clean up live reordering state (children already reordered during drag)
+    if backend.state.isLiveReordering:
+      echo "[LIVE REORDER] Drag ended, children already in correct order"
+
+      # Reset live reordering state
+      backend.state.isLiveReordering = false
+      backend.state.reorderableContainer = nil
+      backend.state.originalChildOrder = @[]
+      backend.state.liveChildOrder = @[]
+      backend.state.draggedChildIndex = -1
 
     # Clean up drag state
     draggedElem.dragState.isDragging = false
@@ -906,6 +1085,7 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
     backend.state.potentialDropTarget = nil
     backend.state.dragOffsetX = 0.0
     backend.state.dragOffsetY = 0.0
+    backend.state.dragInsertIndex = -1
 
     echo "[DRAG END] Drag ended"
 

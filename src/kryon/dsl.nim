@@ -1587,12 +1587,16 @@ macro kryonApp*(body: untyped): Element =
       `appVar`.addChild(`headerNode`)
       `appVar`.addChild(`resourcesNode`)
       `appVar`.addChild(`bodyNode`)
+      # Setup reorderable tabs automatically
+      setupReorderableTabs(`appVar`)
       `appVar`
   else:
     result.add quote do:
       var `appVar` = newElement(ekBody)
       `appVar`.addChild(`headerNode`)
       `appVar`.addChild(`bodyNode`)
+      # Setup reorderable tabs automatically
+      setupReorderableTabs(`appVar`)
       `appVar`
 
 # ============================================================================
