@@ -16,7 +16,7 @@ import ../../kryon/components/container
 import ../../kryon/components/containers
 import ../../kryon/components/tabs
 import ../../kryon/rendering/renderingContext
-import options, tables, math, os, times
+import options, tables, math, os, times, sets
 import ../windowing/raylib/raylib_ffi
 
 # ============================================================================
@@ -232,6 +232,14 @@ proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
 # ============================================================================
 # Rendering with Real Raylib
 # ============================================================================
+
+proc getDragContentOverridePanel*(backend: RaylibBackend, elem: Element): Element =
+  ## Check if this TabContent should use drag content override
+  ## Returns the override panel if in drag mode, otherwise nil
+  if backend.state.isLiveReordering and backend.state.dragTabContentPanel != nil and elem.kind == ekTabContent:
+    # During drag, always show the dragged tab's original content
+    return backend.state.dragTabContentPanel
+  return nil
 
 proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: Option[Color] = none(Color)) =
   ## Render an element using Raylib
@@ -476,7 +484,9 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
     backend.drawRectangleBorder(data.x, data.y, data.width, data.height, data.borderWidth, data.borderColor)
 
     # Draw bottom border (active or inactive) as a horizontal line
-    backend.drawRectangle(data.x, data.bottomBorderY, data.width, data.bottomBorderWidth, data.bottomBorderColor)
+    # Skip if this is the dragged element to prevent double blue lines during drag
+    if elem != backend.state.draggedElement:
+      backend.drawRectangle(data.x, data.bottomBorderY, data.width, data.bottomBorderWidth, data.bottomBorderColor)
 
     # Center text in tab
     if data.label.len > 0:
@@ -493,8 +503,14 @@ proc renderElement*(backend: var RaylibBackend, elem: Element, inheritedColor: O
     if data.hasBackground:
       backend.drawRectangle(data.x, data.y, data.width, data.height, data.backgroundColor)
 
-    # Only render the active TabPanel
-    if data.hasActivePanel:
+    # Check for drag content override first
+    let dragOverridePanel = backend.getDragContentOverridePanel(elem)
+    if dragOverridePanel != nil:
+      # During drag, always render the dragged tab's original content
+      echo "[DRAG CONTENT OVERRIDE] Rendering dragged tab's original content"
+      backend.renderElement(dragOverridePanel, inheritedColor)
+    elif data.hasActivePanel:
+      # Normal mode: render the active TabPanel
       backend.renderElement(data.activePanel, inheritedColor)
 
   of ekTabPanel:
@@ -648,7 +664,8 @@ proc findDropTargetAtPoint*(elem: Element, mousePos: RVector2, itemType: string)
 
 proc renderDropTargetHighlights*(backend: var RaylibBackend, elem: Element) =
   ## Recursively render drop target highlights for a single element and its children
-  if hasDropTargetBehavior(elem) and elem.dropTargetState.isHovered:
+  ## Skip TabBar elements to avoid distracting green border during tab reordering
+  if hasDropTargetBehavior(elem) and elem.dropTargetState.isHovered and elem.kind != ekTabBar:
     # Draw a semi-transparent green overlay to indicate valid drop target
     let highlightColor = rgba(82, 196, 26, 60)  # Green with transparency
     backend.drawRectangle(elem.x, elem.y, elem.width, elem.height, highlightColor)
@@ -744,37 +761,28 @@ proc renderDragAndDropEffects*(backend: var RaylibBackend, elem: Element) =
     # Render the dragged element with offset
     renderDraggedElement(backend, draggedElem, offsetX, offsetY)
 
-    # Draw insert indicator if we have a valid insert position (for tab reordering)
-    if backend.state.dragInsertIndex >= 0 and backend.state.potentialDropTarget != nil:
-      let dropTarget = backend.state.potentialDropTarget
-      if dropTarget.kind == ekTabBar:
-        # Calculate X position for the insert indicator
-        var insertX = dropTarget.x
-        var tabIndex = 0
-        for child in dropTarget.children:
-          if child.kind == ekTab:
-            if tabIndex == backend.state.dragInsertIndex:
-              insertX = child.x
-              break
-            elif tabIndex == backend.state.dragInsertIndex - 1:
-              # Insert after this tab
-              insertX = child.x + child.width
-              break
-            tabIndex += 1
+    # Draw insert indicator under the dragged tab during drag (for tab reordering)
+    if backend.state.draggedElement != nil and backend.state.draggedElement.kind == ekTab:
+      let draggedTab = backend.state.draggedElement
+      # Position the blue underline under the dragged tab as it moves
+      let indicatorColor = rgba(74, 144, 226, 255)  # Bright blue
+      let indicatorWidth = 3.0
 
-        # If insert index is at the end, position after the last tab
-        if backend.state.dragInsertIndex >= tabIndex:
-          var lastTab: Element = nil
-          for child in dropTarget.children:
-            if child.kind == ekTab:
-              lastTab = child
-          if lastTab != nil:
-            insertX = lastTab.x + lastTab.width
+      # Calculate current dragged tab position (follows mouse movement)
+      var dragX = GetMousePosition().x - backend.state.dragOffsetX
+      var dragY = draggedTab.y
 
-        # Draw a bright vertical line at the insert position
-        let indicatorColor = rgba(74, 144, 226, 255)  # Bright blue
-        let indicatorWidth = 3.0
-        backend.drawRectangle(insertX - indicatorWidth / 2.0, dropTarget.y, indicatorWidth, dropTarget.height, indicatorColor)
+      # Apply axis locking if specified
+      let dragBehavior = getDraggableBehavior(draggedTab)
+      if dragBehavior != nil:
+        let lockAxis = dragBehavior.getProp("lockAxis").get(val("none")).getString()
+        if lockAxis == "x":
+          dragY = draggedTab.y  # Keep original Y position
+        elif lockAxis == "y":
+          dragX = draggedTab.x  # Keep original X position
+
+      # Draw a horizontal line under the dragged tab
+      backend.drawRectangle(dragX - indicatorWidth / 2.0, draggedTab.y + draggedTab.height - 3.0, draggedTab.width + indicatorWidth, indicatorWidth, indicatorColor)
 
 # ============================================================================
 # Input Handling
@@ -883,6 +891,15 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
 
   let mousePos = GetMousePosition()
 
+  # CRITICAL: Clear drag content override on next frame if flag is set
+  # This ensures proper synchronization before clearing the override
+  if backend.state.shouldClearDragOverride:
+    backend.state.dragTabContentPanel = nil
+    backend.state.dragOriginalTabIndex = -1
+    backend.state.dragOriginalContentMapping.clear()
+    backend.state.shouldClearDragOverride = false
+    echo "[DRAG OVERRIDE CLEARED] Cleared drag content override on next frame"
+
   # Handle drag start (mouse down on draggable element)
   if IsMouseButtonPressed(MOUSE_BUTTON_LEFT) and backend.state.draggedElement == nil:
     let draggableElem = findDraggableElementAtPoint(elem, mousePos)
@@ -923,6 +940,90 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
             break
 
         echo "[LIVE REORDER] Enabled for container kind: ", container.kind, ", dragged child index: ", backend.state.draggedChildIndex
+
+      # CRITICAL FIX: Immediately select the dragged tab to ensure its content is shown
+      if draggableElem.kind == ekTab:
+        var parent = draggableElem.parent
+        var tabGroup: Element = nil
+
+        # Find the TabGroup (not just TabBar)
+        while parent != nil:
+          if parent.kind == ekTabGroup:
+            tabGroup = parent
+            break
+          parent = parent.parent
+
+        if tabGroup != nil:
+          # CRITICAL: Store the original tab index and content for drag content locking
+          backend.state.dragOriginalTabIndex = draggableElem.tabIndex
+
+          # CRITICAL: Capture original content mapping from ALL tabs to their panels
+          backend.state.dragOriginalContentMapping.clear()
+
+          # Find the TabBar to get all tabs and their original indices
+          var tabBar: Element = nil
+          for child in tabGroup.children:
+            if child.kind == ekTabBar:
+              tabBar = child
+              break
+
+          # Find the TabContent to get all panels
+          var tabContent: Element = nil
+          for child in tabGroup.children:
+            if child.kind == ekTabContent:
+              tabContent = child
+              break
+
+          if tabBar != nil and tabContent != nil:
+            # Create mapping from original tab indices to their corresponding panels
+            for tab in tabBar.children:
+              if tab.kind == ekTab:
+                let originalTabIndex = tab.tabIndex
+                # Find the panel that corresponds to this tab's original content
+                for panel in tabContent.children:
+                  if panel.kind == ekTabPanel and panel.tabIndex == originalTabIndex:
+                    backend.state.dragOriginalContentMapping[originalTabIndex] = panel
+                    echo "[CONTENT MAPPING] Mapped tab ", originalTabIndex, " to panel"
+                    break
+
+            # Store the dragged tab's specific panel for quick access
+            if backend.state.dragOriginalContentMapping.hasKey(backend.state.dragOriginalTabIndex):
+              backend.state.dragTabContentPanel = backend.state.dragOriginalContentMapping[backend.state.dragOriginalTabIndex]
+              echo "[DRAG CONTENT LOCK] Stored original content for tab ", backend.state.dragOriginalTabIndex
+
+          # Find the current visual position of the dragged tab
+          var draggedVisualIndex = -1
+          for i, child in tabGroup.children:
+            if child.kind == ekTabBar:
+              for j, tab in child.children:
+                if tab == draggableElem:
+                  draggedVisualIndex = j
+                  break
+              break
+
+          # Select the dragged tab immediately
+          if draggedVisualIndex >= 0:
+            let oldSelectedIndex = tabGroup.tabSelectedIndex
+            tabGroup.tabSelectedIndex = draggedVisualIndex
+
+            if oldSelectedIndex != draggedVisualIndex:
+              echo "[TAB DRAG SELECT] Immediately selected dragged tab at index ", draggedVisualIndex, " (original index: ", backend.state.dragOriginalTabIndex, ")"
+
+              # Trigger the onSelectedIndexChanged event
+              if tabGroup.eventHandlers.hasKey("onSelectedIndexChanged"):
+                tabGroup.eventHandlers["onSelectedIndexChanged"]()
+
+              # Invalidate related reactive values
+              invalidateRelatedValues("tabSelectedIndex")
+
+              # Mark TabGroup and children as dirty for immediate visual updates
+              markDirty(tabGroup)
+              for child in tabGroup.children:
+                markDirty(child)
+                if child.kind == ekTabContent:
+                  for panel in child.children:
+                    markDirty(panel)
+                    markAllDescendantsDirty(panel)
 
       echo "[DRAG START] Started dragging element at (", draggableElem.x, ", ", draggableElem.y, ")"
 
@@ -968,27 +1069,34 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
 
       # Calculate insert position for tab reordering
       if dropTarget != nil and dropTarget.kind == ekTabBar:
-        # Calculate which tab position the mouse is over
+        # Calculate which tab position the mouse is over using actual tab positions
         let relativeX = mousePos.x - dropTarget.x
 
-        # Count visible tabs to calculate insert position
+        # Calculate insert index based on actual tab positions and widths
+        var insertIdx = 0
+        var currentX = 0.0
+
+        # Find which tab position the mouse is closest to
+        for child in dropTarget.children:
+          if child.kind == ekTab:
+            let tabWidth = child.width
+            let tabCenter = currentX + tabWidth / 2.0
+
+            if relativeX >= tabCenter:
+              insertIdx += 1
+            else:
+              break
+            currentX += tabWidth
+
+        # Clamp to valid range [0, tabCount]
         var tabCount = 0
-        var totalTabWidth = 0.0
         for child in dropTarget.children:
           if child.kind == ekTab:
             tabCount += 1
-            totalTabWidth += child.width
 
-        if tabCount > 0:
-          let avgTabWidth = totalTabWidth / tabCount.float
-          # Calculate insert index based on relative X position
-          var insertIdx = int(relativeX / avgTabWidth)
-          # Clamp to valid range [0, tabCount]
-          insertIdx = max(0, min(tabCount, insertIdx))
-          backend.state.dragInsertIndex = insertIdx
-          echo "[INSERT CALC] Mouse at X=", relativeX, ", calculated insert index: ", insertIdx
-        else:
-          backend.state.dragInsertIndex = 0
+        insertIdx = max(0, min(tabCount, insertIdx))
+        backend.state.dragInsertIndex = insertIdx
+        echo "[INSERT CALC] Mouse at X=", relativeX, ", calculated insert index: ", insertIdx, " (tabCount: ", tabCount, ")"
       else:
         backend.state.dragInsertIndex = -1
 
@@ -1024,6 +1132,55 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
           # Update container.children directly with reordered visual elements
           # (behaviors like DropTarget are in withBehaviors, not children, so this is safe)
           container.children = reorderedVisualChildren
+
+          # CRITICAL FIX: During drag, ensure dragged tab's content follows the dragged tab
+          # This ensures tab content always matches the dragged tab during movement
+          var tabGroup = container.parent
+          while tabGroup != nil and tabGroup.kind != ekTabGroup:
+            tabGroup = tabGroup.parent
+
+          if tabGroup != nil:
+            # CRITICAL: During drag, the content should follow the DRAGGED tab, not the selected index
+            # Set selected index to match the dragged tab's original content
+            if backend.state.draggedElement != nil:
+              let draggedTabIndex = backend.state.draggedElement.tabIndex
+              tabGroup.tabSelectedIndex = draggedTabIndex
+              echo "[DRAG CONTENT SYNC] Set selected index to dragged tab's content: ", draggedTabIndex
+
+            for child in tabGroup.children:
+              if child.kind == ekTabContent:
+                # Reorder tab panels to match the new tab order during drag
+                var reorderedPanels: seq[Element] = @[]
+                for i in 0..<reorderedVisualChildren.len:
+                  let tab = reorderedVisualChildren[i]
+                  # Find corresponding panel by original tabIndex
+                  for panel in child.children:
+                    if panel.kind == ekTabPanel and panel.tabIndex == tab.tabIndex:
+                      reorderedPanels.add(panel)
+                      break
+
+                # Update TabContent children to match tab order
+                child.children = reorderedPanels
+
+                # CRITICAL: Update panel tabIndex values to match new visual order
+                # This ensures content visibility follows the dragged tab during movement
+                for i, panel in reorderedPanels:
+                  panel.tabIndex = i
+
+                # CRITICAL: During drag, ensure the dragged tab's original content is visible
+                # by setting the selected index to match the dragged tab's content
+                if backend.state.draggedElement != nil:
+                  let draggedOriginalIndex = backend.state.draggedElement.tabIndex
+
+                  # Find which panel now contains the dragged tab's original content
+                  for i, panel in reorderedPanels:
+                    if panel.tabIndex == draggedOriginalIndex:
+                      tabGroup.tabSelectedIndex = i
+                      echo "[DRAG CONTENT SYNC] Set selected index to panel with dragged content: ", i, " (original: ", draggedOriginalIndex, ")"
+                      break
+
+                echo "[LIVE REORDER SYNC] Reordered ", reorderedPanels.len, " tab panels to follow dragged tab"
+                break
 
           # Mark container as dirty to trigger layout recalculation
           markDirty(container)
@@ -1064,12 +1221,160 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
     if backend.state.isLiveReordering:
       echo "[LIVE REORDER] Drag ended, children already in correct order"
 
+      # Handle proper tab selection after reordering
+      if draggedElem.kind == ekTab:
+        var parent = draggedElem.parent
+        var tabGroup: Element = nil
+
+        # Find the TabGroup (not just TabBar)
+        while parent != nil:
+          if parent.kind == ekTabGroup:
+            tabGroup = parent
+            break
+          parent = parent.parent
+
+        if tabGroup != nil:
+          # Find the dragged tab's new position in the visual order
+          var newTabIndex = -1
+          for i, child in tabGroup.children:
+            if child.kind == ekTabBar:
+              for j, tab in child.children:
+                if tab == draggedElem:
+                  newTabIndex = j
+                  break
+              break
+
+          # CRITICAL FIX: After drag, ensure the DRAGGED tab remains selected with correct content
+          if newTabIndex >= 0:
+            let oldSelectedIndex = tabGroup.tabSelectedIndex
+
+            # CRITICAL: Always select the dragged tab after reordering to ensure consistency
+            tabGroup.tabSelectedIndex = newTabIndex
+
+            # CRITICAL FIX: Update tabIndex values on all tabs and tab panels to match new visual order
+            # This ensures tab content visibility works correctly after reordering
+            for i, child in tabGroup.children:
+              if child.kind == ekTabBar:
+                # Update tabIndex values on all tabs to match their new visual positions
+                for j, tab in child.children:
+                  tab.tabIndex = j
+                  echo "[TAB INDEX FIX] Updated tab[", j, "] tabIndex to ", j
+                break
+
+            # CRITICAL: Fix post-drag content synchronization using preserved mapping
+            for child in tabGroup.children:
+              if child.kind == ekTabContent:
+                # Find the TabBar to get the new tab order
+                var tabBar: Element = nil
+                for sibling in tabGroup.children:
+                  if sibling.kind == ekTabBar:
+                    tabBar = sibling
+                    break
+
+                if tabBar != nil:
+                  # CRITICAL FIX: Build the correct content mapping based on final tab positions
+                  # Use the dragged element's final position to ensure correct content mapping
+                  var reorderedPanels: seq[Element] = @[]
+
+                  # CRITICAL FIX: Build the correct content mapping by tracking tab movements
+                  # We need to determine where each original tab ended up after the drag
+                  var originalIndexToNewPosition: Table[int, int]
+
+                  # For each position in the final tab order, find which original tab is there
+                  for newPosition, tab in tabBar.children:
+                    if tab.kind == ekTab:
+                      # Find which original index this tab corresponds to by checking the original order
+                      var originalIndex = -1
+                      for i, originalTab in backend.state.originalChildOrder:
+                        if originalTab == tab:
+                          originalIndex = i
+                          break
+
+                      if originalIndex >= 0:
+                        originalIndexToNewPosition[originalIndex] = newPosition
+                        echo "[POST-DRAG MAPPING] Original tab ", originalIndex, " is now at position ", newPosition
+
+                  # Create the final panel order based on where each original tab's content should now appear
+                  reorderedPanels = newSeq[Element](tabBar.children.len)
+
+                  # Place each original panel in its new position based on where its tab moved
+                  for originalIndex, newPosition in originalIndexToNewPosition:
+                    if backend.state.dragOriginalContentMapping.hasKey(originalIndex):
+                      let originalPanel = backend.state.dragOriginalContentMapping[originalIndex]
+                      if newPosition >= 0 and newPosition < reorderedPanels.len:
+                        reorderedPanels[newPosition] = originalPanel
+                        echo "[POST-DRAG SYNC] Original panel ", originalIndex, " moved to position ", newPosition
+
+                  # Fill any remaining gaps (shouldn't happen if mapping is complete)
+                  for j in 0..<reorderedPanels.len:
+                    if reorderedPanels[j] == nil:
+                      # Find any panel not yet placed
+                      for originalIdx, panel in backend.state.dragOriginalContentMapping:
+                        var alreadyPlaced = false
+                        for placedPanel in reorderedPanels:
+                          if placedPanel == panel:
+                            alreadyPlaced = true
+                            break
+                        if not alreadyPlaced:
+                          reorderedPanels[j] = panel
+                          echo "[POST-DRAG SYNC] Filled gap at position ", j, " with unmapped panel ", originalIdx
+                          break
+
+                  # Update TabContent children to match the exact new tab order
+                  child.children = reorderedPanels
+
+                  # CRITICAL: Update panel tabIndex values to match new visual order
+                  # This ensures the tab content system works correctly after drag
+                  for j, panel in reorderedPanels:
+                    if panel != nil:
+                      panel.tabIndex = j
+                      echo "[POST-DRAG SYNC] Updated panel[", j, "] tabIndex to ", j
+
+                  # CRITICAL: Ensure the dragged tab remains selected with correct content
+                  # Find which position the dragged tab ended up in
+                  var draggedFinalPosition = -1
+                  for j, tab in tabBar.children:
+                    if tab.kind == ekTab and tab == draggedElem:
+                      draggedFinalPosition = j
+                      break
+
+                  if draggedFinalPosition >= 0:
+                    tabGroup.tabSelectedIndex = draggedFinalPosition
+                    echo "[POST-DRAG SYNC] Selected dragged tab at final position ", draggedFinalPosition
+
+                break
+
+            if oldSelectedIndex != newTabIndex:
+              echo "[TAB REORDER SELECT] Updated selected index to dragged tab at position ", newTabIndex, " after reordering"
+
+              # Trigger the onSelectedIndexChanged event
+              if tabGroup.eventHandlers.hasKey("onSelectedIndexChanged"):
+                tabGroup.eventHandlers["onSelectedIndexChanged"]()
+
+              # Invalidate related reactive values
+              invalidateRelatedValues("tabSelectedIndex")
+
+              # Mark TabGroup and children as dirty for complete visual update
+              markDirty(tabGroup)
+              for child in tabGroup.children:
+                markDirty(child)
+                if child.kind == ekTabContent:
+                  for panel in child.children:
+                    markDirty(panel)
+                    markAllDescendantsDirty(panel)
+
       # Reset live reordering state
       backend.state.isLiveReordering = false
       backend.state.reorderableContainer = nil
       backend.state.originalChildOrder = @[]
       backend.state.liveChildOrder = @[]
       backend.state.draggedChildIndex = -1
+
+      # CRITICAL: DO NOT clear drag content override immediately
+      # The tab content system needs time to synchronize with the new order
+      # We'll clear it on the next frame after content has been properly synchronized
+      backend.state.shouldClearDragOverride = true
+      echo "[DRAG CLEANUP] Preserving drag content override for one more frame to ensure proper sync"
 
     # Clean up drag state
     draggedElem.dragState.isDragging = false
@@ -1200,7 +1505,7 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
     let isPressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT)
     let isDown = IsMouseButtonDown(MOUSE_BUTTON_LEFT)
 
-    if isPressed:
+    if isPressed and not backend.state.isLiveReordering:
       if CheckCollisionPointRec(mousePos, rect):
         # Tab was clicked - find and update parent TabGroup's selectedIndex
         var parent = elem.parent

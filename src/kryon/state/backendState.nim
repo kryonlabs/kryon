@@ -43,6 +43,12 @@ type
     draggedChildIndex*: int             ## Index of child being dragged
     isLiveReordering*: bool             ## Flag indicating live reordering is active
 
+    # Tab content override during drag
+    dragTabContentPanel*: Element       ## Original tab panel content for dragged tab
+    dragOriginalTabIndex*: int          ## Original index of dragged tab in TabGroup
+    dragOriginalContentMapping*: Table[int, Element]  ## Maps original tab indices to their TabPanel elements
+    shouldClearDragOverride*: bool     ## Flag to clear drag content override on next frame
+
 proc newBackendState*(): BackendState =
   ## Create a new backend state with default values
   result = BackendState(
@@ -68,7 +74,13 @@ proc newBackendState*(): BackendState =
     originalChildOrder: @[],
     liveChildOrder: @[],
     draggedChildIndex: -1,
-    isLiveReordering: false
+    isLiveReordering: false,
+
+    # Tab content override during drag
+    dragTabContentPanel: nil,
+    dragOriginalTabIndex: -1,
+    dragOriginalContentMapping: initTable[int, Element](),
+    shouldClearDragOverride: false
   )
 
 proc updateCursorBlink*(state: var BackendState, deltaTime: float) =
