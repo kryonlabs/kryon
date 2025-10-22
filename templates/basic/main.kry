@@ -1,0 +1,21 @@
+## Basic Kryon Application
+##
+## A simple window with a button and text label
+## Run with: kryon run main.kry
+
+import kryon
+import kryon.integration.raylib_backend
+
+window("My First App", 800, 600):
+  container:
+    # Title
+    text("Welcome to Kryon!", fontSize = 32)
+
+    # Simple button
+    button("Click me!"):
+      onClick:
+        echo "Button clicked!"
+
+    # Some descriptive text
+    text("This is a basic Kryon application template.", fontSize = 16)
+    text("Edit this file to build your own UI.", fontSize = 14)

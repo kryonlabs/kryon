@@ -814,10 +814,17 @@ proc createParameterizedStyleApplication*(styleName: string, params: seq[NimNode
 
 const ManualReorderPropName* = "__manualReorderActive"
 
-proc expandForLoopChildren(forLoopElem: Element): seq[Element] =
+proc expandForLoopChildren*(forLoopElem: Element): seq[Element] =
   ## Expand a for-loop element to get its generated children
   ## This is needed because for loops don't expand until layout time
   result = @[]
+
+  let manualProp = forLoopElem.getProp(ManualReorderPropName)
+  let manualActive = manualProp.isSome and manualProp.get().getBool(false)
+
+  if manualActive:
+    if forLoopElem.children.len > 0:
+      return forLoopElem.children
 
   if forLoopElem.forBuilder != nil:
     # Use custom builder for type-preserving loops
@@ -850,6 +857,13 @@ proc elementHasBehavior(elem: Element, behaviorKind: ElementKind): bool =
 proc regenerateForLoopChildren*(forLoopElem: Element) =
   ## Rebuild a for-loop element's children using its builder/template
   if forLoopElem == nil:
+    return
+
+  let manualProp = forLoopElem.getProp(ManualReorderPropName)
+  let manualActive = manualProp.isSome and manualProp.get().getBool(false)
+
+  if manualActive and forLoopElem.children.len > 0:
+    # Preserve existing children during manual reorder sessions
     return
 
   if forLoopElem.forBuilder != nil:
@@ -934,12 +948,32 @@ proc wrapForLoopForTabs(tabBar: Element, forLoopElem: Element) =
 
   if forLoopElem.forBodyTemplate != nil:
     let originalTemplate = forLoopElem.forBodyTemplate
-    forLoopElem.forBodyTemplate = proc(item: Value): Element =
-      let generated = originalTemplate(item)
-      if generated != nil and generated.kind == ekTab:
-        let idx = forLoopElem.children.len
-        ensureTabDraggable(generated, idx)
-      generated
+    let originalIterable = forLoopElem.forIterable
+
+    forLoopElem.forBuilder = proc(loopElem: Element) =
+      let manualProp = loopElem.getProp(ManualReorderPropName)
+      let manualActive = manualProp.isSome and manualProp.get().getBool(false)
+
+      if manualActive and loopElem.children.len > 0:
+        for idx, child in loopElem.children:
+          if child.kind == ekTab:
+            ensureTabDraggable(child, idx)
+            if child.parent != loopElem:
+              child.parent = loopElem
+        return
+
+      loopElem.children.setLen(0)
+
+      if originalIterable != nil:
+        let items = originalIterable()
+        for item in items:
+          let generated = originalTemplate(item)
+          if generated != nil:
+            addChild(loopElem, generated)
+            if generated.kind == ekTab:
+              ensureTabDraggable(generated, loopElem.children.len - 1)
+
+    forLoopElem.forBodyTemplate = nil
 
   forLoopElem.setProp("__reorderableTabsWrapped", true)
 

@@ -1,0 +1,25 @@
+# Kryon UI Framework pkg-config file
+# This file enables easy integration with other projects
+
+prefix=@PREFIX@
+libdir=${prefix}/lib
+includedir=${prefix}/include/kryon
+
+Name: kryon
+Description: Declarative UI framework for multiple platforms
+Version: @VERSION@
+URL: https://github.com/kryonlabs/kryon
+
+# Libraries to link against
+Libs: -L${libdir} -lkryon
+
+# Include directories
+Cflags: -I${includedir}
+
+# Backend dependencies (conditional)
+# These will be added based on what backends are available
+Requires.Private:
+
+# Additional information
+conflicts:
+provides:

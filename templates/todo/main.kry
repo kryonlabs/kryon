@@ -1,0 +1,46 @@
+## Todo Application
+##
+## A functional todo list app with add/remove functionality
+## Run with: kryon run main.kry
+
+import kryon
+import kryon.integration.raylib_backend
+
+# State for our todo list
+var todos = @["Learn Kryon", "Build amazing apps"]
+var newTodoText = ""
+
+window("Todo List", 600, 500):
+  container:
+    # Title
+    text("My Todo List", fontSize = 28, fontWeight = "bold")
+
+    # Add new todo section
+    container:
+      text("Add new task:", fontSize = 16)
+
+      # Input field for new todo
+      inputText(newTodoText, placeholder = "Enter task..."):
+        onTextChange(text):
+          newTodoText = text
+
+      # Add button
+      button("Add Task"):
+        onClick:
+          if newTodoText.strip() != "":
+            todos.add(newTodoText.strip())
+            newTodoText = ""
+
+    # Todo list
+    text("Tasks:", fontSize = 18, fontWeight = "bold")
+
+    for i, todo in todos:
+      container:
+        # Todo item with remove button
+        text(todo, fontSize = 14)
+        button("×", textColor = "red"):
+          onClick:
+            todos.delete(i)
+
+    # Status
+    text("Total tasks: " & $todos.len, fontSize = 14, fontStyle = "italic")

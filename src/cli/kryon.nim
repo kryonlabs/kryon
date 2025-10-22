@@ -3,9 +3,16 @@
 ## Command-line interface for running and compiling Kryon applications
 ## with support for multiple renderers.
 
-import os, osproc, strutils, strformat
+import os, osproc, strutils, strformat, ospaths
 
 const VERSION = "0.2.0"
+
+# Installation detection
+const
+  CONFIG_DIR = when defined(unix): getHomeDir() / ".config" / "kryon"
+               else: getAppDir() / "config"
+  BIN_DIR = when defined(unix): getHomeDir() / ".local" / "bin"
+           else: getAppDir() / "bin"
 
 type
   Renderer* = enum
@@ -145,12 +152,157 @@ proc buildRendererBody(renderer: Renderer): string =
   else:
     result = ""
 
+# ============================================================================
+# Installation Detection and Enhanced Path Resolution
+# ============================================================================
+
+proc isInstalledVersion*(): bool =
+  ## Check if we're running from an installed version
+  let exePath = getAppFilename()
+  exePath.startsWith(BIN_DIR) or fileExists(CONFIG_DIR / "config.yaml")
+
+proc getInstalledKryonPath*(): string =
+  ## Get the Kryon library path for installed version
+  if isInstalledVersion():
+    when defined(unix):
+      getHomeDir() / ".local" / "lib"
+    else:
+      getAppDir() / "lib"
+  else:
+    ""
+
+proc checkSystemDependencies*(): tuple[nim: bool, raylib: bool, sdl2: bool, skia: bool] =
+  ## Check if system dependencies are available
+  result.nim = findExe("nim") != ""
+
+  # Check for raylib (can be via nimble or system)
+  result.raylib = execCmdEx("nimble list raylib", {poUsePath, poStdErrToStdOut}).exitCode == 0 or
+                   execCmdEx("pkg-config --exists raylib", {poUsePath, poStdErrToStdOut}).exitCode == 0
+
+  # Check for SDL2 (system package)
+  result.sdl2 = execCmdEx("pkg-config --exists sdl2", {poUsePath, poStdErrToStdOut}).exitCode == 0
+
+  # Check for Skia (typically via SDL2 backend)
+  result.skia = fileExists("/usr/include/skia") or fileExists("/usr/local/include/skia")
+
+proc doctorCmd*(): int =
+  ## System health check and dependency verification
+  echo "Kryon System Health Check"
+  echo "========================="
+  echo ""
+  echo "Version: ", VERSION
+  echo "Build: ", hostOS, "-", hostCPU
+  echo "Installation: ", if isInstalledVersion(): "Installed" else: "Development"
+  echo "Executable: ", getAppFilename()
+  echo ""
+
+  if isInstalledVersion():
+    echo "Installation paths:"
+    echo "  CLI: ", getAppFilename()
+    echo "  Config: ", CONFIG_DIR
+    echo "  Library: ", getInstalledKryonPath()
+    echo ""
+
+  let deps = checkSystemDependencies()
+  echo "Dependencies:"
+  echo "  Nim: ", if deps.nim: "✓ Available" else: "✗ Not found"
+  echo "  Raylib: ", if deps.raylib: "✓ Available" else: "✗ Not found (install: nimble install raylib)"
+  echo "  SDL2: ", if deps.sdl2: "✓ Available" else: "✗ Not found (system package required)"
+  echo "  Skia: ", if deps.skia: "✓ Available" else: "✗ Not found (optional)"
+  echo ""
+
+  if not deps.nim:
+    echo "❌ Critical: Nim compiler is required"
+    echo "   Install from: https://nim-lang.org/install.html"
+  elif not deps.raylib and not deps.sdl2:
+    echo "⚠️  Warning: No rendering backends available"
+    echo "   Install at least one backend:"
+    echo "   - Raylib: nimble install raylib"
+    echo "   - SDL2: sudo apt install libsdl2-dev (Ubuntu/Debian)"
+    echo "            brew install sdl2 (macOS)"
+  else:
+    echo "✅ System appears ready for Kryon development"
+
+  echo ""
+  if deps.nim:
+    return 0
+  else:
+    return 1
+
+proc initCmd*(templateName: string, projectName: string = ""): int =
+  ## Initialize a new Kryon project from a template
+  let templates = ["basic", "todo", "game", "calculator"]
+
+  if templateName notin templates:
+    echo "Error: Unknown template '", templateName, "'"
+    echo "Available templates:"
+    for tmpl in templates:
+      echo "  - ", tmpl
+    return 1
+
+  # Determine project name
+  let projName = if projectName.len > 0: projectName else: templateName
+
+  # Check if directory already exists
+  if dirExists(projName):
+    echo "Error: Directory '", projName, "' already exists"
+    return 1
+
+  # Find template directory
+  let templateDir = if isInstalledVersion():
+      CONFIG_DIR / "templates" / templateName
+    else:
+      getCurrentDir() / "templates" / templateName
+
+  if not dirExists(templateDir):
+    echo "Error: Template not found at ", templateDir
+    echo "Try reinstalling Kryon or run from source directory"
+    return 1
+
+  # Create project directory
+  createDir(projName)
+  echo "Creating project: ", projName
+  echo "Using template: ", templateName
+  echo ""
+
+  # Copy template files
+  for file in walkFiles(templateDir / "/*"):
+    let filename = splitPath(file).tail
+    let destPath = projName / filename
+    copyFile(file, destPath)
+    echo "  + ", filename
+
+  # Special handling for main.kry - rename if needed
+  if projName != templateName:
+    let mainFile = projName / "main.kry"
+    if fileExists(mainFile):
+      echo "  + main.kry (ready to run)"
+
+  echo ""
+  echo "Project created successfully!"
+  echo ""
+  echo "Get started:"
+  echo "  cd ", projName
+  echo "  kryon run main.kry"
+  echo ""
+  return 0
+
 proc locateKryonPaths(appDir: string): tuple[basePath: string, kryonPath: string] =
   ## Find the Kryon source directory relative to the app location.
+  ## Enhanced with installed version detection.
   ## Supports:
+  ##   - Installed version detection (uses system library paths)
   ##   - Environment vars pointing to the repo (KRYON_ROOT/KRYON_HOME/KRYON_PATH)
   ##   - Environment var pointing directly at the src directory (KRYON_SRC)
   ##   - Walking up from the app directory to locate either src/kryon or kryon/src/kryon
+
+  # Check if we're running from installed version
+  if isInstalledVersion():
+    let libPath = getInstalledKryonPath()
+    if dirExists(libPath / "kryon"):
+      return (basePath: libPath, kryonPath: libPath / "kryon")
+
+  # Continue with original logic for development versions
 
   proc normalize(path: string): string =
     var tmp = absolutePath(path)
@@ -256,7 +408,10 @@ proc createWrapperFile*(filename: string, renderer: Renderer): string =
     "import '../src/kryon'",
     "import ../kryon/src/kryon",
     "import \"../kryon/src/kryon\"",
-    "import '../kryon/src/kryon'"
+    "import '../kryon/src/kryon'",
+    "import ../kryonlabs/kryon/src/kryon",
+    "import \"../kryonlabs/kryon/src/kryon\"",
+    "import '../kryonlabs/kryon/src/kryon'"
   ]:
     fixedImports = fixedImports.replace(pattern, "import \"" & kryonPath & "\"")
   for pattern in [
@@ -777,6 +932,15 @@ when isMainModule:
      short = {
        "filename": 'f'
      }
+    ],
+    [initCmd, cmdName = "init",
+     help = {
+       "templateName": "Template to use (basic, todo, game, calculator)",
+       "projectName": "Optional project name (defaults to template name)"
+     }
+    ],
+    [doctorCmd, cmdName = "doctor",
+     help = "Check system dependencies and installation status"
     ],
     [versionCmd, cmdName = "version"]
   )

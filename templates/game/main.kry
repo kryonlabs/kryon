@@ -1,0 +1,42 @@
+## Simple Game Template
+##
+## A basic game showing input handling and animation
+## Run with: kryon run main.kry
+
+import kryon
+import kryon.integration.raylib_backend
+
+# Game state
+var playerX = 400.0
+var playerY = 300.0
+var score = 0
+var gameRunning = true
+
+window("Simple Game", 800, 600):
+  container:
+    # Game title and score
+    text("Simple Game", fontSize = 32, fontWeight = "bold")
+    text("Score: " & $score, fontSize = 20)
+
+    # Game area
+    container(width = 780, height = 400, backgroundColor = "black"):
+      # Player (represented as a colored text block)
+      text("■", fontSize = 24, color = "yellow"):
+        position(playerX, playerY)
+
+      # Game instructions
+      if gameRunning:
+        text("Use arrow keys to move!", fontSize = 16, color = "white"):
+          position(10, 10)
+
+    # Controls
+    container:
+      text("Controls:", fontSize = 16, fontWeight = "bold")
+      text("↑↓←→ : Move player", fontSize = 14)
+      text("Space: Pause/Resume", fontSize = 14)
+      text("R: Reset game", fontSize = 14)
+
+# Input handling (simplified - in real implementation you'd use proper event handlers)
+when defined(kryonInputHandling):
+  # This would be handled by the backend
+  discard
