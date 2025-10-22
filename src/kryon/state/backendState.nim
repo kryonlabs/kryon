@@ -28,27 +28,6 @@ type
     # Checkbox state
     checkboxStates*: Table[Element, bool] ## Checked state for each checkbox
 
-    # Drag-and-drop state
-    draggedElement*: Element            ## Currently dragging element (the visual element being dragged)
-    dragSource*: Element                ## Original source element that initiated the drag
-    potentialDropTarget*: Element       ## Element currently under the dragged item
-    dragOffsetX*, dragOffsetY*: float   ## Offset from element origin to mouse position
-    dragStartTime*: float               ## Timestamp when drag started
-    dragInsertIndex*: int               ## Calculated insert position for reordering (e.g., tab index)
-
-    # Live reordering state
-    reorderableContainer*: Element      ## Container being reordered (TabBar, Row, etc.)
-    originalChildOrder*: seq[Element]   ## Original child order before drag started
-    liveChildOrder*: seq[Element]       ## Live order during drag (for rendering)
-    draggedChildIndex*: int             ## Index of child being dragged
-    isLiveReordering*: bool             ## Flag indicating live reordering is active
-
-    # Tab content override during drag
-    dragTabContentPanel*: Element       ## Original tab panel content for dragged tab
-    dragOriginalTabIndex*: int          ## Original index of dragged tab in TabGroup
-    dragOriginalContentMapping*: Table[int, Element]  ## Maps original tab indices to their TabPanel elements
-    shouldClearDragOverride*: bool     ## Flag to clear drag content override on next frame
-
 proc newBackendState*(): BackendState =
   ## Create a new backend state with default values
   result = BackendState(
@@ -60,27 +39,7 @@ proc newBackendState*(): BackendState =
     backspaceRepeatDelay: 0.5,  # 500ms initial delay
     backspaceRepeatRate: 0.05,   # 50ms repeat rate
     focusedDropdown: nil,
-    checkboxStates: initTable[Element, bool](),
-    # Drag-and-drop state
-    draggedElement: nil,
-    dragSource: nil,
-    potentialDropTarget: nil,
-    dragOffsetX: 0.0,
-    dragOffsetY: 0.0,
-    dragStartTime: 0.0,
-    dragInsertIndex: -1,
-    # Live reordering state
-    reorderableContainer: nil,
-    originalChildOrder: @[],
-    liveChildOrder: @[],
-    draggedChildIndex: -1,
-    isLiveReordering: false,
-
-    # Tab content override during drag
-    dragTabContentPanel: nil,
-    dragOriginalTabIndex: -1,
-    dragOriginalContentMapping: initTable[int, Element](),
-    shouldClearDragOverride: false
+    checkboxStates: initTable[Element, bool]()
   )
 
 proc updateCursorBlink*(state: var BackendState, deltaTime: float) =

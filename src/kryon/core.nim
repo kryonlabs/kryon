@@ -111,6 +111,7 @@ type
     isDragging*: bool              # Whether this element is currently being dragged
     dragStartX*, dragStartY*: float  # Original mouse position when drag started
     currentOffsetX*, currentOffsetY*: float  # Current drag offset from original position
+    elementStartX*, elementStartY*: float  # Element position when drag started
     dragData*: Value               # Data payload for the drag operation
 
   DropTargetState* = object
@@ -407,7 +408,9 @@ proc newElement*(kind: ElementKind): Element =
     dirty: true,  # New elements start as dirty to ensure initial layout
     withBehaviors: @[],  # Initialize empty behaviors list
     dragState: DragState(isDragging: false, dragStartX: 0.0, dragStartY: 0.0,
-                        currentOffsetX: 0.0, currentOffsetY: 0.0, dragData: Value(kind: vkNil)),
+                        currentOffsetX: 0.0, currentOffsetY: 0.0,
+                        elementStartX: 0.0, elementStartY: 0.0,
+                        dragData: Value(kind: vkNil)),
     dropTargetState: DropTargetState(isHovered: false, canAcceptDrop: false, lastHoverCheck: 0.0)
   )
 
