@@ -13,6 +13,9 @@ build/
 dist/
 *.out
 
+.cache/
+.nimble_cache/
+
 # Examples - only include .nim source files, exclude compiled binaries
 examples/build/
 examples/*

@@ -157,19 +157,23 @@ proc locateKryonPaths(appDir: string): tuple[basePath: string, kryonPath: string
     normalizePath(tmp)
     result = tmp
 
+  proc isValidKryonDir(dir: string): bool =
+    ## Ensure the directory actually contains the Kryon modules.
+    fileExists(dir / "core.nim") and fileExists(dir / "dsl.nim")
+
   proc checkCandidate(base: string, basePath: var string, kryonPath: var string): bool =
     if base.len == 0:
       return false
 
     let normalizedBase = normalize(base)
     let direct = normalizedBase / "src" / "kryon"
-    if dirExists(direct):
+    if dirExists(direct) and isValidKryonDir(direct):
       basePath = normalizedBase / "src"
       kryonPath = direct
       return true
 
     let nested = normalizedBase / "kryon" / "src" / "kryon"
-    if dirExists(nested):
+    if dirExists(nested) and isValidKryonDir(nested):
       basePath = normalizedBase / "kryon" / "src"
       kryonPath = nested
       return true
@@ -180,7 +184,7 @@ proc locateKryonPaths(appDir: string): tuple[basePath: string, kryonPath: string
   if envSrc.len > 0:
     var basePath, kryonPath: string
     let normalizedSrc = normalize(envSrc)
-    if dirExists(normalizedSrc / "kryon"):
+    if dirExists(normalizedSrc / "kryon") and isValidKryonDir(normalizedSrc / "kryon"):
       return (basePath: normalizedSrc, kryonPath: normalizedSrc / "kryon")
     elif checkCandidate(envSrc, basePath, kryonPath):
       return (basePath: basePath, kryonPath: kryonPath)
