@@ -14,6 +14,10 @@ import interactionState
 import times
 import options
 import tables
+import math
+
+const
+  DragActivationThreshold = 5.0
 
 # ============================================================================
 # Element Discovery
@@ -119,6 +123,7 @@ proc handleDragStart*(root: Element, mouseX, mouseY: float): bool =
   globalInteractionState.dragOffsetX = mouseX - draggableElem.x
   globalInteractionState.dragOffsetY = mouseY - draggableElem.y
   globalInteractionState.dragStartTime = epochTime()
+  globalInteractionState.dragHasMoved = false
   draggableElem.dragState.elementStartX = draggableElem.x
   draggableElem.dragState.elementStartY = draggableElem.y
 
@@ -161,6 +166,10 @@ proc handleDragMove*(root: Element, mouseX, mouseY: float) =
 
   draggedElem.dragState.currentOffsetX = currentOffsetX
   draggedElem.dragState.currentOffsetY = currentOffsetY
+
+  if (not globalInteractionState.dragHasMoved) and
+     max(abs(currentOffsetX), abs(currentOffsetY)) >= DragActivationThreshold:
+    globalInteractionState.dragHasMoved = true
 
   # Find potential drop target under mouse
   if dragBehavior != nil:
@@ -238,6 +247,7 @@ proc handleDragEnd*(): bool =
   globalInteractionState.dragOffsetX = 0.0
   globalInteractionState.dragOffsetY = 0.0
   globalInteractionState.dragInsertIndex = -1
+  globalInteractionState.dragHasMoved = false
 
   echo "[DRAG END] Drag ended"
   return dropSuccessful

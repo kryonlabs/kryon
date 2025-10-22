@@ -20,6 +20,7 @@ type
     dragOffsetX*, dragOffsetY*: float   ## Offset from element origin to mouse position
     dragStartTime*: float               ## Timestamp when drag started
     dragInsertIndex*: int               ## Calculated insert position for reordering (e.g., tab index)
+    dragHasMoved*: bool                 ## Whether cursor moved past drag threshold
 
     # Live reordering state
     reorderableContainer*: Element      ## Container being reordered (TabBar, Row, etc.)
@@ -43,6 +44,7 @@ var globalInteractionState* = InteractionState(
   dragOffsetY: 0.0,
   dragStartTime: 0.0,
   dragInsertIndex: -1,
+  dragHasMoved: false,
   reorderableContainer: nil,
   originalChildOrder: @[],
   liveChildOrder: @[],
@@ -68,6 +70,7 @@ proc resetDragState*() =
   globalInteractionState.dragOffsetY = 0.0
   globalInteractionState.dragStartTime = 0.0
   globalInteractionState.dragInsertIndex = -1
+  globalInteractionState.dragHasMoved = false
 
 proc resetReorderState*() =
   ## Reset live reordering state to initial values

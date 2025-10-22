@@ -301,17 +301,16 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
       resetTabContentOverride()
 
     if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
-      let dragStarted = handleDragStart(backend.rootElement, mouseX, mouseY)
-      if dragStarted:
-        if globalInteractionState.draggedElement != nil:
-          var container = globalInteractionState.draggedElement.parent
-          while container != nil and not hasDropTargetBehavior(container):
-            container = container.parent
-          if container != nil:
-            discard initTabReorder(container, globalInteractionState.draggedElement)
+      discard handleDragStart(backend.rootElement, mouseX, mouseY)
 
     if globalInteractionState.draggedElement != nil and IsMouseButtonDown(MOUSE_BUTTON_LEFT):
       handleDragMove(backend.rootElement, mouseX, mouseY)
+      if globalInteractionState.dragHasMoved and not globalInteractionState.isLiveReordering:
+        var container = globalInteractionState.draggedElement.parent
+        while container != nil and not hasDropTargetBehavior(container):
+          container = container.parent
+        if container != nil:
+          discard initTabReorder(container, globalInteractionState.draggedElement)
       if globalInteractionState.isLiveReordering and
          globalInteractionState.potentialDropTarget != nil and
          globalInteractionState.potentialDropTarget.kind == ekTabBar:

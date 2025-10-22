@@ -478,3 +478,4 @@ proc finalizeTabReorder*(draggedElem: Element, shouldCommit: bool) =
 
   # Reset live reordering state
   resetReorderState()
+  globalInteractionState.dragHasMoved = false
