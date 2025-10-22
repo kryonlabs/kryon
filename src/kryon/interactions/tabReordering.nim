@@ -31,6 +31,41 @@ proc collectActualTabs*(container: Element): seq[Element] =
         if grandchild.kind == ekTab:
           result.add(grandchild)
 
+proc enableManualLoopOrder(container: Element) =
+  ## Mark any for-loop children so they preserve manual order during drag
+  if container == nil:
+    return
+  for child in container.children:
+    if child.kind == ekForLoop:
+      child.setProp(ManualReorderPropName, true)
+
+proc disableManualLoopOrder(container: Element) =
+  ## Clear manual reorder mode and rebuild for-loop children from source data
+  if container == nil:
+    return
+  for child in container.children:
+    if child.kind == ekForLoop:
+      child.setProp(ManualReorderPropName, false)
+      regenerateForLoopChildren(child)
+      markDirty(child)
+  markDirty(container)
+
+proc collectTabPanels(tabContent: Element): seq[Element] =
+  ## Collect TabPanel elements from TabContent, expanding ForLoops
+  result = @[]
+  if tabContent == nil:
+    return
+  for child in tabContent.children:
+    case child.kind
+    of ekTabPanel:
+      result.add(child)
+    of ekForLoop:
+      for grandchild in child.children:
+        if grandchild.kind == ekTabPanel:
+          result.add(grandchild)
+    else:
+      discard
+
 # ============================================================================
 # Tab Reorder Initialization
 # ============================================================================
@@ -233,16 +268,24 @@ proc updateLiveTabOrder*() =
         nonForLoopChildren.add(child)
 
     if forLoopElem != nil:
+      enableManualLoopOrder(container)
       # Dynamic tabs: Update ForLoop's children with reordered tabs
       forLoopElem.children = reorderedVisualChildren
+      for child in forLoopElem.children:
+        if child != nil:
+          child.parent = forLoopElem
+      markDirty(forLoopElem)
       echo "[LIVE REORDER] Updated ForLoop.children with ", reorderedVisualChildren.len, " reordered tabs"
     else:
       # Static tabs: Update container.children directly
       container.children = reorderedVisualChildren
       echo "[LIVE REORDER] Updated TabBar.children directly (static tabs)"
+
   else:
     # Non-TabBar containers: Update container.children directly
     container.children = reorderedVisualChildren
+
+  globalInteractionState.liveChildOrder = reorderedVisualChildren
 
   # Sync tab content during drag
   var tabGroup = container.parent
@@ -256,25 +299,48 @@ proc updateLiveTabOrder*() =
       tabGroup.tabSelectedIndex = draggedTabIndex
       echo "[DRAG CONTENT SYNC] Set selected index to dragged tab's content: ", draggedTabIndex
 
+    let state = getInteractionState()
     for child in tabGroup.children:
       if child.kind == ekTabContent:
-        # Reorder tab panels to match the new tab order during drag
         var reorderedPanels: seq[Element] = @[]
-        for i in 0..<reorderedVisualChildren.len:
-          let tab = reorderedVisualChildren[i]
-          # Find corresponding panel by original tabIndex
-          for panel in child.children:
-            if panel.kind == ekTabPanel and panel.tabIndex == tab.tabIndex:
-              reorderedPanels.add(panel)
+        for tab in reorderedVisualChildren:
+          var originalIndex = -1
+          for idx, originalTab in state.originalChildOrder:
+            if originalTab == tab:
+              originalIndex = idx
               break
 
-        # Update TabContent children to match tab order
-        child.children = reorderedPanels
+          if originalIndex >= 0 and state.dragOriginalContentMapping.hasKey(originalIndex):
+            let mappedPanel = state.dragOriginalContentMapping[originalIndex]
+            if mappedPanel != nil:
+              reorderedPanels.add(mappedPanel)
+
+        # Apply reordered panels to TabContent (handling ForLoop-generated panels)
+        var contentForLoop: Element = nil
+        for grandchild in child.children:
+          if grandchild.kind == ekForLoop:
+            contentForLoop = grandchild
+            break
+
+        if contentForLoop != nil:
+          enableManualLoopOrder(child)
+          contentForLoop.children = reorderedPanels
+          for panel in contentForLoop.children:
+            if panel != nil:
+              panel.parent = contentForLoop
+          markDirty(contentForLoop)
+        else:
+          child.children = reorderedPanels
+          for panel in child.children:
+            if panel != nil:
+              panel.parent = child
 
         # Update panel tabIndex values to match new visual order
         for i, panel in reorderedPanels:
-          panel.tabIndex = i
+          if panel != nil:
+            panel.tabIndex = i
 
+        markDirty(child)
         echo "[LIVE REORDER SYNC] Reordered ", reorderedPanels.len, " tab panels to follow dragged tab"
         break
 
@@ -323,11 +389,22 @@ proc finalizeTabReorder*(draggedElem: Element, shouldCommit: bool) =
           break
 
       if forLoopElem != nil:
+        enableManualLoopOrder(container)
         forLoopElem.children = originalTabs
+        for tab in forLoopElem.children:
+          if tab != nil:
+            tab.parent = forLoopElem
+        markDirty(forLoopElem)
       else:
         container.children = originalTabs
+        for tab in container.children:
+          if tab != nil:
+            tab.parent = container
     else:
       container.children = originalTabs
+      for tab in container.children:
+        if tab != nil:
+          tab.parent = container
 
     if tabGroup != nil:
       # Restore tab indices and selection
@@ -354,7 +431,24 @@ proc finalizeTabReorder*(draggedElem: Element, shouldCommit: bool) =
               if idx >= 0 and idx < restoredPanels.len and restoredPanels[idx] == nil:
                 restoredPanels[idx] = panel
 
-          child.children = restoredPanels
+          var contentLoop: Element = nil
+          for grandchild in child.children:
+            if grandchild.kind == ekForLoop:
+              contentLoop = grandchild
+              break
+
+          if contentLoop != nil:
+            enableManualLoopOrder(child)
+            contentLoop.children = restoredPanels
+            for panel in contentLoop.children:
+              if panel != nil:
+                panel.parent = contentLoop
+            markDirty(contentLoop)
+          else:
+            child.children = restoredPanels
+            for panel in child.children:
+              if panel != nil:
+                panel.parent = child
           break
 
       markDirty(tabGroup)
@@ -373,7 +467,15 @@ proc finalizeTabReorder*(draggedElem: Element, shouldCommit: bool) =
     echo "[LIVE REORDER] Drag canceled or invalid, restoring original tab order"
     restoreOriginalOrder()
     state.shouldClearDragOverride = true
+    if container.kind == ekTabBar:
+      disableManualLoopOrder(container)
+      if tabGroup != nil:
+        for child in tabGroup.children:
+          if child.kind == ekTabContent:
+            disableManualLoopOrder(child)
+            break
     resetReorderState()
+    globalInteractionState.liveChildOrder = @[]
     return
 
   echo "[LIVE REORDER] Drag ended, committing reordered tab state"
@@ -472,6 +574,14 @@ proc finalizeTabReorder*(draggedElem: Element, shouldCommit: bool) =
               markDirty(panel)
               markAllDescendantsDirty(panel)
 
+  if container.kind == ekTabBar:
+    disableManualLoopOrder(container)
+    if tabGroup != nil:
+      for child in tabGroup.children:
+        if child.kind == ekTabContent:
+          disableManualLoopOrder(child)
+          break
+
   # Clear drag content override on next frame
   state.shouldClearDragOverride = true
   echo "[DRAG CLEANUP] Preserving drag content override for one more frame to ensure proper sync"
@@ -479,3 +589,4 @@ proc finalizeTabReorder*(draggedElem: Element, shouldCommit: bool) =
   # Reset live reordering state
   resetReorderState()
   globalInteractionState.dragHasMoved = false
+  globalInteractionState.liveChildOrder = @[]

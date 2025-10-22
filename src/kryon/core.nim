@@ -812,6 +812,8 @@ proc createParameterizedStyleApplication*(styleName: string, params: seq[NimNode
 # Reorderable Tabs Setup
 # ============================================================================
 
+const ManualReorderPropName* = "__manualReorderActive"
+
 proc expandForLoopChildren(forLoopElem: Element): seq[Element] =
   ## Expand a for-loop element to get its generated children
   ## This is needed because for loops don't expand until layout time
@@ -832,6 +834,118 @@ proc expandForLoopChildren(forLoopElem: Element): seq[Element] =
         addChild(forLoopElem, childElement)
         result.add(childElement)
 
+proc getBehavior(elem: Element, behaviorKind: ElementKind): Element =
+  ## Retrieve the first attached behavior element of the given kind
+  if elem.withBehaviors.len == 0:
+    return nil
+  for behavior in elem.withBehaviors:
+    if behavior.kind == behaviorKind:
+      return behavior
+  return nil
+
+proc elementHasBehavior(elem: Element, behaviorKind: ElementKind): bool =
+  ## Check if an element already has a specific behavior attached
+  getBehavior(elem, behaviorKind) != nil
+
+proc regenerateForLoopChildren*(forLoopElem: Element) =
+  ## Rebuild a for-loop element's children using its builder/template
+  if forLoopElem == nil:
+    return
+
+  if forLoopElem.forBuilder != nil:
+    forLoopElem.children.setLen(0)
+    forLoopElem.forBuilder(forLoopElem)
+  elif forLoopElem.forIterable != nil and forLoopElem.forBodyTemplate != nil:
+    forLoopElem.children.setLen(0)
+    let items = forLoopElem.forIterable()
+    for item in items:
+      let generated = forLoopElem.forBodyTemplate(item)
+      if generated != nil:
+        addChild(forLoopElem, generated)
+
+proc ensureTabDropTarget(tabBar: Element) =
+  ## Attach a DropTarget behavior to the TabBar if it does not already have one
+  var dropTargetBehavior = getBehavior(tabBar, ekDropTarget)
+  if dropTargetBehavior != nil:
+    # Ensure drop behavior has access to the tab bar's onDrop handler
+    if tabBar.eventHandlers.hasKey("onDrop") and
+       not dropTargetBehavior.eventHandlers.hasKey("onDrop"):
+      dropTargetBehavior.eventHandlers["onDrop"] = tabBar.eventHandlers["onDrop"]
+    return
+
+  dropTargetBehavior = newElement(ekDropTarget)
+  dropTargetBehavior.setProp("itemType", "tab")
+  dropTargetBehavior.parent = tabBar
+  if tabBar.eventHandlers.hasKey("onDrop"):
+    dropTargetBehavior.eventHandlers["onDrop"] = tabBar.eventHandlers["onDrop"]
+  tabBar.withBehaviors.add(dropTargetBehavior)
+
+proc ensureTabDraggable(tab: Element, index: int) =
+  ## Attach a Draggable behavior to a Tab if needed (respecting draggable=false)
+  let draggableProp = tab.getProp("draggable")
+  if draggableProp.isSome and not draggableProp.get().getBool(true):
+    let skippedTitle =
+      if tab.getProp("title").isSome: tab.getProp("title").get().getString("")
+      else: ""
+    echo "[REORDERABLE TABS] Skipping Tab '", skippedTitle, "' (draggable=false)"
+    return
+
+  if elementHasBehavior(tab, ekDraggable):
+    return
+
+  let titleProp = tab.getProp("title")
+  let tabTitle = if titleProp.isSome: titleProp.get().getString("") else: ""
+  let tabData = if tabTitle.len > 0: tabTitle else: "tab" & $index
+
+  let draggableBehavior = newElement(ekDraggable)
+  draggableBehavior.setProp("itemType", "tab")
+  draggableBehavior.setProp("data", tabData)
+  draggableBehavior.setProp("lockAxis", "x")  # Lock to horizontal movement
+  draggableBehavior.parent = tab
+  tab.withBehaviors.add(draggableBehavior)
+
+  echo "[REORDERABLE TABS] Made Tab '", tabData, "' draggable"
+
+proc wrapForLoopForTabs(tabBar: Element, forLoopElem: Element) =
+  ## Ensure for-loop generated tabs receive draggable behaviors every time they are rebuilt
+  let alreadyWrapped = forLoopElem.getProp("__reorderableTabsWrapped")
+  if alreadyWrapped.isSome and alreadyWrapped.get().getBool(false):
+    return
+
+  let originalBuilder = forLoopElem.forBuilder
+  if originalBuilder != nil:
+    forLoopElem.forBuilder = proc(loopElem: Element) =
+      let manualProp = loopElem.getProp(ManualReorderPropName)
+      let manualActive = manualProp.isSome and manualProp.get().getBool(false)
+      if manualActive and loopElem.children.len > 0:
+        for idx, child in loopElem.children:
+          if child.kind == ekTab:
+            ensureTabDraggable(child, idx)
+            if child.parent != loopElem:
+              child.parent = loopElem
+        return
+
+      originalBuilder(loopElem)
+      for idx, child in loopElem.children:
+        if child.kind == ekTab:
+          ensureTabDraggable(child, idx)
+          if child.parent != loopElem:
+            child.parent = loopElem
+
+  if forLoopElem.forBodyTemplate != nil:
+    let originalTemplate = forLoopElem.forBodyTemplate
+    forLoopElem.forBodyTemplate = proc(item: Value): Element =
+      let generated = originalTemplate(item)
+      if generated != nil and generated.kind == ekTab:
+        let idx = forLoopElem.children.len
+        ensureTabDraggable(generated, idx)
+      generated
+
+  forLoopElem.setProp("__reorderableTabsWrapped", true)
+
+  # Force regeneration so existing children pick up the wrapped behavior
+  regenerateForLoopChildren(forLoopElem)
+
 proc setupReorderableTabs*(root: Element) =
   ## Automatically attach drag-and-drop behaviors to TabBars with reorderable=true
   ## Recursively walks the element tree and sets up all child Tabs as draggable
@@ -846,51 +960,24 @@ proc setupReorderableTabs*(root: Element) =
   if root.kind == ekTabBar:
     let reorderableProp = root.getProp("reorderable")
     if reorderableProp.isSome and reorderableProp.get().getBool(false):
-      # Collect all actual Tab children (expanding for loops if needed)
+      ensureTabDropTarget(root)
+
       var allTabs: seq[Element] = @[]
 
-      for child in root.children:
-        if child.kind == ekTab:
-          # Direct Tab child
-          allTabs.add(child)
-        elif child.kind == ekForLoop:
-          # Expand for loop and collect Tab children
-          let expandedChildren = expandForLoopChildren(child)
-          for expanded in expandedChildren:
-            if expanded.kind == ekTab:
-              allTabs.add(expanded)
+      proc collectTabs(container: Element) =
+        for child in container.children:
+          case child.kind:
+          of ekTab:
+            allTabs.add(child)
+            ensureTabDraggable(child, allTabs.len - 1)
+          of ekForLoop:
+            wrapForLoopForTabs(root, child)
+            collectTabs(child)
+          else:
+            discard
 
+      collectTabs(root)
       echo "[REORDERABLE TABS] Setting up TabBar with ", allTabs.len, " tabs"
-
-      # Create and attach DropTarget behavior to the TabBar
-      let dropTargetBehavior = newElement(ekDropTarget)
-      dropTargetBehavior.setProp("itemType", "tab")
-      dropTargetBehavior.parent = root
-      root.withBehaviors.add(dropTargetBehavior)
-
-      # Create and attach Draggable behavior to each Tab
-      for i, tab in allTabs:
-        # Check if this tab should be draggable (default: true)
-        let draggableProp = tab.getProp("draggable")
-        if draggableProp.isSome and not draggableProp.get().getBool(true):
-          # Skip this tab - it's marked as non-draggable
-          let tabTitle = tab.getProp("title").get(val("")).getString()
-          echo "[REORDERABLE TABS] Skipping Tab '", tabTitle, "' (draggable=false)"
-          continue
-
-        # Get the tab title for use as drag data
-        let tabTitle = tab.getProp("title").get(val("")).getString()
-        let tabData = if tabTitle.len > 0: tabTitle else: "tab" & $i
-
-        # Create Draggable behavior
-        let draggableBehavior = newElement(ekDraggable)
-        draggableBehavior.setProp("itemType", "tab")
-        draggableBehavior.setProp("data", tabData)
-        draggableBehavior.setProp("lockAxis", "x")  # Lock to horizontal movement
-        draggableBehavior.parent = tab
-        tab.withBehaviors.add(draggableBehavior)
-
-        echo "[REORDERABLE TABS] Made Tab '", tabData, "' draggable"
 
   # Recursively process all children
   for child in root.children:
