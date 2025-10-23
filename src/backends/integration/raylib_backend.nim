@@ -10,16 +10,12 @@ import ../../kryon/layout/layoutEngine
 import ../../kryon/layout/zindexSort
 import ../../kryon/state/backendState
 import ../../kryon/rendering/renderingContext
-import ../../kryon/rendering/sharedRenderer
 import ../../kryon/interactions/dragDrop
 import ../../kryon/interactions/tabReordering
 import ../../kryon/interactions/interactionState
+import ../../kryon/pipeline/processor
+import ../../kryon/pipeline/renderCommands
 import options, tables, math, os, times, sets
-
-# Pipeline imports (for new architecture)
-when defined(usePipeline):
-  import ../../kryon/pipeline/processor
-  import ../../kryon/pipeline/renderCommands
 
 # ============================================================================
 # Backend Type
@@ -218,43 +214,42 @@ proc endClipping*(backend: var RaylibBackend) =
   endScissorMode()
 
 # ============================================================================
-# Pipeline Command Executor (New Architecture)
+# Pipeline Command Executor
 # ============================================================================
 
-when defined(usePipeline):
-  proc executeCommand*(backend: var RaylibBackend, cmd: RenderCommand) =
-    ## Execute a single RenderCommand
-    ## This is the ONLY backend-specific rendering code needed for the pipeline!
-    case cmd.kind:
-    of rcDrawRectangle:
-      # Draw filled rectangle
-      backend.drawRectangle(cmd.rectX, cmd.rectY, cmd.rectWidth, cmd.rectHeight, cmd.rectColor)
+proc executeCommand*(backend: var RaylibBackend, cmd: RenderCommand) =
+  ## Execute a single RenderCommand
+  ## This is the ONLY backend-specific rendering code needed!
+  case cmd.kind:
+  of rcDrawRectangle:
+    # Draw filled rectangle
+    backend.drawRectangle(cmd.rectX, cmd.rectY, cmd.rectWidth, cmd.rectHeight, cmd.rectColor)
 
-    of rcDrawBorder:
-      # Draw rectangle outline
-      backend.drawRectangleBorder(cmd.borderX, cmd.borderY, cmd.borderWidth, cmd.borderHeight,
-                                  cmd.borderThickness, cmd.borderColor)
+  of rcDrawBorder:
+    # Draw rectangle outline
+    backend.drawRectangleBorder(cmd.borderX, cmd.borderY, cmd.borderWidth, cmd.borderHeight,
+                                cmd.borderThickness, cmd.borderColor)
 
-    of rcDrawText:
-      # Draw text
-      backend.drawText(cmd.textContent, cmd.textX, cmd.textY, cmd.textSize, cmd.textColor)
+  of rcDrawText:
+    # Draw text
+    backend.drawText(cmd.textContent, cmd.textX, cmd.textY, cmd.textSize, cmd.textColor)
 
-    of rcDrawImage:
-      # Draw image
-      backend.drawImage(cmd.imagePath, cmd.imageX, cmd.imageY, cmd.imageWidth, cmd.imageHeight)
+  of rcDrawImage:
+    # Draw image
+    backend.drawImage(cmd.imagePath, cmd.imageX, cmd.imageY, cmd.imageWidth, cmd.imageHeight)
 
-    of rcDrawLine:
-      # Draw line
-      backend.drawLine(cmd.lineX1, cmd.lineY1, cmd.lineX2, cmd.lineY2,
-                       cmd.lineThickness, cmd.lineColor)
+  of rcDrawLine:
+    # Draw line
+    backend.drawLine(cmd.lineX1, cmd.lineY1, cmd.lineX2, cmd.lineY2,
+                     cmd.lineThickness, cmd.lineColor)
 
-    of rcBeginClip:
-      # Start clipping region
-      backend.beginClipping(cmd.clipX, cmd.clipY, cmd.clipWidth, cmd.clipHeight)
+  of rcBeginClip:
+    # Start clipping region
+    backend.beginClipping(cmd.clipX, cmd.clipY, cmd.clipWidth, cmd.clipHeight)
 
-    of rcEndClip:
-      # End clipping region
-      backend.endClipping()
+  of rcEndClip:
+    # End clipping region
+    backend.endClipping()
 
 # ============================================================================
 # Layout Engine Wrapper
@@ -851,37 +846,23 @@ proc run*(backend: var RaylibBackend, root: Element) =
     else:
       clearBackground(backend.backgroundColor.toRaylibColor())
 
-    # Render using pipeline or legacy approach
-    when defined(usePipeline):
-      # ========== NEW PIPELINE APPROACH ==========
-      # Create pipeline configuration
-      let mousePos = getMousePosition()
-      let config = newPipelineConfig(
-        windowWidth = backend.windowWidth,
-        windowHeight = backend.windowHeight,
-        mouseX = mousePos.x,
-        mouseY = mousePos.y,
-        mousePressed = isMouseButtonPressed(MouseButton.Left),
-        mouseReleased = isMouseButtonReleased(MouseButton.Left)
-      )
+    # Render using pipeline
+    let mousePos = getMousePosition()
+    let config = newPipelineConfig(
+      windowWidth = backend.windowWidth,
+      windowHeight = backend.windowHeight,
+      mouseX = mousePos.x,
+      mouseY = mousePos.y,
+      mousePressed = isMouseButtonPressed(MouseButton.Left),
+      mouseReleased = isMouseButtonReleased(MouseButton.Left)
+    )
 
-      # Process frame through pipeline - this does ALL the work!
-      let commands = processFrame(root, backend, backend.state, config)
+    # Process frame through pipeline - this does ALL the work!
+    let commands = processFrame(root, backend, backend.state, config)
 
-      # Execute commands (includes drag-and-drop effects)
-      for cmd in commands:
-        backend.executeCommand(cmd)
-
-    else:
-      # ========== OLD APPROACH (FALLBACK) ==========
-      # Render all elements
-      renderElement(backend, backend.state, root)
-
-      # Render dropdown menus on top
-      renderDropdownMenus(backend, backend.state, root)
-
-      # Render drag-and-drop visual effects
-      renderDragAndDropEffects(backend, root)
+    # Execute commands (includes drag-and-drop effects)
+    for cmd in commands:
+      backend.executeCommand(cmd)
 
     endDrawing()
 

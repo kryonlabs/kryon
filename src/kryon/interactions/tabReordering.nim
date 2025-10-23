@@ -12,6 +12,7 @@
 import ../core
 import dragDrop
 import interactionState
+import sharedState
 import tables
 
 # Global variables to communicate reorder indices to app handlers
@@ -49,10 +50,12 @@ proc disableManualLoopOrder(container: Element) =
   if container == nil:
     return
   for child in container.children:
-    if child.kind == ekForLoop:
+    if child != nil and child.kind == ekForLoop:
       child.setProp(ManualReorderPropName, false)
-      regenerateForLoopChildren(child)
-      markDirty(child)
+      # Only regenerate if the ForLoop has a valid data source
+      if child.forBuilder != nil or child.forIterable != nil:
+        regenerateForLoopChildren(child)
+        markDirty(child)
   markDirty(container)
 
 proc collectTabPanels(tabContent: Element): seq[Element] =
@@ -86,6 +89,10 @@ proc initTabReorder*(tabBar: Element, draggedTab: Element): bool =
 
   if not hasDropTargetBehavior(tabBar):
     return false
+
+  # FREEZE REACTIVITY: Prevent ForLoops from regenerating during drag
+  sharedState.isDraggingTab = true
+  echo "[TAB DRAG] Freezing reactive ForLoop updates"
 
   # Enable live reordering mode
   globalInteractionState.isLiveReordering = true
@@ -609,6 +616,10 @@ proc finalizeTabReorder*(draggedElem: Element, shouldCommit: bool) =
   # Clear drag content override on next frame
   state.shouldClearDragOverride = true
   echo "[DRAG CLEANUP] Preserving drag content override for one more frame to ensure proper sync"
+
+  # UNFREEZE REACTIVITY: Allow ForLoops to regenerate from updated data
+  sharedState.isDraggingTab = false
+  echo "[TAB DRAG] Unfreezing reactive ForLoop updates"
 
   # Reset live reordering state
   resetReorderState()

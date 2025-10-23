@@ -19,7 +19,6 @@ type
     ## Supported renderers
     rRaylib = "raylib"
     rSDL2 = "sdl2"
-    rSkia = "skia"
     rHTML = "html"      # Future
     rTerminal = "terminal"  # Future
 
@@ -40,9 +39,7 @@ proc detectRenderer*(filename: string): Renderer =
   let content = readFile(filename)
 
   # Check for new integration-based backend imports
-  if "integration/sdl2_skia" in content or "skia_backend" in content:
-    return rSkia
-  elif "integration/sdl2" in content or "sdl2_backend" in content:
+  if "integration/sdl2" in content or "sdl2_backend" in content:
     return rSDL2
   elif "integration/raylib" in content or "raylib_backend" in content:
     return rRaylib
@@ -108,9 +105,6 @@ proc buildRendererImports(renderer: Renderer, basePath: string): string =
   of rSDL2:
     result = &"""import "{basePath / "backends" / "integration" / "sdl2"}"
 """
-  of rSkia:
-    result = &"""import "{basePath / "backends" / "integration" / "sdl2_skia"}"
-"""
   of rHTML:
     result = &"""import "{basePath / "backends" / "integration" / "html"}"
 import os
@@ -131,12 +125,6 @@ proc buildRendererBody(renderer: Renderer): string =
     result = renderIndentedBlock([
       "var backend: SDL2Backend",
       "backend = newSDL2BackendFromApp(app)",
-      "backend.run(app)"
-    ], 2)
-  of rSkia:
-    result = renderIndentedBlock([
-      "var backend: SkiaBackend",
-      "backend = newSkiaBackendFromApp(app)",
       "backend.run(app)"
     ], 2)
   of rHTML:
@@ -522,8 +510,6 @@ proc compileKryon*(
   case renderer:
   of rSDL2:
     nimCmd.add(" --passL:\"-lSDL2 -lSDL2_ttf\"")
-  of rSkia:
-    nimCmd.add(" --passL:\"-lSDL2 -lskia\"")
   of rHTML:
     # For HTML, no special linking needed
     discard

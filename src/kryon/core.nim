@@ -6,7 +6,7 @@
 ## - ElementKind: Enumeration of all element types
 ## - Color: Color representation
 
-import tables, strutils, options, hashes, sets, macros
+import tables, strutils, options, hashes, sets, macros, interactions/sharedState
 
 type
   ElementKind* = enum
@@ -860,6 +860,11 @@ proc elementHasBehavior(elem: Element, behaviorKind: ElementKind): bool =
 proc regenerateForLoopChildren*(forLoopElem: Element) =
   ## Rebuild a for-loop element's children using its builder/template
   if forLoopElem == nil:
+    return
+
+  # FREEZE DURING TAB DRAG: Don't regenerate if a tab is being dragged
+  # This prevents the reactive data source from fighting with manual reordering
+  if sharedState.isDraggingTab:
     return
 
   let manualProp = forLoopElem.getProp(ManualReorderPropName)
