@@ -428,7 +428,9 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     if heightOpt.isSome:
       elem.height = heightOpt.get.getFloat()
     else:
-      elem.height = if parentHeight > 0: parentHeight else: maxHeight
+      # Fix: Use actual content height (maxHeight) instead of parentHeight
+      # Rows should size to their content, not fill the entire parent height
+      elem.height = maxHeight
 
     # Determine starting X position and gaps based on mainAxisAlignment
     var currentX = elem.x
