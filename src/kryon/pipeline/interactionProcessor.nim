@@ -49,6 +49,23 @@ proc findElementAt*(root: Element, x, y: float): Option[Element] =
   ## Returns the deepest child that contains the point
   ## Respects z-index ordering
 
+  # Handle Conditional elements specially - they're transparent wrappers
+  if root.kind == ekConditional:
+    if root.condition != nil:
+      let conditionResult = root.condition()
+      let activeBranch = if conditionResult: root.trueBranch else: root.falseBranch
+      if activeBranch != nil:
+        return findElementAt(activeBranch, x, y)
+    return none(Element)
+
+  # Handle ForLoop elements - check their generated children
+  if root.kind == ekForLoop:
+    for child in root.children:
+      let found = findElementAt(child, x, y)
+      if found.isSome:
+        return found
+    return none(Element)
+
   # Sort children by z-index (highest first) for proper hit testing
   var sortedChildren = root.children
   sortedChildren.sort(proc(a, b: Element): int =

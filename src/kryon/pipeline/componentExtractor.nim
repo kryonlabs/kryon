@@ -261,7 +261,15 @@ proc extractElement*(elem: Element, measurer: TextMeasurer, state: var BackendSt
   of ekConditional:
     # Handle conditional rendering
     if elem.condition != nil:
+      # Set current element for dependency tracking BEFORE evaluating condition
+      let previousElement = currentElementBeingProcessed
+      currentElementBeingProcessed = elem
+
       let conditionResult = elem.condition()
+
+      # Restore previous element after condition evaluation
+      currentElementBeingProcessed = previousElement
+
       let activeBranch = if conditionResult: elem.trueBranch else: elem.falseBranch
       if activeBranch != nil:
         result.add extractElement(activeBranch, measurer, state, inheritedColor)
