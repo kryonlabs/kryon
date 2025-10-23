@@ -39,9 +39,13 @@ if [ ! -f "$EXAMPLE_FILE" ]; then
     exit 1
 fi
 
+# Prevent nested wrapper creation by cleaning the entire .kryon directory first
+if [ -d "examples/.kryon" ]; then
+    rm -rf "examples/.kryon"
+fi
+
 # Check if kryon binary exists
 if [ ! -f "./bin/cli/kryon" ]; then
-    echo "Error: kryon binary not found. Building first..."
     nimble build
 fi
 

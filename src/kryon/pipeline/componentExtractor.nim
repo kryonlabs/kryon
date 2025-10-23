@@ -36,7 +36,7 @@ type
 # Component Extraction to RenderCommands
 # ============================================================================
 
-proc extractButton*(elem: Element, inheritedColor: Option[Color] = none(Color)): RenderCommandList =
+proc extractButton*(elem: Element, measurer: TextMeasurer, inheritedColor: Option[Color] = none(Color)): RenderCommandList =
   ## Extract button rendering commands
   let data = extractButtonData(elem, inheritedColor)
 
@@ -59,10 +59,11 @@ proc extractButton*(elem: Element, inheritedColor: Option[Color] = none(Color)):
 
   # Text (if present)
   if data.text.len > 0:
-    # Note: Text positioning will need text measurements
-    # For now, we'll add the command and let the renderer handle positioning
-    # In a future iteration, we should pre-calculate positions
-    result.add drawText(data.text, data.x, data.y, data.fontSize, data.textColor)
+    # Center text within button bounds
+    let textMeasurements = measurer.measureText(data.text, data.fontSize)
+    let textX = data.x + (data.width - textMeasurements.width) / 2.0
+    let textY = data.y + (data.height - textMeasurements.height) / 2.0
+    result.add drawText(data.text, textX, textY, data.fontSize, data.textColor)
 
 proc extractText*(elem: Element, measurer: TextMeasurer, inheritedColor: Option[Color] = none(Color)): RenderCommandList =
   ## Extract text rendering commands
@@ -116,11 +117,22 @@ proc extractCheckbox*(elem: Element, state: var BackendState, inheritedColor: Op
   # Checkmark if checked
   if data.checked:
     # Draw checkmark segments (from component data)
-    for segment in data.checkmarkSegments1:
-      result.add drawLine(segment.x, segment.y, segment.x, segment.y, segment.thickness, data.checkColor)
+    # Connect the dots to form lines instead of drawing zero-length lines
+    if data.checkmarkSegments1.len > 1:
+      for i in 0..<data.checkmarkSegments1.len-1:
+        let startSegment = data.checkmarkSegments1[i]
+        let endSegment = data.checkmarkSegments1[i+1]
+        result.add drawLine(startSegment.x + startSegment.thickness/2, startSegment.y + startSegment.thickness/2,
+                           endSegment.x + endSegment.thickness/2, endSegment.y + endSegment.thickness/2,
+                           startSegment.thickness, data.checkColor)
 
-    for segment in data.checkmarkSegments2:
-      result.add drawLine(segment.x, segment.y, segment.x, segment.y, segment.thickness, data.checkColor)
+    if data.checkmarkSegments2.len > 1:
+      for i in 0..<data.checkmarkSegments2.len-1:
+        let startSegment = data.checkmarkSegments2[i]
+        let endSegment = data.checkmarkSegments2[i+1]
+        result.add drawLine(startSegment.x + startSegment.thickness/2, startSegment.y + startSegment.thickness/2,
+                           endSegment.x + endSegment.thickness/2, endSegment.y + endSegment.thickness/2,
+                           startSegment.thickness, data.checkColor)
 
   # Label text if present
   if data.hasLabel:
@@ -274,7 +286,7 @@ proc extractElement*(elem: Element, measurer: TextMeasurer, state: var BackendSt
     result.add extractText(elem, measurer, inheritedColor)
 
   of ekButton:
-    result.add extractButton(elem, inheritedColor)
+    result.add extractButton(elem, measurer, inheritedColor)
 
   of ekCheckbox:
     result.add extractCheckbox(elem, state, inheritedColor)

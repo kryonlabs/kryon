@@ -74,6 +74,7 @@ proc processFrame*(root: Element, measurer: TextMeasurer, state: var BackendStat
   # Handle user input and update element state
   processInteractions(
     root,
+    state,
     config.mouseX,
     config.mouseY,
     config.mousePressed,

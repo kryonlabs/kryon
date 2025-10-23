@@ -428,12 +428,8 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
       backend.handleInput(child)
 
   of ekButton:
-    if not isDisabled(elem):
-      if isMouseButtonPressed(MouseButton.Left):
-        let rectArea = rect(elem.x, elem.y, elem.width, elem.height)
-        if checkCollisionPointRec(mousePos, rectArea):
-          if elem.eventHandlers.hasKey("onClick"):
-            elem.eventHandlers["onClick"]()
+    # Button clicks are now handled by the new pipeline system to avoid double-clicks
+    discard
 
   of ekInput:
     if isMouseButtonPressed(MouseButton.Left):
@@ -449,28 +445,8 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
           backend.state.focusedInput = nil
 
   of ekCheckbox:
-    if isMouseButtonPressed(MouseButton.Left):
-      let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
-      let checkboxSize = min(elem.height, fontSize.float + 8.0)
-      let checkboxRect = rect(elem.x, elem.y + (elem.height - checkboxSize) / 2.0, checkboxSize, checkboxSize)
-
-      let label = elem.getProp("label").get(val("")).getString()
-      var clickArea = checkboxRect
-
-      if label.len > 0:
-        clickArea = rect(elem.x, elem.y, elem.width, elem.height)
-
-      if checkCollisionPointRec(mousePos, clickArea):
-        var currentState = backend.state.checkboxStates.getOrDefault(elem, false)
-        currentState = not currentState
-        backend.state.checkboxStates[elem] = currentState
-
-        if elem.eventHandlers.hasKey("onClick"):
-          elem.eventHandlers["onClick"]()
-
-        if elem.eventHandlers.hasKey("onChange"):
-          let handler = elem.eventHandlers["onChange"]
-          handler($currentState)
+    # Checkbox clicks are now handled by the new pipeline system to avoid double-clicks
+    discard
 
   of ekTabGroup, ekTabBar, ekTabContent:
     let sortedChildren = sortChildrenByZIndexReverse(elem.children)
@@ -525,60 +501,8 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
           elem.eventHandlers["onClick"]()
 
   of ekDropdown:
-    if isMouseButtonPressed(MouseButton.Left):
-      let mainRect = rect(elem.x, elem.y, elem.width, elem.height)
-
-      if checkCollisionPointRec(mousePos, mainRect):
-        if elem.dropdownIsOpen:
-          elem.dropdownIsOpen = false
-          elem.dropdownHoveredIndex = -1
-          backend.state.focusedDropdown = nil
-        else:
-          elem.dropdownIsOpen = true
-          elem.dropdownHoveredIndex = elem.dropdownSelectedIndex
-          backend.state.focusedDropdown = elem
-          backend.closeOtherDropdowns(elem)
-        return
-
-      elif elem.dropdownIsOpen:
-        if elem.dropdownOptions.len > 0:
-          let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
-          let itemHeight = fontSize.float + 10.0
-          let dropdownHeight = min(elem.dropdownOptions.len.float * itemHeight, 200.0)
-          let dropdownRect = rect(elem.x, elem.y + elem.height, elem.width, dropdownHeight)
-
-          if checkCollisionPointRec(mousePos, dropdownRect):
-            let relativeY = mousePos.y - dropdownRect.y
-            let clickedIndex = int(relativeY / itemHeight)
-
-            if clickedIndex >= 0 and clickedIndex < elem.dropdownOptions.len:
-              elem.dropdownSelectedIndex = clickedIndex
-              elem.dropdownIsOpen = false
-              elem.dropdownHoveredIndex = -1
-              backend.state.focusedDropdown = nil
-
-              if elem.eventHandlers.hasKey("onChange"):
-                let handler = elem.eventHandlers["onChange"]
-                handler(elem.dropdownOptions[clickedIndex])
-
-              if elem.eventHandlers.hasKey("onSelectionChange"):
-                let handler = elem.eventHandlers["onSelectionChange"]
-                handler(elem.dropdownOptions[clickedIndex])
-
-              return
-          else:
-            elem.dropdownIsOpen = false
-            elem.dropdownHoveredIndex = -1
-            backend.state.focusedDropdown = nil
-        else:
-          elem.dropdownIsOpen = false
-          elem.dropdownHoveredIndex = -1
-          backend.state.focusedDropdown = nil
-      else:
-        if backend.state.focusedDropdown == elem:
-          backend.state.focusedDropdown = nil
-
-    # Handle hover state for dropdown options
+    # Dropdown clicks are now handled by the new pipeline system to avoid double-clicks
+    # Keep hover state for visual feedback
     if elem.dropdownIsOpen and elem.dropdownOptions.len > 0:
       let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
       let itemHeight = fontSize.float + 10.0

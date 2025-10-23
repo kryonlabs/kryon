@@ -47,6 +47,7 @@ compile_example() {
     local build_path="$BUILD_DIR/$example_name"
 
     echo -e "${BLUE}Compiling ${CYAN}$example_name${NC}..."
+
     if "$CLI_PATH" build -f "$example_file" -r raylib -o "$build_path"; then
         echo -e "${GREEN}✓ $example_name compiled successfully${NC}"
         return 0
@@ -79,9 +80,9 @@ run_example() {
     fi
 }
 
-# Get all .nim files in examples directory
+# Get all .nim files in examples directory (excluding wrapper files)
 examples_dir="examples"
-examples=($(find "$examples_dir" -name "*.nim" -not -path "*/build/*" | sort))
+examples=($(find "$examples_dir" -name "*.nim" -not -path "*/build/*" -not -name "wrapper.nim" | sort))
 
 if [ ${#examples[@]} -eq 0 ]; then
     echo -e "${RED}No .nim files found in $examples_dir${NC}"
