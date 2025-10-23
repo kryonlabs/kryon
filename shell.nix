@@ -11,6 +11,21 @@ pkgs.mkShell {
     SDL2.dev        # SDL2 itself DOES have a .dev output
     SDL2_ttf        # FIX: SDL2_ttf does NOT, so just use the main package
     pkg-config
+
+    # X11 and Wayland dependencies for naylib/raylib
+    xorg.libX11
+    xorg.libXrandr
+    xorg.libXi
+    xorg.libXcursor
+    xorg.libXinerama
+    libxkbcommon
+    wayland
+    wayland-protocols
+
+    # Audio dependencies for raylib
+    alsa-lib
+    mesa
+    libGL
   ];
 
   shellHook = ''

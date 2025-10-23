@@ -1,7 +1,9 @@
 ## Raylib Backend for Kryon
 ##
-## This backend renders Kryon UI elements using Raylib for native desktop applications.
+## This backend renders Kryon UI elements using Raylib (via naylib) for native desktop applications.
 
+import raylib_config  # Must be imported BEFORE raylib to enable image format support
+import raylib
 import ../../kryon/core
 import ../../kryon/fonts
 import ../../kryon/layout/layoutEngine
@@ -13,7 +15,6 @@ import ../../kryon/interactions/dragDrop
 import ../../kryon/interactions/tabReordering
 import ../../kryon/interactions/interactionState
 import options, tables, math, os, times, sets
-import ../windowing/raylib/raylib_ffi
 
 # ============================================================================
 # Backend Type
@@ -24,11 +25,12 @@ type
     windowWidth*: int
     windowHeight*: int
     windowTitle*: string
-    backgroundColor*: Color
+    backgroundColor*: core.Color
     running*: bool
     rootElement*: Element
-    font*: RFont           # Custom font for consistent rendering
-    state*: BackendState   # Shared state for all interactive elements
+    font*: raylib.Font           # Raylib font for rendering
+    state*: BackendState  # Shared state for all interactive elements
+    textureCache*: Table[string, raylib.Texture2D]  # Cache loaded textures
 
 proc newRaylibBackend*(width, height: int, title: string): RaylibBackend =
   ## Create a new Raylib backend
@@ -38,13 +40,12 @@ proc newRaylibBackend*(width, height: int, title: string): RaylibBackend =
     windowTitle: title,
     backgroundColor: rgba(30, 30, 30, 255),
     running: false,
-    state: newBackendState()
+    state: newBackendState(),
+    textureCache: initTable[string, raylib.Texture2D]()
   )
 
 proc newRaylibBackendFromApp*(app: Element): RaylibBackend =
   ## Create backend from app element (extracts config from Header and Body)
-  ## App structure: Body -> [Header, Body]
-
   var width = 800
   var height = 600
   var title = "Kryon App"
@@ -53,8 +54,6 @@ proc newRaylibBackendFromApp*(app: Element): RaylibBackend =
   # Look for Header and Body children in app
   for child in app.children:
     if child.kind == ekHeader:
-      # Extract window config from Header (support both full names and aliases)
-      # Try windowWidth first, then width
       var widthProp = child.getProp("windowWidth")
       if widthProp.isNone:
         widthProp = child.getProp("width")
@@ -71,7 +70,6 @@ proc newRaylibBackendFromApp*(app: Element): RaylibBackend =
       height = heightProp.get(val(600)).getInt()
       title = titleProp.get(val("Kryon App")).getString()
     elif child.kind == ekBody:
-      # Extract window background from Body
       bgColor = child.getProp("backgroundColor")
 
   result = RaylibBackend(
@@ -80,32 +78,39 @@ proc newRaylibBackendFromApp*(app: Element): RaylibBackend =
     windowTitle: title,
     backgroundColor: if bgColor.isSome: bgColor.get.getColor() else: rgba(30, 30, 30, 255),
     running: false,
-    state: newBackendState()
+    state: newBackendState(),
+    textureCache: initTable[string, raylib.Texture2D]()
   )
 
+# ============================================================================
+# Font Management for Layout
+# ============================================================================
+
 var
-  layoutFont: RFont
+  layoutFont: ptr raylib.Font
   layoutFontInitialized = false
 
-proc setLayoutFont*(font: RFont) =
-  ## Cache the active font for layout measurements.
-  layoutFont = font
+proc setLayoutFont*(font: var raylib.Font) =
+  ## Cache the active font for layout measurements
+  layoutFont = addr font
   layoutFontInitialized = true
 
 proc measureLayoutTextWidth(text: string, fontSize: int): float =
-  ## Measure text width for layout calculations using the cached font.
+  ## Measure text width for layout calculations using the cached font
   if text.len == 0:
     return 0.0
   if layoutFontInitialized:
-    return MeasureTextEx(layoutFont, text.cstring, fontSize.cfloat, 0.0).x
+    let size = measureText(layoutFont[], text, fontSize.float32, 0.0)
+    return size.x
   else:
-    return MeasureText(text.cstring, fontSize.cint).float
+    return measureText(text, fontSize.int32).float
 
 proc measureTextWidth*(backend: RaylibBackend, text: string, fontSize: int): float =
-  ## Measure text width using the backend's active font.
+  ## Measure text width using the backend's active font
   if text.len == 0:
     return 0.0
-  return MeasureTextEx(backend.font, text.cstring, fontSize.cfloat, 0.0).x
+  let size = measureText(backend.font, text, fontSize.float32, 0.0)
+  return size.x
 
 # ============================================================================
 # TextMeasurer Interface Implementation
@@ -115,61 +120,102 @@ proc measureText*(backend: RaylibBackend, text: string, fontSize: int): tuple[wi
   ## Implement TextMeasurer interface for layout engine
   if text.len == 0:
     return (width: 0.0, height: fontSize.float)
-  let size = MeasureTextEx(backend.font, text.cstring, fontSize.cfloat, 0.0)
+  let size = measureText(backend.font, text, fontSize.float32, 0.0)
   return (width: size.x, height: size.y)
 
 # ============================================================================
 # Color Conversion
 # ============================================================================
 
-proc toRaylibColor*(c: Color): RColor {.inline.} =
-  ## Convert Kryon Color to Raylib RColor
-  rcolor(c.r, c.g, c.b, c.a)
+proc toRaylibColor*(c: core.Color): raylib.Color {.inline.} =
+  ## Convert Kryon Color to Raylib Color
+  ## Both have same structure (r,g,b,a: uint8), so we can cast
+  raylib.Color(r: c.r, g: c.g, b: c.b, a: c.a)
+
+proc toKryonColor*(c: raylib.Color): core.Color {.inline.} =
+  ## Convert Raylib Color to Kryon Color
+  core.Color(r: c.r, g: c.g, b: c.b, a: c.a)
+
+# ============================================================================
+# Helper constructors
+# ============================================================================
+
+proc vec2*(x, y: float): raylib.Vector2 {.inline.} =
+  raylib.Vector2(x: x.float32, y: y.float32)
+
+proc rect*(x, y, width, height: float): raylib.Rectangle {.inline.} =
+  raylib.Rectangle(x: x.float32, y: y.float32, width: width.float32, height: height.float32)
 
 # ============================================================================
 # Renderer Interface Implementation
 # ============================================================================
 
-proc drawRectangle*(backend: var RaylibBackend, x, y, width, height: float, color: Color) =
+proc drawRectangle*(backend: var RaylibBackend, x, y, width, height: float, color: core.Color) =
   ## Draw a filled rectangle
-  DrawRectangleRec(rrect(x, y, width, height), color.toRaylibColor())
+  drawRectangle(rect(x, y, width, height), color.toRaylibColor())
 
-proc drawRectangleBorder*(backend: var RaylibBackend, x, y, width, height, borderWidth: float, color: Color) =
+proc drawRectangleBorder*(backend: var RaylibBackend, x, y, width, height, borderWidth: float, color: core.Color) =
   ## Draw a rectangle border
-  DrawRectangleLinesEx(rrect(x, y, width, height), borderWidth, color.toRaylibColor())
+  drawRectangleLines(rect(x, y, width, height), borderWidth.float32, color.toRaylibColor())
 
-proc drawText*(backend: var RaylibBackend, text: string, x, y: float, fontSize: int, color: Color) =
+proc drawText*(backend: var RaylibBackend, text: string, x, y: float, fontSize: int, color: core.Color) =
   ## Draw text using the backend's font
-  DrawTextEx(backend.font, text.cstring, rvec2(x, y), fontSize.cfloat, 0.0, color.toRaylibColor())
+  drawText(backend.font, text, vec2(x, y), fontSize.float32, 0.0, color.toRaylibColor())
 
-proc drawLine*(backend: var RaylibBackend, x1, y1, x2, y2, thickness: float, color: Color) =
+proc drawLine*(backend: var RaylibBackend, x1, y1, x2, y2, thickness: float, color: core.Color) =
   ## Draw a line
   if thickness <= 1.0:
-    # Use rectangle for thin lines since DrawLine might not be available
-    DrawRectangle(x1.cint, y1.cint, (x2 - x1).abs.cint + 1, (y2 - y1).abs.cint + 1, color.toRaylibColor())
+    raylib.drawLine(x1.int32, y1.int32, x2.int32, y2.int32, color.toRaylibColor())
   else:
-    # For thicker lines, draw a rectangle rotated
-    # Simple implementation: just draw a thick horizontal or vertical line
+    # For thicker lines, draw a rectangle
     if abs(x2 - x1) > abs(y2 - y1):
       # More horizontal
-      DrawRectangle(min(x1, x2).cint, (y1 - thickness / 2).cint, abs(x2 - x1).cint, thickness.cint, color.toRaylibColor())
+      drawRectangle(backend, min(x1, x2), y1 - thickness / 2, abs(x2 - x1), thickness, color)
     else:
       # More vertical
-      DrawRectangle((x1 - thickness / 2).cint, min(y1, y2).cint, thickness.cint, abs(y2 - y1).cint, color.toRaylibColor())
+      drawRectangle(backend, x1 - thickness / 2, min(y1, y2), thickness, abs(y2 - y1), color)
+
+proc drawImage*(backend: var RaylibBackend, imagePath: string, x, y, width, height: float) =
+  ## Draw an image at specified position with given dimensions
+  if not fileExists(imagePath):
+    # File doesn't exist, draw placeholder
+    drawRectangle(backend, x, y, width, height, rgba(204, 204, 204, 255))
+    drawText(backend, "X", x + width/2 - 8, y + height/2 - 8, 16, rgba(255, 0, 0, 255))
+    return
+
+  # Check if texture is already cached
+  if not backend.textureCache.hasKey(imagePath):
+    try:
+      let texture = loadTexture(imagePath)
+      backend.textureCache[imagePath] = texture
+      echo "Loaded and cached texture: ", imagePath
+    except:
+      # Failed to load image, draw placeholder
+      echo "Failed to load image: ", imagePath, " - ", getCurrentExceptionMsg()
+      drawRectangle(backend, x, y, width, height, rgba(204, 204, 204, 255))
+      drawText(backend, "X", x + width/2 - 8, y + height/2 - 8, 16, rgba(255, 0, 0, 255))
+      return
+
+  # Draw the cached texture
+  # Access width/height directly to avoid copying the Texture
+  let texWidth = backend.textureCache[imagePath].width.float
+  let texHeight = backend.textureCache[imagePath].height.float
+  let sourceRect = rect(0, 0, texWidth, texHeight)
+  let destRect = rect(x, y, width, height)
+  drawTexture(backend.textureCache[imagePath], sourceRect, destRect, vec2(0, 0), 0, raylib.White)
 
 proc beginClipping*(backend: var RaylibBackend, x, y, width, height: float) =
   ## Begin clipping region (scissor mode)
-  BeginScissorMode(x.cint, y.cint, width.cint, height.cint)
+  beginScissorMode(x.int32, y.int32, width.int32, height.int32)
 
 proc endClipping*(backend: var RaylibBackend) =
   ## End clipping region
-  EndScissorMode()
+  endScissorMode()
 
 # ============================================================================
 # Layout Engine Wrapper
 # ============================================================================
 
-# Text measurer for layout - uses cached font or active backend font
 type LayoutTextMeasurer = object
   backend: ptr RaylibBackend
 
@@ -179,13 +225,13 @@ proc measureText(m: LayoutTextMeasurer, text: string, fontSize: int): tuple[widt
     return (width: 0.0, height: fontSize.float)
 
   if layoutFontInitialized:
-    let size = MeasureTextEx(layoutFont, text.cstring, fontSize.cfloat, 0.0)
+    let size = measureText(layoutFont[], text, fontSize.float32, 0.0)
     return (width: size.x, height: size.y)
   elif m.backend != nil:
-    let size = MeasureTextEx(m.backend.font, text.cstring, fontSize.cfloat, 0.0)
+    let size = measureText(m.backend.font, text, fontSize.float32, 0.0)
     return (width: size.x, height: size.y)
   else:
-    return (width: MeasureText(text.cstring, fontSize.cint).float, height: fontSize.float)
+    return (width: measureText(text, fontSize.int32).float, height: fontSize.float)
 
 proc measureTextWidth(m: LayoutTextMeasurer, text: string, fontSize: int): float =
   ## Measure text width for layout - optimization when height not needed
@@ -199,10 +245,12 @@ proc calculateLayout*(backend: var RaylibBackend, elem: Element, x, y, parentWid
 
 proc calculateLayout*(elem: Element, x, y, parentWidth, parentHeight: float) =
   ## Convenience wrapper for layout calculation without backend reference
-  ## Uses the cached layout font
   var measurer = LayoutTextMeasurer(backend: nil)
   layoutEngine.calculateLayout(measurer, elem, x, y, parentWidth, parentHeight)
 
+# ============================================================================
+# Interaction Helpers
+# ============================================================================
 
 proc closeOtherDropdowns*(backend: var RaylibBackend, keepOpen: Element) =
   ## Close all dropdowns except the specified one
@@ -218,10 +266,9 @@ proc closeOtherDropdowns*(backend: var RaylibBackend, keepOpen: Element) =
 
   closeDropdownsRecursive(backend.rootElement)
 
-
 proc checkHoverCursor*(elem: Element): bool =
   ## Check if mouse is hovering over any interactive element that needs pointer cursor
-  ## Returns true if pointer cursor should be shown
+  let mousePos = getMousePosition()
 
   case elem.kind:
   of ekConditional:
@@ -235,48 +282,40 @@ proc checkHoverCursor*(elem: Element): bool =
   of ekButton:
     if isDisabled(elem):
       return false
-    let mousePos = GetMousePosition()
-    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
-    if CheckCollisionPointRec(mousePos, rect):
+    let rectArea = rect(elem.x, elem.y, elem.width, elem.height)
+    if checkCollisionPointRec(mousePos, rectArea):
       return true
 
   of ekTab:
-    let mousePos = GetMousePosition()
-    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
-    if CheckCollisionPointRec(mousePos, rect):
+    let rectArea = rect(elem.x, elem.y, elem.width, elem.height)
+    if checkCollisionPointRec(mousePos, rectArea):
       return true
 
   of ekDropdown:
-    let mousePos = GetMousePosition()
-    let mainRect = rrect(elem.x, elem.y, elem.width, elem.height)
-
-    if CheckCollisionPointRec(mousePos, mainRect):
+    let mainRect = rect(elem.x, elem.y, elem.width, elem.height)
+    if checkCollisionPointRec(mousePos, mainRect):
       return true
 
     if elem.dropdownIsOpen and elem.dropdownOptions.len > 0:
       let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
       let itemHeight = fontSize.float + 10.0
       let dropdownHeight = min(elem.dropdownOptions.len.float * itemHeight, 200.0)
-      let dropdownRect = rrect(elem.x, elem.y + elem.height, elem.width, dropdownHeight)
-      if CheckCollisionPointRec(mousePos, dropdownRect):
+      let dropdownRect = rect(elem.x, elem.y + elem.height, elem.width, dropdownHeight)
+      if checkCollisionPointRec(mousePos, dropdownRect):
         return true
 
   of ekCheckbox:
-    let mousePos = GetMousePosition()
     let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
     let checkboxSize = min(elem.height, fontSize.float + 8.0)
-    let checkboxRect = rrect(elem.x, elem.y + (elem.height - checkboxSize) / 2.0, checkboxSize, checkboxSize)
+    let checkboxRect = rect(elem.x, elem.y + (elem.height - checkboxSize) / 2.0, checkboxSize, checkboxSize)
 
     let label = elem.getProp("label").get(val("")).getString()
     var hoverArea = checkboxRect
 
     if label.len > 0:
-      hoverArea.x = elem.x
-      hoverArea.y = elem.y
-      hoverArea.width = elem.width
-      hoverArea.height = elem.height
+      hoverArea = rect(elem.x, elem.y, elem.width, elem.height)
 
-    if CheckCollisionPointRec(mousePos, hoverArea):
+    if checkCollisionPointRec(mousePos, hoverArea):
       return true
 
   else:
@@ -288,11 +327,13 @@ proc checkHoverCursor*(elem: Element): bool =
 
   return false
 
+# ============================================================================
+# Input Handling
+# ============================================================================
 
 proc handleInput*(backend: var RaylibBackend, elem: Element) =
   ## Handle mouse input for interactive elements
-
-  let mousePos = GetMousePosition()
+  let mousePos = getMousePosition()
   let mouseX = mousePos.x.float
   let mouseY = mousePos.y.float
 
@@ -300,10 +341,10 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
     if globalInteractionState.shouldClearDragOverride:
       resetTabContentOverride()
 
-    if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
+    if isMouseButtonPressed(MouseButton.Left):
       discard handleDragStart(backend.rootElement, mouseX, mouseY)
 
-    if globalInteractionState.draggedElement != nil and IsMouseButtonDown(MOUSE_BUTTON_LEFT):
+    if globalInteractionState.draggedElement != nil and isMouseButtonDown(MouseButton.Left):
       handleDragMove(backend.rootElement, mouseX, mouseY)
       if globalInteractionState.dragHasMoved and not globalInteractionState.isLiveReordering:
         var container = globalInteractionState.draggedElement.parent
@@ -317,7 +358,7 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
         updateTabInsertIndex(globalInteractionState.potentialDropTarget, mouseX)
         updateLiveTabOrder()
 
-    if globalInteractionState.draggedElement != nil and IsMouseButtonReleased(MOUSE_BUTTON_LEFT):
+    if globalInteractionState.draggedElement != nil and isMouseButtonReleased(MouseButton.Left):
       let draggedElem = globalInteractionState.draggedElement
       let savedInsertIndex = globalInteractionState.dragInsertIndex
       let dropTargetBeforeDrop = globalInteractionState.potentialDropTarget
@@ -330,125 +371,89 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
           shouldCommit = dropTargetBeforeDrop == afterInteraction.reorderableContainer
         finalizeTabReorder(draggedElem, shouldCommit)
 
-  # ============================================================================
-  # Element-Specific Input Handling
-  # ============================================================================
-
+  # Element-specific input handling
   case elem.kind:
   of ekHeader:
-    # Header is metadata only - no input handling
     discard
 
   of ekConditional:
-    # Conditional elements only handle input for their active branch
     if elem.condition != nil:
       let conditionResult = elem.condition()
       let activeBranch = if conditionResult: elem.trueBranch else: elem.falseBranch
-
-      # Handle input for the active branch if it exists
       if activeBranch != nil:
         backend.handleInput(activeBranch)
 
   of ekBody:
-    # Body is a wrapper - handle children's input (reverse z-index order, highest first)
     let sortedChildren = sortChildrenByZIndexReverse(elem.children)
     for child in sortedChildren:
       backend.handleInput(child)
 
   of ekButton:
-    # Check if button is disabled - if so, don't handle clicks
     if not isDisabled(elem):
-      if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
-        let mousePos = GetMousePosition()
-        let rect = rrect(elem.x, elem.y, elem.width, elem.height)
-
-        if CheckCollisionPointRec(mousePos, rect):
-          # Button was clicked - trigger onClick handler
+      if isMouseButtonPressed(MouseButton.Left):
+        let rectArea = rect(elem.x, elem.y, elem.width, elem.height)
+        if checkCollisionPointRec(mousePos, rectArea):
           if elem.eventHandlers.hasKey("onClick"):
             elem.eventHandlers["onClick"]()
 
   of ekInput:
-    if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
-      let mousePos = GetMousePosition()
-      let rect = rrect(elem.x, elem.y, elem.width, elem.height)
-
-      if CheckCollisionPointRec(mousePos, rect):
-        # Input was clicked - focus it
+    if isMouseButtonPressed(MouseButton.Left):
+      let rectArea = rect(elem.x, elem.y, elem.width, elem.height)
+      if checkCollisionPointRec(mousePos, rectArea):
         backend.state.focusedInput = elem
-        backend.state.cursorBlink = 0.0  # Reset cursor blink
-
-        # Initialize input value if not already present
+        backend.state.cursorBlink = 0.0
         if not backend.state.inputValues.hasKey(elem):
           let initialValue = elem.getProp("value").get(val("")).getString()
           backend.state.inputValues[elem] = initialValue
       else:
-        # Clicked outside - unfocus if this was focused
         if backend.state.focusedInput == elem:
           backend.state.focusedInput = nil
 
   of ekCheckbox:
-    if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
-      let mousePos = GetMousePosition()
-
-      # Calculate checkbox clickable area (including label)
+    if isMouseButtonPressed(MouseButton.Left):
       let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
       let checkboxSize = min(elem.height, fontSize.float + 8.0)
-      let checkboxRect = rrect(elem.x, elem.y + (elem.height - checkboxSize) / 2.0, checkboxSize, checkboxSize)
+      let checkboxRect = rect(elem.x, elem.y + (elem.height - checkboxSize) / 2.0, checkboxSize, checkboxSize)
 
-      # Check if click is on checkbox or label
       let label = elem.getProp("label").get(val("")).getString()
       var clickArea = checkboxRect
 
       if label.len > 0:
-        # Extend clickable area to include the full element bounds
-        clickArea.x = elem.x
-        clickArea.y = elem.y
-        clickArea.width = elem.width
-        clickArea.height = elem.height
+        clickArea = rect(elem.x, elem.y, elem.width, elem.height)
 
-      if CheckCollisionPointRec(mousePos, clickArea):
-        # Checkbox was clicked - toggle state
+      if checkCollisionPointRec(mousePos, clickArea):
         var currentState = backend.state.checkboxStates.getOrDefault(elem, false)
         currentState = not currentState
         backend.state.checkboxStates[elem] = currentState
 
-        # Trigger onClick handler if present
         if elem.eventHandlers.hasKey("onClick"):
           elem.eventHandlers["onClick"]()
 
-        # Trigger onChange handler if present (pass the new state as data)
         if elem.eventHandlers.hasKey("onChange"):
           let handler = elem.eventHandlers["onChange"]
-          handler($currentState)  # Pass boolean state as string
+          handler($currentState)
 
   of ekTabGroup, ekTabBar, ekTabContent:
-    # Tab containers - explicitly handle structural children's input (reverse z-index order)
     let sortedChildren = sortChildrenByZIndexReverse(elem.children)
     for child in sortedChildren:
       if child.kind == ekConditional:
-        # Conditionals handle their own input (see ekConditional case)
         backend.handleInput(child)
       elif child.kind == ekForLoop:
-        # For loops contain dynamic children - recurse into them
         for grandchild in child.children:
           backend.handleInput(grandchild)
       else:
         backend.handleInput(child)
 
   of ekTab:
-    let mousePos = GetMousePosition()
-    let rect = rrect(elem.x, elem.y, elem.width, elem.height)
-    let isPressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT)
-    let isDown = IsMouseButtonDown(MOUSE_BUTTON_LEFT)
+    let rectArea = rect(elem.x, elem.y, elem.width, elem.height)
+    let isPressed = isMouseButtonPressed(MouseButton.Left)
 
     let interaction = getInteractionState()
     if isPressed and not interaction.isLiveReordering:
-      if CheckCollisionPointRec(mousePos, rect):
-        # Tab was clicked - find and update parent TabGroup's selectedIndex
+      if checkCollisionPointRec(mousePos, rectArea):
         var parent = elem.parent
         var tabGroup: Element = nil
 
-        # Find the TabGroup (not just TabBar)
         while parent != nil:
           if parent.kind == ekTabGroup:
             tabGroup = parent
@@ -456,121 +461,92 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
           parent = parent.parent
 
         if tabGroup != nil:
-          # Update the selected index
           let oldSelectedIndex = tabGroup.tabSelectedIndex
           tabGroup.tabSelectedIndex = elem.tabIndex
 
-          # Enhanced reactivity: invalidate reactive values that depend on tab selection
-          # This triggers automatic updates for any element that depends on tab state
           if oldSelectedIndex != tabGroup.tabSelectedIndex:
-            # Log the tab change for debugging
             echo "TAB CHANGED: from index ", oldSelectedIndex, " to index ", tabGroup.tabSelectedIndex
 
-            # Trigger the onSelectedIndexChanged event for two-way binding
             if tabGroup.eventHandlers.hasKey("onSelectedIndexChanged"):
               echo "TRIGGERING: onSelectedIndexChanged event for TabGroup"
               tabGroup.eventHandlers["onSelectedIndexChanged"]()
 
-            # Use the improved reactive system to invalidate related values
-            # This automatically handles cross-element dependencies
             invalidateRelatedValues("tabSelectedIndex")
 
-            # Also mark TabGroup and related elements as dirty for immediate visual updates
             markDirty(tabGroup)
             for child in tabGroup.children:
               markDirty(child)
-              # Also mark TabContent's children (TabPanels) for complete re-render
               if child.kind == ekTabContent:
                 echo "Marking TabContent children as dirty for tab change"
                 for panel in child.children:
                   markDirty(panel)
-                  # Recursively mark all descendants as dirty to ensure calendar updates
                   markAllDescendantsDirty(panel)
 
-        # Trigger onClick handler if present
         if elem.eventHandlers.hasKey("onClick"):
           elem.eventHandlers["onClick"]()
 
   of ekDropdown:
-    if IsMouseButtonPressed(MOUSE_BUTTON_LEFT):
-      let mousePos = GetMousePosition()
-      let mainRect = rrect(elem.x, elem.y, elem.width, elem.height)
+    if isMouseButtonPressed(MouseButton.Left):
+      let mainRect = rect(elem.x, elem.y, elem.width, elem.height)
 
-      if CheckCollisionPointRec(mousePos, mainRect):
-        # Main dropdown button was clicked
+      if checkCollisionPointRec(mousePos, mainRect):
         if elem.dropdownIsOpen:
-          # Close the dropdown
           elem.dropdownIsOpen = false
           elem.dropdownHoveredIndex = -1
           backend.state.focusedDropdown = nil
         else:
-          # Open the dropdown
           elem.dropdownIsOpen = true
-          elem.dropdownHoveredIndex = elem.dropdownSelectedIndex  # Start with current selection
+          elem.dropdownHoveredIndex = elem.dropdownSelectedIndex
           backend.state.focusedDropdown = elem
-
-          # Close any other dropdowns
           backend.closeOtherDropdowns(elem)
-
-        # Early return to prevent click-through to underlying elements
         return
 
       elif elem.dropdownIsOpen:
-        # Check if clicked on dropdown options
         if elem.dropdownOptions.len > 0:
           let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
-          let itemHeight = fontSize.float + 10.0  # Match rendering code
+          let itemHeight = fontSize.float + 10.0
           let dropdownHeight = min(elem.dropdownOptions.len.float * itemHeight, 200.0)
-          let dropdownRect = rrect(elem.x, elem.y + elem.height, elem.width, dropdownHeight)
+          let dropdownRect = rect(elem.x, elem.y + elem.height, elem.width, dropdownHeight)
 
-          if CheckCollisionPointRec(mousePos, dropdownRect):
-            # Calculate which option was clicked
+          if checkCollisionPointRec(mousePos, dropdownRect):
             let relativeY = mousePos.y - dropdownRect.y
             let clickedIndex = int(relativeY / itemHeight)
 
             if clickedIndex >= 0 and clickedIndex < elem.dropdownOptions.len:
-              # Select the clicked option
               elem.dropdownSelectedIndex = clickedIndex
               elem.dropdownIsOpen = false
               elem.dropdownHoveredIndex = -1
               backend.state.focusedDropdown = nil
 
-              # Trigger onChange handler if present
               if elem.eventHandlers.hasKey("onChange"):
                 let handler = elem.eventHandlers["onChange"]
                 handler(elem.dropdownOptions[clickedIndex])
 
-              # For onSelectionChange, we pass the selected value as data (index can be parsed if needed)
               if elem.eventHandlers.hasKey("onSelectionChange"):
                 let handler = elem.eventHandlers["onSelectionChange"]
                 handler(elem.dropdownOptions[clickedIndex])
 
-              # Early return to prevent click-through to underlying elements
               return
           else:
-            # Clicked outside dropdown - close it
             elem.dropdownIsOpen = false
             elem.dropdownHoveredIndex = -1
             backend.state.focusedDropdown = nil
         else:
-          # No options - close dropdown
           elem.dropdownIsOpen = false
           elem.dropdownHoveredIndex = -1
           backend.state.focusedDropdown = nil
       else:
-        # Clicked outside while closed - just ensure it's not focused
         if backend.state.focusedDropdown == elem:
           backend.state.focusedDropdown = nil
 
     # Handle hover state for dropdown options
     if elem.dropdownIsOpen and elem.dropdownOptions.len > 0:
-      let mousePos = GetMousePosition()
       let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
-      let itemHeight = fontSize.float + 10.0  # Match rendering code
+      let itemHeight = fontSize.float + 10.0
       let dropdownHeight = min(elem.dropdownOptions.len.float * itemHeight, 200.0)
-      let dropdownRect = rrect(elem.x, elem.y + elem.height, elem.width, dropdownHeight)
+      let dropdownRect = rect(elem.x, elem.y + elem.height, elem.width, dropdownHeight)
 
-      if CheckCollisionPointRec(mousePos, dropdownRect):
+      if checkCollisionPointRec(mousePos, dropdownRect):
         let relativeY = mousePos.y - dropdownRect.y
         let hoveredIndex = int(relativeY / itemHeight)
 
@@ -582,44 +558,35 @@ proc handleInput*(backend: var RaylibBackend, elem: Element) =
         elem.dropdownHoveredIndex = -1
 
   of ekColumn, ekRow, ekCenter, ekContainer:
-    # Layout containers - only handle children's input (reverse z-index order, highest first)
     let sortedChildren = sortChildrenByZIndexReverse(elem.children)
     for child in sortedChildren:
       backend.handleInput(child)
 
   else:
-    # Other element types - check children (reverse z-index order, highest first)
     let sortedChildren = sortChildrenByZIndexReverse(elem.children)
     for child in sortedChildren:
       backend.handleInput(child)
 
-
 proc handleKeyboardInput*(backend: var RaylibBackend, root: Element) =
-  ## Handle keyboard input for focused input and dropdown elements
+  ## Handle keyboard input for focused elements
 
   # Handle checkbox keyboard input
-  # For simplicity, we'll handle basic checkbox toggling with a focused element state
-  # Note: This is a basic implementation. A full implementation would need checkbox focus management
-  let mousePos = GetMousePosition()
+  let mousePos = getMousePosition()
   proc findCheckboxUnderMouse(elem: Element): Element =
     if elem.kind == ekCheckbox:
       let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
       let checkboxSize = min(elem.height, fontSize.float + 8.0)
-      let checkboxRect = rrect(elem.x, elem.y + (elem.height - checkboxSize) / 2.0, checkboxSize, checkboxSize)
+      let checkboxRect = rect(elem.x, elem.y + (elem.height - checkboxSize) / 2.0, checkboxSize, checkboxSize)
 
       let label = elem.getProp("label").get(val("")).getString()
       var clickArea = checkboxRect
 
       if label.len > 0:
-        clickArea.x = elem.x
-        clickArea.y = elem.y
-        clickArea.width = elem.width
-        clickArea.height = elem.height
+        clickArea = rect(elem.x, elem.y, elem.width, elem.height)
 
-      if CheckCollisionPointRec(mousePos, clickArea):
+      if checkCollisionPointRec(mousePos, clickArea):
         return elem
 
-    # Check children
     for child in elem.children:
       let found = findCheckboxUnderMouse(child)
       if found != nil:
@@ -629,131 +596,105 @@ proc handleKeyboardInput*(backend: var RaylibBackend, root: Element) =
 
   let hoveredCheckbox = findCheckboxUnderMouse(root)
   if hoveredCheckbox != nil:
-    if IsKeyPressed(KEY_ENTER):
-      # Toggle checkbox state
+    if isKeyPressed(KeyboardKey.Enter):
       var currentState = backend.state.checkboxStates.getOrDefault(hoveredCheckbox, false)
       currentState = not currentState
       backend.state.checkboxStates[hoveredCheckbox] = currentState
 
-      # Trigger onClick handler if present
       if hoveredCheckbox.eventHandlers.hasKey("onClick"):
         hoveredCheckbox.eventHandlers["onClick"]()
 
-      # Trigger onChange handler if present (pass the new state as data)
       if hoveredCheckbox.eventHandlers.hasKey("onChange"):
         let handler = hoveredCheckbox.eventHandlers["onChange"]
-        handler($currentState)  # Pass boolean state as string
+        handler($currentState)
 
   # Handle dropdown keyboard input
   if backend.state.focusedDropdown != nil:
     let dropdown = backend.state.focusedDropdown
 
-    if IsKeyPressed(KEY_ESCAPE):
-      # Close dropdown on ESC
+    if isKeyPressed(KeyboardKey.Escape):
       dropdown.dropdownIsOpen = false
       dropdown.dropdownHoveredIndex = -1
       backend.state.focusedDropdown = nil
 
     elif dropdown.dropdownIsOpen:
       if dropdown.dropdownOptions.len > 0:
-        var handled = false
-
-        if IsKeyPressed(KEY_UP):
-          # Move selection up
+        if isKeyPressed(KeyboardKey.Up):
           dropdown.dropdownHoveredIndex = if dropdown.dropdownHoveredIndex <= 0:
-            dropdown.dropdownOptions.len - 1  # Wrap to bottom
+            dropdown.dropdownOptions.len - 1
           else:
             dropdown.dropdownHoveredIndex - 1
-          handled = true
 
-        elif IsKeyPressed(KEY_DOWN):
-          # Move selection down
+        elif isKeyPressed(KeyboardKey.Down):
           dropdown.dropdownHoveredIndex = if dropdown.dropdownHoveredIndex >= dropdown.dropdownOptions.len - 1:
-            0  # Wrap to top
+            0
           else:
             dropdown.dropdownHoveredIndex + 1
-          handled = true
 
-        elif IsKeyPressed(KEY_ENTER):
-          # Select current hover item
+        elif isKeyPressed(KeyboardKey.Enter):
           if dropdown.dropdownHoveredIndex >= 0 and dropdown.dropdownHoveredIndex < dropdown.dropdownOptions.len:
             dropdown.dropdownSelectedIndex = dropdown.dropdownHoveredIndex
             dropdown.dropdownIsOpen = false
             dropdown.dropdownHoveredIndex = -1
             backend.state.focusedDropdown = nil
 
-            # Trigger onChange handler if present
             if dropdown.eventHandlers.hasKey("onChange"):
               let handler = dropdown.eventHandlers["onChange"]
               handler(dropdown.dropdownOptions[dropdown.dropdownSelectedIndex])
 
-            # Trigger onSelectionChange handler if present
             if dropdown.eventHandlers.hasKey("onSelectionChange"):
               let handler = dropdown.eventHandlers["onSelectionChange"]
               handler(dropdown.dropdownOptions[dropdown.dropdownSelectedIndex])
-          handled = true
 
-        elif IsKeyPressed(KEY_TAB):
-          # Close dropdown on TAB (don't select)
+        elif isKeyPressed(KeyboardKey.Tab):
           dropdown.dropdownIsOpen = false
           dropdown.dropdownHoveredIndex = -1
           backend.state.focusedDropdown = nil
-          handled = true
 
-      # If no dropdown-specific key was pressed, don't handle further
       return
 
   # Handle input field keyboard input
   if backend.state.focusedInput == nil:
-    backend.state.backspaceHoldTimer = 0.0  # Reset timer when no focus
+    backend.state.backspaceHoldTimer = 0.0
     return
 
-  # Get current value
   var currentValue = backend.state.inputValues.getOrDefault(backend.state.focusedInput, "")
   var textChanged = false
 
   # Handle character input
   while true:
-    let char = GetCharPressed()
+    let char = getCharPressed()
     if char == 0:
       break
-    # Add printable characters
     if char >= 32 and char < 127:
       currentValue.add(char.chr)
       textChanged = true
-      backend.state.backspaceHoldTimer = 0.0  # Reset backspace timer when typing
+      backend.state.backspaceHoldTimer = 0.0
 
-  # Handle backspace with repeat logic
-  let backspacePressed = IsKeyDown(KEY_BACKSPACE)
+  # Handle backspace
+  let backspacePressed = isKeyDown(KeyboardKey.Backspace)
   if backspacePressed and currentValue.len > 0:
-    if IsKeyPressed(KEY_BACKSPACE):
-      # First press - delete one character immediately
+    if isKeyPressed(KeyboardKey.Backspace):
       currentValue.setLen(currentValue.len - 1)
       textChanged = true
-      backend.state.backspaceHoldTimer = 0.0  # Start the hold timer
+      backend.state.backspaceHoldTimer = 0.0
     else:
-      # Key is being held down
-      backend.state.backspaceHoldTimer += 1.0 / 60.0  # Increment by frame time (~16ms at 60fps)
+      backend.state.backspaceHoldTimer += 1.0 / 60.0
 
-      # Check if we should delete more characters
       if backend.state.backspaceHoldTimer >= backend.state.backspaceRepeatDelay:
-        # Calculate how many characters to delete based on hold time
         let holdBeyondDelay = backend.state.backspaceHoldTimer - backend.state.backspaceRepeatDelay
         let charsToDelete = min(int(holdBeyondDelay / backend.state.backspaceRepeatRate), currentValue.len)
 
         if charsToDelete > 0:
           currentValue.setLen(currentValue.len - charsToDelete)
           textChanged = true
-          # Adjust timer to maintain repeat rate
           backend.state.backspaceHoldTimer = backend.state.backspaceRepeatDelay +
                                       (charsToDelete.float * backend.state.backspaceRepeatRate)
   else:
-    # Backspace not pressed - reset timer
     backend.state.backspaceHoldTimer = 0.0
 
-  # Handle other special keys
-  if IsKeyPressed(KEY_ENTER):
-    # Trigger onSubmit handler if present
+  # Handle enter key
+  if isKeyPressed(KeyboardKey.Enter):
     if backend.state.focusedInput.eventHandlers.hasKey("onSubmit"):
       backend.state.focusedInput.eventHandlers["onSubmit"]()
 
@@ -761,17 +702,15 @@ proc handleKeyboardInput*(backend: var RaylibBackend, root: Element) =
   if textChanged:
     backend.state.inputValues[backend.state.focusedInput] = currentValue
 
-  # Trigger onChange handler if present
+  # Trigger event handlers
   if textChanged and backend.state.focusedInput.eventHandlers.hasKey("onChange"):
     let handler = backend.state.focusedInput.eventHandlers["onChange"]
     handler(currentValue)
 
-  # Trigger onTextChange handler for real-time text updates
   if textChanged and backend.state.focusedInput.eventHandlers.hasKey("onTextChange"):
     let handler = backend.state.focusedInput.eventHandlers["onTextChange"]
     handler(currentValue)
 
-  # Trigger onValueChange handler for two-way binding
   if textChanged and backend.state.focusedInput.eventHandlers.hasKey("onValueChange"):
     let handler = backend.state.focusedInput.eventHandlers["onValueChange"]
     handler(currentValue)
@@ -782,22 +721,20 @@ proc handleKeyboardInput*(backend: var RaylibBackend, root: Element) =
 
 proc run*(backend: var RaylibBackend, root: Element) =
   ## Run the application with the given root element
-
   backend.rootElement = root
   backend.running = true
 
   # Initialize Raylib window
-  InitWindow(backend.windowWidth.cint, backend.windowHeight.cint, backend.windowTitle.cstring)
-  SetTargetFPS(60)
+  initWindow(backend.windowWidth.int32, backend.windowHeight.int32, backend.windowTitle)
+  setTargetFPS(60)
 
-  # Load font based on fontFamily property or default font
+  # Load font
   var fontPath = ""
   var fontName = resolvePreferredFont(root)
 
   if fontName.len > 0:
     fontPath = findFontByName(fontName)
 
-  # If no specific font found, try default font configuration
   if fontPath.len == 0:
     let fontInfo = getDefaultFontInfo()
     if fontInfo.path.len > 0:
@@ -805,23 +742,22 @@ proc run*(backend: var RaylibBackend, root: Element) =
       fontName = fontInfo.name
       echo "Using default font: " & fontName & " at " & fontPath
 
-  # Load the font
   if fontPath.len > 0:
     echo "Loading font: " & fontPath
     if fileExists(fontPath):
       echo "Font file exists on disk"
-      backend.font = LoadFont(fontPath.cstring)
-      if backend.font.baseSize > 0:  # Check if font loaded successfully
+      backend.font = loadFont(fontPath)
+      if backend.font.baseSize > 0:
         echo "Successfully loaded font: " & fontName & " (baseSize: " & $backend.font.baseSize & ")"
       else:
         echo "Warning: Failed to load font (baseSize=0), using Raylib default font"
-        backend.font = GetFontDefault()
+        backend.font = getFontDefault()
     else:
       echo "Error: Font file does not exist: " & fontPath
-      backend.font = GetFontDefault()
+      backend.font = getFontDefault()
   else:
     echo "No font found, using Raylib default font"
-    backend.font = GetFontDefault()
+    backend.font = getFontDefault()
 
   setLayoutFont(backend.font)
 
@@ -829,39 +765,36 @@ proc run*(backend: var RaylibBackend, root: Element) =
   calculateLayout(root, 0, 0, backend.windowWidth.float, backend.windowHeight.float)
 
   # Main game loop
-  while not WindowShouldClose():
+  while not windowShouldClose():
     # Update cursor blink timer
-    backend.state.cursorBlink += 1.0 / 60.0  # Assuming 60 FPS
+    backend.state.cursorBlink += 1.0 / 60.0
     if backend.state.cursorBlink >= 1.0:
       backend.state.cursorBlink = 0.0
 
     # Update mouse cursor based on hover state
     if checkHoverCursor(root):
-      SetMouseCursor(MOUSE_CURSOR_POINTING_HAND)
+      setMouseCursor(MouseCursor.PointingHand)
     else:
-      SetMouseCursor(MOUSE_CURSOR_DEFAULT)
+      setMouseCursor(MouseCursor.Default)
 
-    # Handle mouse input
+    # Handle input
     backend.handleInput(root)
-
-    # Handle keyboard input
     backend.handleKeyboardInput(root)
 
-    # Only recalculate layout when there are dirty elements (intelligent updates)
+    # Recalculate layout when there are dirty elements
     if hasDirtyElements():
       calculateLayout(root, 0, 0, backend.windowWidth.float, backend.windowHeight.float)
 
     # Render
-    BeginDrawing()
+    beginDrawing()
 
-    # Find the actual Body element (child of root) and check for background color
+    # Find the actual Body element and check for background color
     var actualBody: Element = nil
     for child in root.children:
       if child.kind == ekBody:
         actualBody = child
         break
 
-    # Check for both "background" and "backgroundColor" properties
     var bodyBg: Option[Value] = none(Value)
     if actualBody != nil:
       bodyBg = actualBody.getProp("backgroundColor")
@@ -870,23 +803,22 @@ proc run*(backend: var RaylibBackend, root: Element) =
 
     if bodyBg.isSome:
       let bgColor = bodyBg.get.getColor()
-      ClearBackground(bgColor.toRaylibColor())
+      clearBackground(bgColor.toRaylibColor())
     else:
-      ClearBackground(backend.backgroundColor.toRaylibColor())
+      clearBackground(backend.backgroundColor.toRaylibColor())
 
-    # Render all elements with normal z-index sorting
+    # Render all elements
     renderElement(backend, backend.state, root)
 
-    # Render dropdown menus on top of everything else
+    # Render dropdown menus on top
     renderDropdownMenus(backend, backend.state, root)
 
-    # Render drag-and-drop visual effects on top
+    # Render drag-and-drop visual effects
     renderDragAndDropEffects(backend, root)
 
-    EndDrawing()
+    endDrawing()
 
   # Cleanup
-  UnloadFont(backend.font)
   layoutFontInitialized = false
-  CloseWindow()
+  closeWindow()
   backend.running = false

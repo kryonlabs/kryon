@@ -10,6 +10,7 @@ binDir        = "bin"
 # Dependencies
 requires "nim >= 2.0.0"
 requires "cligen >= 1.6.0"  # For CLI tool
+requires "naylib >= 25.4.0"  # Raylib wrapper for native rendering
 
 # Backend dependencies (optional - install what you need)
 # SDL2 backend dependencies (requires system SDL2 and SDL_ttf libraries)
@@ -18,9 +19,6 @@ requires "cligen >= 1.6.0"  # For CLI tool
 # - macOS: brew install sdl2 sdl2_ttf
 # - Windows: Download SDL2 and SDL2_ttf development libraries
 # Add passL flags manually when compiling: --passL:"-lSDL2 -lSDL2_ttf"
-
-# Raylib backend dependencies (if using Raylib backend)
-# Install with: nimble install raylib
 
 # Tasks
 task test, "Run tests":

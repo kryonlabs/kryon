@@ -103,7 +103,7 @@ proc buildRendererImports(renderer: Renderer, basePath: string): string =
   ## Produce the backend-specific import statements.
   case renderer
   of rRaylib:
-    result = &"""import "{basePath / "backends" / "integration" / "raylib"}"
+    result = &"""import "{basePath / "backends" / "integration" / "raylib_backend"}"
 """
   of rSDL2:
     result = &"""import "{basePath / "backends" / "integration" / "sdl2"}"

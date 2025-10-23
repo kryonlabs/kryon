@@ -134,10 +134,26 @@ proc renderElement*[R](renderer: var R, state: var BackendState,
 
     renderer.drawRectangle(data.x, data.y, data.width, data.height, bgColor)
     renderer.drawRectangleBorder(data.x, data.y, data.width, data.height, data.borderWidth, borderColor)
-    let textMeasurements = renderer.measureText(data.text, data.fontSize)
-    let textX = data.x + (data.width - textMeasurements.width) / 2.0
-    let textY = data.y + (data.height - textMeasurements.height) / 2.0
-    renderer.drawText(data.text, textX, textY, data.fontSize, textColor)
+
+    if data.hasImage:
+      # Render actual image if available
+      let imgX = data.x + 10
+      let imgY = data.y + 10
+      let imgWidth = data.width - 20
+      let imgHeight = data.height - 20
+      renderer.drawImage(data.imagePath, imgX, imgY, imgWidth, imgHeight)
+
+    if data.text.len > 0:
+      # Render text (either with image or text-only)
+      let textMeasurements = renderer.measureText(data.text, data.fontSize)
+      let textX = data.x + (data.width - textMeasurements.width) / 2.0
+      let textY = if data.hasImage:
+        # If there's an image, place text below it
+        data.y + data.height - textMeasurements.height - 10
+      else:
+        # Text only, center vertically
+        data.y + (data.height - textMeasurements.height) / 2.0
+      renderer.drawText(data.text, textX, textY, data.fontSize, textColor)
 
   of ekInput:
     let data = extractInputData(elem, state, inheritedColor)

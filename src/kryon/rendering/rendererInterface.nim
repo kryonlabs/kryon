@@ -10,6 +10,7 @@
 ##   - drawRectangleBorder(x, y, width, height, borderWidth, color)
 ##   - drawText(text, x, y, fontSize, color)
 ##   - drawLine(x1, y1, x2, y2, thickness, color)
+##   - drawImage(imagePath, x, y, width, height)
 ##
 ## Clipping (for scroll areas, dropdowns):
 ##   - beginClipping(x, y, width, height)
@@ -30,6 +31,7 @@
 ##   proc drawRectangleBorder*(r: var RendererType, x, y, width, height, borderWidth: float, color: Color)
 ##   proc drawText*(r: var RendererType, text: string, x, y: float, fontSize: int, color: Color)
 ##   proc drawLine*(r: var RendererType, x1, y1, x2, y2, thickness: float, color: Color)
+##   proc drawImage*(r: var RendererType, imagePath: string, x, y, width, height: float)
 ##
 ## Clipping:
 ##   proc beginClipping*(r: var RendererType, x, y, width, height: float)

@@ -17,12 +17,15 @@ type
     borderWidth*: float
     borderColor*: Color
     disabled*: bool
+    hasImage*: bool
+    imagePath*: string
 
 proc extractButtonData*(elem: Element, inheritedColor: Option[Color] = none(Color)): ButtonData =
   ## Extract button properties from element
   ##
   ## Properties supported:
-  ##   - text: Button label (default: "Button")
+  ##   - text: Button label (optional)
+  ##   - image: Path to image file (optional)
   ##   - backgroundColor: Background color (default: #4A90E2)
   ##   - color: Text color (default: #FFFFFF)
   ##   - fontSize: Text size (default: 20)
@@ -30,7 +33,12 @@ proc extractButtonData*(elem: Element, inheritedColor: Option[Color] = none(Colo
   ##   - borderColor: Border color (default: #D1D5DB)
   ##   - disabled: Whether button is disabled (default: false)
 
-  result.text = elem.getProp("text").get(val("Button")).getString()
+  let imageProp = elem.getProp("image")
+  result.hasImage = imageProp.isSome
+  result.imagePath = if imageProp.isSome: imageProp.get.getString() else: ""
+
+  # Extract text if it exists, otherwise use empty string for image-only buttons
+  result.text = elem.getProp("text").get(val("")).getString()
   result.backgroundColor = elem.getProp("backgroundColor").get(val("#4A90E2")).getColor()
   result.textColor = elem.getProp("color").get(val("#FFFFFF")).getColor()
   result.fontSize = getFontSize(elem, 20)

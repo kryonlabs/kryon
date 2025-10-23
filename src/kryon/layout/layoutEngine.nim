@@ -132,18 +132,28 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     elem.height = if heightOpt.isSome: heightOpt.get.getFloat() else: textHeight
 
   elif elem.kind == ekButton:
-    # Special handling for Button elements - size based on text content with padding
-    let text = elem.getProp("text").get(val("Button")).getString()
+    # Special handling for Button elements - can be text, image, or both
+    let text = elem.getProp("text").get(val("")).getString()
     let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
+    let imageProp = elem.getProp("image")
 
-    # Measure text dimensions and add padding
-    let textWidth = measurer.measureTextWidth(text, fontSize)
-    let textHeight = fontSize.float
-    let padding = 20.0  # Horizontal padding
-    let verticalPadding = 10.0  # Vertical padding
+    if imageProp.isSome:
+      # Image button - use default size or explicit size
+      elem.width = if widthOpt.isSome: widthOpt.get.getFloat() else: 80.0
+      elem.height = if heightOpt.isSome: heightOpt.get.getFloat() else: 80.0
+    elif text.len > 0:
+      # Text button - size based on text content with padding
+      let textWidth = measurer.measureTextWidth(text, fontSize)
+      let textHeight = fontSize.float
+      let padding = 20.0  # Horizontal padding
+      let verticalPadding = 10.0  # Vertical padding
 
-    elem.width = if widthOpt.isSome: widthOpt.get.getFloat() else: textWidth + (padding * 2.0)
-    elem.height = if heightOpt.isSome: heightOpt.get.getFloat() else: textHeight + (verticalPadding * 2.0)
+      elem.width = if widthOpt.isSome: widthOpt.get.getFloat() else: textWidth + (padding * 2.0)
+      elem.height = if heightOpt.isSome: heightOpt.get.getFloat() else: textHeight + (verticalPadding * 2.0)
+    else:
+      # Fallback - use default button size
+      elem.width = if widthOpt.isSome: widthOpt.get.getFloat() else: 120.0
+      elem.height = if heightOpt.isSome: heightOpt.get.getFloat() else: 40.0
 
   elif elem.kind == ekInput:
     # Special handling for Input elements - size based on fontSize with padding

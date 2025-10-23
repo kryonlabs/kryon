@@ -13,6 +13,21 @@ let
     SDL2
     SDL2_ttf
 
+    # X11 and Wayland dependencies for naylib/raylib
+    xorg.libX11
+    xorg.libXrandr
+    xorg.libXi
+    xorg.libXcursor
+    xorg.libXinerama
+    libxkbcommon
+    wayland
+    wayland-protocols
+
+    # Audio dependencies for raylib
+    alsa-lib
+    mesa
+    libGL
+
     # Additional tools
     git
     gdb
