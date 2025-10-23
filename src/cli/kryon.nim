@@ -3,7 +3,7 @@
 ## Command-line interface for running and compiling Kryon applications
 ## with support for multiple renderers.
 
-import os, osproc, strutils, strformat, ospaths
+import std/[os, osproc, strutils, strformat, hashes, md5]
 
 const VERSION = "0.2.0"
 
@@ -366,8 +366,10 @@ proc locateKryonPaths(appDir: string): tuple[basePath: string, kryonPath: string
 proc createWrapperFile*(filename: string, renderer: Renderer): string =
   ## Create a wrapper file that includes the user code and backend initialization
   ## Returns: Path to the wrapper file
+  ##
+  ## Uses a stable project-local path (.kryon/wrapper.nim) instead of temp file
+  ## to enable Nim's incremental compilation and avoid recompiling raylib every time
 
-  let wrapperFile = getTempDir() / "kryon_wrapper.nim"
   let userContent = readFile(filename)
   let absoluteFilename = if filename.isAbsolute():
     filename
@@ -377,6 +379,30 @@ proc createWrapperFile*(filename: string, renderer: Renderer): string =
   let assetsDir = if appDir.len > 0: appDir / "assets" else: ""
   let (basePath, kryonPath) = locateKryonPaths(appDir)
 
+  # Use stable wrapper file in project directory for incremental compilation
+  let projectRoot = if appDir.len > 0: appDir else: getCurrentDir()
+  let kryonDir = projectRoot / ".kryon"
+  if not dirExists(kryonDir):
+    createDir(kryonDir)
+  let wrapperFile = kryonDir / "wrapper.nim"
+  let hashFile = kryonDir / "wrapper.hash"
+
+  # Check if wrapper needs regeneration by comparing content hash
+  # Hash includes: user code + renderer + kryon version
+  let contentHash = getMD5($renderer & userContent & VERSION)
+  var needsRegeneration = true
+
+  if fileExists(hashFile) and fileExists(wrapperFile):
+    let savedHash = readFile(hashFile).strip()
+    if savedHash == contentHash:
+      # Wrapper is up-to-date, skip regeneration
+      needsRegeneration = false
+
+  if not needsRegeneration:
+    # Reuse existing wrapper for faster compilation
+    return wrapperFile
+
+  # Generate new wrapper and save hash
   # Add imports and other non-app code from user file
   let lines = userContent.split('\n')
   var inAppBlock = false
@@ -450,6 +476,10 @@ proc createWrapperFile*(filename: string, renderer: Renderer): string =
     wrapperBuilder.add(rendererBody)
 
   writeFile(wrapperFile, wrapperBuilder)
+
+  # Save content hash for future cache checks
+  writeFile(hashFile, contentHash)
+
   return wrapperFile
 
 proc compileKryon*(
@@ -517,9 +547,8 @@ proc compileKryon*(
 
   let (output, exitCode) = execCmdEx(nimCmd)
 
-  # Cleanup wrapper file
-  if fileExists(wrapperFile):
-    removeFile(wrapperFile)
+  # Keep wrapper file for incremental compilation (don't clean up)
+  # The stable path allows Nim to cache compiled dependencies like raylib
 
   if exitCode != 0:
     echo "Compilation failed:"
@@ -656,15 +685,23 @@ proc runKryon*(
   else:
     discard
 
-  # Create temporary output file
-  let tmpDir = getTempDir()
-  let tmpFile = tmpDir / filename.extractFilename().changeFileExt("")
+  # Use stable output path in .kryon directory for better incremental compilation
+  let absoluteFilename = if filename.isAbsolute():
+    filename
+  else:
+    getCurrentDir() / filename
+  let (appDir, baseName, _) = absoluteFilename.splitFile
+  let projectRoot = if appDir.len > 0: appDir else: getCurrentDir()
+  let kryonDir = projectRoot / ".kryon"
+  if not dirExists(kryonDir):
+    createDir(kryonDir)
+  let outputFile = kryonDir / baseName
 
   # Compile
   let compileResult = compileKryon(
     filename,
     detectedRenderer,
-    tmpFile,
+    outputFile,
     release,
     verbose
   )
@@ -677,11 +714,9 @@ proc runKryon*(
   echo "Running..."
   echo "─".repeat(60)
 
-  let runResult = execCmd(tmpFile)
+  let runResult = execCmd(outputFile)
 
-  # Cleanup
-  if fileExists(tmpFile):
-    removeFile(tmpFile)
+  # Keep binary for faster subsequent runs (don't cleanup)
 
   return runResult
 

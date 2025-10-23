@@ -17,7 +17,14 @@ proc triggerControlFlowGeneration*[T](measurer: T, elem: Element, parentWidth, p
   ## This is used to populate for-loop children before collecting them
   case elem.kind:
   of ekForLoop:
-    if elem.forBuilder != nil:
+    # Check if manual reordering is active (used by tab reordering system)
+    let manualReorderProp = elem.getProp("__manualReorderActive")
+    let manualReorderActive = manualReorderProp.isSome and manualReorderProp.get().getBool(false)
+
+    if manualReorderActive and elem.children.len > 0:
+      # During manual reordering, preserve existing children
+      discard
+    elif elem.forBuilder != nil:
       # Use custom builder for type-preserving loops
       elem.children.setLen(0)
       elem.forBuilder(elem)
@@ -219,7 +226,19 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
 
   of ekForLoop:
     # For loop elements generate dynamic content - let parent handle layout
-    if elem.forBuilder != nil:
+    # Check if manual reordering is active (used by tab reordering system)
+    let manualReorderProp = elem.getProp("__manualReorderActive")
+    let manualReorderActive = manualReorderProp.isSome and manualReorderProp.get().getBool(false)
+
+    if manualReorderActive and elem.children.len > 0:
+      # During manual reordering (e.g., tab drag), preserve existing children
+      # Don't regenerate from source data - use the manually reordered children
+      elem.width = parentWidth
+      elem.height = parentHeight
+      when defined(debugTabs):
+        echo "Debug: ekForLoop in manual reorder mode, preserving ", elem.children.len, " children"
+
+    elif elem.forBuilder != nil:
       # Use custom builder for type-preserving loops
       elem.children.setLen(0)
       elem.forBuilder(elem)

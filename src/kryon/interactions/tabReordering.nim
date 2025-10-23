@@ -14,6 +14,11 @@ import dragDrop
 import interactionState
 import tables
 
+# Global variables to communicate reorder indices to app handlers
+# Apps can read these in their onReorder/onDrop handlers
+var lastTabReorderFromIndex* = -1
+var lastTabReorderToIndex* = -1
+
 # ============================================================================
 # Tab Collection (ForLoop-aware)
 # ============================================================================
@@ -573,6 +578,25 @@ proc finalizeTabReorder*(draggedElem: Element, shouldCommit: bool) =
             if panel != nil:
               markDirty(panel)
               markAllDescendantsDirty(panel)
+
+      # Trigger onReorder event to let app update its data array
+      # This fires BEFORE we disable manual loop order, so the app can update its data
+      # and the ForLoop will regenerate with the new data order on the next frame
+      if state.draggedChildIndex >= 0 and newTabIndex >= 0:
+        # Set global variables so apps can access the reorder indices
+        lastTabReorderFromIndex = state.draggedChildIndex
+        lastTabReorderToIndex = newTabIndex
+
+        # Support both onReorder (new API) and onDrop (legacy compatibility)
+        if container.eventHandlers.hasKey("onReorder"):
+          echo "[TAB REORDER EVENT] Triggering onReorder: from ", state.draggedChildIndex, " to ", newTabIndex
+          let onReorderHandler = container.eventHandlers["onReorder"]
+          onReorderHandler()
+        elif container.eventHandlers.hasKey("onDrop"):
+          # Legacy onDrop handler
+          echo "[TAB REORDER EVENT] Triggering legacy onDrop: from ", state.draggedChildIndex, " to ", newTabIndex
+          let onDropHandler = container.eventHandlers["onDrop"]
+          onDropHandler()
 
   if container.kind == ekTabBar:
     disableManualLoopOrder(container)
