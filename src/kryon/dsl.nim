@@ -186,7 +186,7 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
       let nodeName = node[0]
       if nodeName.kind == nnkIdent:
         let nameStr = nodeName.strVal
-        if nameStr in ["Container", "Text", "Button", "Column", "Row", "Input", "Checkbox",
+        if nameStr in ["Container", "Text", "H1", "H2", "H3", "Button", "Column", "Row", "Input", "Checkbox",
                       "Dropdown", "Grid", "Image", "Center", "ScrollView", "Header", "Body",
                       "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel", "Link",
                       "Draggable", "DropTarget"]:
@@ -214,7 +214,7 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
     result.boundVar = none(NimNode)
 
 const builtinElementNames = [
-  "Container", "Text", "Button", "Column", "Row", "Input", "Checkbox",
+  "Container", "Text", "H1", "H2", "H3", "Button", "Column", "Row", "Input", "Checkbox",
   "Dropdown", "Grid", "Image", "Center", "ScrollView", "Header", "Body",
   "Resources", "Font", "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel", "Link",
   "Draggable", "DropTarget"
@@ -1075,6 +1075,18 @@ macro Container*(body: untyped): Element =
 macro Text*(body: untyped): Element =
   ## Create a Text element
   result = processElementBody(ekText, body)
+
+macro H1*(body: untyped): Element =
+  ## Create an H1 heading element
+  result = processElementBody(ekH1, body)
+
+macro H2*(body: untyped): Element =
+  ## Create an H2 heading element
+  result = processElementBody(ekH2, body)
+
+macro H3*(body: untyped): Element =
+  ## Create an H3 heading element
+  result = processElementBody(ekH3, body)
 
 macro Button*(body: untyped): Element =
   ## Create a Button element

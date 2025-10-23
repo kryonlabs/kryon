@@ -86,7 +86,44 @@ proc renderElement*[R](renderer: var R, state: var BackendState,
 
   of ekText:
     let data = extractTextData(elem, inheritedColor)
-    renderer.drawText(data.text, data.x, data.y, data.fontSize, data.color)
+    let textMeasurements = renderer.measureText(data.text, data.fontSize)
+    let alignedX = case data.alignment:
+      of taCenter:
+        # Center text within parent container
+        if elem.parent != nil:
+          data.x + (elem.parent.width - textMeasurements.width) / 2.0
+        else:
+          data.x
+      of taRight:
+        # Right-align text within parent container
+        if elem.parent != nil:
+          data.x + elem.parent.width - textMeasurements.width
+        else:
+          data.x
+      else:
+        data.x  # taLeft - use default positioning
+    renderer.drawText(data.text, alignedX, data.y, data.fontSize, data.color)
+
+  of ekH1, ekH2, ekH3:
+    # Heading elements are rendered like Text elements with their specific styling
+    let data = extractTextData(elem, inheritedColor)
+    let textMeasurements = renderer.measureText(data.text, data.fontSize)
+    let alignedX = case data.alignment:
+      of taCenter:
+        # Center text within parent container
+        if elem.parent != nil:
+          data.x + (elem.parent.width - textMeasurements.width) / 2.0
+        else:
+          data.x
+      of taRight:
+        # Right-align text within parent container
+        if elem.parent != nil:
+          data.x + elem.parent.width - textMeasurements.width
+        else:
+          data.x
+      else:
+        data.x  # taLeft - use default positioning
+    renderer.drawText(data.text, alignedX, data.y, data.fontSize, data.color)
 
   of ekButton:
     let data = extractButtonData(elem, inheritedColor)

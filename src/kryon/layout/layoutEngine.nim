@@ -104,10 +104,26 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
   elem.x = if posXOpt.isSome: posXOpt.get.getFloat() else: x
   elem.y = if posYOpt.isSome: posYOpt.get.getFloat() else: y
 
-  # Special handling for Text elements - measure actual text size
+  # Special handling for Text and Heading elements - measure actual text size
   if elem.kind == ekText:
     let text = elem.getProp("text").get(val("")).getString()
     let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
+
+    # Measure text dimensions using backend's text measurer
+    let (textWidth, textHeight) = measurer.measureText(text, fontSize)
+
+    elem.width = if widthOpt.isSome: widthOpt.get.getFloat() else: textWidth
+    elem.height = if heightOpt.isSome: heightOpt.get.getFloat() else: textHeight
+
+  elif elem.kind in [ekH1, ekH2, ekH3]:
+    # Special handling for Heading elements - measure text with default font sizes
+    let text = elem.getProp("text").get(val("")).getString()
+    let defaultFontSize = case elem.kind:
+      of ekH1: 32
+      of ekH2: 24
+      of ekH3: 18
+      else: 20
+    let fontSize = elem.getProp("fontSize").get(val(defaultFontSize)).getInt()
 
     # Measure text dimensions using backend's text measurer
     let (textWidth, textHeight) = measurer.measureText(text, fontSize)

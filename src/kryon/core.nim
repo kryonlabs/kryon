@@ -21,6 +21,9 @@ type
     ekDropTarget = "DropTarget"  # Drop target behavior extension (non-rendering)
     ekContainer = "Container"
     ekText = "Text"
+    ekH1 = "H1"
+    ekH2 = "H2"
+    ekH3 = "H3"
     ekButton = "Button"
     ekColumn = "Column"
     ekRow = "Row"
