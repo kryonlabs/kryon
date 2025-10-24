@@ -19,11 +19,13 @@
 import kryon/core
 import kryon/dsl
 import kryon/fonts
+import kryon/components/canvas
 
 # Re-export public API
 export core
 export dsl
 export fonts
+export canvas
 
 # Version information
 const

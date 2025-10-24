@@ -11,6 +11,7 @@
 ## - Keeps backends simple (just execute commands)
 
 import ../core
+import options
 
 type
   RenderCommandKind* = enum
@@ -22,6 +23,11 @@ type
     rcDrawLine
     rcBeginClip
     rcEndClip
+    rcDrawCanvas
+    rcDrawPath
+    rcClearCanvas
+    rcSaveCanvasState
+    rcRestoreCanvasState
 
   RenderCommand* = object
     ## A single drawing command to be executed by the renderer
@@ -48,6 +54,24 @@ type
     of rcBeginClip:
       clipX*, clipY*, clipWidth*, clipHeight*: float
     of rcEndClip:
+      discard
+    of rcDrawCanvas:
+      canvasX*, canvasY*, canvasWidth*, canvasHeight*: float
+      canvasDrawProc*: proc(ctx: DrawingContext, width, height: float) {.closure.}
+      canvasBackgroundColor*: Option[Color]
+    of rcDrawPath:
+      pathCommands*: seq[PathCommand]
+      pathFillStyle*: Color
+      pathStrokeStyle*: Color
+      pathLineWidth*: float
+      pathShouldFill*: bool
+      pathShouldStroke*: bool
+    of rcClearCanvas:
+      clearX*, clearY*, clearWidth*, clearHeight*: float
+      clearColor*: Color
+    of rcSaveCanvasState:
+      discard
+    of rcRestoreCanvasState:
       discard
 
   RenderCommandList* = seq[RenderCommand]
@@ -109,3 +133,40 @@ proc beginClipping*(x, y, width, height: float): RenderCommand =
 proc endClipping*(): RenderCommand =
   ## Create an end clipping command
   RenderCommand(kind: rcEndClip)
+
+proc drawCanvas*(x, y, width, height: float, drawProc: proc(ctx: DrawingContext, width, height: float) {.closure.}, backgroundColor: Option[Color] = none(Color)): RenderCommand =
+  ## Create a canvas drawing command
+  RenderCommand(
+    kind: rcDrawCanvas,
+    canvasX: x, canvasY: y, canvasWidth: width, canvasHeight: height,
+    canvasDrawProc: drawProc,
+    canvasBackgroundColor: backgroundColor
+  )
+
+proc drawPath*(commands: seq[PathCommand], fillStyle: Color, strokeStyle: Color, lineWidth: float, shouldFill: bool, shouldStroke: bool): RenderCommand =
+  ## Create a path drawing command
+  RenderCommand(
+    kind: rcDrawPath,
+    pathCommands: commands,
+    pathFillStyle: fillStyle,
+    pathStrokeStyle: strokeStyle,
+    pathLineWidth: lineWidth,
+    pathShouldFill: shouldFill,
+    pathShouldStroke: shouldStroke
+  )
+
+proc clearCanvas*(x, y, width, height: float, color: Color): RenderCommand =
+  ## Create a clear canvas command
+  RenderCommand(
+    kind: rcClearCanvas,
+    clearX: x, clearY: y, clearWidth: width, clearHeight: height,
+    clearColor: color
+  )
+
+proc saveCanvasState*(): RenderCommand =
+  ## Create a save canvas state command
+  RenderCommand(kind: rcSaveCanvasState)
+
+proc restoreCanvasState*(): RenderCommand =
+  ## Create a restore canvas state command
+  RenderCommand(kind: rcRestoreCanvasState)

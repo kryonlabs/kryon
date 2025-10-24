@@ -16,6 +16,7 @@ import ../components/dropdown
 import ../components/container
 import ../components/containers
 import ../components/tabs
+import ../components/canvas
 import ../layout/zindexSort
 import ../state/backendState
 import ../interactions/interactionState
@@ -36,7 +37,7 @@ type
 # Component Extraction to RenderCommands
 # ============================================================================
 
-proc extractButton*(elem: Element, measurer: TextMeasurer, inheritedColor: Option[Color] = none(Color)): RenderCommandList =
+proc extractButton*(elem: Element, measurer: TextMeasurer, inheritedColor: Option[Color] = none(Color)): renderCommands.RenderCommandList =
   ## Extract button rendering commands
   let data = extractButtonData(elem, inheritedColor)
 
@@ -65,7 +66,7 @@ proc extractButton*(elem: Element, measurer: TextMeasurer, inheritedColor: Optio
     let textY = data.y + (data.height - textMeasurements.height) / 2.0
     result.add drawText(data.text, textX, textY, data.fontSize, data.textColor)
 
-proc extractText*(elem: Element, measurer: TextMeasurer, inheritedColor: Option[Color] = none(Color)): RenderCommandList =
+proc extractText*(elem: Element, measurer: TextMeasurer, inheritedColor: Option[Color] = none(Color)): renderCommands.RenderCommandList =
   ## Extract text rendering commands
   let data = extractTextData(elem, inheritedColor)
   result = @[]
@@ -90,7 +91,7 @@ proc extractText*(elem: Element, measurer: TextMeasurer, inheritedColor: Option[
 
     result.add drawText(data.text, alignedX, data.y, data.fontSize, data.color)
 
-proc extractContainer*(elem: Element, inheritedColor: Option[Color] = none(Color)): RenderCommandList =
+proc extractContainer*(elem: Element, inheritedColor: Option[Color] = none(Color)): renderCommands.RenderCommandList =
   ## Extract container rendering commands
   let data = extractContainerData(elem, inheritedColor)
   result = @[]
@@ -103,7 +104,7 @@ proc extractContainer*(elem: Element, inheritedColor: Option[Color] = none(Color
   if data.hasBorder:
     result.add drawBorder(data.x, data.y, data.width, data.height, data.borderWidth, data.borderColor)
 
-proc extractCheckbox*(elem: Element, state: var BackendState, inheritedColor: Option[Color] = none(Color)): RenderCommandList =
+proc extractCheckbox*(elem: Element, state: var BackendState, inheritedColor: Option[Color] = none(Color)): renderCommands.RenderCommandList =
   ## Extract checkbox rendering commands
   let data = extractCheckboxData(elem, state, inheritedColor)
   result = @[]
@@ -138,7 +139,7 @@ proc extractCheckbox*(elem: Element, state: var BackendState, inheritedColor: Op
   if data.hasLabel:
     result.add drawText(data.label, data.labelX, data.labelY, data.fontSize, data.labelColor)
 
-proc extractInput*(elem: Element, measurer: TextMeasurer, state: var BackendState, inheritedColor: Option[Color] = none(Color)): RenderCommandList =
+proc extractInput*(elem: Element, measurer: TextMeasurer, state: var BackendState, inheritedColor: Option[Color] = none(Color)): renderCommands.RenderCommandList =
   ## Extract input field rendering commands
   let data = extractInputData(elem, state, inheritedColor)
   result = @[]
@@ -166,7 +167,7 @@ proc extractInput*(elem: Element, measurer: TextMeasurer, state: var BackendStat
     result.add drawLine(cursorX, data.cursorY, cursorX, data.cursorY + data.fontSize.float,
                        2.0, data.textColor)
 
-proc extractDropdown*(elem: Element, measurer: TextMeasurer, state: var BackendState, inheritedColor: Option[Color] = none(Color)): RenderCommandList =
+proc extractDropdown*(elem: Element, measurer: TextMeasurer, state: var BackendState, inheritedColor: Option[Color] = none(Color)): renderCommands.RenderCommandList =
   ## Extract dropdown rendering commands
   let buttonData = extractDropdownButtonData(elem, state, inheritedColor)
   result = @[]
@@ -209,7 +210,7 @@ proc extractDropdown*(elem: Element, measurer: TextMeasurer, state: var BackendS
       # Option text
       result.add drawText(option.text, option.textX, option.textY, menuData.fontSize, menuData.textColor)
 
-proc extractTabBar*(elem: Element, inheritedColor: Option[Color] = none(Color)): RenderCommandList =
+proc extractTabBar*(elem: Element, inheritedColor: Option[Color] = none(Color)): renderCommands.RenderCommandList =
   ## Extract tab bar rendering commands
   let data = extractTabBarData(elem, inheritedColor)
   result = @[]
@@ -220,7 +221,7 @@ proc extractTabBar*(elem: Element, inheritedColor: Option[Color] = none(Color)):
   if data.hasBorder:
     result.add drawRectangle(data.x, data.borderY, data.width, data.borderWidth, data.borderColor)
 
-proc extractTab*(elem: Element, measurer: TextMeasurer, inheritedColor: Option[Color] = none(Color)): RenderCommandList =
+proc extractTab*(elem: Element, measurer: TextMeasurer, inheritedColor: Option[Color] = none(Color)): renderCommands.RenderCommandList =
   ## Extract tab rendering commands
   let data = extractTabData(elem, inheritedColor)
   result = @[]
@@ -247,7 +248,7 @@ proc extractTab*(elem: Element, measurer: TextMeasurer, inheritedColor: Option[C
 # Main Extraction Function
 # ============================================================================
 
-proc extractElement*(elem: Element, measurer: TextMeasurer, state: var BackendState, inheritedColor: Option[Color] = none(Color)): RenderCommandList =
+proc extractElement*(elem: Element, measurer: TextMeasurer, state: var BackendState, inheritedColor: Option[Color] = none(Color)): renderCommands.RenderCommandList =
   ## Extract render commands for an element and its children
   ## This is the main entry point for component extraction
 
@@ -350,6 +351,11 @@ proc extractElement*(elem: Element, measurer: TextMeasurer, state: var BackendSt
     for child in data.sortedChildren:
       result.add extractElement(child, measurer, state, inheritedColor)
 
+  of ekCanvas:
+    let data = extractCanvasData(elem, inheritedColor)
+    result.add drawCanvas(data.x, data.y, data.width, data.height, data.drawProc,
+                        if data.hasBackground: some(data.backgroundColor) else: none(Color))
+
   else:
     # For other elements, just recurse to children
     let sortedChildren = sortChildrenByZIndex(elem.children)
@@ -360,7 +366,7 @@ proc extractElement*(elem: Element, measurer: TextMeasurer, state: var BackendSt
 # Drag-and-Drop Visual Effects
 # ============================================================================
 
-proc extractDropTargetHighlights(elem: Element): RenderCommandList =
+proc extractDropTargetHighlights(elem: Element): renderCommands.RenderCommandList =
   ## Extract drop target highlight rendering commands
   result = @[]
 
@@ -376,7 +382,7 @@ proc extractDropTargetHighlights(elem: Element): RenderCommandList =
   for child in elem.children:
     result.add extractDropTargetHighlights(child)
 
-proc extractDraggedElement(elem: Element, measurer: TextMeasurer, offsetX, offsetY: float): RenderCommandList =
+proc extractDraggedElement(elem: Element, measurer: TextMeasurer, offsetX, offsetY: float): renderCommands.RenderCommandList =
   ## Extract dragged element rendering commands with transparency
   result = @[]
 
@@ -409,7 +415,7 @@ proc extractDraggedElement(elem: Element, measurer: TextMeasurer, offsetX, offse
     let textY = elem.y + offsetY + (elem.height - textMeasurements.height) / 2.0
     result.add drawText(title, textX, textY, fontSize, transparentText)
 
-proc extractDragAndDropEffects*(root: Element, measurer: TextMeasurer): RenderCommandList =
+proc extractDragAndDropEffects*(root: Element, measurer: TextMeasurer): renderCommands.RenderCommandList =
   ## Extract all drag-and-drop visual effects as render commands
   result = @[]
 

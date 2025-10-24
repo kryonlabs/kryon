@@ -111,6 +111,7 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
   elem.x = if posXOpt.isSome: posXOpt.get.getFloat() else: x
   elem.y = if posYOpt.isSome: posYOpt.get.getFloat() else: y
 
+  
   # Special handling for Text and Heading elements - measure actual text size
   if elem.kind == ekText:
     let text = elem.getProp("text").get(val("")).getString()
@@ -556,6 +557,7 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     # Get all actual children (expanding control flow)
     let actualChildren = getActualChildren(measurer, elem, elem.width, elem.height)
 
+    
     if alignment.getString() == "center":
       # Center children - needs two-pass layout
       for child in actualChildren:

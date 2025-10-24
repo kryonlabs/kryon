@@ -6,6 +6,7 @@ import raylib_config  # Must be imported BEFORE raylib to enable image format su
 import raylib
 import ../../kryon/core
 import ../../kryon/fonts
+import ../../kryon/components/canvas
 import ../../kryon/layout/layoutEngine
 import ../../kryon/layout/zindexSort
 import ../../kryon/state/backendState
@@ -214,10 +215,137 @@ proc endClipping*(backend: var RaylibBackend) =
   endScissorMode()
 
 # ============================================================================
+# Canvas Drawing Functions
+# ============================================================================
+
+# Forward declarations
+proc executeCommand*(backend: var RaylibBackend, cmd: renderCommands.RenderCommand)
+proc executeCanvasCommand*(backend: var RaylibBackend, cmd: renderCommands.RenderCommand, canvasX, canvasY: float)
+
+proc drawCanvas*(backend: var RaylibBackend, x, y, width, height: float,
+                 drawProc: proc(ctx: DrawingContext, width, height: float) {.closure.},
+                 backgroundColor: Option[core.Color]) =
+  ## Draw a canvas with custom rendering using proper render command pipeline
+  # Clear background if specified
+  if backgroundColor.isSome:
+    let bgColor = backgroundColor.get()
+    raylib.drawRectangle(x.int32, y.int32, width.int32, height.int32,
+                         raylib.Color(r: bgColor.r, g: bgColor.g, b: bgColor.b, a: bgColor.a))
+
+  # Create a temporary render command list for canvas operations
+  var canvasCommands: seq[renderCommands.RenderCommand] = @[]
+
+  # Create drawing context and connect it to the render command list
+  let ctx = newDrawingContext()
+  ctx.renderCommands = addr canvasCommands
+
+  # Store canvas position in backendData for coordinate translation (if needed)
+  ctx.backendData = cast[pointer](alloc(sizeof(tuple[x: float, y: float])))
+  cast[ptr tuple[x: float, y: float]](ctx.backendData)[] = (x: x, y: y)
+
+  # Set default values
+  ctx.fillStyle = rgba(0.uint8, 0.uint8, 0.uint8, 255.uint8)
+  ctx.strokeStyle = rgba(0.uint8, 0.uint8, 0.uint8, 255.uint8)
+  ctx.lineWidth = 1.0
+
+  # Enable scissor mode to clip drawing to canvas area
+  raylib.beginScissorMode(x.int32, y.int32, width.int32, height.int32)
+
+  # Execute the user's drawing procedure - this will add render commands to canvasCommands
+  if drawProc != nil:
+    drawProc(ctx, width, height)
+
+  # Execute all canvas render commands with coordinate translation
+  for cmd in canvasCommands:
+    backend.executeCanvasCommand(cmd, x, y)
+
+  # End clipping region
+  raylib.endScissorMode()
+
+  # Clean up
+  dealloc(ctx.backendData)
+
+proc drawPath*(backend: var RaylibBackend, commands: seq[PathCommand],
+               fillStyle: core.Color, strokeStyle: core.Color, lineWidth: float,
+               shouldFill: bool, shouldStroke: bool) =
+  ## Draw a path using raylib
+  if commands.len == 0:
+    return
+
+  # Convert path commands to raylib drawing
+  # Note: For simplicity, we'll handle basic path commands
+  # A full implementation would convert all path types to raylib equivalents
+
+  for i, cmd in commands:
+    case cmd.kind
+    of PathCommandKind.MoveTo:
+      # Start a new path segment
+      discard
+    of PathCommandKind.LineTo:
+      # Draw line from previous point to this point
+      if i > 0 and commands[i-1].kind in {PathCommandKind.MoveTo, PathCommandKind.LineTo}:
+        let prevCmd = commands[i-1]
+        let startX = if prevCmd.kind == PathCommandKind.MoveTo: prevCmd.moveToX else: prevCmd.lineToX
+        let startY = if prevCmd.kind == PathCommandKind.MoveTo: prevCmd.moveToY else: prevCmd.lineToY
+        let endX = cmd.lineToX
+        let endY = cmd.lineToY
+
+        if shouldStroke:
+          raylib.drawLine(
+            startX.int32, startY.int32, endX.int32, endY.int32,
+            raylib.Color(r: strokeStyle.r, g: strokeStyle.g, b: strokeStyle.b, a: strokeStyle.a)
+          )
+    of PathCommandKind.Arc:
+      # Draw arc (simplified as circle segments)
+      if shouldFill:
+        raylib.drawCircle(
+          cmd.arcX.int32, cmd.arcY.int32, cmd.arcRadius.float32,
+          raylib.Color(r: fillStyle.r, g: fillStyle.g, b: fillStyle.b, a: fillStyle.a)
+        )
+      elif shouldStroke:
+        raylib.drawCircleLines(
+          cmd.arcX.int32, cmd.arcY.int32, cmd.arcRadius.float32,
+          raylib.Color(r: strokeStyle.r, g: strokeStyle.g, b: strokeStyle.b, a: strokeStyle.a)
+        )
+    of PathCommandKind.ClosePath:
+      # Close the path by drawing a line to the start
+      if commands.len > 0:
+        let firstCmd = commands[0]
+        let lastCmd = commands[i-1]
+        if lastCmd.kind in {PathCommandKind.MoveTo, PathCommandKind.LineTo} and firstCmd.kind in {PathCommandKind.MoveTo, PathCommandKind.LineTo}:
+          let startX = if firstCmd.kind == PathCommandKind.MoveTo: firstCmd.moveToX else: firstCmd.lineToX
+          let startY = if firstCmd.kind == PathCommandKind.MoveTo: firstCmd.moveToY else: firstCmd.lineToY
+          let endX = if lastCmd.kind == PathCommandKind.MoveTo: lastCmd.moveToX else: lastCmd.lineToX
+          let endY = if lastCmd.kind == PathCommandKind.MoveTo: lastCmd.moveToY else: lastCmd.lineToY
+          if shouldStroke:
+            raylib.drawLine(
+              endX.int32, endY.int32, startX.int32, startY.int32,
+              raylib.Color(r: strokeStyle.r, g: strokeStyle.g, b: strokeStyle.b, a: strokeStyle.a)
+            )
+    of PathCommandKind.BezierCurveTo:
+      # Bezier curves would need more complex implementation
+      # For now, draw a simple line approximation
+      if i > 0 and commands[i-1].kind in {PathCommandKind.MoveTo, PathCommandKind.LineTo}:
+        let prevCmd = commands[i-1]
+        let startX = if prevCmd.kind == PathCommandKind.MoveTo: prevCmd.moveToX else: prevCmd.lineToX
+        let startY = if prevCmd.kind == PathCommandKind.MoveTo: prevCmd.moveToY else: prevCmd.lineToY
+        raylib.drawLine(
+          startX.int32, startY.int32, cmd.bezierX.int32, cmd.bezierY.int32,
+          raylib.Color(r: strokeStyle.r, g: strokeStyle.g, b: strokeStyle.b, a: strokeStyle.a)
+        )
+
+proc clearCanvas*(backend: var RaylibBackend, x, y, width, height: float, color: core.Color) =
+  ## Clear a canvas area with the specified color
+  raylib.drawRectangle(
+    x.int32, y.int32, width.int32, height.int32,
+    raylib.Color(r: color.r, g: color.g, b: color.b, a: color.a)
+  )
+
+# ============================================================================
 # Pipeline Command Executor
 # ============================================================================
 
-proc executeCommand*(backend: var RaylibBackend, cmd: RenderCommand) =
+proc executeCommand*(backend: var RaylibBackend, cmd: renderCommands.RenderCommand) =
   ## Execute a single RenderCommand
   ## This is the ONLY backend-specific rendering code needed!
   case cmd.kind:
@@ -250,6 +378,89 @@ proc executeCommand*(backend: var RaylibBackend, cmd: RenderCommand) =
   of rcEndClip:
     # End clipping region
     backend.endClipping()
+
+  of rcDrawCanvas:
+    # Draw canvas with custom rendering
+    backend.drawCanvas(cmd.canvasX, cmd.canvasY, cmd.canvasWidth, cmd.canvasHeight,
+                       cmd.canvasDrawProc, cmd.canvasBackgroundColor)
+
+  of rcDrawPath:
+    # Draw path
+    backend.drawPath(cmd.pathCommands, cmd.pathFillStyle, cmd.pathStrokeStyle,
+                     cmd.pathLineWidth, cmd.pathShouldFill, cmd.pathShouldStroke)
+
+  of rcClearCanvas:
+    # Clear canvas area
+    backend.clearCanvas(cmd.clearX, cmd.clearY, cmd.clearWidth, cmd.clearHeight, cmd.clearColor)
+
+  of rcSaveCanvasState:
+    # Save canvas state (will be handled in context)
+    discard
+
+  of rcRestoreCanvasState:
+    # Restore canvas state (will be handled in context)
+    discard
+
+proc executeCanvasCommand*(backend: var RaylibBackend, cmd: renderCommands.RenderCommand, canvasX, canvasY: float) =
+  ## Execute a single RenderCommand with canvas coordinate translation
+  ## All coordinates are translated by (canvasX, canvasY) to map canvas-local coords to screen coords
+  case cmd.kind:
+  of rcDrawRectangle:
+    # Draw filled rectangle with translation
+    backend.drawRectangle(cmd.rectX + canvasX, cmd.rectY + canvasY, cmd.rectWidth, cmd.rectHeight, cmd.rectColor)
+  of rcDrawBorder:
+    # Draw rectangle outline with translation
+    backend.drawRectangleBorder(cmd.borderX + canvasX, cmd.borderY + canvasY, cmd.borderWidth, cmd.borderHeight,
+                                cmd.borderThickness, cmd.borderColor)
+  of rcDrawText:
+    # Draw text with translation
+    backend.drawText(cmd.textContent, cmd.textX + canvasX, cmd.textY + canvasY, cmd.textSize, cmd.textColor)
+  of rcDrawImage:
+    # Draw image with translation
+    backend.drawImage(cmd.imagePath, cmd.imageX + canvasX, cmd.imageY + canvasY, cmd.imageWidth, cmd.imageHeight)
+  of rcDrawLine:
+    # Draw line with translation
+    backend.drawLine(cmd.lineX1 + canvasX, cmd.lineY1 + canvasY, cmd.lineX2 + canvasX, cmd.lineY2 + canvasY,
+                     cmd.lineThickness, cmd.lineColor)
+  of rcBeginClip:
+    # Start clipping region with translation
+    backend.beginClipping(cmd.clipX + canvasX, cmd.clipY + canvasY, cmd.clipWidth, cmd.clipHeight)
+  of rcEndClip:
+    # End clipping region
+    backend.endClipping()
+  of rcDrawPath:
+    # Draw path with translation - translate all path commands
+    var translatedCommands: seq[PathCommand] = @[]
+    for pathCmd in cmd.pathCommands:
+      case pathCmd.kind:
+      of MoveTo:
+        translatedCommands.add(PathCommand(kind: MoveTo, moveToX: pathCmd.moveToX + canvasX, moveToY: pathCmd.moveToY + canvasY))
+      of LineTo:
+        translatedCommands.add(PathCommand(kind: LineTo, lineToX: pathCmd.lineToX + canvasX, lineToY: pathCmd.lineToY + canvasY))
+      of Arc:
+        # Arc center needs translation
+        translatedCommands.add(PathCommand(kind: Arc, arcX: pathCmd.arcX + canvasX, arcY: pathCmd.arcY + canvasY,
+                                           arcRadius: pathCmd.arcRadius, arcStartAngle: pathCmd.arcStartAngle, arcEndAngle: pathCmd.arcEndAngle))
+      of BezierCurveTo:
+        # All bezier control points need translation
+        translatedCommands.add(PathCommand(kind: BezierCurveTo,
+                                           cp1x: pathCmd.cp1x + canvasX, cp1y: pathCmd.cp1y + canvasY,
+                                           cp2x: pathCmd.cp2x + canvasX, cp2y: pathCmd.cp2y + canvasY,
+                                           bezierX: pathCmd.bezierX + canvasX, bezierY: pathCmd.bezierY + canvasY))
+      of ClosePath:
+        translatedCommands.add(PathCommand(kind: ClosePath))
+    backend.drawPath(translatedCommands, cmd.pathFillStyle, cmd.pathStrokeStyle,
+                     cmd.pathLineWidth, cmd.pathShouldFill, cmd.pathShouldStroke)
+  of rcDrawCanvas:
+    # Canvas within canvas - translate the nested canvas position
+    backend.drawCanvas(cmd.canvasX + canvasX, cmd.canvasY + canvasY, cmd.canvasWidth, cmd.canvasHeight,
+                       cmd.canvasDrawProc, cmd.canvasBackgroundColor)
+  of rcClearCanvas:
+    # Clear canvas area with translation
+    backend.clearCanvas(cmd.clearX + canvasX, cmd.clearY + canvasY, cmd.clearWidth, cmd.clearHeight, cmd.clearColor)
+  of rcSaveCanvasState, rcRestoreCanvasState:
+    # Canvas state operations (no coordinates to translate)
+    discard
 
 # ============================================================================
 # Layout Engine Wrapper

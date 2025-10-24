@@ -217,7 +217,7 @@ const builtinElementNames = [
   "Container", "Text", "H1", "H2", "H3", "Button", "Column", "Row", "Input", "Checkbox",
   "Dropdown", "Grid", "Image", "Center", "ScrollView", "Header", "Body",
   "Resources", "Font", "TabGroup", "TabBar", "Tab", "TabContent", "TabPanel", "Link",
-  "Draggable", "DropTarget"
+  "Draggable", "DropTarget", "Canvas"
 ]
 
 proc isEventName(name: string): bool {.inline.} =
@@ -356,6 +356,14 @@ proc convertInlineProcToEventHandler(procNode: NimNode, eventName: string = ""):
 proc emitEventAssignment(elemVar: NimNode, propName: string, handlerNode: NimNode): seq[NimNode] =
   ## Generate statements to attach an event handler to an element
   var handlerExpr = handlerNode
+
+  # Special handling for Canvas onDraw event
+  if propName == "onDraw":
+    let valueCopy = copyNimTree(handlerNode)
+    return @[
+      quote do:
+        `elemVar`.canvasDrawProc = `valueCopy`
+    ]
 
   if handlerExpr.kind == nnkStmtList:
     if handlerExpr.len == 1:
@@ -799,21 +807,31 @@ proc processElementBody(kind: ElementKind, body: NimNode): NimNode =
           # This is a regular procedure call, execute it directly
           result.add(stmt)
 
+    of nnkSym:
+      # This is likely an element reference (e.g., from Canvas macro)
+      # Add it as a child to the parent element
+      result.add quote do:
+        `elemVar`.addChild(`stmt`)
+
     of nnkAsgn:
       # Also handle nnkAsgn (rare, but valid)
       when defined(debugDropdown):
         echo "Debug: nnkAsgn: stmt[0] = ", stmt[0].repr, " kind = ", stmt[0].kind
-      let propName = stmt[0].strVal
+      let propName = if stmt[0].kind == nnkIdent: stmt[0].strVal else: ""
       when defined(debugDropdown):
         echo "Debug: nnkAsgn: propName = ", propName
 
-      # Check if this is an event handler
-      if isEventName(propName):
-        for eventStmt in emitEventAssignment(elemVar, propName, stmt[1]):
-          result.add(eventStmt)
+      # Skip processing for direct field assignments like elem.canvasDrawProc = drawShapes
+      if stmt[0].kind == nnkDotExpr:
+        result.add(stmt)
       else:
-        for propStmt in emitPropertyAssignment(kind, elemVar, propName, stmt[1]):
-          result.add(propStmt)
+        # Check if this is an event handler
+        if isEventName(propName):
+          for eventStmt in emitEventAssignment(elemVar, propName, stmt[1]):
+            result.add(eventStmt)
+        else:
+          for propStmt in emitPropertyAssignment(kind, elemVar, propName, stmt[1]):
+            result.add(propStmt)
 
     of nnkExprColonExpr:
       # Colon syntax: width: 800 (same as width = 800)
@@ -1175,6 +1193,10 @@ macro Draggable*(body: untyped): Element =
 macro DropTarget*(body: untyped): Element =
   ## Create a DropTarget behavior element (used within "with" blocks)
   result = processElementBody(ekDropTarget, body)
+
+macro Canvas*(body: untyped): Element =
+  ## Create a Canvas element for custom drawing
+  result = processElementBody(ekCanvas, body)
 
 # ============================================================================
 # Style macros

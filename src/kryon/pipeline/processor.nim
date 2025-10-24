@@ -43,7 +43,7 @@ type
 # Main Pipeline Processing
 # ============================================================================
 
-proc processFrame*(root: Element, measurer: TextMeasurer, state: var BackendState, config: PipelineConfig): RenderCommandList =
+proc processFrame*(root: Element, measurer: TextMeasurer, state: var BackendState, config: PipelineConfig): renderCommands.RenderCommandList =
   ## Process a single frame through the entire pipeline
   ## Returns a list of RenderCommands ready for rendering
   ##
@@ -114,7 +114,7 @@ proc newPipelineConfig*(
 # Debug Support
 # ============================================================================
 
-proc countCommands*(commands: RenderCommandList): tuple[
+proc countCommands*(commands: renderCommands.RenderCommandList): tuple[
   rectangles: int,
   borders: int,
   texts: int,
@@ -139,8 +139,10 @@ proc countCommands*(commands: RenderCommandList): tuple[
       inc result.lines
     of rcBeginClip, rcEndClip:
       inc result.clips
+    of rcDrawCanvas, rcDrawPath, rcClearCanvas, rcSaveCanvasState, rcRestoreCanvasState:
+      inc result.rectangles  # Count as rectangles for now
 
-proc dumpCommands*(commands: RenderCommandList) =
+proc dumpCommands*(commands: renderCommands.RenderCommandList) =
   ## Dump all commands for debugging
   echo "=== RENDER COMMANDS ==="
   echo "Total commands: ", commands.len

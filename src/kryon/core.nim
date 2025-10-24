@@ -8,6 +8,10 @@
 
 import tables, strutils, options, hashes, sets, macros, interactions/sharedState
 
+# Forward declaration for render commands to avoid circular dependency
+type RenderCommand* = object
+type RenderCommandList* = seq[RenderCommand]
+
 type
   ElementKind* = enum
     ## All supported UI element types
@@ -40,6 +44,7 @@ type
     ekTabContent = "TabContent"
     ekTabPanel = "TabPanel"
     ekLink = "Link"
+    ekCanvas = "Canvas"
 
   Alignment* = enum
     ## Alignment options for layout
@@ -53,6 +58,84 @@ type
   Color* = object
     ## RGBA color representation
     r*, g*, b*, a*: uint8
+
+# ============================================================================
+# Canvas API Types (needed before Element)
+# ============================================================================
+
+type
+  PathCommandKind* = enum
+    MoveTo, LineTo, Arc, BezierCurveTo, ClosePath
+
+  TextAlign* = enum
+    Start, End, Left, Right, Center
+
+  TextBaseline* = enum
+    Top, Middle, Alphabetic, Bottom
+
+  GlobalCompositeOperation* = enum
+    SourceOver, Multiply, Screen, Lighten
+
+  LineCap* = enum
+    Butt, Round, Square
+
+  LineJoin* = enum
+    Miter, Round, Bevel
+
+  DrawingContext* = ref object
+    ## The "pen" used for all drawing operations on a canvas
+    # Canvas properties
+    fillStyle*: Color
+    strokeStyle*: Color
+    lineWidth*: float
+    font*: string
+    textAlign*: TextAlign
+    textBaseline*: TextBaseline
+    globalAlpha*: float
+    globalCompositeOperation*: GlobalCompositeOperation
+    lineCap*: LineCap
+    lineJoin*: LineJoin
+
+    # State stack for save/restore
+    stateStack*: seq[DrawingState]
+
+    # Path operations
+    currentPath*: seq[PathCommand]
+    pathInProgress*: bool
+
+    # Backend-specific data
+    backendData*: pointer
+    renderCommands*: pointer  # For proper render command emission - will be cast to seq[RenderCommand]
+
+  DrawingState* = object
+    ## Saved drawing state for restore operations
+    fillStyle*: Color
+    strokeStyle*: Color
+    lineWidth*: float
+    font*: string
+    textAlign*: TextAlign
+    textBaseline*: TextBaseline
+    globalAlpha*: float
+    globalCompositeOperation*: GlobalCompositeOperation
+    lineCap*: LineCap
+    lineJoin*: LineJoin
+
+  PathCommand* = object
+    ## Individual path commands
+    case kind*: PathCommandKind
+    of MoveTo:
+      moveToX*, moveToY*: float
+    of LineTo:
+      lineToX*, lineToY*: float
+    of Arc:
+      arcX*, arcY*, arcRadius*, arcStartAngle*, arcEndAngle*: float
+    of BezierCurveTo:
+      cp1x*, cp1y*, cp2x*, cp2y*, bezierX*, bezierY*: float
+    of ClosePath:
+      discard
+
+  DrawProc* = proc(ctx: DrawingContext, width, height: float) {.closure.}
+    ## The required signature for canvas drawing callbacks
 
   ValueKind* = enum
     ## Value types for properties
@@ -171,6 +254,10 @@ type
 
     # Drop target state (for elements with DropTarget behavior)
     dropTargetState*: DropTargetState  # Drop target state
+
+    # Canvas-specific properties (for ekCanvas)
+    canvasDrawProc*: proc(ctx: DrawingContext, width, height: float) {.closure.}  # Drawing callback
+    canvasBackgroundColor*: Option[Color]  # Canvas background color
 
 # ============================================================================
 # Forward Declarations for Reactive System
