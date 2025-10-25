@@ -272,67 +272,83 @@ proc drawPath*(backend: var RaylibBackend, commands: seq[PathCommand],
   if commands.len == 0:
     return
 
-  # Convert path commands to raylib drawing
-  # Note: For simplicity, we'll handle basic path commands
-  # A full implementation would convert all path types to raylib equivalents
+  # Collect all points from the path
+  var points: seq[raylib.Vector2] = @[]
+  var currentX, currentY: float = 0.0
+  var hasArc = false
 
-  for i, cmd in commands:
+  for cmd in commands:
     case cmd.kind
     of PathCommandKind.MoveTo:
-      # Start a new path segment
-      discard
+      currentX = cmd.moveToX
+      currentY = cmd.moveToY
+      points.add(raylib.Vector2(x: currentX.float32, y: currentY.float32))
     of PathCommandKind.LineTo:
-      # Draw line from previous point to this point
-      if i > 0 and commands[i-1].kind in {PathCommandKind.MoveTo, PathCommandKind.LineTo}:
-        let prevCmd = commands[i-1]
-        let startX = if prevCmd.kind == PathCommandKind.MoveTo: prevCmd.moveToX else: prevCmd.lineToX
-        let startY = if prevCmd.kind == PathCommandKind.MoveTo: prevCmd.moveToY else: prevCmd.lineToY
-        let endX = cmd.lineToX
-        let endY = cmd.lineToY
-
-        if shouldStroke:
-          raylib.drawLine(
-            startX.int32, startY.int32, endX.int32, endY.int32,
-            raylib.Color(r: strokeStyle.r, g: strokeStyle.g, b: strokeStyle.b, a: strokeStyle.a)
-          )
+      currentX = cmd.lineToX
+      currentY = cmd.lineToY
+      points.add(raylib.Vector2(x: currentX.float32, y: currentY.float32))
     of PathCommandKind.Arc:
-      # Draw arc (simplified as circle segments)
+      # Handle arcs separately - draw filled or outlined circle
+      hasArc = true
       if shouldFill:
         raylib.drawCircle(
           cmd.arcX.int32, cmd.arcY.int32, cmd.arcRadius.float32,
           raylib.Color(r: fillStyle.r, g: fillStyle.g, b: fillStyle.b, a: fillStyle.a)
         )
-      elif shouldStroke:
+      if shouldStroke:
         raylib.drawCircleLines(
           cmd.arcX.int32, cmd.arcY.int32, cmd.arcRadius.float32,
           raylib.Color(r: strokeStyle.r, g: strokeStyle.g, b: strokeStyle.b, a: strokeStyle.a)
         )
-    of PathCommandKind.ClosePath:
-      # Close the path by drawing a line to the start
-      if commands.len > 0:
-        let firstCmd = commands[0]
-        let lastCmd = commands[i-1]
-        if lastCmd.kind in {PathCommandKind.MoveTo, PathCommandKind.LineTo} and firstCmd.kind in {PathCommandKind.MoveTo, PathCommandKind.LineTo}:
-          let startX = if firstCmd.kind == PathCommandKind.MoveTo: firstCmd.moveToX else: firstCmd.lineToX
-          let startY = if firstCmd.kind == PathCommandKind.MoveTo: firstCmd.moveToY else: firstCmd.lineToY
-          let endX = if lastCmd.kind == PathCommandKind.MoveTo: lastCmd.moveToX else: lastCmd.lineToX
-          let endY = if lastCmd.kind == PathCommandKind.MoveTo: lastCmd.moveToY else: lastCmd.lineToY
-          if shouldStroke:
-            raylib.drawLine(
-              endX.int32, endY.int32, startX.int32, startY.int32,
-              raylib.Color(r: strokeStyle.r, g: strokeStyle.g, b: strokeStyle.b, a: strokeStyle.a)
-            )
     of PathCommandKind.BezierCurveTo:
-      # Bezier curves would need more complex implementation
-      # For now, draw a simple line approximation
-      if i > 0 and commands[i-1].kind in {PathCommandKind.MoveTo, PathCommandKind.LineTo}:
-        let prevCmd = commands[i-1]
-        let startX = if prevCmd.kind == PathCommandKind.MoveTo: prevCmd.moveToX else: prevCmd.lineToX
-        let startY = if prevCmd.kind == PathCommandKind.MoveTo: prevCmd.moveToY else: prevCmd.lineToY
+      # Simple approximation: just add the end point
+      # A full implementation would sample points along the curve
+      currentX = cmd.bezierX
+      currentY = cmd.bezierY
+      points.add(raylib.Vector2(x: currentX.float32, y: currentY.float32))
+    of PathCommandKind.ClosePath:
+      # Path will be automatically closed by polygon drawing
+      discard
+
+  # Draw the collected points as a polygon
+  if points.len >= 3 and not hasArc:
+    if shouldFill:
+      # Check if this is a simple rectangle (4 points forming axis-aligned rect)
+      if points.len == 4:
+        # Use Raylib's optimized rectangle drawing
+        let minX = min(min(points[0].x, points[1].x), min(points[2].x, points[3].x))
+        let minY = min(min(points[0].y, points[1].y), min(points[2].y, points[3].y))
+        let maxX = max(max(points[0].x, points[1].x), max(points[2].x, points[3].x))
+        let maxY = max(max(points[0].y, points[1].y), max(points[2].y, points[3].y))
+        raylib.drawRectangle(
+          minX.int32, minY.int32, (maxX - minX).int32, (maxY - minY).int32,
+          raylib.Color(r: fillStyle.r, g: fillStyle.g, b: fillStyle.b, a: fillStyle.a)
+        )
+      else:
+        # Draw filled polygon using triangle fan for other shapes
+        raylib.drawTriangleFan(
+          points,
+          raylib.Color(r: fillStyle.r, g: fillStyle.g, b: fillStyle.b, a: fillStyle.a)
+        )
+
+    if shouldStroke:
+      # Draw outline by connecting consecutive points
+      # Note: lineWidth is currently ignored due to raylib binding limitations
+      for i in 0..<points.len:
+        let nextI = (i + 1) mod points.len
         raylib.drawLine(
-          startX.int32, startY.int32, cmd.bezierX.int32, cmd.bezierY.int32,
+          points[i].x.int32, points[i].y.int32,
+          points[nextI].x.int32, points[nextI].y.int32,
           raylib.Color(r: strokeStyle.r, g: strokeStyle.g, b: strokeStyle.b, a: strokeStyle.a)
         )
+  elif points.len == 2:
+    # Just a line
+    if shouldStroke:
+      raylib.drawLine(
+        points[0].x.int32, points[0].y.int32,
+        points[1].x.int32, points[1].y.int32,
+        raylib.Color(r: strokeStyle.r, g: strokeStyle.g, b: strokeStyle.b, a: strokeStyle.a)
+      )
 
 proc clearCanvas*(backend: var RaylibBackend, x, y, width, height: float, color: core.Color) =
   ## Clear a canvas area with the specified color

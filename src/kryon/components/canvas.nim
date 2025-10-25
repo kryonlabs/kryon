@@ -85,10 +85,12 @@ proc newDrawingContext*(): DrawingContext =
 # Canvas Drawing Operations
 # ============================================================================
 
-proc clear*(ctx: DrawingContext, color: core.Color) =
+proc clearBackground*(ctx: DrawingContext, width, height: float, color: core.Color) =
   ## Clears the entire canvas to a specific color
-  # Note: For now, we'll use a simpler approach since clearBackground affects the whole screen
-  discard
+  ## Similar to Raylib's clearBackground - this is the proper way to clear a canvas
+  ## Note: This will be scoped to the current canvas area, not the entire screen
+  let cmd = renderCommands.clearCanvas(0, 0, width, height, color)
+  addRenderCommand(ctx, cmd)
 
 proc fillRect*(ctx: DrawingContext, x, y, w, h: float) =
   ## Draws a filled rectangle with the current fillStyle

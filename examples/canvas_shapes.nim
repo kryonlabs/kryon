@@ -9,8 +9,7 @@ import ../src/kryon
 # Drawing procedure that creates various shapes using high-level drawing functions
 proc drawShapes(ctx: DrawingContext, width, height: float) =
   # Clear canvas with light blue background
-  ctx.fillStyle = rgba(135.uint8, 206.uint8, 235.uint8, 255.uint8)  # Sky blue
-  ctx.drawRectangle(0, 0, width, height)
+  ctx.clearBackground(width, height, rgba(135.uint8, 206.uint8, 235.uint8, 255.uint8))  # Sky blue
 
   # Draw a red filled rectangle
   ctx.fillStyle = rgba(255.uint8, 0.uint8, 0.uint8, 255.uint8)  # Red
