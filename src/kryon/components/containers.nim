@@ -11,26 +11,64 @@ import options
 type
   ColumnData* = object
     ## Extracted column rendering data
+    x*, y*, width*, height*: float
+    hasBackground*: bool
+    backgroundColor*: Color
     sortedChildren*: seq[Element]
 
   RowData* = object
     ## Extracted row rendering data
+    x*, y*, width*, height*: float
+    hasBackground*: bool
+    backgroundColor*: Color
     sortedChildren*: seq[Element]
 
 proc extractColumnData*(elem: Element, inheritedColor: Option[Color] = none(Color)): ColumnData =
   ## Extract column properties from element
   ##
   ## Layout is handled by the layout engine (mainAxisAlignment, crossAxisAlignment, gap).
-  ## This just provides sorted children for rendering.
+  ## This provides children (sorted by z-index) and background rendering.
 
-  # Column doesn't render itself, just provides children (sorted by z-index)
+  result.x = elem.x
+  result.y = elem.y
+  result.width = elem.width
+  result.height = elem.height
+
+  # Check for background (same logic as Container)
+  let bgColor = elem.getProp("backgroundColor")
+  if bgColor.isNone:
+    let bg = elem.getProp("background")
+    if bg.isSome:
+      result.hasBackground = true
+      result.backgroundColor = bg.get.getColor()
+  elif bgColor.isSome:
+    result.hasBackground = true
+    result.backgroundColor = bgColor.get.getColor()
+
+  # Sort children by z-index
   result.sortedChildren = sortChildrenByZIndex(elem.children)
 
 proc extractRowData*(elem: Element, inheritedColor: Option[Color] = none(Color)): RowData =
   ## Extract row properties from element
   ##
   ## Layout is handled by the layout engine (mainAxisAlignment, crossAxisAlignment, gap).
-  ## This just provides sorted children for rendering.
+  ## This provides children (sorted by z-index) and background rendering.
 
-  # Row doesn't render itself, just provides children (sorted by z-index)
+  result.x = elem.x
+  result.y = elem.y
+  result.width = elem.width
+  result.height = elem.height
+
+  # Check for background (same logic as Container)
+  let bgColor = elem.getProp("backgroundColor")
+  if bgColor.isNone:
+    let bg = elem.getProp("background")
+    if bg.isSome:
+      result.hasBackground = true
+      result.backgroundColor = bg.get.getColor()
+  elif bgColor.isSome:
+    result.hasBackground = true
+    result.backgroundColor = bgColor.get.getColor()
+
+  # Sort children by z-index
   result.sortedChildren = sortChildrenByZIndex(elem.children)

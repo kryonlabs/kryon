@@ -338,11 +338,15 @@ proc extractElement*(elem: Element, measurer: TextMeasurer, state: var BackendSt
 
   of ekColumn:
     let data = extractColumnData(elem, inheritedColor)
+    if data.hasBackground:
+      result.add drawRectangle(data.x, data.y, data.width, data.height, data.backgroundColor)
     for child in data.sortedChildren:
       result.add extractElement(child, measurer, state, inheritedColor)
 
   of ekRow:
     let data = extractRowData(elem, inheritedColor)
+    if data.hasBackground:
+      result.add drawRectangle(data.x, data.y, data.width, data.height, data.backgroundColor)
     for child in data.sortedChildren:
       result.add extractElement(child, measurer, state, inheritedColor)
 

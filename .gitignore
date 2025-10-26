@@ -12,6 +12,7 @@ bin
 build/
 dist/
 *.out
+.kryon
 
 .cache/
 .nimble_cache/

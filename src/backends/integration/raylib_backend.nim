@@ -276,6 +276,7 @@ proc drawPath*(backend: var RaylibBackend, commands: seq[PathCommand],
   var points: seq[raylib.Vector2] = @[]
   var currentX, currentY: float = 0.0
   var hasArc = false
+  var isClosed = false
 
   for cmd in commands:
     case cmd.kind
@@ -288,16 +289,24 @@ proc drawPath*(backend: var RaylibBackend, commands: seq[PathCommand],
       currentY = cmd.lineToY
       points.add(raylib.Vector2(x: currentX.float32, y: currentY.float32))
     of PathCommandKind.Arc:
-      # Handle arcs separately - draw filled or outlined circle
+      # Handle arcs - draw arc sectors with proper start/end angles
       hasArc = true
+      # Convert radians to degrees (Raylib uses degrees, Canvas API uses radians)
+      let startAngleDeg = (cmd.arcStartAngle * 180.0 / PI).float32
+      let endAngleDeg = (cmd.arcEndAngle * 180.0 / PI).float32
+      let center = raylib.Vector2(x: cmd.arcX.float32, y: cmd.arcY.float32)
+      let segments = 36.int32  # Good quality for smooth arcs
+
       if shouldFill:
-        raylib.drawCircle(
-          cmd.arcX.int32, cmd.arcY.int32, cmd.arcRadius.float32,
+        raylib.drawCircleSector(
+          center, cmd.arcRadius.float32,
+          startAngleDeg, endAngleDeg, segments,
           raylib.Color(r: fillStyle.r, g: fillStyle.g, b: fillStyle.b, a: fillStyle.a)
         )
       if shouldStroke:
-        raylib.drawCircleLines(
-          cmd.arcX.int32, cmd.arcY.int32, cmd.arcRadius.float32,
+        raylib.drawCircleSectorLines(
+          center, cmd.arcRadius.float32,
+          startAngleDeg, endAngleDeg, segments,
           raylib.Color(r: strokeStyle.r, g: strokeStyle.g, b: strokeStyle.b, a: strokeStyle.a)
         )
     of PathCommandKind.BezierCurveTo:
@@ -307,8 +316,8 @@ proc drawPath*(backend: var RaylibBackend, commands: seq[PathCommand],
       currentY = cmd.bezierY
       points.add(raylib.Vector2(x: currentX.float32, y: currentY.float32))
     of PathCommandKind.ClosePath:
-      # Path will be automatically closed by polygon drawing
-      discard
+      # Mark path as closed
+      isClosed = true
 
   # Draw the collected points as a polygon
   if points.len >= 3 and not hasArc:
@@ -334,8 +343,9 @@ proc drawPath*(backend: var RaylibBackend, commands: seq[PathCommand],
     if shouldStroke:
       # Draw outline by connecting consecutive points
       # Note: lineWidth is currently ignored due to raylib binding limitations
-      for i in 0..<points.len:
-        let nextI = (i + 1) mod points.len
+      let lineCount = if isClosed: points.len else: points.len - 1
+      for i in 0..<lineCount:
+        let nextI = if isClosed: (i + 1) mod points.len else: i + 1
         raylib.drawLine(
           points[i].x.int32, points[i].y.int32,
           points[nextI].x.int32, points[nextI].y.int32,

@@ -267,119 +267,6 @@ proc drawLine*(ctx: DrawingContext, startX, startY, endX, endY: float) =
   ctx.lineTo(endX, endY)
   ctx.stroke()
 
-proc drawPoly*(ctx: DrawingContext, center: tuple[x, y: float], sides: int, radius: float) =
-  ## Draw a filled polygon
-  ctx.beginPath()
-  for i in 0..<sides:
-    let angle = (2 * PI * i.float) / sides.float - PI / 2.0
-    let x = center.x + cos(angle) * radius
-    let y = center.y + sin(angle) * radius
-    if i == 0:
-      ctx.moveTo(x, y)
-    else:
-      ctx.lineTo(x, y)
-  ctx.closePath()
-  ctx.fill()
-
-proc drawPolyLines*(ctx: DrawingContext, center: tuple[x, y: float], sides: int, radius: float) =
-  ## Draw polygon outline
-  ctx.beginPath()
-  for i in 0..<sides:
-    let angle = (2 * PI * i.float) / sides.float - PI / 2.0
-    let x = center.x + cos(angle) * radius
-    let y = center.y + sin(angle) * radius
-    if i == 0:
-      ctx.moveTo(x, y)
-    else:
-      ctx.lineTo(x, y)
-  ctx.closePath()
-  ctx.stroke()
-
-proc drawStar*(ctx: DrawingContext, centerX, centerY: float, outerRadius, innerRadius: float, points: int) =
-  ## Draw a filled star
-  ctx.beginPath()
-  for i in 0..<points * 2:
-    let angle = (PI * i.float) / points.float - PI / 2.0
-    let radius = if i mod 2 == 0: outerRadius else: innerRadius
-    let x = centerX + cos(angle) * radius
-    let y = centerY + sin(angle) * radius
-    if i == 0:
-      ctx.moveTo(x, y)
-    else:
-      ctx.lineTo(x, y)
-  ctx.closePath()
-  ctx.fill()
-
-proc drawStarLines*(ctx: DrawingContext, centerX, centerY: float, outerRadius, innerRadius: float, points: int) =
-  ## Draw star outline
-  ctx.beginPath()
-  for i in 0..<points * 2:
-    let angle = (PI * i.float) / points.float - PI / 2.0
-    let radius = if i mod 2 == 0: outerRadius else: innerRadius
-    let x = centerX + cos(angle) * radius
-    let y = centerY + sin(angle) * radius
-    if i == 0:
-      ctx.moveTo(x, y)
-    else:
-      ctx.lineTo(x, y)
-  ctx.closePath()
-  ctx.stroke()
-
-proc drawEllipse*(ctx: DrawingContext, centerX, centerY: float, radiusX, radiusY: float) =
-  ## Draw a filled ellipse
-  ctx.beginPath()
-  for i in 0..360:
-    let angle = (PI * 2 * i.float) / 360.0
-    let x = centerX + cos(angle) * radiusX
-    let y = centerY + sin(angle) * radiusY
-    if i == 0:
-      ctx.moveTo(x, y)
-    else:
-      ctx.lineTo(x, y)
-  ctx.closePath()
-  ctx.fill()
-
-proc drawEllipseLines*(ctx: DrawingContext, centerX, centerY: float, radiusX, radiusY: float) =
-  ## Draw ellipse outline
-  ctx.beginPath()
-  for i in 0..360:
-    let angle = (PI * 2 * i.float) / 360.0
-    let x = centerX + cos(angle) * radiusX
-    let y = centerY + sin(angle) * radiusY
-    if i == 0:
-      ctx.moveTo(x, y)
-    else:
-      ctx.lineTo(x, y)
-  ctx.closePath()
-  ctx.stroke()
-
-proc drawRing*(ctx: DrawingContext, centerX, centerY: float, innerRadius, outerRadius: float) =
-  ## Draw a filled ring (circle with hole)
-  ctx.beginPath()
-  for i in 0..360:
-    let angle = (PI * 2 * i.float) / 360.0
-    let x = centerX + cos(angle) * outerRadius
-    let y = centerY + sin(angle) * outerRadius
-    if i == 0:
-      ctx.moveTo(x, y)
-    else:
-      ctx.lineTo(x, y)
-  ctx.closePath()
-  ctx.fill()
-
-  # Cut out the inner circle
-  ctx.beginPath()
-  for i in 0..360:
-    let angle = (PI * 2 * i.float) / 360.0
-    let x = centerX + cos(angle) * innerRadius
-    let y = centerY + sin(angle) * innerRadius
-    if i == 0:
-      ctx.moveTo(x, y)
-    else:
-      ctx.lineTo(x, y)
-  ctx.closePath()
-  ctx.fill()
-
 proc drawSineWave*(ctx: DrawingContext, startX, startY, endX, amplitude: float, frequency: float = 0.05) =
   ## Draw a sine wave
   ctx.beginPath()
@@ -389,4 +276,5 @@ proc drawSineWave*(ctx: DrawingContext, startX, startY, endX, amplitude: float, 
       ctx.moveTo(startX + x.float, y)
     else:
       ctx.lineTo(startX + x.float, y)
+  # Don't close path for sine wave - it's an open curve
   ctx.stroke()
