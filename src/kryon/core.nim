@@ -441,7 +441,11 @@ proc getFloat*(v: Value, default: float = 0.0): float =
 
 proc getString*(v: Value, default: string = ""): string =
   if v.kind == vkGetter:
-    v.getter().getString(default)
+    try:
+      v.getter().getString(default)
+    except:
+      # Return default if reactive getter fails (e.g., IndexDefect from array access)
+      default
   elif v.kind == vkString:
     v.strVal
   else:
@@ -451,7 +455,11 @@ proc getStringSeq*(v: Value): seq[string] =
   ## Extract a sequence of strings from a Value.
   case v.kind
   of vkGetter:
-    v.getter().getStringSeq()
+    try:
+      v.getter().getStringSeq()
+    except:
+      # Return empty sequence if reactive getter fails
+      @[]
   of vkStringSeq:
     v.strSeqVal
   of vkString:
@@ -461,7 +469,11 @@ proc getStringSeq*(v: Value): seq[string] =
 
 proc getBool*(v: Value, default: bool = false): bool =
   if v.kind == vkGetter:
-    v.getter().getBool(default)
+    try:
+      v.getter().getBool(default)
+    except:
+      # Return default if reactive getter fails
+      default
   elif v.kind == vkBool:
     v.boolVal
   else:
@@ -469,17 +481,29 @@ proc getBool*(v: Value, default: bool = false): bool =
 
 proc getColor*(v: Value): Color =
   if v.kind == vkGetter:
-    v.getter().getColor()
+    try:
+      v.getter().getColor()
+    except:
+      # Return black color if reactive getter fails
+      rgba(0, 0, 0, 255)
   elif v.kind == vkColor:
     v.colorVal
   elif v.kind == vkString:
-    parseColor(v.strVal)
+    try:
+      parseColor(v.strVal)
+    except:
+      # Return black color if string parsing fails
+      rgba(0, 0, 0, 255)
   else:
     rgba(0, 0, 0, 255)
 
 proc getAlignment*(v: Value, default: Alignment = alStart): Alignment =
   if v.kind == vkGetter:
-    v.getter().getAlignment(default)
+    try:
+      v.getter().getAlignment(default)
+    except:
+      # Return default if reactive getter fails
+      default
   elif v.kind == vkAlignment:
     v.alignVal
   else:

@@ -31,7 +31,12 @@ proc extractTextData*(elem: Element, inheritedColor: Option[Color] = none(Color)
   ##   - fontSize: Text size (default: 20)
   ##   - textAlignment: Text alignment (left, center, right; default: left)
 
-  result.text = elem.getProp("text").get(val("")).getString()
+  # Safe text property access with error handling
+  try:
+    result.text = elem.getProp("text").get(val("")).getString()
+  except:
+    # Return empty string if text property access fails (e.g., IndexDefect from reactive expressions)
+    result.text = ""
   result.color = getTextColor(elem, inheritedColor, "#FFFFFF")
   result.fontSize = getFontSize(elem, 20)
   result.x = elem.x

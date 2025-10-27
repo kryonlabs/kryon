@@ -175,9 +175,13 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
       # Variable reference - wrap in getter for reactivity!
       let varName = node.strVal
       result.value = quote do: valGetter(proc(): Value =
-        # Register dependency using variable name as identifier
-        registerDependency(`varName`)
-        val(`node`)
+        try:
+          # Register dependency using variable name as identifier
+          registerDependency(`varName`)
+          val(`node`)
+        except:
+          # Return empty string as fallback if reactive expression fails
+          val("")
       )
       result.boundVar = some(node)  # Return the variable name for binding
   of nnkCall:
@@ -202,11 +206,39 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
           return
 
     # Complex expression - wrap in getter for reactivity!
-    result.value = quote do: valGetter(proc(): Value = val(`node`))
+    result.value = quote do: valGetter(proc(): Value =
+      try:
+        val(`node`)
+      except:
+        # Return empty string as fallback if reactive expression fails
+        val("")
+    )
+    result.boundVar = none(NimNode)
+  of nnkIfExpr:
+    # Inline if expression: if condition: true_expr else: false_expr
+    # Wrap in getter for reactivity!
+    let ifExprCopy = copyNimTree(node)
+    result.value = quote do: valGetter(proc(): Value =
+      try:
+        # Register dependency on the entire if expression
+        registerDependency("ifExpr_" & $`ifExprCopy`.repr)
+
+        # Evaluate the if expression
+        val(`ifExprCopy`)
+      except:
+        # Return empty string as fallback if reactive expression fails
+        val("")
+    )
     result.boundVar = none(NimNode)
   of nnkInfix, nnkPrefix, nnkDotExpr:
     # Complex expression - wrap in getter for reactivity!
-    result.value = quote do: valGetter(proc(): Value = val(`node`))
+    result.value = quote do: valGetter(proc(): Value =
+      try:
+        val(`node`)
+      except:
+        # Return empty string as fallback if reactive expression fails
+        val("")
+    )
     result.boundVar = none(NimNode)
   else:
     # Default: try to convert to Value
