@@ -360,6 +360,11 @@ proc extractElement*(elem: Element, measurer: TextMeasurer, state: var BackendSt
     result.add drawCanvas(data.x, data.y, data.width, data.height, data.drawProc,
                         if data.hasBackground: some(data.backgroundColor) else: none(Color))
 
+  of ekSpacer:
+    # Spacer is a non-visual element that only takes up space
+    # No rendering needed - layout engine handles the spacing
+    discard
+
   else:
     # For other elements, just recurse to children
     let sortedChildren = sortChildrenByZIndex(elem.children)

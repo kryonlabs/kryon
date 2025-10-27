@@ -45,6 +45,7 @@ type
     ekTabPanel = "TabPanel"
     ekLink = "Link"
     ekCanvas = "Canvas"
+    ekSpacer = "Spacer"
 
   Alignment* = enum
     ## Alignment options for layout

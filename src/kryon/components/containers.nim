@@ -23,6 +23,11 @@ type
     backgroundColor*: Color
     sortedChildren*: seq[Element]
 
+  SpacerData* = object
+    ## Extracted spacer rendering data
+    width*: float
+    height*: float
+
 proc extractColumnData*(elem: Element, inheritedColor: Option[Color] = none(Color)): ColumnData =
   ## Extract column properties from element
   ##
@@ -47,6 +52,16 @@ proc extractColumnData*(elem: Element, inheritedColor: Option[Color] = none(Colo
 
   # Sort children by z-index
   result.sortedChildren = sortChildrenByZIndex(elem.children)
+
+proc extractSpacerData*(elem: Element): SpacerData =
+  ## Extract spacer properties from element
+  ##
+  ## Properties supported:
+  ##   - width: Horizontal space (default: 0.0)
+  ##   - height: Vertical space (default: 16.0)
+
+  result.width = elem.getProp("width").get(val(0.0)).getFloat()
+  result.height = elem.getProp("height").get(val(16.0)).getFloat()
 
 proc extractRowData*(elem: Element, inheritedColor: Option[Color] = none(Color)): RowData =
   ## Extract row properties from element

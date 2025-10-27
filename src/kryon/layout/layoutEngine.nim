@@ -738,6 +738,14 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
       calculateLayout(measurer, child, contentX, currentY, contentWidth, 0)
       currentY += child.height + gap
 
+  of ekSpacer:
+    # Spacer takes up space based on its width and height properties
+    # Use explicit width/height if provided, otherwise use defaults
+    let width = elem.getProp("width").get(val(0.0)).getFloat()
+    let height = elem.getProp("height").get(val(16.0)).getFloat()
+    elem.width = width
+    elem.height = height
+
   else:
     # Default: just layout children in same space as parent
     for child in elem.children:

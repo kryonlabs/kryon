@@ -1146,6 +1146,19 @@ macro ScrollView*(body: untyped): Element =
   ## Create a ScrollView element
   result = processElementBody(ekScrollView, body)
 
+func Spacer*(): Element =
+  ## Create a Spacer element with default dimensions (16px vertical, 0px horizontal)
+  ## Usage: Spacer() for default spacing
+  let spacer = newElement(ekSpacer)
+  spacer.properties["width"] = val(0.0)
+  spacer.properties["height"] = val(16.0)
+  spacer
+
+macro Spacer*(body: untyped): Element =
+  ## Create a Spacer element for empty space with custom properties
+  ## Usage: Spacer: height = 20 or Spacer: width = 0, height = 30
+  result = processElementBody(ekSpacer, body)
+
 macro Header*(body: untyped): Element =
   ## Create a Header element (window metadata)
   result = processElementBody(ekHeader, body)
