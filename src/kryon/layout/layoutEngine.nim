@@ -362,6 +362,8 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
     if widthOpt.isSome:
       elem.width = widthOpt.get.getFloat()
     else:
+      # Revert: Use parentWidth as before, but fix the alignment calculation
+      # The real issue is in how center alignment is calculated, not the width itself
       elem.width = if parentWidth > 0: parentWidth else: maxWidth
     if heightOpt.isSome:
       elem.height = heightOpt.get.getFloat()
@@ -428,8 +430,11 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
       if crossAxisAlignment.isSome:
         let align = crossAxisAlignment.get.getString()
         if align == "center":
+          # Fix: Use full elem.width for centering to support flex expansion
+          # When Column expands via flex, elem.width contains the full expanded width
           childX = elem.x + (elem.width - childSizes[childIndex].w) / 2.0
         elif align == "end":
+          # Fix: Use full elem.width for end alignment to support flex expansion
           childX = elem.x + elem.width - childSizes[childIndex].w
 
       # Layout child at final position
@@ -454,12 +459,20 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
       calculateLayout(measurer, child, elem.x, elem.y, parentWidth, elem.height)
       childSizes.add((w: child.width, h: child.height))
 
-    # Calculate total width and max height
+    # Calculate total width, max height, and total flex
     var totalWidth = 0.0
     var maxHeight = 0.0
-    for size in childSizes:
-      totalWidth += size.w
-      maxHeight = max(maxHeight, size.h)
+    var totalFlex = 0.0
+    var childFlexes: seq[float] = @[]
+
+    for i, child in actualChildren:
+      let flexVal = child.getProp("flex").get(val(0)).getFloat()
+      childFlexes.add(flexVal)
+      totalFlex += flexVal
+      # For flex children, use their natural width as minimum width
+      totalWidth += childSizes[i].w
+      maxHeight = max(maxHeight, childSizes[i].h)
+
     if actualChildren.len > 1:
       totalWidth += gap * (actualChildren.len - 1).float
 
@@ -527,11 +540,20 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
         # Default to start
         currentX = elem.x
 
-    # Second pass: Position children
+    # Second pass: Position children with flex support
     var childIndex = 0
+
+    # Calculate available space for flex distribution
+    let availableSpace = elem.width - totalWidth
+    let flexSpacePerUnit = if totalFlex > 0: availableSpace / totalFlex else: 0.0
+
     for child in actualChildren:
       if childIndex > 0:
         currentX += dynamicGap
+
+      # Determine final child width based on flex property
+      let childFlex = childFlexes[childIndex]
+      let finalChildWidth = childSizes[childIndex].w + (childFlex * flexSpacePerUnit)
 
       # Determine Y position based on crossAxisAlignment
       var childY = elem.y
@@ -542,9 +564,9 @@ proc calculateLayout*[T](measurer: T, elem: Element, x, y, parentWidth, parentHe
         elif align == "end":
           childY = elem.y + elem.height - childSizes[childIndex].h
 
-      # Layout child at final position
-      calculateLayout(measurer, child, currentX, childY, childSizes[childIndex].w, childSizes[childIndex].h)
-      currentX += childSizes[childIndex].w
+      # Layout child at final position with flex-adjusted width
+      calculateLayout(measurer, child, currentX, childY, finalChildWidth, childSizes[childIndex].h)
+      currentX += finalChildWidth
       inc childIndex
 
   of ekCenter:
