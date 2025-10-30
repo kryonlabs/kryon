@@ -163,6 +163,9 @@ type
   EventHandler* = proc (data: string = "") {.closure.}
     ## Event handler callback type - accepts optional data parameter
 
+  UpdateEventHandler* = proc (deltaTime: float) {.closure.}
+    ## Update event handler callback type - accepts deltaTime parameter
+
   FontResource* = object
     ## Font resource definition for DSL
     name*: string
@@ -260,11 +263,38 @@ type
     canvasDrawProc*: proc(ctx: DrawingContext, width, height: float) {.closure.}  # Drawing callback
     canvasBackgroundColor*: Option[Color]  # Canvas background color
 
+    # Update event handler (for ekBody and other elements)
+    onUpdate*: UpdateEventHandler  # Optional update callback called every frame
+
 # ============================================================================
 # Forward Declarations for Reactive System
 # ============================================================================
 
 proc registerDependency*(valueIdentifier: string)  # Forward declaration
+
+# ============================================================================
+# Update Event Helper Functions
+# ============================================================================
+
+proc setOnUpdate*(elem: Element, handler: UpdateEventHandler) =
+  ## Set an update event handler for an element
+  ## This handler will be called every frame with deltaTime
+  elem.onUpdate = handler
+
+proc getOnUpdate*(elem: Element): UpdateEventHandler =
+  ## Get the update event handler for an element
+  ## Returns nil if no handler is set
+  result = elem.onUpdate
+
+proc triggerOnUpdate*(elem: Element, deltaTime: float) =
+  ## Trigger the update event handler for an element if it exists
+  ## This is called automatically by the main loop but can be called manually
+  if elem.onUpdate != nil:
+    elem.onUpdate(deltaTime)
+
+proc hasOnUpdate*(elem: Element): bool =
+  ## Check if an element has an update event handler
+  result = elem.onUpdate != nil
 
 # ============================================================================
 # Color Utilities

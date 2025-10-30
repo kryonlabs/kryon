@@ -396,6 +396,13 @@ proc emitEventAssignment(elemVar: NimNode, propName: string, handlerNode: NimNod
       quote do:
         `elemVar`.canvasDrawProc = `valueCopy`
     ]
+  # Special handling for onUpdate event (accepts deltaTime parameter)
+  if propName == "onUpdate":
+    let valueCopy = copyNimTree(handlerNode)
+    return @[
+      quote do:
+        `elemVar`.onUpdate = `valueCopy`
+    ]
 
   if handlerExpr.kind == nnkStmtList:
     if handlerExpr.len == 1:

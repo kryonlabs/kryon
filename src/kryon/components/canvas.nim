@@ -4,6 +4,7 @@
 ## Canvas elements provide a drawing surface for custom graphics.
 
 import std/math
+import std/strutils
 import ../core
 import ../rendering/renderingContext
 import ../pipeline/renderCommands
@@ -200,7 +201,18 @@ proc restore*(ctx: DrawingContext) =
 
 proc fillText*(ctx: DrawingContext, text: string, x, y: float) =
   ## Draws filled text at the specified position
-  ## This will be implemented by the backend
+  # Extract font size from font string (e.g., "Arial 16" -> 16)
+  var fontSize = 12  # Default
+  try:
+    let parts = ctx.font.split(" ")
+    if parts.len >= 2:
+      fontSize = parseInt(parts[^1])
+  except:
+    discard
+
+  # Create a text drawing render command
+  let cmd = renderCommands.drawText(text, x, y, fontSize, ctx.fillStyle)
+  addRenderCommand(ctx, cmd)
 
 proc strokeText*(ctx: DrawingContext, text: string, x, y: float) =
   ## Draws outlined text at the specified position

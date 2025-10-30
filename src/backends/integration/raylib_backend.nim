@@ -964,10 +964,20 @@ proc run*(backend: var RaylibBackend, root: Element) =
   # Calculate initial layout
   calculateLayout(root, 0, 0, backend.windowWidth.float, backend.windowHeight.float)
 
+  # Frame timing for deltaTime calculations
+  var lastTime = raylib.getTime()
+  var currentTime: float
+  var deltaTime: float
+
   # Main game loop
   while not windowShouldClose():
-    # Update cursor blink timer
-    backend.state.cursorBlink += 1.0 / 60.0
+    # Calculate real deltaTime
+    currentTime = raylib.getTime()
+    deltaTime = currentTime - lastTime
+    lastTime = currentTime
+
+    # Update cursor blink timer with real deltaTime
+    backend.state.cursorBlink += deltaTime
     if backend.state.cursorBlink >= 1.0:
       backend.state.cursorBlink = 0.0
 
@@ -1015,7 +1025,8 @@ proc run*(backend: var RaylibBackend, root: Element) =
       mouseX = mousePos.x,
       mouseY = mousePos.y,
       mousePressed = isMouseButtonPressed(MouseButton.Left),
-      mouseReleased = isMouseButtonReleased(MouseButton.Left)
+      mouseReleased = isMouseButtonReleased(MouseButton.Left),
+      deltaTime = deltaTime
     )
 
     # Process frame through pipeline - this does ALL the work!

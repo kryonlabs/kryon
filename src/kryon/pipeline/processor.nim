@@ -34,6 +34,7 @@ type
     mouseY*: float
     mousePressed*: bool
     mouseReleased*: bool
+    deltaTime*: float  # Time since last frame for animations and updates
 
   TextMeasurer* = concept m
     ## Duck-typed interface for text measurement (provided by backend)
@@ -42,6 +43,9 @@ type
 # ============================================================================
 # Main Pipeline Processing
 # ============================================================================
+
+# Forward declaration
+proc processUpdateEvents*(root: Element, deltaTime: float)
 
 proc processFrame*(root: Element, measurer: TextMeasurer, state: var BackendState, config: PipelineConfig): renderCommands.RenderCommandList =
   ## Process a single frame through the entire pipeline
@@ -85,9 +89,44 @@ proc processFrame*(root: Element, measurer: TextMeasurer, state: var BackendStat
   # Convert element tree to RenderCommands
   result = extractElement(root, measurer, state, none(Color))
 
-  # ========== STAGE 5: DRAG-AND-DROP EFFECTS ==========
+  # ========== STAGE 5: UPDATE EVENTS ==========
+  # Process onUpdate events for animations and time-based logic
+  processUpdateEvents(root, config.deltaTime)
+
+  # ========== STAGE 6: DRAG-AND-DROP EFFECTS ==========
   # Add drag-and-drop visual effects on top
   result.add extractDragAndDropEffects(root, measurer)
+
+# ============================================================================
+# Update Event Processing
+# ============================================================================
+
+proc processUpdateEvents*(root: Element, deltaTime: float) =
+  ## Process onUpdate events for all elements in the tree
+  ## This is called every frame with the time delta since last frame
+  ##
+  ## This function traverses the element tree and calls any registered
+  ## onUpdate handlers with the deltaTime parameter.
+
+  proc processElement(elem: Element) =
+    # Process current element's onUpdate handler if it exists
+    if elem.onUpdate != nil:
+      try:
+        elem.onUpdate(deltaTime)
+      except:
+        echo "Error in onUpdate handler: ", getCurrentExceptionMsg()
+
+    # Recursively process children
+    for child in elem.children:
+      processElement(child)
+
+    # Also process behavior elements (Draggable, DropTarget, etc.)
+    if elem.withBehaviors.len > 0:
+      for behavior in elem.withBehaviors:
+        processElement(behavior)
+
+  # Start processing from the root element
+  processElement(root)
 
 # ============================================================================
 # Simplified API
@@ -98,7 +137,8 @@ proc newPipelineConfig*(
   mouseX: float = 0.0,
   mouseY: float = 0.0,
   mousePressed: bool = false,
-  mouseReleased: bool = false
+  mouseReleased: bool = false,
+  deltaTime: float = 0.016666  # Default to ~60 FPS
 ): PipelineConfig =
   ## Create a new pipeline configuration
   PipelineConfig(
@@ -107,7 +147,8 @@ proc newPipelineConfig*(
     mouseX: mouseX,
     mouseY: mouseY,
     mousePressed: mousePressed,
-    mouseReleased: mouseReleased
+    mouseReleased: mouseReleased,
+    deltaTime: deltaTime
   )
 
 # ============================================================================
