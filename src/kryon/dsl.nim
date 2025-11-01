@@ -16,7 +16,7 @@
 ## ```
 
 import macros, strutils, options, unicode, tables
-import core
+import core, js_codegen
 
 # ============================================================================
 # Helper procs for macro processing
@@ -142,7 +142,26 @@ proc resolvePropertyAlias*(propName: string): string =
   # of "size": "fontSize"
   else: propName
 
-proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[NimNode]] =
+proc extractDependenciesFromAST(node: NimNode, deps: var seq[string]) =
+  ## Recursively extract variable identifiers from an AST node
+  ## These become the reactive dependencies for the expression
+  case node.kind:
+  of nnkIdent, nnkSym:
+    let name = node.strVal
+    # Skip language keywords and common function names
+    if name notin ["true", "false", "nil", "if", "else", "and", "or", "not", "div", "mod"] and
+       name notin deps:
+      deps.add(name)
+  of nnkCall:
+    # For function calls, extract dependencies from arguments (skip function name at index 0)
+    for i in 1..<node.len:
+      extractDependenciesFromAST(node[i], deps)
+  else:
+    # Recursively walk all children
+    for child in node:
+      extractDependenciesFromAST(child, deps)
+
+proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[NimNode], reactiveExpr: Option[tuple[jsCode: string, deps: seq[string]]]] =
   ## Convert a property value node to a Value (wraps dynamic expressions in getters)
   ## Returns both the value code and optionally the bound variable name
   case node.kind:
@@ -150,10 +169,12 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
     # Static integer literal
     result.value = quote do: val(`node`)
     result.boundVar = none(NimNode)
+    result.reactiveExpr = none(tuple[jsCode: string, deps: seq[string]])
   of nnkFloatLit:
     # Static float literal
     result.value = quote do: val(`node`)
     result.boundVar = none(NimNode)
+    result.reactiveExpr = none(tuple[jsCode: string, deps: seq[string]])
   of nnkStrLit:
     # Static string literal (check if it's a color)
     let strVal = node.strVal
@@ -162,28 +183,33 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
     else:
       result.value = quote do: val(`node`)
     result.boundVar = none(NimNode)
+    result.reactiveExpr = none(tuple[jsCode: string, deps: seq[string]])
   of nnkIdent:
     # Could be true/false (static) or a variable reference (dynamic)
     let identStr = node.strVal
     if identStr == "true":
       result.value = quote do: val(true)
       result.boundVar = none(NimNode)
+      result.reactiveExpr = none(tuple[jsCode: string, deps: seq[string]])
     elif identStr == "false":
       result.value = quote do: val(false)
       result.boundVar = none(NimNode)
+      result.reactiveExpr = none(tuple[jsCode: string, deps: seq[string]])
     else:
-      # Variable reference - wrap in getter for reactivity!
+      # Variable reference - REACTIVE! Capture AST and convert to JS
       let varName = node.strVal
+      let jsCode = "AppState." & varName
+      let deps = @[varName]
+
       result.value = quote do: valGetter(proc(): Value =
         try:
-          # Register dependency using variable name as identifier
           registerDependency(`varName`)
           val(`node`)
         except:
-          # Return empty string as fallback if reactive expression fails
           val("")
       )
-      result.boundVar = some(node)  # Return the variable name for binding
+      result.boundVar = some(node)
+      result.reactiveExpr = some((jsCode: jsCode, deps: deps))
   of nnkCall:
     # Check if this is a UI element creation call
     if node.len > 0:
@@ -197,53 +223,64 @@ proc parsePropertyValue(node: NimNode): tuple[value: NimNode, boundVar: Option[N
           # This is a UI element creation call, return it directly
           result.value = node
           result.boundVar = none(NimNode)
+          result.reactiveExpr = none(tuple[jsCode: string, deps: seq[string]])
           return
         else:
           # Check if this might be a function call that returns an Element
           # We'll treat it as a UI element creation call and let it be resolved at runtime
           result.value = node
           result.boundVar = none(NimNode)
+          result.reactiveExpr = none(tuple[jsCode: string, deps: seq[string]])
           return
 
-    # Complex expression - wrap in getter for reactivity!
+    # Complex expression (function call) - REACTIVE! Capture AST and convert to JS
+    var deps: seq[string] = @[]
+    extractDependenciesFromAST(node, deps)
+    let jsCode = astToJavaScript(node, 0)
+
     result.value = quote do: valGetter(proc(): Value =
       try:
         val(`node`)
       except:
-        # Return empty string as fallback if reactive expression fails
         val("")
     )
     result.boundVar = none(NimNode)
+    result.reactiveExpr = some((jsCode: jsCode, deps: deps))
   of nnkIfExpr:
-    # Inline if expression: if condition: true_expr else: false_expr
-    # Wrap in getter for reactivity!
+    # Inline if expression - REACTIVE! Capture AST and convert to JS
+    var deps: seq[string] = @[]
+    extractDependenciesFromAST(node, deps)
+    let jsCode = astToJavaScript(node, 0)
+
     let ifExprCopy = copyNimTree(node)
     result.value = quote do: valGetter(proc(): Value =
       try:
-        # Register dependency on the entire if expression
         registerDependency("ifExpr_" & $`ifExprCopy`.repr)
-
-        # Evaluate the if expression
         val(`ifExprCopy`)
       except:
-        # Return empty string as fallback if reactive expression fails
         val("")
     )
     result.boundVar = none(NimNode)
+    result.reactiveExpr = some((jsCode: jsCode, deps: deps))
   of nnkInfix, nnkPrefix, nnkDotExpr:
-    # Complex expression - wrap in getter for reactivity!
+    # Complex expression - REACTIVE! Capture AST and convert to JS
+    var deps: seq[string] = @[]
+    extractDependenciesFromAST(node, deps)
+    let jsCode = astToJavaScript(node, 0)
+
     result.value = quote do: valGetter(proc(): Value =
       try:
         val(`node`)
       except:
-        # Return empty string as fallback if reactive expression fails
         val("")
     )
     result.boundVar = none(NimNode)
+    result.reactiveExpr = some((jsCode: jsCode, deps: deps))
   else:
     # Default: try to convert to Value
     result.value = quote do: val(`node`)
     result.boundVar = none(NimNode)
+    result.reactiveExpr = none(tuple[jsCode: string, deps: seq[string]])
 
 const builtinElementNames = [
   "Container", "Text", "H1", "H2", "H3", "Button", "Column", "Row", "Input", "Checkbox",
@@ -412,17 +449,30 @@ proc emitEventAssignment(elemVar: NimNode, propName: string, handlerNode: NimNod
       let closureProc = quote do:
         proc(data: string = "") {.closure.} =
           `body`
+
+      # Generate JavaScript code from the same AST
+      let jsCode = astToJavaScript(body)
+      let jsCodeLit = newLit(jsCode)
+
       return @[
         quote do:
           `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `closureProc`)
+          `elemVar`.setJSHandler(resolvePropertyAlias(`propName`), `jsCodeLit`)
       ]
 
   # Check for inline proc definition: proc(param: Type) = body
   if handlerExpr.kind == nnkProcDef or handlerExpr.kind == nnkLambda:
     let eventHandler = convertInlineProcToEventHandler(handlerExpr, propName)
+
+    # Extract body from proc for JS generation
+    let procBody = handlerExpr[6]  # Body is at index 6
+    let jsCode = astToJavaScript(procBody)
+    let jsCodeLit = newLit(jsCode)
+
     return @[
       quote do:
         `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `eventHandler`)
+        `elemVar`.setJSHandler(resolvePropertyAlias(`propName`), `jsCodeLit`)
     ]
 
   # Check for proc assignment: onTextChange = proc(newName: string) = ...
@@ -448,10 +498,26 @@ proc emitEventAssignment(elemVar: NimNode, propName: string, handlerNode: NimNod
             ]
 
   let cleanHandler = ensureEventHandler(copyNimTree(handlerExpr), propName)
-  @[
-    quote do:
-      `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `cleanHandler`)
-  ]
+
+  # Try to extract JS code if possible
+  # For simple proc references, we can't auto-generate JS, so this is best effort
+  let jsCode = try:
+    astToJavaScript(handlerExpr)
+  except:
+    ""  # If conversion fails, don't add JS handler
+
+  if jsCode.len > 0:
+    let jsCodeLit = newLit(jsCode)
+    @[
+      quote do:
+        `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `cleanHandler`)
+        `elemVar`.setJSHandler(resolvePropertyAlias(`propName`), `jsCodeLit`)
+    ]
+  else:
+    @[
+      quote do:
+        `elemVar`.setEventHandler(resolvePropertyAlias(`propName`), `cleanHandler`)
+    ]
 
 proc handleDropdownProperty(kind: ElementKind, elemVar: NimNode, propName: string, valueNode: NimNode): seq[NimNode] =
   ## Handle dropdown-specific properties (options/selectedIndex)
@@ -691,6 +757,25 @@ proc emitPropertyAssignment(kind: ElementKind, elemVar: NimNode, propName: strin
 
   result.add quote do:
     `elemVar`.setProp(resolvePropertyAlias(`propName`), `propValue`)
+
+  # NEW: Store reactive expression metadata for HTML backend
+  if parseResult.reactiveExpr.isSome:
+    let exprInfo = parseResult.reactiveExpr.get()
+    let jsCodeLit = newLit(exprInfo.jsCode)
+    let propNameLit = newLit(resolvePropertyAlias(propName))
+
+    # Build dependencies array literal
+    var depsArray = nnkBracket.newTree()
+    for dep in exprInfo.deps:
+      depsArray.add(newLit(dep))
+
+    result.add quote do:
+      # Store reactive expression metadata for HTML backend
+      `elemVar`.reactiveExpressions[`propNameLit`] = ReactiveExpression(
+        jsExpression: `jsCodeLit`,
+        dependencies: @`depsArray`,
+        propertyName: `propNameLit`
+      )
 
   if kind == ekInput and parseResult.boundVar.isSome:
     let varNode = parseResult.boundVar.get()

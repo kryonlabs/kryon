@@ -108,10 +108,14 @@ install-static: build-static
 install-lib: build-lib
 	@echo "Installing Kryon library..."
 	@mkdir -p $(LIBDIR)
-	@mkdir -p $(INCDIR)
 	@mkdir -p $(PKGCONFIGDIR)
 	install -m 644 $(LIB_FILE) $(LIBDIR)/
-	cp -r $(SRC_DIR)/kryon/*.nim $(INCDIR)/
+	# Copy the entire kryon source tree to include directory
+	rm -rf $(INCDIR)
+	mkdir -p $(PREFIX)/include
+	cp -r $(SRC_DIR)/kryon $(INCDIR)/
+	cp $(SRC_DIR)/kryon.nim $(PREFIX)/include/
+	cp -r $(SRC_DIR)/backends $(INCDIR)/
 	sed -e 's/@PREFIX@/$(subst /,\/,$(PREFIX))/g' \
 	    -e 's/@VERSION@/$(VERSION)/g' \
 	    kryon.pc > $(PKGCONFIGDIR)/kryon.pc

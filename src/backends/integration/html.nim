@@ -3,9 +3,21 @@
 ## This backend generates HTML/CSS/JS files instead of a native executable.
 ## DSL elements are converted to web standards with CSS handling layout and styling.
 
-import ../kryon/core
-import ../kryon/fonts
-import options, tables, strutils, os, sets
+when defined(kryonDevMode):
+  import ../../kryon/core
+  import ../../kryon/fonts
+  import ../../kryon/components/canvas
+  import ../../kryon/rendering/renderingContext
+  import ../../kryon/pipeline/renderCommands
+  import ../../kryon/js_codegen
+else:
+  import kryon/core
+  import kryon/fonts
+  import kryon/components/canvas
+  import kryon/rendering/renderingContext
+  import kryon/pipeline/renderCommands
+  import kryon/js_codegen
+import options, tables, strutils, os, sets, sequtils
 
 # ============================================================================
 # Backend Type
@@ -259,7 +271,11 @@ proc extractRoutes*(backend: var HTMLBackend, root: Element): bool =
 proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""): string =
   ## Generate CSS for an element and its children
   let elementId = if elem.id.len > 0: elem.id else: "elem_" & $backend.elementCounter
-  let cssClass = "kryon-" & ($elem.kind).toLowerAscii().sanitizeCSSClass()
+  # Only increment counter for elements that don't have a custom ID
+  if elem.id.len == 0:
+    inc backend.elementCounter
+  # Use unique CSS class per element to avoid style collision
+  let cssClass = "kryon-" & ($elem.kind).toLowerAscii().sanitizeCSSClass() & "-" & elementId.replace("_", "-")
 
   var css = ""
 
@@ -327,6 +343,11 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
     if gap.isSome:
       css.add("  gap: " & $gap.get.getFloat() & "px;\n")
 
+    # Flex property - allows column to expand in parent flex container
+    let flexProp = elem.getProp("flex")
+    if flexProp.isSome:
+      css.add("  flex: " & $flexProp.get.getFloat() & ";\n")
+
   of ekRow:
     css.add("  display: flex;\n")
     css.add("  flex-direction: row;\n")
@@ -357,6 +378,11 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
     if gap.isSome:
       css.add("  gap: " & $gap.get.getFloat() & "px;\n")
 
+    # Flex property - allows row to expand in parent flex container
+    let flexProp = elem.getProp("flex")
+    if flexProp.isSome:
+      css.add("  flex: " & $flexProp.get.getFloat() & ";\n")
+
   of ekCenter:
     css.add("  display: flex;\n")
     css.add("  justify-content: center;\n")
@@ -370,7 +396,16 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
       css.add("  justify-content: center;\n")
       css.add("  align-items: center;\n")
 
-  of ekHeader, ekBody, ekConditional, ekForLoop, ekText, ekButton, ekInput, ekCheckbox, ekDropdown, ekGrid, ekImage, ekScrollView, ekTabGroup, ekTabBar, ekTab, ekTabContent, ekTabPanel, ekResources, ekFont, ekLink:
+    # Flex property - allows container to expand in parent flex container
+    let flexProp = elem.getProp("flex")
+    if flexProp.isSome:
+      css.add("  flex: " & $flexProp.get.getFloat() & ";\n")
+
+  of ekCanvas:
+    css.add("  display: block;\n")
+    css.add("  border: 1px solid #ccc;\n")
+
+  of ekHeader, ekBody, ekConditional, ekForLoop, ekText, ekButton, ekInput, ekCheckbox, ekDropdown, ekGrid, ekImage, ekScrollView, ekTabGroup, ekTabBar, ekTab, ekTabContent, ekTabPanel, ekResources, ekFont, ekLink, ekSpacer, ekDraggable, ekDropTarget, ekH1, ekH2, ekH3:
     # These elements either don't need special CSS layout or are handled elsewhere
     discard
 
@@ -394,13 +429,15 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
     css.add("  user-select: none;\n")
     css.add("  text-decoration: none;\n")  # For navigation links
     css.add("  color: inherit;\n")           # For navigation links
+    css.add("  box-sizing: border-box;\n")   # Ensure padding doesn't affect dimensions
 
-    let fontSize = elem.getProp("fontSize").get(val(16)).getInt()
+    # Font size - default 20 to match layout engine
+    let fontSize = elem.getProp("fontSize").get(val(20)).getInt()
     css.add("  font-size: " & $fontSize & "px;\n")
 
-    # Button padding
-    if not elem.getProp("width").isSome:
-      css.add("  padding: 8px 16px;\n")
+    # Button padding - removed conditional, always add some padding for text
+    # This ensures text doesn't touch button edges
+    css.add("  padding: 4px 8px;\n")
 
   # Input styling
   if elem.kind == ekInput:
@@ -436,10 +473,447 @@ proc generateCSS*(backend: var HTMLBackend, elem: Element, parentId: string = ""
   css.add("\n")
 
   # Generate CSS for children
-  for child in elem.children:
-    css.add(backend.generateCSS(child, elementId))
+  if elem.kind == ekForLoop:
+    # For loops need special handling - expand to get actual children
+    let expandedChildren = expandForLoopChildren(elem)
+    for child in expandedChildren:
+      css.add(backend.generateCSS(child, elementId))
+  else:
+    for child in elem.children:
+      css.add(backend.generateCSS(child, elementId))
 
   result = css
+
+# ============================================================================
+# JavaScript State Management System
+# ============================================================================
+
+type
+  StateVariable = object
+    name: string
+    varType: string  # "string", "number", "boolean", "array", "object"
+    initialValue: string
+    elementId: string  # Element that owns this state
+
+  DependencyInfo = object
+    stateVar: string      # Name of the state variable
+    elementId: string     # ID of the dependent element
+    propertyName: string  # Which property depends on it (text, src, backgroundColor, etc.)
+
+# Forward declarations
+proc generateDOMUpdateFunctions*(backend: var HTMLBackend, root: Element, dependencies: seq[DependencyInfo]): string
+
+proc addStateVariable(states: var seq[StateVariable], name: string, varType: string, initialValue: string, elementId: string) =
+  ## Helper to add a state variable if it doesn't already exist
+  for state in states:
+    if state.name == name:
+      return  # Already exists
+  states.add(StateVariable(
+    name: name,
+    varType: varType,
+    initialValue: initialValue,
+    elementId: elementId
+  ))
+
+proc evaluateInitialValue(val: Value): string =
+  ## Evaluate a Value to get its JavaScript representation
+  case val.kind:
+  of vkString:
+    return "\"" & val.strVal.replace("\"", "\\\"") & "\""
+  of vkInt:
+    return $val.intVal
+  of vkFloat:
+    return $val.floatVal
+  of vkBool:
+    return if val.boolVal: "true" else: "false"
+  of vkColor:
+    let c = val.colorVal
+    return "\"rgba(" & $c.r & "," & $c.g & "," & $c.b & "," & $(c.a.float / 255.0) & ")\""
+  of vkGetter:
+    # Execute getter to get current value
+    try:
+      let currentVal = val.getter()
+      return evaluateInitialValue(currentVal)
+    except:
+      return "null"
+  else:
+    return "null"
+
+proc extractStateVarsFromJS(jsCode: string): seq[string] =
+  ## Parse JavaScript code for updateState('varName', ...) calls
+  ## Returns list of unique state variable names found
+  result = @[]
+  var idx = 0
+  while idx < jsCode.len:
+    idx = jsCode.find("updateState('", idx)
+    if idx == -1:
+      break
+    let startIdx = idx + 13  # len("updateState('")
+    let endIdx = jsCode.find("'", startIdx)
+    if endIdx > startIdx:
+      let varName = jsCode[startIdx ..< endIdx]
+      if varName notin result:
+        result.add(varName)
+    idx = endIdx + 1
+
+proc extractDependencies(elem: Element, elementId: string, dependencies: var seq[DependencyInfo]) =
+  ## Extract which state variables this element depends on
+  ## We do this by temporarily hooking into registerDependency
+
+  # Store the original currentElementBeingProcessed
+  let originalCurrent = currentElementBeingProcessed
+  currentElementBeingProcessed = elem
+
+  # Track which dependencies are registered
+  var registeredDeps: seq[string] = @[]
+
+  # Evaluate each property that might have a getter
+  for propName, propValue in elem.properties:
+    if propValue.kind == vkGetter:
+      try:
+        # Clear reactive dependencies for this element
+        if propName in reactiveDependencies:
+          reactiveDependencies.del(propName)
+
+        # Evaluate the getter - this will call registerDependency
+        discard propValue.getter()
+
+        # Check what dependencies were registered
+        for varName in reactiveDependencies.keys:
+          if elem in reactiveDependencies[varName]:
+            if varName notin registeredDeps:
+              registeredDeps.add(varName)
+              dependencies.add(DependencyInfo(
+                stateVar: varName,
+                elementId: elementId,
+                propertyName: propName
+              ))
+      except:
+        # Ignore errors during dependency extraction
+        discard
+
+  # Restore original
+  currentElementBeingProcessed = originalCurrent
+
+proc extractStateVariables(elem: Element, states: var seq[StateVariable], dependencies: var seq[DependencyInfo], elementId: string = "") =
+  ## Recursively extract state variables and dependencies from element tree
+  ## State variables include:
+  ## - Bound input values (Input with value property)
+  ## - Reactive variables referenced in event handlers
+  ## - For loop iterables
+
+  # Generate element ID if not provided
+  let currentElementId = if elementId.len > 0: elementId else: "elem_" & $elem.id
+
+  # Check for bound variables (Input elements with value binding)
+  if elem.kind == ekInput and elem.boundVarName.isSome:
+    let varName = elem.boundVarName.get()
+    let initialValue = elem.getProp("value").get(val("")).getString()
+    addStateVariable(states, varName, "string", "\"" & initialValue & "\"", "input_" & varName)
+
+  # Extract state variables from event handlers
+  for event, jsCode in elem.jsHandlerCode:
+    for varName in extractStateVarsFromJS(jsCode):
+      # Add with default initial value 0 (will be smarter in the future)
+      addStateVariable(states, varName, "number", "0", "handler_" & currentElementId)
+
+  # Extract dependencies for this element
+  extractDependencies(elem, currentElementId, dependencies)
+
+  # Process children recursively
+  for i, child in elem.children:
+    let childId = currentElementId & "_" & $i
+    extractStateVariables(child, states, dependencies, childId)
+
+proc collectReactiveExprs(elem: Element, elementId: string, exprs: var Table[string, seq[ReactiveExpression]]) =
+  ## Recursively collect reactive expressions from element tree
+  ## Groups expressions by element ID
+
+  # Add this element's reactive expressions
+  if elem.reactiveExpressions.len > 0:
+    if elementId notin exprs:
+      exprs[elementId] = @[]
+
+    for propName, expr in elem.reactiveExpressions:
+      exprs[elementId].add(expr)
+
+  # Recurse into children
+  for i, child in elem.children:
+    let childId = elementId & "_" & $i
+    collectReactiveExprs(child, childId, exprs)
+
+proc generateStateManagementJS*(backend: var HTMLBackend, root: Element): string =
+  ## Generate JavaScript state management code
+  var states: seq[StateVariable] = @[]
+  var dependencies: seq[DependencyInfo] = @[]
+  extractStateVariables(root, states, dependencies)
+
+  var js = """
+// ============================================================================
+// Kryon State Management System
+// ============================================================================
+
+// Application state object
+const AppState = {
+"""
+
+  # Add state variables
+  if states.len > 0:
+    for i, state in states:
+      js.add("  " & state.name & ": " & state.initialValue)
+      if i < states.len - 1:
+        js.add(",\n")
+      else:
+        js.add("\n")
+  else:
+    js.add("  // No state variables detected\n")
+
+  js.add("""};
+
+// Theme data for reactive styling
+const themes = [
+  {name: "Dark", background: "#1a1a1a", primary: "#2d2d2d", secondary: "#3d3d3d", text: "#ffffff", accent: "#4a90e2"},
+  {name: "Light", background: "#f5f5f5", primary: "#ffffff", secondary: "#e0e0e0", text: "#333333", accent: "#2196f3"},
+  {name: "Ocean", background: "#0d1b2a", primary: "#1b263b", secondary: "#415a77", text: "#e0e1dd", accent: "#778da9"}
+];
+
+function getCurrentTheme() {
+  return themes[AppState.currentThemeIndex || 0];
+}
+
+// State update function with reactive invalidation
+function updateState(key, value) {
+  if (AppState[key] !== value) {
+    AppState[key] = value;
+    invalidateState(key);
+  }
+}
+
+// Get state value
+function getState(key) {
+  return AppState[key];
+}
+
+// Dependency tracking for reactive updates
+const StateDependencies = {
+""")
+
+  # Build dependency mappings from reactive expressions
+  # Map: state variable -> list of element IDs that depend on it
+  var depMap: Table[string, seq[string]] = initTable[string, seq[string]]()
+
+  # Collect dependencies from reactive expressions in element tree
+  var elemExprs: Table[string, seq[ReactiveExpression]] = initTable[string, seq[ReactiveExpression]]()
+  collectReactiveExprs(root, "elem_0", elemExprs)
+
+  for elementId, exprs in elemExprs:
+    for expr in exprs:
+      # Each reactive expression has a list of state variables it depends on
+      for stateVar in expr.dependencies:
+        if stateVar notin depMap:
+          depMap[stateVar] = @[]
+        if elementId notin depMap[stateVar]:
+          depMap[stateVar].add(elementId)
+
+  # Generate JavaScript dependency object
+  var firstDep = true
+  for stateVar, elemIds in depMap:
+    if not firstDep:
+      js.add(",\n")
+    firstDep = false
+    js.add("  '" & stateVar & "': [")
+    for i, elemId in elemIds:
+      js.add("'" & elemId & "'")
+      if i < elemIds.len - 1:
+        js.add(", ")
+    js.add("]")
+
+  js.add("""
+};
+
+// Register a dependency between state variable and DOM element
+function registerDependency(stateKey, elementId) {
+  if (!StateDependencies[stateKey]) {
+    StateDependencies[stateKey] = [];
+  }
+  if (!StateDependencies[stateKey].includes(elementId)) {
+    StateDependencies[stateKey].push(elementId);
+  }
+}
+
+// Invalidate state and trigger re-render of dependent elements
+function invalidateState(stateKey) {
+  const dependents = StateDependencies[stateKey] || [];
+  dependents.forEach(elementId => {
+    reRenderElement(elementId);
+  });
+}
+
+// Log state changes (for debugging)
+function logState() {
+  console.log('Current AppState:', AppState);
+}
+
+""")
+
+  # Now generate element-specific update functions based on dependencies
+  js.add(backend.generateDOMUpdateFunctions(root, dependencies))
+
+  result = js
+
+# ============================================================================
+# DOM Update Functions Generation
+# ============================================================================
+
+proc generateDOMUpdateFunctions*(backend: var HTMLBackend, root: Element, dependencies: seq[DependencyInfo]): string =
+  ## Generate JavaScript functions that update specific DOM elements when state changes
+  var js = """
+// ============================================================================
+// DOM Update Functions
+// ============================================================================
+
+// Map of element IDs to their update functions
+const UpdateFunctions = {};
+
+"""
+
+  # Collect reactive expressions from element tree
+  var elemExprs: Table[string, seq[ReactiveExpression]] = initTable[string, seq[ReactiveExpression]]()
+  collectReactiveExprs(root, "elem_0", elemExprs)
+
+  # Generate update function for each element with reactive expressions
+  for elementId, exprs in elemExprs:
+    js.add("// Update function for element " & elementId & "\n")
+    js.add("UpdateFunctions['" & elementId & "'] = function() {\n")
+    js.add("  const elem = document.querySelector('[data-element-id=\"" & elementId & "\"]');\n")
+    js.add("  if (!elem) return;\n")
+    js.add("  \n")
+
+    # For each reactive expression, generate update code using the stored JavaScript expression
+    for expr in exprs:
+      js.add("  // Update " & expr.propertyName & " (depends on: " & expr.dependencies.join(", ") & ")\n")
+
+      case expr.propertyName:
+      of "text":
+        js.add("  elem.textContent = String(" & expr.jsExpression & ");\n")
+      of "src":
+        js.add("  elem.src = String(" & expr.jsExpression & ");\n")
+      of "backgroundColor", "background":
+        js.add("  elem.style.backgroundColor = " & expr.jsExpression & ";\n")
+      of "color":
+        js.add("  elem.style.color = " & expr.jsExpression & ";\n")
+      of "value":
+        js.add("  elem.value = String(" & expr.jsExpression & ");\n")
+      of "disabled":
+        js.add("  elem.disabled = Boolean(" & expr.jsExpression & ");\n")
+      of "width":
+        js.add("  elem.style.width = " & expr.jsExpression & ";\n")
+      of "height":
+        js.add("  elem.style.height = " & expr.jsExpression & ";\n")
+      else:
+        # Generic property update
+        js.add("  elem.setAttribute('" & expr.propertyName & "', String(" & expr.jsExpression & "));\n")
+
+    js.add("};\n\n")
+
+  js.add("""
+// Re-render a specific element using its update function
+function reRenderElement(elementId) {
+  if (UpdateFunctions[elementId]) {
+    UpdateFunctions[elementId]();
+  } else {
+    console.log('No update function for element:', elementId);
+  }
+}
+
+""")
+
+  result = js
+
+# ============================================================================
+# Event Command Recording System
+# ============================================================================
+
+type
+  EventCommandKind = enum
+    ecStateAssignment    # updateState(varName, value)
+    ecArrayAdd           # arr.push(value)
+    ecArrayDelete        # arr.splice(index, 1)
+    ecFunctionCall       # call a named function
+    ecConsoleLog         # console.log for debugging
+
+  EventCommand = object
+    case kind: EventCommandKind
+    of ecStateAssignment:
+      varName: string
+      valueExpr: string  # JavaScript expression for the value
+    of ecArrayAdd:
+      arrayName: string
+      addValueExpr: string
+    of ecArrayDelete:
+      delArrayName: string
+      delIndex: int
+    of ecFunctionCall:
+      funcName: string
+      funcArgs: seq[string]
+    of ecConsoleLog:
+      logMessage: string
+
+var eventCommands: seq[EventCommand] = @[]
+var recordingEvents: bool = false
+
+proc startRecordingEvents() =
+  ## Start recording event commands
+  eventCommands = @[]
+  recordingEvents = true
+
+proc stopRecordingEvents(): seq[EventCommand] =
+  ## Stop recording and return captured commands
+  recordingEvents = false
+  result = eventCommands
+  eventCommands = @[]
+
+proc recordStateAssignment(varName: string, valueExpr: string) =
+  ## Record a state variable assignment
+  if recordingEvents:
+    eventCommands.add(EventCommand(
+      kind: ecStateAssignment,
+      varName: varName,
+      valueExpr: valueExpr
+    ))
+
+proc recordArrayAdd(arrayName: string, valueExpr: string) =
+  ## Record an array append operation
+  if recordingEvents:
+    eventCommands.add(EventCommand(
+      kind: ecArrayAdd,
+      arrayName: arrayName,
+      addValueExpr: valueExpr
+    ))
+
+proc recordFunctionCall(funcName: string, args: seq[string] = @[]) =
+  ## Record a function call
+  if recordingEvents:
+    eventCommands.add(EventCommand(
+      kind: ecFunctionCall,
+      funcName: funcName,
+      funcArgs: args
+    ))
+
+proc generateEventCommandJS(cmd: EventCommand): string =
+  ## Convert an event command to JavaScript code
+  case cmd.kind:
+  of ecStateAssignment:
+    return "  updateState('" & cmd.varName & "', " & cmd.valueExpr & ");\n"
+  of ecArrayAdd:
+    return "  " & cmd.arrayName & ".push(" & cmd.addValueExpr & ");\n  updateState('" & cmd.arrayName & "', " & cmd.arrayName & ");\n"
+  of ecArrayDelete:
+    return "  " & cmd.delArrayName & ".splice(" & $cmd.delIndex & ", 1);\n  updateState('" & cmd.delArrayName & "', " & cmd.delArrayName & ");\n"
+  of ecFunctionCall:
+    let argsStr = cmd.funcArgs.join(", ")
+    return "  " & cmd.funcName & "(" & argsStr & ");\n"
+  of ecConsoleLog:
+    return "  console.log(" & cmd.logMessage & ");\n"
 
 # ============================================================================
 # JavaScript Event Handler Generation
@@ -449,6 +923,25 @@ proc generateJavaScriptForElement*(backend: var HTMLBackend, elem: Element, elem
   ## Generate JavaScript event handlers for an element
   if elem.eventHandlers.len > 0:
     for event, handler in elem.eventHandlers:
+      # Check if we have JavaScript code for this handler
+      if event in elem.jsHandlerCode:
+        # Use the provided JavaScript code
+        var jsCode = elem.jsHandlerCode[event]
+
+        # Check if this element has a loop index (from being inside a for loop)
+        let loopIndexProp = elem.getProp("__loopIndex")
+        if loopIndexProp.isSome:
+          let loopIdx = loopIndexProp.get().getInt()
+          # Substitute common loop variable names with the actual index
+          jsCode = substituteLoopVariables(jsCode, [("i", $loopIdx), ("idx", $loopIdx), ("index", $loopIdx)])
+
+        backend.jsContent.add("// " & $elem.kind & " handler for element " & elementId & "\n")
+        backend.jsContent.add("document.querySelector('[data-element-id=\"" & elementId & "\"]').addEventListener('" & event.replace("on", "").toLowerAscii() & "', function(e) {\n")
+        backend.jsContent.add(jsCode)
+        backend.jsContent.add("});\n\n")
+        continue
+
+      # Otherwise, generate default handler based on element type
       case elem.kind:
       of ekButton:
         if event == "onClick":
@@ -462,14 +955,19 @@ proc generateJavaScriptForElement*(backend: var HTMLBackend, elem: Element, elem
           backend.jsContent.add("});\n\n")
 
       of ekInput:
-        if event == "onChange":
+        if event == "onChange" or event == "onTextChange":
           backend.jsContent.add("// Input change handler for element " & elementId & "\n")
           backend.jsContent.add("document.querySelector('[data-element-id=\"" & elementId & "\"]').addEventListener('input', function(e) {\n")
-          backend.jsContent.add("  // Kryon event handler: " & event & "\n")
-          backend.jsContent.add("  console.log('Input changed! New value:', e.target.value);\n")
-          backend.jsContent.add("  console.log('Event: " & event & "');\n")
-          backend.jsContent.add("  // Original Nim procedure would be called here with the new value\n")
-          backend.jsContent.add("  // For now, logging the change to console\n")
+
+          # Check if this input has a bound variable
+          if elem.boundVarName.isSome:
+            let varName = elem.boundVarName.get()
+            backend.jsContent.add("  // Update bound state variable: " & varName & "\n")
+            backend.jsContent.add("  updateState('" & varName & "', e.target.value);\n")
+          else:
+            backend.jsContent.add("  // No bound variable, just log the change\n")
+            backend.jsContent.add("  console.log('Input changed! New value:', e.target.value);\n")
+
           backend.jsContent.add("});\n\n")
 
       of ekCheckbox:
@@ -509,6 +1007,91 @@ proc generateJavaScriptForElement*(backend: var HTMLBackend, elem: Element, elem
         backend.jsContent.add("});\n\n")
 
 # ============================================================================
+# Canvas JavaScript Generation
+# ============================================================================
+
+proc generateCanvasJavaScript*(backend: var HTMLBackend, elem: Element, canvasId: string, canvasData: CanvasData) =
+  ## Generate JavaScript code to render canvas content
+  ## This procedure extracts drawing commands from the Nim canvas procedure
+  ## and converts them to HTML5 Canvas API calls
+
+  backend.jsContent.add("// Canvas drawing for element " & canvasId & "\n")
+  backend.jsContent.add("document.addEventListener('DOMContentLoaded', function() {\n")
+  backend.jsContent.add("  const canvas_" & canvasId & " = document.getElementById('" & canvasId & "');\n")
+  backend.jsContent.add("  if (!canvas_" & canvasId & ") return;\n")
+  backend.jsContent.add("  const ctx_" & canvasId & " = canvas_" & canvasId & ".getContext('2d');\n")
+  backend.jsContent.add("  \n")
+
+  # Clear canvas background if specified
+  if canvasData.hasBackground:
+    let bg = canvasData.backgroundColor
+    backend.jsContent.add("  // Clear background\n")
+    backend.jsContent.add("  ctx_" & canvasId & ".fillStyle = 'rgba(" & $bg.r & ", " & $bg.g & ", " & $bg.b & ", " & $(bg.a.float / 255.0) & ")';\n")
+    backend.jsContent.add("  ctx_" & canvasId & ".fillRect(0, 0, " & $canvasData.width & ", " & $canvasData.height & ");\n")
+    backend.jsContent.add("  \n")
+
+  # Execute the drawing procedure and capture render commands
+  if canvasData.drawProc != nil:
+    var drawCtx = newDrawingContext()
+    var commands: seq[renderCommands.RenderCommand] = @[]
+    drawCtx.renderCommands = addr commands
+
+    # Execute the user's drawing procedure
+    canvasData.drawProc(drawCtx, canvasData.width, canvasData.height)
+
+    # Convert render commands to JavaScript
+    backend.jsContent.add("  // User drawing commands\n")
+    for cmd in commands:
+      case cmd.kind:
+      of rcClearCanvas:
+        let c = cmd.clearColor
+        backend.jsContent.add("  ctx_" & canvasId & ".fillStyle = 'rgba(" & $c.r & ", " & $c.g & ", " & $c.b & ", " & $(c.a.float / 255.0) & ")';\n")
+        backend.jsContent.add("  ctx_" & canvasId & ".fillRect(" & $cmd.clearX & ", " & $cmd.clearY & ", " & $cmd.clearWidth & ", " & $cmd.clearHeight & ");\n")
+
+      of rcDrawPath:
+        # Begin path
+        backend.jsContent.add("  ctx_" & canvasId & ".beginPath();\n")
+
+        # Translate path commands
+        for pathCmd in cmd.pathCommands:
+          case pathCmd.kind:
+          of PathCommandKind.MoveTo:
+            backend.jsContent.add("  ctx_" & canvasId & ".moveTo(" & $pathCmd.moveToX & ", " & $pathCmd.moveToY & ");\n")
+          of PathCommandKind.LineTo:
+            backend.jsContent.add("  ctx_" & canvasId & ".lineTo(" & $pathCmd.lineToX & ", " & $pathCmd.lineToY & ");\n")
+          of PathCommandKind.Arc:
+            backend.jsContent.add("  ctx_" & canvasId & ".arc(" & $pathCmd.arcX & ", " & $pathCmd.arcY & ", " & $pathCmd.arcRadius & ", " & $pathCmd.arcStartAngle & ", " & $pathCmd.arcEndAngle & ");\n")
+          of PathCommandKind.BezierCurveTo:
+            backend.jsContent.add("  ctx_" & canvasId & ".bezierCurveTo(" & $pathCmd.cp1x & ", " & $pathCmd.cp1y & ", " & $pathCmd.cp2x & ", " & $pathCmd.cp2y & ", " & $pathCmd.bezierX & ", " & $pathCmd.bezierY & ");\n")
+          of PathCommandKind.ClosePath:
+            backend.jsContent.add("  ctx_" & canvasId & ".closePath();\n")
+
+        # Fill or stroke based on command flags
+        if cmd.pathShouldFill:
+          let c = cmd.pathFillStyle
+          backend.jsContent.add("  ctx_" & canvasId & ".fillStyle = 'rgba(" & $c.r & ", " & $c.g & ", " & $c.b & ", " & $(c.a.float / 255.0) & ")';\n")
+          backend.jsContent.add("  ctx_" & canvasId & ".fill();\n")
+
+        if cmd.pathShouldStroke:
+          let c = cmd.pathStrokeStyle
+          backend.jsContent.add("  ctx_" & canvasId & ".strokeStyle = 'rgba(" & $c.r & ", " & $c.g & ", " & $c.b & ", " & $(c.a.float / 255.0) & ")';\n")
+          backend.jsContent.add("  ctx_" & canvasId & ".lineWidth = " & $cmd.pathLineWidth & ";\n")
+          backend.jsContent.add("  ctx_" & canvasId & ".stroke();\n")
+
+      of rcDrawText:
+        let c = cmd.textColor
+        backend.jsContent.add("  ctx_" & canvasId & ".fillStyle = 'rgba(" & $c.r & ", " & $c.g & ", " & $c.b & ", " & $(c.a.float / 255.0) & ")';\n")
+        backend.jsContent.add("  ctx_" & canvasId & ".font = '" & $cmd.textSize & "px Arial';\n")
+        backend.jsContent.add("  ctx_" & canvasId & ".fillText('" & cmd.textContent.replace("'", "\\'") & "', " & $cmd.textX & ", " & $cmd.textY & ");\n")
+
+      else:
+        # Other render commands not commonly used in canvas (like rcDrawRectangle, rcDrawLine)
+        # Can be implemented as needed
+        discard
+
+  backend.jsContent.add("});\n\n")
+
+# ============================================================================
 # HTML Generation (Clean Version)
 # ============================================================================
 
@@ -536,14 +1119,24 @@ proc generateHTML*(backend: var HTMLBackend, elem: Element): string =
   # Only increment counter for elements that don't have a custom ID
   if elem.id.len == 0:
     inc backend.elementCounter
-  let cssClass = "kryon-" & ($elem.kind).toLowerAscii().sanitizeCSSClass()
+  # Use unique CSS class per element to match CSS generation
+  let cssClass = "kryon-" & ($elem.kind).toLowerAscii().sanitizeCSSClass() & "-" & elementId.replace("_", "-")
 
   var html = ""
 
   case elem.kind:
-  of ekHeader, ekBody, ekConditional, ekForLoop:
+  of ekHeader, ekBody, ekConditional:
     # These are structural elements - don't render themselves
     for child in elem.children:
+      html.add(backend.generateHTML(child))
+
+  of ekForLoop:
+    # For loops need special handling - execute the builder to get actual children
+    let expandedChildren = expandForLoopChildren(elem)
+    for idx, child in expandedChildren:
+      # Store loop index in child for potential JS substitution
+      # This helps with loop variable capture in event handlers
+      child.setProp("__loopIndex", val(idx))
       html.add(backend.generateHTML(child))
 
   of ekContainer:
@@ -638,6 +1231,31 @@ proc generateHTML*(backend: var HTMLBackend, elem: Element): string =
     for child in elem.children:
       html.add(backend.generateHTML(child))
     html.add("</div>\n")
+
+  of ekCanvas:
+    # Generate canvas element with unique ID for JavaScript access
+    # Get dimensions from properties (layout hasn't run yet in HTML backend)
+    let width = elem.getProp("width").get(val(300)).getFloat()
+    let height = elem.getProp("height").get(val(150)).getFloat()
+
+    html.add("<canvas id=\"" & elementId & "\" class=\"" & cssClass & "\" width=\"" & $width.int & "\" height=\"" & $height.int & "\" data-element-id=\"" & elementId & "\"></canvas>\n")
+
+    # Generate JavaScript to render canvas content
+    if elem.canvasDrawProc != nil:
+      # Create canvas data manually with correct dimensions
+      var canvasData = CanvasData()
+      canvasData.x = 0
+      canvasData.y = 0
+      canvasData.width = width
+      canvasData.height = height
+      canvasData.drawProc = cast[proc(ctx: DrawingContext, width, height: float) {.closure.}](elem.canvasDrawProc)
+
+      let bgColor = elem.getProp("backgroundColor")
+      if bgColor.isSome:
+        canvasData.hasBackground = true
+        canvasData.backgroundColor = bgColor.get.getColor()
+
+      backend.generateCanvasJavaScript(elem, elementId, canvasData)
 
   else:
     # Default case - render as div
@@ -791,10 +1409,15 @@ document.addEventListener('DOMContentLoaded', function() {
 proc generateRouteHTMLFile*(backend: var HTMLBackend, route: RouteInfo): string =
   ## Generate HTML file for a specific route
   var html = """<!DOCTYPE html>
+<!--
+  Generated by Kryon Web Backend
+  Multi-page application with client-side routing
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="Kryon Framework">
     <title>""" & route.title & """</title>
     <link rel="stylesheet" href="shared/styles.css">
 </head>
@@ -870,10 +1493,18 @@ proc generateMultiFileHTML*(backend: var HTMLBackend, root: Element, outputDir: 
 proc generateHTMLFile*(backend: var HTMLBackend, root: Element): string =
   ## Generate complete HTML file (for non-routing apps)
   var html = """<!DOCTYPE html>
+<!--
+  Generated by Kryon Web Backend
+  https://github.com/kryon-framework
+
+  This is a static HTML/CSS/JS export of a Kryon application.
+  The framework is similar to Flutter but targets multiple backends.
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="Kryon Framework">
     <title>""" & backend.windowTitle & """</title>
     <style>
 """
@@ -936,6 +1567,9 @@ proc generateHTMLFile*(backend: var HTMLBackend, root: Element): string =
     <div class="kryon-app">
 """)
 
+  # Reset element counter so HTML generation uses same IDs as CSS
+  backend.elementCounter = 0
+
   # Add generated HTML
   html.add(backend.generateHTML(root))
 
@@ -943,7 +1577,10 @@ proc generateHTMLFile*(backend: var HTMLBackend, root: Element): string =
     <script>
 """)
 
-  # Add generated JavaScript
+  # Add state management system
+  html.add(backend.generateStateManagementJS(root))
+
+  # Add generated JavaScript (event handlers, canvas, etc.)
   html.add(backend.jsContent)
 
   html.add("""    </script>
@@ -982,5 +1619,30 @@ proc run*(backend: var HTMLBackend, root: Element, outputDir: string = ".") =
 
   backend.generateFiles(root, outputDir)
 
+  # Show summary of generated files
+  echo ""
+  echo "Generated files:"
+  var totalSize = 0
+  for file in walkFiles(outputDir / "*.*"):
+    let size = getFileSize(file)
+    totalSize += size
+    let sizeStr = if size < 1024: $size & " B"
+                  elif size < 1024*1024: $(size div 1024) & " KB"
+                  else: $(size div (1024*1024)) & " MB"
+    echo "  " & file.extractFilename & " (" & sizeStr & ")"
+
+  if dirExists(outputDir / "shared"):
+    for file in walkFiles(outputDir / "shared" / "*.*"):
+      let size = getFileSize(file)
+      totalSize += size
+      let sizeStr = if size < 1024: $size & " B"
+                    elif size < 1024*1024: $(size div 1024) & " KB"
+                    else: $(size div (1024*1024)) & " MB"
+      echo "  shared/" & file.extractFilename & " (" & sizeStr & ")"
+
+  echo ""
+  echo "Total size: " & $(totalSize div 1024) & " KB"
+  echo "Output directory: " & outputDir
+  echo ""
   echo "HTML web app generated successfully!"
   echo "Open " & outputDir / "index.html" & " in your browser to view the app."

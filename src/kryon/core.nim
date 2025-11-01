@@ -210,6 +210,13 @@ type
     canAcceptDrop*: bool           # Can this target accept the current drag?
     lastHoverCheck*: float         # Timestamp of last hover check
 
+  ReactiveExpression* = object
+    ## Metadata for reactive property expressions (HTML backend)
+    ## Stores pre-compiled JavaScript expression for runtime re-evaluation
+    jsExpression*: string           # JavaScript code for this expression
+    dependencies*: seq[string]      # State variables this expression depends on
+    propertyName*: string           # Which property this is for (backgroundColor, text, etc.)
+
   Element* = ref object
     ## Base UI element type
     kind*: ElementKind
@@ -218,6 +225,8 @@ type
     children*: seq[Element]
     parent*: Element
     eventHandlers*: Table[string, EventHandler]
+    jsHandlerCode*: Table[string, string]  # JavaScript code for event handlers (web backend only)
+    reactiveExpressions*: Table[string, ReactiveExpression]  # Pre-compiled JS expressions for reactive properties (HTML backend)
 
     # Computed layout (filled by layout engine)
     x*, y*: float
@@ -550,6 +559,8 @@ proc newElement*(kind: ElementKind): Element =
     properties: initTable[string, Value](),
     children: @[],
     eventHandlers: initTable[string, EventHandler](),
+    jsHandlerCode: initTable[string, string](),
+    reactiveExpressions: initTable[string, ReactiveExpression](),
     dirty: true,  # New elements start as dirty to ensure initial layout
     withBehaviors: @[],  # Initialize empty behaviors list
     dragState: DragState(isDragging: false, dragStartX: 0.0, dragStartY: 0.0,
@@ -573,6 +584,7 @@ proc newConditionalElement*(condition: proc(): bool {.closure.}, trueBranch: Ele
     properties: initTable[string, Value](),
     children: @[],
     eventHandlers: initTable[string, EventHandler](),
+    jsHandlerCode: initTable[string, string](),
     condition: condition,
     trueBranch: trueBranch,
     falseBranch: falseBranch
@@ -585,6 +597,7 @@ proc newForLoopElement*(iterable: proc(): seq[Value] {.closure.}, bodyTemplate: 
     properties: initTable[string, Value](),
     children: @[],
     eventHandlers: initTable[string, EventHandler](),
+    jsHandlerCode: initTable[string, string](),
     forIterable: iterable,
     forBodyTemplate: bodyTemplate,
     forBuilder: nil
@@ -650,6 +663,10 @@ proc addChild*(parent, child: Element) =
 proc setEventHandler*(elem: Element, event: string, handler: EventHandler) =
   ## Set an event handler
   elem.eventHandlers[event] = handler
+
+proc setJSHandler*(elem: Element, event: string, jsCode: string) =
+  ## Set JavaScript code for an event handler (web backend only)
+  elem.jsHandlerCode[event] = jsCode
 
 proc setBoundVarName*(elem: Element, varName: string) =
   ## Set the bound variable name for two-way data binding

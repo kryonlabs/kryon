@@ -3,9 +3,40 @@
 ## Command-line interface for running and compiling Kryon applications
 ## with support for multiple renderers.
 
-import std/[os, osproc, strutils, strformat, hashes, md5]
+import std/[os, osproc, strutils, strformat, hashes, md5, asynchttpserver, asyncdispatch]
 
 const VERSION = "0.2.0"
+
+const HELP_INTRO = """
+Kryon - A Declarative UI Framework for Nim
+===========================================
+
+Kryon is similar to Flutter but more intelligent, supporting multiple backends
+from a single codebase. Write your UI once, run anywhere!
+
+Supported Backends:
+  • web       - HTML/CSS/JS for browsers (with Canvas support!)
+  • native    - Auto-select desktop backend (raylib or sdl2)
+  • raylib    - Native desktop with raylib (60 FPS)
+  • sdl2      - Native desktop with SDL2 (cross-platform)
+
+Quick Start:
+  kryon run -d web --serve -f myapp.nim    # Web with dev server
+  kryon run -d native -f myapp.nim         # Desktop app
+  kryon devices                            # List all backends
+
+Examples:
+  • Canvas graphics and games
+  • Multi-page web applications
+  • Cross-platform desktop apps
+  • Reactive UI with state management
+
+Learn More:
+  kryon --help           # This help message
+  kryon run --help       # Help for run command
+  kryon devices          # List available backends
+
+"""
 
 # Installation detection
 const
@@ -19,8 +50,16 @@ type
     ## Supported renderers
     rRaylib = "raylib"
     rSDL2 = "sdl2"
-    rHTML = "html"      # Future
+    rHTML = "html"      # Web backend
     rTerminal = "terminal"  # Future
+
+  Backend* = enum
+    ## Backend aliases (Flutter-style naming)
+    bWeb = "web"        # Alias for HTML
+    bNative = "native"  # Auto-select raylib or sdl2
+    bRaylib = "raylib"
+    bSDL2 = "sdl2"
+    bTerminal = "terminal"
 
   CompileMode = enum
     cmRun       # Compile and run
@@ -51,6 +90,61 @@ proc detectRenderer*(filename: string): Renderer =
     # Default to raylib
     echo "Warning: No renderer import detected, defaulting to raylib"
     return rRaylib
+
+# ============================================================================
+# Backend/Renderer Conversion
+# ============================================================================
+
+proc backendToRenderer*(backend: Backend, filename: string = ""): Renderer =
+  ## Convert Flutter-style backend name to Renderer
+  case backend:
+  of bWeb:
+    return rHTML
+  of bRaylib:
+    return rRaylib
+  of bSDL2:
+    return rSDL2
+  of bTerminal:
+    return rTerminal
+  of bNative:
+    # Auto-detect or default to raylib
+    if filename.len > 0 and fileExists(filename):
+      return detectRenderer(filename)
+    else:
+      return rRaylib
+
+proc parseBackendOrRenderer*(value: string, filename: string = ""): Renderer =
+  ## Parse a backend or renderer string
+  ## Supports both Flutter-style (web, native) and direct (raylib, sdl2, html)
+  case value.toLowerAscii():
+  of "web":
+    return rHTML
+  of "native":
+    if filename.len > 0 and fileExists(filename):
+      return detectRenderer(filename)
+    else:
+      return rRaylib
+  of "raylib":
+    return rRaylib
+  of "sdl2":
+    return rSDL2
+  of "html":
+    return rHTML
+  of "terminal":
+    return rTerminal
+  of "auto":
+    if filename.len > 0:
+      return detectRenderer(filename)
+    else:
+      return rRaylib
+  else:
+    echo &"Error: Unknown backend/renderer: {value}"
+    echo "Available backends:"
+    echo "  -d web         (HTML/CSS/JS web application)"
+    echo "  -d native      (Auto-select raylib or sdl2)"
+    echo "  -d raylib      (Raylib desktop backend)"
+    echo "  -d sdl2        (SDL2 desktop backend)"
+    quit(1)
 
 # ============================================================================
 # Compilation
@@ -548,22 +642,94 @@ proc compileKryon*(
   return 0
 
 # ============================================================================
+# Development Server
+# ============================================================================
+
+proc getMimeType(filename: string): string =
+  ## Get MIME type based on file extension
+  let ext = filename.splitFile.ext.toLowerAscii()
+  case ext:
+  of ".html": "text/html; charset=utf-8"
+  of ".css": "text/css; charset=utf-8"
+  of ".js": "application/javascript; charset=utf-8"
+  of ".json": "application/json; charset=utf-8"
+  of ".png": "image/png"
+  of ".jpg", ".jpeg": "image/jpeg"
+  of ".gif": "image/gif"
+  of ".svg": "image/svg+xml"
+  of ".woff": "font/woff"
+  of ".woff2": "font/woff2"
+  of ".ttf": "font/ttf"
+  of ".otf": "font/otf"
+  else: "application/octet-stream"
+
+proc startDevServer(rootDir: string, port: int) {.async.} =
+  ## Start a simple HTTP development server
+  ## Serves files from rootDir on the specified port
+
+  proc handleRequest(req: Request) {.async.} =
+    try:
+      var path = req.url.path
+
+      # Default to index.html for root path
+      if path == "/" or path == "":
+        path = "/index.html"
+
+      # Remove leading slash and construct file path
+      let filePath = rootDir / path[1..^1]
+
+      if fileExists(filePath):
+        let content = readFile(filePath)
+        let mimeType = getMimeType(filePath)
+        await req.respond(Http200, content, newHttpHeaders([("Content-Type", mimeType)]))
+      else:
+        # Try 404.html if it exists
+        let notFoundPath = rootDir / "404.html"
+        if fileExists(notFoundPath):
+          let content = readFile(notFoundPath)
+          await req.respond(Http404, content, newHttpHeaders([("Content-Type", "text/html")]))
+        else:
+          await req.respond(Http404, "404 - File Not Found: " & path)
+
+    except Exception as e:
+      await req.respond(Http500, "Internal Server Error: " & e.msg)
+
+  var server = newAsyncHttpServer()
+
+  echo "Serving files from: " & rootDir
+  server.listen(Port(port))
+  echo "✓ Server running at http://localhost:" & $port
+  echo ""
+
+  while true:
+    if server.shouldAcceptRequest():
+      await server.acceptRequest(handleRequest)
+    else:
+      await sleepAsync(10)
+
+# ============================================================================
 # Run Command
 # ============================================================================
 
 proc runKryon*(
   filename: string,
   renderer: string = "auto",
+  device: string = "",
   release: bool = false,
-  verbose: bool = false
+  verbose: bool = false,
+  serve: bool = false,
+  port: int = 8080
 ): int =
   ## Compile and run a Kryon application
   ##
   ## Args:
   ##   filename: Path to .nim file to run
-  ##   renderer: Renderer to use ("auto", "raylib", "sdl2", "html", "terminal")
+  ##   renderer: Renderer to use (legacy flag, use -d/--device instead)
+  ##   device: Backend to use ("web", "native", "raylib", "sdl2") - Flutter-style
   ##   release: Compile in release mode (optimized)
   ##   verbose: Show detailed output
+  ##   serve: Start development server (for web backend)
+  ##   port: Port for development server (default: 8080)
   ##
   ## Returns: Exit code
 
@@ -571,16 +737,21 @@ proc runKryon*(
     echo &"Error: File not found: {filename}"
     return 1
 
-  # Detect or parse renderer
-  let detectedRenderer = if renderer == "auto":
+  # Determine backend: prioritize -d/--device flag, fall back to --renderer
+  let backendValue = if device.len > 0: device else: renderer
+  let detectedRenderer = if backendValue == "auto":
     detectRenderer(filename)
   else:
-    try:
-      parseEnum[Renderer](renderer)
-    except ValueError:
-      echo &"Error: Unknown renderer: {renderer}"
-      echo &"Available renderers: auto, raylib, sdl2, skia, html, terminal"
-      return 1
+    parseBackendOrRenderer(backendValue, filename)
+
+  # For web backend, default to serving unless explicitly disabled
+  var shouldServe = serve
+  if detectedRenderer == rHTML and not serve:
+    # Web backend defaults to serving for better developer experience
+    shouldServe = true
+    if verbose:
+      echo "Note: Dev server enabled by default for web backend"
+      echo "      Use 'kryon build -d web' to generate files only"
 
   # Check renderer support
   case detectedRenderer:
@@ -625,14 +796,26 @@ proc runKryon*(
         # Add imports and other non-app code
         importsContent &= line & "\n"
 
-    # Fix import paths to be absolute
-    let kryonPath = currentDir / "src" / "kryon"
-    var fixedImports = importsContent
-    fixedImports = fixedImports.replace("import ../src/kryon", "import \"" & kryonPath & "\"")
+    # Determine Kryon installation path
+    # First check if we're in the kryon dev directory
+    let devKryonPath = currentDir / "src" / "kryon"
+    let isDevMode = dirExists(devKryonPath)
 
+    var fixedImports = importsContent
     var htmlGeneratorCode = "import os, strformat\n"
-    htmlGeneratorCode &= "import \"" & currentDir & "/src/kryon\"\n"
-    htmlGeneratorCode &= "import \"" & currentDir & "/src/backends/integration/html\"\n"
+
+    if isDevMode:
+      # Development mode - use local sources
+      fixedImports = fixedImports.replace("import ../src/kryon", "import \"" & devKryonPath & "\"")
+      fixedImports = fixedImports.replace("import ../kryon/src/kryon", "import \"" & devKryonPath & "\"")
+      htmlGeneratorCode &= "import \"" & currentDir & "/src/kryon\"\n"
+      htmlGeneratorCode &= "import \"" & currentDir & "/src/backends/integration/html\"\n"
+    else:
+      # Production mode - use installed Kryon
+      fixedImports = fixedImports.replace("import ../src/kryon", "import kryon")
+      fixedImports = fixedImports.replace("import ../kryon/src/kryon", "import kryon")
+      htmlGeneratorCode &= "import kryon\n"
+      htmlGeneratorCode &= "import kryon/backends/integration/html\n"
     htmlGeneratorCode &= "\n"
     htmlGeneratorCode &= fixedImports
     htmlGeneratorCode &= "\n"
@@ -646,7 +829,16 @@ proc runKryon*(
     let tempFile = getTempDir() / "html_gen.nim"
     writeFile(tempFile, htmlGeneratorCode)
 
-    let genCmd = "nim c -r " & tempFile
+    # Get kryon installation path if not in dev mode
+    var genCmd = "nim c -r "
+    if isDevMode:
+      genCmd &= "-d:kryonDevMode "
+    else:
+      # Use the locally installed kryon from ~/.local/include
+      let kryonIncludeDir = getHomeDir() / ".local" / "include"
+      if dirExists(kryonIncludeDir / "kryon"):
+        genCmd &= "--path:\"" & kryonIncludeDir & "\" "
+    genCmd &= tempFile
     let (output, exitCode) = execCmdEx(genCmd)
 
     # Cleanup
@@ -656,12 +848,44 @@ proc runKryon*(
     if exitCode == 0:
       echo ""
       echo "✓ HTML web app generated successfully!"
-      echo "Open " & outputDir / "index.html" & " in your browser to view the app."
+
+      # Start development server if enabled (default for web)
+      if shouldServe:
+        echo ""
+        echo "Starting development server..."
+        echo "Server: http://localhost:" & $port
+        echo "Press Ctrl+C to stop"
+        echo ""
+
+        try:
+          waitFor startDevServer(outputDir, port)
+          return 0
+        except Exception as e:
+          echo "Server error: " & e.msg
+          return 1
+      else:
+        # Only reached if user explicitly disabled serving
+        echo "Open " & outputDir / "index.html" & " in your browser to view the app."
+        echo ""
+        echo "Tip: Development server is enabled by default"
+        echo "     Just run: kryon run -d web -f " & filename
+
       if verbose:
         echo output
     else:
-      echo "HTML generation failed:"
+      echo "✗ HTML generation failed"
+      echo ""
+      echo "Error details:"
+      echo "─".repeat(60)
       echo output
+      echo "─".repeat(60)
+      echo ""
+      echo "Common issues:"
+      echo "  • Check for syntax errors in your Nim code"
+      echo "  • Ensure all imports are correct"
+      echo "  • Verify the file path is valid"
+      echo ""
+      echo "Tip: Use --verbose flag for more details"
 
     return exitCode
 
@@ -786,14 +1010,26 @@ proc buildKryon*(
         # Add imports and other non-app code
         importsContent &= line & "\n"
 
-    # Fix import paths to be absolute
-    let kryonPath = currentDir / "src" / "kryon"
-    var fixedImports = importsContent
-    fixedImports = fixedImports.replace("import ../src/kryon", "import \"" & kryonPath & "\"")
+    # Determine Kryon installation path
+    # First check if we're in the kryon dev directory
+    let devKryonPath = currentDir / "src" / "kryon"
+    let isDevMode = dirExists(devKryonPath)
 
+    var fixedImports = importsContent
     var htmlGeneratorCode = "import os, strformat\n"
-    htmlGeneratorCode &= "import \"" & currentDir & "/src/kryon\"\n"
-    htmlGeneratorCode &= "import \"" & currentDir & "/src/backends/integration/html\"\n"
+
+    if isDevMode:
+      # Development mode - use local sources
+      fixedImports = fixedImports.replace("import ../src/kryon", "import \"" & devKryonPath & "\"")
+      fixedImports = fixedImports.replace("import ../kryon/src/kryon", "import \"" & devKryonPath & "\"")
+      htmlGeneratorCode &= "import \"" & currentDir & "/src/kryon\"\n"
+      htmlGeneratorCode &= "import \"" & currentDir & "/src/backends/integration/html\"\n"
+    else:
+      # Production mode - use installed Kryon
+      fixedImports = fixedImports.replace("import ../src/kryon", "import kryon")
+      fixedImports = fixedImports.replace("import ../kryon/src/kryon", "import kryon")
+      htmlGeneratorCode &= "import kryon\n"
+      htmlGeneratorCode &= "import kryon/backends/integration/html\n"
     htmlGeneratorCode &= "\n"
     htmlGeneratorCode &= fixedImports
     htmlGeneratorCode &= "\n"
@@ -807,7 +1043,16 @@ proc buildKryon*(
     let tempFile = getTempDir() / "html_gen.nim"
     writeFile(tempFile, htmlGeneratorCode)
 
-    let genCmd = "nim c -r " & tempFile
+    # Get kryon installation path if not in dev mode
+    var genCmd = "nim c -r "
+    if isDevMode:
+      genCmd &= "-d:kryonDevMode "
+    else:
+      # Use the locally installed kryon from ~/.local/include
+      let kryonIncludeDir = getHomeDir() / ".local" / "include"
+      if dirExists(kryonIncludeDir / "kryon"):
+        genCmd &= "--path:\"" & kryonIncludeDir & "\" "
+    genCmd &= tempFile
     let (genOutput, exitCode) = execCmdEx(genCmd)
 
     # Cleanup
@@ -885,20 +1130,60 @@ proc infoKryon*(filename: string): int =
   return 0
 
 # ============================================================================
+# Devices Command (Flutter-style)
+# ============================================================================
+
+proc devicesCmd*(): int =
+  ## List available backends/devices (Flutter-style)
+  echo "Kryon backends (devices):"
+  echo ""
+  echo "web • HTML/CSS/JS"
+  echo "  - Generates static web applications"
+  echo "  - Use: kryon run -d web <file>"
+  echo "  - Serve: kryon run -d web --serve <file>"
+  echo ""
+  echo "native • Desktop"
+  echo "  - Auto-selects raylib or sdl2"
+  echo "  - Use: kryon run -d native <file>"
+  echo ""
+  echo "raylib • Raylib Desktop"
+  echo "  - 60 FPS desktop applications"
+  echo "  - Use: kryon run -d raylib <file>"
+  echo ""
+  echo "sdl2 • SDL2 Desktop"
+  echo "  - Cross-platform desktop"
+  echo "  - Use: kryon run -d sdl2 <file>"
+  echo ""
+  echo "Run 'kryon devices' to see this list anytime"
+  return 0
+
+# ============================================================================
 # Version Command
 # ============================================================================
 
 proc versionCmd*(): int =
   ## Show Kryon version
-  echo &"Kryon-Nim v{VERSION}"
+  echo &"Kryon v{VERSION}"
   echo "A declarative UI framework for Nim"
   echo ""
-  echo "Supported renderers:"
-  echo "  - raylib (desktop, 60 FPS)"
-  echo "  - sdl2 (desktop, cross-platform)"
-  echo "  - skia (desktop, high-quality 2D graphics)"
-  echo "  - html (web, generates HTML/CSS/JS)"
-  echo "  - terminal (coming soon)"
+  echo "Features:"
+  echo "  ✓ Flutter-like declarative UI"
+  echo "  ✓ Multiple backends (web, desktop)"
+  echo "  ✓ Full Canvas API support"
+  echo "  ✓ Built-in development server"
+  echo "  ✓ Hot-serve capability"
+  echo "  ✓ Reactive state management"
+  echo ""
+  echo "Backends:"
+  echo "  • web      - HTML/CSS/JS with Canvas"
+  echo "  • native   - Auto-select desktop"
+  echo "  • raylib   - Desktop (60 FPS)"
+  echo "  • sdl2     - Desktop (cross-platform)"
+  echo ""
+  echo "Quick Commands:"
+  echo "  kryon devices       - List backends"
+  echo "  kryon help          - Show help"
+  echo "  kryon run -d web    - Run web backend"
   return 0
 
 # ============================================================================
@@ -915,19 +1200,44 @@ when isMainModule:
   # Configure to allow bare arguments
   clCfg.reqSep = false
 
+  # Set custom usage message
+  clCfg.useMulti = """Kryon CLI Tool - A Flutter-like UI Framework for Nim
+Usage:
+  $command {SUBCMD}  [sub-command options & parameters]
+
+Quick Start:
+  kryon run -d web -f app.nim           # Web (dev server auto-starts)
+  kryon run -d native -f app.nim        # Desktop app
+  kryon devices                         # List backends
+  kryon version                         # Show version
+
+where {SUBCMD} is one of:
+$subcmds
+$command {-h|--help} or with no args at all prints this message.
+$command --help-syntax gives general cligen syntax help.
+Run "$command {help SUBCMD|SUBCMD --help}" to see help for just SUBCMD.
+Run "$command help" to get *comprehensive* help.
+"""
+
   dispatchMulti(
     [runKryon, cmdName = "run",
      help = {
        "filename": "Path to .nim file to run",
-       "renderer": "Renderer to use (auto, raylib, sdl2, skia, html, terminal)",
+       "renderer": "Renderer to use (legacy, use -d instead)",
+       "device": "Backend device: web, native, raylib, sdl2 (Flutter-style)",
        "release": "Compile in release mode (optimized)",
-       "verbose": "Show detailed compilation output"
+       "verbose": "Show detailed compilation output",
+       "serve": "Start dev server (default=true for web, use --serve=false to disable)",
+       "port": "Port for development server (default: 8080)"
      },
      short = {
        "filename": 'f',
        "renderer": 'r',
+       "device": 'd',
        "release": 'R',
-       "verbose": 'v'
+       "verbose": 'v',
+       "serve": 's',
+       "port": 'p'
      }
     ],
     [buildKryon, cmdName = "build",
@@ -962,6 +1272,9 @@ when isMainModule:
     ],
     [doctorCmd, cmdName = "doctor",
      help = "Check system dependencies and installation status"
+    ],
+    [devicesCmd, cmdName = "devices",
+     help = "List available backends (Flutter-style)"
     ],
     [versionCmd, cmdName = "version"]
   )
