@@ -1,18 +1,19 @@
 # Kryon UI Framework
 
-A declarative UI framework for Nim with multiple rendering backends.
+A declarative UI framework with multiple rendering backends and C core architecture.
 
 ## Quick Start
 
+Kryon provides a DSL-based UI framework with a C core that supports multiple backends:
+
 ```nim
-import ../src/kryon
-import ../src/backends/integration/raylib
+import kryon_dsl
 
 let app = kryonApp:
   Header:
-    width = 800
-    height = 600
-    title = "Hello Kryon"
+    windowWidth = 800
+    windowHeight = 600
+    windowTitle = "Hello Kryon"
 
   Body:
     backgroundColor = "#2C3E50"
@@ -32,9 +33,7 @@ let app = kryonApp:
           onClick = proc() =
             echo "Button clicked!"
 
-when isMainModule:
-  var backend = newRaylibBackendFromApp(app)
-  backend.run(app)
+app.run()
 ```
 
 ## Installation
@@ -44,7 +43,7 @@ when isMainModule:
 ```bash
 cd kryon
 nix-shell
-nimble build
+make build
 ```
 
 ### Manual Installation
@@ -53,12 +52,13 @@ nimble build
 # Install Nim
 curl https://nim-lang.org/choosenim/init.sh -sSf | sh
 
-# Install dependencies
-# Ubuntu/Debian:
-sudo apt install libsdl2-dev libsdl2-ttf-dev libraylib-dev
+# Build C Core
+cd core && make
+cd ../renderers/sdl3 && make
+cd ../terminal && make
 
-# macOS:
-brew install nim sdl2 sdl2_ttf raylib
+# Build CLI tool
+cd ../cli && make
 
 # Build
 nimble build
@@ -69,30 +69,30 @@ nimble build
 ### Run Examples
 
 ```bash
-./build/bin/kryon run examples/button_demo.nim
-./build/bin/kryon run examples/counter.nim
-./build/bin/kryon run examples/dropdown.nim
+./run_example.sh hello_world nim sdl3
+./run_example.sh button_demo nim terminal
+./run_example.sh checkbox nim framebuffer
 ```
 
 ### Build Executable
 
 ```bash
-./build/bin/kryon build --filename=my_app.nim --output=my_app
-./my_app
+# Build with specific renderer
+nim c -r examples/hello_world.nim --renderer:terminal
+nim c -r examples/button_demo.nim --renderer:sdl3
 ```
 
 ### Available Backends
 
-- **raylib** - Lightweight, easy to use
-- **sdl2** - Cross-platform, hardware accelerated
-- **skia** - High-quality 2D graphics
-- **html** - Web applications
+- **SDL3** - Modern cross-platform, hardware accelerated
+- **Terminal** - Text-based UI using ANSI escape sequences
+- **Framebuffer** - Direct framebuffer rendering (Linux)
+- **Web** - WebAssembly/JavaScript backend (planned)
 
 ```bash
-# Specify backend
-./build/bin/kryon build --filename=app.nim --renderer=raylib
-./build/bin/kryon build --filename=app.nim --renderer=sdl2
-./build/bin/kryon build --filename=app.nim --renderer=skia
+# Specify backend in build command
+nim c -r app.nim --renderer:terminal
+nim c -r app.nim --renderer:sdl3
 ```
 
 ## Features
@@ -123,10 +123,9 @@ nimble build
 
 ## Documentation
 
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture and design
-- **[BACKENDS.md](docs/BACKENDS.md)** - Backend system and custom backends
-- **[CLI.md](docs/CLI.md)** - CLI tool usage
-- **[GETTING_STARTED.md](docs/GETTING_STARTED.md)** - Detailed getting started guide
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture and design
+- **[Installation Guide](examples/)** - See examples directory for usage
+- **Build System** - See Makefile for build options
 
 ## Examples
 

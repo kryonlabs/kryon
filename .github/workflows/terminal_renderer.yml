@@ -1,0 +1,324 @@
+name: Terminal Renderer CI/CD
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  # Build and test on multiple Linux distributions
+  terminal-tests-linux:
+    name: Linux Terminal Tests
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-20.04]
+        compiler: [gcc, clang]
+        include:
+          - os: ubuntu-22.04
+            compiler: gcc
+            cc: gcc-11
+            cxx: g++-11
+          - os: ubuntu-22.04
+            compiler: clang
+            cc: clang-14
+            cxx: clang++-14
+          - os: ubuntu-20.04
+            compiler: gcc
+            cc: gcc-9
+            cxx: g++-9
+          - os: ubuntu-20.04
+            compiler: clang
+            cc: clang-12
+            cxx: clang++-12
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libtickit-dev \
+          libncursesw5-dev \
+          libncurses-dev \
+          pkg-config \
+          build-essential \
+          valgrind \
+          nim \
+          lua5.3 \
+          lua5.3-dev
+
+    - name: Set up environment
+      run: |
+        echo "CC=${{ matrix.cc }}" >> $GITHUB_ENV
+        echo "CXX=${{ matrix.cxx }}" >> $GITHUB_ENV
+
+    - name: Verify dependencies
+      run: |
+        which $CC
+        which $CXX
+        pkg-config --exists tickit && echo "libtickit found" || echo "libtickit missing"
+        pkg-config --modversion tickit
+        tic -V
+
+    - name: Build terminal renderer
+      working-directory: renderers/terminal
+      run: |
+        make clean
+        make all
+
+    - name: Run comprehensive test suite
+      working-directory: renderers/terminal
+      run: |
+        chmod +x run_tests.sh
+        ./run_tests.sh
+
+    - name: Run memory leak detection
+      working-directory: renderers/terminal
+      run: |
+        if command -v valgrind &> /dev/null; then
+          make test-memory
+        else
+          echo "Valgrind not available, skipping memory tests"
+        fi
+
+    - name: Build and test examples
+      working-directory: renderers/terminal
+      run: |
+        make examples
+
+    - name: Test terminal compatibility
+      working-directory: renderers/terminal
+      run: |
+        export TERM=xterm-256color
+        ./test_compat
+        export TERM=alacritty
+        ./test_compat || true  # May fail on CI
+
+    - name: Performance benchmarking
+      working-directory: renderers/terminal
+      run: |
+        make benchmark || true  # May not work well on CI
+
+    - name: Upload test artifacts
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-logs-${{ matrix.os }}-${{ matrix.compiler }}
+        path: |
+          renderers/terminal/*.log
+          renderers/terminal/test_results/
+        retention-days: 7
+
+  # macOS testing
+  terminal-tests-macos:
+    name: macOS Terminal Tests
+    runs-on: macos-12
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        brew update
+        brew install tickit ncurses pkg-config nim lua
+
+    - name: Verify dependencies
+      run: |
+        which gcc
+        which clang
+        pkg-config --exists tickit && echo "libtickit found" || echo "libtickit missing"
+        pkg-config --modversion tickit
+        tic -V
+
+    - name: Build terminal renderer
+      working-directory: renderers/terminal
+      run: |
+        make clean
+        make all
+
+    - name: Run test suite
+      working-directory: renderers/terminal
+      run: |
+        chmod +x run_tests.sh
+        ./run_tests.sh
+
+  # Windows (WSL) testing
+  terminal-tests-windows:
+    name: Windows (WSL) Terminal Tests
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up WSL
+      uses: Vampire/setup-wsl@v1
+      with:
+        distribution: Ubuntu-22.04
+
+    - name: Install dependencies in WSL
+      run: |
+        wsl sudo apt-get update
+        wsl sudo apt-get install -y libtickit-dev libncursesw5-dev pkg-config build-essential nim
+
+    - name: Build and test in WSL
+      run: |
+        wsl bash -c "cd renderers/terminal && make all && ./test_compat"
+
+  # Integration tests with full Kryon build
+  integration-tests:
+    name: Full Kryon Integration Tests
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libtickit-dev \
+          libncursesw5-dev \
+          pkg-config \
+          build-essential \
+          nim \
+          lua5.3 \
+          lua5.3-dev \
+          libsdl3-dev
+
+    - name: Build full Kryon with terminal support
+      run: |
+        nimble build -y
+        cd renderers/terminal && make all
+
+    - name: Test CLI terminal integration
+      run: |
+        cd src/cli
+        nim c -d:terminal kryon.nim
+        ./kryon --help
+
+    - name: Test terminal examples
+      run: |
+        cd examples
+        make terminal || true
+        # Run basic terminal example if built
+        if [ -f bin/hello_world_terminal ]; then
+          timeout 5s ./bin/hello_world_terminal || true
+        fi
+
+  # Code quality checks
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libtickit-dev clang-format cppcheck
+
+    - name: Code formatting check
+      working-directory: renderers/terminal
+      run: |
+        # Check if files are properly formatted
+        find . -name "*.c" -o -name "*.h" | xargs clang-format --dry-run --Werror
+
+    - name: Static analysis
+      working-directory: renderers/terminal
+      run: |
+        cppcheck --enable=all --error-exitcode=1 --std=c99 *.c *.h
+
+    - name: Check for memory leaks in build
+      working-directory: renderers/terminal
+      run: |
+        make clean
+        make CFLAGS="-g -O0 -DDEBUG" all
+
+    - name: Documentation coverage
+      working-directory: renderers/terminal
+      run: |
+        # Check if all public functions are documented
+        grep -E "kryon_terminal_\w+" *.h | grep -v "^[[:space:]]*//" | wc -l
+
+  # Performance regression testing
+  performance-tests:
+    name: Performance Regression Tests
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libtickit-dev build-essential time
+
+    - name: Build for performance testing
+      working-directory: renderers/terminal
+      run: |
+        make clean
+        make CFLAGS="-O3 -DNDEBUG" all
+
+    - name: Run performance benchmarks
+      working-directory: renderers/terminal
+      run: |
+        make benchmark > benchmark_results.txt 2>&1 || true
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results
+        path: renderers/terminal/benchmark_results.txt
+        retention-days: 30
+
+  # Terminal compatibility matrix
+  compatibility-tests:
+    name: Terminal Compatibility Matrix
+    runs-on: ubuntu-22.04
+
+    strategy:
+      matrix:
+        terminal: [xterm-256color, screen, tmux, alacritty, kitty, gnome-terminal]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libtickit-dev build-essential
+
+    - name: Build terminal renderer
+      working-directory: renderers/terminal
+      run: |
+        make all
+
+    - name: Test terminal compatibility
+      working-directory: renderers/terminal
+      run: |
+        export TERM=${{ matrix.terminal }}
+        echo "Testing with TERM=$TERM"
+        ./test_compat > compat_${{ matrix.terminal }}.log 2>&1 || true
+        cat compat_${{ matrix.terminal }}.log
+
+    - name: Upload compatibility results
+      uses: actions/upload-artifact@v3
+      with:
+        name: compatibility-results
+        path: renderers/terminal/compat_*.log
+        retention-days: 7

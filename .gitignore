@@ -17,12 +17,14 @@ dist/
 .cache/
 .nimble_cache/
 
-# Examples - only include .nim source files, exclude compiled binaries
+# Examples - only include source files, exclude compiled binaries
 examples/build/
-examples/*
-!examples/*.nim
-!examples/assets/
-!examples/assets/**
+examples/*/build/
+examples/*/*.out
+examples/*/*.exe
+examples/*/bin/
+examples/*/dist/
+examples/*/nimcache/
 
 # Nim cache
 .nimcache/

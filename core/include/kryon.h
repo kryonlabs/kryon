@@ -1,0 +1,619 @@
+#ifndef KRYON_H
+#define KRYON_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+
+// ============================================================================
+// Memory Constraints Platform Configuration
+// ============================================================================
+
+// Platform constants - only define if not already defined
+#ifndef KRYON_PLATFORM_DESKTOP
+#define KRYON_PLATFORM_DESKTOP  0
+#define KRYON_PLATFORM_MCU      1
+#define KRYON_PLATFORM_WEB      2
+#endif
+
+// Target platform - only set if not already set by build system
+#ifndef KRYON_TARGET_PLATFORM
+#define KRYON_TARGET_PLATFORM KRYON_PLATFORM_DESKTOP
+#endif
+
+// Maximum text length for text inputs
+#define KRYON_MAX_TEXT_LENGTH 256
+
+// Memory constraint configuration
+#if KRYON_TARGET_PLATFORM == KRYON_PLATFORM_MCU
+#ifndef KRYON_NO_HEAP
+#define KRYON_NO_HEAP           1       // FORBIDDEN heap allocations
+#endif
+#ifndef KRYON_NO_FLOAT
+#define KRYON_NO_FLOAT          1       // FORBIDDEN floating point
+#endif
+#define KRYON_MAX_COMPONENTS    64      // Maximum component count
+#ifndef KRYON_CMD_BUF_SIZE
+#define KRYON_CMD_BUF_SIZE      2048    // Larger buffer even for MCU when needed
+#endif
+#else
+#ifndef KRYON_NO_HEAP
+#define KRYON_NO_HEAP           0       // Allow heap on desktop
+#endif
+#ifndef KRYON_NO_FLOAT
+#define KRYON_NO_FLOAT          0       // Allow floating point
+#endif
+#define KRYON_MAX_COMPONENTS    1024    // Higher limit for desktop
+#ifndef KRYON_CMD_BUF_SIZE
+#define KRYON_CMD_BUF_SIZE      1024    // Larger command buffer for desktop
+#endif
+#endif
+
+// ============================================================================
+// Fixed-Point Arithmetic (16.16 format) - Required for MCUs
+// ============================================================================
+
+#if KRYON_NO_FLOAT
+typedef int32_t kryon_fp_t;
+#define KRYON_FP_16_16(value)   ((kryon_fp_t)((value) * 65536.0f))
+#define KRYON_FP_TO_INT(value)  ((value) >> 16)
+#define KRYON_FP_FROM_INT(value) ((value) << 16)
+#define KRYON_FP_MUL(a, b)      (((int64_t)(a) * (b)) >> 16)
+#define KRYON_FP_DIV(a, b)      (((int64_t)(a) << 16) / (b))
+#else
+typedef float kryon_fp_t;
+#define KRYON_FP_16_16(value)   ((kryon_fp_t)(value))
+#define KRYON_FP_TO_INT(value)  ((int32_t)(value))
+#define KRYON_FP_FROM_INT(value) ((kryon_fp_t)(value))
+#define KRYON_FP_MUL(a, b)      ((a) * (b))
+#define KRYON_FP_DIV(a, b)      ((a) / (b))
+#endif
+
+// ============================================================================
+// Unified Event System
+// ============================================================================
+
+typedef enum {
+    KRYON_EVT_CLICK      = 0,
+    KRYON_EVT_TOUCH      = 1,
+    KRYON_EVT_KEY        = 2,
+    KRYON_EVT_TIMER      = 3,
+    KRYON_EVT_HOVER      = 4,
+    KRYON_EVT_SCROLL     = 5,
+    KRYON_EVT_FOCUS      = 6,
+    KRYON_EVT_BLUR       = 7,
+    KRYON_EVT_CUSTOM     = 8
+} kryon_event_type_t;
+
+typedef struct {
+    kryon_event_type_t type;
+    int16_t x, y;                          // Coordinates (fixed-point 8.8 for MCUs)
+    uint32_t param;                        // Key code, timer ID, etc.
+    void* data;                           // Optional event-specific data
+    uint32_t timestamp;                   // Event timestamp (ms)
+} kryon_event_t;
+
+// ============================================================================
+// Component System (VTable Pattern)
+// ============================================================================
+
+// Forward declarations (use only when needed to avoid C11 typedef redefinition warnings)
+struct kryon_component;
+struct kryon_cmd_buf;
+struct kryon_renderer;
+
+// Component function table (vtable)
+typedef struct kryon_component_ops {
+    void (*render)(struct kryon_component* self, struct kryon_cmd_buf* buf);
+    bool (*on_event)(struct kryon_component* self, kryon_event_t* evt);
+    void (*destroy)(struct kryon_component* self);
+    void (*layout)(struct kryon_component* self, kryon_fp_t available_width, kryon_fp_t available_height);
+} kryon_component_ops_t;
+
+// Forward declarations for style system
+typedef struct kryon_style_rule kryon_style_rule_t;
+typedef struct kryon_selector_group kryon_selector_group_t;
+typedef struct kryon_style_prop kryon_style_prop_t;
+
+// Alignment options
+typedef enum {
+    KRYON_ALIGN_START = 0,
+    KRYON_ALIGN_CENTER = 1,
+    KRYON_ALIGN_END = 2,
+    KRYON_ALIGN_STRETCH = 3
+} kryon_alignment_t;
+
+typedef enum {
+    KRYON_COMPONENT_FLAG_HAS_X      = 1 << 0,
+    KRYON_COMPONENT_FLAG_HAS_Y      = 1 << 1,
+    KRYON_COMPONENT_FLAG_HAS_WIDTH  = 1 << 2,
+    KRYON_COMPONENT_FLAG_HAS_HEIGHT = 1 << 3
+} kryon_component_flag_t;
+
+// Component state structure
+typedef struct kryon_component {
+    const kryon_component_ops_t* ops;      // VTable pointer
+    void* state;                          // Language-specific state pointer
+    struct kryon_component* parent;       // Parent component
+    struct kryon_component** children;    // Child components array
+    uint8_t child_count;                  // Number of children
+    uint8_t child_capacity;               // Capacity of children array
+
+    // Layout properties
+    kryon_fp_t x, y;                     // Position
+    kryon_fp_t width, height;            // Dimensions
+    kryon_fp_t min_width, min_height;    // Minimum dimensions
+    kryon_fp_t max_width, max_height;    // Maximum dimensions
+    kryon_fp_t explicit_x, explicit_y;   // Declarative offsets for layout
+
+    // Style properties (simplified for core)
+    uint32_t background_color;           // RGBA color
+    uint32_t text_color;                 // RGBA color
+    uint32_t border_color;               // RGBA color
+    uint8_t padding_top, padding_right;  // Padding (reduced for memory)
+    uint8_t padding_bottom, padding_left;
+    uint8_t margin_top, margin_right;    // Margin (reduced for memory)
+    uint8_t margin_bottom, margin_left;
+    uint8_t border_width;                // Border thickness in pixels
+
+    // Layout properties
+    uint8_t flex_grow;                   // Flex grow factor
+    uint8_t flex_shrink;                 // Flex shrink factor
+    uint8_t align_self;                  // Self alignment
+    uint8_t align_items;                 // Cross-axis alignment for children
+    uint8_t justify_content;             // Main-axis alignment for children
+    bool dirty;                          // Needs layout recalculation
+    bool visible;                        // Visibility flag
+    uint8_t z_index;                     // Z-order index
+    uint8_t layout_flags;                // Explicit property bitmask
+
+    // Event handling
+    void (*event_handlers[8])(struct kryon_component*, kryon_event_t*);  // Limited handler array
+    uint8_t handler_count;
+} kryon_component_t;
+
+// ============================================================================
+// Command Buffer System (Ring Buffer)
+// ============================================================================
+
+// Command types
+typedef enum {
+    KRYON_CMD_DRAW_RECT      = 0,
+    KRYON_CMD_DRAW_TEXT      = 1,
+    KRYON_CMD_DRAW_LINE      = 2,
+    KRYON_CMD_DRAW_ARC       = 3,
+    KRYON_CMD_DRAW_TEXTURE   = 4,
+    KRYON_CMD_SET_CLIP       = 5,
+    KRYON_CMD_PUSH_CLIP      = 6,
+    KRYON_CMD_POP_CLIP       = 7,
+    KRYON_CMD_SET_TRANSFORM  = 8,
+    KRYON_CMD_PUSH_TRANSFORM = 9,
+    KRYON_CMD_POP_TRANSFORM  = 10
+} kryon_command_type_t;
+
+// Command structures
+typedef struct {
+    kryon_command_type_t type;
+    union {
+        struct {
+            int16_t x, y;
+            uint16_t w, h;
+            uint32_t color;
+        } draw_rect;
+        struct {
+            const char* text;
+            int16_t x, y;
+            uint16_t font_id;
+            uint32_t color;
+            uint8_t max_length;
+            char text_storage[128]; // Text storage to fix pointer issue
+        } draw_text;
+        struct {
+            int16_t x1, y1;
+            int16_t x2, y2;
+            uint32_t color;
+        } draw_line;
+        struct {
+            int16_t cx, cy;
+            uint16_t radius;
+            int16_t start_angle, end_angle;
+            uint32_t color;
+        } draw_arc;
+        struct {
+            uint16_t texture_id;
+            int16_t x, y;
+        } draw_texture;
+        struct {
+            int16_t x, y;
+            uint16_t w, h;
+        } set_clip;
+        struct {
+            // Simple 2D transform: matrix[6] = [a, b, c, d, tx, ty]
+            kryon_fp_t matrix[6];
+        } set_transform;
+    } data;
+} kryon_command_t;
+
+// Command buffer (ring buffer)
+typedef struct kryon_cmd_buf {
+    uint8_t buffer[KRYON_CMD_BUF_SIZE];  // Raw command buffer
+    uint16_t head;                       // Write position
+    uint16_t tail;                       // Read position
+    uint16_t count;                      // Number of commands
+    bool overflow;                       // Buffer overflow flag
+} kryon_cmd_buf_t;
+
+// ============================================================================
+// Renderer Abstraction
+// ============================================================================
+
+// Renderer backend interface
+typedef struct kryon_renderer_ops {
+    bool (*init)(struct kryon_renderer* renderer, void* native_window);
+    void (*shutdown)(struct kryon_renderer* renderer);
+    void (*begin_frame)(struct kryon_renderer* renderer);
+    void (*end_frame)(struct kryon_renderer* renderer);
+    void (*execute_commands)(struct kryon_renderer* renderer, struct kryon_cmd_buf* buf);
+    void (*swap_buffers)(struct kryon_renderer* renderer);
+    void (*get_dimensions)(struct kryon_renderer* renderer, uint16_t* width, uint16_t* height);
+    void (*set_clear_color)(struct kryon_renderer* renderer, uint32_t color);
+} kryon_renderer_ops_t;
+
+// Renderer structure
+typedef struct kryon_renderer {
+    const kryon_renderer_ops_t* ops;     // Backend operations
+    void* backend_data;                  // Backend-specific data
+    uint16_t width, height;              // Renderer dimensions
+    uint32_t clear_color;                // Background clear color
+    bool vsync_enabled;                  // VSync enabled flag
+} kryon_renderer_t;
+
+// ============================================================================
+// Core API Functions
+// ============================================================================
+
+// Component lifecycle
+kryon_component_t* kryon_component_create(const kryon_component_ops_t* ops, void* initial_state);
+void kryon_component_destroy(kryon_component_t* component);
+bool kryon_component_add_child(kryon_component_t* parent, kryon_component_t* child);
+void kryon_component_remove_child(kryon_component_t* parent, kryon_component_t* child);
+kryon_component_t* kryon_component_get_parent(kryon_component_t* component);
+kryon_component_t* kryon_component_get_child(kryon_component_t* component, uint8_t index);
+uint8_t kryon_component_get_child_count(kryon_component_t* component);
+
+// Event system
+void kryon_component_send_event(kryon_component_t* component, kryon_event_t* event);
+bool kryon_component_add_event_handler(kryon_component_t* component,
+                                      void (*handler)(kryon_component_t*, kryon_event_t*));
+bool kryon_component_is_button(kryon_component_t* component);
+kryon_component_t* kryon_event_find_target_at_point(kryon_component_t* root, int16_t x, int16_t y);
+void kryon_event_dispatch_to_point(kryon_component_t* root, int16_t x, int16_t y, kryon_event_t* event);
+
+// Event utility functions
+uint32_t kryon_event_get_key_code(kryon_event_t* event);
+bool kryon_event_is_key_pressed(kryon_event_t* event);
+
+// Layout system
+void kryon_component_set_bounds_mask(kryon_component_t* component, kryon_fp_t x, kryon_fp_t y,
+                                     kryon_fp_t width, kryon_fp_t height, uint8_t explicit_mask);
+void kryon_component_set_bounds(kryon_component_t* component, kryon_fp_t x, kryon_fp_t y,
+                               kryon_fp_t width, kryon_fp_t height);
+void kryon_component_set_padding(kryon_component_t* component, uint8_t top, uint8_t right,
+                                uint8_t bottom, uint8_t left);
+void kryon_component_set_margin(kryon_component_t* component, uint8_t top, uint8_t right,
+                               uint8_t bottom, uint8_t left);
+void kryon_component_set_background_color(kryon_component_t* component, uint32_t color);
+void kryon_component_set_border_color(kryon_component_t* component, uint32_t color);
+void kryon_component_set_border_width(kryon_component_t* component, uint8_t width);
+void kryon_component_set_visible(kryon_component_t* component, bool visible);
+void kryon_component_set_flex(kryon_component_t* component, uint8_t flex_grow, uint8_t flex_shrink);
+void kryon_component_mark_dirty(kryon_component_t* component);
+void kryon_component_mark_clean(kryon_component_t* component);
+bool kryon_component_is_dirty(kryon_component_t* component);
+void kryon_component_set_text_color(kryon_component_t* component, uint32_t color);
+void kryon_component_set_layout_alignment(kryon_component_t* component,
+                                         kryon_alignment_t justify,
+                                         kryon_alignment_t align);
+
+// Command buffer operations
+void kryon_cmd_buf_init(kryon_cmd_buf_t* buf);
+void kryon_cmd_buf_clear(kryon_cmd_buf_t* buf);
+bool kryon_cmd_buf_push(kryon_cmd_buf_t* buf, const kryon_command_t* cmd);
+bool kryon_cmd_buf_pop(kryon_cmd_buf_t* buf, kryon_command_t* cmd);
+uint16_t kryon_cmd_buf_count(kryon_cmd_buf_t* buf);
+bool kryon_cmd_buf_is_full(kryon_cmd_buf_t* buf);
+bool kryon_cmd_buf_is_empty(kryon_cmd_buf_t* buf);
+
+// Command iterator (internal)
+typedef struct {
+    kryon_cmd_buf_t* buf;
+    uint16_t position;
+    uint16_t remaining;
+} kryon_cmd_iterator_t;
+
+kryon_cmd_iterator_t kryon_cmd_iter_create(kryon_cmd_buf_t* buf);
+bool kryon_cmd_iter_has_next(kryon_cmd_iterator_t* iter);
+bool kryon_cmd_iter_next(kryon_cmd_iterator_t* iter, kryon_command_t* cmd);
+
+// Drawing commands (these go into command buffer)
+bool kryon_draw_rect(kryon_cmd_buf_t* buf, int16_t x, int16_t y, uint16_t w, uint16_t h, uint32_t color);
+bool kryon_draw_text(kryon_cmd_buf_t* buf, const char* text, int16_t x, int16_t y, uint16_t font_id, uint32_t color);
+bool kryon_draw_line(kryon_cmd_buf_t* buf, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint32_t color);
+bool kryon_draw_arc(kryon_cmd_buf_t* buf, int16_t cx, int16_t cy, uint16_t radius,
+                   int16_t start_angle, int16_t end_angle, uint32_t color);
+
+// Layout engine
+void kryon_layout_tree(kryon_component_t* root, kryon_fp_t available_width, kryon_fp_t available_height);
+void kryon_layout_component(kryon_component_t* component, kryon_fp_t available_width, kryon_fp_t available_height);
+void kryon_layout_apply_column(kryon_component_t* container, kryon_fp_t available_width, kryon_fp_t available_height);
+
+// Renderer management
+kryon_renderer_t* kryon_renderer_create(const kryon_renderer_ops_t* ops);
+void kryon_renderer_destroy(kryon_renderer_t* renderer);
+bool kryon_renderer_init(kryon_renderer_t* renderer, void* native_window);
+void kryon_renderer_shutdown(kryon_renderer_t* renderer);
+
+// Main rendering loop
+void kryon_render_frame(kryon_renderer_t* renderer, kryon_component_t* root_component);
+
+// Built-in renderer helpers
+const kryon_renderer_ops_t* kryon_get_framebuffer_renderer_ops(void);
+kryon_renderer_t* kryon_framebuffer_renderer_create(uint16_t width, uint16_t height, uint8_t bytes_per_pixel);
+
+// Command execution (for renderer backends)
+typedef struct {
+    void (*execute_draw_rect)(int16_t x, int16_t y, uint16_t w, uint16_t h, uint32_t color);
+    void (*execute_draw_text)(const char* text, int16_t x, int16_t y, uint16_t font_id, uint32_t color);
+    void (*execute_draw_line)(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint32_t color);
+    void (*execute_draw_arc)(int16_t cx, int16_t cy, uint16_t radius, int16_t start_angle, int16_t end_angle, uint32_t color);
+    void (*execute_draw_texture)(uint16_t texture_id, int16_t x, int16_t y);
+    void (*execute_set_clip)(int16_t x, int16_t y, uint16_t w, uint16_t h);
+    void (*execute_push_clip)(void);
+    void (*execute_pop_clip)(void);
+    void (*execute_set_transform)(const kryon_fp_t matrix[6]);
+    void (*execute_push_transform)(void);
+    void (*execute_pop_transform)(void);
+} kryon_command_executor_t;
+
+void kryon_execute_commands(kryon_cmd_buf_t* buf, const kryon_command_executor_t* executor);
+
+// Utility functions
+uint32_t kryon_color_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+uint32_t kryon_color_rgb(uint8_t r, uint8_t g, uint8_t b);
+void kryon_color_get_components(uint32_t color, uint8_t* r, uint8_t* g, uint8_t* b, uint8_t* a);
+uint8_t kryon_color_get_red(uint32_t color);
+uint8_t kryon_color_get_green(uint32_t color);
+uint8_t kryon_color_get_blue(uint32_t color);
+uint8_t kryon_color_get_alpha(uint32_t color);
+uint32_t kryon_color_lerp(uint32_t color1, uint32_t color2, kryon_fp_t t);
+
+// Geometry utilities
+bool kryon_point_in_rect(int16_t x, int16_t y, int16_t rx, int16_t ry, uint16_t rw, uint16_t rh);
+bool kryon_rect_intersect(int16_t x1, int16_t y1, uint16_t w1, uint16_t h1,
+                         int16_t x2, int16_t y2, uint16_t w2, uint16_t h2);
+void kryon_rect_union(int16_t x1, int16_t y1, uint16_t w1, uint16_t h1,
+                     int16_t x2, int16_t y2, uint16_t w2, uint16_t h2,
+                     int16_t* ux, int16_t* uy, uint16_t* uw, uint16_t* uh);
+
+// Memory utilities
+void* kryon_memcpy(void* dest, const void* src, uint32_t size);
+void* kryon_memset(void* ptr, int value, uint32_t size);
+int32_t kryon_memcmp(const void* ptr1, const void* ptr2, uint32_t size);
+
+// String utilities
+uint32_t kryon_str_len(const char* str);
+int32_t kryon_str_cmp(const char* str1, const char* str2);
+void kryon_str_copy(char* dest, const char* src, uint32_t max_len);
+bool kryon_str_equals(const char* str1, const char* str2);
+
+// Fixed-point utilities (always available)
+kryon_fp_t kryon_fp_from_float(float f);
+float kryon_fp_to_float(kryon_fp_t fp);
+kryon_fp_t kryon_fp_from_int(int32_t i);
+int32_t kryon_fp_to_int_round(kryon_fp_t fp);
+
+// Fixed-point math operations
+kryon_fp_t kryon_fp_add(kryon_fp_t a, kryon_fp_t b);
+kryon_fp_t kryon_fp_sub(kryon_fp_t a, kryon_fp_t b);
+kryon_fp_t kryon_fp_mul(kryon_fp_t a, kryon_fp_t b);
+kryon_fp_t kryon_fp_div(kryon_fp_t a, kryon_fp_t b);
+kryon_fp_t kryon_fp_sqrt(kryon_fp_t value);
+kryon_fp_t kryon_fp_abs(kryon_fp_t value);
+kryon_fp_t kryon_fp_min(kryon_fp_t a, kryon_fp_t b);
+kryon_fp_t kryon_fp_max(kryon_fp_t a, kryon_fp_t b);
+kryon_fp_t kryon_fp_clamp(kryon_fp_t value, kryon_fp_t min, kryon_fp_t max);
+bool kryon_fp_equal(kryon_fp_t a, kryon_fp_t b, kryon_fp_t epsilon);
+
+// Additional math utilities
+kryon_fp_t kryon_lerp(kryon_fp_t a, kryon_fp_t b, kryon_fp_t t);
+kryon_fp_t kryon_smoothstep(kryon_fp_t edge0, kryon_fp_t edge1, kryon_fp_t x);
+
+// ============================================================================
+// Built-in Component Types (Core components)
+// ============================================================================
+
+// Container component
+extern const kryon_component_ops_t kryon_container_ops;
+
+// Text component
+typedef struct {
+    const char* text;
+    uint16_t font_id;
+    uint16_t max_length;
+    bool word_wrap;
+} kryon_text_state_t;
+
+extern const kryon_component_ops_t kryon_text_ops;
+
+// Button component
+typedef struct {
+    const char* text;
+    uint16_t font_id;
+    bool pressed;
+    bool hovered;
+    void (*on_click)(kryon_component_t*, kryon_event_t*);
+} kryon_button_state_t;
+
+extern const kryon_component_ops_t kryon_button_ops;
+
+// Canvas component
+typedef struct {
+    uint16_t width;
+    uint16_t height;
+    uint32_t background_color;
+    bool (*on_draw)(kryon_component_t* canvas, kryon_cmd_buf_t* buf);
+    void (*on_update)(kryon_component_t* canvas, float delta_time);
+    float update_timer;
+} kryon_canvas_state_t;
+
+extern const kryon_component_ops_t kryon_canvas_ops;
+
+// Input component
+typedef struct {
+    char text[KRYON_MAX_TEXT_LENGTH];
+    char placeholder[KRYON_MAX_TEXT_LENGTH];
+    uint16_t font_id;
+    uint32_t text_color;
+    uint32_t placeholder_color;
+    uint32_t background_color;
+    uint32_t border_color;
+    uint8_t border_width;
+    uint8_t padding;
+    bool focused;
+    bool password_mode;
+    uint8_t cursor_position;
+    float cursor_blink_timer;
+    bool cursor_visible;
+    void (*on_change)(kryon_component_t* input, const char* text);
+    void (*on_submit)(kryon_component_t* input, const char* text);
+} kryon_input_state_t;
+
+extern const kryon_component_ops_t kryon_input_ops;
+
+// Checkbox component
+typedef struct {
+    bool checked;
+    uint16_t check_size;
+    uint32_t check_color;
+    uint32_t box_color;
+    uint32_t text_color;
+    char label[KRYON_MAX_TEXT_LENGTH];
+    uint16_t font_id;
+    void (*on_change)(kryon_component_t* checkbox, bool checked);
+} kryon_checkbox_state_t;
+
+extern const kryon_component_ops_t kryon_checkbox_ops;
+
+// Spacer component
+typedef struct {
+    uint16_t width;
+    uint16_t height;
+    uint8_t flex_grow;
+} kryon_spacer_state_t;
+
+extern const kryon_component_ops_t kryon_spacer_ops;
+
+// Component factory functions
+kryon_component_t* kryon_canvas_create(uint16_t width, uint16_t height, uint32_t background_color,
+                                         bool (*on_draw)(kryon_component_t*, kryon_cmd_buf_t*),
+                                         void (*on_update)(kryon_component_t*, float));
+kryon_component_t* kryon_input_create(const char* placeholder, const char* initial_text,
+                                         uint16_t font_id, bool password_mode);
+kryon_component_t* kryon_checkbox_create(const char* label, bool initial_checked,
+                                            uint16_t check_size, void (*on_change)(kryon_component_t*, bool));
+kryon_component_t* kryon_spacer_create(uint16_t width, uint16_t height, uint8_t flex_grow);
+
+// ============================================================================
+// Style System API
+// ============================================================================
+
+// Style system initialization
+void kryon_style_init(void);
+void kryon_style_clear(void);
+
+// Style rule management
+uint16_t kryon_style_add_rule(const kryon_selector_group_t* selector, const kryon_style_rule_t* rule);
+void kryon_style_remove_rule(uint16_t rule_index);
+
+// Style resolution
+void kryon_style_resolve_tree(kryon_component_t* root);
+void kryon_style_resolve_component(kryon_component_t* component);
+
+// Style system state
+bool kryon_style_is_dirty(void);
+void kryon_style_mark_clean(void);
+
+// Style rule creation - types already declared above
+
+kryon_style_rule_t kryon_style_create_rule(void);
+void kryon_style_add_property(kryon_style_rule_t* rule, const kryon_style_prop_t* prop);
+
+// Style property creation - functions only, struct is opaque
+
+kryon_style_prop_t kryon_style_color(uint32_t color);
+kryon_style_prop_t kryon_style_background_color(uint32_t color);
+kryon_style_prop_t kryon_style_width(kryon_fp_t width);
+kryon_style_prop_t kryon_style_height(kryon_fp_t height);
+kryon_style_prop_t kryon_style_margin(uint8_t margin);
+kryon_style_prop_t kryon_style_padding(uint8_t padding);
+kryon_style_prop_t kryon_style_visible(bool visible);
+kryon_style_prop_t kryon_style_z_index(uint8_t z_index);
+
+// Selector creation
+kryon_selector_group_t kryon_style_selector_type(const char* type);
+kryon_selector_group_t kryon_style_selector_class(const char* class_name);
+kryon_selector_group_t kryon_style_selector_id(const char* id);
+kryon_selector_group_t kryon_style_selector_pseudo(const char* pseudo);
+
+// Convenience style functions
+uint16_t kryon_style_add_button_style(const char* class_name, uint32_t bg_color, uint32_t text_color,
+                                     uint8_t padding, uint16_t width, uint16_t height);
+uint16_t kryon_style_add_container_style(const char* class_name, uint32_t bg_color,
+                                        uint8_t margin, uint8_t padding);
+uint16_t kryon_style_add_text_style(const char* class_name, uint32_t text_color,
+                                   uint16_t font_size);
+
+// ============================================================================
+// Error Codes
+// ============================================================================
+
+typedef enum {
+    KRYON_OK               = 0,
+    KRYON_ERROR_NULL_PTR   = -1,
+    KRYON_ERROR_INVALID_PARAM = -2,
+    KRYON_ERROR_OUT_OF_MEMORY = -3,
+    KRYON_ERROR_BUFFER_FULL    = -4,
+    KRYON_ERROR_INVALID_COMPONENT = -5,
+    KRYON_ERROR_RENDERER_INIT   = -6,
+    KRYON_ERROR_COMMAND_OVERFLOW = -7
+} kryon_error_t;
+
+// ============================================================================
+// Platform-specific includes and configurations
+// ============================================================================
+
+#ifdef KRYON_PLATFORM_MCU
+// MCU-specific configurations - override global setting
+#undef KRYON_MAX_TEXT_LENGTH
+#define KRYON_MAX_TEXT_LENGTH 64
+#define KRYON_FONT_CACHE_SIZE  4
+#else
+// Desktop-specific configurations - keep global setting
+#define KRYON_FONT_CACHE_SIZE  32
+#endif
+
+// Version information
+#define KRYON_VERSION_MAJOR  1
+#define KRYON_VERSION_MINOR  0
+#define KRYON_VERSION_PATCH  0
+#define KRYON_VERSION_STRING "1.0.0"
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // KRYON_H
