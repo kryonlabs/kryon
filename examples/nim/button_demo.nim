@@ -21,6 +21,7 @@ let app = kryonApp:
         width = 150
         height = 50
         text = "Click Me!"
+        color = "pink"
         backgroundColor = "#404080FF"
         onClick = handleButtonClick
 

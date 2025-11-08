@@ -722,7 +722,7 @@ macro Button*(props: untyped): untyped =
         posYVal = value
       of "backgroundcolor":
         bgColorVal = colorNode(value)
-      of "textcolor":
+      of "color", "textcolor":  # Allow "color" as alias for "textcolor"
         textColorVal = colorNode(value)
       of "bordercolor":
         borderColorVal = colorNode(value)
@@ -1146,23 +1146,87 @@ proc parseHexColor*(hex: string): uint32 =
       echo "[kryon][color] parseHexColor: invalid format '", hex, "' -> default black 0x", result.toHex(8)
 
 proc parseNamedColor*(name: string): uint32 =
-  ## Parse named colors
+  ## Parse named colors - supports common CSS color names
   case name.toLowerAscii():
+  # Primary colors
   of "red":
     result = rgba(255, 0, 0, 255)
   of "green":
     result = rgba(0, 255, 0, 255)
   of "blue":
     result = rgba(0, 0, 255, 255)
+  of "yellow":
+    result = rgba(255, 255, 0, 255)
+
+  # Grayscale
   of "white":
     result = rgba(255, 255, 255, 255)
   of "black":
     result = rgba(0, 0, 0, 255)
-  of "yellow":
-    result = rgba(255, 255, 0, 255)
+  of "gray", "grey":
+    result = rgba(128, 128, 128, 255)
+  of "lightgray", "lightgrey":
+    result = rgba(211, 211, 211, 255)
+  of "darkgray", "darkgrey":
+    result = rgba(169, 169, 169, 255)
+  of "silver":
+    result = rgba(192, 192, 192, 255)
+
+  # Common colors
+  of "orange":
+    result = rgba(255, 165, 0, 255)
+  of "purple":
+    result = rgba(128, 0, 128, 255)
+  of "pink":
+    result = rgba(255, 192, 203, 255)
+  of "brown":
+    result = rgba(165, 42, 42, 255)
   of "cyan":
     result = rgba(0, 255, 255, 255)
   of "magenta":
     result = rgba(255, 0, 255, 255)
+  of "lime":
+    result = rgba(0, 255, 0, 255)
+  of "olive":
+    result = rgba(128, 128, 0, 255)
+  of "navy":
+    result = rgba(0, 0, 128, 255)
+  of "teal":
+    result = rgba(0, 128, 128, 255)
+  of "aqua":
+    result = rgba(0, 255, 255, 255)
+  of "maroon":
+    result = rgba(128, 0, 0, 255)
+  of "fuchsia":
+    result = rgba(255, 0, 255, 255)
+
+  # Light variations
+  of "lightblue":
+    result = rgba(173, 216, 230, 255)
+  of "lightgreen":
+    result = rgba(144, 238, 144, 255)
+  of "lightpink":
+    result = rgba(255, 182, 193, 255)
+  of "lightyellow":
+    result = rgba(255, 255, 224, 255)
+  of "lightcyan":
+    result = rgba(224, 255, 255, 255)
+
+  # Dark variations
+  of "darkred":
+    result = rgba(139, 0, 0, 255)
+  of "darkgreen":
+    result = rgba(0, 100, 0, 255)
+  of "darkblue":
+    result = rgba(0, 0, 139, 255)
+  of "darkorange":
+    result = rgba(255, 140, 0, 255)
+  of "darkviolet":
+    result = rgba(148, 0, 211, 255)
+
+  # Transparent
+  of "transparent":
+    result = rgba(0, 0, 0, 0)
+
   else:
     result = rgba(128, 128, 128, 255)  # Default to gray

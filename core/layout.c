@@ -389,7 +389,6 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
 static void layout_column(kryon_component_t* container, kryon_layout_context_t* ctx) {
     if (container == NULL || ctx == NULL) return;
 
-    fprintf(stderr, "[kryon][layout_column] %p justify_content=%d align_items=%d\n", (void*)container, (int)container->justify_content, (int)container->align_items);
     kryon_fp_t padding_left = KRYON_FP_FROM_INT(container->padding_left);
     kryon_fp_t padding_right = KRYON_FP_FROM_INT(container->padding_right);
     kryon_fp_t padding_top = KRYON_FP_FROM_INT(container->padding_top);
