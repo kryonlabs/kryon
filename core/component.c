@@ -410,6 +410,7 @@ void kryon_component_set_layout_alignment(kryon_component_t* component,
         return;
     }
 
+    fprintf(stderr, "[kryon][component] set_layout_alignment %p justify=%d align=%d\n", (void*)component, (int)justify, (int)align);
     component->justify_content = (uint8_t)justify;
     component->align_items = (uint8_t)align;
     kryon_component_mark_dirty(component);

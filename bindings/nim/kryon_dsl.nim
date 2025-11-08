@@ -20,6 +20,18 @@ proc colorNode(value: NimNode): NimNode =
     # For other node types, try to parse as hex color
     result = newCall(ident("parseHexColor"), value)
 
+proc parseAlignmentString*(name: string): KryonAlignment =
+  ## Runtime function to parse alignment strings
+  let normalized = name.toLowerAscii()
+  case normalized
+  of "center", "middle": KryonAlignment.kaCenter
+  of "end", "bottom", "right": KryonAlignment.kaEnd
+  of "stretch": KryonAlignment.kaStretch
+  of "spaceevenly": KryonAlignment.kaSpaceEvenly
+  of "spacearound": KryonAlignment.kaSpaceAround
+  of "spacebetween": KryonAlignment.kaSpaceBetween
+  else: KryonAlignment.kaStart
+
 proc alignmentNode(name: string): NimNode =
   let normalized = name.toLowerAscii()
   let variant =
@@ -278,15 +290,22 @@ macro Container*(props: untyped): untyped =
       of "justifycontent":
         if value.kind == nnkStrLit:
           justifyNode = alignmentNode(value.strVal)
-      of "mainAxisAlignment":
+      of "mainaxisalignment":
         if value.kind == nnkStrLit:
           justifyNode = alignmentNode(value.strVal)
+        else:
+          # Non-literal value - call runtime parser
+          justifyNode = newCall(ident("parseAlignmentString"), value)
       of "alignitems":
         if value.kind == nnkStrLit:
           alignNode = alignmentNode(value.strVal)
+        else:
+          alignNode = newCall(ident("parseAlignmentString"), value)
       of "crossaxisalignment":  # Alias for alignItems (React-like API)
         if value.kind == nnkStrLit:
           alignNode = alignmentNode(value.strVal)
+        else:
+          alignNode = newCall(ident("parseAlignmentString"), value)
       of "justify":  # Shorthand for justifyContent
         if value.kind == nnkStrLit:
           justifyNode = alignmentNode(value.strVal)

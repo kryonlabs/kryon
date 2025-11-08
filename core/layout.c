@@ -110,14 +110,15 @@ static kryon_fp_t calculate_total_flex_grow(kryon_component_t* container) {
 }
 
 static kryon_fp_t calculate_space_offset(kryon_alignment_t alignment, kryon_fp_t available_space,
-                                        kryon_fp_t total_item_size, uint8_t item_count, uint8_t item_index) {
+                                        kryon_fp_t total_item_size, uint8_t item_count, uint8_t item_index,
+                                        kryon_fp_t cumulative_size_before) {
     if (item_count <= 1 || available_space <= 0) {
-        return 0;
+        return cumulative_size_before;
     }
 
     kryon_fp_t remaining_space = available_space - total_item_size;
     if (remaining_space <= 0) {
-        return 0;
+        return cumulative_size_before;
     }
 
     switch (alignment) {
@@ -125,28 +126,31 @@ static kryon_fp_t calculate_space_offset(kryon_alignment_t alignment, kryon_fp_t
             // Equal space before, between, and after each item
             // Total segments = item_count + 1
             kryon_fp_t segment_size = remaining_space / KRYON_FP_FROM_INT(item_count + 1);
-            return segment_size * KRYON_FP_FROM_INT(item_index + 1);
+            kryon_fp_t gap_offset = segment_size * KRYON_FP_FROM_INT(item_index + 1);
+            return gap_offset + cumulative_size_before;
         }
 
         case KRYON_ALIGN_SPACE_AROUND: {
             // Equal space before and after each item (half at edges)
             // Total segments = item_count * 2
             kryon_fp_t segment_size = remaining_space / KRYON_FP_FROM_INT(item_count * 2);
-            return segment_size * KRYON_FP_FROM_INT(item_index * 2 + 1);
+            kryon_fp_t gap_offset = segment_size * KRYON_FP_FROM_INT(item_index * 2 + 1);
+            return gap_offset + cumulative_size_before;
         }
 
         case KRYON_ALIGN_SPACE_BETWEEN: {
             // Equal space between items, no space at edges
             // Total segments = item_count - 1
             if (item_index == 0) {
-                return 0; // First item has no offset
+                return cumulative_size_before; // First item has no gap offset
             }
             kryon_fp_t segment_size = remaining_space / KRYON_FP_FROM_INT(item_count - 1);
-            return segment_size * KRYON_FP_FROM_INT(item_index);
+            kryon_fp_t gap_offset = segment_size * KRYON_FP_FROM_INT(item_index);
+            return gap_offset + cumulative_size_before;
         }
 
         default:
-            return 0;
+            return cumulative_size_before;
     }
 }
 
@@ -250,17 +254,20 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
                 kryon_fp_t available_width = container_width - KRYON_FP_FROM_INT(container->margin_left + container->margin_right);
 
                 // Re-position children with space distribution
+                kryon_fp_t cumulative_width = 0;
                 for (uint8_t j = 0; j < visible_child_count; j++) {
                     uint8_t child_idx = child_indices[j];
                     kryon_component_t* visible_child = container->children[child_idx];
 
                     kryon_fp_t space_offset = calculate_space_offset(
                         container->justify_content, available_width, total_children_width,
-                        visible_child_count, j
+                        visible_child_count, j, cumulative_width
                     );
 
                     kryon_fp_t base_x = KRYON_FP_FROM_INT(container->margin_left) + space_offset;
                     visible_child->x = base_x + KRYON_FP_FROM_INT(visible_child->margin_left);
+
+                    cumulative_width += visible_child->width + KRYON_FP_FROM_INT(visible_child->margin_left) + KRYON_FP_FROM_INT(visible_child->margin_right);
                 }
             }
 
@@ -314,17 +321,20 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
         kryon_fp_t available_width = container_width - KRYON_FP_FROM_INT(container->margin_left + container->margin_right);
 
         // Re-position children with space distribution
+        kryon_fp_t cumulative_width = 0;
         for (uint8_t j = 0; j < visible_child_count; j++) {
             uint8_t child_idx = child_indices[j];
             kryon_component_t* visible_child = container->children[child_idx];
 
             kryon_fp_t space_offset = calculate_space_offset(
                 container->justify_content, available_width, total_children_width,
-                visible_child_count, j
+                visible_child_count, j, cumulative_width
             );
 
             kryon_fp_t base_x = KRYON_FP_FROM_INT(container->margin_left) + space_offset;
             visible_child->x = base_x + KRYON_FP_FROM_INT(visible_child->margin_left);
+
+            cumulative_width += visible_child->width + KRYON_FP_FROM_INT(visible_child->margin_left) + KRYON_FP_FROM_INT(visible_child->margin_right);
         }
     }
 
@@ -379,10 +389,12 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
 static void layout_column(kryon_component_t* container, kryon_layout_context_t* ctx) {
     if (container == NULL || ctx == NULL) return;
 
+    fprintf(stderr, "[kryon][layout_column] %p justify_content=%d align_items=%d\n", (void*)container, (int)container->justify_content, (int)container->align_items);
     kryon_fp_t padding_left = KRYON_FP_FROM_INT(container->padding_left);
     kryon_fp_t padding_right = KRYON_FP_FROM_INT(container->padding_right);
     kryon_fp_t padding_top = KRYON_FP_FROM_INT(container->padding_top);
     kryon_fp_t padding_bottom = KRYON_FP_FROM_INT(container->padding_bottom);
+    kryon_fp_t gap_fp = KRYON_FP_FROM_INT(container->gap);
 
     kryon_fp_t container_width = container->width;
     if (container_width == 0) {
@@ -398,7 +410,16 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
     kryon_fp_t total_content_height = 0;
     kryon_fp_t total_flex_grow = 0;
 
+    // Count visible children first
+    uint8_t visible_child_count = 0;
+    for (uint8_t i = 0; i < container->child_count; i++) {
+        if (container->children[i]->visible) {
+            visible_child_count++;
+        }
+    }
+
     // Measure children and assign base dimensions
+    uint8_t visible_index = 0;
     for (uint8_t i = 0; i < container->child_count; i++) {
         kryon_component_t* child = container->children[i];
         if (!child->visible) continue;
@@ -432,9 +453,16 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
 
         total_content_height += child->height + margin_top + margin_bottom;
 
+        // Add gap to total content height (except for last child)
+        if (visible_index < visible_child_count - 1) {
+            total_content_height += gap_fp;
+        }
+
         if (child->flex_grow > 0) {
             total_flex_grow += KRYON_FP_FROM_INT(child->flex_grow);
         }
+
+        visible_index++;
     }
 
     kryon_fp_t target_inner_height = container->height > 0
@@ -479,14 +507,6 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
         available_height_for_alignment = total_content_height;
     }
 
-    // Count visible children for space distribution
-    uint8_t visible_child_count = 0;
-    for (uint8_t i = 0; i < container->child_count; i++) {
-        if (container->children[i]->visible) {
-            visible_child_count++;
-        }
-    }
-
     kryon_fp_t alignment_offset = 0;
     switch (container->justify_content) {
         case KRYON_ALIGN_CENTER:
@@ -512,6 +532,7 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
 
     // Position children
     kryon_fp_t cursor_y = origin_y + alignment_offset;
+    kryon_fp_t cumulative_height = 0; // Track cumulative height for space distribution
     uint8_t current_visible_index = 0; // Track visible child index for space distribution
 
     for (uint8_t i = 0; i < container->child_count; i++) {
@@ -564,7 +585,7 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
 
             kryon_fp_t space_offset = calculate_space_offset(
                 container->justify_content, target_inner_height, total_content_height,
-                visible_child_count, current_visible_index
+                visible_child_count, current_visible_index, cumulative_height
             );
             child_y = origin_y + space_offset + margin_top;
         }
@@ -574,14 +595,20 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
             child->y += explicit_y;
         }
 
-        // Update cursor for next child
+        // Update cursor and cumulative height for next child
         if (container->justify_content == KRYON_ALIGN_SPACE_EVENLY ||
             container->justify_content == KRYON_ALIGN_SPACE_AROUND ||
             container->justify_content == KRYON_ALIGN_SPACE_BETWEEN) {
-            // For space distribution, calculate next position based on spacing, not accumulated height
+            // For space distribution, track cumulative height
+            cumulative_height += child->height + margin_top + margin_bottom;
             current_visible_index++;
         } else {
-            cursor_y += child->height + margin_bottom;
+            // For non-space alignments, add gap between children
+            cursor_y += child->height + margin_top + margin_bottom;
+            if (current_visible_index < visible_child_count - 1) {
+                cursor_y += gap_fp;
+            }
+            current_visible_index++;
         }
     }
 
