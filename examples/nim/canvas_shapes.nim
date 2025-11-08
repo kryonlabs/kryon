@@ -1,43 +1,47 @@
-## Canvas Shapes Example - Pure Kryon DSL
+## Canvas Shapes Example - Updated Love2D Style API
 ##
-## Demonstrates the Canvas API with various drawing operations.
+## Demonstrates the new Love2D-inspired Canvas API with various drawing operations.
 ## Shows how to draw rectangles, circles, lines, and use different colors.
-## NO direct SDL3 code - clean declarative UI
+## Uses immediate mode drawing functions within a Canvas component
 
 import std/math
 import kryon_dsl
+import canvas
 
-# Drawing procedure that creates various shapes using high-level drawing functions
-proc drawShapes(ctx: DrawingContext, width, height: float) =
+# Drawing procedure that creates various shapes using Love2D-style API
+proc drawShapes() =
   # Clear canvas with light blue background
-  ctx.clearBackground(width, height, rgba(135.uint8, 206.uint8, 235.uint8, 255.uint8))  # Sky blue
+  background(135, 206, 235)  # Sky blue
 
   # Row 1: Basic filled shapes
-  ctx.fillStyle = rgba(255.uint8, 0.uint8, 0.uint8, 255.uint8)  # Red
-  ctx.drawRectangle(50, 50, 80, 60)
+  fill(255, 0, 0, 255)  # Red
+  rectangle(Fill, 50, 50, 80, 60)
 
-  ctx.fillStyle = rgba(0.uint8, 0.uint8, 255.uint8, 255.uint8)  # Blue
-  ctx.drawCircle(200, 80, 35)
+  fill(0, 0, 255, 255)  # Blue
+  circle(Fill, 200, 80, 35)
 
-  ctx.fillStyle = rgba(0.uint8, 255.uint8, 0.uint8, 255.uint8)  # Green
-  ctx.drawTriangle(300, 120, 260, 40, 340, 40)
+  fill(0, 255, 0, 255)  # Green
+  # Triangle as polygon
+  let triangleVertices = [(x: 300.0, y: 120.0), (x: 260.0, y: 40.0), (x: 340.0, y: 40.0)]
+  polygon(Fill, triangleVertices)
 
   # Row 2: Arc demos (half circle and quarter circle)
-  ctx.fillStyle = rgba(255.uint8, 255.uint8, 0.uint8, 255.uint8)  # Yellow
-  ctx.beginPath()
-  ctx.arc(450, 80, 35, 0, PI)  # Half circle
-  ctx.fill()
+  fill(255, 255, 0, 255)  # Yellow
+  arc(Fill, 450, 80, 35, 0, PI)  # Half circle
 
-  ctx.strokeStyle = rgba(0.uint8, 255.uint8, 255.uint8, 255.uint8)  # Cyan
-  ctx.lineWidth = 3.0
-  ctx.beginPath()
-  ctx.arc(80, 200, 35, 0, PI / 2)  # Quarter circle
-  ctx.stroke()
+  stroke(0, 255, 255, 255)  # Cyan
+  strokeWeight(3)
+  arc(Line, 80, 200, 35, 0, PI / 2)  # Quarter circle
 
   # Row 3: Sine wave
-  ctx.strokeStyle = rgba(148.uint8, 0.uint8, 211.uint8, 255.uint8)  # Purple
-  ctx.lineWidth = 2.0
-  ctx.drawSineWave(50, 320, 500, 20, 0.08)
+  stroke(148, 0, 211, 255)  # Purple
+  strokeWeight(2)
+  let wavePoints: seq[Point] = @[]
+  for i in 0..100:
+    let x = 50.0 + i * 5.0
+    let y = 320.0 + sin(0.08 * float(i)) * 20.0
+    wavePoints.add((x, y))
+  line(wavePoints)
 
 
 # Define the UI with multiple canvases using pure Kryon DSL
@@ -65,4 +69,7 @@ let app = kryonApp:
         backgroundColor = "#34495E"
 
         Canvas:
+          width = 550
+          height = 400
+          backgroundColor = "#3498DB"
           onDraw = drawShapes

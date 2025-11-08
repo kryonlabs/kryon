@@ -49,7 +49,7 @@ extern "C" {
 #endif
 #define KRYON_MAX_COMPONENTS    1024    // Higher limit for desktop
 #ifndef KRYON_CMD_BUF_SIZE
-#define KRYON_CMD_BUF_SIZE      1024    // Larger command buffer for desktop
+#define KRYON_CMD_BUF_SIZE      8192    // Larger command buffer for desktop
 #endif
 #endif
 
@@ -124,7 +124,10 @@ typedef enum {
     KRYON_ALIGN_START = 0,
     KRYON_ALIGN_CENTER = 1,
     KRYON_ALIGN_END = 2,
-    KRYON_ALIGN_STRETCH = 3
+    KRYON_ALIGN_STRETCH = 3,
+    KRYON_ALIGN_SPACE_EVENLY = 4,
+    KRYON_ALIGN_SPACE_AROUND = 5,
+    KRYON_ALIGN_SPACE_BETWEEN = 6
 } kryon_alignment_t;
 
 typedef enum {
@@ -166,6 +169,7 @@ typedef struct kryon_component {
     uint8_t align_self;                  // Self alignment
     uint8_t align_items;                 // Cross-axis alignment for children
     uint8_t justify_content;             // Main-axis alignment for children
+    uint8_t layout_direction;            // Layout direction: 0=column, 1=row
     bool dirty;                          // Needs layout recalculation
     bool visible;                        // Visibility flag
     uint8_t z_index;                     // Z-order index
@@ -318,6 +322,7 @@ void kryon_component_set_text_color(kryon_component_t* component, uint32_t color
 void kryon_component_set_layout_alignment(kryon_component_t* component,
                                          kryon_alignment_t justify,
                                          kryon_alignment_t align);
+void kryon_component_set_layout_direction(kryon_component_t* component, uint8_t direction);
 
 // Command buffer operations
 void kryon_cmd_buf_init(kryon_cmd_buf_t* buf);

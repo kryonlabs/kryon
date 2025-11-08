@@ -15,6 +15,8 @@
 
 // Include Kryon C API
 #include "../../core/include/kryon.h"
+#include "../../core/include/kryon_canvas.h"
+#include "../../core/include/kryon_markdown.h"
 
 // ============================================================================
 // Lua Helper Structures and Functions
@@ -189,6 +191,204 @@ static int lua_kryon_canvas_create(lua_State *L) {
     return 1;
 }
 
+static int lua_kryon_markdown_create(lua_State *L) {
+    const char* source = luaL_checkstring(L, 1);
+    uint16_t width = luaL_optinteger(L, 2, 400);
+    uint16_t height = luaL_optinteger(L, 3, 300);
+
+    // Create markdown state
+    kryon_markdown_state_t* markdown_state = malloc(sizeof(kryon_markdown_state_t));
+    markdown_state->source = strdup(source);
+    markdown_state->theme = NULL;  // Use default theme
+
+    // Create markdown component
+    kryon_component_t* component = kryon_component_create(&kryon_markdown_ops, markdown_state);
+    if (!component) {
+        free(markdown_state->source);
+        free(markdown_state);
+        return luaL_error(L, "Failed to create markdown component");
+    }
+
+    // Create user data wrapper
+    lua_kryon_component_t* lua_comp = (lua_kryon_component_t*)lua_newuserdata(L, sizeof(lua_kryon_component_t));
+    lua_comp->component = component;
+    lua_comp->is_owner = true;
+
+    // Set metatable
+    luaL_getmetatable(L, "KryonComponent");
+    lua_setmetatable(L, -2);
+
+    return 1;
+}
+
+// ============================================================================
+// Canvas Drawing Functions
+// ============================================================================
+
+static int lua_kryon_canvas_clear(lua_State *L) {
+    uint32_t color = luaL_optinteger(L, 1, 0x000000FF);
+    kryonCanvasClearColor(color);
+    return 0;
+}
+
+static int lua_kryon_canvas_rectangle(lua_State *L) {
+    int mode = luaL_checkinteger(L, 1);  // 0=fill, 1=line, 2=both
+    float x = luaL_checknumber(L, 2);
+    float y = luaL_checknumber(L, 3);
+    float width = luaL_checknumber(L, 4);
+    float height = luaL_checknumber(L, 5);
+    uint32_t color = luaL_optinteger(L, 6, 0xFFFFFFFF);
+
+    kryonCanvasRectangle(mode, kryon_fp_from_float(x), kryon_fp_from_float(y),
+                        kryon_fp_from_float(width), kryon_fp_from_float(height), color);
+    return 0;
+}
+
+static int lua_kryon_canvas_circle(lua_State *L) {
+    int mode = luaL_checkinteger(L, 1);  // 0=fill, 1=line, 2=both
+    float x = luaL_checknumber(L, 2);
+    float y = luaL_checknumber(L, 3);
+    float radius = luaL_checknumber(L, 4);
+    uint32_t color = luaL_optinteger(L, 5, 0xFFFFFFFF);
+
+    kryonCanvasCircle(mode, kryon_fp_from_float(x), kryon_fp_from_float(y),
+                     kryon_fp_from_float(radius), color);
+    return 0;
+}
+
+static int lua_kryon_canvas_ellipse(lua_State *L) {
+    int mode = luaL_checkinteger(L, 1);  // 0=fill, 1=line, 2=both
+    float x = luaL_checknumber(L, 2);
+    float y = luaL_checknumber(L, 3);
+    float radius_x = luaL_checknumber(L, 4);
+    float radius_y = luaL_checknumber(L, 5);
+    uint32_t color = luaL_optinteger(L, 6, 0xFFFFFFFF);
+
+    kryonCanvasEllipse(mode, kryon_fp_from_float(x), kryon_fp_from_float(y),
+                      kryon_fp_from_float(radius_x), kryon_fp_from_float(radius_y), color);
+    return 0;
+}
+
+static int lua_kryon_canvas_line(lua_State *L) {
+    float x1 = luaL_checknumber(L, 1);
+    float y1 = luaL_checknumber(L, 2);
+    float x2 = luaL_checknumber(L, 3);
+    float y2 = luaL_checknumber(L, 4);
+    uint32_t color = luaL_optinteger(L, 5, 0xFFFFFFFF);
+    float width = luaL_optnumber(L, 6, 1.0f);
+
+    kryonCanvasLine(kryon_fp_from_float(x1), kryon_fp_from_float(y1),
+                   kryon_fp_from_float(x2), kryon_fp_from_float(y2),
+                   color, kryon_fp_from_float(width));
+    return 0;
+}
+
+static int lua_kryon_canvas_polygon(lua_State *L) {
+    int mode = luaL_checkinteger(L, 1);  // 0=fill, 1=line, 2=both
+
+    if (!lua_istable(L, 2)) {
+        return luaL_error(L, "Expected table of points");
+    }
+
+    // Get number of points
+    int num_points = lua_rawlen(L, 2);
+    if (num_points < 3) {
+        return luaL_error(L, "Polygon needs at least 3 points");
+    }
+
+    // Allocate and populate points array
+    kryon_point_t* points = malloc(num_points * sizeof(kryon_point_t));
+
+    for (int i = 0; i < num_points; i++) {
+        lua_pushinteger(L, i + 1);
+        lua_gettable(L, 2);
+
+        if (lua_istable(L, -1)) {
+            // Point is a table {x, y}
+            lua_pushinteger(L, 1);
+            lua_gettable(L, -2);
+            float x = lua_tonumber(L, -1);
+            lua_pop(L, 1);
+
+            lua_pushinteger(L, 2);
+            lua_gettable(L, -2);
+            float y = lua_tonumber(L, -1);
+            lua_pop(L, 1);
+
+            points[i].x = kryon_fp_from_float(x);
+            points[i].y = kryon_fp_from_float(y);
+        } else {
+            free(points);
+            return luaL_error(L, "Each point must be a table {x, y}");
+        }
+
+        lua_pop(L, 1);
+    }
+
+    uint32_t color = luaL_optinteger(L, 3, 0xFFFFFFFF);
+    kryonCanvasPolygon(mode, points, num_points, color);
+    free(points);
+
+    return 0;
+}
+
+static int lua_kryon_canvas_arc(lua_State *L) {
+    int mode = luaL_checkinteger(L, 1);  // 0=fill, 1=line, 2=both
+    float x = luaL_checknumber(L, 2);
+    float y = luaL_checknumber(L, 3);
+    float radius = luaL_checknumber(L, 4);
+    float start_angle = luaL_checknumber(L, 5);
+    float end_angle = luaL_checknumber(L, 6);
+    uint32_t color = luaL_optinteger(L, 7, 0xFFFFFFFF);
+
+    kryonCanvasArc(mode, kryon_fp_from_float(x), kryon_fp_from_float(y),
+                  kryon_fp_from_float(radius), kryon_fp_from_float(start_angle),
+                  kryon_fp_from_float(end_angle), color);
+    return 0;
+}
+
+static int lua_kryon_canvas_text(lua_State *L) {
+    const char* text = luaL_checkstring(L, 1);
+    float x = luaL_checknumber(L, 2);
+    float y = luaL_checknumber(L, 3);
+    uint32_t color = luaL_optinteger(L, 4, 0xFFFFFFFF);
+    uint16_t font_size = luaL_optinteger(L, 5, 16);
+
+    kryonCanvasText(text, kryon_fp_from_float(x), kryon_fp_from_float(y),
+                   color, font_size);
+    return 0;
+}
+
+static int lua_kryon_canvas_push_transform(lua_State *L) {
+    kryonCanvasPushTransform();
+    return 0;
+}
+
+static int lua_kryon_canvas_pop_transform(lua_State *L) {
+    kryonCanvasPopTransform();
+    return 0;
+}
+
+static int lua_kryon_canvas_translate(lua_State *L) {
+    float x = luaL_checknumber(L, 1);
+    float y = luaL_checknumber(L, 2);
+    kryonCanvasTranslate(kryon_fp_from_float(x), kryon_fp_from_float(y));
+    return 0;
+}
+
+static int lua_kryon_canvas_rotate(lua_State *L) {
+    float angle = luaL_checknumber(L, 1);  // In degrees
+    kryonCanvasRotate(kryon_fp_from_float(angle));
+    return 0;
+}
+
+static int lua_kryon_canvas_scale(lua_State *L) {
+    float x = luaL_checknumber(L, 1);
+    float y = luaL_optnumber(L, 2, x);  // Default to uniform scaling
+    kryonCanvasScale(kryon_fp_from_float(x), kryon_fp_from_float(y));
+    return 0;
+}
+
 // ============================================================================
 // Component Methods
 // ============================================================================
@@ -312,10 +512,26 @@ static const struct luaL_Reg kryon_lib[] = {
     {"button", lua_kryon_button_create},
     {"input", lua_kryon_input_create},
     {"canvas", lua_kryon_canvas_create},
+    {"markdown", lua_kryon_markdown_create},
 
     // Utility functions
     {"color_rgba", lua_kryon_color_rgba},
     {"color_rgb", lua_kryon_color_rgb},
+
+    // Canvas drawing functions
+    {"canvas_clear", lua_kryon_canvas_clear},
+    {"canvas_rectangle", lua_kryon_canvas_rectangle},
+    {"canvas_circle", lua_kryon_canvas_circle},
+    {"canvas_ellipse", lua_kryon_canvas_ellipse},
+    {"canvas_line", lua_kryon_canvas_line},
+    {"canvas_polygon", lua_kryon_canvas_polygon},
+    {"canvas_arc", lua_kryon_canvas_arc},
+    {"canvas_text", lua_kryon_canvas_text},
+    {"canvas_push_transform", lua_kryon_canvas_push_transform},
+    {"canvas_pop_transform", lua_kryon_canvas_pop_transform},
+    {"canvas_translate", lua_kryon_canvas_translate},
+    {"canvas_rotate", lua_kryon_canvas_rotate},
+    {"canvas_scale", lua_kryon_canvas_scale},
 
     // Application functions
     {"app", lua_kryon_app_create},

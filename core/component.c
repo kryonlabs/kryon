@@ -269,6 +269,7 @@ void kryon_component_set_bounds_mask(kryon_component_t* component, kryon_fp_t x,
             KRYON_FP_TO_INT(height),
             (int)width);
 #endif
+
     kryon_component_mark_dirty(component);
 }
 
@@ -366,6 +367,16 @@ void kryon_component_set_layout_alignment(kryon_component_t* component,
 
     component->justify_content = (uint8_t)justify;
     component->align_items = (uint8_t)align;
+    kryon_component_mark_dirty(component);
+}
+
+void kryon_component_set_layout_direction(kryon_component_t* component, uint8_t direction) {
+    if (component == NULL) {
+        return;
+    }
+
+    fprintf(stderr, "[kryon][component] set_layout_direction %p to %d\n", (void*)component, (int)direction);
+    component->layout_direction = direction;
     kryon_component_mark_dirty(component);
 }
 

@@ -69,19 +69,26 @@ static void kryon_cmd_buf_read(kryon_cmd_buf_t* buf, uint8_t* dest, uint16_t siz
 }
 
 bool kryon_cmd_buf_push(kryon_cmd_buf_t* buf, const kryon_command_t* cmd) {
-    // Simple bypass for now - always succeed and write directly to buffer
     if (buf == NULL || cmd == NULL) {
         return false;
     }
 
-    // Just write the command without checking buffer size for now
+    // Check if there's enough space for the full command
+    if (buf->count + kCommandSize > KRYON_CMD_BUF_SIZE) {
+        if (getenv("KRYON_TRACE_CMD_BUF")) {
+            fprintf(stderr, "[kryon][cmdbuf] BUFFER FULL! count=%u size=%u\n",
+                    buf->count, kCommandSize);
+        }
+        return false;
+    }
+
+    // Write the full command to the buffer
     uint8_t* cmd_bytes = (uint8_t*)cmd;
-    for (uint16_t i = 0; i < kCommandSize && (buf->count + i) < KRYON_CMD_BUF_SIZE; i++) {
+    for (uint16_t i = 0; i < kCommandSize; i++) {
         buf->buffer[(buf->head + buf->count + i) % KRYON_CMD_BUF_SIZE] = cmd_bytes[i];
     }
 
     buf->count += kCommandSize;
-    return true;
 
     if (getenv("KRYON_TRACE_CMD_BUF")) {
         fprintf(stderr, "[kryon][cmdbuf] push count=%u head=%u\n",

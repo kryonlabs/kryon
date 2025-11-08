@@ -53,7 +53,10 @@ type
     kaStart = 0,
     kaCenter = 1,
     kaEnd = 2,
-    kaStretch = 3
+    kaStretch = 3,
+    kaSpaceEvenly = 4,
+    kaSpaceAround = 5,
+    kaSpaceBetween = 6
 
   KryonComponentObj* {.importc: "kryon_component_t", nodecl, header: "kryon.h".} = object
   KryonComponent* = ptr KryonComponentObj
@@ -139,6 +142,7 @@ proc kryon_component_set_border_color*(component: KryonComponent; color: uint32)
 proc kryon_component_set_border_width*(component: KryonComponent; width: uint8)
 proc kryon_component_set_text_color*(component: KryonComponent; color: uint32)
 proc kryon_component_set_layout_alignment*(component: KryonComponent; justify, align: KryonAlignment)
+proc kryon_component_set_layout_direction*(component: KryonComponent; direction: uint8)
 proc kryon_component_set_visible*(component: KryonComponent; visible: bool)
 proc kryon_component_set_flex*(component: KryonComponent; flexGrow, flexShrink: uint8)
 proc kryon_component_mark_dirty*(component: KryonComponent)

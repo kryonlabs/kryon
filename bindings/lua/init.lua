@@ -13,6 +13,7 @@ local text = kryon.text
 local button = kryon.button
 local input = kryon.input
 local canvas = kryon.canvas
+local markdown = kryon.markdown
 local color_rgba = kryon.color_rgba
 local color_rgb = kryon.color_rgb
 
@@ -218,6 +219,83 @@ function M.canvas(config)
     -- Set draw handler if provided
     if config.on_draw then
         -- TODO: Implement canvas draw handler registration
+    end
+
+    -- Add children if provided
+    if config.children then
+        for _, child in ipairs(config.children) do
+            comp:add_child(child)
+        end
+    end
+
+    return comp
+end
+
+-- Markdown builder
+function M.markdown(config)
+    config = config or {}
+    local comp = markdown(config.source or "", config.width or 400, config.height or 300)
+
+    -- Apply common properties
+    if config.x or config.y then
+        comp:set_bounds(
+            config.x or 0,
+            config.y or 0,
+            config.width,
+            config.height
+        )
+    end
+
+    if config.visible ~= nil then
+        comp:set_visible(config.visible)
+    end
+
+    -- Set theme if provided
+    if config.theme then
+        -- TODO: Set markdown theme in C bindings
+        print("Setting markdown theme:", config.theme.name or "custom")
+    end
+
+    -- Set link click handler if provided
+    if config.on_link_click then
+        -- TODO: Implement link click handler in C bindings
+        print("Setting markdown link click handler")
+    end
+
+    -- Add children if provided
+    if config.children then
+        for _, child in ipairs(config.children) do
+            comp:add_child(child)
+        end
+    end
+
+    return comp
+end
+
+-- Enhanced Canvas builder with draw handler support
+function M.canvas_enhanced(config)
+    config = config or {}
+    local comp = canvas(config.width or 400, config.height or 300, config.background or M.colors.black)
+
+    -- Apply common properties
+    if config.x or config.y then
+        comp:set_bounds(
+            config.x or 0,
+            config.y or 0,
+            config.width,
+            config.height
+        )
+    end
+
+    if config.visible ~= nil then
+        comp:set_visible(config.visible)
+    end
+
+    -- Set draw handler if provided
+    if config.on_draw then
+        -- Store draw handler for later execution
+        comp._draw_handler = config.on_draw
+        print("Setting canvas draw handler")
     end
 
     -- Add children if provided

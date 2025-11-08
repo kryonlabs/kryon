@@ -38,6 +38,22 @@ EXAMPLE_NAME="$1"
 FRONTEND="${2:-nim}"
 RENDERER="${3:-sdl3}"
 
+# Handle case where user passes full path like "examples/nim/foo.nim"
+# Extract just the basename without extension
+if [[ "$EXAMPLE_NAME" == */* ]]; then
+    # Extract the basename first (removes directory path)
+    EXAMPLE_NAME=$(basename "$EXAMPLE_NAME")
+fi
+
+# Now remove the extension
+if [[ "$EXAMPLE_NAME" == *.nim ]]; then
+    EXAMPLE_NAME="${EXAMPLE_NAME%.nim}"
+elif [[ "$EXAMPLE_NAME" == *.lua ]]; then
+    EXAMPLE_NAME="${EXAMPLE_NAME%.lua}"
+elif [[ "$EXAMPLE_NAME" == *.c ]]; then
+    EXAMPLE_NAME="${EXAMPLE_NAME%.c}"
+fi
+
 # Build C core libraries if needed
 BUILD_DIR="build"
 mkdir -p "$BUILD_DIR"
@@ -146,6 +162,11 @@ case "$FRONTEND" in
 
         # Capture compilation output for error analysis
         COMPILATION_LOG="$BUILD_DIR/compilation.log"
+
+        # Force rebuild by removing old binary and nimcache
+        rm -f "$BUILD_DIR/${EXAMPLE_NAME}_${FRONTEND}_${RENDERER}"
+        rm -rf "$BUILD_DIR/nimcache"
+
         if nim c \
             --path:bindings/nim \
             $INCLUDE_PATHS \

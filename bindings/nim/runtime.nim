@@ -2,7 +2,7 @@
 ##
 ## Provides the runtime bridge between Nim DSL and C core engine
 
-import core_kryon, os, strutils, tables
+import core_kryon, core_kryon_canvas, os, strutils, tables
 
 template runtimeTrace(msg: string) =
   if getEnv("KRYON_TRACE_RUNTIME", "") != "":
@@ -395,6 +395,37 @@ proc initRenderer*(width, height: int; title: string): KryonRenderer =
 # Component Tree Management
 # ============================================================================
 
+proc createComponent*(componentType: string, props: NimNode): KryonComponent =
+  ## Generic component creation function used by DSL
+  ## This function creates components based on type string and properties
+  case componentType.toLowerAscii():
+  of "container":
+    result = newKryonContainer()
+  of "text":
+    # Extract text content from props if available
+    var textContent = "Text"
+    # Note: This is a simplified implementation
+    # In a full implementation, we'd parse the props NimNode to extract properties
+    result = newKryonText(textContent)
+  of "button":
+    # Extract button text from props if available
+    var buttonText = "Button"
+    result = newKryonButton(buttonText)
+  of "checkbox":
+    # Extract checkbox properties from props if available
+    var labelText = ""
+    var checked = false
+    result = newKryonCheckbox(labelText, checked, nil)
+  of "canvas":
+    result = newKryonCanvas()
+  of "markdown":
+    result = newKryonContainer()  # Markdown will be handled by component properties
+  of "spacer":
+    result = newKryonSpacer()
+  else:
+    echo "Unknown component type: " & componentType
+    result = newKryonContainer()  # Default to container
+
 proc createComponentTree*(parent: KryonComponent; components: NimNode) =
   ## Create component tree from nested components
   # This would be used by the Container macro
@@ -429,3 +460,57 @@ proc parseColor*(color: string): uint32 =
     return rgba(0, 0, 0, 255)
 
   return rgba(128, 128, 128, 255)  # Default gray
+
+# ============================================================================
+# Canvas Utility Functions
+# ============================================================================
+
+# Fixed-point conversion functions are available in core_kryon.nim
+# No need to duplicate them here to avoid naming conflicts
+
+# ============================================================================
+# Canvas Component Integration
+# ============================================================================
+
+proc createCanvasComponent*(width, height: int, onDraw: proc(ctx: DrawingContext),
+                           backgroundColor: uint32 = 0x000000FF): KryonComponent =
+  ## Create a canvas component with Love2D-style drawing
+  # TODO: Implement proper canvas component creation once canvas API is available
+  result = newKryonContainer()  # Use container as placeholder for now
+
+  # Store the drawing callback in component state
+  if not onDraw.isNil:
+    # This would need to be stored in component state for later use
+    # For now, we'll just set up a basic component
+    discard
+
+# ============================================================================
+# Canvas Runtime Integration
+# ============================================================================
+
+proc initCanvasForApp*(app: KryonApp, width, height: int) =
+  ## Initialize canvas system for an application
+  kryonCanvasInit(uint16(width), uint16(height))
+
+proc getCanvasCommandBuffer*(): KryonCmdBuf =
+  ## Get the current canvas command buffer for low-level access
+  # This would return the global command buffer from the canvas system
+  # For now, create a new one
+  result = createKryonCmdBuf()
+
+proc executeCanvasCommands*(app: KryonApp) =
+  ## Execute pending canvas commands
+  # This would flush the canvas command buffer to the renderer
+  discard
+
+# ============================================================================
+# Enhanced Drawing Context for Canvas Components
+# ============================================================================
+
+proc newDrawingContext*(width, height: int): DrawingContext =
+  ## Create a new drawing context
+  result = DrawingContext(width: width, height: height)
+
+proc clearBackground*(ctx: DrawingContext, width, height: int, color: uint32) =
+  ## Clear the drawing context background
+  kryonCanvasClearColor(color)

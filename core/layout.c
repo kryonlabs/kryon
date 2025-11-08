@@ -8,8 +8,8 @@
 // ============================================================================
 
 typedef enum {
-    KRYON_LAYOUT_ROW = 0,
-    KRYON_LAYOUT_COLUMN = 1,
+    KRYON_LAYOUT_COLUMN = 0,
+    KRYON_LAYOUT_ROW = 1,
     KRYON_LAYOUT_ABSOLUTE = 2
 } kryon_layout_direction_t;
 
@@ -109,6 +109,47 @@ static kryon_fp_t calculate_total_flex_grow(kryon_component_t* container) {
     return total_grow;
 }
 
+static kryon_fp_t calculate_space_offset(kryon_alignment_t alignment, kryon_fp_t available_space,
+                                        kryon_fp_t total_item_size, uint8_t item_count, uint8_t item_index) {
+    if (item_count <= 1 || available_space <= 0) {
+        return 0;
+    }
+
+    kryon_fp_t remaining_space = available_space - total_item_size;
+    if (remaining_space <= 0) {
+        return 0;
+    }
+
+    switch (alignment) {
+        case KRYON_ALIGN_SPACE_EVENLY: {
+            // Equal space before, between, and after each item
+            // Total segments = item_count + 1
+            kryon_fp_t segment_size = remaining_space / KRYON_FP_FROM_INT(item_count + 1);
+            return segment_size * KRYON_FP_FROM_INT(item_index + 1);
+        }
+
+        case KRYON_ALIGN_SPACE_AROUND: {
+            // Equal space before and after each item (half at edges)
+            // Total segments = item_count * 2
+            kryon_fp_t segment_size = remaining_space / KRYON_FP_FROM_INT(item_count * 2);
+            return segment_size * KRYON_FP_FROM_INT(item_index * 2 + 1);
+        }
+
+        case KRYON_ALIGN_SPACE_BETWEEN: {
+            // Equal space between items, no space at edges
+            // Total segments = item_count - 1
+            if (item_index == 0) {
+                return 0; // First item has no offset
+            }
+            kryon_fp_t segment_size = remaining_space / KRYON_FP_FROM_INT(item_count - 1);
+            return segment_size * KRYON_FP_FROM_INT(item_index);
+        }
+
+        default:
+            return 0;
+    }
+}
+
 static void apply_alignment(kryon_component_t* component, kryon_fp_t available_space,
                            kryon_alignment_t alignment, bool is_main_axis) {
     if (component == NULL) return;
@@ -142,6 +183,21 @@ static void apply_alignment(kryon_component_t* component, kryon_fp_t available_s
             }
             break;
 
+        case KRYON_ALIGN_SPACE_EVENLY:
+            // Space evenly: equal space before, between, and after each item
+            // This is handled at the container level in layout_row/layout_column
+            break;
+
+        case KRYON_ALIGN_SPACE_AROUND:
+            // Space around: equal space before and after each item (half at edges)
+            // This is handled at the container level in layout_row/layout_column
+            break;
+
+        case KRYON_ALIGN_SPACE_BETWEEN:
+            // Space between: equal space between items, no space at edges
+            // This is handled at the container level in layout_row/layout_column
+            break;
+
         default:
             break;
     }
@@ -154,12 +210,21 @@ static void apply_alignment(kryon_component_t* component, kryon_fp_t available_s
 static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx) {
     if (container == NULL || ctx == NULL) return;
 
+    fprintf(stderr, "[kryon][layout_row] container %p direction=%d child_count=%d width=%f height=%d\n",
+            (void*)container, (int)container->layout_direction, (int)container->child_count,
+            kryon_fp_to_float(container->width), (int)container->height);
+
     kryon_fp_t container_width = container->width;
     kryon_fp_t container_height = container->height;
     kryon_fp_t current_x = KRYON_FP_FROM_INT(container->margin_left);
     kryon_fp_t current_y = KRYON_FP_FROM_INT(container->margin_top);
     kryon_fp_t line_height = 0;
     kryon_fp_t used_width = current_x;
+
+    // Track visible children for space distribution
+    uint8_t visible_child_count = 0;
+    kryon_fp_t total_children_width = 0;
+    uint8_t child_indices[16]; // Track visible child indices for space distribution
 
     // First pass: calculate intrinsic sizes and handle wrapping
     for (uint8_t i = 0; i < container->child_count; i++) {
@@ -175,18 +240,53 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
 
         // Check if we need to wrap to next line
         if (used_width + child_width > container_width && i > 0) {
-            // Move to next line
+            // Apply space distribution to previous line before wrapping
+            if (visible_child_count > 0 && (container->justify_content == KRYON_ALIGN_SPACE_EVENLY ||
+                container->justify_content == KRYON_ALIGN_SPACE_AROUND ||
+                container->justify_content == KRYON_ALIGN_SPACE_BETWEEN)) {
+
+                kryon_fp_t available_width = container_width - KRYON_FP_FROM_INT(container->margin_left + container->margin_right);
+
+                // Re-position children with space distribution
+                for (uint8_t j = 0; j < visible_child_count; j++) {
+                    uint8_t child_idx = child_indices[j];
+                    kryon_component_t* visible_child = container->children[child_idx];
+
+                    kryon_fp_t space_offset = calculate_space_offset(
+                        container->justify_content, available_width, total_children_width,
+                        visible_child_count, j
+                    );
+
+                    kryon_fp_t base_x = KRYON_FP_FROM_INT(container->margin_left) + space_offset;
+                    visible_child->x = base_x + KRYON_FP_FROM_INT(visible_child->margin_left);
+                }
+            }
+
+            // Reset for new line
+            visible_child_count = 0;
+            total_children_width = 0;
             current_x = KRYON_FP_FROM_INT(container->margin_left);
             current_y += line_height;
             used_width = current_x;
             line_height = 0;
         }
 
-        // Position child
+        // Store child index for space distribution
+        if (visible_child_count < 16) {
+            child_indices[visible_child_count] = i;
+        }
+        visible_child_count++;
+        total_children_width += child_width;
+
+        // Initial position (will be adjusted for space distribution later)
         child->x = current_x + KRYON_FP_FROM_INT(child->margin_left);
         child->y = current_y + KRYON_FP_FROM_INT(child->margin_top);
         child->width = child_width - KRYON_FP_FROM_INT(child->margin_left + child->margin_right);
         child->height = child_height - KRYON_FP_FROM_INT(child->margin_top + child->margin_bottom);
+
+        fprintf(stderr, "[kryon][layout_row] child %d positioned at x=%f y=%f w=%f h=%f\n",
+                (int)i, kryon_fp_to_float(child->x), kryon_fp_to_float(child->y),
+                kryon_fp_to_float(child->width), kryon_fp_to_float(child->height));
 
         // Update line tracking
         if (child_height > line_height) {
@@ -195,6 +295,28 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
 
         current_x += child_width;
         used_width += child_width;
+    }
+
+    // Apply space distribution to last line if needed
+    if (visible_child_count > 0 && (container->justify_content == KRYON_ALIGN_SPACE_EVENLY ||
+        container->justify_content == KRYON_ALIGN_SPACE_AROUND ||
+        container->justify_content == KRYON_ALIGN_SPACE_BETWEEN)) {
+
+        kryon_fp_t available_width = container_width - KRYON_FP_FROM_INT(container->margin_left + container->margin_right);
+
+        // Re-position children with space distribution
+        for (uint8_t j = 0; j < visible_child_count; j++) {
+            uint8_t child_idx = child_indices[j];
+            kryon_component_t* visible_child = container->children[child_idx];
+
+            kryon_fp_t space_offset = calculate_space_offset(
+                container->justify_content, available_width, total_children_width,
+                visible_child_count, j
+            );
+
+            kryon_fp_t base_x = KRYON_FP_FROM_INT(container->margin_left) + space_offset;
+            visible_child->x = base_x + KRYON_FP_FROM_INT(visible_child->margin_left);
+        }
     }
 
     // Second pass: apply flex grow and alignment
@@ -213,14 +335,30 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
         }
     }
 
-    // Apply cross-axis alignment (vertical centering for now)
+    // Apply cross-axis alignment (vertical alignment)
     for (uint8_t i = 0; i < container->child_count; i++) {
         kryon_component_t* child = container->children[i];
         if (!child->visible) continue;
 
         kryon_fp_t extra_height = line_height - child->height;
         if (extra_height > 0) {
-            child->y += extra_height / 2; // Center vertically
+            switch (container->align_items) {
+                case KRYON_ALIGN_START:
+                    // No offset needed
+                    break;
+                case KRYON_ALIGN_CENTER:
+                    child->y += extra_height / 2;
+                    break;
+                case KRYON_ALIGN_END:
+                    child->y += extra_height;
+                    break;
+                case KRYON_ALIGN_STRETCH:
+                    child->height = line_height;
+                    break;
+                default:
+                    child->y += extra_height / 2; // Default to center
+                    break;
+            }
         }
     }
 }
@@ -326,10 +464,18 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
         child->width = inner_width;
     }
 
-    // Determine alignment offsets
+    // Determine alignment offsets including space distribution
     kryon_fp_t available_height_for_alignment = target_inner_height;
     if (available_height_for_alignment < total_content_height) {
         available_height_for_alignment = total_content_height;
+    }
+
+    // Count visible children for space distribution
+    uint8_t visible_child_count = 0;
+    for (uint8_t i = 0; i < container->child_count; i++) {
+        if (container->children[i]->visible) {
+            visible_child_count++;
+        }
     }
 
     kryon_fp_t alignment_offset = 0;
@@ -344,6 +490,12 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
                 alignment_offset = available_height_for_alignment - total_content_height;
             }
             break;
+        case KRYON_ALIGN_SPACE_EVENLY:
+        case KRYON_ALIGN_SPACE_AROUND:
+        case KRYON_ALIGN_SPACE_BETWEEN:
+            // Space distribution will be handled per-child in the positioning loop
+            alignment_offset = 0;
+            break;
         case KRYON_ALIGN_STRETCH:
         default:
             break;
@@ -351,6 +503,8 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
 
     // Position children
     kryon_fp_t cursor_y = origin_y + alignment_offset;
+    uint8_t current_visible_index = 0; // Track visible child index for space distribution
+
     for (uint8_t i = 0; i < container->child_count; i++) {
         kryon_component_t* child = container->children[i];
         if (!child->visible) continue;
@@ -368,6 +522,7 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
         kryon_fp_t available_width = inner_width - (margin_left + margin_right);
         if (available_width < 0) available_width = 0;
 
+        // Handle cross-axis alignment (horizontal)
         switch (container->align_items) {
             case KRYON_ALIGN_CENTER:
                 child->x = origin_x + margin_left + (available_width > child->width
@@ -391,12 +546,34 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
             child->x += explicit_x;
         }
 
-        cursor_y += margin_top;
-        child->y = cursor_y;
+        // Handle main-axis space distribution (vertical)
+        kryon_fp_t child_y = cursor_y + margin_top;
+
+        if (container->justify_content == KRYON_ALIGN_SPACE_EVENLY ||
+            container->justify_content == KRYON_ALIGN_SPACE_AROUND ||
+            container->justify_content == KRYON_ALIGN_SPACE_BETWEEN) {
+
+            kryon_fp_t space_offset = calculate_space_offset(
+                container->justify_content, target_inner_height, total_content_height,
+                visible_child_count, current_visible_index
+            );
+            child_y = origin_y + space_offset + margin_top;
+        }
+
+        child->y = child_y;
         if (has_explicit_y) {
             child->y += explicit_y;
         }
-        cursor_y += child->height + margin_bottom;
+
+        // Update cursor for next child
+        if (container->justify_content == KRYON_ALIGN_SPACE_EVENLY ||
+            container->justify_content == KRYON_ALIGN_SPACE_AROUND ||
+            container->justify_content == KRYON_ALIGN_SPACE_BETWEEN) {
+            // For space distribution, calculate next position based on spacing, not accumulated height
+            current_visible_index++;
+        } else {
+            cursor_y += child->height + margin_bottom;
+        }
     }
 
     if (container->height == 0) {
@@ -475,9 +652,16 @@ static void layout_component_internal(kryon_component_t* component, kryon_fp_t a
     kryon_fp_t effective_width = component->width > 0 ? component->width : available_width;
     kryon_fp_t effective_height = component->height > 0 ? component->height : available_height;
 
-    // Determine layout direction based on component type or properties
-    // For now, use simple heuristics
-    kryon_layout_direction_t direction = KRYON_LAYOUT_COLUMN; // Default
+    // Determine layout direction based on component property
+    kryon_layout_direction_t direction = (kryon_layout_direction_t)component->layout_direction;
+    if (direction > KRYON_LAYOUT_ABSOLUTE) {
+        direction = KRYON_LAYOUT_COLUMN; // Fallback to column if invalid
+    }
+
+    if (kryon_layout_should_trace()) {
+        fprintf(stderr, "[kryon][layout] component %p direction=%d child_count=%d\n",
+                (void*)component, (int)direction, (int)component->child_count);
+    }
 
     // Create layout context
     kryon_layout_context_t ctx = {0};
@@ -506,7 +690,7 @@ static void layout_component_internal(kryon_component_t* component, kryon_fp_t a
     // Recursively layout children
     for (uint8_t i = 0; i < component->child_count; i++) {
         kryon_component_t* child = component->children[i];
-        if (child->visible && child->dirty) {
+        if (child->visible) {
             layout_component_internal(child, child->width, child->height);
         }
     }
