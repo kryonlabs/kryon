@@ -149,8 +149,8 @@ case "$FRONTEND" in
         # Build and run separately for better error handling
         echo "Compiling with new architecture bindings..."
         # Add appropriate include paths based on renderer
-        INCLUDE_PATHS="--passC:\"-Icore/include\" --passC:\"-I${PROJECT_ROOT}\" --passC:\"-DKRYON_NO_FLOAT=1\""
-        NIM_FLAGS="--threads:on --mm:arc --define:KRYON_NO_FLOAT"
+        INCLUDE_PATHS="--passC:\"-Icore/include\" --passC:\"-I${PROJECT_ROOT}\" --passC:\"-DKRYON_TARGET_PLATFORM=0\" --passC:\"-DKRYON_NO_FLOAT=0\""
+        NIM_FLAGS="--threads:on --mm:arc"
 
         if [ "$RENDERER" = "terminal" ]; then
             INCLUDE_PATHS="$INCLUDE_PATHS --passC:\"-I${PROJECT_ROOT}/renderers/terminal\""

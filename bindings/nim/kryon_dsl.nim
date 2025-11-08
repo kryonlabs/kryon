@@ -199,6 +199,7 @@ macro Container*(props: untyped): untyped =
   var
     containerName = genSym(nskLet, "container")
     bgColorVal: NimNode = nil
+    textColorVal: NimNode = nil
     borderColorVal: NimNode = nil
     borderWidthVal: NimNode = nil
     posXVal: NimNode = nil
@@ -231,6 +232,8 @@ macro Container*(props: untyped): untyped =
       case propName.toLowerAscii():
       of "backgroundcolor", "bg":  # Added 'bg' shorthand
         bgColorVal = colorNode(value)
+      of "color", "textcolor":  # Text color for inheritance
+        textColorVal = colorNode(value)
       of "bordercolor":
         borderColorVal = colorNode(value)
       of "borderwidth":
@@ -290,7 +293,7 @@ macro Container*(props: untyped): untyped =
       of "align":  # Shorthand for alignItems
         if value.kind == nnkStrLit:
           alignNode = alignmentNode(value.strVal)
-      of "gap":  # Gap between children (not yet implemented in C core)
+      of "gap":  # Gap between children
         gapVal = value
       of "layoutdirection":
         layoutDirectionVal = value
@@ -378,6 +381,10 @@ macro Container*(props: untyped): untyped =
     initStmts.add quote do:
       kryon_component_set_background_color(`containerName`, `bgColorVal`)
 
+  if textColorVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_text_color(`containerName`, `textColorVal`)
+
   if borderColorVal != nil:
     initStmts.add quote do:
       kryon_component_set_border_color(`containerName`, `borderColorVal`)
@@ -394,6 +401,11 @@ macro Container*(props: untyped): untyped =
 
   initStmts.add quote do:
     kryon_component_set_layout_alignment(`containerName`, `justifyNode`, `alignNode`)
+
+  # Set gap if specified
+  if gapVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_gap(`containerName`, uint8(`gapVal`))
 
   # Layout direction already set early above
 
@@ -959,14 +971,39 @@ macro Markdown*(props: untyped): untyped =
 
 macro Row*(props: untyped): untyped =
   ## Convenience macro for a row layout container
-  ## By default: takes full width from parent, height auto-sizes to content
+  ## Preserves user-specified properties and sets defaults for missing ones
   var body = newTree(nnkStmtList)
-  body.add newTree(nnkAsgn, ident("flexGrow"), newIntLitNode(1))  # Take available space
-  body.add newTree(nnkAsgn, ident("mainAxisAlignment"), newStrLitNode("start"))
-  body.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
-  body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(1))  # 1 = KRYON_LAYOUT_ROW
+
+  # Track which properties are set by user
+  var hasWidth = false
+  var hasHeight = false
+  var hasMainAxisAlignment = false
+  var hasAlignItems = false
+
+  # First, extract user properties
   for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      if propName == "width": hasWidth = true
+      if propName == "height": hasHeight = true
+      if propName == "mainAxisAlignment": hasMainAxisAlignment = true
+      if propName == "alignItems": hasAlignItems = true
     body.add(node)
+
+  # Then, add defaults only if not specified by user
+  # Note: Don't set default width for containers - let them expand to fill parent
+  # if not hasWidth:
+  #   body.add newTree(nnkAsgn, ident("width"), newIntLitNode(800))  # Default width
+  if not hasHeight:
+    body.add newTree(nnkAsgn, ident("height"), newIntLitNode(500)) # Default height
+  if not hasMainAxisAlignment:
+    body.add newTree(nnkAsgn, ident("mainAxisAlignment"), newStrLitNode("start"))
+  if not hasAlignItems:
+    body.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
+
+  # Always set layout direction to row
+  body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(1))  # 1 = KRYON_LAYOUT_ROW
+
   result = newTree(nnkCall, ident("Container"), body)
 
 macro Column*(props: untyped): untyped =
@@ -1074,14 +1111,20 @@ proc parseHexColor*(hex: string): uint32 =
     let g = parseHexInt(hex[3..4])
     let b = parseHexInt(hex[5..6])
     result = rgba(r, g, b, 255)
+    when defined(debug):
+      echo "[kryon][color] parseHexColor: ", hex, " -> rgba(", r, ",", g, ",", b, ",255) = 0x", result.toHex(8)
   elif hex.len == 9 and hex.startsWith("#"):
     let r = parseHexInt(hex[1..2])
     let g = parseHexInt(hex[3..4])
     let b = parseHexInt(hex[5..6])
     let a = parseHexInt(hex[7..8])
     result = rgba(r, g, b, a)
+    when defined(debug):
+      echo "[kryon][color] parseHexColor: ", hex, " -> rgba(", r, ",", g, ",", b, ",", a, ") = 0x", result.toHex(8)
   else:
     result = 0xFF000000'u32  # Default to black
+    when defined(debug):
+      echo "[kryon][color] parseHexColor: invalid format '", hex, "' -> default black 0x", result.toHex(8)
 
 proc parseNamedColor*(name: string): uint32 =
   ## Parse named colors

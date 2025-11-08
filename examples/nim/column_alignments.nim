@@ -1,7 +1,6 @@
 ## Column Alignments Demo
 ##
 ## Demonstrates different mainAxisAlignment values for Column layouts
-## Uses staticFor to generate multiple alignment examples from data
 
 import kryon_dsl
 
@@ -78,7 +77,7 @@ let app = kryonApp:
               gap = 10
 
               Text:
-                text = "mainAxisAlignment: " & alignment.name
+                text = alignment.name
                 fontSize = 12
                 fontWeight = "bold"
 
@@ -107,4 +106,3 @@ let app = kryonApp:
                     width = 80
                     height = 70
                     backgroundColor = alignment.colors[2]
-

@@ -28,6 +28,12 @@ extern "C" {
 // Maximum text length for text inputs
 #define KRYON_MAX_TEXT_LENGTH 256
 
+// Command buffer size - DEFAULT TO LARGE for desktop builds
+// Only override to small if explicitly building for MCU
+#ifndef KRYON_CMD_BUF_SIZE
+#define KRYON_CMD_BUF_SIZE      32768   // Default: 32KB buffer for desktop
+#endif
+
 // Memory constraint configuration
 #if KRYON_TARGET_PLATFORM == KRYON_PLATFORM_MCU
 #ifndef KRYON_NO_HEAP
@@ -37,9 +43,8 @@ extern "C" {
 #define KRYON_NO_FLOAT          1       // FORBIDDEN floating point
 #endif
 #define KRYON_MAX_COMPONENTS    64      // Maximum component count
-#ifndef KRYON_CMD_BUF_SIZE
-#define KRYON_CMD_BUF_SIZE      2048    // Larger buffer even for MCU when needed
-#endif
+#undef KRYON_CMD_BUF_SIZE
+#define KRYON_CMD_BUF_SIZE      2048    // Override to 2KB for MCU
 #else
 #ifndef KRYON_NO_HEAP
 #define KRYON_NO_HEAP           0       // Allow heap on desktop
@@ -48,9 +53,7 @@ extern "C" {
 #define KRYON_NO_FLOAT          0       // Allow floating point
 #endif
 #define KRYON_MAX_COMPONENTS    1024    // Higher limit for desktop
-#ifndef KRYON_CMD_BUF_SIZE
-#define KRYON_CMD_BUF_SIZE      8192    // Larger command buffer for desktop
-#endif
+// Keep the default 32KB buffer size for desktop
 #endif
 
 // ============================================================================
@@ -170,6 +173,7 @@ typedef struct kryon_component {
     uint8_t align_items;                 // Cross-axis alignment for children
     uint8_t justify_content;             // Main-axis alignment for children
     uint8_t layout_direction;            // Layout direction: 0=column, 1=row
+    uint8_t gap;                         // Gap between children (pixels)
     bool dirty;                          // Needs layout recalculation
     bool visible;                        // Visibility flag
     uint8_t z_index;                     // Z-order index
@@ -323,6 +327,11 @@ void kryon_component_set_layout_alignment(kryon_component_t* component,
                                          kryon_alignment_t justify,
                                          kryon_alignment_t align);
 void kryon_component_set_layout_direction(kryon_component_t* component, uint8_t direction);
+void kryon_component_set_gap(kryon_component_t* component, uint8_t gap);
+
+// Color inheritance helpers
+uint32_t kryon_component_get_effective_text_color(kryon_component_t* component);
+uint32_t kryon_component_get_effective_background_color(kryon_component_t* component);
 
 // Command buffer operations
 void kryon_cmd_buf_init(kryon_cmd_buf_t* buf);

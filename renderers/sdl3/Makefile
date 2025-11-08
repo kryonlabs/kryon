@@ -25,7 +25,7 @@ SHARED_LIB = $(BUILD_DIR)/$(RENDERER_NAME).so
 # ============================================================================
 
 CFLAGS_BASE = -std=c99 -Wall -Wextra -O2 -fPIC
-CFLAGS_PLATFORM = -DKRYON_TARGET_PLATFORM=0 -DKRYON_PLATFORM_DESKTOP
+CFLAGS_PLATFORM = -DKRYON_TARGET_PLATFORM=0
 CFLAGS_SDL3 = $(shell pkg-config --cflags sdl3 sdl3-ttf 2>/dev/null || echo "-I/usr/include/SDL3 -I/usr/include/SDL3_ttf")
 INCLUDES = -I$(CORE_DIR)/core/include
 

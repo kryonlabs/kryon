@@ -75,10 +75,10 @@ bool kryon_cmd_buf_push(kryon_cmd_buf_t* buf, const kryon_command_t* cmd) {
 
     // Check if there's enough space for the full command
     if (buf->count + kCommandSize > KRYON_CMD_BUF_SIZE) {
-        if (getenv("KRYON_TRACE_CMD_BUF")) {
-            fprintf(stderr, "[kryon][cmdbuf] BUFFER FULL! count=%u size=%u\n",
-                    buf->count, kCommandSize);
-        }
+        // Always show buffer overflow warnings - this is critical for debugging
+        fprintf(stderr, "[kryon][cmdbuf] BUFFER FULL! count=%u size=%u capacity=%u\n",
+                buf->count, kCommandSize, KRYON_CMD_BUF_SIZE);
+        fprintf(stderr, "[kryon][cmdbuf] CRITICAL: Command dropped - increase KRYON_CMD_BUF_SIZE\n");
         return false;
     }
 

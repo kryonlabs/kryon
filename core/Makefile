@@ -29,7 +29,7 @@ SHARED_LIB = $(BUILD_DIR)/$(LIB_NAME).so
 ifeq ($(TARGET),desktop)
     # Desktop configuration
     CFLAGS_BASE = -std=c99 -Wall -Wextra -O2 -fPIC
-    CFLAGS_PLATFORM = -DKRYON_TARGET_PLATFORM=0 -DKRYON_PLATFORM_DESKTOP -DKRYON_NO_FLOAT=1
+    CFLAGS_PLATFORM = -DKRYON_TARGET_PLATFORM=0 -DKRYON_NO_FLOAT=0
     LDFLAGS_PLATFORM = -shared
     INCLUDES_PLATFORM = $(shell pkg-config --cflags sdl3 SDL3_ttf 2>/dev/null || echo "-I/usr/include/SDL3")
     LIBS_PLATFORM = -lm $(shell pkg-config --libs sdl3 SDL3_ttf 2>/dev/null || echo "-lSDL3 -lSDL3_ttf")

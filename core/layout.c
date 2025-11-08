@@ -210,9 +210,9 @@ static void apply_alignment(kryon_component_t* component, kryon_fp_t available_s
 static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx) {
     if (container == NULL || ctx == NULL) return;
 
-    fprintf(stderr, "[kryon][layout_row] container %p direction=%d child_count=%d width=%f height=%d\n",
+    fprintf(stderr, "[kryon][layout_row] container %p direction=%d child_count=%d width=%f height=%d gap=%d\n",
             (void*)container, (int)container->layout_direction, (int)container->child_count,
-            kryon_fp_to_float(container->width), (int)container->height);
+            kryon_fp_to_float(container->width), (int)container->height, (int)container->gap);
 
     kryon_fp_t container_width = container->width;
     kryon_fp_t container_height = container->height;
@@ -220,6 +220,7 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
     kryon_fp_t current_y = KRYON_FP_FROM_INT(container->margin_top);
     kryon_fp_t line_height = 0;
     kryon_fp_t used_width = current_x;
+    kryon_fp_t gap_fp = KRYON_FP_FROM_INT(container->gap);
 
     // Track visible children for space distribution
     uint8_t visible_child_count = 0;
@@ -238,8 +239,9 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
         child_width += KRYON_FP_FROM_INT(child->margin_left + child->margin_right);
         child_height += KRYON_FP_FROM_INT(child->margin_top + child->margin_bottom);
 
-        // Check if we need to wrap to next line
-        if (used_width + child_width > container_width && i > 0) {
+        // Check if we need to wrap to next line (account for gap)
+        kryon_fp_t gap_needed = (visible_child_count > 0) ? gap_fp : 0;
+        if (used_width + child_width + gap_needed > container_width && i > 0) {
             // Apply space distribution to previous line before wrapping
             if (visible_child_count > 0 && (container->justify_content == KRYON_ALIGN_SPACE_EVENLY ||
                 container->justify_content == KRYON_ALIGN_SPACE_AROUND ||
@@ -275,6 +277,13 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
         if (visible_child_count < 16) {
             child_indices[visible_child_count] = i;
         }
+
+        // Add gap before positioning (except for first child)
+        if (visible_child_count > 0) {
+            current_x += gap_fp;
+            used_width += gap_fp;
+        }
+
         visible_child_count++;
         total_children_width += child_width;
 
@@ -641,16 +650,47 @@ void kryon_layout_apply_column(kryon_component_t* container,
 static void layout_component_internal(kryon_component_t* component, kryon_fp_t available_width, kryon_fp_t available_height) {
     if (component == NULL) return;
 
-    // Respect explicit dimensions while still using available space when unset
-    if (component->width == 0 && available_width > 0) {
+    if (kryon_layout_should_trace()) {
+        fprintf(stderr, "[kryon][layout] BEFORE component=%p available_width=%f component->width=%f flex_grow=%d\n",
+                (void*)component, kryon_fp_to_float(available_width), kryon_fp_to_float(component->width), component->flex_grow);
+    }
+
+    // For container components (with children), allow expansion to available space
+    // unless they have explicit width constraints that should be respected
+    bool is_container = (component->child_count > 0);
+    bool has_explicit_width = (component->layout_flags & KRYON_COMPONENT_FLAG_HAS_WIDTH) != 0;
+    bool has_explicit_height = (component->layout_flags & KRYON_COMPONENT_FLAG_HAS_HEIGHT) != 0;
+
+    if (is_container && !has_explicit_width && available_width > 0) {
+        component->width = available_width;
+    } else if (component->width == 0 && available_width > 0) {
         component->width = available_width;
     }
-    if (component->height == 0 && available_height > 0) {
+
+    if (is_container && !has_explicit_height && available_height > 0) {
         component->height = available_height;
+    } else if (component->height == 0 && available_height > 0) {
+        component->height = available_height;
+    }
+
+    // For components with flex_grow > 0, ensure they can expand to fill available space
+    // but don't override explicit dimensions unless they need to grow
+    if (component->flex_grow > 0) {
+        if (available_width > component->width && !has_explicit_width) {
+            component->width = available_width;
+        }
+        if (available_height > component->height && !has_explicit_height) {
+            component->height = available_height;
+        }
     }
 
     kryon_fp_t effective_width = component->width > 0 ? component->width : available_width;
     kryon_fp_t effective_height = component->height > 0 ? component->height : available_height;
+
+    if (kryon_layout_should_trace()) {
+        fprintf(stderr, "[kryon][layout] AFTER component=%p effective_width=%f effective_height=%f\n",
+                (void*)component, kryon_fp_to_float(effective_width), kryon_fp_to_float(effective_height));
+    }
 
     // Determine layout direction based on component property
     kryon_layout_direction_t direction = (kryon_layout_direction_t)component->layout_direction;
@@ -691,7 +731,10 @@ static void layout_component_internal(kryon_component_t* component, kryon_fp_t a
     for (uint8_t i = 0; i < component->child_count; i++) {
         kryon_component_t* child = component->children[i];
         if (child->visible) {
-            layout_component_internal(child, child->width, child->height);
+            // Pass available space for children to use, not their current dimensions
+            kryon_fp_t child_available_width = component->width;
+            kryon_fp_t child_available_height = component->height;
+            layout_component_internal(child, child_available_width, child_available_height);
         }
     }
 

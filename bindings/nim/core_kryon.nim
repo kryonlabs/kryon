@@ -12,7 +12,7 @@ when defined(KRYON_NO_FLOAT):
 const
   hostIsMcu = defined(mcu)
   hostIsWeb = defined(web)
-  hostNoFloat = hostIsMcu or defined(KRYON_NO_FLOAT) or true  ## force fixed-point for current core build
+  hostNoFloat = hostIsMcu or defined(KRYON_NO_FLOAT)  ## Use fixed-point on MCU or when explicitly defined
 
 when hostIsMcu:
   const
@@ -120,6 +120,7 @@ type
 
 ## C API Functions - Component Lifecycle
 {.passC: "-I../../core/include".}
+{.passC: "-DKRYON_CMD_BUF_SIZE=32768".}  ## Force large buffer size for desktop
 {.emit: "#include <kryon.h>".}
 
 {.push importc, cdecl, header: "kryon.h", nodecl.}
@@ -143,6 +144,7 @@ proc kryon_component_set_border_width*(component: KryonComponent; width: uint8)
 proc kryon_component_set_text_color*(component: KryonComponent; color: uint32)
 proc kryon_component_set_layout_alignment*(component: KryonComponent; justify, align: KryonAlignment)
 proc kryon_component_set_layout_direction*(component: KryonComponent; direction: uint8)
+proc kryon_component_set_gap*(component: KryonComponent; gap: uint8)
 proc kryon_component_set_visible*(component: KryonComponent; visible: bool)
 proc kryon_component_set_flex*(component: KryonComponent; flexGrow, flexShrink: uint8)
 proc kryon_component_mark_dirty*(component: KryonComponent)

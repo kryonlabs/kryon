@@ -73,7 +73,7 @@ kryon_component_t* kryon_component_create(const kryon_component_ops_t* ops, void
     component->visible = true;
     component->dirty = true;
     component->background_color = 0; // Transparent until styled
-    component->text_color = kryon_color_rgb(255, 255, 255);  // White default
+    component->text_color = 0;  // Transparent (inherit from parent)
     component->border_color = 0;
     component->border_width = 0;
     component->align_items = KRYON_ALIGN_START;
@@ -340,6 +340,45 @@ void kryon_component_set_visible(kryon_component_t* component, bool visible) {
     kryon_component_mark_dirty(component);
 }
 
+// Color inheritance helpers
+uint32_t kryon_component_get_effective_text_color(kryon_component_t* component) {
+    if (component == NULL) {
+        return kryon_color_rgb(0, 0, 0);  // Default: black
+    }
+
+    // Use component's color if alpha is non-zero (color is set)
+    if ((component->text_color & 0xFF) != 0) {
+        return component->text_color;
+    }
+
+    // Fallback to parent color recursively
+    if (component->parent != NULL) {
+        return kryon_component_get_effective_text_color(component->parent);
+    }
+
+    // Final default: black
+    return kryon_color_rgb(0, 0, 0);
+}
+
+uint32_t kryon_component_get_effective_background_color(kryon_component_t* component) {
+    if (component == NULL) {
+        return 0;  // Default: transparent
+    }
+
+    // Use component's color if alpha is non-zero (color is set)
+    if ((component->background_color & 0xFF) != 0) {
+        return component->background_color;
+    }
+
+    // Fallback to parent color recursively
+    if (component->parent != NULL) {
+        return kryon_component_get_effective_background_color(component->parent);
+    }
+
+    // Final default: transparent
+    return 0;
+}
+
 void kryon_component_set_flex(kryon_component_t* component, uint8_t flex_grow, uint8_t flex_shrink) {
     if (component == NULL) {
         return;
@@ -356,6 +395,12 @@ void kryon_component_set_text_color(kryon_component_t* component, uint32_t color
     }
     component->text_color = color;
     kryon_component_mark_dirty(component);
+
+    if (kryon_component_should_trace()) {
+        fprintf(stderr, "[kryon][component] set_text_color %p to 0x%08x (rgba: %d,%d,%d,%d)\n",
+                (void*)component, color,
+                (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+    }
 }
 
 void kryon_component_set_layout_alignment(kryon_component_t* component,
@@ -377,6 +422,15 @@ void kryon_component_set_layout_direction(kryon_component_t* component, uint8_t 
 
     fprintf(stderr, "[kryon][component] set_layout_direction %p to %d\n", (void*)component, (int)direction);
     component->layout_direction = direction;
+    kryon_component_mark_dirty(component);
+}
+
+void kryon_component_set_gap(kryon_component_t* component, uint8_t gap) {
+    if (component == NULL) {
+        return;
+    }
+
+    component->gap = gap;
     kryon_component_mark_dirty(component);
 }
 
@@ -479,8 +533,16 @@ static void container_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
     uint16_t w = (uint16_t)KRYON_FP_TO_INT(self->width);
     uint16_t h = (uint16_t)KRYON_FP_TO_INT(self->height);
 
+    // Use inherited colors
+    uint32_t bg_color = kryon_component_get_effective_background_color(self);
     const bool has_border = self->border_width > 0 && (self->border_color & 0xFF) != 0;
-    const bool has_background = (self->background_color & 0xFF) != 0;
+    const bool has_background = (bg_color & 0xFF) != 0;
+
+    // Debug: Check background color values
+    if (getenv("KRYON_TRACE_COLORS")) {
+        fprintf(stderr, "[kryon][component] render_container %p: bg_color=0x%08x, alpha=%d, has_background=%d, w=%u, h=%u\n",
+                (void*)self, bg_color, (int)(bg_color & 0xFF), (int)has_background, w, h);
+    }
 
     if (has_border && w > 0 && h > 0) {
         kryon_draw_rect(buf, x, y, w, h, self->border_color);
@@ -497,10 +559,10 @@ static void container_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
                     (int16_t)(y + bw),
                     (uint16_t)(w - bw * 2),
                     (uint16_t)(h - bw * 2),
-                    self->background_color);
+                    bg_color);
             }
         } else {
-            kryon_draw_rect(buf, x, y, w, h, self->background_color);
+            kryon_draw_rect(buf, x, y, w, h, bg_color);
         }
     }
 
@@ -562,23 +624,30 @@ static void text_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
                 text_state->text);
     }
 
-    // Draw background
-    if ((self->background_color & 0xFF) != 0) {
+    // Draw background using inherited color
+    uint32_t bg_color = kryon_component_get_effective_background_color(self);
+    if ((bg_color & 0xFF) != 0) {
         kryon_draw_rect(buf,
                        KRYON_FP_TO_INT(self->x),
                        KRYON_FP_TO_INT(self->y),
                        KRYON_FP_TO_INT(self->width),
                        KRYON_FP_TO_INT(self->height),
-                       self->background_color);
+                       bg_color);
     }
 
-    // Draw text
+    // Draw text using inherited color
+    uint32_t text_color = kryon_component_get_effective_text_color(self);
+    if (trace_enabled) {
+        fprintf(stderr, "[kryon][component] text effective_color=0x%08x (rgba: %d,%d,%d,%d)\n",
+                text_color,
+                (text_color >> 24) & 0xFF, (text_color >> 16) & 0xFF, (text_color >> 8) & 0xFF, text_color & 0xFF);
+    }
     kryon_draw_text(buf,
                    text_state->text,
                    KRYON_FP_TO_INT(self->x + KRYON_FP_FROM_INT(self->padding_left)),
                    KRYON_FP_TO_INT(self->y + KRYON_FP_FROM_INT(self->padding_top)),
                    text_state->font_id,
-                   self->text_color);
+                   text_color);
 }
 
 static void text_layout(kryon_component_t* self, kryon_fp_t available_width, kryon_fp_t available_height) {

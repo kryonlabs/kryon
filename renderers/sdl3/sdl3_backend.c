@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
-#include "../common/command_buf.c"
 #include "../../core/include/kryon.h"
+#include "../common/command_buf.c"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
