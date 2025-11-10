@@ -4,6 +4,22 @@
 
 import os, strutils, json, times, sequtils, osproc
 
+# Forward declarations
+proc buildLinuxTarget*()
+proc buildSTM32Target*()
+proc buildWindowsTarget*()
+proc buildMacOSTarget*()
+proc buildWebTarget*()
+proc buildTerminalTarget*()
+proc buildNimLinux*()
+proc buildLuaLinux*()
+proc buildCLinux*()
+proc buildNimSTM32*()
+proc buildCSTM32*()
+proc buildNimTerminal*()
+proc buildLuaTerminal*()
+proc buildCTerminal*()
+
 proc buildForTarget*(target: string) =
   ## Build project for specified target
   echo "Building for target: " & target
@@ -17,8 +33,8 @@ proc buildForTarget*(target: string) =
       buildMacOSTarget()
     of "stm32f4":
       buildSTM32Target()
-    of "rp2040":
-      buildRP2040Target()
+    # of "rp2040":
+    #   buildRP2040Target()  # Not implemented yet
     of "web":
       buildWebTarget()
     of "terminal":
@@ -122,7 +138,7 @@ proc buildSTM32Target*() =
     # Extract bundled toolchain if available
     if fileExists("cli/deps/arm_gcc/toolchain.tar.gz"):
       echo "Extracting bundled ARM toolchain..."
-      execCmdEx("tar -xzf cli/deps/arm_gcc/toolchain.tar.gz -C cli/deps/arm_gcc/")
+      discard execCmdEx("tar -xzf cli/deps/arm_gcc/toolchain.tar.gz -C cli/deps/arm_gcc/")
     else:
       raise newException(IOError, "ARM toolchain not found and no bundled version available")
 

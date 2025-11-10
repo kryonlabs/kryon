@@ -1,5 +1,6 @@
 #include "include/kryon.h"
 #include <string.h>
+#include <stdio.h>
 
 // ============================================================================
 // Event Utility Functions
@@ -37,8 +38,18 @@ bool kryon_event_is_point_in_component(kryon_component_t* component, int16_t x, 
         return false;
     }
 
-    int16_t comp_x = KRYON_FP_TO_INT(component->x);
-    int16_t comp_y = KRYON_FP_TO_INT(component->y);
+    // Calculate absolute position by accumulating parent offsets
+    kryon_fp_t abs_x = component->x;
+    kryon_fp_t abs_y = component->y;
+    kryon_component_t* parent = component->parent;
+    while (parent != NULL) {
+        abs_x += parent->x;
+        abs_y += parent->y;
+        parent = parent->parent;
+    }
+
+    int16_t comp_x = KRYON_FP_TO_INT(abs_x);
+    int16_t comp_y = KRYON_FP_TO_INT(abs_y);
     int16_t comp_w = KRYON_FP_TO_INT(component->width);
     int16_t comp_h = KRYON_FP_TO_INT(component->height);
 
@@ -51,16 +62,24 @@ kryon_component_t* kryon_event_find_target_at_point(kryon_component_t* root, int
         return NULL;
     }
 
+    fprintf(stderr, "[kryon][hit] checking component %p: x=%d y=%d w=%d h=%d children=%d\n",
+            (void*)root,
+            KRYON_FP_TO_INT(root->x), KRYON_FP_TO_INT(root->y),
+            KRYON_FP_TO_INT(root->width), KRYON_FP_TO_INT(root->height),
+            root->child_count);
+
     // Search children first (top-to-bottom for proper z-order)
     for (int8_t i = (int8_t)root->child_count - 1; i >= 0; i--) {
         kryon_component_t* child = root->children[i];
         kryon_component_t* target = kryon_event_find_target_at_point(child, x, y);
         if (target != NULL) {
+            fprintf(stderr, "[kryon][hit] found target in child: %p\n", (void*)target);
             return target;
         }
     }
 
     // No child handled the event, return this component
+    fprintf(stderr, "[kryon][hit] no child matched, returning self: %p\n", (void*)root);
     return root;
 }
 
@@ -70,8 +89,15 @@ void kryon_event_dispatch_to_point(kryon_component_t* root, int16_t x, int16_t y
     }
 
     kryon_component_t* target = kryon_event_find_target_at_point(root, x, y);
+    fprintf(stderr, "[kryon][event] dispatch_to_point(%d,%d): target=%p\n", x, y, (void*)target);
     if (target != NULL) {
+        fprintf(stderr, "[kryon][event] target bounds: x=%d y=%d w=%d h=%d ops=%p\n",
+                KRYON_FP_TO_INT(target->x), KRYON_FP_TO_INT(target->y),
+                KRYON_FP_TO_INT(target->width), KRYON_FP_TO_INT(target->height),
+                (void*)target->ops);
         kryon_component_send_event(target, event);
+    } else {
+        fprintf(stderr, "[kryon][event] No target found for click at (%d,%d)\n", x, y);
     }
 }
 

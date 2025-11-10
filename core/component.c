@@ -4,6 +4,31 @@
 #include <stdlib.h>
 
 // ============================================================================
+// Coordinate Transformation Utilities
+// ============================================================================
+
+// Calculate absolute position by accumulating parent positions
+static void calculate_absolute_position(const kryon_component_t* component,
+                                      kryon_fp_t* abs_x, kryon_fp_t* abs_y) {
+    if (component == NULL) {
+        *abs_x = 0;
+        *abs_y = 0;
+        return;
+    }
+
+    *abs_x = component->x;
+    *abs_y = component->y;
+
+    // Add parent positions recursively
+    kryon_component_t* parent = component->parent;
+    while (parent != NULL) {
+        *abs_x += parent->x;
+        *abs_y += parent->y;
+        parent = parent->parent;
+    }
+}
+
+// ============================================================================
 // Static Component Pool (No Heap Allocations on MCU)
 // ============================================================================
 
@@ -34,6 +59,33 @@ static bool kryon_component_should_trace(void) {
     }
 
     return enabled;
+}
+
+static bool kryon_render_coordinates_should_trace(void) {
+    static bool initialized = false;
+    static bool enabled = false;
+
+    if (!initialized) {
+        initialized = true;
+#if defined(__unix__) || defined(__APPLE__) || defined(_WIN32)
+        const char* env = getenv("KRYON_TRACE_COORDINATES_FLOW");
+        enabled = (env != NULL && env[0] != '\0' && env[0] != '0');
+#endif
+    }
+
+    return enabled;
+}
+
+static void trace_render_coordinates(const char* component_type, kryon_component_t* component,
+                                    int16_t render_x, int16_t render_y, uint16_t render_w, uint16_t render_h) {
+    if (!kryon_render_coordinates_should_trace()) return;
+
+    fprintf(stderr, "[kryon][render] %s: component=%p "
+            "fixed_point(x=%f,y=%f,w=%f,h=%f) -> render(x=%d,y=%d,w=%d,h=%d)\n",
+            component_type, (void*)component,
+            kryon_fp_to_float(component->x), kryon_fp_to_float(component->y),
+            kryon_fp_to_float(component->width), kryon_fp_to_float(component->height),
+            render_x, render_y, render_w, render_h);
 }
 
 kryon_component_t* kryon_component_create(const kryon_component_ops_t* ops, void* initial_state) {
@@ -403,6 +455,56 @@ void kryon_component_set_text_color(kryon_component_t* component, uint32_t color
     }
 }
 
+void kryon_component_set_text(kryon_component_t* component, const char* text) {
+    if (component == NULL) {
+        return;
+    }
+
+    // Check if component has text state (Text or Button component)
+    if (component->state == NULL) {
+        return;
+    }
+
+    // Try to cast to text state (works for both Text and Button components)
+    kryon_text_state_t* text_state = (kryon_text_state_t*)component->state;
+
+    // Free old text if it exists and was dynamically allocated
+    if (text_state->text != NULL) {
+        free((void*)text_state->text);
+    }
+
+    // Allocate and copy new text
+    if (text != NULL) {
+        size_t len = strlen(text);
+        char* new_buffer = (char*)malloc(len + 1);
+        if (new_buffer != NULL) {
+            memcpy(new_buffer, text, len);
+            new_buffer[len] = '\0';
+            text_state->text = new_buffer;
+        } else {
+            // Memory allocation failed, set to empty string
+            text_state->text = "";
+        }
+    } else {
+        // Handle NULL text
+        char* empty_buffer = (char*)malloc(1);
+        if (empty_buffer != NULL) {
+            empty_buffer[0] = '\0';
+            text_state->text = empty_buffer;
+        } else {
+            text_state->text = "";
+        }
+    }
+
+    // Mark component as dirty to trigger re-render
+    kryon_component_mark_dirty(component);
+
+    if (kryon_component_should_trace()) {
+        fprintf(stderr, "[kryon][component] set_text %p to \"%s\"\n",
+                (void*)component, text ? text : "(null)");
+    }
+}
+
 void kryon_component_set_layout_alignment(kryon_component_t* component,
                                          kryon_alignment_t justify,
                                          kryon_alignment_t align) {
@@ -529,10 +631,16 @@ static void container_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
                 self->dirty);
     }
 
-    int16_t x = KRYON_FP_TO_INT(self->x);
-    int16_t y = KRYON_FP_TO_INT(self->y);
+    // Calculate absolute position for rendering
+    kryon_fp_t abs_x, abs_y;
+    calculate_absolute_position(self, &abs_x, &abs_y);
+    int16_t x = KRYON_FP_TO_INT(abs_x);
+    int16_t y = KRYON_FP_TO_INT(abs_y);
     uint16_t w = (uint16_t)KRYON_FP_TO_INT(self->width);
     uint16_t h = (uint16_t)KRYON_FP_TO_INT(self->height);
+
+    // Trace container render coordinates
+    trace_render_coordinates("container", self, x, y, w, h);
 
     // Use inherited colors
     uint32_t bg_color = kryon_component_get_effective_background_color(self);
@@ -643,10 +751,22 @@ static void text_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
                 text_color,
                 (text_color >> 24) & 0xFF, (text_color >> 16) & 0xFF, (text_color >> 8) & 0xFF, text_color & 0xFF);
     }
+
+    // Calculate absolute position for rendering
+    kryon_fp_t abs_x, abs_y;
+    calculate_absolute_position(self, &abs_x, &abs_y);
+    int16_t render_x = KRYON_FP_TO_INT(abs_x);
+    int16_t render_y = KRYON_FP_TO_INT(abs_y);
+
+    // Trace final render coordinates before text drawing
+    trace_render_coordinates("text", self, render_x, render_y,
+                            KRYON_FP_TO_INT(self->width),
+                            KRYON_FP_TO_INT(self->height));
+
     kryon_draw_text(buf,
                    text_state->text,
-                   KRYON_FP_TO_INT(self->x + KRYON_FP_FROM_INT(self->padding_left)),
-                   KRYON_FP_TO_INT(self->y + KRYON_FP_FROM_INT(self->padding_top)),
+                   render_x,
+                   render_y,
                    text_state->font_id,
                    text_color);
 }
@@ -716,8 +836,11 @@ static void button_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
         bg_color = button_tint_color(bg_color, -24);
     }
 
-    const int16_t x = KRYON_FP_TO_INT(self->x);
-    const int16_t y = KRYON_FP_TO_INT(self->y);
+    // Calculate absolute position for rendering
+    kryon_fp_t abs_x, abs_y;
+    calculate_absolute_position(self, &abs_x, &abs_y);
+    const int16_t x = KRYON_FP_TO_INT(abs_x);
+    const int16_t y = KRYON_FP_TO_INT(abs_y);
     const uint16_t w = (uint16_t)KRYON_FP_TO_INT(self->width);
     const uint16_t h = (uint16_t)KRYON_FP_TO_INT(self->height);
 
@@ -754,15 +877,25 @@ static void button_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
         int16_t available_height = KRYON_FP_TO_INT(self->height) -
                                   (self->padding_top + self->padding_bottom);
 
-        // Center text horizontally and vertically
-        int16_t text_x = KRYON_FP_TO_INT(self->x) + self->padding_left +
+        // Calculate absolute position for rendering
+        kryon_fp_t abs_x, abs_y;
+        calculate_absolute_position(self, &abs_x, &abs_y);
+        int16_t base_x = KRYON_FP_TO_INT(abs_x);
+        int16_t base_y = KRYON_FP_TO_INT(abs_y);
+
+        // Center text horizontally and vertically (relative to button)
+        int16_t text_x = base_x + self->padding_left +
                         (available_width > estimated_text_width ?
                          (available_width - estimated_text_width) / 2 : 0);
-        int16_t text_y = KRYON_FP_TO_INT(self->y) + self->padding_top +
+        int16_t text_y = base_y + self->padding_top +
                         (available_height > estimated_text_height ?
                          (available_height - estimated_text_height) / 2 : 0);
 
-        kryon_draw_text(buf,
+        // Trace final render coordinates before button text drawing
+        trace_render_coordinates("button_text", self, text_x, text_y,
+                                (uint16_t)(text_len * 8), 16);
+
+    kryon_draw_text(buf,
                        button_state->text,
                        text_x,
                        text_y,
@@ -781,11 +914,15 @@ static bool button_on_event(kryon_component_t* self, kryon_event_t* event) {
     switch (event->type) {
         case KRYON_EVT_CLICK: {
             const bool is_press = (event->param & 0x80000000u) != 0;
+            fprintf(stderr, "[kryon][button] button_on_event: param=0x%08x is_press=%d on_click=%p\n",
+                    event->param, is_press, (void*)button_state->on_click);
             button_state->pressed = is_press;
             kryon_component_mark_dirty(self);
 
             if (!is_press && button_state->on_click != NULL) {
+                fprintf(stderr, "[kryon][button] Calling onclick handler!\n");
                 button_state->on_click(self, event);
+                fprintf(stderr, "[kryon][button] onclick handler returned\n");
             }
             return true;
         }

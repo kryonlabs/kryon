@@ -4,7 +4,7 @@ author        = "Kryon Labs"
 description   = "Kryon UI Framework - Declarative UI for multiple platforms"
 license       = "BSD-Zero-Clause"
 srcDir        = "bindings/nim"
-bin           = @["cli/kryon"]
+bin           = @["cli/main"]
 binDir        = "bin"
 
 # Dependencies

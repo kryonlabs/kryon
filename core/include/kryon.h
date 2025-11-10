@@ -323,6 +323,7 @@ void kryon_component_mark_dirty(kryon_component_t* component);
 void kryon_component_mark_clean(kryon_component_t* component);
 bool kryon_component_is_dirty(kryon_component_t* component);
 void kryon_component_set_text_color(kryon_component_t* component, uint32_t color);
+void kryon_component_set_text(kryon_component_t* component, const char* text);
 void kryon_component_set_layout_alignment(kryon_component_t* component,
                                          kryon_alignment_t justify,
                                          kryon_alignment_t align);

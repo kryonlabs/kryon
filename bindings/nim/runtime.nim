@@ -3,6 +3,7 @@
 ## Provides the runtime bridge between Nim DSL and C core engine
 
 import core_kryon, core_kryon_canvas, os, strutils, tables
+import reactive_system
 
 template runtimeTrace(msg: string) =
   if getEnv("KRYON_TRACE_RUNTIME", "") != "":
@@ -84,8 +85,11 @@ proc updateCursorShape(target: KryonComponent) =
 when defined(KRYON_SDL3):
   proc dispatchPointerEvent(app: KryonApp; evt: var KryonEvent) =
     if app.root.isNil:
+      echo "[kryon][runtime] dispatchPointerEvent: root is nil!"
       return
+    echo "[kryon][runtime] dispatchPointerEvent: dispatching to root at (", evt.x, ",", evt.y, ")"
     kryon_event_dispatch_to_point(app.root, evt.x, evt.y, addr evt)
+    echo "[kryon][runtime] dispatchPointerEvent: dispatch complete"
 
   proc updateHoverState(app: KryonApp; evt: var KryonEvent) =
     if app.root.isNil:
@@ -132,6 +136,10 @@ proc run*(app: KryonApp) =
 
   echo "Starting Kryon application: " & app.window.title
   app.running = true
+
+  # Initialize reactive system
+  if not isReactiveSystemInitialized():
+    initReactiveSystem()
 
   # Initialize the renderer
   var rendererReady = true
@@ -188,10 +196,15 @@ proc run*(app: KryonApp) =
       kryon_layout_tree(app.root, wfp, hfp)
       runtimeTrace("[kryon][runtime] layout complete")
 
+    # Process reactive updates after layout but before rendering
+    processReactiveUpdates()
+    runtimeTrace("[kryon][runtime] reactive updates complete")
+
     when defined(KRYON_SDL3):
       if activeRendererBackend == "sdl3":
         var evt: KryonEvent
         while kryon_sdl3_poll_event(addr evt):
+          echo "[kryon][runtime] SDL3 event received: type=", evt.`type`, " x=", evt.x, " y=", evt.y
           case evt.`type`
           of KryonEventType.Custom:
             app.running = false
@@ -203,6 +216,7 @@ proc run*(app: KryonApp) =
               app.running = false
               break
           of KryonEventType.Click:
+            echo "[kryon][runtime] Dispatching click event to components"
             dispatchPointerEvent(app, evt)
           of KryonEventType.Hover:
             updateHoverState(app, evt)
@@ -315,19 +329,29 @@ proc newKryonSpacer*(): KryonComponent =
   ## Create a new spacer component
   result = newKryonContainer()  # For now, use container as base
 
-var buttonCallbacks*: Table[uint, proc () {.nimcall.}] = initTable[uint, proc () {.nimcall.}]()
+var buttonCallbacks*: Table[uint, proc () {.closure.}] = initTable[uint, proc () {.closure.}]()
 
-proc registerButtonHandler*(button: KryonComponent; cb: proc () {.nimcall.}) =
+proc registerButtonHandler*(button: KryonComponent; cb: proc () {.closure.}) =
   if cb.isNil or button.isNil:
     return
-  buttonCallbacks[cast[uint](button)] = cb
+  let key = cast[uint](button)
+  buttonCallbacks[key] = cb
+  echo "[kryon][runtime] Registered button handler for component ", key
 
 proc nimButtonBridge*(component: KryonComponent; event: ptr KryonEvent) {.cdecl.} =
+  echo "[kryon][runtime] Button clicked! Component: ", cast[uint](component)
   let key = cast[uint](component)
   if buttonCallbacks.hasKey(key):
+    echo "[kryon][runtime] Found handler for button"
     let cb = buttonCallbacks[key]
     if not cb.isNil:
+      echo "[kryon][runtime] Calling handler"
       cb()
+      echo "[kryon][runtime] Handler completed"
+    else:
+      echo "[kryon][runtime] Handler is nil!"
+  else:
+    echo "[kryon][runtime] No handler registered for this button"
 
 # ============================================================================
 # Renderer and System Functions

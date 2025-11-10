@@ -62,18 +62,18 @@ proc handleNewCommand*(args: seq[string]) =
     quit(1)
 
   let projectName = args[0]
-  var template = "nim"  # Default template
+  var projectTemplate = "nim"  # Default template
 
   # Parse template option
   for arg in args[1..^1]:
     if arg.startsWith("--template="):
-      template = arg[11..^1]
+      projectTemplate = arg[11..^1]
 
   echo "Creating new Kryon project: " & projectName
-  echo "Template: " & template
+  echo "Template: " & projectTemplate
 
   try:
-    createProject(projectName, template)
+    createProject(projectName, projectTemplate)
     echo "✓ Project created successfully!"
     echo ""
     echo "Next steps:"

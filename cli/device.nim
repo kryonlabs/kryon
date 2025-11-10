@@ -4,6 +4,19 @@
 
 import os, strutils, sequtils, times, osproc
 
+# Forward declarations
+proc deployToSTM32*(devicePath: string)
+proc deployToRP2040*(devicePath: string)
+proc deployWithSTLink*(binaryPath: string)
+proc deployWithOpenOCD*(binaryPath: string)
+proc deployWithDFU*(binaryPath: string)
+proc convertToUF2*(binaryPath: string, uf2Path: string)
+proc inspectMCUComponents*(target: string)
+proc inspectDesktopComponents*(target: string)
+proc findConnectedDevices*(): seq[string]
+proc runDiagnostics*()
+proc runLocally*(target: string)
+
 proc deployToDevice*(target: string, devicePath: string) =
   ## Deploy and run application on physical device
   echo "Deploying to device: " & devicePath

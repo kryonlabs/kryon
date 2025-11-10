@@ -4,8 +4,13 @@
 
 import os, strutils, json, times
 
-proc createProject*(name: string, template: string) =
-  ## Create a new Kryon project with specified template
+# Forward declarations
+proc createNimProject*(name: string)
+proc createLuaProject*(name: string)
+proc createCProject*(name: string)
+
+proc createProject*(name: string, projectTemplate: string) =
+  ## Create a new Kryon project with specified projectTemplate
 
   if dirExists(name):
     raise newException(IOError, "Directory already exists: " & name)
@@ -21,7 +26,7 @@ proc createProject*(name: string, template: string) =
   let config = %*{
     "name": name,
     "version": "1.0.0",
-    "template": template,
+    "projectTemplate": projectTemplate,
     "targets": ["linux"],
     "created": getTime().format("yyyy-MM-dd HH:mm:ss"),
     "kryon_version": "1.2.0"
@@ -29,7 +34,7 @@ proc createProject*(name: string, template: string) =
 
   writeFile(name / "kryon.json", pretty(config))
 
-  case template.toLowerAscii():
+  case projectTemplate.toLowerAscii():
     of "nim":
       createNimProject(name)
     of "lua":
@@ -37,7 +42,7 @@ proc createProject*(name: string, template: string) =
     of "c":
       createCProject(name)
     else:
-      raise newException(ValueError, "Unknown template: " & template)
+      raise newException(ValueError, "Unknown projectTemplate: " & projectTemplate)
 
 proc createNimProject*(name: string) =
   ## Create Nim-based Kryon project
@@ -231,7 +236,7 @@ kryon.run(app)
 
 return {
   name = "$1",
-  template = "lua",
+  projectTemplate = "lua",
   targets = {"linux"},
 
   cflags = "-I../../core/include",

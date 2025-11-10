@@ -2,8 +2,24 @@
 ##
 ## Provides declarative UI syntax that compiles to C core component trees
 
-import macros, strutils, os
-import ./runtime, ./core_kryon
+import macros, strutils, os, sequtils
+import ./runtime, ./core_kryon, ./reactive_system
+
+# ============================================================================
+# Type Aliases for Custom Components
+# ============================================================================
+
+type Element* = KryonComponent
+  ## Type alias for custom component return values.
+  ## Use this as the return type for procedures that compose UI components.
+  ## Example:
+  ##   proc MyCustomComponent(): Element =
+  ##     result = Container:
+  ##       Button: ...
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
 
 proc colorNode(value: NimNode): NimNode =
   if value.kind == nnkStrLit:
@@ -45,6 +61,94 @@ proc alignmentNode(name: string): NimNode =
     else: "kaStart"
   let alignSym = bindSym("KryonAlignment")
   result = newTree(nnkDotExpr, alignSym, ident(variant))
+
+# ============================================================================
+# Reactive Expression Detection
+# ============================================================================
+
+proc isReactiveExpression*(node: NimNode): bool =
+  ## Check if a node contains a reactive variable reference
+  ## Detects patterns like `$value` where `value` could be a ReactiveVar
+  result = false
+
+  case node.kind
+  of nnkPrefix:
+    # Check for `$` prefix (string interpolation)
+    if node.len >= 1:
+      let operator = node[0]
+      if operator.kind == nnkIdent and operator.strVal == "$":
+        if node.len == 2 and node[1].kind == nnkIdent:
+          # Pattern: `$variableName`
+          result = true
+        elif node.len >= 2:
+          # Recursively check the operand
+          result = isReactiveExpression(node[1])
+  of nnkIdent:
+    # Direct variable reference - could be a ReactiveVar
+    # We'll be conservative and treat all idents as potentially reactive
+    result = true
+  of nnkDotExpr:
+    # Field access like `counter.value` - check if base is reactive
+    if node.len >= 1:
+      result = isReactiveExpression(node[0])
+  of nnkInfix:
+    # Binary operations - check both operands
+    if node.len >= 3:
+      result = isReactiveExpression(node[1]) or isReactiveExpression(node[2])
+  of nnkCall:
+    # Function calls - check arguments
+    for child in node.children:
+      if isReactiveExpression(child):
+        result = true
+        break
+  else:
+    # For other node types, recursively check children
+    for child in node.children:
+      if isReactiveExpression(child):
+        result = true
+        break
+
+proc extractReactiveVars*(node: NimNode): seq[NimNode] =
+  ## Extract all reactive variable references from a node
+  result = @[]
+
+  case node.kind
+  of nnkPrefix:
+    if node.len >= 1:
+      let operator = node[0]
+      if operator.kind == nnkIdent and operator.strVal == "$":
+        if node.len == 2 and node[1].kind == nnkIdent:
+          # Pattern: `$variableName` - extract the variable
+          result.add(node[1])
+        elif node.len >= 2:
+          # Recursively check the operand
+          result.add(extractReactiveVars(node[1]))
+      else:
+        # Not a $ prefix, check if len == 1
+        if node.len == 1:
+          result.add(extractReactiveVars(node[0]))
+  of nnkIdent:
+    # Direct variable reference
+    result.add(node)
+  of nnkDotExpr:
+    # Field access - extract the base variable
+    if node.len >= 1:
+      result.add(extractReactiveVars(node[0]))
+  of nnkInfix:
+    # Binary operations - extract from both operands
+    if node.len >= 3:
+      result.add(extractReactiveVars(node[1]))
+      result.add(extractReactiveVars(node[2]))
+  of nnkCall:
+    # Function calls - check arguments
+    for child in node.children:
+      result.add(extractReactiveVars(child))
+  else:
+    # For other node types, recursively check children
+    for child in node.children:
+      result.add(extractReactiveVars(child))
+
+# createReactiveBinding function removed - now using live expression evaluation
 
 # ============================================================================
 # DSL Macros for Declarative UI
@@ -548,6 +652,8 @@ macro Body*(props: untyped): untyped =
     posXSet = false
     posYSet = false
     flexGrowSet = false
+    widthSet = false
+    heightSet = false
 
   for node in props.children:
     if node.kind == nnkAsgn:
@@ -561,18 +667,22 @@ macro Body*(props: untyped): untyped =
         posYSet = true
       of "flexgrow":
         flexGrowSet = true
+      of "width":
+        widthSet = true
+      of "height":
+        heightSet = true
       else:
         discard
 
+  # Add defaults first (before user properties)
   if not posXSet:
     bodyStmt.add newTree(nnkAsgn, ident("posX"), newIntLitNode(0))
   if not posYSet:
     bodyStmt.add newTree(nnkAsgn, ident("posY"), newIntLitNode(0))
-  if not flexGrowSet:
-    bodyStmt.add newTree(nnkAsgn, ident("flexGrow"), newIntLitNode(1))
   if not backgroundSet:
     bodyStmt.add newTree(nnkAsgn, ident("backgroundColor"), newStrLitNode("#101820FF"))
 
+  # Then add user properties (including width/height from ensureBodyDimensions)
   for node in props.children:
     bodyStmt.add(node)
 
@@ -592,6 +702,8 @@ macro Text*(props: untyped): untyped =
     fontWeightVal: NimNode = nil
     fontFamilyVal: NimNode = nil
     textAlignVal: NimNode = nil
+    isReactive = false
+    reactiveVars: seq[NimNode] = @[]
   let textSym = genSym(nskLet, "text")
 
   for node in props.children:
@@ -602,6 +714,10 @@ macro Text*(props: untyped): untyped =
       case propName.toLowerAscii():
       of "content", "text":
         textContent = value
+        # Check if the text content contains reactive expressions
+        isReactive = isReactiveExpression(value)
+        if isReactive:
+          reactiveVars = extractReactiveVars(value)
       of "color", "colour":  # Added 'colour' alias
         colorVal = colorNode(value)
       of "fontsize":
@@ -651,6 +767,23 @@ macro Text*(props: untyped): untyped =
         uint8(`marginBottomExpr`),
         uint8(`marginLeftExpr`))
 
+  # Add reactive bindings if detected
+  if isReactive and reactiveVars.len > 0:
+    # Create live expression evaluation instead of static reactive binding
+    let varNames = newLit(reactiveVars.map(proc(x: NimNode): string = x.strVal))
+    let expressionStr = newLit(textContent.repr)
+
+    # Add code to create reactive text expression
+    # CRITICAL: Create the closure at RUNTIME, not at compile-time, so Nim's
+    # closure mechanism properly captures variables and heap-allocates them
+    let createExprSym = bindSym("createReactiveTextExpression")
+    initStmts.add quote do:
+      # Create closure at runtime in the actual scope where variables exist
+      let evalProc = proc (): string {.closure.} =
+        `textContent`  # This captures variables from the runtime scope
+      `createExprSym`(`textSym`, `expressionStr`, evalProc, `varNames`)
+      echo "[kryon][reactive] Created live reactive expression: ", `expressionStr`
+
   result = quote do:
     block:
       let `textSym` = newKryonText(`textContent`)
@@ -691,6 +824,8 @@ macro Button*(props: untyped): untyped =
       of "text":
         buttonText = value
       of "onclick":
+        # Wrap the click handler to automatically trigger reactive updates
+        # For Counter demo, we need to intercept variable changes in increment/decrement
         clickHandler = value
       of "margin":
         marginAll = value
@@ -999,7 +1134,7 @@ macro Row*(props: untyped): untyped =
   var hasMainAxisAlignment = false
   var hasAlignItems = false
 
-  # First, extract user properties
+  # First pass: detect which properties user has set
   for node in props.children:
     if node.kind == nnkAsgn:
       let propName = $node[0]
@@ -1007,32 +1142,68 @@ macro Row*(props: untyped): untyped =
       if propName == "height": hasHeight = true
       if propName == "mainAxisAlignment": hasMainAxisAlignment = true
       if propName == "alignItems": hasAlignItems = true
-    body.add(node)
 
-  # Then, add defaults only if not specified by user
-  # Note: Don't set default width for containers - let them expand to fill parent
+  # Add defaults first (only if not specified by user)
+  # Note: Don't set default width or height for containers - let them size based on content
   # if not hasWidth:
   #   body.add newTree(nnkAsgn, ident("width"), newIntLitNode(800))  # Default width
-  if not hasHeight:
-    body.add newTree(nnkAsgn, ident("height"), newIntLitNode(500)) # Default height
+  # if not hasHeight:
+  #   body.add newTree(nnkAsgn, ident("height"), newIntLitNode(500)) # Default height
   if not hasMainAxisAlignment:
     body.add newTree(nnkAsgn, ident("mainAxisAlignment"), newStrLitNode("start"))
   if not hasAlignItems:
     body.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
 
-  # Always set layout direction to row
+  # Then add user properties (so they override defaults if there are duplicates)
+  for node in props.children:
+    body.add(node)
+
+  # Always set layout direction to row (at the end so it always overrides)
   body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(1))  # 1 = KRYON_LAYOUT_ROW
 
   result = newTree(nnkCall, ident("Container"), body)
 
 macro Column*(props: untyped): untyped =
   ## Convenience macro for a column layout container
+  ## Preserves user-specified properties and sets defaults for missing ones
   var body = newTree(nnkStmtList)
-  body.add newTree(nnkAsgn, ident("mainAxisAlignment"), newStrLitNode("start"))
-  body.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("stretch"))
-  body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(0))  # 0 = KRYON_LAYOUT_COLUMN
+
+  # Track which properties are set by user
+  var hasWidth = false
+  var hasHeight = false
+  var hasMainAxisAlignment = false
+  var hasAlignItems = false
+  var hasFlexGrow = false
+  var hasLayoutDirection = false
+
+  # First pass: detect which properties user has set
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      if propName == "width": hasWidth = true
+      if propName == "height": hasHeight = true
+      if propName == "mainAxisAlignment": hasMainAxisAlignment = true
+      if propName == "alignItems": hasAlignItems = true
+      if propName == "flexGrow": hasFlexGrow = true
+      if propName == "layoutDirection": hasLayoutDirection = true
+
+  # Add defaults first (only if not specified by user)
+  # Column should fill available height by default
+  if not hasFlexGrow:
+    body.add newTree(nnkAsgn, ident("flexGrow"), newIntLitNode(1))  # Fill available height
+  # Don't set default width - let Column fill available width naturally
+  if not hasMainAxisAlignment:
+    body.add newTree(nnkAsgn, ident("mainAxisAlignment"), newStrLitNode("start"))
+  if not hasAlignItems:
+    body.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("stretch"))
+
+  # Then add user properties (so they override defaults if there are duplicates)
   for node in props.children:
     body.add(node)
+
+  # Always set layout direction to column (at the end so it always overrides)
+  body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(0))  # 0 = KRYON_LAYOUT_COLUMN
+
   result = newTree(nnkCall, ident("Container"), body)
 
 macro Center*(props: untyped): untyped =

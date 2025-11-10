@@ -5,6 +5,10 @@
 
 import strutils
 
+# Import C malloc/free for memory management consistency with C code
+proc c_malloc(size: csize_t): pointer {.importc: "malloc", header: "<stdlib.h>".}
+proc c_free(p: pointer) {.importc: "free", header: "<stdlib.h>".}
+
 when defined(KRYON_NO_FLOAT):
   {.warning: "KRYON_NO_FLOAT symbol detected at compile time".}
 
@@ -142,6 +146,7 @@ proc kryon_component_set_background_color*(component: KryonComponent; color: uin
 proc kryon_component_set_border_color*(component: KryonComponent; color: uint32)
 proc kryon_component_set_border_width*(component: KryonComponent; width: uint8)
 proc kryon_component_set_text_color*(component: KryonComponent; color: uint32)
+proc kryon_component_set_text*(component: KryonComponent; text: cstring)
 proc kryon_component_set_layout_alignment*(component: KryonComponent; justify, align: KryonAlignment)
 proc kryon_component_set_layout_direction*(component: KryonComponent; direction: uint8)
 proc kryon_component_set_gap*(component: KryonComponent; gap: uint8)
@@ -248,7 +253,8 @@ proc newKryonText*(text: string): KryonComponent =
   ## Create a new text component
   var textState: KryonTextState
   let len = text.len
-  let buffer = cast[ptr UncheckedArray[char]](alloc(len + 1))
+  # Use malloc instead of alloc to match C's free() in kryon_component_set_text
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
   if len > 0:
     copyMem(addr buffer[0], unsafeAddr text[0], len)
   buffer[len] = '\0'
@@ -257,7 +263,8 @@ proc newKryonText*(text: string): KryonComponent =
   textState.max_length = 255
   textState.word_wrap = false
 
-  let statePtr = alloc(sizeof(KryonTextState))
+  # Use malloc for state too, for consistency
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
   copyMem(statePtr, addr textState, sizeof(KryonTextState))
 
   result = kryon_component_create(addr kryon_text_ops, statePtr)
@@ -266,7 +273,8 @@ proc newKryonButton*(text: string; onClickCallback: proc (component: KryonCompon
   ## Create a new button component
   var buttonState: KryonButtonState
   let len = text.len
-  let buffer = cast[ptr UncheckedArray[char]](alloc(len + 1))
+  # Use malloc instead of alloc to match C's free() in kryon_component_set_text
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
   if len > 0:
     copyMem(addr buffer[0], unsafeAddr text[0], len)
   buffer[len] = '\0'
@@ -276,7 +284,8 @@ proc newKryonButton*(text: string; onClickCallback: proc (component: KryonCompon
   buttonState.hovered = false
   buttonState.on_click = onClickCallback
 
-  let statePtr = alloc(sizeof(KryonButtonState))
+  # Use malloc for state too, for consistency
+  let statePtr = c_malloc(csize_t(sizeof(KryonButtonState)))
   copyMem(statePtr, addr buttonState, sizeof(KryonButtonState))
 
   result = kryon_component_create(addr kryon_button_ops, statePtr)
@@ -347,6 +356,11 @@ proc setBackgroundColor*(component: KryonComponent; color: uint32) =
 proc setVisible*(component: KryonComponent; visible: bool) =
   ## Set component visibility
   kryon_component_set_visible(component, visible)
+
+proc setText*(component: KryonComponent; text: string) =
+  ## Update text content for Text and Button components
+  if component != nil:
+    kryon_component_set_text(component, cstring(text))
 
 proc layout*(root: KryonComponent; width, height: auto) =
   ## Perform layout on component tree

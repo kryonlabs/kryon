@@ -63,4 +63,3 @@ let app = kryonApp:
       Counter(5)
 
       Counter()
-
