@@ -124,6 +124,9 @@ proc newKryonApp*(): KryonApp =
     rendererPreinitialized: false
   )
 
+# Forward declare canvas callback function
+proc executeAllCanvasCallbacks*(root: KryonComponent)
+
 proc run*(app: KryonApp) =
   ## Run the application main loop
   if app.root == nil:
@@ -199,6 +202,11 @@ proc run*(app: KryonApp) =
     # Process reactive updates after layout but before rendering
     processReactiveUpdates()
     runtimeTrace("[kryon][runtime] reactive updates complete")
+
+    # Execute canvas drawing callbacks
+    if app.root != nil:
+      executeAllCanvasCallbacks(app.root)
+      runtimeTrace("[kryon][runtime] canvas drawing complete")
 
     when defined(KRYON_SDL3):
       if activeRendererBackend == "sdl3":
@@ -321,9 +329,54 @@ proc shutdownKryonCore*() =
 # Missing Component Functions
 # ============================================================================
 
+var canvasCallbacks*: Table[uint, proc () {.closure.}] = initTable[uint, proc () {.closure.}]()
+
+proc registerCanvasHandler*(canvas: KryonComponent; cb: proc () {.closure.}) =
+  if cb.isNil or canvas.isNil:
+    return
+  let key = cast[uint](canvas)
+  canvasCallbacks[key] = cb
+  echo "[kryon][runtime] Registered canvas onDraw handler for component ", key
+
+proc executeCanvasDrawing*(canvas: KryonComponent) =
+  ## Execute the canvas drawing callback and render to the canvas component
+  let key = cast[uint](canvas)
+  if canvasCallbacks.hasKey(key):
+    let cb = canvasCallbacks[key]
+    if not cb.isNil:
+      # Initialize canvas for this drawing session
+      kryonCanvasInit(800, 600)  # TODO: Get actual canvas dimensions
+
+      # Execute the user's drawing code
+      cb()
+
+      # Get the canvas command buffer with all drawing commands
+      let cmdBuf = kryonCanvasGetCommandBuffer()
+      if not cmdBuf.isNil:
+        # The canvas commands need to be rendered to the component
+        # For now, the commands will be executed during the next render pass
+        echo "[kryon][canvas] Canvas drawing executed, commands ready"
+
+proc executeAllCanvasCallbacks*(root: KryonComponent) =
+  ## Walk the component tree and execute all canvas drawing callbacks
+  if root.isNil:
+    return
+
+  # Check if this component is a canvas with a callback
+  executeCanvasDrawing(root)
+
+  # Recursively process children
+  let childCount = int(kryon_component_get_child_count(root))
+  for i in 0..<childCount:
+    let child = kryon_component_get_child(root, uint8(i))
+    if not child.isNil:
+      executeAllCanvasCallbacks(child)
+
 proc newKryonCanvas*(): KryonComponent =
   ## Create a new canvas component
-  result = newKryonContainer()  # For now, use container as base
+  result = newKryonContainer()
+  # Set canvas-specific ops for rendering
+  kryon_component_set_canvas_ops(result)
 
 proc newKryonSpacer*(): KryonComponent =
   ## Create a new spacer component

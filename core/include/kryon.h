@@ -31,7 +31,7 @@ extern "C" {
 // Command buffer size - DEFAULT TO LARGE for desktop builds
 // Only override to small if explicitly building for MCU
 #ifndef KRYON_CMD_BUF_SIZE
-#define KRYON_CMD_BUF_SIZE      32768   // Default: 32KB buffer for desktop
+#define KRYON_CMD_BUF_SIZE      131072   // Default: 128KB buffer for desktop
 #endif
 
 // Memory constraint configuration
@@ -486,6 +486,7 @@ typedef struct {
 } kryon_canvas_state_t;
 
 extern const kryon_component_ops_t kryon_canvas_ops;
+void kryon_component_set_canvas_ops(kryon_component_t* component);
 
 // Input component
 typedef struct {

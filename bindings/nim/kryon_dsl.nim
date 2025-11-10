@@ -1053,13 +1053,55 @@ macro Canvas*(props: untyped): untyped =
   ## Canvas component macro
   var
     canvasName = genSym(nskLet, "canvas")
+    widthVal: NimNode = newIntLitNode(800)
+    heightVal: NimNode = newIntLitNode(600)
+    bgColorVal: NimNode = newStrLitNode("#000000")
+    onDrawVal: NimNode = newNilLit()
+    hasOnDraw = false
 
-  discard props
+  # Extract properties from props
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let identName = node[0]
+      let value = node[1]
 
-  result = quote do:
-    block:
-      let `canvasName` = newKryonCanvas()
-      `canvasName`
+      case $identName
+      of "width":
+        widthVal = value
+      of "height":
+        heightVal = value
+      of "backgroundColor":
+        bgColorVal = value
+      of "onDraw":
+        onDrawVal = value
+        hasOnDraw = true
+      else:
+        discard
+
+  if hasOnDraw:
+    result = quote do:
+      block:
+        let `canvasName` = newKryonCanvas()
+        # Set bounds using the bounds API
+        kryon_component_set_bounds(`canvasName`,
+          kryon_fp_from_float(0),
+          kryon_fp_from_float(0),
+          kryon_fp_from_float(float32(`widthVal`)),
+          kryon_fp_from_float(float32(`heightVal`)))
+        `canvasName`.setBackgroundColor(runtime.parseColor(`bgColorVal`))
+        registerCanvasHandler(`canvasName`, `onDrawVal`)
+        `canvasName`
+  else:
+    result = quote do:
+      block:
+        let `canvasName` = newKryonCanvas()
+        kryon_component_set_bounds(`canvasName`,
+          kryon_fp_from_float(0),
+          kryon_fp_from_float(0),
+          kryon_fp_from_float(float32(`widthVal`)),
+          kryon_fp_from_float(float32(`heightVal`)))
+        `canvasName`.setBackgroundColor(runtime.parseColor(`bgColorVal`))
+        `canvasName`
 
 macro Spacer*(props: untyped): untyped =
   ## Spacer component macro

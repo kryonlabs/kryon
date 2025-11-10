@@ -107,3 +107,9 @@ proc kryonCanvasPrintf*(text: cstring, x, y, wrapLimit: KryonFp, align: int32) {
 proc kryonCanvasGetTextWidth*(text: cstring): KryonFp {.importc: "kryon_canvas_get_text_width", header: "core/include/kryon_canvas.h".}
 proc kryonCanvasGetTextHeight*(): KryonFp {.importc: "kryon_canvas_get_text_height", header: "core/include/kryon_canvas.h".}
 proc kryonCanvasGetFontSize*(): KryonFp {.importc: "kryon_canvas_get_font_size", header: "core/include/kryon_canvas.h".}
+
+# ============================================================================
+# Canvas Command Buffer Access
+# ============================================================================
+
+proc kryonCanvasGetCommandBuffer*(): KryonCmdBuf {.importc: "kryon_canvas_get_command_buffer", header: "core/include/kryon_canvas.h".}

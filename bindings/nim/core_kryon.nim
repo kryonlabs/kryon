@@ -124,7 +124,7 @@ type
 
 ## C API Functions - Component Lifecycle
 {.passC: "-I../../core/include".}
-{.passC: "-DKRYON_CMD_BUF_SIZE=32768".}  ## Force large buffer size for desktop
+{.passC: "-DKRYON_CMD_BUF_SIZE=131072".}  ## Force 128KB buffer size for desktop
 {.emit: "#include <kryon.h>".}
 
 {.push importc, cdecl, header: "kryon.h", nodecl.}
@@ -238,6 +238,9 @@ when defined(KRYON_TERMINAL):
   proc kryon_terminal_renderer_create*(): KryonRenderer
   proc kryon_terminal_renderer_destroy*(renderer: KryonRenderer)
   {.pop.}
+
+# Canvas ops helper
+proc kryon_component_set_canvas_ops*(component: KryonComponent) {.importc: "kryon_component_set_canvas_ops", header: "core/include/kryon.h".}
 
 # End of C API imports
 

@@ -85,7 +85,8 @@ CORE_SOURCES = \
     renderer.c \
     util.c \
     style.c \
-    components.c
+    components.c \
+    canvas.c
 
 OBJECTS = $(CORE_SOURCES:%.c=$(BUILD_DIR)/%.o)
 

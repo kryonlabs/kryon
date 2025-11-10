@@ -8,7 +8,7 @@
 // Global Canvas State
 // ============================================================================
 
-static kryon_canvas_state_t* g_canvas = NULL;
+kryon_canvas_draw_state_t* g_canvas = NULL;  // Exposed for external access
 static kryon_cmd_buf_t* g_command_buffer = NULL;
 
 // ============================================================================
@@ -16,19 +16,22 @@ static kryon_cmd_buf_t* g_command_buffer = NULL;
 // ============================================================================
 
 void kryon_canvas_init(uint16_t width, uint16_t height) {
+    (void)width;   // unused for now
+    (void)height;  // unused for now
+
     if (g_canvas != NULL) {
         kryon_canvas_shutdown();
     }
 
 #if KRYON_NO_HEAP
     // For MCU, use static allocation
-    static kryon_canvas_state_t static_canvas;
+    static kryon_canvas_draw_state_t static_canvas;
     static kryon_cmd_buf_t static_cmd_buf;
     g_canvas = &static_canvas;
     g_command_buffer = &static_cmd_buf;
 #else
     // For desktop, use dynamic allocation
-    g_canvas = (kryon_canvas_state_t*)malloc(sizeof(kryon_canvas_state_t));
+    g_canvas = (kryon_canvas_draw_state_t*)malloc(sizeof(kryon_canvas_draw_state_t));
     if (g_canvas == NULL) return;
 
     g_command_buffer = (kryon_cmd_buf_t*)malloc(sizeof(kryon_cmd_buf_t));
@@ -40,12 +43,8 @@ void kryon_canvas_init(uint16_t width, uint16_t height) {
 #endif
 
     // Initialize canvas state
-    memset(g_canvas, 0, sizeof(kryon_canvas_state_t));
+    memset(g_canvas, 0, sizeof(kryon_canvas_draw_state_t));
     memset(g_command_buffer, 0, sizeof(kryon_cmd_buf_t));
-
-    // Initialize transform and clip stacks
-    kryon_transform_stack_init(&g_canvas->transform_stack);
-    kryon_clip_stack_init(&g_canvas->clip_stack, width, height);
 
     // Set default state
     g_canvas->color = KRYON_COLOR_WHITE;
@@ -79,11 +78,12 @@ void kryon_canvas_shutdown(void) {
 }
 
 void kryon_canvas_resize(uint16_t width, uint16_t height) {
-    if (g_canvas == NULL) return;
-    kryon_clip_stack_init(&g_canvas->clip_stack, width, height);
+    (void)width;   // unused for now
+    (void)height;  // unused for now
+    // TODO: Implement clip stack when available
 }
 
-kryon_canvas_state_t* kryon_canvas_get_state(void) {
+kryon_canvas_draw_state_t* kryon_canvas_get_state(void) {
     return g_canvas;
 }
 
@@ -96,12 +96,9 @@ void kryon_canvas_clear_color(uint32_t color) {
     if (g_canvas == NULL || g_command_buffer == NULL) return;
 
     // Clear the entire canvas with the specified color
-    // For now, we'll draw a rectangle covering the entire canvas area
-    int16_t clip_x, clip_y;
-    uint16_t clip_w, clip_h;
-    kryon_clip_stack_get(&g_canvas->clip_stack, &clip_x, &clip_y, &clip_w, &clip_h);
-
-    kryon_draw_rect(g_command_buffer, clip_x, clip_y, clip_w, clip_h, color);
+    // TODO: Use actual canvas dimensions when available
+    // For now, draw a large rectangle
+    kryon_draw_rect(g_command_buffer, 0, 0, 800, 600, color);
 }
 
 // ============================================================================
@@ -186,59 +183,57 @@ kryon_blend_mode_t kryon_canvas_get_blend_mode(void) {
 // ============================================================================
 // Transform System (Love2D Style)
 // ============================================================================
+// TODO: Implement transform stack system
 
 void kryon_canvas_origin(void) {
     if (g_canvas == NULL) return;
-    kryon_transform_stack_init(&g_canvas->transform_stack);
-    g_canvas->dirty.transform = true;
+    // TODO: Reset transform stack
 }
 
 void kryon_canvas_translate(kryon_fp_t x, kryon_fp_t y) {
+    (void)x; (void)y;
     if (g_canvas == NULL) return;
-    kryon_transform_stack_translate(&g_canvas->transform_stack, x, y);
-    g_canvas->dirty.transform = true;
+    // TODO: Implement translate
 }
 
 void kryon_canvas_rotate(kryon_fp_t angle) {
+    (void)angle;
     if (g_canvas == NULL) return;
-    kryon_transform_stack_rotate(&g_canvas->transform_stack, angle);
-    g_canvas->dirty.transform = true;
+    // TODO: Implement rotate
 }
 
 void kryon_canvas_scale(kryon_fp_t sx, kryon_fp_t sy) {
+    (void)sx; (void)sy;
     if (g_canvas == NULL) return;
-    kryon_transform_stack_scale(&g_canvas->transform_stack, sx, sy);
-    g_canvas->dirty.transform = true;
+    // TODO: Implement scale
 }
 
 void kryon_canvas_shear(kryon_fp_t kx, kryon_fp_t ky) {
+    (void)kx; (void)ky;
     if (g_canvas == NULL) return;
-
-    // Shear matrix: [1, kx, ky, 1, 0, 0]
-    kryon_fp_t shear_matrix[6] = {
-        KRYON_FP_FROM_INT(1), kx,
-        ky, KRYON_FP_FROM_INT(1),
-        KRYON_FP_FROM_INT(0), KRYON_FP_FROM_INT(0)
-    };
-
-    kryon_transform_stack_multiply(&g_canvas->transform_stack, shear_matrix);
-    g_canvas->dirty.transform = true;
+    // TODO: Implement shear
 }
 
 void kryon_canvas_push(void) {
     if (g_canvas == NULL) return;
-    kryon_transform_stack_push(&g_canvas->transform_stack);
+    // TODO: Push transform stack
 }
 
 void kryon_canvas_pop(void) {
     if (g_canvas == NULL) return;
-    kryon_transform_stack_pop(&g_canvas->transform_stack);
-    g_canvas->dirty.transform = true;
+    // TODO: Pop transform stack
 }
 
 void kryon_canvas_get_transform(kryon_fp_t matrix[6]) {
     if (g_canvas == NULL || matrix == NULL) return;
-    kryon_transform_stack_get(&g_canvas->transform_stack, matrix);
+    // TODO: Get current transform
+    // Return identity matrix for now
+    matrix[0] = KRYON_FP_FROM_INT(1);
+    matrix[1] = KRYON_FP_FROM_INT(0);
+    matrix[2] = KRYON_FP_FROM_INT(0);
+    matrix[3] = KRYON_FP_FROM_INT(1);
+    matrix[4] = KRYON_FP_FROM_INT(0);
+    matrix[5] = KRYON_FP_FROM_INT(0);
 }
 
 // ============================================================================
@@ -307,7 +302,7 @@ uint16_t kryon_canvas_tessellate_ellipse(kryon_fp_t rx, kryon_fp_t ry, kryon_fp_
     if (rx <= 0 || ry <= 0 || vertices == NULL) return 0;
 
     // Calculate number of segments based on average radius
-    kryon_fp_t avg_radius = KRYON_FP_DIV(KRYON_FP_ADD(rx, ry), KRYON_FP_FROM_INT(2));
+    kryon_fp_t avg_radius = KRYON_FP_DIV((rx + ry), KRYON_FP_FROM_INT(2));
     uint16_t segments = KRYON_DEFAULT_CIRCLE_SEGMENTS;
     if (avg_radius < KRYON_FP_FROM_INT(10)) {
         segments = 16;
@@ -364,55 +359,13 @@ uint16_t kryon_canvas_tessellate_ellipse(kryon_fp_t rx, kryon_fp_t ry, kryon_fp_
 void kryon_canvas_triangle_fan(const kryon_fp_t* vertices, uint16_t vertex_count, kryon_cmd_buf_t* buf) {
     if (vertices == NULL || vertex_count < 3 || buf == NULL) return;
 
-    // Transform vertices through current transform stack
-    kryon_fp_t* transformed_vertices;
-#if KRYON_NO_HEAP
-    static kryon_fp_t static_transformed[256]; // Maximum 128 vertices
-    if (vertex_count * 2 > 256) return;
-    transformed_vertices = static_transformed;
-#else
-    transformed_vertices = (kryon_fp_t*)malloc(vertex_count * 2 * sizeof(kryon_fp_t));
-    if (transformed_vertices == NULL) return;
-#endif
+    // NOTE: Triangle fan rendering for filled shapes is not yet implemented
+    // The renderer doesn't support filled triangles/polygons natively
+    // For now, we approximate filled circles with line loops (outline only)
+    // TODO: Add proper filled polygon rendering to the renderer
 
-    // Apply transforms
-    for (uint16_t i = 0; i < vertex_count; i++) {
-        kryon_fp_t x = vertices[i * 2];
-        kryon_fp_t y = vertices[i * 2 + 1];
-        kryon_transform_stack_transform_point(&g_canvas->transform_stack, &x, &y);
-        transformed_vertices[i * 2] = x;
-        transformed_vertices[i * 2 + 1] = y;
-    }
-
-    // Create triangle fan from vertices (center + pairs of vertices)
-    uint32_t color = g_canvas->color;
-
-    // First vertex is the center
-    kryon_fp_t center_x = transformed_vertices[0];
-    kryon_fp_t center_y = transformed_vertices[1];
-
-    // Draw triangles from center to each edge
-    for (uint16_t i = 1; i < vertex_count - 1; i++) {
-        kryon_fp_t x1 = transformed_vertices[i * 2];
-        kryon_fp_t y1 = transformed_vertices[i * 2 + 1];
-        kryon_fp_t x2 = transformed_vertices[(i + 1) * 2];
-        kryon_fp_t y2 = transformed_vertices[(i + 1) * 2 + 1];
-
-        // Draw triangle as three lines for now (would need triangle fill command)
-        kryon_draw_line(buf,
-                       KRYON_FP_TO_INT(center_x), KRYON_FP_TO_INT(center_y),
-                       KRYON_FP_TO_INT(x1), KRYON_FP_TO_INT(y1), color);
-        kryon_draw_line(buf,
-                       KRYON_FP_TO_INT(x1), KRYON_FP_TO_INT(y1),
-                       KRYON_FP_TO_INT(x2), KRYON_FP_TO_INT(y2), color);
-        kryon_draw_line(buf,
-                       KRYON_FP_TO_INT(x2), KRYON_FP_TO_INT(y2),
-                       KRYON_FP_TO_INT(center_x), KRYON_FP_TO_INT(center_y), color);
-    }
-
-#if !KRYON_NO_HEAP
-    free(transformed_vertices);
-#endif
+    // Just draw the outline as a line loop for now
+    kryon_canvas_line_loop(vertices, vertex_count, buf);
 }
 
 void kryon_canvas_line_loop(const kryon_fp_t* vertices, uint16_t vertex_count, kryon_cmd_buf_t* buf) {
@@ -421,17 +374,13 @@ void kryon_canvas_line_loop(const kryon_fp_t* vertices, uint16_t vertex_count, k
     uint32_t color = g_canvas->color;
     kryon_fp_t line_width = g_canvas->line_width;
 
-    // Transform and draw line segments
+    // Draw line segments (transforms not yet implemented)
     for (uint16_t i = 0; i < vertex_count; i++) {
         kryon_fp_t x1 = vertices[i * 2];
         kryon_fp_t y1 = vertices[i * 2 + 1];
 
-        kryon_transform_stack_transform_point(&g_canvas->transform_stack, &x1, &y1);
-
         kryon_fp_t x2 = vertices[((i + 1) % vertex_count) * 2];
         kryon_fp_t y2 = vertices[((i + 1) % vertex_count) * 2 + 1];
-
-        kryon_transform_stack_transform_point(&g_canvas->transform_stack, &x2, &y2);
 
         // Draw line (multiple times for thickness if needed)
         int32_t width_int = KRYON_FP_TO_INT(line_width);
@@ -467,24 +416,19 @@ void kryon_canvas_rectangle(kryon_draw_mode_t mode, kryon_fp_t x, kryon_fp_t y, 
         kryon_fp_t transformed_x, transformed_y;
         kryon_fp_t transformed_w, transformed_h;
 
-        // Transform top-left corner
+        // Use coordinates directly (transforms not yet implemented)
         transformed_x = x;
         transformed_y = y;
-        kryon_transform_stack_transform_point(&g_canvas->transform_stack, &transformed_x, &transformed_y);
+        transformed_w = width;
+        transformed_h = height;
 
-        // Transform bottom-right corner to calculate width/height
-        transformed_w = x + width;
-        transformed_h = y + height;
-        kryon_transform_stack_transform_point(&g_canvas->transform_stack, &transformed_w, &transformed_h);
-
-        transformed_w = KRYON_FP_SUB(transformed_w, transformed_x);
-        transformed_h = KRYON_FP_SUB(transformed_h, transformed_y);
+        // Width and height are already set correctly above
 
         kryon_draw_rect(g_command_buffer,
                        KRYON_FP_TO_INT(transformed_x),
                        KRYON_FP_TO_INT(transformed_y),
-                       KRYON_FP_TO_UINT(transformed_w),
-                       KRYON_FP_TO_UINT(transformed_h),
+                       (uint16_t)KRYON_FP_TO_INT(transformed_w),
+                       (uint16_t)KRYON_FP_TO_INT(transformed_h),
                        color);
     } else {
         // Draw outline using line loop
@@ -495,45 +439,42 @@ void kryon_canvas_rectangle(kryon_draw_mode_t mode, kryon_fp_t x, kryon_fp_t y, 
 void kryon_canvas_circle(kryon_draw_mode_t mode, kryon_fp_t x, kryon_fp_t y, kryon_fp_t radius) {
     if (g_canvas == NULL || g_command_buffer == NULL || radius <= 0) return;
 
-    kryon_fp_t* vertices;
-    uint16_t vertex_count = kryon_canvas_tessellate_circle(radius, &vertices);
-    if (vertex_count == 0) return;
+    (void)mode;  // Mode ignored for now - renderer doesn't support filled circles yet
 
-    // Translate circle to center position
-    for (uint16_t i = 0; i < vertex_count; i++) {
-        vertices[i * 2] = KRYON_FP_ADD(vertices[i * 2], x);
-        vertices[i * 2 + 1] = KRYON_FP_ADD(vertices[i * 2 + 1], y);
-    }
-
-    if (mode == KRYON_DRAW_FILL) {
-        kryon_canvas_triangle_fan(vertices, vertex_count, g_command_buffer);
-    } else {
-        kryon_canvas_line_loop(vertices, vertex_count, g_command_buffer);
-    }
-
-#if !KRYON_NO_HEAP
-    free(vertices);
-#endif
+    // Use the arc command to draw a full circle (0-360 degrees)
+    // This is much more efficient than tessellating into 32+ line segments
+    kryon_draw_arc(g_command_buffer,
+                  KRYON_FP_TO_INT(x),
+                  KRYON_FP_TO_INT(y),
+                  (uint16_t)KRYON_FP_TO_INT(radius),
+                  0,    // start angle (0 degrees)
+                  360,  // end angle (360 degrees = full circle)
+                  g_canvas->color);
 }
 
 void kryon_canvas_ellipse(kryon_draw_mode_t mode, kryon_fp_t x, kryon_fp_t y, kryon_fp_t rx, kryon_fp_t ry) {
     if (g_canvas == NULL || g_command_buffer == NULL || rx <= 0 || ry <= 0) return;
 
+    // If it's a circle (rx == ry), use the optimized circle command
+    if (rx == ry) {
+        kryon_canvas_circle(mode, x, y, rx);
+        return;
+    }
+
+    // Otherwise, tessellate the ellipse and draw as line loop
+    // NOTE: True filled ellipses are not yet supported by the renderer
     kryon_fp_t* vertices;
     uint16_t vertex_count = kryon_canvas_tessellate_ellipse(rx, ry, &vertices);
     if (vertex_count == 0) return;
 
     // Translate ellipse to center position
     for (uint16_t i = 0; i < vertex_count; i++) {
-        vertices[i * 2] = KRYON_FP_ADD(vertices[i * 2], x);
-        vertices[i * 2 + 1] = KRYON_FP_ADD(vertices[i * 2 + 1], y);
+        vertices[i * 2] = vertices[i * 2] + x;
+        vertices[i * 2 + 1] = vertices[i * 2 + 1] + y;
     }
 
-    if (mode == KRYON_DRAW_FILL) {
-        kryon_canvas_triangle_fan(vertices, vertex_count, g_command_buffer);
-    } else {
-        kryon_canvas_line_loop(vertices, vertex_count, g_command_buffer);
-    }
+    // Draw as line loop (outline) - same for both fill and line mode for now
+    kryon_canvas_line_loop(vertices, vertex_count, g_command_buffer);
 
 #if !KRYON_NO_HEAP
     free(vertices);
@@ -553,9 +494,7 @@ void kryon_canvas_polygon(kryon_draw_mode_t mode, const kryon_fp_t* vertices, ui
 void kryon_canvas_line(kryon_fp_t x1, kryon_fp_t y1, kryon_fp_t x2, kryon_fp_t y2) {
     if (g_canvas == NULL || g_command_buffer == NULL) return;
 
-    // Transform line endpoints
-    kryon_transform_stack_transform_point(&g_canvas->transform_stack, &x1, &y1);
-    kryon_transform_stack_transform_point(&g_canvas->transform_stack, &x2, &y2);
+    // Use coordinates directly (transforms not yet implemented)
 
     uint32_t color = g_canvas->color;
     kryon_fp_t line_width = g_canvas->line_width;
@@ -588,8 +527,7 @@ void kryon_canvas_line_points(const kryon_fp_t* points, uint16_t point_count) {
 void kryon_canvas_point(kryon_fp_t x, kryon_fp_t y) {
     if (g_canvas == NULL || g_command_buffer == NULL) return;
 
-    // Transform point
-    kryon_transform_stack_transform_point(&g_canvas->transform_stack, &x, &y);
+    // Use coordinates directly (transforms not yet implemented)
 
     uint32_t color = g_canvas->color;
 
@@ -621,15 +559,14 @@ void kryon_canvas_arc(kryon_draw_mode_t mode, kryon_fp_t cx, kryon_fp_t cy, kryo
     end_deg = kryon_fp_from_float(kryon_fp_to_float(end_angle) * 180.0f / KRYON_PI);
 #endif
 
-    // Use core arc command for now
+    // Use coordinates directly (transforms not yet implemented)
     kryon_fp_t transformed_cx = cx;
     kryon_fp_t transformed_cy = cy;
-    kryon_transform_stack_transform_point(&g_canvas->transform_stack, &transformed_cx, &transformed_cy);
 
     kryon_draw_arc(g_command_buffer,
                   KRYON_FP_TO_INT(transformed_cx),
                   KRYON_FP_TO_INT(transformed_cy),
-                  KRYON_FP_TO_UINT(radius),
+                  (uint16_t)KRYON_FP_TO_INT(radius),
                   KRYON_FP_TO_INT(start_deg),
                   KRYON_FP_TO_INT(end_deg),
                   g_canvas->color);
@@ -642,8 +579,7 @@ void kryon_canvas_arc(kryon_draw_mode_t mode, kryon_fp_t cx, kryon_fp_t cy, kryo
 void kryon_canvas_print(const char* text, kryon_fp_t x, kryon_fp_t y) {
     if (g_canvas == NULL || g_command_buffer == NULL || text == NULL) return;
 
-    // Transform position
-    kryon_transform_stack_transform_point(&g_canvas->transform_stack, &x, &y);
+    // Use coordinates directly (transforms not yet implemented)
 
     kryon_draw_text(g_command_buffer, text,
                    KRYON_FP_TO_INT(x), KRYON_FP_TO_INT(y),
@@ -667,4 +603,12 @@ kryon_fp_t kryon_canvas_get_text_height(void) {
 
 kryon_fp_t kryon_canvas_get_font_size(void) {
     return g_canvas ? g_canvas->font_size : KRYON_FP_FROM_INT(16);
+}
+
+// ============================================================================
+// Canvas Command Buffer Access
+// ============================================================================
+
+kryon_cmd_buf_t* kryon_canvas_get_command_buffer(void) {
+    return g_command_buffer;
 }

@@ -3,9 +3,22 @@
 ## Provides Love2D-inspired immediate mode drawing functions
 ## that map to the enhanced C canvas implementation
 
+import std/math
 import core_kryon, core_kryon_canvas, runtime
 
-export core_kryon
+export core_kryon, math
+
+# ============================================================================
+# Fixed-Point Conversion Helpers
+# ============================================================================
+
+proc floatToFp*(f: float): KryonFp {.inline.} =
+  ## Convert float to fixed-point
+  kryon_fp_from_float(float32(f))
+
+proc fpToFloat*(fp: KryonFp): float {.inline.} =
+  ## Convert fixed-point to float
+  float(kryon_fp_to_float(fp))
 
 # ============================================================================
 # Types and Enums (matching C definitions)
@@ -41,8 +54,6 @@ type
 # ============================================================================
 
 const
-  PI* = 3.141592653589793
-
   # Predefined colors (matching C definitions)
   COLOR_RED*     = 0xFF0000FF'u32
   COLOR_GREEN*   = 0x00FF00FF'u32
@@ -82,7 +93,7 @@ proc clearCanvas*(color: uint32) =
 
 proc clearCanvas*(r, g, b, a: int) =
   ## Clear the canvas with specific RGBA color
-  kryonCanvasClearColor(rgb(r, g, b, a))
+  kryonCanvasClearColor(rgba(r, g, b, a))
 
 # ============================================================================
 # Drawing State Management (Love2D Style)
@@ -170,7 +181,7 @@ proc rotate*(angle: float) =
 
 proc rotateRad*(angle: float) =
   ## Rotate the coordinate system (angle in radians)
-  kryonCanvasRotate(floatToFp(angle * 180.0 / PI))
+  kryonCanvasRotate(floatToFp(angle * 180.0 / math.PI))
 
 proc scale*(sx, sy: float) =
   ## Scale the coordinate system
@@ -233,7 +244,7 @@ proc polygon*(mode: DrawMode, vertices: openArray[Point]) =
   if vertices.len == 0: return
 
   # Convert vertices to fixed-point array
-  var fpVertices = newSeq[kryon_fp_t](vertices.len * 2)
+  var fpVertices = newSeq[KryonFp](vertices.len * 2)
   for i, vertex in vertices:
     fpVertices[i * 2] = floatToFp(vertex.x)
     fpVertices[i * 2 + 1] = floatToFp(vertex.y)
@@ -256,7 +267,7 @@ proc line*(points: openArray[Point]) =
   if points.len < 2: return
 
   # Convert vertices to fixed-point array
-  var fpVertices = newSeq[kryon_fp_t](points.len * 2)
+  var fpVertices = newSeq[KryonFp](points.len * 2)
   for i, point in points:
     fpVertices[i * 2] = floatToFp(point.x)
     fpVertices[i * 2 + 1] = floatToFp(point.y)
@@ -276,7 +287,7 @@ proc points*(points: openArray[Point]) =
   if points.len == 0: return
 
   # Convert vertices to fixed-point array
-  var fpVertices = newSeq[kryon_fp_t](points.len * 2)
+  var fpVertices = newSeq[KryonFp](points.len * 2)
   for i, point in points:
     fpVertices[i * 2] = floatToFp(point.x)
     fpVertices[i * 2 + 1] = floatToFp(point.y)
@@ -409,35 +420,35 @@ proc ellipseMode*() =
 
 proc color*(r, g, b, a: int): uint32 =
   ## Create color from RGBA values
-  rgb(r, g, b, a)
+  rgba(r, g, b, a)
 
 proc color*(r, g, b: int): uint32 =
   ## Create color from RGB values
-  rgb(r, g, b, 255)
+  rgb(r, g, b)
 
 proc color*(gray: int): uint32 =
   ## Create grayscale color
-  rgb(gray, gray, gray, 255)
+  rgb(gray, gray, gray)
 
 proc color*(gray, alpha: int): uint32 =
   ## Create grayscale color with alpha
-  rgb(gray, gray, gray, alpha)
+  rgba(gray, gray, gray, alpha)
 
 proc red*(color: uint32): int =
   ## Get red component from color
-  int(colorRed(color))
+  int((color shr 24) and 0xFF)
 
 proc green*(color: uint32): int =
   ## Get green component from color
-  int(colorGreen(color))
+  int((color shr 16) and 0xFF)
 
 proc blue*(color: uint32): int =
   ## Get blue component from color
-  int(colorBlue(color))
+  int((color shr 8) and 0xFF)
 
 proc alpha*(color: uint32): int =
   ## Get alpha component from color
-  int(colorAlpha(color))
+  int(color and 0xFF)
 
 # ============================================================================
 # Math Utilities
@@ -445,11 +456,11 @@ proc alpha*(color: uint32): int =
 
 proc radians*(degrees: float): float =
   ## Convert degrees to radians
-  degrees * PI / 180.0
+  degrees * math.PI / 180.0
 
 proc degrees*(radians: float): float =
   ## Convert radians to degrees
-  radians * 180.0 / PI
+  radians * 180.0 / math.PI
 
 proc random*(low, high: float): float =
   ## Generate random float between low and high
@@ -510,14 +521,14 @@ proc drawStar*(x, y, size: float, points: int = 5) =
 
     # Outer point
     vertices[i * 2] = (
-      cos(radians(angle1)) * 25.0,
-      sin(radians(angle1)) * 25.0
+      math.cos(radians(angle1)) * 25.0,
+      math.sin(radians(angle1)) * 25.0
     )
 
     # Inner point
     vertices[i * 2 + 1] = (
-      cos(radians(angle2)) * 10.0,
-      sin(radians(angle2)) * 10.0
+      math.cos(radians(angle2)) * 10.0,
+      math.sin(radians(angle2)) * 10.0
     )
 
   polygon(Fill, vertices)

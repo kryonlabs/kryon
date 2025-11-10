@@ -1,7 +1,7 @@
 #ifndef KRYON_CANVAS_H
 #define KRYON_CANVAS_H
 
-#include "include/kryon.h"
+#include "kryon.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,7 +41,8 @@ typedef enum {
     KRYON_BLEND_REPLACE = 5       // Replace (no blending)
 } kryon_blend_mode_t;
 
-// Extended canvas state
+// Canvas drawing state (Love2D style global state)
+// NOTE: This is separate from kryon_canvas_state_t which is the component state
 typedef struct {
     // Drawing colors
     uint32_t color;               // Current drawing color (RGBA)
@@ -59,23 +60,17 @@ typedef struct {
     // Blend mode
     kryon_blend_mode_t blend_mode;    // Current blend mode
 
-    // Transform state (inherited from core)
-    kryon_transform_stack_t transform_stack;
-    kryon_clip_stack_t clip_stack;
-
     // State flags for dirty tracking
     struct {
         bool color : 1;
         bool line_width : 1;
         bool font : 1;
         bool blend_mode : 1;
-        bool transform : 1;
-        bool clip : 1;
     } dirty;
-} kryon_canvas_state_t;
+} kryon_canvas_draw_state_t;
 
 // Global canvas instance (Love2D style)
-extern kryon_canvas_state_t* g_canvas;
+extern kryon_canvas_draw_state_t* g_canvas;
 
 // ============================================================================
 // Canvas Lifecycle and State Management
@@ -90,8 +85,8 @@ void kryon_canvas_shutdown(void);
 // Resize canvas
 void kryon_canvas_resize(uint16_t width, uint16_t height);
 
-// Get current canvas state
-kryon_canvas_state_t* kryon_canvas_get_state(void);
+// Get current canvas drawing state
+kryon_canvas_draw_state_t* kryon_canvas_get_state(void);
 
 // Clear canvas with background color
 void kryon_canvas_clear(void);
@@ -243,6 +238,13 @@ bool kryon_canvas_triangulate_polygon(const kryon_fp_t* vertices, uint16_t verte
 // Helper macros for drawing modes
 #define KRYON_FILL  KRYON_DRAW_FILL
 #define KRYON_LINE  KRYON_DRAW_LINE
+
+// ============================================================================
+// Canvas Command Buffer Access
+// ============================================================================
+
+// Get the canvas command buffer for rendering
+kryon_cmd_buf_t* kryon_canvas_get_command_buffer(void);
 
 #ifdef __cplusplus
 }

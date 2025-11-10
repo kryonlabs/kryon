@@ -1,4 +1,5 @@
 #include "include/kryon.h"
+#include "include/kryon_canvas.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -962,3 +963,50 @@ const kryon_component_ops_t kryon_button_ops = {
     .destroy = NULL,
     .layout = button_layout
 };
+
+// ============================================================================
+// Canvas Component
+// ============================================================================
+
+static void canvas_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
+    if (self == NULL || buf == NULL || !self->visible) {
+        return;
+    }
+
+    // First render the container background
+    container_render(self, buf);
+
+    // Get the canvas command buffer from the global canvas state
+    kryon_cmd_buf_t* canvas_buf = kryon_canvas_get_command_buffer();
+    if (canvas_buf == NULL) {
+        return;
+    }
+
+    // Copy all canvas commands to the renderer's buffer
+    kryon_cmd_iterator_t iter = kryon_cmd_iter_create(canvas_buf);
+    kryon_command_t cmd;
+
+    while (kryon_cmd_iter_has_next(&iter)) {
+        if (kryon_cmd_iter_next(&iter, &cmd)) {
+            // Push the command to the renderer's buffer
+            kryon_cmd_buf_push(buf, &cmd);
+        }
+    }
+
+    // Clear the canvas buffer for next frame
+    kryon_cmd_buf_clear(canvas_buf);
+}
+
+const kryon_component_ops_t kryon_canvas_ops = {
+    .render = canvas_render,
+    .on_event = NULL,
+    .destroy = NULL,
+    .layout = container_layout  // Use container layout
+};
+
+// Helper function to set canvas ops (for Nim bindings)
+void kryon_component_set_canvas_ops(kryon_component_t* component) {
+    if (component != NULL) {
+        component->ops = &kryon_canvas_ops;
+    }
+}
