@@ -4,6 +4,8 @@
 ## that map to the enhanced C canvas implementation
 
 import std/math
+import std/os
+import std/strutils
 import core_kryon, core_kryon_canvas, runtime
 
 export core_kryon, math
@@ -14,7 +16,7 @@ export core_kryon, math
 
 proc floatToFp*(f: float): KryonFp {.inline.} =
   ## Convert float to fixed-point
-  kryon_fp_from_float(float32(f))
+  kryon_fp_from_float(cfloat(f))
 
 proc fpToFloat*(fp: KryonFp): float {.inline.} =
   ## Convert fixed-point to float
@@ -243,16 +245,30 @@ proc polygon*(mode: DrawMode, vertices: openArray[Point]) =
   ## Draw a polygon (filled or outline)
   if vertices.len == 0: return
 
+  # Allocate raw memory for vertices to avoid Nim seq overhead
+  let numFloats = vertices.len * 2
+  var fpVertices = cast[ptr UncheckedArray[KryonFp]](alloc0(numFloats * sizeof(KryonFp)))
+
   # Convert vertices to fixed-point array
-  var fpVertices = newSeq[KryonFp](vertices.len * 2)
   for i, vertex in vertices:
     fpVertices[i * 2] = floatToFp(vertex.x)
     fpVertices[i * 2 + 1] = floatToFp(vertex.y)
 
+  # Debug: print vertices before calling C
+  if existsEnv("KRYON_TRACE_POLYGON"):
+    echo "[nim][polygon] Before calling C:"
+    echo "[nim][polygon] fpVertices ptr=0x", cast[uint](cast[pointer](fpVertices)).toHex(8), " len=", vertices.len
+    echo "[nim][polygon] sizeof(KryonFp)=", sizeof(KryonFp)
+    for i in 0..<vertices.len:
+      echo "[nim][polygon]   vertex[", i, "]: input=(", vertices[i].x, ",", vertices[i].y, ") fp=(", fpVertices[i*2], ",", fpVertices[i*2+1], ")"
+
   kryonCanvasPolygon(
     cast[ kryon_draw_mode_t ](ord(mode)),
-    fpVertices[0].addr, uint16(vertices.len)
+    cast[ptr KryonFp](fpVertices), uint16(vertices.len)
   )
+
+  # Deallocate memory AFTER C function call
+  dealloc(fpVertices)
 
 proc line*(x1, y1, x2, y2: float) =
   ## Draw a line between two points

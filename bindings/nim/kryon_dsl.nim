@@ -386,11 +386,14 @@ macro Container*(props: untyped): untyped =
         flexGrowVal = value
       of "flexshrink":
         flexShrinkVal = value
-      of "contentalignment":
+      of "contentalignment":  # Content alignment (sets both justifyContent and alignItems)
         if value.kind == nnkStrLit:
-          let alignStr = value.strVal
-          justifyNode = alignmentNode(alignStr)
-          alignNode = alignmentNode(alignStr)
+          justifyNode = alignmentNode(value.strVal)
+          alignNode = alignmentNode(value.strVal)
+        else:
+          # Non-literal value - call runtime parser
+          justifyNode = newCall(ident("parseAlignmentString"), value)
+          alignNode = newCall(ident("parseAlignmentString"), value)
       of "justifycontent":
         if value.kind == nnkStrLit:
           justifyNode = alignmentNode(value.strVal)
@@ -601,24 +604,31 @@ macro Container*(props: untyped): untyped =
         initStmts.add(staticBlock)
 
         # Generate unrolled code with independent AST copies for each iteration
-        # Use copyNimTree to prevent AST node reuse across iterations
+        # KEY INSIGHT: The issue is that we need to create fresh symbols for each iteration
+        # Let's use a block for each iteration to ensure proper scoping and symbol isolation
 
         for i in 0 ..< 20:  # Support up to 20 items
           let iLit = newLit(i)
           let itemAccess = nnkBracketExpr.newTree(collection, iLit)
           let expandedBody = replaceInAst(body, loopVar, itemAccess)
-          # CRITICAL: Create independent copy to prevent AST reuse
-          let expandedBodyCopy = copyNimTree(expandedBody)
-          let childSym = genSym(nskLet, "staticChild")
 
-          # Use when to guard against out-of-bounds access
+          # CRITICAL FIX: Create components that properly integrate with layout system
+          # Don't use absolute coordinates - let the parent layout handle positioning
+          let resultSym = genSym(nskLet, "result")
+
           initStmts.add(quote do:
             when `iLit` < `collection`.len:
               block:
-                let `childSym` = `expandedBodyCopy`
-                if `childSym` != nil:
-                  kryon_component_mark_dirty(`childSym`)
-                  discard kryon_component_add_child(`containerName`, `childSym`)
+                # Create component that will be positioned by parent layout
+                let `resultSym` = `expandedBody`
+                if `resultSym` != nil:
+                  # Add to parent first so it's in the child list
+                  discard kryon_component_add_child(`containerName`, `resultSym`)
+                  # Force immediate layout calculation to position this child
+                  kryon_component_mark_dirty(`containerName`)
+                  # Trigger immediate layout pass to prevent overlapping
+                  kryon_layout_component(`containerName`, 0, 0)
+                  echo "[kryon][static] Created and positioned component for iteration ", `iLit`
           )
       else:
         # Static block doesn't contain a for loop - just execute it
@@ -1082,25 +1092,31 @@ macro Canvas*(props: untyped): untyped =
     result = quote do:
       block:
         let `canvasName` = newKryonCanvas()
+        # Set canvas size
+        kryon_canvas_set_size(`canvasName`, uint16(`widthVal`), uint16(`heightVal`))
+        # Set canvas background color
+        kryon_canvas_component_set_background_color(`canvasName`, runtime.parseColor(`bgColorVal`))
         # Set bounds using the bounds API
         kryon_component_set_bounds(`canvasName`,
           kryon_fp_from_float(0),
           kryon_fp_from_float(0),
           kryon_fp_from_float(float32(`widthVal`)),
           kryon_fp_from_float(float32(`heightVal`)))
-        `canvasName`.setBackgroundColor(runtime.parseColor(`bgColorVal`))
         registerCanvasHandler(`canvasName`, `onDrawVal`)
         `canvasName`
   else:
     result = quote do:
       block:
         let `canvasName` = newKryonCanvas()
+        # Set canvas size
+        kryon_canvas_set_size(`canvasName`, uint16(`widthVal`), uint16(`heightVal`))
+        # Set canvas background color
+        kryon_canvas_component_set_background_color(`canvasName`, runtime.parseColor(`bgColorVal`))
         kryon_component_set_bounds(`canvasName`,
           kryon_fp_from_float(0),
           kryon_fp_from_float(0),
           kryon_fp_from_float(float32(`widthVal`)),
           kryon_fp_from_float(float32(`heightVal`)))
-        `canvasName`.setBackgroundColor(runtime.parseColor(`bgColorVal`))
         `canvasName`
 
 macro Spacer*(props: untyped): untyped =
@@ -1323,10 +1339,20 @@ macro staticFor*(loopStmt, bodyStmt: untyped): untyped =
     # Replace the loop variable with the item access in a copy of the body
     let expandedBody = replaceIdent(bodyStmt, loopVar, itemAccess)
 
-    # Add a when branch for this index
+    # CRITICAL FIX: Apply the same symbol isolation as the static: for construct
+    # Use unique symbols and block wrapping to prevent AST reuse
+    let resultSym = genSym(nskLet, "staticForResult")
+    let iterationBlock = ident("iteration")
+
     result.add quote do:
       when `iLit` < `lenSym`:
-        `expandedBody`
+        block `iterationBlock`:
+          let `resultSym` = `expandedBody`
+          # Add to parent container if this is a component
+          when compiles(`resultSym`):
+            when compiles(kryon_component_add_child):
+              when compiles(staticForParent):
+                discard kryon_component_add_child(staticForParent, `resultSym`)
 
 # ============================================================================
 # DSL Implementation Complete

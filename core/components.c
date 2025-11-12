@@ -1,4 +1,5 @@
 #include "include/kryon.h"
+#include "include/kryon_canvas.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,6 +18,24 @@ static void canvas_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
     kryon_canvas_state_t* canvas_state = (kryon_canvas_state_t*)self->state;
     if (canvas_state == NULL) return;
 
+    // Resize the global canvas to match this component's actual dimensions
+    uint16_t canvas_width = (uint16_t)KRYON_FP_TO_INT(self->width);
+    uint16_t canvas_height = (uint16_t)KRYON_FP_TO_INT(self->height);
+    kryon_canvas_resize(canvas_width, canvas_height);
+
+    // CRITICAL: Calculate absolute position for canvas offset
+    // Canvas drawing uses absolute screen coordinates
+    kryon_fp_t abs_x, abs_y;
+    calculate_absolute_position(self, &abs_x, &abs_y);
+    int16_t offset_x = KRYON_FP_TO_INT(abs_x);
+    int16_t offset_y = KRYON_FP_TO_INT(abs_y);
+    kryon_canvas_set_offset(offset_x, offset_y);
+
+    // Set the active command buffer to this component's buffer
+    // This ensures all canvas drawing operations write to the correct buffer
+    kryon_cmd_buf_t* old_buf = kryon_canvas_get_command_buffer();
+    kryon_canvas_set_command_buffer(buf);
+
     // Draw background
     if ((canvas_state->background_color & 0xFF) != 0) {
         kryon_draw_rect(buf,
@@ -31,6 +50,9 @@ static void canvas_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
     if (canvas_state->on_draw != NULL) {
         canvas_state->on_draw(self, buf);
     }
+
+    // Restore the previous command buffer
+    kryon_canvas_set_command_buffer(old_buf);
 }
 
 static void canvas_layout(kryon_component_t* self, kryon_fp_t available_width, kryon_fp_t available_height) {

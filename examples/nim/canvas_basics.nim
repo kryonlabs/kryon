@@ -93,22 +93,6 @@ proc draw() =
   strokeWeight(3)
   arc(Line, 200, 420, 30, 0, PI / 2)
 
-  # === SECTION 5: Transform and Animation ===
-
-  # Save transform state
-  push()
-
-  # Rotating square in center-right
-  translate(500, 300)
-  rotate(rotation)
-
-  # Draw centered rotating square
-  fill(155, 89, 182, 200)  # Semi-transparent purple
-  rect(-40, -40, 80, 80)
-
-  # Restore transform
-  pop()
-
   # === SECTION 6: Pulsing Circle ===
 
   let pulseRadius = 30.0 + sin(pulseTime * 2) * 10.0
@@ -118,7 +102,7 @@ proc draw() =
   # === SECTION 7: Text Rendering ===
 
   fill(255, 255, 255)  # White text
-  print("Kryon Canvas - Love2D Style API", 50, 500)
+  print("Kryon Canvas", 50, 500)
 
   fill(149, 165, 166)  # Gray text
   print("Press ESC to exit", 50, 530)
@@ -128,7 +112,7 @@ proc draw() =
   pulseTime += 0.05
 
 # Application setup
-discard kryonApp:
+let app = kryonApp:
   Header:
     windowWidth = 800
     windowHeight = 600

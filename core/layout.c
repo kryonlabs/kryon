@@ -295,6 +295,9 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
                     kryon_fp_t base_x = KRYON_FP_FROM_INT(container->margin_left) + space_offset;
                     visible_child->x = base_x + KRYON_FP_FROM_INT(visible_child->margin_left);
 
+                    // Mark that this component has absolute coordinates set by layout system
+                    visible_child->layout_flags |= KRYON_COMPONENT_FLAG_HAS_ABSOLUTE;
+
                     cumulative_width += visible_child->width + KRYON_FP_FROM_INT(visible_child->margin_left) + KRYON_FP_FROM_INT(visible_child->margin_right);
                 }
             }
@@ -491,8 +494,26 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
     kryon_fp_t inner_width = container_width - padding_left - padding_right;
     if (inner_width < 0) inner_width = 0;
 
-    kryon_fp_t origin_x = container->x + padding_left;
-    kryon_fp_t origin_y = container->y + padding_top;
+    // Check if this is a root-level container (no parent) or nested container
+    kryon_component_t* parent = container->parent;
+    kryon_fp_t origin_x, origin_y;
+
+    if (parent == NULL) {
+        // Root-level container: use absolute positioning directly
+        origin_x = container->x + padding_left;
+        origin_y = container->y + padding_top;
+    } else {
+        // Nested container: calculate parent's absolute position first
+        kryon_fp_t parent_abs_x = 0, parent_abs_y = 0;
+        kryon_component_t* p = parent;
+        while (p != NULL) {
+            parent_abs_x += p->x;
+            parent_abs_y += p->y;
+            p = p->parent;
+        }
+        origin_x = parent_abs_x + container->x + padding_left;
+        origin_y = parent_abs_y + container->y + padding_top;
+    }
 
     kryon_fp_t total_content_height = 0;
     kryon_fp_t total_flex_grow = 0;

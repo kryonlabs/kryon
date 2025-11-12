@@ -17,6 +17,10 @@ void kryon_cmd_buf_init(kryon_cmd_buf_t* buf) {
     buf->count = 0;
     buf->overflow = false;
     memset(buf->buffer, 0, KRYON_CMD_BUF_SIZE);
+
+    // Debug: Log buffer size and platform detection at initialization (disabled - too verbose)
+    // fprintf(stderr, "[kryon][cmdbuf] INIT: platform=%d, buffer_size=%u, no_float=%d, no_heap=%d\n",
+    //         KRYON_TARGET_PLATFORM, KRYON_CMD_BUF_SIZE, KRYON_NO_FLOAT, KRYON_NO_HEAP);
 }
 
 void kryon_cmd_buf_clear(kryon_cmd_buf_t* buf) {
@@ -73,6 +77,17 @@ bool kryon_cmd_buf_push(kryon_cmd_buf_t* buf, const kryon_command_t* cmd) {
         return false;
     }
 
+    // Special debug for polygon commands to track corruption
+    if (cmd->type == KRYON_CMD_DRAW_POLYGON) {
+        fprintf(stderr, "[kryon][cmdbuf] POLYGON DEBUG: Before push, vertex[0]=(%.2f,%.2f) vertex[1]=(%.2f,%.2f) vertex[2]=(%.2f,%.2f)\n",
+                kryon_fp_to_float(cmd->data.draw_polygon.vertex_storage[0]),
+                kryon_fp_to_float(cmd->data.draw_polygon.vertex_storage[1]),
+                kryon_fp_to_float(cmd->data.draw_polygon.vertex_storage[2]),
+                kryon_fp_to_float(cmd->data.draw_polygon.vertex_storage[3]),
+                kryon_fp_to_float(cmd->data.draw_polygon.vertex_storage[4]),
+                kryon_fp_to_float(cmd->data.draw_polygon.vertex_storage[5]));
+    }
+
     // Check if there's enough space for the full command
     if (buf->count + kCommandSize > KRYON_CMD_BUF_SIZE) {
         // Always show buffer overflow warnings - this is critical for debugging
@@ -84,8 +99,10 @@ bool kryon_cmd_buf_push(kryon_cmd_buf_t* buf, const kryon_command_t* cmd) {
 
     // Write the full command to the buffer
     uint8_t* cmd_bytes = (uint8_t*)cmd;
+    // Write at head position, then advance head
     for (uint16_t i = 0; i < kCommandSize; i++) {
-        buf->buffer[(buf->head + buf->count + i) % KRYON_CMD_BUF_SIZE] = cmd_bytes[i];
+        buf->buffer[buf->head] = cmd_bytes[i];
+        buf->head = (buf->head + 1) % KRYON_CMD_BUF_SIZE;
     }
 
     buf->count += kCommandSize;
@@ -270,6 +287,85 @@ bool kryon_pop_transform(kryon_cmd_buf_t* buf) {
     return kryon_cmd_buf_push(buf, &cmd);
 }
 
+bool kryon_draw_polygon(kryon_cmd_buf_t* buf, const kryon_fp_t* vertices, uint16_t vertex_count,
+                       uint32_t color, bool filled) {
+    // Always debug entry to see if function is called
+    fprintf(stderr, "[kryon][cmdbuf] ENTRY: kryon_draw_polygon called with vertex_count=%d\n", vertex_count);
+
+    if (buf == NULL || vertices == NULL || vertex_count < 3) {
+        fprintf(stderr, "[kryon][cmdbuf] ERROR: buf=%p vertices=%p vertex_count=%d\n",
+                (void*)buf, (void*)vertices, vertex_count);
+        return false;
+    }
+
+    // Limit vertex count to prevent buffer overflow
+    if (vertex_count > 16) {
+        fprintf(stderr, "[kryon][cmdbuf] ERROR: Too many vertices (%d), max supported is 16\n", vertex_count);
+        return false;
+    }
+
+    kryon_command_t cmd = {0};
+    cmd.type = KRYON_CMD_DRAW_POLYGON;
+    cmd.data.draw_polygon.vertices = vertices;
+    cmd.data.draw_polygon.vertex_count = vertex_count;
+    cmd.data.draw_polygon.color = color;
+    cmd.data.draw_polygon.filled = filled;
+
+    // Copy vertices inline to fix pointer dereference issues
+    // Use vertex_storage instead of external pointer to avoid invalid memory access
+    uint16_t num_floats = vertex_count * 2; // x,y pairs
+
+    // Cap at our storage size to prevent buffer overflow
+    if (vertex_count > 16 || num_floats > 32) {
+        fprintf(stderr, "[kryon][cmdbuf] ERROR: Too many vertices (%d), max supported is 16\n", vertex_count);
+        return false;
+    }
+
+    // Debug: Trace vertex copying
+    if (getenv("KRYON_TRACE_POLYGON")) {
+        fprintf(stderr, "[kryon][cmdbuf] About to copy %d vertices (%d floats):\n", vertex_count, num_floats);
+        for (uint16_t i = 0; i < num_floats; i++) {
+            fprintf(stderr, "[kryon][cmdbuf]   input[%d]: raw=%d float=%.2f\n",
+                    i, (int32_t)vertices[i], kryon_fp_to_float(vertices[i]));
+        }
+    }
+
+    // Copy vertices into inline storage
+    for (uint16_t i = 0; i < num_floats; i++) {
+        if (getenv("KRYON_TRACE_POLYGON")) {
+            fprintf(stderr, "[kryon][cmdbuf] COPY[%d]: input=%.2f (raw=%d) -> storage\n",
+                    i, kryon_fp_to_float(vertices[i]), (int32_t)vertices[i]);
+        }
+        cmd.data.draw_polygon.vertex_storage[i] = vertices[i];
+        if (getenv("KRYON_TRACE_POLYGON")) {
+            fprintf(stderr, "[kryon][cmdbuf] COPY[%d]: stored=%.2f (raw=%d)\n",
+                    i, kryon_fp_to_float(cmd.data.draw_polygon.vertex_storage[i]),
+                    (int32_t)cmd.data.draw_polygon.vertex_storage[i]);
+        }
+    }
+
+    // Point to the copied vertex data
+    cmd.data.draw_polygon.vertices = cmd.data.draw_polygon.vertex_storage;
+
+    if (getenv("KRYON_TRACE_POLYGON")) {
+        fprintf(stderr, "[kryon][cmdbuf] Copied %d vertices to storage:\n", vertex_count);
+        for (uint16_t i = 0; i < vertex_count; i++) {
+            fprintf(stderr, "[kryon][cmdbuf]   vertex[%d]: storage=(%.2f,%.2f)\n",
+                    i, kryon_fp_to_float(cmd.data.draw_polygon.vertex_storage[i * 2]),
+                          kryon_fp_to_float(cmd.data.draw_polygon.vertex_storage[i * 2 + 1]));
+        }
+    }
+
+    if (getenv("KRYON_TRACE_CMD_BUF")) {
+        fprintf(stderr, "[kryon][cmdbuf] polygon: vertices=%d color=0x%08x filled=%d\n",
+                vertex_count, color, filled);
+    }
+
+    bool push_result = kryon_cmd_buf_push(buf, &cmd);
+    fprintf(stderr, "[kryon][cmdbuf] POLYGON PUSH: result=%d cmd.type=%d\n", push_result, cmd.type);
+    return push_result;
+}
+
 // ============================================================================
 // Command Iterator for Processing
 // ============================================================================
@@ -282,6 +378,8 @@ kryon_cmd_iterator_t kryon_cmd_iter_create(kryon_cmd_buf_t* buf) {
         iter.buf = buf;
         iter.position = buf->tail;
         iter.remaining = buf->count;
+        fprintf(stderr, "[kryon][cmdbuf] ITER CREATE: buf=%p head=%u tail=%u count=%u\n",
+                (void*)buf, buf->head, buf->tail, buf->count);
     }
     return iter;
 }
@@ -299,11 +397,31 @@ bool kryon_cmd_iter_next(kryon_cmd_iterator_t* iter, kryon_command_t* cmd) {
         return false;
     }
 
+    uint16_t start_pos = iter->position;
     for (uint16_t i = 0; i < kCommandSize; i++) {
         ((uint8_t*)cmd)[i] = iter->buf->buffer[iter->position];
         iter->position = (iter->position + 1) % KRYON_CMD_BUF_SIZE;
     }
     iter->remaining -= kCommandSize;
+
+    // CRITICAL FIX: For polygon commands, fix the vertices pointer
+    // After copying bytes from buffer, the vertices pointer is invalid
+    // It needs to point to the vertex_storage within THIS command
+    if (cmd->type == KRYON_CMD_DRAW_POLYGON) {
+        cmd->data.draw_polygon.vertices = cmd->data.draw_polygon.vertex_storage;
+        fprintf(stderr, "[kryon][cmdbuf] ITER READ POLYGON: Fixed vertices pointer to %p (vertex_storage)\n",
+                (void*)cmd->data.draw_polygon.vertices);
+    }
+
+    // Debug: Log what we read
+    if (cmd->type == 11 || cmd->type == 0) {  // POLYGON or RECT
+        fprintf(stderr, "[kryon][cmdbuf] ITER READ: pos=%u cmd.type=%d (first 4 bytes: %02x %02x %02x %02x)\n",
+                start_pos, cmd->type,
+                iter->buf->buffer[start_pos],
+                iter->buf->buffer[start_pos + 1],
+                iter->buf->buffer[start_pos + 2],
+                iter->buf->buffer[start_pos + 3]);
+    }
 
     return true;
 }
@@ -311,19 +429,7 @@ bool kryon_cmd_iter_next(kryon_cmd_iterator_t* iter, kryon_command_t* cmd) {
 // ============================================================================
 // Command Buffer Statistics
 // ============================================================================
-
-typedef struct {
-    uint16_t total_commands;
-    uint16_t draw_rect_count;
-    uint16_t draw_text_count;
-    uint16_t draw_line_count;
-    uint16_t draw_arc_count;
-    uint16_t draw_texture_count;
-    uint16_t clip_operations;
-    uint16_t transform_operations;
-    uint16_t buffer_utilization;  // Percentage of buffer used
-    bool overflow_detected;
-} kryon_cmd_stats_t;
+// kryon_cmd_stats_t is now defined in kryon.h
 
 kryon_cmd_stats_t kryon_cmd_buf_get_stats(kryon_cmd_buf_t* buf) {
     kryon_cmd_stats_t stats = {0};
@@ -358,6 +464,9 @@ kryon_cmd_stats_t kryon_cmd_buf_get_stats(kryon_cmd_buf_t* buf) {
                     break;
                 case KRYON_CMD_DRAW_TEXTURE:
                     stats.draw_texture_count++;
+                    break;
+                case KRYON_CMD_DRAW_POLYGON:
+                    stats.draw_polygon_count++;
                     break;
                 case KRYON_CMD_SET_CLIP:
                 case KRYON_CMD_PUSH_CLIP:

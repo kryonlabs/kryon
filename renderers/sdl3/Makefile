@@ -59,7 +59,11 @@ RENDERER_SOURCES = \
     sdl3_input.c \
     sdl3_fonts.c
 
-OBJECTS = $(RENDERER_SOURCES:%.c=$(BUILD_DIR)/sdl3_%.o)
+# Special handling for object files with different paths
+OBJECTS = \
+    $(BUILD_DIR)/sdl3_sdl3_backend.o \
+    $(BUILD_DIR)/sdl3_sdl3_input.o \
+    $(BUILD_DIR)/sdl3_sdl3_fonts.o
 
 # ============================================================================
 # Build Targets

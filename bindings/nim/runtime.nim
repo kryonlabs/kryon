@@ -144,6 +144,9 @@ proc run*(app: KryonApp) =
   if not isReactiveSystemInitialized():
     initReactiveSystem()
 
+  # Initialize canvas system
+  kryonCanvasInit(uint16(app.window.width), uint16(app.window.height))
+
   # Initialize the renderer
   var rendererReady = true
   if not app.rendererPreinitialized:
@@ -233,6 +236,9 @@ proc run*(app: KryonApp) =
 
         if not app.running:
           break
+
+    # Process all canvas drawing callbacks before rendering
+    executeAllCanvasCallbacks(app.root)
 
     if getEnv("KRYON_SKIP_RENDER", "") == "":
       kryon_render_frame(app.renderer, app.root)
@@ -331,6 +337,17 @@ proc shutdownKryonCore*() =
 
 var canvasCallbacks*: Table[uint, proc () {.closure.}] = initTable[uint, proc () {.closure.}]()
 
+proc canvasDrawBridge(component: KryonComponent; buf: KryonCmdBuf): bool {.cdecl.} =
+  ## C callback bridge for canvas drawing
+  let key = cast[uint](component)
+  if canvasCallbacks.hasKey(key):
+    let cb = canvasCallbacks[key]
+    if not cb.isNil:
+      echo "[kryon][canvas] Executing canvas draw callback for component ", key
+      cb()
+      return true
+  return false
+
 proc registerCanvasHandler*(canvas: KryonComponent; cb: proc () {.closure.}) =
   if cb.isNil or canvas.isNil:
     return
@@ -338,15 +355,16 @@ proc registerCanvasHandler*(canvas: KryonComponent; cb: proc () {.closure.}) =
   canvasCallbacks[key] = cb
   echo "[kryon][runtime] Registered canvas onDraw handler for component ", key
 
+  # Set the C-side callback
+  kryon_canvas_set_draw_callback(canvas, canvasDrawBridge)
+
 proc executeCanvasDrawing*(canvas: KryonComponent) =
   ## Execute the canvas drawing callback and render to the canvas component
   let key = cast[uint](canvas)
   if canvasCallbacks.hasKey(key):
     let cb = canvasCallbacks[key]
     if not cb.isNil:
-      # Initialize canvas for this drawing session
-      kryonCanvasInit(800, 600)  # TODO: Get actual canvas dimensions
-
+      
       # Execute the user's drawing code
       cb()
 
@@ -363,6 +381,7 @@ proc executeAllCanvasCallbacks*(root: KryonComponent) =
     return
 
   # Check if this component is a canvas with a callback
+  # echo "[kryon][runtime] Checking component for canvas callback: ", cast[uint](root)  # Disabled - too verbose
   executeCanvasDrawing(root)
 
   # Recursively process children

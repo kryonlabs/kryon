@@ -51,7 +51,7 @@ type
   KryonCommandType* {.importc: "kryon_command_type_t", header: "kryon.h".} = enum
     DrawRect = 0, DrawText = 1, DrawLine = 2, DrawArc = 3, DrawTexture = 4,
     SetClip = 5, PushClip = 6, PopClip = 7, SetTransform = 8,
-    PushTransform = 9, PopTransform = 10
+    PushTransform = 9, PopTransform = 10, DrawPolygon = 11
 
   KryonAlignment* {.importc: "kryon_alignment_t", header: "kryon.h".} = enum
     kaStart = 0,
@@ -177,6 +177,7 @@ proc kryon_draw_rect*(buf: KryonCmdBuf; x, y: int16; w, h: uint16; color: uint32
 proc kryon_draw_text*(buf: KryonCmdBuf; text: cstring; x, y: int16; fontId: uint16; color: uint32): bool
 proc kryon_draw_line*(buf: KryonCmdBuf; x1, y1, x2, y2: int16; color: uint32): bool
 proc kryon_draw_arc*(buf: KryonCmdBuf; cx, cy: int16; radius: uint16; startAngle, endAngle: int16; color: uint32): bool
+proc kryon_draw_polygon*(buf: KryonCmdBuf; vertices: ptr KryonFp; vertexCount: uint16; color: uint32; filled: bool): bool
 
 ## Layout System
 proc kryon_layout_tree*(root: KryonComponent; availableWidth, availableHeight: KryonFp)
@@ -199,8 +200,8 @@ proc kryon_color_rgb*(r, g, b: uint8): uint32
 proc kryon_color_get_components*(color: uint32; r, g, b, a: ptr uint8)
 
 ## Fixed-point utilities
-proc kryon_fp_from_float*(f: float32): KryonFp
-proc kryon_fp_to_float*(fp: KryonFp): float32
+proc kryon_fp_from_float*(f: cfloat): KryonFp
+proc kryon_fp_to_float*(fp: KryonFp): cfloat
 proc kryon_fp_from_int*(i: int32): KryonFp
 proc kryon_fp_to_int_round*(fp: KryonFp): int32
 
@@ -240,7 +241,10 @@ when defined(KRYON_TERMINAL):
   {.pop.}
 
 # Canvas ops helper
-proc kryon_component_set_canvas_ops*(component: KryonComponent) {.importc: "kryon_component_set_canvas_ops", header: "core/include/kryon.h".}
+proc kryon_component_set_canvas_ops*(component: KryonComponent) {.importc: "kryon_component_set_canvas_ops", header: "kryon.h".}
+proc kryon_canvas_set_draw_callback*(component: KryonComponent; onDraw: proc(component: KryonComponent; buf: KryonCmdBuf): bool {.cdecl.}) {.importc: "kryon_canvas_set_draw_callback", header: "kryon.h".}
+proc kryon_canvas_set_size*(component: KryonComponent; width, height: uint16) {.importc: "kryon_canvas_set_size", header: "kryon.h".}
+proc kryon_canvas_component_set_background_color*(component: KryonComponent; color: uint32) {.importc: "kryon_canvas_component_set_background_color", header: "kryon.h".}
 
 # End of C API imports
 

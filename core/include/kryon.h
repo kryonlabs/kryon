@@ -53,8 +53,9 @@ extern "C" {
 #define KRYON_NO_FLOAT          0       // Allow floating point
 #endif
 #define KRYON_MAX_COMPONENTS    1024    // Higher limit for desktop
-// Keep the default 32KB buffer size for desktop
+// Keep the default 128KB buffer size for desktop - DO NOT OVERRIDE
 #endif
+
 
 // ============================================================================
 // Fixed-Point Arithmetic (16.16 format) - Required for MCUs
@@ -137,7 +138,8 @@ typedef enum {
     KRYON_COMPONENT_FLAG_HAS_X      = 1 << 0,
     KRYON_COMPONENT_FLAG_HAS_Y      = 1 << 1,
     KRYON_COMPONENT_FLAG_HAS_WIDTH  = 1 << 2,
-    KRYON_COMPONENT_FLAG_HAS_HEIGHT = 1 << 3
+    KRYON_COMPONENT_FLAG_HAS_HEIGHT = 1 << 3,
+    KRYON_COMPONENT_FLAG_HAS_ABSOLUTE = 1 << 4  // Set when layout system sets absolute coordinates
 } kryon_component_flag_t;
 
 // Component state structure
@@ -200,7 +202,8 @@ typedef enum {
     KRYON_CMD_POP_CLIP       = 7,
     KRYON_CMD_SET_TRANSFORM  = 8,
     KRYON_CMD_PUSH_TRANSFORM = 9,
-    KRYON_CMD_POP_TRANSFORM  = 10
+    KRYON_CMD_POP_TRANSFORM  = 10,
+    KRYON_CMD_DRAW_POLYGON   = 11
 } kryon_command_type_t;
 
 // Command structures
@@ -243,6 +246,14 @@ typedef struct {
             // Simple 2D transform: matrix[6] = [a, b, c, d, tx, ty]
             kryon_fp_t matrix[6];
         } set_transform;
+        struct {
+            const kryon_fp_t* vertices;     // Pointer to vertex array (x,y pairs)
+            uint16_t vertex_count;          // Number of vertices
+            uint32_t color;                 // Fill color
+            bool filled;                    // true = filled, false = outline only
+            // Store vertices inline to avoid pointer issues (max 16 vertices = 32 floats)
+            kryon_fp_t vertex_storage[32];
+        } draw_polygon;
     } data;
 } kryon_command_t;
 
@@ -292,6 +303,10 @@ void kryon_component_remove_child(kryon_component_t* parent, kryon_component_t* 
 kryon_component_t* kryon_component_get_parent(kryon_component_t* component);
 kryon_component_t* kryon_component_get_child(kryon_component_t* component, uint8_t index);
 uint8_t kryon_component_get_child_count(kryon_component_t* component);
+
+// Coordinate transformation
+void calculate_absolute_position(const kryon_component_t* component,
+                                 kryon_fp_t* abs_x, kryon_fp_t* abs_y);
 
 // Event system
 void kryon_component_send_event(kryon_component_t* component, kryon_event_t* event);
@@ -360,6 +375,36 @@ bool kryon_draw_text(kryon_cmd_buf_t* buf, const char* text, int16_t x, int16_t 
 bool kryon_draw_line(kryon_cmd_buf_t* buf, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint32_t color);
 bool kryon_draw_arc(kryon_cmd_buf_t* buf, int16_t cx, int16_t cy, uint16_t radius,
                    int16_t start_angle, int16_t end_angle, uint32_t color);
+bool kryon_draw_polygon(kryon_cmd_buf_t* buf, const kryon_fp_t* vertices, uint16_t vertex_count,
+                       uint32_t color, bool filled);
+bool kryon_draw_texture(kryon_cmd_buf_t* buf, uint16_t texture_id, int16_t x, int16_t y);
+
+// Clipping operations
+bool kryon_set_clip(kryon_cmd_buf_t* buf, int16_t x, int16_t y, uint16_t w, uint16_t h);
+bool kryon_push_clip(kryon_cmd_buf_t* buf);
+bool kryon_pop_clip(kryon_cmd_buf_t* buf);
+
+// Transform operations
+bool kryon_set_transform(kryon_cmd_buf_t* buf, const kryon_fp_t matrix[6]);
+bool kryon_push_transform(kryon_cmd_buf_t* buf);
+bool kryon_pop_transform(kryon_cmd_buf_t* buf);
+
+// Command buffer statistics
+typedef struct {
+    uint16_t total_commands;
+    uint16_t draw_rect_count;
+    uint16_t draw_text_count;
+    uint16_t draw_line_count;
+    uint16_t draw_arc_count;
+    uint16_t draw_texture_count;
+    uint16_t draw_polygon_count;
+    uint16_t clip_operations;
+    uint16_t transform_operations;
+    uint16_t buffer_utilization;  // Percentage of buffer used
+    bool overflow_detected;
+} kryon_cmd_stats_t;
+
+kryon_cmd_stats_t kryon_cmd_buf_get_stats(kryon_cmd_buf_t* buf);
 
 // Layout engine
 void kryon_layout_tree(kryon_component_t* root, kryon_fp_t available_width, kryon_fp_t available_height);
@@ -487,6 +532,10 @@ typedef struct {
 
 extern const kryon_component_ops_t kryon_canvas_ops;
 void kryon_component_set_canvas_ops(kryon_component_t* component);
+void kryon_canvas_set_draw_callback(kryon_component_t* component,
+                                    bool (*on_draw)(kryon_component_t*, kryon_cmd_buf_t*));
+void kryon_canvas_set_size(kryon_component_t* component, uint16_t width, uint16_t height);
+void kryon_canvas_component_set_background_color(kryon_component_t* component, uint32_t color);
 
 // Input component
 typedef struct {

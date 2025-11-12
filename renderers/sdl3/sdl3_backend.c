@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
 #include "../../core/include/kryon.h"
-#include "../common/command_buf.c"
+// command_buf functions are now in libkryon_core.a - no need to include the .c file
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -134,6 +134,14 @@ static void kryon_sdl3_trace_command(const kryon_command_t* cmd) {
                     cmd->data.draw_arc.start_angle,
                     cmd->data.draw_arc.end_angle,
                     cmd->data.draw_arc.color);
+            break;
+
+        case KRYON_CMD_DRAW_POLYGON:
+            fprintf(stderr,
+                    "[kryon][sdl3][trace] polygon vertices=%u color=%08X filled=%s\n",
+                    cmd->data.draw_polygon.vertex_count,
+                    cmd->data.draw_polygon.color,
+                    cmd->data.draw_polygon.filled ? "true" : "false");
             break;
 
         default:
@@ -550,6 +558,113 @@ static void sdl3_draw_arc(kryon_cmd_buf_t* buf, const kryon_command_t* cmd, SDL_
     }
 }
 
+static void sdl3_draw_polygon(kryon_cmd_buf_t* buf, const kryon_command_t* cmd, SDL_Renderer* renderer) {
+    fprintf(stderr, "[SDL3] POLYGON RENDER CALLED: vertices=%d color=0x%08x filled=%d\n",
+            cmd->data.draw_polygon.vertex_count, cmd->data.draw_polygon.color, cmd->data.draw_polygon.filled);
+
+    if (cmd->data.draw_polygon.vertex_count < 3) {
+        fprintf(stderr, "[SDL3] POLYGON SKIPPED: Not enough vertices\n");
+        return; // Need at least 3 vertices for a polygon
+    }
+
+    SDL_Color color = kryon_color_to_sdl(cmd->data.draw_polygon.color);
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+    fprintf(stderr, "[SDL3] POLYGON: Set color RGB(%d,%d,%d,%d)\n", color.r, color.g, color.b, color.a);
+
+    fprintf(stderr, "[SDL3] POLYGON: About to access vertices pointer...\n");
+    const kryon_fp_t* vertices = cmd->data.draw_polygon.vertices;
+    uint16_t vertex_count = cmd->data.draw_polygon.vertex_count;
+    fprintf(stderr, "[SDL3] POLYGON: Got vertices=%p vertex_count=%d\n", (void*)vertices, vertex_count);
+
+    if (vertices == NULL) {
+        fprintf(stderr, "[SDL3] POLYGON ERROR: vertices pointer is NULL!\n");
+        return;
+    }
+
+    // Debug: Log vertex data as received by renderer
+    if (getenv("KRYON_TRACE_POLYGON")) {
+        fprintf(stderr, "[kryon][sdl3] POLYGON RECEIVED: vertex_count=%d, vertices_ptr=%p\n",
+                vertex_count, (void*)vertices);
+        for (uint16_t i = 0; i < vertex_count; i++) {
+            fprintf(stderr, "[kryon][sdl3]   received_vertex[%d]: raw=%d float=%.2f\n",
+                    i, (int32_t)vertices[i * 2], kryon_fp_to_float(vertices[i * 2]));
+            fprintf(stderr, "[kryon][sdl3]   received_vertex[%d]: raw=%d float=%.2f\n",
+                    i, (int32_t)vertices[i * 2 + 1], kryon_fp_to_float(vertices[i * 2 + 1]));
+        }
+    }
+
+    if (cmd->data.draw_polygon.filled) {
+        fprintf(stderr, "[SDL3] POLYGON: Filled polygon path, will triangulate %d vertices\n", vertex_count);
+        // Filled polygon - convert to triangles and render using SDL's geometry
+        // Simple fan triangulation from vertex 0
+        for (uint16_t i = 1; i < vertex_count - 1; i++) {
+            fprintf(stderr, "[SDL3] POLYGON: Triangle %d/%d\n", i, vertex_count - 2);
+            // Get triangle vertices with proper coordinate conversion
+            // Use rounding for better precision
+            float x0f = kryon_fp_to_float(vertices[0]);
+            float y0f = kryon_fp_to_float(vertices[1]);
+            float x1f = kryon_fp_to_float(vertices[i * 2]);
+            float y1f = kryon_fp_to_float(vertices[i * 2 + 1]);
+            float x2f = kryon_fp_to_float(vertices[(i + 1) * 2]);
+            float y2f = kryon_fp_to_float(vertices[(i + 1) * 2 + 1]);
+            fprintf(stderr, "[SDL3] POLYGON: Triangle coords: (%.1f,%.1f) (%.1f,%.1f) (%.1f,%.1f)\n",
+                    x0f, y0f, x1f, y1f, x2f, y2f);
+
+            // Convert to screen coordinates with rounding
+            int16_t x0 = (int16_t)(x0f + 0.5f);
+            int16_t y0 = (int16_t)(y0f + 0.5f);
+            int16_t x1 = (int16_t)(x1f + 0.5f);
+            int16_t y1 = (int16_t)(y1f + 0.5f);
+            int16_t x2 = (int16_t)(x2f + 0.5f);
+            int16_t y2 = (int16_t)(y2f + 0.5f);
+
+            // Debug trace coordinates to help verify positioning
+            if (getenv("KRYON_TRACE_POLYGON")) {
+                fprintf(stderr, "[kryon][polygon] Triangle %d: (%d,%d), (%d,%d), (%d,%d) raw=[%.2f,%.2f,%.2f,%.2f,%.2f,%.2f]\n",
+                        i - 1, x0, y0, x1, y1, x2, y2,
+                        kryon_fp_to_float(vertices[0]), kryon_fp_to_float(vertices[1]),
+                        kryon_fp_to_float(vertices[i * 2]), kryon_fp_to_float(vertices[i * 2 + 1]),
+                        kryon_fp_to_float(vertices[(i + 1) * 2]), kryon_fp_to_float(vertices[(i + 1) * 2 + 1]));
+            }
+
+            // Fill the triangle using SDL_RenderGeometry with vertex data
+            SDL_FPoint points[3] = {
+                {(float)x0, (float)y0},
+                {(float)x1, (float)y1},
+                {(float)x2, (float)y2}
+            };
+
+            // Use SDL_RenderGeometry for filled triangles
+            SDL_Vertex sdl_vertices[3] = {
+                {{points[0].x, points[0].y}, {color.r, color.g, color.b, color.a}, {0, 0}},
+                {{points[1].x, points[1].y}, {color.r, color.g, color.b, color.a}, {0, 0}},
+                {{points[2].x, points[2].y}, {color.r, color.g, color.b, color.a}, {0, 0}}
+            };
+
+            fprintf(stderr, "[SDL3] POLYGON: Calling SDL_RenderGeometry with 3 vertices\n");
+            // Draw filled triangle using geometry rendering
+            int result = SDL_RenderGeometry(renderer, NULL, sdl_vertices, 3, NULL, 0);
+            fprintf(stderr, "[SDL3] POLYGON: SDL_RenderGeometry returned %d\n", result);
+        }
+        fprintf(stderr, "[SDL3] POLYGON: Finished rendering filled polygon\n");
+    } else {
+        // Outline polygon - draw lines between consecutive vertices
+        for (uint16_t i = 0; i < vertex_count; i++) {
+            float x1f = kryon_fp_to_float(vertices[i * 2]);
+            float y1f = kryon_fp_to_float(vertices[i * 2 + 1]);
+            float x2f = kryon_fp_to_float(vertices[((i + 1) % vertex_count) * 2]);
+            float y2f = kryon_fp_to_float(vertices[((i + 1) % vertex_count) * 2 + 1]);
+
+            int16_t x1 = (int16_t)(x1f + 0.5f);
+            int16_t y1 = (int16_t)(y1f + 0.5f);
+            int16_t x2 = (int16_t)(x2f + 0.5f);
+            int16_t y2 = (int16_t)(y2f + 0.5f);
+
+            SDL_RenderLine(renderer, x1, y1, x2, y2);
+        }
+    }
+}
+
 // ============================================================================
 // SDL3 Renderer Operations
 // ============================================================================
@@ -599,6 +714,7 @@ static bool sdl3_init(kryon_renderer_t* renderer, void* native_window) {
     backend->renderer = SDL_CreateRenderer(backend->window, NULL);
     if (backend->renderer != NULL) {
         SDL_SetRenderVSync(backend->renderer, 1);  // Enable vsync
+        SDL_SetRenderDrawBlendMode(backend->renderer, SDL_BLENDMODE_BLEND);  // Enable alpha blending for SDL_RenderGeometry
     }
     if (backend->renderer == NULL) {
         fprintf(stderr, "[kryon][sdl3] SDL_CreateRenderer failed: %s\n", SDL_GetError());
@@ -755,6 +871,11 @@ static void sdl3_execute_commands(kryon_renderer_t* renderer, kryon_cmd_buf_t* b
 
                 case KRYON_CMD_DRAW_ARC:
                     sdl3_draw_arc(buf, &cmd, backend->renderer);
+                    break;
+
+                case KRYON_CMD_DRAW_POLYGON:
+                    fprintf(stderr, "[SDL3] EXECUTE: Processing POLYGON command\n");
+                    sdl3_draw_polygon(buf, &cmd, backend->renderer);
                     break;
 
                 default:

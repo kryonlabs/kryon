@@ -44,6 +44,12 @@ typedef enum {
 // Canvas drawing state (Love2D style global state)
 // NOTE: This is separate from kryon_canvas_state_t which is the component state
 typedef struct {
+    // Canvas dimensions and offset
+    uint16_t width;              // Canvas width
+    uint16_t height;             // Canvas height
+    int16_t offset_x;            // X offset for drawing (canvas position)
+    int16_t offset_y;            // Y offset for drawing (canvas position)
+
     // Drawing colors
     uint32_t color;               // Current drawing color (RGBA)
     uint32_t background_color;    // Background color
@@ -87,6 +93,13 @@ void kryon_canvas_resize(uint16_t width, uint16_t height);
 
 // Get current canvas drawing state
 kryon_canvas_draw_state_t* kryon_canvas_get_state(void);
+
+// Set the active command buffer for canvas operations
+// This allows canvas to write to a specific buffer (e.g., component's buffer)
+void kryon_canvas_set_command_buffer(kryon_cmd_buf_t* buf);
+
+// Set the drawing offset (for positioning canvas within a component)
+void kryon_canvas_set_offset(int16_t x, int16_t y);
 
 // Clear canvas with background color
 void kryon_canvas_clear(void);

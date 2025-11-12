@@ -1,4 +1,5 @@
 #include "include/kryon.h"
+#include "include/kryon_canvas.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -149,7 +150,7 @@ void kryon_render_frame(kryon_renderer_t* renderer, kryon_component_t* root_comp
         renderer->ops->begin_frame(renderer);
     }
 
-    // Create command buffer
+    // Create command buffer (reverting to local allocation to restore basic rendering)
     kryon_cmd_buf_t* cmd_buf = (kryon_cmd_buf_t*)malloc(sizeof(kryon_cmd_buf_t));
     if (cmd_buf == NULL) {
         return;

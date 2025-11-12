@@ -9,7 +9,7 @@
 // ============================================================================
 
 // Calculate absolute position by accumulating parent positions
-static void calculate_absolute_position(const kryon_component_t* component,
+void calculate_absolute_position(const kryon_component_t* component,
                                       kryon_fp_t* abs_x, kryon_fp_t* abs_y) {
     if (component == NULL) {
         *abs_x = 0;
@@ -19,6 +19,11 @@ static void calculate_absolute_position(const kryon_component_t* component,
 
     *abs_x = component->x;
     *abs_y = component->y;
+
+    // If layout system already set absolute coordinates, don't add parents again
+    if (component->layout_flags & KRYON_COMPONENT_FLAG_HAS_ABSOLUTE) {
+        return;
+    }
 
     // Add parent positions recursively
     kryon_component_t* parent = component->parent;
@@ -513,7 +518,7 @@ void kryon_component_set_layout_alignment(kryon_component_t* component,
         return;
     }
 
-    fprintf(stderr, "[kryon][component] set_layout_alignment %p justify=%d align=%d\n", (void*)component, (int)justify, (int)align);
+    // fprintf(stderr, "[kryon][component] set_layout_alignment %p justify=%d align=%d\n", (void*)component, (int)justify, (int)align);  // Disabled - too verbose
     component->justify_content = (uint8_t)justify;
     component->align_items = (uint8_t)align;
     kryon_component_mark_dirty(component);
@@ -698,7 +703,8 @@ static void container_layout(kryon_component_t* self, kryon_fp_t available_width
         self->height = available_height;
     }
 
-    kryon_layout_apply_column(self,
+    // Use the main layout engine which respects layout_direction
+    kryon_layout_component(self,
         self->width > 0 ? self->width : available_width,
         self->height > 0 ? self->height : available_height);
 
@@ -968,45 +974,53 @@ const kryon_component_ops_t kryon_button_ops = {
 // Canvas Component
 // ============================================================================
 
-static void canvas_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
-    if (self == NULL || buf == NULL || !self->visible) {
-        return;
-    }
-
-    // First render the container background
-    container_render(self, buf);
-
-    // Get the canvas command buffer from the global canvas state
-    kryon_cmd_buf_t* canvas_buf = kryon_canvas_get_command_buffer();
-    if (canvas_buf == NULL) {
-        return;
-    }
-
-    // Copy all canvas commands to the renderer's buffer
-    kryon_cmd_iterator_t iter = kryon_cmd_iter_create(canvas_buf);
-    kryon_command_t cmd;
-
-    while (kryon_cmd_iter_has_next(&iter)) {
-        if (kryon_cmd_iter_next(&iter, &cmd)) {
-            // Push the command to the renderer's buffer
-            kryon_cmd_buf_push(buf, &cmd);
-        }
-    }
-
-    // Clear the canvas buffer for next frame
-    kryon_cmd_buf_clear(canvas_buf);
-}
-
-const kryon_component_ops_t kryon_canvas_ops = {
-    .render = canvas_render,
-    .on_event = NULL,
-    .destroy = NULL,
-    .layout = container_layout  // Use container layout
-};
+// Note: canvas_render is now in components.c to avoid duplication
+// The kryon_canvas_ops is also defined there
 
 // Helper function to set canvas ops (for Nim bindings)
 void kryon_component_set_canvas_ops(kryon_component_t* component) {
-    if (component != NULL) {
-        component->ops = &kryon_canvas_ops;
+    if (component == NULL) return;
+
+    // Allocate canvas state if not already present
+    if (component->state == NULL) {
+        kryon_canvas_state_t* state = (kryon_canvas_state_t*)malloc(sizeof(kryon_canvas_state_t));
+        if (state == NULL) return;
+
+        memset(state, 0, sizeof(kryon_canvas_state_t));
+        state->width = 0;  // Will be set during layout
+        state->height = 0;
+        state->background_color = 0;  // Transparent
+        state->on_draw = NULL;
+        state->on_update = NULL;
+
+        component->state = state;
     }
+
+    component->ops = &kryon_canvas_ops;
+}
+
+void kryon_canvas_set_draw_callback(kryon_component_t* component,
+                                    bool (*on_draw)(kryon_component_t*, kryon_cmd_buf_t*)) {
+    if (component == NULL || component->state == NULL) return;
+    kryon_canvas_state_t* state = (kryon_canvas_state_t*)component->state;
+    state->on_draw = on_draw;
+}
+
+void kryon_canvas_set_size(kryon_component_t* component, uint16_t width, uint16_t height) {
+    if (component == NULL || component->state == NULL) return;
+    kryon_canvas_state_t* state = (kryon_canvas_state_t*)component->state;
+    state->width = width;
+    state->height = height;
+}
+
+void kryon_canvas_component_set_background_color(kryon_component_t* component, uint32_t color) {
+    if (component == NULL || component->state == NULL) return;
+
+    // Set both component and canvas state background colors
+    component->background_color = color;
+
+    kryon_canvas_state_t* state = (kryon_canvas_state_t*)component->state;
+    state->background_color = color;
+
+    kryon_component_mark_dirty(component);
 }

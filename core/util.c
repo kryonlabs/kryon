@@ -78,7 +78,8 @@ float kryon_fp_to_float(kryon_fp_t fp) {
     // For MCU builds, this would return integer approximation
     return (float)KRYON_FP_TO_INT(fp);
 #else
-    return (float)fp / 65536.0f;
+    // For desktop builds, kryon_fp_t is already float, just return it
+    return (float)fp;
 #endif
 }
 

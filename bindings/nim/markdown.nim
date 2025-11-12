@@ -190,15 +190,15 @@ type
   CMarkdownTheme* = ptr md_theme_t
 
 # Parser functions
-proc mdParse*(input: cstring, length: csize_t): CMarkdownNode {.importc: "md_parse", header: "core/include/kryon_markdown.h".}
-proc mdParseFile*(filename: cstring): CMarkdownNode {.importc: "md_parse_file", header: "core/include/kryon_markdown.h".}
-proc mdFree*(root: CMarkdownNode) {.importc: "md_free", header: "core/include/kryon_markdown.h".}
+proc mdParse*(input: cstring, length: csize_t): CMarkdownNode {.importc: "md_parse", header: "kryon_markdown.h".}
+proc mdParseFile*(filename: cstring): CMarkdownNode {.importc: "md_parse_file", header: "kryon_markdown.h".}
+proc mdFree*(root: CMarkdownNode) {.importc: "md_free", header: "kryon_markdown.h".}
 
 # Renderer functions
-proc mdRendererCreate*(cmdBuf: KryonCmdBuf, width, height: uint16): CMarkdownRenderer {.importc: "md_renderer_create", header: "core/include/kryon_markdown.h".}
-proc mdRendererDestroy*(renderer: CMarkdownRenderer) {.importc: "md_renderer_destroy", header: "core/include/kryon_markdown.h".}
-proc mdRendererSetTheme*(renderer: CMarkdownRenderer, theme: CMarkdownTheme) {.importc: "md_renderer_set_theme", header: "core/include/kryon_markdown.h".}
-proc mdRenderDocument*(root: CMarkdownNode, renderer: CMarkdownRenderer) {.importc: "md_render_document", header: "core/include/kryon_markdown.h".}
+proc mdRendererCreate*(cmdBuf: KryonCmdBuf, width, height: uint16): CMarkdownRenderer {.importc: "md_renderer_create", header: "kryon_markdown.h".}
+proc mdRendererDestroy*(renderer: CMarkdownRenderer) {.importc: "md_renderer_destroy", header: "kryon_markdown.h".}
+proc mdRendererSetTheme*(renderer: CMarkdownRenderer, theme: CMarkdownTheme) {.importc: "md_renderer_set_theme", header: "kryon_markdown.h".}
+proc mdRenderDocument*(root: CMarkdownNode, renderer: CMarkdownRenderer) {.importc: "md_render_document", header: "kryon_markdown.h".}
 
 # Theme access
 var mdThemeLight*: CMarkdownTheme {.importc: "md_theme_light", header: "core/markdown.c".}

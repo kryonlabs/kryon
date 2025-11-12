@@ -2,6 +2,7 @@
 #include "include/kryon_canvas.h"
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 // ============================================================================
@@ -16,9 +17,6 @@ static kryon_cmd_buf_t* g_command_buffer = NULL;
 // ============================================================================
 
 void kryon_canvas_init(uint16_t width, uint16_t height) {
-    (void)width;   // unused for now
-    (void)height;  // unused for now
-
     if (g_canvas != NULL) {
         kryon_canvas_shutdown();
     }
@@ -45,6 +43,10 @@ void kryon_canvas_init(uint16_t width, uint16_t height) {
     // Initialize canvas state
     memset(g_canvas, 0, sizeof(kryon_canvas_draw_state_t));
     memset(g_command_buffer, 0, sizeof(kryon_cmd_buf_t));
+
+    // Set canvas dimensions
+    g_canvas->width = width;
+    g_canvas->height = height;
 
     // Set default state
     g_canvas->color = KRYON_COLOR_WHITE;
@@ -78,13 +80,23 @@ void kryon_canvas_shutdown(void) {
 }
 
 void kryon_canvas_resize(uint16_t width, uint16_t height) {
-    (void)width;   // unused for now
-    (void)height;  // unused for now
-    // TODO: Implement clip stack when available
+    if (g_canvas == NULL) return;
+    g_canvas->width = width;
+    g_canvas->height = height;
 }
 
 kryon_canvas_draw_state_t* kryon_canvas_get_state(void) {
     return g_canvas;
+}
+
+void kryon_canvas_set_command_buffer(kryon_cmd_buf_t* buf) {
+    g_command_buffer = buf;
+}
+
+void kryon_canvas_set_offset(int16_t x, int16_t y) {
+    if (g_canvas == NULL) return;
+    g_canvas->offset_x = x;
+    g_canvas->offset_y = y;
 }
 
 void kryon_canvas_clear(void) {
@@ -93,12 +105,27 @@ void kryon_canvas_clear(void) {
 }
 
 void kryon_canvas_clear_color(uint32_t color) {
-    if (g_canvas == NULL || g_command_buffer == NULL) return;
+    if (g_canvas == NULL) {
+        fprintf(stderr, "[kryon][canvas] ERROR: kryon_canvas_clear_color called but canvas not initialized!\n");
+        return;
+    }
+    if (g_command_buffer == NULL) {
+        fprintf(stderr, "[kryon][canvas] ERROR: kryon_canvas_clear_color called but command buffer is NULL!\n");
+        return;
+    }
 
-    // Clear the entire canvas with the specified color
-    // TODO: Use actual canvas dimensions when available
-    // For now, draw a large rectangle
-    kryon_draw_rect(g_command_buffer, 0, 0, 800, 600, color);
+    // Clear the canvas with the specified color
+    // Use the canvas dimensions stored in the global state
+    uint16_t width = g_canvas->width;
+    uint16_t height = g_canvas->height;
+
+    // Fallback to reasonable defaults if not set
+    if (width == 0) width = 800;
+    if (height == 0) height = 600;
+
+    fprintf(stderr, "[CANVAS] Clearing canvas at (%d,%d) size %dx%d color=0x%08x\n",
+            g_canvas->offset_x, g_canvas->offset_y, width, height, color);
+    kryon_draw_rect(g_command_buffer, g_canvas->offset_x, g_canvas->offset_y, width, height, color);
 }
 
 // ============================================================================
@@ -374,7 +401,7 @@ void kryon_canvas_line_loop(const kryon_fp_t* vertices, uint16_t vertex_count, k
     uint32_t color = g_canvas->color;
     kryon_fp_t line_width = g_canvas->line_width;
 
-    // Draw line segments (transforms not yet implemented)
+    // Draw line segments with canvas offset applied
     for (uint16_t i = 0; i < vertex_count; i++) {
         kryon_fp_t x1 = vertices[i * 2];
         kryon_fp_t y1 = vertices[i * 2 + 1];
@@ -382,18 +409,22 @@ void kryon_canvas_line_loop(const kryon_fp_t* vertices, uint16_t vertex_count, k
         kryon_fp_t x2 = vertices[((i + 1) % vertex_count) * 2];
         kryon_fp_t y2 = vertices[((i + 1) % vertex_count) * 2 + 1];
 
+        // Apply canvas offset
+        int16_t offset_x1 = KRYON_FP_TO_INT(x1) + g_canvas->offset_x;
+        int16_t offset_y1 = KRYON_FP_TO_INT(y1) + g_canvas->offset_y;
+        int16_t offset_x2 = KRYON_FP_TO_INT(x2) + g_canvas->offset_x;
+        int16_t offset_y2 = KRYON_FP_TO_INT(y2) + g_canvas->offset_y;
+
         // Draw line (multiple times for thickness if needed)
         int32_t width_int = KRYON_FP_TO_INT(line_width);
         if (width_int <= 1) {
-            kryon_draw_line(buf,
-                           KRYON_FP_TO_INT(x1), KRYON_FP_TO_INT(y1),
-                           KRYON_FP_TO_INT(x2), KRYON_FP_TO_INT(y2), color);
+            kryon_draw_line(buf, offset_x1, offset_y1, offset_x2, offset_y2, color);
         } else {
             // Draw thick lines by drawing multiple offset lines
             for (int32_t offset = -(width_int / 2); offset <= (width_int / 2); offset++) {
                 kryon_draw_line(buf,
-                               KRYON_FP_TO_INT(x1), KRYON_FP_TO_INT(y1 + offset),
-                               KRYON_FP_TO_INT(x2), KRYON_FP_TO_INT(y2 + offset), color);
+                               offset_x1, offset_y1 + offset,
+                               offset_x2, offset_y2 + offset, color);
             }
         }
     }
@@ -404,7 +435,14 @@ void kryon_canvas_line_loop(const kryon_fp_t* vertices, uint16_t vertex_count, k
 // ============================================================================
 
 void kryon_canvas_rectangle(kryon_draw_mode_t mode, kryon_fp_t x, kryon_fp_t y, kryon_fp_t width, kryon_fp_t height) {
-    if (g_canvas == NULL || g_command_buffer == NULL) return;
+    if (g_canvas == NULL) {
+        fprintf(stderr, "[kryon][canvas] ERROR: kryon_canvas_rectangle called but canvas not initialized!\n");
+        return;
+    }
+    if (g_command_buffer == NULL) {
+        fprintf(stderr, "[kryon][canvas] ERROR: kryon_canvas_rectangle called but command buffer is NULL!\n");
+        return;
+    }
 
     uint32_t color = g_canvas->color;
 
@@ -416,13 +454,15 @@ void kryon_canvas_rectangle(kryon_draw_mode_t mode, kryon_fp_t x, kryon_fp_t y, 
         kryon_fp_t transformed_x, transformed_y;
         kryon_fp_t transformed_w, transformed_h;
 
-        // Use coordinates directly (transforms not yet implemented)
-        transformed_x = x;
-        transformed_y = y;
+        // Apply canvas offset
+        transformed_x = x + KRYON_FP_FROM_INT(g_canvas->offset_x);
+        transformed_y = y + KRYON_FP_FROM_INT(g_canvas->offset_y);
         transformed_w = width;
         transformed_h = height;
 
-        // Width and height are already set correctly above
+        fprintf(stderr, "[CANVAS] Drawing rect at (%d,%d) size %dx%d color=0x%08x\n",
+                KRYON_FP_TO_INT(transformed_x), KRYON_FP_TO_INT(transformed_y),
+                (uint16_t)KRYON_FP_TO_INT(transformed_w), (uint16_t)KRYON_FP_TO_INT(transformed_h), color);
 
         kryon_draw_rect(g_command_buffer,
                        KRYON_FP_TO_INT(transformed_x),
@@ -431,21 +471,37 @@ void kryon_canvas_rectangle(kryon_draw_mode_t mode, kryon_fp_t x, kryon_fp_t y, 
                        (uint16_t)KRYON_FP_TO_INT(transformed_h),
                        color);
     } else {
-        // Draw outline using line loop
+        // Draw outline using line loop (offset applied in line_loop)
         kryon_canvas_line_loop(corners, 4, g_command_buffer);
     }
 }
 
 void kryon_canvas_circle(kryon_draw_mode_t mode, kryon_fp_t x, kryon_fp_t y, kryon_fp_t radius) {
-    if (g_canvas == NULL || g_command_buffer == NULL || radius <= 0) return;
+    if (g_canvas == NULL) {
+        fprintf(stderr, "[kryon][canvas] ERROR: kryon_canvas_circle called but canvas not initialized!\n");
+        return;
+    }
+    if (g_command_buffer == NULL) {
+        fprintf(stderr, "[kryon][canvas] ERROR: kryon_canvas_circle called but command buffer is NULL!\n");
+        return;
+    }
+    if (radius <= 0) {
+        fprintf(stderr, "[kryon][canvas] ERROR: kryon_canvas_circle called with invalid radius %f!\n", kryon_fp_to_float(radius));
+        return;
+    }
 
     (void)mode;  // Mode ignored for now - renderer doesn't support filled circles yet
+    if (getenv("KRYON_TRACE_CANVAS_DRAW")) {
+        fprintf(stderr, "[kryon][canvas] Drawing circle mode=%d at (%.2f,%.2f) radius=%.2f color=0x%08x\n",
+                mode, kryon_fp_to_float(x), kryon_fp_to_float(y), kryon_fp_to_float(radius), g_canvas->color);
+    }
 
     // Use the arc command to draw a full circle (0-360 degrees)
     // This is much more efficient than tessellating into 32+ line segments
+    // Apply canvas offset
     kryon_draw_arc(g_command_buffer,
-                  KRYON_FP_TO_INT(x),
-                  KRYON_FP_TO_INT(y),
+                  KRYON_FP_TO_INT(x) + g_canvas->offset_x,
+                  KRYON_FP_TO_INT(y) + g_canvas->offset_y,
                   (uint16_t)KRYON_FP_TO_INT(radius),
                   0,    // start angle (0 degrees)
                   360,  // end angle (360 degrees = full circle)
@@ -484,17 +540,59 @@ void kryon_canvas_ellipse(kryon_draw_mode_t mode, kryon_fp_t x, kryon_fp_t y, kr
 void kryon_canvas_polygon(kryon_draw_mode_t mode, const kryon_fp_t* vertices, uint16_t vertex_count) {
     if (g_canvas == NULL || g_command_buffer == NULL || vertices == NULL || vertex_count < 3) return;
 
-    if (mode == KRYON_DRAW_FILL) {
-        kryon_canvas_triangle_fan(vertices, vertex_count, g_command_buffer);
-    } else {
-        kryon_canvas_line_loop(vertices, vertex_count, g_command_buffer);
+    // Debug: Trace incoming coordinates
+    if (getenv("KRYON_TRACE_POLYGON")) {
+        fprintf(stderr, "[kryon][canvas] polygon: mode=%d, vertex_count=%d, vertices_ptr=%p\n", mode, vertex_count, (void*)vertices);
+        fprintf(stderr, "[kryon][canvas] sizeof(kryon_fp_t)=%zu, KRYON_NO_FLOAT=%d\n", sizeof(kryon_fp_t), KRYON_NO_FLOAT);
+
+        // Dump raw memory
+        fprintf(stderr, "[kryon][canvas] Raw memory (first 24 bytes as floats):\n");
+        const float* raw = (const float*)vertices;
+        for (int i = 0; i < 6 && i < vertex_count * 2; i++) {
+            fprintf(stderr, "[kryon][canvas]   [%d]: %.6f (hex: 0x%08X)\n", i, raw[i], *((uint32_t*)&raw[i]));
+        }
+
+        for (uint16_t i = 0; i < vertex_count && i < 8; i++) {  // Limit to first 8 vertices
+            kryon_fp_t x = vertices[i * 2];
+            kryon_fp_t y = vertices[i * 2 + 1];
+#if KRYON_NO_FLOAT
+            // MCU: kryon_fp_t is int32_t, need conversion
+            fprintf(stderr, "[kryon][canvas]   vertex[%d]: fp=(%d,%d) float=(%.2f,%.2f)\n",
+                    i, (int32_t)x, (int32_t)y, kryon_fp_to_float(x), kryon_fp_to_float(y));
+#else
+            // Desktop: kryon_fp_t is float, no conversion needed
+            fprintf(stderr, "[kryon][canvas]   vertex[%d]: fp=(%.2f,%.2f) float=(%.2f,%.2f)\n",
+                    i, x, y, x, y);
+#endif
+        }
     }
+
+    // Apply canvas offset to all vertices
+    kryon_fp_t* offset_vertices = (kryon_fp_t*)malloc(vertex_count * 2 * sizeof(kryon_fp_t));
+    if (offset_vertices == NULL) return;
+
+    for (uint16_t i = 0; i < vertex_count; i++) {
+        offset_vertices[i * 2] = vertices[i * 2] + KRYON_FP_FROM_INT(g_canvas->offset_x);
+        offset_vertices[i * 2 + 1] = vertices[i * 2 + 1] + KRYON_FP_FROM_INT(g_canvas->offset_y);
+    }
+
+    // Use the new polygon command for both filled and outline polygons
+    bool filled = (mode == KRYON_DRAW_FILL);
+    uint32_t color = g_canvas->color;
+
+    kryon_draw_polygon(g_command_buffer, offset_vertices, vertex_count, color, filled);
+
+    free(offset_vertices);
 }
 
 void kryon_canvas_line(kryon_fp_t x1, kryon_fp_t y1, kryon_fp_t x2, kryon_fp_t y2) {
     if (g_canvas == NULL || g_command_buffer == NULL) return;
 
-    // Use coordinates directly (transforms not yet implemented)
+    // Apply canvas offset
+    int16_t offset_x1 = KRYON_FP_TO_INT(x1) + g_canvas->offset_x;
+    int16_t offset_y1 = KRYON_FP_TO_INT(y1) + g_canvas->offset_y;
+    int16_t offset_x2 = KRYON_FP_TO_INT(x2) + g_canvas->offset_x;
+    int16_t offset_y2 = KRYON_FP_TO_INT(y2) + g_canvas->offset_y;
 
     uint32_t color = g_canvas->color;
     kryon_fp_t line_width = g_canvas->line_width;
@@ -502,15 +600,13 @@ void kryon_canvas_line(kryon_fp_t x1, kryon_fp_t y1, kryon_fp_t x2, kryon_fp_t y
     // Draw line (multiple times for thickness if needed)
     int32_t width_int = KRYON_FP_TO_INT(line_width);
     if (width_int <= 1) {
-        kryon_draw_line(g_command_buffer,
-                       KRYON_FP_TO_INT(x1), KRYON_FP_TO_INT(y1),
-                       KRYON_FP_TO_INT(x2), KRYON_FP_TO_INT(y2), color);
+        kryon_draw_line(g_command_buffer, offset_x1, offset_y1, offset_x2, offset_y2, color);
     } else {
         // Draw thick lines by drawing multiple offset lines
         for (int32_t offset = -(width_int / 2); offset <= (width_int / 2); offset++) {
             kryon_draw_line(g_command_buffer,
-                           KRYON_FP_TO_INT(x1), KRYON_FP_TO_INT(y1 + offset),
-                           KRYON_FP_TO_INT(x2), KRYON_FP_TO_INT(y2 + offset), color);
+                           offset_x1, offset_y1 + offset,
+                           offset_x2, offset_y2 + offset, color);
         }
     }
 }

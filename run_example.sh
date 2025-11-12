@@ -56,7 +56,9 @@ fi
 
 # Build C core libraries if needed
 BUILD_DIR="build"
+BIN_DIR="bin"
 mkdir -p "$BUILD_DIR"
+mkdir -p "$BIN_DIR"
 
 # Color variables
 RED='\033[0;31m'
@@ -163,21 +165,21 @@ case "$FRONTEND" in
         # Capture compilation output for error analysis
         COMPILATION_LOG="$BUILD_DIR/compilation.log"
 
-        # Force rebuild by removing old binary and nimcache
-        rm -f "$BUILD_DIR/${EXAMPLE_NAME}_${FRONTEND}_${RENDERER}"
-        rm -rf "$BUILD_DIR/nimcache"
+        # Remove old binary (but keep nimcache for faster recompilation)
+        rm -f "$BIN_DIR/${EXAMPLE_NAME}"
 
         if nim c \
+            -d:release \
             --path:bindings/nim \
             $INCLUDE_PATHS \
             --passL:"$LINK_LIBS" \
             $NIM_FLAGS \
             --nimcache:"$BUILD_DIR/nimcache" \
-            -o:"$BUILD_DIR/${EXAMPLE_NAME}_${FRONTEND}_${RENDERER}" \
+            --outdir:"$BIN_DIR" \
             "$EXAMPLE_FILE" 2>&1 | tee "$COMPILATION_LOG"; then
             echo -e "${GREEN}✓ Compilation successful${NC}"
             echo -e "${YELLOW}Running example (press Ctrl+C to exit)...${NC}"
-            "$BUILD_DIR/${EXAMPLE_NAME}_${FRONTEND}_${RENDERER}" || true
+            "$BIN_DIR/${EXAMPLE_NAME}" || true
         else
             # Analyze the compilation error and provide helpful message
             if grep -q "undefined reference" "$COMPILATION_LOG"; then
