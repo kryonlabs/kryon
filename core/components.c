@@ -36,11 +36,11 @@ static void canvas_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
     kryon_cmd_buf_t* old_buf = kryon_canvas_get_command_buffer();
     kryon_canvas_set_command_buffer(buf);
 
-    // Draw background
+    // Draw background using absolute coordinates
     if ((canvas_state->background_color & 0xFF) != 0) {
         kryon_draw_rect(buf,
-                       KRYON_FP_TO_INT(self->x),
-                       KRYON_FP_TO_INT(self->y),
+                       offset_x,
+                       offset_y,
                        KRYON_FP_TO_INT(self->width),
                        KRYON_FP_TO_INT(self->height),
                        canvas_state->background_color);
@@ -120,39 +120,28 @@ static void input_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
     kryon_input_state_t* input_state = (kryon_input_state_t*)self->state;
     if (input_state == NULL) return;
 
-    // Draw background
-    kryon_draw_rect(buf,
-                   KRYON_FP_TO_INT(self->x),
-                   KRYON_FP_TO_INT(self->y),
-                   KRYON_FP_TO_INT(self->width),
-                   KRYON_FP_TO_INT(self->height),
-                   input_state->background_color);
+    // Calculate absolute position for rendering
+    kryon_fp_t abs_x, abs_y;
+    calculate_absolute_position(self, &abs_x, &abs_y);
+    int16_t x = KRYON_FP_TO_INT(abs_x);
+    int16_t y = KRYON_FP_TO_INT(abs_y);
+    uint16_t w = (uint16_t)KRYON_FP_TO_INT(self->width);
+    uint16_t h = (uint16_t)KRYON_FP_TO_INT(self->height);
+
+    // Draw background using absolute coordinates
+    kryon_draw_rect(buf, x, y, w, h, input_state->background_color);
 
     // Draw border
     if (input_state->border_width > 0) {
         uint16_t bw = input_state->border_width;
         // Top border
-        kryon_draw_rect(buf,
-                       KRYON_FP_TO_INT(self->x), KRYON_FP_TO_INT(self->y),
-                       KRYON_FP_TO_INT(self->width), bw,
-                       input_state->border_color);
+        kryon_draw_rect(buf, x, y, w, bw, input_state->border_color);
         // Bottom border
-        kryon_draw_rect(buf,
-                       KRYON_FP_TO_INT(self->x),
-                       KRYON_FP_TO_INT(self->y + self->height) - bw,
-                       KRYON_FP_TO_INT(self->width), bw,
-                       input_state->border_color);
+        kryon_draw_rect(buf, x, y + h - bw, w, bw, input_state->border_color);
         // Left border
-        kryon_draw_rect(buf,
-                       KRYON_FP_TO_INT(self->x), KRYON_FP_TO_INT(self->y),
-                       bw, KRYON_FP_TO_INT(self->height),
-                       input_state->border_color);
+        kryon_draw_rect(buf, x, y, bw, h, input_state->border_color);
         // Right border
-        kryon_draw_rect(buf,
-                       KRYON_FP_TO_INT(self->x + self->width) - bw,
-                       KRYON_FP_TO_INT(self->y),
-                       bw, KRYON_FP_TO_INT(self->height),
-                       input_state->border_color);
+        kryon_draw_rect(buf, x + w - bw, y, bw, h, input_state->border_color);
     }
 
     // Draw text or placeholder
@@ -174,8 +163,8 @@ static void input_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
         text_to_draw = masked_text;
     }
 
-    int16_t text_x = KRYON_FP_TO_INT(self->x) + input_state->padding + input_state->border_width;
-    int16_t text_y = KRYON_FP_TO_INT(self->y) + input_state->padding + input_state->border_width;
+    int16_t text_x = x + input_state->padding + input_state->border_width;
+    int16_t text_y = y + input_state->padding + input_state->border_width;
 
     kryon_draw_text(buf, text_to_draw, text_x, text_y, input_state->font_id, text_color);
 
@@ -283,9 +272,12 @@ static void checkbox_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
         return;
     }
 
+    // Calculate absolute position for rendering
+    kryon_fp_t abs_x, abs_y;
+    calculate_absolute_position(self, &abs_x, &abs_y);
+    int16_t x = KRYON_FP_TO_INT(abs_x);
+    int16_t y = KRYON_FP_TO_INT(abs_y);
     int16_t box_size = checkbox_state->check_size;
-    int16_t x = KRYON_FP_TO_INT(self->x);
-    int16_t y = KRYON_FP_TO_INT(self->y);
 
     // Draw checkbox box
     kryon_draw_rect(buf, x, y, box_size, box_size, checkbox_state->box_color);

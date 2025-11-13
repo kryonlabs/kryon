@@ -648,8 +648,9 @@ static void container_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
     // Trace container render coordinates
     trace_render_coordinates("container", self, x, y, w, h);
 
-    // Use inherited colors
-    uint32_t bg_color = kryon_component_get_effective_background_color(self);
+    // Only use explicitly set background color, don't render inherited backgrounds
+    // This prevents double-rendering when a child inherits parent's background
+    uint32_t bg_color = self->background_color;
     const bool has_border = self->border_width > 0 && (self->border_color & 0xFF) != 0;
     const bool has_background = (bg_color & 0xFF) != 0;
 
@@ -682,6 +683,9 @@ static void container_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
     }
 
     // Render all children
+    if (getenv("KRYON_TRACE_TREE") && self->child_count > 0) {
+        fprintf(stderr, "[TREE] container=%p rendering %u children\n", (void*)self, self->child_count);
+    }
     for (uint8_t i = 0; i < self->child_count; i++) {
         kryon_component_t* child = self->children[i];
         if (child->ops && child->ops->render) {
@@ -703,7 +707,9 @@ static void container_layout(kryon_component_t* self, kryon_fp_t available_width
         self->height = available_height;
     }
 
-    // Use the main layout engine which respects layout_direction
+    fprintf(stderr, "[CONTAINER_LAYOUT] ptr=%p layout_dir=%d child_count=%u\n",
+            (void*)self, (int)self->layout_direction, self->child_count);
+
     kryon_layout_component(self,
         self->width > 0 ? self->width : available_width,
         self->height > 0 ? self->height : available_height);
@@ -740,15 +746,18 @@ static void text_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
                 text_state->text);
     }
 
-    // Draw background using inherited color
+    // Calculate absolute position for rendering (used for both background and text)
+    kryon_fp_t abs_x, abs_y;
+    calculate_absolute_position(self, &abs_x, &abs_y);
+    int16_t render_x = KRYON_FP_TO_INT(abs_x);
+    int16_t render_y = KRYON_FP_TO_INT(abs_y);
+    uint16_t render_w = (uint16_t)KRYON_FP_TO_INT(self->width);
+    uint16_t render_h = (uint16_t)KRYON_FP_TO_INT(self->height);
+
+    // Draw background using inherited color with absolute coordinates
     uint32_t bg_color = kryon_component_get_effective_background_color(self);
     if ((bg_color & 0xFF) != 0) {
-        kryon_draw_rect(buf,
-                       KRYON_FP_TO_INT(self->x),
-                       KRYON_FP_TO_INT(self->y),
-                       KRYON_FP_TO_INT(self->width),
-                       KRYON_FP_TO_INT(self->height),
-                       bg_color);
+        kryon_draw_rect(buf, render_x, render_y, render_w, render_h, bg_color);
     }
 
     // Draw text using inherited color
@@ -758,12 +767,6 @@ static void text_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
                 text_color,
                 (text_color >> 24) & 0xFF, (text_color >> 16) & 0xFF, (text_color >> 8) & 0xFF, text_color & 0xFF);
     }
-
-    // Calculate absolute position for rendering
-    kryon_fp_t abs_x, abs_y;
-    calculate_absolute_position(self, &abs_x, &abs_y);
-    int16_t render_x = KRYON_FP_TO_INT(abs_x);
-    int16_t render_y = KRYON_FP_TO_INT(abs_y);
 
     // Trace final render coordinates before text drawing
     trace_render_coordinates("text", self, render_x, render_y,

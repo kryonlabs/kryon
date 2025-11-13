@@ -91,6 +91,7 @@ let app = kryonApp:
                   mainAxisAlignment = alignment.value
                   crossAxisAlignment = "center"
                   gap = alignment.gap
+                  padding = 0
 
                   Container:
                     width = 80

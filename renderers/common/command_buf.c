@@ -378,8 +378,6 @@ kryon_cmd_iterator_t kryon_cmd_iter_create(kryon_cmd_buf_t* buf) {
         iter.buf = buf;
         iter.position = buf->tail;
         iter.remaining = buf->count;
-        fprintf(stderr, "[kryon][cmdbuf] ITER CREATE: buf=%p head=%u tail=%u count=%u\n",
-                (void*)buf, buf->head, buf->tail, buf->count);
     }
     return iter;
 }
@@ -409,18 +407,6 @@ bool kryon_cmd_iter_next(kryon_cmd_iterator_t* iter, kryon_command_t* cmd) {
     // It needs to point to the vertex_storage within THIS command
     if (cmd->type == KRYON_CMD_DRAW_POLYGON) {
         cmd->data.draw_polygon.vertices = cmd->data.draw_polygon.vertex_storage;
-        fprintf(stderr, "[kryon][cmdbuf] ITER READ POLYGON: Fixed vertices pointer to %p (vertex_storage)\n",
-                (void*)cmd->data.draw_polygon.vertices);
-    }
-
-    // Debug: Log what we read
-    if (cmd->type == 11 || cmd->type == 0) {  // POLYGON or RECT
-        fprintf(stderr, "[kryon][cmdbuf] ITER READ: pos=%u cmd.type=%d (first 4 bytes: %02x %02x %02x %02x)\n",
-                start_pos, cmd->type,
-                iter->buf->buffer[start_pos],
-                iter->buf->buffer[start_pos + 1],
-                iter->buf->buffer[start_pos + 2],
-                iter->buf->buffer[start_pos + 3]);
     }
 
     return true;

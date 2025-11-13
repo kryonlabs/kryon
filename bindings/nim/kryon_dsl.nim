@@ -622,13 +622,8 @@ macro Container*(props: untyped): untyped =
                 # Create component that will be positioned by parent layout
                 let `resultSym` = `expandedBody`
                 if `resultSym` != nil:
-                  # Add to parent first so it's in the child list
+                  # Add to parent - layout will happen naturally during render
                   discard kryon_component_add_child(`containerName`, `resultSym`)
-                  # Force immediate layout calculation to position this child
-                  kryon_component_mark_dirty(`containerName`)
-                  # Trigger immediate layout pass to prevent overlapping
-                  kryon_layout_component(`containerName`, 0, 0)
-                  echo "[kryon][static] Created and positioned component for iteration ", `iLit`
           )
       else:
         # Static block doesn't contain a for loop - just execute it
@@ -1191,6 +1186,7 @@ macro Row*(props: untyped): untyped =
   var hasHeight = false
   var hasMainAxisAlignment = false
   var hasAlignItems = false
+  var hasBackgroundColor = false
 
   # First pass: detect which properties user has set
   for node in props.children:
@@ -1200,8 +1196,12 @@ macro Row*(props: untyped): untyped =
       if propName == "height": hasHeight = true
       if propName == "mainAxisAlignment": hasMainAxisAlignment = true
       if propName == "alignItems": hasAlignItems = true
+      if propName == "backgroundColor": hasBackgroundColor = true
 
   # Add defaults first (only if not specified by user)
+  # Row should have transparent background by default to avoid double-rendering inherited colors
+  if not hasBackgroundColor:
+    body.add newTree(nnkAsgn, ident("backgroundColor"), newStrLitNode("transparent"))
   # Note: Don't set default width or height for containers - let them size based on content
   # if not hasWidth:
   #   body.add newTree(nnkAsgn, ident("width"), newIntLitNode(800))  # Default width
@@ -1233,6 +1233,7 @@ macro Column*(props: untyped): untyped =
   var hasAlignItems = false
   var hasFlexGrow = false
   var hasLayoutDirection = false
+  var hasBackgroundColor = false
 
   # First pass: detect which properties user has set
   for node in props.children:
@@ -1244,8 +1245,12 @@ macro Column*(props: untyped): untyped =
       if propName == "alignItems": hasAlignItems = true
       if propName == "flexGrow": hasFlexGrow = true
       if propName == "layoutDirection": hasLayoutDirection = true
+      if propName == "backgroundColor": hasBackgroundColor = true
 
   # Add defaults first (only if not specified by user)
+  # Column should have transparent background by default to avoid double-rendering inherited colors
+  if not hasBackgroundColor:
+    body.add newTree(nnkAsgn, ident("backgroundColor"), newStrLitNode("transparent"))
   # Column should fill available height by default
   if not hasFlexGrow:
     body.add newTree(nnkAsgn, ident("flexGrow"), newIntLitNode(1))  # Fill available height
