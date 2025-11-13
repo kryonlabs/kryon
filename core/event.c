@@ -84,20 +84,43 @@ kryon_component_t* kryon_event_find_target_at_point(kryon_component_t* root, int
         return NULL;
     }
 
-    fprintf(stderr, "[kryon][hit] checking component %p: x=%d y=%d w=%d h=%d children=%d\n",
+    fprintf(stderr, "[kryon][hit] checking component %p: x=%d y=%d w=%d h=%d children=%d z_index=%d\n",
             (void*)root,
             KRYON_FP_TO_INT(root->x), KRYON_FP_TO_INT(root->y),
             KRYON_FP_TO_INT(root->width), KRYON_FP_TO_INT(root->height),
-            root->child_count);
+            root->child_count, root->z_index);
 
-    // Search children first (top-to-bottom for proper z-order)
-    for (int8_t i = (int8_t)root->child_count - 1; i >= 0; i--) {
+    // Find the child with highest z-index that contains the point
+    // This ensures dropdowns and other "popup" elements capture events properly
+    kryon_component_t* best_target = NULL;
+    int16_t best_z_index = -32768; // Minimum possible int16_t
+
+    for (int8_t i = 0; i < root->child_count; i++) {
         kryon_component_t* child = root->children[i];
-        kryon_component_t* target = kryon_event_find_target_at_point(child, x, y);
-        if (target != NULL) {
-            fprintf(stderr, "[kryon][hit] found target in child: %p\n", (void*)target);
-            return target;
+        if (child == NULL) continue;
+
+        // Check if point is in this child's bounds (including extended bounds for dropdowns)
+        if (kryon_event_is_point_in_component(child, x, y)) {
+            // Recursively find target in this child's subtree
+            kryon_component_t* child_target = kryon_event_find_target_at_point(child, x, y);
+            if (child_target != NULL) {
+                // Get the effective z-index (use child's z-index if target is the child itself)
+                int16_t effective_z = (child_target == child) ? child->z_index : child_target->z_index;
+
+                if (effective_z > best_z_index) {
+                    best_z_index = effective_z;
+                    best_target = child_target;
+                    fprintf(stderr, "[kryon][hit] new best target %p with z_index=%d\n",
+                            (void*)best_target, best_z_index);
+                }
+            }
         }
+    }
+
+    if (best_target != NULL) {
+        fprintf(stderr, "[kryon][hit] found target in child: %p (z_index=%d)\n",
+                (void*)best_target, best_z_index);
+        return best_target;
     }
 
     // No child handled the event, return this component
