@@ -11,32 +11,69 @@ PROJECT_ROOT="$(pwd)"
 
 # Check if example name is provided
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 <example_name> [frontend] [renderer]"
+    echo "Usage: $0 <example_name|number> [frontend] [renderer]"
     echo ""
     echo "Frontends: nim, lua, c"
     echo "Renderers: sdl3, framebuffer, terminal"
     echo ""
-    echo "Available examples:"
+    echo "Available examples (alphabetical order):"
+    INDEX=1
     for frontend in nim lua c; do
         if [ -d "examples/$frontend" ]; then
             for file in "examples/$frontend"/*.$frontend; do
                 if [ -f "$file" ]; then
-                    echo "  $(basename "$file" .${frontend}) ($frontend frontend)"
+                    printf "  %2d. %-30s (%s frontend)\n" "$INDEX" "$(basename "$file" .${frontend})" "$frontend"
+                    INDEX=$((INDEX + 1))
                 fi
             done
         fi
     done
     echo ""
-    echo "Default: ./run_example.sh <example> nim sdl3"
+    echo "Usage examples:"
+    echo "  ./run_example.sh button_demo          # By name"
+    echo "  ./run_example.sh 1                     # By number"
+    echo "  ./run_example.sh 1 nim sdl3            # Specify all options"
     echo ""
     echo "Terminal examples:"
     echo "  button_demo_terminal - Interactive button demo (nim frontend)"
     exit 1
 fi
 
-EXAMPLE_NAME="$1"
+INPUT="$1"
 FRONTEND="${2:-nim}"
 RENDERER="${3:-sdl3}"
+
+# Check if input is a number
+if [[ "$INPUT" =~ ^[0-9]+$ ]]; then
+    # User provided a number, find the corresponding example
+    INDEX=1
+    FOUND=0
+    for frontend in nim lua c; do
+        if [ -d "examples/$frontend" ]; then
+            for file in "examples/$frontend"/*.$frontend; do
+                if [ -f "$file" ]; then
+                    if [ $INDEX -eq $INPUT ]; then
+                        EXAMPLE_NAME=$(basename "$file" ."$frontend")
+                        # Auto-detect frontend from the file
+                        FRONTEND="$frontend"
+                        FOUND=1
+                        break 2
+                    fi
+                    INDEX=$((INDEX + 1))
+                fi
+            done
+        fi
+    done
+
+    if [ $FOUND -eq 0 ]; then
+        echo "Error: Invalid example number $INPUT"
+        echo "Run '$0' without arguments to see available examples"
+        exit 1
+    fi
+else
+    # User provided a name
+    EXAMPLE_NAME="$INPUT"
+fi
 
 # Handle case where user passes full path like "examples/nim/foo.nim"
 # Extract just the basename without extension

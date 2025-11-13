@@ -209,11 +209,6 @@ proc run*(app: KryonApp) =
     processReactiveUpdates()
     runtimeTrace("[kryon][runtime] reactive updates complete")
 
-    # Execute canvas drawing callbacks
-    if app.root != nil:
-      executeAllCanvasCallbacks(app.root)
-      runtimeTrace("[kryon][runtime] canvas drawing complete")
-
     when defined(KRYON_SDL3):
       if activeRendererBackend == "sdl3":
         var evt: KryonEvent
@@ -240,8 +235,10 @@ proc run*(app: KryonApp) =
         if not app.running:
           break
 
-    # Process all canvas drawing callbacks before rendering
-    executeAllCanvasCallbacks(app.root)
+    # Execute canvas drawing callbacks before rendering
+    if app.root != nil:
+      executeAllCanvasCallbacks(app.root)
+      runtimeTrace("[kryon][runtime] canvas drawing complete")
 
     if getEnv("KRYON_SKIP_RENDER", "") == "":
       kryon_render_frame(app.renderer, app.root)
