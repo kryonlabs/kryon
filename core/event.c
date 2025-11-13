@@ -53,8 +53,30 @@ bool kryon_event_is_point_in_component(kryon_component_t* component, int16_t x, 
     int16_t comp_w = KRYON_FP_TO_INT(component->width);
     int16_t comp_h = KRYON_FP_TO_INT(component->height);
 
-    return (x >= comp_x && x < comp_x + comp_w &&
-            y >= comp_y && y < comp_y + comp_h);
+    // Check normal component bounds
+    bool in_bounds = (x >= comp_x && x < comp_x + comp_w &&
+                      y >= comp_y && y < comp_y + comp_h);
+
+    if (in_bounds) {
+        return true;
+    }
+
+    // Special case: check extended bounds for open dropdowns
+    // The dropdown menu renders below the component, extending the hit area
+    if (component->ops == &kryon_dropdown_ops && component->state != NULL) {
+        kryon_dropdown_state_t* dropdown_state = (kryon_dropdown_state_t*)component->state;
+        if (dropdown_state->is_open) {
+            // Menu extends below the dropdown button
+            // option_height equals component height, menu_height = option_count * option_height
+            int16_t menu_height = dropdown_state->option_count * comp_h;
+            int16_t total_h = comp_h + menu_height;
+
+            return (x >= comp_x && x < comp_x + comp_w &&
+                    y >= comp_y && y < comp_y + total_h);
+        }
+    }
+
+    return false;
 }
 
 kryon_component_t* kryon_event_find_target_at_point(kryon_component_t* root, int16_t x, int16_t y) {

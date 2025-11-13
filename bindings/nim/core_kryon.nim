@@ -96,6 +96,7 @@ const
   KRYON_COMPONENT_FLAG_HAS_WIDTH* = uint8(0x04)
   KRYON_COMPONENT_FLAG_HAS_HEIGHT* = uint8(0x08)
   KRYON_MAX_TEXT_LENGTH* = 64
+  KRYON_MAX_DROPDOWN_OPTIONS* = 16
 
 # Component State Types
 type
@@ -121,6 +122,22 @@ type
     label*: array[KRYON_MAX_TEXT_LENGTH, char]
     font_id*: uint16
     on_change*: proc (checkbox: KryonComponent; checked: bool) {.cdecl.}
+
+  KryonDropdownState* {.importc: "kryon_dropdown_state_t", bycopy, header: "kryon.h".} = object
+    placeholder*: array[KRYON_MAX_TEXT_LENGTH, char]
+    options*: array[KRYON_MAX_DROPDOWN_OPTIONS, cstring]
+    option_count*: uint8
+    selected_index*: int8
+    is_open*: bool
+    hovered_index*: int8
+    font_id*: uint16
+    font_size*: uint8
+    text_color*: uint32
+    background_color*: uint32
+    border_color*: uint32
+    hover_color*: uint32
+    border_width*: uint8
+    on_change*: proc (dropdown: KryonComponent; selected_index: int8) {.cdecl.}
 
 ## C API Functions - Component Lifecycle
 {.passC: "-I../../core/include".}
@@ -209,6 +226,7 @@ proc kryon_fp_to_int_round*(fp: KryonFp): int32
 var kryon_container_ops* {.importc: "kryon_container_ops", nodecl.}: KryonComponentOps
 var kryon_text_ops* {.importc: "kryon_text_ops", nodecl.}: KryonComponentOps
 var kryon_button_ops* {.importc: "kryon_button_ops", nodecl.}: KryonComponentOps
+var kryon_dropdown_ops* {.importc: "kryon_dropdown_ops", nodecl.}: KryonComponentOps
 var kryon_checkbox_ops* {.importc: "kryon_checkbox_ops", nodecl.}: KryonComponentOps
 
 ## Checkbox creation function
@@ -302,6 +320,54 @@ proc newKryonCheckbox*(label: string; initialChecked: bool = false;
   ## Create a new checkbox component
   let labelCStr = if label.len > 0: cstring(label) else: nil
   result = kryon_checkbox_create(labelCStr, initialChecked, 16, onChangeCallback)
+
+proc newKryonDropdown*(placeholder: string = "Select...";
+                      options: seq[string] = @[];
+                      selectedIndex: int = -1;
+                      fontSize: uint8 = 14;
+                      textColor: uint32 = 0xFF000000'u32;
+                      backgroundColor: uint32 = 0xFFFFFFFF'u32;
+                      borderColor: uint32 = 0xFFCCCCCC'u32;
+                      borderWidth: uint8 = 1;
+                      hoverColor: uint32 = 0xFFEEEEFF'u32;
+                      onChangeCallback: proc (dropdown: KryonComponent; selected_index: int8) {.cdecl.} = nil): KryonComponent =
+  ## Create a new dropdown component
+  var dropdownState: KryonDropdownState
+
+  # Copy placeholder text
+  let placeholderLen = min(placeholder.len, KRYON_MAX_TEXT_LENGTH - 1)
+  if placeholderLen > 0:
+    copyMem(addr dropdownState.placeholder[0], unsafeAddr placeholder[0], placeholderLen)
+  dropdownState.placeholder[placeholderLen] = '\0'
+
+  # Copy options - allocate each string with malloc
+  dropdownState.option_count = uint8(min(options.len, KRYON_MAX_DROPDOWN_OPTIONS))
+  for i in 0 ..< dropdownState.option_count.int:
+    let optLen = options[i].len
+    let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(optLen + 1)))
+    if optLen > 0:
+      copyMem(addr buffer[0], unsafeAddr options[i][0], optLen)
+    buffer[optLen] = '\0'
+    dropdownState.options[i] = cast[cstring](buffer)
+
+  # Initialize state with provided parameters
+  dropdownState.selected_index = int8(selectedIndex)
+  dropdownState.is_open = false
+  dropdownState.hovered_index = -1
+  dropdownState.font_id = 0
+  dropdownState.font_size = fontSize
+  dropdownState.text_color = textColor
+  dropdownState.background_color = backgroundColor
+  dropdownState.border_color = borderColor
+  dropdownState.hover_color = hoverColor
+  dropdownState.border_width = borderWidth
+  dropdownState.on_change = onChangeCallback
+
+  # Use malloc for state
+  let statePtr = c_malloc(csize_t(sizeof(KryonDropdownState)))
+  copyMem(statePtr, addr dropdownState, sizeof(KryonDropdownState))
+
+  result = kryon_component_create(addr kryon_dropdown_ops, statePtr)
 
 proc newKryonRenderer*(): KryonRenderer =
   ## Create a new framebuffer renderer

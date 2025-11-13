@@ -97,19 +97,22 @@ when defined(KRYON_SDL3):
 
     let target = kryon_event_find_target_at_point(app.root, evt.x, evt.y)
 
-    if target == currentHoverTarget:
-      updateCursorShape(target)
-      return
+    # Handle target changes (send leave/enter events)
+    if target != currentHoverTarget:
+      if currentHoverTarget != nil:
+        var leaveEvent = KryonEvent(`type`: KryonEventType.Hover, x: evt.x, y: evt.y, param: 0'u32)
+        kryon_component_send_event(currentHoverTarget, addr leaveEvent)
 
-    if currentHoverTarget != nil:
-      var leaveEvent = KryonEvent(`type`: KryonEventType.Hover, x: evt.x, y: evt.y, param: 0'u32)
-      kryon_component_send_event(currentHoverTarget, addr leaveEvent)
+      currentHoverTarget = target
 
-    currentHoverTarget = target
+      if target != nil:
+        var enterEvent = KryonEvent(`type`: KryonEventType.Hover, x: evt.x, y: evt.y, param: 1'u32)
+        kryon_component_send_event(target, addr enterEvent)
 
+    # Always send hover event to current target (for components like dropdown that need continuous updates)
     if target != nil:
-      var enterEvent = KryonEvent(`type`: KryonEventType.Hover, x: evt.x, y: evt.y, param: 1'u32)
-      kryon_component_send_event(target, addr enterEvent)
+      var hoverEvent = KryonEvent(`type`: KryonEventType.Hover, x: evt.x, y: evt.y, param: 1'u32)
+      kryon_component_send_event(target, addr hoverEvent)
 
     updateCursorShape(target)
 

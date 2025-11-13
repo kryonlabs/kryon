@@ -682,17 +682,77 @@ static void container_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
         }
     }
 
-    // Render all children
+    // Render all children sorted by z-index
     if (getenv("KRYON_TRACE_TREE") && self->child_count > 0) {
         fprintf(stderr, "[TREE] container=%p rendering %u children\n", (void*)self, self->child_count);
     }
+
+    // Create temporary array for z-index sorted rendering
+    // This preserves the original layout order while rendering by z-index
+    kryon_component_t* sorted_children[255];
+
+    // Copy children to temporary array
     for (uint8_t i = 0; i < self->child_count; i++) {
-        kryon_component_t* child = self->children[i];
+        sorted_children[i] = self->children[i];
+    }
+
+    // Sort temporary array by z_index (insertion sort - efficient for small arrays)
+    // Higher z_index renders last (appears on top)
+    if (self->child_count > 1) {
+        for (uint8_t i = 1; i < self->child_count; i++) {
+            kryon_component_t* key = sorted_children[i];
+            uint8_t key_z = key->z_index;
+            int j = i - 1;
+
+            while (j >= 0 && sorted_children[j]->z_index > key_z) {
+                sorted_children[j + 1] = sorted_children[j];
+                j--;
+            }
+            sorted_children[j + 1] = key;
+        }
+    }
+
+    // Render from sorted array (preserves original children order)
+    for (uint8_t i = 0; i < self->child_count; i++) {
+        kryon_component_t* child = sorted_children[i];
         if (child->ops && child->ops->render) {
             child->ops->render(child, buf);
         } else {
         }
     }
+}
+
+static bool container_on_event(kryon_component_t* self, kryon_event_t* event) {
+    if (self == NULL || event == NULL) {
+        return false;
+    }
+
+    // Handle click-outside-to-close for dropdown children
+    if (event->type == KRYON_EVT_CLICK) {
+        const bool is_press = (event->param & 0x80000000u) == 0;
+        if (is_press) {
+            // Check all children for open dropdowns
+            for (uint8_t i = 0; i < self->child_count; i++) {
+                kryon_component_t* child = self->children[i];
+                if (child != NULL && child->ops == &kryon_dropdown_ops && child->state != NULL) {
+                    kryon_dropdown_state_t* dropdown_state = (kryon_dropdown_state_t*)child->state;
+                    if (dropdown_state->is_open) {
+                        // Check if click is outside the dropdown
+                        // We need to account for the dropdown menu which extends below the component
+                        if (!kryon_event_is_point_in_component(child, event->x, event->y)) {
+                            // Click is outside dropdown, close it
+                            dropdown_state->is_open = false;
+                            child->z_index = 0;  // Restore normal z-index
+                            kryon_component_mark_dirty(child);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Return false to allow normal event propagation
+    return false;
 }
 
 static void container_layout(kryon_component_t* self, kryon_fp_t available_width, kryon_fp_t available_height) {
@@ -719,7 +779,7 @@ static void container_layout(kryon_component_t* self, kryon_fp_t available_width
 
 const kryon_component_ops_t kryon_container_ops = {
     .render = container_render,
-    .on_event = NULL,
+    .on_event = container_on_event,
     .destroy = NULL,
     .layout = container_layout
 };
@@ -971,6 +1031,196 @@ const kryon_component_ops_t kryon_button_ops = {
     .on_event = button_on_event,
     .destroy = NULL,
     .layout = button_layout
+};
+
+// ============================================================================
+// Dropdown Component
+// ============================================================================
+
+static void dropdown_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
+    if (self == NULL || buf == NULL || !self->visible) {
+        return;
+    }
+
+    kryon_dropdown_state_t* dropdown_state = (kryon_dropdown_state_t*)self->state;
+    if (dropdown_state == NULL) return;
+
+    // Calculate absolute position for rendering
+    kryon_fp_t abs_x, abs_y;
+    calculate_absolute_position(self, &abs_x, &abs_y);
+    int16_t x = KRYON_FP_TO_INT(abs_x);
+    int16_t y = KRYON_FP_TO_INT(abs_y);
+    uint16_t w = (uint16_t)KRYON_FP_TO_INT(self->width);
+    uint16_t h = (uint16_t)KRYON_FP_TO_INT(self->height);
+
+    // Draw main dropdown box background
+    kryon_draw_rect(buf, x, y, w, h, dropdown_state->background_color);
+
+    // Draw border
+    if (dropdown_state->border_width > 0) {
+        uint16_t bw = dropdown_state->border_width;
+        // Top border
+        kryon_draw_rect(buf, x, y, w, bw, dropdown_state->border_color);
+        // Bottom border
+        kryon_draw_rect(buf, x, y + h - bw, w, bw, dropdown_state->border_color);
+        // Left border
+        kryon_draw_rect(buf, x, y, bw, h, dropdown_state->border_color);
+        // Right border
+        kryon_draw_rect(buf, x + w - bw, y, bw, h, dropdown_state->border_color);
+    }
+
+    // Draw selected option or placeholder
+    const char* display_text = dropdown_state->placeholder;
+    if (dropdown_state->selected_index >= 0 &&
+        dropdown_state->selected_index < dropdown_state->option_count) {
+        display_text = dropdown_state->options[dropdown_state->selected_index];
+    }
+
+    if (display_text != NULL) {
+        int16_t text_x = x + 8;  // Left padding
+        int16_t text_y = y + (h - 16) / 2;  // Vertically center
+        kryon_draw_text(buf, display_text, text_x, text_y,
+                       dropdown_state->font_id, dropdown_state->text_color);
+    }
+
+    // Draw dropdown arrow indicator
+    int16_t arrow_x = x + w - 20;
+    int16_t arrow_y = y + h / 2;
+    const char* arrow = dropdown_state->is_open ? "▲" : "▼";
+    kryon_draw_text(buf, arrow, arrow_x, arrow_y - 8,
+                   dropdown_state->font_id, dropdown_state->text_color);
+
+    // Draw dropdown menu if open
+    if (dropdown_state->is_open) {
+        uint16_t option_height = h;
+        int16_t menu_y = y + h;
+
+        for (uint8_t i = 0; i < dropdown_state->option_count; i++) {
+            uint32_t bg_color = (i == dropdown_state->hovered_index) ?
+                dropdown_state->hover_color : dropdown_state->background_color;
+
+            kryon_draw_rect(buf, x, menu_y + (i * option_height),
+                          w, option_height, bg_color);
+
+            // Draw option border
+            if (dropdown_state->border_width > 0) {
+                uint16_t bw = dropdown_state->border_width;
+                kryon_draw_rect(buf, x, menu_y + (i * option_height), w, bw, dropdown_state->border_color);
+                kryon_draw_rect(buf, x, menu_y + ((i + 1) * option_height) - bw, w, bw, dropdown_state->border_color);
+                kryon_draw_rect(buf, x, menu_y + (i * option_height), bw, option_height, dropdown_state->border_color);
+                kryon_draw_rect(buf, x + w - bw, menu_y + (i * option_height), bw, option_height, dropdown_state->border_color);
+            }
+
+            // Draw option text
+            if (dropdown_state->options[i] != NULL) {
+                int16_t option_text_x = x + 8;
+                int16_t option_text_y = menu_y + (i * option_height) + (option_height - 16) / 2;
+                kryon_draw_text(buf, dropdown_state->options[i],
+                              option_text_x, option_text_y,
+                              dropdown_state->font_id, dropdown_state->text_color);
+            }
+        }
+    }
+}
+
+static bool dropdown_on_event(kryon_component_t* self, kryon_event_t* event) {
+    if (self == NULL || event == NULL || self->state == NULL) {
+        return false;
+    }
+
+    kryon_dropdown_state_t* dropdown_state = (kryon_dropdown_state_t*)self->state;
+
+    switch (event->type) {
+        case KRYON_EVT_CLICK: {
+            const bool is_press = (event->param & 0x80000000u) == 0;
+            if (is_press) {
+                // Toggle dropdown or select option
+                if (dropdown_state->is_open) {
+                    // Check if clicking on an option
+                    if (dropdown_state->hovered_index >= 0) {
+                        dropdown_state->selected_index = dropdown_state->hovered_index;
+                        if (dropdown_state->on_change != NULL) {
+                            dropdown_state->on_change(self, dropdown_state->selected_index);
+                        }
+                        dropdown_state->is_open = false;
+                        // Restore normal z-index when closed
+                        self->z_index = 0;
+                    } else {
+                        dropdown_state->is_open = false;
+                        // Restore normal z-index when closed
+                        self->z_index = 0;
+                    }
+                } else {
+                    dropdown_state->is_open = true;
+                    // Set high z-index when opened to render on top
+                    self->z_index = 200;
+                }
+                kryon_component_mark_dirty(self);
+            }
+            return true;
+        }
+
+        case KRYON_EVT_HOVER: {
+            // Update hovered index when dropdown is open
+            if (dropdown_state->is_open) {
+                // Calculate which option is being hovered
+                kryon_fp_t abs_x, abs_y;
+                calculate_absolute_position(self, &abs_x, &abs_y);
+                int16_t y = KRYON_FP_TO_INT(abs_y);
+                uint16_t h = (uint16_t)KRYON_FP_TO_INT(self->height);
+
+                int16_t mouse_y = event->y;
+                int16_t menu_y = y + h;
+
+                fprintf(stderr, "[DROPDOWN_HOVER] mouse_y=%d, dropdown_y=%d, h=%u, menu_y=%d, option_count=%d\n",
+                        mouse_y, y, h, menu_y, dropdown_state->option_count);
+
+                // Only recalculate if mouse is within menu bounds
+                // This ensures precise hit detection matching visual rendering
+                int16_t menu_end = menu_y + (dropdown_state->option_count * h);
+                fprintf(stderr, "[DROPDOWN_HOVER] menu_end=%d, in_bounds=%d\n",
+                        menu_end, (mouse_y >= menu_y && mouse_y < menu_end));
+
+                if (mouse_y >= menu_y && mouse_y < menu_end) {
+                    // Calculate which option using direct arithmetic
+                    int8_t new_index = (mouse_y - menu_y) / h;
+                    fprintf(stderr, "[DROPDOWN_HOVER] calculated: (mouse_y - menu_y) / h = (%d - %d) / %u = %d\n",
+                            mouse_y, menu_y, h, new_index);
+                    if (new_index >= 0 && new_index < dropdown_state->option_count) {
+                        dropdown_state->hovered_index = new_index;
+                        fprintf(stderr, "[DROPDOWN_HOVER] SET hovered_index=%d\n", new_index);
+                    } else {
+                        dropdown_state->hovered_index = -1;
+                        fprintf(stderr, "[DROPDOWN_HOVER] SET hovered_index=-1 (out of range)\n");
+                    }
+                    kryon_component_mark_dirty(self);
+                }
+            }
+            return true;
+        }
+
+        default:
+            return false;
+    }
+}
+
+static void dropdown_layout(kryon_component_t* self, kryon_fp_t available_width, kryon_fp_t available_height) {
+    if (self == NULL || self->state == NULL) {
+        return;
+    }
+
+    // Use explicit dimensions if set
+    if (self->width == 0) self->width = KRYON_FP_FROM_INT(200);
+    if (self->height == 0) self->height = KRYON_FP_FROM_INT(40);
+
+    kryon_component_mark_clean(self);
+}
+
+const kryon_component_ops_t kryon_dropdown_ops = {
+    .render = dropdown_render,
+    .on_event = dropdown_on_event,
+    .destroy = NULL,
+    .layout = dropdown_layout
 };
 
 // ============================================================================

@@ -980,6 +980,199 @@ macro Button*(props: untyped): untyped =
       `initStmts`
       `buttonName`
 
+macro Dropdown*(props: untyped): untyped =
+  ## Dropdown component macro
+  var
+    dropdownName = genSym(nskLet, "dropdown")
+    placeholderVal = newStrLitNode("Select...")
+    optionsVal: NimNode = nil
+    selectedIndexVal: NimNode = newIntLitNode(-1)
+    clickHandler = newNilLit()
+    marginAll: NimNode = nil
+    marginTopVal: NimNode = nil
+    marginRightVal: NimNode = nil
+    marginBottomVal: NimNode = nil
+    marginLeftVal: NimNode = nil
+    paddingAll: NimNode = nil
+    paddingTopVal: NimNode = nil
+    paddingRightVal: NimNode = nil
+    paddingBottomVal: NimNode = nil
+    paddingLeftVal: NimNode = nil
+    widthVal: NimNode = nil
+    heightVal: NimNode = nil
+    posXVal: NimNode = nil
+    posYVal: NimNode = nil
+    bgColorVal: NimNode = nil
+    textColorVal: NimNode = nil
+    borderColorVal: NimNode = nil
+    borderWidthVal: NimNode = nil
+    hoverColorVal: NimNode = nil
+    fontSizeVal: NimNode = nil
+
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      let value = node[1]
+
+      case propName.toLowerAscii():
+      of "placeholder":
+        placeholderVal = value
+      of "options":
+        optionsVal = value
+      of "selectedindex":
+        selectedIndexVal = value
+      of "onchange":
+        clickHandler = value
+      of "margin":
+        marginAll = value
+      of "margintop":
+        marginTopVal = value
+      of "marginright":
+        marginRightVal = value
+      of "marginbottom":
+        marginBottomVal = value
+      of "marginleft":
+        marginLeftVal = value
+      of "padding":
+        paddingAll = value
+      of "paddingtop":
+        paddingTopVal = value
+      of "paddingright":
+        paddingRightVal = value
+      of "paddingbottom":
+        paddingBottomVal = value
+      of "paddingleft":
+        paddingLeftVal = value
+      of "width":
+        widthVal = value
+      of "height":
+        heightVal = value
+      of "posx", "x":
+        posXVal = value
+      of "posy", "y":
+        posYVal = value
+      of "backgroundcolor":
+        bgColorVal = colorNode(value)
+      of "color", "textcolor":
+        textColorVal = colorNode(value)
+      of "bordercolor":
+        borderColorVal = colorNode(value)
+      of "borderwidth":
+        borderWidthVal = value
+      of "hovercolor":
+        hoverColorVal = colorNode(value)
+      of "fontsize":
+        fontSizeVal = value
+      else:
+        discard
+
+  let marginTopExpr = if marginTopVal != nil: marginTopVal
+    elif marginAll != nil: marginAll
+    else: newIntLitNode(0)
+  let marginRightExpr = if marginRightVal != nil: marginRightVal
+    elif marginAll != nil: marginAll
+    else: newIntLitNode(0)
+  let marginBottomExpr = if marginBottomVal != nil: marginBottomVal
+    elif marginAll != nil: marginAll
+    else: newIntLitNode(0)
+  let marginLeftExpr = if marginLeftVal != nil: marginLeftVal
+    elif marginAll != nil: marginAll
+    else: newIntLitNode(0)
+
+  let padTopExpr = if paddingTopVal != nil: paddingTopVal
+    elif paddingAll != nil: paddingAll
+    else: newIntLitNode(0)
+  let padRightExpr = if paddingRightVal != nil: paddingRightVal
+    elif paddingAll != nil: paddingAll
+    else: newIntLitNode(0)
+  let padBottomExpr = if paddingBottomVal != nil: paddingBottomVal
+    elif paddingAll != nil: paddingAll
+    else: newIntLitNode(0)
+  let padLeftExpr = if paddingLeftVal != nil: paddingLeftVal
+    elif paddingAll != nil: paddingAll
+    else: newIntLitNode(0)
+
+  let xExpr = if posXVal != nil: posXVal else: newIntLitNode(0)
+  let yExpr = if posYVal != nil: posYVal else: newIntLitNode(0)
+  let widthExpr = if widthVal != nil: widthVal else: newIntLitNode(0)
+  let heightExpr = if heightVal != nil: heightVal else: newIntLitNode(0)
+
+  var maskVal = 0
+  if posXVal != nil: maskVal = maskVal or 0x01
+  if posYVal != nil: maskVal = maskVal or 0x02
+  if widthVal != nil: maskVal = maskVal or 0x04
+  if heightVal != nil: maskVal = maskVal or 0x08
+  let maskCast = newCall(ident("uint8"), newIntLitNode(maskVal))
+
+  # Build initialization statements
+  var initStmts = newTree(nnkStmtList)
+
+  # Set bounds
+  initStmts.add quote do:
+    kryon_component_set_bounds_mask(`dropdownName`,
+      toFixed(`xExpr`),
+      toFixed(`yExpr`),
+      toFixed(`widthExpr`),
+      toFixed(`heightExpr`),
+      `maskCast`)
+
+  # Set padding if specified
+  if paddingAll != nil or paddingTopVal != nil or paddingRightVal != nil or paddingBottomVal != nil or paddingLeftVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_padding(`dropdownName`,
+        uint8(`padTopExpr`),
+        uint8(`padRightExpr`),
+        uint8(`padBottomExpr`),
+        uint8(`padLeftExpr`))
+
+  # Set margin if specified
+  if marginAll != nil or marginTopVal != nil or marginRightVal != nil or marginBottomVal != nil or marginLeftVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_margin(`dropdownName`,
+        uint8(`marginTopExpr`),
+        uint8(`marginRightExpr`),
+        uint8(`marginBottomExpr`),
+        uint8(`marginLeftExpr`))
+
+  # Note: Colors and styles are set through the state during creation,
+  # so they don't need to be set after component creation
+
+  initStmts.add quote do:
+    kryon_component_mark_dirty(`dropdownName`)
+
+  # Build the dropdown creation call with all parameters
+  let newDropdownSym = bindSym("newKryonDropdown")
+  let optionsExpr = if optionsVal != nil: optionsVal
+    else: newNimNode(nnkPrefix).add(ident("@"), newNimNode(nnkBracket))
+
+  # Build named arguments for the creation function
+  var creationStmt = newTree(nnkCall, newDropdownSym)
+  creationStmt.add(newTree(nnkExprEqExpr, ident("placeholder"), placeholderVal))
+  creationStmt.add(newTree(nnkExprEqExpr, ident("options"), optionsExpr))
+  creationStmt.add(newTree(nnkExprEqExpr, ident("selectedIndex"), selectedIndexVal))
+
+  # Add optional parameters if they were specified
+  if fontSizeVal != nil:
+    creationStmt.add(newTree(nnkExprEqExpr, ident("fontSize"), newCall(ident("uint8"), fontSizeVal)))
+  if textColorVal != nil:
+    creationStmt.add(newTree(nnkExprEqExpr, ident("textColor"), textColorVal))
+  if bgColorVal != nil:
+    creationStmt.add(newTree(nnkExprEqExpr, ident("backgroundColor"), bgColorVal))
+  if borderColorVal != nil:
+    creationStmt.add(newTree(nnkExprEqExpr, ident("borderColor"), borderColorVal))
+  if borderWidthVal != nil:
+    creationStmt.add(newTree(nnkExprEqExpr, ident("borderWidth"), newCall(ident("uint8"), borderWidthVal)))
+  if hoverColorVal != nil:
+    creationStmt.add(newTree(nnkExprEqExpr, ident("hoverColor"), hoverColorVal))
+  if clickHandler.kind != nnkNilLit:
+    creationStmt.add(newTree(nnkExprEqExpr, ident("onChangeCallback"), clickHandler))
+
+  result = quote do:
+    block:
+      let `dropdownName` = `creationStmt`
+      `initStmts`
+      `dropdownName`
+
 macro Checkbox*(props: untyped): untyped =
   ## Checkbox component macro
   var

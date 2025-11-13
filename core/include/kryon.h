@@ -315,6 +315,7 @@ bool kryon_component_add_event_handler(kryon_component_t* component,
 bool kryon_component_is_button(kryon_component_t* component);
 kryon_component_t* kryon_event_find_target_at_point(kryon_component_t* root, int16_t x, int16_t y);
 void kryon_event_dispatch_to_point(kryon_component_t* root, int16_t x, int16_t y, kryon_event_t* event);
+bool kryon_event_is_point_in_component(kryon_component_t* component, int16_t x, int16_t y);
 
 // Event utility functions
 uint32_t kryon_event_get_key_code(kryon_event_t* event);
@@ -581,6 +582,27 @@ typedef struct {
 } kryon_spacer_state_t;
 
 extern const kryon_component_ops_t kryon_spacer_ops;
+
+// Dropdown component
+#define KRYON_MAX_DROPDOWN_OPTIONS 16
+typedef struct {
+    char placeholder[KRYON_MAX_TEXT_LENGTH];
+    const char* options[KRYON_MAX_DROPDOWN_OPTIONS];
+    uint8_t option_count;
+    int8_t selected_index;
+    bool is_open;
+    int8_t hovered_index;
+    uint16_t font_id;
+    uint8_t font_size;
+    uint32_t text_color;
+    uint32_t background_color;
+    uint32_t border_color;
+    uint32_t hover_color;
+    uint8_t border_width;
+    void (*on_change)(kryon_component_t* dropdown, int8_t selected_index);
+} kryon_dropdown_state_t;
+
+extern const kryon_component_ops_t kryon_dropdown_ops;
 
 // Component factory functions
 kryon_component_t* kryon_canvas_create(uint16_t width, uint16_t height, uint32_t background_color,
