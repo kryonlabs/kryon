@@ -246,10 +246,6 @@ static void apply_alignment(kryon_component_t* component, kryon_fp_t available_s
 static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx) {
     if (container == NULL || ctx == NULL) return;
 
-    fprintf(stderr, "[DEBUG][layout_row] STARTING: container=%p width=%f height=%f child_count=%d\n",
-            (void*)container, kryon_fp_to_float(container->width), kryon_fp_to_float(container->height),
-            container->child_count);
-
     kryon_fp_t padding_left = KRYON_FP_FROM_INT(container->padding_left);
     kryon_fp_t padding_right = KRYON_FP_FROM_INT(container->padding_right);
     kryon_fp_t padding_top = KRYON_FP_FROM_INT(container->padding_top);
@@ -285,9 +281,9 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
         child_width += KRYON_FP_FROM_INT(child->margin_left + child->margin_right);
         child_height += KRYON_FP_FROM_INT(child->margin_top + child->margin_bottom);
 
-        // Check if we need to wrap to next line (account for gap)
+        // Check if we need to wrap to next line (account for gap and right padding)
         kryon_fp_t gap_needed = (visible_child_count > 0) ? gap_fp : 0;
-        if (used_width + child_width + gap_needed > container_width && i > 0) {
+        if (used_width + child_width + gap_needed + padding_right > container_width && i > 0) {
             // Apply space distribution to previous line before wrapping
             if (visible_child_count > 0 && (container->justify_content == KRYON_ALIGN_SPACE_EVENLY ||
                 container->justify_content == KRYON_ALIGN_SPACE_AROUND ||
@@ -340,12 +336,6 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
         child->y = current_y + KRYON_FP_FROM_INT(child->margin_top);
         child->width = child_width - KRYON_FP_FROM_INT(child->margin_left + child->margin_right);
         child->height = child_height - KRYON_FP_FROM_INT(child->margin_top + child->margin_bottom);
-
-        // DEBUG: Print child position after setting
-        fprintf(stderr, "[DEBUG][layout_row] Set child %p position: x=%f y=%f w=%f h=%f (current_x was %f)\n",
-                (void*)child, kryon_fp_to_float(child->x), kryon_fp_to_float(child->y),
-                kryon_fp_to_float(child->width), kryon_fp_to_float(child->height),
-                kryon_fp_to_float(current_x));
 
         // Track total width for alignment calculations
         total_children_width_no_gap += child_width;  // Without gaps (for space distribution)
@@ -857,12 +847,7 @@ static void layout_component_internal(kryon_component_t* component, kryon_fp_t a
     // Determine layout direction based on component property
     kryon_layout_direction_t direction = (kryon_layout_direction_t)component->layout_direction;
 
-    // ALWAYS print direction for debugging
-    fprintf(stderr, "[DEBUG][layout] component=%p RAW_layout_direction=%d direction=%d child_count=%d\n",
-            (void*)component, (int)component->layout_direction, (int)direction, (int)component->child_count);
-
     if (direction > KRYON_LAYOUT_ABSOLUTE) {
-        fprintf(stderr, "[DEBUG][layout] INVALID direction %d, falling back to COLUMN\n", (int)direction);
         direction = KRYON_LAYOUT_COLUMN; // Fallback to column if invalid
     }
 
@@ -879,32 +864,37 @@ static void layout_component_internal(kryon_component_t* component, kryon_fp_t a
     // Layout children based on direction
     switch (direction) {
         case KRYON_LAYOUT_ROW:
-            fprintf(stderr, "[DEBUG][layout] Calling layout_ROW for component %p\n", (void*)component);
             layout_row(component, &ctx);
             break;
 
         case KRYON_LAYOUT_COLUMN:
-            fprintf(stderr, "[DEBUG][layout] Calling layout_COLUMN for component %p\n", (void*)component);
             layout_column(component, &ctx);
             break;
 
         case KRYON_LAYOUT_ABSOLUTE:
-            fprintf(stderr, "[DEBUG][layout] Calling layout_ABSOLUTE for component %p\n", (void*)component);
             layout_absolute(component, &ctx);
             break;
 
         default:
-            fprintf(stderr, "[DEBUG][layout] DEFAULT case - calling layout_COLUMN for component %p\n", (void*)component);
             layout_column(component, &ctx);
             break;
     }
 
-    // Recursively layout children
+    // Calculate inner dimensions for children (subtract padding from effective dimensions)
+    kryon_fp_t inner_width = effective_width -
+        KRYON_FP_FROM_INT(component->padding_left + component->padding_right);
+    kryon_fp_t inner_height = effective_height -
+        KRYON_FP_FROM_INT(component->padding_top + component->padding_bottom);
+
+    if (inner_width < 0) inner_width = 0;
+    if (inner_height < 0) inner_height = 0;
+
+    // Recursively layout children with inner dimensions (content area after padding)
     for (uint8_t i = 0; i < component->child_count; i++) {
         kryon_component_t* child = component->children[i];
         if (child->visible) {
-            // Pass effective dimensions to children
-            layout_component_internal(child, effective_width, effective_height);
+            // Pass inner dimensions to children (effective dimensions minus padding)
+            layout_component_internal(child, inner_width, inner_height);
         }
     }
 
