@@ -652,6 +652,70 @@ macro Container*(props: untyped): untyped =
 
           createReactiveConditional(`containerName`, condProc, thenProc, nil)
 
+  proc processCaseNode(caseNode: NimNode, containerName: NimNode): NimNode =
+    ## Convert case statements to a single reactive conditional
+    ## The closure contains the entire case statement and returns the matching component
+
+    # Create a closure that evaluates the case statement and returns components
+    let caseEvalClosure = nnkLambda.newTree(
+      newEmptyNode(), # name
+      newEmptyNode(), # pragmas
+      newEmptyNode(), # type params
+      nnkFormalParams.newTree(
+        nnkBracketExpr.newTree(bindSym("seq"), bindSym("KryonComponent"))
+      ), # params
+      newEmptyNode(), # pragmas
+      newEmptyNode(), # reserved
+      newStmtList(
+        nnkVarSection.newTree(
+          nnkIdentDefs.newTree(
+            ident("result"),
+            nnkBracketExpr.newTree(bindSym("seq"), bindSym("KryonComponent")),
+            nnkPrefix.newTree(bindSym("@"), nnkBracket.newTree())
+          )
+        ),
+        nnkStmtList.newTree(
+          nnkLetSection.newTree(
+            nnkIdentDefs.newTree(
+              ident("comp"),
+              newEmptyNode(),
+              caseNode  # The entire case statement
+            )
+          ),
+          nnkIfStmt.newTree(
+            nnkElifBranch.newTree(
+              nnkInfix.newTree(ident("!="), ident("comp"), newNilLit()),
+              newStmtList(
+                nnkCall.newTree(
+                  nnkDotExpr.newTree(ident("result"), ident("add")),
+                  ident("comp")
+                )
+              )
+            )
+          )
+        ),
+        ident("result")
+      )
+    )
+
+    # Extract the selector so we can capture it in the condition
+    let selector = caseNode[0]
+
+    # Create a condition that uses the navigation counter
+    # The counter increments on each navigation, so the condition toggles
+    let condClosure = quote do:
+      proc(): bool {.closure.} =
+        # Import navigation counter
+        (navigationCounter and 1) == 0  # Toggles true/false on each navigation
+
+    result = quote do:
+      block:
+        createReactiveConditional(`containerName`,
+          `condClosure`,
+          `caseEvalClosure`,
+          `caseEvalClosure`  # Same closure for else branch!
+        )
+
   # Process child nodes - handle static blocks specially
   for node in childNodes:
     # Check if this is a static block that generates components
@@ -750,6 +814,9 @@ macro Container*(props: untyped): untyped =
       if node.kind == nnkIfStmt:
         # Handle if/else statements specially
         initStmts.add processConditionalNode(node, containerName)
+      elif node.kind == nnkCaseStmt:
+        # Handle case statements specially
+        initStmts.add processCaseNode(node, containerName)
       else:
         # Regular child component
         let childSym = genSym(nskLet, "child")
@@ -1300,8 +1367,8 @@ macro Checkbox*(props: untyped): untyped =
   var
     checkboxName = genSym(nskLet, "checkbox")
     clickHandler = newNilLit()
-    labelVal: NimNode = newNilLit()
-    checkedVal: NimNode = newNilLit()
+    labelVal: NimNode = newStrLitNode("")
+    checkedVal: NimNode = newLit(false)
     widthVal: NimNode = nil
     heightVal: NimNode = nil
     fontSizeVal: NimNode = nil
@@ -1317,7 +1384,7 @@ macro Checkbox*(props: untyped): untyped =
         if node[1].kind == nnkStrLit:
           labelVal = node[1]
       of "checked":
-        if node[1].kind == nnkIdent or node[1].kind == nnkStrLit:
+        if node[1].kind == nnkIdent or node[1].kind in {nnkIntLit, nnkIdent}:
           checkedVal = node[1]
       of "width":
         widthVal = node[1]
@@ -1368,6 +1435,79 @@ macro Checkbox*(props: untyped): untyped =
       `initStmts`
       kryon_component_mark_dirty(`checkboxName`)
       `checkboxName`
+
+macro Input*(props: untyped): untyped =
+  ## Input component macro (placeholder implementation)
+  ## TODO: Implement proper text input once C core supports it
+  var
+    inputName = genSym(nskLet, "input")
+    placeholderVal: NimNode = newStrLitNode("")
+    widthVal: NimNode = newIntLitNode(200)
+    heightVal: NimNode = newIntLitNode(40)
+    backgroundColorVal: NimNode = nil
+    textColorVal: NimNode = nil
+
+  # Parse Input properties
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii():
+      of "placeholder":
+        if node[1].kind == nnkStrLit:
+          placeholderVal = node[1]
+      of "width":
+        widthVal = node[1]
+      of "height":
+        heightVal = node[1]
+      of "backgroundcolor":
+        backgroundColorVal = colorNode(node[1])
+      of "textcolor", "color":
+        textColorVal = colorNode(node[1])
+      else:
+        discard
+
+  var initStmts = newTree(nnkStmtList)
+
+  # Set background color (default light gray for input field)
+  if backgroundColorVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_background_color(`inputName`, `backgroundColorVal`)
+  else:
+    initStmts.add quote do:
+      kryon_component_set_background_color(`inputName`, 0xF5F5F5FF'u32)
+
+  # Set border to indicate it's an input field
+  initStmts.add quote do:
+    kryon_component_set_border_width(`inputName`, 1)
+    kryon_component_set_border_color(`inputName`, 0xCCCCCCFF'u32)
+
+  # Set size
+  initStmts.add quote do:
+    kryon_component_set_bounds(`inputName`, toFixed(0), toFixed(0), toFixed(`widthVal`), toFixed(`heightVal`))
+
+  # Add padding
+  initStmts.add quote do:
+    kryon_component_set_padding(`inputName`, 8, 8, 8, 8)
+
+  # Create text component for placeholder
+  let textSym = genSym(nskLet, "placeholderText")
+  if textColorVal != nil:
+    initStmts.add quote do:
+      let `textSym` = newKryonText(`placeholderVal`, 14, 0, 0)
+      kryon_component_set_text_color(`textSym`, `textColorVal`)
+      discard kryon_component_add_child(`inputName`, `textSym`)
+  else:
+    initStmts.add quote do:
+      let `textSym` = newKryonText(`placeholderVal`, 14, 0, 0)
+      kryon_component_set_text_color(`textSym`, 0x999999FF'u32)
+      discard kryon_component_add_child(`inputName`, `textSym`)
+
+  result = quote do:
+    block:
+      let `inputName` = newKryonContainer()
+      `initStmts`
+      kryon_component_mark_dirty(`inputName`)
+      `inputName`
 
 macro Canvas*(props: untyped): untyped =
   ## Canvas component macro
