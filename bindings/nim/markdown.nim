@@ -466,6 +466,51 @@ proc createMarkdownComponent*(props: MarkdownProps): KryonComponent =
       let textComp = parseInlineMarkdown(text, theme)
       addChild(result,textComp)
 
+    # Check for blockquote (lines starting with "> ")
+    elif line.startsWith("> "):
+      echo "[nim][markdown] Found blockquote at line ", i, ": '", line, "'"
+      # Collect consecutive blockquote lines
+      var quoteLines: seq[string] = @[]
+      while i < lines.len and lines[i].startsWith("> "):
+        quoteLines.add(lines[i][2..^1])  # Strip "> " prefix
+        inc i
+
+      # i now points to first non-blockquote line
+      # We use 'continue' below to skip the outer loop's inc i,
+      # so i will correctly point to the first non-blockquote line on next iteration
+      echo "[nim][markdown] Collected ", quoteLines.len, " blockquote lines, i now at ", i
+
+      # Create blockquote container
+      let blockquoteContainer = newKryonContainer()
+      kryon_component_set_layout_direction(blockquoteContainer, 0)  # Column layout
+
+      # Set width to fill available space
+      if props.width > 0:
+        let innerWidth = props.width - (theme.padding * 2)
+        kryon_component_set_bounds(blockquoteContainer, toFixed(0), toFixed(0), toFixed(innerWidth), toFixed(0))
+
+      # Style: left padding for indentation (16px left, 12px top/bottom, 8px right)
+      kryon_component_set_padding(blockquoteContainer, 12, 8, 12, 16)
+
+      # Style: left border (4px wide) - Note: this will draw all 4 sides
+      kryon_component_set_border_width(blockquoteContainer, 4)
+      kryon_component_set_border_color(blockquoteContainer, theme.blockquoteBorderColor)
+
+      # Style: subtle background
+      kryon_component_set_background_color(blockquoteContainer, 0xF8F8F8FF'u32)
+
+      # Add each line as a separate text component to create multiple lines
+      for quoteLine in quoteLines:
+        echo "[nim][markdown] Adding blockquote line: '", quoteLine, "'"
+        let textComp = parseInlineMarkdown(quoteLine, theme)
+        # Set text color for this line
+        kryon_component_set_text_color(textComp, theme.blockquoteTextColor)
+        # Add the line to the blockquote container
+        addChild(blockquoteContainer, textComp)
+
+      addChild(result, blockquoteContainer)
+      continue
+
     # Regular paragraph with inline formatting
     else:
       let textComp = parseInlineMarkdown(line, theme)
