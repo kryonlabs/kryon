@@ -58,6 +58,7 @@ typedef struct {
     SDL_Window* window;
     SDL_Renderer* renderer;
     TTF_Font* default_font;
+    TTF_Font* monospace_font;  // Font for code (font_id == 1)
     uint32_t window_id;
     bool initialized;
     uint16_t last_width, last_height;
@@ -65,6 +66,12 @@ typedef struct {
     // Window configuration from DSL
     uint16_t config_width, config_height;
     char* config_title;
+
+    // Clipping stack
+    SDL_Rect clip_stack[8];      // Stack of clip rectangles (max 8 nested levels)
+    int clip_stack_depth;        // Current depth in the stack
+    SDL_Rect current_clip;       // Currently pending clip rectangle
+    bool clip_enabled;           // Whether clipping is currently active
 } kryon_sdl3_backend_t;
 
 // Forward declarations
@@ -475,11 +482,251 @@ static const char* kryon_locate_default_font(void) {
     return NULL;
 }
 
+static bool kryon_try_known_monospace_locations(char* font_path, size_t path_len) {
+    static const char* mono_font_names[] = {
+        "DejaVuSansMono.ttf",
+        "FreeMono.ttf",
+        "LiberationMono-Regular.ttf",
+        "UbuntuMono-R.ttf",
+        "CascadiaCode.ttf",
+        "SourceCodePro-Regular.ttf",
+        "FiraCode-Regular.ttf",
+        "JetBrainsMono-Regular.ttf"
+    };
+
+    static const char* direct_files[] = {
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+        "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf",
+        "/usr/share/fonts/TTF/DejaVuSansMono.ttf",
+        "/usr/local/share/fonts/DejaVuSansMono.ttf",
+        "/Library/Fonts/Courier New.ttf",
+        "/Library/Fonts/Monaco.ttf",
+        "/System/Library/Fonts/Monaco.ttf",
+        "/System/Library/Fonts/Menlo.ttc"
+    };
+
+    // Try direct file paths first
+    for (size_t i = 0; i < SDL_arraysize(direct_files); ++i) {
+        if (kryon_file_exists(direct_files[i])) {
+            SDL_strlcpy(font_path, direct_files[i], path_len);
+            return true;
+        }
+    }
+
+#if defined(_WIN32)
+    const char* win_dir = SDL_getenv("SystemRoot");
+    if (win_dir == NULL) {
+        win_dir = SDL_getenv("WINDIR");
+    }
+    char windows_fonts_dir[512];
+    if (win_dir != NULL) {
+        SDL_snprintf(windows_fonts_dir, sizeof(windows_fonts_dir), "%s\\Fonts", win_dir);
+    } else {
+        SDL_strlcpy(windows_fonts_dir, "C:\\Windows\\Fonts", sizeof(windows_fonts_dir));
+    }
+
+    static const char* windows_mono_fonts[] = {
+        "consola.ttf",
+        "cour.ttf",
+        "CascadiaCode.ttf"
+    };
+
+    if (kryon_try_directory_fonts(font_path, path_len, windows_fonts_dir,
+                                  windows_mono_fonts, SDL_arraysize(windows_mono_fonts))) {
+        return true;
+    }
+#endif
+
+    // Try common Linux font directories
+    static const char* linux_dirs[] = {
+        "/usr/share/fonts/truetype/dejavu",
+        "/usr/share/fonts/truetype/liberation",
+        "/usr/share/fonts/truetype/ubuntu",
+        "/usr/share/fonts",
+        "/usr/local/share/fonts",
+        "/usr/share/fonts/truetype",
+        "/usr/share/fonts/opentype",
+        NULL
+    };
+
+    for (size_t i = 0; linux_dirs[i] != NULL; ++i) {
+        if (kryon_try_directory_fonts(font_path, path_len, linux_dirs[i],
+                                      mono_font_names, SDL_arraysize(mono_font_names))) {
+            return true;
+        }
+    }
+
+#if defined(__APPLE__)
+    static const char* mac_dirs[] = {
+        "/Library/Fonts",
+        "/System/Library/Fonts",
+        NULL
+    };
+
+    static const char* mac_mono_fonts[] = {
+        "Monaco.ttf",
+        "Menlo.ttc",
+        "Courier New.ttf"
+    };
+
+    for (size_t i = 0; mac_dirs[i] != NULL; ++i) {
+        if (kryon_try_directory_fonts(font_path, path_len, mac_dirs[i],
+                                      mac_mono_fonts, SDL_arraysize(mac_mono_fonts))) {
+            return true;
+        }
+    }
+
+    // Also try the generic monospace font names
+    if (kryon_try_directory_fonts(font_path, path_len, mac_dirs[0],
+                                  mono_font_names, SDL_arraysize(mono_font_names))) {
+        return true;
+    }
+#endif
+
+    return false;
+}
+
+static const char* kryon_locate_monospace_font(void) {
+    static bool resolved = false;
+    static bool success = false;
+    static char cached_path[KRYON_MAX_FONT_PATH];
+
+    if (resolved) {
+        return success ? cached_path : NULL;
+    }
+
+    resolved = true;
+
+    // Check for KRYON_MONO_FONT_PATH environment variable
+    const char* env_mono_font = SDL_getenv("KRYON_MONO_FONT_PATH");
+    if (kryon_file_exists(env_mono_font)) {
+        SDL_strlcpy(cached_path, env_mono_font, sizeof(cached_path));
+        success = true;
+        return cached_path;
+    }
+
+#if KRYON_HAS_FONTCONFIG
+    // Try fontconfig for monospace font
+    if (!FcInit()) {
+        goto try_known_locations;
+    }
+
+    FcPattern* pattern = FcPatternCreate();
+    if (pattern != NULL) {
+        FcPatternAddString(pattern, FC_FAMILY, (const FcChar8*)"monospace");
+        FcPatternAddInteger(pattern, FC_SPACING, FC_MONO);
+
+        FcResult result;
+        FcPattern* font = FcFontMatch(NULL, pattern, &result);
+
+        if (font != NULL) {
+            FcChar8* file = NULL;
+            if (FcPatternGetString(font, FC_FILE, 0, &file) == FcResultMatch && file != NULL) {
+                SDL_strlcpy(cached_path, (const char*)file, sizeof(cached_path));
+                success = true;
+                FcPatternDestroy(font);
+                FcPatternDestroy(pattern);
+                return cached_path;
+            }
+            FcPatternDestroy(font);
+        }
+        FcPatternDestroy(pattern);
+    }
+
+try_known_locations:
+#endif
+
+    if (kryon_try_known_monospace_locations(cached_path, sizeof(cached_path))) {
+        success = true;
+        return cached_path;
+    }
+
+    success = false;
+    return NULL;
+}
+
 // SDL3 color conversion helper
 static SDL_Color kryon_color_to_sdl(uint32_t kryon_color) {
     SDL_Color sdl_color;
     kryon_color_get_components(kryon_color, &sdl_color.r, &sdl_color.g, &sdl_color.b, &sdl_color.a);
     return sdl_color;
+}
+
+// Text measurement callback for markdown renderer
+void kryon_sdl3_measure_text_styled(const char* text, uint16_t font_size,
+                                    uint8_t font_weight, uint8_t font_style,
+                                    uint16_t font_id,
+                                    uint16_t* width, uint16_t* height, void* user_data) {
+    if (text == NULL || width == NULL || height == NULL) {
+        return;
+    }
+
+    // Select font path based on font_id
+    const char* font_path = NULL;
+    if (font_id == 1) {
+        // Monospace font for code
+        font_path = kryon_locate_monospace_font();
+    }
+
+    if (font_path == NULL) {
+        // Default font (font_id == 0 or monospace not found)
+        font_path = kryon_locate_default_font();
+    }
+
+    if (font_path == NULL) {
+        // Fallback to approximation
+        if (width) *width = (uint16_t)(strlen(text) * font_size * 0.5f);
+        if (height) *height = font_size;
+        return;
+    }
+
+    TTF_Font* font = TTF_OpenFont(font_path, font_size);
+    if (font == NULL) {
+        // Fallback to approximation
+        if (width) *width = (uint16_t)(strlen(text) * font_size * 0.5f);
+        if (height) *height = font_size;
+        return;
+    }
+
+    // Apply font style
+    int ttf_style = TTF_STYLE_NORMAL;
+    if (font_weight == KRYON_FONT_WEIGHT_BOLD) {
+        ttf_style |= TTF_STYLE_BOLD;
+    }
+    if (font_style == KRYON_FONT_STYLE_ITALIC) {
+        ttf_style |= TTF_STYLE_ITALIC;
+    }
+    TTF_SetFontStyle(font, ttf_style);
+
+    // CRITICAL FIX: Render text to a surface to get the ACTUAL pixel dimensions
+    // This ensures measurement matches what sdl3_draw_text() will render
+    // TTF_GetStringSize returns logical width, but actual rendered width can differ
+    SDL_Color dummy_color = {255, 255, 255, 255};
+    SDL_Surface* surface = TTF_RenderText_Blended(font, text, strlen(text), dummy_color);
+    
+    if (surface != NULL) {
+        // Use the actual rendered surface dimensions
+        *width = (uint16_t)surface->w;
+        *height = (uint16_t)surface->h;
+        SDL_DestroySurface(surface);
+    } else {
+        // Fallback to TTF_GetStringSize if rendering fails
+        int measured_width = 0;
+        int measured_height = 0;
+        
+        if (TTF_GetStringSize(font, text, strlen(text), &measured_width, &measured_height)) {
+            *width = (uint16_t)measured_width;
+            *height = (uint16_t)measured_height;
+        } else {
+            // Final fallback to approximation
+            *width = (uint16_t)(strlen(text) * font_size * 0.5f);
+            *height = font_size;
+        }
+    }
+
+    // Clean up
+    TTF_CloseFont(font);
 }
 
 // Command execution functions
@@ -496,21 +743,68 @@ static void sdl3_draw_rect(kryon_cmd_buf_t* buf, const kryon_command_t* cmd, SDL
     SDL_RenderFillRect(renderer, &frect);
 }
 
-static void sdl3_draw_text(kryon_cmd_buf_t* buf, const kryon_command_t* cmd, SDL_Renderer* renderer, TTF_Font* font) {
+static void sdl3_draw_text(kryon_cmd_buf_t* buf, const kryon_command_t* cmd, SDL_Renderer* renderer, TTF_Font* default_font) {
+    TTF_Font* font_to_use = default_font;
+    TTF_Font* dynamic_font = NULL;
 
-    if (font == NULL || cmd->data.draw_text.text == NULL) {
+    if (cmd->data.draw_text.text == NULL) {
         return;
     }
 
+    // If a specific font size is requested (non-zero), load font at that size
+    if (cmd->data.draw_text.font_size > 0) {
+        // Select font based on font_id
+        const char* font_path = NULL;
+        if (cmd->data.draw_text.font_id == 1) {
+            // Use monospace font for code
+            font_path = kryon_locate_monospace_font();
+        }
+
+        if (font_path == NULL) {
+            // Fallback to default font
+            font_path = kryon_locate_default_font();
+        }
+
+        if (font_path != NULL) {
+            dynamic_font = TTF_OpenFont(font_path, cmd->data.draw_text.font_size);
+            if (dynamic_font != NULL) {
+                font_to_use = dynamic_font;
+            }
+        }
+    }
+
+    if (font_to_use == NULL) {
+        if (dynamic_font != NULL) {
+            TTF_CloseFont(dynamic_font);
+        }
+        return;
+    }
+
+    // Apply font style based on weight and style parameters
+    int ttf_style = TTF_STYLE_NORMAL;
+    if (cmd->data.draw_text.font_weight == KRYON_FONT_WEIGHT_BOLD) {
+        ttf_style |= TTF_STYLE_BOLD;
+    }
+    if (cmd->data.draw_text.font_style == KRYON_FONT_STYLE_ITALIC) {
+        ttf_style |= TTF_STYLE_ITALIC;
+    }
+    TTF_SetFontStyle(font_to_use, ttf_style);
+
     SDL_Color color = kryon_color_to_sdl(cmd->data.draw_text.color);
-    SDL_Surface* surface = TTF_RenderText_Blended(font, cmd->data.draw_text.text, strlen(cmd->data.draw_text.text), color);
+    SDL_Surface* surface = TTF_RenderText_Blended(font_to_use, cmd->data.draw_text.text, strlen(cmd->data.draw_text.text), color);
     if (surface == NULL) {
+        if (dynamic_font != NULL) {
+            TTF_CloseFont(dynamic_font);
+        }
         return;
     }
 
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
     if (texture == NULL) {
         SDL_DestroySurface(surface);
+        if (dynamic_font != NULL) {
+            TTF_CloseFont(dynamic_font);
+        }
         return;
     }
 
@@ -528,6 +822,14 @@ static void sdl3_draw_text(kryon_cmd_buf_t* buf, const kryon_command_t* cmd, SDL
 
     SDL_DestroyTexture(texture);
     SDL_DestroySurface(surface);
+
+    // Reset font style back to normal to avoid affecting subsequent text
+    TTF_SetFontStyle(font_to_use, TTF_STYLE_NORMAL);
+
+    // Clean up dynamically loaded font
+    if (dynamic_font != NULL) {
+        TTF_CloseFont(dynamic_font);
+    }
 }
 
 static void sdl3_draw_line(kryon_cmd_buf_t* buf, const kryon_command_t* cmd, SDL_Renderer* renderer) {
@@ -758,6 +1060,23 @@ static bool sdl3_init(kryon_renderer_t* renderer, void* native_window) {
         }
     }
 
+    // Load monospace font for code
+    const char* mono_font_path = kryon_locate_monospace_font();
+    if (mono_font_path != NULL) {
+        backend->monospace_font = TTF_OpenFont(mono_font_path, 16);
+        if (backend->monospace_font != NULL) {
+            fprintf(stderr, "[kryon][sdl3] Loaded monospace font: %s\n", mono_font_path);
+        } else {
+            fprintf(stderr, "[kryon][sdl3] Failed to load monospace font '%s': %s\n",
+                    mono_font_path, SDL_GetError());
+        }
+    }
+
+    if (backend->monospace_font == NULL) {
+        // Fallback to default font for code if no monospace found
+        fprintf(stderr, "[kryon][sdl3] Warning: No monospace font found, code will use default font\n");
+    }
+
     // Get window dimensions
     int width, height;
     SDL_GetWindowSize(backend->window, &width, &height);
@@ -772,6 +1091,15 @@ static bool sdl3_init(kryon_renderer_t* renderer, void* native_window) {
     backend->window_id = SDL_GetWindowID(backend->window);
     backend->initialized = true;
 
+    // Initialize clipping stack
+    backend->clip_stack_depth = 0;
+    backend->clip_enabled = false;
+
+    // Set text measurement callback for accurate rich text layout
+    renderer->measure_text = kryon_sdl3_measure_text_styled;
+    fprintf(stderr, "[kryon][sdl3] Set measure_text callback: renderer=%p callback=%p\n",
+            (void*)renderer, (void*)kryon_sdl3_measure_text_styled);
+
     return true;
 }
 
@@ -785,6 +1113,11 @@ static void sdl3_shutdown(kryon_renderer_t* renderer) {
     if (backend->default_font != NULL) {
         TTF_CloseFont(backend->default_font);
         backend->default_font = NULL;
+    }
+
+    if (backend->monospace_font != NULL) {
+        TTF_CloseFont(backend->monospace_font);
+        backend->monospace_font = NULL;
     }
 
     if (backend->renderer != NULL) {
@@ -876,6 +1209,44 @@ static void sdl3_execute_commands(kryon_renderer_t* renderer, kryon_cmd_buf_t* b
                 case KRYON_CMD_DRAW_POLYGON:
                     fprintf(stderr, "[SDL3] EXECUTE: Processing POLYGON command\n");
                     sdl3_draw_polygon(buf, &cmd, backend->renderer);
+                    break;
+
+                case KRYON_CMD_SET_CLIP:
+                    // Store the clip rectangle to be pushed later
+                    backend->current_clip.x = cmd.data.set_clip.x;
+                    backend->current_clip.y = cmd.data.set_clip.y;
+                    backend->current_clip.w = cmd.data.set_clip.w;
+                    backend->current_clip.h = cmd.data.set_clip.h;
+                    break;
+
+                case KRYON_CMD_PUSH_CLIP:
+                    // Push current clip onto stack and activate it
+                    if (backend->clip_stack_depth < 8) {
+                        backend->clip_stack[backend->clip_stack_depth] = backend->current_clip;
+                        backend->clip_stack_depth++;
+                        SDL_SetRenderClipRect(backend->renderer, &backend->current_clip);
+                        backend->clip_enabled = true;
+                    } else {
+                        fprintf(stderr, "[kryon][sdl3] Warning: Clip stack overflow (max 8 levels)\n");
+                    }
+                    break;
+
+                case KRYON_CMD_POP_CLIP:
+                    // Pop clip from stack and restore previous or disable
+                    if (backend->clip_stack_depth > 0) {
+                        backend->clip_stack_depth--;
+                        if (backend->clip_stack_depth > 0) {
+                            // Restore previous clip
+                            SDL_Rect* prev_clip = &backend->clip_stack[backend->clip_stack_depth - 1];
+                            SDL_SetRenderClipRect(backend->renderer, prev_clip);
+                        } else {
+                            // No more clips, disable clipping
+                            SDL_SetRenderClipRect(backend->renderer, NULL);
+                            backend->clip_enabled = false;
+                        }
+                    } else {
+                        fprintf(stderr, "[kryon][sdl3] Warning: Clip stack underflow\n");
+                    }
                     break;
 
                 default:
@@ -1034,6 +1405,23 @@ bool kryon_sdl3_poll_event(kryon_event_t* event) {
             // Store key state in data pointer (simple encoding: pressed=1, released=0)
             event->data = (void*)(uintptr_t)(sdl_event.type == SDL_EVENT_KEY_DOWN ? 1 : 0);
             break;
+
+        case SDL_EVENT_MOUSE_WHEEL: {
+            // Get current mouse position
+            float mouse_x, mouse_y;
+            SDL_GetMouseState(&mouse_x, &mouse_y);
+
+            event->type = KRYON_EVT_SCROLL;
+            event->x = (int16_t)mouse_x;
+            event->y = (int16_t)mouse_y;
+
+            // Pack scroll delta into param (delta_x in upper 16 bits, delta_y in lower 16 bits)
+            int16_t delta_x = (int16_t)sdl_event.wheel.x;
+            int16_t delta_y = (int16_t)sdl_event.wheel.y;
+            event->param = ((uint32_t)(uint16_t)delta_x << 16) | (uint16_t)delta_y;
+            event->data = NULL;
+            break;
+        }
 
         default:
             return false; // Unhandled event type

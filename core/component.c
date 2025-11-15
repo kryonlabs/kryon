@@ -5,6 +5,24 @@
 #include <stdlib.h>
 
 // ============================================================================
+// Global Renderer for Text Measurement
+// ============================================================================
+
+static kryon_renderer_t* g_renderer = NULL;
+
+void kryon_set_global_renderer(kryon_renderer_t* renderer) {
+    g_renderer = renderer;
+    if (getenv("KRYON_TRACE_LAYOUT")) {
+        fprintf(stderr, "[kryon][global] Set global renderer: %p (measure_text=%p)\n",
+                (void*)renderer, (void*)(renderer ? renderer->measure_text : NULL));
+    }
+}
+
+kryon_renderer_t* kryon_get_global_renderer(void) {
+    return g_renderer;
+}
+
+// ============================================================================
 // Coordinate Transformation Utilities
 // ============================================================================
 
@@ -279,19 +297,6 @@ void kryon_component_set_bounds_mask(kryon_component_t* component, kryon_fp_t x,
     component->width = width;
     component->height = height;
 
-#if defined(__unix__) || defined(__APPLE__) || defined(_WIN32)
-    const char* trace_env = getenv("KRYON_TRACE_LAYOUT");
-    if (trace_env != NULL && trace_env[0] != '\0' && trace_env[0] != '0') {
-        fprintf(stderr,
-                "[kryon][bounds] mask=%u x=%d y=%d w=%d h=%d\n",
-                explicit_mask,
-                KRYON_FP_TO_INT(x),
-                KRYON_FP_TO_INT(y),
-                KRYON_FP_TO_INT(width),
-                KRYON_FP_TO_INT(height));
-    }
-#endif
-
     if (explicit_mask & KRYON_COMPONENT_FLAG_HAS_X) {
         component->explicit_x = x;
         component->layout_flags |= KRYON_COMPONENT_FLAG_HAS_X;
@@ -319,14 +324,6 @@ void kryon_component_set_bounds_mask(kryon_component_t* component, kryon_fp_t x,
     } else {
         component->layout_flags &= (uint8_t)~KRYON_COMPONENT_FLAG_HAS_HEIGHT;
     }
-
-#if defined(KRYON_TRACE_LAYOUT)
-    fprintf(stderr, "[kryon][bounds] set %p x=%d w=%d raw=%d\n",
-            (void*)component,
-            KRYON_FP_TO_INT(width),
-            KRYON_FP_TO_INT(height),
-            (int)width);
-#endif
 
     kryon_component_mark_dirty(component);
 }
@@ -398,6 +395,37 @@ void kryon_component_set_visible(kryon_component_t* component, bool visible) {
     kryon_component_mark_dirty(component);
 }
 
+void kryon_component_set_scrollable(kryon_component_t* component, bool scrollable) {
+    if (component == NULL) {
+        return;
+    }
+    component->scrollable = scrollable;
+    if (scrollable) {
+        component->scroll_offset_x = 0;
+        component->scroll_offset_y = 0;
+    }
+    kryon_component_mark_dirty(component);
+}
+
+void kryon_component_set_scroll_offset(kryon_component_t* component, kryon_fp_t offset_x, kryon_fp_t offset_y) {
+    if (component == NULL || !component->scrollable) {
+        return;
+    }
+    component->scroll_offset_x = offset_x;
+    component->scroll_offset_y = offset_y;
+    kryon_component_mark_dirty(component);
+}
+
+void kryon_component_get_scroll_offset(kryon_component_t* component, kryon_fp_t* offset_x, kryon_fp_t* offset_y) {
+    if (component == NULL) {
+        if (offset_x) *offset_x = 0;
+        if (offset_y) *offset_y = 0;
+        return;
+    }
+    if (offset_x) *offset_x = component->scroll_offset_x;
+    if (offset_y) *offset_y = component->scroll_offset_y;
+}
+
 // Color inheritance helpers
 uint32_t kryon_component_get_effective_text_color(kryon_component_t* component) {
     if (component == NULL) {
@@ -453,12 +481,6 @@ void kryon_component_set_text_color(kryon_component_t* component, uint32_t color
     }
     component->text_color = color;
     kryon_component_mark_dirty(component);
-
-    if (kryon_component_should_trace()) {
-        fprintf(stderr, "[kryon][component] set_text_color %p to 0x%08x (rgba: %d,%d,%d,%d)\n",
-                (void*)component, color,
-                (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
-    }
 }
 
 void kryon_component_set_text(kryon_component_t* component, const char* text) {
@@ -504,11 +526,6 @@ void kryon_component_set_text(kryon_component_t* component, const char* text) {
 
     // Mark component as dirty to trigger re-render
     kryon_component_mark_dirty(component);
-
-    if (kryon_component_should_trace()) {
-        fprintf(stderr, "[kryon][component] set_text %p to \"%s\"\n",
-                (void*)component, text ? text : "(null)");
-    }
 }
 
 void kryon_component_set_layout_alignment(kryon_component_t* component,
@@ -529,7 +546,6 @@ void kryon_component_set_layout_direction(kryon_component_t* component, uint8_t 
         return;
     }
 
-    fprintf(stderr, "[kryon][component] set_layout_direction %p to %d\n", (void*)component, (int)direction);
     component->layout_direction = direction;
     kryon_component_mark_dirty(component);
 }
@@ -623,20 +639,6 @@ static void container_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
         return;
     }
 
-    const bool trace = kryon_component_should_trace();
-    if (trace) {
-        fprintf(stderr,
-                "[kryon][component] render container=%p x=%d y=%d w=%d h=%d bg=%08X borderWidth=%u dirty=%d\n",
-                (void*)self,
-                KRYON_FP_TO_INT(self->x),
-                KRYON_FP_TO_INT(self->y),
-                KRYON_FP_TO_INT(self->width),
-                KRYON_FP_TO_INT(self->height),
-                self->background_color,
-                self->border_width,
-                self->dirty);
-    }
-
     // Calculate absolute position for rendering
     kryon_fp_t abs_x, abs_y;
     calculate_absolute_position(self, &abs_x, &abs_y);
@@ -645,20 +647,11 @@ static void container_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
     uint16_t w = (uint16_t)KRYON_FP_TO_INT(self->width);
     uint16_t h = (uint16_t)KRYON_FP_TO_INT(self->height);
 
-    // Trace container render coordinates
-    trace_render_coordinates("container", self, x, y, w, h);
-
     // Only use explicitly set background color, don't render inherited backgrounds
     // This prevents double-rendering when a child inherits parent's background
     uint32_t bg_color = self->background_color;
     const bool has_border = self->border_width > 0 && (self->border_color & 0xFF) != 0;
     const bool has_background = (bg_color & 0xFF) != 0;
-
-    // Debug: Check background color values
-    if (getenv("KRYON_TRACE_COLORS")) {
-        fprintf(stderr, "[kryon][component] render_container %p: bg_color=0x%08x, alpha=%d, has_background=%d, w=%u, h=%u\n",
-                (void*)self, bg_color, (int)(bg_color & 0xFF), (int)has_background, w, h);
-    }
 
     if (has_border && w > 0 && h > 0) {
         kryon_draw_rect(buf, x, y, w, h, self->border_color);
@@ -683,10 +676,6 @@ static void container_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
     }
 
     // Render all children sorted by z-index
-    if (getenv("KRYON_TRACE_TREE") && self->child_count > 0) {
-        fprintf(stderr, "[TREE] container=%p rendering %u children\n", (void*)self, self->child_count);
-    }
-
     // Create temporary array for z-index sorted rendering
     // This preserves the original layout order while rendering by z-index
     kryon_component_t* sorted_children[255];
@@ -712,12 +701,94 @@ static void container_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
         }
     }
 
+    // Apply clipping and scroll offset for scrollable containers
+    if (self->scrollable) {
+        // Recalculate content dimensions now that all children are laid out
+        kryon_fp_t max_right = 0;
+        kryon_fp_t max_bottom = 0;
+        for (uint8_t i = 0; i < self->child_count; i++) {
+            kryon_component_t* child = self->children[i];
+            if (child != NULL && child->visible) {
+                kryon_fp_t child_right = child->x + child->width +
+                                        kryon_fp_from_int(child->margin_right);
+                kryon_fp_t child_bottom = child->y + child->height +
+                                         kryon_fp_from_int(child->margin_bottom);
+                if (child_right > max_right) max_right = child_right;
+                if (child_bottom > max_bottom) max_bottom = child_bottom;
+            }
+        }
+        self->content_width = max_right;
+        self->content_height = max_bottom;
+
+        // Set and push clip rectangle to constrain content to container bounds
+        kryon_set_clip(buf, x, y, w, h);
+        kryon_push_clip(buf);
+
+        // Temporarily offset children by scroll amount
+        for (uint8_t i = 0; i < self->child_count; i++) {
+            kryon_component_t* child = self->children[i];
+            if (child != NULL) {
+                child->y -= self->scroll_offset_y;
+                child->x -= self->scroll_offset_x;
+            }
+        }
+    }
+
     // Render from sorted array (preserves original children order)
     for (uint8_t i = 0; i < self->child_count; i++) {
         kryon_component_t* child = sorted_children[i];
         if (child->ops && child->ops->render) {
             child->ops->render(child, buf);
         } else {
+        }
+    }
+
+    // Restore child positions and pop clip for scrollable containers
+    if (self->scrollable) {
+        // Restore original child positions
+        for (uint8_t i = 0; i < self->child_count; i++) {
+            kryon_component_t* child = self->children[i];
+            if (child != NULL) {
+                child->y += self->scroll_offset_y;
+                child->x += self->scroll_offset_x;
+            }
+        }
+
+        // Pop clip rectangle
+        kryon_pop_clip(buf);
+
+        // Draw scrollbar if content overflows
+        if (self->content_height > self->height) {
+            // Scrollbar dimensions
+            const uint16_t scrollbar_width = 12;
+            const int16_t scrollbar_x = x + w - scrollbar_width;
+            const int16_t scrollbar_y = y;
+            const uint16_t scrollbar_height = h;
+
+            // Draw scrollbar track
+            uint32_t track_color = 0xE0E0E0FF;  // Light gray
+            kryon_draw_rect(buf, scrollbar_x, scrollbar_y, scrollbar_width, scrollbar_height, track_color);
+
+            // Calculate thumb size and position
+            kryon_fp_t content_h = self->content_height;
+            kryon_fp_t visible_h = self->height;
+            kryon_fp_t scroll_range = content_h - visible_h;
+
+            // Thumb height proportional to visible:content ratio
+            uint16_t thumb_height = (uint16_t)((visible_h * kryon_fp_from_int(h)) / content_h);
+            if (thumb_height < 20) thumb_height = 20;  // Minimum thumb size
+            if (thumb_height > scrollbar_height) thumb_height = scrollbar_height;
+
+            // Thumb position based on scroll offset
+            uint16_t thumb_y_offset = 0;
+            if (scroll_range > 0) {
+                thumb_y_offset = (uint16_t)((self->scroll_offset_y * kryon_fp_from_int(scrollbar_height - thumb_height)) / scroll_range);
+            }
+
+            // Draw scrollbar thumb
+            uint32_t thumb_color = 0xA0A0A0FF;  // Dark gray
+            kryon_draw_rect(buf, scrollbar_x + 2, scrollbar_y + thumb_y_offset + 2,
+                          scrollbar_width - 4, thumb_height - 4, thumb_color);
         }
     }
 }
@@ -751,6 +822,41 @@ static bool container_on_event(kryon_component_t* self, kryon_event_t* event) {
         }
     }
 
+    // Handle scroll events for scrollable containers
+    if (self->scrollable && event->type == KRYON_EVT_SCROLL) {
+        // Check if event is within this container's bounds
+        if (kryon_event_is_point_in_component(self, event->x, event->y)) {
+            // Extract scroll deltas from event
+            int16_t delta_x, delta_y;
+            kryon_event_get_scroll_delta(event, &delta_x, &delta_y);
+
+            // Update scroll offset (delta_y is typically negative when scrolling down)
+            // Use 40 pixels per scroll unit for natural browser-like scrolling
+            kryon_fp_t new_offset_y = self->scroll_offset_y - kryon_fp_from_int(delta_y * 40);
+            kryon_fp_t new_offset_x = self->scroll_offset_x - kryon_fp_from_int(delta_x * 40);
+
+            // Clamp vertical scroll to valid range [0, max_scroll]
+            kryon_fp_t max_scroll_y = self->content_height > self->height ?
+                                     self->content_height - self->height : 0;
+            if (new_offset_y < 0) new_offset_y = 0;
+            if (new_offset_y > max_scroll_y) new_offset_y = max_scroll_y;
+
+            // Clamp horizontal scroll to valid range [0, max_scroll]
+            kryon_fp_t max_scroll_x = self->content_width > self->width ?
+                                     self->content_width - self->width : 0;
+            if (new_offset_x < 0) new_offset_x = 0;
+            if (new_offset_x > max_scroll_x) new_offset_x = max_scroll_x;
+
+            // Apply new offsets
+            self->scroll_offset_y = new_offset_y;
+            self->scroll_offset_x = new_offset_x;
+            kryon_component_mark_dirty(self);
+
+            // Event was handled
+            return true;
+        }
+    }
+
     // Return false to allow normal event propagation
     return false;
 }
@@ -760,19 +866,38 @@ static void container_layout(kryon_component_t* self, kryon_fp_t available_width
         return;
     }
 
+
     if (self->width == 0 && available_width > 0) {
         self->width = available_width;
     }
-    if (self->height == 0 && available_height > 0) {
-        self->height = available_height;
-    }
-
-    fprintf(stderr, "[CONTAINER_LAYOUT] ptr=%p layout_dir=%d child_count=%u\n",
-            (void*)self, (int)self->layout_direction, self->child_count);
+    // Don't set height from available_height - let layout calculation determine it from content
 
     kryon_layout_component(self,
         self->width > 0 ? self->width : available_width,
         self->height > 0 ? self->height : available_height);
+
+    // Calculate content dimensions for scrollable containers
+    // Note: This is done again in render phase for accuracy after all layout completes
+    if (self->scrollable && self->child_count > 0) {
+        kryon_fp_t max_right = 0;
+        kryon_fp_t max_bottom = 0;
+
+        for (uint8_t i = 0; i < self->child_count; i++) {
+            kryon_component_t* child = self->children[i];
+            if (child != NULL && child->visible) {
+                kryon_fp_t child_right = child->x + child->width +
+                                        kryon_fp_from_int(child->margin_right);
+                kryon_fp_t child_bottom = child->y + child->height +
+                                         kryon_fp_from_int(child->margin_bottom);
+
+                if (child_right > max_right) max_right = child_right;
+                if (child_bottom > max_bottom) max_bottom = child_bottom;
+            }
+        }
+
+        self->content_width = max_right;
+        self->content_height = max_bottom;
+    }
 
     kryon_component_mark_clean(self);
 }
@@ -791,19 +916,16 @@ static void text_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
     }
 
     kryon_text_state_t* text_state = (kryon_text_state_t*)self->state;
-    if (text_state->text == NULL) {
+
+    // Check if using rich text mode
+    if (text_state->uses_rich_text && text_state->rich_text) {
+        kryon_rich_text_render(self, text_state->rich_text, buf);
         return;
     }
 
-    const char* trace_env = getenv("KRYON_TRACE_COMPONENTS");
-    const bool trace_enabled = (trace_env != NULL && trace_env[0] != '\0' && trace_env[0] != '0');
-    if (trace_enabled) {
-        fprintf(stderr, "[kryon][component] text x=%d y=%d w=%d h=%d text=%s\n",
-                KRYON_FP_TO_INT(self->x),
-                KRYON_FP_TO_INT(self->y),
-                KRYON_FP_TO_INT(self->width),
-                KRYON_FP_TO_INT(self->height),
-                text_state->text);
+    // Simple text mode
+    if (text_state->text == NULL) {
+        return;
     }
 
     // Calculate absolute position for rendering (used for both background and text)
@@ -822,22 +944,15 @@ static void text_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
 
     // Draw text using inherited color
     uint32_t text_color = kryon_component_get_effective_text_color(self);
-    if (trace_enabled) {
-        fprintf(stderr, "[kryon][component] text effective_color=0x%08x (rgba: %d,%d,%d,%d)\n",
-                text_color,
-                (text_color >> 24) & 0xFF, (text_color >> 16) & 0xFF, (text_color >> 8) & 0xFF, text_color & 0xFF);
-    }
-
-    // Trace final render coordinates before text drawing
-    trace_render_coordinates("text", self, render_x, render_y,
-                            KRYON_FP_TO_INT(self->width),
-                            KRYON_FP_TO_INT(self->height));
 
     kryon_draw_text(buf,
                    text_state->text,
                    render_x,
                    render_y,
                    text_state->font_id,
+                   text_state->font_size,
+                   text_state->font_weight,
+                   text_state->font_style,
                    text_color);
 }
 
@@ -846,17 +961,139 @@ static void text_layout(kryon_component_t* self, kryon_fp_t available_width, kry
         return;
     }
 
-    // For now, use fixed size. In a real implementation, we would measure text
     kryon_text_state_t* text_state = (kryon_text_state_t*)self->state;
 
-    // Estimate text size (this would be platform-specific in real implementation)
-    self->width = KRYON_FP_FROM_INT(100); // Placeholder
-    self->height = KRYON_FP_FROM_INT(20); // Placeholder
+    // DEBUG: Always log child count and ops
+    if (getenv("KRYON_TRACE_LAYOUT")) {
+        fprintf(stderr, "[kryon][text_layout] child_count=%d ops=%p text_ops=%p text='%s'\n",
+                self->child_count, (void*)self->ops, (void*)&kryon_text_ops,
+                text_state->text ? text_state->text : "(null)");
+    }
+
+    // Check if we have inline children (rich text mode)
+    if (self->child_count > 0 && text_state) {
+        // Rich text mode - flatten children to runs and layout
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            fprintf(stderr, "[kryon][richtext] Text component has %d children, entering rich text mode\n",
+                    self->child_count);
+        }
+
+        // DEBUG: Verify execution continues
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            fprintf(stderr, "[kryon][richtext] After rich text mode msg, text_state=%p rich_text=%p\n",
+                    (void*)text_state, (void*)(text_state ? text_state->rich_text : NULL));
+        }
+
+        // Create rich text if not already exists
+        if (!text_state->rich_text) {
+            text_state->rich_text = kryon_rich_text_create(1024, 32, 16);
+            text_state->uses_rich_text = true;
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                fprintf(stderr, "[kryon][richtext] Created rich_text=%p\n", (void*)text_state->rich_text);
+            }
+        }
+
+        if (text_state->rich_text) {
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                fprintf(stderr, "[kryon][richtext] About to flatten children\n");
+            }
+            // Flatten children to text runs
+            kryon_text_flatten_children_to_runs(self, text_state->rich_text);
+
+            // Layout the lines
+            uint16_t max_width = available_width > 0 ? KRYON_FP_TO_INT(available_width) : 10000;
+            uint8_t font_size = text_state->font_size > 0 ? text_state->font_size : 16;
+            kryon_rich_text_layout_lines(text_state->rich_text, max_width, font_size, g_renderer);
+
+            // Calculate total dimensions from lines
+            uint16_t total_height = 0;
+            uint16_t max_line_width = 0;
+
+            for (uint16_t i = 0; i < text_state->rich_text->line_count; i++) {
+                kryon_text_line_t* line = &text_state->rich_text->lines[i];
+                total_height += line->height;
+                if (line->width > max_line_width) {
+                    max_line_width = line->width;
+                }
+            }
+
+            self->width = KRYON_FP_FROM_INT(max_line_width);
+            self->height = KRYON_FP_FROM_INT(total_height);
+        }
+    } else if (text_state && text_state->text) {
+        // Simple text mode
+        uint32_t text_len = strlen(text_state->text);
+        uint8_t font_size = text_state->font_size > 0 ? text_state->font_size : 16;
+
+        // Use same formula as layout.c get_component_intrinsic_width for consistency
+        float char_width = font_size * 0.5f;
+
+        // Account for bold (20% wider) and italic (5% wider)
+        if (text_state->font_weight == KRYON_FONT_WEIGHT_BOLD) {
+            char_width *= 1.2f;
+        }
+        if (text_state->font_style == KRYON_FONT_STYLE_ITALIC) {
+            char_width *= 1.05f;
+        }
+
+        self->width = KRYON_FP_FROM_INT((int)(text_len * char_width));
+        self->height = KRYON_FP_FROM_INT((int)(font_size * 1.2f));
+    } else {
+        // Fallback for empty text
+        self->width = KRYON_FP_FROM_INT(50);
+        self->height = KRYON_FP_FROM_INT(20);
+    }
 
     kryon_component_mark_clean(self);
 }
 
 const kryon_component_ops_t kryon_text_ops = {
+    .render = text_render,
+    .on_event = NULL,
+    .destroy = NULL,
+    .layout = text_layout
+};
+
+// ============================================================================
+// Heading Components (H1-H6) - Native first-class components
+// ============================================================================
+
+const kryon_component_ops_t kryon_h1_ops = {
+    .render = text_render,
+    .on_event = NULL,
+    .destroy = NULL,
+    .layout = text_layout
+};
+
+const kryon_component_ops_t kryon_h2_ops = {
+    .render = text_render,
+    .on_event = NULL,
+    .destroy = NULL,
+    .layout = text_layout
+};
+
+const kryon_component_ops_t kryon_h3_ops = {
+    .render = text_render,
+    .on_event = NULL,
+    .destroy = NULL,
+    .layout = text_layout
+};
+
+const kryon_component_ops_t kryon_h4_ops = {
+    .render = text_render,
+    .on_event = NULL,
+    .destroy = NULL,
+    .layout = text_layout
+};
+
+const kryon_component_ops_t kryon_h5_ops = {
+    .render = text_render,
+    .on_event = NULL,
+    .destroy = NULL,
+    .layout = text_layout
+};
+
+const kryon_component_ops_t kryon_h6_ops = {
     .render = text_render,
     .on_event = NULL,
     .destroy = NULL,
@@ -961,15 +1198,14 @@ static void button_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
                         (available_height > estimated_text_height ?
                          (available_height - estimated_text_height) / 2 : 0);
 
-        // Trace final render coordinates before button text drawing
-        trace_render_coordinates("button_text", self, text_x, text_y,
-                                (uint16_t)(text_len * 8), 16);
-
     kryon_draw_text(buf,
                        button_state->text,
                        text_x,
                        text_y,
                        button_state->font_id,
+                       0,
+                       KRYON_FONT_WEIGHT_NORMAL,
+                       KRYON_FONT_STYLE_NORMAL,
                        self->text_color);
     }
 }
@@ -984,15 +1220,11 @@ static bool button_on_event(kryon_component_t* self, kryon_event_t* event) {
     switch (event->type) {
         case KRYON_EVT_CLICK: {
             const bool is_press = (event->param & 0x80000000u) != 0;
-            fprintf(stderr, "[kryon][button] button_on_event: param=0x%08x is_press=%d on_click=%p\n",
-                    event->param, is_press, (void*)button_state->on_click);
             button_state->pressed = is_press;
             kryon_component_mark_dirty(self);
 
             if (!is_press && button_state->on_click != NULL) {
-                fprintf(stderr, "[kryon][button] Calling onclick handler!\n");
                 button_state->on_click(self, event);
-                fprintf(stderr, "[kryon][button] onclick handler returned\n");
             }
             return true;
         }
@@ -1080,7 +1312,8 @@ static void dropdown_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
         int16_t text_x = x + 8;  // Left padding
         int16_t text_y = y + (h - 16) / 2;  // Vertically center
         kryon_draw_text(buf, display_text, text_x, text_y,
-                       dropdown_state->font_id, dropdown_state->text_color);
+                       dropdown_state->font_id, 0, KRYON_FONT_WEIGHT_NORMAL,
+                       KRYON_FONT_STYLE_NORMAL, dropdown_state->text_color);
     }
 
     // Draw dropdown arrow indicator
@@ -1088,7 +1321,8 @@ static void dropdown_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
     int16_t arrow_y = y + h / 2;
     const char* arrow = dropdown_state->is_open ? "▲" : "▼";
     kryon_draw_text(buf, arrow, arrow_x, arrow_y - 8,
-                   dropdown_state->font_id, dropdown_state->text_color);
+                   dropdown_state->font_id, 0, KRYON_FONT_WEIGHT_NORMAL,
+                   KRYON_FONT_STYLE_NORMAL, dropdown_state->text_color);
 
     // Draw dropdown menu if open
     if (dropdown_state->is_open) {
@@ -1117,7 +1351,8 @@ static void dropdown_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
                 int16_t option_text_y = menu_y + (i * option_height) + (option_height - 16) / 2;
                 kryon_draw_text(buf, dropdown_state->options[i],
                               option_text_x, option_text_y,
-                              dropdown_state->font_id, dropdown_state->text_color);
+                              dropdown_state->font_id, 0, KRYON_FONT_WEIGHT_NORMAL,
+                              KRYON_FONT_STYLE_NORMAL, dropdown_state->text_color);
             }
         }
     }
@@ -1171,27 +1406,14 @@ static bool dropdown_on_event(kryon_component_t* self, kryon_event_t* event) {
 
                 int16_t mouse_y = event->y;
                 int16_t menu_y = y + h;
-
-                fprintf(stderr, "[DROPDOWN_HOVER] mouse_y=%d, dropdown_y=%d, h=%u, menu_y=%d, option_count=%d\n",
-                        mouse_y, y, h, menu_y, dropdown_state->option_count);
-
-                // Only recalculate if mouse is within menu bounds
-                // This ensures precise hit detection matching visual rendering
                 int16_t menu_end = menu_y + (dropdown_state->option_count * h);
-                fprintf(stderr, "[DROPDOWN_HOVER] menu_end=%d, in_bounds=%d\n",
-                        menu_end, (mouse_y >= menu_y && mouse_y < menu_end));
 
                 if (mouse_y >= menu_y && mouse_y < menu_end) {
-                    // Calculate which option using direct arithmetic
                     int8_t new_index = (mouse_y - menu_y) / h;
-                    fprintf(stderr, "[DROPDOWN_HOVER] calculated: (mouse_y - menu_y) / h = (%d - %d) / %u = %d\n",
-                            mouse_y, menu_y, h, new_index);
                     if (new_index >= 0 && new_index < dropdown_state->option_count) {
                         dropdown_state->hovered_index = new_index;
-                        fprintf(stderr, "[DROPDOWN_HOVER] SET hovered_index=%d\n", new_index);
                     } else {
                         dropdown_state->hovered_index = -1;
-                        fprintf(stderr, "[DROPDOWN_HOVER] SET hovered_index=-1 (out of range)\n");
                     }
                     kryon_component_mark_dirty(self);
                 }

@@ -28,8 +28,9 @@ var reactiveProcessingEnabled*: bool = true
 # Registry for update procedures that can be called to sync regular variables with reactive ones
 var reactiveUpdateRegistry*: Table[string, proc ()] = initTable[string, proc ()]()
 
-# Forward declaration
+# Forward declarations
 proc updateAllReactiveTextExpressions*()
+proc updateAllReactiveConditionals*()
 
 # Initialize reactive system
 proc initReactiveSystem*() =
@@ -92,6 +93,9 @@ proc processReactiveUpdates*() =
 
     # Clear the queue
     reactiveUpdateQueue.setLen(0)
+
+  # Update all reactive conditionals (evaluates them each frame)
+  updateAllReactiveConditionals()
 
   # Update all reactive text expressions (evaluates them each frame)
   updateAllReactiveTextExpressions()
@@ -218,3 +222,73 @@ template autoReactive*(variable: untyped): untyped =
   else:
     # Fallback: treat as regular variable
     variable
+
+# ============================================================================
+# Reactive Conditional System
+# ============================================================================
+
+type
+  ReactiveConditional* = ref object
+    parent*: KryonComponent
+    conditionProc*: proc(): bool {.closure.}
+    thenProc*: proc(): seq[KryonComponent] {.closure.}
+    elseProc*: proc(): seq[KryonComponent] {.closure.}
+    currentChildren*: seq[KryonComponent]
+    lastCondition*: bool
+    initialized*: bool
+
+var reactiveConditionals*: seq[ReactiveConditional] = @[]
+
+proc createReactiveConditional*(
+  parent: KryonComponent,
+  conditionProc: proc(): bool {.closure.},
+  thenProc: proc(): seq[KryonComponent] {.closure.},
+  elseProc: proc(): seq[KryonComponent] {.closure.} = nil
+) =
+  ## Create and register a reactive conditional that re-evaluates when variables change
+  let conditional = ReactiveConditional(
+    parent: parent,
+    conditionProc: conditionProc,
+    thenProc: thenProc,
+    elseProc: elseProc,
+    currentChildren: @[],
+    lastCondition: false,
+    initialized: false
+  )
+  reactiveConditionals.add(conditional)
+  echo "[kryon][reactive] Created reactive conditional"
+
+proc updateAllReactiveConditionals*() =
+  ## Update all reactive conditionals by re-evaluating conditions and updating component tree
+  for cond in reactiveConditionals:
+    if cond != nil and cond.parent != nil:
+      try:
+        let currentCondition = cond.conditionProc()
+
+        # Update if condition changed or first time
+        if not cond.initialized or currentCondition != cond.lastCondition:
+          echo "[kryon][reactive] Conditional changed: ", currentCondition
+
+          # Remove old children
+          for child in cond.currentChildren:
+            if child != nil:
+              kryon_component_remove_child(cond.parent, child)
+          cond.currentChildren.setLen(0)
+
+          # Add new children based on condition
+          let newChildren = if currentCondition:
+            cond.thenProc()
+          else:
+            if cond.elseProc != nil: cond.elseProc() else: @[]
+
+          for child in newChildren:
+            if child != nil:
+              discard kryon_component_add_child(cond.parent, child)
+              kryon_component_mark_dirty(child)
+
+          cond.currentChildren = newChildren
+          cond.lastCondition = currentCondition
+          cond.initialized = true
+          kryon_component_mark_dirty(cond.parent)
+      except Exception as e:
+        echo "[kryon][reactive] Error updating conditional: ", e.msg

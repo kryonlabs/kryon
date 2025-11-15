@@ -1,7 +1,7 @@
 #ifndef KRYON_MARKDOWN_H
 #define KRYON_MARKDOWN_H
 
-#include "include/kryon.h"
+#include "kryon.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -84,6 +84,7 @@ typedef struct md_node {
         struct {
             char* text;
             uint16_t length;
+            struct md_inline* first_inline;  // Linked list of inline elements
         } paragraph;
 
         struct {
@@ -165,7 +166,7 @@ typedef struct md_theme {
     uint16_t code_font_size;
     uint16_t line_height;
     uint16_t paragraph_spacing;
-    uint16_t heading_spacing;
+    uint16_t heading_spacing[6];
 
     // Layout
     uint16_t max_width;
@@ -195,7 +196,9 @@ typedef struct md_parser {
         md_inline_t* inlines;
         char* text_buffer;
         uint16_t node_count;
+        uint16_t node_used;
         uint16_t inline_count;
+        uint16_t inline_used;
         uint16_t text_buffer_size;
         uint16_t text_buffer_used;
     } memory;
@@ -247,7 +250,7 @@ void md_layout_document(md_node_t* root, md_layout_context_t* ctx);
 // Layout utilities
 uint16_t md_measure_text(const char* text, uint16_t length, const md_theme_t* theme);
 uint16_t md_wrap_text(const char* text, uint16_t length, uint16_t max_width, const md_theme_t* theme);
-uint16_t md_measure_inline(md_inline_t* inline, const md_theme_t* theme);
+uint16_t md_measure_inline(md_inline_t* inl, const md_theme_t* theme);
 
 // ============================================================================
 // Renderer System
@@ -276,12 +279,23 @@ typedef struct md_renderer {
         uint16_t count;
         uint16_t capacity;
     } images;
+
+    // Text measurement callback (for accurate spacing)
+    void (*measure_text)(const char* text, uint16_t font_size,
+                        uint8_t font_weight, uint8_t font_style,
+                        uint16_t* width, uint16_t* height, void* user_data);
+    void* measure_text_user_data;
 } md_renderer_t;
 
 // Renderer lifecycle
 md_renderer_t* md_renderer_create(kryon_cmd_buf_t* cmd_buf, uint16_t width, uint16_t height);
 void md_renderer_destroy(md_renderer_t* renderer);
 void md_renderer_set_theme(md_renderer_t* renderer, const md_theme_t* theme);
+
+// Set text measurement callback for accurate spacing
+void md_renderer_set_measure_callback(md_renderer_t* renderer,
+                                      void (*measure_text)(const char*, uint16_t, uint8_t, uint8_t, uint16_t*, uint16_t*, void*),
+                                      void* user_data);
 
 // Rendering functions
 void md_render_node(md_node_t* node, md_renderer_t* renderer, md_layout_context_t* ctx);
@@ -297,10 +311,10 @@ void md_render_table(md_node_t* table, md_renderer_t* renderer, md_layout_contex
 
 // Inline rendering
 void md_render_inlines(md_inline_t* inlines, md_renderer_t* renderer, md_layout_context_t* ctx);
-void md_render_text_inline(md_inline_t* inline, md_renderer_t* renderer, md_layout_context_t* ctx);
-void md_render_code_inline(md_inline_t* inline, md_renderer_t* renderer, md_layout_context_t* ctx);
-void md_render_link_inline(md_inline_t* inline, md_renderer_t* renderer, md_layout_context_t* ctx);
-void md_render_image_inline(md_inline_t* inline, md_renderer_t* renderer, md_layout_context_t* ctx);
+void md_render_text_inline(md_inline_t* inl, md_renderer_t* renderer, md_layout_context_t* ctx);
+void md_render_code_inline(md_inline_t* inl, md_renderer_t* renderer, md_layout_context_t* ctx);
+void md_render_link_inline(md_inline_t* inl, md_renderer_t* renderer, md_layout_context_t* ctx);
+void md_render_image_inline(md_inline_t* inl, md_renderer_t* renderer, md_layout_context_t* ctx);
 
 // ============================================================================
 // Utility Functions

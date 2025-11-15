@@ -3,7 +3,7 @@
 ## Provides declarative UI syntax that compiles to C core component trees
 
 import macros, strutils, os, sequtils
-import ./runtime, ./core_kryon, ./reactive_system
+import ./runtime, ./core_kryon, ./reactive_system, ./markdown
 
 # ============================================================================
 # Type Aliases for Custom Components
@@ -535,6 +535,123 @@ macro Container*(props: untyped): untyped =
 
   # Layout direction already set early above
 
+  # Helper function to process conditional (if/else) nodes into reactive conditionals
+  proc processConditionalNode(ifNode: NimNode, containerName: NimNode): NimNode =
+    ## Convert if/else statements to reactive conditionals that re-evaluate when variables change
+
+    # Extract the first branch (if branch)
+    let firstBranch = ifNode[0]
+    let condition = firstBranch[0]  # The if condition
+    let thenBody = firstBranch[1]   # The then body
+
+    # Build then closure body - collects all child components
+    var thenComponents = newStmtList()
+    let thenChildrenSym = genSym(nskVar, "childComponents")
+    for child in thenBody:
+      # Each child might be a component macro that returns a value
+      # We need to capture the value and add it to the children sequence
+      let compSym = genSym(nskLet, "comp")
+      let addCall = nnkCall.newTree(
+        nnkDotExpr.newTree(thenChildrenSym, ident("add")),
+        compSym
+      )
+      let ifStmt = nnkIfStmt.newTree(
+        nnkElifBranch.newTree(
+          nnkInfix.newTree(ident("!="), compSym, newNilLit()),
+          newStmtList(addCall)
+        )
+      )
+      thenComponents.add(nnkLetSection.newTree(
+        nnkIdentDefs.newTree(compSym, newEmptyNode(), child)
+      ))
+      thenComponents.add(ifStmt)
+
+    # Check if there's an else branch
+    var hasElse = false
+    var elseComponents = newStmtList()
+    var elseChildrenSym: NimNode
+
+    if ifNode.len > 1:
+      let elseBranch = ifNode[1]
+      if elseBranch.kind == nnkElse:
+        hasElse = true
+        elseChildrenSym = genSym(nskVar, "childComponents")
+        for child in elseBranch[0]:
+          # Each child might be a component macro that returns a value
+          # We need to capture the value and add it to the children sequence
+          let compSym = genSym(nskLet, "comp")
+          let addCall = nnkCall.newTree(
+            nnkDotExpr.newTree(elseChildrenSym, ident("add")),
+            compSym
+          )
+          let ifStmt = nnkIfStmt.newTree(
+            nnkElifBranch.newTree(
+              nnkInfix.newTree(ident("!="), compSym, newNilLit()),
+              newStmtList(addCall)
+            )
+          )
+          elseComponents.add(nnkLetSection.newTree(
+            nnkIdentDefs.newTree(compSym, newEmptyNode(), child)
+          ))
+          elseComponents.add(ifStmt)
+
+    # Generate the reactive conditional registration code
+    if hasElse:
+      # Build complete closure bodies
+      var thenBody = newStmtList()
+      thenBody.add(nnkVarSection.newTree(
+        nnkIdentDefs.newTree(
+          thenChildrenSym,
+          nnkBracketExpr.newTree(bindSym("seq"), bindSym("KryonComponent")),
+          nnkPrefix.newTree(bindSym("@"), nnkBracket.newTree())
+        )
+      ))
+      thenBody.add(thenComponents)
+      thenBody.add(thenChildrenSym)
+
+      var elseBody = newStmtList()
+      elseBody.add(nnkVarSection.newTree(
+        nnkIdentDefs.newTree(
+          elseChildrenSym,
+          nnkBracketExpr.newTree(bindSym("seq"), bindSym("KryonComponent")),
+          nnkPrefix.newTree(bindSym("@"), nnkBracket.newTree())
+        )
+      ))
+      elseBody.add(elseComponents)
+      elseBody.add(elseChildrenSym)
+
+      result = quote do:
+        block:
+          # Create closures at runtime so they capture variables
+          let condProc = proc(): bool {.closure.} = `condition`
+          let thenProc = proc(): seq[KryonComponent] {.closure.} =
+            `thenBody`
+          let elseProc = proc(): seq[KryonComponent] {.closure.} =
+            `elseBody`
+
+          createReactiveConditional(`containerName`, condProc, thenProc, elseProc)
+    else:
+      # Build complete closure body
+      var thenBody = newStmtList()
+      thenBody.add(nnkVarSection.newTree(
+        nnkIdentDefs.newTree(
+          thenChildrenSym,
+          nnkBracketExpr.newTree(bindSym("seq"), bindSym("KryonComponent")),
+          nnkPrefix.newTree(bindSym("@"), nnkBracket.newTree())
+        )
+      ))
+      thenBody.add(thenComponents)
+      thenBody.add(thenChildrenSym)
+
+      result = quote do:
+        block:
+          # Create closures at runtime so they capture variables
+          let condProc = proc(): bool {.closure.} = `condition`
+          let thenProc = proc(): seq[KryonComponent] {.closure.} =
+            `thenBody`
+
+          createReactiveConditional(`containerName`, condProc, thenProc, nil)
+
   # Process child nodes - handle static blocks specially
   for node in childNodes:
     # Check if this is a static block that generates components
@@ -629,13 +746,18 @@ macro Container*(props: untyped): untyped =
         # Static block doesn't contain a for loop - just execute it
         initStmts.add node
     else:
-      # Regular child node
-      let childSym = genSym(nskLet, "child")
-      initStmts.add quote do:
-        let `childSym` = `node`
-        if `childSym` != nil:
-          kryon_component_mark_dirty(`childSym`)
-          discard kryon_component_add_child(`containerName`, `childSym`)
+      # Regular child node - check if it's a conditional statement
+      if node.kind == nnkIfStmt:
+        # Handle if/else statements specially
+        initStmts.add processConditionalNode(node, containerName)
+      else:
+        # Regular child component
+        let childSym = genSym(nskLet, "child")
+        initStmts.add quote do:
+          let `childSym` = `node`
+          if `childSym` != nil:
+            kryon_component_mark_dirty(`childSym`)
+            discard kryon_component_add_child(`containerName`, `childSym`)
 
   initStmts.add quote do:
     kryon_component_mark_dirty(`containerName`)
@@ -1323,11 +1445,12 @@ macro Markdown*(props: untyped): untyped =
   ## Markdown component macro for rich text formatting
   var
     markdownName = genSym(nskLet, "markdown")
-    sourceVal: NimNode = newNilLit()
-    fileVal: NimNode = newNilLit()
+    sourceVal: NimNode = newStrLitNode("")
+    fileVal: NimNode = newStrLitNode("")
     themeVal: NimNode = newNilLit()
     widthVal: NimNode = newIntLitNode(800)
     heightVal: NimNode = newIntLitNode(600)
+    scrollableVal: NimNode = newLit(true)  # Default to true (bool literal)
     onLinkClickVal: NimNode = newNilLit()
     onImageClickVal: NimNode = newNilLit()
 
@@ -1348,6 +1471,8 @@ macro Markdown*(props: untyped): untyped =
         widthVal = value
       of "height":
         heightVal = value
+      of "scrollable":
+        scrollableVal = value
       of "onLinkClick":
         onLinkClickVal = value
       of "onImageClick":
@@ -1364,6 +1489,7 @@ macro Markdown*(props: untyped): untyped =
       theme: `themeVal`,
       width: `widthVal`,
       height: `heightVal`,
+      scrollable: `scrollableVal`,
       onLinkClick: `onLinkClickVal`,
       onImageClick: `onImageClickVal`
     )

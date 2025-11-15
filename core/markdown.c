@@ -187,10 +187,10 @@ md_node_t* md_create_node(md_parser_t* parser, md_block_type_t type) {
 md_inline_t* md_create_inline(md_parser_t* parser, md_inline_type_t type) {
     if (parser == NULL || parser->memory.inline_count <= parser->memory.inline_used) return NULL;
 
-    md_inline_t* inline = &parser->memory.inlines[parser->memory.inline_used++];
-    memset(inline, 0, sizeof(md_inline_t));
-    inline->type = type;
-    return inline;
+    md_inline_t* inl = &parser->memory.inlines[parser->memory.inline_used++];
+    memset(inl, 0, sizeof(md_inline_t));
+    inl->type = type;
+    return inl;
 }
 
 char* md_alloc_text(md_parser_t* parser, const char* text, uint16_t length) {
@@ -307,6 +307,211 @@ uint32_t md_hash_string(const char* str, uint16_t length) {
 }
 
 // ============================================================================
+// Inline Parser Implementation
+// ============================================================================
+
+// Parse inline formatting from text and return linked list of inline elements
+md_inline_t* md_parse_inlines(md_parser_t* parser, const char* text, uint16_t length) {
+    if (parser == NULL || text == NULL || length == 0) return NULL;
+
+    md_inline_t* first_inline = NULL;
+    md_inline_t* last_inline = NULL;
+    uint16_t pos = 0;
+
+    while (pos < length) {
+        // Look for inline markers
+        uint16_t next_marker = pos;
+
+        // Find the next marker position
+        while (next_marker < length) {
+            char c = text[next_marker];
+            if (c == '*' || c == '_' || c == '`') {
+                break;
+            }
+            next_marker++;
+        }
+
+        // Add any plain text before the marker
+        if (next_marker > pos) {
+            md_inline_t* text_inline = md_create_inline(parser, MD_INLINE_TEXT);
+            if (text_inline) {
+                uint16_t text_len = next_marker - pos;
+                text_inline->data.text.text = md_alloc_text(parser, &text[pos], text_len);
+                text_inline->data.text.length = text_len;
+
+                // Add to linked list
+                if (first_inline == NULL) {
+                    first_inline = text_inline;
+                    last_inline = text_inline;
+                } else {
+                    last_inline->next = text_inline;
+                    last_inline = text_inline;
+                }
+            }
+            pos = next_marker;
+        }
+
+        if (pos >= length) break;
+
+        // Parse marker
+        char marker = text[pos];
+
+        // Check for code span: `code`
+        if (marker == '`') {
+            uint16_t end = pos + 1;
+            while (end < length && text[end] != '`') {
+                end++;
+            }
+
+            if (end < length) {
+                // Found closing backtick
+                uint16_t code_len = end - pos - 1;
+                if (code_len > 0) {
+                    md_inline_t* code_inline = md_create_inline(parser, MD_INLINE_CODE_SPAN);
+                    if (code_inline) {
+                        code_inline->data.text.text = md_alloc_text(parser, &text[pos + 1], code_len);
+                        code_inline->data.text.length = code_len;
+
+                        if (first_inline == NULL) {
+                            first_inline = code_inline;
+                            last_inline = code_inline;
+                        } else {
+                            last_inline->next = code_inline;
+                            last_inline = code_inline;
+                        }
+                    }
+                    pos = end + 1;
+                } else {
+                    // Empty code span, skip
+                    pos = end + 1;
+                }
+            } else {
+                // No closing backtick, treat as literal
+                md_inline_t* text_inline = md_create_inline(parser, MD_INLINE_TEXT);
+                if (text_inline) {
+                    text_inline->data.text.text = md_alloc_text(parser, &text[pos], 1);
+                    text_inline->data.text.length = 1;
+
+                    if (first_inline == NULL) {
+                        first_inline = text_inline;
+                        last_inline = text_inline;
+                    } else {
+                        last_inline->next = text_inline;
+                        last_inline = text_inline;
+                    }
+                }
+                pos++;
+            }
+        }
+        // Check for bold: **text** or __text__
+        else if ((marker == '*' || marker == '_') && pos + 1 < length && text[pos + 1] == marker) {
+            uint16_t end = pos + 2;
+            while (end + 1 < length) {
+                if (text[end] == marker && text[end + 1] == marker) {
+                    break;
+                }
+                end++;
+            }
+
+            if (end + 1 < length && text[end] == marker && text[end + 1] == marker) {
+                // Found closing markers
+                uint16_t bold_len = end - pos - 2;
+                if (bold_len > 0) {
+                    md_inline_t* bold_inline = md_create_inline(parser, MD_INLINE_STRONG);
+                    if (bold_inline) {
+                        bold_inline->data.text.text = md_alloc_text(parser, &text[pos + 2], bold_len);
+                        bold_inline->data.text.length = bold_len;
+
+                        if (first_inline == NULL) {
+                            first_inline = bold_inline;
+                            last_inline = bold_inline;
+                        } else {
+                            last_inline->next = bold_inline;
+                            last_inline = bold_inline;
+                        }
+                    }
+                    pos = end + 2;
+                } else {
+                    // Empty bold, skip
+                    pos = end + 2;
+                }
+            } else {
+                // No closing markers, treat as literal
+                md_inline_t* text_inline = md_create_inline(parser, MD_INLINE_TEXT);
+                if (text_inline) {
+                    text_inline->data.text.text = md_alloc_text(parser, &text[pos], 2);
+                    text_inline->data.text.length = 2;
+
+                    if (first_inline == NULL) {
+                        first_inline = text_inline;
+                        last_inline = text_inline;
+                    } else {
+                        last_inline->next = text_inline;
+                        last_inline = text_inline;
+                    }
+                }
+                pos += 2;
+            }
+        }
+        // Check for italic: *text* or _text_
+        else if (marker == '*' || marker == '_') {
+            uint16_t end = pos + 1;
+            while (end < length) {
+                if (text[end] == marker) {
+                    break;
+                }
+                end++;
+            }
+
+            if (end < length && text[end] == marker) {
+                // Found closing marker
+                uint16_t italic_len = end - pos - 1;
+                if (italic_len > 0) {
+                    md_inline_t* italic_inline = md_create_inline(parser, MD_INLINE_EMPHASIS);
+                    if (italic_inline) {
+                        italic_inline->data.text.text = md_alloc_text(parser, &text[pos + 1], italic_len);
+                        italic_inline->data.text.length = italic_len;
+
+                        if (first_inline == NULL) {
+                            first_inline = italic_inline;
+                            last_inline = italic_inline;
+                        } else {
+                            last_inline->next = italic_inline;
+                            last_inline = italic_inline;
+                        }
+                    }
+                    pos = end + 1;
+                } else {
+                    // Empty italic, skip
+                    pos = end + 1;
+                }
+            } else {
+                // No closing marker, treat as literal
+                md_inline_t* text_inline = md_create_inline(parser, MD_INLINE_TEXT);
+                if (text_inline) {
+                    text_inline->data.text.text = md_alloc_text(parser, &text[pos], 1);
+                    text_inline->data.text.length = 1;
+
+                    if (first_inline == NULL) {
+                        first_inline = text_inline;
+                        last_inline = text_inline;
+                    } else {
+                        last_inline->next = text_inline;
+                        last_inline = text_inline;
+                    }
+                }
+                pos++;
+            }
+        } else {
+            // Unknown marker, shouldn't happen
+            pos++;
+        }
+    }
+
+    return first_inline;
+}
+
+// ============================================================================
 // Simple Parser Implementation
 // ============================================================================
 
@@ -409,6 +614,10 @@ md_node_t* md_parse(const char* input, size_t length) {
                 if (paragraph) {
                     paragraph->data.paragraph.text = md_alloc_text(parser, &input[position], trimmed_length);
                     paragraph->data.paragraph.length = trimmed_length;
+
+                    // Parse inline elements from paragraph text
+                    paragraph->data.paragraph.first_inline = md_parse_inlines(parser, &input[position], trimmed_length);
+
                     paragraph->parent = current_parent;
 
                     if (current_parent->first_child == NULL) {
@@ -430,7 +639,15 @@ md_node_t* md_parse(const char* input, size_t length) {
         }
     }
 
-    md_parser_destroy(parser);
+    // NOTE: We intentionally don't destroy the parser here because it owns the memory
+    // for all the nodes we created. The nodes use the parser's memory pools.
+    // In a real implementation, we would either:
+    //   1. Use heap allocation for nodes (not parser memory pools)
+    //   2. Keep the parser alive and associate it with the document
+    //   3. Implement a proper cleanup function that frees everything
+    // For now, this is a known memory leak but necessary for the nodes to remain valid.
+    // md_parser_destroy(parser);  // DO NOT uncomment - will free all nodes!
+
     return document;
 }
 
@@ -467,6 +684,14 @@ void md_renderer_destroy(md_renderer_t* renderer) {
 void md_renderer_set_theme(md_renderer_t* renderer, const md_theme_t* theme) {
     if (renderer == NULL || theme == NULL) return;
     renderer->theme = theme;
+}
+
+void md_renderer_set_measure_callback(md_renderer_t* renderer,
+                                      void (*measure_text)(const char*, uint16_t, uint8_t, uint8_t, uint16_t*, uint16_t*, void*),
+                                      void* user_data) {
+    if (renderer == NULL) return;
+    renderer->measure_text = measure_text;
+    renderer->measure_text_user_data = user_data;
 }
 
 // ============================================================================
@@ -519,18 +744,97 @@ void md_render_document(md_node_t* root, md_renderer_t* renderer) {
                     kryon_draw_text(renderer->cmd_buf,
                                    node->data.heading.text,
                                    renderer->theme->margin, y,
-                                   0, color);  // Use default font for now
+                                   0, font_size, KRYON_FONT_WEIGHT_NORMAL,
+                                   KRYON_FONT_STYLE_NORMAL, color);
 
                     y += font_size + renderer->theme->heading_spacing[level - 1];
                 }
                 break;
 
             case MD_BLOCK_PARAGRAPH:
-                if (node->data.paragraph.text && node->data.paragraph.length > 0) {
+                if (node->data.paragraph.first_inline != NULL) {
+                    // Render inline elements horizontally
+                    uint16_t x = renderer->theme->margin;
+                    md_inline_t* inl = node->data.paragraph.first_inline;
+
+                    while (inl != NULL) {
+                        uint8_t font_weight = KRYON_FONT_WEIGHT_NORMAL;
+                        uint8_t font_style = KRYON_FONT_STYLE_NORMAL;
+                        uint32_t color = renderer->theme->text_color;
+                        uint16_t font_id = 0;
+
+                        // Determine styling based on inline type
+                        switch (inl->type) {
+                            case MD_INLINE_STRONG:
+                                font_weight = KRYON_FONT_WEIGHT_BOLD;
+                                break;
+
+                            case MD_INLINE_EMPHASIS:
+                                font_style = KRYON_FONT_STYLE_ITALIC;
+                                break;
+
+                            case MD_INLINE_CODE_SPAN:
+                                color = renderer->theme->code_text_color;
+                                font_id = 1;  // Use monospace font (if available)
+                                // TODO: Add code background rectangle
+                                break;
+
+                            case MD_INLINE_TEXT:
+                            default:
+                                // Normal text styling
+                                break;
+                        }
+
+                        // Draw the text
+                        if (inl->data.text.text && inl->data.text.length > 0) {
+                            kryon_draw_text(renderer->cmd_buf,
+                                           inl->data.text.text,
+                                           x, y,
+                                           font_id, renderer->theme->base_font_size,
+                                           font_weight, font_style, color);
+
+                            // Measure text width for accurate spacing
+                            uint16_t text_width = 0;
+                            uint16_t text_height = 0;
+
+                            if (renderer->measure_text != NULL) {
+                                // Use accurate measurement from backend
+                                renderer->measure_text(inl->data.text.text,
+                                                     renderer->theme->base_font_size,
+                                                     font_weight, font_style,
+                                                     &text_width, &text_height,
+                                                     renderer->measure_text_user_data);
+                                x += text_width;
+                            } else {
+                                // Fallback to approximation if no callback set
+                                uint16_t font_size = renderer->theme->base_font_size;
+                                float char_width = font_size * 0.5f;
+
+                                // Adjust for bold text (approximately 20% wider)
+                                if (font_weight == KRYON_FONT_WEIGHT_BOLD) {
+                                    char_width *= 1.2f;
+                                }
+                                // Adjust for italic text (approximately 5% wider due to slant)
+                                if (font_style == KRYON_FONT_STYLE_ITALIC) {
+                                    char_width *= 1.05f;
+                                }
+
+                                x += (uint16_t)(inl->data.text.length * char_width);
+                            }
+                        }
+
+                        inl = inl->next;
+                    }
+
+                    y += renderer->theme->line_height + renderer->theme->paragraph_spacing;
+                } else if (node->data.paragraph.text && node->data.paragraph.length > 0) {
+                    // Fallback to plain text if no inlines
                     kryon_draw_text(renderer->cmd_buf,
                                    node->data.paragraph.text,
                                    renderer->theme->margin, y,
-                                   0, renderer->theme->text_color);
+                                   0, renderer->theme->base_font_size,
+                                   KRYON_FONT_WEIGHT_NORMAL, KRYON_FONT_STYLE_NORMAL,
+                                   renderer->theme->text_color);
 
                     y += renderer->theme->line_height + renderer->theme->paragraph_spacing;
                 }

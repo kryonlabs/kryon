@@ -252,15 +252,23 @@ void kryon_sdl3_measure_text(const char* text, uint16_t font_id, uint16_t* width
         return;
     }
 
-    // Use font height and estimate width based on character count
-    int font_height = TTF_GetFontHeight(font);
-    size_t text_len = strlen(text);
+    // Use TTF_GetStringSize for accurate text measurement (SDL3_ttf function)
+    int measured_width = 0;
+    int measured_height = 0;
 
-    // Estimate: average character width is about 60% of font height for most fonts
-    int estimated_width = (int)(text_len * font_height * 0.6f);
+    if (TTF_GetStringSize(font, text, strlen(text), &measured_width, &measured_height)) {
+        // Success - use actual measured dimensions
+        if (width) *width = (uint16_t)measured_width;
+        if (height) *height = (uint16_t)measured_height;
+    } else {
+        // Fallback to font height if measurement fails
+        int font_height = TTF_GetFontHeight(font);
+        size_t text_len = strlen(text);
+        int estimated_width = (int)(text_len * font_height * 0.6f);
 
-    if (width) *width = (uint16_t)estimated_width;
-    if (height) *height = (uint16_t)font_height;
+        if (width) *width = (uint16_t)estimated_width;
+        if (height) *height = (uint16_t)font_height;
+    }
 }
 
 void kryon_sdl3_measure_text_utf8(const char* text, uint16_t font_id, uint16_t* width, uint16_t* height) {

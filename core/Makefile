@@ -87,6 +87,9 @@ CORE_SOURCES = \
     style.c \
     components.c \
     canvas.c \
+    markdown.c \
+    richtext.c \
+    inline_components.c \
     ../renderers/common/command_buf.c
 
 OBJECTS = $(CORE_SOURCES:%.c=$(BUILD_DIR)/%.o)

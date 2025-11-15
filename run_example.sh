@@ -216,7 +216,7 @@ case "$FRONTEND" in
             "$EXAMPLE_FILE" 2>&1 | tee "$COMPILATION_LOG"; then
             echo -e "${GREEN}✓ Compilation successful${NC}"
             echo -e "${YELLOW}Running example (press Ctrl+C to exit)...${NC}"
-            "$BIN_DIR/${EXAMPLE_NAME}" || true
+            LD_LIBRARY_PATH="${PROJECT_ROOT}/build:$LD_LIBRARY_PATH" "$BIN_DIR/${EXAMPLE_NAME}" || true
         else
             # Analyze the compilation error and provide helpful message
             if grep -q "undefined reference" "$COMPILATION_LOG"; then

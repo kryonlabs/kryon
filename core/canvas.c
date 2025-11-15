@@ -679,7 +679,8 @@ void kryon_canvas_print(const char* text, kryon_fp_t x, kryon_fp_t y) {
 
     kryon_draw_text(g_command_buffer, text,
                    KRYON_FP_TO_INT(x), KRYON_FP_TO_INT(y),
-                   g_canvas->font_id, g_canvas->color);
+                   g_canvas->font_id, 0, KRYON_FONT_WEIGHT_NORMAL,
+                   KRYON_FONT_STYLE_NORMAL, g_canvas->color);
 }
 
 void kryon_canvas_printf(const char* text, kryon_fp_t x, kryon_fp_t y, kryon_fp_t wrap_limit, int32_t align) {

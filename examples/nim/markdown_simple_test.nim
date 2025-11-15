@@ -5,13 +5,13 @@
 import kryon_dsl
 import markdown
 
-# Simple markdown content
+# Markdown content with lots of text to test scrolling
 let sampleMarkdown = """
-# Simple Markdown Test
+# Scrollable Markdown Test
 
 This is a **bold** text with *italic* and `code` formatting.
 
-## Lists
+## Section 1: Lists
 
 ### Unordered List
 - First item
@@ -23,7 +23,7 @@ This is a **bold** text with *italic* and `code` formatting.
 2. Second step
 3. Third step
 
-## Code Example
+## Section 2: Code Example
 
 ```nim
 import kryon_dsl
@@ -34,14 +34,38 @@ let app = kryonApp:
       text = "Hello World"
 ```
 
-## Blockquote
+## Section 3: Blockquote
 
 > This is a blockquote.
 > It can span multiple lines.
 
-## Links
+## Section 4: More Content
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+
+### Subsection A
+
+More text here to make the content overflow the container height.
+
+### Subsection B
+
+Even more text to ensure scrolling is necessary.
+
+## Section 5: Additional Lists
+
+1. Item one
+2. Item two
+3. Item three
+4. Item four
+5. Item five
+
+## Section 6: Links
 
 Visit [Kryon](https://kryon.dev) for more information.
+
+## Section 7: Final Content
+
+This is the end of the markdown content. You should be able to scroll to see all of this text.
 """
 
 let app = kryonApp:

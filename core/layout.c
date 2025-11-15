@@ -80,8 +80,8 @@ static void trace_coordinate_flow(const char* stage, kryon_component_t* componen
 static kryon_fp_t get_component_intrinsic_width(kryon_component_t* component) {
     if (component == NULL) return 0;
 
-    // Use explicit width if set
-    if (component->width > 0) {
+    // Use explicit width ONLY if user explicitly set it (not layout-calculated width)
+    if ((component->layout_flags & KRYON_COMPONENT_FLAG_HAS_WIDTH) != 0) {
         return component->width;
     }
 
@@ -89,10 +89,50 @@ static kryon_fp_t get_component_intrinsic_width(kryon_component_t* component) {
     // Use string comparison to identify component types
     if (component->ops == &kryon_text_ops) {
         kryon_text_state_t* text_state = (kryon_text_state_t*)component->state;
+
+        // Check if this Text component has inline children (rich text mode)
+        if (component->child_count > 0 && text_state) {
+            // Rich text mode - sum up children widths
+            // Trigger layout to calculate proper dimensions
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                fprintf(stderr, "[kryon][layout] Text with %d inline children - triggering layout\n",
+                        component->child_count);
+            }
+
+            // Call text_layout to flatten children and calculate dimensions
+            // This will set component->width and component->height
+            if (component->ops->layout) {
+                component->ops->layout(component, 0, 0);  // Let it auto-size
+            }
+
+            return component->width > 0 ? component->width : KRYON_FP_FROM_INT(100);
+        }
+
         if (text_state && text_state->text) {
-            // Estimate text width (platform-specific implementation needed)
+            // Improved text width estimation based on font size and weight
             uint32_t text_len = strlen(text_state->text);
-            return KRYON_FP_FROM_INT(text_len * 8); // 8 pixels per character (estimate)
+            uint8_t font_size = text_state->font_size > 0 ? text_state->font_size : 16; // Default 16px
+
+            // Use 0.5 * font_size per character (better approximation than fixed 8px)
+            float char_width = font_size * 0.5f;
+
+            // Account for bold (20% wider) and italic (5% wider)
+            if (text_state->font_weight == KRYON_FONT_WEIGHT_BOLD) {
+                char_width *= 1.2f;
+            }
+            if (text_state->font_style == KRYON_FONT_STYLE_ITALIC) {
+                char_width *= 1.05f;
+            }
+
+            int width = (int)(text_len * char_width);
+
+            // Debug trace
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                fprintf(stderr, "[kryon][layout] get_intrinsic_width text='%s' len=%u font_size=%u weight=%u style=%u char_width=%.2f calculated_width=%d\n",
+                        text_state->text, text_len, font_size, text_state->font_weight, text_state->font_style, char_width, width);
+            }
+
+            return KRYON_FP_FROM_INT(width);
         }
         return KRYON_FP_FROM_INT(50); // Default text width
     }
@@ -111,13 +151,18 @@ static kryon_fp_t get_component_intrinsic_width(kryon_component_t* component) {
 static kryon_fp_t get_component_intrinsic_height(kryon_component_t* component) {
     if (component == NULL) return 0;
 
-    // Use explicit height if set
-    if (component->height > 0) {
+    // Use explicit height ONLY if user explicitly set it (not layout-calculated height)
+    if ((component->layout_flags & KRYON_COMPONENT_FLAG_HAS_HEIGHT) != 0) {
         return component->height;
     }
 
     // Calculate based on content (simplified)
     if (component->ops == &kryon_text_ops) {
+        // If this Text component has inline children (rich text mode), use calculated height
+        if (component->child_count > 0) {
+            // Layout should have been called during width calculation
+            return component->height > 0 ? component->height : KRYON_FP_FROM_INT(20);
+        }
         return KRYON_FP_FROM_INT(20); // Standard text height
     }
     else if (component->ops == &kryon_button_ops) {
@@ -337,6 +382,17 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
         child->width = child_width - KRYON_FP_FROM_INT(child->margin_left + child->margin_right);
         child->height = child_height - KRYON_FP_FROM_INT(child->margin_top + child->margin_bottom);
 
+        // Debug trace for text components
+        if (getenv("KRYON_TRACE_LAYOUT") && child->ops == &kryon_text_ops) {
+            kryon_text_state_t* text_state = (kryon_text_state_t*)child->state;
+            if (text_state && text_state->text) {
+                fprintf(stderr, "[kryon][layout] ROW_POSITION text='%s' x=%d y=%d width=%d height=%d current_x=%d gap=%d\n",
+                        text_state->text, KRYON_FP_TO_INT(child->x), KRYON_FP_TO_INT(child->y),
+                        KRYON_FP_TO_INT(child->width), KRYON_FP_TO_INT(child->height),
+                        KRYON_FP_TO_INT(current_x), KRYON_FP_TO_INT(gap_fp));
+            }
+        }
+
         // Track total width for alignment calculations
         total_children_width_no_gap += child_width;  // Without gaps (for space distribution)
         total_children_width += child_width;  // With gaps (for regular alignment)
@@ -344,9 +400,6 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
             total_children_width += gap_fp;
         }
         visible_child_count++;
-
-        // Trace child coordinates immediately after positioning
-        trace_coordinate_flow("ROW_CHILD_POSITIONED", child, child->x, child->y, child->width, child->height);
 
         // Update line tracking
         if (child_height > line_height) {
@@ -489,6 +542,7 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
 static void layout_column(kryon_component_t* container, kryon_layout_context_t* ctx) {
     if (container == NULL || ctx == NULL) return;
 
+
     kryon_fp_t padding_left = KRYON_FP_FROM_INT(container->padding_left);
     kryon_fp_t padding_right = KRYON_FP_FROM_INT(container->padding_right);
     kryon_fp_t padding_top = KRYON_FP_FROM_INT(container->padding_top);
@@ -545,15 +599,19 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
         }
 
         kryon_fp_t child_height = child->height;
-        if (child_height == 0) {
+        // Don't set intrinsic height for containers - let them calculate from content
+        if (child_height == 0 && child->ops != &kryon_container_ops) {
             child_height = get_component_intrinsic_height(child);
         }
-        if (child_height == 0) {
+        if (child_height == 0 && child->ops != &kryon_container_ops) {
             child_height = KRYON_FP_FROM_INT(20);
         }
 
         child->width = child_width;
-        child->height = child_height;
+        // Only assign height if we calculated one (containers keep height=0 for auto-calculation)
+        if (child_height > 0) {
+            child->height = child_height;
+        }
 
         total_content_height += child->height + margin_top + margin_bottom;
 
@@ -702,9 +760,6 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
             child->y += explicit_y;
         }
 
-        // Trace child coordinates after positioning in column
-        trace_coordinate_flow("COLUMN_CHILD_POSITIONED", child, child->x, child->y, child->width, child->height);
-
         // Update cursor and cumulative height for next child
         if (container->justify_content == KRYON_ALIGN_SPACE_EVENLY ||
             container->justify_content == KRYON_ALIGN_SPACE_AROUND ||
@@ -722,8 +777,31 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
         }
     }
 
+    // Calculate container height if not explicitly set
     if (container->height == 0) {
-        container->height = (cursor_y - container->y) + padding_bottom;
+        // Always calculate from actual content, not cursor position
+        // cursor_y may not be accurate when using space distribution
+        kryon_fp_t total_height = padding_top;
+        uint8_t height_calc_index = 0;
+
+        for (uint8_t i = 0; i < container->child_count; i++) {
+            kryon_component_t* child = container->children[i];
+            if (!child->visible) continue;
+
+            kryon_fp_t child_contribution = child->height +
+                                           KRYON_FP_FROM_INT(child->margin_top + child->margin_bottom);
+
+            total_height += child_contribution;
+
+            // Add gap between children (but not after the last one)
+            if (height_calc_index > 0) {
+                total_height += gap_fp;
+            }
+            height_calc_index++;
+        }
+
+        total_height += padding_bottom;
+        container->height = total_height;
     }
 }
 
@@ -792,14 +870,6 @@ static void layout_component_internal(kryon_component_t* component, kryon_fp_t a
     if (is_root_component) {
         component->x = 0;
         component->y = 0;
-        if (kryon_layout_should_trace()) {
-            fprintf(stderr, "[kryon][layout] ROOT component=%p positioned at (0,0)\n", (void*)component);
-        }
-    }
-
-    if (kryon_layout_should_trace()) {
-        fprintf(stderr, "[kryon][layout] BEFORE component=%p available_width=%f component->width=%f flex_grow=%d\n",
-                (void*)component, kryon_fp_to_float(available_width), kryon_fp_to_float(component->width), component->flex_grow);
     }
 
     // For container components (with children), allow expansion to available space
@@ -836,24 +906,11 @@ static void layout_component_internal(kryon_component_t* component, kryon_fp_t a
         effective_height = available_height > 0 ? available_height : component->height;
     }
 
-    // Trace coordinates BEFORE layout calculation
-    trace_coordinate_flow("BEFORE_LAYOUT", component, component->x, component->y, component->width, component->height);
-
-    if (kryon_layout_should_trace()) {
-        fprintf(stderr, "[kryon][layout] AFTER component=%p effective_width=%f effective_height=%f\n",
-                (void*)component, kryon_fp_to_float(effective_width), kryon_fp_to_float(effective_height));
-    }
-
     // Determine layout direction based on component property
     kryon_layout_direction_t direction = (kryon_layout_direction_t)component->layout_direction;
 
     if (direction > KRYON_LAYOUT_ABSOLUTE) {
         direction = KRYON_LAYOUT_COLUMN; // Fallback to column if invalid
-    }
-
-    if (kryon_layout_should_trace()) {
-        fprintf(stderr, "[kryon][layout] component %p direction=%d child_count=%d\n",
-                (void*)component, (int)direction, (int)component->child_count);
     }
 
     // Create layout context
@@ -898,9 +955,6 @@ static void layout_component_internal(kryon_component_t* component, kryon_fp_t a
         }
     }
 
-    // Trace coordinates AFTER layout calculation complete
-    trace_coordinate_flow("AFTER_LAYOUT", component, component->x, component->y, component->width, component->height);
-
     kryon_component_mark_clean(component);
 }
 
@@ -913,29 +967,6 @@ void kryon_layout_tree(kryon_component_t* root, kryon_fp_t available_width, kryo
 
     // Start layout from root
     layout_component_internal(root, available_width, available_height);
-
-    if (kryon_layout_should_trace()) {
-        fprintf(stderr,
-                "[kryon][layout] root w=%d h=%d (available=%d x %d raw=%f x %f) sizeof_fp=%zu no_float=%d\n",
-                KRYON_FP_TO_INT(root->width),
-                KRYON_FP_TO_INT(root->height),
-                KRYON_FP_TO_INT(available_width),
-                KRYON_FP_TO_INT(available_height),
-                (double)available_width,
-                (double)available_height,
-                sizeof(kryon_fp_t),
-                KRYON_NO_FLOAT);
-        for (uint8_t i = 0; i < root->child_count; i++) {
-            kryon_component_t* child = root->children[i];
-            fprintf(stderr,
-                    "[kryon][layout] child[%u] w=%d h=%d x=%d y=%d\n",
-                    i,
-                    KRYON_FP_TO_INT(child->width),
-                    KRYON_FP_TO_INT(child->height),
-                    KRYON_FP_TO_INT(child->x),
-                    KRYON_FP_TO_INT(child->y));
-        }
-    }
 }
 
 void kryon_layout_component(kryon_component_t* component, kryon_fp_t available_width, kryon_fp_t available_height) {

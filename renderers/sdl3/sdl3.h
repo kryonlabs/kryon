@@ -91,6 +91,10 @@ TTF_Font* kryon_sdl3_get_font(uint16_t font_id);
 // Text measurement
 void kryon_sdl3_measure_text(const char* text, uint16_t font_id, uint16_t* width, uint16_t* height);
 void kryon_sdl3_measure_text_utf8(const char* text, uint16_t font_id, uint16_t* width, uint16_t* height);
+void kryon_sdl3_measure_text_styled(const char* text, uint16_t font_size,
+                                   uint8_t font_weight, uint8_t font_style,
+                                   uint16_t font_id,
+                                   uint16_t* width, uint16_t* height, void* user_data);
 
 // Text rendering utilities
 SDL_Texture* kryon_sdl3_render_text(SDL_Renderer* renderer, const char* text, uint16_t font_id, uint32_t color);

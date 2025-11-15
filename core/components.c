@@ -166,7 +166,8 @@ static void input_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
     int16_t text_x = x + input_state->padding + input_state->border_width;
     int16_t text_y = y + input_state->padding + input_state->border_width;
 
-    kryon_draw_text(buf, text_to_draw, text_x, text_y, input_state->font_id, text_color);
+    kryon_draw_text(buf, text_to_draw, text_x, text_y, input_state->font_id, 0,
+                   KRYON_FONT_WEIGHT_NORMAL, KRYON_FONT_STYLE_NORMAL, text_color);
 
     // Draw cursor if focused
     if (input_state->focused && input_state->cursor_visible) {
@@ -311,7 +312,8 @@ static void checkbox_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
         uint32_t text_color = checkbox_state->text_color; // Use the component's text color
 
                 kryon_draw_text(buf, checkbox_state->label, text_x, text_y,
-                       checkbox_state->font_id, text_color);
+                       checkbox_state->font_id, 0, KRYON_FONT_WEIGHT_NORMAL,
+                       KRYON_FONT_STYLE_NORMAL, text_color);
     }
 }
 

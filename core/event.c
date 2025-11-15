@@ -84,11 +84,12 @@ kryon_component_t* kryon_event_find_target_at_point(kryon_component_t* root, int
         return NULL;
     }
 
-    fprintf(stderr, "[kryon][hit] checking component %p: x=%d y=%d w=%d h=%d children=%d z_index=%d\n",
-            (void*)root,
-            KRYON_FP_TO_INT(root->x), KRYON_FP_TO_INT(root->y),
-            KRYON_FP_TO_INT(root->width), KRYON_FP_TO_INT(root->height),
-            root->child_count, root->z_index);
+    // Disabled: too noisy
+    // fprintf(stderr, "[kryon][hit] checking component %p: x=%d y=%d w=%d h=%d children=%d z_index=%d\n",
+    //         (void*)root,
+    //         KRYON_FP_TO_INT(root->x), KRYON_FP_TO_INT(root->y),
+    //         KRYON_FP_TO_INT(root->width), KRYON_FP_TO_INT(root->height),
+    //         root->child_count, root->z_index);
 
     // Find the child with highest z-index that contains the point
     // This ensures dropdowns and other "popup" elements capture events properly
@@ -110,21 +111,24 @@ kryon_component_t* kryon_event_find_target_at_point(kryon_component_t* root, int
                 if (effective_z > best_z_index) {
                     best_z_index = effective_z;
                     best_target = child_target;
-                    fprintf(stderr, "[kryon][hit] new best target %p with z_index=%d\n",
-                            (void*)best_target, best_z_index);
+                    // Disabled: too noisy
+                    // fprintf(stderr, "[kryon][hit] new best target %p with z_index=%d\n",
+                    //         (void*)best_target, best_z_index);
                 }
             }
         }
     }
 
     if (best_target != NULL) {
-        fprintf(stderr, "[kryon][hit] found target in child: %p (z_index=%d)\n",
-                (void*)best_target, best_z_index);
+        // Disabled: too noisy
+        // fprintf(stderr, "[kryon][hit] found target in child: %p (z_index=%d)\n",
+        //         (void*)best_target, best_z_index);
         return best_target;
     }
 
     // No child handled the event, return this component
-    fprintf(stderr, "[kryon][hit] no child matched, returning self: %p\n", (void*)root);
+    // Disabled: too noisy
+    // fprintf(stderr, "[kryon][hit] no child matched, returning self: %p\n", (void*)root);
     return root;
 }
 

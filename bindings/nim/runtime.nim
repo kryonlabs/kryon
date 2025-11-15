@@ -154,8 +154,13 @@ proc run*(app: KryonApp) =
   var rendererReady = true
   if not app.rendererPreinitialized:
     rendererReady = kryon_renderer_init(app.renderer, nil)
+    if rendererReady:
+      # Set global renderer for accurate text measurement
+      kryon_set_global_renderer(app.renderer)
   else:
     app.rendererPreinitialized = false
+    # Set global renderer even if pre-initialized
+    kryon_set_global_renderer(app.renderer)
   if not rendererReady:
     echo "Failed to initialize renderer"
 
@@ -168,6 +173,7 @@ proc run*(app: KryonApp) =
           rendererReady = kryon_renderer_init(app.renderer, nil)
           if rendererReady:
             echo "SDL renderer initialized with dummy video driver"
+            kryon_set_global_renderer(app.renderer)
 
     if not rendererReady:
       when defined(KRYON_SDL3):
@@ -229,6 +235,9 @@ proc run*(app: KryonApp) =
             dispatchPointerEvent(app, evt)
           of KryonEventType.Hover:
             updateHoverState(app, evt)
+          of KryonEventType.Scroll:
+            # Dispatch scroll event to component at mouse position
+            dispatchPointerEvent(app, evt)
           else:
             discard
 

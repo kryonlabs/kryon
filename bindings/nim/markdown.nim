@@ -3,7 +3,7 @@
 ## Provides native Markdown rendering with CommonMark compliance
 ## Full GitHub Flavored Markdown support with customizable theming
 
-import core_kryon, core_kryon_markdown, runtime
+import core_kryon, runtime, macros, strutils, os
 
 export core_kryon
 
@@ -98,6 +98,7 @@ type
     width*: int
     height*: int
     padding*: int
+    scrollable*: bool
     onLinkClick*: proc(url: string)
     onImageClick*: proc(url: string)
 
@@ -184,7 +185,12 @@ proc newGitHubMarkdownTheme*(): MarkdownTheme =
 # C API Bindings
 # ============================================================================
 
+# C types (opaque pointers)
 type
+  md_node_t {.importc: "md_node_t", header: "kryon_markdown.h", incompleteStruct.} = object
+  md_renderer_t {.importc: "md_renderer_t", header: "kryon_markdown.h", incompleteStruct.} = object
+  md_theme_t {.importc: "md_theme_t", header: "kryon_markdown.h".} = object
+
   CMarkdownNode* = ptr md_node_t
   CMarkdownRenderer* = ptr md_renderer_t
   CMarkdownTheme* = ptr md_theme_t
@@ -200,10 +206,10 @@ proc mdRendererDestroy*(renderer: CMarkdownRenderer) {.importc: "md_renderer_des
 proc mdRendererSetTheme*(renderer: CMarkdownRenderer, theme: CMarkdownTheme) {.importc: "md_renderer_set_theme", header: "kryon_markdown.h".}
 proc mdRenderDocument*(root: CMarkdownNode, renderer: CMarkdownRenderer) {.importc: "md_render_document", header: "kryon_markdown.h".}
 
-# Theme access
-var mdThemeLight*: CMarkdownTheme {.importc: "md_theme_light", header: "core/markdown.c".}
-var mdThemeDark*: CMarkdownTheme {.importc: "md_theme_dark", header: "core/markdown.c".}
-var mdThemeGithub*: CMarkdownTheme {.importc: "md_theme_github", header: "core/markdown.c".}
+# Theme access (external C variables)
+var mdThemeLight* {.importc: "md_theme_light", header: "kryon_markdown.h".}: md_theme_t
+var mdThemeDark* {.importc: "md_theme_dark", header: "kryon_markdown.h".}: md_theme_t
+var mdThemeGithub* {.importc: "md_theme_github", header: "kryon_markdown.h".}: md_theme_t
 
 # ============================================================================
 # High-Level API
@@ -241,6 +247,106 @@ proc createMarkdownRenderer*(cmdBuf: KryonCmdBuf, width, height: int): CMarkdown
 # Component Integration
 # ============================================================================
 
+proc parseInlineMarkdown(text: string, theme: MarkdownTheme, fontSize: uint8 = 0): KryonComponent =
+  ## Parse inline markdown and convert to NATIVE inline components
+  ## Returns a Text component with Bold, Italic, Code children
+  ## Handles: **bold**, *italic*, `code`
+  ## fontSize: Font size for all text (0 = use default)
+
+  # Create the parent Text component
+  result = newKryonText("", fontSize, 0, 0)
+
+  # DEBUG
+  if getEnv("KRYON_TRACE_LAYOUT") != "":
+    echo "[nim][markdown] parseInlineMarkdown: text='", text, "' fontSize=", fontSize
+
+  var i = 0
+  var currentText = ""
+
+  # Flush current plain text as a child
+  template flushCurrentText() =
+    if currentText.len > 0:
+      let plainText = newKryonText(currentText, fontSize, 0, 0)
+      let addResult = kryon_component_add_child(result, plainText)
+      if getEnv("KRYON_TRACE_LAYOUT") != "":
+        echo "[nim][markdown]   Added plain text child: '", currentText, "' result=", addResult
+      currentText = ""
+
+  while i < text.len:
+    # Check for **bold**
+    if i + 1 < text.len and text[i] == '*' and text[i+1] == '*':
+      flushCurrentText()
+      i += 2
+      let start = i
+      while i + 1 < text.len and not (text[i] == '*' and text[i+1] == '*'):
+        inc i
+      if i + 1 < text.len:
+        let boldText = text[start..<i]  # Strip markers
+        # Create Bold component with text using native constructor
+        let boldComp = newKryonBold(boldText, fontSize)
+        let addResult = kryon_component_add_child(result, boldComp)
+        if getEnv("KRYON_TRACE_LAYOUT") != "":
+          echo "[nim][markdown]   Added Bold child: '", boldText, "' result=", addResult
+          echo "[nim][markdown]   After bold, i=", i, " next char='", (if i < text.len: $text[i] else: "EOF"), "'"
+        i += 2
+        continue
+      else:
+        # No closing markers, treat as literal
+        currentText.add("**")
+        i = start
+        continue
+
+    # Check for *italic*
+    elif text[i] == '*':
+      flushCurrentText()
+      inc i
+      let start = i
+      while i < text.len and text[i] != '*':
+        inc i
+      if i < text.len:
+        let italicText = text[start..<i]  # Strip markers
+        # Create Italic component with text using native constructor
+        let italicComp = newKryonItalic(italicText, fontSize)
+        let addResult = kryon_component_add_child(result, italicComp)
+        if getEnv("KRYON_TRACE_LAYOUT") != "":
+          echo "[nim][markdown]   Added Italic child: '", italicText, "' result=", addResult
+        inc i
+        continue
+      else:
+        # No closing marker, treat as literal
+        currentText.add('*')
+        i = start
+        continue
+
+    # Check for `code`
+    elif text[i] == '`':
+      flushCurrentText()
+      inc i
+      let start = i
+      while i < text.len and text[i] != '`':
+        inc i
+      if i < text.len:
+        let codeText = text[start..<i]  # Strip markers
+        # Create Code component with text using native constructor
+        let codeComp = newKryonCode(codeText, fontSize)
+        let addResult = kryon_component_add_child(result, codeComp)
+        if getEnv("KRYON_TRACE_LAYOUT") != "":
+          echo "[nim][markdown]   Added Code child: '", codeText, "' result=", addResult
+        inc i
+        continue
+      else:
+        # No closing backtick, treat as literal
+        currentText.add('`')
+        i = start
+        continue
+
+    # Regular character
+    else:
+      currentText.add(text[i])
+      inc i
+
+  flushCurrentText()
+
 proc createMarkdownComponent*(props: MarkdownProps): KryonComponent =
   ## Create a Markdown component with the given properties
   if props == nil: return nil
@@ -255,33 +361,128 @@ proc createMarkdownComponent*(props: MarkdownProps): KryonComponent =
     # Empty or failed to load, create empty container
     return newKryonContainer()
 
-  # Parse the markdown
-  let ast = parseMarkdown(content)
-  if ast == nil:
-    return newKryonContainer()
+  # Get theme
+  let theme = if props.theme != nil: props.theme else: newMarkdownTheme()
 
-  # Create container component that will render markdown
+  # Create container (scrollable or not based on props)
   result = newKryonContainer()
+  kryon_component_set_layout_direction(result, 0)  # 0 = column (vertical)
 
-  # Store parsing data in component state for rendering
-  # In a full implementation, we'd store this properly
-  discard
+  # Add padding to the markdown container for proper margins
+  let containerPadding = uint8(theme.padding)
+  kryon_component_set_padding(result, containerPadding, containerPadding, containerPadding, containerPadding)
+
+  # Configure as scrollable if requested
+  if props.scrollable:
+    if props.height > 0:
+      kryon_component_set_bounds(result, toFixed(0), toFixed(0), toFixed(props.width), toFixed(props.height))
+    kryon_component_set_scrollable(result, true)
+
+  # Parse markdown line by line for simple block-level elements
+  let lines = content.split('\n')
+
+  var i = 0
+  while i < lines.len:
+    let line = lines[i]
+
+    if line.len == 0:
+      # Empty line - create spacing between blocks
+      let spacer = newKryonText("", uint8(theme.baseFontSize), 0, 0)
+      kryon_component_set_margin(spacer, 0, 0, 12, 0)  # Add vertical spacing (bottom margin)
+      addChild(result, spacer)
+      inc i
+      continue
+
+    # Check for code blocks (triple backticks)
+    if line.startsWith("```"):
+      # Extract language identifier (optional)
+      let lang = if line.len > 3: line[3..^1].strip() else: ""
+
+      # Collect code block lines
+      var codeLines: seq[string] = @[]
+      inc i
+      while i < lines.len and not lines[i].startsWith("```"):
+        codeLines.add(lines[i])
+        inc i
+
+      # Skip the closing ```
+      if i < lines.len:
+        inc i
+
+      # Create code block as a container with one text component per line
+      let codeBlockContainer = newKryonContainer()
+      kryon_component_set_layout_direction(codeBlockContainer, 0)  # Column layout
+
+      # Set width to fill available space (accounting for parent's padding)
+      # Inner width = total width - left padding - right padding
+      if props.width > 0:
+        let innerWidth = props.width - (theme.padding * 2)
+        kryon_component_set_bounds(codeBlockContainer, toFixed(0), toFixed(0), toFixed(innerWidth), toFixed(0))
+
+      # Add padding and background for proper code block styling
+      kryon_component_set_padding(codeBlockContainer, 8, 8, 8, 8)
+      kryon_component_set_background_color(codeBlockContainer, theme.codeBackgroundColor)
+
+      if getEnv("KRYON_TRACE_LAYOUT") != "":
+        echo "[nim][markdown] Creating code block, lang='", lang, "' lines=", codeLines.len
+
+      # Add each line as a separate code text component
+      for codeLine in codeLines:
+        let lineComp = newKryonCodeBlock(codeLine, uint8(theme.codeFontSize))
+        addChild(codeBlockContainer, lineComp)
+
+      addChild(result, codeBlockContainer)
+      continue
+
+    # Check for headings (H1-H6)
+    if line.startsWith("# "):
+      let text = line[2..^1]  # Remove marker - H1
+      let textComp = parseInlineMarkdown(text, theme, 32)  # H1 = 32px
+      addChild(result,textComp)
+    elif line.startsWith("## "):
+      let text = line[3..^1]  # Remove marker - H2
+      let textComp = parseInlineMarkdown(text, theme, 28)  # H2 = 28px
+      addChild(result,textComp)
+    elif line.startsWith("### "):
+      let text = line[4..^1]  # Remove marker - H3
+      let textComp = parseInlineMarkdown(text, theme, 24)  # H3 = 24px
+      addChild(result,textComp)
+    elif line.startsWith("#### "):
+      let text = line[5..^1]  # Remove marker - H4
+      let textComp = parseInlineMarkdown(text, theme, 20)  # H4 = 20px
+      addChild(result,textComp)
+    elif line.startsWith("##### "):
+      let text = line[6..^1]  # Remove marker - H5
+      let textComp = parseInlineMarkdown(text, theme, 18)  # H5 = 18px
+      addChild(result,textComp)
+    elif line.startsWith("###### "):
+      let text = line[7..^1]  # Remove marker - H6
+      let textComp = parseInlineMarkdown(text, theme, 16)  # H6 = 16px
+      addChild(result,textComp)
+
+    # Check for list items
+    elif line.startsWith("- ") or line.startsWith("* "):
+      let text = "• " & line[2..^1]
+      let textComp = parseInlineMarkdown(text, theme)
+      addChild(result,textComp)
+
+    # Regular paragraph with inline formatting
+    else:
+      let textComp = parseInlineMarkdown(line, theme)
+      addChild(result,textComp)
+
+    # Move to next line
+    inc i
 
 # ============================================================================
-# DSL Macro for Markdown Component
+# DSL Macro - NOTE: The Markdown macro is defined in kryon_dsl.nim
 # ============================================================================
-
-macro Markdown*(props: untyped): untyped =
-  ## Creates a Markdown component using DSL syntax
-  ##
-  ## Usage:
-  ## Markdown:
-  ##   source = "# Title\nThis is **bold** text."
-  ##   theme = darkTheme
-  ##   width = 800
-
-  result = quote do:
-    createMarkdownComponent(`props`)
+# The Markdown component macro is integrated into the DSL system in kryon_dsl.nim
+# It creates a Markdown component using the following syntax:
+# Markdown:
+#   source = "# Title\nThis is **bold** text."
+#   theme = darkTheme
+#   width = 800
 
 # ============================================================================
 # Convenience Functions
@@ -325,37 +526,35 @@ proc onImageClick*(props: MarkdownProps, callback: proc(url: string)): MarkdownP
 # Markdown Canvas Rendering (for Canvas component integration)
 # ============================================================================
 
-proc renderMarkdownToCanvas*(markdown: string, canvas: Canvas, theme: MarkdownTheme) =
-  ## Render markdown directly to canvas using Love2D-style API
-  if markdown.len == 0 or canvas == nil: return
-
-  # Parse the markdown
-  let ast = parseMarkdown(markdown)
-  if ast == nil: return
-
-  # Create renderer with canvas command buffer
-  let renderer = createMarkdownRenderer(getCanvasCommandBuffer(), canvas.getWidth, canvas.getHeight)
-  if renderer == nil:
-    freeMarkdown(ast)
-    return
-
-  # Convert theme to C theme (simplified)
-  var cTheme = mdThemeLight
-
-  if theme != nil:
-    # Convert Nim theme to C theme structure
-    cTheme.textColor = theme.textColor
-    cTheme.linkColor = theme.linkColor
-    # ... copy other fields
-
-  mdRendererSetTheme(renderer, cTheme)
-
-  # Render the document
-  mdRenderDocument(nil, renderer)  # Convert AST back to C
-
-  # Cleanup
-  mdRendererDestroy(renderer)
-  freeMarkdown(ast)
+# TODO: Implement when Canvas component is available
+# proc renderMarkdownToCanvas*(markdown: string, canvas: Canvas, theme: MarkdownTheme) =
+#   ## Render markdown directly to canvas using Love2D-style API
+#   if markdown.len == 0 or canvas == nil: return
+#
+#   # Parse the markdown
+#   let ast = parseMarkdown(markdown)
+#   if ast == nil: return
+#
+#   # Create renderer with canvas command buffer
+#   let renderer = createMarkdownRenderer(getCanvasCommandBuffer(), canvas.getWidth, canvas.getHeight)
+#   if renderer == nil:
+#     freeMarkdown(ast)
+#     return
+#
+#   # Use a C theme directly (can't access fields of opaque pointer)
+#   var cTheme = addr mdThemeLight
+#   if theme != nil:
+#     # Would need C function to create theme from Nim values
+#     discard
+#
+#   mdRendererSetTheme(renderer, cTheme)
+#
+#   # Render the document
+#   mdRenderDocument(nil, renderer)  # Convert AST back to C
+#
+#   # Cleanup
+#   mdRendererDestroy(renderer)
+#   freeMarkdown(ast)
 
 # ============================================================================
 # Predefined Themes
@@ -392,7 +591,7 @@ proc countWords*(markdown: string): int =
   for i, c in markdown:
     if c == ' ' or c == '\t' or c == '\n' or c == '\r':
       inWord = false
-    elif not inWord and (c.isLetterAscii() or c.isDigit()):
+    elif not inWord and (c.isAlphaAscii() or c.isDigit()):
       inc result
       inWord = true
 
@@ -424,10 +623,10 @@ proc extractLinks*(markdown: string): seq[string] =
 
 proc newMarkdown*(source: string, theme: MarkdownTheme = nil): KryonComponent =
   ## Create a new Markdown component with source text
-  let props = MarkdownProps(source: source, theme: if theme != nil: theme else newMarkdownTheme())
+  let props = MarkdownProps(source: source, theme: if theme != nil: theme else: newMarkdownTheme())
   createMarkdownComponent(props)
 
 proc newMarkdownFromFile*(filename: string, theme: MarkdownTheme = nil): KryonComponent =
   ## Create a new Markdown component from file
-  let props = MarkdownProps(file: filename, theme: if theme != nil: theme else newMarkdownTheme())
+  let props = MarkdownProps(file: filename, theme: if theme != nil: theme else: newMarkdownTheme())
   createMarkdownComponent(props)

@@ -103,8 +103,15 @@ type
   KryonTextState* {.importc: "kryon_text_state_t", bycopy, header: "kryon.h".} = object
     text*: cstring
     font_id*: uint16
+    font_size*: uint8      # Font size in pixels (0 = use default)
+    font_weight*: uint8    # 0=normal, 1=bold
+    font_style*: uint8     # 0=normal, 1=italic
     max_length*: uint16
     word_wrap*: bool
+
+  KryonCodeState* {.importc: "kryon_code_state_t", bycopy, header: "kryon.h".} = object
+    bg_color*: uint32      # Background color (default: light gray)
+    fg_color*: uint32      # Foreground color (default: dark gray)
 
   KryonButtonState* {.importc: "kryon_button_state_t", bycopy, header: "kryon.h".} = object
     text*: cstring
@@ -149,7 +156,7 @@ type
 proc kryon_component_create*(ops: ptr KryonComponentOps; initialState: pointer): KryonComponent
 proc kryon_component_destroy*(component: KryonComponent)
 proc kryon_component_add_child*(parent: KryonComponent; child: KryonComponent): bool
-proc kryon_component_remove_child*(parent: KryonComponent; child: KryonComponent): bool
+proc kryon_component_remove_child*(parent: KryonComponent; child: KryonComponent)
 proc kryon_component_get_parent*(component: KryonComponent): KryonComponent
 proc kryon_component_get_child*(component: KryonComponent; index: uint8): KryonComponent
 proc kryon_component_get_child_count*(component: KryonComponent): uint8
@@ -168,6 +175,9 @@ proc kryon_component_set_layout_alignment*(component: KryonComponent; justify, a
 proc kryon_component_set_layout_direction*(component: KryonComponent; direction: uint8)
 proc kryon_component_set_gap*(component: KryonComponent; gap: uint8)
 proc kryon_component_set_visible*(component: KryonComponent; visible: bool)
+proc kryon_component_set_scrollable*(component: KryonComponent; scrollable: bool)
+proc kryon_component_set_scroll_offset*(component: KryonComponent; offset_x, offset_y: KryonFp)
+proc kryon_component_get_scroll_offset*(component: KryonComponent; offset_x, offset_y: ptr KryonFp)
 proc kryon_component_set_flex*(component: KryonComponent; flexGrow, flexShrink: uint8)
 proc kryon_component_mark_dirty*(component: KryonComponent)
 proc kryon_component_mark_clean*(component: KryonComponent)
@@ -191,7 +201,7 @@ proc kryon_cmd_buf_is_empty*(buf: KryonCmdBuf): bool
 
 ## Drawing Commands
 proc kryon_draw_rect*(buf: KryonCmdBuf; x, y: int16; w, h: uint16; color: uint32): bool
-proc kryon_draw_text*(buf: KryonCmdBuf; text: cstring; x, y: int16; fontId: uint16; color: uint32): bool
+proc kryon_draw_text*(buf: KryonCmdBuf; text: cstring; x, y: int16; fontId: uint16; fontSize: uint8; fontWeight: uint8; fontStyle: uint8; color: uint32): bool
 proc kryon_draw_line*(buf: KryonCmdBuf; x1, y1, x2, y2: int16; color: uint32): bool
 proc kryon_draw_arc*(buf: KryonCmdBuf; cx, cy: int16; radius: uint16; startAngle, endAngle: int16; color: uint32): bool
 proc kryon_draw_polygon*(buf: KryonCmdBuf; vertices: ptr KryonFp; vertexCount: uint16; color: uint32; filled: bool): bool
@@ -207,6 +217,10 @@ proc kryon_renderer_init*(renderer: KryonRenderer; nativeWindow: pointer): bool
 proc kryon_renderer_shutdown*(renderer: KryonRenderer)
 proc kryon_renderer_get_dimensions*(renderer: KryonRenderer; width, height: ptr uint16)
 proc kryon_renderer_set_clear_color*(renderer: KryonRenderer; color: uint32)
+
+## Global renderer for text measurement
+proc kryon_set_global_renderer*(renderer: KryonRenderer)
+proc kryon_get_global_renderer*(): KryonRenderer
 
 ## Main Rendering Loop
 proc kryon_render_frame*(renderer: KryonRenderer; rootComponent: KryonComponent)
@@ -228,6 +242,24 @@ var kryon_text_ops* {.importc: "kryon_text_ops", nodecl.}: KryonComponentOps
 var kryon_button_ops* {.importc: "kryon_button_ops", nodecl.}: KryonComponentOps
 var kryon_dropdown_ops* {.importc: "kryon_dropdown_ops", nodecl.}: KryonComponentOps
 var kryon_checkbox_ops* {.importc: "kryon_checkbox_ops", nodecl.}: KryonComponentOps
+
+## Heading Component Operations (H1-H6) - Native first-class components
+var kryon_h1_ops* {.importc: "kryon_h1_ops", nodecl.}: KryonComponentOps
+var kryon_h2_ops* {.importc: "kryon_h2_ops", nodecl.}: KryonComponentOps
+var kryon_h3_ops* {.importc: "kryon_h3_ops", nodecl.}: KryonComponentOps
+var kryon_h4_ops* {.importc: "kryon_h4_ops", nodecl.}: KryonComponentOps
+var kryon_h5_ops* {.importc: "kryon_h5_ops", nodecl.}: KryonComponentOps
+var kryon_h6_ops* {.importc: "kryon_h6_ops", nodecl.}: KryonComponentOps
+
+## Inline component ops (native styled text)
+var kryon_span_ops* {.importc: "kryon_span_ops", nodecl.}: KryonComponentOps
+var kryon_bold_ops* {.importc: "kryon_bold_ops", nodecl.}: KryonComponentOps
+var kryon_italic_ops* {.importc: "kryon_italic_ops", nodecl.}: KryonComponentOps
+var kryon_underline_ops* {.importc: "kryon_underline_ops", nodecl.}: KryonComponentOps
+var kryon_strikethrough_ops* {.importc: "kryon_strikethrough_ops", nodecl.}: KryonComponentOps
+var kryon_code_ops* {.importc: "kryon_code_ops", nodecl.}: KryonComponentOps
+var kryon_link_ops* {.importc: "kryon_link_ops", nodecl.}: KryonComponentOps
+var kryon_highlight_ops* {.importc: "kryon_highlight_ops", nodecl.}: KryonComponentOps
 
 ## Checkbox creation function
 proc kryon_checkbox_create*(label: cstring; initial_checked: bool;
@@ -274,8 +306,12 @@ proc newKryonContainer*(): KryonComponent =
   ## Create a new container component
   kryon_component_create(addr kryon_container_ops, nil)
 
-proc newKryonText*(text: string): KryonComponent =
-  ## Create a new text component
+proc newKryonText*(text: string, fontSize: uint8 = 0, fontWeight: uint8 = 0, fontStyle: uint8 = 0, wordWrap: bool = false): KryonComponent =
+  ## Create a new text component with optional font styling
+  ## fontSize: Font size in pixels (0 = use default, typically 16)
+  ## fontWeight: Font weight (0 = normal, 1 = bold)
+  ## fontStyle: Font style (0 = normal, 1 = italic)
+  ## wordWrap: Enable word wrapping (default = false)
   var textState: KryonTextState
   let len = text.len
   # Use malloc instead of alloc to match C's free() in kryon_component_set_text
@@ -285,8 +321,11 @@ proc newKryonText*(text: string): KryonComponent =
   buffer[len] = '\0'
   textState.text = cast[cstring](buffer)
   textState.font_id = 0
+  textState.font_size = fontSize
+  textState.font_weight = fontWeight
+  textState.font_style = fontStyle
   textState.max_length = 255
-  textState.word_wrap = false
+  textState.word_wrap = wordWrap
 
   # Use malloc for state too, for consistency
   let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
@@ -314,6 +353,317 @@ proc newKryonButton*(text: string; onClickCallback: proc (component: KryonCompon
   copyMem(statePtr, addr buttonState, sizeof(KryonButtonState))
 
   result = kryon_component_create(addr kryon_button_ops, statePtr)
+
+# ============================================================================
+# Heading Components (H1-H6) - Native first-class components
+# ============================================================================
+
+proc newKryonH1*(text: string): KryonComponent =
+  ## Create a native H1 heading component (32px font)
+  var textState: KryonTextState
+  let len = text.len
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+  if len > 0:
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+  buffer[len] = '\0'
+  textState.text = cast[cstring](buffer)
+  textState.font_id = 0
+  textState.font_size = 32  # H1 font size
+  textState.font_weight = 0  # KRYON_FONT_WEIGHT_NORMAL
+  textState.font_style = 0   # KRYON_FONT_STYLE_NORMAL
+  textState.max_length = 255
+  textState.word_wrap = false
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+  copyMem(statePtr, addr textState, sizeof(KryonTextState))
+  result = kryon_component_create(addr kryon_h1_ops, statePtr)
+
+proc newKryonH2*(text: string): KryonComponent =
+  ## Create a native H2 heading component (28px font)
+  var textState: KryonTextState
+  let len = text.len
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+  if len > 0:
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+  buffer[len] = '\0'
+  textState.text = cast[cstring](buffer)
+  textState.font_id = 0
+  textState.font_size = 28  # H2 font size
+  textState.font_weight = 0  # KRYON_FONT_WEIGHT_NORMAL
+  textState.font_style = 0   # KRYON_FONT_STYLE_NORMAL
+  textState.max_length = 255
+  textState.word_wrap = false
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+  copyMem(statePtr, addr textState, sizeof(KryonTextState))
+  result = kryon_component_create(addr kryon_h2_ops, statePtr)
+
+proc newKryonH3*(text: string): KryonComponent =
+  ## Create a native H3 heading component (24px font)
+  var textState: KryonTextState
+  let len = text.len
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+  if len > 0:
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+  buffer[len] = '\0'
+  textState.text = cast[cstring](buffer)
+  textState.font_id = 0
+  textState.font_size = 24  # H3 font size
+  textState.font_weight = 0  # KRYON_FONT_WEIGHT_NORMAL
+  textState.font_style = 0   # KRYON_FONT_STYLE_NORMAL
+  textState.max_length = 255
+  textState.word_wrap = false
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+  copyMem(statePtr, addr textState, sizeof(KryonTextState))
+  result = kryon_component_create(addr kryon_h3_ops, statePtr)
+
+proc newKryonH4*(text: string): KryonComponent =
+  ## Create a native H4 heading component (20px font)
+  var textState: KryonTextState
+  let len = text.len
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+  if len > 0:
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+  buffer[len] = '\0'
+  textState.text = cast[cstring](buffer)
+  textState.font_id = 0
+  textState.font_size = 20  # H4 font size
+  textState.font_weight = 0  # KRYON_FONT_WEIGHT_NORMAL
+  textState.font_style = 0   # KRYON_FONT_STYLE_NORMAL
+  textState.max_length = 255
+  textState.word_wrap = false
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+  copyMem(statePtr, addr textState, sizeof(KryonTextState))
+  result = kryon_component_create(addr kryon_h4_ops, statePtr)
+
+proc newKryonH5*(text: string): KryonComponent =
+  ## Create a native H5 heading component (18px font)
+  var textState: KryonTextState
+  let len = text.len
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+  if len > 0:
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+  buffer[len] = '\0'
+  textState.text = cast[cstring](buffer)
+  textState.font_id = 0
+  textState.font_size = 18  # H5 font size
+  textState.font_weight = 0  # KRYON_FONT_WEIGHT_NORMAL
+  textState.font_style = 0   # KRYON_FONT_STYLE_NORMAL
+  textState.max_length = 255
+  textState.word_wrap = false
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+  copyMem(statePtr, addr textState, sizeof(KryonTextState))
+  result = kryon_component_create(addr kryon_h5_ops, statePtr)
+
+proc newKryonH6*(text: string): KryonComponent =
+  ## Create a native H6 heading component (16px font)
+  var textState: KryonTextState
+  let len = text.len
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+  if len > 0:
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+  buffer[len] = '\0'
+  textState.text = cast[cstring](buffer)
+  textState.font_id = 0
+  textState.font_size = 16  # H6 font size
+  textState.font_weight = 0  # KRYON_FONT_WEIGHT_NORMAL
+  textState.font_style = 0   # KRYON_FONT_STYLE_NORMAL
+  textState.max_length = 255
+  textState.word_wrap = false
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+  copyMem(statePtr, addr textState, sizeof(KryonTextState))
+  result = kryon_component_create(addr kryon_h6_ops, statePtr)
+
+proc newKryonBold*(text: string; fontSize: uint8 = 0): KryonComponent =
+  ## Create NATIVE bold component (uses kryon_bold_ops for rich text)
+  ## fontSize: Font size in pixels (0 = use default, typically 16)
+  var textState: KryonTextState
+  let len = text.len
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+  if len > 0:
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+  buffer[len] = '\0'
+  textState.text = cast[cstring](buffer)
+  textState.font_id = 0
+  textState.font_size = fontSize
+  textState.font_weight = 0  # Will be applied by Bold ops
+  textState.font_style = 0
+  textState.max_length = 255
+  textState.word_wrap = false
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+  copyMem(statePtr, addr textState, sizeof(KryonTextState))
+  result = kryon_component_create(addr kryon_bold_ops, statePtr)
+
+proc newKryonItalic*(text: string; fontSize: uint8 = 0): KryonComponent =
+  ## Create NATIVE italic component (uses kryon_italic_ops for rich text)
+  ## fontSize: Font size in pixels (0 = use default, typically 16)
+  var textState: KryonTextState
+  let len = text.len
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+  if len > 0:
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+  buffer[len] = '\0'
+  textState.text = cast[cstring](buffer)
+  textState.font_id = 0
+  textState.font_size = fontSize
+  textState.font_weight = 0
+  textState.font_style = 0  # Will be applied by Italic ops
+  textState.max_length = 255
+  textState.word_wrap = false
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+  copyMem(statePtr, addr textState, sizeof(KryonTextState))
+  result = kryon_component_create(addr kryon_italic_ops, statePtr)
+
+proc newKryonCode*(text: string; fontSize: uint8 = 0): KryonComponent =
+  ## Create NATIVE inline code component (uses kryon_code_ops for rich text)
+  ## fontSize: Font size in pixels (0 = use default, typically 16)
+  ## Note: Code uses monospace font with gray background and dark text
+  ## Code is a container - the text is stored in a child Text component
+
+  # Create Code container with colors
+  var codeState: KryonCodeState
+  # Standard markdown code colors:
+  # Light gray background: #F0F0F0 = RGB(240,240,240)
+  # Dark gray text: #333333 = RGB(51,51,51)
+  codeState.bg_color = 0xF0F0F0FF'u32  # Light gray background
+  codeState.fg_color = 0x333333FF'u32  # Dark gray text
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonCodeState)))
+  copyMem(statePtr, addr codeState, sizeof(KryonCodeState))
+  result = kryon_component_create(addr kryon_code_ops, statePtr)
+
+  # Create Text child with the actual text
+  if text.len > 0:
+    var textState: KryonTextState
+    let len = text.len
+    let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+    buffer[len] = '\0'
+    textState.text = cast[cstring](buffer)
+    textState.font_id = 1  # Font ID 1 reserved for monospace
+    textState.font_size = fontSize
+    textState.font_weight = 0  # KRYON_FONT_WEIGHT_NORMAL
+    textState.font_style = 0   # KRYON_FONT_STYLE_NORMAL
+    textState.max_length = 255
+    textState.word_wrap = false
+
+    let textStatePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+    copyMem(textStatePtr, addr textState, sizeof(KryonTextState))
+    let textComp = kryon_component_create(addr kryon_text_ops, textStatePtr)
+
+    # Add Text as child of Code
+    discard kryon_component_add_child(result, textComp)
+
+proc newKryonCodeBlock*(text: string; fontSize: uint8 = 14): KryonComponent =
+  ## Create code block (multiline monospace text, for ```code```)
+  ## fontSize: Font size in pixels (default 14 for code blocks)
+  ## Note: Backend renderers should use monospace font and add background
+  var textState: KryonTextState
+  let len = text.len
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+  if len > 0:
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+  buffer[len] = '\0'
+  textState.text = cast[cstring](buffer)
+  textState.font_id = 1  # Font ID 1 reserved for monospace
+  textState.font_size = fontSize
+  textState.font_weight = 0  # KRYON_FONT_WEIGHT_NORMAL
+  textState.font_style = 0   # KRYON_FONT_STYLE_NORMAL
+  textState.max_length = 255
+  textState.word_wrap = true  # Code blocks can wrap
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+  copyMem(statePtr, addr textState, sizeof(KryonTextState))
+  result = kryon_component_create(addr kryon_text_ops, statePtr)
+
+proc newKryonBlockquote*(text: string; fontSize: uint8 = 0): KryonComponent =
+  ## Create blockquote text (for > blockquote in markdown)
+  ## fontSize: Font size in pixels (0 = use default, typically 16)
+  ## Note: Backend renderers should add indentation and left border styling
+  var textState: KryonTextState
+  let len = text.len
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+  if len > 0:
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+  buffer[len] = '\0'
+  textState.text = cast[cstring](buffer)
+  textState.font_id = 0
+  textState.font_size = fontSize
+  textState.font_weight = 0  # KRYON_FONT_WEIGHT_NORMAL
+  textState.font_style = 1   # KRYON_FONT_STYLE_ITALIC (blockquotes often italic)
+  textState.max_length = 255
+  textState.word_wrap = true  # Blockquotes can wrap
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+  copyMem(statePtr, addr textState, sizeof(KryonTextState))
+  result = kryon_component_create(addr kryon_text_ops, statePtr)
+
+proc newKryonUnderline*(text: string; fontSize: uint8 = 0): KryonComponent =
+  ## Create NATIVE underline component (uses kryon_underline_ops for rich text)
+  var textState: KryonTextState
+  let len = text.len
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+  if len > 0:
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+  buffer[len] = '\0'
+  textState.text = cast[cstring](buffer)
+  textState.font_id = 0
+  textState.font_size = fontSize
+  textState.font_weight = 0
+  textState.font_style = 0
+  textState.max_length = 255
+  textState.word_wrap = false
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+  copyMem(statePtr, addr textState, sizeof(KryonTextState))
+  result = kryon_component_create(addr kryon_underline_ops, statePtr)
+
+proc newKryonStrikethrough*(text: string; fontSize: uint8 = 0): KryonComponent =
+  ## Create NATIVE strikethrough component (uses kryon_strikethrough_ops for rich text)
+  var textState: KryonTextState
+  let len = text.len
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+  if len > 0:
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+  buffer[len] = '\0'
+  textState.text = cast[cstring](buffer)
+  textState.font_id = 0
+  textState.font_size = fontSize
+  textState.font_weight = 0
+  textState.font_style = 0
+  textState.max_length = 255
+  textState.word_wrap = false
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+  copyMem(statePtr, addr textState, sizeof(KryonTextState))
+  result = kryon_component_create(addr kryon_strikethrough_ops, statePtr)
+
+proc newKryonSpan*(text: string; fontSize: uint8 = 0; fgColor: uint32 = 0; bgColor: uint32 = 0): KryonComponent =
+  ## Create NATIVE span component (uses kryon_span_ops for rich text)
+  ## Generic inline text with custom styling
+  var textState: KryonTextState
+  let len = text.len
+  let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
+  if len > 0:
+    copyMem(addr buffer[0], unsafeAddr text[0], len)
+  buffer[len] = '\0'
+  textState.text = cast[cstring](buffer)
+  textState.font_id = 0
+  textState.font_size = fontSize
+  textState.font_weight = 0
+  textState.font_style = 0
+  textState.max_length = 255
+  textState.word_wrap = false
+
+  let statePtr = c_malloc(csize_t(sizeof(KryonTextState)))
+  copyMem(statePtr, addr textState, sizeof(KryonTextState))
+  result = kryon_component_create(addr kryon_span_ops, statePtr)
 
 proc newKryonCheckbox*(label: string; initialChecked: bool = false;
                       onChangeCallback: proc (checkbox: KryonComponent; checked: bool) {.cdecl.} = nil): KryonComponent =

@@ -149,7 +149,7 @@ bool kryon_draw_rect(kryon_cmd_buf_t* buf, int16_t x, int16_t y, uint16_t w, uin
     return result;
 }
 
-bool kryon_draw_text(kryon_cmd_buf_t* buf, const char* text, int16_t x, int16_t y, uint16_t font_id, uint32_t color) {
+bool kryon_draw_text(kryon_cmd_buf_t* buf, const char* text, int16_t x, int16_t y, uint16_t font_id, uint8_t font_size, uint8_t font_weight, uint8_t font_style, uint32_t color) {
     if (buf == NULL || text == NULL) {
         return false;
     }
@@ -160,6 +160,9 @@ bool kryon_draw_text(kryon_cmd_buf_t* buf, const char* text, int16_t x, int16_t 
     cmd.data.draw_text.x = x;
     cmd.data.draw_text.y = y;
     cmd.data.draw_text.font_id = font_id;
+    cmd.data.draw_text.font_size = font_size;
+    cmd.data.draw_text.font_weight = font_weight;
+    cmd.data.draw_text.font_style = font_style;
     cmd.data.draw_text.color = color;
 
     // Calculate max length based on remaining buffer space (conservative estimate)

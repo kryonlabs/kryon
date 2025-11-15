@@ -178,8 +178,15 @@ typedef struct kryon_component {
     uint8_t gap;                         // Gap between children (pixels)
     bool dirty;                          // Needs layout recalculation
     bool visible;                        // Visibility flag
+    bool scrollable;                     // Scrollable container flag
     uint8_t z_index;                     // Z-order index
     uint8_t layout_flags;                // Explicit property bitmask
+
+    // Scrolling
+    kryon_fp_t scroll_offset_x;          // Horizontal scroll offset
+    kryon_fp_t scroll_offset_y;          // Vertical scroll offset
+    kryon_fp_t content_width;            // Content width (for scrolling)
+    kryon_fp_t content_height;           // Content height (for scrolling)
 
     // Event handling
     void (*event_handlers[8])(struct kryon_component*, kryon_event_t*);  // Limited handler array
@@ -219,6 +226,9 @@ typedef struct {
             const char* text;
             int16_t x, y;
             uint16_t font_id;
+            uint8_t font_size;      // Font size in pixels (0 = use default)
+            uint8_t font_weight;    // 0=normal, 1=bold
+            uint8_t font_style;     // 0=normal, 1=italic
             uint32_t color;
             uint8_t max_length;
             char text_storage[128]; // Text storage to fix pointer issue
@@ -270,6 +280,19 @@ typedef struct kryon_cmd_buf {
 // Renderer Abstraction
 // ============================================================================
 
+// Text measurement callback for accurate rich text layout
+// Renderer backend provides this to measure text with actual font metrics
+typedef void (*kryon_measure_text_callback_t)(
+    const char* text,           // Text to measure
+    uint16_t font_size,         // Font size in pixels (0 = default)
+    uint8_t font_weight,        // KRYON_FONT_WEIGHT_NORMAL or KRYON_FONT_WEIGHT_BOLD
+    uint8_t font_style,         // KRYON_FONT_STYLE_NORMAL or KRYON_FONT_STYLE_ITALIC
+    uint16_t font_id,           // Font ID (0 = default, 1 = monospace)
+    uint16_t* width,            // OUT: measured width in pixels
+    uint16_t* height,           // OUT: measured height in pixels
+    void* user_data             // Renderer backend data
+);
+
 // Renderer backend interface
 typedef struct kryon_renderer_ops {
     bool (*init)(struct kryon_renderer* renderer, void* native_window);
@@ -289,6 +312,9 @@ typedef struct kryon_renderer {
     uint16_t width, height;              // Renderer dimensions
     uint32_t clear_color;                // Background clear color
     bool vsync_enabled;                  // VSync enabled flag
+
+    // Text measurement callback (NULL = use fallback approximation)
+    kryon_measure_text_callback_t measure_text;
 } kryon_renderer_t;
 
 // ============================================================================
@@ -320,6 +346,7 @@ bool kryon_event_is_point_in_component(kryon_component_t* component, int16_t x, 
 // Event utility functions
 uint32_t kryon_event_get_key_code(kryon_event_t* event);
 bool kryon_event_is_key_pressed(kryon_event_t* event);
+void kryon_event_get_scroll_delta(kryon_event_t* event, int16_t* delta_x, int16_t* delta_y);
 
 // Layout system
 void kryon_component_set_bounds_mask(kryon_component_t* component, kryon_fp_t x, kryon_fp_t y,
@@ -334,6 +361,9 @@ void kryon_component_set_background_color(kryon_component_t* component, uint32_t
 void kryon_component_set_border_color(kryon_component_t* component, uint32_t color);
 void kryon_component_set_border_width(kryon_component_t* component, uint8_t width);
 void kryon_component_set_visible(kryon_component_t* component, bool visible);
+void kryon_component_set_scrollable(kryon_component_t* component, bool scrollable);
+void kryon_component_set_scroll_offset(kryon_component_t* component, kryon_fp_t offset_x, kryon_fp_t offset_y);
+void kryon_component_get_scroll_offset(kryon_component_t* component, kryon_fp_t* offset_x, kryon_fp_t* offset_y);
 void kryon_component_set_flex(kryon_component_t* component, uint8_t flex_grow, uint8_t flex_shrink);
 void kryon_component_mark_dirty(kryon_component_t* component);
 void kryon_component_mark_clean(kryon_component_t* component);
@@ -372,7 +402,7 @@ bool kryon_cmd_iter_next(kryon_cmd_iterator_t* iter, kryon_command_t* cmd);
 
 // Drawing commands (these go into command buffer)
 bool kryon_draw_rect(kryon_cmd_buf_t* buf, int16_t x, int16_t y, uint16_t w, uint16_t h, uint32_t color);
-bool kryon_draw_text(kryon_cmd_buf_t* buf, const char* text, int16_t x, int16_t y, uint16_t font_id, uint32_t color);
+bool kryon_draw_text(kryon_cmd_buf_t* buf, const char* text, int16_t x, int16_t y, uint16_t font_id, uint8_t font_size, uint8_t font_weight, uint8_t font_style, uint32_t color);
 bool kryon_draw_line(kryon_cmd_buf_t* buf, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint32_t color);
 bool kryon_draw_arc(kryon_cmd_buf_t* buf, int16_t cx, int16_t cy, uint16_t radius,
                    int16_t start_angle, int16_t end_angle, uint32_t color);
@@ -417,6 +447,10 @@ kryon_renderer_t* kryon_renderer_create(const kryon_renderer_ops_t* ops);
 void kryon_renderer_destroy(kryon_renderer_t* renderer);
 bool kryon_renderer_init(kryon_renderer_t* renderer, void* native_window);
 void kryon_renderer_shutdown(kryon_renderer_t* renderer);
+
+// Global renderer for text measurement (set during initialization)
+void kryon_set_global_renderer(kryon_renderer_t* renderer);
+kryon_renderer_t* kryon_get_global_renderer(void);
 
 // Main rendering loop
 void kryon_render_frame(kryon_renderer_t* renderer, kryon_component_t* root_component);
@@ -500,15 +534,242 @@ kryon_fp_t kryon_smoothstep(kryon_fp_t edge0, kryon_fp_t edge1, kryon_fp_t x);
 // Container component
 extern const kryon_component_ops_t kryon_container_ops;
 
-// Text component
+// Font weight constants
+#define KRYON_FONT_WEIGHT_NORMAL  0
+#define KRYON_FONT_WEIGHT_BOLD    1
+
+// Font style constants
+#define KRYON_FONT_STYLE_NORMAL   0
+#define KRYON_FONT_STYLE_ITALIC   1
+
+// ============================================================================
+// Rich Text System - Text Runs and Inline Formatting
+// ============================================================================
+
+// Text style flags (bitfield)
+typedef enum {
+    KRYON_TEXT_STYLE_BOLD          = 1 << 0,
+    KRYON_TEXT_STYLE_ITALIC        = 1 << 1,
+    KRYON_TEXT_STYLE_UNDERLINE     = 1 << 2,
+    KRYON_TEXT_STYLE_STRIKETHROUGH = 1 << 3,
+    KRYON_TEXT_STYLE_CODE          = 1 << 4,
+    KRYON_TEXT_STYLE_LINK          = 1 << 5,
+    KRYON_TEXT_STYLE_SUBSCRIPT     = 1 << 6,
+    KRYON_TEXT_STYLE_SUPERSCRIPT   = 1 << 7
+} kryon_text_style_flags_t;
+
+// Single text run/span with formatting
+typedef struct kryon_text_run {
+    const char* text;              // Pointer to text content (in shared buffer)
+    uint16_t offset;               // Byte offset in shared text buffer
+    uint16_t length;               // Length in bytes (NOT characters - handles UTF-8)
+
+    // Styling
+    uint8_t style_flags;           // Bitfield of kryon_text_style_flags_t
+    uint32_t fg_color;             // Foreground color (0 = inherit)
+    uint32_t bg_color;             // Background color (0 = transparent)
+
+    // Font properties
+    uint16_t font_id;              // Font family ID (0 = default)
+    uint8_t font_size;             // Font size in pixels (0 = inherit)
+
+    // Link data (if KRYON_TEXT_STYLE_LINK is set)
+    const char* link_url;          // URL for clickable links
+    uint16_t link_url_offset;      // Offset in URL buffer
+    uint16_t link_url_length;      // URL length
+
+    // Layout cache (calculated during layout pass)
+    uint16_t measured_width;       // Measured pixel width
+    uint16_t measured_height;      // Measured pixel height (line height)
+    uint16_t baseline;             // Distance from top to baseline
+
+    struct kryon_text_run* next;   // Linked list for layout
+} kryon_text_run_t;
+
+// Represents a single wrapped line of text
+typedef struct kryon_text_line {
+    kryon_text_run_t** runs;       // Array of pointers to runs in this line
+    uint16_t run_count;            // Number of runs in this line
+    uint16_t run_capacity;         // Capacity of runs array
+
+    // Measured dimensions
+    uint16_t width;                // Total line width in pixels
+    uint16_t height;               // Line height (max of run heights)
+    uint16_t baseline;             // Distance from top to baseline
+
+    // Word breaking info
+    uint16_t word_count;           // Number of words in this line
+    bool ends_with_soft_break;     // True if line ends with soft wrap
+    bool ends_with_hard_break;     // True if line ends with \n or </p>
+
+    // Justification cache (for JUSTIFY alignment)
+    uint16_t space_count;          // Number of spaces in line
+    kryon_fp_t extra_space_per_gap;// Extra pixels per word gap (for justify)
+} kryon_text_line_t;
+
+// Collection of text runs forming rich text content
+typedef struct kryon_rich_text {
+    // Memory pools (NO heap allocation during render)
+    kryon_text_run_t* runs;        // Array of text runs
+    uint16_t run_count;            // Number of runs
+    uint16_t run_capacity;         // Capacity of runs array
+
+    // Shared text buffer (all runs point into this)
+    char* text_buffer;             // Shared UTF-8 text buffer
+    uint16_t text_buffer_size;     // Total buffer size
+    uint16_t text_buffer_used;     // Bytes used
+
+    // Shared URL buffer (for links)
+    char* url_buffer;              // Shared URL buffer
+    uint16_t url_buffer_size;      // Total URL buffer size
+    uint16_t url_buffer_used;      // Bytes used in URL buffer
+
+    // Layout cache (calculated once, reused until invalidated)
+    kryon_text_line_t* lines;      // Array of wrapped lines
+    uint16_t line_count;           // Number of wrapped lines
+    uint16_t line_capacity;        // Capacity of lines array
+    bool layout_valid;             // Layout cache validity flag
+
+    // Paragraph-level properties
+    uint8_t text_align;            // KRYON_ALIGN_START/CENTER/END/JUSTIFY
+    uint16_t line_height;          // Line height in pixels (0 = auto = 1.2x font size)
+    uint16_t paragraph_spacing;    // Space after paragraph
+    uint16_t first_line_indent;    // First line indentation
+    kryon_fp_t max_width;          // Maximum width for wrapping (0 = no limit)
+} kryon_rich_text_t;
+
+// Text component (now supports rich text)
 typedef struct {
-    const char* text;
+    const char* text;              // Simple text (for backward compat)
     uint16_t font_id;
+    uint8_t font_size;             // Font size in pixels (0 = use default)
+    uint8_t font_weight;           // 0=normal, 1=bold (for simple text)
+    uint8_t font_style;            // 0=normal, 1=italic (for simple text)
     uint16_t max_length;
     bool word_wrap;
+
+    // Rich text support
+    kryon_rich_text_t* rich_text;  // Rich text content (NULL = simple text)
+    bool uses_rich_text;           // True if using rich text mode
 } kryon_text_state_t;
 
 extern const kryon_component_ops_t kryon_text_ops;
+
+// ============================================================================
+// Inline Text Components - Native styled text elements
+// ============================================================================
+
+// Span component state (inline container)
+typedef struct {
+    uint32_t fg_color;             // Foreground color (0 = inherit)
+    uint32_t bg_color;             // Background color (0 = transparent)
+    uint8_t font_size;             // Font size override (0 = inherit)
+} kryon_span_state_t;
+
+extern const kryon_component_ops_t kryon_span_ops;
+
+// Bold component (no state needed - just sets style flag)
+extern const kryon_component_ops_t kryon_bold_ops;
+
+// Italic component (no state needed - just sets style flag)
+extern const kryon_component_ops_t kryon_italic_ops;
+
+// Underline component (no state needed - just sets style flag)
+extern const kryon_component_ops_t kryon_underline_ops;
+
+// Strikethrough component (no state needed - just sets style flag)
+extern const kryon_component_ops_t kryon_strikethrough_ops;
+
+// Code component (inline code span)
+typedef struct {
+    uint32_t bg_color;             // Background color (default: light gray)
+    uint32_t fg_color;             // Foreground color (default: dark gray)
+} kryon_code_state_t;
+
+extern const kryon_component_ops_t kryon_code_ops;
+
+// Link component (clickable hyperlink)
+typedef struct {
+    const char* url;               // Link URL
+    bool underline;                // Show underline
+    uint32_t color;                // Link color (default: blue)
+    void (*on_click)(kryon_component_t*, const char* url, kryon_event_t*);
+} kryon_link_state_t;
+
+extern const kryon_component_ops_t kryon_link_ops;
+
+// Highlight component (background highlight)
+typedef struct {
+    uint32_t bg_color;             // Highlight color (default: yellow)
+    uint32_t fg_color;             // Text color (0 = inherit)
+} kryon_highlight_state_t;
+
+extern const kryon_component_ops_t kryon_highlight_ops;
+
+// ============================================================================
+// Rich Text API
+// ============================================================================
+
+// Create and destroy rich text
+kryon_rich_text_t* kryon_rich_text_create(uint16_t text_capacity,
+                                          uint16_t run_capacity,
+                                          uint16_t line_capacity);
+void kryon_rich_text_destroy(kryon_rich_text_t* rich_text);
+
+// Add text runs
+kryon_text_run_t* kryon_rich_text_add_run(kryon_rich_text_t* rich_text,
+                                          const char* text,
+                                          uint16_t length);
+
+// Modify run styling
+void kryon_text_run_set_bold(kryon_text_run_t* run, bool enable);
+void kryon_text_run_set_italic(kryon_text_run_t* run, bool enable);
+void kryon_text_run_set_underline(kryon_text_run_t* run, bool enable);
+void kryon_text_run_set_strikethrough(kryon_text_run_t* run, bool enable);
+void kryon_text_run_set_code(kryon_text_run_t* run, bool enable);
+void kryon_text_run_set_color(kryon_text_run_t* run, uint32_t fg, uint32_t bg);
+void kryon_text_run_set_font(kryon_text_run_t* run, uint16_t font_id, uint8_t size);
+void kryon_text_run_set_link(kryon_text_run_t* run, const char* url);
+
+// Paragraph-level properties
+void kryon_rich_text_set_alignment(kryon_rich_text_t* rich_text, uint8_t align);
+void kryon_rich_text_set_line_height(kryon_rich_text_t* rich_text, uint16_t height);
+void kryon_rich_text_set_first_line_indent(kryon_rich_text_t* rich_text, uint16_t indent);
+void kryon_rich_text_set_max_width(kryon_rich_text_t* rich_text, kryon_fp_t max_width);
+
+// Layout invalidation
+void kryon_rich_text_invalidate_layout(kryon_rich_text_t* rich_text);
+
+// Flatten component tree to text runs (internal)
+void kryon_text_flatten_children_to_runs(kryon_component_t* text_component,
+                                         kryon_rich_text_t* rich_text);
+
+// Find run at pixel coordinates (for link clicks)
+kryon_text_run_t* kryon_rich_text_find_run_at_point(kryon_rich_text_t* rich_text,
+                                                     uint16_t x, uint16_t y,
+                                                     uint16_t base_x, uint16_t base_y);
+
+// Handle click event on rich text (for links)
+bool kryon_rich_text_handle_click(kryon_component_t* component,
+                                   kryon_rich_text_t* rich_text,
+                                   kryon_event_t* event);
+
+// Layout and rendering (internal)
+void kryon_rich_text_layout_lines(kryon_rich_text_t* rich_text,
+                                  uint16_t max_width,
+                                  uint8_t default_font_size,
+                                  kryon_renderer_t* renderer);
+void kryon_rich_text_render(kryon_component_t* component,
+                            kryon_rich_text_t* rich_text,
+                            kryon_cmd_buf_t* buf);
+
+// Heading components (H1-H6) - Native first-class components
+extern const kryon_component_ops_t kryon_h1_ops;
+extern const kryon_component_ops_t kryon_h2_ops;
+extern const kryon_component_ops_t kryon_h3_ops;
+extern const kryon_component_ops_t kryon_h4_ops;
+extern const kryon_component_ops_t kryon_h5_ops;
+extern const kryon_component_ops_t kryon_h6_ops;
 
 // Button component
 typedef struct {
