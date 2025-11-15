@@ -111,6 +111,13 @@ static kryon_style_prop_t create_style_prop_uint8(kryon_style_prop_type_t type, 
     return prop;
 }
 
+static kryon_style_prop_t create_style_prop_uint16(kryon_style_prop_type_t type, uint16_t value) {
+    kryon_style_prop_t prop = {0};
+    prop.type = type;
+    prop.value.uint16_val = value;
+    return prop;
+}
+
 static kryon_style_prop_t create_style_prop_bool(kryon_style_prop_type_t type, bool value) {
     kryon_style_prop_t prop = {0};
     prop.type = type;
@@ -384,8 +391,8 @@ kryon_style_prop_t kryon_style_visible(bool visible) {
     return prop;
 }
 
-kryon_style_prop_t kryon_style_z_index(uint8_t z_index) {
-    kryon_style_prop_t prop = create_style_prop_uint8(KRYON_STYLE_PROP_Z_INDEX, z_index);
+kryon_style_prop_t kryon_style_z_index(uint16_t z_index) {
+    kryon_style_prop_t prop = create_style_prop_uint16(KRYON_STYLE_PROP_Z_INDEX, z_index);
     return prop;
 }
 

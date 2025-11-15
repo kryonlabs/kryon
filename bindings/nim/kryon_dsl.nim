@@ -5,6 +5,9 @@
 import macros, strutils, os, sequtils
 import ./runtime, ./core_kryon, ./reactive_system, ./markdown
 
+# Export font management functions from runtime
+export addFontSearchDir, loadFont, getFontId
+
 # ============================================================================
 # Type Aliases for Custom Components
 # ============================================================================
@@ -164,6 +167,7 @@ macro kryonApp*(body: untyped): untyped =
   var windowTitle = newStrLitNode("Kryon Application")
   var pendingChildren: seq[NimNode] = @[]
   var bodyNode: NimNode = nil
+  var resourcesNode: NimNode = nil
 
   # Extract window configuration and component tree
   for node in body.children:
@@ -185,6 +189,9 @@ macro kryonApp*(body: untyped): untyped =
               windowTitle = value
             else:
               discard
+      of "resources":
+        # Process resources (fonts, etc.)
+        resourcesNode = node
       of "body":
         if bodyNode.isNil:
           bodyNode = node
@@ -233,7 +240,12 @@ macro kryonApp*(body: untyped): untyped =
 
   # Generate proper application code
   var appName = genSym(nskLet, "app")
-  result = quote do:
+
+  # Build the final code structure
+  var appCode = newStmtList()
+
+  # Add initialization
+  appCode.add quote do:
     # Initialize application
     let `appName` = newKryonApp()
 
@@ -253,9 +265,16 @@ macro kryonApp*(body: untyped): untyped =
     `appName`.setWindow(window)
     `appName`.setRenderer(renderer)
 
+  # Add resources loading if present
+  if not resourcesNode.isNil:
+    appCode.add(resourcesNode)
+
+  # Add component tree creation and run
+  appCode.add quote do:
     # Create component tree
     let rootComponent: KryonComponent = block:
       `bodyNode`
+
     if rootComponent != nil:
       `appName`.setRoot(rootComponent)
     else:
@@ -264,8 +283,10 @@ macro kryonApp*(body: untyped): untyped =
     # Run the application
     `appName`.run()
 
-  # Return the app
-  result.add(appName)
+    # Return the app
+    `appName`
+
+  result = appCode
 
 macro component*(name: untyped, props: untyped): untyped =
   ## Generic component creation macro
@@ -310,6 +331,51 @@ macro Header*(props: untyped): untyped =
     window.height = `heightVal`
     window.title = `titleVal`
 
+macro Resources*(props: untyped): untyped =
+  ## Resources configuration macro - loads fonts and other assets
+  ## Returns nothing - this is a statement block
+  var loadStatements = newStmtList()
+
+  for node in props.children:
+    if node.kind == nnkCall and $node[0] == "Font":
+      # Extract font properties
+      var fontName: NimNode = nil
+      var fontSources: seq[NimNode] = @[]
+
+      for child in node[1].children:
+        if child.kind == nnkAsgn:
+          let propName = $child[0]
+          case propName.toLowerAscii():
+          of "name":
+            fontName = child[1]
+          of "sources", "source":
+            # Handle both single source and array of sources
+            if child[1].kind == nnkBracket:
+              for source in child[1].children:
+                fontSources.add(source)
+            else:
+              fontSources.add(child[1])
+          else:
+            discard
+
+      # Generate font loading code
+      if fontName != nil and fontSources.len > 0:
+        # Just load the font by name - the C backend will find it in search paths
+        loadStatements.add quote do:
+          when defined(KRYON_SDL3):
+            discard loadFont(`fontName`, 16)  # Load at default size
+
+  # If no statements were added, add a pass statement
+  if loadStatements.len == 0:
+    loadStatements.add(newNilLit())
+
+  result = loadStatements
+
+macro Font*(props: untyped): untyped =
+  ## Font resource declaration - used inside Resources block
+  ## This is handled by the Resources macro, so we just return empty
+  result = newStmtList()
+
 macro Container*(props: untyped): untyped =
   ## Container component macro
   var
@@ -322,6 +388,7 @@ macro Container*(props: untyped): untyped =
     posYVal: NimNode = nil
     widthVal: NimNode = nil
     heightVal: NimNode = nil
+    zIndexVal: NimNode = nil
     paddingAll: NimNode = nil
     paddingTopVal: NimNode = nil
     paddingRightVal: NimNode = nil
@@ -362,6 +429,8 @@ macro Container*(props: untyped): untyped =
         widthVal = value
       of "height", "h":  # Added 'h' shorthand
         heightVal = value
+      of "zindex", "z":
+        zIndexVal = value
       of "padding", "p":  # Added 'p' shorthand
         paddingAll = value
       of "paddingtop":
@@ -427,6 +496,26 @@ macro Container*(props: untyped): untyped =
         discard
     else:
       childNodes.add(node)
+
+  # Auto-detect if children have absolute positions and set layout to ABSOLUTE
+  var hasChildWithAbsolutePos = false
+  if layoutDirectionVal == nil:  # Only auto-detect if not explicitly set
+    for childNode in childNodes:
+      # Check if child is a component call (Text, Container, etc.) with properties
+      if childNode.kind == nnkCall and childNode.len > 1:
+        # Check the properties block for posX or posY
+        for propNode in childNode[1].children:
+          if propNode.kind == nnkAsgn:
+            let propName = $propNode[0]
+            if propName.toLowerAscii() in ["posx", "x", "posy", "y"]:
+              hasChildWithAbsolutePos = true
+              break
+        if hasChildWithAbsolutePos:
+          break
+
+  # If children have absolute positions, use LAYOUT_ABSOLUTE mode
+  if hasChildWithAbsolutePos and layoutDirectionVal == nil:
+    layoutDirectionVal = newIntLitNode(2)  # LAYOUT_ABSOLUTE
 
   var initStmts = newTree(nnkStmtList)
 
@@ -518,6 +607,10 @@ macro Container*(props: untyped): untyped =
   if borderWidthVal != nil:
     initStmts.add quote do:
       kryon_component_set_border_width(`containerName`, uint8(`borderWidthVal`))
+
+  if zIndexVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_z_index(`containerName`, uint16(`zIndexVal`))
 
   if flexGrowVal != nil or flexShrinkVal != nil:
     let growExpr = if flexGrowVal != nil: flexGrowVal else: newIntLitNode(0)
@@ -810,13 +903,28 @@ macro Container*(props: untyped): untyped =
         # Static block doesn't contain a for loop - just execute it
         initStmts.add node
     else:
-      # Regular child node - check if it's a conditional statement
+      # Regular child node - check if it's a conditional or loop statement
       if node.kind == nnkIfStmt:
         # Handle if/else statements specially
         initStmts.add processConditionalNode(node, containerName)
       elif node.kind == nnkCaseStmt:
         # Handle case statements specially
         initStmts.add processCaseNode(node, containerName)
+      elif node.kind == nnkForStmt:
+        # Handle runtime for loops
+        # Structure: nnkForStmt[loopVar, collection, body]
+        let loopVar = node[0]
+        let collection = node[1]
+        let body = node[2]
+
+        # Generate code that iterates at runtime and adds children
+        initStmts.add quote do:
+          for `loopVar` in `collection`:
+            let child = block:
+              `body`
+            if child != nil:
+              kryon_component_mark_dirty(child)
+              discard kryon_component_add_child(`containerName`, child)
       else:
         # Regular child component
         let childSym = genSym(nskLet, "child")
@@ -848,6 +956,7 @@ macro Body*(props: untyped): untyped =
     flexGrowSet = false
     widthSet = false
     heightSet = false
+    layoutDirectionSet = false
 
   for node in props.children:
     if node.kind == nnkAsgn:
@@ -865,6 +974,8 @@ macro Body*(props: untyped): untyped =
         widthSet = true
       of "height":
         heightSet = true
+      of "layoutdirection":
+        layoutDirectionSet = true
       else:
         discard
 
@@ -875,6 +986,9 @@ macro Body*(props: untyped): untyped =
     bodyStmt.add newTree(nnkAsgn, ident("posY"), newIntLitNode(0))
   if not backgroundSet:
     bodyStmt.add newTree(nnkAsgn, ident("backgroundColor"), newStrLitNode("#101820FF"))
+  if not layoutDirectionSet:
+    # Default to LAYOUT_ABSOLUTE (value 2) to support absolute positioning
+    bodyStmt.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(2))
 
   # Then add user properties (including width/height from ensureBodyDimensions)
   for node in props.children:
@@ -896,6 +1010,11 @@ macro Text*(props: untyped): untyped =
     fontWeightVal: NimNode = nil
     fontFamilyVal: NimNode = nil
     textAlignVal: NimNode = nil
+    posXVal: NimNode = nil
+    posYVal: NimNode = nil
+    widthVal: NimNode = nil
+    heightVal: NimNode = nil
+    zIndexVal: NimNode = nil
     isReactive = false
     reactiveVars: seq[NimNode] = @[]
   let textSym = genSym(nskLet, "text")
@@ -932,6 +1051,16 @@ macro Text*(props: untyped): untyped =
         marginBottomVal = value
       of "marginleft":
         marginLeftVal = value
+      of "posx", "x":
+        posXVal = value
+      of "posy", "y":
+        posYVal = value
+      of "width", "w":
+        widthVal = value
+      of "height", "h":
+        heightVal = value
+      of "zindex", "z":
+        zIndexVal = value
       else:
         discard
 
@@ -949,6 +1078,17 @@ macro Text*(props: untyped): untyped =
     else: newIntLitNode(0)
 
   var initStmts = newTree(nnkStmtList)
+
+  # Handle font family (load font if specified)
+  if fontFamilyVal != nil:
+    initStmts.add quote do:
+      let fontId = getFontId(`fontFamilyVal`, 16)
+      if fontId > 0:
+        # Set font ID on the text component
+        let state = cast[ptr KryonTextState](kryon_component_get_state(`textSym`))
+        if not state.isNil:
+          state.font_id = fontId
+
   if colorVal != nil:
     initStmts.add quote do:
       kryon_component_set_text_color(`textSym`, `colorVal`)
@@ -960,6 +1100,36 @@ macro Text*(props: untyped): untyped =
         uint8(`marginRightExpr`),
         uint8(`marginBottomExpr`),
         uint8(`marginLeftExpr`))
+
+  # Set bounds if specified
+  let xExpr = if posXVal != nil: posXVal else: newIntLitNode(0)
+  let yExpr = if posYVal != nil: posYVal else: newIntLitNode(0)
+  let widthExpr = if widthVal != nil: widthVal else: newIntLitNode(0)
+  let heightExpr = if heightVal != nil: heightVal else: newIntLitNode(0)
+
+  var maskVal = 0
+  if posXVal != nil:
+    maskVal = maskVal or 0x01
+  if posYVal != nil:
+    maskVal = maskVal or 0x02
+  if widthVal != nil:
+    maskVal = maskVal or 0x04
+  if heightVal != nil:
+    maskVal = maskVal or 0x08
+
+  if maskVal != 0:
+    let maskCast = newCall(ident("uint8"), newIntLitNode(maskVal))
+    initStmts.add quote do:
+      kryon_component_set_bounds_mask(`textSym`,
+        toFixed(`xExpr`),
+        toFixed(`yExpr`),
+        toFixed(`widthExpr`),
+        toFixed(`heightExpr`),
+        `maskCast`)
+
+  if zIndexVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_z_index(`textSym`, uint16(`zIndexVal`))
 
   # Add reactive bindings if detected
   if isReactive and reactiveVars.len > 0:

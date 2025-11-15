@@ -341,6 +341,45 @@ proc shutdownKryonCore*() =
   discard
 
 # ============================================================================
+# Font Management
+# ============================================================================
+
+# Global registry for loaded fonts (name -> font_id)
+var loadedFonts*: Table[string, uint16] = initTable[string, uint16]()
+
+proc addFontSearchDir*(path: string) =
+  ## Add a directory to the font search path
+  ## This allows fonts to be loaded from custom locations
+  when defined(KRYON_SDL3):
+    kryon_sdl3_add_font_search_path(cstring(path))
+    echo "[kryon][fonts] Added font search directory: ", path
+
+proc loadFont*(name: string, size: uint16 = 16): uint16 =
+  ## Load a font by name and size
+  ## Returns the font ID, or 0 if loading failed
+  when defined(KRYON_SDL3):
+    let fontId = kryon_sdl3_load_font(cstring(name), size)
+    if fontId > 0:
+      let key = name & "@" & $size
+      loadedFonts[key] = fontId
+      echo "[kryon][fonts] Loaded font: ", name, " at size ", size, " -> ID ", fontId
+    else:
+      echo "[kryon][fonts] Failed to load font: ", name
+    return fontId
+  else:
+    return 0
+
+proc getFontId*(name: string, size: uint16 = 16): uint16 =
+  ## Get the font ID for a loaded font
+  ## Returns 0 if font not loaded
+  let key = name & "@" & $size
+  if loadedFonts.hasKey(key):
+    return loadedFonts[key]
+  else:
+    # Try to load it
+    return loadFont(name, size)
+
+# ============================================================================
 # Missing Component Functions
 # ============================================================================
 

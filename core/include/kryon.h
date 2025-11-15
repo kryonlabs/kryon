@@ -179,7 +179,7 @@ typedef struct kryon_component {
     bool dirty;                          // Needs layout recalculation
     bool visible;                        // Visibility flag
     bool scrollable;                     // Scrollable container flag
-    uint8_t z_index;                     // Z-order index
+    uint16_t z_index;                    // Z-order index (0-65535)
     uint8_t layout_flags;                // Explicit property bitmask
 
     // Scrolling
@@ -353,6 +353,7 @@ void kryon_component_set_bounds_mask(kryon_component_t* component, kryon_fp_t x,
                                      kryon_fp_t width, kryon_fp_t height, uint8_t explicit_mask);
 void kryon_component_set_bounds(kryon_component_t* component, kryon_fp_t x, kryon_fp_t y,
                                kryon_fp_t width, kryon_fp_t height);
+void kryon_component_set_z_index(kryon_component_t* component, uint16_t z_index);
 void kryon_component_set_padding(kryon_component_t* component, uint8_t top, uint8_t right,
                                 uint8_t bottom, uint8_t left);
 void kryon_component_set_margin(kryon_component_t* component, uint8_t top, uint8_t right,
@@ -909,7 +910,7 @@ kryon_style_prop_t kryon_style_height(kryon_fp_t height);
 kryon_style_prop_t kryon_style_margin(uint8_t margin);
 kryon_style_prop_t kryon_style_padding(uint8_t padding);
 kryon_style_prop_t kryon_style_visible(bool visible);
-kryon_style_prop_t kryon_style_z_index(uint8_t z_index);
+kryon_style_prop_t kryon_style_z_index(uint16_t z_index);
 
 // Selector creation
 kryon_selector_group_t kryon_style_selector_type(const char* type);

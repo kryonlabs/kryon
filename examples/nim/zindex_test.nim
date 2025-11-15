@@ -5,9 +5,10 @@ let app = kryonApp:
     windowWidth = 800
     windowHeight = 600
     windowTitle = "Z-Index Overlap Test"
-    backgroundColor = "#f0f0f0"
 
   Body:
+    backgroundColor = "#f0f0f0"
+
     # Instructions text (highest z-index)
     Text:
       text = "Z-Index Test: Blue should be on top, Green in middle, Red at bottom"
@@ -30,15 +31,15 @@ let app = kryonApp:
         text = "RED Layer (z-index: 1)"
         fontSize = 18
         color = "#ffffff"
-        posX = 110
-        posY = 160
+        posX = 10
+        posY = 10
 
       Text:
         text = "Should be BEHIND others"
         fontSize = 14
         color = "#ffffff"
-        posX = 110
-        posY = 190
+        posX = 10
+        posY = 40
 
     # Middle layer - Green container (should be above red, below blue)
     Container:
@@ -53,15 +54,15 @@ let app = kryonApp:
         text = "GREEN Layer (z-index: 500)"
         fontSize = 18
         color = "#ffffff"
-        posX = 190
-        posY = 210
+        posX = 10
+        posY = 10
 
       Text:
         text = "Should be MIDDLE layer"
         fontSize = 14
         color = "#ffffff"
-        posX = 190
-        posY = 240
+        posX = 10
+        posY = 40
 
     # Top layer - Blue container (should be above all others)
     Container:
@@ -76,13 +77,13 @@ let app = kryonApp:
         text = "BLUE Layer (z-index: 1000)"
         fontSize = 18
         color = "#ffffff"
-        posX = 270
-        posY = 260
+        posX = 10
+        posY = 10
 
       Text:
         text = "Should be ON TOP"
         fontSize = 14
         color = "#ffffff"
-        posX = 270
-        posY = 290
+        posX = 10
+        posY = 40
 

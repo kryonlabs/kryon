@@ -337,6 +337,14 @@ void kryon_component_set_bounds(kryon_component_t* component, kryon_fp_t x, kryo
         KRYON_COMPONENT_FLAG_HAS_HEIGHT);
 }
 
+void kryon_component_set_z_index(kryon_component_t* component, uint16_t z_index) {
+    if (component == NULL) {
+        return;
+    }
+    component->z_index = z_index;
+    kryon_component_mark_dirty(component);
+}
+
 void kryon_component_set_padding(kryon_component_t* component, uint8_t top, uint8_t right,
                                 uint8_t bottom, uint8_t left) {
     if (component == NULL) {
@@ -685,12 +693,20 @@ static void container_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
         sorted_children[i] = self->children[i];
     }
 
+    // Debug: Print BEFORE sorting
+    if (getenv("KRYON_TRACE_ZINDEX")) {
+        fprintf(stderr, "[kryon][zindex] BEFORE sort (%d children):\n", self->child_count);
+        for (uint8_t i = 0; i < self->child_count; i++) {
+            fprintf(stderr, "[kryon][zindex]   [%d] z=%d\n", i, sorted_children[i]->z_index);
+        }
+    }
+
     // Sort temporary array by z_index (insertion sort - efficient for small arrays)
     // Higher z_index renders last (appears on top)
     if (self->child_count > 1) {
         for (uint8_t i = 1; i < self->child_count; i++) {
             kryon_component_t* key = sorted_children[i];
-            uint8_t key_z = key->z_index;
+            uint16_t key_z = key->z_index;
             int j = i - 1;
 
             while (j >= 0 && sorted_children[j]->z_index > key_z) {
@@ -698,6 +714,14 @@ static void container_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
                 j--;
             }
             sorted_children[j + 1] = key;
+        }
+    }
+
+    // Debug: Print AFTER sorting
+    if (getenv("KRYON_TRACE_ZINDEX")) {
+        fprintf(stderr, "[kryon][zindex] AFTER sort:\n");
+        for (uint8_t i = 0; i < self->child_count; i++) {
+            fprintf(stderr, "[kryon][zindex]   [%d] z=%d\n", i, sorted_children[i]->z_index);
         }
     }
 
@@ -731,6 +755,15 @@ static void container_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
                 child->y -= self->scroll_offset_y;
                 child->x -= self->scroll_offset_x;
             }
+        }
+    }
+
+    // Debug: Print z-index order
+    if (getenv("KRYON_TRACE_ZINDEX")) {
+        fprintf(stderr, "[kryon][zindex] Rendering %d children in z-index order:\n", self->child_count);
+        for (uint8_t i = 0; i < self->child_count; i++) {
+            fprintf(stderr, "[kryon][zindex]   [%d] z_index=%d component=%p\n",
+                    i, sorted_children[i]->z_index, (void*)sorted_children[i]);
         }
     }
 

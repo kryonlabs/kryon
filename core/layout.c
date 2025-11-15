@@ -737,8 +737,9 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
                 break;
         }
 
+        // If explicit X position is set, use it (relative to container)
         if (has_explicit_x) {
-            child->x += explicit_x;
+            child->x = explicit_x;
         }
 
         // Handle main-axis space distribution (vertical)
@@ -756,8 +757,9 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
         }
 
         child->y = child_y;
+        // If explicit Y position is set, use it (relative to container)
         if (has_explicit_y) {
-            child->y += explicit_y;
+            child->y = explicit_y;
         }
 
         // Update cursor and cumulative height for next child
@@ -819,9 +821,14 @@ static void layout_absolute(kryon_component_t* container, kryon_layout_context_t
         kryon_component_t* child = container->children[i];
         if (!child->visible) continue;
 
-        // Use explicit position if set, otherwise use current position
-        kryon_fp_t child_x = (child->x > 0) ? child->x : KRYON_FP_FROM_INT(child->margin_left);
-        kryon_fp_t child_y = (child->y > 0) ? child->y : KRYON_FP_FROM_INT(child->margin_top);
+        // Check if explicit positions are set using flags
+        const bool has_explicit_x = (child->layout_flags & KRYON_COMPONENT_FLAG_HAS_X) != 0;
+        const bool has_explicit_y = (child->layout_flags & KRYON_COMPONENT_FLAG_HAS_Y) != 0;
+
+        // Use explicit position if set, otherwise use margin as default
+        // Positions are relative to the container, not screen-absolute
+        kryon_fp_t child_x = has_explicit_x ? child->explicit_x : KRYON_FP_FROM_INT(child->margin_left);
+        kryon_fp_t child_y = has_explicit_y ? child->explicit_y : KRYON_FP_FROM_INT(child->margin_top);
 
         // Calculate size
         kryon_fp_t child_width = get_component_intrinsic_width(child);

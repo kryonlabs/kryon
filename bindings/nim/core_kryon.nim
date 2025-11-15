@@ -164,6 +164,7 @@ proc kryon_component_get_child_count*(component: KryonComponent): uint8
 ## Component Properties
 proc kryon_component_set_bounds_mask*(component: KryonComponent; x, y, width, height: KryonFp; explicitMask: uint8)
 proc kryon_component_set_bounds*(component: KryonComponent; x, y, width, height: KryonFp)
+proc kryon_component_set_z_index*(component: KryonComponent; zIndex: uint16)
 proc kryon_component_set_padding*(component: KryonComponent; top, right, bottom, left: uint8)
 proc kryon_component_set_margin*(component: KryonComponent; top, right, bottom, left: uint8)
 proc kryon_component_set_background_color*(component: KryonComponent; color: uint32)
@@ -281,6 +282,16 @@ when defined(KRYON_SDL3):
   proc kryon_sdl3_renderer_destroy*(renderer: KryonRenderer)
   proc kryon_sdl3_poll_event*(event: ptr KryonEvent): bool
   proc kryon_sdl3_apply_cursor_shape*(shape: uint8)
+
+  ## Font management functions
+  proc kryon_sdl3_fonts_init*()
+  proc kryon_sdl3_fonts_shutdown*()
+  proc kryon_sdl3_load_font*(name: cstring, size: uint16): uint16
+  proc kryon_sdl3_unload_font*(font_id: uint16)
+  proc kryon_sdl3_add_font_search_path*(path: cstring)
+  proc kryon_sdl3_get_font_name*(font_id: uint16): cstring
+  proc kryon_sdl3_get_font_size*(font_id: uint16): uint16
+  proc kryon_sdl3_get_font_height*(font_id: uint16): uint16
   {.pop.}
 
 ## Terminal Renderer Integration
