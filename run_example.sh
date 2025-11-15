@@ -7,6 +7,35 @@
 
 set -e
 
+BUILD_DIR="build"
+BIN_DIR="bin"
+
+ensure_core_build() {
+    local core_lib="$BUILD_DIR/libkryon_core.a"
+    local need_core=0
+
+    if [ ! -f "$core_lib" ]; then
+        need_core=1
+    else
+        local newer_sources
+        newer_sources="$(find core -maxdepth 1 -name '*.c' -newer "$core_lib" -print -quit)"
+        if [ -n "$newer_sources" ]; then
+            need_core=1
+        fi
+    fi
+
+    if [ $need_core -eq 1 ]; then
+        echo "Building Kryon architecture..."
+        make -C core > /dev/null
+    fi
+
+    local common_lib="$BUILD_DIR/libkryon_common.a"
+    if [ ! -f "$common_lib" ]; then
+        echo "Installing renderer helpers..."
+        make -C renderers/common install > /dev/null
+    fi
+}
+
 PROJECT_ROOT="$(pwd)"
 
 # Check if example name is provided
@@ -92,10 +121,9 @@ elif [[ "$EXAMPLE_NAME" == *.c ]]; then
 fi
 
 # Build C core libraries if needed
-BUILD_DIR="build"
-BIN_DIR="bin"
 mkdir -p "$BUILD_DIR"
 mkdir -p "$BIN_DIR"
+ensure_core_build
 
 # Color variables
 RED='\033[0;31m'
@@ -110,9 +138,6 @@ FONTCONFIG_LIBS="$(pkg-config --libs fontconfig 2>/dev/null || true)"
 
 # Find example file based on frontend directory structure
 EXAMPLE_FILE="examples/${FRONTEND}/${EXAMPLE_NAME}.${FRONTEND}"
-echo "Building Kryon architecture..."
-make -C core > /dev/null 2>&1
-make -C renderers/common install > /dev/null 2>&1
 
 # Build renderer if needed
 case "$RENDERER" in

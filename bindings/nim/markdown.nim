@@ -413,11 +413,15 @@ proc createMarkdownComponent*(props: MarkdownProps): KryonComponent =
       let codeBlockContainer = newKryonContainer()
       kryon_component_set_layout_direction(codeBlockContainer, 0)  # Column layout
 
-      # Set width to fill available space (accounting for parent's padding)
-      # Inner width = total width - left padding - right padding
+      # Set width to fill available space without forcing height
       if props.width > 0:
         let innerWidth = props.width - (theme.padding * 2)
-        kryon_component_set_bounds(codeBlockContainer, toFixed(0), toFixed(0), toFixed(innerWidth), toFixed(0))
+        kryon_component_set_bounds_mask(codeBlockContainer,
+          toFixed(0),
+          toFixed(0),
+          toFixed(innerWidth),
+          toFixed(0),
+          uint8(0x04))  # only width
 
       # Add padding and background for proper code block styling
       kryon_component_set_padding(codeBlockContainer, 8, 8, 8, 8)
@@ -484,10 +488,15 @@ proc createMarkdownComponent*(props: MarkdownProps): KryonComponent =
       let blockquoteContainer = newKryonContainer()
       kryon_component_set_layout_direction(blockquoteContainer, 0)  # Column layout
 
-      # Set width to fill available space
+      # Set width to fill available space without locking height
       if props.width > 0:
         let innerWidth = props.width - (theme.padding * 2)
-        kryon_component_set_bounds(blockquoteContainer, toFixed(0), toFixed(0), toFixed(innerWidth), toFixed(0))
+        kryon_component_set_bounds_mask(blockquoteContainer,
+          toFixed(0),
+          toFixed(0),
+          toFixed(innerWidth),
+          toFixed(0),
+          uint8(0x04))
 
       # Style: left padding for indentation (16px left, 12px top/bottom, 8px right)
       kryon_component_set_padding(blockquoteContainer, 12, 8, 12, 16)
