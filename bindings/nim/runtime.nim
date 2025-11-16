@@ -47,6 +47,24 @@ type
   KryonCanvas* = ref object
   KryonSpacer* = ref object
 
+  TabVisualState* = object
+    backgroundColor*: uint32
+    activeBackgroundColor*: uint32
+    textColor*: uint32
+    activeTextColor*: uint32
+
+  TabGroupState* = ref object
+    group*: KryonComponent
+    tabBar*: KryonComponent
+    tabContent*: KryonComponent
+    tabs*: seq[KryonComponent]
+    tabVisuals*: seq[TabVisualState]
+    panels*: seq[KryonComponent]
+    selectedIndex*: int
+    reorderable*: bool
+    dragging*: bool
+    dragTabIndex*: int
+
 proc isHeadlessEnvironment(): bool =
   ## Detect whether we are running without a graphical display available.
   when defined(linux):
@@ -67,6 +85,11 @@ proc toUint16OrDefault(value: int; defaultValue: uint16): uint16 =
 var activeRendererBackend = "sdl3"
 var rendererPreinitializedHint = false
 var currentHoverTarget: KryonComponent = nil
+var tabGroupRegistry*: Table[uint, TabGroupState] = initTable[uint, TabGroupState]()
+var tabComponentRegistry*: Table[uint, tuple[state: TabGroupState, index: int]] = initTable[uint, tuple[state: TabGroupState, index: int]]()
+var tabBarRegistry*: Table[uint, TabGroupState] = initTable[uint, TabGroupState]()
+var lastPointerX: int16 = 0
+var lastPointerY: int16 = 0
 
 when defined(KRYON_SDL3):
   const
@@ -74,10 +97,20 @@ when defined(KRYON_SDL3):
     cursorHand = 1'u8
   var currentCursorShape: uint8 = cursorArrow
 
+proc findTabAtPoint(state: TabGroupState; pointerX, pointerY: int16): int
+
 proc updateCursorShape(target: KryonComponent) =
   when defined(KRYON_SDL3):
     if activeRendererBackend == "sdl3":
-      let desired = if not target.isNil and kryon_component_is_button(target): cursorHand else: cursorArrow
+      var actualTarget = target
+      if not actualTarget.isNil:
+        let key = cast[uint](actualTarget)
+        if tabGroupRegistry.hasKey(key):
+          let state = tabGroupRegistry[key]
+          let idx = findTabAtPoint(state, lastPointerX, lastPointerY)
+          if idx >= 0 and idx < state.tabs.len:
+            actualTarget = state.tabs[idx]
+      let desired = if not actualTarget.isNil and kryon_component_is_button(actualTarget): cursorHand else: cursorArrow
       if desired != currentCursorShape:
         kryon_sdl3_apply_cursor_shape(desired)
         currentCursorShape = desired
@@ -94,6 +127,8 @@ when defined(KRYON_SDL3):
   proc updateHoverState(app: KryonApp; evt: var KryonEvent) =
     if app.root.isNil:
       return
+    lastPointerX = evt.x
+    lastPointerY = evt.y
 
     let target = kryon_event_find_target_at_point(app.root, evt.x, evt.y)
 
@@ -472,6 +507,291 @@ proc nimButtonBridge*(component: KryonComponent; event: ptr KryonEvent) {.cdecl.
       echo "[kryon][runtime] Handler is nil!"
   else:
     echo "[kryon][runtime] No handler registered for this button"
+
+# ============================================================================
+# Tab Group System
+# ============================================================================
+when defined(KRYON_SDL3):
+  proc pointerPrimaryDown(): bool =
+    kryon_sdl3_is_mouse_button_down(uint8(1))
+else:
+  proc pointerPrimaryDown(): bool = false
+
+proc refreshTabComponentIndices(state: TabGroupState) =
+  if state.isNil:
+    return
+  for idx, tab in state.tabs:
+    if tab.isNil:
+      continue
+    tabComponentRegistry[cast[uint](tab)] = (state: state, index: idx)
+
+proc reorderChildren(parent: KryonComponent; children: seq[KryonComponent]) =
+  if parent.isNil:
+    return
+  for child in children:
+    if not child.isNil:
+      kryon_component_remove_child(parent, child)
+  for child in children:
+    if not child.isNil:
+      discard kryon_component_add_child(parent, child)
+
+proc clampIndex(value, maxVal: int): int =
+  if maxVal < 0:
+    return 0
+  if value < 0:
+    return 0
+  if value > maxVal:
+    return maxVal
+  value
+
+proc applyTabSelection(state: TabGroupState) =
+  if state.isNil or state.tabs.len == 0:
+    return
+  state.selectedIndex = clampIndex(state.selectedIndex, state.tabs.len - 1)
+  for idx, tab in state.tabs:
+    if tab.isNil: continue
+    if idx < state.tabVisuals.len:
+      let visual = state.tabVisuals[idx]
+      let isActive = idx == state.selectedIndex
+      let bgColor = if isActive: visual.activeBackgroundColor else: visual.backgroundColor
+      let textColor = if isActive: visual.activeTextColor else: visual.textColor
+      kryon_component_set_background_color(tab, bgColor)
+      kryon_component_set_text_color(tab, textColor)
+      kryon_component_mark_dirty(tab)
+    if idx < state.panels.len:
+      let panel = state.panels[idx]
+      if not panel.isNil:
+        let active = idx == state.selectedIndex
+        kryon_component_set_visible(panel, active)
+        if active:
+          kryon_component_mark_dirty(panel)
+
+proc setActiveTab*(state: TabGroupState; index: int) =
+  if state.isNil:
+    return
+  state.selectedIndex = clampIndex(index, state.tabs.len - 1)
+  applyTabSelection(state)
+
+proc computeTargetIndex(state: TabGroupState; pointerX: int16): int =
+  if state.tabs.len == 0:
+    return -1
+  let px = float(pointerX)
+  var fallback = state.tabs.len - 1
+  for idx, tab in state.tabs:
+    if tab.isNil: continue
+    var absX, absY, width, height: KryonFp
+    kryon_component_get_absolute_bounds(tab, addr absX, addr absY, addr width, addr height)
+    let left = fromKryonFp(absX)
+    let right = left + fromKryonFp(width)
+    let midpoint = left + (right - left) / 2
+    if getEnv("KRYON_TRACE_TABS", "") != "":
+      echo "[kryon][tabs] tab#", idx, " bounds=(", left, "-", right, ")"
+    if px < midpoint:
+      return idx
+    fallback = idx
+  fallback
+
+proc findTabAtPoint(state: TabGroupState; pointerX, pointerY: int16): int =
+  if state.tabs.len == 0:
+    return -1
+  let px = float(pointerX)
+  let py = float(pointerY)
+  for idx, tab in state.tabs:
+    if tab.isNil:
+      continue
+    var absX, absY, width, height: KryonFp
+    kryon_component_get_absolute_bounds(tab, addr absX, addr absY, addr width, addr height)
+    let left = fromKryonFp(absX)
+    let top = fromKryonFp(absY)
+    let right = left + fromKryonFp(width)
+    let bottom = top + fromKryonFp(height)
+    if px >= left and px <= right and py >= top and py <= bottom:
+      return idx
+  return -1
+
+proc reorderTabs(state: TabGroupState; fromIdx, toIdx: int) =
+  if state.isNil or state.tabs.len == 0:
+    return
+  let target = clampIndex(toIdx, state.tabs.len - 1)
+  if fromIdx == target or fromIdx < 0 or fromIdx >= state.tabs.len:
+    return
+  let tabComp = state.tabs[fromIdx]
+  state.tabs.delete(fromIdx)
+  state.tabs.insert(tabComp, target)
+
+  if fromIdx < state.tabVisuals.len:
+    let visual = state.tabVisuals[fromIdx]
+    state.tabVisuals.delete(fromIdx)
+    state.tabVisuals.insert(visual, target)
+
+  if fromIdx < state.panels.len:
+    let panel = state.panels[fromIdx]
+    state.panels.delete(fromIdx)
+    if target <= state.panels.len:
+      state.panels.insert(panel, target)
+    else:
+      state.panels.add(panel)
+
+  if state.selectedIndex == fromIdx:
+    state.selectedIndex = target
+  elif state.selectedIndex > fromIdx and state.selectedIndex <= target:
+    state.selectedIndex -= 1
+  elif state.selectedIndex < fromIdx and state.selectedIndex >= target:
+    state.selectedIndex += 1
+
+  reorderChildren(state.tabBar, state.tabs)
+  reorderChildren(state.tabContent, state.panels)
+  refreshTabComponentIndices(state)
+  applyTabSelection(state)
+
+proc stopTabDrag(state: TabGroupState) =
+  if state.isNil: return
+  state.dragging = false
+  state.dragTabIndex = -1
+
+proc updateTabDrag(state: TabGroupState; pointerX: int16) =
+  if state.isNil or state.dragTabIndex < 0 or not state.dragging:
+    return
+  let target = computeTargetIndex(state, pointerX)
+  if target >= 0 and target < state.tabs.len and target != state.dragTabIndex:
+    reorderTabs(state, state.dragTabIndex, target)
+    state.dragTabIndex = target
+
+proc handleTabHover(state: TabGroupState; index: int; event: ptr KryonEvent) =
+  if state.isNil or event.isNil or not state.reorderable:
+    return
+  if pointerPrimaryDown():
+    if not state.dragging:
+      state.dragging = true
+      state.dragTabIndex = clampIndex(index, state.tabs.len - 1)
+    updateTabDrag(state, event.x)
+  else:
+    if state.dragging:
+      stopTabDrag(state)
+
+proc tabComponentEventHandler(component: KryonComponent; event: ptr KryonEvent) {.cdecl.} =
+  if component.isNil or event.isNil:
+    return
+  let key = cast[uint](component)
+  if not tabComponentRegistry.hasKey(key):
+    return
+  let entry = tabComponentRegistry[key]
+  let state = entry.state
+  if state.isNil:
+    return
+  case event.`type`
+  of KryonEventType.Click:
+    if state.reorderable:
+      stopTabDrag(state)
+    setActiveTab(state, entry.index)
+  of KryonEventType.Hover:
+    handleTabHover(state, entry.index, event)
+  else:
+    discard
+
+proc tabBarEventHandler(component: KryonComponent; event: ptr KryonEvent) {.cdecl.} =
+  if component.isNil or event.isNil:
+    return
+  let state = tabBarRegistry.getOrDefault(cast[uint](component))
+  if state.isNil or not state.reorderable:
+    return
+  case event.`type`
+  of KryonEventType.Hover:
+    if state.dragging and pointerPrimaryDown():
+      updateTabDrag(state, event.x)
+    elif state.dragging:
+      stopTabDrag(state)
+  of KryonEventType.Click:
+    stopTabDrag(state)
+  else:
+    discard
+
+proc tabGroupEventHandler(component: KryonComponent; event: ptr KryonEvent) {.cdecl.} =
+  if component.isNil or event.isNil:
+    return
+  let state = tabGroupRegistry.getOrDefault(cast[uint](component))
+  if state.isNil:
+    return
+  case event.`type`
+  of KryonEventType.Click:
+    let directIdx = findTabAtPoint(state, event.x, event.y)
+    var idx = directIdx
+    if idx < 0:
+      idx = computeTargetIndex(state, event.x)
+    if getEnv("KRYON_TRACE_TABS", "") != "":
+      echo "[kryon][tabs] click at ", event.x, ",", event.y,
+           " direct=", directIdx, " target idx=", idx
+    if idx >= 0:
+      setActiveTab(state, idx)
+    stopTabDrag(state)
+  of KryonEventType.Hover:
+    if state.reorderable and state.dragging and pointerPrimaryDown():
+      updateTabDrag(state, event.x)
+    elif state.dragging and not pointerPrimaryDown():
+      stopTabDrag(state)
+  else:
+    discard
+
+proc createTabGroupState*(component: KryonComponent; selectedIndex: int): TabGroupState =
+  if component.isNil:
+    return nil
+  result = TabGroupState(
+    group: component,
+    selectedIndex: if selectedIndex >= 0: selectedIndex else: 0,
+    tabs: @[],
+    tabVisuals: @[],
+    panels: @[],
+    reorderable: false,
+    dragging: false,
+    dragTabIndex: -1
+  )
+  let key = cast[uint](component)
+  tabGroupRegistry[key] = result
+  discard kryon_component_add_event_handler(component, tabGroupEventHandler)
+
+proc registerTabBar*(state: TabGroupState; tabBar: KryonComponent; reorderable: bool) =
+  if state.isNil or tabBar.isNil:
+    return
+  state.tabBar = tabBar
+  state.reorderable = reorderable
+  tabBarRegistry[cast[uint](tabBar)] = state
+  discard kryon_component_add_event_handler(tabBar, tabBarEventHandler)
+
+proc registerTabContent*(state: TabGroupState; content: KryonComponent) =
+  if state.isNil or content.isNil:
+    return
+  state.tabContent = content
+
+proc registerTabComponent*(state: TabGroupState; component: KryonComponent; visuals: TabVisualState) =
+  if state.isNil or component.isNil:
+    return
+  state.tabs.add(component)
+  state.tabVisuals.add(visuals)
+  tabComponentRegistry[cast[uint](component)] = (state: state, index: state.tabs.len - 1)
+  discard kryon_component_add_event_handler(component, tabComponentEventHandler)
+  kryon_component_set_background_color(component, visuals.backgroundColor)
+  kryon_component_set_text_color(component, visuals.textColor)
+  kryon_component_mark_dirty(component)
+
+proc registerTabPanel*(state: TabGroupState; panel: KryonComponent) =
+  if state.isNil or panel.isNil:
+    return
+  state.panels.add(panel)
+  kryon_component_set_visible(panel, false)
+
+proc finalizeTabGroup*(state: TabGroupState) =
+  if state.isNil:
+    return
+  if getEnv("KRYON_TRACE_TABS", "") != "":
+    var absX, absY, w, h: KryonFp
+    if state.tabBar != nil:
+      kryon_component_get_absolute_bounds(state.tabBar, addr absX, addr absY, addr w, addr h)
+    echo "[kryon][tabs] finalize group ", cast[uint](state.group),
+         " tabs=", state.tabs.len, " panels=", state.panels.len,
+         " tabBar=(" & $fromKryonFp(absX) & "," & $fromKryonFp(absY) & "," &
+         $fromKryonFp(w) & "," & $fromKryonFp(h) & ")"
+  refreshTabComponentIndices(state)
+  applyTabSelection(state)
 
 # ============================================================================
 # Renderer and System Functions

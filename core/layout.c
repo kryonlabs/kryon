@@ -140,7 +140,9 @@ static kryon_fp_t get_component_intrinsic_width(kryon_component_t* component) {
         kryon_button_state_t* button_state = (kryon_button_state_t*)component->state;
         if (button_state && button_state->text) {
             uint32_t text_len = strlen(button_state->text);
-            return KRYON_FP_FROM_INT(text_len * 8 + 20); // Text width + padding
+            uint16_t padding = (uint16_t)(component->padding_left + component->padding_right);
+            uint16_t total_padding = padding > 0 ? padding : 20;
+            return KRYON_FP_FROM_INT((int)(text_len * 8 + total_padding)); // Text width + measured padding
         }
         return KRYON_FP_FROM_INT(80); // Default button width
     }
@@ -166,7 +168,60 @@ static kryon_fp_t get_component_intrinsic_height(kryon_component_t* component) {
         return KRYON_FP_FROM_INT(20); // Standard text height
     }
     else if (component->ops == &kryon_button_ops) {
-        return KRYON_FP_FROM_INT(30); // Standard button height
+        uint16_t vertical_padding = (uint16_t)(component->padding_top + component->padding_bottom);
+        uint16_t base_height = 30;
+        if (vertical_padding > 0) {
+            uint16_t padding_height = (uint16_t)(vertical_padding + 14); // include text baseline
+            if (padding_height > base_height) base_height = padding_height;
+        }
+        return KRYON_FP_FROM_INT(base_height); // Button height reflects padding
+    }
+
+    // Estimate container height from children when possible
+    if (component->child_count > 0) {
+        uint16_t padding = (uint16_t)(component->padding_top + component->padding_bottom);
+        uint16_t computed_height = 0;
+        kryon_layout_direction_t direction = (kryon_layout_direction_t)component->layout_direction;
+        if (direction == KRYON_LAYOUT_ROW) {
+            uint16_t max_child = 0;
+            for (uint8_t i = 0; i < component->child_count; i++) {
+                kryon_component_t* child = component->children[i];
+                if (child == NULL || !child->visible) {
+                    continue;
+                }
+                int child_height = KRYON_FP_TO_INT(child->height);
+                if (child_height == 0) {
+                    child_height = KRYON_FP_TO_INT(get_component_intrinsic_height(child));
+                }
+                if (child_height > max_child) {
+                    max_child = (uint16_t)child_height;
+                }
+            }
+            computed_height = max_child;
+        } else if (direction == KRYON_LAYOUT_COLUMN) {
+            uint16_t total = 0;
+            uint8_t visible_count = 0;
+            for (uint8_t i = 0; i < component->child_count; i++) {
+                kryon_component_t* child = component->children[i];
+                if (child == NULL || !child->visible) {
+                    continue;
+                }
+                int child_height = KRYON_FP_TO_INT(child->height);
+                if (child_height == 0) {
+                    child_height = KRYON_FP_TO_INT(get_component_intrinsic_height(child));
+                }
+                total += (uint16_t)child_height;
+                visible_count++;
+            }
+            if (visible_count > 1) {
+                total += (uint16_t)(component->gap * (visible_count - 1));
+            }
+            computed_height = total;
+        }
+        uint16_t final_height = (uint16_t)(padding + computed_height);
+        if (final_height > 0) {
+            return KRYON_FP_FROM_INT(final_height);
+        }
     }
 
     return KRYON_FP_FROM_INT(50); // Default height for containers
@@ -529,9 +584,14 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
         }
     }
 
-    // Set container height if not explicitly set
+    // Set container dimensions if not explicitly provided
     if (container->height == 0) {
         container->height = current_y + line_height + padding_bottom;
+    }
+    if (container_width > 0) {
+        container->width = container_width;
+    } else if (used_width > container->width) {
+        container->width = used_width;
     }
 }
 
@@ -953,12 +1013,25 @@ static void layout_component_internal(kryon_component_t* component, kryon_fp_t a
     if (inner_width < 0) inner_width = 0;
     if (inner_height < 0) inner_height = 0;
 
-    // Recursively layout children with inner dimensions (content area after padding)
+    // Recursively layout children. Width defaults to the parent's inner width
+    // (so rows stretch to match their container) unless the child explicitly
+    // set its width. Height defaults to the child's measured height (to avoid
+    // inflating short components like TabBar rows) or the parent's inner height
+    // if no height has been resolved yet.
     for (uint8_t i = 0; i < component->child_count; i++) {
         kryon_component_t* child = component->children[i];
         if (child->visible) {
-            // Pass inner dimensions to children (effective dimensions minus padding)
-            layout_component_internal(child, inner_width, inner_height);
+            kryon_fp_t child_available_width = inner_width;
+            kryon_fp_t child_available_height = inner_height;
+
+            if (((child->layout_flags & KRYON_COMPONENT_FLAG_HAS_WIDTH) != 0) && child->width > 0) {
+                child_available_width = child->width;
+            }
+            if (child->height > 0) {
+                child_available_height = child->height;
+            }
+
+            layout_component_internal(child, child_available_width, child_available_height);
         }
     }
 

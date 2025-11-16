@@ -170,31 +170,3 @@ let app = kryonApp:
                 fontSize = 16
                 color = "#cccccc"
 
-      # Instructions
-      Column:
-        gap = 10
-
-        Text:
-          text = "How it works:"
-          fontSize = 16
-          color = "#888888"
-
-        Text:
-          text = "- Just add 'reorderable = true' to TabBar"
-          fontSize = 14
-          color = "#666666"
-
-        Text:
-          text = "- Framework automatically makes all Tabs draggable"
-          fontSize = 14
-          color = "#666666"
-
-        Text:
-          text = "- Framework handles live visual reordering"
-          fontSize = 14
-          color = "#666666"
-
-        Text:
-          text = "- NO manual behaviors or handlers needed!"
-          fontSize = 14
-          color = "#666666"

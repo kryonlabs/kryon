@@ -179,6 +179,8 @@ proc kryon_component_set_visible*(component: KryonComponent; visible: bool)
 proc kryon_component_set_scrollable*(component: KryonComponent; scrollable: bool)
 proc kryon_component_set_scroll_offset*(component: KryonComponent; offset_x, offset_y: KryonFp)
 proc kryon_component_get_scroll_offset*(component: KryonComponent; offset_x, offset_y: ptr KryonFp)
+proc kryon_component_get_absolute_bounds*(component: KryonComponent;
+                                          abs_x, abs_y, width, height: ptr KryonFp)
 proc kryon_component_set_flex*(component: KryonComponent; flexGrow, flexShrink: uint8)
 proc kryon_component_mark_dirty*(component: KryonComponent)
 proc kryon_component_mark_clean*(component: KryonComponent)
@@ -282,6 +284,7 @@ when defined(KRYON_SDL3):
   proc kryon_sdl3_renderer_destroy*(renderer: KryonRenderer)
   proc kryon_sdl3_poll_event*(event: ptr KryonEvent): bool
   proc kryon_sdl3_apply_cursor_shape*(shape: uint8)
+  proc kryon_sdl3_is_mouse_button_down*(button: uint8): bool
 
   ## Font management functions
   proc kryon_sdl3_fonts_init*()

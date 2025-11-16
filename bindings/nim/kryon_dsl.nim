@@ -1159,6 +1159,7 @@ macro Button*(props: untyped): untyped =
   var
     buttonName = genSym(nskLet, "button")
     buttonText = newStrLitNode("Button")
+    childNodes: seq[NimNode] = @[]
     clickHandler = newNilLit()
     marginAll: NimNode = nil
     marginTopVal: NimNode = nil
@@ -1229,6 +1230,8 @@ macro Button*(props: untyped): untyped =
         borderWidthVal = value
       else:
         discard
+    else:
+      childNodes.add(node)
 
   let marginTopExpr = if marginTopVal != nil: marginTopVal
     elif marginAll != nil: marginAll
@@ -1333,10 +1336,18 @@ macro Button*(props: untyped): untyped =
   initStmts.add quote do:
     kryon_component_mark_dirty(`buttonName`)
 
+  var childStmtList = newStmtList()
+  for child in childNodes:
+    childStmtList.add quote do:
+      let childComp = `child`
+      if childComp != nil:
+        discard kryon_component_add_child(`buttonName`, childComp)
+
   result = quote do:
     block:
       let `buttonName` = `buttonCall`
       `initStmts`
+      `childStmtList`
       `buttonName`
 
 macro Dropdown*(props: untyped): untyped =
@@ -1907,6 +1918,326 @@ macro Center*(props: untyped): untyped =
   for node in props.children:
     body.add(node)
   result = newTree(nnkCall, ident("Container"), body)
+
+# ============================================================================
+# Tabs
+# ============================================================================
+
+macro TabGroup*(props: untyped): untyped =
+  let createSym = bindSym("createTabGroupState")
+  let finalizeSym = bindSym("finalizeTabGroup")
+  let addChildSym = bindSym("kryon_component_add_child")
+  let ctxSym = ident("__kryonCurrentTabGroup")
+
+  var propertyNodes: seq[NimNode] = @[]
+  var childNodes: seq[NimNode] = @[]
+  var selectedIndexVal: NimNode = newIntLitNode(0)
+  var hasLayout = false
+  var hasGap = false
+
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii()
+      of "selectedindex":
+        selectedIndexVal = node[1]
+      of "layoutdirection":
+        hasLayout = true
+        propertyNodes.add(node)
+      of "gap":
+        hasGap = true
+        propertyNodes.add(node)
+      else:
+        propertyNodes.add(node)
+    else:
+      childNodes.add(node)
+
+  var body = newTree(nnkStmtList)
+  if not hasLayout:
+    body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(0))
+  if not hasGap:
+    body.add newTree(nnkAsgn, ident("gap"), newIntLitNode(8))
+  for node in propertyNodes:
+    body.add(node)
+
+  let containerCall = newTree(nnkCall, ident("Container"), body)
+  let groupSym = genSym(nskLet, "tabGroup")
+  let stateSym = genSym(nskLet, "tabGroupState")
+
+  var childStmtList = newStmtList()
+  for child in childNodes:
+    childStmtList.add quote do:
+      let childComponent = `child`
+      if childComponent != nil:
+        discard `addChildSym`(`groupSym`, childComponent)
+
+  result = quote do:
+    block:
+      let `groupSym` = `containerCall`
+      let `stateSym` = `createSym`(`groupSym`, `selectedIndexVal`)
+      let `ctxSym` = `stateSym`
+      block:
+        `childStmtList`
+      `finalizeSym`(`stateSym`)
+      `groupSym`
+
+macro TabBar*(props: untyped): untyped =
+  let registerSym = bindSym("registerTabBar")
+  let ctxSym = ident("__kryonCurrentTabGroup")
+  let addChildSym = bindSym("kryon_component_add_child")
+
+  var propertyNodes: seq[NimNode] = @[]
+  var childNodes: seq[NimNode] = @[]
+  var reorderableVal: NimNode = newLit(false)
+  var hasLayout = false
+  var hasGap = false
+  var hasAlign = false
+  var hasPadding = false
+  var hasBackground = false
+  var hasBorderColor = false
+  var hasBorderWidth = false
+  var hasFlex = false
+
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii()
+      of "reorderable":
+        reorderableVal = node[1]
+      of "layoutdirection":
+        hasLayout = true
+        propertyNodes.add(node)
+      of "gap":
+        hasGap = true
+        propertyNodes.add(node)
+      of "alignitems", "crossaxisalignment":
+        hasAlign = true
+        propertyNodes.add(node)
+      of "padding":
+        hasPadding = true
+        propertyNodes.add(node)
+      of "backgroundcolor":
+        hasBackground = true
+        propertyNodes.add(node)
+      of "bordercolor":
+        hasBorderColor = true
+        propertyNodes.add(node)
+      of "borderwidth":
+        hasBorderWidth = true
+        propertyNodes.add(node)
+      of "flexgrow":
+        hasFlex = true
+        propertyNodes.add(node)
+      else:
+        propertyNodes.add(node)
+    else:
+      childNodes.add(node)
+
+  var body = newTree(nnkStmtList)
+  if not hasLayout:
+    body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(1))
+  if not hasAlign:
+    body.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
+  if not hasGap:
+    body.add newTree(nnkAsgn, ident("gap"), newIntLitNode(6))
+  if not hasPadding:
+    body.add newTree(nnkAsgn, ident("paddingTop"), newIntLitNode(4))
+    body.add newTree(nnkAsgn, ident("paddingBottom"), newIntLitNode(4))
+    body.add newTree(nnkAsgn, ident("paddingLeft"), newIntLitNode(8))
+    body.add newTree(nnkAsgn, ident("paddingRight"), newIntLitNode(8))
+  if not hasBackground:
+    body.add newTree(nnkAsgn, ident("backgroundColor"), newStrLitNode("#202124"))
+  if not hasBorderWidth:
+    body.add newTree(nnkAsgn, ident("borderWidth"), newIntLitNode(1))
+  if not hasBorderColor:
+    body.add newTree(nnkAsgn, ident("borderColor"), newStrLitNode("#2b2f33"))
+  # Tab bars shouldn't consume vertical space by default; leave flexGrow unset unless provided
+  for node in propertyNodes:
+    body.add(node)
+
+  let containerCall = newTree(nnkCall, ident("Container"), body)
+  let barSym = genSym(nskLet, "tabBar")
+
+  var childStmtList = newStmtList()
+  for child in childNodes:
+    childStmtList.add quote do:
+      let tabChild = `child`
+      if tabChild != nil:
+        discard `addChildSym`(`barSym`, tabChild)
+
+  result = quote do:
+    block:
+      let `barSym` = `containerCall`
+      `registerSym`(`ctxSym`, `barSym`, `reorderableVal`)
+      block:
+        `childStmtList`
+      `barSym`
+
+macro TabContent*(props: untyped): untyped =
+  let registerSym = bindSym("registerTabContent")
+  let ctxSym = ident("__kryonCurrentTabGroup")
+  let addChildSym = bindSym("kryon_component_add_child")
+
+  var propertyNodes: seq[NimNode] = @[]
+  var childNodes: seq[NimNode] = @[]
+  var hasLayout = false
+  var hasFlex = false
+
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii()
+      of "layoutdirection":
+        hasLayout = true
+        propertyNodes.add(node)
+      of "flexgrow":
+        hasFlex = true
+        propertyNodes.add(node)
+      else:
+        propertyNodes.add(node)
+    else:
+      childNodes.add(node)
+
+  var body = newTree(nnkStmtList)
+  if not hasLayout:
+    body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(0))
+  if not hasFlex:
+    body.add newTree(nnkAsgn, ident("flexGrow"), newIntLitNode(1))
+  for node in propertyNodes:
+    body.add(node)
+
+  let containerCall = newTree(nnkCall, ident("Container"), body)
+  let contentSym = genSym(nskLet, "tabContent")
+
+  var childStmtList = newStmtList()
+  for child in childNodes:
+    childStmtList.add quote do:
+      let panelChild = `child`
+      if panelChild != nil:
+        discard `addChildSym`(`contentSym`, panelChild)
+
+  result = quote do:
+    block:
+      let `contentSym` = `containerCall`
+      `registerSym`(`ctxSym`, `contentSym`)
+      block:
+        `childStmtList`
+      `contentSym`
+
+macro TabPanel*(props: untyped): untyped =
+  let registerSym = bindSym("registerTabPanel")
+  let ctxSym = ident("__kryonCurrentTabGroup")
+
+  var body = newTree(nnkStmtList)
+  for node in props.children:
+    body.add(node)
+
+  let containerCall = newTree(nnkCall, ident("Container"), body)
+  let panelSym = genSym(nskLet, "tabPanel")
+
+  result = quote do:
+    block:
+      let `panelSym` = `containerCall`
+      `registerSym`(`ctxSym`, `panelSym`)
+      `panelSym`
+
+macro Tab*(props: untyped): untyped =
+  let registerSym = bindSym("registerTabComponent")
+  let visualType = bindSym("TabVisualState")
+  let ctxSym = ident("__kryonCurrentTabGroup")
+
+  var buttonProps = newTree(nnkStmtList)
+  var extraChildren: seq[NimNode] = @[]
+  var titleVal: NimNode = newStrLitNode("Tab")
+  var backgroundColorExpr: NimNode = newStrLitNode("#292C30")
+  var activeBackgroundExpr: NimNode = newStrLitNode("#3C4047")
+  var textColorExpr: NimNode = newStrLitNode("#C7C9CC")
+  var activeTextExpr: NimNode = newStrLitNode("#FFFFFF")
+  var hasPadding = false
+  var hasMargin = false
+  var hasBackground = false
+  var hasTextColor = false
+  var hasBorderColor = false
+  var hasBorderWidth = false
+
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii()
+      of "title":
+        titleVal = node[1]
+      of "backgroundcolor":
+        backgroundColorExpr = node[1]
+        buttonProps.add(node)
+        hasBackground = true
+      of "activebackgroundcolor":
+        activeBackgroundExpr = node[1]
+      of "textcolor":
+        textColorExpr = node[1]
+        buttonProps.add(node)
+        hasTextColor = true
+      of "activetextcolor":
+        activeTextExpr = node[1]
+      of "bordercolor":
+        hasBorderColor = true
+        buttonProps.add(node)
+      of "borderwidth":
+        hasBorderWidth = true
+        buttonProps.add(node)
+      of "padding":
+        hasPadding = true
+        buttonProps.add(node)
+      of "margin":
+        hasMargin = true
+        buttonProps.add(node)
+      else:
+        buttonProps.add(node)
+    else:
+        extraChildren.add(node)
+
+  if not hasBackground:
+    buttonProps.add newTree(nnkAsgn, ident("backgroundColor"), copyNimTree(backgroundColorExpr))
+  if not hasTextColor:
+    buttonProps.add newTree(nnkAsgn, ident("color"), copyNimTree(textColorExpr))
+  if not hasBorderColor:
+    buttonProps.add newTree(nnkAsgn, ident("borderColor"), newStrLitNode("#4C5057"))
+  if not hasBorderWidth:
+    buttonProps.add newTree(nnkAsgn, ident("borderWidth"), newIntLitNode(1))
+
+  buttonProps.add newTree(nnkAsgn, ident("text"), titleVal)
+
+  for child in extraChildren:
+    buttonProps.add(child)
+
+  let buttonCall = newTree(nnkCall, ident("Button"), buttonProps)
+  let tabSym = genSym(nskLet, "tabComponent")
+  var afterCreate = newStmtList()
+
+  if not hasPadding:
+    afterCreate.add quote do:
+      kryon_component_set_padding(`tabSym`, 10'u8, 20'u8, 10'u8, 20'u8)
+
+  if not hasMargin:
+    afterCreate.add quote do:
+      kryon_component_set_margin(`tabSym`, 2'u8, 6'u8, 0'u8, 6'u8)
+
+  afterCreate.add quote do:
+    kryon_component_set_layout_alignment(`tabSym`, kaCenter, kaCenter)
+    kryon_component_set_flex(`tabSym`, 0'u8, 0'u8)
+
+  let visualNode = newTree(nnkObjConstr, visualType,
+    newTree(nnkExprColonExpr, ident("backgroundColor"), colorNode(copyNimTree(backgroundColorExpr))),
+    newTree(nnkExprColonExpr, ident("activeBackgroundColor"), colorNode(copyNimTree(activeBackgroundExpr))),
+    newTree(nnkExprColonExpr, ident("textColor"), colorNode(copyNimTree(textColorExpr))),
+    newTree(nnkExprColonExpr, ident("activeTextColor"), colorNode(copyNimTree(activeTextExpr)))
+  )
+
+  result = quote do:
+    block:
+      let `tabSym` = `buttonCall`
+      `afterCreate`
+      `registerSym`(`ctxSym`, `tabSym`, `visualNode`)
+      `tabSym`
 
 # ============================================================================
 # Static For Loop Macro

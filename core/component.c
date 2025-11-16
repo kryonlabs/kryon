@@ -28,7 +28,7 @@ kryon_renderer_t* kryon_get_global_renderer(void) {
 
 // Calculate absolute position by accumulating parent positions
 void calculate_absolute_position(const kryon_component_t* component,
-                                      kryon_fp_t* abs_x, kryon_fp_t* abs_y) {
+                                     kryon_fp_t* abs_x, kryon_fp_t* abs_y) {
     if (component == NULL) {
         *abs_x = 0;
         *abs_y = 0;
@@ -50,6 +50,27 @@ void calculate_absolute_position(const kryon_component_t* component,
         *abs_y += parent->y;
         parent = parent->parent;
     }
+}
+
+void kryon_component_get_absolute_bounds(kryon_component_t* component,
+                                         kryon_fp_t* abs_x, kryon_fp_t* abs_y,
+                                         kryon_fp_t* width, kryon_fp_t* height) {
+    if (abs_x) *abs_x = 0;
+    if (abs_y) *abs_y = 0;
+    if (width) *width = 0;
+    if (height) *height = 0;
+
+    if (component == NULL) {
+        return;
+    }
+
+    kryon_fp_t ax = 0, ay = 0;
+    calculate_absolute_position(component, &ax, &ay);
+
+    if (abs_x) *abs_x = ax;
+    if (abs_y) *abs_y = ay;
+    if (width) *width = component->width;
+    if (height) *height = component->height;
 }
 
 // ============================================================================
@@ -598,11 +619,11 @@ void kryon_component_send_event(kryon_component_t* component, kryon_event_t* eve
         return;
     }
 
+    bool handled = false;
+
     // Send to component-specific handlers first
     if (component->ops && component->ops->on_event) {
-        if (component->ops->on_event(component, event)) {
-            return; // Event was handled
-        }
+        handled = component->ops->on_event(component, event);
     }
 
     // Send to registered event handlers
@@ -610,6 +631,10 @@ void kryon_component_send_event(kryon_component_t* component, kryon_event_t* eve
         if (component->event_handlers[i] != NULL) {
             component->event_handlers[i](component, event);
         }
+    }
+
+    if (handled) {
+        return;
     }
 
     // Bubble up to parent (event propagation)

@@ -333,6 +333,9 @@ uint8_t kryon_component_get_child_count(kryon_component_t* component);
 // Coordinate transformation
 void calculate_absolute_position(const kryon_component_t* component,
                                  kryon_fp_t* abs_x, kryon_fp_t* abs_y);
+void kryon_component_get_absolute_bounds(kryon_component_t* component,
+                                         kryon_fp_t* abs_x, kryon_fp_t* abs_y,
+                                         kryon_fp_t* width, kryon_fp_t* height);
 
 // Event system
 void kryon_component_send_event(kryon_component_t* component, kryon_event_t* event);

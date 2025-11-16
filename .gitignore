@@ -10,6 +10,7 @@ nimcache/
 
 # Build artifacts
 build/
+bin/
 dist/
 *.out
 .kryon
