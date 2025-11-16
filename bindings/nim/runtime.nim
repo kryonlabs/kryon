@@ -614,6 +614,10 @@ proc computeTargetIndex(state: TabGroupState; pointerX: int16): int =
     return -1
   let px = float(pointerX)
   var fallback = state.tabs.len - 1
+
+  if getEnv("KRYON_TRACE_TABS", "") != "":
+    echo "[kryon][tabs] computeTargetIndex: px=", px, " dragTabIndex=", state.dragTabIndex
+
   for idx, tab in state.tabs:
     if tab.isNil: continue
     var absX, absY, width, height: KryonFp
@@ -621,11 +625,24 @@ proc computeTargetIndex(state: TabGroupState; pointerX: int16): int =
     let left = fromKryonFp(absX)
     let right = left + fromKryonFp(width)
     let midpoint = left + (right - left) / 2
+
     if getEnv("KRYON_TRACE_TABS", "") != "":
-      echo "[kryon][tabs] tab#", idx, " bounds=(", left, "-", right, ")"
+      echo "[kryon][tabs] tab#", idx, " bounds=(", left, "-", right, ") midpoint=", midpoint
+
+    # Skip the tab being dragged to avoid self-targeting
+    if idx == state.dragTabIndex:
+      if getEnv("KRYON_TRACE_TABS", "") != "":
+        echo "[kryon][tabs] skipping dragged tab at index ", idx
+      continue
+
     if px < midpoint:
+      if getEnv("KRYON_TRACE_TABS", "") != "":
+        echo "[kryon][tabs] returning target index ", idx
       return idx
     fallback = idx
+
+  if getEnv("KRYON_TRACE_TABS", "") != "":
+    echo "[kryon][tabs] returning fallback index ", fallback
   fallback
 
 proc clampDragLeft(state: TabGroupState; desiredLeft: float): float =
@@ -692,7 +709,16 @@ proc maybeReorderTabs(state: TabGroupState; pointerX: int16) =
   let target = computeTargetIndex(state, pointerX)
   if target < 0 or target >= state.tabs.len or target == state.dragTabIndex:
     return
-  if abs(float(pointerX - state.dragLastReorderPointer)) < tabReorderThreshold / 2:
+
+  # Increased dead zone to prevent rapid flipping when dragging to end positions
+  if abs(float(pointerX - state.dragLastReorderPointer)) < tabReorderThreshold:
+    return
+
+  # Prevent immediate reversal - only allow reordering if moving consistently in one direction
+  let pointerDiff = float(pointerX) - float(state.dragLastReorderPointer)
+  if (target > state.dragTabIndex and pointerDiff < 0) or (target < state.dragTabIndex and pointerDiff > 0):
+    if getEnv("KRYON_TRACE_TABS", "") != "":
+      echo "[kryon][tabs] blocking reversal: target=", target, " dragTabIndex=", state.dragTabIndex, " pointerDiff=", pointerDiff
     return
   if target > state.dragTabIndex:
     let neighbor = state.tabs[target]
