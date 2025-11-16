@@ -2159,6 +2159,7 @@ macro Tab*(props: untyped): untyped =
   var hasTextColor = false
   var hasBorderColor = false
   var hasBorderWidth = false
+  var hasWidth = false
 
   for node in props.children:
     if node.kind == nnkAsgn:
@@ -2190,6 +2191,9 @@ macro Tab*(props: untyped): untyped =
       of "margin":
         hasMargin = true
         buttonProps.add(node)
+      of "width":
+        hasWidth = true
+        buttonProps.add(node)
       else:
         buttonProps.add(node)
     else:
@@ -2203,6 +2207,10 @@ macro Tab*(props: untyped): untyped =
     buttonProps.add newTree(nnkAsgn, ident("borderColor"), newStrLitNode("#4C5057"))
   if not hasBorderWidth:
     buttonProps.add newTree(nnkAsgn, ident("borderWidth"), newIntLitNode(1))
+  if not hasWidth:
+    buttonProps.add newTree(nnkAsgn, ident("width"), newIntLitNode(168))
+  buttonProps.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
+  buttonProps.add newTree(nnkAsgn, ident("justifyContent"), newStrLitNode("start"))
 
   buttonProps.add newTree(nnkAsgn, ident("text"), titleVal)
 
@@ -2211,6 +2219,8 @@ macro Tab*(props: untyped): untyped =
 
   let buttonCall = newTree(nnkCall, ident("Button"), buttonProps)
   let tabSym = genSym(nskLet, "tabComponent")
+  let centerSetter = bindSym("kryon_button_set_center_text")
+  let ellipsizeSetter = bindSym("kryon_button_set_ellipsize")
   var afterCreate = newStmtList()
 
   if not hasPadding:
@@ -2224,6 +2234,9 @@ macro Tab*(props: untyped): untyped =
   afterCreate.add quote do:
     kryon_component_set_layout_alignment(`tabSym`, kaCenter, kaCenter)
     kryon_component_set_flex(`tabSym`, 0'u8, 0'u8)
+    kryon_component_set_layout_direction(`tabSym`, 1'u8)
+    `centerSetter`(`tabSym`, false)
+    `ellipsizeSetter`(`tabSym`, true)
 
   let visualNode = newTree(nnkObjConstr, visualType,
     newTree(nnkExprColonExpr, ident("backgroundColor"), colorNode(copyNimTree(backgroundColorExpr))),

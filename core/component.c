@@ -1231,40 +1231,81 @@ static void button_render(kryon_component_t* self, kryon_cmd_buf_t* buf) {
     }
 
     if (button_state->text != NULL) {
-        // Calculate text dimensions for centering
         uint32_t text_len = strlen(button_state->text);
-        int16_t estimated_text_width = text_len * 8; // Same estimate as layout system
-        int16_t estimated_text_height = 16; // Standard text height estimate
+        int16_t char_width = button_state->font_size > 0
+            ? (int16_t)(button_state->font_size * 0.5f)
+            : 8;
+        if (char_width <= 0) char_width = 8;
+        int16_t estimated_text_width = (int16_t)(text_len * char_width);
+        int16_t estimated_text_height = button_state->font_size > 0
+            ? button_state->font_size
+            : 16;
 
-        // Calculate available space inside padding
-        int16_t available_width = KRYON_FP_TO_INT(self->width) -
-                                 (self->padding_left + self->padding_right);
-        int16_t available_height = KRYON_FP_TO_INT(self->height) -
-                                  (self->padding_top + self->padding_bottom);
+        int16_t available_width = (int16_t)(w - (self->padding_left + self->padding_right));
+        if (available_width < 0) available_width = 0;
+        int16_t available_height = (int16_t)(h - (self->padding_top + self->padding_bottom));
+        if (available_height < 0) available_height = 0;
 
-        // Calculate absolute position for rendering
-        kryon_fp_t abs_x, abs_y;
-        calculate_absolute_position(self, &abs_x, &abs_y);
-        int16_t base_x = KRYON_FP_TO_INT(abs_x);
-        int16_t base_y = KRYON_FP_TO_INT(abs_y);
+        // Base (text) position relative to button
+        int16_t text_x = x + self->padding_left;
+        int16_t text_y = y + self->padding_top +
+            (available_height > estimated_text_height ?
+                (available_height - estimated_text_height) / 2 : 0);
 
-        // Center text horizontally and vertically (relative to button)
-        int16_t text_x = base_x + self->padding_left +
-                        (available_width > estimated_text_width ?
-                         (available_width - estimated_text_width) / 2 : 0);
-        int16_t text_y = base_y + self->padding_top +
-                        (available_height > estimated_text_height ?
-                         (available_height - estimated_text_height) / 2 : 0);
+        const char* draw_text = button_state->text;
+        char truncated_buffer[192];
+        int16_t layout_text_width = estimated_text_width;
 
-    kryon_draw_text(buf,
-                       button_state->text,
-                       text_x,
-                       text_y,
-                       button_state->font_id,
-                       0,
-                       KRYON_FONT_WEIGHT_NORMAL,
-                       KRYON_FONT_STYLE_NORMAL,
-                       self->text_color);
+        if (button_state->ellipsize && available_width > 0 && estimated_text_width > available_width) {
+            int16_t chars_fit = (int16_t)(available_width / char_width);
+            if (chars_fit <= 0) chars_fit = 1;
+            if (chars_fit < (int16_t)text_len) {
+                bool add_ellipsis = chars_fit > 3;
+                int16_t copy_len = add_ellipsis ? (chars_fit - 3) : chars_fit;
+                if (copy_len < 0) copy_len = 0;
+                if (copy_len > (int16_t)text_len) {
+                    copy_len = (int16_t)text_len;
+                    add_ellipsis = false;
+                }
+                if (copy_len > (int16_t)sizeof(truncated_buffer) - 4) {
+                    copy_len = (int16_t)sizeof(truncated_buffer) - 4;
+                }
+                if (copy_len > 0) {
+                    memcpy(truncated_buffer, button_state->text, (size_t)copy_len);
+                }
+                if (add_ellipsis && copy_len >= 0) {
+                    truncated_buffer[copy_len] = '.';
+                    truncated_buffer[copy_len + 1] = '.';
+                    truncated_buffer[copy_len + 2] = '.';
+                    truncated_buffer[copy_len + 3] = '\0';
+                } else {
+                    truncated_buffer[copy_len] = '\0';
+                }
+                draw_text = truncated_buffer;
+                layout_text_width = available_width;
+            }
+        }
+
+        if (button_state->center_text) {
+            if (available_width > layout_text_width) {
+                text_x += (available_width - layout_text_width) / 2;
+            }
+        } else {
+            // Left align with a small inset to mimic Chromium tabs
+            text_x += 4;
+        }
+
+        if (available_width > 0) {
+            kryon_draw_text(buf,
+                           draw_text,
+                           text_x,
+                           text_y,
+                           button_state->font_id,
+                           button_state->font_size,
+                           KRYON_FONT_WEIGHT_NORMAL,
+                           KRYON_FONT_STYLE_NORMAL,
+                           self->text_color);
+        }
     }
 }
 
@@ -1322,6 +1363,33 @@ const kryon_component_ops_t kryon_button_ops = {
     .destroy = NULL,
     .layout = button_layout
 };
+
+void kryon_button_set_center_text(kryon_component_t* component, bool center) {
+    if (component == NULL || component->ops != &kryon_button_ops || component->state == NULL) {
+        return;
+    }
+    kryon_button_state_t* state = (kryon_button_state_t*)component->state;
+    state->center_text = center;
+    kryon_component_mark_dirty(component);
+}
+
+void kryon_button_set_ellipsize(kryon_component_t* component, bool ellipsize) {
+    if (component == NULL || component->ops != &kryon_button_ops || component->state == NULL) {
+        return;
+    }
+    kryon_button_state_t* state = (kryon_button_state_t*)component->state;
+    state->ellipsize = ellipsize;
+    kryon_component_mark_dirty(component);
+}
+
+void kryon_button_set_font_size(kryon_component_t* component, uint8_t font_size) {
+    if (component == NULL || component->ops != &kryon_button_ops || component->state == NULL) {
+        return;
+    }
+    kryon_button_state_t* state = (kryon_button_state_t*)component->state;
+    state->font_size = font_size;
+    kryon_component_mark_dirty(component);
+}
 
 // ============================================================================
 // Dropdown Component

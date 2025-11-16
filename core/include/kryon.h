@@ -779,12 +779,18 @@ extern const kryon_component_ops_t kryon_h6_ops;
 typedef struct {
     const char* text;
     uint16_t font_id;
+    uint8_t font_size;
     bool pressed;
     bool hovered;
+    bool center_text;
+    bool ellipsize;
     void (*on_click)(kryon_component_t*, kryon_event_t*);
 } kryon_button_state_t;
 
 extern const kryon_component_ops_t kryon_button_ops;
+void kryon_button_set_center_text(kryon_component_t* component, bool center);
+void kryon_button_set_ellipsize(kryon_component_t* component, bool ellipsize);
+void kryon_button_set_font_size(kryon_component_t* component, uint8_t font_size);
 
 // Canvas component
 typedef struct {

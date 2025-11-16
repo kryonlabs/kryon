@@ -116,8 +116,11 @@ type
   KryonButtonState* {.importc: "kryon_button_state_t", bycopy, header: "kryon.h".} = object
     text*: cstring
     font_id*: uint16
+    font_size*: uint8
     pressed*: bool
     hovered*: bool
+    center_text*: bool
+    ellipsize*: bool
     on_click*: proc (component: KryonComponent; event: ptr KryonEvent) {.cdecl.}
 
   KryonCheckboxState* {.importc: "kryon_checkbox_state_t", bycopy, header: "kryon.h".} = object
@@ -192,6 +195,9 @@ proc kryon_component_add_event_handler*(component: KryonComponent; handler: proc
 proc kryon_component_is_button*(component: KryonComponent): bool
 proc kryon_event_dispatch_to_point*(root: KryonComponent; x, y: int16; event: ptr KryonEvent)
 proc kryon_event_find_target_at_point*(root: KryonComponent; x, y: int16): KryonComponent
+proc kryon_button_set_center_text*(component: KryonComponent; center: bool)
+proc kryon_button_set_ellipsize*(component: KryonComponent; ellipsize: bool)
+proc kryon_button_set_font_size*(component: KryonComponent; fontSize: uint8)
 
 ## Command Buffer
 proc kryon_cmd_buf_init*(buf: KryonCmdBuf)
@@ -349,20 +355,22 @@ proc newKryonText*(text: string, fontSize: uint8 = 0, fontWeight: uint8 = 0, fon
 
 proc newKryonButton*(text: string; onClickCallback: proc (component: KryonComponent; event: ptr KryonEvent) {.cdecl.} = nil): KryonComponent =
   ## Create a new button component
-  var buttonState: KryonButtonState
+  var buttonState = KryonButtonState(
+    font_id: 0,
+    font_size: 16,
+    pressed: false,
+    hovered: false,
+    center_text: true,
+    ellipsize: true,
+    on_click: onClickCallback
+  )
   let len = text.len
-  # Use malloc instead of alloc to match C's free() in kryon_component_set_text
   let buffer = cast[ptr UncheckedArray[char]](c_malloc(csize_t(len + 1)))
   if len > 0:
     copyMem(addr buffer[0], unsafeAddr text[0], len)
   buffer[len] = '\0'
   buttonState.text = cast[cstring](buffer)
-  buttonState.font_id = 0
-  buttonState.pressed = false
-  buttonState.hovered = false
-  buttonState.on_click = onClickCallback
 
-  # Use malloc for state too, for consistency
   let statePtr = c_malloc(csize_t(sizeof(KryonButtonState)))
   copyMem(statePtr, addr buttonState, sizeof(KryonButtonState))
 
