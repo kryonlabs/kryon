@@ -591,6 +591,20 @@ proc computeTargetIndex(state: TabGroupState; pointerX: int16): int =
     fallback = idx
   fallback
 
+proc pointInsideTabBar(state: TabGroupState; pointerX, pointerY: int16): bool =
+  ## True when the pointer is within the tab bar's bounding box.
+  if state.isNil or state.tabBar.isNil:
+    return false
+  let px = float(pointerX)
+  let py = float(pointerY)
+  var absX, absY, width, height: KryonFp
+  kryon_component_get_absolute_bounds(state.tabBar, addr absX, addr absY, addr width, addr height)
+  let left = fromKryonFp(absX)
+  let top = fromKryonFp(absY)
+  let right = left + fromKryonFp(width)
+  let bottom = top + fromKryonFp(height)
+  result = px >= left and px <= right and py >= top and py <= bottom
+
 proc findTabAtPoint(state: TabGroupState; pointerX, pointerY: int16): int =
   if state.tabs.len == 0:
     return -1
@@ -716,7 +730,7 @@ proc tabGroupEventHandler(component: KryonComponent; event: ptr KryonEvent) {.cd
   of KryonEventType.Click:
     let directIdx = findTabAtPoint(state, event.x, event.y)
     var idx = directIdx
-    if idx < 0:
+    if idx < 0 and pointInsideTabBar(state, event.x, event.y):
       idx = computeTargetIndex(state, event.x)
     if getEnv("KRYON_TRACE_TABS", "") != "":
       echo "[kryon][tabs] click at ", event.x, ",", event.y,
