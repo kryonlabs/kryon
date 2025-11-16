@@ -61,6 +61,9 @@ type
     tabVisuals*: seq[TabVisualState]
     panels*: seq[KryonComponent]
     tabBaseZIndices*: seq[uint16]
+    dragPending*: bool
+    dragPendingIndex*: int
+    dragPendingStartX*: int16
     selectedIndex*: int
     reorderable*: bool
     dragging*: bool
@@ -77,6 +80,7 @@ type
     dragOriginalLayoutFlags*: uint8
     dragTabHasManualBounds*: bool
     dragHadMovement*: bool
+    dragLastReorderPointer*: int16
     suppressClick*: bool
 
 proc isHeadlessEnvironment(): bool =
@@ -122,6 +126,7 @@ when defined(KRYON_SDL3):
   var currentCursorShape: uint8 = cursorArrow
 
 proc findTabAtPoint(state: TabGroupState; pointerX, pointerY: int16): int
+proc reorderTabs(state: TabGroupState; fromIdx, toIdx: int)
 
 proc updateCursorShape(target: KryonComponent) =
   when defined(KRYON_SDL3):
@@ -599,7 +604,10 @@ proc setActiveTab*(state: TabGroupState; index: int) =
   state.selectedIndex = clampIndex(index, state.tabs.len - 1)
   applyTabSelection(state)
 
-const tabDragMaskBits = (0x01'u8 or 0x02'u8)
+const
+  tabDragMaskBits = (0x01'u8 or 0x02'u8)
+  tabReorderThreshold = 24.0
+  tabDragStartThreshold = 6.0
 
 proc computeTargetIndex(state: TabGroupState; pointerX: int16): int =
   if state.tabs.len == 0:
@@ -671,6 +679,45 @@ proc applyTabDragVisual(state: TabGroupState; pointerX: int16; isRefresh = false
     state.dragHadMovement = true
   kryon_component_mark_dirty(tab)
 
+proc maybeReorderTabs(state: TabGroupState; pointerX: int16) =
+  if state.isNil or not state.dragging or not state.reorderable:
+    return
+  if state.tabs.len == 0:
+    return
+  let currentLeft = float(pointerX) - state.dragPointerOffset
+  let currentRight = currentLeft + state.dragTabOriginalWidth
+  let displacement = currentLeft - state.dragTabOriginalLeft
+  if abs(displacement) < tabReorderThreshold:
+    return
+  let target = computeTargetIndex(state, pointerX)
+  if target < 0 or target >= state.tabs.len or target == state.dragTabIndex:
+    return
+  if abs(float(pointerX - state.dragLastReorderPointer)) < tabReorderThreshold / 2:
+    return
+  if target > state.dragTabIndex:
+    let neighbor = state.tabs[target]
+    if neighbor.isNil:
+      return
+    var nAbsX, nAbsY, nW, nH: KryonFp
+    kryon_component_get_absolute_bounds(neighbor, addr nAbsX, addr nAbsY, addr nW, addr nH)
+    let neighborLeft = fromKryonFp(nAbsX)
+    if currentRight < neighborLeft + tabDragStartThreshold:
+      return
+  elif target < state.dragTabIndex:
+    let neighbor = state.tabs[target]
+    if neighbor.isNil:
+      return
+    var nAbsX, nAbsY, nW, nH: KryonFp
+    kryon_component_get_absolute_bounds(neighbor, addr nAbsX, addr nAbsY, addr nW, addr nH)
+    let neighborRight = fromKryonFp(nAbsX) + fromKryonFp(nW)
+    if currentLeft > neighborRight - tabDragStartThreshold:
+      return
+  reorderTabs(state, state.dragTabIndex, target)
+  state.dragTabIndex = target
+  state.dragTabOriginalLeft = currentLeft
+  state.dragLastReorderPointer = pointerX
+  applyTabDragVisual(state, pointerX, true)
+
 proc startTabDrag(state: TabGroupState; index: int; pointerX: int16) =
   ## Capture initial bounds for chrome-style dragging.
   if state.isNil or index < 0 or index >= state.tabs.len:
@@ -700,7 +747,11 @@ proc startTabDrag(state: TabGroupState; index: int; pointerX: int16) =
   state.dragHadMovement = false
   state.dragPointerX = pointerX
   state.dragOriginalLayoutFlags = kryon_component_get_layout_flags(tab)
+  state.dragPending = false
+  state.dragPendingIndex = -1
   state.suppressClick = false
+  state.dragLastReorderPointer = pointerX
+  setActiveTab(state, state.dragTabIndex)
   if state.dragTabIndex >= 0 and state.dragTabIndex < state.tabBaseZIndices.len:
     state.dragTabOriginalZIndex = state.tabBaseZIndices[state.dragTabIndex]
   else:
@@ -814,11 +865,16 @@ proc stopTabDrag(state: TabGroupState) =
   state.dragHadMovement = false
   state.dragTabOriginalZIndex = 0'u16
   state.dragOriginalLayoutFlags = 0'u8
+  state.dragPending = false
+  state.dragPendingIndex = -1
+  state.dragPendingStartX = 0'i16
+  state.dragLastReorderPointer = 0'i16
   state.suppressClick = hadMovement
   relayoutTabBar(state)
 
 proc updateTabDrag(state: TabGroupState; pointerX: int16) =
   applyTabDragVisual(state, pointerX)
+  maybeReorderTabs(state, pointerX)
 
 proc refreshActiveTabDrags() =
   for _, state in tabGroupRegistry:
@@ -833,9 +889,23 @@ proc handleTabHover(state: TabGroupState; index: int; event: ptr KryonEvent) =
   if state.isNil or event.isNil or not state.reorderable:
     return
   if pointerPrimaryDown():
+    let targetIndex = clampIndex(index, state.tabs.len - 1)
     if not state.dragging:
-      startTabDrag(state, clampIndex(index, state.tabs.len - 1), event.x)
-    updateTabDrag(state, event.x)
+      if not state.dragPending or state.dragPendingIndex != targetIndex:
+        state.dragPending = true
+        state.dragPendingIndex = targetIndex
+        state.dragPendingStartX = event.x
+      let delta = abs(float(event.x - state.dragPendingStartX))
+      if delta >= tabDragStartThreshold:
+        startTabDrag(state, targetIndex, event.x)
+    if state.dragging:
+      updateTabDrag(state, event.x)
+  else:
+    if state.dragging:
+      stopTabDrag(state)
+    state.dragPending = false
+    state.dragPendingIndex = -1
+    state.dragPendingStartX = 0'i16
 
 proc tabComponentEventHandler(component: KryonComponent; event: ptr KryonEvent) {.cdecl.} =
   if component.isNil or event.isNil:
@@ -936,6 +1006,7 @@ proc createTabGroupState*(component: KryonComponent; selectedIndex: int): TabGro
     dragOriginalLayoutFlags: 0'u8,
     dragTabHasManualBounds: false,
     dragHadMovement: false,
+    dragLastReorderPointer: 0'i16,
     suppressClick: false
   )
   let key = cast[uint](component)
