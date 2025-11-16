@@ -1373,6 +1373,10 @@ bool kryon_sdl3_poll_event(kryon_event_t* event) {
         return false;
     }
 
+    // Update shared input state (mouse buttons, cursor) even if we don't emit an event.
+    kryon_event_t internal_event = {0};
+    kryon_sdl3_process_event(&sdl_event, &internal_event);
+
     // Convert SDL3 event to Kryon event
     switch (sdl_event.type) {
         case SDL_EVENT_QUIT:

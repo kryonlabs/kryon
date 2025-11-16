@@ -366,6 +366,20 @@ void kryon_component_set_z_index(kryon_component_t* component, uint16_t z_index)
     kryon_component_mark_dirty(component);
 }
 
+uint16_t kryon_component_get_z_index(kryon_component_t* component) {
+    if (component == NULL) {
+        return 0;
+    }
+    return component->z_index;
+}
+
+uint8_t kryon_component_get_layout_flags(kryon_component_t* component) {
+    if (component == NULL) {
+        return 0;
+    }
+    return component->layout_flags;
+}
+
 void kryon_component_set_padding(kryon_component_t* component, uint8_t top, uint8_t right,
                                 uint8_t bottom, uint8_t left) {
     if (component == NULL) {

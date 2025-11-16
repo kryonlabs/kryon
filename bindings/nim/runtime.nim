@@ -60,10 +60,24 @@ type
     tabs*: seq[KryonComponent]
     tabVisuals*: seq[TabVisualState]
     panels*: seq[KryonComponent]
+    tabBaseZIndices*: seq[uint16]
     selectedIndex*: int
     reorderable*: bool
     dragging*: bool
     dragTabIndex*: int
+    dragPointerOffset*: float
+    dragTabOriginalLeft*: float
+    dragTabOriginalTop*: float
+    dragTabOriginalWidth*: float
+    dragTabOriginalHeight*: float
+    dragTabBarLeft*: float
+    dragTabBarTop*: float
+    dragPointerX*: int16
+    dragTabOriginalZIndex*: uint16
+    dragOriginalLayoutFlags*: uint8
+    dragTabHasManualBounds*: bool
+    dragHadMovement*: bool
+    suppressClick*: bool
 
 proc isHeadlessEnvironment(): bool =
   ## Detect whether we are running without a graphical display available.
@@ -90,6 +104,16 @@ var tabComponentRegistry*: Table[uint, tuple[state: TabGroupState, index: int]] 
 var tabBarRegistry*: Table[uint, TabGroupState] = initTable[uint, TabGroupState]()
 var lastPointerX: int16 = 0
 var lastPointerY: int16 = 0
+
+proc refreshActiveTabDrags()
+
+proc relayoutTabBar(state: TabGroupState) =
+  if state.isNil or state.tabBar.isNil:
+    return
+  var absX, absY, widthFp, heightFp: KryonFp
+  kryon_component_get_absolute_bounds(state.tabBar, addr absX, addr absY, addr widthFp, addr heightFp)
+  kryon_layout_component(state.tabBar, widthFp, heightFp)
+  kryon_component_mark_dirty(state.tabBar)
 
 when defined(KRYON_SDL3):
   const
@@ -118,11 +142,11 @@ proc updateCursorShape(target: KryonComponent) =
 when defined(KRYON_SDL3):
   proc dispatchPointerEvent(app: KryonApp; evt: var KryonEvent) =
     if app.root.isNil:
-      echo "[kryon][runtime] dispatchPointerEvent: root is nil!"
+      runtimeTrace("[kryon][runtime] dispatchPointerEvent: root is nil!")
       return
-    echo "[kryon][runtime] dispatchPointerEvent: dispatching to root at (", evt.x, ",", evt.y, ")"
+    runtimeTrace("[kryon][runtime] dispatchPointerEvent: dispatching to root at (" & $evt.x & "," & $evt.y & ")")
     kryon_event_dispatch_to_point(app.root, evt.x, evt.y, addr evt)
-    echo "[kryon][runtime] dispatchPointerEvent: dispatch complete"
+    runtimeTrace("[kryon][runtime] dispatchPointerEvent: dispatch complete")
 
   proc updateHoverState(app: KryonApp; evt: var KryonEvent) =
     if app.root.isNil:
@@ -244,6 +268,7 @@ proc run*(app: KryonApp) =
              " wfp=", fromKryonFp(wfp), " hfp=", fromKryonFp(hfp), " raw=", wBase, "x", hBase,
              " noFloat=", KRYON_NO_FLOAT
       kryon_layout_tree(app.root, wfp, hfp)
+      refreshActiveTabDrags()
       runtimeTrace("[kryon][runtime] layout complete")
 
     # Process reactive updates after layout but before rendering
@@ -254,7 +279,7 @@ proc run*(app: KryonApp) =
       if activeRendererBackend == "sdl3":
         var evt: KryonEvent
         while kryon_sdl3_poll_event(addr evt):
-          echo "[kryon][runtime] SDL3 event received: type=", evt.`type`, " x=", evt.x, " y=", evt.y
+          runtimeTrace("[kryon][runtime] SDL3 event received: type=" & $evt.`type` & " x=" & $evt.x & " y=" & $evt.y)
           case evt.`type`
           of KryonEventType.Custom:
             app.running = false
@@ -266,7 +291,7 @@ proc run*(app: KryonApp) =
               app.running = false
               break
           of KryonEventType.Click:
-            echo "[kryon][runtime] Dispatching click event to components"
+            runtimeTrace("[kryon][runtime] Dispatching click event to components")
             dispatchPointerEvent(app, evt)
           of KryonEventType.Hover:
             updateHoverState(app, evt)
@@ -387,7 +412,7 @@ proc addFontSearchDir*(path: string) =
   ## This allows fonts to be loaded from custom locations
   when defined(KRYON_SDL3):
     kryon_sdl3_add_font_search_path(cstring(path))
-    echo "[kryon][fonts] Added font search directory: ", path
+    runtimeTrace("[kryon][fonts] Added font search directory: " & path)
 
 proc loadFont*(name: string, size: uint16 = 16): uint16 =
   ## Load a font by name and size
@@ -397,9 +422,9 @@ proc loadFont*(name: string, size: uint16 = 16): uint16 =
     if fontId > 0:
       let key = name & "@" & $size
       loadedFonts[key] = fontId
-      echo "[kryon][fonts] Loaded font: ", name, " at size ", size, " -> ID ", fontId
+      runtimeTrace("[kryon][fonts] Loaded font: " & name & " at size " & $size & " -> ID " & $fontId)
     else:
-      echo "[kryon][fonts] Failed to load font: ", name
+      runtimeTrace("[kryon][fonts] Failed to load font: " & name)
     return fontId
   else:
     return 0
@@ -426,7 +451,7 @@ proc canvasDrawBridge(component: KryonComponent; buf: KryonCmdBuf): bool {.cdecl
   if canvasCallbacks.hasKey(key):
     let cb = canvasCallbacks[key]
     if not cb.isNil:
-      echo "[kryon][canvas] Executing canvas draw callback for component ", key
+      runtimeTrace("[kryon][canvas] Executing canvas draw callback for component " & $key)
       cb()
       return true
   return false
@@ -436,7 +461,7 @@ proc registerCanvasHandler*(canvas: KryonComponent; cb: proc () {.closure.}) =
     return
   let key = cast[uint](canvas)
   canvasCallbacks[key] = cb
-  echo "[kryon][runtime] Registered canvas onDraw handler for component ", key
+  runtimeTrace("[kryon][runtime] Registered canvas onDraw handler for component " & $key)
 
   # Set the C-side callback
   kryon_canvas_set_draw_callback(canvas, canvasDrawBridge)
@@ -456,7 +481,7 @@ proc executeCanvasDrawing*(canvas: KryonComponent) =
       if not cmdBuf.isNil:
         # The canvas commands need to be rendered to the component
         # For now, the commands will be executed during the next render pass
-        echo "[kryon][canvas] Canvas drawing executed, commands ready"
+        runtimeTrace("[kryon][canvas] Canvas drawing executed, commands ready")
 
 proc executeAllCanvasCallbacks*(root: KryonComponent) =
   ## Walk the component tree and execute all canvas drawing callbacks
@@ -491,22 +516,22 @@ proc registerButtonHandler*(button: KryonComponent; cb: proc () {.closure.}) =
     return
   let key = cast[uint](button)
   buttonCallbacks[key] = cb
-  echo "[kryon][runtime] Registered button handler for component ", key
+  runtimeTrace("[kryon][runtime] Registered button handler for component " & $key)
 
 proc nimButtonBridge*(component: KryonComponent; event: ptr KryonEvent) {.cdecl.} =
-  echo "[kryon][runtime] Button clicked! Component: ", cast[uint](component)
+  runtimeTrace("[kryon][runtime] Button clicked! Component: " & $cast[uint](component))
   let key = cast[uint](component)
   if buttonCallbacks.hasKey(key):
-    echo "[kryon][runtime] Found handler for button"
+    runtimeTrace("[kryon][runtime] Found handler for button")
     let cb = buttonCallbacks[key]
     if not cb.isNil:
-      echo "[kryon][runtime] Calling handler"
+      runtimeTrace("[kryon][runtime] Calling handler")
       cb()
-      echo "[kryon][runtime] Handler completed"
+      runtimeTrace("[kryon][runtime] Handler completed")
     else:
-      echo "[kryon][runtime] Handler is nil!"
+      runtimeTrace("[kryon][runtime] Handler is nil!")
   else:
-    echo "[kryon][runtime] No handler registered for this button"
+    runtimeTrace("[kryon][runtime] No handler registered for this button")
 
 # ============================================================================
 # Tab Group System
@@ -534,6 +559,7 @@ proc reorderChildren(parent: KryonComponent; children: seq[KryonComponent]) =
   for child in children:
     if not child.isNil:
       discard kryon_component_add_child(parent, child)
+
 
 proc clampIndex(value, maxVal: int): int =
   if maxVal < 0:
@@ -566,11 +592,14 @@ proc applyTabSelection(state: TabGroupState) =
         if active:
           kryon_component_mark_dirty(panel)
 
+
 proc setActiveTab*(state: TabGroupState; index: int) =
   if state.isNil:
     return
   state.selectedIndex = clampIndex(index, state.tabs.len - 1)
   applyTabSelection(state)
+
+const tabDragMaskBits = (0x01'u8 or 0x02'u8)
 
 proc computeTargetIndex(state: TabGroupState; pointerX: int16): int =
   if state.tabs.len == 0:
@@ -590,6 +619,119 @@ proc computeTargetIndex(state: TabGroupState; pointerX: int16): int =
       return idx
     fallback = idx
   fallback
+
+proc clampDragLeft(state: TabGroupState; desiredLeft: float): float =
+  ## Keep dragged tab within its tab bar bounds.
+  result = desiredLeft
+  if state.isNil or state.tabBar.isNil:
+    return
+  var absX, absY, width, height: KryonFp
+  kryon_component_get_absolute_bounds(state.tabBar, addr absX, addr absY, addr width, addr height)
+  let barLeft = fromKryonFp(absX)
+  let barWidth = fromKryonFp(width)
+  if barWidth <= 0 or state.dragTabOriginalWidth <= 0:
+    return
+  let barRight = barLeft + barWidth
+  var minLeft = barLeft
+  var maxLeft = barRight - state.dragTabOriginalWidth
+  if maxLeft < minLeft:
+    maxLeft = minLeft
+  if result < minLeft:
+    result = minLeft
+  if result > maxLeft:
+    result = maxLeft
+
+proc applyTabDragVisual(state: TabGroupState; pointerX: int16; isRefresh = false) =
+  ## Position the active tab directly under the cursor along the X axis.
+  if state.isNil:
+    return
+  if state.dragTabIndex < 0 or state.dragTabIndex >= state.tabs.len:
+    return
+  let tab = state.tabs[state.dragTabIndex]
+  if tab.isNil:
+    return
+  if not isRefresh and not state.dragging:
+    return
+  var desiredLeft = float(pointerX) - state.dragPointerOffset
+  desiredLeft = clampDragLeft(state, desiredLeft)
+  let relativeLeft = desiredLeft - state.dragTabBarLeft
+  let relativeTop = state.dragTabOriginalTop - state.dragTabBarTop
+  let dragMask = state.dragOriginalLayoutFlags or tabDragMaskBits
+  kryon_component_set_bounds_mask(
+    tab,
+    toFixed(relativeLeft),
+    toFixed(relativeTop),
+    toFixed(state.dragTabOriginalWidth),
+    toFixed(state.dragTabOriginalHeight),
+    dragMask
+  )
+  state.dragTabHasManualBounds = true
+  state.dragPointerX = pointerX
+  if not isRefresh:
+    state.dragHadMovement = true
+  kryon_component_mark_dirty(tab)
+
+proc startTabDrag(state: TabGroupState; index: int; pointerX: int16) =
+  ## Capture initial bounds for chrome-style dragging.
+  if state.isNil or index < 0 or index >= state.tabs.len:
+    return
+  let tab = state.tabs[index]
+  if tab.isNil:
+    return
+  var absX, absY, width, height: KryonFp
+  kryon_component_get_absolute_bounds(tab, addr absX, addr absY, addr width, addr height)
+  if not state.tabBar.isNil:
+    var barAbsX, barAbsY, barWidth, barHeight: KryonFp
+    kryon_component_get_absolute_bounds(state.tabBar, addr barAbsX, addr barAbsY, addr barWidth, addr barHeight)
+    state.dragTabBarLeft = fromKryonFp(barAbsX)
+    state.dragTabBarTop = fromKryonFp(barAbsY)
+  else:
+    state.dragTabBarLeft = 0.0
+    state.dragTabBarTop = 0.0
+  let left = fromKryonFp(absX)
+  state.dragPointerOffset = float(pointerX) - left
+  state.dragTabOriginalLeft = left
+  state.dragTabOriginalTop = fromKryonFp(absY)
+  state.dragTabOriginalWidth = fromKryonFp(width)
+  state.dragTabOriginalHeight = fromKryonFp(height)
+  state.dragTabIndex = clampIndex(index, state.tabs.len - 1)
+  state.dragging = true
+  state.dragTabHasManualBounds = false
+  state.dragHadMovement = false
+  state.dragPointerX = pointerX
+  state.dragOriginalLayoutFlags = kryon_component_get_layout_flags(tab)
+  state.suppressClick = false
+  if state.dragTabIndex >= 0 and state.dragTabIndex < state.tabBaseZIndices.len:
+    state.dragTabOriginalZIndex = state.tabBaseZIndices[state.dragTabIndex]
+  else:
+    state.dragTabOriginalZIndex = 0'u16
+  kryon_component_set_z_index(tab, 60000'u16)
+  applyTabDragVisual(state, pointerX)
+
+proc resetTabDragVisual(state: TabGroupState) =
+  ## Give control back to the flex layout once dragging stops.
+  if state.isNil or not state.dragTabHasManualBounds:
+    return
+  if state.dragTabIndex < 0 or state.dragTabIndex >= state.tabs.len:
+    return
+  let tab = state.tabs[state.dragTabIndex]
+  if tab.isNil:
+    return
+  let relativeLeft = state.dragTabOriginalLeft - state.dragTabBarLeft
+  let relativeTop = state.dragTabOriginalTop - state.dragTabBarTop
+  kryon_component_set_bounds_mask(
+    tab,
+    toFixed(relativeLeft),
+    toFixed(relativeTop),
+    toFixed(state.dragTabOriginalWidth),
+    toFixed(state.dragTabOriginalHeight),
+    state.dragOriginalLayoutFlags
+  )
+  state.dragTabHasManualBounds = false
+  kryon_component_mark_dirty(tab)
+  kryon_component_set_z_index(tab, state.dragTabOriginalZIndex)
+  if state.dragTabIndex >= 0 and state.dragTabIndex < state.tabBaseZIndices.len:
+    state.tabBaseZIndices[state.dragTabIndex] = state.dragTabOriginalZIndex
 
 proc pointInsideTabBar(state: TabGroupState; pointerX, pointerY: int16): bool =
   ## True when the pointer is within the tab bar's bounding box.
@@ -645,6 +787,10 @@ proc reorderTabs(state: TabGroupState; fromIdx, toIdx: int) =
       state.panels.insert(panel, target)
     else:
       state.panels.add(panel)
+  if fromIdx < state.tabBaseZIndices.len:
+    let baseZ = state.tabBaseZIndices[fromIdx]
+    state.tabBaseZIndices.delete(fromIdx)
+    state.tabBaseZIndices.insert(baseZ, target)
 
   if state.selectedIndex == fromIdx:
     state.selectedIndex = target
@@ -660,28 +806,36 @@ proc reorderTabs(state: TabGroupState; fromIdx, toIdx: int) =
 
 proc stopTabDrag(state: TabGroupState) =
   if state.isNil: return
+  let hadMovement = state.dragHadMovement or state.dragTabHasManualBounds or state.dragging
+  resetTabDragVisual(state)
   state.dragging = false
   state.dragTabIndex = -1
+  state.dragPointerOffset = 0.0
+  state.dragHadMovement = false
+  state.dragTabOriginalZIndex = 0'u16
+  state.dragOriginalLayoutFlags = 0'u8
+  state.suppressClick = hadMovement
+  relayoutTabBar(state)
 
 proc updateTabDrag(state: TabGroupState; pointerX: int16) =
-  if state.isNil or state.dragTabIndex < 0 or not state.dragging:
-    return
-  let target = computeTargetIndex(state, pointerX)
-  if target >= 0 and target < state.tabs.len and target != state.dragTabIndex:
-    reorderTabs(state, state.dragTabIndex, target)
-    state.dragTabIndex = target
+  applyTabDragVisual(state, pointerX)
+
+proc refreshActiveTabDrags() =
+  for _, state in tabGroupRegistry:
+    if state.isNil: continue
+    if state.dragging and not pointerPrimaryDown():
+      stopTabDrag(state)
+      continue
+    if state.dragTabHasManualBounds and state.dragTabIndex >= 0 and state.dragTabIndex < state.tabs.len:
+      applyTabDragVisual(state, state.dragPointerX, true)
 
 proc handleTabHover(state: TabGroupState; index: int; event: ptr KryonEvent) =
   if state.isNil or event.isNil or not state.reorderable:
     return
   if pointerPrimaryDown():
     if not state.dragging:
-      state.dragging = true
-      state.dragTabIndex = clampIndex(index, state.tabs.len - 1)
+      startTabDrag(state, clampIndex(index, state.tabs.len - 1), event.x)
     updateTabDrag(state, event.x)
-  else:
-    if state.dragging:
-      stopTabDrag(state)
 
 proc tabComponentEventHandler(component: KryonComponent; event: ptr KryonEvent) {.cdecl.} =
   if component.isNil or event.isNil:
@@ -695,6 +849,11 @@ proc tabComponentEventHandler(component: KryonComponent; event: ptr KryonEvent) 
     return
   case event.`type`
   of KryonEventType.Click:
+    if state.suppressClick:
+      state.suppressClick = false
+      return
+    if state.reorderable and (state.dragging or state.dragTabHasManualBounds or state.dragHadMovement):
+      return  # Let the tab group handler finalize the drag
     if state.reorderable:
       stopTabDrag(state)
     setActiveTab(state, entry.index)
@@ -713,10 +872,12 @@ proc tabBarEventHandler(component: KryonComponent; event: ptr KryonEvent) {.cdec
   of KryonEventType.Hover:
     if state.dragging and pointerPrimaryDown():
       updateTabDrag(state, event.x)
-    elif state.dragging:
-      stopTabDrag(state)
   of KryonEventType.Click:
-    stopTabDrag(state)
+    if state.suppressClick:
+      state.suppressClick = false
+      return
+    if not state.dragging and not state.dragTabHasManualBounds and not state.dragHadMovement:
+      stopTabDrag(state)
   else:
     discard
 
@@ -728,21 +889,25 @@ proc tabGroupEventHandler(component: KryonComponent; event: ptr KryonEvent) {.cd
     return
   case event.`type`
   of KryonEventType.Click:
+    if state.suppressClick:
+      state.suppressClick = false
+      return
+    if state.reorderable and (state.dragging or state.dragTabHasManualBounds or state.dragHadMovement):
+      stopTabDrag(state)
+      return
     let directIdx = findTabAtPoint(state, event.x, event.y)
     var idx = directIdx
     if idx < 0 and pointInsideTabBar(state, event.x, event.y):
       idx = computeTargetIndex(state, event.x)
     if getEnv("KRYON_TRACE_TABS", "") != "":
-      echo "[kryon][tabs] click at ", event.x, ",", event.y,
-           " direct=", directIdx, " target idx=", idx
+      runtimeTrace("[kryon][tabs] click at " & $event.x & "," & $event.y &
+           " direct=" & $directIdx & " target idx=" & $idx)
     if idx >= 0:
       setActiveTab(state, idx)
     stopTabDrag(state)
   of KryonEventType.Hover:
     if state.reorderable and state.dragging and pointerPrimaryDown():
       updateTabDrag(state, event.x)
-    elif state.dragging and not pointerPrimaryDown():
-      stopTabDrag(state)
   else:
     discard
 
@@ -755,9 +920,23 @@ proc createTabGroupState*(component: KryonComponent; selectedIndex: int): TabGro
     tabs: @[],
     tabVisuals: @[],
     panels: @[],
+    tabBaseZIndices: @[],
     reorderable: false,
     dragging: false,
-    dragTabIndex: -1
+    dragTabIndex: -1,
+    dragPointerOffset: 0.0,
+    dragTabOriginalLeft: 0.0,
+    dragTabOriginalTop: 0.0,
+    dragTabOriginalWidth: 0.0,
+    dragTabOriginalHeight: 0.0,
+    dragTabBarLeft: 0.0,
+    dragTabBarTop: 0.0,
+    dragPointerX: 0'i16,
+    dragTabOriginalZIndex: 0'u16,
+    dragOriginalLayoutFlags: 0'u8,
+    dragTabHasManualBounds: false,
+    dragHadMovement: false,
+    suppressClick: false
   )
   let key = cast[uint](component)
   tabGroupRegistry[key] = result
@@ -781,6 +960,7 @@ proc registerTabComponent*(state: TabGroupState; component: KryonComponent; visu
     return
   state.tabs.add(component)
   state.tabVisuals.add(visuals)
+  state.tabBaseZIndices.add(kryon_component_get_z_index(component))
   tabComponentRegistry[cast[uint](component)] = (state: state, index: state.tabs.len - 1)
   discard kryon_component_add_event_handler(component, tabComponentEventHandler)
   kryon_component_set_background_color(component, visuals.backgroundColor)

@@ -357,6 +357,8 @@ void kryon_component_set_bounds_mask(kryon_component_t* component, kryon_fp_t x,
 void kryon_component_set_bounds(kryon_component_t* component, kryon_fp_t x, kryon_fp_t y,
                                kryon_fp_t width, kryon_fp_t height);
 void kryon_component_set_z_index(kryon_component_t* component, uint16_t z_index);
+uint16_t kryon_component_get_z_index(kryon_component_t* component);
+uint8_t kryon_component_get_layout_flags(kryon_component_t* component);
 void kryon_component_set_padding(kryon_component_t* component, uint8_t top, uint8_t right,
                                 uint8_t bottom, uint8_t left);
 void kryon_component_set_margin(kryon_component_t* component, uint8_t top, uint8_t right,

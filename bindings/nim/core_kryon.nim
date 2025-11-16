@@ -168,6 +168,8 @@ proc kryon_component_get_child_count*(component: KryonComponent): uint8
 proc kryon_component_set_bounds_mask*(component: KryonComponent; x, y, width, height: KryonFp; explicitMask: uint8)
 proc kryon_component_set_bounds*(component: KryonComponent; x, y, width, height: KryonFp)
 proc kryon_component_set_z_index*(component: KryonComponent; zIndex: uint16)
+proc kryon_component_get_z_index*(component: KryonComponent): uint16
+proc kryon_component_get_layout_flags*(component: KryonComponent): uint8
 proc kryon_component_set_padding*(component: KryonComponent; top, right, bottom, left: uint8)
 proc kryon_component_set_margin*(component: KryonComponent; top, right, bottom, left: uint8)
 proc kryon_component_set_background_color*(component: KryonComponent; color: uint32)
