@@ -140,16 +140,12 @@ FONTCONFIG_LIBS="$(pkg-config --libs fontconfig 2>/dev/null || true)"
 EXAMPLE_FILE="examples/${FRONTEND}/${EXAMPLE_NAME}.${FRONTEND}"
 
 # Build renderer if needed
+# Build renderer if needed
 case "$RENDERER" in
     "sdl3")
         echo "Building SDL3 renderer..."
-        if make -C renderers/sdl3 > /dev/null 2>&1; then
-            make -C renderers/framebuffer install > /dev/null 2>&1
-            echo "SDL3 renderer built successfully"
-        else
-            echo "Error: SDL3 renderer not available. Install SDL3 development libraries:"
-            echo "  sudo apt install libsdl3-dev libsdl3-ttf-dev"
-            echo "  or ensure SDL3 is properly installed on your system"
+        if ! make -C renderers/sdl3 > /dev/null 2>&1; then
+            echo "Error: SDL3 renderer build failed"
             exit 1
         fi
         ;;
@@ -171,7 +167,6 @@ case "$RENDERER" in
         exit 1
         ;;
 esac
-
 echo "Running example: $EXAMPLE_NAME"
 echo "Frontend: $FRONTEND"
 echo "Renderer: $RENDERER"

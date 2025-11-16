@@ -9,7 +9,6 @@ nimcache/
 *.o
 
 # Build artifacts
-bin
 build/
 dist/
 *.out
