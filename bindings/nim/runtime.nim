@@ -248,18 +248,9 @@ proc run*(app: KryonApp) =
         if activeRendererBackend == "sdl3" and app.renderer != nil:
           app.renderer = nil
 
-      let fallback = kryon_framebuffer_renderer_create(
-        uint16(app.window.width),
-        uint16(app.window.height),
-        4'u8)
-      if fallback == nil:
-        echo "Renderer initialization failed"
-        return
-
-      app.renderer = fallback
-      activeRendererBackend = "framebuffer"
-      app.rendererPreinitialized = true
-      rendererReady = true
+      echo "ERROR: SDL3 renderer initialization failed - no fallback available"
+      echo "This application requires SDL3 to be properly installed and configured"
+      quit(1)
 
   # Main application loop
   while app.running:
@@ -1103,13 +1094,9 @@ proc initRenderer*(width, height: int; title: string): KryonRenderer =
         return
 
   if requestedRenderer == "framebuffer":
-    echo "Using framebuffer renderer backend"
-    let w = toUint16OrDefault(width, 800'u16)
-    let h = toUint16OrDefault(height, 600'u16)
-    result = kryon_framebuffer_renderer_create(w, h, 4)
-    activeRendererBackend = "framebuffer"
-    rendererPreinitializedHint = true
-    return
+    echo "ERROR: Framebuffer renderer not supported - this application requires SDL3"
+    echo "Please run without explicit renderer selection to use SDL3"
+    quit(1)
 
   when defined(KRYON_SDL3):
     if requestedRenderer == "sdl3":
@@ -1123,13 +1110,9 @@ proc initRenderer*(width, height: int; title: string): KryonRenderer =
 
   # Default behavior when no explicit renderer requested
   if isHeadlessEnvironment():
-    echo "No display detected; using framebuffer renderer backend"
-    let w = toUint16OrDefault(width, 800'u16)
-    let h = toUint16OrDefault(height, 600'u16)
-    result = kryon_framebuffer_renderer_create(w, h, 4)
-    activeRendererBackend = "framebuffer"
-    rendererPreinitializedHint = true
-    return
+    echo "ERROR: No display detected - this application requires SDL3 with a display"
+    echo "Cannot run in headless environment without framebuffer fallback"
+    quit(1)
 
   when defined(KRYON_SDL3):
       echo "Using SDL3 renderer backend (default)"
@@ -1139,12 +1122,9 @@ proc initRenderer*(width, height: int; title: string): KryonRenderer =
       activeRendererBackend = "sdl3"
       rendererPreinitializedHint = false
   else:
-      echo "SDL3 not available; using framebuffer renderer backend"
-      let w = toUint16OrDefault(width, 800'u16)
-      let h = toUint16OrDefault(height, 600'u16)
-      result = kryon_framebuffer_renderer_create(w, h, 4)
-      activeRendererBackend = "framebuffer"
-      rendererPreinitializedHint = true
+      echo "ERROR: SDL3 not available - this application requires SDL3"
+      echo "Please compile with SDL3 support or install SDL3 development libraries"
+      quit(1)
 
 # ============================================================================
 # Component Tree Management

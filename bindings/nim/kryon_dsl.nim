@@ -2,11 +2,24 @@
 ##
 ## Provides declarative UI syntax that compiles to C core component trees
 
-import macros, strutils, os, sequtils
+import macros, strutils, os, sequtils, random
 import ./runtime, ./core_kryon, ./reactive_system, ./markdown
 
 # Export font management functions from runtime
 export addFontSearchDir, loadFont, getFontId
+
+# Export core component functions for styling
+export kryon_component_set_background_color, kryon_component_set_border_color
+export kryon_component_set_border_width, kryon_component_set_text_color
+export KryonComponent
+
+# ============================================================================
+# Style System Infrastructure
+# ============================================================================
+
+# Helper to generate unique style function names
+proc genStyleFuncName*(styleName: string): string =
+  "styleFunc_" & styleName & "_" & $rand(1000..9999)
 
 # ============================================================================
 # Type Aliases for Custom Components
@@ -153,6 +166,185 @@ proc extractReactiveVars*(node: NimNode): seq[NimNode] =
 
 # createReactiveBinding function removed - now using live expression evaluation
 
+# ============================================================================
+# Style Macro Implementation
+# ============================================================================
+
+macro style*(styleCall: untyped, body: untyped): untyped =
+  ## Define a reusable style function
+  ## Usage:
+  ##   style calendarDayStyle(day: CalendarDay):
+  ##     backgroundColor = "#3d3d3d"
+  ##     textColor = "#ffffff"
+  ##     if day.isCompleted:
+  ##       backgroundColor = "#4a90e2"
+
+  # Parse the style call: calendarDayStyle(day: CalendarDay)
+  var styleName: NimNode
+  var params: seq[NimNode]
+
+  if styleCall.kind == nnkCall:
+    # Function call syntax: calendarDayStyle(day: CalendarDay)
+    styleName = styleCall[0]  # The function name
+
+    # Extract individual parameter definitions
+    var userParams: seq[NimNode] = @[]
+
+    for i in 1..<styleCall.len:
+      let arg = styleCall[i]
+      if arg.kind == nnkExprEqExpr:
+        # Parameter with type: day: CalendarDay
+        userParams.add(nnkIdentDefs.newTree(arg[0], arg[1], newEmptyNode()))
+      else:
+        # Just a parameter name, infer type as auto
+        userParams.add(nnkIdentDefs.newTree(arg, ident("auto"), newEmptyNode()))
+
+    params = userParams
+
+  elif styleCall.kind == nnkObjConstr:
+    # Object constructor syntax: calendarDayStyle(day: CalendarDay)
+    styleName = styleCall[0]  # The function name
+
+    # Extract individual parameter definitions (not as FormalParams yet)
+    var userParams: seq[NimNode] = @[]
+
+    for i in 1..<styleCall.len:
+      let arg = styleCall[i]
+      if arg.kind == nnkExprColonExpr:
+        # Parameter with type: day: CalendarDay
+        userParams.add(nnkIdentDefs.newTree(arg[0], arg[1], newEmptyNode()))
+      else:
+        # Just a parameter name, infer type as auto
+        userParams.add(nnkIdentDefs.newTree(arg, ident("auto"), newEmptyNode()))
+
+    # Convert userParams to a simpler format for later processing
+    params = userParams
+
+  elif styleCall.kind == nnkIdent:
+    # Simple name: myStyle
+    styleName = styleCall
+    params = @[]  # No user parameters
+  else:
+    echo "Style call kind: ", styleCall.kind
+    echo "Style call repr: ", styleCall.treeRepr
+    error("Invalid style function call format", styleCall)
+
+  # Generate the style function name
+  let styleFuncName = ident($styleName)
+
+  # Parse the body to extract property assignments
+  var propertyStmts: seq[NimNode] = @[]
+
+  for stmt in body.children:
+    if stmt.kind == nnkAsgn:
+      let propName = $stmt[0]
+      let value = stmt[1]
+
+      case propName.toLowerAscii():
+      of "backgroundcolor":
+        propertyStmts.add newCall(
+          ident("kryon_component_set_background_color"),
+          ident("component"),
+          colorNode(value)
+        )
+      of "textcolor", "color":
+        propertyStmts.add newCall(
+          ident("kryon_component_set_text_color"),
+          ident("component"),
+          colorNode(value)
+        )
+      of "bordercolor":
+        propertyStmts.add newCall(
+          ident("kryon_component_set_border_color"),
+          ident("component"),
+          colorNode(value)
+        )
+      of "borderwidth":
+        propertyStmts.add newCall(
+          ident("kryon_component_set_border_width"),
+          ident("component"),
+          newCall("uint8", value)
+        )
+      else:
+        # Unknown property - skip for now
+        discard
+    elif stmt.kind == nnkIfStmt:
+      # Handle conditional styling
+      var ifBranches: seq[NimNode] = @[]
+      for branch in stmt.children:
+        if branch.len >= 2:
+          let condition = branch[0]
+          let branchStmts = branch[1]
+
+          var branchProperties: seq[NimNode] = @[]
+          for branchStmt in branchStmts:
+            if branchStmt.kind == nnkAsgn:
+              let propName = $branchStmt[0]
+              let value = branchStmt[1]
+
+              case propName.toLowerAscii():
+              of "backgroundcolor":
+                branchProperties.add newCall(
+                  ident("kryon_component_set_background_color"),
+                  ident("component"),
+                  colorNode(value)
+                )
+              of "textcolor", "color":
+                branchProperties.add newCall(
+                  ident("kryon_component_set_text_color"),
+                  ident("component"),
+                  colorNode(value)
+                )
+              of "bordercolor":
+                branchProperties.add newCall(
+                  ident("kryon_component_set_border_color"),
+                  ident("component"),
+                  colorNode(value)
+                )
+              else:
+                discard
+
+          if branchProperties.len > 0:
+            ifBranches.add(newTree(nnkElifBranch, condition, newStmtList(branchProperties)))
+
+      if ifBranches.len > 0:
+        # Build a single if statement with all branches
+        var ifStmt = newTree(nnkIfStmt, ifBranches[0])
+        for i in 1..<ifBranches.len:
+          ifStmt.add(ifBranches[i])
+        propertyStmts.add(ifStmt)
+
+  # Generate the style function with the component and any parameters
+  let componentParam = ident("component")
+
+  # Start with the return type
+  var paramDecl = nnkFormalParams.newTree(ident("void"))
+
+  # Always include component parameter first
+  paramDecl.add(nnkIdentDefs.newTree(componentParam, ident("KryonComponent"), newEmptyNode()))
+
+  # Add user parameters (params is now a seq of individual parameter definitions)
+  for paramDef in params:
+    paramDecl.add(paramDef)
+
+  # Extract complete parameter list for newProc (skip return type, include component)
+  var paramList: seq[NimNode] = @[]
+  for i in 1..<paramDecl.len:  # Skip return type at index 0
+    paramList.add(paramDecl[i])
+
+  # Use the parsed parameters and body to create the complete style function
+  # Convert paramDecl to a sequence for newProc
+  var paramSeq: seq[NimNode] = @[]
+  for param in paramDecl:
+    paramSeq.add(param)
+
+  result = newProc(
+    styleFuncName,
+    paramSeq,
+    newStmtList(propertyStmts)
+  )
+
+  
 # ============================================================================
 # DSL Macros for Declarative UI
 # ============================================================================
@@ -405,6 +597,8 @@ macro Container*(props: untyped): untyped =
     alignNode: NimNode = alignmentNode("start")
     layoutDirectionVal: NimNode = nil
     gapVal: NimNode = nil
+    styleName: NimNode = nil
+    styleData: NimNode = nil
     childNodes: seq[NimNode] = @[]
 
   for node in props.children:
@@ -492,6 +686,14 @@ macro Container*(props: untyped): untyped =
         gapVal = value
       of "layoutdirection":
         layoutDirectionVal = value
+      of "style":
+        # Parse style assignment: style = calendarDayStyle(day)
+        if value.kind == nnkCall:
+          styleName = newStrLitNode($value[0])
+          if value.len > 1:
+            styleData = value[1]
+        else:
+          styleName = newStrLitNode($value)
       else:
         discard
     else:
@@ -524,6 +726,15 @@ macro Container*(props: untyped): untyped =
     initStmts.add quote do:
       echo "[kryon][nim] Setting layout direction EARLY for component to ", uint8(`layoutDirectionVal`)
       kryon_component_set_layout_direction(`containerName`, uint8(`layoutDirectionVal`))
+
+  # Apply style after layout direction (before individual property overrides)
+  if styleName != nil:
+    if styleData != nil:
+      initStmts.add quote do:
+        `styleName`(`containerName`, `styleData`)
+    else:
+      initStmts.add quote do:
+        `styleName`(`containerName`)
 
   let xExpr = if posXVal != nil: posXVal else: newIntLitNode(0)
   let yExpr = if posYVal != nil: posYVal else: newIntLitNode(0)
@@ -1179,6 +1390,8 @@ macro Button*(props: untyped): untyped =
     textColorVal: NimNode = nil
     borderColorVal: NimNode = nil
     borderWidthVal: NimNode = nil
+    styleName: NimNode = nil
+    styleData: NimNode = nil
 
   for node in props.children:
     if node.kind == nnkAsgn:
@@ -1228,6 +1441,19 @@ macro Button*(props: untyped): untyped =
         borderColorVal = colorNode(value)
       of "borderwidth":
         borderWidthVal = value
+      of "style":
+        # Parse style assignment: style = calendarDayStyle(day)
+        if value.kind == nnkCall:
+          # Function call: calendarDayStyle(day)
+          styleName = value[0]  # The function identifier
+          if value.len > 1:
+            styleData = value[1]
+        elif value.kind == nnkIdent:
+          # Simple identifier: myStyle
+          styleName = value
+        else:
+          # Other expression, try to convert to identifier
+          styleName = value
       else:
         discard
     else:
@@ -1272,6 +1498,16 @@ macro Button*(props: untyped): untyped =
   let maskCast = newCall(ident("uint8"), newIntLitNode(maskVal))
 
   var initStmts = newTree(nnkStmtList)
+
+  # Apply style first (before individual property overrides)
+  if styleName != nil:
+    if styleData != nil:
+      initStmts.add quote do:
+        `styleName`(`buttonName`, `styleData`)
+    else:
+      initStmts.add quote do:
+        `styleName`(`buttonName`)
+
   initStmts.add quote do:
     kryon_component_set_bounds_mask(`buttonName`,
       toFixed(`xExpr`),
@@ -1911,12 +2147,21 @@ macro Column*(props: untyped): untyped =
 
 macro Center*(props: untyped): untyped =
   ## Convenience macro that centers its children both horizontally and vertically.
+  ## Uses explicit flex layout for proper centering regardless of parent layout.
   var body = newTree(nnkStmtList)
+
+  # Set explicit layout direction to column flex layout for proper centering
+  body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(0))  # KRYON_LAYOUT_COLUMN
+
+  # Set flex properties for centering
   body.add newTree(nnkAsgn, ident("justifyContent"), newStrLitNode("center"))
   body.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
   body.add newTree(nnkAsgn, ident("flexGrow"), newIntLitNode(1))
+
+  # Add user properties (allowing overrides)
   for node in props.children:
     body.add(node)
+
   result = newTree(nnkCall, ident("Container"), body)
 
 # ============================================================================
@@ -2059,11 +2304,25 @@ macro TabBar*(props: untyped): untyped =
   let barSym = genSym(nskLet, "tabBar")
 
   var childStmtList = newStmtList()
-  for child in childNodes:
-    childStmtList.add quote do:
-      let tabChild = `child`
-      if tabChild != nil:
-        discard `addChildSym`(`barSym`, tabChild)
+  for node in childNodes:
+    if node.kind == nnkForStmt:
+      # Handle runtime for loops with Tab components
+      # Structure: nnkForStmt[loopVar, collection, body]
+      let loopVar = node[0]
+      let collection = node[1]
+      let body = node[2]
+
+      # Generate code that iterates at runtime and processes Tab components
+      # Since Tab components self-register, we just execute the body without capturing results
+      childStmtList.add newTree(nnkForStmt, loopVar, collection, body)
+    else:
+      # Handle regular child nodes
+      if node.kind == nnkCall and node[0].kind == nnkIdent and node[0].eqIdent("Tab"):
+        # Tab components are statements that self-register, add them directly
+        childStmtList.add(node)
+      else:
+        # Other components return values, add normally
+        childStmtList.add(node)
 
   result = quote do:
     block:
@@ -2110,11 +2369,35 @@ macro TabContent*(props: untyped): untyped =
   let contentSym = genSym(nskLet, "tabContent")
 
   var childStmtList = newStmtList()
-  for child in childNodes:
-    childStmtList.add quote do:
-      let panelChild = `child`
-      if panelChild != nil:
-        discard `addChildSym`(`contentSym`, panelChild)
+  for node in childNodes:
+    if node.kind == nnkForStmt:
+      # Handle runtime for loops with TabPanel components
+      # Structure: nnkForStmt[loopVar, collection, body]
+      let loopVar = node[0]
+      let collection = node[1]
+      let body = node[2]
+
+      # Generate code that iterates at runtime and processes TabPanel components
+      # TabPanel components return values that need to be added as children
+      childStmtList.add quote do:
+        for `loopVar` in `collection`:
+          let panelChild = `body`
+          if panelChild != nil:
+            discard `addChildSym`(`contentSym`, panelChild)
+    else:
+      # Handle regular child nodes
+      if node.kind == nnkCall and node[0].kind == nnkIdent and node[0].eqIdent("TabPanel"):
+        # TabPanel components self-register and are added as children, so we need to capture the result
+        childStmtList.add quote do:
+          let panelChild = `node`
+          if panelChild != nil:
+            discard `addChildSym`(`contentSym`, panelChild)
+      else:
+        # Other components
+        childStmtList.add quote do:
+          let panelChild = `node`
+          if panelChild != nil:
+            discard `addChildSym`(`contentSym`, panelChild)
 
   result = quote do:
     block:
@@ -2210,7 +2493,7 @@ macro Tab*(props: untyped): untyped =
   if not hasWidth:
     buttonProps.add newTree(nnkAsgn, ident("width"), newIntLitNode(168))
   buttonProps.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
-  buttonProps.add newTree(nnkAsgn, ident("justifyContent"), newStrLitNode("start"))
+  buttonProps.add newTree(nnkAsgn, ident("justifyContent"), newStrLitNode("center"))
 
   buttonProps.add newTree(nnkAsgn, ident("text"), titleVal)
 
@@ -2250,7 +2533,8 @@ macro Tab*(props: untyped): untyped =
       let `tabSym` = `buttonCall`
       `afterCreate`
       `registerSym`(`ctxSym`, `tabSym`, `visualNode`)
-      `tabSym`
+      # Tab components are registered with the tab group, explicitly return void
+      discard ()
 
 # ============================================================================
 # Static For Loop Macro

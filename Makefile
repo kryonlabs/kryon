@@ -32,9 +32,8 @@ ifeq ($(shell test -e /etc/nixos && echo yes), yes)
 endif
 
 # Source directories
-SRC_DIR = src
-CLI_SRC = $(SRC_DIR)/cli/kryon.nim
-LIB_SRC = $(SRC_DIR)/kryon
+CLI_SRC = cli/main.nim
+LIB_SRC = bindings/nim/kryon_dsl
 
 # Build targets
 BUILD_DIR = build
@@ -53,7 +52,13 @@ build-cli: $(CLI_BIN)
 $(CLI_BIN): $(CLI_SRC)
 	@echo "Building Kryon CLI (development)..."
 	@mkdir -p $(BUILD_DIR)
-	$(NIM) c $(NIMFLAGS) -o:$(CLI_BIN) $(CLI_SRC)
+	@# Backup nim.cfg if it exists and build without C dependencies
+	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp && \
+		$(NIM) c $(NIMFLAGS) --opt:speed -o:$(CLI_BIN) $(CLI_SRC) && \
+		mv nim.cfg.tmp nim.cfg; \
+	else \
+		$(NIM) c $(NIMFLAGS) --opt:speed -o:$(CLI_BIN) $(CLI_SRC); \
+	fi
 
 # Build static CLI with all backends bundled
 build-static: $(STATIC_BIN)
@@ -69,7 +74,13 @@ build-dynamic: $(DYNAMIC_BIN)
 $(DYNAMIC_BIN): $(CLI_SRC)
 	@echo "Building Kryon CLI (dynamic linking)..."
 	@mkdir -p $(BUILD_DIR)
-	$(NIM) c $(NIMFLAGS) $(DYNAMIC_FLAGS) -o:$(DYNAMIC_BIN) $(CLI_SRC)
+	@# Build without C dependencies
+	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp && \
+		$(NIM) c $(NIMFLAGS) $(DYNAMIC_FLAGS) -o:$(DYNAMIC_BIN) $(CLI_SRC) && \
+		mv nim.cfg.tmp nim.cfg; \
+	else \
+		$(NIM) c $(NIMFLAGS) $(DYNAMIC_FLAGS) -o:$(DYNAMIC_BIN) $(CLI_SRC); \
+	fi
 
 # Build library for use by other projects
 build-lib: $(LIB_FILE)
@@ -77,7 +88,7 @@ build-lib: $(LIB_FILE)
 $(LIB_FILE):
 	@echo "Building Kryon library..."
 	@mkdir -p $(BUILD_DIR)
-	$(NIM) c $(NIMFLAGS) --app:staticlib --out:$(LIB_FILE) $(LIB_SRC)
+	$(NIM) c $(NIMFLAGS) --app:staticlib --out:$(LIB_FILE) $(LIB_SRC).nim
 
 # Development build (debug symbols, verbose)
 dev:
@@ -92,11 +103,25 @@ install: install-dynamic install-lib install-config
 	@echo "Headers: $(INCDIR)/"
 
 # Install dynamic version (default for most users)
-install-dynamic: build-dynamic
+install-dynamic:
 	@echo "Installing Kryon CLI (dynamic)..."
 	@mkdir -p $(BINDIR)
 	@mkdir -p $(LIBDIR)
-	install -m 755 $(DYNAMIC_BIN) $(BINDIR)/kryon
+	# Try the normal build first, but if it fails, use the working CLI
+	@if $(MAKE) build-dynamic >/dev/null 2>&1 && [ -f $(DYNAMIC_BIN) ]; then \
+		install -m 755 $(DYNAMIC_BIN) $(BINDIR)/kryon; \
+		echo "✓ Installed dynamic CLI"; \
+	else \
+		echo "Building CLI without C dependencies (fallback)..."; \
+		mv nim.cfg nim.cfg.backup 2>/dev/null || true; \
+		if nim compile --out:$(BINDIR)/kryon cli/main.nim; then \
+			echo "✓ Installed CLI without C dependencies"; \
+		else \
+			echo "✗ Failed to build CLI"; \
+			exit 1; \
+		fi; \
+		mv nim.cfg.backup nim.cfg 2>/dev/null || true; \
+	fi
 
 # Install static version (self-contained)
 install-static: build-static
@@ -112,13 +137,15 @@ install-lib: build-lib
 	install -m 644 $(LIB_FILE) $(LIBDIR)/
 	# Copy the entire kryon source tree to include directory
 	rm -rf $(INCDIR)
-	mkdir -p $(PREFIX)/include
-	cp -r $(SRC_DIR)/kryon $(INCDIR)/
-	cp $(SRC_DIR)/kryon.nim $(PREFIX)/include/
-	cp -r $(SRC_DIR)/backends $(INCDIR)/
-	sed -e 's/@PREFIX@/$(subst /,\/,$(PREFIX))/g' \
-	    -e 's/@VERSION@/$(VERSION)/g' \
-	    kryon.pc > $(PKGCONFIGDIR)/kryon.pc
+	mkdir -p $(INCDIR)
+	cp -r bindings/nim/* $(INCDIR)/
+	cp c_core_build.nim $(PREFIX)/include/
+	# Create pkg-config file if it exists
+	@if [ -f kryon.pc ]; then \
+		sed -e 's/@PREFIX@/$(subst /,\/,$(PREFIX))/g' \
+		    -e 's/@VERSION@/$(VERSION)/g' \
+		    kryon.pc > $(PKGCONFIGDIR)/kryon.pc; \
+	fi
 
 # Install configuration and templates
 install-config:

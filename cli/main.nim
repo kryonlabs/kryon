@@ -12,7 +12,7 @@ import project, build, device
 const
   VERSION = "1.2.0"
   HELP_TEXT = """
-Kryon CLI v$1 - Unified Development Orchestrator
+Kryon CLI v""" & VERSION & """ - Unified Development Orchestrator
 
 USAGE:
   kryon <command> [options] [args]
@@ -108,38 +108,45 @@ proc handleBuildCommand*(args: seq[string]) =
     quit(1)
 
 proc handleRunCommand*(args: seq[string]) =
-  ## Handle 'kryon run' command
-  var target = "linux"
-  var device = ""
+  ## Handle 'kryon run' command - Flutter-like behavior
+  var target = "native"
+  var file = "main.nim"
 
   for arg in args:
     if arg.startsWith("--target="):
       target = arg[9..^1]
     elif arg.startsWith("--device="):
-      device = arg[9..^1]
+      discard  # For compatibility
+    elif arg.endsWith(".nim"):
+      file = arg
     elif not arg.startsWith("-"):
-      target = arg
+      if arg != "run":
+        file = arg & ".nim"
 
-  echo "Running Kryon project..."
-  echo "Target: " & target
-  if device.len > 0:
-    echo "Device: " & device
+  echo "🚀 Running Kryon application..."
+  echo "📁 File: " & file
+  echo "🎯 Target: " & target
 
   try:
-    # First build
-    buildForTarget(target)
+    # Set environment for kryon sources
+    let kryonRoot = getEnv("KRYON_ROOT", getCurrentDir() / ".." / "..")
+    putEnv("KRYON_ROOT", kryonRoot)
 
-    # Then run/deploy
-    if target in ["stm32f4", "rp2040"]:
-      if device.len == 0:
-        echo "Error: Device path required for MCU targets"
-        echo "Usage: kryon run --target=stm32f4 --device=/dev/ttyUSB0"
-        quit(1)
-      deployToDevice(target, device)
+    # Simple compilation and execution like Flutter
+    let outFile = "kryon_app_run"
+    let cmd = "nim compile --out:" & outFile & " " & file
+
+    echo "🔨 Building..."
+    let buildResult = execShellCmd(cmd)
+
+    if buildResult == 0:
+      echo "✅ Build successful!"
+      echo "🏃 Running application..."
+      discard execShellCmd("./" & outFile)
     else:
-      runLocally(target)
+      echo "❌ Build failed"
+      quit(1)
 
-    echo "✓ Application running"
   except:
     echo "✗ Run failed: " & getCurrentExceptionMsg()
     quit(1)

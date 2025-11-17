@@ -150,7 +150,7 @@ type
     on_change*: proc (dropdown: KryonComponent; selected_index: int8) {.cdecl.}
 
 ## C API Functions - Component Lifecycle
-{.passC: "-I../../core/include".}
+{.passC: "-I../kryon/core/include".}
 {.passC: "-DKRYON_CMD_BUF_SIZE=131072".}  ## Force 128KB buffer size for desktop
 {.emit: "#include <kryon.h>".}
 
@@ -287,7 +287,7 @@ proc kryon_framebuffer_renderer_create*(width: uint16; height: uint16; bytesPerP
 
 ## SDL3 Renderer Integration
 when defined(KRYON_SDL3):
-  {.push importc, cdecl, header: "renderers/sdl3/sdl3.h", nodecl.}
+  {.push importc, cdecl, header: "sdl3.h", nodecl.}
   proc kryon_sdl3_renderer_create*(width: uint16, height: uint16, title: cstring): KryonRenderer
   proc kryon_sdl3_renderer_destroy*(renderer: KryonRenderer)
   proc kryon_sdl3_poll_event*(event: ptr KryonEvent): bool

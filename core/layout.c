@@ -14,6 +14,13 @@ typedef enum {
 } kryon_layout_direction_t;
 
 // ============================================================================
+// Forward Declarations
+// ============================================================================
+
+// Forward declaration for layout_component_internal used by layout_absolute
+static void layout_component_internal(kryon_component_t* component, kryon_fp_t available_width, kryon_fp_t available_height);
+
+// ============================================================================
 // Layout Context for Pass Information
 // ============================================================================
 
@@ -562,7 +569,12 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
         kryon_component_t* child = container->children[i];
         if (!child->visible) continue;
 
-        kryon_fp_t extra_height = line_height - child->height;
+        // Calculate available height for alignment
+        kryon_fp_t available_height_for_alignment = container->height > 0
+            ? container->height - container->padding_top - container->padding_bottom
+            : line_height;
+
+        kryon_fp_t extra_height = available_height_for_alignment - child->height;
         if (extra_height > 0) {
             switch (container->align_items) {
                 case KRYON_ALIGN_START:
@@ -575,7 +587,7 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
                     child->y += extra_height;
                     break;
                 case KRYON_ALIGN_STRETCH:
-                    child->height = line_height;
+                    child->height = available_height_for_alignment;
                     break;
                 default:
                     child->y += extra_height / 2; // Default to center
@@ -586,7 +598,12 @@ static void layout_row(kryon_component_t* container, kryon_layout_context_t* ctx
 
     // Set container dimensions if not explicitly provided
     if (container->height == 0) {
-        container->height = current_y + line_height + padding_bottom;
+        // For containers with flex_grow > 0, use available height instead of content-based height
+        if (container->flex_grow > 0 && ctx->available_height > 0) {
+            container->height = ctx->available_height;
+        } else {
+            container->height = current_y + line_height + padding_bottom;
+        }
     }
     if (container_width > 0) {
         container->width = container_width;
@@ -881,31 +898,38 @@ static void layout_absolute(kryon_component_t* container, kryon_layout_context_t
         kryon_component_t* child = container->children[i];
         if (!child->visible) continue;
 
-        // Check if explicit positions are set using flags
-        const bool has_explicit_x = (child->layout_flags & KRYON_COMPONENT_FLAG_HAS_X) != 0;
-        const bool has_explicit_y = (child->layout_flags & KRYON_COMPONENT_FLAG_HAS_Y) != 0;
+        // Check if child wants flex layout (has layoutDirection set to 0 or 1)
+        if (child->layout_direction == KRYON_LAYOUT_COLUMN || child->layout_direction == KRYON_LAYOUT_ROW) {
+            // Child wants flex layout - use flex layout system with available container space
+            layout_component_internal(child, container_width, container_height);
+        } else {
+            // Child wants absolute positioning - use traditional absolute layout
+            // Check if explicit positions are set using flags
+            const bool has_explicit_x = (child->layout_flags & KRYON_COMPONENT_FLAG_HAS_X) != 0;
+            const bool has_explicit_y = (child->layout_flags & KRYON_COMPONENT_FLAG_HAS_Y) != 0;
 
-        // Use explicit position if set, otherwise use margin as default
-        // Positions are relative to the container, not screen-absolute
-        kryon_fp_t child_x = has_explicit_x ? child->explicit_x : KRYON_FP_FROM_INT(child->margin_left);
-        kryon_fp_t child_y = has_explicit_y ? child->explicit_y : KRYON_FP_FROM_INT(child->margin_top);
+            // Use explicit position if set, otherwise use margin as default
+            // Positions are relative to the container, not screen-absolute
+            kryon_fp_t child_x = has_explicit_x ? child->explicit_x : KRYON_FP_FROM_INT(child->margin_left);
+            kryon_fp_t child_y = has_explicit_y ? child->explicit_y : KRYON_FP_FROM_INT(child->margin_top);
 
-        // Calculate size
-        kryon_fp_t child_width = get_component_intrinsic_width(child);
-        kryon_fp_t child_height = get_component_intrinsic_height(child);
+            // Calculate size
+            kryon_fp_t child_width = get_component_intrinsic_width(child);
+            kryon_fp_t child_height = get_component_intrinsic_height(child);
 
-        // Clamp to container bounds
-        if (child_x + child_width > container_width) {
-            child_width = container_width - child_x;
+            // Clamp to container bounds
+            if (child_x + child_width > container_width) {
+                child_width = container_width - child_x;
+            }
+            if (child_y + child_height > container_height) {
+                child_height = container_height - child_y;
+            }
+
+            child->x = child_x;
+            child->y = child_y;
+            child->width = child_width;
+            child->height = child_height;
         }
-        if (child_y + child_height > container_height) {
-            child_height = container_height - child_y;
-        }
-
-        child->x = child_x;
-        child->y = child_y;
-        child->width = child_width;
-        child->height = child_height;
     }
 }
 
