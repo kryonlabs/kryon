@@ -699,25 +699,10 @@ macro Container*(props: untyped): untyped =
     else:
       childNodes.add(node)
 
-  # Auto-detect if children have absolute positions and set layout to ABSOLUTE
-  var hasChildWithAbsolutePos = false
-  if layoutDirectionVal == nil:  # Only auto-detect if not explicitly set
-    for childNode in childNodes:
-      # Check if child is a component call (Text, Container, etc.) with properties
-      if childNode.kind == nnkCall and childNode.len > 1:
-        # Check the properties block for posX or posY
-        for propNode in childNode[1].children:
-          if propNode.kind == nnkAsgn:
-            let propName = $propNode[0]
-            if propName.toLowerAscii() in ["posx", "x", "posy", "y"]:
-              hasChildWithAbsolutePos = true
-              break
-        if hasChildWithAbsolutePos:
-          break
-
-  # If children have absolute positions, use LAYOUT_ABSOLUTE mode
-  if hasChildWithAbsolutePos and layoutDirectionVal == nil:
-    layoutDirectionVal = newIntLitNode(2)  # LAYOUT_ABSOLUTE
+  # DISABLED: Auto-detection was causing layout issues
+  # Keep user-specified layout direction or let the parent handle it
+  # if layoutDirectionVal == nil:
+  #   layoutDirectionVal = newIntLitNode(0)  # Default to column layout
 
   var initStmts = newTree(nnkStmtList)
 
@@ -1198,8 +1183,8 @@ macro Body*(props: untyped): untyped =
   if not backgroundSet:
     bodyStmt.add newTree(nnkAsgn, ident("backgroundColor"), newStrLitNode("#101820FF"))
   if not layoutDirectionSet:
-    # Default to LAYOUT_ABSOLUTE (value 2) to support absolute positioning
-    bodyStmt.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(2))
+    # Default to LAYOUT_COLUMN (value 0) to support contentAlignment and proper centering
+    bodyStmt.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(0))
 
   # Then add user properties (including width/height from ensureBodyDimensions)
   for node in props.children:
@@ -1821,7 +1806,8 @@ macro Checkbox*(props: untyped): untyped =
 
   var initStmts = newTree(nnkStmtList)
 
-  # Label, checked state, and default dimensions are handled by the C core creation function
+  # Don't set explicit bounds or layout direction - let layout system handle it completely
+  # Checkboxes should be positioned naturally in the flow so Body centering works
 
   # Set text color if provided
   if textColorVal != nil:
@@ -2149,6 +2135,12 @@ macro Center*(props: untyped): untyped =
   ## Convenience macro that centers its children both horizontally and vertically.
   ## Uses explicit flex layout for proper centering regardless of parent layout.
   var body = newTree(nnkStmtList)
+  var hasFlexGrow = false
+
+  # Check user properties for flexGrow override
+  for node in props.children:
+    if node.kind == nnkAsgn and $node[0] == "flexGrow":
+      hasFlexGrow = true
 
   # Set explicit layout direction to column flex layout for proper centering
   body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(0))  # KRYON_LAYOUT_COLUMN
@@ -2156,7 +2148,10 @@ macro Center*(props: untyped): untyped =
   # Set flex properties for centering
   body.add newTree(nnkAsgn, ident("justifyContent"), newStrLitNode("center"))
   body.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
-  body.add newTree(nnkAsgn, ident("flexGrow"), newIntLitNode(1))
+
+  # Only set flexGrow if not provided by user - prevents layout conflicts with siblings
+  if not hasFlexGrow:
+    body.add newTree(nnkAsgn, ident("flexGrow"), newIntLitNode(1))
 
   # Add user properties (allowing overrides)
   for node in props.children:
@@ -2296,9 +2291,16 @@ macro TabBar*(props: untyped): untyped =
     body.add newTree(nnkAsgn, ident("borderWidth"), newIntLitNode(1))
   if not hasBorderColor:
     body.add newTree(nnkAsgn, ident("borderColor"), newStrLitNode("#2b2f33"))
-  # Tab bars shouldn't consume vertical space by default; leave flexGrow unset unless provided
+  # Add explicit height to prevent TabBar visibility issues
+  var hasHeight = false
   for node in propertyNodes:
+    if node.kind == nnkAsgn and $node[0] == "height":
+      hasHeight = true
     body.add(node)
+
+  # Set default height if not provided
+  if not hasHeight:
+    body.add newTree(nnkAsgn, ident("height"), newIntLitNode(40))
 
   let containerCall = newTree(nnkCall, ident("Container"), body)
   let barSym = genSym(nskLet, "tabBar")
