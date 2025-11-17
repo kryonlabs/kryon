@@ -572,10 +572,17 @@ macro Resources*(props: untyped): untyped =
 
   result = loadStatements
 
-macro Font*(props: untyped): untyped =
-  ## Font resource declaration - used inside Resources block
-  ## This is handled by the Resources macro, so we just return empty
-  result = newStmtList()
+# Helper function to transform loop variable references in component expressions
+proc transformLoopVariableReferences(node: NimNode, originalVar: NimNode, capturedVar: NimNode): NimNode =
+  ## Recursively replace all ident nodes that match the original loop variable with captured copy
+  result = node.copyNimTree()
+  if result.kind == nnkIdent and result.eqIdent(originalVar):
+    # Replace with captured variable reference
+    result = capturedVar
+  else:
+    # Recursively process child nodes
+    for i in 0..<result.len:
+      result[i] = transformLoopVariableReferences(result[i], originalVar, capturedVar)
 
 macro Container*(props: untyped): untyped =
   ## Simplified Container component using C core layout API
@@ -706,22 +713,34 @@ macro Container*(props: untyped): untyped =
           # Static block content is wrapped in a statement list - iterate through it
           for stmt in staticChild.children:
             if stmt.kind == nnkForStmt:
-              # Handle for loop from statement list
+              # Handle for loop from statement list - force value capture for reactive expressions
               var transformedBody = newTree(nnkStmtList)
+
+              # Force value capture by creating a let copy of the loop variable for each iteration
+              let loopVar = stmt[0]  # The loop variable (e.g., "alignment")
+              let loopIterVar = genSym(nskLet, "iteration")
+
+              # Add let declaration to capture the current loop variable value
+              transformedBody.add(newLetStmt(loopIterVar, loopVar))
+
               for bodyNode in stmt[^1].children:
-                if bodyNode.kind == nnkDiscardStmt and bodyNode.len > 0:
-                  let componentExpr = bodyNode[0]
+                # Transform the body node to replace loop variable references
+                let transformedBodyNode = transformLoopVariableReferences(bodyNode, loopVar, loopIterVar)
+
+                if transformedBodyNode.kind == nnkDiscardStmt and transformedBodyNode.len > 0:
+                  let componentExpr = transformedBodyNode[0]
                   let childSym = genSym(nskLet, "loopChild")
                   transformedBody.add(newLetStmt(childSym, componentExpr))
                   transformedBody.add quote do:
                     discard kryon_component_add_child(`containerName`, `childSym`)
-                elif bodyNode.kind == nnkCall:
+                elif transformedBodyNode.kind == nnkCall:
                   let childSym = genSym(nskLet, "loopChild")
-                  transformedBody.add(newLetStmt(childSym, bodyNode))
+                  transformedBody.add(newLetStmt(childSym, transformedBodyNode))
                   transformedBody.add quote do:
                     discard kryon_component_add_child(`containerName`, `childSym`)
                 else:
-                  transformedBody.add(bodyNode)
+                  # For other nodes, just add them directly
+                  transformedBody.add(transformedBodyNode)
               if transformedBody.len > 0:
                 let newForLoop = newTree(nnkForStmt, stmt[0], stmt[1], transformedBody)
                 initStmts.add(newForLoop)
@@ -1103,9 +1122,10 @@ macro Text*(props: untyped): untyped =
     # closure mechanism properly captures variables and heap-allocates them
     let createExprSym = bindSym("createReactiveTextExpression")
     initStmts.add quote do:
-      # Create closure at runtime in the actual scope where variables exist
+      # Create reactive expression for text
+      # The closure will capture the current runtime value of variables in `textContent`
       let evalProc = proc (): string {.closure.} =
-        `textContent`  # This captures variables from the runtime scope
+        `textContent`  # This will be evaluated with captured runtime values
       `createExprSym`(`textSym`, `expressionStr`, evalProc, `varNames`)
       echo "[kryon][reactive] Created live reactive expression: ", `expressionStr`
 
