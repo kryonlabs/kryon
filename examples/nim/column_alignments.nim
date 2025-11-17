@@ -65,7 +65,7 @@ let app = kryonApp:
 
       static:
         for alignment in alignments:
-          Container:
+          discard Container:
             width = 150
             height = 740
             backgroundColor = "#ffffff"
@@ -81,7 +81,7 @@ let app = kryonApp:
                 fontSize = 12
                 fontWeight = "bold"
 
-              Container:
+              discard Container:
                 width = 120
                 height = 600
                 backgroundColor = "#f1f5f9"
@@ -92,17 +92,17 @@ let app = kryonApp:
                   crossAxisAlignment = "center"
                   gap = alignment.gap
 
-                  Container:
+                  discard Container:
                     width = 80
                     height = 60
                     backgroundColor = alignment.colors[0]
 
-                  Container:
+                  discard Container:
                     width = 80
                     height = 80
                     backgroundColor = alignment.colors[1]
 
-                  Container:
+                  discard Container:
                     width = 80
                     height = 70
                     backgroundColor = alignment.colors[2]

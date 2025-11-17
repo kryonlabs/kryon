@@ -7,7 +7,7 @@ proc handleButtonClick() =
   echo "🎯 Button clicked! Hello from Kryon-Nim!"
 
 # Define the UI with explicit Header and Body
-let app = kryonApp:
+discard kryonApp:
   Header:
     windowWidth = 600
     windowHeight = 400

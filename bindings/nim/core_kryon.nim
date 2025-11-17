@@ -5,9 +5,8 @@
 
 import strutils
 
-# Import C malloc/free for memory management consistency with C code
+# Import C malloc for memory management consistency with C code
 proc c_malloc(size: csize_t): pointer {.importc: "malloc", header: "<stdlib.h>".}
-proc c_free(p: pointer) {.importc: "free", header: "<stdlib.h>".}
 
 when defined(KRYON_NO_FLOAT):
   {.warning: "KRYON_NO_FLOAT symbol detected at compile time".}

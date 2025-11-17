@@ -78,6 +78,15 @@ proc alignmentNode(name: string): NimNode =
   let alignSym = bindSym("KryonAlignment")
   result = newTree(nnkDotExpr, alignSym, ident(variant))
 
+proc parseAlignmentValue(value: NimNode): NimNode =
+  ## Parse alignment value and return KryonAlignment enum value for C API
+  if value.kind == nnkStrLit:
+    # Convert string to enum value at compile time using alignmentNode
+    result = alignmentNode(value.strVal)
+  else:
+    # Runtime parsing for non-literal values
+    result = newCall(ident("parseAlignmentString"), value)
+
 # ============================================================================
 # Reactive Expression Detection
 # ============================================================================
@@ -569,18 +578,27 @@ macro Font*(props: untyped): untyped =
   result = newStmtList()
 
 macro Container*(props: untyped): untyped =
-  ## Container component macro
+  ## Simplified Container component using C core layout API
   var
     containerName = genSym(nskLet, "container")
+    childNodes: seq[NimNode] = @[]
+    # Layout properties - default to HTML-like behavior (column layout)
+    layoutDirectionVal = newIntLitNode(0)  # Default to column layout
+    justifyContentVal = alignmentNode("start")  # Start alignment
+    alignItemsVal = alignmentNode("start")      # Start alignment
+    gapVal = newIntLitNode(0)
+    # Visual properties
     bgColorVal: NimNode = nil
     textColorVal: NimNode = nil
     borderColorVal: NimNode = nil
     borderWidthVal: NimNode = nil
+    # Position properties
     posXVal: NimNode = nil
     posYVal: NimNode = nil
     widthVal: NimNode = nil
     heightVal: NimNode = nil
     zIndexVal: NimNode = nil
+    # Spacing properties
     paddingAll: NimNode = nil
     paddingTopVal: NimNode = nil
     paddingRightVal: NimNode = nil
@@ -591,25 +609,23 @@ macro Container*(props: untyped): untyped =
     marginRightVal: NimNode = nil
     marginBottomVal: NimNode = nil
     marginLeftVal: NimNode = nil
+    # Flex properties
     flexGrowVal: NimNode = nil
     flexShrinkVal: NimNode = nil
-    justifyNode: NimNode = alignmentNode("start")
-    alignNode: NimNode = alignmentNode("start")
-    layoutDirectionVal: NimNode = nil
-    gapVal: NimNode = nil
+    # Style properties
     styleName: NimNode = nil
     styleData: NimNode = nil
-    childNodes: seq[NimNode] = @[]
 
+  # Parse properties
   for node in props.children:
     if node.kind == nnkAsgn:
       let propName = $node[0]
       let value = node[1]
 
       case propName.toLowerAscii():
-      of "backgroundcolor", "bg":  # Added 'bg' shorthand
+      of "backgroundcolor", "bg":
         bgColorVal = colorNode(value)
-      of "color", "textcolor":  # Text color for inheritance
+      of "color", "textcolor":
         textColorVal = colorNode(value)
       of "bordercolor":
         borderColorVal = colorNode(value)
@@ -619,13 +635,13 @@ macro Container*(props: untyped): untyped =
         posXVal = value
       of "posy", "y":
         posYVal = value
-      of "width", "w":  # Added 'w' shorthand
+      of "width", "w":
         widthVal = value
-      of "height", "h":  # Added 'h' shorthand
+      of "height", "h":
         heightVal = value
       of "zindex", "z":
         zIndexVal = value
-      of "padding", "p":  # Added 'p' shorthand
+      of "padding", "p":
         paddingAll = value
       of "paddingtop":
         paddingTopVal = value
@@ -635,7 +651,7 @@ macro Container*(props: untyped): untyped =
         paddingBottomVal = value
       of "paddingleft":
         paddingLeftVal = value
-      of "margin", "m":  # Added 'm' shorthand
+      of "margin", "m":
         marginAll = value
       of "margintop":
         marginTopVal = value
@@ -649,45 +665,18 @@ macro Container*(props: untyped): untyped =
         flexGrowVal = value
       of "flexshrink":
         flexShrinkVal = value
-      of "contentalignment":  # Content alignment (sets both justifyContent and alignItems)
-        if value.kind == nnkStrLit:
-          justifyNode = alignmentNode(value.strVal)
-          alignNode = alignmentNode(value.strVal)
-        else:
-          # Non-literal value - call runtime parser
-          justifyNode = newCall(ident("parseAlignmentString"), value)
-          alignNode = newCall(ident("parseAlignmentString"), value)
-      of "justifycontent":
-        if value.kind == nnkStrLit:
-          justifyNode = alignmentNode(value.strVal)
-      of "mainaxisalignment":
-        if value.kind == nnkStrLit:
-          justifyNode = alignmentNode(value.strVal)
-        else:
-          # Non-literal value - call runtime parser
-          justifyNode = newCall(ident("parseAlignmentString"), value)
-      of "alignitems":
-        if value.kind == nnkStrLit:
-          alignNode = alignmentNode(value.strVal)
-        else:
-          alignNode = newCall(ident("parseAlignmentString"), value)
-      of "crossaxisalignment":  # Alias for alignItems (React-like API)
-        if value.kind == nnkStrLit:
-          alignNode = alignmentNode(value.strVal)
-        else:
-          alignNode = newCall(ident("parseAlignmentString"), value)
-      of "justify":  # Shorthand for justifyContent
-        if value.kind == nnkStrLit:
-          justifyNode = alignmentNode(value.strVal)
-      of "align":  # Shorthand for alignItems
-        if value.kind == nnkStrLit:
-          alignNode = alignmentNode(value.strVal)
-      of "gap":  # Gap between children
+      of "justifycontent", "mainaxisalignment", "justify":
+        justifyContentVal = parseAlignmentValue(value)
+      of "alignitems", "crossaxisalignment", "align":
+        alignItemsVal = parseAlignmentValue(value)
+      of "contentalignment":
+        justifyContentVal = parseAlignmentValue(value)
+        alignItemsVal = parseAlignmentValue(value)
+      of "gap":
         gapVal = value
       of "layoutdirection":
         layoutDirectionVal = value
       of "style":
-        # Parse style assignment: style = calendarDayStyle(day)
         if value.kind == nnkCall:
           styleName = newStrLitNode($value[0])
           if value.len > 1:
@@ -697,22 +686,118 @@ macro Container*(props: untyped): untyped =
       else:
         discard
     else:
-      childNodes.add(node)
+      # Handle static blocks specially using the same pattern as staticFor
+      if node.kind == nnkStaticStmt:
+        # Static blocks will be processed later after initStmts is initialized
+        # Don't add them to childNodes - they'll be handled separately
+        discard
+      else:
+        childNodes.add(node)
 
-  # DISABLED: Auto-detection was causing layout issues
-  # Keep user-specified layout direction or let the parent handle it
-  # if layoutDirectionVal == nil:
-  #   layoutDirectionVal = newIntLitNode(0)  # Default to column layout
-
+  # Generate initialization statements using C core API
   var initStmts = newTree(nnkStmtList)
 
-  # Set layout direction FIRST - immediately after component creation
-  if layoutDirectionVal != nil:
-    initStmts.add quote do:
-      echo "[kryon][nim] Setting layout direction EARLY for component to ", uint8(`layoutDirectionVal`)
-      kryon_component_set_layout_direction(`containerName`, uint8(`layoutDirectionVal`))
+  # Process static blocks from the original props after initStmts is available
+  for node in props.children:
+    if node.kind == nnkStaticStmt:
+      for staticChild in node.children:
+        # Handle static block children appropriately based on their type
+        if staticChild.kind == nnkStmtList:
+          # Static block content is wrapped in a statement list - iterate through it
+          for stmt in staticChild.children:
+            if stmt.kind == nnkForStmt:
+              # Handle for loop from statement list
+              var transformedBody = newTree(nnkStmtList)
+              for bodyNode in stmt[^1].children:
+                if bodyNode.kind == nnkDiscardStmt and bodyNode.len > 0:
+                  let componentExpr = bodyNode[0]
+                  let childSym = genSym(nskLet, "loopChild")
+                  transformedBody.add(newLetStmt(childSym, componentExpr))
+                  transformedBody.add quote do:
+                    discard kryon_component_add_child(`containerName`, `childSym`)
+                elif bodyNode.kind == nnkCall:
+                  let childSym = genSym(nskLet, "loopChild")
+                  transformedBody.add(newLetStmt(childSym, bodyNode))
+                  transformedBody.add quote do:
+                    discard kryon_component_add_child(`containerName`, `childSym`)
+                else:
+                  transformedBody.add(bodyNode)
+              if transformedBody.len > 0:
+                let newForLoop = newTree(nnkForStmt, stmt[0], stmt[1], transformedBody)
+                initStmts.add(newForLoop)
+            else:
+              # Handle other statements from statement list
+              initStmts.add(stmt)
+        elif staticChild.kind == nnkDiscardStmt:
+          # Static child already has discard - extract the component and add to container
+          if staticChild.len > 0:
+            let childExpr = staticChild[0]
+            let childSym = genSym(nskLet, "staticChild")
+            initStmts.add(newLetStmt(childSym, childExpr))
+            initStmts.add quote do:
+              discard kryon_component_add_child(`containerName`, `childSym`)
+          else:
+            # Discard without expression - just execute as-is
+            initStmts.add(staticChild)
+        elif staticChild.kind == nnkCall:
+          # Direct component call in static block (e.g., Container(...))
+          let childSym = genSym(nskLet, "staticChild")
+          initStmts.add(newLetStmt(childSym, staticChild))
+          initStmts.add quote do:
+            discard kryon_component_add_child(`containerName`, `childSym`)
+        else:
+          # For control flow statements (for loops, if statements, etc.),
+          # transform them to capture component results and add to parent
+          if staticChild.kind == nnkForStmt:
+            # Transform for loops to capture component results and add them to parent
+            var transformedBody = newTree(nnkStmtList)
 
-  # Apply style after layout direction (before individual property overrides)
+            # Process the body of the for loop
+            for bodyNode in staticChild[^1].children:
+              if bodyNode.kind == nnkDiscardStmt and bodyNode.len > 0:
+                # Extract component from discard statement
+                let componentExpr = bodyNode[0]
+                let childSym = genSym(nskLet, "loopChild")
+                transformedBody.add(newLetStmt(childSym, componentExpr))
+                transformedBody.add quote do:
+                  let added = kryon_component_add_child(`containerName`, `childSym`)
+                  echo "[kryon][static] Added child to container: ", `containerName`, " -> ", `childSym`, " success: ", added
+              elif bodyNode.kind == nnkCall:
+                # Direct component call
+                let childSym = genSym(nskLet, "loopChild")
+                transformedBody.add(newLetStmt(childSym, bodyNode))
+                transformedBody.add quote do:
+                  let added = kryon_component_add_child(`containerName`, `childSym`)
+                  echo "[kryon][static] Added direct child to container: ", `containerName`, " -> ", `childSym`, " success: ", added
+              else:
+                # Other statements - just add as-is
+                transformedBody.add(bodyNode)
+
+            # Recreate the for loop with transformed body
+            if transformedBody.len > 0:
+              let newForLoop = newTree(nnkForStmt, staticChild[0], staticChild[1], transformedBody)
+              initStmts.add(newForLoop)
+            else:
+              # If no transformable content, add original
+              initStmts.add(staticChild)
+          else:
+            # Other control flow statements - add as-is for now
+            initStmts.add(staticChild)
+
+  # Set layout direction first (most important)
+  initStmts.add quote do:
+    kryon_component_set_layout_direction(`containerName`, uint8(`layoutDirectionVal`))
+
+  # Set layout alignment
+  initStmts.add quote do:
+    kryon_component_set_layout_alignment(`containerName`,
+      `justifyContentVal`, `alignItemsVal`)
+
+  # Set gap
+  initStmts.add quote do:
+    kryon_component_set_gap(`containerName`, uint8(`gapVal`))
+
+  # Apply style if specified
   if styleName != nil:
     if styleData != nil:
       initStmts.add quote do:
@@ -721,73 +806,45 @@ macro Container*(props: untyped): untyped =
       initStmts.add quote do:
         `styleName`(`containerName`)
 
+  # Set position and size
   let xExpr = if posXVal != nil: posXVal else: newIntLitNode(0)
   let yExpr = if posYVal != nil: posYVal else: newIntLitNode(0)
-  let widthExpr = if widthVal != nil: widthVal else: newIntLitNode(0)
-  let heightExpr = if heightVal != nil: heightVal else: newIntLitNode(0)
+  let wExpr = if widthVal != nil: widthVal else: newIntLitNode(0)
+  let hExpr = if heightVal != nil: heightVal else: newIntLitNode(0)
 
   var maskVal = 0
-  if posXVal != nil:
-    maskVal = maskVal or 0x01
-  if posYVal != nil:
-    maskVal = maskVal or 0x02
-  if widthVal != nil:
-    maskVal = maskVal or 0x04
-  if heightVal != nil:
-    maskVal = maskVal or 0x08
-
-  let maskCast = newCall(ident("uint8"), newIntLitNode(maskVal))
+  if posXVal != nil: maskVal = maskVal or 0x01
+  if posYVal != nil: maskVal = maskVal or 0x02
+  if widthVal != nil: maskVal = maskVal or 0x04
+  if heightVal != nil: maskVal = maskVal or 0x08
 
   initStmts.add quote do:
     kryon_component_set_bounds_mask(`containerName`,
-      toFixed(`xExpr`),
-      toFixed(`yExpr`),
-      toFixed(`widthExpr`),
-      toFixed(`heightExpr`),
-      `maskCast`)
+      toFixed(`xExpr`), toFixed(`yExpr`), toFixed(`wExpr`), toFixed(`hExpr`), uint8(`maskVal`))
 
-  let padTopExpr = if paddingTopVal != nil: paddingTopVal
-    elif paddingAll != nil: paddingAll
-    else: newIntLitNode(0)
-  let padRightExpr = if paddingRightVal != nil: paddingRightVal
-    elif paddingAll != nil: paddingAll
-    else: newIntLitNode(0)
-  let padBottomExpr = if paddingBottomVal != nil: paddingBottomVal
-    elif paddingAll != nil: paddingAll
-    else: newIntLitNode(0)
-  let padLeftExpr = if paddingLeftVal != nil: paddingLeftVal
-    elif paddingAll != nil: paddingAll
-    else: newIntLitNode(0)
+  # Set padding
+  let padTop = if paddingTopVal != nil: paddingTopVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
+  let padRight = if paddingRightVal != nil: paddingRightVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
+  let padBottom = if paddingBottomVal != nil: paddingBottomVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
+  let padLeft = if paddingLeftVal != nil: paddingLeftVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
 
   if paddingAll != nil or paddingTopVal != nil or paddingRightVal != nil or paddingBottomVal != nil or paddingLeftVal != nil:
     initStmts.add quote do:
       kryon_component_set_padding(`containerName`,
-        uint8(`padTopExpr`),
-        uint8(`padRightExpr`),
-        uint8(`padBottomExpr`),
-        uint8(`padLeftExpr`))
+        uint8(`padTop`), uint8(`padRight`), uint8(`padBottom`), uint8(`padLeft`))
 
-  let marginTopExpr = if marginTopVal != nil: marginTopVal
-    elif marginAll != nil: marginAll
-    else: newIntLitNode(0)
-  let marginRightExpr = if marginRightVal != nil: marginRightVal
-    elif marginAll != nil: marginAll
-    else: newIntLitNode(0)
-  let marginBottomExpr = if marginBottomVal != nil: marginBottomVal
-    elif marginAll != nil: marginAll
-    else: newIntLitNode(0)
-  let marginLeftExpr = if marginLeftVal != nil: marginLeftVal
-    elif marginAll != nil: marginAll
-    else: newIntLitNode(0)
+  # Set margin
+  let marginTop = if marginTopVal != nil: marginTopVal elif marginAll != nil: marginAll else: newIntLitNode(0)
+  let marginRight = if marginRightVal != nil: marginRightVal elif marginAll != nil: marginAll else: newIntLitNode(0)
+  let marginBottom = if marginBottomVal != nil: marginBottomVal elif marginAll != nil: marginAll else: newIntLitNode(0)
+  let marginLeft = if marginLeftVal != nil: marginLeftVal elif marginAll != nil: marginAll else: newIntLitNode(0)
 
   if marginAll != nil or marginTopVal != nil or marginRightVal != nil or marginBottomVal != nil or marginLeftVal != nil:
     initStmts.add quote do:
       kryon_component_set_margin(`containerName`,
-        uint8(`marginTopExpr`),
-        uint8(`marginRightExpr`),
-        uint8(`marginBottomExpr`),
-        uint8(`marginLeftExpr`))
+        uint8(`marginTop`), uint8(`marginRight`), uint8(`marginBottom`), uint8(`marginLeft`))
 
+  # Set visual properties
   if bgColorVal != nil:
     initStmts.add quote do:
       kryon_component_set_background_color(`containerName`, `bgColorVal`)
@@ -808,339 +865,47 @@ macro Container*(props: untyped): untyped =
     initStmts.add quote do:
       kryon_component_set_z_index(`containerName`, uint16(`zIndexVal`))
 
+  # Set flex properties
   if flexGrowVal != nil or flexShrinkVal != nil:
     let growExpr = if flexGrowVal != nil: flexGrowVal else: newIntLitNode(0)
     let shrinkExpr = if flexShrinkVal != nil: flexShrinkVal else: newIntLitNode(1)
     initStmts.add quote do:
       kryon_component_set_flex(`containerName`, uint8(`growExpr`), uint8(`shrinkExpr`))
 
-  initStmts.add quote do:
-    kryon_component_set_layout_alignment(`containerName`, `justifyNode`, `alignNode`)
-
-  # Set gap if specified
-  if gapVal != nil:
-    initStmts.add quote do:
-      kryon_component_set_gap(`containerName`, uint8(`gapVal`))
-
-  # Layout direction already set early above
-
-  # Helper function to process conditional (if/else) nodes into reactive conditionals
-  proc processConditionalNode(ifNode: NimNode, containerName: NimNode): NimNode =
-    ## Convert if/else statements to reactive conditionals that re-evaluate when variables change
-
-    # Extract the first branch (if branch)
-    let firstBranch = ifNode[0]
-    let condition = firstBranch[0]  # The if condition
-    let thenBody = firstBranch[1]   # The then body
-
-    # Build then closure body - collects all child components
-    var thenComponents = newStmtList()
-    let thenChildrenSym = genSym(nskVar, "childComponents")
-    for child in thenBody:
-      # Each child might be a component macro that returns a value
-      # We need to capture the value and add it to the children sequence
-      let compSym = genSym(nskLet, "comp")
-      let addCall = nnkCall.newTree(
-        nnkDotExpr.newTree(thenChildrenSym, ident("add")),
-        compSym
-      )
-      let ifStmt = nnkIfStmt.newTree(
-        nnkElifBranch.newTree(
-          nnkInfix.newTree(ident("!="), compSym, newNilLit()),
-          newStmtList(addCall)
-        )
-      )
-      thenComponents.add(nnkLetSection.newTree(
-        nnkIdentDefs.newTree(compSym, newEmptyNode(), child)
-      ))
-      thenComponents.add(ifStmt)
-
-    # Check if there's an else branch
-    var hasElse = false
-    var elseComponents = newStmtList()
-    var elseChildrenSym: NimNode
-
-    if ifNode.len > 1:
-      let elseBranch = ifNode[1]
-      if elseBranch.kind == nnkElse:
-        hasElse = true
-        elseChildrenSym = genSym(nskVar, "childComponents")
-        for child in elseBranch[0]:
-          # Each child might be a component macro that returns a value
-          # We need to capture the value and add it to the children sequence
-          let compSym = genSym(nskLet, "comp")
-          let addCall = nnkCall.newTree(
-            nnkDotExpr.newTree(elseChildrenSym, ident("add")),
-            compSym
-          )
-          let ifStmt = nnkIfStmt.newTree(
-            nnkElifBranch.newTree(
-              nnkInfix.newTree(ident("!="), compSym, newNilLit()),
-              newStmtList(addCall)
-            )
-          )
-          elseComponents.add(nnkLetSection.newTree(
-            nnkIdentDefs.newTree(compSym, newEmptyNode(), child)
-          ))
-          elseComponents.add(ifStmt)
-
-    # Generate the reactive conditional registration code
-    if hasElse:
-      # Build complete closure bodies
-      var thenBody = newStmtList()
-      thenBody.add(nnkVarSection.newTree(
-        nnkIdentDefs.newTree(
-          thenChildrenSym,
-          nnkBracketExpr.newTree(bindSym("seq"), bindSym("KryonComponent")),
-          nnkPrefix.newTree(bindSym("@"), nnkBracket.newTree())
-        )
-      ))
-      thenBody.add(thenComponents)
-      thenBody.add(thenChildrenSym)
-
-      var elseBody = newStmtList()
-      elseBody.add(nnkVarSection.newTree(
-        nnkIdentDefs.newTree(
-          elseChildrenSym,
-          nnkBracketExpr.newTree(bindSym("seq"), bindSym("KryonComponent")),
-          nnkPrefix.newTree(bindSym("@"), nnkBracket.newTree())
-        )
-      ))
-      elseBody.add(elseComponents)
-      elseBody.add(elseChildrenSym)
-
-      result = quote do:
-        block:
-          # Create closures at runtime so they capture variables
-          let condProc = proc(): bool {.closure.} = `condition`
-          let thenProc = proc(): seq[KryonComponent] {.closure.} =
-            `thenBody`
-          let elseProc = proc(): seq[KryonComponent] {.closure.} =
-            `elseBody`
-
-          createReactiveConditional(`containerName`, condProc, thenProc, elseProc)
-    else:
-      # Build complete closure body
-      var thenBody = newStmtList()
-      thenBody.add(nnkVarSection.newTree(
-        nnkIdentDefs.newTree(
-          thenChildrenSym,
-          nnkBracketExpr.newTree(bindSym("seq"), bindSym("KryonComponent")),
-          nnkPrefix.newTree(bindSym("@"), nnkBracket.newTree())
-        )
-      ))
-      thenBody.add(thenComponents)
-      thenBody.add(thenChildrenSym)
-
-      result = quote do:
-        block:
-          # Create closures at runtime so they capture variables
-          let condProc = proc(): bool {.closure.} = `condition`
-          let thenProc = proc(): seq[KryonComponent] {.closure.} =
-            `thenBody`
-
-          createReactiveConditional(`containerName`, condProc, thenProc, nil)
-
-  proc processCaseNode(caseNode: NimNode, containerName: NimNode): NimNode =
-    ## Convert case statements to a single reactive conditional
-    ## The closure contains the entire case statement and returns the matching component
-
-    # Create a closure that evaluates the case statement and returns components
-    let caseEvalClosure = nnkLambda.newTree(
-      newEmptyNode(), # name
-      newEmptyNode(), # pragmas
-      newEmptyNode(), # type params
-      nnkFormalParams.newTree(
-        nnkBracketExpr.newTree(bindSym("seq"), bindSym("KryonComponent"))
-      ), # params
-      newEmptyNode(), # pragmas
-      newEmptyNode(), # reserved
-      newStmtList(
-        nnkVarSection.newTree(
-          nnkIdentDefs.newTree(
-            ident("result"),
-            nnkBracketExpr.newTree(bindSym("seq"), bindSym("KryonComponent")),
-            nnkPrefix.newTree(bindSym("@"), nnkBracket.newTree())
-          )
-        ),
-        nnkStmtList.newTree(
-          nnkLetSection.newTree(
-            nnkIdentDefs.newTree(
-              ident("comp"),
-              newEmptyNode(),
-              caseNode  # The entire case statement
-            )
-          ),
-          nnkIfStmt.newTree(
-            nnkElifBranch.newTree(
-              nnkInfix.newTree(ident("!="), ident("comp"), newNilLit()),
-              newStmtList(
-                nnkCall.newTree(
-                  nnkDotExpr.newTree(ident("result"), ident("add")),
-                  ident("comp")
-                )
-              )
-            )
-          )
-        ),
-        ident("result")
-      )
-    )
-
-    # Extract the selector so we can capture it in the condition
-    let selector = caseNode[0]
-
-    # Create a condition that uses the navigation counter
-    # The counter increments on each navigation, so the condition toggles
-    let condClosure = quote do:
-      proc(): bool {.closure.} =
-        # Import navigation counter
-        (navigationCounter and 1) == 0  # Toggles true/false on each navigation
-
-    result = quote do:
-      block:
-        createReactiveConditional(`containerName`,
-          `condClosure`,
-          `caseEvalClosure`,
-          `caseEvalClosure`  # Same closure for else branch!
-        )
-
-  # Process child nodes - handle static blocks specially
-  for node in childNodes:
-    # Check if this is a static block that generates components
-    if node.kind == nnkStaticStmt:
-      # Static block - we need to handle this differently
-      # The static block contains code that will execute at compile-time
-      # We need to collect the results and add them as children
-
-      # Actually, we need a different approach - static blocks don't return values
-      # We need to unroll the static block's for loop at macro expansion time
-
-      # Extract the for loop from the static block
-      # The static block has structure: nnkStaticStmt -> nnkStmtList -> nnkForStmt
-      if node.len > 0 and node[0].kind == nnkStmtList and
-         node[0].len > 0 and node[0][0].kind == nnkForStmt:
-        let forStmt = node[0][0]  # Get the actual for statement
-        # forStmt structure: [loopVar, collection, body]
-        let loopVar = forStmt[0]
-        let collection = forStmt[1]
-        let body = forStmt[2]
-
-        # Helper to replace identifiers in AST
-        # This needs to handle dotted expressions like alignment.name -> alignments[i].name
-        proc replaceInAst(n: NimNode, target: NimNode, replacement: NimNode): NimNode =
-          case n.kind
-          of nnkIdent:
-            if n.eqIdent(target):
-              return copyNimTree(replacement)
-            else:
-              return n
-          of nnkEmpty, nnkNilLit:
-            return n
-          of nnkCharLit..nnkUInt64Lit, nnkFloatLit..nnkFloat128Lit, nnkStrLit..nnkTripleStrLit:
-            return n
-          of nnkDotExpr:
-            # Handle dotted expressions like alignment.name
-            # If the left side is our target, replace it
-            if n.len >= 2 and n[0].kind == nnkIdent and n[0].eqIdent(target):
-              result = nnkDotExpr.newTree(
-                copyNimTree(replacement),
-                n[1]  # Keep the field name
-              )
-            else:
-              result = copyNimNode(n)
-              for child in n:
-                result.add replaceInAst(child, target, replacement)
-          of nnkBracketExpr:
-            # Handle bracket expressions like alignment.colors[0]
-            # Recursively replace in all children
-            result = copyNimNode(n)
-            for child in n:
-              result.add replaceInAst(child, target, replacement)
-          else:
-            result = copyNimNode(n)
-            for child in n:
-              result.add replaceInAst(child, target, replacement)
-
-        # BREAKTHROUGH: Don't use when at all. Use static evaluation at the OUTER level
-        # to determine how many items to generate, then generate ONLY that many blocks
-
-        # Wrap the unrolling in a static block that evaluates the collection length
-        let staticBlock = quote do:
-          static:
-            const numItems = `collection`.len
-            echo "Static for loop: unrolling ", numItems, " iterations"
-
-        initStmts.add(staticBlock)
-
-        # Generate unrolled code with independent AST copies for each iteration
-        # KEY INSIGHT: The issue is that we need to create fresh symbols for each iteration
-        # Let's use a block for each iteration to ensure proper scoping and symbol isolation
-
-        for i in 0 ..< 20:  # Support up to 20 items
-          let iLit = newLit(i)
-          let itemAccess = nnkBracketExpr.newTree(collection, iLit)
-          let expandedBody = replaceInAst(body, loopVar, itemAccess)
-
-          # CRITICAL FIX: Create components that properly integrate with layout system
-          # Don't use absolute coordinates - let the parent layout handle positioning
-          let resultSym = genSym(nskLet, "result")
-
-          initStmts.add(quote do:
-            when `iLit` < `collection`.len:
-              block:
-                # Create component that will be positioned by parent layout
-                let `resultSym` = `expandedBody`
-                if `resultSym` != nil:
-                  # Add to parent - layout will happen naturally during render
-                  discard kryon_component_add_child(`containerName`, `resultSym`)
-          )
-      else:
-        # Static block doesn't contain a for loop - just execute it
-        initStmts.add node
-    else:
-      # Regular child node - check if it's a conditional or loop statement
-      if node.kind == nnkIfStmt:
-        # Handle if/else statements specially
-        initStmts.add processConditionalNode(node, containerName)
-      elif node.kind == nnkCaseStmt:
-        # Handle case statements specially
-        initStmts.add processCaseNode(node, containerName)
-      elif node.kind == nnkForStmt:
-        # Handle runtime for loops
-        # Structure: nnkForStmt[loopVar, collection, body]
-        let loopVar = node[0]
-        let collection = node[1]
-        let body = node[2]
-
-        # Generate code that iterates at runtime and adds children
-        initStmts.add quote do:
-          for `loopVar` in `collection`:
-            let child = block:
-              `body`
-            if child != nil:
-              kryon_component_mark_dirty(child)
-              discard kryon_component_add_child(`containerName`, child)
-      else:
-        # Regular child component
+  # Add child components
+  for child in childNodes:
+    # Handle both discarded and non-discarded children
+    if child.kind == nnkDiscardStmt:
+      # Child already has discard - just execute it directly
+      # The user took care of discarding, so we just need to add it to container
+      # But first, we need to extract the actual component from the discard
+      if child.len > 0:
+        let childExpr = child[0]
         let childSym = genSym(nskLet, "child")
+        initStmts.add(newLetStmt(childSym, childExpr))
         initStmts.add quote do:
-          let `childSym` = `node`
-          if `childSym` != nil:
-            kryon_component_mark_dirty(`childSym`)
-            discard kryon_component_add_child(`containerName`, `childSym`)
+          discard kryon_component_add_child(`containerName`, `childSym`)
+      else:
+        # Discard without expression - just execute as-is
+        initStmts.add(child)
+    else:
+      # Regular child component - create symbol and add to container
+      let childSym = genSym(nskLet, "child")
+      initStmts.add(newLetStmt(childSym, child))
+      initStmts.add quote do:
+        discard kryon_component_add_child(`containerName`, `childSym`)
 
+  # Mark container as dirty
   initStmts.add quote do:
     kryon_component_mark_dirty(`containerName`)
 
+  # Generate the final result
+  # Always return the component - the calling context should handle it properly
   result = quote do:
     block:
       let `containerName` = newKryonContainer()
       `initStmts`
       `containerName`
-
-  # TODO: Add background color handling once basic compilation works
-  # For now, skip background color to get compilation working
 
 macro Body*(props: untyped): untyped =
   ## Body macro - top-level container that fills the window by default
@@ -1442,7 +1207,11 @@ macro Button*(props: untyped): untyped =
       else:
         discard
     else:
-      childNodes.add(node)
+      # Handle static blocks specially - don't add them to childNodes
+      if node.kind == nnkStaticStmt:
+        discard  # Static blocks will be handled by the Container macros they contain
+      else:
+        childNodes.add(node)
 
   let marginTopExpr = if marginTopVal != nil: marginTopVal
     elif marginAll != nil: marginAll
@@ -1845,10 +1614,14 @@ macro Input*(props: untyped): untyped =
   var
     inputName = genSym(nskLet, "input")
     placeholderVal: NimNode = newStrLitNode("")
+    valueVal: NimNode = newStrLitNode("")
     widthVal: NimNode = newIntLitNode(200)
     heightVal: NimNode = newIntLitNode(40)
     backgroundColorVal: NimNode = nil
     textColorVal: NimNode = nil
+    fontSizeVal: NimNode = newIntLitNode(14)
+    onTextChangeVal: NimNode = nil
+    childNodes: seq[NimNode] = @[]
 
   # Parse Input properties
   for node in props.children:
@@ -1858,6 +1631,8 @@ macro Input*(props: untyped): untyped =
       of "placeholder":
         if node[1].kind == nnkStrLit:
           placeholderVal = node[1]
+      of "value":
+        valueVal = node[1]
       of "width":
         widthVal = node[1]
       of "height":
@@ -1866,8 +1641,14 @@ macro Input*(props: untyped): untyped =
         backgroundColorVal = colorNode(node[1])
       of "textcolor", "color":
         textColorVal = colorNode(node[1])
+      of "fontsize":
+        fontSizeVal = node[1]
+      of "ontextchange":
+        onTextChangeVal = node[1]
       else:
         discard
+    else:
+      childNodes.add(node)
 
   var initStmts = newTree(nnkStmtList)
 
@@ -1892,18 +1673,29 @@ macro Input*(props: untyped): untyped =
   initStmts.add quote do:
     kryon_component_set_padding(`inputName`, 8, 8, 8, 8)
 
-  # Create text component for placeholder
-  let textSym = genSym(nskLet, "placeholderText")
+  # Create text component for input value (use value, not placeholder)
+  let textSym = genSym(nskLet, "inputText")
+  # Use the actual value, fallback to placeholder if empty
+  let displayText = quote do:
+    if `valueVal`.len > 0: `valueVal` else: `placeholderVal`
+
   if textColorVal != nil:
     initStmts.add quote do:
-      let `textSym` = newKryonText(`placeholderVal`, 14, 0, 0)
+      let `textSym` = newKryonText(`displayText`, `fontSizeVal`, 0, 0)
       kryon_component_set_text_color(`textSym`, `textColorVal`)
       discard kryon_component_add_child(`inputName`, `textSym`)
   else:
     initStmts.add quote do:
-      let `textSym` = newKryonText(`placeholderVal`, 14, 0, 0)
-      kryon_component_set_text_color(`textSym`, 0x999999FF'u32)
+      let `textSym` = newKryonText(`displayText`, `fontSizeVal`, 0, 0)
+      kryon_component_set_text_color(`textSym`, 0x333333FF'u32)  # Darker text for input
       discard kryon_component_add_child(`inputName`, `textSym`)
+
+  # Add any child components
+  for child in childNodes:
+    initStmts.add quote do:
+      let childComponent = `child`
+      if childComponent != nil:
+        discard kryon_component_add_child(`inputName`, childComponent)
 
   result = quote do:
     block:
@@ -2078,6 +1870,7 @@ macro Row*(props: untyped): untyped =
   for node in props.children:
     body.add(node)
 
+
   # Always set layout direction to row (at the end so it always overrides)
   body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(1))  # 1 = KRYON_LAYOUT_ROW
 
@@ -2126,6 +1919,7 @@ macro Column*(props: untyped): untyped =
   for node in props.children:
     body.add(node)
 
+  
   # Always set layout direction to column (at the end so it always overrides)
   body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(0))  # 0 = KRYON_LAYOUT_COLUMN
 
@@ -2224,7 +2018,6 @@ macro TabGroup*(props: untyped): untyped =
 macro TabBar*(props: untyped): untyped =
   let registerSym = bindSym("registerTabBar")
   let ctxSym = ident("__kryonCurrentTabGroup")
-  let addChildSym = bindSym("kryon_component_add_child")
 
   var propertyNodes: seq[NimNode] = @[]
   var childNodes: seq[NimNode] = @[]
@@ -2275,7 +2068,7 @@ macro TabBar*(props: untyped): untyped =
 
   var body = newTree(nnkStmtList)
   if not hasLayout:
-    body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(1))
+    body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(2))
   if not hasAlign:
     body.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
   if not hasGap:

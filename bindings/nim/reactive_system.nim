@@ -4,7 +4,7 @@
 ## Works transparently with existing DSL
 
 import core_kryon
-import sequtils, tables
+import tables
 
 # Reactive binding types
 type

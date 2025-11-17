@@ -176,7 +176,7 @@ echo "────────────────────────�
 # Determine linker libraries based on renderer
 case "$RENDERER" in
     "sdl3")
-        LINK_LIBS="-Lbuild -lkryon_core -lkryon_sdl3 -lkryon_fb -lkryon_common -lSDL3 -lSDL3_ttf -lm"
+        LINK_LIBS="-Lbuild -lkryon_core -lkryon_sdl3 -lkryon_common -lSDL3 -lSDL3_ttf -lm"
         if [ -n "$FONTCONFIG_LIBS" ]; then
             LINK_LIBS="$LINK_LIBS $FONTCONFIG_LIBS"
         fi
