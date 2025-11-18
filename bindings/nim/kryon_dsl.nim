@@ -584,6 +584,119 @@ proc transformLoopVariableReferences(node: NimNode, originalVar: NimNode, captur
     for i in 0..<result.len:
       result[i] = transformLoopVariableReferences(result[i], originalVar, capturedVar)
 
+proc convertIfStmtToReactiveConditional*(ifStmt: NimNode, windowWidth: NimNode, windowHeight: NimNode): NimNode =
+  ## Convert an if statement to reactive component expression
+  ## Creates a reactive container that evaluates the if statement and returns the appropriate component
+  # Process all branches: if, elif, else
+  var reactiveCode = newStmtList()
+  let containerSym = genSym(nskLet, "ifContainer")
+
+  # Create the main container with window-filling dimensions using Container DSL
+  reactiveCode.add quote do:
+    let `containerSym` = Container:
+      width = `windowWidth`
+      height = `windowHeight`
+
+  # For each branch in the if statement, create a reactive conditional
+  for i in 0..<ifStmt.len:
+    let branch = ifStmt[i]
+
+    if branch.kind == nnkElifBranch:
+      # elif branch: condition and body
+      let condition = branch[0]
+      let branchBody = branch[1]
+
+      # Create reactive conditional for this elif condition
+      let conditionProc = genSym(nskProc, "elifConditionProc")
+      let thenProc = genSym(nskProc, "elifThenProc")
+
+      reactiveCode.add newProc(
+        conditionProc,
+        params = [ident("bool")],
+        body = newStmtList(condition),
+        procType = nnkProcDef
+      )
+
+      reactiveCode.add newProc(
+        thenProc,
+        params = [newTree(nnkBracketExpr, ident("seq"), ident("KryonComponent"))],
+        body = newStmtList(
+          newCall(ident("@"), newNimNode(nnkBracket).add(branchBody))
+        ),
+        procType = nnkProcDef
+      )
+
+      reactiveCode.add quote do:
+        createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil)
+
+    elif branch.kind == nnkElse:
+      # else branch: only body
+      let elseBody = branch[0]
+
+      # Create reactive conditional for else (always true condition)
+      let conditionProc = genSym(nskProc, "elseConditionProc")
+      let thenProc = genSym(nskProc, "elseThenProc")
+
+      reactiveCode.add newProc(
+        conditionProc,
+        params = [ident("bool")],
+        body = newStmtList(newLit(true)),  # else is always true if reached
+        procType = nnkProcDef
+      )
+
+      reactiveCode.add newProc(
+        thenProc,
+        params = [newTree(nnkBracketExpr, ident("seq"), ident("KryonComponent"))],
+        body = newStmtList(
+          newCall(ident("@"), newNimNode(nnkBracket).add(elseBody))
+        ),
+        procType = nnkProcDef
+      )
+
+      reactiveCode.add quote do:
+        createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil)
+
+    elif branch.kind == nnkIfExpr:
+      # This is the main 'if' branch (first element in ifStmt)
+      # The actual structure is: ifStmt[0] = condition, ifStmt[1] = first branch body
+      # But we're iterating, so this case handles the condition separately
+      discard
+
+  # Handle the main 'if' branch separately (it's structured differently)
+  if ifStmt.len >= 2:
+    let ifCondition = ifStmt[0]  # The condition
+    let ifBranch = ifStmt[1]     # The first branch body
+
+    if ifBranch.kind == nnkStmtList and ifBranch.len > 0:
+      let branchBody = ifBranch[0]  # Get the actual component from the branch
+
+      # Create reactive conditional for the main if condition
+      let conditionProc = genSym(nskProc, "ifConditionProc")
+      let thenProc = genSym(nskProc, "ifThenProc")
+
+      reactiveCode.add newProc(
+        conditionProc,
+        params = [ident("bool")],
+        body = newStmtList(ifCondition),
+        procType = nnkProcDef
+      )
+
+      reactiveCode.add newProc(
+        thenProc,
+        params = [newTree(nnkBracketExpr, ident("seq"), ident("KryonComponent"))],
+        body = newStmtList(
+          newCall(ident("@"), newNimNode(nnkBracket).add(branchBody))
+        ),
+        procType = nnkProcDef
+      )
+
+      reactiveCode.add quote do:
+        createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil)
+
+  # Return the container
+  reactiveCode.add(containerSym)
+  result = reactiveCode
+
 macro Container*(props: untyped): untyped =
   ## Simplified Container component using C core layout API
   var
@@ -698,6 +811,11 @@ macro Container*(props: untyped): untyped =
         # Static blocks will be processed later after initStmts is initialized
         # Don't add them to childNodes - they'll be handled separately
         discard
+      elif node.kind == nnkIfStmt:
+        # Handle if statements by converting to reactive conditionals
+        # Create a reactive conditional with window dimensions (defaults since Container doesn't have access)
+        let ifResult = convertIfStmtToReactiveConditional(node, newIntLitNode(800), newIntLitNode(600))
+        childNodes.add(ifResult)
       else:
         childNodes.add(node)
 
@@ -1142,6 +1260,14 @@ macro Body*(props: untyped, windowWidth: untyped = nil, windowHeight: untyped = 
       let bodyWidth = if windowWidth != nil: windowWidth else: newIntLitNode(800)
       let bodyHeight = if windowHeight != nil: windowHeight else: newIntLitNode(600)
       let reactiveResult = convertCaseStmtToReactiveConditional(node, bodyWidth, bodyHeight)
+      bodyStmt.add(reactiveResult)
+    elif node.kind == nnkIfStmt:
+      # Convert if statement to reactive conditional using existing infrastructure
+      echo "[kryon][if] Converting if statement to reactive conditional"
+      # Use provided window dimensions or defaults
+      let bodyWidth = if windowWidth != nil: windowWidth else: newIntLitNode(800)
+      let bodyHeight = if windowHeight != nil: windowHeight else: newIntLitNode(600)
+      let reactiveResult = convertIfStmtToReactiveConditional(node, bodyWidth, bodyHeight)
       bodyStmt.add(reactiveResult)
     else:
       # Regular node - add as-is
