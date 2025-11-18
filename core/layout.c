@@ -731,15 +731,6 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
         }
     }
 
-    // Handle flexible width for children with flexGrow
-    for (uint8_t i = 0; i < container->child_count; i++) {
-        kryon_component_t* child = container->children[i];
-        if (!child->visible || child->flex_grow == 0) continue;
-
-        // If child has flex_grow, make it fill the available width
-        child->width = inner_width;
-    }
-
     // Determine alignment offsets including space distribution
     kryon_fp_t available_height_for_alignment = target_inner_height;
     if (available_height_for_alignment < total_content_height) {

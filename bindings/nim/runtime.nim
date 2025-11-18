@@ -1051,6 +1051,14 @@ proc registerTabComponent*(state: TabGroupState; component: KryonComponent; visu
   state.tabBaseZIndices.add(kryon_component_get_z_index(component))
   tabComponentRegistry[cast[uint](component)] = (state: state, index: state.tabs.len - 1)
   discard kryon_component_add_event_handler(component, tabComponentEventHandler)
+
+  # CRITICAL: Add the tab component as a child to the TabBar
+  if state.tabBar != nil:
+    discard kryon_component_add_child(state.tabBar, component)
+    echo "[kryon][tabs] Added tab component to TabBar: ", cast[uint](component), " -> TabBar: ", cast[uint](state.tabBar)
+  else:
+    echo "[kryon][tabs] Warning: TabBar is nil, cannot add tab as child"
+
   kryon_component_set_background_color(component, visuals.backgroundColor)
   kryon_component_set_text_color(component, visuals.textColor)
   kryon_component_mark_dirty(component)

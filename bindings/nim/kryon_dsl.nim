@@ -2349,6 +2349,7 @@ macro TabBar*(props: untyped): untyped =
   var hasBorderColor = false
   var hasBorderWidth = false
   var hasFlex = false
+  var hasWidth = false
 
   for node in props.children:
     if node.kind == nnkAsgn:
@@ -2380,6 +2381,9 @@ macro TabBar*(props: untyped): untyped =
       of "flexgrow":
         hasFlex = true
         propertyNodes.add(node)
+      of "width":
+        hasWidth = true
+        propertyNodes.add(node)
       else:
         propertyNodes.add(node)
     else:
@@ -2387,7 +2391,7 @@ macro TabBar*(props: untyped): untyped =
 
   var body = newTree(nnkStmtList)
   if not hasLayout:
-    body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(2))
+    body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(1))
   if not hasAlign:
     body.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
   if not hasGap:
@@ -2405,14 +2409,28 @@ macro TabBar*(props: untyped): untyped =
     body.add newTree(nnkAsgn, ident("borderColor"), newStrLitNode("#2b2f33"))
   # Add explicit height to prevent TabBar visibility issues
   var hasHeight = false
+  var otherProperties: seq[NimNode] = @[]
+
   for node in propertyNodes:
-    if node.kind == nnkAsgn and $node[0] == "height":
-      hasHeight = true
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      if propName.toLowerAscii() == "height":
+        hasHeight = true
+        body.add(node)
+      else:
+        # Only add properties we haven't already handled
+        otherProperties.add(node)
+
+  # Add remaining properties
+  for node in otherProperties:
     body.add(node)
 
   # Set default height if not provided
   if not hasHeight:
     body.add newTree(nnkAsgn, ident("height"), newIntLitNode(40))
+
+  # Remove default flex grow - TabBar should maintain its fixed height
+  # TabBar expands horizontally due to width=100% in its parent, not flex grow
 
   let containerCall = newTree(nnkCall, ident("Container"), body)
   let barSym = genSym(nskLet, "tabBar")
@@ -2605,9 +2623,12 @@ macro Tab*(props: untyped): untyped =
   if not hasBorderWidth:
     buttonProps.add newTree(nnkAsgn, ident("borderWidth"), newIntLitNode(1))
   if not hasWidth:
-    buttonProps.add newTree(nnkAsgn, ident("width"), newIntLitNode(168))
+    buttonProps.add newTree(nnkAsgn, ident("width"), newIntLitNode(120))
+  buttonProps.add newTree(nnkAsgn, ident("height"), newIntLitNode(32))
   buttonProps.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
   buttonProps.add newTree(nnkAsgn, ident("justifyContent"), newStrLitNode("center"))
+  buttonProps.add newTree(nnkAsgn, ident("minWidth"), newIntLitNode(80))
+  buttonProps.add newTree(nnkAsgn, ident("minHeight"), newIntLitNode(28))
 
   buttonProps.add newTree(nnkAsgn, ident("text"), titleVal)
 
@@ -2644,9 +2665,21 @@ macro Tab*(props: untyped): untyped =
 
   result = quote do:
     block:
+      # Check if TabGroup context is available
+      if `ctxSym` == nil:
+        echo "[kryon][error] Tab component created outside of TabGroup context: ", `titleVal`
+        discard ()
+
       let `tabSym` = `buttonCall`
+      if `tabSym` == nil:
+        echo "[kryon][error] Failed to create tab button: ", `titleVal`
+        discard ()
+
       `afterCreate`
+      # Ensure the tab component is visible by marking dirty
+      kryon_component_mark_dirty(`tabSym`)
       `registerSym`(`ctxSym`, `tabSym`, `visualNode`)
+      echo "[kryon][debug] Created tab button: ", `titleVal`, " component: ", cast[uint](`tabSym`)
       # Tab components are registered with the tab group, explicitly return void
       discard ()
 
