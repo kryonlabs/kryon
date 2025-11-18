@@ -1,4 +1,4 @@
-## Simple Navigation Demo
+# Simple Navigation Demo
 ##
 ## Demonstrates the state-driven enum routing system in Kryon.
 ## This example shows how to create a multi-screen application
@@ -57,7 +57,9 @@ proc HomeScreen(): Element =
         height = 50
         backgroundColor = "#3498DB"
         fontSize = 16
-        onClick = proc() = navigateTo(currentRoute, AboutScreen)
+        onClick = proc() =
+          echo "[kryon][debug] About button clicked!"
+          navigateTo(currentRoute, AboutScreen)
 
       Button:
         text = "Settings"

@@ -512,7 +512,7 @@ proc registerButtonHandler*(button: KryonComponent; cb: proc () {.closure.}) =
     return
   let key = cast[uint](button)
   buttonCallbacks[key] = cb
-  runtimeTrace("[kryon][runtime] Registered button handler for component " & $key)
+  echo "[kryon][runtime] Registered button handler for component: ", key
 
 proc nimButtonBridge*(component: KryonComponent; event: ptr KryonEvent) {.cdecl.} =
   runtimeTrace("[kryon][runtime] Button clicked! Component: " & $cast[uint](component))

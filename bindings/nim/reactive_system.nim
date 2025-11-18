@@ -196,6 +196,10 @@ proc triggerReactiveUpdates*() =
     updateProc()
 
 # ============================================================================
+# Note: Reactive component expressions are handled by the existing ReactiveConditional system
+# ============================================================================
+
+# ============================================================================
 # Automatic Reactive Variable Conversion
 # ============================================================================
 
@@ -290,5 +294,21 @@ proc updateAllReactiveConditionals*() =
           cond.lastCondition = currentCondition
           cond.initialized = true
           kryon_component_mark_dirty(cond.parent)
+
+          # Force layout recalculation to ensure newly added components get proper bounds
+          # This is critical for reactive components to be visible to the event system
+          var parentX, parentY, parentWidth, parentHeight: KryonFp
+          kryon_component_get_absolute_bounds(cond.parent, addr parentX, addr parentY, addr parentWidth, addr parentHeight)
+          echo "[kryon][reactive] Layout: parent bounds before: ", parentX, ", ", parentY, ", w=", parentWidth, ", h=", parentHeight
+          kryon_layout_component(cond.parent, parentWidth, parentHeight)
+          kryon_component_get_absolute_bounds(cond.parent, addr parentX, addr parentY, addr parentWidth, addr parentHeight)
+          echo "[kryon][reactive] Layout: parent bounds after: ", parentX, ", ", parentY, ", w=", parentWidth, ", h=", parentHeight
+
+          # Debug: Log child component bounds
+          for i, child in newChildren:
+            if child != nil:
+              var childX, childY, childWidth, childHeight: KryonFp
+              kryon_component_get_absolute_bounds(child, addr childX, addr childY, addr childWidth, addr childHeight)
+              echo "[kryon][reactive] Layout: child[", i, "] bounds: ", childX, ", ", childY, ", w=", childWidth, ", h=", childHeight
       except Exception as e:
         echo "[kryon][reactive] Error updating conditional: ", e.msg

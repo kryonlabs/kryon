@@ -431,7 +431,7 @@ macro kryonApp*(body: untyped): untyped =
     var synthesizedBody = newTree(nnkStmtList)
     for child in pendingChildren:
       synthesizedBody.add(child)
-    bodyNode = newTree(nnkCall, ident("Body"), synthesizedBody)
+    bodyNode = newTree(nnkCall, ident("Body"), synthesizedBody, copyNimTree(windowWidth), copyNimTree(windowHeight))
   elif pendingChildren.len > 0:
     if bodyNode.len >= 2 and bodyNode[1].kind == nnkStmtList:
       for child in pendingChildren:
@@ -926,7 +926,152 @@ macro Container*(props: untyped): untyped =
       `initStmts`
       `containerName`
 
-macro Body*(props: untyped): untyped =
+proc convertCaseStmtToReactiveConditional*(caseStmt: NimNode, windowWidth: NimNode, windowHeight: NimNode): NimNode =
+  ## Convert a case statement to reactive component expression
+  ## Creates a reactive container that evaluates the case statement and returns the appropriate component
+  let caseExpr = caseStmt[0]
+
+  # Create a container for the reactive expression
+  let containerSym = genSym(nskLet, "caseContainer")
+
+  # Build if-elif chain for component evaluation
+  var ifChain = newNimNode(nnkIfStmt)
+
+  # Process each branch
+  for i in 1..<caseStmt.len:
+    let branch = caseStmt[i]
+    if branch.kind == nnkOfBranch:
+      # Extract the value(s) and the body
+      let ofValues = branch[0]
+      let branchBody = branch[1]
+
+      # Create condition for this branch
+      var condition: NimNode
+      if ofValues.kind == nnkCurly:  # Multiple values: {val1, val2, val3}
+        # Create (caseExpr == val1 or caseExpr == val2 or caseExpr == val3)
+        condition = newNimNode(nnkInfix).add(ident("or"))
+        for j in 0..<ofValues.len:
+          let eqCheck = newNimNode(nnkInfix).add(ident("=="), caseExpr, ofValues[j])
+          if j == 0:
+            condition[0] = eqCheck
+          elif j == 1:
+            condition[1] = eqCheck
+          else:
+            # Nest or operations for more than 2 values
+            let newOr = newNimNode(nnkInfix).add(ident("or"), condition, eqCheck)
+            condition = newOr
+      else:
+        # Single value: caseExpr == value
+        condition = newNimNode(nnkInfix).add(ident("=="), caseExpr, ofValues)
+
+      # Add branch to if-elif chain
+      ifChain.add(newNimNode(nnkElifBranch).add(condition, branchBody))
+
+  # Create a modified if-elif chain where each branch returns the component
+  var returnIfChain = newNimNode(nnkIfStmt)
+
+  # Process each branch and add return statements
+  for i in 1..<caseStmt.len:
+    let branch = caseStmt[i]
+    if branch.kind == nnkOfBranch:
+      # Extract the value(s) and the body
+      let ofValues = branch[0]
+      let branchBody = branch[1]
+
+      # Create condition for this branch
+      var condition: NimNode
+      if ofValues.kind == nnkCurly:  # Multiple values: {val1, val2, val3}
+        condition = newNimNode(nnkInfix).add(ident("or"))
+        for j in 0..<ofValues.len:
+          let eqCheck = newNimNode(nnkInfix).add(ident("=="), caseExpr, ofValues[j])
+          if j == 0:
+            condition[0] = eqCheck
+          elif j == 1:
+            condition[1] = eqCheck
+          else:
+            let newOr = newNimNode(nnkInfix).add(ident("or"), condition, eqCheck)
+            condition = newOr
+      else:
+        condition = newNimNode(nnkInfix).add(ident("=="), caseExpr, ofValues)
+
+      # Wrap the branch body in a return statement
+      let returnStmt = newNimNode(nnkReturnStmt).add(branchBody)
+
+      # Add branch with return
+      returnIfChain.add(newNimNode(nnkElifBranch).add(condition, returnStmt))
+
+  # Handle else branch if present
+  let lastBranch = caseStmt[caseStmt.len - 1]
+  if lastBranch.kind == nnkElse:
+    let elseBody = lastBranch[0]
+    let returnStmt = newNimNode(nnkReturnStmt).add(elseBody)
+    returnIfChain.add(newNimNode(nnkElse).add(returnStmt))
+
+  # Generate code that uses the existing reactive conditional system
+  # Convert case statement to if-elif chain with reactive conditionals for each branch
+  var reactiveCode = newStmtList()
+
+  # Create the main container with window-filling dimensions using Container DSL
+  reactiveCode.add quote do:
+    let `containerSym` = Container:
+      width = `windowWidth`
+      height = `windowHeight`
+
+  # For each case branch, create a reactive conditional
+  for i in 1..<caseStmt.len:
+    let branch = caseStmt[i]
+    if branch.kind == nnkOfBranch:
+      # Extract the value(s) and the body
+      let ofValues = branch[0]
+      let branchBody = branch[1]
+
+      # Create condition for this branch
+      var condition: NimNode
+      if ofValues.kind == nnkCurly:  # Multiple values: {val1, val2, val3}
+        # Create (caseExpr == val1 or caseExpr == val2 or caseExpr == val3)
+        condition = newNimNode(nnkInfix).add(ident("or"))
+        for j in 0..<ofValues.len:
+          let eqCheck = newNimNode(nnkInfix).add(ident("=="), caseExpr, ofValues[j])
+          if j == 0:
+            condition[0] = eqCheck
+          elif j == 1:
+            condition[1] = eqCheck
+          else:
+            let newOr = newNimNode(nnkInfix).add(ident("or"), condition, eqCheck)
+            condition = newOr
+      else:
+        # Single value: caseExpr == value
+        condition = newNimNode(nnkInfix).add(ident("=="), caseExpr, ofValues)
+
+      # Create reactive conditional for this specific condition using quote
+      let conditionProc = genSym(nskProc, "conditionProc")
+      let thenProc = genSym(nskProc, "thenProc")
+
+      reactiveCode.add newProc(
+        conditionProc,
+        params = [ident("bool")],
+        body = newStmtList(condition),
+        procType = nnkProcDef
+      )
+
+      reactiveCode.add newProc(
+        thenProc,
+        params = [newTree(nnkBracketExpr, ident("seq"), ident("KryonComponent"))],
+        body = newStmtList(
+          newCall(ident("@"), newNimNode(nnkBracket).add(branchBody))
+        ),
+        procType = nnkProcDef
+      )
+
+      reactiveCode.add quote do:
+        createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil)
+
+  # Return the container
+  reactiveCode.add(containerSym)
+
+  result = reactiveCode
+
+macro Body*(props: untyped, windowWidth: untyped = nil, windowHeight: untyped = nil): untyped =
   ## Body macro - top-level container that fills the window by default
   var
     bodyStmt = newTree(nnkStmtList)
@@ -972,7 +1117,35 @@ macro Body*(props: untyped): untyped =
 
   # Then add user properties (including width/height from ensureBodyDimensions)
   for node in props.children:
-    bodyStmt.add(node)
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii():
+      of "backgroundcolor":
+        backgroundSet = true
+      of "posx", "x":
+        posXSet = true
+      of "posy", "y":
+        posYSet = true
+      of "flexgrow":
+        flexGrowSet = true
+      of "width":
+        widthSet = true
+      of "height":
+        heightSet = true
+      of "layoutdirection":
+        layoutDirectionSet = true
+      bodyStmt.add(node)
+    elif node.kind == nnkCaseStmt:
+      # Convert case statement to reactive conditional using existing infrastructure
+      echo "[kryon][case] Converting case statement to reactive conditional"
+      # Use provided window dimensions or defaults
+      let bodyWidth = if windowWidth != nil: windowWidth else: newIntLitNode(800)
+      let bodyHeight = if windowHeight != nil: windowHeight else: newIntLitNode(600)
+      let reactiveResult = convertCaseStmtToReactiveConditional(node, bodyWidth, bodyHeight)
+      bodyStmt.add(reactiveResult)
+    else:
+      # Regular node - add as-is
+      bodyStmt.add(node)
 
   result = newTree(nnkCall, ident("Container"), bodyStmt)
 
@@ -2546,3 +2719,4 @@ proc parseNamedColor*(name: string): uint32 =
 
   else:
     result = rgba(128, 128, 128, 255)  # Default to gray
+

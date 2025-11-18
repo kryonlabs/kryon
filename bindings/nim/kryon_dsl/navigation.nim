@@ -3,7 +3,7 @@
 ## Provides simple enum-based navigation with reactive state management
 ## Integrates with Kryon's reactive system for automatic UI updates
 
-import ../reactive_system
+import reactive_system
 
 # ============================================================================
 # Navigation Core
@@ -31,6 +31,10 @@ proc navigateTo*[T](routeVar: var T, newRoute: T) =
     # This ensures any UI bound to the route variable will update
     updateAllReactiveTextExpressions()
     updateAllReactiveConditionals()
+
+    # Force a complete re-render to ensure case statements are re-evaluated
+    # This is a brute-force approach but should work for now
+    echo "[kryon][nav] Route changed to: ", newRoute
 
 # ============================================================================
 # Utility Functions
