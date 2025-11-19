@@ -2,7 +2,7 @@
 ##
 ## Provides the runtime bridge between Nim DSL and C core engine
 
-import core_kryon, core_kryon_canvas, os, strutils, tables
+import core_kryon, core_kryon_canvas, os, strutils, tables, math
 import reactive_system
 
 template runtimeTrace(msg: string) =
@@ -20,6 +20,7 @@ type
     window*: KryonWindow
     running*: bool
     rendererPreinitialized*: bool
+    focusedComponent*: KryonComponent
 
   KryonWindow* = ref object
     width*: int
@@ -286,8 +287,18 @@ proc run*(app: KryonApp) =
             if isPressed and evt.param == 27'u32:
               app.running = false
               break
+            
+            # Dispatch to focused component
+            if app.focusedComponent != nil:
+              kryon_component_send_event(app.focusedComponent, addr evt)
+
           of KryonEventType.Click:
             runtimeTrace("[kryon][runtime] Dispatching click event to components")
+            
+            # Update focus
+            let target = kryon_event_find_target_at_point(app.root, evt.x, evt.y)
+            app.focusedComponent = target
+            
             dispatchPointerEvent(app, evt)
           of KryonEventType.Hover:
             updateHoverState(app, evt)
@@ -1257,3 +1268,221 @@ proc newDrawingContext*(width, height: int): DrawingContext =
 proc clearBackground*(ctx: DrawingContext, width, height: int, color: uint32) =
   ## Clear the drawing context background
   kryonCanvasClearColor(color)
+
+# ============================================================================
+# Input Component Implementation (Nim-side)
+# ============================================================================
+
+type
+  KryonInputState* = ref object
+    text*: string
+    placeholder*: string
+    onTextChange*: proc(text: string)
+    textColor*: uint32
+    backgroundColor*: uint32
+    borderColor*: uint32
+    cursorPos*: int
+    scrollOffset*: float
+    isFocused*: bool
+
+var inputRegistry = initTable[uint, KryonInputState]()
+var kryon_input_ops: KryonComponentOps
+
+proc input_render(component: KryonComponent; buf: KryonCmdBuf) {.cdecl.} =
+  let key = cast[uint](component)
+  if not inputRegistry.hasKey(key): return
+  let state = inputRegistry[key]
+  
+  var x, y, w, h: KryonFp
+  kryon_component_get_absolute_bounds(component, addr x, addr y, addr w, addr h)
+  let ix = int16(fromKryonFp(x))
+  let iy = int16(fromKryonFp(y))
+  let iw = uint16(fromKryonFp(w))
+  let ih = uint16(fromKryonFp(h))
+  
+  # Draw background
+  let bgColor = if state.backgroundColor != 0: state.backgroundColor else: kryon_color_rgba(255, 255, 255, 255)
+  discard kryon_draw_rect(buf, ix, iy, iw, ih, bgColor)
+  
+  # Draw border - 1px width
+  let borderColor = if state.borderColor != 0: state.borderColor else: kryon_color_rgba(204, 204, 204, 255)
+  discard kryon_draw_rect(buf, ix, iy, iw, 1, borderColor) # Top
+  discard kryon_draw_rect(buf, ix, iy + int16(ih) - 1, iw, 1, borderColor) # Bottom
+  discard kryon_draw_rect(buf, ix, iy, 1, ih, borderColor) # Left
+  discard kryon_draw_rect(buf, ix + int16(iw) - 1, iy, 1, ih, borderColor) # Right
+  
+  const CHAR_WIDTH = 8.0
+  let padding = 5.0
+  let contentWidth = float(iw) - (padding * 2)
+  
+  # Draw text with scrolling
+  let displayText = if state.text.len > 0: state.text else: state.placeholder
+  var textColor = state.textColor
+  if textColor == 0:
+    if state.text.len > 0:
+      textColor = kryon_color_rgba(0, 0, 0, 255)
+    else:
+      textColor = kryon_color_rgba(136, 136, 136, 255)
+  
+  # Calculate visible range
+  # We assume monospace font for now (approx 8px width)
+  let startIdx = int(state.scrollOffset / CHAR_WIDTH)
+  let visibleChars = int(contentWidth / CHAR_WIDTH) + 2 # +2 for partial chars
+  let endIdx = min(startIdx + visibleChars, displayText.len)
+  
+  if startIdx < displayText.len:
+    let visibleText = displayText[startIdx ..< endIdx]
+    let textX = float(ix) + padding + (float(startIdx) * CHAR_WIDTH) - state.scrollOffset
+    
+    # Simple clipping check (only draw if within bounds)
+    if textX + (float(visibleText.len) * CHAR_WIDTH) > float(ix) and textX < float(ix) + float(iw):
+      discard kryon_draw_text(buf, cstring(visibleText), int16(textX), iy + 10, 0, 14, 0, 0, textColor)
+
+  # Draw Cursor
+  if state.isFocused and state.text.len >= 0: # Draw cursor even if empty
+    let cursorX = (float(state.cursorPos) * CHAR_WIDTH) - state.scrollOffset
+    let drawCursorX = float(ix) + padding + cursorX
+    
+    # Only draw cursor if visible within content area
+    if drawCursorX >= float(ix) and drawCursorX <= float(ix) + float(iw):
+      let cursorColor = kryon_color_rgba(0, 0, 0, 255)
+      discard kryon_draw_rect(buf, int16(drawCursorX), iy + 5, 1, ih - 10, cursorColor)
+
+proc input_onEvent(component: KryonComponent; evt: ptr KryonEvent): bool {.cdecl.} =
+  let key = cast[uint](component)
+  if not inputRegistry.hasKey(key): return false
+  let state = inputRegistry[key]
+  
+  # Constants for key handling (SDL3 Keycodes)
+  const
+    SDLK_RIGHT = 1073741903'u32
+    SDLK_LEFT = 1073741904'u32
+    SDLK_HOME = 1073741898'u32
+    SDLK_END = 1073741901'u32
+    SDLK_DELETE = 127'u32
+    CHAR_WIDTH = 8.0 # Approx width per char
+  
+  # Focus handling
+  if evt.`type` == KryonEventType.Focus:
+    state.isFocused = true
+    kryon_component_mark_dirty(component)
+    return true
+  elif evt.`type` == KryonEventType.Blur:
+    state.isFocused = false
+    kryon_component_mark_dirty(component)
+    return true
+  
+  if evt.`type` == KryonEventType.Click:
+    var widthPtr, heightPtr: KryonFp
+    var xPtr, yPtr: KryonFp
+    kryon_component_get_absolute_bounds(component, addr xPtr, addr yPtr, addr widthPtr, addr heightPtr)
+    
+    let absX = float(fromKryonFp(xPtr))
+    let padding = 5.0
+    let clickX = float(evt.x) - absX - padding + state.scrollOffset
+    
+    # Calculate index from click position (approx)
+    var newPos = int(round(clickX / CHAR_WIDTH))
+    if newPos < 0: newPos = 0
+    if newPos > state.text.len: newPos = state.text.len
+    
+    state.cursorPos = newPos
+    kryon_component_mark_dirty(component)
+    return true
+
+  if evt.`type` == KryonEventType.Key:
+    let pressedVal = if evt.data.isNil: 0'u else: cast[uint](evt.data)
+    if pressedVal == 1'u: # Key down
+      let keyCode = evt.param
+      var handled = false
+      
+      # Navigation
+      if keyCode == SDLK_LEFT:
+        if state.cursorPos > 0:
+          state.cursorPos.dec
+          handled = true
+      elif keyCode == SDLK_RIGHT:
+        if state.cursorPos < state.text.len:
+          state.cursorPos.inc
+          handled = true
+      elif keyCode == SDLK_HOME:
+        state.cursorPos = 0
+        handled = true
+      elif keyCode == SDLK_END:
+        state.cursorPos = state.text.len
+        handled = true
+        
+      # Editing
+      elif keyCode == 8: # Backspace
+        if state.cursorPos > 0 and state.text.len > 0:
+          state.text.delete(state.cursorPos - 1, state.cursorPos - 1)
+          state.cursorPos.dec
+          if state.onTextChange != nil: state.onTextChange(state.text)
+          handled = true
+      elif keyCode == SDLK_DELETE: # Delete
+        if state.cursorPos < state.text.len:
+          state.text.delete(state.cursorPos, state.cursorPos)
+          if state.onTextChange != nil: state.onTextChange(state.text)
+          handled = true
+      # Printable characters (32-126)
+      elif keyCode >= 32 and keyCode <= 126:
+        state.text.insert($char(keyCode), state.cursorPos)
+        state.cursorPos.inc
+        if state.onTextChange != nil: state.onTextChange(state.text)
+        handled = true
+        
+      if handled:
+        # Update scroll offset to keep cursor visible
+        var widthPtr, heightPtr: KryonFp
+        var xPtr, yPtr: KryonFp
+        kryon_component_get_absolute_bounds(component, addr xPtr, addr yPtr, addr widthPtr, addr heightPtr)
+        let width = float(fromKryonFp(widthPtr)) - 16.0 # Subtract padding
+        
+        let cursorX = float(state.cursorPos) * CHAR_WIDTH
+        
+        if cursorX < state.scrollOffset:
+          state.scrollOffset = cursorX
+        elif cursorX > state.scrollOffset + width:
+          state.scrollOffset = cursorX - width
+          
+        kryon_component_mark_dirty(component)
+        return true
+        
+  return false
+
+proc input_destroy(component: KryonComponent) {.cdecl.} =
+  let key = cast[uint](component)
+  if inputRegistry.hasKey(key):
+    inputRegistry.del(key)
+
+proc newKryonInput*(
+    placeholder: string = "";
+    value: string = "";
+    onTextChange: proc(text: string) = nil;
+    textColor: uint32 = 0;
+    backgroundColor: uint32 = 0;
+    borderColor: uint32 = 0
+  ): KryonComponent =
+  # Initialize ops if needed
+  if kryon_input_ops.render == nil:
+    kryon_input_ops.render = input_render
+    kryon_input_ops.onEvent = input_onEvent
+    kryon_input_ops.destroy = input_destroy
+    # Use container layout logic
+    kryon_input_ops.layout = kryon_container_ops.layout
+  
+  result = kryon_component_create(addr kryon_input_ops, nil)
+  
+  let state = KryonInputState(
+    text: value,
+    placeholder: placeholder,
+    onTextChange: onTextChange,
+    textColor: textColor,
+    backgroundColor: backgroundColor,
+    borderColor: borderColor,
+    cursorPos: value.len,
+    scrollOffset: 0.0,
+    isFocused: false
+  )
+  
+  inputRegistry[cast[uint](result)] = state

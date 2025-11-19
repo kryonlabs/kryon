@@ -85,7 +85,7 @@ type
 
   KryonComponentOps* {.importc: "kryon_component_ops_t", bycopy, header: "kryon.h".} = object
     render*: proc (self: KryonComponent; buf: KryonCmdBuf) {.cdecl.}
-    onEvent*: proc (self: KryonComponent; evt: ptr KryonEvent): bool {.cdecl.}
+    onEvent* {.importc: "on_event".}: proc (self: KryonComponent; evt: ptr KryonEvent): bool {.cdecl.}
     destroy*: proc (self: KryonComponent) {.cdecl.}
     layout*: proc (self: KryonComponent; availableWidth: KryonFp; availableHeight: KryonFp) {.cdecl.}
 

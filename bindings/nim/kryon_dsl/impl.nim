@@ -1883,16 +1883,20 @@ macro Checkbox*(props: untyped): untyped =
       `checkboxName`
 
 macro Input*(props: untyped): untyped =
-  ## Input component macro (placeholder implementation)
-  ## TODO: Implement proper text input once C core supports it
+  ## Input component macro
+  ## Note: Text editing not yet supported by C core, shows as styled container
   var
     inputName = genSym(nskLet, "input")
     placeholderVal: NimNode = newStrLitNode("")
     valueVal: NimNode = newStrLitNode("")
-    widthVal: NimNode = newIntLitNode(200)
-    heightVal: NimNode = newIntLitNode(40)
+    widthVal: NimNode = nil
+    heightVal: NimNode = nil
+    posXVal: NimNode = nil
+    posYVal: NimNode = nil
     backgroundColorVal: NimNode = nil
     textColorVal: NimNode = nil
+    borderColorVal: NimNode = nil
+    borderWidthVal: NimNode = nil
     fontSizeVal: NimNode = newIntLitNode(14)
     onTextChangeVal: NimNode = nil
     childNodes: seq[NimNode] = @[]
@@ -1903,22 +1907,32 @@ macro Input*(props: untyped): untyped =
       let propName = $node[0]
       case propName.toLowerAscii():
       of "placeholder":
-        if node[1].kind == nnkStrLit:
-          placeholderVal = node[1]
+        placeholderVal = node[1]
       of "value":
         valueVal = node[1]
       of "width":
         widthVal = node[1]
       of "height":
         heightVal = node[1]
+      of "posx", "x":
+        posXVal = node[1]
+      of "posy", "y":
+        posYVal = node[1]
       of "backgroundcolor":
         backgroundColorVal = colorNode(node[1])
       of "textcolor", "color":
         textColorVal = colorNode(node[1])
+      of "bordercolor":
+        borderColorVal = colorNode(node[1])
+      of "borderwidth":
+        borderWidthVal = node[1]
       of "fontsize":
         fontSizeVal = node[1]
       of "ontextchange":
         onTextChangeVal = node[1]
+      of "inputtype", "min", "max", "step", "accept":
+        # Store these for future implementation
+        discard
       else:
         discard
     else:
@@ -1926,54 +1940,64 @@ macro Input*(props: untyped): untyped =
 
   var initStmts = newTree(nnkStmtList)
 
-  # Set background color (default light gray for input field)
-  if backgroundColorVal != nil:
-    initStmts.add quote do:
-      kryon_component_set_background_color(`inputName`, `backgroundColorVal`)
-  else:
-    initStmts.add quote do:
-      kryon_component_set_background_color(`inputName`, 0xF5F5F5FF'u32)
+  # Use bounds_mask to allow layout system to position the input
+  let xExpr = if posXVal != nil: posXVal else: newIntLitNode(0)
+  let yExpr = if posYVal != nil: posYVal else: newIntLitNode(0)
+  let wExpr = if widthVal != nil: widthVal else: newIntLitNode(200)
+  let hExpr = if heightVal != nil: heightVal else: newIntLitNode(40)
 
-  # Set border to indicate it's an input field
-  initStmts.add quote do:
-    kryon_component_set_border_width(`inputName`, 1)
-    kryon_component_set_border_color(`inputName`, 0xCCCCCCFF'u32)
+  var maskVal = 0
+  if posXVal != nil: maskVal = maskVal or 0x01
+  if posYVal != nil: maskVal = maskVal or 0x02
+  if widthVal != nil: maskVal = maskVal or 0x04
+  if heightVal != nil: maskVal = maskVal or 0x08
+  let maskCast = newCall(ident("uint8"), newIntLitNode(maskVal))
 
-  # Set size
   initStmts.add quote do:
-    kryon_component_set_bounds(`inputName`, toFixed(0), toFixed(0), toFixed(`widthVal`), toFixed(`heightVal`))
+    kryon_component_set_bounds_mask(`inputName`,
+      toFixed(`xExpr`),
+      toFixed(`yExpr`),
+      toFixed(`wExpr`),
+      toFixed(`hExpr`),
+      `maskCast`)
 
   # Add padding
   initStmts.add quote do:
     kryon_component_set_padding(`inputName`, 8, 8, 8, 8)
 
-  # Create text component for input value (use value, not placeholder)
-  let textSym = genSym(nskLet, "inputText")
-  # Use the actual value, fallback to placeholder if empty
-  let displayText = quote do:
-    if `valueVal`.len > 0: `valueVal` else: `placeholderVal`
-
-  if textColorVal != nil:
-    initStmts.add quote do:
-      let `textSym` = newKryonText(`displayText`, `fontSizeVal`, 0, 0)
-      kryon_component_set_text_color(`textSym`, `textColorVal`)
-      discard kryon_component_add_child(`inputName`, `textSym`)
-  else:
-    initStmts.add quote do:
-      let `textSym` = newKryonText(`displayText`, `fontSizeVal`, 0, 0)
-      kryon_component_set_text_color(`textSym`, 0x333333FF'u32)  # Darker text for input
-      discard kryon_component_add_child(`inputName`, `textSym`)
-
-  # Add any child components
+  # Add any child components (though Input usually doesn't have children)
   for child in childNodes:
     initStmts.add quote do:
       let childComponent = `child`
       if childComponent != nil:
         discard kryon_component_add_child(`inputName`, childComponent)
 
+  let onTextChangeExpr = if onTextChangeVal != nil: onTextChangeVal else: newNilLit()
+  
+  # Prepare color expressions
+  let textColorExpr = if textColorVal != nil:
+    if textColorVal.kind == nnkStrLit: newCall(ident("parseHexColor"), textColorVal) else: textColorVal
+  else: newIntLitNode(0)
+  
+  let bgColorExpr = if backgroundColorVal != nil:
+    if backgroundColorVal.kind == nnkStrLit: newCall(ident("parseHexColor"), backgroundColorVal) else: backgroundColorVal
+  else: newIntLitNode(0)
+  
+  let borderColorExpr = if borderColorVal != nil:
+    if borderColorVal.kind == nnkStrLit: newCall(ident("parseHexColor"), borderColorVal) else: borderColorVal
+  else: newIntLitNode(0)
+
   result = quote do:
     block:
-      let `inputName` = newKryonContainer()
+      # Use the new Nim-side Input component implementation
+      let `inputName` = newKryonInput(
+        `placeholderVal`, 
+        `valueVal`, 
+        `onTextChangeExpr`,
+        `textColorExpr`,
+        `bgColorExpr`,
+        `borderColorExpr`
+      )
       `initStmts`
       kryon_component_mark_dirty(`inputName`)
       `inputName`
@@ -2721,3 +2745,244 @@ macro staticFor*(loopStmt, bodyStmt: untyped): untyped =
 # ============================================================================
 # DSL Implementation Complete
 # ============================================================================
+# New input components to add to impl.nim after the Spacer macro
+
+macro RadioGroup*(props: untyped): untyped =
+  ## Radio button group component  
+  ## Groups radio buttons and manages single selection
+  var
+    groupName = genSym(nskLet, "radioGroup")
+    nameVal = newStrLitNode("radiogroup")
+    selectedIndexVal = newIntLitNode(0)
+    childNodes: seq[NimNode] = @[]
+    gapVal = newIntLitNode(8)
+    
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii():
+      of "name":
+        nameVal = node[1]
+      of "selectedindex":
+        selectedIndexVal = node[1]
+      of "gap":
+        gapVal = node[1]
+      else:
+        discard
+    else:
+      childNodes.add(node)
+  
+  result = quote do:
+    block:
+      let `groupName` = Column:
+        gap = `gapVal`
+      `groupName`
+
+
+macro RadioButton*(props: untyped): untyped =
+  ## Individual radio button component
+  var
+    labelVal = newStrLitNode("")
+    valueVal = newIntLitNode(0)
+    clickHandler = newNilLit()
+    
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii():
+      of "label":
+        labelVal = node[1]
+      of "value":
+        valueVal = node[1]
+      of "onclick":
+        clickHandler = node[1]
+      else:
+        discard
+  
+  # For now, render as checkbox until we have proper radio support
+  result = quote do:
+    Checkbox:
+      label = `labelVal`
+      checked = false
+      onClick = `clickHandler`
+
+macro Slider*(props: untyped): untyped =
+  ## Slider/Range input component
+  var
+    valueVal = newIntLitNode(50)
+    minVal = newIntLitNode(0)
+    maxVal = newIntLitNode(100)
+    stepVal = newIntLitNode(1)
+    widthVal = newIntLitNode(200)
+    heightVal = newIntLitNode(30)
+    changeHandler = newNilLit()
+    
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii():
+      of "value":
+        valueVal = node[1]
+      of "min":
+        minVal = node[1]
+      of "max":
+        maxVal = node[1]
+      of "step":
+        stepVal = node[1]
+      of "width":
+        widthVal = node[1]
+      of "height":
+        heightVal = node[1]
+      of "onchange":
+        changeHandler = node[1]
+      else:
+        discard
+  
+  # Placeholder: render as a container with text showing value
+  result = quote do:
+    Container:
+      width = `widthVal`
+      height = `heightVal`
+      backgroundColor = "#ddd"
+      layoutDirection = 1  # Row
+      
+      # Progress bar
+      Container:
+        width = (`valueVal` * `widthVal`) div `maxVal`
+        height = `heightVal`
+        backgroundColor = "#3498db"
+
+macro TextArea*(props: untyped): untyped =
+  ## Multi-line text input component
+  var
+    textareaName = genSym(nskLet, "textarea")
+    placeholderVal = newStrLitNode("")
+    valueVal = newStrLitNode("")
+
+    widthVal = newIntLitNode(300)
+    heightVal = newIntLitNode(100)
+    backgroundColorVal: NimNode = nil
+    textColorVal: NimNode = nil
+    borderColorVal: NimNode = nil
+    borderWidthVal: NimNode = nil
+    changeHandler = newNilLit()
+    
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii():
+      of "placeholder":
+        placeholderVal = node[1]
+      of "value":
+        valueVal = node[1]
+      of "width":
+        widthVal = node[1]
+      of "height":
+        heightVal = node[1]
+      of "backgroundcolor":
+        backgroundColorVal = colorNode(node[1])
+      of "textcolor", "color":
+        textColorVal = colorNode(node[1])
+      of "bordercolor":
+        borderColorVal = colorNode(node[1])
+      of "borderwidth":
+        borderWidthVal = node[1]
+      of "ontextchange":
+        changeHandler = node[1]
+      else:
+        discard
+  
+  var initStmts = newTree(nnkStmtList)
+  
+  if backgroundColorVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_background_color(`textareaName`, `backgroundColorVal`)
+  
+  if textColorVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_text_color(`textareaName`, `textColorVal`)
+  
+  if borderColorVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_border_color(`textareaName`, `borderColorVal`)
+  
+  if borderWidthVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_border_width(`textareaName`, uint8(`borderWidthVal`))
+  
+  result = quote do:
+    block:
+      let `textareaName` = newKryonContainer()
+      kryon_component_set_bounds(`textareaName`,
+        toFixed(0), toFixed(0), toFixed(`widthVal`), toFixed(`heightVal`))
+      `initStmts`
+      # TODO: Implement actual multiline text editing
+      # For now, just a container
+      `textareaName`
+
+macro ColorPicker*(props: untyped): untyped =
+  ## Color picker component
+  var
+    valueVal = newStrLitNode("#000000")
+    widthVal = newIntLitNode(60)
+    heightVal = newIntLitNode(35)
+    changeHandler = newNilLit()
+    
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii():
+      of "value":
+        valueVal = node[1]
+      of "width":
+        widthVal = node[1]
+      of "height":
+        heightVal = node[1]
+      of "onchange":
+        changeHandler = node[1]
+      else:
+        discard
+  
+  result = quote do:
+    Container:
+      width = `widthVal`
+      height = `heightVal`
+      backgroundColor = `valueVal`
+      borderColor = "#333"
+      borderWidth = 1
+
+macro FileInput*(props: untyped): untyped =
+  ## File upload input component
+  var
+    placeholderVal = newStrLitNode("Choose file...")
+    acceptVal = newStrLitNode("*")
+    widthVal = newIntLitNode(300)
+    heightVal = newIntLitNode(35)
+    changeHandler = newNilLit()
+    
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii():
+      of "placeholder":
+        placeholderVal = node[1]
+      of "accept":
+        acceptVal = node[1]
+      of "width":
+        widthVal = node[1]
+      of "height":
+        heightVal = node[1]
+      of "onchange":
+        changeHandler = node[1]
+      else:
+        discard
+  
+  result = quote do:
+    Button:
+      text = `placeholderVal`
+      width = `widthVal`
+      height = `heightVal`
+      backgroundColor = "#ecf0f1"
+      textColor = "#7f8c8d"
+      onClick = proc() =
+        echo "File input clicked - not yet implemented"
