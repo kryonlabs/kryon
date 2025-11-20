@@ -1,0 +1,296 @@
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+#include "../../ir/ir_core.h"
+#include "ir_web_renderer.h"
+#include "html_generator.h"
+#include "css_generator.h"
+#include "wasm_bridge.h"
+
+// Web IR Renderer Context
+typedef struct WebIRRenderer {
+    HTMLGenerator* html_generator;
+    CSSGenerator* css_generator;
+    WASMBridge* wasm_bridge;
+    char output_directory[256];
+    bool generate_separate_files;
+    bool include_javascript_runtime;
+    bool include_wasm_modules;
+} WebIRRenderer;
+
+// JavaScript runtime template
+static const char* javascript_runtime_template =
+"// Kryon Web Runtime\n"
+"// Auto-generated JavaScript for IR component interaction\n\n"
+"let kryon_components = new Map();\n"
+"let kryon_handlers = new Map();\n\n"
+"function kryon_handle_click(component_id, handler_id) {\n"
+"    console.log('Click on component', component_id, 'handler:', handler_id);\n"
+"    // TODO: Call WASM handler when implemented\n"
+"}\n\n"
+"function kryon_handle_hover(component_id, handler_id) {\n"
+"    console.log('Hover on component', component_id, 'handler:', handler_id);\n"
+"    // TODO: Call WASM handler when implemented\n"
+"}\n\n"
+"function kryon_handle_leave(component_id) {\n"
+"    console.log('Leave component', component_id);\n"
+"}\n\n"
+"function kryon_handle_focus(component_id) {\n"
+"    console.log('Focus component', component_id);\n"
+"}\n\n"
+"function kryon_handle_blur(component_id) {\n"
+"    console.log('Blur component', component_id);\n"
+"}\n\n"
+"// Initialize when DOM is ready\n"
+"document.addEventListener('DOMContentLoaded', function() {\n"
+"    console.log('Kryon Web Runtime initialized');\n"
+"    \n"
+"    // Find all Kryon components\n"
+"    const elements = document.querySelectorAll('[id^=\"kryon-\"]');\n"
+"    elements.forEach(element => {\n"
+"        const id = parseInt(element.id.replace('kryon-', ''));\n"
+"        kryon_components.set(id, element);\n"
+"    });\n"
+"    \n"
+"    console.log('Found', kryon_components.size, 'Kryon components');\n"
+"});\n\n";
+
+WebIRRenderer* web_ir_renderer_create() {
+    WebIRRenderer* renderer = malloc(sizeof(WebIRRenderer));
+    if (!renderer) return NULL;
+
+    renderer->html_generator = html_generator_create();
+    renderer->css_generator = css_generator_create();
+    renderer->wasm_bridge = wasm_bridge_create();
+
+    if (!renderer->html_generator || !renderer->css_generator || !renderer->wasm_bridge) {
+        if (renderer->html_generator) html_generator_destroy(renderer->html_generator);
+        if (renderer->css_generator) css_generator_destroy(renderer->css_generator);
+        if (renderer->wasm_bridge) wasm_bridge_destroy(renderer->wasm_bridge);
+        free(renderer);
+        return NULL;
+    }
+
+    strcpy(renderer->output_directory, ".");
+    renderer->generate_separate_files = true;
+    renderer->include_javascript_runtime = true;
+    renderer->include_wasm_modules = true;
+
+    return renderer;
+}
+
+void web_ir_renderer_destroy(WebIRRenderer* renderer) {
+    if (!renderer) return;
+
+    if (renderer->html_generator) {
+        html_generator_destroy(renderer->html_generator);
+    }
+    if (renderer->css_generator) {
+        css_generator_destroy(renderer->css_generator);
+    }
+    if (renderer->wasm_bridge) {
+        wasm_bridge_destroy(renderer->wasm_bridge);
+    }
+    free(renderer);
+}
+
+void web_ir_renderer_set_output_directory(WebIRRenderer* renderer, const char* directory) {
+    if (!renderer || !directory) return;
+
+    strncpy(renderer->output_directory, directory, sizeof(renderer->output_directory) - 1);
+    renderer->output_directory[sizeof(renderer->output_directory) - 1] = '\0';
+
+    if (renderer->wasm_bridge) {
+        wasm_bridge_set_output_directory(renderer->wasm_bridge, directory);
+    }
+}
+
+void web_ir_renderer_set_generate_separate_files(WebIRRenderer* renderer, bool separate) {
+    if (!renderer) return;
+    renderer->generate_separate_files = separate;
+}
+
+void web_ir_renderer_set_include_javascript_runtime(WebIRRenderer* renderer, bool include) {
+    if (!renderer) return;
+    renderer->include_javascript_runtime = include;
+}
+
+void web_ir_renderer_set_include_wasm_modules(WebIRRenderer* renderer, bool include) {
+    if (!renderer) return;
+    renderer->include_wasm_modules = include;
+}
+
+static bool generate_javascript_runtime(WebIRRenderer* renderer) {
+    if (!renderer || !renderer->include_javascript_runtime) return true;
+
+    char js_filename[512];
+    snprintf(js_filename, sizeof(js_filename), "%s/kryon.js", renderer->output_directory);
+
+    FILE* js_file = fopen(js_filename, "w");
+    if (!js_file) return false;
+
+    bool success = (fprintf(js_file, "%s", javascript_runtime_template) >= 0);
+    fclose(js_file);
+
+    return success;
+}
+
+static bool collect_wasm_modules(WebIRRenderer* renderer, IRComponent* component) {
+    if (!renderer || !renderer->wasm_bridge || !renderer->include_wasm_modules) {
+        return true; // Skip WASM if disabled
+    }
+
+    // Extract logic modules from IR
+    return wasm_bridge_extract_logic_from_ir(renderer->wasm_bridge, component);
+}
+
+bool web_ir_renderer_render(WebIRRenderer* renderer, IRComponent* root) {
+    if (!renderer || !root) return false;
+
+    printf("🌐 Rendering IR component tree to web format...\n");
+
+    // Create output directory if it doesn't exist
+    char mkdir_cmd[512];
+    snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p '%s'", renderer->output_directory);
+    if (system(mkdir_cmd) != 0) {
+        printf("Warning: Could not create output directory '%s'\n", renderer->output_directory);
+    }
+
+    // Generate HTML
+    if (renderer->generate_separate_files) {
+        char html_filename[512];
+        snprintf(html_filename, sizeof(html_filename), "%s/index.html", renderer->output_directory);
+
+        if (!html_generator_write_to_file(renderer->html_generator, root, html_filename)) {
+            printf("❌ Failed to write HTML file\n");
+            return false;
+        }
+        printf("✅ Generated HTML: %s\n", html_filename);
+    }
+
+    // Generate CSS
+    if (renderer->generate_separate_files) {
+        char css_filename[512];
+        snprintf(css_filename, sizeof(css_filename), "%s/kryon.css", renderer->output_directory);
+
+        if (!css_generator_write_to_file(renderer->css_generator, root, css_filename)) {
+            printf("❌ Failed to write CSS file\n");
+            return false;
+        }
+        printf("✅ Generated CSS: %s\n", css_filename);
+    }
+
+    // Generate JavaScript runtime
+    if (!generate_javascript_runtime(renderer)) {
+        printf("❌ Failed to write JavaScript runtime\n");
+        return false;
+    }
+    printf("✅ Generated JavaScript: %s/kryon.js\n", renderer->output_directory);
+
+    // Collect and process WASM modules
+    if (!collect_wasm_modules(renderer, root)) {
+        printf("❌ Failed to collect WASM modules\n");
+        return false;
+    }
+    printf("✅ Collected WASM modules\n");
+
+    // Generate WASM files and JavaScript bindings
+    if (renderer->include_wasm_modules && renderer->wasm_bridge) {
+        if (!wasm_bridge_write_runtime_loader(renderer->wasm_bridge, renderer->output_directory)) {
+            printf("❌ Failed to write WASM runtime loader\n");
+            return false;
+        }
+        printf("✅ Generated WASM runtime loader\n");
+    }
+
+    // Generate statistics
+    const char* html_buffer = html_generator_get_buffer(renderer->html_generator);
+    const char* css_buffer = css_generator_get_buffer(renderer->css_generator);
+
+    if (html_buffer && css_buffer) {
+        printf("📊 Generation Statistics:\n");
+        printf("   HTML size: %zu bytes\n", html_generator_get_size(renderer->html_generator));
+        printf("   CSS size: %zu bytes\n", css_generator_get_size(renderer->css_generator));
+        printf("   Output directory: %s\n", renderer->output_directory);
+    }
+
+    printf("🎉 Web rendering complete!\n");
+    return true;
+}
+
+bool web_ir_renderer_render_to_memory(WebIRRenderer* renderer, IRComponent* root,
+                                       char** html_output, char** css_output, char** js_output) {
+    if (!renderer || !root) return false;
+
+    // Generate HTML to memory
+    if (html_output) {
+        const char* html = html_generator_generate(renderer->html_generator, root);
+        *html_output = html ? strdup(html) : NULL;
+    }
+
+    // Generate CSS to memory
+    if (css_output) {
+        const char* css = css_generator_generate(renderer->css_generator, root);
+        *css_output = css ? strdup(css) : NULL;
+    }
+
+    // Generate JavaScript runtime to memory
+    if (js_output && renderer->include_javascript_runtime) {
+        *js_output = strdup(javascript_runtime_template);
+    }
+
+    return true;
+}
+
+bool web_ir_renderer_validate_ir(WebIRRenderer* renderer, IRComponent* root) {
+    if (!renderer || !root) return false;
+
+    printf("🔍 Validating IR component tree...\n");
+
+    // Basic validation
+    if (!ir_validate_component(root)) {
+        printf("❌ IR validation failed\n");
+        return false;
+    }
+
+    printf("✅ IR validation passed\n");
+    return true;
+}
+
+void web_ir_renderer_print_tree_info(WebIRRenderer* renderer, IRComponent* root) {
+    if (!renderer || !root) return;
+
+    printf("🌳 IR Component Tree Information:\n");
+    ir_print_component_info(root, 0);
+}
+
+// Utility functions for debugging
+void web_ir_renderer_print_stats(WebIRRenderer* renderer, IRComponent* root) {
+    if (!renderer || !root) return;
+
+    printf("📈 Web Renderer Statistics:\n");
+    printf("   Output directory: %s\n", renderer->output_directory);
+    printf("   Separate files: %s\n", renderer->generate_separate_files ? "Yes" : "No");
+    printf("   JS Runtime: %s\n", renderer->include_javascript_runtime ? "Yes" : "No");
+    printf("   HTML Generator: %s\n", renderer->html_generator ? "Created" : "Failed");
+    printf("   CSS Generator: %s\n", renderer->css_generator ? "Created" : "Failed");
+}
+
+// Convenience function for quick rendering
+bool web_render_ir_component(IRComponent* root, const char* output_dir) {
+    WebIRRenderer* renderer = web_ir_renderer_create();
+    if (!renderer) return false;
+
+    if (output_dir) {
+        web_ir_renderer_set_output_directory(renderer, output_dir);
+    }
+
+    bool success = web_ir_renderer_render(renderer, root);
+    web_ir_renderer_destroy(renderer);
+
+    return success;
+}

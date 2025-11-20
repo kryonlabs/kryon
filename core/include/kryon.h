@@ -966,6 +966,24 @@ typedef enum {
 #define KRYON_FONT_CACHE_SIZE  32
 #endif
 
+// ============================================================================
+// Generic Platform Abstraction APIs
+// ============================================================================
+
+// Generic Event System (implemented by platform backends)
+bool kryon_poll_event(kryon_event_t* event);
+bool kryon_is_mouse_button_down(uint8_t button);
+void kryon_get_mouse_position(int16_t* x, int16_t* y);
+bool kryon_is_key_down(uint32_t key_code);
+
+// Generic Font Management (implemented by platform backends)
+void kryon_add_font_search_path(const char* path);
+uint16_t kryon_load_font(const char* name, uint16_t size);
+void kryon_get_font_metrics(uint16_t font_id, uint16_t* width, uint16_t* height);
+
+// Generic Renderer Factory (implemented by platform backends)
+kryon_renderer_t* kryon_create_renderer(uint16_t width, uint16_t height, const char* title);
+
 // Version information
 #define KRYON_VERSION_MAJOR  1
 #define KRYON_VERSION_MINOR  0

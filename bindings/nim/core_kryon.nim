@@ -284,25 +284,20 @@ proc kryon_get_framebuffer_renderer_ops*(): ptr KryonRendererOps
 proc kryon_framebuffer_renderer_create*(width: uint16; height: uint16; bytesPerPixel: uint8): KryonRenderer
 {.pop.}
 
-## SDL3 Renderer Integration
-when defined(KRYON_SDL3):
-  {.push importc, cdecl, header: "sdl3.h", nodecl.}
-  proc kryon_sdl3_renderer_create*(width: uint16, height: uint16, title: cstring): KryonRenderer
-  proc kryon_sdl3_renderer_destroy*(renderer: KryonRenderer)
-  proc kryon_sdl3_poll_event*(event: ptr KryonEvent): bool
-  proc kryon_sdl3_apply_cursor_shape*(shape: uint8)
-  proc kryon_sdl3_is_mouse_button_down*(button: uint8): bool
+## Note: SDL3 and Desktop Renderer Integration has been migrated to the new IR system
+## Use ir_desktop.nim for desktop rendering functionality instead of legacy functions
 
-  ## Font management functions
-  proc kryon_sdl3_fonts_init*()
-  proc kryon_sdl3_fonts_shutdown*()
-  proc kryon_sdl3_load_font*(name: cstring, size: uint16): uint16
-  proc kryon_sdl3_unload_font*(font_id: uint16)
-  proc kryon_sdl3_add_font_search_path*(path: cstring)
-  proc kryon_sdl3_get_font_name*(font_id: uint16): cstring
-  proc kryon_sdl3_get_font_size*(font_id: uint16): uint16
-  proc kryon_sdl3_get_font_height*(font_id: uint16): uint16
-  {.pop.}
+## Generic Platform Abstraction APIs
+{.push importc, cdecl, header: "kryon.h", nodecl.}
+proc kryon_poll_event*(event: ptr KryonEvent): bool
+proc kryon_is_mouse_button_down*(button: uint8): bool
+proc kryon_get_mouse_position*(x, y: ptr int16)
+proc kryon_is_key_down*(key_code: uint32): bool
+proc kryon_add_font_search_path*(path: cstring)
+proc kryon_load_font*(name: cstring; size: uint16): uint16
+proc kryon_get_font_metrics*(font_id: uint16; width, height: ptr uint16)
+proc kryon_create_renderer*(width, height: uint16; title: cstring): KryonRenderer
+{.pop.}
 
 ## Terminal Renderer Integration
 when defined(KRYON_TERMINAL):

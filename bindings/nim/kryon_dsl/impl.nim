@@ -21,17 +21,14 @@ proc colorNode(value: NimNode): NimNode =
 
 proc alignmentNode(name: string): NimNode =
   let normalized = name.toLowerAscii()
-  let variant =
-    case normalized
-    of "center", "middle": "kaCenter"
-    of "end", "bottom", "right": "kaEnd"
-    of "stretch": "kaStretch"
-    of "spaceevenly": "kaSpaceEvenly"
-    of "spacearound": "kaSpaceAround"
-    of "spacebetween": "kaSpaceBetween"
-    else: "kaStart"
-  let alignSym = bindSym("KryonAlignment")
-  result = newTree(nnkDotExpr, alignSym, ident(variant))
+  case normalized
+  of "center", "middle": result = bindSym("kaCenter")
+  of "end", "bottom", "right": result = bindSym("kaEnd")
+  of "stretch": result = bindSym("kaStretch")
+  of "spaceevenly": result = bindSym("kaSpaceEvenly")
+  of "spacearound": result = bindSym("kaSpaceAround")
+  of "spacebetween": result = bindSym("kaSpaceBetween")
+  else: result = bindSym("kaStart")
 
 proc parseAlignmentValue(value: NimNode): NimNode =
   ## Parse alignment value and return KryonAlignment enum value for C API
@@ -413,10 +410,9 @@ macro kryonApp*(body: untyped): untyped =
     )
 
     # Set up renderer with window config
+    # Note: IR architecture defers renderer creation to run()
+    # initRenderer() just sets up config, returns nil placeholder
     let renderer = initRenderer(window.width, window.height, window.title)
-    if renderer == nil:
-      echo "Failed to initialize renderer"
-      quit(1)
 
     `appName`.setWindow(window)
     `appName`.setRenderer(renderer)
@@ -878,7 +874,7 @@ macro Container*(props: untyped): untyped =
 
   # Set layout direction first (most important)
   initStmts.add quote do:
-    kryon_component_set_layout_direction(`containerName`, uint8(`layoutDirectionVal`))
+    kryon_component_set_layout_direction(`containerName`, int(`layoutDirectionVal`))
 
   # Set layout alignment
   initStmts.add quote do:
@@ -1591,9 +1587,10 @@ macro Button*(props: untyped): untyped =
   let buttonBridgeSym = bindSym("nimButtonBridge")
   let registerHandlerSym = bindSym("registerButtonHandler")
 
+  # Create button (IR system handles events separately via registerButtonHandler)
   var buttonCall = newCall(newButtonSym, buttonText)
   if clickHandler.kind != nnkNilLit:
-    buttonCall = newCall(newButtonSym, buttonText, buttonBridgeSym)
+    # Register handler separately using IR event system
     initStmts.add quote do:
       `registerHandlerSym`(`buttonName`, `clickHandler`)
 
@@ -2225,31 +2222,37 @@ macro Column*(props: untyped): untyped =
 
 macro Center*(props: untyped): untyped =
   ## Convenience macro that centers its children both horizontally and vertically.
-  ## Uses explicit flex layout for proper centering regardless of parent layout.
-  var body = newTree(nnkStmtList)
-  var hasFlexGrow = false
+  ## Creates an IR_COMPONENT_CENTER which handles centering in the renderer.
+  let centerSym = genSym(nskLet, "center")
+  let newCenterSym = bindSym("newKryonCenter")
+  let addChildSym = bindSym("kryon_component_add_child")
 
-  # Check user properties for flexGrow override
+  var initStmts = newStmtList()
+  var childNodes: seq[NimNode] = @[]
+
+  # Process properties and children
   for node in props.children:
-    if node.kind == nnkAsgn and $node[0] == "flexGrow":
-      hasFlexGrow = true
+    if node.kind in {nnkCall, nnkCommand, nnkIdent}:
+      # This is a child component
+      childNodes.add(node)
+    elif node.kind == nnkAsgn:
+      # Property assignment - apply to center component
+      let propName = $node[0]
+      let propValue = node[1]
+      initStmts.add quote do:
+        when compiles(`centerSym`.`propName` = `propValue`):
+          `centerSym`.`propName` = `propValue`
 
-  # Set explicit layout direction to column flex layout for proper centering
-  body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(0))  # KRYON_LAYOUT_COLUMN
+  # Add children to center component
+  for child in childNodes:
+    initStmts.add quote do:
+      discard `addChildSym`(`centerSym`, `child`)
 
-  # Set flex properties for centering
-  body.add newTree(nnkAsgn, ident("justifyContent"), newStrLitNode("center"))
-  body.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
-
-  # Only set flexGrow if not provided by user - prevents layout conflicts with siblings
-  if not hasFlexGrow:
-    body.add newTree(nnkAsgn, ident("flexGrow"), newIntLitNode(1))
-
-  # Add user properties (allowing overrides)
-  for node in props.children:
-    body.add(node)
-
-  result = newTree(nnkCall, ident("Container"), body)
+  result = quote do:
+    block:
+      let `centerSym` = `newCenterSym`()
+      `initStmts`
+      `centerSym`
 
 # ============================================================================
 # Tabs

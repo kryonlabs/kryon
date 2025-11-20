@@ -10,29 +10,34 @@ set -e
 BUILD_DIR="build"
 BIN_DIR="bin"
 
-ensure_core_build() {
-    local core_lib="$BUILD_DIR/libkryon_core.a"
-    local need_core=0
+ensure_ir_build() {
+    local ir_lib="$BUILD_DIR/libkryon_ir.a"
+    local web_lib="$BUILD_DIR/libkryon_web.a"
+    local desktop_lib="$BUILD_DIR/libkryon_desktop.a"
+    local need_ir=0
 
-    if [ ! -f "$core_lib" ]; then
-        need_core=1
+    # Check if any IR libraries need building
+    if [ ! -f "$ir_lib" ] || [ ! -f "$web_lib" ] || [ ! -f "$desktop_lib" ]; then
+        need_ir=1
     else
         local newer_sources
-        newer_sources="$(find core -maxdepth 1 -name '*.c' -newer "$core_lib" -print -quit)"
+        newer_sources="$(find ir backends -maxdepth 3 -name '*.c' -newer "$ir_lib" -print -quit 2>/dev/null || true)"
         if [ -n "$newer_sources" ]; then
-            need_core=1
+            need_ir=1
         fi
     fi
 
-    if [ $need_core -eq 1 ]; then
-        echo "Building Kryon architecture..."
-        make -C core > /dev/null
-    fi
+    if [ $need_ir -eq 1 ]; then
+        echo "🚀 Building Universal IR system..."
 
-    local common_lib="$BUILD_DIR/libkryon_common.a"
-    if [ ! -f "$common_lib" ]; then
-        echo "Installing renderer helpers..."
-        make -C renderers/common install > /dev/null
+        echo "   🔧 Building IR core libraries..."
+        make -C ir all
+
+        echo "   🌐 Building web backend..."
+        make -C backends/web all
+
+        echo "   🖥️  Building desktop backend..."
+        make -C backends/desktop all
     fi
 }
 
@@ -120,10 +125,10 @@ elif [[ "$EXAMPLE_NAME" == *.c ]]; then
     EXAMPLE_NAME="${EXAMPLE_NAME%.c}"
 fi
 
-# Build C core libraries if needed
+# Build Universal IR system if needed
 mkdir -p "$BUILD_DIR"
 mkdir -p "$BIN_DIR"
-ensure_core_build
+ensure_ir_build
 
 # Color variables
 RED='\033[0;31m'
@@ -140,55 +145,30 @@ FONTCONFIG_LIBS="$(pkg-config --libs fontconfig 2>/dev/null || true)"
 EXAMPLE_FILE="examples/${FRONTEND}/${EXAMPLE_NAME}.${FRONTEND}"
 
 # Build renderer if needed
-# Build renderer if needed
-case "$RENDERER" in
-    "sdl3")
-        echo "Building SDL3 renderer..."
-        if ! make -C renderers/sdl3 > /dev/null 2>&1; then
-            echo "Error: SDL3 renderer build failed"
-            exit 1
-        fi
-        ;;
-    "framebuffer")
-        echo "Building framebuffer renderer..."
-        make -C renderers/framebuffer install > /dev/null 2>&1
-        ;;
-    "terminal")
-        echo "Building terminal renderer..."
-        if make -C renderers/terminal install > /dev/null 2>&1; then
-            echo "Terminal renderer built successfully"
-        else
-            echo "Error: Terminal renderer build failed"
-            exit 1
-        fi
-        ;;
-    *)
-        echo "Error: Unknown renderer '$RENDERER'. Use sdl3, framebuffer, or terminal"
-        exit 1
-        ;;
-esac
+# IR backends are already built by ensure_ir_build()
+# Note: Renderer selection is now handled by the IR pipeline
 echo "Running example: $EXAMPLE_NAME"
 echo "Frontend: $FRONTEND"
 echo "Renderer: $RENDERER"
 echo "File: $EXAMPLE_FILE"
 echo "────────────────────────────────────────────────────────────"
 
-# Determine linker libraries based on renderer
+# Determine linker libraries based on renderer using new IR system
 case "$RENDERER" in
     "sdl3")
-        LINK_LIBS="-Lbuild -lkryon_core -lkryon_sdl3 -lkryon_common -lSDL3 -lSDL3_ttf -lm"
+        LINK_LIBS="-Lbuild -lkryon_ir -lkryon_desktop -lSDL3 -lSDL3_ttf -lm"
         if [ -n "$FONTCONFIG_LIBS" ]; then
             LINK_LIBS="$LINK_LIBS $FONTCONFIG_LIBS"
         fi
         ;;
     "framebuffer")
-        LINK_LIBS="-Lbuild -lkryon_core -lkryon_fb -lkryon_common"
+        LINK_LIBS="-Lbuild -lkryon_ir -lkryon_desktop"
         ;;
     "terminal")
-        LINK_LIBS="-Lbuild -lkryon_core -lkryon_terminal -lkryon_common -lutil -ltickit"
+        LINK_LIBS="-Lbuild -lkryon_ir -lkryon_desktop -lutil -ltickit"
         ;;
     *)
-        LINK_LIBS="-Lbuild -lkryon_core -lkryon_fb -lkryon_common"
+        LINK_LIBS="-Lbuild -lkryon_ir -lkryon_desktop"
         ;;
 esac
 
@@ -207,15 +187,15 @@ case "$FRONTEND" in
 
         # Build and run separately for better error handling
         echo "Compiling with new architecture bindings..."
-        # Add appropriate include paths based on renderer
-        INCLUDE_PATHS="--passC:\"-Icore/include\" --passC:\"-I${PROJECT_ROOT}\" --passC:\"-DKRYON_TARGET_PLATFORM=0\" --passC:\"-DKRYON_NO_FLOAT=0\""
+        # Add appropriate include paths based on renderer using new IR system
+        INCLUDE_PATHS="--passC:\"-Iir\" --passC:\"-I${PROJECT_ROOT}\" --passC:\"-DKRYON_TARGET_PLATFORM=0\" --passC:\"-DKRYON_NO_FLOAT=0\""
         NIM_FLAGS="--threads:on --mm:arc"
 
         if [ "$RENDERER" = "terminal" ]; then
-            INCLUDE_PATHS="$INCLUDE_PATHS --passC:\"-I${PROJECT_ROOT}/renderers/terminal\""
+            INCLUDE_PATHS="$INCLUDE_PATHS --passC:\"-I${PROJECT_ROOT}/backends/desktop\""
             NIM_FLAGS="$NIM_FLAGS -d:KRYON_TERMINAL"
         elif [ "$RENDERER" = "sdl3" ]; then
-            INCLUDE_PATHS="$INCLUDE_PATHS --passC:\"-I${PROJECT_ROOT}/renderers/sdl3\""
+            INCLUDE_PATHS="$INCLUDE_PATHS --passC:\"-I${PROJECT_ROOT}/backends/desktop\""
             NIM_FLAGS="$NIM_FLAGS -d:KRYON_SDL3"
         fi
 

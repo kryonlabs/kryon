@@ -3,9 +3,8 @@
 ## Provides native Markdown rendering with CommonMark compliance
 ## Full GitHub Flavored Markdown support with customizable theming
 
-import core_kryon, runtime, macros, strutils, os
-
-export core_kryon
+import runtime, macros, strutils, os
+# Removed core_kryon import - using IR-based runtime now
 
 # ============================================================================
 # Types and Enums (matching C definitions)

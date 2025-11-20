@@ -3,7 +3,8 @@
 ## Shared helper functions for macro expansion and color parsing
 
 import macros, strutils, random
-import ../runtime, ../core_kryon
+import ../runtime
+# Removed core_kryon - using IR system now
 
 # ============================================================================
 # Style System Infrastructure  
@@ -33,17 +34,21 @@ proc parseAlignmentString*(name: string): KryonAlignment =
   ## Runtime function to parse alignment strings
   let normalized = name.toLowerAscii()
   case normalized
-  of "center", "middle": KryonAlignment.kaCenter
-  of "end", "bottom", "right": KryonAlignment.kaEnd
-  of "stretch": KryonAlignment.kaStretch
-  of "spaceevenly": KryonAlignment.kaSpaceEvenly
-  of "spacearound": KryonAlignment.kaSpaceAround
-  of "spacebetween": KryonAlignment.kaSpaceBetween
-  else: KryonAlignment.kaStart
+  of "center", "middle": kaCenter
+  of "end", "bottom", "right": kaEnd
+  of "stretch": kaStretch
+  of "spaceevenly": kaSpaceEvenly
+  of "spacearound": kaSpaceAround
+  of "spacebetween": kaSpaceBetween
+  else: kaStart
 
 # ============================================================================
 # Color Parsing Utilities
 # ============================================================================
+
+proc rgba*(r, g, b, a: int): uint32 =
+  ## Create RGBA color from components (0-255)
+  result = (uint32(r) shl 24) or (uint32(g) shl 16) or (uint32(b) shl 8) or uint32(a)
 
 proc parseHexColor*(hex: string): uint32 =
   ## Parse hex color string like "#ff0000" or "#ff0000ff"

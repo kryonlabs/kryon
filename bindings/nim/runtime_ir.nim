@@ -15,7 +15,6 @@ export reactive_system
 type
   KryonComponent* = ptr IRComponent  # Type alias for compatibility
   KryonRenderer* = DesktopIRRenderer  # Type alias for compatibility
-  KryonAlignment* = IRAlignment  # Type alias for compatibility
 
   KryonApp* = ref object
     root*: ptr IRComponent
@@ -28,17 +27,6 @@ type
     width*: int
     height*: int
     title*: string
-
-# Alignment constants for compatibility
-const
-  kaStart* = IR_ALIGNMENT_START
-  kaCenter* = IR_ALIGNMENT_CENTER
-  kaEnd* = IR_ALIGNMENT_END
-  kaStretch* = IR_ALIGNMENT_STRETCH
-  # Legacy alignment modes - map to IR equivalents
-  kaSpaceEvenly* = IR_ALIGNMENT_STRETCH  # Fallback to stretch
-  kaSpaceAround* = IR_ALIGNMENT_STRETCH  # Fallback to stretch
-  kaSpaceBetween* = IR_ALIGNMENT_STRETCH  # Fallback to stretch
 
 # ============================================================================
 # Component Creation - IR-based
@@ -132,18 +120,6 @@ proc newKryonApp*(): KryonApp =
   result = KryonApp()
   result.running = false
 
-proc setWindow*(app: KryonApp, window: KryonWindow) =
-  ## Set the window configuration for the app
-  app.window = window
-
-proc setRenderer*(app: KryonApp, renderer: KryonRenderer) =
-  ## Set the renderer for the app (not used in IR architecture)
-  app.renderer = renderer
-
-proc setRoot*(app: KryonApp, root: ptr IRComponent) =
-  ## Set the root component for the app
-  app.root = root
-
 proc initRenderer*(width, height: int; title: string): KryonRenderer =
   ## Initialize IR desktop renderer with window properties
   echo "Initializing IR desktop renderer..."
@@ -216,18 +192,13 @@ proc parseColor*(colorStr: string): uint32 =
   except:
     result = 0xFFFFFFFF'u32
 
-# IR uses floats directly - toFixed is for DSL compatibility with old fixed-point system
-proc toFixed*(value: int): cfloat {.inline.} = cfloat(value)
-proc toFixed*(value: float): cfloat {.inline.} = cfloat(value)
-
 # ============================================================================
 # Compatibility Layer - Map old API to IR
 # ============================================================================
 
 # Component tree management (compatibility with old API)
-proc kryon_component_add_child*(parent, child: ptr IRComponent): bool =
+proc kryon_component_add_child*(parent, child: ptr IRComponent) =
   ir_add_child(parent, child)
-  return true  # IR always succeeds unless nil pointers
 
 # Component property setters (compatibility with old API)
 proc kryon_component_set_background_color*(component: ptr IRComponent, color: uint32) =
@@ -247,191 +218,22 @@ proc kryon_component_set_bounds*(component: ptr IRComponent, x, y, w, h: int) =
     ir_set_width(style, IR_DIMENSION_PX, cfloat(w))
     ir_set_height(style, IR_DIMENSION_PX, cfloat(h))
 
-# Canvas/Spacer - actual IR components
+# Canvas/Spacer stubs (not yet implemented in IR)
 proc newKryonCanvas*(): ptr IRComponent =
   result = ir_create_component(IR_COMPONENT_CANVAS)
 
 proc newKryonSpacer*(): ptr IRComponent =
-  result = ir_create_component(IR_COMPONENT_CONTAINER)
+  result = ir_create_component(IR_COMPONENT_CONTAINER)  # Use container as spacer for now
 
-# Dropdown - not yet implemented in IR, placeholder for compatibility
+# Dropdown stub (not yet implemented)
 proc newKryonDropdown*(options: seq[string] = @[], selected: int = 0, onChange: proc(index: int) = nil): ptr IRComponent =
-  result = ir_create_component(IR_COMPONENT_CONTAINER)
-
-# Legacy compatibility for markdown and other modules
-type
-  KryonCmdBuf* = pointer
-
-proc kryon_component_set_layout_direction*(component: ptr IRComponent, direction: int) =
-  # Layout direction is implicitly handled by ROW vs COLUMN component types
-  discard
-
-proc kryon_component_set_layout_alignment*(component: ptr IRComponent, justify: KryonAlignment, align: KryonAlignment) =
-  # Layout alignment for containers - create or get layout and set alignment
-  var layout = ir_get_layout(component)
-  if layout.isNil:
-    layout = ir_create_layout()
-    ir_set_layout(component, layout)
-  ir_set_justify_content(layout, justify)
-  ir_set_align_items(layout, align)
-
-proc kryon_component_set_gap*(component: ptr IRComponent, gap: uint8) =
-  # Gap is part of flexbox layout
-  var layout = ir_get_layout(component)
-  if layout.isNil:
-    layout = ir_create_layout()
-    ir_set_layout(component, layout)
-  ir_set_gap(layout, uint32(gap))
-
-proc kryon_component_set_bounds_mask*(component: ptr IRComponent, x, y, w, h: cfloat, mask: uint8) =
-  # Set component bounds using IR style system
-  # Mask parameter ignored - all bounds are set
-  kryon_component_set_bounds(component, int(x), int(y), int(w), int(h))
-
-proc kryon_component_set_flex*(component: ptr IRComponent, flexGrow, flexShrink: uint8) =
-  # Flex grow/shrink in IR would be handled by flex layout dimensions
-  # For now, stub - full flex implementation needs more IR layout work
-  discard
-
-proc kryon_component_mark_dirty*(component: ptr IRComponent) =
-  # Dirty marking not needed in IR - rendering happens on each frame
-  discard
-
-# ============================================================================
-# Nim-to-C Event Bridge - Actual Implementation
-# ============================================================================
-
-# Button event handling using IR event system
-var buttonHandlers = initTable[uint32, proc()]()
-
-proc nimButtonBridge*(componentId: uint32) {.exportc: "nimButtonBridge", cdecl, dynlib.} =
-  ## Bridge function for button clicks - called from C IR event system
-  ## This is exported to C so it can be called when buttons are clicked
-  if buttonHandlers.hasKey(componentId):
-    buttonHandlers[componentId]()
-
-proc registerButtonHandler*(component: ptr IRComponent, handler: proc()) =
-  ## Register a button click handler using IR event system
-  if component.isNil:
-    return
-
-  buttonHandlers[component.id] = handler
-
-  # Create IR event and attach to component
-  let event = ir_create_event(IR_EVENT_CLICK, cstring("nim_button_" & $component.id), nil)
-  ir_add_event(component, event)
-
-proc kryon_component_set_border_color*(component: ptr IRComponent, color: uint32) =
-  let style = ir_get_style(component)
-  let r = uint8((color shr 24) and 0xFF)
-  let g = uint8((color shr 16) and 0xFF)
-  let b = uint8((color shr 8) and 0xFF)
-  let a = uint8(color and 0xFF)
-
-  if style.isNil:
-    let newStyle = ir_create_style()
-    ir_set_border(newStyle, 1.0, r, g, b, a, 0)
-    ir_set_style(component, newStyle)
-  else:
-    ir_set_border(style, 1.0, r, g, b, a, 0)
-
-proc kryon_component_set_border_width*(component: ptr IRComponent, width: uint32) =
-  let style = ir_get_style(component)
-
-  if style.isNil:
-    let newStyle = ir_create_style()
-    ir_set_border(newStyle, cfloat(width), 0, 0, 0, 255, 0)
-    ir_set_style(component, newStyle)
-  else:
-    ir_set_border(style, cfloat(width), 0, 0, 0, 255, 0)
-
-proc kryon_button_set_center_text*(button: ptr IRComponent, centered: bool) =
-  # Text centering is handled automatically in button rendering
-  discard
-
-proc kryon_button_set_ellipsize*(button: ptr IRComponent, ellipsize: bool) =
-  # Ellipsize not yet implemented in IR - would need font metrics
-  discard
-
-# Tab/Checkbox/Input stubs (not yet implemented in IR)
-type
-  TabVisualState* = object  # Stub for tab visual state
-    backgroundColor*: uint32
-    activeBackgroundColor*: uint32
-    textColor*: uint32
-    activeTextColor*: uint32
-
-  TabGroupState* = ref object  # Stub
-  CheckboxState* = ref object  # Stub
-  InputState* = ref object  # Stub
-
-proc createTabGroupState*(group, tabBar, tabContent: ptr IRComponent, selectedIndex: int, reorderable: bool): TabGroupState =
-  # Stub for tab groups
-  result = TabGroupState()
-
-proc addTab*(state: TabGroupState, tab, panel: ptr IRComponent) =
-  # Stub for adding tabs
-  discard
-
-proc finalizeTabGroup*(state: TabGroupState) =
-  # Stub for finalizing tab group
-  discard
-
-proc registerTabBar*(tabBar: ptr IRComponent, state: TabGroupState) =
-  # Stub for registering tab bar
-  discard
-
-proc registerTabComponent*(tab: ptr IRComponent, state: TabGroupState, index: int) =
-  # Stub for registering tab component
-  discard
-
-proc registerTabContent*(content: ptr IRComponent, state: TabGroupState) =
-  # Stub for registering tab content
-  discard
-
-proc registerTabPanel*(panel: ptr IRComponent, state: TabGroupState, index: int) =
-  # Stub for registering tab panel
-  discard
-
-proc registerCanvasHandler*(canvas: ptr IRComponent, handler: proc(ctx: pointer)) =
-  # Stub for canvas handler registration
-  discard
-
-proc nimInputBridge*(component: ptr IRComponent, text: ptr cstring): bool =
-  # Stub for input handling
-  result = false
-
-proc nimCheckboxBridge*(component: ptr IRComponent): bool =
-  # Stub for checkbox handling
-  result = false
-
-proc registerCheckboxHandler*(component: ptr IRComponent, handler: proc(checked: bool)) =
-  # Stub for checkbox handler registration
-  discard
-
-proc registerInputHandler*(component: ptr IRComponent, onChange: proc(text: string), onSubmit: proc(text: string) = nil) =
-  # Stub for input handler registration
-  discard
-
-# Font management stubs
-proc addFontSearchDir*(path: string) =
-  # Stub - font management not yet implemented in IR
-  discard
-
-proc loadFont*(path: string, size: int): int =
-  # Stub - font management not yet implemented in IR
-  result = 0
-
-proc getFontId*(path: string, size: int): int =
-  # Stub - font management not yet implemented in IR
-  result = 0
+  result = ir_create_component(IR_COMPONENT_CONTAINER)  # Stub for now
 
 # Export IR functions for DSL use
 export ir_add_child, ir_create_component, ir_set_text_content
-export IRComponentType, IRAlignment  # Export the enum types
+export IR_COMPONENT_CONTAINER, IR_COMPONENT_BUTTON, IR_COMPONENT_TEXT
+export IR_COMPONENT_ROW, IR_COMPONENT_COLUMN, IR_COMPONENT_CENTER
+export IR_COMPONENT_INPUT, IR_COMPONENT_CHECKBOX, IR_COMPONENT_CANVAS
 
 # Export compatibility types
-export KryonComponent, KryonRenderer, KryonApp, KryonAlignment
-
-# Export alignment constants
-export kaStart, kaCenter, kaEnd, kaStretch, kaSpaceEvenly, kaSpaceAround, kaSpaceBetween
+export KryonComponent, KryonRenderer, KryonApp

@@ -1434,3 +1434,69 @@ bool kryon_sdl3_poll_event(kryon_event_t* event) {
     event->timestamp = SDL_GetTicks();
     return true;
 }
+
+// ============================================================================
+// Generic Platform Abstraction API Implementations
+// ============================================================================
+
+// Generic Event System Implementation
+bool kryon_poll_event(kryon_event_t* event) {
+    return kryon_sdl3_poll_event(event);
+}
+
+bool kryon_is_mouse_button_down(uint8_t button) {
+    return SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(button);
+}
+
+void kryon_get_mouse_position(int16_t* x, int16_t* y) {
+    float fx, fy;
+    SDL_GetMouseState(&fx, &fy);
+    *x = (int16_t)fx;
+    *y = (int16_t)fy;
+}
+
+bool kryon_is_key_down(uint32_t key_code) {
+    const Uint8* state = SDL_GetKeyboardState(NULL);
+    return state[SDL_GetScancodeFromKey(key_code)] != 0;
+}
+
+// Generic Font Management Implementation
+void kryon_add_font_search_path(const char* path) {
+    if (!path) return;
+
+    // Add to SDL3 font search path
+    SDL_AddPath(path);
+
+#if KRYON_HAS_FONTCONFIG
+    // Also add to FontConfig if available
+    FcConfigAppFontAddDir(FcConfigGetCurrent(), (FcChar8*)path);
+#endif
+}
+
+uint16_t kryon_load_font(const char* name, uint16_t size) {
+    // This is a simplified implementation - in a full system we'd need proper font loading/caching
+    // For now, we return a basic font ID (0 = default, 1+ = loaded fonts)
+    if (!name || strlen(name) == 0) {
+        return 0; // Default font
+    }
+
+    // Try to load the font with SDL3_ttf
+    TTF_Font* font = TTF_OpenFont(name, size);
+    if (font) {
+        TTF_CloseFont(font); // We don't keep the font open, just validate it can be loaded
+        return 1; // Return font ID 1 for any successfully loaded font
+    }
+
+    return 0; // Fall back to default font
+}
+
+void kryon_get_font_metrics(uint16_t font_id, uint16_t* width, uint16_t* height) {
+    // Simplified font metrics - in a full implementation we'd cache actual font data
+    if (width) *width = 8;  // Approximate monospace width
+    if (height) *height = 16; // Approximate height
+}
+
+// Generic Renderer Factory Implementation
+kryon_renderer_t* kryon_create_renderer(uint16_t width, uint16_t height, const char* title) {
+    return kryon_sdl3_renderer_create(width, height, title);
+}
