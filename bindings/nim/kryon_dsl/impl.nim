@@ -908,7 +908,7 @@ macro Container*(props: untyped): untyped =
 
   initStmts.add quote do:
     kryon_component_set_bounds_mask(`containerName`,
-      toFixed(`xExpr`), toFixed(`yExpr`), toFixed(`wExpr`), toFixed(`hExpr`), uint8(`maskVal`))
+      cfloat(`xExpr`), cfloat(`yExpr`), cfloat(`wExpr`), cfloat(`hExpr`), uint8(`maskVal`))
 
   # Set padding
   let padTop = if paddingTopVal != nil: paddingTopVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
@@ -2000,7 +2000,7 @@ macro Input*(props: untyped): untyped =
       `inputName`
 
 macro Canvas*(props: untyped): untyped =
-  ## Canvas component macro
+  ## Canvas component macro - IR version
   var
     canvasName = genSym(nskLet, "canvas")
     widthVal: NimNode = newIntLitNode(800)
@@ -2028,35 +2028,33 @@ macro Canvas*(props: untyped): untyped =
       else:
         discard
 
+  let registerHandlerSym = bindSym("registerCanvasHandler")
+  let newCanvasSym = bindSym("newKryonCanvas")
+  let setBgColorSym = bindSym("setBackgroundColor")
+  let setWidthSym = bindSym("setWidth")
+  let setHeightSym = bindSym("setHeight")
+
   if hasOnDraw:
     result = quote do:
       block:
-        let `canvasName` = newKryonCanvas()
-        # Set canvas size
-        kryon_canvas_set_size(`canvasName`, uint16(`widthVal`), uint16(`heightVal`))
+        let `canvasName` = `newCanvasSym`()
+        # Set canvas size using IR style system
+        `setWidthSym`(`canvasName`, `widthVal`)
+        `setHeightSym`(`canvasName`, `heightVal`)
         # Set canvas background color
-        kryon_canvas_component_set_background_color(`canvasName`, runtime.parseColor(`bgColorVal`))
-        # Set bounds using the bounds API
-        kryon_component_set_bounds(`canvasName`,
-          kryon_fp_from_float(0),
-          kryon_fp_from_float(0),
-          kryon_fp_from_float(float32(`widthVal`)),
-          kryon_fp_from_float(float32(`heightVal`)))
-        registerCanvasHandler(`canvasName`, `onDrawVal`)
+        `setBgColorSym`(`canvasName`, runtime.parseColor(`bgColorVal`))
+        # Register the onDraw handler
+        `registerHandlerSym`(`canvasName`, `onDrawVal`)
         `canvasName`
   else:
     result = quote do:
       block:
-        let `canvasName` = newKryonCanvas()
-        # Set canvas size
-        kryon_canvas_set_size(`canvasName`, uint16(`widthVal`), uint16(`heightVal`))
+        let `canvasName` = `newCanvasSym`()
+        # Set canvas size using IR style system
+        `setWidthSym`(`canvasName`, `widthVal`)
+        `setHeightSym`(`canvasName`, `heightVal`)
         # Set canvas background color
-        kryon_canvas_component_set_background_color(`canvasName`, runtime.parseColor(`bgColorVal`))
-        kryon_component_set_bounds(`canvasName`,
-          kryon_fp_from_float(0),
-          kryon_fp_from_float(0),
-          kryon_fp_from_float(float32(`widthVal`)),
-          kryon_fp_from_float(float32(`heightVal`)))
+        `setBgColorSym`(`canvasName`, runtime.parseColor(`bgColorVal`))
         `canvasName`
 
 macro Spacer*(props: untyped): untyped =

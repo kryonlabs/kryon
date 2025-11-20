@@ -393,9 +393,19 @@ proc registerTabPanel*(panel: ptr IRComponent, state: TabGroupState, index: int)
   # Stub for registering tab panel
   discard
 
-proc registerCanvasHandler*(canvas: ptr IRComponent, handler: proc(ctx: pointer)) =
-  # Stub for canvas handler registration
-  discard
+var canvasHandlers = initTable[uint32, proc()]()
+
+proc registerCanvasHandler*(canvas: ptr IRComponent, handler: proc()) =
+  ## Register a canvas onDraw handler - called each frame when canvas is rendered
+  if canvas.isNil:
+    return
+  canvasHandlers[canvas.id] = handler
+
+proc nimCanvasBridge*(componentId: uint32) {.exportc: "nimCanvasBridge", cdecl, dynlib.} =
+  ## Bridge function for canvas rendering - called from C desktop renderer
+  ## This is exported to C so it can be called when canvas components are rendered
+  if canvasHandlers.hasKey(componentId):
+    canvasHandlers[componentId]()
 
 proc nimInputBridge*(component: ptr IRComponent, text: ptr cstring): bool =
   # Stub for input handling

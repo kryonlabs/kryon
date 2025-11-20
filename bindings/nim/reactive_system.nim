@@ -3,15 +3,49 @@
 ## Provides automatic UI updates when variables change
 ## Works transparently with existing DSL
 
-import core_kryon
 import tables
+import ir_core
+
+# KryonComponent is defined in runtime.nim, we just use ptr IRComponent here
+# Legacy function wrappers for reactive system (until fully migrated to IR)
+# These are temporary shims that provide the old API using IR functions
+
+proc setText(component: ptr IRComponent, text: string) =
+  ## setText wrapper for reactive system - calls IR function
+  ir_set_text_content(component, cstring(text))
+
+proc kryon_component_add_child(parent: ptr IRComponent, child: ptr IRComponent): cint {.discardable.} =
+  ## Legacy wrapper for ir_add_child
+  ir_add_child(parent, child)
+  return 0
+
+proc kryon_component_remove_child(parent: ptr IRComponent, child: ptr IRComponent) =
+  ## Legacy wrapper for ir_remove_child
+  ir_remove_child(parent, child)
+
+proc kryon_component_mark_dirty(component: ptr IRComponent) =
+  ## Legacy wrapper - IR doesn't need explicit dirty marking (handled automatically)
+  discard
+
+type KryonFp = cfloat
+
+proc kryon_component_get_absolute_bounds(component: ptr IRComponent, x: ptr KryonFp, y: ptr KryonFp, width: ptr KryonFp, height: ptr KryonFp) =
+  ## Legacy wrapper - stub for now (IR handles bounds differently)
+  x[] = 0.0
+  y[] = 0.0
+  width[] = 100.0
+  height[] = 100.0
+
+proc kryon_layout_component(component: ptr IRComponent, width: KryonFp, height: KryonFp) =
+  ## Legacy wrapper - stub for now (IR handles layout automatically)
+  discard
 
 # Reactive binding types
 type
   ReactiveProc* = proc () {.closure.}
 
   ReactiveBinding* = ref object
-    component*: KryonComponent
+    component*: ptr IRComponent
     updateProc*: ReactiveProc
     isText*: bool  # Optimization for text components
     lastValue*: string  # Cache to avoid unnecessary updates
@@ -64,7 +98,7 @@ proc set*[T](rv: ReactiveVar[T], newValue: T) =
           reactiveUpdateQueue.add(binding)
 
 # Bind a component to a reactive variable
-proc bindToComponent*[T](rv: ReactiveVar[T], component: KryonComponent, updateProc: ReactiveProc, isText: bool = true) =
+proc bindToComponent*[T](rv: ReactiveVar[T], component: ptr IRComponent, updateProc: ReactiveProc, isText: bool = true) =
   ## Binds a component to automatically update when the reactive variable changes
   let binding = ReactiveBinding(
     component: component,
@@ -101,7 +135,7 @@ proc processReactiveUpdates*() =
   updateAllReactiveTextExpressions()
 
 # Utility: Create reactive text binding
-proc bindTextToReactiveVar*[T](rv: ReactiveVar[T], component: KryonComponent) =
+proc bindTextToReactiveVar*[T](rv: ReactiveVar[T], component: ptr IRComponent) =
   ## Utility to bind text content to a reactive variable
   # Create binding first to capture it in the closure
   let binding = ReactiveBinding(
@@ -142,7 +176,7 @@ proc storeReactiveUpdate*(varName: string, updateProc: proc ()) =
 # Type for storing reactive text expressions
 type
   ReactiveTextExpression* = ref object
-    component*: KryonComponent
+    component*: ptr IRComponent
     expression*: string  # The original expression as string (e.g., "$value")
     evalProc*: proc (): string {.closure.}  # Procedure that evaluates the expression
     lastValue*: string  # Cache to avoid unnecessary updates
@@ -150,7 +184,7 @@ type
 
 var reactiveTextExpressions*: seq[ReactiveTextExpression] = @[]
 
-proc createReactiveTextExpression*(component: KryonComponent, expression: string,
+proc createReactiveTextExpression*(component: ptr IRComponent, expression: string,
                                   evalProc: proc (): string {.closure.},
                                   varNames: seq[string]) =
   ## Create a new reactive text expression that will be evaluated each frame
@@ -233,21 +267,21 @@ template autoReactive*(variable: untyped): untyped =
 
 type
   ReactiveConditional* = ref object
-    parent*: KryonComponent
+    parent*: ptr IRComponent
     conditionProc*: proc(): bool {.closure.}
-    thenProc*: proc(): seq[KryonComponent] {.closure.}
-    elseProc*: proc(): seq[KryonComponent] {.closure.}
-    currentChildren*: seq[KryonComponent]
+    thenProc*: proc(): seq[ptr IRComponent] {.closure.}
+    elseProc*: proc(): seq[ptr IRComponent] {.closure.}
+    currentChildren*: seq[ptr IRComponent]
     lastCondition*: bool
     initialized*: bool
 
 var reactiveConditionals*: seq[ReactiveConditional] = @[]
 
 proc createReactiveConditional*(
-  parent: KryonComponent,
+  parent: ptr IRComponent,
   conditionProc: proc(): bool {.closure.},
-  thenProc: proc(): seq[KryonComponent] {.closure.},
-  elseProc: proc(): seq[KryonComponent] {.closure.} = nil
+  thenProc: proc(): seq[ptr IRComponent] {.closure.},
+  elseProc: proc(): seq[ptr IRComponent] {.closure.} = nil
 ) =
   ## Create and register a reactive conditional that re-evaluates when variables change
   let conditional = ReactiveConditional(

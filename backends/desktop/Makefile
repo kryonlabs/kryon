@@ -30,8 +30,8 @@ else
 endif
 
 # Source files
-DESKTOP_SOURCES = ir_desktop_renderer.c
-DESKTOP_HEADERS = ir_desktop_renderer.h
+DESKTOP_SOURCES = ir_desktop_renderer.c canvas_sdl3.c
+DESKTOP_HEADERS = ir_desktop_renderer.h canvas_sdl3.h
 
 # Output files
 DESKTOP_STATIC_LIB = $(BUILD_DIR)/libkryon_desktop.a
@@ -55,13 +55,16 @@ $(BUILD_DIR):
 ir_desktop_renderer.o: ir_desktop_renderer.c $(DESKTOP_HEADERS)
 	$(CC) $(CFLAGS) $(INCLUDES) -c ir_desktop_renderer.c -o ir_desktop_renderer.o
 
+canvas_sdl3.o: canvas_sdl3.c canvas_sdl3.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c canvas_sdl3.c -o canvas_sdl3.o
+
 # Create static library
-$(DESKTOP_STATIC_LIB): $(BUILD_DIR) ir_desktop_renderer.o
-	$(AR) $(ARFLAGS) $@ ir_desktop_renderer.o
+$(DESKTOP_STATIC_LIB): $(BUILD_DIR) ir_desktop_renderer.o canvas_sdl3.o
+	$(AR) $(ARFLAGS) $@ ir_desktop_renderer.o canvas_sdl3.o
 
 # Create shared library
-$(DESKTOP_SHARED_LIB): $(BUILD_DIR) ir_desktop_renderer.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_desktop_renderer.o $(LIBS)
+$(DESKTOP_SHARED_LIB): $(BUILD_DIR) ir_desktop_renderer.o canvas_sdl3.o
+	$(CC) $(CFLAGS) -shared -o $@ ir_desktop_renderer.o canvas_sdl3.o $(LIBS)
 
 # Build test program
 $(DESKTOP_TEST): $(DESKTOP_STATIC_LIB) desktop_test.c

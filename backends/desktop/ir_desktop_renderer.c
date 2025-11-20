@@ -11,6 +11,7 @@
 #include "../../ir/ir_builder.h"
 #include "../../ir/ir_serialization.h"
 #include "ir_desktop_renderer.h"
+#include "canvas_sdl3.h"
 
 // Platform-specific includes (conditional compilation)
 #ifdef ENABLE_SDL3
@@ -221,6 +222,18 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
             SDL_RenderFillRect(renderer->renderer, &sdl_rect);
             SDL_SetRenderDrawColor(renderer->renderer, 100, 100, 100, 255);
             SDL_RenderRect(renderer->renderer, &sdl_rect);
+            break;
+
+        case IR_COMPONENT_CANVAS:
+            // Set the SDL renderer context for canvas drawing
+            canvas_sdl3_set_renderer(renderer->renderer);
+
+            // Call the Nim canvas callback (declared in runtime.nim as exportc)
+            extern void nimCanvasBridge(uint32_t componentId);
+            nimCanvasBridge(component->id);
+
+            // Clear renderer context
+            canvas_sdl3_set_renderer(NULL);
             break;
 
         default:
