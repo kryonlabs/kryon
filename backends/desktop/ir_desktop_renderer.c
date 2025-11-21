@@ -314,10 +314,10 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 if (surface) {
                     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
                     if (texture) {
-                        // Center text in button
+                        // Center text in button (round to integer pixels for crisp rendering)
                         SDL_FRect text_rect = {
-                            .x = rect.x + (rect.width - surface->w) / 2,
-                            .y = rect.y + (rect.height - surface->h) / 2,
+                            .x = roundf(rect.x + (rect.width - surface->w) / 2),
+                            .y = roundf(rect.y + (rect.height - surface->h) / 2),
                             .w = (float)surface->w,
                             .h = (float)surface->h
                         };
@@ -342,11 +342,11 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 if (surface) {
                     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
                     if (texture) {
-                        // Center the text horizontally within the allocated rect
-                        float text_x = rect.x + (rect.width - surface->w) / 2.0f;
+                        // Center the text horizontally within the allocated rect (round to integer pixels)
+                        float text_x = roundf(rect.x + (rect.width - surface->w) / 2.0f);
                         SDL_FRect text_rect = {
                             .x = text_x,
-                            .y = rect.y,  // Align to top of allocated rect
+                            .y = roundf(rect.y),  // Round Y to integer pixel
                             .w = (float)surface->w,
                             .h = (float)surface->h
                         };
@@ -420,9 +420,10 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 if (surface) {
                     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
                     if (texture) {
+                        // Round text position to integer pixels for crisp rendering
                         SDL_FRect text_rect = {
-                            .x = checkbox_rect.x + checkbox_size + 10,
-                            .y = rect.y + (rect.height - surface->h) / 2.0f,
+                            .x = roundf(checkbox_rect.x + checkbox_size + 10),
+                            .y = roundf(rect.y + (rect.height - surface->h) / 2.0f),
                             .w = (float)surface->w,
                             .h = (float)surface->h
                         };
@@ -760,8 +761,9 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
     }
 
     for (uint32_t i = 0; i < component->child_count; i++) {
+        IRComponent* child = component->children[i];
         // Get child size WITHOUT recursive layout (just from style)
-        LayoutRect child_layout = get_child_size(component->children[i], child_rect);
+        LayoutRect child_layout = get_child_size(child, child_rect);
 
         // Now position the child based on current_x/current_y (main axis)
         // and alignment settings (cross axis)
@@ -802,8 +804,11 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                     break;
                 case IR_ALIGNMENT_STRETCH:
                     child_layout.x = child_rect.x;
-                    // Only stretch if container has non-zero width
-                    if (child_rect.width > 0) {
+                    // Only stretch if child doesn't have explicit width AND container has non-zero width
+                    // Check if child has explicit width (not AUTO)
+                    bool has_explicit_width = child && child->style &&
+                                            child->style->width.type != IR_DIMENSION_AUTO;
+                    if (!has_explicit_width && child_rect.width > 0) {
                         child_layout.width = child_rect.width;
                     }
                     break;
@@ -835,8 +840,11 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                     break;
                 case IR_ALIGNMENT_STRETCH:
                     child_layout.y = child_rect.y;
-                    // Only stretch if container has non-zero height
-                    if (child_rect.height > 0) {
+                    // Only stretch if child doesn't have explicit height AND container has non-zero height
+                    // Check if child has explicit height (not AUTO)
+                    bool has_explicit_height = child && child->style &&
+                                             child->style->height.type != IR_DIMENSION_AUTO;
+                    if (!has_explicit_height && child_rect.height > 0) {
                         child_layout.height = child_rect.height;
                     }
                     break;
@@ -855,7 +863,6 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
         // For AUTO-sized Row/Column children, pass the available space from parent's child_rect
         // instead of the measured child size, so they can properly calculate alignment
         LayoutRect rect_for_child = child_layout;
-        IRComponent* child = component->children[i];
 
         if (child && (child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN)) {
             // Detect AUTO-sized Row/Column by checking if measured size is 0
