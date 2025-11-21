@@ -27,6 +27,9 @@ type
     IR_ALIGNMENT_CENTER
     IR_ALIGNMENT_END
     IR_ALIGNMENT_STRETCH
+    IR_ALIGNMENT_SPACE_BETWEEN
+    IR_ALIGNMENT_SPACE_AROUND
+    IR_ALIGNMENT_SPACE_EVENLY
 
   IREventType* {.size: sizeof(cint).} = enum
     IR_EVENT_CLICK = 0
@@ -236,8 +239,7 @@ proc ir_button*(content: cstring): ptr IRComponent =
 proc ir_input*(): ptr IRComponent =
   result = ir_create_component(IR_COMPONENT_INPUT)
 
-proc ir_checkbox*(): ptr IRComponent =
-  result = ir_create_component(IR_COMPONENT_CHECKBOX)
+proc ir_checkbox*(label: cstring): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
 
 proc ir_row*(): ptr IRComponent =
   result = ir_create_component(IR_COMPONENT_ROW)

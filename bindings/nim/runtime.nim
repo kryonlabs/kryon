@@ -35,10 +35,10 @@ const
   kaCenter* = IR_ALIGNMENT_CENTER
   kaEnd* = IR_ALIGNMENT_END
   kaStretch* = IR_ALIGNMENT_STRETCH
-  # Legacy alignment modes - map to IR equivalents
-  kaSpaceEvenly* = IR_ALIGNMENT_STRETCH  # Fallback to stretch
-  kaSpaceAround* = IR_ALIGNMENT_STRETCH  # Fallback to stretch
-  kaSpaceBetween* = IR_ALIGNMENT_STRETCH  # Fallback to stretch
+  # Space distribution alignment modes
+  kaSpaceEvenly* = IR_ALIGNMENT_SPACE_EVENLY
+  kaSpaceAround* = IR_ALIGNMENT_SPACE_AROUND
+  kaSpaceBetween* = IR_ALIGNMENT_SPACE_BETWEEN
 
 # ============================================================================
 # Component Creation - IR-based
@@ -67,8 +67,8 @@ proc newKryonCenter*(): ptr IRComponent =
 proc newKryonInput*(): ptr IRComponent =
   result = ir_create_component(IR_COMPONENT_INPUT)
 
-proc newKryonCheckbox*(): ptr IRComponent =
-  result = ir_create_component(IR_COMPONENT_CHECKBOX)
+proc newKryonCheckbox*(label: string = ""): ptr IRComponent =
+  result = ir_checkbox(cstring(label))
 
 # ============================================================================
 # Component Property Setters - IR-based
@@ -122,6 +122,37 @@ proc setTextColor*(component: ptr IRComponent, color: uint32) =
 
 proc setText*(component: ptr IRComponent, text: string) =
   ir_set_text_content(component, cstring(text))
+
+proc setFontSize*(component: ptr IRComponent, size: int) =
+  ## Set font size for component
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_font(newStyle, cfloat(size), "sans-serif", 0, 0, 0, 255, false, false)
+    ir_set_style(component, newStyle)
+  else:
+    # Get current font properties
+    ir_set_font(style, cfloat(size), "sans-serif", 0, 0, 0, 255, false, false)
+
+proc kryon_component_set_padding*(component: ptr IRComponent, top, right, bottom, left: uint8) =
+  ## Set padding for component (space inside the component)
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_padding(newStyle, cfloat(top), cfloat(right), cfloat(bottom), cfloat(left))
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_padding(style, cfloat(top), cfloat(right), cfloat(bottom), cfloat(left))
+
+proc kryon_component_set_margin*(component: ptr IRComponent, top, right, bottom, left: uint8) =
+  ## Set margin for component (space outside the component)
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_margin(newStyle, cfloat(top), cfloat(right), cfloat(bottom), cfloat(left))
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_margin(style, cfloat(top), cfloat(right), cfloat(bottom), cfloat(left))
 
 # ============================================================================
 # Application Runtime - IR-based
@@ -320,6 +351,31 @@ proc registerButtonHandler*(component: ptr IRComponent, handler: proc()) =
   # Create IR event and attach to component
   let event = ir_create_event(IR_EVENT_CLICK, cstring("nim_button_" & $component.id), nil)
   ir_add_event(component, event)
+
+# Checkbox Handler System
+var checkboxHandlers = initTable[uint32, proc()]()
+
+proc nimCheckboxBridge*(componentId: uint32) {.exportc: "nimCheckboxBridge", cdecl, dynlib.} =
+  ## Bridge function for checkbox clicks - called from C IR event system
+  if checkboxHandlers.hasKey(componentId):
+    checkboxHandlers[componentId]()
+
+proc registerCheckboxHandler*(component: ptr IRComponent, handler: proc()) =
+  ## Register a checkbox click handler using IR event system
+  if component.isNil:
+    return
+
+  checkboxHandlers[component.id] = handler
+
+  # Create IR event and attach to component
+  let event = ir_create_event(IR_EVENT_CLICK, cstring("nim_checkbox_" & $component.id), nil)
+  ir_add_event(component, event)
+
+proc setCheckboxState*(component: ptr IRComponent, checked: bool) =
+  ## Set checkbox checked state using custom_data
+  if component.isNil:
+    return
+  ir_set_custom_data(component, if checked: cstring("checked") else: cstring("unchecked"))
 
 proc kryon_component_set_border_color*(component: ptr IRComponent, color: uint32) =
   let style = ir_get_style(component)

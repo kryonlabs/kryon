@@ -989,9 +989,25 @@ macro Container*(props: untyped): untyped =
 
   # Generate the final result
   # Always return the component - the calling context should handle it properly
+  # Use IR_COMPONENT_ROW or IR_COMPONENT_COLUMN instead of CONTAINER based on layoutDirection
+  let componentCreation =
+    if layoutDirectionVal.kind == nnkIntLit:
+      if layoutDirectionVal.intVal == 0:
+        # Column layout (vertical)
+        quote do: newKryonColumn()
+      elif layoutDirectionVal.intVal == 1:
+        # Row layout (horizontal)
+        quote do: newKryonRow()
+      else:
+        # Default to container
+        quote do: newKryonContainer()
+    else:
+      # Runtime value - default to container
+      quote do: newKryonContainer()
+
   result = quote do:
     block:
-      let `containerName` = newKryonContainer()
+      let `containerName` = `componentCreation`
       `initStmts`
       `containerName`
 
@@ -1846,37 +1862,42 @@ macro Checkbox*(props: untyped): untyped =
 
   var initStmts = newTree(nnkStmtList)
 
-  # Don't set explicit bounds or layout direction - let layout system handle it completely
-  # Checkboxes should be positioned naturally in the flow so Body centering works
+  # Set width and height using IR style system
+  if widthVal != nil:
+    initStmts.add quote do:
+      setWidth(`checkboxName`, `widthVal`)
+  if heightVal != nil:
+    initStmts.add quote do:
+      setHeight(`checkboxName`, `heightVal`)
 
-  # Set text color if provided
+  # Set font size if provided
+  if fontSizeVal != nil:
+    initStmts.add quote do:
+      setFontSize(`checkboxName`, `fontSizeVal`)
+
+  # Set text color if provided (for the label text)
   if textColorVal != nil:
     initStmts.add quote do:
-      kryon_component_set_text_color(`checkboxName`, `textColorVal`)
+      setTextColor(`checkboxName`, runtime.parseColor(`textColorVal`))
 
   # Set background color if provided
   if backgroundColorVal != nil:
     initStmts.add quote do:
-      kryon_component_set_background_color(`checkboxName`, `backgroundColorVal`)
+      setBgColor(`checkboxName`, runtime.parseColor(`backgroundColorVal`))
 
-  # Set up click handler with proper signature
-  var checkboxHandler = clickHandler
-  if clickHandler.kind != nnkNilLit:
-    # Create a wrapper function with correct signature
-    checkboxHandler = quote do:
-      proc(checkbox: KryonComponent, checked: bool) {.cdecl.} =
-        `clickHandler`()
-  else:
-    checkboxHandler = newNilLit()
-
+  # Store checked state in custom_data
   initStmts.add quote do:
-    kryon_component_mark_dirty(`checkboxName`)
+    setCheckboxState(`checkboxName`, `checkedVal`)
+
+  # Register click handler if provided
+  if clickHandler.kind != nnkNilLit:
+    initStmts.add quote do:
+      registerCheckboxHandler(`checkboxName`, proc() = `clickHandler`())
 
   result = quote do:
     block:
-      let `checkboxName` = newKryonCheckbox(`labelVal`, `checkedVal`, `checkboxHandler`)
+      let `checkboxName` = newKryonCheckbox(`labelVal`)
       `initStmts`
-      kryon_component_mark_dirty(`checkboxName`)
       `checkboxName`
 
 macro Input*(props: untyped): untyped =

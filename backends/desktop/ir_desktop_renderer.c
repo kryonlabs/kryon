@@ -81,6 +81,9 @@ typedef struct LayoutRect {
     float x, y, width, height;
 } LayoutRect;
 
+// Forward declaration
+static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_height);
+
 static LayoutRect calculate_component_layout(IRComponent* component, LayoutRect parent_rect) {
     LayoutRect rect = {0};
 
@@ -91,6 +94,17 @@ static LayoutRect calculate_component_layout(IRComponent* component, LayoutRect 
     rect.y = parent_rect.y;
     rect.width = parent_rect.width;
     rect.height = parent_rect.height;
+
+    // Special handling for Text and Checkbox components - auto-size to content instead of filling parent
+    if (component->type == IR_COMPONENT_TEXT || component->type == IR_COMPONENT_CHECKBOX) {
+        // Get font size from style or use default
+        float font_size = 16.0f;  // Default font size
+        if (component->style && component->style->font.size > 0) {
+            font_size = component->style->font.size;
+        }
+        // Use font size * 1.2 as default height (just enough for the text itself)
+        rect.height = font_size * 1.2f;
+    }
 
     // Apply component-specific dimensions
     if (component->style) {
@@ -109,6 +123,133 @@ static LayoutRect calculate_component_layout(IRComponent* component, LayoutRect 
     }
 
     return rect;
+}
+
+// Helper to get child size (both width and height) using the existing layout calculation
+// This reuses calculate_component_layout but only extracts width/height, ignoring position
+static LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect) {
+    if (!child) {
+        LayoutRect zero = {0, 0, 0, 0};
+        return zero;
+    }
+
+    // Use the existing calculate_component_layout which handles all component types correctly
+    LayoutRect layout = calculate_component_layout(child, parent_rect);
+
+    // For AUTO-sized Row/Column, measure children to get actual size
+    if ((child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN) && child->child_count > 0) {
+        bool is_auto_width = !child->style || child->style->width.type == IR_DIMENSION_AUTO;
+        bool is_auto_height = !child->style || child->style->height.type == IR_DIMENSION_AUTO;
+
+        if (is_auto_width || is_auto_height) {
+            float total_width = 0, total_height = 0;
+            float gap = 20.0f;
+            if (child->layout && child->layout->flex.gap > 0) {
+                gap = (float)child->layout->flex.gap;
+            }
+
+            for (uint32_t i = 0; i < child->child_count; i++) {
+                float child_w = get_child_dimension(child->children[i], parent_rect, false);
+                float child_h = get_child_dimension(child->children[i], parent_rect, true);
+
+                if (child->type == IR_COMPONENT_COLUMN) {
+                    total_height += child_h;
+                    if (i < child->child_count - 1) total_height += gap;
+                    if (child_w > total_width) total_width = child_w;
+                } else { // ROW
+                    total_width += child_w;
+                    if (i < child->child_count - 1) total_width += gap;
+                    if (child_h > total_height) total_height = child_h;
+                }
+            }
+
+            if (is_auto_width) layout.width = total_width;
+            if (is_auto_height) layout.height = total_height;
+        }
+    }
+
+    // Return a rect with just width/height, position set to 0
+    // (position will be set later in the main layout loop)
+    LayoutRect result = {0, 0, layout.width, layout.height};
+    return result;
+}
+
+// Helper to get child size without recursive layout
+// IMPORTANT: This function must NOT recurse into child layout to prevent infinite loops
+static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_height) {
+    if (!child) return 0.0f;
+
+    // Check if component has explicit size in style
+    if (child->style) {
+        IRDimension style_dim = is_height ? child->style->height : child->style->width;
+        if (style_dim.type != IR_DIMENSION_AUTO) {
+            // Has explicit size, use it
+            return ir_dimension_to_pixels(style_dim, is_height ? parent_rect.height : parent_rect.width);
+        }
+    }
+
+    // Component has AUTO size - handle based on type
+    if (child->type == IR_COMPONENT_TEXT || child->type == IR_COMPONENT_CHECKBOX) {
+        // Text/checkbox auto-size to content
+        if (is_height) {
+            float font_size = 16.0f;
+            if (child->style && child->style->font.size > 0) {
+                font_size = child->style->font.size;
+            }
+            return font_size * 1.2f;
+        }
+        return 0.0f;  // Text width is auto
+    }
+
+    // For Container/Row/Column with AUTO size, we need to measure children
+    // But we CANNOT recurse into full layout - just sum up their explicit sizes
+    if ((child->type == IR_COMPONENT_CONTAINER ||
+         child->type == IR_COMPONENT_ROW ||
+         child->type == IR_COMPONENT_COLUMN) &&
+        child->child_count > 0) {
+
+        float total = 0.0f;
+        float gap = 20.0f;
+        if (child->layout && child->layout->flex.gap > 0) {
+            gap = (float)child->layout->flex.gap;
+        }
+
+        // Determine if we're measuring the main axis
+        bool is_main_axis = (is_height && child->type == IR_COMPONENT_COLUMN) ||
+                           (!is_height && child->type == IR_COMPONENT_ROW);
+
+        for (uint32_t i = 0; i < child->child_count; i++) {
+            IRComponent* grandchild = child->children[i];
+
+            // Get grandchild's explicit dimension only (no recursion)
+            float child_dim = 0.0f;
+            if (grandchild->style) {
+                IRDimension gd = is_height ? grandchild->style->height : grandchild->style->width;
+                if (gd.type != IR_DIMENSION_AUTO) {
+                    // For grandchildren, we need to use ir_dimension_to_pixels to handle all dimension types
+                    child_dim = ir_dimension_to_pixels(gd, is_height ? parent_rect.height : parent_rect.width);
+                }
+            }
+
+            if (is_main_axis) {
+                // Sum up children along main axis
+                total += child_dim;
+                if (i < child->child_count - 1) {
+                    total += gap;
+                }
+            } else {
+                // Take max along cross axis
+                if (child_dim > total) {
+                    total = child_dim;
+                }
+            }
+        }
+
+        return total;
+    }
+
+    // Default: return 0 for unknown AUTO-sized components
+    return 0.0f;
 }
 
 // Platform-specific rendering implementations
@@ -131,11 +272,14 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
         case IR_COMPONENT_CONTAINER:
         case IR_COMPONENT_ROW:
         case IR_COMPONENT_COLUMN:
-            // Only render background if component has a style (otherwise transparent)
+            // Only render background if component has a style with non-transparent background
             if (component->style) {
                 SDL_Color bg_color = ir_color_to_sdl(component->style->background);
-                SDL_SetRenderDrawColor(renderer->renderer, bg_color.r, bg_color.g, bg_color.b, bg_color.a);
-                SDL_RenderFillRect(renderer->renderer, &sdl_rect);
+                // Only render if alpha > 0 (not fully transparent)
+                if (bg_color.a > 0) {
+                    SDL_SetRenderDrawColor(renderer->renderer, bg_color.r, bg_color.g, bg_color.b, bg_color.a);
+                    SDL_RenderFillRect(renderer->renderer, &sdl_rect);
+                }
             }
             break;
 
@@ -198,9 +342,11 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 if (surface) {
                     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
                     if (texture) {
+                        // Center the text horizontally within the allocated rect
+                        float text_x = rect.x + (rect.width - surface->w) / 2.0f;
                         SDL_FRect text_rect = {
-                            .x = rect.x,
-                            .y = rect.y + (rect.height - surface->h) / 2.0f,
+                            .x = text_x,
+                            .y = rect.y,  // Align to top of allocated rect
                             .w = (float)surface->w,
                             .h = (float)surface->h
                         };
@@ -218,11 +364,76 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
             SDL_RenderRect(renderer->renderer, &sdl_rect);
             break;
 
-        case IR_COMPONENT_CHECKBOX:
-            SDL_RenderFillRect(renderer->renderer, &sdl_rect);
+        case IR_COMPONENT_CHECKBOX: {
+            // Checkbox is rendered as a small box on the left + label text
+            float checkbox_size = fminf(rect.height * 0.6f, 20.0f);
+            float checkbox_y = rect.y + (rect.height - checkbox_size) / 2;
+
+            SDL_FRect checkbox_rect = {
+                .x = rect.x + 5,
+                .y = checkbox_y,
+                .w = checkbox_size,
+                .h = checkbox_size
+            };
+
+            // Draw checkbox background
+            SDL_Color bg_color = component->style ?
+                ir_color_to_sdl(component->style->background) :
+                (SDL_Color){255, 255, 255, 255};
+            SDL_SetRenderDrawColor(renderer->renderer, bg_color.r, bg_color.g, bg_color.b, bg_color.a);
+            SDL_RenderFillRect(renderer->renderer, &checkbox_rect);
+
+            // Draw checkbox border
             SDL_SetRenderDrawColor(renderer->renderer, 100, 100, 100, 255);
-            SDL_RenderRect(renderer->renderer, &sdl_rect);
+            SDL_RenderRect(renderer->renderer, &checkbox_rect);
+
+            // Check if checkbox is checked (stored in custom_data)
+            bool is_checked = component->custom_data &&
+                             strcmp(component->custom_data, "checked") == 0;
+
+            // Draw checkmark if checked
+            if (is_checked) {
+                SDL_SetRenderDrawColor(renderer->renderer, 50, 200, 50, 255);
+                // Draw a simple checkmark using lines
+                float cx = checkbox_rect.x + checkbox_size / 2;
+                float cy = checkbox_rect.y + checkbox_size / 2;
+                float size = checkbox_size * 0.3f;
+
+                SDL_RenderLine(renderer->renderer,
+                              cx - size, cy,
+                              cx - size/3, cy + size);
+                SDL_RenderLine(renderer->renderer,
+                              cx - size/3, cy + size,
+                              cx + size, cy - size);
+            }
+
+            // Render label text next to checkbox
+            if (component->text_content && renderer->default_font) {
+                SDL_Color text_color = component->style ?
+                    ir_color_to_sdl(component->style->font.color) :
+                    (SDL_Color){0, 0, 0, 255};
+
+                SDL_Surface* surface = TTF_RenderText_Blended(renderer->default_font,
+                                                              component->text_content,
+                                                              strlen(component->text_content),
+                                                              text_color);
+                if (surface) {
+                    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
+                    if (texture) {
+                        SDL_FRect text_rect = {
+                            .x = checkbox_rect.x + checkbox_size + 10,
+                            .y = rect.y + (rect.height - surface->h) / 2.0f,
+                            .w = (float)surface->w,
+                            .h = (float)surface->h
+                        };
+                        SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
+                        SDL_DestroyTexture(texture);
+                    }
+                    SDL_DestroySurface(surface);
+                }
+            }
             break;
+        }
 
         case IR_COMPONENT_CANVAS:
             // Set the SDL renderer context for canvas drawing
@@ -243,6 +454,17 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
 
     // Render children
     LayoutRect child_rect = rect;
+
+    // For AUTO-sized Row/Column components, if rect.height/width is 0,
+    // we still need a container dimension for alignment calculations.
+    // Use parent's rect as the available space.
+    if ((component->type == IR_COMPONENT_COLUMN || component->type == IR_COMPONENT_ROW)) {
+        // For AUTO-sized components, rect dimensions might be 0
+        // But we need the actual available space for alignment
+        // The rect passed in IS the available space from the parent
+        // So keep rect dimensions as-is for child_rect calculations
+    }
+
     if (component->style) {
         child_rect.x += component->style->padding.left;
         child_rect.y += component->style->padding.top;
@@ -250,8 +472,308 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
         child_rect.height -= (component->style->padding.top + component->style->padding.bottom);
     }
 
+    // Two-pass layout for COLUMN: measure total height, then position based on justify_content
+    float start_y = child_rect.y;
+    float start_x = child_rect.x;
+
+    #ifdef KRYON_TRACE_LAYOUT
+    if (component->type == IR_COMPONENT_COLUMN) {
+        printf("🔎 COLUMN check: child_count=%d, child_rect.height=%.1f\n", component->child_count, child_rect.height);
+    }
+    #endif
+
+    if (component->type == IR_COMPONENT_COLUMN && component->child_count > 0) {
+        // Pass 1: Measure total content height (just get sizes, don't do full layout)
+        float total_height = 0.0f;
+        float gap = 20.0f;
+        if (component->layout && component->layout->flex.gap > 0) {
+            gap = (float)component->layout->flex.gap;
+        }
+
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            // Use get_child_dimension to correctly measure all component types
+            float child_height = get_child_dimension(component->children[i], child_rect, true);
+
+            #ifdef KRYON_TRACE_LAYOUT
+            printf("  🔍 Child %d: measured height=%.1f\n", i, child_height);
+            #endif
+
+            total_height += child_height;
+            if (i < component->child_count - 1) {  // Don't add gap after last child
+                total_height += gap;
+            }
+        }
+
+        #ifdef KRYON_TRACE_LAYOUT
+        printf("  📏 Total height: %.1f, child_rect.height: %.1f\n", total_height, child_rect.height);
+        #endif
+
+        // Calculate starting Y based on justify_content (main axis alignment for column)
+        if (component->layout) {
+            #ifdef KRYON_TRACE_LAYOUT
+            printf("  🎯 Alignment mode: %d\n", component->layout->flex.justify_content);
+            #endif
+
+            switch (component->layout->flex.justify_content) {
+                case IR_ALIGNMENT_CENTER:
+                    // Center if container has explicit non-zero height
+                    if (child_rect.height > 0) {
+                        float offset = (child_rect.height - total_height) / 2.0f;
+                        start_y = child_rect.y + (offset > 0 ? offset : 0);  // Don't go negative
+                        #ifdef KRYON_TRACE_LAYOUT
+                        printf("  ↔️  CENTER: offset=%.1f, start_y=%.1f\n", offset, start_y);
+                        #endif
+                    } else {
+                        start_y = child_rect.y;
+                        #ifdef KRYON_TRACE_LAYOUT
+                        printf("  ↔️  CENTER: child_rect.height=0, using START\n");
+                        #endif
+                    }
+                    break;
+                case IR_ALIGNMENT_END:
+                    // Align to end if container has explicit non-zero height
+                    if (child_rect.height > 0) {
+                        float offset = child_rect.height - total_height;
+                        start_y = child_rect.y + (offset > 0 ? offset : 0);  // Don't go negative
+                        #ifdef KRYON_TRACE_LAYOUT
+                        printf("  ⬇️  END: offset=%.1f, start_y=%.1f\n", offset, start_y);
+                        #endif
+                    } else {
+                        start_y = child_rect.y;
+                        #ifdef KRYON_TRACE_LAYOUT
+                        printf("  ⬇️  END: child_rect.height=0, using START\n");
+                        #endif
+                    }
+                    break;
+                case IR_ALIGNMENT_START:
+                default:
+                    start_y = child_rect.y;
+                    #ifdef KRYON_TRACE_LAYOUT
+                    printf("  ⬆️  START: start_y=%.1f\n", start_y);
+                    #endif
+                    break;
+                // Space distribution modes handled differently in Pass 2
+                case IR_ALIGNMENT_SPACE_BETWEEN:
+                case IR_ALIGNMENT_SPACE_AROUND:
+                case IR_ALIGNMENT_SPACE_EVENLY:
+                    start_y = child_rect.y;  // Will be calculated per-item in Pass 2
+                    break;
+            }
+        }
+    }
+
+    // Two-pass layout for ROW: measure total width, then position based on justify_content
+    if (component->type == IR_COMPONENT_ROW && component->child_count > 0) {
+        // Pass 1: Measure total content width (just get sizes, don't do full layout)
+        float total_width = 0.0f;
+        float gap = 20.0f;
+        if (component->layout && component->layout->flex.gap > 0) {
+            gap = (float)component->layout->flex.gap;
+        }
+
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            // Use get_child_dimension to correctly measure all component types
+            float child_width = get_child_dimension(component->children[i], child_rect, false);
+
+            total_width += child_width;
+            if (i < component->child_count - 1) {  // Don't add gap after last child
+                total_width += gap;
+            }
+        }
+
+        // Calculate starting X based on justify_content (main axis alignment for row)
+        if (component->layout) {
+            switch (component->layout->flex.justify_content) {
+                case IR_ALIGNMENT_CENTER:
+                    // Center if container has explicit non-zero width
+                    if (child_rect.width > 0) {
+                        float offset = (child_rect.width - total_width) / 2.0f;
+                        start_x = child_rect.x + (offset > 0 ? offset : 0);  // Don't go negative
+                    } else {
+                        start_x = child_rect.x;
+                    }
+                    break;
+                case IR_ALIGNMENT_END:
+                    // Align to end if container has explicit non-zero width
+                    if (child_rect.width > 0) {
+                        float offset = child_rect.width - total_width;
+                        start_x = child_rect.x + (offset > 0 ? offset : 0);  // Don't go negative
+                    } else {
+                        start_x = child_rect.x;
+                    }
+                    break;
+                case IR_ALIGNMENT_START:
+                default:
+                    start_x = child_rect.x;
+                    break;
+                // Space distribution modes handled differently in Pass 2
+                case IR_ALIGNMENT_SPACE_BETWEEN:
+                case IR_ALIGNMENT_SPACE_AROUND:
+                case IR_ALIGNMENT_SPACE_EVENLY:
+                    start_x = child_rect.x;  // Will be calculated per-item in Pass 2
+                    break;
+            }
+        }
+    }
+
+    // Calculate spacing for space distribution modes
+    float item_gap = 20.0f;  // Default gap
+    if (component->layout && component->layout->flex.gap > 0) {
+        item_gap = (float)component->layout->flex.gap;
+    }
+
+    // For space distribution, calculate custom gap
+    float available_space = 0.0f;
+    float distributed_gap = item_gap;
+
+    // Store original child_rect for measurements
+    LayoutRect measure_rect = child_rect;
+
+    // COLUMN space distribution
+    if (component->type == IR_COMPONENT_COLUMN && component->layout && component->child_count > 0) {
+        switch (component->layout->flex.justify_content) {
+            case IR_ALIGNMENT_SPACE_BETWEEN: {
+                // Equal space between items, no space at edges
+                float total_height = 0.0f;
+                for (uint32_t i = 0; i < component->child_count; i++) {
+                    float child_height = get_child_dimension(component->children[i], measure_rect, true);
+                    total_height += child_height;
+                }
+                available_space = child_rect.height - total_height;
+                if (component->child_count > 1 && available_space > 0) {
+                    distributed_gap = available_space / (component->child_count - 1);
+                } else {
+                    distributed_gap = 0;  // No space to distribute, pack items tightly
+                }
+                start_y = child_rect.y;  // Start at top
+                break;
+            }
+            case IR_ALIGNMENT_SPACE_AROUND: {
+                // Equal space around each item (half space at edges)
+                float total_height = 0.0f;
+                for (uint32_t i = 0; i < component->child_count; i++) {
+                    float child_height = get_child_dimension(component->children[i], measure_rect, true);
+                    total_height += child_height;
+                }
+                available_space = child_rect.height - total_height;
+                if (available_space > 0) {
+                    distributed_gap = available_space / component->child_count;
+                    start_y = child_rect.y + distributed_gap / 2.0f;  // Start with half gap
+                } else {
+                    distributed_gap = 0;  // No space to distribute
+                    start_y = child_rect.y;
+                }
+                break;
+            }
+            case IR_ALIGNMENT_SPACE_EVENLY: {
+                // Equal space everywhere including edges
+                float total_height = 0.0f;
+                for (uint32_t i = 0; i < component->child_count; i++) {
+                    float child_height = get_child_dimension(component->children[i], measure_rect, true);
+                    total_height += child_height;
+                }
+                available_space = child_rect.height - total_height;
+                if (available_space > 0) {
+                    distributed_gap = available_space / (component->child_count + 1);
+                    start_y = child_rect.y + distributed_gap;  // Start with full gap
+                } else {
+                    distributed_gap = 0;  // No space to distribute
+                    start_y = child_rect.y;
+                }
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    // ROW space distribution
+    if (component->type == IR_COMPONENT_ROW && component->layout && component->child_count > 0) {
+        switch (component->layout->flex.justify_content) {
+            case IR_ALIGNMENT_SPACE_BETWEEN: {
+                // Equal space between items, no space at edges
+                float total_width = 0.0f;
+                for (uint32_t i = 0; i < component->child_count; i++) {
+                    float child_width = get_child_dimension(component->children[i], measure_rect, false);
+                    total_width += child_width;
+                }
+                available_space = child_rect.width - total_width;
+                if (component->child_count > 1 && available_space > 0) {
+                    distributed_gap = available_space / (component->child_count - 1);
+                } else {
+                    distributed_gap = 0;  // No space to distribute, pack items tightly
+                }
+                start_x = child_rect.x;  // Start at left
+                break;
+            }
+            case IR_ALIGNMENT_SPACE_AROUND: {
+                // Equal space around each item (half space at edges)
+                float total_width = 0.0f;
+                for (uint32_t i = 0; i < component->child_count; i++) {
+                    float child_width = get_child_dimension(component->children[i], measure_rect, false);
+                    total_width += child_width;
+                }
+                available_space = child_rect.width - total_width;
+                if (available_space > 0) {
+                    distributed_gap = available_space / component->child_count;
+                    start_x = child_rect.x + distributed_gap / 2.0f;  // Start with half gap
+                } else {
+                    distributed_gap = 0;  // No space to distribute
+                    start_x = child_rect.x;
+                }
+                break;
+            }
+            case IR_ALIGNMENT_SPACE_EVENLY: {
+                // Equal space everywhere including edges
+                float total_width = 0.0f;
+                for (uint32_t i = 0; i < component->child_count; i++) {
+                    float child_width = get_child_dimension(component->children[i], measure_rect, false);
+                    total_width += child_width;
+                }
+                available_space = child_rect.width - total_width;
+                if (available_space > 0) {
+                    distributed_gap = available_space / (component->child_count + 1);
+                    start_x = child_rect.x + distributed_gap;  // Start with full gap
+                } else {
+                    distributed_gap = 0;  // No space to distribute
+                    start_x = child_rect.x;
+                }
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    // Track current position separately from child_rect to avoid modifying container bounds
+    // Initialize from start_x/start_y which already account for alignment
+    float current_x = start_x;
+    float current_y = start_y;
+
+    // Layout tracing (only when enabled)
+    if (getenv("KRYON_TRACE_LAYOUT")) {
+        const char* type_name = component->type == IR_COMPONENT_COLUMN ? "COLUMN" :
+                               component->type == IR_COMPONENT_ROW ? "ROW" : "OTHER";
+        printf("📦 Layout %s: start=(%.1f,%.1f) child_rect=(%.1f,%.1f %.1fx%.1f) gap=%.1f\n",
+               type_name, start_x, start_y, child_rect.x, child_rect.y,
+               child_rect.width, child_rect.height, distributed_gap);
+    }
+
     for (uint32_t i = 0; i < component->child_count; i++) {
-        LayoutRect child_layout = calculate_component_layout(component->children[i], child_rect);
+        // Get child size WITHOUT recursive layout (just from style)
+        LayoutRect child_layout = get_child_size(component->children[i], child_rect);
+
+        // Now position the child based on current_x/current_y (main axis)
+        // and alignment settings (cross axis)
+
+        // Set main axis position
+        child_layout.x = current_x;
+        child_layout.y = current_y;
+
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            printf("  📍 Child %d BEFORE align: pos=(%.1f,%.1f) size=(%.1fx%.1f)\n",
+                   i, child_layout.x, child_layout.y, child_layout.width, child_layout.height);
+        }
 
         // Special handling for Center component - center the child
         if (component->type == IR_COMPONENT_CENTER) {
@@ -259,12 +781,144 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
             child_layout.y = child_rect.y + (child_rect.height - child_layout.height) / 2;
         }
 
-        render_component_sdl3(renderer, component->children[i], child_layout);
-
-        // Simple vertical stacking for demo
-        if (component->type == IR_COMPONENT_COLUMN) {
-            child_rect.y += child_layout.height + 10; // 10px spacing
+        // Apply horizontal alignment for COLUMN layout based on cross_axis (align_items)
+        if (component->type == IR_COMPONENT_COLUMN && component->layout) {
+            switch (component->layout->flex.cross_axis) {
+                case IR_ALIGNMENT_CENTER:
+                    // Only center if child fits in container, otherwise align to start
+                    if (child_layout.width <= child_rect.width) {
+                        child_layout.x = child_rect.x + (child_rect.width - child_layout.width) / 2;
+                    } else {
+                        child_layout.x = child_rect.x;
+                    }
+                    break;
+                case IR_ALIGNMENT_END:
+                    // Only align to end if child fits, otherwise align to start
+                    if (child_layout.width <= child_rect.width) {
+                        child_layout.x = child_rect.x + child_rect.width - child_layout.width;
+                    } else {
+                        child_layout.x = child_rect.x;
+                    }
+                    break;
+                case IR_ALIGNMENT_STRETCH:
+                    child_layout.x = child_rect.x;
+                    // Only stretch if container has non-zero width
+                    if (child_rect.width > 0) {
+                        child_layout.width = child_rect.width;
+                    }
+                    break;
+                case IR_ALIGNMENT_START:
+                default:
+                    child_layout.x = child_rect.x;
+                    break;
+            }
         }
+
+        // Apply vertical alignment for ROW layout based on cross_axis (align_items)
+        if (component->type == IR_COMPONENT_ROW && component->layout) {
+            switch (component->layout->flex.cross_axis) {
+                case IR_ALIGNMENT_CENTER:
+                    // Only center if child fits in container, otherwise align to start
+                    if (child_layout.height <= child_rect.height) {
+                        child_layout.y = child_rect.y + (child_rect.height - child_layout.height) / 2;
+                    } else {
+                        child_layout.y = child_rect.y;
+                    }
+                    break;
+                case IR_ALIGNMENT_END:
+                    // Only align to end if child fits, otherwise align to start
+                    if (child_layout.height <= child_rect.height) {
+                        child_layout.y = child_rect.y + child_rect.height - child_layout.height;
+                    } else {
+                        child_layout.y = child_rect.y;
+                    }
+                    break;
+                case IR_ALIGNMENT_STRETCH:
+                    child_layout.y = child_rect.y;
+                    // Only stretch if container has non-zero height
+                    if (child_rect.height > 0) {
+                        child_layout.height = child_rect.height;
+                    }
+                    break;
+                case IR_ALIGNMENT_START:
+                default:
+                    child_layout.y = child_rect.y;
+                    break;
+            }
+        }
+
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            printf("  ✅ Child %d AFTER align: pos=(%.1f,%.1f) size=(%.1fx%.1f)\n",
+                   i, child_layout.x, child_layout.y, child_layout.width, child_layout.height);
+        }
+
+        // For AUTO-sized Row/Column children, pass the available space from parent's child_rect
+        // instead of the measured child size, so they can properly calculate alignment
+        LayoutRect rect_for_child = child_layout;
+        IRComponent* child = component->children[i];
+
+        if (child && (child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN)) {
+            // Detect AUTO-sized Row/Column by checking if measured size is 0
+            // This is more reliable than checking style, since style defaults may vary
+            bool is_auto_width = child_layout.width == 0.0f;
+            bool is_auto_height = child_layout.height == 0.0f;
+
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                printf("  🔧 AUTO-sized %s detected: w=%.1f (auto=%d), h=%.1f (auto=%d), available=(%.1fx%.1f)\n",
+                       child->type == IR_COMPONENT_ROW ? "ROW" : "COLUMN",
+                       child_layout.width, is_auto_width,
+                       child_layout.height, is_auto_height,
+                       child_rect.width, child_rect.height);
+            }
+
+            if (is_auto_width || is_auto_height) {
+                // Preserve position from child_layout, but use available space from child_rect
+                rect_for_child.x = child_layout.x;
+                rect_for_child.y = child_layout.y;
+                if (is_auto_width) {
+                    rect_for_child.width = child_rect.width;
+                }
+                if (is_auto_height) {
+                    rect_for_child.height = child_rect.height;
+                }
+
+                if (getenv("KRYON_TRACE_LAYOUT")) {
+                    printf("  🔧 FIXED: Passing rect_for_child=(%.1f,%.1f %.1fx%.1f) instead of child_layout\n",
+                           rect_for_child.x, rect_for_child.y, rect_for_child.width, rect_for_child.height);
+                }
+            }
+        }
+
+        render_component_sdl3(renderer, child, rect_for_child);
+
+        // Vertical stacking for column layout - advance current_y
+        if (component->type == IR_COMPONENT_COLUMN) {
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                float old_y = current_y;
+                current_y += child_layout.height + distributed_gap;
+                printf("  ⬇️  Advance Y: %.1f -> %.1f (height=%.1f gap=%.1f)\n",
+                       old_y, current_y, child_layout.height, distributed_gap);
+            } else {
+                current_y += child_layout.height + distributed_gap;
+            }
+        }
+
+        // Horizontal stacking for row layout - advance current_x
+        if (component->type == IR_COMPONENT_ROW) {
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                float old_x = current_x;
+                current_x += child_layout.width + distributed_gap;
+                printf("  ➡️  Advance X: %.1f -> %.1f (width=%.1f gap=%.1f)\n",
+                       old_x, current_x, child_layout.width, distributed_gap);
+            } else {
+                current_x += child_layout.width + distributed_gap;
+            }
+        }
+    }
+    if (getenv("KRYON_TRACE_LAYOUT")) {
+        const char* type_name = component->type == IR_COMPONENT_COLUMN ? "COLUMN" :
+                               component->type == IR_COMPONENT_ROW ? "ROW" : "OTHER";
+        printf("📦 Layout %s complete\n\n", type_name);
     }
 
     return true;
