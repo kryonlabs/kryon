@@ -156,7 +156,19 @@ bool kryon_draw_text(kryon_cmd_buf_t* buf, const char* text, int16_t x, int16_t 
 
     kryon_command_t cmd = {0};
     cmd.type = KRYON_CMD_DRAW_TEXT;
-    cmd.data.draw_text.text = text;
+
+    // Copy text into text_storage buffer to avoid dangling pointer issues
+    size_t text_len = strlen(text);
+    if (text_len >= sizeof(cmd.data.draw_text.text_storage)) {
+        text_len = sizeof(cmd.data.draw_text.text_storage) - 1;
+    }
+    memcpy(cmd.data.draw_text.text_storage, text, text_len);
+    cmd.data.draw_text.text_storage[text_len] = '\0';
+    cmd.data.draw_text.max_length = (uint8_t)text_len;
+
+    // Set pointer to storage buffer (renderer will use text_storage, not text pointer)
+    cmd.data.draw_text.text = cmd.data.draw_text.text_storage;
+
     cmd.data.draw_text.x = x;
     cmd.data.draw_text.y = y;
     cmd.data.draw_text.font_id = font_id;
@@ -165,11 +177,7 @@ bool kryon_draw_text(kryon_cmd_buf_t* buf, const char* text, int16_t x, int16_t 
     cmd.data.draw_text.font_style = font_style;
     cmd.data.draw_text.color = color;
 
-    // Calculate max length based on remaining buffer space (conservative estimate)
-    cmd.data.draw_text.max_length = 32; // Conservative limit
-
-    bool result = kryon_cmd_buf_push(buf, &cmd);
-    return result;
+    return kryon_cmd_buf_push(buf, &cmd);
 }
 
 bool kryon_draw_line(kryon_cmd_buf_t* buf, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint32_t color) {

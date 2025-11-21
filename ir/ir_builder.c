@@ -539,6 +539,23 @@ void ir_set_custom_data(IRComponent* component, const char* data) {
     component->custom_data = data ? strdup(data) : NULL;
 }
 
+// Checkbox state helpers
+bool ir_get_checkbox_state(IRComponent* component) {
+    if (!component || !component->custom_data) return false;
+    return strcmp(component->custom_data, "checked") == 0;
+}
+
+void ir_set_checkbox_state(IRComponent* component, bool checked) {
+    if (!component) return;
+    ir_set_custom_data(component, checked ? "checked" : "unchecked");
+}
+
+void ir_toggle_checkbox_state(IRComponent* component) {
+    if (!component) return;
+    bool current = ir_get_checkbox_state(component);
+    ir_set_checkbox_state(component, !current);
+}
+
 void ir_set_tag(IRComponent* component, const char* tag) {
     if (!component) return;
 

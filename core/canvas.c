@@ -1,9 +1,14 @@
 #include "include/kryon.h"
 #include "include/kryon_canvas.h"
 #include <string.h>
+#define _USE_MATH_DEFINES
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 // ============================================================================
 // Global Canvas State
@@ -51,6 +56,7 @@ void kryon_canvas_init(uint16_t width, uint16_t height) {
     // Set default state
     g_canvas->color = KRYON_COLOR_WHITE;
     g_canvas->background_color = KRYON_COLOR_BLACK;
+    fprintf(stderr, "[CANVAS] INIT: Set default color to WHITE (0x%08x)\n", KRYON_COLOR_WHITE);
     g_canvas->line_width = KRYON_FP_FROM_INT(1);
     g_canvas->line_style = KRYON_LINE_SOLID;
     g_canvas->line_join = KRYON_LINE_JOIN_MITER;
@@ -139,7 +145,10 @@ void kryon_canvas_set_color(uint32_t color) {
 }
 
 void kryon_canvas_set_color_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    kryon_canvas_set_color(kryon_color_rgba(r, g, b, a));
+    uint32_t color = kryon_color_rgba(r, g, b, a);
+    fprintf(stderr, "[CANVAS] SET_COLOR_RGBA: r=%d g=%d b=%d a=%d -> color=0x%08x\n", r, g, b, a, color);
+    kryon_canvas_set_color(color);
+    fprintf(stderr, "[CANVAS] AFTER SET: g_canvas->color=0x%08x\n", g_canvas ? g_canvas->color : 0);
 }
 
 void kryon_canvas_set_color_rgb(uint8_t r, uint8_t g, uint8_t b) {
@@ -490,22 +499,72 @@ void kryon_canvas_circle(kryon_draw_mode_t mode, kryon_fp_t x, kryon_fp_t y, kry
         return;
     }
 
-    (void)mode;  // Mode ignored for now - renderer doesn't support filled circles yet
     if (getenv("KRYON_TRACE_CANVAS_DRAW")) {
         fprintf(stderr, "[kryon][canvas] Drawing circle mode=%d at (%.2f,%.2f) radius=%.2f color=0x%08x\n",
                 mode, kryon_fp_to_float(x), kryon_fp_to_float(y), kryon_fp_to_float(radius), g_canvas->color);
     }
 
-    // Use the arc command to draw a full circle (0-360 degrees)
-    // This is much more efficient than tessellating into 32+ line segments
-    // Apply canvas offset
-    kryon_draw_arc(g_command_buffer,
-                  KRYON_FP_TO_INT(x) + g_canvas->offset_x,
-                  KRYON_FP_TO_INT(y) + g_canvas->offset_y,
-                  (uint16_t)KRYON_FP_TO_INT(radius),
-                  0,    // start angle (0 degrees)
-                  360,  // end angle (360 degrees = full circle)
-                  g_canvas->color);
+    // For filled circles, tessellate into a polygon
+    // For outline circles, use the efficient arc command
+    fprintf(stderr, "[kryon][canvas] CIRCLE: mode=%d KRYON_DRAW_FILL=%d\n", mode, KRYON_DRAW_FILL);
+    if (mode == KRYON_DRAW_FILL) {
+        fprintf(stderr, "[kryon][canvas] CIRCLE: Taking FILLED path, tessellating into polygon\n");
+        // Tessellate circle into polygon for filling
+        const int segments = 16;  // Limited by command buffer max vertices (16)
+        kryon_fp_t* vertices = (kryon_fp_t*)malloc(segments * 2 * sizeof(kryon_fp_t));
+        if (vertices == NULL) {
+            fprintf(stderr, "[kryon][canvas] ERROR: Failed to allocate memory for circle vertices!\n");
+            return;
+        }
+
+        // Generate circle vertices
+        float cx = kryon_fp_to_float(x);
+        float cy = kryon_fp_to_float(y);
+        float r = kryon_fp_to_float(radius);
+
+        for (int i = 0; i < segments; i++) {
+            float angle = (2.0f * M_PI * i) / segments;
+            float vx = cx + r * cosf(angle);
+            float vy = cy + r * sinf(angle);
+#if KRYON_NO_FLOAT
+            vertices[i * 2] = KRYON_FP_16_16(vx);
+            vertices[i * 2 + 1] = KRYON_FP_16_16(vy);
+#else
+            vertices[i * 2] = vx;
+            vertices[i * 2 + 1] = vy;
+#endif
+        }
+
+        // Apply canvas offset
+        kryon_fp_t* offset_vertices = (kryon_fp_t*)malloc(segments * 2 * sizeof(kryon_fp_t));
+        if (offset_vertices == NULL) {
+            free(vertices);
+            fprintf(stderr, "[kryon][canvas] ERROR: Failed to allocate memory for offset vertices!\n");
+            return;
+        }
+
+        for (int i = 0; i < segments; i++) {
+            offset_vertices[i * 2] = vertices[i * 2] + KRYON_FP_FROM_INT(g_canvas->offset_x);
+            offset_vertices[i * 2 + 1] = vertices[i * 2 + 1] + KRYON_FP_FROM_INT(g_canvas->offset_y);
+        }
+
+        // Draw as filled polygon
+        fprintf(stderr, "[CANVAS] CIRCLE DRAWING POLYGON: using g_canvas->color=0x%08x\n", g_canvas->color);
+        kryon_draw_polygon(g_command_buffer, offset_vertices, segments, g_canvas->color, true);
+
+        free(vertices);
+        free(offset_vertices);
+    } else {
+        // Use the arc command for outline circles (more efficient)
+        // Apply canvas offset
+        kryon_draw_arc(g_command_buffer,
+                      KRYON_FP_TO_INT(x) + g_canvas->offset_x,
+                      KRYON_FP_TO_INT(y) + g_canvas->offset_y,
+                      (uint16_t)KRYON_FP_TO_INT(radius),
+                      0,    // start angle (0 degrees)
+                      360,  // end angle (360 degrees = full circle)
+                      g_canvas->color);
+    }
 }
 
 void kryon_canvas_ellipse(kryon_draw_mode_t mode, kryon_fp_t x, kryon_fp_t y, kryon_fp_t rx, kryon_fp_t ry) {
@@ -676,7 +735,6 @@ void kryon_canvas_print(const char* text, kryon_fp_t x, kryon_fp_t y) {
     if (g_canvas == NULL || g_command_buffer == NULL || text == NULL) return;
 
     // Use coordinates directly (transforms not yet implemented)
-
     kryon_draw_text(g_command_buffer, text,
                    KRYON_FP_TO_INT(x), KRYON_FP_TO_INT(y),
                    g_canvas->font_id, 0, KRYON_FONT_WEIGHT_NORMAL,

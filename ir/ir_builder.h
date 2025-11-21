@@ -103,4 +103,9 @@ bool ir_is_point_in_component(IRComponent* component, float x, float y);
 IRComponent* ir_find_component_at_point(IRComponent* root, float x, float y);
 void ir_set_rendered_bounds(IRComponent* component, float x, float y, float width, float height);
 
+// Checkbox State Helpers
+bool ir_get_checkbox_state(IRComponent* component);
+void ir_set_checkbox_state(IRComponent* component, bool checked);
+void ir_toggle_checkbox_state(IRComponent* component);
+
 #endif // IR_BUILDER_H

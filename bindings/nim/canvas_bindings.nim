@@ -1,12 +1,9 @@
-## Nim bindings for C canvas SDL3 backend
-## These functions are implemented in backends/desktop/canvas_sdl3.c
+## Nim bindings for Kryon IR Canvas system
+## These functions are implemented in core/canvas.c using the IR command buffer
 
 import std/math
 
-# SDL renderer type (opaque)
-type SDL_Renderer* {.importc: "SDL_Renderer", header: "canvas_sdl3.h", incompleteStruct.} = object
-
-# Canvas draw mode
+# Canvas draw mode (matches kryon_draw_mode_t)
 type
   CanvasDrawMode* {.size: sizeof(cint).} = enum
     CANVAS_DRAW_FILL = 0
@@ -16,113 +13,154 @@ type
 
   Point* = tuple[x: float, y: float]
 
-# Context management
-proc canvas_sdl3_set_renderer*(renderer: ptr SDL_Renderer) {.importc, cdecl, header: "canvas_sdl3.h".}
-proc canvas_sdl3_get_renderer*(): ptr SDL_Renderer {.importc, cdecl, header: "canvas_sdl3.h".}
+# Import kryon_draw_mode_t type
+type kryon_draw_mode_t* {.importc: "kryon_draw_mode_t", header: "kryon_canvas.h", size: sizeof(cint).} = enum
+  KRYON_DRAW_FILL = 0
+  KRYON_DRAW_LINE = 1
+
+# Import kryon_fp_t (on desktop it's float)
+type kryon_fp_t* {.importc: "kryon_fp_t", header: "kryon.h".} = cfloat
+
+# Canvas lifecycle
+proc kryon_canvas_init*(width, height: uint16) {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_shutdown*() {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_resize*(width, height: uint16) {.importc, cdecl, header: "kryon_canvas.h".}
+
+# Canvas state
+proc kryon_canvas_set_command_buffer*(buf: pointer) {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_set_offset*(x, y: int16) {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_clear*() {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_clear_color*(color: uint32) {.importc, cdecl, header: "kryon_canvas.h".}
 
 # Color management
-proc canvas_sdl3_background*(r, g, b, a: uint8) {.importc, cdecl, header: "canvas_sdl3.h".}
-proc canvas_sdl3_fill*(r, g, b, a: uint8) {.importc, cdecl, header: "canvas_sdl3.h".}
-proc canvas_sdl3_stroke*(r, g, b, a: uint8) {.importc, cdecl, header: "canvas_sdl3.h".}
-proc canvas_sdl3_stroke_weight*(weight: cfloat) {.importc, cdecl, header: "canvas_sdl3.h".}
+proc kryon_canvas_set_color*(color: uint32) {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_set_color_rgba*(r, g, b, a: uint8) {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_set_color_rgb*(r, g, b: uint8) {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_get_color*(): uint32 {.importc, cdecl, header: "kryon_canvas.h".}
 
-# Basic shapes
-proc canvas_sdl3_rect*(x, y, width, height: cfloat) {.importc, cdecl, header: "canvas_sdl3.h".}
-proc canvas_sdl3_rectangle*(mode: CanvasDrawMode, x, y, width, height: cfloat) {.importc, cdecl, header: "canvas_sdl3.h".}
-proc canvas_sdl3_circle*(mode: CanvasDrawMode, x, y, radius: cfloat) {.importc, cdecl, header: "canvas_sdl3.h".}
-proc canvas_sdl3_ellipse*(mode: CanvasDrawMode, x, y, rx, ry: cfloat) {.importc, cdecl, header: "canvas_sdl3.h".}
-proc canvas_sdl3_polygon*(mode: CanvasDrawMode, vertices: ptr cfloat, vertex_count: cint) {.importc, cdecl, header: "canvas_sdl3.h".}
+proc kryon_canvas_set_background_color*(color: uint32) {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_set_background_color_rgba*(r, g, b, a: uint8) {.importc, cdecl, header: "kryon_canvas.h".}
 
-# Lines
-proc canvas_sdl3_line*(x1, y1, x2, y2: cfloat) {.importc, cdecl, header: "canvas_sdl3.h".}
-proc canvas_sdl3_lines*(points: ptr cfloat, point_count: cint) {.importc, cdecl, header: "canvas_sdl3.h".}
+# Line properties
+proc kryon_canvas_set_line_width*(width: kryon_fp_t) {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_get_line_width*(): kryon_fp_t {.importc, cdecl, header: "kryon_canvas.h".}
 
-# Arcs
-proc canvas_sdl3_arc*(mode: CanvasDrawMode, cx, cy, radius, start_angle, end_angle: cfloat) {.importc, cdecl, header: "canvas_sdl3.h".}
+# Shape drawing
+proc kryon_canvas_rectangle*(mode: kryon_draw_mode_t, x, y, width, height: kryon_fp_t) {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_circle*(mode: kryon_draw_mode_t, x, y, radius: kryon_fp_t) {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_ellipse*(mode: kryon_draw_mode_t, x, y, rx, ry: kryon_fp_t) {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_polygon*(mode: kryon_draw_mode_t, vertices: ptr kryon_fp_t, vertex_count: uint16) {.importc, cdecl, header: "kryon_canvas.h".}
 
-# Text
-proc canvas_sdl3_print*(text: cstring, x, y: cfloat) {.importc, cdecl, header: "canvas_sdl3.h".}
+# Line drawing
+proc kryon_canvas_line*(x1, y1, x2, y2: kryon_fp_t) {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_line_points*(points: ptr kryon_fp_t, point_count: uint16) {.importc, cdecl, header: "kryon_canvas.h".}
 
-# High-level API wrappers
+# Arc drawing
+proc kryon_canvas_arc*(mode: kryon_draw_mode_t, cx, cy, radius, start_angle, end_angle: kryon_fp_t) {.importc, cdecl, header: "kryon_canvas.h".}
+
+# Text rendering
+proc kryon_canvas_print*(text: cstring, x, y: kryon_fp_t) {.importc, cdecl, header: "kryon_canvas.h".}
+proc kryon_canvas_get_text_width*(text: cstring): kryon_fp_t {.importc, cdecl, header: "kryon_canvas.h".}
+
+# High-level API wrappers (maintain compatibility with old API)
+
 proc background*(r, g, b: int) =
-  canvas_sdl3_background(uint8(r), uint8(g), uint8(b), 255)
+  ## Clear background with opaque color
+  kryon_canvas_set_background_color_rgba(uint8(r), uint8(g), uint8(b), 255)
+  kryon_canvas_clear()
 
 proc background*(r, g, b, a: int) =
-  canvas_sdl3_background(uint8(r), uint8(g), uint8(b), uint8(a))
+  ## Clear background with transparent color
+  kryon_canvas_set_background_color_rgba(uint8(r), uint8(g), uint8(b), uint8(a))
+  kryon_canvas_clear()
 
 proc fill*(r, g, b: int) =
-  canvas_sdl3_fill(uint8(r), uint8(g), uint8(b), 255)
+  ## Set fill color (opaque)
+  kryon_canvas_set_color_rgba(uint8(r), uint8(g), uint8(b), 255)
 
 proc fill*(r, g, b, a: int) =
-  canvas_sdl3_fill(uint8(r), uint8(g), uint8(b), uint8(a))
+  ## Set fill color (with alpha)
+  kryon_canvas_set_color_rgba(uint8(r), uint8(g), uint8(b), uint8(a))
 
 proc stroke*(r, g, b: int) =
-  canvas_sdl3_stroke(uint8(r), uint8(g), uint8(b), 255)
+  ## Set stroke color (opaque) - same as fill in new system
+  kryon_canvas_set_color_rgba(uint8(r), uint8(g), uint8(b), 255)
 
 proc stroke*(r, g, b, a: int) =
-  canvas_sdl3_stroke(uint8(r), uint8(g), uint8(b), uint8(a))
+  ## Set stroke color (with alpha) - same as fill in new system
+  kryon_canvas_set_color_rgba(uint8(r), uint8(g), uint8(b), uint8(a))
 
 proc strokeWeight*(weight: float) =
-  canvas_sdl3_stroke_weight(cfloat(weight))
+  ## Set line width
+  kryon_canvas_set_line_width(kryon_fp_t(weight))
 
 proc rect*(x, y, width, height: float) =
-  canvas_sdl3_rect(cfloat(x), cfloat(y), cfloat(width), cfloat(height))
+  ## Draw filled rectangle (legacy API - always filled)
+  kryon_canvas_rectangle(KRYON_DRAW_FILL, kryon_fp_t(x), kryon_fp_t(y), kryon_fp_t(width), kryon_fp_t(height))
 
 proc rect*(x, y, width, height: int) =
   rect(float(x), float(y), float(width), float(height))
 
 proc rectangle*(mode: DrawMode, x, y, width, height: float) =
-  canvas_sdl3_rectangle(mode, cfloat(x), cfloat(y), cfloat(width), cfloat(height))
+  ## Draw rectangle with fill/line mode
+  kryon_canvas_rectangle(kryon_draw_mode_t(mode), kryon_fp_t(x), kryon_fp_t(y), kryon_fp_t(width), kryon_fp_t(height))
 
 proc rectangle*(mode: DrawMode, x, y, width, height: int) =
   rectangle(mode, float(x), float(y), float(width), float(height))
 
 proc circle*(mode: DrawMode, x, y, radius: float) =
-  canvas_sdl3_circle(mode, cfloat(x), cfloat(y), cfloat(radius))
+  ## Draw circle with fill/line mode
+  kryon_canvas_circle(kryon_draw_mode_t(mode), kryon_fp_t(x), kryon_fp_t(y), kryon_fp_t(radius))
 
 proc circle*(mode: DrawMode, x, y, radius: int) =
   circle(mode, float(x), float(y), float(radius))
 
 proc ellipse*(mode: DrawMode, x, y, rx, ry: float) =
-  canvas_sdl3_ellipse(mode, cfloat(x), cfloat(y), cfloat(rx), cfloat(ry))
+  ## Draw ellipse with fill/line mode
+  kryon_canvas_ellipse(kryon_draw_mode_t(mode), kryon_fp_t(x), kryon_fp_t(y), kryon_fp_t(rx), kryon_fp_t(ry))
 
 proc ellipse*(mode: DrawMode, x, y, rx, ry: int) =
   ellipse(mode, float(x), float(y), float(rx), float(ry))
 
 proc polygon*(mode: DrawMode, vertices: openArray[Point]) =
+  ## Draw polygon with fill/line mode
   if vertices.len < 3: return
 
-  var flatVertices = newSeq[cfloat](vertices.len * 2)
+  var flatVertices = newSeq[kryon_fp_t](vertices.len * 2)
   for i, vertex in vertices:
-    flatVertices[i * 2] = cfloat(vertex.x)
-    flatVertices[i * 2 + 1] = cfloat(vertex.y)
+    flatVertices[i * 2] = kryon_fp_t(vertex.x)
+    flatVertices[i * 2 + 1] = kryon_fp_t(vertex.y)
 
-  canvas_sdl3_polygon(mode, addr flatVertices[0], cint(vertices.len))
+  kryon_canvas_polygon(kryon_draw_mode_t(mode), addr flatVertices[0], uint16(vertices.len))
 
 proc line*(x1, y1, x2, y2: float) =
-  canvas_sdl3_line(cfloat(x1), cfloat(y1), cfloat(x2), cfloat(y2))
+  ## Draw single line
+  kryon_canvas_line(kryon_fp_t(x1), kryon_fp_t(y1), kryon_fp_t(x2), kryon_fp_t(y2))
 
 proc line*(x1, y1, x2, y2: int) =
   line(float(x1), float(y1), float(x2), float(y2))
 
 proc line*(points: openArray[Point]) =
+  ## Draw connected lines
   if points.len < 2: return
 
-  var flatPoints = newSeq[cfloat](points.len * 2)
+  var flatPoints = newSeq[kryon_fp_t](points.len * 2)
   for i, point in points:
-    flatPoints[i * 2] = cfloat(point.x)
-    flatPoints[i * 2 + 1] = cfloat(point.y)
+    flatPoints[i * 2] = kryon_fp_t(point.x)
+    flatPoints[i * 2 + 1] = kryon_fp_t(point.y)
 
-  canvas_sdl3_lines(addr flatPoints[0], cint(points.len))
+  kryon_canvas_line_points(addr flatPoints[0], uint16(points.len))
 
 proc arc*(mode: DrawMode, cx, cy, radius: float, startAngle, endAngle: float) =
-  canvas_sdl3_arc(mode, cfloat(cx), cfloat(cy), cfloat(radius), cfloat(startAngle), cfloat(endAngle))
+  ## Draw arc with fill/line mode
+  kryon_canvas_arc(kryon_draw_mode_t(mode), kryon_fp_t(cx), kryon_fp_t(cy), kryon_fp_t(radius), kryon_fp_t(startAngle), kryon_fp_t(endAngle))
 
 proc arc*(mode: DrawMode, cx, cy, radius: int, startAngle, endAngle: float) =
   arc(mode, float(cx), float(cy), float(radius), startAngle, endAngle)
 
 proc print*(text: string, x, y: float) =
-  canvas_sdl3_print(cstring(text), cfloat(x), cfloat(y))
+  ## Print text at position
+  kryon_canvas_print(cstring(text), kryon_fp_t(x), kryon_fp_t(y))
 
 proc print*(text: string, x, y: int) =
   print(text, float(x), float(y))
