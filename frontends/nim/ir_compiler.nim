@@ -42,6 +42,7 @@ proc ir_create_layout*(): pointer {.ir_import.}
 proc ir_destroy_layout*(layout: pointer) {.ir_import.}
 proc ir_set_layout*(component: IRComponentC, layout: pointer) {.ir_import.}
 proc ir_set_flexbox*(layout: pointer, wrap: bool, gap: uint32, main_axis, cross_axis: IRAlignment) {.ir_import.}
+proc ir_set_justify_content*(layout: pointer, justify: IRAlignment) {.ir_import.}
 
 proc ir_create_event*(event_type: IREventType, logic_id: cstring, handler_data: cstring): IREventC {.ir_import.}
 proc ir_destroy_event*(event: IREventC) {.ir_import.}
@@ -223,6 +224,7 @@ proc applyLayoutToComponent*(component: IRComponentC, properties: Table[string, 
   let cross_axis = mapAlignmentToIR(properties.getOrDefault("crossAxisAlignment", "start"))
 
   ir_set_flexbox(layout, wrap, gap, main_axis, cross_axis)
+  ir_set_justify_content(layout, main_axis)
   ir_set_layout(component, layout)
 
 proc applyEventsToComponent*(component: IRComponentC, properties: Table[string, string]) =

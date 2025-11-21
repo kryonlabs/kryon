@@ -3,7 +3,7 @@
 ## Provides declarative UI syntax that compiles to C core component trees
 
 import macros, strutils, os, sequtils, random
-import ./runtime, ./reactive_system
+import ./runtime, ./reactive_system, ./ir_core
 # Removed core_kryon and markdown - using IR system now
 import ./kryon_dsl/helpers  # Import helper functions
 

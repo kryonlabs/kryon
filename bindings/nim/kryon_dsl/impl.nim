@@ -398,9 +398,18 @@ macro kryonApp*(body: untyped): untyped =
   var appCode = newStmtList()
 
   # Add initialization
+  let createContextSym = bindSym("ir_create_context")
+  let setContextSym = bindSym("ir_set_context")
+
   appCode.add quote do:
     # Initialize application
     let `appName` = newKryonApp()
+
+    # Initialize IR context BEFORE creating any components
+    # This ensures all components get unique auto-incrementing IDs
+    let irContext = `createContextSym`()
+    `setContextSym`(irContext)
+    echo "[kryon][dsl] Initialized IR context"
 
     # Set window properties
     var window = KryonWindow(
@@ -1387,11 +1396,15 @@ macro Text*(props: untyped): untyped =
     # CRITICAL: Create the closure at RUNTIME, not at compile-time, so Nim's
     # closure mechanism properly captures variables and heap-allocates them
     let createExprSym = bindSym("createReactiveTextExpression")
+    # FIX: Embed the expression AST directly in the closure body (not pre-evaluated)
+    # This allows the closure to re-evaluate the expression each time it's called,
+    # reading the current variable values (not capturing evaluated results)
     initStmts.add quote do:
       # Create reactive expression for text
-      # The closure will capture the current runtime value of variables in `textContent`
+      # The closure body contains the expression AST, which will be evaluated
+      # each time the closure is called, capturing variables by reference
       let evalProc = proc (): string {.closure.} =
-        `textContent`  # This will be evaluated with captured runtime values
+        `textContent`  # Re-evaluate expression each call
       `createExprSym`(`textSym`, `expressionStr`, evalProc, `varNames`)
       echo "[kryon][reactive] Created live reactive expression: ", `expressionStr`
 

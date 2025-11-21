@@ -19,6 +19,9 @@
 #include <SDL3_ttf/SDL_ttf.h>
 #endif
 
+// Nim bridge declarations - functions exported from Nim for C to call
+extern void nimProcessReactiveUpdates();
+
 // Desktop IR Renderer Context
 struct DesktopIRRenderer {
     DesktopRendererConfig config;
@@ -185,7 +188,27 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
         IRDimension style_dim = is_height ? child->style->height : child->style->width;
         if (style_dim.type != IR_DIMENSION_AUTO) {
             // Has explicit size, use it
-            return ir_dimension_to_pixels(style_dim, is_height ? parent_rect.height : parent_rect.width);
+            float result = ir_dimension_to_pixels(style_dim, is_height ? parent_rect.height : parent_rect.width);
+
+            // WORKAROUND: Treat explicit 0 dimensions as AUTO for Row/Column
+            // This fixes DSL bug where Rows/Columns get explicit height=0 instead of AUTO
+            if (result == 0.0f && (child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN)) {
+                if (getenv("KRYON_TRACE_LAYOUT")) {
+                    const char* type_name = child->type == IR_COMPONENT_ROW ? "ROW" : "COLUMN";
+                    printf("    🔍 %s has EXPLICIT %s: %.1f --> treating as AUTO\n",
+                           type_name, is_height ? "height" : "width", result);
+                }
+                // Fall through to AUTO sizing logic below
+            } else {
+                if (getenv("KRYON_TRACE_LAYOUT")) {
+                    const char* type_name = "OTHER";
+                    if (child->type == IR_COMPONENT_ROW) type_name = "ROW";
+                    else if (child->type == IR_COMPONENT_COLUMN) type_name = "COLUMN";
+                    else if (child->type == IR_COMPONENT_BUTTON) type_name = "BUTTON";
+                    printf("    🔍 %s has EXPLICIT %s: %.1f\n", type_name, is_height ? "height" : "width", result);
+                }
+                return result;
+            }
         }
     }
 
@@ -204,6 +227,17 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
 
     // For Container/Row/Column with AUTO size, we need to measure children
     // But we CANNOT recurse into full layout - just sum up their explicit sizes
+    if (getenv("KRYON_TRACE_LAYOUT")) {
+        const char* type_name = "OTHER";
+        if (child->type == IR_COMPONENT_ROW) type_name = "ROW";
+        else if (child->type == IR_COMPONENT_COLUMN) type_name = "COLUMN";
+        else if (child->type == IR_COMPONENT_CONTAINER) type_name = "CONTAINER";
+        printf("    🔍 Checking %s for recursive measurement: type_match=%d, child_count=%d\n",
+               type_name,
+               (child->type == IR_COMPONENT_CONTAINER || child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN),
+               child->child_count);
+    }
+
     if ((child->type == IR_COMPONENT_CONTAINER ||
          child->type == IR_COMPONENT_ROW ||
          child->type == IR_COMPONENT_COLUMN) &&
@@ -219,6 +253,13 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
         bool is_main_axis = (is_height && child->type == IR_COMPONENT_COLUMN) ||
                            (!is_height && child->type == IR_COMPONENT_ROW);
 
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            const char* child_type_name = child->type == IR_COMPONENT_ROW ? "ROW" :
+                                         child->type == IR_COMPONENT_COLUMN ? "COLUMN" : "CONTAINER";
+            printf("    📐 Measuring %s's %s (main_axis=%d, %d children)\n",
+                   child_type_name, is_height ? "HEIGHT" : "WIDTH", is_main_axis, child->child_count);
+        }
+
         for (uint32_t i = 0; i < child->child_count; i++) {
             IRComponent* grandchild = child->children[i];
 
@@ -230,6 +271,20 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
                     // For grandchildren, we need to use ir_dimension_to_pixels to handle all dimension types
                     child_dim = ir_dimension_to_pixels(gd, is_height ? parent_rect.height : parent_rect.width);
                 }
+            }
+
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                const char* gc_type_name = "OTHER";
+                if (grandchild) {
+                    switch (grandchild->type) {
+                        case IR_COMPONENT_BUTTON: gc_type_name = "BUTTON"; break;
+                        case IR_COMPONENT_TEXT: gc_type_name = "TEXT"; break;
+                        case IR_COMPONENT_ROW: gc_type_name = "ROW"; break;
+                        case IR_COMPONENT_COLUMN: gc_type_name = "COLUMN"; break;
+                        default: break;
+                    }
+                }
+                printf("      ├─ grandchild[%d] %s: %s=%.1f\n", i, gc_type_name, is_height ? "height" : "width", child_dim);
             }
 
             if (is_main_axis) {
@@ -244,6 +299,10 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
                     total = child_dim;
                 }
             }
+        }
+
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            printf("      └─ Total %s: %.1f\n", is_height ? "HEIGHT" : "WIDTH", total);
         }
 
         return total;
@@ -668,9 +727,19 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
             // Use get_child_dimension to correctly measure all component types
             float child_height = get_child_dimension(component->children[i], child_rect, true);
 
-            #ifdef KRYON_TRACE_LAYOUT
-            printf("  🔍 Child %d: measured height=%.1f\n", i, child_height);
-            #endif
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                const char* child_type_name = "OTHER";
+                if (component->children[i]) {
+                    switch (component->children[i]->type) {
+                        case IR_COMPONENT_ROW: child_type_name = "ROW"; break;
+                        case IR_COMPONENT_COLUMN: child_type_name = "COLUMN"; break;
+                        case IR_COMPONENT_BUTTON: child_type_name = "BUTTON"; break;
+                        case IR_COMPONENT_TEXT: child_type_name = "TEXT"; break;
+                        default: break;
+                    }
+                }
+                printf("  🔍 Child %d (%s): measured height=%.1f\n", i, child_type_name, child_height);
+            }
 
             total_height += child_height;
             if (i < component->child_count - 1) {  // Don't add gap after last child
@@ -928,9 +997,16 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
     if (getenv("KRYON_TRACE_LAYOUT")) {
         const char* type_name = component->type == IR_COMPONENT_COLUMN ? "COLUMN" :
                                component->type == IR_COMPONENT_ROW ? "ROW" : "OTHER";
-        printf("📦 Layout %s: start=(%.1f,%.1f) child_rect=(%.1f,%.1f %.1fx%.1f) gap=%.1f\n",
-               type_name, start_x, start_y, child_rect.x, child_rect.y,
-               child_rect.width, child_rect.height, distributed_gap);
+        if (component->layout) {
+            printf("📦 Layout %s: start=(%.1f,%.1f) child_rect=(%.1f,%.1f %.1fx%.1f) gap=%.1f main_axis=%d cross_axis=%d\n",
+                   type_name, start_x, start_y, child_rect.x, child_rect.y,
+                   child_rect.width, child_rect.height, distributed_gap,
+                   component->layout->flex.main_axis, component->layout->flex.cross_axis);
+        } else {
+            printf("📦 Layout %s: start=(%.1f,%.1f) child_rect=(%.1f,%.1f %.1fx%.1f) gap=%.1f\n",
+                   type_name, start_x, start_y, child_rect.x, child_rect.y,
+                   child_rect.width, child_rect.height, distributed_gap);
+        }
     }
 
     for (uint32_t i = 0; i < component->child_count; i++) {
@@ -1059,7 +1135,26 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                     rect_for_child.width = child_rect.width;
                 }
                 if (is_auto_height) {
-                    rect_for_child.height = child_rect.height;
+                    // For auto-height children in a Column with CENTER/END alignment,
+                    // use their measured content height instead of full available space
+                    // to prevent cross-axis alignment from pushing content off-screen
+                    bool parent_is_centering = component->type == IR_COMPONENT_COLUMN &&
+                                              component->layout &&
+                                              (component->layout->flex.justify_content == IR_ALIGNMENT_CENTER ||
+                                               component->layout->flex.justify_content == IR_ALIGNMENT_END);
+                    if (parent_is_centering) {
+                        // Measure the actual content height of the child
+                        float content_height = get_child_dimension(child, child_rect, true);
+                        if (content_height > 0) {
+                            rect_for_child.height = content_height;
+                        } else {
+                            // Fallback to measured height if available
+                            rect_for_child.height = child_layout.height > 0 ? child_layout.height : child_rect.height;
+                        }
+                    } else {
+                        // Use full available height for stretch/start alignment
+                        rect_for_child.height = child_rect.height;
+                    }
                 }
 
                 if (getenv("KRYON_TRACE_LAYOUT")) {
@@ -1073,25 +1168,31 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
 
         // Vertical stacking for column layout - advance current_y
         if (component->type == IR_COMPONENT_COLUMN) {
+            // Use rect_for_child height for auto-sized children (which may have been measured)
+            // instead of child_layout height (which may be 0 for auto-sized components)
+            float advance_height = rect_for_child.height > 0 ? rect_for_child.height : child_layout.height;
             if (getenv("KRYON_TRACE_LAYOUT")) {
                 float old_y = current_y;
-                current_y += child_layout.height + distributed_gap;
+                current_y += advance_height + distributed_gap;
                 printf("  ⬇️  Advance Y: %.1f -> %.1f (height=%.1f gap=%.1f)\n",
-                       old_y, current_y, child_layout.height, distributed_gap);
+                       old_y, current_y, advance_height, distributed_gap);
             } else {
-                current_y += child_layout.height + distributed_gap;
+                current_y += advance_height + distributed_gap;
             }
         }
 
         // Horizontal stacking for row layout - advance current_x
         if (component->type == IR_COMPONENT_ROW) {
+            // Use rect_for_child width for auto-sized children (which may have been measured)
+            // instead of child_layout width (which may be 0 for auto-sized components)
+            float advance_width = rect_for_child.width > 0 ? rect_for_child.width : child_layout.width;
             if (getenv("KRYON_TRACE_LAYOUT")) {
                 float old_x = current_x;
-                current_x += child_layout.width + distributed_gap;
+                current_x += advance_width + distributed_gap;
                 printf("  ➡️  Advance X: %.1f -> %.1f (width=%.1f gap=%.1f)\n",
-                       old_x, current_x, child_layout.width, distributed_gap);
+                       old_x, current_x, advance_width, distributed_gap);
             } else {
-                current_x += child_layout.width + distributed_gap;
+                current_x += advance_width + distributed_gap;
             }
         }
     }
@@ -1480,6 +1581,10 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
 #ifdef ENABLE_SDL3
     while (renderer->running) {
         handle_sdl3_events(renderer);
+
+        // Process reactive updates (text expressions, conditionals, etc.)
+        // This ensures UI updates when reactive variables change
+        nimProcessReactiveUpdates();
 
         if (!desktop_ir_renderer_render_frame(renderer, root)) {
             printf("❌ Frame rendering failed\n");

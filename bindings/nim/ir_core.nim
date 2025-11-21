@@ -138,18 +138,12 @@ type
     event_count*: uint32
     logic*: ptr LogicSource
 
-  IRContext* = object
-    components*: ptr IRComponent
-    component_count*: uint32
-    component_capacity*: uint32
-
-# Global context
-var g_ir_context*: IRContext
+  IRContext* {.importc: "IRContext", header: "ir_core.h", incompleteStruct.} = object
 
 # Context Management
-proc ir_create_context*(): IRContext {.importc, cdecl, header: "ir_builder.h".}
-proc ir_destroy_context*(context: IRContext) {.importc, cdecl, header: "ir_builder.h".}
-proc ir_set_context*(context: IRContext) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_create_context*(): ptr IRContext {.importc, cdecl, header: "ir_builder.h".}
+proc ir_destroy_context*(context: ptr IRContext) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_context*(context: ptr IRContext) {.importc, cdecl, header: "ir_builder.h".}
 
 # Component Creation
 proc ir_create_component*(component_type: IRComponentType): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}

@@ -346,3 +346,12 @@ proc updateAllReactiveConditionals*() =
               echo "[kryon][reactive] Layout: child[", i, "] bounds: ", childX, ", ", childY, ", w=", childWidth, ", h=", childHeight
       except Exception as e:
         echo "[kryon][reactive] Error updating conditional: ", e.msg
+
+# ============================================================================
+# C Bridge for Desktop Renderer Main Loop
+# ============================================================================
+
+proc nimProcessReactiveUpdates*() {.exportc: "nimProcessReactiveUpdates", cdecl, dynlib.} =
+  ## C-callable bridge function that processes reactive updates every frame
+  ## Called from the desktop renderer's main event loop
+  processReactiveUpdates()
