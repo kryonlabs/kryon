@@ -22,7 +22,7 @@ proc Counter*(initialValue: int = 0): Element =
 
   # Return the counter UI
   result = Row:
-    mainAxisAlignment = "center"
+    alignItems = "center"
     gap = 32
 
     Button:

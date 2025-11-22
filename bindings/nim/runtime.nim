@@ -316,8 +316,23 @@ proc kryon_component_set_gap*(component: ptr IRComponent, gap: uint8) =
 
 proc kryon_component_set_bounds_mask*(component: ptr IRComponent, x, y, w, h: cfloat, mask: uint8) =
   # Set component bounds using IR style system
-  # Mask parameter ignored - all bounds are set
-  kryon_component_set_bounds(component, int(x), int(y), int(w), int(h))
+  # Only set dimensions if their mask bit is set (0x04 = width, 0x08 = height)
+  # This allows components without explicit dimensions to remain as AUTO
+  let style = ir_get_style(component)
+  let targetStyle = if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_style(component, newStyle)
+    newStyle
+  else:
+    style
+
+  # Only set width if mask bit 0x04 is set
+  if (mask and 0x04) != 0:
+    ir_set_width(targetStyle, IR_DIMENSION_PX, w)
+
+  # Only set height if mask bit 0x08 is set
+  if (mask and 0x08) != 0:
+    ir_set_height(targetStyle, IR_DIMENSION_PX, h)
 
 proc kryon_component_set_flex*(component: ptr IRComponent, flexGrow, flexShrink: uint8) =
   # Flex grow/shrink in IR would be handled by flex layout dimensions

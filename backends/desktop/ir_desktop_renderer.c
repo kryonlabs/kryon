@@ -22,6 +22,20 @@
 // Nim bridge declarations - functions exported from Nim for C to call
 extern void nimProcessReactiveUpdates();
 
+// ============================================================================
+// TEXT MEASUREMENT CONSTANTS
+// ============================================================================
+// These constants define heuristics for estimating text dimensions without
+// actual font rendering. Used when calculating layout before rendering phase.
+
+// Average character width as a ratio of font size (for proportional fonts)
+// Example: 16px font → ~9.6px average character width
+#define TEXT_CHAR_WIDTH_RATIO 0.6f
+
+// Line height as a ratio of font size (includes typical line spacing)
+// Example: 16px font → ~19.2px line height
+#define TEXT_LINE_HEIGHT_RATIO 1.2f
+
 // Desktop IR Renderer Context
 struct DesktopIRRenderer {
     DesktopRendererConfig config;
@@ -88,6 +102,72 @@ typedef struct LayoutRect {
 // Forward declaration
 static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_height);
 
+#ifdef ENABLE_SDL3
+// ============================================================================
+// TEXT MEASUREMENT AND LAYOUT FLOW
+// ============================================================================
+//
+// TEXT components require special handling in the layout engine because their
+// dimensions cannot be determined from style properties alone - they depend on
+// the actual text content and font properties.
+//
+// MEASUREMENT FLOW:
+// -----------------
+// 1. measure_text_dimensions() calculates natural text size using heuristics:
+//    - Width: character_count × font_size × TEXT_CHAR_WIDTH_RATIO (0.6)
+//    - Height: font_size × TEXT_LINE_HEIGHT_RATIO (1.2)
+//    - Applies max_width constraint from parent container to prevent overflow
+//
+// 2. get_child_size() calls measure_text_dimensions() during layout phase
+//    - Passes parent_rect.width as max_width constraint
+//    - Returns measured dimensions for layout calculation
+//
+// 3. get_child_dimension() also calls measure_text_dimensions() for axis-specific sizing
+//    - Used by flexbox layout algorithm
+//    - Passes parent_rect.width as max_width constraint
+//
+// CRITICAL RULES FOR TEXT LAYOUT:
+// --------------------------------
+// ✓ TEXT should NEVER be stretched by STRETCH alignment (see lines ~1137, ~1174)
+// ✓ TEXT should NEVER overflow parent container width (constrained by max_width)
+// ✓ TEXT positioning should respect layout engine decisions (no hardcoded centering)
+// ✓ TEXT should start at container's top-left (respecting padding)
+//
+// DEBUGGING:
+// ----------
+// Set KRYON_TRACE_LAYOUT=1 to see TEXT measurement and constraint application:
+//   📏 TEXT width clamped: 480.0 -> 370.0 (container constraint)
+//
+// Helper function to estimate text dimensions using heuristics
+static void measure_text_dimensions(IRComponent* component, float max_width, float* out_width, float* out_height) {
+    *out_width = 0.0f;
+    *out_height = 0.0f;
+
+    if (!component || !component->text_content) {
+        return;
+    }
+
+    // Get font size from style or use default
+    float font_size = 16.0f;
+    if (component->style && component->style->font.size > 0) {
+        font_size = component->style->font.size;
+    }
+
+    // Estimate dimensions based on text length and font size using heuristic ratios
+    size_t text_len = strlen(component->text_content);
+    *out_height = font_size * TEXT_LINE_HEIGHT_RATIO;
+    *out_width = (float)text_len * font_size * TEXT_CHAR_WIDTH_RATIO;
+
+    // Constrain TEXT to parent container width to prevent overflow
+    if (max_width > 0.0f && *out_width > max_width) {
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            printf("    📏 TEXT width clamped: %.1f -> %.1f (container constraint)\n", *out_width, max_width);
+        }
+        *out_width = max_width;
+    }
+}
+#endif
+
 static LayoutRect calculate_component_layout(IRComponent* component, LayoutRect parent_rect) {
     LayoutRect rect = {0};
 
@@ -96,18 +176,15 @@ static LayoutRect calculate_component_layout(IRComponent* component, LayoutRect 
     // Default to parent bounds for container
     rect.x = parent_rect.x;
     rect.y = parent_rect.y;
-    rect.width = parent_rect.width;
-    rect.height = parent_rect.height;
 
-    // Special handling for Text and Checkbox components - auto-size to content instead of filling parent
-    if (component->type == IR_COMPONENT_TEXT || component->type == IR_COMPONENT_CHECKBOX) {
-        // Get font size from style or use default
-        float font_size = 16.0f;  // Default font size
-        if (component->style && component->style->font.size > 0) {
-            font_size = component->style->font.size;
-        }
-        // Use font size * 1.2 as default height (just enough for the text itself)
-        rect.height = font_size * 1.2f;
+    // For TEXT components with AUTO dimensions, start with 0 instead of parent dimensions
+    // This allows get_child_size() to detect and measure them properly
+    if (component->type == IR_COMPONENT_TEXT) {
+        rect.width = 0;
+        rect.height = 0;
+    } else {
+        rect.width = parent_rect.width;
+        rect.height = parent_rect.height;
     }
 
     // Apply component-specific dimensions
@@ -119,11 +196,16 @@ static LayoutRect calculate_component_layout(IRComponent* component, LayoutRect 
             rect.height = ir_dimension_to_pixels(component->style->height, parent_rect.height);
         }
 
-        // Apply margins
-        if (component->style) {
-            if (component->style->margin.top > 0) rect.y += component->style->margin.top;
-            if (component->style->margin.left > 0) rect.x += component->style->margin.left;
+        // For TEXT components, if explicit dimensions resolve to 0, treat as AUTO
+        // This allows text measurement to happen in get_child_size()
+        if (component->type == IR_COMPONENT_TEXT) {
+            if (rect.width <= 0) rect.width = 0;
+            if (rect.height <= 0) rect.height = 0;
         }
+
+        // Apply margins
+        if (component->style->margin.top > 0) rect.y += component->style->margin.top;
+        if (component->style->margin.left > 0) rect.x += component->style->margin.left;
     }
 
     return rect;
@@ -172,6 +254,24 @@ static LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect) {
         }
     }
 
+    // Measure TEXT components using text dimensions
+    if (child->type == IR_COMPONENT_TEXT) {
+        // TEXT should auto-size if:
+        // 1. No style at all
+        // 2. Dimension type is AUTO
+        // In both cases, calculate_component_layout will have returned 0 dimensions
+        // So we just check if the calculated dimensions are 0
+        if (layout.width <= 0.0f || layout.height <= 0.0f) {
+#ifdef ENABLE_SDL3
+            float text_width = 0.0f, text_height = 0.0f;
+            measure_text_dimensions(child, parent_rect.width, &text_width, &text_height);
+
+            if (layout.width <= 0.0f && text_width > 0.0f) layout.width = text_width;
+            if (layout.height <= 0.0f && text_height > 0.0f) layout.height = text_height;
+#endif
+        }
+    }
+
     // Return a rect with just width/height, position set to 0
     // (position will be set later in the main layout loop)
     LayoutRect result = {0, 0, layout.width, layout.height};
@@ -190,11 +290,14 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
             // Has explicit size, use it
             float result = ir_dimension_to_pixels(style_dim, is_height ? parent_rect.height : parent_rect.width);
 
-            // WORKAROUND: Treat explicit 0 dimensions as AUTO for Row/Column
-            // This fixes DSL bug where Rows/Columns get explicit height=0 instead of AUTO
-            if (result == 0.0f && (child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN)) {
+            // WORKAROUND: Treat explicit 0 dimensions as AUTO for Row/Column/Text
+            // This fixes DSL bug where these components get explicit height=0/width=0 instead of AUTO
+            if (result == 0.0f && (child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN || child->type == IR_COMPONENT_TEXT)) {
                 if (getenv("KRYON_TRACE_LAYOUT")) {
-                    const char* type_name = child->type == IR_COMPONENT_ROW ? "ROW" : "COLUMN";
+                    const char* type_name = "OTHER";
+                    if (child->type == IR_COMPONENT_ROW) type_name = "ROW";
+                    else if (child->type == IR_COMPONENT_COLUMN) type_name = "COLUMN";
+                    else if (child->type == IR_COMPONENT_TEXT) type_name = "TEXT";
                     printf("    🔍 %s has EXPLICIT %s: %.1f --> treating as AUTO\n",
                            type_name, is_height ? "height" : "width", result);
                 }
@@ -205,6 +308,7 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
                     if (child->type == IR_COMPONENT_ROW) type_name = "ROW";
                     else if (child->type == IR_COMPONENT_COLUMN) type_name = "COLUMN";
                     else if (child->type == IR_COMPONENT_BUTTON) type_name = "BUTTON";
+                    else if (child->type == IR_COMPONENT_TEXT) type_name = "TEXT";
                     printf("    🔍 %s has EXPLICIT %s: %.1f\n", type_name, is_height ? "height" : "width", result);
                 }
                 return result;
@@ -215,14 +319,35 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
     // Component has AUTO size - handle based on type
     if (child->type == IR_COMPONENT_TEXT || child->type == IR_COMPONENT_CHECKBOX) {
         // Text/checkbox auto-size to content
+#ifdef ENABLE_SDL3
+        float text_width = 0.0f, text_height = 0.0f;
+        measure_text_dimensions(child, parent_rect.width, &text_width, &text_height);
+
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            printf("    📝 TEXT measurement result: width=%.1f, height=%.1f\n", text_width, text_height);
+        }
+
+        if (is_height && text_height > 0.0f) {
+            return text_height;
+        } else if (!is_height && text_width > 0.0f) {
+            return text_width;
+        }
+#endif
+        // Fallback if measurement failed or not available
         if (is_height) {
             float font_size = 16.0f;
             if (child->style && child->style->font.size > 0) {
                 font_size = child->style->font.size;
             }
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                printf("    📝 TEXT fallback height: %.1f (font_size=%.1f)\n", font_size * 1.2f, font_size);
+            }
             return font_size * 1.2f;
         }
-        return 0.0f;  // Text width is auto
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            printf("    📝 TEXT fallback width: 0.0\n");
+        }
+        return 0.0f;  // Text width is auto (fallback)
     }
 
     // For Container/Row/Column with AUTO size, we need to measure children
@@ -402,8 +527,8 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 if (surface) {
                     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
                     if (texture) {
-                        // Center the text horizontally within the allocated rect (round to integer pixels)
-                        float text_x = roundf(rect.x + (rect.width - surface->w) / 2.0f);
+                        // Render text at the position determined by the layout engine (round to integer pixels)
+                        float text_x = roundf(rect.x);
                         SDL_FRect text_rect = {
                             .x = text_x,
                             .y = roundf(rect.y),  // Round Y to integer pixel
@@ -688,14 +813,20 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
     // Render children
     LayoutRect child_rect = rect;
 
-    // For AUTO-sized Row/Column components, if rect.height/width is 0,
-    // we still need a container dimension for alignment calculations.
-    // Use parent's rect as the available space.
+    // For AUTO-sized Row/Column components, use their measured content dimensions
+    // for child alignment calculations instead of 0 or parent's full height
     if ((component->type == IR_COMPONENT_COLUMN || component->type == IR_COMPONENT_ROW)) {
-        // For AUTO-sized components, rect dimensions might be 0
-        // But we need the actual available space for alignment
-        // The rect passed in IS the available space from the parent
-        // So keep rect dimensions as-is for child_rect calculations
+        // Get measured content dimensions
+        float content_width = get_child_dimension(component, rect, false);
+        float content_height = get_child_dimension(component, rect, true);
+
+        // If rect dimensions are 0 (AUTO-sized), use measured content dimensions
+        if (rect.width == 0.0f && content_width > 0.0f) {
+            child_rect.width = content_width;
+        }
+        if (rect.height == 0.0f && content_height > 0.0f) {
+            child_rect.height = content_height;
+        }
     }
 
     if (component->style) {
@@ -1054,10 +1185,11 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 case IR_ALIGNMENT_STRETCH:
                     child_layout.x = child_rect.x;
                     // Only stretch if child doesn't have explicit width AND container has non-zero width
+                    // Never stretch TEXT components - they should use their measured width
                     // Check if child has explicit width (not AUTO)
                     bool has_explicit_width = child && child->style &&
                                             child->style->width.type != IR_DIMENSION_AUTO;
-                    if (!has_explicit_width && child_rect.width > 0) {
+                    if (!has_explicit_width && child_rect.width > 0 && child->type != IR_COMPONENT_TEXT) {
                         child_layout.width = child_rect.width;
                     }
                     break;
@@ -1090,10 +1222,11 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 case IR_ALIGNMENT_STRETCH:
                     child_layout.y = child_rect.y;
                     // Only stretch if child doesn't have explicit height AND container has non-zero height
+                    // Never stretch TEXT components - they should use their measured height
                     // Check if child has explicit height (not AUTO)
                     bool has_explicit_height = child && child->style &&
                                              child->style->height.type != IR_DIMENSION_AUTO;
-                    if (!has_explicit_height && child_rect.height > 0) {
+                    if (!has_explicit_height && child_rect.height > 0 && child->type != IR_COMPONENT_TEXT) {
                         child_layout.height = child_rect.height;
                     }
                     break;
