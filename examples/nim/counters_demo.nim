@@ -58,6 +58,7 @@ let app = kryonApp:
 
     Column:
       mainAxisAlignment = "center"
+      crossAxisAlignment = "center"
       gap = 20
 
       Counter(5)

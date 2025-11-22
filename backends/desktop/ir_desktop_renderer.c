@@ -815,16 +815,23 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
 
     // For AUTO-sized Row/Column components, use their measured content dimensions
     // for child alignment calculations instead of 0 or parent's full height
+    // EXCEPTION: If component has cross-axis alignment (not START), keep rect dimensions
+    // so it can align its children within the full available space
     if ((component->type == IR_COMPONENT_COLUMN || component->type == IR_COMPONENT_ROW)) {
+        // Check if component needs cross-axis space for alignment
+        bool needs_cross_axis_space = component->layout &&
+                                     component->layout->flex.cross_axis != IR_ALIGNMENT_START;
+
         // Get measured content dimensions
         float content_width = get_child_dimension(component, rect, false);
         float content_height = get_child_dimension(component, rect, true);
 
         // If rect dimensions are 0 (AUTO-sized), use measured content dimensions
-        if (rect.width == 0.0f && content_width > 0.0f) {
+        // UNLESS component needs cross-axis space for alignment
+        if (rect.width == 0.0f && content_width > 0.0f && !needs_cross_axis_space) {
             child_rect.width = content_width;
         }
-        if (rect.height == 0.0f && content_height > 0.0f) {
+        if (rect.height == 0.0f && content_height > 0.0f && !needs_cross_axis_space) {
             child_rect.height = content_height;
         }
     }
@@ -1167,9 +1174,16 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
         if (component->type == IR_COMPONENT_COLUMN && component->layout) {
             switch (component->layout->flex.cross_axis) {
                 case IR_ALIGNMENT_CENTER:
+                    // For AUTO-width Row/Column, measure actual content width for centering
+                    float width_for_centering = child_layout.width;
+                    if ((child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN) &&
+                        child_layout.width == 0.0f) {
+                        width_for_centering = get_child_dimension(child, child_rect, false);
+                    }
+
                     // Only center if child fits in container, otherwise align to start
-                    if (child_layout.width <= child_rect.width) {
-                        child_layout.x = child_rect.x + (child_rect.width - child_layout.width) / 2;
+                    if (width_for_centering <= child_rect.width) {
+                        child_layout.x = child_rect.x + (child_rect.width - width_for_centering) / 2;
                     } else {
                         child_layout.x = child_rect.x;
                     }
@@ -1247,10 +1261,15 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
         LayoutRect rect_for_child = child_layout;
 
         if (child && (child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN)) {
-            // Detect AUTO-sized Row/Column by checking if measured size is 0
-            // This is more reliable than checking style, since style defaults may vary
-            bool is_auto_width = child_layout.width == 0.0f;
-            bool is_auto_height = child_layout.height == 0.0f;
+            // Detect AUTO-sized Row/Column by checking the component's style
+            // AUTO-sized components should use their measured content size, not container size
+            // Treat explicit 0 dimensions as AUTO (this handles DSL-created components without explicit sizes)
+            bool is_auto_width = (!child->style ||
+                                 child->style->width.type == IR_DIMENSION_AUTO ||
+                                 (child->style->width.type == IR_DIMENSION_PX && child->style->width.value == 0.0f));
+            bool is_auto_height = (!child->style ||
+                                  child->style->height.type == IR_DIMENSION_AUTO ||
+                                  (child->style->height.type == IR_DIMENSION_PX && child->style->height.value == 0.0f));
 
             if (getenv("KRYON_TRACE_LAYOUT")) {
                 printf("  🔧 AUTO-sized %s detected: w=%.1f (auto=%d), h=%.1f (auto=%d), available=(%.1fx%.1f)\n",
@@ -1261,32 +1280,46 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
             }
 
             if (is_auto_width || is_auto_height) {
-                // Preserve position from child_layout, but use available space from child_rect
+                // Preserve position from child_layout
                 rect_for_child.x = child_layout.x;
                 rect_for_child.y = child_layout.y;
                 if (is_auto_width) {
-                    rect_for_child.width = child_rect.width;
+                    // If child has cross-axis alignment, it needs parent's full width to align its children
+                    // Otherwise use measured content width for positioning
+                    bool needs_full_width = child->layout &&
+                                           child->layout->flex.cross_axis != IR_ALIGNMENT_START;
+                    rect_for_child.width = needs_full_width ? child_rect.width : child_layout.width;
                 }
                 if (is_auto_height) {
-                    // For auto-height children in a Column with CENTER/END alignment,
-                    // use their measured content height instead of full available space
-                    // to prevent cross-axis alignment from pushing content off-screen
-                    bool parent_is_centering = component->type == IR_COMPONENT_COLUMN &&
-                                              component->layout &&
-                                              (component->layout->flex.justify_content == IR_ALIGNMENT_CENTER ||
-                                               component->layout->flex.justify_content == IR_ALIGNMENT_END);
-                    if (parent_is_centering) {
-                        // Measure the actual content height of the child
-                        float content_height = get_child_dimension(child, child_rect, true);
-                        if (content_height > 0) {
-                            rect_for_child.height = content_height;
-                        } else {
-                            // Fallback to measured height if available
-                            rect_for_child.height = child_layout.height > 0 ? child_layout.height : child_rect.height;
-                        }
-                    } else {
-                        // Use full available height for stretch/start alignment
+                    // For ROW: only needs measured content height, even with cross-axis alignment
+                    // For COLUMN: needs parent's full height if it has cross-axis alignment
+                    bool is_column_with_cross_align = (child->type == IR_COMPONENT_COLUMN) &&
+                                                      child->layout &&
+                                                      child->layout->flex.cross_axis != IR_ALIGNMENT_START;
+
+                    if (is_column_with_cross_align) {
+                        // Column needs full height to horizontally center its children
                         rect_for_child.height = child_rect.height;
+                    } else {
+                        // For auto-height children in a Column with CENTER/END alignment,
+                        // use their measured content height for positioning
+                        bool parent_is_centering = component->type == IR_COMPONENT_COLUMN &&
+                                                  component->layout &&
+                                                  (component->layout->flex.justify_content == IR_ALIGNMENT_CENTER ||
+                                                   component->layout->flex.justify_content == IR_ALIGNMENT_END);
+                        if (parent_is_centering) {
+                            // Measure the actual content height of the child
+                            float content_height = get_child_dimension(child, child_rect, true);
+                            if (content_height > 0) {
+                                rect_for_child.height = content_height;
+                            } else {
+                                // Fallback to measured height if available
+                                rect_for_child.height = child_layout.height > 0 ? child_layout.height : child_rect.height;
+                            }
+                        } else {
+                            // Use full available height for stretch/start alignment
+                            rect_for_child.height = child_rect.height;
+                        }
                     }
                 }
 
