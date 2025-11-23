@@ -9,6 +9,7 @@ type
     IR_COMPONENT_BUTTON
     IR_COMPONENT_INPUT
     IR_COMPONENT_CHECKBOX
+    IR_COMPONENT_DROPDOWN
     IR_COMPONENT_ROW
     IR_COMPONENT_COLUMN
     IR_COMPONENT_CENTER
@@ -308,3 +309,14 @@ proc ir_optimize_component*(component: ptr IRComponent) {.importc, cdecl, header
 proc ir_is_point_in_component*(component: ptr IRComponent; x: cfloat; y: cfloat): bool {.importc, cdecl, header: "ir_builder.h".}
 proc ir_find_component_at_point*(root: ptr IRComponent; x: cfloat; y: cfloat): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_rendered_bounds*(component: ptr IRComponent; x: cfloat; y: cfloat; width: cfloat; height: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+
+# Dropdown functions
+proc ir_dropdown*(placeholder: cstring; options: ptr cstring; option_count: uint32): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
+proc ir_get_dropdown_selected_index*(component: ptr IRComponent): int32 {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_dropdown_selected_index*(component: ptr IRComponent; index: int32) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_dropdown_options*(component: ptr IRComponent; options: ptr cstring; count: uint32) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_get_dropdown_open_state*(component: ptr IRComponent): bool {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_dropdown_open_state*(component: ptr IRComponent; is_open: bool) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_toggle_dropdown_open_state*(component: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_get_dropdown_hovered_index*(component: ptr IRComponent): int32 {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_dropdown_hovered_index*(component: ptr IRComponent; index: int32) {.importc, cdecl, header: "ir_builder.h".}

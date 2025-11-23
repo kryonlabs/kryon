@@ -556,6 +556,98 @@ void ir_toggle_checkbox_state(IRComponent* component) {
     ir_set_checkbox_state(component, !current);
 }
 
+// Dropdown state helpers
+IRDropdownState* ir_get_dropdown_state(IRComponent* component) {
+    if (!component || component->type != IR_COMPONENT_DROPDOWN || !component->custom_data) {
+        return NULL;
+    }
+    return (IRDropdownState*)component->custom_data;
+}
+
+int32_t ir_get_dropdown_selected_index(IRComponent* component) {
+    IRDropdownState* state = ir_get_dropdown_state(component);
+    return state ? state->selected_index : -1;
+}
+
+void ir_set_dropdown_selected_index(IRComponent* component, int32_t index) {
+    IRDropdownState* state = ir_get_dropdown_state(component);
+    if (!state) return;
+
+    // Validate index
+    if (index >= -1 && (uint32_t)index < state->option_count) {
+        state->selected_index = index;
+    }
+}
+
+void ir_set_dropdown_options(IRComponent* component, char** options, uint32_t count) {
+    IRDropdownState* state = ir_get_dropdown_state(component);
+    if (!state) return;
+
+    // Free existing options
+    if (state->options) {
+        for (uint32_t i = 0; i < state->option_count; i++) {
+            free(state->options[i]);
+        }
+        free(state->options);
+    }
+
+    // Copy new options
+    state->option_count = count;
+    if (count > 0 && options) {
+        state->options = (char**)malloc(sizeof(char*) * count);
+        for (uint32_t i = 0; i < count; i++) {
+            state->options[i] = options[i] ? strdup(options[i]) : NULL;
+        }
+    } else {
+        state->options = NULL;
+    }
+
+    // Reset selection if out of range
+    if (state->selected_index >= (int32_t)count) {
+        state->selected_index = -1;
+    }
+}
+
+bool ir_get_dropdown_open_state(IRComponent* component) {
+    IRDropdownState* state = ir_get_dropdown_state(component);
+    return state ? state->is_open : false;
+}
+
+void ir_set_dropdown_open_state(IRComponent* component, bool is_open) {
+    IRDropdownState* state = ir_get_dropdown_state(component);
+    if (state) {
+        state->is_open = is_open;
+        if (!is_open) {
+            state->hovered_index = -1;  // Reset hover when closing
+        }
+    }
+}
+
+void ir_toggle_dropdown_open_state(IRComponent* component) {
+    IRDropdownState* state = ir_get_dropdown_state(component);
+    if (state) {
+        state->is_open = !state->is_open;
+        if (!state->is_open) {
+            state->hovered_index = -1;  // Reset hover when closing
+        }
+    }
+}
+
+int32_t ir_get_dropdown_hovered_index(IRComponent* component) {
+    IRDropdownState* state = ir_get_dropdown_state(component);
+    return state ? state->hovered_index : -1;
+}
+
+void ir_set_dropdown_hovered_index(IRComponent* component, int32_t index) {
+    IRDropdownState* state = ir_get_dropdown_state(component);
+    if (!state) return;
+
+    // Validate index (-1 is valid for no hover)
+    if (index >= -1 && (uint32_t)index < state->option_count) {
+        state->hovered_index = index;
+    }
+}
+
 void ir_set_tag(IRComponent* component, const char* tag) {
     if (!component) return;
 
@@ -593,6 +685,35 @@ IRComponent* ir_input(const char* placeholder) {
 IRComponent* ir_checkbox(const char* label) {
     IRComponent* component = ir_create_component(IR_COMPONENT_CHECKBOX);
     if (label) ir_set_text_content(component, label);
+    return component;
+}
+
+IRComponent* ir_dropdown(const char* placeholder, char** options, uint32_t option_count) {
+    IRComponent* component = ir_create_component(IR_COMPONENT_DROPDOWN);
+
+    // Create and initialize dropdown state
+    IRDropdownState* state = (IRDropdownState*)malloc(sizeof(IRDropdownState));
+    if (!state) return component;
+
+    state->placeholder = placeholder ? strdup(placeholder) : NULL;
+    state->option_count = option_count;
+    state->selected_index = -1;  // No selection initially
+    state->is_open = false;
+    state->hovered_index = -1;
+
+    // Copy options array
+    if (option_count > 0 && options) {
+        state->options = (char**)malloc(sizeof(char*) * option_count);
+        for (uint32_t i = 0; i < option_count; i++) {
+            state->options[i] = options[i] ? strdup(options[i]) : NULL;
+        }
+    } else {
+        state->options = NULL;
+    }
+
+    // Store state pointer in custom_data
+    component->custom_data = (char*)state;
+
     return component;
 }
 

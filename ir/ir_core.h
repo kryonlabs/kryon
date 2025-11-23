@@ -12,6 +12,7 @@ typedef enum {
     IR_COMPONENT_BUTTON,
     IR_COMPONENT_INPUT,
     IR_COMPONENT_CHECKBOX,
+    IR_COMPONENT_DROPDOWN,
     IR_COMPONENT_ROW,
     IR_COMPONENT_COLUMN,
     IR_COMPONENT_CENTER,
@@ -176,6 +177,16 @@ typedef struct IRRenderedBounds {
     float x, y, width, height;
     bool valid;  // true if bounds have been calculated
 } IRRenderedBounds;
+
+// Dropdown State (stored in IRComponent->custom_data)
+typedef struct IRDropdownState {
+    char* placeholder;      // Placeholder text when nothing selected
+    char** options;         // Array of option strings
+    uint32_t option_count;  // Number of options
+    int32_t selected_index; // Currently selected index (-1 = none)
+    bool is_open;           // Whether dropdown menu is open
+    int32_t hovered_index;  // Currently hovered option index (-1 = none)
+} IRDropdownState;
 
 // Main IR Component
 typedef struct IRComponent {

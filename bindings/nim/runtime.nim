@@ -285,9 +285,81 @@ proc newKryonCanvas*(): ptr IRComponent =
 proc newKryonSpacer*(): ptr IRComponent =
   result = ir_create_component(IR_COMPONENT_CONTAINER)
 
-# Dropdown - not yet implemented in IR, placeholder for compatibility
-proc newKryonDropdown*(options: seq[string] = @[], selected: int = 0, onChange: proc(index: int) = nil): ptr IRComponent =
-  result = ir_create_component(IR_COMPONENT_CONTAINER)
+# Forward declaration for dropdown handler registration
+proc registerDropdownHandler*(component: ptr IRComponent, handler: proc(index: int))
+
+# Dropdown Handler System - declare before use
+var dropdownHandlers = initTable[uint32, proc(index: int)]()
+
+# Dropdown - full IR implementation
+proc newKryonDropdown*(
+  placeholder: string = "Select...",
+  options: seq[string] = @[],
+  selectedIndex: int = -1,
+  fontSize: uint8 = 14,
+  textColor: uint32 = 0xFF000000'u32,
+  backgroundColor: uint32 = 0xFFFFFFFF'u32,
+  borderColor: uint32 = 0xFFD1D5DB'u32,
+  borderWidth: uint8 = 1,
+  hoverColor: uint32 = 0xFFE0E0E0'u32,
+  width: int = 0,  # Added for DSL support
+  height: int = 0,  # Added for DSL support
+  onChangeCallback: proc(index: int) = nil
+): ptr IRComponent =
+  # Convert Nim seq[string] to C string array
+  var cOptions: seq[cstring] = @[]
+  for opt in options:
+    cOptions.add(cstring(opt))
+
+  # Create the dropdown component using IR core function
+  result = if cOptions.len > 0:
+    ir_dropdown(cstring(placeholder), addr cOptions[0], uint32(cOptions.len))
+  else:
+    ir_dropdown(cstring(placeholder), nil, 0)
+
+  # Set initial selected index if valid
+  if selectedIndex >= 0 and selectedIndex < options.len:
+    ir_set_dropdown_selected_index(result, int32(selectedIndex))
+
+  # Create and apply style
+  let style = ir_create_style()
+
+  # Set dimensions if specified
+  if width > 0:
+    ir_set_width(style, IR_DIMENSION_PX, cfloat(width))
+  if height > 0:
+    ir_set_height(style, IR_DIMENSION_PX, cfloat(height))
+
+  # Apply colors
+  let textR = uint8((textColor shr 24) and 0xFF)
+  let textG = uint8((textColor shr 16) and 0xFF)
+  let textB = uint8((textColor shr 8) and 0xFF)
+  let textA = uint8(textColor and 0xFF)
+
+  let bgR = uint8((backgroundColor shr 24) and 0xFF)
+  let bgG = uint8((backgroundColor shr 16) and 0xFF)
+  let bgB = uint8((backgroundColor shr 8) and 0xFF)
+  let bgA = uint8(backgroundColor and 0xFF)
+
+  let borderR = uint8((borderColor shr 24) and 0xFF)
+  let borderG = uint8((borderColor shr 16) and 0xFF)
+  let borderB = uint8((borderColor shr 8) and 0xFF)
+  let borderA = uint8(borderColor and 0xFF)
+
+  ir_set_font(style, cfloat(fontSize), nil, textR, textG, textB, textA, false, false)
+  ir_set_background_color(style, bgR, bgG, bgB, bgA)
+  ir_set_border(style, cfloat(borderWidth), borderR, borderG, borderB, borderA, 4)
+
+  ir_set_style(result, style)
+
+  # Always register dropdown event (for open/close interaction)
+  # even if there's no callback - the renderer needs this to detect clicks
+  let event = ir_create_event(IR_EVENT_CLICK, cstring("nim_dropdown_" & $result.id), nil)
+  ir_add_event(result, event)
+
+  # Register onChange handler if provided
+  if onChangeCallback != nil:
+    dropdownHandlers[result.id] = onChangeCallback
 
 # Legacy compatibility for markdown and other modules
 type
@@ -391,6 +463,19 @@ proc setCheckboxState*(component: ptr IRComponent, checked: bool) =
   if component.isNil:
     return
   ir_set_custom_data(component, if checked: cstring("checked") else: cstring("unchecked"))
+
+# Dropdown Handler System (variable declared at top of file)
+proc nimDropdownBridge*(componentId: uint32, selectedIndex: int32) {.exportc: "nimDropdownBridge", cdecl, dynlib.} =
+  ## Bridge function for dropdown selection changes - called from C IR event system
+  if dropdownHandlers.hasKey(componentId):
+    dropdownHandlers[componentId](int(selectedIndex))
+
+proc registerDropdownHandler*(component: ptr IRComponent, handler: proc(index: int)) =
+  ## Register a dropdown change handler
+  ## Note: The event is already registered in newKryonDropdown, this just adds the callback
+  if component.isNil:
+    return
+  dropdownHandlers[component.id] = handler
 
 proc kryon_component_set_border_color*(component: ptr IRComponent, color: uint32) =
   let style = ir_get_style(component)

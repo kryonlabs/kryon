@@ -108,4 +108,16 @@ bool ir_get_checkbox_state(IRComponent* component);
 void ir_set_checkbox_state(IRComponent* component, bool checked);
 void ir_toggle_checkbox_state(IRComponent* component);
 
+// Dropdown Convenience Function and State Helpers
+IRComponent* ir_dropdown(const char* placeholder, char** options, uint32_t option_count);
+int32_t ir_get_dropdown_selected_index(IRComponent* component);
+void ir_set_dropdown_selected_index(IRComponent* component, int32_t index);
+void ir_set_dropdown_options(IRComponent* component, char** options, uint32_t count);
+bool ir_get_dropdown_open_state(IRComponent* component);
+void ir_set_dropdown_open_state(IRComponent* component, bool is_open);
+void ir_toggle_dropdown_open_state(IRComponent* component);
+int32_t ir_get_dropdown_hovered_index(IRComponent* component);
+void ir_set_dropdown_hovered_index(IRComponent* component, int32_t index);
+IRDropdownState* ir_get_dropdown_state(IRComponent* component);
+
 #endif // IR_BUILDER_H

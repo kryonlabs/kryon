@@ -439,6 +439,139 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
 
 // Platform-specific rendering implementations
 #ifdef ENABLE_SDL3
+
+// Helper function to render a dropdown menu (called in second pass for correct z-index)
+static void render_dropdown_menu_sdl3(DesktopIRRenderer* renderer, IRComponent* component) {
+    if (!renderer || !component || component->type != IR_COMPONENT_DROPDOWN) return;
+
+    IRDropdownState* dropdown_state = ir_get_dropdown_state(component);
+    if (!dropdown_state || !dropdown_state->is_open || dropdown_state->option_count == 0) return;
+
+    // Get cached rendered bounds from the component
+    IRRenderedBounds bounds = component->rendered_bounds;
+    if (!bounds.valid) return;
+
+    // Get colors from component style
+    SDL_Color bg_color = component->style ?
+        ir_color_to_sdl(component->style->background) :
+        (SDL_Color){255, 255, 255, 255};
+    SDL_Color text_color = component->style ?
+        ir_color_to_sdl(component->style->font.color) :
+        (SDL_Color){0, 0, 0, 255};
+    SDL_Color border_color = component->style ?
+        ir_color_to_sdl(component->style->border.color) :
+        (SDL_Color){209, 213, 219, 255};
+
+    float menu_y = bounds.y + bounds.height;
+    float menu_height = fminf(dropdown_state->option_count * 35.0f, 200.0f);
+
+    SDL_FRect menu_rect = {
+        .x = bounds.x,
+        .y = menu_y,
+        .w = bounds.width,
+        .h = menu_height
+    };
+
+    // Draw menu background with shadow effect
+    SDL_SetRenderDrawColor(renderer->renderer, 50, 50, 50, 100);
+    SDL_FRect shadow_rect = {menu_rect.x + 2, menu_rect.y + 2, menu_rect.w, menu_rect.h};
+    SDL_RenderFillRect(renderer->renderer, &shadow_rect);
+
+    SDL_SetRenderDrawColor(renderer->renderer, bg_color.r, bg_color.g, bg_color.b, bg_color.a);
+    SDL_RenderFillRect(renderer->renderer, &menu_rect);
+
+    SDL_SetRenderDrawColor(renderer->renderer, border_color.r, border_color.g, border_color.b, border_color.a);
+    SDL_RenderRect(renderer->renderer, &menu_rect);
+
+    // Render each option
+    float option_height = 35.0f;
+    for (uint32_t i = 0; i < dropdown_state->option_count; i++) {
+        float option_y = menu_y + i * option_height;
+
+        // Highlight hovered or selected option
+        if ((int32_t)i == dropdown_state->hovered_index || (int32_t)i == dropdown_state->selected_index) {
+            SDL_Color hover_color = {224, 224, 224, 255};
+            SDL_SetRenderDrawColor(renderer->renderer, hover_color.r, hover_color.g, hover_color.b, hover_color.a);
+            SDL_FRect option_rect = {menu_rect.x, option_y, menu_rect.w, option_height};
+            SDL_RenderFillRect(renderer->renderer, &option_rect);
+        }
+
+        // Render option text
+        if (dropdown_state->options[i] && renderer->default_font) {
+            SDL_Surface* opt_surface = TTF_RenderText_Blended(renderer->default_font,
+                                                              dropdown_state->options[i],
+                                                              strlen(dropdown_state->options[i]),
+                                                              text_color);
+            if (opt_surface) {
+                SDL_Texture* opt_texture = SDL_CreateTextureFromSurface(renderer->renderer, opt_surface);
+                if (opt_texture) {
+                    SDL_FRect opt_text_rect = {
+                        .x = roundf(menu_rect.x + 10),
+                        .y = roundf(option_y + (option_height - opt_surface->h) / 2.0f),
+                        .w = (float)opt_surface->w,
+                        .h = (float)opt_surface->h
+                    };
+                    SDL_RenderTexture(renderer->renderer, opt_texture, NULL, &opt_text_rect);
+                    SDL_DestroyTexture(opt_texture);
+                }
+                SDL_DestroySurface(opt_surface);
+            }
+        }
+    }
+}
+
+// Helper function to collect all open dropdowns from component tree
+static void collect_open_dropdowns(IRComponent* component, IRComponent** dropdown_list, int* count, int max_count) {
+    if (!component || !dropdown_list || !count || *count >= max_count) return;
+
+    // Check if this component is an open dropdown
+    if (component->type == IR_COMPONENT_DROPDOWN) {
+        IRDropdownState* state = ir_get_dropdown_state(component);
+        if (state && state->is_open && component->rendered_bounds.valid) {
+            dropdown_list[*count] = component;
+            (*count)++;
+        }
+    }
+
+    // Recursively check children
+    for (uint32_t i = 0; i < component->child_count && *count < max_count; i++) {
+        collect_open_dropdowns(component->children[i], dropdown_list, count, max_count);
+    }
+}
+
+// Helper function to check if a point is in an open dropdown menu and return the dropdown
+static IRComponent* find_dropdown_menu_at_point(IRComponent* root, float x, float y) {
+    if (!root) return NULL;
+
+    // Collect all open dropdowns
+    #define MAX_OPEN_DROPDOWNS_CHECK 10
+    IRComponent* open_dropdowns[MAX_OPEN_DROPDOWNS_CHECK];
+    int dropdown_count = 0;
+    collect_open_dropdowns(root, open_dropdowns, &dropdown_count, MAX_OPEN_DROPDOWNS_CHECK);
+
+    // Check each open dropdown menu (in reverse order for proper z-index)
+    for (int i = dropdown_count - 1; i >= 0; i--) {
+        IRComponent* dropdown = open_dropdowns[i];
+        IRDropdownState* state = ir_get_dropdown_state(dropdown);
+        if (!state || !state->is_open) continue;
+
+        IRRenderedBounds bounds = dropdown->rendered_bounds;
+        if (!bounds.valid) continue;
+
+        // Calculate menu area
+        float menu_y = bounds.y + bounds.height;
+        float menu_height = fminf(state->option_count * 35.0f, 200.0f);
+
+        // Check if point is in menu area
+        if (x >= bounds.x && x < bounds.x + bounds.width &&
+            y >= menu_y && y < menu_y + menu_height) {
+            return dropdown;
+        }
+    }
+
+    return NULL;
+}
+
 static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, LayoutRect rect) {
     if (!renderer || !component || !renderer->renderer) return false;
 
@@ -618,6 +751,86 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                     SDL_DestroySurface(surface);
                 }
             }
+            break;
+        }
+
+        case IR_COMPONENT_DROPDOWN: {
+            // Get dropdown state from custom_data
+            IRDropdownState* dropdown_state = ir_get_dropdown_state(component);
+            if (!dropdown_state) break;
+
+            // Get colors and styling
+            SDL_Color bg_color = component->style ?
+                ir_color_to_sdl(component->style->background) :
+                (SDL_Color){255, 255, 255, 255};
+            SDL_Color text_color = component->style ?
+                ir_color_to_sdl(component->style->font.color) :
+                (SDL_Color){0, 0, 0, 255};
+            SDL_Color border_color = component->style ?
+                ir_color_to_sdl(component->style->border.color) :
+                (SDL_Color){209, 213, 219, 255};
+
+            // Draw main dropdown box
+            SDL_SetRenderDrawColor(renderer->renderer, bg_color.r, bg_color.g, bg_color.b, bg_color.a);
+            SDL_RenderFillRect(renderer->renderer, &sdl_rect);
+
+            // Draw border
+            float border_width = component->style ? component->style->border.width : 1.0f;
+            SDL_SetRenderDrawColor(renderer->renderer, border_color.r, border_color.g, border_color.b, border_color.a);
+            for (int i = 0; i < (int)border_width; i++) {
+                SDL_FRect border_rect = {
+                    .x = rect.x + i,
+                    .y = rect.y + i,
+                    .w = rect.width - 2*i,
+                    .h = rect.height - 2*i
+                };
+                SDL_RenderRect(renderer->renderer, &border_rect);
+            }
+
+            // Render selected text or placeholder
+            const char* display_text = dropdown_state->placeholder;
+            if (dropdown_state->selected_index >= 0 &&
+                dropdown_state->selected_index < (int32_t)dropdown_state->option_count &&
+                dropdown_state->options) {
+                display_text = dropdown_state->options[dropdown_state->selected_index];
+            }
+
+            if (display_text && renderer->default_font) {
+                SDL_Surface* surface = TTF_RenderText_Blended(renderer->default_font,
+                                                              display_text,
+                                                              strlen(display_text),
+                                                              text_color);
+                if (surface) {
+                    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
+                    if (texture) {
+                        SDL_FRect text_rect = {
+                            .x = roundf(rect.x + 10),
+                            .y = roundf(rect.y + (rect.height - surface->h) / 2.0f),
+                            .w = (float)surface->w,
+                            .h = (float)surface->h
+                        };
+                        SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
+                        SDL_DestroyTexture(texture);
+                    }
+                    SDL_DestroySurface(surface);
+                }
+            }
+
+            // Draw dropdown arrow on the right
+            float arrow_x = rect.x + rect.width - 20;
+            float arrow_y = rect.y + rect.height / 2;
+            float arrow_size = 5;
+            SDL_SetRenderDrawColor(renderer->renderer, text_color.r, text_color.g, text_color.b, text_color.a);
+            // Draw downward arrow using lines
+            SDL_RenderLine(renderer->renderer,
+                          arrow_x - arrow_size, arrow_y - arrow_size/2,
+                          arrow_x, arrow_y + arrow_size/2);
+            SDL_RenderLine(renderer->renderer,
+                          arrow_x, arrow_y + arrow_size/2,
+                          arrow_x + arrow_size, arrow_y - arrow_size/2);
+
+            // Dropdown menu rendering is deferred to second pass (after all components)
+            // This ensures menus appear on top (correct z-index)
             break;
         }
 
@@ -1402,11 +1615,26 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
                 // Dispatch click event to IR component at mouse position
                 if (renderer->last_root) {
-                    IRComponent* clicked = ir_find_component_at_point(
+                    IRComponent* clicked = NULL;
+
+                    // FIRST: Check if click is in an open dropdown menu (higher priority due to z-index)
+                    IRComponent* dropdown_at_point = find_dropdown_menu_at_point(
                         renderer->last_root,
                         (float)event.button.x,
                         (float)event.button.y
                     );
+
+                    if (dropdown_at_point) {
+                        // Click is in a dropdown menu - use the dropdown component
+                        clicked = dropdown_at_point;
+                    } else {
+                        // No dropdown menu at this point - do normal hit testing
+                        clicked = ir_find_component_at_point(
+                            renderer->last_root,
+                            (float)event.button.x,
+                            (float)event.button.y
+                        );
+                    }
 
                     if (clicked) {
                         // Find and trigger IR_EVENT_CLICK handler
@@ -1433,6 +1661,42 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                 // Invoke Nim handler
                                 nimCheckboxBridge(clicked->id);
                             }
+                            // Check if this is a Nim dropdown handler
+                            else if (strncmp(ir_event->logic_id, "nim_dropdown_", 13) == 0) {
+                                if (clicked->type == IR_COMPONENT_DROPDOWN) {
+                                    IRDropdownState* state = ir_get_dropdown_state(clicked);
+                                    if (state) {
+                                        // Get click coordinates
+                                        float click_y = (float)event.button.y;
+                                        IRRenderedBounds bounds = clicked->rendered_bounds;
+
+                                        if (state->is_open) {
+                                            // Check if click is in menu area
+                                            float menu_y = bounds.y + bounds.height;
+                                            float menu_height = fminf(state->option_count * 35.0f, 200.0f);
+
+                                            if (click_y >= menu_y && click_y < menu_y + menu_height) {
+                                                // Click in menu - select option
+                                                uint32_t option_index = (uint32_t)((click_y - menu_y) / 35.0f);
+                                                if (option_index < state->option_count) {
+                                                    ir_set_dropdown_selected_index(clicked, (int32_t)option_index);
+                                                    ir_set_dropdown_open_state(clicked, false);
+
+                                                    // Call Nim handler with selected index
+                                                    extern void nimDropdownBridge(uint32_t componentId, int32_t selectedIndex);
+                                                    nimDropdownBridge(clicked->id, (int32_t)option_index);
+                                                }
+                                            } else {
+                                                // Click outside menu - just close it
+                                                ir_set_dropdown_open_state(clicked, false);
+                                            }
+                                        } else {
+                                            // Dropdown closed - toggle it open
+                                            ir_set_dropdown_open_state(clicked, true);
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1449,17 +1713,57 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
                 // Update cursor based on what component is under the mouse
                 if (renderer->last_root) {
-                    IRComponent* hovered = ir_find_component_at_point(
+                    IRComponent* hovered = NULL;
+                    bool is_in_dropdown_menu = false;
+
+                    // FIRST: Check if mouse is over an open dropdown menu (higher priority due to z-index)
+                    IRComponent* dropdown_at_point = find_dropdown_menu_at_point(
                         renderer->last_root,
                         (float)event.motion.x,
                         (float)event.motion.y
                     );
 
-                    // Set cursor to hand for clickable components
+                    if (dropdown_at_point) {
+                        // Mouse is over a dropdown menu
+                        hovered = dropdown_at_point;
+                        is_in_dropdown_menu = true;
+
+                        // Update hovered index within the menu
+                        IRDropdownState* state = ir_get_dropdown_state(dropdown_at_point);
+                        if (state && state->is_open) {
+                            IRRenderedBounds bounds = dropdown_at_point->rendered_bounds;
+                            float menu_y = bounds.y + bounds.height;
+                            float mouse_y = (float)event.motion.y;
+                            int32_t new_hover = (int32_t)((mouse_y - menu_y) / 35.0f);
+                            if (new_hover >= 0 && new_hover < (int32_t)state->option_count) {
+                                ir_set_dropdown_hovered_index(dropdown_at_point, new_hover);
+                            }
+                        }
+                    } else {
+                        // No dropdown menu at this point - do normal hit testing
+                        hovered = ir_find_component_at_point(
+                            renderer->last_root,
+                            (float)event.motion.x,
+                            (float)event.motion.y
+                        );
+
+                        // Clear hover state for any open dropdowns since mouse is not over menu
+                        #define MAX_DROPDOWNS_TO_CLEAR 10
+                        IRComponent* all_dropdowns[MAX_DROPDOWNS_TO_CLEAR];
+                        int count = 0;
+                        collect_open_dropdowns(renderer->last_root, all_dropdowns, &count, MAX_DROPDOWNS_TO_CLEAR);
+                        for (int i = 0; i < count; i++) {
+                            ir_set_dropdown_hovered_index(all_dropdowns[i], -1);
+                        }
+                    }
+
+                    // Set cursor to hand for clickable components or dropdown menu
                     SDL_Cursor* desired_cursor;
-                    if (hovered && (hovered->type == IR_COMPONENT_BUTTON ||
-                                    hovered->type == IR_COMPONENT_INPUT ||
-                                    hovered->type == IR_COMPONENT_CHECKBOX)) {
+                    if (is_in_dropdown_menu ||
+                        (hovered && (hovered->type == IR_COMPONENT_BUTTON ||
+                                     hovered->type == IR_COMPONENT_INPUT ||
+                                     hovered->type == IR_COMPONENT_CHECKBOX ||
+                                     hovered->type == IR_COMPONENT_DROPDOWN))) {
                         desired_cursor = renderer->cursor_hand;
                     } else {
                         desired_cursor = renderer->cursor_default;
@@ -1711,6 +2015,16 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
     if (!render_component_sdl3(renderer, root, root_rect)) {
         printf("❌ Failed to render component\n");
         return false;
+    }
+
+    // Second pass: Render all open dropdown menus on top (for correct z-index)
+    #define MAX_OPEN_DROPDOWNS 10
+    IRComponent* open_dropdowns[MAX_OPEN_DROPDOWNS];
+    int dropdown_count = 0;
+    collect_open_dropdowns(root, open_dropdowns, &dropdown_count, MAX_OPEN_DROPDOWNS);
+
+    for (int i = 0; i < dropdown_count; i++) {
+        render_dropdown_menu_sdl3(renderer, open_dropdowns[i]);
     }
 
     // Present frame
