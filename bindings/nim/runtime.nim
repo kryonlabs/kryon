@@ -70,6 +70,12 @@ proc newKryonInput*(): ptr IRComponent =
 proc newKryonCheckbox*(label: string = ""): ptr IRComponent =
   result = ir_checkbox(cstring(label))
 
+proc newKryonMarkdown*(source: string): ptr IRComponent =
+  ## Create a markdown component with raw markdown source
+  ## The backend will parse and render the markdown
+  result = ir_create_component(IR_COMPONENT_MARKDOWN)
+  ir_set_text_content(result, cstring(source))
+
 # ============================================================================
 # Component Property Setters - IR-based
 # ============================================================================

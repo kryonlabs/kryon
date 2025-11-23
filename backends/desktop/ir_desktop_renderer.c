@@ -92,6 +92,8 @@ static SDL_Color ir_color_to_sdl(IRColor color) {
         .a = color.a
     };
 }
+
+
 #endif
 
 // Layout calculation helpers
@@ -103,6 +105,475 @@ typedef struct LayoutRect {
 static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_height);
 
 #ifdef ENABLE_SDL3
+// ============================================================================
+// MARKDOWN RENDERING FUNCTIONS
+// ============================================================================
+
+typedef struct {
+    char* text;
+    size_t length;
+    bool bold;
+    bool italic;
+    bool code;
+    int header_level;  // 0 for regular text, 1-6 for headers
+    bool is_list_item;
+    bool is_ordered;
+    int order_index;
+    int list_level;
+    bool is_code_block;
+    bool ends_line;
+} MarkdownToken;
+
+typedef struct {
+    MarkdownToken* tokens;
+    size_t count;
+    size_t capacity;
+} MarkdownTokens;
+
+// Simple dynamic buffer helper for code blocks
+static bool append_to_buffer(char** buffer, size_t* len, size_t* cap,
+                             const char* text, size_t text_len, bool add_newline) {
+    size_t extra = text_len + (add_newline ? 1 : 0);
+    if (*len + extra + 1 > *cap) {
+        size_t new_cap = (*cap == 0 ? 128 : *cap * 2);
+        while (*len + extra + 1 > new_cap) new_cap *= 2;
+        char* tmp = realloc(*buffer, new_cap);
+        if (!tmp) return false;
+        *buffer = tmp;
+        *cap = new_cap;
+    }
+    memcpy(*buffer + *len, text, text_len);
+    *len += text_len;
+    if (add_newline) {
+        (*buffer)[*len] = '\n';
+        (*len)++;
+    }
+    (*buffer)[*len] = '\0';
+    return true;
+}
+
+static MarkdownTokens* create_markdown_tokens(void) {
+    MarkdownTokens* tokens = malloc(sizeof(MarkdownTokens));
+    if (!tokens) return NULL;
+
+    tokens->capacity = 64;
+    tokens->count = 0;
+    tokens->tokens = malloc(sizeof(MarkdownToken) * tokens->capacity);
+    if (!tokens->tokens) {
+        free(tokens);
+        return NULL;
+    }
+
+    return tokens;
+}
+
+static void add_markdown_token(MarkdownTokens* tokens, const char* text, size_t length,
+                               bool bold, bool italic, bool code, int header_level,
+                               bool is_list_item, bool is_ordered, int order_index,
+                               int list_level, bool is_code_block, bool ends_line) {
+    if (tokens->count >= tokens->capacity) {
+        tokens->capacity *= 2;
+        tokens->tokens = realloc(tokens->tokens, sizeof(MarkdownToken) * tokens->capacity);
+        if (!tokens->tokens) return;
+    }
+
+    MarkdownToken* token = &tokens->tokens[tokens->count];
+    token->text = malloc(length + 1);
+    if (token->text && length > 0) {
+        memcpy(token->text, text, length);
+        token->text[length] = '\0';
+    } else {
+        token->text = strdup("");
+    }
+    token->length = length;
+    token->bold = bold;
+    token->italic = italic;
+    token->code = code;
+    token->header_level = header_level;
+    token->is_list_item = is_list_item;
+    token->is_ordered = is_ordered;
+    token->order_index = order_index;
+    token->list_level = list_level;
+    token->is_code_block = is_code_block;
+    token->ends_line = ends_line;
+
+    tokens->count++;
+}
+
+static void free_markdown_tokens(MarkdownTokens* tokens) {
+    if (!tokens) return;
+
+    for (size_t i = 0; i < tokens->count; i++) {
+        free(tokens->tokens[i].text);
+    }
+    free(tokens->tokens);
+    free(tokens);
+}
+
+// Add inline segments for a single line (bold/italic/code spans)
+static void add_inline_segments(MarkdownTokens* tokens, const char* text, size_t len,
+                                bool is_list_item, bool is_ordered, int order_index, int list_level) {
+    size_t start_count = tokens->count;
+    size_t start = 0;
+    bool bold = false, italic = false, code = false;
+
+    for (size_t i = 0; i < len; i++) {
+        if (text[i] == '`') {
+            // Emit text before the backtick
+            if (i > start) {
+                add_markdown_token(tokens, text + start, i - start, bold, italic, code, 0,
+                                   is_list_item, is_ordered, order_index, list_level, false, false);
+            }
+            code = !code;
+            start = i + 1;
+        }
+        else if (!code && text[i] == '*' && i + 1 < len && text[i + 1] == '*') {
+            if (i > start) {
+                add_markdown_token(tokens, text + start, i - start, bold, italic, code, 0,
+                                   is_list_item, is_ordered, order_index, list_level, false, false);
+            }
+            bold = !bold;
+            i++; // Skip second *
+            start = i + 1;
+        }
+        else if (!code && text[i] == '*') {
+            if (i > start) {
+                add_markdown_token(tokens, text + start, i - start, bold, italic, code, 0,
+                                   is_list_item, is_ordered, order_index, list_level, false, false);
+            }
+            italic = !italic;
+            start = i + 1;
+        }
+    }
+
+    // Emit remaining text
+    if (start < len) {
+        add_markdown_token(tokens, text + start, len - start, bold, italic, code, 0,
+                           is_list_item, is_ordered, order_index, list_level, false, false);
+    }
+
+    // Mark end of line on the final token for this line
+    if (tokens->count > start_count) {
+        tokens->tokens[tokens->count - 1].ends_line = true;
+    }
+}
+
+static MarkdownTokens* parse_markdown(const char* markdown) {
+    if (!markdown) return NULL;
+
+    MarkdownTokens* tokens = create_markdown_tokens();
+    if (!tokens) return NULL;
+
+    size_t len = strlen(markdown);
+    size_t pos = 0;
+    bool in_code_block = false;
+    char* code_buffer = NULL;
+    size_t code_len = 0;
+    size_t code_cap = 0;
+
+    while (pos < len) {
+        // Skip whitespace at start of line
+        while (pos < len && (markdown[pos] == ' ' || markdown[pos] == '\t')) pos++;
+
+        // Fenced code block start/end
+        if (pos + 2 < len && markdown[pos] == '`' && markdown[pos + 1] == '`' && markdown[pos + 2] == '`') {
+            pos += 3;
+            // Skip the rest of the fence line (language hint ignored)
+            while (pos < len && markdown[pos] != '\n') pos++;
+
+            if (in_code_block) {
+                // End code block
+                add_markdown_token(tokens, code_buffer ? code_buffer : "", code_len, false, false, true, 0,
+                                   false, false, 0, 0, true, true);
+                free(code_buffer);
+                code_buffer = NULL;
+                code_len = 0;
+                code_cap = 0;
+                in_code_block = false;
+            } else {
+                // Start code block
+                in_code_block = true;
+            }
+
+            if (pos < len && markdown[pos] == '\n') pos++;
+            continue;
+        }
+
+        if (in_code_block) {
+            // Accumulate raw text inside code block
+            size_t start = pos;
+            while (pos < len && markdown[pos] != '\n') pos++;
+            append_to_buffer(&code_buffer, &code_len, &code_cap, markdown + start, pos - start, true);
+            if (pos < len && markdown[pos] == '\n') pos++;
+            continue;
+        }
+
+        // Check for headers
+        if (pos < len && markdown[pos] == '#') {
+            int header_level = 0;
+            while (pos < len && markdown[pos] == '#') {
+                header_level++;
+                pos++;
+            }
+            while (pos < len && markdown[pos] == ' ') pos++;
+
+            size_t start = pos;
+            while (pos < len && markdown[pos] != '\n') pos++;
+
+            add_markdown_token(tokens, markdown + start, pos - start,
+                              true, false, false, header_level, false, false, 0, 0, false, true);
+        }
+        // Check for list items
+        else if (pos + 1 < len && (markdown[pos] == '-' || markdown[pos] == '*') && markdown[pos + 1] == ' ') {
+            pos += 2; // Skip "- " or "* "
+            int list_level = 0;
+
+            size_t start = pos;
+            while (pos < len && markdown[pos] != '\n') pos++;
+
+            add_inline_segments(tokens, markdown + start, pos - start, true, false, 0, list_level);
+        }
+        // Check for ordered list items
+        else if (pos < len && markdown[pos] >= '1' && markdown[pos] <= '9') {
+            size_t num_start = pos;
+            while (pos < len && markdown[pos] >= '0' && markdown[pos] <= '9') pos++;
+            if (pos + 1 < len && markdown[pos] == '.' && markdown[pos + 1] == ' ') {
+                int order_index = atoi(markdown + num_start);
+                pos += 2; // Skip ". "
+
+                size_t start = pos;
+                while (pos < len && markdown[pos] != '\n') pos++;
+
+                add_inline_segments(tokens, markdown + start, pos - start, true, true, order_index, 0);
+            } else {
+                // Regular text
+                size_t start = num_start;
+                while (pos < len && markdown[pos] != '\n') pos++;
+                add_inline_segments(tokens, markdown + start, pos - start, false, false, 0, 0);
+            }
+        }
+        // Regular text
+        else {
+            size_t start = pos;
+            while (pos < len && markdown[pos] != '\n') pos++;
+
+            add_inline_segments(tokens, markdown + start, pos - start, false, false, 0, 0);
+        }
+
+        // Skip newline
+        if (pos < len && markdown[pos] == '\n') pos++;
+    }
+
+    // If file ended while still in code block, flush buffer
+    if (in_code_block) {
+        add_markdown_token(tokens, code_buffer ? code_buffer : "", code_len, false, false, true, 0,
+                           false, false, 0, 0, true, true);
+        free(code_buffer);
+    }
+
+    return tokens;
+}
+
+static void render_markdown_content(DesktopIRRenderer* renderer, const char* markdown, LayoutRect rect) {
+    if (!markdown || !renderer->default_font) return;
+
+    MarkdownTokens* tokens = parse_markdown(markdown);
+    if (!tokens) return;
+
+    SDL_Color default_color = {0, 0, 0, 255}; // Black text
+    SDL_Color header_color = {0, 0, 100, 255}; // Dark blue for headers
+    SDL_Color code_color = {100, 0, 100, 255}; // Purple for code
+    SDL_Color code_bg_color = {240, 240, 240, 255}; // Light gray background
+
+    float line_y = rect.y;
+    float line_x = rect.x;
+    float line_height = 22.0f; // Base line height
+    float current_line_height = line_height;
+    float header_scales[] = {1.0f, 2.0f, 1.6f, 1.35f, 1.2f, 1.05f, 1.0f}; // H1-H6 scales
+
+    for (size_t i = 0; i < tokens->count; i++) {
+        MarkdownToken* token = &tokens->tokens[i];
+
+        if (token->length == 0) {
+            line_y += line_height * 0.5f; // Empty line
+            line_x = rect.x;
+            current_line_height = line_height;
+            continue;
+        }
+
+        // Determine font properties
+        float font_scale = 1.0f;
+        SDL_Color text_color = default_color;
+        bool is_bold = token->bold;
+        bool is_italic = token->italic;
+        bool is_code_span = token->code;
+
+        if (token->header_level > 0 && token->header_level <= 6) {
+            font_scale = header_scales[token->header_level];
+            text_color = header_color;
+            is_bold = true;
+        } else if (is_code_span) {
+            text_color = code_color;
+        }
+
+        // Load font with appropriate size
+        TTF_Font* font = renderer->default_font; // Base font
+
+        // Apply font style
+        int ttf_style = TTF_STYLE_NORMAL;
+        if (is_bold) ttf_style |= TTF_STYLE_BOLD;
+        if (is_italic) ttf_style |= TTF_STYLE_ITALIC;
+        TTF_SetFontStyle(font, ttf_style);
+
+        float x_offset = 0.0f;
+        if (token->is_list_item) {
+            x_offset = 24.0f + (float)(token->list_level * 16); // Indent list items per level
+
+            const char* marker_text = token->is_ordered ? "-" : "-";
+            char marker_buf[16];
+            if (token->is_ordered) {
+                snprintf(marker_buf, sizeof(marker_buf), "%d.", token->order_index > 0 ? token->order_index : 1);
+                marker_text = marker_buf;
+            }
+
+            SDL_Surface* bullet_surface = TTF_RenderText_Blended(font, marker_text, strlen(marker_text), text_color);
+            if (bullet_surface) {
+                SDL_Texture* bullet_texture = SDL_CreateTextureFromSurface(renderer->renderer, bullet_surface);
+                if (bullet_texture) {
+                    SDL_FRect bullet_rect = {
+                        .x = roundf(rect.x + x_offset - 18.0f),
+                        .y = roundf(line_y + 2.0f),
+                        .w = (float)bullet_surface->w,
+                        .h = (float)bullet_surface->h
+                    };
+                    SDL_RenderTexture(renderer->renderer, bullet_texture, NULL, &bullet_rect);
+                    SDL_DestroyTexture(bullet_texture);
+                }
+                SDL_DestroySurface(bullet_surface);
+            }
+        }
+
+        if (token->is_code_block) {
+            // Render multi-line code block with background
+            const float padding = 6.0f;
+            float block_x = rect.x + x_offset;
+            float block_y = line_y;
+            float block_width = rect.width > 0 ? rect.width - x_offset : 0.0f;
+            float block_height = 0.0f;
+
+            // First pass: measure lines to get max width/height
+            const char* text_ptr = token->text;
+            size_t text_remaining = token->length;
+            float max_line_width = 0.0f;
+            float total_height = 0.0f;
+
+            while (text_remaining > 0) {
+                const char* newline = memchr(text_ptr, '\n', text_remaining);
+                size_t line_len = newline ? (size_t)(newline - text_ptr) : text_remaining;
+
+                SDL_Surface* measure_surface = TTF_RenderText_Blended(font, line_len > 0 ? text_ptr : " ", line_len, text_color);
+                if (measure_surface) {
+                    if (measure_surface->w > max_line_width) max_line_width = (float)measure_surface->w;
+                    total_height += measure_surface->h;
+                    SDL_DestroySurface(measure_surface);
+                } else {
+                    total_height += line_height;
+                }
+
+                if (!newline) break;
+                text_remaining -= line_len + 1;
+                text_ptr = newline + 1;
+            }
+
+            block_height = total_height + padding * 2.0f;
+            if (block_width <= 0.0f) {
+                block_width = max_line_width + padding * 2.0f;
+            }
+
+            // Draw background
+            SDL_FRect bg_rect = {
+                .x = roundf(block_x),
+                .y = roundf(block_y),
+                .w = block_width,
+                .h = block_height
+            };
+            SDL_SetRenderDrawColor(renderer->renderer, code_bg_color.r, code_bg_color.g, code_bg_color.b, code_bg_color.a);
+            SDL_RenderFillRect(renderer->renderer, &bg_rect);
+
+            // Render lines
+            float line_y = block_y + padding;
+            text_ptr = token->text;
+            text_remaining = token->length;
+            while (text_remaining > 0) {
+                const char* newline = memchr(text_ptr, '\n', text_remaining);
+                size_t line_len = newline ? (size_t)(newline - text_ptr) : text_remaining;
+
+                SDL_Surface* surface = TTF_RenderText_Blended(font, line_len > 0 ? text_ptr : " ", line_len, text_color);
+                if (surface) {
+                    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
+                    if (texture) {
+                        SDL_FRect text_rect = {
+                            .x = roundf(block_x + padding),
+                            .y = roundf(line_y),
+                            .w = (float)surface->w,
+                            .h = (float)surface->h
+                        };
+                        SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
+                        SDL_DestroyTexture(texture);
+                    }
+                    line_y += surface->h;
+                    SDL_DestroySurface(surface);
+                } else {
+                    line_y += line_height;
+                }
+
+                if (!newline) break;
+                text_remaining -= line_len + 1;
+                text_ptr = newline + 1;
+            }
+
+            line_y += block_height + 6.0f; // Add spacing after block
+            line_x = rect.x;
+            current_line_height = line_height;
+            continue;
+        }
+
+        // Render text
+        SDL_Surface* surface = TTF_RenderText_Blended(font, token->text, token->length, text_color);
+        if (surface) {
+            SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
+            if (texture) {
+                SDL_FRect text_rect = {
+                    .x = roundf(line_x + x_offset),
+                    .y = roundf(line_y),
+                    .w = (float)surface->w,
+                    .h = (float)surface->h
+                };
+
+                SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
+                SDL_DestroyTexture(texture);
+            }
+            float advance = (float)surface->h;
+            if (advance < line_height * font_scale) advance = line_height * font_scale;
+            if (advance > current_line_height) current_line_height = advance;
+
+            // Advance cursor on the same line
+            line_x += x_offset + (float)surface->w + 4.0f; // small gap between segments
+            x_offset = 0.0f; // only apply indentation once per line
+            SDL_DestroySurface(surface);
+
+            if (token->ends_line) {
+                line_y += current_line_height + (token->header_level > 0 ? 4.0f : 2.0f);
+                line_x = rect.x;
+                current_line_height = line_height;
+            }
+        }
+    }
+
+    free_markdown_tokens(tokens);
+}
+
+// ============================================================================
 // ============================================================================
 // TEXT MEASUREMENT AND LAYOUT FLOW
 // ============================================================================
@@ -1058,6 +1529,14 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                             break;
                     }
                 }
+            }
+            break;
+        }
+
+        case IR_COMPONENT_MARKDOWN: {
+            // Parse and render markdown content with full formatting
+            if (component->text_content && renderer->default_font) {
+                render_markdown_content(renderer, component->text_content, rect);
             }
             break;
         }

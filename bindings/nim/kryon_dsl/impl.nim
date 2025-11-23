@@ -2105,16 +2105,12 @@ macro Spacer*(props: untyped): untyped =
 
 macro Markdown*(props: untyped): untyped =
   ## Markdown component macro for rich text formatting
+  ## Creates an IR_COMPONENT_MARKDOWN that will be rendered by the backend
   var
     markdownName = genSym(nskLet, "markdown")
     sourceVal: NimNode = newStrLitNode("")
-    fileVal: NimNode = newStrLitNode("")
-    themeVal: NimNode = newNilLit()
-    widthVal: NimNode = newIntLitNode(800)
-    heightVal: NimNode = newIntLitNode(600)
-    scrollableVal: NimNode = newLit(true)  # Default to true (bool literal)
-    onLinkClickVal: NimNode = newNilLit()
-    onImageClickVal: NimNode = newNilLit()
+    widthVal: NimNode = newIntLitNode(0)
+    heightVal: NimNode = newIntLitNode(0)
 
   # Extract properties from props
   for node in props.children:
@@ -2125,37 +2121,25 @@ macro Markdown*(props: untyped): untyped =
       case $identName
       of "source":
         sourceVal = value
-      of "file":
-        fileVal = value
-      of "theme":
-        themeVal = value
       of "width":
         widthVal = value
       of "height":
         heightVal = value
-      of "scrollable":
-        scrollableVal = value
-      of "onLinkClick":
-        onLinkClickVal = value
-      of "onImageClick":
-        onImageClickVal = value
       else:
-        # Unknown property, skip
+        # Unknown properties ignored for now (file, theme, scrollable, onLinkClick, etc.)
+        # Backend will handle all markdown rendering
         discard
 
-  # Generate component creation code
+  # Generate IR component creation code
   result = quote do:
-    let `markdownName` = MarkdownProps(
-      source: `sourceVal`,
-      file: `fileVal`,
-      theme: `themeVal`,
-      width: `widthVal`,
-      height: `heightVal`,
-      scrollable: `scrollableVal`,
-      onLinkClick: `onLinkClickVal`,
-      onImageClick: `onImageClickVal`
-    )
-    createMarkdownComponent(`markdownName`)
+    block:
+      let `markdownName` = newKryonMarkdown(`sourceVal`)
+      # Apply width/height if specified
+      if `widthVal` > 0:
+        `markdownName`.setWidth(`widthVal`)
+      if `heightVal` > 0:
+        `markdownName`.setHeight(`heightVal`)
+      `markdownName`
 
 macro Row*(props: untyped): untyped =
   ## Convenience macro for a row layout container

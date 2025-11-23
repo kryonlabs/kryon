@@ -15,6 +15,7 @@ type
     IR_COMPONENT_CENTER
     IR_COMPONENT_IMAGE
     IR_COMPONENT_CANVAS
+    IR_COMPONENT_MARKDOWN
     IR_COMPONENT_CUSTOM
 
   IRDimensionType* {.size: sizeof(cint).} = enum

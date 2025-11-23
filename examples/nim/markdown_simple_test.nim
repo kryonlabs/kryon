@@ -3,7 +3,6 @@
 ## Basic test to verify the Markdown component works correctly
 
 import kryon_dsl
-import markdown
 
 # Markdown content with lots of text to test scrolling
 let sampleMarkdown = """
@@ -94,8 +93,6 @@ let app = kryonApp:
         source = sampleMarkdown
         width = 760
         height = 500
-        onLinkClick = proc(url: string) =
-          echo "Link clicked: ", url
 
 echo "Simple Markdown Test Running"
 echo "Testing basic markdown rendering with:"

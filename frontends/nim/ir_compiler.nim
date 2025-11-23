@@ -61,6 +61,7 @@ proc mapKryonTypeToIR*(kryon_type: string): IRComponentType =
   case kryon_type.toLowerAscii():
     of "container": result = IR_COMPONENT_CONTAINER
     of "text": result = IR_COMPONENT_TEXT
+    of "markdown": result = IR_COMPONENT_MARKDOWN
     of "button": result = IR_COMPONENT_BUTTON
     of "input": result = IR_COMPONENT_INPUT
     of "checkbox": result = IR_COMPONENT_CHECKBOX
@@ -132,8 +133,15 @@ proc createIRComponent*(component_type: string, properties: Table[string, string
     ir_set_tag(result, properties["tag"])
 
   # Set text content for text-based components
-  if component_type.toLowerAscii() in ["text", "button"] and properties.contains("text"):
+  let lowered = component_type.toLowerAscii()
+  if lowered in ["text", "button"] and properties.contains("text"):
     ir_set_text_content(result, properties["text"])
+  elif lowered == "markdown":
+    # Markdown uses `source` instead of `text`
+    let sourceKey = if properties.contains("source"): "source"
+                    elif properties.contains("text"): "text" else: ""
+    if sourceKey.len > 0:
+      ir_set_text_content(result, properties[sourceKey])
 
 proc applyStyleToComponent*(component: IRComponentC, properties: Table[string, string]) =
   ## Applies style properties to an IR component
