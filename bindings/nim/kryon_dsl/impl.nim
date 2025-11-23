@@ -2276,6 +2276,7 @@ macro TabGroup*(props: untyped): untyped =
   var propertyNodes: seq[NimNode] = @[]
   var childNodes: seq[NimNode] = @[]
   var selectedIndexVal: NimNode = newIntLitNode(0)
+  var reorderableVal: NimNode = newLit(false)
   var hasLayout = false
   var hasGap = false
 
@@ -2285,6 +2286,8 @@ macro TabGroup*(props: untyped): untyped =
       case propName.toLowerAscii()
       of "selectedindex":
         selectedIndexVal = node[1]
+      of "reorderable":
+        reorderableVal = node[1]
       of "layoutdirection":
         hasLayout = true
         propertyNodes.add(node)
@@ -2318,7 +2321,8 @@ macro TabGroup*(props: untyped): untyped =
   result = quote do:
     block:
       let `groupSym` = `containerCall`
-      let `stateSym` = `createSym`(`groupSym`, `selectedIndexVal`)
+      # TabGroup state needs group, tab bar, tab content, selected index, reorderable flag
+      let `stateSym` = `createSym`(`groupSym`, nil, nil, `selectedIndexVal`, `reorderableVal`)
       let `ctxSym` = `stateSym`
       block:
         `childStmtList`
@@ -2328,6 +2332,7 @@ macro TabGroup*(props: untyped): untyped =
 macro TabBar*(props: untyped): untyped =
   let registerSym = bindSym("registerTabBar")
   let ctxSym = ident("__kryonCurrentTabGroup")
+  let ctxBarSym = ident("__kryonCurrentTabBar")
 
   var propertyNodes: seq[NimNode] = @[]
   var childNodes: seq[NimNode] = @[]
@@ -2450,7 +2455,8 @@ macro TabBar*(props: untyped): untyped =
   result = quote do:
     block:
       let `barSym` = `containerCall`
-      `registerSym`(`ctxSym`, `barSym`, `reorderableVal`)
+      `registerSym`(`barSym`, `ctxSym`, `reorderableVal`)
+      let `ctxBarSym` = `barSym`
       block:
         `childStmtList`
       `barSym`
@@ -2525,7 +2531,7 @@ macro TabContent*(props: untyped): untyped =
   result = quote do:
     block:
       let `contentSym` = `containerCall`
-      `registerSym`(`ctxSym`, `contentSym`)
+      `registerSym`(`contentSym`, `ctxSym`)
       block:
         `childStmtList`
       `contentSym`
@@ -2544,13 +2550,14 @@ macro TabPanel*(props: untyped): untyped =
   result = quote do:
     block:
       let `panelSym` = `containerCall`
-      `registerSym`(`ctxSym`, `panelSym`)
+      `registerSym`(`panelSym`, `ctxSym`, 0)
       `panelSym`
 
 macro Tab*(props: untyped): untyped =
   let registerSym = bindSym("registerTabComponent")
   let visualType = bindSym("TabVisualState")
   let ctxSym = ident("__kryonCurrentTabGroup")
+  let ctxBarSym = ident("__kryonCurrentTabBar")
 
   var buttonProps = newTree(nnkStmtList)
   var extraChildren: seq[NimNode] = @[]
@@ -2643,7 +2650,7 @@ macro Tab*(props: untyped): untyped =
   afterCreate.add quote do:
     kryon_component_set_layout_alignment(`tabSym`, kaCenter, kaCenter)
     kryon_component_set_flex(`tabSym`, 0'u8, 0'u8)
-    kryon_component_set_layout_direction(`tabSym`, 1'u8)
+    kryon_component_set_layout_direction(`tabSym`, 1)
     `centerSetter`(`tabSym`, false)
     `ellipsizeSetter`(`tabSym`, true)
 
@@ -2669,7 +2676,11 @@ macro Tab*(props: untyped): untyped =
       `afterCreate`
       # Ensure the tab component is visible by marking dirty
       kryon_component_mark_dirty(`tabSym`)
-      `registerSym`(`ctxSym`, `tabSym`, `visualNode`)
+      # Register tab with current tab group (index handled in backend; use 0 placeholder)
+      `registerSym`(`tabSym`, `ctxSym`, `visualNode`, 0)
+      # Attach tab button into current TabBar so it renders
+      if `ctxBarSym` != nil:
+        discard kryon_component_add_child(`ctxBarSym`, `tabSym`)
       echo "[kryon][debug] Created tab button: ", `titleVal`, " component: ", cast[uint](`tabSym`)
       # Tab components are registered with the tab group, explicitly return void
       discard ()

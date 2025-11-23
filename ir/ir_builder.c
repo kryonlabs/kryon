@@ -51,6 +51,174 @@ const char* ir_logic_type_to_string(LogicSourceType type) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Tab Group Support (shared across frontends)
+// ---------------------------------------------------------------------------
+struct TabGroupState {
+    IRComponent* group;
+    IRComponent* tab_bar;
+    IRComponent* tab_content;
+    IRComponent** tabs;
+    IRComponent** panels;
+    uint32_t tab_count;
+    uint32_t panel_count;
+    int selected_index;
+    bool reorderable;
+};
+
+static void ir_tabgroup_set_visible(IRComponent* component, bool visible) {
+    if (!component) return;
+    IRStyle* style = ir_get_style(component);
+    if (!style) {
+        style = ir_create_style();
+        ir_set_style(component, style);
+    }
+    style->visible = visible;
+}
+
+TabGroupState* ir_tabgroup_create_state(IRComponent* group,
+                                        IRComponent* tab_bar,
+                                        IRComponent* tab_content,
+                                        int selected_index,
+                                        bool reorderable) {
+    TabGroupState* state = (TabGroupState*)calloc(1, sizeof(TabGroupState));
+    if (!state) return NULL;
+    state->group = group;
+    state->tab_bar = tab_bar;
+    state->tab_content = tab_content;
+    state->tabs = NULL;
+    state->panels = NULL;
+    state->tab_count = 0;
+    state->panel_count = 0;
+    state->selected_index = selected_index;
+    state->reorderable = reorderable;
+    return state;
+}
+
+void ir_tabgroup_register_bar(TabGroupState* state, IRComponent* tab_bar) {
+    if (!state) return;
+    state->tab_bar = tab_bar;
+}
+
+void ir_tabgroup_register_content(TabGroupState* state, IRComponent* tab_content) {
+    if (!state) return;
+    state->tab_content = tab_content;
+}
+
+void ir_tabgroup_register_tab(TabGroupState* state, IRComponent* tab) {
+    if (!state || !tab) return;
+    state->tabs = realloc(state->tabs, sizeof(IRComponent*) * (state->tab_count + 1));
+    if (!state->tabs) {
+        state->tab_count = 0;
+        return;
+    }
+    state->tabs[state->tab_count++] = tab;
+}
+
+void ir_tabgroup_register_panel(TabGroupState* state, IRComponent* panel) {
+    if (!state || !panel) return;
+    state->panels = realloc(state->panels, sizeof(IRComponent*) * (state->panel_count + 1));
+    if (!state->panels) {
+        state->panel_count = 0;
+        return;
+    }
+    state->panels[state->panel_count++] = panel;
+}
+
+void ir_tabgroup_select(TabGroupState* state, int index) {
+    if (!state) return;
+    if (index < 0 || (uint32_t)index >= state->tab_count) return;
+    state->selected_index = index;
+
+    // Panels: show only selected
+    if (state->tab_content) {
+        // Remove all panels from tab_content
+        for (uint32_t i = 0; i < state->panel_count; i++) {
+            if (state->panels[i]) {
+                // Check if child before removing
+                for (uint32_t c = 0; c < state->tab_content->child_count; c++) {
+                    if (state->tab_content->children[c] == state->panels[i]) {
+                        ir_remove_child(state->tab_content, state->panels[i]);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Add only the selected panel
+        if ((uint32_t)index < state->panel_count && state->panels[index]) {
+            ir_add_child(state->tab_content, state->panels[index]);
+        }
+
+        // Invalidate layout so renderer recalculates with new child set
+        state->tab_content->rendered_bounds.valid = false;
+    }
+
+    // Invalidate parent/group/root bounds to force relayout
+    if (state->group) {
+        state->group->rendered_bounds.valid = false;
+    }
+    if (g_ir_context && g_ir_context->root) {
+        g_ir_context->root->rendered_bounds.valid = false;
+    }
+}
+
+void ir_tabgroup_reorder(TabGroupState* state, int from_index, int to_index) {
+    if (!state) return;
+    if (from_index < 0 || to_index < 0) return;
+    if ((uint32_t)from_index >= state->tab_count || (uint32_t)to_index >= state->tab_count) return;
+    if (from_index == to_index) return;
+
+    // Reorder tabs array
+    IRComponent* moved_tab = state->tabs[from_index];
+    if (from_index < to_index) {
+        memmove(&state->tabs[from_index], &state->tabs[from_index + 1], (size_t)(to_index - from_index) * sizeof(IRComponent*));
+    } else {
+        memmove(&state->tabs[to_index + 1], &state->tabs[to_index], (size_t)(from_index - to_index) * sizeof(IRComponent*));
+    }
+    state->tabs[to_index] = moved_tab;
+
+    // Reorder panels to match tabs if counts align
+    if (state->panel_count == state->tab_count) {
+        IRComponent* moved_panel = state->panels[from_index];
+        if (from_index < to_index) {
+            memmove(&state->panels[from_index], &state->panels[from_index + 1], (size_t)(to_index - from_index) * sizeof(IRComponent*));
+        } else {
+            memmove(&state->panels[to_index + 1], &state->panels[to_index], (size_t)(from_index - to_index) * sizeof(IRComponent*));
+        }
+        state->panels[to_index] = moved_panel;
+    }
+
+    // Reorder children inside tab bar for visual order
+    if (state->tab_bar && state->tab_bar->children && state->tab_bar->child_count == state->tab_count) {
+        IRComponent* moved_child = state->tab_bar->children[from_index];
+        if (from_index < to_index) {
+            memmove(&state->tab_bar->children[from_index], &state->tab_bar->children[from_index + 1], (size_t)(to_index - from_index) * sizeof(IRComponent*));
+        } else {
+            memmove(&state->tab_bar->children[to_index + 1], &state->tab_bar->children[to_index], (size_t)(from_index - to_index) * sizeof(IRComponent*));
+        }
+        state->tab_bar->children[to_index] = moved_child;
+    }
+
+    // Maintain selection if needed
+    int sel = state->selected_index;
+    if (from_index == sel) sel = to_index;
+    else if (from_index < sel && to_index >= sel) sel -= 1;
+    else if (from_index > sel && to_index <= sel) sel += 1;
+    state->selected_index = sel;
+    ir_tabgroup_select(state, state->selected_index);
+}
+
+void ir_tabgroup_finalize(TabGroupState* state) {
+    if (!state) return;
+    if (state->tab_count > 0) {
+        int clamp_index = state->selected_index;
+        if (clamp_index < 0) clamp_index = 0;
+        if ((uint32_t)clamp_index >= state->tab_count) clamp_index = (int)(state->tab_count - 1);
+        ir_tabgroup_select(state, clamp_index);
+    }
+}
+
 // Context Management
 IRContext* ir_create_context(void) {
     IRContext* context = malloc(sizeof(IRContext));
@@ -275,6 +443,11 @@ IRStyle* ir_get_style(IRComponent* component) {
     }
 
     return component->style;
+}
+
+void ir_set_visible(IRStyle* style, bool visible) {
+    if (!style) return;
+    style->visible = visible;
 }
 
 // Style Property Helpers
@@ -901,4 +1074,3 @@ void ir_set_align_content(IRLayout* layout, IRAlignment align) {
     // For now, use main_axis to control overall alignment
     layout->flex.main_axis = align;
 }
-

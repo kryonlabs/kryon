@@ -541,37 +541,113 @@ type
     textColor*: uint32
     activeTextColor*: uint32
 
-  TabGroupState* = ref object  # Stub
   CheckboxState* = ref object  # Stub
   InputState* = ref object  # Stub
 
-proc createTabGroupState*(group, tabBar, tabContent: ptr IRComponent, selectedIndex: int, reorderable: bool): TabGroupState =
-  # Stub for tab groups
-  result = TabGroupState()
+# Track tab/panel insertion order per group
+var tabGroupTabOrder = initTable[ptr TabGroupState, seq[ptr IRComponent]]()
+var tabGroupPanelOrder = initTable[ptr TabGroupState, seq[ptr IRComponent]]()
+var tabGroupIsReorderable = initTable[ptr TabGroupState, bool]()
+var tabVisuals = initTable[ptr IRComponent, TabVisualState]()
+var tabGroupVisuals = initTable[ptr TabGroupState, seq[TabVisualState]]()
 
-proc addTab*(state: TabGroupState, tab, panel: ptr IRComponent) =
-  # Stub for adding tabs
-  discard
+proc createTabGroupState*(group, tabBar, tabContent: ptr IRComponent, selectedIndex: int, reorderable: bool): ptr TabGroupState =
+  let state = ir_tabgroup_create_state(group, tabBar, tabContent, cint(selectedIndex), reorderable)
+  if state != nil:
+    tabGroupTabOrder[state] = @[]
+    tabGroupPanelOrder[state] = @[]
+    tabGroupVisuals[state] = @[]
+  result = state
 
-proc finalizeTabGroup*(state: TabGroupState) =
-  # Stub for finalizing tab group
-  discard
+proc setComponentBg(component: ptr IRComponent, color: uint32) =
+  if component.isNil: return
+  var style = ir_get_style(component)
+  if style.isNil:
+    style = ir_create_style()
+    ir_set_style(component, style)
+  let r = uint8((color shr 24) and 0xFF)
+  let g = uint8((color shr 16) and 0xFF)
+  let b = uint8((color shr 8) and 0xFF)
+  let a = uint8(color and 0xFF)
+  ir_set_background_color(style, r, g, b, a)
 
-proc registerTabBar*(tabBar: ptr IRComponent, state: TabGroupState) =
-  # Stub for registering tab bar
-  discard
+proc setComponentTextColor(component: ptr IRComponent, color: uint32) =
+  if component.isNil: return
+  var style = ir_get_style(component)
+  if style.isNil:
+    style = ir_create_style()
+    ir_set_style(component, style)
+  let r = uint8((color shr 24) and 0xFF)
+  let g = uint8((color shr 16) and 0xFF)
+  let b = uint8((color shr 8) and 0xFF)
+  let a = uint8(color and 0xFF)
+  ir_set_font(style, if style.font.size > 0: style.font.size else: 16.0, style.font.family, r, g, b, a, style.font.bold, style.font.italic)
 
-proc registerTabComponent*(tab: ptr IRComponent, state: TabGroupState, index: int) =
-  # Stub for registering tab component
-  discard
+proc registerTabBar*(tabBar: ptr IRComponent, state: ptr TabGroupState, reorderable: bool) =
+  if state.isNil: return
+  ir_tabgroup_register_bar(state, tabBar)
+  tabGroupIsReorderable[state] = reorderable
 
-proc registerTabContent*(content: ptr IRComponent, state: TabGroupState) =
-  # Stub for registering tab content
-  discard
+proc applyTabVisuals(state: ptr TabGroupState, selectedIdx: int) =
+  if state.isNil: return
+  let order = tabGroupTabOrder.getOrDefault(state, @[])
+  let visuals = tabGroupVisuals.getOrDefault(state, @[])
+  let count = min(order.len, visuals.len)
+  for i in 0 ..< count:
+    let t = order[i]
+    let v = visuals[i]
+    if i == selectedIdx:
+      setComponentBg(t, v.activeBackgroundColor)
+      setComponentTextColor(t, v.activeTextColor)
+    else:
+      setComponentBg(t, v.backgroundColor)
+      setComponentTextColor(t, v.textColor)
 
-proc registerTabPanel*(panel: ptr IRComponent, state: TabGroupState, index: int) =
-  # Stub for registering tab panel
-  discard
+proc registerTabComponent*(tab: ptr IRComponent, state: ptr TabGroupState, visual: TabVisualState, index: int) =
+  if state.isNil: return
+  # Track tab order using the index hint
+  ir_tabgroup_register_tab(state, tab)
+  if not tabGroupTabOrder.hasKey(state):
+    tabGroupTabOrder[state] = @[]
+  tabGroupTabOrder[state].add(tab)
+  let tabIndex = tabGroupTabOrder[state].len - 1
+  tabVisuals[tab] = visual
+  if not tabGroupVisuals.hasKey(state):
+    tabGroupVisuals[state] = @[]
+  tabGroupVisuals[state].add(visual)
+
+  proc applyVisuals(selectedIdx: int) =
+    applyTabVisuals(state, selectedIdx)
+
+  registerButtonHandler(tab, proc() =
+    let order = tabGroupTabOrder.getOrDefault(state, @[])
+    let idx = order.find(tab)
+    if idx >= 0:
+      ir_tabgroup_select(state, cint(idx))
+      applyVisuals(idx)
+    else:
+      ir_tabgroup_select(state, cint(tabIndex))
+      applyVisuals(tabIndex)
+  )
+
+proc registerTabContent*(content: ptr IRComponent, state: ptr TabGroupState) =
+  if state.isNil: return
+  ir_tabgroup_register_content(state, content)
+
+proc registerTabPanel*(panel: ptr IRComponent, state: ptr TabGroupState, index: int) =
+  if state.isNil: return
+  ir_tabgroup_register_panel(state, panel)
+  if not tabGroupPanelOrder.hasKey(state):
+    tabGroupPanelOrder[state] = @[]
+  tabGroupPanelOrder[state].add(panel)
+
+proc finalizeTabGroup*(state: ptr TabGroupState) =
+  if state.isNil: return
+  ir_tabgroup_finalize(state)
+  # Apply initial visuals (default to first tab if present)
+  if tabGroupTabOrder.hasKey(state) and tabGroupTabOrder[state].len > 0:
+    applyTabVisuals(state, 0)
+  # Keep state data for runtime clicks (cleanup can be done when disposing state if needed)
 
 var canvasHandlers = initTable[uint32, proc()]()
 

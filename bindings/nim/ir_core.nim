@@ -148,6 +148,7 @@ type
     logic*: ptr LogicSource
 
   IRContext* {.importc: "IRContext", header: "ir_core.h", incompleteStruct.} = object
+  TabGroupState* {.importc: "TabGroupState", header: "ir_builder.h", incompleteStruct.} = object
 
 # Context Management
 proc ir_create_context*(): ptr IRContext {.importc, cdecl, header: "ir_builder.h".}
@@ -200,6 +201,16 @@ proc ir_set_direction*(layout: ptr IRLayout; direction: cint) {.importc, cdecl, 
 proc ir_set_justify_content*(layout: ptr IRLayout; justify: IRAlignment) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_align_items*(layout: ptr IRLayout; align: IRAlignment) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_align_content*(layout: ptr IRLayout; align: IRAlignment) {.importc, cdecl, header: "ir_builder.h".}
+
+# Tab Group Management
+proc ir_tabgroup_create_state*(group, tabBar, tabContent: ptr IRComponent; selectedIndex: cint; reorderable: bool): ptr TabGroupState {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_register_bar*(state: ptr TabGroupState; tabBar: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_register_content*(state: ptr TabGroupState; tabContent: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_register_tab*(state: ptr TabGroupState; tab: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_register_panel*(state: ptr TabGroupState; panel: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_finalize*(state: ptr TabGroupState) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_select*(state: ptr TabGroupState; index: cint) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_reorder*(state: ptr TabGroupState; from_index: cint; to_index: cint) {.importc, cdecl, header: "ir_builder.h".}
 
 # Layout setters not in C yet - add stubs
 proc ir_set_gap*(layout: ptr IRLayout; gap: uint32) =

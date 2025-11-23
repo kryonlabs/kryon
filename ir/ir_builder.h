@@ -34,6 +34,7 @@ IRStyle* ir_get_style(IRComponent* component);
 // Style Property Helpers
 void ir_set_width(IRStyle* style, IRDimensionType type, float value);
 void ir_set_height(IRStyle* style, IRDimensionType type, float value);
+void ir_set_visible(IRStyle* style, bool visible);
 void ir_set_background_color(IRStyle* style, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 void ir_set_border(IRStyle* style, float width, uint8_t r, uint8_t g, uint8_t b, uint8_t a, uint8_t radius);
 void ir_set_margin(IRStyle* style, float top, float right, float bottom, float left);
@@ -97,6 +98,22 @@ IRColor ir_color_transparent(void);
 // Validation and Optimization
 bool ir_validate_component(IRComponent* component);
 void ir_optimize_component(IRComponent* component);
+
+// Tab Group Support (shared across frontends)
+typedef struct TabGroupState TabGroupState;
+
+TabGroupState* ir_tabgroup_create_state(IRComponent* group,
+                                        IRComponent* tab_bar,
+                                        IRComponent* tab_content,
+                                        int selected_index,
+                                        bool reorderable);
+void ir_tabgroup_register_bar(TabGroupState* state, IRComponent* tab_bar);
+void ir_tabgroup_register_content(TabGroupState* state, IRComponent* tab_content);
+void ir_tabgroup_register_tab(TabGroupState* state, IRComponent* tab);
+void ir_tabgroup_register_panel(TabGroupState* state, IRComponent* panel);
+void ir_tabgroup_finalize(TabGroupState* state);
+void ir_tabgroup_select(TabGroupState* state, int index);
+void ir_tabgroup_reorder(TabGroupState* state, int from_index, int to_index);
 
 // Hit Testing
 bool ir_is_point_in_component(IRComponent* component, float x, float y);
