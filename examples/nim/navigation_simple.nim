@@ -5,7 +5,6 @@
 ## using the existing reactive system for navigation.
 
 import kryon_dsl
-import kryon_dsl/navigation
 
 # ============================================================================
 # Route Definition
@@ -23,6 +22,10 @@ type AppRoute = enum
 
 # Define the global state for the current route
 var currentRoute = HomeScreen
+
+# Simple navigation helper (reactive state updates currentRoute)
+proc navigateTo(route: var AppRoute, next: AppRoute) =
+  route = next
 
 # ============================================================================
 # Screen Components

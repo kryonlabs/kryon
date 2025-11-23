@@ -130,6 +130,31 @@ typedef struct {
     size_t capacity;
 } MarkdownTokens;
 
+typedef struct {
+    uint32_t component_id;
+    float scroll_offset;
+    float content_height;
+} MarkdownScrollState;
+
+static MarkdownScrollState markdown_scroll_states[32];
+static size_t markdown_scroll_state_count = 0;
+
+static MarkdownScrollState* get_markdown_scroll_state(uint32_t component_id) {
+    for (size_t i = 0; i < markdown_scroll_state_count; i++) {
+        if (markdown_scroll_states[i].component_id == component_id) {
+            return &markdown_scroll_states[i];
+        }
+    }
+    if (markdown_scroll_state_count < (sizeof(markdown_scroll_states) / sizeof(markdown_scroll_states[0]))) {
+        markdown_scroll_states[markdown_scroll_state_count].component_id = component_id;
+        markdown_scroll_states[markdown_scroll_state_count].scroll_offset = 0.0f;
+        markdown_scroll_states[markdown_scroll_state_count].content_height = 0.0f;
+        markdown_scroll_state_count++;
+        return &markdown_scroll_states[markdown_scroll_state_count - 1];
+    }
+    return NULL;
+}
+
 // Simple dynamic buffer helper for code blocks
 static bool append_to_buffer(char** buffer, size_t* len, size_t* cap,
                              const char* text, size_t text_len, bool add_newline) {
@@ -374,7 +399,8 @@ static MarkdownTokens* parse_markdown(const char* markdown) {
     return tokens;
 }
 
-static void render_markdown_content(DesktopIRRenderer* renderer, const char* markdown, LayoutRect rect) {
+static void render_markdown_content(DesktopIRRenderer* renderer, IRComponent* component, LayoutRect rect) {
+    const char* markdown = component ? component->text_content : NULL;
     if (!markdown || !renderer->default_font) return;
 
     MarkdownTokens* tokens = parse_markdown(markdown);
@@ -390,6 +416,93 @@ static void render_markdown_content(DesktopIRRenderer* renderer, const char* mar
     float line_height = 22.0f; // Base line height
     float current_line_height = line_height;
     float header_scales[] = {1.0f, 2.0f, 1.6f, 1.35f, 1.2f, 1.05f, 1.0f}; // H1-H6 scales
+
+    // First pass: measure total content height
+    float measure_line_y = 0.0f;
+    float measure_line_x = 0.0f;
+    float measure_current_line_height = line_height;
+    for (size_t i = 0; i < tokens->count; i++) {
+        MarkdownToken* token = &tokens->tokens[i];
+        if (token->length == 0) {
+            measure_line_y += line_height * 0.5f;
+            measure_line_x = 0.0f;
+            measure_current_line_height = line_height;
+            continue;
+        }
+
+        float font_scale = 1.0f;
+        if (token->header_level > 0 && token->header_level <= 6) {
+            font_scale = header_scales[token->header_level];
+        }
+
+        if (token->is_code_block) {
+            // Measure code block using actual font rendering for accurate height
+            const float padding = 6.0f;
+            const char* text_ptr = token->text;
+            size_t text_remaining = token->length;
+            float total_height = 0.0f;
+            while (text_remaining > 0) {
+                const char* newline = memchr(text_ptr, '\n', text_remaining);
+                size_t line_len = newline ? (size_t)(newline - text_ptr) : text_remaining;
+                SDL_Surface* measure_surface = TTF_RenderText_Blended(renderer->default_font, line_len > 0 ? text_ptr : " ", line_len, default_color);
+                if (measure_surface) {
+                    total_height += measure_surface->h;
+                    SDL_DestroySurface(measure_surface);
+                } else {
+                    total_height += line_height;
+                }
+                if (!newline) break;
+                text_remaining -= line_len + 1;
+                text_ptr = newline + 1;
+            }
+            float block_height = total_height + padding * 2.0f;
+            if (block_height < line_height * 2.0f) block_height = line_height * 2.0f;
+            // Add extra breathing room below code blocks so following content doesn't overlap visually
+            measure_line_y += block_height + line_height * 0.75f;
+            measure_line_x = 0.0f;
+            measure_current_line_height = line_height;
+            continue;
+        }
+
+        // Estimate width by rendering to surface for accuracy
+        SDL_Surface* surface = TTF_RenderText_Blended(renderer->default_font, token->text, token->length, default_color);
+        float token_width = surface ? (float)surface->w : (float)token->length * 8.0f;
+        float token_height = surface ? (float)surface->h : line_height * font_scale;
+        if (surface) SDL_DestroySurface(surface);
+
+        if (token_height < line_height * font_scale) token_height = line_height * font_scale;
+        if (token_height > measure_current_line_height) measure_current_line_height = token_height;
+
+        measure_line_x += token_width + (token->is_list_item ? 22.0f : 4.0f);
+        if (token->ends_line) {
+            measure_line_y += measure_current_line_height + (token->header_level > 0 ? 4.0f : 2.0f);
+            measure_line_x = 0.0f;
+            measure_current_line_height = line_height;
+        }
+    }
+
+    float content_height = measure_line_y + measure_current_line_height;
+
+    // Get/update scroll state
+    MarkdownScrollState* scroll_state = component ? get_markdown_scroll_state(component->id) : NULL;
+    if (scroll_state) {
+        scroll_state->content_height = content_height;
+        float max_scroll = content_height - rect.height;
+        if (max_scroll < 0) max_scroll = 0;
+        if (scroll_state->scroll_offset < 0) scroll_state->scroll_offset = 0;
+        if (scroll_state->scroll_offset > max_scroll) scroll_state->scroll_offset = max_scroll;
+    }
+
+    float scroll_offset = scroll_state ? scroll_state->scroll_offset : 0.0f;
+
+    // Apply clip for scroll region
+    SDL_Rect clip_rect = {
+        (int)roundf(rect.x),
+        (int)roundf(rect.y),
+        (int)roundf(rect.width),
+        (int)roundf(rect.height)
+    };
+    SDL_SetRenderClipRect(renderer->renderer, &clip_rect);
 
     for (size_t i = 0; i < tokens->count; i++) {
         MarkdownToken* token = &tokens->tokens[i];
@@ -438,16 +551,16 @@ static void render_markdown_content(DesktopIRRenderer* renderer, const char* mar
 
             SDL_Surface* bullet_surface = TTF_RenderText_Blended(font, marker_text, strlen(marker_text), text_color);
             if (bullet_surface) {
-                SDL_Texture* bullet_texture = SDL_CreateTextureFromSurface(renderer->renderer, bullet_surface);
-                if (bullet_texture) {
-                    SDL_FRect bullet_rect = {
-                        .x = roundf(rect.x + x_offset - 18.0f),
-                        .y = roundf(line_y + 2.0f),
-                        .w = (float)bullet_surface->w,
-                        .h = (float)bullet_surface->h
-                    };
-                    SDL_RenderTexture(renderer->renderer, bullet_texture, NULL, &bullet_rect);
-                    SDL_DestroyTexture(bullet_texture);
+                    SDL_Texture* bullet_texture = SDL_CreateTextureFromSurface(renderer->renderer, bullet_surface);
+                    if (bullet_texture) {
+                        SDL_FRect bullet_rect = {
+                            .x = roundf(rect.x + x_offset - 18.0f),
+                            .y = roundf(line_y - scroll_offset + 2.0f),
+                            .w = (float)bullet_surface->w,
+                            .h = (float)bullet_surface->h
+                        };
+                        SDL_RenderTexture(renderer->renderer, bullet_texture, NULL, &bullet_rect);
+                        SDL_DestroyTexture(bullet_texture);
                 }
                 SDL_DestroySurface(bullet_surface);
             }
@@ -457,7 +570,7 @@ static void render_markdown_content(DesktopIRRenderer* renderer, const char* mar
             // Render multi-line code block with background
             const float padding = 6.0f;
             float block_x = rect.x + x_offset;
-            float block_y = line_y;
+            float block_y = line_y - scroll_offset;
             float block_width = rect.width > 0 ? rect.width - x_offset : 0.0f;
             float block_height = 0.0f;
 
@@ -486,8 +599,16 @@ static void render_markdown_content(DesktopIRRenderer* renderer, const char* mar
             }
 
             block_height = total_height + padding * 2.0f;
-            if (block_width <= 0.0f) {
-                block_width = max_line_width + padding * 2.0f;
+            // Always ensure minimum block width to avoid overlap with following content
+            float min_block_width = max_line_width + padding * 2.0f;
+            if (block_width <= 0.0f || block_width < min_block_width) {
+                block_width = min_block_width;
+            }
+
+            // Ensure a minimum code block height to keep following content from overlapping
+            if (block_height < line_height * 2.0f) {
+                block_height = line_height * 2.0f;
+                total_height = block_height - padding * 2.0f;
             }
 
             // Draw background
@@ -501,7 +622,7 @@ static void render_markdown_content(DesktopIRRenderer* renderer, const char* mar
             SDL_RenderFillRect(renderer->renderer, &bg_rect);
 
             // Render lines
-            float line_y = block_y + padding;
+            float line_y_block = block_y + padding;
             text_ptr = token->text;
             text_remaining = token->length;
             while (text_remaining > 0) {
@@ -514,17 +635,17 @@ static void render_markdown_content(DesktopIRRenderer* renderer, const char* mar
                     if (texture) {
                         SDL_FRect text_rect = {
                             .x = roundf(block_x + padding),
-                            .y = roundf(line_y),
+                            .y = roundf(line_y_block),
                             .w = (float)surface->w,
                             .h = (float)surface->h
                         };
                         SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
                         SDL_DestroyTexture(texture);
                     }
-                    line_y += surface->h;
+                    line_y_block += surface->h;
                     SDL_DestroySurface(surface);
                 } else {
-                    line_y += line_height;
+                    line_y_block += line_height;
                 }
 
                 if (!newline) break;
@@ -532,7 +653,8 @@ static void render_markdown_content(DesktopIRRenderer* renderer, const char* mar
                 text_ptr = newline + 1;
             }
 
-            line_y += block_height + 6.0f; // Add spacing after block
+            // Advance line_y by full block height plus margin so following content starts below
+            line_y += block_height + line_height;
             line_x = rect.x;
             current_line_height = line_height;
             continue;
@@ -545,10 +667,10 @@ static void render_markdown_content(DesktopIRRenderer* renderer, const char* mar
             if (texture) {
                 SDL_FRect text_rect = {
                     .x = roundf(line_x + x_offset),
-                    .y = roundf(line_y),
-                    .w = (float)surface->w,
-                    .h = (float)surface->h
-                };
+                            .y = roundf(line_y - scroll_offset),
+                            .w = (float)surface->w,
+                            .h = (float)surface->h
+                        };
 
                 SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
                 SDL_DestroyTexture(texture);
@@ -569,6 +691,33 @@ static void render_markdown_content(DesktopIRRenderer* renderer, const char* mar
             }
         }
     }
+
+    // Draw scrollbar if overflow
+    if (scroll_state && content_height > rect.height && rect.height > 0.0f) {
+        float track_width = 10.0f;
+        float track_x = rect.x + rect.width - track_width;
+        float track_y = rect.y;
+        float track_h = rect.height;
+
+        SDL_SetRenderDrawColor(renderer->renderer, 220, 220, 220, 180);
+        SDL_FRect track_rect = {track_x, track_y, track_width, track_h};
+        SDL_RenderFillRect(renderer->renderer, &track_rect);
+
+        float thumb_h = (rect.height * rect.height) / content_height;
+        if (thumb_h < 24.0f) thumb_h = 24.0f;
+        if (thumb_h > track_h) thumb_h = track_h;
+        float max_scroll = content_height - rect.height;
+        float thumb_y = track_y;
+        if (max_scroll > 0.0f) {
+            thumb_y = track_y + (scroll_offset / max_scroll) * (track_h - thumb_h);
+        }
+        SDL_SetRenderDrawColor(renderer->renderer, 120, 120, 120, 220);
+        SDL_FRect thumb_rect = {track_x + 2.0f, thumb_y + 2.0f, track_width - 4.0f, thumb_h - 4.0f};
+        SDL_RenderFillRect(renderer->renderer, &thumb_rect);
+    }
+
+    // Clear clip
+    SDL_SetRenderClipRect(renderer->renderer, NULL);
 
     free_markdown_tokens(tokens);
 }
@@ -1536,7 +1685,7 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
         case IR_COMPONENT_MARKDOWN: {
             // Parse and render markdown content with full formatting
             if (component->text_content && renderer->default_font) {
-                render_markdown_content(renderer, component->text_content, rect);
+                render_markdown_content(renderer, component, rect);
             }
             break;
         }
@@ -2236,6 +2385,28 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
                     renderer->event_callback(&desktop_event, renderer->event_user_data);
                 }
                 break;
+
+            case SDL_EVENT_MOUSE_WHEEL: {
+                // Apply scroll to markdown components under the cursor
+                if (renderer->last_root) {
+                    float mouse_x = (float)event.wheel.mouse_x;
+                    float mouse_y = (float)event.wheel.mouse_y;
+                    IRComponent* target = ir_find_component_at_point(renderer->last_root, mouse_x, mouse_y);
+                    if (target && target->type == IR_COMPONENT_MARKDOWN) {
+                        MarkdownScrollState* state = get_markdown_scroll_state(target->id);
+                        if (state) {
+                            float max_scroll = state->content_height - target->rendered_bounds.height;
+                            if (max_scroll < 0.0f) max_scroll = 0.0f;
+                            // SDL wheel y: positive away from user (scroll up), negative towards (down)
+                            float delta = -(float)event.wheel.y * 40.0f;
+                            state->scroll_offset += delta;
+                            if (state->scroll_offset < 0.0f) state->scroll_offset = 0.0f;
+                            if (state->scroll_offset > max_scroll) state->scroll_offset = max_scroll;
+                        }
+                    }
+                }
+                break;
+            }
 
             case SDL_EVENT_MOUSE_MOTION:
                 desktop_event.type = DESKTOP_EVENT_MOUSE_MOVE;

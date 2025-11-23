@@ -2020,15 +2020,8 @@ macro Input*(props: untyped): untyped =
 
   result = quote do:
     block:
-      # Use the new Nim-side Input component implementation
-      let `inputName` = newKryonInput(
-        `placeholderVal`, 
-        `valueVal`, 
-        `onTextChangeExpr`,
-        `textColorExpr`,
-        `bgColorExpr`,
-        `borderColorExpr`
-      )
+      # Use the new IR-based Input component (placeholder/value currently unused)
+      let `inputName` = newKryonInput()
       `initStmts`
       kryon_component_mark_dirty(`inputName`)
       `inputName`
