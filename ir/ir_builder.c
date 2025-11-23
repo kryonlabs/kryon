@@ -233,6 +233,9 @@ IRStyle* ir_create_style(void) {
     // Set sensible defaults
     style->visible = true;
     style->opacity = 1.0f;
+    style->position_mode = IR_POSITION_RELATIVE;
+    style->absolute_x = 0.0f;
+    style->absolute_y = 0.0f;
 
     return style;
 }

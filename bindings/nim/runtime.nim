@@ -388,8 +388,8 @@ proc kryon_component_set_gap*(component: ptr IRComponent, gap: uint8) =
 
 proc kryon_component_set_bounds_mask*(component: ptr IRComponent, x, y, w, h: cfloat, mask: uint8) =
   # Set component bounds using IR style system
-  # Only set dimensions if their mask bit is set (0x04 = width, 0x08 = height)
-  # This allows components without explicit dimensions to remain as AUTO
+  # Mask bits: 0x01 = X, 0x02 = Y, 0x04 = width, 0x08 = height
+  # If X or Y are set, this is ABSOLUTE positioning
   let style = ir_get_style(component)
   let targetStyle = if style.isNil:
     let newStyle = ir_create_style()
@@ -397,6 +397,22 @@ proc kryon_component_set_bounds_mask*(component: ptr IRComponent, x, y, w, h: cf
     newStyle
   else:
     style
+
+  # Check if absolute positioning is being set (X or Y specified)
+  let hasAbsoluteX = (mask and 0x01) != 0
+  let hasAbsoluteY = (mask and 0x02) != 0
+
+  if hasAbsoluteX or hasAbsoluteY:
+    # Enable absolute positioning mode
+    targetStyle.position_mode = IR_POSITION_ABSOLUTE
+
+    if hasAbsoluteX:
+      targetStyle.absolute_x = x
+
+    if hasAbsoluteY:
+      targetStyle.absolute_y = y
+
+    echo "[IR] Set absolute positioning: x=", x, ", y=", y, " (mask=0x", mask.toHex, ")"
 
   # Only set width if mask bit 0x04 is set
   if (mask and 0x04) != 0:
@@ -496,10 +512,12 @@ proc kryon_component_set_border_width*(component: ptr IRComponent, width: uint32
 
   if style.isNil:
     let newStyle = ir_create_style()
+    # No existing border color, use default black
     ir_set_border(newStyle, cfloat(width), 0, 0, 0, 255, 0)
     ir_set_style(component, newStyle)
   else:
-    ir_set_border(style, cfloat(width), 0, 0, 0, 255, 0)
+    # Preserve existing border color when updating width
+    ir_set_border(style, cfloat(width), style.border.color.r, style.border.color.g, style.border.color.b, style.border.color.a, cfloat(style.border.radius))
 
 proc kryon_button_set_center_text*(button: ptr IRComponent, centered: bool) =
   # Text centering is handled automatically in button rendering

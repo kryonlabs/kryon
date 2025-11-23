@@ -93,6 +93,10 @@ type
     cross_axis*: IRAlignment
     justify_content*: IRAlignment
 
+  IRPositionMode* {.size: sizeof(cint).} = enum
+    IR_POSITION_RELATIVE = 0
+    IR_POSITION_ABSOLUTE
+
   IRStyle* {.importc: "IRStyle", header: "ir_core.h", incompleteStruct.} = object
     width*: IRDimension
     height*: IRDimension
@@ -107,6 +111,9 @@ type
     font*: IRTypography
     visible*: bool
     z_index*: uint32
+    position_mode*: IRPositionMode
+    absolute_x*: cfloat
+    absolute_y*: cfloat
 
   IRLayout* {.importc: "IRLayout", header: "ir_core.h", incompleteStruct.} = object
     min_width*: IRDimension

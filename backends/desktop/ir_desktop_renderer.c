@@ -173,9 +173,22 @@ static LayoutRect calculate_component_layout(IRComponent* component, LayoutRect 
 
     if (!component) return rect;
 
-    // Default to parent bounds for container
-    rect.x = parent_rect.x;
-    rect.y = parent_rect.y;
+    // Check for absolute positioning
+    bool is_absolute = component->style && component->style->position_mode == IR_POSITION_ABSOLUTE;
+
+    if (is_absolute) {
+        // Absolute positioning: use explicit coordinates relative to root/window
+        rect.x = component->style->absolute_x;
+        rect.y = component->style->absolute_y;
+
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            printf("    🎯 ABSOLUTE positioning: component at (%.1f, %.1f)\n", rect.x, rect.y);
+        }
+    } else {
+        // Default to parent bounds for container (relative positioning)
+        rect.x = parent_rect.x;
+        rect.y = parent_rect.y;
+    }
 
     // For TEXT components with AUTO dimensions, start with 0 instead of parent dimensions
     // This allows get_child_size() to detect and measure them properly
@@ -203,9 +216,11 @@ static LayoutRect calculate_component_layout(IRComponent* component, LayoutRect 
             if (rect.height <= 0) rect.height = 0;
         }
 
-        // Apply margins
-        if (component->style->margin.top > 0) rect.y += component->style->margin.top;
-        if (component->style->margin.left > 0) rect.x += component->style->margin.left;
+        // Apply margins (only for relative positioning)
+        if (!is_absolute) {
+            if (component->style->margin.top > 0) rect.y += component->style->margin.top;
+            if (component->style->margin.left > 0) rect.x += component->style->margin.left;
+        }
     }
 
     return rect;
@@ -272,9 +287,20 @@ static LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect) {
         }
     }
 
-    // Return a rect with just width/height, position set to 0
-    // (position will be set later in the main layout loop)
-    LayoutRect result = {0, 0, layout.width, layout.height};
+    // For absolutely positioned components, preserve the x/y coordinates from calculate_component_layout
+    // For relative positioned components, return position 0 (will be set in main layout loop)
+    bool is_absolute = child->style && child->style->position_mode == IR_POSITION_ABSOLUTE;
+
+    LayoutRect result;
+    if (is_absolute) {
+        result = layout;  // Preserve all coordinates for absolute positioning
+    } else {
+        result.x = 0;
+        result.y = 0;
+        result.width = layout.width;
+        result.height = layout.height;
+    }
+
     return result;
 }
 
@@ -597,6 +623,24 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 if (bg_color.a > 0) {
                     SDL_SetRenderDrawColor(renderer->renderer, bg_color.r, bg_color.g, bg_color.b, bg_color.a);
                     SDL_RenderFillRect(renderer->renderer, &sdl_rect);
+                }
+
+                // Render border if it has a width > 0
+                float border_width = component->style->border.width;
+                if (border_width > 0) {
+                    SDL_Color border_color = ir_color_to_sdl(component->style->border.color);
+                    SDL_SetRenderDrawColor(renderer->renderer, border_color.r, border_color.g, border_color.b, border_color.a);
+
+                    // Draw border with specified width (multiple concentric rectangles)
+                    for (int i = 0; i < (int)border_width; i++) {
+                        SDL_FRect border_rect = {
+                            .x = sdl_rect.x + i,
+                            .y = sdl_rect.y + i,
+                            .w = sdl_rect.w - 2*i,
+                            .h = sdl_rect.h - 2*i
+                        };
+                        SDL_RenderRect(renderer->renderer, &border_rect);
+                    }
                 }
             }
             break;
@@ -1365,23 +1409,30 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
         // Get child size WITHOUT recursive layout (just from style)
         LayoutRect child_layout = get_child_size(child, child_rect);
 
-        // Now position the child based on current_x/current_y (main axis)
-        // and alignment settings (cross axis)
+        // Check if child has absolute positioning - if so, skip all alignment/positioning logic
+        bool is_child_absolute = child && child->style && child->style->position_mode == IR_POSITION_ABSOLUTE;
 
-        // Set main axis position
-        child_layout.x = current_x;
-        child_layout.y = current_y;
+        // For absolute positioned children, use the absolute coordinates set in calculate_component_layout
+        // For relative positioned children, position based on current_x/current_y (main axis)
+        if (!is_child_absolute) {
+            // Set main axis position for relative children
+            child_layout.x = current_x;
+            child_layout.y = current_y;
+        }
 
         if (getenv("KRYON_TRACE_LAYOUT")) {
-            printf("  📍 Child %d BEFORE align: pos=(%.1f,%.1f) size=(%.1fx%.1f)\n",
-                   i, child_layout.x, child_layout.y, child_layout.width, child_layout.height);
+            printf("  📍 Child %d BEFORE align: pos=(%.1f,%.1f) size=(%.1fx%.1f) %s\n",
+                   i, child_layout.x, child_layout.y, child_layout.width, child_layout.height,
+                   is_child_absolute ? "[ABSOLUTE]" : "[RELATIVE]");
         }
 
-        // Special handling for Center component - center the child
-        if (component->type == IR_COMPONENT_CENTER) {
-            child_layout.x = child_rect.x + (child_rect.width - child_layout.width) / 2;
-            child_layout.y = child_rect.y + (child_rect.height - child_layout.height) / 2;
-        }
+        // Only apply alignment/positioning for relative positioned children
+        if (!is_child_absolute) {
+            // Special handling for Center component - center the child
+            if (component->type == IR_COMPONENT_CENTER) {
+                child_layout.x = child_rect.x + (child_rect.width - child_layout.width) / 2;
+                child_layout.y = child_rect.y + (child_rect.height - child_layout.height) / 2;
+            }
 
         // Apply horizontal alignment for COLUMN layout based on cross_axis (align_items)
         if (component->type == IR_COMPONENT_COLUMN && component->layout) {
@@ -1463,6 +1514,7 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                     break;
             }
         }
+        } // End of !is_child_absolute check
 
         if (getenv("KRYON_TRACE_LAYOUT")) {
             printf("  ✅ Child %d AFTER align: pos=(%.1f,%.1f) size=(%.1fx%.1f)\n",

@@ -321,6 +321,8 @@ void kryon_component_set_bounds_mask(kryon_component_t* component, kryon_fp_t x,
     if (explicit_mask & KRYON_COMPONENT_FLAG_HAS_X) {
         component->explicit_x = x;
         component->layout_flags |= KRYON_COMPONENT_FLAG_HAS_X;
+        fprintf(stderr, "[BOUNDS] Set EXPLICIT X = %.1f for component (mask=0x%02x, flags=0x%02x)\n",
+                KRYON_FP_TO_FLOAT(x), explicit_mask, component->layout_flags);
     } else {
         component->explicit_x = 0;
         component->layout_flags &= (uint8_t)~KRYON_COMPONENT_FLAG_HAS_X;
@@ -329,6 +331,8 @@ void kryon_component_set_bounds_mask(kryon_component_t* component, kryon_fp_t x,
     if (explicit_mask & KRYON_COMPONENT_FLAG_HAS_Y) {
         component->explicit_y = y;
         component->layout_flags |= KRYON_COMPONENT_FLAG_HAS_Y;
+        fprintf(stderr, "[BOUNDS] Set EXPLICIT Y = %.1f for component (mask=0x%02x, flags=0x%02x)\n",
+                KRYON_FP_TO_FLOAT(y), explicit_mask, component->layout_flags);
     } else {
         component->explicit_y = 0;
         component->layout_flags &= (uint8_t)~KRYON_COMPONENT_FLAG_HAS_Y;

@@ -774,6 +774,10 @@ static void layout_column(kryon_component_t* container, kryon_layout_context_t* 
         const kryon_fp_t explicit_x = child->explicit_x;
         const kryon_fp_t explicit_y = child->explicit_y;
 
+        fprintf(stderr, "[LAYOUT] Child %d flags=0x%02x, has_explicit_x=%d (%.1f), has_explicit_y=%d (%.1f)\n",
+                i, child->layout_flags, has_explicit_x, KRYON_FP_TO_FLOAT(explicit_x),
+                has_explicit_y, KRYON_FP_TO_FLOAT(explicit_y));
+
         kryon_fp_t margin_left = KRYON_FP_FROM_INT(child->margin_left);
         kryon_fp_t margin_right = KRYON_FP_FROM_INT(child->margin_right);
         kryon_fp_t margin_top = KRYON_FP_FROM_INT(child->margin_top);

@@ -119,6 +119,12 @@ typedef struct {
     IRSpacing padding;
 } IRLayout;
 
+// Position Mode
+typedef enum {
+    IR_POSITION_RELATIVE,   // Default: positioned via flexbox/flow layout
+    IR_POSITION_ABSOLUTE    // Positioned at explicit x/y coordinates
+} IRPositionMode;
+
 // Style Properties
 typedef struct IRStyle {
     IRDimension width, height;
@@ -133,6 +139,10 @@ typedef struct IRStyle {
     uint32_t z_index;
     bool visible;
     float opacity;
+    // Absolute positioning
+    IRPositionMode position_mode;
+    float absolute_x;
+    float absolute_y;
 } IRStyle;
 
 // Event Types
