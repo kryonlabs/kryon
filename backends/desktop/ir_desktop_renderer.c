@@ -2360,6 +2360,49 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
         }
     }
 
+    // Shortcut: if all children are absolutely positioned, render them by z-index without flex layout
+    bool all_absolute = true;
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        IRComponent* child = component->children[i];
+        if (!child || !child->style || child->style->position_mode != IR_POSITION_ABSOLUTE) {
+            all_absolute = false;
+            break;
+        }
+    }
+
+    if (all_absolute && component->child_count > 0) {
+        typedef struct {
+            IRComponent* child;
+            uint32_t z;
+        } AbsChild;
+        AbsChild* abs_children = malloc(sizeof(AbsChild) * component->child_count);
+        if (!abs_children) return false;
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            IRComponent* child = component->children[i];
+            uint32_t z = child && child->style ? child->style->z_index : 0;
+            abs_children[i].child = child;
+            abs_children[i].z = z;
+        }
+        // Sort by z ascending so higher z draws last
+        int cmp_abs(const void* a, const void* b) {
+            const AbsChild* ca = (const AbsChild*)a;
+            const AbsChild* cb = (const AbsChild*)b;
+            if (ca->z < cb->z) return -1;
+            if (ca->z > cb->z) return 1;
+            return 0;
+        }
+        qsort(abs_children, component->child_count, sizeof(AbsChild), cmp_abs);
+
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            IRComponent* child = abs_children[i].child;
+            if (!child) continue;
+            LayoutRect abs_layout = calculate_component_layout(child, rect);
+            render_component_sdl3(renderer, child, abs_layout);
+        }
+        free(abs_children);
+        return true;
+    }
+
     // Track dragged tab info so we can paint it last (above siblings)
     TabGroupState* tab_bar_state = component->custom_data ? (TabGroupState*)component->custom_data : NULL;
     IRComponent* dragged_child = NULL;

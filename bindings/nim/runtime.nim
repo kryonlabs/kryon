@@ -144,6 +144,17 @@ proc setFontSize*(component: ptr IRComponent, size: int) =
     # Get current font properties
     ir_set_font(style, cfloat(size), "sans-serif", 0, 0, 0, 255, false, false)
 
+proc kryon_component_set_z_index*(component: ptr IRComponent, z: uint16) =
+  ## Set z-index via IR style
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_z_index(newStyle, uint32(z))
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_z_index(style, uint32(z))
+
 proc kryon_component_set_padding*(component: ptr IRComponent, top, right, bottom, left: uint8) =
   ## Set padding for component (space inside the component)
   let style = ir_get_style(component)

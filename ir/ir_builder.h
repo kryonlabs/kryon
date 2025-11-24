@@ -40,6 +40,7 @@ void ir_set_border(IRStyle* style, float width, uint8_t r, uint8_t g, uint8_t b,
 void ir_set_margin(IRStyle* style, float top, float right, float bottom, float left);
 void ir_set_padding(IRStyle* style, float top, float right, float bottom, float left);
 void ir_set_font(IRStyle* style, float size, const char* family, uint8_t r, uint8_t g, uint8_t b, uint8_t a, bool bold, bool italic);
+void ir_set_z_index(IRStyle* style, uint32_t z_index);
 
 // Layout Management
 IRLayout* ir_create_layout(void);

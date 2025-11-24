@@ -558,6 +558,11 @@ void ir_set_visible(IRStyle* style, bool visible) {
     style->visible = visible;
 }
 
+void ir_set_z_index(IRStyle* style, uint32_t z_index) {
+    if (!style) return;
+    style->z_index = z_index;
+}
+
 // Style Property Helpers
 void ir_set_width(IRStyle* style, IRDimensionType type, float value) {
     if (!style) return;

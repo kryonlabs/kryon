@@ -26,20 +26,16 @@ let app = kryonApp:
       posX = 100
       posY = 150
       zIndex = 1
-
+      padding = 2
       Text:
         text = "RED Layer (z-index: 1)"
         fontSize = 18
         color = "#ffffff"
-        posX = 10
-        posY = 10
 
       Text:
         text = "Should be BEHIND others"
         fontSize = 14
         color = "#ffffff"
-        posX = 10
-        posY = 40
 
     # Middle layer - Green container (should be above red, below blue)
     Container:
@@ -49,20 +45,17 @@ let app = kryonApp:
       posX = 180
       posY = 200
       zIndex = 500
+      padding = 2
 
       Text:
         text = "GREEN Layer (z-index: 500)"
         fontSize = 18
         color = "#ffffff"
-        posX = 10
-        posY = 10
 
       Text:
         text = "Should be MIDDLE layer"
         fontSize = 14
         color = "#ffffff"
-        posX = 10
-        posY = 40
 
     # Top layer - Blue container (should be above all others)
     Container:
@@ -72,18 +65,15 @@ let app = kryonApp:
       posX = 260
       posY = 250
       zIndex = 1000
+      padding = 2
 
       Text:
         text = "BLUE Layer (z-index: 1000)"
         fontSize = 18
         color = "#ffffff"
-        posX = 10
-        posY = 10
 
       Text:
         text = "Should be ON TOP"
         fontSize = 14
         color = "#ffffff"
-        posX = 10
-        posY = 40
 
