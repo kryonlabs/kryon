@@ -1996,6 +1996,22 @@ macro Input*(props: untyped): untyped =
   initStmts.add quote do:
     kryon_component_set_padding(`inputName`, 8, 8, 8, 8)
 
+  # Apply colors if provided
+  if backgroundColorVal != nil:
+    initStmts.add quote do:
+      setBackgroundColor(`inputName`, runtime.parseColor(`backgroundColorVal`))
+  if textColorVal != nil:
+    initStmts.add quote do:
+      setTextColor(`inputName`, runtime.parseColor(`textColorVal`))
+
+  # Store placeholder separately; only set real value as text content
+  initStmts.add quote do:
+    setCustomData(`inputName`, `placeholderVal`)
+    if `valueVal`.len > 0:
+      setText(`inputName`, `valueVal`)
+    else:
+      setText(`inputName`, "")
+
   # Add any child components (though Input usually doesn't have children)
   for child in childNodes:
     initStmts.add quote do:

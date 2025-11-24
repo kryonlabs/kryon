@@ -129,6 +129,10 @@ proc setTextColor*(component: ptr IRComponent, color: uint32) =
 proc setText*(component: ptr IRComponent, text: string) =
   ir_set_text_content(component, cstring(text))
 
+proc setCustomData*(component: ptr IRComponent, data: string) =
+  ## Store auxiliary data (e.g., input placeholder)
+  ir_set_custom_data(component, cstring(data))
+
 proc setFontSize*(component: ptr IRComponent, size: int) =
   ## Set font size for component
   let style = ir_get_style(component)

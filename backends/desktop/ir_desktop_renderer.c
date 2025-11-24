@@ -1343,9 +1343,82 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
             break;
 
         case IR_COMPONENT_INPUT:
-            SDL_RenderFillRect(renderer->renderer, &sdl_rect);
-            SDL_SetRenderDrawColor(renderer->renderer, 100, 100, 100, 255);
-            SDL_RenderRect(renderer->renderer, &sdl_rect);
+            // Background
+            {
+                SDL_Color bg_color = (SDL_Color){255, 255, 255, 255};
+                if (component->style) {
+                    SDL_Color candidate = ir_color_to_sdl(component->style->background);
+                    // Default styles have alpha=0; use fallback if fully transparent
+                    if (candidate.a != 0) {
+                        bg_color = candidate;
+                    }
+                }
+                SDL_SetRenderDrawColor(renderer->renderer, bg_color.r, bg_color.g, bg_color.b, bg_color.a);
+                SDL_RenderFillRect(renderer->renderer, &sdl_rect);
+            }
+
+            // Border
+            {
+                SDL_Color border_color = (SDL_Color){180, 180, 180, 255};
+                if (component->style) {
+                    SDL_Color candidate = ir_color_to_sdl(component->style->border.color);
+                    if (candidate.a != 0) {
+                        border_color = candidate;
+                    }
+                }
+                SDL_SetRenderDrawColor(renderer->renderer, border_color.r, border_color.g, border_color.b, border_color.a);
+                SDL_RenderRect(renderer->renderer, &sdl_rect);
+            }
+
+            // Text / placeholder
+            if (renderer->default_font) {
+                const char* value_text = component->text_content ? component->text_content : "";
+                bool has_value = value_text[0] != '\0';
+                const char* placeholder = component->custom_data ? component->custom_data : "";
+                const char* to_render = has_value ? value_text : placeholder;
+                if (to_render && to_render[0] != '\0') {
+                    SDL_Color text_color = has_value ? (SDL_Color){40, 40, 40, 255}
+                                                     : (SDL_Color){160, 160, 160, 255};
+                    if (component->style) {
+                        SDL_Color candidate = ir_color_to_sdl(component->style->font.color);
+                        if (candidate.a != 0) {
+                            text_color = candidate;
+                            if (!has_value) {
+                                text_color.r = (uint8_t)((text_color.r + 255) / 2);
+                                text_color.g = (uint8_t)((text_color.g + 255) / 2);
+                                text_color.b = (uint8_t)((text_color.b + 255) / 2);
+                            }
+                        }
+                    }
+
+                    SDL_Surface* surface = TTF_RenderText_Blended(renderer->default_font,
+                                                                  to_render,
+                                                                  strlen(to_render),
+                                                                  text_color);
+                    if (surface) {
+                        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
+                        if (texture) {
+                            float pad_left = component->style ? component->style->padding.left : 8.0f;
+                            float pad_top = component->style ? component->style->padding.top : 8.0f;
+                            float text_x = rect.x + pad_left;
+                            float text_y = rect.y + pad_top;
+                            // Vertically center if padding not set
+                            if (!component->style || (component->style->padding.top == 0 && component->style->padding.bottom == 0)) {
+                                text_y = rect.y + (rect.height - surface->h) / 2;
+                            }
+                            SDL_FRect text_rect = {
+                                .x = roundf(text_x),
+                                .y = roundf(text_y),
+                                .w = (float)surface->w,
+                                .h = (float)surface->h
+                            };
+                            SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
+                            SDL_DestroyTexture(texture);
+                        }
+                        SDL_DestroySurface(surface);
+                    }
+                }
+            }
             break;
 
         case IR_COMPONENT_CHECKBOX: {
@@ -2305,6 +2378,7 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
 #ifdef ENABLE_SDL3
 static void handle_sdl3_events(DesktopIRRenderer* renderer) {
     static TabGroupState* dragging_tabgroup = NULL;
+    static IRComponent* focused_input = NULL;
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         DesktopEvent desktop_event = {0};
@@ -2354,6 +2428,15 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
                     }
 
                     if (clicked) {
+                        // Handle input focus
+                        if (clicked->type == IR_COMPONENT_INPUT) {
+                            focused_input = clicked;
+                            SDL_StartTextInput(renderer->window);
+                        } else if (focused_input) {
+                            focused_input = NULL;
+                            SDL_StopTextInput(renderer->window);
+                        }
+
                         // Start tab drag if parent carries TabGroupState in custom_data
                         if (clicked->parent && clicked->parent->custom_data) {
                             TabGroupState* tg_state = (TabGroupState*)clicked->parent->custom_data;
@@ -2543,10 +2626,49 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
                 }
                 break;
 
-            case SDL_EVENT_KEY_DOWN:
+            case SDL_EVENT_TEXT_INPUT:
+                if (focused_input && event.text.text[0] != '\0') {
+                    const char* incoming = event.text.text;
+                    size_t incoming_len = strlen(incoming);
+                    const char* current = focused_input->text_content ? focused_input->text_content : "";
+                    size_t current_len = strlen(current);
+                    char* combined = malloc(current_len + incoming_len + 1);
+                    if (combined) {
+                        memcpy(combined, current, current_len);
+                        memcpy(combined + current_len, incoming, incoming_len);
+                        combined[current_len + incoming_len] = '\0';
+                        ir_set_text_content(focused_input, combined);
+                        free(combined);
+                    }
+                }
+                break;
+
+            case SDL_EVENT_KEY_DOWN: {
                 // ESC key closes window by default
                 if (event.key.key == SDLK_ESCAPE) {
                     renderer->running = false;
+                    break;
+                }
+
+                // Backspace handling for focused input
+                if (focused_input && event.key.key == SDLK_BACKSPACE) {
+                    const char* current = focused_input->text_content ? focused_input->text_content : "";
+                    size_t len = strlen(current);
+                    if (len > 0) {
+                        size_t new_len = len;
+                        // Remove last UTF-8 codepoint (simplified: trim last byte and continuation bytes)
+                        new_len -= 1;
+                        while (new_len > 0 && ((current[new_len] & 0xC0) == 0x80)) {
+                            new_len -= 1;
+                        }
+                        char* truncated = malloc(new_len + 1);
+                        if (truncated) {
+                            memcpy(truncated, current, new_len);
+                            truncated[new_len] = '\0';
+                            ir_set_text_content(focused_input, truncated);
+                            free(truncated);
+                        }
+                    }
                     break;
                 }
 
@@ -2559,6 +2681,7 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
                     renderer->event_callback(&desktop_event, renderer->event_user_data);
                 }
                 break;
+            }
 
             case SDL_EVENT_WINDOW_RESIZED:
                 desktop_event.type = DESKTOP_EVENT_WINDOW_RESIZE;
