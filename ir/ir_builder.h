@@ -114,6 +114,8 @@ void ir_tabgroup_register_panel(TabGroupState* state, IRComponent* panel);
 void ir_tabgroup_finalize(TabGroupState* state);
 void ir_tabgroup_select(TabGroupState* state, int index);
 void ir_tabgroup_reorder(TabGroupState* state, int from_index, int to_index);
+void ir_tabgroup_handle_drag(TabGroupState* state, float x, float y, bool is_down, bool is_up);
+void ir_tabgroup_set_reorderable(TabGroupState* state, bool reorderable);
 
 // Hit Testing
 bool ir_is_point_in_component(IRComponent* component, float x, float y);

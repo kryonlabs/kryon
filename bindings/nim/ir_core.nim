@@ -211,6 +211,7 @@ proc ir_tabgroup_register_panel*(state: ptr TabGroupState; panel: ptr IRComponen
 proc ir_tabgroup_finalize*(state: ptr TabGroupState) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_tabgroup_select*(state: ptr TabGroupState; index: cint) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_tabgroup_reorder*(state: ptr TabGroupState; from_index: cint; to_index: cint) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_set_reorderable*(state: ptr TabGroupState; reorderable: bool) {.importc, cdecl, header: "ir_builder.h".}
 
 # Layout setters not in C yet - add stubs
 proc ir_set_gap*(layout: ptr IRLayout; gap: uint32) =

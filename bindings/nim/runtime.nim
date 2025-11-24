@@ -585,6 +585,7 @@ proc setComponentTextColor(component: ptr IRComponent, color: uint32) =
 
 proc registerTabBar*(tabBar: ptr IRComponent, state: ptr TabGroupState, reorderable: bool) =
   if state.isNil: return
+  ir_tabgroup_set_reorderable(state, reorderable)
   ir_tabgroup_register_bar(state, tabBar)
   tabGroupIsReorderable[state] = reorderable
 

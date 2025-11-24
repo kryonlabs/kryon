@@ -2268,6 +2268,7 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
 // Event handling
 #ifdef ENABLE_SDL3
 static void handle_sdl3_events(DesktopIRRenderer* renderer) {
+    static TabGroupState* dragging_tabgroup = NULL;
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         DesktopEvent desktop_event = {0};
@@ -2317,6 +2318,15 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
                     }
 
                     if (clicked) {
+                        // Start tab drag if parent carries TabGroupState in custom_data
+                        if (clicked->parent && clicked->parent->custom_data) {
+                            TabGroupState* tg_state = (TabGroupState*)clicked->parent->custom_data;
+                            if (tg_state) {
+                                ir_tabgroup_handle_drag(tg_state, (float)event.button.x, (float)event.button.y, true, false);
+                                dragging_tabgroup = tg_state;
+                            }
+                        }
+
                         // Find and trigger IR_EVENT_CLICK handler
                         IREvent* ir_event = ir_find_event(clicked, IR_EVENT_CLICK);
                         if (ir_event && ir_event->logic_id) {
@@ -2408,10 +2418,24 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
                 break;
             }
 
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    if (dragging_tabgroup) {
+                        ir_tabgroup_handle_drag(dragging_tabgroup, (float)event.button.x, (float)event.button.y, false, true);
+                        dragging_tabgroup = NULL;
+                    }
+                }
+                break;
+
             case SDL_EVENT_MOUSE_MOTION:
                 desktop_event.type = DESKTOP_EVENT_MOUSE_MOVE;
                 desktop_event.data.mouse.x = event.motion.x;
                 desktop_event.data.mouse.y = event.motion.y;
+
+                // Dragging tabs (if active)
+                if (dragging_tabgroup) {
+                    ir_tabgroup_handle_drag(dragging_tabgroup, (float)event.motion.x, (float)event.motion.y, false, false);
+                }
 
                 // Update cursor based on what component is under the mouse
                 if (renderer->last_root) {

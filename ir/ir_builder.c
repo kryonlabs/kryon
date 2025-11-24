@@ -64,6 +64,9 @@ struct TabGroupState {
     uint32_t panel_count;
     int selected_index;
     bool reorderable;
+    // Drag state
+    bool dragging;
+    int drag_index;
 };
 
 static void ir_tabgroup_set_visible(IRComponent* component, bool visible) {
@@ -92,12 +95,18 @@ TabGroupState* ir_tabgroup_create_state(IRComponent* group,
     state->panel_count = 0;
     state->selected_index = selected_index;
     state->reorderable = reorderable;
+    state->dragging = false;
+    state->drag_index = -1;
     return state;
 }
 
 void ir_tabgroup_register_bar(TabGroupState* state, IRComponent* tab_bar) {
     if (!state) return;
     state->tab_bar = tab_bar;
+    if (tab_bar) {
+        // Store state pointer for renderer hit-testing (unsafe cast)
+        tab_bar->custom_data = (char*)state;
+    }
 }
 
 void ir_tabgroup_register_content(TabGroupState* state, IRComponent* tab_content) {
@@ -209,6 +218,65 @@ void ir_tabgroup_reorder(TabGroupState* state, int from_index, int to_index) {
     ir_tabgroup_select(state, state->selected_index);
 }
 
+void ir_tabgroup_handle_drag(TabGroupState* state, float x, float y, bool is_down, bool is_up) {
+    if (!state || !state->tab_bar) return;
+    if (!state->reorderable) return;
+
+    if (is_down) {
+        // Start drag: find tab under x,y in tab_bar
+        if (!state->tab_bar->children) return;
+        for (uint32_t i = 0; i < state->tab_bar->child_count; i++) {
+            IRComponent* tab = state->tab_bar->children[i];
+            if (!tab) continue;
+            IRRenderedBounds b = tab->rendered_bounds;
+            if (b.valid && x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height) {
+                state->dragging = true;
+                state->drag_index = (int)i;
+                break;
+            }
+        }
+        return;
+    }
+
+    if (is_up) {
+        state->dragging = false;
+        state->drag_index = -1;
+        return;
+    }
+
+    if (!state->dragging || state->drag_index < 0) return;
+
+    // Track drag movement; if we cross midpoint of adjacent tab, reorder
+    if (!state->tab_bar->children || state->tab_bar->child_count == 0) return;
+    int current_index = state->drag_index;
+    IRComponent* current_tab = state->tab_bar->children[current_index];
+    if (!current_tab) return;
+
+    // Check neighbor midpoints
+    if (current_index > 0) {
+        IRComponent* left = state->tab_bar->children[current_index - 1];
+        if (left && left->rendered_bounds.valid) {
+            float midpoint = left->rendered_bounds.x + left->rendered_bounds.width * 0.5f;
+            if (x < midpoint) {
+                ir_tabgroup_reorder(state, current_index, current_index - 1);
+                state->drag_index = current_index - 1;
+                return;
+            }
+        }
+    }
+    if ((uint32_t)current_index + 1 < state->tab_bar->child_count) {
+        IRComponent* right = state->tab_bar->children[current_index + 1];
+        if (right && right->rendered_bounds.valid) {
+            float midpoint = right->rendered_bounds.x + right->rendered_bounds.width * 0.5f;
+            if (x > midpoint) {
+                ir_tabgroup_reorder(state, current_index, current_index + 1);
+                state->drag_index = current_index + 1;
+                return;
+            }
+        }
+    }
+}
+
 void ir_tabgroup_finalize(TabGroupState* state) {
     if (!state) return;
     if (state->tab_count > 0) {
@@ -217,6 +285,11 @@ void ir_tabgroup_finalize(TabGroupState* state) {
         if ((uint32_t)clamp_index >= state->tab_count) clamp_index = (int)(state->tab_count - 1);
         ir_tabgroup_select(state, clamp_index);
     }
+}
+
+void ir_tabgroup_set_reorderable(TabGroupState* state, bool reorderable) {
+    if (!state) return;
+    state->reorderable = reorderable;
 }
 
 // Context Management
