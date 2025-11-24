@@ -684,17 +684,49 @@ proc registerInputHandler*(component: ptr IRComponent, onChange: proc(text: stri
   # Stub for input handler registration
   discard
 
-# Font management stubs
+# Font management (resources)
+var fontSearchDirs: seq[string] = @[]
+var fontRegistry = initTable[string, string]()  # name -> resolved path
+
 proc addFontSearchDir*(path: string) =
-  # Stub - font management not yet implemented in IR
-  discard
+  if path.len > 0 and not fontSearchDirs.contains(path):
+    fontSearchDirs.add(path)
+
+proc resolveFontPath(pathOrName: string): string =
+  ## Resolve a font path using search dirs; returns empty if not found
+  if pathOrName.len == 0: return ""
+  if fileExists(pathOrName):
+    return absolutePath(pathOrName)
+  for dir in fontSearchDirs:
+    let candidate = absolutePath(joinPath(dir, pathOrName))
+    if fileExists(candidate): return candidate
+  result = ""
+
+proc registerFont*(name: string, source: string, size: int = 16): bool =
+  let resolved = resolveFontPath(source)
+  if resolved.len == 0: return false
+  fontRegistry[name] = resolved
+  desktop_ir_register_font(cstring(name), cstring(resolved))
+  if fontRegistry.len == 1:
+    desktop_ir_set_default_font(cstring(name))
+  result = true
 
 proc loadFont*(path: string, size: int): int =
-  # Stub - font management not yet implemented in IR
-  result = 0
+  ## Compatibility helper: try to load a font given a name or path
+  var name = path
+  let resolved = resolveFontPath(path)
+  if resolved.len > 0:
+    name = splitFile(path).name
+    discard registerFont(name, resolved, size)
+    return 1
+  # If path not found, still register name (renderer may find via fontconfig)
+  discard registerFont(name, path, size)
+  result = 1
 
 proc getFontId*(path: string, size: int): int =
-  # Stub - font management not yet implemented in IR
+  ## Return non-zero if font is known/registered
+  if fontRegistry.hasKey(path): return 1
+  if registerFont(path, path, size): return 1
   result = 0
 
 # Export IR functions for DSL use

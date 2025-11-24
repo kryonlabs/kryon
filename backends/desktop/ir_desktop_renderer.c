@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <math.h>
+#include <unistd.h>
 
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_builder.h"
@@ -67,6 +68,121 @@ struct DesktopIRRenderer {
     bool needs_relayout;
 };
 
+// Font registry shared across renderers (simple global table)
+typedef struct {
+    char name[128];
+    char path[512];
+} RegisteredFont;
+
+typedef struct {
+    char path[512];
+    int size;
+    TTF_Font* font;
+} CachedFont;
+
+static RegisteredFont g_font_registry[32];
+static int g_font_registry_count = 0;
+static CachedFont g_font_cache[64];
+static int g_font_cache_count = 0;
+static char g_default_font_name[128] = {0};
+static char g_default_font_path[512] = {0};
+
+static void desktop_ir_register_font_internal(const char* name, const char* path) {
+    if (!name || !path || g_font_registry_count >= (int)(sizeof(g_font_registry) / sizeof(g_font_registry[0]))) return;
+    for (int i = 0; i < g_font_registry_count; i++) {
+        if (strcmp(g_font_registry[i].name, name) == 0) {
+            strncpy(g_font_registry[i].path, path, sizeof(g_font_registry[i].path) - 1);
+            g_font_registry[i].path[sizeof(g_font_registry[i].path) - 1] = '\0';
+            return;
+        }
+    }
+    strncpy(g_font_registry[g_font_registry_count].name, name, sizeof(g_font_registry[g_font_registry_count].name) - 1);
+    strncpy(g_font_registry[g_font_registry_count].path, path, sizeof(g_font_registry[g_font_registry_count].path) - 1);
+    g_font_registry[g_font_registry_count].name[sizeof(g_font_registry[g_font_registry_count].name) - 1] = '\0';
+    g_font_registry[g_font_registry_count].path[sizeof(g_font_registry[g_font_registry_count].path) - 1] = '\0';
+    g_font_registry_count++;
+    if (g_default_font_path[0] == '\0') {
+        strncpy(g_default_font_name, name, sizeof(g_default_font_name) - 1);
+        strncpy(g_default_font_path, path, sizeof(g_default_font_path) - 1);
+    }
+}
+
+void desktop_ir_register_font(const char* name, const char* path) {
+    desktop_ir_register_font_internal(name, path);
+}
+
+void desktop_ir_set_default_font(const char* name) {
+    if (!name) return;
+    for (int i = 0; i < g_font_registry_count; i++) {
+        if (strcmp(g_font_registry[i].name, name) == 0) {
+            strncpy(g_default_font_name, g_font_registry[i].name, sizeof(g_default_font_name) - 1);
+            strncpy(g_default_font_path, g_font_registry[i].path, sizeof(g_default_font_path) - 1);
+            return;
+        }
+    }
+}
+
+static const char* desktop_ir_find_font_path(const char* name_or_path) {
+    if (!name_or_path) return NULL;
+    // If it's an absolute/relative path that exists, use it
+    if (access(name_or_path, R_OK) == 0) {
+        return name_or_path;
+    }
+    // Otherwise look up by registered name
+    for (int i = 0; i < g_font_registry_count; i++) {
+        if (strcmp(g_font_registry[i].name, name_or_path) == 0) {
+            return g_font_registry[i].path;
+        }
+    }
+    return NULL;
+}
+
+static TTF_Font* desktop_ir_get_cached_font(const char* path, int size) {
+    if (!path) return NULL;
+    for (int i = 0; i < g_font_cache_count; i++) {
+        if (g_font_cache[i].size == size && strcmp(g_font_cache[i].path, path) == 0) {
+            return g_font_cache[i].font;
+        }
+    }
+    if (g_font_cache_count >= (int)(sizeof(g_font_cache) / sizeof(g_font_cache[0]))) {
+        return NULL;
+    }
+    TTF_Font* font = TTF_OpenFont(path, size);
+    if (!font) return NULL;
+    strncpy(g_font_cache[g_font_cache_count].path, path, sizeof(g_font_cache[g_font_cache_count].path) - 1);
+    g_font_cache[g_font_cache_count].size = size;
+    g_font_cache[g_font_cache_count].font = font;
+    g_font_cache_count++;
+    return font;
+}
+
+static TTF_Font* desktop_ir_resolve_font(DesktopIRRenderer* renderer, IRComponent* component, float fallback_size) {
+    float size = fallback_size > 0 ? fallback_size : 16.0f;
+    const char* family = NULL;
+    if (component && component->style) {
+        if (component->style->font.size > 0) size = component->style->font.size;
+        family = component->style->font.family;
+    }
+
+    const char* path = NULL;
+    if (family) {
+        path = desktop_ir_find_font_path(family);
+    }
+    if (!path && g_default_font_path[0] != '\0') {
+        path = g_default_font_path;
+    }
+
+    if (path) {
+        TTF_Font* f = desktop_ir_get_cached_font(path, (int)size);
+        if (f) return f;
+    }
+
+    // Fallback to renderer default
+    if (renderer && renderer->default_font) {
+        return renderer->default_font;
+    }
+    return NULL;
+}
 // Color conversion utilities (only when SDL3 is available)
 static float ir_dimension_to_pixels(IRDimension dimension, float container_size) {
     switch (dimension.type) {
@@ -1271,7 +1387,8 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
             // Center is a layout-only component, completely transparent - don't render background
             break;
 
-        case IR_COMPONENT_BUTTON:
+        case IR_COMPONENT_BUTTON: {
+            TTF_Font* font = desktop_ir_resolve_font(renderer, component, component->style && component->style->font.size > 0 ? component->style->font.size : 16.0f);
             // Set button background color
             if (component->style) {
                 SDL_Color bg_color = ir_color_to_sdl(component->style->background);
@@ -1286,12 +1403,12 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
             SDL_RenderRect(renderer->renderer, &sdl_rect);
 
             // Render button text if present
-            if (component->text_content && renderer->default_font) {
+            if (component->text_content && font) {
                 SDL_Color text_color = component->style ?
                     ir_color_to_sdl(component->style->font.color) :
                     (SDL_Color){0, 0, 0, 255};
 
-                SDL_Surface* surface = TTF_RenderText_Blended(renderer->default_font,
+                SDL_Surface* surface = TTF_RenderText_Blended(font,
                                                               component->text_content,
                                                               strlen(component->text_content),
                                                               text_color);
@@ -1312,14 +1429,16 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 }
             }
             break;
+        }
 
-        case IR_COMPONENT_TEXT:
-            if (component->text_content && renderer->default_font) {
+        case IR_COMPONENT_TEXT: {
+            TTF_Font* font = desktop_ir_resolve_font(renderer, component, component->style && component->style->font.size > 0 ? component->style->font.size : 16.0f);
+            if (component->text_content && font) {
                 SDL_Color text_color = component->style ?
                     ir_color_to_sdl(component->style->font.color) :
                     (SDL_Color){0, 0, 0, 255};
 
-                SDL_Surface* surface = TTF_RenderText_Blended(renderer->default_font,
+                SDL_Surface* surface = TTF_RenderText_Blended(font,
                                                               component->text_content,
                                                               strlen(component->text_content),
                                                               text_color);
@@ -1341,6 +1460,7 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 }
             }
             break;
+        }
 
         case IR_COMPONENT_INPUT:
             // Background
@@ -1371,12 +1491,13 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
             }
 
             // Text / placeholder
-            if (renderer->default_font) {
+            {
                 const char* value_text = component->text_content ? component->text_content : "";
                 bool has_value = value_text[0] != '\0';
                 const char* placeholder = component->custom_data ? component->custom_data : "";
                 const char* to_render = has_value ? value_text : placeholder;
-                if (to_render && to_render[0] != '\0') {
+                TTF_Font* font = desktop_ir_resolve_font(renderer, component, component->style && component->style->font.size > 0 ? component->style->font.size : 16.0f);
+                if (font && to_render && to_render[0] != '\0') {
                     SDL_Color text_color = has_value ? (SDL_Color){40, 40, 40, 255}
                                                      : (SDL_Color){160, 160, 160, 255};
                     if (component->style) {
@@ -1391,7 +1512,7 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                         }
                     }
 
-                    SDL_Surface* surface = TTF_RenderText_Blended(renderer->default_font,
+                    SDL_Surface* surface = TTF_RenderText_Blended(font,
                                                                   to_render,
                                                                   strlen(to_render),
                                                                   text_color);
@@ -2810,22 +2931,33 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
         SDL_SetTextureBlendMode(renderer->white_texture, SDL_BLENDMODE_BLEND);
     }
 
-    // Load default font using fontconfig to find system fonts
-    FILE* fc = popen("fc-match sans:style=Regular -f \"%{file}\"", "r");
-    char fontconfig_path[512] = {0};
-    if (fc) {
-        if (fgets(fontconfig_path, sizeof(fontconfig_path), fc)) {
-            // Remove newline
-            size_t len = strlen(fontconfig_path);
-            if (len > 0 && fontconfig_path[len-1] == '\n') {
-                fontconfig_path[len-1] = '\0';
-            }
-            renderer->default_font = TTF_OpenFont(fontconfig_path, 16);
-            if (renderer->default_font) {
-                printf("✅ Loaded font via fontconfig: %s\n", fontconfig_path);
-            }
+    // Load default font using registered font or fontconfig to find system fonts
+    if (g_default_font_path[0] != '\0') {
+        renderer->default_font = TTF_OpenFont(g_default_font_path, 16);
+        if (renderer->default_font) {
+            printf("✅ Loaded default font (registered): %s\n", g_default_font_path);
         }
-        pclose(fc);
+    }
+
+    FILE* fc = NULL;
+    char fontconfig_path[512] = {0};
+    if (!renderer->default_font) {
+        fc = popen("fc-match sans:style=Regular -f \"%{file}\"", "r");
+        if (fc) {
+            if (fgets(fontconfig_path, sizeof(fontconfig_path), fc)) {
+                // Remove newline
+                size_t len = strlen(fontconfig_path);
+                if (len > 0 && fontconfig_path[len-1] == '\n') {
+                    fontconfig_path[len-1] = '\0';
+                }
+                renderer->default_font = TTF_OpenFont(fontconfig_path, 16);
+                if (renderer->default_font) {
+                    printf("✅ Loaded font via fontconfig: %s\n", fontconfig_path);
+                    strncpy(g_default_font_path, fontconfig_path, sizeof(g_default_font_path) - 1);
+                }
+            }
+            pclose(fc);
+        }
     }
 
     // Fallback to hardcoded paths if fontconfig fails
@@ -2844,6 +2976,7 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
             renderer->default_font = TTF_OpenFont(font_paths[i], 16);
             if (renderer->default_font) {
                 printf("✅ Loaded font: %s\n", font_paths[i]);
+                strncpy(g_default_font_path, font_paths[i], sizeof(g_default_font_path) - 1);
                 break;
             }
         }

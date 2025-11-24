@@ -77,6 +77,10 @@ bool desktop_ir_renderer_load_font(DesktopIRRenderer* renderer, const char* font
 bool desktop_ir_renderer_load_image(DesktopIRRenderer* renderer, const char* image_path);
 void desktop_ir_renderer_clear_resources(DesktopIRRenderer* renderer);
 
+// Resource registration (global, before renderer init)
+void desktop_ir_register_font(const char* name, const char* path);
+void desktop_ir_set_default_font(const char* name);
+
 // Debug and utilities
 bool desktop_ir_renderer_validate_ir(DesktopIRRenderer* renderer, IRComponent* root);
 void desktop_ir_renderer_print_tree_info(DesktopIRRenderer* renderer, IRComponent* root);

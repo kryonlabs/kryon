@@ -521,10 +521,11 @@ macro Resources*(props: untyped): untyped =
 
       # Generate font loading code
       if fontName != nil and fontSources.len > 0:
-        # Just load the font by name - the C backend will find it in search paths
+        # Load the font from the first source and register with provided name
+        let firstSource = fontSources[0]
         loadStatements.add quote do:
           when defined(KRYON_SDL3):
-            discard loadFont(`fontName`, 16)  # Load at default size
+            discard registerFont(`fontName`, `firstSource`, 16)
 
   # If no statements were added, add a pass statement
   if loadStatements.len == 0:

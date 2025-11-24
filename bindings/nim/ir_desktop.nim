@@ -59,6 +59,8 @@ proc desktop_ir_renderer_set_event_callback*(renderer: DesktopIRRenderer; callba
 proc desktop_ir_renderer_load_font*(renderer: DesktopIRRenderer; font_path: cstring; size: cfloat): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
 proc desktop_ir_renderer_load_image*(renderer: DesktopIRRenderer; image_path: cstring): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
 proc desktop_ir_renderer_clear_resources*(renderer: DesktopIRRenderer) {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_register_font*(name: cstring; path: cstring) {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_set_default_font*(name: cstring) {.importc, cdecl, header: "ir_desktop_renderer.h".}
 
 # Utility Functions
 proc desktop_ir_renderer_validate_ir*(renderer: DesktopIRRenderer; root: ptr IRComponent): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}

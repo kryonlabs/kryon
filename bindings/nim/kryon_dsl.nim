@@ -11,6 +11,7 @@ import ./kryon_dsl/helpers  # Import helper functions
 export kryon_component_set_background_color, kryon_component_set_text_color
 export kryon_component_add_child
 export KryonComponent
+export addFontSearchDir, loadFont, registerFont, getFontId
 
 # Export helpers
 export helpers
