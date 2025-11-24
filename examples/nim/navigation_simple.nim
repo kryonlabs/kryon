@@ -95,41 +95,37 @@ proc AboutScreen(): Element =
       width = 500
       height = 200
       backgroundColor = "#ECF0F1"
-      contentAlignment = "center"
 
-      Column:
-        gap = 15
-        padding = 20
 
-        Text:
-          text = "Kryon Navigation System"
-          fontSize = 20
-          color = "#34495E"
-          textAlign = "center"
+      Text:
+        text = "Kryon Navigation System"
+        fontSize = 20
+        color = "#34495E"
+        textAlign = "center"
 
-        Text:
-          text = "A simple enum-based routing approach"
-          fontSize = 16
-          color = "#7F8C8D"
-          textAlign = "center"
+      Text:
+        text = "A simple enum-based routing approach"
+        fontSize = 16
+        color = "#7F8C8D"
+        textAlign = "center"
 
-        Text:
-          text = "• Type-safe with enums"
-          fontSize = 14
-          color = "#95A5A6"
+      Text:
+        text = "• Type-safe with enums"
+        fontSize = 14
+        color = "#95A5A6"
 
-        Text:
-          text = "• Reactive navigation"
-          fontSize = 14
-          color = "#95A5A6"
+      Text:
+        text = "• Reactive navigation"
+        fontSize = 14
+        color = "#95A5A6"
 
-        Text:
-          text = "• Clean separation of screens"
-          fontSize = 14
-          color = "#95A5A6"
+      Text:
+        text = "• Clean separation of screens"
+        fontSize = 14
+        color = "#95A5A6"
 
     Button:
-      text = "← Back to Home"
+      text = "Back to Home"
       width = 150
       height = 45
       backgroundColor = "#95A5A6"
@@ -140,7 +136,6 @@ proc SettingsScreen(): Element =
   ## Settings screen component with demo options
   result = Column:
     mainAxisAlignment = "center"
-    gap = 20
     padding = 40
 
     Text:
@@ -150,58 +145,51 @@ proc SettingsScreen(): Element =
       textAlign = "center"
 
     Container:
+      padding = 20
       width = 400
       height = 250
       backgroundColor = "#ECF0F1"
-      contentAlignment = "center"
 
-      Column:
-        gap = 15
-        padding = 20
+      Row:
+        mainAxisAlignment = "spaceBetween"
+        width = 350
 
-        Row:
-          gap = 15
-          mainAxisAlignment = "spaceBetween"
-          width = 350
+        Text:
+          text = "Enable Notifications"
+          fontSize = 16
+          color = "#34495E"
 
-          Text:
-            text = "Enable Notifications"
-            fontSize = 16
-            color = "#34495E"
+        Checkbox:
+          checked = true
 
-          Checkbox:
-            checked = true
+      Row:
+        mainAxisAlignment = "spaceBetween"
+        width = 350
 
-        Row:
-          gap = 15
-          mainAxisAlignment = "spaceBetween"
-          width = 350
+        Text:
+          text = "Dark Mode"
+          fontSize = 16
+          color = "#34495E"
 
-          Text:
-            text = "Dark Mode"
-            fontSize = 16
-            color = "#34495E"
+        Checkbox:
+          checked = false
 
-          Checkbox:
-            checked = false
+      Row:
+        mainAxisAlignment = "spaceBetween"
+        width = 350
 
-        Row:
-          gap = 15
-          mainAxisAlignment = "spaceBetween"
-          width = 350
+        Text:
+          text = "Auto-save"
+          fontSize = 16
+          color = "#34495E"
 
-          Text:
-            text = "Auto-save"
-            fontSize = 16
-            color = "#34495E"
+        Checkbox:
+          checked = true
 
-          Checkbox:
-            checked = true
-
-        Input:
-          placeholder = "Enter your name"
-          width = 350
-          height = 40
+      Input:
+        placeholder = "Enter your name"
+        width = 350
+        height = 40
 
     Row:
       mainAxisAlignment = "center"

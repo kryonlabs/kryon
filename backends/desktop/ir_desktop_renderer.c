@@ -864,7 +864,7 @@ static LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect) {
 
         if (is_auto_width || is_auto_height) {
             float total_width = 0, total_height = 0;
-            float gap = 20.0f;
+            float gap = 0.0f;
             if (child->layout && child->layout->flex.gap > 0) {
                 gap = (float)child->layout->flex.gap;
             }
@@ -1015,7 +1015,7 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
         child->child_count > 0) {
 
         float total = 0.0f;
-        float gap = 20.0f;
+        float gap = 0.0f;
         if (child->layout && child->layout->flex.gap > 0) {
             gap = (float)child->layout->flex.gap;
         }
@@ -1034,14 +1034,16 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
         for (uint32_t i = 0; i < child->child_count; i++) {
             IRComponent* grandchild = child->children[i];
 
-            // Get grandchild's explicit dimension only (no recursion)
+            // Get grandchild dimension; prefer explicit, otherwise measure recursively
             float child_dim = 0.0f;
-            if (grandchild->style) {
+            if (grandchild && grandchild->style) {
                 IRDimension gd = is_height ? grandchild->style->height : grandchild->style->width;
                 if (gd.type != IR_DIMENSION_AUTO) {
-                    // For grandchildren, we need to use ir_dimension_to_pixels to handle all dimension types
                     child_dim = ir_dimension_to_pixels(gd, is_height ? parent_rect.height : parent_rect.width);
                 }
+            }
+            if (child_dim <= 0.0f && grandchild) {
+                child_dim = get_child_dimension(grandchild, parent_rect, is_height);
             }
 
             if (getenv("KRYON_TRACE_LAYOUT")) {
@@ -1741,7 +1743,7 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
     if (component->type == IR_COMPONENT_COLUMN && component->child_count > 0) {
         // Pass 1: Measure total content height (just get sizes, don't do full layout)
         float total_height = 0.0f;
-        float gap = 20.0f;
+        float gap = 0.0f;
         if (component->layout && component->layout->flex.gap > 0) {
             gap = (float)component->layout->flex.gap;
         }
@@ -1832,7 +1834,7 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
     if (component->type == IR_COMPONENT_ROW && component->child_count > 0) {
         // Pass 1: Measure total content width (just get sizes, don't do full layout)
         float total_width = 0.0f;
-        float gap = 20.0f;
+        float gap = 0.0f;
         if (component->layout && component->layout->flex.gap > 0) {
             gap = (float)component->layout->flex.gap;
         }
@@ -2216,8 +2218,13 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                                 rect_for_child.height = child_layout.height > 0 ? child_layout.height : child_rect.height;
                             }
                         } else {
-                            // Use full available height for stretch/start alignment
-                            rect_for_child.height = child_rect.height;
+                            // Use measured content height first; fall back to computed/measured defaults
+                            float content_height = get_child_dimension(child, child_rect, true);
+                            if (content_height > 0) {
+                                rect_for_child.height = content_height;
+                            } else {
+                                rect_for_child.height = child_layout.height > 0 ? child_layout.height : child_rect.height;
+                            }
                         }
                     }
                 }
