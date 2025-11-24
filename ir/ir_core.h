@@ -189,6 +189,9 @@ typedef struct IRRenderedBounds {
     bool valid;  // true if bounds have been calculated
 } IRRenderedBounds;
 
+// Forward declaration for tab drag visuals
+struct TabGroupState;
+
 // Dropdown State (stored in IRComponent->custom_data)
 typedef struct IRDropdownState {
     char* placeholder;      // Placeholder text when nothing selected

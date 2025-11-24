@@ -2032,6 +2032,12 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
         }
     }
 
+    // Track dragged tab info so we can paint it last (above siblings)
+    TabGroupState* tab_bar_state = component->custom_data ? (TabGroupState*)component->custom_data : NULL;
+    IRComponent* dragged_child = NULL;
+    LayoutRect dragged_rect = {0};
+    bool has_dragged_rect = false;
+
     for (uint32_t i = 0; i < component->child_count; i++) {
         IRComponent* child = component->children[i];
         // Get child size WITHOUT recursive layout (just from style)
@@ -2223,7 +2229,23 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
             }
         }
 
-        render_component_sdl3(renderer, child, rect_for_child);
+        // If this is a tab bar, draw the dragged tab after all siblings so it appears on top
+        bool is_dragged_tab = false;
+        if (component->custom_data && child) {
+            TabGroupState* tg_state = (TabGroupState*)component->custom_data;
+            if (tg_state && tg_state->dragging && tg_state->drag_index == (int)i) {
+                is_dragged_tab = true;
+                // Defer rendering; we'll draw it after the loop with cursor-following offset
+            }
+        }
+
+        if (is_dragged_tab) {
+            dragged_child = child;
+            dragged_rect = rect_for_child;
+            has_dragged_rect = true;
+        } else {
+            render_component_sdl3(renderer, child, rect_for_child);
+        }
 
         // Vertical stacking for column layout - advance current_y
         if (component->type == IR_COMPONENT_COLUMN) {
@@ -2254,6 +2276,13 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 current_x += advance_width + distributed_gap;
             }
         }
+    }
+
+    // If this component is a tab bar with an active drag, render the dragged tab last so it follows the cursor
+    if (tab_bar_state && has_dragged_rect && dragged_child) {
+        // Apply cursor-following offset and render on top
+        dragged_rect.x = tab_bar_state->drag_x - dragged_rect.width * 0.5f;
+        render_component_sdl3(renderer, dragged_child, dragged_rect);
     }
     if (getenv("KRYON_TRACE_LAYOUT")) {
         const char* type_name = component->type == IR_COMPONENT_COLUMN ? "COLUMN" :

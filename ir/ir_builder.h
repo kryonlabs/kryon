@@ -100,7 +100,20 @@ bool ir_validate_component(IRComponent* component);
 void ir_optimize_component(IRComponent* component);
 
 // Tab Group Support (shared across frontends)
-typedef struct TabGroupState TabGroupState;
+typedef struct TabGroupState {
+    IRComponent* group;
+    IRComponent* tab_bar;
+    IRComponent* tab_content;
+    IRComponent** tabs;
+    IRComponent** panels;
+    uint32_t tab_count;
+    uint32_t panel_count;
+    int selected_index;
+    bool reorderable;
+    bool dragging;
+    int drag_index;
+    float drag_x;
+} TabGroupState;
 
 TabGroupState* ir_tabgroup_create_state(IRComponent* group,
                                         IRComponent* tab_bar,

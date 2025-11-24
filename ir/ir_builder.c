@@ -51,24 +51,6 @@ const char* ir_logic_type_to_string(LogicSourceType type) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Tab Group Support (shared across frontends)
-// ---------------------------------------------------------------------------
-struct TabGroupState {
-    IRComponent* group;
-    IRComponent* tab_bar;
-    IRComponent* tab_content;
-    IRComponent** tabs;
-    IRComponent** panels;
-    uint32_t tab_count;
-    uint32_t panel_count;
-    int selected_index;
-    bool reorderable;
-    // Drag state
-    bool dragging;
-    int drag_index;
-};
-
 static void ir_tabgroup_set_visible(IRComponent* component, bool visible) {
     if (!component) return;
     IRStyle* style = ir_get_style(component);
@@ -97,6 +79,7 @@ TabGroupState* ir_tabgroup_create_state(IRComponent* group,
     state->reorderable = reorderable;
     state->dragging = false;
     state->drag_index = -1;
+    state->drag_x = 0.0f;
     return state;
 }
 
@@ -232,6 +215,9 @@ void ir_tabgroup_handle_drag(TabGroupState* state, float x, float y, bool is_dow
             if (b.valid && x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height) {
                 state->dragging = true;
                 state->drag_index = (int)i;
+                state->drag_x = x;
+                // Switch to the tab we're dragging so content stays in sync during drag
+                ir_tabgroup_select(state, (int)i);
                 break;
             }
         }
@@ -245,6 +231,8 @@ void ir_tabgroup_handle_drag(TabGroupState* state, float x, float y, bool is_dow
     }
 
     if (!state->dragging || state->drag_index < 0) return;
+
+    state->drag_x = x;
 
     // Track drag movement; if we cross midpoint of adjacent tab, reorder
     if (!state->tab_bar->children || state->tab_bar->child_count == 0) return;
