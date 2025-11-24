@@ -4,10 +4,6 @@ import kryon_dsl
 
 var textValue = ""
 
-proc onTextChange(newText: string) =
-  textValue = newText
-  echo "Text changed to: ", newText
-
 # Define the UI
 let app = kryonApp:
   Header:
@@ -16,7 +12,6 @@ let app = kryonApp:
     title = "Simple Text Input"
 
   Body:
-    contentAlignment = "center"
     backgroundColor = "#f5f5f5"
 
     Column:
@@ -37,7 +32,6 @@ let app = kryonApp:
         backgroundColor = "white"
         borderColor = "#bdc3c7"
         borderWidth = 1
-        onTextChange = onTextChange
 
       Text:
         text = "You typed: " & textValue

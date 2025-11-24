@@ -202,6 +202,12 @@ proc ir_set_justify_content*(layout: ptr IRLayout; justify: IRAlignment) {.impor
 proc ir_set_align_items*(layout: ptr IRLayout; align: IRAlignment) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_align_content*(layout: ptr IRLayout; align: IRAlignment) {.importc, cdecl, header: "ir_builder.h".}
 
+# Color Helpers
+proc ir_color_rgb*(r: uint8; g: uint8; b: uint8): IRColor {.importc, cdecl, header: "ir_builder.h".}
+proc ir_color_rgba*(r: uint8; g: uint8; b: uint8; a: uint8): IRColor {.importc, cdecl, header: "ir_builder.h".}
+proc ir_color_transparent*(): IRColor {.importc, cdecl, header: "ir_builder.h".}
+proc ir_color_named*(name: cstring): IRColor {.importc, cdecl, header: "ir_builder.h".}
+
 # Tab Group Management
 proc ir_tabgroup_create_state*(group, tabBar, tabContent: ptr IRComponent; selectedIndex: cint; reorderable: bool): ptr TabGroupState {.importc, cdecl, header: "ir_builder.h".}
 proc ir_tabgroup_register_bar*(state: ptr TabGroupState; tabBar: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}

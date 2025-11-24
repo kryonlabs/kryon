@@ -271,6 +271,82 @@ static MarkdownScrollState* get_markdown_scroll_state(uint32_t component_id) {
     return NULL;
 }
 
+// Runtime state for text inputs (caret, scroll, focus)
+typedef struct {
+    uint32_t id;
+    size_t cursor_index;
+    float scroll_x;
+    bool focused;
+    uint32_t last_blink_ms;
+    bool caret_visible;
+} InputRuntimeState;
+
+static InputRuntimeState input_states[64];
+static size_t input_state_count = 0;
+
+static InputRuntimeState* get_input_state(uint32_t id) {
+    for (size_t i = 0; i < input_state_count; i++) {
+        if (input_states[i].id == id) return &input_states[i];
+    }
+    if (input_state_count < sizeof(input_states) / sizeof(input_states[0])) {
+        input_states[input_state_count] = (InputRuntimeState){
+            .id = id,
+            .cursor_index = 0,
+            .scroll_x = 0.0f,
+            .focused = false,
+            .last_blink_ms = 0,
+            .caret_visible = true
+        };
+        input_state_count++;
+        return &input_states[input_state_count - 1];
+    }
+    return NULL;
+}
+
+static float measure_text_width(TTF_Font* font, const char* text) {
+    if (!font || !text || text[0] == '\0') return 0.0f;
+    SDL_Color dummy = {255, 255, 255, 255};
+    SDL_Surface* s = TTF_RenderText_Blended(font, text, strlen(text), dummy);
+    if (!s) return 0.0f;
+    float w = (float)s->w;
+    SDL_DestroySurface(s);
+    return w;
+}
+
+static void ensure_caret_visible(DesktopIRRenderer* renderer,
+                                 IRComponent* input,
+                                 InputRuntimeState* istate,
+                                 TTF_Font* font,
+                                 float pad_left,
+                                 float pad_right) {
+    if (!renderer || !input || !istate) return;
+    const char* txt = input->text_content ? input->text_content : "";
+    size_t cur = istate->cursor_index;
+    size_t len = strlen(txt);
+    if (cur > len) cur = len;
+    char* prefix = strndup(txt, cur);
+    float caret_local = measure_text_width(font ? font : renderer->default_font, prefix);
+    free(prefix);
+
+    float avail = input->rendered_bounds.width - pad_left - pad_right;
+    if (avail < 0) avail = 0;
+
+    // Clamp scroll to content width
+    float total_width = measure_text_width(font ? font : renderer->default_font, txt);
+    float max_scroll = total_width > avail ? (total_width - avail) : 0.0f;
+    if (istate->scroll_x > max_scroll) istate->scroll_x = max_scroll;
+
+    float visible_pos = caret_local - istate->scroll_x;
+    const float margin = 8.0f;
+    if (visible_pos > avail - margin) {
+        istate->scroll_x = caret_local - (avail - margin);
+        if (istate->scroll_x > max_scroll) istate->scroll_x = max_scroll;
+    } else if (visible_pos < margin) {
+        istate->scroll_x = caret_local - margin;
+        if (istate->scroll_x < 0) istate->scroll_x = 0;
+    }
+}
+
 // Simple dynamic buffer helper for code blocks
 static bool append_to_buffer(char** buffer, size_t* len, size_t* cap,
                              const char* text, size_t text_len, bool add_newline) {
@@ -1436,7 +1512,11 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
             if (component->text_content && font) {
                 SDL_Color text_color = component->style ?
                     ir_color_to_sdl(component->style->font.color) :
-                    (SDL_Color){0, 0, 0, 255};
+                    (SDL_Color){51, 51, 51, 255};
+                if (text_color.a == 0) {
+                    // Avoid invisible/alpha=0 colors; default to dark text
+                    text_color = (SDL_Color){51, 51, 51, 255};
+                }
 
                 SDL_Surface* surface = TTF_RenderText_Blended(font,
                                                               component->text_content,
@@ -1490,28 +1570,50 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 SDL_RenderRect(renderer->renderer, &sdl_rect);
             }
 
-            // Text / placeholder
+            // Text / placeholder with scrolling and caret
             {
+                InputRuntimeState* istate = get_input_state(component->id);
                 const char* value_text = component->text_content ? component->text_content : "";
                 bool has_value = value_text[0] != '\0';
                 const char* placeholder = component->custom_data ? component->custom_data : "";
                 const char* to_render = has_value ? value_text : placeholder;
                 TTF_Font* font = desktop_ir_resolve_font(renderer, component, component->style && component->style->font.size > 0 ? component->style->font.size : 16.0f);
-                if (font && to_render && to_render[0] != '\0') {
-                    SDL_Color text_color = has_value ? (SDL_Color){40, 40, 40, 255}
-                                                     : (SDL_Color){160, 160, 160, 255};
-                    if (component->style) {
-                        SDL_Color candidate = ir_color_to_sdl(component->style->font.color);
-                        if (candidate.a != 0) {
-                            text_color = candidate;
-                            if (!has_value) {
-                                text_color.r = (uint8_t)((text_color.r + 255) / 2);
-                                text_color.g = (uint8_t)((text_color.g + 255) / 2);
-                                text_color.b = (uint8_t)((text_color.b + 255) / 2);
-                            }
+
+                float pad_left = component->style ? component->style->padding.left : 8.0f;
+                float pad_top = component->style ? component->style->padding.top : 8.0f;
+                float pad_right = component->style ? component->style->padding.right : 8.0f;
+                float avail_width = rect.width - pad_left - pad_right;
+
+                SDL_Color text_color = has_value ? (SDL_Color){40, 40, 40, 255}
+                                                 : (SDL_Color){160, 160, 160, 255};
+                if (component->style) {
+                    SDL_Color candidate = ir_color_to_sdl(component->style->font.color);
+                    if (candidate.a != 0) {
+                        text_color = candidate;
+                        if (!has_value) {
+                            text_color.r = (uint8_t)((text_color.r + 255) / 2);
+                            text_color.g = (uint8_t)((text_color.g + 255) / 2);
+                            text_color.b = (uint8_t)((text_color.b + 255) / 2);
                         }
                     }
+                }
 
+                float caret_x = rect.x + pad_left;
+                float caret_y = rect.y + pad_top;
+                float caret_height = rect.height - pad_top - (component->style ? component->style->padding.bottom : 8.0f);
+
+                float caret_local = 0.0f;
+                if (font && istate) {
+                    char* prefix = strndup(value_text, istate->cursor_index);
+                    caret_local = measure_text_width(font, prefix);
+                    free(prefix);
+                    ensure_caret_visible(renderer, component, istate, font, pad_left, pad_right);
+                    caret_x = rect.x + pad_left + (caret_local - istate->scroll_x);
+                } else {
+                    caret_x = rect.x + pad_left;
+                }
+
+                if (font && to_render && to_render[0] != '\0') {
                     SDL_Surface* surface = TTF_RenderText_Blended(font,
                                                                   to_render,
                                                                   strlen(to_render),
@@ -1519,24 +1621,54 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                     if (surface) {
                         SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
                         if (texture) {
-                            float pad_left = component->style ? component->style->padding.left : 8.0f;
-                            float pad_top = component->style ? component->style->padding.top : 8.0f;
                             float text_x = rect.x + pad_left;
                             float text_y = rect.y + pad_top;
-                            // Vertically center if padding not set
                             if (!component->style || (component->style->padding.top == 0 && component->style->padding.bottom == 0)) {
                                 text_y = rect.y + (rect.height - surface->h) / 2;
                             }
-                            SDL_FRect text_rect = {
-                                .x = roundf(text_x),
+                            SDL_FRect dest_rect = {
+                                .x = roundf(text_x - (istate ? istate->scroll_x : 0.0f)),
                                 .y = roundf(text_y),
                                 .w = (float)surface->w,
                                 .h = (float)surface->h
                             };
-                            SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
+                            // Clip to input rect minus padding
+                            SDL_FRect clip_rect = {
+                                .x = rect.x + pad_left,
+                                .y = rect.y + pad_top,
+                                .w = fmaxf(0.0f, rect.width - pad_left - pad_right),
+                                .h = rect.height - pad_top - (component->style ? component->style->padding.bottom : 8.0f)
+                            };
+                            SDL_Rect clip_px = {
+                                .x = (int)clip_rect.x,
+                                .y = (int)clip_rect.y,
+                                .w = (int)clip_rect.w,
+                                .h = (int)clip_rect.h
+                            };
+                            SDL_SetRenderClipRect(renderer->renderer, &clip_px);
+                            SDL_RenderTexture(renderer->renderer, texture, NULL, &dest_rect);
+                            SDL_SetRenderClipRect(renderer->renderer, NULL);
                             SDL_DestroyTexture(texture);
                         }
                         SDL_DestroySurface(surface);
+                    }
+                }
+
+                // Caret rendering
+                if (istate && istate->focused && font) {
+                    uint32_t now = SDL_GetTicks();
+                    if (now - istate->last_blink_ms > 500) {
+                        istate->caret_visible = !istate->caret_visible;
+                        istate->last_blink_ms = now;
+                    }
+                    if (istate->caret_visible) {
+                        SDL_Color caret_color = text_color;
+                        SDL_SetRenderDrawColor(renderer->renderer, caret_color.r, caret_color.g, caret_color.b, caret_color.a);
+                        SDL_RenderLine(renderer->renderer,
+                            caret_x,
+                            caret_y,
+                            caret_x,
+                            caret_y + caret_height - 2);
                     }
                 }
             }
@@ -2552,8 +2684,18 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
                         // Handle input focus
                         if (clicked->type == IR_COMPONENT_INPUT) {
                             focused_input = clicked;
+                            InputRuntimeState* istate = get_input_state(clicked->id);
+                            if (istate) {
+                                istate->focused = true;
+                                istate->caret_visible = true;
+                                istate->last_blink_ms = SDL_GetTicks();
+                                size_t len = clicked->text_content ? strlen(clicked->text_content) : 0;
+                                istate->cursor_index = len;
+                            }
                             SDL_StartTextInput(renderer->window);
                         } else if (focused_input) {
+                            InputRuntimeState* istate = get_input_state(focused_input->id);
+                            if (istate) istate->focused = false;
                             focused_input = NULL;
                             SDL_StopTextInput(renderer->window);
                         }
@@ -2753,12 +2895,26 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
                     size_t incoming_len = strlen(incoming);
                     const char* current = focused_input->text_content ? focused_input->text_content : "";
                     size_t current_len = strlen(current);
+                    InputRuntimeState* istate = get_input_state(focused_input->id);
+                    float pad_left = focused_input->style ? focused_input->style->padding.left : 8.0f;
+                    float pad_right = focused_input->style ? focused_input->style->padding.right : 8.0f;
+                    TTF_Font* font = desktop_ir_resolve_font(renderer, focused_input,
+                        (focused_input->style && focused_input->style->font.size > 0) ? focused_input->style->font.size : 16.0f);
+                    size_t cursor = istate ? istate->cursor_index : current_len;
+                    if (cursor > current_len) cursor = current_len;
                     char* combined = malloc(current_len + incoming_len + 1);
                     if (combined) {
-                        memcpy(combined, current, current_len);
-                        memcpy(combined + current_len, incoming, incoming_len);
+                        memcpy(combined, current, cursor);
+                        memcpy(combined + cursor, incoming, incoming_len);
+                        memcpy(combined + cursor + incoming_len, current + cursor, current_len - cursor);
                         combined[current_len + incoming_len] = '\0';
                         ir_set_text_content(focused_input, combined);
+                        if (istate) {
+                            istate->cursor_index = cursor + incoming_len;
+                            ensure_caret_visible(renderer, focused_input, istate, font, pad_left, pad_right);
+                        }
+                        extern bool nimInputBridge(IRComponent* component, const char* text);
+                        nimInputBridge(focused_input, focused_input->text_content);
                         free(combined);
                     }
                 }
@@ -2775,19 +2931,31 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
                 if (focused_input && event.key.key == SDLK_BACKSPACE) {
                     const char* current = focused_input->text_content ? focused_input->text_content : "";
                     size_t len = strlen(current);
-                    if (len > 0) {
-                        size_t new_len = len;
-                        // Remove last UTF-8 codepoint (simplified: trim last byte and continuation bytes)
-                        new_len -= 1;
-                        while (new_len > 0 && ((current[new_len] & 0xC0) == 0x80)) {
-                            new_len -= 1;
-                        }
-                        char* truncated = malloc(new_len + 1);
-                        if (truncated) {
-                            memcpy(truncated, current, new_len);
-                            truncated[new_len] = '\0';
-                            ir_set_text_content(focused_input, truncated);
-                            free(truncated);
+                    InputRuntimeState* istate = get_input_state(focused_input->id);
+                    float pad_left = focused_input->style ? focused_input->style->padding.left : 8.0f;
+                    float pad_right = focused_input->style ? focused_input->style->padding.right : 8.0f;
+                    TTF_Font* font = desktop_ir_resolve_font(renderer, focused_input,
+                        (focused_input->style && focused_input->style->font.size > 0) ? focused_input->style->font.size : 16.0f);
+                    size_t cursor = istate ? istate->cursor_index : len;
+                    if (cursor > len) cursor = len;
+                    if (len > 0 && cursor > 0) {
+                        size_t cut = cursor - 1;
+                        while (cut > 0 && ((current[cut] & 0xC0) == 0x80)) cut -= 1;
+                        size_t prefix_len = cut;
+                        size_t suffix_len = len - cursor;
+                        char* combined = malloc(prefix_len + suffix_len + 1);
+                        if (combined) {
+                            memcpy(combined, current, prefix_len);
+                            memcpy(combined + prefix_len, current + cursor, suffix_len);
+                            combined[prefix_len + suffix_len] = '\0';
+                            ir_set_text_content(focused_input, combined);
+                            if (istate) {
+                                istate->cursor_index = prefix_len;
+                                ensure_caret_visible(renderer, focused_input, istate, font, pad_left, pad_right);
+                            }
+                            extern bool nimInputBridge(IRComponent* component, const char* text);
+                            nimInputBridge(focused_input, focused_input->text_content);
+                            free(combined);
                         }
                     }
                     break;

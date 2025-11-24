@@ -237,13 +237,24 @@ proc run*(app: KryonApp) =
 # ============================================================================
 
 proc parseColor*(colorStr: string): uint32 =
-  ## Parse hex color string like "#ff0000" or "#ff0000ff"
-  if colorStr.len == 0 or colorStr[0] != '#':
+  ## Parse hex color string or named color; supports #RGB, #RRGGBB, optional alpha
+  if colorStr.len == 0:
     return 0xFFFFFFFF'u32
 
+  # Named colors fall back to helpers.parseNamedColor if no '#'
+  if colorStr[0] != '#':
+    let c = ir_color_named(cstring(colorStr))
+    return (uint32(c.r) shl 24) or (uint32(c.g) shl 16) or (uint32(c.b) shl 8) or uint32(c.a)
+
   var hex = colorStr[1..^1]
-  if hex.len == 6:
-    hex = hex & "FF"  # Add alpha if not present
+
+  # Expand short forms
+  if hex.len == 3: # RGB
+    hex = "" & hex[0] & hex[0] & hex[1] & hex[1] & hex[2] & hex[2] & "FF"
+  elif hex.len == 4: # RGBA
+    hex = "" & hex[0] & hex[0] & hex[1] & hex[1] & hex[2] & hex[2] & hex[3] & hex[3]
+  elif hex.len == 6: # RRGGBB
+    hex = hex & "FF"
 
   if hex.len != 8:
     return 0xFFFFFFFF'u32
@@ -256,6 +267,10 @@ proc parseColor*(colorStr: string): uint32 =
     result = (uint32(r) shl 24) or (uint32(g) shl 16) or (uint32(b) shl 8) or uint32(a)
   except:
     result = 0xFFFFFFFF'u32
+
+proc parseColor*(color: uint32): uint32 =
+  ## Passthrough overload for already-parsed colors
+  color
 
 # IR uses floats directly - toFixed is for DSL compatibility with old fixed-point system
 proc toFixed*(value: int): cfloat {.inline.} = cfloat(value)
@@ -668,8 +683,16 @@ proc nimCanvasBridge*(componentId: uint32) {.exportc: "nimCanvasBridge", cdecl, 
   if canvasHandlers.hasKey(componentId):
     canvasHandlers[componentId]()
 
-proc nimInputBridge*(component: ptr IRComponent, text: ptr cstring): bool =
-  # Stub for input handling
+var inputHandlers = initTable[uint32, proc(text: string)]()
+
+proc nimInputBridge*(component: ptr IRComponent, text: cstring): bool {.exportc: "nimInputBridge", cdecl, dynlib.} =
+  ## Bridge from C: notify Nim input change
+  if component.isNil:
+    return false
+  if inputHandlers.hasKey(component.id):
+    let s = if text != nil: $text else: ""
+    inputHandlers[component.id](s)
+    return true
   result = false
 
 proc nimCheckboxBridge*(component: ptr IRComponent): bool =
@@ -681,8 +704,9 @@ proc registerCheckboxHandler*(component: ptr IRComponent, handler: proc(checked:
   discard
 
 proc registerInputHandler*(component: ptr IRComponent, onChange: proc(text: string), onSubmit: proc(text: string) = nil) =
-  # Stub for input handler registration
-  discard
+  if component.isNil or onChange.isNil:
+    return
+  inputHandlers[component.id] = onChange
 
 # Font management (resources)
 var fontSearchDirs: seq[string] = @[]

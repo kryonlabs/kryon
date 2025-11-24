@@ -1997,13 +1997,20 @@ macro Input*(props: untyped): untyped =
   initStmts.add quote do:
     kryon_component_set_padding(`inputName`, 8, 8, 8, 8)
 
-  # Apply colors if provided
+  # Apply colors if provided (accept string or uint32)
   if backgroundColorVal != nil:
+    let bgExpr =
+      if backgroundColorVal.kind == nnkStrLit: quote do: runtime.parseColor(`backgroundColorVal`)
+      else: backgroundColorVal
     initStmts.add quote do:
-      setBackgroundColor(`inputName`, runtime.parseColor(`backgroundColorVal`))
+      setBackgroundColor(`inputName`, `bgExpr`)
+
   if textColorVal != nil:
+    let tcExpr =
+      if textColorVal.kind == nnkStrLit: quote do: runtime.parseColor(`textColorVal`)
+      else: textColorVal
     initStmts.add quote do:
-      setTextColor(`inputName`, runtime.parseColor(`textColorVal`))
+      setTextColor(`inputName`, `tcExpr`)
 
   # Store placeholder separately; only set real value as text content
   initStmts.add quote do:
@@ -2012,6 +2019,25 @@ macro Input*(props: untyped): untyped =
       setText(`inputName`, `valueVal`)
     else:
       setText(`inputName`, "")
+
+  # Wire onChange/value binding if provided
+  let hasValueBinding = valueVal.kind == nnkIdent
+  if hasValueBinding and onTextChangeVal != nil:
+    initStmts.add quote do:
+      registerInputHandler(`inputName`, proc(t: string) =
+        `valueVal` = t
+        `onTextChangeVal`(t)
+      )
+  elif hasValueBinding:
+    initStmts.add quote do:
+      registerInputHandler(`inputName`, proc(t: string) =
+        `valueVal` = t
+      )
+  elif onTextChangeVal != nil:
+    initStmts.add quote do:
+      registerInputHandler(`inputName`, proc(t: string) =
+        `onTextChangeVal`(t)
+      )
 
   # Add any child components (though Input usually doesn't have children)
   for child in childNodes:
@@ -2024,15 +2050,15 @@ macro Input*(props: untyped): untyped =
   
   # Prepare color expressions
   let textColorExpr = if textColorVal != nil:
-    if textColorVal.kind == nnkStrLit: newCall(ident("parseHexColor"), textColorVal) else: textColorVal
+    if textColorVal.kind == nnkStrLit: newCall(ident("parseColor"), textColorVal) else: textColorVal
   else: newIntLitNode(0)
   
   let bgColorExpr = if backgroundColorVal != nil:
-    if backgroundColorVal.kind == nnkStrLit: newCall(ident("parseHexColor"), backgroundColorVal) else: backgroundColorVal
+    if backgroundColorVal.kind == nnkStrLit: newCall(ident("parseColor"), backgroundColorVal) else: backgroundColorVal
   else: newIntLitNode(0)
   
   let borderColorExpr = if borderColorVal != nil:
-    if borderColorVal.kind == nnkStrLit: newCall(ident("parseHexColor"), borderColorVal) else: borderColorVal
+    if borderColorVal.kind == nnkStrLit: newCall(ident("parseColor"), borderColorVal) else: borderColorVal
   else: newIntLitNode(0)
 
   result = quote do:

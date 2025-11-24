@@ -94,6 +94,7 @@ IRDimension ir_dimension_flex(float value);
 IRColor ir_color_rgb(uint8_t r, uint8_t g, uint8_t b);
 IRColor ir_color_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 IRColor ir_color_transparent(void);
+IRColor ir_color_named(const char* name);
 
 // Validation and Optimization
 bool ir_validate_component(IRComponent* component);
