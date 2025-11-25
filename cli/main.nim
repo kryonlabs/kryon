@@ -3,7 +3,7 @@
 ## Single interface for all Kryon development workflows
 ## From project creation to microcontroller deployment
 
-import os, strutils, parseopt, times, json
+import os, osproc, strutils, parseopt, times, json
 import std/[sequtils, sugar]
 
 # CLI modules
@@ -39,6 +39,45 @@ EXAMPLES:
 
 For detailed help: kryon <command> --help
 """
+
+proc findKryonRoot*(): string =
+  ## Resolve the Kryon root directory even when running outside the repo.
+  ## Priority: KRYON_ROOT env -> walk up from cwd looking for core/include/kryon.h ->
+  ##           walk up from the CLI executable location -> fallback to cwd.
+  let envRoot = getEnv("KRYON_ROOT")
+  if envRoot.len > 0 and dirExists(envRoot):
+    return envRoot
+
+  proc searchUp(start: string): string =
+    var cur = absolutePath(start)
+    while true:
+      if fileExists(cur / "core" / "include" / "kryon.h"):
+        return cur
+      let parent = parentDir(cur)
+      if parent.len == 0 or parent == cur: break
+      cur = parent
+    result = ""
+
+  let fromCwd = searchUp(getCurrentDir())
+  if fromCwd.len > 0:
+    return fromCwd
+
+  let exeDir = parentDir(getAppFilename())
+  let fromExe = searchUp(exeDir)
+  if fromExe.len > 0:
+    return fromExe
+
+  # Last resort: current dir
+  return getCurrentDir()
+
+proc pkgLibFlags*(pkg: string): seq[string] =
+  ## Best-effort retrieval of linker flags from pkg-config
+  try:
+    let (stdout, code) = execCmdEx("pkg-config --libs " & pkg)
+    if code == 0:
+      result = stdout.strip.splitWhitespace()
+  except:
+    discard
 
 # =============================================================================
 # Command Line Interface
@@ -128,13 +167,59 @@ proc handleRunCommand*(args: seq[string]) =
   echo "🎯 Target: " & target
 
   try:
-    # Set environment for kryon sources
-    let kryonRoot = getEnv("KRYON_ROOT", getCurrentDir() / ".." / "..")
+    # Resolve Kryon root so we can inject include/lib paths for external apps
+    let kryonRoot = findKryonRoot()
     putEnv("KRYON_ROOT", kryonRoot)
 
+    # Make sure we have a writable build/cache location even if cwd is read-only
+    let runCache = kryonRoot / "tmp_nimcache" / "cli_run"
+    createDir(runCache)
+
+    let outFile = runCache / "kryon_app_run"
+    var nimArgs = @[
+      "nim", "c",
+      "--nimcache:" & runCache,
+      "--out:" & outFile,
+      "--path:" & (kryonRoot / "bindings" / "nim"),
+      # Includes
+      "--passC:\"-I" & kryonRoot / "core/include" & "\"",
+      "--passC:\"-I" & kryonRoot / "ir" & "\"",
+      "--passC:\"-I" & kryonRoot / "backends/desktop" & "\"",
+    ]
+
+    # Base linker flags for Kryon libs
+    var libFlags: seq[string] = @[
+      "--passL:\"-L" & kryonRoot / "build" & "\"",
+      "--passL:\"-Wl,--start-group -lkryon_core -lkryon_ir -lkryon_desktop -Wl,--end-group\"",
+      "--passL:\"-Wl,-rpath," & kryonRoot / "build" & "\""
+    ]
+
+    # Gather SDL flags from pkg-config (captures -L/-rpath/-l)
+    let sdlFlags = pkgLibFlags("sdl3")
+    if sdlFlags.len > 0:
+      for flag in sdlFlags:
+        libFlags.add "--passL:\"" & flag & "\""
+    else:
+      # Fallback to default name if pkg-config unavailable
+      libFlags.add "--passL:\"-lSDL3\""
+
+    var ttfFlags: seq[string] = @[]
+    for pkg in ["sdl3-ttf", "sdl3_ttf", "SDL3_ttf"]:
+      let found = pkgLibFlags(pkg)
+      if found.len > 0:
+        ttfFlags = found
+        break
+    if ttfFlags.len > 0:
+      for flag in ttfFlags:
+        libFlags.add "--passL:\"" & flag & "\""
+    else:
+      libFlags.add "--passL:\"-lSDL3_ttf\""
+
+    nimArgs.add(libFlags)
+    nimArgs.add(file)
+
     # Simple compilation and execution like Flutter
-    let outFile = "kryon_app_run"
-    let cmd = "nim compile --out:" & outFile & " " & file
+    let cmd = nimArgs.join(" ")
 
     echo "🔨 Building..."
     let buildResult = execShellCmd(cmd)
@@ -142,7 +227,7 @@ proc handleRunCommand*(args: seq[string]) =
     if buildResult == 0:
       echo "✅ Build successful!"
       echo "🏃 Running application..."
-      discard execShellCmd("./" & outFile)
+      discard execShellCmd(outFile)
     else:
       echo "❌ Build failed"
       quit(1)

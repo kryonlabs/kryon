@@ -19,7 +19,7 @@ proc kryon_component_add_child(parent: ptr IRComponent, child: ptr IRComponent):
   ir_add_child(parent, child)
   return 0
 
-proc kryon_component_remove_child(parent: ptr IRComponent, child: ptr IRComponent) =
+proc kryon_component_remove_child*(parent: ptr IRComponent, child: ptr IRComponent) =
   ## Legacy wrapper for ir_remove_child
   ir_remove_child(parent, child)
 
@@ -65,6 +65,7 @@ var reactiveUpdateRegistry*: Table[string, proc ()] = initTable[string, proc ()]
 # Forward declarations
 proc updateAllReactiveTextExpressions*()
 proc updateAllReactiveConditionals*()
+proc updateAllReactiveRebuilds*()
 
 # Initialize reactive system
 proc initReactiveSystem*() =
@@ -134,6 +135,9 @@ proc processReactiveUpdates*() =
   # Update all reactive text expressions (evaluates them each frame)
   updateAllReactiveTextExpressions()
 
+  # Re-run any registered rebuild callbacks (e.g., dynamic for-loops)
+  updateAllReactiveRebuilds()
+
 # Utility: Create reactive text binding
 proc bindTextToReactiveVar*[T](rv: ReactiveVar[T], component: ptr IRComponent) =
   ## Utility to bind text content to a reactive variable
@@ -200,6 +204,13 @@ proc createReactiveTextExpression*(component: ptr IRComponent, expression: strin
 
 proc updateAllReactiveTextExpressions*() =
   ## Update all reactive text expressions by re-evaluating them
+  # Clean up any expressions pointing to nil components
+  var cleaned: seq[ReactiveTextExpression] = @[]
+  for expr in reactiveTextExpressions:
+    if expr != nil and expr.component != nil:
+      cleaned.add(expr)
+  reactiveTextExpressions = cleaned
+
   # Closures are now created at runtime (in kryon_dsl.nim), so Nim properly
   # heap-allocates captured variables and they remain valid
   for expr in reactiveTextExpressions:
@@ -215,6 +226,55 @@ proc updateAllReactiveTextExpressions*() =
             echo "[kryon][reactive] Updated text: ", expr.expression, " -> ", currentValue
       except Exception as e:
         echo "[kryon][reactive] Error evaluating expression: ", expr.expression, " - ", e.msg
+
+# Remove reactive text bindings for a set of components (used when rebuilding loops)
+proc unregisterReactiveTextFor*(components: seq[ptr IRComponent]) =
+  if components.len == 0: return
+  var filtered: seq[ReactiveTextExpression] = @[]
+  for expr in reactiveTextExpressions:
+    var keep = true
+    if expr != nil:
+      for comp in components:
+        if comp == expr.component:
+          keep = false
+          break
+    if keep:
+      filtered.add(expr)
+  reactiveTextExpressions = filtered
+
+# Remove queued reactive bindings for components that are about to be destroyed/removed
+proc unregisterReactiveBindingsFor*(components: seq[ptr IRComponent]) =
+  if components.len == 0: return
+  var filtered: seq[ReactiveBinding] = @[]
+  for b in reactiveUpdateQueue:
+    var keep = true
+    if b != nil:
+      for comp in components:
+        if comp == b.component:
+          keep = false
+          break
+    if keep:
+      filtered.add(b)
+  reactiveUpdateQueue = filtered
+
+
+# ============================================================================
+# Reactive rebuild bindings (e.g., dynamic for-loops)
+# ============================================================================
+
+var reactiveRebuilds*: seq[proc ()] = @[]
+
+proc registerReactiveRebuild*(rebuild: proc ()) =
+  if rebuild != nil:
+    reactiveRebuilds.add(rebuild)
+
+proc updateAllReactiveRebuilds*() =
+  for r in reactiveRebuilds:
+    if r != nil:
+      try:
+        r()
+      except:
+        echo "[kryon][reactive] Error in reactive rebuild"
 
 # Update a specific reactive variable with a new value
 proc updateReactiveVar*(varName: string, newValue: string) =

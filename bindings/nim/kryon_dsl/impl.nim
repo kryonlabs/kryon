@@ -39,6 +39,16 @@ proc parseAlignmentValue(value: NimNode): NimNode =
     # Runtime parsing for non-literal values
     result = newCall(ident("parseAlignmentString"), value)
 
+proc isEchoStatement(node: NimNode): bool =
+  ## Detect Nim echo statements (command or call form)
+  if node.len == 0:
+    return false
+  let head = node[0]
+  if head.kind == nnkIdent and head.strVal == "echo":
+    if node.kind == nnkCommand or node.kind == nnkCall:
+      return true
+  result = false
+
 # ============================================================================
 # Reactive Expression Detection
 # ============================================================================
@@ -552,6 +562,19 @@ proc convertIfStmtToReactiveConditional*(ifStmt: NimNode, windowWidth: NimNode, 
   var reactiveCode = newStmtList()
   let containerSym = genSym(nskLet, "ifContainer")
 
+  proc buildComponentArray(body: NimNode): NimNode =
+    var elements = newNimNode(nnkBracket)
+    if body.kind == nnkStmtList:
+      for child in body:
+        elements.add(quote do:
+          block:
+            `child`)
+    else:
+      elements.add(quote do:
+        block:
+          `body`)
+    newCall(ident("@"), elements)
+
   # Create the main container with window-filling dimensions using Container DSL
   reactiveCode.add quote do:
     let `containerSym` = Container:
@@ -582,7 +605,7 @@ proc convertIfStmtToReactiveConditional*(ifStmt: NimNode, windowWidth: NimNode, 
         thenProc,
         params = [newTree(nnkBracketExpr, ident("seq"), ident("KryonComponent"))],
         body = newStmtList(
-          newCall(ident("@"), newNimNode(nnkBracket).add(branchBody))
+          buildComponentArray(branchBody)
         ),
         procType = nnkProcDef
       )
@@ -609,7 +632,7 @@ proc convertIfStmtToReactiveConditional*(ifStmt: NimNode, windowWidth: NimNode, 
         thenProc,
         params = [newTree(nnkBracketExpr, ident("seq"), ident("KryonComponent"))],
         body = newStmtList(
-          newCall(ident("@"), newNimNode(nnkBracket).add(elseBody))
+          buildComponentArray(elseBody)
         ),
         procType = nnkProcDef
       )
@@ -629,7 +652,7 @@ proc convertIfStmtToReactiveConditional*(ifStmt: NimNode, windowWidth: NimNode, 
     let ifBranch = ifStmt[1]     # The first branch body
 
     if ifBranch.kind == nnkStmtList and ifBranch.len > 0:
-      let branchBody = ifBranch[0]  # Get the actual component from the branch
+      let branchBody = ifBranch    # Full branch body (may contain multiple statements)
 
       # Create reactive conditional for the main if condition
       let conditionProc = genSym(nskProc, "ifConditionProc")
@@ -646,7 +669,7 @@ proc convertIfStmtToReactiveConditional*(ifStmt: NimNode, windowWidth: NimNode, 
         thenProc,
         params = [newTree(nnkBracketExpr, ident("seq"), ident("KryonComponent"))],
         body = newStmtList(
-          newCall(ident("@"), newNimNode(nnkBracket).add(branchBody))
+          buildComponentArray(branchBody)
         ),
         procType = nnkProcDef
       )
@@ -663,6 +686,7 @@ macro Container*(props: untyped): untyped =
   var
     containerName = genSym(nskLet, "container")
     childNodes: seq[NimNode] = @[]
+    sideEffectStmts: seq[NimNode] = @[]
     # Layout properties - default to HTML-like behavior (column layout)
     layoutDirectionVal = newIntLitNode(0)  # Default to column layout
     justifyContentVal = alignmentNode("start")  # Start alignment
@@ -704,7 +728,7 @@ macro Container*(props: untyped): untyped =
       let value = node[1]
 
       case propName.toLowerAscii():
-      of "backgroundcolor", "bg":
+      of "backgroundcolor", "bg", "background":
         bgColorVal = colorNode(value)
       of "color", "textcolor":
         textColorVal = colorNode(value)
@@ -768,7 +792,13 @@ macro Container*(props: untyped): untyped =
         discard
     else:
       # Handle static blocks specially using the same pattern as staticFor
-      if node.kind == nnkStaticStmt:
+      if isEchoStatement(node):
+        # Allow echo/logging statements inside templates without treating them as children
+        sideEffectStmts.add(node)
+      elif node.kind in {nnkLetSection, nnkVarSection, nnkConstSection}:
+        # Local bindings inside DSL blocks should execute but not become children
+        sideEffectStmts.add(node)
+      elif node.kind == nnkStaticStmt:
         # Static blocks will be processed later after initStmts is initialized
         # Don't add them to childNodes - they'll be handled separately
         discard
@@ -782,6 +812,10 @@ macro Container*(props: untyped): untyped =
 
   # Generate initialization statements using C core API
   var initStmts = newTree(nnkStmtList)
+
+  # Add standalone side-effect statements (e.g., echo) before component setup
+  for stmt in sideEffectStmts:
+    initStmts.add(stmt)
 
   # Process static blocks from the original props after initStmts is available
   for node in props.children:
@@ -972,6 +1006,42 @@ macro Container*(props: untyped): untyped =
 
   # Add child components
   for child in childNodes:
+    # Runtime for-loops: expand body to add each produced component
+    if child.kind == nnkForStmt:
+      proc buildLoop(forNode: NimNode): NimNode =
+        let loopVar = forNode[0]
+        let collection = forNode[1]
+        let loopBody = forNode[2]
+
+        var transformedBody = newTree(nnkStmtList)
+        for bodyNode in loopBody.children:
+          case bodyNode.kind
+          of nnkLetSection, nnkVarSection, nnkConstSection:
+            transformedBody.add(bodyNode)
+          of nnkForStmt:
+            transformedBody.add(buildLoop(bodyNode))
+          of nnkDiscardStmt:
+            if bodyNode.len > 0:
+              let componentExpr = bodyNode[0]
+              let childSym = genSym(nskLet, "loopChild")
+              transformedBody.add(newLetStmt(childSym, componentExpr))
+              transformedBody.add quote do:
+                discard kryon_component_add_child(`containerName`, `childSym`)
+            else:
+              transformedBody.add(bodyNode)
+          else:
+            let childSym = genSym(nskLet, "loopChild")
+            transformedBody.add quote do:
+              let `childSym` = block:
+                `bodyNode`
+              if `childSym` != nil:
+                discard kryon_component_add_child(`containerName`, `childSym`)
+
+        newTree(nnkForStmt, loopVar, collection, transformedBody)
+
+      initStmts.add(buildLoop(child))
+      continue
+
     # Handle both discarded and non-discarded children
     if child.kind == nnkDiscardStmt:
       # Child already has discard - just execute it directly
@@ -989,8 +1059,9 @@ macro Container*(props: untyped): untyped =
     else:
       # Regular child component - create symbol and add to container
       let childSym = genSym(nskLet, "child")
-      initStmts.add(newLetStmt(childSym, child))
       initStmts.add quote do:
+        let `childSym` = block:
+          `child`
         discard kryon_component_add_child(`containerName`, `childSym`)
 
   # Mark container as dirty
@@ -1287,6 +1358,10 @@ macro Text*(props: untyped): untyped =
         isReactive = isReactiveExpression(value)
         if isReactive:
           reactiveVars = extractReactiveVars(value)
+          # Text generated inside runtime loops uses loopValCopy_*; treat those as static
+          if value.repr.contains("loopValCopy"):
+            isReactive = false
+            reactiveVars = @[]
       of "color", "colour":  # Added 'colour' alias
         colorVal = colorNode(value)
       of "fontsize":
@@ -1551,6 +1626,12 @@ macro Button*(props: untyped): untyped =
   if heightVal != nil: maskVal = maskVal or 0x08
   let maskCast = newCall(ident("uint8"), newIntLitNode(maskVal))
 
+  # Normalize click handlers: allow plain calls to be lifted into procs
+  if clickHandler.kind notin {nnkNilLit, nnkProcDef, nnkLambda} and clickHandler.kind != nnkIdent:
+    clickHandler = quote do:
+      proc() =
+        `clickHandler`
+
   var initStmts = newTree(nnkStmtList)
 
   # Apply style first (before individual property overrides)
@@ -1629,8 +1710,12 @@ macro Button*(props: untyped): untyped =
 
   var childStmtList = newStmtList()
   for child in childNodes:
+    if isEchoStatement(child):
+      childStmtList.add(child)
+      continue
     childStmtList.add quote do:
-      let childComp = `child`
+      let childComp = block:
+        `child`
       if childComp != nil:
         discard kryon_component_add_child(`buttonName`, childComp)
 
@@ -2039,12 +2124,25 @@ macro Input*(props: untyped): untyped =
         `onTextChangeVal`(t)
       )
 
+  # Keep the component value in sync with the bound variable (e.g., when cleared in code)
+  if hasValueBinding:
+    let syncProcSym = genSym(nskProc, "syncInputValue")
+    initStmts.add quote do:
+      proc `syncProcSym`() =
+        setText(`inputName`, `valueVal`)
+      registerReactiveRebuild(`syncProcSym`)
+      `syncProcSym`()
+
   # Add any child components (though Input usually doesn't have children)
   for child in childNodes:
-    initStmts.add quote do:
-      let childComponent = `child`
-      if childComponent != nil:
-        discard kryon_component_add_child(`inputName`, childComponent)
+    if isEchoStatement(child):
+      initStmts.add(child)
+    else:
+      initStmts.add quote do:
+        let childComponent = block:
+          `child`
+        if childComponent != nil:
+          discard kryon_component_add_child(`inputName`, childComponent)
 
   let onTextChangeExpr = if onTextChangeVal != nil: onTextChangeVal else: newNilLit()
   
@@ -2297,8 +2395,13 @@ macro Center*(props: untyped): untyped =
 
   # Add children to center component
   for child in childNodes:
-    initStmts.add quote do:
-      discard `addChildSym`(`centerSym`, `child`)
+    if isEchoStatement(child):
+      initStmts.add(child)
+    else:
+      initStmts.add quote do:
+        let centerChild = block:
+          `child`
+        discard `addChildSym`(`centerSym`, centerChild)
 
   result = quote do:
     block:
@@ -2356,8 +2459,12 @@ macro TabGroup*(props: untyped): untyped =
 
   var childStmtList = newStmtList()
   for child in childNodes:
+    if isEchoStatement(child):
+      childStmtList.add(child)
+      continue
     childStmtList.add quote do:
-      let childComponent = `child`
+      let childComponent = block:
+        `child`
       if childComponent != nil:
         discard `addChildSym`(`groupSym`, childComponent)
 
@@ -2476,6 +2583,9 @@ macro TabBar*(props: untyped): untyped =
 
   var childStmtList = newStmtList()
   for node in childNodes:
+    if isEchoStatement(node):
+      childStmtList.add(node)
+      continue
     if node.kind == nnkForStmt:
       # Handle runtime for loops with Tab components
       # Structure: nnkForStmt[loopVar, collection, body]
@@ -2542,6 +2652,9 @@ macro TabContent*(props: untyped): untyped =
 
   var childStmtList = newStmtList()
   for node in childNodes:
+    if isEchoStatement(node):
+      childStmtList.add(node)
+      continue
     if node.kind == nnkForStmt:
       # Handle runtime for loops with TabPanel components
       # Structure: nnkForStmt[loopVar, collection, body]
@@ -2553,7 +2666,8 @@ macro TabContent*(props: untyped): untyped =
       # TabPanel components return values that need to be added as children
       childStmtList.add quote do:
         for `loopVar` in `collection`:
-          let panelChild = `body`
+          let panelChild = block:
+            `body`
           if panelChild != nil:
             discard `addChildSym`(`contentSym`, panelChild)
     else:
@@ -2561,13 +2675,15 @@ macro TabContent*(props: untyped): untyped =
       if node.kind == nnkCall and node[0].kind == nnkIdent and node[0].eqIdent("TabPanel"):
         # TabPanel components self-register and are added as children, so we need to capture the result
         childStmtList.add quote do:
-          let panelChild = `node`
+          let panelChild = block:
+            `node`
           if panelChild != nil:
             discard `addChildSym`(`contentSym`, panelChild)
       else:
         # Other components
         childStmtList.add quote do:
-          let panelChild = `node`
+          let panelChild = block:
+            `node`
           if panelChild != nil:
             discard `addChildSym`(`contentSym`, panelChild)
 
