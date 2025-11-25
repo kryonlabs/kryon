@@ -14,6 +14,7 @@ bin/
 dist/
 *.out
 .kryon
+cli/main
 
 .cache/
 .nimble_cache/
@@ -26,6 +27,8 @@ examples/*/*.exe
 examples/*/bin/
 examples/*/dist/
 examples/*/nimcache/
+
+tmp*
 
 # Nim cache
 .nimcache/

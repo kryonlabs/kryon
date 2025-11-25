@@ -656,9 +656,24 @@ proc registerTabComponent*(tab: ptr IRComponent, state: ptr TabGroupState, visua
     if idx >= 0:
       ir_tabgroup_select(state, cint(idx))
       applyVisuals(idx)
+      if tabGroupPanelOrder.hasKey(state) and idx < tabGroupPanelOrder[state].len:
+        let panel = tabGroupPanelOrder[state][idx]
+        if panel != nil:
+          kryon_component_mark_dirty(panel)
+      # Mark content/group dirty to refresh layout
+      if tabGroupPanelOrder.hasKey(state):
+        for p in tabGroupPanelOrder[state]:
+          if p != nil: kryon_component_mark_dirty(p)
     else:
       ir_tabgroup_select(state, cint(tabIndex))
       applyVisuals(tabIndex)
+      if tabGroupPanelOrder.hasKey(state) and tabIndex < tabGroupPanelOrder[state].len:
+        let panel = tabGroupPanelOrder[state][tabIndex]
+        if panel != nil:
+          kryon_component_mark_dirty(panel)
+      if tabGroupPanelOrder.hasKey(state):
+        for p in tabGroupPanelOrder[state]:
+          if p != nil: kryon_component_mark_dirty(p)
   )
 
 proc registerTabContent*(content: ptr IRComponent, state: ptr TabGroupState) =
@@ -678,6 +693,10 @@ proc finalizeTabGroup*(state: ptr TabGroupState) =
   # Apply initial visuals (default to first tab if present)
   if tabGroupTabOrder.hasKey(state) and tabGroupTabOrder[state].len > 0:
     applyTabVisuals(state, 0)
+  # Mark panels dirty so initial layout happens
+  if tabGroupPanelOrder.hasKey(state):
+    for p in tabGroupPanelOrder[state]:
+      if p != nil: kryon_component_mark_dirty(p)
   # Keep state data for runtime clicks (cleanup can be done when disposing state if needed)
 
 var canvasHandlers = initTable[uint32, proc()]()
