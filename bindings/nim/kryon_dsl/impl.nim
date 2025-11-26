@@ -236,6 +236,63 @@ macro style*(styleCall: untyped, body: untyped): untyped =
           ident("component"),
           newCall("uint8", value)
         )
+      of "textfade":
+        # Parse: textFade = horizontal(15) or textFade = none
+        if value.kind == nnkCall:
+          let fadeTypeStr = ($value[0]).toLowerAscii()
+          var fadeType = ident("IR_TEXT_FADE_NONE")
+          var fadeLength = newFloatLitNode(0.0)
+          case fadeTypeStr:
+          of "horizontal":
+            fadeType = ident("IR_TEXT_FADE_HORIZONTAL")
+            if value.len > 1:
+              fadeLength = value[1]
+          of "vertical":
+            fadeType = ident("IR_TEXT_FADE_VERTICAL")
+            if value.len > 1:
+              fadeLength = value[1]
+          of "radial":
+            fadeType = ident("IR_TEXT_FADE_RADIAL")
+            if value.len > 1:
+              fadeLength = value[1]
+          of "none":
+            fadeType = ident("IR_TEXT_FADE_NONE")
+          else:
+            discard
+          propertyStmts.add newCall(
+            ident("kryon_component_set_text_fade"),
+            ident("component"),
+            fadeType,
+            newCall("float", fadeLength)
+          )
+        elif value.kind == nnkIdent and ($value).toLowerAscii() == "none":
+          propertyStmts.add newCall(
+            ident("kryon_component_set_text_fade"),
+            ident("component"),
+            ident("IR_TEXT_FADE_NONE"),
+            newFloatLitNode(0.0)
+          )
+      of "textoverflow":
+        # Parse: textOverflow = ellipsis | clip | fade | visible
+        let overflowStr = if value.kind == nnkIdent: ($value).toLowerAscii() else: ""
+        var overflowType = ident("IR_TEXT_OVERFLOW_CLIP")
+        case overflowStr:
+        of "visible": overflowType = ident("IR_TEXT_OVERFLOW_VISIBLE")
+        of "clip": overflowType = ident("IR_TEXT_OVERFLOW_CLIP")
+        of "ellipsis": overflowType = ident("IR_TEXT_OVERFLOW_ELLIPSIS")
+        of "fade": overflowType = ident("IR_TEXT_OVERFLOW_FADE")
+        else: discard
+        propertyStmts.add newCall(
+          ident("kryon_component_set_text_overflow"),
+          ident("component"),
+          overflowType
+        )
+      of "opacity":
+        propertyStmts.add newCall(
+          ident("kryon_component_set_opacity"),
+          ident("component"),
+          newCall("float", value)
+        )
       else:
         # Unknown property - skip for now
         discard
@@ -271,6 +328,57 @@ macro style*(styleCall: untyped, body: untyped): untyped =
                   ident("kryon_component_set_border_color"),
                   ident("component"),
                   colorNode(value)
+                )
+              of "textfade":
+                if value.kind == nnkCall:
+                  let fadeTypeStr = ($value[0]).toLowerAscii()
+                  var fadeType = ident("IR_TEXT_FADE_NONE")
+                  var fadeLength = newFloatLitNode(0.0)
+                  case fadeTypeStr:
+                  of "horizontal":
+                    fadeType = ident("IR_TEXT_FADE_HORIZONTAL")
+                    if value.len > 1: fadeLength = value[1]
+                  of "vertical":
+                    fadeType = ident("IR_TEXT_FADE_VERTICAL")
+                    if value.len > 1: fadeLength = value[1]
+                  of "radial":
+                    fadeType = ident("IR_TEXT_FADE_RADIAL")
+                    if value.len > 1: fadeLength = value[1]
+                  of "none":
+                    fadeType = ident("IR_TEXT_FADE_NONE")
+                  else: discard
+                  branchProperties.add newCall(
+                    ident("kryon_component_set_text_fade"),
+                    ident("component"),
+                    fadeType,
+                    newCall("float", fadeLength)
+                  )
+                elif value.kind == nnkIdent and ($value).toLowerAscii() == "none":
+                  branchProperties.add newCall(
+                    ident("kryon_component_set_text_fade"),
+                    ident("component"),
+                    ident("IR_TEXT_FADE_NONE"),
+                    newFloatLitNode(0.0)
+                  )
+              of "textoverflow":
+                let overflowStr = if value.kind == nnkIdent: ($value).toLowerAscii() else: ""
+                var overflowType = ident("IR_TEXT_OVERFLOW_CLIP")
+                case overflowStr:
+                of "visible": overflowType = ident("IR_TEXT_OVERFLOW_VISIBLE")
+                of "clip": overflowType = ident("IR_TEXT_OVERFLOW_CLIP")
+                of "ellipsis": overflowType = ident("IR_TEXT_OVERFLOW_ELLIPSIS")
+                of "fade": overflowType = ident("IR_TEXT_OVERFLOW_FADE")
+                else: discard
+                branchProperties.add newCall(
+                  ident("kryon_component_set_text_overflow"),
+                  ident("component"),
+                  overflowType
+                )
+              of "opacity":
+                branchProperties.add newCall(
+                  ident("kryon_component_set_opacity"),
+                  ident("component"),
+                  newCall("float", value)
                 )
               else:
                 discard
@@ -1641,6 +1749,9 @@ macro Button*(props: untyped): untyped =
     borderWidthVal: NimNode = nil
     styleName: NimNode = nil
     styleData: NimNode = nil
+    textFadeVal: NimNode = nil
+    textOverflowVal: NimNode = nil
+    opacityVal: NimNode = nil
 
   for node in props.children:
     if node.kind == nnkAsgn:
@@ -1711,6 +1822,12 @@ macro Button*(props: untyped): untyped =
         else:
           # Other expression, try to convert to identifier
           styleName = value
+      of "textfade":
+        textFadeVal = value
+      of "textoverflow":
+        textOverflowVal = value
+      of "opacity":
+        opacityVal = value
       else:
         discard
     else:
@@ -1825,6 +1942,53 @@ macro Button*(props: untyped): untyped =
     initStmts.add quote do:
       # Default border: white for good contrast with dark button backgrounds
       kryon_component_set_border_color(`buttonName`, rgba(200, 200, 200, 255))
+
+  # Text effect properties
+  if textFadeVal != nil:
+    # Parse: textFade = horizontal(15) or textFade = none
+    if textFadeVal.kind == nnkCall:
+      let fadeTypeStr = ($textFadeVal[0]).toLowerAscii()
+      var fadeType = ident("IR_TEXT_FADE_NONE")
+      var fadeLength = newFloatLitNode(0.0)
+      case fadeTypeStr:
+      of "horizontal":
+        fadeType = ident("IR_TEXT_FADE_HORIZONTAL")
+        if textFadeVal.len > 1:
+          fadeLength = textFadeVal[1]
+      of "vertical":
+        fadeType = ident("IR_TEXT_FADE_VERTICAL")
+        if textFadeVal.len > 1:
+          fadeLength = textFadeVal[1]
+      of "radial":
+        fadeType = ident("IR_TEXT_FADE_RADIAL")
+        if textFadeVal.len > 1:
+          fadeLength = textFadeVal[1]
+      of "none":
+        fadeType = ident("IR_TEXT_FADE_NONE")
+      else:
+        discard
+      initStmts.add quote do:
+        kryon_component_set_text_fade(`buttonName`, `fadeType`, float(`fadeLength`))
+    elif textFadeVal.kind == nnkIdent and ($textFadeVal).toLowerAscii() == "none":
+      let fadeNone = ident("IR_TEXT_FADE_NONE")
+      initStmts.add quote do:
+        kryon_component_set_text_fade(`buttonName`, `fadeNone`, 0.0)
+
+  if textOverflowVal != nil:
+    let overflowStr = if textOverflowVal.kind == nnkIdent: ($textOverflowVal).toLowerAscii() else: ""
+    var overflowType = ident("IR_TEXT_OVERFLOW_CLIP")
+    case overflowStr:
+    of "visible": overflowType = ident("IR_TEXT_OVERFLOW_VISIBLE")
+    of "clip": overflowType = ident("IR_TEXT_OVERFLOW_CLIP")
+    of "ellipsis": overflowType = ident("IR_TEXT_OVERFLOW_ELLIPSIS")
+    of "fade": overflowType = ident("IR_TEXT_OVERFLOW_FADE")
+    else: discard
+    initStmts.add quote do:
+      kryon_component_set_text_overflow(`buttonName`, `overflowType`)
+
+  if opacityVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_opacity(`buttonName`, float(`opacityVal`))
 
   # Apply min/max width/height constraints via layout
   if minWidthVal != nil:
@@ -2994,6 +3158,10 @@ macro Tab*(props: untyped): untyped =
   buttonProps.add newTree(nnkAsgn, ident("minWidth"), newIntLitNode(16))
   buttonProps.add newTree(nnkAsgn, ident("maxWidth"), newIntLitNode(180))
   buttonProps.add newTree(nnkAsgn, ident("minHeight"), newIntLitNode(28))
+
+  # Tab default: text fades when overflowing (Chrome-like behavior)
+  buttonProps.add newTree(nnkAsgn, ident("textFade"), newCall(ident("horizontal"), newIntLitNode(15)))
+  buttonProps.add newTree(nnkAsgn, ident("textOverflow"), ident("fade"))
 
   buttonProps.add newTree(nnkAsgn, ident("text"), titleVal)
 

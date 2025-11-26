@@ -20,6 +20,10 @@ export ir_percent, ir_px, ir_auto, ir_flex
 # Export helpers
 export helpers
 
+# Export text effect types and functions (re-export entire module for enum values)
+export ir_core
+export kryon_component_set_text_fade, kryon_component_set_text_overflow, kryon_component_set_opacity
+
 # Export reactive for loop support
 export createReactiveForLoop, ReactiveForLoop
 

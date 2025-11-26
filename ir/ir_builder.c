@@ -747,6 +747,37 @@ void ir_set_z_index(IRStyle* style, uint32_t z_index) {
     style->z_index = z_index;
 }
 
+// Text Effect Helpers
+void ir_set_text_overflow(IRStyle* style, IRTextOverflowType overflow) {
+    if (!style) return;
+    style->text_effect.overflow = overflow;
+}
+
+void ir_set_text_fade(IRStyle* style, IRTextFadeType fade_type, float fade_length) {
+    if (!style) return;
+    style->text_effect.fade_type = fade_type;
+    style->text_effect.fade_length = fade_length;
+}
+
+void ir_set_text_shadow(IRStyle* style, float offset_x, float offset_y, float blur_radius,
+                        uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    if (!style) return;
+    style->text_effect.shadow.offset_x = offset_x;
+    style->text_effect.shadow.offset_y = offset_y;
+    style->text_effect.shadow.blur_radius = blur_radius;
+    style->text_effect.shadow.color.type = IR_COLOR_SOLID;
+    style->text_effect.shadow.color.r = r;
+    style->text_effect.shadow.color.g = g;
+    style->text_effect.shadow.color.b = b;
+    style->text_effect.shadow.color.a = a;
+    style->text_effect.shadow.enabled = true;
+}
+
+void ir_set_opacity(IRStyle* style, float opacity) {
+    if (!style) return;
+    style->opacity = opacity;
+}
+
 // Style Property Helpers
 void ir_set_width(IRStyle* style, IRDimensionType type, float value) {
     if (!style) return;

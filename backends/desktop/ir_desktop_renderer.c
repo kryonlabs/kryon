@@ -1628,15 +1628,40 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                         float avail_w = rect.width;
                         float text_y = roundf(rect.y + (rect.height - text_h) / 2);
 
+                        // Check text_effect settings for overflow handling
+                        IRTextOverflowType overflow = IR_TEXT_OVERFLOW_CLIP;  // Default: clip (no fade)
+                        IRTextFadeType fade_type = IR_TEXT_FADE_NONE;
+                        float fade_length = 0;
+
+                        if (component->style) {
+                            overflow = component->style->text_effect.overflow;
+                            fade_type = component->style->text_effect.fade_type;
+                            fade_length = component->style->text_effect.fade_length;
+                        }
+
                         if (text_w > avail_w - 16) {
-                            // Text overflows: left-align and fade right edge
+                            // Text overflows - handle based on text_effect settings
                             float text_x = rect.x + 8;  // Small left padding
                             float visible_w = avail_w - 12;  // Leave margin
 
-                            // Render text with per-vertex alpha fade (actual text pixels fade)
-                            render_text_with_fade(renderer->renderer, texture,
-                                                  text_x, text_y, text_w, text_h,
-                                                  visible_w, 0.25f);  // Fade last 25%
+                            // Use fade if: overflow is FADE, or fade_type is HORIZONTAL with length > 0
+                            bool should_fade = (overflow == IR_TEXT_OVERFLOW_FADE) ||
+                                              (fade_type == IR_TEXT_FADE_HORIZONTAL && fade_length > 0);
+
+                            if (should_fade) {
+                                // Calculate fade ratio from fade_length or default to 25%
+                                float fade_ratio = (fade_length > 0) ? (fade_length / visible_w) : 0.25f;
+                                if (fade_ratio > 1.0f) fade_ratio = 1.0f;
+
+                                render_text_with_fade(renderer->renderer, texture,
+                                                      text_x, text_y, text_w, text_h,
+                                                      visible_w, fade_ratio);
+                            } else {
+                                // Clip: just render what fits, no fade
+                                SDL_FRect src_rect = { 0, 0, visible_w, text_h };
+                                SDL_FRect dst_rect = { text_x, text_y, visible_w, text_h };
+                                SDL_RenderTexture(renderer->renderer, texture, &src_rect, &dst_rect);
+                            }
                         } else {
                             // Text fits: render normally, centered
                             SDL_FRect text_rect = {

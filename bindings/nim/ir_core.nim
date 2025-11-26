@@ -107,6 +107,20 @@ type
     IR_POSITION_RELATIVE = 0
     IR_POSITION_ABSOLUTE
 
+  # Text Overflow Behavior
+  IRTextOverflowType* {.size: sizeof(cint).} = enum
+    IR_TEXT_OVERFLOW_VISIBLE = 0  # Show all text (may overflow bounds)
+    IR_TEXT_OVERFLOW_CLIP         # Hard clip at bounds
+    IR_TEXT_OVERFLOW_ELLIPSIS     # Show "..." when truncated
+    IR_TEXT_OVERFLOW_FADE         # Gradient fade at edge
+
+  # Text Fade Direction
+  IRTextFadeType* {.size: sizeof(cint).} = enum
+    IR_TEXT_FADE_NONE = 0
+    IR_TEXT_FADE_HORIZONTAL       # Fade left/right edges
+    IR_TEXT_FADE_VERTICAL         # Fade top/bottom edges
+    IR_TEXT_FADE_RADIAL           # Fade from center outward
+
   IRStyle* {.importc: "IRStyle", header: "ir_core.h", incompleteStruct.} = object
     width*: IRDimension
     height*: IRDimension
@@ -207,6 +221,12 @@ proc ir_set_padding*(style: ptr IRStyle; top: cfloat; right: cfloat; bottom: cfl
 proc ir_set_font*(style: ptr IRStyle; size: cfloat; family: cstring; r: uint8; g: uint8; b: uint8; a: uint8; bold: bool; italic: bool) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_visible*(style: ptr IRStyle; visible: bool) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_z_index*(style: ptr IRStyle; z_index: uint32) {.importc, cdecl, header: "ir_builder.h".}
+
+# Text Effect Property Helpers
+proc ir_set_text_overflow*(style: ptr IRStyle; overflow: IRTextOverflowType) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_text_fade*(style: ptr IRStyle; fade_type: IRTextFadeType; fade_length: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_text_shadow*(style: ptr IRStyle; offset_x, offset_y, blur_radius: cfloat; r, g, b, a: uint8) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_opacity*(style: ptr IRStyle; opacity: cfloat) {.importc, cdecl, header: "ir_builder.h".}
 
 # Layout Management
 proc ir_create_layout*(): ptr IRLayout {.importc, cdecl, header: "ir_builder.h".}

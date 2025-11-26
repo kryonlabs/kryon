@@ -114,6 +114,39 @@ typedef struct IRAnimation {
     char* custom_data;  // For custom animations
 } IRAnimation;
 
+// Text Overflow Behavior
+typedef enum {
+    IR_TEXT_OVERFLOW_VISIBLE,   // Show all text (may overflow bounds)
+    IR_TEXT_OVERFLOW_CLIP,      // Hard clip at bounds
+    IR_TEXT_OVERFLOW_ELLIPSIS,  // Show "..." when truncated
+    IR_TEXT_OVERFLOW_FADE       // Gradient fade at edge (uses text_effect settings)
+} IRTextOverflowType;
+
+// Text Fade Direction
+typedef enum {
+    IR_TEXT_FADE_NONE,
+    IR_TEXT_FADE_HORIZONTAL,    // Fade left/right edges
+    IR_TEXT_FADE_VERTICAL,      // Fade top/bottom edges
+    IR_TEXT_FADE_RADIAL         // Fade from center outward
+} IRTextFadeType;
+
+// Text Shadow
+typedef struct IRTextShadow {
+    float offset_x;
+    float offset_y;
+    float blur_radius;
+    IRColor color;
+    bool enabled;
+} IRTextShadow;
+
+// Text Effect Properties
+typedef struct IRTextEffect {
+    IRTextOverflowType overflow;
+    IRTextFadeType fade_type;
+    float fade_length;          // Pixels to fade (0 = no fade)
+    IRTextShadow shadow;
+} IRTextEffect;
+
 // Layout Constraints
 typedef struct {
     IRDimension min_width, min_height;
@@ -147,6 +180,8 @@ typedef struct IRStyle {
     IRPositionMode position_mode;
     float absolute_x;
     float absolute_y;
+    // Text effects
+    IRTextEffect text_effect;
 } IRStyle;
 
 // Event Types

@@ -44,6 +44,13 @@ void ir_set_padding(IRStyle* style, float top, float right, float bottom, float 
 void ir_set_font(IRStyle* style, float size, const char* family, uint8_t r, uint8_t g, uint8_t b, uint8_t a, bool bold, bool italic);
 void ir_set_z_index(IRStyle* style, uint32_t z_index);
 
+// Text Effect Helpers
+void ir_set_text_overflow(IRStyle* style, IRTextOverflowType overflow);
+void ir_set_text_fade(IRStyle* style, IRTextFadeType fade_type, float fade_length);
+void ir_set_text_shadow(IRStyle* style, float offset_x, float offset_y, float blur_radius,
+                        uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+void ir_set_opacity(IRStyle* style, float opacity);
+
 // Layout Management
 IRLayout* ir_create_layout(void);
 void ir_destroy_layout(IRLayout* layout);

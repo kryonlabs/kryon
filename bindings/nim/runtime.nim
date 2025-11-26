@@ -175,6 +175,50 @@ proc kryon_component_set_margin*(component: ptr IRComponent, top, right, bottom,
   else:
     ir_set_margin(style, cfloat(top), cfloat(right), cfloat(bottom), cfloat(left))
 
+proc kryon_component_set_text_overflow*(component: ptr IRComponent, overflow: IRTextOverflowType) =
+  ## Set text overflow behavior (clip, ellipsis, fade)
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_text_overflow(newStyle, overflow)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_text_overflow(style, overflow)
+
+proc kryon_component_set_text_fade*(component: ptr IRComponent, fadeType: IRTextFadeType, fadeLength: float) =
+  ## Set text fade effect (horizontal, vertical, radial)
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_text_fade(newStyle, fadeType, cfloat(fadeLength))
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_text_fade(style, fadeType, cfloat(fadeLength))
+
+proc kryon_component_set_text_shadow*(component: ptr IRComponent, offsetX, offsetY, blurRadius: float, r, g, b, a: uint8) =
+  ## Set text shadow effect
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_text_shadow(newStyle, cfloat(offsetX), cfloat(offsetY), cfloat(blurRadius), r, g, b, a)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_text_shadow(style, cfloat(offsetX), cfloat(offsetY), cfloat(blurRadius), r, g, b, a)
+
+proc kryon_component_set_opacity*(component: ptr IRComponent, opacity: float) =
+  ## Set component opacity (0.0 to 1.0)
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_opacity(newStyle, cfloat(opacity))
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_opacity(style, cfloat(opacity))
+
 # ============================================================================
 # Application Runtime - IR-based
 # ============================================================================
