@@ -61,3 +61,13 @@ nimbledeps/
 benchmarks/*.log
 benchmarks/hello_world
 benchmarks/hello_world.exe
+
+# Documentation generated files
+docs/mermaid-config.json
+docs/diagrams/*.svg
+
+# TypeScript/Bun
+node_modules/
+bindings/typescript/build/
+bindings/typescript/node_modules/
+*.tsbuildinfo

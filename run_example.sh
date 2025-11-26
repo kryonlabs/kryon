@@ -51,16 +51,23 @@ PROJECT_ROOT="$(pwd)"
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <example_name|number> [frontend] [renderer]"
     echo ""
-    echo "Frontends: nim, lua, c"
-    echo "Renderers: sdl3, framebuffer, terminal"
+    echo "Frontends: nim, typescript (ts), lua, c"
+    echo "Renderers: sdl3, terminal, web, framebuffer"
     echo ""
     echo "Available examples (alphabetical order):"
     INDEX=1
-    for frontend in nim lua c; do
+    for frontend in nim typescript lua c; do
         if [ -d "examples/$frontend" ]; then
-            for file in "examples/$frontend"/*.$frontend; do
+            # Determine file extension
+            case "$frontend" in
+                "nim") ext="nim" ;;
+                "typescript") ext="tsx" ;;
+                "lua") ext="lua" ;;
+                "c") ext="c" ;;
+            esac
+            for file in "examples/$frontend"/*.$ext; do
                 if [ -f "$file" ]; then
-                    printf "  %2d. %-30s (%s frontend)\n" "$INDEX" "$(basename "$file" .${frontend})" "$frontend"
+                    printf "  %2d. %-30s (%s frontend)\n" "$INDEX" "$(basename "$file" ."$ext")" "$frontend"
                     INDEX=$((INDEX + 1))
                 fi
             done
@@ -71,6 +78,7 @@ if [ $# -eq 0 ]; then
     echo "  ./run_example.sh button_demo          # By name"
     echo "  ./run_example.sh 1                     # By number"
     echo "  ./run_example.sh 1 nim sdl3            # Specify all options"
+    echo "  ./run_example.sh hello_world ts        # TypeScript frontend"
     echo ""
     echo "Terminal examples:"
     echo "  button_demo_terminal - Interactive button demo (nim frontend)"
@@ -81,17 +89,29 @@ INPUT="$1"
 FRONTEND="${2:-nim}"
 RENDERER="${3:-sdl3}"
 
+# Normalize frontend aliases
+case "$FRONTEND" in
+    "ts"|"typescript") FRONTEND="typescript" ;;
+esac
+
 # Check if input is a number
 if [[ "$INPUT" =~ ^[0-9]+$ ]]; then
     # User provided a number, find the corresponding example
     INDEX=1
     FOUND=0
-    for frontend in nim lua c; do
+    for frontend in nim typescript lua c; do
         if [ -d "examples/$frontend" ]; then
-            for file in "examples/$frontend"/*.$frontend; do
+            # Determine file extension
+            case "$frontend" in
+                "nim") ext="nim" ;;
+                "typescript") ext="tsx" ;;
+                "lua") ext="lua" ;;
+                "c") ext="c" ;;
+            esac
+            for file in "examples/$frontend"/*.$ext; do
                 if [ -f "$file" ]; then
                     if [ $INDEX -eq $INPUT ]; then
-                        EXAMPLE_NAME=$(basename "$file" ."$frontend")
+                        EXAMPLE_NAME=$(basename "$file" ."$ext")
                         # Auto-detect frontend from the file
                         FRONTEND="$frontend"
                         FOUND=1
@@ -123,6 +143,10 @@ fi
 # Now remove the extension
 if [[ "$EXAMPLE_NAME" == *.nim ]]; then
     EXAMPLE_NAME="${EXAMPLE_NAME%.nim}"
+elif [[ "$EXAMPLE_NAME" == *.tsx ]]; then
+    EXAMPLE_NAME="${EXAMPLE_NAME%.tsx}"
+elif [[ "$EXAMPLE_NAME" == *.ts ]]; then
+    EXAMPLE_NAME="${EXAMPLE_NAME%.ts}"
 elif [[ "$EXAMPLE_NAME" == *.lua ]]; then
     EXAMPLE_NAME="${EXAMPLE_NAME%.lua}"
 elif [[ "$EXAMPLE_NAME" == *.c ]]; then
@@ -146,7 +170,11 @@ NC='\033[0m' # No Color
 FONTCONFIG_LIBS="$(pkg-config --libs fontconfig 2>/dev/null || true)"
 
 # Find example file based on frontend directory structure
-EXAMPLE_FILE="examples/${FRONTEND}/${EXAMPLE_NAME}.${FRONTEND}"
+case "$FRONTEND" in
+    "typescript") EXAMPLE_EXT="tsx" ;;
+    *) EXAMPLE_EXT="$FRONTEND" ;;
+esac
+EXAMPLE_FILE="examples/${FRONTEND}/${EXAMPLE_NAME}.${EXAMPLE_EXT}"
 
 # Build renderer if needed
 # IR backends are already built by ensure_ir_build()
@@ -170,6 +198,9 @@ case "$RENDERER" in
         ;;
     "terminal")
         LINK_LIBS="-Lbuild -lkryon_ir -lkryon_desktop -lutil -ltickit"
+        ;;
+    "web")
+        LINK_LIBS="-Lbuild -lkryon_ir -lkryon_web"
         ;;
     *)
         LINK_LIBS="-Lbuild -lkryon_ir -lkryon_desktop"
@@ -249,6 +280,84 @@ case "$FRONTEND" in
 
             echo -e "${CYAN}Full compilation log saved to: $COMPILATION_LOG${NC}"
         fi
+        echo -e "${GREEN}✓ Example processing complete${NC}"
+        ;;
+    "typescript")
+        echo "Building and running TypeScript example..."
+
+        # Check if bun is available
+        if ! command -v bun &> /dev/null; then
+            echo -e "${RED}✗ Bun runtime not found${NC}"
+            echo -e "${YELLOW}TypeScript frontend requires Bun. Install it with:${NC}"
+            echo -e "  curl -fsSL https://bun.sh/install | bash"
+            echo -e "Or add 'bun' to your shell.nix/flake.nix"
+            exit 1
+        fi
+
+        # Check if example file exists
+        if [ ! -f "$EXAMPLE_FILE" ]; then
+            echo -e "${RED}✗ Example file not found: $EXAMPLE_FILE${NC}"
+            exit 1
+        fi
+
+        # Build the TypeScript wrapper library if needed
+        TS_WRAPPER_LIB="${PROJECT_ROOT}/bindings/typescript/build/libkryon_ts_wrapper.so"
+        if [ ! -f "$TS_WRAPPER_LIB" ]; then
+            echo -e "${CYAN}Building TypeScript wrapper library...${NC}"
+            make -C bindings/typescript wrapper 2>/dev/null || {
+                echo -e "${YELLOW}Warning: Could not build TypeScript wrapper library${NC}"
+                echo -e "${YELLOW}Falling back to manual struct creation${NC}"
+            }
+        fi
+
+        # Install bun dependencies if needed
+        if [ ! -d "${PROJECT_ROOT}/bindings/typescript/node_modules" ]; then
+            echo -e "${CYAN}Installing TypeScript dependencies...${NC}"
+            (cd "${PROJECT_ROOT}/bindings/typescript" && bun install)
+        fi
+
+        # Set environment variables
+        export KRYON_TS_WRAPPER_PATH="$TS_WRAPPER_LIB"
+        export LD_LIBRARY_PATH="${PROJECT_ROOT}/build:$LD_LIBRARY_PATH"
+
+        case "$RENDERER" in
+            "web")
+                echo -e "${CYAN}Web renderer mode${NC}"
+                export KRYON_RENDERER=web
+                export KRYON_LIB_PATH="${PROJECT_ROOT}/build/libkryon_web.so"
+
+                # Create output directory for web files
+                WEB_OUTPUT_DIR="${PROJECT_ROOT}/build/web_output/${EXAMPLE_NAME}"
+                mkdir -p "$WEB_OUTPUT_DIR"
+                export KRYON_WEB_OUTPUT_DIR="$WEB_OUTPUT_DIR"
+
+                echo -e "${YELLOW}Running TypeScript example with web renderer...${NC}"
+                bun run "$EXAMPLE_FILE" || true
+
+                # Check if HTML was generated
+                if [ -f "$WEB_OUTPUT_DIR/index.html" ]; then
+                    echo -e "${GREEN}✓ Web output generated at: $WEB_OUTPUT_DIR${NC}"
+                    echo -e "${CYAN}Starting local server at http://localhost:3000${NC}"
+                    echo -e "${YELLOW}Press Ctrl+C to stop the server...${NC}"
+                    (cd "$WEB_OUTPUT_DIR" && bun --eval "Bun.serve({port:3000,fetch(r){const p=new URL(r.url).pathname;const f=p==='/'?'index.html':p.slice(1);return new Response(Bun.file(f))}}); console.log('Server running at http://localhost:3000')" ) || true
+                fi
+                ;;
+            "terminal")
+                echo -e "${CYAN}Terminal renderer mode${NC}"
+                export KRYON_RENDERER=terminal
+                export KRYON_LIB_PATH="${PROJECT_ROOT}/build/libkryon_desktop.so"
+                echo -e "${YELLOW}Running TypeScript example (press Ctrl+C to exit)...${NC}"
+                bun run "$EXAMPLE_FILE" || true
+                ;;
+            *)
+                # Default: SDL3
+                export KRYON_RENDERER=sdl3
+                export KRYON_LIB_PATH="${PROJECT_ROOT}/build/libkryon_desktop.so"
+                echo -e "${YELLOW}Running TypeScript example (press Ctrl+C to exit)...${NC}"
+                bun run "$EXAMPLE_FILE" || true
+                ;;
+        esac
+
         echo -e "${GREEN}✓ Example processing complete${NC}"
         ;;
     "lua")

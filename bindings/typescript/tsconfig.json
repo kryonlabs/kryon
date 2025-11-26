@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": ".",
+    "types": ["bun-types"],
+    "paths": {
+      "kryon": ["./src/index.ts"],
+      "kryon/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*", "../../examples/typescript/**/*"]
+}

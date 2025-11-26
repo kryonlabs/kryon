@@ -22,6 +22,10 @@ pkgs.mkShell {
     lua
     lua54Packages.lua
 
+    # TypeScript/JavaScript frontend support
+    bun
+    nodejs  # For npm compatibility if needed
+
     # System libraries
     libGL
     libglvnd
@@ -42,17 +46,19 @@ pkgs.mkShell {
     echo "Kryon Development Environment"
     echo "============================="
     echo "Nim version: $(nim --version | head -1)"
+    echo "Bun version: $(bun --version 2>/dev/null || echo 'not available')"
     echo ""
     echo "Quick start:"
     echo "  Build C Core: cd core && make"
     echo "  Build SDL3 renderer: cd renderers/sdl3 && make"
     echo "  Build Terminal renderer: cd renderers/terminal && make"
-    echo "  Run examples: ./run_example.sh hello_world nim sdl3"
+    echo "  Run Nim examples: ./run_example.sh hello_world nim sdl3"
+    echo "  Run TypeScript examples: ./run_example.sh hello_world ts"
     echo "  Run terminal examples: ./run_example.sh hello_world nim terminal"
+    echo "  Run web examples: ./run_example.sh hello_world ts web"
     echo ""
-    echo "Available renderers: framebuffer, sdl3, terminal"
-    echo "SDL3 Nim wrapper: https://github.com/dinau/sdl3_nim"
-    echo "Terminal rendering: libtickit-based TUI support"
+    echo "Available frontends: nim, typescript (ts), lua, c"
+    echo "Available renderers: sdl3, terminal, web, framebuffer"
     echo ""
   '';
 }
