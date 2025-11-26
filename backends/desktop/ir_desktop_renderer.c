@@ -1002,9 +1002,10 @@ static LayoutRect calculate_component_layout(IRComponent* component, LayoutRect 
         rect.y = parent_rect.y;
     }
 
-    // For TEXT components with AUTO dimensions, start with 0 instead of parent dimensions
+    // For TEXT and BUTTON components with AUTO dimensions, start with 0 instead of parent dimensions
     // This allows get_child_size() to detect and measure them properly
-    if (component->type == IR_COMPONENT_TEXT) {
+    // CRITICAL: Buttons in a ROW must NOT default to parent width, or flex_grow won't work correctly!
+    if (component->type == IR_COMPONENT_TEXT || component->type == IR_COMPONENT_BUTTON) {
         rect.width = 0;
         rect.height = 0;
     } else {
@@ -1099,6 +1100,17 @@ static LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect) {
         }
     }
 
+    // Measure BUTTON components using get_child_dimension (which includes text + padding + minWidth)
+    if (child->type == IR_COMPONENT_BUTTON) {
+        // BUTTON should auto-size if calculate_component_layout returned 0 dimensions
+        if (layout.width <= 0.0f) {
+            layout.width = get_child_dimension(child, parent_rect, false);
+        }
+        if (layout.height <= 0.0f) {
+            layout.height = get_child_dimension(child, parent_rect, true);
+        }
+    }
+
     // For absolutely positioned components, preserve the x/y coordinates from calculate_component_layout
     // For relative positioned components, return position 0 (will be set in main layout loop)
     bool is_absolute = child->style && child->style->position_mode == IR_POSITION_ABSOLUTE;
@@ -1128,14 +1140,16 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
             // Has explicit size, use it
             float result = ir_dimension_to_pixels(style_dim, is_height ? parent_rect.height : parent_rect.width);
 
-            // WORKAROUND: Treat explicit 0 dimensions as AUTO for Row/Column/Text
+            // WORKAROUND: Treat explicit 0 dimensions as AUTO for Row/Column/Text/Button
             // This fixes DSL bug where these components get explicit height=0/width=0 instead of AUTO
-            if (result == 0.0f && (child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN || child->type == IR_COMPONENT_TEXT)) {
+            if (result == 0.0f && (child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN ||
+                                   child->type == IR_COMPONENT_TEXT || child->type == IR_COMPONENT_BUTTON)) {
                 if (getenv("KRYON_TRACE_LAYOUT")) {
                     const char* type_name = "OTHER";
                     if (child->type == IR_COMPONENT_ROW) type_name = "ROW";
                     else if (child->type == IR_COMPONENT_COLUMN) type_name = "COLUMN";
                     else if (child->type == IR_COMPONENT_TEXT) type_name = "TEXT";
+                    else if (child->type == IR_COMPONENT_BUTTON) type_name = "BUTTON";
                     printf("    🔍 %s has EXPLICIT %s: %.1f --> treating as AUTO\n",
                            type_name, is_height ? "height" : "width", result);
                 }
@@ -1186,6 +1200,78 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
             printf("    📝 TEXT fallback width: 0.0\n");
         }
         return 0.0f;  // Text width is auto (fallback)
+    }
+
+    // Button auto-size: measure text content + padding
+    if (child->type == IR_COMPONENT_BUTTON) {
+#ifdef ENABLE_SDL3
+        float text_width = 0.0f, text_height = 0.0f;
+        measure_text_dimensions(child, parent_rect.width, &text_width, &text_height);
+
+        // Add padding to button dimensions
+        float pad_left = 0.0f, pad_right = 0.0f, pad_top = 0.0f, pad_bottom = 0.0f;
+        if (child->style) {
+            pad_left = child->style->padding.left;
+            pad_right = child->style->padding.right;
+            pad_top = child->style->padding.top;
+            pad_bottom = child->style->padding.bottom;
+        }
+
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            printf("    🔘 BUTTON measurement: text=(%.1f,%.1f) pad=(%.1f,%.1f,%.1f,%.1f)\n",
+                   text_width, text_height, pad_top, pad_right, pad_bottom, pad_left);
+        }
+
+        if (is_height && text_height > 0.0f) {
+            float result = text_height + pad_top + pad_bottom;
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                printf("    ✅ BUTTON height from text: %.1f\n", result);
+            }
+            return result;
+        } else if (!is_height && text_width > 0.0f) {
+            float result = text_width + pad_left + pad_right;
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                printf("    ✅ BUTTON width from text: %.1f (text=%.1f + pad=%.1f)\n", result, text_width, pad_left + pad_right);
+            }
+            return result;
+        }
+#endif
+        // Fallback
+        if (is_height) {
+            float font_size = 16.0f;
+            if (child->style && child->style->font.size > 0) {
+                font_size = child->style->font.size;
+            }
+            float pad = child->style ? (child->style->padding.top + child->style->padding.bottom) : 0.0f;
+            float result = font_size * 1.2f + pad;
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                printf("    ⚠️  BUTTON height FALLBACK: %.1f\n", result);
+            }
+            return result;
+        } else {
+            // Width fallback: use minWidth if set, otherwise estimate
+            if (child->layout && child->layout->min_width.type == IR_DIMENSION_PX &&
+                child->layout->min_width.value > 0) {
+                if (getenv("KRYON_TRACE_LAYOUT")) {
+                    printf("    ✅ BUTTON width from minWidth: %.1f\n", child->layout->min_width.value);
+                }
+                return child->layout->min_width.value;
+            }
+
+            // Otherwise estimate minimum readable button width
+            float font_size = 16.0f;
+            if (child->style && child->style->font.size > 0) {
+                font_size = child->style->font.size;
+            }
+            float pad = child->style ? (child->style->padding.left + child->style->padding.right) : 0.0f;
+            // Estimate ~4 average characters worth of width as minimum
+            // Average character width ≈ font_size * 0.5 for typical fonts
+            float result = (font_size * 0.5f * 4.0f) + pad;
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                printf("    ⚠️  BUTTON width FALLBACK (estimated): %.1f (font=%.1f, pad=%.1f)\n", result, font_size, pad);
+            }
+            return result;
+        }
     }
 
     // For Container/Row/Column with AUTO size, we need to measure children
@@ -2157,21 +2243,100 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
     }
 
     // Two-pass layout for ROW: measure total width, then position based on justify_content
+    // Also store flex_grow distribution for use in the render pass
+    float* flex_extra_widths = NULL;  // Extra width each child gets from flex_grow
     if (component->type == IR_COMPONENT_ROW && component->child_count > 0) {
-        // Pass 1: Measure total content width (just get sizes, don't do full layout)
+        // Pass 1: Measure total content width AND calculate flex_grow distribution
         float total_width = 0.0f;
+        float total_flex_grow = 0.0f;
         float gap = 0.0f;
         if (component->layout && component->layout->flex.gap > 0) {
             gap = (float)component->layout->flex.gap;
         }
 
+        // Allocate array for flex extra widths
+        flex_extra_widths = (float*)calloc(component->child_count, sizeof(float));
+
         for (uint32_t i = 0; i < component->child_count; i++) {
             // Use get_child_dimension to correctly measure all component types
             float child_width = get_child_dimension(component->children[i], child_rect, false);
 
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                IRComponent* child = component->children[i];
+                const char* type_name = (child && child->type == IR_COMPONENT_BUTTON) ? "BUTTON" : "OTHER";
+                printf("  📏 ROW child %d (%s): measured width=%.1f\n", i, type_name, child_width);
+            }
+
             total_width += child_width;
             if (i < component->child_count - 1) {  // Don't add gap after last child
                 total_width += gap;
+            }
+
+            // Sum up flex_grow factors
+            IRComponent* child = component->children[i];
+            if (child && child->layout && child->layout->flex.grow > 0) {
+                total_flex_grow += (float)child->layout->flex.grow;
+                if (getenv("KRYON_TRACE_LAYOUT")) {
+                    printf("  📏 ROW child %d: flex_grow=%d\n", i, child->layout->flex.grow);
+                }
+            }
+        }
+
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            printf("  📊 ROW totals: total_width=%.1f, container_width=%.1f, total_flex_grow=%.1f\n",
+                   total_width, child_rect.width, total_flex_grow);
+        }
+
+        // Calculate and distribute remaining space via flex_grow or flex_shrink
+        float remaining_width = child_rect.width - total_width;
+        if (remaining_width > 0 && total_flex_grow > 0) {
+            // FLEX_GROW: distribute extra space to children
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                printf("  💪 FLEX_GROW: remaining=%.1f total_flex=%.1f distributing...\n",
+                       remaining_width, total_flex_grow);
+            }
+            for (uint32_t i = 0; i < component->child_count; i++) {
+                IRComponent* child = component->children[i];
+                if (child && child->layout && child->layout->flex.grow > 0) {
+                    float ratio = (float)child->layout->flex.grow / total_flex_grow;
+                    flex_extra_widths[i] = remaining_width * ratio;
+                    if (getenv("KRYON_TRACE_LAYOUT")) {
+                        printf("    Child %d: flex_grow=%d, extra_width=%.1f\n",
+                               i, child->layout->flex.grow, flex_extra_widths[i]);
+                    }
+                }
+            }
+        } else if (remaining_width < 0) {
+            // FLEX_SHRINK: shrink children to fit within container
+            float overflow = -remaining_width;  // Positive amount we need to shrink
+            float total_flex_shrink = 0.0f;
+
+            // Calculate total flex_shrink
+            for (uint32_t i = 0; i < component->child_count; i++) {
+                IRComponent* child = component->children[i];
+                if (child && child->layout && child->layout->flex.shrink > 0) {
+                    total_flex_shrink += (float)child->layout->flex.shrink;
+                }
+            }
+
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                printf("  📉 FLEX_SHRINK: overflow=%.1f total_flex_shrink=%.1f distributing...\n",
+                       overflow, total_flex_shrink);
+            }
+
+            // Distribute shrinkage proportionally
+            if (total_flex_shrink > 0) {
+                for (uint32_t i = 0; i < component->child_count; i++) {
+                    IRComponent* child = component->children[i];
+                    if (child && child->layout && child->layout->flex.shrink > 0) {
+                        float ratio = (float)child->layout->flex.shrink / total_flex_shrink;
+                        flex_extra_widths[i] = -(overflow * ratio);  // Negative = shrink
+                        if (getenv("KRYON_TRACE_LAYOUT")) {
+                            printf("    Child %d: flex_shrink=%d, shrink_amount=%.1f\n",
+                                   i, child->layout->flex.shrink, flex_extra_widths[i]);
+                        }
+                    }
+                }
             }
         }
 
@@ -2211,7 +2376,7 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
     }
 
     // Calculate spacing for space distribution modes
-    float item_gap = 20.0f;  // Default gap
+    float item_gap = 0.0f;  // Default gap (no gap unless explicitly set)
     if (component->layout && component->layout->flex.gap > 0) {
         item_gap = (float)component->layout->flex.gap;
     }
@@ -2469,11 +2634,20 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                     child_layout.x = child_rect.x;
                     // Only stretch if child doesn't have explicit width AND container has non-zero width
                     // Never stretch TEXT components - they should use their measured width
+                    // Never stretch components with flex_grow > 0 - flex distribution will size them
                     // Check if child has explicit width (not AUTO)
                     bool has_explicit_width = child && child->style &&
                                             child->style->width.type != IR_DIMENSION_AUTO;
-                    if (!has_explicit_width && child_rect.width > 0 && child->type != IR_COMPONENT_TEXT) {
+                    bool has_flex_grow = child && child->layout && child->layout->flex.grow > 0;
+                    if (getenv("KRYON_TRACE_LAYOUT")) {
+                        printf("  🔄 STRETCH check: has_explicit=%d has_flex_grow=%d child_rect.width=%.1f child_type=%d\n",
+                               has_explicit_width, has_flex_grow, child_rect.width, child ? child->type : -1);
+                    }
+                    if (!has_explicit_width && !has_flex_grow && child_rect.width > 0 && child->type != IR_COMPONENT_TEXT) {
                         child_layout.width = child_rect.width;
+                        if (getenv("KRYON_TRACE_LAYOUT")) {
+                            printf("  🔄 STRETCH applied: width=%.1f\n", child_layout.width);
+                        }
                     }
                     break;
                 case IR_ALIGNMENT_START:
@@ -2530,6 +2704,25 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
         // instead of the measured child size, so they can properly calculate alignment
         LayoutRect rect_for_child = child_layout;
 
+        // Apply flex_grow extra width for ROW children
+        if (component->type == IR_COMPONENT_ROW && flex_extra_widths && flex_extra_widths[i] > 0) {
+            rect_for_child.width += flex_extra_widths[i];
+
+            // Clamp to maxWidth if set (prevents single flex item from taking all space)
+            if (child && child->layout &&
+                child->layout->max_width.type == IR_DIMENSION_PX &&
+                child->layout->max_width.value > 0) {
+                if (rect_for_child.width > child->layout->max_width.value) {
+                    rect_for_child.width = child->layout->max_width.value;
+                }
+            }
+
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                printf("  💪 Child %d: adding flex_extra_width=%.1f, new width=%.1f\n",
+                       i, flex_extra_widths[i], rect_for_child.width);
+            }
+        }
+
         if (child && (child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN)) {
             // Detect AUTO-sized Row/Column by checking the component's style
             // AUTO-sized components should use their measured content size, not container size
@@ -2554,9 +2747,10 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 rect_for_child.x = child_layout.x;
                 rect_for_child.y = child_layout.y;
                 if (is_auto_width) {
-                    // If child has cross-axis alignment, it needs parent's full width to align its children
-                    // Otherwise use measured content width for positioning
-                    bool needs_full_width = child->layout &&
+                    // For COLUMN: cross-axis is horizontal, needs full width for horizontal alignment (Center/End)
+                    // For ROW: cross-axis is vertical, doesn't need full width - use measured content width
+                    bool needs_full_width = (child->type == IR_COMPONENT_COLUMN) &&
+                                           child->layout &&
                                            child->layout->flex.cross_axis != IR_ALIGNMENT_START;
                     rect_for_child.width = needs_full_width ? child_rect.width : child_layout.width;
                 }
@@ -2666,6 +2860,11 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
         printf("📦 Layout %s complete\n\n", type_name);
     }
 
+    // Free flex_extra_widths if allocated
+    if (flex_extra_widths) {
+        free(flex_extra_widths);
+    }
+
     return true;
 }
 #endif
@@ -2760,10 +2959,52 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
                             // Check if this is a Nim button handler
                             if (strncmp(ir_event->logic_id, "nim_button_", 11) == 0) {
-                                // Declare external Nim callback
-                                extern void nimButtonBridge(uint32_t componentId);
-                                // Invoke Nim handler
-                                nimButtonBridge(clicked->id);
+                                printf("[DEBUG] Button clicked: id=%u, has_parent=%d\n",
+                                       clicked->id, clicked->parent != NULL);
+
+                                // Check if this button is actually a tab in a TabGroup
+                                // by looking at parent's custom_data for TabGroupState
+                                bool handled_as_tab = false;
+                                if (clicked->parent && clicked->parent->custom_data) {
+                                    TabGroupState* tg_state = (TabGroupState*)clicked->parent->custom_data;
+                                    printf("[DEBUG] Parent has custom_data: tg_state=%p\n", (void*)tg_state);
+
+                                    // Verify this looks like a valid TabGroupState (tab_bar matches parent)
+                                    if (tg_state && tg_state->tab_bar == clicked->parent) {
+                                        printf("[DEBUG] Tab detected! tab_bar=%p == parent=%p, tab_count=%u\n",
+                                               (void*)tg_state->tab_bar, (void*)clicked->parent, tg_state->tab_count);
+
+                                        // Find which tab was clicked
+                                        for (uint32_t i = 0; i < tg_state->tab_count; i++) {
+                                            if (tg_state->tabs[i] == clicked) {
+                                                printf("[kryon][tabs] C layer handling tab click: index=%u\n", i);
+                                                // C handles tab selection (panel switching, visuals)
+                                                ir_tabgroup_handle_tab_click(tg_state, i);
+                                                // Also call Nim button bridge for user's onClick handler
+                                                extern void nimButtonBridge(uint32_t componentId);
+                                                nimButtonBridge(clicked->id);
+                                                handled_as_tab = true;
+                                                break;
+                                            }
+                                        }
+                                        if (!handled_as_tab) {
+                                            printf("[DEBUG] Tab NOT found in tabs array!\n");
+                                        }
+                                    } else {
+                                        printf("[DEBUG] Tab detection FAILED! tab_bar=%p != parent=%p\n",
+                                               tg_state ? (void*)tg_state->tab_bar : NULL, (void*)clicked->parent);
+                                    }
+                                } else {
+                                    printf("[DEBUG] Parent missing or no custom_data\n");
+                                }
+
+                                // If not a tab, use normal button bridge
+                                if (!handled_as_tab) {
+                                    // Declare external Nim callback
+                                    extern void nimButtonBridge(uint32_t componentId);
+                                    // Invoke Nim handler
+                                    nimButtonBridge(clicked->id);
+                                }
                             }
                             // Check if this is a Nim checkbox handler
                             else if (strncmp(ir_event->logic_id, "nim_checkbox_", 13) == 0) {

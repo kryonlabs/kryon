@@ -65,6 +65,7 @@ extern "C" {
 typedef int32_t kryon_fp_t;
 #define KRYON_FP_16_16(value)   ((kryon_fp_t)((value) * 65536.0f))
 #define KRYON_FP_TO_INT(value)  ((value) >> 16)
+#define KRYON_FP_TO_FLOAT(value) ((float)((value) >> 16))
 #define KRYON_FP_FROM_INT(value) ((value) << 16)
 #define KRYON_FP_MUL(a, b)      (((int64_t)(a) * (b)) >> 16)
 #define KRYON_FP_DIV(a, b)      (((int64_t)(a) << 16) / (b))
@@ -72,6 +73,7 @@ typedef int32_t kryon_fp_t;
 typedef float kryon_fp_t;
 #define KRYON_FP_16_16(value)   ((kryon_fp_t)(value))
 #define KRYON_FP_TO_INT(value)  ((int32_t)(value))
+#define KRYON_FP_TO_FLOAT(value) ((float)(value))
 #define KRYON_FP_FROM_INT(value) ((kryon_fp_t)(value))
 #define KRYON_FP_MUL(a, b)      ((a) * (b))
 #define KRYON_FP_DIV(a, b)      ((a) / (b))

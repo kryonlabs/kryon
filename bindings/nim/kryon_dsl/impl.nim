@@ -591,26 +591,14 @@ proc convertIfStmtToReactiveConditional*(ifStmt: NimNode, windowWidth: NimNode, 
       let branchBody = branch[1]
 
       # Create reactive conditional for this elif condition
-      let conditionProc = genSym(nskProc, "elifConditionProc")
-      let thenProc = genSym(nskProc, "elifThenProc")
-
-      reactiveCode.add newProc(
-        conditionProc,
-        params = [ident("bool")],
-        body = newStmtList(condition),
-        procType = nnkProcDef
-      )
-
-      reactiveCode.add newProc(
-        thenProc,
-        params = [newTree(nnkBracketExpr, ident("seq"), ident("KryonComponent"))],
-        body = newStmtList(
-          buildComponentArray(branchBody)
-        ),
-        procType = nnkProcDef
-      )
+      # CRITICAL FIX: Use lambda expressions for proper closure capture
+      let conditionProc = genSym(nskLet, "elifConditionProc")
+      let thenProc = genSym(nskLet, "elifThenProc")
+      let thenBody = buildComponentArray(branchBody)
 
       reactiveCode.add quote do:
+        let `conditionProc` = proc(): bool {.closure.} = `condition`
+        let `thenProc` = proc(): seq[KryonComponent] {.closure.} = `thenBody`
         createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil)
 
     elif branch.kind == nnkElse:
@@ -618,26 +606,14 @@ proc convertIfStmtToReactiveConditional*(ifStmt: NimNode, windowWidth: NimNode, 
       let elseBody = branch[0]
 
       # Create reactive conditional for else (always true condition)
-      let conditionProc = genSym(nskProc, "elseConditionProc")
-      let thenProc = genSym(nskProc, "elseThenProc")
-
-      reactiveCode.add newProc(
-        conditionProc,
-        params = [ident("bool")],
-        body = newStmtList(newLit(true)),  # else is always true if reached
-        procType = nnkProcDef
-      )
-
-      reactiveCode.add newProc(
-        thenProc,
-        params = [newTree(nnkBracketExpr, ident("seq"), ident("KryonComponent"))],
-        body = newStmtList(
-          buildComponentArray(elseBody)
-        ),
-        procType = nnkProcDef
-      )
+      # CRITICAL FIX: Use lambda expressions for proper closure capture
+      let conditionProc = genSym(nskLet, "elseConditionProc")
+      let thenProc = genSym(nskLet, "elseThenProc")
+      let thenBody = buildComponentArray(elseBody)
 
       reactiveCode.add quote do:
+        let `conditionProc` = proc(): bool {.closure.} = true  # else is always true if reached
+        let `thenProc` = proc(): seq[KryonComponent] {.closure.} = `thenBody`
         createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil)
 
     elif branch.kind == nnkIfExpr:
@@ -655,26 +631,14 @@ proc convertIfStmtToReactiveConditional*(ifStmt: NimNode, windowWidth: NimNode, 
       let branchBody = ifBranch    # Full branch body (may contain multiple statements)
 
       # Create reactive conditional for the main if condition
-      let conditionProc = genSym(nskProc, "ifConditionProc")
-      let thenProc = genSym(nskProc, "ifThenProc")
-
-      reactiveCode.add newProc(
-        conditionProc,
-        params = [ident("bool")],
-        body = newStmtList(ifCondition),
-        procType = nnkProcDef
-      )
-
-      reactiveCode.add newProc(
-        thenProc,
-        params = [newTree(nnkBracketExpr, ident("seq"), ident("KryonComponent"))],
-        body = newStmtList(
-          buildComponentArray(branchBody)
-        ),
-        procType = nnkProcDef
-      )
+      # CRITICAL FIX: Use lambda expressions for proper closure capture
+      let conditionProc = genSym(nskLet, "ifConditionProc")
+      let thenProc = genSym(nskLet, "ifThenProc")
+      let thenBody = buildComponentArray(branchBody)
 
       reactiveCode.add quote do:
+        let `conditionProc` = proc(): bool {.closure.} = `ifCondition`
+        let `thenProc` = proc(): seq[KryonComponent] {.closure.} = `thenBody`
         createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil)
 
   # Return the container
@@ -687,6 +651,7 @@ macro Container*(props: untyped): untyped =
     containerName = genSym(nskLet, "container")
     childNodes: seq[NimNode] = @[]
     sideEffectStmts: seq[NimNode] = @[]
+    deferredIfStmts: seq[NimNode] = @[]  # If statements to process with parent context
     # Layout properties - default to HTML-like behavior (column layout)
     layoutDirectionVal = newIntLitNode(0)  # Default to column layout
     justifyContentVal = alignmentNode("start")  # Start alignment
@@ -702,6 +667,10 @@ macro Container*(props: untyped): untyped =
     posYVal: NimNode = nil
     widthVal: NimNode = nil
     heightVal: NimNode = nil
+    minWidthVal: NimNode = nil
+    maxWidthVal: NimNode = nil
+    minHeightVal: NimNode = nil
+    maxHeightVal: NimNode = nil
     zIndexVal: NimNode = nil
     # Spacing properties
     paddingAll: NimNode = nil
@@ -744,6 +713,14 @@ macro Container*(props: untyped): untyped =
         widthVal = value
       of "height", "h":
         heightVal = value
+      of "minwidth":
+        minWidthVal = value
+      of "maxwidth":
+        maxWidthVal = value
+      of "minheight":
+        minHeightVal = value
+      of "maxheight":
+        maxHeightVal = value
       of "zindex", "z":
         zIndexVal = value
       of "padding", "p":
@@ -803,10 +780,9 @@ macro Container*(props: untyped): untyped =
         # Don't add them to childNodes - they'll be handled separately
         discard
       elif node.kind == nnkIfStmt:
-        # Handle if statements by converting to reactive conditionals
-        # Create a reactive conditional with window dimensions (defaults since Container doesn't have access)
-        let ifResult = convertIfStmtToReactiveConditional(node, newIntLitNode(800), newIntLitNode(600))
-        childNodes.add(ifResult)
+        # Defer if statement processing - will be handled with parent context
+        # This avoids creating wrapper containers and respects parent layout
+        deferredIfStmts.add(node)
       else:
         childNodes.add(node)
 
@@ -827,35 +803,41 @@ macro Container*(props: untyped): untyped =
           for stmt in staticChild.children:
             if stmt.kind == nnkForStmt:
               # Handle for loop from statement list - force value capture for reactive expressions
-              var transformedBody = newTree(nnkStmtList)
-
-              # Force value capture by creating a let copy of the loop variable for each iteration
+              # CRITICAL FIX: Use immediately-invoked closure to force value capture
               let loopVar = stmt[0]  # The loop variable (e.g., "alignment")
-              let loopIterVar = genSym(nskLet, "iteration")
-
-              # Add let declaration to capture the current loop variable value
-              transformedBody.add(newLetStmt(loopIterVar, loopVar))
+              let capturedParam = genSym(nskParam, "capturedIdx")
+              var innerBody = newTree(nnkStmtList)
 
               for bodyNode in stmt[^1].children:
-                # Transform the body node to replace loop variable references
-                let transformedBodyNode = transformLoopVariableReferences(bodyNode, loopVar, loopIterVar)
+                # Transform the body node to replace loop variable references with captured parameter
+                let transformedBodyNode = transformLoopVariableReferences(bodyNode, loopVar, capturedParam)
 
                 if transformedBodyNode.kind == nnkDiscardStmt and transformedBodyNode.len > 0:
                   let componentExpr = transformedBodyNode[0]
                   let childSym = genSym(nskLet, "loopChild")
-                  transformedBody.add(newLetStmt(childSym, componentExpr))
-                  transformedBody.add quote do:
+                  innerBody.add(newLetStmt(childSym, componentExpr))
+                  innerBody.add quote do:
                     discard kryon_component_add_child(`containerName`, `childSym`)
                 elif transformedBodyNode.kind == nnkCall:
                   let childSym = genSym(nskLet, "loopChild")
-                  transformedBody.add(newLetStmt(childSym, transformedBodyNode))
-                  transformedBody.add quote do:
+                  innerBody.add(newLetStmt(childSym, transformedBodyNode))
+                  innerBody.add quote do:
                     discard kryon_component_add_child(`containerName`, `childSym`)
                 else:
                   # For other nodes, just add them directly
-                  transformedBody.add(transformedBodyNode)
-              if transformedBody.len > 0:
-                let newForLoop = newTree(nnkForStmt, stmt[0], stmt[1], transformedBody)
+                  innerBody.add(transformedBodyNode)
+
+              if innerBody.len > 0:
+                # Create immediately-invoked closure: (proc(capturedIdx: typeof(loopVar)) = body)(loopVar)
+                let closureProc = newProc(
+                  name = newEmptyNode(),
+                  params = [newEmptyNode(), newIdentDefs(capturedParam, newCall(ident("typeof"), loopVar))],
+                  body = innerBody,
+                  procType = nnkLambda
+                )
+                closureProc.addPragma(ident("closure"))
+                let closureCall = newCall(closureProc, loopVar)
+                let newForLoop = newTree(nnkForStmt, loopVar, stmt[1], newStmtList(closureCall))
                 initStmts.add(newForLoop)
             else:
               # Handle other statements from statement list
@@ -882,32 +864,54 @@ macro Container*(props: untyped): untyped =
           # transform them to capture component results and add to parent
           if staticChild.kind == nnkForStmt:
             # Transform for loops to capture component results and add them to parent
-            var transformedBody = newTree(nnkStmtList)
+            # CRITICAL FIX: Wrap loop body in immediately-invoked closure to force value capture
+            # Without this, all closures share the same loop variable and see the final value
+            let loopVar = staticChild[0]
+            let capturedParam = genSym(nskParam, "capturedIdx")
+            var innerBody = newTree(nnkStmtList)
 
             # Process the body of the for loop
             for bodyNode in staticChild[^1].children:
-              if bodyNode.kind == nnkDiscardStmt and bodyNode.len > 0:
+              # Transform the body node to replace loop variable references with captured parameter
+              let transformedBodyNode = transformLoopVariableReferences(bodyNode, loopVar, capturedParam)
+
+              if transformedBodyNode.kind == nnkDiscardStmt and transformedBodyNode.len > 0:
                 # Extract component from discard statement
-                let componentExpr = bodyNode[0]
+                let componentExpr = transformedBodyNode[0]
                 let childSym = genSym(nskLet, "loopChild")
-                transformedBody.add(newLetStmt(childSym, componentExpr))
-                transformedBody.add quote do:
+                innerBody.add(newLetStmt(childSym, componentExpr))
+                innerBody.add quote do:
                   let added = kryon_component_add_child(`containerName`, `childSym`)
                   echo "[kryon][static] Added child to container: ", `containerName`, " -> ", `childSym`, " success: ", added
-              elif bodyNode.kind == nnkCall:
+              elif transformedBodyNode.kind == nnkCall:
                 # Direct component call
                 let childSym = genSym(nskLet, "loopChild")
-                transformedBody.add(newLetStmt(childSym, bodyNode))
-                transformedBody.add quote do:
+                innerBody.add(newLetStmt(childSym, transformedBodyNode))
+                innerBody.add quote do:
                   let added = kryon_component_add_child(`containerName`, `childSym`)
                   echo "[kryon][static] Added direct child to container: ", `containerName`, " -> ", `childSym`, " success: ", added
               else:
                 # Other statements - just add as-is
-                transformedBody.add(bodyNode)
+                innerBody.add(transformedBodyNode)
 
-            # Recreate the for loop with transformed body
-            if transformedBody.len > 0:
-              let newForLoop = newTree(nnkForStmt, staticChild[0], staticChild[1], transformedBody)
+            # Create immediately-invoked closure: (proc(capturedIdx: typeof(i)) = body)(i)
+            # This ensures each iteration captures its own copy of the loop variable
+            if innerBody.len > 0:
+              let loopRange = staticChild[1]
+              # Create closure proc type with parameter matching the loop variable type
+              let closureProc = newProc(
+                name = newEmptyNode(),
+                params = [newEmptyNode(), newIdentDefs(capturedParam, newCall(ident("typeof"), loopVar))],
+                body = innerBody,
+                procType = nnkLambda
+              )
+              closureProc.addPragma(ident("closure"))
+
+              # Create call to closure with loop variable as argument
+              let closureCall = newCall(closureProc, loopVar)
+
+              # Recreate the for loop with closure call as body
+              let newForLoop = newTree(nnkForStmt, loopVar, loopRange, newStmtList(closureCall))
               initStmts.add(newForLoop)
             else:
               # If no transformable content, add original
@@ -1004,40 +1008,87 @@ macro Container*(props: untyped): untyped =
     initStmts.add quote do:
       kryon_component_set_flex(`containerName`, uint8(`growExpr`), uint8(`shrinkExpr`))
 
+  # Apply min/max width/height constraints via layout
+  if minWidthVal != nil:
+    let dimType = bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      let layout = ir_get_layout(`containerName`)
+      if layout != nil:
+        ir_set_min_width(layout, `dimType`, cfloat(`minWidthVal`))
+
+  if maxWidthVal != nil:
+    let dimType = bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      let layout = ir_get_layout(`containerName`)
+      if layout != nil:
+        ir_set_max_width(layout, `dimType`, cfloat(`maxWidthVal`))
+
+  if minHeightVal != nil:
+    let dimType = bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      let layout = ir_get_layout(`containerName`)
+      if layout != nil:
+        ir_set_min_height(layout, `dimType`, cfloat(`minHeightVal`))
+
+  if maxHeightVal != nil:
+    let dimType = bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      let layout = ir_get_layout(`containerName`)
+      if layout != nil:
+        ir_set_max_height(layout, `dimType`, cfloat(`maxHeightVal`))
+
   # Add child components
   for child in childNodes:
     # Runtime for-loops: expand body to add each produced component
+    # CRITICAL FIX: Use immediately-invoked closure to force value capture
     if child.kind == nnkForStmt:
       proc buildLoop(forNode: NimNode): NimNode =
         let loopVar = forNode[0]
         let collection = forNode[1]
         let loopBody = forNode[2]
 
-        var transformedBody = newTree(nnkStmtList)
+        # Use a parameter for captured value instead of a let binding
+        # This ensures each iteration captures its own copy via closure parameter
+        let capturedParam = genSym(nskParam, "capturedIdx")
+        var innerBody = newTree(nnkStmtList)
+
         for bodyNode in loopBody.children:
-          case bodyNode.kind
+          # Transform the body node to replace loop variable references with captured parameter
+          let transformedBodyNode = transformLoopVariableReferences(bodyNode, loopVar, capturedParam)
+
+          case transformedBodyNode.kind
           of nnkLetSection, nnkVarSection, nnkConstSection:
-            transformedBody.add(bodyNode)
+            innerBody.add(transformedBodyNode)
           of nnkForStmt:
-            transformedBody.add(buildLoop(bodyNode))
+            innerBody.add(buildLoop(transformedBodyNode))
           of nnkDiscardStmt:
-            if bodyNode.len > 0:
-              let componentExpr = bodyNode[0]
+            if transformedBodyNode.len > 0:
+              let componentExpr = transformedBodyNode[0]
               let childSym = genSym(nskLet, "loopChild")
-              transformedBody.add(newLetStmt(childSym, componentExpr))
-              transformedBody.add quote do:
+              innerBody.add(newLetStmt(childSym, componentExpr))
+              innerBody.add quote do:
                 discard kryon_component_add_child(`containerName`, `childSym`)
             else:
-              transformedBody.add(bodyNode)
+              innerBody.add(transformedBodyNode)
           else:
             let childSym = genSym(nskLet, "loopChild")
-            transformedBody.add quote do:
+            innerBody.add quote do:
               let `childSym` = block:
-                `bodyNode`
+                `transformedBodyNode`
               if `childSym` != nil:
                 discard kryon_component_add_child(`containerName`, `childSym`)
 
-        newTree(nnkForStmt, loopVar, collection, transformedBody)
+        # Create immediately-invoked closure: (proc(capturedIdx: typeof(loopVar)) = body)(loopVar)
+        let closureProc = newProc(
+          name = newEmptyNode(),
+          params = [newEmptyNode(), newIdentDefs(capturedParam, newCall(ident("typeof"), loopVar))],
+          body = innerBody,
+          procType = nnkLambda
+        )
+        closureProc.addPragma(ident("closure"))
+        let closureCall = newCall(closureProc, loopVar)
+
+        newTree(nnkForStmt, loopVar, collection, newStmtList(closureCall))
 
       initStmts.add(buildLoop(child))
       continue
@@ -1063,6 +1114,87 @@ macro Container*(props: untyped): untyped =
         let `childSym` = block:
           `child`
         discard kryon_component_add_child(`containerName`, `childSym`)
+
+  # Process deferred if statements - create reactive conditionals with parent context
+  for ifStmt in deferredIfStmts:
+    # Extract condition and branches from if statement
+    # nnkIfStmt structure: [condition, thenBranch, (elifBranch | elseBranch)...]
+    var conditionExpr: NimNode
+    var thenBody: NimNode
+    var elseBody: NimNode = nil
+
+    # Process the if statement branches
+    for i in 0..<ifStmt.len:
+      let branch = ifStmt[i]
+      if branch.kind == nnkElifBranch:
+        if i == 0:
+          # First elif is the main if condition
+          conditionExpr = branch[0]
+          thenBody = branch[1]
+        else:
+          # Subsequent elif branches - chain into else
+          if elseBody == nil:
+            elseBody = newTree(nnkIfStmt)
+          elseBody.add(branch)
+      elif branch.kind == nnkElse:
+        if elseBody != nil and elseBody.kind == nnkIfStmt:
+          elseBody.add(branch)
+        else:
+          elseBody = branch[0]
+
+    # Build closures for condition and branches
+    # CRITICAL: Use nskLet since we create lambda expressions with let bindings
+    let condProc = genSym(nskLet, "conditionProc")
+    let thenProc = genSym(nskLet, "thenProc")
+    let elseProc = genSym(nskLet, "elseProc")
+
+    # Helper to build component array from branch body
+    proc buildComponentSeq(body: NimNode): NimNode =
+      var elements = newNimNode(nnkBracket)
+      if body.kind == nnkStmtList:
+        for child in body:
+          if child.kind notin {nnkCommentStmt, nnkDiscardStmt}:
+            elements.add(quote do:
+              block:
+                `child`)
+      else:
+        elements.add(quote do:
+          block:
+            `body`)
+      newCall(ident("@"), elements)
+
+    # CRITICAL FIX: Use let bindings with lambdas instead of proc definitions
+    # This ensures proper closure capture of loop variables in reactive conditionals
+    # With nnkProcDef, Nim may not properly capture the closure environment
+    # when variables like capturedLoopVar are referenced inside the proc body
+
+    let thenBodySeq = buildComponentSeq(thenBody)
+
+    # Generate condition and then procs as lambda expressions
+    initStmts.add quote do:
+      let `condProc` = proc(): bool {.closure.} = `conditionExpr`
+      let `thenProc` = proc(): seq[KryonComponent] {.closure.} = `thenBodySeq`
+
+    # Generate else proc (may be nil)
+    if elseBody != nil:
+      let elseBodySeq = if elseBody.kind == nnkIfStmt:
+        # Nested if-elif chain - wrap in closure
+        quote do:
+          @[block:
+            `elseBody`]
+      else:
+        buildComponentSeq(elseBody)
+
+      initStmts.add quote do:
+        let `elseProc` = proc(): seq[KryonComponent] {.closure.} = `elseBodySeq`
+
+      # Register reactive conditional with else
+      initStmts.add quote do:
+        createReactiveConditional(`containerName`, `condProc`, `thenProc`, `elseProc`)
+    else:
+      # Register reactive conditional without else
+      initStmts.add quote do:
+        createReactiveConditional(`containerName`, `condProc`, `thenProc`, nil)
 
   # Mark container as dirty
   initStmts.add quote do:
@@ -1210,26 +1342,14 @@ proc convertCaseStmtToReactiveConditional*(caseStmt: NimNode, windowWidth: NimNo
         condition = newNimNode(nnkInfix).add(ident("=="), caseExpr, ofValues)
 
       # Create reactive conditional for this specific condition using quote
-      let conditionProc = genSym(nskProc, "conditionProc")
-      let thenProc = genSym(nskProc, "thenProc")
-
-      reactiveCode.add newProc(
-        conditionProc,
-        params = [ident("bool")],
-        body = newStmtList(condition),
-        procType = nnkProcDef
-      )
-
-      reactiveCode.add newProc(
-        thenProc,
-        params = [newTree(nnkBracketExpr, ident("seq"), ident("KryonComponent"))],
-        body = newStmtList(
-          newCall(ident("@"), newNimNode(nnkBracket).add(branchBody))
-        ),
-        procType = nnkProcDef
-      )
+      # CRITICAL FIX: Use lambda expressions for proper closure capture
+      let conditionProc = genSym(nskLet, "caseConditionProc")
+      let thenProc = genSym(nskLet, "caseThenProc")
+      let thenBody = newCall(ident("@"), newNimNode(nnkBracket).add(branchBody))
 
       reactiveCode.add quote do:
+        let `conditionProc` = proc(): bool {.closure.} = `condition`
+        let `thenProc` = proc(): seq[KryonComponent] {.closure.} = `thenBody`
         createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil)
 
   # Return the container
@@ -1509,6 +1629,10 @@ macro Button*(props: untyped): untyped =
     paddingLeftVal: NimNode = nil
     widthVal: NimNode = nil
     heightVal: NimNode = nil
+    minWidthVal: NimNode = nil
+    maxWidthVal: NimNode = nil
+    minHeightVal: NimNode = nil
+    maxHeightVal: NimNode = nil
     posXVal: NimNode = nil
     posYVal: NimNode = nil
     bgColorVal: NimNode = nil
@@ -1526,6 +1650,14 @@ macro Button*(props: untyped): untyped =
       case propName.toLowerAscii():
       of "text":
         buttonText = value
+      of "minwidth":
+        minWidthVal = value
+      of "maxwidth":
+        maxWidthVal = value
+      of "minheight":
+        minHeightVal = value
+      of "maxheight":
+        maxHeightVal = value
       of "onclick":
         # Wrap the click handler to automatically trigger reactive updates
         # For Counter demo, we need to intercept variable changes in increment/decrement
@@ -1693,6 +1825,35 @@ macro Button*(props: untyped): untyped =
     initStmts.add quote do:
       # Default border: white for good contrast with dark button backgrounds
       kryon_component_set_border_color(`buttonName`, rgba(200, 200, 200, 255))
+
+  # Apply min/max width/height constraints via layout
+  if minWidthVal != nil:
+    let dimType = bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      let layout = ir_get_layout(`buttonName`)
+      if layout != nil:
+        ir_set_min_width(layout, `dimType`, cfloat(`minWidthVal`))
+
+  if maxWidthVal != nil:
+    let dimType = bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      let layout = ir_get_layout(`buttonName`)
+      if layout != nil:
+        ir_set_max_width(layout, `dimType`, cfloat(`maxWidthVal`))
+
+  if minHeightVal != nil:
+    let dimType = bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      let layout = ir_get_layout(`buttonName`)
+      if layout != nil:
+        ir_set_min_height(layout, `dimType`, cfloat(`minHeightVal`))
+
+  if maxHeightVal != nil:
+    let dimType = bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      let layout = ir_get_layout(`buttonName`)
+      if layout != nil:
+        ir_set_max_height(layout, `dimType`, cfloat(`maxHeightVal`))
 
   let newButtonSym = bindSym("newKryonButton")
   let buttonBridgeSym = bindSym("nimButtonBridge")
@@ -2425,6 +2586,7 @@ macro TabGroup*(props: untyped): untyped =
   var reorderableVal: NimNode = newLit(false)
   var hasLayout = false
   var hasGap = false
+  var hasAlign = false
 
   for node in props.children:
     if node.kind == nnkAsgn:
@@ -2440,6 +2602,9 @@ macro TabGroup*(props: untyped): untyped =
       of "gap":
         hasGap = true
         propertyNodes.add(node)
+      of "alignitems":
+        hasAlign = true
+        propertyNodes.add(node)
       else:
         propertyNodes.add(node)
     else:
@@ -2448,6 +2613,9 @@ macro TabGroup*(props: untyped): untyped =
   var body = newTree(nnkStmtList)
   if not hasLayout:
     body.add newTree(nnkAsgn, ident("layoutDirection"), newIntLitNode(0))
+  if not hasAlign:
+    # Stretch children to fill TabGroup width - enables flex_grow on tabs
+    body.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("stretch"))
   if not hasGap:
     body.add newTree(nnkAsgn, ident("gap"), newIntLitNode(8))
   for node in propertyNodes:
@@ -2468,15 +2636,20 @@ macro TabGroup*(props: untyped): untyped =
       if childComponent != nil:
         discard `addChildSym`(`groupSym`, childComponent)
 
+  let panelIndexSym = ident("__kryonTabPanelIndex")
+
   result = quote do:
     block:
       let `groupSym` = `containerCall`
       # TabGroup state needs group, tab bar, tab content, selected index, reorderable flag
       let `stateSym` = `createSym`(`groupSym`, nil, nil, `selectedIndexVal`, `reorderableVal`)
       let `ctxSym` = `stateSym`
+      var `panelIndexSym` = 0  # Counter for panel indices
       block:
         `childStmtList`
       `finalizeSym`(`stateSym`)
+      # Register state for runtime access by reactive system
+      registerTabGroupState(`groupSym`, `stateSym`)
       `groupSym`
 
 macro TabBar*(props: untyped): untyped =
@@ -2541,7 +2714,8 @@ macro TabBar*(props: untyped): untyped =
   if not hasAlign:
     body.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
   if not hasGap:
-    body.add newTree(nnkAsgn, ident("gap"), newIntLitNode(6))
+    # Chrome-like tabs: minimal gap between tabs
+    body.add newTree(nnkAsgn, ident("gap"), newIntLitNode(2))
   if not hasPadding:
     body.add newTree(nnkAsgn, ident("paddingTop"), newIntLitNode(4))
     body.add newTree(nnkAsgn, ident("paddingBottom"), newIntLitNode(4))
@@ -2593,17 +2767,35 @@ macro TabBar*(props: untyped): untyped =
       let collection = node[1]
       let body = node[2]
 
+      # CRITICAL FIX: Use immediately-invoked closure to force value capture
+      # Without this, all closures share the same loop variable and see the final value
+      let capturedParam = genSym(nskParam, "capturedIdx")
+      let transformedBody = transformLoopVariableReferences(body, loopVar, capturedParam)
+
+      # Create immediately-invoked closure: (proc(capturedIdx: typeof(loopVar)) = body)(loopVar)
+      let closureProc = newProc(
+        name = newEmptyNode(),
+        params = [newEmptyNode(), newIdentDefs(capturedParam, newCall(ident("typeof"), loopVar))],
+        body = transformedBody,
+        procType = nnkLambda
+      )
+      closureProc.addPragma(ident("closure"))
+      let closureCall = newCall(closureProc, loopVar)
+
       # Generate code that iterates at runtime and processes Tab components
-      # Since Tab components self-register, we just execute the body without capturing results
-      childStmtList.add newTree(nnkForStmt, loopVar, collection, body)
+      childStmtList.add newTree(nnkForStmt, loopVar, collection, newStmtList(closureCall))
     else:
       # Handle regular child nodes
       if node.kind == nnkCall and node[0].kind == nnkIdent and node[0].eqIdent("Tab"):
         # Tab components are statements that self-register, add them directly
         childStmtList.add(node)
       else:
-        # Other components return values, add normally
-        childStmtList.add(node)
+        # Other components (like Button) return values - add them as children to TabBar
+        let componentSym = genSym(nskLet, "tabBarChild")
+        let addChildSym = bindSym("kryon_component_add_child")
+        childStmtList.add quote do:
+          let `componentSym` = `node`
+          discard `addChildSym`(`ctxBarSym`, `componentSym`)
 
   result = quote do:
     block:
@@ -2662,14 +2854,22 @@ macro TabContent*(props: untyped): untyped =
       let collection = node[1]
       let body = node[2]
 
+      # CRITICAL FIX: Use immediately-invoked closure to force value capture
+      # Without this, all closures share the same loop variable and see the final value
+      let capturedParam = genSym(nskParam, "capturedIdx")
+      let transformedBody = transformLoopVariableReferences(body, loopVar, capturedParam)
+
       # Generate code that iterates at runtime and processes TabPanel components
       # TabPanel components return values that need to be added as children
+      # Use immediately-invoked closure to capture the loop variable value
       childStmtList.add quote do:
         for `loopVar` in `collection`:
-          let panelChild = block:
-            `body`
-          if panelChild != nil:
-            discard `addChildSym`(`contentSym`, panelChild)
+          (proc(`capturedParam`: typeof(`loopVar`)) {.closure.} =
+            let panelChild = block:
+              `transformedBody`
+            if panelChild != nil:
+              discard `addChildSym`(`contentSym`, panelChild)
+          )(`loopVar`)
     else:
       # Handle regular child nodes
       if node.kind == nnkCall and node[0].kind == nnkIdent and node[0].eqIdent("TabPanel"):
@@ -2698,6 +2898,7 @@ macro TabContent*(props: untyped): untyped =
 macro TabPanel*(props: untyped): untyped =
   let registerSym = bindSym("registerTabPanel")
   let ctxSym = ident("__kryonCurrentTabGroup")
+  let panelIndexSym = ident("__kryonTabPanelIndex")
 
   var body = newTree(nnkStmtList)
   for node in props.children:
@@ -2709,7 +2910,8 @@ macro TabPanel*(props: untyped): untyped =
   result = quote do:
     block:
       let `panelSym` = `containerCall`
-      `registerSym`(`panelSym`, `ctxSym`, 0)
+      `registerSym`(`panelSym`, `ctxSym`, `panelIndexSym`)
+      `panelIndexSym` += 1  # Increment for next panel
       `panelSym`
 
 macro Tab*(props: untyped): untyped =
@@ -2725,6 +2927,7 @@ macro Tab*(props: untyped): untyped =
   var activeBackgroundExpr: NimNode = newStrLitNode("#3C4047")
   var textColorExpr: NimNode = newStrLitNode("#C7C9CC")
   var activeTextExpr: NimNode = newStrLitNode("#FFFFFF")
+  var onClickExpr: NimNode = nil
   var hasPadding = false
   var hasMargin = false
   var hasBackground = false
@@ -2766,6 +2969,8 @@ macro Tab*(props: untyped): untyped =
       of "width":
         hasWidth = true
         buttonProps.add(node)
+      of "onclick":
+        onClickExpr = node[1]
       else:
         buttonProps.add(node)
     else:
@@ -2779,15 +2984,29 @@ macro Tab*(props: untyped): untyped =
     buttonProps.add newTree(nnkAsgn, ident("borderColor"), newStrLitNode("#4C5057"))
   if not hasBorderWidth:
     buttonProps.add newTree(nnkAsgn, ident("borderWidth"), newIntLitNode(1))
-  if not hasWidth:
-    buttonProps.add newTree(nnkAsgn, ident("width"), newIntLitNode(120))
+  # Don't set fixed width - tabs will fill available space via flex_grow
   buttonProps.add newTree(nnkAsgn, ident("height"), newIntLitNode(32))
   buttonProps.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
   buttonProps.add newTree(nnkAsgn, ident("justifyContent"), newStrLitNode("center"))
-  buttonProps.add newTree(nnkAsgn, ident("minWidth"), newIntLitNode(80))
+  # Chrome-like tabs: minimum width to ensure tab is still readable
+  # No maxWidth - tabs expand/shrink dynamically via flex_grow/flex_shrink
+  buttonProps.add newTree(nnkAsgn, ident("minWidth"), newIntLitNode(50))
   buttonProps.add newTree(nnkAsgn, ident("minHeight"), newIntLitNode(28))
 
   buttonProps.add newTree(nnkAsgn, ident("text"), titleVal)
+
+  # ALWAYS add onClick handler to ensure IR_EVENT_CLICK is created
+  # This is required for automatic tab switching to work
+  # The C renderer detects tab clicks via IR_EVENT_CLICK with "nim_button_" logic_id
+  if onClickExpr != nil:
+    # User provided onClick - use it
+    buttonProps.add newTree(nnkAsgn, ident("onClick"), onClickExpr)
+  else:
+    # No onClick - add dummy handler to ensure event is created
+    # The C layer handles tab switching, this just triggers event creation
+    let dummyHandler = quote do:
+      proc() = discard
+    buttonProps.add newTree(nnkAsgn, ident("onClick"), dummyHandler)
 
   for child in extraChildren:
     buttonProps.add(child)
@@ -2799,19 +3018,33 @@ macro Tab*(props: untyped): untyped =
   var afterCreate = newStmtList()
 
   if not hasPadding:
+    # Compact padding for tabs: 6px vertical, 10px horizontal
     afterCreate.add quote do:
-      kryon_component_set_padding(`tabSym`, 10'u8, 20'u8, 10'u8, 20'u8)
+      kryon_component_set_padding(`tabSym`, 6'u8, 10'u8, 6'u8, 10'u8)
 
   if not hasMargin:
+    # Chrome-like tabs: minimal margin between tabs
     afterCreate.add quote do:
-      kryon_component_set_margin(`tabSym`, 2'u8, 6'u8, 0'u8, 6'u8)
+      kryon_component_set_margin(`tabSym`, 2'u8, 1'u8, 0'u8, 1'u8)
 
-  afterCreate.add quote do:
-    kryon_component_set_layout_alignment(`tabSym`, kaCenter, kaCenter)
-    kryon_component_set_flex(`tabSym`, 0'u8, 0'u8)
-    kryon_component_set_layout_direction(`tabSym`, 1)
-    `centerSetter`(`tabSym`, false)
-    `ellipsizeSetter`(`tabSym`, true)
+  # Flex behavior: tabs with explicit width should NOT shrink (flexShrink=0)
+  # Tabs without explicit width fill available space (flexGrow=1, flexShrink=1)
+  if hasWidth:
+    afterCreate.add quote do:
+      kryon_component_set_layout_alignment(`tabSym`, kaCenter, kaCenter)
+      # Tab has fixed width - don't allow shrinking
+      kryon_component_set_flex(`tabSym`, 0'u8, 0'u8)
+      kryon_component_set_layout_direction(`tabSym`, 1)
+      `centerSetter`(`tabSym`, false)
+      `ellipsizeSetter`(`tabSym`, true)
+  else:
+    afterCreate.add quote do:
+      kryon_component_set_layout_alignment(`tabSym`, kaCenter, kaCenter)
+      # Tabs fill available space evenly (flexGrow=1, flexShrink=1)
+      kryon_component_set_flex(`tabSym`, 1'u8, 1'u8)
+      kryon_component_set_layout_direction(`tabSym`, 1)
+      `centerSetter`(`tabSym`, false)
+      `ellipsizeSetter`(`tabSym`, true)
 
   let visualNode = newTree(nnkObjConstr, visualType,
     newTree(nnkExprColonExpr, ident("backgroundColor"), colorNode(copyNimTree(backgroundColorExpr))),

@@ -195,6 +195,7 @@ proc setRenderer*(app: KryonApp, renderer: KryonRenderer) =
 proc setRoot*(app: KryonApp, root: ptr IRComponent) =
   ## Set the root component for the app
   app.root = root
+  ir_set_root(root)  # Update C context too - needed for visibility checks
 
 proc initRenderer*(width, height: int; title: string): KryonRenderer =
   ## Initialize IR desktop renderer with window properties
@@ -235,6 +236,12 @@ proc run*(app: KryonApp) =
 
   echo "  Window: ", app.window.width, "x", app.window.height
   echo "  Title: ", app.window.title
+
+  # Debug: Print component tree if KRYON_DEBUG_TREE is set
+  if getEnv("KRYON_DEBUG_TREE") != "":
+    echo "\n=== DEBUG: Initial Component Tree ==="
+    debug_print_tree(app.root)
+    echo "=== END DEBUG ===\n"
 
   # Render using IR desktop renderer
   if not desktop_render_ir_component(app.root, addr app.config):
@@ -402,8 +409,13 @@ type
   KryonCmdBuf* = pointer
 
 proc kryon_component_set_layout_direction*(component: ptr IRComponent, direction: int) =
-  # Layout direction is implicitly handled by ROW vs COLUMN component types
-  discard
+  ## Set layout direction: 0=column, 1=row
+  if component.isNil: return
+  var layout = ir_get_layout(component)
+  if layout.isNil:
+    layout = ir_create_layout()
+    ir_set_layout(component, layout)
+  ir_set_flex_properties(layout, layout.flex.grow, layout.flex.shrink, uint8(direction))
 
 proc kryon_component_set_layout_alignment*(component: ptr IRComponent, justify: KryonAlignment, align: KryonAlignment) =
   # Layout alignment for containers - create or get layout and set alignment
@@ -459,9 +471,13 @@ proc kryon_component_set_bounds_mask*(component: ptr IRComponent, x, y, w, h: cf
     ir_set_height(targetStyle, IR_DIMENSION_PX, h)
 
 proc kryon_component_set_flex*(component: ptr IRComponent, flexGrow, flexShrink: uint8) =
-  # Flex grow/shrink in IR would be handled by flex layout dimensions
-  # For now, stub - full flex implementation needs more IR layout work
-  discard
+  ## Set flex grow and shrink properties on the IR component
+  if component.isNil: return
+  var layout = ir_get_layout(component)
+  if layout.isNil:
+    layout = ir_create_layout()
+    ir_set_layout(component, layout)
+  ir_set_flex_properties(layout, flexGrow, flexShrink, layout.flex.direction)
 
 proc kryon_component_mark_dirty*(component: ptr IRComponent) =
   # Dirty marking not needed in IR - rendering happens on each frame
@@ -482,14 +498,21 @@ proc nimButtonBridge*(componentId: uint32) {.exportc: "nimButtonBridge", cdecl, 
 
 proc registerButtonHandler*(component: ptr IRComponent, handler: proc()) =
   ## Register a button click handler using IR event system
+  ## Replaces any existing handler for this component
   if component.isNil:
     return
 
+  # Check if event needs to be created (before we update the handler table)
+  let needsEvent = not buttonHandlers.hasKey(component.id) or component.events == nil
+
+  # Replace existing handler (don't accumulate)
   buttonHandlers[component.id] = handler
 
-  # Create IR event and attach to component
-  let event = ir_create_event(IR_EVENT_CLICK, cstring("nim_button_" & $component.id), nil)
-  ir_add_event(component, event)
+  # Only create event if not already registered
+  # The event persists on the component, we just update the Nim handler
+  if needsEvent:
+    let event = ir_create_event(IR_EVENT_CLICK, cstring("nim_button_" & $component.id), nil)
+    ir_add_event(component, event)
 
 # Checkbox Handler System
 var checkboxHandlers = initTable[uint32, proc()]()
@@ -565,7 +588,7 @@ proc kryon_button_set_ellipsize*(button: ptr IRComponent, ellipsize: bool) =
 
 # Tab/Checkbox/Input stubs (not yet implemented in IR)
 type
-  TabVisualState* = object  # Stub for tab visual state
+  TabVisualState* = object  # Tab visual state for Nim DSL
     backgroundColor*: uint32
     activeBackgroundColor*: uint32
     textColor*: uint32
@@ -574,130 +597,121 @@ type
   CheckboxState* = ref object  # Stub
   InputState* = ref object  # Stub
 
-# Track tab/panel insertion order per group
-var tabGroupTabOrder = initTable[ptr TabGroupState, seq[ptr IRComponent]]()
-var tabGroupPanelOrder = initTable[ptr TabGroupState, seq[ptr IRComponent]]()
-var tabGroupIsReorderable = initTable[ptr TabGroupState, bool]()
-var tabVisuals = initTable[ptr IRComponent, TabVisualState]()
-var tabGroupVisuals = initTable[ptr TabGroupState, seq[TabVisualState]]()
+# ============================================================================
+# TabGroup State Registry
+# ============================================================================
+
+# Store TabGroup states by TabGroup component pointer for runtime access
+var tabGroupStates = initTable[pointer, ptr TabGroupState]()
+
+proc registerTabGroupState*(group: ptr IRComponent, state: ptr TabGroupState) =
+  ## Register a TabGroup state for runtime access by reactive system
+  tabGroupStates[cast[pointer](group)] = state
+
+proc getTabGroupState*(group: ptr IRComponent): ptr TabGroupState =
+  ## Get a TabGroup state by its component pointer
+  tabGroupStates.getOrDefault(cast[pointer](group), nil)
+
+# Forward declaration
+proc resyncTabGroupChildren*(state: ptr TabGroupState)
+
+proc handleReactiveForLoopParentChanged(parent: ptr IRComponent) =
+  ## Called by reactive system when a for-loop's parent children change
+  ## Checks if parent is a TabBar or TabContent and resyncs the TabGroup
+  if parent == nil: return
+
+  # Walk up to find potential TabGroup parent
+  var current = parent.parent
+  while current != nil:
+    let state = getTabGroupState(current)
+    if state != nil:
+      # We found a TabGroup - resync if parent is inside it
+      # (We can't check specific pointers since TabGroupState is incomplete,
+      #  so we resync on any child change within a TabGroup)
+      echo "[ReactiveForLoop] Resyncing TabGroup after children changed"
+      resyncTabGroupChildren(state)
+      break  # Found it, no need to continue
+    current = current.parent
+
+# Register the hook with reactive system
+onReactiveForLoopParentChanged = handleReactiveForLoopParentChanged
+
+# ============================================================================
+# TabGroup Core Functions
+# ============================================================================
 
 proc createTabGroupState*(group, tabBar, tabContent: ptr IRComponent, selectedIndex: int, reorderable: bool): ptr TabGroupState =
-  let state = ir_tabgroup_create_state(group, tabBar, tabContent, cint(selectedIndex), reorderable)
-  if state != nil:
-    tabGroupTabOrder[state] = @[]
-    tabGroupPanelOrder[state] = @[]
-    tabGroupVisuals[state] = @[]
-  result = state
-
-proc setComponentBg(component: ptr IRComponent, color: uint32) =
-  if component.isNil: return
-  var style = ir_get_style(component)
-  if style.isNil:
-    style = ir_create_style()
-    ir_set_style(component, style)
-  let r = uint8((color shr 24) and 0xFF)
-  let g = uint8((color shr 16) and 0xFF)
-  let b = uint8((color shr 8) and 0xFF)
-  let a = uint8(color and 0xFF)
-  ir_set_background_color(style, r, g, b, a)
-
-proc setComponentTextColor(component: ptr IRComponent, color: uint32) =
-  if component.isNil: return
-  var style = ir_get_style(component)
-  if style.isNil:
-    style = ir_create_style()
-    ir_set_style(component, style)
-  let r = uint8((color shr 24) and 0xFF)
-  let g = uint8((color shr 16) and 0xFF)
-  let b = uint8((color shr 8) and 0xFF)
-  let a = uint8(color and 0xFF)
-  ir_set_font(style, if style.font.size > 0: style.font.size else: 16.0, style.font.family, r, g, b, a, style.font.bold, style.font.italic)
+  ## Create tab group state - delegates entirely to C
+  result = ir_tabgroup_create_state(group, tabBar, tabContent, cint(selectedIndex), reorderable)
 
 proc registerTabBar*(tabBar: ptr IRComponent, state: ptr TabGroupState, reorderable: bool) =
+  ## Register tab bar - delegates to C
   if state.isNil: return
   ir_tabgroup_set_reorderable(state, reorderable)
   ir_tabgroup_register_bar(state, tabBar)
-  tabGroupIsReorderable[state] = reorderable
-
-proc applyTabVisuals(state: ptr TabGroupState, selectedIdx: int) =
-  if state.isNil: return
-  let order = tabGroupTabOrder.getOrDefault(state, @[])
-  let visuals = tabGroupVisuals.getOrDefault(state, @[])
-  let count = min(order.len, visuals.len)
-  for i in 0 ..< count:
-    let t = order[i]
-    let v = visuals[i]
-    if i == selectedIdx:
-      setComponentBg(t, v.activeBackgroundColor)
-      setComponentTextColor(t, v.activeTextColor)
-    else:
-      setComponentBg(t, v.backgroundColor)
-      setComponentTextColor(t, v.textColor)
 
 proc registerTabComponent*(tab: ptr IRComponent, state: ptr TabGroupState, visual: TabVisualState, index: int) =
+  ## Register a tab component with the tab group
+  ## C handles tab selection; user's onClick is in buttonHandlers (set by DSL)
   if state.isNil: return
-  # Track tab order using the index hint
+
+  # Check if this tab is already registered via C
+  let existingCount = ir_tabgroup_get_tab_count(state)
+  for i in 0..<existingCount:
+    if ir_tabgroup_get_tab(state, i) == tab:
+      echo "[kryon][tabs] tab id=", tab.id, " already registered"
+      return
+
+  # Register tab with C (adds to tabs array)
   ir_tabgroup_register_tab(state, tab)
-  if not tabGroupTabOrder.hasKey(state):
-    tabGroupTabOrder[state] = @[]
-  tabGroupTabOrder[state].add(tab)
-  let tabIndex = tabGroupTabOrder[state].len - 1
-  tabVisuals[tab] = visual
-  if not tabGroupVisuals.hasKey(state):
-    tabGroupVisuals[state] = @[]
-  tabGroupVisuals[state].add(visual)
+  let tabIndex = ir_tabgroup_get_tab_count(state) - 1
+  echo "[kryon][tabs] register tab id=", tab.id, " index=", tabIndex
 
-  proc applyVisuals(selectedIdx: int) =
-    applyTabVisuals(state, selectedIdx)
-
-  registerButtonHandler(tab, proc() =
-    let order = tabGroupTabOrder.getOrDefault(state, @[])
-    let idx = order.find(tab)
-    if idx >= 0:
-      ir_tabgroup_select(state, cint(idx))
-      applyVisuals(idx)
-      if tabGroupPanelOrder.hasKey(state) and idx < tabGroupPanelOrder[state].len:
-        let panel = tabGroupPanelOrder[state][idx]
-        if panel != nil:
-          kryon_component_mark_dirty(panel)
-      # Mark content/group dirty to refresh layout
-      if tabGroupPanelOrder.hasKey(state):
-        for p in tabGroupPanelOrder[state]:
-          if p != nil: kryon_component_mark_dirty(p)
-    else:
-      ir_tabgroup_select(state, cint(tabIndex))
-      applyVisuals(tabIndex)
-      if tabGroupPanelOrder.hasKey(state) and tabIndex < tabGroupPanelOrder[state].len:
-        let panel = tabGroupPanelOrder[state][tabIndex]
-        if panel != nil:
-          kryon_component_mark_dirty(panel)
-      if tabGroupPanelOrder.hasKey(state):
-        for p in tabGroupPanelOrder[state]:
-          if p != nil: kryon_component_mark_dirty(p)
+  # Store visual state in C core for automatic application
+  let cVisual = CTabVisualState(
+    background_color: visual.backgroundColor,
+    active_background_color: visual.activeBackgroundColor,
+    text_color: visual.textColor,
+    active_text_color: visual.activeTextColor
   )
+  ir_tabgroup_set_tab_visual(state, cint(tabIndex), cVisual)
+
+  # User's onClick handler is already in buttonHandlers (set by DSL)
+  # C renderer calls nimButtonBridge after ir_tabgroup_handle_tab_click
+  # No duplicate tracking needed - tabs are buttons
 
 proc registerTabContent*(content: ptr IRComponent, state: ptr TabGroupState) =
+  ## Register tab content container - delegates to C
   if state.isNil: return
+  echo "[kryon][tabs] register content id=", content.id
   ir_tabgroup_register_content(state, content)
 
 proc registerTabPanel*(panel: ptr IRComponent, state: ptr TabGroupState, index: int) =
+  ## Register a tab panel - delegates to C
   if state.isNil: return
+  echo "[kryon][tabs] register panel id=", panel.id, " idx=", index
   ir_tabgroup_register_panel(state, panel)
-  if not tabGroupPanelOrder.hasKey(state):
-    tabGroupPanelOrder[state] = @[]
-  tabGroupPanelOrder[state].add(panel)
 
 proc finalizeTabGroup*(state: ptr TabGroupState) =
+  ## Finalize tab group - delegates to C
   if state.isNil: return
+  echo "[kryon][tabs] finalize state=", cast[int](state)
   ir_tabgroup_finalize(state)
-  # Apply initial visuals (default to first tab if present)
-  if tabGroupTabOrder.hasKey(state) and tabGroupTabOrder[state].len > 0:
-    applyTabVisuals(state, 0)
-  # Mark panels dirty so initial layout happens
-  if tabGroupPanelOrder.hasKey(state):
-    for p in tabGroupPanelOrder[state]:
-      if p != nil: kryon_component_mark_dirty(p)
-  # Keep state data for runtime clicks (cleanup can be done when disposing state if needed)
+  # C handles initial visual application via ir_tabgroup_apply_visuals
+
+proc resyncTabGroupChildren*(state: ptr TabGroupState) =
+  ## Re-synchronize TabGroup state with current TabBar/TabContent children
+  ## Called when a reactive for-loop rebuilds tabs or panels
+  if state.isNil: return
+
+  echo "[TabGroup] Resyncing children..."
+
+  # Since TabGroupState is incomplete, we can't directly access fields
+  # The C functions handle the internal state management
+  # We just need to call finalize again to re-count tabs/panels
+  ir_tabgroup_finalize(state)
+
+  echo "[TabGroup] Resync complete"
 
 var canvasHandlers = initTable[uint32, proc()]()
 
@@ -782,6 +796,48 @@ proc getFontId*(path: string, size: int): int =
   if fontRegistry.hasKey(path): return 1
   if registerFont(path, path, size): return 1
   result = 0
+
+# ============================================================================
+# Handler Cleanup Functions
+# ============================================================================
+
+proc cleanupButtonHandlerFor*(component: ptr IRComponent) =
+  ## Remove button handler for a specific component
+  if component.isNil:
+    return
+  if buttonHandlers.hasKey(component.id):
+    buttonHandlers.del(component.id)
+    echo "[kryon][handlers] Removed button handler for id=", component.id
+
+proc cleanupHandlersForSubtree*(root: ptr IRComponent) =
+  ## Clean up all handlers for components in a subtree
+  ## Called when a component tree is being removed
+  if root.isNil:
+    return
+
+  # Clean up handler for this component
+  if buttonHandlers.hasKey(root.id):
+    buttonHandlers.del(root.id)
+  if checkboxHandlers.hasKey(root.id):
+    checkboxHandlers.del(root.id)
+  if canvasHandlers.hasKey(root.id):
+    canvasHandlers.del(root.id)
+  if inputHandlers.hasKey(root.id):
+    inputHandlers.del(root.id)
+  if dropdownHandlers.hasKey(root.id):
+    dropdownHandlers.del(root.id)
+
+  # Recursively clean up children
+  if root.children != nil and root.child_count > 0:
+    let childArray = cast[ptr UncheckedArray[ptr IRComponent]](root.children)
+    for i in 0..<root.child_count:
+      let child = childArray[i]
+      if child != nil:
+        cleanupHandlersForSubtree(child)
+
+proc nimCleanupHandlersForComponent*(component: ptr IRComponent) {.exportc: "nimCleanupHandlersForComponent", cdecl, dynlib.} =
+  ## C-callable bridge to clean up handlers when a component is removed
+  cleanupHandlersForSubtree(component)
 
 # Export IR functions for DSL use
 export ir_add_child, ir_create_component, ir_set_text_content

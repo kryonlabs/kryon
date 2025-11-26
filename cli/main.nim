@@ -171,6 +171,41 @@ proc handleRunCommand*(args: seq[string]) =
     let kryonRoot = findKryonRoot()
     putEnv("KRYON_ROOT", kryonRoot)
 
+    # Ensure C libraries are built
+    let buildDir = kryonRoot / "build"
+    createDir(buildDir)
+
+    let coreLib = buildDir / "libkryon_core.a"
+    let irLib = buildDir / "libkryon_ir.a"
+    let desktopLib = buildDir / "libkryon_desktop.a"
+
+    # Build C core library if missing or outdated
+    if not fileExists(coreLib):
+      echo "🧱 Building C core library..."
+      let coreCmd = "make -C " & (kryonRoot / "core") & " all"
+      let coreResult = execShellCmd(coreCmd)
+      if coreResult != 0:
+        echo "❌ Failed to build C core library"
+        quit(1)
+
+    # Build IR library if missing
+    if not fileExists(irLib):
+      echo "🔧 Building IR library..."
+      let irCmd = "make -C " & (kryonRoot / "ir") & " all"
+      let irResult = execShellCmd(irCmd)
+      if irResult != 0:
+        echo "❌ Failed to build IR library"
+        quit(1)
+
+    # Build desktop library if missing
+    if not fileExists(desktopLib):
+      echo "🖥️  Building desktop library..."
+      let desktopCmd = "make -C " & (kryonRoot / "backends" / "desktop") & " all"
+      let desktopResult = execShellCmd(desktopCmd)
+      if desktopResult != 0:
+        echo "❌ Failed to build desktop library"
+        quit(1)
+
     # Make sure we have a writable build/cache location even if cwd is read-only
     let runCache = kryonRoot / "tmp_nimcache" / "cli_run"
     createDir(runCache)
@@ -190,7 +225,7 @@ proc handleRunCommand*(args: seq[string]) =
     # Base linker flags for Kryon libs
     var libFlags: seq[string] = @[
       "--passL:\"-L" & kryonRoot / "build" & "\"",
-      "--passL:\"-Wl,--start-group -lkryon_core -lkryon_ir -lkryon_desktop -Wl,--end-group\"",
+      "--passL:\"-Wl,--start-group -lkryon_core -lkryon_ir -lkryon_desktop -lkryon_debug -Wl,--end-group\"",
       "--passL:\"-Wl,-rpath," & kryonRoot / "build" & "\""
     ]
 

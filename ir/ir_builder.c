@@ -8,6 +8,20 @@
 // Global IR context
 IRContext* g_ir_context = NULL;
 
+// Nim callback for cleanup when components are removed
+// This allows the Nim reactive system to clean up when tab panels change
+extern void nimOnComponentRemoved(IRComponent* component) __attribute__((weak));
+
+// Nim callback to clean up button/canvas/input handlers when components are removed
+extern void nimCleanupHandlersForComponent(IRComponent* component) __attribute__((weak));
+
+// Nim callback when components are added to the tree
+// This resets cleanup tracking so panels can be cleaned up again when removed
+extern void nimOnComponentAdded(IRComponent* component) __attribute__((weak));
+
+// Forward declarations
+void ir_tabgroup_apply_visuals(TabGroupState* state);
+
 // Type system helper functions
 const char* ir_component_type_to_string(IRComponentType type) {
     switch (type) {
@@ -120,6 +134,7 @@ TabGroupState* ir_tabgroup_create_state(IRComponent* group,
     state->tab_content = tab_content;
     state->tabs = NULL;
     state->panels = NULL;
+    state->tab_visuals = NULL;
     state->tab_count = 0;
     state->panel_count = 0;
     state->selected_index = selected_index;
@@ -127,6 +142,9 @@ TabGroupState* ir_tabgroup_create_state(IRComponent* group,
     state->dragging = false;
     state->drag_index = -1;
     state->drag_x = 0.0f;
+    // User callback storage - initialized to NULL
+    state->user_callbacks = NULL;
+    state->user_callback_data = NULL;
     return state;
 }
 
@@ -171,6 +189,23 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
 
     // Panels: show only selected
     if (state->tab_content) {
+        // Notify Nim to clean up reactive state before removing panels
+        // This prevents stale references in the reactive system
+        for (uint32_t i = 0; i < state->panel_count; i++) {
+            if (state->panels[i] && i != (uint32_t)index) {
+                // Only notify for panels being removed (not the newly selected one)
+                for (uint32_t c = 0; c < state->tab_content->child_count; c++) {
+                    if (state->tab_content->children[c] == state->panels[i]) {
+                        // Panel is currently visible and will be removed
+                        if (nimOnComponentRemoved) {
+                            nimOnComponentRemoved(state->panels[i]);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
         // Remove all panels from tab_content
         for (uint32_t i = 0; i < state->panel_count; i++) {
             if (state->panels[i]) {
@@ -187,6 +222,10 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
         // Add only the selected panel
         if ((uint32_t)index < state->panel_count && state->panels[index]) {
             ir_add_child(state->tab_content, state->panels[index]);
+            // Notify Nim that this panel was added - resets cleanup tracking
+            if (nimOnComponentAdded) {
+                nimOnComponentAdded(state->panels[index]);
+            }
         }
 
         // Invalidate layout so renderer recalculates with new child set
@@ -200,6 +239,9 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
     if (g_ir_context && g_ir_context->root) {
         g_ir_context->root->rendered_bounds.valid = false;
     }
+
+    // Apply tab visuals (active/inactive colors)
+    ir_tabgroup_apply_visuals(state);
 }
 
 void ir_tabgroup_reorder(TabGroupState* state, int from_index, int to_index) {
@@ -327,6 +369,132 @@ void ir_tabgroup_set_reorderable(TabGroupState* state, bool reorderable) {
     state->reorderable = reorderable;
 }
 
+void ir_tabgroup_set_tab_visual(TabGroupState* state, int index, TabVisualState visual) {
+    if (!state) return;
+    if (index < 0 || (uint32_t)index >= state->tab_count) return;
+
+    // Always reallocate tab_visuals array to match current tab_count
+    // This handles the case where tabs are added after initial allocation
+    TabVisualState* new_visuals = (TabVisualState*)realloc(state->tab_visuals,
+        state->tab_count * sizeof(TabVisualState));
+    if (!new_visuals) return;
+    state->tab_visuals = new_visuals;
+
+    state->tab_visuals[index] = visual;
+}
+
+static void ir_tabgroup_apply_visual_to_tab(IRComponent* tab, TabVisualState* visual, bool is_active) {
+    if (!tab || !visual) return;
+
+    IRStyle* style = ir_get_style(tab);
+    if (!style) {
+        style = ir_create_style();
+        ir_set_style(tab, style);
+    }
+
+    // Apply background color
+    uint32_t bg_color = is_active ? visual->active_background_color : visual->background_color;
+    uint8_t bg_r = (bg_color >> 24) & 0xFF;
+    uint8_t bg_g = (bg_color >> 16) & 0xFF;
+    uint8_t bg_b = (bg_color >> 8) & 0xFF;
+    uint8_t bg_a = bg_color & 0xFF;
+    ir_set_background_color(style, bg_r, bg_g, bg_b, bg_a);
+
+    // Apply text color
+    uint32_t text_color = is_active ? visual->active_text_color : visual->text_color;
+    uint8_t text_r = (text_color >> 24) & 0xFF;
+    uint8_t text_g = (text_color >> 16) & 0xFF;
+    uint8_t text_b = (text_color >> 8) & 0xFF;
+    uint8_t text_a = text_color & 0xFF;
+    // Keep existing font properties, just update color
+    float font_size = style->font.size > 0 ? style->font.size : 16.0f;
+    ir_set_font(style, font_size, style->font.family, text_r, text_g, text_b, text_a, style->font.bold, style->font.italic);
+}
+
+void ir_tabgroup_apply_visuals(TabGroupState* state) {
+    if (!state || !state->tab_visuals) return;
+
+    for (uint32_t i = 0; i < state->tab_count; i++) {
+        if (state->tabs[i] && i < state->tab_count) {
+            bool is_active = ((int)i == state->selected_index);
+            ir_tabgroup_apply_visual_to_tab(state->tabs[i], &state->tab_visuals[i], is_active);
+        }
+    }
+}
+
+// Tab Group Query Functions
+uint32_t ir_tabgroup_get_tab_count(TabGroupState* state) {
+    return state ? state->tab_count : 0;
+}
+
+uint32_t ir_tabgroup_get_panel_count(TabGroupState* state) {
+    return state ? state->panel_count : 0;
+}
+
+int ir_tabgroup_get_selected(TabGroupState* state) {
+    return state ? state->selected_index : -1;
+}
+
+IRComponent* ir_tabgroup_get_tab(TabGroupState* state, uint32_t index) {
+    if (!state || index >= state->tab_count) return NULL;
+    return state->tabs[index];
+}
+
+IRComponent* ir_tabgroup_get_panel(TabGroupState* state, uint32_t index) {
+    if (!state || index >= state->panel_count) return NULL;
+    return state->panels[index];
+}
+
+// Tab User Callback Registration
+void ir_tabgroup_set_tab_callback(TabGroupState* state, uint32_t index,
+                                   TabClickCallback callback, void* user_data) {
+    if (!state || index >= state->tab_count) return;
+
+    // Always reallocate callback arrays to match current tab_count
+    // This handles the case where tabs are added after initial allocation
+    TabClickCallback* new_callbacks = (TabClickCallback*)realloc(state->user_callbacks,
+        state->tab_count * sizeof(TabClickCallback));
+    void** new_data = (void**)realloc(state->user_callback_data,
+        state->tab_count * sizeof(void*));
+
+    if (!new_callbacks || !new_data) {
+        // Allocation failed, clean up
+        if (new_callbacks) free(new_callbacks);
+        if (new_data) free(new_data);
+        return;
+    }
+
+    state->user_callbacks = new_callbacks;
+    state->user_callback_data = new_data;
+
+    state->user_callbacks[index] = callback;
+    state->user_callback_data[index] = user_data;
+}
+
+// Tab Click Handling - combines user callback + selection
+void ir_tabgroup_handle_tab_click(TabGroupState* state, uint32_t tab_index) {
+    if (!state || tab_index >= state->tab_count) return;
+
+    // CRITICAL: Call user's onClick callback FIRST (as per requirement)
+    if (state->user_callbacks && state->user_callbacks[tab_index]) {
+        state->user_callbacks[tab_index](tab_index, state->user_callback_data[tab_index]);
+    }
+
+    // Then select the tab (this applies visuals and switches panels)
+    ir_tabgroup_select(state, (int)tab_index);
+}
+
+// Cleanup
+void ir_tabgroup_destroy_state(TabGroupState* state) {
+    if (!state) return;
+    if (state->tabs) free(state->tabs);
+    if (state->panels) free(state->panels);
+    if (state->tab_visuals) free(state->tab_visuals);
+    if (state->user_callbacks) free(state->user_callbacks);
+    if (state->user_callback_data) free(state->user_callback_data);
+    free(state);
+}
+
 // Context Management
 IRContext* ir_create_context(void) {
     IRContext* context = malloc(sizeof(IRContext));
@@ -360,6 +528,16 @@ void ir_destroy_context(IRContext* context) {
 
 void ir_set_context(IRContext* context) {
     g_ir_context = context;
+}
+
+IRComponent* ir_get_root(void) {
+    return g_ir_context ? g_ir_context->root : NULL;
+}
+
+void ir_set_root(IRComponent* root) {
+    if (g_ir_context) {
+        g_ir_context->root = root;
+    }
 }
 
 // Component Creation
@@ -513,6 +691,12 @@ IRStyle* ir_create_style(void) {
     style->position_mode = IR_POSITION_RELATIVE;
     style->absolute_x = 0.0f;
     style->absolute_y = 0.0f;
+
+    // Default dimensions to AUTO so components can be stretched by align-items: stretch
+    style->width.type = IR_DIMENSION_AUTO;
+    style->width.value = 0.0f;
+    style->height.type = IR_DIMENSION_AUTO;
+    style->height.value = 0.0f;
 
     return style;
 }
@@ -671,6 +855,13 @@ void ir_set_flexbox(IRLayout* layout, bool wrap, uint32_t gap, IRAlignment main_
     layout->flex.cross_axis = cross_axis;
 }
 
+void ir_set_flex_properties(IRLayout* layout, uint8_t grow, uint8_t shrink, uint8_t direction) {
+    if (!layout) return;
+    layout->flex.grow = grow;
+    layout->flex.shrink = shrink;
+    layout->flex.direction = direction;
+}
+
 void ir_set_min_width(IRLayout* layout, IRDimensionType type, float value) {
     if (!layout) return;
     layout->min_width.type = type;
@@ -681,6 +872,18 @@ void ir_set_min_height(IRLayout* layout, IRDimensionType type, float value) {
     if (!layout) return;
     layout->min_height.type = type;
     layout->min_height.value = value;
+}
+
+void ir_set_max_width(IRLayout* layout, IRDimensionType type, float value) {
+    if (!layout) return;
+    layout->max_width.type = type;
+    layout->max_width.value = value;
+}
+
+void ir_set_max_height(IRLayout* layout, IRDimensionType type, float value) {
+    if (!layout) return;
+    layout->max_height.type = type;
+    layout->max_height.value = value;
 }
 
 // Event Management

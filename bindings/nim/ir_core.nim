@@ -93,6 +93,9 @@ type
     main_axis*: IRAlignment
     cross_axis*: IRAlignment
     justify_content*: IRAlignment
+    grow*: uint8      # Flex grow factor (0-255)
+    shrink*: uint8    # Flex shrink factor (0-255)
+    direction*: uint8 # Layout direction: 0=column, 1=row
 
   IRPositionMode* {.size: sizeof(cint).} = enum
     IR_POSITION_RELATIVE = 0
@@ -137,23 +140,33 @@ type
   IRComponent* {.importc: "IRComponent", header: "ir_core.h", incompleteStruct.} = object
     id*: uint32
     `type`*: IRComponentType
-    text_content*: cstring
+    tag*: cstring
     style*: ptr IRStyle
-    layout*: ptr IRLayout
+    events*: ptr IREvent
+    logic*: ptr LogicSource
     children*: ptr ptr IRComponent
     child_count*: uint32
-    capacity*: uint32
-    events*: ptr IREvent
-    event_count*: uint32
-    logic*: ptr LogicSource
+    layout*: ptr IRLayout
+    parent*: ptr IRComponent
+    text_content*: cstring
+    custom_data*: cstring
 
   IRContext* {.importc: "IRContext", header: "ir_core.h", incompleteStruct.} = object
   TabGroupState* {.importc: "TabGroupState", header: "ir_builder.h", incompleteStruct.} = object
+
+  # Tab visual state for active/inactive tab colors (matches C struct)
+  CTabVisualState* {.importc: "TabVisualState", header: "ir_builder.h".} = object
+    background_color*: uint32
+    active_background_color*: uint32
+    text_color*: uint32
+    active_text_color*: uint32
 
 # Context Management
 proc ir_create_context*(): ptr IRContext {.importc, cdecl, header: "ir_builder.h".}
 proc ir_destroy_context*(context: ptr IRContext) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_context*(context: ptr IRContext) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_get_root*(): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_root*(root: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
 
 # Component Creation
 proc ir_create_component*(component_type: IRComponentType): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
@@ -176,10 +189,10 @@ proc ir_get_style*(component: ptr IRComponent): ptr IRStyle {.importc, cdecl, he
 # Style Property Helpers
 proc ir_set_width*(style: ptr IRStyle; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_height*(style: ptr IRStyle; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
-proc ir_set_min_width*(style: ptr IRStyle; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
-proc ir_set_min_height*(style: ptr IRStyle; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
-proc ir_set_max_width*(style: ptr IRStyle; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
-proc ir_set_max_height*(style: ptr IRStyle; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_min_width*(layout: ptr IRLayout; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_min_height*(layout: ptr IRLayout; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_max_width*(layout: ptr IRLayout; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_max_height*(layout: ptr IRLayout; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
 
 proc ir_set_background_color*(style: ptr IRStyle; r: uint8; g: uint8; b: uint8; a: uint8) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_border*(style: ptr IRStyle; width: cfloat; r: uint8; g: uint8; b: uint8; a: uint8; radius: cfloat) {.importc, cdecl, header: "ir_builder.h".}
@@ -197,7 +210,7 @@ proc ir_get_layout*(component: ptr IRComponent): ptr IRLayout {.importc, cdecl, 
 
 # Layout Property Helpers
 proc ir_set_flexbox*(layout: ptr IRLayout; wrap: bool; gap: uint32; main_axis: IRAlignment; cross_axis: IRAlignment) {.importc, cdecl, header: "ir_builder.h".}
-proc ir_set_direction*(layout: ptr IRLayout; direction: cint) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_flex_properties*(layout: ptr IRLayout; grow: uint8; shrink: uint8; direction: uint8) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_justify_content*(layout: ptr IRLayout; justify: IRAlignment) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_align_items*(layout: ptr IRLayout; align: IRAlignment) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_align_content*(layout: ptr IRLayout; align: IRAlignment) {.importc, cdecl, header: "ir_builder.h".}
@@ -218,6 +231,28 @@ proc ir_tabgroup_finalize*(state: ptr TabGroupState) {.importc, cdecl, header: "
 proc ir_tabgroup_select*(state: ptr TabGroupState; index: cint) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_tabgroup_reorder*(state: ptr TabGroupState; from_index: cint; to_index: cint) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_tabgroup_set_reorderable*(state: ptr TabGroupState; reorderable: bool) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_set_tab_visual*(state: ptr TabGroupState; index: cint; visual: CTabVisualState) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_apply_visuals*(state: ptr TabGroupState) {.importc, cdecl, header: "ir_builder.h".}
+
+# Tab Group Query Functions
+proc ir_tabgroup_get_tab_count*(state: ptr TabGroupState): uint32 {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_get_panel_count*(state: ptr TabGroupState): uint32 {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_get_selected*(state: ptr TabGroupState): cint {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_get_tab*(state: ptr TabGroupState; index: uint32): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
+proc ir_tabgroup_get_panel*(state: ptr TabGroupState; index: uint32): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
+
+# Tab User Callback - called BEFORE tab selection
+type TabClickCallback* = proc(tab_index: uint32; user_data: pointer) {.cdecl.}
+
+proc ir_tabgroup_set_tab_callback*(state: ptr TabGroupState; index: uint32;
+                                    callback: TabClickCallback;
+                                    user_data: pointer) {.importc, cdecl, header: "ir_builder.h".}
+
+# Tab Click Handling - combines user callback + selection
+proc ir_tabgroup_handle_tab_click*(state: ptr TabGroupState; tab_index: uint32) {.importc, cdecl, header: "ir_builder.h".}
+
+# Tab Group Cleanup
+proc ir_tabgroup_destroy_state*(state: ptr TabGroupState) {.importc, cdecl, header: "ir_builder.h".}
 
 # Layout setters not in C yet - add stubs
 proc ir_set_gap*(layout: ptr IRLayout; gap: uint32) =
@@ -330,6 +365,10 @@ proc ir_spacing_custom*(top: cfloat; right: cfloat; bottom: cfloat; left: cfloat
 proc ir_validate_component*(component: ptr IRComponent): bool {.importc, cdecl, header: "ir_core.h".}
 proc ir_print_component_info*(component: ptr IRComponent; depth: cint) {.importc, cdecl, header: "ir_core.h".}
 proc ir_optimize_component*(component: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
+
+# Debug Renderer
+proc debug_print_tree*(root: ptr IRComponent) {.importc, cdecl, header: "debug_backend.h".}
+proc debug_print_tree_to_file*(root: ptr IRComponent; filename: cstring) {.importc, cdecl, header: "debug_backend.h".}
 
 # Hit Testing
 proc ir_is_point_in_component*(component: ptr IRComponent; x: cfloat; y: cfloat): bool {.importc, cdecl, header: "ir_builder.h".}

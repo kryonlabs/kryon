@@ -11,17 +11,18 @@ BUILD_DIR="build"
 BIN_DIR="bin"
 
 ensure_ir_build() {
+    local core_lib="$BUILD_DIR/libkryon_core.a"
     local ir_lib="$BUILD_DIR/libkryon_ir.a"
     local web_lib="$BUILD_DIR/libkryon_web.a"
     local desktop_lib="$BUILD_DIR/libkryon_desktop.a"
     local need_ir=0
 
     # Check if any IR libraries need building
-    if [ ! -f "$ir_lib" ] || [ ! -f "$web_lib" ] || [ ! -f "$desktop_lib" ]; then
+    if [ ! -f "$core_lib" ] || [ ! -f "$ir_lib" ] || [ ! -f "$web_lib" ] || [ ! -f "$desktop_lib" ]; then
         need_ir=1
     else
         local newer_sources
-        newer_sources="$(find ir backends -maxdepth 3 -name '*.c' -newer "$ir_lib" -print -quit 2>/dev/null || true)"
+        newer_sources="$(find core ir backends -maxdepth 3 -name '*.c' -newer "$ir_lib" -print -quit 2>/dev/null || true)"
         if [ -n "$newer_sources" ]; then
             need_ir=1
         fi
@@ -29,6 +30,9 @@ ensure_ir_build() {
 
     if [ $need_ir -eq 1 ]; then
         echo "🚀 Building Universal IR system..."
+
+        echo "   🧱 Building C core library..."
+        make -C core all
 
         echo "   🔧 Building IR core libraries..."
         make -C ir all

@@ -88,7 +88,7 @@ build-lib: $(LIB_FILE)
 $(LIB_FILE):
 	@echo "Building Kryon library..."
 	@mkdir -p $(BUILD_DIR)
-	$(NIM) c $(NIMFLAGS) --app:staticlib --out:$(LIB_FILE) $(LIB_SRC).nim
+	$(NIM) c $(NIMFLAGS) --app:staticlib --passC:"-I$(CURDIR)/ir" --out:$(LIB_FILE) $(LIB_SRC).nim
 
 # Development build (debug symbols, verbose)
 dev:

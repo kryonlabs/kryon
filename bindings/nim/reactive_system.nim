@@ -4,9 +4,12 @@
 ## Works transparently with existing DSL
 
 import tables
+import sets
 import ir_core
 
-# KryonComponent is defined in runtime.nim, we just use ptr IRComponent here
+# Hook for TabGroup resync (set by runtime.nim to avoid circular import)
+var onReactiveForLoopParentChanged*: proc(parent: ptr IRComponent) {.closure.} = nil
+
 # Legacy function wrappers for reactive system (until fully migrated to IR)
 # These are temporary shims that provide the old API using IR functions
 
@@ -66,6 +69,13 @@ var reactiveUpdateRegistry*: Table[string, proc ()] = initTable[string, proc ()]
 proc updateAllReactiveTextExpressions*()
 proc updateAllReactiveConditionals*()
 proc updateAllReactiveRebuilds*()
+proc updateAllReactiveForLoops*()
+proc isComponentInVisibleTree*(component: ptr IRComponent): bool
+proc isComponentInSubtree(component: ptr IRComponent, root: ptr IRComponent): bool
+proc unregisterReactiveTextFor*(components: seq[ptr IRComponent])
+proc unregisterReactiveConditionalsFor*(components: seq[ptr IRComponent])
+proc suspendReactiveForLoopsFor*(root: ptr IRComponent)
+proc resumeReactiveForLoopsFor*(root: ptr IRComponent)
 
 # Initialize reactive system
 proc initReactiveSystem*() =
@@ -135,6 +145,9 @@ proc processReactiveUpdates*() =
   # Update all reactive text expressions (evaluates them each frame)
   updateAllReactiveTextExpressions()
 
+  # Update all reactive for loops (checks for collection changes)
+  updateAllReactiveForLoops()
+
   # Re-run any registered rebuild callbacks (e.g., dynamic for-loops)
   updateAllReactiveRebuilds()
 
@@ -185,6 +198,7 @@ type
     evalProc*: proc (): string {.closure.}  # Procedure that evaluates the expression
     lastValue*: string  # Cache to avoid unnecessary updates
     varNames*: seq[string]  # Variable names used in this expression
+    suspended*: bool  # True when parent panel is hidden - skip updates but preserve state
 
 var reactiveTextExpressions*: seq[ReactiveTextExpression] = @[]
 
@@ -204,43 +218,34 @@ proc createReactiveTextExpression*(component: ptr IRComponent, expression: strin
 
 proc updateAllReactiveTextExpressions*() =
   ## Update all reactive text expressions by re-evaluating them
-  # Clean up any expressions pointing to nil components
-  var cleaned: seq[ReactiveTextExpression] = @[]
-  for expr in reactiveTextExpressions:
-    if expr != nil and expr.component != nil:
-      cleaned.add(expr)
-  reactiveTextExpressions = cleaned
+  # NOTE: We no longer clean up expressions - they're preserved across tab switches
+  # Expressions for hidden panels will be skipped by the visibility check
 
   # Closures are now created at runtime (in kryon_dsl.nim), so Nim properly
   # heap-allocates captured variables and they remain valid
   for expr in reactiveTextExpressions:
-    if expr != nil and expr.component != nil and expr.evalProc != nil:
-      try:
-        let currentValue = expr.evalProc()
-        # Only update if value actually changed (optimization)
-        if expr.lastValue != currentValue:
-          expr.lastValue = currentValue
-          # Verify component is still valid before setText
-          if expr.component != nil:
-            expr.component.setText(currentValue)
-            echo "[kryon][reactive] Updated text: ", expr.expression, " -> ", currentValue
-      except Exception as e:
-        echo "[kryon][reactive] Error evaluating expression: ", expr.expression, " - ", e.msg
+    if expr == nil or expr.component == nil or expr.evalProc == nil:
+      continue
 
-# Remove reactive text bindings for a set of components (used when rebuilding loops)
-proc unregisterReactiveTextFor*(components: seq[ptr IRComponent]) =
-  if components.len == 0: return
-  var filtered: seq[ReactiveTextExpression] = @[]
-  for expr in reactiveTextExpressions:
-    var keep = true
-    if expr != nil:
-      for comp in components:
-        if comp == expr.component:
-          keep = false
-          break
-    if keep:
-      filtered.add(expr)
-  reactiveTextExpressions = filtered
+    # Skip suspended expressions entirely - they're hidden and will be resumed later
+    if expr.suspended:
+      continue
+
+    # Skip update if component is not in the visible tree (e.g., panel is hidden)
+    if not isComponentInVisibleTree(expr.component):
+      continue
+
+    try:
+      let currentValue = expr.evalProc()
+      # Only update if value actually changed (optimization)
+      if expr.lastValue != currentValue:
+        expr.lastValue = currentValue
+        # Verify component is still valid before setText
+        if expr.component != nil:
+          expr.component.setText(currentValue)
+          echo "[kryon][reactive] Updated text: ", expr.expression, " -> ", currentValue
+    except Exception as e:
+      echo "[kryon][reactive] Error evaluating expression: ", expr.expression, " - ", e.msg
 
 # Remove queued reactive bindings for components that are about to be destroyed/removed
 proc unregisterReactiveBindingsFor*(components: seq[ptr IRComponent]) =
@@ -334,8 +339,16 @@ type
     currentChildren*: seq[ptr IRComponent]
     lastCondition*: bool
     initialized*: bool
+    suspended*: bool  # True when parent panel is hidden - skip updates but preserve state
 
 var reactiveConditionals*: seq[ReactiveConditional] = @[]
+
+# Track which component IDs have been cleaned up to prevent double cleanup crashes
+var cleanedUpComponentIds: HashSet[uint32] = initHashSet[uint32]()
+
+proc resetCleanedUpTracking*() =
+  ## Reset the cleaned up tracking - call this when rebuilding the UI
+  cleanedUpComponentIds.clear()
 
 proc createReactiveConditional*(
   parent: ptr IRComponent,
@@ -359,53 +372,73 @@ proc createReactiveConditional*(
 proc updateAllReactiveConditionals*() =
   ## Update all reactive conditionals by re-evaluating conditions and updating component tree
   for cond in reactiveConditionals:
-    if cond != nil and cond.parent != nil:
-      try:
-        let currentCondition = cond.conditionProc()
+    # Safety checks: ensure cond, parent, and closures are valid
+    if cond == nil or cond.parent == nil or cond.conditionProc == nil:
+      continue
 
-        # Update if condition changed or first time
-        if not cond.initialized or currentCondition != cond.lastCondition:
-          echo "[kryon][reactive] Conditional changed: ", currentCondition
+    # Skip suspended conditionals entirely - they're hidden and will be resumed later
+    if cond.suspended:
+      continue
 
-          # Remove old children
-          for child in cond.currentChildren:
-            if child != nil:
-              kryon_component_remove_child(cond.parent, child)
-          cond.currentChildren.setLen(0)
+    # Skip update if parent is not in the visible tree (e.g., panel is hidden)
+    if not isComponentInVisibleTree(cond.parent):
+      continue
 
-          # Add new children based on condition
-          let newChildren = if currentCondition:
-            cond.thenProc()
-          else:
-            if cond.elseProc != nil: cond.elseProc() else: @[]
+    try:
+      let currentCondition = cond.conditionProc()
 
-          for child in newChildren:
-            if child != nil:
-              discard kryon_component_add_child(cond.parent, child)
-              kryon_component_mark_dirty(child)
+      # Update if condition changed or first time
+      if not cond.initialized or currentCondition != cond.lastCondition:
+        echo "[kryon][reactive] Conditional changed: ", currentCondition
 
-          cond.currentChildren = newChildren
-          cond.lastCondition = currentCondition
-          cond.initialized = true
-          kryon_component_mark_dirty(cond.parent)
+        # Unregister reactive expressions for old children BEFORE removing them
+        # This prevents stale expressions from pointing to freed components
+        if cond.currentChildren.len > 0:
+          unregisterReactiveTextFor(cond.currentChildren)
+          unregisterReactiveConditionalsFor(cond.currentChildren)
 
-          # Force layout recalculation to ensure newly added components get proper bounds
-          # This is critical for reactive components to be visible to the event system
-          var parentX, parentY, parentWidth, parentHeight: KryonFp
-          kryon_component_get_absolute_bounds(cond.parent, addr parentX, addr parentY, addr parentWidth, addr parentHeight)
-          echo "[kryon][reactive] Layout: parent bounds before: ", parentX, ", ", parentY, ", w=", parentWidth, ", h=", parentHeight
-          kryon_layout_component(cond.parent, parentWidth, parentHeight)
-          kryon_component_get_absolute_bounds(cond.parent, addr parentX, addr parentY, addr parentWidth, addr parentHeight)
-          echo "[kryon][reactive] Layout: parent bounds after: ", parentX, ", ", parentY, ", w=", parentWidth, ", h=", parentHeight
+        # Remove old children
+        for child in cond.currentChildren:
+          if child != nil:
+            kryon_component_remove_child(cond.parent, child)
+        cond.currentChildren.setLen(0)
 
-          # Debug: Log child component bounds
-          for i, child in newChildren:
-            if child != nil:
-              var childX, childY, childWidth, childHeight: KryonFp
-              kryon_component_get_absolute_bounds(child, addr childX, addr childY, addr childWidth, addr childHeight)
-              echo "[kryon][reactive] Layout: child[", i, "] bounds: ", childX, ", ", childY, ", w=", childWidth, ", h=", childHeight
-      except Exception as e:
-        echo "[kryon][reactive] Error updating conditional: ", e.msg
+        # Add new children based on condition
+        var newChildren: seq[ptr IRComponent] = @[]
+        if currentCondition:
+          if cond.thenProc != nil:
+            newChildren = cond.thenProc()
+        else:
+          if cond.elseProc != nil:
+            newChildren = cond.elseProc()
+
+        for child in newChildren:
+          if child != nil:
+            discard kryon_component_add_child(cond.parent, child)
+            kryon_component_mark_dirty(child)
+
+        cond.currentChildren = newChildren
+        cond.lastCondition = currentCondition
+        cond.initialized = true
+        kryon_component_mark_dirty(cond.parent)
+
+        # Force layout recalculation to ensure newly added components get proper bounds
+        # This is critical for reactive components to be visible to the event system
+        var parentX, parentY, parentWidth, parentHeight: KryonFp
+        kryon_component_get_absolute_bounds(cond.parent, addr parentX, addr parentY, addr parentWidth, addr parentHeight)
+        echo "[kryon][reactive] Layout: parent bounds before: ", parentX, ", ", parentY, ", w=", parentWidth, ", h=", parentHeight
+        kryon_layout_component(cond.parent, parentWidth, parentHeight)
+        kryon_component_get_absolute_bounds(cond.parent, addr parentX, addr parentY, addr parentWidth, addr parentHeight)
+        echo "[kryon][reactive] Layout: parent bounds after: ", parentX, ", ", parentY, ", w=", parentWidth, ", h=", parentHeight
+
+        # Debug: Log child component bounds
+        for i, child in newChildren:
+          if child != nil:
+            var childX, childY, childWidth, childHeight: KryonFp
+            kryon_component_get_absolute_bounds(child, addr childX, addr childY, addr childWidth, addr childHeight)
+            echo "[kryon][reactive] Layout: child[", i, "] bounds: ", childX, ", ", childY, ", w=", childWidth, ", h=", childHeight
+    except Exception as e:
+      echo "[kryon][reactive] Error updating conditional: ", e.msg
 
 # ============================================================================
 # C Bridge for Desktop Renderer Main Loop
@@ -415,3 +448,317 @@ proc nimProcessReactiveUpdates*() {.exportc: "nimProcessReactiveUpdates", cdecl,
   ## C-callable bridge function that processes reactive updates every frame
   ## Called from the desktop renderer's main event loop
   processReactiveUpdates()
+
+# ============================================================================
+# Cleanup Functions for Tab Panel Removal
+# ============================================================================
+
+proc cleanupReactiveConditionalsFor*(removedComponent: ptr IRComponent) =
+  ## Remove all reactive conditionals that have this component as parent
+  ## Called when a component is removed from the tree
+  if removedComponent == nil:
+    return
+
+  var kept: seq[ReactiveConditional] = @[]
+  for cond in reactiveConditionals:
+    if cond != nil and cond.parent != removedComponent:
+      kept.add(cond)
+    else:
+      # Remove children before deleting conditional
+      if cond != nil and cond.parent != nil:
+        for child in cond.currentChildren:
+          if child != nil:
+            kryon_component_remove_child(cond.parent, child)
+        cond.currentChildren.setLen(0)
+      echo "[kryon][reactive] Cleaned up conditional for removed component"
+  reactiveConditionals = kept
+
+proc cleanupReactiveTextFor*(removedComponent: ptr IRComponent) =
+  ## Remove reactive text expressions for a component
+  if removedComponent == nil:
+    return
+
+  var kept: seq[ReactiveTextExpression] = @[]
+  for expr in reactiveTextExpressions:
+    if expr != nil and expr.component != removedComponent:
+      kept.add(expr)
+    else:
+      echo "[kryon][reactive] Cleaned up text expression for removed component"
+  reactiveTextExpressions = kept
+
+proc isComponentInSubtree(component: ptr IRComponent, root: ptr IRComponent): bool =
+  ## Check if a component is part of a subtree rooted at `root`
+  if component == nil or root == nil:
+    return false
+  if component == root:
+    return true
+  # Walk up the parent chain with depth limit to prevent infinite loops
+  var current = component
+  var depth = 0
+  const maxDepth = 100
+  while current != nil and depth < maxDepth:
+    if current == root:
+      return true
+    current = current.parent
+    depth += 1
+  return false
+
+# Remove reactive text bindings for a set of components (used when rebuilding loops)
+proc unregisterReactiveTextFor*(components: seq[ptr IRComponent]) =
+  if components.len == 0: return
+  var filtered: seq[ReactiveTextExpression] = @[]
+  for expr in reactiveTextExpressions:
+    var keep = true
+    if expr != nil and expr.component != nil:
+      for comp in components:
+        # Check if expression's component is the root OR is a descendant of root
+        if comp != nil and (comp == expr.component or isComponentInSubtree(expr.component, comp)):
+          echo "[kryon][reactive] Unregistering text expression for component in subtree: ", expr.expression
+          keep = false
+          break
+    if keep:
+      filtered.add(expr)
+  reactiveTextExpressions = filtered
+
+# Remove reactive conditionals for a set of root components (removes nested conditionals)
+proc unregisterReactiveConditionalsFor*(components: seq[ptr IRComponent]) =
+  if components.len == 0: return
+  var filtered: seq[ReactiveConditional] = @[]
+  for cond in reactiveConditionals:
+    var keep = true
+    if cond != nil and cond.parent != nil:
+      for comp in components:
+        # Check if conditional's parent is the root OR is a descendant of root
+        if comp != nil and (comp == cond.parent or isComponentInSubtree(cond.parent, comp)):
+          echo "[kryon][reactive] Unregistering nested conditional in subtree"
+          keep = false
+          break
+    if keep:
+      filtered.add(cond)
+  reactiveConditionals = filtered
+
+proc isComponentInVisibleTree*(component: ptr IRComponent): bool =
+  ## Check if a component is currently part of the rendered tree
+  ## Returns true if walking up the parent chain reaches the root
+  if component == nil:
+    return false
+  let root = ir_get_root()
+  if root == nil:
+    echo "[kryon][reactive] Warning: ir_get_root() returned nil - visibility check will fail"
+    return false
+  # Walk up the parent chain with depth limit to prevent infinite loops
+  var current = component
+  var depth = 0
+  const maxDepth = 100
+  while current != nil and depth < maxDepth:
+    if current == root:
+      return true
+    current = current.parent
+    depth += 1
+  return false
+
+proc cleanupReactiveConditionalsForSubtree*(root: ptr IRComponent) =
+  ## Temporarily disable reactive conditionals in a component subtree
+  ## Called when a tab panel is removed from the tree
+  ## NOTE: We DON'T remove conditionals from the list or reset initialized
+  ## We just mark them as suspended so they are skipped until re-activated
+  if root == nil:
+    return
+
+  echo "[kryon][reactive] Suspending reactive state for subtree id=", root.id
+
+  # Suspend reactive conditionals where parent is in the subtree (but don't remove from list)
+  for cond in reactiveConditionals:
+    if cond == nil:
+      continue
+    # Check if this conditional's parent is in the subtree being hidden
+    if isComponentInSubtree(cond.parent, root):
+      # Mark as suspended - DON'T reset initialized or clear children
+      # This preserves the state so we don't re-create everything when shown again
+      cond.suspended = true
+      echo "[kryon][reactive] Suspended conditional (parent in subtree)"
+  # NOTE: We keep all conditionals in reactiveConditionals - don't filter!
+
+  # Suspend text expressions in subtree - same approach
+  for expr in reactiveTextExpressions:
+    if expr == nil:
+      continue
+    if isComponentInSubtree(expr.component, root):
+      expr.suspended = true
+      echo "[kryon][reactive] Suspended text expression (component in subtree)"
+  # NOTE: We keep all text expressions in reactiveTextExpressions - don't filter!
+
+proc nimOnComponentRemoved*(component: ptr IRComponent) {.exportc: "nimOnComponentRemoved", cdecl, dynlib.} =
+  ## C-callable bridge function to clean up reactive state when a component is removed
+  ## Called from ir_tabgroup_select before removing panels
+  if component == nil:
+    return
+
+  let componentId = component.id
+  echo "[kryon][reactive] Component removed callback for id=", componentId
+
+  # Check if this component was already cleaned up - prevent double cleanup crash
+  if componentId in cleanedUpComponentIds:
+    echo "[kryon][reactive] Skipping cleanup for id=", componentId, " (already cleaned up)"
+    return
+
+  # Mark as cleaned up BEFORE doing the cleanup
+  cleanedUpComponentIds.incl(componentId)
+
+  cleanupReactiveConditionalsForSubtree(component)
+  # Note: suspendReactiveForLoopsFor disabled until ReactiveForLoops are actually used
+
+proc nimOnComponentAdded*(component: ptr IRComponent) {.exportc: "nimOnComponentAdded", cdecl, dynlib.} =
+  ## C-callable bridge function called when a component is added to the tree
+  ## This resets the cleaned-up status and resumes suspended conditionals
+  if component == nil:
+    return
+
+  let componentId = component.id
+  if componentId in cleanedUpComponentIds:
+    echo "[kryon][reactive] Resetting cleanup status for id=", componentId, " (panel re-added)"
+    cleanedUpComponentIds.excl(componentId)
+
+  # Resume suspended conditionals for this subtree
+  echo "[kryon][reactive] Resuming suspended state for subtree id=", componentId
+  for cond in reactiveConditionals:
+    if cond == nil:
+      continue
+    if cond.suspended and isComponentInSubtree(cond.parent, component):
+      cond.suspended = false
+      echo "[kryon][reactive] Resumed conditional (parent in subtree)"
+
+  # Resume suspended text expressions for this subtree
+  for expr in reactiveTextExpressions:
+    if expr == nil:
+      continue
+    if expr.suspended and isComponentInSubtree(expr.component, component):
+      expr.suspended = false
+      echo "[kryon][reactive] Resumed text expression (component in subtree)"
+
+  # Note: resumeReactiveForLoopsFor disabled until ReactiveForLoops are actually used
+
+# ============================================================================
+# Reactive For Loop System
+# ============================================================================
+
+type
+  ReactiveForLoop* = ref object
+    parent*: ptr IRComponent           # Container to add children to
+    currentChildren*: seq[ptr IRComponent]  # Currently rendered components
+    lastLength*: int                   # Cached length for change detection
+    suspended*: bool                   # For tab switching
+    # Type-erased update proc - captures the generic logic in a closure
+    updateProc*: proc() {.closure.}
+
+var reactiveForLoops*: seq[ReactiveForLoop] = @[]
+
+# Forward declare the cleanup proc from runtime.nim
+# This will be resolved at link time since runtime.nim exports it
+proc nimCleanupHandlersForComponent*(component: ptr IRComponent) {.cdecl, importc: "nimCleanupHandlersForComponent".}
+
+proc createReactiveForLoopImpl*[T](
+    parent: ptr IRComponent,
+    collectionProc: proc(): seq[T] {.closure.},
+    itemProc: proc(item: T, index: int): ptr IRComponent {.closure.}
+): ReactiveForLoop =
+  ## Create and register a reactive for loop (implementation)
+  var loop = ReactiveForLoop(
+    parent: parent,
+    currentChildren: @[],
+    lastLength: -1,  # -1 means not initialized
+    suspended: false
+  )
+
+  # Create the type-erased update closure
+  loop.updateProc = proc() {.closure.} =
+    if loop.suspended:
+      return
+    if loop.parent == nil or collectionProc == nil or itemProc == nil:
+      return
+    if not isComponentInVisibleTree(loop.parent):
+      return
+
+    let newCollection = collectionProc()
+    let newLength = newCollection.len
+
+    # Check if collection changed (simple length comparison for now)
+    if newLength == loop.lastLength:
+      return
+
+    echo "[kryon][reactive] For loop collection changed: ", loop.lastLength, " -> ", newLength
+
+    # Remove old children from IR tree
+    for child in loop.currentChildren:
+      if child != nil:
+        # Clean up handlers for this component
+        nimCleanupHandlersForComponent(child)
+        # Call the removed callback
+        nimOnComponentRemoved(child)
+        # Remove from parent
+        kryon_component_remove_child(loop.parent, child)
+
+    # Clear and unregister old reactive bindings
+    let oldChildren = loop.currentChildren
+    loop.currentChildren.setLen(0)
+    unregisterReactiveTextFor(oldChildren)
+    unregisterReactiveBindingsFor(oldChildren)
+
+    # Create new children
+    for i, item in newCollection:
+      let child = itemProc(item, i)
+      if child != nil:
+        loop.currentChildren.add(child)
+        discard kryon_component_add_child(loop.parent, child)
+        # Call the added callback
+        nimOnComponentAdded(child)
+        echo "[kryon][reactive] Added child for item ", i
+
+    # Update cache and invalidate layout
+    loop.lastLength = newLength
+    loop.parent.rendered_bounds.valid = false
+    kryon_component_mark_dirty(loop.parent)
+
+    # Notify hook that parent's children changed (for TabGroup resync)
+    if loop.parent != nil and onReactiveForLoopParentChanged != nil:
+      onReactiveForLoopParentChanged(loop.parent)
+
+  reactiveForLoops.add(loop)
+  echo "[kryon][reactive] Created reactive for loop"
+  result = loop
+
+template createReactiveForLoop*[T](
+    parent: ptr IRComponent,
+    collectionProc: proc(): seq[T] {.closure.},
+    itemProc: proc(item: T, index: int): ptr IRComponent {.closure.}
+): ReactiveForLoop =
+  ## Create and register a reactive for loop (template wrapper for type inference)
+  createReactiveForLoopImpl[T](parent, collectionProc, itemProc)
+
+proc updateAllReactiveForLoops*() =
+  ## Update all reactive for loops
+  for loop in reactiveForLoops:
+    if loop == nil or loop.updateProc == nil:
+      continue
+    try:
+      loop.updateProc()
+    except Exception as e:
+      echo "[kryon][reactive] Error updating for loop: ", e.msg
+
+proc suspendReactiveForLoopsFor*(root: ptr IRComponent) =
+  ## Suspend reactive for loops in a subtree
+  for loop in reactiveForLoops:
+    if loop == nil:
+      continue
+    if isComponentInSubtree(loop.parent, root):
+      loop.suspended = true
+      echo "[kryon][reactive] Suspended for loop (parent in subtree)"
+
+proc resumeReactiveForLoopsFor*(root: ptr IRComponent) =
+  ## Resume reactive for loops in a subtree
+  for loop in reactiveForLoops:
+    if loop == nil:
+      continue
+    if loop.suspended and isComponentInSubtree(loop.parent, root):
+      loop.suspended = false
+      echo "[kryon][reactive] Resumed for loop (parent in subtree)"

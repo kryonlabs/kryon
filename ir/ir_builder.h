@@ -12,6 +12,8 @@ extern IRContext* g_ir_context;
 IRContext* ir_create_context(void);
 void ir_destroy_context(IRContext* context);
 void ir_set_context(IRContext* context);
+IRComponent* ir_get_root(void);  // Get the current root component
+void ir_set_root(IRComponent* root);  // Set the root component
 
 // Component Creation
 IRComponent* ir_create_component(IRComponentType type);
@@ -50,8 +52,11 @@ IRLayout* ir_get_layout(IRComponent* component);
 
 // Layout Property Helpers
 void ir_set_flexbox(IRLayout* layout, bool wrap, uint32_t gap, IRAlignment main_axis, IRAlignment cross_axis);
+void ir_set_flex_properties(IRLayout* layout, uint8_t grow, uint8_t shrink, uint8_t direction);
 void ir_set_min_width(IRLayout* layout, IRDimensionType type, float value);
 void ir_set_min_height(IRLayout* layout, IRDimensionType type, float value);
+void ir_set_max_width(IRLayout* layout, IRDimensionType type, float value);
+void ir_set_max_height(IRLayout* layout, IRDimensionType type, float value);
 void ir_set_justify_content(IRLayout* layout, IRAlignment justify);
 void ir_set_align_items(IRLayout* layout, IRAlignment align);
 void ir_set_align_content(IRLayout* layout, IRAlignment align);
@@ -101,6 +106,19 @@ IRColor ir_color_named(const char* name);
 bool ir_validate_component(IRComponent* component);
 void ir_optimize_component(IRComponent* component);
 
+// Tab Visual State (colors for active/inactive tabs)
+typedef struct TabVisualState {
+    uint32_t background_color;        // RGBA packed: 0xRRGGBBAA
+    uint32_t active_background_color;
+    uint32_t text_color;
+    uint32_t active_text_color;
+} TabVisualState;
+
+// Tab click callback type - called BEFORE tab selection
+// tab_index: which tab was clicked
+// user_data: user-provided context (e.g., component ID for frontend bridge)
+typedef void (*TabClickCallback)(uint32_t tab_index, void* user_data);
+
 // Tab Group Support (shared across frontends)
 typedef struct TabGroupState {
     IRComponent* group;
@@ -108,6 +126,7 @@ typedef struct TabGroupState {
     IRComponent* tab_content;
     IRComponent** tabs;
     IRComponent** panels;
+    TabVisualState* tab_visuals;  // Array of visual states per tab
     uint32_t tab_count;
     uint32_t panel_count;
     int selected_index;
@@ -115,6 +134,9 @@ typedef struct TabGroupState {
     bool dragging;
     int drag_index;
     float drag_x;
+    // User callback storage - called before tab selection
+    TabClickCallback* user_callbacks;  // Array of callbacks (one per tab)
+    void** user_callback_data;         // Array of user data pointers
 } TabGroupState;
 
 TabGroupState* ir_tabgroup_create_state(IRComponent* group,
@@ -131,6 +153,26 @@ void ir_tabgroup_select(TabGroupState* state, int index);
 void ir_tabgroup_reorder(TabGroupState* state, int from_index, int to_index);
 void ir_tabgroup_handle_drag(TabGroupState* state, float x, float y, bool is_down, bool is_up);
 void ir_tabgroup_set_reorderable(TabGroupState* state, bool reorderable);
+void ir_tabgroup_set_tab_visual(TabGroupState* state, int index, TabVisualState visual);
+void ir_tabgroup_apply_visuals(TabGroupState* state);  // Apply active/inactive colors based on selected_index
+
+// Tab Group Query Functions
+uint32_t ir_tabgroup_get_tab_count(TabGroupState* state);
+uint32_t ir_tabgroup_get_panel_count(TabGroupState* state);
+int ir_tabgroup_get_selected(TabGroupState* state);
+IRComponent* ir_tabgroup_get_tab(TabGroupState* state, uint32_t index);
+IRComponent* ir_tabgroup_get_panel(TabGroupState* state, uint32_t index);
+
+// Tab User Callback Registration - callback called BEFORE tab selection
+void ir_tabgroup_set_tab_callback(TabGroupState* state, uint32_t index,
+                                   TabClickCallback callback, void* user_data);
+
+// Tab Click Handling - combines user callback + selection logic
+// Call this from renderer when a tab is clicked
+void ir_tabgroup_handle_tab_click(TabGroupState* state, uint32_t tab_index);
+
+// Cleanup
+void ir_tabgroup_destroy_state(TabGroupState* state);
 
 // Hit Testing
 bool ir_is_point_in_component(IRComponent* component, float x, float y);

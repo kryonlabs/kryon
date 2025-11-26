@@ -14,8 +14,14 @@ export kryon_component_add_child
 export KryonComponent
 export addFontSearchDir, loadFont, registerFont, getFontId
 
+# Export dimension helpers
+export ir_percent, ir_px, ir_auto, ir_flex
+
 # Export helpers
 export helpers
+
+# Export reactive for loop support
+export createReactiveForLoop, ReactiveForLoop
 
 # Include the main DSL implementation
 include ./kryon_dsl/impl

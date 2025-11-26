@@ -65,6 +65,9 @@ typedef struct {
     IRAlignment main_axis;
     IRAlignment cross_axis;
     IRAlignment justify_content;
+    uint8_t grow;      // Flex grow factor (0-255)
+    uint8_t shrink;    // Flex shrink factor (0-255)
+    uint8_t direction; // Layout direction: 0=column, 1=row
 } IRFlexbox;
 
 // Spacing
