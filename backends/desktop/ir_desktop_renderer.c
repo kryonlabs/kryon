@@ -1230,6 +1230,14 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
             return result;
         } else if (!is_height && text_width > 0.0f) {
             float result = text_width + pad_left + pad_right;
+
+            // If maxWidth is set, cap the natural width
+            // This allows flex-shrink to work properly for tabs
+            if (child->layout && child->layout->max_width.type == IR_DIMENSION_PX &&
+                child->layout->max_width.value > 0 && result > child->layout->max_width.value) {
+                result = child->layout->max_width.value;
+            }
+
             if (getenv("KRYON_TRACE_LAYOUT")) {
                 printf("    ✅ BUTTON width from text: %.1f (text=%.1f + pad=%.1f)\n", result, text_width, pad_left + pad_right);
             }
@@ -1365,6 +1373,44 @@ static float get_child_dimension(IRComponent* child, LayoutRect parent_rect, boo
 
 // Platform-specific rendering implementations
 #ifdef ENABLE_SDL3
+
+// Render text texture with right-edge alpha fade using per-vertex alpha
+// This fades the actual text pixels (not an overlay) for Chrome-like tab text fade
+static void render_text_with_fade(SDL_Renderer* renderer, SDL_Texture* texture,
+                                   float x, float y, float text_w, float text_h,
+                                   float visible_w, float fade_zone_ratio) {
+    (void)fade_zone_ratio;  // Currently using simple left-to-right fade
+
+    // UV coordinates for the texture - only show portion that fits
+    float uv_right = visible_w / text_w;
+    if (uv_right > 1.0f) uv_right = 1.0f;
+
+    SDL_Vertex quad[4];
+
+    // Top-left (fully opaque)
+    quad[0].position = (SDL_FPoint){x, y};
+    quad[0].color = (SDL_FColor){1.0f, 1.0f, 1.0f, 1.0f};
+    quad[0].tex_coord = (SDL_FPoint){0.0f, 0.0f};
+
+    // Top-right (transparent at edge)
+    quad[1].position = (SDL_FPoint){x + visible_w, y};
+    quad[1].color = (SDL_FColor){1.0f, 1.0f, 1.0f, 0.0f};
+    quad[1].tex_coord = (SDL_FPoint){uv_right, 0.0f};
+
+    // Bottom-left (fully opaque)
+    quad[2].position = (SDL_FPoint){x, y + text_h};
+    quad[2].color = (SDL_FColor){1.0f, 1.0f, 1.0f, 1.0f};
+    quad[2].tex_coord = (SDL_FPoint){0.0f, 1.0f};
+
+    // Bottom-right (transparent at edge)
+    quad[3].position = (SDL_FPoint){x + visible_w, y + text_h};
+    quad[3].color = (SDL_FColor){1.0f, 1.0f, 1.0f, 0.0f};
+    quad[3].tex_coord = (SDL_FPoint){uv_right, 1.0f};
+
+    int indices[6] = {0, 1, 2, 1, 3, 2};
+
+    SDL_RenderGeometry(renderer, texture, quad, 4, indices, 6);
+}
 
 // Helper function to render a dropdown menu (called in second pass for correct z-index)
 static void render_dropdown_menu_sdl3(DesktopIRRenderer* renderer, IRComponent* component) {
@@ -1577,14 +1623,30 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 if (surface) {
                     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
                     if (texture) {
-                        // Center text in button (round to integer pixels for crisp rendering)
-                        SDL_FRect text_rect = {
-                            .x = roundf(rect.x + (rect.width - surface->w) / 2),
-                            .y = roundf(rect.y + (rect.height - surface->h) / 2),
-                            .w = (float)surface->w,
-                            .h = (float)surface->h
-                        };
-                        SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
+                        float text_w = (float)surface->w;
+                        float text_h = (float)surface->h;
+                        float avail_w = rect.width;
+                        float text_y = roundf(rect.y + (rect.height - text_h) / 2);
+
+                        if (text_w > avail_w - 16) {
+                            // Text overflows: left-align and fade right edge
+                            float text_x = rect.x + 8;  // Small left padding
+                            float visible_w = avail_w - 12;  // Leave margin
+
+                            // Render text with per-vertex alpha fade (actual text pixels fade)
+                            render_text_with_fade(renderer->renderer, texture,
+                                                  text_x, text_y, text_w, text_h,
+                                                  visible_w, 0.25f);  // Fade last 25%
+                        } else {
+                            // Text fits: render normally, centered
+                            SDL_FRect text_rect = {
+                                .x = roundf(rect.x + (rect.width - text_w) / 2),
+                                .y = text_y,
+                                .w = text_w,
+                                .h = text_h
+                            };
+                            SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
+                        }
                         SDL_DestroyTexture(texture);
                     }
                     SDL_DestroySurface(surface);
@@ -2704,16 +2766,26 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
         // instead of the measured child size, so they can properly calculate alignment
         LayoutRect rect_for_child = child_layout;
 
-        // Apply flex_grow extra width for ROW children
-        if (component->type == IR_COMPONENT_ROW && flex_extra_widths && flex_extra_widths[i] > 0) {
+        // Apply flex_grow/flex_shrink extra width for ROW children
+        // flex_extra_widths[i] > 0 = grow, < 0 = shrink
+        if (component->type == IR_COMPONENT_ROW && flex_extra_widths && flex_extra_widths[i] != 0) {
             rect_for_child.width += flex_extra_widths[i];
 
-            // Clamp to maxWidth if set (prevents single flex item from taking all space)
-            if (child && child->layout &&
+            // Clamp to maxWidth if growing
+            if (flex_extra_widths[i] > 0 && child && child->layout &&
                 child->layout->max_width.type == IR_DIMENSION_PX &&
                 child->layout->max_width.value > 0) {
                 if (rect_for_child.width > child->layout->max_width.value) {
                     rect_for_child.width = child->layout->max_width.value;
+                }
+            }
+
+            // Clamp to minWidth if shrinking
+            if (flex_extra_widths[i] < 0 && child && child->layout &&
+                child->layout->min_width.type == IR_DIMENSION_PX &&
+                child->layout->min_width.value > 0) {
+                if (rect_for_child.width < child->layout->min_width.value) {
+                    rect_for_child.width = child->layout->min_width.value;
                 }
             }
 

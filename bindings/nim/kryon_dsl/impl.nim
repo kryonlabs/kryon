@@ -2988,9 +2988,11 @@ macro Tab*(props: untyped): untyped =
   buttonProps.add newTree(nnkAsgn, ident("height"), newIntLitNode(32))
   buttonProps.add newTree(nnkAsgn, ident("alignItems"), newStrLitNode("center"))
   buttonProps.add newTree(nnkAsgn, ident("justifyContent"), newStrLitNode("center"))
-  # Chrome-like tabs: minimum width to ensure tab is still readable
-  # No maxWidth - tabs expand/shrink dynamically via flex_grow/flex_shrink
-  buttonProps.add newTree(nnkAsgn, ident("minWidth"), newIntLitNode(50))
+  # Chrome-like tabs: min/max width for responsive behavior
+  # minWidth=16: allows tabs to shrink very small (text fades out with ellipsis)
+  # maxWidth=180: prevents excessive expansion (Chrome-like behavior)
+  buttonProps.add newTree(nnkAsgn, ident("minWidth"), newIntLitNode(16))
+  buttonProps.add newTree(nnkAsgn, ident("maxWidth"), newIntLitNode(180))
   buttonProps.add newTree(nnkAsgn, ident("minHeight"), newIntLitNode(28))
 
   buttonProps.add newTree(nnkAsgn, ident("text"), titleVal)
