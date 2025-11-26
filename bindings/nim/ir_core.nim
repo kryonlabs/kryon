@@ -56,7 +56,13 @@ type
     `type`*: IRDimensionType
     value*: cfloat
 
-  IRColor* = object
+  IRColorType* {.size: sizeof(cint).} = enum
+    IR_COLOR_SOLID = 0
+    IR_COLOR_TRANSPARENT
+    IR_COLOR_GRADIENT
+
+  IRColor* {.importc: "IRColor", header: "ir_core.h".} = object
+    `type`*: IRColorType
     r*: uint8
     g*: uint8
     b*: uint8

@@ -160,7 +160,7 @@ echo "────────────────────────�
 # Determine linker libraries based on renderer using new IR system
 case "$RENDERER" in
     "sdl3")
-        LINK_LIBS="-Lbuild -lkryon_ir -lkryon_desktop -lSDL3 -lSDL3_ttf -lm"
+        LINK_LIBS="-Lbuild -lkryon_ir -lkryon_desktop -lkryon_debug -lSDL3 -lSDL3_ttf -lm"
         if [ -n "$FONTCONFIG_LIBS" ]; then
             LINK_LIBS="$LINK_LIBS $FONTCONFIG_LIBS"
         fi
@@ -192,7 +192,7 @@ case "$FRONTEND" in
         # Build and run separately for better error handling
         echo "Compiling with new architecture bindings..."
         # Add appropriate include paths based on renderer using new IR system
-        INCLUDE_PATHS="--passC:\"-Iir\" --passC:\"-I${PROJECT_ROOT}\" --passC:\"-DKRYON_TARGET_PLATFORM=0\" --passC:\"-DKRYON_NO_FLOAT=0\""
+        INCLUDE_PATHS="--passC:\"-Iir\" --passC:\"-Icore/include\" --passC:\"-I${PROJECT_ROOT}\" --passC:\"-DKRYON_TARGET_PLATFORM=0\" --passC:\"-DKRYON_NO_FLOAT=0\""
         NIM_FLAGS="--threads:on --mm:arc"
 
         if [ "$RENDERER" = "terminal" ]; then
