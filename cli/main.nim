@@ -40,6 +40,15 @@ EXAMPLES:
 For detailed help: kryon <command> --help
 """
 
+proc findInstalledKryon*(): tuple[found: bool, libDir: string, includeDir: string] =
+  ## Check if kryon is installed in ~/.local
+  let homeLocal = getHomeDir() / ".local"
+  let libFile = homeLocal / "lib" / "libkryon.a"
+  let includeDir = homeLocal / "include" / "kryon"
+  if fileExists(libFile) and dirExists(includeDir):
+    return (true, homeLocal / "lib", includeDir)
+  return (false, "", "")
+
 proc findKryonRoot*(): string =
   ## Resolve the Kryon root directory even when running outside the repo.
   ## Priority: KRYON_ROOT env -> walk up from cwd looking for core/include/kryon.h ->
@@ -167,67 +176,96 @@ proc handleRunCommand*(args: seq[string]) =
   echo "🎯 Target: " & target
 
   try:
-    # Resolve Kryon root so we can inject include/lib paths for external apps
-    let kryonRoot = findKryonRoot()
-    putEnv("KRYON_ROOT", kryonRoot)
+    # Check for installed kryon first (user project mode)
+    let installed = findInstalledKryon()
 
-    # Ensure C libraries are built
-    let buildDir = kryonRoot / "build"
-    createDir(buildDir)
-
-    let coreLib = buildDir / "libkryon_core.a"
-    let irLib = buildDir / "libkryon_ir.a"
-    let desktopLib = buildDir / "libkryon_desktop.a"
-
-    # Build C core library if missing or outdated
-    if not fileExists(coreLib):
-      echo "🧱 Building C core library..."
-      let coreCmd = "make -C " & (kryonRoot / "core") & " all"
-      let coreResult = execShellCmd(coreCmd)
-      if coreResult != 0:
-        echo "❌ Failed to build C core library"
-        quit(1)
-
-    # Build IR library if missing
-    if not fileExists(irLib):
-      echo "🔧 Building IR library..."
-      let irCmd = "make -C " & (kryonRoot / "ir") & " all"
-      let irResult = execShellCmd(irCmd)
-      if irResult != 0:
-        echo "❌ Failed to build IR library"
-        quit(1)
-
-    # Build desktop library if missing
-    if not fileExists(desktopLib):
-      echo "🖥️  Building desktop library..."
-      let desktopCmd = "make -C " & (kryonRoot / "backends" / "desktop") & " all"
-      let desktopResult = execShellCmd(desktopCmd)
-      if desktopResult != 0:
-        echo "❌ Failed to build desktop library"
-        quit(1)
-
-    # Make sure we have a writable build/cache location even if cwd is read-only
-    let runCache = kryonRoot / "tmp_nimcache" / "cli_run"
+    # Set up cache directory for compilation
+    let homeCache = getHomeDir() / ".cache" / "kryon"
+    let runCache = homeCache / "cli_run"
     createDir(runCache)
-
     let outFile = runCache / "kryon_app_run"
-    var nimArgs = @[
-      "nim", "c",
-      "--nimcache:" & runCache,
-      "--out:" & outFile,
-      "--path:" & (kryonRoot / "bindings" / "nim"),
-      # Includes
-      "--passC:\"-I" & kryonRoot / "core/include" & "\"",
-      "--passC:\"-I" & kryonRoot / "ir" & "\"",
-      "--passC:\"-I" & kryonRoot / "backends/desktop" & "\"",
-    ]
 
-    # Base linker flags for Kryon libs
-    var libFlags: seq[string] = @[
-      "--passL:\"-L" & kryonRoot / "build" & "\"",
-      "--passL:\"-Wl,--start-group -lkryon_core -lkryon_ir -lkryon_desktop -Wl,--end-group\"",
-      "--passL:\"-Wl,-rpath," & kryonRoot / "build" & "\""
-    ]
+    var nimArgs: seq[string]
+    var libFlags: seq[string]
+
+    if installed.found:
+      # Installed mode - use pre-built library from ~/.local
+      echo "📦 Using installed Kryon from ~/.local"
+
+      let cHeaderDir = installed.includeDir / "c"
+
+      nimArgs = @[
+        "nim", "c",
+        "--nimcache:" & runCache,
+        "--out:" & outFile,
+        "--path:" & installed.includeDir,  # Nim bindings in ~/.local/include/kryon
+        # C headers
+        "--passC:\"-I" & cHeaderDir & "\"",
+      ]
+
+      # Single combined library
+      libFlags = @[
+        "--passL:\"-L" & installed.libDir & "\"",
+        "--passL:\"-lkryon\"",
+        "--passL:\"-Wl,-rpath," & installed.libDir & "\""
+      ]
+    else:
+      # Dev mode - build from source
+      let kryonRoot = findKryonRoot()
+      putEnv("KRYON_ROOT", kryonRoot)
+
+      # Ensure C libraries are built
+      let buildDir = kryonRoot / "build"
+      createDir(buildDir)
+
+      let coreLib = buildDir / "libkryon_core.a"
+      let irLib = buildDir / "libkryon_ir.a"
+      let desktopLib = buildDir / "libkryon_desktop.a"
+
+      # Build C core library if missing or outdated
+      if not fileExists(coreLib):
+        echo "🧱 Building C core library..."
+        let coreCmd = "make -C " & (kryonRoot / "core") & " all"
+        let coreResult = execShellCmd(coreCmd)
+        if coreResult != 0:
+          echo "❌ Failed to build C core library"
+          quit(1)
+
+      # Build IR library if missing
+      if not fileExists(irLib):
+        echo "🔧 Building IR library..."
+        let irCmd = "make -C " & (kryonRoot / "ir") & " all"
+        let irResult = execShellCmd(irCmd)
+        if irResult != 0:
+          echo "❌ Failed to build IR library"
+          quit(1)
+
+      # Build desktop library if missing
+      if not fileExists(desktopLib):
+        echo "🖥️  Building desktop library..."
+        let desktopCmd = "make -C " & (kryonRoot / "backends" / "desktop") & " all"
+        let desktopResult = execShellCmd(desktopCmd)
+        if desktopResult != 0:
+          echo "❌ Failed to build desktop library"
+          quit(1)
+
+      nimArgs = @[
+        "nim", "c",
+        "--nimcache:" & runCache,
+        "--out:" & outFile,
+        "--path:" & (kryonRoot / "bindings" / "nim"),
+        # Includes
+        "--passC:\"-I" & kryonRoot / "core/include" & "\"",
+        "--passC:\"-I" & kryonRoot / "ir" & "\"",
+        "--passC:\"-I" & kryonRoot / "backends/desktop" & "\"",
+      ]
+
+      # Base linker flags for Kryon libs
+      libFlags = @[
+        "--passL:\"-L" & kryonRoot / "build" & "\"",
+        "--passL:\"-Wl,--start-group -lkryon_core -lkryon_ir -lkryon_desktop -Wl,--end-group\"",
+        "--passL:\"-Wl,-rpath," & kryonRoot / "build" & "\""
+      ]
 
     # Gather SDL flags from pkg-config (captures -L/-rpath/-l)
     let sdlFlags = pkgLibFlags("sdl3")

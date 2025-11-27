@@ -83,12 +83,32 @@ $(DYNAMIC_BIN): $(CLI_SRC)
 	fi
 
 # Build library for use by other projects
-build-lib: $(LIB_FILE)
+# This creates a combined archive with all C libraries needed for linking
+build-lib: build-c-libs $(LIB_FILE)
 
-$(LIB_FILE):
-	@echo "Building Kryon library..."
+# Build the C core libraries
+build-c-libs:
+	@echo "Building C core libraries..."
 	@mkdir -p $(BUILD_DIR)
-	$(NIM) c $(NIMFLAGS) --app:staticlib --passC:"-I$(CURDIR)/ir" --out:$(LIB_FILE) $(LIB_SRC).nim
+	$(MAKE) -C core all
+	$(MAKE) -C ir all
+	$(MAKE) -C backends/desktop all
+
+# Create combined static library from all C libraries
+$(LIB_FILE): build-c-libs
+	@echo "Creating combined Kryon library..."
+	@mkdir -p $(BUILD_DIR)
+	@# Create a temporary directory for combining archives
+	@rm -rf $(BUILD_DIR)/combined_lib
+	@mkdir -p $(BUILD_DIR)/combined_lib
+	@# Extract all object files from component libraries
+	@cd $(BUILD_DIR)/combined_lib && ar x ../libkryon_core.a
+	@cd $(BUILD_DIR)/combined_lib && ar x ../libkryon_ir.a
+	@cd $(BUILD_DIR)/combined_lib && ar x ../libkryon_desktop.a
+	@# Create combined archive
+	ar rcs $(LIB_FILE) $(BUILD_DIR)/combined_lib/*.o
+	@rm -rf $(BUILD_DIR)/combined_lib
+	@echo "Created $(LIB_FILE)"
 
 # Development build (debug symbols, verbose)
 dev:
@@ -135,11 +155,18 @@ install-lib: build-lib
 	@mkdir -p $(LIBDIR)
 	@mkdir -p $(PKGCONFIGDIR)
 	install -m 644 $(LIB_FILE) $(LIBDIR)/
-	# Copy the entire kryon source tree to include directory
+	# Copy Nim bindings to include directory
 	rm -rf $(INCDIR)
 	mkdir -p $(INCDIR)
 	cp -r bindings/nim/* $(INCDIR)/
 	cp c_core_build.nim $(PREFIX)/include/
+	# Copy C headers for compilation (fix relative paths for flat install)
+	mkdir -p $(INCDIR)/c
+	cp core/include/*.h $(INCDIR)/c/
+	cp ir/*.h $(INCDIR)/c/
+	for h in backends/desktop/*.h; do \
+		sed 's|#include "../../ir/|#include "|g' "$$h" > $(INCDIR)/c/$$(basename "$$h"); \
+	done
 	# Create pkg-config file if it exists
 	@if [ -f kryon.pc ]; then \
 		sed -e 's/@PREFIX@/$(subst /,\/,$(PREFIX))/g' \

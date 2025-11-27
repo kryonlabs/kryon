@@ -49,6 +49,25 @@ proc isEchoStatement(node: NimNode): bool =
       return true
   result = false
 
+proc isStaticCollection(node: NimNode): bool =
+  ## Check if a for-loop collection is static (can be unrolled at compile time)
+  ## Static collections: array literals, seq literals, range literals
+  case node.kind
+  of nnkBracket:
+    # Array literal: [1, 2, 3]
+    return true
+  of nnkPrefix:
+    # Seq literal: @[1, 2, 3]
+    if node.len == 2 and node[0].eqIdent("@") and node[1].kind == nnkBracket:
+      return true
+  of nnkInfix:
+    # Range: 0..6 or 0..<7
+    if node[0].eqIdent("..") or node[0].eqIdent("..<"):
+      return true
+  else:
+    discard
+  return false
+
 # ============================================================================
 # Reactive Expression Detection
 # ============================================================================
@@ -1147,8 +1166,60 @@ macro Container*(props: untyped): untyped =
 
   # Add child components
   for child in childNodes:
-    # Runtime for-loops: use reactive for-loop system for dynamic list rendering
+    # For-loops: distinguish static vs dynamic collections
     if child.kind == nnkForStmt:
+      let loopCollection = child[1]
+
+      # Static collections (array literals, seq literals, ranges) get compile-time unrolled
+      if isStaticCollection(loopCollection):
+        proc buildStaticForLoop(forNode: NimNode): NimNode =
+          ## Generate a compile-time for loop that directly adds children to container
+          let loopVar = forNode[0]
+          let collection = forNode[1]
+          let loopBody = forNode[2]
+
+          # Use immediately-invoked closure to capture loop variable value
+          let capturedParam = genSym(nskParam, "captured")
+
+          var innerBody = newTree(nnkStmtList)
+          for bodyNode in loopBody.children:
+            let transformed = transformLoopVariableReferences(bodyNode, loopVar, capturedParam)
+            case transformed.kind
+            of nnkLetSection, nnkVarSection, nnkConstSection:
+              innerBody.add(transformed)
+            of nnkDiscardStmt:
+              # Discarded component - still add to container
+              if transformed.len > 0:
+                let childSym = genSym(nskLet, "child")
+                innerBody.add(newLetStmt(childSym, transformed[0]))
+                innerBody.add quote do:
+                  discard kryon_component_add_child(`containerName`, `childSym`)
+              else:
+                innerBody.add(transformed)
+            else:
+              # Component expression - add to container
+              let childSym = genSym(nskLet, "child")
+              innerBody.add(newLetStmt(childSym, transformed))
+              innerBody.add quote do:
+                discard kryon_component_add_child(`containerName`, `childSym`)
+
+          # Create closure and call it with loop variable
+          let closureProc = newProc(
+            name = newEmptyNode(),
+            params = @[newEmptyNode(), newIdentDefs(capturedParam, newCall(ident("typeof"), loopVar))],
+            body = innerBody,
+            procType = nnkLambda
+          )
+          closureProc.addPragma(ident("closure"))
+          let closureCall = newCall(closureProc, loopVar)
+
+          # Return the for loop with closure call as body
+          result = newTree(nnkForStmt, loopVar, collection, newStmtList(closureCall))
+
+        initStmts.add(buildStaticForLoop(child))
+        continue
+
+      # Dynamic collections use reactive for-loop system
       proc buildReactiveForLoop(forNode: NimNode): NimNode =
         let loopVar = forNode[0]
         let collection = forNode[1]
