@@ -3302,12 +3302,6 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
                 break;
 
             case SDL_EVENT_KEY_DOWN: {
-                // ESC key closes window by default
-                if (event.key.key == SDLK_ESCAPE) {
-                    renderer->running = false;
-                    break;
-                }
-
                 // Backspace handling for focused input
                 if (focused_input && event.key.key == SDLK_BACKSPACE) {
                     const char* current = focused_input->text_content ? focused_input->text_content : "";
