@@ -1147,58 +1147,62 @@ macro Container*(props: untyped): untyped =
 
   # Add child components
   for child in childNodes:
-    # Runtime for-loops: expand body to add each produced component
-    # CRITICAL FIX: Use immediately-invoked closure to force value capture
+    # Runtime for-loops: use reactive for-loop system for dynamic list rendering
     if child.kind == nnkForStmt:
-      proc buildLoop(forNode: NimNode): NimNode =
+      proc buildReactiveForLoop(forNode: NimNode): NimNode =
         let loopVar = forNode[0]
         let collection = forNode[1]
         let loopBody = forNode[2]
 
-        # Use a parameter for captured value instead of a let binding
-        # This ensures each iteration captures its own copy via closure parameter
-        let capturedParam = genSym(nskParam, "capturedIdx")
-        var innerBody = newTree(nnkStmtList)
+        # Use a parameter for captured value in the item proc
+        let itemParam = genSym(nskParam, "item")
+        let indexParam = genSym(nskParam, "idx")
+
+        # Build the item creation proc body - must return a component
+        var itemBody = newTree(nnkStmtList)
+        var lastComponentExpr: NimNode = nil
 
         for bodyNode in loopBody.children:
-          # Transform the body node to replace loop variable references with captured parameter
-          let transformedBodyNode = transformLoopVariableReferences(bodyNode, loopVar, capturedParam)
+          # Transform the body node to replace loop variable references with item parameter
+          let transformedBodyNode = transformLoopVariableReferences(bodyNode, loopVar, itemParam)
 
           case transformedBodyNode.kind
           of nnkLetSection, nnkVarSection, nnkConstSection:
-            innerBody.add(transformedBodyNode)
-          of nnkForStmt:
-            innerBody.add(buildLoop(transformedBodyNode))
+            itemBody.add(transformedBodyNode)
           of nnkDiscardStmt:
             if transformedBodyNode.len > 0:
-              let componentExpr = transformedBodyNode[0]
-              let childSym = genSym(nskLet, "loopChild")
-              innerBody.add(newLetStmt(childSym, componentExpr))
-              innerBody.add quote do:
-                discard kryon_component_add_child(`containerName`, `childSym`)
+              lastComponentExpr = transformedBodyNode[0]
             else:
-              innerBody.add(transformedBodyNode)
+              itemBody.add(transformedBodyNode)
           else:
-            let childSym = genSym(nskLet, "loopChild")
-            innerBody.add quote do:
-              let `childSym` = block:
-                `transformedBodyNode`
-              if `childSym` != nil:
-                discard kryon_component_add_child(`containerName`, `childSym`)
+            # This should be a component expression - save it as the return value
+            lastComponentExpr = transformedBodyNode
 
-        # Create immediately-invoked closure: (proc(capturedIdx: typeof(loopVar)) = body)(loopVar)
-        let closureProc = newProc(
-          name = newEmptyNode(),
-          params = [newEmptyNode(), newIdentDefs(capturedParam, newCall(ident("typeof"), loopVar))],
-          body = innerBody,
-          procType = nnkLambda
-        )
-        closureProc.addPragma(ident("closure"))
-        let closureCall = newCall(closureProc, loopVar)
+        # Add the return expression (the component)
+        if lastComponentExpr != nil:
+          itemBody.add(lastComponentExpr)
+        else:
+          # Fallback - return nil if no component found
+          itemBody.add(newNilLit())
 
-        newTree(nnkForStmt, loopVar, collection, newStmtList(closureCall))
+        # Generate the createReactiveForLoop call
+        # collectionProc: returns the current collection
+        # itemProc: creates a component from an item
+        let collectionProcSym = genSym(nskProc, "collectionProc")
+        let itemProcSym = genSym(nskProc, "itemProc")
 
-      initStmts.add(buildLoop(child))
+        # Determine element type from collection
+        let elemType = newCall(ident("typeof"), newTree(nnkBracketExpr, collection, newLit(0)))
+
+        result = quote do:
+          block:
+            proc `collectionProcSym`(): seq[`elemType`] {.closure.} =
+              result = `collection`
+            proc `itemProcSym`(`itemParam`: `elemType`, `indexParam`: int): ptr IRComponent {.closure.} =
+              `itemBody`
+            discard createReactiveForLoop(`containerName`, `collectionProcSym`, `itemProcSym`)
+
+      initStmts.add(buildReactiveForLoop(child))
       continue
 
     # Handle both discarded and non-discarded children

@@ -716,7 +716,6 @@ proc createReactiveForLoopImpl*[T](
 
     # Update cache and invalidate layout
     loop.lastLength = newLength
-    loop.parent.rendered_bounds.valid = false
     kryon_component_mark_dirty(loop.parent)
 
     # Notify hook that parent's children changed (for TabGroup resync)

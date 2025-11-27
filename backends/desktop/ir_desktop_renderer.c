@@ -2844,11 +2844,12 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
                 rect_for_child.x = child_layout.x;
                 rect_for_child.y = child_layout.y;
                 if (is_auto_width) {
-                    // For COLUMN: cross-axis is horizontal, needs full width for horizontal alignment (Center/End)
-                    // For ROW: cross-axis is vertical, doesn't need full width - use measured content width
-                    bool needs_full_width = (child->type == IR_COMPONENT_COLUMN) &&
-                                           child->layout &&
-                                           child->layout->flex.cross_axis != IR_ALIGNMENT_START;
+                    // COLUMN needs full width for cross-axis alignment (horizontal centering)
+                    // ROW needs full width for main-axis alignment (justify_content != START)
+                    bool needs_full_width = child->layout && (
+                        ((child->type == IR_COMPONENT_COLUMN) && child->layout->flex.cross_axis != IR_ALIGNMENT_START) ||
+                        ((child->type == IR_COMPONENT_ROW) && child->layout->flex.justify_content != IR_ALIGNMENT_START)
+                    );
                     rect_for_child.width = needs_full_width ? child_rect.width : child_layout.width;
                 }
                 if (is_auto_height) {
@@ -3302,6 +3303,12 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
                 break;
 
             case SDL_EVENT_KEY_DOWN: {
+                // Ctrl+Q closes window (layout-independent using scancode)
+                if (event.key.scancode == SDL_SCANCODE_Q && (event.key.mod & SDL_KMOD_CTRL)) {
+                    renderer->running = false;
+                    break;
+                }
+
                 // Backspace handling for focused input
                 if (focused_input && event.key.key == SDLK_BACKSPACE) {
                     const char* current = focused_input->text_content ? focused_input->text_content : "";
