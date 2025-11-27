@@ -225,7 +225,7 @@ proc handleRunCommand*(args: seq[string]) =
     # Base linker flags for Kryon libs
     var libFlags: seq[string] = @[
       "--passL:\"-L" & kryonRoot / "build" & "\"",
-      "--passL:\"-Wl,--start-group -lkryon_core -lkryon_ir -lkryon_desktop -lkryon_debug -Wl,--end-group\"",
+      "--passL:\"-Wl,--start-group -lkryon_core -lkryon_ir -lkryon_desktop -Wl,--end-group\"",
       "--passL:\"-Wl,-rpath," & kryonRoot / "build" & "\""
     ]
 

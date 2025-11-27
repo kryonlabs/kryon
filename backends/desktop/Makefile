@@ -30,8 +30,8 @@ else
 endif
 
 # Source files
-DESKTOP_SOURCES = ir_desktop_renderer.c
-DESKTOP_HEADERS = ir_desktop_renderer.h
+DESKTOP_SOURCES = ir_desktop_renderer.c debug_backend.c
+DESKTOP_HEADERS = ir_desktop_renderer.h debug_backend.h
 
 # Output files
 DESKTOP_STATIC_LIB = $(BUILD_DIR)/libkryon_desktop.a
@@ -55,13 +55,16 @@ $(BUILD_DIR):
 ir_desktop_renderer.o: ir_desktop_renderer.c $(DESKTOP_HEADERS)
 	$(CC) $(CFLAGS) $(INCLUDES) -c ir_desktop_renderer.c -o ir_desktop_renderer.o
 
+debug_backend.o: debug_backend.c debug_backend.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c debug_backend.c -o debug_backend.o
+
 # Create static library
-$(DESKTOP_STATIC_LIB): $(BUILD_DIR) ir_desktop_renderer.o
-	$(AR) $(ARFLAGS) $@ ir_desktop_renderer.o
+$(DESKTOP_STATIC_LIB): $(BUILD_DIR) ir_desktop_renderer.o debug_backend.o
+	$(AR) $(ARFLAGS) $@ ir_desktop_renderer.o debug_backend.o
 
 # Create shared library
-$(DESKTOP_SHARED_LIB): $(BUILD_DIR) ir_desktop_renderer.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_desktop_renderer.o -L$(BUILD_DIR) -lkryon_core -lkryon_ir $(LIBS)
+$(DESKTOP_SHARED_LIB): $(BUILD_DIR) ir_desktop_renderer.o debug_backend.o
+	$(CC) $(CFLAGS) -shared -o $@ ir_desktop_renderer.o debug_backend.o -L$(BUILD_DIR) -lkryon_core -lkryon_ir $(LIBS)
 
 # Build test program
 $(DESKTOP_TEST): $(DESKTOP_STATIC_LIB) desktop_test.c

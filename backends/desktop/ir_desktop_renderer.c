@@ -2972,6 +2972,7 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
 static void handle_sdl3_events(DesktopIRRenderer* renderer) {
     static TabGroupState* dragging_tabgroup = NULL;
     static IRComponent* focused_input = NULL;
+
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         DesktopEvent desktop_event = {0};
@@ -3302,10 +3303,21 @@ static void handle_sdl3_events(DesktopIRRenderer* renderer) {
                 }
                 break;
 
-            case SDL_EVENT_KEY_DOWN: {
-                // Ctrl+Q closes window (layout-independent using scancode)
+            case SDL_EVENT_KEY_UP:
+                // Quit on key RELEASE to prevent stuck key state (SDL bug #5550)
+                if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
+                    renderer->running = false;
+                    break;
+                }
                 if (event.key.scancode == SDL_SCANCODE_Q && (event.key.mod & SDL_KMOD_CTRL)) {
                     renderer->running = false;
+                    break;
+                }
+                break;
+
+            case SDL_EVENT_KEY_DOWN: {
+                // Ignore key repeat events
+                if (event.key.repeat) {
                     break;
                 }
 
@@ -3429,6 +3441,11 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
         printf("❌ Failed to initialize SDL3: %s\n", SDL_GetError());
         return false;
     }
+
+    // Flush any stale keyboard events from previous sessions
+    // This prevents cached key states from triggering immediate quit
+    SDL_PumpEvents();
+    SDL_FlushEvents(SDL_EVENT_FIRST, SDL_EVENT_LAST);
 
     // Initialize SDL_ttf
     if (!TTF_Init()) {
@@ -3627,6 +3644,12 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
     renderer->last_root = root;
 
 #ifdef ENABLE_SDL3
+    // Clear all keyboard/mouse state and flush stale events
+    // ResetKeyboard generates KEY_UP events, so we must flush AFTER it
+    SDL_ResetKeyboard();
+    SDL_PumpEvents();
+    SDL_FlushEvents(SDL_EVENT_FIRST, SDL_EVENT_LAST);
+
     while (renderer->running) {
         handle_sdl3_events(renderer);
 
