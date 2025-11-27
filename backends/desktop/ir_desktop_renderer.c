@@ -11,6 +11,7 @@
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_builder.h"
 #include "../../ir/ir_serialization.h"
+#include "../../ir/ir_style_vars.h"
 #include "ir_desktop_renderer.h"
 #include "../../core/include/kryon_canvas.h"
 
@@ -201,12 +202,12 @@ static float ir_dimension_to_pixels(IRDimension dimension, float container_size)
 
 #ifdef ENABLE_SDL3
 static SDL_Color ir_color_to_sdl(IRColor color) {
-    return (SDL_Color){
-        .r = color.r,
-        .g = color.g,
-        .b = color.b,
-        .a = color.a
-    };
+    uint8_t r, g, b, a;
+    if (ir_color_resolve(&color, &r, &g, &b, &a)) {
+        return (SDL_Color){ .r = r, .g = g, .b = b, .a = a };
+    }
+    // Fallback to transparent if resolution failed
+    return (SDL_Color){ .r = 0, .g = 0, .b = 0, .a = 0 };
 }
 
 
@@ -3656,6 +3657,13 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
         // Process reactive updates (text expressions, conditionals, etc.)
         // This ensures UI updates when reactive variables change
         nimProcessReactiveUpdates();
+
+        // Check if style variables changed (theme switch)
+        // The dirty flag is cleared after check, re-render happens naturally
+        if (ir_style_vars_is_dirty()) {
+            ir_style_vars_clear_dirty();
+            // Colors will be re-resolved in render_frame via ir_color_to_sdl
+        }
 
         if (!desktop_ir_renderer_render_frame(renderer, root)) {
             printf("❌ Frame rendering failed\n");

@@ -115,7 +115,7 @@ bool css_generator_write_format(CSSGenerator* generator, const char* format, ...
 static const char* get_color_string(IRColor color) {
     static char color_buffer[16];
     snprintf(color_buffer, sizeof(color_buffer), "#%02X%02X%02X%02X",
-             color.r, color.g, color.b, color.a);
+             color.data.r, color.data.g, color.data.b, color.data.a);
     return color_buffer;
 }
 

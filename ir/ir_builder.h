@@ -44,6 +44,11 @@ void ir_set_padding(IRStyle* style, float top, float right, float bottom, float 
 void ir_set_font(IRStyle* style, float size, const char* family, uint8_t r, uint8_t g, uint8_t b, uint8_t a, bool bold, bool italic);
 void ir_set_z_index(IRStyle* style, uint32_t z_index);
 
+// Style Variable Reference Setters (for theme support)
+void ir_set_background_color_var(IRStyle* style, IRStyleVarId var_id);
+void ir_set_text_color_var(IRStyle* style, IRStyleVarId var_id);
+void ir_set_border_color_var(IRStyle* style, IRStyleVarId var_id);
+
 // Text Effect Helpers
 void ir_set_text_overflow(IRStyle* style, IRTextOverflowType overflow);
 void ir_set_text_fade(IRStyle* style, IRTextFadeType fade_type, float fade_length);

@@ -60,14 +60,33 @@ type
     IR_COLOR_SOLID = 0
     IR_COLOR_TRANSPARENT
     IR_COLOR_GRADIENT
+    IR_COLOR_VAR_REF
+
+  # Union data for IRColor - matches C union layout exactly
+  # C has: union { struct { uint8_t r, g, b, a; }; IRStyleVarId var_id; }
+  # Use importc to match the C field names
+  IRColorData* {.importc: "IRColorData", header: "ir_core.h", union.} = object
+    r*, g*, b*, a*: uint8   # Anonymous struct fields (accessed directly)
+    var_id*: uint16         # Style variable reference
 
   IRColor* {.importc: "IRColor", header: "ir_core.h".} = object
     `type`*: IRColorType
-    r*: uint8
-    g*: uint8
-    b*: uint8
-    a*: uint8
+    data*: IRColorData
 
+# IRColor convenience accessors for backwards compatibility
+template r*(c: IRColor): uint8 = c.data.r
+template g*(c: IRColor): uint8 = c.data.g
+template b*(c: IRColor): uint8 = c.data.b
+template a*(c: IRColor): uint8 = c.data.a
+template var_id*(c: IRColor): uint16 = c.data.var_id
+
+template `r=`*(c: var IRColor, v: uint8) = c.data.r = v
+template `g=`*(c: var IRColor, v: uint8) = c.data.g = v
+template `b=`*(c: var IRColor, v: uint8) = c.data.b = v
+template `a=`*(c: var IRColor, v: uint8) = c.data.a = v
+template `var_id=`*(c: var IRColor, v: uint16) = c.data.var_id = v
+
+type
   IRSpacing* = object
     top*: cfloat
     right*: cfloat

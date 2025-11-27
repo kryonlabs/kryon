@@ -3,7 +3,45 @@
 # Helper Functions
 # ============================================================================
 
+proc isStyleVarRef(value: NimNode): bool =
+  ## Check if the value is a style variable reference (@varName)
+  if value.kind == nnkPrefix and value.len == 2:
+    let op = value[0]
+    if op.kind == nnkIdent and op.strVal == "@":
+      return true
+  return false
+
+proc styleVarNode(value: NimNode): NimNode =
+  ## Convert @varName to colorVar(varName) call
+  ## Maps common variable names to their builtin IDs
+  let varName = value[1]  # Get the identifier after @
+  let varNameStr = if varName.kind == nnkIdent: varName.strVal else: ""
+  # Map semantic names to builtin variable IDs
+  case varNameStr.toLowerAscii()
+  of "primary": result = newCall(ident("colorVar"), ident("varPrimary"))
+  of "primaryhover": result = newCall(ident("colorVar"), ident("varPrimaryHover"))
+  of "secondary": result = newCall(ident("colorVar"), ident("varSecondary"))
+  of "accent": result = newCall(ident("colorVar"), ident("varAccent"))
+  of "background", "bg": result = newCall(ident("colorVar"), ident("varBackground"))
+  of "surface": result = newCall(ident("colorVar"), ident("varSurface"))
+  of "surfacehover": result = newCall(ident("colorVar"), ident("varSurfaceHover"))
+  of "card": result = newCall(ident("colorVar"), ident("varCard"))
+  of "text": result = newCall(ident("colorVar"), ident("varText"))
+  of "textmuted", "muted": result = newCall(ident("colorVar"), ident("varTextMuted"))
+  of "textonprimary": result = newCall(ident("colorVar"), ident("varTextOnPrimary"))
+  of "success": result = newCall(ident("colorVar"), ident("varSuccess"))
+  of "warning": result = newCall(ident("colorVar"), ident("varWarning"))
+  of "error": result = newCall(ident("colorVar"), ident("varError"))
+  of "border": result = newCall(ident("colorVar"), ident("varBorder"))
+  of "divider": result = newCall(ident("colorVar"), ident("varDivider"))
+  else:
+    # Pass through as identifier (custom variable)
+    result = newCall(ident("colorVar"), varName)
+
 proc colorNode(value: NimNode): NimNode =
+  # Check for style variable reference (@varName)
+  if isStyleVarRef(value):
+    return styleVarNode(value)
   if value.kind == nnkStrLit:
     let text = value.strVal
     if text.startsWith("#"):

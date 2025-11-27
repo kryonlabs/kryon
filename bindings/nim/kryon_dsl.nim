@@ -3,7 +3,7 @@
 ## Provides declarative UI syntax that compiles to C core component trees
 
 import macros, strutils, os, sequtils, random
-import ./runtime, ./reactive_system, ./ir_core
+import ./runtime, ./reactive_system, ./ir_core, ./style_vars
 # Removed core_kryon and markdown - using IR system now
 import ./kryon_dsl/helpers  # Import helper functions
 
@@ -26,6 +26,9 @@ export kryon_component_set_text_fade, kryon_component_set_text_overflow, kryon_c
 
 # Export reactive for loop support
 export createReactiveForLoop, ReactiveForLoop
+
+# Export style variables for theming
+export style_vars
 
 # Include the main DSL implementation
 include ./kryon_dsl/impl

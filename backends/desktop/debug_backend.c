@@ -229,13 +229,13 @@ static void render_component(DebugRenderer* renderer, IRComponent* comp, int dep
         }
 
         // Background color if non-transparent
-        if (comp->style->background.a > 0) {
+        if (comp->style->background.data.a > 0) {
             debug_write(renderer, " bg=#%02X%02X%02X",
-                comp->style->background.r,
-                comp->style->background.g,
-                comp->style->background.b);
-            if (comp->style->background.a < 255) {
-                debug_write(renderer, "%02X", comp->style->background.a);
+                comp->style->background.data.r,
+                comp->style->background.data.g,
+                comp->style->background.data.b);
+            if (comp->style->background.data.a < 255) {
+                debug_write(renderer, "%02X", comp->style->background.data.a);
             }
         }
 
@@ -243,9 +243,9 @@ static void render_component(DebugRenderer* renderer, IRComponent* comp, int dep
         if (comp->style->border.width > 0) {
             debug_write(renderer, " border(%dpx #%02X%02X%02X r=%d)",
                 (int)comp->style->border.width,
-                comp->style->border.color.r,
-                comp->style->border.color.g,
-                comp->style->border.color.b,
+                comp->style->border.color.data.r,
+                comp->style->border.color.data.g,
+                comp->style->border.color.data.b,
                 comp->style->border.radius);
         }
 

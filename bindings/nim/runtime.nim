@@ -3,6 +3,7 @@
 ## NO LEGACY CODE - everything uses IR
 
 import ir_core, ir_desktop, os, strutils, tables, math, parseutils
+import style_vars
 
 # Import reactive system for compatibility
 import reactive_system
@@ -353,6 +354,52 @@ proc kryon_component_set_background_color*(component: ptr IRComponent, color: ui
 
 proc kryon_component_set_text_color*(component: ptr IRComponent, color: uint32) =
   setTextColor(component, color)
+
+# Overloads for IRColor (supports style variable references)
+proc kryon_component_set_background_color*(component: ptr IRComponent, color: IRColor) =
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    if color.`type` == IR_COLOR_VAR_REF:
+      ir_set_background_color_var(newStyle, color.var_id)
+    else:
+      ir_set_background_color(newStyle, color.r, color.g, color.b, color.a)
+    ir_set_style(component, newStyle)
+  else:
+    if color.`type` == IR_COLOR_VAR_REF:
+      ir_set_background_color_var(style, color.var_id)
+    else:
+      ir_set_background_color(style, color.r, color.g, color.b, color.a)
+
+proc kryon_component_set_text_color*(component: ptr IRComponent, color: IRColor) =
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    if color.`type` == IR_COLOR_VAR_REF:
+      ir_set_text_color_var(newStyle, color.var_id)
+    else:
+      ir_set_font(newStyle, 16.0, nil, color.r, color.g, color.b, color.a, false, false)
+    ir_set_style(component, newStyle)
+  else:
+    if color.`type` == IR_COLOR_VAR_REF:
+      ir_set_text_color_var(style, color.var_id)
+    else:
+      ir_set_font(style, 16.0, nil, color.r, color.g, color.b, color.a, false, false)
+
+proc kryon_component_set_border_color*(component: ptr IRComponent, color: IRColor) =
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    if color.`type` == IR_COLOR_VAR_REF:
+      ir_set_border_color_var(newStyle, color.var_id)
+    else:
+      ir_set_border(newStyle, 1.0, color.r, color.g, color.b, color.a, 0.0)
+    ir_set_style(component, newStyle)
+  else:
+    if color.`type` == IR_COLOR_VAR_REF:
+      ir_set_border_color_var(style, color.var_id)
+    else:
+      ir_set_border(style, 1.0, color.r, color.g, color.b, color.a, 0.0)
 
 proc kryon_component_set_bounds*(component: ptr IRComponent, x, y, w, h: int) =
   let style = ir_get_style(component)

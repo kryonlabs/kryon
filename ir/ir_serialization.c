@@ -165,19 +165,19 @@ static bool deserialize_dimension(IRBuffer* buffer, IRDimension* dimension) {
 
 static bool serialize_color(IRBuffer* buffer, IRColor color) {
     if (!write_uint8(buffer, color.type)) return false;
-    if (!write_uint8(buffer, color.r)) return false;
-    if (!write_uint8(buffer, color.g)) return false;
-    if (!write_uint8(buffer, color.b)) return false;
-    if (!write_uint8(buffer, color.a)) return false;
+    if (!write_uint8(buffer, color.data.r)) return false;
+    if (!write_uint8(buffer, color.data.g)) return false;
+    if (!write_uint8(buffer, color.data.b)) return false;
+    if (!write_uint8(buffer, color.data.a)) return false;
     return true;
 }
 
 static bool deserialize_color(IRBuffer* buffer, IRColor* color) {
     if (!read_uint8(buffer, (uint8_t*)&color->type)) return false;
-    if (!read_uint8(buffer, &color->r)) return false;
-    if (!read_uint8(buffer, &color->g)) return false;
-    if (!read_uint8(buffer, &color->b)) return false;
-    if (!read_uint8(buffer, &color->a)) return false;
+    if (!read_uint8(buffer, &color->data.r)) return false;
+    if (!read_uint8(buffer, &color->data.g)) return false;
+    if (!read_uint8(buffer, &color->data.b)) return false;
+    if (!read_uint8(buffer, &color->data.a)) return false;
     return true;
 }
 

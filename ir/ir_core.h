@@ -39,13 +39,27 @@ typedef struct {
 typedef enum {
     IR_COLOR_SOLID,
     IR_COLOR_TRANSPARENT,
-    IR_COLOR_GRADIENT
+    IR_COLOR_GRADIENT,
+    IR_COLOR_VAR_REF    // Reference to style variable
 } IRColorType;
 
-typedef struct {
+// Style variable ID type (for IR_COLOR_VAR_REF)
+typedef uint16_t IRStyleVarId;
+
+// Union for color data - either RGBA or style variable reference
+typedef union IRColorData {
+    struct { uint8_t r, g, b, a; };  // Direct RGBA (anonymous for convenience)
+    IRStyleVarId var_id;              // Reference to style variable
+} IRColorData;
+
+typedef struct IRColor {
     IRColorType type;
-    uint8_t r, g, b, a;
+    IRColorData data;
 } IRColor;
+
+// Helper macros for creating IRColor values
+#define IR_COLOR_RGBA(R, G, B, A) ((IRColor){ .type = IR_COLOR_SOLID, .data = { .r = (R), .g = (G), .b = (B), .a = (A) } })
+#define IR_COLOR_VAR(ID) ((IRColor){ .type = IR_COLOR_VAR_REF, .data = { .var_id = (ID) } })
 
 // Alignment Types
 typedef enum {

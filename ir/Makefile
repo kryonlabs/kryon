@@ -12,8 +12,8 @@ BUILD_DIR = ../build
 INCLUDE_DIR = .
 
 # Source files
-IR_SOURCES = ir_builder.c ir_serialization.c
-IR_HEADERS = ir_core.h ir_builder.h ir_serialization.h
+IR_SOURCES = ir_builder.c ir_serialization.c ir_style_vars.c
+IR_HEADERS = ir_core.h ir_builder.h ir_serialization.h ir_style_vars.h
 
 # Output files
 IR_STATIC_LIB = $(BUILD_DIR)/libkryon_ir.a
@@ -33,13 +33,16 @@ ir_builder.o: ir_builder.c $(IR_HEADERS)
 ir_serialization.o: ir_serialization.c $(IR_HEADERS)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_serialization.c -o ir_serialization.o
 
+ir_style_vars.o: ir_style_vars.c $(IR_HEADERS)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_style_vars.c -o ir_style_vars.o
+
 # Create static library
-$(IR_STATIC_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o
-	$(AR) $(ARFLAGS) $@ ir_builder.o ir_serialization.o
+$(IR_STATIC_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_style_vars.o
+	$(AR) $(ARFLAGS) $@ ir_builder.o ir_serialization.o ir_style_vars.o
 
 # Create shared library
-$(IR_SHARED_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o
+$(IR_SHARED_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_style_vars.o
+	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o ir_style_vars.o
 
 # Install headers
 install-headers: $(BUILD_DIR)

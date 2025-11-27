@@ -766,10 +766,10 @@ void ir_set_text_shadow(IRStyle* style, float offset_x, float offset_y, float bl
     style->text_effect.shadow.offset_y = offset_y;
     style->text_effect.shadow.blur_radius = blur_radius;
     style->text_effect.shadow.color.type = IR_COLOR_SOLID;
-    style->text_effect.shadow.color.r = r;
-    style->text_effect.shadow.color.g = g;
-    style->text_effect.shadow.color.b = b;
-    style->text_effect.shadow.color.a = a;
+    style->text_effect.shadow.color.data.r = r;
+    style->text_effect.shadow.color.data.g = g;
+    style->text_effect.shadow.color.data.b = b;
+    style->text_effect.shadow.color.data.a = a;
     style->text_effect.shadow.enabled = true;
 }
 
@@ -794,20 +794,20 @@ void ir_set_height(IRStyle* style, IRDimensionType type, float value) {
 void ir_set_background_color(IRStyle* style, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     if (!style) return;
     style->background.type = IR_COLOR_SOLID;
-    style->background.r = r;
-    style->background.g = g;
-    style->background.b = b;
-    style->background.a = a;
+    style->background.data.r = r;
+    style->background.data.g = g;
+    style->background.data.b = b;
+    style->background.data.a = a;
 }
 
 void ir_set_border(IRStyle* style, float width, uint8_t r, uint8_t g, uint8_t b, uint8_t a, uint8_t radius) {
     if (!style) return;
     style->border.width = width;
     style->border.color.type = IR_COLOR_SOLID;
-    style->border.color.r = r;
-    style->border.color.g = g;
-    style->border.color.b = b;
-    style->border.color.a = a;
+    style->border.color.data.r = r;
+    style->border.color.data.g = g;
+    style->border.color.data.b = b;
+    style->border.color.data.a = a;
     style->border.radius = radius;
 }
 
@@ -832,12 +832,31 @@ void ir_set_font(IRStyle* style, float size, const char* family, uint8_t r, uint
     style->font.size = size;
     style->font.family = family ? strdup(family) : NULL;
     style->font.color.type = IR_COLOR_SOLID;
-    style->font.color.r = r;
-    style->font.color.g = g;
-    style->font.color.b = b;
-    style->font.color.a = a;
+    style->font.color.data.r = r;
+    style->font.color.data.g = g;
+    style->font.color.data.b = b;
+    style->font.color.data.a = a;
     style->font.bold = bold;
     style->font.italic = italic;
+}
+
+// Style Variable Reference Setters (for theme support)
+void ir_set_background_color_var(IRStyle* style, IRStyleVarId var_id) {
+    if (!style) return;
+    style->background.type = IR_COLOR_VAR_REF;
+    style->background.data.var_id = var_id;
+}
+
+void ir_set_text_color_var(IRStyle* style, IRStyleVarId var_id) {
+    if (!style) return;
+    style->font.color.type = IR_COLOR_VAR_REF;
+    style->font.color.data.var_id = var_id;
+}
+
+void ir_set_border_color_var(IRStyle* style, IRStyleVarId var_id) {
+    if (!style) return;
+    style->border.color.type = IR_COLOR_VAR_REF;
+    style->border.color.data.var_id = var_id;
 }
 
 // Layout Management
@@ -1289,18 +1308,15 @@ IRDimension ir_dimension_flex(float value) {
 
 // Color Helpers
 IRColor ir_color_rgb(uint8_t r, uint8_t g, uint8_t b) {
-    IRColor color = { IR_COLOR_SOLID, r, g, b, 255 };
-    return color;
+    return IR_COLOR_RGBA(r, g, b, 255);
 }
 
 IRColor ir_color_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    IRColor color = { IR_COLOR_SOLID, r, g, b, a };
-    return color;
+    return IR_COLOR_RGBA(r, g, b, a);
 }
 
 IRColor ir_color_transparent(void) {
-    IRColor color = { IR_COLOR_TRANSPARENT, 0, 0, 0, 0 };
-    return color;
+    return IR_COLOR_RGBA(0, 0, 0, 0);
 }
 
 // Validation and Optimization
