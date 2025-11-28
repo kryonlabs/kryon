@@ -164,8 +164,6 @@ void ir_tabgroup_register_bar(TabGroupState* state, IRComponent* tab_bar) {
     if (tab_bar) {
         // Store state pointer for renderer hit-testing (unsafe cast)
         tab_bar->custom_data = (char*)state;
-        printf("[TAB_DRAG_DEBUG] Registered TabGroupState on tab_bar component id=%u state=%p\n",
-               tab_bar->id, (void*)state);
     }
 }
 
