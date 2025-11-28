@@ -91,6 +91,10 @@ static int g_font_cache_count = 0;
 static char g_default_font_name[128] = {0};
 static char g_default_font_path[512] = {0};
 
+// Conditional debug logging - controlled by KRYON_DEBUG_RENDERER env var
+static bool g_debug_renderer = false;
+#define DEBUG_LOG(...) do { if (g_debug_renderer) fprintf(stderr, __VA_ARGS__); } while(0)
+
 static void desktop_ir_register_font_internal(const char* name, const char* path) {
     if (!name || !path || g_font_registry_count >= (int)(sizeof(g_font_registry) / sizeof(g_font_registry[0]))) return;
     for (int i = 0; i < g_font_registry_count; i++) {
@@ -3031,6 +3035,9 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
 // Event handling
 #ifdef ENABLE_SDL3
 static void handle_sdl3_events(DesktopIRRenderer* renderer) {
+    // NOTE: These static variables are NOT thread-safe
+    // This renderer assumes single-threaded usage
+    // If multi-threading is needed, move these to DesktopIRRenderer struct
     static TabGroupState* dragging_tabgroup = NULL;
     static IRComponent* focused_input = NULL;
 
@@ -3468,6 +3475,15 @@ void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
     }
 
 #ifdef ENABLE_SDL3
+    // Clean up font cache to prevent memory leaks
+    for (int i = 0; i < g_font_cache_count; i++) {
+        if (g_font_cache[i].font) {
+            TTF_CloseFont(g_font_cache[i].font);
+            g_font_cache[i].font = NULL;
+        }
+    }
+    g_font_cache_count = 0;
+
     if (renderer->cursor_hand) {
         SDL_DestroyCursor(renderer->cursor_hand);
     }
@@ -3494,7 +3510,10 @@ void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
 bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
     if (!renderer) return false;
 
-    printf("🚀 Initializing desktop renderer...\n");
+    // Enable debug logging if environment variable is set
+    g_debug_renderer = (getenv("KRYON_DEBUG_RENDERER") != NULL);
+
+    DEBUG_LOG("🚀 Initializing desktop renderer...\n");
 
 #ifdef ENABLE_SDL3
     if (renderer->config.backend_type != DESKTOP_BACKEND_SDL3) {

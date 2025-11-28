@@ -4,6 +4,7 @@
 #include "ir_hashmap.h"
 #include "ir_core.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 // ============================================================================
@@ -95,6 +96,12 @@ static bool ir_map_resize(IRComponentMap* map, uint32_t new_capacity) {
 bool ir_map_insert(IRComponentMap* map, IRComponent* component) {
     if (!map || !component) return false;
 
+    // Validate component ID (0 is reserved/invalid)
+    if (component->id == 0) {
+        fprintf(stderr, "Error: Cannot insert component with ID 0 (reserved/invalid)\n");
+        return false;
+    }
+
     // Check if we need to resize
     float load_factor = (float)map->item_count / (float)map->bucket_count;
     if (load_factor > LOAD_FACTOR_THRESHOLD) {
@@ -131,6 +138,11 @@ bool ir_map_insert(IRComponentMap* map, IRComponent* component) {
 IRComponent* ir_map_lookup(IRComponentMap* map, uint32_t id) {
     if (!map) return NULL;
 
+    // Validate component ID (0 is reserved/invalid)
+    if (id == 0) {
+        return NULL;
+    }
+
     uint32_t hash = hash_component_id(id, map->bucket_count);
     uint32_t start_hash = hash;
 
@@ -152,6 +164,11 @@ IRComponent* ir_map_lookup(IRComponentMap* map, uint32_t id) {
 
 bool ir_map_remove(IRComponentMap* map, uint32_t id) {
     if (!map) return false;
+
+    // Validate component ID (0 is reserved/invalid)
+    if (id == 0) {
+        return false;
+    }
 
     uint32_t hash = hash_component_id(id, map->bucket_count);
     uint32_t start_hash = hash;

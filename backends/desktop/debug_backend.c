@@ -193,13 +193,17 @@ static void render_component(DebugRenderer* renderer, IRComponent* comp, int dep
         debug_write(renderer, " tag=\"%s\"", comp->tag);
     }
 
-    // Text content (truncated)
+    // Text content (truncated) - SAFE version
     if (comp->text_content && strlen(comp->text_content) > 0) {
         char truncated[32];
         strncpy(truncated, comp->text_content, 28);
         truncated[28] = '\0';
         if (strlen(comp->text_content) > 28) {
-            strcat(truncated, "...");
+            // Safe: We know truncated[28] is '\0', so we have room for "..."
+            truncated[28] = '.';
+            truncated[29] = '.';
+            truncated[30] = '.';
+            truncated[31] = '\0';
         }
         // Replace newlines with spaces
         for (char* c = truncated; *c; c++) {

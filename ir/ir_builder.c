@@ -1541,7 +1541,12 @@ IRGradient* ir_gradient_create_conic(float center_x, float center_y) {
 }
 
 void ir_gradient_add_stop(IRGradient* gradient, float position, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    if (!gradient || gradient->stop_count >= 8) return;
+    if (!gradient) return;
+
+    if (gradient->stop_count >= 8) {
+        fprintf(stderr, "Warning: Gradient stop limit (8) exceeded, ignoring additional stop\n");
+        return;
+    }
 
     IRGradientStop* stop = &gradient->stops[gradient->stop_count];
     stop->position = position;

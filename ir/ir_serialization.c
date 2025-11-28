@@ -623,25 +623,45 @@ IRComponent* ir_read_binary_file(const char* filename) {
     return root;
 }
 
-// JSON Serialization Helper
+// JSON Serialization Helper - SAFE version without strcpy
 static void append_json(char** json, size_t* size, size_t* capacity, const char* str) {
     size_t len = strlen(str);
     while (*size + len + 1 > *capacity) {
         *capacity *= 2;
-        *json = realloc(*json, *capacity);
+        char* new_json = realloc(*json, *capacity);
+        if (!new_json) {
+            fprintf(stderr, "Error: Failed to allocate memory for JSON serialization\n");
+            return;
+        }
+        *json = new_json;
     }
-    strcpy(*json + *size, str);
+    // Use memcpy instead of strcpy for safety
+    memcpy(*json + *size, str, len);
     *size += len;
+    (*json)[*size] = '\0';
 }
+
+#define MAX_JSON_DEPTH 64
 
 static void serialize_component_json_recursive(IRComponent* component, char** json, size_t* size, size_t* capacity, int depth) {
     if (!component) return;
 
-    char buffer[1024];
-    char indent[128] = "";
-    for (int i = 0; i < depth; i++) {
-        strcat(indent, "  ");
+    // Depth limit to prevent stack overflow
+    if (depth > MAX_JSON_DEPTH) {
+        fprintf(stderr, "Error: JSON serialization depth limit exceeded (%d)\n", MAX_JSON_DEPTH);
+        return;
     }
+
+    char buffer[1024];
+    char indent[256] = "";  // Increased size for safety
+
+    // Build indent string safely
+    int indent_len = 0;
+    for (int i = 0; i < depth && indent_len < (int)sizeof(indent) - 3; i++) {
+        indent[indent_len++] = ' ';
+        indent[indent_len++] = ' ';
+    }
+    indent[indent_len] = '\0';
 
     // Start component object
     snprintf(buffer, sizeof(buffer), "%s{\n", indent);
