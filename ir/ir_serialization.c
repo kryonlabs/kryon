@@ -623,11 +623,110 @@ IRComponent* ir_read_binary_file(const char* filename) {
     return root;
 }
 
-// JSON Serialization (simplified version)
+// JSON Serialization Helper
+static void append_json(char** json, size_t* size, size_t* capacity, const char* str) {
+    size_t len = strlen(str);
+    while (*size + len + 1 > *capacity) {
+        *capacity *= 2;
+        *json = realloc(*json, *capacity);
+    }
+    strcpy(*json + *size, str);
+    *size += len;
+}
+
+static void serialize_component_json_recursive(IRComponent* component, char** json, size_t* size, size_t* capacity, int depth) {
+    if (!component) return;
+
+    char buffer[1024];
+    char indent[128] = "";
+    for (int i = 0; i < depth; i++) {
+        strcat(indent, "  ");
+    }
+
+    // Start component object
+    snprintf(buffer, sizeof(buffer), "%s{\n", indent);
+    append_json(json, size, capacity, buffer);
+
+    // ID and type
+    snprintf(buffer, sizeof(buffer), "%s  \"id\": %u,\n", indent, component->id);
+    append_json(json, size, capacity, buffer);
+
+    snprintf(buffer, sizeof(buffer), "%s  \"type\": \"%s\",\n", indent, ir_component_type_to_string(component->type));
+    append_json(json, size, capacity, buffer);
+
+    // Text content
+    if (component->text_content) {
+        snprintf(buffer, sizeof(buffer), "%s  \"text\": \"%s\",\n", indent, component->text_content);
+        append_json(json, size, capacity, buffer);
+    }
+
+    // Style (simplified - just visible and z_index)
+    if (component->style) {
+        snprintf(buffer, sizeof(buffer), "%s  \"style\": {\n", indent);
+        append_json(json, size, capacity, buffer);
+
+        snprintf(buffer, sizeof(buffer), "%s    \"visible\": %s,\n", indent, component->style->visible ? "true" : "false");
+        append_json(json, size, capacity, buffer);
+
+        snprintf(buffer, sizeof(buffer), "%s    \"z_index\": %u\n", indent, component->style->z_index);
+        append_json(json, size, capacity, buffer);
+
+        snprintf(buffer, sizeof(buffer), "%s  },\n", indent);
+        append_json(json, size, capacity, buffer);
+    }
+
+    // Rendered bounds
+    if (component->rendered_bounds.valid) {
+        snprintf(buffer, sizeof(buffer), "%s  \"bounds\": { \"x\": %.2f, \"y\": %.2f, \"width\": %.2f, \"height\": %.2f },\n",
+                indent, component->rendered_bounds.x, component->rendered_bounds.y,
+                component->rendered_bounds.width, component->rendered_bounds.height);
+        append_json(json, size, capacity, buffer);
+    }
+
+    // Children
+    if (component->child_count > 0) {
+        snprintf(buffer, sizeof(buffer), "%s  \"children\": [\n", indent);
+        append_json(json, size, capacity, buffer);
+
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            serialize_component_json_recursive(component->children[i], json, size, capacity, depth + 2);
+            if (i < component->child_count - 1) {
+                append_json(json, size, capacity, ",\n");
+            } else {
+                append_json(json, size, capacity, "\n");
+            }
+        }
+
+        snprintf(buffer, sizeof(buffer), "%s  ]\n", indent);
+        append_json(json, size, capacity, buffer);
+    } else {
+        // Remove trailing comma if no children
+        if ((*json)[*size - 2] == ',') {
+            (*json)[*size - 2] = '\n';
+            (*size)--;
+        }
+    }
+
+    snprintf(buffer, sizeof(buffer), "%s}", indent);
+    append_json(json, size, capacity, buffer);
+}
+
+// JSON Serialization
 char* ir_serialize_json(IRComponent* root) {
-    // This is a placeholder for JSON serialization
-    // In a full implementation, you'd build a JSON string representation
-    return strdup("{ \"message\": \"JSON serialization not fully implemented yet\" }");
+    if (!root) return strdup("null");
+
+    size_t capacity = 4096;
+    size_t size = 0;
+    char* json = malloc(capacity);
+    if (!json) return NULL;
+
+    json[0] = '\0';
+
+    serialize_component_json_recursive(root, &json, &size, &capacity, 0);
+
+    append_json(&json, &size, &capacity, "\n");
+
+    return json;
 }
 
 IRComponent* ir_deserialize_json(const char* json_string) {

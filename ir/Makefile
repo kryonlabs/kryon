@@ -12,8 +12,8 @@ BUILD_DIR = ../build
 INCLUDE_DIR = .
 
 # Source files
-IR_SOURCES = ir_builder.c ir_serialization.c ir_style_vars.c
-IR_HEADERS = ir_core.h ir_builder.h ir_serialization.h ir_style_vars.h
+IR_SOURCES = ir_builder.c ir_serialization.c ir_style_vars.c ir_layout.c ir_memory.c ir_hashmap.c ir_animation.c
+IR_HEADERS = ir_core.h ir_builder.h ir_serialization.h ir_style_vars.h ir_memory.h ir_hashmap.h ir_animation.h
 
 # Output files
 IR_STATIC_LIB = $(BUILD_DIR)/libkryon_ir.a
@@ -36,13 +36,25 @@ ir_serialization.o: ir_serialization.c $(IR_HEADERS)
 ir_style_vars.o: ir_style_vars.c $(IR_HEADERS)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_style_vars.c -o ir_style_vars.o
 
+ir_layout.o: ir_layout.c $(IR_HEADERS)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_layout.c -o ir_layout.o
+
+ir_memory.o: ir_memory.c $(IR_HEADERS)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_memory.c -o ir_memory.o
+
+ir_hashmap.o: ir_hashmap.c $(IR_HEADERS)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_hashmap.c -o ir_hashmap.o
+
+ir_animation.o: ir_animation.c $(IR_HEADERS)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_animation.c -o ir_animation.o -lm
+
 # Create static library
-$(IR_STATIC_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_style_vars.o
-	$(AR) $(ARFLAGS) $@ ir_builder.o ir_serialization.o ir_style_vars.o
+$(IR_STATIC_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o
+	$(AR) $(ARFLAGS) $@ ir_builder.o ir_serialization.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o
 
 # Create shared library
-$(IR_SHARED_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_style_vars.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o ir_style_vars.o
+$(IR_SHARED_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o
+	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o -lm
 
 # Install headers
 install-headers: $(BUILD_DIR)

@@ -61,6 +61,28 @@ typedef struct IRColor {
 #define IR_COLOR_RGBA(R, G, B, A) ((IRColor){ .type = IR_COLOR_SOLID, .data = { .r = (R), .g = (G), .b = (B), .a = (A) } })
 #define IR_COLOR_VAR(ID) ((IRColor){ .type = IR_COLOR_VAR_REF, .data = { .var_id = (ID) } })
 
+// Gradient Types
+typedef enum {
+    IR_GRADIENT_LINEAR,
+    IR_GRADIENT_RADIAL,
+    IR_GRADIENT_CONIC
+} IRGradientType;
+
+// Gradient Color Stop
+typedef struct {
+    float position;  // 0.0 to 1.0
+    uint8_t r, g, b, a;
+} IRGradientStop;
+
+// Gradient Definition
+typedef struct {
+    IRGradientType type;
+    IRGradientStop stops[8];  // Maximum 8 color stops
+    uint8_t stop_count;
+    float angle;  // For linear gradients (degrees)
+    float center_x, center_y;  // For radial/conic (0.0 to 1.0)
+} IRGradient;
+
 // Alignment Types
 typedef enum {
     IR_ALIGNMENT_START,
@@ -236,6 +258,24 @@ typedef struct IRLogic {
     struct IRLogic* next;
 } IRLogic;
 
+// Dirty flags for efficient incremental layout
+typedef enum {
+    IR_DIRTY_NONE = 0,
+    IR_DIRTY_STYLE = 1 << 0,     // Style properties changed
+    IR_DIRTY_LAYOUT = 1 << 1,    // Layout needs recalculation
+    IR_DIRTY_CHILDREN = 1 << 2,  // Children added/removed
+    IR_DIRTY_CONTENT = 1 << 3,   // Text content changed
+    IR_DIRTY_SUBTREE = 1 << 4    // Descendant needs layout
+} IRDirtyFlags;
+
+// Layout cache for performance optimization
+typedef struct {
+    bool dirty;                          // Cache invalid flag
+    float cached_intrinsic_width;        // Cached intrinsic width
+    float cached_intrinsic_height;       // Cached intrinsic height
+    uint32_t cache_generation;           // Generation counter for invalidation
+} IRLayoutCache;
+
 // Rendered bounds cache (filled during layout/render)
 typedef struct IRRenderedBounds {
     float x, y, width, height;
@@ -270,6 +310,8 @@ typedef struct IRComponent {
     char* text_content;  // For text components
     char* custom_data;   // For custom components
     IRRenderedBounds rendered_bounds;  // Cached layout bounds
+    IRLayoutCache layout_cache;        // Performance cache for layout
+    uint32_t dirty_flags;              // Dirty tracking for incremental updates
 } IRComponent;
 
 // IR Buffer for serialization
@@ -279,17 +321,31 @@ typedef struct IRBuffer {
     size_t capacity;
 } IRBuffer;
 
+// Forward declarations
+typedef struct IRComponentPool IRComponentPool;
+typedef struct IRComponentMap IRComponentMap;
+
 // Global IR Context
 typedef struct IRContext {
     IRComponent* root;
     IRLogic* logic_list;
     uint32_t next_component_id;
     uint32_t next_logic_id;
+    IRComponentPool* component_pool;  // Memory pool for components
+    IRComponentMap* component_map;     // Hash map for fast ID lookups
 } IRContext;
 
 // IR Type System Functions
 const char* ir_component_type_to_string(IRComponentType type);
 const char* ir_event_type_to_string(IREventType type);
 const char* ir_logic_type_to_string(LogicSourceType type);
+
+// IR Layout API (defined in ir_layout.c)
+void ir_layout_compute(IRComponent* root, float available_width, float available_height);
+void ir_layout_mark_dirty(IRComponent* component);
+void ir_layout_invalidate_subtree(IRComponent* component);
+void ir_layout_invalidate_cache(IRComponent* component);
+float ir_get_component_intrinsic_width(IRComponent* component);
+float ir_get_component_intrinsic_height(IRComponent* component);
 
 #endif // IR_CORE_H

@@ -1,5 +1,7 @@
 #define _GNU_SOURCE
 #include "ir_builder.h"
+#include "ir_memory.h"
+#include "ir_hashmap.h"
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -21,6 +23,13 @@ extern void nimOnComponentAdded(IRComponent* component) __attribute__((weak));
 
 // Forward declarations
 void ir_tabgroup_apply_visuals(TabGroupState* state);
+
+// Helper function to mark component dirty when style changes
+static void mark_style_dirty(IRComponent* component) {
+    if (!component) return;
+    ir_layout_invalidate_cache(component);
+    component->dirty_flags |= IR_DIRTY_STYLE | IR_DIRTY_LAYOUT;
+}
 
 // Type system helper functions
 const char* ir_component_type_to_string(IRComponentType type) {
@@ -132,9 +141,7 @@ TabGroupState* ir_tabgroup_create_state(IRComponent* group,
     state->group = group;
     state->tab_bar = tab_bar;
     state->tab_content = tab_content;
-    state->tabs = NULL;
-    state->panels = NULL;
-    state->tab_visuals = NULL;
+    // Arrays are now fixed-size, no allocation needed
     state->tab_count = 0;
     state->panel_count = 0;
     state->selected_index = selected_index;
@@ -142,9 +149,12 @@ TabGroupState* ir_tabgroup_create_state(IRComponent* group,
     state->dragging = false;
     state->drag_index = -1;
     state->drag_x = 0.0f;
-    // User callback storage - initialized to NULL
-    state->user_callbacks = NULL;
-    state->user_callback_data = NULL;
+    // Arrays are stack-allocated, initialize to NULL/0
+    memset(state->tabs, 0, sizeof(state->tabs));
+    memset(state->panels, 0, sizeof(state->panels));
+    memset(state->tab_visuals, 0, sizeof(state->tab_visuals));
+    memset(state->user_callbacks, 0, sizeof(state->user_callbacks));
+    memset(state->user_callback_data, 0, sizeof(state->user_callback_data));
     return state;
 }
 
@@ -154,6 +164,8 @@ void ir_tabgroup_register_bar(TabGroupState* state, IRComponent* tab_bar) {
     if (tab_bar) {
         // Store state pointer for renderer hit-testing (unsafe cast)
         tab_bar->custom_data = (char*)state;
+        printf("[TAB_DRAG_DEBUG] Registered TabGroupState on tab_bar component id=%u state=%p\n",
+               tab_bar->id, (void*)state);
     }
 }
 
@@ -164,9 +176,8 @@ void ir_tabgroup_register_content(TabGroupState* state, IRComponent* tab_content
 
 void ir_tabgroup_register_tab(TabGroupState* state, IRComponent* tab) {
     if (!state || !tab) return;
-    state->tabs = realloc(state->tabs, sizeof(IRComponent*) * (state->tab_count + 1));
-    if (!state->tabs) {
-        state->tab_count = 0;
+    if (state->tab_count >= IR_MAX_TABS_PER_GROUP) {
+        fprintf(stderr, "[ir_builder] Tab group full: max %d tabs\n", IR_MAX_TABS_PER_GROUP);
         return;
     }
     state->tabs[state->tab_count++] = tab;
@@ -174,9 +185,8 @@ void ir_tabgroup_register_tab(TabGroupState* state, IRComponent* tab) {
 
 void ir_tabgroup_register_panel(TabGroupState* state, IRComponent* panel) {
     if (!state || !panel) return;
-    state->panels = realloc(state->panels, sizeof(IRComponent*) * (state->panel_count + 1));
-    if (!state->panels) {
-        state->panel_count = 0;
+    if (state->panel_count >= IR_MAX_TABS_PER_GROUP) {
+        fprintf(stderr, "[ir_builder] Tab group full: max %d panels\n", IR_MAX_TABS_PER_GROUP);
         return;
     }
     state->panels[state->panel_count++] = panel;
@@ -372,14 +382,9 @@ void ir_tabgroup_set_reorderable(TabGroupState* state, bool reorderable) {
 void ir_tabgroup_set_tab_visual(TabGroupState* state, int index, TabVisualState visual) {
     if (!state) return;
     if (index < 0 || (uint32_t)index >= state->tab_count) return;
+    if (index >= IR_MAX_TABS_PER_GROUP) return;
 
-    // Always reallocate tab_visuals array to match current tab_count
-    // This handles the case where tabs are added after initial allocation
-    TabVisualState* new_visuals = (TabVisualState*)realloc(state->tab_visuals,
-        state->tab_count * sizeof(TabVisualState));
-    if (!new_visuals) return;
-    state->tab_visuals = new_visuals;
-
+    // Directly set visual in fixed-size array
     state->tab_visuals[index] = visual;
 }
 
@@ -412,7 +417,7 @@ static void ir_tabgroup_apply_visual_to_tab(IRComponent* tab, TabVisualState* vi
 }
 
 void ir_tabgroup_apply_visuals(TabGroupState* state) {
-    if (!state || !state->tab_visuals) return;
+    if (!state) return;
 
     for (uint32_t i = 0; i < state->tab_count; i++) {
         if (state->tabs[i] && i < state->tab_count) {
@@ -449,24 +454,9 @@ IRComponent* ir_tabgroup_get_panel(TabGroupState* state, uint32_t index) {
 void ir_tabgroup_set_tab_callback(TabGroupState* state, uint32_t index,
                                    TabClickCallback callback, void* user_data) {
     if (!state || index >= state->tab_count) return;
+    if (index >= IR_MAX_TABS_PER_GROUP) return;
 
-    // Always reallocate callback arrays to match current tab_count
-    // This handles the case where tabs are added after initial allocation
-    TabClickCallback* new_callbacks = (TabClickCallback*)realloc(state->user_callbacks,
-        state->tab_count * sizeof(TabClickCallback));
-    void** new_data = (void**)realloc(state->user_callback_data,
-        state->tab_count * sizeof(void*));
-
-    if (!new_callbacks || !new_data) {
-        // Allocation failed, clean up
-        if (new_callbacks) free(new_callbacks);
-        if (new_data) free(new_data);
-        return;
-    }
-
-    state->user_callbacks = new_callbacks;
-    state->user_callback_data = new_data;
-
+    // Directly set callback in fixed-size array
     state->user_callbacks[index] = callback;
     state->user_callback_data[index] = user_data;
 }
@@ -476,7 +466,7 @@ void ir_tabgroup_handle_tab_click(TabGroupState* state, uint32_t tab_index) {
     if (!state || tab_index >= state->tab_count) return;
 
     // CRITICAL: Call user's onClick callback FIRST (as per requirement)
-    if (state->user_callbacks && state->user_callbacks[tab_index]) {
+    if (state->user_callbacks[tab_index]) {
         state->user_callbacks[tab_index](tab_index, state->user_callback_data[tab_index]);
     }
 
@@ -487,11 +477,7 @@ void ir_tabgroup_handle_tab_click(TabGroupState* state, uint32_t tab_index) {
 // Cleanup
 void ir_tabgroup_destroy_state(TabGroupState* state) {
     if (!state) return;
-    if (state->tabs) free(state->tabs);
-    if (state->panels) free(state->panels);
-    if (state->tab_visuals) free(state->tab_visuals);
-    if (state->user_callbacks) free(state->user_callbacks);
-    if (state->user_callback_data) free(state->user_callback_data);
+    // Arrays are now stack-allocated within the struct, no need to free them
     free(state);
 }
 
@@ -504,6 +490,21 @@ IRContext* ir_create_context(void) {
     context->logic_list = NULL;
     context->next_component_id = 1;
     context->next_logic_id = 1;
+
+    // Create component pool
+    context->component_pool = ir_pool_create();
+    if (!context->component_pool) {
+        free(context);
+        return NULL;
+    }
+
+    // Create component hash map
+    context->component_map = ir_map_create(256);
+    if (!context->component_map) {
+        ir_pool_destroy(context->component_pool);
+        free(context);
+        return NULL;
+    }
 
     return context;
 }
@@ -521,6 +522,16 @@ void ir_destroy_context(IRContext* context) {
         IRLogic* next = logic->next;
         ir_destroy_logic(logic);
         logic = next;
+    }
+
+    // Destroy component hash map
+    if (context->component_map) {
+        ir_map_destroy(context->component_map);
+    }
+
+    // Destroy component pool
+    if (context->component_pool) {
+        ir_pool_destroy(context->component_pool);
     }
 
     free(context);
@@ -546,16 +557,33 @@ IRComponent* ir_create_component(IRComponentType type) {
 }
 
 IRComponent* ir_create_component_with_id(IRComponentType type, uint32_t id) {
-    IRComponent* component = malloc(sizeof(IRComponent));
-    if (!component) return NULL;
+    IRComponent* component = NULL;
 
-    memset(component, 0, sizeof(IRComponent));
+    // Use pool allocator if context exists
+    if (g_ir_context && g_ir_context->component_pool) {
+        component = ir_pool_alloc_component(g_ir_context->component_pool);
+    } else {
+        // Fallback to malloc if no context/pool
+        component = malloc(sizeof(IRComponent));
+        if (component) {
+            memset(component, 0, sizeof(IRComponent));
+            component->layout_cache.dirty = true;
+            component->dirty_flags = IR_DIRTY_LAYOUT;
+        }
+    }
+
+    if (!component) return NULL;
 
     component->type = type;
     if (id == 0 && g_ir_context) {
         component->id = g_ir_context->next_component_id++;
     } else {
         component->id = id;
+    }
+
+    // Add to hash map for fast lookups
+    if (g_ir_context && g_ir_context->component_map) {
+        ir_map_insert(g_ir_context->component_map, component);
     }
 
     return component;
@@ -605,7 +633,17 @@ void ir_destroy_component(IRComponent* component) {
         free(component->children);
     }
 
-    free(component);
+    // Remove from hash map
+    if (g_ir_context && g_ir_context->component_map) {
+        ir_map_remove(g_ir_context->component_map, component->id);
+    }
+
+    // Return to pool or free
+    if (g_ir_context && g_ir_context->component_pool) {
+        ir_pool_free_component(g_ir_context->component_pool, component);
+    } else {
+        free(component);
+    }
 }
 
 // Tree Structure Management
@@ -617,6 +655,10 @@ void ir_add_child(IRComponent* parent, IRComponent* child) {
     parent->children[parent->child_count] = child;
     parent->child_count++;
     child->parent = parent;
+
+    // Mark parent dirty - children changed
+    ir_layout_invalidate_cache(parent);
+    parent->dirty_flags |= IR_DIRTY_CHILDREN | IR_DIRTY_LAYOUT;
 }
 
 void ir_remove_child(IRComponent* parent, IRComponent* child) {
@@ -642,6 +684,10 @@ void ir_remove_child(IRComponent* parent, IRComponent* child) {
 
     parent->child_count--;
     child->parent = NULL;
+
+    // Mark parent dirty - children changed
+    ir_layout_invalidate_cache(parent);
+    parent->dirty_flags |= IR_DIRTY_CHILDREN | IR_DIRTY_LAYOUT;
 }
 
 void ir_insert_child(IRComponent* parent, IRComponent* child, uint32_t index) {
@@ -666,6 +712,12 @@ IRComponent* ir_get_child(IRComponent* component, uint32_t index) {
 }
 
 IRComponent* ir_find_component_by_id(IRComponent* root, uint32_t id) {
+    // Use hash map for O(1) lookup if available
+    if (g_ir_context && g_ir_context->component_map) {
+        return ir_map_lookup(g_ir_context->component_map, id);
+    }
+
+    // Fallback to tree traversal if no hash map
     if (!root) return NULL;
 
     if (root->id == id) return root;
@@ -1076,6 +1128,10 @@ void ir_set_text_content(IRComponent* component, const char* text) {
         free(component->text_content);
     }
     component->text_content = text ? strdup(text) : NULL;
+
+    // Mark component dirty - content changed
+    ir_layout_invalidate_cache(component);
+    component->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
 }
 
 void ir_set_custom_data(IRComponent* component, const char* data) {
@@ -1441,4 +1497,66 @@ void ir_set_align_content(IRLayout* layout, IRAlignment align) {
     // align-content controls how multiple rows/columns are aligned (when wrapping)
     // For now, use main_axis to control overall alignment
     layout->flex.main_axis = align;
+}
+
+// ============================================================================
+// Gradient Helpers
+// ============================================================================
+
+IRGradient* ir_gradient_create_linear(float angle) {
+    IRGradient* gradient = (IRGradient*)calloc(1, sizeof(IRGradient));
+    if (!gradient) return NULL;
+
+    gradient->type = IR_GRADIENT_LINEAR;
+    gradient->angle = angle;
+    gradient->stop_count = 0;
+    gradient->center_x = 0.5f;
+    gradient->center_y = 0.5f;
+
+    return gradient;
+}
+
+IRGradient* ir_gradient_create_radial(float center_x, float center_y) {
+    IRGradient* gradient = (IRGradient*)calloc(1, sizeof(IRGradient));
+    if (!gradient) return NULL;
+
+    gradient->type = IR_GRADIENT_RADIAL;
+    gradient->center_x = center_x;
+    gradient->center_y = center_y;
+    gradient->stop_count = 0;
+    gradient->angle = 0.0f;
+
+    return gradient;
+}
+
+IRGradient* ir_gradient_create_conic(float center_x, float center_y) {
+    IRGradient* gradient = (IRGradient*)calloc(1, sizeof(IRGradient));
+    if (!gradient) return NULL;
+
+    gradient->type = IR_GRADIENT_CONIC;
+    gradient->center_x = center_x;
+    gradient->center_y = center_y;
+    gradient->stop_count = 0;
+    gradient->angle = 0.0f;
+
+    return gradient;
+}
+
+void ir_gradient_add_stop(IRGradient* gradient, float position, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    if (!gradient || gradient->stop_count >= 8) return;
+
+    IRGradientStop* stop = &gradient->stops[gradient->stop_count];
+    stop->position = position;
+    stop->r = r;
+    stop->g = g;
+    stop->b = b;
+    stop->a = a;
+
+    gradient->stop_count++;
+}
+
+void ir_gradient_destroy(IRGradient* gradient) {
+    if (gradient) {
+        free(gradient);
+    }
 }

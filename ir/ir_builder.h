@@ -115,6 +115,13 @@ IRColor ir_color_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 IRColor ir_color_transparent(void);
 IRColor ir_color_named(const char* name);
 
+// Gradient Helpers
+IRGradient* ir_gradient_create_linear(float angle);
+IRGradient* ir_gradient_create_radial(float center_x, float center_y);
+IRGradient* ir_gradient_create_conic(float center_x, float center_y);
+void ir_gradient_add_stop(IRGradient* gradient, float position, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+void ir_gradient_destroy(IRGradient* gradient);
+
 // Validation and Optimization
 bool ir_validate_component(IRComponent* component);
 void ir_optimize_component(IRComponent* component);
@@ -132,14 +139,19 @@ typedef struct TabVisualState {
 // user_data: user-provided context (e.g., component ID for frontend bridge)
 typedef void (*TabClickCallback)(uint32_t tab_index, void* user_data);
 
+// Maximum tabs per tab group (prevents realloc)
+#define IR_MAX_TABS_PER_GROUP 32
+
 // Tab Group Support (shared across frontends)
 typedef struct TabGroupState {
     IRComponent* group;
     IRComponent* tab_bar;
     IRComponent* tab_content;
-    IRComponent** tabs;
-    IRComponent** panels;
-    TabVisualState* tab_visuals;  // Array of visual states per tab
+    IRComponent* tabs[IR_MAX_TABS_PER_GROUP];         // Fixed-size array
+    IRComponent* panels[IR_MAX_TABS_PER_GROUP];       // Fixed-size array
+    TabVisualState tab_visuals[IR_MAX_TABS_PER_GROUP]; // Fixed-size array
+    TabClickCallback user_callbacks[IR_MAX_TABS_PER_GROUP]; // Fixed-size array
+    void* user_callback_data[IR_MAX_TABS_PER_GROUP];  // Fixed-size array
     uint32_t tab_count;
     uint32_t panel_count;
     int selected_index;
@@ -147,9 +159,6 @@ typedef struct TabGroupState {
     bool dragging;
     int drag_index;
     float drag_x;
-    // User callback storage - called before tab selection
-    TabClickCallback* user_callbacks;  // Array of callbacks (one per tab)
-    void** user_callback_data;         // Array of user data pointers
 } TabGroupState;
 
 TabGroupState* ir_tabgroup_create_state(IRComponent* group,

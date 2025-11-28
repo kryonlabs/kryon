@@ -2722,6 +2722,15 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
     LayoutRect dragged_rect = {0};
     bool has_dragged_rect = false;
 
+    // DEBUG: Trace tab bar state detection
+    if (component->custom_data) {
+        TabGroupState* debug_state = (TabGroupState*)component->custom_data;
+        if (debug_state && debug_state->tab_bar == component) {
+            printf("[TAB_DRAG_DEBUG] Found TabGroupState on component id=%u dragging=%d drag_index=%d drag_x=%.1f\n",
+                   component->id, debug_state->dragging, debug_state->drag_index, debug_state->drag_x);
+        }
+    }
+
     for (uint32_t i = 0; i < component->child_count; i++) {
         IRComponent* child = component->children[i];
         // Get child size WITHOUT recursive layout (just from style)
@@ -3010,8 +3019,13 @@ static bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* comp
     // If this component is a tab bar with an active drag, render the dragged tab last so it follows the cursor
     if (tab_bar_state && has_dragged_rect && dragged_child) {
         // Apply cursor-following offset and render on top
+        printf("[TAB_DRAG_DEBUG] Rendering dragged tab: drag_x=%.1f rect_width=%.1f new_x=%.1f\n",
+               tab_bar_state->drag_x, dragged_rect.width, tab_bar_state->drag_x - dragged_rect.width * 0.5f);
         dragged_rect.x = tab_bar_state->drag_x - dragged_rect.width * 0.5f;
         render_component_sdl3(renderer, dragged_child, dragged_rect);
+    } else if (tab_bar_state) {
+        printf("[TAB_DRAG_DEBUG] NOT rendering dragged tab: has_dragged_rect=%d dragged_child=%p\n",
+               has_dragged_rect, (void*)dragged_child);
     }
     if (getenv("KRYON_TRACE_LAYOUT")) {
         const char* type_name = component->type == IR_COMPONENT_COLUMN ? "COLUMN" :
