@@ -30,19 +30,21 @@ void ir_style_var_set(IRStyleVarId id, uint8_t r, uint8_t g, uint8_t b, uint8_t 
     style_vars_dirty = true;
 }
 
-// Set a style variable from packed hex color (0xAARRGGBB or 0xRRGGBB)
+// Set a style variable from packed hex color (0xRRGGBBAA or 0xRRGGBB)
+// Uses web-standard format: RGB first, alpha last (like CSS #RRGGBBAA)
 void ir_style_var_set_hex(IRStyleVarId id, uint32_t hex_color) {
     ensure_initialized();
     if (id >= IR_MAX_STYLE_VARS) return;
 
-    // Handle both 0xRRGGBB and 0xAARRGGBB formats
-    uint8_t a = (hex_color >> 24) & 0xFF;
-    uint8_t r = (hex_color >> 16) & 0xFF;
-    uint8_t g = (hex_color >> 8) & 0xFF;
-    uint8_t b = hex_color & 0xFF;
+    // Web-standard format: 0xRRGGBBAA (alpha in low byte)
+    uint8_t r = (hex_color >> 24) & 0xFF;
+    uint8_t g = (hex_color >> 16) & 0xFF;
+    uint8_t b = (hex_color >> 8) & 0xFF;
+    uint8_t a = hex_color & 0xFF;
 
-    // If alpha is 0 but color has values, assume fully opaque
+    // If alpha is 0 but color has values, assume 0xRRGGBB format (no alpha byte)
     if (a == 0 && (r || g || b)) {
+        // Shift: treat as 0x00RRGGBB, not 0xRRGGBB00
         a = 255;
     }
 

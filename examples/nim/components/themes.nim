@@ -11,26 +11,26 @@ type
     colors*: Theme  # array[16, uint32] from style_vars
 
 # Pastel Dream - Soft, light, cheerful
-# Colors in 0xAARRGGBB format (alpha in high byte)
+# Colors in web-standard 0xRRGGBBAA format (like CSS #RRGGBBAA)
 const pastelTheme* = ThemePreset(
   name: "Pastel Dream",
   colors: [
-    0xFFA8D8EA'u32,  # primary - soft blue
-    0xFF89C9DE'u32,  # primaryHover
-    0xFFAA96DA'u32,  # secondary - lavender
-    0xFFFCBAD3'u32,  # accent - pink
-    0xFFFFFDD0'u32,  # background - cream
-    0xFFFFF5E6'u32,  # surface
-    0xFFFFE8CC'u32,  # surfaceHover
+    0xA8D8EAFF'u32,  # primary - soft blue
+    0x89C9DEFF'u32,  # primaryHover
+    0xAA96DAFF'u32,  # secondary - lavender
+    0xFCBAD3FF'u32,  # accent - pink
+    0xFFFDD0FF'u32,  # background - cream
+    0xFFF5E6FF'u32,  # surface
+    0xFFE8CCFF'u32,  # surfaceHover
     0xFFFFFFFF'u32,  # card - white
-    0xFF4A4A4A'u32,  # text - dark gray
-    0xFF7A7A7A'u32,  # textMuted
-    0xFF2D3436'u32,  # textOnPrimary
-    0xFFA8E6CF'u32,  # success - mint
-    0xFFFFD93D'u32,  # warning - yellow
-    0xFFFF8B94'u32,  # error - coral
-    0xFFE0E0E0'u32,  # border
-    0xFFF0F0F0'u32,  # divider
+    0x4A4A4AFF'u32,  # text - dark gray
+    0x7A7A7AFF'u32,  # textMuted
+    0x2D3436FF'u32,  # textOnPrimary
+    0xA8E6CFFF'u32,  # success - mint
+    0xFFD93DFF'u32,  # warning - yellow
+    0xFF8B94FF'u32,  # error - coral
+    0xE0E0E0FF'u32,  # border
+    0xF0F0F0FF'u32,  # divider
   ]
 )
 
@@ -38,22 +38,22 @@ const pastelTheme* = ThemePreset(
 const coffeeTheme* = ThemePreset(
   name: "Coffee House",
   colors: [
-    0xFFC4A484'u32,  # primary - tan
-    0xFFB08968'u32,  # primaryHover
-    0xFF8B7355'u32,  # secondary - brown
-    0xFFD4A574'u32,  # accent - caramel
-    0xFF2C1810'u32,  # background - dark brown
-    0xFF3D2317'u32,  # surface
-    0xFF4E2E1E'u32,  # surfaceHover
-    0xFF4A3728'u32,  # card
-    0xFFF5E6D3'u32,  # text - cream
-    0xFFC9B8A8'u32,  # textMuted
-    0xFF1A0F0A'u32,  # textOnPrimary
-    0xFF7CB342'u32,  # success
-    0xFFFFB74D'u32,  # warning
-    0xFFE57373'u32,  # error
-    0xFF5D4037'u32,  # border
-    0xFF4E342E'u32,  # divider
+    0xC4A484FF'u32,  # primary - tan
+    0xB08968FF'u32,  # primaryHover
+    0x8B7355FF'u32,  # secondary - brown
+    0xD4A574FF'u32,  # accent - caramel
+    0x2C1810FF'u32,  # background - dark brown
+    0x3D2317FF'u32,  # surface
+    0x4E2E1EFF'u32,  # surfaceHover
+    0x4A3728FF'u32,  # card
+    0xF5E6D3FF'u32,  # text - cream
+    0xC9B8A8FF'u32,  # textMuted
+    0x1A0F0AFF'u32,  # textOnPrimary
+    0x7CB342FF'u32,  # success
+    0xFFB74DFF'u32,  # warning
+    0xE57373FF'u32,  # error
+    0x5D4037FF'u32,  # border
+    0x4E342EFF'u32,  # divider
   ]
 )
 
@@ -61,22 +61,22 @@ const coffeeTheme* = ThemePreset(
 const midnightTheme* = ThemePreset(
   name: "Midnight",
   colors: [
-    0xFF7C4DFF'u32,  # primary - purple
-    0xFF651FFF'u32,  # primaryHover
-    0xFF448AFF'u32,  # secondary - blue
-    0xFFFF4081'u32,  # accent - pink
-    0xFF0D1117'u32,  # background - near black
-    0xFF161B22'u32,  # surface
-    0xFF21262D'u32,  # surfaceHover
-    0xFF1C2128'u32,  # card
-    0xFFE6EDF3'u32,  # text - light
-    0xFF8B949E'u32,  # textMuted
+    0x7C4DFFFF'u32,  # primary - purple
+    0x651FFFFF'u32,  # primaryHover
+    0x448AFFFF'u32,  # secondary - blue
+    0xFF4081FF'u32,  # accent - pink
+    0x0D1117FF'u32,  # background - near black
+    0x161B22FF'u32,  # surface
+    0x21262DFF'u32,  # surfaceHover
+    0x1C2128FF'u32,  # card
+    0xE6EDF3FF'u32,  # text - light
+    0x8B949EFF'u32,  # textMuted
     0xFFFFFFFF'u32,  # textOnPrimary
-    0xFF3FB950'u32,  # success
-    0xFFD29922'u32,  # warning
-    0xFFF85149'u32,  # error
-    0xFF30363D'u32,  # border
-    0xFF21262D'u32,  # divider
+    0x3FB950FF'u32,  # success
+    0xD29922FF'u32,  # warning
+    0xF85149FF'u32,  # error
+    0x30363DFF'u32,  # border
+    0x21262DFF'u32,  # divider
   ]
 )
 
@@ -84,22 +84,22 @@ const midnightTheme* = ThemePreset(
 const forestTheme* = ThemePreset(
   name: "Forest",
   colors: [
-    0xFF4CAF50'u32,  # primary - green
-    0xFF388E3C'u32,  # primaryHover
-    0xFF81C784'u32,  # secondary - light green
-    0xFFFFEB3B'u32,  # accent - yellow
-    0xFF1B2E1B'u32,  # background - dark green
-    0xFF243524'u32,  # surface
-    0xFF2D422D'u32,  # surfaceHover
-    0xFF2E4A2E'u32,  # card
-    0xFFE8F5E9'u32,  # text - light green tint
-    0xFFA5D6A7'u32,  # textMuted
-    0xFF1B2E1B'u32,  # textOnPrimary
-    0xFF69F0AE'u32,  # success
-    0xFFFFD54F'u32,  # warning
-    0xFFFF5252'u32,  # error
-    0xFF3E5C3E'u32,  # border
-    0xFF2E4A2E'u32,  # divider
+    0x4CAF50FF'u32,  # primary - green
+    0x388E3CFF'u32,  # primaryHover
+    0x81C784FF'u32,  # secondary - light green
+    0xFFEB3BFF'u32,  # accent - yellow
+    0x1B2E1BFF'u32,  # background - dark green
+    0x243524FF'u32,  # surface
+    0x2D422DFF'u32,  # surfaceHover
+    0x2E4A2EFF'u32,  # card
+    0xE8F5E9FF'u32,  # text - light green tint
+    0xA5D6A7FF'u32,  # textMuted
+    0x1B2E1BFF'u32,  # textOnPrimary
+    0x69F0AEFF'u32,  # success
+    0xFFD54FFF'u32,  # warning
+    0xFF5252FF'u32,  # error
+    0x3E5C3EFF'u32,  # border
+    0x2E4A2EFF'u32,  # divider
   ]
 )
 
@@ -107,22 +107,22 @@ const forestTheme* = ThemePreset(
 const roseTheme* = ThemePreset(
   name: "Rose Gold",
   colors: [
-    0xFFE91E63'u32,  # primary - pink
-    0xFFC2185B'u32,  # primaryHover
-    0xFFF48FB1'u32,  # secondary - light pink
-    0xFFFFD700'u32,  # accent - gold
-    0xFF1A1215'u32,  # background - dark wine
-    0xFF251A1D'u32,  # surface
-    0xFF302226'u32,  # surfaceHover
-    0xFF2D1F23'u32,  # card
-    0xFFFCE4EC'u32,  # text - pink tint
-    0xFFF8BBD9'u32,  # textMuted
+    0xE91E63FF'u32,  # primary - pink
+    0xC2185BFF'u32,  # primaryHover
+    0xF48FB1FF'u32,  # secondary - light pink
+    0xFFD700FF'u32,  # accent - gold
+    0x1A1215FF'u32,  # background - dark wine
+    0x251A1DFF'u32,  # surface
+    0x302226FF'u32,  # surfaceHover
+    0x2D1F23FF'u32,  # card
+    0xFCE4ECFF'u32,  # text - pink tint
+    0xF8BBD9FF'u32,  # textMuted
     0xFFFFFFFF'u32,  # textOnPrimary
-    0xFF69F0AE'u32,  # success
-    0xFFFFD54F'u32,  # warning
-    0xFFFF5252'u32,  # error
-    0xFF4A2F36'u32,  # border
-    0xFF3D252B'u32,  # divider
+    0x69F0AEFF'u32,  # success
+    0xFFD54FFF'u32,  # warning
+    0xFF5252FF'u32,  # error
+    0x4A2F36FF'u32,  # border
+    0x3D252BFF'u32,  # divider
   ]
 )
 
@@ -130,22 +130,22 @@ const roseTheme* = ThemePreset(
 const oceanTheme* = ThemePreset(
   name: "Ocean Breeze",
   colors: [
-    0xFF00BCD4'u32,  # primary - cyan
-    0xFF0097A7'u32,  # primaryHover
-    0xFF4DD0E1'u32,  # secondary - light cyan
-    0xFFFF6E40'u32,  # accent - coral orange
-    0xFF0A1929'u32,  # background - navy
-    0xFF0D2137'u32,  # surface
-    0xFF122A45'u32,  # surfaceHover
-    0xFF132F4C'u32,  # card
-    0xFFE3F2FD'u32,  # text - light blue tint
-    0xFF90CAF9'u32,  # textMuted
-    0xFF0A1929'u32,  # textOnPrimary
-    0xFF66BB6A'u32,  # success
-    0xFFFFA726'u32,  # warning
-    0xFFF44336'u32,  # error
-    0xFF1E4976'u32,  # border
-    0xFF173A5E'u32,  # divider
+    0x00BCD4FF'u32,  # primary - cyan
+    0x0097A7FF'u32,  # primaryHover
+    0x4DD0E1FF'u32,  # secondary - light cyan
+    0xFF6E40FF'u32,  # accent - coral orange
+    0x0A1929FF'u32,  # background - navy
+    0x0D2137FF'u32,  # surface
+    0x122A45FF'u32,  # surfaceHover
+    0x132F4CFF'u32,  # card
+    0xE3F2FDFF'u32,  # text - light blue tint
+    0x90CAF9FF'u32,  # textMuted
+    0x0A1929FF'u32,  # textOnPrimary
+    0x66BB6AFF'u32,  # success
+    0xFFA726FF'u32,  # warning
+    0xF44336FF'u32,  # error
+    0x1E4976FF'u32,  # border
+    0x173A5EFF'u32,  # divider
   ]
 )
 
