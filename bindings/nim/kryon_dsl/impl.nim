@@ -4,29 +4,26 @@
 # ============================================================================
 
 proc isPercentExpression(value: NimNode): bool =
-  ## Check if the value is a percent expression like `50.percent`
-  ## Returns true for patterns like nnkCall(nnkDotExpr(value, ident("percent")))
-  ## or nnkDotExpr(value, ident("percent"))
+  ## Check if the value is a percent expression like `50.pct`
+  ## Returns true for DotExpr with ident "pct"
   if value.kind == nnkDotExpr and value.len == 2:
-    let methodName = value[1]
-    if methodName.kind == nnkIdent and methodName.strVal == "percent":
+    let suffix = value[1]
+    if suffix.kind == nnkIdent and suffix.strVal == "pct":
       return true
-  elif value.kind == nnkCall:
-    if value.len >= 1 and value[0].kind == nnkDotExpr:
-      let dotExpr = value[0]
-      if dotExpr.len == 2:
-        let methodName = dotExpr[1]
-        if methodName.kind == nnkIdent and methodName.strVal == "percent":
-          return true
+  # Also handle call syntax: pct(50)
+  if value.kind == nnkCall and value.len >= 1:
+    let fn = value[0]
+    if fn.kind == nnkIdent and fn.strVal == "pct":
+      return true
   return false
 
 proc extractPercentValue(value: NimNode): NimNode =
   ## Extract the numeric value from a percent expression
-  ## For `50.percent`, returns 50
+  ## For `50.pct`, returns 50
   if value.kind == nnkDotExpr and value.len == 2:
-    return value[0]
-  elif value.kind == nnkCall and value.len >= 1 and value[0].kind == nnkDotExpr:
-    return value[0][0]
+    return value[0]  # The numeric part before .pct
+  elif value.kind == nnkCall and value.len >= 2:
+    return value[1]  # The argument to pct()
   return value
 
 proc isStyleVarRef(value: NimNode): bool =

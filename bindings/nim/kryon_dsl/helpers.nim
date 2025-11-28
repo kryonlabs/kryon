@@ -10,10 +10,10 @@ import ../runtime
 # Dimension Helpers for DSL
 # ============================================================================
 
-template percent*(value: untyped): untyped =
-  ## Mark a value as a percentage dimension
-  ## Used in DSL: width = 50.percent means 50% of parent width
-  value
+# CSS-style percentage suffix
+# Usage: width = 50.pct means 50% of parent width
+func pct*(value: int): int = value
+func pct*(value: float): float = value
 
 # ============================================================================
 # Style System Infrastructure
