@@ -3,6 +3,32 @@
 # Helper Functions
 # ============================================================================
 
+proc isPercentExpression(value: NimNode): bool =
+  ## Check if the value is a percent expression like `50.percent`
+  ## Returns true for patterns like nnkCall(nnkDotExpr(value, ident("percent")))
+  ## or nnkDotExpr(value, ident("percent"))
+  if value.kind == nnkDotExpr and value.len == 2:
+    let methodName = value[1]
+    if methodName.kind == nnkIdent and methodName.strVal == "percent":
+      return true
+  elif value.kind == nnkCall:
+    if value.len >= 1 and value[0].kind == nnkDotExpr:
+      let dotExpr = value[0]
+      if dotExpr.len == 2:
+        let methodName = dotExpr[1]
+        if methodName.kind == nnkIdent and methodName.strVal == "percent":
+          return true
+  return false
+
+proc extractPercentValue(value: NimNode): NimNode =
+  ## Extract the numeric value from a percent expression
+  ## For `50.percent`, returns 50
+  if value.kind == nnkDotExpr and value.len == 2:
+    return value[0]
+  elif value.kind == nnkCall and value.len >= 1 and value[0].kind == nnkDotExpr:
+    return value[0][0]
+  return value
+
 proc isStyleVarRef(value: NimNode): bool =
   ## Check if the value is a style variable reference (@varName)
   if value.kind == nnkPrefix and value.len == 2:
@@ -836,6 +862,7 @@ macro Container*(props: untyped): untyped =
     maxWidthVal: NimNode = nil
     minHeightVal: NimNode = nil
     maxHeightVal: NimNode = nil
+    aspectRatioVal: NimNode = nil
     zIndexVal: NimNode = nil
     # Spacing properties
     paddingAll: NimNode = nil
@@ -886,6 +913,8 @@ macro Container*(props: untyped): untyped =
         minHeightVal = value
       of "maxheight":
         maxHeightVal = value
+      of "aspectratio":
+        aspectRatioVal = value
       of "zindex", "z":
         zIndexVal = value
       of "padding", "p":
@@ -1110,8 +1139,19 @@ macro Container*(props: untyped): untyped =
   # Set position and size
   let xExpr = if posXVal != nil: posXVal else: newIntLitNode(0)
   let yExpr = if posYVal != nil: posYVal else: newIntLitNode(0)
-  let wExpr = if widthVal != nil: widthVal else: newIntLitNode(0)
-  let hExpr = if heightVal != nil: heightVal else: newIntLitNode(0)
+
+  # Check for percent expressions and extract values
+  let widthIsPercent = widthVal != nil and isPercentExpression(widthVal)
+  let heightIsPercent = heightVal != nil and isPercentExpression(heightVal)
+
+  let wExpr = if widthVal != nil:
+    if widthIsPercent: extractPercentValue(widthVal) else: widthVal
+  else:
+    newIntLitNode(0)
+  let hExpr = if heightVal != nil:
+    if heightIsPercent: extractPercentValue(heightVal) else: heightVal
+  else:
+    newIntLitNode(0)
 
   var maskVal = 0
   if posXVal != nil: maskVal = maskVal or 0x01
@@ -1119,9 +1159,18 @@ macro Container*(props: untyped): untyped =
   if widthVal != nil: maskVal = maskVal or 0x04
   if heightVal != nil: maskVal = maskVal or 0x08
 
-  initStmts.add quote do:
-    kryon_component_set_bounds_mask(`containerName`,
-      cfloat(`xExpr`), cfloat(`yExpr`), cfloat(`wExpr`), cfloat(`hExpr`), uint8(`maskVal`))
+  # Use dimension-typed setter if any dimension uses percent
+  if widthIsPercent or heightIsPercent:
+    let widthType = if widthIsPercent: bindSym("IR_DIMENSION_PERCENT") else: bindSym("IR_DIMENSION_PX")
+    let heightType = if heightIsPercent: bindSym("IR_DIMENSION_PERCENT") else: bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      kryon_component_set_bounds_with_types(`containerName`,
+        cfloat(`xExpr`), cfloat(`yExpr`), cfloat(`wExpr`), cfloat(`hExpr`),
+        `widthType`, `heightType`, uint8(`maskVal`))
+  else:
+    initStmts.add quote do:
+      kryon_component_set_bounds_mask(`containerName`,
+        cfloat(`xExpr`), cfloat(`yExpr`), cfloat(`wExpr`), cfloat(`hExpr`), uint8(`maskVal`))
 
   # Set padding
   let padTop = if paddingTopVal != nil: paddingTopVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
@@ -1201,6 +1250,13 @@ macro Container*(props: untyped): untyped =
       let layout = ir_get_layout(`containerName`)
       if layout != nil:
         ir_set_max_height(layout, `dimType`, cfloat(`maxHeightVal`))
+
+  # Apply aspect ratio constraint
+  if aspectRatioVal != nil:
+    initStmts.add quote do:
+      let layout = ir_get_layout(`containerName`)
+      if layout != nil:
+        ir_set_aspect_ratio(layout, cfloat(`aspectRatioVal`))
 
   # Add child components
   for child in childNodes:

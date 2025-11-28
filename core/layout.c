@@ -84,6 +84,48 @@ static void trace_coordinate_flow(const char* stage, kryon_component_t* componen
 // Layout Helper Functions
 // ============================================================================
 
+// Resolve a dimension value based on its type and parent size
+static kryon_fp_t resolve_dimension(kryon_fp_t value, uint8_t dim_type, kryon_fp_t parent_size) {
+    switch (dim_type) {
+        case KRYON_DIM_PX:
+            // Pixels - use value directly
+            return value;
+        case KRYON_DIM_PERCENT:
+            // Percentage - value is 0-100, calculate from parent
+            if (parent_size > 0) {
+                return KRYON_FP_MUL(parent_size, KRYON_FP_DIV(value, KRYON_FP_FROM_INT(100)));
+            }
+            return value; // Fallback if no parent size
+        case KRYON_DIM_AUTO:
+            // Auto - return 0 to indicate intrinsic sizing should be used
+            return 0;
+        case KRYON_DIM_FLEX:
+            // Flex - handled separately by flex grow/shrink
+            return 0;
+        default:
+            return value;
+    }
+}
+
+// Apply aspect ratio constraint to component dimensions
+static void apply_aspect_ratio(kryon_component_t* component) {
+    if (component == NULL || component->aspect_ratio <= 0) return;
+
+    bool has_width = (component->layout_flags & KRYON_COMPONENT_FLAG_HAS_WIDTH) != 0;
+    bool has_height = (component->layout_flags & KRYON_COMPONENT_FLAG_HAS_HEIGHT) != 0;
+
+    if (has_width && !has_height) {
+        // Width is set, calculate height from aspect ratio
+        // aspect_ratio = width / height, so height = width / aspect_ratio
+        component->height = KRYON_FP_DIV(component->width, component->aspect_ratio);
+    } else if (has_height && !has_width) {
+        // Height is set, calculate width from aspect ratio
+        // width = height * aspect_ratio
+        component->width = KRYON_FP_MUL(component->height, component->aspect_ratio);
+    }
+    // If both are set, aspect ratio is ignored (explicit dimensions win)
+}
+
 static kryon_fp_t get_component_intrinsic_width(kryon_component_t* component) {
     if (component == NULL) return 0;
 
@@ -958,11 +1000,23 @@ static void layout_component_internal(kryon_component_t* component, kryon_fp_t a
         component->y = 0;
     }
 
+    // Resolve percentage-based dimensions using parent/available size
+    bool has_explicit_width = (component->layout_flags & KRYON_COMPONENT_FLAG_HAS_WIDTH) != 0;
+    bool has_explicit_height = (component->layout_flags & KRYON_COMPONENT_FLAG_HAS_HEIGHT) != 0;
+
+    if (has_explicit_width && component->width_type == KRYON_DIM_PERCENT) {
+        component->width = resolve_dimension(component->width, KRYON_DIM_PERCENT, available_width);
+    }
+    if (has_explicit_height && component->height_type == KRYON_DIM_PERCENT) {
+        component->height = resolve_dimension(component->height, KRYON_DIM_PERCENT, available_height);
+    }
+
+    // Apply aspect ratio constraint (after percentage resolution)
+    apply_aspect_ratio(component);
+
     // For container components (with children), allow expansion to available space
     // unless they have explicit width constraints that should be respected
     bool is_container = (component->child_count > 0);
-    bool has_explicit_width = (component->layout_flags & KRYON_COMPONENT_FLAG_HAS_WIDTH) != 0;
-    bool has_explicit_height = (component->layout_flags & KRYON_COMPONENT_FLAG_HAS_HEIGHT) != 0;
 
     // For components with flex_grow > 0, ensure they can expand to fill available space
     // but don't override explicit dimensions unless they need to grow

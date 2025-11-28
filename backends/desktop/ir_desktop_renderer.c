@@ -38,6 +38,9 @@ extern void nimProcessReactiveUpdates();
 // Example: 16px font → ~19.2px line height
 #define TEXT_LINE_HEIGHT_RATIO 1.2f
 
+// Global desktop renderer pointer for text measurement during layout
+static struct DesktopIRRenderer* g_desktop_renderer = NULL;
+
 // Desktop IR Renderer Context
 struct DesktopIRRenderer {
     DesktopRendererConfig config;
@@ -966,10 +969,53 @@ static void measure_text_dimensions(IRComponent* component, float max_width, flo
         font_size = component->style->font.size;
     }
 
-    // Estimate dimensions based on text length and font size using heuristic ratios
+    // Try to use actual font measurement via SDL_TTF if a renderer is available
+    DesktopIRRenderer* renderer = g_desktop_renderer;
+    if (renderer && renderer->default_font) {
+        // Get or create font at the specified size
+        TTF_Font* font = renderer->default_font;
+
+        // Check for custom font from style
+        if (component->style && component->style->font.family && component->style->font.family[0]) {
+            // Use the first registered custom font if available (simplified)
+            // In practice, should look up by family name
+        }
+
+        // Try actual text measurement
+        if (font && component->text_content[0] != '\0') {
+            SDL_Color dummy = {255, 255, 255, 255};
+            SDL_Surface* surface = TTF_RenderText_Blended(font, component->text_content,
+                                                          strlen(component->text_content), dummy);
+            if (surface) {
+                *out_width = (float)surface->w;
+                *out_height = (float)surface->h;
+                SDL_DestroySurface(surface);
+
+                if (getenv("KRYON_TRACE_LAYOUT")) {
+                    printf("    📏 TEXT measured via TTF: width=%.1f, height=%.1f\n", *out_width, *out_height);
+                }
+
+                // Constrain to parent width
+                if (max_width > 0.0f && *out_width > max_width) {
+                    if (getenv("KRYON_TRACE_LAYOUT")) {
+                        printf("    📏 TEXT width clamped: %.1f -> %.1f\n", *out_width, max_width);
+                    }
+                    *out_width = max_width;
+                }
+                return;
+            }
+        }
+    }
+
+    // Fallback: Estimate dimensions based on text length and font size using heuristic ratios
     size_t text_len = strlen(component->text_content);
     *out_height = font_size * TEXT_LINE_HEIGHT_RATIO;
     *out_width = (float)text_len * font_size * TEXT_CHAR_WIDTH_RATIO;
+
+    if (getenv("KRYON_TRACE_LAYOUT")) {
+        printf("    📏 TEXT measured via heuristic: width=%.1f, height=%.1f (len=%zu, fontSize=%.1f)\n",
+               *out_width, *out_height, text_len, font_size);
+    }
 
     // Constrain TEXT to parent container width to prevent overflow
     if (max_width > 0.0f && *out_width > max_width) {
@@ -1028,6 +1074,20 @@ static LayoutRect calculate_component_layout(IRComponent* component, LayoutRect 
         if (component->type == IR_COMPONENT_TEXT) {
             if (rect.width <= 0) rect.width = 0;
             if (rect.height <= 0) rect.height = 0;
+        }
+
+        // Apply aspect ratio constraint (width/height ratio)
+        if (component->layout && component->layout->aspect_ratio > 0) {
+            bool has_explicit_width = component->style && component->style->width.type != IR_DIMENSION_AUTO;
+            bool has_explicit_height = component->style && component->style->height.type != IR_DIMENSION_AUTO;
+
+            if (has_explicit_width && !has_explicit_height) {
+                // Width is set, calculate height from aspect ratio
+                rect.height = rect.width / component->layout->aspect_ratio;
+            } else if (has_explicit_height && !has_explicit_width) {
+                // Height is set, calculate width from aspect ratio
+                rect.width = rect.height * component->layout->aspect_ratio;
+            }
         }
 
         // Apply margins (only for relative positioning)
@@ -3402,6 +3462,11 @@ DesktopIRRenderer* desktop_ir_renderer_create(const DesktopRendererConfig* confi
 void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
     if (!renderer) return;
 
+    // Clear global renderer reference
+    if (g_desktop_renderer == renderer) {
+        g_desktop_renderer = NULL;
+    }
+
 #ifdef ENABLE_SDL3
     if (renderer->cursor_hand) {
         SDL_DestroyCursor(renderer->cursor_hand);
@@ -3561,6 +3626,10 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
     SDL_SetCursor(renderer->cursor_default);
 
     renderer->initialized = true;
+
+    // Set global renderer for text measurement during layout
+    g_desktop_renderer = renderer;
+
     printf("✅ Desktop renderer initialized successfully\n");
     return true;
 

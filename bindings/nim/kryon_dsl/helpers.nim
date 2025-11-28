@@ -7,7 +7,16 @@ import ../runtime
 # Removed core_kryon - using IR system now
 
 # ============================================================================
-# Style System Infrastructure  
+# Dimension Helpers for DSL
+# ============================================================================
+
+template percent*(value: untyped): untyped =
+  ## Mark a value as a percentage dimension
+  ## Used in DSL: width = 50.percent means 50% of parent width
+  value
+
+# ============================================================================
+# Style System Infrastructure
 # ============================================================================
 
 # Helper to generate unique style function names

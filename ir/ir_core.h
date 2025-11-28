@@ -168,6 +168,7 @@ typedef struct {
     IRFlexbox flex;
     IRSpacing margin;
     IRSpacing padding;
+    float aspect_ratio;  // Width/height ratio (0 = no constraint, 1.0 = square, 1.777 = 16:9)
 } IRLayout;
 
 // Position Mode

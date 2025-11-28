@@ -232,6 +232,7 @@ proc ir_set_min_width*(layout: ptr IRLayout; dimension_type: IRDimensionType; va
 proc ir_set_min_height*(layout: ptr IRLayout; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_max_width*(layout: ptr IRLayout; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_max_height*(layout: ptr IRLayout; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_aspect_ratio*(layout: ptr IRLayout; ratio: cfloat) {.importc, cdecl, header: "ir_builder.h".}
 
 proc ir_set_background_color*(style: ptr IRStyle; r: uint8; g: uint8; b: uint8; a: uint8) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_border*(style: ptr IRStyle; width: cfloat; r: uint8; g: uint8; b: uint8; a: uint8; radius: cfloat) {.importc, cdecl, header: "ir_builder.h".}

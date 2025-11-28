@@ -561,6 +561,41 @@ proc kryon_component_set_bounds_mask*(component: ptr IRComponent, x, y, w, h: cf
   if (mask and 0x08) != 0:
     ir_set_height(targetStyle, IR_DIMENSION_PX, h)
 
+proc kryon_component_set_bounds_with_types*(component: ptr IRComponent, x, y, w, h: cfloat,
+                                            widthType, heightType: IRDimensionType, mask: uint8) =
+  ## Set component bounds with explicit dimension types for width and height
+  ## This allows percentage-based sizing (e.g., width = 50.percent)
+  ## Mask bits: 0x01 = X, 0x02 = Y, 0x04 = width, 0x08 = height
+  let style = ir_get_style(component)
+  let targetStyle = if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_style(component, newStyle)
+    newStyle
+  else:
+    style
+
+  # Check if absolute positioning is being set (X or Y specified)
+  let hasAbsoluteX = (mask and 0x01) != 0
+  let hasAbsoluteY = (mask and 0x02) != 0
+
+  if hasAbsoluteX or hasAbsoluteY:
+    # Enable absolute positioning mode
+    targetStyle.position_mode = IR_POSITION_ABSOLUTE
+
+    if hasAbsoluteX:
+      targetStyle.absolute_x = x
+
+    if hasAbsoluteY:
+      targetStyle.absolute_y = y
+
+  # Only set width if mask bit 0x04 is set
+  if (mask and 0x04) != 0:
+    ir_set_width(targetStyle, widthType, w)
+
+  # Only set height if mask bit 0x08 is set
+  if (mask and 0x08) != 0:
+    ir_set_height(targetStyle, heightType, h)
+
 proc kryon_component_set_flex*(component: ptr IRComponent, flexGrow, flexShrink: uint8) =
   ## Set flex grow and shrink properties on the IR component
   if component.isNil: return

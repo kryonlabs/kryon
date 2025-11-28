@@ -69,6 +69,7 @@ void ir_set_min_width(IRLayout* layout, IRDimensionType type, float value);
 void ir_set_min_height(IRLayout* layout, IRDimensionType type, float value);
 void ir_set_max_width(IRLayout* layout, IRDimensionType type, float value);
 void ir_set_max_height(IRLayout* layout, IRDimensionType type, float value);
+void ir_set_aspect_ratio(IRLayout* layout, float ratio);
 void ir_set_justify_content(IRLayout* layout, IRAlignment justify);
 void ir_set_align_items(IRLayout* layout, IRAlignment align);
 void ir_set_align_content(IRLayout* layout, IRAlignment align);

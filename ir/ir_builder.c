@@ -936,6 +936,11 @@ void ir_set_max_height(IRLayout* layout, IRDimensionType type, float value) {
     layout->max_height.value = value;
 }
 
+void ir_set_aspect_ratio(IRLayout* layout, float ratio) {
+    if (!layout) return;
+    layout->aspect_ratio = ratio;
+}
+
 // Event Management
 IREvent* ir_create_event(IREventType type, const char* logic_id, const char* handler_data) {
     IREvent* event = malloc(sizeof(IREvent));

@@ -136,6 +136,14 @@ typedef enum {
     KRYON_ALIGN_SPACE_BETWEEN = 6
 } kryon_alignment_t;
 
+// Dimension types for width/height
+typedef enum {
+    KRYON_DIM_PX = 0,       // Pixels (default)
+    KRYON_DIM_PERCENT = 1,  // Percentage of parent (0-100)
+    KRYON_DIM_AUTO = 2,     // Auto-size based on content
+    KRYON_DIM_FLEX = 3      // Flex units (grow/shrink)
+} kryon_dimension_type_t;
+
 typedef enum {
     KRYON_COMPONENT_FLAG_HAS_X      = 1 << 0,
     KRYON_COMPONENT_FLAG_HAS_Y      = 1 << 1,
@@ -178,6 +186,9 @@ typedef struct kryon_component {
     uint8_t justify_content;             // Main-axis alignment for children
     uint8_t layout_direction;            // Layout direction: 0=column, 1=row
     uint8_t gap;                         // Gap between children (pixels)
+    uint8_t width_type;                  // Dimension type: 0=px, 1=percent, 2=auto, 3=flex
+    uint8_t height_type;                 // Dimension type: 0=px, 1=percent, 2=auto, 3=flex
+    kryon_fp_t aspect_ratio;             // Width/height ratio (0 = no constraint)
     bool dirty;                          // Needs layout recalculation
     bool visible;                        // Visibility flag
     bool scrollable;                     // Scrollable container flag
