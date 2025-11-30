@@ -232,8 +232,25 @@ static void render_component(DebugRenderer* renderer, IRComponent* comp, int dep
             debug_write(renderer, " size=%s×%s", w, h);
         }
 
-        // Background color if non-transparent
-        if (comp->style->background.data.a > 0) {
+        // Background color (handle gradients and solid colors)
+        if (comp->style->background.type == IR_COLOR_GRADIENT) {
+            IRGradient* grad = comp->style->background.data.gradient;
+            if (grad) {
+                const char* grad_type = "???";
+                switch (grad->type) {
+                    case IR_GRADIENT_LINEAR: grad_type = "linear"; break;
+                    case IR_GRADIENT_RADIAL: grad_type = "radial"; break;
+                    case IR_GRADIENT_CONIC: grad_type = "conic"; break;
+                }
+                debug_write(renderer, " bg=%s-gradient(%d stops", grad_type, grad->stop_count);
+                if (grad->type == IR_GRADIENT_LINEAR) {
+                    debug_write(renderer, ", %.0f°", grad->angle);
+                } else if (grad->type == IR_GRADIENT_RADIAL || grad->type == IR_GRADIENT_CONIC) {
+                    debug_write(renderer, ", center=%.1f,%.1f", grad->center_x, grad->center_y);
+                }
+                debug_write(renderer, ")");
+            }
+        } else if (comp->style->background.type == IR_COLOR_SOLID && comp->style->background.data.a > 0) {
             debug_write(renderer, " bg=#%02X%02X%02X",
                 comp->style->background.data.r,
                 comp->style->background.data.g,
@@ -241,6 +258,8 @@ static void render_component(DebugRenderer* renderer, IRComponent* comp, int dep
             if (comp->style->background.data.a < 255) {
                 debug_write(renderer, "%02X", comp->style->background.data.a);
             }
+        } else if (comp->style->background.type == IR_COLOR_VAR_REF) {
+            debug_write(renderer, " bg=var(%u)", comp->style->background.data.var_id);
         }
 
         // Border if present

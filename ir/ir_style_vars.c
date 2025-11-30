@@ -136,12 +136,21 @@ bool ir_color_resolve(const IRColor* color, uint8_t* r, uint8_t* g, uint8_t* b, 
             return true;
 
         case IR_COLOR_GRADIENT:
-            // Gradients not yet implemented - fall back to first color
-            if (r) *r = color->data.r;
-            if (g) *g = color->data.g;
-            if (b) *b = color->data.b;
-            if (a) *a = color->data.a;
-            return true;
+            // For gradients, return the first stop color as fallback for simple color resolution
+            // Actual gradient rendering happens in the renderers
+            if (color->data.gradient && color->data.gradient->stop_count > 0) {
+                if (r) *r = color->data.gradient->stops[0].r;
+                if (g) *g = color->data.gradient->stops[0].g;
+                if (b) *b = color->data.gradient->stops[0].b;
+                if (a) *a = color->data.gradient->stops[0].a;
+                return true;
+            }
+            // No gradient or no stops - return transparent
+            if (r) *r = 0;
+            if (g) *g = 0;
+            if (b) *b = 0;
+            if (a) *a = 0;
+            return false;
 
         default:
             if (r) *r = 0;

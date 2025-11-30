@@ -33,6 +33,12 @@ type
     IR_ALIGNMENT_SPACE_AROUND
     IR_ALIGNMENT_SPACE_EVENLY
 
+  IRTextAlign* {.size: sizeof(cint).} = enum
+    IR_TEXT_ALIGN_LEFT = 0
+    IR_TEXT_ALIGN_RIGHT
+    IR_TEXT_ALIGN_CENTER
+    IR_TEXT_ALIGN_JUSTIFY
+
   IREventType* {.size: sizeof(cint).} = enum
     IR_EVENT_CLICK = 0
     IR_EVENT_HOVER
@@ -62,12 +68,31 @@ type
     IR_COLOR_GRADIENT
     IR_COLOR_VAR_REF
 
+  # Gradient types
+  IRGradientType* {.size: sizeof(cint).} = enum
+    IR_GRADIENT_LINEAR = 0
+    IR_GRADIENT_RADIAL
+    IR_GRADIENT_CONIC
+
+  IRGradientStop* {.importc: "IRGradientStop", header: "ir_core.h".} = object
+    r*, g*, b*, a*: uint8
+    position*: cfloat  # 0.0 to 1.0
+
+  IRGradient* {.importc: "struct IRGradient", header: "ir_core.h".} = object
+    `type`*: IRGradientType
+    stops*: array[8, IRGradientStop]
+    stop_count*: uint8
+    angle*: cfloat           # For linear gradients (degrees)
+    center_x*: cfloat        # For radial/conic (0.0 to 1.0)
+    center_y*: cfloat        # For radial/conic (0.0 to 1.0)
+
   # Union data for IRColor - matches C union layout exactly
-  # C has: union { struct { uint8_t r, g, b, a; }; IRStyleVarId var_id; }
+  # C has: union { struct { uint8_t r, g, b, a; }; IRStyleVarId var_id; ptr[IRGradient] gradient; }
   # Use importc to match the C field names
   IRColorData* {.importc: "IRColorData", header: "ir_core.h", union.} = object
     r*, g*, b*, a*: uint8   # Anonymous struct fields (accessed directly)
     var_id*: uint16         # Style variable reference
+    gradient*: ptr IRGradient  # Gradient pointer
 
   IRColor* {.importc: "IRColor", header: "ir_core.h".} = object
     `type`*: IRColorType
@@ -176,6 +201,13 @@ type
     source*: cstring
     language*: cstring
 
+  # Layout cache for performance optimization
+  IRLayoutCache* {.importc: "IRLayoutCache", header: "ir_core.h".} = object
+    dirty*: bool
+    cached_intrinsic_width*: cfloat
+    cached_intrinsic_height*: cfloat
+    cache_generation*: uint32
+
   IRComponent* {.importc: "IRComponent", header: "ir_core.h", incompleteStruct.} = object
     id*: uint32
     `type`*: IRComponentType
@@ -189,6 +221,7 @@ type
     parent*: ptr IRComponent
     text_content*: cstring
     custom_data*: cstring
+    layout_cache*: IRLayoutCache
 
   IRContext* {.importc: "IRContext", header: "ir_core.h", incompleteStruct.} = object
   TabGroupState* {.importc: "TabGroupState", header: "ir_builder.h", incompleteStruct.} = object
@@ -235,6 +268,7 @@ proc ir_set_max_height*(layout: ptr IRLayout; dimension_type: IRDimensionType; v
 proc ir_set_aspect_ratio*(layout: ptr IRLayout; ratio: cfloat) {.importc, cdecl, header: "ir_builder.h".}
 
 proc ir_set_background_color*(style: ptr IRStyle; r: uint8; g: uint8; b: uint8; a: uint8) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_background_gradient*(style: ptr IRStyle; gradient: ptr IRGradient) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_border*(style: ptr IRStyle; width: cfloat; r: uint8; g: uint8; b: uint8; a: uint8; radius: cfloat) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_margin*(style: ptr IRStyle; top: cfloat; right: cfloat; bottom: cfloat; left: cfloat) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_padding*(style: ptr IRStyle; top: cfloat; right: cfloat; bottom: cfloat; left: cfloat) {.importc, cdecl, header: "ir_builder.h".}
@@ -266,6 +300,86 @@ proc ir_color_rgb*(r: uint8; g: uint8; b: uint8): IRColor {.importc, cdecl, head
 proc ir_color_rgba*(r: uint8; g: uint8; b: uint8; a: uint8): IRColor {.importc, cdecl, header: "ir_builder.h".}
 proc ir_color_transparent*(): IRColor {.importc, cdecl, header: "ir_builder.h".}
 proc ir_color_named*(name: cstring): IRColor {.importc, cdecl, header: "ir_builder.h".}
+
+# Extended Typography (Phase 3)
+proc ir_set_font_weight*(style: ptr IRStyle; weight: uint16) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_letter_spacing*(style: ptr IRStyle; spacing: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_word_spacing*(style: ptr IRStyle; spacing: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_line_height*(style: ptr IRStyle; line_height: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_text_align*(style: ptr IRStyle; align: IRTextAlign) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_text_decoration*(style: ptr IRStyle; decoration: uint8) {.importc, cdecl, header: "ir_builder.h".}
+
+# Text decoration constants
+const
+  IR_TEXT_DECORATION_NONE* = 0x00'u8
+  IR_TEXT_DECORATION_UNDERLINE* = 0x01'u8
+  IR_TEXT_DECORATION_OVERLINE* = 0x02'u8
+  IR_TEXT_DECORATION_LINE_THROUGH* = 0x04'u8
+
+# Box Shadow (Phase 2)
+proc ir_set_box_shadow*(style: ptr IRStyle; offset_x: cfloat; offset_y: cfloat; blur_radius: cfloat; spread_radius: cfloat; r: uint8; g: uint8; b: uint8; a: uint8; inset: bool) {.importc, cdecl, header: "ir_builder.h".}
+
+# CSS Filters (Phase 3)
+type
+  IRFilterType* {.size: sizeof(cint).} = enum
+    IR_FILTER_BLUR = 0              # Gaussian blur (value in px)
+    IR_FILTER_BRIGHTNESS            # 0 = black, 1 = normal, >1 = brighter
+    IR_FILTER_CONTRAST              # 0 = gray, 1 = normal, >1 = more contrast
+    IR_FILTER_GRAYSCALE             # 0 = color, 1 = fully grayscale
+    IR_FILTER_HUE_ROTATE            # Rotate hue (value in degrees)
+    IR_FILTER_INVERT                # 0 = normal, 1 = inverted
+    IR_FILTER_OPACITY               # 0 = transparent, 1 = opaque
+    IR_FILTER_SATURATE              # 0 = desaturated, 1 = normal, >1 = more saturated
+    IR_FILTER_SEPIA                 # 0 = normal, 1 = fully sepia
+
+proc ir_add_filter*(style: ptr IRStyle; filter_type: IRFilterType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_clear_filters*(style: ptr IRStyle) {.importc, cdecl, header: "ir_builder.h".}
+
+# Grid Layout (Phase 4)
+type
+  IRLayoutMode* {.size: sizeof(cint).} = enum
+    IR_LAYOUT_MODE_FLEX = 0         # Flexbox layout (default)
+    IR_LAYOUT_MODE_GRID             # CSS Grid layout
+    IR_LAYOUT_MODE_BLOCK            # Block layout (stacked)
+
+  IRGridTrackType* {.size: sizeof(cint).} = enum
+    IR_GRID_TRACK_AUTO = 0          # auto
+    IR_GRID_TRACK_FR                # fractional unit (fr)
+    IR_GRID_TRACK_PX                # pixels
+    IR_GRID_TRACK_PERCENT           # percentage
+    IR_GRID_TRACK_MIN_CONTENT       # min-content
+    IR_GRID_TRACK_MAX_CONTENT       # max-content
+
+  IRGridTrack* {.importc: "IRGridTrack", header: "ir_core.h".} = object
+    track_type* {.importc: "type".}: IRGridTrackType
+    value*: cfloat
+
+# Grid track helpers
+proc ir_grid_track_px*(value: cfloat): IRGridTrack {.importc, cdecl, header: "ir_builder.h".}
+proc ir_grid_track_percent*(value: cfloat): IRGridTrack {.importc, cdecl, header: "ir_builder.h".}
+proc ir_grid_track_fr*(value: cfloat): IRGridTrack {.importc, cdecl, header: "ir_builder.h".}
+proc ir_grid_track_auto*(): IRGridTrack {.importc, cdecl, header: "ir_builder.h".}
+proc ir_grid_track_min_content*(): IRGridTrack {.importc, cdecl, header: "ir_builder.h".}
+proc ir_grid_track_max_content*(): IRGridTrack {.importc, cdecl, header: "ir_builder.h".}
+
+# Grid layout functions
+# Note: ir_set_layout_mode not yet implemented in C core - mode is inferred when grid properties are set
+proc ir_set_grid_template_rows*(layout: ptr IRLayout; tracks: ptr IRGridTrack; count: uint8) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_grid_template_columns*(layout: ptr IRLayout; tracks: ptr IRGridTrack; count: uint8) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_grid_gap*(layout: ptr IRLayout; row_gap: cfloat; column_gap: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_grid_auto_flow*(layout: ptr IRLayout; row_direction: bool; dense: bool) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_grid_alignment*(layout: ptr IRLayout; justify_items: IRAlignment; align_items: IRAlignment; justify_content: IRAlignment; align_content: IRAlignment) {.importc, cdecl, header: "ir_builder.h".}
+
+# Grid item placement
+proc ir_set_grid_item_placement*(style: ptr IRStyle; row_start: int16; row_end: int16; column_start: int16; column_end: int16) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_grid_item_alignment*(style: ptr IRStyle; justify_self: IRAlignment; align_self: IRAlignment) {.importc, cdecl, header: "ir_builder.h".}
+
+# Gradient Helpers
+proc ir_gradient_create*(gradient_type: IRGradientType): ptr IRGradient {.importc, cdecl, header: "ir_builder.h".}
+proc ir_gradient_add_stop*(gradient: ptr IRGradient; position: cfloat; r, g, b, a: uint8) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_gradient_set_angle*(gradient: ptr IRGradient; angle: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_gradient_set_center*(gradient: ptr IRGradient; x, y: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_color_from_gradient*(gradient: ptr IRGradient): IRColor {.importc, cdecl, header: "ir_builder.h".}
 
 # Tab Group Management
 proc ir_tabgroup_create_state*(group, tabBar, tabContent: ptr IRComponent; selectedIndex: cint; reorderable: bool): ptr TabGroupState {.importc, cdecl, header: "ir_builder.h".}
@@ -431,3 +545,114 @@ proc ir_set_dropdown_open_state*(component: ptr IRComponent; is_open: bool) {.im
 proc ir_toggle_dropdown_open_state*(component: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_get_dropdown_hovered_index*(component: ptr IRComponent): int32 {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_dropdown_hovered_index*(component: ptr IRComponent; index: int32) {.importc, cdecl, header: "ir_builder.h".}
+
+# ============================================================================
+# Animation System
+# ============================================================================
+
+type
+  IREasingType* {.size: sizeof(cint).} = enum
+    IR_EASING_LINEAR = 0
+    IR_EASING_EASE_IN
+    IR_EASING_EASE_OUT
+    IR_EASING_EASE_IN_OUT
+    IR_EASING_EASE_IN_QUAD
+    IR_EASING_EASE_OUT_QUAD
+    IR_EASING_EASE_IN_OUT_QUAD
+    IR_EASING_EASE_IN_CUBIC
+    IR_EASING_EASE_OUT_CUBIC
+    IR_EASING_EASE_IN_OUT_CUBIC
+    IR_EASING_EASE_IN_BOUNCE
+    IR_EASING_EASE_OUT_BOUNCE
+
+  IRAnimationProperty* {.size: sizeof(cint).} = enum
+    IR_ANIM_PROP_OPACITY = 0
+    IR_ANIM_PROP_TRANSLATE_X
+    IR_ANIM_PROP_TRANSLATE_Y
+    IR_ANIM_PROP_SCALE_X
+    IR_ANIM_PROP_SCALE_Y
+    IR_ANIM_PROP_ROTATE
+    IR_ANIM_PROP_WIDTH
+    IR_ANIM_PROP_HEIGHT
+    IR_ANIM_PROP_BACKGROUND_COLOR
+    IR_ANIM_PROP_CUSTOM
+
+  IRKeyframe* {.importc: "IRKeyframe", header: "ir_core.h", incompleteStruct.} = object
+  IRAnimation* {.importc: "IRAnimation", header: "ir_core.h", incompleteStruct.} = object
+  IRTransition* {.importc: "IRTransition", header: "ir_core.h", incompleteStruct.} = object
+
+# Animation creation and management
+proc ir_animation_create_keyframe*(name: cstring; duration: cfloat): ptr IRAnimation {.importc, cdecl, header: "ir_builder.h".}
+proc ir_animation_add_keyframe*(anim: ptr IRAnimation; offset: cfloat): ptr IRKeyframe {.importc, cdecl, header: "ir_builder.h".}
+proc ir_keyframe_set_property*(kf: ptr IRKeyframe; prop: IRAnimationProperty; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_keyframe_set_color_property*(kf: ptr IRKeyframe; prop: IRAnimationProperty; color: IRColor) {.importc, cdecl, header: "ir_builder.h".}
+
+# Animation configuration
+proc ir_animation_set_delay*(anim: ptr IRAnimation; delay: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_animation_set_iterations*(anim: ptr IRAnimation; iterations: int32) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_animation_set_alternate*(anim: ptr IRAnimation; alternate: bool) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_animation_set_default_easing*(anim: ptr IRAnimation; easing: IREasingType) {.importc, cdecl, header: "ir_builder.h".}
+
+# Attach animations to components
+proc ir_component_add_animation*(component: ptr IRComponent; anim: ptr IRAnimation) {.importc, cdecl, header: "ir_builder.h".}
+
+# Helper animation creators
+proc ir_animation_fade_in_out*(duration: cfloat): ptr IRAnimation {.importc, cdecl, header: "ir_builder.h".}
+proc ir_animation_pulse*(duration: cfloat): ptr IRAnimation {.importc, cdecl, header: "ir_builder.h".}
+proc ir_animation_slide_in_left*(duration: cfloat): ptr IRAnimation {.importc, cdecl, header: "ir_builder.h".}
+
+# Tree-wide animation update (call once per frame with current time)
+proc ir_animation_tree_update*(root: ptr IRComponent; current_time: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+
+# Re-propagate animation flags after tree construction (call once after building tree)
+proc ir_animation_propagate_flags*(root: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
+
+# General component subtree finalization (call after adding children, especially from static loops)
+proc ir_component_finalize_subtree*(component: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
+
+# Transitions (Phase 6)
+proc ir_transition_create*(property: IRAnimationProperty; duration: cfloat): ptr IRTransition {.importc, cdecl, header: "ir_builder.h".}
+proc ir_transition_destroy*(transition: ptr IRTransition) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_transition_set_easing*(transition: ptr IRTransition; easing: IREasingType) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_transition_set_delay*(transition: ptr IRTransition; delay: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_transition_set_trigger*(transition: ptr IRTransition; state_mask: uint32) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_component_add_transition*(component: ptr IRComponent; transition: ptr IRTransition) {.importc, cdecl, header: "ir_builder.h".}
+
+# Container Queries (Phase 7)
+type IRQueryType* {.size: sizeof(cint).} = enum
+  IR_QUERY_MIN_WIDTH
+  IR_QUERY_MAX_WIDTH
+  IR_QUERY_MIN_HEIGHT
+  IR_QUERY_MAX_HEIGHT
+
+type IRContainerType* {.size: sizeof(cint).} = enum
+  IR_CONTAINER_TYPE_NORMAL
+  IR_CONTAINER_TYPE_SIZE
+  IR_CONTAINER_TYPE_INLINE_SIZE
+
+type IRQueryCondition* {.importc: "IRQueryCondition", header: "ir_core.h".} = object
+  `type`*: IRQueryType
+  value*: cfloat
+
+# Constants
+const
+  IR_MAX_BREAKPOINTS* = 4
+  IR_MAX_QUERY_CONDITIONS* = 2
+
+# Container setup functions
+proc ir_set_container_type*(style: ptr IRStyle; container_type: IRContainerType) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_container_name*(style: ptr IRStyle; name: cstring) {.importc, cdecl, header: "ir_builder.h".}
+
+# Query condition builder functions
+proc ir_query_min_width*(value: cfloat): IRQueryCondition {.importc, cdecl, header: "ir_builder.h".}
+proc ir_query_max_width*(value: cfloat): IRQueryCondition {.importc, cdecl, header: "ir_builder.h".}
+proc ir_query_min_height*(value: cfloat): IRQueryCondition {.importc, cdecl, header: "ir_builder.h".}
+proc ir_query_max_height*(value: cfloat): IRQueryCondition {.importc, cdecl, header: "ir_builder.h".}
+
+# Breakpoint management functions
+proc ir_add_breakpoint*(style: ptr IRStyle; conditions: ptr IRQueryCondition; condition_count: uint8) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_breakpoint_set_width*(style: ptr IRStyle; breakpoint_index: uint8; dim_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_breakpoint_set_height*(style: ptr IRStyle; breakpoint_index: uint8; dim_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_breakpoint_set_visible*(style: ptr IRStyle; breakpoint_index: uint8; visible: bool) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_breakpoint_set_opacity*(style: ptr IRStyle; breakpoint_index: uint8; opacity: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_breakpoint_set_layout_mode*(style: ptr IRStyle; breakpoint_index: uint8; mode: IRLayoutMode) {.importc, cdecl, header: "ir_builder.h".}

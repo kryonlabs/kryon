@@ -26,59 +26,140 @@ proc extractPercentValue(value: NimNode): NimNode =
     return value[1]  # The argument to pct()
   return value
 
-proc isStyleVarRef(value: NimNode): bool =
-  ## Check if the value is a style variable reference (@varName)
-  if value.kind == nnkPrefix and value.len == 2:
-    let op = value[0]
-    if op.kind == nnkIdent and op.strVal == "@":
+proc isPxExpression(value: NimNode): bool =
+  ## Check if the value is a px expression like `24.px`
+  ## Returns true for DotExpr with ident "px"
+  if value.kind == nnkDotExpr and value.len == 2:
+    let suffix = value[1]
+    if suffix.kind == nnkIdent and suffix.strVal == "px":
+      return true
+  # Also handle call syntax: px(24)
+  if value.kind == nnkCall and value.len >= 1:
+    let fn = value[0]
+    if fn.kind == nnkIdent and fn.strVal == "px":
       return true
   return false
 
-proc styleVarNode(value: NimNode): NimNode =
-  ## Convert @varName to colorVar(varName) call
-  ## Maps common variable names to their builtin IDs
-  let varName = value[1]  # Get the identifier after @
-  let varNameStr = if varName.kind == nnkIdent: varName.strVal else: ""
-  # Map semantic names to builtin variable IDs
-  case varNameStr.toLowerAscii()
-  of "primary": result = newCall(ident("colorVar"), ident("varPrimary"))
-  of "primaryhover": result = newCall(ident("colorVar"), ident("varPrimaryHover"))
-  of "secondary": result = newCall(ident("colorVar"), ident("varSecondary"))
-  of "accent": result = newCall(ident("colorVar"), ident("varAccent"))
-  of "background", "bg": result = newCall(ident("colorVar"), ident("varBackground"))
-  of "surface": result = newCall(ident("colorVar"), ident("varSurface"))
-  of "surfacehover": result = newCall(ident("colorVar"), ident("varSurfaceHover"))
-  of "card": result = newCall(ident("colorVar"), ident("varCard"))
-  of "text": result = newCall(ident("colorVar"), ident("varText"))
-  of "textmuted", "muted": result = newCall(ident("colorVar"), ident("varTextMuted"))
-  of "textonprimary": result = newCall(ident("colorVar"), ident("varTextOnPrimary"))
-  of "success": result = newCall(ident("colorVar"), ident("varSuccess"))
-  of "warning": result = newCall(ident("colorVar"), ident("varWarning"))
-  of "error": result = newCall(ident("colorVar"), ident("varError"))
-  of "border": result = newCall(ident("colorVar"), ident("varBorder"))
-  of "divider": result = newCall(ident("colorVar"), ident("varDivider"))
-  else:
-    # Pass through as identifier (custom variable)
-    result = newCall(ident("colorVar"), varName)
+proc extractPxValue(value: NimNode): NimNode =
+  ## Extract the numeric value from a px expression
+  ## For `24.px`, returns 24
+  if value.kind == nnkDotExpr and value.len == 2:
+    return value[0]  # The numeric part before .px
+  elif value.kind == nnkCall and value.len >= 2:
+    return value[1]  # The argument to px()
+  return value
 
-proc colorNode(value: NimNode): NimNode =
-  # Check for style variable reference (@varName)
-  if isStyleVarRef(value):
-    return styleVarNode(value)
+proc parseUnitString(value: NimNode): tuple[numericValue: NimNode, isPercent: bool, isPx: bool] =
+  ## Parse strings like "100%", "10px", "150" and extract value + unit
+  ## Returns (value, isPercent, isPx)
+
   if value.kind == nnkStrLit:
-    let text = value.strVal
-    if text.startsWith("#"):
-      result = newCall(ident("parseHexColor"), value)
-    else:
-      result = newCall(ident("parseNamedColor"), value)
-  elif value.kind == nnkBracketExpr:
-    # Handle array access like alignment.colors[0]
-    # Assume it returns a string that needs color parsing
-    result = newCall(ident("parseHexColor"), value)
-  else:
-    # For other node types, try to parse as hex color
-    result = newCall(ident("parseHexColor"), value)
+    let str = value.strVal.strip()
 
+    # Check for percentage: "100%"
+    if str.endsWith("%"):
+      let numStr = str[0 .. ^2].strip()  # Remove '%'
+      return (newLit(parseFloat(numStr)), true, false)
+
+    # Check for pixels: "10px"
+    elif str.endsWith("px"):
+      let numStr = str[0 .. ^3].strip()  # Remove 'px'
+      return (newLit(parseFloat(numStr)), false, true)
+
+    # Plain number as string: "150"
+    else:
+      return (newLit(parseFloat(str)), false, false)
+
+  # Not a string literal - return as-is
+  return (value, false, false)
+
+proc parseQuadString(value: NimNode): tuple[top, right, bottom, left: NimNode] =
+  ## Parse strings like "20px, 20px, 20px, 20px" or "10px, 20px"
+  ## Supports 1-4 values (CSS-style)
+
+  if value.kind != nnkStrLit:
+    return (value, value, value, value)  # Not a string, use as-is for all sides
+
+  let str = value.strVal.strip()
+  let parts = str.split(',').mapIt(it.strip())
+
+  var values: seq[NimNode]
+  for part in parts:
+    let parsed = parseUnitString(newStrLitNode(part))
+    values.add(parsed.numericValue)
+
+  # CSS-style value expansion
+  case values.len:
+  of 1:  # All sides same
+    return (values[0], values[0], values[0], values[0])
+  of 2:  # top/bottom, left/right
+    return (values[0], values[1], values[0], values[1])
+  of 3:  # top, left/right, bottom
+    return (values[0], values[1], values[2], values[1])
+  of 4:  # top, right, bottom, left
+    return (values[0], values[1], values[2], values[3])
+  else:
+    return (values[0], values[0], values[0], values[0])
+
+proc evalConstExpr(node: NimNode): NimNode =
+  ## Pass const expressions through as-is
+  ## Within static blocks, const field access works correctly
+  ## This is a placeholder for potential future enhancements
+  return node
+
+proc parseAnimationString(spec: string): NimNode =
+  ## Parse animation spec string and return the call node
+  ## Examples: "pulse(2.0, -1)" -> pulse(2.0, -1)
+  ##           "fadeInOut(3.0)" -> fadeInOut(3.0, 1)
+  ##           "slideInLeft(2.0)" -> slideInLeft(2.0)
+
+  # Parse function name and args from "funcName(arg1, arg2)"
+  let openParen = spec.find('(')
+  let closeParen = spec.find(')')
+
+  if openParen == -1 or closeParen == -1:
+    error("Invalid animation spec: " & spec & ". Expected format: 'funcName(args)'")
+
+  let funcName = spec[0..<openParen].strip()
+  let argsStr = spec[openParen+1..<closeParen].strip()
+
+  # Split arguments
+  var args: seq[NimNode]
+  if argsStr.len > 0:
+    for arg in argsStr.split(','):
+      let trimmed = arg.strip()
+      # Parse as float or int
+      if trimmed.contains('.') or trimmed.contains('e') or trimmed.contains('E'):
+        args.add(newLit(parseFloat(trimmed)))
+      else:
+        args.add(newLit(parseInt(trimmed)))
+
+  # Generate call based on animation type
+  case funcName.toLowerAscii()
+  of "pulse":
+    if args.len == 1:
+      result = newCall(ident("pulse"), args[0], newLit(-1))
+    elif args.len == 2:
+      result = newCall(ident("pulse"), args[0], args[1])
+    else:
+      error("pulse() expects 1-2 args: duration, [iterations]. Got: " & spec)
+
+  of "fadeinout", "fade_in_out":
+    if args.len == 1:
+      result = newCall(ident("fadeInOut"), args[0], newLit(1))
+    elif args.len == 2:
+      result = newCall(ident("fadeInOut"), args[0], args[1])
+    else:
+      error("fadeInOut() expects 1-2 args: duration, [iterations]. Got: " & spec)
+
+  of "slideinleft", "slide_in_left":
+    if args.len == 1:
+      result = newCall(ident("slideInLeft"), args[0])
+    else:
+      error("slideInLeft() expects 1 arg: duration. Got: " & spec)
+
+  else:
+    error("Unknown animation: " & funcName & ". Available: pulse, fadeInOut, slideInLeft")
 
 proc alignmentNode(name: string): NimNode =
   let normalized = name.toLowerAscii()
@@ -636,6 +717,11 @@ macro kryonApp*(body: untyped): untyped =
 
     if rootComponent != nil:
       `appName`.setRoot(rootComponent)
+
+      # FIX: Re-propagate animation flags after tree is fully constructed
+      # Animations are attached before components are added to parents,
+      # so the flag propagation in ir_component_add_animation doesn't work
+      ir_animation_propagate_flags(rootComponent)
     else:
       echo "Warning: No root component defined; application will exit."
 
@@ -847,9 +933,22 @@ macro Container*(props: untyped): untyped =
     gapVal = newIntLitNode(0)
     # Visual properties
     bgColorVal: NimNode = nil
+    bgGradientVal: NimNode = nil
     textColorVal: NimNode = nil
     borderColorVal: NimNode = nil
     borderWidthVal: NimNode = nil
+    borderRadiusVal: NimNode = nil
+    boxShadowVal: NimNode = nil
+    # Filter properties
+    blurVal: NimNode = nil
+    brightnessVal: NimNode = nil
+    contrastVal: NimNode = nil
+    grayscaleVal: NimNode = nil
+    hueRotateVal: NimNode = nil
+    invertVal: NimNode = nil
+    filterOpacityVal: NimNode = nil
+    saturateVal: NimNode = nil
+    sepiaVal: NimNode = nil
     # Position properties
     posXVal: NimNode = nil
     posYVal: NimNode = nil
@@ -878,22 +977,53 @@ macro Container*(props: untyped): untyped =
     # Style properties
     styleName: NimNode = nil
     styleData: NimNode = nil
+    # Grid placement properties
+    gridRowVal: NimNode = nil
+    gridColumnVal: NimNode = nil
+    gridRowStartVal: NimNode = nil
+    gridRowEndVal: NimNode = nil
+    gridColumnStartVal: NimNode = nil
+    gridColumnEndVal: NimNode = nil
+    justifySelfVal: NimNode = nil
+    alignSelfVal: NimNode = nil
+    # Transition properties
+    transitionOpacityVal: NimNode = nil
+    transitionTransformVal: NimNode = nil
+    transitionSizeVal: NimNode = nil
+    transitionColorVal: NimNode = nil
+    # Container query properties
+    containerTypeVal: NimNode = nil
+    containerNameVal: NimNode = nil
+    breakpointVals: seq[NimNode] = @[]
+    # Animation properties
+    animationVal: NimNode = nil
 
   # Parse properties
   for node in props.children:
     if node.kind == nnkAsgn:
       let propName = $node[0]
-      let value = node[1]
+      # Evaluate const expressions (e.g., config.field) to their literal values
+      var value = evalConstExpr(node[1])
 
       case propName.toLowerAscii():
-      of "backgroundcolor", "bg", "background":
+      of "backgroundcolor", "bg":
         bgColorVal = colorNode(value)
+      of "background", "backgroundgradient", "gradient":
+        # Can be either a color or a gradient
+        if value.kind == nnkTupleConstr or value.kind == nnkPar:
+          # Assume it's a gradient spec
+          bgGradientVal = value
+        else:
+          # Assume it's a color
+          bgColorVal = colorNode(value)
       of "color", "textcolor":
         textColorVal = colorNode(value)
       of "bordercolor":
         borderColorVal = colorNode(value)
       of "borderwidth":
         borderWidthVal = value
+      of "borderradius":
+        borderRadiusVal = value
       of "posx", "x":
         posXVal = value
       of "posy", "y":
@@ -945,8 +1075,6 @@ macro Container*(props: untyped): untyped =
       of "contentalignment":
         justifyContentVal = parseAlignmentValue(value)
         alignItemsVal = parseAlignmentValue(value)
-      of "gap":
-        gapVal = value
       of "layoutdirection":
         layoutDirectionVal = value
       of "style":
@@ -956,6 +1084,58 @@ macro Container*(props: untyped): untyped =
             styleData = value[1]
         else:
           styleName = newStrLitNode($value)
+      of "boxshadow":
+        boxShadowVal = value
+      of "blur":
+        blurVal = value
+      of "brightness":
+        brightnessVal = value
+      of "contrast":
+        contrastVal = value
+      of "grayscale":
+        grayscaleVal = value
+      of "huerotate":
+        hueRotateVal = value
+      of "invert":
+        invertVal = value
+      of "filteropacity":
+        filterOpacityVal = value
+      of "saturate":
+        saturateVal = value
+      of "sepia":
+        sepiaVal = value
+      of "gridrow":
+        gridRowVal = value
+      of "gridcolumn":
+        gridColumnVal = value
+      of "gridrowstart":
+        gridRowStartVal = value
+      of "gridrowend":
+        gridRowEndVal = value
+      of "gridcolumnstart":
+        gridColumnStartVal = value
+      of "gridcolumnend":
+        gridColumnEndVal = value
+      of "justifyself":
+        justifySelfVal = parseAlignmentValue(value)
+      of "alignself":
+        alignSelfVal = parseAlignmentValue(value)
+      of "transitionopacity":
+        transitionOpacityVal = value
+      of "transitiontransform":
+        transitionTransformVal = value
+      of "transitionsize":
+        transitionSizeVal = value
+      of "transitioncolor":
+        transitionColorVal = value
+      of "containertype":
+        containerTypeVal = value
+      of "containername":
+        containerNameVal = value
+      of "breakpoint":
+        breakpointVals.add(value)
+      of "animation":
+        animationVal = value
       else:
         discard
     else:
@@ -1120,9 +1300,17 @@ macro Container*(props: untyped): untyped =
     kryon_component_set_layout_alignment(`containerName`,
       `justifyContentVal`, `alignItemsVal`)
 
-  # Set gap
+  # Set gap (parse string or extract .px suffix)
+  let gapParsed = parseUnitString(gapVal)
+  let gapExpr = if gapParsed.numericValue.kind != nnkIntLit or gapParsed.numericValue.intVal != 0:
+    gapParsed.numericValue  # Use parsed string value
+  elif isPxExpression(gapVal):
+    extractPxValue(gapVal)
+  else:
+    gapVal
+
   initStmts.add quote do:
-    kryon_component_set_gap(`containerName`, uint8(`gapVal`))
+    kryon_component_set_gap(`containerName`, uint8(`gapExpr`))
 
   # Apply style if specified
   if styleName != nil:
@@ -1137,16 +1325,51 @@ macro Container*(props: untyped): untyped =
   let xExpr = if posXVal != nil: posXVal else: newIntLitNode(0)
   let yExpr = if posYVal != nil: posYVal else: newIntLitNode(0)
 
-  # Check for percent expressions and extract values
-  let widthIsPercent = widthVal != nil and isPercentExpression(widthVal)
-  let heightIsPercent = heightVal != nil and isPercentExpression(heightVal)
+  # Parse string values and check for unit suffixes
+  # Skip parsing for 'auto' identifier
+  let widthParsed = if widthVal != nil and widthVal.kind != nnkIdent:
+    parseUnitString(widthVal)
+  else:
+    (newIntLitNode(0), false, false)
+  let heightParsed = if heightVal != nil and heightVal.kind != nnkIdent:
+    parseUnitString(heightVal)
+  else:
+    (newIntLitNode(0), false, false)
+
+  # Check if values are 'auto' identifier
+  let widthIsAuto = widthVal != nil and widthVal.kind == nnkIdent and widthVal.strVal == "auto"
+  let heightIsAuto = heightVal != nil and heightVal.kind == nnkIdent and heightVal.strVal == "auto"
+
+  let widthIsPercent = (widthVal != nil and isPercentExpression(widthVal)) or widthParsed.isPercent
+  let heightIsPercent = (heightVal != nil and isPercentExpression(heightVal)) or heightParsed.isPercent
+  let widthIsPx = (widthVal != nil and isPxExpression(widthVal)) or widthParsed.isPx
+  let heightIsPx = (heightVal != nil and isPxExpression(heightVal)) or heightParsed.isPx
 
   let wExpr = if widthVal != nil:
-    if widthIsPercent: extractPercentValue(widthVal) else: widthVal
+    if widthIsAuto:
+      newIntLitNode(0)  # Auto dimension uses 0 for value
+    elif widthParsed.numericValue.kind != nnkIntLit or widthParsed.numericValue.intVal != 0:
+      widthParsed.numericValue  # Use parsed string value
+    elif widthIsPercent:
+      extractPercentValue(widthVal)
+    elif widthIsPx:
+      extractPxValue(widthVal)
+    else:
+      widthVal
   else:
     newIntLitNode(0)
+
   let hExpr = if heightVal != nil:
-    if heightIsPercent: extractPercentValue(heightVal) else: heightVal
+    if heightIsAuto:
+      newIntLitNode(0)  # Auto dimension uses 0 for value
+    elif heightParsed.numericValue.kind != nnkIntLit or heightParsed.numericValue.intVal != 0:
+      heightParsed.numericValue  # Use parsed string value
+    elif heightIsPercent:
+      extractPercentValue(heightVal)
+    elif heightIsPx:
+      extractPxValue(heightVal)
+    else:
+      heightVal
   else:
     newIntLitNode(0)
 
@@ -1156,29 +1379,87 @@ macro Container*(props: untyped): untyped =
   if widthVal != nil: maskVal = maskVal or 0x04
   if heightVal != nil: maskVal = maskVal or 0x08
 
-  # Use dimension-typed setter if any dimension uses percent
-  if widthIsPercent or heightIsPercent:
-    let widthType = if widthIsPercent: bindSym("IR_DIMENSION_PERCENT") else: bindSym("IR_DIMENSION_PX")
-    let heightType = if heightIsPercent: bindSym("IR_DIMENSION_PERCENT") else: bindSym("IR_DIMENSION_PX")
+  # Use dimension-typed setter if any dimension uses percent or auto
+  if widthIsPercent or heightIsPercent or widthIsAuto or heightIsAuto:
+    let widthType = if widthIsAuto:
+      bindSym("IR_DIMENSION_AUTO")
+    elif widthIsPercent:
+      bindSym("IR_DIMENSION_PERCENT")
+    else:
+      bindSym("IR_DIMENSION_PX")
+
+    let heightType = if heightIsAuto:
+      bindSym("IR_DIMENSION_AUTO")
+    elif heightIsPercent:
+      bindSym("IR_DIMENSION_PERCENT")
+    else:
+      bindSym("IR_DIMENSION_PX")
+
     initStmts.add quote do:
       kryon_component_set_bounds_with_types(`containerName`,
-        cfloat(`xExpr`), cfloat(`yExpr`), cfloat(`wExpr`), cfloat(`hExpr`),
+        toFixed(`xExpr`), toFixed(`yExpr`), toFixed(`wExpr`), toFixed(`hExpr`),
         `widthType`, `heightType`, uint8(`maskVal`))
   else:
     initStmts.add quote do:
       kryon_component_set_bounds_mask(`containerName`,
-        cfloat(`xExpr`), cfloat(`yExpr`), cfloat(`wExpr`), cfloat(`hExpr`), uint8(`maskVal`))
+        toFixed(`xExpr`), toFixed(`yExpr`), toFixed(`wExpr`), toFixed(`hExpr`), uint8(`maskVal`))
 
-  # Set padding
-  let padTop = if paddingTopVal != nil: paddingTopVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
-  let padRight = if paddingRightVal != nil: paddingRightVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
-  let padBottom = if paddingBottomVal != nil: paddingBottomVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
-  let padLeft = if paddingLeftVal != nil: paddingLeftVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
+  # Set padding (support string format, tuple with .px, and individual values)
+  var padTop, padRight, padBottom, padLeft: NimNode
+
+  # Check if paddingAll is a string like "20px, 20px, 20px, 20px"
+  if paddingAll != nil and paddingAll.kind == nnkStrLit:
+    let parsed = parseQuadString(paddingAll)
+    padTop = parsed.top
+    padRight = parsed.right
+    padBottom = parsed.bottom
+    padLeft = parsed.left
+  # Check if paddingAll is a tuple like (12.px, 24.px, 12.px, 24.px)
+  elif paddingAll != nil and (paddingAll.kind == nnkTupleConstr or paddingAll.kind == nnkPar):
+    # Extract values from tuple and handle .px suffixes
+    let top = if paddingAll.len >= 1: paddingAll[0] else: newIntLitNode(0)
+    let right = if paddingAll.len >= 2: paddingAll[1] else: newIntLitNode(0)
+    let bottom = if paddingAll.len >= 3: paddingAll[2] else: newIntLitNode(0)
+    let left = if paddingAll.len >= 4: paddingAll[3] else: newIntLitNode(0)
+    padTop = if isPxExpression(top): extractPxValue(top) else: top
+    padRight = if isPxExpression(right): extractPxValue(right) else: right
+    padBottom = if isPxExpression(bottom): extractPxValue(bottom) else: bottom
+    padLeft = if isPxExpression(left): extractPxValue(left) else: left
+  else:
+    # Individual values or single paddingAll value
+    let allVal = if paddingAll != nil:
+      (if isPxExpression(paddingAll): extractPxValue(paddingAll) else: paddingAll)
+    else: newIntLitNode(0)
+
+    padTop = if paddingTopVal != nil:
+      (if isPxExpression(paddingTopVal): extractPxValue(paddingTopVal) else: paddingTopVal)
+    else: allVal
+    padRight = if paddingRightVal != nil:
+      (if isPxExpression(paddingRightVal): extractPxValue(paddingRightVal) else: paddingRightVal)
+    else: allVal
+    padBottom = if paddingBottomVal != nil:
+      (if isPxExpression(paddingBottomVal): extractPxValue(paddingBottomVal) else: paddingBottomVal)
+    else: allVal
+    padLeft = if paddingLeftVal != nil:
+      (if isPxExpression(paddingLeftVal): extractPxValue(paddingLeftVal) else: paddingLeftVal)
+    else: allVal
 
   if paddingAll != nil or paddingTopVal != nil or paddingRightVal != nil or paddingBottomVal != nil or paddingLeftVal != nil:
     initStmts.add quote do:
-      kryon_component_set_padding(`containerName`,
-        uint8(`padTop`), uint8(`padRight`), uint8(`padBottom`), uint8(`padLeft`))
+      let style = ir_get_style(`containerName`)
+      if style.isNil:
+        let newStyle = ir_create_style()
+        ir_set_padding(newStyle,
+          float32(`padTop`), float32(`padRight`),
+          float32(`padBottom`), float32(`padLeft`))
+        ir_set_style(`containerName`, newStyle)
+      else:
+        ir_set_padding(style,
+          float32(`padTop`), float32(`padRight`),
+          float32(`padBottom`), float32(`padLeft`))
+
+      # Invalidate layout cache after modifying padding
+      kryon_component_mark_dirty(`containerName`)
 
   # Set margin
   let marginTop = if marginTopVal != nil: marginTopVal elif marginAll != nil: marginAll else: newIntLitNode(0)
@@ -1196,6 +1477,15 @@ macro Container*(props: untyped): untyped =
     initStmts.add quote do:
       kryon_component_set_background_color(`containerName`, `bgColorVal`)
 
+  # Set background gradient
+  if bgGradientVal != nil:
+    let gradientSpec = parseGradientSpec(bgGradientVal)
+    let gradientVar = genSym(nskLet, "gradient")
+    let gradientCode = buildGradientCreation(gradientSpec, gradientVar)
+    initStmts.add(gradientCode)
+    initStmts.add quote do:
+      kryon_component_set_background_gradient(`containerName`, `gradientVar`)
+
   if textColorVal != nil:
     initStmts.add quote do:
       kryon_component_set_text_color(`containerName`, `textColorVal`)
@@ -1207,6 +1497,70 @@ macro Container*(props: untyped): untyped =
   if borderWidthVal != nil:
     initStmts.add quote do:
       kryon_component_set_border_width(`containerName`, uint8(`borderWidthVal`))
+
+  if borderRadiusVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_border_radius(`containerName`, uint8(`borderRadiusVal`))
+
+  if boxShadowVal != nil:
+    # Support both named parameter syntax and positional tuple syntax
+    # Check if it's a named tuple by looking at the first child's kind
+    let isNamedTuple = (boxShadowVal.kind == nnkTableConstr) or
+                       ((boxShadowVal.kind == nnkTupleConstr or boxShadowVal.kind == nnkPar) and
+                        boxShadowVal.len > 0 and boxShadowVal[0].kind == nnkExprColonExpr)
+
+    if isNamedTuple:
+      # Named parameter syntax: (offsetY: 8.0, blur: 24.0, color: "#000")
+      let spec = parseBoxShadowSpec(boxShadowVal)
+      let shadowCall = buildBoxShadowCreation(containerName, spec)
+      initStmts.add(shadowCall)
+    elif boxShadowVal.kind == nnkTupleConstr or boxShadowVal.kind == nnkPar:
+      # Positional tuple syntax (backward compatible): (offsetX, offsetY, blur, spread, color) or (offsetX, offsetY, blur, spread, color, inset)
+      let offsetX = boxShadowVal[0]
+      let offsetY = boxShadowVal[1]
+      let blurRadius = boxShadowVal[2]
+      let spreadRadius = boxShadowVal[3]
+      let shadowColor = colorNode(boxShadowVal[4])
+      let inset = if boxShadowVal.len >= 6: boxShadowVal[5] else: newLit(false)
+      initStmts.add quote do:
+        kryon_component_set_box_shadow(`containerName`, cfloat(`offsetX`), cfloat(`offsetY`), cfloat(`blurRadius`), cfloat(`spreadRadius`), `shadowColor`, `inset`)
+
+  # CSS Filters
+  if blurVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_blur(`containerName`, cfloat(`blurVal`))
+
+  if brightnessVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_brightness(`containerName`, cfloat(`brightnessVal`))
+
+  if contrastVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_contrast(`containerName`, cfloat(`contrastVal`))
+
+  if grayscaleVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_grayscale(`containerName`, cfloat(`grayscaleVal`))
+
+  if hueRotateVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_hue_rotate(`containerName`, cfloat(`hueRotateVal`))
+
+  if invertVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_invert(`containerName`, cfloat(`invertVal`))
+
+  if filterOpacityVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_filter_opacity(`containerName`, cfloat(`filterOpacityVal`))
+
+  if saturateVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_saturate(`containerName`, cfloat(`saturateVal`))
+
+  if sepiaVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_sepia(`containerName`, cfloat(`sepiaVal`))
 
   if zIndexVal != nil:
     initStmts.add quote do:
@@ -1254,6 +1608,199 @@ macro Container*(props: untyped): untyped =
       let layout = ir_get_layout(`containerName`)
       if layout != nil:
         ir_set_aspect_ratio(layout, cfloat(`aspectRatioVal`))
+
+  # Apply grid placement (for when this container is a child of a Grid)
+  var needsGridPlacement = false
+  var rowStart, rowEnd, colStart, colEnd: NimNode
+
+  # Parse gridRow and gridColumn if provided
+  if gridRowVal != nil:
+    let (start, endVal) = parseGridLine(gridRowVal)
+    rowStart = start
+    rowEnd = endVal
+    needsGridPlacement = true
+  if gridColumnVal != nil:
+    let (start, endVal) = parseGridLine(gridColumnVal)
+    colStart = start
+    colEnd = endVal
+    needsGridPlacement = true
+
+  # Override with individual values if provided
+  if gridRowStartVal != nil:
+    rowStart = gridRowStartVal
+    needsGridPlacement = true
+  if gridRowEndVal != nil:
+    rowEnd = gridRowEndVal
+    needsGridPlacement = true
+  if gridColumnStartVal != nil:
+    colStart = gridColumnStartVal
+    needsGridPlacement = true
+  if gridColumnEndVal != nil:
+    colEnd = gridColumnEndVal
+    needsGridPlacement = true
+
+  # Set default values if needed
+  if needsGridPlacement:
+    if rowStart == nil: rowStart = newLit(int16(1))
+    if rowEnd == nil: rowEnd = newLit(int16(-1))
+    if colStart == nil: colStart = newLit(int16(1))
+    if colEnd == nil: colEnd = newLit(int16(-1))
+
+    initStmts.add quote do:
+      kryon_component_set_grid_item_placement(`containerName`, int16(`rowStart`), int16(`rowEnd`), int16(`colStart`), int16(`colEnd`))
+
+  # Apply grid item alignment
+  if justifySelfVal != nil or alignSelfVal != nil:
+    let justifySelf = if justifySelfVal != nil: justifySelfVal else: alignmentNode("auto")
+    let alignSelf = if alignSelfVal != nil: alignSelfVal else: alignmentNode("auto")
+    initStmts.add quote do:
+      kryon_component_set_grid_item_alignment(`containerName`, `justifySelf`, `alignSelf`)
+
+  # Apply transitions
+  if transitionOpacityVal != nil:
+    initStmts.add quote do:
+      kryon_component_add_opacity_transition(`containerName`, cfloat(`transitionOpacityVal`))
+
+  if transitionTransformVal != nil:
+    initStmts.add quote do:
+      kryon_component_add_transform_transition(`containerName`, cfloat(`transitionTransformVal`))
+
+  if transitionSizeVal != nil:
+    initStmts.add quote do:
+      kryon_component_add_size_transition(`containerName`, cfloat(`transitionSizeVal`))
+
+  if transitionColorVal != nil:
+    initStmts.add quote do:
+      kryon_component_add_color_transition(`containerName`, cfloat(`transitionColorVal`))
+
+  # Apply container query settings
+  if containerTypeVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_container_type(`containerName`, `containerTypeVal`)
+
+  if containerNameVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_container_name(`containerName`, `containerNameVal`)
+
+  # Apply breakpoints
+  var breakpointIndex = 0
+  for breakpointVal in breakpointVals:
+    # Parse breakpoint tuple: (minWidth: 600, width: 50.pct)
+    # Expected format: named tuple with optional fields
+    if breakpointVal.kind == nnkTupleConstr or breakpointVal.kind == nnkPar:
+      var minWidthVal: NimNode = newLit(-1.0)
+      var maxWidthVal: NimNode = newLit(-1.0)
+      var minHeightVal: NimNode = newLit(-1.0)
+      var maxHeightVal: NimNode = newLit(-1.0)
+      var widthVal: NimNode = newLit(-1.0)
+      var heightVal: NimNode = newLit(-1.0)
+      var visibleVal: NimNode = newLit(true)
+      var opacityVal: NimNode = newLit(-1.0)
+
+      # Parse each field in the tuple
+      for field in breakpointVal:
+        if field.kind == nnkExprColonExpr:
+          let fieldName = $field[0]
+          let fieldValue = field[1]
+          case fieldName.toLowerAscii():
+          of "minwidth":
+            minWidthVal = fieldValue
+          of "maxwidth":
+            maxWidthVal = fieldValue
+          of "minheight":
+            minHeightVal = fieldValue
+          of "maxheight":
+            maxHeightVal = fieldValue
+          of "width":
+            widthVal = fieldValue
+          of "height":
+            heightVal = fieldValue
+          of "visible":
+            visibleVal = fieldValue
+          of "opacity":
+            opacityVal = fieldValue
+          else:
+            discard
+
+      # Generate call to add breakpoint with index
+      let bpIndexLit = newLit(uint8(breakpointIndex))
+      initStmts.add quote do:
+        kryon_component_add_breakpoint(`containerName`,
+          breakpoint_index = `bpIndexLit`,
+          min_width = float(`minWidthVal`),
+          max_width = float(`maxWidthVal`),
+          min_height = float(`minHeightVal`),
+          max_height = float(`maxHeightVal`),
+          width = float(`widthVal`),
+          height = float(`heightVal`),
+          visible = `visibleVal`,
+          opacity = float(`opacityVal`))
+
+      breakpointIndex.inc
+
+  # Apply animation
+  if animationVal != nil:
+    var animCallNode = animationVal
+    var useRuntimeParser = false
+
+    # Check if it's a string literal
+    if animationVal.kind == nnkStrLit:
+      # Direct string literal: animation = "pulse(2.0, -1)"
+      animCallNode = parseAnimationString(animationVal.strVal)
+    elif animationVal.kind in {nnkDotExpr, nnkBracketExpr, nnkIdent}:
+      # Const field access: animation = config.anim
+      # Generate code to call runtime string parser with the const value
+      # The value will be evaluated in the static block
+      initStmts.add quote do:
+        kryon_apply_animation_from_string(`containerName`, `animationVal`)
+      useRuntimeParser = true
+
+    # animation value should be a call like pulse(2.0) or fadeInOut(1.5)
+    # Skip this if we're using the runtime parser for const field access
+    if not useRuntimeParser and animCallNode.kind == nnkCall:
+      let animFunc = animCallNode[0]
+      let animFuncName = $animFunc
+
+      # Generate call to create animation
+      case animFuncName.toLowerAscii():
+      of "pulse":
+        # pulse(duration) or pulse(duration, iterations)
+        if animCallNode.len == 2:
+          let duration = animCallNode[1]
+          initStmts.add quote do:
+            let anim = kryon_animation_pulse(cfloat(`duration`))
+            kryon_component_add_animation(`containerName`, anim)
+        elif animCallNode.len == 3:
+          let duration = animCallNode[1]
+          let iterations = animCallNode[2]
+          initStmts.add quote do:
+            let anim = kryon_animation_pulse(cfloat(`duration`), int32(`iterations`))
+            kryon_component_add_animation(`containerName`, anim)
+
+      of "fadeinout", "fade_in_out":
+        # fadeInOut(duration) or fadeInOut(duration, iterations)
+        if animCallNode.len == 2:
+          let duration = animCallNode[1]
+          initStmts.add quote do:
+            let anim = kryon_animation_fade_in_out(cfloat(`duration`))
+            kryon_component_add_animation(`containerName`, anim)
+        elif animCallNode.len == 3:
+          let duration = animCallNode[1]
+          let iterations = animCallNode[2]
+          initStmts.add quote do:
+            let anim = kryon_animation_fade_in_out(cfloat(`duration`), int32(`iterations`))
+            kryon_component_add_animation(`containerName`, anim)
+
+      of "slideinleft", "slide_in_left":
+        # slideInLeft(duration)
+        if animCallNode.len == 2:
+          let duration = animCallNode[1]
+          initStmts.add quote do:
+            let anim = kryon_animation_slide_in_left(cfloat(`duration`))
+            kryon_component_add_animation(`containerName`, anim)
+
+      else:
+        discard  # Unknown animation function
 
   # Add child components
   for child in childNodes:
@@ -1470,6 +2017,20 @@ macro Container*(props: untyped): untyped =
       initStmts.add quote do:
         createReactiveConditional(`containerName`, `condProc`, `thenProc`, nil)
 
+  # Check if this container has any static blocks, and if so, finalize the subtree
+  # This must happen AFTER all properties (including animations) have been set
+  # This ensures all post-construction propagation steps are performed (e.g., animation flags)
+  var hasStaticBlocks = false
+  for node in props.children:
+    if node.kind == nnkStaticStmt:
+      hasStaticBlocks = true
+      break
+
+  if hasStaticBlocks:
+    # Finalize the subtree to ensure all propagation happens
+    initStmts.add quote do:
+      ir_component_finalize_subtree(`containerName`)
+
   # Mark container as dirty
   initStmts.add quote do:
     kryon_component_mark_dirty(`containerName`)
@@ -1497,6 +2058,359 @@ macro Container*(props: untyped): untyped =
       let `containerName` = `componentCreation`
       `initStmts`
       `containerName`
+
+macro Grid*(props: untyped): untyped =
+  ## Grid container component using CSS Grid layout
+  var
+    gridName = genSym(nskLet, "grid")
+    childNodes: seq[NimNode] = @[]
+    sideEffectStmts: seq[NimNode] = @[]
+    deferredIfStmts: seq[NimNode] = @[]
+    # Grid-specific properties
+    gridTemplateRowsVal: NimNode = nil
+    gridTemplateColumnsVal: NimNode = nil
+    gridGapVal: NimNode = nil
+    gridRowGapVal: NimNode = nil
+    gridColumnGapVal: NimNode = nil
+    gridAutoFlowVal: NimNode = nil
+    gridJustifyItemsVal: NimNode = nil
+    gridAlignItemsVal: NimNode = nil
+    gridJustifyContentVal: NimNode = nil
+    gridAlignContentVal: NimNode = nil
+    # Common properties
+    bgColorVal: NimNode = nil
+    textColorVal: NimNode = nil
+    borderColorVal: NimNode = nil
+    borderWidthVal: NimNode = nil
+    borderRadiusVal: NimNode = nil
+    boxShadowVal: NimNode = nil
+    posXVal: NimNode = nil
+    posYVal: NimNode = nil
+    widthVal: NimNode = nil
+    heightVal: NimNode = nil
+    minWidthVal: NimNode = nil
+    maxWidthVal: NimNode = nil
+    minHeightVal: NimNode = nil
+    maxHeightVal: NimNode = nil
+    zIndexVal: NimNode = nil
+    paddingAll: NimNode = nil
+    paddingTopVal: NimNode = nil
+    paddingRightVal: NimNode = nil
+    paddingBottomVal: NimNode = nil
+    paddingLeftVal: NimNode = nil
+    marginAll: NimNode = nil
+    marginTopVal: NimNode = nil
+    marginRightVal: NimNode = nil
+    marginBottomVal: NimNode = nil
+    marginLeftVal: NimNode = nil
+
+  # Parse properties
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      # Evaluate const expressions (e.g., config.field) to their literal values
+      var value = evalConstExpr(node[1])
+
+      case propName.toLowerAscii():
+      # Grid-specific properties
+      of "gridtemplaterows", "templaterows", "rows":
+        gridTemplateRowsVal = parseGridTemplate(value)
+      of "gridtemplatecolumns", "templatecolumns", "columns":
+        gridTemplateColumnsVal = parseGridTemplate(value)
+      of "gridgap":
+        gridGapVal = value
+      of "gridrowgap", "rowgap":
+        gridRowGapVal = value
+      of "gridcolumngap", "columngap":
+        gridColumnGapVal = value
+      of "gridautoflow", "autoflow":
+        gridAutoFlowVal = value
+      of "gridjustifyitems", "justifyitems":
+        gridJustifyItemsVal = parseAlignmentValue(value)
+      of "gridalignitems", "alignitems":
+        gridAlignItemsVal = parseAlignmentValue(value)
+      of "gridjustifycontent", "justifycontent":
+        gridJustifyContentVal = parseAlignmentValue(value)
+      of "gridaligncontent", "aligncontent":
+        gridAlignContentVal = parseAlignmentValue(value)
+      of "gap":
+        # Support both single value and tuple (rowGap, columnGap)
+        if value.kind == nnkTupleConstr or value.kind == nnkPar:
+          gridRowGapVal = value[0]
+          gridColumnGapVal = if value.len > 1: value[1] else: value[0]
+        else:
+          gridGapVal = value
+      # Common properties
+      of "backgroundcolor", "bg", "background":
+        bgColorVal = colorNode(value)
+      of "color", "textcolor":
+        textColorVal = colorNode(value)
+      of "bordercolor":
+        borderColorVal = colorNode(value)
+      of "borderwidth":
+        borderWidthVal = value
+      of "borderradius":
+        borderRadiusVal = value
+      of "posx", "x":
+        posXVal = value
+      of "posy", "y":
+        posYVal = value
+      of "width", "w":
+        widthVal = value
+      of "height", "h":
+        heightVal = value
+      of "minwidth":
+        minWidthVal = value
+      of "maxwidth":
+        maxWidthVal = value
+      of "minheight":
+        minHeightVal = value
+      of "maxheight":
+        maxHeightVal = value
+      of "zindex", "z":
+        zIndexVal = value
+      of "padding", "p":
+        paddingAll = value
+      of "paddingtop":
+        paddingTopVal = value
+      of "paddingright":
+        paddingRightVal = value
+      of "paddingbottom":
+        paddingBottomVal = value
+      of "paddingleft":
+        paddingLeftVal = value
+      of "margin", "m":
+        marginAll = value
+      of "margintop":
+        marginTopVal = value
+      of "marginright":
+        marginRightVal = value
+      of "marginbottom":
+        marginBottomVal = value
+      of "marginleft":
+        marginLeftVal = value
+      of "boxshadow":
+        boxShadowVal = value
+      else:
+        discard
+    else:
+      if isEchoStatement(node):
+        sideEffectStmts.add(node)
+      elif node.kind in {nnkLetSection, nnkVarSection, nnkConstSection}:
+        sideEffectStmts.add(node)
+      elif node.kind == nnkIfStmt:
+        deferredIfStmts.add(node)
+      else:
+        childNodes.add(node)
+
+  # Generate initialization statements
+  var initStmts = newTree(nnkStmtList)
+
+  # Add side-effect statements
+  for stmt in sideEffectStmts:
+    initStmts.add(stmt)
+
+  # Note: ir_set_layout_mode not yet implemented in C core
+  # The layout mode should be inferred when grid properties are set
+
+  # Set grid template rows
+  if gridTemplateRowsVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_grid_template_rows(`gridName`, `gridTemplateRowsVal`)
+
+  # Set grid template columns
+  if gridTemplateColumnsVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_grid_template_columns(`gridName`, `gridTemplateColumnsVal`)
+
+  # Set grid gap
+  if gridGapVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_grid_gap(`gridName`, cfloat(`gridGapVal`), cfloat(`gridGapVal`))
+  elif gridRowGapVal != nil or gridColumnGapVal != nil:
+    let rowGap = if gridRowGapVal != nil: gridRowGapVal else: newLit(0)
+    let colGap = if gridColumnGapVal != nil: gridColumnGapVal else: newLit(0)
+    initStmts.add quote do:
+      kryon_component_set_grid_gap(`gridName`, cfloat(`rowGap`), cfloat(`colGap`))
+
+  # Set grid auto-flow
+  if gridAutoFlowVal != nil:
+    # Parse "row", "column", "row dense", "column dense"
+    if gridAutoFlowVal.kind == nnkStrLit:
+      let flowStr = gridAutoFlowVal.strVal.toLowerAscii()
+      let isRow = flowStr.contains("row") or not flowStr.contains("column")
+      let isDense = flowStr.contains("dense")
+      initStmts.add quote do:
+        kryon_component_set_grid_auto_flow(`gridName`, `isRow`, `isDense`)
+    else:
+      # Assume boolean for row direction
+      initStmts.add quote do:
+        kryon_component_set_grid_auto_flow(`gridName`, `gridAutoFlowVal`, false)
+
+  # Set grid alignment
+  let justifyItems = if gridJustifyItemsVal != nil: gridJustifyItemsVal else: alignmentNode("stretch")
+  let alignItems = if gridAlignItemsVal != nil: gridAlignItemsVal else: alignmentNode("stretch")
+  let justifyContent = if gridJustifyContentVal != nil: gridJustifyContentVal else: alignmentNode("start")
+  let alignContent = if gridAlignContentVal != nil: gridAlignContentVal else: alignmentNode("start")
+
+  initStmts.add quote do:
+    kryon_component_set_grid_alignment(`gridName`, `justifyItems`, `alignItems`, `justifyContent`, `alignContent`)
+
+  # Set position and size
+  let xExpr = if posXVal != nil: posXVal else: newIntLitNode(0)
+  let yExpr = if posYVal != nil: posYVal else: newIntLitNode(0)
+
+  let widthIsPercent = widthVal != nil and isPercentExpression(widthVal)
+  let heightIsPercent = heightVal != nil and isPercentExpression(heightVal)
+
+  let wExpr = if widthVal != nil:
+    if widthIsPercent: extractPercentValue(widthVal) else: widthVal
+  else:
+    newIntLitNode(0)
+  let hExpr = if heightVal != nil:
+    if heightIsPercent: extractPercentValue(heightVal) else: heightVal
+  else:
+    newIntLitNode(0)
+
+  var maskVal = 0
+  if posXVal != nil: maskVal = maskVal or 0x01
+  if posYVal != nil: maskVal = maskVal or 0x02
+  if widthVal != nil: maskVal = maskVal or 0x04
+  if heightVal != nil: maskVal = maskVal or 0x08
+
+  if widthIsPercent or heightIsPercent:
+    let widthType = if widthIsPercent: bindSym("IR_DIMENSION_PERCENT") else: bindSym("IR_DIMENSION_PX")
+    let heightType = if heightIsPercent: bindSym("IR_DIMENSION_PERCENT") else: bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      kryon_component_set_bounds_with_types(`gridName`,
+        cfloat(`xExpr`), cfloat(`yExpr`), cfloat(`wExpr`), cfloat(`hExpr`),
+        `widthType`, `heightType`, uint8(`maskVal`))
+  else:
+    initStmts.add quote do:
+      kryon_component_set_bounds_mask(`gridName`,
+        cfloat(`xExpr`), cfloat(`yExpr`), cfloat(`wExpr`), cfloat(`hExpr`), uint8(`maskVal`))
+
+  # Set padding
+  let padTop = if paddingTopVal != nil: paddingTopVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
+  let padRight = if paddingRightVal != nil: paddingRightVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
+  let padBottom = if paddingBottomVal != nil: paddingBottomVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
+  let padLeft = if paddingLeftVal != nil: paddingLeftVal elif paddingAll != nil: paddingAll else: newIntLitNode(0)
+
+  if paddingAll != nil or paddingTopVal != nil or paddingRightVal != nil or paddingBottomVal != nil or paddingLeftVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_padding(`gridName`,
+        uint8(`padTop`), uint8(`padRight`), uint8(`padBottom`), uint8(`padLeft`))
+
+  # Set margin
+  let marginTop = if marginTopVal != nil: marginTopVal elif marginAll != nil: marginAll else: newIntLitNode(0)
+  let marginRight = if marginRightVal != nil: marginRightVal elif marginAll != nil: marginAll else: newIntLitNode(0)
+  let marginBottom = if marginBottomVal != nil: marginBottomVal elif marginAll != nil: marginAll else: newIntLitNode(0)
+  let marginLeft = if marginLeftVal != nil: marginLeftVal elif marginAll != nil: marginAll else: newIntLitNode(0)
+
+  if marginAll != nil or marginTopVal != nil or marginRightVal != nil or marginBottomVal != nil or marginLeftVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_margin(`gridName`,
+        uint8(`marginTop`), uint8(`marginRight`), uint8(`marginBottom`), uint8(`marginLeft`))
+
+  # Set visual properties
+  if bgColorVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_background_color(`gridName`, `bgColorVal`)
+
+  if textColorVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_text_color(`gridName`, `textColorVal`)
+
+  if borderColorVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_border_color(`gridName`, `borderColorVal`)
+
+  if borderWidthVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_border_width(`gridName`, uint8(`borderWidthVal`))
+
+  if borderRadiusVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_border_radius(`gridName`, uint8(`borderRadiusVal`))
+
+  if boxShadowVal != nil:
+    # Support both named parameter syntax and positional tuple syntax
+    let isNamedTuple = (boxShadowVal.kind == nnkTableConstr) or
+                       ((boxShadowVal.kind == nnkTupleConstr or boxShadowVal.kind == nnkPar) and
+                        boxShadowVal.len > 0 and boxShadowVal[0].kind == nnkExprColonExpr)
+
+    if isNamedTuple:
+      # Named parameter syntax: (offsetY: 8.0, blur: 24.0, color: "#000")
+      let spec = parseBoxShadowSpec(boxShadowVal)
+      let shadowCall = buildBoxShadowCreation(gridName, spec)
+      initStmts.add(shadowCall)
+    elif boxShadowVal.kind == nnkTupleConstr or boxShadowVal.kind == nnkPar:
+      # Positional tuple syntax (backward compatible)
+      let offsetX = boxShadowVal[0]
+      let offsetY = boxShadowVal[1]
+      let blurRadius = boxShadowVal[2]
+      let spreadRadius = boxShadowVal[3]
+      let shadowColor = colorNode(boxShadowVal[4])
+      let inset = if boxShadowVal.len >= 6: boxShadowVal[5] else: newLit(false)
+      initStmts.add quote do:
+        kryon_component_set_box_shadow(`gridName`, cfloat(`offsetX`), cfloat(`offsetY`), cfloat(`blurRadius`), cfloat(`spreadRadius`), `shadowColor`, `inset`)
+
+  if zIndexVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_z_index(`gridName`, uint16(`zIndexVal`))
+
+  # Apply min/max width/height constraints
+  if minWidthVal != nil:
+    let dimType = bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      let layout = ir_get_layout(`gridName`)
+      if layout != nil:
+        ir_set_min_width(layout, `dimType`, cfloat(`minWidthVal`))
+
+  if maxWidthVal != nil:
+    let dimType = bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      let layout = ir_get_layout(`gridName`)
+      if layout != nil:
+        ir_set_max_width(layout, `dimType`, cfloat(`maxWidthVal`))
+
+  if minHeightVal != nil:
+    let dimType = bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      let layout = ir_get_layout(`gridName`)
+      if layout != nil:
+        ir_set_min_height(layout, `dimType`, cfloat(`minHeightVal`))
+
+  if maxHeightVal != nil:
+    let dimType = bindSym("IR_DIMENSION_PX")
+    initStmts.add quote do:
+      let layout = ir_get_layout(`gridName`)
+      if layout != nil:
+        ir_set_max_height(layout, `dimType`, cfloat(`maxHeightVal`))
+
+  # Add child components
+  for child in childNodes:
+    let childSym = genSym(nskLet, "gridChild")
+    initStmts.add quote do:
+      let `childSym` = `child`
+      discard kryon_component_add_child(`gridName`, `childSym`)
+
+  # Process deferred if statements
+  for ifStmt in deferredIfStmts:
+    # Similar reactive conditional handling as Container
+    # (simplified for now - can be expanded later)
+    initStmts.add(ifStmt)
+
+  # Mark grid as dirty
+  initStmts.add quote do:
+    kryon_component_mark_dirty(`gridName`)
+
+  # Return the grid component
+  result = quote do:
+    block:
+      let `gridName` = newKryonContainer()  # Create as container, then set grid mode
+      `initStmts`
+      `gridName`
 
 proc convertCaseStmtToReactiveConditional*(caseStmt: NimNode, windowWidth: NimNode, windowHeight: NimNode): NimNode =
   ## Convert a case statement to reactive component expression
@@ -1730,7 +2644,11 @@ macro Text*(props: untyped): untyped =
     fontSizeVal: NimNode = nil
     fontWeightVal: NimNode = nil
     fontFamilyVal: NimNode = nil
+    letterSpacingVal: NimNode = nil
+    wordSpacingVal: NimNode = nil
+    lineHeightVal: NimNode = nil
     textAlignVal: NimNode = nil
+    textDecorationVal: NimNode = nil
     posXVal: NimNode = nil
     posYVal: NimNode = nil
     widthVal: NimNode = nil
@@ -1761,11 +2679,19 @@ macro Text*(props: untyped): untyped =
       of "fontsize":
         fontSizeVal = value
       of "fontweight":
-        fontWeightVal = value
+        fontWeightVal = parseFontWeight(value)
       of "fontfamily":
         fontFamilyVal = value
+      of "letterspacing":
+        letterSpacingVal = value
+      of "wordspacing":
+        wordSpacingVal = value
+      of "lineheight":
+        lineHeightVal = value
       of "textalign":
-        textAlignVal = value
+        textAlignVal = parseTextAlign(value)
+      of "textdecoration":
+        textDecorationVal = parseTextDecoration(value)
       of "margin":
         marginAll = value
       of "margintop":
@@ -1817,6 +2743,34 @@ macro Text*(props: untyped): untyped =
   if colorVal != nil:
     initStmts.add quote do:
       kryon_component_set_text_color(`textSym`, `colorVal`)
+
+  if fontSizeVal != nil:
+    initStmts.add quote do:
+      setFontSize(`textSym`, `fontSizeVal`)
+
+  if fontWeightVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_font_weight(`textSym`, uint16(`fontWeightVal`))
+
+  if letterSpacingVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_letter_spacing(`textSym`, cfloat(`letterSpacingVal`))
+
+  if wordSpacingVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_word_spacing(`textSym`, cfloat(`wordSpacingVal`))
+
+  if lineHeightVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_line_height(`textSym`, cfloat(`lineHeightVal`))
+
+  if textAlignVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_text_align(`textSym`, `textAlignVal`)
+
+  if textDecorationVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_text_decoration(`textSym`, `textDecorationVal`)
 
   if marginAll != nil or marginTopVal != nil or marginRightVal != nil or marginBottomVal != nil or marginLeftVal != nil:
     initStmts.add quote do:
@@ -1913,11 +2867,20 @@ macro Button*(props: untyped): untyped =
     textColorVal: NimNode = nil
     borderColorVal: NimNode = nil
     borderWidthVal: NimNode = nil
+    borderRadiusVal: NimNode = nil
+    boxShadowVal: NimNode = nil
     styleName: NimNode = nil
     styleData: NimNode = nil
     textFadeVal: NimNode = nil
     textOverflowVal: NimNode = nil
     opacityVal: NimNode = nil
+    fontSizeVal: NimNode = nil
+    fontWeightVal: NimNode = nil
+    letterSpacingVal: NimNode = nil
+    wordSpacingVal: NimNode = nil
+    lineHeightVal: NimNode = nil
+    textAlignVal: NimNode = nil
+    textDecorationVal: NimNode = nil
 
   for node in props.children:
     if node.kind == nnkAsgn:
@@ -1994,6 +2957,22 @@ macro Button*(props: untyped): untyped =
         textOverflowVal = value
       of "opacity":
         opacityVal = value
+      of "fontsize":
+        fontSizeVal = value
+      of "fontweight":
+        fontWeightVal = parseFontWeight(value)
+      of "letterspacing":
+        letterSpacingVal = value
+      of "wordspacing":
+        wordSpacingVal = value
+      of "lineheight":
+        lineHeightVal = value
+      of "textalign":
+        textAlignVal = parseTextAlign(value)
+      of "textdecoration":
+        textDecorationVal = parseTextDecoration(value)
+      of "boxshadow":
+        boxShadowVal = value
       else:
         discard
     else:
@@ -2016,18 +2995,45 @@ macro Button*(props: untyped): untyped =
     elif marginAll != nil: marginAll
     else: newIntLitNode(0)
 
-  let padTopExpr = if paddingTopVal != nil: paddingTopVal
-    elif paddingAll != nil: paddingAll
+  # Set padding (support string format, tuple with .px, and individual values)
+  var padTopExpr, padRightExpr, padBottomExpr, padLeftExpr: NimNode
+
+  # Check if paddingAll is a string like "20px, 20px, 20px, 20px"
+  if paddingAll != nil and paddingAll.kind == nnkStrLit:
+    let parsed = parseQuadString(paddingAll)
+    padTopExpr = parsed.top
+    padRightExpr = parsed.right
+    padBottomExpr = parsed.bottom
+    padLeftExpr = parsed.left
+  # Check if paddingAll is a tuple like (12.px, 24.px, 12.px, 24.px)
+  elif paddingAll != nil and (paddingAll.kind == nnkTupleConstr or paddingAll.kind == nnkPar):
+    # Extract values from tuple and handle .px suffixes
+    let top = if paddingAll.len >= 1: paddingAll[0] else: newIntLitNode(0)
+    let right = if paddingAll.len >= 2: paddingAll[1] else: newIntLitNode(0)
+    let bottom = if paddingAll.len >= 3: paddingAll[2] else: newIntLitNode(0)
+    let left = if paddingAll.len >= 4: paddingAll[3] else: newIntLitNode(0)
+    padTopExpr = if isPxExpression(top): extractPxValue(top) else: top
+    padRightExpr = if isPxExpression(right): extractPxValue(right) else: right
+    padBottomExpr = if isPxExpression(bottom): extractPxValue(bottom) else: bottom
+    padLeftExpr = if isPxExpression(left): extractPxValue(left) else: left
+  else:
+    # Individual values or single paddingAll value
+    let allVal = if paddingAll != nil:
+      (if isPxExpression(paddingAll): extractPxValue(paddingAll) else: paddingAll)
     else: newIntLitNode(0)
-  let padRightExpr = if paddingRightVal != nil: paddingRightVal
-    elif paddingAll != nil: paddingAll
-    else: newIntLitNode(0)
-  let padBottomExpr = if paddingBottomVal != nil: paddingBottomVal
-    elif paddingAll != nil: paddingAll
-    else: newIntLitNode(0)
-  let padLeftExpr = if paddingLeftVal != nil: paddingLeftVal
-    elif paddingAll != nil: paddingAll
-    else: newIntLitNode(0)
+
+    padTopExpr = if paddingTopVal != nil:
+      (if isPxExpression(paddingTopVal): extractPxValue(paddingTopVal) else: paddingTopVal)
+    else: allVal
+    padRightExpr = if paddingRightVal != nil:
+      (if isPxExpression(paddingRightVal): extractPxValue(paddingRightVal) else: paddingRightVal)
+    else: allVal
+    padBottomExpr = if paddingBottomVal != nil:
+      (if isPxExpression(paddingBottomVal): extractPxValue(paddingBottomVal) else: paddingBottomVal)
+    else: allVal
+    padLeftExpr = if paddingLeftVal != nil:
+      (if isPxExpression(paddingLeftVal): extractPxValue(paddingLeftVal) else: paddingLeftVal)
+    else: allVal
 
   let xExpr = if posXVal != nil: posXVal else: newIntLitNode(0)
   let yExpr = if posYVal != nil: posYVal else: newIntLitNode(0)
@@ -2090,6 +3096,34 @@ macro Button*(props: untyped): untyped =
     initStmts.add quote do:
       kryon_component_set_text_color(`buttonName`, `textColorVal`)
 
+  if fontSizeVal != nil:
+    initStmts.add quote do:
+      setFontSize(`buttonName`, `fontSizeVal`)
+
+  if fontWeightVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_font_weight(`buttonName`, uint16(`fontWeightVal`))
+
+  if letterSpacingVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_letter_spacing(`buttonName`, cfloat(`letterSpacingVal`))
+
+  if wordSpacingVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_word_spacing(`buttonName`, cfloat(`wordSpacingVal`))
+
+  if lineHeightVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_line_height(`buttonName`, cfloat(`lineHeightVal`))
+
+  if textAlignVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_text_align(`buttonName`, `textAlignVal`)
+
+  if textDecorationVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_text_decoration(`buttonName`, `textDecorationVal`)
+
   if borderColorVal != nil:
     initStmts.add quote do:
       kryon_component_set_border_color(`buttonName`, `borderColorVal`)
@@ -2108,6 +3142,32 @@ macro Button*(props: untyped): untyped =
     initStmts.add quote do:
       # Default border: white for good contrast with dark button backgrounds
       kryon_component_set_border_color(`buttonName`, rgba(200, 200, 200, 255))
+
+  if borderRadiusVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_border_radius(`buttonName`, uint8(`borderRadiusVal`))
+
+  if boxShadowVal != nil:
+    # Support both named parameter syntax and positional tuple syntax
+    let isNamedTuple = (boxShadowVal.kind == nnkTableConstr) or
+                       ((boxShadowVal.kind == nnkTupleConstr or boxShadowVal.kind == nnkPar) and
+                        boxShadowVal.len > 0 and boxShadowVal[0].kind == nnkExprColonExpr)
+
+    if isNamedTuple:
+      # Named parameter syntax: (offsetY: 8.0, blur: 24.0, color: "#000")
+      let spec = parseBoxShadowSpec(boxShadowVal)
+      let shadowCall = buildBoxShadowCreation(buttonName, spec)
+      initStmts.add(shadowCall)
+    elif boxShadowVal.kind == nnkTupleConstr or boxShadowVal.kind == nnkPar:
+      # Positional tuple syntax (backward compatible): (offsetX, offsetY, blur, spread, color) or (offsetX, offsetY, blur, spread, color, inset)
+      let offsetX = boxShadowVal[0]
+      let offsetY = boxShadowVal[1]
+      let blurRadius = boxShadowVal[2]
+      let spreadRadius = boxShadowVal[3]
+      let shadowColor = colorNode(boxShadowVal[4])
+      let inset = if boxShadowVal.len >= 6: boxShadowVal[5] else: newLit(false)
+      initStmts.add quote do:
+        kryon_component_set_box_shadow(`buttonName`, cfloat(`offsetX`), cfloat(`offsetY`), cfloat(`blurRadius`), cfloat(`spreadRadius`), `shadowColor`, `inset`)
 
   # Text effect properties
   if textFadeVal != nil:
@@ -2316,18 +3376,45 @@ macro Dropdown*(props: untyped): untyped =
     elif marginAll != nil: marginAll
     else: newIntLitNode(0)
 
-  let padTopExpr = if paddingTopVal != nil: paddingTopVal
-    elif paddingAll != nil: paddingAll
+  # Set padding (support string format, tuple with .px, and individual values)
+  var padTopExpr, padRightExpr, padBottomExpr, padLeftExpr: NimNode
+
+  # Check if paddingAll is a string like "20px, 20px, 20px, 20px"
+  if paddingAll != nil and paddingAll.kind == nnkStrLit:
+    let parsed = parseQuadString(paddingAll)
+    padTopExpr = parsed.top
+    padRightExpr = parsed.right
+    padBottomExpr = parsed.bottom
+    padLeftExpr = parsed.left
+  # Check if paddingAll is a tuple like (12.px, 24.px, 12.px, 24.px)
+  elif paddingAll != nil and (paddingAll.kind == nnkTupleConstr or paddingAll.kind == nnkPar):
+    # Extract values from tuple and handle .px suffixes
+    let top = if paddingAll.len >= 1: paddingAll[0] else: newIntLitNode(0)
+    let right = if paddingAll.len >= 2: paddingAll[1] else: newIntLitNode(0)
+    let bottom = if paddingAll.len >= 3: paddingAll[2] else: newIntLitNode(0)
+    let left = if paddingAll.len >= 4: paddingAll[3] else: newIntLitNode(0)
+    padTopExpr = if isPxExpression(top): extractPxValue(top) else: top
+    padRightExpr = if isPxExpression(right): extractPxValue(right) else: right
+    padBottomExpr = if isPxExpression(bottom): extractPxValue(bottom) else: bottom
+    padLeftExpr = if isPxExpression(left): extractPxValue(left) else: left
+  else:
+    # Individual values or single paddingAll value
+    let allVal = if paddingAll != nil:
+      (if isPxExpression(paddingAll): extractPxValue(paddingAll) else: paddingAll)
     else: newIntLitNode(0)
-  let padRightExpr = if paddingRightVal != nil: paddingRightVal
-    elif paddingAll != nil: paddingAll
-    else: newIntLitNode(0)
-  let padBottomExpr = if paddingBottomVal != nil: paddingBottomVal
-    elif paddingAll != nil: paddingAll
-    else: newIntLitNode(0)
-  let padLeftExpr = if paddingLeftVal != nil: paddingLeftVal
-    elif paddingAll != nil: paddingAll
-    else: newIntLitNode(0)
+
+    padTopExpr = if paddingTopVal != nil:
+      (if isPxExpression(paddingTopVal): extractPxValue(paddingTopVal) else: paddingTopVal)
+    else: allVal
+    padRightExpr = if paddingRightVal != nil:
+      (if isPxExpression(paddingRightVal): extractPxValue(paddingRightVal) else: paddingRightVal)
+    else: allVal
+    padBottomExpr = if paddingBottomVal != nil:
+      (if isPxExpression(paddingBottomVal): extractPxValue(paddingBottomVal) else: paddingBottomVal)
+    else: allVal
+    padLeftExpr = if paddingLeftVal != nil:
+      (if isPxExpression(paddingLeftVal): extractPxValue(paddingLeftVal) else: paddingLeftVal)
+    else: allVal
 
   let xExpr = if posXVal != nil: posXVal else: newIntLitNode(0)
   let yExpr = if posYVal != nil: posYVal else: newIntLitNode(0)
@@ -2505,7 +3592,14 @@ macro Input*(props: untyped): untyped =
     textColorVal: NimNode = nil
     borderColorVal: NimNode = nil
     borderWidthVal: NimNode = nil
+    borderRadiusVal: NimNode = nil
     fontSizeVal: NimNode = newIntLitNode(14)
+    fontWeightVal: NimNode = nil
+    letterSpacingVal: NimNode = nil
+    wordSpacingVal: NimNode = nil
+    lineHeightVal: NimNode = nil
+    textAlignVal: NimNode = nil
+    textDecorationVal: NimNode = nil
     onTextChangeVal: NimNode = nil
     childNodes: seq[NimNode] = @[]
 
@@ -2534,8 +3628,22 @@ macro Input*(props: untyped): untyped =
         borderColorVal = colorNode(node[1])
       of "borderwidth":
         borderWidthVal = node[1]
+      of "borderradius":
+        borderRadiusVal = node[1]
       of "fontsize":
         fontSizeVal = node[1]
+      of "fontweight":
+        fontWeightVal = parseFontWeight(node[1])
+      of "letterspacing":
+        letterSpacingVal = node[1]
+      of "wordspacing":
+        wordSpacingVal = node[1]
+      of "lineheight":
+        lineHeightVal = node[1]
+      of "textalign":
+        textAlignVal = parseTextAlign(node[1])
+      of "textdecoration":
+        textDecorationVal = parseTextDecoration(node[1])
       of "ontextchange":
         onTextChangeVal = node[1]
       of "inputtype", "min", "max", "step", "accept":
@@ -2587,6 +3695,46 @@ macro Input*(props: untyped): untyped =
       else: textColorVal
     initStmts.add quote do:
       setTextColor(`inputName`, `tcExpr`)
+
+  if fontSizeVal != nil:
+    initStmts.add quote do:
+      setFontSize(`inputName`, `fontSizeVal`)
+
+  if fontWeightVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_font_weight(`inputName`, uint16(`fontWeightVal`))
+
+  if letterSpacingVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_letter_spacing(`inputName`, cfloat(`letterSpacingVal`))
+
+  if wordSpacingVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_word_spacing(`inputName`, cfloat(`wordSpacingVal`))
+
+  if lineHeightVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_line_height(`inputName`, cfloat(`lineHeightVal`))
+
+  if textAlignVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_text_align(`inputName`, `textAlignVal`)
+
+  if textDecorationVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_text_decoration(`inputName`, `textDecorationVal`)
+
+  if borderColorVal != nil:
+    initStmts.add quote do:
+      ir_component_set_border_color(`inputName`, `borderColorVal`)
+
+  if borderWidthVal != nil:
+    initStmts.add quote do:
+      ir_component_set_border_width(`inputName`, uint8(`borderWidthVal`))
+
+  if borderRadiusVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_border_radius(`inputName`, uint8(`borderRadiusVal`))
 
   # Store placeholder separately; only set real value as text content
   initStmts.add quote do:
@@ -2899,6 +4047,29 @@ macro Center*(props: untyped): untyped =
       let `centerSym` = `newCenterSym`()
       `initStmts`
       `centerSym`
+
+# ============================================================================
+# Spacer / Gap - HTML-like spacing elements
+# ============================================================================
+
+macro Spacer*(height: int = 10, backgroundColor: string = "transparent"): untyped =
+  ## Creates a spacing element (like HTML <br>)
+  ## Usage: Spacer() for default 10px spacing, or Spacer(height = 20) for custom
+  ## Can also be used as divider: Spacer(height = 1, backgroundColor = "#cccccc")
+  let widthExpr = quote do:
+    100.pct
+
+  result = quote do:
+    Container:
+      height = `height`
+      width = `widthExpr`
+      backgroundColor = `backgroundColor`
+
+macro Gap*(height: int = 10, backgroundColor: string = "transparent"): untyped =
+  ## Alias for Spacer - creates a spacing element
+  ## Usage: Gap() or Gap(height = 30)
+  result = quote do:
+    Spacer(`height`, `backgroundColor`)
 
 # ============================================================================
 # Tabs
@@ -3616,6 +4787,7 @@ macro TextArea*(props: untyped): untyped =
     textColorVal: NimNode = nil
     borderColorVal: NimNode = nil
     borderWidthVal: NimNode = nil
+    borderRadiusVal: NimNode = nil
     changeHandler = newNilLit()
     
   for node in props.children:
@@ -3638,6 +4810,8 @@ macro TextArea*(props: untyped): untyped =
         borderColorVal = colorNode(node[1])
       of "borderwidth":
         borderWidthVal = node[1]
+      of "borderradius":
+        borderRadiusVal = node[1]
       of "ontextchange":
         changeHandler = node[1]
       else:
@@ -3660,7 +4834,11 @@ macro TextArea*(props: untyped): untyped =
   if borderWidthVal != nil:
     initStmts.add quote do:
       kryon_component_set_border_width(`textareaName`, uint8(`borderWidthVal`))
-  
+
+  if borderRadiusVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_border_radius(`textareaName`, uint8(`borderRadiusVal`))
+
   result = quote do:
     block:
       let `textareaName` = newKryonContainer()

@@ -52,14 +52,14 @@ uint32_t ir_animation_get_active_count(IRAnimationContext* ctx);
 // Animation Management
 // ============================================================================
 
-// Create a new animation
-IRAnimationState* ir_animation_create(IRComponent* target, IRAnimationType type, float duration);
+// Create a new animation (deprecated, use keyframe-based animations)
+IRAnimationState* ir_animation_create(IRComponent* target, uint32_t type, float duration);
 
 // Set easing function
 void ir_animation_set_easing(IRAnimationState* anim, IREasingFunction easing);
 
-// Set delay before animation starts
-void ir_animation_set_delay(IRAnimationState* anim, float delay);
+// Set delay before animation starts  (for legacy animations)
+void ir_animation_set_delay_legacy(IRAnimationState* anim, float delay);
 
 // Set loop mode
 void ir_animation_set_loop(IRAnimationState* anim, bool loop);
@@ -88,5 +88,11 @@ IRAnimationState* ir_animation_slide_in(IRComponent* target, float from_x, float
 
 // Scale animation
 IRAnimationState* ir_animation_scale(IRComponent* target, float from_scale, float to_scale, float duration);
+
+// Keyframe animation application
+void ir_animation_apply_keyframes(IRComponent* component, IRAnimation* anim, float current_time);
+
+// Easing evaluation
+float ir_easing_evaluate(IREasingType type, float t);
 
 #endif // IR_ANIMATION_H

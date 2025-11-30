@@ -9,6 +9,9 @@ import style_vars
 import reactive_system
 export reactive_system
 
+# Forward declare layout cache invalidation function (used in style setters)
+proc ir_layout_invalidate_cache*(component: ptr IRComponent) {.importc, cdecl, header: "ir_core.h".}
+
 # ============================================================================
 # Runtime Types - IR-based
 # ============================================================================
@@ -165,6 +168,7 @@ proc kryon_component_set_padding*(component: ptr IRComponent, top, right, bottom
     ir_set_style(component, newStyle)
   else:
     ir_set_padding(style, cfloat(top), cfloat(right), cfloat(bottom), cfloat(left))
+    ir_layout_invalidate_cache(component)
 
 proc kryon_component_set_margin*(component: ptr IRComponent, top, right, bottom, left: uint8) =
   ## Set margin for component (space outside the component)
@@ -175,6 +179,7 @@ proc kryon_component_set_margin*(component: ptr IRComponent, top, right, bottom,
     ir_set_style(component, newStyle)
   else:
     ir_set_margin(style, cfloat(top), cfloat(right), cfloat(bottom), cfloat(left))
+    ir_layout_invalidate_cache(component)
 
 proc kryon_component_set_text_overflow*(component: ptr IRComponent, overflow: IRTextOverflowType) =
   ## Set text overflow behavior (clip, ellipsis, fade)
@@ -209,6 +214,137 @@ proc kryon_component_set_text_shadow*(component: ptr IRComponent, offsetX, offse
   else:
     ir_set_text_shadow(style, cfloat(offsetX), cfloat(offsetY), cfloat(blurRadius), r, g, b, a)
 
+# Extended Typography (Phase 1)
+proc kryon_component_set_font_weight*(component: ptr IRComponent, weight: uint16) =
+  ## Set font weight (100-900, where 400=normal, 700=bold)
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_font_weight(newStyle, weight)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_font_weight(style, weight)
+
+proc kryon_component_set_letter_spacing*(component: ptr IRComponent, spacing: cfloat) =
+  ## Set letter spacing in pixels
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_letter_spacing(newStyle, spacing)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_letter_spacing(style, spacing)
+
+proc kryon_component_set_word_spacing*(component: ptr IRComponent, spacing: cfloat) =
+  ## Set word spacing in pixels
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_word_spacing(newStyle, spacing)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_word_spacing(style, spacing)
+
+proc kryon_component_set_line_height*(component: ptr IRComponent, line_height: cfloat) =
+  ## Set line height multiplier (e.g., 1.5 = 1.5x font size)
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_line_height(newStyle, line_height)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_line_height(style, line_height)
+
+proc kryon_component_set_text_align*(component: ptr IRComponent, align: IRTextAlign) =
+  ## Set text alignment (left, center, right, justify)
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_text_align(newStyle, align)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_text_align(style, align)
+
+proc kryon_component_set_text_decoration*(component: ptr IRComponent, decoration: uint8) =
+  ## Set text decoration flags (underline, overline, line-through)
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_text_decoration(newStyle, decoration)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_text_decoration(style, decoration)
+
+# Box Shadow (Phase 2)
+proc kryon_component_set_box_shadow*(component: ptr IRComponent, offset_x, offset_y, blur_radius, spread_radius: cfloat, color: uint32, inset: bool = false) =
+  ## Set box shadow with offsets, blur, spread, color, and optional inset
+  if component.isNil: return
+  let style = ir_get_style(component)
+  let r = uint8((color shr 24) and 0xFF)
+  let g = uint8((color shr 16) and 0xFF)
+  let b = uint8((color shr 8) and 0xFF)
+  let a = uint8(color and 0xFF)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_box_shadow(newStyle, offset_x, offset_y, blur_radius, spread_radius, r, g, b, a, inset)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_box_shadow(style, offset_x, offset_y, blur_radius, spread_radius, r, g, b, a, inset)
+
+# CSS Filters (Phase 3)
+proc kryon_component_add_filter*(component: ptr IRComponent, filter_type: IRFilterType, value: cfloat) =
+  ## Add a CSS filter to the component
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_add_filter(newStyle, filter_type, value)
+    ir_set_style(component, newStyle)
+  else:
+    ir_add_filter(style, filter_type, value)
+
+proc kryon_component_set_blur*(component: ptr IRComponent, blur: cfloat) =
+  ## Set blur filter (value in pixels)
+  kryon_component_add_filter(component, IR_FILTER_BLUR, blur)
+
+proc kryon_component_set_brightness*(component: ptr IRComponent, brightness: cfloat) =
+  ## Set brightness filter (0 = black, 1 = normal, >1 = brighter)
+  kryon_component_add_filter(component, IR_FILTER_BRIGHTNESS, brightness)
+
+proc kryon_component_set_contrast*(component: ptr IRComponent, contrast: cfloat) =
+  ## Set contrast filter (0 = gray, 1 = normal, >1 = more contrast)
+  kryon_component_add_filter(component, IR_FILTER_CONTRAST, contrast)
+
+proc kryon_component_set_grayscale*(component: ptr IRComponent, grayscale: cfloat) =
+  ## Set grayscale filter (0 = color, 1 = fully grayscale)
+  kryon_component_add_filter(component, IR_FILTER_GRAYSCALE, grayscale)
+
+proc kryon_component_set_hue_rotate*(component: ptr IRComponent, degrees: cfloat) =
+  ## Set hue rotation filter (value in degrees)
+  kryon_component_add_filter(component, IR_FILTER_HUE_ROTATE, degrees)
+
+proc kryon_component_set_invert*(component: ptr IRComponent, invert: cfloat) =
+  ## Set invert filter (0 = normal, 1 = inverted)
+  kryon_component_add_filter(component, IR_FILTER_INVERT, invert)
+
+proc kryon_component_set_filter_opacity*(component: ptr IRComponent, opacity: cfloat) =
+  ## Set opacity filter (0 = transparent, 1 = opaque)
+  kryon_component_add_filter(component, IR_FILTER_OPACITY, opacity)
+
+proc kryon_component_set_saturate*(component: ptr IRComponent, saturate: cfloat) =
+  ## Set saturate filter (0 = desaturated, 1 = normal, >1 = more saturated)
+  kryon_component_add_filter(component, IR_FILTER_SATURATE, saturate)
+
+proc kryon_component_set_sepia*(component: ptr IRComponent, sepia: cfloat) =
+  ## Set sepia filter (0 = normal, 1 = fully sepia)
+  kryon_component_add_filter(component, IR_FILTER_SEPIA, sepia)
+
 proc kryon_component_set_opacity*(component: ptr IRComponent, opacity: float) =
   ## Set component opacity (0.0 to 1.0)
   if component.isNil: return
@@ -219,6 +355,362 @@ proc kryon_component_set_opacity*(component: ptr IRComponent, opacity: float) =
     ir_set_style(component, newStyle)
   else:
     ir_set_opacity(style, cfloat(opacity))
+
+# ============================================================================
+# Grid Layout (Phase 4)
+# ============================================================================
+
+proc kryon_component_set_grid_template_rows*(component: ptr IRComponent, tracks: seq[IRGridTrack]) =
+  ## Set grid template rows from a sequence of grid tracks
+  if component.isNil: return
+  let layout = ir_get_layout(component)
+  if not layout.isNil and tracks.len > 0:
+    var trackArray = tracks
+    ir_set_grid_template_rows(layout, addr trackArray[0], uint8(tracks.len))
+
+proc kryon_component_set_grid_template_columns*(component: ptr IRComponent, tracks: seq[IRGridTrack]) =
+  ## Set grid template columns from a sequence of grid tracks
+  if component.isNil: return
+  let layout = ir_get_layout(component)
+  if not layout.isNil and tracks.len > 0:
+    var trackArray = tracks
+    ir_set_grid_template_columns(layout, addr trackArray[0], uint8(tracks.len))
+
+proc kryon_component_set_grid_gap*(component: ptr IRComponent, row_gap: cfloat, column_gap: cfloat) =
+  ## Set grid row and column gaps
+  if component.isNil: return
+  let layout = ir_get_layout(component)
+  if not layout.isNil:
+    ir_set_grid_gap(layout, row_gap, column_gap)
+
+proc kryon_component_set_grid_auto_flow*(component: ptr IRComponent, row_direction: bool, dense: bool) =
+  ## Set grid auto-flow direction (true = row, false = column) and dense packing
+  if component.isNil: return
+  let layout = ir_get_layout(component)
+  if not layout.isNil:
+    ir_set_grid_auto_flow(layout, row_direction, dense)
+
+proc kryon_component_set_grid_alignment*(component: ptr IRComponent,
+                                          justify_items: IRAlignment,
+                                          align_items: IRAlignment,
+                                          justify_content: IRAlignment,
+                                          align_content: IRAlignment) =
+  ## Set grid alignment properties for items and content
+  if component.isNil: return
+  let layout = ir_get_layout(component)
+  if not layout.isNil:
+    ir_set_grid_alignment(layout, justify_items, align_items, justify_content, align_content)
+
+proc kryon_component_set_grid_item_placement*(component: ptr IRComponent,
+                                               row_start: int16,
+                                               row_end: int16,
+                                               column_start: int16,
+                                               column_end: int16) =
+  ## Set explicit grid item placement (grid-row and grid-column)
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_grid_item_placement(newStyle, row_start, row_end, column_start, column_end)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_grid_item_placement(style, row_start, row_end, column_start, column_end)
+
+proc kryon_component_set_grid_item_alignment*(component: ptr IRComponent,
+                                               justify_self: IRAlignment,
+                                               align_self: IRAlignment) =
+  ## Set grid item self-alignment (justify-self and align-self)
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_grid_item_alignment(newStyle, justify_self, align_self)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_grid_item_alignment(style, justify_self, align_self)
+
+# ============================================================================
+# Gradients (Phase 5)
+# ============================================================================
+
+proc kryon_create_linear_gradient*(angle: cfloat): ptr IRGradient =
+  ## Create a linear gradient with specified angle in degrees
+  let gradient = ir_gradient_create(IR_GRADIENT_LINEAR)
+  if not gradient.isNil:
+    ir_gradient_set_angle(gradient, angle)
+  return gradient
+
+proc kryon_create_radial_gradient*(center_x: cfloat = 0.5, center_y: cfloat = 0.5): ptr IRGradient =
+  ## Create a radial gradient with center position (0.0-1.0)
+  let gradient = ir_gradient_create(IR_GRADIENT_RADIAL)
+  if not gradient.isNil:
+    ir_gradient_set_center(gradient, center_x, center_y)
+  return gradient
+
+proc kryon_create_conic_gradient*(center_x: cfloat = 0.5, center_y: cfloat = 0.5): ptr IRGradient =
+  ## Create a conic gradient with center position (0.0-1.0)
+  let gradient = ir_gradient_create(IR_GRADIENT_CONIC)
+  if not gradient.isNil:
+    ir_gradient_set_center(gradient, center_x, center_y)
+  return gradient
+
+proc kryon_gradient_add_color_stop*(gradient: ptr IRGradient, position: cfloat, color: uint32) =
+  ## Add a color stop to a gradient at position (0.0-1.0)
+  if gradient.isNil: return
+  let r = uint8((color shr 24) and 0xFF)
+  let g = uint8((color shr 16) and 0xFF)
+  let b = uint8((color shr 8) and 0xFF)
+  let a = uint8(color and 0xFF)
+  ir_gradient_add_stop(gradient, position, r, g, b, a)
+
+proc kryon_component_set_background_gradient*(component: ptr IRComponent, gradient: ptr IRGradient) =
+  ## Set background gradient for a component
+  if component.isNil or gradient.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_background_gradient(newStyle, gradient)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_background_gradient(style, gradient)
+
+# ============================================================================
+# Transitions (Phase 6)
+# ============================================================================
+
+proc kryon_create_transition*(property: IRAnimationProperty, duration: cfloat,
+                               easing: IREasingType = IR_EASING_EASE_IN_OUT,
+                               delay: cfloat = 0.0): ptr IRTransition =
+  ## Create a CSS-style transition for a property
+  let transition = ir_transition_create(property, duration)
+  if not transition.isNil:
+    ir_transition_set_easing(transition, easing)
+    if delay > 0.0:
+      ir_transition_set_delay(transition, delay)
+  return transition
+
+proc kryon_component_add_opacity_transition*(component: ptr IRComponent, duration: cfloat,
+                                              easing: IREasingType = IR_EASING_EASE_IN_OUT) =
+  ## Add opacity transition to component
+  if component.isNil: return
+  let transition = kryon_create_transition(IR_ANIM_PROP_OPACITY, duration, easing)
+  if not transition.isNil:
+    ir_component_add_transition(component, transition)
+
+proc kryon_component_add_transform_transition*(component: ptr IRComponent, duration: cfloat,
+                                                easing: IREasingType = IR_EASING_EASE_IN_OUT) =
+  ## Add transform (translate/scale/rotate) transition to component
+  if component.isNil: return
+  # Add transitions for all transform properties
+  var transitions = [
+    kryon_create_transition(IR_ANIM_PROP_TRANSLATE_X, duration, easing),
+    kryon_create_transition(IR_ANIM_PROP_TRANSLATE_Y, duration, easing),
+    kryon_create_transition(IR_ANIM_PROP_SCALE_X, duration, easing),
+    kryon_create_transition(IR_ANIM_PROP_SCALE_Y, duration, easing),
+    kryon_create_transition(IR_ANIM_PROP_ROTATE, duration, easing)
+  ]
+  for t in transitions:
+    if not t.isNil:
+      ir_component_add_transition(component, t)
+
+proc kryon_component_add_size_transition*(component: ptr IRComponent, duration: cfloat,
+                                          easing: IREasingType = IR_EASING_EASE_IN_OUT) =
+  ## Add size (width/height) transition to component
+  if component.isNil: return
+  var transitions = [
+    kryon_create_transition(IR_ANIM_PROP_WIDTH, duration, easing),
+    kryon_create_transition(IR_ANIM_PROP_HEIGHT, duration, easing)
+  ]
+  for t in transitions:
+    if not t.isNil:
+      ir_component_add_transition(component, t)
+
+proc kryon_component_add_color_transition*(component: ptr IRComponent, duration: cfloat,
+                                           easing: IREasingType = IR_EASING_EASE_IN_OUT) =
+  ## Add background color transition to component
+  if component.isNil: return
+  let transition = kryon_create_transition(IR_ANIM_PROP_BACKGROUND_COLOR, duration, easing)
+  if not transition.isNil:
+    ir_component_add_transition(component, transition)
+
+# ============================================================================
+# Container Queries (Phase 7)
+# ============================================================================
+
+proc kryon_component_set_container_type*(component: ptr IRComponent, container_type: string) =
+  ## Set container query type ("size", "inline-size", or "normal")
+  if component.isNil: return
+  let containerEnum = case container_type.toLowerAscii()
+    of "size": IR_CONTAINER_TYPE_SIZE
+    of "inline-size", "inlinesize": IR_CONTAINER_TYPE_INLINE_SIZE
+    else: IR_CONTAINER_TYPE_NORMAL
+
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_container_type(newStyle, containerEnum)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_container_type(style, containerEnum)
+
+proc kryon_component_set_container_name*(component: ptr IRComponent, name: string) =
+  ## Set container query name for targeting
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_container_name(newStyle, name.cstring)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_container_name(style, name.cstring)
+
+proc kryon_component_add_breakpoint*(component: ptr IRComponent,
+                                      breakpoint_index: uint8,
+                                      min_width: float = -1.0, max_width: float = -1.0,
+                                      min_height: float = -1.0, max_height: float = -1.0,
+                                      width: float = -1.0, height: float = -1.0,
+                                      visible: bool = true, opacity: float = -1.0) =
+  ## Add breakpoint with query conditions and style overrides
+  ## Use negative values to skip that condition/override
+  if component.isNil: return
+
+  var style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_style(component, newStyle)
+    style = newStyle
+
+  # Build query conditions
+  var conditions: array[IR_MAX_QUERY_CONDITIONS, IRQueryCondition]
+  var condCount: uint8 = 0
+
+  # Add width conditions
+  if min_width >= 0.0:
+    conditions[condCount] = ir_query_min_width(cfloat(min_width))
+    condCount.inc
+  if max_width >= 0.0 and condCount < IR_MAX_QUERY_CONDITIONS:
+    conditions[condCount] = ir_query_max_width(cfloat(max_width))
+    condCount.inc
+
+  # Add height conditions (if room)
+  if min_height >= 0.0 and condCount < IR_MAX_QUERY_CONDITIONS:
+    conditions[condCount] = ir_query_min_height(cfloat(min_height))
+    condCount.inc
+  if max_height >= 0.0 and condCount < IR_MAX_QUERY_CONDITIONS:
+    conditions[condCount] = ir_query_max_height(cfloat(max_height))
+    condCount.inc
+
+  # Add breakpoint if we have at least one condition
+  if condCount > 0:
+    ir_add_breakpoint(style, addr conditions[0], condCount)
+
+    # Use the provided breakpoint_index to set overrides
+    # The IR layer will have added it at this index
+    let bpIndex = breakpoint_index
+
+    # Set style overrides
+    if width >= 0.0:
+      ir_breakpoint_set_width(style, bpIndex, IR_DIMENSION_PX, cfloat(width))
+    if height >= 0.0:
+      ir_breakpoint_set_height(style, bpIndex, IR_DIMENSION_PX, cfloat(height))
+    if opacity >= 0.0:
+      ir_breakpoint_set_opacity(style, bpIndex, cfloat(opacity))
+    ir_breakpoint_set_visible(style, bpIndex, visible)
+
+# ============================================================================
+# Animations (Phase 8)
+# ============================================================================
+
+proc kryon_animation_pulse*(duration: cfloat, iterations: int32 = -1): ptr IRAnimation =
+  ## Create pulse animation (scale in/out effect)
+  ## iterations: -1 = infinite, 1 = once, etc.
+  let anim = ir_animation_pulse(duration)
+  if not anim.isNil:
+    ir_animation_set_iterations(anim, iterations)
+  return anim
+
+proc kryon_animation_fade_in_out*(duration: cfloat, iterations: int32 = 1): ptr IRAnimation =
+  ## Create fade in/out animation (opacity 0 -> 1 -> 0)
+  ## iterations: -1 = infinite, 1 = once, etc.
+  let anim = ir_animation_fade_in_out(duration)
+  if not anim.isNil:
+    ir_animation_set_iterations(anim, iterations)
+  return anim
+
+proc kryon_animation_slide_in_left*(duration: cfloat): ptr IRAnimation =
+  ## Create slide in from left animation
+  let anim = ir_animation_slide_in_left(duration)
+  return anim
+
+proc kryon_component_add_animation*(component: ptr IRComponent, animation: ptr IRAnimation) =
+  ## Attach animation to component
+  if component.isNil or animation.isNil: return
+  ir_component_add_animation(component, animation)
+
+proc kryon_apply_animation_from_string*(component: ptr IRComponent, animSpec: string) =
+  ## Parse and apply animation from string specification at runtime
+  ## Format: "functionName(param1, param2, ...)"
+  ## Examples:
+  ##   "pulse(2.0, -1)" -> pulse animation, 2.0s duration, infinite iterations
+  ##   "fadeInOut(3.0, -1)" -> fade in/out, 3.0s duration, infinite iterations
+  ##   "slideInLeft(2.0)" -> slide in from left, 2.0s duration
+
+  if component.isNil or animSpec.len == 0:
+    return
+
+  # Find function name and parameters
+  let parenPos = animSpec.find('(')
+  if parenPos < 0:
+    echo "Warning: Invalid animation spec (missing parenthesis): ", animSpec
+    return
+
+  let funcName = animSpec[0..<parenPos].strip()
+  let paramsEnd = animSpec.rfind(')')
+  if paramsEnd < 0:
+    echo "Warning: Invalid animation spec (missing closing parenthesis): ", animSpec
+    return
+
+  let paramsStr = animSpec[parenPos+1..<paramsEnd].strip()
+  var params: seq[string] = @[]
+  if paramsStr.len > 0:
+    params = paramsStr.split(',')
+    for i in 0..<params.len:
+      params[i] = params[i].strip()
+
+  # Create animation based on function name
+  var anim: ptr IRAnimation = nil
+
+  case funcName.toLowerAscii()
+  of "pulse":
+    if params.len >= 1:
+      let duration = parseFloat(params[0])
+      let iterations = if params.len >= 2: parseInt(params[1]) else: -1
+      anim = kryon_animation_pulse(cfloat(duration), int32(iterations))
+    else:
+      echo "Warning: pulse() requires at least 1 parameter (duration)"
+
+  of "fadeinout", "fade_in_out":
+    if params.len >= 1:
+      let duration = parseFloat(params[0])
+      let iterations = if params.len >= 2: parseInt(params[1]) else: 1
+      anim = kryon_animation_fade_in_out(cfloat(duration), int32(iterations))
+    else:
+      echo "Warning: fadeInOut() requires at least 1 parameter (duration)"
+
+  of "slideinleft", "slide_in_left":
+    if params.len >= 1:
+      let duration = parseFloat(params[0])
+      anim = kryon_animation_slide_in_left(cfloat(duration))
+    else:
+      echo "Warning: slideInLeft() requires at least 1 parameter (duration)"
+
+  else:
+    echo "Warning: Unknown animation function: ", funcName
+    return
+
+  # Apply animation to component
+  if not anim.isNil:
+    kryon_component_add_animation(component, anim)
 
 # ============================================================================
 # Application Runtime - IR-based
@@ -606,8 +1098,8 @@ proc kryon_component_set_flex*(component: ptr IRComponent, flexGrow, flexShrink:
   ir_set_flex_properties(layout, flexGrow, flexShrink, layout.flex.direction)
 
 proc kryon_component_mark_dirty*(component: ptr IRComponent) =
-  # Dirty marking not needed in IR - rendering happens on each frame
-  discard
+  # Use the C function which properly invalidates cache and marks layout dirty
+  ir_layout_invalidate_cache(component)
 
 # ============================================================================
 # Nim-to-C Event Bridge - Actual Implementation
@@ -703,6 +1195,18 @@ proc kryon_component_set_border_width*(component: ptr IRComponent, width: uint32
   else:
     # Preserve existing border color when updating width
     ir_set_border(style, cfloat(width), style.border.color.r, style.border.color.g, style.border.color.b, style.border.color.a, cfloat(style.border.radius))
+
+proc kryon_component_set_border_radius*(component: ptr IRComponent, radius: uint8) =
+  let style = ir_get_style(component)
+
+  if style.isNil:
+    let newStyle = ir_create_style()
+    # No existing border, use default width and color
+    ir_set_border(newStyle, 1.0, 0, 0, 0, 255, cfloat(radius))
+    ir_set_style(component, newStyle)
+  else:
+    # Preserve existing border color and width when updating radius
+    ir_set_border(style, style.border.width, style.border.color.r, style.border.color.g, style.border.color.b, style.border.color.a, cfloat(radius))
 
 proc kryon_button_set_center_text*(button: ptr IRComponent, centered: bool) =
   # Text centering is handled automatically in button rendering

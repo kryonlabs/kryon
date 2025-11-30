@@ -56,6 +56,20 @@ void ir_set_text_shadow(IRStyle* style, float offset_x, float offset_y, float bl
                         uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 void ir_set_opacity(IRStyle* style, float opacity);
 
+// Extended Typography (Phase 3)
+void ir_set_font_weight(IRStyle* style, uint16_t weight);  // 100-900 (400=normal, 700=bold)
+void ir_set_line_height(IRStyle* style, float line_height);  // Line height multiplier
+void ir_set_letter_spacing(IRStyle* style, float spacing);   // Letter spacing in pixels
+void ir_set_word_spacing(IRStyle* style, float spacing);     // Word spacing in pixels
+void ir_set_text_align(IRStyle* style, IRTextAlign align);   // Text alignment
+void ir_set_text_decoration(IRStyle* style, uint8_t decoration);  // Decoration flags (bitfield)
+
+// Box Shadow and Filters
+void ir_set_box_shadow(IRStyle* style, float offset_x, float offset_y, float blur_radius,
+                       float spread_radius, uint8_t r, uint8_t g, uint8_t b, uint8_t a, bool inset);
+void ir_add_filter(IRStyle* style, IRFilterType type, float value);
+void ir_clear_filters(IRStyle* style);
+
 // Layout Management
 IRLayout* ir_create_layout(void);
 void ir_destroy_layout(IRLayout* layout);
@@ -217,5 +231,97 @@ void ir_toggle_dropdown_open_state(IRComponent* component);
 int32_t ir_get_dropdown_hovered_index(IRComponent* component);
 void ir_set_dropdown_hovered_index(IRComponent* component, int32_t index);
 IRDropdownState* ir_get_dropdown_state(IRComponent* component);
+
+// Gradient Creation and Management
+IRGradient* ir_gradient_create(IRGradientType type);
+void ir_gradient_destroy(IRGradient* gradient);
+void ir_gradient_add_stop(IRGradient* gradient, float position, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+void ir_gradient_set_angle(IRGradient* gradient, float angle);
+void ir_gradient_set_center(IRGradient* gradient, float x, float y);
+IRColor ir_color_from_gradient(IRGradient* gradient);
+
+// Style gradient setters
+void ir_set_background_gradient(IRStyle* style, IRGradient* gradient);
+
+// Animation and Keyframe Creation
+IRAnimation* ir_animation_create_keyframe(const char* name, float duration);
+void ir_animation_destroy(IRAnimation* anim);
+void ir_animation_set_iterations(IRAnimation* anim, int32_t count);  // -1 = infinite
+void ir_animation_set_alternate(IRAnimation* anim, bool alternate);
+void ir_animation_set_delay(IRAnimation* anim, float delay);
+void ir_animation_set_default_easing(IRAnimation* anim, IREasingType easing);
+
+// Keyframe management
+IRKeyframe* ir_animation_add_keyframe(IRAnimation* anim, float offset);  // offset 0.0-1.0
+void ir_keyframe_set_property(IRKeyframe* kf, IRAnimationProperty prop, float value);
+void ir_keyframe_set_color_property(IRKeyframe* kf, IRAnimationProperty prop, IRColor color);
+void ir_keyframe_set_easing(IRKeyframe* kf, IREasingType easing);
+
+// Attach animation to component
+void ir_component_add_animation(IRComponent* component, IRAnimation* anim);
+
+// Re-propagate animation flags after tree construction
+// Call this after all components are created and added to fix flag propagation
+void ir_animation_propagate_flags(IRComponent* root);
+
+// General component subtree finalization (post-construction propagation)
+// Call this after adding children (especially from static loops) to ensure all
+// post-construction propagation steps are performed
+void ir_component_finalize_subtree(IRComponent* component);
+
+// Transition creation
+IRTransition* ir_transition_create(IRAnimationProperty property, float duration);
+void ir_transition_destroy(IRTransition* transition);
+void ir_transition_set_easing(IRTransition* transition, IREasingType easing);
+void ir_transition_set_delay(IRTransition* transition, float delay);
+void ir_transition_set_trigger(IRTransition* transition, uint32_t state_mask);
+
+// Attach transition to component
+void ir_component_add_transition(IRComponent* component, IRTransition* transition);
+
+// Helper: Create common animations
+IRAnimation* ir_animation_fade_in_out(float duration);  // Fade in then out
+IRAnimation* ir_animation_pulse(float duration);  // Scale pulse effect
+IRAnimation* ir_animation_slide_in_left(float duration);
+
+// Apply all animations to a component tree (call each frame from renderer)
+void ir_animation_tree_update(IRComponent* root, float current_time);
+
+// Grid Layout (Phase 5)
+void ir_set_grid_template_rows(IRLayout* layout, IRGridTrack* tracks, uint8_t count);
+void ir_set_grid_template_columns(IRLayout* layout, IRGridTrack* tracks, uint8_t count);
+void ir_set_grid_gap(IRLayout* layout, float row_gap, float column_gap);
+void ir_set_grid_auto_flow(IRLayout* layout, bool row_direction, bool dense);
+void ir_set_grid_alignment(IRLayout* layout, IRAlignment justify_items, IRAlignment align_items,
+                            IRAlignment justify_content, IRAlignment align_content);
+
+// Grid Item Placement
+void ir_set_grid_item_placement(IRStyle* style, int16_t row_start, int16_t row_end,
+                                  int16_t column_start, int16_t column_end);
+void ir_set_grid_item_alignment(IRStyle* style, IRAlignment justify_self, IRAlignment align_self);
+
+// Grid Track Helpers
+IRGridTrack ir_grid_track_px(float value);
+IRGridTrack ir_grid_track_percent(float value);
+IRGridTrack ir_grid_track_fr(float value);
+IRGridTrack ir_grid_track_auto(void);
+IRGridTrack ir_grid_track_min_content(void);
+IRGridTrack ir_grid_track_max_content(void);
+
+// Container Queries (Phase 6)
+void ir_set_container_type(IRStyle* style, IRContainerType type);
+void ir_set_container_name(IRStyle* style, const char* name);
+void ir_add_breakpoint(IRStyle* style, IRQueryCondition* conditions, uint8_t condition_count);
+void ir_breakpoint_set_width(IRStyle* style, uint8_t breakpoint_index, IRDimensionType type, float value);
+void ir_breakpoint_set_height(IRStyle* style, uint8_t breakpoint_index, IRDimensionType type, float value);
+void ir_breakpoint_set_visible(IRStyle* style, uint8_t breakpoint_index, bool visible);
+void ir_breakpoint_set_opacity(IRStyle* style, uint8_t breakpoint_index, float opacity);
+void ir_breakpoint_set_layout_mode(IRStyle* style, uint8_t breakpoint_index, IRLayoutMode mode);
+
+// Query Condition Helpers
+IRQueryCondition ir_query_min_width(float value);
+IRQueryCondition ir_query_max_width(float value);
+IRQueryCondition ir_query_min_height(float value);
+IRQueryCondition ir_query_max_height(float value);
 
 #endif // IR_BUILDER_H
