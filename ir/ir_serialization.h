@@ -52,6 +52,15 @@ bool ir_write_json_v2_file(IRComponent* root, const char* filename);
 char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* manifest);
 bool ir_write_json_v2_file_with_manifest(IRComponent* root, IRReactiveManifest* manifest, const char* filename);
 
+// Bytecode metadata serialization (forward declaration)
+typedef struct IRMetadata IRMetadata;
+char* ir_serialize_json_with_metadata(IRComponent* root, IRMetadata* metadata);
+bool ir_write_json_file_with_metadata(IRComponent* root, IRMetadata* metadata, const char* filename);
+
+// Bytecode metadata deserialization
+IRComponent* ir_deserialize_json_with_metadata(const char* json_string, IRMetadata** metadata);
+IRComponent* ir_read_json_file_with_metadata(const char* filename, IRMetadata** metadata);
+
 // JSON v2 Deserialization
 IRComponent* ir_deserialize_json_v2(const char* json_string);
 IRComponent* ir_read_json_v2_file(const char* filename);

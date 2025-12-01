@@ -2,6 +2,10 @@
 
 import ir_core
 
+# Import IRMetadata from bytecode module to avoid duplicate definitions
+# Users should import bytecode.nim to work with metadata
+import bytecode
+
 # Buffer management
 proc ir_buffer_create*(initial_capacity: csize_t): ptr IRBuffer {.importc, cdecl, header: "ir_serialization.h".}
 proc ir_buffer_create_from_file*(filename: cstring): ptr IRBuffer {.importc, cdecl, header: "ir_serialization.h".}
@@ -49,3 +53,10 @@ proc ir_read_json_v2_file*(filename: cstring): ptr IRComponent {.importc, cdecl,
 # JSON v2 deserialization with reactive manifest
 proc ir_deserialize_json_v2_with_manifest*(json_string: cstring; manifest: ptr ptr IRReactiveManifest): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
 proc ir_read_json_v2_file_with_manifest*(filename: cstring; manifest: ptr ptr IRReactiveManifest): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
+
+# Bytecode metadata serialization/deserialization
+# IRMetadata type imported from bytecode module
+proc ir_serialize_json_with_metadata*(root: ptr IRComponent; metadata: ptr IRMetadata): cstring {.importc, cdecl, header: "ir_serialization.h".}
+proc ir_write_json_file_with_metadata*(root: ptr IRComponent; metadata: ptr IRMetadata; filename: cstring): bool {.importc, cdecl, header: "ir_serialization.h".}
+proc ir_deserialize_json_with_metadata*(json_string: cstring; metadata: ptr ptr IRMetadata): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
+proc ir_read_json_file_with_metadata*(filename: cstring; metadata: ptr ptr IRMetadata): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}

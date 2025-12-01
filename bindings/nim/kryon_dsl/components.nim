@@ -1127,11 +1127,11 @@ macro Input*(props: untyped): untyped =
 
   if borderColorVal != nil:
     initStmts.add quote do:
-      ir_component_set_border_color(`inputName`, `borderColorVal`)
+      kryon_component_set_border_color(`inputName`, `borderColorVal`)
 
   if borderWidthVal != nil:
     initStmts.add quote do:
-      ir_component_set_border_width(`inputName`, uint8(`borderWidthVal`))
+      kryon_component_set_border_width(`inputName`, uint8(`borderWidthVal`))
 
   if borderRadiusVal != nil:
     initStmts.add quote do:

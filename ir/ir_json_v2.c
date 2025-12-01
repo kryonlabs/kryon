@@ -4,6 +4,8 @@
 #define _GNU_SOURCE
 #include "ir_serialization.h"
 #include "ir_builder.h"
+#include "ir_metadata.h"
+#include "ir_vm.h"
 #include "third_party/cJSON/cJSON.h"
 #include <stdlib.h>
 #include <string.h>
@@ -653,6 +655,116 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
     return obj;
 }
 
+// ============================================================================
+// Bytecode Metadata Serialization
+// ============================================================================
+
+/**
+ * Serialize a bytecode instruction to JSON
+ */
+static cJSON* json_serialize_bytecode_instruction(IRBytecodeInstruction* instr) {
+    cJSON* obj = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(obj, "op", ir_vm_opcode_name(instr->opcode));
+
+    if (instr->has_arg) {
+        // Determine arg type based on opcode
+        switch (instr->opcode) {
+            case OP_PUSH_INT:
+            case OP_PUSH_BOOL:
+            case OP_GET_STATE:
+            case OP_SET_STATE:
+            case OP_GET_LOCAL:
+            case OP_SET_LOCAL:
+            case OP_CALL_HOST:
+            case OP_CALL:
+                cJSON_AddNumberToObject(obj, "arg", (double)instr->arg.id_arg);
+                break;
+
+            case OP_PUSH_FLOAT:
+                cJSON_AddNumberToObject(obj, "arg", instr->arg.float_arg);
+                break;
+
+            case OP_PUSH_STRING:
+                cJSON_AddStringToObject(obj, "arg", instr->arg.string_arg ? instr->arg.string_arg : "");
+                break;
+
+            case OP_JUMP:
+            case OP_JUMP_IF_FALSE:
+                cJSON_AddNumberToObject(obj, "arg", (double)instr->arg.offset_arg);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    return obj;
+}
+
+/**
+ * Serialize bytecode function to JSON
+ */
+static cJSON* json_serialize_bytecode_function(IRBytecodeFunction* func) {
+    cJSON* obj = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(obj, "id", func->id);
+    cJSON_AddStringToObject(obj, "name", func->name ? func->name : "");
+
+    cJSON* bytecode = cJSON_CreateArray();
+    for (int i = 0; i < func->instruction_count; i++) {
+        cJSON_AddItemToArray(bytecode, json_serialize_bytecode_instruction(&func->instructions[i]));
+    }
+    cJSON_AddItemToObject(obj, "bytecode", bytecode);
+
+    return obj;
+}
+
+/**
+ * Serialize state definition to JSON
+ */
+static cJSON* json_serialize_state_definition(IRStateDefinition* state) {
+    cJSON* obj = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(obj, "id", state->id);
+    cJSON_AddStringToObject(obj, "name", state->name ? state->name : "");
+
+    switch (state->type) {
+        case IR_STATE_TYPE_INT:
+            cJSON_AddStringToObject(obj, "type", "int");
+            cJSON_AddNumberToObject(obj, "initial_value", (double)state->initial_value.int_value);
+            break;
+        case IR_STATE_TYPE_FLOAT:
+            cJSON_AddStringToObject(obj, "type", "float");
+            cJSON_AddNumberToObject(obj, "initial_value", state->initial_value.float_value);
+            break;
+        case IR_STATE_TYPE_STRING:
+            cJSON_AddStringToObject(obj, "type", "string");
+            cJSON_AddStringToObject(obj, "initial_value", state->initial_value.string_value ? state->initial_value.string_value : "");
+            break;
+        case IR_STATE_TYPE_BOOL:
+            cJSON_AddStringToObject(obj, "type", "bool");
+            cJSON_AddBoolToObject(obj, "initial_value", state->initial_value.bool_value);
+            break;
+    }
+
+    return obj;
+}
+
+/**
+ * Serialize host function declaration to JSON
+ */
+static cJSON* json_serialize_host_function(IRHostFunctionDeclaration* host_func) {
+    cJSON* obj = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(obj, "id", host_func->id);
+    cJSON_AddStringToObject(obj, "name", host_func->name ? host_func->name : "");
+    cJSON_AddStringToObject(obj, "signature", host_func->signature ? host_func->signature : "() -> void");
+    cJSON_AddBoolToObject(obj, "required", host_func->required);
+
+    return obj;
+}
+
 /**
  * Serialize IR component tree with reactive manifest to JSON v2 format
  * @param root Root component to serialize
@@ -682,6 +794,495 @@ char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* 
     cJSON_Delete(root_obj);
 
     return jsonStr;
+}
+
+/**
+ * Serialize IR component tree with bytecode metadata to JSON
+ * @param root Root component to serialize
+ * @param metadata Bytecode metadata (functions, states, host_functions)
+ * @return JSON string (caller must free), or NULL on error
+ */
+char* ir_serialize_json_with_metadata(IRComponent* root, IRMetadata* metadata) {
+    if (!root) return NULL;
+
+    cJSON* root_obj = cJSON_CreateObject();
+
+    // Add component tree
+    cJSON* component = json_serialize_component_recursive(root);
+    if (component) {
+        cJSON_AddItemToObject(root_obj, "component", component);
+    }
+
+    // Add bytecode metadata
+    if (metadata) {
+        // Functions array
+        if (metadata->function_count > 0) {
+            cJSON* functions = cJSON_CreateArray();
+            for (int i = 0; i < metadata->function_count; i++) {
+                cJSON_AddItemToArray(functions, json_serialize_bytecode_function(&metadata->functions[i]));
+            }
+            cJSON_AddItemToObject(root_obj, "functions", functions);
+        }
+
+        // States array
+        if (metadata->state_count > 0) {
+            cJSON* states = cJSON_CreateArray();
+            for (int i = 0; i < metadata->state_count; i++) {
+                cJSON_AddItemToArray(states, json_serialize_state_definition(&metadata->states[i]));
+            }
+            cJSON_AddItemToObject(root_obj, "states", states);
+        }
+
+        // Host functions array
+        if (metadata->host_function_count > 0) {
+            cJSON* host_functions = cJSON_CreateArray();
+            for (int i = 0; i < metadata->host_function_count; i++) {
+                cJSON_AddItemToArray(host_functions, json_serialize_host_function(&metadata->host_functions[i]));
+            }
+            cJSON_AddItemToObject(root_obj, "host_functions", host_functions);
+        }
+    }
+
+    char* jsonStr = cJSON_Print(root_obj);
+    cJSON_Delete(root_obj);
+
+    return jsonStr;
+}
+
+/**
+ * Write IR component tree with bytecode metadata to JSON file
+ * @param root Root component to serialize
+ * @param metadata Bytecode metadata (can be NULL)
+ * @param filename Output file path
+ * @return true on success, false on error
+ */
+bool ir_write_json_file_with_metadata(IRComponent* root, IRMetadata* metadata, const char* filename) {
+    char* json = ir_serialize_json_with_metadata(root, metadata);
+    if (!json) return false;
+
+    FILE* file = fopen(filename, "w");
+    if (!file) {
+        free(json);
+        return false;
+    }
+
+    bool success = (fprintf(file, "%s", json) >= 0);
+    fclose(file);
+    free(json);
+
+    return success;
+}
+
+// ============================================================================
+// Bytecode Deserialization
+// ============================================================================
+
+// Forward declaration
+static IRComponent* json_deserialize_component_recursive(cJSON* json);
+
+/**
+ * Parse opcode string to IROpcode enum
+ */
+static IROpcode json_parse_opcode(const char* op_str) {
+    if (strcmp(op_str, "PUSH_INT") == 0) return OP_PUSH_INT;
+    if (strcmp(op_str, "PUSH_FLOAT") == 0) return OP_PUSH_FLOAT;
+    if (strcmp(op_str, "PUSH_STRING") == 0) return OP_PUSH_STRING;
+    if (strcmp(op_str, "PUSH_BOOL") == 0) return OP_PUSH_BOOL;
+    if (strcmp(op_str, "POP") == 0) return OP_POP;
+    if (strcmp(op_str, "DUP") == 0) return OP_DUP;
+
+    if (strcmp(op_str, "ADD") == 0) return OP_ADD;
+    if (strcmp(op_str, "SUB") == 0) return OP_SUB;
+    if (strcmp(op_str, "MUL") == 0) return OP_MUL;
+    if (strcmp(op_str, "DIV") == 0) return OP_DIV;
+    if (strcmp(op_str, "MOD") == 0) return OP_MOD;
+    if (strcmp(op_str, "NEG") == 0) return OP_NEG;
+
+    if (strcmp(op_str, "EQ") == 0) return OP_EQ;
+    if (strcmp(op_str, "NE") == 0) return OP_NE;
+    if (strcmp(op_str, "LT") == 0) return OP_LT;
+    if (strcmp(op_str, "GT") == 0) return OP_GT;
+    if (strcmp(op_str, "LE") == 0) return OP_LE;
+    if (strcmp(op_str, "GE") == 0) return OP_GE;
+
+    if (strcmp(op_str, "AND") == 0) return OP_AND;
+    if (strcmp(op_str, "OR") == 0) return OP_OR;
+    if (strcmp(op_str, "NOT") == 0) return OP_NOT;
+
+    if (strcmp(op_str, "CONCAT") == 0) return OP_CONCAT;
+
+    if (strcmp(op_str, "GET_STATE") == 0) return OP_GET_STATE;
+    if (strcmp(op_str, "SET_STATE") == 0) return OP_SET_STATE;
+    if (strcmp(op_str, "GET_LOCAL") == 0) return OP_GET_LOCAL;
+    if (strcmp(op_str, "SET_LOCAL") == 0) return OP_SET_LOCAL;
+
+    if (strcmp(op_str, "JUMP") == 0) return OP_JUMP;
+    if (strcmp(op_str, "JUMP_IF_FALSE") == 0) return OP_JUMP_IF_FALSE;
+    if (strcmp(op_str, "CALL") == 0) return OP_CALL;
+    if (strcmp(op_str, "RETURN") == 0) return OP_RETURN;
+
+    if (strcmp(op_str, "CALL_HOST") == 0) return OP_CALL_HOST;
+    if (strcmp(op_str, "GET_PROP") == 0) return OP_GET_PROP;
+    if (strcmp(op_str, "SET_PROP") == 0) return OP_SET_PROP;
+
+    if (strcmp(op_str, "HALT") == 0) return OP_HALT;
+
+    return OP_HALT;  // Default to HALT for unknown opcodes
+}
+
+/**
+ * Deserialize bytecode instruction from JSON
+ */
+static bool json_deserialize_bytecode_instruction(cJSON* json, IRBytecodeInstruction* instr) {
+    if (!json || !instr) return false;
+
+    memset(instr, 0, sizeof(IRBytecodeInstruction));
+
+    // Get opcode
+    cJSON* op = cJSON_GetObjectItem(json, "op");
+    if (!op || !cJSON_IsString(op)) return false;
+
+    instr->opcode = json_parse_opcode(op->valuestring);
+
+    // Get optional argument
+    cJSON* arg = cJSON_GetObjectItem(json, "arg");
+    if (arg) {
+        instr->has_arg = true;
+
+        // Determine argument type based on opcode
+        switch (instr->opcode) {
+            case OP_PUSH_INT:
+                if (cJSON_IsNumber(arg)) {
+                    instr->arg.int_arg = (int64_t)arg->valuedouble;
+                }
+                break;
+
+            case OP_PUSH_FLOAT:
+                if (cJSON_IsNumber(arg)) {
+                    instr->arg.float_arg = arg->valuedouble;
+                }
+                break;
+
+            case OP_PUSH_STRING:
+                if (cJSON_IsString(arg)) {
+                    instr->arg.string_arg = strdup(arg->valuestring);
+                }
+                break;
+
+            case OP_PUSH_BOOL:
+                if (cJSON_IsBool(arg)) {
+                    instr->arg.bool_arg = cJSON_IsTrue(arg);
+                }
+                break;
+
+            case OP_GET_STATE:
+            case OP_SET_STATE:
+            case OP_GET_LOCAL:
+            case OP_SET_LOCAL:
+            case OP_CALL:
+            case OP_CALL_HOST:
+            case OP_GET_PROP:
+            case OP_SET_PROP:
+                if (cJSON_IsNumber(arg)) {
+                    instr->arg.id_arg = (uint32_t)arg->valuedouble;
+                }
+                break;
+
+            case OP_JUMP:
+            case OP_JUMP_IF_FALSE:
+                if (cJSON_IsNumber(arg)) {
+                    instr->arg.offset_arg = (int32_t)arg->valuedouble;
+                }
+                break;
+
+            default:
+                instr->has_arg = false;
+                break;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Deserialize bytecode function from JSON
+ */
+static bool json_deserialize_bytecode_function(cJSON* json, IRBytecodeFunction* func) {
+    if (!json || !func) return false;
+
+    memset(func, 0, sizeof(IRBytecodeFunction));
+
+    // Get function ID
+    cJSON* id = cJSON_GetObjectItem(json, "id");
+    if (!id || !cJSON_IsNumber(id)) return false;
+    func->id = (uint32_t)id->valuedouble;
+
+    // Get function name
+    cJSON* name = cJSON_GetObjectItem(json, "name");
+    if (name && cJSON_IsString(name)) {
+        func->name = strdup(name->valuestring);
+    }
+
+    // Get bytecode array
+    cJSON* bytecode = cJSON_GetObjectItem(json, "bytecode");
+    if (!bytecode || !cJSON_IsArray(bytecode)) return false;
+
+    int instruction_count = cJSON_GetArraySize(bytecode);
+    if (instruction_count == 0) return true;
+
+    // Allocate instruction array
+    func->instruction_capacity = instruction_count;
+    func->instructions = (IRBytecodeInstruction*)calloc(instruction_count, sizeof(IRBytecodeInstruction));
+    if (!func->instructions) return false;
+
+    // Deserialize each instruction
+    cJSON* instr_json = NULL;
+    int idx = 0;
+    cJSON_ArrayForEach(instr_json, bytecode) {
+        if (!json_deserialize_bytecode_instruction(instr_json, &func->instructions[idx])) {
+            // Cleanup on error
+            free(func->instructions);
+            free(func->name);
+            return false;
+        }
+        idx++;
+    }
+
+    func->instruction_count = instruction_count;
+    return true;
+}
+
+/**
+ * Deserialize state definition from JSON
+ */
+static bool json_deserialize_state_definition(cJSON* json, IRStateDefinition* state) {
+    if (!json || !state) return false;
+
+    memset(state, 0, sizeof(IRStateDefinition));
+
+    // Get state ID
+    cJSON* id = cJSON_GetObjectItem(json, "id");
+    if (!id || !cJSON_IsNumber(id)) return false;
+    state->id = (uint32_t)id->valuedouble;
+
+    // Get state name
+    cJSON* name = cJSON_GetObjectItem(json, "name");
+    if (name && cJSON_IsString(name)) {
+        state->name = strdup(name->valuestring);
+    }
+
+    // Get state type
+    cJSON* type = cJSON_GetObjectItem(json, "type");
+    if (!type || !cJSON_IsString(type)) return false;
+
+    if (strcmp(type->valuestring, "int") == 0) {
+        state->type = IR_STATE_TYPE_INT;
+        cJSON* initial = cJSON_GetObjectItem(json, "initial_value");
+        if (initial && cJSON_IsNumber(initial)) {
+            state->initial_value.int_value = (int64_t)initial->valuedouble;
+        }
+    } else if (strcmp(type->valuestring, "float") == 0) {
+        state->type = IR_STATE_TYPE_FLOAT;
+        cJSON* initial = cJSON_GetObjectItem(json, "initial_value");
+        if (initial && cJSON_IsNumber(initial)) {
+            state->initial_value.float_value = initial->valuedouble;
+        }
+    } else if (strcmp(type->valuestring, "string") == 0) {
+        state->type = IR_STATE_TYPE_STRING;
+        cJSON* initial = cJSON_GetObjectItem(json, "initial_value");
+        if (initial && cJSON_IsString(initial)) {
+            state->initial_value.string_value = strdup(initial->valuestring);
+        }
+    } else if (strcmp(type->valuestring, "bool") == 0) {
+        state->type = IR_STATE_TYPE_BOOL;
+        cJSON* initial = cJSON_GetObjectItem(json, "initial_value");
+        if (initial && cJSON_IsBool(initial)) {
+            state->initial_value.bool_value = cJSON_IsTrue(initial);
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Deserialize host function declaration from JSON
+ */
+static bool json_deserialize_host_function(cJSON* json, IRHostFunctionDeclaration* host_func) {
+    if (!json || !host_func) return false;
+
+    memset(host_func, 0, sizeof(IRHostFunctionDeclaration));
+
+    // Get host function ID
+    cJSON* id = cJSON_GetObjectItem(json, "id");
+    if (!id || !cJSON_IsNumber(id)) return false;
+    host_func->id = (uint32_t)id->valuedouble;
+
+    // Get host function name
+    cJSON* name = cJSON_GetObjectItem(json, "name");
+    if (name && cJSON_IsString(name)) {
+        host_func->name = strdup(name->valuestring);
+    }
+
+    // Get signature
+    cJSON* signature = cJSON_GetObjectItem(json, "signature");
+    if (signature && cJSON_IsString(signature)) {
+        host_func->signature = strdup(signature->valuestring);
+    }
+
+    // Get required flag
+    cJSON* required = cJSON_GetObjectItem(json, "required");
+    if (required && cJSON_IsBool(required)) {
+        host_func->required = cJSON_IsTrue(required);
+    }
+
+    return true;
+}
+
+/**
+ * Deserialize metadata from JSON root object
+ */
+static IRMetadata* json_deserialize_metadata(cJSON* root) {
+    if (!root) return NULL;
+
+    IRMetadata* metadata = ir_metadata_create();
+    if (!metadata) return NULL;
+
+    // Deserialize functions
+    cJSON* functions = cJSON_GetObjectItem(root, "functions");
+    if (functions && cJSON_IsArray(functions)) {
+        int func_count = cJSON_GetArraySize(functions);
+        cJSON* func_json = NULL;
+
+        cJSON_ArrayForEach(func_json, functions) {
+            IRBytecodeFunction temp_func;
+            if (json_deserialize_bytecode_function(func_json, &temp_func)) {
+                // Add to metadata
+                IRBytecodeFunction* func = ir_metadata_add_function(metadata, temp_func.id, temp_func.name);
+                if (func) {
+                    // Transfer ownership of instructions
+                    free(func->instructions);
+                    func->instructions = temp_func.instructions;
+                    func->instruction_count = temp_func.instruction_count;
+                    func->instruction_capacity = temp_func.instruction_capacity;
+                }
+                free(temp_func.name);
+            }
+        }
+    }
+
+    // Deserialize states
+    cJSON* states = cJSON_GetObjectItem(root, "states");
+    if (states && cJSON_IsArray(states)) {
+        cJSON* state_json = NULL;
+
+        cJSON_ArrayForEach(state_json, states) {
+            IRStateDefinition temp_state;
+            if (json_deserialize_state_definition(state_json, &temp_state)) {
+                // Add to metadata based on type
+                switch (temp_state.type) {
+                    case IR_STATE_TYPE_INT:
+                        ir_metadata_add_state_int(metadata, temp_state.id, temp_state.name,
+                                                  temp_state.initial_value.int_value);
+                        break;
+                    case IR_STATE_TYPE_FLOAT:
+                        ir_metadata_add_state_float(metadata, temp_state.id, temp_state.name,
+                                                    temp_state.initial_value.float_value);
+                        break;
+                    case IR_STATE_TYPE_STRING:
+                        ir_metadata_add_state_string(metadata, temp_state.id, temp_state.name,
+                                                     temp_state.initial_value.string_value);
+                        free(temp_state.initial_value.string_value);
+                        break;
+                    case IR_STATE_TYPE_BOOL:
+                        ir_metadata_add_state_bool(metadata, temp_state.id, temp_state.name,
+                                                   temp_state.initial_value.bool_value);
+                        break;
+                }
+                free(temp_state.name);
+            }
+        }
+    }
+
+    // Deserialize host functions
+    cJSON* host_functions = cJSON_GetObjectItem(root, "host_functions");
+    if (host_functions && cJSON_IsArray(host_functions)) {
+        cJSON* host_func_json = NULL;
+
+        cJSON_ArrayForEach(host_func_json, host_functions) {
+            IRHostFunctionDeclaration temp_host;
+            if (json_deserialize_host_function(host_func_json, &temp_host)) {
+                ir_metadata_add_host_function(metadata, temp_host.id, temp_host.name,
+                                              temp_host.signature, temp_host.required);
+                free(temp_host.name);
+                free(temp_host.signature);
+            }
+        }
+    }
+
+    return metadata;
+}
+
+/**
+ * Deserialize IR component tree with bytecode metadata from JSON string
+ * @param json_string JSON string to deserialize
+ * @param metadata Pointer to receive deserialized metadata (can be NULL)
+ * @return Deserialized component tree, or NULL on error
+ */
+IRComponent* ir_deserialize_json_with_metadata(const char* json_string, IRMetadata** metadata) {
+    if (!json_string) return NULL;
+
+    cJSON* root = cJSON_Parse(json_string);
+    if (!root) return NULL;
+
+    // Deserialize component tree
+    cJSON* componentJson = cJSON_GetObjectItem(root, "component");
+    IRComponent* component = NULL;
+    if (componentJson) {
+        component = json_deserialize_component_recursive(componentJson);
+    }
+
+    // Deserialize metadata if requested
+    if (metadata) {
+        *metadata = json_deserialize_metadata(root);
+    }
+
+    cJSON_Delete(root);
+    return component;
+}
+
+/**
+ * Read IR component tree with bytecode metadata from JSON file
+ * @param filename Input file path
+ * @param metadata Pointer to receive deserialized metadata (can be NULL)
+ * @return Deserialized component tree, or NULL on error
+ */
+IRComponent* ir_read_json_file_with_metadata(const char* filename, IRMetadata** metadata) {
+    if (!filename) return NULL;
+
+    FILE* file = fopen(filename, "r");
+    if (!file) return NULL;
+
+    // Get file size
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    // Read file contents
+    char* json_string = (char*)malloc(file_size + 1);
+    if (!json_string) {
+        fclose(file);
+        return NULL;
+    }
+
+    size_t read_size = fread(json_string, 1, file_size, file);
+    json_string[read_size] = '\0';
+    fclose(file);
+
+    // Deserialize
+    IRComponent* component = ir_deserialize_json_with_metadata(json_string, metadata);
+
+    free(json_string);
+    return component;
 }
 
 /**

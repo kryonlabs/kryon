@@ -25,8 +25,8 @@ BUILD_DIR = ../build
 INCLUDE_DIR = .
 
 # Source files
-IR_SOURCES = ir_builder.c ir_serialization.c ir_validation.c ir_reactive_manifest.c ir_style_vars.c ir_layout.c ir_memory.c ir_hashmap.c ir_animation.c ir_text_shaping.c ir_hot_reload.c ir_format_detect.c ir_json_v2.c ir_game_loop.c ir_input.c ir_sprite.c ir_particle.c ir_asset.c ir_audio.c ir_physics.c ir_entity.c ir_plugin.c third_party/cJSON/cJSON.c
-IR_HEADERS = ir_core.h ir_builder.h ir_serialization.h ir_validation.h ir_style_vars.h ir_memory.h ir_hashmap.h ir_animation.h ir_text_shaping.h ir_hot_reload.h ir_format_detect.h ir_game_loop.h ir_input.h ir_sprite.h ir_particle.h ir_asset.h ir_audio.h ir_physics.h ir_entity.h ir_plugin.h third_party/cJSON/cJSON.h third_party/stb_image.h
+IR_SOURCES = ir_builder.c ir_serialization.c ir_validation.c ir_reactive_manifest.c ir_style_vars.c ir_layout.c ir_memory.c ir_hashmap.c ir_animation.c ir_text_shaping.c ir_hot_reload.c ir_format_detect.c ir_json_v2.c ir_game_loop.c ir_input.c ir_sprite.c ir_particle.c ir_asset.c ir_audio.c ir_physics.c ir_entity.c ir_plugin.c ir_vm.c ir_metadata.c third_party/cJSON/cJSON.c
+IR_HEADERS = ir_core.h ir_builder.h ir_serialization.h ir_validation.h ir_style_vars.h ir_memory.h ir_hashmap.h ir_animation.h ir_text_shaping.h ir_hot_reload.h ir_format_detect.h ir_game_loop.h ir_input.h ir_sprite.h ir_particle.h ir_asset.h ir_audio.h ir_physics.h ir_entity.h ir_plugin.h ir_vm.h ir_metadata.h third_party/cJSON/cJSON.h third_party/stb_image.h
 
 # Output files
 IR_STATIC_LIB = $(BUILD_DIR)/libkryon_ir.a
@@ -109,13 +109,19 @@ ir_entity.o: ir_entity.c $(IR_HEADERS)
 ir_plugin.o: ir_plugin.c $(IR_HEADERS)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_plugin.c -o ir_plugin.o
 
+ir_vm.o: ir_vm.c $(IR_HEADERS)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_vm.c -o ir_vm.o
+
+ir_metadata.o: ir_metadata.c $(IR_HEADERS)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_metadata.c -o ir_metadata.o
+
 # Create static library
-$(IR_STATIC_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o third_party/cJSON/cJSON.o
-	$(AR) $(ARFLAGS) $@ ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o third_party/cJSON/cJSON.o
+$(IR_STATIC_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o ir_vm.o ir_metadata.o third_party/cJSON/cJSON.o
+	$(AR) $(ARFLAGS) $@ ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o ir_vm.o ir_metadata.o third_party/cJSON/cJSON.o
 
 # Create shared library
-$(IR_SHARED_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o third_party/cJSON/cJSON.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o third_party/cJSON/cJSON.o -lm $(HARFBUZZ_LIBS)
+$(IR_SHARED_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o ir_vm.o ir_metadata.o third_party/cJSON/cJSON.o
+	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o ir_vm.o ir_metadata.o third_party/cJSON/cJSON.o -lm $(HARFBUZZ_LIBS)
 
 # Install headers
 install-headers: $(BUILD_DIR)
@@ -130,6 +136,11 @@ clean:
 test: $(IR_STATIC_LIB)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -L$(BUILD_DIR) -lkryon_ir test_ir.c -o $(BUILD_DIR)/test_ir
 	$(BUILD_DIR)/test_ir
+
+# Build and run VM test
+test-vm: $(IR_STATIC_LIB)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) test_vm.c ir_vm.o -o $(BUILD_DIR)/test_vm
+	$(BUILD_DIR)/test_vm
 
 # Debug build
 debug: CFLAGS += -g -DDEBUG
@@ -163,6 +174,7 @@ help:
 	@echo "  static       - Build static library only"
 	@echo "  shared       - Build shared library only"
 	@echo "  test         - Build and run test program"
+	@echo "  test-vm      - Build and run VM prototype test"
 	@echo "  clean        - Remove build artifacts"
 	@echo "  install-headers - Copy headers to build directory"
 	@echo "  debug        - Build with debug symbols"
@@ -173,4 +185,4 @@ help:
 	@echo "  tsan         - Build with ThreadSanitizer"
 	@echo "  help         - Show this help"
 
-.PHONY: all clean test debug install-headers help asan ubsan asan-ubsan tsan
+.PHONY: all clean test test-vm debug install-headers help asan ubsan asan-ubsan tsan
