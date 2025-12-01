@@ -15,12 +15,15 @@ pkgs.mkShell {
     sdl3-ttf
     sdl3-image
 
+    # Text layout and shaping
+    harfbuzz
+    fribidi
+
     # Terminal rendering backend
     libtickit
 
-    # Lua frontend support
-    lua
-    lua54Packages.lua
+    # Lua frontend support (LuaJIT for FFI)
+    luajit
 
     # TypeScript/JavaScript frontend support
     bun
@@ -46,6 +49,7 @@ pkgs.mkShell {
     echo "Kryon Development Environment"
     echo "============================="
     echo "Nim version: $(nim --version | head -1)"
+    echo "LuaJIT version: $(luajit -v 2>/dev/null || echo 'not available')"
     echo "Bun version: $(bun --version 2>/dev/null || echo 'not available')"
     echo ""
     echo "Quick start:"

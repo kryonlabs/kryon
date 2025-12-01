@@ -7,6 +7,8 @@
 // Forward declarations for functions defined in ir_builder.c
 IRStyle* ir_create_style(void);
 void ir_destroy_style(IRStyle* style);
+IRLayout* ir_create_layout(void);
+void ir_destroy_layout(IRLayout* layout);
 IREvent* ir_create_event(IREventType type, const char* logic_id, const char* handler_data);
 void ir_destroy_event(IREvent* event);
 IRLogic* ir_create_logic(const char* id, LogicSourceType type, const char* source_code);
@@ -14,7 +16,8 @@ void ir_destroy_logic(IRLogic* logic);
 void ir_destroy_component(IRComponent* component);
 
 // IR Serialization Format Version
-#define IR_FORMAT_VERSION_MAJOR 1
+// v2.0: Complete serialization with layout, animations, transitions, pseudo-styles, etc.
+#define IR_FORMAT_VERSION_MAJOR 2
 #define IR_FORMAT_VERSION_MINOR 0
 
 // Serialization Types
@@ -29,6 +32,12 @@ IRComponent* ir_deserialize_binary(IRBuffer* buffer);
 bool ir_write_binary_file(IRComponent* root, const char* filename);
 IRComponent* ir_read_binary_file(const char* filename);
 
+// Binary Serialization with Reactive Manifest
+IRBuffer* ir_serialize_binary_with_manifest(IRComponent* root, IRReactiveManifest* manifest);
+IRComponent* ir_deserialize_binary_with_manifest(IRBuffer* buffer, IRReactiveManifest** manifest);
+bool ir_write_binary_file_with_manifest(IRComponent* root, IRReactiveManifest* manifest, const char* filename);
+IRComponent* ir_read_binary_file_with_manifest(const char* filename, IRReactiveManifest** manifest);
+
 // JSON Serialization Functions (for debugging/tooling)
 char* ir_serialize_json(IRComponent* root);
 IRComponent* ir_deserialize_json(const char* json_string);
@@ -37,6 +46,7 @@ IRComponent* ir_read_json_file(const char* filename);
 
 // Buffer Management
 IRBuffer* ir_buffer_create(size_t initial_capacity);
+IRBuffer* ir_buffer_create_from_file(const char* filename);
 void ir_buffer_destroy(IRBuffer* buffer);
 bool ir_buffer_write(IRBuffer* buffer, const void* data, size_t size);
 bool ir_buffer_read(IRBuffer* buffer, void* data, size_t size);

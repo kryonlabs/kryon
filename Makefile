@@ -90,7 +90,6 @@ build-lib: build-c-libs $(LIB_FILE)
 build-c-libs:
 	@echo "Building C core libraries..."
 	@mkdir -p $(BUILD_DIR)
-	$(MAKE) -C core all
 	$(MAKE) -C ir all
 	$(MAKE) -C backends/desktop all
 
@@ -102,7 +101,6 @@ $(LIB_FILE): build-c-libs
 	@rm -rf $(BUILD_DIR)/combined_lib
 	@mkdir -p $(BUILD_DIR)/combined_lib
 	@# Extract all object files from component libraries
-	@cd $(BUILD_DIR)/combined_lib && ar x ../libkryon_core.a
 	@cd $(BUILD_DIR)/combined_lib && ar x ../libkryon_ir.a
 	@cd $(BUILD_DIR)/combined_lib && ar x ../libkryon_desktop.a
 	@# Create combined archive
@@ -155,6 +153,19 @@ install-lib: build-lib
 	@mkdir -p $(LIBDIR)
 	@mkdir -p $(PKGCONFIGDIR)
 	install -m 644 $(LIB_FILE) $(LIBDIR)/
+	# Install shared libraries if they exist
+	@if [ -f build/libkryon_ir.so ]; then \
+		install -m 755 build/libkryon_ir.so $(LIBDIR)/; \
+		echo "✓ Installed libkryon_ir.so"; \
+	fi
+	@if [ -f build/libkryon_desktop.so ]; then \
+		install -m 755 build/libkryon_desktop.so $(LIBDIR)/; \
+		echo "✓ Installed libkryon_desktop.so"; \
+	fi
+	@if [ -f build/libkryon_web.so ]; then \
+		install -m 755 build/libkryon_web.so $(LIBDIR)/; \
+		echo "✓ Installed libkryon_web.so"; \
+	fi
 	# Copy Nim bindings to include directory
 	rm -rf $(INCDIR)
 	mkdir -p $(INCDIR)

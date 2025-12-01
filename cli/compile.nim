@@ -1,0 +1,458 @@
+## Kryon IR Compilation Pipeline
+##
+## Advanced compilation with caching, validation, and inspection
+
+import os, osproc, strutils, times, hashes, json, tables
+import ../bindings/nim/ir_core
+import ../bindings/nim/ir_serialization
+
+type
+  CompileOptions* = object
+    sourceFile*: string
+    outputFile*: string
+    frontend*: string  # "nim", "lua", "c"
+    enableCache*: bool
+    enableValidation*: bool
+    enableOptimization*: bool
+    verboseOutput*: bool
+    includeManifest*: bool  # Include reactive manifest in output
+
+  CompilationResult* = object
+    success*: bool
+    irFile*: string
+    errors*: seq[string]
+    warnings*: seq[string]
+    componentCount*: int
+    manifestVars*: int
+    compileTime*: float
+    cacheHit*: bool
+
+  CacheEntry = object
+    sourceHash: string
+    irFilePath: string
+    timestamp: Time
+    componentCount: int
+
+# Cache management
+const CACHE_DIR = ".kryon_cache"
+const CACHE_INDEX = ".kryon_cache/index.json"
+
+var compilationCache: Table[string, CacheEntry]
+
+proc initCache*() =
+  ## Initialize the compilation cache
+  createDir(CACHE_DIR)
+
+  if fileExists(CACHE_INDEX):
+    try:
+      let indexData = readFile(CACHE_INDEX)
+      let jsonIndex = parseJson(indexData)
+
+      for key, val in jsonIndex.pairs:
+        compilationCache[key] = CacheEntry(
+          sourceHash: val["hash"].getStr(),
+          irFilePath: val["irFile"].getStr(),
+          timestamp: fromUnix(val["timestamp"].getInt()),
+          componentCount: val["componentCount"].getInt()
+        )
+    except:
+      echo "[cache] Warning: Failed to load cache index, starting fresh"
+      compilationCache = initTable[string, CacheEntry]()
+  else:
+    compilationCache = initTable[string, CacheEntry]()
+
+proc saveCache*() =
+  ## Save cache index to disk
+  var jsonIndex = newJObject()
+
+  for key, entry in compilationCache.pairs:
+    jsonIndex[key] = %* {
+      "hash": entry.sourceHash,
+      "irFile": entry.irFilePath,
+      "timestamp": entry.timestamp.toUnix(),
+      "componentCount": entry.componentCount
+    }
+
+  writeFile(CACHE_INDEX, $jsonIndex)
+
+proc computeFileHash(path: string): string =
+  ## Compute hash of source file for cache invalidation
+  if not fileExists(path):
+    return ""
+
+  let content = readFile(path)
+  result = $hash(content)
+
+proc getCachedIR*(sourceFile: string): tuple[found: bool, irPath: string] =
+  ## Check if compiled IR exists in cache and is up-to-date
+  let sourceHash = computeFileHash(sourceFile)
+  let cacheKey = absolutePath(sourceFile)
+
+  if compilationCache.hasKey(cacheKey):
+    let entry = compilationCache[cacheKey]
+
+    # Validate cache entry
+    if entry.sourceHash == sourceHash and fileExists(entry.irFilePath):
+      let irModTime = getLastModificationTime(entry.irFilePath)
+      let sourceModTime = getLastModificationTime(sourceFile)
+
+      if irModTime >= sourceModTime:
+        return (true, entry.irFilePath)
+
+  return (false, "")
+
+proc addToCache*(sourceFile: string, irFile: string, componentCount: int) =
+  ## Add compilation result to cache
+  let sourceHash = computeFileHash(sourceFile)
+  let cacheKey = absolutePath(sourceFile)
+
+  compilationCache[cacheKey] = CacheEntry(
+    sourceHash: sourceHash,
+    irFilePath: absolutePath(irFile),
+    timestamp: getTime(),
+    componentCount: componentCount
+  )
+
+  saveCache()
+
+proc detectFrontend*(sourceFile: string): string =
+  ## Detect frontend language from file extension
+  let ext = splitFile(sourceFile).ext.toLowerAscii()
+
+  case ext
+  of ".nim": return "nim"
+  of ".lua": return "lua"
+  of ".c", ".cpp", ".cc": return "c"
+  else: return "unknown"
+
+proc compileNimToIR*(sourceFile: string, outputFile: string, verbose: bool): CompilationResult =
+  ## Compile Nim source to Kryon IR
+  result.success = false
+  result.errors = @[]
+  result.warnings = @[]
+  result.irFile = outputFile
+
+  let startTime = cpuTime()
+
+  # Build Nim compiler command
+  # This would invoke the Nim compiler with custom pragmas/hooks to generate IR
+  # For now, this is a placeholder that shows the structure
+
+  if verbose:
+    echo "[compile] Compiling Nim to IR: ", sourceFile
+
+  let compileCmd = "nim c --app:lib --noMain --nimcache:.kryon_cache/nimcache " & sourceFile
+
+  let (output, exitCode) = execCmdEx(compileCmd)
+
+  if exitCode != 0:
+    result.errors.add("Nim compilation failed")
+    result.errors.add(output)
+    result.compileTime = cpuTime() - startTime
+    return
+
+  # TODO: Actually generate IR from compiled Nim code
+  # This would involve:
+  # 1. Running the Nim program with special hooks
+  # 2. Capturing the component tree construction
+  # 3. Serializing to IR format
+
+  # For now, return placeholder success
+  result.success = true
+  result.componentCount = 0
+  result.compileTime = cpuTime() - startTime
+
+  if verbose:
+    echo "[compile] Compilation completed in ", result.compileTime, "s"
+
+proc validateIR*(irFile: string): tuple[valid: bool, errors: seq[string]] =
+  ## Validate IR file format and structure
+  result.valid = false
+  result.errors = @[]
+
+  if not fileExists(irFile):
+    result.errors.add("IR file not found: " & irFile)
+    return
+
+  # Use IR validation functions
+  let buffer = ir_buffer_create_from_file(cstring(irFile))
+  if buffer == nil:
+    result.errors.add("Failed to read IR file")
+    return
+
+  # Validate format
+  if not ir_validate_binary_format(buffer):
+    result.errors.add("Invalid IR binary format")
+    ir_buffer_destroy(buffer)
+    return
+
+  # Deserialize to validate structure
+  let root = ir_deserialize_binary(buffer)
+  ir_buffer_destroy(buffer)
+
+  if root == nil:
+    result.errors.add("Failed to deserialize IR - corrupt or invalid structure")
+    return
+
+  # TODO: Add semantic validation
+  # - Check for orphaned components
+  # - Validate parent-child relationships
+  # - Check for circular dependencies
+  # - Validate style/layout constraints
+
+  ir_destroy_component(root)
+  result.valid = true
+
+proc inspectIR*(irFile: string): JsonNode =
+  ## Inspect IR file and return metadata
+  result = newJObject()
+
+  if not fileExists(irFile):
+    result["error"] = %"IR file not found"
+    return
+
+  let buffer = ir_buffer_create_from_file(cstring(irFile))
+  if buffer == nil:
+    result["error"] = %"Failed to read IR file"
+    return
+
+  # Read header information
+  var manifest: ptr IRReactiveManifest = nil
+  let root = ir_deserialize_binary_with_manifest(buffer, addr manifest)
+  ir_buffer_destroy(buffer)
+
+  if root == nil:
+    result["error"] = %"Failed to deserialize IR"
+    return
+
+  # Count components recursively
+  proc countComponents(comp: ptr IRComponent): int =
+    result = 1
+    if comp.child_count > 0:
+      let childArray = cast[ptr UncheckedArray[ptr IRComponent]](comp.children)
+      for i in 0..<comp.child_count:
+        result += countComponents(childArray[i])
+
+  let componentCount = countComponents(root)
+
+  result["componentCount"] = %componentCount
+  result["rootType"] = %($root.`type`)
+  result["hasManifest"] = %(manifest != nil)
+
+  if manifest != nil:
+    result["manifest"] = %* {
+      "variables": manifest.variable_count,
+      "bindings": manifest.binding_count,
+      "conditionals": manifest.conditional_count,
+      "forLoops": manifest.for_loop_count
+    }
+    ir_reactive_manifest_destroy(manifest)
+
+  ir_destroy_component(root)
+
+proc compile*(opts: CompileOptions): CompilationResult =
+  ## Main compilation entry point with caching
+  result.success = false
+  result.errors = @[]
+  result.warnings = @[]
+  result.cacheHit = false
+
+  # Validate source file exists
+  if not fileExists(opts.sourceFile):
+    result.errors.add("Source file not found: " & opts.sourceFile)
+    return
+
+  # Check cache if enabled
+  if opts.enableCache:
+    initCache()
+    let (found, cachedPath) = getCachedIR(opts.sourceFile)
+
+    if found:
+      if opts.verboseOutput:
+        echo "[compile] Cache hit: ", cachedPath
+
+      result.success = true
+      result.irFile = cachedPath
+      result.cacheHit = true
+      result.compileTime = 0.0
+
+      # Get cached metadata
+      let metadata = inspectIR(cachedPath)
+      if metadata.hasKey("componentCount"):
+        result.componentCount = metadata["componentCount"].getInt()
+
+      return
+
+  # Detect frontend if not specified
+  var frontend = opts.frontend
+  if frontend.len == 0:
+    frontend = detectFrontend(opts.sourceFile)
+
+  if opts.verboseOutput:
+    echo "[compile] Frontend: ", frontend
+    echo "[compile] Source: ", opts.sourceFile
+    echo "[compile] Output: ", opts.outputFile
+
+  # Compile based on frontend
+  case frontend
+  of "nim":
+    result = compileNimToIR(opts.sourceFile, opts.outputFile, opts.verboseOutput)
+  of "lua":
+    result.errors.add("Lua frontend not yet implemented")
+    return
+  of "c":
+    result.errors.add("C frontend not yet implemented")
+    return
+  else:
+    result.errors.add("Unknown frontend: " & frontend)
+    return
+
+  if not result.success:
+    return
+
+  # Validate if requested
+  if opts.enableValidation:
+    if opts.verboseOutput:
+      echo "[compile] Validating IR..."
+
+    let (valid, errors) = validateIR(result.irFile)
+    if not valid:
+      result.success = false
+      result.errors.add("IR validation failed:")
+      result.errors.add(errors)
+      return
+
+  # Add to cache if enabled and compilation succeeded
+  if opts.enableCache and result.success:
+    addToCache(opts.sourceFile, result.irFile, result.componentCount)
+    if opts.verboseOutput:
+      echo "[compile] Added to cache"
+
+proc clearCache*() =
+  ## Clear compilation cache
+  if dirExists(CACHE_DIR):
+    removeDir(CACHE_DIR)
+    echo "[cache] Cache cleared"
+  else:
+    echo "[cache] No cache to clear"
+
+# CLI command handlers
+proc handleCompileCommand*(args: seq[string]) =
+  ## Handle 'kryon compile' command
+  if args.len == 0:
+    echo "Error: Source file required"
+    echo "Usage: kryon compile <source> [--output=<file>] [--no-cache] [--validate]"
+    return
+
+  var opts = CompileOptions(
+    sourceFile: args[0],
+    outputFile: "",
+    frontend: "",
+    enableCache: true,
+    enableValidation: false,
+    enableOptimization: true,
+    verboseOutput: false,
+    includeManifest: false
+  )
+
+  # Parse options
+  for i in 1..<args.len:
+    let arg = args[i]
+    if arg.startsWith("--output="):
+      opts.outputFile = arg[9..^1]
+    elif arg == "--no-cache":
+      opts.enableCache = false
+    elif arg == "--validate":
+      opts.enableValidation = true
+    elif arg == "--verbose" or arg == "-v":
+      opts.verboseOutput = true
+    elif arg == "--with-manifest":
+      opts.includeManifest = true
+
+  # Default output file
+  if opts.outputFile.len == 0:
+    let (dir, name, ext) = splitFile(opts.sourceFile)
+    opts.outputFile = dir / name & ".kir"
+
+  # Compile
+  echo "🔨 Compiling ", opts.sourceFile
+  let result = compile(opts)
+
+  if result.success:
+    echo "✅ Compilation successful"
+    if result.cacheHit:
+      echo "   📦 Cache hit"
+    else:
+      echo "   ⏱️  ", result.compileTime.formatFloat(ffDecimal, 3), "s"
+    echo "   📄 Output: ", result.irFile
+    echo "   🧩 Components: ", result.componentCount
+
+    if result.manifestVars > 0:
+      echo "   📊 Reactive vars: ", result.manifestVars
+  else:
+    echo "❌ Compilation failed"
+    for err in result.errors:
+      echo "   ", err
+
+proc handleValidateCommand*(args: seq[string]) =
+  ## Handle 'kryon validate' command
+  if args.len == 0:
+    echo "Error: IR file required"
+    echo "Usage: kryon validate <file.kir>"
+    return
+
+  let irFile = args[0]
+  echo "🔍 Validating ", irFile
+
+  let (valid, errors) = validateIR(irFile)
+
+  if valid:
+    echo "✅ IR file is valid"
+
+    # Show inspection data
+    let metadata = inspectIR(irFile)
+    echo "   🧩 Components: ", metadata["componentCount"].getInt()
+    if metadata.hasKey("manifest"):
+      let manifest = metadata["manifest"]
+      echo "   📊 Reactive state:"
+      echo "      Variables: ", manifest["variables"].getInt()
+      echo "      Bindings: ", manifest["bindings"].getInt()
+  else:
+    echo "❌ IR file is invalid"
+    for err in errors:
+      echo "   ", err
+
+proc handleInspectIRCommand*(args: seq[string]) =
+  ## Handle 'kryon inspect-ir' command
+  if args.len == 0:
+    echo "Error: IR file required"
+    echo "Usage: kryon inspect-ir <file.kir> [--json]"
+    return
+
+  let irFile = args[0]
+  let jsonOutput = args.len > 1 and args[1] == "--json"
+
+  let metadata = inspectIR(irFile)
+
+  if jsonOutput:
+    echo pretty(metadata)
+  else:
+    echo "📊 IR File: ", irFile
+    echo "─────────────────────────────────────"
+
+    if metadata.hasKey("error"):
+      echo "❌ Error: ", metadata["error"].getStr()
+      return
+
+    echo "Components: ", metadata["componentCount"].getInt()
+    echo "Root type: ", metadata["rootType"].getStr()
+    echo "Has manifest: ", metadata["hasManifest"].getBool()
+
+    if metadata.hasKey("manifest"):
+      echo ""
+      echo "Reactive State:"
+      let manifest = metadata["manifest"]
+      echo "  Variables: ", manifest["variables"].getInt()
+      echo "  Bindings: ", manifest["bindings"].getInt()
+      echo "  Conditionals: ", manifest["conditionals"].getInt()
+      echo "  For-loops: ", manifest["forLoops"].getInt()

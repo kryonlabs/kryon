@@ -761,3 +761,159 @@ proc resumeReactiveForLoopsFor*(root: ptr IRComponent) =
     if loop.suspended and isComponentInSubtree(loop.parent, root):
       loop.suspended = false
       echo "[kryon][reactive] Resumed for loop (parent in subtree)"
+
+# ============================================================================
+# Reactive State Export to IR Manifest
+# ============================================================================
+
+type
+  # Wrapper to store reactive variables with type information
+  ReactiveVarEntry* = ref object
+    name*: string
+    varType*: IRReactiveVarType
+    getValue*: proc(): IRReactiveValue {.closure.}
+    componentBindings*: seq[ptr IRComponent]  # Components bound to this var
+
+# Global registry of named reactive variables for serialization
+var namedReactiveVars*: Table[string, ReactiveVarEntry] = initTable[string, ReactiveVarEntry]()
+
+# Register a reactive variable with a name for export
+proc registerNamedReactiveVar*[T](name: string, rv: ReactiveVar[T]) =
+  ## Register a reactive variable by name so it can be exported to manifest
+
+  # Determine type and create value getter
+  var varType: IRReactiveVarType
+  var getValue: proc(): IRReactiveValue {.closure.}
+
+  when T is int:
+    varType = IR_REACTIVE_TYPE_INT
+    getValue = proc(): IRReactiveValue {.closure.} =
+      result.as_int = int32(rv.value)
+  elif T is float or T is float32 or T is float64:
+    varType = IR_REACTIVE_TYPE_FLOAT
+    getValue = proc(): IRReactiveValue {.closure.} =
+      result.as_float = float64(rv.value)
+  elif T is string:
+    varType = IR_REACTIVE_TYPE_STRING
+    getValue = proc(): IRReactiveValue {.closure.} =
+      result.as_string = cstring(rv.value)
+  elif T is bool:
+    varType = IR_REACTIVE_TYPE_BOOL
+    getValue = proc(): IRReactiveValue {.closure.} =
+      result.as_bool = rv.value
+  else:
+    # For other types, convert to JSON string (custom type)
+    varType = IR_REACTIVE_TYPE_CUSTOM
+    getValue = proc(): IRReactiveValue {.closure.} =
+      result.as_string = cstring($rv.value)
+
+  # Extract component bindings
+  var components: seq[ptr IRComponent] = @[]
+  for binding in rv.bindings:
+    if binding != nil and binding.component != nil:
+      components.add(binding.component)
+
+  let entry = ReactiveVarEntry(
+    name: name,
+    varType: varType,
+    getValue: getValue,
+    componentBindings: components
+  )
+
+  namedReactiveVars[name] = entry
+  echo "[kryon][reactive] Registered named reactive var: ", name
+
+# Export all reactive state to an IR manifest
+proc exportReactiveManifest*(): ptr IRReactiveManifest =
+  ## Export all registered reactive state to an IRReactiveManifest
+  ## This manifest can then be serialized along with the component tree
+
+  result = ir_reactive_manifest_create()
+  if result == nil:
+    echo "[kryon][reactive] Failed to create manifest"
+    return nil
+
+  echo "[kryon][reactive] Exporting reactive state to manifest..."
+
+  # Table to map variable names to their IDs
+  var varNameToId: Table[string, uint32] = initTable[string, uint32]()
+
+  # Export reactive variables
+  for name, entry in namedReactiveVars:
+    let value = entry.getValue()
+    let varId = ir_reactive_manifest_add_var(result, cstring(name), entry.varType, value)
+    varNameToId[name] = varId
+    echo "[kryon][reactive] Exported var: ", name, " (id=", varId, ")"
+
+    # Add bindings for this variable
+    for component in entry.componentBindings:
+      if component != nil and component.id > 0:
+        ir_reactive_manifest_add_binding(
+          result,
+          component.id,
+          varId,
+          IR_BINDING_TEXT,  # Most bindings are text updates
+          cstring(name)
+        )
+
+  # Export reactive text expressions
+  for expr in reactiveTextExpressions:
+    if expr == nil or expr.component == nil or expr.varNames.len == 0:
+      continue
+
+    # Find variable IDs for this expression
+    var depVarIds: seq[uint32] = @[]
+    for varName in expr.varNames:
+      if varNameToId.hasKey(varName):
+        depVarIds.add(varNameToId[varName])
+
+    if depVarIds.len > 0:
+      # Add as a conditional binding (text expressions are similar to conditionals)
+      ir_reactive_manifest_add_conditional(
+        result,
+        expr.component.id,
+        cstring(expr.expression),
+        addr depVarIds[0],
+        uint32(depVarIds.len)
+      )
+
+  # Export reactive conditionals
+  for cond in reactiveConditionals:
+    if cond == nil or cond.parent == nil:
+      continue
+
+    # We can't serialize the closure, but we can track the conditional exists
+    # On restore, the DSL will recreate it
+    ir_reactive_manifest_add_conditional(
+      result,
+      cond.parent.id,
+      cstring("<conditional>"),  # Placeholder since we can't serialize closures
+      nil,
+      0
+    )
+
+  # Export reactive for loops
+  for loop in reactiveForLoops:
+    if loop == nil or loop.parent == nil:
+      continue
+
+    # Track the for loop and its parent
+    ir_reactive_manifest_add_for_loop(
+      result,
+      loop.parent.id,
+      cstring("<collection>"),  # Placeholder
+      0  # No collection var ID available
+    )
+
+  echo "[kryon][reactive] Exported ", result.variable_count, " variables, ",
+       result.binding_count, " bindings, ",
+       result.conditional_count, " conditionals, ",
+       result.for_loop_count, " for-loops"
+
+  return result
+
+# Helper to create a named reactive variable (combines creation + registration)
+proc namedReactiveVar*[T](name: string, initialValue: T): ReactiveVar[T] =
+  ## Creates a reactive variable and registers it by name for export
+  result = reactiveVar[T](initialValue)
+  registerNamedReactiveVar(name, result)

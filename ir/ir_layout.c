@@ -94,6 +94,26 @@ static float ir_get_component_intrinsic_width_impl(IRComponent* component) {
         case IR_COMPONENT_TEXT:
             if (component->text_content) {
                 float font_size = style->font.size > 0 ? style->font.size : 16.0f;
+
+                // Check if max_width is set for text wrapping
+                float max_width = 0.0f;
+                if (style->text_effect.max_width.type == IR_DIMENSION_PX) {
+                    max_width = style->text_effect.max_width.value;
+                }
+
+                // If max_width is set, compute text layout and use it
+                if (max_width > 0) {
+                    // Compute text layout if not cached or if dirty
+                    if (!component->text_layout || component->layout_cache.dirty) {
+                        ir_text_layout_compute(component, max_width, font_size);
+                    }
+
+                    if (component->text_layout) {
+                        return ir_text_layout_get_width(component->text_layout);
+                    }
+                }
+
+                // Fallback to single-line estimation
                 return ir_get_text_width_estimate(component->text_content, font_size);
             }
             return 50.0f;
@@ -174,8 +194,30 @@ static float ir_get_component_intrinsic_height_impl(IRComponent* component) {
 
     // Calculate based on component type
     switch (component->type) {
-        case IR_COMPONENT_TEXT:
-            return style->font.size > 0 ? style->font.size + 4.0f : 20.0f;
+        case IR_COMPONENT_TEXT: {
+            float font_size = style->font.size > 0 ? style->font.size : 16.0f;
+
+            // Check if max_width is set for text wrapping
+            float max_width = 0.0f;
+            if (style->text_effect.max_width.type == IR_DIMENSION_PX) {
+                max_width = style->text_effect.max_width.value;
+            }
+
+            // If max_width is set and we have text layout, use multi-line height
+            if (max_width > 0 && component->text_content) {
+                // Compute text layout if not cached or if dirty
+                if (!component->text_layout || component->layout_cache.dirty) {
+                    ir_text_layout_compute(component, max_width, font_size);
+                }
+
+                if (component->text_layout) {
+                    return ir_text_layout_get_height(component->text_layout);
+                }
+            }
+
+            // Fallback to single-line height
+            return font_size + 4.0f;
+        }
 
         case IR_COMPONENT_BUTTON: {
             float font_size = style->font.size > 0 ? style->font.size : 14.0f;
@@ -804,4 +846,231 @@ static void ir_layout_compute_grid(IRComponent* container, float available_width
         child->rendered_bounds.height = item_height;
         child->rendered_bounds.valid = true;
     }
+}
+
+// ============================================================================
+// Text Layout System (Multi-line text wrapping)
+// ============================================================================
+
+// Global font metrics (set by backend)
+IRFontMetrics* g_ir_font_metrics = NULL;
+
+void ir_set_font_metrics(IRFontMetrics* metrics) {
+    g_ir_font_metrics = metrics;
+}
+
+// Create a new text layout structure
+IRTextLayout* ir_text_layout_create(uint32_t max_lines) {
+    IRTextLayout* layout = (IRTextLayout*)calloc(1, sizeof(IRTextLayout));
+    if (!layout) return NULL;
+
+    layout->line_widths = (float*)malloc(sizeof(float) * max_lines);
+    layout->line_heights = (float*)malloc(sizeof(float) * max_lines);
+    layout->line_start_indices = (uint32_t*)malloc(sizeof(uint32_t) * max_lines);
+    layout->line_end_indices = (uint32_t*)malloc(sizeof(uint32_t) * max_lines);
+    layout->line_count = 0;
+    layout->total_height = 0.0f;
+    layout->max_line_width = 0.0f;
+    layout->needs_reshape = false;
+    layout->direction = IR_TEXT_DIR_LTR;
+
+    return layout;
+}
+
+// Destroy text layout and free resources
+void ir_text_layout_destroy(IRTextLayout* layout) {
+    if (!layout) return;
+
+    free(layout->line_widths);
+    free(layout->line_heights);
+    free(layout->line_start_indices);
+    free(layout->line_end_indices);
+    free(layout);
+}
+
+// Helper: Check if character is whitespace
+static inline bool is_whitespace(char c) {
+    return c == ' ' || c == '\t' || c == '\r';
+}
+
+// Helper: Find next word boundary (returns index after word)
+static uint32_t find_next_word_boundary(const char* text, uint32_t start, uint32_t length) {
+    uint32_t i = start;
+
+    // Skip leading whitespace
+    while (i < length && is_whitespace(text[i])) {
+        i++;
+    }
+
+    // Find end of word (next whitespace or end of string)
+    while (i < length && !is_whitespace(text[i]) && text[i] != '\n') {
+        i++;
+    }
+
+    return i;
+}
+
+// Helper: Measure text width using backend or fallback
+static float measure_text_width(const char* text, uint32_t start, uint32_t end,
+                                 float font_size, const char* font_family) {
+    if (g_ir_font_metrics && g_ir_font_metrics->get_text_width) {
+        return g_ir_font_metrics->get_text_width(text + start, end - start, font_size, font_family);
+    }
+
+    // Fallback: estimate
+    uint32_t char_count = end - start;
+    return char_count * font_size * 0.5f;
+}
+
+// Compute multi-line text layout with greedy line-breaking
+void ir_text_layout_compute(IRComponent* component, float max_width, float font_size) {
+    if (!component || component->type != IR_COMPONENT_TEXT || !component->text_content) {
+        return;
+    }
+
+    const char* text = component->text_content;
+    uint32_t text_length = strlen(text);
+
+    if (text_length == 0) {
+        return;
+    }
+
+    // Destroy existing layout if any
+    if (component->text_layout) {
+        ir_text_layout_destroy(component->text_layout);
+    }
+
+    // Create new layout (estimate max lines as text_length / 10)
+    uint32_t max_lines = (text_length / 10) + 10;
+    IRTextLayout* layout = ir_text_layout_create(max_lines);
+    if (!layout) return;
+
+    // Get font properties
+    const char* font_family = (component->style && component->style->font.family)
+                              ? component->style->font.family : "sans-serif";
+
+    // Get line height (default 1.2 * font_size)
+    float line_height = font_size;
+    if (component->style && component->style->font.line_height > 0) {
+        line_height = font_size * component->style->font.line_height;
+    } else {
+        line_height = font_size * 1.2f;
+    }
+
+    // Get text direction
+    if (component->style && component->style->text_effect.text_direction != IR_TEXT_DIR_AUTO) {
+        layout->direction = component->style->text_effect.text_direction;
+    } else {
+        layout->direction = IR_TEXT_DIR_LTR;  // Default LTR, auto-detect in Phase 3
+    }
+
+    // Greedy line-breaking algorithm
+    uint32_t line_index = 0;
+    uint32_t current_pos = 0;
+
+    while (current_pos < text_length && line_index < max_lines) {
+        uint32_t line_start = current_pos;
+        uint32_t line_end = line_start;
+        float current_line_width = 0.0f;
+        uint32_t last_break_point = line_start;
+        float last_break_width = 0.0f;
+
+        // Handle explicit line break
+        if (text[current_pos] == '\n') {
+            // Empty line
+            layout->line_start_indices[line_index] = line_start;
+            layout->line_end_indices[line_index] = line_start;
+            layout->line_widths[line_index] = 0.0f;
+            layout->line_heights[line_index] = line_height;
+            line_index++;
+            current_pos++;
+            continue;
+        }
+
+        // Build line until we exceed max_width or hit newline
+        while (current_pos < text_length) {
+            // Check for explicit line break
+            if (text[current_pos] == '\n') {
+                line_end = current_pos;
+                current_pos++;  // Skip newline
+                break;
+            }
+
+            // Find next word
+            uint32_t next_word_end = find_next_word_boundary(text, current_pos, text_length);
+
+            // Measure text from line start to next word end
+            float potential_width = measure_text_width(text, line_start, next_word_end,
+                                                        font_size, font_family);
+
+            // Check if adding this word would exceed max_width
+            if (max_width > 0 && potential_width > max_width) {
+                // If this is the first word on the line, we must include it anyway
+                if (line_end == line_start) {
+                    line_end = next_word_end;
+                    current_line_width = potential_width;
+                    current_pos = next_word_end;
+                } else {
+                    // Break at last valid point
+                    line_end = last_break_point;
+                    current_line_width = last_break_width;
+                }
+                break;
+            }
+
+            // Word fits, update line end
+            last_break_point = next_word_end;
+            last_break_width = potential_width;
+            line_end = next_word_end;
+            current_line_width = potential_width;
+            current_pos = next_word_end;
+
+            // If we reached end of text, we're done
+            if (current_pos >= text_length) {
+                break;
+            }
+        }
+
+        // Trim trailing whitespace from line_end
+        while (line_end > line_start && is_whitespace(text[line_end - 1])) {
+            line_end--;
+            current_line_width = measure_text_width(text, line_start, line_end,
+                                                     font_size, font_family);
+        }
+
+        // Record line
+        layout->line_start_indices[line_index] = line_start;
+        layout->line_end_indices[line_index] = line_end;
+        layout->line_widths[line_index] = current_line_width;
+        layout->line_heights[line_index] = line_height;
+
+        // Update max line width
+        if (current_line_width > layout->max_line_width) {
+            layout->max_line_width = current_line_width;
+        }
+
+        line_index++;
+    }
+
+    // Finalize layout
+    layout->line_count = line_index;
+    layout->total_height = line_index * line_height;
+
+    // Store layout in component
+    component->text_layout = layout;
+
+    #ifdef KRYON_TRACE_LAYOUT
+    fprintf(stderr, "📝 TEXT_LAYOUT computed for component %u: %u lines, max_width=%.1f, total_height=%.1f\n",
+            component->id, layout->line_count, layout->max_line_width, layout->total_height);
+    #endif
+}
+
+// Get width of text layout
+float ir_text_layout_get_width(IRTextLayout* layout) {
+    return layout ? layout->max_line_width : 0.0f;
+}
+
+// Get height of text layout
+float ir_text_layout_get_height(IRTextLayout* layout) {
+    return layout ? layout->total_height : 0.0f;
 }

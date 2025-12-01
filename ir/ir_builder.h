@@ -56,6 +56,9 @@ void ir_set_text_shadow(IRStyle* style, float offset_x, float offset_y, float bl
                         uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 void ir_set_opacity(IRStyle* style, float opacity);
 
+// Text Layout (Phase 1: Multi-line wrapping)
+void ir_set_text_max_width(IRStyle* style, IRDimensionType type, float value);
+
 // Extended Typography (Phase 3)
 void ir_set_font_weight(IRStyle* style, uint16_t weight);  // 100-900 (400=normal, 700=bold)
 void ir_set_line_height(IRStyle* style, float line_height);  // Line height multiplier

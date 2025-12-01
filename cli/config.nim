@@ -1,11 +1,10 @@
-##[
-  Kryon Configuration System
+## Kryon Configuration System
+##
+## Provides project configuration support via kryon.toml or kryon.json files.
+## Supports hierarchical configuration with smart defaults.
+## Uses simple built-in TOML parser (no external dependencies)
 
-  Provides project configuration support via kryon.toml files.
-  Supports hierarchical configuration with smart defaults.
-]##
-
-import parsetoml, json, os, strutils, tables, sequtils
+import json, os, strutils, tables, times
 
 type
   KryonConfig* = object
@@ -27,276 +26,168 @@ type
     optimizationMinifyJs*: bool
     optimizationTreeShake*: bool
 
-    # Web target settings
-    webGenerateSeparateFiles*: bool
-    webIncludeJsRuntime*: bool
-    webIncludeWasmModules*: bool
-
     # Development settings
     devHotReload*: bool
     devPort*: int
-    devWatchPaths*: seq[string]
-    devOpenBrowser*: bool
-
-    # Desktop target settings
-    desktopWindowWidth*: int
-    desktopWindowHeight*: int
-    desktopWindowTitle*: string
-    desktopResizable*: bool
-    desktopVsync*: bool
-    desktopTargetFps*: int
-    desktopBackend*: string        # "sdl3", "terminal", "framebuffer"
+    devAutoOpen*: bool
 
     # Metadata
     metadataCreated*: string
-    metadataKryonVersion*: string
+    metadataModified*: string
 
 proc defaultConfig*(): KryonConfig =
-  ## Return default configuration with sensible values
-  result.projectName = getCurrentDir().lastPathPart()
-  result.projectVersion = "1.0.0"
+  ## Create a config with sensible defaults
+  result.projectName = "kryon-app"
+  result.projectVersion = "0.1.0"
   result.projectAuthor = ""
   result.projectDescription = ""
 
   result.buildTarget = "desktop"
-  result.buildOutputDir = "dist"
-  result.buildEntry = ""  # Auto-detect
-  result.buildFrontend = ""  # Auto-detect
+  result.buildOutputDir = "build"
+  result.buildEntry = ""
+  result.buildFrontend = "nim"
 
-  result.optimizationEnabled = false
-  result.optimizationMinifyCss = false
-  result.optimizationMinifyJs = false
-  result.optimizationTreeShake = false
-
-  result.webGenerateSeparateFiles = true
-  result.webIncludeJsRuntime = false
-  result.webIncludeWasmModules = false
+  result.optimizationEnabled = true
+  result.optimizationMinifyCss = true
+  result.optimizationMinifyJs = true
+  result.optimizationTreeShake = true
 
   result.devHotReload = true
   result.devPort = 3000
-  result.devWatchPaths = @[]
-  result.devOpenBrowser = false
+  result.devAutoOpen = false
 
-  result.desktopWindowWidth = 800
-  result.desktopWindowHeight = 600
-  result.desktopWindowTitle = "Kryon App"
-  result.desktopResizable = true
-  result.desktopVsync = true
-  result.desktopTargetFps = 60
-  result.desktopBackend = "sdl3"
+  result.metadataCreated = now().format("yyyy-MM-dd")
+  result.metadataModified = now().format("yyyy-MM-dd")
 
-  result.metadataCreated = ""
-  result.metadataKryonVersion = "1.2.0"
+proc parseSimpleToml(content: string): Table[string, string] =
+  ## Simple TOML parser for basic key = "value" pairs
+  ## Supports sections like [project], [build], etc.
+  result = initTable[string, string]()
+  var currentSection = ""
 
-proc loadTomlConfig*(path: string): KryonConfig =
-  ## Load and parse TOML configuration file
-  if not fileExists(path):
-    raise newException(IOError, "Config file not found: " & path)
+  for rawLine in content.splitLines():
+    let line = rawLine.strip()
 
-  let toml = parseFile(path)
+    # Skip empty lines and comments
+    if line.len == 0 or line.startsWith("#"):
+      continue
+
+    # Section headers [name]
+    if line.startsWith("[") and line.endsWith("]"):
+      currentSection = line[1..^2]
+      continue
+
+    # Key = value pairs
+    if "=" in line:
+      let parts = line.split("=", maxsplit=1)
+      if parts.len == 2:
+        var key = parts[0].strip()
+        var value = parts[1].strip()
+
+        # Remove quotes from value
+        if value.startsWith("\"") and value.endsWith("\""):
+          value = value[1..^2]
+        elif value.startsWith("'") and value.endsWith("'"):
+          value = value[1..^2]
+
+        # Prefix key with section
+        if currentSection.len > 0:
+          key = currentSection & "." & key
+
+        result[key] = value
+
+proc tomlToConfig(toml: Table[string, string]): KryonConfig =
+  ## Convert parsed TOML table to KryonConfig
   result = defaultConfig()
 
-  # Parse [project] section
-  if toml.hasKey("project"):
-    let proj = toml["project"]
-    if proj.hasKey("name"):
-      result.projectName = proj["name"].getStr()
-    if proj.hasKey("version"):
-      result.projectVersion = proj["version"].getStr()
-    if proj.hasKey("author"):
-      result.projectAuthor = proj["author"].getStr()
-    if proj.hasKey("description"):
-      result.projectDescription = proj["description"].getStr()
+  # Project metadata
+  if toml.hasKey("project.name"):
+    result.projectName = toml["project.name"]
+  if toml.hasKey("project.version"):
+    result.projectVersion = toml["project.version"]
+  if toml.hasKey("project.author"):
+    result.projectAuthor = toml["project.author"]
+  if toml.hasKey("project.description"):
+    result.projectDescription = toml["project.description"]
 
-  # Parse [build] section
-  if toml.hasKey("build"):
-    let build = toml["build"]
-    if build.hasKey("target"):
-      result.buildTarget = build["target"].getStr()
-    if build.hasKey("output_dir"):
-      result.buildOutputDir = build["output_dir"].getStr()
-    if build.hasKey("entry"):
-      result.buildEntry = build["entry"].getStr()
-    if build.hasKey("frontend"):
-      result.buildFrontend = build["frontend"].getStr()
+  # Build settings
+  if toml.hasKey("build.target"):
+    result.buildTarget = toml["build.target"]
+  if toml.hasKey("build.output_dir"):
+    result.buildOutputDir = toml["build.output_dir"]
+  if toml.hasKey("build.entry"):
+    result.buildEntry = toml["build.entry"]
+  if toml.hasKey("build.frontend"):
+    result.buildFrontend = toml["build.frontend"]
 
-    # Parse [build.optimization] subsection
-    if build.hasKey("optimization"):
-      let opt = build["optimization"]
-      if opt.hasKey("enabled"):
-        result.optimizationEnabled = opt["enabled"].getBool()
-      if opt.hasKey("minify_css"):
-        result.optimizationMinifyCss = opt["minify_css"].getBool()
-      if opt.hasKey("minify_js"):
-        result.optimizationMinifyJs = opt["minify_js"].getBool()
-      if opt.hasKey("tree_shake"):
-        result.optimizationTreeShake = opt["tree_shake"].getBool()
+  # Optimization settings
+  if toml.hasKey("optimization.enabled"):
+    result.optimizationEnabled = toml["optimization.enabled"] == "true"
+  if toml.hasKey("optimization.minify_css"):
+    result.optimizationMinifyCss = toml["optimization.minify_css"] == "true"
+  if toml.hasKey("optimization.minify_js"):
+    result.optimizationMinifyJs = toml["optimization.minify_js"] == "true"
+  if toml.hasKey("optimization.tree_shake"):
+    result.optimizationTreeShake = toml["optimization.tree_shake"] == "true"
 
-  # Parse [web] section
-  if toml.hasKey("web"):
-    let web = toml["web"]
-    if web.hasKey("generate_separate_files"):
-      result.webGenerateSeparateFiles = web["generate_separate_files"].getBool()
-    if web.hasKey("include_js_runtime"):
-      result.webIncludeJsRuntime = web["include_js_runtime"].getBool()
-    if web.hasKey("include_wasm_modules"):
-      result.webIncludeWasmModules = web["include_wasm_modules"].getBool()
-    if web.hasKey("minify_css"):
-      result.optimizationMinifyCss = web["minify_css"].getBool()
-    if web.hasKey("minify_js"):
-      result.optimizationMinifyJs = web["minify_js"].getBool()
+  # Dev settings
+  if toml.hasKey("dev.hot_reload"):
+    result.devHotReload = toml["dev.hot_reload"] == "true"
+  if toml.hasKey("dev.port"):
+    result.devPort = parseInt(toml["dev.port"])
+  if toml.hasKey("dev.auto_open"):
+    result.devAutoOpen = toml["dev.auto_open"] == "true"
 
-  # Parse [dev] section
-  if toml.hasKey("dev"):
-    let dev = toml["dev"]
-    if dev.hasKey("hot_reload"):
-      result.devHotReload = dev["hot_reload"].getBool()
-    if dev.hasKey("port"):
-      result.devPort = int(dev["port"].getInt())
-    if dev.hasKey("watch_paths"):
-      let paths = dev["watch_paths"]
-      if paths.kind == TomlValueKind.Array:
-        result.devWatchPaths = @[]
-        for item in paths.getElems():
-          result.devWatchPaths.add(item.getStr())
-    if dev.hasKey("open_browser"):
-      result.devOpenBrowser = dev["open_browser"].getBool()
+  # Metadata
+  if toml.hasKey("metadata.created"):
+    result.metadataCreated = toml["metadata.created"]
+  if toml.hasKey("metadata.modified"):
+    result.metadataModified = toml["metadata.modified"]
 
-  # Parse [desktop] section
-  if toml.hasKey("desktop"):
-    let desktop = toml["desktop"]
-    if desktop.hasKey("window_width"):
-      result.desktopWindowWidth = int(desktop["window_width"].getInt())
-    if desktop.hasKey("window_height"):
-      result.desktopWindowHeight = int(desktop["window_height"].getInt())
-    if desktop.hasKey("window_title"):
-      result.desktopWindowTitle = desktop["window_title"].getStr()
-    if desktop.hasKey("resizable"):
-      result.desktopResizable = desktop["resizable"].getBool()
-    if desktop.hasKey("vsync"):
-      result.desktopVsync = desktop["vsync"].getBool()
-    if desktop.hasKey("target_fps"):
-      result.desktopTargetFps = int(desktop["target_fps"].getInt())
-    if desktop.hasKey("backend"):
-      result.desktopBackend = desktop["backend"].getStr()
-
-  # Parse [metadata] section
-  if toml.hasKey("metadata"):
-    let metadata = toml["metadata"]
-    if metadata.hasKey("created"):
-      result.metadataCreated = metadata["created"].getStr()
-    if metadata.hasKey("kryon_version"):
-      result.metadataKryonVersion = metadata["kryon_version"].getStr()
-
-proc loadJsonConfig*(path: string): KryonConfig =
-  ## Load legacy kryon.json configuration for backward compatibility
-  if not fileExists(path):
-    raise newException(IOError, "Config file not found: " & path)
-
-  let jsonData = parseFile(path)
+proc jsonToConfig(jsonNode: JsonNode): KryonConfig =
+  ## Convert JSON to KryonConfig
   result = defaultConfig()
 
-  # Parse basic fields from legacy format
-  if jsonData.hasKey("name"):
-    result.projectName = jsonData["name"].getStr()
-  if jsonData.hasKey("version"):
-    result.projectVersion = jsonData["version"].getStr()
-  if jsonData.hasKey("template"):
-    result.buildFrontend = jsonData["template"].getStr()
+  # Project metadata
+  if jsonNode.hasKey("project"):
+    let proj = jsonNode["project"]
+    if proj.hasKey("name"): result.projectName = proj["name"].getStr()
+    if proj.hasKey("version"): result.projectVersion = proj["version"].getStr()
+    if proj.hasKey("author"): result.projectAuthor = proj["author"].getStr()
+    if proj.hasKey("description"): result.projectDescription = proj["description"].getStr()
 
-  # Parse targets array
-  if jsonData.hasKey("targets"):
-    let targets = jsonData["targets"].getElems()
-    if targets.len > 0:
-      result.buildTarget = targets[0].getStr()
+  # Build settings
+  if jsonNode.hasKey("build"):
+    let build = jsonNode["build"]
+    if build.hasKey("target"): result.buildTarget = build["target"].getStr()
+    if build.hasKey("output_dir"): result.buildOutputDir = build["output_dir"].getStr()
+    if build.hasKey("entry"): result.buildEntry = build["entry"].getStr()
+    if build.hasKey("frontend"): result.buildFrontend = build["frontend"].getStr()
 
-  # Parse output configuration if present
-  if jsonData.hasKey("output"):
-    let output = jsonData["output"]
-    if output.hasKey("dir"):
-      result.buildOutputDir = output["dir"].getStr()
+  # Optimization settings
+  if jsonNode.hasKey("optimization"):
+    let opt = jsonNode["optimization"]
+    if opt.hasKey("enabled"): result.optimizationEnabled = opt["enabled"].getBool()
+    if opt.hasKey("minify_css"): result.optimizationMinifyCss = opt["minify_css"].getBool()
+    if opt.hasKey("minify_js"): result.optimizationMinifyJs = opt["minify_js"].getBool()
+    if opt.hasKey("tree_shake"): result.optimizationTreeShake = opt["tree_shake"].getBool()
 
-  # Parse dev configuration if present
-  if jsonData.hasKey("dev"):
-    let dev = jsonData["dev"]
-    if dev.hasKey("hotReload"):
-      result.devHotReload = dev["hotReload"].getBool()
-    if dev.hasKey("watchPaths"):
-      let paths = dev["watchPaths"].getElems()
-      result.devWatchPaths = @[]
-      for path in paths:
-        result.devWatchPaths.add(path.getStr())
+  # Dev settings
+  if jsonNode.hasKey("dev"):
+    let dev = jsonNode["dev"]
+    if dev.hasKey("hot_reload"): result.devHotReload = dev["hot_reload"].getBool()
+    if dev.hasKey("port"): result.devPort = dev["port"].getInt()
+    if dev.hasKey("auto_open"): result.devAutoOpen = dev["auto_open"].getBool()
 
-proc findProjectConfig*(): string =
-  ## Search for kryon.toml or kryon.json in current directory or ancestors
-  var dir = getCurrentDir()
-  while true:
-    # Prefer TOML over JSON
-    let tomlPath = dir / "kryon.toml"
-    if fileExists(tomlPath):
-      return tomlPath
-
-    let jsonPath = dir / "kryon.json"
-    if fileExists(jsonPath):
-      return jsonPath
-
-    # Move up to parent directory
-    let parent = parentDir(dir)
-    if parent == dir or parent.len == 0:
-      break
-    dir = parent
-
-  return ""
-
-proc loadProjectConfig*(): KryonConfig =
-  ## Load project configuration from file or return defaults
-  let configPath = findProjectConfig()
-
-  if configPath.len == 0:
-    return defaultConfig()
-
-  if configPath.endsWith(".toml"):
-    return loadTomlConfig(configPath)
-  elif configPath.endsWith(".json"):
-    return loadJsonConfig(configPath)
-  else:
-    return defaultConfig()
-
-proc validateConfig*(config: KryonConfig): tuple[valid: bool, errors: seq[string]] =
-  ## Validate configuration and return any errors
-  result.valid = true
-  result.errors = @[]
-
-  # Validate target
-  const validTargets = ["web", "desktop", "terminal", "framebuffer"]
-  if config.buildTarget notin validTargets:
-    result.valid = false
-    result.errors.add("Invalid target: " & config.buildTarget & ". Must be one of: " & validTargets.join(", "))
-
-  # Validate port range
-  if config.devPort < 1 or config.devPort > 65535:
-    result.valid = false
-    result.errors.add("Invalid port: " & $config.devPort & ". Must be between 1 and 65535")
-
-  # Validate window dimensions
-  if config.desktopWindowWidth < 1 or config.desktopWindowHeight < 1:
-    result.valid = false
-    result.errors.add("Invalid window dimensions: " & $config.desktopWindowWidth & "x" & $config.desktopWindowHeight)
-
-  # Validate backend
-  const validBackends = ["sdl3", "terminal", "framebuffer"]
-  if config.desktopBackend notin validBackends:
-    result.valid = false
-    result.errors.add("Invalid desktop backend: " & config.desktopBackend & ". Must be one of: " & validBackends.join(", "))
-
-  # Validate output directory
-  if config.buildOutputDir.len == 0:
-    result.valid = false
-    result.errors.add("Output directory cannot be empty")
+  # Metadata
+  if jsonNode.hasKey("metadata"):
+    let meta = jsonNode["metadata"]
+    if meta.hasKey("created"): result.metadataCreated = meta["created"].getStr()
+    if meta.hasKey("modified"): result.metadataModified = meta["modified"].getStr()
 
 proc configToJson*(config: KryonConfig): JsonNode =
-  ## Convert configuration to JSON for display/export
-  result = %*{
+  ## Convert KryonConfig to JSON
+  result = %* {
     "project": {
       "name": config.projectName,
       "version": config.projectVersion,
@@ -307,112 +198,143 @@ proc configToJson*(config: KryonConfig): JsonNode =
       "target": config.buildTarget,
       "output_dir": config.buildOutputDir,
       "entry": config.buildEntry,
-      "frontend": config.buildFrontend,
-      "optimization": {
-        "enabled": config.optimizationEnabled,
-        "minify_css": config.optimizationMinifyCss,
-        "minify_js": config.optimizationMinifyJs,
-        "tree_shake": config.optimizationTreeShake
-      }
+      "frontend": config.buildFrontend
     },
-    "web": {
-      "generate_separate_files": config.webGenerateSeparateFiles,
-      "include_js_runtime": config.webIncludeJsRuntime,
-      "include_wasm_modules": config.webIncludeWasmModules
+    "optimization": {
+      "enabled": config.optimizationEnabled,
+      "minify_css": config.optimizationMinifyCss,
+      "minify_js": config.optimizationMinifyJs,
+      "tree_shake": config.optimizationTreeShake
     },
     "dev": {
       "hot_reload": config.devHotReload,
       "port": config.devPort,
-      "watch_paths": %config.devWatchPaths,
-      "open_browser": config.devOpenBrowser
-    },
-    "desktop": {
-      "window_width": config.desktopWindowWidth,
-      "window_height": config.desktopWindowHeight,
-      "window_title": config.desktopWindowTitle,
-      "resizable": config.desktopResizable,
-      "vsync": config.desktopVsync,
-      "target_fps": config.desktopTargetFps,
-      "backend": config.desktopBackend
+      "auto_open": config.devAutoOpen
     },
     "metadata": {
       "created": config.metadataCreated,
-      "kryon_version": config.metadataKryonVersion
+      "modified": config.metadataModified
     }
   }
 
+proc configToToml*(config: KryonConfig): string =
+  ## Convert KryonConfig to TOML format
+  result = "# Kryon Project Configuration\n\n"
+
+  result &= "[project]\n"
+  result &= "name = \"" & config.projectName & "\"\n"
+  result &= "version = \"" & config.projectVersion & "\"\n"
+  result &= "author = \"" & config.projectAuthor & "\"\n"
+  result &= "description = \"" & config.projectDescription & "\"\n\n"
+
+  result &= "[build]\n"
+  result &= "target = \"" & config.buildTarget & "\"\n"
+  result &= "output_dir = \"" & config.buildOutputDir & "\"\n"
+  result &= "entry = \"" & config.buildEntry & "\"\n"
+  result &= "frontend = \"" & config.buildFrontend & "\"\n\n"
+
+  result &= "[optimization]\n"
+  result &= "enabled = " & $config.optimizationEnabled & "\n"
+  result &= "minify_css = " & $config.optimizationMinifyCss & "\n"
+  result &= "minify_js = " & $config.optimizationMinifyJs & "\n"
+  result &= "tree_shake = " & $config.optimizationTreeShake & "\n\n"
+
+  result &= "[dev]\n"
+  result &= "hot_reload = " & $config.devHotReload & "\n"
+  result &= "port = " & $config.devPort & "\n"
+  result &= "auto_open = " & $config.devAutoOpen & "\n\n"
+
+  result &= "[metadata]\n"
+  result &= "created = \"" & config.metadataCreated & "\"\n"
+  result &= "modified = \"" & config.metadataModified & "\"\n"
+
+proc findProjectConfig*(): string =
+  ## Find project config file in current directory or parents
+  ## Searches for kryon.toml or kryon.json
+  var currentDir = getCurrentDir()
+
+  while true:
+    # Check for TOML config
+    let tomlPath = currentDir / "kryon.toml"
+    if fileExists(tomlPath):
+      return tomlPath
+
+    # Check for JSON config
+    let jsonPath = currentDir / "kryon.json"
+    if fileExists(jsonPath):
+      return jsonPath
+
+    # Move up one directory
+    let parent = parentDir(currentDir)
+    if parent == currentDir or parent.len == 0:
+      break
+    currentDir = parent
+
+  return ""
+
+proc loadProjectConfig*(): KryonConfig =
+  ## Load project config from file
+  let configPath = findProjectConfig()
+
+  if configPath.len == 0:
+    raise newException(IOError, "No configuration file found (kryon.toml or kryon.json)")
+
+  let content = readFile(configPath)
+
+  if configPath.endsWith(".toml"):
+    let toml = parseSimpleToml(content)
+    result = tomlToConfig(toml)
+  elif configPath.endsWith(".json"):
+    let jsonNode = parseJson(content)
+    result = jsonToConfig(jsonNode)
+  else:
+    raise newException(ValueError, "Unknown config format: " & configPath)
+
 proc writeTomlConfig*(config: KryonConfig, path: string) =
-  ## Write configuration to TOML file
-  var content = ""
+  ## Write config to TOML file
+  let toml = configToToml(config)
+  writeFile(path, toml)
 
-  # Project section
-  content.add("[project]\n")
-  content.add("name = \"" & config.projectName & "\"\n")
-  content.add("version = \"" & config.projectVersion & "\"\n")
-  if config.projectAuthor.len > 0:
-    content.add("author = \"" & config.projectAuthor & "\"\n")
-  if config.projectDescription.len > 0:
-    content.add("description = \"" & config.projectDescription & "\"\n")
-  content.add("\n")
+proc writeJsonConfig*(config: KryonConfig, path: string) =
+  ## Write config to JSON file
+  let jsonNode = configToJson(config)
+  writeFile(path, jsonNode.pretty())
 
-  # Build section
-  content.add("[build]\n")
-  content.add("target = \"" & config.buildTarget & "\"\n")
-  content.add("output_dir = \"" & config.buildOutputDir & "\"\n")
-  if config.buildEntry.len > 0:
-    content.add("entry = \"" & config.buildEntry & "\"\n")
-  if config.buildFrontend.len > 0:
-    content.add("frontend = \"" & config.buildFrontend & "\"\n")
-  content.add("\n")
+proc validateConfig*(config: KryonConfig): tuple[valid: bool, errors: seq[string]] =
+  ## Validate configuration values
+  result.valid = true
+  result.errors = @[]
 
-  # Optimization subsection
-  if config.optimizationEnabled:
-    content.add("[build.optimization]\n")
-    content.add("enabled = true\n")
-    if config.optimizationMinifyCss:
-      content.add("minify_css = true\n")
-    if config.optimizationMinifyJs:
-      content.add("minify_js = true\n")
-    if config.optimizationTreeShake:
-      content.add("tree_shake = true\n")
-    content.add("\n")
+  # Validate project name
+  if config.projectName.len == 0:
+    result.valid = false
+    result.errors.add("Project name cannot be empty")
 
-  # Web section
-  if config.buildTarget == "web":
-    content.add("[web]\n")
-    content.add("generate_separate_files = " & $config.webGenerateSeparateFiles & "\n")
-    content.add("include_js_runtime = " & $config.webIncludeJsRuntime & "\n")
-    content.add("include_wasm_modules = " & $config.webIncludeWasmModules & "\n")
-    content.add("\n")
+  # Validate version format (basic check)
+  if config.projectVersion.len == 0:
+    result.valid = false
+    result.errors.add("Project version cannot be empty")
 
-  # Dev section
-  content.add("[dev]\n")
-  content.add("hot_reload = " & $config.devHotReload & "\n")
-  content.add("port = " & $config.devPort & "\n")
-  if config.devWatchPaths.len > 0:
-    content.add("watch_paths = [\"" & config.devWatchPaths.join("\", \"") & "\"]\n")
-  if config.devOpenBrowser:
-    content.add("open_browser = true\n")
-  content.add("\n")
+  # Validate build target
+  const validTargets = ["web", "desktop", "terminal", "framebuffer"]
+  if config.buildTarget notin validTargets:
+    result.valid = false
+    result.errors.add("Invalid build target: " & config.buildTarget &
+                     " (must be one of: " & validTargets.join(", ") & ")")
 
-  # Desktop section
-  if config.buildTarget == "desktop":
-    content.add("[desktop]\n")
-    content.add("window_width = " & $config.desktopWindowWidth & "\n")
-    content.add("window_height = " & $config.desktopWindowHeight & "\n")
-    content.add("window_title = \"" & config.desktopWindowTitle & "\"\n")
-    content.add("resizable = " & $config.desktopResizable & "\n")
-    content.add("vsync = " & $config.desktopVsync & "\n")
-    content.add("target_fps = " & $config.desktopTargetFps & "\n")
-    content.add("backend = \"" & config.desktopBackend & "\"\n")
-    content.add("\n")
+  # Validate frontend
+  const validFrontends = ["nim", "lua", "c", "js", "ts"]
+  if config.buildFrontend notin validFrontends:
+    result.valid = false
+    result.errors.add("Invalid frontend: " & config.buildFrontend &
+                     " (must be one of: " & validFrontends.join(", ") & ")")
 
-  # Metadata section
-  if config.metadataCreated.len > 0 or config.metadataKryonVersion.len > 0:
-    content.add("[metadata]\n")
-    if config.metadataCreated.len > 0:
-      content.add("created = \"" & config.metadataCreated & "\"\n")
-    if config.metadataKryonVersion.len > 0:
-      content.add("kryon_version = \"" & config.metadataKryonVersion & "\"\n")
+  # Validate output directory
+  if config.buildOutputDir.len == 0:
+    result.valid = false
+    result.errors.add("Build output directory cannot be empty")
 
-  writeFile(path, content)
+  # Validate dev port
+  if config.devPort < 1024 or config.devPort > 65535:
+    result.valid = false
+    result.errors.add("Dev port must be between 1024 and 65535")

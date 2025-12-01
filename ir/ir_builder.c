@@ -618,6 +618,12 @@ void ir_destroy_component(IRComponent* component) {
     if (component->text_content) free(component->text_content);
     if (component->custom_data) free(component->custom_data);
 
+    // Free text layout
+    if (component->text_layout) {
+        ir_text_layout_destroy(component->text_layout);
+        component->text_layout = NULL;
+    }
+
     // Free children array
     if (component->children) {
         free(component->children);
@@ -769,6 +775,12 @@ IRStyle* ir_create_style(void) {
     style->grid_item.row_end = -1;
     style->grid_item.column_start = -1;
     style->grid_item.column_end = -1;
+
+    // Text effect defaults
+    style->text_effect.max_width.type = IR_DIMENSION_PX;
+    style->text_effect.max_width.value = 0.0f;  // 0 means no wrapping
+    style->text_effect.text_direction = IR_TEXT_DIR_AUTO;  // Auto-detect direction
+    style->text_effect.language = NULL;  // No language specified
     style->grid_item.justify_self = IR_ALIGNMENT_START;
     style->grid_item.align_self = IR_ALIGNMENT_START;
 
@@ -792,6 +804,14 @@ void ir_destroy_style(IRStyle* style) {
             ir_transition_destroy(style->transitions[i]);
         }
         free(style->transitions);
+    }
+
+    // Free gradient objects
+    if (style->background.type == IR_COLOR_GRADIENT && style->background.data.gradient) {
+        ir_gradient_destroy(style->background.data.gradient);
+    }
+    if (style->border_color.type == IR_COLOR_GRADIENT && style->border_color.data.gradient) {
+        ir_gradient_destroy(style->border_color.data.gradient);
     }
 
     if (style->font.family) free(style->font.family);
@@ -857,6 +877,13 @@ void ir_set_text_shadow(IRStyle* style, float offset_x, float offset_y, float bl
 void ir_set_opacity(IRStyle* style, float opacity) {
     if (!style) return;
     style->opacity = opacity;
+}
+
+// Text Layout
+void ir_set_text_max_width(IRStyle* style, IRDimensionType type, float value) {
+    if (!style) return;
+    style->text_effect.max_width.type = type;
+    style->text_effect.max_width.value = value;
 }
 
 // Box Shadow and Filters
@@ -939,6 +966,13 @@ void ir_set_padding(IRStyle* style, float top, float right, float bottom, float 
 
 void ir_set_font(IRStyle* style, float size, const char* family, uint8_t r, uint8_t g, uint8_t b, uint8_t a, bool bold, bool italic) {
     if (!style) return;
+
+    // Free old font family before replacing
+    if (style->font.family) {
+        free((void*)style->font.family);
+        style->font.family = NULL;
+    }
+
     style->font.size = size;
     style->font.family = family ? strdup(family) : NULL;
     style->font.color.type = IR_COLOR_SOLID;
@@ -1217,6 +1251,12 @@ void ir_set_text_content(IRComponent* component, const char* text) {
         free(component->text_content);
     }
     component->text_content = text ? strdup(text) : NULL;
+
+    // Invalidate text layout when content changes
+    if (component->text_layout) {
+        ir_text_layout_destroy(component->text_layout);
+        component->text_layout = NULL;
+    }
 
     // Mark component dirty - content changed
     ir_layout_invalidate_cache(component);

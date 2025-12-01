@@ -304,6 +304,26 @@ typedef struct IRTransition {
     uint32_t trigger_state;  // Bitmask of IR_PSEUDO_* states
 } IRTransition;
 
+// Text Direction for BiDi support
+typedef enum {
+    IR_TEXT_DIR_LTR,    // Left-to-right (English, Spanish, etc.)
+    IR_TEXT_DIR_RTL,    // Right-to-left (Arabic, Hebrew, etc.)
+    IR_TEXT_DIR_AUTO    // Auto-detect from first strong character
+} IRTextDirection;
+
+// Text Layout Result (multi-line text)
+typedef struct IRTextLayout {
+    uint32_t line_count;                // Number of lines
+    float* line_widths;                 // Width of each line
+    float* line_heights;                // Height of each line
+    uint32_t* line_start_indices;       // Character offset where each line starts
+    uint32_t* line_end_indices;         // Character offset where each line ends (exclusive)
+    float total_height;                 // Total height of all lines
+    float max_line_width;               // Width of widest line
+    bool needs_reshape;                 // True if text shaping needed (complex scripts)
+    IRTextDirection direction;          // Text direction (LTR/RTL/AUTO)
+} IRTextLayout;
+
 // Text Overflow Behavior
 typedef enum {
     IR_TEXT_OVERFLOW_VISIBLE,   // Show all text (may overflow bounds)
@@ -335,6 +355,10 @@ typedef struct IRTextEffect {
     IRTextFadeType fade_type;
     float fade_length;          // Pixels to fade (0 = no fade)
     IRTextShadow shadow;
+    // Text layout properties
+    IRDimension max_width;      // Maximum width for text wrapping (0 = no limit)
+    IRTextDirection text_direction;  // Text direction (LTR/RTL/AUTO)
+    char* language;             // Language code for text shaping (e.g., "ar", "hi", "th")
 } IRTextEffect;
 
 // Box Shadow (for containers)
@@ -606,13 +630,15 @@ typedef struct IRComponent {
     IRLayoutCache layout_cache;        // Performance cache for layout
     uint32_t dirty_flags;              // Dirty tracking for incremental updates
     bool has_active_animations;        // OPTIMIZATION: Track if this subtree has animations (80% reduction)
+    IRTextLayout* text_layout;         // Cached multi-line text layout (for IR_COMPONENT_TEXT)
 } IRComponent;
 
 // IR Buffer for serialization
 typedef struct IRBuffer {
-    uint8_t* data;
-    size_t size;
-    size_t capacity;
+    uint8_t* data;        // Current read/write position
+    uint8_t* base;        // Original pointer (for free)
+    size_t size;          // Remaining/used bytes
+    size_t capacity;      // Total capacity
 } IRBuffer;
 
 // Forward declarations
@@ -642,5 +668,168 @@ void ir_layout_invalidate_subtree(IRComponent* component);
 void ir_layout_invalidate_cache(IRComponent* component);
 float ir_get_component_intrinsic_width(IRComponent* component);
 float ir_get_component_intrinsic_height(IRComponent* component);
+
+// Text Layout API (defined in ir_layout.c)
+IRTextLayout* ir_text_layout_create(uint32_t max_lines);
+void ir_text_layout_destroy(IRTextLayout* layout);
+void ir_text_layout_compute(IRComponent* component, float max_width, float font_size);
+float ir_text_layout_get_width(IRTextLayout* layout);
+float ir_text_layout_get_height(IRTextLayout* layout);
+
+// Font metrics callback (implemented by backends)
+typedef struct {
+    float (*get_text_width)(const char* text, uint32_t length, float font_size, const char* font_family);
+    float (*get_font_height)(float font_size, const char* font_family);
+    float (*get_word_width)(const char* word, uint32_t length, float font_size, const char* font_family);
+} IRFontMetrics;
+
+// Global font metrics (set by backend)
+extern IRFontMetrics* g_ir_font_metrics;
+void ir_set_font_metrics(IRFontMetrics* metrics);
+
+// ============================================================================
+// Reactive State Manifest System (for hot reload & state persistence)
+// ============================================================================
+
+// Reactive variable value types
+typedef enum {
+    IR_REACTIVE_TYPE_INT,
+    IR_REACTIVE_TYPE_FLOAT,
+    IR_REACTIVE_TYPE_STRING,
+    IR_REACTIVE_TYPE_BOOL,
+    IR_REACTIVE_TYPE_CUSTOM  // For complex types (serialized as JSON)
+} IRReactiveVarType;
+
+// Reactive variable value (union for different types)
+typedef union {
+    int64_t as_int;
+    double as_float;
+    char* as_string;
+    bool as_bool;
+} IRReactiveValue;
+
+// Reactive variable descriptor
+typedef struct {
+    uint32_t id;                    // Unique ID for this reactive variable
+    char* name;                     // Variable name (for debugging/reconnection)
+    IRReactiveVarType type;         // Type of the value
+    IRReactiveValue value;          // Current value
+    uint32_t version;               // Version counter (for change tracking)
+
+    // Metadata for reconnection
+    char* source_location;          // Source file:line where variable was created
+    uint32_t binding_count;         // Number of bindings to components
+} IRReactiveVarDescriptor;
+
+// Binding type (how the binding updates the component)
+typedef enum {
+    IR_BINDING_TEXT,           // Updates text content
+    IR_BINDING_CONDITIONAL,    // Shows/hides component
+    IR_BINDING_ATTRIBUTE,      // Updates a component attribute
+    IR_BINDING_FOR_LOOP,       // Rebuilds for-loop items
+    IR_BINDING_CUSTOM          // Custom update procedure (language-specific)
+} IRBindingType;
+
+// Reactive binding (links component to reactive variable)
+typedef struct {
+    uint32_t component_id;          // ID of the bound component
+    uint32_t reactive_var_id;       // ID of the reactive variable
+    IRBindingType binding_type;     // Type of binding
+    char* expression;               // Expression string (e.g., "$value", "count > 5")
+    char* update_code;              // Language-specific update code (optional)
+} IRReactiveBinding;
+
+// Reactive conditional (for if/else components)
+typedef struct {
+    uint32_t component_id;          // Component that is conditionally shown
+    char* condition;                // Condition expression (e.g., "count > 5")
+    uint32_t* dependent_var_ids;    // Array of reactive var IDs this depends on
+    uint32_t dependent_var_count;
+    bool last_eval_result;          // Last evaluation result (for caching)
+    bool suspended;                 // If true, don't re-initialize (for tab switching)
+} IRReactiveConditional;
+
+// Reactive for-loop (for dynamic lists)
+typedef struct {
+    uint32_t parent_component_id;   // Parent container
+    char* collection_expr;          // Collection expression (e.g., "items")
+    uint32_t collection_var_id;     // Reactive var ID for the collection
+    char* item_template;            // Template for each item (language-specific)
+    uint32_t* child_component_ids;  // Current child components
+    uint32_t child_count;
+} IRReactiveForLoop;
+
+// Complete reactive manifest
+typedef struct {
+    // Reactive variables
+    IRReactiveVarDescriptor* variables;
+    uint32_t variable_count;
+    uint32_t variable_capacity;
+
+    // Bindings
+    IRReactiveBinding* bindings;
+    uint32_t binding_count;
+    uint32_t binding_capacity;
+
+    // Conditionals
+    IRReactiveConditional* conditionals;
+    uint32_t conditional_count;
+    uint32_t conditional_capacity;
+
+    // For-loops
+    IRReactiveForLoop* for_loops;
+    uint32_t for_loop_count;
+    uint32_t for_loop_capacity;
+
+    // Metadata
+    uint32_t next_var_id;
+    uint32_t format_version;  // Manifest format version
+} IRReactiveManifest;
+
+// Reactive manifest management functions
+IRReactiveManifest* ir_reactive_manifest_create(void);
+void ir_reactive_manifest_destroy(IRReactiveManifest* manifest);
+
+// Add reactive variable to manifest
+uint32_t ir_reactive_manifest_add_var(IRReactiveManifest* manifest,
+                                      const char* name,
+                                      IRReactiveVarType type,
+                                      IRReactiveValue value);
+
+// Add binding to manifest
+void ir_reactive_manifest_add_binding(IRReactiveManifest* manifest,
+                                      uint32_t component_id,
+                                      uint32_t reactive_var_id,
+                                      IRBindingType binding_type,
+                                      const char* expression);
+
+// Add conditional to manifest
+void ir_reactive_manifest_add_conditional(IRReactiveManifest* manifest,
+                                         uint32_t component_id,
+                                         const char* condition,
+                                         const uint32_t* dependent_var_ids,
+                                         uint32_t dependent_var_count);
+
+// Add for-loop to manifest
+void ir_reactive_manifest_add_for_loop(IRReactiveManifest* manifest,
+                                      uint32_t parent_component_id,
+                                      const char* collection_expr,
+                                      uint32_t collection_var_id);
+
+// Find reactive variable by name
+IRReactiveVarDescriptor* ir_reactive_manifest_find_var(IRReactiveManifest* manifest,
+                                                       const char* name);
+
+// Get reactive variable by ID
+IRReactiveVarDescriptor* ir_reactive_manifest_get_var(IRReactiveManifest* manifest,
+                                                      uint32_t var_id);
+
+// Update reactive variable value
+bool ir_reactive_manifest_update_var(IRReactiveManifest* manifest,
+                                     uint32_t var_id,
+                                     IRReactiveValue new_value);
+
+// Print manifest (for debugging)
+void ir_reactive_manifest_print(IRReactiveManifest* manifest);
 
 #endif // IR_CORE_H

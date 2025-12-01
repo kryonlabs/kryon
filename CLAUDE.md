@@ -50,18 +50,62 @@ Kryon is a cross-platform UI framework with an intermediate representation (IR) 
 ## Build Commands
 
 ```bash
-# Build the main library
+# Build the IR libraries and desktop backend
 make build
 
 # Build and install CLI
 make install
+nimble build  # Or directly build CLI
 
-# Run examples
-./run_example.sh <example_name>
+# Run examples with run_example.sh
+./run_example.sh <example_name>  # Uses SDL3 renderer by default
+./run_example.sh <example_name> nim terminal  # Use terminal renderer
 
 # Build with debug info
 make build-debug
 ```
+
+## CLI Tool (kryon)
+
+The Kryon CLI provides professional tooling for IR compilation, inspection, and project management:
+
+```bash
+# Compile Nim/Lua/C to Kryon IR (.kir files)
+kryon compile examples/nim/button_demo.nim
+kryon compile app.nim --validate  # Compile and validate
+kryon compile app.nim --no-cache  # Force recompilation
+
+# Inspect IR files
+kryon inspect-ir app.kir           # Quick metadata
+kryon inspect-detailed app.kir      # Full analysis with stats
+kryon inspect-detailed app.kir --tree  # Include tree visualization
+kryon tree app.kir --max-depth=5    # Visual component tree
+
+# Validate IR format
+kryon validate app.kir
+
+# Compare IR files
+kryon diff old.kir new.kir
+
+# Project management
+kryon new <name>                    # Create project (kryon.json)
+kryon init <name> --template=nim    # Create project (kryon.toml)
+kryon config                        # Show config summary
+kryon config show                   # Full JSON output
+kryon config validate               # Validate configuration
+
+# Run applications
+kryon run app.nim                   # Compile and run
+kryon dev app.nim                   # Hot reload mode
+```
+
+### IR Compilation Cache
+
+The CLI uses hash-based caching in `.kryon_cache/`:
+- `index.json` - Cache metadata
+- `<hash>.kir` - Cached IR files
+- Cache invalidation on source changes
+- Instant recompilation on cache hit
 
 ## Common Patterns
 

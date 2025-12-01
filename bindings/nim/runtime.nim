@@ -259,6 +259,17 @@ proc kryon_component_set_line_height*(component: ptr IRComponent, line_height: c
   else:
     ir_set_line_height(style, line_height)
 
+proc kryon_component_set_max_text_width*(component: ptr IRComponent, max_width: cfloat) =
+  ## Set maximum text width for wrapping (in pixels)
+  if component.isNil: return
+  let style = ir_get_style(component)
+  if style.isNil:
+    let newStyle = ir_create_style()
+    ir_set_text_max_width(newStyle, IR_DIMENSION_PX, max_width)
+    ir_set_style(component, newStyle)
+  else:
+    ir_set_text_max_width(style, IR_DIMENSION_PX, max_width)
+
 proc kryon_component_set_text_align*(component: ptr IRComponent, align: IRTextAlign) =
   ## Set text alignment (left, center, right, justify)
   if component.isNil: return

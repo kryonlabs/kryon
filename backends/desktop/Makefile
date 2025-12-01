@@ -29,9 +29,12 @@ else
     CFLAGS += -DDISABLE_SDL3
 endif
 
-# Source files
-DESKTOP_SOURCES = ir_desktop_renderer.c debug_backend.c
-DESKTOP_HEADERS = ir_desktop_renderer.h debug_backend.h
+# Source files (modular architecture - 10 modules)
+DESKTOP_SOURCES = ir_desktop_renderer.c desktop_globals.c \
+                  desktop_fonts.c desktop_effects.c desktop_layout.c \
+                  desktop_markdown.c desktop_input.c desktop_rendering.c \
+                  debug_backend.c canvas.c
+DESKTOP_HEADERS = ir_desktop_renderer.h desktop_internal.h debug_backend.h
 
 # Output files
 DESKTOP_STATIC_LIB = $(BUILD_DIR)/libkryon_desktop.a
@@ -42,7 +45,7 @@ DESKTOP_TEST = $(BUILD_DIR)/desktop_test
 INCLUDES = -I$(INCLUDE_DIR) -I$(INCLUDE_IR_DIR)
 
 # Link libraries (excluding IR libs which are added separately)
-LINK_LIBS = -L$(BUILD_DIR) -lkryon_core -lkryon_ir $(LIBS)
+LINK_LIBS = -L$(BUILD_DIR) -lkryon_ir $(LIBS)
 
 # Default target
 all: $(DESKTOP_STATIC_LIB) $(DESKTOP_SHARED_LIB)
@@ -51,20 +54,23 @@ all: $(DESKTOP_STATIC_LIB) $(DESKTOP_SHARED_LIB)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-# Compile object files
-ir_desktop_renderer.o: ir_desktop_renderer.c $(DESKTOP_HEADERS)
-	$(CC) $(CFLAGS) $(INCLUDES) -c ir_desktop_renderer.c -o ir_desktop_renderer.o
+# Object files list
+DESKTOP_OBJS = ir_desktop_renderer.o desktop_globals.o \
+               desktop_fonts.o desktop_effects.o desktop_layout.o \
+               desktop_markdown.o desktop_input.o desktop_rendering.o \
+               debug_backend.o canvas.o
 
-debug_backend.o: debug_backend.c debug_backend.h
-	$(CC) $(CFLAGS) $(INCLUDES) -c debug_backend.c -o debug_backend.o
+# Compile object files
+%.o: %.c $(DESKTOP_HEADERS)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 # Create static library
-$(DESKTOP_STATIC_LIB): $(BUILD_DIR) ir_desktop_renderer.o debug_backend.o
-	$(AR) $(ARFLAGS) $@ ir_desktop_renderer.o debug_backend.o
+$(DESKTOP_STATIC_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)
+	$(AR) $(ARFLAGS) $@ $(DESKTOP_OBJS)
 
 # Create shared library
-$(DESKTOP_SHARED_LIB): $(BUILD_DIR) ir_desktop_renderer.o debug_backend.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_desktop_renderer.o debug_backend.o -L$(BUILD_DIR) -lkryon_core -lkryon_ir $(LIBS)
+$(DESKTOP_SHARED_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)
+	$(CC) $(CFLAGS) -shared -o $@ $(DESKTOP_OBJS) -L$(BUILD_DIR) -lkryon_ir $(LIBS)
 
 # Build test program
 $(DESKTOP_TEST): $(DESKTOP_STATIC_LIB) desktop_test.c

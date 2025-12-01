@@ -1,6 +1,8 @@
 ## Universal IR Core Bindings for Nim
 ## Direct bindings to the new IR system - no legacy compatibility layers
 
+import os
+
 # Type definitions from ir_core.h
 type
   IRComponentType* {.size: sizeof(cint).} = enum
@@ -58,7 +60,7 @@ type
 
 # Core structures
 type
-  IRDimension* = object
+  IRDimension* {.importc: "IRDimension", header: "ir_core.h".} = object
     `type`*: IRDimensionType
     value*: cfloat
 
@@ -112,32 +114,32 @@ template `a=`*(c: var IRColor, v: uint8) = c.data.a = v
 template `var_id=`*(c: var IRColor, v: uint16) = c.data.var_id = v
 
 type
-  IRSpacing* = object
+  IRSpacing* {.importc: "IRSpacing", header: "ir_core.h".} = object
     top*: cfloat
     right*: cfloat
     bottom*: cfloat
     left*: cfloat
 
-  IRFont* = object
+  IRFont* {.importc: "IRFont", header: "ir_core.h".} = object
     family*: cstring
     size*: cfloat
     color*: IRColor
     bold*: bool
     italic*: bool
 
-  IRBorder* = object
+  IRBorder* {.importc: "IRBorder", header: "ir_core.h".} = object
     width*: cfloat
     color*: IRColor
     radius*: uint8
 
-  IRTypography* = object
+  IRTypography* {.importc: "IRTypography", header: "ir_core.h".} = object
     size*: cfloat
     color*: IRColor
     bold*: bool
     italic*: bool
     family*: cstring
 
-  IRFlexbox* = object
+  IRFlexbox* {.importc: "IRFlexbox", header: "ir_core.h".} = object
     wrap*: bool
     gap*: uint32
     main_axis*: IRAlignment
@@ -150,6 +152,24 @@ type
   IRPositionMode* {.size: sizeof(cint).} = enum
     IR_POSITION_RELATIVE = 0
     IR_POSITION_ABSOLUTE
+
+  # Text Direction for BiDi support
+  IRTextDirection* {.size: sizeof(cint).} = enum
+    IR_TEXT_DIR_LTR = 0   # Left-to-right (English, Spanish, etc.)
+    IR_TEXT_DIR_RTL       # Right-to-left (Arabic, Hebrew, etc.)
+    IR_TEXT_DIR_AUTO      # Auto-detect from first strong character
+
+  # Text Layout Result (multi-line text)
+  IRTextLayout* {.importc: "IRTextLayout", header: "ir_core.h".} = object
+    line_count*: uint32              # Number of lines
+    line_widths*: ptr cfloat         # Width of each line
+    line_heights*: ptr cfloat        # Height of each line
+    line_start_indices*: ptr uint32  # Character offset where each line starts
+    line_end_indices*: ptr uint32    # Character offset where each line ends
+    total_height*: cfloat            # Total height of all lines
+    max_line_width*: cfloat          # Width of widest line
+    needs_reshape*: bool             # True if text shaping needed
+    direction*: IRTextDirection      # Text direction (LTR/RTL/AUTO)
 
   # Text Overflow Behavior
   IRTextOverflowType* {.size: sizeof(cint).} = enum
@@ -280,6 +300,7 @@ proc ir_set_z_index*(style: ptr IRStyle; z_index: uint32) {.importc, cdecl, head
 proc ir_set_text_overflow*(style: ptr IRStyle; overflow: IRTextOverflowType) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_text_fade*(style: ptr IRStyle; fade_type: IRTextFadeType; fade_length: cfloat) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_text_shadow*(style: ptr IRStyle; offset_x, offset_y, blur_radius: cfloat; r, g, b, a: uint8) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_set_text_max_width*(style: ptr IRStyle; dimension_type: IRDimensionType; value: cfloat) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_opacity*(style: ptr IRStyle; opacity: cfloat) {.importc, cdecl, header: "ir_builder.h".}
 
 # Layout Management
@@ -287,6 +308,13 @@ proc ir_create_layout*(): ptr IRLayout {.importc, cdecl, header: "ir_builder.h".
 proc ir_destroy_layout*(layout: ptr IRLayout) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_layout*(component: ptr IRComponent; layout: ptr IRLayout) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_get_layout*(component: ptr IRComponent): ptr IRLayout {.importc, cdecl, header: "ir_builder.h".}
+
+# Text Layout API (multi-line text wrapping)
+proc ir_text_layout_create*(max_lines: uint32): ptr IRTextLayout {.importc, cdecl, header: "ir_core.h".}
+proc ir_text_layout_destroy*(layout: ptr IRTextLayout) {.importc, cdecl, header: "ir_core.h".}
+proc ir_text_layout_compute*(component: ptr IRComponent; max_width: cfloat; font_size: cfloat) {.importc, cdecl, header: "ir_core.h".}
+proc ir_text_layout_get_width*(layout: ptr IRTextLayout): cfloat {.importc, cdecl, header: "ir_core.h".}
+proc ir_text_layout_get_height*(layout: ptr IRTextLayout): cfloat {.importc, cdecl, header: "ir_core.h".}
 
 # Layout Property Helpers
 proc ir_set_flexbox*(layout: ptr IRLayout; wrap: bool; gap: uint32; main_axis: IRAlignment; cross_axis: IRAlignment) {.importc, cdecl, header: "ir_builder.h".}
@@ -422,6 +450,17 @@ proc ir_set_gap*(layout: ptr IRLayout; gap: uint32) =
 # Serialization
 proc ir_serialize_binary*(root: ptr IRComponent; filename: cstring): bool {.importc, cdecl, header: "ir_serialization.h".}
 proc ir_deserialize_binary*(filename: cstring): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
+
+# IR Serialization
+{.passC: "-I" & currentSourcePath().parentDir() & "/../../ir".}
+
+# JSON Serialization (write only - read not implemented yet)
+proc ir_write_json_file*(root: ptr IRComponent; filename: cstring): bool {.importc, cdecl, header: "ir_serialization.h".}
+proc ir_serialize_json*(root: ptr IRComponent): cstring {.importc, cdecl, header: "ir_serialization.h".}
+
+# Binary Serialization (fully implemented)
+proc ir_write_binary_file*(root: ptr IRComponent; filename: cstring): bool {.importc, cdecl, header: "ir_serialization.h".}
+proc ir_read_binary_file*(filename: cstring): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
 
 # Content Management
 proc ir_set_text_content*(component: ptr IRComponent; text: cstring) {.importc, cdecl, header: "ir_builder.h".}
@@ -656,3 +695,343 @@ proc ir_breakpoint_set_height*(style: ptr IRStyle; breakpoint_index: uint8; dim_
 proc ir_breakpoint_set_visible*(style: ptr IRStyle; breakpoint_index: uint8; visible: bool) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_breakpoint_set_opacity*(style: ptr IRStyle; breakpoint_index: uint8; opacity: cfloat) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_breakpoint_set_layout_mode*(style: ptr IRStyle; breakpoint_index: uint8; mode: IRLayoutMode) {.importc, cdecl, header: "ir_builder.h".}
+
+# ============================================================================
+# Text Shaping API (HarfBuzz integration)
+# ============================================================================
+
+type
+  IRShapeDirection* {.size: sizeof(cint).} = enum
+    IR_SHAPE_DIRECTION_LTR = 0    # Left-to-right
+    IR_SHAPE_DIRECTION_RTL        # Right-to-left
+    IR_SHAPE_DIRECTION_TTB        # Top-to-bottom
+    IR_SHAPE_DIRECTION_BTT        # Bottom-to-top
+    IR_SHAPE_DIRECTION_AUTO       # Auto-detect from script
+
+  IRGlyphInfo* {.importc, header: "ir_text_shaping.h".} = object
+    glyph_id*: uint32
+    cluster*: uint32
+    x_advance*: cfloat
+    y_advance*: cfloat
+    x_offset*: cfloat
+    y_offset*: cfloat
+
+  IRShapedText* {.importc, header: "ir_text_shaping.h".} = object
+    glyphs*: ptr IRGlyphInfo
+    glyph_count*: uint32
+    total_width*: cfloat
+    total_height*: cfloat
+    hb_buffer*: pointer
+
+  IRShapingFont* {.importc: "IRFont", header: "ir_text_shaping.h".} = object
+    hb_font*: pointer
+    hb_face*: pointer
+    hb_blob*: pointer
+    font_path*: cstring
+    size*: cfloat
+    scale*: cfloat
+
+  IRShapeOptions* {.importc, header: "ir_text_shaping.h".} = object
+    direction*: IRShapeDirection
+    language*: cstring
+    script*: cstring
+    features*: cstringArray
+    feature_count*: uint32
+
+# Text shaping system initialization
+proc ir_text_shaping_init*(): bool {.importc, cdecl, header: "ir_text_shaping.h".}
+proc ir_text_shaping_shutdown*() {.importc, cdecl, header: "ir_text_shaping.h".}
+proc ir_text_shaping_available*(): bool {.importc, cdecl, header: "ir_text_shaping.h".}
+
+# Font management
+proc ir_font_load*(font_path: cstring; size: cfloat): ptr IRShapingFont {.importc, cdecl, header: "ir_text_shaping.h".}
+proc ir_font_destroy*(font: ptr IRShapingFont) {.importc, cdecl, header: "ir_text_shaping.h".}
+proc ir_font_set_size*(font: ptr IRShapingFont; size: cfloat) {.importc, cdecl, header: "ir_text_shaping.h".}
+
+# Text shaping
+proc ir_shape_text*(
+  font: ptr IRShapingFont;
+  text: cstring;
+  text_length: uint32;
+  options: ptr IRShapeOptions
+): ptr IRShapedText {.importc, cdecl, header: "ir_text_shaping.h".}
+
+proc ir_shaped_text_destroy*(shaped_text: ptr IRShapedText) {.importc, cdecl, header: "ir_text_shaping.h".}
+proc ir_shaped_text_get_width*(shaped_text: ptr IRShapedText): cfloat {.importc, cdecl, header: "ir_text_shaping.h".}
+proc ir_shaped_text_get_height*(shaped_text: ptr IRShapedText): cfloat {.importc, cdecl, header: "ir_text_shaping.h".}
+
+# ============================================================================
+# Bidirectional Text (BiDi) API
+# ============================================================================
+
+type
+  IRBidiDirection* {.size: sizeof(cint).} = enum
+    IR_BIDI_DIR_LTR = 0      # Left-to-right
+    IR_BIDI_DIR_RTL          # Right-to-left
+    IR_BIDI_DIR_WEAK_LTR     # Weak LTR (auto-detect, prefer LTR)
+    IR_BIDI_DIR_WEAK_RTL     # Weak RTL (auto-detect, prefer RTL)
+    IR_BIDI_DIR_NEUTRAL      # Neutral (auto-detect from content)
+
+  IRBidiResult* {.importc, header: "ir_text_shaping.h".} = object
+    visual_to_logical*: ptr uint32
+    logical_to_visual*: ptr uint32
+    embedding_levels*: ptr uint8
+    base_direction*: IRBidiDirection
+    length*: uint32
+
+# BiDi functions
+proc ir_bidi_available*(): bool {.importc, cdecl, header: "ir_text_shaping.h".}
+
+proc ir_bidi_detect_direction*(text: cstring; length: uint32): IRBidiDirection {.importc, cdecl, header: "ir_text_shaping.h".}
+
+proc ir_bidi_reorder*(
+  text: ptr uint32;
+  length: uint32;
+  base_dir: IRBidiDirection
+): ptr IRBidiResult {.importc, cdecl, header: "ir_text_shaping.h".}
+
+proc ir_bidi_utf8_to_utf32*(
+  utf8_text: cstring;
+  utf8_length: uint32;
+  out_length: ptr uint32
+): ptr uint32 {.importc, cdecl, header: "ir_text_shaping.h".}
+
+proc ir_bidi_result_destroy*(result: ptr IRBidiResult) {.importc, cdecl, header: "ir_text_shaping.h".}
+
+# ============================================================================
+# Hot Reload System API
+# ============================================================================
+
+type
+  IRFileEventType* {.size: sizeof(cint).} = enum
+    IR_FILE_EVENT_CREATED = 0
+    IR_FILE_EVENT_MODIFIED
+    IR_FILE_EVENT_DELETED
+    IR_FILE_EVENT_MOVED
+
+  IRReloadResult* {.size: sizeof(cint).} = enum
+    IR_RELOAD_SUCCESS = 0
+    IR_RELOAD_BUILD_FAILED
+    IR_RELOAD_NO_CHANGES
+    IR_RELOAD_ERROR
+
+  IRFileEvent* {.importc, header: "ir_hot_reload.h".} = object
+    `type`*: IRFileEventType
+    path*: cstring
+    old_path*: cstring
+    timestamp*: uint64
+
+  IRFileWatcher* {.importc, header: "ir_hot_reload.h".} = object
+  IRStateSnapshot* {.importc, header: "ir_hot_reload.h".} = object
+  IRHotReloadContext* {.importc, header: "ir_hot_reload.h".} = object
+
+  IRFileWatchCallback* = proc(event: ptr IRFileEvent; user_data: pointer) {.cdecl.}
+  IRRebuildCallback* = proc(user_data: pointer): ptr IRComponent {.cdecl.}
+
+# File watcher functions
+proc ir_file_watcher_create*(): ptr IRFileWatcher {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_file_watcher_add_path*(
+  watcher: ptr IRFileWatcher;
+  path: cstring;
+  recursive: bool
+): bool {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_file_watcher_remove_path*(
+  watcher: ptr IRFileWatcher;
+  path: cstring
+): bool {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_file_watcher_set_callback*(
+  watcher: ptr IRFileWatcher;
+  callback: IRFileWatchCallback;
+  user_data: pointer
+) {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_file_watcher_poll*(
+  watcher: ptr IRFileWatcher;
+  timeout_ms: cint
+): cint {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_file_watcher_is_active*(watcher: ptr IRFileWatcher): bool {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_file_watcher_destroy*(watcher: ptr IRFileWatcher) {.importc, cdecl, header: "ir_hot_reload.h".}
+
+# State preservation functions
+proc ir_capture_state*(root: ptr IRComponent): ptr IRStateSnapshot {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_restore_state*(
+  root: ptr IRComponent;
+  snapshot: ptr IRStateSnapshot
+) {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_state_snapshot_destroy*(snapshot: ptr IRStateSnapshot) {.importc, cdecl, header: "ir_hot_reload.h".}
+
+# Hot reload context functions
+proc ir_hot_reload_create*(): ptr IRHotReloadContext {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_hot_reload_set_rebuild_callback*(
+  ctx: ptr IRHotReloadContext;
+  callback: IRRebuildCallback;
+  user_data: pointer
+) {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_hot_reload_watch_file*(
+  ctx: ptr IRHotReloadContext;
+  path: cstring
+): bool {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_hot_reload_watch_directory*(
+  ctx: ptr IRHotReloadContext;
+  path: cstring
+): bool {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_hot_reload_poll*(
+  ctx: ptr IRHotReloadContext;
+  current_root: ptr ptr IRComponent
+): IRReloadResult {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_hot_reload_set_enabled*(
+  ctx: ptr IRHotReloadContext;
+  enabled: bool
+) {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_hot_reload_is_enabled*(ctx: ptr IRHotReloadContext): bool {.importc, cdecl, header: "ir_hot_reload.h".}
+
+proc ir_hot_reload_destroy*(ctx: ptr IRHotReloadContext) {.importc, cdecl, header: "ir_hot_reload.h".}
+
+# ============================================================================
+# IR Buffer for Serialization
+# ============================================================================
+
+type
+  IRBuffer* {.importc: "IRBuffer", header: "ir_core.h".} = object
+    data*: ptr uint8
+    base*: ptr uint8
+    size*: csize_t
+    capacity*: csize_t
+
+# ============================================================================
+# Reactive Manifest Types and Functions
+# ============================================================================
+
+type
+  IRReactiveVarType* {.size: sizeof(cint).} = enum
+    IR_REACTIVE_TYPE_INT = 0
+    IR_REACTIVE_TYPE_FLOAT = 1
+    IR_REACTIVE_TYPE_STRING = 2
+    IR_REACTIVE_TYPE_BOOL = 3
+    IR_REACTIVE_TYPE_CUSTOM = 4
+
+  IRBindingType* {.size: sizeof(cint).} = enum
+    IR_BINDING_TEXT = 0
+    IR_BINDING_CONDITIONAL = 1
+    IR_BINDING_ATTRIBUTE = 2
+    IR_BINDING_FOR_LOOP = 3
+    IR_BINDING_CUSTOM = 4
+
+  IRReactiveValue* {.importc: "IRReactiveValue", header: "ir_core.h", union.} = object
+    as_int*: int32
+    as_float*: float64
+    as_string*: cstring
+    as_bool*: bool
+
+  IRReactiveVarDescriptor* {.importc: "IRReactiveVarDescriptor", header: "ir_core.h".} = object
+    id*: uint32
+    name*: cstring
+    `type`*: IRReactiveVarType
+    value*: IRReactiveValue
+    version*: uint32
+    source_location*: cstring
+    binding_count*: uint32
+
+  IRReactiveBinding* {.importc: "IRReactiveBinding", header: "ir_core.h".} = object
+    component_id*: uint32
+    reactive_var_id*: uint32
+    binding_type*: IRBindingType
+    expression*: cstring
+    update_code*: cstring
+
+  IRReactiveConditional* {.importc: "IRReactiveConditional", header: "ir_core.h".} = object
+    component_id*: uint32
+    condition*: cstring
+    last_eval_result*: bool
+    suspended*: bool
+    dependent_var_ids*: ptr uint32
+    dependent_var_count*: uint32
+
+  IRReactiveForLoop* {.importc: "IRReactiveForLoop", header: "ir_core.h".} = object
+    parent_component_id*: uint32
+    collection_expr*: cstring
+    collection_var_id*: uint32
+    item_template*: cstring
+    child_component_ids*: ptr uint32
+    child_count*: uint32
+
+  IRReactiveManifest* {.importc: "IRReactiveManifest", header: "ir_core.h".} = object
+    variables*: ptr IRReactiveVarDescriptor
+    variable_count*: uint32
+    variable_capacity*: uint32
+    bindings*: ptr IRReactiveBinding
+    binding_count*: uint32
+    binding_capacity*: uint32
+    conditionals*: ptr IRReactiveConditional
+    conditional_count*: uint32
+    conditional_capacity*: uint32
+    for_loops*: ptr IRReactiveForLoop
+    for_loop_count*: uint32
+    for_loop_capacity*: uint32
+    next_var_id*: uint32
+    format_version*: uint32
+
+# Reactive manifest management functions
+proc ir_reactive_manifest_create*(): ptr IRReactiveManifest {.importc, cdecl, header: "ir_core.h".}
+proc ir_reactive_manifest_destroy*(manifest: ptr IRReactiveManifest) {.importc, cdecl, header: "ir_core.h".}
+
+proc ir_reactive_manifest_add_var*(
+  manifest: ptr IRReactiveManifest;
+  name: cstring;
+  `type`: IRReactiveVarType;
+  value: IRReactiveValue
+): uint32 {.importc, cdecl, header: "ir_core.h".}
+
+proc ir_reactive_manifest_add_binding*(
+  manifest: ptr IRReactiveManifest;
+  component_id: uint32;
+  reactive_var_id: uint32;
+  binding_type: IRBindingType;
+  expression: cstring
+) {.importc, cdecl, header: "ir_core.h".}
+
+proc ir_reactive_manifest_add_conditional*(
+  manifest: ptr IRReactiveManifest;
+  component_id: uint32;
+  condition: cstring;
+  dependent_var_ids: ptr uint32;
+  dependent_var_count: uint32
+) {.importc, cdecl, header: "ir_core.h".}
+
+proc ir_reactive_manifest_add_for_loop*(
+  manifest: ptr IRReactiveManifest;
+  parent_component_id: uint32;
+  collection_expr: cstring;
+  collection_var_id: uint32
+) {.importc, cdecl, header: "ir_core.h".}
+
+proc ir_reactive_manifest_find_var*(
+  manifest: ptr IRReactiveManifest;
+  name: cstring
+): ptr IRReactiveVarDescriptor {.importc, cdecl, header: "ir_core.h".}
+
+proc ir_reactive_manifest_get_var*(
+  manifest: ptr IRReactiveManifest;
+  var_id: uint32
+): ptr IRReactiveVarDescriptor {.importc, cdecl, header: "ir_core.h".}
+
+proc ir_reactive_manifest_update_var*(
+  manifest: ptr IRReactiveManifest;
+  var_id: uint32;
+  new_value: IRReactiveValue
+): bool {.importc, cdecl, header: "ir_core.h".}
+
+proc ir_reactive_manifest_print*(manifest: ptr IRReactiveManifest) {.importc, cdecl, header: "ir_core.h".}

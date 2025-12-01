@@ -1,8 +1,16 @@
 ## Desktop IR Renderer Bindings for Nim
 ## Direct bindings to the desktop backend of the Universal IR system
 
+import os
+
 # Import core IR bindings
 import ir_core
+
+# Add include path for desktop backend headers
+{.passC: "-I" & currentSourcePath().parentDir() & "/../../backends/desktop".}
+
+# Link against desktop backend library
+{.passL: "-L" & currentSourcePath().parentDir() & "/../../build -lkryon_desktop -lkryon_ir".}
 
 # Types from ir_desktop_renderer.h
 type
