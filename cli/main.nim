@@ -921,11 +921,26 @@ proc main*() =
     case kind
     of cmdArgument:
       args.add(key)
-    of cmdLongOption, cmdShortOption:
+    of cmdLongOption:
       case key
       of "help", "h": showHelp()
       of "version", "v": showVersion()
-      else: discard
+      else:
+        # Pass other long options to command handlers
+        if val != "":
+          args.add("--" & key & "=" & val)
+        else:
+          args.add("--" & key)
+    of cmdShortOption:
+      case key
+      of "help", "h": showHelp()
+      of "version", "v": showVersion()
+      else:
+        # Pass other short options to command handlers
+        if val != "":
+          args.add("-" & key & "=" & val)
+        else:
+          args.add("-" & key)
     of cmdEnd: break
 
   if args.len == 0:

@@ -48,6 +48,18 @@ IRComponent* ir_read_json_file(const char* filename);
 char* ir_serialize_json_v2(IRComponent* root);
 bool ir_write_json_v2_file(IRComponent* root, const char* filename);
 
+// JSON v2 Serialization with Reactive Manifest
+char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* manifest);
+bool ir_write_json_v2_file_with_manifest(IRComponent* root, IRReactiveManifest* manifest, const char* filename);
+
+// JSON v2 Deserialization
+IRComponent* ir_deserialize_json_v2(const char* json_string);
+IRComponent* ir_read_json_v2_file(const char* filename);
+
+// JSON v2 Deserialization with Reactive Manifest
+IRComponent* ir_deserialize_json_v2_with_manifest(const char* json_string, IRReactiveManifest** manifest);
+IRComponent* ir_read_json_v2_file_with_manifest(const char* filename, IRReactiveManifest** manifest);
+
 // Buffer Management
 IRBuffer* ir_buffer_create(size_t initial_capacity);
 IRBuffer* ir_buffer_create_from_file(const char* filename);

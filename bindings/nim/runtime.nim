@@ -795,9 +795,9 @@ proc run*(app: KryonApp) =
   let serializeTarget = getEnv("KRYON_SERIALIZE_IR")
   if serializeTarget != "":
     echo "Serializing IR to: ", serializeTarget
-    # Write with null manifest (no reactive state to preserve during compilation)
-    if ir_serialization.ir_write_binary_file_with_manifest(app.root, nil, cstring(serializeTarget)):
-      echo "✓ IR serialized successfully"
+    # Write JSON v2 format with null manifest (frontends always output .kir JSON files)
+    if ir_serialization.ir_write_json_v2_file_with_manifest(app.root, nil, cstring(serializeTarget)):
+      echo "✓ IR serialized successfully (JSON format)"
       quit(0)
     else:
       echo "✗ Failed to serialize IR"

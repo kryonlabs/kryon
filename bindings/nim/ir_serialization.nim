@@ -37,3 +37,15 @@ proc ir_read_json_file*(filename: cstring): ptr IRComponent {.importc, cdecl, he
 # JSON v2 serialization (complete property coverage)
 proc ir_serialize_json_v2*(root: ptr IRComponent): cstring {.importc, cdecl, header: "ir_serialization.h".}
 proc ir_write_json_v2_file*(root: ptr IRComponent; filename: cstring): bool {.importc, cdecl, header: "ir_serialization.h".}
+
+# JSON v2 serialization with reactive manifest
+proc ir_serialize_json_v2_with_manifest*(root: ptr IRComponent; manifest: ptr IRReactiveManifest): cstring {.importc, cdecl, header: "ir_serialization.h".}
+proc ir_write_json_v2_file_with_manifest*(root: ptr IRComponent; manifest: ptr IRReactiveManifest; filename: cstring): bool {.importc, cdecl, header: "ir_serialization.h".}
+
+# JSON v2 deserialization
+proc ir_deserialize_json_v2*(json_string: cstring): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
+proc ir_read_json_v2_file*(filename: cstring): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
+
+# JSON v2 deserialization with reactive manifest
+proc ir_deserialize_json_v2_with_manifest*(json_string: cstring; manifest: ptr ptr IRReactiveManifest): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
+proc ir_read_json_v2_file_with_manifest*(filename: cstring; manifest: ptr ptr IRReactiveManifest): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}

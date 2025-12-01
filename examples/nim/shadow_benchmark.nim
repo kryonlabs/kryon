@@ -1,4 +1,4 @@
-import ../../bindings/nim/kryon_dsl
+0BSD0BSD0BSDimport ../../bindings/nim/kryon_dsl
 
 # Shadow Benchmark - 100 shadowed text elements
 # Before optimization: ~10 FPS

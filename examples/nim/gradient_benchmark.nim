@@ -1,4 +1,4 @@
-import ../../bindings/nim/kryon_dsl
+0BSD0BSD0BSD0BSDimport ../../bindings/nim/kryon_dsl
 
 # Gradient Benchmark - 20 conic gradients
 # Before optimization: ~20 FPS

@@ -1,4 +1,4 @@
-## Debug test for padding issue - shows exact bounds of each component
+0BSD## Debug test for padding issue - shows exact bounds of each component
 
 import kryon_dsl
 

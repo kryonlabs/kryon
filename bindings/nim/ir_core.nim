@@ -1,4 +1,4 @@
-## Universal IR Core Bindings for Nim
+0BSD## Universal IR Core Bindings for Nim
 ## Direct bindings to the new IR system - no legacy compatibility layers
 
 import os
