@@ -212,6 +212,7 @@ typedef struct kryon_component {
 
 // Command types
 typedef enum {
+    // Core commands (0-99)
     KRYON_CMD_DRAW_RECT      = 0,
     KRYON_CMD_DRAW_TEXT      = 1,
     KRYON_CMD_DRAW_LINE      = 2,
@@ -223,7 +224,22 @@ typedef enum {
     KRYON_CMD_SET_TRANSFORM  = 8,
     KRYON_CMD_PUSH_TRANSFORM = 9,
     KRYON_CMD_POP_TRANSFORM  = 10,
-    KRYON_CMD_DRAW_POLYGON   = 11
+    KRYON_CMD_DRAW_POLYGON   = 11,
+
+    // Plugin commands (100-255)
+    KRYON_CMD_PLUGIN_START   = 100,
+
+    // Canvas plugin commands
+    KRYON_CMD_CANVAS_CIRCLE  = 100,
+    KRYON_CMD_CANVAS_ELLIPSE = 101,
+    KRYON_CMD_CANVAS_ARC     = 102,
+
+    // Tilemap plugin commands
+    KRYON_CMD_TILEMAP_CREATE = 103,
+    KRYON_CMD_TILEMAP_SET    = 104,
+    KRYON_CMD_TILEMAP_RENDER = 105,
+
+    KRYON_CMD_PLUGIN_END     = 255
 } kryon_command_type_t;
 
 // Command structures
@@ -277,6 +293,35 @@ typedef struct {
             // Store vertices inline to avoid pointer issues (max 16 vertices = 32 floats)
             kryon_fp_t vertex_storage[32];
         } draw_polygon;
+
+        // Plugin command structures
+        struct {
+            kryon_fp_t cx, cy;      // Center position
+            kryon_fp_t radius;       // Circle radius
+            uint32_t color;          // Fill/stroke color
+            bool filled;             // true = filled, false = outline
+        } canvas_circle;
+        struct {
+            kryon_fp_t cx, cy;      // Center position
+            kryon_fp_t rx, ry;       // X and Y radii
+            uint32_t color;          // Fill/stroke color
+            bool filled;             // true = filled, false = outline
+        } canvas_ellipse;
+        struct {
+            kryon_fp_t cx, cy;      // Center position
+            kryon_fp_t radius;       // Arc radius
+            kryon_fp_t start_angle;  // Start angle in radians
+            kryon_fp_t end_angle;    // End angle in radians
+            uint32_t color;          // Stroke color
+        } canvas_arc;
+
+        // Tilemap plugin structures
+        struct {
+            int32_t x, y;            // Render position in pixels
+            uint8_t layer;           // Layer index
+            uint16_t width, height;  // Tilemap dimensions in tiles
+            uint16_t tile_width, tile_height;  // Tile size in pixels
+        } tilemap_render;
     } data;
 } kryon_command_t;
 

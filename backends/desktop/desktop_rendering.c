@@ -58,6 +58,7 @@
 #include "desktop_internal.h"
 #include "../../ir/ir_serialization.h"
 #include "../../ir/ir_style_vars.h"
+#include "../../ir/ir_plugin.h"
 #include "../../core/include/kryon_canvas.h"
 
 #ifdef ENABLE_SDL3
@@ -926,6 +927,10 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                             break;
                         }
                         default:
+                            // Try plugin dispatch for unknown command types
+                            if (!ir_plugin_dispatch(renderer->renderer, cmd.type, &cmd)) {
+                                // Unknown command - silently ignore
+                            }
                             break;
                     }
                 }

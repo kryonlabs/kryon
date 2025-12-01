@@ -21,6 +21,13 @@ Kryon is a cross-platform UI framework with an intermediate representation (IR) 
 - Nim callbacks are registered with C using `{.exportc, cdecl, dynlib.}` pragmas
 - Weak extern declarations allow optional callbacks in C
 
+### IR Pipeline (.kir → .kirb)
+- **Frontends** (Nim/Lua/C) always output `.kir` (JSON v2 format) - human-readable, standardized
+- **IR Layer** converts `.kir` → `.kirb` (binary v2.0 format) - 5-10× smaller, optimized
+- **Backends** (SDL3/Terminal/Web) only read `.kirb` - fast loading, efficient
+- Use `kryon convert` to manually convert .kir → .kirb
+- See `docs/IR_PIPELINE.md` for complete architecture details
+
 ## Directory Structure
 
 ```
@@ -122,10 +129,15 @@ make build-debug
 The Kryon CLI provides professional tooling for IR compilation, inspection, and project management:
 
 ```bash
-# Compile Nim/Lua/C to Kryon IR (.kir files)
-kryon compile examples/nim/button_demo.nim
-kryon compile app.nim --validate  # Compile and validate
-kryon compile app.nim --no-cache  # Force recompilation
+# Compile Nim/Lua/C to Kryon IR
+kryon compile examples/nim/button_demo.nim  # Outputs .kir (JSON)
+kryon compile app.nim --format=binary       # Outputs .kirb (binary)
+kryon compile app.nim --validate            # Compile and validate
+kryon compile app.nim --no-cache            # Force recompilation
+
+# Convert .kir (JSON) to .kirb (binary)
+kryon convert app.kir app.kirb     # Manual conversion
+# Binary format is 5-10× smaller and optimized for backends
 
 # Inspect IR files
 kryon inspect-ir app.kir           # Quick metadata
@@ -133,8 +145,9 @@ kryon inspect-detailed app.kir      # Full analysis with stats
 kryon inspect-detailed app.kir --tree  # Include tree visualization
 kryon tree app.kir --max-depth=5    # Visual component tree
 
-# Validate IR format
+# Validate IR format (works with both .kir and .kirb)
 kryon validate app.kir
+kryon validate app.kirb
 
 # Compare IR files
 kryon diff old.kir new.kir

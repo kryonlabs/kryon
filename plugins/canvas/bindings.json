@@ -1,0 +1,175 @@
+{
+  "plugin": {
+    "name": "canvas",
+    "version": "1.0.0",
+    "description": "2D drawing primitives (circles, ellipses, arcs)",
+    "header": "../../plugins/canvas/canvas_plugin.h",
+    "library": "-lkryon_desktop -lkryon_ir"
+  },
+  "types": {
+    "kryon_fp_t": {
+      "nim": "int32",
+      "js": "number",
+      "python": "int",
+      "description": "Fixed-point coordinate"
+    },
+    "color": {
+      "nim": "uint32",
+      "js": "string",
+      "python": "str",
+      "description": "RGBA color (hex string or uint32)"
+    }
+  },
+  "functions": [
+    {
+      "c_name": "kryon_canvas_draw_circle",
+      "nim_name": "drawCircle",
+      "js_name": "drawCircle",
+      "python_name": "draw_circle",
+      "description": "Draw a circle (filled or outline)",
+      "parameters": [
+        {
+          "name": "cx",
+          "type": "kryon_fp_t",
+          "description": "Center X coordinate"
+        },
+        {
+          "name": "cy",
+          "type": "kryon_fp_t",
+          "description": "Center Y coordinate"
+        },
+        {
+          "name": "radius",
+          "type": "kryon_fp_t",
+          "description": "Circle radius"
+        },
+        {
+          "name": "color",
+          "type": "color",
+          "description": "RGBA color"
+        },
+        {
+          "name": "filled",
+          "type": "bool",
+          "description": "Fill the circle (true) or outline only (false)",
+          "default": "true"
+        }
+      ],
+      "return_type": "void"
+    },
+    {
+      "c_name": "kryon_canvas_draw_ellipse",
+      "nim_name": "drawEllipse",
+      "js_name": "drawEllipse",
+      "python_name": "draw_ellipse",
+      "description": "Draw an ellipse (filled or outline)",
+      "parameters": [
+        {
+          "name": "cx",
+          "type": "kryon_fp_t",
+          "description": "Center X coordinate"
+        },
+        {
+          "name": "cy",
+          "type": "kryon_fp_t",
+          "description": "Center Y coordinate"
+        },
+        {
+          "name": "rx",
+          "type": "kryon_fp_t",
+          "description": "Horizontal radius"
+        },
+        {
+          "name": "ry",
+          "type": "kryon_fp_t",
+          "description": "Vertical radius"
+        },
+        {
+          "name": "color",
+          "type": "color",
+          "description": "RGBA color"
+        },
+        {
+          "name": "filled",
+          "type": "bool",
+          "description": "Fill the ellipse (true) or outline only (false)",
+          "default": "true"
+        }
+      ],
+      "return_type": "void"
+    },
+    {
+      "c_name": "kryon_canvas_draw_arc",
+      "nim_name": "drawArc",
+      "js_name": "drawArc",
+      "python_name": "draw_arc",
+      "description": "Draw an arc (portion of a circle)",
+      "parameters": [
+        {
+          "name": "cx",
+          "type": "kryon_fp_t",
+          "description": "Center X coordinate"
+        },
+        {
+          "name": "cy",
+          "type": "kryon_fp_t",
+          "description": "Center Y coordinate"
+        },
+        {
+          "name": "radius",
+          "type": "kryon_fp_t",
+          "description": "Arc radius"
+        },
+        {
+          "name": "start_angle",
+          "type": "kryon_fp_t",
+          "description": "Start angle in degrees"
+        },
+        {
+          "name": "end_angle",
+          "type": "kryon_fp_t",
+          "description": "End angle in degrees"
+        },
+        {
+          "name": "color",
+          "type": "color",
+          "description": "RGBA color"
+        }
+      ],
+      "return_type": "void"
+    }
+  ],
+  "helpers": {
+    "nim": [
+      {
+        "name": "parseColor",
+        "description": "Convert hex color string to uint32 RGBA",
+        "signature": "proc parseColor*(hex: string): uint32",
+        "implementation": "color_parser.nim"
+      }
+    ]
+  },
+  "examples": {
+    "nim": [
+      "drawCircle(100, 100, 50, \"#ff0000\", filled = true)  # Red filled circle",
+      "drawEllipse(200, 150, 80, 40, \"#00ff00\", filled = false)  # Green outline",
+      "drawArc(300, 200, 60, 0, 180, \"#0000ff\")  # Blue semicircle"
+    ],
+    "js": [
+      "canvas.drawCircle(100, 100, 50, \"#ff0000\", {filled: true});  // Red filled circle",
+      "canvas.drawEllipse(200, 150, 80, 40, \"#00ff00\", {filled: false});  // Green outline",
+      "canvas.drawArc(300, 200, 60, 0, 180, \"#0000ff\");  // Blue semicircle"
+    ],
+    "python": [
+      "canvas.draw_circle(100, 100, 50, \"#ff0000\", filled=True)  # Red filled circle",
+      "canvas.draw_ellipse(200, 150, 80, 40, \"#00ff00\", filled=False)  # Green outline",
+      "canvas.draw_arc(300, 200, 60, 0, 180, \"#0000ff\")  # Blue semicircle"
+    ]
+  },
+  "metadata": {
+    "author": "Kryon Plugin System",
+    "license": "0BSD",
+    "requires": ["kryon_ir", "kryon_desktop"],
+    "backends": ["sdl3"]
+  }
+}

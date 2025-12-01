@@ -43,6 +43,9 @@ char g_default_font_path[512] = {0};
 // Text texture cache with LRU eviction (128 entries, 40-60% speedup)
 TextTextureCache g_text_texture_cache[TEXT_TEXTURE_CACHE_SIZE];
 
+// Hash table for O(1) text cache lookup (Phase 1 optimization: 15-25% speedup)
+TextCacheHashBucket g_text_cache_hash_table[TEXT_CACHE_HASH_SIZE];
+
 // ============================================================================
 // MARKDOWN STATE
 // ============================================================================

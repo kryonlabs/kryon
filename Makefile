@@ -5,6 +5,7 @@
 
 .PHONY: all clean install install-dynamic install-static uninstall doctor dev test help
 .PHONY: build-cli build-lib build-dynamic build-static
+.PHONY: test-serialization test-validation test-conversion test-backend test-integration test-all test-modular
 
 # Configuration
 VERSION = 0.2.0
@@ -257,10 +258,90 @@ test:
 	@echo "Running tests..."
 	$(NIM) c -r tests/test_all.nim
 
+# Modular test targets for IR pipeline
+test-serialization:
+	@echo "Running serialization module tests..."
+	@if [ -n "$$(ls -A tests/serialization/*.c 2>/dev/null)" ]; then \
+		for test in tests/serialization/*.c; do \
+			echo "  - Running $$test"; \
+			gcc $$test -o /tmp/test_serial -Iir -Lbuild -lkryon_ir && /tmp/test_serial || exit 1; \
+		done; \
+	else \
+		echo "  ⚠️  No serialization tests found (placeholder directory)"; \
+	fi
+
+test-validation:
+	@echo "Running validation module tests..."
+	@if [ -n "$$(ls -A tests/validation/*.c 2>/dev/null)" ]; then \
+		for test in tests/validation/*.c; do \
+			echo "  - Running $$test"; \
+			gcc $$test -o /tmp/test_valid -Iir -Lbuild -lkryon_ir && /tmp/test_valid || exit 1; \
+		done; \
+	else \
+		echo "  ⚠️  No validation tests found (placeholder directory)"; \
+	fi
+
+test-conversion:
+	@echo "Running conversion module tests (.kir → .kirb)..."
+	@if [ -n "$$(ls -A tests/conversion/*.c 2>/dev/null)" ]; then \
+		for test in tests/conversion/*.c; do \
+			echo "  - Running $$test"; \
+			gcc $$test -o /tmp/test_conv -Iir -Lbuild -lkryon_ir && /tmp/test_conv || exit 1; \
+		done; \
+	else \
+		echo "  ⚠️  No conversion tests found (placeholder directory)"; \
+	fi
+
+test-backend:
+	@echo "Running backend module tests..."
+	@if [ -n "$$(ls -A tests/backend/*.c 2>/dev/null)" ]; then \
+		for test in tests/backend/*.c; do \
+			echo "  - Running $$test"; \
+			gcc $$test -o /tmp/test_backend -Iir -Ibackends/desktop -Lbuild -lkryon_desktop -lkryon_ir && /tmp/test_backend || exit 1; \
+		done; \
+	else \
+		echo "  ⚠️  No backend tests found (placeholder directory)"; \
+	fi
+
+test-integration:
+	@echo "Running integration tests (end-to-end pipeline)..."
+	@if [ -n "$$(ls -A tests/integration/*.c 2>/dev/null)" ]; then \
+		for test in tests/integration/*.c; do \
+			echo "  - Running $$test"; \
+			gcc $$test -o /tmp/test_integ -Iir -Ibackends/desktop -Lbuild -lkryon_desktop -lkryon_ir && /tmp/test_integ || exit 1; \
+		done; \
+	else \
+		echo "  ⚠️  No integration tests found (placeholder directory)"; \
+	fi
+
+test-modular: test-serialization test-validation test-conversion test-backend test-integration
+	@echo "✅ All modular tests passed!"
+
+test-all: test test-modular
+	@echo "✅ Complete test suite passed!"
+
 # Examples
 examples:
 	@echo "Building examples..."
 	$(MAKE) -C examples
+
+# Generate plugin bindings
+generate-bindings:
+	@echo "Generating plugin bindings..."
+	@if [ -z "$(PLUGIN)" ]; then \
+		echo "Usage: make generate-bindings PLUGIN=<plugin_name>"; \
+		echo "Example: make generate-bindings PLUGIN=canvas"; \
+		exit 1; \
+	fi
+	@if [ ! -f "plugins/$(PLUGIN)/bindings.json" ]; then \
+		echo "Error: plugins/$(PLUGIN)/bindings.json not found"; \
+		exit 1; \
+	fi
+	@echo "Compiling bindings generator..."
+	@$(NIM) c --hints:off --warnings:off -o:build/generate_bindings tools/generate_nim_bindings.nim
+	@echo "Generating Nim bindings for $(PLUGIN)..."
+	@build/generate_bindings plugins/$(PLUGIN)/bindings.json bindings/nim/$(PLUGIN)_generated.nim
+	@echo "✓ Bindings generated: bindings/nim/$(PLUGIN)_generated.nim"
 
 # Clean build artifacts
 clean:
@@ -300,6 +381,7 @@ help:
 	@echo "  doctor        System health check and dependencies"
 	@echo "  test          Run test suite"
 	@echo "  examples      Build example programs"
+	@echo "  generate-bindings PLUGIN=<name>  Generate plugin bindings"
 	@echo "  clean         Clean build artifacts"
 	@echo "  distclean     Deep clean including generated files"
 	@echo "  help          Show this help"

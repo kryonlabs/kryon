@@ -29,6 +29,7 @@ COMMANDS:
   init <name>         Initialize new project with kryon.toml
   build [targets]      Compile for specified targets
   compile <file>      Compile to IR with caching
+  convert <in> <out>  Convert .kir (JSON) to .kirb (binary)
   run <target>         Build + execute once
   dev <file>           Development mode with hot reload
   config [show|validate]  Show or validate project configuration
@@ -958,6 +959,8 @@ proc main*() =
     handleBuildCommand(commandArgs)
   of "compile":
     handleCompileCommand(commandArgs)
+  of "convert":
+    handleConvertCommand(commandArgs)
   of "run":
     handleRunCommand(commandArgs)
   of "dev":

@@ -28,6 +28,8 @@
 #include "../../ir/ir_animation.h"
 #include "../../ir/ir_hot_reload.h"
 #include "../../ir/ir_style_vars.h"
+#include "../../plugins/canvas/canvas_plugin.h"
+#include "../../plugins/tilemap/tilemap_plugin.h"
 
 #ifdef ENABLE_SDL3
 #include <SDL3/SDL.h>
@@ -233,6 +235,32 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
     renderer->initialized = true;
     g_desktop_renderer = renderer;
 
+    /* Initialize text cache hash table (Phase 1 optimization) */
+    for (int i = 0; i < TEXT_CACHE_HASH_SIZE; i++) {
+        g_text_cache_hash_table[i].cache_index = -1;
+        g_text_cache_hash_table[i].next_index = -1;
+    }
+    for (int i = 0; i < TEXT_TEXTURE_CACHE_SIZE; i++) {
+        g_text_texture_cache[i].valid = false;
+        g_text_texture_cache[i].cache_index = i;
+    }
+
+    /* Initialize font cache hash table (Phase 1 optimization) */
+    extern int g_font_cache_hash_table[];  // Defined in desktop_fonts.c
+    for (int i = 0; i < 64; i++) {  // FONT_CACHE_HASH_SIZE = 64
+        g_font_cache_hash_table[i] = -1;
+    }
+
+    /* Initialize canvas plugin */
+    if (!kryon_canvas_plugin_init(renderer->renderer)) {
+        printf("Warning: Canvas plugin initialization failed\n");
+    }
+
+    /* Initialize tilemap plugin */
+    if (!kryon_tilemap_plugin_init(renderer->renderer)) {
+        printf("Warning: Tilemap plugin initialization failed\n");
+    }
+
     printf("Desktop renderer initialized successfully\n");
     return true;
 
@@ -278,6 +306,12 @@ void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
         ir_hot_reload_destroy(renderer->hot_reload_ctx);
         renderer->hot_reload_ctx = NULL;
     }
+
+    /* Shutdown canvas plugin */
+    kryon_canvas_plugin_shutdown();
+
+    /* Shutdown tilemap plugin */
+    kryon_tilemap_plugin_shutdown();
 
     /* Clean up SDL resources */
     if (renderer->cursor_hand) {

@@ -83,7 +83,15 @@ typedef struct {
     int height;               // Texture height
     uint64_t last_access;     // Frame counter for LRU
     bool valid;               // Entry is valid
+    int cache_index;          // Index in g_text_texture_cache array
 } TextTextureCache;
+
+// Hash table for O(1) text cache lookup (Phase 1 optimization)
+#define TEXT_CACHE_HASH_SIZE 256
+typedef struct {
+    int cache_index;  // Index into g_text_texture_cache, or -1 if empty
+    int next_index;   // For collision chaining, or -1 if end of chain
+} TextCacheHashBucket;
 
 // Layout rectangle helper
 typedef struct LayoutRect {
@@ -158,6 +166,7 @@ extern char g_default_font_path[512];
 
 // Text texture cache
 extern TextTextureCache g_text_texture_cache[TEXT_TEXTURE_CACHE_SIZE];
+extern TextCacheHashBucket g_text_cache_hash_table[TEXT_CACHE_HASH_SIZE];
 
 // Markdown scroll states
 extern MarkdownScrollState markdown_scroll_states[32];

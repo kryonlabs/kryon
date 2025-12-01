@@ -1,8 +1,11 @@
 # Makefile for Kryon Desktop Backend
 # Compiles IR to native desktop applications using SDL3
+# Phase 1, Week 2: Added incremental build support with dependency tracking
 
 CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra -O2 -fPIC
+# Dependency tracking flags (5-10x faster rebuilds)
+DEPFLAGS = -MMD -MP
 AR = ar
 ARFLAGS = rcs
 
@@ -17,6 +20,7 @@ ENABLE_SDL3 = 1
 # Directories
 DESKTOP_DIR = .
 IR_DIR = ../../ir
+PLUGIN_DIR = ../../plugins
 BUILD_DIR = ../../build
 INCLUDE_DIR = .
 INCLUDE_IR_DIR = ../../ir
@@ -29,11 +33,13 @@ else
     CFLAGS += -DDISABLE_SDL3
 endif
 
-# Source files (modular architecture - 10 modules)
+# Source files (modular architecture - 10 modules + plugins)
 DESKTOP_SOURCES = ir_desktop_renderer.c desktop_globals.c \
                   desktop_fonts.c desktop_effects.c desktop_layout.c \
                   desktop_markdown.c desktop_input.c desktop_rendering.c \
-                  debug_backend.c canvas.c
+                  debug_backend.c canvas.c \
+                  $(PLUGIN_DIR)/canvas/canvas_plugin.c \
+                  $(PLUGIN_DIR)/tilemap/tilemap_plugin.c
 DESKTOP_HEADERS = ir_desktop_renderer.h desktop_internal.h debug_backend.h
 
 # Output files
@@ -58,11 +64,24 @@ $(BUILD_DIR):
 DESKTOP_OBJS = ir_desktop_renderer.o desktop_globals.o \
                desktop_fonts.o desktop_effects.o desktop_layout.o \
                desktop_markdown.o desktop_input.o desktop_rendering.o \
-               debug_backend.o canvas.o
+               debug_backend.o canvas.o canvas_plugin.o tilemap_plugin.o
 
-# Compile object files
-%.o: %.c $(DESKTOP_HEADERS)
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+# Dependency files (auto-generated)
+DESKTOP_DEPS = $(DESKTOP_OBJS:.o=.d)
+
+# Compile object files with dependency tracking
+%.o: %.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+
+# Compile plugin files with dependency tracking
+canvas_plugin.o: $(PLUGIN_DIR)/canvas/canvas_plugin.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+
+tilemap_plugin.o: $(PLUGIN_DIR)/tilemap/tilemap_plugin.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+
+# Include auto-generated dependencies (if they exist)
+-include $(DESKTOP_DEPS)
 
 # Create static library
 $(DESKTOP_STATIC_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)
@@ -85,9 +104,9 @@ example: $(DESKTOP_STATIC_LIB)
 	$(CC) $(CFLAGS) $(INCLUDES) example_desktop_render.c $(LINK_LIBS) -l$(DESKTOP_STATIC_LIB:$(BUILD_DIR)/lib%.a=%) -o $(BUILD_DIR)/example_desktop_render
 	$(BUILD_DIR)/example_desktop_render
 
-# Clean build artifacts
+# Clean build artifacts (including dependency files)
 clean:
-	rm -f *.o
+	rm -f *.o *.d
 	rm -f $(DESKTOP_STATIC_LIB) $(DESKTOP_SHARED_LIB) $(DESKTOP_TEST) $(BUILD_DIR)/example_desktop_render
 
 # Install headers

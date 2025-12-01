@@ -341,7 +341,7 @@ proc compile*(opts: CompileOptions): CompilationResult =
   # Compile based on frontend
   case frontend
   of "nim":
-    result = compileNimToIR(opts.sourceFile, opts.outputFile, opts.verboseOutput)
+    result = compileNimToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput)
   of "lua":
     result.errors.add("Lua frontend not yet implemented")
     return
@@ -450,6 +450,64 @@ proc handleCompileCommand*(args: seq[string]) =
     echo "❌ Compilation failed"
     for err in result.errors:
       echo "   ", err
+
+proc handleConvertCommand*(args: seq[string]) =
+  ## Handle 'kryon convert' command - Convert .kir (JSON) to .kirb (binary)
+  if args.len < 2:
+    echo "Error: Input and output files required"
+    echo "Usage: kryon convert <input.kir> <output.kirb>"
+    echo ""
+    echo "Converts Kryon IR from JSON format (.kir) to binary format (.kirb)"
+    echo "Binary format is more efficient for backends to load."
+    return
+
+  let inputFile = args[0]
+  let outputFile = args[1]
+
+  # Check input file exists
+  if not fileExists(inputFile):
+    echo "❌ Input file not found: ", inputFile
+    quit(1)
+
+  # Check input is .kir format
+  if not (inputFile.endsWith(".kir") or inputFile.endsWith(".json")):
+    echo "⚠️  Warning: Input file should be .kir (JSON format)"
+
+  # Check output is .kirb format
+  if not outputFile.endsWith(".kirb"):
+    echo "⚠️  Warning: Output file should be .kirb (binary format)"
+
+  echo "🔄 Converting ", inputFile, " → ", outputFile
+
+  # Load JSON IR
+  let startTime = cpuTime()
+  let component = ir_read_json_v2_file(cstring(inputFile))
+  if component == nil:
+    echo "❌ Failed to read JSON IR file"
+    quit(1)
+
+  # Write binary IR
+  if not ir_write_binary_file(component, cstring(outputFile)):
+    echo "❌ Failed to write binary IR file"
+    # Cleanup component
+    ir_component_destroy(component)
+    quit(1)
+
+  let elapsed = cpuTime() - startTime
+
+  # Get file sizes for comparison
+  let inputSize = getFileSize(inputFile)
+  let outputSize = getFileSize(outputFile)
+  let ratio = (1.0 - (outputSize.float / inputSize.float)) * 100.0
+
+  echo "✅ Conversion successful"
+  echo "   ⏱️  ", elapsed.formatFloat(ffDecimal, 3), "s"
+  echo "   📄 Input:  ", inputFile, " (", formatSize(inputSize), ")"
+  echo "   📄 Output: ", outputFile, " (", formatSize(outputSize), ")"
+  echo "   📦 Size reduction: ", ratio.formatFloat(ffDecimal, 1), "%"
+
+  # Cleanup
+  ir_component_destroy(component)
 
 proc handleValidateCommand*(args: seq[string]) =
   ## Handle 'kryon validate' command
