@@ -10,6 +10,7 @@ binDir        = "bin"
 # Dependencies
 requires "nim >= 2.0.0"
 requires "cligen >= 1.6.0"  # For CLI tool
+requires "parsetoml >= 0.7.0"  # For TOML configuration support
 import os
 # Note: naylib and other rendering backends are optional system dependencies
 

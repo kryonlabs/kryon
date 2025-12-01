@@ -7,10 +7,17 @@ import os, osproc, strutils, parseopt, times, json
 import std/[sequtils, sugar]
 
 # CLI modules
-import project, build, device
+import project, build, device, compile, diff, inspect, config
+
+# IR and backend bindings (for orchestration)
+import ../bindings/nim/ir_core
+import ../bindings/nim/ir_desktop
+import ../bindings/nim/runtime  # Provides Nim bridge functions for desktop backend
 
 const
   VERSION = "1.2.0"
+  # Store the source directory at compile time
+  KRYON_SOURCE_DIR = staticExec("cd " & currentSourcePath().parentDir() & "/.. && pwd").strip()
   HELP_TEXT = """
 Kryon CLI v""" & VERSION & """ - Unified Development Orchestrator
 
@@ -19,9 +26,18 @@ USAGE:
 
 COMMANDS:
   new <name>          Create new project with template
+  init <name>         Initialize new project with kryon.toml
   build [targets]      Compile for specified targets
-  run <target>         Build + deploy + live debug
+  compile <file>      Compile to IR with caching
+  run <target>         Build + execute once
+  dev <file>           Development mode with hot reload
+  config [show|validate]  Show or validate project configuration
+  validate <file>     Validate IR file format
   inspect             Component tree visualization
+  inspect-ir <file>   Inspect compiled IR file
+  inspect-detailed <file>  Detailed IR analysis with stats
+  tree <file>         Show component tree structure
+  diff <file1> <file2>  Compare two IR files
   add-backend <name>  Integrate new renderer backend
   doctor              Diagnose environment issues
 
@@ -29,12 +45,15 @@ TARGETS:
   stm32f4, rp2040, linux, windows, macos, web
 
 TEMPLATES:
-  nim, lua, c
+  nim, lua, c, js, ts
 
 EXAMPLES:
+  kryon init myapp --template=js
   kryon new myapp --template=nim
   kryon build --targets=stm32f4,linux
-  kryon run --target=stm32f4 --device=/dev/ttyUSB0
+  kryon run examples/nim/hello_world.nim
+  kryon dev examples/nim/habits.nim
+  kryon config show
   kryon inspect --target=stm32f4
 
 For detailed help: kryon <command> --help
@@ -60,7 +79,10 @@ proc findKryonRoot*(): string =
   proc searchUp(start: string): string =
     var cur = absolutePath(start)
     while true:
-      if fileExists(cur / "core" / "include" / "kryon.h"):
+      # Check for multiple markers to identify Kryon root
+      if fileExists(cur / "core" / "include" / "kryon.h") or
+         fileExists(cur / "ir" / "ir_core.h") or
+         (dirExists(cur / "bindings" / "lua") and dirExists(cur / "ir")):
         return cur
       let parent = parentDir(cur)
       if parent.len == 0 or parent == cur: break
@@ -75,6 +97,12 @@ proc findKryonRoot*(): string =
   let fromExe = searchUp(exeDir)
   if fromExe.len > 0:
     return fromExe
+
+  # Use the compile-time source directory
+  if dirExists(KRYON_SOURCE_DIR) and
+     (dirExists(KRYON_SOURCE_DIR / "bindings" / "lua") or
+      fileExists(KRYON_SOURCE_DIR / "ir" / "ir_core.h")):
+    return KRYON_SOURCE_DIR
 
   # Last resort: current dir
   return getCurrentDir()
@@ -131,6 +159,110 @@ proc handleNewCommand*(args: seq[string]) =
     echo "✗ Failed to create project: " & getCurrentExceptionMsg()
     quit(1)
 
+proc handleInitCommand*(args: seq[string]) =
+  ## Handle 'kryon init' command - creates project with kryon.toml
+  if args.len == 0:
+    echo "Error: Project name required"
+    echo "Usage: kryon init <name> [--template=<template>]"
+    quit(1)
+
+  let projectName = args[0]
+  var projectTemplate = "js"  # Default to JavaScript
+
+  # Parse template option
+  for arg in args[1..^1]:
+    if arg.startsWith("--template="):
+      projectTemplate = arg[11..^1]
+
+  echo "Initializing new Kryon project: " & projectName
+  echo "Template: " & projectTemplate
+
+  try:
+    # Create project directory
+    createDir(projectName)
+
+    # Create kryon.toml configuration
+    var config = defaultConfig()
+    config.projectName = projectName
+    config.buildFrontend = projectTemplate
+
+    # Set target based on template
+    if projectTemplate in ["js", "ts"]:
+      config.buildTarget = "web"
+    else:
+      config.buildTarget = "desktop"
+
+    config.metadataCreated = now().format("yyyy-MM-dd")
+
+    writeTomlConfig(config, projectName / "kryon.toml")
+
+    echo "✓ Project initialized successfully!"
+    echo "✓ Created " & projectName / "kryon.toml"
+    echo ""
+    echo "Next steps:"
+    echo "  cd " & projectName
+    echo "  # Create your " & projectTemplate & " files"
+    echo "  kryon build"
+  except:
+    echo "✗ Failed to initialize project: " & getCurrentExceptionMsg()
+    quit(1)
+
+proc handleConfigCommand*(args: seq[string]) =
+  ## Handle 'kryon config' command - show or validate configuration
+  if args.len == 0:
+    # Show current config summary
+    try:
+      let config = loadProjectConfig()
+      echo "Project Configuration:"
+      echo "  Name: " & config.projectName
+      echo "  Version: " & config.projectVersion
+      echo "  Target: " & config.buildTarget
+      echo "  Output: " & config.buildOutputDir
+      echo ""
+      echo "Use 'kryon config show' for full configuration"
+      echo "Use 'kryon config validate' to check for errors"
+    except:
+      echo "No configuration file found (kryon.toml or kryon.json)"
+      echo "Use 'kryon init <name>' to create a new project"
+    return
+
+  case args[0].toLowerAscii()
+  of "show":
+    try:
+      let config = loadProjectConfig()
+      let configJson = configToJson(config)
+      echo pretty(configJson, indent=2)
+    except:
+      echo "✗ Failed to load configuration: " & getCurrentExceptionMsg()
+      quit(1)
+
+  of "validate":
+    try:
+      let configPath = findProjectConfig()
+      if configPath.len == 0:
+        echo "✗ No configuration file found"
+        quit(1)
+
+      echo "Validating: " & configPath
+      let config = loadProjectConfig()
+      let (valid, errors) = validateConfig(config)
+
+      if valid:
+        echo "✓ Configuration is valid"
+      else:
+        echo "✗ Configuration has errors:"
+        for error in errors:
+          echo "  - " & error
+        quit(1)
+    except:
+      echo "✗ Validation failed: " & getCurrentExceptionMsg()
+      quit(1)
+
+  else:
+    echo "Unknown config command: " & args[0]
+    echo "Usage: kryon config [show|validate]"
+    quit(1)
+
 proc handleBuildCommand*(args: seq[string]) =
   ## Handle 'kryon build' command
   var targets: seq[string] = @["linux"]  # Default target
@@ -155,26 +287,177 @@ proc handleBuildCommand*(args: seq[string]) =
     echo "✗ Build failed: " & getCurrentExceptionMsg()
     quit(1)
 
+proc detectFileWithExtensions*(baseName: string): tuple[found: bool, path: string, ext: string] =
+  ## Try to find a file with common Kryon frontend extensions
+  const extensions = [".lua", ".nim", ".ts", ".js", ".c"]
+
+  # If the file already has an extension, check if it exists
+  if baseName.contains('.'):
+    if fileExists(baseName):
+      let ext = splitFile(baseName).ext
+      return (true, baseName, ext)
+
+  # Try each extension
+  for ext in extensions:
+    let testPath = baseName & ext
+    if fileExists(testPath):
+      return (true, testPath, ext)
+
+  # Not found
+  return (false, "", "")
+
 proc handleRunCommand*(args: seq[string]) =
-  ## Handle 'kryon run' command - Flutter-like behavior
+  ## Handle 'kryon run' command - Multi-frontend support
   var target = "native"
-  var file = "main.nim"
+  var file = ""
+  var baseName = "main"
 
   for arg in args:
     if arg.startsWith("--target="):
       target = arg[9..^1]
     elif arg.startsWith("--device="):
       discard  # For compatibility
-    elif arg.endsWith(".nim"):
-      file = arg
-    elif not arg.startsWith("-"):
-      if arg != "run":
-        file = arg & ".nim"
+    elif not arg.startsWith("-") and arg != "run":
+      baseName = arg
+      # If arg has an extension, use it directly
+      if arg.contains('.'):
+        file = arg
+      else:
+        # Will detect extension below
+        file = ""
+
+  # Auto-detect file with extension if not explicitly provided
+  if file == "" or not fileExists(file):
+    let detected = detectFileWithExtensions(baseName)
+    if detected.found:
+      file = detected.path
+      let ext = detected.ext
+      echo "🔍 Detected " & ext & " file: " & file
+    else:
+      echo "❌ Could not find file: " & baseName
+      echo "   Tried extensions: .lua, .nim, .ts, .js, .c"
+      quit(1)
+
+  # Determine frontend type from extension
+  let (_, _, ext) = splitFile(file)
+  let frontend = ext.toLowerAscii()
 
   echo "🚀 Running Kryon application..."
   echo "📁 File: " & file
+  echo "🎨 Frontend: " & frontend
   echo "🎯 Target: " & target
 
+  # Handle non-Nim frontends
+  if frontend == ".lua":
+    # Check for LuaJIT
+    let (_, luajitCheck) = execCmdEx("which luajit")
+    if luajitCheck != 0:
+      echo "❌ LuaJIT not found!"
+      echo "   Install LuaJIT or run in nix-shell:"
+      echo "   nix-shell -p luajit --run 'kryon run " & file & "'"
+      quit(1)
+
+    # Run Lua file with IR capture and rendering
+    echo "🌙 Running Lua application with LuaJIT..."
+
+    # Set up library path
+    let kryonRoot = findKryonRoot()
+    let buildDir = kryonRoot / "build"
+
+    putEnv("KRYON_LIB_PATH", buildDir / "libkryon_ir.so")
+    putEnv("LD_LIBRARY_PATH", buildDir & ":" & getEnv("LD_LIBRARY_PATH"))
+
+    # Set Lua module path so require("kryon") works from any directory
+    let luaBindingsDir = kryonRoot / "bindings" / "lua"
+    let existingPath = getEnv("LUA_PATH")
+    let luaPath = luaBindingsDir / "?.lua;" &
+                  luaBindingsDir / "?/init.lua;" &
+                  (if existingPath.len > 0: existingPath else: ";")
+    putEnv("LUA_PATH", luaPath)
+
+    # Create wrapper script to capture IR
+    let tempIR = "/tmp/kryon_ir_" & $getCurrentProcessId() & ".kir"
+    let wrapperScript = "/tmp/kryon_wrapper_" & $getCurrentProcessId() & ".lua"
+
+    let absPath = if file.isAbsolute(): file else: getCurrentDir() / file
+    let wrapperCode = """
+local kryon = require('kryon')
+local app = dofile('""" & absPath & """')
+
+if app and app.root then
+  -- Save IR to temp file
+  kryon.saveIR(app, '""" & tempIR & """')
+  print('✓ IR tree created and saved')
+else
+  error('App must return a valid app object with root component')
+end
+"""
+
+    writeFile(wrapperScript, wrapperCode)
+
+    # Run wrapper to generate IR
+    echo "📦 Creating IR tree..."
+    let (wrapperOutput, wrapperExitCode) = execCmdEx("luajit " & wrapperScript)
+    echo wrapperOutput
+
+    if wrapperExitCode != 0:
+      echo "❌ Failed to create IR tree"
+      quit(1)
+
+    # Create IR context (required for loading)
+    let ctx = ir_create_context()
+    ir_set_context(ctx)
+
+    # Load IR tree (binary format)
+    echo "🔄 Loading IR tree..."
+    let irRoot = ir_read_binary_file(cstring(tempIR))
+    if irRoot == nil:
+      echo "❌ Failed to load IR from " & tempIR
+      quit(1)
+
+    echo "✓ IR tree loaded successfully"
+
+    # Render with SDL3 backend
+    echo "🎨 Rendering with SDL3..."
+    var config = desktop_renderer_config_sdl3(800, 600, "Kryon App")
+    let renderSuccess = desktop_render_ir_component(irRoot, addr config)
+
+    # Cleanup
+    removeFile(tempIR)
+    removeFile(wrapperScript)
+
+    if not renderSuccess:
+      echo "❌ Rendering failed"
+      quit(1)
+
+    echo "✓ Application closed"
+    quit(0)
+
+  elif frontend == ".ts" or frontend == ".js":
+    # Run TypeScript/JavaScript with appropriate runtime
+    echo "📦 Running TypeScript/JavaScript application..."
+
+    var jsCmd: string
+    if fileExists("bun.lockb") or fileExists("bunfig.toml"):
+      jsCmd = "bun run " & file
+    elif fileExists("package.json"):
+      jsCmd = "node " & file
+    else:
+      jsCmd = "bun run " & file  # Default to bun
+
+    let result = execShellCmd(jsCmd)
+    quit(result)
+
+  elif frontend == ".c":
+    echo "🔧 C frontend not yet implemented"
+    quit(1)
+
+  elif frontend != ".nim":
+    echo "❌ Unknown frontend: " & frontend
+    echo "   Supported: .nim, .lua, .ts, .js"
+    quit(1)
+
+  # Continue with Nim compilation for .nim files
   try:
     # Check for installed kryon first (user project mode)
     let installed = findInstalledKryon()
@@ -309,6 +592,279 @@ proc handleRunCommand*(args: seq[string]) =
     echo "✗ Run failed: " & getCurrentExceptionMsg()
     quit(1)
 
+proc handleDevCommand*(args: seq[string]) =
+  ## Handle 'kryon dev' command - Hot reload development mode
+  var target = "native"
+  var file = ""
+  var baseName = "main"
+
+  for arg in args:
+    if arg.startsWith("--target="):
+      target = arg[9..^1]
+    elif not arg.startsWith("-") and arg != "dev":
+      baseName = arg
+      if arg.contains('.'):
+        file = arg
+      else:
+        file = ""
+
+  # Auto-detect file with extension
+  if file == "" or not fileExists(file):
+    let detected = detectFileWithExtensions(baseName)
+    if detected.found:
+      file = detected.path
+    else:
+      echo "❌ Could not find file: " & baseName
+      echo "   Tried extensions: .lua, .nim, .ts, .js, .c"
+      quit(1)
+
+  let (_, _, ext) = splitFile(file)
+  let frontend = ext.toLowerAscii()
+
+  echo "🔥 Starting Hot Reload Development Mode..."
+  echo "📁 File: " & file
+  echo "🎨 Frontend: " & frontend
+  echo "🎯 Target: " & target
+  echo ""
+  echo "💡 Edit your code and save to see live updates!"
+  echo "   Press Ctrl+C to exit"
+  echo ""
+
+  # Handle Lua hot reload (simple re-execution)
+  if frontend == ".lua":
+    echo "🌙 Lua hot reload mode..."
+
+    let kryonRoot = findKryonRoot()
+    let buildDir = kryonRoot / "build"
+
+    putEnv("KRYON_LIB_PATH", buildDir / "libkryon_ir.so")
+    putEnv("LD_LIBRARY_PATH", buildDir & ":" & getEnv("LD_LIBRARY_PATH"))
+
+    # Set Lua module path so require("kryon") works from any directory
+    let luaBindingsDir = kryonRoot / "bindings" / "lua"
+    let existingPath = getEnv("LUA_PATH")
+    let luaPath = luaBindingsDir / "?.lua;" &
+                  luaBindingsDir / "?/init.lua;" &
+                  (if existingPath.len > 0: existingPath else: ";")
+    putEnv("LUA_PATH", luaPath)
+
+    var lastModTime = getLastModificationTime(file)
+    var appProcess: Process = nil
+
+    # Initial run
+    echo "🏃 Running " & file & "..."
+    appProcess = startProcess("luajit", args = @[file], workingDir = getCurrentDir(),
+                              options = {poUsePath, poParentStreams})
+
+    # Watch for changes
+    while true:
+      sleep(200)
+
+      try:
+        let currentModTime = getLastModificationTime(file)
+        if currentModTime != lastModTime:
+          lastModTime = currentModTime
+          echo ""
+          echo "🔄 File changed, restarting..."
+
+          if appProcess != nil:
+            appProcess.terminate()
+            discard appProcess.waitForExit()
+
+          appProcess = startProcess("luajit", args = @[file], workingDir = getCurrentDir(),
+                                    options = {poUsePath, poParentStreams})
+      except:
+        discard
+
+    return
+
+  # TypeScript/JavaScript hot reload
+  if frontend == ".ts" or frontend == ".js":
+    echo "📦 TypeScript/JavaScript hot reload not yet implemented"
+    echo "   Use 'bun --watch' or similar tool for now"
+    quit(1)
+
+  # Continue with Nim hot reload
+  try:
+    # Check for installed kryon first (user project mode)
+    let installed = findInstalledKryon()
+
+    # Set up cache directory for compilation
+    let homeCache = getHomeDir() / ".cache" / "kryon"
+    let devCache = homeCache / "cli_dev"
+    createDir(devCache)
+    let outFile = devCache / "kryon_app_dev"
+
+    var nimArgs: seq[string]
+    var libFlags: seq[string]
+
+    if installed.found:
+      # Installed mode - use pre-built library from ~/.local
+      echo "📦 Using installed Kryon from ~/.local"
+
+      let cHeaderDir = installed.includeDir / "c"
+
+      nimArgs = @[
+        "nim", "c",
+        "--nimcache:" & devCache,
+        "--out:" & outFile,
+        "--path:" & installed.includeDir,  # Nim bindings in ~/.local/include/kryon
+        # C headers
+        "--passC:\"-I" & cHeaderDir & "\"",
+      ]
+
+      # Single combined library
+      libFlags = @[
+        "--passL:\"-L" & installed.libDir & "\"",
+        "--passL:\"-lkryon\"",
+        "--passL:\"-Wl,-rpath," & installed.libDir & "\""
+      ]
+    else:
+      # Dev mode - build from source
+      let kryonRoot = findKryonRoot()
+      putEnv("KRYON_ROOT", kryonRoot)
+
+      # Ensure C libraries are built
+      let buildDir = kryonRoot / "build"
+      createDir(buildDir)
+
+      let coreLib = buildDir / "libkryon_core.a"
+      let irLib = buildDir / "libkryon_ir.a"
+      let desktopLib = buildDir / "libkryon_desktop.a"
+
+      # Build C core library if missing or outdated
+      if not fileExists(coreLib):
+        echo "🧱 Building C core library..."
+        let coreCmd = "make -C " & (kryonRoot / "core") & " all"
+        let coreResult = execShellCmd(coreCmd)
+        if coreResult != 0:
+          echo "❌ Failed to build C core library"
+          quit(1)
+
+      # Build IR library if missing
+      if not fileExists(irLib):
+        echo "🔧 Building IR library..."
+        let irCmd = "make -C " & (kryonRoot / "ir") & " all"
+        let irResult = execShellCmd(irCmd)
+        if irResult != 0:
+          echo "❌ Failed to build IR library"
+          quit(1)
+
+      # Build desktop library if missing
+      if not fileExists(desktopLib):
+        echo "🖥️  Building desktop library..."
+        let desktopCmd = "make -C " & (kryonRoot / "backends" / "desktop") & " all"
+        let desktopResult = execShellCmd(desktopCmd)
+        if desktopResult != 0:
+          echo "❌ Failed to build desktop library"
+          quit(1)
+
+      nimArgs = @[
+        "nim", "c",
+        "--nimcache:" & devCache,
+        "--out:" & outFile,
+        "--path:" & (kryonRoot / "bindings" / "nim"),
+        # Includes
+        "--passC:\"-I" & kryonRoot / "core/include" & "\"",
+        "--passC:\"-I" & kryonRoot / "ir" & "\"",
+        "--passC:\"-I" & kryonRoot / "backends/desktop" & "\"",
+      ]
+
+      # Base linker flags for Kryon libs
+      libFlags = @[
+        "--passL:\"-L" & kryonRoot / "build" & "\"",
+        "--passL:\"-Wl,--start-group -lkryon_core -lkryon_ir -lkryon_desktop -Wl,--end-group\"",
+        "--passL:\"-Wl,-rpath," & kryonRoot / "build" & "\""
+      ]
+
+    # Gather SDL flags from pkg-config (captures -L/-rpath/-l)
+    let sdlFlags = pkgLibFlags("sdl3")
+    if sdlFlags.len > 0:
+      for flag in sdlFlags:
+        libFlags.add "--passL:\"" & flag & "\""
+    else:
+      # Fallback to default name if pkg-config unavailable
+      libFlags.add "--passL:\"-lSDL3\""
+
+    var ttfFlags: seq[string] = @[]
+    for pkg in ["sdl3-ttf", "sdl3_ttf", "SDL3_ttf"]:
+      let found = pkgLibFlags(pkg)
+      if found.len > 0:
+        ttfFlags = found
+        break
+    if ttfFlags.len > 0:
+      for flag in ttfFlags:
+        libFlags.add "--passL:\"" & flag & "\""
+    else:
+      libFlags.add "--passL:\"-lSDL3_ttf\""
+
+    nimArgs.add(libFlags)
+    nimArgs.add(file)
+
+    # Initial build
+    let cmd = nimArgs.join(" ")
+
+    echo "🔨 Initial build..."
+    let buildResult = execShellCmd(cmd)
+
+    if buildResult != 0:
+      echo "❌ Build failed"
+      quit(1)
+
+    echo "✅ Build successful!"
+    echo ""
+    echo "🏃 Running application with hot reload enabled..."
+    echo "   Edit your code and save - app will restart automatically!"
+    echo "   Press Ctrl+C to exit"
+    echo ""
+
+    # Set environment variable to enable hot reload mode
+    putEnv("KRYON_HOT_RELOAD", "1")
+    putEnv("KRYON_HOT_RELOAD_FILE", file)
+    putEnv("KRYON_HOT_RELOAD_CMD", cmd)
+
+    # Hot reload loop: watch file, restart on changes
+    var lastModTime = getLastModificationTime(file)
+    var appProcess: Process = nil
+
+    while true:
+      # Start/restart the application
+      if appProcess != nil:
+        appProcess.terminate()
+        discard appProcess.waitForExit()
+        echo ""
+        echo "🔄 Reloading..."
+
+        # Rebuild
+        let rebuildResult = execShellCmd(cmd)
+        if rebuildResult != 0:
+          echo "❌ Rebuild failed - waiting for fixes..."
+          sleep(1000)
+          continue
+        echo "✅ Rebuild successful!"
+
+      appProcess = startProcess(outFile, workingDir = getCurrentDir(),
+                                options = {poUsePath, poParentStreams})
+
+      # Watch for file changes
+      while true:
+        sleep(200)  # Check every 200ms
+
+        try:
+          let currentModTime = getLastModificationTime(file)
+          if currentModTime != lastModTime:
+            lastModTime = currentModTime
+            echo ""
+            echo "📝 File changed: " & file
+            break  # Restart app
+        except:
+          # File might be temporarily unavailable during save
+          discard
+
+  except:
+    echo "✗ Dev mode failed: " & getCurrentExceptionMsg()
+    quit(1)
+
 proc handleInspectCommand*(args: seq[string]) =
   ## Handle 'kryon inspect' command
   var target = "linux"
@@ -363,12 +919,30 @@ proc main*() =
   case command.toLowerAscii()
   of "new":
     handleNewCommand(commandArgs)
+  of "init":
+    handleInitCommand(commandArgs)
   of "build":
     handleBuildCommand(commandArgs)
+  of "compile":
+    handleCompileCommand(commandArgs)
   of "run":
     handleRunCommand(commandArgs)
+  of "dev":
+    handleDevCommand(commandArgs)
+  of "config":
+    handleConfigCommand(commandArgs)
+  of "validate":
+    handleValidateCommand(commandArgs)
   of "inspect":
     handleInspectCommand(commandArgs)
+  of "inspect-ir":
+    handleInspectIRCommand(commandArgs)
+  of "inspect-detailed":
+    handleInspectDetailedCommand(commandArgs)
+  of "tree":
+    handleTreeCommand(commandArgs)
+  of "diff":
+    handleDiffCommand(commandArgs)
   of "doctor":
     handleDoctorCommand()
   of "add-backend":

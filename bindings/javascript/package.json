@@ -1,0 +1,29 @@
+{
+  "name": "@kryon/javascript",
+  "version": "0.1.0",
+  "description": "Kryon UI Framework - JavaScript Bindings",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "keywords": [
+    "kryon",
+    "ui",
+    "framework",
+    "javascript",
+    "cross-platform",
+    "native",
+    "web"
+  ],
+  "author": "Kryon Labs",
+  "license": "MIT",
+  "peerDependencies": {
+    "bun": ">=1.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kryonlabs/kryon.git",
+    "directory": "bindings/javascript"
+  }
+}
