@@ -15,9 +15,12 @@ dist/
 *.out
 .kryon
 cli/main
+*.kir
+*.kirb
 
 .cache/
 .nimble_cache/
+.kryon_cache/
 
 # Examples - only include source files, exclude compiled binaries
 examples/build/

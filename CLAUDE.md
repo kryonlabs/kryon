@@ -24,27 +24,79 @@ Kryon is a cross-platform UI framework with an intermediate representation (IR) 
 ## Directory Structure
 
 ```
-/ir/                   - IR core (C)
-  ir_builder.c         - Component creation, tree management
-  ir_layout.c          - Flexbox layout computation
-  ir_events.c          - Event system
-  kryon.h             - Main header with all IR types
+/ir/                      - IR core library (C)
+  ir_builder.c            - Component creation, tree management
+  ir_builder.h            - Builder API
+  ir_layout.c             - Flexbox layout computation
+  ir_serialization.c      - Binary IR format v2.0 (.kir files)
+  ir_serialization.h      - Serialization API
+  ir_validation.c         - 3-tier validation (format, structure, semantic)
+  ir_reactive_manifest.c  - Reactive state preservation for hot reload
+  ir_hot_reload.c         - Hot reload support
+  ir_text_shaping.c       - Text shaping with HarfBuzz
+  ir_core.h               - Core types and structures
+  Makefile                - Builds libkryon_ir.a
 
-/backends/desktop/     - Desktop backends (C)
-  sdl_backend.c        - SDL3 rendering
-  debug_backend.c      - Text-based debug renderer
+/backends/desktop/        - Desktop backend (C)
+  ir_desktop_renderer.c   - SDL3/Terminal rendering
+  desktop_layout.c        - Layout computation
+  desktop_rendering.c     - Rendering primitives
+  desktop_fonts.c         - Font management
+  desktop_input.c         - Input handling
+  desktop_markdown.c      - Markdown support
+  Makefile                - Builds libkryon_desktop.a
 
-/bindings/nim/         - Nim language bindings
-  runtime.nim          - Main runtime, event handlers, tab groups
-  reactive_system.nim  - Reactive state management
-  kryon_dsl/impl.nim   - DSL macros (Container, Button, etc.)
+/backends/web/            - Web backend (future)
+  css_generator.c         - CSS generation from IR
 
-/renderers/            - Platform-specific renderers
-  sdl3/               - SDL3 graphics renderer
-  terminal/           - Terminal/console renderer
+/bindings/nim/            - Nim language bindings
+  ir_core.nim             - Core IR bindings
+  ir_desktop.nim          - Desktop backend bindings
+  ir_serialization.nim    - Serialization bindings
+  runtime.nim             - Runtime, event handlers, tab groups
+  reactive_system.nim     - Reactive state management
+  kryon_dsl/              - DSL implementation
+    impl.nim              - Main DSL macros (Container, Button, etc.)
+    components.nim        - Component definitions
+    core.nim              - Core DSL functionality
+    layout.nim            - Layout properties
+    properties.nim        - Style properties
+    reactive.nim          - Reactive helpers
+    animations.nim        - Animation DSL
 
-/cli/                  - CLI tool for running Kryon apps
-/examples/nim/         - Example Nim applications
+/bindings/lua/            - Lua language bindings (in progress)
+  kryon/                  - Lua module structure
+
+/cli/                     - Kryon CLI tool
+  main.nim                - CLI entry point and command router
+  compile.nim             - Compilation pipeline with caching
+  inspect.nim             - IR inspection and tree visualization
+  diff.nim                - IR diff tool
+  config.nim              - Configuration (kryon.toml/kryon.json)
+  project.nim             - Project scaffolding
+  build.nim               - Build system
+  device.nim              - Device deployment
+
+/examples/nim/            - Nim example applications
+  button_demo.nim         - Interactive buttons
+  animations_demo.nim     - Animations and transitions
+  bidi_demo.nim           - BiDi text (Hebrew, Arabic)
+  markdown_simple_test.nim - Markdown rendering
+  tabs_demo.nim           - Tab groups
+  text_shaping_demo.nim   - Text shaping examples
+  ...
+
+/build/                   - Build artifacts
+  libkryon_ir.a           - IR core library (static)
+  libkryon_ir.so          - IR core library (shared)
+  libkryon_desktop.a      - Desktop backend library
+  libkryon_web.a          - Web backend library
+
+/bin/cli/kryon            - CLI executable (after nimble build)
+
+/docs/                    - Documentation
+  KIR_FORMAT_V2.md        - Binary IR format specification
+  DEVELOPER_GUIDE.md      - Developer documentation
 ```
 
 ## Build Commands
@@ -175,10 +227,53 @@ Tab groups track:
 - `tabGroupVisuals` - Visual state per tab
 - `tabGroupStates` - Active tab index, panel visibility
 
-## Debugging
+## Debugging and Inspecting IR Output
 
-### Debug Renderer
-Use the debug backend to see IR tree structure with all properties:
+### Using the CLI to Inspect IR
+
+The recommended way to debug and inspect component trees is using the CLI tools:
+
+```bash
+# Run the example to generate Nim code
+./run_example.sh bidi_demo
+
+# Or use the CLI run command (when implemented)
+kryon run examples/nim/bidi_demo.nim
+
+# To inspect the generated IR:
+# 1. Compile to .kir file
+kryon compile examples/nim/bidi_demo.nim
+
+# 2. Inspect the IR structure
+kryon tree .kryon_cache/*.kir
+
+# 3. Get detailed analysis
+kryon inspect-detailed .kryon_cache/*.kir --tree
+
+# 4. Validate the IR format
+kryon validate .kryon_cache/*.kir
+```
+
+The `kryon tree` command shows:
+- Component hierarchy with indentation
+- Component types (CONTAINER, TEXT, etc.)
+- Component IDs
+- Text content (for Text components)
+- Child count
+- Tree depth
+
+The `kryon inspect-detailed` command provides:
+- Total component count
+- Component type distribution
+- Tree depth statistics
+- Text content analysis
+- Style usage tracking
+- Reactive state information
+- Warnings (large text, excessive children, deep nesting)
+
+### Debug Renderer (Legacy)
+
+You can also use the debug backend directly in code:
 ```nim
 # Print tree to stdout
 debug_print_tree(root)
@@ -187,24 +282,15 @@ debug_print_tree(root)
 debug_print_tree_to_file(root, "/tmp/tree_debug.txt")
 ```
 
-The debug output includes:
-- Component type and ID
-- Text content (truncated)
-- Rendered bounds [x, y, width, height]
-- Size (width × height dimensions)
-- Background color (if set)
-- Padding and margin
-- Gap between children
-- Alignment (justify, align)
-- Events (if any handlers attached)
-- Visibility and z-index
-- Child count
-
 ### Environment Variables
 - `KRYON_TRACE_LAYOUT=1` - Trace layout calculations
 - `KRYON_TRACE_COMPONENTS=1` - Trace component creation
 - `KRYON_TRACE_ZINDEX=1` - Trace z-index sorting
+- `KRYON_TRACE_POLYGON=1` - Trace polygon rendering
+- `KRYON_TRACE_SCROLLBAR=1` - Trace scrollbar updates
+- `KRYON_TRACE_TABS=1` - Trace tab group state
 - `KRYON_RENDERER=terminal` - Use terminal renderer
+- `KRYON_RENDERER=sdl3` - Use SDL3 renderer (default)
 
 ## Common Issues and Solutions
 

@@ -44,6 +44,10 @@ IRComponent* ir_deserialize_json(const char* json_string);
 bool ir_write_json_file(IRComponent* root, const char* filename);
 IRComponent* ir_read_json_file(const char* filename);
 
+// JSON v2 Serialization (complete property coverage)
+char* ir_serialize_json_v2(IRComponent* root);
+bool ir_write_json_v2_file(IRComponent* root, const char* filename);
+
 // Buffer Management
 IRBuffer* ir_buffer_create(size_t initial_capacity);
 IRBuffer* ir_buffer_create_from_file(const char* filename);

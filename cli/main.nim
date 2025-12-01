@@ -310,8 +310,19 @@ proc handleRunCommand*(args: seq[string]) =
   ## Handle 'kryon run' command - Multi-frontend support
   var target = "native"
   var file = ""
-  var baseName = "main"
+  var baseName = ""
 
+  # Try to load config to get defaults
+  try:
+    let config = loadProjectConfig()
+    baseName = config.buildEntry
+    if target == "native":
+      target = config.buildTarget
+  except:
+    # No config file, use defaults
+    baseName = "main"
+
+  # Parse command-line arguments (override config)
   for arg in args:
     if arg.startsWith("--target="):
       target = arg[9..^1]
@@ -325,6 +336,10 @@ proc handleRunCommand*(args: seq[string]) =
       else:
         # Will detect extension below
         file = ""
+
+  # If no entry file specified, try "main" as fallback
+  if baseName.len == 0:
+    baseName = "main"
 
   # Auto-detect file with extension if not explicitly provided
   if file == "" or not fileExists(file):
@@ -436,6 +451,9 @@ end
   elif frontend == ".ts" or frontend == ".js":
     # Run TypeScript/JavaScript with appropriate runtime
     echo "📦 Running TypeScript/JavaScript application..."
+
+    # Set KRYON_RENDERER environment variable based on target
+    putEnv("KRYON_RENDERER", target)
 
     var jsCmd: string
     if fileExists("bun.lockb") or fileExists("bunfig.toml"):

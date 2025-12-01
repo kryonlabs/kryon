@@ -3,6 +3,9 @@
 
 import os
 
+# Link IR libraries
+{.passL: "-Lbuild -lkryon_ir -lkryon_desktop -lm".}
+
 # Type definitions from ir_core.h
 type
   IRComponentType* {.size: sizeof(cint).} = enum

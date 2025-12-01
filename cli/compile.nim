@@ -7,10 +7,15 @@ import ../bindings/nim/ir_core
 import ../bindings/nim/ir_serialization
 
 type
+  CompileFormat* = enum
+    FormatBinary,  # .kirb - efficient binary format
+    FormatJSON     # .kir - human-readable JSON format
+
   CompileOptions* = object
     sourceFile*: string
     outputFile*: string
     frontend*: string  # "nim", "lua", "c"
+    format*: CompileFormat  # Output format
     enableCache*: bool
     enableValidation*: bool
     enableOptimization*: bool
@@ -125,7 +130,7 @@ proc detectFrontend*(sourceFile: string): string =
   of ".c", ".cpp", ".cc": return "c"
   else: return "unknown"
 
-proc compileNimToIR*(sourceFile: string, outputFile: string, verbose: bool): CompilationResult =
+proc compileNimToIR*(sourceFile: string, outputFile: string, format: CompileFormat, verbose: bool): CompilationResult =
   ## Compile Nim source to Kryon IR
   result.success = false
   result.errors = @[]
@@ -134,36 +139,76 @@ proc compileNimToIR*(sourceFile: string, outputFile: string, verbose: bool): Com
 
   let startTime = cpuTime()
 
-  # Build Nim compiler command
-  # This would invoke the Nim compiler with custom pragmas/hooks to generate IR
-  # For now, this is a placeholder that shows the structure
-
   if verbose:
     echo "[compile] Compiling Nim to IR: ", sourceFile
+    echo "[compile] Output format: ", if format == FormatBinary: "binary (.kirb)" else: "JSON (.kir)"
 
-  let compileCmd = "nim c --app:lib --noMain --nimcache:.kryon_cache/nimcache " & sourceFile
+  # Get project root directory (where the CLI is located)
+  let projectRoot = getCurrentDir()
 
-  let (output, exitCode) = execCmdEx(compileCmd)
+  # Build temporary executable path
+  let tempExe = ".kryon_cache" / "temp_compile_" & sourceFile.extractFilename().changeFileExt("")
 
-  if exitCode != 0:
+  # Build Nim compiler command with proper paths
+  var compileCmd = "nim c"
+  compileCmd &= " --path:bindings/nim"
+  compileCmd &= " --passC:\"-Iir\""
+  compileCmd &= " --passC:\"-I" & projectRoot & "\""
+  compileCmd &= " --passC:\"-DKRYON_TARGET_PLATFORM=0\""
+  compileCmd &= " --passC:\"-DKRYON_NO_FLOAT=0\""
+  compileCmd &= " --passL:\"-Lbuild -lkryon_ir -lkryon_desktop -lSDL3 -lSDL3_ttf -lm\""
+  compileCmd &= " --threads:on --mm:arc"
+  compileCmd &= " --nimcache:.kryon_cache/nimcache"
+  compileCmd &= " --out:" & tempExe
+  compileCmd &= " " & sourceFile
+
+  if verbose:
+    echo "[compile] Running: ", compileCmd
+
+  let (compileOutput, compileExit) = execCmdEx(compileCmd)
+
+  if compileExit != 0:
     result.errors.add("Nim compilation failed")
-    result.errors.add(output)
+    result.errors.add(compileOutput)
     result.compileTime = cpuTime() - startTime
     return
 
-  # TODO: Actually generate IR from compiled Nim code
-  # This would involve:
-  # 1. Running the Nim program with special hooks
-  # 2. Capturing the component tree construction
-  # 3. Serializing to IR format
+  if verbose:
+    echo "[compile] Executable built successfully"
+    echo "[compile] Running with KRYON_SERIALIZE_IR=", outputFile
 
-  # For now, return placeholder success
+  # Run the executable with KRYON_SERIALIZE_IR set
+  let runCmd = "LD_LIBRARY_PATH=build:$LD_LIBRARY_PATH KRYON_SERIALIZE_IR=" & outputFile & " " & tempExe
+  let (runOutput, runExit) = execCmdEx(runCmd)
+
+  if verbose:
+    echo "[compile] Run output:"
+    echo runOutput
+
+  if runExit != 0:
+    result.errors.add("IR serialization failed")
+    result.errors.add(runOutput)
+    result.compileTime = cpuTime() - startTime
+    return
+
+  # Check if the IR file was created
+  if not fileExists(outputFile):
+    result.errors.add("IR file was not created: " & outputFile)
+    result.compileTime = cpuTime() - startTime
+    return
+
+  # Clean up temporary executable
+  try:
+    removeFile(tempExe)
+  except:
+    discard
+
   result.success = true
-  result.componentCount = 0
+  result.componentCount = 0  # TODO: Parse from output
   result.compileTime = cpuTime() - startTime
 
   if verbose:
-    echo "[compile] Compilation completed in ", result.compileTime, "s"
+    echo "[compile] IR compilation completed in ", result.compileTime, "s"
 
 proc validateIR*(irFile: string): tuple[valid: bool, errors: seq[string]] =
   ## Validate IR file format and structure
@@ -341,13 +386,14 @@ proc handleCompileCommand*(args: seq[string]) =
   ## Handle 'kryon compile' command
   if args.len == 0:
     echo "Error: Source file required"
-    echo "Usage: kryon compile <source> [--output=<file>] [--no-cache] [--validate]"
+    echo "Usage: kryon compile <source> [--output=<file>] [--format=binary|json] [--no-cache] [--validate]"
     return
 
   var opts = CompileOptions(
     sourceFile: args[0],
     outputFile: "",
     frontend: "",
+    format: FormatBinary,  # Default to binary (.kirb) format
     enableCache: true,
     enableValidation: false,
     enableOptimization: true,
@@ -360,6 +406,16 @@ proc handleCompileCommand*(args: seq[string]) =
     let arg = args[i]
     if arg.startsWith("--output="):
       opts.outputFile = arg[9..^1]
+    elif arg.startsWith("--format="):
+      let formatStr = arg[9..^1].toLowerAscii()
+      case formatStr
+      of "binary", "kirb":
+        opts.format = FormatBinary
+      of "json", "kir":
+        opts.format = FormatJSON
+      else:
+        echo "Error: Unknown format '", formatStr, "'. Use 'binary' or 'json'."
+        return
     elif arg == "--no-cache":
       opts.enableCache = false
     elif arg == "--validate":
@@ -369,10 +425,11 @@ proc handleCompileCommand*(args: seq[string]) =
     elif arg == "--with-manifest":
       opts.includeManifest = true
 
-  # Default output file
+  # Default output file based on format
   if opts.outputFile.len == 0:
     let (dir, name, ext) = splitFile(opts.sourceFile)
-    opts.outputFile = dir / name & ".kir"
+    let extension = if opts.format == FormatBinary: ".kirb" else: ".kir"
+    opts.outputFile = dir / name & extension
 
   # Compile
   echo "🔨 Compiling ", opts.sourceFile
@@ -398,7 +455,7 @@ proc handleValidateCommand*(args: seq[string]) =
   ## Handle 'kryon validate' command
   if args.len == 0:
     echo "Error: IR file required"
-    echo "Usage: kryon validate <file.kir>"
+    echo "Usage: kryon validate <file.kirb|file.kir>"
     return
 
   let irFile = args[0]
@@ -426,7 +483,7 @@ proc handleInspectIRCommand*(args: seq[string]) =
   ## Handle 'kryon inspect-ir' command
   if args.len == 0:
     echo "Error: IR file required"
-    echo "Usage: kryon inspect-ir <file.kir> [--json]"
+    echo "Usage: kryon inspect-ir <file.kirb|file.kir> [--json]"
     return
 
   let irFile = args[0]

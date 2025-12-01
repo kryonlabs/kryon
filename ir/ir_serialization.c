@@ -1,13 +1,16 @@
 #define _GNU_SOURCE
 #include "ir_serialization.h"
 #include "ir_builder.h"
+#include "third_party/cJSON/cJSON.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 
 // Binary format magic numbers
-#define IR_MAGIC_NUMBER 0x4B5259   // "KRY" in hex
+#define IR_MAGIC_NUMBER 0x4B495242      // "KIRB" in hex (new binary format)
+#define IR_MAGIC_NUMBER_LEGACY 0x4B5259 // "KRY" in hex (old format, for backwards compatibility)
 #define IR_ENDIANNESS_CHECK 0x12345678
 
 // Binary Serialization Helper Functions
@@ -1519,8 +1522,11 @@ IRComponent* ir_deserialize_binary(IRBuffer* buffer) {
     if (!read_uint16(buffer, &version_minor)) return NULL;
     if (!read_uint32(buffer, &endianness_check)) return NULL;
 
-    if (magic != IR_MAGIC_NUMBER) {
-        printf("Error: Invalid magic number in IR file\n");
+    if (magic == IR_MAGIC_NUMBER_LEGACY) {
+        // Legacy .kir file (old binary format)
+        printf("Warning: Loading legacy .kir format. Consider converting to .kirb format.\n");
+    } else if (magic != IR_MAGIC_NUMBER) {
+        printf("Error: Invalid magic number in IR file (expected KIRB format)\n");
         return NULL;
     }
 
@@ -1638,8 +1644,11 @@ IRComponent* ir_deserialize_binary_with_manifest(IRBuffer* buffer, IRReactiveMan
     if (!read_uint32(buffer, &endianness_check)) return NULL;
     if (!read_uint8(buffer, &flags)) return NULL;
 
-    if (magic != IR_MAGIC_NUMBER) {
-        printf("Error: Invalid magic number in IR file\n");
+    if (magic == IR_MAGIC_NUMBER_LEGACY) {
+        // Legacy .kir file (old binary format)
+        printf("Warning: Loading legacy .kir format. Consider converting to .kirb format.\n");
+    } else if (magic != IR_MAGIC_NUMBER) {
+        printf("Error: Invalid magic number in IR file (expected KIRB format)\n");
         return NULL;
     }
 
@@ -1964,7 +1973,7 @@ bool ir_validate_binary_format(IRBuffer* buffer) {
     buffer->data = original_data;
     buffer->size = original_size;
 
-    return (magic == IR_MAGIC_NUMBER &&
+    return ((magic == IR_MAGIC_NUMBER || magic == IR_MAGIC_NUMBER_LEGACY) &&
             version_major == IR_FORMAT_VERSION_MAJOR &&
             endianness_check == IR_ENDIANNESS_CHECK);
 }

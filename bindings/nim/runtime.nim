@@ -2,7 +2,7 @@
 ## This is the NEW runtime that uses ONLY the IR system
 ## NO LEGACY CODE - everything uses IR
 
-import ir_core, ir_desktop, os, strutils, tables, math, parseutils
+import ir_core, ir_desktop, ir_serialization, os, strutils, tables, math, parseutils
 import style_vars
 
 # Import reactive system for compatibility
@@ -790,6 +790,18 @@ proc run*(app: KryonApp) =
     echo "\n=== DEBUG: Initial Component Tree ==="
     debug_print_tree(app.root)
     echo "=== END DEBUG ===\n"
+
+  # Serialize to IR file if KRYON_SERIALIZE_IR is set
+  let serializeTarget = getEnv("KRYON_SERIALIZE_IR")
+  if serializeTarget != "":
+    echo "Serializing IR to: ", serializeTarget
+    # Write with null manifest (no reactive state to preserve during compilation)
+    if ir_serialization.ir_write_binary_file_with_manifest(app.root, nil, cstring(serializeTarget)):
+      echo "✓ IR serialized successfully"
+      quit(0)
+    else:
+      echo "✗ Failed to serialize IR"
+      quit(1)
 
   # Render using IR desktop renderer
   if not desktop_render_ir_component(app.root, addr app.config):

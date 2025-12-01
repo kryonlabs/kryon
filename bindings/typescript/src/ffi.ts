@@ -1,15 +1,42 @@
 // Kryon FFI Bindings - Bun native bindings to libkryon C library
 import { dlopen, FFIType, suffix, ptr } from 'bun:ffi';
-import { resolve } from 'path';
+import { resolve, join, dirname } from 'path';
+import { existsSync } from 'fs';
+import { homedir } from 'os';
 
 // Determine renderer from environment
 export const KRYON_RENDERER = process.env.KRYON_RENDERER || 'sdl3';
 
 // Find the library paths based on renderer
-const KRYON_LIB_PATH = process.env.KRYON_LIB_PATH ||
-  (KRYON_RENDERER === 'web'
-    ? resolve(import.meta.dir, '../../../../build/libkryon_web.so')
-    : resolve(import.meta.dir, '../../../../build/libkryon_desktop.so'));
+function findKryonLibrary(): string {
+  if (process.env.KRYON_LIB_PATH) {
+    return process.env.KRYON_LIB_PATH;
+  }
+
+  const libName = KRYON_RENDERER === 'web' ? 'libkryon_web.so' : 'libkryon_desktop.so';
+
+  // Check standard installation paths
+  const searchPaths = [
+    join(homedir(), '.local', 'lib', libName),           // User install
+    join('/usr', 'local', 'lib', libName),                // System install
+    join('/usr', 'lib', libName),                         // System-wide
+    join(dirname(dirname(dirname(dirname(import.meta.dir)))), 'build', libName)  // Relative from bindings/typescript/src/
+  ];
+
+  for (const path of searchPaths) {
+    if (existsSync(path)) {
+      return path;
+    }
+  }
+
+  throw new Error(
+    `Could not find ${libName}. Tried:\n` +
+    searchPaths.map(p => `  - ${p}`).join('\n') +
+    `\n\nSet KRYON_LIB_PATH environment variable to specify library location.`
+  );
+}
+
+const KRYON_LIB_PATH = findKryonLibrary();
 
 const KRYON_TS_WRAPPER_PATH = process.env.KRYON_TS_WRAPPER_PATH ||
   resolve(import.meta.dir, '../build/libkryon_ts_wrapper.so');
@@ -18,8 +45,8 @@ const KRYON_TS_WRAPPER_PATH = process.env.KRYON_TS_WRAPPER_PATH ||
 export const KRYON_WEB_OUTPUT_DIR = process.env.KRYON_WEB_OUTPUT_DIR ||
   resolve(import.meta.dir, '../../../../build/web_output');
 
-// Load the shared libraries
-const lib = dlopen(KRYON_LIB_PATH, {
+// Build symbols object based on renderer type
+const commonSymbols = {
   // ============================================================
   // Component Creation
   // ============================================================
@@ -203,40 +230,6 @@ const lib = dlopen(KRYON_LIB_PATH, {
   },
 
   // ============================================================
-  // Desktop Renderer
-  // ============================================================
-  desktop_render_ir_component: {
-    args: [FFIType.ptr, FFIType.ptr],  // root, config
-    returns: FFIType.bool,
-  },
-  desktop_ir_renderer_create: {
-    args: [FFIType.ptr],  // config
-    returns: FFIType.ptr,
-  },
-  desktop_ir_renderer_destroy: {
-    args: [FFIType.ptr],
-    returns: FFIType.void,
-  },
-  desktop_ir_renderer_initialize: {
-    args: [FFIType.ptr],
-    returns: FFIType.bool,
-  },
-  desktop_ir_renderer_run_main_loop: {
-    args: [FFIType.ptr, FFIType.ptr],  // renderer, root
-    returns: FFIType.bool,
-  },
-
-  // ============================================================
-  // Web Renderer (only available when using libkryon_web.so)
-  // ============================================================
-  // Note: These are conditionally available based on which library is loaded
-  // web_ir_renderer_create: { args: [], returns: FFIType.ptr },
-  // web_ir_renderer_destroy: { args: [FFIType.ptr], returns: FFIType.void },
-  // web_ir_renderer_set_output_directory: { args: [FFIType.ptr, FFIType.cstring], returns: FFIType.void },
-  // web_ir_renderer_render: { args: [FFIType.ptr, FFIType.ptr], returns: FFIType.bool },
-  // web_render_ir_component: { args: [FFIType.ptr, FFIType.cstring], returns: FFIType.bool },
-
-  // ============================================================
   // Convenience Component Creators
   // ============================================================
   ir_container: {
@@ -267,7 +260,75 @@ const lib = dlopen(KRYON_LIB_PATH, {
     args: [],
     returns: FFIType.ptr,
   },
-});
+};
+
+const desktopSymbols = {
+  // ============================================================
+  // Desktop Renderer
+  // ============================================================
+  desktop_render_ir_component: {
+    args: [FFIType.ptr, FFIType.ptr],  // root, config
+    returns: FFIType.bool,
+  },
+  desktop_ir_renderer_create: {
+    args: [FFIType.ptr],  // config
+    returns: FFIType.ptr,
+  },
+  desktop_ir_renderer_destroy: {
+    args: [FFIType.ptr],
+    returns: FFIType.void,
+  },
+  desktop_ir_renderer_initialize: {
+    args: [FFIType.ptr],
+    returns: FFIType.bool,
+  },
+  desktop_ir_renderer_run_main_loop: {
+    args: [FFIType.ptr, FFIType.ptr],  // renderer, root
+    returns: FFIType.bool,
+  },
+};
+
+const webSymbols = {
+  // ============================================================
+  // Web Renderer
+  // ============================================================
+  web_ir_renderer_create: {
+    args: [],
+    returns: FFIType.ptr,
+  },
+  web_ir_renderer_destroy: {
+    args: [FFIType.ptr],
+    returns: FFIType.void,
+  },
+  web_ir_renderer_set_output_directory: {
+    args: [FFIType.ptr, FFIType.cstring],
+    returns: FFIType.void,
+  },
+  web_ir_renderer_set_generate_separate_files: {
+    args: [FFIType.ptr, FFIType.bool],
+    returns: FFIType.void,
+  },
+  web_ir_renderer_set_include_javascript_runtime: {
+    args: [FFIType.ptr, FFIType.bool],
+    returns: FFIType.void,
+  },
+  web_ir_renderer_render: {
+    args: [FFIType.ptr, FFIType.ptr],  // renderer, root
+    returns: FFIType.bool,
+  },
+  web_render_ir_component: {
+    args: [FFIType.ptr, FFIType.cstring],  // root, output_dir
+    returns: FFIType.bool,
+  },
+};
+
+// Combine symbols based on renderer type
+const symbols = KRYON_RENDERER === 'web'
+  ? { ...commonSymbols, ...webSymbols }
+  : { ...commonSymbols, ...desktopSymbols };
+
+// Load the shared libraries
+const lib = dlopen(KRYON_LIB_PATH, symbols);
 
 export const ffi = lib.symbols;
 
@@ -311,48 +372,8 @@ try {
 
 export const wrapper = wrapperLib?.symbols ?? null;
 
-// Load web renderer library if in web mode
-let webLib: ReturnType<typeof dlopen> | null = null;
-if (KRYON_RENDERER === 'web') {
-  try {
-    const webLibPath = resolve(import.meta.dir, '../../../../build/libkryon_web.so');
-    webLib = dlopen(webLibPath, {
-      web_ir_renderer_create: {
-        args: [],
-        returns: FFIType.ptr,
-      },
-      web_ir_renderer_destroy: {
-        args: [FFIType.ptr],
-        returns: FFIType.void,
-      },
-      web_ir_renderer_set_output_directory: {
-        args: [FFIType.ptr, FFIType.cstring],
-        returns: FFIType.void,
-      },
-      web_ir_renderer_set_generate_separate_files: {
-        args: [FFIType.ptr, FFIType.bool],
-        returns: FFIType.void,
-      },
-      web_ir_renderer_set_include_javascript_runtime: {
-        args: [FFIType.ptr, FFIType.bool],
-        returns: FFIType.void,
-      },
-      web_ir_renderer_render: {
-        args: [FFIType.ptr, FFIType.ptr],  // renderer, root
-        returns: FFIType.bool,
-      },
-      web_render_ir_component: {
-        args: [FFIType.ptr, FFIType.cstring],  // root, output_dir
-        returns: FFIType.bool,
-      },
-    });
-    console.log('Web renderer library loaded');
-  } catch (e) {
-    console.warn('Web renderer library not found:', e);
-  }
-}
-
-export const webFfi = webLib?.symbols ?? null;
+// Export web FFI symbols (they're already loaded in the main lib when renderer === 'web')
+export const webFfi = KRYON_RENDERER === 'web' ? ffi : null;
 
 // Helper to convert string to C string pointer
 export function toCString(str: string): ReturnType<typeof ptr> {

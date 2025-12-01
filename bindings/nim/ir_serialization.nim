@@ -33,3 +33,7 @@ proc ir_serialize_json*(root: ptr IRComponent): cstring {.importc, cdecl, header
 proc ir_deserialize_json*(json_string: cstring): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
 proc ir_write_json_file*(root: ptr IRComponent; filename: cstring): bool {.importc, cdecl, header: "ir_serialization.h".}
 proc ir_read_json_file*(filename: cstring): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
+
+# JSON v2 serialization (complete property coverage)
+proc ir_serialize_json_v2*(root: ptr IRComponent): cstring {.importc, cdecl, header: "ir_serialization.h".}
+proc ir_write_json_v2_file*(root: ptr IRComponent; filename: cstring): bool {.importc, cdecl, header: "ir_serialization.h".}

@@ -25,8 +25,8 @@ BUILD_DIR = ../build
 INCLUDE_DIR = .
 
 # Source files
-IR_SOURCES = ir_builder.c ir_serialization.c ir_validation.c ir_reactive_manifest.c ir_style_vars.c ir_layout.c ir_memory.c ir_hashmap.c ir_animation.c ir_text_shaping.c ir_hot_reload.c
-IR_HEADERS = ir_core.h ir_builder.h ir_serialization.h ir_validation.h ir_style_vars.h ir_memory.h ir_hashmap.h ir_animation.h ir_text_shaping.h ir_hot_reload.h
+IR_SOURCES = ir_builder.c ir_serialization.c ir_validation.c ir_reactive_manifest.c ir_style_vars.c ir_layout.c ir_memory.c ir_hashmap.c ir_animation.c ir_text_shaping.c ir_hot_reload.c ir_format_detect.c ir_json_v2.c third_party/cJSON/cJSON.c
+IR_HEADERS = ir_core.h ir_builder.h ir_serialization.h ir_validation.h ir_style_vars.h ir_memory.h ir_hashmap.h ir_animation.h ir_text_shaping.h ir_hot_reload.h ir_format_detect.h third_party/cJSON/cJSON.h
 
 # Output files
 IR_STATIC_LIB = $(BUILD_DIR)/libkryon_ir.a
@@ -73,13 +73,22 @@ ir_text_shaping.o: ir_text_shaping.c $(IR_HEADERS)
 ir_hot_reload.o: ir_hot_reload.c $(IR_HEADERS)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_hot_reload.c -o ir_hot_reload.o
 
+ir_format_detect.o: ir_format_detect.c $(IR_HEADERS)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_format_detect.c -o ir_format_detect.o
+
+third_party/cJSON/cJSON.o: third_party/cJSON/cJSON.c third_party/cJSON/cJSON.h
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c third_party/cJSON/cJSON.c -o third_party/cJSON/cJSON.o
+
+ir_json_v2.o: ir_json_v2.c $(IR_HEADERS)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_json_v2.c -o ir_json_v2.o
+
 # Create static library
-$(IR_STATIC_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o
-	$(AR) $(ARFLAGS) $@ ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o
+$(IR_STATIC_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o third_party/cJSON/cJSON.o
+	$(AR) $(ARFLAGS) $@ ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o third_party/cJSON/cJSON.o
 
 # Create shared library
-$(IR_SHARED_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o -lm $(HARFBUZZ_LIBS)
+$(IR_SHARED_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o third_party/cJSON/cJSON.o
+	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o ir_validation.o ir_reactive_manifest.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o third_party/cJSON/cJSON.o -lm $(HARFBUZZ_LIBS)
 
 # Install headers
 install-headers: $(BUILD_DIR)
