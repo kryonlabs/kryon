@@ -91,12 +91,22 @@ void ir_set_justify_content(IRLayout* layout, IRAlignment justify);
 void ir_set_align_items(IRLayout* layout, IRAlignment align);
 void ir_set_align_content(IRLayout* layout, IRAlignment align);
 
+// BiDi Direction Property Helpers
+void ir_set_base_direction(IRComponent* component, IRDirection dir);
+void ir_set_unicode_bidi(IRComponent* component, IRUnicodeBidi bidi);
+IRDirection ir_parse_direction(const char* str);
+IRUnicodeBidi ir_parse_unicode_bidi(const char* str);
+
 // Event Management
 IREvent* ir_create_event(IREventType type, const char* logic_id, const char* handler_data);
 void ir_destroy_event(IREvent* event);
 void ir_add_event(IRComponent* component, IREvent* event);
 void ir_remove_event(IRComponent* component, IREvent* event);
 IREvent* ir_find_event(IRComponent* component, IREventType type);
+
+// Event Bytecode Support (IR v2.1)
+void ir_event_set_bytecode_function_id(IREvent* event, uint32_t function_id);
+uint32_t ir_event_get_bytecode_function_id(IREvent* event);
 
 // Logic Management
 IRLogic* ir_create_logic(const char* id, LogicSourceType type, const char* source_code);

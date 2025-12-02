@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 #include "ir_serialization.h"
 #include "ir_builder.h"
-#include "third_party/cJSON/cJSON.h"
+#include "cJSON.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -24,6 +24,18 @@ static bool write_uint16(IRBuffer* buffer, uint16_t value) {
 
 static bool write_uint32(IRBuffer* buffer, uint32_t value) {
     return ir_buffer_write(buffer, &value, sizeof(uint32_t));
+}
+
+static bool write_int32(IRBuffer* buffer, int32_t value) {
+    return ir_buffer_write(buffer, &value, sizeof(int32_t));
+}
+
+static bool write_int64(IRBuffer* buffer, int64_t value) {
+    return ir_buffer_write(buffer, &value, sizeof(int64_t));
+}
+
+static bool write_double(IRBuffer* buffer, double value) {
+    return ir_buffer_write(buffer, &value, sizeof(double));
 }
 
 static bool write_float32(IRBuffer* buffer, float value) {
@@ -55,6 +67,18 @@ static bool read_uint16(IRBuffer* buffer, uint16_t* value) {
 
 static bool read_uint32(IRBuffer* buffer, uint32_t* value) {
     return ir_buffer_read(buffer, value, sizeof(uint32_t));
+}
+
+static bool read_int32(IRBuffer* buffer, int32_t* value) {
+    return ir_buffer_read(buffer, value, sizeof(int32_t));
+}
+
+static bool read_int64(IRBuffer* buffer, int64_t* value) {
+    return ir_buffer_read(buffer, value, sizeof(int64_t));
+}
+
+static bool read_double(IRBuffer* buffer, double* value) {
+    return ir_buffer_read(buffer, value, sizeof(double));
 }
 
 static bool read_float32(IRBuffer* buffer, float* value) {
@@ -250,6 +274,9 @@ static bool serialize_flexbox(IRBuffer* buffer, IRFlexbox* flex) {
     if (!write_uint8(buffer, flex->grow)) return false;
     if (!write_uint8(buffer, flex->shrink)) return false;
     if (!write_uint8(buffer, flex->direction)) return false;
+    if (!write_uint8(buffer, flex->base_direction)) return false;  // BiDi: CSS direction
+    if (!write_uint8(buffer, flex->unicode_bidi)) return false;    // BiDi: unicode-bidi
+    if (!write_uint8(buffer, flex->_padding)) return false;        // BiDi: padding
     return true;
 }
 
@@ -262,6 +289,9 @@ static bool deserialize_flexbox(IRBuffer* buffer, IRFlexbox* flex) {
     if (!read_uint8(buffer, &flex->grow)) return false;
     if (!read_uint8(buffer, &flex->shrink)) return false;
     if (!read_uint8(buffer, &flex->direction)) return false;
+    if (!read_uint8(buffer, &flex->base_direction)) return false;  // BiDi: CSS direction
+    if (!read_uint8(buffer, &flex->unicode_bidi)) return false;    // BiDi: unicode-bidi
+    if (!read_uint8(buffer, &flex->_padding)) return false;        // BiDi: padding
     return true;
 }
 
@@ -959,6 +989,7 @@ static bool serialize_event(IRBuffer* buffer, IREvent* event) {
     if (!write_uint8(buffer, event->type)) return false;
     if (!write_string(buffer, event->logic_id)) return false;
     if (!write_string(buffer, event->handler_data)) return false;
+    if (!write_uint32(buffer, event->bytecode_function_id)) return false;  // IR v2.1: bytecode support
 
     return true;
 }
@@ -980,6 +1011,7 @@ static bool deserialize_event(IRBuffer* buffer, IREvent** event_ptr) {
     if (!read_uint8(buffer, (uint8_t*)&event->type)) goto error;
     if (!read_string(buffer, &event->logic_id)) goto error;
     if (!read_string(buffer, &event->handler_data)) goto error;
+    if (!read_uint32(buffer, &event->bytecode_function_id)) goto error;  // IR v2.1: bytecode support
 
     *event_ptr = event;
     return true;
@@ -1176,319 +1208,42 @@ error:
 }
 
 // ============================================================================
-// Reactive Manifest Serialization
+// Validation Functions
 // ============================================================================
 
-// Header flags
-#define IR_HEADER_FLAG_HAS_MANIFEST 0x01
+bool ir_validate_binary_format(IRBuffer* buffer) {
+    if (!buffer || buffer->size < 16) return false;
 
-// Serialize a reactive variable
-static bool serialize_reactive_var(IRBuffer* buffer, IRReactiveVarDescriptor* var) {
-    if (!write_uint32(buffer, var->id)) return false;
-    if (!write_string(buffer, var->name)) return false;
-    if (!write_uint8(buffer, (uint8_t)var->type)) return false;
-    if (!write_uint32(buffer, var->version)) return false;
-    if (!write_string(buffer, var->source_location)) return false;
-    if (!write_uint32(buffer, var->binding_count)) return false;
+    // Check magic number and version by attempting to read header
+    size_t original_size = buffer->size;
+    uint8_t* original_data = buffer->data;
 
-    // Serialize value based on type
-    switch (var->type) {
-        case IR_REACTIVE_TYPE_INT:
-            if (!write_uint32(buffer, (uint32_t)var->value.as_int)) return false;
-            break;
-        case IR_REACTIVE_TYPE_FLOAT:
-            if (!write_float64(buffer, var->value.as_float)) return false;
-            break;
-        case IR_REACTIVE_TYPE_STRING:
-            if (!write_string(buffer, var->value.as_string)) return false;
-            break;
-        case IR_REACTIVE_TYPE_BOOL:
-            if (!write_uint8(buffer, var->value.as_bool ? 1 : 0)) return false;
-            break;
-        case IR_REACTIVE_TYPE_CUSTOM:
-            if (!write_string(buffer, var->value.as_string)) return false;
-            break;
-    }
+    uint32_t magic;
+    uint16_t version_major, version_minor;
+    uint32_t endianness_check;
 
-    return true;
+    if (!read_uint32(buffer, &magic)) return false;
+    if (!read_uint16(buffer, &version_major)) return false;
+    if (!read_uint16(buffer, &version_minor)) return false;
+    if (!read_uint32(buffer, &endianness_check)) return false;
+
+    // Restore buffer position
+    buffer->data = original_data;
+    buffer->size = original_size;
+
+    return ((magic == IR_MAGIC_NUMBER || magic == IR_MAGIC_NUMBER_LEGACY) &&
+            version_major == IR_FORMAT_VERSION_MAJOR &&
+            endianness_check == IR_ENDIANNESS_CHECK);
 }
 
-// Deserialize a reactive variable
-static bool deserialize_reactive_var(IRBuffer* buffer, IRReactiveVarDescriptor* var) {
-    if (!read_uint32(buffer, &var->id)) return false;
-    if (!read_string(buffer, &var->name)) return false;
-
-    uint8_t type;
-    if (!read_uint8(buffer, &type)) return false;
-    var->type = (IRReactiveVarType)type;
-
-    if (!read_uint32(buffer, &var->version)) return false;
-    if (!read_string(buffer, &var->source_location)) return false;
-    if (!read_uint32(buffer, &var->binding_count)) return false;
-
-    // Deserialize value based on type
-    switch (var->type) {
-        case IR_REACTIVE_TYPE_INT: {
-            uint32_t val;
-            if (!read_uint32(buffer, &val)) return false;
-            var->value.as_int = (int32_t)val;
-            break;
-        }
-        case IR_REACTIVE_TYPE_FLOAT:
-            if (!read_float64(buffer, &var->value.as_float)) return false;
-            break;
-        case IR_REACTIVE_TYPE_STRING:
-            if (!read_string(buffer, &var->value.as_string)) return false;
-            break;
-        case IR_REACTIVE_TYPE_BOOL: {
-            uint8_t val;
-            if (!read_uint8(buffer, &val)) return false;
-            var->value.as_bool = (val != 0);
-            break;
-        }
-        case IR_REACTIVE_TYPE_CUSTOM:
-            if (!read_string(buffer, &var->value.as_string)) return false;
-            break;
-    }
-
-    return true;
+bool ir_validate_json_format(const char* json_string) {
+    // Simplified JSON validation - just check if it starts with {
+    return json_string && json_string[0] == '{';
 }
-
-// Serialize a reactive binding
-static bool serialize_reactive_binding(IRBuffer* buffer, IRReactiveBinding* binding) {
-    if (!write_uint32(buffer, binding->component_id)) return false;
-    if (!write_uint32(buffer, binding->reactive_var_id)) return false;
-    if (!write_uint8(buffer, (uint8_t)binding->binding_type)) return false;
-    if (!write_string(buffer, binding->expression)) return false;
-    if (!write_string(buffer, binding->update_code)) return false;
-    return true;
-}
-
-// Deserialize a reactive binding
-static bool deserialize_reactive_binding(IRBuffer* buffer, IRReactiveBinding* binding) {
-    if (!read_uint32(buffer, &binding->component_id)) return false;
-    if (!read_uint32(buffer, &binding->reactive_var_id)) return false;
-
-    uint8_t type;
-    if (!read_uint8(buffer, &type)) return false;
-    binding->binding_type = (IRBindingType)type;
-
-    if (!read_string(buffer, &binding->expression)) return false;
-    if (!read_string(buffer, &binding->update_code)) return false;
-    return true;
-}
-
-// Serialize a reactive conditional
-static bool serialize_reactive_conditional(IRBuffer* buffer, IRReactiveConditional* cond) {
-    if (!write_uint32(buffer, cond->component_id)) return false;
-    if (!write_string(buffer, cond->condition)) return false;
-    if (!write_uint8(buffer, cond->last_eval_result ? 1 : 0)) return false;
-    if (!write_uint8(buffer, cond->suspended ? 1 : 0)) return false;
-    if (!write_uint32(buffer, cond->dependent_var_count)) return false;
-
-    for (uint32_t i = 0; i < cond->dependent_var_count; i++) {
-        if (!write_uint32(buffer, cond->dependent_var_ids[i])) return false;
-    }
-
-    return true;
-}
-
-// Deserialize a reactive conditional
-static bool deserialize_reactive_conditional(IRBuffer* buffer, IRReactiveConditional* cond) {
-    if (!read_uint32(buffer, &cond->component_id)) return false;
-    if (!read_string(buffer, &cond->condition)) return false;
-
-    uint8_t val;
-    if (!read_uint8(buffer, &val)) return false;
-    cond->last_eval_result = (val != 0);
-
-    if (!read_uint8(buffer, &val)) return false;
-    cond->suspended = (val != 0);
-
-    if (!read_uint32(buffer, &cond->dependent_var_count)) return false;
-
-    if (cond->dependent_var_count > 0) {
-        cond->dependent_var_ids = malloc(sizeof(uint32_t) * cond->dependent_var_count);
-        if (!cond->dependent_var_ids) return false;
-
-        for (uint32_t i = 0; i < cond->dependent_var_count; i++) {
-            if (!read_uint32(buffer, &cond->dependent_var_ids[i])) return false;
-        }
-    } else {
-        cond->dependent_var_ids = NULL;
-    }
-
-    return true;
-}
-
-// Serialize a reactive for-loop
-static bool serialize_reactive_for_loop(IRBuffer* buffer, IRReactiveForLoop* loop) {
-    if (!write_uint32(buffer, loop->parent_component_id)) return false;
-    if (!write_string(buffer, loop->collection_expr)) return false;
-    if (!write_uint32(buffer, loop->collection_var_id)) return false;
-    if (!write_string(buffer, loop->item_template)) return false;
-    if (!write_uint32(buffer, loop->child_count)) return false;
-
-    for (uint32_t i = 0; i < loop->child_count; i++) {
-        if (!write_uint32(buffer, loop->child_component_ids[i])) return false;
-    }
-
-    return true;
-}
-
-// Deserialize a reactive for-loop
-static bool deserialize_reactive_for_loop(IRBuffer* buffer, IRReactiveForLoop* loop) {
-    if (!read_uint32(buffer, &loop->parent_component_id)) return false;
-    if (!read_string(buffer, &loop->collection_expr)) return false;
-    if (!read_uint32(buffer, &loop->collection_var_id)) return false;
-    if (!read_string(buffer, &loop->item_template)) return false;
-    if (!read_uint32(buffer, &loop->child_count)) return false;
-
-    if (loop->child_count > 0) {
-        loop->child_component_ids = malloc(sizeof(uint32_t) * loop->child_count);
-        if (!loop->child_component_ids) return false;
-
-        for (uint32_t i = 0; i < loop->child_count; i++) {
-            if (!read_uint32(buffer, &loop->child_component_ids[i])) return false;
-        }
-    } else {
-        loop->child_component_ids = NULL;
-    }
-
-    return true;
-}
-
-// Serialize complete reactive manifest
-static bool serialize_reactive_manifest(IRBuffer* buffer, IRReactiveManifest* manifest) {
-    if (!manifest) return true;  // NULL manifest is OK
-
-    // Write manifest header
-    if (!write_uint32(buffer, manifest->format_version)) return false;
-    if (!write_uint32(buffer, manifest->next_var_id)) return false;
-
-    // Write variables
-    if (!write_uint32(buffer, manifest->variable_count)) return false;
-    for (uint32_t i = 0; i < manifest->variable_count; i++) {
-        if (!serialize_reactive_var(buffer, &manifest->variables[i])) return false;
-    }
-
-    // Write bindings
-    if (!write_uint32(buffer, manifest->binding_count)) return false;
-    for (uint32_t i = 0; i < manifest->binding_count; i++) {
-        if (!serialize_reactive_binding(buffer, &manifest->bindings[i])) return false;
-    }
-
-    // Write conditionals
-    if (!write_uint32(buffer, manifest->conditional_count)) return false;
-    for (uint32_t i = 0; i < manifest->conditional_count; i++) {
-        if (!serialize_reactive_conditional(buffer, &manifest->conditionals[i])) return false;
-    }
-
-    // Write for-loops
-    if (!write_uint32(buffer, manifest->for_loop_count)) return false;
-    for (uint32_t i = 0; i < manifest->for_loop_count; i++) {
-        if (!serialize_reactive_for_loop(buffer, &manifest->for_loops[i])) return false;
-    }
-
-    return true;
-}
-
-// Deserialize complete reactive manifest
-static bool deserialize_reactive_manifest(IRBuffer* buffer, IRReactiveManifest** manifest_ptr) {
-    IRReactiveManifest* manifest = ir_reactive_manifest_create();
-    if (!manifest) return false;
-
-    // Read manifest header
-    if (!read_uint32(buffer, &manifest->format_version)) goto error;
-    if (!read_uint32(buffer, &manifest->next_var_id)) goto error;
-
-    // Read variables
-    uint32_t var_count;
-    if (!read_uint32(buffer, &var_count)) goto error;
-
-    if (var_count > 0) {
-        // Ensure capacity
-        while (manifest->variable_capacity < var_count) {
-            manifest->variable_capacity *= 2;
-            IRReactiveVarDescriptor* new_vars = realloc(manifest->variables,
-                sizeof(IRReactiveVarDescriptor) * manifest->variable_capacity);
-            if (!new_vars) goto error;
-            manifest->variables = new_vars;
-        }
-
-        for (uint32_t i = 0; i < var_count; i++) {
-            if (!deserialize_reactive_var(buffer, &manifest->variables[i])) goto error;
-            manifest->variable_count++;
-        }
-    }
-
-    // Read bindings
-    uint32_t binding_count;
-    if (!read_uint32(buffer, &binding_count)) goto error;
-
-    if (binding_count > 0) {
-        while (manifest->binding_capacity < binding_count) {
-            manifest->binding_capacity *= 2;
-            IRReactiveBinding* new_bindings = realloc(manifest->bindings,
-                sizeof(IRReactiveBinding) * manifest->binding_capacity);
-            if (!new_bindings) goto error;
-            manifest->bindings = new_bindings;
-        }
-
-        for (uint32_t i = 0; i < binding_count; i++) {
-            if (!deserialize_reactive_binding(buffer, &manifest->bindings[i])) goto error;
-            manifest->binding_count++;
-        }
-    }
-
-    // Read conditionals
-    uint32_t conditional_count;
-    if (!read_uint32(buffer, &conditional_count)) goto error;
-
-    if (conditional_count > 0) {
-        while (manifest->conditional_capacity < conditional_count) {
-            manifest->conditional_capacity *= 2;
-            IRReactiveConditional* new_conds = realloc(manifest->conditionals,
-                sizeof(IRReactiveConditional) * manifest->conditional_capacity);
-            if (!new_conds) goto error;
-            manifest->conditionals = new_conds;
-        }
-
-        for (uint32_t i = 0; i < conditional_count; i++) {
-            if (!deserialize_reactive_conditional(buffer, &manifest->conditionals[i])) goto error;
-            manifest->conditional_count++;
-        }
-    }
-
-    // Read for-loops
-    uint32_t for_loop_count;
-    if (!read_uint32(buffer, &for_loop_count)) goto error;
-
-    if (for_loop_count > 0) {
-        while (manifest->for_loop_capacity < for_loop_count) {
-            manifest->for_loop_capacity *= 2;
-            IRReactiveForLoop* new_loops = realloc(manifest->for_loops,
-                sizeof(IRReactiveForLoop) * manifest->for_loop_capacity);
-            if (!new_loops) goto error;
-            manifest->for_loops = new_loops;
-        }
-
-        for (uint32_t i = 0; i < for_loop_count; i++) {
-            if (!deserialize_reactive_for_loop(buffer, &manifest->for_loops[i])) goto error;
-            manifest->for_loop_count++;
-        }
-    }
-
-    *manifest_ptr = manifest;
-    return true;
-
-error:
-    ir_reactive_manifest_destroy(manifest);
-    return false;
-}
-
 // ============================================================================
-// Binary Serialization Functions
+// High-Level Serialization API
+// ============================================================================
+
 IRBuffer* ir_serialize_binary(IRComponent* root) {
     IRBuffer* buffer = ir_buffer_create(4096);  // Start with 4KB
     if (!buffer) return NULL;
@@ -1522,11 +1277,8 @@ IRComponent* ir_deserialize_binary(IRBuffer* buffer) {
     if (!read_uint16(buffer, &version_minor)) return NULL;
     if (!read_uint32(buffer, &endianness_check)) return NULL;
 
-    if (magic == IR_MAGIC_NUMBER_LEGACY) {
-        // Legacy .kir file (old binary format)
-        printf("Warning: Loading legacy .kir format. Consider converting to .kirb format.\n");
-    } else if (magic != IR_MAGIC_NUMBER) {
-        printf("Error: Invalid magic number in IR file (expected KIRB format)\n");
+    if (magic != IR_MAGIC_NUMBER) {
+        printf("Error: Invalid magic number in IR file\n");
         return NULL;
     }
 
@@ -1596,273 +1348,29 @@ IRComponent* ir_read_binary_file(const char* filename) {
     return root;
 }
 
-// ============================================================================
-// Binary Serialization with Reactive Manifest
-// ============================================================================
-
-IRBuffer* ir_serialize_binary_with_manifest(IRComponent* root, IRReactiveManifest* manifest) {
-    IRBuffer* buffer = ir_buffer_create(4096);  // Start with 4KB
-    if (!buffer) return NULL;
-
-    // Write header with flags
-    uint8_t flags = 0;
-    if (manifest) flags |= IR_HEADER_FLAG_HAS_MANIFEST;
-
-    if (!write_uint32(buffer, IR_MAGIC_NUMBER)) goto error;
-    if (!write_uint16(buffer, IR_FORMAT_VERSION_MAJOR)) goto error;
-    if (!write_uint16(buffer, IR_FORMAT_VERSION_MINOR)) goto error;
-    if (!write_uint32(buffer, IR_ENDIANNESS_CHECK)) goto error;
-    if (!write_uint8(buffer, flags)) goto error;
-
-    // Serialize root component
-    if (!serialize_component(buffer, root)) goto error;
-
-    // Serialize reactive manifest if present
-    if (manifest) {
-        if (!serialize_reactive_manifest(buffer, manifest)) goto error;
-    }
-
-    return buffer;
-
-error:
-    ir_buffer_destroy(buffer);
-    return NULL;
-}
-
-IRComponent* ir_deserialize_binary_with_manifest(IRBuffer* buffer, IRReactiveManifest** manifest) {
-    if (!buffer) return NULL;
-
-    // Read and validate header
-    uint32_t magic;
-    uint16_t version_major, version_minor;
-    uint32_t endianness_check;
-    uint8_t flags;
-
-    if (!read_uint32(buffer, &magic)) return NULL;
-    if (!read_uint16(buffer, &version_major)) return NULL;
-    if (!read_uint16(buffer, &version_minor)) return NULL;
-    if (!read_uint32(buffer, &endianness_check)) return NULL;
-    if (!read_uint8(buffer, &flags)) return NULL;
-
-    if (magic == IR_MAGIC_NUMBER_LEGACY) {
-        // Legacy .kir file (old binary format)
-        printf("Warning: Loading legacy .kir format. Consider converting to .kirb format.\n");
-    } else if (magic != IR_MAGIC_NUMBER) {
-        printf("Error: Invalid magic number in IR file (expected KIRB format)\n");
-        return NULL;
-    }
-
-    if (version_major != IR_FORMAT_VERSION_MAJOR) {
-        printf("Error: Unsupported IR format version %d.%d\n", version_major, version_minor);
-        return NULL;
-    }
-
-    if (endianness_check != IR_ENDIANNESS_CHECK) {
-        printf("Error: Endianness mismatch in IR file\n");
-        return NULL;
-    }
-
-    // Deserialize root component
-    IRComponent* root;
-    if (!deserialize_component(buffer, &root)) return NULL;
-
-    // Deserialize reactive manifest if present
-    if (manifest) {
-        if (flags & IR_HEADER_FLAG_HAS_MANIFEST) {
-            if (!deserialize_reactive_manifest(buffer, manifest)) {
-                ir_destroy_component(root);
-                return NULL;
-            }
-        } else {
-            *manifest = NULL;
-        }
-    }
-
-    return root;
-}
-
-bool ir_write_binary_file_with_manifest(IRComponent* root, IRReactiveManifest* manifest, const char* filename) {
-    IRBuffer* buffer = ir_serialize_binary_with_manifest(root, manifest);
-    if (!buffer) return false;
-
-    FILE* file = fopen(filename, "wb");
-    if (!file) {
-        ir_buffer_destroy(buffer);
-        return false;
-    }
-
-    bool success = (fwrite(buffer->data, 1, buffer->size, file) == buffer->size);
-    fclose(file);
-    ir_buffer_destroy(buffer);
-
-    return success;
-}
-
-IRComponent* ir_read_binary_file_with_manifest(const char* filename, IRReactiveManifest** manifest) {
-    FILE* file = fopen(filename, "rb");
-    if (!file) return NULL;
-
-    // Get file size
-    fseek(file, 0, SEEK_END);
-    size_t file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    // Create buffer
-    IRBuffer* buffer = ir_buffer_create(file_size);
-    if (!buffer) {
-        fclose(file);
-        return NULL;
-    }
-
-    // Read file into buffer
-    if (fread(buffer->data, 1, file_size, file) != file_size) {
-        fclose(file);
-        ir_buffer_destroy(buffer);
-        return NULL;
-    }
-    buffer->size = file_size;
-    fclose(file);
-
-    // Deserialize
-    IRComponent* root = ir_deserialize_binary_with_manifest(buffer, manifest);
-    ir_buffer_destroy(buffer);
-
-    return root;
-}
-
-// JSON Serialization Helper - SAFE version without strcpy
-static void append_json(char** json, size_t* size, size_t* capacity, const char* str) {
-    size_t len = strlen(str);
-    while (*size + len + 1 > *capacity) {
-        *capacity *= 2;
-        char* new_json = realloc(*json, *capacity);
-        if (!new_json) {
-            fprintf(stderr, "Error: Failed to allocate memory for JSON serialization\n");
-            return;
-        }
-        *json = new_json;
-    }
-    // Use memcpy instead of strcpy for safety
-    memcpy(*json + *size, str, len);
-    *size += len;
-    (*json)[*size] = '\0';
-}
-
-#define MAX_JSON_DEPTH 64
-
-static void serialize_component_json_recursive(IRComponent* component, char** json, size_t* size, size_t* capacity, int depth) {
+void ir_print_component_info(IRComponent* component, int depth) {
     if (!component) return;
 
-    // Depth limit to prevent stack overflow
-    if (depth > MAX_JSON_DEPTH) {
-        fprintf(stderr, "Error: JSON serialization depth limit exceeded (%d)\n", MAX_JSON_DEPTH);
-        return;
+    // Print indentation
+    for (int i = 0; i < depth; i++) {
+        printf("  ");
     }
 
-    char buffer[1024];
-    char indent[256] = "";  // Increased size for safety
-
-    // Build indent string safely
-    int indent_len = 0;
-    for (int i = 0; i < depth && indent_len < (int)sizeof(indent) - 3; i++) {
-        indent[indent_len++] = ' ';
-        indent[indent_len++] = ' ';
-    }
-    indent[indent_len] = '\0';
-
-    // Start component object
-    snprintf(buffer, sizeof(buffer), "%s{\n", indent);
-    append_json(json, size, capacity, buffer);
-
-    // ID and type
-    snprintf(buffer, sizeof(buffer), "%s  \"id\": %u,\n", indent, component->id);
-    append_json(json, size, capacity, buffer);
-
-    snprintf(buffer, sizeof(buffer), "%s  \"type\": \"%s\",\n", indent, ir_component_type_to_string(component->type));
-    append_json(json, size, capacity, buffer);
-
-    // Text content
+    printf("%s (ID: %u)", ir_component_type_to_string(component->type), component->id);
     if (component->text_content) {
-        snprintf(buffer, sizeof(buffer), "%s  \"text\": \"%s\",\n", indent, component->text_content);
-        append_json(json, size, capacity, buffer);
+        printf(" Text: \"%s\"", component->text_content);
     }
-
-    // Style (simplified - just visible and z_index)
-    if (component->style) {
-        snprintf(buffer, sizeof(buffer), "%s  \"style\": {\n", indent);
-        append_json(json, size, capacity, buffer);
-
-        snprintf(buffer, sizeof(buffer), "%s    \"visible\": %s,\n", indent, component->style->visible ? "true" : "false");
-        append_json(json, size, capacity, buffer);
-
-        snprintf(buffer, sizeof(buffer), "%s    \"z_index\": %u\n", indent, component->style->z_index);
-        append_json(json, size, capacity, buffer);
-
-        snprintf(buffer, sizeof(buffer), "%s  },\n", indent);
-        append_json(json, size, capacity, buffer);
+    if (component->tag) {
+        printf(" Tag: \"%s\"", component->tag);
     }
+    printf("\n");
 
-    // Rendered bounds
-    if (component->rendered_bounds.valid) {
-        snprintf(buffer, sizeof(buffer), "%s  \"bounds\": { \"x\": %.2f, \"y\": %.2f, \"width\": %.2f, \"height\": %.2f },\n",
-                indent, component->rendered_bounds.x, component->rendered_bounds.y,
-                component->rendered_bounds.width, component->rendered_bounds.height);
-        append_json(json, size, capacity, buffer);
+    // Print children recursively
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        ir_print_component_info(component->children[i], depth + 1);
     }
-
-    // Children
-    if (component->child_count > 0) {
-        snprintf(buffer, sizeof(buffer), "%s  \"children\": [\n", indent);
-        append_json(json, size, capacity, buffer);
-
-        for (uint32_t i = 0; i < component->child_count; i++) {
-            serialize_component_json_recursive(component->children[i], json, size, capacity, depth + 2);
-            if (i < component->child_count - 1) {
-                append_json(json, size, capacity, ",\n");
-            } else {
-                append_json(json, size, capacity, "\n");
-            }
-        }
-
-        snprintf(buffer, sizeof(buffer), "%s  ]\n", indent);
-        append_json(json, size, capacity, buffer);
-    } else {
-        // Remove trailing comma if no children
-        if ((*json)[*size - 2] == ',') {
-            (*json)[*size - 2] = '\n';
-            (*size)--;
-        }
-    }
-
-    snprintf(buffer, sizeof(buffer), "%s}", indent);
-    append_json(json, size, capacity, buffer);
 }
 
-// JSON Serialization
-char* ir_serialize_json(IRComponent* root) {
-    if (!root) return strdup("null");
-
-    size_t capacity = 4096;
-    size_t size = 0;
-    char* json = malloc(capacity);
-    if (!json) return NULL;
-
-    json[0] = '\0';
-
-    serialize_component_json_recursive(root, &json, &size, &capacity, 0);
-
-    append_json(&json, &size, &capacity, "\n");
-
-    return json;
-}
-
-IRComponent* ir_deserialize_json(const char* json_string) {
-    // This is a placeholder for JSON deserialization
-    // In a full implementation, you'd parse the JSON string and build IR components
-    return NULL;
-}
-
-// File I/O for JSON
 bool ir_write_json_file(IRComponent* root, const char* filename) {
     char* json = ir_serialize_json(root);
     if (!json) return false;
@@ -1908,77 +1416,14 @@ IRComponent* ir_read_json_file(const char* filename) {
     return root;
 }
 
-// Utility Functions
-size_t ir_calculate_serialized_size(IRComponent* root) {
-    IRBuffer* buffer = ir_serialize_binary(root);
-    if (!buffer) return 0;
+// ============================================================================
+// JSON Serialization Wrappers (delegate to v2 implementations)
+// ============================================================================
 
-    size_t size = buffer->size;
-    ir_buffer_destroy(buffer);
-    return size;
+char* ir_serialize_json(IRComponent* root) {
+    return ir_serialize_json_v2(root);
 }
 
-void ir_print_component_info(IRComponent* component, int depth) {
-    if (!component) return;
-
-    // Print indentation
-    for (int i = 0; i < depth; i++) {
-        printf("  ");
-    }
-
-    printf("%s (ID: %u)", ir_component_type_to_string(component->type), component->id);
-    if (component->text_content) {
-        printf(" Text: \"%s\"", component->text_content);
-    }
-    if (component->tag) {
-        printf(" Tag: \"%s\"", component->tag);
-    }
-    printf("\n");
-
-    // Print children recursively
-    for (uint32_t i = 0; i < component->child_count; i++) {
-        ir_print_component_info(component->children[i], depth + 1);
-    }
-}
-
-void ir_print_buffer_info(IRBuffer* buffer) {
-    if (!buffer) {
-        printf("Buffer: NULL\n");
-        return;
-    }
-
-    printf("Buffer Info:\n");
-    printf("  Size: %zu bytes\n", buffer->size);
-    printf("  Capacity: %zu bytes\n", buffer->capacity);
-    printf("  Usage: %.1f%%\n", buffer->capacity > 0 ? (100.0 * buffer->size / buffer->capacity) : 0.0);
-}
-
-bool ir_validate_binary_format(IRBuffer* buffer) {
-    if (!buffer || buffer->size < 16) return false;
-
-    // Check magic number and version by attempting to read header
-    size_t original_size = buffer->size;
-    uint8_t* original_data = buffer->data;
-
-    uint32_t magic;
-    uint16_t version_major, version_minor;
-    uint32_t endianness_check;
-
-    if (!read_uint32(buffer, &magic)) return false;
-    if (!read_uint16(buffer, &version_major)) return false;
-    if (!read_uint16(buffer, &version_minor)) return false;
-    if (!read_uint32(buffer, &endianness_check)) return false;
-
-    // Restore buffer position
-    buffer->data = original_data;
-    buffer->size = original_size;
-
-    return ((magic == IR_MAGIC_NUMBER || magic == IR_MAGIC_NUMBER_LEGACY) &&
-            version_major == IR_FORMAT_VERSION_MAJOR &&
-            endianness_check == IR_ENDIANNESS_CHECK);
-}
-
-bool ir_validate_json_format(const char* json_string) {
-    // Simplified JSON validation - just check if it starts with {
-    return json_string && json_string[0] == '{';
+IRComponent* ir_deserialize_json(const char* json_string) {
+    return ir_deserialize_json_v2(json_string);
 }

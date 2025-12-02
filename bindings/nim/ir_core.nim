@@ -4,12 +4,13 @@
 
 import os
 
-# Link IR libraries
-{.passL: "-Lbuild -lkryon_ir -lkryon_desktop -lm".}
+# Link IR libraries (desktop backend linked separately when needed)
+{.passL: "-Lbuild -lkryon_ir -lm".}
 
 # Type definitions from ir_core.h
+# IMPORTANT: Import enums from C to avoid hardcoded values getting out of sync
 type
-  IRComponentType* {.size: sizeof(cint).} = enum
+  IRComponentType* {.size: sizeof(cint), importc: "IRComponentType", header: "ir_core.h".} = enum
     IR_COMPONENT_CONTAINER = 0
     IR_COMPONENT_TEXT
     IR_COMPONENT_BUTTON
@@ -24,13 +25,13 @@ type
     IR_COMPONENT_MARKDOWN
     IR_COMPONENT_CUSTOM
 
-  IRDimensionType* {.size: sizeof(cint).} = enum
+  IRDimensionType* {.size: sizeof(cint), importc: "IRDimensionType", header: "ir_core.h".} = enum
     IR_DIMENSION_PX = 0      # Pixels
     IR_DIMENSION_PERCENT   # Percentage (0-100)
     IR_DIMENSION_AUTO      # Auto-calculated
     IR_DIMENSION_FLEX      # Flex units
 
-  IRAlignment* {.size: sizeof(cint).} = enum
+  IRAlignment* {.size: sizeof(cint), importc: "IRAlignment", header: "ir_core.h".} = enum
     IR_ALIGNMENT_START = 0
     IR_ALIGNMENT_CENTER
     IR_ALIGNMENT_END
@@ -39,13 +40,26 @@ type
     IR_ALIGNMENT_SPACE_AROUND
     IR_ALIGNMENT_SPACE_EVENLY
 
-  IRTextAlign* {.size: sizeof(cint).} = enum
+  IRTextAlign* {.size: sizeof(cint), importc: "IRTextAlign", header: "ir_core.h".} = enum
     IR_TEXT_ALIGN_LEFT = 0
     IR_TEXT_ALIGN_RIGHT
     IR_TEXT_ALIGN_CENTER
     IR_TEXT_ALIGN_JUSTIFY
 
-  IREventType* {.size: sizeof(cint).} = enum
+  # BiDi (Bidirectional Text) Support - NEW!
+  IRDirection* {.size: sizeof(cint), importc: "IRDirection", header: "ir_core.h".} = enum
+    IR_DIRECTION_AUTO = 0       # Auto-detect from content (default)
+    IR_DIRECTION_LTR = 1        # Left-to-right
+    IR_DIRECTION_RTL = 2        # Right-to-left
+    IR_DIRECTION_INHERIT = 3    # Inherit from parent
+
+  IRUnicodeBidi* {.size: sizeof(cint), importc: "IRUnicodeBidi", header: "ir_core.h".} = enum
+    IR_UNICODE_BIDI_NORMAL = 0     # Default behavior
+    IR_UNICODE_BIDI_EMBED = 1      # Embed level
+    IR_UNICODE_BIDI_ISOLATE = 2    # Isolate from surroundings
+    IR_UNICODE_BIDI_PLAINTEXT = 3  # Treat as plain text
+
+  IREventType* {.size: sizeof(cint), importc: "IREventType", header: "ir_core.h".} = enum
     IR_EVENT_CLICK = 0
     IR_EVENT_HOVER
     IR_EVENT_FOCUS
@@ -55,7 +69,7 @@ type
     IR_EVENT_TIMER
     IR_EVENT_CUSTOM
 
-  LogicSourceType* {.size: sizeof(cint).} = enum
+  LogicSourceType* {.size: sizeof(cint), importc: "LogicSourceType", header: "ir_core.h".} = enum
     LOGIC_NONE = 0
     LOGIC_JAVASCRIPT
     LOGIC_WEBASSEMBLY
@@ -68,14 +82,14 @@ type
     `type`*: IRDimensionType
     value*: cfloat
 
-  IRColorType* {.size: sizeof(cint).} = enum
+  IRColorType* {.size: sizeof(cint), importc: "IRColorType", header: "ir_core.h".} = enum
     IR_COLOR_SOLID = 0
     IR_COLOR_TRANSPARENT
     IR_COLOR_GRADIENT
     IR_COLOR_VAR_REF
 
   # Gradient types
-  IRGradientType* {.size: sizeof(cint).} = enum
+  IRGradientType* {.size: sizeof(cint), importc: "IRGradientType", header: "ir_core.h".} = enum
     IR_GRADIENT_LINEAR = 0
     IR_GRADIENT_RADIAL
     IR_GRADIENT_CONIC
@@ -458,13 +472,6 @@ proc ir_deserialize_binary*(filename: cstring): ptr IRComponent {.importc, cdecl
 # IR Serialization
 {.passC: "-I" & currentSourcePath().parentDir() & "/../../ir".}
 
-# JSON Serialization (write only - read not implemented yet)
-proc ir_write_json_file*(root: ptr IRComponent; filename: cstring): bool {.importc, cdecl, header: "ir_serialization.h".}
-proc ir_serialize_json*(root: ptr IRComponent): cstring {.importc, cdecl, header: "ir_serialization.h".}
-
-# Binary Serialization (fully implemented)
-proc ir_write_binary_file*(root: ptr IRComponent; filename: cstring): bool {.importc, cdecl, header: "ir_serialization.h".}
-proc ir_read_binary_file*(filename: cstring): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
 
 # Content Management
 proc ir_set_text_content*(component: ptr IRComponent; text: cstring) {.importc, cdecl, header: "ir_builder.h".}
@@ -477,6 +484,10 @@ proc ir_destroy_event*(event: ptr IREvent) {.importc, cdecl, header: "ir_builder
 proc ir_add_event*(component: ptr IRComponent; event: ptr IREvent) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_remove_event*(component: ptr IRComponent; event: ptr IREvent) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_find_event*(component: ptr IRComponent; event_type: IREventType): ptr IREvent {.importc, cdecl, header: "ir_builder.h".}
+
+# Event Bytecode Support (IR v2.1)
+proc ir_event_set_bytecode_function_id*(event: ptr IREvent; function_id: uint32) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_event_get_bytecode_function_id*(event: ptr IREvent): uint32 {.importc, cdecl, header: "ir_builder.h".}
 
 # Utility functions
 proc ir_component_type_to_string*(component_type: IRComponentType): cstring {.importc, cdecl, header: "ir_core.h".}

@@ -132,9 +132,8 @@ proc diffIRFiles*(file1: string, file2: string): DiffResult =
     return
 
   # Deserialize both files
-  var manifest1, manifest2: ptr IRReactiveManifest = nil
-  let root1 = ir_deserialize_binary_with_manifest(buffer1, addr manifest1)
-  let root2 = ir_deserialize_binary_with_manifest(buffer2, addr manifest2)
+  let root1 = ir_deserialize_binary(buffer1)
+  let root2 = ir_deserialize_binary(buffer2)
 
   ir_buffer_destroy(buffer1)
   ir_buffer_destroy(buffer2)
@@ -160,25 +159,9 @@ proc diffIRFiles*(file1: string, file2: string): DiffResult =
     result.differences.add(diff.path & " [" & diff.field & "]: " &
                           diff.value1 & " -> " & diff.value2)
 
-  # Compare manifests if present
-  if manifest1 != nil and manifest2 != nil:
-    if manifest1.variable_count != manifest2.variable_count:
-      result.differences.add("Reactive variables: " & $manifest1.variable_count &
-                            " -> " & $manifest2.variable_count)
-
-    if manifest1.binding_count != manifest2.binding_count:
-      result.differences.add("Reactive bindings: " & $manifest1.binding_count &
-                            " -> " & $manifest2.binding_count)
-  elif manifest1 != nil or manifest2 != nil:
-    result.differences.add("Reactive manifest: " &
-                          (if manifest1 != nil: "present" else: "absent") & " -> " &
-                          (if manifest2 != nil: "present" else: "absent"))
-
   # Cleanup
   ir_destroy_component(root1)
   ir_destroy_component(root2)
-  if manifest1 != nil: ir_reactive_manifest_destroy(manifest1)
-  if manifest2 != nil: ir_reactive_manifest_destroy(manifest2)
 
   result.same = result.differences.len == 0
 

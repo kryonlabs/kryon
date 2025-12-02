@@ -15,6 +15,8 @@
 #include <tickit.h>
 
 #include "../../core/include/kryon.h"
+#include "../../ir/ir_vm.h"
+#include "../../ir/ir_metadata.h"
 #include "terminal_backend.h"
 
 // ============================================================================
@@ -57,6 +59,10 @@ typedef struct {
     // Performance optimization
     char* char_buffer;
     size_t buffer_size;
+
+    // Bytecode VM (Phase 3: Backend Integration)
+    IRVM* vm;
+    IRMetadata* metadata;
 
 } kryon_terminal_state_t;
 
@@ -140,7 +146,8 @@ static void terminal_draw_rect(kryon_terminal_state_t* state,
     // Draw filled rectangle using spaces with background color
     for (int16_t row = draw_y; row < draw_y + draw_h; row++) {
         for (int16_t col = draw_x; col < draw_x + draw_w; col++) {
-            tickit_renderbuffer_char(state->buffer, col, row, ' ', pen);
+            tickit_renderbuffer_setpen(state->buffer, pen);
+            tickit_renderbuffer_char_at(state->buffer, row, col, ' ');
         }
     }
 
@@ -165,7 +172,8 @@ static void terminal_draw_text(kryon_terminal_state_t* state,
     while (*ptr && current_x < state->term_width) {
         // Handle simple ASCII for now, Unicode can be added later
         if ((unsigned char)*ptr >= 32 && (unsigned char)*ptr <= 126) {
-            tickit_renderbuffer_char(state->buffer, current_x, y, *ptr, pen);
+            tickit_renderbuffer_setpen(state->buffer, pen);
+            tickit_renderbuffer_char_at(state->buffer, y, current_x, *ptr);
             current_x++;
         }
         ptr++;
@@ -202,7 +210,8 @@ static void terminal_draw_line(kryon_terminal_state_t* state,
             else if (dy == 0) line_char = '-';     // Horizontal
             else line_char = '*';                  // Diagonal
 
-            tickit_renderbuffer_char(state->buffer, current_x, current_y, line_char, pen);
+            tickit_renderbuffer_setpen(state->buffer, pen);
+            tickit_renderbuffer_char_at(state->buffer, current_y, current_x, line_char);
         }
 
         if (current_x == x2 && current_y == y2) break;
@@ -243,21 +252,29 @@ static void terminal_draw_arc(kryon_terminal_state_t* state,
     while (x >= y) {
         // Draw 8 points of the circle
         if (cx + x >= 0 && cx + x < state->term_width && cy + y >= 0 && cy + y < state->term_height)
-            tickit_renderbuffer_char(state->buffer, cx + x, cy + y, 'o', pen);
+            tickit_renderbuffer_setpen(state->buffer, pen);
+            tickit_renderbuffer_char_at(state->buffer, cy + y, cx + x, 'o');
         if (cx + y >= 0 && cx + y < state->term_width && cy + x >= 0 && cy + x < state->term_height)
-            tickit_renderbuffer_char(state->buffer, cx + y, cy + x, 'o', pen);
+            tickit_renderbuffer_setpen(state->buffer, pen);
+            tickit_renderbuffer_char_at(state->buffer, cy + x, cx + y, 'o');
         if (cx - y >= 0 && cx - y < state->term_width && cy + x >= 0 && cy + x < state->term_height)
-            tickit_renderbuffer_char(state->buffer, cx - y, cy + x, 'o', pen);
+            tickit_renderbuffer_setpen(state->buffer, pen);
+            tickit_renderbuffer_char_at(state->buffer, cy + x, cx - y, 'o');
         if (cx - x >= 0 && cx - x < state->term_width && cy + y >= 0 && cy + y < state->term_height)
-            tickit_renderbuffer_char(state->buffer, cx - x, cy + y, 'o', pen);
+            tickit_renderbuffer_setpen(state->buffer, pen);
+            tickit_renderbuffer_char_at(state->buffer, cy + y, cx - x, 'o');
         if (cx - x >= 0 && cx - x < state->term_width && cy - y >= 0 && cy - y < state->term_height)
-            tickit_renderbuffer_char(state->buffer, cx - x, cy - y, 'o', pen);
+            tickit_renderbuffer_setpen(state->buffer, pen);
+            tickit_renderbuffer_char_at(state->buffer, cy - y, cx - x, 'o');
         if (cx - y >= 0 && cx - y < state->term_width && cy - x >= 0 && cy - x < state->term_height)
-            tickit_renderbuffer_char(state->buffer, cx - y, cy - x, 'o', pen);
+            tickit_renderbuffer_setpen(state->buffer, pen);
+            tickit_renderbuffer_char_at(state->buffer, cy - x, cx - y, 'o');
         if (cx + y >= 0 && cx + y < state->term_width && cy - x >= 0 && cy - x < state->term_height)
-            tickit_renderbuffer_char(state->buffer, cx + y, cy - x, 'o', pen);
+            tickit_renderbuffer_setpen(state->buffer, pen);
+            tickit_renderbuffer_char_at(state->buffer, cy - x, cx + y, 'o');
         if (cx + x >= 0 && cx + x < state->term_width && cy - y >= 0 && cy - y < state->term_height)
-            tickit_renderbuffer_char(state->buffer, cx + x, cy - y, 'o', pen);
+            tickit_renderbuffer_setpen(state->buffer, pen);
+            tickit_renderbuffer_char_at(state->buffer, cy - y, cx + x, 'o');
 
         if (err <= 0) {
             y += 1;
@@ -339,6 +356,15 @@ static bool terminal_init(kryon_renderer_t* renderer, void* native_window) {
     // Clear screen initially
     tickit_term_clear(tickit_get_term(state->tickit));
 
+    // Initialize bytecode VM (Phase 3: Backend Integration)
+    state->vm = ir_vm_create();
+    if (!state->vm) {
+        fprintf(stderr, "Warning: Failed to create bytecode VM for terminal renderer\n");
+        // Continue without VM - non-critical for rendering
+    }
+
+    state->metadata = NULL;  // Will be set when loading IR
+
     return true;
 }
 
@@ -364,6 +390,14 @@ static void terminal_shutdown(kryon_renderer_t* renderer) {
     // Clean up character buffer
     if (state->char_buffer) {
         free(state->char_buffer);
+    }
+
+    // Clean up bytecode VM
+    if (state->vm) {
+        ir_vm_destroy(state->vm);
+    }
+    if (state->metadata) {
+        ir_metadata_destroy(state->metadata);
     }
 
     free(state);

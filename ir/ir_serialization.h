@@ -32,12 +32,6 @@ IRComponent* ir_deserialize_binary(IRBuffer* buffer);
 bool ir_write_binary_file(IRComponent* root, const char* filename);
 IRComponent* ir_read_binary_file(const char* filename);
 
-// Binary Serialization with Reactive Manifest
-IRBuffer* ir_serialize_binary_with_manifest(IRComponent* root, IRReactiveManifest* manifest);
-IRComponent* ir_deserialize_binary_with_manifest(IRBuffer* buffer, IRReactiveManifest** manifest);
-bool ir_write_binary_file_with_manifest(IRComponent* root, IRReactiveManifest* manifest, const char* filename);
-IRComponent* ir_read_binary_file_with_manifest(const char* filename, IRReactiveManifest** manifest);
-
 // JSON Serialization Functions (for debugging/tooling)
 char* ir_serialize_json(IRComponent* root);
 IRComponent* ir_deserialize_json(const char* json_string);
@@ -48,26 +42,9 @@ IRComponent* ir_read_json_file(const char* filename);
 char* ir_serialize_json_v2(IRComponent* root);
 bool ir_write_json_v2_file(IRComponent* root, const char* filename);
 
-// JSON v2 Serialization with Reactive Manifest
-char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* manifest);
-bool ir_write_json_v2_file_with_manifest(IRComponent* root, IRReactiveManifest* manifest, const char* filename);
-
-// Bytecode metadata serialization (forward declaration)
-typedef struct IRMetadata IRMetadata;
-char* ir_serialize_json_with_metadata(IRComponent* root, IRMetadata* metadata);
-bool ir_write_json_file_with_metadata(IRComponent* root, IRMetadata* metadata, const char* filename);
-
-// Bytecode metadata deserialization
-IRComponent* ir_deserialize_json_with_metadata(const char* json_string, IRMetadata** metadata);
-IRComponent* ir_read_json_file_with_metadata(const char* filename, IRMetadata** metadata);
-
 // JSON v2 Deserialization
 IRComponent* ir_deserialize_json_v2(const char* json_string);
 IRComponent* ir_read_json_v2_file(const char* filename);
-
-// JSON v2 Deserialization with Reactive Manifest
-IRComponent* ir_deserialize_json_v2_with_manifest(const char* json_string, IRReactiveManifest** manifest);
-IRComponent* ir_read_json_v2_file_with_manifest(const char* filename, IRReactiveManifest** manifest);
 
 // Buffer Management
 IRBuffer* ir_buffer_create(size_t initial_capacity);

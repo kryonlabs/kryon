@@ -767,7 +767,10 @@ proc run*(app: KryonApp) =
     echo "ERROR: No root component set"
     quit(1)
 
-  echo "Running Kryon IR application..."
+  let isDebug = getEnv("KRYON_DEBUG") != ""
+
+  if isDebug:
+    echo "Running Kryon IR application..."
 
   # Create renderer config if not set
   if app.window.isNil:
@@ -782,8 +785,9 @@ proc run*(app: KryonApp) =
   app.config.vsync_enabled = true
   app.config.target_fps = 60
 
-  echo "  Window: ", app.window.width, "x", app.window.height
-  echo "  Title: ", app.window.title
+  if isDebug:
+    echo "  Window: ", app.window.width, "x", app.window.height
+    echo "  Title: ", app.window.title
 
   # Debug: Print component tree if KRYON_DEBUG_TREE is set
   if getEnv("KRYON_DEBUG_TREE") != "":
@@ -795,13 +799,34 @@ proc run*(app: KryonApp) =
   let serializeTarget = getEnv("KRYON_SERIALIZE_IR")
   if serializeTarget != "":
     echo "Serializing IR to: ", serializeTarget
-    # Write JSON v2 format with null manifest (frontends always output .kir JSON files)
-    if ir_serialization.ir_write_json_v2_file_with_manifest(app.root, nil, cstring(serializeTarget)):
+    # Write JSON format (visual structure only)
+    if ir_write_json_file(app.root, cstring(serializeTarget)):
       echo "✓ IR serialized successfully (JSON format)"
       quit(0)
     else:
       echo "✗ Failed to serialize IR"
       quit(1)
+
+  # Auto-save IR files to build/ir/ directory
+  let exeName = extractFilename(getAppFilename()).changeFileExt("")
+  let irDir = "build/ir"
+  if not dirExists(irDir):
+    createDir(irDir)
+
+  let kirPath = irDir / exeName & ".kir"
+  let kirbPath = irDir / exeName & ".kirb"
+
+  # Save JSON IR file
+  if ir_write_json_file(app.root, cstring(kirPath)):
+    echo "[IR] Saved JSON IR: ", kirPath
+  else:
+    echo "[IR] Warning: Failed to save JSON IR"
+
+  # Save binary IR file
+  if ir_write_binary_file(app.root, cstring(kirbPath)):
+    echo "[IR] Saved binary IR: ", kirbPath
+  else:
+    echo "[IR] Warning: Failed to save binary IR"
 
   # Render using IR desktop renderer
   if not desktop_render_ir_component(app.root, addr app.config):
@@ -810,6 +835,7 @@ proc run*(app: KryonApp) =
 
   echo "Application closed"
 
+# ============================================================================
 # ============================================================================
 # Helper Functions for DSL Compatibility
 # ============================================================================

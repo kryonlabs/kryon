@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "desktop_internal.h"
+#include "../../ir/ir_text_shaping.h"
 
 #ifdef ENABLE_SDL3
 
@@ -379,9 +380,64 @@ void render_text_with_shadow(SDL_Renderer* sdl_renderer, TTF_Font* font,
                              const char* text, SDL_Color color, IRComponent* comp) {
     if (!comp || !text || !sdl_renderer) return;
 
+    // Check if text should be rendered RTL
+    bool is_rtl = false;
+    if (comp->layout && comp->layout->flex.base_direction == IR_DIRECTION_RTL) {
+        is_rtl = true;
+        fprintf(stderr, "[BiDi] RTL text detected: '%s'\n", text);
+    }
+
+    // For RTL text, reverse the string using FriBidi
+    const char* render_text = text;
+    char* reversed_text = NULL;
+    if (is_rtl && text[0] != '\0') {
+        // UTF-8 aware string reversal using FriBidi
+        uint32_t text_len_utf32 = 0;
+        uint32_t* utf32_text = ir_bidi_utf8_to_utf32(text, strlen(text), &text_len_utf32);
+
+        if (utf32_text && text_len_utf32 > 0) {
+            // Use FriBidi to reorder the text for visual display
+            IRBidiResult* bidi_result = ir_bidi_reorder(utf32_text, text_len_utf32, IR_BIDI_DIR_RTL);
+
+            if (bidi_result) {
+                // Convert reordered UTF-32 back to UTF-8
+                // Allocate buffer (UTF-8 can be up to 4 bytes per character)
+                reversed_text = (char*)malloc(text_len_utf32 * 4 + 1);
+                if (reversed_text) {
+                    char* p = reversed_text;
+                    for (uint32_t i = 0; i < text_len_utf32; i++) {
+                        uint32_t visual_idx = bidi_result->logical_to_visual[i];
+                        uint32_t codepoint = utf32_text[visual_idx];
+
+                        // Convert UTF-32 to UTF-8
+                        if (codepoint < 0x80) {
+                            *p++ = (char)codepoint;
+                        } else if (codepoint < 0x800) {
+                            *p++ = (char)(0xC0 | (codepoint >> 6));
+                            *p++ = (char)(0x80 | (codepoint & 0x3F));
+                        } else if (codepoint < 0x10000) {
+                            *p++ = (char)(0xE0 | (codepoint >> 12));
+                            *p++ = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+                            *p++ = (char)(0x80 | (codepoint & 0x3F));
+                        } else {
+                            *p++ = (char)(0xF0 | (codepoint >> 18));
+                            *p++ = (char)(0x80 | ((codepoint >> 12) & 0x3F));
+                            *p++ = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+                            *p++ = (char)(0x80 | (codepoint & 0x3F));
+                        }
+                    }
+                    *p = '\0';
+                    render_text = reversed_text;
+                }
+                ir_bidi_result_destroy(bidi_result);
+            }
+            free(utf32_text);
+        }
+    }
+
     // Simple text rendering - shadow effects not yet implemented in current IR
     int width, height;
-    SDL_Texture* texture = get_text_texture_cached(sdl_renderer, font, text, color, &width, &height);
+    SDL_Texture* texture = get_text_texture_cached(sdl_renderer, font, render_text, color, &width, &height);
     if (texture) {
         // Use component's rendered bounds for positioning
         SDL_FRect text_rect = {
@@ -391,6 +447,11 @@ void render_text_with_shadow(SDL_Renderer* sdl_renderer, TTF_Font* font,
             (float)height
         };
         SDL_RenderTexture(sdl_renderer, texture, NULL, &text_rect);
+    }
+
+    // Clean up reversed text if allocated
+    if (reversed_text) {
+        free(reversed_text);
     }
 }
 

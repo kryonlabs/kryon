@@ -3,6 +3,7 @@
 
 #include "ir_core.h"
 #include "ir_builder.h"
+#include "ir_text_shaping.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -319,6 +320,47 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
 static void ir_layout_compute_column(IRComponent* container, float available_width, float available_height);
 static void ir_layout_compute_grid(IRComponent* container, float available_width, float available_height);
 
+// ============================================================================
+// BiDi Direction Propagation
+// ============================================================================
+
+static void ir_propagate_direction(IRComponent* component, IRDirection parent_dir) {
+    if (!component || !component->layout) return;
+
+    IRFlexbox* flex = &component->layout->flex;
+
+    // Resolve inherited direction
+    if (flex->base_direction == IR_DIRECTION_INHERIT) {
+        flex->base_direction = (uint8_t)parent_dir;
+    }
+
+    // Resolve auto direction (detect from content)
+    if (flex->base_direction == IR_DIRECTION_AUTO) {
+        // For text components, detect direction from text content
+        if (component->type == IR_COMPONENT_TEXT && component->text_content && component->text_content[0] != '\0') {
+            fprintf(stderr, "[BiDi Detection] Text: '%s'\n", component->text_content);
+            IRBidiDirection bidi_dir = ir_bidi_detect_direction(component->text_content, strlen(component->text_content));
+            flex->base_direction = (bidi_dir == IR_BIDI_DIR_RTL) ? IR_DIRECTION_RTL : IR_DIRECTION_LTR;
+            fprintf(stderr, "[BiDi Detection] Result: %s\n", (bidi_dir == IR_BIDI_DIR_RTL) ? "RTL" : "LTR");
+        } else {
+            // For non-text components or empty text, default to LTR
+            flex->base_direction = IR_DIRECTION_LTR;
+        }
+    }
+
+    // Propagate resolved direction to children
+    IRDirection resolved_dir = (IRDirection)flex->base_direction;
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        if (component->children[i] && component->children[i]->layout) {
+            ir_propagate_direction(component->children[i], resolved_dir);
+        }
+    }
+}
+
+// ============================================================================
+// Layout Computation
+// ============================================================================
+
 void ir_layout_compute(IRComponent* root, float available_width, float available_height) {
     if (!root) return;
 
@@ -334,6 +376,9 @@ void ir_layout_compute(IRComponent* root, float available_width, float available
     if (!root->layout) {
         root->layout = (IRLayout*)calloc(1, sizeof(IRLayout));
     }
+
+    // Propagate CSS direction property through the tree
+    ir_propagate_direction(root, IR_DIRECTION_LTR);
 
     IRStyle* style = root->style;
     IRLayout* layout = root->layout;
