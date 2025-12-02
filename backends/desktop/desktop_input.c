@@ -390,31 +390,25 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
                         // Find and trigger IR_EVENT_CLICK handler
                         IREvent* ir_event = ir_find_event(clicked, IR_EVENT_CLICK);
-                        if (ir_event && ir_event->logic_id) {
-                            printf("Click on component ID %u (logic: %s)\n",
-                                   clicked->id, ir_event->logic_id);
+                        if (ir_event) {
+                            // Use legacy logic_id system
+                            if (ir_event->logic_id) {
+                                printf("Click on component ID %u (logic: %s)\n",
+                                       clicked->id, ir_event->logic_id);
 
-                            // Check if this is a Nim button handler
-                            if (strncmp(ir_event->logic_id, "nim_button_", 11) == 0) {
-                                printf("[DEBUG] Button clicked: id=%u, has_parent=%d\n",
-                                       clicked->id, clicked->parent != NULL);
-
+                                // Check if this is a Nim button handler
+                                if (strncmp(ir_event->logic_id, "nim_button_", 11) == 0) {
                                 // Check if this button is actually a tab in a TabGroup
                                 // by looking at parent's custom_data for TabGroupState
                                 bool handled_as_tab = false;
                                 if (clicked->parent && clicked->parent->custom_data) {
                                     TabGroupState* tg_state = (TabGroupState*)clicked->parent->custom_data;
-                                    printf("[DEBUG] Parent has custom_data: tg_state=%p\n", (void*)tg_state);
 
                                     // Verify this looks like a valid TabGroupState (tab_bar matches parent)
                                     if (tg_state && tg_state->tab_bar == clicked->parent) {
-                                        printf("[DEBUG] Tab detected! tab_bar=%p == parent=%p, tab_count=%u\n",
-                                               (void*)tg_state->tab_bar, (void*)clicked->parent, tg_state->tab_count);
-
                                         // Find which tab was clicked
                                         for (uint32_t i = 0; i < tg_state->tab_count; i++) {
                                             if (tg_state->tabs[i] == clicked) {
-                                                printf("[kryon][tabs] C layer handling tab click: index=%u\n", i);
                                                 // C handles tab selection (panel switching, visuals)
                                                 ir_tabgroup_handle_tab_click(tg_state, i);
                                                 // Also call Nim button bridge for user's onClick handler
@@ -424,15 +418,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                                 break;
                                             }
                                         }
-                                        if (!handled_as_tab) {
-                                            printf("[DEBUG] Tab NOT found in tabs array!\n");
-                                        }
-                                    } else {
-                                        printf("[DEBUG] Tab detection FAILED! tab_bar=%p != parent=%p\n",
-                                               tg_state ? (void*)tg_state->tab_bar : NULL, (void*)clicked->parent);
                                     }
-                                } else {
-                                    printf("[DEBUG] Parent missing or no custom_data\n");
                                 }
 
                                 // If not a tab, use normal button bridge
@@ -490,7 +476,8 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                     }
                                 }
                             }
-                        }
+                            }  // end else if (ir_event->logic_id)
+                        }  // end if (ir_event)
                     }
                 }
 

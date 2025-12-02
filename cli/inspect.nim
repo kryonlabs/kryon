@@ -135,9 +135,8 @@ proc inspectIRFile*(irFile: string): InspectionReport =
     result.warnings.add("Failed to read IR file")
     return
 
-  # Deserialize with manifest
-  var manifest: ptr IRReactiveManifest = nil
-  let root = ir_deserialize_binary_with_manifest(buffer, addr manifest)
+  # Deserialize
+  let root = ir_deserialize_binary(buffer)
   ir_buffer_destroy(buffer)
 
   if root == nil:
@@ -146,17 +145,6 @@ proc inspectIRFile*(irFile: string): InspectionReport =
 
   # Analyze component tree
   result.componentTree = analyzeComponent(root, 0, result, "root")
-
-  # Analyze reactive manifest
-  if manifest != nil:
-    result.reactiveVars = int(manifest.variable_count)
-    result.reactiveBindings = int(manifest.binding_count)
-
-    # Warn about excessive reactive state
-    if manifest.variable_count > 100:
-      result.warnings.add("High number of reactive variables: " & $manifest.variable_count)
-
-    ir_reactive_manifest_destroy(manifest)
 
   # Cleanup
   ir_destroy_component(root)

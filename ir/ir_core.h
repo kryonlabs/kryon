@@ -106,6 +106,22 @@ typedef enum {
     IR_ALIGNMENT_SPACE_EVENLY
 } IRAlignment;
 
+// CSS Direction Property (separate from flexbox direction)
+typedef enum {
+    IR_DIRECTION_AUTO = 0,      // Auto-detect from content (default)
+    IR_DIRECTION_LTR = 1,       // Left-to-right
+    IR_DIRECTION_RTL = 2,       // Right-to-left
+    IR_DIRECTION_INHERIT = 3    // Inherit from parent
+} IRDirection;
+
+// CSS unicode-bidi Property
+typedef enum {
+    IR_UNICODE_BIDI_NORMAL = 0,    // Default behavior
+    IR_UNICODE_BIDI_EMBED = 1,     // Creates additional level of embedding
+    IR_UNICODE_BIDI_ISOLATE = 2,   // Isolates from surrounding text (recommended)
+    IR_UNICODE_BIDI_PLAINTEXT = 3  // Each paragraph is independent
+} IRUnicodeBidi;
+
 // Flexbox Properties
 typedef struct {
     bool wrap;
@@ -115,7 +131,10 @@ typedef struct {
     IRAlignment justify_content;
     uint8_t grow;      // Flex grow factor (0-255)
     uint8_t shrink;    // Flex shrink factor (0-255)
-    uint8_t direction; // Layout direction: 0=column, 1=row
+    uint8_t direction; // Flexbox direction: 0=column, 1=row
+    uint8_t base_direction;   // CSS direction property (IRDirection)
+    uint8_t unicode_bidi;     // CSS unicode-bidi property (IRUnicodeBidi)
+    uint8_t _padding;         // Alignment padding
 } IRFlexbox;
 
 // Layout Mode
@@ -561,8 +580,9 @@ typedef enum {
 // Event Handler
 typedef struct IREvent {
     IREventType type;
-    char* logic_id;      // References IRLogic
+    char* logic_id;      // References IRLogic (legacy, for Nim/C callbacks)
     char* handler_data;  // Event-specific data
+    uint32_t bytecode_function_id;  // References bytecode function in IRMetadata (0 = none)
     struct IREvent* next;
 } IREvent;
 

@@ -1,4 +1,4 @@
-# 0BSD
+0BSD# 0BSD
 ## Kryon Plugin Bindings Generator
 ## Automatically generates Nim bindings from JSON specifications
 

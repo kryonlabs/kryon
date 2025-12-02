@@ -1,4 +1,4 @@
-## Kryon Bytecode Module
+0BSD0BSD0BSD0BSD0BSD## Kryon Bytecode Module
 ## Provides Nim bindings for bytecode compilation and manipulation
 
 import ir_core
@@ -103,7 +103,7 @@ type
     signature*: cstring
     required*: bool
 
-  IRMetadata* {.importc: "struct IRMetadata", header: "ir_metadata.h", incompletestruct.} = object
+  IRMetadata* {.importc: "struct IRMetadata", header: "ir_metadata.h".} = object
 
 # C function bindings
 {.push importc, header: "ir_metadata.h".}
@@ -112,7 +112,7 @@ proc ir_metadata_create*(): ptr IRMetadata
 proc ir_metadata_destroy*(metadata: ptr IRMetadata)
 
 proc ir_metadata_add_function*(metadata: ptr IRMetadata, id: uint32, name: cstring): ptr IRBytecodeFunction
-proc ir_function_add_instruction*(function: ptr IRBytecodeFunction, instr: IRBytecodeInstruction): bool
+proc ir_function_add_instruction*(func: ptr IRBytecodeFunction, instr: IRBytecodeInstruction): bool
 
 proc ir_instr_simple*(opcode: IROpcode): IRBytecodeInstruction
 proc ir_instr_int*(opcode: IROpcode, arg: int64): IRBytecodeInstruction
@@ -389,7 +389,7 @@ when isMainModule:
   echo "Created state 'counter' with ID: ", counterId
 
   # Build an increment function
-  discard builder
+  builder
     .beginFunction("increment")
     .getState(counterId)
     .pushInt(1)
@@ -401,7 +401,7 @@ when isMainModule:
   echo "Created function 'increment'"
 
   # Build a conditional function
-  discard builder
+  builder
     .beginFunction("check_positive")
     .getState(counterId)
     .pushInt(0)

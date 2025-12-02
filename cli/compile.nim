@@ -256,15 +256,23 @@ proc inspectIR*(irFile: string): JsonNode =
     result["error"] = %"IR file not found"
     return
 
-  let buffer = ir_buffer_create_from_file(cstring(irFile))
-  if buffer == nil:
-    result["error"] = %"Failed to read IR file"
-    return
+  # Detect format by extension
+  let (_, _, ext) = splitFile(irFile)
+  let isJson = ext == ".kir"  # .kir is JSON, .kirb is binary
 
-  # Read header information
-  var manifest: ptr IRReactiveManifest = nil
-  let root = ir_deserialize_binary_with_manifest(buffer, addr manifest)
-  ir_buffer_destroy(buffer)
+  var root: ptr IRComponent = nil
+
+  if isJson:
+    # JSON format - just load the component tree
+    root = ir_read_json_v2_file(cstring(irFile))
+  else:
+    # Binary format
+    let buffer = ir_buffer_create_from_file(cstring(irFile))
+    if buffer == nil:
+      result["error"] = %"Failed to read IR file"
+      return
+    root = ir_deserialize_binary(buffer)
+    ir_buffer_destroy(buffer)
 
   if root == nil:
     result["error"] = %"Failed to deserialize IR"
@@ -282,16 +290,6 @@ proc inspectIR*(irFile: string): JsonNode =
 
   result["componentCount"] = %componentCount
   result["rootType"] = %($root.`type`)
-  result["hasManifest"] = %(manifest != nil)
-
-  if manifest != nil:
-    result["manifest"] = %* {
-      "variables": manifest.variable_count,
-      "bindings": manifest.binding_count,
-      "conditionals": manifest.conditional_count,
-      "forLoops": manifest.for_loop_count
-    }
-    ir_reactive_manifest_destroy(manifest)
 
   ir_destroy_component(root)
 
@@ -320,11 +318,7 @@ proc compile*(opts: CompileOptions): CompilationResult =
       result.irFile = cachedPath
       result.cacheHit = true
       result.compileTime = 0.0
-
-      # Get cached metadata
-      let metadata = inspectIR(cachedPath)
-      if metadata.hasKey("componentCount"):
-        result.componentCount = metadata["componentCount"].getInt()
+      result.componentCount = 0  # Component count not tracked in cache
 
       return
 
@@ -487,10 +481,10 @@ proc handleConvertCommand*(args: seq[string]) =
     quit(1)
 
   # Write binary IR
-  if not ir_write_binary_file(component, cstring(outputFile)):
+  if not ir_serialization.ir_write_binary_file(component, cstring(outputFile)):
     echo "❌ Failed to write binary IR file"
     # Cleanup component
-    ir_component_destroy(component)
+    ir_destroy_component(component)
     quit(1)
 
   let elapsed = cpuTime() - startTime
@@ -507,7 +501,7 @@ proc handleConvertCommand*(args: seq[string]) =
   echo "   📦 Size reduction: ", ratio.formatFloat(ffDecimal, 1), "%"
 
   # Cleanup
-  ir_component_destroy(component)
+  ir_destroy_component(component)
 
 proc handleValidateCommand*(args: seq[string]) =
   ## Handle 'kryon validate' command

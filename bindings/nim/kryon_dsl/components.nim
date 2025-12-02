@@ -652,8 +652,10 @@ macro Button*(props: untyped): untyped =
 
   # Create button (IR system handles events separately via registerButtonHandler)
   var buttonCall = newCall(newButtonSym, buttonText)
+
+  # Register onClick handler if provided
   if clickHandler.kind != nnkNilLit:
-    # Register handler separately using IR event system
+    # Use Nim proc handler (via handler bridge system)
     initStmts.add quote do:
       `registerHandlerSym`(`buttonName`, `clickHandler`)
 
@@ -1396,6 +1398,7 @@ macro TabGroup*(props: untyped): untyped =
       # Register state for runtime access by reactive system
       registerTabGroupState(`groupSym`, `stateSym`)
       `groupSym`
+
 
 macro TabBar*(props: untyped): untyped =
   let registerSym = bindSym("registerTabBar")

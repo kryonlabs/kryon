@@ -6,7 +6,7 @@
 ## - Header: Window property configuration
 ## - Resources: Asset loading (fonts, etc.)
 
-import macros, strutils
+import macros, strutils, tables
 import ./properties
 import ./reactive
 
@@ -26,6 +26,7 @@ macro kryonApp*(body: untyped): untyped =
   var windowWidth = newIntLitNode(800)
   var windowHeight = newIntLitNode(600)
   var windowTitle = newStrLitNode("Kryon Application")
+  var stateCallbackNode: NimNode = nil  # Phase 5: State callback
   var pendingChildren: seq[NimNode] = @[]
   var bodyNode: NimNode = nil
   var resourcesNode: NimNode = nil
@@ -48,6 +49,8 @@ macro kryonApp*(body: untyped): untyped =
               windowHeight = value
             of "title", "windowtitle":
               windowTitle = value
+            of "statecallback":
+              stateCallbackNode = value  # Phase 5: State change callback
             else:
               discard
       of "resources":
@@ -154,7 +157,13 @@ macro kryonApp*(body: untyped): untyped =
     else:
       echo "Warning: No root component defined; application will exit."
 
-    # Run the application
+  # Phase 5: Set state callback BEFORE running
+  if stateCallbackNode != nil:
+    appCode.add quote do:
+      `appName`.registerStateCallback(`stateCallbackNode`)
+
+  # Run the application
+  appCode.add quote do:
     `appName`.run()
 
     # Return the app

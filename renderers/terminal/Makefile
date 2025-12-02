@@ -4,12 +4,14 @@
 # Compiler and flags
 CC ?= gcc
 CFLAGS ?= -std=c99 -Wall -Wextra -Werror -O2
-INCLUDES = -I../../core/include
+INCLUDES = -I../../core/include -I../../ir
 LDFLAGS = -lutil
 
 # Directories
 BUILD_DIR = ../../build
-CORE_LIB = $(BUILD_DIR)/libkryon_core.a
+IR_DIR = ../../ir
+THIRD_PARTY_DIR = ../../third_party
+CORE_LIB = $(BUILD_DIR)/libkryon_ir.a
 TESTDIR = tests
 
 # Source files
@@ -50,7 +52,7 @@ $(TARGET): $(OBJECTS) $(CORE_LIB)
 shared: $(CORE_LIB)
 	@echo "Building terminal renderer shared library..."
 	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -shared -o $(BUILD_DIR)/libkryon_terminal.so $(SOURCES) $(LDFLAGS) -L$(BUILD_DIR) -lkryon_core
+	$(CC) $(CFLAGS) -shared -o $(BUILD_DIR)/libkryon_terminal.so $(SOURCES) $(LDFLAGS) -L$(BUILD_DIR) -lkryon_ir
 	@echo "✓ Terminal renderer shared library built"
 
 # Install target (for compatibility with other renderers)
@@ -101,10 +103,10 @@ $(STRESS_BIN): $(STRESS_SOURCES) $(OBJECTS)
 	@echo "Building stress test: $@"
 	$(CC) $(CFLAGS) -pthread -o $@ $< $(OBJECTS) $(LDFLAGS) -lrt
 
-# Ensure C core is built
+# Ensure IR library is built
 $(CORE_LIB):
-	@echo "Building Kryon C core..."
-	@$(MAKE) -C ../../core
+	@echo "Building Kryon IR library..."
+	@$(MAKE) -C $(IR_DIR)
 
 # Install dependencies (Ubuntu/Debian)
 .PHONY: deps
@@ -349,7 +351,7 @@ help:
 	@echo "  make validate-build # Validate build system"
 
 # Ensure object files depend on headers
-%.o: %.c ../../core/include/kryon.h
+%.o: %.c $(IR_DIR)/ir_core.h
 
 # Prevent make from removing intermediate files
 .PRECIOUS: %.o

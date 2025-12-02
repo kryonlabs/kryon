@@ -1675,13 +1675,5 @@ macro Gap*(height: int = 10, backgroundColor: string = "transparent"): untyped =
     Spacer(`height`, `backgroundColor`)
 
 # ============================================================================
-# Tabs
+# Tabs - TabGroup macro is defined in components.nim
 # ============================================================================
-
-macro TabGroup*(props: untyped): untyped =
-  let createSym = bindSym("createTabGroupState")
-  let finalizeSym = bindSym("finalizeTabGroup")
-  let addChildSym = bindSym("kryon_component_add_child")
-  let ctxSym = ident("__kryonCurrentTabGroup")
-
-  var propertyNodes: seq[NimNode] = @[]

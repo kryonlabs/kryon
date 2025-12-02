@@ -12,6 +12,7 @@ import project, build, device, compile, diff, inspect, config
 # IR and backend bindings (for orchestration)
 import ../bindings/nim/ir_core
 import ../bindings/nim/ir_desktop
+import ../bindings/nim/ir_serialization  # For loading .kir files
 import ../bindings/nim/runtime  # Provides Nim bridge functions for desktop backend
 
 const
@@ -426,7 +427,7 @@ end
 
     # Load IR tree (binary format)
     echo "🔄 Loading IR tree..."
-    let irRoot = ir_read_binary_file(cstring(tempIR))
+    let irRoot = ir_serialization.ir_read_binary_file(cstring(tempIR))
     if irRoot == nil:
       echo "❌ Failed to load IR from " & tempIR
       quit(1)
@@ -471,9 +472,56 @@ end
     echo "🔧 C frontend not yet implemented"
     quit(1)
 
+  elif frontend == ".kir" or frontend == ".kirb":
+    # Run pre-compiled IR file directly
+    echo "📦 Loading pre-compiled IR file..."
+
+    if not fileExists(file):
+      echo "❌ File not found: " & file
+      quit(1)
+
+    # Create IR context (required for loading)
+    let ctx = ir_create_context()
+    ir_set_context(ctx)
+
+    # Load IR tree (supports both .kir JSON and .kirb binary)
+    echo "🔄 Loading IR tree..."
+    let irRoot = if frontend == ".kirb":
+                   # Binary format
+                   ir_serialization.ir_read_binary_file(cstring(file))
+                 else:
+                   # JSON format
+                   ir_serialization.ir_read_json_v2_file(cstring(file))
+
+    if irRoot == nil:
+      echo "❌ Failed to load IR from " & file
+      quit(1)
+
+    echo "✓ IR tree loaded successfully"
+
+    # Determine renderer from target
+    if target == "web":
+      echo "🌐 Web rendering not yet implemented for .kir files"
+      quit(1)
+
+    # Render with desktop backend (SDL3 or Terminal based on KRYON_RENDERER env var)
+    let renderer = getEnv("KRYON_RENDERER", "sdl3")
+    echo "🎨 Rendering with " & renderer & " backend..."
+
+    var config = desktop_renderer_config_sdl3(800, 600, "Kryon App")
+
+    let renderSuccess = desktop_render_ir_component(irRoot, addr config)
+
+    if not renderSuccess:
+      echo "❌ Rendering failed"
+      quit(1)
+
+    echo "✓ Application closed"
+    quit(0)
+
   elif frontend != ".nim":
     echo "❌ Unknown frontend: " & frontend
-    echo "   Supported: .nim, .lua, .ts, .js"
+    echo "   Supported: .nim, .lua, .ts, .js, .kir, .kirb"
     quit(1)
 
   # Continue with Nim compilation for .nim files

@@ -4,9 +4,7 @@
 #define _GNU_SOURCE
 #include "ir_serialization.h"
 #include "ir_builder.h"
-#include "ir_metadata.h"
-#include "ir_vm.h"
-#include "third_party/cJSON/cJSON.h"
+#include "cJSON.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -287,6 +285,30 @@ static void json_serialize_layout(cJSON* obj, IRLayout* layout) {
         cJSON_AddStringToObject(obj, "flexDirection", layout->flex.direction == 1 ? "row" : "column");
     }
 
+    // BiDi direction property (CSS direction)
+    if (layout->flex.base_direction != IR_DIRECTION_LTR) {
+        const char* dirStr = "ltr";
+        switch (layout->flex.base_direction) {
+            case IR_DIRECTION_RTL: dirStr = "rtl"; break;
+            case IR_DIRECTION_AUTO: dirStr = "auto"; break;
+            case IR_DIRECTION_INHERIT: dirStr = "inherit"; break;
+            default: break;
+        }
+        cJSON_AddStringToObject(obj, "direction", dirStr);
+    }
+
+    // BiDi unicode-bidi property
+    if (layout->flex.unicode_bidi != IR_UNICODE_BIDI_NORMAL) {
+        const char* bidiStr = "normal";
+        switch (layout->flex.unicode_bidi) {
+            case IR_UNICODE_BIDI_EMBED: bidiStr = "embed"; break;
+            case IR_UNICODE_BIDI_ISOLATE: bidiStr = "isolate"; break;
+            case IR_UNICODE_BIDI_PLAINTEXT: bidiStr = "plaintext"; break;
+            default: break;
+        }
+        cJSON_AddStringToObject(obj, "unicodeBidi", bidiStr);
+    }
+
     if (layout->flex.justify_content != IR_ALIGNMENT_START) {
         const char* justifyStr = "flex-start";
         switch (layout->flex.justify_content) {
@@ -363,6 +385,48 @@ static cJSON* json_serialize_component_recursive(IRComponent* component) {
         json_serialize_layout(obj, component->layout);
     }
 
+    // Serialize events (IR v2.1: with bytecode support)
+    if (component->events) {
+        cJSON* events = cJSON_CreateArray();
+        IREvent* event = component->events;
+        while (event) {
+            cJSON* eventObj = cJSON_CreateObject();
+
+            // Event type
+            const char* eventType = "unknown";
+            switch (event->type) {
+                case IR_EVENT_CLICK: eventType = "click"; break;
+                case IR_EVENT_HOVER: eventType = "hover"; break;
+                case IR_EVENT_FOCUS: eventType = "focus"; break;
+                case IR_EVENT_BLUR: eventType = "blur"; break;
+                case IR_EVENT_KEY: eventType = "key"; break;
+                case IR_EVENT_SCROLL: eventType = "scroll"; break;
+                case IR_EVENT_TIMER: eventType = "timer"; break;
+                case IR_EVENT_CUSTOM: eventType = "custom"; break;
+            }
+            cJSON_AddStringToObject(eventObj, "type", eventType);
+
+            // Legacy logic ID (for Nim/C callbacks)
+            if (event->logic_id && event->logic_id[0] != '\0') {
+                cJSON_AddStringToObject(eventObj, "logic_id", event->logic_id);
+            }
+
+            // Handler data
+            if (event->handler_data && event->handler_data[0] != '\0') {
+                cJSON_AddStringToObject(eventObj, "handler_data", event->handler_data);
+            }
+
+            // Bytecode function ID (IR v2.1)
+            if (event->bytecode_function_id != 0) {
+                cJSON_AddNumberToObject(eventObj, "bytecode_function_id", event->bytecode_function_id);
+            }
+
+            cJSON_AddItemToArray(events, eventObj);
+            event = event->next;
+        }
+        cJSON_AddItemToObject(obj, "events", events);
+    }
+
     // Children
     if (component->child_count > 0) {
         cJSON* children = cJSON_CreateArray();
@@ -422,902 +486,6 @@ bool ir_write_json_v2_file(IRComponent* root, const char* filename) {
     return success;
 }
 
-// ============================================================================
-// Reactive Manifest JSON Serialization
-// ============================================================================
-
-/**
- * Convert IRReactiveVarType enum to JSON string
- */
-static const char* json_reactive_type_to_string(IRReactiveVarType type) {
-    switch (type) {
-        case IR_REACTIVE_TYPE_INT: return "int";
-        case IR_REACTIVE_TYPE_FLOAT: return "float";
-        case IR_REACTIVE_TYPE_STRING: return "string";
-        case IR_REACTIVE_TYPE_BOOL: return "bool";
-        case IR_REACTIVE_TYPE_CUSTOM: return "custom";
-        default: return "unknown";
-    }
-}
-
-/**
- * Convert IRBindingType enum to JSON string
- */
-static const char* json_binding_type_to_string(IRBindingType type) {
-    switch (type) {
-        case IR_BINDING_TEXT: return "text";
-        case IR_BINDING_CONDITIONAL: return "conditional";
-        case IR_BINDING_ATTRIBUTE: return "attribute";
-        case IR_BINDING_FOR_LOOP: return "for_loop";
-        case IR_BINDING_CUSTOM: return "custom";
-        default: return "unknown";
-    }
-}
-
-/**
- * Serialize reactive variable to cJSON object
- */
-static cJSON* json_serialize_reactive_var(IRReactiveVarDescriptor* var) {
-    if (!var) return NULL;
-
-    cJSON* obj = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(obj, "id", var->id);
-    if (var->name) {
-        cJSON_AddStringToObject(obj, "name", var->name);
-    }
-    cJSON_AddStringToObject(obj, "type", json_reactive_type_to_string(var->type));
-    cJSON_AddNumberToObject(obj, "version", var->version);
-
-    if (var->source_location) {
-        cJSON_AddStringToObject(obj, "sourceLocation", var->source_location);
-    }
-    cJSON_AddNumberToObject(obj, "bindingCount", var->binding_count);
-
-    // Serialize value based on type
-    cJSON* value = NULL;
-    switch (var->type) {
-        case IR_REACTIVE_TYPE_INT:
-            value = cJSON_CreateNumber(var->value.as_int);
-            break;
-        case IR_REACTIVE_TYPE_FLOAT:
-            value = cJSON_CreateNumber(var->value.as_float);
-            break;
-        case IR_REACTIVE_TYPE_STRING:
-            if (var->value.as_string) {
-                value = cJSON_CreateString(var->value.as_string);
-            } else {
-                value = cJSON_CreateString("");
-            }
-            break;
-        case IR_REACTIVE_TYPE_BOOL:
-            value = cJSON_CreateBool(var->value.as_bool);
-            break;
-        case IR_REACTIVE_TYPE_CUSTOM:
-            if (var->value.as_string) {
-                value = cJSON_CreateString(var->value.as_string);
-            } else {
-                value = cJSON_CreateString("");
-            }
-            break;
-    }
-
-    if (value) {
-        cJSON_AddItemToObject(obj, "value", value);
-    }
-
-    return obj;
-}
-
-/**
- * Serialize reactive binding to cJSON object
- */
-static cJSON* json_serialize_reactive_binding(IRReactiveBinding* binding) {
-    if (!binding) return NULL;
-
-    cJSON* obj = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(obj, "componentId", binding->component_id);
-    cJSON_AddNumberToObject(obj, "varId", binding->reactive_var_id);
-    cJSON_AddStringToObject(obj, "type", json_binding_type_to_string(binding->binding_type));
-
-    if (binding->expression) {
-        cJSON_AddStringToObject(obj, "expression", binding->expression);
-    }
-
-    if (binding->update_code) {
-        cJSON_AddStringToObject(obj, "updateCode", binding->update_code);
-    }
-
-    return obj;
-}
-
-/**
- * Serialize reactive conditional to cJSON object
- */
-static cJSON* json_serialize_reactive_conditional(IRReactiveConditional* cond) {
-    if (!cond) return NULL;
-
-    cJSON* obj = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(obj, "componentId", cond->component_id);
-
-    if (cond->condition) {
-        cJSON_AddStringToObject(obj, "condition", cond->condition);
-    }
-
-    cJSON_AddBoolToObject(obj, "lastEvalResult", cond->last_eval_result);
-    cJSON_AddBoolToObject(obj, "suspended", cond->suspended);
-
-    // Serialize dependent var IDs array
-    if (cond->dependent_var_count > 0 && cond->dependent_var_ids) {
-        cJSON* deps = cJSON_CreateArray();
-        for (uint32_t i = 0; i < cond->dependent_var_count; i++) {
-            cJSON_AddItemToArray(deps, cJSON_CreateNumber(cond->dependent_var_ids[i]));
-        }
-        cJSON_AddItemToObject(obj, "dependentVarIds", deps);
-    }
-
-    return obj;
-}
-
-/**
- * Serialize reactive for-loop to cJSON object
- */
-static cJSON* json_serialize_reactive_for_loop(IRReactiveForLoop* loop) {
-    if (!loop) return NULL;
-
-    cJSON* obj = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(obj, "parentId", loop->parent_component_id);
-
-    if (loop->collection_expr) {
-        cJSON_AddStringToObject(obj, "collectionExpr", loop->collection_expr);
-    }
-
-    cJSON_AddNumberToObject(obj, "collectionVarId", loop->collection_var_id);
-
-    if (loop->item_template) {
-        cJSON_AddStringToObject(obj, "itemTemplate", loop->item_template);
-    }
-
-    // Serialize child component IDs array
-    if (loop->child_count > 0 && loop->child_component_ids) {
-        cJSON* children = cJSON_CreateArray();
-        for (uint32_t i = 0; i < loop->child_count; i++) {
-            cJSON_AddItemToArray(children, cJSON_CreateNumber(loop->child_component_ids[i]));
-        }
-        cJSON_AddItemToObject(obj, "childComponentIds", children);
-    }
-
-    return obj;
-}
-
-/**
- * Serialize complete reactive manifest to cJSON object
- */
-static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
-    if (!manifest) return NULL;
-
-    cJSON* obj = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(obj, "version", manifest->format_version);
-    cJSON_AddNumberToObject(obj, "nextVarId", manifest->next_var_id);
-
-    // Serialize variables
-    if (manifest->variable_count > 0) {
-        cJSON* vars = cJSON_CreateArray();
-        for (uint32_t i = 0; i < manifest->variable_count; i++) {
-            cJSON* var = json_serialize_reactive_var(&manifest->variables[i]);
-            if (var) {
-                cJSON_AddItemToArray(vars, var);
-            }
-        }
-        cJSON_AddItemToObject(obj, "variables", vars);
-    }
-
-    // Serialize bindings
-    if (manifest->binding_count > 0) {
-        cJSON* bindings = cJSON_CreateArray();
-        for (uint32_t i = 0; i < manifest->binding_count; i++) {
-            cJSON* binding = json_serialize_reactive_binding(&manifest->bindings[i]);
-            if (binding) {
-                cJSON_AddItemToArray(bindings, binding);
-            }
-        }
-        cJSON_AddItemToObject(obj, "bindings", bindings);
-    }
-
-    // Serialize conditionals
-    if (manifest->conditional_count > 0) {
-        cJSON* conditionals = cJSON_CreateArray();
-        for (uint32_t i = 0; i < manifest->conditional_count; i++) {
-            cJSON* cond = json_serialize_reactive_conditional(&manifest->conditionals[i]);
-            if (cond) {
-                cJSON_AddItemToArray(conditionals, cond);
-            }
-        }
-        cJSON_AddItemToObject(obj, "conditionals", conditionals);
-    }
-
-    // Serialize for-loops
-    if (manifest->for_loop_count > 0) {
-        cJSON* loops = cJSON_CreateArray();
-        for (uint32_t i = 0; i < manifest->for_loop_count; i++) {
-            cJSON* loop = json_serialize_reactive_for_loop(&manifest->for_loops[i]);
-            if (loop) {
-                cJSON_AddItemToArray(loops, loop);
-            }
-        }
-        cJSON_AddItemToObject(obj, "forLoops", loops);
-    }
-
-    return obj;
-}
-
-// ============================================================================
-// Bytecode Metadata Serialization
-// ============================================================================
-
-/**
- * Serialize a bytecode instruction to JSON
- */
-static cJSON* json_serialize_bytecode_instruction(IRBytecodeInstruction* instr) {
-    cJSON* obj = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(obj, "op", ir_vm_opcode_name(instr->opcode));
-
-    if (instr->has_arg) {
-        // Determine arg type based on opcode
-        switch (instr->opcode) {
-            case OP_PUSH_INT:
-            case OP_PUSH_BOOL:
-            case OP_GET_STATE:
-            case OP_SET_STATE:
-            case OP_GET_LOCAL:
-            case OP_SET_LOCAL:
-            case OP_CALL_HOST:
-            case OP_CALL:
-                cJSON_AddNumberToObject(obj, "arg", (double)instr->arg.id_arg);
-                break;
-
-            case OP_PUSH_FLOAT:
-                cJSON_AddNumberToObject(obj, "arg", instr->arg.float_arg);
-                break;
-
-            case OP_PUSH_STRING:
-                cJSON_AddStringToObject(obj, "arg", instr->arg.string_arg ? instr->arg.string_arg : "");
-                break;
-
-            case OP_JUMP:
-            case OP_JUMP_IF_FALSE:
-                cJSON_AddNumberToObject(obj, "arg", (double)instr->arg.offset_arg);
-                break;
-
-            default:
-                break;
-        }
-    }
-
-    return obj;
-}
-
-/**
- * Serialize bytecode function to JSON
- */
-static cJSON* json_serialize_bytecode_function(IRBytecodeFunction* func) {
-    cJSON* obj = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(obj, "id", func->id);
-    cJSON_AddStringToObject(obj, "name", func->name ? func->name : "");
-
-    cJSON* bytecode = cJSON_CreateArray();
-    for (int i = 0; i < func->instruction_count; i++) {
-        cJSON_AddItemToArray(bytecode, json_serialize_bytecode_instruction(&func->instructions[i]));
-    }
-    cJSON_AddItemToObject(obj, "bytecode", bytecode);
-
-    return obj;
-}
-
-/**
- * Serialize state definition to JSON
- */
-static cJSON* json_serialize_state_definition(IRStateDefinition* state) {
-    cJSON* obj = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(obj, "id", state->id);
-    cJSON_AddStringToObject(obj, "name", state->name ? state->name : "");
-
-    switch (state->type) {
-        case IR_STATE_TYPE_INT:
-            cJSON_AddStringToObject(obj, "type", "int");
-            cJSON_AddNumberToObject(obj, "initial_value", (double)state->initial_value.int_value);
-            break;
-        case IR_STATE_TYPE_FLOAT:
-            cJSON_AddStringToObject(obj, "type", "float");
-            cJSON_AddNumberToObject(obj, "initial_value", state->initial_value.float_value);
-            break;
-        case IR_STATE_TYPE_STRING:
-            cJSON_AddStringToObject(obj, "type", "string");
-            cJSON_AddStringToObject(obj, "initial_value", state->initial_value.string_value ? state->initial_value.string_value : "");
-            break;
-        case IR_STATE_TYPE_BOOL:
-            cJSON_AddStringToObject(obj, "type", "bool");
-            cJSON_AddBoolToObject(obj, "initial_value", state->initial_value.bool_value);
-            break;
-    }
-
-    return obj;
-}
-
-/**
- * Serialize host function declaration to JSON
- */
-static cJSON* json_serialize_host_function(IRHostFunctionDeclaration* host_func) {
-    cJSON* obj = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(obj, "id", host_func->id);
-    cJSON_AddStringToObject(obj, "name", host_func->name ? host_func->name : "");
-    cJSON_AddStringToObject(obj, "signature", host_func->signature ? host_func->signature : "() -> void");
-    cJSON_AddBoolToObject(obj, "required", host_func->required);
-
-    return obj;
-}
-
-/**
- * Serialize IR component tree with reactive manifest to JSON v2 format
- * @param root Root component to serialize
- * @param manifest Reactive manifest (can be NULL)
- * @return JSON string (caller must free), or NULL on error
- */
-char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* manifest) {
-    if (!root) return NULL;
-
-    cJSON* root_obj = cJSON_CreateObject();
-
-    // Add component tree
-    cJSON* component = json_serialize_component_recursive(root);
-    if (component) {
-        cJSON_AddItemToObject(root_obj, "component", component);
-    }
-
-    // Add reactive manifest
-    if (manifest) {
-        cJSON* manifest_obj = json_serialize_reactive_manifest(manifest);
-        if (manifest_obj) {
-            cJSON_AddItemToObject(root_obj, "manifest", manifest_obj);
-        }
-    }
-
-    char* jsonStr = cJSON_Print(root_obj);
-    cJSON_Delete(root_obj);
-
-    return jsonStr;
-}
-
-/**
- * Serialize IR component tree with bytecode metadata to JSON
- * @param root Root component to serialize
- * @param metadata Bytecode metadata (functions, states, host_functions)
- * @return JSON string (caller must free), or NULL on error
- */
-char* ir_serialize_json_with_metadata(IRComponent* root, IRMetadata* metadata) {
-    if (!root) return NULL;
-
-    cJSON* root_obj = cJSON_CreateObject();
-
-    // Add component tree
-    cJSON* component = json_serialize_component_recursive(root);
-    if (component) {
-        cJSON_AddItemToObject(root_obj, "component", component);
-    }
-
-    // Add bytecode metadata
-    if (metadata) {
-        // Functions array
-        if (metadata->function_count > 0) {
-            cJSON* functions = cJSON_CreateArray();
-            for (int i = 0; i < metadata->function_count; i++) {
-                cJSON_AddItemToArray(functions, json_serialize_bytecode_function(&metadata->functions[i]));
-            }
-            cJSON_AddItemToObject(root_obj, "functions", functions);
-        }
-
-        // States array
-        if (metadata->state_count > 0) {
-            cJSON* states = cJSON_CreateArray();
-            for (int i = 0; i < metadata->state_count; i++) {
-                cJSON_AddItemToArray(states, json_serialize_state_definition(&metadata->states[i]));
-            }
-            cJSON_AddItemToObject(root_obj, "states", states);
-        }
-
-        // Host functions array
-        if (metadata->host_function_count > 0) {
-            cJSON* host_functions = cJSON_CreateArray();
-            for (int i = 0; i < metadata->host_function_count; i++) {
-                cJSON_AddItemToArray(host_functions, json_serialize_host_function(&metadata->host_functions[i]));
-            }
-            cJSON_AddItemToObject(root_obj, "host_functions", host_functions);
-        }
-    }
-
-    char* jsonStr = cJSON_Print(root_obj);
-    cJSON_Delete(root_obj);
-
-    return jsonStr;
-}
-
-/**
- * Write IR component tree with bytecode metadata to JSON file
- * @param root Root component to serialize
- * @param metadata Bytecode metadata (can be NULL)
- * @param filename Output file path
- * @return true on success, false on error
- */
-bool ir_write_json_file_with_metadata(IRComponent* root, IRMetadata* metadata, const char* filename) {
-    char* json = ir_serialize_json_with_metadata(root, metadata);
-    if (!json) return false;
-
-    FILE* file = fopen(filename, "w");
-    if (!file) {
-        free(json);
-        return false;
-    }
-
-    bool success = (fprintf(file, "%s", json) >= 0);
-    fclose(file);
-    free(json);
-
-    return success;
-}
-
-// ============================================================================
-// Bytecode Deserialization
-// ============================================================================
-
-// Forward declaration
-static IRComponent* json_deserialize_component_recursive(cJSON* json);
-
-/**
- * Parse opcode string to IROpcode enum
- */
-static IROpcode json_parse_opcode(const char* op_str) {
-    if (strcmp(op_str, "PUSH_INT") == 0) return OP_PUSH_INT;
-    if (strcmp(op_str, "PUSH_FLOAT") == 0) return OP_PUSH_FLOAT;
-    if (strcmp(op_str, "PUSH_STRING") == 0) return OP_PUSH_STRING;
-    if (strcmp(op_str, "PUSH_BOOL") == 0) return OP_PUSH_BOOL;
-    if (strcmp(op_str, "POP") == 0) return OP_POP;
-    if (strcmp(op_str, "DUP") == 0) return OP_DUP;
-
-    if (strcmp(op_str, "ADD") == 0) return OP_ADD;
-    if (strcmp(op_str, "SUB") == 0) return OP_SUB;
-    if (strcmp(op_str, "MUL") == 0) return OP_MUL;
-    if (strcmp(op_str, "DIV") == 0) return OP_DIV;
-    if (strcmp(op_str, "MOD") == 0) return OP_MOD;
-    if (strcmp(op_str, "NEG") == 0) return OP_NEG;
-
-    if (strcmp(op_str, "EQ") == 0) return OP_EQ;
-    if (strcmp(op_str, "NE") == 0) return OP_NE;
-    if (strcmp(op_str, "LT") == 0) return OP_LT;
-    if (strcmp(op_str, "GT") == 0) return OP_GT;
-    if (strcmp(op_str, "LE") == 0) return OP_LE;
-    if (strcmp(op_str, "GE") == 0) return OP_GE;
-
-    if (strcmp(op_str, "AND") == 0) return OP_AND;
-    if (strcmp(op_str, "OR") == 0) return OP_OR;
-    if (strcmp(op_str, "NOT") == 0) return OP_NOT;
-
-    if (strcmp(op_str, "CONCAT") == 0) return OP_CONCAT;
-
-    if (strcmp(op_str, "GET_STATE") == 0) return OP_GET_STATE;
-    if (strcmp(op_str, "SET_STATE") == 0) return OP_SET_STATE;
-    if (strcmp(op_str, "GET_LOCAL") == 0) return OP_GET_LOCAL;
-    if (strcmp(op_str, "SET_LOCAL") == 0) return OP_SET_LOCAL;
-
-    if (strcmp(op_str, "JUMP") == 0) return OP_JUMP;
-    if (strcmp(op_str, "JUMP_IF_FALSE") == 0) return OP_JUMP_IF_FALSE;
-    if (strcmp(op_str, "CALL") == 0) return OP_CALL;
-    if (strcmp(op_str, "RETURN") == 0) return OP_RETURN;
-
-    if (strcmp(op_str, "CALL_HOST") == 0) return OP_CALL_HOST;
-    if (strcmp(op_str, "GET_PROP") == 0) return OP_GET_PROP;
-    if (strcmp(op_str, "SET_PROP") == 0) return OP_SET_PROP;
-
-    if (strcmp(op_str, "HALT") == 0) return OP_HALT;
-
-    return OP_HALT;  // Default to HALT for unknown opcodes
-}
-
-/**
- * Deserialize bytecode instruction from JSON
- */
-static bool json_deserialize_bytecode_instruction(cJSON* json, IRBytecodeInstruction* instr) {
-    if (!json || !instr) return false;
-
-    memset(instr, 0, sizeof(IRBytecodeInstruction));
-
-    // Get opcode
-    cJSON* op = cJSON_GetObjectItem(json, "op");
-    if (!op || !cJSON_IsString(op)) return false;
-
-    instr->opcode = json_parse_opcode(op->valuestring);
-
-    // Get optional argument
-    cJSON* arg = cJSON_GetObjectItem(json, "arg");
-    if (arg) {
-        instr->has_arg = true;
-
-        // Determine argument type based on opcode
-        switch (instr->opcode) {
-            case OP_PUSH_INT:
-                if (cJSON_IsNumber(arg)) {
-                    instr->arg.int_arg = (int64_t)arg->valuedouble;
-                }
-                break;
-
-            case OP_PUSH_FLOAT:
-                if (cJSON_IsNumber(arg)) {
-                    instr->arg.float_arg = arg->valuedouble;
-                }
-                break;
-
-            case OP_PUSH_STRING:
-                if (cJSON_IsString(arg)) {
-                    instr->arg.string_arg = strdup(arg->valuestring);
-                }
-                break;
-
-            case OP_PUSH_BOOL:
-                if (cJSON_IsBool(arg)) {
-                    instr->arg.bool_arg = cJSON_IsTrue(arg);
-                }
-                break;
-
-            case OP_GET_STATE:
-            case OP_SET_STATE:
-            case OP_GET_LOCAL:
-            case OP_SET_LOCAL:
-            case OP_CALL:
-            case OP_CALL_HOST:
-            case OP_GET_PROP:
-            case OP_SET_PROP:
-                if (cJSON_IsNumber(arg)) {
-                    instr->arg.id_arg = (uint32_t)arg->valuedouble;
-                }
-                break;
-
-            case OP_JUMP:
-            case OP_JUMP_IF_FALSE:
-                if (cJSON_IsNumber(arg)) {
-                    instr->arg.offset_arg = (int32_t)arg->valuedouble;
-                }
-                break;
-
-            default:
-                instr->has_arg = false;
-                break;
-        }
-    }
-
-    return true;
-}
-
-/**
- * Deserialize bytecode function from JSON
- */
-static bool json_deserialize_bytecode_function(cJSON* json, IRBytecodeFunction* func) {
-    if (!json || !func) return false;
-
-    memset(func, 0, sizeof(IRBytecodeFunction));
-
-    // Get function ID
-    cJSON* id = cJSON_GetObjectItem(json, "id");
-    if (!id || !cJSON_IsNumber(id)) return false;
-    func->id = (uint32_t)id->valuedouble;
-
-    // Get function name
-    cJSON* name = cJSON_GetObjectItem(json, "name");
-    if (name && cJSON_IsString(name)) {
-        func->name = strdup(name->valuestring);
-    }
-
-    // Get bytecode array
-    cJSON* bytecode = cJSON_GetObjectItem(json, "bytecode");
-    if (!bytecode || !cJSON_IsArray(bytecode)) return false;
-
-    int instruction_count = cJSON_GetArraySize(bytecode);
-    if (instruction_count == 0) return true;
-
-    // Allocate instruction array
-    func->instruction_capacity = instruction_count;
-    func->instructions = (IRBytecodeInstruction*)calloc(instruction_count, sizeof(IRBytecodeInstruction));
-    if (!func->instructions) return false;
-
-    // Deserialize each instruction
-    cJSON* instr_json = NULL;
-    int idx = 0;
-    cJSON_ArrayForEach(instr_json, bytecode) {
-        if (!json_deserialize_bytecode_instruction(instr_json, &func->instructions[idx])) {
-            // Cleanup on error
-            free(func->instructions);
-            free(func->name);
-            return false;
-        }
-        idx++;
-    }
-
-    func->instruction_count = instruction_count;
-    return true;
-}
-
-/**
- * Deserialize state definition from JSON
- */
-static bool json_deserialize_state_definition(cJSON* json, IRStateDefinition* state) {
-    if (!json || !state) return false;
-
-    memset(state, 0, sizeof(IRStateDefinition));
-
-    // Get state ID
-    cJSON* id = cJSON_GetObjectItem(json, "id");
-    if (!id || !cJSON_IsNumber(id)) return false;
-    state->id = (uint32_t)id->valuedouble;
-
-    // Get state name
-    cJSON* name = cJSON_GetObjectItem(json, "name");
-    if (name && cJSON_IsString(name)) {
-        state->name = strdup(name->valuestring);
-    }
-
-    // Get state type
-    cJSON* type = cJSON_GetObjectItem(json, "type");
-    if (!type || !cJSON_IsString(type)) return false;
-
-    if (strcmp(type->valuestring, "int") == 0) {
-        state->type = IR_STATE_TYPE_INT;
-        cJSON* initial = cJSON_GetObjectItem(json, "initial_value");
-        if (initial && cJSON_IsNumber(initial)) {
-            state->initial_value.int_value = (int64_t)initial->valuedouble;
-        }
-    } else if (strcmp(type->valuestring, "float") == 0) {
-        state->type = IR_STATE_TYPE_FLOAT;
-        cJSON* initial = cJSON_GetObjectItem(json, "initial_value");
-        if (initial && cJSON_IsNumber(initial)) {
-            state->initial_value.float_value = initial->valuedouble;
-        }
-    } else if (strcmp(type->valuestring, "string") == 0) {
-        state->type = IR_STATE_TYPE_STRING;
-        cJSON* initial = cJSON_GetObjectItem(json, "initial_value");
-        if (initial && cJSON_IsString(initial)) {
-            state->initial_value.string_value = strdup(initial->valuestring);
-        }
-    } else if (strcmp(type->valuestring, "bool") == 0) {
-        state->type = IR_STATE_TYPE_BOOL;
-        cJSON* initial = cJSON_GetObjectItem(json, "initial_value");
-        if (initial && cJSON_IsBool(initial)) {
-            state->initial_value.bool_value = cJSON_IsTrue(initial);
-        }
-    }
-
-    return true;
-}
-
-/**
- * Deserialize host function declaration from JSON
- */
-static bool json_deserialize_host_function(cJSON* json, IRHostFunctionDeclaration* host_func) {
-    if (!json || !host_func) return false;
-
-    memset(host_func, 0, sizeof(IRHostFunctionDeclaration));
-
-    // Get host function ID
-    cJSON* id = cJSON_GetObjectItem(json, "id");
-    if (!id || !cJSON_IsNumber(id)) return false;
-    host_func->id = (uint32_t)id->valuedouble;
-
-    // Get host function name
-    cJSON* name = cJSON_GetObjectItem(json, "name");
-    if (name && cJSON_IsString(name)) {
-        host_func->name = strdup(name->valuestring);
-    }
-
-    // Get signature
-    cJSON* signature = cJSON_GetObjectItem(json, "signature");
-    if (signature && cJSON_IsString(signature)) {
-        host_func->signature = strdup(signature->valuestring);
-    }
-
-    // Get required flag
-    cJSON* required = cJSON_GetObjectItem(json, "required");
-    if (required && cJSON_IsBool(required)) {
-        host_func->required = cJSON_IsTrue(required);
-    }
-
-    return true;
-}
-
-/**
- * Deserialize metadata from JSON root object
- */
-static IRMetadata* json_deserialize_metadata(cJSON* root) {
-    if (!root) return NULL;
-
-    IRMetadata* metadata = ir_metadata_create();
-    if (!metadata) return NULL;
-
-    // Deserialize functions
-    cJSON* functions = cJSON_GetObjectItem(root, "functions");
-    if (functions && cJSON_IsArray(functions)) {
-        int func_count = cJSON_GetArraySize(functions);
-        cJSON* func_json = NULL;
-
-        cJSON_ArrayForEach(func_json, functions) {
-            IRBytecodeFunction temp_func;
-            if (json_deserialize_bytecode_function(func_json, &temp_func)) {
-                // Add to metadata
-                IRBytecodeFunction* func = ir_metadata_add_function(metadata, temp_func.id, temp_func.name);
-                if (func) {
-                    // Transfer ownership of instructions
-                    free(func->instructions);
-                    func->instructions = temp_func.instructions;
-                    func->instruction_count = temp_func.instruction_count;
-                    func->instruction_capacity = temp_func.instruction_capacity;
-                }
-                free(temp_func.name);
-            }
-        }
-    }
-
-    // Deserialize states
-    cJSON* states = cJSON_GetObjectItem(root, "states");
-    if (states && cJSON_IsArray(states)) {
-        cJSON* state_json = NULL;
-
-        cJSON_ArrayForEach(state_json, states) {
-            IRStateDefinition temp_state;
-            if (json_deserialize_state_definition(state_json, &temp_state)) {
-                // Add to metadata based on type
-                switch (temp_state.type) {
-                    case IR_STATE_TYPE_INT:
-                        ir_metadata_add_state_int(metadata, temp_state.id, temp_state.name,
-                                                  temp_state.initial_value.int_value);
-                        break;
-                    case IR_STATE_TYPE_FLOAT:
-                        ir_metadata_add_state_float(metadata, temp_state.id, temp_state.name,
-                                                    temp_state.initial_value.float_value);
-                        break;
-                    case IR_STATE_TYPE_STRING:
-                        ir_metadata_add_state_string(metadata, temp_state.id, temp_state.name,
-                                                     temp_state.initial_value.string_value);
-                        free(temp_state.initial_value.string_value);
-                        break;
-                    case IR_STATE_TYPE_BOOL:
-                        ir_metadata_add_state_bool(metadata, temp_state.id, temp_state.name,
-                                                   temp_state.initial_value.bool_value);
-                        break;
-                }
-                free(temp_state.name);
-            }
-        }
-    }
-
-    // Deserialize host functions
-    cJSON* host_functions = cJSON_GetObjectItem(root, "host_functions");
-    if (host_functions && cJSON_IsArray(host_functions)) {
-        cJSON* host_func_json = NULL;
-
-        cJSON_ArrayForEach(host_func_json, host_functions) {
-            IRHostFunctionDeclaration temp_host;
-            if (json_deserialize_host_function(host_func_json, &temp_host)) {
-                ir_metadata_add_host_function(metadata, temp_host.id, temp_host.name,
-                                              temp_host.signature, temp_host.required);
-                free(temp_host.name);
-                free(temp_host.signature);
-            }
-        }
-    }
-
-    return metadata;
-}
-
-/**
- * Deserialize IR component tree with bytecode metadata from JSON string
- * @param json_string JSON string to deserialize
- * @param metadata Pointer to receive deserialized metadata (can be NULL)
- * @return Deserialized component tree, or NULL on error
- */
-IRComponent* ir_deserialize_json_with_metadata(const char* json_string, IRMetadata** metadata) {
-    if (!json_string) return NULL;
-
-    cJSON* root = cJSON_Parse(json_string);
-    if (!root) return NULL;
-
-    // Deserialize component tree
-    cJSON* componentJson = cJSON_GetObjectItem(root, "component");
-    IRComponent* component = NULL;
-    if (componentJson) {
-        component = json_deserialize_component_recursive(componentJson);
-    }
-
-    // Deserialize metadata if requested
-    if (metadata) {
-        *metadata = json_deserialize_metadata(root);
-    }
-
-    cJSON_Delete(root);
-    return component;
-}
-
-/**
- * Read IR component tree with bytecode metadata from JSON file
- * @param filename Input file path
- * @param metadata Pointer to receive deserialized metadata (can be NULL)
- * @return Deserialized component tree, or NULL on error
- */
-IRComponent* ir_read_json_file_with_metadata(const char* filename, IRMetadata** metadata) {
-    if (!filename) return NULL;
-
-    FILE* file = fopen(filename, "r");
-    if (!file) return NULL;
-
-    // Get file size
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    // Read file contents
-    char* json_string = (char*)malloc(file_size + 1);
-    if (!json_string) {
-        fclose(file);
-        return NULL;
-    }
-
-    size_t read_size = fread(json_string, 1, file_size, file);
-    json_string[read_size] = '\0';
-    fclose(file);
-
-    // Deserialize
-    IRComponent* component = ir_deserialize_json_with_metadata(json_string, metadata);
-
-    free(json_string);
-    return component;
-}
-
-/**
- * Write IR component tree with manifest to JSON v2 file
- * @param root Root component to serialize
- * @param manifest Reactive manifest (can be NULL)
- * @param filename Output file path
- * @return true on success, false on error
- */
-bool ir_write_json_v2_file_with_manifest(IRComponent* root,
-                                          IRReactiveManifest* manifest,
-                                          const char* filename) {
-    char* json = ir_serialize_json_v2_with_manifest(root, manifest);
-    if (!json) return false;
-
-    FILE* file = fopen(filename, "w");
-    if (!file) {
-        free(json);
-        return false;
-    }
-
-    bool success = (fprintf(file, "%s", json) >= 0);
-    fclose(file);
-    free(json);
-
-    return success;
-}
-
-// ============================================================================
-// JSON Deserialization - Parsing Utilities
-// ============================================================================
-
-/**
- * Parse dimension string (e.g., "100px", "50%", "auto") into IRDimension
- */
 static IRDimension json_parse_dimension(const char* str) {
     IRDimension dim = {0};
 
@@ -1508,6 +676,7 @@ static IRAlignment json_parse_alignment(const char* str) {
 /**
  * Deserialize style from JSON object into IRStyle
  */
+
 static void json_deserialize_style(cJSON* obj, IRStyle* style) {
     if (!obj || !style) return;
 
@@ -1714,6 +883,60 @@ static IRComponent* json_deserialize_component_recursive(cJSON* json) {
     json_deserialize_style(json, component->style);
     json_deserialize_layout(json, component->layout);
 
+    // Deserialize events (IR v2.1: with bytecode support)
+    if ((item = cJSON_GetObjectItem(json, "events")) != NULL && cJSON_IsArray(item)) {
+        int eventCount = cJSON_GetArraySize(item);
+        IREvent* lastEvent = NULL;
+
+        for (int i = 0; i < eventCount; i++) {
+            cJSON* eventJson = cJSON_GetArrayItem(item, i);
+            if (!eventJson || !cJSON_IsObject(eventJson)) continue;
+
+            IREvent* event = (IREvent*)calloc(1, sizeof(IREvent));
+            if (!event) continue;
+
+            // Event type
+            cJSON* typeItem = cJSON_GetObjectItem(eventJson, "type");
+            if (typeItem && cJSON_IsString(typeItem)) {
+                const char* typeStr = typeItem->valuestring;
+                if (strcmp(typeStr, "click") == 0) event->type = IR_EVENT_CLICK;
+                else if (strcmp(typeStr, "hover") == 0) event->type = IR_EVENT_HOVER;
+                else if (strcmp(typeStr, "focus") == 0) event->type = IR_EVENT_FOCUS;
+                else if (strcmp(typeStr, "blur") == 0) event->type = IR_EVENT_BLUR;
+                else if (strcmp(typeStr, "key") == 0) event->type = IR_EVENT_KEY;
+                else if (strcmp(typeStr, "scroll") == 0) event->type = IR_EVENT_SCROLL;
+                else if (strcmp(typeStr, "timer") == 0) event->type = IR_EVENT_TIMER;
+                else if (strcmp(typeStr, "custom") == 0) event->type = IR_EVENT_CUSTOM;
+            }
+
+            // Logic ID (legacy)
+            cJSON* logicIdItem = cJSON_GetObjectItem(eventJson, "logic_id");
+            if (logicIdItem && cJSON_IsString(logicIdItem)) {
+                event->logic_id = strdup(logicIdItem->valuestring);
+            }
+
+            // Handler data
+            cJSON* handlerDataItem = cJSON_GetObjectItem(eventJson, "handler_data");
+            if (handlerDataItem && cJSON_IsString(handlerDataItem)) {
+                event->handler_data = strdup(handlerDataItem->valuestring);
+            }
+
+            // Bytecode function ID (IR v2.1)
+            cJSON* funcIdItem = cJSON_GetObjectItem(eventJson, "bytecode_function_id");
+            if (funcIdItem && cJSON_IsNumber(funcIdItem)) {
+                event->bytecode_function_id = (uint32_t)funcIdItem->valueint;
+            }
+
+            // Add to linked list
+            if (!component->events) {
+                component->events = event;
+            } else {
+                lastEvent->next = event;
+            }
+            lastEvent = event;
+        }
+    }
+
     // Children
     if ((item = cJSON_GetObjectItem(json, "children")) != NULL && cJSON_IsArray(item)) {
         int childCount = cJSON_GetArraySize(item);
@@ -1737,328 +960,32 @@ static IRComponent* json_deserialize_component_recursive(cJSON* json) {
 }
 
 // ============================================================================
-// Reactive Manifest Deserialization
+// JSON v2 Deserialization Functions
 // ============================================================================
 
 /**
- * Parse reactive variable type from string
- */
-static IRReactiveVarType json_parse_reactive_type(const char* str) {
-    if (!str) return IR_REACTIVE_TYPE_INT;
-    if (strcmp(str, "int") == 0) return IR_REACTIVE_TYPE_INT;
-    if (strcmp(str, "float") == 0) return IR_REACTIVE_TYPE_FLOAT;
-    if (strcmp(str, "string") == 0) return IR_REACTIVE_TYPE_STRING;
-    if (strcmp(str, "bool") == 0) return IR_REACTIVE_TYPE_BOOL;
-    if (strcmp(str, "custom") == 0) return IR_REACTIVE_TYPE_CUSTOM;
-    return IR_REACTIVE_TYPE_INT;
-}
-
-/**
- * Parse binding type from string
- */
-static IRBindingType json_parse_binding_type(const char* str) {
-    if (!str) return IR_BINDING_TEXT;
-    if (strcmp(str, "text") == 0) return IR_BINDING_TEXT;
-    if (strcmp(str, "conditional") == 0) return IR_BINDING_CONDITIONAL;
-    if (strcmp(str, "attribute") == 0) return IR_BINDING_ATTRIBUTE;
-    if (strcmp(str, "for_loop") == 0) return IR_BINDING_FOR_LOOP;
-    if (strcmp(str, "custom") == 0) return IR_BINDING_CUSTOM;
-    return IR_BINDING_TEXT;
-}
-
-/**
- * Deserialize reactive variable from JSON
- */
-static IRReactiveVarDescriptor* json_deserialize_reactive_var(cJSON* json) {
-    if (!json || !cJSON_IsObject(json)) return NULL;
-
-    IRReactiveVarDescriptor* var = (IRReactiveVarDescriptor*)calloc(1, sizeof(IRReactiveVarDescriptor));
-    if (!var) return NULL;
-
-    cJSON* item = NULL;
-
-    if ((item = cJSON_GetObjectItem(json, "id")) != NULL && cJSON_IsNumber(item)) {
-        var->id = (uint32_t)item->valueint;
-    }
-    if ((item = cJSON_GetObjectItem(json, "name")) != NULL && cJSON_IsString(item)) {
-        var->name = strdup(item->valuestring);
-    }
-    if ((item = cJSON_GetObjectItem(json, "type")) != NULL && cJSON_IsString(item)) {
-        var->type = json_parse_reactive_type(item->valuestring);
-    }
-    if ((item = cJSON_GetObjectItem(json, "version")) != NULL && cJSON_IsNumber(item)) {
-        var->version = (uint32_t)item->valueint;
-    }
-    if ((item = cJSON_GetObjectItem(json, "sourceLocation")) != NULL && cJSON_IsString(item)) {
-        var->source_location = strdup(item->valuestring);
-    }
-    if ((item = cJSON_GetObjectItem(json, "bindingCount")) != NULL && cJSON_IsNumber(item)) {
-        var->binding_count = (uint32_t)item->valueint;
-    }
-
-    // Deserialize value based on type
-    if ((item = cJSON_GetObjectItem(json, "value")) != NULL) {
-        switch (var->type) {
-            case IR_REACTIVE_TYPE_INT:
-                if (cJSON_IsNumber(item)) {
-                    var->value.as_int = item->valueint;
-                }
-                break;
-            case IR_REACTIVE_TYPE_FLOAT:
-                if (cJSON_IsNumber(item)) {
-                    var->value.as_float = (float)item->valuedouble;
-                }
-                break;
-            case IR_REACTIVE_TYPE_STRING:
-            case IR_REACTIVE_TYPE_CUSTOM:
-                if (cJSON_IsString(item)) {
-                    var->value.as_string = strdup(item->valuestring);
-                }
-                break;
-            case IR_REACTIVE_TYPE_BOOL:
-                if (cJSON_IsBool(item)) {
-                    var->value.as_bool = cJSON_IsTrue(item);
-                }
-                break;
-        }
-    }
-
-    return var;
-}
-
-/**
- * Deserialize reactive binding from JSON
- */
-static IRReactiveBinding* json_deserialize_reactive_binding(cJSON* json) {
-    if (!json || !cJSON_IsObject(json)) return NULL;
-
-    IRReactiveBinding* binding = (IRReactiveBinding*)calloc(1, sizeof(IRReactiveBinding));
-    if (!binding) return NULL;
-
-    cJSON* item = NULL;
-
-    if ((item = cJSON_GetObjectItem(json, "componentId")) != NULL && cJSON_IsNumber(item)) {
-        binding->component_id = (uint32_t)item->valueint;
-    }
-    if ((item = cJSON_GetObjectItem(json, "reactiveVarId")) != NULL && cJSON_IsNumber(item)) {
-        binding->reactive_var_id = (uint32_t)item->valueint;
-    }
-    if ((item = cJSON_GetObjectItem(json, "bindingType")) != NULL && cJSON_IsString(item)) {
-        binding->binding_type = json_parse_binding_type(item->valuestring);
-    }
-    if ((item = cJSON_GetObjectItem(json, "expression")) != NULL && cJSON_IsString(item)) {
-        binding->expression = strdup(item->valuestring);
-    }
-    if ((item = cJSON_GetObjectItem(json, "updateCode")) != NULL && cJSON_IsString(item)) {
-        binding->update_code = strdup(item->valuestring);
-    }
-
-    return binding;
-}
-
-/**
- * Deserialize reactive conditional from JSON
- */
-static IRReactiveConditional* json_deserialize_reactive_conditional(cJSON* json) {
-    if (!json || !cJSON_IsObject(json)) return NULL;
-
-    IRReactiveConditional* cond = (IRReactiveConditional*)calloc(1, sizeof(IRReactiveConditional));
-    if (!cond) return NULL;
-
-    cJSON* item = NULL;
-
-    if ((item = cJSON_GetObjectItem(json, "componentId")) != NULL && cJSON_IsNumber(item)) {
-        cond->component_id = (uint32_t)item->valueint;
-    }
-    if ((item = cJSON_GetObjectItem(json, "condition")) != NULL && cJSON_IsString(item)) {
-        cond->condition = strdup(item->valuestring);
-    }
-    if ((item = cJSON_GetObjectItem(json, "lastEvalResult")) != NULL && cJSON_IsBool(item)) {
-        cond->last_eval_result = cJSON_IsTrue(item);
-    }
-    if ((item = cJSON_GetObjectItem(json, "suspended")) != NULL && cJSON_IsBool(item)) {
-        cond->suspended = cJSON_IsTrue(item);
-    }
-
-    // Deserialize dependent var IDs
-    if ((item = cJSON_GetObjectItem(json, "dependentVarIds")) != NULL && cJSON_IsArray(item)) {
-        int count = cJSON_GetArraySize(item);
-        if (count > 0) {
-            cond->dependent_var_ids = (uint32_t*)calloc(count, sizeof(uint32_t));
-            cond->dependent_var_count = count;
-            for (int i = 0; i < count; i++) {
-                cJSON* idItem = cJSON_GetArrayItem(item, i);
-                if (cJSON_IsNumber(idItem)) {
-                    cond->dependent_var_ids[i] = (uint32_t)idItem->valueint;
-                }
-            }
-        }
-    }
-
-    return cond;
-}
-
-/**
- * Deserialize reactive for-loop from JSON
- */
-static IRReactiveForLoop* json_deserialize_reactive_for_loop(cJSON* json) {
-    if (!json || !cJSON_IsObject(json)) return NULL;
-
-    IRReactiveForLoop* loop = (IRReactiveForLoop*)calloc(1, sizeof(IRReactiveForLoop));
-    if (!loop) return NULL;
-
-    cJSON* item = NULL;
-
-    if ((item = cJSON_GetObjectItem(json, "parentComponentId")) != NULL && cJSON_IsNumber(item)) {
-        loop->parent_component_id = (uint32_t)item->valueint;
-    }
-    if ((item = cJSON_GetObjectItem(json, "collectionExpr")) != NULL && cJSON_IsString(item)) {
-        loop->collection_expr = strdup(item->valuestring);
-    }
-    if ((item = cJSON_GetObjectItem(json, "collectionVarId")) != NULL && cJSON_IsNumber(item)) {
-        loop->collection_var_id = (uint32_t)item->valueint;
-    }
-    if ((item = cJSON_GetObjectItem(json, "itemTemplate")) != NULL && cJSON_IsString(item)) {
-        loop->item_template = strdup(item->valuestring);
-    }
-
-    // Deserialize child component IDs
-    if ((item = cJSON_GetObjectItem(json, "childComponentIds")) != NULL && cJSON_IsArray(item)) {
-        int count = cJSON_GetArraySize(item);
-        if (count > 0) {
-            loop->child_component_ids = (uint32_t*)calloc(count, sizeof(uint32_t));
-            loop->child_count = count;
-            for (int i = 0; i < count; i++) {
-                cJSON* idItem = cJSON_GetArrayItem(item, i);
-                if (cJSON_IsNumber(idItem)) {
-                    loop->child_component_ids[i] = (uint32_t)idItem->valueint;
-                }
-            }
-        }
-    }
-
-    return loop;
-}
-
-/**
- * Deserialize reactive manifest from JSON
- */
-static IRReactiveManifest* json_deserialize_reactive_manifest(cJSON* json) {
-    if (!json || !cJSON_IsObject(json)) return NULL;
-
-    IRReactiveManifest* manifest = (IRReactiveManifest*)calloc(1, sizeof(IRReactiveManifest));
-    if (!manifest) return NULL;
-
-    cJSON* item = NULL;
-
-    // Deserialize variables
-    if ((item = cJSON_GetObjectItem(json, "variables")) != NULL && cJSON_IsArray(item)) {
-        int count = cJSON_GetArraySize(item);
-        if (count > 0) {
-            manifest->variables = (IRReactiveVarDescriptor*)calloc(count, sizeof(IRReactiveVarDescriptor));
-            manifest->variable_count = 0;
-            for (int i = 0; i < count; i++) {
-                cJSON* varJson = cJSON_GetArrayItem(item, i);
-                IRReactiveVarDescriptor* var = json_deserialize_reactive_var(varJson);
-                if (var) {
-                    manifest->variables[manifest->variable_count++] = *var;
-                    free(var);
-                }
-            }
-        }
-    }
-
-    // Deserialize bindings
-    if ((item = cJSON_GetObjectItem(json, "bindings")) != NULL && cJSON_IsArray(item)) {
-        int count = cJSON_GetArraySize(item);
-        if (count > 0) {
-            manifest->bindings = (IRReactiveBinding*)calloc(count, sizeof(IRReactiveBinding));
-            manifest->binding_count = 0;
-            for (int i = 0; i < count; i++) {
-                cJSON* bindingJson = cJSON_GetArrayItem(item, i);
-                IRReactiveBinding* binding = json_deserialize_reactive_binding(bindingJson);
-                if (binding) {
-                    manifest->bindings[manifest->binding_count++] = *binding;
-                    free(binding);
-                }
-            }
-        }
-    }
-
-    // Deserialize conditionals
-    if ((item = cJSON_GetObjectItem(json, "conditionals")) != NULL && cJSON_IsArray(item)) {
-        int count = cJSON_GetArraySize(item);
-        if (count > 0) {
-            manifest->conditionals = (IRReactiveConditional*)calloc(count, sizeof(IRReactiveConditional));
-            manifest->conditional_count = 0;
-            for (int i = 0; i < count; i++) {
-                cJSON* condJson = cJSON_GetArrayItem(item, i);
-                IRReactiveConditional* cond = json_deserialize_reactive_conditional(condJson);
-                if (cond) {
-                    manifest->conditionals[manifest->conditional_count++] = *cond;
-                    free(cond);
-                }
-            }
-        }
-    }
-
-    // Deserialize for-loops
-    if ((item = cJSON_GetObjectItem(json, "forLoops")) != NULL && cJSON_IsArray(item)) {
-        int count = cJSON_GetArraySize(item);
-        if (count > 0) {
-            manifest->for_loops = (IRReactiveForLoop*)calloc(count, sizeof(IRReactiveForLoop));
-            manifest->for_loop_count = 0;
-            for (int i = 0; i < count; i++) {
-                cJSON* loopJson = cJSON_GetArrayItem(item, i);
-                IRReactiveForLoop* loop = json_deserialize_reactive_for_loop(loopJson);
-                if (loop) {
-                    manifest->for_loops[manifest->for_loop_count++] = *loop;
-                    free(loop);
-                }
-            }
-        }
-    }
-
-    return manifest;
-}
-
-// ============================================================================
-// Main JSON v2 Deserialization Entry Points
-// ============================================================================
-
-/**
- * Deserialize IR component tree with reactive manifest from JSON v2 format
+ * Deserialize IR component tree from JSON v2 format
  * @param json_string JSON string to deserialize
- * @param manifest Output parameter for reactive manifest (can be NULL if not needed)
  * @return Deserialized component tree, or NULL on error
  */
-IRComponent* ir_deserialize_json_v2_with_manifest(const char* json_string, IRReactiveManifest** manifest) {
+IRComponent* ir_deserialize_json_v2(const char* json_string) {
     if (!json_string) return NULL;
 
     cJSON* root = cJSON_Parse(json_string);
     if (!root) return NULL;
 
     IRComponent* component = NULL;
-    IRReactiveManifest* deserialized_manifest = NULL;
 
-    // Check if root has "component" and "manifest" keys (wrapped format)
+    // Check if root has "component" key (wrapped format)
     cJSON* componentJson = cJSON_GetObjectItem(root, "component");
-    cJSON* manifestJson = cJSON_GetObjectItem(root, "manifest");
 
     if (componentJson && cJSON_IsObject(componentJson)) {
-        // Wrapped format: { "component": {...}, "manifest": {...} }
+        // Wrapped format: { "component": {...} }
+        // (manifest key is ignored)
         component = json_deserialize_component_recursive(componentJson);
-
-        if (manifestJson && cJSON_IsObject(manifestJson) && manifest) {
-            deserialized_manifest = json_deserialize_reactive_manifest(manifestJson);
-        }
     } else {
         // Unwrapped format: just component tree at root
         component = json_deserialize_component_recursive(root);
-    }
-
-    if (manifest) {
-        *manifest = deserialized_manifest;
     }
 
     cJSON_Delete(root);
@@ -2066,21 +993,11 @@ IRComponent* ir_deserialize_json_v2_with_manifest(const char* json_string, IRRea
 }
 
 /**
- * Deserialize IR component tree from JSON v2 format (no manifest)
- * @param json_string JSON string to deserialize
- * @return Deserialized component tree, or NULL on error
- */
-IRComponent* ir_deserialize_json_v2(const char* json_string) {
-    return ir_deserialize_json_v2_with_manifest(json_string, NULL);
-}
-
-/**
- * Read and deserialize IR component tree with manifest from JSON v2 file
+ * Read and deserialize IR component tree from JSON v2 file
  * @param filename Input file path
- * @param manifest Output parameter for reactive manifest (can be NULL if not needed)
  * @return Deserialized component tree, or NULL on error
  */
-IRComponent* ir_read_json_v2_file_with_manifest(const char* filename, IRReactiveManifest** manifest) {
+IRComponent* ir_read_json_v2_file(const char* filename) {
     if (!filename) return NULL;
 
     FILE* file = fopen(filename, "r");
@@ -2108,17 +1025,8 @@ IRComponent* ir_read_json_v2_file_with_manifest(const char* filename, IRReactive
     fclose(file);
 
     // Deserialize
-    IRComponent* component = ir_deserialize_json_v2_with_manifest(content, manifest);
+    IRComponent* component = ir_deserialize_json_v2(content);
     free(content);
 
     return component;
-}
-
-/**
- * Read and deserialize IR component tree from JSON v2 file (no manifest)
- * @param filename Input file path
- * @return Deserialized component tree, or NULL on error
- */
-IRComponent* ir_read_json_v2_file(const char* filename) {
-    return ir_read_json_v2_file_with_manifest(filename, NULL);
 }

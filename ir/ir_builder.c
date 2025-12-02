@@ -1176,6 +1176,17 @@ IREvent* ir_find_event(IRComponent* component, IREventType type) {
     return NULL;
 }
 
+// Event Bytecode Support (IR v2.1)
+void ir_event_set_bytecode_function_id(IREvent* event, uint32_t function_id) {
+    if (!event) return;
+    event->bytecode_function_id = function_id;
+}
+
+uint32_t ir_event_get_bytecode_function_id(IREvent* event) {
+    if (!event) return 0;
+    return event->bytecode_function_id;
+}
+
 // Logic Management
 IRLogic* ir_create_logic(const char* id, LogicSourceType type, const char* source_code) {
     IRLogic* logic = malloc(sizeof(IRLogic));
@@ -1626,6 +1637,40 @@ void ir_set_align_content(IRLayout* layout, IRAlignment align) {
     // align-content controls how multiple rows/columns are aligned (when wrapping)
     // For now, use main_axis to control overall alignment
     layout->flex.main_axis = align;
+}
+
+// ============================================================================
+// BiDi Direction Property Helpers
+// ============================================================================
+
+void ir_set_base_direction(IRComponent* component, IRDirection dir) {
+    if (!component || !component->layout) return;
+    component->layout->flex.base_direction = (uint8_t)dir;
+    mark_style_dirty(component);
+}
+
+void ir_set_unicode_bidi(IRComponent* component, IRUnicodeBidi bidi) {
+    if (!component || !component->layout) return;
+    component->layout->flex.unicode_bidi = (uint8_t)bidi;
+    mark_style_dirty(component);
+}
+
+IRDirection ir_parse_direction(const char* str) {
+    if (!str) return IR_DIRECTION_LTR;
+    if (ir_str_ieq(str, "rtl")) return IR_DIRECTION_RTL;
+    if (ir_str_ieq(str, "ltr")) return IR_DIRECTION_LTR;
+    if (ir_str_ieq(str, "auto")) return IR_DIRECTION_AUTO;
+    if (ir_str_ieq(str, "inherit")) return IR_DIRECTION_INHERIT;
+    return IR_DIRECTION_LTR;  // Default to LTR
+}
+
+IRUnicodeBidi ir_parse_unicode_bidi(const char* str) {
+    if (!str) return IR_UNICODE_BIDI_NORMAL;
+    if (ir_str_ieq(str, "normal")) return IR_UNICODE_BIDI_NORMAL;
+    if (ir_str_ieq(str, "embed")) return IR_UNICODE_BIDI_EMBED;
+    if (ir_str_ieq(str, "isolate") || ir_str_ieq(str, "bidi-override")) return IR_UNICODE_BIDI_ISOLATE;
+    if (ir_str_ieq(str, "plaintext")) return IR_UNICODE_BIDI_PLAINTEXT;
+    return IR_UNICODE_BIDI_NORMAL;  // Default to normal
 }
 
 // ============================================================================
