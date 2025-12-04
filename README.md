@@ -1,10 +1,35 @@
 # Kryon UI Framework
 
-A declarative UI framework with multiple rendering backends and C core architecture.
+A declarative UI framework with multiple frontends (.kry, .nim) and rendering backends (SDL3, terminal).
 
 ## Quick Start
 
-Kryon provides a DSL-based UI framework with a C core that supports multiple backends:
+### Using `.kry` files (recommended for simple UIs)
+
+```kry
+// hello.kry
+App {
+    windowTitle = "Hello Kryon"
+    windowWidth = 800
+    windowHeight = 600
+
+    Container {
+        width = 200
+        height = 100
+        backgroundColor = "#191970"
+        contentAlignment = "center"
+
+        Text {
+            text = "Hello World"
+            color = "yellow"
+        }
+    }
+}
+```
+
+Run with: `kryon run hello.kry`
+
+### Using Nim DSL (for reactive apps)
 
 ```nim
 import kryon_dsl
@@ -29,12 +54,13 @@ let app = kryonApp:
 
         Button:
           text = "Click Me"
-          fontSize = 16
           onClick = proc() =
             echo "Button clicked!"
 
 app.run()
 ```
+
+Run with: `kryon run hello.nim`
 
 ## Installation
 
@@ -44,55 +70,60 @@ app.run()
 cd kryon
 nix-shell
 make build
+make install   # Installs kryon CLI to ~/.local/bin
 ```
 
 ### Manual Installation
 
 ```bash
-# Install Nim
+# Install Nim (>= 2.0)
 curl https://nim-lang.org/choosenim/init.sh -sSf | sh
 
-# Build C Core
-cd core && make
-cd ../renderers/sdl3 && make
-cd ../terminal && make
-
-# Build CLI tool
-cd ../cli && make
-
-# Build
-nimble build
+# Build C libraries and CLI
+make build
+make install
 ```
+
+The `make install` command installs:
+- `kryon` CLI to `~/.local/bin/`
+- Shared libraries to `~/.local/lib/`
 
 ## Usage
 
-### Run Examples
+### CLI Commands
 
 ```bash
-./run_example.sh hello_world nim sdl3
-./run_example.sh button_demo nim terminal
-./run_example.sh checkbox nim framebuffer
+# Run applications
+kryon run examples/kry/hello_world.kry   # Run .kry file
+kryon run examples/nim/button_demo.nim   # Run Nim app
+kryon run app.kir                        # Run pre-compiled IR
+
+# Parse .kry to .kir (JSON IR)
+kryon parse hello.kry                    # Outputs hello.kir
+
+# Inspect IR files
+kryon tree app.kir                       # Show component tree
+kryon inspect-detailed app.kir           # Full analysis
+
+# Development mode with hot reload
+kryon dev examples/nim/habits.nim
 ```
 
-### Build Executable
+### Run Examples Script
 
 ```bash
-# Build with specific renderer
-nim c -r examples/hello_world.nim --renderer:terminal
-nim c -r examples/button_demo.nim --renderer:sdl3
+./run_example.sh hello_world             # Run Nim example with SDL3
+./run_example.sh button_demo nim terminal # Use terminal renderer
 ```
 
 ### Available Backends
 
-- **SDL3** - Modern cross-platform, hardware accelerated
+- **SDL3** - Modern cross-platform, hardware accelerated (default)
 - **Terminal** - Text-based UI using ANSI escape sequences
-- **Framebuffer** - Direct framebuffer rendering (Linux)
-- **Web** - WebAssembly/JavaScript backend (planned)
 
 ```bash
-# Specify backend in build command
-nim c -r app.nim --renderer:terminal
-nim c -r app.nim --renderer:sdl3
+# Set renderer via environment variable
+KRYON_RENDERER=terminal kryon run app.kry
 ```
 
 ## Features
