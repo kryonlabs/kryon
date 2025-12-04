@@ -995,7 +995,11 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
     }
     #endif
 
-    if (component->type == IR_COMPONENT_COLUMN && component->child_count > 0) {
+    // Apply two-pass layout for column-like containers (COLUMN, CONTAINER with default vertical direction)
+    bool is_column_layout = (component->type == IR_COMPONENT_COLUMN) ||
+                           (component->type == IR_COMPONENT_CONTAINER &&
+                            (!component->layout || component->layout->flex.direction == 0));
+    if (is_column_layout && component->child_count > 0) {
         // Pass 1: Measure total content height (just get sizes, don't do full layout)
         float total_height = 0.0f;
         float gap = 0.0f;
@@ -1088,7 +1092,11 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
     // Two-pass layout for ROW: measure total width, then position based on justify_content
     // Also store flex_grow distribution for use in the render pass
     float* flex_extra_widths = NULL;  // Extra width each child gets from flex_grow
-    if (component->type == IR_COMPONENT_ROW && component->child_count > 0) {
+    // Apply two-pass layout for row-like containers (ROW, CONTAINER with horizontal direction)
+    bool is_row_layout = (component->type == IR_COMPONENT_ROW) ||
+                        (component->type == IR_COMPONENT_CONTAINER &&
+                         component->layout && component->layout->flex.direction == 1);
+    if (is_row_layout && component->child_count > 0) {
         // Pass 1: Measure total content width AND calculate flex_grow distribution
         float total_width = 0.0f;
         float total_flex_grow = 0.0f;
@@ -1454,7 +1462,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             }
 
         // Apply horizontal alignment for COLUMN layout based on cross_axis (align_items)
-        if (component->type == IR_COMPONENT_COLUMN && component->layout) {
+        // Also apply to Container with default vertical direction
+        if (is_column_layout && component->layout) {
             switch (component->layout->flex.cross_axis) {
                 case IR_ALIGNMENT_CENTER:
                     // For AUTO-width Row/Column, measure actual content width for centering

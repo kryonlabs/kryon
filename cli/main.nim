@@ -522,9 +522,58 @@ end
     echo "✓ Application closed"
     quit(0)
 
+  elif frontend == ".kry":
+    # .kry → .kir → IR renderer
+    echo "📦 Running .kry via IR pipeline..."
+
+    if not fileExists(file):
+      echo "❌ File not found: " & file
+      quit(1)
+
+    # Set up temp directory
+    let homeCache = getHomeDir() / ".cache" / "kryon"
+    let runCache = homeCache / "cli_run"
+    createDir(runCache)
+
+    let baseName = splitFile(file).name
+    let tempKir = runCache / baseName & ".kir"
+
+    # Parse .kry -> .kir
+    echo "  → Parsing to KIR..."
+    try:
+      let source = readFile(file)
+      let ast = parseKry(source, file)
+      let kirJson = transpileToKir(ast)
+      writeFile(tempKir, $kirJson)
+    except:
+      echo "❌ Failed to parse .kry file: " & getCurrentExceptionMsg()
+      quit(1)
+
+    # Load IR directly
+    echo "  → Loading IR..."
+    let ctx = ir_create_context()
+    ir_set_context(ctx)
+    let irRoot = ir_read_json_v2_file(cstring(tempKir))
+
+    if irRoot == nil:
+      echo "❌ Failed to load IR from " & tempKir
+      quit(1)
+
+    # Render with SDL3
+    echo "  → Rendering..."
+    var config = desktop_renderer_config_sdl3(800, 600, "Kryon App")
+    let renderSuccess = desktop_render_ir_component(irRoot, addr config)
+
+    if not renderSuccess:
+      echo "❌ Rendering failed"
+      quit(1)
+
+    echo "✓ Application closed"
+    quit(0)
+
   elif frontend != ".nim":
     echo "❌ Unknown frontend: " & frontend
-    echo "   Supported: .nim, .lua, .ts, .js, .kir, .kirb"
+    echo "   Supported: .nim, .lua, .ts, .js, .kir, .kirb, .kry"
     quit(1)
 
   # Continue with Nim compilation for .nim files
@@ -644,19 +693,47 @@ end
     nimArgs.add(libFlags)
     nimArgs.add(file)
 
-    # Simple compilation and execution like Flutter
+    # .nim → compile → serialize IR → load IR → render
     let cmd = nimArgs.join(" ")
 
     echo "🔨 Building..."
     let buildResult = execShellCmd(cmd)
 
-    if buildResult == 0:
-      echo "✅ Build successful!"
-      echo "🏃 Running application..."
-      discard execShellCmd(outFile)
-    else:
+    if buildResult != 0:
       echo "❌ Build failed"
       quit(1)
+
+    echo "✅ Build successful!"
+
+    # Run with KRYON_SERIALIZE_IR to generate .kir (app exits after serializing)
+    let baseName = splitFile(file).name
+    let tempKir = runCache / baseName & ".kir"
+    putEnv("KRYON_SERIALIZE_IR", tempKir)
+
+    echo "📦 Generating IR..."
+    let serializeResult = execShellCmd(outFile)
+    if serializeResult != 0:
+      echo "❌ Failed to generate IR"
+      quit(1)
+
+    # Load IR and render
+    echo "🎨 Rendering via IR pipeline..."
+    let ctx = ir_create_context()
+    ir_set_context(ctx)
+    let irRoot = ir_read_json_v2_file(cstring(tempKir))
+
+    if irRoot == nil:
+      echo "❌ Failed to load IR from " & tempKir
+      quit(1)
+
+    var config = desktop_renderer_config_sdl3(800, 600, "Kryon App")
+    let renderSuccess = desktop_render_ir_component(irRoot, addr config)
+
+    if not renderSuccess:
+      echo "❌ Rendering failed"
+      quit(1)
+
+    echo "✓ Application closed"
 
   except:
     echo "✗ Run failed: " & getCurrentExceptionMsg()

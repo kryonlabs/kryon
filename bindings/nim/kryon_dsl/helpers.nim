@@ -76,6 +76,10 @@ proc colorNode*(value: NimNode): NimNode =
 func pct*(value: int): int = value
 func pct*(value: float): float = value
 
+# Alias: width = 50.percent
+func percent*(value: int): int = value
+func percent*(value: float): float = value
+
 # CSS-style pixel suffix
 # Usage: fontSize = 24.px explicitly marks value as pixels
 func px*(value: int): int = value

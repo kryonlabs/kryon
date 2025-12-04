@@ -24,7 +24,8 @@ NIMFLAGS = --define:kryonVersion=$(VERSION)
 STATIC_FLAGS = -d:staticBackend --opt:size --passL:"-static"
 
 # Dynamic build flags (uses system libraries)
-DYNAMIC_FLAGS = --opt:speed
+# Add rpath so the CLI can find libraries in ~/.local/lib at runtime
+DYNAMIC_FLAGS = --opt:speed --passL:"-Wl,-rpath,$(LIBDIR) -L$(LIBDIR)"
 
 # Detect NixOS environment
 ifeq ($(shell test -e /etc/nixos && echo yes), yes)
@@ -133,7 +134,7 @@ install-dynamic:
 	else \
 		echo "Building CLI without C dependencies (fallback)..."; \
 		mv nim.cfg nim.cfg.backup 2>/dev/null || true; \
-		if nim compile --out:$(BINDIR)/kryon cli/main.nim; then \
+		if nim compile --passL:"-Wl,-rpath,$(LIBDIR) -L$(LIBDIR)" --out:$(BINDIR)/kryon cli/main.nim; then \
 			echo "✓ Installed CLI without C dependencies"; \
 		else \
 			echo "✗ Failed to build CLI"; \
