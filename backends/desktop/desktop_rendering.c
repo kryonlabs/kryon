@@ -367,6 +367,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 if (surface) {
                     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
                     if (texture) {
+                        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text
                         float text_w = (float)surface->w;
                         float text_h = (float)surface->h;
                         float avail_w = rect.width;
@@ -539,6 +540,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     if (surface) {
                         SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
                         if (texture) {
+                            SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text
                             float text_x = rect.x + pad_left;
                             float text_y = rect.y + pad_top;
                             if (!component->style || (component->style->padding.top == 0 && component->style->padding.bottom == 0)) {
@@ -655,6 +657,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 if (surface) {
                     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
                     if (texture) {
+                        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text
                         // Round text position to integer pixels for crisp rendering
                         SDL_FRect text_rect = {
                             .x = roundf(checkbox_rect.x + checkbox_size + 10),
@@ -720,6 +723,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 if (surface) {
                     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
                     if (texture) {
+                        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text
                         SDL_FRect text_rect = {
                             .x = roundf(rect.x + 10),
                             .y = roundf(rect.y + (rect.height - surface->h) / 2.0f),
@@ -873,6 +877,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                                 SDL_DestroySurface(text_surface);
                                 break;
                             }
+                            SDL_SetTextureScaleMode(text_texture, SDL_SCALEMODE_NEAREST);  // Crisp text
 
                             SDL_FRect dest_rect = {
                                 (float)cmd.data.draw_text.x,
