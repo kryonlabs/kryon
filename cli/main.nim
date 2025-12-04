@@ -122,6 +122,35 @@ proc pkgLibFlags*(pkg: string): seq[string] =
     discard
 
 # =============================================================================
+# IR Rendering Helper
+# =============================================================================
+
+proc renderIRFile*(kirPath: string, title: string = "Kryon App",
+                   width: int = 800, height: int = 600): bool =
+  ## Unified IR rendering - loads .kir/.kirb and renders with SDL3 backend
+  ## Returns true on success, false on failure
+  let ctx = ir_create_context()
+  ir_set_context(ctx)
+
+  # Load IR tree (supports both .kir JSON and .kirb binary)
+  let irRoot = if kirPath.endsWith(".kirb"):
+                 ir_serialization.ir_read_binary_file(cstring(kirPath))
+               else:
+                 ir_read_json_v2_file(cstring(kirPath))
+
+  if irRoot.isNil:
+    echo "❌ Failed to load IR: " & kirPath
+    return false
+
+  var config = desktop_renderer_config_sdl3(width.cint, height.cint, cstring(title))
+  let renderSuccess = desktop_render_ir_component(irRoot, addr config)
+
+  # Cleanup IR resources
+  ir_destroy_component(irRoot)
+
+  return renderSuccess
+
+# =============================================================================
 # Command Line Interface
 # =============================================================================
 
@@ -424,25 +453,11 @@ end
       echo "❌ Failed to create IR tree"
       quit(1)
 
-    # Create IR context (required for loading)
-    let ctx = ir_create_context()
-    ir_set_context(ctx)
+    # Render via unified IR pipeline
+    echo "🎨 Rendering..."
+    let renderSuccess = renderIRFile(tempIR)
 
-    # Load IR tree (binary format)
-    echo "🔄 Loading IR tree..."
-    let irRoot = ir_serialization.ir_read_binary_file(cstring(tempIR))
-    if irRoot == nil:
-      echo "❌ Failed to load IR from " & tempIR
-      quit(1)
-
-    echo "✓ IR tree loaded successfully"
-
-    # Render with SDL3 backend
-    echo "🎨 Rendering with SDL3..."
-    var config = desktop_renderer_config_sdl3(800, 600, "Kryon App")
-    let renderSuccess = desktop_render_ir_component(irRoot, addr config)
-
-    # Cleanup
+    # Cleanup temp files
     removeFile(tempIR)
     removeFile(wrapperScript)
 
@@ -483,37 +498,16 @@ end
       echo "❌ File not found: " & file
       quit(1)
 
-    # Create IR context (required for loading)
-    let ctx = ir_create_context()
-    ir_set_context(ctx)
-
-    # Load IR tree (supports both .kir JSON and .kirb binary)
-    echo "🔄 Loading IR tree..."
-    let irRoot = if frontend == ".kirb":
-                   # Binary format
-                   ir_serialization.ir_read_binary_file(cstring(file))
-                 else:
-                   # JSON format
-                   ir_serialization.ir_read_json_v2_file(cstring(file))
-
-    if irRoot == nil:
-      echo "❌ Failed to load IR from " & file
-      quit(1)
-
-    echo "✓ IR tree loaded successfully"
-
     # Determine renderer from target
     if target == "web":
       echo "🌐 Web rendering not yet implemented for .kir files"
       quit(1)
 
-    # Render with desktop backend (SDL3 or Terminal based on KRYON_RENDERER env var)
+    # Render via unified IR pipeline
     let renderer = getEnv("KRYON_RENDERER", "sdl3")
     echo "🎨 Rendering with " & renderer & " backend..."
 
-    var config = desktop_renderer_config_sdl3(800, 600, "Kryon App")
-
-    let renderSuccess = desktop_render_ir_component(irRoot, addr config)
+    let renderSuccess = renderIRFile(file)
 
     if not renderSuccess:
       echo "❌ Rendering failed"
@@ -549,20 +543,9 @@ end
       echo "❌ Failed to parse .kry file: " & getCurrentExceptionMsg()
       quit(1)
 
-    # Load IR directly
-    echo "  → Loading IR..."
-    let ctx = ir_create_context()
-    ir_set_context(ctx)
-    let irRoot = ir_read_json_v2_file(cstring(tempKir))
-
-    if irRoot == nil:
-      echo "❌ Failed to load IR from " & tempKir
-      quit(1)
-
-    # Render with SDL3
+    # Render via unified IR pipeline
     echo "  → Rendering..."
-    var config = desktop_renderer_config_sdl3(800, 600, "Kryon App")
-    let renderSuccess = desktop_render_ir_component(irRoot, addr config)
+    let renderSuccess = renderIRFile(tempKir)
 
     if not renderSuccess:
       echo "❌ Rendering failed"
@@ -716,18 +699,9 @@ end
       echo "❌ Failed to generate IR"
       quit(1)
 
-    # Load IR and render
+    # Render via unified IR pipeline
     echo "🎨 Rendering via IR pipeline..."
-    let ctx = ir_create_context()
-    ir_set_context(ctx)
-    let irRoot = ir_read_json_v2_file(cstring(tempKir))
-
-    if irRoot == nil:
-      echo "❌ Failed to load IR from " & tempKir
-      quit(1)
-
-    var config = desktop_renderer_config_sdl3(800, 600, "Kryon App")
-    let renderSuccess = desktop_render_ir_component(irRoot, addr config)
+    let renderSuccess = renderIRFile(tempKir)
 
     if not renderSuccess:
       echo "❌ Rendering failed"

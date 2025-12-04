@@ -21,12 +21,20 @@ Kryon is a cross-platform UI framework with an intermediate representation (IR) 
 - Nim callbacks are registered with C using `{.exportc, cdecl, dynlib.}` pragmas
 - Weak extern declarations allow optional callbacks in C
 
-### IR Pipeline (.kir → .kirb)
-- **Frontends** (Nim/Lua/C) always output `.kir` (JSON v2 format) - human-readable, standardized
-- **IR Layer** converts `.kir` → `.kirb` (binary v2.0 format) - 5-10× smaller, optimized
-- **Backends** (SDL3/Terminal/Web) only read `.kirb` - fast loading, efficient
-- Use `kryon convert` to manually convert .kir → .kirb
-- See `docs/IR_PIPELINE.md` for complete architecture details
+### IR Pipeline (Universal)
+All frontends go through the same pipeline:
+```
+.kry  → .kir (JSON) → renderer
+.nim  → .kir (JSON) → renderer
+.kirb → renderer (binary, pre-compiled)
+```
+
+- **`.kry`** - Simple declarative syntax, parsed by `kry_parser.nim`
+- **`.nim`** - Nim DSL with reactive state, compiled to binary that serializes IR
+- **`.kir`** - JSON IR format (human-readable, named colors supported)
+- **`.kirb`** - Binary IR format (5-10× smaller, optimized)
+
+The CLI uses `renderIRFile()` helper (cli/main.nim:128) for unified rendering across all paths.
 
 ## Directory Structure
 
@@ -83,6 +91,14 @@ Kryon is a cross-platform UI framework with an intermediate representation (IR) 
   project.nim             - Project scaffolding
   build.nim               - Build system
   device.nim              - Device deployment
+  kry_lexer.nim           - .kry tokenizer
+  kry_parser.nim          - .kry parser (produces AST)
+  kry_to_kir.nim          - .kry AST to .kir JSON transpiler
+  kry_ast.nim             - .kry AST types
+
+/examples/kry/            - .kry example applications
+  hello_world.kry         - Simple hello world
+  hello_world.kir         - Generated IR (JSON)
 
 /examples/nim/            - Nim example applications
   button_demo.nim         - Interactive buttons
