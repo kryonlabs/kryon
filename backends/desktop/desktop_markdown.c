@@ -600,6 +600,7 @@ void render_markdown_content(DesktopIRRenderer* renderer, IRComponent* component
             if (bullet_surface) {
                     SDL_Texture* bullet_texture = SDL_CreateTextureFromSurface(renderer->renderer, bullet_surface);
                     if (bullet_texture) {
+                        SDL_SetTextureScaleMode(bullet_texture, SDL_SCALEMODE_NEAREST);  // Crisp text
                         SDL_FRect bullet_rect = {
                             .x = roundf(rect.x + x_offset - 18.0f),
                             .y = roundf(line_y - scroll_offset + 2.0f),
@@ -680,6 +681,7 @@ void render_markdown_content(DesktopIRRenderer* renderer, IRComponent* component
                 if (surface) {
                     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
                     if (texture) {
+                        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text
                         SDL_FRect text_rect = {
                             .x = roundf(block_x + padding),
                             .y = roundf(line_y_block),
@@ -712,6 +714,7 @@ void render_markdown_content(DesktopIRRenderer* renderer, IRComponent* component
         if (surface) {
             SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
             if (texture) {
+                SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text
                 SDL_FRect text_rect = {
                     .x = roundf(line_x + x_offset),
                             .y = roundf(line_y - scroll_offset),

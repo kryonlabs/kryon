@@ -190,6 +190,7 @@ void render_dropdown_menu_sdl3(DesktopIRRenderer* renderer, IRComponent* compone
             if (opt_surface) {
                 SDL_Texture* opt_texture = SDL_CreateTextureFromSurface(renderer->renderer, opt_surface);
                 if (opt_texture) {
+                    SDL_SetTextureScaleMode(opt_texture, SDL_SCALEMODE_NEAREST);  // Crisp text
                     SDL_FRect opt_text_rect = {
                         .x = roundf(menu_rect.x + 10),
                         .y = roundf(option_y + (option_height - opt_surface->h) / 2.0f),

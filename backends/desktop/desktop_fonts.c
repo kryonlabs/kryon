@@ -295,6 +295,7 @@ SDL_Texture* get_text_texture_cached(SDL_Renderer* sdl_renderer, TTF_Font* font,
         if (out_height) *out_height = surface->h;
 
         SDL_Texture* texture = SDL_CreateTextureFromSurface(sdl_renderer, surface);
+        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text rendering
         SDL_DestroySurface(surface);
         return texture;
     }
@@ -315,6 +316,9 @@ SDL_Texture* get_text_texture_cached(SDL_Renderer* sdl_renderer, TTF_Font* font,
     if (!surface) return NULL;
 
     SDL_Texture* texture = SDL_CreateTextureFromSurface(sdl_renderer, surface);
+    if (texture) {
+        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text rendering
+    }
     if (out_width) *out_width = surface->w;
     if (out_height) *out_height = surface->h;
 
