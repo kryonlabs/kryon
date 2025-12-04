@@ -1,0 +1,44 @@
+// Button Demo - Interactive button with click handler
+// Multi-language support: Nim, Lua, JavaScript, C
+
+App {
+  windowTitle = "Interactive Button Demo"
+  windowWidth = 600
+  windowHeight = 400
+  backgroundColor = "#191919"
+
+  Center {
+    Button {
+      text = "Click Me!"
+      width = 150
+      height = 50
+      color = "pink"
+      backgroundColor = "#404080"
+      onClick = handleButtonClick
+    }
+  }
+}
+
+// Nim implementation
+@nim
+proc handleButtonClick*() =
+  echo "Button clicked! Hello from Kryon-Nim!"
+@end
+
+@lua
+function handleButtonClick()
+  print("Button clicked! Hello from Kryon-Lua!")
+end
+@end
+
+@js
+function handleButtonClick() {
+  console.log("Button clicked! Hello from Kryon-JS!");
+}
+@end
+
+@c
+void handleButtonClick(void) {
+  printf("Button clicked! Hello from Kryon-C!\n");
+}
+@end

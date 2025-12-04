@@ -233,7 +233,7 @@ void render_background(SDL_Renderer* renderer, IRComponent* comp, SDL_FRect* rec
 
 // Text effects
 void render_text_with_shadow(SDL_Renderer* sdl_renderer, TTF_Font* font, const char* text,
-                             SDL_Color color, IRComponent* comp);
+                             SDL_Color color, IRComponent* comp, float x, float y);
 void render_text_with_fade(SDL_Renderer* renderer, TTF_Font* font, const char* text,
                            SDL_FRect* rect, SDL_Color color, float fade_start_ratio);
 

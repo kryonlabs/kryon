@@ -42,6 +42,17 @@ IRComponent* ir_read_json_file(const char* filename);
 char* ir_serialize_json_v2(IRComponent* root);
 bool ir_write_json_v2_file(IRComponent* root, const char* filename);
 
+// JSON v2.1 Serialization with Reactive Manifest (POC)
+char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* manifest);
+bool ir_write_json_v2_with_manifest_file(IRComponent* root, IRReactiveManifest* manifest, const char* filename);
+
+// Forward declaration for logic block (defined in ir_logic.h)
+struct IRLogicBlock;
+
+// JSON v3.0 Serialization with Logic Block Support
+char* ir_serialize_json_v3(IRComponent* root, IRReactiveManifest* manifest, struct IRLogicBlock* logic);
+bool ir_write_json_v3_file(IRComponent* root, IRReactiveManifest* manifest, struct IRLogicBlock* logic, const char* filename);
+
 // JSON v2 Deserialization
 IRComponent* ir_deserialize_json_v2(const char* json_string);
 IRComponent* ir_read_json_v2_file(const char* filename);

@@ -377,7 +377,8 @@ void render_background(SDL_Renderer* renderer, IRComponent* comp, SDL_FRect* rec
 // ============================================================================
 
 void render_text_with_shadow(SDL_Renderer* sdl_renderer, TTF_Font* font,
-                             const char* text, SDL_Color color, IRComponent* comp) {
+                             const char* text, SDL_Color color, IRComponent* comp,
+                             float x, float y) {
     if (!comp || !text || !sdl_renderer) return;
 
     // Check if text should be rendered RTL
@@ -439,10 +440,10 @@ void render_text_with_shadow(SDL_Renderer* sdl_renderer, TTF_Font* font,
     int width, height;
     SDL_Texture* texture = get_text_texture_cached(sdl_renderer, font, render_text, color, &width, &height);
     if (texture) {
-        // Use component's rendered bounds for positioning
+        // Use explicit x, y position parameters for correct positioning
         SDL_FRect text_rect = {
-            comp->rendered_bounds.x,
-            comp->rendered_bounds.y,
+            x,
+            y,
             (float)width,
             (float)height
         };

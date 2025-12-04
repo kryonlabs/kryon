@@ -258,7 +258,10 @@ type
     layout*: ptr IRLayout
     parent*: ptr IRComponent
     text_content*: cstring
+    text_expression*: cstring  # For reactive text (e.g., "{{value}}")
     custom_data*: cstring
+    component_ref*: cstring    # For component references (e.g., "Counter")
+    component_props*: cstring  # JSON string of props passed to component instance
     layout_cache*: IRLayoutCache
 
   IRContext* {.importc: "IRContext", header: "ir_core.h", incompleteStruct.} = object
@@ -460,10 +463,11 @@ proc ir_tabgroup_handle_tab_click*(state: ptr TabGroupState; tab_index: uint32) 
 # Tab Group Cleanup
 proc ir_tabgroup_destroy_state*(state: ptr TabGroupState) {.importc, cdecl, header: "ir_builder.h".}
 
-# Layout setters not in C yet - add stubs
+# Layout setters - direct field access
 proc ir_set_gap*(layout: ptr IRLayout; gap: uint32) =
-  # Gap is part of flexbox in IR
-  discard
+  ## Set the flex gap between children
+  if layout != nil:
+    layout.flex.gap = gap
 
 # Serialization
 proc ir_serialize_binary*(root: ptr IRComponent; filename: cstring): bool {.importc, cdecl, header: "ir_serialization.h".}
@@ -477,6 +481,34 @@ proc ir_deserialize_binary*(filename: cstring): ptr IRComponent {.importc, cdecl
 proc ir_set_text_content*(component: ptr IRComponent; text: cstring) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_custom_data*(component: ptr IRComponent; data: cstring) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_tag*(component: ptr IRComponent; tag: cstring) {.importc, cdecl, header: "ir_builder.h".}
+
+# Text expression support for reactive bindings
+proc ir_set_text_expression*(component: ptr IRComponent; expr: cstring) =
+  ## Set the reactive text expression (e.g., "{{value}}")
+  ## This is serialized alongside text_content for .kir files
+  component.text_expression = expr
+
+# C library strdup for copying strings to C-allocated memory
+proc strdup(s: cstring): cstring {.importc, header: "<string.h>".}
+
+# Component reference support for custom components
+proc ir_set_component_ref*(component: ptr IRComponent; refName: cstring) =
+  ## Set the component reference name (e.g., "Counter")
+  ## Used when serializing component instances instead of expanded trees
+  ## Note: Must use strdup to copy the string because Nim's cstring may be temporary
+  if refName != nil and refName[0] != '\0':
+    component.component_ref = strdup(refName)
+  else:
+    component.component_ref = nil
+
+proc ir_set_component_props*(component: ptr IRComponent; propsJson: cstring) =
+  ## Set the component instance props as JSON string
+  ## Used when serializing component instances with their props
+  ## Note: Must use strdup to copy the string because Nim's cstring may be temporary
+  if propsJson != nil and propsJson[0] != '\0':
+    component.component_props = strdup(propsJson)
+  else:
+    component.component_props = nil
 
 # Event Management
 proc ir_create_event*(event_type: IREventType; logic_id: cstring; handler_data: cstring): ptr IREvent {.importc, cdecl, header: "ir_builder.h".}
@@ -983,6 +1015,25 @@ type
     child_component_ids*: ptr uint32
     child_count*: uint32
 
+  # Component definition types (for custom components) - must be before IRReactiveManifest
+  IRComponentProp* {.importc: "IRComponentProp", header: "ir_core.h".} = object
+    name*: cstring
+    `type`*: cstring
+    default_value*: cstring
+
+  IRComponentStateVar* {.importc: "IRComponentStateVar", header: "ir_core.h".} = object
+    name*: cstring
+    `type`*: cstring
+    initial_expr*: cstring
+
+  IRComponentDefinition* {.importc: "IRComponentDefinition", header: "ir_core.h".} = object
+    name*: cstring
+    props*: ptr IRComponentProp
+    prop_count*: uint32
+    state_vars*: ptr IRComponentStateVar
+    state_var_count*: uint32
+    template_root*: ptr IRComponent
+
   IRReactiveManifest* {.importc: "IRReactiveManifest", header: "ir_core.h".} = object
     variables*: ptr IRReactiveVarDescriptor
     variable_count*: uint32
@@ -996,8 +1047,12 @@ type
     for_loops*: ptr IRReactiveForLoop
     for_loop_count*: uint32
     for_loop_capacity*: uint32
+    # Component definitions (custom components)
+    component_defs*: ptr IRComponentDefinition
+    component_def_count*: uint32
+    component_def_capacity*: uint32
+    # Metadata
     next_var_id*: uint32
-    format_version*: uint32
 
 # Reactive manifest management functions
 proc ir_reactive_manifest_create*(): ptr IRReactiveManifest {.importc, cdecl, header: "ir_core.h".}
@@ -1009,6 +1064,14 @@ proc ir_reactive_manifest_add_var*(
   `type`: IRReactiveVarType;
   value: IRReactiveValue
 ): uint32 {.importc, cdecl, header: "ir_core.h".}
+
+proc ir_reactive_manifest_set_var_metadata*(
+  manifest: ptr IRReactiveManifest;
+  var_id: uint32;
+  type_string: cstring;
+  initial_value_json: cstring;
+  scope: cstring
+) {.importc, cdecl, header: "ir_core.h".}
 
 proc ir_reactive_manifest_add_binding*(
   manifest: ptr IRReactiveManifest;
@@ -1024,6 +1087,15 @@ proc ir_reactive_manifest_add_conditional*(
   condition: cstring;
   dependent_var_ids: ptr uint32;
   dependent_var_count: uint32
+) {.importc, cdecl, header: "ir_core.h".}
+
+proc ir_reactive_manifest_set_conditional_branches*(
+  manifest: ptr IRReactiveManifest;
+  component_id: uint32;
+  then_children_ids: ptr uint32;
+  then_children_count: uint32;
+  else_children_ids: ptr uint32;
+  else_children_count: uint32
 ) {.importc, cdecl, header: "ir_core.h".}
 
 proc ir_reactive_manifest_add_for_loop*(
@@ -1050,3 +1122,19 @@ proc ir_reactive_manifest_update_var*(
 ): bool {.importc, cdecl, header: "ir_core.h".}
 
 proc ir_reactive_manifest_print*(manifest: ptr IRReactiveManifest) {.importc, cdecl, header: "ir_core.h".}
+
+# Component definition functions
+proc ir_reactive_manifest_add_component_def*(
+  manifest: ptr IRReactiveManifest;
+  name: cstring;
+  props: ptr IRComponentProp;
+  prop_count: uint32;
+  state_vars: ptr IRComponentStateVar;
+  state_var_count: uint32;
+  template_root: ptr IRComponent
+) {.importc, cdecl, header: "ir_core.h".}
+
+proc ir_reactive_manifest_find_component_def*(
+  manifest: ptr IRReactiveManifest;
+  name: cstring
+): ptr IRComponentDefinition {.importc, cdecl, header: "ir_core.h".}

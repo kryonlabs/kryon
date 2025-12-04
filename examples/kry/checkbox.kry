@@ -1,0 +1,38 @@
+// Checkbox Example
+
+App {
+    width = 800
+    height = 600
+    title = "Checkbox Example"
+
+    Column {
+        justifyContent = "center"
+        alignItems = "center"
+        width = 100%
+        height = 100%
+        background = "#f0f0f0"
+        gap = 20
+
+        Text {
+            text = "Simple Checkbox Test"
+            color = "#333333"
+            fontSize = 18
+        }
+
+        Checkbox {
+            label = "Test checkbox"
+            checked = true
+            width = 250
+            height = 30
+            fontSize = 14
+        }
+
+        Checkbox {
+            label = "Unchecked checkbox"
+            checked = false
+            width = 250
+            height = 30
+            fontSize = 14
+        }
+    }
+}

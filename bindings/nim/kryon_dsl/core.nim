@@ -18,6 +18,240 @@ import ../ir_core
 
 export runtime, ir_core
 
+# ============================================================================
+# Custom Component with Automatic Reactive Detection
+# ============================================================================
+
+type ReactiveVarInfo = object
+  name: string
+  initialValue: NimNode
+  usedInHandlers: bool
+  usedInText: bool
+
+type ReactiveVarTable = ref object
+  data: Table[string, ReactiveVarInfo]
+
+proc detectReactiveVars(body: NimNode): Table[string, ReactiveVarInfo] =
+  ## Scan a component proc body for reactive variables
+  var vars = ReactiveVarTable(data: initTable[string, ReactiveVarInfo]())
+
+  proc scanForVars(n: NimNode, vars: ReactiveVarTable) =
+    case n.kind:
+    of nnkVarSection:
+      # Found variable declaration
+      for identDef in n:
+        if identDef.len >= 3:
+          let varName = $identDef[0]
+          vars.data[varName] = ReactiveVarInfo(
+            name: varName,
+            initialValue: identDef[2],
+            usedInHandlers: false,
+            usedInText: false
+          )
+
+    of nnkCall:
+      # Check if it's a component with properties
+      if n.len >= 2:
+        let props = n[1]
+        if props.kind == nnkStmtList:
+          for prop in props:
+            if prop.kind == nnkAsgn:
+              let propName = $prop[0]
+              let value = prop[1]
+
+              # Check for onClick handlers
+              if propName.toLowerAscii() == "onclick":
+                let mutated = analyzeHandlerMutations(value)
+                for varName in mutated:
+                  if varName in vars.data:
+                    vars.data[varName].usedInHandlers = true
+
+              # Check for text expressions
+              elif propName.toLowerAscii() in ["text", "content", "title"]:
+                let referenced = extractVariableReferences(value)
+                for varName in referenced:
+                  if varName in vars.data:
+                    vars.data[varName].usedInText = true
+
+      # Also recursively scan child components
+      for child in n:
+        scanForVars(child, vars)
+
+    else:
+      for child in n: scanForVars(child, vars)
+
+  scanForVars(body, vars)
+
+  # Filter to only variables used reactively
+  result = initTable[string, ReactiveVarInfo]()
+  for name, info in vars.data:
+    if info.usedInHandlers or info.usedInText:
+      result[name] = info
+
+proc transformToReactive(body: NimNode, reactiveVars: Table[string, ReactiveVarInfo], componentName: string): NimNode =
+  ## Transform variable declarations and access to use namedReactiveVar
+  result = body.copyNimTree()
+
+  proc transform(n: NimNode): NimNode =
+    case n.kind:
+    of nnkVarSection:
+      result = newNimNode(nnkVarSection)
+      for identDef in n:
+        let varName = $identDef[0]
+        if varName in reactiveVars:
+          # Transform: var value = init
+          # Into: var value = namedReactiveVar("Component:value", init)
+          let scopedName = componentName & ":" & varName
+          let initVal = identDef[2]
+          let wrappedInit = quote do:
+            namedReactiveVar(`scopedName`, `initVal`)
+          result.add(newIdentDefs(identDef[0], identDef[1], wrappedInit))
+        else:
+          result.add(identDef)
+
+    of nnkIdent:
+      # Transform variable access: value → value.value
+      let varName = $n
+      if varName in reactiveVars:
+        result = newDotExpr(n, ident("value"))
+      else:
+        result = n
+
+    else:
+      result = n.copyNimNode()
+      for child in n:
+        result.add(transform(child))
+
+  result = transform(body)
+
+macro kryonComponent*(procDef: untyped): untyped =
+  ## Wrap a component proc to automatically detect and transform reactive variables
+  ## Usage:
+  ##   proc Counter*(init: int = 0): Element {.kryonComponent.} =
+  ##     var value = init
+  ##     result = Row:
+  ##       Button: onClick = proc() = value += 1
+  ##       Text: text = $value
+  ##
+  ## This will automatically:
+  ## 1. Detect that `value` is used reactively (in onClick and text)
+  ## 2. Transform `var value = init` to `var value = namedReactiveVar("Counter:value", init)`
+  ## 3. Transform all `value` access to `value.value`
+  ## 4. Register the component definition for .kir serialization
+
+  expectKind(procDef, nnkProcDef)
+
+  # Get proc name, handling both exported (nnkPostfix) and non-exported (nnkIdent) procs
+  var procName: string
+  if procDef[0].kind == nnkPostfix:
+    # Exported proc: postfix(`*`, ident("Counter"))
+    procName = $procDef[0][1]
+  else:
+    procName = $procDef[0]
+
+  let procNameLit = newLit(procName)
+  let procBody = procDef[6]
+
+  # Extract proc parameters (props)
+  var propsSeq = newNimNode(nnkBracket)
+  let params = procDef[3]  # nnkFormalParams
+  if params.len > 1:  # First child is return type
+    for i in 1..<params.len:
+      let identDefs = params[i]
+      if identDefs.kind == nnkIdentDefs:
+        let paramName = $identDefs[0]
+        var paramType = "any"
+        if identDefs[1].kind == nnkIdent:
+          paramType = $identDefs[1]
+        elif identDefs[1].kind == nnkSym:
+          paramType = $identDefs[1]
+        var defaultVal = ""
+        if identDefs[2].kind != nnkEmpty:
+          defaultVal = repr(identDefs[2])
+
+        propsSeq.add quote do:
+          ComponentProp(name: `paramName`, propType: `paramType`, defaultValue: `defaultVal`)
+
+  # Detect reactive variables
+  let reactiveVars = detectReactiveVars(procBody)
+
+  # Build state vars sequence
+  var stateVarsSeq = newNimNode(nnkBracket)
+  for name, info in reactiveVars:
+    let nameLit = newLit(name)
+    let initExprLit = newLit(repr(info.initialValue))
+    stateVarsSeq.add quote do:
+      ComponentStateVar(name: `nameLit`, varType: "any", initialExpr: `initExprLit`)
+
+  if reactiveVars.len > 0:
+    # Transform the proc body
+    let transformedBody = transformToReactive(procBody, reactiveVars, procName)
+    procDef[6] = transformedBody
+
+    # Log what we transformed (for debugging)
+    echo "[kryonComponent] ", procName, ": detected ", reactiveVars.len, " reactive variables"
+    for name, info in reactiveVars:
+      echo "  - ", name, " (handlers: ", info.usedInHandlers, ", text: ", info.usedInText, ")"
+
+  # Wrap the proc body to register the component definition and set the template
+  let registerComponentDefSym = bindSym("registerComponentDefinition")
+  let setComponentTemplateSym = bindSym("setComponentTemplate")
+  let setComponentRefSym = bindSym("ir_set_component_ref")
+  let setComponentPropsSym = bindSym("ir_set_component_props")
+
+  let originalBody = procDef[6]
+
+  # Build code to serialize props to JSON
+  var paramNames: seq[NimNode] = @[]
+  if params.len > 1:
+    for i in 1..<params.len:
+      let identDefs = params[i]
+      if identDefs.kind == nnkIdentDefs:
+        let paramName = identDefs[0]
+        paramNames.add(paramName)
+
+  # Generate props JSON expression
+  var propsJsonExpr: NimNode
+  if paramNames.len > 0:
+    # Build JSON object from params: {"param1": value1, "param2": value2}
+    var jsonItems: seq[NimNode] = @[]
+    for paramName in paramNames:
+      let paramNameStr = newLit($paramName)
+      jsonItems.add quote do:
+        "\"" & `paramNameStr` & "\": " & (when `paramName` is string: "\"" & `paramName` & "\"" else: $`paramName`)
+
+    let jsonItemsNode = newNimNode(nnkBracket)
+    for item in jsonItems:
+      jsonItemsNode.add(item)
+
+    propsJsonExpr = quote do:
+      "{" & @`jsonItemsNode`.join(", ") & "}"
+  else:
+    propsJsonExpr = newLit("{}")
+
+  # Create new body that registers on first call and captures template
+  # Note: The originalBody assigns to `result`, so we execute it directly
+  # and then use `result` for registration
+  procDef[6] = quote do:
+    # Register component definition (only registers once)
+    `registerComponentDefSym`(`procNameLit`, @`propsSeq`, @`stateVarsSeq`)
+
+    # Execute original body (which assigns to result)
+    `originalBody`
+
+    # Set template root (only sets once)
+    `setComponentTemplateSym`(`procNameLit`, result)
+
+    # Set component_ref on EVERY instance
+    `setComponentRefSym`(result, `procNameLit`)
+
+    # Set component_props on EVERY instance
+    `setComponentPropsSym`(result, cstring(`propsJsonExpr`))
+
+    # Return result (implicit)
+
+  result = procDef
+
 macro kryonApp*(body: untyped): untyped =
   ## Top-level application macro
   ## Creates root container with window configuration

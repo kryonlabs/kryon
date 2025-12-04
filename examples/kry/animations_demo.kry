@@ -1,0 +1,205 @@
+// Animations Demo - CSS-Like Animation Configs
+
+App {
+    width = 1000
+    height = 600
+    title = "Animations Demo"
+    background = "#0a0e27"
+
+    Column {
+        padding = 40
+        gap = 20
+        width = 100%
+        height = 100%
+
+        // Title
+        Text {
+            text = "Preset Animations"
+            fontSize = 36
+            fontWeight = 700
+            color = "#ffffff"
+        }
+
+        Text {
+            text = "CSS-like animation configs"
+            fontSize = 16
+            color = "#a5b4fc"
+        }
+
+        // Animation boxes
+        Row {
+            gap = 30
+            justifyContent = "center"
+
+            // Pulse Animation
+            Container {
+                width = 200
+                background = "#1e1b4b"
+                padding = 24
+                borderRadius = 12
+
+                Column {
+                    gap = 12
+                    alignItems = "center"
+
+                    Container {
+                        width = 80
+                        height = 80
+                        background = "#6366f1"
+                        borderRadius = 40
+                        animation = "pulse(2.0, -1)"
+
+                        Center {
+                            Text {
+                                text = "*"
+                                fontSize = 40
+                                color = "#ffffff"
+                            }
+                        }
+                    }
+
+                    Text {
+                        text = "Pulse"
+                        fontSize = 18
+                        fontWeight = 600
+                        color = "#e0e7ff"
+                    }
+
+                    Text {
+                        text = "Scale animation"
+                        fontSize = 13
+                        color = "#a5b4fc"
+                    }
+                }
+            }
+
+            // Fade Animation
+            Container {
+                width = 200
+                background = "#1e1b4b"
+                padding = 24
+                borderRadius = 12
+
+                Column {
+                    gap = 12
+                    alignItems = "center"
+
+                    Container {
+                        width = 80
+                        height = 80
+                        background = "#a78bfa"
+                        borderRadius = 40
+                        animation = "fadeInOut(3.0, -1)"
+
+                        Center {
+                            Text {
+                                text = "~"
+                                fontSize = 40
+                                color = "#ffffff"
+                            }
+                        }
+                    }
+
+                    Text {
+                        text = "Fade In/Out"
+                        fontSize = 18
+                        fontWeight = 600
+                        color = "#e0e7ff"
+                    }
+
+                    Text {
+                        text = "Opacity animation"
+                        fontSize = 13
+                        color = "#a5b4fc"
+                    }
+                }
+            }
+
+            // Slide Animation
+            Container {
+                width = 200
+                background = "#1e1b4b"
+                padding = 24
+                borderRadius = 12
+
+                Column {
+                    gap = 12
+                    alignItems = "center"
+
+                    Container {
+                        width = 80
+                        height = 80
+                        background = "#f472b6"
+                        borderRadius = 40
+                        animation = "slideInLeft(2.0)"
+
+                        Center {
+                            Text {
+                                text = ">"
+                                fontSize = 40
+                                color = "#ffffff"
+                            }
+                        }
+                    }
+
+                    Text {
+                        text = "Slide In"
+                        fontSize = 18
+                        fontWeight = 600
+                        color = "#e0e7ff"
+                    }
+
+                    Text {
+                        text = "Translate animation"
+                        fontSize = 13
+                        color = "#a5b4fc"
+                    }
+                }
+            }
+        }
+
+        // Info box
+        Container {
+            width = 100%
+            maxWidth = 600
+            background = "#1e1b4b"
+            padding = 20
+            borderRadius = 12
+
+            Column {
+                gap = 8
+
+                Text {
+                    text = "Available Preset Animations"
+                    fontSize = 16
+                    fontWeight = 600
+                    color = "#e0e7ff"
+                }
+
+                Text {
+                    text = "pulse(duration, iterations) - Scale in/out effect"
+                    fontSize = 13
+                    color = "#c7d2fe"
+                }
+
+                Text {
+                    text = "fadeInOut(duration, iterations) - Opacity 0 to 1 to 0"
+                    fontSize = 13
+                    color = "#c7d2fe"
+                }
+
+                Text {
+                    text = "slideInLeft(duration) - Slide in from left edge"
+                    fontSize = 13
+                    color = "#c7d2fe"
+                }
+
+                Text {
+                    text = "Use -1 for infinite loop, 1 for once, N for N times"
+                    fontSize = 12
+                    color = "#a5b4fc"
+                }
+            }
+        }
+    }
+}

@@ -2,12 +2,15 @@
 ## This is the NEW runtime that uses ONLY the IR system
 ## NO LEGACY CODE - everything uses IR
 
-import ir_core, ir_desktop, ir_serialization, os, strutils, tables, math, parseutils
+import ir_core, ir_desktop, ir_serialization, ir_logic, os, strutils, tables, math, parseutils
 import style_vars
 
 # Import reactive system for compatibility
 import reactive_system
 export reactive_system
+
+# Export ir_logic for DSL access
+export ir_logic
 
 # Forward declare layout cache invalidation function (used in style setters)
 proc ir_layout_invalidate_cache*(component: ptr IRComponent) {.importc, cdecl, header: "ir_core.h".}
@@ -799,13 +802,33 @@ proc run*(app: KryonApp) =
   let serializeTarget = getEnv("KRYON_SERIALIZE_IR")
   if serializeTarget != "":
     echo "Serializing IR to: ", serializeTarget
-    # Write JSON format (visual structure only)
-    if ir_write_json_file(app.root, cstring(serializeTarget)):
-      echo "✓ IR serialized successfully (JSON format)"
-      quit(0)
+    # Evaluate all reactive conditionals before serialization
+    # This ensures conditional children are in the tree when we serialize
+    updateAllReactiveConditionals()
+    # Export reactive manifest and sync component definitions
+    let manifest = exportReactiveManifest()
+    if manifest != nil:
+      syncComponentDefinitionsToManifest(manifest)
+
+    # Write JSON v2.1 format with component definitions and reactive manifest
+    if manifest != nil and (manifest.variable_count > 0 or manifest.component_def_count > 0 or
+                            manifest.conditional_count > 0 or manifest.for_loop_count > 0):
+      if ir_write_json_v2_with_manifest_file(app.root, manifest, cstring(serializeTarget)):
+        echo "✓ IR serialized successfully (JSON v2.1 with ", manifest.component_def_count, " components, ", manifest.variable_count, " reactive vars)"
+        ir_reactive_manifest_destroy(manifest)
+        quit(0)
+      else:
+        echo "✗ Failed to serialize IR"
+        ir_reactive_manifest_destroy(manifest)
+        quit(1)
     else:
-      echo "✗ Failed to serialize IR"
-      quit(1)
+      # Fallback to v2.0 (no reactive state)
+      if ir_write_json_file(app.root, cstring(serializeTarget)):
+        echo "✓ IR serialized successfully (JSON v2.0)"
+        quit(0)
+      else:
+        echo "✗ Failed to serialize IR"
+        quit(1)
 
   # Auto-save IR files to build/ir/ directory
   let exeName = extractFilename(getAppFilename()).changeFileExt("")
@@ -814,19 +837,43 @@ proc run*(app: KryonApp) =
     createDir(irDir)
 
   let kirPath = irDir / exeName & ".kir"
-  let kirbPath = irDir / exeName & ".kirb"
 
-  # Save JSON IR file
-  if ir_write_json_file(app.root, cstring(kirPath)):
-    echo "[IR] Saved JSON IR: ", kirPath
-  else:
-    echo "[IR] Warning: Failed to save JSON IR"
+  # Evaluate all reactive conditionals before serialization
+  # This ensures conditional children are in the tree when we serialize
+  updateAllReactiveConditionals()
 
-  # Save binary IR file
-  if ir_write_binary_file(app.root, cstring(kirbPath)):
-    echo "[IR] Saved binary IR: ", kirbPath
+  # Check if reactive manifest exists (from kryonComponent macros)
+  let manifest = exportReactiveManifest()
+  if manifest != nil:
+    # Sync component definitions from Nim registry to C manifest
+    syncComponentDefinitionsToManifest(manifest)
+
+  # Get the global logic block (may be empty)
+  let logicBlock = getGlobalLogicBlock()
+
+  if manifest != nil and (manifest.variable_count > 0 or manifest.component_def_count > 0 or
+                          manifest.conditional_count > 0 or manifest.for_loop_count > 0):
+    # Sync component definitions from Nim registry to C manifest
+    # Check if we have logic (use v3) or not (use v2.1)
+    if logicBlock.handle != nil:
+      # Save JSON v3.0 with logic block
+      if ir_write_json_v3_file(app.root, manifest, logicBlock.handle, cstring(kirPath)):
+        echo "[IR] Saved JSON v3.0 IR with ", manifest.component_def_count, " components, ", manifest.variable_count, " reactive variables: ", kirPath
+      else:
+        echo "[IR] Warning: Failed to save JSON v3.0 IR"
+    else:
+      # Save JSON v2.1 with reactive manifest and component definitions
+      if ir_write_json_v2_with_manifest_file(app.root, manifest, cstring(kirPath)):
+        echo "[IR] Saved JSON v2.1 IR with ", manifest.component_def_count, " components, ", manifest.variable_count, " reactive variables: ", kirPath
+      else:
+        echo "[IR] Warning: Failed to save JSON v2.1 IR"
+    ir_reactive_manifest_destroy(manifest)
   else:
-    echo "[IR] Warning: Failed to save binary IR"
+    # Fallback to v2.0 (no reactive state)
+    if ir_write_json_file(app.root, cstring(kirPath)):
+      echo "[IR] Saved JSON v2.0 IR: ", kirPath
+    else:
+      echo "[IR] Warning: Failed to save JSON IR"
 
   # Render using IR desktop renderer
   if not desktop_render_ir_component(app.root, addr app.config):

@@ -1,0 +1,21 @@
+// Hello World - The simplest Kryon application
+
+App {
+    windowTitle = "Hello World"
+    windowWidth = 400
+    windowHeight = 300
+    backgroundColor = "#1E1E1E"
+
+    Column {
+        justifyContent = "center"
+        alignItems = "center"
+        width = 100%
+        height = 100%
+
+        Text {
+            text = "Hello, Kryon!"
+            fontSize = 32
+            color = "#FFFFFF"
+        }
+    }
+}
