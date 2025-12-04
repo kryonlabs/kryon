@@ -502,6 +502,47 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
     float remaining_width = available_width - total_width;
     float current_x = style->padding.left;
 
+    // Apply main-axis alignment (justify_content) for row layout
+    if (remaining_width > 0 && total_flex_grow == 0) {
+        switch (layout->flex.justify_content) {
+            case IR_ALIGNMENT_CENTER:
+                current_x += remaining_width / 2.0f;
+                break;
+            case IR_ALIGNMENT_END:
+                current_x += remaining_width;
+                break;
+            case IR_ALIGNMENT_SPACE_BETWEEN:
+                // Will be handled per-child below
+                break;
+            case IR_ALIGNMENT_SPACE_AROUND:
+                current_x += remaining_width / (visible_count * 2);
+                break;
+            case IR_ALIGNMENT_SPACE_EVENLY:
+                current_x += remaining_width / (visible_count + 1);
+                break;
+            default:
+                break;
+        }
+    }
+
+    // Calculate gap for space-between/around/evenly
+    float extra_gap = 0.0f;
+    if (remaining_width > 0 && total_flex_grow == 0 && visible_count > 1) {
+        switch (layout->flex.justify_content) {
+            case IR_ALIGNMENT_SPACE_BETWEEN:
+                extra_gap = remaining_width / (visible_count - 1);
+                break;
+            case IR_ALIGNMENT_SPACE_AROUND:
+                extra_gap = remaining_width / visible_count;
+                break;
+            case IR_ALIGNMENT_SPACE_EVENLY:
+                extra_gap = remaining_width / (visible_count + 1);
+                break;
+            default:
+                break;
+        }
+    }
+
     for (uint32_t i = 0; i < container->child_count; i++) {
         IRComponent* child = container->children[i];
         if (!child->style || !child->style->visible) continue;
@@ -539,7 +580,7 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
         child->rendered_bounds.height = child_height;
         child->rendered_bounds.valid = true;
 
-        current_x += child_width + child->style->margin.left + child->style->margin.right + layout->flex.gap;
+        current_x += child_width + child->style->margin.left + child->style->margin.right + layout->flex.gap + extra_gap;
     }
 }
 
@@ -581,6 +622,47 @@ static void ir_layout_compute_column(IRComponent* container, float available_wid
     // Second pass: distribute remaining space and position children
     float remaining_height = available_height - total_height;
     float current_y = style->padding.top;
+
+    // Apply main-axis alignment (justify_content) for column layout
+    if (remaining_height > 0 && total_flex_grow == 0) {
+        switch (layout->flex.justify_content) {
+            case IR_ALIGNMENT_CENTER:
+                current_y += remaining_height / 2.0f;
+                break;
+            case IR_ALIGNMENT_END:
+                current_y += remaining_height;
+                break;
+            case IR_ALIGNMENT_SPACE_BETWEEN:
+                // Will be handled per-child below
+                break;
+            case IR_ALIGNMENT_SPACE_AROUND:
+                current_y += remaining_height / (visible_count * 2);
+                break;
+            case IR_ALIGNMENT_SPACE_EVENLY:
+                current_y += remaining_height / (visible_count + 1);
+                break;
+            default:
+                break;
+        }
+    }
+
+    // Calculate gap for space-between/around/evenly
+    float extra_gap = 0.0f;
+    if (remaining_height > 0 && total_flex_grow == 0 && visible_count > 1) {
+        switch (layout->flex.justify_content) {
+            case IR_ALIGNMENT_SPACE_BETWEEN:
+                extra_gap = remaining_height / (visible_count - 1);
+                break;
+            case IR_ALIGNMENT_SPACE_AROUND:
+                extra_gap = remaining_height / visible_count;
+                break;
+            case IR_ALIGNMENT_SPACE_EVENLY:
+                extra_gap = remaining_height / (visible_count + 1);
+                break;
+            default:
+                break;
+        }
+    }
 
     for (uint32_t i = 0; i < container->child_count; i++) {
         IRComponent* child = container->children[i];
@@ -626,7 +708,7 @@ static void ir_layout_compute_column(IRComponent* container, float available_wid
             ir_get_component_intrinsic_height(child));
         #endif
 
-        current_y += child_height + child->style->margin.top + child->style->margin.bottom + layout->flex.gap;
+        current_y += child_height + child->style->margin.top + child->style->margin.bottom + layout->flex.gap + extra_gap;
     }
 
     #ifdef KRYON_TRACE_LAYOUT

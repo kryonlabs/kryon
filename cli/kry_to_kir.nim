@@ -5,6 +5,9 @@
 import std/[json, tables, strutils, strformat, sequtils]
 import kry_ast, kry_parser
 
+# Note: Named colors (e.g., "yellow", "red") are resolved by the IR layer
+# in json_parse_color() via ir_color_named(). No normalization needed here.
+
 type
   ConstValue = object
     typeName: string
@@ -193,12 +196,13 @@ proc getSimpleValue(ctx: var TranspilerContext, node: KryNode): JsonNode =
 proc mapPropertyName(name: string): string =
   case name
   of "backgroundColor": "background"
-  of "borderColor": "border_color"
+  of "borderColor": "border_color"  # Handled specially for nested border object
   of "fontSize": "fontSize"
   of "fontFamily": "fontFamily"
   of "fontWeight": "fontWeight"
   of "alignItems": "alignItems"
   of "justifyContent": "justifyContent"
+  of "contentAlignment": "contentAlignment"  # Handled specially
   of "flexDirection": "flexDirection"
   of "flexGrow": "flexGrow"
   of "flexShrink": "flexShrink"
@@ -226,6 +230,13 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
     "id": id,
     "type": node.componentType
   }
+
+  # Collect border properties for nested object
+  var borderWidth: JsonNode = nil
+  var borderColor: JsonNode = nil
+  var borderRadius: JsonNode = nil
+  var posX: JsonNode = nil
+  var posY: JsonNode = nil
 
   # Process properties
   for name, value in node.componentProps:
@@ -283,6 +294,7 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
         else:
           result[irName] = simpleVal
       of "background", "color":
+        # Pass color through - named colors resolved by IR layer
         result[irName] = simpleVal
       of "text":
         result["text"] = simpleVal
@@ -290,8 +302,45 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
         if value.kind == nkExprInterp:
           if value.interpExpr.kind == nkExprIdent:
             result["text_expression"] = %("{{" & value.interpExpr.identName & "}}")
+      # Handle border properties - collect for nested object
+      of "borderWidth":
+        borderWidth = simpleVal
+      of "border_color":
+        # Pass color through - named colors resolved by IR layer
+        borderColor = simpleVal
+      of "borderRadius":
+        borderRadius = simpleVal
+      # Handle contentAlignment → justifyContent + alignItems
+      of "contentAlignment":
+        let alignStr = simpleVal.getStr("start")
+        result["justifyContent"] = %alignStr
+        result["alignItems"] = %alignStr
+      # Handle absolute positioning
+      of "posX":
+        posX = simpleVal
+      of "posY":
+        posY = simpleVal
       else:
         result[irName] = simpleVal
+
+  # Build nested border object if any border properties were set
+  if not borderWidth.isNil or not borderColor.isNil or not borderRadius.isNil:
+    var borderObj = newJObject()
+    if not borderWidth.isNil:
+      borderObj["width"] = borderWidth
+    if not borderColor.isNil:
+      borderObj["color"] = borderColor
+    if not borderRadius.isNil:
+      borderObj["radius"] = borderRadius
+    result["border"] = borderObj
+
+  # Add absolute positioning if specified
+  if not posX.isNil or not posY.isNil:
+    result["position"] = %"absolute"
+    if not posX.isNil:
+      result["left"] = posX
+    if not posY.isNil:
+      result["top"] = posY
 
   # Process children
   if node.componentChildren.len > 0:
@@ -570,7 +619,7 @@ proc transpileAppBlock(ctx: var TranspilerContext, node: KryNode): JsonNode =
   var appWidth = 800
   var appHeight = 600
   var appTitle = "Kryon App"
-  var appBg = "#1E1E1E"
+  var appBg = "#101820"
 
   for item in node.appBody:
     case item.kind
@@ -586,7 +635,7 @@ proc transpileAppBlock(ctx: var TranspilerContext, node: KryNode): JsonNode =
         if item.propValue.kind == nkExprLiteral and item.propValue.litKind == lkString:
           appTitle = item.propValue.litString
       of "backgroundColor", "background_color", "background":
-        appBg = ctx.getSimpleValue(item.propValue).getStr("#1E1E1E")
+        appBg = ctx.getSimpleValue(item.propValue).getStr("#101820")
       else:
         discard
     of nkComponent:

@@ -11,16 +11,16 @@ import ../ir_core  # For KryonAlignment enum constants
 # ============================================================================
 
 proc isPercentExpression*(value: NimNode): bool =
-  ## Check if the value is a percent expression like `50.pct`
-  ## Returns true for DotExpr with ident "pct"
+  ## Check if the value is a percent expression like `50.pct` or `50.percent`
+  ## Returns true for DotExpr with ident "pct" or "percent"
   if value.kind == nnkDotExpr and value.len == 2:
     let suffix = value[1]
-    if suffix.kind == nnkIdent and suffix.strVal == "pct":
+    if suffix.kind == nnkIdent and suffix.strVal in ["pct", "percent"]:
       return true
-  # Also handle call syntax: pct(50)
+  # Also handle call syntax: pct(50) or percent(50)
   if value.kind == nnkCall and value.len >= 1:
     let fn = value[0]
-    if fn.kind == nnkIdent and fn.strVal == "pct":
+    if fn.kind == nnkIdent and fn.strVal in ["pct", "percent"]:
       return true
   return false
 

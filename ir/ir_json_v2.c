@@ -167,6 +167,18 @@ static void json_serialize_style(cJSON* obj, IRStyle* style) {
         cJSON_AddItemToObject(obj, "border", border);
     }
 
+    // Absolute positioning
+    if (style->position_mode != IR_POSITION_RELATIVE) {
+        const char* posStr = "relative";
+        if (style->position_mode == IR_POSITION_ABSOLUTE) posStr = "absolute";
+        else if (style->position_mode == IR_POSITION_FIXED) posStr = "fixed";
+        cJSON_AddStringToObject(obj, "position", posStr);
+    }
+    if (style->absolute_x != 0.0f || style->absolute_y != 0.0f) {
+        cJSON_AddNumberToObject(obj, "left", style->absolute_x);
+        cJSON_AddNumberToObject(obj, "top", style->absolute_y);
+    }
+
     // Typography
     if (style->font.size > 0) {
         cJSON_AddNumberToObject(obj, "fontSize", style->font.size);
@@ -937,7 +949,9 @@ static IRDimension json_parse_dimension(const char* str) {
 }
 
 /**
- * Parse color string (e.g., "#rrggbb", "#rrggbbaa", "transparent") into IRColor
+ * Parse color string into IRColor
+ * Supports: "#rrggbb", "#rrggbbaa", "#rgb", "#rgba", "transparent", "var(id)",
+ *           and named colors ("yellow", "red", "blue", etc.)
  */
 static IRColor json_parse_color(const char* str) {
     IRColor color = {0};
@@ -997,14 +1011,8 @@ static IRColor json_parse_color(const char* str) {
         return color;
     }
 
-    // Default to black
-    color.type = IR_COLOR_SOLID;
-    color.data.r = 0;
-    color.data.g = 0;
-    color.data.b = 0;
-    color.data.a = 255;
-
-    return color;
+    // Fallback: try named color lookup (e.g., "yellow", "red", "blue")
+    return ir_color_named(str);
 }
 
 /**
@@ -1117,6 +1125,23 @@ static void json_deserialize_style(cJSON* obj, IRStyle* style) {
         if ((borderItem = cJSON_GetObjectItem(item, "radius")) != NULL && cJSON_IsNumber(borderItem)) {
             style->border.radius = (float)borderItem->valuedouble;
         }
+    }
+
+    // Absolute positioning
+    if ((item = cJSON_GetObjectItem(obj, "position")) != NULL && cJSON_IsString(item)) {
+        if (strcmp(item->valuestring, "absolute") == 0) {
+            style->position_mode = IR_POSITION_ABSOLUTE;
+        } else if (strcmp(item->valuestring, "fixed") == 0) {
+            style->position_mode = IR_POSITION_FIXED;
+        } else {
+            style->position_mode = IR_POSITION_RELATIVE;
+        }
+    }
+    if ((item = cJSON_GetObjectItem(obj, "left")) != NULL && cJSON_IsNumber(item)) {
+        style->absolute_x = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(obj, "top")) != NULL && cJSON_IsNumber(item)) {
+        style->absolute_y = (float)item->valuedouble;
     }
 
     // Typography
