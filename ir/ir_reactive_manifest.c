@@ -26,15 +26,17 @@ IRReactiveManifest* ir_reactive_manifest_create(void) {
     manifest->conditional_capacity = 16;
     manifest->for_loop_capacity = 16;
     manifest->component_def_capacity = 8;
+    manifest->source_capacity = 4;
 
     manifest->variables = calloc(manifest->variable_capacity, sizeof(IRReactiveVarDescriptor));
     manifest->bindings = calloc(manifest->binding_capacity, sizeof(IRReactiveBinding));
     manifest->conditionals = calloc(manifest->conditional_capacity, sizeof(IRReactiveConditional));
     manifest->for_loops = calloc(manifest->for_loop_capacity, sizeof(IRReactiveForLoop));
     manifest->component_defs = calloc(manifest->component_def_capacity, sizeof(IRComponentDefinition));
+    manifest->sources = calloc(manifest->source_capacity, sizeof(IRSourceEntry));
 
     if (!manifest->variables || !manifest->bindings || !manifest->conditionals ||
-        !manifest->for_loops || !manifest->component_defs) {
+        !manifest->for_loops || !manifest->component_defs || !manifest->sources) {
         fprintf(stderr, "[ReactiveManifest] Failed to allocate internal arrays\n");
         ir_reactive_manifest_destroy(manifest);
         return NULL;
@@ -100,11 +102,18 @@ void ir_reactive_manifest_destroy(IRReactiveManifest* manifest) {
         // Note: template_root is part of component tree, freed separately
     }
 
+    // Free source entries
+    for (uint32_t i = 0; i < manifest->source_count; i++) {
+        free(manifest->sources[i].lang);
+        free(manifest->sources[i].code);
+    }
+
     free(manifest->variables);
     free(manifest->bindings);
     free(manifest->conditionals);
     free(manifest->for_loops);
     free(manifest->component_defs);
+    free(manifest->sources);
     free(manifest);
 }
 
@@ -472,6 +481,56 @@ IRComponentDefinition* ir_reactive_manifest_find_component_def(IRReactiveManifes
     for (uint32_t i = 0; i < manifest->component_def_count; i++) {
         if (manifest->component_defs[i].name && strcmp(manifest->component_defs[i].name, name) == 0) {
             return &manifest->component_defs[i];
+        }
+    }
+
+    return NULL;
+}
+
+// ============================================================================
+// Source Code Management (for round-trip preservation)
+// ============================================================================
+
+void ir_reactive_manifest_add_source(IRReactiveManifest* manifest,
+                                     const char* lang,
+                                     const char* code) {
+    if (!manifest || !lang || !code) return;
+
+    // Check if this language already exists - if so, update it
+    for (uint32_t i = 0; i < manifest->source_count; i++) {
+        if (manifest->sources[i].lang && strcmp(manifest->sources[i].lang, lang) == 0) {
+            // Update existing entry
+            free(manifest->sources[i].code);
+            manifest->sources[i].code = strdup(code);
+            return;
+        }
+    }
+
+    // Resize if needed
+    if (manifest->source_count >= manifest->source_capacity) {
+        manifest->source_capacity *= 2;
+        IRSourceEntry* new_sources = realloc(manifest->sources,
+                                              manifest->source_capacity * sizeof(IRSourceEntry));
+        if (!new_sources) {
+            fprintf(stderr, "[ReactiveManifest] Failed to resize sources array\n");
+            return;
+        }
+        manifest->sources = new_sources;
+    }
+
+    // Add new entry
+    IRSourceEntry* entry = &manifest->sources[manifest->source_count++];
+    entry->lang = strdup(lang);
+    entry->code = strdup(code);
+}
+
+const char* ir_reactive_manifest_get_source(IRReactiveManifest* manifest,
+                                            const char* lang) {
+    if (!manifest || !lang) return NULL;
+
+    for (uint32_t i = 0; i < manifest->source_count; i++) {
+        if (manifest->sources[i].lang && strcmp(manifest->sources[i].lang, lang) == 0) {
+            return manifest->sources[i].code;
         }
     }
 

@@ -110,6 +110,10 @@ IREventBinding** ir_logic_block_find_bindings_for_component(IRLogicBlock* block,
 // Get the handler name for a component event
 const char* ir_logic_block_get_handler(IRLogicBlock* block, uint32_t component_id, const char* event_type);
 
+// Get function and binding counts
+int ir_logic_block_get_function_count(IRLogicBlock* block);
+int ir_logic_block_get_binding_count(IRLogicBlock* block);
+
 // ============================================================================
 // JSON SERIALIZATION
 // ============================================================================

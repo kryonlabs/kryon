@@ -257,6 +257,7 @@ macro Button*(props: untyped): untyped =
     buttonText = newStrLitNode("Button")
     childNodes: seq[NimNode] = @[]
     clickHandler = newNilLit()
+    clickHandlerName: NimNode = nil  # String name for round-trip serialization
     marginAll: NimNode = nil
     marginTopVal: NimNode = nil
     marginRightVal: NimNode = nil
@@ -314,6 +315,9 @@ macro Button*(props: untyped): untyped =
         # Wrap the click handler to automatically trigger reactive updates
         # For Counter demo, we need to intercept variable changes in increment/decrement
         clickHandler = value
+      of "onclickname":
+        # String name of handler for round-trip serialization
+        clickHandlerName = value
       of "margin":
         marginAll = value
       of "margintop":
@@ -342,7 +346,7 @@ macro Button*(props: untyped): untyped =
         posXVal = value
       of "posy", "y":
         posYVal = value
-      of "backgroundcolor":
+      of "background", "backgroundcolor":  # Allow "background" as alias
         bgColorVal = colorNode(value)
       of "color", "textcolor":  # Allow "color" as alias for "textcolor"
         textColorVal = colorNode(value)
@@ -702,6 +706,14 @@ macro Button*(props: untyped): untyped =
     initStmts.add quote do:
       `registerHandlerSym`(`buttonName`, `clickHandler`)
 
+    # Register handler name for round-trip serialization if provided
+    if clickHandlerName != nil:
+      let registerRoundTripSym = bindSym("registerHandler")
+      initStmts.add quote do:
+        # Get the logic_id that was created for this button
+        let logicId = "nim_button_" & $`buttonName`.id
+        `registerRoundTripSym`(uint32(`buttonName`.id), "click", logicId, `clickHandlerName`)
+
   initStmts.add quote do:
     kryon_component_mark_dirty(`buttonName`)
 
@@ -794,7 +806,7 @@ macro Dropdown*(props: untyped): untyped =
         posXVal = value
       of "posy", "y":
         posYVal = value
-      of "backgroundcolor":
+      of "background", "backgroundcolor":
         bgColorVal = colorNode(value)
       of "color", "textcolor":
         textColorVal = colorNode(value)
@@ -975,7 +987,7 @@ macro Checkbox*(props: untyped): untyped =
         fontSizeVal = node[1]
       of "textcolor":
         textColorVal = colorNode(node[1])
-      of "backgroundcolor":
+      of "background", "backgroundcolor":
         backgroundColorVal = colorNode(node[1])
       of "onclick", "onchange":
         if node[1].kind == nnkIdent:
@@ -1014,8 +1026,37 @@ macro Checkbox*(props: untyped): untyped =
 
   # Register click handler if provided
   if clickHandler.kind != nnkNilLit:
-    initStmts.add quote do:
-      registerCheckboxHandler(`checkboxName`, proc() = `clickHandler`())
+    # Analyze handler for universal expression conversion
+    let analysis = analyzeHandler(clickHandler)
+
+    if analysis.isUniversal:
+      # Generate logic function name based on variable and operation
+      let funcName = "Checkbox:" & analysis.targetVar & "_" & analysis.operation
+      let funcNameLit = newLit(funcName)
+      let varNameLit = newLit(analysis.targetVar)
+      let operationLit = newLit(analysis.operation)
+
+      # Register universal logic function and event binding
+      initStmts.add quote do:
+        if registerLogicFunction(`funcNameLit`, `varNameLit`, `operationLit`):
+          echo "[kryon][logic] Registered universal checkbox handler: ", `funcNameLit`
+        registerEventBinding(uint32(`checkboxName`.id), "click", `funcNameLit`)
+        # Use logic_id-aware handler registration
+        registerCheckboxHandlerWithLogicId(`checkboxName`, proc() = `clickHandler`(), `funcNameLit`)
+
+    else:
+      # Complex handler - register embedded Nim source
+      let lineInfo = clickHandler.lineInfoObj
+      let funcName = "nim_checkbox_" & $lineInfo.line
+      let funcNameLit = newLit(funcName)
+      let nimSourceLit = newLit(analysis.nimSource)
+
+      initStmts.add quote do:
+        if registerLogicFunctionWithSource(`funcNameLit`, "nim", `nimSourceLit`):
+          echo "[kryon][logic] Registered embedded checkbox handler: ", `funcNameLit`
+        registerEventBinding(uint32(`checkboxName`.id), "click", `funcNameLit`)
+        # Use logic_id-aware handler registration
+        registerCheckboxHandlerWithLogicId(`checkboxName`, proc() = `clickHandler`(), `funcNameLit`)
 
   result = quote do:
     block:
@@ -1066,7 +1107,7 @@ macro Input*(props: untyped): untyped =
         posXVal = node[1]
       of "posy", "y":
         posYVal = node[1]
-      of "backgroundcolor":
+      of "background", "backgroundcolor":
         backgroundColorVal = colorNode(node[1])
       of "textcolor", "color":
         textColorVal = colorNode(node[1])
@@ -1479,7 +1520,7 @@ macro TabBar*(props: untyped): untyped =
       of "padding":
         hasPadding = true
         propertyNodes.add(node)
-      of "backgroundcolor":
+      of "background", "backgroundcolor":
         hasBackground = true
         propertyNodes.add(node)
       of "bordercolor":
@@ -1733,7 +1774,7 @@ macro Tab*(props: untyped): untyped =
       case propName.toLowerAscii()
       of "title":
         titleVal = node[1]
-      of "backgroundcolor":
+      of "background", "backgroundcolor":
         backgroundColorExpr = node[1]
         buttonProps.add(node)
         hasBackground = true
@@ -2092,7 +2133,7 @@ macro TextArea*(props: untyped): untyped =
         widthVal = node[1]
       of "height":
         heightVal = node[1]
-      of "backgroundcolor":
+      of "background", "backgroundcolor":
         backgroundColorVal = colorNode(node[1])
       of "textcolor", "color":
         textColorVal = colorNode(node[1])
