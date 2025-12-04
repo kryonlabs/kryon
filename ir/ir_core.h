@@ -645,8 +645,11 @@ typedef struct IRComponent {
     uint32_t child_capacity;  // Allocated capacity for exponential growth
     IRLayout* layout;
     struct IRComponent* parent;
-    char* text_content;  // For text components
-    char* custom_data;   // For custom components
+    char* text_content;      // For text components (evaluated value)
+    char* text_expression;   // For reactive text (e.g., "{{value}}" or "$value")
+    char* custom_data;       // For custom components
+    char* component_ref;     // For component references (e.g., "Counter")
+    char* component_props;   // JSON string of props passed to component instance
     IRRenderedBounds rendered_bounds;  // Cached layout bounds
     IRLayoutCache layout_cache;        // Performance cache for layout
     uint32_t dirty_flags;              // Dirty tracking for incremental updates
@@ -740,6 +743,11 @@ typedef struct {
     // Metadata for reconnection
     char* source_location;          // Source file:line where variable was created
     uint32_t binding_count;         // Number of bindings to components
+
+    // NEW: Declarative metadata for .kir v2.1 serialization
+    char* type_string;              // Type as string ("int", "float", "string", "bool", "array<T>")
+    char* initial_value_json;       // Initial value as JSON string
+    char* scope;                    // Scope ("global", "component:123")
 } IRReactiveVarDescriptor;
 
 // Binding type (how the binding updates the component)
@@ -768,6 +776,11 @@ typedef struct {
     uint32_t dependent_var_count;
     bool last_eval_result;          // Last evaluation result (for caching)
     bool suspended;                 // If true, don't re-initialize (for tab switching)
+    // Branch children IDs (for serialization/codegen round-trip)
+    uint32_t* then_children_ids;    // Component IDs in then-branch
+    uint32_t then_children_count;
+    uint32_t* else_children_ids;    // Component IDs in else-branch
+    uint32_t else_children_count;
 } IRReactiveConditional;
 
 // Reactive for-loop (for dynamic lists)
@@ -779,6 +792,30 @@ typedef struct {
     uint32_t* child_component_ids;  // Current child components
     uint32_t child_count;
 } IRReactiveForLoop;
+
+// Component property definition (for custom components)
+typedef struct {
+    char* name;                     // Prop name (e.g., "initialValue")
+    char* type;                     // Type as string (e.g., "int", "string")
+    char* default_value;            // Default value as JSON string
+} IRComponentProp;
+
+// Component state variable definition
+typedef struct {
+    char* name;                     // State var name (e.g., "value")
+    char* type;                     // Type as string
+    char* initial_expr;             // Initial expression (e.g., "{{initialValue}}")
+} IRComponentStateVar;
+
+// Custom component definition
+typedef struct {
+    char* name;                     // Component name (e.g., "Counter")
+    IRComponentProp* props;         // Array of prop definitions
+    uint32_t prop_count;
+    IRComponentStateVar* state_vars; // Array of state variable definitions
+    uint32_t state_var_count;
+    IRComponent* template_root;     // Template component tree
+} IRComponentDefinition;
 
 // Complete reactive manifest
 typedef struct {
@@ -802,9 +839,13 @@ typedef struct {
     uint32_t for_loop_count;
     uint32_t for_loop_capacity;
 
+    // Component definitions (custom components)
+    IRComponentDefinition* component_defs;
+    uint32_t component_def_count;
+    uint32_t component_def_capacity;
+
     // Metadata
     uint32_t next_var_id;
-    uint32_t format_version;  // Manifest format version
 } IRReactiveManifest;
 
 // Reactive manifest management functions
@@ -831,6 +872,14 @@ void ir_reactive_manifest_add_conditional(IRReactiveManifest* manifest,
                                          const uint32_t* dependent_var_ids,
                                          uint32_t dependent_var_count);
 
+// Set branch children IDs for a conditional (for serialization round-trip)
+void ir_reactive_manifest_set_conditional_branches(IRReactiveManifest* manifest,
+                                                   uint32_t component_id,
+                                                   const uint32_t* then_children_ids,
+                                                   uint32_t then_children_count,
+                                                   const uint32_t* else_children_ids,
+                                                   uint32_t else_children_count);
+
 // Add for-loop to manifest
 void ir_reactive_manifest_add_for_loop(IRReactiveManifest* manifest,
                                       uint32_t parent_component_id,
@@ -850,7 +899,27 @@ bool ir_reactive_manifest_update_var(IRReactiveManifest* manifest,
                                      uint32_t var_id,
                                      IRReactiveValue new_value);
 
+// NEW: Set declarative metadata for .kir v2.1 serialization
+void ir_reactive_manifest_set_var_metadata(IRReactiveManifest* manifest,
+                                           uint32_t var_id,
+                                           const char* type_string,
+                                           const char* initial_value_json,
+                                           const char* scope);
+
 // Print manifest (for debugging)
 void ir_reactive_manifest_print(IRReactiveManifest* manifest);
+
+// Add component definition to manifest
+void ir_reactive_manifest_add_component_def(IRReactiveManifest* manifest,
+                                            const char* name,
+                                            IRComponentProp* props,
+                                            uint32_t prop_count,
+                                            IRComponentStateVar* state_vars,
+                                            uint32_t state_var_count,
+                                            IRComponent* template_root);
+
+// Find component definition by name
+IRComponentDefinition* ir_reactive_manifest_find_component_def(IRReactiveManifest* manifest,
+                                                               const char* name);
 
 #endif // IR_CORE_H

@@ -22,14 +22,16 @@ import ./reactive
 import ./core
 import ./layout
 import ./helpers  # For colorNode and other helper functions
+import ./logic_emitter
 
-export properties, reactive, core, layout, helpers
+export properties, reactive, core, layout, helpers, logic_emitter
 
 # Re-export runtime symbols needed by component macros
 import ../runtime
 import ../ir_core
+import ../ir_logic
 
-export runtime, ir_core
+export runtime, ir_core, ir_logic
 
 
 macro Text*(props: untyped): untyped =
@@ -217,10 +219,17 @@ macro Text*(props: untyped): untyped =
     let varNames = newLit(reactiveVars.map(proc(x: NimNode): string = x.strVal))
     let expressionStr = newLit(textContent.repr)
 
+    # Convert the expression to a serializable format for .kir files
+    # Transform "$value" or "$value.value" to "{{value}}"
+    let varNamesSeq = reactiveVars.map(proc(x: NimNode): string = x.strVal)
+    var bindingExpr = "{{" & varNamesSeq[0] & "}}"
+    let bindingExprLit = newLit(bindingExpr)
+
     # Add code to create reactive text expression
     # CRITICAL: Create the closure at RUNTIME, not at compile-time, so Nim's
     # closure mechanism properly captures variables and heap-allocates them
     let createExprSym = bindSym("createReactiveTextExpression")
+    let setTextExprSym = bindSym("ir_set_text_expression")
     # FIX: Embed the expression AST directly in the closure body (not pre-evaluated)
     # This allows the closure to re-evaluate the expression each time it's called,
     # reading the current variable values (not capturing evaluated results)
@@ -231,7 +240,9 @@ macro Text*(props: untyped): untyped =
       let evalProc = proc (): string {.closure.} =
         `textContent`  # Re-evaluate expression each call
       `createExprSym`(`textSym`, `expressionStr`, evalProc, `varNames`)
-      echo "[kryon][reactive] Created live reactive expression: ", `expressionStr`
+      # Set the text_expression field for serialization to .kir files
+      `setTextExprSym`(`textSym`, `bindingExprLit`)
+      echo "[kryon][reactive] Created live reactive expression: ", `expressionStr`, " -> ", `bindingExprLit`
 
   result = quote do:
     block:
@@ -655,7 +666,39 @@ macro Button*(props: untyped): untyped =
 
   # Register onClick handler if provided
   if clickHandler.kind != nnkNilLit:
-    # Use Nim proc handler (via handler bridge system)
+    # Analyze handler for universal expression conversion
+    let analysis = analyzeHandler(clickHandler)
+
+    if analysis.isUniversal:
+      # Generate logic function name based on variable and operation
+      let funcName = "Button:" & analysis.targetVar & "_" & analysis.operation
+      let funcNameLit = newLit(funcName)
+      let varNameLit = newLit(analysis.targetVar)
+      let operationLit = newLit(analysis.operation)
+
+      # Register universal logic function (only if not already registered) and event binding
+      initStmts.add quote do:
+        # Register logic function to global logic block (deduped)
+        if registerLogicFunction(`funcNameLit`, `varNameLit`, `operationLit`):
+          echo "[kryon][logic] Registered universal handler: ", `funcNameLit`, " -> ", `operationLit`, "(", `varNameLit`, ")"
+        # Always register event binding (each component instance needs its own)
+        registerEventBinding(uint32(`buttonName`.id), "click", `funcNameLit`)
+
+    else:
+      # Complex handler - register embedded Nim source
+      let lineInfo = clickHandler.lineInfoObj
+      let funcName = "Button:handler_" & $lineInfo.line
+      let funcNameLit = newLit(funcName)
+      let nimSourceLit = newLit(analysis.nimSource)
+
+      initStmts.add quote do:
+        # Register embedded Nim source as fallback (deduped)
+        if registerLogicFunctionWithSource(`funcNameLit`, "nim", `nimSourceLit`):
+          echo "[kryon][logic] Registered embedded handler: ", `funcNameLit`
+        # Always register event binding (each component instance needs its own)
+        registerEventBinding(uint32(`buttonName`.id), "click", `funcNameLit`)
+
+    # Use Nim proc handler (via handler bridge system) for runtime execution
     initStmts.add quote do:
       `registerHandlerSym`(`buttonName`, `clickHandler`)
 

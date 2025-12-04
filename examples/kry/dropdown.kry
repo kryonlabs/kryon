@@ -1,0 +1,55 @@
+// Dropdown Demo
+
+App {
+    width = 400
+    height = 300
+    title = "Dropdown Demo"
+    background = "#f8f9fa"
+
+    Column {
+        justifyContent = "center"
+        alignItems = "center"
+        width = 100%
+        height = 100%
+        gap = 20
+        padding = 40
+
+        Text {
+            text = "Select your favorite color:"
+            fontSize = 16
+            color = "#6b7280"
+        }
+
+        Dropdown {
+            width = 200
+            height = 40
+            placeholder = "Choose a color..."
+            fontSize = 14
+            background = "#ffffff"
+            borderColor = "#d1d5db"
+            borderWidth = 1
+            color = "#2d3748"
+            options = ["Red", "Green", "Blue", "Yellow", "Purple", "Orange"]
+            selectedIndex = 0
+        }
+
+        Text {
+            text = "Select your country:"
+            fontSize = 16
+            color = "#6b7280"
+        }
+
+        Dropdown {
+            width = 200
+            height = 40
+            placeholder = "Choose a country..."
+            fontSize = 14
+            background = "#ffffff"
+            borderColor = "#d1d5db"
+            borderWidth = 1
+            color = "#2d3748"
+            options = ["United States", "Canada", "United Kingdom", "Australia", "Germany", "France"]
+            selectedIndex = 0
+        }
+    }
+}

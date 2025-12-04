@@ -7,7 +7,8 @@ import os, osproc, strutils, parseopt, times, json
 import std/[sequtils, sugar]
 
 # CLI modules
-import project, build, device, compile, diff, inspect, config
+import project, build, device, compile, diff, inspect, config, codegen
+import kry_ast, kry_lexer, kry_parser, kry_to_kir
 
 # IR and backend bindings (for orchestration)
 import ../bindings/nim/ir_core
@@ -30,6 +31,8 @@ COMMANDS:
   init <name>         Initialize new project with kryon.toml
   build [targets]      Compile for specified targets
   compile <file>      Compile to IR with caching
+  parse <file.kry>    Parse .kry file to .kir (JSON IR)
+  codegen <file.kir>  Generate source code from .kir file
   convert <in> <out>  Convert .kir (JSON) to .kirb (binary)
   run <target>         Build + execute once
   dev <file>           Development mode with hot reload
@@ -948,6 +951,138 @@ proc handleInspectCommand*(args: seq[string]) =
     echo "✗ Inspection failed: " & getCurrentExceptionMsg()
     quit(1)
 
+proc handleParseCommand*(args: seq[string]) =
+  ## Handle 'kryon parse' command - Parse .kry file to .kir
+  if args.len == 0:
+    echo "Error: Input .kry file required"
+    echo "Usage: kryon parse <input.kry> [--output=file.kir] [--tree]"
+    quit(1)
+
+  let inputFile = args[0]
+  var outputFile = ""
+  var showTree = false
+
+  # Parse options
+  for arg in args[1..^1]:
+    if arg.startsWith("--output=") or arg.startsWith("-o="):
+      outputFile = arg.split("=")[1]
+    elif arg == "--tree" or arg == "-t":
+      showTree = true
+
+  if not fileExists(inputFile):
+    echo "Error: File not found: " & inputFile
+    quit(1)
+
+  try:
+    echo "Parsing: " & inputFile
+
+    # Read and parse .kry file
+    let source = readFile(inputFile)
+    let ast = parseKry(source, inputFile)
+
+    # Show AST tree if requested
+    if showTree:
+      echo ""
+      echo "AST Tree:"
+      echo "========="
+      echo treeRepr(ast)
+      echo ""
+
+    # Transpile to KIR
+    let kir = transpileToKir(ast)
+
+    # Determine output file
+    if outputFile == "":
+      # Default: same name with .kir extension
+      let (dir, name, _) = splitFile(inputFile)
+      outputFile = dir / name & ".kir"
+
+    # Write output
+    writeFile(outputFile, pretty(kir, indent = 2))
+    echo "Generated: " & outputFile
+
+    # Show summary
+    let compDefs = kir{"component_definitions"}.len
+    let hasRoot = kir.hasKey("root") and kir["root"].kind != JNull
+    let logicFns = kir{"logic", "functions"}.len
+    let reactiveVars = kir{"reactive_manifest", "variables"}.len
+
+    echo ""
+    echo "Summary:"
+    echo "  Component definitions: " & $compDefs
+    echo "  Has App root: " & $hasRoot
+    echo "  Logic functions: " & $logicFns
+    echo "  Reactive variables: " & $reactiveVars
+
+  except LexerError as e:
+    echo "Lexer error: " & e.msg
+    quit(1)
+  except ParseError as e:
+    echo "Parse error: " & e.msg
+    quit(1)
+  except CatchableError as e:
+    echo "Error: " & e.msg
+    quit(1)
+
+proc handleCodegenCommand*(args: seq[string]) =
+  ## Handle 'kryon codegen' command - Generate source code from .kir files
+  if args.len == 0:
+    echo "Error: Input .kir file required"
+    echo "Usage: kryon codegen <input.kir> [--lang=lua|nim] [--output=file]"
+    quit(1)
+
+  let inputFile = args[0]
+  var lang = "nim"  # Default to Nim
+  var outputFile = ""
+
+  # Parse options
+  for arg in args[1..^1]:
+    if arg.startsWith("--lang="):
+      lang = arg[7..^1]
+    elif arg.startsWith("--output="):
+      outputFile = arg[9..^1]
+
+  if not fileExists(inputFile):
+    echo "✗ File not found: " & inputFile
+    quit(1)
+
+  try:
+    # Read file to detect version
+    let kirJson = parseFile(inputFile)
+    let version = kirJson{"format_version"}.getStr("2.0")
+
+    # Use V3 codegen only when there are component_definitions
+    # V3 is designed for component-based apps, V2 handles simple component trees better
+    let hasComponentDefs = kirJson.hasKey("component_definitions") and
+                           kirJson["component_definitions"].len > 0
+    let useV3Codegen = hasComponentDefs
+
+    let generatedCode = case lang.toLowerAscii():
+      of "lua":
+        if useV3Codegen:
+          generateLuaFromKirV3(inputFile)
+        else:
+          generateLuaFromKir(inputFile)
+      of "nim":
+        if useV3Codegen:
+          generateNimFromKirV3(inputFile)
+        else:
+          generateNimFromKir(inputFile)
+      else:
+        echo "✗ Unsupported language: " & lang
+        echo "   Supported: lua, nim"
+        quit(1)
+
+    if outputFile != "":
+      writeFile(outputFile, generatedCode)
+      echo "✓ Generated " & lang & " code from .kir v" & version & ": " & outputFile
+    else:
+      echo generatedCode
+
+  except:
+    echo "✗ Code generation failed: " & getCurrentExceptionMsg()
+    quit(1)
+
 proc handleDoctorCommand*() =
   ## Handle 'kryon doctor' command
   echo "Diagnosing Kryon development environment..."
@@ -1007,6 +1142,10 @@ proc main*() =
     handleBuildCommand(commandArgs)
   of "compile":
     handleCompileCommand(commandArgs)
+  of "parse":
+    handleParseCommand(commandArgs)
+  of "codegen":
+    handleCodegenCommand(commandArgs)
   of "convert":
     handleConvertCommand(commandArgs)
   of "run":

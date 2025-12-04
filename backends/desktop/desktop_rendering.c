@@ -448,7 +448,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
                 // Render text with optional shadow
                 render_text_with_shadow(renderer->renderer, font,
-                                       component->text_content, text_color, component);
+                                       component->text_content, text_color, component,
+                                       rect.x, rect.y);
             }
             break;
         }

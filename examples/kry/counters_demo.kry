@@ -1,0 +1,59 @@
+// Counters Demo - Reusable component with state
+
+component Counter(initialValue: int = 0) {
+    state value: int = initialValue
+
+    Row {
+        alignItems = "center"
+        gap = 32
+
+        Button {
+            text = "-"
+            width = 60
+            height = 50
+            backgroundColor = "#E74C3C"
+            fontSize = 24
+            onClick = { value -= 1 }
+        }
+
+        Text {
+            text = $value
+            fontSize = 32
+            color = "#FFFFFF"
+        }
+
+        Button {
+            text = "+"
+            width = 60
+            height = 50
+            backgroundColor = "#2ECC71"
+            fontSize = 24
+            onClick = { value += 1 }
+        }
+    }
+}
+
+App {
+    windowTitle = "Counters Demo"
+    windowWidth = 800
+    windowHeight = 600
+    backgroundColor = "#1E1E1E"
+
+    Column {
+        justifyContent = "center"
+        alignItems = "center"
+        gap = 20
+        width = 100%
+        height = 100%
+
+        Text {
+            text = "Multiple Independent Counters"
+            fontSize = 24
+            color = "#FFFFFF"
+        }
+
+        Counter(5)
+        Counter()
+        Counter(initialValue = 10)
+    }
+}

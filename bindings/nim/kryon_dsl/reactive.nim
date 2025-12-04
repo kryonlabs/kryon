@@ -154,11 +154,12 @@ proc convertIfStmtToReactiveConditional*(ifStmt: NimNode, windowWidth: NimNode, 
       let conditionProc = genSym(nskLet, "elifConditionProc")
       let thenProc = genSym(nskLet, "elifThenProc")
       let thenBody = buildComponentArray(branchBody)
+      let condExprStr = newLit(repr(condition))
 
       reactiveCode.add quote do:
         let `conditionProc` = proc(): bool {.closure.} = `condition`
         let `thenProc` = proc(): seq[KryonComponent] {.closure.} = `thenBody`
-        createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil)
+        createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil, `condExprStr`)
 
     elif branch.kind == nnkElse:
       # else branch: only body
@@ -173,7 +174,7 @@ proc convertIfStmtToReactiveConditional*(ifStmt: NimNode, windowWidth: NimNode, 
       reactiveCode.add quote do:
         let `conditionProc` = proc(): bool {.closure.} = true  # else is always true if reached
         let `thenProc` = proc(): seq[KryonComponent] {.closure.} = `thenBody`
-        createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil)
+        createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil, "else")
 
     elif branch.kind == nnkIfExpr:
       # This is the main 'if' branch (first element in ifStmt)
@@ -194,11 +195,12 @@ proc convertIfStmtToReactiveConditional*(ifStmt: NimNode, windowWidth: NimNode, 
       let conditionProc = genSym(nskLet, "ifConditionProc")
       let thenProc = genSym(nskLet, "ifThenProc")
       let thenBody = buildComponentArray(branchBody)
+      let condExprStr = newLit(repr(ifCondition))
 
       reactiveCode.add quote do:
         let `conditionProc` = proc(): bool {.closure.} = `ifCondition`
         let `thenProc` = proc(): seq[KryonComponent] {.closure.} = `thenBody`
-        createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil)
+        createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil, `condExprStr`)
 
   # Return the container
   reactiveCode.add(containerSym)
@@ -257,11 +259,12 @@ proc convertCaseStmtToReactiveConditional*(caseStmt: NimNode, windowWidth: NimNo
       let conditionProc = genSym(nskLet, "caseConditionProc")
       let thenProc = genSym(nskLet, "caseThenProc")
       let thenBody = newCall(ident("@"), newNimNode(nnkBracket).add(branchBody))
+      let condExprStr = newLit(repr(condition))
 
       reactiveCode.add quote do:
         let `conditionProc` = proc(): bool {.closure.} = `condition`
         let `thenProc` = proc(): seq[KryonComponent] {.closure.} = `thenBody`
-        createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil)
+        createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil, `condExprStr`)
 
   # Handle else branch if present
   let lastBranch = caseStmt[caseStmt.len - 1]
@@ -274,9 +277,81 @@ proc convertCaseStmtToReactiveConditional*(caseStmt: NimNode, windowWidth: NimNo
     reactiveCode.add quote do:
       let `conditionProc` = proc(): bool {.closure.} = true  # else is always true
       let `thenProc` = proc(): seq[KryonComponent] {.closure.} = `thenBody`
-      createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil)
+      createReactiveConditional(`containerSym`, `conditionProc`, `thenProc`, nil, "else")
 
   # Return the container
   reactiveCode.add(containerSym)
 
   result = reactiveCode
+
+# ============================================================================
+# Automatic Reactive Variable Detection (For DSL Integration)
+# ============================================================================
+
+proc analyzeHandlerMutations*(handler: NimNode): seq[string] =
+  ## Detect which variables are modified in onClick handlers
+  ## Returns a list of variable names that are mutated
+  var vars: seq[string] = @[]
+
+  proc scan(n: NimNode, vars: var seq[string]) =
+    case n.kind:
+    of nnkAsgn:
+      # value = 10
+      if n[0].kind == nnkIdent:
+        vars.add($n[0])
+
+    of nnkInfix:
+      # value += 1, value -= 1, value *= 2, value /= 2
+      if n[0].kind == nnkIdent and n[0].strVal in ["+=", "-=", "*=", "/=", "&=", "|=", "^="]:
+        if n.len >= 2 and n[1].kind == nnkIdent:
+          vars.add($n[1])
+
+    of nnkCall:
+      # inc(value), dec(value)
+      if n[0].kind == nnkIdent and n[0].strVal in ["inc", "dec"]:
+        if n.len > 1 and n[1].kind == nnkIdent:
+          vars.add($n[1])
+
+    else:
+      for child in n: scan(child, vars)
+
+  scan(handler, vars)
+
+  # Remove duplicates
+  var seen: seq[string] = @[]
+  result = @[]
+  for varName in vars:
+    if varName notin seen:
+      seen.add(varName)
+      result.add(varName)
+
+proc extractVariableReferences*(expr: NimNode): seq[string] =
+  ## Extract variable names from text expressions like $value
+  ## Returns a list of variable names referenced in the expression
+  var vars: seq[string] = @[]
+
+  proc scan(n: NimNode, vars: var seq[string]): void =
+    if n.kind == nnkIdent:
+      vars.add($n)
+    elif n.kind == nnkPrefix and n.len >= 1:
+      if n[0].kind == nnkIdent and n[0].strVal == "$":
+        # Found $variable pattern
+        if n.len >= 2 and n[1].kind == nnkIdent:
+          vars.add($n[1])
+        elif n.len >= 2:
+          scan(n[1], vars)
+    elif n.kind == nnkDotExpr and n.len >= 1:
+      # field.value - extract the base
+      scan(n[0], vars)
+    else:
+      for child in n: scan(child, vars)
+
+  scan(expr, vars)
+
+  # Remove duplicates
+  var seen: seq[string] = @[]
+  result = @[]
+  for varName in vars:
+    if varName notin seen:
+      seen.add(varName)
+      result.add(varName)

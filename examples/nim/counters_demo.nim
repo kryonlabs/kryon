@@ -5,20 +5,14 @@
 
 import kryon_dsl
 
-# Define a reusable Counter component
-# Each counter gets its own state (value) captured in a closure
-proc Counter*(initialValue: int = 0): Element =
+# Define a reusable Counter component with automatic reactive detection
+# The {.kryonComponent.} pragma automatically:
+# 1. Detects variables used in onClick handlers
+# 2. Detects variables used in text expressions
+# 3. Transforms them to namedReactiveVar for serialization
+proc Counter*(initialValue: int = 0): Element {.kryonComponent.} =
   # Each counter instance has its own state variable
   var value = initialValue
-
-  # Event handlers that modify this counter's state
-  proc increment() =
-    value += 1
-    echo "Counter value: ", value
-
-  proc decrement() =
-    value -= 1
-    echo "Counter value: ", value
 
   # Return the counter UI
   result = Row:
@@ -31,7 +25,7 @@ proc Counter*(initialValue: int = 0): Element =
       height = 50
       backgroundColor = "#E74C3C"
       fontSize = 24
-      onClick = decrement
+      onClick = proc() = value -= 1
 
     Text:
       text = $value  # Reactive! Updates automatically
@@ -44,7 +38,7 @@ proc Counter*(initialValue: int = 0): Element =
       height = 50
       backgroundColor = "#2ECC71"
       fontSize = 24
-      onClick = increment
+      onClick = proc() = value += 1
 
 # --- Now, use your component in the main App ---
 let app = kryonApp:

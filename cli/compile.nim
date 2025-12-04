@@ -387,7 +387,7 @@ proc handleCompileCommand*(args: seq[string]) =
     sourceFile: args[0],
     outputFile: "",
     frontend: "",
-    format: FormatBinary,  # Default to binary (.kirb) format
+    format: FormatJSON,  # Default to JSON (.kir) format
     enableCache: true,
     enableValidation: false,
     enableOptimization: true,
@@ -421,9 +421,12 @@ proc handleCompileCommand*(args: seq[string]) =
 
   # Default output file based on format
   if opts.outputFile.len == 0:
+    # Create build/ir directory if it doesn't exist
+    createDir("build/ir")
+
     let (dir, name, ext) = splitFile(opts.sourceFile)
     let extension = if opts.format == FormatBinary: ".kirb" else: ".kir"
-    opts.outputFile = dir / name & extension
+    opts.outputFile = "build/ir" / name & extension
 
   # Compile
   echo "🔨 Compiling ", opts.sourceFile

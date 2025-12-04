@@ -4,6 +4,7 @@
 #define _GNU_SOURCE
 #include "ir_serialization.h"
 #include "ir_builder.h"
+#include "ir_logic.h"
 #include "cJSON.h"
 #include <stdlib.h>
 #include <string.h>
@@ -359,10 +360,31 @@ static void json_serialize_layout(cJSON* obj, IRLayout* layout) {
 // Component Serialization (Recursive)
 // ============================================================================
 
-static cJSON* json_serialize_component_recursive(IRComponent* component) {
+/**
+ * Serialize component - with option to serialize as reference or full tree
+ * @param component Component to serialize
+ * @param as_template If true, serialize full tree (for templates). If false, output reference when component_ref is set.
+ */
+static cJSON* json_serialize_component_impl(IRComponent* component, bool as_template) {
     if (!component) return NULL;
 
     cJSON* obj = cJSON_CreateObject();
+
+    // If this is a component instance (has component_ref) and we're not serializing as template,
+    // output just a reference instead of the full tree
+    if (!as_template && component->component_ref && component->component_ref[0] != '\0') {
+        cJSON_AddStringToObject(obj, "component", component->component_ref);
+        cJSON_AddNumberToObject(obj, "id", component->id);
+
+        // Add props if present
+        if (component->component_props && component->component_props[0] != '\0') {
+            cJSON* propsJson = cJSON_Parse(component->component_props);
+            if (propsJson) {
+                cJSON_AddItemToObject(obj, "props", propsJson);
+            }
+        }
+        return obj;
+    }
 
     // Basic properties
     cJSON_AddNumberToObject(obj, "id", component->id);
@@ -373,6 +395,16 @@ static cJSON* json_serialize_component_recursive(IRComponent* component) {
     // Text content
     if (component->text_content && component->text_content[0] != '\0') {
         cJSON_AddStringToObject(obj, "text", component->text_content);
+    }
+
+    // Reactive text expression (for declarative .kir files)
+    if (component->text_expression && component->text_expression[0] != '\0') {
+        cJSON_AddStringToObject(obj, "text_expression", component->text_expression);
+    }
+
+    // Component reference (for custom components) - only in template mode
+    if (as_template && component->component_ref && component->component_ref[0] != '\0') {
+        cJSON_AddStringToObject(obj, "component_ref", component->component_ref);
     }
 
     // Serialize style properties
@@ -431,12 +463,219 @@ static cJSON* json_serialize_component_recursive(IRComponent* component) {
     if (component->child_count > 0) {
         cJSON* children = cJSON_CreateArray();
         for (uint32_t i = 0; i < component->child_count; i++) {
-            cJSON* child = json_serialize_component_recursive(component->children[i]);
+            cJSON* child = json_serialize_component_impl(component->children[i], as_template);
             if (child) {
                 cJSON_AddItemToArray(children, child);
             }
         }
         cJSON_AddItemToObject(obj, "children", children);
+    }
+
+    return obj;
+}
+
+// Wrapper for main tree serialization (outputs references for component instances)
+static cJSON* json_serialize_component_recursive(IRComponent* component) {
+    return json_serialize_component_impl(component, false);
+}
+
+// Wrapper for template serialization (full tree)
+static cJSON* json_serialize_component_as_template(IRComponent* component) {
+    return json_serialize_component_impl(component, true);
+}
+
+// ============================================================================
+// Reactive Manifest Serialization (v2.1 POC)
+// ============================================================================
+
+/**
+ * Serialize reactive manifest to JSON
+ * @param manifest Reactive manifest to serialize
+ * @return cJSON object (caller must delete), or NULL if no manifest data
+ */
+/**
+ * Serialize component definitions to JSON
+ */
+static cJSON* json_serialize_component_definitions(IRReactiveManifest* manifest) {
+    if (!manifest || manifest->component_def_count == 0) return NULL;
+
+    cJSON* arr = cJSON_CreateArray();
+
+    for (uint32_t i = 0; i < manifest->component_def_count; i++) {
+        IRComponentDefinition* def = &manifest->component_defs[i];
+        cJSON* defObj = cJSON_CreateObject();
+
+        if (def->name) {
+            cJSON_AddStringToObject(defObj, "name", def->name);
+        }
+
+        // Serialize props
+        if (def->prop_count > 0 && def->props) {
+            cJSON* propsArr = cJSON_CreateArray();
+            for (uint32_t j = 0; j < def->prop_count; j++) {
+                IRComponentProp* prop = &def->props[j];
+                cJSON* propObj = cJSON_CreateObject();
+                if (prop->name) cJSON_AddStringToObject(propObj, "name", prop->name);
+                if (prop->type) cJSON_AddStringToObject(propObj, "type", prop->type);
+                if (prop->default_value) cJSON_AddStringToObject(propObj, "default", prop->default_value);
+                cJSON_AddItemToArray(propsArr, propObj);
+            }
+            cJSON_AddItemToObject(defObj, "props", propsArr);
+        }
+
+        // Serialize state variables
+        if (def->state_var_count > 0 && def->state_vars) {
+            cJSON* stateArr = cJSON_CreateArray();
+            for (uint32_t j = 0; j < def->state_var_count; j++) {
+                IRComponentStateVar* sv = &def->state_vars[j];
+                cJSON* svObj = cJSON_CreateObject();
+                if (sv->name) cJSON_AddStringToObject(svObj, "name", sv->name);
+                if (sv->type) cJSON_AddStringToObject(svObj, "type", sv->type);
+                if (sv->initial_expr) cJSON_AddStringToObject(svObj, "initial", sv->initial_expr);
+                cJSON_AddItemToArray(stateArr, svObj);
+            }
+            cJSON_AddItemToObject(defObj, "state", stateArr);
+        }
+
+        // Serialize template if present (use template mode for full tree)
+        if (def->template_root) {
+            cJSON* templateJson = json_serialize_component_as_template(def->template_root);
+            if (templateJson) {
+                cJSON_AddItemToObject(defObj, "template", templateJson);
+            }
+        }
+
+        cJSON_AddItemToArray(arr, defObj);
+    }
+
+    return arr;
+}
+
+static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
+    if (!manifest || (manifest->variable_count == 0 && manifest->component_def_count == 0 &&
+                      manifest->conditional_count == 0 && manifest->for_loop_count == 0)) return NULL;
+
+    cJSON* obj = cJSON_CreateObject();
+
+    // Serialize variables
+    if (manifest->variable_count > 0) {
+        cJSON* vars = cJSON_CreateArray();
+        for (uint32_t i = 0; i < manifest->variable_count; i++) {
+            IRReactiveVarDescriptor* var = &manifest->variables[i];
+            cJSON* varObj = cJSON_CreateObject();
+
+            cJSON_AddNumberToObject(varObj, "id", var->id);
+            if (var->name) cJSON_AddStringToObject(varObj, "name", var->name);
+
+            // Type as string
+            if (var->type_string) {
+                cJSON_AddStringToObject(varObj, "type", var->type_string);
+            } else {
+                // Fallback to numeric type
+                const char* typeStr = "unknown";
+                switch (var->type) {
+                    case IR_REACTIVE_TYPE_INT: typeStr = "int"; break;
+                    case IR_REACTIVE_TYPE_FLOAT: typeStr = "float"; break;
+                    case IR_REACTIVE_TYPE_STRING: typeStr = "string"; break;
+                    case IR_REACTIVE_TYPE_BOOL: typeStr = "bool"; break;
+                }
+                cJSON_AddStringToObject(varObj, "type", typeStr);
+            }
+
+            // Initial value as JSON string
+            if (var->initial_value_json) {
+                cJSON_AddStringToObject(varObj, "initial_value", var->initial_value_json);
+            }
+
+            // Scope
+            if (var->scope) {
+                cJSON_AddStringToObject(varObj, "scope", var->scope);
+            }
+
+            cJSON_AddItemToArray(vars, varObj);
+        }
+        cJSON_AddItemToObject(obj, "variables", vars);
+    }
+
+    // Serialize bindings
+    if (manifest->binding_count > 0) {
+        cJSON* bindings = cJSON_CreateArray();
+        for (uint32_t i = 0; i < manifest->binding_count; i++) {
+            IRReactiveBinding* binding = &manifest->bindings[i];
+            cJSON* bindingObj = cJSON_CreateObject();
+
+            cJSON_AddNumberToObject(bindingObj, "component_id", binding->component_id);
+            cJSON_AddNumberToObject(bindingObj, "var_id", binding->reactive_var_id);
+
+            if (binding->expression) {
+                cJSON_AddStringToObject(bindingObj, "expression", binding->expression);
+            }
+
+            cJSON_AddItemToArray(bindings, bindingObj);
+        }
+        cJSON_AddItemToObject(obj, "bindings", bindings);
+    }
+
+    // Serialize conditionals
+    if (manifest->conditional_count > 0) {
+        cJSON* conditionals = cJSON_CreateArray();
+        for (uint32_t i = 0; i < manifest->conditional_count; i++) {
+            IRReactiveConditional* cond = &manifest->conditionals[i];
+            cJSON* condObj = cJSON_CreateObject();
+
+            cJSON_AddNumberToObject(condObj, "component_id", cond->component_id);
+
+            if (cond->condition) {
+                cJSON_AddStringToObject(condObj, "condition", cond->condition);
+            }
+
+            if (cond->dependent_var_count > 0 && cond->dependent_var_ids) {
+                cJSON* deps = cJSON_CreateArray();
+                for (uint32_t j = 0; j < cond->dependent_var_count; j++) {
+                    cJSON_AddItemToArray(deps, cJSON_CreateNumber(cond->dependent_var_ids[j]));
+                }
+                cJSON_AddItemToObject(condObj, "dependent_vars", deps);
+            }
+
+            // Serialize branch children IDs for round-trip support
+            if (cond->then_children_count > 0 && cond->then_children_ids) {
+                cJSON* thenIds = cJSON_CreateArray();
+                for (uint32_t j = 0; j < cond->then_children_count; j++) {
+                    cJSON_AddItemToArray(thenIds, cJSON_CreateNumber(cond->then_children_ids[j]));
+                }
+                cJSON_AddItemToObject(condObj, "then_children_ids", thenIds);
+            }
+
+            if (cond->else_children_count > 0 && cond->else_children_ids) {
+                cJSON* elseIds = cJSON_CreateArray();
+                for (uint32_t j = 0; j < cond->else_children_count; j++) {
+                    cJSON_AddItemToArray(elseIds, cJSON_CreateNumber(cond->else_children_ids[j]));
+                }
+                cJSON_AddItemToObject(condObj, "else_children_ids", elseIds);
+            }
+
+            cJSON_AddItemToArray(conditionals, condObj);
+        }
+        cJSON_AddItemToObject(obj, "conditionals", conditionals);
+    }
+
+    // Serialize for-loops
+    if (manifest->for_loop_count > 0) {
+        cJSON* loops = cJSON_CreateArray();
+        for (uint32_t i = 0; i < manifest->for_loop_count; i++) {
+            IRReactiveForLoop* loop = &manifest->for_loops[i];
+            cJSON* loopObj = cJSON_CreateObject();
+
+            cJSON_AddNumberToObject(loopObj, "parent_component_id", loop->parent_component_id);
+            cJSON_AddNumberToObject(loopObj, "collection_var_id", loop->collection_var_id);
+
+            if (loop->collection_expr) {
+                cJSON_AddStringToObject(loopObj, "collection_expr", loop->collection_expr);
+            }
+
+            cJSON_AddItemToArray(loops, loopObj);
+        }
+        cJSON_AddItemToObject(obj, "for_loops", loops);
     }
 
     return obj;
@@ -464,6 +703,54 @@ char* ir_serialize_json_v2(IRComponent* root) {
 }
 
 /**
+ * Serialize IR component tree with reactive manifest to JSON v2.1 format
+ * @param root Root component to serialize
+ * @param manifest Reactive manifest to include (can be NULL)
+ * @return JSON string (caller must free), or NULL on error
+ */
+char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* manifest) {
+    if (!root) return NULL;
+
+    // Create wrapper object
+    cJSON* wrapper = cJSON_CreateObject();
+
+    // Add format version - v2.1 when we have component definitions, conditionals, or for-loops
+    if (manifest && (manifest->component_def_count > 0 || manifest->conditional_count > 0 || manifest->for_loop_count > 0)) {
+        cJSON_AddStringToObject(wrapper, "format_version", "2.1");
+    }
+
+    // Add component definitions FIRST (at the top)
+    if (manifest && manifest->component_def_count > 0) {
+        cJSON* componentDefsJson = json_serialize_component_definitions(manifest);
+        if (componentDefsJson) {
+            cJSON_AddItemToObject(wrapper, "component_definitions", componentDefsJson);
+        }
+    }
+
+    // Add component tree
+    cJSON* componentJson = json_serialize_component_recursive(root);
+    if (!componentJson) {
+        cJSON_Delete(wrapper);
+        return NULL;
+    }
+    cJSON_AddItemToObject(wrapper, "root", componentJson);
+
+    // Add reactive manifest if present (variables, bindings, conditionals, for-loops)
+    if (manifest && (manifest->variable_count > 0 || manifest->binding_count > 0 ||
+                     manifest->conditional_count > 0 || manifest->for_loop_count > 0)) {
+        cJSON* manifestJson = json_serialize_reactive_manifest(manifest);
+        if (manifestJson) {
+            cJSON_AddItemToObject(wrapper, "reactive_manifest", manifestJson);
+        }
+    }
+
+    char* jsonStr = cJSON_Print(wrapper);  // Pretty-printed JSON
+    cJSON_Delete(wrapper);
+
+    return jsonStr;
+}
+
+/**
  * Write IR component tree to JSON v2 file
  * @param root Root component to serialize
  * @param filename Output file path
@@ -471,6 +758,114 @@ char* ir_serialize_json_v2(IRComponent* root) {
  */
 bool ir_write_json_v2_file(IRComponent* root, const char* filename) {
     char* json = ir_serialize_json_v2(root);
+    if (!json) return false;
+
+    FILE* file = fopen(filename, "w");
+    if (!file) {
+        free(json);
+        return false;
+    }
+
+    bool success = (fprintf(file, "%s", json) >= 0);
+    fclose(file);
+    free(json);
+
+    return success;
+}
+
+/**
+ * Write IR component tree with reactive manifest to JSON v2.1 file
+ * @param root Root component to serialize
+ * @param manifest Reactive manifest to include (can be NULL)
+ * @param filename Output file path
+ * @return true on success, false on error
+ */
+bool ir_write_json_v2_with_manifest_file(IRComponent* root, IRReactiveManifest* manifest, const char* filename) {
+    char* json = ir_serialize_json_v2_with_manifest(root, manifest);
+    if (!json) return false;
+
+    FILE* file = fopen(filename, "w");
+    if (!file) {
+        free(json);
+        return false;
+    }
+
+    bool success = (fprintf(file, "%s", json) >= 0);
+    fclose(file);
+    free(json);
+
+    return success;
+}
+
+// ============================================================================
+// JSON v3.0 Serialization - With Logic Block Support
+// ============================================================================
+
+/**
+ * Serialize IR component tree with reactive manifest and logic block to JSON v3.0 format
+ * @param root Root component to serialize
+ * @param manifest Reactive manifest to include (can be NULL)
+ * @param logic Logic block with functions and event bindings (can be NULL)
+ * @return JSON string (caller must free), or NULL on error
+ */
+char* ir_serialize_json_v3(IRComponent* root, IRReactiveManifest* manifest, struct IRLogicBlock* logic) {
+    if (!root) return NULL;
+
+    // Create wrapper object
+    cJSON* wrapper = cJSON_CreateObject();
+
+    // Add format version
+    cJSON_AddStringToObject(wrapper, "format_version", "3.0");
+
+    // Add component definitions FIRST (at the top)
+    if (manifest && manifest->component_def_count > 0) {
+        cJSON* componentDefsJson = json_serialize_component_definitions(manifest);
+        if (componentDefsJson) {
+            cJSON_AddItemToObject(wrapper, "component_definitions", componentDefsJson);
+        }
+    }
+
+    // Add component tree
+    cJSON* componentJson = json_serialize_component_recursive(root);
+    if (!componentJson) {
+        cJSON_Delete(wrapper);
+        return NULL;
+    }
+    cJSON_AddItemToObject(wrapper, "root", componentJson);
+
+    // Add logic block if present
+    if (logic && (logic->function_count > 0 || logic->event_binding_count > 0)) {
+        cJSON* logicJson = ir_logic_block_to_json(logic);
+        if (logicJson) {
+            cJSON_AddItemToObject(wrapper, "logic", logicJson);
+        }
+    }
+
+    // Add reactive manifest if present (variables, bindings, conditionals, for-loops)
+    if (manifest && (manifest->variable_count > 0 || manifest->binding_count > 0 ||
+                     manifest->conditional_count > 0 || manifest->for_loop_count > 0)) {
+        cJSON* manifestJson = json_serialize_reactive_manifest(manifest);
+        if (manifestJson) {
+            cJSON_AddItemToObject(wrapper, "reactive_manifest", manifestJson);
+        }
+    }
+
+    char* jsonStr = cJSON_Print(wrapper);  // Pretty-printed JSON
+    cJSON_Delete(wrapper);
+
+    return jsonStr;
+}
+
+/**
+ * Write IR component tree with logic block to JSON v3.0 file
+ * @param root Root component to serialize
+ * @param manifest Reactive manifest to include (can be NULL)
+ * @param logic Logic block with functions and event bindings (can be NULL)
+ * @param filename Output file path
+ * @return true on success, false on error
+ */
+bool ir_write_json_v3_file(IRComponent* root, IRReactiveManifest* manifest, struct IRLogicBlock* logic, const char* filename) {
+    char* json = ir_serialize_json_v3(root, manifest, logic);
     if (!json) return false;
 
     FILE* file = fopen(filename, "w");
@@ -976,12 +1371,14 @@ IRComponent* ir_deserialize_json_v2(const char* json_string) {
 
     IRComponent* component = NULL;
 
-    // Check if root has "component" key (wrapped format)
-    cJSON* componentJson = cJSON_GetObjectItem(root, "component");
+    // Check for "root" key first (new format), then "component" (legacy)
+    cJSON* componentJson = cJSON_GetObjectItem(root, "root");
+    if (!componentJson) {
+        componentJson = cJSON_GetObjectItem(root, "component");
+    }
 
     if (componentJson && cJSON_IsObject(componentJson)) {
-        // Wrapped format: { "component": {...} }
-        // (manifest key is ignored)
+        // Wrapped format: { "root": {...} } or { "component": {...} }
         component = json_deserialize_component_recursive(componentJson);
     } else {
         // Unwrapped format: just component tree at root

@@ -7,6 +7,91 @@ import tables
 import sets
 import ir_core
 
+# ============================================================================
+# Component Definition Registry
+# ============================================================================
+
+type
+  ComponentProp* = object
+    name*: string
+    propType*: string
+    defaultValue*: string
+
+  ComponentStateVar* = object
+    name*: string
+    varType*: string
+    initialExpr*: string  # e.g., "{{initialValue}}" to reference prop
+
+  ComponentDefinition* = object
+    name*: string
+    props*: seq[ComponentProp]
+    stateVars*: seq[ComponentStateVar]
+    templateRoot*: ptr IRComponent  # First instance captures the template
+
+# Global registry for custom component definitions
+var componentDefinitions*: Table[string, ComponentDefinition] = initTable[string, ComponentDefinition]()
+
+proc registerComponentDefinition*(name: string, props: seq[ComponentProp], stateVars: seq[ComponentStateVar]) =
+  ## Register a custom component definition (called by kryonComponent macro)
+  if name notin componentDefinitions:
+    componentDefinitions[name] = ComponentDefinition(
+      name: name,
+      props: props,
+      stateVars: stateVars,
+      templateRoot: nil
+    )
+    echo "[kryonComponent] Registered component definition: ", name
+
+proc setComponentTemplate*(name: string, templateRoot: ptr IRComponent) =
+  ## Set the template root for a component (first instantiation)
+  if name in componentDefinitions and componentDefinitions[name].templateRoot == nil:
+    componentDefinitions[name].templateRoot = templateRoot
+    # Mark the root component with the component name
+    ir_set_component_ref(templateRoot, cstring(name))
+    echo "[kryonComponent] Captured template for: ", name
+
+proc getComponentDefinitions*(): Table[string, ComponentDefinition] =
+  ## Get all registered component definitions
+  result = componentDefinitions
+
+proc syncComponentDefinitionsToManifest*(manifest: ptr IRReactiveManifest) =
+  ## Sync Nim component definitions to C manifest for serialization
+  if manifest == nil:
+    return
+
+  for name, def in componentDefinitions:
+    # Create C arrays for props and state vars
+    var cProps: seq[IRComponentProp] = @[]
+    var cStateVars: seq[IRComponentStateVar] = @[]
+
+    for prop in def.props:
+      cProps.add(IRComponentProp(
+        name: cstring(prop.name),
+        `type`: cstring(prop.propType),
+        default_value: cstring(prop.defaultValue)
+      ))
+
+    for sv in def.stateVars:
+      cStateVars.add(IRComponentStateVar(
+        name: cstring(sv.name),
+        `type`: cstring(sv.varType),
+        initial_expr: cstring(sv.initialExpr)
+      ))
+
+    # Call C function to add to manifest
+    let propsPtr = if cProps.len > 0: addr cProps[0] else: nil
+    let stateVarsPtr = if cStateVars.len > 0: addr cStateVars[0] else: nil
+
+    ir_reactive_manifest_add_component_def(
+      manifest,
+      cstring(name),
+      propsPtr,
+      uint32(cProps.len),
+      stateVarsPtr,
+      uint32(cStateVars.len),
+      def.templateRoot
+    )
+
 # Hook for TabGroup resync (set by runtime.nim to avoid circular import)
 var onReactiveForLoopParentChanged*: proc(parent: ptr IRComponent) {.closure.} = nil
 
@@ -340,6 +425,10 @@ type
     lastCondition*: bool
     initialized*: bool
     suspended*: bool  # True when parent panel is hidden - skip updates but preserve state
+    conditionExpr*: string  # Original condition expression as string for serialization
+    # Captured children for serialization (both branches)
+    thenChildrenIds*: seq[uint32]  # Component IDs of then-branch children
+    elseChildrenIds*: seq[uint32]  # Component IDs of else-branch children
 
 var reactiveConditionals*: seq[ReactiveConditional] = @[]
 
@@ -354,7 +443,8 @@ proc createReactiveConditional*(
   parent: ptr IRComponent,
   conditionProc: proc(): bool {.closure.},
   thenProc: proc(): seq[ptr IRComponent] {.closure.},
-  elseProc: proc(): seq[ptr IRComponent] {.closure.} = nil
+  elseProc: proc(): seq[ptr IRComponent] {.closure.} = nil,
+  conditionExpr: string = ""
 ) =
   ## Create and register a reactive conditional that re-evaluates when variables change
   let conditional = ReactiveConditional(
@@ -364,10 +454,13 @@ proc createReactiveConditional*(
     elseProc: elseProc,
     currentChildren: @[],
     lastCondition: false,
-    initialized: false
+    initialized: false,
+    conditionExpr: conditionExpr,
+    thenChildrenIds: @[],
+    elseChildrenIds: @[]
   )
   reactiveConditionals.add(conditional)
-  echo "[kryon][reactive] Created reactive conditional"
+  echo "[kryon][reactive] Created reactive conditional: ", if conditionExpr.len > 0: conditionExpr else: "<closure>"
 
 proc updateAllReactiveConditionals*() =
   ## Update all reactive conditionals by re-evaluating conditions and updating component tree
@@ -408,9 +501,19 @@ proc updateAllReactiveConditionals*() =
         if currentCondition:
           if cond.thenProc != nil:
             newChildren = cond.thenProc()
+            # Capture IDs for then-branch (for serialization)
+            cond.thenChildrenIds.setLen(0)
+            for child in newChildren:
+              if child != nil:
+                cond.thenChildrenIds.add(child.id)
         else:
           if cond.elseProc != nil:
             newChildren = cond.elseProc()
+            # Capture IDs for else-branch (for serialization)
+            cond.elseChildrenIds.setLen(0)
+            for child in newChildren:
+              if child != nil:
+                cond.elseChildrenIds.add(child.id)
 
         for child in newChildren:
           if child != nil:
@@ -845,6 +948,30 @@ proc exportReactiveManifest*(): ptr IRReactiveManifest =
     varNameToId[name] = varId
     echo "[kryon][reactive] Exported var: ", name, " (id=", varId, ")"
 
+    # Add metadata for v2.1 format (POC)
+    let typeString = case entry.varType
+      of IR_REACTIVE_TYPE_INT: "int"
+      of IR_REACTIVE_TYPE_FLOAT: "float"
+      of IR_REACTIVE_TYPE_STRING: "string"
+      of IR_REACTIVE_TYPE_BOOL: "bool"
+      else: "unknown"
+
+    # Simple JSON serialization of initial value
+    let initialValueJson = case entry.varType
+      of IR_REACTIVE_TYPE_INT: $value.as_int
+      of IR_REACTIVE_TYPE_FLOAT: $value.as_float
+      of IR_REACTIVE_TYPE_STRING: "\"" & (if value.as_string != nil: $value.as_string else: "") & "\""
+      of IR_REACTIVE_TYPE_BOOL: (if value.as_bool: "true" else: "false")
+      else: "null"
+
+    ir_reactive_manifest_set_var_metadata(
+      result,
+      varId,
+      cstring(typeString),
+      cstring(initialValueJson),
+      cstring("global")  # All named vars are global scope for now
+    )
+
     # Add bindings for this variable
     for component in entry.componentBindings:
       if component != nil and component.id > 0:
@@ -882,14 +1009,26 @@ proc exportReactiveManifest*(): ptr IRReactiveManifest =
     if cond == nil or cond.parent == nil:
       continue
 
-    # We can't serialize the closure, but we can track the conditional exists
-    # On restore, the DSL will recreate it
+    # Use the stored condition expression if available, otherwise placeholder
+    let condExpr = if cond.conditionExpr.len > 0: cond.conditionExpr else: "<conditional>"
     ir_reactive_manifest_add_conditional(
       result,
       cond.parent.id,
-      cstring("<conditional>"),  # Placeholder since we can't serialize closures
+      cstring(condExpr),
       nil,
       0
+    )
+
+    # Set branch children IDs (for serialization round-trip)
+    let thenIdsPtr = if cond.thenChildrenIds.len > 0: addr cond.thenChildrenIds[0] else: nil
+    let elseIdsPtr = if cond.elseChildrenIds.len > 0: addr cond.elseChildrenIds[0] else: nil
+    ir_reactive_manifest_set_conditional_branches(
+      result,
+      cond.parent.id,
+      thenIdsPtr,
+      uint32(cond.thenChildrenIds.len),
+      elseIdsPtr,
+      uint32(cond.elseChildrenIds.len)
     )
 
   # Export reactive for loops

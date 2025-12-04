@@ -23,6 +23,7 @@ import ./utils
 import ./layout
 import ./animations
 import ./components
+import ./logic_emitter
 
 # Re-export all symbols
 export properties
@@ -33,10 +34,13 @@ export utils
 export layout
 export animations
 export components
+export logic_emitter
 
 # Re-export runtime and IR core for convenience
 import ../runtime
 import ../ir_core
+import ../ir_logic
 
 export runtime
 export ir_core
+export ir_logic

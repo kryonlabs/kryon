@@ -181,6 +181,8 @@ macro Container*(props: untyped): untyped =
         alignItemsVal = parseAlignmentValue(value)
       of "layoutdirection":
         layoutDirectionVal = value
+      of "gap":
+        gapVal = value
       of "style":
         if value.kind == nnkCall:
           styleName = newStrLitNode($value[0])
@@ -1095,6 +1097,9 @@ macro Container*(props: untyped): untyped =
 
     let thenBodySeq = buildComponentSeq(thenBody)
 
+    # Capture condition expression as string for serialization
+    let condExprStr = newLit(repr(conditionExpr))
+
     # Generate condition and then procs as lambda expressions
     initStmts.add quote do:
       let `condProc` = proc(): bool {.closure.} = `conditionExpr`
@@ -1113,13 +1118,13 @@ macro Container*(props: untyped): untyped =
       initStmts.add quote do:
         let `elseProc` = proc(): seq[KryonComponent] {.closure.} = `elseBodySeq`
 
-      # Register reactive conditional with else
+      # Register reactive conditional with else (including condition expression for serialization)
       initStmts.add quote do:
-        createReactiveConditional(`containerName`, `condProc`, `thenProc`, `elseProc`)
+        createReactiveConditional(`containerName`, `condProc`, `thenProc`, `elseProc`, `condExprStr`)
     else:
-      # Register reactive conditional without else
+      # Register reactive conditional without else (including condition expression for serialization)
       initStmts.add quote do:
-        createReactiveConditional(`containerName`, `condProc`, `thenProc`, nil)
+        createReactiveConditional(`containerName`, `condProc`, `thenProc`, nil, `condExprStr`)
 
   # Check if this container has any static blocks, and if so, finalize the subtree
   # This must happen AFTER all properties (including animations) have been set

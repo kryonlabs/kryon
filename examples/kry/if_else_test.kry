@@ -1,0 +1,56 @@
+// If/Else Test - Conditional rendering
+
+state showMessage: bool = true
+
+App {
+    windowTitle = "If/Else Test"
+    windowWidth = 800
+    windowHeight = 600
+    backgroundColor = "#2C3E50"
+
+    Column {
+        padding = 40
+        gap = 20
+
+        Text {
+            text = "Conditional Rendering Demo"
+            fontSize = 28
+            color = "#FFFFFF"
+        }
+
+        Button {
+            text = "Toggle Message"
+            width = 200
+            height = 50
+            backgroundColor = "#3498DB"
+            fontSize = 16
+            onClick = { showMessage = !showMessage }
+        }
+
+        if showMessage {
+            Container {
+                backgroundColor = "#27AE60"
+                padding = 20
+                borderRadius = 8
+
+                Text {
+                    text = "The message is VISIBLE!"
+                    fontSize = 18
+                    color = "#FFFFFF"
+                }
+            }
+        } else {
+            Container {
+                backgroundColor = "#E74C3C"
+                padding = 20
+                borderRadius = 8
+
+                Text {
+                    text = "The message is HIDDEN"
+                    fontSize = 18
+                    color = "#FFFFFF"
+                }
+            }
+        }
+    }
+}
