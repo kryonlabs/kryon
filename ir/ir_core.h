@@ -817,6 +817,12 @@ typedef struct {
     IRComponent* template_root;     // Template component tree
 } IRComponentDefinition;
 
+// Source code entry (for round-trip serialization)
+typedef struct {
+    char* lang;  // Language identifier (e.g., "nim", "lua", "js", "c")
+    char* code;  // Source code content
+} IRSourceEntry;
+
 // Complete reactive manifest
 typedef struct {
     // Reactive variables
@@ -843,6 +849,11 @@ typedef struct {
     IRComponentDefinition* component_defs;
     uint32_t component_def_count;
     uint32_t component_def_capacity;
+
+    // Source code entries (for round-trip preservation)
+    IRSourceEntry* sources;
+    uint32_t source_count;
+    uint32_t source_capacity;
 
     // Metadata
     uint32_t next_var_id;
@@ -921,5 +932,14 @@ void ir_reactive_manifest_add_component_def(IRReactiveManifest* manifest,
 // Find component definition by name
 IRComponentDefinition* ir_reactive_manifest_find_component_def(IRReactiveManifest* manifest,
                                                                const char* name);
+
+// Add source code to manifest (for round-trip preservation)
+void ir_reactive_manifest_add_source(IRReactiveManifest* manifest,
+                                     const char* lang,
+                                     const char* code);
+
+// Get source code by language
+const char* ir_reactive_manifest_get_source(IRReactiveManifest* manifest,
+                                            const char* lang);
 
 #endif // IR_CORE_H

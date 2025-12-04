@@ -48,6 +48,46 @@ const
   kaSpaceBetween* = IR_ALIGNMENT_SPACE_BETWEEN
 
 # ============================================================================
+# Source Code Registry (for round-trip serialization)
+# ============================================================================
+
+var registeredSources*: Table[string, string] = initTable[string, string]()
+
+proc registerSource*(lang: string, code: string) =
+  ## Register source code for a language (for round-trip serialization)
+  registeredSources[lang] = code
+
+proc clearRegisteredSources*() =
+  ## Clear all registered sources
+  registeredSources.clear()
+
+# ============================================================================
+# Handler Registry (for round-trip logic block serialization)
+# ============================================================================
+
+type
+  HandlerEntry* = object
+    componentId*: uint32
+    eventType*: string
+    logicId*: string
+    handlerName*: string
+
+var registeredHandlers*: seq[HandlerEntry] = @[]
+
+proc registerHandler*(componentId: uint32, eventType: string, logicId: string, handlerName: string) =
+  ## Register a handler for round-trip serialization
+  registeredHandlers.add(HandlerEntry(
+    componentId: componentId,
+    eventType: eventType,
+    logicId: logicId,
+    handlerName: handlerName
+  ))
+
+proc clearRegisteredHandlers*() =
+  ## Clear all registered handlers
+  registeredHandlers.setLen(0)
+
+# ============================================================================
 # Component Creation - IR-based
 # ============================================================================
 
@@ -806,15 +846,50 @@ proc run*(app: KryonApp) =
     # This ensures conditional children are in the tree when we serialize
     updateAllReactiveConditionals()
     # Export reactive manifest and sync component definitions
-    let manifest = exportReactiveManifest()
+    var manifest = exportReactiveManifest()
+    if manifest == nil:
+      # Create a manifest if none exists (we need it for sources)
+      manifest = ir_reactive_manifest_create()
     if manifest != nil:
       syncComponentDefinitionsToManifest(manifest)
+      # Add registered sources to manifest (for round-trip preservation)
+      for lang, code in registeredSources.pairs:
+        ir_reactive_manifest_add_source(manifest, cstring(lang), cstring(code))
 
-    # Write JSON v2.1 format with component definitions and reactive manifest
-    if manifest != nil and (manifest.variable_count > 0 or manifest.component_def_count > 0 or
-                            manifest.conditional_count > 0 or manifest.for_loop_count > 0):
+    # Create logic block from registered handlers (for round-trip)
+    var logicBlock: IRLogicBlockPtr = nil
+    if registeredHandlers.len > 0:
+      logicBlock = ir_logic_block_create()
+      for entry in registeredHandlers:
+        # Create function with a statement that calls the handler
+        let fn = ir_logic_function_create(cstring(entry.logicId))
+        # Add a "var" statement that references the handler function name
+        let varExpr = ir_expr_var(cstring(entry.handlerName))
+        let stmt = ir_stmt_assign(cstring("_call"), varExpr)
+        ir_logic_function_add_stmt(fn, stmt)
+        ir_logic_block_add_function(logicBlock, fn)
+        # Create event binding
+        let binding = ir_event_binding_create(entry.componentId, cstring(entry.eventType), cstring(entry.logicId))
+        ir_logic_block_add_binding(logicBlock, binding)
+      echo "[kryon] Created logic block with ", registeredHandlers.len, " handlers"
+
+    # Write JSON v3.0 if we have handlers, otherwise v2.1
+    if logicBlock != nil:
+      if ir_write_json_v3_file(app.root, manifest, logicBlock, cstring(serializeTarget)):
+        echo "✓ IR serialized successfully (JSON v3.0 with logic block, ", manifest.source_count, " sources)"
+        ir_logic_block_free(logicBlock)
+        ir_reactive_manifest_destroy(manifest)
+        quit(0)
+      else:
+        echo "✗ Failed to serialize IR"
+        ir_logic_block_free(logicBlock)
+        ir_reactive_manifest_destroy(manifest)
+        quit(1)
+    elif manifest != nil and (manifest.variable_count > 0 or manifest.component_def_count > 0 or
+                            manifest.conditional_count > 0 or manifest.for_loop_count > 0 or
+                            manifest.source_count > 0):
       if ir_write_json_v2_with_manifest_file(app.root, manifest, cstring(serializeTarget)):
-        echo "✓ IR serialized successfully (JSON v2.1 with ", manifest.component_def_count, " components, ", manifest.variable_count, " reactive vars)"
+        echo "✓ IR serialized successfully (JSON v2.1 with ", manifest.component_def_count, " components, ", manifest.variable_count, " reactive vars, ", manifest.source_count, " sources)"
         ir_reactive_manifest_destroy(manifest)
         quit(0)
       else:
@@ -823,6 +898,8 @@ proc run*(app: KryonApp) =
         quit(1)
     else:
       # Fallback to v2.0 (no reactive state)
+      if manifest != nil:
+        ir_reactive_manifest_destroy(manifest)
       if ir_write_json_file(app.root, cstring(serializeTarget)):
         echo "✓ IR serialized successfully (JSON v2.0)"
         quit(0)
@@ -851,25 +928,30 @@ proc run*(app: KryonApp) =
   # Get the global logic block (may be empty)
   let logicBlock = getGlobalLogicBlock()
 
-  if manifest != nil and (manifest.variable_count > 0 or manifest.component_def_count > 0 or
-                          manifest.conditional_count > 0 or manifest.for_loop_count > 0):
-    # Sync component definitions from Nim registry to C manifest
-    # Check if we have logic (use v3) or not (use v2.1)
-    if logicBlock.handle != nil:
-      # Save JSON v3.0 with logic block
-      if ir_write_json_v3_file(app.root, manifest, logicBlock.handle, cstring(kirPath)):
-        echo "[IR] Saved JSON v3.0 IR with ", manifest.component_def_count, " components, ", manifest.variable_count, " reactive variables: ", kirPath
-      else:
-        echo "[IR] Warning: Failed to save JSON v3.0 IR"
+  # Check if we have logic block with handlers (always use v3 for handlers)
+  let hasLogic = logicBlock.handle != nil and logicBlock.functionCount > 0
+  let hasReactiveState = manifest != nil and (manifest.variable_count > 0 or manifest.component_def_count > 0 or
+                          manifest.conditional_count > 0 or manifest.for_loop_count > 0)
+
+  if hasLogic:
+    # Use JSON v3.0 with logic block (includes handlers for .kir execution)
+    if ir_write_json_v3_file(app.root, manifest, logicBlock.handle, cstring(kirPath)):
+      echo "[IR] Saved JSON v3.0 IR with logic block (", logicBlock.functionCount, " handlers): ", kirPath
     else:
-      # Save JSON v2.1 with reactive manifest and component definitions
-      if ir_write_json_v2_with_manifest_file(app.root, manifest, cstring(kirPath)):
-        echo "[IR] Saved JSON v2.1 IR with ", manifest.component_def_count, " components, ", manifest.variable_count, " reactive variables: ", kirPath
-      else:
-        echo "[IR] Warning: Failed to save JSON v2.1 IR"
+      echo "[IR] Warning: Failed to save JSON v3.0 IR"
+    if manifest != nil:
+      ir_reactive_manifest_destroy(manifest)
+  elif hasReactiveState:
+    # Save JSON v2.1 with reactive manifest and component definitions
+    if ir_write_json_v2_with_manifest_file(app.root, manifest, cstring(kirPath)):
+      echo "[IR] Saved JSON v2.1 IR with ", manifest.component_def_count, " components, ", manifest.variable_count, " reactive variables: ", kirPath
+    else:
+      echo "[IR] Warning: Failed to save JSON v2.1 IR"
     ir_reactive_manifest_destroy(manifest)
   else:
-    # Fallback to v2.0 (no reactive state)
+    # Fallback to v2.0 (no reactive state, no handlers)
+    if manifest != nil:
+      ir_reactive_manifest_destroy(manifest)
     if ir_write_json_file(app.root, cstring(kirPath)):
       echo "[IR] Saved JSON v2.0 IR: ", kirPath
     else:
@@ -1243,8 +1325,19 @@ proc registerCheckboxHandler*(component: ptr IRComponent, handler: proc()) =
 
   checkboxHandlers[component.id] = handler
 
-  # Create IR event and attach to component
+  # Create IR event and attach to component (use component ID for default logic_id)
   let event = ir_create_event(IR_EVENT_CLICK, cstring("nim_checkbox_" & $component.id), nil)
+  ir_add_event(component, event)
+
+proc registerCheckboxHandlerWithLogicId*(component: ptr IRComponent, handler: proc(), logicId: string) =
+  ## Register a checkbox click handler with a specific logic_id for IR serialization
+  if component.isNil:
+    return
+
+  checkboxHandlers[component.id] = handler
+
+  # Create IR event with the specified logic_id
+  let event = ir_create_event(IR_EVENT_CLICK, cstring(logicId), nil)
   ir_add_event(component, event)
 
 proc setCheckboxState*(component: ptr IRComponent, checked: bool) =

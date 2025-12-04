@@ -33,8 +33,8 @@ STB_DIR = $(THIRD_PARTY_DIR)/stb
 CFLAGS += -I$(CJSON_DIR) -I$(STB_DIR)
 
 # Source files
-IR_SOURCES = ir_builder.c ir_serialization.c ir_validation.c ir_style_vars.c ir_layout.c ir_memory.c ir_hashmap.c ir_animation.c ir_text_shaping.c ir_hot_reload.c ir_format_detect.c ir_json_v2.c ir_reactive_manifest.c ir_expression.c ir_logic.c ir_game_loop.c ir_input.c ir_sprite.c ir_particle.c ir_asset.c ir_audio.c ir_physics.c ir_entity.c ir_plugin.c $(CJSON_DIR)/cJSON.c
-IR_HEADERS = ir_core.h ir_builder.h ir_serialization.h ir_validation.h ir_style_vars.h ir_memory.h ir_hashmap.h ir_animation.h ir_text_shaping.h ir_hot_reload.h ir_format_detect.h ir_expression.h ir_logic.h ir_game_loop.h ir_input.h ir_sprite.h ir_particle.h ir_asset.h ir_audio.h ir_physics.h ir_entity.h ir_plugin.h $(CJSON_DIR)/cJSON.h $(STB_DIR)/stb_image.h
+IR_SOURCES = ir_builder.c ir_serialization.c ir_validation.c ir_style_vars.c ir_layout.c ir_memory.c ir_hashmap.c ir_animation.c ir_text_shaping.c ir_hot_reload.c ir_format_detect.c ir_json_v2.c ir_reactive_manifest.c ir_expression.c ir_logic.c ir_executor.c ir_game_loop.c ir_input.c ir_sprite.c ir_particle.c ir_asset.c ir_audio.c ir_physics.c ir_entity.c ir_plugin.c $(CJSON_DIR)/cJSON.c
+IR_HEADERS = ir_core.h ir_builder.h ir_serialization.h ir_validation.h ir_style_vars.h ir_memory.h ir_hashmap.h ir_animation.h ir_text_shaping.h ir_hot_reload.h ir_format_detect.h ir_expression.h ir_logic.h ir_executor.h ir_game_loop.h ir_input.h ir_sprite.h ir_particle.h ir_asset.h ir_audio.h ir_physics.h ir_entity.h ir_plugin.h $(CJSON_DIR)/cJSON.h $(STB_DIR)/stb_image.h
 
 # Output files
 IR_STATIC_LIB = $(BUILD_DIR)/libkryon_ir.a
@@ -96,6 +96,9 @@ ir_expression.o: ir_expression.c $(IR_HEADERS)
 ir_logic.o: ir_logic.c $(IR_HEADERS)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_logic.c -o ir_logic.o
 
+ir_executor.o: ir_executor.c $(IR_HEADERS)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_executor.c -o ir_executor.o
+
 ir_game_loop.o: ir_game_loop.c $(IR_HEADERS)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_game_loop.c -o ir_game_loop.o
 
@@ -124,12 +127,12 @@ ir_plugin.o: ir_plugin.c $(IR_HEADERS)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_plugin.c -o ir_plugin.o
 
 # Create static library
-$(IR_STATIC_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o
-	$(AR) $(ARFLAGS) $@ ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o
+$(IR_STATIC_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_executor.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o
+	$(AR) $(ARFLAGS) $@ ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_executor.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o
 
 # Create shared library
-$(IR_SHARED_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o -lm $(HARFBUZZ_LIBS)
+$(IR_SHARED_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_executor.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o
+	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_executor.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o -lm $(HARFBUZZ_LIBS)
 
 # Install headers
 install-headers: $(BUILD_DIR)

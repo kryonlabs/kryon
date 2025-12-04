@@ -41,6 +41,12 @@ proc ir_logic_block_find_function*(logic: IRLogicBlockPtr, name: cstring): IRLog
 proc ir_logic_block_get_handler*(logic: IRLogicBlockPtr, componentId: uint32, eventType: cstring): cstring
   {.cdecl, importc, dynlib: irLib.}
 
+proc ir_logic_block_get_function_count*(logic: IRLogicBlockPtr): cint
+  {.cdecl, importc, dynlib: irLib.}
+
+proc ir_logic_block_get_binding_count*(logic: IRLogicBlockPtr): cint
+  {.cdecl, importc, dynlib: irLib.}
+
 # ============================================================================
 # Logic Function Creation
 # ============================================================================
@@ -151,6 +157,16 @@ type
 
 proc newLogicBlock*(): LogicBlock =
   result.handle = ir_logic_block_create()
+
+proc functionCount*(lb: LogicBlock): int =
+  if lb.handle != nil:
+    return int(ir_logic_block_get_function_count(lb.handle))
+  return 0
+
+proc bindingCount*(lb: LogicBlock): int =
+  if lb.handle != nil:
+    return int(ir_logic_block_get_binding_count(lb.handle))
+  return 0
 
 proc destroy*(lb: var LogicBlock) =
   if lb.handle != nil:

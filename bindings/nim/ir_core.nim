@@ -1034,6 +1034,10 @@ type
     state_var_count*: uint32
     template_root*: ptr IRComponent
 
+  IRSourceEntry* {.importc: "IRSourceEntry", header: "ir_core.h".} = object
+    lang*: cstring
+    code*: cstring
+
   IRReactiveManifest* {.importc: "IRReactiveManifest", header: "ir_core.h".} = object
     variables*: ptr IRReactiveVarDescriptor
     variable_count*: uint32
@@ -1051,6 +1055,10 @@ type
     component_defs*: ptr IRComponentDefinition
     component_def_count*: uint32
     component_def_capacity*: uint32
+    # Source code entries (for round-trip preservation)
+    sources*: ptr IRSourceEntry
+    source_count*: uint32
+    source_capacity*: uint32
     # Metadata
     next_var_id*: uint32
 
@@ -1138,3 +1146,15 @@ proc ir_reactive_manifest_find_component_def*(
   manifest: ptr IRReactiveManifest;
   name: cstring
 ): ptr IRComponentDefinition {.importc, cdecl, header: "ir_core.h".}
+
+# Source code management (for round-trip preservation)
+proc ir_reactive_manifest_add_source*(
+  manifest: ptr IRReactiveManifest;
+  lang: cstring;
+  code: cstring
+) {.importc, cdecl, header: "ir_core.h".}
+
+proc ir_reactive_manifest_get_source*(
+  manifest: ptr IRReactiveManifest;
+  lang: cstring
+): cstring {.importc, cdecl, header: "ir_core.h".}

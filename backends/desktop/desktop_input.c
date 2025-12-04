@@ -19,6 +19,7 @@
 
 #define _GNU_SOURCE
 #include "desktop_internal.h"
+#include "../../ir/ir_executor.h"
 
 #ifdef ENABLE_SDL3
 
@@ -412,9 +413,14 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                             if (tg_state->tabs[i] == clicked) {
                                                 // C handles tab selection (panel switching, visuals)
                                                 ir_tabgroup_handle_tab_click(tg_state, i);
-                                                // Also call Nim button bridge for user's onClick handler
-                                                extern void nimButtonBridge(uint32_t componentId);
-                                                nimButtonBridge(clicked->id);
+                                                // Also call handler for user's onClick
+                                                IRExecutorContext* executor = ir_executor_get_global();
+                                                if (executor) {
+                                                    ir_executor_handle_event(executor, clicked->id, "click");
+                                                } else {
+                                                    extern void nimButtonBridge(uint32_t componentId);
+                                                    nimButtonBridge(clicked->id);
+                                                }
                                                 handled_as_tab = true;
                                                 break;
                                             }
@@ -424,10 +430,16 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
                                 // If not a tab, use normal button bridge
                                 if (!handled_as_tab) {
-                                    // Declare external Nim callback
-                                    extern void nimButtonBridge(uint32_t componentId);
-                                    // Invoke Nim handler
-                                    nimButtonBridge(clicked->id);
+                                    // Try executor first (for .kir file execution)
+                                    IRExecutorContext* executor = ir_executor_get_global();
+                                    if (executor) {
+                                        // Execute via IR executor (handles .kir logic blocks)
+                                        ir_executor_handle_event(executor, clicked->id, "click");
+                                    } else {
+                                        // Fallback to Nim bridge (for compiled Nim binaries)
+                                        extern void nimButtonBridge(uint32_t componentId);
+                                        nimButtonBridge(clicked->id);
+                                    }
                                 }
                             }
                             // Check if this is a Nim checkbox handler
@@ -436,10 +448,15 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                 if (clicked->type == IR_COMPONENT_CHECKBOX) {
                                     ir_toggle_checkbox_state(clicked);
                                 }
-                                // Declare external Nim callback
-                                extern void nimCheckboxBridge(uint32_t componentId);
-                                // Invoke Nim handler
-                                nimCheckboxBridge(clicked->id);
+                                // Try executor first (for .kir file execution)
+                                IRExecutorContext* executor = ir_executor_get_global();
+                                if (executor) {
+                                    ir_executor_handle_event(executor, clicked->id, "click");
+                                } else {
+                                    // Fallback to Nim bridge
+                                    extern void nimCheckboxBridge(uint32_t componentId);
+                                    nimCheckboxBridge(clicked->id);
+                                }
                             }
                             // Check if this is a Nim dropdown handler
                             else if (strncmp(ir_event->logic_id, "nim_dropdown_", 13) == 0) {

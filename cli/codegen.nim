@@ -289,19 +289,25 @@ proc generateNimComponentWithContext(node: JsonNode, ctx: CodegenContext, indent
   let compType = node{"type"}.getStr("Container")
   let nodeId = node{"id"}.getInt(0)
 
-  # Map IR type to Nim DSL
-  let nimType = case compType
-    of "Row": "Container"
-    else: compType
+  # Use component type directly (Row, Column, Container, etc.)
+  let nimType = compType
 
   result = &"{spaces}{nimType}:\n"
 
   # Skip internal/structural properties
-  let skipProps = ["id", "type", "children", "events", "border"]
+  let skipProps = ["id", "type", "children", "events"]
 
   # Generate properties (skip defaults and internal properties)
   for key, val in node.pairs:
     if key in skipProps:
+      continue
+    # Handle border object specially - extract borderRadius
+    if key == "border" and val.kind == JObject:
+      if val.hasKey("radius"):
+        let radius = val["radius"].getInt
+        if radius > 0:
+          result.add &"{spaces}  borderRadius = {radius}\n"
+      # TODO: Add borderWidth, borderColor if needed
       continue
     if isDefaultValue(key, val):
       continue
@@ -374,6 +380,8 @@ proc generateNimComponentWithContext(node: JsonNode, ctx: CodegenContext, indent
               handlerName = stmts[0]["var"].getStr()
           if handlerName != "":
             result.add &"{spaces}  onClick = {handlerName}\n"
+            # Register handler name for round-trip serialization
+            result.add &"{spaces}  onClickName = \"{handlerName}\"\n"
           else:
             result.add &"{spaces}  onClick = proc() =\n"
             result.add &"{spaces}    # Handler: {logicId}\n"
@@ -465,9 +473,14 @@ proc generateNimFromKir*(kirPath: string): string =
 
     # Include Nim source handlers from sources section
     if kirJson.hasKey("sources") and kirJson["sources"].hasKey("nim"):
+      let nimSource = kirJson["sources"]["nim"].getStr().replace("\t", "  ")
       nimCode.add "\n# Event Handlers (from sources.nim)\n"
-      nimCode.add kirJson["sources"]["nim"].getStr().replace("\t", "  ")
+      nimCode.add nimSource
       nimCode.add "\n\n"
+      # Register source code for round-trip serialization (escape for string literal)
+      let escapedSource = nimSource.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+      nimCode.add "# Register source code for round-trip serialization\n"
+      nimCode.add &"registerSource(\"nim\", \"{escapedSource}\")\n\n"
 
     nimCode.add generateKryonAppCode(kirJson["root"], ctx)
   else:

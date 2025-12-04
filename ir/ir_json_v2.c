@@ -151,14 +151,16 @@ static void json_serialize_style(cJSON* obj, IRStyle* style) {
         free(colorStr);
     }
 
-    // Border
-    if (style->border.width > 0) {
+    // Border (width, color, radius - any can be set independently)
+    if (style->border.width > 0 || style->border.radius > 0) {
         cJSON* border = cJSON_CreateObject();
-        cJSON_AddNumberToObject(border, "width", style->border.width);
 
-        char* colorStr = json_color_to_string(style->border.color);
-        cJSON_AddStringToObject(border, "color", colorStr);
-        free(colorStr);
+        if (style->border.width > 0) {
+            cJSON_AddNumberToObject(border, "width", style->border.width);
+            char* colorStr = json_color_to_string(style->border.color);
+            cJSON_AddStringToObject(border, "color", colorStr);
+            free(colorStr);
+        }
 
         if (style->border.radius > 0) {
             cJSON_AddNumberToObject(border, "radius", style->border.radius);
@@ -429,6 +431,12 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         json_serialize_layout(obj, component->layout);
     }
 
+    // Serialize checkbox state (stored in custom_data)
+    if (component->type == IR_COMPONENT_CHECKBOX && component->custom_data) {
+        bool is_checked = strcmp(component->custom_data, "checked") == 0;
+        cJSON_AddBoolToObject(obj, "checked", is_checked);
+    }
+
     // Serialize events (IR v2.1: with bytecode support)
     if (component->events) {
         cJSON* events = cJSON_CreateArray();
@@ -469,6 +477,22 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
             event = event->next;
         }
         cJSON_AddItemToObject(obj, "events", events);
+    }
+
+    // Serialize animations (stored in style)
+    if (component->style && component->style->animation_count > 0) {
+        IRAnimation* anim = component->style->animations[0];
+        if (anim && anim->name) {
+            char animStr[128];
+            // Format: "name(duration, iterations)" or "name(duration)"
+            if (anim->iteration_count != 1) {
+                snprintf(animStr, sizeof(animStr), "%s(%.1f, %d)",
+                         anim->name, anim->duration, anim->iteration_count);
+            } else {
+                snprintf(animStr, sizeof(animStr), "%s(%.1f)", anim->name, anim->duration);
+            }
+            cJSON_AddStringToObject(obj, "animation", animStr);
+        }
     }
 
     // Children
@@ -756,6 +780,17 @@ char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* 
         }
     }
 
+    // Add sources if present (for round-trip preservation)
+    if (manifest && manifest->source_count > 0) {
+        cJSON* sources = cJSON_CreateObject();
+        for (uint32_t i = 0; i < manifest->source_count; i++) {
+            if (manifest->sources[i].lang && manifest->sources[i].code) {
+                cJSON_AddStringToObject(sources, manifest->sources[i].lang, manifest->sources[i].code);
+            }
+        }
+        cJSON_AddItemToObject(wrapper, "sources", sources);
+    }
+
     char* jsonStr = cJSON_Print(wrapper);  // Pretty-printed JSON
     cJSON_Delete(wrapper);
 
@@ -860,6 +895,17 @@ char* ir_serialize_json_v3(IRComponent* root, IRReactiveManifest* manifest, stru
         if (manifestJson) {
             cJSON_AddItemToObject(wrapper, "reactive_manifest", manifestJson);
         }
+    }
+
+    // Add sources if present (for round-trip preservation)
+    if (manifest && manifest->source_count > 0) {
+        cJSON* sources = cJSON_CreateObject();
+        for (uint32_t i = 0; i < manifest->source_count; i++) {
+            if (manifest->sources[i].lang && manifest->sources[i].code) {
+                cJSON_AddStringToObject(sources, manifest->sources[i].lang, manifest->sources[i].code);
+            }
+        }
+        cJSON_AddItemToObject(wrapper, "sources", sources);
     }
 
     char* jsonStr = cJSON_Print(wrapper);  // Pretty-printed JSON
@@ -1269,6 +1315,43 @@ static IRComponentType ir_string_to_component_type(const char* str) {
 }
 
 /**
+ * Parse animation string and apply to component
+ * Formats: "pulse(duration, iterations)", "fadeInOut(duration, iterations)", "slideInLeft(duration)"
+ */
+static void apply_animation_from_string(IRComponent* component, const char* animSpec) {
+    if (!component || !animSpec) return;
+
+    char funcName[64] = {0};
+    float param1 = 0, param2 = 0;
+    int paramCount = 0;
+
+    // Parse "funcName(p1, p2)" or "funcName(p1)"
+    if (sscanf(animSpec, "%63[^(](%f, %f)", funcName, &param1, &param2) == 3) {
+        paramCount = 2;
+    } else if (sscanf(animSpec, "%63[^(](%f)", funcName, &param1) == 2) {
+        paramCount = 1;
+    } else {
+        return;  // Invalid format
+    }
+
+    IRAnimation* anim = NULL;
+
+    if (strcmp(funcName, "pulse") == 0) {
+        anim = ir_animation_pulse(param1);
+        if (anim && paramCount >= 2) ir_animation_set_iterations(anim, (int32_t)param2);
+    } else if (strcmp(funcName, "fadeInOut") == 0) {
+        anim = ir_animation_fade_in_out(param1);
+        if (anim && paramCount >= 2) ir_animation_set_iterations(anim, (int32_t)param2);
+    } else if (strcmp(funcName, "slideInLeft") == 0) {
+        anim = ir_animation_slide_in_left(param1);
+    }
+
+    if (anim) {
+        ir_component_add_animation(component, anim);
+    }
+}
+
+/**
  * Recursively deserialize component from JSON
  */
 static IRComponent* json_deserialize_component_recursive(cJSON* json) {
@@ -1302,6 +1385,19 @@ static IRComponent* json_deserialize_component_recursive(cJSON* json) {
     // Deserialize style and layout
     json_deserialize_style(json, component->style);
     json_deserialize_layout(json, component->layout);
+
+    // Parse animation property
+    if ((item = cJSON_GetObjectItem(json, "animation")) != NULL && cJSON_IsString(item)) {
+        apply_animation_from_string(component, item->valuestring);
+    }
+
+    // Parse checkbox state
+    if (component->type == IR_COMPONENT_CHECKBOX) {
+        if ((item = cJSON_GetObjectItem(json, "checked")) != NULL && cJSON_IsBool(item)) {
+            bool is_checked = cJSON_IsTrue(item);
+            ir_set_custom_data(component, is_checked ? "checked" : "unchecked");
+        }
+    }
 
     // Deserialize events (IR v2.1: with bytecode support)
     if ((item = cJSON_GetObjectItem(json, "events")) != NULL && cJSON_IsArray(item)) {
@@ -1411,6 +1507,12 @@ IRComponent* ir_deserialize_json_v2(const char* json_string) {
     }
 
     cJSON_Delete(root);
+
+    // Propagate animation flags after full tree construction
+    if (component) {
+        ir_animation_propagate_flags(component);
+    }
+
     return component;
 }
 

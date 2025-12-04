@@ -108,6 +108,16 @@ void ir_logic_block_add_binding(IRLogicBlock* block, IREventBinding* binding) {
     block->event_binding_count++;
 }
 
+int ir_logic_block_get_function_count(IRLogicBlock* block) {
+    if (!block) return 0;
+    return block->function_count;
+}
+
+int ir_logic_block_get_binding_count(IRLogicBlock* block) {
+    if (!block) return 0;
+    return block->event_binding_count;
+}
+
 // ============================================================================
 // MEMORY MANAGEMENT
 // ============================================================================

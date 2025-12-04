@@ -14,6 +14,8 @@ import kry_ast, kry_lexer, kry_parser, kry_to_kir
 import ../bindings/nim/ir_core
 import ../bindings/nim/ir_desktop
 import ../bindings/nim/ir_serialization  # For loading .kir files
+import ../bindings/nim/ir_logic  # Logic block bindings
+import ../bindings/nim/ir_executor  # Executor for .kir handler execution
 import ../bindings/nim/runtime  # Provides Nim bridge functions for desktop backend
 
 const
@@ -142,10 +144,25 @@ proc renderIRFile*(kirPath: string, title: string = "Kryon App",
     echo "❌ Failed to load IR: " & kirPath
     return false
 
+  # Set up executor for .kir files with logic blocks
+  var executor: ptr IRExecutorContext = nil
+  if not kirPath.endsWith(".kirb"):
+    executor = ir_executor_create()
+    if executor != nil:
+      if ir_executor_load_kir_file(executor, cstring(kirPath)):
+        ir_executor_set_global(executor)
+      else:
+        ir_executor_destroy(executor)
+        executor = nil
+
   var config = desktop_renderer_config_sdl3(width.cint, height.cint, cstring(title))
   let renderSuccess = desktop_render_ir_component(irRoot, addr config)
 
-  # Cleanup IR resources
+  # Cleanup
+  if executor != nil:
+    ir_executor_set_global(nil)
+    ir_executor_destroy(executor)
+
   ir_destroy_component(irRoot)
 
   return renderSuccess
