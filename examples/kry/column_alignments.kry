@@ -1,309 +1,87 @@
-// Column Alignments Demo
+// Column Alignments Demo - Using Object Literals
 // Demonstrates different mainAxisAlignment values for Column layouts
 
+const alignments = [
+  { name: "start (flex-start)", value: "start", gap: 15,
+    colors: ["#ef4444", "#dc2626", "#b91c1c"] },
+  { name: "center", value: "center", gap: 15,
+    colors: ["#06b6d4", "#0891b2", "#0e7490"] },
+  { name: "end (flex-end)", value: "end", gap: 15,
+    colors: ["#8b5cf6", "#7c3aed", "#6d28d9"] },
+  { name: "spaceEvenly", value: "spaceEvenly", gap: 0,
+    colors: ["#64748b", "#475569", "#334155"] },
+  { name: "spaceAround", value: "spaceAround", gap: 0,
+    colors: ["#f59e0b", "#d97706", "#b45309"] },
+  { name: "spaceBetween", value: "spaceBetween", gap: 0,
+    colors: ["#10b981", "#059669", "#047857"] }
+]
+
 App {
-    width = 1000
-    height = 800
-    title = "Column Alignments Demo"
-    background = "#f8fafc"
+  width = 1000
+  height = 800
+  title = "Column Alignments Demo"
+  background = "#f8fafc"
 
-    Row {
-        justifyContent = "start"
-        alignItems = "stretch"
-        gap = 20
-        padding = 20
-        width = 100%
-        height = 100%
+  Row {
+    justifyContent = "start"
+    alignItems = "stretch"
+    gap = 20
+    padding = 20
+    width = 100%
+    height = 100%
 
-        // Start alignment
+    static {
+      for item in alignments {
         Container {
-            width = 150
-            height = 740
-            background = "#ffffff"
-            padding = 15
+          width = 150
+          height = 740
+          background = "#ffffff"
+          padding = 15
 
-            Column {
-                justifyContent = "start"
+          Column {
+            justifyContent = "start"
+            alignItems = "center"
+            gap = 10
+
+            Text {
+              text = item.name
+              fontSize = 12
+              fontWeight = "bold"
+            }
+
+            Container {
+              width = 120
+              height = 600
+              background = "#f1f5f9"
+              padding = 8
+
+              Column {
+                justifyContent = item.value
                 alignItems = "center"
-                gap = 10
+                gap = item.gap
 
-                Text {
-                    text = "start (flex-start)"
-                    fontSize = 12
-                    fontWeight = "bold"
+                Container {
+                  width = 80
+                  height = 60
+                  background = item.colors[0]
                 }
 
                 Container {
-                    width = 120
-                    height = 600
-                    background = "#f1f5f9"
-                    padding = 8
-
-                    Column {
-                        justifyContent = "start"
-                        alignItems = "center"
-                        gap = 15
-
-                        Container {
-                            width = 80
-                            height = 60
-                            background = "#ef4444"
-                        }
-                        Container {
-                            width = 80
-                            height = 80
-                            background = "#dc2626"
-                        }
-                        Container {
-                            width = 80
-                            height = 70
-                            background = "#b91c1c"
-                        }
-                    }
-                }
-            }
-        }
-
-        // Center alignment
-        Container {
-            width = 150
-            height = 740
-            background = "#ffffff"
-            padding = 15
-
-            Column {
-                justifyContent = "start"
-                alignItems = "center"
-                gap = 10
-
-                Text {
-                    text = "center"
-                    fontSize = 12
-                    fontWeight = "bold"
+                  width = 80
+                  height = 80
+                  background = item.colors[1]
                 }
 
                 Container {
-                    width = 120
-                    height = 600
-                    background = "#f1f5f9"
-                    padding = 8
-
-                    Column {
-                        justifyContent = "center"
-                        alignItems = "center"
-                        gap = 15
-
-                        Container {
-                            width = 80
-                            height = 60
-                            background = "#06b6d4"
-                        }
-                        Container {
-                            width = 80
-                            height = 80
-                            background = "#0891b2"
-                        }
-                        Container {
-                            width = 80
-                            height = 70
-                            background = "#0e7490"
-                        }
-                    }
+                  width = 80
+                  height = 70
+                  background = item.colors[2]
                 }
+              }
             }
+          }
         }
-
-        // End alignment
-        Container {
-            width = 150
-            height = 740
-            background = "#ffffff"
-            padding = 15
-
-            Column {
-                justifyContent = "start"
-                alignItems = "center"
-                gap = 10
-
-                Text {
-                    text = "end (flex-end)"
-                    fontSize = 12
-                    fontWeight = "bold"
-                }
-
-                Container {
-                    width = 120
-                    height = 600
-                    background = "#f1f5f9"
-                    padding = 8
-
-                    Column {
-                        justifyContent = "end"
-                        alignItems = "center"
-                        gap = 15
-
-                        Container {
-                            width = 80
-                            height = 60
-                            background = "#8b5cf6"
-                        }
-                        Container {
-                            width = 80
-                            height = 80
-                            background = "#7c3aed"
-                        }
-                        Container {
-                            width = 80
-                            height = 70
-                            background = "#6d28d9"
-                        }
-                    }
-                }
-            }
-        }
-
-        // Space Evenly
-        Container {
-            width = 150
-            height = 740
-            background = "#ffffff"
-            padding = 15
-
-            Column {
-                justifyContent = "start"
-                alignItems = "center"
-                gap = 10
-
-                Text {
-                    text = "spaceEvenly"
-                    fontSize = 12
-                    fontWeight = "bold"
-                }
-
-                Container {
-                    width = 120
-                    height = 600
-                    background = "#f1f5f9"
-                    padding = 8
-
-                    Column {
-                        justifyContent = "spaceEvenly"
-                        alignItems = "center"
-
-                        Container {
-                            width = 80
-                            height = 60
-                            background = "#64748b"
-                        }
-                        Container {
-                            width = 80
-                            height = 80
-                            background = "#475569"
-                        }
-                        Container {
-                            width = 80
-                            height = 70
-                            background = "#334155"
-                        }
-                    }
-                }
-            }
-        }
-
-        // Space Around
-        Container {
-            width = 150
-            height = 740
-            background = "#ffffff"
-            padding = 15
-
-            Column {
-                justifyContent = "start"
-                alignItems = "center"
-                gap = 10
-
-                Text {
-                    text = "spaceAround"
-                    fontSize = 12
-                    fontWeight = "bold"
-                }
-
-                Container {
-                    width = 120
-                    height = 600
-                    background = "#f1f5f9"
-                    padding = 8
-
-                    Column {
-                        justifyContent = "spaceAround"
-                        alignItems = "center"
-
-                        Container {
-                            width = 80
-                            height = 60
-                            background = "#f59e0b"
-                        }
-                        Container {
-                            width = 80
-                            height = 80
-                            background = "#d97706"
-                        }
-                        Container {
-                            width = 80
-                            height = 70
-                            background = "#b45309"
-                        }
-                    }
-                }
-            }
-        }
-
-        // Space Between
-        Container {
-            width = 150
-            height = 740
-            background = "#ffffff"
-            padding = 15
-
-            Column {
-                justifyContent = "start"
-                alignItems = "center"
-                gap = 10
-
-                Text {
-                    text = "spaceBetween"
-                    fontSize = 12
-                    fontWeight = "bold"
-                }
-
-                Container {
-                    width = 120
-                    height = 600
-                    background = "#f1f5f9"
-                    padding = 8
-
-                    Column {
-                        justifyContent = "spaceBetween"
-                        alignItems = "center"
-
-                        Container {
-                            width = 80
-                            height = 60
-                            background = "#10b981"
-                        }
-                        Container {
-                            width = 80
-                            height = 80
-                            background = "#059669"
-                        }
-                        Container {
-                            width = 80
-                            height = 70
-                            background = "#047857"
-                        }
-                    }
-                }
-            }
-        }
+      }
     }
+  }
 }

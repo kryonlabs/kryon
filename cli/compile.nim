@@ -5,6 +5,7 @@
 import os, osproc, strutils, times, hashes, json, tables
 import ../bindings/nim/ir_core
 import ../bindings/nim/ir_serialization
+import kry_parser, kry_to_kir
 
 type
   CompileFormat* = enum
@@ -21,6 +22,7 @@ type
     enableOptimization*: bool
     verboseOutput*: bool
     includeManifest*: bool  # Include reactive manifest in output
+    preserveStatic*: bool  # Preserve static blocks for codegen
 
   CompilationResult* = object
     success*: bool
@@ -128,6 +130,7 @@ proc detectFrontend*(sourceFile: string): string =
   of ".nim": return "nim"
   of ".lua": return "lua"
   of ".c", ".cpp", ".cc": return "c"
+  of ".kry": return "kry"
   else: return "unknown"
 
 proc compileNimToIR*(sourceFile: string, outputFile: string, format: CompileFormat, verbose: bool): CompilationResult =
@@ -301,6 +304,48 @@ proc inspectIR*(irFile: string): JsonNode =
 
   ir_destroy_component(root)
 
+proc compileKryToIR*(sourceFile: string, outputFile: string, format: CompileFormat, verbose: bool, preserveStatic = false): CompilationResult =
+  ## Compile .kry source to Kryon IR
+  ## Set preserveStatic=true to preserve static blocks for codegen
+  result.success = false
+  result.errors = @[]
+  result.warnings = @[]
+  result.irFile = outputFile
+
+  let startTime = cpuTime()
+
+  if verbose:
+    echo "[kry] Parsing: ", sourceFile
+
+  # Read and parse .kry file
+  let source = readFile(sourceFile)
+  let ast = parseKry(source)
+
+  if verbose:
+    echo "[kry] Transpiling to KIR..."
+    if preserveStatic:
+      echo "[kry] Preserving static blocks for codegen"
+
+  # Transpile to KIR JSON
+  let kirJson = transpileToKir(ast, preserveStatic)
+
+  # Write output
+  if format == FormatJSON:
+    writeFile(outputFile, kirJson.pretty)
+  else:
+    # For binary format, write JSON first then convert
+    let tempJsonFile = outputFile.changeFileExt(".kir.tmp")
+    writeFile(tempJsonFile, kirJson.pretty)
+    # TODO: Convert to binary format
+    moveFile(tempJsonFile, outputFile.changeFileExt(".kir"))
+    result.irFile = outputFile.changeFileExt(".kir")
+
+  result.success = true
+  result.compileTime = cpuTime() - startTime
+
+  if verbose:
+    echo "[kry] Compilation completed in ", result.compileTime * 1000, " ms"
+
 proc compile*(opts: CompileOptions): CompilationResult =
   ## Main compilation entry point with caching
   result.success = false
@@ -344,6 +389,8 @@ proc compile*(opts: CompileOptions): CompilationResult =
   case frontend
   of "nim":
     result = compileNimToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput)
+  of "kry":
+    result = compileKryToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput, opts.preserveStatic)
   of "lua":
     result.errors.add("Lua frontend not yet implemented")
     return
@@ -388,7 +435,7 @@ proc handleCompileCommand*(args: seq[string]) =
   ## Handle 'kryon compile' command
   if args.len == 0:
     echo "Error: Source file required"
-    echo "Usage: kryon compile <source> [--output=<file>] [--format=binary|json] [--no-cache] [--validate]"
+    echo "Usage: kryon compile <source> [--output=<file>] [--format=binary|json] [--no-cache] [--validate] [--preserve-static]"
     return
 
   var opts = CompileOptions(
@@ -400,7 +447,8 @@ proc handleCompileCommand*(args: seq[string]) =
     enableValidation: false,
     enableOptimization: true,
     verboseOutput: false,
-    includeManifest: false
+    includeManifest: false,
+    preserveStatic: false
   )
 
   # Parse options
@@ -426,6 +474,8 @@ proc handleCompileCommand*(args: seq[string]) =
       opts.verboseOutput = true
     elif arg == "--with-manifest":
       opts.includeManifest = true
+    elif arg == "--preserve-static":
+      opts.preserveStatic = true
 
   # Default output file based on format
   if opts.outputFile.len == 0:

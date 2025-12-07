@@ -107,13 +107,37 @@ proc parsePrimary(p: var Parser): KryNode =
     discard p.lex.advanceToken()
     result = newUnaryExpr(opNeg, p.parsePrimary(), loc)
   of tkLBrace:
-    # Block expression: { statements }
-    discard p.lex.advanceToken()  # {
-    var stmts: seq[KryNode] = @[]
-    while not p.lex.check(tkRBrace) and not p.lex.check(tkEof):
-      stmts.add(p.parseExpression())
-    discard p.lex.expect(tkRBrace)
-    result = newBlockExpr(stmts, loc)
+    # Check if this is an object literal { key: value, ... } or block { stmts }
+    # Object: { ident : ... }  Block: { ident = ... } or { expr ... }
+    let nextTok = p.lex.peekToken(1)
+    let afterNext = p.lex.peekToken(2)
+
+    if nextTok.kind == tkIdent and afterNext.kind == tkColon:
+      # Object literal: { key: value, ... }
+      discard p.lex.advanceToken()  # consume {
+      var fields: seq[tuple[key: string, value: KryNode]] = @[]
+
+      while not p.lex.check(tkRBrace) and not p.lex.check(tkEof):
+        let keyTok = p.lex.expect(tkIdent)
+        discard p.lex.expect(tkColon)
+        let value = p.parseExpression()
+        fields.add((keyTok.value, value))
+
+        if p.lex.check(tkComma):
+          discard p.lex.advanceToken()
+        elif not p.lex.check(tkRBrace):
+          break
+
+      discard p.lex.expect(tkRBrace)
+      result = newObjectExpr(fields, loc)
+    else:
+      # Block expression: { statements }
+      discard p.lex.advanceToken()  # {
+      var stmts: seq[KryNode] = @[]
+      while not p.lex.check(tkRBrace) and not p.lex.check(tkEof):
+        stmts.add(p.parseExpression())
+      discard p.lex.expect(tkRBrace)
+      result = newBlockExpr(stmts, loc)
   else:
     p.error(&"Unexpected token in expression: {tok.kind} ('{tok.value}')")
 
