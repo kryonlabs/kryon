@@ -706,13 +706,29 @@ macro Button*(props: untyped): untyped =
     initStmts.add quote do:
       `registerHandlerSym`(`buttonName`, `clickHandler`)
 
-    # Register handler name for round-trip serialization if provided
+    # Register handler name and source for round-trip serialization if provided
     if clickHandlerName != nil:
       let registerRoundTripSym = bindSym("registerHandler")
+      let registerSourceSym = bindSym("registerSource")
+
+      # For named proc references, try to extract source from the file
+      var nimSourceLit: NimNode
+      if clickHandler.kind in {nnkIdent, nnkSym} and analysis.nimSource == $clickHandler:
+        # The analysis only got the name, try to extract full source from file
+        # Use the props node's lineInfo to get the caller's file (props comes from user code)
+        let callerInfo = props.lineInfoObj
+        let handlerNameStr = $clickHandler
+        let extractedSource = findProcSourceInCallerFile(callerInfo, handlerNameStr)
+        nimSourceLit = newLit(extractedSource)
+      else:
+        nimSourceLit = newLit(analysis.nimSource)
+
       initStmts.add quote do:
         # Get the logic_id that was created for this button
         let logicId = "nim_button_" & $`buttonName`.id
         `registerRoundTripSym`(uint32(`buttonName`.id), "click", logicId, `clickHandlerName`)
+        # Auto-register source for round-trip (from the actual handler definition)
+        `registerSourceSym`("nim", `nimSourceLit`)
 
   initStmts.add quote do:
     kryon_component_mark_dirty(`buttonName`)

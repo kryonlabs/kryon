@@ -1377,8 +1377,11 @@ static IRComponent* json_deserialize_component_recursive(cJSON* json) {
         component->type = ir_string_to_component_type(item->valuestring);
     }
 
-    // Text content
+    // Text content (check both "text" and "label" properties)
     if ((item = cJSON_GetObjectItem(json, "text")) != NULL && cJSON_IsString(item)) {
+        component->text_content = strdup(item->valuestring);
+    } else if ((item = cJSON_GetObjectItem(json, "label")) != NULL && cJSON_IsString(item)) {
+        // "label" is an alias for "text" (used by Checkbox, Button, etc.)
         component->text_content = strdup(item->valuestring);
     }
 

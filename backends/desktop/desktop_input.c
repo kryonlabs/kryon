@@ -496,6 +496,13 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             }
                             }  // end else if (ir_event->logic_id)
                         }  // end if (ir_event)
+                        else {
+                            // No event handler registered - handle built-in behaviors
+                            // Checkboxes should toggle on click even without a handler
+                            if (clicked->type == IR_COMPONENT_CHECKBOX) {
+                                ir_toggle_checkbox_state(clicked);
+                            }
+                        }
                     }
                 }
 

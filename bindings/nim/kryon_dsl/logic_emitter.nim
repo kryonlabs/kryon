@@ -109,6 +109,22 @@ proc analyzeHandlerBody*(body: NimNode): LogicAnalysisResult =
       else:
         discard
 
+proc isNamedProcReference*(handler: NimNode): bool =
+  ## Check if handler is a reference to a named proc (not inline lambda)
+  handler.kind in {nnkIdent, nnkSym}
+
+proc getNamedProcSource*(handler: NimNode): string =
+  ## For a named proc reference, use getImpl to get its full source
+  ## Returns the full proc definition if available, otherwise just the identifier
+  ## Note: getImpl only works on resolved symbols (nnkSym), not identifiers (nnkIdent)
+  ## For identifiers, we return just the name - the source will come from registerSource
+  if handler.kind == nnkSym:
+    let impl = handler.getImpl()
+    if impl != nil and impl.kind == nnkProcDef:
+      return impl.repr
+  # For nnkIdent or failed getImpl, return just the name
+  return handler.repr
+
 proc analyzeHandler*(handler: NimNode): LogicAnalysisResult =
   ## Analyze a full handler (proc or lambda) and extract the body analysis
 
@@ -125,6 +141,10 @@ proc analyzeHandler*(handler: NimNode): LogicAnalysisResult =
   of nnkStmtList:
     # Direct statement list
     result = analyzeHandlerBody(handler)
+  of nnkIdent, nnkSym:
+    # Named proc reference - use getImpl to get full source
+    result.nimSource = getNamedProcSource(handler)
+    result.handlerName = $handler
   else:
     # Unrecognized handler type
     result.nimSource = handler.repr
@@ -148,3 +168,77 @@ proc debugHandlerAST*(handler: NimNode): string =
   if handler.kind in {nnkLambda, nnkProcDef}:
     result &= "  Body kind: " & $handler.body.kind & "\n"
     result &= "  Body repr: " & handler.body.repr & "\n"
+
+# =============================================================================
+# Compile-time source file scanning for named proc extraction
+# =============================================================================
+
+proc extractProcSourceFromFile*(sourceFile: string, procName: string): string {.compileTime.} =
+  ## Extract the source code of a proc from a source file at compile time
+  ## Scans for "proc procName" and captures until the next proc or end of indentation
+
+  try:
+    let content = staticRead(sourceFile)
+    let lines = content.split('\n')
+
+    # Find the proc definition
+    var inProc = false
+    var procLines: seq[string] = @[]
+    var baseIndent = 0
+
+    for line in lines:
+      if not inProc:
+        # Look for proc definition: "proc procName" or "proc procName*"
+        let procPattern1 = "proc " & procName & "*"
+        let procPattern2 = "proc " & procName & "("
+        let procPattern3 = "proc " & procName & " "
+
+        if line.contains(procPattern1) or line.contains(procPattern2) or line.contains(procPattern3):
+          inProc = true
+          procLines.add(line)
+          # Calculate base indentation
+          baseIndent = 0
+          for c in line:
+            if c == ' ':
+              baseIndent += 1
+            elif c == '\t':
+              baseIndent += 4
+            else:
+              break
+      else:
+        # Check if we've left the proc (new proc, or back to base indentation with content)
+        let stripped = line.strip()
+        if stripped.len > 0:
+          # Calculate current indentation
+          var currentIndent = 0
+          for c in line:
+            if c == ' ':
+              currentIndent += 1
+            elif c == '\t':
+              currentIndent += 4
+            else:
+              break
+
+          # If we're at base indent or less and it's a new definition, stop
+          if currentIndent <= baseIndent and stripped.startsWith("proc "):
+            break
+
+          # If we're back to base indentation with content, check if it's part of the proc
+          if currentIndent <= baseIndent and not line.startsWith(" ") and not line.startsWith("\t"):
+            # Line at column 0 that's not empty - probably a new definition
+            if stripped.len > 0 and not stripped.startsWith("#"):
+              break
+
+        procLines.add(line)
+
+    if procLines.len > 0:
+      return procLines.join("\n")
+  except:
+    discard  # staticRead can fail, fallback to procName
+
+  return procName  # fallback
+
+proc findProcSourceInCallerFile*(callerInfo: LineInfo, procName: string): string {.compileTime.} =
+  ## Find the proc source in the file where the macro is being called
+  let sourceFile = $callerInfo.filename
+  return extractProcSourceFromFile(sourceFile, procName)
