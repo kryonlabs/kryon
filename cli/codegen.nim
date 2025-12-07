@@ -376,8 +376,15 @@ proc generateNimComponentWithContext(node: JsonNode, ctx: CodegenContext, indent
           var handlerName = ""
           if fn.hasKey("universal") and fn["universal"].hasKey("statements"):
             let stmts = fn["universal"]["statements"]
-            if stmts.len == 1 and stmts[0].hasKey("var"):
-              handlerName = stmts[0]["var"].getStr()
+            if stmts.len > 0:
+              let stmt = stmts[0]
+              # Check for direct var reference: {"var": "handlerName"}
+              if stmt.hasKey("var"):
+                handlerName = stmt["var"].getStr()
+              # Check for call pattern: {"op": "assign", "target": "_call", "expr": {"var": "handlerName"}}
+              elif stmt.hasKey("op") and stmt["op"].getStr() == "assign":
+                if stmt.hasKey("expr") and stmt["expr"].hasKey("var"):
+                  handlerName = stmt["expr"]["var"].getStr()
           if handlerName != "":
             result.add &"{spaces}  onClick = {handlerName}\n"
             # Register handler name for round-trip serialization
@@ -472,15 +479,12 @@ proc generateNimFromKir*(kirPath: string): string =
     # v3.0 format (without component_definitions, falls back to v2 codegen)
 
     # Include Nim source handlers from sources section
+    # The source is preserved in .kir via the onClickName property and DSL auto-registration
     if kirJson.hasKey("sources") and kirJson["sources"].hasKey("nim"):
       let nimSource = kirJson["sources"]["nim"].getStr().replace("\t", "  ")
       nimCode.add "\n# Event Handlers (from sources.nim)\n"
       nimCode.add nimSource
-      nimCode.add "\n\n"
-      # Register source code for round-trip serialization (escape for string literal)
-      let escapedSource = nimSource.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
-      nimCode.add "# Register source code for round-trip serialization\n"
-      nimCode.add &"registerSource(\"nim\", \"{escapedSource}\")\n\n"
+      nimCode.add "\n\n"  # Extra blank line before kryonApp
 
     nimCode.add generateKryonAppCode(kirJson["root"], ctx)
   else:

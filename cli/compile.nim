@@ -156,7 +156,15 @@ proc compileNimToIR*(sourceFile: string, outputFile: string, format: CompileForm
   compileCmd &= " --passC:\"-I" & projectRoot & "\""
   compileCmd &= " --passC:\"-DKRYON_TARGET_PLATFORM=0\""
   compileCmd &= " --passC:\"-DKRYON_NO_FLOAT=0\""
-  compileCmd &= " --passL:\"-Lbuild -lkryon_ir -lkryon_desktop -lSDL3 -lSDL3_ttf -lm\""
+
+  # Get SDL3 library paths via pkg-config (works with NixOS and standard installs)
+  let (sdl3Libs, sdl3Exit) = execCmdEx("pkg-config --libs sdl3 SDL3_ttf 2>/dev/null")
+  if sdl3Exit == 0 and sdl3Libs.len > 0:
+    compileCmd &= " --passL:\"-Lbuild -lkryon_ir -lkryon_desktop " & sdl3Libs.strip() & " -lm\""
+  else:
+    # Fallback: try to use LD_LIBRARY_PATH or system default
+    compileCmd &= " --passL:\"-Lbuild -L$HOME/.local/lib -lkryon_ir -lkryon_desktop -lSDL3 -lSDL3_ttf -lm\""
+
   compileCmd &= " --threads:on --mm:arc"
   compileCmd &= " --nimcache:.kryon_cache/nimcache"
   compileCmd &= " --out:" & tempExe
