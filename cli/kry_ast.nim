@@ -100,6 +100,7 @@ type
     nkExprInterp      # string interpolation ($value)
     nkExprArray       # array literal [a, b, c]
     nkExprBlock       # { statements } for handlers
+    nkExprObject      # object literal { key: value, ... }
 
   # Literal types
   LiteralKind* = enum
@@ -216,6 +217,8 @@ type
       arrayElems*: seq[KryNode]
     of nkExprBlock:
       blockStmts*: seq[KryNode]
+    of nkExprObject:
+      objectFields*: seq[tuple[key: string, value: KryNode]]
 
 # Constructor helpers
 proc newProgram*(stmts: seq[KryNode], loc = SourceLoc()): KryNode =
@@ -300,6 +303,9 @@ proc newArrayExpr*(elems: seq[KryNode], loc = SourceLoc()): KryNode =
 
 proc newBlockExpr*(stmts: seq[KryNode], loc = SourceLoc()): KryNode =
   KryNode(kind: nkExprBlock, blockStmts: stmts, loc: loc)
+
+proc newObjectExpr*(fields: seq[tuple[key: string, value: KryNode]], loc = SourceLoc()): KryNode =
+  KryNode(kind: nkExprObject, objectFields: fields, loc: loc)
 
 # Pretty printing for debugging
 proc `$`*(loc: SourceLoc): string =
@@ -414,3 +420,8 @@ proc treeRepr*(node: KryNode, indent: int = 0): string =
     result = prefix & "Block:\n"
     for stmt in node.blockStmts:
       result &= treeRepr(stmt, indent + 1)
+  of nkExprObject:
+    result = prefix & "Object:\n"
+    for (key, value) in node.objectFields:
+      result &= prefix & &"  {key}:\n"
+      result &= treeRepr(value, indent + 2)

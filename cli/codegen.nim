@@ -280,6 +280,46 @@ proc isDefaultValue(key: string, val: JsonNode): bool =
   else:
     return false
 
+# Forward declaration
+proc generateNimComponentWithContext(node: JsonNode, ctx: CodegenContext, indent: int = 0): string
+
+# Generate Nim code for a static_for template (replacing {{var.prop}} with var.prop)
+proc generateStaticTemplate(node: JsonNode, ctx: CodegenContext, loopVar: string, indent: int): string =
+  if node.kind != JObject:
+    return ""
+
+  let spaces = "  ".repeat(indent)
+  let compType = node{"type"}.getStr("Container")
+
+  result = &"{spaces}discard {compType}:\n"
+
+  let skipProps = ["id", "type", "children", "template", "loop_var", "iterable"]
+
+  for key, val in node.pairs:
+    if key in skipProps:
+      continue
+
+    var nimVal: string
+    if val.kind == JString:
+      let s = val.getStr()
+      # Check for template reference: {{item.prop}} or {{item.colors[0]}}
+      if s.startsWith("{{") and s.endsWith("}}"):
+        let inner = s[2..^3]  # Remove {{ and }}
+        nimVal = inner  # Use directly as Nim expression
+      else:
+        nimVal = "\"" & s & "\""
+    else:
+      nimVal = toNimValue(key, val)
+
+    if nimVal != "nil" and nimVal != "\"auto\"" and nimVal != "0":
+      result.add &"{spaces}  {key} = {nimVal}\n"
+
+  # Generate children
+  if node.hasKey("children") and node["children"].len > 0:
+    for child in node["children"]:
+      result.add "\n"
+      result.add generateStaticTemplate(child, ctx, loopVar, indent + 1)
+
 proc generateNimComponentWithContext(node: JsonNode, ctx: CodegenContext, indent: int = 0): string =
   ## Generate Nim DSL code from component JSON with conditional support
   if node.kind != JObject:
@@ -288,6 +328,21 @@ proc generateNimComponentWithContext(node: JsonNode, ctx: CodegenContext, indent
   let spaces = "  ".repeat(indent)
   let compType = node{"type"}.getStr("Container")
   let nodeId = node{"id"}.getInt(0)
+
+  # Handle static_for nodes
+  if compType == "static_for":
+    let loopVar = node{"loop_var"}.getStr("item")
+    let iterable = node{"iterable"}.getStr("items")
+    let tmpl = node{"template"}
+
+    result = &"{spaces}static:\n"
+    result.add &"{spaces}  for {loopVar} in {iterable}:\n"
+    if tmpl.kind == JObject:
+      result.add generateStaticTemplate(tmpl, ctx, loopVar, indent + 2)
+    elif tmpl.kind == JArray:
+      for t in tmpl:
+        result.add generateStaticTemplate(t, ctx, loopVar, indent + 2)
+    return result
 
   # Use component type directly (Row, Column, Container, etc.)
   let nimType = compType
@@ -431,6 +486,58 @@ proc generateNimComponent(node: JsonNode, indent: int = 0): string =
   )
   return generateNimComponentWithContext(node, ctx, indent)
 
+# Generate Nim const value from JSON (handles arrays, objects, primitives)
+proc generateNimConstValue(value: JsonNode, indent: int): string =
+  let spaces = "  ".repeat(indent)
+  case value.kind
+  of JString:
+    return "\"" & value.getStr() & "\""
+  of JInt:
+    return $value.getInt()
+  of JFloat:
+    return $value.getFloat()
+  of JBool:
+    return if value.getBool(): "true" else: "false"
+  of JNull:
+    return "nil"
+  of JArray:
+    if value.len == 0:
+      return "@[]"
+    # Check if it's an array of objects (for named tuples)
+    if value[0].kind == JObject:
+      result = "[\n"
+      var idx = 0
+      for elem in value:
+        result.add spaces & "  (\n"
+        for key, val in elem.pairs:
+          result.add spaces & "    " & key & ": " & generateNimConstValue(val, 0)
+          result.add ",\n"
+        result.add spaces & "  )"
+        if idx < value.len - 1:
+          result.add ","
+        result.add "\n"
+        idx.inc
+      result.add spaces & "]"
+    else:
+      # Simple array
+      result = "["
+      var first = true
+      for elem in value:
+        if not first: result.add ", "
+        first = false
+        result.add generateNimConstValue(elem, 0)
+      result.add "]"
+  of JObject:
+    # Generate named tuple
+    result = "(\n"
+    var first = true
+    for key, val in value.pairs:
+      if not first:
+        result.add ",\n"
+      first = false
+      result.add spaces & "  " & key & ": " & generateNimConstValue(val, indent + 1)
+    result.add "\n" & spaces & ")"
+
 proc generateNimFromKir*(kirPath: string): string =
   ## Generate Nim code from .kir file (v2.0 and v2.1 support)
   if not fileExists(kirPath):
@@ -477,6 +584,33 @@ proc generateNimFromKir*(kirPath: string): string =
       nimCode.add generateKryonAppCode(kirJson["root"], ctx)
   elif kirJson.hasKey("root"):
     # v3.0 format (without component_definitions, falls back to v2 codegen)
+
+    # Generate const declarations if static blocks are present and constants exist
+    if kirJson.hasKey("constants") and kirJson["constants"].len > 0:
+      # Check if there are static_for nodes in the tree (meaning we should generate consts)
+      var hasStaticFor = false
+      proc checkForStaticFor(node: JsonNode) =
+        if node.kind == JObject:
+          if node{"type"}.getStr() == "static_for":
+            hasStaticFor = true
+            return
+          if node.hasKey("children"):
+            for child in node["children"]:
+              checkForStaticFor(child)
+              if hasStaticFor: return
+      checkForStaticFor(kirJson["root"])
+
+      if hasStaticFor:
+        nimCode.add "# Constants for static loops\n"
+        for constNode in kirJson["constants"]:
+          let name = constNode["name"].getStr()
+          let value = constNode["value"]
+
+          # Generate Nim const with appropriate structure
+          nimCode.add &"const {name} = "
+          nimCode.add generateNimConstValue(value, 0)
+          nimCode.add "\n"
+        nimCode.add "\n"
 
     # Include Nim source handlers from sources section
     # The source is preserved in .kir via the onClickName property and DSL auto-registration

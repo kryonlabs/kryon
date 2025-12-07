@@ -26,8 +26,10 @@ type
     conditionals: seq[JsonNode]
     foreachLoops: seq[JsonNode]  # For reactive for loops
     sources: Table[string, string]  # Language-specific source code blocks
+    preserveStatic: bool  # If true, preserve static blocks as structured nodes for codegen
+    staticBlocks: seq[JsonNode]  # Preserved static block definitions
 
-proc newContext(): TranspilerContext =
+proc newContext(preserveStatic = false): TranspilerContext =
   TranspilerContext(
     componentDefs: initTable[string, KryNode](),
     globalStates: @[],
@@ -39,7 +41,9 @@ proc newContext(): TranspilerContext =
     reactiveVars: @[],
     conditionals: @[],
     foreachLoops: @[],
-    sources: initTable[string, string]()
+    sources: initTable[string, string](),
+    preserveStatic: preserveStatic,
+    staticBlocks: @[]
   )
 
 proc genId(ctx: var TranspilerContext): int =
@@ -140,11 +144,67 @@ proc transpileExpression(ctx: var TranspilerContext, node: KryNode): JsonNode =
       "expr": ctx.transpileExpression(node.unaryExpr)
     }
   of nkExprCall:
+    # Special case: index(array, int) - try compile-time evaluation
+    if node.callName == "index" and node.callArgs.len == 2:
+      let arrExpr = node.callArgs[0]
+      let idxExpr = node.callArgs[1]
+
+      # Try to get array value (constant or loop binding)
+      var arrValue: KryNode = nil
+      if arrExpr.kind == nkExprIdent:
+        if ctx.loopBindings.hasKey(arrExpr.identName):
+          arrValue = ctx.loopBindings[arrExpr.identName]
+        elif ctx.constants.hasKey(arrExpr.identName):
+          arrValue = ctx.constants[arrExpr.identName].value
+      elif arrExpr.kind == nkExprArray:
+        arrValue = arrExpr
+      elif arrExpr.kind == nkExprMember:
+        # Handle item.colors where item is a loop-bound object
+        if arrExpr.memberObj.kind == nkExprIdent:
+          let objName = arrExpr.memberObj.identName
+          if ctx.loopBindings.hasKey(objName):
+            let bound = ctx.loopBindings[objName]
+            if bound.kind == nkExprObject:
+              for (key, value) in bound.objectFields:
+                if key == arrExpr.memberName:
+                  arrValue = value
+                  break
+
+      # Try to get index value (loop binding or literal)
+      var idxValue: int = -1
+      var idxKnown = false
+      if idxExpr.kind == nkExprIdent:
+        if ctx.loopBindings.hasKey(idxExpr.identName):
+          let bound = ctx.loopBindings[idxExpr.identName]
+          if bound.kind == nkExprLiteral and bound.litKind == lkInt:
+            idxValue = bound.litInt.int
+            idxKnown = true
+      elif idxExpr.kind == nkExprLiteral and idxExpr.litKind == lkInt:
+        idxValue = idxExpr.litInt.int
+        idxKnown = true
+
+      # If both are known at compile time, return the element
+      if arrValue != nil and arrValue.kind == nkExprArray and idxKnown:
+        if idxValue >= 0 and idxValue < arrValue.arrayElems.len:
+          return ctx.transpileExpression(arrValue.arrayElems[idxValue])
+
+    # Fallback to runtime call
     %*{
       "call": node.callName,
       "args": node.callArgs.mapIt(ctx.transpileExpression(it))
     }
   of nkExprMember:
+    # Check if object is a loop binding (for static loop expansion)
+    if node.memberObj.kind == nkExprIdent:
+      let objName = node.memberObj.identName
+      if ctx.loopBindings.hasKey(objName):
+        let bound = ctx.loopBindings[objName]
+        # If bound to an object, resolve member at compile time
+        if bound.kind == nkExprObject:
+          for (key, value) in bound.objectFields:
+            if key == node.memberName:
+              return ctx.transpileExpression(value)
+    # Fallback to runtime member access
     %*{
       "member": node.memberName,
       "object": ctx.transpileExpression(node.memberObj)
@@ -169,6 +229,12 @@ proc transpileExpression(ctx: var TranspilerContext, node: KryNode): JsonNode =
     %*{
       "statements": node.blockStmts.mapIt(ctx.transpileExpression(it))
     }
+  of nkExprObject:
+    # Object literal { key: value, ... } → JSON object
+    var obj = newJObject()
+    for (key, value) in node.objectFields:
+      obj[key] = ctx.transpileExpression(value)
+    obj
   else:
     %(&"<unsupported: {node.kind}>")
 
@@ -347,6 +413,87 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
     let children = ctx.transpileChildren(node.componentChildren, id)
     if children.len > 0:
       result["children"] = %children
+
+# Forward declaration for transpileChildrenAsTemplate
+proc transpileChildrenAsTemplate(ctx: var TranspilerContext, children: seq[KryNode], parentId: int, loopVar: string): seq[JsonNode]
+
+# Transpile an expression as a template reference (preserving loop var references)
+proc transpileExpressionAsTemplate(ctx: var TranspilerContext, node: KryNode, loopVar: string): JsonNode =
+  if node.isNil:
+    return newJNull()
+
+  case node.kind
+  of nkExprMember:
+    # item.name → "{{item.name}}"
+    if node.memberObj.kind == nkExprIdent and node.memberObj.identName == loopVar:
+      return %(&"{{{{{loopVar}.{node.memberName}}}}}")
+    # Recurse for nested members
+    let objStr = ctx.transpileExpressionAsTemplate(node.memberObj, loopVar)
+    if objStr.kind == JString and objStr.getStr.startsWith("{{"):
+      return %(&"{objStr.getStr[0..^3]}.{node.memberName}}}}}")
+    return %*{"member": node.memberName, "object": objStr}
+
+  of nkExprIdent:
+    if node.identName == loopVar:
+      return %(&"{{{{{loopVar}}}}}")
+    return ctx.transpileExpression(node)
+
+  of nkExprCall:
+    # Handle item.colors[0] → "{{item.colors[0]}}"
+    if node.callName == "index" and node.callArgs.len == 2:
+      let arrExpr = node.callArgs[0]
+      let idxExpr = node.callArgs[1]
+
+      # Check if array is a member of loop var: item.colors
+      if arrExpr.kind == nkExprMember and arrExpr.memberObj.kind == nkExprIdent:
+        if arrExpr.memberObj.identName == loopVar:
+          if idxExpr.kind == nkExprLiteral and idxExpr.litKind == lkInt:
+            return %(&"{{{{{loopVar}.{arrExpr.memberName}[{idxExpr.litInt}]}}}}")
+
+    return ctx.transpileExpression(node)
+
+  else:
+    return ctx.transpileExpression(node)
+
+# Transpile a component as a template (preserving loop variable references)
+proc transpileComponentAsTemplate(ctx: var TranspilerContext, node: KryNode, parentId: int, loopVar: string): JsonNode =
+  let componentType = node.componentType
+  let id = ctx.genId()
+
+  result = %*{
+    "id": id,
+    "type": componentType
+  }
+
+  # Process properties, preserving loop var references
+  for name, value in node.componentProps:
+    let irName = case name.toLowerAscii
+      of "backgroundcolor": "background"
+      of "mainaxisalignment", "mainalignment", "justify": "justifyContent"
+      of "crossaxisalignment", "crossalignment", "align": "alignItems"
+      of "direction", "flexdirection": "flexDirection"
+      of "layoutdirection": "layoutDirection"
+      else: name
+
+    # Use template expression preserving loop var references
+    let templVal = ctx.transpileExpressionAsTemplate(value, loopVar)
+    result[irName] = templVal
+
+  # Process children as templates
+  if node.componentChildren.len > 0:
+    let children = ctx.transpileChildrenAsTemplate(node.componentChildren, id, loopVar)
+    if children.len > 0:
+      result["children"] = %children
+
+# Transpile children as templates (preserving loop var refs)
+proc transpileChildrenAsTemplate(ctx: var TranspilerContext, children: seq[KryNode], parentId: int, loopVar: string): seq[JsonNode] =
+  result = @[]
+  for child in children:
+    case child.kind
+    of nkComponent:
+      result.add(ctx.transpileComponentAsTemplate(child, parentId, loopVar))
+    else:
+      discard
 
 # Transpile children inside a static block (compile-time evaluation)
 # All for loops are expanded, conditionals evaluated if possible
@@ -546,9 +693,37 @@ proc transpileChildren(ctx: var TranspilerContext, children: seq[KryNode], paren
         })
 
     of nkStaticBlock:
-      # Static block: process contents with compile-time evaluation
-      # All for loops and conditionals inside are expanded at compile time
-      result.add(ctx.transpileStaticChildren(child.staticBody, parentId))
+      if ctx.preserveStatic:
+        # Preserve static block structure for codegen
+        for bodyNode in child.staticBody:
+          if bodyNode.kind == nkForLoop:
+            # Get iterable name
+            var iterableName = ""
+            if bodyNode.loopExpr.kind == nkExprIdent:
+              iterableName = bodyNode.loopExpr.identName
+
+            # Transpile template without expanding (create placeholder refs)
+            var templateNodes: seq[JsonNode] = @[]
+            for loopChild in bodyNode.loopBody:
+              if loopChild.kind == nkComponent:
+                # Transpile with loop var as template reference
+                let tmpl = ctx.transpileComponentAsTemplate(loopChild, parentId, bodyNode.loopVar)
+                templateNodes.add(tmpl)
+
+            # Emit as static_for node (will be a marker in children)
+            result.add(%*{
+              "type": "static_for",
+              "id": ctx.genId(),
+              "loop_var": bodyNode.loopVar,
+              "iterable": iterableName,
+              "template": if templateNodes.len == 1: templateNodes[0] else: %templateNodes
+            })
+          else:
+            # Non-loop content in static - just expand
+            result.add(ctx.transpileStaticChildren(@[bodyNode], parentId))
+      else:
+        # Normal mode: expand static blocks at compile time
+        result.add(ctx.transpileStaticChildren(child.staticBody, parentId))
 
     else:
       discard
@@ -625,13 +800,13 @@ proc transpileAppBlock(ctx: var TranspilerContext, node: KryNode): JsonNode =
     case item.kind
     of nkProperty:
       case item.propName
-      of "windowWidth", "window_width":
+      of "width", "windowWidth", "window_width":
         if item.propValue.kind == nkExprLiteral and item.propValue.litKind == lkInt:
           appWidth = item.propValue.litInt.int
-      of "windowHeight", "window_height":
+      of "height", "windowHeight", "window_height":
         if item.propValue.kind == nkExprLiteral and item.propValue.litKind == lkInt:
           appHeight = item.propValue.litInt.int
-      of "windowTitle", "window_title":
+      of "title", "windowTitle", "window_title":
         if item.propValue.kind == nkExprLiteral and item.propValue.litKind == lkString:
           appTitle = item.propValue.litString
       of "backgroundColor", "background_color", "background":
@@ -665,8 +840,9 @@ proc transpileAppBlock(ctx: var TranspilerContext, node: KryNode): JsonNode =
     result["children"] = %ctx.transpileChildren(children, rootId)
 
 # Main transpile function
-proc transpileToKir*(ast: KryNode): JsonNode =
-  var ctx = newContext()
+# Set preserveStatic=true to preserve static block structure for codegen
+proc transpileToKir*(ast: KryNode, preserveStatic = false): JsonNode =
+  var ctx = newContext(preserveStatic)
 
   # First pass: collect component definitions and global state
   for stmt in ast.statements:

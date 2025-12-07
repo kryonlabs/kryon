@@ -2,7 +2,7 @@
 ## This is the NEW runtime that uses ONLY the IR system
 ## NO LEGACY CODE - everything uses IR
 
-import ir_core, ir_desktop, ir_serialization, ir_logic, os, strutils, tables, math, parseutils
+import ir_core, ir_desktop, ir_serialization, ir_logic, os, strutils, tables, math, parseutils, json
 import style_vars
 
 # Import reactive system for compatibility
@@ -804,6 +804,19 @@ proc initRenderer*(width, height: int; title: string): KryonRenderer =
   # For now, return nil as placeholder (not used in IR architecture)
   result = nil
 
+proc addWindowPropertiesToKir*(filename: string, window: KryonWindow) =
+  ## Post-process a serialized KIR file to add window properties
+  try:
+    let content = readFile(filename)
+    var kirJson = parseJson(content)
+    # Add window properties at root level
+    kirJson["windowTitle"] = %window.title
+    kirJson["windowWidth"] = %($window.width & ".0px")
+    kirJson["windowHeight"] = %($window.height & ".0px")
+    writeFile(filename, $kirJson)
+  except:
+    echo "[IR] Warning: Failed to add window properties to KIR file"
+
 proc run*(app: KryonApp) =
   ## Run the IR-based Kryon application
   if app.root.isNil:
@@ -876,6 +889,7 @@ proc run*(app: KryonApp) =
     # Write JSON v3.0 if we have handlers, otherwise v2.1
     if logicBlock != nil:
       if ir_write_json_v3_file(app.root, manifest, logicBlock, cstring(serializeTarget)):
+        addWindowPropertiesToKir(serializeTarget, app.window)
         echo "✓ IR serialized successfully (JSON v3.0 with logic block, ", manifest.source_count, " sources)"
         ir_logic_block_free(logicBlock)
         ir_reactive_manifest_destroy(manifest)
@@ -889,6 +903,7 @@ proc run*(app: KryonApp) =
                             manifest.conditional_count > 0 or manifest.for_loop_count > 0 or
                             manifest.source_count > 0):
       if ir_write_json_v2_with_manifest_file(app.root, manifest, cstring(serializeTarget)):
+        addWindowPropertiesToKir(serializeTarget, app.window)
         echo "✓ IR serialized successfully (JSON v2.1 with ", manifest.component_def_count, " components, ", manifest.variable_count, " reactive vars, ", manifest.source_count, " sources)"
         ir_reactive_manifest_destroy(manifest)
         quit(0)
@@ -901,6 +916,7 @@ proc run*(app: KryonApp) =
       if manifest != nil:
         ir_reactive_manifest_destroy(manifest)
       if ir_write_json_file(app.root, cstring(serializeTarget)):
+        addWindowPropertiesToKir(serializeTarget, app.window)
         echo "✓ IR serialized successfully (JSON v2.0)"
         quit(0)
       else:
@@ -936,6 +952,7 @@ proc run*(app: KryonApp) =
   if hasLogic:
     # Use JSON v3.0 with logic block (includes handlers for .kir execution)
     if ir_write_json_v3_file(app.root, manifest, logicBlock.handle, cstring(kirPath)):
+      addWindowPropertiesToKir(kirPath, app.window)
       echo "[IR] Saved JSON v3.0 IR with logic block (", logicBlock.functionCount, " handlers): ", kirPath
     else:
       echo "[IR] Warning: Failed to save JSON v3.0 IR"
@@ -944,6 +961,7 @@ proc run*(app: KryonApp) =
   elif hasReactiveState:
     # Save JSON v2.1 with reactive manifest and component definitions
     if ir_write_json_v2_with_manifest_file(app.root, manifest, cstring(kirPath)):
+      addWindowPropertiesToKir(kirPath, app.window)
       echo "[IR] Saved JSON v2.1 IR with ", manifest.component_def_count, " components, ", manifest.variable_count, " reactive variables: ", kirPath
     else:
       echo "[IR] Warning: Failed to save JSON v2.1 IR"
@@ -953,6 +971,7 @@ proc run*(app: KryonApp) =
     if manifest != nil:
       ir_reactive_manifest_destroy(manifest)
     if ir_write_json_file(app.root, cstring(kirPath)):
+      addWindowPropertiesToKir(kirPath, app.window)
       echo "[IR] Saved JSON v2.0 IR: ", kirPath
     else:
       echo "[IR] Warning: Failed to save JSON IR"

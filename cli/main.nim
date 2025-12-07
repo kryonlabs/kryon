@@ -520,11 +520,41 @@ end
       echo "🌐 Web rendering not yet implemented for .kir files"
       quit(1)
 
+    # Extract window properties from KIR root (only for .kir JSON files)
+    var windowTitle = "Kryon App"
+    var windowWidth = 800
+    var windowHeight = 600
+    if frontend == ".kir":
+      try:
+        let kirJson = parseFile(file)
+        # Handle both formats: with "root" wrapper (.kry) and without (Nim)
+        let root = if kirJson.hasKey("root"): kirJson["root"] else: kirJson
+        # Check for windowTitle at kirJson level first (Nim serialization), then root
+        if kirJson.hasKey("windowTitle"):
+          windowTitle = kirJson["windowTitle"].getStr("Kryon App")
+        elif root.hasKey("windowTitle"):
+          windowTitle = root["windowTitle"].getStr("Kryon App")
+        # Check for windowWidth/windowHeight at kirJson level first, then fall back to width/height
+        if kirJson.hasKey("windowWidth"):
+          let wStr = kirJson["windowWidth"].getStr("800.0px")
+          windowWidth = parseInt(wStr.replace(".0px", "").replace("px", ""))
+        elif root.hasKey("width"):
+          let wStr = root["width"].getStr("800.0px")
+          windowWidth = parseInt(wStr.replace(".0px", "").replace("px", ""))
+        if kirJson.hasKey("windowHeight"):
+          let hStr = kirJson["windowHeight"].getStr("600.0px")
+          windowHeight = parseInt(hStr.replace(".0px", "").replace("px", ""))
+        elif root.hasKey("height"):
+          let hStr = root["height"].getStr("600.0px")
+          windowHeight = parseInt(hStr.replace(".0px", "").replace("px", ""))
+      except:
+        discard  # Use defaults if parsing fails
+
     # Render via unified IR pipeline
     let renderer = getEnv("KRYON_RENDERER", "sdl3")
     echo "🎨 Rendering with " & renderer & " backend..."
 
-    let renderSuccess = renderIRFile(file)
+    let renderSuccess = renderIRFile(file, windowTitle, windowWidth, windowHeight)
 
     if not renderSuccess:
       echo "❌ Rendering failed"
@@ -551,18 +581,34 @@ end
 
     # Parse .kry -> .kir
     echo "  → Parsing to KIR..."
+    var kirJson: JsonNode
     try:
       let source = readFile(file)
       let ast = parseKry(source, file)
-      let kirJson = transpileToKir(ast)
+      kirJson = transpileToKir(ast)
       writeFile(tempKir, $kirJson)
     except:
       echo "❌ Failed to parse .kry file: " & getCurrentExceptionMsg()
       quit(1)
 
+    # Extract window properties from KIR root
+    var windowTitle = "Kryon App"
+    var windowWidth = 800
+    var windowHeight = 600
+    if kirJson.hasKey("root"):
+      let root = kirJson["root"]
+      if root.hasKey("windowTitle"):
+        windowTitle = root["windowTitle"].getStr("Kryon App")
+      if root.hasKey("width"):
+        let wStr = root["width"].getStr("800.0px")
+        windowWidth = parseInt(wStr.replace(".0px", "").replace("px", ""))
+      if root.hasKey("height"):
+        let hStr = root["height"].getStr("600.0px")
+        windowHeight = parseInt(hStr.replace(".0px", "").replace("px", ""))
+
     # Render via unified IR pipeline
     echo "  → Rendering..."
-    let renderSuccess = renderIRFile(tempKir)
+    let renderSuccess = renderIRFile(tempKir, windowTitle, windowWidth, windowHeight)
 
     if not renderSuccess:
       echo "❌ Rendering failed"
