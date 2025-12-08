@@ -950,8 +950,20 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
         }
 
         case IR_COMPONENT_MARKDOWN:
-            // Markdown rendering now handled by plugin
-            // TODO: Add plugin rendering hook
+            // Generic plugin component - dispatch to registered component renderer
+            // No hardcoding of plugin names - routing based on component type
+            {
+                IRPluginBackendContext plugin_ctx = {
+                    .renderer = renderer->renderer,
+                    .font = renderer->default_font,
+                    .user_data = NULL
+                };
+                if (!ir_plugin_dispatch_component_render(&plugin_ctx, component->type, component,
+                                                         rect.x, rect.y, rect.width, rect.height)) {
+                    // No plugin renderer registered - silently ignore or warn
+                    // This allows graceful degradation if plugin is not installed
+                }
+            }
             break;
 
         default:
