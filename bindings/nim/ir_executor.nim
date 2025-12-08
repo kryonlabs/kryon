@@ -27,6 +27,9 @@ proc ir_executor_set_manifest*(ctx: ptr IRExecutorContext, manifest: ptr IRReact
 proc ir_executor_set_root*(ctx: ptr IRExecutorContext, root: ptr IRComponent)
   {.importc, dynlib: irLib, header: irHeader.}
 
+proc ir_executor_apply_initial_conditionals*(ctx: ptr IRExecutorContext)
+  {.importc, dynlib: irLib, header: irHeader.}
+
 proc ir_executor_add_source*(ctx: ptr IRExecutorContext, lang: cstring, code: cstring)
   {.importc, dynlib: irLib, header: irHeader.}
 

@@ -245,6 +245,11 @@
 bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, LayoutRect rect, float inherited_opacity) {
     if (!renderer || !component || !renderer->renderer) return false;
 
+    // Skip rendering if component is not visible
+    if (component->style && !component->style->visible) {
+        return true;  // Successfully "rendered" by not drawing
+    }
+
     // Cache rendered bounds for hit testing
     ir_set_rendered_bounds(component, rect.x, rect.y, rect.width, rect.height);
 
@@ -944,13 +949,10 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             break;
         }
 
-        case IR_COMPONENT_MARKDOWN: {
-            // Parse and render markdown content with full formatting
-            if (component->text_content && renderer->default_font) {
-                render_markdown_content(renderer, component, rect);
-            }
+        case IR_COMPONENT_MARKDOWN:
+            // Markdown rendering now handled by plugin
+            // TODO: Add plugin rendering hook
             break;
-        }
 
         default:
             SDL_RenderFillRect(renderer->renderer, &sdl_rect);
@@ -1420,6 +1422,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
         for (uint32_t i = 0; i < component->child_count; i++) {
             IRComponent* child = abs_children[i].child;
             if (!child) continue;
+            // Skip invisible children
+            if (child->style && !child->style->visible) continue;
             LayoutRect abs_layout = calculate_component_layout(child, rect);
             render_component_sdl3(renderer, child, abs_layout, child_opacity);
         }
@@ -1438,6 +1442,12 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
     for (uint32_t i = 0; i < component->child_count; i++) {
         IRComponent* child = component->children[i];
+
+        // Skip invisible children entirely - don't render AND don't take up space
+        if (child && child->style && !child->style->visible) {
+            continue;
+        }
+
         // Get child size WITHOUT recursive layout (just from style)
         LayoutRect child_layout = get_child_size(child, child_rect);
 

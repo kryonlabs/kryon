@@ -947,6 +947,58 @@ proc registerNamedReactiveVar*[T](name: string, rv: ReactiveVar[T]) =
   namedReactiveVars[name] = entry
   echo "[kryon][reactive] Registered named reactive var: ", name
 
+# Register a plain variable with the reactive system for IR export
+# This is used when conditionals reference plain bool/int variables
+proc registerPlainVar*[T](name: string, valuePtr: ptr T, initialValue: T) =
+  ## Register a plain variable by name so it can be exported to manifest
+  ## The valuePtr is a pointer to the actual variable for reading its current value
+
+  # Skip if already registered
+  if name in namedReactiveVars:
+    return
+
+  var varType: IRReactiveVarType
+  var getValue: proc(): IRReactiveValue {.closure.}
+  var initialStr: string
+
+  when T is int:
+    varType = IR_REACTIVE_TYPE_INT
+    getValue = proc(): IRReactiveValue {.closure.} =
+      result.as_int = int32(valuePtr[])
+    initialStr = $initialValue
+  elif T is float or T is float32 or T is float64:
+    varType = IR_REACTIVE_TYPE_FLOAT
+    getValue = proc(): IRReactiveValue {.closure.} =
+      result.as_float = float64(valuePtr[])
+    initialStr = $initialValue
+  elif T is string:
+    varType = IR_REACTIVE_TYPE_STRING
+    getValue = proc(): IRReactiveValue {.closure.} =
+      result.as_string = cstring(valuePtr[])
+    initialStr = "\"" & initialValue & "\""
+  elif T is bool:
+    varType = IR_REACTIVE_TYPE_BOOL
+    getValue = proc(): IRReactiveValue {.closure.} =
+      result.as_bool = valuePtr[]
+    initialStr = if initialValue: "true" else: "false"
+  else:
+    varType = IR_REACTIVE_TYPE_CUSTOM
+    getValue = proc(): IRReactiveValue {.closure.} =
+      result.as_string = cstring($valuePtr[])
+    initialStr = $initialValue
+
+  let entry = ReactiveVarEntry(
+    name: name,
+    varType: varType,
+    getValue: getValue,
+    componentBindings: @[],
+    scope: "global",
+    initialExpr: initialStr
+  )
+
+  namedReactiveVars[name] = entry
+  echo "[kryon][reactive] Registered plain var: ", name, " = ", initialStr
+
 # Export all reactive state to an IR manifest
 proc exportReactiveManifest*(): ptr IRReactiveManifest =
   ## Export all registered reactive state to an IRReactiveManifest

@@ -7,7 +7,7 @@ import os, osproc, strutils, parseopt, times, json
 import std/[sequtils, sugar]
 
 # CLI modules
-import project, build, device, compile, diff, inspect, config, codegen
+import project, build, device, compile, diff, inspect, config, codegen, plugin_manager
 import kry_ast, kry_lexer, kry_parser, kry_to_kir
 
 # IR and backend bindings (for orchestration)
@@ -45,6 +45,7 @@ COMMANDS:
   inspect-detailed <file>  Detailed IR analysis with stats
   tree <file>         Show component tree structure
   diff <file1> <file2>  Compare two IR files
+  plugin <cmd>        Manage plugins (add, remove, list, update, info)
   add-backend <name>  Integrate new renderer backend
   doctor              Diagnose environment issues
 
@@ -151,6 +152,10 @@ proc renderIRFile*(kirPath: string, title: string = "Kryon App",
     if executor != nil:
       if ir_executor_load_kir_file(executor, cstring(kirPath)):
         ir_executor_set_global(executor)
+        # Set the root component so conditionals can update visibility
+        ir_executor_set_root(executor, irRoot)
+        # Apply initial conditionals based on initial variable values
+        ir_executor_apply_initial_conditionals(executor)
       else:
         ir_executor_destroy(executor)
         executor = nil
@@ -1280,6 +1285,8 @@ proc main*() =
     handleTreeCommand(commandArgs)
   of "diff":
     handleDiffCommand(commandArgs)
+  of "plugin":
+    handlePluginCommand(commandArgs)
   of "doctor":
     handleDoctorCommand()
   of "add-backend":

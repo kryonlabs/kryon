@@ -74,6 +74,10 @@ void ir_executor_set_manifest(IRExecutorContext* ctx, IRReactiveManifest* manife
 // Set root component for tree traversal
 void ir_executor_set_root(IRExecutorContext* ctx, IRComponent* root);
 
+// Apply initial conditional visibility based on current variable values
+// Call this after setting the root and loading the manifest
+void ir_executor_apply_initial_conditionals(IRExecutorContext* ctx);
+
 // Add source code for a language (from .kir "sources" section)
 void ir_executor_add_source(IRExecutorContext* ctx, const char* lang, const char* code);
 

@@ -1100,6 +1100,25 @@ macro Container*(props: untyped): untyped =
     # Capture condition expression as string for serialization
     let condExprStr = newLit(repr(conditionExpr))
 
+    # Extract identifiers from condition expression to register as reactive vars
+    # This handles plain variables like `if showMessage:`
+    proc extractIdents(node: NimNode): seq[NimNode] =
+      result = @[]
+      if node.kind == nnkIdent:
+        result.add(node)
+      else:
+        for child in node:
+          result.add(extractIdents(child))
+
+    let condIdents = extractIdents(conditionExpr)
+
+    # Register each identifier as a plain variable (at runtime)
+    for identNode in condIdents:
+      let identName = newLit($identNode)
+      initStmts.add quote do:
+        # Register the plain variable with the reactive system
+        registerPlainVar(`identName`, addr `identNode`, `identNode`)
+
     # Generate condition and then procs as lambda expressions
     initStmts.add quote do:
       let `condProc` = proc(): bool {.closure.} = `conditionExpr`

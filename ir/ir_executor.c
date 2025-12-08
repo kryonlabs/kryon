@@ -1,12 +1,31 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ir_executor.h"
 #include "ir_expression.h"
+#include "ir_core.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
 // Forward declarations
 void ir_executor_set_var(IRExecutorContext* ctx, const char* name, int64_t value, uint32_t instance_id);
+static void ir_executor_update_conditionals(IRExecutorContext* ctx);
+
+// ============================================================================
+// RUNTIME CONDITIONALS
+// ============================================================================
+
+#define IR_EXECUTOR_MAX_CONDITIONALS 32
+
+typedef struct {
+    IRExpression* condition;        // Parsed condition expression
+    uint32_t* then_ids;             // Component IDs to show when true
+    uint32_t then_count;
+    uint32_t* else_ids;             // Component IDs to show when false
+    uint32_t else_count;
+} IRRuntimeConditional;
+
+static IRRuntimeConditional g_conditionals[IR_EXECUTOR_MAX_CONDITIONALS];
+static int g_conditional_count = 0;
 
 // ============================================================================
 // GLOBAL STATE
@@ -114,10 +133,17 @@ void ir_executor_set_root(IRExecutorContext* ctx, IRComponent* root) {
         bool is_new_root = (ctx->root != root);
         ctx->root = root;
         // Initialize variables from Text components (only on first call)
-        if (root && is_new_root && ctx->var_count == 0) {
+        // Note: Always initialize on new root, don't check var_count
+        if (root && is_new_root) {
             init_vars_from_text_recursive(ctx, root);
         }
     }
+}
+
+void ir_executor_apply_initial_conditionals(IRExecutorContext* ctx) {
+    if (!ctx || !ctx->root) return;
+    printf("[executor] Applying initial conditionals (%d total)\n", g_conditional_count);
+    ir_executor_update_conditionals(ctx);
 }
 
 void ir_executor_add_source(IRExecutorContext* ctx, const char* lang, const char* code) {
@@ -477,6 +503,114 @@ bool ir_executor_load_kir_file(IRExecutorContext* ctx, const char* kir_path) {
         }
     }
 
+    // Parse reactive_manifest
+    cJSON* manifest = cJSON_GetObjectItem(root, "reactive_manifest");
+    if (manifest) {
+        // Parse variables - initialize them
+        cJSON* variables = cJSON_GetObjectItem(manifest, "variables");
+        if (variables && cJSON_IsArray(variables)) {
+            cJSON* varObj;
+            cJSON_ArrayForEach(varObj, variables) {
+                cJSON* nameJ = cJSON_GetObjectItem(varObj, "name");
+                cJSON* initialJ = cJSON_GetObjectItem(varObj, "initial_value");
+
+                if (nameJ && cJSON_IsString(nameJ)) {
+                    const char* name = nameJ->valuestring;
+                    int64_t initial = 0;
+
+                    // Parse initial value
+                    if (initialJ) {
+                        if (cJSON_IsNumber(initialJ)) {
+                            initial = (int64_t)initialJ->valuedouble;
+                        } else if (cJSON_IsString(initialJ)) {
+                            // Handle "true"/"false" or numeric strings
+                            const char* str = initialJ->valuestring;
+                            if (strcmp(str, "true") == 0) {
+                                initial = 1;
+                            } else if (strcmp(str, "false") == 0) {
+                                initial = 0;
+                            } else {
+                                initial = atoll(str);
+                            }
+                        } else if (cJSON_IsBool(initialJ)) {
+                            initial = cJSON_IsTrue(initialJ) ? 1 : 0;
+                        }
+                    }
+
+                    // Don't call ir_executor_set_var here as it triggers update_conditionals
+                    // and we haven't parsed conditionals yet. Directly add the variable.
+                    if (ctx->var_count < IR_EXECUTOR_MAX_VARS) {
+                        ctx->vars[ctx->var_count].name = strdup(name);
+                        ctx->vars[ctx->var_count].value = initial;
+                        ctx->vars[ctx->var_count].owner_component_id = 0;  // global
+                        ctx->var_count++;
+                        printf("[executor] Initialized var %s = %ld from manifest\n", name, (long)initial);
+                    }
+                }
+            }
+        }
+
+        // Parse conditionals
+        cJSON* conditionals = cJSON_GetObjectItem(manifest, "conditionals");
+        if (conditionals && cJSON_IsArray(conditionals)) {
+            g_conditional_count = 0;  // Reset
+
+            cJSON* condObj;
+            cJSON_ArrayForEach(condObj, conditionals) {
+                if (g_conditional_count >= IR_EXECUTOR_MAX_CONDITIONALS) break;
+
+                IRRuntimeConditional* cond = &g_conditionals[g_conditional_count];
+                memset(cond, 0, sizeof(IRRuntimeConditional));
+
+                // Parse condition expression
+                cJSON* condExpr = cJSON_GetObjectItem(condObj, "condition");
+                if (condExpr) {
+                    cond->condition = ir_expr_from_json(condExpr);
+                    if (cond->condition) {
+                        printf("[executor] Parsed conditional expression\n");
+                    }
+                }
+
+                // Parse then_children_ids
+                cJSON* thenIds = cJSON_GetObjectItem(condObj, "then_children_ids");
+                if (thenIds && cJSON_IsArray(thenIds)) {
+                    int count = cJSON_GetArraySize(thenIds);
+                    if (count > 0) {
+                        cond->then_ids = (uint32_t*)malloc(count * sizeof(uint32_t));
+                        cond->then_count = count;
+                        for (int i = 0; i < count; i++) {
+                            cJSON* item = cJSON_GetArrayItem(thenIds, i);
+                            if (cJSON_IsNumber(item)) {
+                                cond->then_ids[i] = (uint32_t)item->valuedouble;
+                            }
+                        }
+                        printf("[executor] Conditional has %d then_children\n", count);
+                    }
+                }
+
+                // Parse else_children_ids
+                cJSON* elseIds = cJSON_GetObjectItem(condObj, "else_children_ids");
+                if (elseIds && cJSON_IsArray(elseIds)) {
+                    int count = cJSON_GetArraySize(elseIds);
+                    if (count > 0) {
+                        cond->else_ids = (uint32_t*)malloc(count * sizeof(uint32_t));
+                        cond->else_count = count;
+                        for (int i = 0; i < count; i++) {
+                            cJSON* item = cJSON_GetArrayItem(elseIds, i);
+                            if (cJSON_IsNumber(item)) {
+                                cond->else_ids[i] = (uint32_t)item->valuedouble;
+                            }
+                        }
+                        printf("[executor] Conditional has %d else_children\n", count);
+                    }
+                }
+
+                g_conditional_count++;
+            }
+            printf("[executor] Loaded %d conditionals from manifest\n", g_conditional_count);
+        }
+    }
+
     cJSON_Delete(root);
     return true;
 }
@@ -509,6 +643,8 @@ void ir_executor_set_var(IRExecutorContext* ctx, const char* name, int64_t value
             ctx->vars[i].name && strcmp(ctx->vars[i].name, name) == 0) {
             ctx->vars[i].value = value;
             printf("[executor] Set var %s (instance %u) = %ld\n", name, instance_id, (long)value);
+            // Update conditionals after variable change
+            ir_executor_update_conditionals(ctx);
             return;
         }
     }
@@ -520,6 +656,58 @@ void ir_executor_set_var(IRExecutorContext* ctx, const char* name, int64_t value
         ctx->vars[ctx->var_count].owner_component_id = instance_id;
         ctx->var_count++;
         printf("[executor] Created var %s (instance %u) = %ld\n", name, instance_id, (long)value);
+        // Update conditionals after variable creation
+        ir_executor_update_conditionals(ctx);
+    }
+}
+
+// ============================================================================
+// CONDITIONAL UPDATES
+// ============================================================================
+
+// Forward declaration of eval_expr (defined below)
+static int64_t eval_expr(IRExecutorContext* ctx, IRExpression* expr, uint32_t instance_id);
+
+static void ir_executor_update_conditionals(IRExecutorContext* ctx) {
+    if (!ctx || !ctx->root) return;
+
+    for (int i = 0; i < g_conditional_count; i++) {
+        IRRuntimeConditional* cond = &g_conditionals[i];
+        if (!cond->condition) continue;
+
+        // Evaluate the condition
+        int64_t result = eval_expr(ctx, cond->condition, 0);
+        bool show_then = result != 0;
+
+        printf("[executor] Conditional %d: result=%ld, show_then=%d\n", i, (long)result, show_then);
+
+        // Update visibility of then_children
+        for (uint32_t j = 0; j < cond->then_count; j++) {
+            IRComponent* comp = find_component_by_id(ctx->root, cond->then_ids[j]);
+            if (comp && comp->style) {
+                bool old_visible = comp->style->visible;
+                comp->style->visible = show_then;
+                printf("[executor] Set component %u visible=%d (then)\n", cond->then_ids[j], show_then);
+                // Mark parent for re-layout if visibility changed
+                if (old_visible != show_then && comp->parent) {
+                    ir_layout_mark_dirty(comp->parent);
+                }
+            }
+        }
+
+        // Update visibility of else_children
+        for (uint32_t j = 0; j < cond->else_count; j++) {
+            IRComponent* comp = find_component_by_id(ctx->root, cond->else_ids[j]);
+            if (comp && comp->style) {
+                bool old_visible = comp->style->visible;
+                comp->style->visible = !show_then;
+                printf("[executor] Set component %u visible=%d (else)\n", cond->else_ids[j], !show_then);
+                // Mark parent for re-layout if visibility changed
+                if (old_visible != !show_then && comp->parent) {
+                    ir_layout_mark_dirty(comp->parent);
+                }
+            }
+        }
     }
 }
 

@@ -1379,44 +1379,6 @@ macro Spacer*(props: untyped): untyped =
       let `spacerName` = newKryonSpacer()
       `spacerName`
 
-macro Markdown*(props: untyped): untyped =
-  ## Markdown component macro for rich text formatting
-  ## Creates an IR_COMPONENT_MARKDOWN that will be rendered by the backend
-  var
-    markdownName = genSym(nskLet, "markdown")
-    sourceVal: NimNode = newStrLitNode("")
-    widthVal: NimNode = newIntLitNode(0)
-    heightVal: NimNode = newIntLitNode(0)
-
-  # Extract properties from props
-  for node in props.children:
-    if node.kind == nnkAsgn:
-      let identName = node[0]
-      let value = node[1]
-
-      case $identName
-      of "source":
-        sourceVal = value
-      of "width":
-        widthVal = value
-      of "height":
-        heightVal = value
-      else:
-        # Unknown properties ignored for now (file, theme, scrollable, onLinkClick, etc.)
-        # Backend will handle all markdown rendering
-        discard
-
-  # Generate IR component creation code
-  result = quote do:
-    block:
-      let `markdownName` = newKryonMarkdown(`sourceVal`)
-      # Apply width/height if specified
-      if `widthVal` > 0:
-        `markdownName`.setWidth(`widthVal`)
-      if `heightVal` > 0:
-        `markdownName`.setHeight(`heightVal`)
-      `markdownName`
-
 # ============================================================================
 # Tabs
 # ============================================================================

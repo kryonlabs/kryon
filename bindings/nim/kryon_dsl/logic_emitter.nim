@@ -73,8 +73,13 @@ proc analyzeHandlerBody*(body: NimNode): LogicAnalysisResult =
         return
 
       # value = !value → toggle
-      if value.kind == nnkPrefix and $value[0] == "not":
-        if value[1].kind == nnkIdent and $value[1] == target:
+      # Handle both `not value` and `(not value)` patterns
+      var notExpr = value
+      # Unwrap parentheses if present
+      if value.kind == nnkPar and value.len == 1:
+        notExpr = value[0]
+      if notExpr.kind == nnkPrefix and $notExpr[0] == "not":
+        if notExpr[1].kind == nnkIdent and $notExpr[1] == target:
           result.isUniversal = true
           result.targetVar = target
           result.operation = "toggle"
