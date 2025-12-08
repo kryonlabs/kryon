@@ -33,10 +33,10 @@ else
     CFLAGS += -DDISABLE_SDL3
 endif
 
-# Source files (modular architecture - 10 modules + plugins)
+# Source files (modular architecture - 9 modules + plugins)
 DESKTOP_SOURCES = ir_desktop_renderer.c desktop_globals.c \
                   desktop_fonts.c desktop_effects.c desktop_layout.c \
-                  desktop_markdown.c desktop_input.c desktop_rendering.c \
+                  desktop_input.c desktop_rendering.c \
                   debug_backend.c canvas.c \
                   $(PLUGIN_DIR)/canvas/canvas_plugin.c \
                   $(PLUGIN_DIR)/tilemap/tilemap_plugin.c
@@ -63,7 +63,7 @@ $(BUILD_DIR):
 # Object files list
 DESKTOP_OBJS = ir_desktop_renderer.o desktop_globals.o \
                desktop_fonts.o desktop_effects.o desktop_layout.o \
-               desktop_markdown.o desktop_input.o desktop_rendering.o \
+               desktop_input.o desktop_rendering.o \
                debug_backend.o canvas.o canvas_plugin.o tilemap_plugin.o
 
 # Dependency files (auto-generated)

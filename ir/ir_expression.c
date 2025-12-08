@@ -790,9 +790,12 @@ IRExpression* ir_expr_from_json(cJSON* json) {
                 );
             }
 
-            // Unary operators
+            // Unary operators - check both "operand" and "expr" field names
             cJSON* operand = cJSON_GetObjectItem(json, "operand");
-            if (operand) {
+            if (!operand) {
+                operand = cJSON_GetObjectItem(json, "expr");  // Also accept "expr" for backwards compat
+            }
+            if (operand && !cJSON_GetObjectItem(json, "left")) {  // Make sure it's not a binary op
                 IRUnaryOp unary_op = string_to_unary_op(op_str);
                 return ir_expr_unary(unary_op, ir_expr_from_json(operand));
             }

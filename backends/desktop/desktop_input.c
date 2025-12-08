@@ -556,24 +556,8 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                 break;
 
             case SDL_EVENT_MOUSE_WHEEL: {
-                // Apply scroll to markdown components under the cursor
-                if (renderer->last_root) {
-                    float mouse_x = (float)event.wheel.mouse_x;
-                    float mouse_y = (float)event.wheel.mouse_y;
-                    IRComponent* target = ir_find_component_at_point(renderer->last_root, mouse_x, mouse_y);
-                    if (target && target->type == IR_COMPONENT_MARKDOWN) {
-                        MarkdownScrollState* state = get_markdown_scroll_state(target->id);
-                        if (state) {
-                            float max_scroll = state->content_height - target->rendered_bounds.height;
-                            if (max_scroll < 0.0f) max_scroll = 0.0f;
-                            // SDL wheel y: positive away from user (scroll up), negative towards (down)
-                            float delta = -(float)event.wheel.y * 40.0f;
-                            state->scroll_offset += delta;
-                            if (state->scroll_offset < 0.0f) state->scroll_offset = 0.0f;
-                            if (state->scroll_offset > max_scroll) state->scroll_offset = max_scroll;
-                        }
-                    }
-                }
+                // Mouse wheel scrolling (now handled by plugins for custom components)
+                // TODO: Add generic scrollable container support
                 break;
             }
 

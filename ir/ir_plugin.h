@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,6 +35,34 @@ extern "C" {
  * @param cmd Command structure containing plugin data
  */
 typedef void (*IRPluginHandler)(void* backend_ctx, const void* cmd);
+
+// ============================================================================
+// Plugin Metadata
+// ============================================================================
+
+#define IR_PLUGIN_NAME_MAX 64
+#define IR_PLUGIN_VERSION_MAX 32
+#define IR_PLUGIN_DESC_MAX 256
+
+typedef struct {
+    char name[IR_PLUGIN_NAME_MAX];              // Plugin name (e.g., "markdown", "canvas")
+    char version[IR_PLUGIN_VERSION_MAX];        // Plugin version (e.g., "1.0.0")
+    char description[IR_PLUGIN_DESC_MAX];       // Short description
+    char kryon_version_min[IR_PLUGIN_VERSION_MAX]; // Minimum Kryon version required
+    uint32_t command_id_start;                  // First command ID
+    uint32_t command_id_end;                    // Last command ID (inclusive)
+    const char** required_capabilities;         // NULL-terminated array of required backend capabilities
+    uint32_t capability_count;                  // Number of required capabilities
+} IRPluginMetadata;
+
+/**
+ * Plugin information structure (returned by query functions)
+ */
+typedef struct {
+    IRPluginMetadata metadata;
+    bool is_loaded;                             // Whether plugin is currently loaded
+    uint32_t handler_count;                     // Number of registered handlers
+} IRPluginInfo;
 
 // ============================================================================
 // Plugin Registration
@@ -62,6 +91,62 @@ void ir_plugin_unregister_handler(uint32_t command_id);
  * @return true if handler is registered, false otherwise
  */
 bool ir_plugin_has_handler(uint32_t command_id);
+
+/**
+ * Register a plugin with metadata.
+ * This is the recommended way to register plugins (instead of registering handlers individually).
+ *
+ * @param metadata Plugin metadata structure
+ * @return true on success, false on error (version incompatible, command ID conflict, etc.)
+ */
+bool ir_plugin_register(const IRPluginMetadata* metadata);
+
+/**
+ * Unregister a plugin by name.
+ * Unregisters all handlers associated with the plugin.
+ *
+ * @param plugin_name Name of plugin to unregister
+ * @return true if plugin was found and unregistered, false otherwise
+ */
+bool ir_plugin_unregister(const char* plugin_name);
+
+/**
+ * Get information about a registered plugin.
+ *
+ * @param plugin_name Name of plugin
+ * @param info Output plugin info structure
+ * @return true if plugin found, false otherwise
+ */
+bool ir_plugin_get_info(const char* plugin_name, IRPluginInfo* info);
+
+/**
+ * List all registered plugins.
+ *
+ * @param infos Output array of plugin info structures
+ * @param max_count Maximum number of plugins to return
+ * @return Number of plugins returned
+ */
+uint32_t ir_plugin_list_all(IRPluginInfo* infos, uint32_t max_count);
+
+/**
+ * Check if a command ID range conflicts with existing plugins.
+ *
+ * @param start_id First command ID
+ * @param end_id Last command ID (inclusive)
+ * @param conflicting_plugin Output buffer for conflicting plugin name (if any)
+ * @param buffer_size Size of conflicting_plugin buffer
+ * @return true if conflict detected, false if range is available
+ */
+bool ir_plugin_check_command_conflict(uint32_t start_id, uint32_t end_id,
+                                      char* conflicting_plugin, size_t buffer_size);
+
+/**
+ * Check if a plugin version is compatible with current Kryon version.
+ *
+ * @param required_version Minimum Kryon version required (e.g., "0.3.0")
+ * @return true if compatible, false otherwise
+ */
+bool ir_plugin_check_version_compat(const char* required_version);
 
 // ============================================================================
 // Plugin Dispatch

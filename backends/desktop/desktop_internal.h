@@ -98,36 +98,6 @@ typedef struct LayoutRect {
     float x, y, width, height;
 } LayoutRect;
 
-// Markdown token for parsing
-typedef struct {
-    char* text;
-    size_t length;
-    bool bold;
-    bool italic;
-    bool code;
-    int header_level;  // 0 for regular text, 1-6 for headers
-    bool is_list_item;
-    bool is_ordered;
-    int order_index;
-    int list_level;
-    bool is_code_block;
-    bool ends_line;
-} MarkdownToken;
-
-// Markdown token collection
-typedef struct {
-    MarkdownToken* tokens;
-    size_t count;
-    size_t capacity;
-} MarkdownTokens;
-
-// Markdown scroll state
-typedef struct {
-    uint32_t component_id;
-    float scroll_offset;
-    float content_height;
-} MarkdownScrollState;
-
 // Text input runtime state
 typedef struct {
     uint32_t id;
@@ -167,10 +137,6 @@ extern char g_default_font_path[512];
 // Text texture cache
 extern TextTextureCache g_text_texture_cache[TEXT_TEXTURE_CACHE_SIZE];
 extern TextCacheHashBucket g_text_cache_hash_table[TEXT_CACHE_HASH_SIZE];
-
-// Markdown scroll states
-extern MarkdownScrollState markdown_scroll_states[32];
-extern size_t markdown_scroll_state_count;
 
 // Input states
 extern InputRuntimeState input_states[64];
@@ -256,38 +222,13 @@ LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect);
 float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_height);
 
 // ============================================================================
-// MARKDOWN RENDERING (desktop_markdown.c)
+// INPUT HANDLING (desktop_input.c)
 // ============================================================================
 
-// Scroll state management
-MarkdownScrollState* get_markdown_scroll_state(uint32_t component_id);
-
-// Buffer utilities
+// Input utilities
 void ensure_caret_visible(DesktopIRRenderer* renderer, IRComponent* input,
                           InputRuntimeState* istate, TTF_Font* font,
                           float pad_left, float pad_right);
-bool append_to_buffer(char** buffer, size_t* len, size_t* cap,
-                      const char* text, size_t text_len, bool add_newline);
-
-// Token management
-MarkdownTokens* create_markdown_tokens(void);
-void add_markdown_token(MarkdownTokens* tokens, const char* text, size_t length,
-                       bool bold, bool italic, bool code, int header_level,
-                       bool is_list_item, bool is_ordered, int order_index,
-                       int list_level, bool is_code_block, bool ends_line);
-void free_markdown_tokens(MarkdownTokens* tokens);
-
-// Inline parsing
-void add_inline_segments(MarkdownTokens* tokens, const char* text, size_t len,
-                        bool is_list_item, bool is_ordered, int order_index, int list_level);
-
-// Markdown parsing and rendering
-MarkdownTokens* parse_markdown(const char* content);
-void render_markdown_content(DesktopIRRenderer* renderer, IRComponent* component, LayoutRect rect);
-
-// ============================================================================
-// INPUT HANDLING (desktop_input.c)
-// ============================================================================
 
 // Input state management
 InputRuntimeState* get_input_state(uint32_t id);

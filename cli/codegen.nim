@@ -1,5 +1,9 @@
 import json, strformat, os, strutils, tables, sets
 
+# Forward declarations
+proc generateNimExpression*(expr: JsonNode): string
+proc generateNimStatement*(stmt: JsonNode): string
+
 # =============================================================================
 # Helper: Extract window configuration from root component
 # =============================================================================
@@ -367,21 +371,35 @@ proc generateNimComponentWithContext(node: JsonNode, ctx: CodegenContext, indent
   for key, val in node.pairs:
     if key in skipProps:
       continue
-    # Handle border object specially - extract borderRadius
+    # Handle border object specially - extract borderRadius, borderWidth, borderColor
     if key == "border" and val.kind == JObject:
       if val.hasKey("radius"):
         let radius = val["radius"].getInt
         if radius > 0:
           result.add &"{spaces}  borderRadius = {radius}\n"
-      # TODO: Add borderWidth, borderColor if needed
+      if val.hasKey("width"):
+        let bwidth = val["width"].getInt
+        if bwidth > 0:
+          result.add &"{spaces}  borderWidth = {bwidth}\n"
+      if val.hasKey("color"):
+        let bcolor = val["color"].getStr
+        if bcolor != "" and bcolor != "#00000000":
+          result.add &"{spaces}  borderColor = \"{bcolor}\"\n"
       continue
     if isDefaultValue(key, val):
       continue
+
+    # Map KIR property names to Nim DSL names
+    let nimKey = case key
+      of "left": "posX"
+      of "top": "posY"
+      else: key
+
     let nimVal = toNimValue(key, val)
     # selectedIndex=0 is a valid value (means first option selected), don't skip it
-    let allowZero = key == "selectedIndex"
+    let allowZero = nimKey == "selectedIndex"
     if nimVal != "nil" and nimVal != "\"auto\"" and (nimVal != "0" or allowZero):
-      result.add &"{spaces}  {key} = {nimVal}\n"
+      result.add &"{spaces}  {nimKey} = {nimVal}\n"
 
   # Generate children with conditional handling
   if node.hasKey("children") and node["children"].len > 0:
@@ -458,9 +476,16 @@ proc generateNimComponentWithContext(node: JsonNode, ctx: CodegenContext, indent
             # Register handler name for round-trip serialization
             result.add &"{spaces}  onClickName = \"{handlerName}\"\n"
           else:
+            # Generate inline handler from universal statements
             result.add &"{spaces}  onClick = proc() =\n"
             result.add &"{spaces}    # Handler: {logicId}\n"
-            result.add &"{spaces}    discard\n"
+            var hasStatements = false
+            for stmt in fn["universal"]["statements"]:
+              let nimStmt = generateNimStatement(stmt)
+              result.add &"{spaces}    {nimStmt}\n"
+              hasStatements = true
+            if not hasStatements:
+              result.add &"{spaces}    discard\n"
         else:
           result.add &"{spaces}  onClick = proc() =\n"
           result.add &"{spaces}    # TODO: Implement click handler\n"
@@ -598,6 +623,26 @@ proc generateNimFromKir*(kirPath: string): string =
   elif kirJson.hasKey("root"):
     # v3.0 format (without component_definitions, falls back to v2 codegen)
 
+    # Generate reactive variables from manifest if present
+    if kirJson.hasKey("reactive_manifest"):
+      let manifest = kirJson["reactive_manifest"]
+      if manifest.hasKey("variables") and manifest["variables"].len > 0:
+        nimCode.add "# Reactive State\n"
+        for varNode in manifest["variables"]:
+          let varName = varNode["name"].getStr()
+          let varType = varNode{"type"}.getStr("any")
+          let initialValue = varNode{"initial_value"}.getStr("0")
+
+          # Map type to appropriate Nim literal
+          let nimInitVal = case varType
+            of "string": "\"" & initialValue & "\""
+            of "int", "float": initialValue
+            of "bool": initialValue
+            else: initialValue
+
+          nimCode.add &"var {varName} = {nimInitVal}\n"
+        nimCode.add "\n"
+
     # Generate const declarations if static blocks are present and constants exist
     if kirJson.hasKey("constants") and kirJson["constants"].len > 0:
       # Check if there are static_for nodes in the tree (meaning we should generate consts)
@@ -661,7 +706,7 @@ proc generateNimExpression*(expr: JsonNode): string =
   # Variable reference: {"var": "name"}
   if expr.hasKey("var"):
     let varName = expr["var"].getStr()
-    return varName & ".value"
+    return varName
 
   # Binary operations: {"op": "add", "left": ..., "right": ...}
   let op = expr{"op"}.getStr("")
@@ -683,8 +728,9 @@ proc generateNimExpression*(expr: JsonNode): string =
     let right = generateNimExpression(expr["right"])
     return &"({left} div {right})"
   of "not":
-    let operand = generateNimExpression(expr["operand"])
-    return &"(not {operand})"
+    # Check both "operand" and "expr" field names
+    let operand = if expr.hasKey("operand"): expr["operand"] else: expr["expr"]
+    return &"(not {generateNimExpression(operand)})"
   else:
     return "nil"
 
@@ -695,7 +741,7 @@ proc generateNimStatement*(stmt: JsonNode): string =
   of "assign":
     let target = stmt["target"].getStr()
     let expr = generateNimExpression(stmt["expr"])
-    return &"{target}.value = {expr}"
+    return &"{target} = {expr}"
   else:
     return "# Unknown statement: " & $stmt
 

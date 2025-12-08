@@ -47,14 +47,6 @@ TextTextureCache g_text_texture_cache[TEXT_TEXTURE_CACHE_SIZE];
 TextCacheHashBucket g_text_cache_hash_table[TEXT_CACHE_HASH_SIZE];
 
 // ============================================================================
-// MARKDOWN STATE
-// ============================================================================
-
-// Scroll state for markdown components (max 32 markdown components)
-MarkdownScrollState markdown_scroll_states[32];
-size_t markdown_scroll_state_count = 0;
-
-// ============================================================================
 // INPUT STATE
 // ============================================================================
 
