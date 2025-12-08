@@ -34,7 +34,8 @@ NC='\033[0m' # No Color
 # Ensure build directories exist
 mkdir -p build/ir build/nim
 
-export LD_LIBRARY_PATH="$HOME/.local/lib:$LD_LIBRARY_PATH"
+# Prioritize local build directory, then installed libraries
+export LD_LIBRARY_PATH="$SCRIPT_DIR/build:$HOME/.local/lib:$LD_LIBRARY_PATH"
 
 # Build examples array
 EXAMPLES=()

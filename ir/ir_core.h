@@ -650,6 +650,7 @@ typedef struct IRComponent {
     char* custom_data;       // For custom components
     char* component_ref;     // For component references (e.g., "Counter")
     char* component_props;   // JSON string of props passed to component instance
+    uint32_t owner_instance_id;        // ID of owning component instance (for state isolation)
     IRRenderedBounds rendered_bounds;  // Cached layout bounds
     IRLayoutCache layout_cache;        // Performance cache for layout
     uint32_t dirty_flags;              // Dirty tracking for incremental updates

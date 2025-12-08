@@ -18,6 +18,14 @@ typedef struct {
 } IRExecutorSource;
 
 #define IR_EXECUTOR_MAX_SOURCES 8
+#define IR_EXECUTOR_MAX_VARS 64
+
+// Simple variable storage for runtime state
+typedef struct {
+    char* name;
+    int64_t value;
+    uint32_t owner_component_id;  // 0 = global, or component instance ID
+} IRExecutorVar;
 
 // Executor context - ties together logic, sources, and component tree
 typedef struct IRExecutorContext {
@@ -28,6 +36,13 @@ typedef struct IRExecutorContext {
     // Embedded source code from "sources" section
     IRExecutorSource sources[IR_EXECUTOR_MAX_SOURCES];
     int source_count;
+
+    // Runtime variable storage
+    IRExecutorVar vars[IR_EXECUTOR_MAX_VARS];
+    int var_count;
+
+    // Current execution context (which component instance we're executing for)
+    uint32_t current_instance_id;
 
     // Event metadata for current handler execution
     struct {
@@ -75,6 +90,11 @@ bool ir_executor_handle_event(IRExecutorContext* ctx,
                                uint32_t component_id,
                                const char* event_type);
 
+// Handle an event by logic_id directly (used when component IDs have been remapped)
+bool ir_executor_handle_event_by_logic_id(IRExecutorContext* ctx,
+                                           uint32_t component_id,
+                                           const char* logic_id);
+
 // Execute a handler function by name
 bool ir_executor_call_handler(IRExecutorContext* ctx, const char* handler_name);
 
@@ -92,5 +112,25 @@ void ir_executor_set_global(IRExecutorContext* ctx);
 
 // Load logic block and sources from a .kir file
 bool ir_executor_load_kir_file(IRExecutorContext* ctx, const char* kir_path);
+
+// ============================================================================
+// VARIABLE MANAGEMENT
+// ============================================================================
+
+// Get a variable's value (returns 0 if not found)
+int64_t ir_executor_get_var(IRExecutorContext* ctx, const char* name, uint32_t instance_id);
+
+// Set a variable's value (creates if doesn't exist)
+void ir_executor_set_var(IRExecutorContext* ctx, const char* name, int64_t value, uint32_t instance_id);
+
+// ============================================================================
+// UNIVERSAL LOGIC EXECUTION
+// ============================================================================
+
+// Execute universal statements for a handler
+bool ir_executor_run_universal(IRExecutorContext* ctx, IRLogicFunction* func, uint32_t instance_id);
+
+// Update Text components after state change (refreshes {{var}} expressions)
+void ir_executor_update_text_components(IRExecutorContext* ctx);
 
 #endif // IR_EXECUTOR_H

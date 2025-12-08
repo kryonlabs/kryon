@@ -179,7 +179,9 @@ macro kryonComponent*(procDef: untyped): untyped =
   var stateVarsSeq = newNimNode(nnkBracket)
   for name, info in reactiveVars:
     let nameLit = newLit(name)
-    let initExprLit = newLit(repr(info.initialValue))
+    # Format initialExpr as JSON var reference: {"var":"propName"}
+    let initExprStr = repr(info.initialValue)
+    let initExprLit = newLit("{\"var\":\"" & initExprStr & "\"}")
     stateVarsSeq.add quote do:
       ComponentStateVar(name: `nameLit`, varType: "any", initialExpr: `initExprLit`)
 

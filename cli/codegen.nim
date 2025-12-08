@@ -163,6 +163,17 @@ proc toNimValue(key: string, val: JsonNode): string =
     return (if val.getBool: "true" else: "false")
   of JNull:
     return "nil"
+  of JArray:
+    # Handle arrays like options = ["Red", "Green", "Blue"]
+    if val.len == 0:
+      return "@[]"
+    var items: seq[string] = @[]
+    for item in val:
+      if item.kind == JString:
+        items.add("\"" & item.getStr() & "\"")
+      else:
+        items.add($item)
+    return "@[" & items.join(", ") & "]"
   else:
     return "nil"
 
@@ -291,7 +302,7 @@ proc generateStaticTemplate(node: JsonNode, ctx: CodegenContext, loopVar: string
   let spaces = "  ".repeat(indent)
   let compType = node{"type"}.getStr("Container")
 
-  result = &"{spaces}discard {compType}:\n"
+  result = &"{spaces}{compType}:\n"
 
   let skipProps = ["id", "type", "children", "template", "loop_var", "iterable"]
 
@@ -367,7 +378,9 @@ proc generateNimComponentWithContext(node: JsonNode, ctx: CodegenContext, indent
     if isDefaultValue(key, val):
       continue
     let nimVal = toNimValue(key, val)
-    if nimVal != "nil" and nimVal != "\"auto\"" and nimVal != "0":
+    # selectedIndex=0 is a valid value (means first option selected), don't skip it
+    let allowZero = key == "selectedIndex"
+    if nimVal != "nil" and nimVal != "\"auto\"" and (nimVal != "0" or allowZero):
       result.add &"{spaces}  {key} = {nimVal}\n"
 
   # Generate children with conditional handling
@@ -460,7 +473,7 @@ proc generateKryonAppCode(root: JsonNode, ctx: CodegenContext): string =
   # Get background color from root
   let bg = root{"background"}.getStr("#1e1e1e")
 
-  result = "discard kryonApp:\n"
+  result = "let app = kryonApp:\n"
   result.add "  Header:\n"
   result.add &"    windowWidth = {width}\n"
   result.add &"    windowHeight = {height}\n"
@@ -737,18 +750,68 @@ proc lookupHandlerForEvent(bindings: JsonNode, componentId: int): string =
   ## Look up handler name for a component ID from event_bindings
   for binding in bindings:
     if binding["component_id"].getInt() == componentId:
-      let handler = binding["handler"].getStr()
-      # Extract local name: "Button:value_decrement" -> "decrement"
-      let parts = handler.split(":")
-      if parts.len > 1:
-        let operation = parts[^1]  # "value_decrement"
-        if "_" in operation:
-          return operation.split("_")[^1]  # "decrement"
-        return operation
-      return handler.replace(":", "_")
+      return binding["handler"].getStr()
   return ""
 
-proc generateNimDslTree(node: JsonNode, bindings: JsonNode, indentLevel: int): string =
+proc universalLogicToNimProc(logic: JsonNode, handlerName: string): string =
+  ## Convert universal logic back to inline Nim proc expression
+  ## e.g., {"op": "assign", "target": "value", "expr": {"op": "sub", "left": {"var": "value"}, "right": 1}}
+  ## -> "proc() = value -= 1"
+  if logic.isNil or not logic.hasKey("functions"):
+    return ""
+
+  let functions = logic["functions"]
+  if not functions.hasKey(handlerName):
+    return ""
+
+  let funcDef = functions[handlerName]
+  if not funcDef.hasKey("universal"):
+    return ""
+
+  let universal = funcDef["universal"]
+  if not universal.hasKey("statements") or universal["statements"].len == 0:
+    return ""
+
+  # Convert statements to Nim code
+  var stmts: seq[string] = @[]
+  for stmt in universal["statements"]:
+    if stmt{"op"}.getStr() == "assign":
+      let target = stmt["target"].getStr()
+      let expr = stmt["expr"]
+
+      # Check if it's a simple increment/decrement
+      if expr{"op"}.getStr() == "add":
+        let left = expr{"left"}
+        let right = expr{"right"}
+        if not left.isNil and left.hasKey("var") and left["var"].getStr() == target:
+          if right.kind == JInt and right.getInt() == 1:
+            stmts.add &"{target} += 1"
+            continue
+          elif right.kind == JInt:
+            stmts.add &"{target} += {right.getInt()}"
+            continue
+      elif expr{"op"}.getStr() == "sub":
+        let left = expr{"left"}
+        let right = expr{"right"}
+        if not left.isNil and left.hasKey("var") and left["var"].getStr() == target:
+          if right.kind == JInt and right.getInt() == 1:
+            stmts.add &"{target} -= 1"
+            continue
+          elif right.kind == JInt:
+            stmts.add &"{target} -= {right.getInt()}"
+            continue
+
+      # Generic assignment
+      stmts.add &"{target} = ..."  # Fallback
+
+  if stmts.len == 0:
+    return ""
+  elif stmts.len == 1:
+    return "proc() = " & stmts[0]
+  else:
+    return "proc() =\n      " & stmts.join("\n      ")
+
+proc generateNimDslTree(node: JsonNode, bindings: JsonNode, logic: JsonNode, indentLevel: int): string =
   ## Generate Nim DSL tree from template node
   if node.kind != JObject:
     return ""
@@ -762,9 +825,40 @@ proc generateNimDslTree(node: JsonNode, bindings: JsonNode, indentLevel: int): s
   result = &"{spaces}{compType}:\n"
 
   # Track which properties to output (skip internal/structural ones)
-  let skipProps = ["id", "type", "children", "events", "component_ref",
-                    "minWidth", "minHeight", "maxWidth", "maxHeight",
-                    "flexShrink", "direction", "flexDirection", "border"]
+  var skipProps = @["id", "type", "children", "events", "component_ref",
+                     "minWidth", "minHeight", "maxWidth", "maxHeight",
+                     "flexShrink", "direction", "flexDirection", "border",
+                     "dropdown_state"]  # Handle dropdown_state specially below
+
+  # For Dropdown components, also skip top-level dropdown properties (handled specially)
+  if compType == "Dropdown":
+    skipProps.add("options")
+    skipProps.add("placeholder")
+    skipProps.add("selectedIndex")
+
+  # Handle dropdown properties (can be nested in dropdown_state or at top level)
+  let isDropdown = compType == "Dropdown"
+  if isDropdown:
+    # Try nested dropdown_state first, then fall back to top-level
+    let dropdownState = if node.hasKey("dropdown_state"): node["dropdown_state"] else: node
+
+    # Placeholder
+    if dropdownState.hasKey("placeholder"):
+      let placeholder = dropdownState["placeholder"].getStr()
+      result.add &"{spaces}  placeholder = \"{placeholder}\"\n"
+
+    # Options
+    if dropdownState.hasKey("options") and dropdownState["options"].kind == JArray:
+      var optionStrings: seq[string] = @[]
+      for opt in dropdownState["options"]:
+        optionStrings.add "\"" & opt.getStr() & "\""
+      result.add &"{spaces}  options = @[{optionStrings.join(\", \")}]\n"
+
+    # Selected index
+    if dropdownState.hasKey("selectedIndex"):
+      let selectedIndex = dropdownState["selectedIndex"].getInt()
+      if selectedIndex >= 0:  # Only emit if a selection is made
+        result.add &"{spaces}  selectedIndex = {selectedIndex}\n"
 
   # Generate properties
   for key, val in node.pairs:
@@ -801,17 +895,19 @@ proc generateNimDslTree(node: JsonNode, bindings: JsonNode, indentLevel: int): s
     let nimExpr = expr.replace("{{", "$").replace("}}", "")
     result.add &"{spaces}  text = {nimExpr}\n"
 
-  # Handle events
+  # Handle events - convert universal logic to inline proc
   if node.hasKey("events"):
     let nodeId = node{"id"}.getInt(0)
-    let handler = lookupHandlerForEvent(bindings, nodeId)
-    if handler != "":
-      result.add &"{spaces}  onClick = {handler}\n"
+    let handlerName = lookupHandlerForEvent(bindings, nodeId)
+    if handlerName != "":
+      let nimProc = universalLogicToNimProc(logic, handlerName)
+      if nimProc != "":
+        result.add &"{spaces}  onClick = {nimProc}\n"
 
   # Generate children
   if node.hasKey("children"):
     for child in node["children"]:
-      result.add generateNimDslTree(child, bindings, indentLevel + 1)
+      result.add generateNimDslTree(child, bindings, logic, indentLevel + 1)
 
 proc generateComponentProc(compDef: JsonNode, logic: JsonNode): string =
   ## Generate a component proc definition
@@ -820,7 +916,7 @@ proc generateComponentProc(compDef: JsonNode, logic: JsonNode): string =
   let state = compDef{"state"}
   let tmpl = compDef{"template"}
 
-  # Generate proc signature
+  # Generate proc signature with kryonComponent pragma for reactive state tracking
   result = &"proc {name}*(initialValue: int = 0): Element {{.kryonComponent.}} =\n"
 
   # Generate state variables
@@ -852,7 +948,7 @@ proc generateComponentProc(compDef: JsonNode, logic: JsonNode): string =
                      logic["event_bindings"]
                    else:
                      newJArray()
-    let tree = generateNimDslTree(tmpl, bindings, 2)
+    let tree = generateNimDslTree(tmpl, bindings, logic, 2)
     # Remove leading indentation from first line since we have "result = "
     let lines = tree.split("\n")
     if lines.len > 0:
@@ -863,39 +959,78 @@ proc generateComponentProc(compDef: JsonNode, logic: JsonNode): string =
   else:
     result.add "Row:\n    discard\n"
 
-proc generateKryonApp(root: JsonNode): string =
-  ## Generate the kryonApp block
+proc generateKryonApp(root: JsonNode, componentDefs: JsonNode = nil): string =
+  ## Generate the kryonApp block with support for custom components
   let width = root{"width"}.getStr("800px").replace(".0px", "").replace("px", "")
   let height = root{"height"}.getStr("600px").replace(".0px", "").replace("px", "")
   let bg = root{"background"}.getStr("#1e1e1e")
+
+  # Build set of custom component names
+  var customComponents: HashSet[string]
+  if not componentDefs.isNil:
+    for def in componentDefs:
+      customComponents.incl(def["name"].getStr())
+
+  # Helper to generate body content recursively
+  proc generateBodyContent(node: JsonNode, indent: int): string =
+    let nodeType = node{"type"}.getStr("Container")
+    let spaces = "  ".repeat(indent)
+
+    # Check if this is a custom component
+    if nodeType in customComponents:
+      # Generate function call: Counter(initialValue = 10)
+      var args: seq[string]
+      if node.hasKey("initialValue"):
+        let val = node["initialValue"]
+        if val.kind == JInt:
+          args.add(&"initialValue = {val.getInt()}")
+        elif val.kind == JString:
+          args.add(&"initialValue = {val.getStr()}")
+      if args.len > 0:
+        result = &"{spaces}{nodeType}({args.join(\", \")})\n"
+      else:
+        result = &"{spaces}{nodeType}()\n"
+    else:
+      # Generate DSL block for built-in component
+      result = &"{spaces}{nodeType}:\n"
+
+      # Skip internal/structural properties
+      let skipProps = ["id", "type", "children", "events"]
+
+      # Generate properties
+      for key, val in node.pairs:
+        if key in skipProps:
+          continue
+        if isDefaultValue(key, val):
+          continue
+        let nimVal = toNimValue(key, val)
+        # selectedIndex=0 is a valid value, don't skip it
+        let allowZero = key == "selectedIndex"
+        if nimVal != "nil" and nimVal != "\"auto\"" and (nimVal != "0" or allowZero):
+          result.add &"{spaces}  {key} = {nimVal}\n"
+
+      # Generate children recursively
+      if node.hasKey("children") and node["children"].len > 0:
+        for child in node["children"]:
+          result.add "\n"
+          result.add generateBodyContent(child, indent + 1)
+
+  let title = root{"windowTitle"}.getStr("Untitled")
 
   result = "let app = kryonApp:\n"
   result.add "  Header:\n"
   result.add &"    windowWidth = {width}\n"
   result.add &"    windowHeight = {height}\n"
-  result.add "    windowTitle = \"Generated App\"\n"
+  result.add &"    windowTitle = \"{title}\"\n"
   result.add "\n"
   result.add "  Body:\n"
   result.add &"    backgroundColor = \"{bg}\"\n"
-  result.add "\n"
 
-  # Find the inner Column that contains component instances
+  # Generate body content
   if root.hasKey("children"):
     for child in root["children"]:
-      if child.hasKey("children"):
-        for inner in child["children"]:
-          if inner.hasKey("component"):
-            let compName = inner["component"].getStr()
-            let props = inner{"props"}
-            if not props.isNil and props.hasKey("initialValue"):
-              let initVal = props["initialValue"].getInt(0)
-              result.add &"    {compName}({initVal})\n"
-            else:
-              result.add &"    {compName}()\n"
-          else:
-            # Regular element - generate DSL
-            result.add "    Column:\n"
-            result.add "      discard\n"
+      result.add "\n"
+      result.add generateBodyContent(child, 2)
 
 proc generateNimFromKirV3*(kirPath: string): string =
   ## Generate Nim code from .kir v2.1/v3.0 file with component definitions
@@ -932,7 +1067,8 @@ proc generateNimFromKirV3*(kirPath: string): string =
   nimCode.add "# =============================================================================\n\n"
 
   if kirJson.hasKey("root"):
-    nimCode.add generateKryonApp(kirJson["root"])
+    let componentDefs = if kirJson.hasKey("component_definitions"): kirJson["component_definitions"] else: nil
+    nimCode.add generateKryonApp(kirJson["root"], componentDefs)
 
   return nimCode
 
