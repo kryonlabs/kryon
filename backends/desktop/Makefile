@@ -87,9 +87,24 @@ tilemap_plugin.o: $(PLUGIN_DIR)/tilemap/tilemap_plugin.c
 $(DESKTOP_STATIC_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)
 	$(AR) $(ARFLAGS) $@ $(DESKTOP_OBJS)
 
+# External plugin paths (optional - use weak linking)
+MARKDOWN_PLUGIN_DIR = $(HOME)/Projects/kryon-plugin-markdown
+MARKDOWN_PLUGIN_LIB = $(MARKDOWN_PLUGIN_DIR)/build/libkryon_markdown.a
+
+# Check if markdown plugin exists
+MARKDOWN_PLUGIN_EXISTS = $(shell [ -f "$(MARKDOWN_PLUGIN_LIB)" ] && echo "yes" || echo "no")
+
+# Add markdown plugin to link flags if it exists
+ifeq ($(MARKDOWN_PLUGIN_EXISTS),yes)
+    PLUGIN_LIBS = $(MARKDOWN_PLUGIN_LIB)
+    $(info Found markdown plugin at $(MARKDOWN_PLUGIN_LIB))
+else
+    PLUGIN_LIBS =
+endif
+
 # Create shared library
 $(DESKTOP_SHARED_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)
-	$(CC) $(CFLAGS) -shared -o $@ $(DESKTOP_OBJS) -L$(BUILD_DIR) -lkryon_ir $(LIBS)
+	$(CC) $(CFLAGS) -shared -o $@ $(DESKTOP_OBJS) $(PLUGIN_LIBS) -L$(BUILD_DIR) -lkryon_ir $(LIBS)
 
 # Build test program
 $(DESKTOP_TEST): $(DESKTOP_STATIC_LIB) desktop_test.c

@@ -28,6 +28,21 @@ extern "C" {
 // Plugin Handler Signature
 // ============================================================================
 
+// Forward declare IRComponent from ir_core.h
+#ifndef IR_CORE_H
+typedef struct IRComponent IRComponent;
+#endif
+
+/**
+ * Backend context for plugin rendering.
+ * Contains pointers to backend-specific rendering resources.
+ */
+typedef struct {
+    void* renderer;      // Backend renderer (e.g., SDL_Renderer*)
+    void* font;          // Default font (e.g., TTF_Font*)
+    void* user_data;     // Additional backend-specific data
+} IRPluginBackendContext;
+
 /**
  * Plugin command handler function signature.
  *
@@ -35,6 +50,20 @@ extern "C" {
  * @param cmd Command structure containing plugin data
  */
 typedef void (*IRPluginHandler)(void* backend_ctx, const void* cmd);
+
+/**
+ * Plugin component renderer function signature.
+ * Allows plugins to handle rendering of specific component types.
+ *
+ * @param backend_ctx Backend-specific context (e.g., SDL_Renderer*, TTF_Font*)
+ * @param component Component to render
+ * @param x X position
+ * @param y Y position
+ * @param width Component width
+ * @param height Component height
+ */
+typedef void (*IRPluginComponentRenderer)(void* backend_ctx, const IRComponent* component,
+                                          float x, float y, float width, float height);
 
 // ============================================================================
 // Plugin Metadata
@@ -161,6 +190,51 @@ bool ir_plugin_check_version_compat(const char* required_version);
  * @return true if command was dispatched, false if no handler registered
  */
 bool ir_plugin_dispatch(void* backend_ctx, uint32_t command_type, const void* cmd);
+
+// ============================================================================
+// Component Renderer Registration
+// ============================================================================
+
+/**
+ * Register a component renderer for a specific component type.
+ * This allows plugins to handle rendering of custom or extended component types.
+ *
+ * @param component_type Component type (e.g., IR_COMPONENT_MARKDOWN)
+ * @param renderer Renderer function
+ * @return true on success, false if component_type already has a renderer
+ */
+bool ir_plugin_register_component_renderer(uint32_t component_type, IRPluginComponentRenderer renderer);
+
+/**
+ * Unregister a component renderer.
+ *
+ * @param component_type Component type to unregister
+ */
+void ir_plugin_unregister_component_renderer(uint32_t component_type);
+
+/**
+ * Check if a component type has a registered renderer.
+ *
+ * @param component_type Component type to check
+ * @return true if renderer is registered, false otherwise
+ */
+bool ir_plugin_has_component_renderer(uint32_t component_type);
+
+/**
+ * Dispatch component rendering to registered plugin renderer.
+ *
+ * @param backend_ctx Backend-specific context
+ * @param component_type Component type
+ * @param component Component to render
+ * @param x X position
+ * @param y Y position
+ * @param width Component width
+ * @param height Component height
+ * @return true if dispatched, false if no renderer registered
+ */
+bool ir_plugin_dispatch_component_render(void* backend_ctx, uint32_t component_type,
+                                         const IRComponent* component,
+                                         float x, float y, float width, float height);
 
 // ============================================================================
 // Backend Capabilities

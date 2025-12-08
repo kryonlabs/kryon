@@ -37,6 +37,10 @@ typedef struct {
     IRPluginHandler handlers[256];
     uint32_t registered_count;
 
+    // Component renderer table (indexed by IRComponentType)
+    IRPluginComponentRenderer component_renderers[32];  // Support up to 32 component types
+    uint32_t component_renderer_count;
+
     // Plugin registry
     PluginRegistryEntry plugins[MAX_PLUGINS];
     uint32_t plugin_count;
@@ -48,6 +52,7 @@ typedef struct {
     // Statistics
     uint32_t commands_dispatched;
     uint32_t unknown_commands;
+    uint32_t components_rendered;
 } PluginSystem;
 
 static PluginSystem g_plugin_system = {0};
@@ -414,4 +419,66 @@ void ir_plugin_print_stats(void) {
 void ir_plugin_reset_stats(void) {
     g_plugin_system.commands_dispatched = 0;
     g_plugin_system.unknown_commands = 0;
+    g_plugin_system.components_rendered = 0;
+}
+
+// ============================================================================
+// Component Renderer Registration
+// ============================================================================
+
+bool ir_plugin_register_component_renderer(uint32_t component_type, IRPluginComponentRenderer renderer) {
+    if (!renderer) {
+        fprintf(stderr, "[kryon][plugin] NULL component renderer provided\n");
+        return false;
+    }
+
+    if (component_type >= 32) {
+        fprintf(stderr, "[kryon][plugin] Component type %u out of range (max 31)\n", component_type);
+        return false;
+    }
+
+    // Check if already registered
+    if (g_plugin_system.component_renderers[component_type] != NULL) {
+        fprintf(stderr, "[kryon][plugin] Component type %u already has a renderer\n", component_type);
+        return false;
+    }
+
+    // Register renderer
+    g_plugin_system.component_renderers[component_type] = renderer;
+    g_plugin_system.component_renderer_count++;
+
+    printf("[kryon][plugin] Registered component renderer for type %u\n", component_type);
+    return true;
+}
+
+void ir_plugin_unregister_component_renderer(uint32_t component_type) {
+    if (component_type < 32 && g_plugin_system.component_renderers[component_type] != NULL) {
+        g_plugin_system.component_renderers[component_type] = NULL;
+        g_plugin_system.component_renderer_count--;
+    }
+}
+
+bool ir_plugin_has_component_renderer(uint32_t component_type) {
+    if (component_type >= 32) {
+        return false;
+    }
+    return g_plugin_system.component_renderers[component_type] != NULL;
+}
+
+bool ir_plugin_dispatch_component_render(void* backend_ctx, uint32_t component_type,
+                                         const IRComponent* component,
+                                         float x, float y, float width, float height) {
+    if (component_type >= 32) {
+        return false;
+    }
+
+    IRPluginComponentRenderer renderer = g_plugin_system.component_renderers[component_type];
+    if (renderer == NULL) {
+        return false;
+    }
+
+    // Dispatch to renderer
+    renderer(backend_ctx, component, x, y, width, height);
+    g_plugin_system.components_rendered++;
+    return true;
 }
