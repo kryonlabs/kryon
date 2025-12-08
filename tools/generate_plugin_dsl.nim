@@ -126,9 +126,9 @@ proc generatePropertyParsing(prop: Property): string =
   case prop.propType
   of ptString:
     if prop.required:
-      result = &"{caseBranch}\n          if propValue.kind == nnkStrLit:\n            {propName} = propValue.strVal"
+      result = &"{caseBranch}\n          if propValue.kind in {{nnkStrLit, nnkTripleStrLit, nnkRStrLit}}:\n            {propName} = propValue.strVal"
     else:
-      result = &"{caseBranch}\n          if propValue.kind == nnkStrLit:\n            {propName} = propValue.strVal\n            has{propName.capitalizeAscii()} = true"
+      result = &"{caseBranch}\n          if propValue.kind in {{nnkStrLit, nnkTripleStrLit, nnkRStrLit}}:\n            {propName} = propValue.strVal\n            has{propName.capitalizeAscii()} = true"
 
   of ptInt:
     result = &"{caseBranch}\n          if propValue.kind == nnkIntLit:\n            {propName} = propValue.intVal\n            has{propName.capitalizeAscii()} = true"
@@ -140,42 +140,49 @@ proc generatePropertyParsing(prop: Property): string =
     result = &"{caseBranch}\n          if propValue.kind in {{nnkIdent, nnkSym}}:\n            {propName} = propValue.strVal == \"true\"\n            has{propName.capitalizeAscii()} = true"
 
   of ptEnum:
-    result = &"{caseBranch}\n          if propValue.kind == nnkStrLit:\n            {propName} = propValue.strVal\n            has{propName.capitalizeAscii()} = true"
+    result = &"{caseBranch}\n          if propValue.kind in {{nnkStrLit, nnkTripleStrLit, nnkRStrLit}}:\n            {propName} = propValue.strVal\n            has{propName.capitalizeAscii()} = true"
 
   of ptColor:
-    result = &"{caseBranch}\n          if propValue.kind == nnkStrLit:\n            {propName} = propValue.strVal\n            has{propName.capitalizeAscii()} = true"
+    result = &"{caseBranch}\n          if propValue.kind in {{nnkStrLit, nnkTripleStrLit, nnkRStrLit}}:\n            {propName} = propValue.strVal\n            has{propName.capitalizeAscii()} = true"
 
   of ptDimension:
-    result = &"{caseBranch}\n          if propValue.kind == nnkStrLit:\n            {propName} = propValue.strVal\n            has{propName.capitalizeAscii()} = true"
+    result = &"{caseBranch}\n          if propValue.kind in {{nnkStrLit, nnkTripleStrLit, nnkRStrLit}}:\n            {propName} = propValue.strVal\n            has{propName.capitalizeAscii()} = true"
+
+proc needsStyle(irFunction: string): bool =
+  ## Check if an IR function operates on style rather than component
+  irFunction in ["ir_set_background_color", "ir_set_padding", "ir_set_width", "ir_set_height",
+                 "ir_set_margin", "ir_set_border", "ir_set_font", "ir_set_opacity"]
 
 proc generatePropertyApplication(prop: Property, componentVar: string): string =
   ## Generate Nim code to apply a property to the IR component (inside quote block)
   if prop.irFunction.len == 0:
     return ""
 
+  let target = if needsStyle(prop.irFunction): &"{componentVar}Style" else: componentVar
   result = ""
+
   case prop.irParamTransform
   of "cstring":
-    result &= &"    {prop.irFunction}({componentVar}, cstring(`{prop.name}`))"
+    result &= &"    {prop.irFunction}({target}, cstring(`{prop.name}`))"
 
   of "rgba_components":
     result &= &"    block:\n"
     result &= &"      let color{prop.name.capitalizeAscii()} = parseColor(`{prop.name}`)\n"
-    result &= &"      {prop.irFunction}({componentVar}, color{prop.name.capitalizeAscii()}.r, color{prop.name.capitalizeAscii()}.g, color{prop.name.capitalizeAscii()}.b, color{prop.name.capitalizeAscii()}.a)"
+    result &= &"      {prop.irFunction}({target}, color{prop.name.capitalizeAscii()}.r, color{prop.name.capitalizeAscii()}.g, color{prop.name.capitalizeAscii()}.b, color{prop.name.capitalizeAscii()}.a)"
 
   of "uniform_edges":
-    result &= &"    {prop.irFunction}({componentVar}, `{prop.name}`, `{prop.name}`, `{prop.name}`, `{prop.name}`)"
+    result &= &"    {prop.irFunction}({target}, float32(`{prop.name}`), float32(`{prop.name}`), float32(`{prop.name}`), float32(`{prop.name}`))"
 
   of "dimension_value_unit":
     result &= &"    block:\n"
     result &= &"      if `{prop.name}`.endsWith(\"%\"):\n"
     result &= &"        let val = parseFloat(`{prop.name}`[0..^2])\n"
-    result &= &"        {prop.irFunction}({componentVar}, val, IR_SIZE_UNIT_PERCENT)\n"
+    result &= &"        {prop.irFunction}({target}, IR_DIMENSION_PERCENT, cfloat(val))\n"
     result &= &"      elif `{prop.name}` == \"auto\":\n"
-    result &= &"        {prop.irFunction}({componentVar}, 0, IR_SIZE_UNIT_AUTO)\n"
+    result &= &"        {prop.irFunction}({target}, IR_DIMENSION_AUTO, 0)\n"
     result &= &"      else:\n"
     result &= &"        let val = parseFloat(`{prop.name}`)\n"
-    result &= &"        {prop.irFunction}({componentVar}, val, IR_SIZE_UNIT_PIXELS)"
+    result &= &"        {prop.irFunction}({target}, IR_DIMENSION_PX, cfloat(val))"
 
   else:
     result &= &"    # Unknown transform: {prop.irParamTransform}"
@@ -235,10 +242,21 @@ proc generateDSLMacro(component: Component): string =
   result &= "        else:\n"
   result &= &"          warning(\"Unknown {macroName} property: \" & propName)\n\n"
 
+  # Check if any properties need style
+  var needsStyleObj = false
+  for prop in component.properties:
+    if prop.irFunction.len > 0 and needsStyle(prop.irFunction):
+      needsStyleObj = true
+      break
+
   # Generate component creation code
   result &= "  # Generate component creation code\n"
   result &= "  result = quote do:\n"
-  result &= &"    let {compVar} = ir_create_component({component.componentType}, nil)\n"
+  result &= &"    let {compVar} = ir_create_component(IRComponentType({component.componentType}))\n"
+
+  # Create style if needed
+  if needsStyleObj:
+    result &= &"    let {compVar}Style = ir_create_style()\n"
 
   # Apply properties
   for prop in component.properties:
@@ -252,6 +270,10 @@ proc generateDSLMacro(component: Component): string =
       else:
         result &= appCode & "\n"
 
+  # Set style on component if we created one
+  if needsStyleObj:
+    result &= &"    ir_set_style({compVar}, {compVar}Style)\n"
+
   # Return component
   result &= &"    {compVar}\n\n"
 
@@ -260,60 +282,29 @@ proc generateBindingFile(schema: JsonNode, outputPath: string) =
   var output = "## AUTO-GENERATED from bindings.json - DO NOT EDIT\n"
   output &= "## Kryon Plugin DSL Bindings\n\n"
 
-  output &= "import macros, strutils, strformat, os\n\n"
+  output &= "import macros, strutils, os\n\n"
 
-  # Generate IR imports
-  output &= "# Import Kryon IR core\n"
-  output &= "{.passL: \"-L\" & getEnv(\"HOME\") & \"/Projects/kryon/build -lkryon_ir\".}\n"
-  output &= "{.passC: \"-I\" & getEnv(\"HOME\") & \"/Projects/kryon/ir\".}\n\n"
+  # Import Kryon IR types from the core bindings
+  output &= "# Import Kryon IR core types and functions\n"
+  output &= "# Use KRYON_ROOT environment variable to locate Kryon installation\n"
+  output &= "const KRYON_ROOT = getEnv(\"HOME\") & \"/Projects/kryon\"\n"
+  output &= "{.passC: \"-I\" & KRYON_ROOT & \"/ir\".}\n"
+  output &= "{.passL: \"-L\" & KRYON_ROOT & \"/build -lkryon_ir\".}\n\n"
 
-  # Generate type definitions
-  output &= "# IR Types\n"
-  if schema.hasKey("ir_imports") and schema["ir_imports"].hasKey("types"):
-    for typeStr in schema["ir_imports"]["types"]:
-      let typeName = typeStr.getStr()
-      if typeName == "IRComponent":
-        output &= "type IRComponent* = ptr object\n"
-      elif typeName == "IRColor":
-        output &= "type IRColor* = object\n"
-        output &= "  r*, g*, b*, a*: uint8\n"
+  output &= "# Import IR types from Kryon's bindings\n"
+  output &= "import ir_core\n\n"
 
-  output &= "\n"
+  # Define color helper type
+  output &= "# Color helper type for parseColor functions\n"
+  output &= "type IRColor* = object\n"
+  output &= "  r*, g*, b*, a*: uint8\n\n"
 
-  # Generate IR constants
-  output &= "# IR Constants\n"
-  if schema.hasKey("ir_imports") and schema["ir_imports"].hasKey("constants"):
-    for constStr in schema["ir_imports"]["constants"]:
-      let constName = constStr.getStr()
-      if "PIXELS" in constName:
-        output &= &"const {constName}* = 0'u32\n"
-      elif "PERCENT" in constName:
-        output &= &"const {constName}* = 1'u32\n"
-      elif "AUTO" in constName:
-        output &= &"const {constName}* = 2'u32\n"
-
-  output &= "\n"
-
-  # Generate IR function imports
-  output &= "# IR Functions\n"
-  if schema.hasKey("ir_imports") and schema["ir_imports"].hasKey("functions"):
-    for funcStr in schema["ir_imports"]["functions"]:
-      let funcName = funcStr.getStr()
-      case funcName
-      of "ir_create_component":
-        output &= &"proc {funcName}*(componentType: uint32, parent: IRComponent): IRComponent {{.importc, dynlib: \"libkryon_ir.so\".}}\n"
-      of "ir_set_text_content":
-        output &= &"proc {funcName}*(component: IRComponent, text: cstring) {{.importc, dynlib: \"libkryon_ir.so\".}}\n"
-      of "ir_set_background_color":
-        output &= &"proc {funcName}*(component: IRComponent, r, g, b, a: uint8) {{.importc, dynlib: \"libkryon_ir.so\".}}\n"
-      of "ir_set_padding":
-        output &= &"proc {funcName}*(component: IRComponent, top, right, bottom, left: float32) {{.importc, dynlib: \"libkryon_ir.so\".}}\n"
-      of "ir_set_width":
-        output &= &"proc {funcName}*(component: IRComponent, value: float32, unit: uint32) {{.importc, dynlib: \"libkryon_ir.so\".}}\n"
-      of "ir_set_height":
-        output &= &"proc {funcName}*(component: IRComponent, value: float32, unit: uint32) {{.importc, dynlib: \"libkryon_ir.so\".}}\n"
-
-  output &= "\n"
+  # Generate IR constants (these are local to the plugin)
+  output &= "# IR Size Units\n"
+  output &= "const\n"
+  output &= "  IR_SIZE_UNIT_PIXELS* = 0'u32\n"
+  output &= "  IR_SIZE_UNIT_PERCENT* = 1'u32\n"
+  output &= "  IR_SIZE_UNIT_AUTO* = 2'u32\n\n"
 
   # Generate helper functions
   if schema.hasKey("helpers"):
