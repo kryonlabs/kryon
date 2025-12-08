@@ -12,6 +12,280 @@
 #include <math.h>
 
 // ============================================================================
+// Component Definition Context (for expansion during deserialization)
+// ============================================================================
+
+typedef struct {
+    char* name;
+    cJSON* definition;  // Full component definition (props, state, template)
+} ComponentDefEntry;
+
+typedef struct {
+    ComponentDefEntry* entries;
+    int count;
+    int capacity;
+} ComponentDefContext;
+
+static ComponentDefContext* component_def_context_create(void) {
+    ComponentDefContext* ctx = calloc(1, sizeof(ComponentDefContext));
+    if (!ctx) return NULL;
+    ctx->capacity = 8;
+    ctx->entries = calloc(ctx->capacity, sizeof(ComponentDefEntry));
+    return ctx;
+}
+
+static void component_def_context_free(ComponentDefContext* ctx) {
+    if (!ctx) return;
+    for (int i = 0; i < ctx->count; i++) {
+        free(ctx->entries[i].name);
+        // Note: definition JSON is part of root cJSON, freed separately
+    }
+    free(ctx->entries);
+    free(ctx);
+}
+
+static void component_def_context_add(ComponentDefContext* ctx, const char* name, cJSON* definition) {
+    if (!ctx || !name || !definition) return;
+    if (ctx->count >= ctx->capacity) {
+        ctx->capacity *= 2;
+        ctx->entries = realloc(ctx->entries, ctx->capacity * sizeof(ComponentDefEntry));
+    }
+    ctx->entries[ctx->count].name = strdup(name);
+    ctx->entries[ctx->count].definition = definition;
+    ctx->count++;
+}
+
+static cJSON* component_def_context_find(ComponentDefContext* ctx, const char* name) {
+    if (!ctx || !name) return NULL;
+    for (int i = 0; i < ctx->count; i++) {
+        if (strcmp(ctx->entries[i].name, name) == 0) {
+            return ctx->entries[i].definition;
+        }
+    }
+    return NULL;
+}
+
+// ============================================================================
+// Text Expression Substitution for Component Expansion
+// ============================================================================
+
+// Simple state context for template expansion
+typedef struct {
+    char* names[16];
+    int values[16];
+    int count;
+} StateContext;
+
+static void state_context_add(StateContext* sc, const char* name, int value) {
+    if (sc->count >= 16) return;
+    sc->names[sc->count] = strdup(name);
+    sc->values[sc->count] = value;
+    sc->count++;
+}
+
+static int state_context_get(StateContext* sc, const char* name, int* out) {
+    for (int i = 0; i < sc->count; i++) {
+        if (strcmp(sc->names[i], name) == 0) {
+            *out = sc->values[i];
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void state_context_free(StateContext* sc) {
+    for (int i = 0; i < sc->count; i++) {
+        free(sc->names[i]);
+    }
+}
+
+// Substitute {{varname}} in text with values from state context
+static char* substitute_text_expressions(const char* text, StateContext* sc) {
+    if (!text || !sc) return strdup(text ? text : "");
+
+    // Find {{...}} pattern
+    const char* start = strstr(text, "{{");
+    if (!start) return strdup(text);
+
+    const char* end = strstr(start, "}}");
+    if (!end) return strdup(text);
+
+    // Extract variable name
+    int nameLen = end - start - 2;
+    if (nameLen <= 0 || nameLen > 64) return strdup(text);
+
+    char varName[65];
+    strncpy(varName, start + 2, nameLen);
+    varName[nameLen] = '\0';
+
+    // Look up value
+    int value;
+    if (!state_context_get(sc, varName, &value)) {
+        return strdup(text);  // Variable not found, keep original
+    }
+
+    // Build result string
+    char result[256];
+    int prefixLen = start - text;
+    strncpy(result, text, prefixLen);
+    result[prefixLen] = '\0';
+
+    char valueStr[32];
+    snprintf(valueStr, sizeof(valueStr), "%d", value);
+    strcat(result, valueStr);
+    strcat(result, end + 2);  // Rest after }}
+
+    return strdup(result);
+}
+
+// Deep clone JSON and substitute text expressions
+// The skipSubstitute flag is used for keys like "text_expression" that should keep {{var}}
+static cJSON* clone_and_substitute_json_impl(cJSON* json, StateContext* sc, bool skipSubstitute) {
+    if (!json) return NULL;
+
+    if (cJSON_IsString(json)) {
+        if (skipSubstitute) {
+            // Keep original value (for text_expression)
+            return cJSON_CreateString(json->valuestring);
+        }
+        // Substitute text expressions in string values
+        char* newText = substitute_text_expressions(json->valuestring, sc);
+        cJSON* result = cJSON_CreateString(newText);
+        free(newText);
+        return result;
+    }
+
+    if (cJSON_IsNumber(json)) {
+        return cJSON_CreateNumber(json->valuedouble);
+    }
+
+    if (cJSON_IsBool(json)) {
+        return cJSON_CreateBool(cJSON_IsTrue(json));
+    }
+
+    if (cJSON_IsNull(json)) {
+        return cJSON_CreateNull();
+    }
+
+    if (cJSON_IsArray(json)) {
+        cJSON* result = cJSON_CreateArray();
+        cJSON* item;
+        cJSON_ArrayForEach(item, json) {
+            cJSON_AddItemToArray(result, clone_and_substitute_json_impl(item, sc, false));
+        }
+        return result;
+    }
+
+    if (cJSON_IsObject(json)) {
+        cJSON* result = cJSON_CreateObject();
+        cJSON* item;
+
+        // Check if this object has text_expression - if so, use it to compute text
+        cJSON* textExpr = cJSON_GetObjectItem(json, "text_expression");
+
+        cJSON_ArrayForEach(item, json) {
+            // Don't substitute text_expression - preserve it for reactive updates
+            bool skip = (item->string && strcmp(item->string, "text_expression") == 0);
+
+            // If this is "text" and we have a text_expression, substitute using that
+            if (item->string && strcmp(item->string, "text") == 0 &&
+                textExpr && cJSON_IsString(textExpr)) {
+                // Use text_expression for substitution instead of current text value
+                char* newText = substitute_text_expressions(textExpr->valuestring, sc);
+                cJSON_AddItemToObject(result, item->string, cJSON_CreateString(newText));
+                free(newText);
+            } else {
+                cJSON_AddItemToObject(result, item->string, clone_and_substitute_json_impl(item, sc, skip));
+            }
+        }
+        return result;
+    }
+
+    return NULL;
+}
+
+static cJSON* clone_and_substitute_json(cJSON* json, StateContext* sc) {
+    return clone_and_substitute_json_impl(json, sc, false);
+}
+
+// Build state context from component definition and instance props
+static StateContext build_state_from_def(cJSON* definition, cJSON* instance) {
+    StateContext sc = {0};
+
+    if (!definition) return sc;
+
+    // Get props definitions and state definitions
+    cJSON* propsDefs = cJSON_GetObjectItem(definition, "props");
+    cJSON* stateDefs = cJSON_GetObjectItem(definition, "state");
+
+    // First, get prop values from instance (with defaults from definition)
+    if (propsDefs && cJSON_IsArray(propsDefs)) {
+        cJSON* propDef;
+        cJSON_ArrayForEach(propDef, propsDefs) {
+            cJSON* nameItem = cJSON_GetObjectItem(propDef, "name");
+            cJSON* defaultItem = cJSON_GetObjectItem(propDef, "default");
+            if (!nameItem || !cJSON_IsString(nameItem)) continue;
+
+            const char* propName = nameItem->valuestring;
+            int propValue = 0;
+
+            // Check if instance provides this prop
+            cJSON* instanceProp = instance ? cJSON_GetObjectItem(instance, propName) : NULL;
+            if (instanceProp && cJSON_IsNumber(instanceProp)) {
+                propValue = instanceProp->valueint;
+            } else if (defaultItem && cJSON_IsNumber(defaultItem)) {
+                propValue = defaultItem->valueint;
+            }
+
+            state_context_add(&sc, propName, propValue);
+        }
+    }
+
+    // Then, compute initial state values
+    if (stateDefs && cJSON_IsArray(stateDefs)) {
+        cJSON* stateDef;
+        cJSON_ArrayForEach(stateDef, stateDefs) {
+            cJSON* nameItem = cJSON_GetObjectItem(stateDef, "name");
+            cJSON* initialItem = cJSON_GetObjectItem(stateDef, "initial");
+            if (!nameItem || !cJSON_IsString(nameItem)) continue;
+
+            const char* stateName = nameItem->valuestring;
+            int stateValue = 0;
+
+            // Handle initial value - can be a number, JSON string like {"var":"propName"}, or plain prop name
+            if (initialItem) {
+                if (cJSON_IsNumber(initialItem)) {
+                    stateValue = initialItem->valueint;
+                } else if (cJSON_IsString(initialItem)) {
+                    const char* initialStr = initialItem->valuestring;
+                    bool found = false;
+
+                    // First try to parse as JSON {"var":"propName"} reference
+                    cJSON* parsed = cJSON_Parse(initialStr);
+                    if (parsed) {
+                        cJSON* varRef = cJSON_GetObjectItem(parsed, "var");
+                        if (varRef && cJSON_IsString(varRef)) {
+                            // Look up the referenced prop
+                            found = state_context_get(&sc, varRef->valuestring, &stateValue);
+                        }
+                        cJSON_Delete(parsed);
+                    }
+
+                    // If not valid JSON or var not found, try as plain prop name
+                    if (!found && initialStr && initialStr[0] != '{') {
+                        state_context_get(&sc, initialStr, &stateValue);
+                    }
+                }
+            }
+
+            state_context_add(&sc, stateName, stateValue);
+        }
+    }
+
+    return sc;
+}
+
+// ============================================================================
 // JSON Helper Functions
 // ============================================================================
 
@@ -387,14 +661,23 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     // If this is a component instance (has component_ref) and we're not serializing as template,
     // output just a reference instead of the full tree
     if (!as_template && component->component_ref && component->component_ref[0] != '\0') {
-        cJSON_AddStringToObject(obj, "component", component->component_ref);
+        // Use "type" to match what the deserializer expects for component expansion
+        cJSON_AddStringToObject(obj, "type", component->component_ref);
         cJSON_AddNumberToObject(obj, "id", component->id);
 
-        // Add props if present
+        // Flatten props to top-level fields (deserializer expects this format)
         if (component->component_props && component->component_props[0] != '\0') {
             cJSON* propsJson = cJSON_Parse(component->component_props);
             if (propsJson) {
-                cJSON_AddItemToObject(obj, "props", propsJson);
+                // Copy each prop field to the top-level object
+                cJSON* prop = propsJson->child;
+                while (prop) {
+                    cJSON* nextProp = prop->next;
+                    cJSON_DetachItemViaPointer(propsJson, prop);
+                    cJSON_AddItemToObject(obj, prop->string, prop);
+                    prop = nextProp;
+                }
+                cJSON_Delete(propsJson);  // Delete the empty container
             }
         }
         return obj;
@@ -406,14 +689,21 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     const char* typeStr = ir_component_type_to_string(component->type);
     cJSON_AddStringToObject(obj, "type", typeStr);
 
-    // Text content
-    if (component->text_content && component->text_content[0] != '\0') {
-        cJSON_AddStringToObject(obj, "text", component->text_content);
-    }
-
-    // Reactive text expression (for declarative .kir files)
-    if (component->text_expression && component->text_expression[0] != '\0') {
+    // Text content - for templates with text_expression, use the expression as the text value
+    // This ensures placeholders like {{value}} are preserved in component definitions
+    if (as_template && component->text_expression && component->text_expression[0] != '\0') {
+        // Template mode: use text_expression for both "text" and "text_expression"
+        cJSON_AddStringToObject(obj, "text", component->text_expression);
         cJSON_AddStringToObject(obj, "text_expression", component->text_expression);
+    } else {
+        // Normal mode: use actual text_content
+        if (component->text_content && component->text_content[0] != '\0') {
+            cJSON_AddStringToObject(obj, "text", component->text_content);
+        }
+        // Reactive text expression (for declarative .kir files)
+        if (component->text_expression && component->text_expression[0] != '\0') {
+            cJSON_AddStringToObject(obj, "text_expression", component->text_expression);
+        }
     }
 
     // Component reference (for custom components) - only in template mode
@@ -435,6 +725,36 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     if (component->type == IR_COMPONENT_CHECKBOX && component->custom_data) {
         bool is_checked = strcmp(component->custom_data, "checked") == 0;
         cJSON_AddBoolToObject(obj, "checked", is_checked);
+    }
+
+    // Serialize dropdown state (stored in custom_data as IRDropdownState*)
+    if (component->type == IR_COMPONENT_DROPDOWN && component->custom_data) {
+        IRDropdownState* state = (IRDropdownState*)component->custom_data;
+        cJSON* dropdownState = cJSON_CreateObject();
+
+        // Placeholder
+        if (state->placeholder) {
+            cJSON_AddStringToObject(dropdownState, "placeholder", state->placeholder);
+        }
+
+        // Options array
+        if (state->options && state->option_count > 0) {
+            cJSON* optionsArr = cJSON_CreateArray();
+            for (uint32_t i = 0; i < state->option_count; i++) {
+                if (state->options[i]) {
+                    cJSON_AddItemToArray(optionsArr, cJSON_CreateString(state->options[i]));
+                }
+            }
+            cJSON_AddItemToObject(dropdownState, "options", optionsArr);
+        }
+
+        // Selected index
+        cJSON_AddNumberToObject(dropdownState, "selectedIndex", state->selected_index);
+
+        // Is open state (usually false when serializing)
+        cJSON_AddBoolToObject(dropdownState, "isOpen", state->is_open);
+
+        cJSON_AddItemToObject(obj, "dropdown_state", dropdownState);
     }
 
     // Serialize events (IR v2.1: with bytecode support)
@@ -1351,11 +1671,86 @@ static void apply_animation_from_string(IRComponent* component, const char* anim
     }
 }
 
+// Forward declaration for context-aware deserialization
+static IRComponent* json_deserialize_component_with_context(cJSON* json, ComponentDefContext* ctx);
+
 /**
- * Recursively deserialize component from JSON
+ * Recursively deserialize component from JSON (legacy wrapper)
  */
 static IRComponent* json_deserialize_component_recursive(cJSON* json) {
+    return json_deserialize_component_with_context(json, NULL);
+}
+
+/**
+ * Helper: Set owner_instance_id recursively on all components in subtree
+ */
+static void set_owner_instance_recursive(IRComponent* comp, uint32_t owner_id) {
+    if (!comp) return;
+    comp->owner_instance_id = owner_id;
+    for (uint32_t i = 0; i < comp->child_count; i++) {
+        set_owner_instance_recursive(comp->children[i], owner_id);
+    }
+}
+
+// Global counter for generating unique component IDs during expansion
+static uint32_t g_next_expansion_id = 1000;  // Start high to avoid conflicts
+
+/**
+ * Helper: Remap component IDs recursively to make them unique
+ */
+static void remap_ids_recursive(IRComponent* comp) {
+    if (!comp) return;
+    comp->id = g_next_expansion_id++;
+    for (uint32_t i = 0; i < comp->child_count; i++) {
+        remap_ids_recursive(comp->children[i]);
+    }
+}
+
+/**
+ * Recursively deserialize component from JSON with component definition expansion
+ */
+static IRComponent* json_deserialize_component_with_context(cJSON* json, ComponentDefContext* ctx) {
     if (!json || !cJSON_IsObject(json)) return NULL;
+
+    // Check if this is a custom component that needs expansion
+    cJSON* typeItem = cJSON_GetObjectItem(json, "type");
+    if (typeItem && cJSON_IsString(typeItem) && ctx) {
+        const char* typeName = typeItem->valuestring;
+        cJSON* definition = component_def_context_find(ctx, typeName);
+        if (definition) {
+            // Found a component definition - expand the template
+            cJSON* templateJson = cJSON_GetObjectItem(definition, "template");
+            if (templateJson) {
+                // Build state context from definition and instance props
+                StateContext sc = build_state_from_def(definition, json);
+
+                // Clone template and substitute text expressions
+                cJSON* expandedTemplate = clone_and_substitute_json(templateJson, &sc);
+                state_context_free(&sc);
+
+                if (expandedTemplate) {
+                    // Deserialize the expanded template
+                    IRComponent* expanded = json_deserialize_component_with_context(expandedTemplate, ctx);
+                    cJSON_Delete(expandedTemplate);  // Free the cloned JSON
+
+                    if (expanded) {
+                        // Copy ID from the instance to track it
+                        cJSON* idItem = cJSON_GetObjectItem(json, "id");
+                        if (idItem && cJSON_IsNumber(idItem)) {
+                            uint32_t instanceId = (uint32_t)idItem->valueint;
+                            // Remap all IDs to make them unique across instances
+                            remap_ids_recursive(expanded);
+                            // But use the original instance ID for the root
+                            expanded->id = instanceId;
+                            // Set owner_instance_id on entire subtree for state isolation
+                            set_owner_instance_recursive(expanded, instanceId);
+                        }
+                        return expanded;
+                    }
+                }
+            }
+        }
+    }
 
     // Create component
     IRComponent* component = (IRComponent*)calloc(1, sizeof(IRComponent));
@@ -1385,6 +1780,11 @@ static IRComponent* json_deserialize_component_recursive(cJSON* json) {
         component->text_content = strdup(item->valuestring);
     }
 
+    // Text expression (reactive text template)
+    if ((item = cJSON_GetObjectItem(json, "text_expression")) != NULL && cJSON_IsString(item)) {
+        component->text_expression = strdup(item->valuestring);
+    }
+
     // Deserialize style and layout
     json_deserialize_style(json, component->style);
     json_deserialize_layout(json, component->layout);
@@ -1399,6 +1799,55 @@ static IRComponent* json_deserialize_component_recursive(cJSON* json) {
         if ((item = cJSON_GetObjectItem(json, "checked")) != NULL && cJSON_IsBool(item)) {
             bool is_checked = cJSON_IsTrue(item);
             ir_set_custom_data(component, is_checked ? "checked" : "unchecked");
+        }
+    }
+
+    // Parse dropdown state
+    if (component->type == IR_COMPONENT_DROPDOWN) {
+        IRDropdownState* state = (IRDropdownState*)calloc(1, sizeof(IRDropdownState));
+        if (state) {
+            // Check for nested dropdown_state object (new format) or fall back to top-level fields (legacy)
+            cJSON* dropdownStateObj = cJSON_GetObjectItem(json, "dropdown_state");
+            cJSON* sourceObj = (dropdownStateObj && cJSON_IsObject(dropdownStateObj)) ? dropdownStateObj : json;
+
+            // Parse placeholder
+            cJSON* placeholderItem = cJSON_GetObjectItem(sourceObj, "placeholder");
+            if (placeholderItem && cJSON_IsString(placeholderItem)) {
+                state->placeholder = strdup(placeholderItem->valuestring);
+            } else {
+                state->placeholder = strdup("Select...");
+            }
+
+            // Parse selectedIndex
+            cJSON* selectedItem = cJSON_GetObjectItem(sourceObj, "selectedIndex");
+            if (selectedItem && cJSON_IsNumber(selectedItem)) {
+                state->selected_index = selectedItem->valueint;
+            } else {
+                state->selected_index = -1;
+            }
+
+            // Parse options array
+            cJSON* optionsItem = cJSON_GetObjectItem(sourceObj, "options");
+            if (optionsItem && cJSON_IsArray(optionsItem)) {
+                int optionCount = cJSON_GetArraySize(optionsItem);
+                state->option_count = optionCount;
+                state->options = (char**)calloc(optionCount, sizeof(char*));
+                if (state->options) {
+                    for (int i = 0; i < optionCount; i++) {
+                        cJSON* opt = cJSON_GetArrayItem(optionsItem, i);
+                        if (opt && cJSON_IsString(opt)) {
+                            state->options[i] = strdup(opt->valuestring);
+                        }
+                    }
+                }
+            }
+
+            // Parse isOpen (from new format)
+            cJSON* isOpenItem = cJSON_GetObjectItem(sourceObj, "isOpen");
+            state->is_open = (isOpenItem && cJSON_IsBool(isOpenItem)) ? cJSON_IsTrue(isOpenItem) : false;
+
+            state->hovered_index = -1;
+            component->custom_data = (char*)state;
         }
     }
 
@@ -1466,7 +1915,7 @@ static IRComponent* json_deserialize_component_recursive(cJSON* json) {
 
             for (int i = 0; i < childCount; i++) {
                 cJSON* childJson = cJSON_GetArrayItem(item, i);
-                IRComponent* child = json_deserialize_component_recursive(childJson);
+                IRComponent* child = json_deserialize_component_with_context(childJson, ctx);
                 if (child) {
                     child->parent = component;
                     component->children[component->child_count++] = child;
@@ -1493,6 +1942,26 @@ IRComponent* ir_deserialize_json_v2(const char* json_string) {
     cJSON* root = cJSON_Parse(json_string);
     if (!root) return NULL;
 
+    // Parse component_definitions for expansion
+    ComponentDefContext* ctx = NULL;
+    cJSON* componentDefs = cJSON_GetObjectItem(root, "component_definitions");
+    if (componentDefs && cJSON_IsArray(componentDefs)) {
+        ctx = component_def_context_create();
+        int defCount = cJSON_GetArraySize(componentDefs);
+        for (int i = 0; i < defCount; i++) {
+            cJSON* def = cJSON_GetArrayItem(componentDefs, i);
+            if (!def || !cJSON_IsObject(def)) continue;
+
+            cJSON* nameItem = cJSON_GetObjectItem(def, "name");
+            cJSON* templateItem = cJSON_GetObjectItem(def, "template");
+
+            if (nameItem && cJSON_IsString(nameItem) && templateItem && cJSON_IsObject(templateItem)) {
+                // Add the full definition (not just template) so we can access props/state
+                component_def_context_add(ctx, nameItem->valuestring, def);
+            }
+        }
+    }
+
     IRComponent* component = NULL;
 
     // Check for "root" key first (new format), then "component" (legacy)
@@ -1503,12 +1972,14 @@ IRComponent* ir_deserialize_json_v2(const char* json_string) {
 
     if (componentJson && cJSON_IsObject(componentJson)) {
         // Wrapped format: { "root": {...} } or { "component": {...} }
-        component = json_deserialize_component_recursive(componentJson);
+        component = json_deserialize_component_with_context(componentJson, ctx);
     } else {
         // Unwrapped format: just component tree at root
-        component = json_deserialize_component_recursive(root);
+        component = json_deserialize_component_with_context(root, ctx);
     }
 
+    // Clean up context before deleting JSON (context references JSON nodes)
+    component_def_context_free(ctx);
     cJSON_Delete(root);
 
     // Propagate animation flags after full tree construction

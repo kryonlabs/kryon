@@ -1,8 +1,12 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ir_executor.h"
+#include "ir_expression.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+// Forward declarations
+void ir_executor_set_var(IRExecutorContext* ctx, const char* name, int64_t value, uint32_t instance_id);
 
 // ============================================================================
 // GLOBAL STATE
@@ -70,9 +74,49 @@ void ir_executor_set_manifest(IRExecutorContext* ctx, IRReactiveManifest* manife
     }
 }
 
+// Helper: Initialize variables from Text components with text_expression
+static void init_vars_from_text_recursive(IRExecutorContext* ctx, IRComponent* comp) {
+    if (!comp) return;
+
+    // If this is a Text component with text_expression, initialize the variable
+    if (comp->type == IR_COMPONENT_TEXT && comp->text_expression && comp->text_content
+        && comp->owner_instance_id != 0) {
+        // Extract variable name from text_expression (e.g., "{{value}}" -> "value")
+        const char* start = strstr(comp->text_expression, "{{");
+        if (start) {
+            const char* end = strstr(start, "}}");
+            if (end) {
+                int nameLen = end - start - 2;
+                if (nameLen > 0 && nameLen < 64) {
+                    char varName[65];
+                    strncpy(varName, start + 2, nameLen);
+                    varName[nameLen] = '\0';
+
+                    // Parse initial value from text_content
+                    int64_t value = atoll(comp->text_content);
+                    ir_executor_set_var(ctx, varName, value, comp->owner_instance_id);
+                    printf("[executor] Initialized var %s (instance %u) = %ld\n",
+                           varName, comp->owner_instance_id, (long)value);
+                }
+            }
+        }
+    }
+
+    // Recurse to children
+    for (uint32_t i = 0; i < comp->child_count; i++) {
+        init_vars_from_text_recursive(ctx, comp->children[i]);
+    }
+}
+
 void ir_executor_set_root(IRExecutorContext* ctx, IRComponent* root) {
     if (ctx) {
+        // Only initialize variables on first root set (avoid re-initialization on every event)
+        bool is_new_root = (ctx->root != root);
         ctx->root = root;
+        // Initialize variables from Text components (only on first call)
+        if (root && is_new_root && ctx->var_count == 0) {
+            init_vars_from_text_recursive(ctx, root);
+        }
     }
 }
 
@@ -160,6 +204,21 @@ bool ir_executor_call_handler(IRExecutorContext* ctx, const char* handler_name) 
     }
 
     if (func) {
+        // FIRST: Try universal logic execution (new path)
+        if (func->has_universal && func->statement_count > 0) {
+            printf("[executor] Found universal logic with %d statements\n", func->statement_count);
+
+            // Execute universal statements
+            bool success = ir_executor_run_universal(ctx, func, ctx->current_instance_id);
+
+            if (success) {
+                // Update UI after state change
+                ir_executor_update_text_components(ctx);
+                return true;
+            }
+        }
+
+        // FALLBACK: Try language-specific source code
         // Extract the actual function name from universal statements
         const char* func_name = extract_handler_function_name(func);
         if (func_name) {
@@ -251,12 +310,32 @@ bool ir_executor_call_handler(IRExecutorContext* ctx, const char* handler_name) 
     return false;
 }
 
+// Helper: Find component by ID in tree
+static IRComponent* find_component_by_id(IRComponent* root, uint32_t id) {
+    if (!root) return NULL;
+    if (root->id == id) return root;
+    for (uint32_t i = 0; i < root->child_count; i++) {
+        IRComponent* found = find_component_by_id(root->children[i], id);
+        if (found) return found;
+    }
+    return NULL;
+}
+
 bool ir_executor_handle_event(IRExecutorContext* ctx,
                                uint32_t component_id,
                                const char* event_type) {
     if (!ctx || !event_type) return false;
 
     printf("[executor] Event '%s' on component %u\n", event_type, component_id);
+
+    // Find the clicked component to get its owner_instance_id
+    if (ctx->root) {
+        IRComponent* clicked = find_component_by_id(ctx->root, component_id);
+        if (clicked && clicked->owner_instance_id != 0) {
+            ctx->current_instance_id = clicked->owner_instance_id;
+            printf("[executor] Using owner_instance_id=%u for state\n", ctx->current_instance_id);
+        }
+    }
 
     // Store current event context
     ctx->current_event.component_id = component_id;
@@ -279,6 +358,61 @@ bool ir_executor_handle_event(IRExecutorContext* ctx,
 
     // Execute the handler
     return ir_executor_call_handler(ctx, handler_name);
+}
+
+// Handle event by logic_id directly (used when component has been remapped)
+bool ir_executor_handle_event_by_logic_id(IRExecutorContext* ctx,
+                                           uint32_t component_id,
+                                           const char* logic_id) {
+    if (!ctx || !logic_id) return false;
+
+    printf("[executor] Event with logic_id '%s' on component %u\n", logic_id, component_id);
+
+    // Find the clicked component to get its owner_instance_id
+    if (ctx->root) {
+        IRComponent* clicked = find_component_by_id(ctx->root, component_id);
+        if (clicked && clicked->owner_instance_id != 0) {
+            ctx->current_instance_id = clicked->owner_instance_id;
+            printf("[executor] Using owner_instance_id=%u for state\n", ctx->current_instance_id);
+        }
+    }
+
+    // Store current event context
+    ctx->current_event.component_id = component_id;
+    ctx->current_event.event_type = "click";
+
+    // First try to execute handler directly using logic_id
+    if (ir_executor_call_handler(ctx, logic_id)) {
+        return true;
+    }
+
+    // If direct call failed, try to lookup handler via event_bindings
+    // logic_id format: "nim_button_<template_id>" -> extract template_id
+    if (ctx->logic && strncmp(logic_id, "nim_button_", 11) == 0) {
+        uint32_t template_id = (uint32_t)atoi(logic_id + 11);
+        printf("[executor] Looking up handler for template_id %u from logic_id '%s'\n",
+               template_id, logic_id);
+
+        // Look up the handler name from event_bindings by template_id
+        const char* handler_name = ir_logic_block_get_handler(ctx->logic, template_id, "click");
+        if (handler_name) {
+            printf("[executor] Found handler '%s' for template_id %u\n", handler_name, template_id);
+            return ir_executor_call_handler(ctx, handler_name);
+        }
+    }
+
+    // Also try for checkbox
+    if (ctx->logic && strncmp(logic_id, "nim_checkbox_", 13) == 0) {
+        uint32_t template_id = (uint32_t)atoi(logic_id + 13);
+        const char* handler_name = ir_logic_block_get_handler(ctx->logic, template_id, "click");
+        if (handler_name) {
+            printf("[executor] Found handler '%s' for checkbox template_id %u\n", handler_name, template_id);
+            return ir_executor_call_handler(ctx, handler_name);
+        }
+    }
+
+    printf("[executor] No handler found for logic_id '%s'\n", logic_id);
+    return false;
 }
 
 // ============================================================================
@@ -345,4 +479,242 @@ bool ir_executor_load_kir_file(IRExecutorContext* ctx, const char* kir_path) {
 
     cJSON_Delete(root);
     return true;
+}
+
+// ============================================================================
+// VARIABLE MANAGEMENT
+// ============================================================================
+
+int64_t ir_executor_get_var(IRExecutorContext* ctx, const char* name, uint32_t instance_id) {
+    if (!ctx || !name) return 0;
+
+    // Look for variable with matching name and instance ID
+    for (int i = 0; i < ctx->var_count; i++) {
+        if (ctx->vars[i].owner_component_id == instance_id &&
+            ctx->vars[i].name && strcmp(ctx->vars[i].name, name) == 0) {
+            return ctx->vars[i].value;
+        }
+    }
+
+    // Not found, return 0
+    return 0;
+}
+
+void ir_executor_set_var(IRExecutorContext* ctx, const char* name, int64_t value, uint32_t instance_id) {
+    if (!ctx || !name) return;
+
+    // Look for existing variable
+    for (int i = 0; i < ctx->var_count; i++) {
+        if (ctx->vars[i].owner_component_id == instance_id &&
+            ctx->vars[i].name && strcmp(ctx->vars[i].name, name) == 0) {
+            ctx->vars[i].value = value;
+            printf("[executor] Set var %s (instance %u) = %ld\n", name, instance_id, (long)value);
+            return;
+        }
+    }
+
+    // Create new variable
+    if (ctx->var_count < IR_EXECUTOR_MAX_VARS) {
+        ctx->vars[ctx->var_count].name = strdup(name);
+        ctx->vars[ctx->var_count].value = value;
+        ctx->vars[ctx->var_count].owner_component_id = instance_id;
+        ctx->var_count++;
+        printf("[executor] Created var %s (instance %u) = %ld\n", name, instance_id, (long)value);
+    }
+}
+
+// ============================================================================
+// EXPRESSION EVALUATION
+// ============================================================================
+
+static int64_t eval_expr(IRExecutorContext* ctx, IRExpression* expr, uint32_t instance_id) {
+    if (!expr) return 0;
+
+    switch (expr->type) {
+        case EXPR_LITERAL_INT:
+            return expr->int_value;
+
+        case EXPR_LITERAL_BOOL:
+            return expr->bool_value ? 1 : 0;
+
+        case EXPR_VAR_REF:
+            return ir_executor_get_var(ctx, expr->var_ref.name, instance_id);
+
+        case EXPR_BINARY: {
+            int64_t left = eval_expr(ctx, expr->binary.left, instance_id);
+            int64_t right = eval_expr(ctx, expr->binary.right, instance_id);
+
+            switch (expr->binary.op) {
+                case BINARY_OP_ADD: return left + right;
+                case BINARY_OP_SUB: return left - right;
+                case BINARY_OP_MUL: return left * right;
+                case BINARY_OP_DIV: return right != 0 ? left / right : 0;
+                case BINARY_OP_MOD: return right != 0 ? left % right : 0;
+                case BINARY_OP_EQ:  return left == right;
+                case BINARY_OP_NEQ: return left != right;
+                case BINARY_OP_LT:  return left < right;
+                case BINARY_OP_LTE: return left <= right;
+                case BINARY_OP_GT:  return left > right;
+                case BINARY_OP_GTE: return left >= right;
+                case BINARY_OP_AND: return left && right;
+                case BINARY_OP_OR:  return left || right;
+                default: return 0;
+            }
+        }
+
+        case EXPR_UNARY: {
+            int64_t operand = eval_expr(ctx, expr->unary.operand, instance_id);
+            switch (expr->unary.op) {
+                case UNARY_OP_NEG: return -operand;
+                case UNARY_OP_NOT: return !operand;
+                default: return 0;
+            }
+        }
+
+        default:
+            return 0;
+    }
+}
+
+// ============================================================================
+// STATEMENT EXECUTION
+// ============================================================================
+
+static void exec_stmt(IRExecutorContext* ctx, IRStatement* stmt, uint32_t instance_id) {
+    if (!stmt) return;
+
+    switch (stmt->type) {
+        case STMT_ASSIGN: {
+            int64_t value = eval_expr(ctx, stmt->assign.expr, instance_id);
+            ir_executor_set_var(ctx, stmt->assign.target, value, instance_id);
+            break;
+        }
+
+        case STMT_ASSIGN_OP: {
+            int64_t current = ir_executor_get_var(ctx, stmt->assign_op.target, instance_id);
+            int64_t delta = eval_expr(ctx, stmt->assign_op.expr, instance_id);
+            int64_t result = current;
+
+            switch (stmt->assign_op.op) {
+                case ASSIGN_OP_ADD: result = current + delta; break;
+                case ASSIGN_OP_SUB: result = current - delta; break;
+                case ASSIGN_OP_MUL: result = current * delta; break;
+                case ASSIGN_OP_DIV: result = delta != 0 ? current / delta : 0; break;
+            }
+
+            ir_executor_set_var(ctx, stmt->assign_op.target, result, instance_id);
+            break;
+        }
+
+        case STMT_IF: {
+            int64_t cond = eval_expr(ctx, stmt->if_stmt.condition, instance_id);
+            if (cond) {
+                for (int i = 0; i < stmt->if_stmt.then_count; i++) {
+                    exec_stmt(ctx, stmt->if_stmt.then_body[i], instance_id);
+                }
+            } else {
+                for (int i = 0; i < stmt->if_stmt.else_count; i++) {
+                    exec_stmt(ctx, stmt->if_stmt.else_body[i], instance_id);
+                }
+            }
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
+// ============================================================================
+// UNIVERSAL LOGIC EXECUTION
+// ============================================================================
+
+bool ir_executor_run_universal(IRExecutorContext* ctx, IRLogicFunction* func, uint32_t instance_id) {
+    if (!ctx || !func || !func->has_universal) return false;
+
+    printf("[executor] Running universal logic for instance %u\n", instance_id);
+
+    for (int i = 0; i < func->statement_count; i++) {
+        exec_stmt(ctx, func->statements[i], instance_id);
+    }
+
+    return true;
+}
+
+// ============================================================================
+// UI UPDATE
+// ============================================================================
+
+static void update_text_recursive(IRExecutorContext* ctx, IRComponent* comp, uint32_t instance_id) {
+    if (!comp) return;
+
+    // Debug: log component type
+    if (comp->type == IR_COMPONENT_TEXT) {
+        printf("[executor] Found Text component id=%u, owner=%u, text_expression=%s\n",
+               comp->id, comp->owner_instance_id,
+               comp->text_expression ? comp->text_expression : "(null)");
+    }
+
+    // Check if this is a Text component with a text_expression (reactive text)
+    // Only update if it belongs to the same instance
+    if (comp->type == IR_COMPONENT_TEXT && comp->text_expression &&
+        comp->owner_instance_id == instance_id) {
+        const char* expr = comp->text_expression;
+        const char* start = strstr(expr, "{{");
+        if (start) {
+            const char* end = strstr(start, "}}");
+            if (end) {
+                // Extract variable name
+                int nameLen = end - start - 2;
+                if (nameLen > 0 && nameLen < 64) {
+                    char varName[65];
+                    strncpy(varName, start + 2, nameLen);
+                    varName[nameLen] = '\0';
+
+                    // Get value and update text
+                    int64_t value = ir_executor_get_var(ctx, varName, instance_id);
+
+                    // Build new text from expression template
+                    char newText[256];
+                    int prefixLen = start - expr;
+                    strncpy(newText, expr, prefixLen);
+                    newText[prefixLen] = '\0';
+
+                    char valueStr[32];
+                    snprintf(valueStr, sizeof(valueStr), "%ld", (long)value);
+                    strcat(newText, valueStr);
+                    strcat(newText, end + 2);
+
+                    // Update the component's text_content (display text)
+                    if (comp->text_content) {
+                        free(comp->text_content);
+                    }
+                    comp->text_content = strdup(newText);
+                    printf("[executor] Updated text: %s -> %s\n", expr, newText);
+                }
+            }
+        }
+    }
+
+    // Recurse to children
+    for (int i = 0; i < comp->child_count; i++) {
+        update_text_recursive(ctx, comp->children[i], instance_id);
+    }
+}
+
+void ir_executor_update_text_components(IRExecutorContext* ctx) {
+    if (!ctx) {
+        printf("[executor] update_text: ctx is NULL\n");
+        return;
+    }
+    if (!ctx->root) {
+        printf("[executor] update_text: ctx->root is NULL\n");
+        return;
+    }
+    printf("[executor] update_text: starting with root id=%u, instance=%u\n",
+           ctx->root->id, ctx->current_instance_id);
+
+    // For now, update all text with instance 0 (simple case)
+    // TODO: Track which instance owns which subtree
+    update_text_recursive(ctx, ctx->root, ctx->current_instance_id);
 }

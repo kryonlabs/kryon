@@ -813,7 +813,7 @@ proc addWindowPropertiesToKir*(filename: string, window: KryonWindow) =
     kirJson["windowTitle"] = %window.title
     kirJson["windowWidth"] = %($window.width & ".0px")
     kirJson["windowHeight"] = %($window.height & ".0px")
-    writeFile(filename, $kirJson)
+    writeFile(filename, pretty(kirJson))
   except:
     echo "[IR] Warning: Failed to add window properties to KIR file"
 
@@ -869,22 +869,13 @@ proc run*(app: KryonApp) =
       for lang, code in registeredSources.pairs:
         ir_reactive_manifest_add_source(manifest, cstring(lang), cstring(code))
 
-    # Create logic block from registered handlers (for round-trip)
+    # Use globalLogicBlock which has proper universal logic functions
+    # (populated by registerLogicFunctionWithSource and registerEventBinding)
     var logicBlock: IRLogicBlockPtr = nil
-    if registeredHandlers.len > 0:
-      logicBlock = ir_logic_block_create()
-      for entry in registeredHandlers:
-        # Create function with a statement that calls the handler
-        let fn = ir_logic_function_create(cstring(entry.logicId))
-        # Add a "var" statement that references the handler function name
-        let varExpr = ir_expr_var(cstring(entry.handlerName))
-        let stmt = ir_stmt_assign(cstring("_call"), varExpr)
-        ir_logic_function_add_stmt(fn, stmt)
-        ir_logic_block_add_function(logicBlock, fn)
-        # Create event binding
-        let binding = ir_event_binding_create(entry.componentId, cstring(entry.eventType), cstring(entry.logicId))
-        ir_logic_block_add_binding(logicBlock, binding)
-      echo "[kryon] Created logic block with ", registeredHandlers.len, " handlers"
+    let glb = getGlobalLogicBlock()
+    if glb.handle != nil and (glb.functionCount > 0 or glb.bindingCount > 0):
+      logicBlock = glb.handle
+      echo "[kryon] Using global logic block with ", glb.functionCount, " functions, ", glb.bindingCount, " bindings"
 
     # Write JSON v3.0 if we have handlers, otherwise v2.1
     if logicBlock != nil:

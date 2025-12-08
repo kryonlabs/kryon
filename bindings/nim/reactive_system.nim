@@ -5,6 +5,7 @@
 
 import tables
 import sets
+import strutils
 import ir_core
 
 # ============================================================================
@@ -59,6 +60,7 @@ proc syncComponentDefinitionsToManifest*(manifest: ptr IRReactiveManifest) =
   if manifest == nil:
     return
 
+  echo "[kryon] syncComponentDefinitionsToManifest: ", componentDefinitions.len, " definitions"
   for name, def in componentDefinitions:
     # Create C arrays for props and state vars
     var cProps: seq[IRComponentProp] = @[]
@@ -876,6 +878,8 @@ type
     varType*: IRReactiveVarType
     getValue*: proc(): IRReactiveValue {.closure.}
     componentBindings*: seq[ptr IRComponent]  # Components bound to this var
+    scope*: string  # "component" or "global" - determines state isolation
+    initialExpr*: string  # Initial expression (e.g., '{"var":"initialValue"}')
 
 # Global registry of named reactive variables for serialization
 var namedReactiveVars*: Table[string, ReactiveVarEntry] = initTable[string, ReactiveVarEntry]()
@@ -916,11 +920,28 @@ proc registerNamedReactiveVar*[T](name: string, rv: ReactiveVar[T]) =
     if binding != nil and binding.component != nil:
       components.add(binding.component)
 
+  # For component-scoped vars like "Counter:value", derive the initialExpr from component definition
+  # The name format is "ComponentName:varName", e.g. "Counter:value"
+  var initialExpr = ""
+  if ":" in name:
+    let parts = name.split(":")
+    let compName = parts[0]
+    let varName = parts[1]
+    # Look up the component definition to get the initial expression
+    if compName in componentDefinitions:
+      let compDef = componentDefinitions[compName]
+      for sv in compDef.stateVars:
+        if sv.name == varName:
+          initialExpr = sv.initialExpr  # e.g., '{"var":"initialValue"}'
+          break
+
   let entry = ReactiveVarEntry(
     name: name,
     varType: varType,
     getValue: getValue,
-    componentBindings: components
+    componentBindings: components,
+    scope: "component",  # Named reactive vars from components are component-scoped
+    initialExpr: initialExpr
   )
 
   namedReactiveVars[name] = entry
@@ -956,20 +977,24 @@ proc exportReactiveManifest*(): ptr IRReactiveManifest =
       of IR_REACTIVE_TYPE_BOOL: "bool"
       else: "unknown"
 
-    # Simple JSON serialization of initial value
-    let initialValueJson = case entry.varType
-      of IR_REACTIVE_TYPE_INT: $value.as_int
-      of IR_REACTIVE_TYPE_FLOAT: $value.as_float
-      of IR_REACTIVE_TYPE_STRING: "\"" & (if value.as_string != nil: $value.as_string else: "") & "\""
-      of IR_REACTIVE_TYPE_BOOL: (if value.as_bool: "true" else: "false")
-      else: "null"
+    # Use initialExpr if available (for component-scoped vars), otherwise serialize current value
+    let initialValueJson = if entry.initialExpr.len > 0:
+        entry.initialExpr  # e.g., '{"var":"initialValue"}'
+      else:
+        # Fallback to current value for global scope or missing initialExpr
+        case entry.varType
+        of IR_REACTIVE_TYPE_INT: $value.as_int
+        of IR_REACTIVE_TYPE_FLOAT: $value.as_float
+        of IR_REACTIVE_TYPE_STRING: "\"" & (if value.as_string != nil: $value.as_string else: "") & "\""
+        of IR_REACTIVE_TYPE_BOOL: (if value.as_bool: "true" else: "false")
+        else: "null"
 
     ir_reactive_manifest_set_var_metadata(
       result,
       varId,
       cstring(typeString),
       cstring(initialValueJson),
-      cstring("global")  # All named vars are global scope for now
+      cstring(entry.scope)  # Use the stored scope (component or global)
     )
 
     # Add bindings for this variable

@@ -433,8 +433,10 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                     // Try executor first (for .kir file execution)
                                     IRExecutorContext* executor = ir_executor_get_global();
                                     if (executor) {
-                                        // Execute via IR executor (handles .kir logic blocks)
-                                        ir_executor_handle_event(executor, clicked->id, "click");
+                                        // Set root for UI updates
+                                        ir_executor_set_root(executor, renderer->last_root);
+                                        // Execute via IR executor using logic_id (handles .kir logic blocks)
+                                        ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
                                     } else {
                                         // Fallback to Nim bridge (for compiled Nim binaries)
                                         extern void nimButtonBridge(uint32_t componentId);
@@ -451,7 +453,9 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                 // Try executor first (for .kir file execution)
                                 IRExecutorContext* executor = ir_executor_get_global();
                                 if (executor) {
-                                    ir_executor_handle_event(executor, clicked->id, "click");
+                                    // Set root for UI updates
+                                    ir_executor_set_root(executor, renderer->last_root);
+                                    ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
                                 } else {
                                     // Fallback to Nim bridge
                                     extern void nimCheckboxBridge(uint32_t componentId);
@@ -494,6 +498,18 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                     }
                                 }
                             }
+                            else {
+                                // Generic logic_id - handle via executor
+                                printf("Click on component ID %u (logic: %s)\n",
+                                       clicked->id, ir_event->logic_id);
+                                IRExecutorContext* executor = ir_executor_get_global();
+                                if (executor) {
+                                    // Set root for UI updates
+                                    ir_executor_set_root(executor, renderer->last_root);
+                                    // Use logic_id directly since component IDs may be remapped
+                                    ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
+                                }
+                            }
                             }  // end else if (ir_event->logic_id)
                         }  // end if (ir_event)
                         else {
@@ -501,6 +517,34 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             // Checkboxes should toggle on click even without a handler
                             if (clicked->type == IR_COMPONENT_CHECKBOX) {
                                 ir_toggle_checkbox_state(clicked);
+                            }
+                            // Dropdowns should toggle open/closed on click even without a handler
+                            else if (clicked->type == IR_COMPONENT_DROPDOWN) {
+                                IRDropdownState* state = ir_get_dropdown_state(clicked);
+                                if (state) {
+                                    // Get click coordinates
+                                    float click_y = (float)event.button.y;
+                                    IRRenderedBounds bounds = clicked->rendered_bounds;
+
+                                    if (state->is_open) {
+                                        // Check if click is in menu area
+                                        float menu_y = bounds.y + bounds.height;
+                                        float menu_height = fminf(state->option_count * 35.0f, 200.0f);
+
+                                        if (click_y >= menu_y && click_y < menu_y + menu_height) {
+                                            // Click in menu - select option
+                                            uint32_t option_index = (uint32_t)((click_y - menu_y) / 35.0f);
+                                            if (option_index < state->option_count) {
+                                                ir_set_dropdown_selected_index(clicked, (int32_t)option_index);
+                                            }
+                                        }
+                                        // Close dropdown after any click when open
+                                        ir_set_dropdown_open_state(clicked, false);
+                                    } else {
+                                        // Dropdown closed - toggle it open
+                                        ir_set_dropdown_open_state(clicked, true);
+                                    }
+                                }
                             }
                         }
                     }

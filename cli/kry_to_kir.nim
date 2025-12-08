@@ -304,6 +304,16 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
   var posX: JsonNode = nil
   var posY: JsonNode = nil
 
+  # Handle positional arguments for custom components
+  # Map positional args to parameter names from component definition
+  if node.componentArgs.len > 0 and ctx.componentDefs.hasKey(node.componentType):
+    let compDef = ctx.componentDefs[node.componentType]
+    for i, arg in node.componentArgs:
+      if i < compDef.compParams.len:
+        let paramName = compDef.compParams[i].name
+        let simpleVal = ctx.getSimpleValue(arg)
+        result[paramName] = simpleVal
+
   # Process properties
   for name, value in node.componentProps:
     let irName = mapPropertyName(name)
