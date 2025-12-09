@@ -290,8 +290,8 @@ typedef struct {
             uint16_t vertex_count;          // Number of vertices
             uint32_t color;                 // Fill color
             bool filled;                    // true = filled, false = outline only
-            // Store vertices inline to avoid pointer issues (max 16 vertices = 32 floats)
-            kryon_fp_t vertex_storage[32];
+            // Store vertices inline to avoid pointer issues (max 64 vertices = 128 floats)
+            kryon_fp_t vertex_storage[128];
         } draw_polygon;
 
         // Plugin command structures

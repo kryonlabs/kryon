@@ -103,6 +103,31 @@ proc generateHelperFunction(helper: Helper): string =
   result &= &"  ## {helper.description}\n"
 
   if helper.implementation == "case_mapping":
+    # Add hex color parsing support
+    result &= "  # Try hex color first (#RGB, #RRGGBB, #RRGGBBAA)\n"
+    result &= "  if value.len > 0 and value[0] == '#':\n"
+    result &= "    let hex = value[1..^1]\n"
+    result &= "    try:\n"
+    result &= "      case hex.len\n"
+    result &= "      of 3:  # #RGB -> #RRGGBB\n"
+    result &= "        let r = uint8(parseHexInt(hex[0..0] & hex[0..0]))\n"
+    result &= "        let g = uint8(parseHexInt(hex[1..1] & hex[1..1]))\n"
+    result &= "        let b = uint8(parseHexInt(hex[2..2] & hex[2..2]))\n"
+    result &= "        return IRColor(r: r, g: g, b: b, a: 255)\n"
+    result &= "      of 6:  # #RRGGBB\n"
+    result &= "        let r = uint8(parseHexInt(hex[0..1]))\n"
+    result &= "        let g = uint8(parseHexInt(hex[2..3]))\n"
+    result &= "        let b = uint8(parseHexInt(hex[4..5]))\n"
+    result &= "        return IRColor(r: r, g: g, b: b, a: 255)\n"
+    result &= "      of 8:  # #RRGGBBAA\n"
+    result &= "        let r = uint8(parseHexInt(hex[0..1]))\n"
+    result &= "        let g = uint8(parseHexInt(hex[2..3]))\n"
+    result &= "        let b = uint8(parseHexInt(hex[4..5]))\n"
+    result &= "        let a = uint8(parseHexInt(hex[6..7]))\n"
+    result &= "        return IRColor(r: r, g: g, b: b, a: a)\n"
+    result &= "      else: discard\n"
+    result &= "    except: discard\n\n"
+    result &= "  # Named colors\n"
     result &= "  case value.toLowerAscii()\n"
     for key, val in helper.cases:
       let r = val["r"].getInt()
@@ -183,6 +208,9 @@ proc generatePropertyApplication(prop: Property, componentVar: string): string =
     result &= &"      else:\n"
     result &= &"        let val = parseFloat(`{prop.name}`)\n"
     result &= &"        {prop.irFunction}({target}, IR_DIMENSION_PX, cfloat(val))"
+
+  of "dimension_int_pixels":
+    result &= &"    {prop.irFunction}({target}, IR_DIMENSION_PX, cfloat(`{prop.name}`))"
 
   else:
     result &= &"    # Unknown transform: {prop.irParamTransform}"

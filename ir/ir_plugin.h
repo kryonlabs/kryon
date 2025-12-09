@@ -237,6 +237,51 @@ bool ir_plugin_dispatch_component_render(void* backend_ctx, uint32_t component_t
                                          float x, float y, float width, float height);
 
 // ============================================================================
+// Component Callback Bridge Registration
+// ============================================================================
+
+/**
+ * Callback bridge function signature.
+ * Allows plugins to register a bridge that gets called during component rendering.
+ * This enables plugins to handle user-defined callbacks (e.g., onDraw for canvas).
+ */
+typedef void (*IRPluginCallbackBridge)(uint32_t component_id);
+
+/**
+ * Register a callback bridge for a specific component type.
+ * This allows plugins to handle user-defined callbacks.
+ *
+ * @param component_type Component type ID
+ * @param bridge Bridge function to call
+ * @return true if registered successfully, false otherwise
+ */
+bool ir_plugin_register_callback_bridge(uint32_t component_type, IRPluginCallbackBridge bridge);
+
+/**
+ * Unregister a callback bridge for a component type.
+ *
+ * @param component_type Component type ID
+ */
+void ir_plugin_unregister_callback_bridge(uint32_t component_type);
+
+/**
+ * Check if a component type has a registered callback bridge.
+ *
+ * @param component_type Component type ID
+ * @return true if bridge is registered, false otherwise
+ */
+bool ir_plugin_has_callback_bridge(uint32_t component_type);
+
+/**
+ * Dispatch callback invocation to registered plugin bridge.
+ *
+ * @param component_type Component type ID
+ * @param component_id Component instance ID
+ * @return true if callback was dispatched, false otherwise
+ */
+bool ir_plugin_dispatch_callback(uint32_t component_type, uint32_t component_id);
+
+// ============================================================================
 // Backend Capabilities
 // ============================================================================
 

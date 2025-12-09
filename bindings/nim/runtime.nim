@@ -1536,20 +1536,6 @@ proc resyncTabGroupChildren*(state: ptr TabGroupState) =
 
   echo "[TabGroup] Resync complete"
 
-var canvasHandlers = initTable[uint32, proc()]()
-
-proc registerCanvasHandler*(canvas: ptr IRComponent, handler: proc()) =
-  ## Register a canvas onDraw handler - called each frame when canvas is rendered
-  if canvas.isNil:
-    return
-  canvasHandlers[canvas.id] = handler
-
-proc nimCanvasBridge*(componentId: uint32) {.exportc: "nimCanvasBridge", cdecl, dynlib.} =
-  ## Bridge function for canvas rendering - called from C desktop renderer
-  ## This is exported to C so it can be called when canvas components are rendered
-  if canvasHandlers.hasKey(componentId):
-    canvasHandlers[componentId]()
-
 var inputHandlers = initTable[uint32, proc(text: string)]()
 
 proc nimInputBridge*(component: ptr IRComponent, text: cstring): bool {.exportc: "nimInputBridge", cdecl, dynlib.} =
@@ -1643,8 +1629,6 @@ proc cleanupHandlersForSubtree*(root: ptr IRComponent) =
     buttonHandlers.del(root.id)
   if checkboxHandlers.hasKey(root.id):
     checkboxHandlers.del(root.id)
-  if canvasHandlers.hasKey(root.id):
-    canvasHandlers.del(root.id)
   if inputHandlers.hasKey(root.id):
     inputHandlers.del(root.id)
   if dropdownHandlers.hasKey(root.id):

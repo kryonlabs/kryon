@@ -258,6 +258,16 @@ proc getSimpleValue(ctx: var TranspilerContext, node: KryNode): JsonNode =
   else:
     ctx.transpileExpression(node)
 
+# Normalize alignment values to IR format (hyphenated)
+proc normalizeAlignmentValue(value: string): string =
+  case value
+  of "spaceEvenly": "space-evenly"
+  of "spaceAround": "space-around"
+  of "spaceBetween": "space-between"
+  of "flexStart": "flex-start"
+  of "flexEnd": "flex-end"
+  else: value
+
 # Map property names to IR property names
 proc mapPropertyName(name: string): string =
   case name
@@ -388,9 +398,15 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
         borderRadius = simpleVal
       # Handle contentAlignment → justifyContent + alignItems
       of "contentAlignment":
-        let alignStr = simpleVal.getStr("start")
+        let alignStr = normalizeAlignmentValue(simpleVal.getStr("start"))
         result["justifyContent"] = %alignStr
         result["alignItems"] = %alignStr
+      # Handle alignment properties - normalize camelCase to hyphenated
+      of "justifyContent", "alignItems":
+        if simpleVal.kind == JString:
+          result[irName] = %normalizeAlignmentValue(simpleVal.getStr)
+        else:
+          result[irName] = simpleVal
       # Handle absolute positioning
       of "posX":
         posX = simpleVal
