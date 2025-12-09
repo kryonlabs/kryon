@@ -1309,63 +1309,8 @@ macro Input*(props: untyped): untyped =
       kryon_component_mark_dirty(`inputName`)
       `inputName`
 
-macro Canvas*(props: untyped): untyped =
-  ## Canvas component macro - IR version
-  var
-    canvasName = genSym(nskLet, "canvas")
-    widthVal: NimNode = newIntLitNode(800)
-    heightVal: NimNode = newIntLitNode(600)
-    bgColorVal: NimNode = newStrLitNode("#000000")
-    onDrawVal: NimNode = newNilLit()
-    hasOnDraw = false
-
-  # Extract properties from props
-  for node in props.children:
-    if node.kind == nnkAsgn:
-      let identName = node[0]
-      let value = node[1]
-
-      case $identName
-      of "width":
-        widthVal = value
-      of "height":
-        heightVal = value
-      of "backgroundColor":
-        bgColorVal = value
-      of "onDraw":
-        onDrawVal = value
-        hasOnDraw = true
-      else:
-        discard
-
-  let registerHandlerSym = bindSym("registerCanvasHandler")
-  let newCanvasSym = bindSym("newKryonCanvas")
-  let setBgColorSym = bindSym("setBackgroundColor")
-  let setWidthSym = bindSym("setWidth")
-  let setHeightSym = bindSym("setHeight")
-
-  if hasOnDraw:
-    result = quote do:
-      block:
-        let `canvasName` = `newCanvasSym`()
-        # Set canvas size using IR style system
-        `setWidthSym`(`canvasName`, `widthVal`)
-        `setHeightSym`(`canvasName`, `heightVal`)
-        # Set canvas background color
-        `setBgColorSym`(`canvasName`, runtime.parseColor(`bgColorVal`))
-        # Register the onDraw handler
-        `registerHandlerSym`(`canvasName`, `onDrawVal`)
-        `canvasName`
-  else:
-    result = quote do:
-      block:
-        let `canvasName` = `newCanvasSym`()
-        # Set canvas size using IR style system
-        `setWidthSym`(`canvasName`, `widthVal`)
-        `setHeightSym`(`canvasName`, `heightVal`)
-        # Set canvas background color
-        `setBgColorSym`(`canvasName`, runtime.parseColor(`bgColorVal`))
-        `canvasName`
+# Canvas macro removed - now available as a plugin
+# Import from kryon-plugin-canvas to use Canvas component
 
 macro Spacer*(props: untyped): untyped =
   ## Spacer component macro

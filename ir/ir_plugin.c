@@ -53,6 +53,10 @@ typedef struct {
     uint32_t commands_dispatched;
     uint32_t unknown_commands;
     uint32_t components_rendered;
+
+    // Callback bridges (indexed by IRComponentType)
+    IRPluginCallbackBridge callback_bridges[32];
+    uint32_t callback_bridge_count;
 } PluginSystem;
 
 static PluginSystem g_plugin_system = {0};
@@ -480,5 +484,50 @@ bool ir_plugin_dispatch_component_render(void* backend_ctx, uint32_t component_t
     // Dispatch to renderer
     renderer(backend_ctx, component, x, y, width, height);
     g_plugin_system.components_rendered++;
+    return true;
+}
+
+// ============================================================================
+// Callback Bridge Registration
+// ============================================================================
+
+bool ir_plugin_register_callback_bridge(uint32_t component_type, IRPluginCallbackBridge bridge) {
+    if (!bridge || component_type >= 32) {
+        return false;
+    }
+
+    if (g_plugin_system.callback_bridges[component_type] != NULL) {
+        fprintf(stderr, "[kryon][plugin] Component type %u already has a callback bridge\n", component_type);
+        return false;
+    }
+
+    g_plugin_system.callback_bridges[component_type] = bridge;
+    g_plugin_system.callback_bridge_count++;
+    printf("[kryon][plugin] Registered callback bridge for component type %u\n", component_type);
+    return true;
+}
+
+void ir_plugin_unregister_callback_bridge(uint32_t component_type) {
+    if (component_type < 32 && g_plugin_system.callback_bridges[component_type] != NULL) {
+        g_plugin_system.callback_bridges[component_type] = NULL;
+        g_plugin_system.callback_bridge_count--;
+    }
+}
+
+bool ir_plugin_has_callback_bridge(uint32_t component_type) {
+    return (component_type < 32) && (g_plugin_system.callback_bridges[component_type] != NULL);
+}
+
+bool ir_plugin_dispatch_callback(uint32_t component_type, uint32_t component_id) {
+    if (component_type >= 32) {
+        return false;
+    }
+
+    IRPluginCallbackBridge bridge = g_plugin_system.callback_bridges[component_type];
+    if (!bridge) {
+        return false;
+    }
+
+    bridge(component_id);
     return true;
 }
