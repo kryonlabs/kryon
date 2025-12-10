@@ -357,6 +357,30 @@ void ir_tabgroup_handle_drag(TabGroupState* state, float x, float y, bool is_dow
 
 void ir_tabgroup_finalize(TabGroupState* state) {
     if (!state) return;
+
+    // Extract visual colors from Tab components into tab_visuals array
+    // (needed when loading from .kir files where colors are in IRTabData)
+    for (uint32_t i = 0; i < state->tab_count; i++) {
+        IRComponent* tab = state->tabs[i];
+        if (tab && tab->tab_data) {
+            // Get background color from style if available, otherwise use default
+            uint32_t bg_color = 0x3d3d3dff;  // Default dark gray
+            if (tab->style && tab->style->background.type == IR_COLOR_SOLID) {
+                IRColorData* bg_data = &tab->style->background.data;
+                bg_color = (bg_data->r << 24) | (bg_data->g << 16) | (bg_data->b << 8) | bg_data->a;
+            }
+
+            TabVisualState visual = {
+                .background_color = bg_color,
+                .active_background_color = tab->tab_data->active_background,
+                .text_color = tab->tab_data->text_color,
+                .active_text_color = tab->tab_data->active_text_color
+            };
+
+            state->tab_visuals[i] = visual;
+        }
+    }
+
     if (state->tab_count > 0) {
         int clamp_index = state->selected_index;
         if (clamp_index < 0) clamp_index = 0;
@@ -394,6 +418,15 @@ static void ir_tabgroup_apply_visual_to_tab(IRComponent* tab, TabVisualState* vi
     uint8_t bg_g = (bg_color >> 16) & 0xFF;
     uint8_t bg_b = (bg_color >> 8) & 0xFF;
     uint8_t bg_a = bg_color & 0xFF;
+
+    // DEBUG: Print colors being applied
+    const char* trace = getenv("KRYON_TRACE_TAB_COLORS");
+    if (trace && strcmp(trace, "1") == 0) {
+        printf("[tab_colors] Tab #%d %s: bg=#%02x%02x%02x%02x (raw=0x%08x)\n",
+               tab->id, is_active ? "ACTIVE" : "inactive",
+               bg_r, bg_g, bg_b, bg_a, bg_color);
+    }
+
     ir_set_background_color(style, bg_r, bg_g, bg_b, bg_a);
 
     // Apply text color
@@ -618,6 +651,12 @@ void ir_destroy_component(IRComponent* component) {
     if (component->tag) free(component->tag);
     if (component->text_content) free(component->text_content);
     if (component->custom_data) free(component->custom_data);
+
+    // Free tab data
+    if (component->tab_data) {
+        if (component->tab_data->title) free(component->tab_data->title);
+        free(component->tab_data);
+    }
 
     // Free text layout
     if (component->text_layout) {

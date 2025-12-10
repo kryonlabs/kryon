@@ -291,6 +291,35 @@ The `kryon tree` command shows:
 - Child count
 - Tree depth
 
+**Enhanced Options**:
+```bash
+# Basic tree
+kryon tree <file>.kir
+
+# Show dimensions and colors
+kryon tree <file>.kir --visual
+
+# Show only colors
+kryon tree <file>.kir --with-colors
+
+# Show only dimensions/positions
+kryon tree <file>.kir --with-positions
+
+# Limit depth
+kryon tree <file>.kir --max-depth=5
+```
+
+Example output with `--visual`:
+```
+Column #1 (800.0px×600.0px) [bg:#2c2c2c] (1 children)
+└── Column #2 (3 children)
+    ├── Text #3 [color:#ffffff] "Reorderable Tabs Demo"
+    └── TabGroup #5 (760.0px×400.0px) (2 children)
+        ├── TabBar #6 [bg:#1a1a1a] (4 children)
+        │   ├── Tab #7 [bg:#3d3d3d] [Home]
+        │   ├── Tab #8 [bg:#3d3d3d] [Profile]
+```
+
 The `kryon inspect-detailed` command provides:
 - Total component count
 - Component type distribution
@@ -299,6 +328,79 @@ The `kryon inspect-detailed` command provides:
 - Style usage tracking
 - Reactive state information
 - Warnings (large text, excessive children, deep nesting)
+
+### Visual Debugging with Screenshots
+
+**IMPORTANT**: When debugging UI rendering issues, ALWAYS use the visual debugging tools first. See `.claude/skills/kryon-visual-debug/` for detailed workflow.
+
+#### Screenshot Capture
+Capture the actual rendered output to see what's really happening:
+
+```bash
+# Basic screenshot (headless, auto-exit after 3 frames)
+env LD_LIBRARY_PATH=build:$LD_LIBRARY_PATH \
+    KRYON_SCREENSHOT=/tmp/debug.png \
+    KRYON_SCREENSHOT_AFTER_FRAMES=3 \
+    KRYON_HEADLESS=1 \
+    timeout 2 ~/.local/bin/kryon run <file>
+```
+
+#### Debug Overlay
+Show component boundaries, IDs, and dimensions:
+
+```bash
+# Screenshot with debug overlay
+env LD_LIBRARY_PATH=build:$LD_LIBRARY_PATH \
+    KRYON_SCREENSHOT=/tmp/debug_overlay.png \
+    KRYON_DEBUG_OVERLAY=1 \
+    KRYON_HEADLESS=1 \
+    timeout 2 ~/.local/bin/kryon run <file>
+```
+
+Debug overlay color coding:
+- **Blue**: Containers, Columns, Rows
+- **Green**: Tab components (TabGroup, TabBar, Tab, etc.)
+- **Yellow**: Text
+- **Red**: Buttons
+- **Orange**: Inputs
+- **Purple**: Checkboxes
+- **Cyan**: Dropdowns
+
+#### Visual Debugging Environment Variables
+- `KRYON_SCREENSHOT=/path/to/output.png` - Enable screenshot capture
+- `KRYON_SCREENSHOT_AFTER_FRAMES=N` - Capture after N frames (default: 5)
+- `KRYON_HEADLESS=1` - Run without window, exit after screenshot
+- `KRYON_DEBUG_OVERLAY=1` - Show component boundaries and labels
+
+#### Claude Code Skills for Visual Debugging
+
+Three skills are available to automate visual debugging workflows:
+
+1. **kryon-visual-debug** (`.claude/skills/kryon-visual-debug/`)
+   - Auto-activates when user reports UI rendering issues
+   - Takes screenshot BEFORE making code changes
+   - Uses debug overlay to see component dimensions
+   - Verifies fixes with after screenshots
+
+2. **kryon-layout-inspector** (`.claude/skills/kryon-layout-inspector/`)
+   - Deep-dives into layout calculations
+   - Uses `KRYON_TRACE_LAYOUT=1` for detailed traces
+   - Identifies flex, sizing, and positioning issues
+   - Provides targeted fix recommendations
+
+3. **kryon-screenshot-diff** (`.claude/skills/kryon-screenshot-diff/`)
+   - Compares before/after screenshots
+   - ALWAYS used after UI fixes to verify success
+   - Catches regressions before user reports them
+   - Builds confidence in claimed fixes
+
+**Best Practice**: When user says "component not showing" or "layout is wrong", use the skills in order:
+1. `kryon-visual-debug` → Take screenshot to SEE the problem
+2. `kryon-layout-inspector` → Analyze layout if needed
+3. Make fix
+4. `kryon-screenshot-diff` → Verify fix worked
+
+This approach reduces debugging time from hours to minutes and eliminates blind guessing.
 
 ### Debug Renderer (Legacy)
 
@@ -312,12 +414,22 @@ debug_print_tree_to_file(root, "/tmp/tree_debug.txt")
 ```
 
 ### Environment Variables
+
+**Visual Debugging**:
+- `KRYON_SCREENSHOT=/path/to/output.png` - Enable screenshot capture
+- `KRYON_SCREENSHOT_AFTER_FRAMES=N` - Capture after N frames (default: 5)
+- `KRYON_HEADLESS=1` - Run without window, exit after screenshot
+- `KRYON_DEBUG_OVERLAY=1` - Show component boundaries and labels
+
+**Trace Debugging**:
 - `KRYON_TRACE_LAYOUT=1` - Trace layout calculations
 - `KRYON_TRACE_COMPONENTS=1` - Trace component creation
 - `KRYON_TRACE_ZINDEX=1` - Trace z-index sorting
 - `KRYON_TRACE_POLYGON=1` - Trace polygon rendering
 - `KRYON_TRACE_SCROLLBAR=1` - Trace scrollbar updates
 - `KRYON_TRACE_TABS=1` - Trace tab group state
+
+**Renderer Selection**:
 - `KRYON_RENDERER=terminal` - Use terminal renderer
 - `KRYON_RENDERER=sdl3` - Use SDL3 renderer (default)
 
@@ -335,15 +447,70 @@ debug_print_tree_to_file(root, "/tmp/tree_debug.txt")
 **Cause**: Loop variables captured by reference
 **Fix**: Transform loop body to use captured copy via `transformLoopVariableReferences()`
 
+### TabBar Components Not Laying Out Horizontally (FIXED)
+**Root Cause**: Desktop renderer didn't include `IR_COMPONENT_TAB_BAR` in row layout checks
+**Symptoms**: Tabs stacked vertically (on top of each other) instead of horizontally side-by-side
+**Fix Locations**:
+- `backends/desktop/desktop_rendering.c:996-999` - Added `IR_COMPONENT_TAB_BAR` to `is_row_layout` check
+- `backends/desktop/desktop_rendering.c:1202` - Added TabBar to space distribution
+- `backends/desktop/desktop_rendering.c:1429` - Added TabBar to cross-axis alignment
+- `backends/desktop/desktop_rendering.c:1478` - Added TabBar to flex_grow handling
+- `backends/desktop/desktop_rendering.c:1617` - Added TabBar to horizontal stacking (X-position advancement)
+**Also Fixed**:
+- `cli/kry_to_kir.nim:443-445` - Transpiler adds `flexDirection: "row"` for TabBar
+- `ir/ir_json_v2.c:1920-1929` - Prevent default `flex.direction` from overwriting JSON values
+**Testing**: Use `./test_visual.sh tabs_reorderable` to verify tabs render horizontally
+
+### TabGroup Opens on Wrong Tab (.kir Files) (FIXED)
+**Root Cause**: When loading `.kir` files from disk, TabGroups are deserialized but never have their `TabGroupState` runtime state created or finalized
+**Symptoms**:
+- Applications open on the last tab (e.g., "About") instead of the first tab ("Home")
+- Only affects `.kir` files loaded via `ir_read_json_v2_file()`
+- Nim DSL apps work correctly because they explicitly create and finalize TabGroupState
+**Fix Location**: `ir/ir_json_v2.c:2095-2171`
+**Solution**: Added `ir_finalize_tabgroups_recursive()` function that:
+1. Finds TabGroup components in the deserialized tree
+2. Creates `TabGroupState` via `ir_tabgroup_create_state()` if not already present
+3. Registers all Tab components from TabBar children via `ir_tabgroup_register_tab()`
+4. Registers all TabPanel components from TabContent children via `ir_tabgroup_register_panel()`
+5. Calls `ir_tabgroup_finalize()` to set initial panel visibility based on `selectedIndex`
+**Key Insight**: `IRTabData` (simple metadata) is populated during deserialization, but `TabGroupState` (runtime state in `custom_data`) must be created explicitly
+**Testing**: Screenshot verification shows "Welcome to the Home Panel!" content instead of "About This App"
+
 ## Testing
 
 ```bash
-# Build and run an example
+# Build and run an example (ALWAYS use this for testing!)
+./run_example.sh <example_name>
+
+# Examples:
+./run_example.sh tabs_reorderable
 ./run_example.sh habits
 
-# Run with tracing
-KRYON_TRACE_LAYOUT=1 ./run_example.sh habits
+# Run with tracing (warning: generates huge output, use with timeout)
+KRYON_TRACE_LAYOUT=1 timeout 1 ./run_example.sh <example_name>
 
-# Use terminal renderer
-KRYON_RENDERER=terminal ./run_example.sh habits
+# Use terminal renderer (faster for testing, auto-exits)
+KRYON_RENDERER=terminal timeout 1 ./run_example.sh <example_name>
 ```
+
+**IMPORTANT**: Always use `./run_example.sh` for testing, not `kryon run` directly. The script ensures proper compilation and handles the full pipeline (.kry → .kir → execution).
+
+### Visual Testing with Screenshots
+
+**CRITICAL**: Before claiming a visual issue is fixed, ALWAYS capture a screenshot to verify!
+
+```bash
+# Quick visual test with screenshot
+./test_visual.sh <example_name>
+
+# Custom output path
+./test_visual.sh tabs_reorderable /tmp/my_test.png
+```
+
+This script:
+- Kills existing kryon processes
+- Runs with screenshot capture enabled
+- Uses debug overlay to show component boundaries
+- Saves to `/tmp/kryon_test_<example>.png` by default
+- Verifies screenshot was actually created

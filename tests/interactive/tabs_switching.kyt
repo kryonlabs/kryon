@@ -1,0 +1,61 @@
+# Kryon Interactive Test File
+# Tests tab switching functionality
+
+Test:
+  name = "Tab Switching Verification"
+  target = "examples/kry/tabs_reorderable.kry"
+  description = "Verify tabs switch correctly and show appropriate content"
+
+  Setup:
+    # Wait for initial render
+    wait:
+      frames = 10
+      comment = "Allow initial layout and rendering"
+
+    # Capture initial state
+    screenshot:
+      path = "/tmp/tabs_initial.png"
+      comment = "Should show Home tab selected"
+
+  Scenario:
+    # Click on Profile tab
+    click:
+      component_id = 8
+      comment = "Click Profile tab (second tab)"
+
+    wait:
+      frames = 5
+      comment = "Wait for tab switch animation"
+
+    screenshot:
+      path = "/tmp/tabs_profile.png"
+      comment = "Should show Profile content"
+
+    # Click on Settings tab
+    click:
+      component_id = 9
+      comment = "Click Settings tab (third tab)"
+
+    wait:
+      frames = 5
+
+    screenshot:
+      path = "/tmp/tabs_settings.png"
+      comment = "Should show Settings content"
+
+    # Click back to Home tab
+    click:
+      component_id = 7
+      comment = "Click Home tab (first tab)"
+
+    wait:
+      frames = 5
+
+    screenshot:
+      path = "/tmp/tabs_home_return.png"
+      comment = "Should show Home content again"
+
+  Teardown:
+    # Optional cleanup actions
+    wait:
+      frames = 2

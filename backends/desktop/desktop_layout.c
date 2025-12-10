@@ -173,10 +173,10 @@ LayoutRect calculate_component_layout(IRComponent* component, LayoutRect parent_
         rect.y = parent_rect.y;
     }
 
-    // For TEXT and BUTTON components with AUTO dimensions, start with 0 instead of parent dimensions
+    // For TEXT, BUTTON, and TAB components with AUTO dimensions, start with 0 instead of parent dimensions
     // This allows get_child_size() to detect and measure them properly
     // CRITICAL: Buttons in a ROW must NOT default to parent width, or flex_grow won't work correctly!
-    if (component->type == IR_COMPONENT_TEXT || component->type == IR_COMPONENT_BUTTON) {
+    if (component->type == IR_COMPONENT_TEXT || component->type == IR_COMPONENT_BUTTON || component->type == IR_COMPONENT_TAB) {
         rect.width = 0;
         rect.height = 0;
     } else {
@@ -249,8 +249,10 @@ LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect) {
     // Use the existing calculate_component_layout which handles all component types correctly
     LayoutRect layout = calculate_component_layout(child, parent_rect);
 
-    // For AUTO-sized Row/Column, measure children to get actual size
-    if ((child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN) && child->child_count > 0) {
+    // For AUTO-sized Row/Column/TabBar, measure children to get actual size
+    // TabBar behaves like a Row (horizontal layout)
+    if ((child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN ||
+         child->type == IR_COMPONENT_TAB_BAR) && child->child_count > 0) {
         bool is_auto_width = !child->style || child->style->width.type == IR_DIMENSION_AUTO;
         bool is_auto_height = !child->style || child->style->height.type == IR_DIMENSION_AUTO;
 
@@ -269,7 +271,7 @@ LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect) {
                     total_height += child_h;
                     if (i < child->child_count - 1) total_height += gap;
                     if (child_w > total_width) total_width = child_w;
-                } else { // ROW
+                } else {  // Row or TabBar - horizontal layout
                     total_width += child_w;
                     if (i < child->child_count - 1) total_width += gap;
                     if (child_h > total_height) total_height = child_h;
@@ -302,6 +304,17 @@ LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect) {
     // Measure BUTTON components using get_child_dimension (which includes text + padding + minWidth)
     if (child->type == IR_COMPONENT_BUTTON) {
         // BUTTON should auto-size if calculate_component_layout returned 0 dimensions
+        if (layout.width <= 0.0f) {
+            layout.width = get_child_dimension(child, parent_rect, false);
+        }
+        if (layout.height <= 0.0f) {
+            layout.height = get_child_dimension(child, parent_rect, true);
+        }
+    }
+
+    // Measure TAB components using get_child_dimension (which includes title text + padding)
+    if (child->type == IR_COMPONENT_TAB) {
+        // TAB should auto-size if calculate_component_layout returned 0 dimensions
         if (layout.width <= 0.0f) {
             layout.width = get_child_dimension(child, parent_rect, false);
         }
@@ -417,6 +430,34 @@ float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_he
         return 0.0f;  // Text width is auto (fallback)
     }
 
+    // Tab auto-size: measure title text + padding (like button)
+    if (child->type == IR_COMPONENT_TAB && child->tab_data && child->tab_data->title) {
+#ifdef ENABLE_SDL3
+        float text_width = 0.0f, text_height = 0.0f;
+
+        // Temporarily set text_content to title for measurement
+        char* original_text = child->text_content;
+        child->text_content = child->tab_data->title;
+        measure_text_dimensions(child, parent_rect.width, &text_width, &text_height);
+        child->text_content = original_text;
+
+        // Add default padding for tabs
+        float pad_x = 20.0f, pad_y = 10.0f;
+        if (child->style) {
+            if (child->style->padding.left > 0) pad_x = child->style->padding.left + child->style->padding.right;
+            if (child->style->padding.top > 0) pad_y = child->style->padding.top + child->style->padding.bottom;
+        }
+
+        if (is_height && text_height > 0.0f) {
+            return text_height + pad_y;
+        } else if (!is_height && text_width > 0.0f) {
+            return text_width + pad_x;
+        }
+#endif
+        // Fallback for tabs
+        return is_height ? 40.0f : 100.0f;
+    }
+
     // Button auto-size: measure text content + padding
     if (child->type == IR_COMPONENT_BUTTON) {
 #ifdef ENABLE_SDL3
@@ -512,7 +553,8 @@ float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_he
 
     if ((child->type == IR_COMPONENT_CONTAINER ||
          child->type == IR_COMPONENT_ROW ||
-         child->type == IR_COMPONENT_COLUMN) &&
+         child->type == IR_COMPONENT_COLUMN ||
+         child->type == IR_COMPONENT_TAB_BAR) &&
         child->child_count > 0) {
 
         float total = 0.0f;
@@ -522,8 +564,9 @@ float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_he
         }
 
         // Determine if we're measuring the main axis
+        // TabBar is treated as horizontal (Row-like)
         bool is_main_axis = (is_height && child->type == IR_COMPONENT_COLUMN) ||
-                           (!is_height && child->type == IR_COMPONENT_ROW);
+                           (!is_height && (child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_TAB_BAR));
 
         if (getenv("KRYON_TRACE_LAYOUT")) {
             const char* child_type_name = child->type == IR_COMPONENT_ROW ? "ROW" :

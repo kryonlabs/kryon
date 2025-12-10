@@ -20,6 +20,11 @@ typedef enum {
     IR_COMPONENT_CANVAS,
     IR_COMPONENT_MARKDOWN,
     IR_COMPONENT_SPRITE,
+    IR_COMPONENT_TAB_GROUP,
+    IR_COMPONENT_TAB_BAR,
+    IR_COMPONENT_TAB,
+    IR_COMPONENT_TAB_CONTENT,
+    IR_COMPONENT_TAB_PANEL,
     IR_COMPONENT_CUSTOM
 } IRComponentType;
 
@@ -633,6 +638,16 @@ typedef struct IRDropdownState {
 } IRDropdownState;
 
 // Main IR Component
+// Tab-specific data
+typedef struct {
+    char* title;                   // Tab title text
+    bool reorderable;              // Can tabs be reordered via drag-and-drop
+    int32_t selected_index;        // Currently selected tab index (for TabGroup)
+    uint32_t active_background;    // Active tab background color (RGBA)
+    uint32_t text_color;           // Tab text color (RGBA)
+    uint32_t active_text_color;    // Active tab text color (RGBA)
+} IRTabData;
+
 typedef struct IRComponent {
     uint32_t id;
     IRComponentType type;
@@ -656,6 +671,7 @@ typedef struct IRComponent {
     uint32_t dirty_flags;              // Dirty tracking for incremental updates
     bool has_active_animations;        // OPTIMIZATION: Track if this subtree has animations (80% reduction)
     IRTextLayout* text_layout;         // Cached multi-line text layout (for IR_COMPONENT_TEXT)
+    IRTabData* tab_data;               // Tab-specific data (for tab components)
 } IRComponent;
 
 // IR Buffer for serialization
