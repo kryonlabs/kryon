@@ -1,0 +1,43 @@
+{
+  "events": [
+    {
+      "type": "wait",
+      "frames": 10,
+      "comment": "Wait for initial render"
+    },
+    {
+      "type": "screenshot",
+      "path": "/tmp/test_tab_before_click.png",
+      "comment": "Capture initial state - should show Home tab"
+    },
+    {
+      "type": "click",
+      "component_id": 8,
+      "comment": "Click on Profile tab (component ID from tabs_reorderable.kir)"
+    },
+    {
+      "type": "wait",
+      "frames": 5,
+      "comment": "Wait for tab switch animation"
+    },
+    {
+      "type": "screenshot",
+      "path": "/tmp/test_tab_after_click.png",
+      "comment": "Capture after clicking Profile - should show Profile content"
+    },
+    {
+      "type": "click",
+      "component_id": 9,
+      "comment": "Click on Settings tab"
+    },
+    {
+      "type": "wait",
+      "frames": 5
+    },
+    {
+      "type": "screenshot",
+      "path": "/tmp/test_tab_settings.png",
+      "comment": "Capture Settings tab"
+    }
+  ]
+}

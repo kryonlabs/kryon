@@ -381,6 +381,33 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             SDL_StopTextInput(renderer->window);
                         }
 
+                        // Handle IR-level tab clicks (new system)
+                        if (clicked->type == IR_COMPONENT_TAB) {
+                            // Find the TabGroup ancestor
+                            IRComponent* tab_group = clicked->parent;
+                            while (tab_group && tab_group->type != IR_COMPONENT_TAB_GROUP) {
+                                tab_group = tab_group->parent;
+                            }
+
+                            if (tab_group && tab_group->custom_data) {
+                                // Get the TabGroupState from custom_data
+                                TabGroupState* tg_state = (TabGroupState*)tab_group->custom_data;
+
+                                // Find which tab was clicked
+                                IRComponent* tab_bar = clicked->parent;
+                                if (tab_bar && tab_bar->type == IR_COMPONENT_TAB_BAR) {
+                                    for (uint32_t i = 0; i < tab_bar->child_count; i++) {
+                                        if (tab_bar->children[i] == clicked) {
+                                            // Switch to the clicked tab (triggers panel switching!)
+                                            printf("[tabs] Clicked tab %u in TabGroup %u\n", i, tab_group->id);
+                                            ir_tabgroup_select(tg_state, (int)i);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         // Start tab drag if parent carries TabGroupState in custom_data
                         if (clicked->parent && clicked->parent->custom_data) {
                             TabGroupState* tg_state = (TabGroupState*)clicked->parent->custom_data;

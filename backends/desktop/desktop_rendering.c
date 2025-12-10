@@ -431,6 +431,61 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             break;
         }
 
+        case IR_COMPONENT_TAB: {
+            // Render tab like a button but use tab_data->title
+            TTF_Font* font = desktop_ir_resolve_font(renderer, component, component->style && component->style->font.size > 0 ? component->style->font.size : 16.0f);
+
+            // Render tab background with opacity
+            if (component->style) {
+                float opacity = component->style->opacity * inherited_opacity;
+                render_background(renderer->renderer, component, &sdl_rect, opacity);
+            }
+
+            // Render tab title text if present
+            if (component->tab_data && component->tab_data->title && font) {
+                SDL_Color text_color = component->style ?
+                    ir_color_to_sdl(component->style->font.color) :
+                    (SDL_Color){255, 255, 255, 255};
+
+                // Guard against alpha=0 colors (uninitialized or transparent)
+                if (text_color.a == 0) {
+                    // Default to white text for tabs (good contrast on dark backgrounds)
+                    text_color = (SDL_Color){255, 255, 255, 255};
+                }
+
+                // Apply component opacity to text (cascaded with inherited opacity)
+                if (component->style) {
+                    float opacity = component->style->opacity * inherited_opacity;
+                    text_color.a = (uint8_t)(text_color.a * opacity);
+                }
+
+                SDL_Surface* surface = TTF_RenderText_Blended(font,
+                                                              component->tab_data->title,
+                                                              strlen(component->tab_data->title),
+                                                              text_color);
+                if (surface) {
+                    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
+                    if (texture) {
+                        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+                        float text_w = (float)surface->w;
+                        float text_h = (float)surface->h;
+
+                        // Center text in tab
+                        SDL_FRect text_rect = {
+                            .x = roundf(rect.x + (rect.width - text_w) / 2),
+                            .y = roundf(rect.y + (rect.height - text_h) / 2),
+                            .w = text_w,
+                            .h = text_h
+                        };
+                        SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
+                        SDL_DestroyTexture(texture);
+                    }
+                    SDL_DestroySurface(surface);
+                }
+            }
+            break;
+        }
+
         case IR_COMPONENT_TEXT: {
             TTF_Font* font = desktop_ir_resolve_font(renderer, component, component->style && component->style->font.size > 0 ? component->style->font.size : 16.0f);
             if (component->text_content && font) {
@@ -793,6 +848,17 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             }
             break;
 
+        case IR_COMPONENT_TAB_GROUP:
+        case IR_COMPONENT_TAB_BAR:
+        case IR_COMPONENT_TAB_CONTENT:
+        case IR_COMPONENT_TAB_PANEL:
+            // Tab containers - render as normal containers with background
+            if (component->style) {
+                float opacity = component->style->opacity * inherited_opacity;
+                render_background(renderer->renderer, component, &sdl_rect, opacity);
+            }
+            break;
+
         default:
             SDL_RenderFillRect(renderer->renderer, &sdl_rect);
             break;
@@ -938,10 +1004,12 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
     // Two-pass layout for ROW: measure total width, then position based on justify_content
     // Also store flex_grow distribution for use in the render pass
     float* flex_extra_widths = NULL;  // Extra width each child gets from flex_grow
-    // Apply two-pass layout for row-like containers (ROW, CONTAINER with horizontal direction)
+    // Apply two-pass layout for row-like containers (ROW, TabBar, CONTAINER with horizontal direction)
     bool is_row_layout = (component->type == IR_COMPONENT_ROW) ||
+                        (component->type == IR_COMPONENT_TAB_BAR) ||
                         (component->type == IR_COMPONENT_CONTAINER &&
                          component->layout && component->layout->flex.direction == 1);
+
     if (is_row_layout && component->child_count > 0) {
         // Pass 1: Measure total content width AND calculate flex_grow distribution
         float total_width = 0.0f;
@@ -1143,8 +1211,9 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
         }
     }
 
-    // ROW space distribution
-    if (component->type == IR_COMPONENT_ROW && component->layout && component->child_count > 0) {
+    // ROW/TabBar space distribution
+    if ((component->type == IR_COMPONENT_ROW || component->type == IR_COMPONENT_TAB_BAR) &&
+        component->layout && component->child_count > 0) {
         switch (component->layout->flex.justify_content) {
             case IR_ALIGNMENT_SPACE_BETWEEN: {
                 // Equal space between items, no space at edges
@@ -1369,8 +1438,9 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             }
         }
 
-        // Apply vertical alignment for ROW layout based on cross_axis (align_items)
-        if (component->type == IR_COMPONENT_ROW && component->layout) {
+        // Apply vertical alignment for ROW/TabBar layout based on cross_axis (align_items)
+        if ((component->type == IR_COMPONENT_ROW || component->type == IR_COMPONENT_TAB_BAR) &&
+            component->layout) {
             switch (component->layout->flex.cross_axis) {
                 case IR_ALIGNMENT_CENTER:
                     // Only center if child fits in container, otherwise align to start
@@ -1418,7 +1488,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
         // Apply flex_grow/flex_shrink extra width for ROW children
         // flex_extra_widths[i] > 0 = grow, < 0 = shrink
-        if (component->type == IR_COMPONENT_ROW && flex_extra_widths && flex_extra_widths[i] != 0) {
+        if ((component->type == IR_COMPONENT_ROW || component->type == IR_COMPONENT_TAB_BAR) &&
+            flex_extra_widths && flex_extra_widths[i] != 0) {
             rect_for_child.width += flex_extra_widths[i];
 
             // Clamp to maxWidth if growing
@@ -1540,8 +1611,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             render_component_sdl3(renderer, child, rect_for_child, child_opacity);
         }
 
-        // Vertical stacking for column layout - advance current_y
-        if (component->type == IR_COMPONENT_COLUMN) {
+        // Vertical stacking for column layout and tab groups - advance current_y
+        if (component->type == IR_COMPONENT_COLUMN || component->type == IR_COMPONENT_TAB_GROUP) {
             // Use rect_for_child height for auto-sized children (which may have been measured)
             // instead of child_layout height (which may be 0 for auto-sized components)
             float advance_height = rect_for_child.height > 0 ? rect_for_child.height : child_layout.height;
@@ -1556,10 +1627,11 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
         }
 
         // Horizontal stacking for row layout - advance current_x
-        if (component->type == IR_COMPONENT_ROW) {
+        if (component->type == IR_COMPONENT_ROW || component->type == IR_COMPONENT_TAB_BAR) {
             // Use rect_for_child width for auto-sized children (which may have been measured)
             // instead of child_layout width (which may be 0 for auto-sized components)
             float advance_width = rect_for_child.width > 0 ? rect_for_child.width : child_layout.width;
+
             if (getenv("KRYON_TRACE_LAYOUT")) {
                 float old_x = current_x;
                 current_x += advance_width + distributed_gap;
@@ -1589,6 +1661,50 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
     }
 
     return true;
+}
+
+// Screenshot capture function
+bool desktop_save_screenshot(DesktopIRRenderer* renderer, const char* path) {
+    if (!renderer || !renderer->renderer || !path) {
+        return false;
+    }
+
+    // Get renderer output size
+    int width, height;
+    if (!SDL_GetRenderOutputSize(renderer->renderer, &width, &height)) {
+        fprintf(stderr, "Failed to get render output size: %s\n", SDL_GetError());
+        return false;
+    }
+
+    // Read pixels from renderer
+    SDL_Surface* surface = SDL_RenderReadPixels(renderer->renderer, NULL);
+    if (!surface) {
+        fprintf(stderr, "Failed to read pixels: %s\n", SDL_GetError());
+        return false;
+    }
+
+    // Save to PNG using SDL_SaveBMP (we can add stb_image_write later for PNG)
+    char bmp_path[512];
+    snprintf(bmp_path, sizeof(bmp_path), "%s.bmp", path);
+    if (!SDL_SaveBMP(surface, bmp_path)) {
+        fprintf(stderr, "Failed to save screenshot: %s\n", SDL_GetError());
+        SDL_DestroySurface(surface);
+        return false;
+    }
+
+    SDL_DestroySurface(surface);
+    return true;
+}
+
+// Debug overlay rendering function
+void desktop_render_debug_overlay(DesktopIRRenderer* renderer, IRComponent* root) {
+    if (!renderer || !renderer->renderer || !root) {
+        return;
+    }
+
+    // Simple implementation: just draw bounding boxes for now
+    // TODO: Add labels with component type and ID
+    (void)root;  // Unused for now
 }
 
 #endif  // ENABLE_SDL3

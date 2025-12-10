@@ -1319,6 +1319,18 @@ static IRDimension json_parse_dimension(const char* str) {
  * Supports: "#rrggbb", "#rrggbbaa", "#rgb", "#rgba", "transparent", "var(id)",
  *           and named colors ("yellow", "red", "blue", etc.)
  */
+// Forward declaration
+static IRColor json_parse_color(const char* str);
+
+// Convert IRColor to uint32_t RGBA format (for tab colors)
+static uint32_t json_parse_color_rgba(const char* str) {
+    IRColor color = json_parse_color(str);
+    if (color.type == IR_COLOR_SOLID) {
+        return (color.data.r << 24) | (color.data.g << 16) | (color.data.b << 8) | color.data.a;
+    }
+    return 0;  // Default to transparent
+}
+
 static IRColor json_parse_color(const char* str) {
     IRColor color = {0};
 
@@ -1630,6 +1642,11 @@ static IRComponentType ir_string_to_component_type(const char* str) {
     if (strcmp(str, "Canvas") == 0) return IR_COMPONENT_CANVAS;
     if (strcmp(str, "Dropdown") == 0) return IR_COMPONENT_DROPDOWN;
     if (strcmp(str, "Markdown") == 0) return IR_COMPONENT_MARKDOWN;
+    if (strcmp(str, "TabGroup") == 0) return IR_COMPONENT_TAB_GROUP;
+    if (strcmp(str, "TabBar") == 0) return IR_COMPONENT_TAB_BAR;
+    if (strcmp(str, "Tab") == 0) return IR_COMPONENT_TAB;
+    if (strcmp(str, "TabContent") == 0) return IR_COMPONENT_TAB_CONTENT;
+    if (strcmp(str, "TabPanel") == 0) return IR_COMPONENT_TAB_PANEL;
     if (strcmp(str, "Custom") == 0) return IR_COMPONENT_CUSTOM;
     return IR_COMPONENT_CONTAINER;
 }
@@ -1851,6 +1868,91 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
         }
     }
 
+    // Parse tab-specific data
+    if (component->type == IR_COMPONENT_TAB_GROUP || component->type == IR_COMPONENT_TAB_BAR ||
+        component->type == IR_COMPONENT_TAB || component->type == IR_COMPONENT_TAB_CONTENT ||
+        component->type == IR_COMPONENT_TAB_PANEL) {
+
+        IRTabData* tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
+        if (tab_data) {
+            // Parse title (for Tab components)
+            if ((item = cJSON_GetObjectItem(json, "title")) != NULL && cJSON_IsString(item)) {
+                tab_data->title = strdup(item->valuestring);
+            }
+
+            // Parse reorderable (for TabBar)
+            if ((item = cJSON_GetObjectItem(json, "reorderable")) != NULL && cJSON_IsBool(item)) {
+                tab_data->reorderable = cJSON_IsTrue(item);
+            }
+
+            // Parse selectedIndex (for TabGroup)
+            if ((item = cJSON_GetObjectItem(json, "selectedIndex")) != NULL && cJSON_IsNumber(item)) {
+                tab_data->selected_index = item->valueint;
+            } else {
+                tab_data->selected_index = 0;  // Default to first tab
+            }
+
+            // Parse activeBackground (for Tab)
+            if ((item = cJSON_GetObjectItem(json, "activeBackground")) != NULL && cJSON_IsString(item)) {
+                tab_data->active_background = json_parse_color_rgba(item->valuestring);
+            }
+
+            // Parse textColor (for Tab)
+            if ((item = cJSON_GetObjectItem(json, "textColor")) != NULL && cJSON_IsString(item)) {
+                tab_data->text_color = json_parse_color_rgba(item->valuestring);
+            }
+
+            // Parse activeTextColor (for Tab)
+            if ((item = cJSON_GetObjectItem(json, "activeTextColor")) != NULL && cJSON_IsString(item)) {
+                tab_data->active_text_color = json_parse_color_rgba(item->valuestring);
+            }
+
+            component->tab_data = tab_data;
+        }
+    }
+
+    // Set default properties for TabBar (horizontal layout + 100% width)
+    if (component->type == IR_COMPONENT_TAB_BAR) {
+        if (!component->layout) {
+            component->layout = (IRLayout*)calloc(1, sizeof(IRLayout));
+        }
+        // Only set default direction if not already set from JSON
+        if (component->layout && component->layout->flex.direction == 0) {
+            // Check if direction was explicitly set to column, or just defaulted to 0
+            // If no flexDirection was in JSON, default to row (horizontal)
+            component->layout->flex.direction = 1;  // Row (horizontal)
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                fprintf(stderr, "[TabBar] Applied default flexDirection=1 (row)\n");
+            }
+        } else if (component->layout && getenv("KRYON_TRACE_LAYOUT")) {
+            fprintf(stderr, "[TabBar] Already has flexDirection=%d from JSON\n", component->layout->flex.direction);
+        }
+
+        // Set default width to 100% to fill parent TabGroup
+        bool style_created = false;
+        if (!component->style) {
+            component->style = (IRStyle*)calloc(1, sizeof(IRStyle));
+            style_created = true;
+        }
+        // Apply default width if: style was just created (width.type=0=PX with value=0) OR explicitly AUTO
+        if (component->style && (style_created || component->style->width.type == IR_DIMENSION_AUTO ||
+            (component->style->width.type == IR_DIMENSION_PX && component->style->width.value == 0))) {
+            component->style->width.type = IR_DIMENSION_PERCENT;
+            component->style->width.value = 100.0f;
+        }
+    }
+
+    // Set default flex properties for Tab components (grow and shrink to fill TabBar)
+    if (component->type == IR_COMPONENT_TAB) {
+        if (!component->layout) {
+            component->layout = (IRLayout*)calloc(1, sizeof(IRLayout));
+        }
+        if (component->layout) {
+            component->layout->flex.grow = 1;
+            component->layout->flex.shrink = 1;
+        }
+    }
+
     // Deserialize events (IR v2.1: with bytecode support)
     if ((item = cJSON_GetObjectItem(json, "events")) != NULL && cJSON_IsArray(item)) {
         int eventCount = cJSON_GetArraySize(item);
@@ -1991,6 +2093,84 @@ IRComponent* ir_deserialize_json_v2(const char* json_string) {
 }
 
 /**
+ * Recursively finalize all TabGroup components in the tree
+ * This is necessary for .kir files loaded from disk, where TabGroups
+ * are deserialized but never have their TabGroupState runtime state created.
+ * @param component Root of component tree to process
+ */
+static void ir_finalize_tabgroups_recursive(IRComponent* component) {
+    if (!component) return;
+
+    // Create and finalize state for TabGroup components
+    if (component->type == IR_COMPONENT_TAB_GROUP) {
+        // Check if TabGroupState already exists (Nim DSL path creates it)
+        if (!component->custom_data) {
+            // Find TabBar and TabContent children
+            IRComponent* tab_bar = NULL;
+            IRComponent* tab_content = NULL;
+
+            for (uint32_t i = 0; i < component->child_count; i++) {
+                IRComponent* child = component->children[i];
+                if (child->type == IR_COMPONENT_TAB_BAR) {
+                    tab_bar = child;
+                } else if (child->type == IR_COMPONENT_TAB_CONTENT) {
+                    tab_content = child;
+                }
+            }
+
+            // Only create state if we found both required children
+            if (tab_bar && tab_content) {
+                // Get initial selectedIndex from tab_data (defaults to 0 if not set)
+                int selected_index = component->tab_data ? component->tab_data->selected_index : 0;
+                bool reorderable = component->tab_data ? component->tab_data->reorderable : false;
+
+                // Create the TabGroupState
+                TabGroupState* state = ir_tabgroup_create_state(
+                    component,
+                    tab_bar,
+                    tab_content,
+                    selected_index,
+                    reorderable
+                );
+
+                if (state) {
+                    // Store state in component's custom_data for renderer access
+                    component->custom_data = (char*)state;
+
+                    // Register all Tab components from TabBar
+                    for (uint32_t i = 0; i < tab_bar->child_count; i++) {
+                        IRComponent* tab = tab_bar->children[i];
+                        if (tab->type == IR_COMPONENT_TAB) {
+                            ir_tabgroup_register_tab(state, tab);
+                        }
+                    }
+
+                    // Register all TabPanel components from TabContent
+                    for (uint32_t i = 0; i < tab_content->child_count; i++) {
+                        IRComponent* panel = tab_content->children[i];
+                        if (panel->type == IR_COMPONENT_TAB_PANEL) {
+                            ir_tabgroup_register_panel(state, panel);
+                        }
+                    }
+
+                    // Finalize the state (sets initial panel visibility based on selectedIndex)
+                    ir_tabgroup_finalize(state);
+                }
+            }
+        } else {
+            // State already exists (Nim DSL path), just finalize it
+            TabGroupState* state = (TabGroupState*)component->custom_data;
+            ir_tabgroup_finalize(state);
+        }
+    }
+
+    // Recursively process all children
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        ir_finalize_tabgroups_recursive(component->children[i]);
+    }
+}
+
+/**
  * Read and deserialize IR component tree from JSON v2 file
  * @param filename Input file path
  * @return Deserialized component tree, or NULL on error
@@ -2025,6 +2205,11 @@ IRComponent* ir_read_json_v2_file(const char* filename) {
     // Deserialize
     IRComponent* component = ir_deserialize_json_v2(content);
     free(content);
+
+    // Finalize all TabGroups in the tree (sets initial panel visibility)
+    if (component) {
+        ir_finalize_tabgroups_recursive(component);
+    }
 
     return component;
 }

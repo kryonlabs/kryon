@@ -267,21 +267,120 @@ proc handleInspectDetailedCommand*(args: seq[string]) =
       echo "🌳 Component Tree:"
       printTreeVisual(report.componentTree, "", true, maxDepth)
 
+proc printTreeFromJson(node: JsonNode, prefix: string = "", isLast: bool = true,
+                       maxDepth: int = 20, currentDepth: int = 0,
+                       showColors: bool = false, showPositions: bool = false) =
+  ## Print tree from JSON .kir file with enhanced options
+  if currentDepth >= maxDepth:
+    echo prefix & "└── (max depth reached...)"
+    return
+
+  let connector = if isLast: "└── " else: "├── "
+  let typeName = node["type"].getStr()
+  var label = typeName
+
+  # Add ID
+  if node.hasKey("id"):
+    label &= " #" & $node["id"].getInt()
+
+  # Add dimensions and position if requested
+  if showPositions and (node.hasKey("width") or node.hasKey("height")):
+    var dims = ""
+    if node.hasKey("width"):
+      dims &= $node["width"].getStr()
+    else:
+      dims &= "auto"
+    dims &= "×"
+    if node.hasKey("height"):
+      dims &= $node["height"].getStr()
+    else:
+      dims &= "auto"
+    label &= " (" & dims & ")"
+
+  # Add colors if requested
+  if showColors:
+    if node.hasKey("background"):
+      label &= " [bg:" & node["background"].getStr() & "]"
+    if node.hasKey("color"):
+      label &= " [color:" & node["color"].getStr() & "]"
+
+  # Add text content
+  if node.hasKey("text"):
+    let text = node["text"].getStr()
+    if text.len > 50:
+      label &= " \"" & text[0..47] & "...\""
+    else:
+      label &= " \"" & text & "\""
+  elif node.hasKey("title"):
+    label &= " [" & node["title"].getStr() & "]"
+
+  # Add child count
+  if node.hasKey("children"):
+    let children = node["children"].getElems()
+    if children.len > 0:
+      label &= " (" & $children.len & " children)"
+
+  echo prefix & connector & label
+
+  # Recurse into children
+  if node.hasKey("children"):
+    let children = node["children"].getElems()
+    let newPrefix = prefix & (if isLast: "    " else: "│   ")
+
+    for i, child in children:
+      let isLastChild = i == children.len - 1
+      printTreeFromJson(child, newPrefix, isLastChild, maxDepth, currentDepth + 1, showColors, showPositions)
+
 proc handleTreeCommand*(args: seq[string]) =
   ## Handle 'kryon tree' command - quick tree visualization
   if args.len == 0:
     echo "Error: IR file required"
-    echo "Usage: kryon tree <file.kir> [--max-depth=N]"
+    echo "Usage: kryon tree <file.kir> [--max-depth=N] [--with-colors] [--with-positions]"
     return
 
   let irFile = args[0]
   var maxDepth = 20
+  var showColors = false
+  var showPositions = false
 
   # Parse options
   for arg in args[1..^1]:
     if arg.startsWith("--max-depth="):
       maxDepth = parseInt(arg[12..^1])
+    elif arg == "--with-colors":
+      showColors = true
+    elif arg == "--with-positions":
+      showPositions = true
+    elif arg == "--visual":
+      showColors = true
+      showPositions = true
 
+  # Try JSON first (for cached .kir files)
+  if fileExists(irFile):
+    try:
+      let jsonContent = readFile(irFile)
+      let jsonData = parseJson(jsonContent)
+
+      if jsonData.hasKey("root"):
+        echo "🌳 Component Tree: ", irFile
+        echo ""
+        printTreeFromJson(jsonData["root"], "", true, maxDepth, 0, showColors, showPositions)
+        echo ""
+
+        # Count total components recursively
+        proc countComponents(node: JsonNode): int =
+          result = 1
+          if node.hasKey("children"):
+            for child in node["children"].getElems():
+              result += countComponents(child)
+
+        echo "Total: ", countComponents(jsonData["root"]), " components"
+        return
+    except:
+      # Fall through to binary deserialization
+      discard
+
+  # Fall back to binary IR format
   let report = inspectIRFile(irFile)
 
   if report.warnings.len > 0:

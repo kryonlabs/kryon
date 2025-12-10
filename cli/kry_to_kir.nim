@@ -440,6 +440,10 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
     if children.len > 0:
       result["children"] = %children
 
+  # Set default flexDirection for TabBar (horizontal layout)
+  if node.componentType == "TabBar" and not result.hasKey("flexDirection"):
+    result["flexDirection"] = %"row"  # Horizontal layout
+
 # Forward declaration for transpileChildrenAsTemplate
 proc transpileChildrenAsTemplate(ctx: var TranspilerContext, children: seq[KryNode], parentId: int, loopVar: string): seq[JsonNode]
 

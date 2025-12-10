@@ -321,6 +321,16 @@ test-modular: test-serialization test-validation test-conversion test-backend te
 test-all: test test-modular
 	@echo "✅ Complete test suite passed!"
 
+# Interactive testing
+.PHONY: test-interactive test-all-with-interactive
+
+test-interactive: build install
+	@echo "🧪 Running interactive tests..."
+	@./scripts/run_interactive_tests.sh tests/interactive
+
+test-all-with-interactive: test test-modular test-interactive
+	@echo "✅ Complete test suite (including interactive) passed!"
+
 # Examples
 examples:
 	@echo "Building examples..."

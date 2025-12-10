@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #include "desktop_internal.h"
+#include "desktop_test_events.h"
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_builder.h"
 #include "../../ir/ir_animation.h"
@@ -78,6 +79,28 @@ DesktopIRRenderer* desktop_ir_renderer_create(const DesktopRendererConfig* confi
     memset(renderer, 0, sizeof(DesktopIRRenderer));
     renderer->config = *config;
     renderer->last_frame_time = 0;
+
+    /* Initialize screenshot capture from environment variables */
+    const char* screenshot_path = getenv("KRYON_SCREENSHOT");
+    if (screenshot_path) {
+        strncpy(renderer->screenshot_path, screenshot_path, sizeof(renderer->screenshot_path) - 1);
+        renderer->screenshot_path[sizeof(renderer->screenshot_path) - 1] = '\0';
+
+        const char* after_frames_str = getenv("KRYON_SCREENSHOT_AFTER_FRAMES");
+        renderer->screenshot_after_frames = after_frames_str ? atoi(after_frames_str) : 5;
+        renderer->frames_since_start = 0;
+        renderer->screenshot_taken = false;
+
+        printf("Screenshot capture enabled: %s (after %d frames)\n",
+               renderer->screenshot_path, renderer->screenshot_after_frames);
+    }
+
+    /* Check for headless mode */
+    const char* headless_env = getenv("KRYON_HEADLESS");
+    if (headless_env && strcmp(headless_env, "1") == 0) {
+        renderer->headless_mode = true;
+        printf("Headless mode enabled\n");
+    }
 
     /* Initialize animation context */
     renderer->animation_ctx = ir_animation_context_create();
@@ -409,6 +432,24 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
         render_dropdown_menu_sdl3(renderer, open_dropdowns[i]);
     }
 
+    /* Render debug overlay if enabled */
+    desktop_render_debug_overlay(renderer, root);
+
+    /* Handle screenshot capture BEFORE present */
+    if (renderer->screenshot_path[0] != '\0' && !renderer->screenshot_taken) {
+        renderer->frames_since_start++;
+        if (renderer->frames_since_start >= renderer->screenshot_after_frames) {
+            desktop_save_screenshot(renderer, renderer->screenshot_path);
+            renderer->screenshot_taken = true;
+
+            /* Exit if headless mode is enabled */
+            if (renderer->headless_mode) {
+                printf("Headless mode: Screenshot taken, exiting\n");
+                renderer->running = false;
+            }
+        }
+    }
+
     /* Present frame and update stats */
     SDL_RenderPresent(renderer->renderer);
 
@@ -438,12 +479,35 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
     renderer->running = true;
     renderer->last_root = root;
 
+    // Initialize test event queue if test mode enabled
+    TestEventQueue* test_queue = NULL;
+    const char* test_mode = getenv("KRYON_TEST_MODE");
+    const char* test_events_file = getenv("KRYON_TEST_EVENTS");
+    if (test_mode && strcmp(test_mode, "1") == 0 && test_events_file) {
+        test_queue = test_queue_init_from_file(test_events_file);
+        if (!test_queue) {
+            fprintf(stderr, "[renderer] Failed to load test events from %s\n", test_events_file);
+        }
+    }
+
 #ifdef ENABLE_SDL3
     SDL_ResetKeyboard();
     SDL_PumpEvents();
     SDL_FlushEvents(SDL_EVENT_FIRST, SDL_EVENT_LAST);
 
     while (renderer->running) {
+        // Process test events before SDL events
+        if (test_queue) {
+            test_queue_process(test_queue, renderer);
+
+            // Stop if all test events completed and in headless mode
+            if (!test_queue->enabled && renderer->headless_mode) {
+                printf("[renderer] Test events completed in headless mode, exiting\n");
+                renderer->running = false;
+                break;
+            }
+        }
+
         handle_sdl3_events(renderer);
 
         /* Process reactive updates */
@@ -470,6 +534,11 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
         }
     }
 #endif
+
+    // Cleanup test event queue
+    if (test_queue) {
+        test_queue_free(test_queue);
+    }
 
     printf("Desktop main loop ended\n");
     return true;

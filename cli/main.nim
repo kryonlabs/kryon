@@ -8,7 +8,7 @@ import std/[sequtils, sugar]
 
 # CLI modules
 import project, build, device, compile, diff, inspect, config, codegen, plugin_manager
-import kry_ast, kry_lexer, kry_parser, kry_to_kir
+import kry_ast, kry_lexer, kry_parser, kry_to_kir, kyt_parser
 
 # IR and backend bindings (for orchestration)
 import ../bindings/nim/ir_core
@@ -1070,6 +1070,94 @@ proc handleInspectCommand*(args: seq[string]) =
     echo "✗ Inspection failed: " & getCurrentExceptionMsg()
     quit(1)
 
+proc handleTestCommand*(args: seq[string]) =
+  ## Handle 'kryon test' command - Run interactive tests from .kyt files
+  if args.len == 0:
+    echo "❌ Error: Test file required"
+    echo "Usage: kryon test <file.kyt> [--verbose]"
+    quit(1)
+
+  var testFile = ""
+  var verbose = false
+
+  for arg in args:
+    if arg == "--verbose" or arg == "-v":
+      verbose = true
+    elif not arg.startsWith("-") and arg != "test":
+      testFile = arg
+
+  if testFile == "":
+    echo "❌ Error: No test file specified"
+    quit(1)
+
+  if not fileExists(testFile):
+    echo "❌ Error: Test file not found: " & testFile
+    quit(1)
+
+  if not testFile.endsWith(".kyt"):
+    echo "❌ Error: Test file must have .kyt extension"
+    quit(1)
+
+  echo "🧪 Running interactive test..."
+  echo "📄 Test file: " & testFile
+
+  try:
+    # Parse .kyt file
+    let test = parseKytFile(testFile)
+    echo "📝 Test: " & test.name
+    if test.description.len > 0:
+      echo "   " & test.description
+
+    # Convert to JSON
+    let eventsJson = kytToJson(test)
+
+    # Write to temporary file
+    let tmpEventsFile = getTempDir() / "kryon_test_events.json"
+    writeFile(tmpEventsFile, $eventsJson)
+
+    if verbose:
+      echo "📋 Generated test events:"
+      echo pretty(eventsJson)
+
+    echo "🎯 Target: " & test.target
+
+    # Check if target file exists
+    if not fileExists(test.target):
+      echo "❌ Error: Target file not found: " & test.target
+      removeFile(tmpEventsFile)
+      quit(1)
+
+    # Run the test using the event injection system
+    let ldPath = KRYON_SOURCE_DIR / "build"
+    let kryonBin = KRYON_SOURCE_DIR / "bin/cli/kryon"
+
+    let cmd = "env LD_LIBRARY_PATH=" & ldPath & ":$LD_LIBRARY_PATH " &
+              "KRYON_TEST_MODE=1 " &
+              "KRYON_TEST_EVENTS=" & tmpEventsFile & " " &
+              "KRYON_HEADLESS=1 " &
+              "timeout 30 " & kryonBin & " run " & test.target
+
+    if verbose:
+      echo "🚀 Executing: " & cmd
+
+    let (output, exitCode) = execCmdEx(cmd)
+
+    if verbose or exitCode != 0:
+      echo output
+
+    # Clean up temporary file
+    removeFile(tmpEventsFile)
+
+    if exitCode == 0:
+      echo "✅ Test passed!"
+    else:
+      echo "❌ Test failed (exit code: " & $exitCode & ")"
+      quit(1)
+
+  except Exception as e:
+    echo "❌ Test execution failed: " & e.msg
+    quit(1)
+
 proc handleParseCommand*(args: seq[string]) =
   ## Handle 'kryon parse' command - Parse .kry file to .kir
   if args.len == 0:
@@ -1271,6 +1359,8 @@ proc main*() =
     handleRunCommand(commandArgs)
   of "dev":
     handleDevCommand(commandArgs)
+  of "test":
+    handleTestCommand(commandArgs)
   of "config":
     handleConfigCommand(commandArgs)
   of "validate":

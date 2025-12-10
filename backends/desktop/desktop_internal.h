@@ -57,6 +57,13 @@ struct DesktopIRRenderer {
     // Hot reload system
     IRHotReloadContext* hot_reload_ctx;
     bool hot_reload_enabled;
+
+    // Screenshot capture
+    char screenshot_path[512];
+    int screenshot_after_frames;
+    int frames_since_start;
+    bool screenshot_taken;
+    bool headless_mode;
 };
 
 // Font registry entry
@@ -250,6 +257,12 @@ void handle_sdl3_events(DesktopIRRenderer* desktop_renderer);
 // Component rendering
 bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component,
                            LayoutRect rect, float inherited_opacity);
+
+// Screenshot capture
+bool desktop_save_screenshot(DesktopIRRenderer* renderer, const char* path);
+
+// Debug overlay
+void desktop_render_debug_overlay(DesktopIRRenderer* renderer, IRComponent* root);
 
 #endif // ENABLE_SDL3
 

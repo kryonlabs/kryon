@@ -157,7 +157,7 @@ echo ""
 # Step 1a: Compile .kry to .kir with --preserve-static for codegen
 echo -e "${YELLOW}[1/3]${NC} Parsing ${GREEN}$INPUT_FILE${NC} → ${GREEN}$KIR_FILE${NC}"
 KIR_STATIC="${KIR_FILE%.kir}_static.kir"
-~/.local/bin/kryon compile "$INPUT_FILE" --output="$KIR_STATIC" --preserve-static --no-cache 2>/dev/null
+~/.local/bin/kryon compile "$INPUT_FILE" --output="$KIR_STATIC" --preserve-static --no-cache
 
 # Step 1b: Compile without --preserve-static for runtime (expanded)
 ~/.local/bin/kryon compile "$INPUT_FILE" --output="$KIR_FILE" --no-cache
