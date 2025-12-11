@@ -2,7 +2,9 @@
  * Kryon Plugin System Implementation
  */
 
+#define _GNU_SOURCE
 #include "ir_plugin.h"
+#include "ir_core.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -530,4 +532,334 @@ bool ir_plugin_dispatch_callback(uint32_t component_type, uint32_t component_id)
 
     bridge(component_id);
     return true;
+}
+// ============================================================================
+// Dynamic Plugin Loading Implementation
+// ============================================================================
+
+#include <dlfcn.h>
+#include <dirent.h>
+#include <glob.h>
+#include <toml.h>
+#include <sys/stat.h>
+#include <wordexp.h>
+
+// Plugin search paths (in priority order)
+static const char* PLUGIN_SEARCH_PATHS[] = {
+    "~/.kryon/plugins/",
+    "/usr/local/lib/kryon/plugins/",
+    "/usr/lib/kryon/plugins/",
+    "../kryon-plugin-*/build/",  // Development mode
+    NULL
+};
+
+// Helper: Expand tilde and wildcards in path
+static char** expand_path(const char* path, int* count) {
+    wordexp_t exp_result;
+    *count = 0;
+
+    if (wordexp(path, &exp_result, 0) != 0) {
+        return NULL;
+    }
+
+    *count = exp_result.we_wordc;
+    char** paths = malloc(sizeof(char*) * *count);
+    for (int i = 0; i < *count; i++) {
+        paths[i] = strdup(exp_result.we_wordv[i]);
+    }
+
+    wordfree(&exp_result);
+    return paths;
+}
+
+// Helper: Check if file exists
+static bool file_exists(const char* path) {
+    struct stat st;
+    return (stat(path, &st) == 0);
+}
+
+// Helper: Parse plugin.toml file
+static bool parse_plugin_toml(const char* toml_path, IRPluginDiscoveryInfo* info) {
+    FILE* fp = fopen(toml_path, "r");
+    if (!fp) {
+        return false;
+    }
+
+    char errbuf[200];
+    toml_table_t* conf = toml_parse_file(fp, errbuf, sizeof(errbuf));
+    fclose(fp);
+
+    if (!conf) {
+        fprintf(stderr, "[kryon][plugin] Error parsing %s: %s\n", toml_path, errbuf);
+        return false;
+    }
+
+    // Parse [plugin] section
+    toml_table_t* plugin_table = toml_table_in(conf, "plugin");
+    if (!plugin_table) {
+        toml_free(conf);
+        return false;
+    }
+
+    // Get plugin name
+    toml_datum_t name = toml_string_in(plugin_table, "name");
+    if (name.ok) {
+        strncpy(info->name, name.u.s, sizeof(info->name) - 1);
+        free(name.u.s);
+    }
+
+    // Get plugin version
+    toml_datum_t version = toml_string_in(plugin_table, "version");
+    if (version.ok) {
+        strncpy(info->version, version.u.s, sizeof(info->version) - 1);
+        free(version.u.s);
+    }
+
+    // Parse [capabilities] section
+    toml_table_t* caps_table = toml_table_in(conf, "capabilities");
+    if (caps_table) {
+        // Get command_ids array
+        toml_array_t* cmd_ids = toml_array_in(caps_table, "command_ids");
+        if (cmd_ids) {
+            int cmd_count = toml_array_nelem(cmd_ids);
+            info->command_count = cmd_count;
+            info->command_ids = malloc(sizeof(uint32_t) * cmd_count);
+
+            for (int i = 0; i < cmd_count; i++) {
+                toml_datum_t id = toml_int_at(cmd_ids, i);
+                if (id.ok) {
+                    info->command_ids[i] = (uint32_t)id.u.i;
+                }
+            }
+        }
+
+        // Get backends array
+        toml_array_t* backends = toml_array_in(caps_table, "backends");
+        if (backends) {
+            int backend_count = toml_array_nelem(backends);
+            info->backend_count = backend_count;
+            info->backends = malloc(sizeof(char*) * backend_count);
+
+            for (int i = 0; i < backend_count; i++) {
+                toml_datum_t backend = toml_string_at(backends, i);
+                if (backend.ok) {
+                    info->backends[i] = backend.u.s;  // Takes ownership
+                }
+            }
+        }
+    }
+
+    toml_free(conf);
+    return true;
+}
+
+// Discover plugins in a single directory
+static void discover_in_directory(const char* dir_path, IRPluginDiscoveryInfo*** plugins, uint32_t* count) {
+    DIR* dir = opendir(dir_path);
+    if (!dir) {
+        return;
+    }
+
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_DIR && strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+            // Check for plugin.toml in subdirectory
+            char toml_path[1024];
+            snprintf(toml_path, sizeof(toml_path), "%s/%s/plugin.toml", dir_path, entry->d_name);
+
+            if (file_exists(toml_path)) {
+                IRPluginDiscoveryInfo* info = calloc(1, sizeof(IRPluginDiscoveryInfo));
+                strncpy(info->toml_path, toml_path, sizeof(info->toml_path) - 1);
+
+                if (parse_plugin_toml(toml_path, info)) {
+                    // Find .so file in same directory
+                    char so_path[1024];
+                    snprintf(so_path, sizeof(so_path), "%s/%s/libkryon_%s.so", dir_path, entry->d_name, info->name);
+
+                    if (file_exists(so_path)) {
+                        strncpy(info->path, so_path, sizeof(info->path) - 1);
+
+                        // Add to results
+                        *plugins = realloc(*plugins, sizeof(IRPluginDiscoveryInfo*) * (*count + 1));
+                        (*plugins)[*count] = info;
+                        (*count)++;
+                    } else {
+                        // .so not found, free info
+                        free(info->command_ids);
+                        for (uint32_t i = 0; i < info->backend_count; i++) {
+                            free(info->backends[i]);
+                        }
+                        free(info->backends);
+                        free(info);
+                    }
+                } else {
+                    free(info);
+                }
+            }
+        }
+    }
+
+    closedir(dir);
+}
+
+IRPluginDiscoveryInfo** ir_plugin_discover(const char* search_path, uint32_t* count) {
+    *count = 0;
+    IRPluginDiscoveryInfo** plugins = NULL;
+
+    if (search_path) {
+        // Search in provided path only
+        discover_in_directory(search_path, &plugins, count);
+    } else {
+        // Search in default paths
+        for (int i = 0; PLUGIN_SEARCH_PATHS[i] != NULL; i++) {
+            int expanded_count = 0;
+            char** expanded_paths = expand_path(PLUGIN_SEARCH_PATHS[i], &expanded_count);
+
+            if (expanded_paths) {
+                for (int j = 0; j < expanded_count; j++) {
+                    discover_in_directory(expanded_paths[j], &plugins, count);
+                    free(expanded_paths[j]);
+                }
+                free(expanded_paths);
+            }
+        }
+    }
+
+    return plugins;
+}
+
+void ir_plugin_free_discovery(IRPluginDiscoveryInfo** plugins, uint32_t count) {
+    if (!plugins) return;
+
+    for (uint32_t i = 0; i < count; i++) {
+        if (plugins[i]) {
+            free(plugins[i]->command_ids);
+            for (uint32_t j = 0; j < plugins[i]->backend_count; j++) {
+                free(plugins[i]->backends[j]);
+            }
+            free(plugins[i]->backends);
+            free(plugins[i]);
+        }
+    }
+    free(plugins);
+}
+
+IRPluginHandle* ir_plugin_load(const char* plugin_path, const char* plugin_name) {
+    IRPluginHandle* handle = calloc(1, sizeof(IRPluginHandle));
+    if (!handle) {
+        return NULL;
+    }
+
+    // Load shared library
+    handle->dl_handle = dlopen(plugin_path, RTLD_LAZY | RTLD_LOCAL);
+    if (!handle->dl_handle) {
+        fprintf(stderr, "[kryon][plugin] Error loading %s: %s\n", plugin_path, dlerror());
+        free(handle);
+        return NULL;
+    }
+
+    // Store plugin info
+    strncpy(handle->name, plugin_name, sizeof(handle->name) - 1);
+    strncpy(handle->path, plugin_path, sizeof(handle->path) - 1);
+
+    // Resolve init function (e.g., "kryon_canvas_plugin_init")
+    char init_name[128];
+    snprintf(init_name, sizeof(init_name), "kryon_%s_plugin_init", plugin_name);
+    handle->init_func = dlsym(handle->dl_handle, init_name);
+
+    if (!handle->init_func) {
+        fprintf(stderr, "[kryon][plugin] Warning: Plugin %s has no init function (%s)\n", plugin_name, init_name);
+    }
+
+    // Resolve shutdown function
+    char shutdown_name[128];
+    snprintf(shutdown_name, sizeof(shutdown_name), "kryon_%s_plugin_shutdown", plugin_name);
+    handle->shutdown_func = dlsym(handle->dl_handle, shutdown_name);
+
+    if (!handle->shutdown_func) {
+        fprintf(stderr, "[kryon][plugin] Warning: Plugin %s has no shutdown function (%s)\n", plugin_name, shutdown_name);
+    }
+
+    return handle;
+}
+
+void ir_plugin_unload(IRPluginHandle* handle) {
+    if (!handle) return;
+
+    if (handle->shutdown_func) {
+        handle->shutdown_func();
+    }
+
+    if (handle->dl_handle) {
+        dlclose(handle->dl_handle);
+    }
+
+    free(handle->command_ids);
+    free(handle);
+}
+
+// Helper: Recursively scan IR tree for plugin commands
+// NOTE: Currently disabled as IRComponent doesn't have plugin_command field yet.
+// This will be implemented when plugin commands are added to the IR structure.
+static void scan_commands_recursive(IRComponent* comp, uint32_t** used_commands, uint32_t* used_count) {
+    if (!comp) return;
+
+    // TODO: Implement plugin command scanning when IRComponent has plugin_command field
+    // For now, just recursively scan children
+    for (uint32_t i = 0; i < comp->child_count; i++) {
+        scan_commands_recursive(comp->children[i], used_commands, used_count);
+    }
+}
+
+// Helper: Check if command is in range
+static bool has_command_in_range(uint32_t* commands, uint32_t count, uint32_t start, uint32_t end) {
+    for (uint32_t i = 0; i < count; i++) {
+        if (commands[i] >= start && commands[i] <= end) {
+            return true;
+        }
+    }
+    return false;
+}
+
+char** ir_plugin_scan_requirements(IRComponent* root, uint32_t* count) {
+    *count = 0;
+
+    if (!root) {
+        return NULL;
+    }
+
+    // Collect all unique plugin command types
+    uint32_t* used_commands = NULL;
+    uint32_t used_count = 0;
+    scan_commands_recursive(root, &used_commands, &used_count);
+
+    // Map command IDs to plugin names
+    // Canvas: 100-102, Markdown: 200-202
+    char** plugin_names = NULL;
+
+    // Check if canvas commands are used
+    if (has_command_in_range(used_commands, used_count, 100, 102)) {
+        plugin_names = realloc(plugin_names, sizeof(char*) * (*count + 1));
+        plugin_names[*count] = strdup("canvas");
+        (*count)++;
+    }
+
+    // Check if markdown commands are used
+    if (has_command_in_range(used_commands, used_count, 200, 202)) {
+        plugin_names = realloc(plugin_names, sizeof(char*) * (*count + 1));
+        plugin_names[*count] = strdup("markdown");
+        (*count)++;
+    }
+
+    free(used_commands);
+    return plugin_names;
+}
+
+void ir_plugin_free_requirements(char** plugin_names, uint32_t count) {
+    if (!plugin_names) return;
+
+    for (uint32_t i = 0; i < count; i++) {
+        free(plugin_names[i]);
+    }
+    free(plugin_names);
 }

@@ -765,12 +765,17 @@ IRComponent* ir_get_child(IRComponent* component, uint32_t index) {
 }
 
 IRComponent* ir_find_component_by_id(IRComponent* root, uint32_t id) {
-    // Use hash map for O(1) lookup if available
+    // Try hash map first for O(1) lookup
     if (g_ir_context && g_ir_context->component_map) {
-        return ir_map_lookup(g_ir_context->component_map, id);
+        IRComponent* result = ir_map_lookup(g_ir_context->component_map, id);
+        if (result) {
+            printf("[find] Hash map hit for #%u\n", id);
+            return result;
+        }
+        printf("[find] Hash map miss for #%u, falling back to tree traversal\n", id);
     }
 
-    // Fallback to tree traversal if no hash map
+    // Tree traversal fallback
     if (!root) return NULL;
 
     if (root->id == id) return root;

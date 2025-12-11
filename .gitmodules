@@ -7,3 +7,6 @@
 [submodule "third_party/libtickit"]
 	path = third_party/libtickit
 	url = https://github.com/leonerd/libtickit.git
+[submodule "third_party/tomlc99"]
+	path = third_party/tomlc99
+	url = https://github.com/cktan/tomlc99

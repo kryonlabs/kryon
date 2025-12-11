@@ -908,6 +908,9 @@ static cJSON* json_serialize_component_definitions(IRReactiveManifest* manifest)
 }
 
 static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
+    fprintf(stderr, "[DEBUG] json_serialize_reactive_manifest called\n");
+    fflush(stderr);
+
     if (!manifest || (manifest->variable_count == 0 && manifest->component_def_count == 0 &&
                       manifest->conditional_count == 0 && manifest->for_loop_count == 0)) return NULL;
 
@@ -974,6 +977,8 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
 
     // Serialize conditionals
     if (manifest->conditional_count > 0) {
+        printf("[ir_json_v2] SERIALIZATION FUNCTION CALLED - %d conditionals\n", manifest->conditional_count);
+        fflush(stdout);
         cJSON* conditionals = cJSON_CreateArray();
         for (uint32_t i = 0; i < manifest->conditional_count; i++) {
             IRReactiveConditional* cond = &manifest->conditionals[i];
@@ -981,8 +986,11 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
 
             cJSON_AddNumberToObject(condObj, "component_id", cond->component_id);
 
-            if (cond->condition) {
-                cJSON_AddStringToObject(condObj, "condition", cond->condition);
+            if (cond->condition && cond->condition[0] != '\0') {
+                // Construct {"var": "varName"} object from variable name
+                cJSON* conditionObj = cJSON_CreateObject();
+                cJSON_AddStringToObject(conditionObj, "var", cond->condition);
+                cJSON_AddItemToObject(condObj, "condition", conditionObj);
             }
 
             if (cond->dependent_var_count > 0 && cond->dependent_var_ids) {
@@ -1790,14 +1798,24 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
     }
 
     // Text content (check both "text" and "label" properties)
-    if ((item = cJSON_GetObjectItem(json, "text")) != NULL && cJSON_IsString(item)) {
-        component->text_content = strdup(item->valuestring);
+    if ((item = cJSON_GetObjectItem(json, "text")) != NULL) {
+        if (cJSON_IsString(item)) {
+            // Simple string text
+            component->text_content = strdup(item->valuestring);
+        } else if (cJSON_IsObject(item)) {
+            // Text is an expression object - serialize to JSON string for text_expression
+            char* expr_str = cJSON_PrintUnformatted(item);
+            if (expr_str) {
+                component->text_expression = expr_str;
+                printf("[deserialize] Text field is expression object, stored in text_expression\n");
+            }
+        }
     } else if ((item = cJSON_GetObjectItem(json, "label")) != NULL && cJSON_IsString(item)) {
         // "label" is an alias for "text" (used by Checkbox, Button, etc.)
         component->text_content = strdup(item->valuestring);
     }
 
-    // Text expression (reactive text template)
+    // Text expression (reactive text template) - can also be specified directly
     if ((item = cJSON_GetObjectItem(json, "text_expression")) != NULL && cJSON_IsString(item)) {
         component->text_expression = strdup(item->valuestring);
     }
@@ -1816,6 +1834,15 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
         if ((item = cJSON_GetObjectItem(json, "checked")) != NULL && cJSON_IsBool(item)) {
             bool is_checked = cJSON_IsTrue(item);
             ir_set_custom_data(component, is_checked ? "checked" : "unchecked");
+        }
+    }
+
+    // Parse Input value binding (e.g., "{{newTodo}}")
+    if (component->type == IR_COMPONENT_INPUT) {
+        if ((item = cJSON_GetObjectItem(json, "value")) != NULL && cJSON_IsString(item)) {
+            // Store the binding expression (e.g., "{{newTodo}}")
+            component->text_expression = strdup(item->valuestring);
+            printf("[deserialize] Input value binding: %s\n", item->valuestring);
         }
     }
 

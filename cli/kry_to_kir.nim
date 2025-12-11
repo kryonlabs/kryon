@@ -188,9 +188,10 @@ proc transpileExpression(ctx: var TranspilerContext, node: KryNode): JsonNode =
         if idxValue >= 0 and idxValue < arrValue.arrayElems.len:
           return ctx.transpileExpression(arrValue.arrayElems[idxValue])
 
-    # Fallback to runtime call
+    # Fallback to runtime call (statement format)
     %*{
-      "call": node.callName,
+      "op": "call",
+      "function": node.callName,
       "args": node.callArgs.mapIt(ctx.transpileExpression(it))
     }
   of nkExprMember:

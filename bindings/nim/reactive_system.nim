@@ -999,6 +999,60 @@ proc registerPlainVar*[T](name: string, valuePtr: ptr T, initialValue: T) =
   namedReactiveVars[name] = entry
   echo "[kryon][reactive] Registered plain var: ", name, " = ", initialStr
 
+proc ensureAllConditionalBranchesInTree*() =
+  ## CRITICAL: Execute BOTH branches of all conditionals to ensure all components
+  ## are added to the tree before serialization. This is required for proper round-trip
+  ## of if/else statements - otherwise only the active branch gets serialized.
+  echo "[kryon][serialization] Ensuring all conditional branches are in tree for serialization..."
+
+  for cond in reactiveConditionals:
+    if cond == nil or cond.parent == nil:
+      continue
+
+    # Check if the active branch was already added by updateAllReactiveConditionals()
+    # If so, we need to capture its IDs but not add it again
+    if cond.initialized and cond.currentChildren.len > 0:
+      # One branch was already executed and added - capture its IDs
+      let condition = cond.conditionProc()
+      if condition:
+        # Then branch is active - capture IDs
+        if cond.thenChildrenIds.len == 0:
+          for child in cond.currentChildren:
+            if child != nil:
+              cond.thenChildrenIds.add(child.id)
+          echo "[kryon][serialization] Captured ", cond.currentChildren.len, " IDs from active then-branch"
+      else:
+        # Else branch is active - capture IDs
+        if cond.elseChildrenIds.len == 0:
+          for child in cond.currentChildren:
+            if child != nil:
+              cond.elseChildrenIds.add(child.id)
+          echo "[kryon][serialization] Captured ", cond.currentChildren.len, " IDs from active else-branch"
+
+    # Execute then branch if not already done
+    if cond.thenProc != nil and cond.thenChildrenIds.len == 0:
+      try:
+        let thenChildren = cond.thenProc()
+        for child in thenChildren:
+          if child != nil:
+            discard kryon_component_add_child(cond.parent, child)
+            cond.thenChildrenIds.add(child.id)
+        echo "[kryon][serialization] Added ", thenChildren.len, " components from then-branch to parent #", cond.parent.id
+      except:
+        echo "[kryon][serialization] Warning: Failed to execute then-branch"
+
+    # Execute else branch if not already done
+    if cond.elseProc != nil and cond.elseChildrenIds.len == 0:
+      try:
+        let elseChildren = cond.elseProc()
+        for child in elseChildren:
+          if child != nil:
+            discard kryon_component_add_child(cond.parent, child)
+            cond.elseChildrenIds.add(child.id)
+        echo "[kryon][serialization] Added ", elseChildren.len, " components from else-branch to parent #", cond.parent.id
+      except:
+        echo "[kryon][serialization] Warning: Failed to execute else-branch"
+
 # Export all reactive state to an IR manifest
 proc exportReactiveManifest*(): ptr IRReactiveManifest =
   ## Export all registered reactive state to an IRReactiveManifest
@@ -1086,8 +1140,37 @@ proc exportReactiveManifest*(): ptr IRReactiveManifest =
     if cond == nil or cond.parent == nil:
       continue
 
-    # Use the stored condition expression if available, otherwise placeholder
-    let condExpr = if cond.conditionExpr.len > 0: cond.conditionExpr else: "<conditional>"
+    # CRITICAL FIX: Execute BOTH branches to capture child IDs for serialization
+    # This ensures if/else blocks serialize both branches to the IR, not just the active one
+    if cond.thenChildrenIds.len == 0 and cond.thenProc != nil:
+      # Then branch hasn't been executed yet - execute it to capture child IDs
+      try:
+        let thenChildren = cond.thenProc()
+        for child in thenChildren:
+          if child != nil:
+            cond.thenChildrenIds.add(child.id)
+            # Add to parent's children array so it's serialized to the tree
+            discard kryon_component_add_child(cond.parent, child)
+      except:
+        discard  # Ignore errors during serialization-time execution
+
+    if cond.elseChildrenIds.len == 0 and cond.elseProc != nil:
+      # Else branch hasn't been executed yet - execute it to capture child IDs
+      try:
+        let elseChildren = cond.elseProc()
+        for child in elseChildren:
+          if child != nil:
+            cond.elseChildrenIds.add(child.id)
+            # Add to parent's children array so it's serialized to the tree
+            discard kryon_component_add_child(cond.parent, child)
+      except:
+        discard  # Ignore errors during serialization-time execution
+
+    # Pass just the variable name - C serialization code will format it as {"var": "varName"}
+    let condExpr = if cond.conditionExpr.len > 0:
+      cond.conditionExpr  # Just "showMessage" - C code adds the {"var": ...} wrapper
+    else:
+      ""  # Empty string for placeholder
     ir_reactive_manifest_add_conditional(
       result,
       cond.parent.id,

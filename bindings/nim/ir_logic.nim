@@ -9,7 +9,7 @@
 import ir_core
 
 const
-  irLib = "libkryon_ir.so"
+  irLib = "/home/wao/Projects/kryon/build/libkryon_ir.so"
 
 # Forward declarations for opaque types
 type

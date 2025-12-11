@@ -346,6 +346,99 @@ void ir_plugin_print_stats(void);
  */
 void ir_plugin_reset_stats(void);
 
+// ============================================================================
+// Dynamic Plugin Loading (dlopen)
+// ============================================================================
+
+/**
+ * Handle for a dynamically loaded plugin.
+ */
+typedef struct IRPluginHandle {
+    void* dl_handle;                    // dlopen handle
+    char name[64];                      // Plugin name from plugin.toml
+    char version[16];                   // Plugin version
+    char path[512];                     // Path to .so file
+    uint32_t* command_ids;              // Array of supported command IDs
+    uint32_t command_count;             // Number of command IDs
+    bool (*init_func)(void*);           // Init function pointer
+    void (*shutdown_func)(void);        // Shutdown function pointer
+} IRPluginHandle;
+
+/**
+ * Plugin discovery information (from plugin.toml scanning).
+ */
+typedef struct IRPluginDiscoveryInfo {
+    char path[512];                     // Full path to .so file
+    char toml_path[512];                // Path to plugin.toml
+    char name[64];                      // Plugin name
+    char version[16];                   // Plugin version
+    uint32_t* command_ids;              // Supported command IDs
+    uint32_t command_count;             // Count of command IDs
+    char** backends;                    // Supported backends
+    uint32_t backend_count;             // Count of backends
+} IRPluginDiscoveryInfo;
+
+/**
+ * Discover plugins by scanning directories for plugin.toml files.
+ * If search_path is NULL, scans default paths:
+ *   1. ~/.kryon/plugins/
+ *   2. /usr/local/lib/kryon/plugins/
+ *   3. /usr/lib/kryon/plugins/
+ *   4. ../kryon-plugin-STAR/build/ (development mode, where STAR is wildcard)
+ *
+ * @param search_path Directory to search, or NULL for defaults
+ * @param count Output: number of plugins discovered
+ * @return Array of plugin info (caller must free with ir_plugin_free_discovery)
+ */
+IRPluginDiscoveryInfo** ir_plugin_discover(const char* search_path, uint32_t* count);
+
+/**
+ * Free memory allocated by ir_plugin_discover().
+ *
+ * @param plugins Array returned by ir_plugin_discover
+ * @param count Number of plugins in array
+ */
+void ir_plugin_free_discovery(IRPluginDiscoveryInfo** plugins, uint32_t count);
+
+/**
+ * Load a plugin from a .so file using dlopen().
+ * Resolves init and shutdown functions:
+ *   - kryon_{name}_plugin_init
+ *   - kryon_{name}_plugin_shutdown
+ *
+ * @param plugin_path Full path to plugin .so file
+ * @param plugin_name Plugin name (for function resolution)
+ * @return Plugin handle, or NULL on error
+ */
+IRPluginHandle* ir_plugin_load(const char* plugin_path, const char* plugin_name);
+
+/**
+ * Unload a dynamically loaded plugin.
+ * Calls shutdown function if present, then dlclose().
+ *
+ * @param handle Plugin handle to unload
+ */
+void ir_plugin_unload(IRPluginHandle* handle);
+
+/**
+ * Scan an IR tree and return list of required plugin names.
+ * Analyzes plugin_command types in the tree and maps them to plugin names
+ * based on command ID ranges.
+ *
+ * @param root Root component of IR tree
+ * @param count Output: number of required plugins
+ * @return Array of plugin names (caller must free)
+ */
+char** ir_plugin_scan_requirements(struct IRComponent* root, uint32_t* count);
+
+/**
+ * Free memory allocated by ir_plugin_scan_requirements().
+ *
+ * @param plugin_names Array of plugin names
+ * @param count Number of plugins
+ */
+void ir_plugin_free_requirements(char** plugin_names, uint32_t count);
+
 #ifdef __cplusplus
 }
 #endif
