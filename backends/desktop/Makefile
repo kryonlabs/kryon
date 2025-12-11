@@ -20,7 +20,6 @@ ENABLE_SDL3 = 1
 # Directories
 DESKTOP_DIR = .
 IR_DIR = ../../ir
-PLUGIN_DIR = ../../plugins
 BUILD_DIR = ../../build
 INCLUDE_DIR = .
 INCLUDE_IR_DIR = ../../ir
@@ -33,13 +32,11 @@ else
     CFLAGS += -DDISABLE_SDL3
 endif
 
-# Source files (modular architecture - 10 modules + plugins)
+# Source files (modular architecture - 10 modules)
 DESKTOP_SOURCES = ir_desktop_renderer.c desktop_globals.c \
                   desktop_fonts.c desktop_effects.c desktop_layout.c \
                   desktop_input.c desktop_rendering.c desktop_test_events.c \
-                  debug_backend.c canvas.c \
-                  $(PLUGIN_DIR)/canvas/canvas_plugin.c \
-                  $(PLUGIN_DIR)/tilemap/tilemap_plugin.c
+                  debug_backend.c canvas.c
 DESKTOP_HEADERS = ir_desktop_renderer.h desktop_internal.h debug_backend.h
 
 # Output files
@@ -64,20 +61,13 @@ $(BUILD_DIR):
 DESKTOP_OBJS = ir_desktop_renderer.o desktop_globals.o \
                desktop_fonts.o desktop_effects.o desktop_layout.o \
                desktop_input.o desktop_rendering.o desktop_test_events.o \
-               debug_backend.o canvas.o canvas_plugin.o tilemap_plugin.o
+               debug_backend.o canvas.o
 
 # Dependency files (auto-generated)
 DESKTOP_DEPS = $(DESKTOP_OBJS:.o=.d)
 
 # Compile object files with dependency tracking
 %.o: %.c
-	$(CC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
-
-# Compile plugin files with dependency tracking
-canvas_plugin.o: $(PLUGIN_DIR)/canvas/canvas_plugin.c
-	$(CC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
-
-tilemap_plugin.o: $(PLUGIN_DIR)/tilemap/tilemap_plugin.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
 # Include auto-generated dependencies (if they exist)

@@ -686,6 +686,19 @@ typedef struct IRBuffer {
 typedef struct IRComponentPool IRComponentPool;
 typedef struct IRComponentMap IRComponentMap;
 
+// IR Metadata (application-wide information)
+typedef struct IRMetadata {
+    uint32_t version;                 // IR format version
+    uint32_t component_count;         // Total number of components
+    uint32_t max_depth;               // Maximum tree depth
+
+    // Plugin requirements
+    char** required_plugins;          // Array of plugin names (e.g., ["canvas", "markdown"])
+    uint32_t plugin_count;            // Number of required plugins
+
+    char reserved[16];                // For future expansion
+} IRMetadata;
+
 // Global IR Context
 typedef struct IRContext {
     IRComponent* root;
@@ -694,6 +707,7 @@ typedef struct IRContext {
     uint32_t next_logic_id;
     IRComponentPool* component_pool;  // Memory pool for components
     IRComponentMap* component_map;     // Hash map for fast ID lookups
+    IRMetadata* metadata;              // Application metadata (including plugin requirements)
 } IRContext;
 
 // IR Type System Functions
@@ -805,6 +819,7 @@ typedef struct {
     uint32_t parent_component_id;   // Parent container
     char* collection_expr;          // Collection expression (e.g., "items")
     uint32_t collection_var_id;     // Reactive var ID for the collection
+    char* loop_variable_name;       // Loop variable name (e.g., "item", "todo")
     char* item_template;            // Template for each item (language-specific)
     uint32_t* child_component_ids;  // Current child components
     uint32_t child_count;

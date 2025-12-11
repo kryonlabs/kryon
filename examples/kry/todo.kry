@@ -40,7 +40,10 @@ App {
                 height = 40
                 background = "#007bff"
                 color = "#ffffff"
-                onClick = { todos.add(newTodo) }
+                onClick = {
+                    todos.add(newTodo)
+                    newTodo = ""
+                }
             }
         }
 

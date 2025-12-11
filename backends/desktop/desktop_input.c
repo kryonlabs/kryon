@@ -703,6 +703,13 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                         }
                         extern bool nimInputBridge(IRComponent* component, const char* text);
                         nimInputBridge(focused_input, focused_input->text_content);
+
+                        // Sync to bound variable
+                        IRExecutorContext* exec_ctx = ir_executor_get_global();
+                        if (exec_ctx) {
+                            ir_executor_sync_input_to_var(exec_ctx, focused_input);
+                        }
+
                         free(combined);
                     }
                 }
@@ -754,6 +761,13 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             }
                             extern bool nimInputBridge(IRComponent* component, const char* text);
                             nimInputBridge(focused_input, focused_input->text_content);
+
+                            // Sync to bound variable
+                            IRExecutorContext* exec_ctx = ir_executor_get_global();
+                            if (exec_ctx) {
+                                ir_executor_sync_input_to_var(exec_ctx, focused_input);
+                            }
+
                             free(combined);
                         }
                     }

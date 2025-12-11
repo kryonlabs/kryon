@@ -20,10 +20,43 @@ typedef struct {
 #define IR_EXECUTOR_MAX_SOURCES 8
 #define IR_EXECUTOR_MAX_VARS 64
 
-// Simple variable storage for runtime state
+// ============================================================================
+// VALUE TYPE SYSTEM (for mixed-type arrays and variables)
+// ============================================================================
+
+// Value types
+typedef enum {
+    VAR_TYPE_INT,
+    VAR_TYPE_STRING,
+    VAR_TYPE_ARRAY,
+    VAR_TYPE_NULL,
+} IRVarType;
+
+// Forward declaration for recursive array definition
+struct IRValue;
+
+// Value container (recursive for arrays)
+typedef struct IRValue {
+    IRVarType type;
+    union {
+        int64_t int_val;
+        char* string_val;
+        struct {
+            struct IRValue* items;  // Array of mixed-type values
+            int count;
+            int capacity;
+        } array_val;
+    };
+} IRValue;
+
+// ============================================================================
+// EXECUTOR STRUCTURES
+// ============================================================================
+
+// Variable storage for runtime state (supports mixed types)
 typedef struct {
     char* name;
-    int64_t value;
+    IRValue value;  // Changed from int64_t to support arrays and strings
     uint32_t owner_component_id;  // 0 = global, or component instance ID
 } IRExecutorVar;
 
@@ -32,6 +65,10 @@ typedef struct IRExecutorContext {
     IRLogicBlock* logic;              // Logic block from .kir file
     IRReactiveManifest* manifest;     // Reactive state (optional)
     IRComponent* root;                // Component tree (optional)
+
+    // For-loop rendering state
+    IRReactiveForLoop* for_loops;     // Parsed for-loops from manifest
+    int for_loop_count;               // Number of for-loops
 
     // Embedded source code from "sources" section
     IRExecutorSource sources[IR_EXECUTOR_MAX_SOURCES];
@@ -49,7 +86,21 @@ typedef struct IRExecutorContext {
         uint32_t component_id;
         const char* event_type;
     } current_event;
+
+    // Built-in function registry
+    struct IRBuiltinEntry* builtins;
+    int builtin_count;
+    int builtin_capacity;
 } IRExecutorContext;
+
+// Built-in function signature
+typedef IRValue (*IRBuiltinFunc)(struct IRExecutorContext* ctx, IRValue* args, int arg_count, uint32_t instance_id);
+
+// Registry entry
+typedef struct IRBuiltinEntry {
+    char* name;
+    IRBuiltinFunc handler;
+} IRBuiltinEntry;
 
 // ============================================================================
 // LIFECYCLE
@@ -121,11 +172,15 @@ bool ir_executor_load_kir_file(IRExecutorContext* ctx, const char* kir_path);
 // VARIABLE MANAGEMENT
 // ============================================================================
 
-// Get a variable's value (returns 0 if not found)
-int64_t ir_executor_get_var(IRExecutorContext* ctx, const char* name, uint32_t instance_id);
+// Get a variable's value (returns copy, null if not found)
+IRValue ir_executor_get_var(IRExecutorContext* ctx, const char* name, uint32_t instance_id);
 
-// Set a variable's value (creates if doesn't exist)
-void ir_executor_set_var(IRExecutorContext* ctx, const char* name, int64_t value, uint32_t instance_id);
+// Set a variable's value (creates if doesn't exist, takes ownership of value)
+void ir_executor_set_var(IRExecutorContext* ctx, const char* name, IRValue value, uint32_t instance_id);
+
+// Backwards-compatible integer API (for existing code)
+int64_t ir_executor_get_var_int(IRExecutorContext* ctx, const char* name, uint32_t instance_id);
+void ir_executor_set_var_int(IRExecutorContext* ctx, const char* name, int64_t value, uint32_t instance_id);
 
 // ============================================================================
 // UNIVERSAL LOGIC EXECUTION
@@ -136,5 +191,8 @@ bool ir_executor_run_universal(IRExecutorContext* ctx, IRLogicFunction* func, ui
 
 // Update Text components after state change (refreshes {{var}} expressions)
 void ir_executor_update_text_components(IRExecutorContext* ctx);
+
+// Sync Input component text back to bound variable (called by backend when Input changes)
+void ir_executor_sync_input_to_var(IRExecutorContext* ctx, IRComponent* input_comp);
 
 #endif // IR_EXECUTOR_H

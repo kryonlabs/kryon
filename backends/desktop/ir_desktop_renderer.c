@@ -29,14 +29,6 @@
 #include "../../ir/ir_animation.h"
 #include "../../ir/ir_hot_reload.h"
 #include "../../ir/ir_style_vars.h"
-#include "../../plugins/tilemap/tilemap_plugin.h"
-
-// External plugins (weak linking - optional)
-// These are installed separately and may not be available
-extern bool kryon_markdown_plugin_init(void) __attribute__((weak));
-extern void kryon_markdown_plugin_shutdown(void) __attribute__((weak));
-extern bool kryon_canvas_plugin_init(void) __attribute__((weak));
-extern void kryon_canvas_plugin_shutdown(void) __attribute__((weak));
 
 #ifdef ENABLE_SDL3
 #include <SDL3/SDL.h>
@@ -280,24 +272,6 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
         g_font_cache_hash_table[i] = -1;
     }
 
-    /* Initialize tilemap plugin */
-    if (!kryon_tilemap_plugin_init(renderer->renderer)) {
-        printf("Warning: Tilemap plugin initialization failed\n");
-    }
-
-    /* Initialize external plugins (if linked) */
-    if (kryon_markdown_plugin_init != NULL) {
-        if (!kryon_markdown_plugin_init()) {
-            printf("Warning: Markdown plugin initialization failed\n");
-        }
-    }
-
-    if (kryon_canvas_plugin_init != NULL) {
-        if (!kryon_canvas_plugin_init()) {
-            printf("Warning: Canvas plugin initialization failed\n");
-        }
-    }
-
     printf("Desktop renderer initialized successfully\n");
     return true;
 
@@ -342,17 +316,6 @@ void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
     if (renderer->hot_reload_ctx) {
         ir_hot_reload_destroy(renderer->hot_reload_ctx);
         renderer->hot_reload_ctx = NULL;
-    }
-
-    /* Shutdown canvas plugin */
-    kryon_canvas_plugin_shutdown();
-
-    /* Shutdown tilemap plugin */
-    kryon_tilemap_plugin_shutdown();
-
-    /* Shutdown external plugins (if linked) */
-    if (kryon_markdown_plugin_shutdown != NULL) {
-        kryon_markdown_plugin_shutdown();
     }
 
     /* Clean up SDL resources */

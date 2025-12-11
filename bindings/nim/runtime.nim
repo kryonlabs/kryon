@@ -850,8 +850,11 @@ proc run*(app: KryonApp) =
   if serializeTarget != "":
     echo "Serializing IR to: ", serializeTarget
     # Evaluate all reactive conditionals before serialization
-    # This ensures conditional children are in the tree when we serialize
+    # This ensures the active branch is in the tree and initialized
     updateAllReactiveConditionals()
+    # CRITICAL: Execute ALL branches (then AND else) and add to tree BEFORE serialization
+    # This ensures if/else statements serialize both branches, not just the active one
+    ensureAllConditionalBranchesInTree()
     # Export reactive manifest and sync component definitions
     var manifest = exportReactiveManifest()
     if manifest == nil:
