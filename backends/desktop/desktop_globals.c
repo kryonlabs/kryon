@@ -36,6 +36,10 @@ int g_font_cache_count = 0;
 char g_default_font_name[128] = {0};
 char g_default_font_path[512] = {0};
 
+// Font path resolution cache
+FontPathCacheEntry g_font_path_cache[FONT_PATH_CACHE_SIZE];
+int g_font_path_cache_count = 0;
+
 // ============================================================================
 // TEXT RENDERING CACHE
 // ============================================================================

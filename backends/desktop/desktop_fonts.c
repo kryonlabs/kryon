@@ -4,6 +4,7 @@
 // Handles font registration, caching, resolution, and text texture caching
 // with LRU eviction for performance optimization.
 
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -64,30 +65,236 @@ const char* desktop_ir_find_font_path(const char* name_or_path) {
 
 TTF_Font* desktop_ir_get_cached_font(const char* path, int size);  // Forward declaration
 
+// ============================================================================
+// FONT PATH CACHE (family, weight, italic) → path
+// ============================================================================
+
+// Lookup cached font path (family, weight, italic) → path
+static const char* lookup_font_path_cache(const char* family, uint16_t weight, bool italic) {
+    const char* search_family = family ? family : "";
+
+    // Linear search (acceptable for <128 entries)
+    for (int i = 0; i < g_font_path_cache_count; i++) {
+        if (g_font_path_cache[i].valid &&
+            g_font_path_cache[i].weight == weight &&
+            g_font_path_cache[i].italic == italic &&
+            strcmp(g_font_path_cache[i].family, search_family) == 0) {
+            return g_font_path_cache[i].path;
+        }
+    }
+
+    return NULL;  // Cache miss
+}
+
+// Insert into font path cache
+static void cache_font_path(const char* family, uint16_t weight, bool italic, const char* path) {
+    if (g_font_path_cache_count >= FONT_PATH_CACHE_SIZE) return;
+
+    const char* cache_family = family ? family : "";
+
+    int idx = g_font_path_cache_count++;
+    strncpy(g_font_path_cache[idx].family, cache_family, sizeof(g_font_path_cache[idx].family) - 1);
+    g_font_path_cache[idx].family[sizeof(g_font_path_cache[idx].family) - 1] = '\0';
+
+    strncpy(g_font_path_cache[idx].path, path, sizeof(g_font_path_cache[idx].path) - 1);
+    g_font_path_cache[idx].path[sizeof(g_font_path_cache[idx].path) - 1] = '\0';
+
+    g_font_path_cache[idx].weight = weight;
+    g_font_path_cache[idx].italic = italic;
+    g_font_path_cache[idx].valid = true;
+}
+
+// Try to find font variant by filesystem naming convention
+// Example: /path/to/DejaVuSans.ttf → /path/to/DejaVuSans-Bold.ttf
+static const char* try_filesystem_font_variant(const char* base_path, uint16_t weight, bool italic) {
+    if (!base_path) return NULL;
+
+    static char variant_path[512];
+    char dir[512], base[256];
+
+    // Extract directory and base name
+    const char* last_slash = strrchr(base_path, '/');
+    if (!last_slash) return NULL;
+
+    size_t dir_len = last_slash - base_path;
+    strncpy(dir, base_path, dir_len);
+    dir[dir_len] = '\0';
+
+    const char* filename = last_slash + 1;
+    const char* ext = strrchr(filename, '.');
+    if (!ext) return NULL;
+
+    size_t base_len = ext - filename;
+    strncpy(base, filename, base_len);
+    base[base_len] = '\0';
+
+    // Remove existing variant suffixes
+    char* hyphen = strrchr(base, '-');
+    if (hyphen) {
+        const char* suffix = hyphen + 1;
+        if (strcmp(suffix, "Bold") == 0 || strcmp(suffix, "Italic") == 0 ||
+            strcmp(suffix, "BoldItalic") == 0 || strcmp(suffix, "Oblique") == 0 ||
+            strcmp(suffix, "BoldOblique") == 0 || strcmp(suffix, "Light") == 0 ||
+            strcmp(suffix, "ExtraLight") == 0) {
+            *hyphen = '\0';
+        }
+    }
+
+    // Build variant path based on weight and italic
+    const char* variant = "";
+    if (weight >= 800) variant = italic ? "-BoldOblique" : "-Bold";
+    else if (weight >= 600) variant = italic ? "-BoldOblique" : "-Bold";
+    else if (weight <= 350) variant = italic ? "-ExtraLight" : "-ExtraLight";
+    else if (italic) variant = "-Oblique";
+
+    snprintf(variant_path, sizeof(variant_path), "%s/%s%s%s", dir, base, variant, ext);
+
+    // Check if file exists
+    if (access(variant_path, R_OK) == 0) {
+        return variant_path;
+    }
+
+    return NULL;
+}
+
+// Map CSS font weight (100-900) to fontconfig weight name
+static const char* map_weight_to_fc_weight(uint16_t weight) {
+    if (weight == 0 || weight == 400) return "regular";
+    if (weight <= 150) return "thin";
+    if (weight <= 250) return "extralight";
+    if (weight <= 350) return "light";
+    if (weight <= 450) return "regular";
+    if (weight <= 550) return "medium";
+    if (weight <= 650) return "semibold";
+    if (weight <= 750) return "bold";
+    if (weight <= 850) return "extrabold";
+    return "black";
+}
+
+// Helper to compute SDL_ttf style flags (only for decorations now)
+static int compute_font_style_flags(IRComponent* component) {
+    int style = TTF_STYLE_NORMAL;
+
+    if (!component || !component->style) {
+        return style;
+    }
+
+    IRTypography* font = &component->style->font;
+
+    // Text decorations only (weight and italic handled by font loading)
+    if (font->decoration & IR_TEXT_DECORATION_UNDERLINE) {
+        style |= TTF_STYLE_UNDERLINE;
+    }
+
+    if (font->decoration & IR_TEXT_DECORATION_LINE_THROUGH) {
+        style |= TTF_STYLE_STRIKETHROUGH;
+    }
+
+    // Note: SDL_ttf doesn't support overline natively
+
+    return style;
+}
+
+// Query fontconfig for a font matching family, weight, and italic
+static char* query_fontconfig_font(const char* family, uint16_t weight, bool italic) {
+    char query[512];
+    const char* fc_weight = map_weight_to_fc_weight(weight);
+    const char* fc_slant = italic ? "italic" : "roman";
+
+    // Build fontconfig query
+    if (family && family[0] != '\0') {
+        snprintf(query, sizeof(query), "fc-match \"%s:weight=%s:slant=%s\" -f \"%%{file}\"",
+                 family, fc_weight, fc_slant);
+    } else {
+        snprintf(query, sizeof(query), "fc-match \"sans:weight=%s:slant=%s\" -f \"%%{file}\"",
+                 fc_weight, fc_slant);
+    }
+
+    FILE* fc = popen(query, "r");
+    if (!fc) return NULL;
+
+    static char fontconfig_path[512];
+    fontconfig_path[0] = '\0';
+
+    if (fgets(fontconfig_path, sizeof(fontconfig_path), fc)) {
+        size_t len = strlen(fontconfig_path);
+        if (len > 0 && fontconfig_path[len-1] == '\n') {
+            fontconfig_path[len-1] = '\0';
+        }
+    }
+
+    pclose(fc);
+
+    return fontconfig_path[0] != '\0' ? fontconfig_path : NULL;
+}
+
 TTF_Font* desktop_ir_resolve_font(DesktopIRRenderer* renderer, IRComponent* component, float fallback_size) {
     float size = fallback_size > 0 ? fallback_size : 16.0f;
     const char* family = NULL;
+    uint16_t weight = 400;  // Default to normal
+    bool italic = false;
 
     if (component && component->style) {
         if (component->style->font.size > 0) size = component->style->font.size;
         family = component->style->font.family;
+
+        // Get weight (use legacy bold flag if weight not set)
+        if (component->style->font.weight > 0) {
+            weight = component->style->font.weight;
+        } else if (component->style->font.bold) {
+            weight = 700;
+        }
+
+        italic = component->style->font.italic;
     }
 
-    const char* path = NULL;
-    if (family) {
-        path = desktop_ir_find_font_path(family);
-    }
-    if (!path && g_default_font_path[0] != '\0') {
-        path = g_default_font_path;
+    // STEP 1: Check font path cache (O(1) after warmup)
+    const char* path = lookup_font_path_cache(family, weight, italic);
+
+    // STEP 2: Cache miss - resolve and cache
+    if (!path) {
+        // Try fontconfig (5ms, but only once per variant)
+        path = query_fontconfig_font(family, weight, italic);
+
+        // Try filesystem naming convention
+        if (!path && family) {
+            const char* base_path = desktop_ir_find_font_path(family);
+            if (base_path) {
+                path = try_filesystem_font_variant(base_path, weight, italic);
+            }
+        }
+
+        // Fallback to registered font
+        if (!path && family) {
+            path = desktop_ir_find_font_path(family);
+        }
+
+        // Fallback to default font
+        if (!path && g_default_font_path[0] != '\0') {
+            path = g_default_font_path;
+        }
+
+        // Cache the result
+        if (path) {
+            cache_font_path(family, weight, italic, path);
+        }
     }
 
+    // STEP 3: Load font from cached path
     if (path) {
         TTF_Font* f = desktop_ir_get_cached_font(path, (int)size);
-        if (f) return f;
+        if (f) {
+            // Apply text decorations (underline, strikethrough)
+            int style_flags = compute_font_style_flags(component);
+            TTF_SetFontStyle(f, style_flags);
+            return f;
+        }
     }
 
-    // Fallback to renderer default
+    // STEP 4: Fallback to renderer default
     if (renderer && renderer->default_font) {
+        int style_flags = compute_font_style_flags(component);
+        TTF_SetFontStyle(renderer->default_font, style_flags);
         return renderer->default_font;
     }
 

@@ -59,6 +59,10 @@ typedef struct {
     // Callback bridges (indexed by IRComponentType)
     IRPluginCallbackBridge callback_bridges[32];
     uint32_t callback_bridge_count;
+
+    // Current plugin requirements (from deserialized IR file)
+    char** current_requirements;
+    uint32_t current_requirement_count;
 } PluginSystem;
 
 static PluginSystem g_plugin_system = {0};
@@ -542,7 +546,6 @@ bool ir_plugin_dispatch_callback(uint32_t component_type, uint32_t component_id)
 #include <glob.h>
 #include <toml.h>
 #include <sys/stat.h>
-#include <wordexp.h>
 
 // Plugin search paths (in priority order)
 static const char* PLUGIN_SEARCH_PATHS[] = {
@@ -553,23 +556,51 @@ static const char* PLUGIN_SEARCH_PATHS[] = {
     NULL
 };
 
-// Helper: Expand tilde and wildcards in path
+// Helper: Expand tilde in path (simplified, no wildcards for now)
 static char** expand_path(const char* path, int* count) {
-    wordexp_t exp_result;
     *count = 0;
 
-    if (wordexp(path, &exp_result, 0) != 0) {
-        return NULL;
+    // Handle tilde expansion manually
+    if (path[0] == '~' && path[1] == '/') {
+        const char* home = getenv("HOME");
+        if (!home) {
+            return NULL;
+        }
+
+        char* expanded = malloc(strlen(home) + strlen(path));
+        sprintf(expanded, "%s%s", home, path + 1);
+
+        char** result = malloc(sizeof(char*));
+        result[0] = expanded;
+        *count = 1;
+        return result;
     }
 
-    *count = exp_result.we_wordc;
-    char** paths = malloc(sizeof(char*) * *count);
-    for (int i = 0; i < *count; i++) {
-        paths[i] = strdup(exp_result.we_wordv[i]);
+    // For wildcard paths (like ../kryon-plugin-*/build/), use glob
+    if (strchr(path, '*')) {
+        glob_t glob_result;
+        memset(&glob_result, 0, sizeof(glob_result));
+
+        int ret = glob(path, GLOB_TILDE, NULL, &glob_result);
+        if (ret != 0) {
+            return NULL;
+        }
+
+        *count = glob_result.gl_pathc;
+        char** paths = malloc(sizeof(char*) * *count);
+        for (size_t i = 0; i < glob_result.gl_pathc; i++) {
+            paths[i] = strdup(glob_result.gl_pathv[i]);
+        }
+
+        globfree(&glob_result);
+        return paths;
     }
 
-    wordfree(&exp_result);
-    return paths;
+    // Regular path - just duplicate it
+    char** result = malloc(sizeof(char*));
+    result[0] = strdup(path);
+    *count = 1;
+    return result;
 }
 
 // Helper: Check if file exists
@@ -862,4 +893,43 @@ void ir_plugin_free_requirements(char** plugin_names, uint32_t count) {
         free(plugin_names[i]);
     }
     free(plugin_names);
+}
+
+// ============================================================================
+// Plugin Requirements Storage (for deserialized IR files)
+// ============================================================================
+
+void ir_plugin_set_requirements(char** plugin_names, uint32_t count) {
+    // Clear any existing requirements
+    ir_plugin_clear_requirements();
+
+    // Store new requirements
+    g_plugin_system.current_requirements = plugin_names;
+    g_plugin_system.current_requirement_count = count;
+
+    if (count > 0) {
+        fprintf(stderr, "[kryon][plugin] IR file requires %u plugin(s): ", count);
+        for (uint32_t i = 0; i < count; i++) {
+            fprintf(stderr, "%s%s", plugin_names[i], (i < count - 1) ? ", " : "");
+        }
+        fprintf(stderr, "\n");
+    }
+}
+
+const char* const* ir_plugin_get_requirements(uint32_t* count) {
+    if (count) {
+        *count = g_plugin_system.current_requirement_count;
+    }
+    return (const char* const*)g_plugin_system.current_requirements;
+}
+
+void ir_plugin_clear_requirements(void) {
+    if (g_plugin_system.current_requirements) {
+        for (uint32_t i = 0; i < g_plugin_system.current_requirement_count; i++) {
+            free(g_plugin_system.current_requirements[i]);
+        }
+        free(g_plugin_system.current_requirements);
+        g_plugin_system.current_requirements = NULL;
+        g_plugin_system.current_requirement_count = 0;
+    }
 }
