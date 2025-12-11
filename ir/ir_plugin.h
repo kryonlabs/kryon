@@ -439,6 +439,30 @@ char** ir_plugin_scan_requirements(struct IRComponent* root, uint32_t* count);
  */
 void ir_plugin_free_requirements(char** plugin_names, uint32_t count);
 
+/**
+ * Set plugin requirements from deserialized IR file.
+ * This is called by the deserializer to store plugin requirements globally.
+ *
+ * @param plugin_names Array of plugin names (takes ownership)
+ * @param count Number of plugins
+ */
+void ir_plugin_set_requirements(char** plugin_names, uint32_t count);
+
+/**
+ * Get plugin requirements from the most recently deserialized IR file.
+ * This allows backends to access plugin requirements after loading a .kir file.
+ *
+ * @param count Output: number of required plugins
+ * @return Array of plugin names (do not free, owned by plugin system)
+ */
+const char* const* ir_plugin_get_requirements(uint32_t* count);
+
+/**
+ * Clear stored plugin requirements.
+ * Should be called when unloading an IR file.
+ */
+void ir_plugin_clear_requirements(void);
+
 #ifdef __cplusplus
 }
 #endif

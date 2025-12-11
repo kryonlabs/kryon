@@ -141,6 +141,19 @@ extern int g_font_cache_count;
 extern char g_default_font_name[128];
 extern char g_default_font_path[512];
 
+// Font path resolution cache (family, weight, italic) → path
+#define FONT_PATH_CACHE_SIZE 128
+typedef struct {
+    char family[128];      // Font family name
+    uint16_t weight;       // 100-900
+    bool italic;           // Italic flag
+    char path[512];        // Resolved font file path
+    bool valid;            // Entry is valid
+} FontPathCacheEntry;
+
+extern FontPathCacheEntry g_font_path_cache[FONT_PATH_CACHE_SIZE];
+extern int g_font_path_cache_count;
+
 // Text texture cache
 extern TextTextureCache g_text_texture_cache[TEXT_TEXTURE_CACHE_SIZE];
 extern TextCacheHashBucket g_text_cache_hash_table[TEXT_CACHE_HASH_SIZE];
