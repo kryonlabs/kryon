@@ -178,6 +178,18 @@ proc toNimValue(key: string, val: JsonNode): string =
       else:
         items.add($item)
     return "@[" & items.join(", ") & "]"
+  of JObject:
+    # Handle expression objects like {op: "neg", expr: 1.0}
+    if val.hasKey("op") and val.hasKey("expr"):
+      let op = val["op"].getStr
+      let expr = val["expr"]
+      if op == "neg":
+        if expr.kind == JFloat:
+          return $(-expr.getFloat)
+        elif expr.kind == JInt:
+          return $(-expr.getInt)
+      # Add other operators as needed (add, sub, mul, div)
+    return "nil"
   else:
     return "nil"
 

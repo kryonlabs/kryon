@@ -179,11 +179,15 @@ proc setFontSize*(component: ptr IRComponent, size: int) =
   let style = ir_get_style(component)
   if style.isNil:
     let newStyle = ir_create_style()
+    # No existing style - use default black color
     ir_set_font(newStyle, cfloat(size), "sans-serif", 0, 0, 0, 255, false, false)
     ir_set_style(component, newStyle)
   else:
-    # Get current font properties
-    ir_set_font(style, cfloat(size), "sans-serif", 0, 0, 0, 255, false, false)
+    # Preserve existing font color
+    let existingColor = style.font.color
+    ir_set_font(style, cfloat(size), "sans-serif",
+                existingColor.r, existingColor.g, existingColor.b, existingColor.a,
+                style.font.bold, style.font.italic)
 
 proc kryon_component_set_z_index*(component: ptr IRComponent, z: uint16) =
   ## Set z-index via IR style
@@ -900,15 +904,17 @@ proc run*(app: KryonApp) =
         ir_reactive_manifest_destroy(manifest)
         quit(1)
     else:
-      # Fallback to v2.0 (no reactive state)
-      if manifest != nil:
-        ir_reactive_manifest_destroy(manifest)
-      if ir_write_json_file(app.root, cstring(serializeTarget)):
+      # Use v3.0 format even without reactive state or handlers (ensures proper envelope structure)
+      if ir_write_json_v3_file(app.root, manifest, nil, cstring(serializeTarget)):
         addWindowPropertiesToKir(serializeTarget, app.window)
-        echo "✓ IR serialized successfully (JSON v2.0)"
+        echo "✓ IR serialized successfully (JSON v3.0)"
+        if manifest != nil:
+          ir_reactive_manifest_destroy(manifest)
         quit(0)
       else:
         echo "✗ Failed to serialize IR"
+        if manifest != nil:
+          ir_reactive_manifest_destroy(manifest)
         quit(1)
 
   # Auto-save IR files to build/ir/ directory
@@ -955,14 +961,14 @@ proc run*(app: KryonApp) =
       echo "[IR] Warning: Failed to save JSON v2.1 IR"
     ir_reactive_manifest_destroy(manifest)
   else:
-    # Fallback to v2.0 (no reactive state, no handlers)
+    # Use v3.0 format even without reactive state or handlers (ensures proper envelope structure)
+    if ir_write_json_v3_file(app.root, manifest, nil, cstring(kirPath)):
+      addWindowPropertiesToKir(kirPath, app.window)
+      echo "[IR] Saved JSON v3.0 IR: ", kirPath
+    else:
+      echo "[IR] Warning: Failed to save JSON v3.0 IR"
     if manifest != nil:
       ir_reactive_manifest_destroy(manifest)
-    if ir_write_json_file(app.root, cstring(kirPath)):
-      addWindowPropertiesToKir(kirPath, app.window)
-      echo "[IR] Saved JSON v2.0 IR: ", kirPath
-    else:
-      echo "[IR] Warning: Failed to save JSON IR"
 
   # Render using IR desktop renderer
   if not desktop_render_ir_component(app.root, addr app.config):

@@ -495,6 +495,34 @@ static void json_serialize_style(cJSON* obj, IRStyle* style) {
         cJSON_AddStringToObject(obj, "textAlign", alignStr);
     }
 
+    // Letter and word spacing
+    if (style->font.letter_spacing != 0.0f) {
+        cJSON_AddNumberToObject(obj, "letterSpacing", style->font.letter_spacing);
+    }
+
+    if (style->font.word_spacing != 0.0f) {
+        cJSON_AddNumberToObject(obj, "wordSpacing", style->font.word_spacing);
+    }
+
+    // Text decoration
+    if (style->font.decoration != IR_TEXT_DECORATION_NONE) {
+        const char* decorationStr = NULL;
+        if (style->font.decoration == IR_TEXT_DECORATION_UNDERLINE) {
+            decorationStr = "underline";
+        } else if (style->font.decoration == IR_TEXT_DECORATION_OVERLINE) {
+            decorationStr = "overline";
+        } else if (style->font.decoration == IR_TEXT_DECORATION_LINE_THROUGH) {
+            decorationStr = "line-through";
+        } else if (style->font.decoration == (IR_TEXT_DECORATION_UNDERLINE | IR_TEXT_DECORATION_LINE_THROUGH)) {
+            decorationStr = "underline line-through";
+        }
+        // Add more combinations as needed
+
+        if (decorationStr) {
+            cJSON_AddStringToObject(obj, "textDecoration", decorationStr);
+        }
+    }
+
     // Spacing
     bool hasPadding = style->padding.top > 0 || style->padding.right > 0 ||
                      style->padding.bottom > 0 || style->padding.left > 0;
@@ -1581,6 +1609,58 @@ static void json_deserialize_style(cJSON* obj, IRStyle* style) {
     }
     if ((item = cJSON_GetObjectItem(obj, "textAlign")) != NULL && cJSON_IsString(item)) {
         style->font.align = json_parse_text_align(item->valuestring);
+    }
+    if ((item = cJSON_GetObjectItem(obj, "letterSpacing")) != NULL) {
+        if (cJSON_IsNumber(item)) {
+            style->font.letter_spacing = (float)item->valuedouble;
+        } else if (cJSON_IsObject(item)) {
+            // Handle expression objects like {op: "neg", expr: 1.0}
+            cJSON* op = cJSON_GetObjectItem(item, "op");
+            cJSON* expr = cJSON_GetObjectItem(item, "expr");
+            if (op && cJSON_IsString(op) && expr && cJSON_IsNumber(expr)) {
+                float value = (float)expr->valuedouble;
+                if (strcmp(op->valuestring, "neg") == 0) {
+                    style->font.letter_spacing = -value;
+                } else {
+                    style->font.letter_spacing = value;
+                }
+            }
+        }
+    }
+    if ((item = cJSON_GetObjectItem(obj, "wordSpacing")) != NULL) {
+        if (cJSON_IsNumber(item)) {
+            style->font.word_spacing = (float)item->valuedouble;
+        } else if (cJSON_IsObject(item)) {
+            // Handle expression objects like {op: "neg", expr: 1.0}
+            cJSON* op = cJSON_GetObjectItem(item, "op");
+            cJSON* expr = cJSON_GetObjectItem(item, "expr");
+            if (op && cJSON_IsString(op) && expr && cJSON_IsNumber(expr)) {
+                float value = (float)expr->valuedouble;
+                if (strcmp(op->valuestring, "neg") == 0) {
+                    style->font.word_spacing = -value;
+                } else {
+                    style->font.word_spacing = value;
+                }
+            }
+        }
+    }
+    if ((item = cJSON_GetObjectItem(obj, "textDecoration")) != NULL && cJSON_IsString(item)) {
+        const char* decoration = item->valuestring;
+        style->font.decoration = IR_TEXT_DECORATION_NONE;
+
+        // Parse decoration string (can be space-separated list)
+        if (strstr(decoration, "underline")) {
+            style->font.decoration |= IR_TEXT_DECORATION_UNDERLINE;
+        }
+        if (strstr(decoration, "overline")) {
+            style->font.decoration |= IR_TEXT_DECORATION_OVERLINE;
+        }
+        if (strstr(decoration, "line-through")) {
+            style->font.decoration |= IR_TEXT_DECORATION_LINE_THROUGH;
+        }
+        if (strcmp(decoration, "none") == 0) {
+            style->font.decoration = IR_TEXT_DECORATION_NONE;
+        }
     }
 
     // Spacing

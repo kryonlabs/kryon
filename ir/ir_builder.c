@@ -47,6 +47,11 @@ const char* ir_component_type_to_string(IRComponentType type) {
         case IR_COMPONENT_CANVAS: return "Canvas";
         case IR_COMPONENT_DROPDOWN: return "Dropdown";
         case IR_COMPONENT_MARKDOWN: return "Markdown";
+        case IR_COMPONENT_TAB_GROUP: return "TabGroup";
+        case IR_COMPONENT_TAB_BAR: return "TabBar";
+        case IR_COMPONENT_TAB: return "Tab";
+        case IR_COMPONENT_TAB_CONTENT: return "TabContent";
+        case IR_COMPONENT_TAB_PANEL: return "TabPanel";
         case IR_COMPONENT_CUSTOM: return "Custom";
         default: return "Unknown";
     }
