@@ -96,18 +96,18 @@ The CLI uses `renderIRFile()` helper (cli/main.nim:128) for unified rendering ac
   kry_to_kir.nim          - .kry AST to .kir JSON transpiler
   kry_ast.nim             - .kry AST types
 
-/examples/kry/            - .kry example applications
+/examples/kry/            - .kry example applications (SOURCE OF TRUTH)
   hello_world.kry         - Simple hello world
-  hello_world.kir         - Generated IR (JSON)
+  button_demo.kry         - Interactive buttons
+  animations_demo.kry     - Animations and transitions
+  tabs_reorderable.kry    - Reorderable tabs demo
+  ... (14 total examples)
 
-/examples/nim/            - Nim example applications
-  button_demo.nim         - Interactive buttons
-  animations_demo.nim     - Animations and transitions
-  bidi_demo.nim           - BiDi text (Hebrew, Arabic)
-  markdown_simple_test.nim - Markdown rendering
-  tabs_demo.nim           - Tab groups
-  text_shaping_demo.nim   - Text shaping examples
-  ...
+/examples/nim/            - Generated Nim examples (NOT IN GIT)
+  (Auto-generated from .kry files via scripts/generate_examples.sh)
+  button_demo.nim         - Generated from button_demo.kry
+  animations_demo.nim     - Generated from animations_demo.kry
+  ... (regenerate with: make generate-examples)
 
 /build/                   - Build artifacts
   libkryon_ir.a           - IR core library (static)
@@ -120,6 +120,61 @@ The CLI uses `renderIRFile()` helper (cli/main.nim:128) for unified rendering ac
 /docs/                    - Documentation
   KIR_FORMAT_V2.md        - Binary IR format specification
   DEVELOPER_GUIDE.md      - Developer documentation
+
+/scripts/                 - Build and generation scripts
+  generate_examples.sh    - Generate/validate all examples from .kry
+  compare_kir.sh          - Semantic .kir comparison
+  normalize_kir.jq        - JSON normalization filter
+```
+
+## Examples Workflow
+
+**IMPORTANT:** Only `.kry` files in `examples/kry/` are checked into git. All other formats (`.nim`, `.lua`, etc.) are auto-generated on demand.
+
+### Working with Examples
+
+**Do NOT edit** files in `examples/nim/` - they are generated and will be overwritten!
+
+**DO edit** files in `examples/kry/` - these are the source of truth.
+
+### Generating Examples
+
+```bash
+# Generate all examples from .kry sources
+make generate-examples
+# Or directly:
+./scripts/generate_examples.sh
+
+# Generate specific example
+./scripts/generate_examples.sh button_demo
+
+# Validate round-trip transpilation (must be 100%)
+make validate-examples
+# Or directly:
+./scripts/generate_examples.sh --validate
+
+# Clean generated files
+make clean-generated
+```
+
+### How Auto-Generation Works
+
+The examples pipeline ensures perfect round-trip transpilation:
+
+1. **`.kry → .kir`** - Parse .kry file to JSON IR (with `--preserve-static` for codegen)
+2. **`.kir → .nim`** - Generate idiomatic Nim DSL code from IR
+3. **`.nim → .kir`** - Compile generated Nim back to IR (round-trip test)
+4. **Validation** - Compare original and round-trip `.kir` files semantically
+
+If validation fails, it indicates a transpilation bug that must be fixed.
+
+### Auto-Generation on Run
+
+The `run_example.sh` script automatically generates missing `.nim` files:
+
+```bash
+# If button_demo.nim doesn't exist, it's generated from button_demo.kry
+./run_example.sh button_demo
 ```
 
 ## Build Commands

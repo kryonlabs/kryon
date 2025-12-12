@@ -112,9 +112,12 @@ kryon dev examples/nim/habits.nim
 ### Run Examples Script
 
 ```bash
-./run_example.sh hello_world             # Run Nim example with SDL3
-./run_example.sh button_demo nim terminal # Use terminal renderer
+./run_example.sh hello_world             # Auto-generates .nim, runs with SDL3
+./run_example.sh button_demo nim         # Test round-trip transpilation
+KRYON_RENDERER=terminal ./run_example.sh hello_world  # Use terminal renderer
 ```
+
+**Note:** The script automatically generates `.nim` files from `.kry` sources if they don't exist.
 
 ### Available Backends
 
@@ -160,14 +163,35 @@ KRYON_RENDERER=terminal kryon run app.kry
 
 ## Examples
 
-See `examples/` directory for complete applications:
-- `hello_world.nim` - Basic hello world
-- `button_demo.nim` - Button interactions
-- `counter.nim` - State management
-- `dropdown.nim` - Dropdown component
-- `checkbox.nim` - Checkbox component
-- `tabs.nim` - Tab navigation
-- And more...
+Examples are auto-generated from `.kry` sources. Only `.kry` files are checked into git.
+
+### Generate Examples
+
+```bash
+make generate-examples      # Generate all .nim examples from .kry
+make validate-examples      # Validate round-trip transpilation (must be 100%)
+```
+
+### Available Examples (in `examples/kry/`)
+
+All 14 examples are source-controlled as `.kry` files:
+- `hello_world.kry` - Basic hello world
+- `button_demo.kry` - Button interactions and states
+- `counters_demo.kry` - Reactive state management
+- `animations_demo.kry` - Smooth animations and transitions
+- `tabs_reorderable.kry` - Drag-to-reorder tabs
+- `checkbox.kry` - Checkbox component
+- `text_input_simple.kry` - Text input with reactive display
+- `todo.kry` - Todo list application
+- `navigation_simple.kry` - Navigation between screens
+- `bidi_demo.kry` - BiDi text (Hebrew, Arabic)
+- `typography_showcase.kry` - Font features and text styling
+- `canvas_basics.kry` - Basic canvas rendering
+- `canvas_shapes.kry` - Shape rendering
+- `zindex_test.kry` - Z-index layering
+
+**DO NOT edit** generated `.nim` files - they will be overwritten!
+**DO edit** `.kry` source files in `examples/kry/`.
 
 ## License
 

@@ -6,6 +6,7 @@
 .PHONY: all clean install install-dynamic install-static uninstall doctor dev test help
 .PHONY: build-cli build-lib build-dynamic build-static
 .PHONY: test-serialization test-validation test-conversion test-backend test-integration test-all test-modular
+.PHONY: generate-examples validate-examples clean-generated
 
 # Configuration
 VERSION = 0.2.0
@@ -336,6 +337,22 @@ examples:
 	@echo "Building examples..."
 	$(MAKE) -C examples
 
+# Generate examples from .kry source files
+generate-examples:
+	@echo "Generating examples from .kry files..."
+	@./scripts/generate_examples.sh
+
+# Validate round-trip transpilation (all examples)
+validate-examples:
+	@echo "Validating round-trip transpilation..."
+	@./scripts/generate_examples.sh --validate
+
+# Clean generated example files
+clean-generated:
+	@echo "Cleaning generated examples..."
+	@./scripts/generate_examples.sh --clean
+	@rm -rf examples/nim/ examples/lua/
+
 # Generate plugin bindings
 generate-bindings:
 	@echo "Generating plugin bindings..."
@@ -392,6 +409,9 @@ help:
 	@echo "  doctor        System health check and dependencies"
 	@echo "  test          Run test suite"
 	@echo "  examples      Build example programs"
+	@echo "  generate-examples    Generate all examples from .kry files"
+	@echo "  validate-examples    Validate round-trip transpilation"
+	@echo "  clean-generated      Clean generated example files"
 	@echo "  generate-bindings PLUGIN=<name>  Generate plugin bindings"
 	@echo "  clean         Clean build artifacts"
 	@echo "  distclean     Deep clean including generated files"
