@@ -134,13 +134,28 @@ proc rgba*(r, g, b, a: int): uint32 =
   result = (uint32(r) shl 24) or (uint32(g) shl 16) or (uint32(b) shl 8) or uint32(a)
 
 proc parseHexColor*(hex: string): uint32 =
-  ## Parse hex color string like "#ff0000" or "#ff0000ff"
-  if hex.len == 7 and hex.startsWith("#"):
+  ## Parse hex color string like "#333", "#ff0000" or "#ff0000ff"
+  if hex.len == 4 and hex.startsWith("#"):
+    # Shorthand #RGB -> #RRGGBB
+    let r = parseHexInt(hex[1..1] & hex[1..1])
+    let g = parseHexInt(hex[2..2] & hex[2..2])
+    let b = parseHexInt(hex[3..3] & hex[3..3])
+    result = rgba(r, g, b, 255)
+  elif hex.len == 5 and hex.startsWith("#"):
+    # Shorthand #RGBA -> #RRGGBBAA
+    let r = parseHexInt(hex[1..1] & hex[1..1])
+    let g = parseHexInt(hex[2..2] & hex[2..2])
+    let b = parseHexInt(hex[3..3] & hex[3..3])
+    let a = parseHexInt(hex[4..4] & hex[4..4])
+    result = rgba(r, g, b, a)
+  elif hex.len == 7 and hex.startsWith("#"):
+    # Full form #RRGGBB
     let r = parseHexInt(hex[1..2])
     let g = parseHexInt(hex[3..4])
     let b = parseHexInt(hex[5..6])
     result = rgba(r, g, b, 255)
   elif hex.len == 9 and hex.startsWith("#"):
+    # Full form #RRGGBBAA
     let r = parseHexInt(hex[1..2])
     let g = parseHexInt(hex[3..4])
     let b = parseHexInt(hex[5..6])

@@ -1,46 +1,41 @@
-## Counters Demo
-##
-## Demonstrates reusable Counter components with independent state
-## Each counter maintains its own value and can be incremented/decremented independently
+## Generated from counters_demo_static.kir
+## Kryon Code Generator - v3.0 Component-Based Output
 
 import kryon_dsl
 
-# Define a reusable Counter component with automatic reactive detection
-# The {.kryonComponent.} pragma automatically:
-# 1. Detects variables used in onClick handlers
-# 2. Detects variables used in text expressions
-# 3. Transforms them to namedReactiveVar for serialization
+# =============================================================================
+# Component Definitions
+# =============================================================================
+
 proc Counter*(initialValue: int = 0): Element {.kryonComponent.} =
-  # Each counter instance has its own state variable
   var value = initialValue
 
-  # Return the counter UI
   result = Row:
-    alignItems = "center"
-    gap = 32
+      alignItems = "center"
+      gap = 32
+      Button:
+        fontSize = 24
+        text = "-"
+        height = 50
+        backgroundColor = "#E74C3C"
+        width = 60
+        onClick = proc() = value -= 1
+      Text:
+        fontSize = 32
+        color = "#FFFFFF"
+        text = $value
+      Button:
+        fontSize = 24
+        text = "+"
+        height = 50
+        backgroundColor = "#2ECC71"
+        width = 60
+        onClick = proc() = value += 1
 
-    Button:
-      text = "-"
-      width = 60
-      height = 50
-      backgroundColor = "#E74C3C"
-      fontSize = 24
-      onClick = proc() = value -= 1
+# =============================================================================
+# Application
+# =============================================================================
 
-    Text:
-      text = $value  # Reactive! Updates automatically
-      fontSize = 32
-      color = "#FFFFFF"
-
-    Button:
-      text = "+"
-      width = 60
-      height = 50
-      backgroundColor = "#2ECC71"
-      fontSize = 24
-      onClick = proc() = value += 1
-
-# --- Now, use your component in the main App ---
 let app = kryonApp:
   Header:
     windowWidth = 800
@@ -51,10 +46,19 @@ let app = kryonApp:
     backgroundColor = "#1E1E1E"
 
     Column:
-      mainAxisAlignment = "center"
-      crossAxisAlignment = "center"
+      justifyContent = "center"
+      alignItems = "center"
+      height = 100.percent
       gap = 20
+      width = 100.percent
 
-      Counter(5)
+      Text:
+        fontSize = 24
+        color = "#FFFFFF"
+        text = "Multiple Independent Counters"
+
+      Counter(initialValue = 5)
 
       Counter()
+
+      Counter(initialValue = 10)
