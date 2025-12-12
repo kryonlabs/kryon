@@ -97,7 +97,16 @@ if [ "$MODE" = "nim" ]; then
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    if [ ! -f "$NIM_FILE" ]; then
+    # Auto-generate .nim file if it doesn't exist but .kry source exists
+    if [ ! -f "$NIM_FILE" ] && [ -f "examples/kry/${BASENAME}.kry" ]; then
+        echo -e "${YELLOW}Info:${NC} Generating examples/nim/${BASENAME}.nim from .kry..."
+        bash scripts/generate_examples.sh "$BASENAME" || {
+            echo -e "${RED}Error:${NC} Failed to generate .nim file"
+            exit 1
+        }
+        # Update NIM_FILE path to generated location
+        NIM_FILE="examples/nim/${BASENAME}.nim"
+    elif [ ! -f "$NIM_FILE" ]; then
         echo -e "${RED}Error:${NC} Nim file not found: $NIM_FILE"
         echo -e "${YELLOW}Hint:${NC} Run './run_example.sh $BASENAME' first to generate the .nim file"
         exit 1

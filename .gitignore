@@ -31,6 +31,19 @@ examples/*/bin/
 examples/*/dist/
 examples/*/nimcache/
 
+# Generated examples (regenerate with scripts/generate_examples.sh)
+# Only .kry files are source of truth
+examples/nim/
+examples/lua/
+examples/js/
+examples/typescript/
+
+# Generated build artifacts
+build/generated/
+
+# Example backups
+backups/examples_backup_*/
+
 tmp*
 
 # Nim cache
