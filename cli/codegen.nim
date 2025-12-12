@@ -132,6 +132,59 @@ proc toLuaValue(val: JsonNode): string =
   else:
     return "nil"
 
+proc reconstructExpression(val: JsonNode): string =
+  ## Recursively reconstruct Nim expression from JSON expression object
+  ## Handles binary operators (add, sub, mul, div) and variable references
+  if val.kind == JObject:
+    # Handle variable references: {var: "name"} -> name
+    if val.hasKey("var"):
+      return val["var"].getStr
+
+    # Handle operators (both unary and binary)
+    if val.hasKey("op"):
+      let op = val["op"].getStr
+
+      # Unary operators: {op: "neg", expr: N} -> -N
+      if val.hasKey("expr") and not val.hasKey("left"):
+        let expr = val["expr"]
+        if op == "neg":
+          let innerExpr = reconstructExpression(expr)
+          return "(-" & innerExpr & ")"
+        return "nil"
+
+      # Binary operators: {op: "add", left: L, right: R}
+      if val.hasKey("left") and val.hasKey("right"):
+        let left = val["left"]
+        let right = val["right"]
+        let leftExpr = reconstructExpression(left)
+        let rightExpr = reconstructExpression(right)
+
+        case op:
+        of "add":
+          # For string concatenation, use & operator
+          return leftExpr & " & " & rightExpr
+        of "sub":
+          return "(" & leftExpr & " - " & rightExpr & ")"
+        of "mul":
+          return "(" & leftExpr & " * " & rightExpr & ")"
+        of "div":
+          return "(" & leftExpr & " / " & rightExpr & ")"
+        else:
+          return "nil"
+
+    return "nil"
+  elif val.kind == JString:
+    # String literals need to be quoted
+    return "\"" & val.getStr & "\""
+  elif val.kind == JInt:
+    return $val.getInt
+  elif val.kind == JFloat:
+    return $val.getFloat
+  elif val.kind == JBool:
+    return (if val.getBool: "true" else: "false")
+  else:
+    return "nil"
+
 proc toNimValue(key: string, val: JsonNode): string =
   ## Convert JSON value to Nim DSL value, handling dimension strings
   case val.kind:
@@ -179,16 +232,10 @@ proc toNimValue(key: string, val: JsonNode): string =
         items.add($item)
     return "@[" & items.join(", ") & "]"
   of JObject:
-    # Handle expression objects like {op: "neg", expr: 1.0}
-    if val.hasKey("op") and val.hasKey("expr"):
-      let op = val["op"].getStr
-      let expr = val["expr"]
-      if op == "neg":
-        if expr.kind == JFloat:
-          return $(-expr.getFloat)
-        elif expr.kind == JInt:
-          return $(-expr.getInt)
-      # Add other operators as needed (add, sub, mul, div)
+    # Try to reconstruct expression objects
+    let expr = reconstructExpression(val)
+    if expr != "nil":
+      return expr
     return "nil"
   else:
     return "nil"
