@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ==============================================================================
 # Kryon Example Auto-Generator
 # ==============================================================================
@@ -11,6 +11,7 @@
 #   ./scripts/generate_examples.sh --validate         # With validation
 #   ./scripts/generate_examples.sh --validate --diff  # Show diffs
 #   ./scripts/generate_examples.sh --clean            # Clean generated
+#   ./scripts/generate_examples.sh --parallel         # Parallel processing
 #
 # Output:
 #   examples/nim/*.nim              # Generated Nim examples (user-facing)
@@ -41,6 +42,8 @@ VALIDATE=false
 SHOW_DIFFS=false
 CLEAN=false
 VERBOSE=false
+PARALLEL=false
+MAX_JOBS=4
 SPECIFIC_EXAMPLE=""
 
 while [[ $# -gt 0 ]]; do
@@ -49,14 +52,19 @@ while [[ $# -gt 0 ]]; do
     --diff) SHOW_DIFFS=true; shift ;;
     --clean) CLEAN=true; shift ;;
     --verbose) VERBOSE=true; shift ;;
+    --parallel) PARALLEL=true; shift ;;
+    --jobs=*) MAX_JOBS="${1#*=}"; PARALLEL=true; shift ;;
+    -j) PARALLEL=true; MAX_JOBS="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 [example_name] [--validate] [--diff] [--clean] [--verbose]"
+      echo "Usage: $0 [example_name] [--validate] [--diff] [--clean] [--verbose] [--parallel] [-j N]"
       echo ""
       echo "Options:"
       echo "  --validate    Validate round-trip transpilation"
       echo "  --diff        Show detailed diffs for mismatches"
       echo "  --clean       Remove all generated files"
       echo "  --verbose     Show detailed progress"
+      echo "  --parallel    Process examples in parallel"
+      echo "  -j N          Max parallel jobs (default: 4)"
       exit 0
       ;;
     -*) echo "Unknown option: $1"; exit 1 ;;
@@ -109,75 +117,168 @@ echo "Source: $KRY_DIR"
 echo "Output: $OUTPUT_NIM_DIR"
 echo "Examples: $total"
 [ "$VALIDATE" = true ] && echo "Mode: Validation enabled"
+[ "$PARALLEL" = true ] && echo "Mode: Parallel ($MAX_JOBS jobs)"
 echo ""
 
-for kry_file in "${KRY_FILES[@]}"; do
-  name=$(basename "$kry_file" .kry)
-  kir_static="$GEN_KIR_DIR/${name}_static.kir"
-  kir_expanded="$GEN_KIR_DIR/${name}.kir"
-  nim_file="$OUTPUT_NIM_DIR/${name}.nim"
-  roundtrip_kir="$GEN_ROUNDTRIP_DIR/${name}_roundtrip.kir"
-
-  current=$((success + failed + validation_failed + 1))
-  echo -e "${BLUE}[$current/$total]${NC} $name"
+# ==============================================================================
+# Process a single example
+# ==============================================================================
+process_example() {
+  local kry_file="$1"
+  local name=$(basename "$kry_file" .kry)
+  local kir_static="$GEN_KIR_DIR/${name}_static.kir"
+  local kir_expanded="$GEN_KIR_DIR/${name}.kir"
+  local nim_file="$OUTPUT_NIM_DIR/${name}.nim"
+  local roundtrip_kir="$GEN_ROUNDTRIP_DIR/${name}_roundtrip.kir"
+  local result="success"
 
   # Step 1: .kry → .kir (static, for codegen)
-  [ "$VERBOSE" = true ] && echo "  → Compiling .kry → .kir (static)..."
   if ! "$KRYON" compile "$kry_file" --output="$kir_static" --preserve-static --no-cache >/dev/null 2>&1; then
-    echo -e "  ${RED}✗ Failed: .kry → .kir (static)${NC}"
-    failed=$((failed + 1))
-    continue
+    echo "FAILED:$name:static"
+    return 1
   fi
-  [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} .kry → .kir (static)"
 
   # Step 2: .kry → .kir (expanded, for runtime & validation)
-  [ "$VERBOSE" = true ] && echo "  → Compiling .kry → .kir (expanded)..."
   if ! "$KRYON" compile "$kry_file" --output="$kir_expanded" --no-cache >/dev/null 2>&1; then
-    echo -e "  ${RED}✗ Failed: .kry → .kir (expanded)${NC}"
-    failed=$((failed + 1))
-    continue
+    echo "FAILED:$name:expanded"
+    return 1
   fi
-  [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} .kry → .kir (expanded)"
 
   # Step 3: .kir → .nim (codegen)
-  [ "$VERBOSE" = true ] && echo "  → Generating .kir → .nim..."
   if ! "$KRYON" codegen "$kir_static" --lang=nim --output="$nim_file" >/dev/null 2>&1; then
-    echo -e "  ${YELLOW}⚠ Codegen not available (skipping .nim generation)${NC}"
-    success=$((success + 1))
-    continue
+    echo "SKIPPED:$name:codegen"
+    return 0
   fi
-  [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} .kir → .nim"
 
   # Step 4: Validation (if requested)
   if [ "$VALIDATE" = true ]; then
-    # Compile .nim → .kir (round-trip)
-    [ "$VERBOSE" = true ] && echo "  → Compiling .nim → .kir (round-trip)..."
     if ! "$KRYON" compile "$nim_file" --output="$roundtrip_kir" --no-cache >/dev/null 2>&1; then
-      echo -e "  ${RED}✗ Failed: .nim → .kir (round-trip compilation)${NC}"
-      validation_failed=$((validation_failed + 1))
+      echo "FAILED:$name:roundtrip"
+      return 1
+    fi
+
+    if [ -f "$COMPARE_SCRIPT" ]; then
+      if ! bash "$COMPARE_SCRIPT" "$kir_expanded" "$roundtrip_kir" false >/dev/null 2>&1; then
+        echo "FAILED:$name:validation"
+        return 1
+      fi
+    fi
+  fi
+
+  echo "SUCCESS:$name"
+  return 0
+}
+export -f process_example
+export KRYON GEN_KIR_DIR OUTPUT_NIM_DIR GEN_ROUNDTRIP_DIR VALIDATE COMPARE_SCRIPT
+
+# ==============================================================================
+# Parallel Processing Mode
+# ==============================================================================
+if [ "$PARALLEL" = true ]; then
+  echo -e "${BLUE}Processing in parallel with $MAX_JOBS jobs...${NC}"
+  echo ""
+
+  # Create temp file for results
+  RESULT_FILE=$(mktemp)
+  trap "rm -f $RESULT_FILE" EXIT
+
+  # Run in parallel using xargs
+  printf '%s\n' "${KRY_FILES[@]}" | xargs -P "$MAX_JOBS" -I {} bash -c 'process_example "$@"' _ {} >> "$RESULT_FILE"
+
+  # Parse results
+  while IFS=: read -r status name stage; do
+    case "$status" in
+      SUCCESS)
+        echo -e "${GREEN}✓${NC} $name"
+        success=$((success + 1))
+        ;;
+      SKIPPED)
+        echo -e "${YELLOW}⚠${NC} $name (codegen skipped)"
+        success=$((success + 1))
+        ;;
+      FAILED)
+        echo -e "${RED}✗${NC} $name ($stage failed)"
+        if [ "$stage" = "validation" ] || [ "$stage" = "roundtrip" ]; then
+          validation_failed=$((validation_failed + 1))
+        else
+          failed=$((failed + 1))
+        fi
+        ;;
+    esac
+  done < "$RESULT_FILE"
+
+# ==============================================================================
+# Sequential Processing Mode (default)
+# ==============================================================================
+else
+  for kry_file in "${KRY_FILES[@]}"; do
+    name=$(basename "$kry_file" .kry)
+    kir_static="$GEN_KIR_DIR/${name}_static.kir"
+    kir_expanded="$GEN_KIR_DIR/${name}.kir"
+    nim_file="$OUTPUT_NIM_DIR/${name}.nim"
+    roundtrip_kir="$GEN_ROUNDTRIP_DIR/${name}_roundtrip.kir"
+
+    current=$((success + failed + validation_failed + 1))
+    echo -e "${BLUE}[$current/$total]${NC} $name"
+
+    # Step 1: .kry → .kir (static, for codegen)
+    [ "$VERBOSE" = true ] && echo "  → Compiling .kry → .kir (static)..."
+    if ! "$KRYON" compile "$kry_file" --output="$kir_static" --preserve-static --no-cache >/dev/null 2>&1; then
+      echo -e "  ${RED}✗ Failed: .kry → .kir (static)${NC}"
+      failed=$((failed + 1))
       continue
     fi
-    [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} .nim → .kir (round-trip)"
+    [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} .kry → .kir (static)"
 
-    # Compare .kir files (use normalize-and-compare)
-    [ "$VERBOSE" = true ] && echo "  → Comparing .kir files..."
-    if [ -f "$COMPARE_SCRIPT" ]; then
-      if bash "$COMPARE_SCRIPT" "$kir_expanded" "$roundtrip_kir" "$SHOW_DIFFS"; then
-        echo -e "  ${GREEN}✓ Round-trip validated${NC}"
-        success=$((success + 1))
-      else
-        echo -e "  ${RED}✗ Round-trip mismatch${NC}"
+    # Step 2: .kry → .kir (expanded, for runtime & validation)
+    [ "$VERBOSE" = true ] && echo "  → Compiling .kry → .kir (expanded)..."
+    if ! "$KRYON" compile "$kry_file" --output="$kir_expanded" --no-cache >/dev/null 2>&1; then
+      echo -e "  ${RED}✗ Failed: .kry → .kir (expanded)${NC}"
+      failed=$((failed + 1))
+      continue
+    fi
+    [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} .kry → .kir (expanded)"
+
+    # Step 3: .kir → .nim (codegen)
+    [ "$VERBOSE" = true ] && echo "  → Generating .kir → .nim..."
+    if ! "$KRYON" codegen "$kir_static" --lang=nim --output="$nim_file" >/dev/null 2>&1; then
+      echo -e "  ${YELLOW}⚠ Codegen not available (skipping .nim generation)${NC}"
+      success=$((success + 1))
+      continue
+    fi
+    [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} .kir → .nim"
+
+    # Step 4: Validation (if requested)
+    if [ "$VALIDATE" = true ]; then
+      # Compile .nim → .kir (round-trip)
+      [ "$VERBOSE" = true ] && echo "  → Compiling .nim → .kir (round-trip)..."
+      if ! "$KRYON" compile "$nim_file" --output="$roundtrip_kir" --no-cache >/dev/null 2>&1; then
+        echo -e "  ${RED}✗ Failed: .nim → .kir (round-trip compilation)${NC}"
         validation_failed=$((validation_failed + 1))
+        continue
+      fi
+      [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} .nim → .kir (round-trip)"
+
+      # Compare .kir files (use normalize-and-compare)
+      [ "$VERBOSE" = true ] && echo "  → Comparing .kir files..."
+      if [ -f "$COMPARE_SCRIPT" ]; then
+        if bash "$COMPARE_SCRIPT" "$kir_expanded" "$roundtrip_kir" "$SHOW_DIFFS"; then
+          echo -e "  ${GREEN}✓ Round-trip validated${NC}"
+          success=$((success + 1))
+        else
+          echo -e "  ${RED}✗ Round-trip mismatch${NC}"
+          validation_failed=$((validation_failed + 1))
+        fi
+      else
+        echo -e "  ${YELLOW}⚠ Comparison script not found, skipping validation${NC}"
+        success=$((success + 1))
       fi
     else
-      echo -e "  ${YELLOW}⚠ Comparison script not found, skipping validation${NC}"
       success=$((success + 1))
+      echo -e "  ${GREEN}✓ Generated${NC}"
     fi
-  else
-    success=$((success + 1))
-    echo -e "  ${GREEN}✓ Generated${NC}"
-  fi
-done
+  done
+fi
 
 echo ""
 echo "=========================================="

@@ -17,6 +17,7 @@ pkgs.mkShell {
 
     # Text layout and shaping
     harfbuzz
+    freetype
     fribidi
 
     # Terminal rendering backend
