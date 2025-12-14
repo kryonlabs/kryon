@@ -17,6 +17,7 @@ import ../bindings/nim/ir_serialization  # For loading .kir files
 import ../bindings/nim/ir_logic  # Logic block bindings
 import ../bindings/nim/ir_executor  # Executor for .kir handler execution
 import ../bindings/nim/runtime  # Provides Nim bridge functions for desktop backend
+import ../bindings/nim/ir_krb  # KRB bytecode format
 
 const
   VERSION = "1.2.0"
@@ -36,6 +37,8 @@ COMMANDS:
   parse <file.kry>    Parse .kry file to .kir (JSON IR)
   codegen <file.kir>  Generate source code from .kir file
   convert <in> <out>  Convert .kir (JSON) to .kirb (binary)
+  krb <file> -o <out>  Compile .kir to .krb bytecode
+  disasm <file.krb>    Disassemble .krb bytecode file
   run <target>         Build + execute once
   dev <file>           Development mode with hot reload
   config [show|validate]  Show or validate project configuration
@@ -1290,6 +1293,85 @@ proc handleCodegenCommand*(args: seq[string]) =
     echo "✗ Code generation failed: " & getCurrentExceptionMsg()
     quit(1)
 
+proc handleKrbCommand*(args: seq[string]) =
+  ## Handle 'kryon krb' command - Compile to .krb bytecode
+  if args.len == 0:
+    echo "Error: Input file required"
+    echo "Usage: kryon krb <input.kir> [-o output.krb]"
+    echo ""
+    echo "Options:"
+    echo "  -o, --output=FILE    Output file path (default: <input>.krb)"
+    quit(1)
+
+  let inputFile = args[0]
+  var outputFile = ""
+
+  # Parse options
+  var i = 1
+  while i < args.len:
+    let arg = args[i]
+    if arg.startsWith("-o=") or arg.startsWith("--output="):
+      outputFile = arg.split("=", 1)[1]
+    elif arg == "-o" or arg == "--output":
+      if i + 1 < args.len:
+        i += 1
+        outputFile = args[i]
+      else:
+        echo "Error: -o requires an argument"
+        quit(1)
+    i += 1
+
+  if not fileExists(inputFile):
+    echo "✗ File not found: " & inputFile
+    quit(1)
+
+  # Determine output path
+  if outputFile == "":
+    let base = inputFile.changeFileExt("")
+    outputFile = base & ".krb"
+
+  echo "Compiling " & inputFile & " to .krb bytecode..."
+
+  if compileKirToKrb(inputFile, outputFile):
+    echo "✓ Created: " & outputFile
+  else:
+    echo "✗ Compilation failed"
+    quit(1)
+
+proc handleDisasmCommand*(args: seq[string]) =
+  ## Handle 'kryon disasm' command - Disassemble .krb bytecode
+  if args.len == 0:
+    echo "Error: Input .krb file required"
+    echo "Usage: kryon disasm <input.krb> [--info]"
+    echo ""
+    echo "Options:"
+    echo "  --info    Show module info instead of disassembly"
+    quit(1)
+
+  let inputFile = args[0]
+  var showInfo = false
+
+  # Parse options
+  for arg in args[1..^1]:
+    if arg == "--info":
+      showInfo = true
+
+  if not fileExists(inputFile):
+    echo "✗ File not found: " & inputFile
+    quit(1)
+
+  if not inputFile.endsWith(".krb"):
+    echo "Warning: File does not have .krb extension"
+
+  if showInfo:
+    inspectKrb(inputFile)
+  else:
+    let disasm = disassembleKrb(inputFile)
+    if disasm == "":
+      echo "✗ Failed to disassemble: " & inputFile
+      quit(1)
+    echo disasm
+
 proc handleDoctorCommand*() =
   ## Handle 'kryon doctor' command
   echo "Diagnosing Kryon development environment..."
@@ -1355,6 +1437,10 @@ proc main*() =
     handleCodegenCommand(commandArgs)
   of "convert":
     handleConvertCommand(commandArgs)
+  of "krb":
+    handleKrbCommand(commandArgs)
+  of "disasm":
+    handleDisasmCommand(commandArgs)
   of "run":
     handleRunCommand(commandArgs)
   of "dev":

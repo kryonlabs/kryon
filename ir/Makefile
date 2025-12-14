@@ -7,17 +7,9 @@ AR = ar
 ARFLAGS = rcs
 
 # HarfBuzz, FreeType, and FriBidi for text shaping
-# Try pkg-config first, fallback to Nix store paths
-HARFBUZZ_CFLAGS = $(shell pkg-config --cflags harfbuzz freetype2 fribidi 2>/dev/null || \
-	echo "-I/nix/store/fyf45yywbqkfzli3k153lngkkdhk7w58-harfbuzz-12.1.0-dev/include/harfbuzz \
-	-I/nix/store/79b83lm0fwilxc816z4pcvd58j1j3cdd-freetype-2.13.3-dev/include/freetype2 \
-	-I/nix/store/79b83lm0fwilxc816z4pcvd58j1j3cdd-freetype-2.13.3-dev/include \
-	-I/nix/store/h329498yf07j5l2j7p3hf2bichgn24fq-fribidi-1.0.16-dev/include/fribidi")
-HARFBUZZ_LIBS = $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || \
-	echo "-L/nix/store/8mk1lafnnrx0a6lvjh69afm8w3i4pvqx-harfbuzz-12.1.0/lib \
-	-L/nix/store/p1cqrricl0ch7qab8b8w3krhc91d890v-freetype-2.13.3/lib \
-	-L/nix/store/62h5sfxr4s1qc3fghcan06viq4gms6yg-fribidi-1.0.16/lib \
-	-lharfbuzz -lfreetype -lfribidi")
+# These must be passed in from the environment or overridden on command line
+HARFBUZZ_CFLAGS ?= $(shell pkg-config --cflags harfbuzz freetype2 fribidi 2>/dev/null || echo "-I/usr/include/harfbuzz -I/usr/include/freetype2 -I/usr/include/fribidi")
+HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "-lharfbuzz -lfreetype -lfribidi")
 
 # Directories
 IR_DIR = .
@@ -34,8 +26,8 @@ TOML_DIR = $(THIRD_PARTY_DIR)/tomlc99
 CFLAGS += -I$(CJSON_DIR) -I$(STB_DIR) -I$(TOML_DIR)
 
 # Source files
-IR_SOURCES = ir_builder.c ir_serialization.c ir_validation.c ir_style_vars.c ir_layout.c ir_memory.c ir_hashmap.c ir_animation.c ir_text_shaping.c ir_hot_reload.c ir_format_detect.c ir_json_v2.c ir_reactive_manifest.c ir_expression.c ir_logic.c ir_executor.c ir_game_loop.c ir_input.c ir_sprite.c ir_particle.c ir_asset.c ir_audio.c ir_physics.c ir_entity.c ir_plugin.c $(CJSON_DIR)/cJSON.c $(TOML_DIR)/toml.c
-IR_HEADERS = ir_core.h ir_builder.h ir_serialization.h ir_validation.h ir_style_vars.h ir_memory.h ir_hashmap.h ir_animation.h ir_text_shaping.h ir_hot_reload.h ir_format_detect.h ir_expression.h ir_logic.h ir_executor.h ir_game_loop.h ir_input.h ir_sprite.h ir_particle.h ir_asset.h ir_audio.h ir_physics.h ir_entity.h ir_plugin.h $(CJSON_DIR)/cJSON.h $(STB_DIR)/stb_image.h $(TOML_DIR)/toml.h
+IR_SOURCES = ir_builder.c ir_serialization.c ir_validation.c ir_style_vars.c ir_layout.c ir_memory.c ir_hashmap.c ir_animation.c ir_text_shaping.c ir_hot_reload.c ir_format_detect.c ir_json_v2.c ir_reactive_manifest.c ir_expression.c ir_logic.c ir_executor.c ir_krb.c ir_game_loop.c ir_input.c ir_sprite.c ir_particle.c ir_asset.c ir_audio.c ir_physics.c ir_entity.c ir_plugin.c $(CJSON_DIR)/cJSON.c $(TOML_DIR)/toml.c
+IR_HEADERS = ir_core.h ir_builder.h ir_serialization.h ir_validation.h ir_style_vars.h ir_memory.h ir_hashmap.h ir_animation.h ir_text_shaping.h ir_hot_reload.h ir_format_detect.h ir_expression.h ir_logic.h ir_executor.h ir_krb.h ir_game_loop.h ir_input.h ir_sprite.h ir_particle.h ir_asset.h ir_audio.h ir_physics.h ir_entity.h ir_plugin.h $(CJSON_DIR)/cJSON.h $(STB_DIR)/stb_image.h $(TOML_DIR)/toml.h
 
 # Output files
 IR_STATIC_LIB = $(BUILD_DIR)/libkryon_ir.a
@@ -127,13 +119,16 @@ ir_entity.o: ir_entity.c $(IR_HEADERS)
 ir_plugin.o: ir_plugin.c $(IR_HEADERS)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_plugin.c -o ir_plugin.o
 
+ir_krb.o: ir_krb.c $(IR_HEADERS)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_krb.c -o ir_krb.o
+
 # Create static library
-$(IR_STATIC_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_executor.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o $(TOML_DIR)/toml.o
-	$(AR) $(ARFLAGS) $@ ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_executor.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o $(TOML_DIR)/toml.o
+$(IR_STATIC_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_executor.o ir_krb.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o $(TOML_DIR)/toml.o
+	$(AR) $(ARFLAGS) $@ ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_executor.o ir_krb.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o $(TOML_DIR)/toml.o
 
 # Create shared library
-$(IR_SHARED_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_executor.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o $(TOML_DIR)/toml.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_executor.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o $(TOML_DIR)/toml.o -lm $(HARFBUZZ_LIBS)
+$(IR_SHARED_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_executor.o ir_krb.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o $(TOML_DIR)/toml.o
+	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json_v2.o ir_reactive_manifest.o ir_expression.o ir_logic.o ir_executor.o ir_krb.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o $(CJSON_DIR)/cJSON.o $(TOML_DIR)/toml.o -lm $(HARFBUZZ_LIBS)
 
 # Install headers
 install-headers: $(BUILD_DIR)
