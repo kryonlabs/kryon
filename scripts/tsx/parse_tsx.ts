@@ -66,14 +66,54 @@ function evaluateExpression(node: t.Node): any {
     return null;
   } else if (t.isTemplateLiteral(node)) {
     let result = '';
+    let hasVarRef = false;
     for (let i = 0; i < node.quasis.length; i++) {
       result += node.quasis[i].value.cooked || '';
       if (i < node.expressions.length) {
-        const exprValue = evaluateExpression(node.expressions[i]);
+        const expr = node.expressions[i];
+        const exprValue = evaluateExpression(expr);
         if (exprValue !== null && exprValue !== undefined) {
           result += String(exprValue);
+        } else {
+          // Handle variable references and method calls in templates
+          // e.g., ${twitter} or ${twitter.replace('@', '')}
+          let varName: string | null = null;
+          let transform: string | null = null;
+
+          if (t.isIdentifier(expr)) {
+            varName = expr.name;
+          } else if (t.isCallExpression(expr) && t.isMemberExpression(expr.callee)) {
+            // Handle expr.replace(a, b) pattern
+            const callee = expr.callee;
+            if (t.isIdentifier(callee.object)) {
+              varName = callee.object.name;
+              if (t.isIdentifier(callee.property) && callee.property.name === 'replace') {
+                // Extract what to replace
+                if (expr.arguments.length >= 2 &&
+                    t.isStringLiteral(expr.arguments[0]) &&
+                    t.isStringLiteral(expr.arguments[1])) {
+                  const from = expr.arguments[0].value;
+                  const to = expr.arguments[1].value;
+                  transform = `replace:${from}:${to}`;
+                }
+              }
+            }
+          }
+
+          if (varName) {
+            hasVarRef = true;
+            if (transform) {
+              result += `{{${varName}|${transform}}}`;
+            } else {
+              result += `{{${varName}}}`;
+            }
+          }
         }
       }
+    }
+    // If we have variable references, return a template object
+    if (hasVarRef) {
+      return { template: result };
     }
     return result;
   } else if (t.isBinaryExpression(node)) {
@@ -360,6 +400,23 @@ function parseJSXElement(node: t.JSXElement, state: ParsedState): KirNode {
         if (t.isJSXElement(fragChild)) {
           children.push(parseJSXElement(fragChild, state));
         }
+      }
+    } else if (t.isJSXExpressionContainer(child)) {
+      // Handle conditional rendering: {condition && <Element />}
+      const expr = child.expression;
+      if (t.isLogicalExpression(expr) && expr.operator === '&&') {
+        // {variable && <Element />} - conditional rendering
+        if (t.isJSXElement(expr.right)) {
+          const childNode = parseJSXElement(expr.right, state);
+          // Add condition for optional rendering
+          if (t.isIdentifier(expr.left)) {
+            childNode.when = { var: expr.left.name };
+          }
+          children.push(childNode);
+        }
+      } else if (t.isJSXElement(expr)) {
+        // {<Element />} - direct element in expression
+        children.push(parseJSXElement(expr, state));
       }
     }
   }

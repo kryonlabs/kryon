@@ -156,6 +156,15 @@ export function renderNode(node: IRNode | string, parentPtr?: Pointer): Pointer 
     case 'center':
       componentPtr = ffi.ir_center() as unknown as Pointer;
       break;
+    case 'image':
+      componentPtr = ffi.ir_create_component(componentType) as unknown as Pointer;
+      if (node.props.src) {
+        ffi.ir_set_custom_data(componentPtr, cstr(node.props.src));
+      }
+      if (node.props.alt) {
+        ffi.ir_set_text_content(componentPtr, cstr(node.props.alt));
+      }
+      break;
     default:
       componentPtr = ffi.ir_create_component(componentType) as unknown as Pointer;
       break;

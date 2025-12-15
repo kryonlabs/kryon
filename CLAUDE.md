@@ -457,6 +457,54 @@ Three skills are available to automate visual debugging workflows:
 
 This approach reduces debugging time from hours to minutes and eliminates blind guessing.
 
+### Performance and Freezing Debug Skill
+
+**IMPORTANT**: For freezing, memory, or performance issues, do NOT use screenshots. Screenshots only capture visual state, not performance problems. Use these tools instead:
+
+#### Quick Freeze Detection
+```bash
+# If exit code is 124, app froze
+timeout 5 ./run_example.sh example_name
+echo "Exit code: $?"
+```
+
+Exit codes:
+- `124` = Timeout (app froze/hung)
+- `137` = SIGKILL (force killed)
+- `0` = Normal exit
+
+#### Layout Trace (Most Common Issue)
+```bash
+# High line count = layout computed every frame = BUG
+KRYON_TRACE_LAYOUT=1 timeout 2 ./run_example.sh example_name 2>&1 | wc -l
+```
+
+What to look for:
+- Same layout trace repeating every frame = layout not cached
+- Expensive operations (table layout, deep trees) running repeatedly
+
+#### Memory Leak Detection
+```bash
+nix-shell --run "make -C ir asan-ubsan"
+ASAN_OPTIONS=detect_leaks=1 ./run_example.sh example_name
+```
+
+#### Common Performance Issues and Fixes
+
+1. **Layout Recomputed Every Frame**
+   - Symptom: App slows down over time, eventually freezes
+   - Fix: Add caching - only recompute when dimensions change
+
+2. **Event Queue Starvation**
+   - Symptom: ESC key and window close don't work
+   - Fix: Cache expensive computations, handle ESC on KEY_DOWN
+
+3. **Memory Leaks**
+   - Symptom: Memory usage grows over time
+   - Fix: Check component cleanup, handler tables, texture caches
+
+**Key Rule**: When user reports "app freezing" or "can't exit", use timeout + trace, NOT screenshots.
+
 ### Debug Renderer (Legacy)
 
 You can also use the debug backend directly in code:

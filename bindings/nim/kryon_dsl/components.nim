@@ -6,7 +6,8 @@
 ## - Dropdown: Dropdown/select component
 ## - Checkbox: Checkbox input component
 ## - Input: Text input component
-## - Canvas: Drawing canvas component
+## - Image: Image display component
+## - Canvas: Drawing canvas component (plugin)
 ## - Markdown: Markdown rendering component
 ## - TabGroup, TabBar, TabContent, TabPanel, Tab: Tab navigation components
 ## - RadioGroup, RadioButton: Radio button components
@@ -1311,6 +1312,78 @@ macro Input*(props: untyped): untyped =
 
 # Canvas macro removed - now available as a plugin
 # Import from kryon-plugin-canvas to use Canvas component
+
+macro Image*(props: untyped): untyped =
+  ## Image component macro
+  ## Properties:
+  ##   src: string - Image source path/URL (required)
+  ##   alt: string - Alt text for accessibility
+  ##   width, height: int/float/percent - Dimensions
+  ##   borderRadius: int - Corner rounding
+  ##   objectFit: string - How image fills container ("cover", "contain", "fill")
+  var
+    imageName = genSym(nskLet, "image")
+    srcVal: NimNode = newStrLitNode("")
+    altVal: NimNode = newStrLitNode("")
+    widthVal: NimNode = nil
+    heightVal: NimNode = nil
+    borderRadiusVal: NimNode = nil
+    objectFitVal: NimNode = nil
+    posXVal: NimNode = nil
+    posYVal: NimNode = nil
+
+  # Parse Image properties
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii():
+      of "src", "source":
+        srcVal = node[1]
+      of "alt":
+        altVal = node[1]
+      of "width":
+        widthVal = node[1]
+      of "height":
+        heightVal = node[1]
+      of "borderradius":
+        borderRadiusVal = node[1]
+      of "objectfit":
+        objectFitVal = node[1]
+      of "x", "posx":
+        posXVal = node[1]
+      of "y", "posy":
+        posYVal = node[1]
+      else:
+        discard
+
+  var initStmts = newTree(nnkStmtList)
+
+  # Set dimensions
+  if widthVal != nil:
+    initStmts.add quote do:
+      setWidth(`imageName`, `widthVal`)
+  if heightVal != nil:
+    initStmts.add quote do:
+      setHeight(`imageName`, `heightVal`)
+
+  # Set border radius
+  if borderRadiusVal != nil:
+    initStmts.add quote do:
+      kryon_component_set_border_radius(`imageName`, uint8(`borderRadiusVal`))
+
+  # Set position if specified
+  if posXVal != nil:
+    initStmts.add quote do:
+      setPosX(`imageName`, `posXVal`)
+  if posYVal != nil:
+    initStmts.add quote do:
+      setPosY(`imageName`, `posYVal`)
+
+  result = quote do:
+    block:
+      let `imageName` = newKryonImage(`srcVal`, `altVal`)
+      `initStmts`
+      `imageName`
 
 macro Spacer*(props: untyped): untyped =
   ## Spacer component macro

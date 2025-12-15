@@ -375,26 +375,35 @@ TextTextureCache* text_texture_cache_lookup(const char* font_path, int font_size
 
     // O(1) hash table lookup (Phase 1 optimization)
     uint32_t hash = compute_text_cache_hash(font_path, font_size, text, text_len, packed_color);
+
+    // Check first entry in bucket
     int cache_idx = g_text_cache_hash_table[hash].cache_index;
-
-    // Walk collision chain
-    while (cache_idx != -1) {
+    if (cache_idx >= 0 && cache_idx < TEXT_TEXTURE_CACHE_SIZE) {
         TextTextureCache* entry = &g_text_texture_cache[cache_idx];
-
         if (entry->valid &&
             entry->font_size == font_size &&
             entry->color == packed_color &&
             strcmp(entry->font_path, font_path) == 0 &&
             strncmp(entry->text, text, text_len) == 0 &&
             entry->text[text_len] == '\0') {
-
-            // Cache hit! Update LRU timestamp
             entry->last_access = g_frame_counter;
             return entry;
         }
+    }
 
-        // Try next in chain
-        cache_idx = g_text_cache_hash_table[hash].next_index;
+    // Check second entry in bucket (collision chain has max 2 entries)
+    cache_idx = g_text_cache_hash_table[hash].next_index;
+    if (cache_idx >= 0 && cache_idx < TEXT_TEXTURE_CACHE_SIZE) {
+        TextTextureCache* entry = &g_text_texture_cache[cache_idx];
+        if (entry->valid &&
+            entry->font_size == font_size &&
+            entry->color == packed_color &&
+            strcmp(entry->font_path, font_path) == 0 &&
+            strncmp(entry->text, text, text_len) == 0 &&
+            entry->text[text_len] == '\0') {
+            entry->last_access = g_frame_counter;
+            return entry;
+        }
     }
 
     return NULL;  // Cache miss
@@ -502,7 +511,10 @@ SDL_Texture* get_text_texture_cached(SDL_Renderer* sdl_renderer, TTF_Font* font,
         if (out_height) *out_height = surface->h;
 
         SDL_Texture* texture = SDL_CreateTextureFromSurface(sdl_renderer, surface);
-        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text rendering
+        if (texture) {
+            SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text rendering
+            SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);    // Enable alpha blending
+        }
         SDL_DestroySurface(surface);
         return texture;
     }
@@ -525,6 +537,7 @@ SDL_Texture* get_text_texture_cached(SDL_Renderer* sdl_renderer, TTF_Font* font,
     SDL_Texture* texture = SDL_CreateTextureFromSurface(sdl_renderer, surface);
     if (texture) {
         SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text rendering
+        SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);    // Enable alpha blending
     }
     if (out_width) *out_width = surface->w;
     if (out_height) *out_height = surface->h;

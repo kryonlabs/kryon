@@ -721,6 +721,8 @@ typedef struct IRTableState {
     bool layout_valid;
     float cached_total_width;
     float cached_total_height;
+    float cached_available_width;   // Input dimensions used for last layout
+    float cached_available_height;
 } IRTableState;
 
 // Main IR Component

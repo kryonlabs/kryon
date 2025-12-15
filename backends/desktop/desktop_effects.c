@@ -385,7 +385,6 @@ void render_text_with_shadow(SDL_Renderer* sdl_renderer, TTF_Font* font,
     bool is_rtl = false;
     if (comp->layout && comp->layout->flex.base_direction == IR_DIRECTION_RTL) {
         is_rtl = true;
-        fprintf(stderr, "[BiDi] RTL text detected: '%s'\n", text);
     }
 
     // For RTL text, reverse the string using FriBidi
