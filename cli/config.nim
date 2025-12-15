@@ -11,6 +11,15 @@ type
     ## Represents a page in a multi-page build
     file*: string      # Source file (e.g., "index.tsx", "docs.tsx")
     path*: string      # Output path (e.g., "/", "/docs")
+    docsFile*: string  # Markdown file for auto-generated docs pages (e.g., "docs/architecture.md")
+
+  DocsConfig* = object
+    ## Configuration for auto-generated documentation pages
+    enabled*: bool           # Enable docs auto-generation
+    directory*: string       # Directory with .md files (default: "docs")
+    templateFile*: string    # TSX template file (default: "docs.tsx")
+    basePath*: string        # URL base path (default: "/docs")
+    indexFile*: string       # File for index page (default: "getting-started.md")
 
   KryonConfig* = object
     # Project metadata
@@ -49,6 +58,9 @@ type
     metadataCreated*: string
     metadataModified*: string
 
+    # Docs auto-generation
+    docsConfig*: DocsConfig
+
 proc defaultConfig*(): KryonConfig =
   ## Create a config with sensible defaults
   result.projectName = "kryon-app"
@@ -80,6 +92,13 @@ proc defaultConfig*(): KryonConfig =
 
   result.metadataCreated = now().format("yyyy-MM-dd")
   result.metadataModified = now().format("yyyy-MM-dd")
+
+  # Docs auto-generation defaults
+  result.docsConfig.enabled = false
+  result.docsConfig.directory = "docs"
+  result.docsConfig.templateFile = "docs.tsx"
+  result.docsConfig.basePath = "/docs"
+  result.docsConfig.indexFile = "getting-started.md"
 
 proc parseSimpleArray(value: string): seq[string] =
   ## Parse simple TOML array like ["web", "desktop"]
@@ -239,6 +258,18 @@ proc tomlToConfig(tomlResult: TomlParseResult): KryonConfig =
   if toml.hasKey("metadata.modified"):
     result.metadataModified = toml["metadata.modified"]
 
+  # Docs auto-generation settings
+  if toml.hasKey("build.docs.enabled"):
+    result.docsConfig.enabled = toml["build.docs.enabled"] == "true"
+  if toml.hasKey("build.docs.directory"):
+    result.docsConfig.directory = toml["build.docs.directory"]
+  if toml.hasKey("build.docs.template"):
+    result.docsConfig.templateFile = toml["build.docs.template"]
+  if toml.hasKey("build.docs.base_path"):
+    result.docsConfig.basePath = toml["build.docs.base_path"]
+  if toml.hasKey("build.docs.index_file"):
+    result.docsConfig.indexFile = toml["build.docs.index_file"]
+
 proc jsonToConfig(jsonNode: JsonNode): KryonConfig =
   ## Convert JSON to KryonConfig
   result = defaultConfig()
@@ -293,6 +324,15 @@ proc jsonToConfig(jsonNode: JsonNode): KryonConfig =
     let meta = jsonNode["metadata"]
     if meta.hasKey("created"): result.metadataCreated = meta["created"].getStr()
     if meta.hasKey("modified"): result.metadataModified = meta["modified"].getStr()
+
+  # Docs auto-generation settings (nested under build.docs in JSON)
+  if jsonNode.hasKey("build") and jsonNode["build"].hasKey("docs"):
+    let docs = jsonNode["build"]["docs"]
+    if docs.hasKey("enabled"): result.docsConfig.enabled = docs["enabled"].getBool()
+    if docs.hasKey("directory"): result.docsConfig.directory = docs["directory"].getStr()
+    if docs.hasKey("template"): result.docsConfig.templateFile = docs["template"].getStr()
+    if docs.hasKey("base_path"): result.docsConfig.basePath = docs["base_path"].getStr()
+    if docs.hasKey("index_file"): result.docsConfig.indexFile = docs["index_file"].getStr()
 
 proc configToJson*(config: KryonConfig): JsonNode =
   ## Convert KryonConfig to JSON

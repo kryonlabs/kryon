@@ -407,6 +407,9 @@ proc handleRunCommand*(args: seq[string]) =
   var target = "native"
   var file = ""
   var baseName = ""
+  var hasWebTarget = false
+  var webPort = 3000
+  var webOutputDir = "build"
 
   # Try to load config to get defaults
   try:
@@ -414,6 +417,11 @@ proc handleRunCommand*(args: seq[string]) =
     baseName = config.buildEntry
     if target == "native":
       target = config.buildTarget
+    # Check if this is a web project
+    if "web" in config.buildTargets or config.buildTarget == "web":
+      hasWebTarget = true
+      webPort = config.devPort
+      webOutputDir = config.buildOutputDir
   except:
     # No config file, use defaults
     baseName = "main"
@@ -422,6 +430,10 @@ proc handleRunCommand*(args: seq[string]) =
   for arg in args:
     if arg.startsWith("--target="):
       target = arg[9..^1]
+      if target == "web":
+        hasWebTarget = true
+    elif arg.startsWith("--port="):
+      webPort = parseInt(arg[7..^1])
     elif arg.startsWith("--device="):
       discard  # For compatibility
     elif not arg.startsWith("-") and arg != "run":
@@ -432,6 +444,36 @@ proc handleRunCommand*(args: seq[string]) =
       else:
         # Will detect extension below
         file = ""
+
+  # Handle web projects - build and serve
+  if hasWebTarget:
+    echo "🌐 Web project detected"
+    echo "📦 Building for web target..."
+
+    # Build for web
+    try:
+      buildForTarget("web")
+    except Exception as e:
+      echo "❌ Build failed: " & e.msg
+      quit(1)
+
+    # Start web server
+    echo ""
+    echo "🚀 Starting development server..."
+    echo "   URL: http://localhost:" & $webPort
+    echo "   Directory: " & webOutputDir
+    echo ""
+    echo "   Press Ctrl+C to stop the server"
+    echo ""
+
+    # Use Python's http.server for cross-platform compatibility
+    let serverCmd = "python3 -m http.server " & $webPort & " --directory " & webOutputDir
+    let exitCode = execCmd(serverCmd)
+    if exitCode != 0:
+      # Try python instead of python3
+      let serverCmd2 = "python -m http.server " & $webPort & " --directory " & webOutputDir
+      discard execCmd(serverCmd2)
+    return
 
   # If no entry file specified, try "main" as fallback
   if baseName.len == 0:

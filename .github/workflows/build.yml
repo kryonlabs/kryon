@@ -139,21 +139,47 @@ jobs:
       - name: Install Nim dependencies
         run: nimble install -y parsetoml cligen
 
-      - name: Build desktop variant
+      - name: Build desktop variant with RPATH
         run: |
           export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
-          make build-desktop
+          # Build C libraries (static and shared)
+          make -C ir all
+          make -C backends/desktop all
+          # Build CLI with RPATH set to find libs in ./lib relative to binary
+          nim c --define:kryonVersion=0.2.0 -d:desktopBackend --opt:speed \
+            --passL:"-Wl,-rpath,'\$ORIGIN/lib'" \
+            --passL:"-Lbuild -lkryon_ir -lkryon_desktop $(pkg-config --libs sdl3 SDL3_ttf)" \
+            -o:build/kryon-desktop cli/main.nim
 
       - name: Verify build
         run: |
           export LD_LIBRARY_PATH=/usr/local/lib:build:$LD_LIBRARY_PATH
           ./build/kryon-desktop --version
 
+      - name: Create bundle with shared libraries
+        run: |
+          mkdir -p bundle/lib
+          cp build/kryon-desktop bundle/kryon
+          # Copy Kryon shared libraries
+          cp build/libkryon_ir.so bundle/lib/ || echo "libkryon_ir.so not found"
+          cp build/libkryon_desktop.so bundle/lib/ || echo "libkryon_desktop.so not found"
+          # Copy SDL3 libraries (follow symlinks to get real files)
+          cp -L /usr/local/lib/libSDL3.so.0 bundle/lib/
+          cp -L /usr/local/lib/libSDL3_ttf.so.0 bundle/lib/
+          # Create symlinks for library loading
+          ln -sf libSDL3.so.0 bundle/lib/libSDL3.so
+          ln -sf libSDL3_ttf.so.0 bundle/lib/libSDL3_ttf.so
+          # Show bundle contents
+          ls -la bundle/ bundle/lib/
+          # Create tarball
+          tar -czvf kryon-desktop-bundle.tar.gz -C bundle .
+          ls -la kryon-desktop-bundle.tar.gz
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: kryon-linux-x86_64-desktop
-          path: build/kryon-desktop
+          path: kryon-desktop-bundle.tar.gz
 
   # Job 3: Web build - fully static with musl (works on any Linux)
   build-web:
@@ -284,21 +310,49 @@ jobs:
       - name: Install Nim dependencies
         run: nimble install -y parsetoml cligen
 
-      - name: Build default variant (all backends)
+      - name: Build default variant with RPATH (all backends)
         run: |
           export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
-          make build-default
+          # Build C libraries (static and shared)
+          make -C ir all
+          make -C backends/desktop all
+          make -C backends/web all
+          # Build CLI with RPATH set to find libs in ./lib relative to binary
+          nim c --define:kryonVersion=0.2.0 -d:staticBackend --opt:speed \
+            --passL:"-Wl,-rpath,'\$ORIGIN/lib'" \
+            --passL:"-Lbuild -lkryon_ir -lkryon_desktop -lkryon_web $(pkg-config --libs sdl3 SDL3_ttf)" \
+            -o:build/kryon-full cli/main.nim
 
       - name: Verify build
         run: |
           export LD_LIBRARY_PATH=/usr/local/lib:build:$LD_LIBRARY_PATH
           ./build/kryon-full --version
 
+      - name: Create bundle with shared libraries
+        run: |
+          mkdir -p bundle/lib
+          cp build/kryon-full bundle/kryon
+          # Copy Kryon shared libraries
+          cp build/libkryon_ir.so bundle/lib/ || echo "libkryon_ir.so not found"
+          cp build/libkryon_desktop.so bundle/lib/ || echo "libkryon_desktop.so not found"
+          cp build/libkryon_web.so bundle/lib/ || echo "libkryon_web.so not found"
+          # Copy SDL3 libraries (follow symlinks to get real files)
+          cp -L /usr/local/lib/libSDL3.so.0 bundle/lib/
+          cp -L /usr/local/lib/libSDL3_ttf.so.0 bundle/lib/
+          # Create symlinks for library loading
+          ln -sf libSDL3.so.0 bundle/lib/libSDL3.so
+          ln -sf libSDL3_ttf.so.0 bundle/lib/libSDL3_ttf.so
+          # Show bundle contents
+          ls -la bundle/ bundle/lib/
+          # Create tarball
+          tar -czvf kryon-bundle.tar.gz -C bundle .
+          ls -la kryon-bundle.tar.gz
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: kryon-linux-x86_64
-          path: build/kryon-full
+          path: kryon-bundle.tar.gz
 
   # Job 5: Create release with all variants
   release:
@@ -312,14 +366,20 @@ jobs:
 
       - name: Prepare release files
         run: |
+          ls -la
+          ls -la kryon-linux-x86_64-terminal/ kryon-linux-x86_64-desktop/ kryon-linux-x86_64-web/ kryon-linux-x86_64/
+
+          # Static builds - just chmod and rename
           chmod +x kryon-linux-x86_64-terminal/kryon-terminal
-          chmod +x kryon-linux-x86_64-desktop/kryon-desktop
           chmod +x kryon-linux-x86_64-web/kryon-web
-          chmod +x kryon-linux-x86_64/kryon-full
           mv kryon-linux-x86_64-terminal/kryon-terminal kryon-linux-x86_64-terminal
-          mv kryon-linux-x86_64-desktop/kryon-desktop kryon-linux-x86_64-desktop
           mv kryon-linux-x86_64-web/kryon-web kryon-linux-x86_64-web
-          mv kryon-linux-x86_64/kryon-full kryon-linux-x86_64
+
+          # Bundled builds - already tarballs, just rename
+          mv kryon-linux-x86_64-desktop/kryon-desktop-bundle.tar.gz kryon-linux-x86_64-desktop.tar.gz
+          mv kryon-linux-x86_64/kryon-bundle.tar.gz kryon-linux-x86_64.tar.gz
+
+          ls -la
 
       - name: Create release
         uses: softprops/action-gh-release@v2
@@ -328,9 +388,9 @@ jobs:
           name: Latest Build
           prerelease: true
           files: |
-            kryon-linux-x86_64
+            kryon-linux-x86_64.tar.gz
             kryon-linux-x86_64-terminal
-            kryon-linux-x86_64-desktop
+            kryon-linux-x86_64-desktop.tar.gz
             kryon-linux-x86_64-web
           body: |
             Automated build from master branch.
@@ -339,27 +399,39 @@ jobs:
 
             ## Available Variants
 
-            | Variant | Static | Works On | Use Case |
+            | Variant | Format | Works On | Use Case |
             |---------|--------|----------|----------|
-            | `kryon-linux-x86_64` | No (glibc) | Ubuntu, Debian, Fedora, etc. | Full CLI with all backends |
-            | `kryon-linux-x86_64-terminal` | Yes (musl) | Any Linux | Terminal UI, CI/CD, headless |
-            | `kryon-linux-x86_64-desktop` | No (glibc) | Ubuntu, Debian, Fedora, etc. | SDL3 desktop apps only |
-            | `kryon-linux-x86_64-web` | Yes (musl) | Any Linux | Website generation (HTML/CSS/JS) |
+            | `kryon-linux-x86_64.tar.gz` | Bundle | Any Linux (glibc) | Full CLI with all backends |
+            | `kryon-linux-x86_64-terminal` | Static | Any Linux | Terminal UI, CI/CD, headless |
+            | `kryon-linux-x86_64-desktop.tar.gz` | Bundle | Any Linux (glibc) | SDL3 desktop apps |
+            | `kryon-linux-x86_64-web` | Static | Any Linux | Website generation (HTML/CSS/JS) |
 
-            ## Download
+            ## Download & Install
 
+            ### Full CLI (recommended)
             ```bash
-            # Full CLI (all backends, requires glibc)
-            curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64 -o kryon
+            curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64.tar.gz | tar xz
+            ./kryon --version
+            # Or install to PATH:
+            sudo mv kryon /usr/local/bin/
+            sudo mv lib/* /usr/local/lib/
+            sudo ldconfig
+            ```
 
-            # Terminal-only (static, works everywhere)
+            ### Terminal-only (static, works everywhere)
+            ```bash
             curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64-terminal -o kryon
+            chmod +x kryon
+            ```
 
-            # Desktop (SDL3 only, requires glibc)
-            curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64-desktop -o kryon
+            ### Desktop (SDL3 apps)
+            ```bash
+            curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64-desktop.tar.gz | tar xz
+            ./kryon --version
+            ```
 
-            # Web (HTML/CSS/JS generation, static)
+            ### Web (HTML/CSS/JS generation, static)
+            ```bash
             curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64-web -o kryon
-
             chmod +x kryon
             ```

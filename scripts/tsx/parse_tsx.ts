@@ -266,6 +266,18 @@ function parseJSXElement(node: t.JSXElement, state: ParsedState): KirNode {
         case 'target':
           result.target = value;
           break;
+        case 'source':
+          // Markdown source content
+          result.source = value;
+          break;
+        case 'theme':
+          // Theme for Markdown component
+          result.theme = value;
+          break;
+        case 'file':
+          // Markdown file path (relative to project root)
+          result.file = value;
+          break;
         case 'onClick':
           if (value && typeof value === 'object' && value.handler) {
             // Register event handler
