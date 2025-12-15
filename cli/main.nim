@@ -7,7 +7,7 @@ import os, osproc, strutils, parseopt, times, json
 import std/[sequtils, sugar]
 
 # CLI modules
-import project, build, device, compile, diff, inspect, config, codegen, plugin_manager
+import project, build, device, compile, diff, inspect, config, codegen, codegen_tsx, plugin_manager
 import kry_ast, kry_lexer, kry_parser, kry_to_kir, kyt_parser
 
 # IR and backend bindings (for orchestration)
@@ -1238,7 +1238,7 @@ proc handleCodegenCommand*(args: seq[string]) =
   ## Handle 'kryon codegen' command - Generate source code from .kir files
   if args.len == 0:
     echo "Error: Input .kir file required"
-    echo "Usage: kryon codegen <input.kir> [--lang=lua|nim] [--output=file]"
+    echo "Usage: kryon codegen <input.kir> [--lang=lua|nim|tsx] [--output=file]"
     quit(1)
 
   let inputFile = args[0]
@@ -1278,9 +1278,11 @@ proc handleCodegenCommand*(args: seq[string]) =
           generateNimFromKirV3(inputFile)
         else:
           generateNimFromKir(inputFile)
+      of "tsx", "jsx":
+        generateTsxFromKir(inputFile)
       else:
         echo "✗ Unsupported language: " & lang
-        echo "   Supported: lua, nim"
+        echo "   Supported: lua, nim, tsx"
         quit(1)
 
     if outputFile != "":

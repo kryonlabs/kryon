@@ -5,7 +5,7 @@
 import os, osproc, strutils, times, hashes, json, tables
 import ../bindings/nim/ir_core
 import ../bindings/nim/ir_serialization
-import kry_parser, kry_to_kir
+import kry_parser, kry_to_kir, tsx_parser
 
 type
   CompileFormat* = enum
@@ -131,6 +131,7 @@ proc detectFrontend*(sourceFile: string): string =
   of ".lua": return "lua"
   of ".c", ".cpp", ".cc": return "c"
   of ".kry": return "kry"
+  of ".tsx", ".jsx": return "tsx"
   else: return "unknown"
 
 proc compileNimToIR*(sourceFile: string, outputFile: string, format: CompileFormat, verbose: bool): CompilationResult =
@@ -346,6 +347,43 @@ proc compileKryToIR*(sourceFile: string, outputFile: string, format: CompileForm
   if verbose:
     echo "[kry] Compilation completed in ", result.compileTime * 1000, " ms"
 
+proc compileTsxToIR*(sourceFile: string, outputFile: string, format: CompileFormat, verbose: bool): CompilationResult =
+  ## Compile .tsx/.jsx source to Kryon IR using Bun/Babel parser
+  result.success = false
+  result.errors = @[]
+  result.warnings = @[]
+  result.irFile = outputFile
+
+  let startTime = cpuTime()
+
+  if verbose:
+    echo "[tsx] Parsing: ", sourceFile
+
+  try:
+    # Use the TSX parser to convert to KIR
+    let kirContent = parseTsxToKir(sourceFile, outputFile)
+
+    # Validate that output was created
+    if not fileExists(outputFile):
+      result.errors.add("TSX parser did not create output file")
+      return
+
+    # For binary format, we would need to convert the JSON
+    if format == FormatBinary:
+      result.warnings.add("Binary format not yet supported for TSX, using JSON")
+      # Keep the .kir file as-is
+
+    result.success = true
+    result.compileTime = cpuTime() - startTime
+
+    if verbose:
+      echo "[tsx] Compilation completed in ", result.compileTime * 1000, " ms"
+
+  except IOError as e:
+    result.errors.add(e.msg)
+  except CatchableError as e:
+    result.errors.add("TSX parsing error: " & e.msg)
+
 proc compile*(opts: CompileOptions): CompilationResult =
   ## Main compilation entry point with caching
   result.success = false
@@ -391,6 +429,8 @@ proc compile*(opts: CompileOptions): CompilationResult =
     result = compileNimToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput)
   of "kry":
     result = compileKryToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput, opts.preserveStatic)
+  of "tsx":
+    result = compileTsxToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput)
   of "lua":
     result.errors.add("Lua frontend not yet implemented")
     return
