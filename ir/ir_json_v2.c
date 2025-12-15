@@ -786,6 +786,122 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         cJSON_AddItemToObject(obj, "dropdown_state", dropdownState);
     }
 
+    // Serialize table state (stored in custom_data as IRTableState*)
+    if (component->type == IR_COMPONENT_TABLE && component->custom_data) {
+        IRTableState* state = (IRTableState*)component->custom_data;
+        cJSON* tableConfig = cJSON_CreateObject();
+
+        // Columns
+        if (state->columns && state->column_count > 0) {
+            cJSON* columnsArr = cJSON_CreateArray();
+            for (uint32_t i = 0; i < state->column_count; i++) {
+                cJSON* colObj = cJSON_CreateObject();
+                IRTableColumnDef* col = &state->columns[i];
+
+                // Width dimension
+                if (col->width.type == IR_DIMENSION_PX) {
+                    char buf[32];
+                    snprintf(buf, sizeof(buf), "%.0fpx", col->width.value);
+                    cJSON_AddStringToObject(colObj, "width", buf);
+                } else if (col->width.type == IR_DIMENSION_PERCENT) {
+                    char buf[32];
+                    snprintf(buf, sizeof(buf), "%.0f%%", col->width.value);
+                    cJSON_AddStringToObject(colObj, "width", buf);
+                } else {
+                    cJSON_AddStringToObject(colObj, "width", "auto");
+                }
+
+                // Min/max widths
+                if (col->min_width.type == IR_DIMENSION_PX && col->min_width.value > 0) {
+                    char buf[32];
+                    snprintf(buf, sizeof(buf), "%.0fpx", col->min_width.value);
+                    cJSON_AddStringToObject(colObj, "minWidth", buf);
+                }
+                if (col->max_width.type == IR_DIMENSION_PX && col->max_width.value > 0) {
+                    char buf[32];
+                    snprintf(buf, sizeof(buf), "%.0fpx", col->max_width.value);
+                    cJSON_AddStringToObject(colObj, "maxWidth", buf);
+                }
+
+                // Alignment
+                if (col->alignment != IR_ALIGNMENT_START) {
+                    const char* alignStr = "start";
+                    switch (col->alignment) {
+                        case IR_ALIGNMENT_CENTER: alignStr = "center"; break;
+                        case IR_ALIGNMENT_END: alignStr = "end"; break;
+                        default: break;
+                    }
+                    cJSON_AddStringToObject(colObj, "alignment", alignStr);
+                }
+
+                cJSON_AddBoolToObject(colObj, "autoSize", col->auto_size);
+                cJSON_AddItemToArray(columnsArr, colObj);
+            }
+            cJSON_AddItemToObject(tableConfig, "columns", columnsArr);
+        }
+
+        // Table styling
+        IRTableStyle* style = &state->style;
+
+        // Border color
+        char colorBuf[10];
+        snprintf(colorBuf, sizeof(colorBuf), "#%02x%02x%02x",
+                 style->border_color.data.r, style->border_color.data.g, style->border_color.data.b);
+        cJSON_AddStringToObject(tableConfig, "borderColor", colorBuf);
+
+        // Header background
+        snprintf(colorBuf, sizeof(colorBuf), "#%02x%02x%02x",
+                 style->header_background.data.r, style->header_background.data.g, style->header_background.data.b);
+        cJSON_AddStringToObject(tableConfig, "headerBackground", colorBuf);
+
+        // Row backgrounds (for striping)
+        snprintf(colorBuf, sizeof(colorBuf), "#%02x%02x%02x",
+                 style->even_row_background.data.r, style->even_row_background.data.g, style->even_row_background.data.b);
+        cJSON_AddStringToObject(tableConfig, "evenRowBackground", colorBuf);
+        snprintf(colorBuf, sizeof(colorBuf), "#%02x%02x%02x",
+                 style->odd_row_background.data.r, style->odd_row_background.data.g, style->odd_row_background.data.b);
+        cJSON_AddStringToObject(tableConfig, "oddRowBackground", colorBuf);
+
+        cJSON_AddNumberToObject(tableConfig, "borderWidth", style->border_width);
+        cJSON_AddNumberToObject(tableConfig, "cellPadding", style->cell_padding);
+        cJSON_AddBoolToObject(tableConfig, "showBorders", style->show_borders);
+        cJSON_AddBoolToObject(tableConfig, "striped", style->striped_rows);
+        cJSON_AddBoolToObject(tableConfig, "headerSticky", style->header_sticky);
+        cJSON_AddBoolToObject(tableConfig, "collapseBorders", style->collapse_borders);
+
+        cJSON_AddItemToObject(obj, "table_config", tableConfig);
+    }
+
+    // Serialize table cell data (for TableCell and TableHeaderCell)
+    if ((component->type == IR_COMPONENT_TABLE_CELL ||
+         component->type == IR_COMPONENT_TABLE_HEADER_CELL) && component->custom_data) {
+        IRTableCellData* cellData = (IRTableCellData*)component->custom_data;
+        cJSON* cellObj = cJSON_CreateObject();
+
+        cJSON_AddNumberToObject(cellObj, "colspan", cellData->colspan);
+        cJSON_AddNumberToObject(cellObj, "rowspan", cellData->rowspan);
+
+        // Alignment
+        const char* alignStr = "start";
+        switch (cellData->alignment) {
+            case IR_ALIGNMENT_CENTER: alignStr = "center"; break;
+            case IR_ALIGNMENT_END: alignStr = "end"; break;
+            default: break;
+        }
+        cJSON_AddStringToObject(cellObj, "alignment", alignStr);
+
+        // Vertical alignment
+        const char* vAlignStr = "top";
+        switch (cellData->vertical_alignment) {
+            case IR_ALIGNMENT_CENTER: vAlignStr = "middle"; break;
+            case IR_ALIGNMENT_END: vAlignStr = "bottom"; break;
+            default: break;
+        }
+        cJSON_AddStringToObject(cellObj, "verticalAlignment", vAlignStr);
+
+        cJSON_AddItemToObject(obj, "cell_data", cellObj);
+    }
+
     // Serialize events (IR v2.1: with bytecode support)
     if (component->events) {
         cJSON* events = cJSON_CreateArray();
@@ -1764,6 +1880,14 @@ static IRComponentType ir_string_to_component_type(const char* str) {
     if (strcmp(str, "Tab") == 0) return IR_COMPONENT_TAB;
     if (strcmp(str, "TabContent") == 0) return IR_COMPONENT_TAB_CONTENT;
     if (strcmp(str, "TabPanel") == 0) return IR_COMPONENT_TAB_PANEL;
+    // Table components
+    if (strcmp(str, "Table") == 0) return IR_COMPONENT_TABLE;
+    if (strcmp(str, "TableHead") == 0) return IR_COMPONENT_TABLE_HEAD;
+    if (strcmp(str, "TableBody") == 0) return IR_COMPONENT_TABLE_BODY;
+    if (strcmp(str, "TableFoot") == 0) return IR_COMPONENT_TABLE_FOOT;
+    if (strcmp(str, "TableRow") == 0 || strcmp(str, "Tr") == 0) return IR_COMPONENT_TABLE_ROW;
+    if (strcmp(str, "TableCell") == 0 || strcmp(str, "Td") == 0) return IR_COMPONENT_TABLE_CELL;
+    if (strcmp(str, "TableHeaderCell") == 0 || strcmp(str, "Th") == 0) return IR_COMPONENT_TABLE_HEADER_CELL;
     if (strcmp(str, "Custom") == 0) return IR_COMPONENT_CUSTOM;
     return IR_COMPONENT_CONTAINER;
 }
@@ -2089,6 +2213,188 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
         }
     }
 
+    // Parse table configuration (for Table components)
+    if (component->type == IR_COMPONENT_TABLE) {
+        cJSON* tableConfig = cJSON_GetObjectItem(json, "table_config");
+        IRTableState* state = ir_table_create_state();
+
+        if (state && tableConfig && cJSON_IsObject(tableConfig)) {
+            // Parse columns
+            cJSON* columnsArr = cJSON_GetObjectItem(tableConfig, "columns");
+            if (columnsArr && cJSON_IsArray(columnsArr)) {
+                int colCount = cJSON_GetArraySize(columnsArr);
+                for (int i = 0; i < colCount; i++) {
+                    cJSON* colObj = cJSON_GetArrayItem(columnsArr, i);
+                    if (!colObj || !cJSON_IsObject(colObj)) continue;
+
+                    IRTableColumnDef col = {0};
+                    col.auto_size = true;  // Default
+
+                    // Parse width
+                    cJSON* widthItem = cJSON_GetObjectItem(colObj, "width");
+                    if (widthItem && cJSON_IsString(widthItem)) {
+                        col.width = json_parse_dimension(widthItem->valuestring);
+                        if (col.width.type != IR_DIMENSION_AUTO) {
+                            col.auto_size = false;
+                        }
+                    }
+
+                    // Parse minWidth
+                    cJSON* minWidthItem = cJSON_GetObjectItem(colObj, "minWidth");
+                    if (minWidthItem && cJSON_IsString(minWidthItem)) {
+                        col.min_width = json_parse_dimension(minWidthItem->valuestring);
+                    }
+
+                    // Parse maxWidth
+                    cJSON* maxWidthItem = cJSON_GetObjectItem(colObj, "maxWidth");
+                    if (maxWidthItem && cJSON_IsString(maxWidthItem)) {
+                        col.max_width = json_parse_dimension(maxWidthItem->valuestring);
+                    }
+
+                    // Parse alignment
+                    cJSON* alignItem = cJSON_GetObjectItem(colObj, "alignment");
+                    if (alignItem && cJSON_IsString(alignItem)) {
+                        if (strcmp(alignItem->valuestring, "center") == 0) {
+                            col.alignment = IR_ALIGNMENT_CENTER;
+                        } else if (strcmp(alignItem->valuestring, "end") == 0 ||
+                                   strcmp(alignItem->valuestring, "right") == 0) {
+                            col.alignment = IR_ALIGNMENT_END;
+                        } else {
+                            col.alignment = IR_ALIGNMENT_START;
+                        }
+                    }
+
+                    // Parse autoSize
+                    cJSON* autoSizeItem = cJSON_GetObjectItem(colObj, "autoSize");
+                    if (autoSizeItem && cJSON_IsBool(autoSizeItem)) {
+                        col.auto_size = cJSON_IsTrue(autoSizeItem);
+                    }
+
+                    ir_table_add_column(state, col);
+                }
+            }
+
+            // Parse styling
+            cJSON* borderColorItem = cJSON_GetObjectItem(tableConfig, "borderColor");
+            if (borderColorItem && cJSON_IsString(borderColorItem)) {
+                state->style.border_color = json_parse_color(borderColorItem->valuestring);
+            }
+
+            cJSON* headerBgItem = cJSON_GetObjectItem(tableConfig, "headerBackground");
+            if (headerBgItem && cJSON_IsString(headerBgItem)) {
+                state->style.header_background = json_parse_color(headerBgItem->valuestring);
+            }
+
+            cJSON* evenBgItem = cJSON_GetObjectItem(tableConfig, "evenRowBackground");
+            if (evenBgItem && cJSON_IsString(evenBgItem)) {
+                state->style.even_row_background = json_parse_color(evenBgItem->valuestring);
+            }
+
+            cJSON* oddBgItem = cJSON_GetObjectItem(tableConfig, "oddRowBackground");
+            if (oddBgItem && cJSON_IsString(oddBgItem)) {
+                state->style.odd_row_background = json_parse_color(oddBgItem->valuestring);
+            }
+
+            cJSON* borderWidthItem = cJSON_GetObjectItem(tableConfig, "borderWidth");
+            if (borderWidthItem && cJSON_IsNumber(borderWidthItem)) {
+                state->style.border_width = (float)borderWidthItem->valuedouble;
+            }
+
+            cJSON* cellPaddingItem = cJSON_GetObjectItem(tableConfig, "cellPadding");
+            if (cellPaddingItem && cJSON_IsNumber(cellPaddingItem)) {
+                state->style.cell_padding = (float)cellPaddingItem->valuedouble;
+            }
+
+            cJSON* showBordersItem = cJSON_GetObjectItem(tableConfig, "showBorders");
+            if (showBordersItem && cJSON_IsBool(showBordersItem)) {
+                state->style.show_borders = cJSON_IsTrue(showBordersItem);
+            }
+
+            cJSON* stripedItem = cJSON_GetObjectItem(tableConfig, "striped");
+            if (stripedItem && cJSON_IsBool(stripedItem)) {
+                state->style.striped_rows = cJSON_IsTrue(stripedItem);
+            }
+
+            cJSON* headerStickyItem = cJSON_GetObjectItem(tableConfig, "headerSticky");
+            if (headerStickyItem && cJSON_IsBool(headerStickyItem)) {
+                state->style.header_sticky = cJSON_IsTrue(headerStickyItem);
+            }
+
+            cJSON* collapseBordersItem = cJSON_GetObjectItem(tableConfig, "collapseBorders");
+            if (collapseBordersItem && cJSON_IsBool(collapseBordersItem)) {
+                state->style.collapse_borders = cJSON_IsTrue(collapseBordersItem);
+            }
+        }
+
+        if (state) {
+            component->custom_data = (char*)state;
+        }
+    }
+
+    // Parse table cell data (for TableCell and TableHeaderCell)
+    if (component->type == IR_COMPONENT_TABLE_CELL ||
+        component->type == IR_COMPONENT_TABLE_HEADER_CELL) {
+        cJSON* cellData = cJSON_GetObjectItem(json, "cell_data");
+
+        IRTableCellData* data = (IRTableCellData*)calloc(1, sizeof(IRTableCellData));
+        if (data) {
+            // Default values
+            data->colspan = 1;
+            data->rowspan = 1;
+            data->alignment = IR_ALIGNMENT_START;
+            data->vertical_alignment = IR_ALIGNMENT_START;  // Top
+
+            if (cellData && cJSON_IsObject(cellData)) {
+                // Parse colspan
+                cJSON* colspanItem = cJSON_GetObjectItem(cellData, "colspan");
+                if (colspanItem && cJSON_IsNumber(colspanItem)) {
+                    data->colspan = (uint16_t)colspanItem->valueint;
+                }
+
+                // Parse rowspan
+                cJSON* rowspanItem = cJSON_GetObjectItem(cellData, "rowspan");
+                if (rowspanItem && cJSON_IsNumber(rowspanItem)) {
+                    data->rowspan = (uint16_t)rowspanItem->valueint;
+                }
+
+                // Parse alignment
+                cJSON* alignItem = cJSON_GetObjectItem(cellData, "alignment");
+                if (alignItem && cJSON_IsString(alignItem)) {
+                    if (strcmp(alignItem->valuestring, "center") == 0) {
+                        data->alignment = IR_ALIGNMENT_CENTER;
+                    } else if (strcmp(alignItem->valuestring, "end") == 0 ||
+                               strcmp(alignItem->valuestring, "right") == 0) {
+                        data->alignment = IR_ALIGNMENT_END;
+                    }
+                }
+
+                // Parse vertical alignment
+                cJSON* vAlignItem = cJSON_GetObjectItem(cellData, "verticalAlignment");
+                if (vAlignItem && cJSON_IsString(vAlignItem)) {
+                    if (strcmp(vAlignItem->valuestring, "middle") == 0 ||
+                        strcmp(vAlignItem->valuestring, "center") == 0) {
+                        data->vertical_alignment = IR_ALIGNMENT_CENTER;
+                    } else if (strcmp(vAlignItem->valuestring, "bottom") == 0 ||
+                               strcmp(vAlignItem->valuestring, "end") == 0) {
+                        data->vertical_alignment = IR_ALIGNMENT_END;
+                    }
+                }
+            } else {
+                // Check for inline colspan/rowspan on the component itself (shorthand)
+                cJSON* colspanItem = cJSON_GetObjectItem(json, "colspan");
+                if (colspanItem && cJSON_IsNumber(colspanItem)) {
+                    data->colspan = (uint16_t)colspanItem->valueint;
+                }
+                cJSON* rowspanItem = cJSON_GetObjectItem(json, "rowspan");
+                if (rowspanItem && cJSON_IsNumber(rowspanItem)) {
+                    data->rowspan = (uint16_t)rowspanItem->valueint;
+                }
+            }
+
+            component->custom_data = (char*)data;
+        }
+    }
+
     // Deserialize events (IR v2.1: with bytecode support)
     if ((item = cJSON_GetObjectItem(json, "events")) != NULL && cJSON_IsArray(item)) {
         int eventCount = cJSON_GetArraySize(item);
@@ -2324,6 +2630,25 @@ static void ir_finalize_tabgroups_recursive(IRComponent* component) {
 }
 
 /**
+ * Recursively finalize all Table components in the tree
+ * This builds the span map for colspan/rowspan support after deserialization.
+ * @param component Root of component tree to process
+ */
+static void ir_finalize_tables_recursive(IRComponent* component) {
+    if (!component) return;
+
+    // Finalize Table components
+    if (component->type == IR_COMPONENT_TABLE && component->custom_data) {
+        ir_table_finalize(component);
+    }
+
+    // Recursively process all children
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        ir_finalize_tables_recursive(component->children[i]);
+    }
+}
+
+/**
  * Read and deserialize IR component tree from JSON v2 file
  * @param filename Input file path
  * @return Deserialized component tree, or NULL on error
@@ -2362,6 +2687,11 @@ IRComponent* ir_read_json_v2_file(const char* filename) {
     // Finalize all TabGroups in the tree (sets initial panel visibility)
     if (component) {
         ir_finalize_tabgroups_recursive(component);
+    }
+
+    // Finalize all Tables in the tree (builds span map for colspan/rowspan)
+    if (component) {
+        ir_finalize_tables_recursive(component);
     }
 
     return component;

@@ -859,6 +859,157 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             }
             break;
 
+        case IR_COMPONENT_TABLE: {
+            // Table container - render background and outer border
+            IRTableState* table_state = (IRTableState*)component->custom_data;
+            float opacity = component->style ? component->style->opacity * inherited_opacity : inherited_opacity;
+            render_background(renderer->renderer, component, &sdl_rect, opacity);
+
+            // Draw outer border if show_borders is enabled
+            if (table_state && table_state->style.show_borders && table_state->style.border_width > 0) {
+                IRColor border_color = table_state->style.border_color;
+                SDL_SetRenderDrawColor(renderer->renderer,
+                    border_color.data.r, border_color.data.g, border_color.data.b,
+                    (uint8_t)(border_color.data.a * opacity));
+                SDL_RenderRect(renderer->renderer, &sdl_rect);
+            }
+            break;
+        }
+
+        case IR_COMPONENT_TABLE_HEAD:
+        case IR_COMPONENT_TABLE_BODY:
+        case IR_COMPONENT_TABLE_FOOT:
+            // Table sections - transparent containers
+            break;
+
+        case IR_COMPONENT_TABLE_ROW: {
+            // Table row - render striped background if applicable
+            IRComponent* table = component->parent ? component->parent->parent : NULL;
+            if (table && table->type == IR_COMPONENT_TABLE) {
+                IRTableState* table_state = (IRTableState*)table->custom_data;
+                if (table_state && table_state->style.striped_rows) {
+                    // Find row index to determine even/odd
+                    IRComponent* section = component->parent;
+                    int row_index = 0;
+                    for (uint32_t i = 0; i < section->child_count; i++) {
+                        if (section->children[i] == component) break;
+                        if (section->children[i]->type == IR_COMPONENT_TABLE_ROW) row_index++;
+                    }
+
+                    // Only apply striping to body rows
+                    if (section->type == IR_COMPONENT_TABLE_BODY) {
+                        IRColor bg_color = (row_index % 2 == 0) ?
+                            table_state->style.even_row_background :
+                            table_state->style.odd_row_background;
+                        float opacity = component->style ? component->style->opacity * inherited_opacity : inherited_opacity;
+                        SDL_SetRenderDrawColor(renderer->renderer,
+                            bg_color.data.r, bg_color.data.g, bg_color.data.b,
+                            (uint8_t)(bg_color.data.a * opacity));
+                        SDL_RenderFillRect(renderer->renderer, &sdl_rect);
+                    }
+                }
+            }
+            break;
+        }
+
+        case IR_COMPONENT_TABLE_HEADER_CELL: {
+            // Header cell - render with header background
+            IRComponent* table = NULL;
+            IRComponent* p = component->parent;
+            while (p) {
+                if (p->type == IR_COMPONENT_TABLE) { table = p; break; }
+                p = p->parent;
+            }
+
+            IRTableState* table_state = table ? (IRTableState*)table->custom_data : NULL;
+            float opacity = component->style ? component->style->opacity * inherited_opacity : inherited_opacity;
+
+            // Draw header background
+            if (table_state) {
+                IRColor bg_color = table_state->style.header_background;
+                SDL_SetRenderDrawColor(renderer->renderer,
+                    bg_color.data.r, bg_color.data.g, bg_color.data.b,
+                    (uint8_t)(bg_color.data.a * opacity));
+                SDL_RenderFillRect(renderer->renderer, &sdl_rect);
+
+                // Draw cell border
+                if (table_state->style.show_borders && table_state->style.border_width > 0) {
+                    IRColor border_color = table_state->style.border_color;
+                    SDL_SetRenderDrawColor(renderer->renderer,
+                        border_color.data.r, border_color.data.g, border_color.data.b,
+                        (uint8_t)(border_color.data.a * opacity));
+                    SDL_RenderRect(renderer->renderer, &sdl_rect);
+                }
+            } else {
+                render_background(renderer->renderer, component, &sdl_rect, opacity);
+            }
+
+            // Render header cell text content (bold white text)
+            if (component->text_content) {
+                float font_size = component->style && component->style->font.size > 0 ? component->style->font.size : 14.0f;
+                TTF_Font* font = desktop_ir_resolve_font(renderer, component, font_size);
+                if (font) {
+                    SDL_Color text_color = {255, 255, 255, (uint8_t)(255 * opacity)};  // White text for headers
+                    float cell_padding = table_state ? table_state->style.cell_padding : 8.0f;
+                    render_text_with_shadow(renderer->renderer, font, component->text_content, text_color, component,
+                                           rect.x + cell_padding, rect.y + cell_padding);
+                }
+            }
+            // Header cell rendering is complete - don't fall through to child rendering
+            return true;
+        }
+
+        case IR_COMPONENT_TABLE_CELL: {
+            fprintf(stderr, "DEBUG: Cell switch case start id=%d\n", component->id);
+            // Regular cell - render background and border
+            IRComponent* table = NULL;
+            IRComponent* p = component->parent;
+            while (p) {
+                if (p->type == IR_COMPONENT_TABLE) { table = p; break; }
+                p = p->parent;
+            }
+            fprintf(stderr, "DEBUG: Cell found table=%p\n", (void*)table);
+
+            IRTableState* table_state = table ? (IRTableState*)table->custom_data : NULL;
+            float opacity = component->style ? component->style->opacity * inherited_opacity : inherited_opacity;
+
+            // Draw cell background (if explicitly set)
+            fprintf(stderr, "DEBUG: Cell rendering bg\n");
+            render_background(renderer->renderer, component, &sdl_rect, opacity);
+
+            // Draw cell border
+            fprintf(stderr, "DEBUG: Cell rendering border\n");
+            if (table_state && table_state->style.show_borders && table_state->style.border_width > 0) {
+                IRColor border_color = table_state->style.border_color;
+                SDL_SetRenderDrawColor(renderer->renderer,
+                    border_color.data.r, border_color.data.g, border_color.data.b,
+                    (uint8_t)(border_color.data.a * opacity));
+                SDL_RenderRect(renderer->renderer, &sdl_rect);
+            }
+
+            // Render cell text content
+            fprintf(stderr, "DEBUG: Cell text content=%s\n", component->text_content ? component->text_content : "(null)");
+            if (component->text_content) {
+                float font_size = component->style && component->style->font.size > 0 ? component->style->font.size : 14.0f;
+                fprintf(stderr, "DEBUG: Cell resolving font size=%.1f\n", font_size);
+                TTF_Font* font = desktop_ir_resolve_font(renderer, component, font_size);
+                fprintf(stderr, "DEBUG: Cell font=%p\n", (void*)font);
+                if (font) {
+                    SDL_Color text_color = component->style ? ir_color_to_sdl(component->style->font.color) : (SDL_Color){255, 255, 255, 255};
+                    if (text_color.a == 0) text_color = (SDL_Color){255, 255, 255, 255};  // Default to white
+                    text_color.a = (uint8_t)(text_color.a * opacity);
+                    float cell_padding = table_state ? table_state->style.cell_padding : 8.0f;
+                    fprintf(stderr, "DEBUG: Cell calling render_text_with_shadow\n");
+                    render_text_with_shadow(renderer->renderer, font, component->text_content, text_color, component,
+                                           rect.x + cell_padding, rect.y + cell_padding);
+                    fprintf(stderr, "DEBUG: Cell render_text_with_shadow done\n");
+                }
+            }
+            fprintf(stderr, "DEBUG: Cell switch case returning\n");
+            // Cell rendering is complete - don't fall through to child rendering
+            return true;
+        }
+
         default:
             SDL_RenderFillRect(renderer->renderer, &sdl_rect);
             break;
@@ -1336,6 +1487,92 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             render_component_sdl3(renderer, child, abs_layout, child_opacity);
         }
         free(abs_children);
+        return true;
+    }
+
+    // Special handling for TABLE components - use table layout algorithm
+    if (component->type == IR_COMPONENT_TABLE && component->child_count > 0) {
+        // Call table layout to compute cell positions
+        fprintf(stderr, "DEBUG: TABLE layout start id=%d\n", component->id);
+        ir_layout_compute_table(component, child_rect.width, child_rect.height);
+        fprintf(stderr, "DEBUG: TABLE layout done id=%d\n", component->id);
+
+        // Calculate cascaded opacity for children
+        float child_opacity = (component->style ? component->style->opacity : 1.0f) * inherited_opacity;
+
+        // Render table sections (TableHead, TableBody, TableFoot)
+        fprintf(stderr, "DEBUG: TABLE rendering %d sections\n", component->child_count);
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            IRComponent* section = component->children[i];
+            if (!section) continue;
+            if (section->style && !section->style->visible) continue;
+
+            // Use the rendered_bounds set by ir_layout_compute_table
+            LayoutRect section_rect = {
+                .x = child_rect.x + section->rendered_bounds.x,
+                .y = child_rect.y + section->rendered_bounds.y,
+                .width = section->rendered_bounds.width > 0 ? section->rendered_bounds.width : child_rect.width,
+                .height = section->rendered_bounds.height
+            };
+
+            fprintf(stderr, "DEBUG: TABLE rendering section %d type=%d\n", i, section->type);
+            // Render the section (transparent, just for structure)
+            render_component_sdl3(renderer, section, section_rect, child_opacity);
+            fprintf(stderr, "DEBUG: TABLE section %d done\n", i);
+        }
+        fprintf(stderr, "DEBUG: TABLE done\n");
+        return true;
+    }
+
+    // Special handling for TABLE sections (TableHead, TableBody, TableFoot) - render rows
+    if ((component->type == IR_COMPONENT_TABLE_HEAD ||
+         component->type == IR_COMPONENT_TABLE_BODY ||
+         component->type == IR_COMPONENT_TABLE_FOOT) && component->child_count > 0) {
+        fprintf(stderr, "DEBUG: Section type=%d rendering %d rows\n", component->type, component->child_count);
+        float child_opacity = (component->style ? component->style->opacity : 1.0f) * inherited_opacity;
+
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            IRComponent* row = component->children[i];
+            if (!row) continue;
+            if (row->style && !row->style->visible) continue;
+
+            LayoutRect row_rect = {
+                .x = rect.x + row->rendered_bounds.x,
+                .y = rect.y + row->rendered_bounds.y,
+                .width = row->rendered_bounds.width > 0 ? row->rendered_bounds.width : rect.width,
+                .height = row->rendered_bounds.height
+            };
+
+            fprintf(stderr, "DEBUG: Rendering row %d type=%d\n", i, row->type);
+            render_component_sdl3(renderer, row, row_rect, child_opacity);
+            fprintf(stderr, "DEBUG: Row %d done\n", i);
+        }
+        fprintf(stderr, "DEBUG: Section done\n");
+        return true;
+    }
+
+    // Special handling for TABLE rows - render cells
+    if (component->type == IR_COMPONENT_TABLE_ROW && component->child_count > 0) {
+        fprintf(stderr, "DEBUG: Row rendering %d cells\n", component->child_count);
+        float child_opacity = (component->style ? component->style->opacity : 1.0f) * inherited_opacity;
+
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            IRComponent* cell = component->children[i];
+            if (!cell) continue;
+            if (cell->style && !cell->style->visible) continue;
+
+            LayoutRect cell_rect = {
+                .x = rect.x + cell->rendered_bounds.x,
+                .y = rect.y + cell->rendered_bounds.y,
+                .width = cell->rendered_bounds.width,
+                .height = cell->rendered_bounds.height > 0 ? cell->rendered_bounds.height : rect.height
+            };
+
+            fprintf(stderr, "DEBUG: Rendering cell %d type=%d\n", i, cell->type);
+            render_component_sdl3(renderer, cell, cell_rect, child_opacity);
+            fprintf(stderr, "DEBUG: Cell %d done\n", i);
+        }
+        fprintf(stderr, "DEBUG: Row done\n");
         return true;
     }
 

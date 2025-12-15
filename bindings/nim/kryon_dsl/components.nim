@@ -2169,3 +2169,524 @@ macro FileInput*(props: untyped): untyped =
       textColor = "#7f8c8d"
       onClick = proc() =
         echo "File input clicked - not yet implemented"
+
+# ============================================================================
+# Tables
+# ============================================================================
+
+macro Table*(props: untyped): untyped =
+  ## Table component macro - creates an HTML-like table structure
+  ## Supports styling: borderColor, cellPadding, striped, showBorders, headerBackground
+  let createStateSym = bindSym("ir_table_create_state")
+  let finalizeSym = bindSym("ir_table_finalize")
+  let addChildSym = bindSym("kryon_component_add_child")
+  let ir_tableSym = bindSym("ir_table")
+  let ctxSym = ident("__kryonCurrentTable")
+  let ctxStateSym = ident("__kryonCurrentTableState")
+
+  var propertyNodes: seq[NimNode] = @[]
+  var childNodes: seq[NimNode] = @[]
+
+  # Table-specific properties
+  var borderColorVal: NimNode = nil
+  var headerBackgroundVal: NimNode = nil
+  var evenRowBackgroundVal: NimNode = nil
+  var oddRowBackgroundVal: NimNode = nil
+  var borderWidthVal: NimNode = nil
+  var cellPaddingVal: NimNode = nil
+  var showBordersVal: NimNode = nil
+  var stripedVal: NimNode = nil
+
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii()
+      of "bordercolor":
+        borderColorVal = node[1]
+      of "headerbackground", "headerbackgroundcolor":
+        headerBackgroundVal = node[1]
+      of "evenrowbackground", "evenrowcolor":
+        evenRowBackgroundVal = node[1]
+      of "oddrowbackground", "oddrowcolor":
+        oddRowBackgroundVal = node[1]
+      of "borderwidth":
+        borderWidthVal = node[1]
+      of "cellpadding":
+        cellPaddingVal = node[1]
+      of "showborders":
+        showBordersVal = node[1]
+      of "striped":
+        stripedVal = node[1]
+      else:
+        propertyNodes.add(node)
+    else:
+      childNodes.add(node)
+
+  let tableSym = genSym(nskLet, "table")
+  let stateSym = genSym(nskLet, "tableState")
+
+  # Build state initialization statements
+  var stateInitStmts = newStmtList()
+
+  if borderColorVal != nil:
+    let colorExpr = if borderColorVal.kind == nnkStrLit:
+      newCall(ident("parseColor"), borderColorVal)
+    else:
+      borderColorVal
+    let setBorderColorSym = bindSym("ir_table_set_border_color")
+    stateInitStmts.add quote do:
+      let bc = `colorExpr`
+      `setBorderColorSym`(`stateSym`, bc.r, bc.g, bc.b, bc.a)
+
+  if headerBackgroundVal != nil:
+    let colorExpr = if headerBackgroundVal.kind == nnkStrLit:
+      newCall(ident("parseColor"), headerBackgroundVal)
+    else:
+      headerBackgroundVal
+    let setHeaderBgSym = bindSym("ir_table_set_header_background")
+    stateInitStmts.add quote do:
+      let hbg = `colorExpr`
+      `setHeaderBgSym`(`stateSym`, hbg.r, hbg.g, hbg.b, hbg.a)
+
+  if evenRowBackgroundVal != nil and oddRowBackgroundVal != nil:
+    let evenExpr = if evenRowBackgroundVal.kind == nnkStrLit:
+      newCall(ident("parseColor"), evenRowBackgroundVal)
+    else:
+      evenRowBackgroundVal
+    let oddExpr = if oddRowBackgroundVal.kind == nnkStrLit:
+      newCall(ident("parseColor"), oddRowBackgroundVal)
+    else:
+      oddRowBackgroundVal
+    let setRowBgSym = bindSym("ir_table_set_row_backgrounds")
+    stateInitStmts.add quote do:
+      let erbg = `evenExpr`
+      let orbg = `oddExpr`
+      `setRowBgSym`(`stateSym`, erbg.r, erbg.g, erbg.b, erbg.a, orbg.r, orbg.g, orbg.b, orbg.a)
+
+  if borderWidthVal != nil:
+    let setBorderWidthSym = bindSym("ir_table_set_border_width")
+    stateInitStmts.add quote do:
+      `setBorderWidthSym`(`stateSym`, cfloat(`borderWidthVal`))
+
+  if cellPaddingVal != nil:
+    let setCellPaddingSym = bindSym("ir_table_set_cell_padding")
+    stateInitStmts.add quote do:
+      `setCellPaddingSym`(`stateSym`, cfloat(`cellPaddingVal`))
+
+  if showBordersVal != nil:
+    let setShowBordersSym = bindSym("ir_table_set_show_borders")
+    stateInitStmts.add quote do:
+      `setShowBordersSym`(`stateSym`, `showBordersVal`)
+
+  if stripedVal != nil:
+    let setStripedSym = bindSym("ir_table_set_striped")
+    stateInitStmts.add quote do:
+      `setStripedSym`(`stateSym`, `stripedVal`)
+
+  # Apply general properties to table component
+  var propInitStmts = newStmtList()
+  for node in propertyNodes:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii()
+      of "width":
+        let val = node[1]
+        propInitStmts.add quote do:
+          kryon_component_set_width(`tableSym`, toFixed(`val`))
+      of "height":
+        let val = node[1]
+        propInitStmts.add quote do:
+          kryon_component_set_height(`tableSym`, toFixed(`val`))
+      of "background", "backgroundcolor":
+        let colorExpr = if node[1].kind == nnkStrLit:
+          newCall(ident("parseColor"), node[1])
+        else:
+          node[1]
+        propInitStmts.add quote do:
+          kryon_component_set_background_color(`tableSym`, `colorExpr`)
+      else:
+        discard
+
+  var childStmtList = newStmtList()
+  for child in childNodes:
+    if isEchoStatement(child):
+      childStmtList.add(child)
+      continue
+    childStmtList.add quote do:
+      let childComponent = block:
+        `child`
+      if childComponent != nil:
+        discard `addChildSym`(`tableSym`, childComponent)
+
+  result = quote do:
+    block:
+      let `tableSym` = `ir_tableSym`()
+      let `stateSym` = `createStateSym`()
+      let `ctxSym` = `tableSym`
+      let `ctxStateSym` = `stateSym`
+      `stateInitStmts`
+      `propInitStmts`
+      # Attach state to table component
+      cast[ptr IRComponent](`tableSym`).custom_data = cast[pointer](`stateSym`)
+      block:
+        `childStmtList`
+      `finalizeSym`(`tableSym`)
+      `tableSym`
+
+macro TableHead*(props: untyped): untyped =
+  ## TableHead section - contains header rows
+  let addChildSym = bindSym("kryon_component_add_child")
+  let ir_table_headSym = bindSym("ir_table_head")
+  let ctxSym = ident("__kryonCurrentTable")
+  let ctxHeadSym = ident("__kryonCurrentTableSection")
+  let ctxIsHeaderSym = ident("__kryonTableIsHeader")
+
+  var childNodes: seq[NimNode] = @[]
+
+  for node in props.children:
+    if node.kind != nnkAsgn:
+      childNodes.add(node)
+
+  let headSym = genSym(nskLet, "tableHead")
+
+  var childStmtList = newStmtList()
+  for child in childNodes:
+    if isEchoStatement(child):
+      childStmtList.add(child)
+      continue
+    childStmtList.add quote do:
+      let childComponent = block:
+        `child`
+      if childComponent != nil:
+        discard `addChildSym`(`headSym`, childComponent)
+
+  result = quote do:
+    block:
+      let `headSym` = `ir_table_headSym`()
+      let `ctxHeadSym` = `headSym`
+      let `ctxIsHeaderSym` = true
+      block:
+        `childStmtList`
+      `headSym`
+
+macro TableBody*(props: untyped): untyped =
+  ## TableBody section - contains data rows
+  let addChildSym = bindSym("kryon_component_add_child")
+  let ir_table_bodySym = bindSym("ir_table_body")
+  let ctxSym = ident("__kryonCurrentTable")
+  let ctxBodySym = ident("__kryonCurrentTableSection")
+  let ctxIsHeaderSym = ident("__kryonTableIsHeader")
+
+  var childNodes: seq[NimNode] = @[]
+
+  for node in props.children:
+    if node.kind != nnkAsgn:
+      childNodes.add(node)
+
+  let bodySym = genSym(nskLet, "tableBody")
+
+  var childStmtList = newStmtList()
+  for child in childNodes:
+    if isEchoStatement(child):
+      childStmtList.add(child)
+      continue
+    childStmtList.add quote do:
+      let childComponent = block:
+        `child`
+      if childComponent != nil:
+        discard `addChildSym`(`bodySym`, childComponent)
+
+  result = quote do:
+    block:
+      let `bodySym` = `ir_table_bodySym`()
+      let `ctxBodySym` = `bodySym`
+      let `ctxIsHeaderSym` = false
+      block:
+        `childStmtList`
+      `bodySym`
+
+macro TableFoot*(props: untyped): untyped =
+  ## TableFoot section - contains footer rows
+  let addChildSym = bindSym("kryon_component_add_child")
+  let ir_table_footSym = bindSym("ir_table_foot")
+  let ctxSym = ident("__kryonCurrentTable")
+  let ctxFootSym = ident("__kryonCurrentTableSection")
+  let ctxIsHeaderSym = ident("__kryonTableIsHeader")
+
+  var childNodes: seq[NimNode] = @[]
+
+  for node in props.children:
+    if node.kind != nnkAsgn:
+      childNodes.add(node)
+
+  let footSym = genSym(nskLet, "tableFoot")
+
+  var childStmtList = newStmtList()
+  for child in childNodes:
+    if isEchoStatement(child):
+      childStmtList.add(child)
+      continue
+    childStmtList.add quote do:
+      let childComponent = block:
+        `child`
+      if childComponent != nil:
+        discard `addChildSym`(`footSym`, childComponent)
+
+  result = quote do:
+    block:
+      let `footSym` = `ir_table_footSym`()
+      let `ctxFootSym` = `footSym`
+      let `ctxIsHeaderSym` = false
+      block:
+        `childStmtList`
+      `footSym`
+
+macro Tr*(props: untyped): untyped =
+  ## Table Row component
+  let addChildSym = bindSym("kryon_component_add_child")
+  let ir_table_rowSym = bindSym("ir_table_row")
+  let ctxSectionSym = ident("__kryonCurrentTableSection")
+  let ctxRowSym = ident("__kryonCurrentTableRow")
+
+  var childNodes: seq[NimNode] = @[]
+  var propertyNodes: seq[NimNode] = @[]
+
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      propertyNodes.add(node)
+    else:
+      childNodes.add(node)
+
+  let rowSym = genSym(nskLet, "tableRow")
+
+  # Apply row properties
+  var propInitStmts = newStmtList()
+  for node in propertyNodes:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii()
+      of "background", "backgroundcolor":
+        let colorExpr = if node[1].kind == nnkStrLit:
+          newCall(ident("parseColor"), node[1])
+        else:
+          node[1]
+        propInitStmts.add quote do:
+          kryon_component_set_background_color(`rowSym`, `colorExpr`)
+      else:
+        discard
+
+  var childStmtList = newStmtList()
+  for child in childNodes:
+    if isEchoStatement(child):
+      childStmtList.add(child)
+      continue
+    childStmtList.add quote do:
+      let childComponent = block:
+        `child`
+      if childComponent != nil:
+        discard `addChildSym`(`rowSym`, childComponent)
+
+  result = quote do:
+    block:
+      let `rowSym` = `ir_table_rowSym`()
+      let `ctxRowSym` = `rowSym`
+      `propInitStmts`
+      block:
+        `childStmtList`
+      `rowSym`
+
+macro Td*(props: untyped): untyped =
+  ## Table Data Cell component
+  ## Supports: colspan, rowspan, alignment, text, children
+  let addChildSym = bindSym("kryon_component_add_child")
+  let ir_table_cellSym = bindSym("ir_table_cell")
+  let setAlignSym = bindSym("ir_table_cell_set_alignment")
+  let ctxRowSym = ident("__kryonCurrentTableRow")
+
+  var childNodes: seq[NimNode] = @[]
+  var colspanVal: NimNode = newIntLitNode(1)
+  var rowspanVal: NimNode = newIntLitNode(1)
+  var alignmentVal: NimNode = nil
+  var textVal: NimNode = nil
+  var backgroundVal: NimNode = nil
+  var textColorVal: NimNode = nil
+  var propertyNodes: seq[NimNode] = @[]
+
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii()
+      of "colspan":
+        colspanVal = node[1]
+      of "rowspan":
+        rowspanVal = node[1]
+      of "align", "alignment", "textalign":
+        alignmentVal = node[1]
+      of "text", "content":
+        textVal = node[1]
+      of "background", "backgroundcolor":
+        backgroundVal = node[1]
+      of "textcolor", "color":
+        textColorVal = node[1]
+      else:
+        propertyNodes.add(node)
+    else:
+      childNodes.add(node)
+
+  let cellSym = genSym(nskLet, "tableCell")
+
+  var initStmts = newStmtList()
+
+  # Handle alignment
+  if alignmentVal != nil:
+    # Convert string alignment to IRAlignment enum
+    initStmts.add quote do:
+      let alignStr = $(`alignmentVal`)
+      let align = case alignStr.toLowerAscii()
+        of "left": kaStart
+        of "center": kaCenter
+        of "right": kaEnd
+        else: kaStart
+      `setAlignSym`(`cellSym`, align)
+
+  # Handle background color
+  if backgroundVal != nil:
+    let colorExpr = if backgroundVal.kind == nnkStrLit:
+      newCall(ident("parseColor"), backgroundVal)
+    else:
+      backgroundVal
+    initStmts.add quote do:
+      kryon_component_set_background_color(`cellSym`, `colorExpr`)
+
+  # Handle text content
+  if textVal != nil:
+    let colorExpr = if textColorVal != nil:
+      if textColorVal.kind == nnkStrLit:
+        newCall(ident("parseColor"), textColorVal)
+      else:
+        textColorVal
+    else:
+      newCall(ident("parseColor"), newStrLitNode("#000000"))
+
+    let textSym = genSym(nskLet, "cellText")
+    initStmts.add quote do:
+      let `textSym` = newKryonText($`textVal`)
+      kryon_component_set_text_color(`textSym`, `colorExpr`)
+      discard `addChildSym`(`cellSym`, `textSym`)
+
+  var childStmtList = newStmtList()
+  for child in childNodes:
+    if isEchoStatement(child):
+      childStmtList.add(child)
+      continue
+    childStmtList.add quote do:
+      let childComponent = block:
+        `child`
+      if childComponent != nil:
+        discard `addChildSym`(`cellSym`, childComponent)
+
+  result = quote do:
+    block:
+      let `cellSym` = `ir_table_cellSym`(uint16(`colspanVal`), uint16(`rowspanVal`))
+      `initStmts`
+      block:
+        `childStmtList`
+      `cellSym`
+
+macro Th*(props: untyped): untyped =
+  ## Table Header Cell component (like Td but with header styling)
+  ## Supports: colspan, rowspan, alignment, text, children
+  let addChildSym = bindSym("kryon_component_add_child")
+  let ir_table_header_cellSym = bindSym("ir_table_header_cell")
+  let setAlignSym = bindSym("ir_table_cell_set_alignment")
+  let ctxRowSym = ident("__kryonCurrentTableRow")
+
+  var childNodes: seq[NimNode] = @[]
+  var colspanVal: NimNode = newIntLitNode(1)
+  var rowspanVal: NimNode = newIntLitNode(1)
+  var alignmentVal: NimNode = nil
+  var textVal: NimNode = nil
+  var backgroundVal: NimNode = nil
+  var textColorVal: NimNode = nil
+  var propertyNodes: seq[NimNode] = @[]
+
+  for node in props.children:
+    if node.kind == nnkAsgn:
+      let propName = $node[0]
+      case propName.toLowerAscii()
+      of "colspan":
+        colspanVal = node[1]
+      of "rowspan":
+        rowspanVal = node[1]
+      of "align", "alignment", "textalign":
+        alignmentVal = node[1]
+      of "text", "content":
+        textVal = node[1]
+      of "background", "backgroundcolor":
+        backgroundVal = node[1]
+      of "textcolor", "color":
+        textColorVal = node[1]
+      else:
+        propertyNodes.add(node)
+    else:
+      childNodes.add(node)
+
+  let cellSym = genSym(nskLet, "tableHeaderCell")
+
+  var initStmts = newStmtList()
+
+  # Handle alignment
+  if alignmentVal != nil:
+    initStmts.add quote do:
+      let alignStr = $(`alignmentVal`)
+      let align = case alignStr.toLowerAscii()
+        of "left": kaStart
+        of "center": kaCenter
+        of "right": kaEnd
+        else: kaStart
+      `setAlignSym`(`cellSym`, align)
+
+  # Handle background color
+  if backgroundVal != nil:
+    let colorExpr = if backgroundVal.kind == nnkStrLit:
+      newCall(ident("parseColor"), backgroundVal)
+    else:
+      backgroundVal
+    initStmts.add quote do:
+      kryon_component_set_background_color(`cellSym`, `colorExpr`)
+
+  # Handle text content (default bold for headers)
+  if textVal != nil:
+    let colorExpr = if textColorVal != nil:
+      if textColorVal.kind == nnkStrLit:
+        newCall(ident("parseColor"), textColorVal)
+      else:
+        textColorVal
+    else:
+      newCall(ident("parseColor"), newStrLitNode("#000000"))
+
+    let textSym = genSym(nskLet, "headerText")
+    initStmts.add quote do:
+      let `textSym` = newKryonText($`textVal`)
+      kryon_component_set_text_color(`textSym`, `colorExpr`)
+      kryon_component_set_font_weight(`textSym`, 700)  # Bold for headers
+      discard `addChildSym`(`cellSym`, `textSym`)
+
+  var childStmtList = newStmtList()
+  for child in childNodes:
+    if isEchoStatement(child):
+      childStmtList.add(child)
+      continue
+    childStmtList.add quote do:
+      let childComponent = block:
+        `child`
+      if childComponent != nil:
+        discard `addChildSym`(`cellSym`, childComponent)
+
+  result = quote do:
+    block:
+      let `cellSym` = `ir_table_header_cellSym`(uint16(`colspanVal`), uint16(`rowspanVal`))
+      `initStmts`
+      block:
+        `childStmtList`
+      `cellSym`
