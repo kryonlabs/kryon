@@ -16,6 +16,88 @@ import * as fs from 'fs';
 // Component ID counter
 let nextId = 1;
 
+// Const map for resolving variable references like colors.accent
+const constMap = new Map<string, any>();
+
+/**
+ * Evaluate a simple expression to extract its value
+ * Handles: literals, objects, arrays, member access
+ */
+function evaluateExpression(node: t.Node): any {
+  if (t.isStringLiteral(node)) {
+    return node.value;
+  } else if (t.isNumericLiteral(node)) {
+    return node.value;
+  } else if (t.isBooleanLiteral(node)) {
+    return node.value;
+  } else if (t.isObjectExpression(node)) {
+    const obj: { [key: string]: any } = {};
+    for (const prop of node.properties) {
+      if (t.isObjectProperty(prop)) {
+        let key: string | null = null;
+        if (t.isIdentifier(prop.key)) {
+          key = prop.key.name;
+        } else if (t.isStringLiteral(prop.key)) {
+          key = prop.key.value;
+        }
+        if (key) {
+          obj[key] = evaluateExpression(prop.value);
+        }
+      }
+    }
+    return obj;
+  } else if (t.isArrayExpression(node)) {
+    return node.elements.map(el => el ? evaluateExpression(el) : null);
+  } else if (t.isIdentifier(node)) {
+    // Reference to another const
+    if (constMap.has(node.name)) {
+      return constMap.get(node.name);
+    }
+    return null;
+  } else if (t.isMemberExpression(node)) {
+    const objValue = evaluateExpression(node.object);
+    if (objValue && typeof objValue === 'object') {
+      if (t.isIdentifier(node.property)) {
+        return objValue[node.property.name];
+      } else if (t.isStringLiteral(node.property)) {
+        return objValue[node.property.value];
+      }
+    }
+    return null;
+  } else if (t.isTemplateLiteral(node)) {
+    let result = '';
+    for (let i = 0; i < node.quasis.length; i++) {
+      result += node.quasis[i].value.cooked || '';
+      if (i < node.expressions.length) {
+        const exprValue = evaluateExpression(node.expressions[i]);
+        if (exprValue !== null && exprValue !== undefined) {
+          result += String(exprValue);
+        }
+      }
+    }
+    return result;
+  }
+  return null;
+}
+
+/**
+ * First pass: collect all top-level const declarations
+ */
+function collectConstants(ast: any) {
+  for (const node of ast.program.body) {
+    if (t.isVariableDeclaration(node) && node.kind === 'const') {
+      for (const decl of node.declarations) {
+        if (t.isIdentifier(decl.id) && decl.init) {
+          const value = evaluateExpression(decl.init);
+          if (value !== null) {
+            constMap.set(decl.id.name, value);
+          }
+        }
+      }
+    }
+  }
+}
+
 // Parsed state
 interface ParsedState {
   componentDefs: Map<string, ComponentDef>;
@@ -69,7 +151,30 @@ function parseValue(node: t.Node): any {
   } else if (t.isJSXExpressionContainer(node)) {
     return parseValue(node.expression);
   } else if (t.isIdentifier(node)) {
+    // First check if this is a known const
+    if (constMap.has(node.name)) {
+      return constMap.get(node.name);
+    }
+    // Otherwise treat as a variable reference (for props)
     return { var: node.name };
+  } else if (t.isMemberExpression(node)) {
+    // Handle colors.accent, spacing.lg, etc.
+    const resolved = evaluateExpression(node);
+    if (resolved !== null && resolved !== undefined) {
+      return resolved;
+    }
+    // Fallback to variable reference if can't resolve
+    if (t.isIdentifier(node.object)) {
+      return { var: node.object.name };
+    }
+    return null;
+  } else if (t.isTemplateLiteral(node)) {
+    // Handle `1px solid ${colors.border}`
+    const resolved = evaluateExpression(node);
+    if (resolved !== null && resolved !== undefined) {
+      return resolved;
+    }
+    return null;
   } else if (t.isCallExpression(node)) {
     // String(value) -> template expression
     if (t.isIdentifier(node.callee) && node.callee.name === 'String') {
@@ -83,6 +188,19 @@ function parseValue(node: t.Node): any {
     return { handler: true, body: node.body };
   } else if (t.isArrayExpression(node)) {
     return node.elements.map(el => el ? parseValue(el) : null);
+  } else if (t.isBinaryExpression(node)) {
+    // Handle arithmetic expressions like spacing.xxxl * 2
+    const left = evaluateExpression(node.left);
+    const right = evaluateExpression(node.right);
+    if (typeof left === 'number' && typeof right === 'number') {
+      switch (node.operator) {
+        case '+': return left + right;
+        case '-': return left - right;
+        case '*': return left * right;
+        case '/': return left / right;
+      }
+    }
+    return null;
   }
   return null;
 }
@@ -374,7 +492,10 @@ function parseKryonApp(node: t.CallExpression, state: ParsedState) {
         }
         break;
       case 'background':
-        if (t.isStringLiteral(value)) {
+        const bgValue = evaluateExpression(value);
+        if (bgValue !== null && typeof bgValue === 'string') {
+          state.rootConfig.background = bgValue;
+        } else if (t.isStringLiteral(value)) {
           state.rootConfig.background = value.value;
         }
         break;
@@ -412,6 +533,10 @@ async function main() {
     sourceType: 'module',
     plugins: ['jsx', 'typescript']
   });
+
+  // Clear and collect const declarations first
+  constMap.clear();
+  collectConstants(ast);
 
   const state: ParsedState = {
     componentDefs: new Map(),

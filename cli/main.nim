@@ -324,14 +324,31 @@ proc handleConfigCommand*(args: seq[string]) =
 
 proc handleBuildCommand*(args: seq[string]) =
   ## Handle 'kryon build' command
-  var targets: seq[string] = @["linux"]  # Default target
+  var targets: seq[string] = @[]
 
+  # First, try to read targets from config
+  try:
+    let cfg = loadConfig()
+    if cfg.buildTargets.len > 0:
+      targets = cfg.buildTargets
+    elif cfg.buildTarget != "" and cfg.buildTarget != "desktop":
+      targets = @[cfg.buildTarget]
+  except:
+    discard
+
+  # Command-line args override config
   if args.len > 0:
     for arg in args:
       if arg.startsWith("--targets="):
         targets = arg[10..^1].split(",")
+      elif arg.startsWith("--target="):
+        targets = @[arg[9..^1]]
       elif not arg.startsWith("-"):
         targets = @[arg]
+
+  # Default to linux if still empty
+  if targets.len == 0:
+    targets = @["linux"]
 
   echo "Building Kryon project for targets: " & targets.join(", ")
 
@@ -686,7 +703,7 @@ end
 
   elif frontend != ".nim":
     echo "❌ Unknown frontend: " & frontend
-    echo "   Supported: .nim, .lua, .ts, .js, .kir, .kirb, .kry"
+    echo "   Supported: .nim, .lua, .ts, .js, .tsx, .jsx, .kir, .kirb, .kry"
     quit(1)
 
   # Continue with Nim compilation for .nim files

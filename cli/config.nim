@@ -16,9 +16,10 @@ type
 
     # Build settings
     buildTarget*: string           # "web", "desktop", "terminal", "framebuffer"
+    buildTargets*: seq[string]     # Multiple targets: ["web", "desktop"]
     buildOutputDir*: string
     buildEntry*: string            # Entry file (auto-detect if empty)
-    buildFrontend*: string         # "js", "ts", "nim", "lua", "c"
+    buildFrontend*: string         # "js", "ts", "tsx", "nim", "lua", "c"
 
     # Optimization settings
     optimizationEnabled*: bool
@@ -26,10 +27,17 @@ type
     optimizationMinifyJs*: bool
     optimizationTreeShake*: bool
 
+    # Web-specific settings
+    webGenerateSeparateFiles*: bool  # Generate separate HTML/CSS/JS files
+    webIncludeJsRuntime*: bool       # Include Kryon JS runtime
+    webMinifyCss*: bool
+    webMinifyJs*: bool
+
     # Development settings
     devHotReload*: bool
     devPort*: int
     devAutoOpen*: bool
+    devWatchPaths*: seq[string]
 
     # Metadata
     metadataCreated*: string
@@ -43,6 +51,7 @@ proc defaultConfig*(): KryonConfig =
   result.projectDescription = ""
 
   result.buildTarget = "desktop"
+  result.buildTargets = @[]
   result.buildOutputDir = "build"
   result.buildEntry = ""
   result.buildFrontend = "nim"
@@ -52,16 +61,38 @@ proc defaultConfig*(): KryonConfig =
   result.optimizationMinifyJs = true
   result.optimizationTreeShake = true
 
+  result.webGenerateSeparateFiles = false
+  result.webIncludeJsRuntime = false
+  result.webMinifyCss = true
+  result.webMinifyJs = true
+
   result.devHotReload = true
   result.devPort = 3000
   result.devAutoOpen = false
+  result.devWatchPaths = @[]
 
   result.metadataCreated = now().format("yyyy-MM-dd")
   result.metadataModified = now().format("yyyy-MM-dd")
 
+proc parseSimpleArray(value: string): seq[string] =
+  ## Parse simple TOML array like ["web", "desktop"]
+  result = @[]
+  var inner = value.strip()
+  if inner.startsWith("[") and inner.endsWith("]"):
+    inner = inner[1..^2]
+    for item in inner.split(","):
+      var cleaned = item.strip()
+      if cleaned.startsWith("\"") and cleaned.endsWith("\""):
+        cleaned = cleaned[1..^2]
+      elif cleaned.startsWith("'") and cleaned.endsWith("'"):
+        cleaned = cleaned[1..^2]
+      if cleaned.len > 0:
+        result.add(cleaned)
+
 proc parseSimpleToml(content: string): Table[string, string] =
   ## Simple TOML parser for basic key = "value" pairs
   ## Supports sections like [project], [build], etc.
+  ## Arrays are stored as raw strings and parsed later
   result = initTable[string, string]()
   var currentSection = ""
 
@@ -84,11 +115,13 @@ proc parseSimpleToml(content: string): Table[string, string] =
         var key = parts[0].strip()
         var value = parts[1].strip()
 
-        # Remove quotes from value
-        if value.startsWith("\"") and value.endsWith("\""):
-          value = value[1..^2]
-        elif value.startsWith("'") and value.endsWith("'"):
-          value = value[1..^2]
+        # Keep arrays as-is (don't remove brackets)
+        if not (value.startsWith("[") and value.endsWith("]")):
+          # Remove quotes from scalar value
+          if value.startsWith("\"") and value.endsWith("\""):
+            value = value[1..^2]
+          elif value.startsWith("'") and value.endsWith("'"):
+            value = value[1..^2]
 
         # Prefix key with section
         if currentSection.len > 0:
@@ -113,6 +146,8 @@ proc tomlToConfig(toml: Table[string, string]): KryonConfig =
   # Build settings
   if toml.hasKey("build.target"):
     result.buildTarget = toml["build.target"]
+  if toml.hasKey("build.targets"):
+    result.buildTargets = parseSimpleArray(toml["build.targets"])
   if toml.hasKey("build.output_dir"):
     result.buildOutputDir = toml["build.output_dir"]
   if toml.hasKey("build.entry"):
@@ -129,6 +164,16 @@ proc tomlToConfig(toml: Table[string, string]): KryonConfig =
     result.optimizationMinifyJs = toml["optimization.minify_js"] == "true"
   if toml.hasKey("optimization.tree_shake"):
     result.optimizationTreeShake = toml["optimization.tree_shake"] == "true"
+
+  # Web settings
+  if toml.hasKey("web.generate_separate_files"):
+    result.webGenerateSeparateFiles = toml["web.generate_separate_files"] == "true"
+  if toml.hasKey("web.include_js_runtime"):
+    result.webIncludeJsRuntime = toml["web.include_js_runtime"] == "true"
+  if toml.hasKey("web.minify_css"):
+    result.webMinifyCss = toml["web.minify_css"] == "true"
+  if toml.hasKey("web.minify_js"):
+    result.webMinifyJs = toml["web.minify_js"] == "true"
 
   # Dev settings
   if toml.hasKey("dev.hot_reload"):
@@ -171,6 +216,14 @@ proc jsonToConfig(jsonNode: JsonNode): KryonConfig =
     if opt.hasKey("minify_css"): result.optimizationMinifyCss = opt["minify_css"].getBool()
     if opt.hasKey("minify_js"): result.optimizationMinifyJs = opt["minify_js"].getBool()
     if opt.hasKey("tree_shake"): result.optimizationTreeShake = opt["tree_shake"].getBool()
+
+  # Web settings
+  if jsonNode.hasKey("web"):
+    let web = jsonNode["web"]
+    if web.hasKey("generate_separate_files"): result.webGenerateSeparateFiles = web["generate_separate_files"].getBool()
+    if web.hasKey("include_js_runtime"): result.webIncludeJsRuntime = web["include_js_runtime"].getBool()
+    if web.hasKey("minify_css"): result.webMinifyCss = web["minify_css"].getBool()
+    if web.hasKey("minify_js"): result.webMinifyJs = web["minify_js"].getBool()
 
   # Dev settings
   if jsonNode.hasKey("dev"):
@@ -290,6 +343,27 @@ proc loadProjectConfig*(): KryonConfig =
   else:
     raise newException(ValueError, "Unknown config format: " & configPath)
 
+proc loadConfig*(): KryonConfig =
+  ## Load project config if available, otherwise return defaults
+  ## This is the preferred function for build scripts that want graceful fallback
+  let configPath = findProjectConfig()
+
+  if configPath.len == 0:
+    return defaultConfig()
+
+  try:
+    let content = readFile(configPath)
+    if configPath.endsWith(".toml"):
+      let toml = parseSimpleToml(content)
+      result = tomlToConfig(toml)
+    elif configPath.endsWith(".json"):
+      let jsonNode = parseJson(content)
+      result = jsonToConfig(jsonNode)
+    else:
+      return defaultConfig()
+  except:
+    return defaultConfig()
+
 proc writeTomlConfig*(config: KryonConfig, path: string) =
   ## Write config to TOML file
   let toml = configToToml(config)
@@ -323,7 +397,7 @@ proc validateConfig*(config: KryonConfig): tuple[valid: bool, errors: seq[string
                      " (must be one of: " & validTargets.join(", ") & ")")
 
   # Validate frontend
-  const validFrontends = ["nim", "lua", "c", "js", "ts"]
+  const validFrontends = ["nim", "lua", "c", "js", "ts", "tsx", "jsx", "kry"]
   if config.buildFrontend notin validFrontends:
     result.valid = false
     result.errors.add("Invalid frontend: " & config.buildFrontend &
