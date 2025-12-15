@@ -7,7 +7,7 @@ on:
 
 env:
   NIM_VERSION: "2.0.14"
-  SDL3_VERSION: "3.2.0"
+  SDL3_VERSION: "3.2.6"
   SDL3_TTF_VERSION: "3.2.2"
 
 jobs:
@@ -29,6 +29,8 @@ jobs:
             freetype-static \
             fribidi-dev \
             fribidi-static \
+            graphite2-dev \
+            graphite2-static \
             bzip2-static \
             libpng-static \
             zlib-static \
@@ -54,7 +56,7 @@ jobs:
           nim c --define:kryonVersion=0.2.0 -d:terminalOnly --opt:size \
             --passL:"-static" \
             --passL:"-Lbuild -lkryon_ir" \
-            --passL:"-lharfbuzz -lfreetype -lfribidi -lbz2 -lpng -lz -lbrotlidec -lbrotlicommon" \
+            --passL:"-lharfbuzz -lgraphite2 -lfreetype -lfribidi -lbz2 -lpng -lz -lbrotlidec -lbrotlicommon" \
             -o:build/kryon-terminal cli/main.nim
 
       - name: Verify build is static
@@ -171,6 +173,8 @@ jobs:
             freetype-static \
             fribidi-dev \
             fribidi-static \
+            graphite2-dev \
+            graphite2-static \
             bzip2-static \
             libpng-static \
             zlib-static \
@@ -192,11 +196,11 @@ jobs:
       - name: Build web variant (static)
         run: |
           export PATH="$HOME/.nimble/bin:$PATH"
-          make -C ir all CC=gcc CFLAGS="-std=c99 -Wall -O2 -fPIC -static"
+          make -C ir all
           nim c --define:kryonVersion=0.2.0 -d:webBackend --opt:size \
             --passL:"-static" \
             --passL:"-Lbuild -lkryon_ir" \
-            --passL:"-lharfbuzz -lfreetype -lfribidi -lbz2 -lpng -lz -lbrotlidec -lbrotlicommon" \
+            --passL:"-lharfbuzz -lgraphite2 -lfreetype -lfribidi -lbz2 -lpng -lz -lbrotlidec -lbrotlicommon" \
             -o:build/kryon-web cli/main.nim
 
       - name: Verify build is static

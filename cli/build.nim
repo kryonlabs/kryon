@@ -15,7 +15,9 @@ proc buildTerminalTarget*()
 
 # IR-based build system
 proc buildWithIR*(sourceFile: string, target: string)
+proc buildWithIRForPage*(sourceFile: string, target: string, pagePath: string, cfg: KryonConfig)
 proc compileToKIR*(sourceFile: string): string
+proc compileToKIRForPage*(sourceFile: string, pageName: string): string
 proc renderIRToTarget*(kirFile: string, target: string)
 proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig)
 
@@ -38,6 +40,18 @@ proc buildForTarget*(target: string) =
 
   # Load project config if available
   let cfg = loadConfig()
+
+  # Check for multi-page configuration
+  if cfg.buildPages.len > 0 and target.toLowerAscii() == "web":
+    echo "📄 Multi-page build configured (" & $cfg.buildPages.len & " pages)"
+    for page in cfg.buildPages:
+      if not fileExists(page.file):
+        echo "⚠️  Page source not found: " & page.file
+        continue
+
+      echo "📁 Building page: " & page.file & " → " & page.path
+      buildWithIRForPage(page.file, target, page.path, cfg)
+    return
 
   # Find source file - check config entry first, then auto-detect
   var sourceFile = ""
@@ -428,6 +442,29 @@ proc buildWithIR*(sourceFile: string, target: string) =
 
   echo "✅ Universal IR build complete!"
 
+proc buildWithIRForPage*(sourceFile: string, target: string, pagePath: string, cfg: KryonConfig) =
+  ## Build a single page for multi-page web builds
+  ## pagePath: "/" for root, "/docs" for docs subdirectory, etc.
+  let pageName = sourceFile.splitFile().name
+
+  # Step 1: Compile source to KIR
+  let kirFile = compileToKIRForPage(sourceFile, pageName)
+
+  # Step 2: Determine output directory
+  var outputDir = cfg.buildOutputDir
+  if pagePath != "/" and pagePath.len > 0:
+    # Strip leading/trailing slashes and create subdirectory
+    let subdir = pagePath.strip(chars = {'/'})
+    outputDir = cfg.buildOutputDir / subdir
+  createDir(outputDir)
+
+  # Step 3: Generate web files
+  echo "   🌐 Generating web files..."
+  generateWebFromKir(kirFile, outputDir, cfg)
+
+  let htmlFile = if pagePath == "/": "index.html" else: outputDir / "index.html"
+  echo "   ✅ Generated: " & htmlFile
+
 proc compileToKIR*(sourceFile: string): string =
   ## Compile source file to KIR JSON format
   ## Handles: .tsx, .jsx, .kry, .nim
@@ -461,6 +498,58 @@ proc compileToKIR*(sourceFile: string): string =
       echo "   🔨 Compiling Nim..."
 
       # Build the Nim file with IR serialization enabled
+      let nimBin = sourceFile.changeFileExt("")
+      let env = "KRYON_SERIALIZE_IR=\"" & kirFile & "\""
+      let compileCmd = env & " nim c -p:bindings/nim -o:" & nimBin & " " & sourceFile
+
+      let (compileOutput, compileExitCode) = execCmdEx(compileCmd)
+      if compileExitCode != 0:
+        echo "   ❌ Nim compilation failed:"
+        echo compileOutput
+        raise newException(IOError, "Nim compilation failed")
+
+      # Run to generate KIR (auto-exits after serialization)
+      let runCmd = env & " timeout 1 " & nimBin & " || true"
+      discard execCmdEx(runCmd)
+
+      if not fileExists(kirFile):
+        raise newException(IOError, "Nim did not generate KIR file: " & kirFile)
+
+      echo "   ✅ KIR generated: " & kirFile
+      result = kirFile
+
+    else:
+      raise newException(ValueError, "Unsupported source file type: " & ext)
+
+proc compileToKIRForPage*(sourceFile: string, pageName: string): string =
+  ## Compile source file to KIR JSON format with a custom name for multi-page builds
+  let ext = sourceFile.splitFile().ext.toLowerAscii()
+  createDir(".kryon_cache")
+  let kirFile = ".kryon_cache/" & pageName & ".kir"
+
+  echo "   🏗️  Compiling " & ext & " → KIR..."
+
+  case ext:
+    of ".tsx", ".jsx":
+      # TSX/JSX → KIR via Bun parser
+      echo "   📦 Parsing TSX/JSX with Bun..."
+      discard parseTsxToKir(sourceFile, kirFile)
+      echo "   ✅ KIR generated: " & kirFile
+      result = kirFile
+
+    of ".kry":
+      # KRY → KIR via native parser
+      echo "   📝 Parsing KRY..."
+      let kryContent = readFile(sourceFile)
+      let ast = parseKry(kryContent, sourceFile)
+      let kirJson = transpileToKir(ast, preserveStatic = false)
+      writeFile(kirFile, kirJson.pretty())
+      echo "   ✅ KIR generated: " & kirFile
+      result = kirFile
+
+    of ".nim":
+      # Nim → KIR via compilation with KRYON_SERIALIZE_IR
+      echo "   🔨 Compiling Nim..."
       let nimBin = sourceFile.changeFileExt("")
       let env = "KRYON_SERIALIZE_IR=\"" & kirFile & "\""
       let compileCmd = env & " nim c -p:bindings/nim -o:" & nimBin & " " & sourceFile
