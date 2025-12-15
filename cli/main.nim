@@ -8,9 +8,12 @@ import std/[sequtils, sugar]
 
 # Compile-time backend selection flags
 # These allow building lightweight CLI variants for CI/CD
+# Use -d:terminalOnly for terminal-only build (no SDL3 deps)
+# Use -d:webBackend for web-only build (no SDL3 deps)
+# Use -d:desktopBackend for desktop build (requires SDL3)
 const
-  hasTerminalBackend* = defined(terminalOnly) or defined(staticBackend) or not (defined(desktopOnly) or defined(webOnly))
-  hasDesktopBackend* = defined(desktopBackend) or defined(staticBackend) or not (defined(terminalOnly) or defined(webOnly))
+  hasTerminalBackend* = defined(terminalOnly) or defined(staticBackend) or not (defined(desktopOnly) or defined(webBackend))
+  hasDesktopBackend* = defined(desktopBackend) or defined(staticBackend) or not (defined(terminalOnly) or defined(webBackend))
   hasWebBackend* = defined(webBackend) or defined(staticBackend)
 
 # CLI modules
