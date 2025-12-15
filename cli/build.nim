@@ -603,10 +603,23 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
     let tagName = case componentType:
       of "Text": "span"
       of "Button": "button"
+      of "Link": "a"
       of "Row", "Column", "Container": "div"
       else: "div"
 
-    html.add("<" & tagName & " id=\"" & componentId & "\" class=\"kryon-" & componentType.toLowerAscii() & "\">")
+    # Build opening tag with special attributes
+    var openingTag = "<" & tagName & " id=\"" & componentId & "\" class=\"kryon-" & componentType.toLowerAscii() & "\""
+
+    # Handle href for Link components
+    if componentType == "Link" and node.hasKey("href"):
+      openingTag.add(" href=\"" & node["href"].getStr() & "\"")
+
+    # Handle target for Link components
+    if componentType == "Link" and node.hasKey("target"):
+      openingTag.add(" target=\"" & node["target"].getStr() & "\"")
+
+    openingTag.add(">")
+    html.add(openingTag)
 
     # Extract styles
     var styles: seq[string] = @[]
@@ -742,6 +755,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .kryon-container { display: flex; }
 .kryon-button { cursor: pointer; border: none; }
 .kryon-text { display: inline; }
+.kryon-link { text-decoration: none; cursor: pointer; }
+.kryon-link:hover { text-decoration: underline; }
 """
 
   # Generate HTML file
