@@ -87,3 +87,4 @@ node_modules/
 bindings/typescript/build/
 bindings/typescript/node_modules/
 *.tsbuildinfo
+examples/tsx/

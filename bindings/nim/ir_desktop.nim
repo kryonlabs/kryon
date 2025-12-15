@@ -10,7 +10,7 @@ import ir_core
 {.passC: "-I" & currentSourcePath().parentDir() & "/../../backends/desktop".}
 
 # Link against desktop backend library
-{.passL: "-L" & currentSourcePath().parentDir() & "/../../build -lkryon_desktop -lkryon_ir".}
+{.passL: "-L" & currentSourcePath().parentDir() & "/../../build -lkryon_desktop -lkryon_ir -lharfbuzz -lfreetype -lfribidi".}
 
 # Types from ir_desktop_renderer.h
 type

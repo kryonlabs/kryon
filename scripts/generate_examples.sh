@@ -2,11 +2,12 @@
 # ==============================================================================
 # Kryon Example Auto-Generator
 # ==============================================================================
-# Generates .kir and .nim files from .kry source files
-# Validates round-trip transpilation (.kry → .kir → .nim → .kir)
+# Generates .kir and language-specific files from .kry source files
+# Validates round-trip transpilation (.kry → .kir → .lang → .kir)
 #
 # Usage:
-#   ./scripts/generate_examples.sh                    # Generate all
+#   ./scripts/generate_examples.sh                    # Generate all (nim)
+#   ./scripts/generate_examples.sh --lang=tsx         # Generate TSX
 #   ./scripts/generate_examples.sh hello_world        # Generate one
 #   ./scripts/generate_examples.sh --validate         # With validation
 #   ./scripts/generate_examples.sh --validate --diff  # Show diffs
@@ -14,7 +15,8 @@
 #   ./scripts/generate_examples.sh --parallel         # Parallel processing
 #
 # Output:
-#   examples/nim/*.nim              # Generated Nim examples (user-facing)
+#   examples/nim/*.nim              # Generated Nim examples
+#   examples/tsx/*.tsx              # Generated TSX examples
 #   build/generated/kir/*.kir       # Generated KIR files (debug)
 #   build/generated/roundtrip/*.kir # Round-trip KIR (validation)
 # ==============================================================================
@@ -25,6 +27,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 KRY_DIR="$PROJECT_DIR/examples/kry"
 OUTPUT_NIM_DIR="$PROJECT_DIR/examples/nim"
+OUTPUT_TSX_DIR="$PROJECT_DIR/examples/tsx"
 GEN_KIR_DIR="$PROJECT_DIR/build/generated/kir"
 GEN_ROUNDTRIP_DIR="$PROJECT_DIR/build/generated/roundtrip"
 KRYON="${KRYON:-$HOME/.local/bin/kryon}"
@@ -45,6 +48,7 @@ VERBOSE=false
 PARALLEL=false
 MAX_JOBS=4
 SPECIFIC_EXAMPLE=""
+LANG="nim"  # Default language
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -55,10 +59,12 @@ while [[ $# -gt 0 ]]; do
     --parallel) PARALLEL=true; shift ;;
     --jobs=*) MAX_JOBS="${1#*=}"; PARALLEL=true; shift ;;
     -j) PARALLEL=true; MAX_JOBS="$2"; shift 2 ;;
+    --lang=*) LANG="${1#*=}"; shift ;;
     -h|--help)
-      echo "Usage: $0 [example_name] [--validate] [--diff] [--clean] [--verbose] [--parallel] [-j N]"
+      echo "Usage: $0 [example_name] [--lang=nim|tsx] [--validate] [--diff] [--clean] [--verbose] [--parallel] [-j N]"
       echo ""
       echo "Options:"
+      echo "  --lang=LANG   Target language (nim, tsx). Default: nim"
       echo "  --validate    Validate round-trip transpilation"
       echo "  --diff        Show detailed diffs for mismatches"
       echo "  --clean       Remove all generated files"
@@ -72,10 +78,18 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Set output directory based on language
+case "$LANG" in
+  nim) OUTPUT_DIR="$OUTPUT_NIM_DIR"; EXT=".nim" ;;
+  tsx|jsx) OUTPUT_DIR="$OUTPUT_TSX_DIR"; EXT=".tsx" ;;
+  *) echo "Unknown language: $LANG"; exit 1 ;;
+esac
+
 # Clean mode
 if [ "$CLEAN" = true ]; then
   echo -e "${YELLOW}Cleaning generated files...${NC}"
   rm -rf "$OUTPUT_NIM_DIR"
+  rm -rf "$OUTPUT_TSX_DIR"
   rm -rf "$GEN_KIR_DIR"
   rm -rf "$GEN_ROUNDTRIP_DIR"
   echo -e "${GREEN}✓ Cleaned${NC}"
@@ -83,7 +97,7 @@ if [ "$CLEAN" = true ]; then
 fi
 
 # Create output directories
-mkdir -p "$OUTPUT_NIM_DIR"
+mkdir -p "$OUTPUT_DIR"
 mkdir -p "$GEN_KIR_DIR"
 mkdir -p "$GEN_ROUNDTRIP_DIR"
 
@@ -114,7 +128,8 @@ echo "=========================================="
 echo "Kryon Example Auto-Generator"
 echo "=========================================="
 echo "Source: $KRY_DIR"
-echo "Output: $OUTPUT_NIM_DIR"
+echo "Output: $OUTPUT_DIR"
+echo "Language: $LANG"
 echo "Examples: $total"
 [ "$VALIDATE" = true ] && echo "Mode: Validation enabled"
 [ "$PARALLEL" = true ] && echo "Mode: Parallel ($MAX_JOBS jobs)"
@@ -128,7 +143,7 @@ process_example() {
   local name=$(basename "$kry_file" .kry)
   local kir_static="$GEN_KIR_DIR/${name}_static.kir"
   local kir_expanded="$GEN_KIR_DIR/${name}.kir"
-  local nim_file="$OUTPUT_NIM_DIR/${name}.nim"
+  local output_file="$OUTPUT_DIR/${name}${EXT}"
   local roundtrip_kir="$GEN_ROUNDTRIP_DIR/${name}_roundtrip.kir"
   local result="success"
 
@@ -144,15 +159,16 @@ process_example() {
     return 1
   fi
 
-  # Step 3: .kir → .nim (codegen)
-  if ! "$KRYON" codegen "$kir_static" --lang=nim --output="$nim_file" >/dev/null 2>&1; then
+  # Step 3: .kir → target language (codegen)
+  if ! "$KRYON" codegen "$kir_static" --lang="$LANG" --output="$output_file" >/dev/null 2>&1; then
     echo "SKIPPED:$name:codegen"
     return 0
   fi
 
-  # Step 4: Validation (if requested)
-  if [ "$VALIDATE" = true ]; then
-    if ! "$KRYON" compile "$nim_file" --output="$roundtrip_kir" --no-cache >/dev/null 2>&1; then
+  # Step 4: Validation (if requested and language supports it)
+  # Note: TSX validation requires tsx_parser which may not be available yet
+  if [ "$VALIDATE" = true ] && [ "$LANG" = "nim" ]; then
+    if ! "$KRYON" compile "$output_file" --output="$roundtrip_kir" --no-cache >/dev/null 2>&1; then
       echo "FAILED:$name:roundtrip"
       return 1
     fi
@@ -169,7 +185,7 @@ process_example() {
   return 0
 }
 export -f process_example
-export KRYON GEN_KIR_DIR OUTPUT_NIM_DIR GEN_ROUNDTRIP_DIR VALIDATE COMPARE_SCRIPT
+export KRYON GEN_KIR_DIR OUTPUT_DIR EXT GEN_ROUNDTRIP_DIR VALIDATE COMPARE_SCRIPT LANG
 
 # ==============================================================================
 # Parallel Processing Mode
@@ -215,7 +231,7 @@ else
     name=$(basename "$kry_file" .kry)
     kir_static="$GEN_KIR_DIR/${name}_static.kir"
     kir_expanded="$GEN_KIR_DIR/${name}.kir"
-    nim_file="$OUTPUT_NIM_DIR/${name}.nim"
+    output_file="$OUTPUT_DIR/${name}${EXT}"
     roundtrip_kir="$GEN_ROUNDTRIP_DIR/${name}_roundtrip.kir"
 
     current=$((success + failed + validation_failed + 1))
@@ -239,25 +255,25 @@ else
     fi
     [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} .kry → .kir (expanded)"
 
-    # Step 3: .kir → .nim (codegen)
-    [ "$VERBOSE" = true ] && echo "  → Generating .kir → .nim..."
-    if ! "$KRYON" codegen "$kir_static" --lang=nim --output="$nim_file" >/dev/null 2>&1; then
-      echo -e "  ${YELLOW}⚠ Codegen not available (skipping .nim generation)${NC}"
+    # Step 3: .kir → target language (codegen)
+    [ "$VERBOSE" = true ] && echo "  → Generating .kir → $LANG..."
+    if ! "$KRYON" codegen "$kir_static" --lang="$LANG" --output="$output_file" >/dev/null 2>&1; then
+      echo -e "  ${YELLOW}⚠ Codegen not available (skipping $EXT generation)${NC}"
       success=$((success + 1))
       continue
     fi
-    [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} .kir → .nim"
+    [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} .kir → $LANG"
 
-    # Step 4: Validation (if requested)
-    if [ "$VALIDATE" = true ]; then
-      # Compile .nim → .kir (round-trip)
-      [ "$VERBOSE" = true ] && echo "  → Compiling .nim → .kir (round-trip)..."
-      if ! "$KRYON" compile "$nim_file" --output="$roundtrip_kir" --no-cache >/dev/null 2>&1; then
-        echo -e "  ${RED}✗ Failed: .nim → .kir (round-trip compilation)${NC}"
+    # Step 4: Validation (if requested and language supports it)
+    if [ "$VALIDATE" = true ] && [ "$LANG" = "nim" ]; then
+      # Compile generated file → .kir (round-trip)
+      [ "$VERBOSE" = true ] && echo "  → Compiling $LANG → .kir (round-trip)..."
+      if ! "$KRYON" compile "$output_file" --output="$roundtrip_kir" --no-cache >/dev/null 2>&1; then
+        echo -e "  ${RED}✗ Failed: $LANG → .kir (round-trip compilation)${NC}"
         validation_failed=$((validation_failed + 1))
         continue
       fi
-      [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} .nim → .kir (round-trip)"
+      [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} $LANG → .kir (round-trip)"
 
       # Compare .kir files (use normalize-and-compare)
       [ "$VERBOSE" = true ] && echo "  → Comparing .kir files..."
@@ -273,6 +289,9 @@ else
         echo -e "  ${YELLOW}⚠ Comparison script not found, skipping validation${NC}"
         success=$((success + 1))
       fi
+    elif [ "$VALIDATE" = true ] && [ "$LANG" != "nim" ]; then
+      echo -e "  ${YELLOW}⚠ Validation not yet supported for $LANG${NC}"
+      success=$((success + 1))
     else
       success=$((success + 1))
       echo -e "  ${GREEN}✓ Generated${NC}"
