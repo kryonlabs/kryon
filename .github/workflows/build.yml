@@ -33,22 +33,16 @@ jobs:
             libpng-static \
             zlib-static \
             brotli-static \
-            curl \
+            nim \
+            nimble \
             bash
 
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install Nim (choosenim)
-        run: |
-          curl https://nim-lang.org/choosenim/init.sh -sSf | sh -s -- -y
-          echo "$HOME/.nimble/bin" >> $GITHUB_PATH
-
       - name: Install Nim dependencies
-        run: |
-          export PATH="$HOME/.nimble/bin:$PATH"
-          nimble install -y parsetoml cligen
+        run: nimble install -y parsetoml cligen
 
       - name: Build terminal variant (static)
         run: |
@@ -178,22 +172,16 @@ jobs:
             libpng-static \
             zlib-static \
             brotli-static \
-            curl \
+            nim \
+            nimble \
             bash
 
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install Nim (choosenim)
-        run: |
-          curl https://nim-lang.org/choosenim/init.sh -sSf | sh -s -- -y
-          echo "$HOME/.nimble/bin" >> $GITHUB_PATH
-
       - name: Install Nim dependencies
-        run: |
-          export PATH="$HOME/.nimble/bin:$PATH"
-          nimble install -y parsetoml cligen
+        run: nimble install -y parsetoml cligen
 
       - name: Build web variant (static)
         run: |
