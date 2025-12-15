@@ -5,7 +5,7 @@
 
 .PHONY: all clean install install-dynamic install-static uninstall doctor dev test help
 .PHONY: build-cli build-lib build-dynamic build-static
-.PHONY: build-terminal build-desktop build-web build-all-variants
+.PHONY: build-terminal build-desktop build-web build-default build-all-variants
 .PHONY: test-serialization test-validation test-conversion test-backend test-integration test-all test-modular
 .PHONY: generate-examples validate-examples clean-generated
 
@@ -61,6 +61,7 @@ LIB_FILE = $(BUILD_DIR)/libkryon.a
 TERMINAL_BIN = $(BUILD_DIR)/kryon-terminal
 DESKTOP_BIN = $(BUILD_DIR)/kryon-desktop
 WEB_BIN = $(BUILD_DIR)/kryon-web
+DEFAULT_BIN = $(BUILD_DIR)/kryon-full
 
 # Default target
 all: build-cli build-lib
@@ -132,22 +133,37 @@ $(DESKTOP_BIN): $(CLI_SRC)
 		-o:$(DESKTOP_BIN) $(CLI_SRC)
 	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
 
-# Web CLI (for WASM compilation target)
+# Web CLI (for website generation - HTML/CSS/JS)
 build-web: $(WEB_BIN)
 
 $(WEB_BIN): $(CLI_SRC)
-	@echo "Building Kryon CLI (web target)..."
+	@echo "Building Kryon CLI (web target with HTML/CSS/JS generation)..."
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C ir all
-	-$(MAKE) -C backends/web all 2>/dev/null || true
+	$(MAKE) -C backends/web all
 	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
 	$(NIM) c $(NIMFLAGS) $(WEB_FLAGS) \
-		--passL:"-L$(BUILD_DIR) -lkryon_ir" \
+		--passL:"-L$(BUILD_DIR) -lkryon_ir -lkryon_web" \
 		-o:$(WEB_BIN) $(CLI_SRC)
 	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
 
+# Default CLI (all backends - terminal, desktop, web)
+build-default: $(DEFAULT_BIN)
+
+$(DEFAULT_BIN): $(CLI_SRC)
+	@echo "Building Kryon CLI (all backends)..."
+	@mkdir -p $(BUILD_DIR)
+	$(MAKE) -C ir all
+	$(MAKE) -C backends/desktop all
+	$(MAKE) -C backends/web all
+	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
+	$(NIM) c $(NIMFLAGS) -d:staticBackend --opt:speed \
+		--passL:"-L$(BUILD_DIR) -lkryon_ir -lkryon_desktop -lkryon_web $(SDL3_LIBS) $(SDL_TTF_LIBS)" \
+		-o:$(DEFAULT_BIN) $(CLI_SRC)
+	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
+
 # Build all renderer variants
-build-all-variants: build-terminal build-desktop build-web
+build-all-variants: build-terminal build-desktop build-web build-default
 	@echo "✅ All renderer variants built successfully!"
 
 # Build library for use by other projects
@@ -465,7 +481,8 @@ help:
 	@echo "Renderer-specific builds (for CI):"
 	@echo "  build-terminal      Terminal-only CLI (no SDL3 deps)"
 	@echo "  build-desktop       Desktop CLI with SDL3 support"
-	@echo "  build-web           Web/WASM compilation target"
+	@echo "  build-web           Web CLI (HTML/CSS/JS generation)"
+	@echo "  build-default       Full CLI with all backends"
 	@echo "  build-all-variants  Build all renderer variants"
 	@echo ""
 	@echo "Installation:"
