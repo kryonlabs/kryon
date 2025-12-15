@@ -756,6 +756,16 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         cJSON_AddBoolToObject(obj, "checked", is_checked);
     }
 
+    // Serialize Image src and alt
+    if (component->type == IR_COMPONENT_IMAGE) {
+        if (component->custom_data) {
+            cJSON_AddStringToObject(obj, "src", component->custom_data);
+        }
+        if (component->text_content) {
+            cJSON_AddStringToObject(obj, "alt", component->text_content);
+        }
+    }
+
     // Serialize dropdown state (stored in custom_data as IRDropdownState*)
     if (component->type == IR_COMPONENT_DROPDOWN && component->custom_data) {
         IRDropdownState* state = (IRDropdownState*)component->custom_data;
@@ -2076,6 +2086,20 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
             // Store the binding expression (e.g., "{{newTodo}}")
             component->text_expression = strdup(item->valuestring);
             printf("[deserialize] Input value binding: %s\n", item->valuestring);
+        }
+    }
+
+    // Parse Image src and alt
+    if (component->type == IR_COMPONENT_IMAGE) {
+        // Parse src (also accept "source" as alias)
+        item = cJSON_GetObjectItem(json, "src");
+        if (!item) item = cJSON_GetObjectItem(json, "source");
+        if (item && cJSON_IsString(item)) {
+            ir_set_custom_data(component, item->valuestring);
+        }
+        // Parse alt text
+        if ((item = cJSON_GetObjectItem(json, "alt")) != NULL && cJSON_IsString(item)) {
+            component->text_content = strdup(item->valuestring);
         }
     }
 

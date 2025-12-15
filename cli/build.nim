@@ -170,6 +170,15 @@ proc buildForTarget*(target: string) =
 
       echo "📁 Building page: " & page.file & " → " & page.path
       buildWithIRForPage(page.file, target, page.path, cfg, page.docsFile)
+
+    # Copy assets directory if it exists
+    if dirExists("assets"):
+      let destAssets = "build/assets"
+      if dirExists(destAssets):
+        removeDir(destAssets)
+      copyDir("assets", destAssets)
+      echo "📁 Copied assets/ → build/assets/"
+
     return
 
   # Find source file - check config entry first, then auto-detect
@@ -977,6 +986,48 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
   var htmlBody = ""
   var idCounter = 1000  # For generated IDs
 
+  # Helper to resolve template strings like "https://x.com/{{twitter|replace:@:}}"
+  proc resolveTemplateString(tmpl: string, props: Table[string, JsonNode]): string =
+    result = tmpl
+    var i = 0
+    while i < result.len:
+      if i + 1 < result.len and result[i] == '{' and result[i+1] == '{':
+        # Find closing }}
+        let start = i
+        var j = i + 2
+        while j + 1 < result.len and not (result[j] == '}' and result[j+1] == '}'):
+          inc j
+        if j + 1 < result.len:
+          # Extract variable expression: varName or varName|transform
+          let expr = result[start+2 .. j-1]
+          var varName = expr
+          var transform = ""
+          let pipePos = expr.find('|')
+          if pipePos >= 0:
+            varName = expr[0 ..< pipePos]
+            transform = expr[pipePos+1 .. ^1]
+
+          # Resolve variable value
+          var value = ""
+          if props.hasKey(varName):
+            value = props[varName].getStr()
+
+          # Apply transform if present
+          if transform.startsWith("replace:"):
+            let parts = transform[8 .. ^1].split(':')
+            if parts.len >= 1:
+              let fromStr = parts[0]
+              let toStr = if parts.len >= 2: parts[1] else: ""
+              value = value.replace(fromStr, toStr)
+
+          # Replace the placeholder
+          result = result[0 ..< start] & value & result[j+2 .. ^1]
+          i = start + value.len
+        else:
+          inc i
+      else:
+        inc i
+
   proc generateComponentCssAndHtml(node: JsonNode, parentId: string = "", depth: int = 0, props: Table[string, JsonNode] = initTable[string, JsonNode]()): tuple[css: string, html: string] =
     var css = ""
     var html = ""
@@ -985,12 +1036,24 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
     let componentId = if node.hasKey("id"): "c" & $node["id"].getInt() else: "c" & $idCounter
     idCounter += 1
 
+    # Check conditional rendering: when property
+    if node.hasKey("when"):
+      let whenNode = node["when"]
+      if whenNode.kind == JObject and whenNode.hasKey("var"):
+        let varName = whenNode["var"].getStr()
+        # Skip this component if the condition variable is not set or empty
+        if not props.hasKey(varName):
+          return ("", "")
+        let propVal = props[varName]
+        if propVal.kind == JNull or (propVal.kind == JString and propVal.getStr() == ""):
+          return ("", "")
+
     # Check if this is a custom component that needs expansion
     if componentMap.hasKey(componentType):
       # Collect props from the call site
       var callProps = initTable[string, JsonNode]()
       for key, val in node.pairs:
-        if key notin ["id", "type", "children"]:
+        if key notin ["id", "type", "children", "when"]:
           callProps[key] = val
       # Expand the component template with props
       let componentTemplate = componentMap[componentType]
@@ -1001,6 +1064,7 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
       of "Text": "span"
       of "Button": "button"
       of "Link": "a"
+      of "Image": "img"
       of "Markdown": "div"
       of "Row", "Column", "Container": "div"
       else: "div"
@@ -1010,14 +1074,56 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
 
     # Handle href for Link components
     if componentType == "Link" and node.hasKey("href"):
-      openingTag.add(" href=\"" & node["href"].getStr() & "\"")
+      let hrefNode = node["href"]
+      var hrefVal = ""
+      if hrefNode.kind == JObject and hrefNode.hasKey("var"):
+        let varName = hrefNode["var"].getStr()
+        if props.hasKey(varName):
+          hrefVal = props[varName].getStr()
+      elif hrefNode.kind == JObject and hrefNode.hasKey("template"):
+        # Template string like "https://x.com/{{twitter|replace:@:}}"
+        hrefVal = resolveTemplateString(hrefNode["template"].getStr(), props)
+      elif hrefNode.kind == JString:
+        hrefVal = hrefNode.getStr()
+      openingTag.add(" href=\"" & hrefVal & "\"")
 
     # Handle target for Link components
     if componentType == "Link" and node.hasKey("target"):
       openingTag.add(" target=\"" & node["target"].getStr() & "\"")
 
-    openingTag.add(">")
-    html.add(openingTag)
+    # Handle src and alt for Image components
+    if componentType == "Image":
+      if node.hasKey("src"):
+        let srcNode = node["src"]
+        # Resolve variable reference if present
+        var srcVal = ""
+        if srcNode.kind == JObject and srcNode.hasKey("var"):
+          let varName = srcNode["var"].getStr()
+          if props.hasKey(varName):
+            srcVal = props[varName].getStr()
+        elif srcNode.kind == JString:
+          srcVal = srcNode.getStr()
+        if srcVal.len > 0:
+          openingTag.add(" src=\"" & srcVal & "\"")
+      if node.hasKey("alt"):
+        let altNode = node["alt"]
+        var altVal = ""
+        if altNode.kind == JObject and altNode.hasKey("var"):
+          let varName = altNode["var"].getStr()
+          if props.hasKey(varName):
+            altVal = props[varName].getStr()
+        elif altNode.kind == JString:
+          altVal = altNode.getStr()
+        if altVal.len > 0:
+          openingTag.add(" alt=\"" & altVal & "\"")
+
+    # Self-closing for void elements (img)
+    if componentType == "Image":
+      openingTag.add(" />")
+      html.add(openingTag)
+    else:
+      openingTag.add(">")
+      html.add(openingTag)
 
     # Extract styles
     var styles: seq[string] = @[]
@@ -1225,15 +1331,16 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
       if mdSource.len > 0:
         html.add(convertMarkdownToHtml(mdSource))
 
-    # Process children
-    if node.hasKey("children"):
+    # Process children (skip for self-closing elements like Image)
+    if componentType != "Image" and node.hasKey("children"):
       for child in node["children"]:
         let (childCss, childHtml) = generateComponentCssAndHtml(child, componentId, depth + 1, props)
         css.add(childCss)
         html.add(childHtml)
 
-    # Close HTML element
-    html.add("</" & tagName & ">")
+    # Close HTML element (skip for self-closing elements like Image)
+    if componentType != "Image":
+      html.add("</" & tagName & ">")
 
     result = (css, html)
 

@@ -733,6 +733,12 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                     break;
                 }
 
+                // Handle ESC on key DOWN for more responsive exit (in addition to KEY_UP)
+                if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
+                    renderer->running = false;
+                    break;
+                }
+
                 // Backspace handling for focused input
                 if (focused_input && event.key.key == SDLK_BACKSPACE) {
                     const char* current = focused_input->text_content ? focused_input->text_content : "";

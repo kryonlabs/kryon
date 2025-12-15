@@ -1555,6 +1555,13 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
     table->rendered_bounds.width = total_width;
     table->rendered_bounds.height = total_height;
 
+    // Mark layout as cached with current input dimensions
+    if (state) {
+        state->layout_valid = true;
+        state->cached_available_width = available_width;
+        state->cached_available_height = available_height;
+    }
+
     #ifdef KRYON_TRACE_LAYOUT
     fprintf(stderr, "📊 TABLE_LAYOUT: %u cols x %u rows, size=%.1fx%.1f\n",
             num_cols, num_rows, total_width, total_height);

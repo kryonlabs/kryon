@@ -114,6 +114,12 @@ proc newKryonCenter*(): ptr IRComponent =
 proc newKryonInput*(): ptr IRComponent =
   result = ir_create_component(IR_COMPONENT_INPUT)
 
+proc newKryonImage*(src: string, alt: string = ""): ptr IRComponent =
+  result = ir_create_component(IR_COMPONENT_IMAGE)
+  ir_set_custom_data(result, cstring(src))
+  if alt.len > 0:
+    ir_set_text_content(result, cstring(alt))
+
 proc newKryonCheckbox*(label: string = ""): ptr IRComponent =
   result = ir_checkbox(cstring(label))
 

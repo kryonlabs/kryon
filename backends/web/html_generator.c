@@ -263,6 +263,11 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             if (component->custom_data) {  // src URL
                 html_generator_write_format(generator, " src=\"%s\"", component->custom_data);
             }
+            if (component->text_content) {  // alt text
+                char escaped_alt[1024];
+                escape_html_text(component->text_content, escaped_alt, sizeof(escaped_alt));
+                html_generator_write_format(generator, " alt=\"%s\"", escaped_alt);
+            }
             break;
 
         case IR_COMPONENT_CANVAS:

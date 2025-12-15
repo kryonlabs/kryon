@@ -60,8 +60,88 @@
 #include "../../ir/ir_style_vars.h"
 #include "../../ir/ir_plugin.h"
 #include "../../core/include/kryon_canvas.h"
+#include "../../third_party/stb/stb_image.h"
 
 #ifdef ENABLE_SDL3
+
+// Image texture cache - simple linked list for now
+typedef struct ImageCacheEntry {
+    char* path;
+    SDL_Texture* texture;
+    int width;
+    int height;
+    struct ImageCacheEntry* next;
+} ImageCacheEntry;
+
+static ImageCacheEntry* image_cache = NULL;
+
+static SDL_Texture* load_image_texture(SDL_Renderer* renderer, const char* path, int* out_width, int* out_height) {
+    // Check cache first
+    for (ImageCacheEntry* entry = image_cache; entry; entry = entry->next) {
+        if (strcmp(entry->path, path) == 0) {
+            if (out_width) *out_width = entry->width;
+            if (out_height) *out_height = entry->height;
+            return entry->texture;
+        }
+    }
+
+    // Load file into memory first (stbi_load requires STDIO which is disabled in IR)
+    FILE* f = fopen(path, "rb");
+    if (!f) {
+        fprintf(stderr, "[kryon][image] Failed to open image file: %s\n", path);
+        return NULL;
+    }
+    fseek(f, 0, SEEK_END);
+    long file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    unsigned char* file_data = malloc(file_size);
+    if (!file_data) {
+        fclose(f);
+        return NULL;
+    }
+    fread(file_data, 1, file_size, f);
+    fclose(f);
+
+    // Load image with stb_image from memory
+    int width, height, channels;
+    unsigned char* data = stbi_load_from_memory(file_data, file_size, &width, &height, &channels, 4);  // Force RGBA
+    free(file_data);
+    if (!data) {
+        fprintf(stderr, "[kryon][image] Failed to decode image: %s\n", path);
+        return NULL;
+    }
+
+    // Create SDL surface from pixel data
+    SDL_Surface* surface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, data, width * 4);
+    if (!surface) {
+        fprintf(stderr, "[kryon][image] Failed to create surface: %s\n", SDL_GetError());
+        stbi_image_free(data);
+        return NULL;
+    }
+
+    // Create texture from surface
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_DestroySurface(surface);
+    stbi_image_free(data);
+
+    if (!texture) {
+        fprintf(stderr, "[kryon][image] Failed to create texture: %s\n", SDL_GetError());
+        return NULL;
+    }
+
+    // Add to cache
+    ImageCacheEntry* entry = malloc(sizeof(ImageCacheEntry));
+    entry->path = strdup(path);
+    entry->texture = texture;
+    entry->width = width;
+    entry->height = height;
+    entry->next = image_cache;
+    image_cache = entry;
+
+    if (out_width) *out_width = width;
+    if (out_height) *out_height = height;
+    return texture;
+}
 
 /*
  * ============================================================================
@@ -848,6 +928,44 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             }
             break;
 
+        case IR_COMPONENT_IMAGE: {
+            // Image component - load and render image from src (stored in custom_data)
+            const char* src = component->custom_data;
+            if (src && strlen(src) > 0) {
+                int img_width, img_height;
+                SDL_Texture* texture = load_image_texture(renderer->renderer, src, &img_width, &img_height);
+                if (texture) {
+                    // Apply opacity
+                    float opacity = inherited_opacity;
+                    if (component->style) {
+                        opacity *= component->style->opacity;
+                    }
+                    SDL_SetTextureAlphaMod(texture, (Uint8)(opacity * 255));
+
+                    // Determine destination rect
+                    SDL_FRect dest_rect;
+                    dest_rect.x = rect.x;
+                    dest_rect.y = rect.y;
+
+                    // Use component dimensions if set, otherwise use image intrinsic size
+                    if (component->style && component->style->width.value > 0) {
+                        dest_rect.w = rect.width;
+                    } else {
+                        dest_rect.w = (float)img_width;
+                    }
+                    if (component->style && component->style->height.value > 0) {
+                        dest_rect.h = rect.height;
+                    } else {
+                        dest_rect.h = (float)img_height;
+                    }
+
+                    // Render the image
+                    SDL_RenderTexture(renderer->renderer, texture, NULL, &dest_rect);
+                }
+            }
+            break;
+        }
+
         case IR_COMPONENT_TAB_GROUP:
         case IR_COMPONENT_TAB_BAR:
         case IR_COMPONENT_TAB_CONTENT:
@@ -960,7 +1078,6 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
         }
 
         case IR_COMPONENT_TABLE_CELL: {
-            fprintf(stderr, "DEBUG: Cell switch case start id=%d\n", component->id);
             // Regular cell - render background and border
             IRComponent* table = NULL;
             IRComponent* p = component->parent;
@@ -968,17 +1085,14 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 if (p->type == IR_COMPONENT_TABLE) { table = p; break; }
                 p = p->parent;
             }
-            fprintf(stderr, "DEBUG: Cell found table=%p\n", (void*)table);
 
             IRTableState* table_state = table ? (IRTableState*)table->custom_data : NULL;
             float opacity = component->style ? component->style->opacity * inherited_opacity : inherited_opacity;
 
             // Draw cell background (if explicitly set)
-            fprintf(stderr, "DEBUG: Cell rendering bg\n");
             render_background(renderer->renderer, component, &sdl_rect, opacity);
 
             // Draw cell border
-            fprintf(stderr, "DEBUG: Cell rendering border\n");
             if (table_state && table_state->style.show_borders && table_state->style.border_width > 0) {
                 IRColor border_color = table_state->style.border_color;
                 SDL_SetRenderDrawColor(renderer->renderer,
@@ -988,24 +1102,18 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             }
 
             // Render cell text content
-            fprintf(stderr, "DEBUG: Cell text content=%s\n", component->text_content ? component->text_content : "(null)");
             if (component->text_content) {
                 float font_size = component->style && component->style->font.size > 0 ? component->style->font.size : 14.0f;
-                fprintf(stderr, "DEBUG: Cell resolving font size=%.1f\n", font_size);
                 TTF_Font* font = desktop_ir_resolve_font(renderer, component, font_size);
-                fprintf(stderr, "DEBUG: Cell font=%p\n", (void*)font);
                 if (font) {
                     SDL_Color text_color = component->style ? ir_color_to_sdl(component->style->font.color) : (SDL_Color){255, 255, 255, 255};
                     if (text_color.a == 0) text_color = (SDL_Color){255, 255, 255, 255};  // Default to white
                     text_color.a = (uint8_t)(text_color.a * opacity);
                     float cell_padding = table_state ? table_state->style.cell_padding : 8.0f;
-                    fprintf(stderr, "DEBUG: Cell calling render_text_with_shadow\n");
                     render_text_with_shadow(renderer->renderer, font, component->text_content, text_color, component,
                                            rect.x + cell_padding, rect.y + cell_padding);
-                    fprintf(stderr, "DEBUG: Cell render_text_with_shadow done\n");
                 }
             }
-            fprintf(stderr, "DEBUG: Cell switch case returning\n");
             // Cell rendering is complete - don't fall through to child rendering
             return true;
         }
@@ -1492,16 +1600,20 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
     // Special handling for TABLE components - use table layout algorithm
     if (component->type == IR_COMPONENT_TABLE && component->child_count > 0) {
-        // Call table layout to compute cell positions
-        fprintf(stderr, "DEBUG: TABLE layout start id=%d\n", component->id);
-        ir_layout_compute_table(component, child_rect.width, child_rect.height);
-        fprintf(stderr, "DEBUG: TABLE layout done id=%d\n", component->id);
+        // Only recompute if cache invalid or dimensions changed
+        IRTableState* table_state = (IRTableState*)component->custom_data;
+        bool need_layout = !table_state || !table_state->layout_valid ||
+                           table_state->cached_available_width != child_rect.width ||
+                           table_state->cached_available_height != child_rect.height;
+
+        if (need_layout) {
+            ir_layout_compute_table(component, child_rect.width, child_rect.height);
+        }
 
         // Calculate cascaded opacity for children
         float child_opacity = (component->style ? component->style->opacity : 1.0f) * inherited_opacity;
 
         // Render table sections (TableHead, TableBody, TableFoot)
-        fprintf(stderr, "DEBUG: TABLE rendering %d sections\n", component->child_count);
         for (uint32_t i = 0; i < component->child_count; i++) {
             IRComponent* section = component->children[i];
             if (!section) continue;
@@ -1515,12 +1627,9 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 .height = section->rendered_bounds.height
             };
 
-            fprintf(stderr, "DEBUG: TABLE rendering section %d type=%d\n", i, section->type);
             // Render the section (transparent, just for structure)
             render_component_sdl3(renderer, section, section_rect, child_opacity);
-            fprintf(stderr, "DEBUG: TABLE section %d done\n", i);
         }
-        fprintf(stderr, "DEBUG: TABLE done\n");
         return true;
     }
 
@@ -1528,7 +1637,6 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
     if ((component->type == IR_COMPONENT_TABLE_HEAD ||
          component->type == IR_COMPONENT_TABLE_BODY ||
          component->type == IR_COMPONENT_TABLE_FOOT) && component->child_count > 0) {
-        fprintf(stderr, "DEBUG: Section type=%d rendering %d rows\n", component->type, component->child_count);
         float child_opacity = (component->style ? component->style->opacity : 1.0f) * inherited_opacity;
 
         for (uint32_t i = 0; i < component->child_count; i++) {
@@ -1543,17 +1651,13 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 .height = row->rendered_bounds.height
             };
 
-            fprintf(stderr, "DEBUG: Rendering row %d type=%d\n", i, row->type);
             render_component_sdl3(renderer, row, row_rect, child_opacity);
-            fprintf(stderr, "DEBUG: Row %d done\n", i);
         }
-        fprintf(stderr, "DEBUG: Section done\n");
         return true;
     }
 
     // Special handling for TABLE rows - render cells
     if (component->type == IR_COMPONENT_TABLE_ROW && component->child_count > 0) {
-        fprintf(stderr, "DEBUG: Row rendering %d cells\n", component->child_count);
         float child_opacity = (component->style ? component->style->opacity : 1.0f) * inherited_opacity;
 
         for (uint32_t i = 0; i < component->child_count; i++) {
@@ -1568,11 +1672,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 .height = cell->rendered_bounds.height > 0 ? cell->rendered_bounds.height : rect.height
             };
 
-            fprintf(stderr, "DEBUG: Rendering cell %d type=%d\n", i, cell->type);
             render_component_sdl3(renderer, cell, cell_rect, child_opacity);
-            fprintf(stderr, "DEBUG: Cell %d done\n", i);
         }
-        fprintf(stderr, "DEBUG: Row done\n");
         return true;
     }
 

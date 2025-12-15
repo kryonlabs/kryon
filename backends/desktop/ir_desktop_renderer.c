@@ -494,6 +494,8 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
         /* Frame rate limiting */
         if (renderer->config.target_fps > 0) {
             SDL_Delay(1000 / renderer->config.target_fps);
+        } else {
+            SDL_Delay(1);  // Minimum delay to allow event processing
         }
     }
 #endif
