@@ -76,6 +76,24 @@ function evaluateExpression(node: t.Node): any {
       }
     }
     return result;
+  } else if (t.isBinaryExpression(node)) {
+    // Handle arithmetic expressions like spacing.xxxl * 2
+    const left = evaluateExpression(node.left);
+    const right = evaluateExpression(node.right);
+    if (typeof left === 'number' && typeof right === 'number') {
+      switch (node.operator) {
+        case '+': return left + right;
+        case '-': return left - right;
+        case '*': return left * right;
+        case '/': return left / right;
+        case '%': return left % right;
+      }
+    }
+    // Also handle string concatenation
+    if (node.operator === '+' && (typeof left === 'string' || typeof right === 'string')) {
+      return String(left ?? '') + String(right ?? '');
+    }
+    return null;
   }
   return null;
 }
