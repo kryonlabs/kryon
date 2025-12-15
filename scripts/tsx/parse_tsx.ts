@@ -260,6 +260,12 @@ function parseJSXElement(node: t.JSXElement, state: ParsedState): KirNode {
             result.text = value;
           }
           break;
+        case 'href':
+          result.href = value;
+          break;
+        case 'target':
+          result.target = value;
+          break;
         case 'onClick':
           if (value && typeof value === 'object' && value.handler) {
             // Register event handler

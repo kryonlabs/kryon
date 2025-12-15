@@ -38,8 +38,11 @@ jobs:
             bash
 
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Fetch submodules
+        run: |
+          git config --global --add safe.directory /__w/kryon/kryon
+          git submodule update --init --recursive
 
       - name: Install Nim dependencies
         run: nimble install -y parsetoml cligen
@@ -177,8 +180,11 @@ jobs:
             bash
 
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Fetch submodules
+        run: |
+          git config --global --add safe.directory /__w/kryon/kryon
+          git submodule update --init --recursive
 
       - name: Install Nim dependencies
         run: nimble install -y parsetoml cligen
