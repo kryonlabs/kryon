@@ -297,6 +297,16 @@ proc mapPropertyName(name: string): string =
   of "onClick": "on_click"
   of "onLoad": "on_load"
   of "onHover": "on_hover"
+  # Table properties
+  of "colspan": "colspan"
+  of "rowspan": "rowspan"
+  of "cellPadding": "cell_padding"
+  of "headerBackground": "header_background"
+  of "evenRowBackground": "even_row_background"
+  of "oddRowBackground": "odd_row_background"
+  of "showBorders": "show_borders"
+  of "striped": "striped"
+  of "textAlign": "text_align"
   else: name
 
 # Transpile a component instance to IR
@@ -314,6 +324,21 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
   var borderRadius: JsonNode = nil
   var posX: JsonNode = nil
   var posY: JsonNode = nil
+
+  # Collect table cell properties for nested cell_data object
+  var cellColspan: JsonNode = nil
+  var cellRowspan: JsonNode = nil
+  var cellAlignment: JsonNode = nil
+
+  # Collect table config properties for nested table_config object
+  var tableBorderColor: JsonNode = nil
+  var tableHeaderBg: JsonNode = nil
+  var tableEvenRowBg: JsonNode = nil
+  var tableOddRowBg: JsonNode = nil
+  var tableBorderWidth: JsonNode = nil
+  var tableCellPadding: JsonNode = nil
+  var tableShowBorders: JsonNode = nil
+  var tableStriped: JsonNode = nil
 
   # Handle positional arguments for custom components
   # Map positional args to parameter names from component definition
@@ -413,6 +438,26 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
         posX = simpleVal
       of "posY":
         posY = simpleVal
+      # Handle table cell properties for nested cell_data object
+      of "colspan":
+        cellColspan = simpleVal
+      of "rowspan":
+        cellRowspan = simpleVal
+      of "text_align":
+        cellAlignment = simpleVal
+      # Handle table config properties for nested table_config object
+      of "cell_padding":
+        tableCellPadding = simpleVal
+      of "header_background":
+        tableHeaderBg = simpleVal
+      of "even_row_background":
+        tableEvenRowBg = simpleVal
+      of "odd_row_background":
+        tableOddRowBg = simpleVal
+      of "show_borders":
+        tableShowBorders = simpleVal
+      of "striped":
+        tableStriped = simpleVal
       else:
         result[irName] = simpleVal
 
@@ -434,6 +479,41 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
       result["left"] = posX
     if not posY.isNil:
       result["top"] = posY
+
+  # Build nested cell_data object if any cell properties were set (for TableCell, TableHeaderCell)
+  if not cellColspan.isNil or not cellRowspan.isNil or not cellAlignment.isNil:
+    var cellDataObj = newJObject()
+    if not cellColspan.isNil:
+      cellDataObj["colspan"] = cellColspan
+    if not cellRowspan.isNil:
+      cellDataObj["rowspan"] = cellRowspan
+    if not cellAlignment.isNil:
+      cellDataObj["alignment"] = cellAlignment
+    result["cell_data"] = cellDataObj
+
+  # Build nested table_config object if any table properties were set (for Table)
+  if not tableBorderColor.isNil or not tableHeaderBg.isNil or
+     not tableEvenRowBg.isNil or not tableOddRowBg.isNil or
+     not tableBorderWidth.isNil or not tableCellPadding.isNil or
+     not tableShowBorders.isNil or not tableStriped.isNil:
+    var tableConfigObj = newJObject()
+    if not tableBorderColor.isNil:
+      tableConfigObj["borderColor"] = tableBorderColor
+    if not tableHeaderBg.isNil:
+      tableConfigObj["headerBackground"] = tableHeaderBg
+    if not tableEvenRowBg.isNil:
+      tableConfigObj["evenRowBackground"] = tableEvenRowBg
+    if not tableOddRowBg.isNil:
+      tableConfigObj["oddRowBackground"] = tableOddRowBg
+    if not tableBorderWidth.isNil:
+      tableConfigObj["borderWidth"] = tableBorderWidth
+    if not tableCellPadding.isNil:
+      tableConfigObj["cellPadding"] = tableCellPadding
+    if not tableShowBorders.isNil:
+      tableConfigObj["showBorders"] = tableShowBorders
+    if not tableStriped.isNil:
+      tableConfigObj["striped"] = tableStriped
+    result["table_config"] = tableConfigObj
 
   # Process children
   if node.componentChildren.len > 0:

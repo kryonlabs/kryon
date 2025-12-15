@@ -1,0 +1,135 @@
+// Table Demo - HTML-like tables with colspan/rowspan support
+// Demonstrates table styling, header backgrounds, and striped rows
+
+App {
+  windowTitle = "Table Demo"
+  windowWidth = 800
+  windowHeight = 600
+  backgroundColor = "#1a1a2e"
+
+  Column {
+    padding = 20
+    gap = 20
+    width = "100%"
+    height = "100%"
+
+    // Title
+    Text {
+      text = "Product Inventory"
+      fontSize = 24
+      fontWeight = 700
+      color = "#ffffff"
+    }
+
+    // Basic table with striped rows
+    Table {
+      cellPadding = 12
+      striped = true
+      showBorders = true
+      headerBackground = "#16213e"
+      evenRowBackground = "#0f3460"
+      oddRowBackground = "#1a1a2e"
+
+      TableHead {
+        Tr {
+          Th { text = "ID" }
+          Th { text = "Product Name" }
+          Th { text = "Category" }
+          Th { text = "Price" }
+          Th { text = "Stock" }
+        }
+      }
+
+      TableBody {
+        Tr {
+          Td { text = "1" }
+          Td { text = "Wireless Mouse" }
+          Td { text = "Electronics" }
+          Td { text = "$29.99" }
+          Td { text = "150" }
+        }
+        Tr {
+          Td { text = "2" }
+          Td { text = "USB-C Cable" }
+          Td { text = "Accessories" }
+          Td { text = "$12.99" }
+          Td { text = "500" }
+        }
+        Tr {
+          Td { text = "3" }
+          Td { text = "Mechanical Keyboard" }
+          Td { text = "Electronics" }
+          Td { text = "$89.99" }
+          Td { text = "75" }
+        }
+        Tr {
+          Td { text = "4" }
+          Td { text = "Monitor Stand" }
+          Td { text = "Furniture" }
+          Td { text = "$45.00" }
+          Td { text = "30" }
+        }
+      }
+    }
+
+    // Spacing
+    Container { height = 20 }
+
+    // Table with colspan/rowspan
+    Text {
+      text = "Schedule (with colspan/rowspan)"
+      fontSize = 18
+      fontWeight = 600
+      color = "#e94560"
+    }
+
+    Table {
+      cellPadding = 10
+      showBorders = true
+      headerBackground = "#533483"
+      evenRowBackground = "#2c2c54"
+      oddRowBackground = "#1a1a2e"
+
+      TableHead {
+        Tr {
+          Th { text = "Time" }
+          Th { text = "Monday" }
+          Th { text = "Tuesday" }
+          Th { text = "Wednesday" }
+        }
+      }
+
+      TableBody {
+        Tr {
+          Td { text = "9:00 AM" }
+          Td {
+            text = "Meeting"
+            colspan = 2
+          }
+          Td { text = "Code Review" }
+        }
+        Tr {
+          Td { text = "10:00 AM" }
+          Td {
+            text = "Development"
+            rowspan = 2
+          }
+          Td { text = "Testing" }
+          Td { text = "Development" }
+        }
+        Tr {
+          Td { text = "11:00 AM" }
+          Td { text = "Documentation" }
+          Td { text = "Planning" }
+        }
+        Tr {
+          Td { text = "12:00 PM" }
+          Td {
+            text = "Lunch Break"
+            colspan = 3
+          }
+        }
+      }
+    }
+  }
+}

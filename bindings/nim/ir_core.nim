@@ -463,6 +463,97 @@ proc ir_tabgroup_handle_tab_click*(state: ptr TabGroupState; tab_index: uint32) 
 # Tab Group Cleanup
 proc ir_tabgroup_destroy_state*(state: ptr TabGroupState) {.importc, cdecl, header: "ir_builder.h".}
 
+# ============================================================================
+# Table Component Support
+# ============================================================================
+
+type
+  IRTableCellData* {.importc: "IRTableCellData", header: "ir_core.h".} = object
+    colspan*: uint16
+    rowspan*: uint16
+    alignment*: uint8
+    vertical_alignment*: uint8
+    is_spanned*: bool
+    spanned_by_id*: uint32
+
+  IRTableColumnDef* {.importc: "IRTableColumnDef", header: "ir_core.h".} = object
+    min_width*: IRDimension
+    max_width*: IRDimension
+    width*: IRDimension
+    alignment*: IRAlignment
+    auto_size*: bool
+
+  IRTableStyle* {.importc: "IRTableStyle", header: "ir_core.h".} = object
+    header_background*: IRColor
+    even_row_background*: IRColor
+    odd_row_background*: IRColor
+    border_color*: IRColor
+    border_width*: cfloat
+    cell_padding*: cfloat
+    show_borders*: bool
+    striped_rows*: bool
+    header_sticky*: bool
+    collapse_borders*: bool
+
+  IRTableState* {.importc: "IRTableState", header: "ir_core.h".} = object
+    columns*: ptr IRTableColumnDef
+    column_count*: uint32
+    calculated_widths*: ptr cfloat
+    calculated_heights*: ptr cfloat
+    row_count*: uint32
+    header_row_count*: uint32
+    footer_row_count*: uint32
+    style*: IRTableStyle
+    span_map*: ptr IRTableCellData
+    span_map_rows*: uint32
+    span_map_cols*: uint32
+    head_section*: ptr IRComponent
+    body_section*: ptr IRComponent
+    foot_section*: ptr IRComponent
+    layout_valid*: bool
+    cached_total_width*: cfloat
+    cached_total_height*: cfloat
+
+# Table State Management
+proc ir_table_create_state*(): ptr IRTableState {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_destroy_state*(state: ptr IRTableState) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_get_table_state*(component: ptr IRComponent): ptr IRTableState {.importc, cdecl, header: "ir_builder.h".}
+
+# Table Column Definitions
+proc ir_table_add_column*(state: ptr IRTableState; column: IRTableColumnDef) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_column_auto*(): IRTableColumnDef {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_column_px*(width: cfloat): IRTableColumnDef {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_column_percent*(percent: cfloat): IRTableColumnDef {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_column_with_alignment*(col: IRTableColumnDef; alignment: IRAlignment): IRTableColumnDef {.importc, cdecl, header: "ir_builder.h".}
+
+# Table Styling
+proc ir_table_set_border_color*(state: ptr IRTableState; r, g, b, a: uint8) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_set_header_background*(state: ptr IRTableState; r, g, b, a: uint8) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_set_row_backgrounds*(state: ptr IRTableState; even_r, even_g, even_b, even_a, odd_r, odd_g, odd_b, odd_a: uint8) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_set_border_width*(state: ptr IRTableState; width: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_set_cell_padding*(state: ptr IRTableState; padding: cfloat) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_set_show_borders*(state: ptr IRTableState; show: bool) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_set_striped*(state: ptr IRTableState; striped: bool) {.importc, cdecl, header: "ir_builder.h".}
+
+# Table Cell Data
+proc ir_table_cell_data_create*(colspan, rowspan: uint16; alignment: IRAlignment): ptr IRTableCellData {.importc, cdecl, header: "ir_builder.h".}
+proc ir_get_table_cell_data*(component: ptr IRComponent): ptr IRTableCellData {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_cell_set_colspan*(cell: ptr IRComponent; colspan: uint16) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_cell_set_rowspan*(cell: ptr IRComponent; rowspan: uint16) {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_cell_set_alignment*(cell: ptr IRComponent; alignment: IRAlignment) {.importc, cdecl, header: "ir_builder.h".}
+
+# Table Component Creation
+proc ir_table*(): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_head*(): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_body*(): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_foot*(): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_row*(): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_cell*(colspan, rowspan: uint16): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
+proc ir_table_header_cell*(colspan, rowspan: uint16): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
+
+# Table Finalization
+proc ir_table_finalize*(table: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
+
 # Layout setters - direct field access
 proc ir_set_gap*(layout: ptr IRLayout; gap: uint32) =
   ## Set the flex gap between children

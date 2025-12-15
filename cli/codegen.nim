@@ -1021,15 +1021,51 @@ proc generateComponentProc(compDef: JsonNode, logic: JsonNode): string =
   let state = compDef{"state"}
   let tmpl = compDef{"template"}
 
-  # Generate proc signature with kryonComponent pragma for reactive state tracking
-  result = &"proc {name}*(initialValue: int = 0): Element {{.kryonComponent.}} =\n"
+  # Generate proc signature with actual props from component definition
+  var paramList: seq[string] = @[]
+  if not props.isNil and props.kind == JArray:
+    for prop in props:
+      let propName = prop["name"].getStr()
+      let propType = prop{"type"}.getStr("int")
+      let defaultVal = prop{"default"}
 
-  # Generate state variables
+      # Map .kry types to Nim types
+      let nimType = case propType
+        of "int": "int"
+        of "float": "float"
+        of "string": "string"
+        of "bool": "bool"
+        else: "int"
+
+      # Format default value
+      var defaultStr = ""
+      if not defaultVal.isNil:
+        defaultStr = case defaultVal.kind
+          of JInt: " = " & $defaultVal.getInt()
+          of JFloat: " = " & $defaultVal.getFloat()
+          of JString: " = \"" & defaultVal.getStr() & "\""
+          of JBool: " = " & $defaultVal.getBool()
+          else: " = 0"
+
+      paramList.add &"{propName}: {nimType}{defaultStr}"
+
+  let params = if paramList.len > 0: paramList.join(", ") else: ""
+  result = &"proc {name}*({params}): Element =\n"
+
+  # Generate state variables using namedReactiveVar for reactive state
   if not state.isNil and state.kind == JArray:
     for stateVar in state:
       let sName = stateVar["name"].getStr()
       let initial = stateVar{"initial"}.getStr("0")
-      result.add &"  var {sName} = initialValue\n"
+
+      # Parse initial value - it may reference a prop like {"var":"initialValue"}
+      var initExpr = initial
+      if initial.startsWith("{\"var\":"):
+        # Extract the variable name reference
+        let varRef = initial.replace("{\"var\":\"", "").replace("\"}", "")
+        initExpr = varRef
+
+      result.add &"  var {sName} = {initExpr}\n"
 
   # Generate nested handlers based on component's logic functions
   # Look for functions that match this component's operations

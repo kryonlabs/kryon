@@ -25,6 +25,14 @@ typedef enum {
     IR_COMPONENT_TAB,
     IR_COMPONENT_TAB_CONTENT,
     IR_COMPONENT_TAB_PANEL,
+    // Table components
+    IR_COMPONENT_TABLE,
+    IR_COMPONENT_TABLE_HEAD,
+    IR_COMPONENT_TABLE_BODY,
+    IR_COMPONENT_TABLE_FOOT,
+    IR_COMPONENT_TABLE_ROW,
+    IR_COMPONENT_TABLE_CELL,
+    IR_COMPONENT_TABLE_HEADER_CELL,
     IR_COMPONENT_CUSTOM
 } IRComponentType;
 
@@ -637,6 +645,84 @@ typedef struct IRDropdownState {
     int32_t hovered_index;  // Currently hovered option index (-1 = none)
 } IRDropdownState;
 
+// ============================================================================
+// Table Component Structures
+// ============================================================================
+
+// Table cell data (for colspan/rowspan and alignment)
+typedef struct IRTableCellData {
+    uint16_t colspan;           // Number of columns this cell spans (default 1)
+    uint16_t rowspan;           // Number of rows this cell spans (default 1)
+    uint8_t alignment;          // IRAlignment for cell content (horizontal)
+    uint8_t vertical_alignment; // IRAlignment for vertical positioning
+    bool is_spanned;            // True if this cell position is covered by another cell's span
+    uint32_t spanned_by_id;     // ID of the cell that spans over this position (if is_spanned)
+} IRTableCellData;
+
+// Table column definition (for auto-sizing and column properties)
+typedef struct IRTableColumnDef {
+    IRDimension min_width;      // Minimum column width
+    IRDimension max_width;      // Maximum column width
+    IRDimension width;          // Explicit width (if set)
+    IRAlignment alignment;      // Default horizontal alignment for column
+    bool auto_size;             // True if width should be calculated from content
+} IRTableColumnDef;
+
+// Table styling options
+typedef struct IRTableStyle {
+    IRColor header_background;    // Background color for header cells
+    IRColor even_row_background;  // Background for even rows (striped)
+    IRColor odd_row_background;   // Background for odd rows
+    IRColor border_color;         // Color for table borders
+    float border_width;           // Width of cell borders in pixels
+    float cell_padding;           // Padding inside cells in pixels
+    bool show_borders;            // Whether to show cell borders
+    bool striped_rows;            // Whether to use alternating row colors
+    bool header_sticky;           // Whether header sticks to top on scroll
+    bool collapse_borders;        // Border-collapse: collapse (true) vs separate (false)
+} IRTableStyle;
+
+// Maximum table dimensions
+#define IR_MAX_TABLE_COLUMNS 64
+#define IR_MAX_TABLE_ROWS 1024
+
+// Runtime table state (stored in IRComponent->custom_data for Table components)
+typedef struct IRTableState {
+    // Column definitions
+    IRTableColumnDef* columns;
+    uint32_t column_count;
+
+    // Calculated column widths (after layout)
+    float* calculated_widths;
+
+    // Calculated row heights (after layout)
+    float* calculated_heights;
+
+    // Row information
+    uint32_t row_count;
+    uint32_t header_row_count;   // Number of rows in TableHead
+    uint32_t footer_row_count;   // Number of rows in TableFoot
+
+    // Table styling
+    IRTableStyle style;
+
+    // Cell span tracking (for efficient lookup during layout)
+    // 2D array: span_map[row * column_count + col] = IRTableCellData
+    IRTableCellData* span_map;
+    uint32_t span_map_rows;
+    uint32_t span_map_cols;
+
+    // Section component references (for quick access)
+    struct IRComponent* head_section;
+    struct IRComponent* body_section;
+    struct IRComponent* foot_section;
+
+    // Layout cache
+    bool layout_valid;
+    float cached_total_width;
+    float cached_total_height;
+} IRTableState;
+
 // Main IR Component
 // Tab-specific data
 typedef struct {
@@ -717,6 +803,7 @@ const char* ir_logic_type_to_string(LogicSourceType type);
 
 // IR Layout API (defined in ir_layout.c)
 void ir_layout_compute(IRComponent* root, float available_width, float available_height);
+void ir_layout_compute_table(IRComponent* table, float available_width, float available_height);
 void ir_layout_mark_dirty(IRComponent* component);
 void ir_layout_mark_render_dirty(IRComponent* component);
 void ir_layout_invalidate_subtree(IRComponent* component);

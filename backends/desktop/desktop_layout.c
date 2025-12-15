@@ -538,6 +538,40 @@ float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_he
         }
     }
 
+    // Handle TABLE components - measure based on row count and content
+    if (child->type == IR_COMPONENT_TABLE && child->child_count > 0) {
+        float total_height = 0.0f;
+        float row_height = 32.0f;  // Default row height
+
+        // Count rows and measure them
+        for (uint32_t i = 0; i < child->child_count; i++) {
+            IRComponent* section = child->children[i];
+            if (section->type != IR_COMPONENT_TABLE_HEAD &&
+                section->type != IR_COMPONENT_TABLE_BODY &&
+                section->type != IR_COMPONENT_TABLE_FOOT) continue;
+
+            for (uint32_t j = 0; j < section->child_count; j++) {
+                IRComponent* row = section->children[j];
+                if (row->type != IR_COMPONENT_TABLE_ROW) continue;
+                total_height += row_height;
+            }
+        }
+
+        // Add cell padding
+        IRTableState* state = (IRTableState*)child->custom_data;
+        if (state) {
+            // Account for cell padding and borders
+            float cell_padding = state->style.cell_padding > 0 ? state->style.cell_padding : 8.0f;
+            total_height += cell_padding * 2.0f;  // Top/bottom padding for header
+        }
+
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            printf("    📊 TABLE measurement: height=%.1f\n", total_height);
+        }
+
+        return is_height ? (total_height > 0 ? total_height : 100.0f) : parent_rect.width;
+    }
+
     // For Container/Row/Column with AUTO size, we need to measure children
     // But we CANNOT recurse into full layout - just sum up their explicit sizes
     if (getenv("KRYON_TRACE_LAYOUT")) {
@@ -545,6 +579,7 @@ float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_he
         if (child->type == IR_COMPONENT_ROW) type_name = "ROW";
         else if (child->type == IR_COMPONENT_COLUMN) type_name = "COLUMN";
         else if (child->type == IR_COMPONENT_CONTAINER) type_name = "CONTAINER";
+        else if (child->type == IR_COMPONENT_TABLE) type_name = "TABLE";
         printf("    🔍 Checking %s for recursive measurement: type_match=%d, child_count=%d\n",
                type_name,
                (child->type == IR_COMPONENT_CONTAINER || child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN),

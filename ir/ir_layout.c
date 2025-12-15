@@ -319,6 +319,7 @@ static float resolve_dimension(IRDimension dim, float parent_size) {
 static void ir_layout_compute_row(IRComponent* container, float available_width, float available_height);
 static void ir_layout_compute_column(IRComponent* container, float available_width, float available_height);
 static void ir_layout_compute_grid(IRComponent* container, float available_width, float available_height);
+void ir_layout_compute_table(IRComponent* table, float available_width, float available_height);
 
 // ============================================================================
 // BiDi Direction Propagation
@@ -432,21 +433,26 @@ void ir_layout_compute(IRComponent* root, float available_width, float available
 
     // Layout children based on layout mode
     if (root->child_count > 0) {
-        switch (layout->mode) {
-            case IR_LAYOUT_MODE_GRID:
-                ir_layout_compute_grid(root, inner_width, inner_height);
-                break;
+        // Special handling for table components
+        if (root->type == IR_COMPONENT_TABLE) {
+            ir_layout_compute_table(root, inner_width, inner_height);
+        } else {
+            switch (layout->mode) {
+                case IR_LAYOUT_MODE_GRID:
+                    ir_layout_compute_grid(root, inner_width, inner_height);
+                    break;
 
-            case IR_LAYOUT_MODE_FLEX:
-            default:
-                if (layout->flex.direction == 1) {
-                    // Row layout
-                    ir_layout_compute_row(root, inner_width, inner_height);
-                } else {
-                    // Column layout (direction == 0 or default)
-                    ir_layout_compute_column(root, inner_width, inner_height);
-                }
-                break;
+                case IR_LAYOUT_MODE_FLEX:
+                default:
+                    if (layout->flex.direction == 1) {
+                        // Row layout
+                        ir_layout_compute_row(root, inner_width, inner_height);
+                    } else {
+                        // Column layout (direction == 0 or default)
+                        ir_layout_compute_column(root, inner_width, inner_height);
+                    }
+                    break;
+            }
         }
     }
 
@@ -1200,4 +1206,357 @@ float ir_text_layout_get_width(IRTextLayout* layout) {
 // Get height of text layout
 float ir_text_layout_get_height(IRTextLayout* layout) {
     return layout ? layout->total_height : 0.0f;
+}
+
+// ============================================================================
+// Table Layout
+// ============================================================================
+
+// Helper: Get cell data from a cell component
+static IRTableCellData* get_cell_data(IRComponent* cell) {
+    if (!cell) return NULL;
+    if (cell->type != IR_COMPONENT_TABLE_CELL &&
+        cell->type != IR_COMPONENT_TABLE_HEADER_CELL) return NULL;
+    return (IRTableCellData*)cell->custom_data;
+}
+
+// Helper: Count columns in a table by looking at first row
+static uint32_t table_count_columns(IRComponent* table) {
+    uint32_t max_cols = 0;
+
+    for (uint32_t i = 0; i < table->child_count; i++) {
+        IRComponent* section = table->children[i];
+        if (section->type != IR_COMPONENT_TABLE_HEAD &&
+            section->type != IR_COMPONENT_TABLE_BODY &&
+            section->type != IR_COMPONENT_TABLE_FOOT) continue;
+
+        for (uint32_t j = 0; j < section->child_count; j++) {
+            IRComponent* row = section->children[j];
+            if (row->type != IR_COMPONENT_TABLE_ROW) continue;
+
+            uint32_t col_count = 0;
+            for (uint32_t k = 0; k < row->child_count; k++) {
+                IRComponent* cell = row->children[k];
+                IRTableCellData* data = get_cell_data(cell);
+                uint32_t colspan = data ? data->colspan : 1;
+                if (colspan == 0) colspan = 1;
+                col_count += colspan;
+            }
+            if (col_count > max_cols) max_cols = col_count;
+        }
+    }
+
+    return max_cols;
+}
+
+// Helper: Count total rows in a table
+static uint32_t table_count_rows(IRComponent* table) {
+    uint32_t row_count = 0;
+
+    for (uint32_t i = 0; i < table->child_count; i++) {
+        IRComponent* section = table->children[i];
+        if (section->type != IR_COMPONENT_TABLE_HEAD &&
+            section->type != IR_COMPONENT_TABLE_BODY &&
+            section->type != IR_COMPONENT_TABLE_FOOT) continue;
+
+        for (uint32_t j = 0; j < section->child_count; j++) {
+            if (section->children[j]->type == IR_COMPONENT_TABLE_ROW) {
+                row_count++;
+            }
+        }
+    }
+
+    return row_count;
+}
+
+// Helper: Get intrinsic cell width
+static float table_get_cell_content_width(IRComponent* cell) {
+    float width = 0.0f;
+
+    // Calculate content width from children or text
+    if (cell->text_content) {
+        float font_size = cell->style ? cell->style->font.size : 16.0f;
+        if (font_size <= 0) font_size = 16.0f;
+        width = ir_get_text_width_estimate(cell->text_content, font_size);
+    }
+
+    // Check children
+    for (uint32_t i = 0; i < cell->child_count; i++) {
+        float child_width = ir_get_component_intrinsic_width(cell->children[i]);
+        if (child_width > width) width = child_width;
+    }
+
+    // Add cell padding
+    if (cell->style) {
+        width += cell->style->padding.left + cell->style->padding.right;
+    }
+
+    return width > 0 ? width : 50.0f;  // Minimum cell width
+}
+
+// Helper: Get intrinsic cell height
+static float table_get_cell_content_height(IRComponent* cell) {
+    float height = 0.0f;
+
+    // Calculate content height from children or text
+    if (cell->text_content) {
+        float font_size = cell->style ? cell->style->font.size : 16.0f;
+        if (font_size <= 0) font_size = 16.0f;
+        height = font_size * 1.5f;  // Line height approximation
+    }
+
+    // Check children
+    for (uint32_t i = 0; i < cell->child_count; i++) {
+        float child_height = ir_get_component_intrinsic_height(cell->children[i]);
+        if (child_height > height) height = child_height;
+    }
+
+    // Add cell padding
+    if (cell->style) {
+        height += cell->style->padding.top + cell->style->padding.bottom;
+    }
+
+    return height > 0 ? height : 24.0f;  // Minimum cell height
+}
+
+// Main table layout function
+void ir_layout_compute_table(IRComponent* table, float available_width, float available_height) {
+    if (!table || table->type != IR_COMPONENT_TABLE) return;
+
+    IRTableState* state = (IRTableState*)table->custom_data;
+    IRStyle* table_style = table->style;
+
+    uint32_t num_cols = table_count_columns(table);
+    uint32_t num_rows = table_count_rows(table);
+
+    if (num_cols == 0 || num_rows == 0) return;
+
+    // Get table styling
+    float cell_padding = state ? state->style.cell_padding : 8.0f;
+    float border_width = state && state->style.show_borders ? state->style.border_width : 0.0f;
+
+    // Allocate arrays for column widths and row heights
+    float* col_widths = (float*)calloc(num_cols, sizeof(float));
+    float* row_heights = (float*)calloc(num_rows, sizeof(float));
+    float* min_col_widths = (float*)calloc(num_cols, sizeof(float));
+
+    if (!col_widths || !row_heights || !min_col_widths) {
+        free(col_widths);
+        free(row_heights);
+        free(min_col_widths);
+        return;
+    }
+
+    // Initialize minimum widths from column definitions
+    for (uint32_t c = 0; c < num_cols; c++) {
+        if (state && c < state->column_count && state->columns) {
+            IRTableColumnDef* col_def = &state->columns[c];
+            if (col_def->width.type == IR_DIMENSION_PX) {
+                col_widths[c] = col_def->width.value;
+            }
+            if (col_def->min_width.type == IR_DIMENSION_PX) {
+                min_col_widths[c] = col_def->min_width.value;
+            }
+        }
+    }
+
+    // Phase 1: Calculate intrinsic column widths from cell content
+    uint32_t row_idx = 0;
+    for (uint32_t i = 0; i < table->child_count; i++) {
+        IRComponent* section = table->children[i];
+        if (section->type != IR_COMPONENT_TABLE_HEAD &&
+            section->type != IR_COMPONENT_TABLE_BODY &&
+            section->type != IR_COMPONENT_TABLE_FOOT) continue;
+
+        for (uint32_t j = 0; j < section->child_count; j++) {
+            IRComponent* row = section->children[j];
+            if (row->type != IR_COMPONENT_TABLE_ROW) continue;
+
+            uint32_t col_idx = 0;
+            for (uint32_t k = 0; k < row->child_count; k++) {
+                IRComponent* cell = row->children[k];
+                IRTableCellData* data = get_cell_data(cell);
+                uint32_t colspan = data ? data->colspan : 1;
+                if (colspan == 0) colspan = 1;
+
+                // Only measure cells without colspan for initial width
+                if (colspan == 1 && col_idx < num_cols) {
+                    float content_width = table_get_cell_content_width(cell) + cell_padding * 2;
+                    if (content_width > col_widths[col_idx]) {
+                        col_widths[col_idx] = content_width;
+                    }
+                }
+
+                col_idx += colspan;
+            }
+            row_idx++;
+        }
+    }
+
+    // Phase 2: Apply minimum widths
+    for (uint32_t c = 0; c < num_cols; c++) {
+        if (col_widths[c] < min_col_widths[c]) {
+            col_widths[c] = min_col_widths[c];
+        }
+        if (col_widths[c] < 30.0f) {
+            col_widths[c] = 30.0f;  // Absolute minimum
+        }
+    }
+
+    // Phase 3: Distribute available width proportionally if we have excess space
+    float total_width = 0;
+    for (uint32_t c = 0; c < num_cols; c++) {
+        total_width += col_widths[c];
+    }
+    total_width += border_width * (num_cols + 1);
+
+    if (total_width < available_width && num_cols > 0) {
+        float extra = available_width - total_width;
+        float extra_per_col = extra / num_cols;
+        for (uint32_t c = 0; c < num_cols; c++) {
+            col_widths[c] += extra_per_col;
+        }
+        total_width = available_width;
+    }
+
+    // Phase 4: Calculate row heights from cell content
+    row_idx = 0;
+    for (uint32_t i = 0; i < table->child_count; i++) {
+        IRComponent* section = table->children[i];
+        if (section->type != IR_COMPONENT_TABLE_HEAD &&
+            section->type != IR_COMPONENT_TABLE_BODY &&
+            section->type != IR_COMPONENT_TABLE_FOOT) continue;
+
+        for (uint32_t j = 0; j < section->child_count; j++) {
+            IRComponent* row = section->children[j];
+            if (row->type != IR_COMPONENT_TABLE_ROW) continue;
+
+            float max_cell_height = 0;
+            for (uint32_t k = 0; k < row->child_count; k++) {
+                IRComponent* cell = row->children[k];
+                IRTableCellData* data = get_cell_data(cell);
+                uint32_t rowspan = data ? data->rowspan : 1;
+                if (rowspan == 0) rowspan = 1;
+
+                // Only measure cells without rowspan for initial height
+                if (rowspan == 1) {
+                    float content_height = table_get_cell_content_height(cell) + cell_padding * 2;
+                    if (content_height > max_cell_height) {
+                        max_cell_height = content_height;
+                    }
+                }
+            }
+
+            row_heights[row_idx] = max_cell_height > 0 ? max_cell_height : 30.0f;
+            row_idx++;
+        }
+    }
+
+    // Calculate total table height
+    float total_height = 0;
+    for (uint32_t r = 0; r < num_rows; r++) {
+        total_height += row_heights[r];
+    }
+    total_height += border_width * (num_rows + 1);
+
+    // Phase 5: Position all cells
+    float y_offset = border_width;
+    row_idx = 0;
+
+    for (uint32_t i = 0; i < table->child_count; i++) {
+        IRComponent* section = table->children[i];
+        if (section->type != IR_COMPONENT_TABLE_HEAD &&
+            section->type != IR_COMPONENT_TABLE_BODY &&
+            section->type != IR_COMPONENT_TABLE_FOOT) continue;
+
+        // Position section to fill table width
+        section->rendered_bounds.x = 0;
+        section->rendered_bounds.y = y_offset;
+        section->rendered_bounds.width = total_width;
+        section->rendered_bounds.valid = true;
+
+        float section_height = 0;
+
+        for (uint32_t j = 0; j < section->child_count; j++) {
+            IRComponent* row = section->children[j];
+            if (row->type != IR_COMPONENT_TABLE_ROW) continue;
+
+            // Position row
+            row->rendered_bounds.x = 0;
+            row->rendered_bounds.y = section_height;
+            row->rendered_bounds.width = total_width;
+            row->rendered_bounds.height = row_heights[row_idx];
+            row->rendered_bounds.valid = true;
+
+            float x_offset = border_width;
+            uint32_t col_idx = 0;
+
+            for (uint32_t k = 0; k < row->child_count; k++) {
+                IRComponent* cell = row->children[k];
+                IRTableCellData* data = get_cell_data(cell);
+                uint32_t colspan = data ? data->colspan : 1;
+                uint32_t rowspan = data ? data->rowspan : 1;
+                if (colspan == 0) colspan = 1;
+                if (rowspan == 0) rowspan = 1;
+
+                // Calculate cell width (sum of spanned columns)
+                float cell_width = 0;
+                for (uint32_t c = col_idx; c < col_idx + colspan && c < num_cols; c++) {
+                    cell_width += col_widths[c];
+                }
+                cell_width += border_width * (colspan - 1);
+
+                // Calculate cell height (sum of spanned rows)
+                float cell_height = 0;
+                for (uint32_t r = row_idx; r < row_idx + rowspan && r < num_rows; r++) {
+                    cell_height += row_heights[r];
+                }
+                cell_height += border_width * (rowspan - 1);
+
+                // Position cell
+                cell->rendered_bounds.x = x_offset;
+                cell->rendered_bounds.y = 0;  // Relative to row
+                cell->rendered_bounds.width = cell_width;
+                cell->rendered_bounds.height = cell_height;
+                cell->rendered_bounds.valid = true;
+
+                x_offset += cell_width + border_width;
+                col_idx += colspan;
+            }
+
+            section_height += row_heights[row_idx] + border_width;
+            row_idx++;
+        }
+
+        section->rendered_bounds.height = section_height;
+        y_offset += section_height;
+    }
+
+    // Update table state with calculated widths if present
+    if (state) {
+        if (state->calculated_widths) free(state->calculated_widths);
+        if (state->calculated_heights) free(state->calculated_heights);
+
+        state->calculated_widths = col_widths;
+        state->calculated_heights = row_heights;
+        state->row_count = num_rows;
+        state->layout_valid = true;
+        state->cached_total_width = total_width;
+        state->cached_total_height = total_height;
+
+        free(min_col_widths);
+    } else {
+        free(col_widths);
+        free(row_heights);
+        free(min_col_widths);
+    }
+
+    // Update table bounds
+    table->rendered_bounds.width = total_width;
+    table->rendered_bounds.height = total_height;
+
+    #ifdef KRYON_TRACE_LAYOUT
+    fprintf(stderr, "📊 TABLE_LAYOUT: %u cols x %u rows, size=%.1fx%.1f\n",
+            num_cols, num_rows, total_width, total_height);
+    #endif
 }
