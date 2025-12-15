@@ -369,11 +369,15 @@ jobs:
           ls -la
           ls -la kryon-linux-x86_64-terminal/ kryon-linux-x86_64-desktop/ kryon-linux-x86_64-web/ kryon-linux-x86_64/
 
-          # Static builds - just chmod and rename
+          # Static builds - extract from artifact directories
+          # (artifact directories have same name as desired output files)
           chmod +x kryon-linux-x86_64-terminal/kryon-terminal
           chmod +x kryon-linux-x86_64-web/kryon-web
-          mv kryon-linux-x86_64-terminal/kryon-terminal kryon-linux-x86_64-terminal
-          mv kryon-linux-x86_64-web/kryon-web kryon-linux-x86_64-web
+          cp kryon-linux-x86_64-terminal/kryon-terminal ./kryon-terminal-static
+          cp kryon-linux-x86_64-web/kryon-web ./kryon-web-static
+          rm -rf kryon-linux-x86_64-terminal kryon-linux-x86_64-web
+          mv ./kryon-terminal-static ./kryon-linux-x86_64-terminal
+          mv ./kryon-web-static ./kryon-linux-x86_64-web
 
           # Bundled builds - already tarballs, just rename
           mv kryon-linux-x86_64-desktop/kryon-desktop-bundle.tar.gz kryon-linux-x86_64-desktop.tar.gz
