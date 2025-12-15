@@ -7,6 +7,11 @@
 import json, os, strutils, tables, times
 
 type
+  PageEntry* = object
+    ## Represents a page in a multi-page build
+    file*: string      # Source file (e.g., "index.tsx", "docs.tsx")
+    path*: string      # Output path (e.g., "/", "/docs")
+
   KryonConfig* = object
     # Project metadata
     projectName*: string
@@ -20,6 +25,7 @@ type
     buildOutputDir*: string
     buildEntry*: string            # Entry file (auto-detect if empty)
     buildFrontend*: string         # "js", "ts", "tsx", "nim", "lua", "c"
+    buildPages*: seq[PageEntry]    # Multiple pages for multi-page builds
 
     # Optimization settings
     optimizationEnabled*: bool
@@ -55,6 +61,7 @@ proc defaultConfig*(): KryonConfig =
   result.buildOutputDir = "build"
   result.buildEntry = ""
   result.buildFrontend = "nim"
+  result.buildPages = @[]
 
   result.optimizationEnabled = true
   result.optimizationMinifyCss = true
@@ -89,12 +96,21 @@ proc parseSimpleArray(value: string): seq[string] =
       if cleaned.len > 0:
         result.add(cleaned)
 
-proc parseSimpleToml(content: string): Table[string, string] =
+type
+  TomlParseResult = object
+    values: Table[string, string]
+    pages: seq[PageEntry]
+
+proc parseSimpleToml(content: string): TomlParseResult =
   ## Simple TOML parser for basic key = "value" pairs
   ## Supports sections like [project], [build], etc.
+  ## Supports array tables like [[build.pages]]
   ## Arrays are stored as raw strings and parsed later
-  result = initTable[string, string]()
+  result.values = initTable[string, string]()
+  result.pages = @[]
   var currentSection = ""
+  var inPagesArray = false
+  var currentPage: PageEntry
 
   for rawLine in content.splitLines():
     let line = rawLine.strip()
@@ -103,9 +119,31 @@ proc parseSimpleToml(content: string): Table[string, string] =
     if line.len == 0 or line.startsWith("#"):
       continue
 
+    # Array table headers [[name]]
+    if line.startsWith("[[") and line.endsWith("]]"):
+      # If we were building a page entry, save it
+      if inPagesArray and (currentPage.file.len > 0 or currentPage.path.len > 0):
+        result.pages.add(currentPage)
+        currentPage = PageEntry()
+
+      let section = line[2..^3]  # Remove [[ and ]]
+      if section == "build.pages":
+        inPagesArray = true
+        currentSection = section
+      else:
+        inPagesArray = false
+        currentSection = section
+      continue
+
     # Section headers [name]
     if line.startsWith("[") and line.endsWith("]"):
+      # If we were building a page entry, save it
+      if inPagesArray and (currentPage.file.len > 0 or currentPage.path.len > 0):
+        result.pages.add(currentPage)
+        currentPage = PageEntry()
+
       currentSection = line[1..^2]
+      inPagesArray = false
       continue
 
     # Key = value pairs
@@ -123,15 +161,27 @@ proc parseSimpleToml(content: string): Table[string, string] =
           elif value.startsWith("'") and value.endsWith("'"):
             value = value[1..^2]
 
-        # Prefix key with section
-        if currentSection.len > 0:
-          key = currentSection & "." & key
+        # Handle page entries specially
+        if inPagesArray:
+          case key:
+            of "file": currentPage.file = value
+            of "path": currentPage.path = value
+            else: discard
+        else:
+          # Prefix key with section
+          if currentSection.len > 0:
+            key = currentSection & "." & key
+          result.values[key] = value
 
-        result[key] = value
+  # Don't forget the last page entry
+  if inPagesArray and (currentPage.file.len > 0 or currentPage.path.len > 0):
+    result.pages.add(currentPage)
 
-proc tomlToConfig(toml: Table[string, string]): KryonConfig =
-  ## Convert parsed TOML table to KryonConfig
+proc tomlToConfig(tomlResult: TomlParseResult): KryonConfig =
+  ## Convert parsed TOML to KryonConfig
   result = defaultConfig()
+  let toml = tomlResult.values
+  result.buildPages = tomlResult.pages
 
   # Project metadata
   if toml.hasKey("project.name"):
@@ -208,6 +258,12 @@ proc jsonToConfig(jsonNode: JsonNode): KryonConfig =
     if build.hasKey("output_dir"): result.buildOutputDir = build["output_dir"].getStr()
     if build.hasKey("entry"): result.buildEntry = build["entry"].getStr()
     if build.hasKey("frontend"): result.buildFrontend = build["frontend"].getStr()
+    if build.hasKey("pages"):
+      for pageNode in build["pages"]:
+        var page = PageEntry()
+        if pageNode.hasKey("file"): page.file = pageNode["file"].getStr()
+        if pageNode.hasKey("path"): page.path = pageNode["path"].getStr()
+        result.buildPages.add(page)
 
   # Optimization settings
   if jsonNode.hasKey("optimization"):
