@@ -1,0 +1,195 @@
+/**
+ * KRB Bytecode Opcodes
+ * Matches the C enum in ir_krb.h
+ */
+
+export enum Opcode {
+  // Stack Operations
+  NOP = 0x00,
+  PUSH_NULL = 0x01,
+  PUSH_TRUE = 0x02,
+  PUSH_FALSE = 0x03,
+  PUSH_INT8 = 0x04,
+  PUSH_INT16 = 0x05,
+  PUSH_INT32 = 0x06,
+  PUSH_INT64 = 0x07,
+  PUSH_FLOAT = 0x08,
+  PUSH_DOUBLE = 0x09,
+  PUSH_STR = 0x0a,
+  POP = 0x0b,
+  DUP = 0x0c,
+  SWAP = 0x0d,
+
+  // Variables
+  LOAD_LOCAL = 0x10,
+  STORE_LOCAL = 0x11,
+  LOAD_GLOBAL = 0x12,
+  STORE_GLOBAL = 0x13,
+
+  // Arithmetic
+  ADD = 0x20,
+  SUB = 0x21,
+  MUL = 0x22,
+  DIV = 0x23,
+  MOD = 0x24,
+  NEG = 0x25,
+  INC = 0x26,
+  DEC = 0x27,
+
+  // Comparison
+  EQ = 0x30,
+  NE = 0x31,
+  LT = 0x32,
+  LE = 0x33,
+  GT = 0x34,
+  GE = 0x35,
+
+  // Logic
+  AND = 0x40,
+  OR = 0x41,
+  NOT = 0x42,
+
+  // Bitwise
+  BAND = 0x48,
+  BOR = 0x49,
+  BXOR = 0x4a,
+  BNOT = 0x4b,
+  SHL = 0x4c,
+  SHR = 0x4d,
+
+  // Control Flow
+  JMP = 0x50,
+  JMP_IF = 0x51,
+  JMP_IF_NOT = 0x52,
+  CALL = 0x53,
+  CALL_NATIVE = 0x54,
+  RET = 0x55,
+  RET_VAL = 0x56,
+
+  // UI Operations
+  GET_COMP = 0x60,
+  SET_PROP = 0x61,
+  GET_PROP = 0x62,
+  SET_TEXT = 0x63,
+  SET_VISIBLE = 0x64,
+  ADD_CHILD = 0x65,
+  REMOVE_CHILD = 0x66,
+  REDRAW = 0x67,
+
+  // String Operations
+  STR_CONCAT = 0x70,
+  STR_LEN = 0x71,
+  STR_SUBSTR = 0x72,
+  STR_FORMAT = 0x73,
+
+  // Array Operations
+  ARR_NEW = 0x80,
+  ARR_GET = 0x81,
+  ARR_SET = 0x82,
+  ARR_PUSH = 0x83,
+  ARR_POP = 0x84,
+  ARR_LEN = 0x85,
+
+  // Debug
+  DEBUG_PRINT = 0xf0,
+  DEBUG_BREAK = 0xf1,
+
+  HALT = 0xff,
+}
+
+export enum PropertyID {
+  TEXT = 0x0001,
+  VISIBLE = 0x0002,
+  ENABLED = 0x0003,
+  WIDTH = 0x0010,
+  HEIGHT = 0x0011,
+  X = 0x0012,
+  Y = 0x0013,
+  BG_COLOR = 0x0020,
+  FG_COLOR = 0x0021,
+  BORDER_COLOR = 0x0022,
+  BORDER_WIDTH = 0x0023,
+  BORDER_RADIUS = 0x0024,
+  FONT_SIZE = 0x0030,
+  FONT_WEIGHT = 0x0031,
+  OPACITY = 0x0040,
+  PADDING = 0x0050,
+  MARGIN = 0x0051,
+  GAP = 0x0052,
+}
+
+export enum SectionType {
+  UI = 0x01,
+  CODE = 0x02,
+  DATA = 0x03,
+  META = 0x04,
+  STRINGS = 0x05,
+  FUNCS = 0x06,
+  EVENTS = 0x07,
+}
+
+export const OPCODE_NAMES: Record<number, string> = {
+  [Opcode.NOP]: 'NOP',
+  [Opcode.PUSH_NULL]: 'PUSH_NULL',
+  [Opcode.PUSH_TRUE]: 'PUSH_TRUE',
+  [Opcode.PUSH_FALSE]: 'PUSH_FALSE',
+  [Opcode.PUSH_INT8]: 'PUSH_INT8',
+  [Opcode.PUSH_INT16]: 'PUSH_INT16',
+  [Opcode.PUSH_INT32]: 'PUSH_INT32',
+  [Opcode.PUSH_INT64]: 'PUSH_INT64',
+  [Opcode.PUSH_FLOAT]: 'PUSH_FLOAT',
+  [Opcode.PUSH_DOUBLE]: 'PUSH_DOUBLE',
+  [Opcode.PUSH_STR]: 'PUSH_STR',
+  [Opcode.POP]: 'POP',
+  [Opcode.DUP]: 'DUP',
+  [Opcode.SWAP]: 'SWAP',
+  [Opcode.LOAD_LOCAL]: 'LOAD_LOCAL',
+  [Opcode.STORE_LOCAL]: 'STORE_LOCAL',
+  [Opcode.LOAD_GLOBAL]: 'LOAD_GLOBAL',
+  [Opcode.STORE_GLOBAL]: 'STORE_GLOBAL',
+  [Opcode.ADD]: 'ADD',
+  [Opcode.SUB]: 'SUB',
+  [Opcode.MUL]: 'MUL',
+  [Opcode.DIV]: 'DIV',
+  [Opcode.MOD]: 'MOD',
+  [Opcode.NEG]: 'NEG',
+  [Opcode.INC]: 'INC',
+  [Opcode.DEC]: 'DEC',
+  [Opcode.EQ]: 'EQ',
+  [Opcode.NE]: 'NE',
+  [Opcode.LT]: 'LT',
+  [Opcode.LE]: 'LE',
+  [Opcode.GT]: 'GT',
+  [Opcode.GE]: 'GE',
+  [Opcode.AND]: 'AND',
+  [Opcode.OR]: 'OR',
+  [Opcode.NOT]: 'NOT',
+  [Opcode.JMP]: 'JMP',
+  [Opcode.JMP_IF]: 'JMP_IF',
+  [Opcode.JMP_IF_NOT]: 'JMP_IF_NOT',
+  [Opcode.CALL]: 'CALL',
+  [Opcode.CALL_NATIVE]: 'CALL_NATIVE',
+  [Opcode.RET]: 'RET',
+  [Opcode.RET_VAL]: 'RET_VAL',
+  [Opcode.GET_COMP]: 'GET_COMP',
+  [Opcode.SET_PROP]: 'SET_PROP',
+  [Opcode.GET_PROP]: 'GET_PROP',
+  [Opcode.SET_TEXT]: 'SET_TEXT',
+  [Opcode.SET_VISIBLE]: 'SET_VISIBLE',
+  [Opcode.ADD_CHILD]: 'ADD_CHILD',
+  [Opcode.REMOVE_CHILD]: 'REMOVE_CHILD',
+  [Opcode.REDRAW]: 'REDRAW',
+  [Opcode.STR_CONCAT]: 'STR_CONCAT',
+  [Opcode.STR_LEN]: 'STR_LEN',
+  [Opcode.STR_SUBSTR]: 'STR_SUBSTR',
+  [Opcode.STR_FORMAT]: 'STR_FORMAT',
+  [Opcode.ARR_NEW]: 'ARR_NEW',
+  [Opcode.ARR_GET]: 'ARR_GET',
+  [Opcode.ARR_SET]: 'ARR_SET',
+  [Opcode.ARR_PUSH]: 'ARR_PUSH',
+  [Opcode.ARR_POP]: 'ARR_POP',
+  [Opcode.ARR_LEN]: 'ARR_LEN',
+  [Opcode.DEBUG_PRINT]: 'DEBUG_PRINT',
+  [Opcode.DEBUG_BREAK]: 'DEBUG_BREAK',
+  [Opcode.HALT]: 'HALT',
+};

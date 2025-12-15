@@ -1,0 +1,37 @@
+{
+  "name": "@kryon/vm",
+  "version": "0.1.0",
+  "description": "Lightweight TypeScript VM for executing Kryon bytecode in the browser",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outdir=dist --target=browser --minify",
+    "dev": "bun run src/dev.ts",
+    "test": "bun test"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "keywords": [
+    "kryon",
+    "ui",
+    "bytecode",
+    "vm",
+    "wasm"
+  ],
+  "author": "Kryon Team",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/bun": "latest"
+  }
+}
