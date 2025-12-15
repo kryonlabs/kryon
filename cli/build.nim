@@ -2,7 +2,7 @@
 ##
 ## Universal IR-based build system for different targets
 
-import os, strutils, json, times, sequtils, osproc, tables, re
+import os, strutils, json, times, sequtils, osproc, tables
 import config, tsx_parser, kry_parser, kry_to_kir
 
 # Forward declarations
@@ -855,6 +855,44 @@ proc convertMarkdownToHtml*(markdown: string): string =
 
   result.add("</div>")
 
+proc replaceDelimited(text: string, delim: string, openTag: string, closeTag: string): string =
+  ## Replace text between delimiters with HTML tags
+  ## e.g. replaceDelimited("**bold**", "**", "<strong>", "</strong>") -> "<strong>bold</strong>"
+  result = text
+  var pos = 0
+  while pos < result.len:
+    let startPos = result.find(delim, pos)
+    if startPos < 0: break
+    let endPos = result.find(delim, startPos + delim.len)
+    if endPos < 0: break
+    let content = result[startPos + delim.len ..< endPos]
+    let replacement = openTag & content & closeTag
+    result = result[0 ..< startPos] & replacement & result[endPos + delim.len .. ^1]
+    pos = startPos + replacement.len
+
+proc replaceLinks(text: string): string =
+  ## Replace markdown links [text](url) with <a> tags
+  result = text
+  var pos = 0
+  while pos < result.len:
+    let bracketStart = result.find('[', pos)
+    if bracketStart < 0: break
+    let bracketEnd = result.find(']', bracketStart + 1)
+    if bracketEnd < 0: break
+    # Check for (url) immediately after ]
+    if bracketEnd + 1 >= result.len or result[bracketEnd + 1] != '(':
+      pos = bracketEnd + 1
+      continue
+    let parenEnd = result.find(')', bracketEnd + 2)
+    if parenEnd < 0:
+      pos = bracketEnd + 1
+      continue
+    let linkText = result[bracketStart + 1 ..< bracketEnd]
+    let linkUrl = result[bracketEnd + 2 ..< parenEnd]
+    let replacement = "<a class=\"kryon-md-link\" href=\"" & linkUrl & "\">" & linkText & "</a>"
+    result = result[0 ..< bracketStart] & replacement & result[parenEnd + 1 .. ^1]
+    pos = bracketStart + replacement.len
+
 proc processInlineMarkdown*(text: string): string =
   ## Process inline markdown: bold, italic, code, links
   result = text
@@ -871,16 +909,16 @@ proc processInlineMarkdown*(text: string): string =
     result = result[0 ..< codeStart] & replacement & result[codeEnd + 1 .. ^1]
     pos = codeStart + replacement.len
 
-  # Bold (**text** or __text__)
-  result = result.replacef(re"\*\*([^*]+)\*\*", "<strong>$1</strong>")
-  result = result.replacef(re"__([^_]+)__", "<strong>$1</strong>")
+  # Bold (**text** or __text__) - must be before italic since ** contains *
+  result = replaceDelimited(result, "**", "<strong>", "</strong>")
+  result = replaceDelimited(result, "__", "<strong>", "</strong>")
 
   # Italic (*text* or _text_)
-  result = result.replacef(re"\*([^*]+)\*", "<em>$1</em>")
-  result = result.replacef(re"_([^_]+)_", "<em>$1</em>")
+  result = replaceDelimited(result, "*", "<em>", "</em>")
+  result = replaceDelimited(result, "_", "<em>", "</em>")
 
   # Links [text](url)
-  result = result.replacef(re"\[([^\]]+)\]\(([^)]+)\)", "<a class=\"kryon-md-link\" href=\"$2\">$1</a>")
+  result = replaceLinks(result)
 
 proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
   ## Generate HTML/CSS/JS from KIR JSON
