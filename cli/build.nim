@@ -1003,6 +1003,34 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
         elif h.kind == JInt or h.kind == JFloat:
           styles.add("height: " & $h.getFloat().int & "px")
 
+      if node.hasKey("maxWidth"):
+        let mw = node["maxWidth"]
+        if mw.kind == JString:
+          styles.add("max-width: " & mw.getStr())
+        elif mw.kind == JInt or mw.kind == JFloat:
+          styles.add("max-width: " & $mw.getFloat().int & "px")
+
+      if node.hasKey("minWidth"):
+        let mw = node["minWidth"]
+        if mw.kind == JString:
+          styles.add("min-width: " & mw.getStr())
+        elif mw.kind == JInt or mw.kind == JFloat:
+          styles.add("min-width: " & $mw.getFloat().int & "px")
+
+      if node.hasKey("maxHeight"):
+        let mh = node["maxHeight"]
+        if mh.kind == JString:
+          styles.add("max-height: " & mh.getStr())
+        elif mh.kind == JInt or mh.kind == JFloat:
+          styles.add("max-height: " & $mh.getFloat().int & "px")
+
+      if node.hasKey("minHeight"):
+        let mh = node["minHeight"]
+        if mh.kind == JString:
+          styles.add("min-height: " & mh.getStr())
+        elif mh.kind == JInt or mh.kind == JFloat:
+          styles.add("min-height: " & $mh.getFloat().int & "px")
+
     if node.hasKey("background"):
       styles.add("background: " & node["background"].getStr())
 
@@ -1026,6 +1054,26 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
         styles.add("padding: " & p.getStr())
       elif p.kind == JInt or p.kind == JFloat:
         styles.add("padding: " & $p.getFloat().int & "px")
+
+    if node.hasKey("paddingTop"):
+      let p = node["paddingTop"]
+      if p.kind == JInt or p.kind == JFloat:
+        styles.add("padding-top: " & $p.getFloat().int & "px")
+
+    if node.hasKey("paddingBottom"):
+      let p = node["paddingBottom"]
+      if p.kind == JInt or p.kind == JFloat:
+        styles.add("padding-bottom: " & $p.getFloat().int & "px")
+
+    if node.hasKey("paddingLeft"):
+      let p = node["paddingLeft"]
+      if p.kind == JInt or p.kind == JFloat:
+        styles.add("padding-left: " & $p.getFloat().int & "px")
+
+    if node.hasKey("paddingRight"):
+      let p = node["paddingRight"]
+      if p.kind == JInt or p.kind == JFloat:
+        styles.add("padding-right: " & $p.getFloat().int & "px")
 
     if node.hasKey("margin"):
       let m = node["margin"]
@@ -1072,6 +1120,23 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
 
     if node.hasKey("alignItems"):
       styles.add("align-items: " & node["alignItems"].getStr())
+
+    if node.hasKey("flexGrow"):
+      let fg = node["flexGrow"]
+      if fg.kind == JInt or fg.kind == JFloat:
+        styles.add("flex-grow: " & $fg.getFloat().int)
+
+    if node.hasKey("flexShrink"):
+      let fs = node["flexShrink"]
+      if fs.kind == JInt or fs.kind == JFloat:
+        styles.add("flex-shrink: " & $fs.getFloat().int)
+
+    if node.hasKey("flexBasis"):
+      let fb = node["flexBasis"]
+      if fb.kind == JString:
+        styles.add("flex-basis: " & fb.getStr())
+      elif fb.kind == JInt or fb.kind == JFloat:
+        styles.add("flex-basis: " & $fb.getFloat().int & "px")
 
     # Add flexbox for layout containers
     if componentType in ["Row", "Column", "Container"]:

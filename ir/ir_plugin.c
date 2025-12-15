@@ -60,6 +60,11 @@ typedef struct {
     IRPluginCallbackBridge callback_bridges[32];
     uint32_t callback_bridge_count;
 
+    // Web component renderers (indexed by IRComponentType)
+    IRPluginWebComponentRenderer web_renderers[32];
+    IRPluginWebCSSGenerator web_css_generators[32];
+    uint32_t web_renderer_count;
+
     // Current plugin requirements (from deserialized IR file)
     char** current_requirements;
     uint32_t current_requirement_count;
@@ -491,6 +496,85 @@ bool ir_plugin_dispatch_component_render(void* backend_ctx, uint32_t component_t
     renderer(backend_ctx, component, x, y, width, height);
     g_plugin_system.components_rendered++;
     return true;
+}
+
+// ============================================================================
+// Web Component Renderer Registration
+// ============================================================================
+
+bool ir_plugin_register_web_renderer(uint32_t component_type,
+                                     IRPluginWebComponentRenderer renderer,
+                                     IRPluginWebCSSGenerator css_gen) {
+    if (!renderer) {
+        fprintf(stderr, "[kryon][plugin] NULL web component renderer provided\n");
+        return false;
+    }
+
+    if (component_type >= 32) {
+        fprintf(stderr, "[kryon][plugin] Component type %u out of range for web renderer (max 31)\n", component_type);
+        return false;
+    }
+
+    // Check if already registered
+    if (g_plugin_system.web_renderers[component_type] != NULL) {
+        fprintf(stderr, "[kryon][plugin] Component type %u already has a web renderer\n", component_type);
+        return false;
+    }
+
+    // Register renderer and optional CSS generator
+    g_plugin_system.web_renderers[component_type] = renderer;
+    g_plugin_system.web_css_generators[component_type] = css_gen;  // Can be NULL
+    g_plugin_system.web_renderer_count++;
+
+    printf("[kryon][plugin] Registered web renderer for component type %u\n", component_type);
+    return true;
+}
+
+void ir_plugin_unregister_web_renderer(uint32_t component_type) {
+    if (component_type < 32 && g_plugin_system.web_renderers[component_type] != NULL) {
+        g_plugin_system.web_renderers[component_type] = NULL;
+        g_plugin_system.web_css_generators[component_type] = NULL;
+        g_plugin_system.web_renderer_count--;
+    }
+}
+
+bool ir_plugin_has_web_renderer(uint32_t component_type) {
+    if (component_type >= 32) {
+        return false;
+    }
+    return g_plugin_system.web_renderers[component_type] != NULL;
+}
+
+char* ir_plugin_render_web_component(const IRComponent* component, const char* theme) {
+    if (!component) {
+        return NULL;
+    }
+
+    uint32_t component_type = component->type;
+    if (component_type >= 32) {
+        return NULL;
+    }
+
+    IRPluginWebComponentRenderer renderer = g_plugin_system.web_renderers[component_type];
+    if (renderer == NULL) {
+        return NULL;
+    }
+
+    // Dispatch to renderer
+    return renderer(component, theme ? theme : "light");
+}
+
+char* ir_plugin_get_web_css(uint32_t component_type, const char* theme) {
+    if (component_type >= 32) {
+        return NULL;
+    }
+
+    IRPluginWebCSSGenerator css_gen = g_plugin_system.web_css_generators[component_type];
+    if (css_gen == NULL) {
+        return NULL;
+    }
+
+    return css_gen(theme ? theme : "light");
 }
 
 // ============================================================================

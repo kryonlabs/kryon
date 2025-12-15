@@ -21,6 +21,20 @@ type
     basePath*: string        # URL base path (default: "/docs")
     indexFile*: string       # File for index page (default: "getting-started.md")
 
+  PluginSource* = enum
+    ## How a plugin dependency is specified
+    psPath,     # Local filesystem path
+    psGit,      # Git repository URL
+    psRegistry  # Version from registry
+
+  PluginDependency* = object
+    ## A plugin dependency declaration
+    name*: string       # Plugin name (e.g., "markdown")
+    source*: PluginSource
+    path*: string       # For psPath: local path to plugin
+    gitUrl*: string     # For psGit: git repository URL
+    version*: string    # For psRegistry: version string
+
   KryonConfig* = object
     # Project metadata
     projectName*: string
@@ -61,6 +75,9 @@ type
     # Docs auto-generation
     docsConfig*: DocsConfig
 
+    # Plugin dependencies
+    plugins*: seq[PluginDependency]
+
 proc defaultConfig*(): KryonConfig =
   ## Create a config with sensible defaults
   result.projectName = "kryon-app"
@@ -100,6 +117,9 @@ proc defaultConfig*(): KryonConfig =
   result.docsConfig.basePath = "/docs"
   result.docsConfig.indexFile = "getting-started.md"
 
+  # Plugin dependencies default
+  result.plugins = @[]
+
 proc parseSimpleArray(value: string): seq[string] =
   ## Parse simple TOML array like ["web", "desktop"]
   result = @[]
@@ -119,16 +139,71 @@ type
   TomlParseResult = object
     values: Table[string, string]
     pages: seq[PageEntry]
+    plugins: seq[PluginDependency]
+
+proc parseInlineTable(value: string): Table[string, string] =
+  ## Parse TOML inline table like { path = "...", git = "..." }
+  result = initTable[string, string]()
+  var inner = value.strip()
+  if inner.startsWith("{") and inner.endsWith("}"):
+    inner = inner[1..^2].strip()
+    if inner.len == 0:
+      return
+    for pair in inner.split(","):
+      let parts = pair.split("=", maxsplit=1)
+      if parts.len == 2:
+        var key = parts[0].strip()
+        var val = parts[1].strip()
+        # Remove quotes from value
+        if val.startsWith("\"") and val.endsWith("\""):
+          val = val[1..^2]
+        elif val.startsWith("'") and val.endsWith("'"):
+          val = val[1..^2]
+        result[key] = val
+
+proc parsePluginDependency(name: string, value: string): PluginDependency =
+  ## Parse a plugin dependency from TOML value
+  result.name = name
+  let trimmed = value.strip()
+
+  # Check if it's an inline table { path = "..." } or { git = "..." }
+  if trimmed.startsWith("{") and trimmed.endsWith("}"):
+    let table = parseInlineTable(trimmed)
+    if table.hasKey("path"):
+      result.source = psPath
+      result.path = table["path"]
+    elif table.hasKey("git"):
+      result.source = psGit
+      result.gitUrl = table["git"]
+    else:
+      # Unknown inline table, treat as registry
+      result.source = psRegistry
+      result.version = "latest"
+  else:
+    # Simple string value - could be path or version
+    var val = trimmed
+    if val.startsWith("\"") and val.endsWith("\""):
+      val = val[1..^2]
+    # If it looks like a path, treat as path; otherwise treat as version
+    if val.startsWith(".") or val.startsWith("/") or val.startsWith("~"):
+      result.source = psPath
+      result.path = val
+    else:
+      result.source = psRegistry
+      result.version = val
 
 proc parseSimpleToml(content: string): TomlParseResult =
   ## Simple TOML parser for basic key = "value" pairs
   ## Supports sections like [project], [build], etc.
   ## Supports array tables like [[build.pages]]
+  ## Supports [plugins] section with inline tables
   ## Arrays are stored as raw strings and parsed later
   result.values = initTable[string, string]()
   result.pages = @[]
+  result.plugins = @[]
   var currentSection = ""
   var inPagesArray = false
+  var inPluginsSection = false
   var currentPage: PageEntry
 
   for rawLine in content.splitLines():
@@ -148,9 +223,11 @@ proc parseSimpleToml(content: string): TomlParseResult =
       let section = line[2..^3]  # Remove [[ and ]]
       if section == "build.pages":
         inPagesArray = true
+        inPluginsSection = false
         currentSection = section
       else:
         inPagesArray = false
+        inPluginsSection = false
         currentSection = section
       continue
 
@@ -163,6 +240,7 @@ proc parseSimpleToml(content: string): TomlParseResult =
 
       currentSection = line[1..^2]
       inPagesArray = false
+      inPluginsSection = (currentSection == "plugins")
       continue
 
     # Key = value pairs
@@ -172,8 +250,15 @@ proc parseSimpleToml(content: string): TomlParseResult =
         var key = parts[0].strip()
         var value = parts[1].strip()
 
-        # Keep arrays as-is (don't remove brackets)
-        if not (value.startsWith("[") and value.endsWith("]")):
+        # Handle plugins section specially - parse inline tables
+        if inPluginsSection:
+          let plugin = parsePluginDependency(key, value)
+          result.plugins.add(plugin)
+          continue
+
+        # Keep arrays and inline tables as-is (don't remove brackets/braces)
+        if not (value.startsWith("[") and value.endsWith("]")) and
+           not (value.startsWith("{") and value.endsWith("}")):
           # Remove quotes from scalar value
           if value.startsWith("\"") and value.endsWith("\""):
             value = value[1..^2]
@@ -201,6 +286,7 @@ proc tomlToConfig(tomlResult: TomlParseResult): KryonConfig =
   result = defaultConfig()
   let toml = tomlResult.values
   result.buildPages = tomlResult.pages
+  result.plugins = tomlResult.plugins
 
   # Project metadata
   if toml.hasKey("project.name"):

@@ -237,6 +237,77 @@ bool ir_plugin_dispatch_component_render(void* backend_ctx, uint32_t component_t
                                          float x, float y, float width, float height);
 
 // ============================================================================
+// Web Component Renderer Registration
+// ============================================================================
+
+/**
+ * Web component renderer function signature.
+ * Returns HTML string representation of the component.
+ * The returned string must be freed by the caller.
+ *
+ * @param component Component to render
+ * @param theme Theme name (e.g., "light", "dark")
+ * @return HTML string (caller must free), or NULL on failure
+ */
+typedef char* (*IRPluginWebComponentRenderer)(const IRComponent* component, const char* theme);
+
+/**
+ * Web component CSS generator function signature.
+ * Returns CSS string for styling the component.
+ * The returned string must be freed by the caller.
+ *
+ * @param theme Theme name (e.g., "light", "dark")
+ * @return CSS string (caller must free), or NULL if no CSS needed
+ */
+typedef char* (*IRPluginWebCSSGenerator)(const char* theme);
+
+/**
+ * Register a web component renderer for a specific component type.
+ * This allows plugins to generate HTML for custom component types.
+ *
+ * @param component_type Component type (e.g., IR_COMPONENT_MARKDOWN)
+ * @param renderer HTML renderer function
+ * @param css_gen CSS generator function (can be NULL)
+ * @return true on success, false if component_type already has a renderer
+ */
+bool ir_plugin_register_web_renderer(uint32_t component_type,
+                                     IRPluginWebComponentRenderer renderer,
+                                     IRPluginWebCSSGenerator css_gen);
+
+/**
+ * Unregister a web component renderer.
+ *
+ * @param component_type Component type to unregister
+ */
+void ir_plugin_unregister_web_renderer(uint32_t component_type);
+
+/**
+ * Check if a component type has a registered web renderer.
+ *
+ * @param component_type Component type to check
+ * @return true if web renderer is registered, false otherwise
+ */
+bool ir_plugin_has_web_renderer(uint32_t component_type);
+
+/**
+ * Render a component to HTML using registered plugin renderer.
+ *
+ * @param component Component to render
+ * @param theme Theme name (e.g., "light", "dark")
+ * @return HTML string (caller must free), or NULL if no renderer registered
+ */
+char* ir_plugin_render_web_component(const IRComponent* component, const char* theme);
+
+/**
+ * Get CSS for a component type from registered plugin.
+ *
+ * @param component_type Component type
+ * @param theme Theme name
+ * @return CSS string (caller must free), or NULL if no CSS generator
+ */
+char* ir_plugin_get_web_css(uint32_t component_type, const char* theme);
+
+// ============================================================================
 // Component Callback Bridge Registration
 // ============================================================================
 

@@ -6,6 +6,7 @@
 #include <stdbool.h>
 
 #include "../../ir/ir_core.h"
+#include "../../ir/ir_plugin.h"
 #include "html_generator.h"
 
 // HTML tag mapping
@@ -201,6 +202,20 @@ bool html_generator_write_format(HTMLGenerator* generator, const char* format, .
 
 static bool generate_component_html(HTMLGenerator* generator, IRComponent* component) {
     if (!generator || !component) return false;
+
+    // Check if a plugin has registered a web renderer for this component type
+    if (ir_plugin_has_web_renderer(component->type)) {
+        // Use plugin renderer - get HTML from plugin
+        char* plugin_html = ir_plugin_render_web_component(component, "light");
+        if (plugin_html) {
+            html_generator_write_indent(generator);
+            html_generator_write_string(generator, plugin_html);
+            html_generator_write_string(generator, "\n");
+            free(plugin_html);
+            return true;
+        }
+        // Fall through to default if plugin returns NULL
+    }
 
     const char* tag = get_html_tag(component->type);
     bool is_self_closing = (component->type == IR_COMPONENT_INPUT ||
