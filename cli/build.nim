@@ -59,29 +59,70 @@ proc generateDocsPages*(cfg: KryonConfig): seq[PageEntry] =
 
   echo "📚 Auto-generated " & $result.len & " doc pages from " & docsDir
 
-proc substituteDocsFile*(kirJson: JsonNode, docsFilePath: string): JsonNode =
-  ## Recursively find Markdown components and substitute the file prop
+proc loadMarkdownContent(filePath: string): string =
+  ## Load markdown file content
+  if fileExists(filePath):
+    try:
+      return readFile(filePath)
+    except:
+      echo "⚠️  Could not read markdown file: " & filePath
+  return ""
+
+proc loadProjectPlugins*(cfg: KryonConfig) =
+  ## Load and initialize plugins declared in the project config
+  ## For now, this just reports which plugins are configured
+  ## Full dynamic loading will be implemented when the plugin C library is integrated
+  if cfg.plugins.len == 0:
+    return
+
+  echo "🔌 Loading " & $cfg.plugins.len & " plugin(s)..."
+  for plugin in cfg.plugins:
+    case plugin.source:
+      of psPath:
+        echo "   📦 " & plugin.name & " (path: " & plugin.path & ")"
+        # TODO: Load plugin shared library from path
+      of psGit:
+        echo "   📦 " & plugin.name & " (git: " & plugin.gitUrl & ")"
+        # TODO: Clone and build plugin from git
+      of psRegistry:
+        echo "   📦 " & plugin.name & " (version: " & plugin.version & ")"
+        # TODO: Load plugin from registry
+
+proc substituteDocsContent*(kirJson: JsonNode, docsFilePath: string): JsonNode =
+  ## Recursively find Markdown components and embed the markdown content
+  ## This allows the plugin web renderer to render the content without dynamic loading
   result = kirJson.copy()
 
-  proc substituteInNode(node: var JsonNode) =
+  # Load the markdown content
+  let markdownContent = loadMarkdownContent(docsFilePath)
+
+  proc substituteInNode(node: JsonNode) =
     if node.kind != JObject:
       return
 
-    # If this is a Markdown component, substitute file prop
+    # If this is a Markdown component, embed the content
     if node.hasKey("type") and node["type"].getStr() == "Markdown":
       node["file"] = newJString(docsFilePath)
+      if markdownContent.len > 0:
+        node["text_content"] = newJString(markdownContent)
 
     # Recurse into children
     if node.hasKey("children"):
-      for i in 0 ..< node["children"].len:
-        var child = node["children"][i]
+      for child in node["children"]:
         substituteInNode(child)
-        node["children"][i] = child
 
+    # Also check template field (for component definitions)
+    if node.hasKey("template"):
+      substituteInNode(node["template"])
+
+  # Search in root
   if result.hasKey("root"):
-    var root = result["root"]
-    substituteInNode(root)
-    result["root"] = root
+    substituteInNode(result["root"])
+
+  # Search in component definitions
+  if result.hasKey("component_definitions"):
+    for def in result["component_definitions"]:
+      substituteInNode(def)
 
 # Legacy support (for transition period)
 proc buildNimLinux*()
@@ -103,13 +144,21 @@ proc buildForTarget*(target: string) =
   # Load project config if available
   let cfg = loadConfig()
 
+  # Load declared plugins
+  loadProjectPlugins(cfg)
+
   # Collect all pages: explicit + auto-generated docs
   var allPages = cfg.buildPages
+
+  # Debug: show docs config state
+  echo "📋 Docs config: enabled=" & $cfg.docsConfig.enabled & ", directory=" & cfg.docsConfig.directory
 
   # Add auto-generated docs pages
   if cfg.docsConfig.enabled:
     let docsPages = generateDocsPages(cfg)
     allPages.add(docsPages)
+  else:
+    echo "   (docs auto-generation disabled)"
 
   # Check for multi-page configuration
   if allPages.len > 0 and target.toLowerAscii() == "web":
@@ -516,15 +565,19 @@ proc buildWithIRForPage*(sourceFile: string, target: string, pagePath: string, c
   ## Build a single page for multi-page web builds
   ## pagePath: "/" for root, "/docs" for docs subdirectory, etc.
   ## docsFile: Optional markdown file path for auto-generated docs pages
-  let pageName = sourceFile.splitFile().name
+  # Use page path for unique cache filename
+  let pageName = if pagePath == "/":
+                   sourceFile.splitFile().name
+                 else:
+                   pagePath.strip(chars = {'/'}).replace("/", "_")
 
   # Step 1: Compile source to KIR
   let kirFile = compileToKIRForPage(sourceFile, pageName)
 
-  # Step 1.5: If this is a docs page, substitute the markdown file path in KIR
+  # Step 1.5: If this is a docs page, embed the markdown content in KIR
   if docsFile.len > 0:
     var kirJson = parseJson(readFile(kirFile))
-    kirJson = substituteDocsFile(kirJson, docsFile)
+    kirJson = substituteDocsContent(kirJson, docsFile)
     writeFile(kirFile, kirJson.pretty())
 
   # Step 2: Determine output directory
@@ -980,6 +1033,26 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
         styles.add("margin: " & m.getStr())
       elif m.kind == JInt or m.kind == JFloat:
         styles.add("margin: " & $m.getFloat().int & "px")
+
+    if node.hasKey("marginTop"):
+      let m = node["marginTop"]
+      if m.kind == JInt or m.kind == JFloat:
+        styles.add("margin-top: " & $m.getFloat().int & "px")
+
+    if node.hasKey("marginBottom"):
+      let m = node["marginBottom"]
+      if m.kind == JInt or m.kind == JFloat:
+        styles.add("margin-bottom: " & $m.getFloat().int & "px")
+
+    if node.hasKey("marginLeft"):
+      let m = node["marginLeft"]
+      if m.kind == JInt or m.kind == JFloat:
+        styles.add("margin-left: " & $m.getFloat().int & "px")
+
+    if node.hasKey("marginRight"):
+      let m = node["marginRight"]
+      if m.kind == JInt or m.kind == JFloat:
+        styles.add("margin-right: " & $m.getFloat().int & "px")
 
     if node.hasKey("borderRadius"):
       let br = node["borderRadius"]
