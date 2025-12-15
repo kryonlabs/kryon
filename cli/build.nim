@@ -2,7 +2,7 @@
 ##
 ## Universal IR-based build system for different targets
 
-import os, strutils, json, times, sequtils, osproc, tables
+import os, strutils, json, times, sequtils, osproc, tables, re
 import config, tsx_parser, kry_parser, kry_to_kir
 
 # Forward declarations
@@ -15,11 +15,73 @@ proc buildTerminalTarget*()
 
 # IR-based build system
 proc buildWithIR*(sourceFile: string, target: string)
-proc buildWithIRForPage*(sourceFile: string, target: string, pagePath: string, cfg: KryonConfig)
+proc buildWithIRForPage*(sourceFile: string, target: string, pagePath: string, cfg: KryonConfig, docsFile: string = "")
 proc compileToKIR*(sourceFile: string): string
 proc compileToKIRForPage*(sourceFile: string, pageName: string): string
 proc renderIRToTarget*(kirFile: string, target: string)
 proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig)
+
+# Docs auto-generation helpers
+proc filenameToSlug*(filename: string): string =
+  ## Convert filename to URL-friendly slug
+  ## "lua-bindings.md" -> "lua-bindings"
+  ## "getting-started.md" -> "getting-started"
+  result = filename.changeFileExt("").replace("_", "-").toLowerAscii()
+
+proc generateDocsPages*(cfg: KryonConfig): seq[PageEntry] =
+  ## Scan docs directory and generate page entries for each markdown file
+  result = @[]
+  if not cfg.docsConfig.enabled:
+    return
+
+  let docsDir = cfg.docsConfig.directory
+  if not dirExists(docsDir):
+    echo "⚠️  Docs directory not found: " & docsDir
+    return
+
+  for file in walkDir(docsDir):
+    if file.kind == pcFile and file.path.endsWith(".md"):
+      let filename = file.path.extractFilename()
+      let slug = filenameToSlug(filename)
+
+      # Index file gets base path, others get /base/slug
+      var urlPath: string
+      if filename == cfg.docsConfig.indexFile:
+        urlPath = cfg.docsConfig.basePath
+      else:
+        urlPath = cfg.docsConfig.basePath & "/" & slug
+
+      result.add(PageEntry(
+        file: cfg.docsConfig.templateFile,
+        path: urlPath,
+        docsFile: file.path
+      ))
+
+  echo "📚 Auto-generated " & $result.len & " doc pages from " & docsDir
+
+proc substituteDocsFile*(kirJson: JsonNode, docsFilePath: string): JsonNode =
+  ## Recursively find Markdown components and substitute the file prop
+  result = kirJson.copy()
+
+  proc substituteInNode(node: var JsonNode) =
+    if node.kind != JObject:
+      return
+
+    # If this is a Markdown component, substitute file prop
+    if node.hasKey("type") and node["type"].getStr() == "Markdown":
+      node["file"] = newJString(docsFilePath)
+
+    # Recurse into children
+    if node.hasKey("children"):
+      for i in 0 ..< node["children"].len:
+        var child = node["children"][i]
+        substituteInNode(child)
+        node["children"][i] = child
+
+  if result.hasKey("root"):
+    var root = result["root"]
+    substituteInNode(root)
+    result["root"] = root
 
 # Legacy support (for transition period)
 proc buildNimLinux*()
@@ -41,16 +103,24 @@ proc buildForTarget*(target: string) =
   # Load project config if available
   let cfg = loadConfig()
 
+  # Collect all pages: explicit + auto-generated docs
+  var allPages = cfg.buildPages
+
+  # Add auto-generated docs pages
+  if cfg.docsConfig.enabled:
+    let docsPages = generateDocsPages(cfg)
+    allPages.add(docsPages)
+
   # Check for multi-page configuration
-  if cfg.buildPages.len > 0 and target.toLowerAscii() == "web":
-    echo "📄 Multi-page build configured (" & $cfg.buildPages.len & " pages)"
-    for page in cfg.buildPages:
+  if allPages.len > 0 and target.toLowerAscii() == "web":
+    echo "📄 Multi-page build configured (" & $allPages.len & " pages)"
+    for page in allPages:
       if not fileExists(page.file):
         echo "⚠️  Page source not found: " & page.file
         continue
 
       echo "📁 Building page: " & page.file & " → " & page.path
-      buildWithIRForPage(page.file, target, page.path, cfg)
+      buildWithIRForPage(page.file, target, page.path, cfg, page.docsFile)
     return
 
   # Find source file - check config entry first, then auto-detect
@@ -442,13 +512,20 @@ proc buildWithIR*(sourceFile: string, target: string) =
 
   echo "✅ Universal IR build complete!"
 
-proc buildWithIRForPage*(sourceFile: string, target: string, pagePath: string, cfg: KryonConfig) =
+proc buildWithIRForPage*(sourceFile: string, target: string, pagePath: string, cfg: KryonConfig, docsFile: string = "") =
   ## Build a single page for multi-page web builds
   ## pagePath: "/" for root, "/docs" for docs subdirectory, etc.
+  ## docsFile: Optional markdown file path for auto-generated docs pages
   let pageName = sourceFile.splitFile().name
 
   # Step 1: Compile source to KIR
   let kirFile = compileToKIRForPage(sourceFile, pageName)
+
+  # Step 1.5: If this is a docs page, substitute the markdown file path in KIR
+  if docsFile.len > 0:
+    var kirJson = parseJson(readFile(kirFile))
+    kirJson = substituteDocsFile(kirJson, docsFile)
+    writeFile(kirFile, kirJson.pretty())
 
   # Step 2: Determine output directory
   var outputDir = cfg.buildOutputDir
@@ -612,6 +689,146 @@ proc renderIRToTarget*(kirFile: string, target: string) =
       echo "   ⚠️  Target '" & target & "' IR renderer not yet implemented"
       echo "   🔄 Add IR renderer for " & target & " in ../../backends/"
 
+# Forward declaration for markdown inline processing
+proc processInlineMarkdown*(text: string): string
+
+proc convertMarkdownToHtml*(markdown: string): string =
+  ## Convert markdown to HTML with proper CSS classes
+  ## Supports: headers, paragraphs, code blocks, lists, blockquotes, links
+  result = "<div class=\"kryon-md\">\n"
+
+  var lines = markdown.split("\n")
+  var i = 0
+  var inCodeBlock = false
+  var codeBlockLang = ""
+  var codeBlockContent = ""
+  var inList = false
+  var listType = ""
+
+  while i < lines.len:
+    var line = lines[i]
+
+    # Code blocks (fenced)
+    if line.startsWith("```"):
+      if inCodeBlock:
+        # End code block
+        result.add("<pre class=\"kryon-md-pre\"><code")
+        if codeBlockLang.len > 0:
+          result.add(" class=\"language-" & codeBlockLang & "\"")
+        result.add(">")
+        result.add(codeBlockContent.replace("<", "&lt;").replace(">", "&gt;"))
+        result.add("</code></pre>\n")
+        inCodeBlock = false
+        codeBlockLang = ""
+        codeBlockContent = ""
+      else:
+        # Start code block
+        inCodeBlock = true
+        codeBlockLang = line[3..^1].strip()
+      i += 1
+      continue
+
+    if inCodeBlock:
+      if codeBlockContent.len > 0:
+        codeBlockContent.add("\n")
+      codeBlockContent.add(line)
+      i += 1
+      continue
+
+    # Close open list if we hit a non-list line
+    if inList and not line.startsWith("- ") and not line.startsWith("* ") and
+       not (line.len > 2 and line[0].isDigit and line[1] == '.'):
+      if listType == "ul":
+        result.add("</ul>\n")
+      else:
+        result.add("</ol>\n")
+      inList = false
+
+    # Empty line
+    if line.strip().len == 0:
+      i += 1
+      continue
+
+    # Headers
+    if line.startsWith("######"):
+      result.add("<h6 class=\"kryon-md-h6\">" & line[6..^1].strip() & "</h6>\n")
+    elif line.startsWith("#####"):
+      result.add("<h5 class=\"kryon-md-h5\">" & line[5..^1].strip() & "</h5>\n")
+    elif line.startsWith("####"):
+      result.add("<h4 class=\"kryon-md-h4\">" & line[4..^1].strip() & "</h4>\n")
+    elif line.startsWith("###"):
+      result.add("<h3 class=\"kryon-md-h3\">" & line[3..^1].strip() & "</h3>\n")
+    elif line.startsWith("##"):
+      result.add("<h2 class=\"kryon-md-h2\">" & line[2..^1].strip() & "</h2>\n")
+    elif line.startsWith("#"):
+      result.add("<h1 class=\"kryon-md-h1\">" & line[1..^1].strip() & "</h1>\n")
+
+    # Blockquote
+    elif line.startsWith(">"):
+      result.add("<blockquote class=\"kryon-md-blockquote\"><p>" & line[1..^1].strip() & "</p></blockquote>\n")
+
+    # Horizontal rule
+    elif line.strip() == "---" or line.strip() == "***" or line.strip() == "___":
+      result.add("<hr class=\"kryon-md-hr\" />\n")
+
+    # Unordered list
+    elif line.startsWith("- ") or line.startsWith("* "):
+      if not inList:
+        result.add("<ul class=\"kryon-md-ul\">\n")
+        inList = true
+        listType = "ul"
+      result.add("<li class=\"kryon-md-li\">" & processInlineMarkdown(line[2..^1].strip()) & "</li>\n")
+
+    # Ordered list
+    elif line.len > 2 and line[0].isDigit and line[1] == '.':
+      if not inList:
+        result.add("<ol class=\"kryon-md-ol\">\n")
+        inList = true
+        listType = "ol"
+      result.add("<li class=\"kryon-md-li\">" & processInlineMarkdown(line[2..^1].strip()) & "</li>\n")
+
+    # Paragraph
+    else:
+      result.add("<p class=\"kryon-md-p\">" & processInlineMarkdown(line) & "</p>\n")
+
+    i += 1
+
+  # Close any open list
+  if inList:
+    if listType == "ul":
+      result.add("</ul>\n")
+    else:
+      result.add("</ol>\n")
+
+  result.add("</div>")
+
+proc processInlineMarkdown*(text: string): string =
+  ## Process inline markdown: bold, italic, code, links
+  result = text
+
+  # Inline code (backticks)
+  var pos = 0
+  while pos < result.len:
+    let codeStart = result.find('`', pos)
+    if codeStart < 0: break
+    let codeEnd = result.find('`', codeStart + 1)
+    if codeEnd < 0: break
+    let code = result[codeStart + 1 ..< codeEnd]
+    let replacement = "<code class=\"kryon-md-code\">" & code.replace("<", "&lt;").replace(">", "&gt;") & "</code>"
+    result = result[0 ..< codeStart] & replacement & result[codeEnd + 1 .. ^1]
+    pos = codeStart + replacement.len
+
+  # Bold (**text** or __text__)
+  result = result.replacef(re"\*\*([^*]+)\*\*", "<strong>$1</strong>")
+  result = result.replacef(re"__([^_]+)__", "<strong>$1</strong>")
+
+  # Italic (*text* or _text_)
+  result = result.replacef(re"\*([^*]+)\*", "<em>$1</em>")
+  result = result.replacef(re"_([^_]+)_", "<em>$1</em>")
+
+  # Links [text](url)
+  result = result.replacef(re"\[([^\]]+)\]\(([^)]+)\)", "<a class=\"kryon-md-link\" href=\"$2\">$1</a>")
+
 proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
   ## Generate HTML/CSS/JS from KIR JSON
   let kirContent = readFile(kirFile)
@@ -693,6 +910,7 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
       of "Text": "span"
       of "Button": "button"
       of "Link": "a"
+      of "Markdown": "div"
       of "Row", "Column", "Container": "div"
       else: "div"
 
@@ -811,6 +1029,26 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
         else:
           html.add("{{" & varName & "}}")
 
+    # Handle Markdown source content (file or inline)
+    if componentType == "Markdown":
+      var mdSource = ""
+
+      # File prop takes precedence over inline source
+      if node.hasKey("file"):
+        let filePath = node["file"].getStr()
+        let fullPath = getCurrentDir() / filePath
+        if fileExists(fullPath):
+          mdSource = readFile(fullPath)
+        else:
+          mdSource = "**Error:** Markdown file not found: " & filePath
+      elif node.hasKey("source"):
+        let sourceNode = node["source"]
+        if sourceNode.kind == JString:
+          mdSource = sourceNode.getStr()
+
+      if mdSource.len > 0:
+        html.add(convertMarkdownToHtml(mdSource))
+
     # Process children
     if node.hasKey("children"):
       for child in node["children"]:
@@ -846,6 +1084,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .kryon-text { display: inline; }
 .kryon-link { text-decoration: none; cursor: pointer; }
 .kryon-link:hover { text-decoration: underline; }
+.kryon-markdown { padding: 20px; line-height: 1.6; color: #E6EDF3; }
+.kryon-md { padding: 20px; line-height: 1.6; color: #E6EDF3; }
+.kryon-md-h1 { font-size: 2em; font-weight: bold; margin: 0.67em 0; border-bottom: 1px solid #30363D; padding-bottom: 0.3em; color: #E6EDF3; }
+.kryon-md-h2 { font-size: 1.5em; font-weight: bold; margin: 0.83em 0; border-bottom: 1px solid #30363D; padding-bottom: 0.3em; color: #E6EDF3; }
+.kryon-md-h3 { font-size: 1.25em; font-weight: bold; margin: 1em 0; color: #E6EDF3; }
+.kryon-md-h4 { font-size: 1em; font-weight: bold; margin: 1.33em 0; color: #E6EDF3; }
+.kryon-md-h5 { font-size: 0.9em; font-weight: bold; margin: 1.5em 0; color: #E6EDF3; }
+.kryon-md-h6 { font-size: 0.85em; font-weight: bold; margin: 1.67em 0; color: #8B949E; }
+.kryon-md-p { margin: 1em 0; color: #C9D1D9; }
+.kryon-md-code { background: #161B22; padding: 0.2em 0.4em; border-radius: 4px; font-family: monospace; font-size: 0.9em; color: #79C0FF; }
+.kryon-md-pre { background: #161B22; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 1em 0; border: 1px solid #30363D; }
+.kryon-md-pre code { background: none; padding: 0; font-size: 0.9em; color: #C9D1D9; }
+.kryon-md-ul, .kryon-md-ol { padding-left: 2em; margin: 1em 0; color: #C9D1D9; }
+.kryon-md-li { margin: 0.25em 0; color: #C9D1D9; }
+.kryon-md-blockquote { border-left: 4px solid #00A8FF; padding-left: 16px; margin: 1em 0; color: #8B949E; }
+.kryon-md-hr { border: none; border-top: 1px solid #30363D; margin: 2em 0; }
+.kryon-md-link { color: #58A6FF; text-decoration: none; }
+.kryon-md-link:hover { text-decoration: underline; }
+.kryon-md-table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+.kryon-md-th, .kryon-md-td { border: 1px solid #30363D; padding: 8px 12px; text-align: left; color: #C9D1D9; }
+.kryon-md-th { background: #161B22; font-weight: bold; color: #E6EDF3; }
+.kryon-md strong { color: #E6EDF3; }
+.kryon-md em { color: #C9D1D9; font-style: italic; }
 """
 
   # Generate HTML file
