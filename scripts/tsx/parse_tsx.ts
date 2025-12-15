@@ -249,7 +249,8 @@ function parseJSXElement(node: t.JSXElement, state: ParsedState): KirNode {
           result.background = value;
           break;
         case 'title':
-          result.windowTitle = value;
+          // Keep title as-is for component props; app title is handled in parseKryonApp
+          result.title = value;
           break;
         case 'text':
           if (typeof value === 'string' && value.startsWith('{{')) {

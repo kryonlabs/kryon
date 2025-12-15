@@ -6,17 +6,25 @@
 import os, osproc, strutils, parseopt, times, json
 import std/[sequtils, sugar]
 
+# Compile-time backend selection flags
+# These allow building lightweight CLI variants for CI/CD
+const
+  hasTerminalBackend* = defined(terminalOnly) or defined(staticBackend) or not (defined(desktopOnly) or defined(webOnly))
+  hasDesktopBackend* = defined(desktopBackend) or defined(staticBackend) or not (defined(terminalOnly) or defined(webOnly))
+  hasWebBackend* = defined(webBackend) or defined(staticBackend)
+
 # CLI modules
 import project, build, device, compile, diff, inspect, config, codegen, codegen_tsx, plugin_manager
 import kry_ast, kry_lexer, kry_parser, kry_to_kir, kyt_parser, tsx_parser
 
 # IR and backend bindings (for orchestration)
 import ../bindings/nim/ir_core
-import ../bindings/nim/ir_desktop
+when hasDesktopBackend:
+  import ../bindings/nim/ir_desktop
+  import ../bindings/nim/runtime  # Provides Nim bridge functions for desktop backend
 import ../bindings/nim/ir_serialization  # For loading .kir files
 import ../bindings/nim/ir_logic  # Logic block bindings
 import ../bindings/nim/ir_executor  # Executor for .kir handler execution
-import ../bindings/nim/runtime  # Provides Nim bridge functions for desktop backend
 import ../bindings/nim/ir_krb  # KRB bytecode format
 
 const
@@ -131,49 +139,58 @@ proc pkgLibFlags*(pkg: string): seq[string] =
 # IR Rendering Helper
 # =============================================================================
 
-proc renderIRFile*(kirPath: string, title: string = "Kryon App",
-                   width: int = 800, height: int = 600): bool =
-  ## Unified IR rendering - loads .kir/.kirb and renders with SDL3 backend
-  ## Returns true on success, false on failure
-  let ctx = ir_create_context()
-  ir_set_context(ctx)
+when hasDesktopBackend:
+  proc renderIRFile*(kirPath: string, title: string = "Kryon App",
+                     width: int = 800, height: int = 600): bool =
+    ## Unified IR rendering - loads .kir/.kirb and renders with SDL3 backend
+    ## Returns true on success, false on failure
+    let ctx = ir_create_context()
+    ir_set_context(ctx)
 
-  # Load IR tree (supports both .kir JSON and .kirb binary)
-  let irRoot = if kirPath.endsWith(".kirb"):
-                 ir_serialization.ir_read_binary_file(cstring(kirPath))
-               else:
-                 ir_read_json_v2_file(cstring(kirPath))
+    # Load IR tree (supports both .kir JSON and .kirb binary)
+    let irRoot = if kirPath.endsWith(".kirb"):
+                   ir_serialization.ir_read_binary_file(cstring(kirPath))
+                 else:
+                   ir_read_json_v2_file(cstring(kirPath))
 
-  if irRoot.isNil:
-    echo "❌ Failed to load IR: " & kirPath
-    return false
+    if irRoot.isNil:
+      echo "❌ Failed to load IR: " & kirPath
+      return false
 
-  # Set up executor for .kir files with logic blocks
-  var executor: ptr IRExecutorContext = nil
-  if not kirPath.endsWith(".kirb"):
-    executor = ir_executor_create()
+    # Set up executor for .kir files with logic blocks
+    var executor: ptr IRExecutorContext = nil
+    if not kirPath.endsWith(".kirb"):
+      executor = ir_executor_create()
+      if executor != nil:
+        if ir_executor_load_kir_file(executor, cstring(kirPath)):
+          ir_executor_set_global(executor)
+          # Set the root component so conditionals can update visibility
+          ir_executor_set_root(executor, irRoot)
+          # Apply initial conditionals based on initial variable values
+          ir_executor_apply_initial_conditionals(executor)
+        else:
+          ir_executor_destroy(executor)
+          executor = nil
+
+    var config = desktop_renderer_config_sdl3(width.cint, height.cint, cstring(title))
+    let renderSuccess = desktop_render_ir_component(irRoot, addr config)
+
+    # Cleanup
     if executor != nil:
-      if ir_executor_load_kir_file(executor, cstring(kirPath)):
-        ir_executor_set_global(executor)
-        # Set the root component so conditionals can update visibility
-        ir_executor_set_root(executor, irRoot)
-        # Apply initial conditionals based on initial variable values
-        ir_executor_apply_initial_conditionals(executor)
-      else:
-        ir_executor_destroy(executor)
-        executor = nil
+      ir_executor_set_global(nil)
+      ir_executor_destroy(executor)
 
-  var config = desktop_renderer_config_sdl3(width.cint, height.cint, cstring(title))
-  let renderSuccess = desktop_render_ir_component(irRoot, addr config)
+    ir_destroy_component(irRoot)
 
-  # Cleanup
-  if executor != nil:
-    ir_executor_set_global(nil)
-    ir_executor_destroy(executor)
-
-  ir_destroy_component(irRoot)
-
-  return renderSuccess
+    return renderSuccess
+else:
+  proc renderIRFile*(kirPath: string, title: string = "Kryon App",
+                     width: int = 800, height: int = 600): bool =
+    ## Stub for when desktop backend is not compiled in
+    echo "❌ Desktop rendering not available in this build"
+    echo "   This CLI was built without SDL3 support."
+    echo "   Use kryon-desktop for graphical rendering."
+    return false
 
 # =============================================================================
 # Command Line Interface

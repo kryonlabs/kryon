@@ -579,7 +579,7 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
   var htmlBody = ""
   var idCounter = 1000  # For generated IDs
 
-  proc generateComponentCssAndHtml(node: JsonNode, parentId: string = "", depth: int = 0): tuple[css: string, html: string] =
+  proc generateComponentCssAndHtml(node: JsonNode, parentId: string = "", depth: int = 0, props: Table[string, JsonNode] = initTable[string, JsonNode]()): tuple[css: string, html: string] =
     var css = ""
     var html = ""
 
@@ -589,9 +589,14 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
 
     # Check if this is a custom component that needs expansion
     if componentMap.hasKey(componentType):
-      # Expand the component template
+      # Collect props from the call site
+      var callProps = initTable[string, JsonNode]()
+      for key, val in node.pairs:
+        if key notin ["id", "type", "children"]:
+          callProps[key] = val
+      # Expand the component template with props
       let componentTemplate = componentMap[componentType]
-      return generateComponentCssAndHtml(componentTemplate, parentId, depth)
+      return generateComponentCssAndHtml(componentTemplate, parentId, depth, callProps)
 
     # Built-in component types
     let tagName = case componentType:
@@ -687,13 +692,21 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
       if textNode.kind == JString:
         html.add(textNode.getStr())
       elif textNode.kind == JObject and textNode.hasKey("var"):
-        # Variable reference - show placeholder or resolve from props
-        html.add("{{" & textNode["var"].getStr() & "}}")
+        # Variable reference - resolve from props
+        let varName = textNode["var"].getStr()
+        if props.hasKey(varName):
+          let propVal = props[varName]
+          if propVal.kind == JString:
+            html.add(propVal.getStr())
+          else:
+            html.add($propVal)
+        else:
+          html.add("{{" & varName & "}}")
 
     # Process children
     if node.hasKey("children"):
       for child in node["children"]:
-        let (childCss, childHtml) = generateComponentCssAndHtml(child, componentId, depth + 1)
+        let (childCss, childHtml) = generateComponentCssAndHtml(child, componentId, depth + 1, props)
         css.add(childCss)
         html.add(childHtml)
 

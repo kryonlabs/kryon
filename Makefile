@@ -5,6 +5,7 @@
 
 .PHONY: all clean install install-dynamic install-static uninstall doctor dev test help
 .PHONY: build-cli build-lib build-dynamic build-static
+.PHONY: build-terminal build-desktop build-web build-all-variants
 .PHONY: test-serialization test-validation test-conversion test-backend test-integration test-all test-modular
 .PHONY: generate-examples validate-examples clean-generated
 
@@ -28,6 +29,16 @@ STATIC_FLAGS = -d:staticBackend --opt:size --passL:"-static"
 # Add rpath so the CLI can find libraries in ~/.local/lib at runtime
 DYNAMIC_FLAGS = --opt:speed --passL:"-Wl,-rpath,$(LIBDIR) -L$(LIBDIR)"
 
+# SDL3 Configuration
+SDL3_CFLAGS = $(shell pkg-config --cflags sdl3 2>/dev/null || echo "-I/usr/include/SDL3")
+SDL3_LIBS = $(shell pkg-config --libs sdl3 2>/dev/null || echo "-lSDL3")
+SDL_TTF_LIBS = $(shell pkg-config --libs SDL3_ttf 2>/dev/null || echo "-lSDL3_ttf")
+
+# Renderer-specific build flags (lightweight variants)
+TERMINAL_FLAGS = -d:terminalOnly --opt:size
+DESKTOP_FLAGS = -d:desktopBackend --opt:speed
+WEB_FLAGS = -d:webBackend --opt:size
+
 # Detect NixOS environment
 ifeq ($(shell test -e /etc/nixos && echo yes), yes)
     NIXOS = 1
@@ -45,6 +56,11 @@ CLI_BIN = $(BUILD_DIR)/kryon
 STATIC_BIN = $(BUILD_DIR)/kryon-static
 DYNAMIC_BIN = $(BUILD_DIR)/kryon-dynamic
 LIB_FILE = $(BUILD_DIR)/libkryon.a
+
+# Renderer-specific binaries
+TERMINAL_BIN = $(BUILD_DIR)/kryon-terminal
+DESKTOP_BIN = $(BUILD_DIR)/kryon-desktop
+WEB_BIN = $(BUILD_DIR)/kryon-web
 
 # Default target
 all: build-cli build-lib
@@ -84,6 +100,55 @@ $(DYNAMIC_BIN): $(CLI_SRC)
 	else \
 		$(NIM) c $(NIMFLAGS) $(DYNAMIC_FLAGS) -o:$(DYNAMIC_BIN) $(CLI_SRC); \
 	fi
+
+# =============================================================================
+# Renderer-specific builds (for GitHub Actions CI)
+# =============================================================================
+
+# Terminal-only CLI (no SDL3 dependencies - lightweight)
+build-terminal: $(TERMINAL_BIN)
+
+$(TERMINAL_BIN): $(CLI_SRC)
+	@echo "Building Kryon CLI (terminal-only)..."
+	@mkdir -p $(BUILD_DIR)
+	$(MAKE) -C ir all
+	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
+	$(NIM) c $(NIMFLAGS) $(TERMINAL_FLAGS) \
+		--passL:"-L$(BUILD_DIR) -lkryon_ir" \
+		-o:$(TERMINAL_BIN) $(CLI_SRC)
+	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
+
+# Desktop CLI (requires SDL3)
+build-desktop: $(DESKTOP_BIN)
+
+$(DESKTOP_BIN): $(CLI_SRC)
+	@echo "Building Kryon CLI (desktop/SDL3)..."
+	@mkdir -p $(BUILD_DIR)
+	$(MAKE) -C ir all
+	$(MAKE) -C backends/desktop all
+	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
+	$(NIM) c $(NIMFLAGS) $(DESKTOP_FLAGS) \
+		--passL:"-L$(BUILD_DIR) -lkryon_ir -lkryon_desktop $(SDL3_LIBS) $(SDL_TTF_LIBS)" \
+		-o:$(DESKTOP_BIN) $(CLI_SRC)
+	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
+
+# Web CLI (for WASM compilation target)
+build-web: $(WEB_BIN)
+
+$(WEB_BIN): $(CLI_SRC)
+	@echo "Building Kryon CLI (web target)..."
+	@mkdir -p $(BUILD_DIR)
+	$(MAKE) -C ir all
+	-$(MAKE) -C backends/web all 2>/dev/null || true
+	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
+	$(NIM) c $(NIMFLAGS) $(WEB_FLAGS) \
+		--passL:"-L$(BUILD_DIR) -lkryon_ir" \
+		-o:$(WEB_BIN) $(CLI_SRC)
+	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
+
+# Build all renderer variants
+build-all-variants: build-terminal build-desktop build-web
+	@echo "✅ All renderer variants built successfully!"
 
 # Build library for use by other projects
 # This creates a combined archive with all C libraries needed for linking
@@ -396,6 +461,12 @@ help:
 	@echo "  build-dynamic Build dynamic CLI using system libraries"
 	@echo "  build-lib     Build library for other projects"
 	@echo "  dev           Development build with debug symbols"
+	@echo ""
+	@echo "Renderer-specific builds (for CI):"
+	@echo "  build-terminal      Terminal-only CLI (no SDL3 deps)"
+	@echo "  build-desktop       Desktop CLI with SDL3 support"
+	@echo "  build-web           Web/WASM compilation target"
+	@echo "  build-all-variants  Build all renderer variants"
 	@echo ""
 	@echo "Installation:"
 	@echo "  install       Install dynamic CLI, library and config"
