@@ -8,7 +8,7 @@ import std/[sequtils, sugar]
 
 # CLI modules
 import project, build, device, compile, diff, inspect, config, codegen, codegen_tsx, plugin_manager
-import kry_ast, kry_lexer, kry_parser, kry_to_kir, kyt_parser
+import kry_ast, kry_lexer, kry_parser, kry_to_kir, kyt_parser, tsx_parser
 
 # IR and backend bindings (for orchestration)
 import ../bindings/nim/ir_core
@@ -613,6 +613,65 @@ end
       if root.hasKey("height"):
         let hStr = root["height"].getStr("600.0px")
         windowHeight = parseInt(hStr.replace(".0px", "").replace("px", ""))
+
+    # Render via unified IR pipeline
+    echo "  → Rendering..."
+    let renderSuccess = renderIRFile(tempKir, windowTitle, windowWidth, windowHeight)
+
+    if not renderSuccess:
+      echo "❌ Rendering failed"
+      quit(1)
+
+    echo "✓ Application closed"
+    quit(0)
+
+  elif frontend == ".tsx" or frontend == ".jsx":
+    # .tsx/.jsx → .kir → IR renderer
+    echo "📦 Running .tsx via IR pipeline..."
+
+    if not fileExists(file):
+      echo "❌ File not found: " & file
+      quit(1)
+
+    # Set up temp directory
+    let homeCache = getHomeDir() / ".cache" / "kryon"
+    let runCache = homeCache / "cli_run"
+    createDir(runCache)
+
+    let baseName = splitFile(file).name
+    let tempKir = runCache / baseName & ".kir"
+
+    # Parse .tsx -> .kir using Bun/Babel
+    echo "  → Parsing TSX to KIR..."
+    try:
+      let kirContent = parseTsxToKir(file, tempKir)
+      if not fileExists(tempKir):
+        echo "❌ TSX parser did not create output file"
+        quit(1)
+    except:
+      echo "❌ Failed to parse .tsx file: " & getCurrentExceptionMsg()
+      quit(1)
+
+    # Extract window properties from KIR root
+    var windowTitle = "Kryon App"
+    var windowWidth = 800
+    var windowHeight = 600
+    try:
+      let kirJson = parseFile(tempKir)
+      if kirJson.hasKey("root"):
+        let root = kirJson["root"]
+        if kirJson.hasKey("windowTitle"):
+          windowTitle = kirJson["windowTitle"].getStr("Kryon App")
+        elif root.hasKey("windowTitle"):
+          windowTitle = root["windowTitle"].getStr("Kryon App")
+        if root.hasKey("width"):
+          let wStr = root["width"].getStr("800.0px")
+          windowWidth = parseInt(wStr.replace(".0px", "").replace("px", ""))
+        if root.hasKey("height"):
+          let hStr = root["height"].getStr("600.0px")
+          windowHeight = parseInt(hStr.replace(".0px", "").replace("px", ""))
+    except:
+      discard  # Use defaults if parsing fails
 
     # Render via unified IR pipeline
     echo "  → Rendering..."
