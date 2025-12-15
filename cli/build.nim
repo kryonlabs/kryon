@@ -433,7 +433,8 @@ proc compileToKIR*(sourceFile: string): string =
   ## Handles: .tsx, .jsx, .kry, .nim
   let ext = sourceFile.splitFile().ext.toLowerAscii()
   let projectName = getCurrentDir().splitPath().tail
-  let kirFile = "build/" & projectName & ".kir"
+  createDir(".kryon_cache")
+  let kirFile = ".kryon_cache/" & projectName & ".kir"
 
   echo "   🏗️  Compiling " & ext & " → KIR..."
 
@@ -610,19 +611,24 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
     # Extract styles
     var styles: seq[string] = @[]
 
-    if node.hasKey("width"):
-      let w = node["width"]
-      if w.kind == JString:
-        styles.add("width: " & w.getStr())
-      elif w.kind == JInt or w.kind == JFloat:
-        styles.add("width: " & $w.getFloat().int & "px")
+    # Root element (depth 0) uses responsive dimensions
+    if depth == 0:
+      styles.add("width: 100%")
+      styles.add("min-height: 100vh")
+    else:
+      if node.hasKey("width"):
+        let w = node["width"]
+        if w.kind == JString:
+          styles.add("width: " & w.getStr())
+        elif w.kind == JInt or w.kind == JFloat:
+          styles.add("width: " & $w.getFloat().int & "px")
 
-    if node.hasKey("height"):
-      let h = node["height"]
-      if h.kind == JString:
-        styles.add("height: " & h.getStr())
-      elif h.kind == JInt or h.kind == JFloat:
-        styles.add("height: " & $h.getFloat().int & "px")
+      if node.hasKey("height"):
+        let h = node["height"]
+        if h.kind == JString:
+          styles.add("height: " & h.getStr())
+        elif h.kind == JInt or h.kind == JFloat:
+          styles.add("height: " & $h.getFloat().int & "px")
 
     if node.hasKey("background"):
       styles.add("background: " & node["background"].getStr())
@@ -729,6 +735,7 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
   # Base CSS reset
   let baseCss = """
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; min-height: 100vh; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 .kryon-row { display: flex; flex-direction: row; }
 .kryon-column { display: flex; flex-direction: column; }
@@ -749,7 +756,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 """ & cssRules & """
   </style>
 </head>
-<body style="background: """ & appBg & """; width: """ & $appWidth & """px; height: """ & $appHeight & """px; margin: 0 auto;">
+<body style="background: """ & appBg & """;">
 """ & htmlBody & """
 </body>
 </html>
