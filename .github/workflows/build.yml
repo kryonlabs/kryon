@@ -8,6 +8,7 @@ on:
 env:
   NIM_VERSION: "2.0.14"
   SDL3_VERSION: "3.2.0"
+  SDL3_TTF_VERSION: "3.2.2"
 
 jobs:
   # Job 1: Terminal build (no SDL3 needed - fast)
@@ -15,6 +16,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install base dependencies
         run: |
@@ -48,6 +51,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install base dependencies
         run: |
@@ -73,7 +78,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /usr/local
-          key: sdl3-${{ env.SDL3_VERSION }}-ubuntu-24.04
+          key: sdl3-${{ env.SDL3_VERSION }}-ttf-${{ env.SDL3_TTF_VERSION }}-ubuntu-24.04
 
       - name: Build SDL3 from source
         if: steps.cache-sdl3.outputs.cache-hit != 'true'
@@ -90,7 +95,7 @@ jobs:
       - name: Build SDL3_ttf from source
         if: steps.cache-sdl3.outputs.cache-hit != 'true'
         run: |
-          git clone --depth 1 --branch release-3.0.0 \
+          git clone --depth 1 --branch release-${{ env.SDL3_TTF_VERSION }} \
             https://github.com/libsdl-org/SDL_ttf.git /tmp/SDL3_ttf
           cd /tmp/SDL3_ttf
           cmake -B build -G Ninja \
@@ -128,6 +133,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install base dependencies
         run: |
