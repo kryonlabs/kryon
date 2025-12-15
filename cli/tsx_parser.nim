@@ -3,8 +3,10 @@
 
 import os, osproc, json, strutils
 
+# Embed the parser script at compile time
 const TsxParserScript = staticRead("../scripts/tsx/parse_tsx.ts")
-const TsxParserPath = "scripts/tsx/parse_tsx.ts"
+
+var cachedParserPath: string = ""
 
 proc findBun(): string =
   ## Find bun executable
@@ -21,21 +23,38 @@ proc findBun(): string =
         return p
     raise newException(IOError, "bun not found. Please install bun: https://bun.sh")
 
-proc getTsxParserScript(projectDir: string): string =
-  ## Get path to TSX parser script
-  let scriptPath = projectDir / TsxParserPath
-  if fileExists(scriptPath):
-    return scriptPath
+proc getTsxParserScript(): string =
+  ## Get path to TSX parser script (creates temp file from embedded script)
 
-  # If not found, try to find in parent directories
-  var dir = projectDir
-  for _ in 0..5:
-    let candidate = dir / TsxParserPath
-    if fileExists(candidate):
-      return candidate
-    dir = parentDir(dir)
+  # Return cached path if still valid
+  if cachedParserPath != "" and fileExists(cachedParserPath):
+    return cachedParserPath
 
-  raise newException(IOError, "TSX parser script not found: " & TsxParserPath)
+  # First try to find installed script in known locations
+  let searchPaths = [
+    getAppDir() / "scripts" / "tsx" / "parse_tsx.ts",
+    getAppDir().parentDir() / "scripts" / "tsx" / "parse_tsx.ts",
+    getAppDir().parentDir() / "share" / "kryon" / "scripts" / "tsx" / "parse_tsx.ts",
+    expandTilde("~/.local/share/kryon/scripts/tsx/parse_tsx.ts"),
+    getEnv("KRYON_ROOT", "") / "scripts" / "tsx" / "parse_tsx.ts"
+  ]
+
+  for path in searchPaths:
+    if path != "" and fileExists(path):
+      cachedParserPath = path
+      return path
+
+  # If not found, write embedded script to cache directory
+  let cacheDir = getHomeDir() / ".cache" / "kryon" / "scripts"
+  createDir(cacheDir)
+
+  let scriptPath = cacheDir / "parse_tsx.ts"
+
+  # Always write the embedded script (in case it was updated)
+  writeFile(scriptPath, TsxParserScript)
+
+  cachedParserPath = scriptPath
+  return scriptPath
 
 proc parseTsxToKir*(tsxPath: string, outputPath: string = ""): string =
   ## Parse a .tsx file and convert to .kir JSON
@@ -44,8 +63,7 @@ proc parseTsxToKir*(tsxPath: string, outputPath: string = ""): string =
     raise newException(IOError, "File not found: " & tsxPath)
 
   let bun = findBun()
-  let projectDir = getAppDir().parentDir()
-  let parserScript = getTsxParserScript(projectDir)
+  let parserScript = getTsxParserScript()
 
   # Determine output path
   let kirPath = if outputPath != "":
@@ -71,8 +89,7 @@ proc parseTsxToKirJson*(tsxPath: string): JsonNode =
     raise newException(IOError, "File not found: " & tsxPath)
 
   let bun = findBun()
-  let projectDir = getAppDir().parentDir()
-  let parserScript = getTsxParserScript(projectDir)
+  let parserScript = getTsxParserScript()
 
   # Run the parser with stdout output
   let (output, exitCode) = execCmdEx(bun & " " & parserScript & " " & tsxPath & " -")

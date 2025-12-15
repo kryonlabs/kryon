@@ -2,7 +2,8 @@
 ##
 ## Universal IR-based build system for different targets
 
-import os, strutils, json, times, sequtils, osproc
+import os, strutils, json, times, sequtils, osproc, tables
+import config, tsx_parser, kry_parser, kry_to_kir
 
 # Forward declarations
 proc buildLinuxTarget*()
@@ -14,8 +15,9 @@ proc buildTerminalTarget*()
 
 # IR-based build system
 proc buildWithIR*(sourceFile: string, target: string)
-proc compileNimToIR*(sourceFile: string): string
-proc renderIRToTarget*(irFile: string, target: string)
+proc compileToKIR*(sourceFile: string): string
+proc renderIRToTarget*(kirFile: string, target: string)
+proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig)
 
 # Legacy support (for transition period)
 proc buildNimLinux*()
@@ -34,10 +36,27 @@ proc buildForTarget*(target: string) =
   # Create build directory
   createDir("build")
 
-  # Find source file and compile to IR
+  # Load project config if available
+  let cfg = loadConfig()
+
+  # Find source file - check config entry first, then auto-detect
   var sourceFile = ""
-  if fileExists("src/main.nim"):
+  if cfg.buildEntry != "" and fileExists(cfg.buildEntry):
+    sourceFile = cfg.buildEntry
+  elif fileExists("index.tsx"):
+    sourceFile = "index.tsx"
+  elif fileExists("index.jsx"):
+    sourceFile = "index.jsx"
+  elif fileExists("main.tsx"):
+    sourceFile = "main.tsx"
+  elif fileExists("main.kry"):
+    sourceFile = "main.kry"
+  elif fileExists("index.kry"):
+    sourceFile = "index.kry"
+  elif fileExists("src/main.nim"):
     sourceFile = "src/main.nim"
+  elif fileExists("main.nim"):
+    sourceFile = "main.nim"
   elif fileExists("src/main.lua"):
     echo "⚠️  Lua frontend not yet implemented in IR system"
     echo "   Falling back to legacy build system..."
@@ -50,6 +69,8 @@ proc buildForTarget*(target: string) =
     return
   else:
     raise newException(ValueError, "No recognized source files found")
+
+  echo "📁 Source: " & sourceFile
 
   # Use the universal IR pipeline
   case target.toLowerAscii():
@@ -392,100 +413,91 @@ proc buildCTerminal*() =
 # ==============================================
 
 proc buildWithIR*(sourceFile: string, target: string) =
-  ## Universal build pipeline: Source → IR → Target
+  ## Universal build pipeline: Source → KIR → Target
   echo "🔄 Starting Universal IR pipeline..."
   echo "   Source: " & sourceFile
   echo "   Target: " & target
 
-  # Step 1: Compile source to IR
-  echo "📝 Step 1: Compiling source to IR..."
-  let irFile = compileNimToIR(sourceFile)
+  # Step 1: Compile source to KIR
+  echo "📝 Step 1: Compiling source to KIR..."
+  let kirFile = compileToKIR(sourceFile)
 
-  # Step 2: Render IR to target
-  echo "🎨 Step 2: Rendering IR to target..."
-  renderIRToTarget(irFile, target)
+  # Step 2: Render KIR to target
+  echo "🎨 Step 2: Rendering KIR to target..."
+  renderIRToTarget(kirFile, target)
 
   echo "✅ Universal IR build complete!"
 
-proc compileNimToIR*(sourceFile: string): string =
-  ## Compile Nim source to IR binary
-  echo "   🏗️  Compiling Nim → IR..."
-
+proc compileToKIR*(sourceFile: string): string =
+  ## Compile source file to KIR JSON format
+  ## Handles: .tsx, .jsx, .kry, .nim
+  let ext = sourceFile.splitFile().ext.toLowerAscii()
   let projectName = getCurrentDir().splitPath().tail
-  let irFile = "build/" & projectName & ".ir"
+  let kirFile = "build/" & projectName & ".kir"
 
-  # Build IR libraries first
-  echo "   🔧 Building IR libraries..."
-  let irLibCmd = "make -C ../../ir all"
-  let (irLibOutput, irLibExitCode) = execCmdEx(irLibCmd)
+  echo "   🏗️  Compiling " & ext & " → KIR..."
 
-  if irLibExitCode != 0:
-    echo "   ❌ IR library build failed:"
-    echo irLibOutput
-    raise newException(IOError, "IR library build failed")
+  case ext:
+    of ".tsx", ".jsx":
+      # TSX/JSX → KIR via Bun parser
+      echo "   📦 Parsing TSX/JSX with Bun..."
+      discard parseTsxToKir(sourceFile, kirFile)
+      echo "   ✅ KIR generated: " & kirFile
+      result = kirFile
 
-  # Compile Nim to IR using our frontend compiler
-  echo "   🔨 Compiling Nim to IR..."
-  let compileCmd = """
-    nim c --path:../../frontends/nim \
-        --define:IR_MODE \
-        --passC:"-I../../ir" \
-        --passL:"-L../../build -lkryon_ir" \
-        --threads:on \
-        --gc:arc \
-        --opt:speed \
-        --out:build/ir_compiler \
-        ../../frontends/nim/ir_compiler.nim
-  """
+    of ".kry":
+      # KRY → KIR via native parser
+      echo "   📝 Parsing KRY..."
+      let kryContent = readFile(sourceFile)
+      let ast = parseKry(kryContent, sourceFile)
+      let kirJson = transpileToKir(ast, preserveStatic = false)
+      writeFile(kirFile, kirJson.pretty())
+      echo "   ✅ KIR generated: " & kirFile
+      result = kirFile
 
-  let (compileOutput, compileExitCode) = execCmdEx(compileCmd)
+    of ".nim":
+      # Nim → KIR via compilation with KRYON_SERIALIZE_IR
+      echo "   🔨 Compiling Nim..."
 
-  if compileExitCode != 0:
-    echo "   ❌ IR compiler build failed:"
-    echo compileOutput
-    raise newException(IOError, "IR compiler build failed")
+      # Build the Nim file with IR serialization enabled
+      let nimBin = sourceFile.changeFileExt("")
+      let env = "KRYON_SERIALIZE_IR=\"" & kirFile & "\""
+      let compileCmd = env & " nim c -p:bindings/nim -o:" & nimBin & " " & sourceFile
 
-  # Run IR compiler on source file
-  echo "   ⚙️  Running IR compiler..."
-  let runCmd = "build/ir_compiler " & sourceFile & " " & irFile
-  let (runOutput, runExitCode) = execCmdEx(runCmd)
+      let (compileOutput, compileExitCode) = execCmdEx(compileCmd)
+      if compileExitCode != 0:
+        echo "   ❌ Nim compilation failed:"
+        echo compileOutput
+        raise newException(IOError, "Nim compilation failed")
 
-  if runExitCode != 0:
-    echo "   ❌ IR compilation failed:"
-    echo runOutput
-    raise newException(IOError, "IR compilation failed")
+      # Run to generate KIR (auto-exits after serialization)
+      let runCmd = env & " timeout 1 " & nimBin & " || true"
+      discard execCmdEx(runCmd)
 
-  echo "   ✅ IR generated: " & irFile
-  result = irFile
+      if not fileExists(kirFile):
+        raise newException(IOError, "Nim did not generate KIR file: " & kirFile)
 
-proc renderIRToTarget*(irFile: string, target: string) =
-  ## Render IR to specific target platform
-  echo "   🎯 Rendering IR → " & target & "..."
+      echo "   ✅ KIR generated: " & kirFile
+      result = kirFile
 
-  let projectName = getCurrentDir().splitPath().tail
+    else:
+      raise newException(ValueError, "Unsupported source file type: " & ext)
+
+proc renderIRToTarget*(kirFile: string, target: string) =
+  ## Render KIR to specific target platform
+  echo "   🎯 Rendering KIR → " & target & "..."
+
+  let cfg = loadConfig()
+  let projectName = if cfg.projectName != "": cfg.projectName else: getCurrentDir().splitPath().tail
+  let outputDir = if cfg.buildOutputDir != "": cfg.buildOutputDir else: "build"
+
+  createDir(outputDir)
 
   case target.toLowerAscii():
     of "web":
-      # Build web backend
-      echo "   🌐 Building web backend..."
-      let webCmd = "make -C ../../backends/web all"
-      let (webOutput, webExitCode) = execCmdEx(webCmd)
-
-      if webExitCode != 0:
-        echo "   ❌ Web backend build failed:"
-        echo webOutput
-        raise newException(IOError, "Web backend build failed")
-
-      # Generate web output
-      let genCmd = "build/test_ir_pipeline " & irFile & " build/"
-      let (genOutput, genExitCode) = execCmdEx(genCmd)
-
-      if genExitCode != 0:
-        echo "   ❌ Web generation failed:"
-        echo genOutput
-        raise newException(IOError, "Web generation failed")
-
-      echo "   ✅ Web files generated in build/"
+      # Generate web output from KIR
+      echo "   🌐 Generating web files..."
+      generateWebFromKir(kirFile, outputDir, cfg)
 
     of "linux":
       # Build desktop backend
@@ -509,3 +521,237 @@ proc renderIRToTarget*(irFile: string, target: string) =
     else:
       echo "   ⚠️  Target '" & target & "' IR renderer not yet implemented"
       echo "   🔄 Add IR renderer for " & target & " in ../../backends/"
+
+proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
+  ## Generate HTML/CSS/JS from KIR JSON
+  let kirContent = readFile(kirFile)
+  let kirJson = parseJson(kirContent)
+
+  # Build component definitions lookup map
+  var componentMap = initTable[string, JsonNode]()
+  if kirJson.hasKey("component_definitions"):
+    for def in kirJson["component_definitions"]:
+      if def.hasKey("name") and def.hasKey("template"):
+        componentMap[def["name"].getStr()] = def["template"]
+
+  # Extract app metadata from root or metadata section
+  var appTitle = cfg.projectName
+  var appWidth = 800
+  var appHeight = 600
+  var appBg = "#ffffff"
+
+  if kirJson.hasKey("root"):
+    let root = kirJson["root"]
+    if root.hasKey("windowTitle"):
+      appTitle = root["windowTitle"].getStr()
+    if root.hasKey("width"):
+      let w = root["width"]
+      if w.kind == JString:
+        let ws = w.getStr()
+        if ws.endsWith("px"):
+          appWidth = parseInt(ws.replace(".0px", "").replace("px", ""))
+      elif w.kind == JInt or w.kind == JFloat:
+        appWidth = w.getFloat().int
+    if root.hasKey("height"):
+      let h = root["height"]
+      if h.kind == JString:
+        let hs = h.getStr()
+        if hs.endsWith("px"):
+          appHeight = parseInt(hs.replace(".0px", "").replace("px", ""))
+      elif h.kind == JInt or h.kind == JFloat:
+        appHeight = h.getFloat().int
+    if root.hasKey("background"):
+      appBg = root["background"].getStr()
+
+  if kirJson.hasKey("metadata"):
+    let appMeta = kirJson["metadata"]
+    if appMeta.hasKey("title"):
+      appTitle = appMeta["title"].getStr()
+    if appMeta.hasKey("window_width"):
+      appWidth = appMeta["window_width"].getInt()
+    if appMeta.hasKey("window_height"):
+      appHeight = appMeta["window_height"].getInt()
+    if appMeta.hasKey("background"):
+      appBg = appMeta["background"].getStr()
+
+  # Generate CSS from component tree
+  var cssRules = ""
+  var htmlBody = ""
+  var idCounter = 1000  # For generated IDs
+
+  proc generateComponentCssAndHtml(node: JsonNode, parentId: string = "", depth: int = 0): tuple[css: string, html: string] =
+    var css = ""
+    var html = ""
+
+    let componentType = if node.hasKey("type"): node["type"].getStr() else: "Container"
+    let componentId = if node.hasKey("id"): "c" & $node["id"].getInt() else: "c" & $idCounter
+    idCounter += 1
+
+    # Check if this is a custom component that needs expansion
+    if componentMap.hasKey(componentType):
+      # Expand the component template
+      let componentTemplate = componentMap[componentType]
+      return generateComponentCssAndHtml(componentTemplate, parentId, depth)
+
+    # Built-in component types
+    let tagName = case componentType:
+      of "Text": "span"
+      of "Button": "button"
+      of "Row", "Column", "Container": "div"
+      else: "div"
+
+    html.add("<" & tagName & " id=\"" & componentId & "\" class=\"kryon-" & componentType.toLowerAscii() & "\">")
+
+    # Extract styles
+    var styles: seq[string] = @[]
+
+    if node.hasKey("width"):
+      let w = node["width"]
+      if w.kind == JString:
+        styles.add("width: " & w.getStr())
+      elif w.kind == JInt or w.kind == JFloat:
+        styles.add("width: " & $w.getFloat().int & "px")
+
+    if node.hasKey("height"):
+      let h = node["height"]
+      if h.kind == JString:
+        styles.add("height: " & h.getStr())
+      elif h.kind == JInt or h.kind == JFloat:
+        styles.add("height: " & $h.getFloat().int & "px")
+
+    if node.hasKey("background"):
+      styles.add("background: " & node["background"].getStr())
+
+    if node.hasKey("backgroundColor"):
+      styles.add("background-color: " & node["backgroundColor"].getStr())
+
+    if node.hasKey("color"):
+      styles.add("color: " & node["color"].getStr())
+
+    if node.hasKey("fontSize"):
+      let fs = node["fontSize"]
+      if fs.kind == JInt or fs.kind == JFloat:
+        styles.add("font-size: " & $fs.getFloat().int & "px")
+
+    if node.hasKey("fontWeight"):
+      styles.add("font-weight: " & node["fontWeight"].getStr())
+
+    if node.hasKey("padding"):
+      let p = node["padding"]
+      if p.kind == JString:
+        styles.add("padding: " & p.getStr())
+      elif p.kind == JInt or p.kind == JFloat:
+        styles.add("padding: " & $p.getFloat().int & "px")
+
+    if node.hasKey("margin"):
+      let m = node["margin"]
+      if m.kind == JString:
+        styles.add("margin: " & m.getStr())
+      elif m.kind == JInt or m.kind == JFloat:
+        styles.add("margin: " & $m.getFloat().int & "px")
+
+    if node.hasKey("borderRadius"):
+      let br = node["borderRadius"]
+      if br.kind == JInt or br.kind == JFloat:
+        styles.add("border-radius: " & $br.getFloat().int & "px")
+
+    if node.hasKey("border"):
+      styles.add("border: " & node["border"].getStr())
+
+    if node.hasKey("gap"):
+      let g = node["gap"]
+      if g.kind == JInt or g.kind == JFloat:
+        styles.add("gap: " & $g.getFloat().int & "px")
+
+    if node.hasKey("justifyContent"):
+      styles.add("justify-content: " & node["justifyContent"].getStr())
+
+    if node.hasKey("alignItems"):
+      styles.add("align-items: " & node["alignItems"].getStr())
+
+    # Add flexbox for layout containers
+    if componentType in ["Row", "Column", "Container"]:
+      styles.add("display: flex")
+      if componentType == "Row":
+        styles.add("flex-direction: row")
+      elif componentType == "Column":
+        styles.add("flex-direction: column")
+
+    # Generate CSS rule
+    if styles.len > 0:
+      css.add("#" & componentId & " { " & styles.join("; ") & " }\n")
+
+    # Add text content
+    if node.hasKey("text"):
+      let textNode = node["text"]
+      if textNode.kind == JString:
+        html.add(textNode.getStr())
+      elif textNode.kind == JObject and textNode.hasKey("var"):
+        # Variable reference - show placeholder or resolve from props
+        html.add("{{" & textNode["var"].getStr() & "}}")
+
+    # Process children
+    if node.hasKey("children"):
+      for child in node["children"]:
+        let (childCss, childHtml) = generateComponentCssAndHtml(child, componentId, depth + 1)
+        css.add(childCss)
+        html.add(childHtml)
+
+    # Close HTML element
+    html.add("</" & tagName & ">")
+
+    result = (css, html)
+
+  # Generate from root
+  if kirJson.hasKey("root"):
+    let (css, html) = generateComponentCssAndHtml(kirJson["root"])
+    cssRules = css
+    htmlBody = html
+  elif kirJson.hasKey("children"):
+    for child in kirJson["children"]:
+      let (css, html) = generateComponentCssAndHtml(child)
+      cssRules.add(css)
+      htmlBody.add(html)
+
+  # Base CSS reset
+  let baseCss = """
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+.kryon-row { display: flex; flex-direction: row; }
+.kryon-column { display: flex; flex-direction: column; }
+.kryon-container { display: flex; }
+.kryon-button { cursor: pointer; border: none; }
+.kryon-text { display: inline; }
+"""
+
+  # Generate HTML file
+  let htmlContent = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>""" & appTitle & """</title>
+  <style>
+""" & baseCss & """
+""" & cssRules & """
+  </style>
+</head>
+<body style="background: """ & appBg & """; width: """ & $appWidth & """px; height: """ & $appHeight & """px; margin: 0 auto;">
+""" & htmlBody & """
+</body>
+</html>
+"""
+
+  # Write files
+  let htmlPath = outputDir / "index.html"
+  writeFile(htmlPath, htmlContent)
+  echo "   ✅ Generated: " & htmlPath
+
+  # Optionally write separate CSS if configured
+  if cfg.webGenerateSeparateFiles:
+    let cssPath = outputDir / "styles.css"
+    writeFile(cssPath, baseCss & "\n" & cssRules)
+    echo "   ✅ Generated: " & cssPath
+
+  echo "   📁 Web files in: " & outputDir & "/"
+  echo "   🌐 Open " & htmlPath & " in a browser"
