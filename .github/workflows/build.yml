@@ -146,7 +146,7 @@ jobs:
 
       - name: Verify build
         run: |
-          export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+          export LD_LIBRARY_PATH=/usr/local/lib:build:$LD_LIBRARY_PATH
           ./build/kryon-desktop --version
 
       - name: Upload artifact
@@ -197,9 +197,10 @@ jobs:
         run: |
           export PATH="$HOME/.nimble/bin:$PATH"
           make -C ir all
+          make -C backends/web all
           nim c --define:kryonVersion=0.2.0 -d:webBackend --opt:size \
             --passL:"-static" \
-            --passL:"-Lbuild -lkryon_ir" \
+            --passL:"-Lbuild -lkryon_ir -lkryon_web" \
             --passL:"-lharfbuzz -lgraphite2 -lfreetype -lfribidi -lbz2 -lpng -lz -lbrotlidec -lbrotlicommon" \
             -o:build/kryon-web cli/main.nim
 
@@ -214,9 +215,94 @@ jobs:
           name: kryon-linux-x86_64-web
           path: build/kryon-web
 
-  # Job 4: Create release with all variants
+  # Job 4: Default build (all backends) - dynamic linking, glibc-based
+  build-default:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install base dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            cmake \
+            ninja-build \
+            libharfbuzz-dev \
+            libfreetype6-dev \
+            libfribidi-dev \
+            libx11-dev \
+            libxext-dev \
+            libxrandr-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            libasound2-dev \
+            libpulse-dev
+
+      - name: Cache SDL3
+        id: cache-sdl3
+        uses: actions/cache@v4
+        with:
+          path: /usr/local
+          key: sdl3-${{ env.SDL3_VERSION }}-ttf-${{ env.SDL3_TTF_VERSION }}-ubuntu-24.04
+
+      - name: Build SDL3 from source
+        if: steps.cache-sdl3.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch release-${{ env.SDL3_VERSION }} \
+            https://github.com/libsdl-org/SDL.git /tmp/SDL3
+          cd /tmp/SDL3
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local
+          cmake --build build
+          sudo cmake --install build
+
+      - name: Build SDL3_ttf from source
+        if: steps.cache-sdl3.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch release-${{ env.SDL3_TTF_VERSION }} \
+            https://github.com/libsdl-org/SDL_ttf.git /tmp/SDL3_ttf
+          cd /tmp/SDL3_ttf
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local
+          cmake --build build
+          sudo cmake --install build
+
+      - name: Update library cache
+        run: sudo ldconfig
+
+      - name: Install Nim
+        uses: jiro4989/setup-nim-action@v2
+        with:
+          nim-version: ${{ env.NIM_VERSION }}
+
+      - name: Install Nim dependencies
+        run: nimble install -y parsetoml cligen
+
+      - name: Build default variant (all backends)
+        run: |
+          export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+          make build-default
+
+      - name: Verify build
+        run: |
+          export LD_LIBRARY_PATH=/usr/local/lib:build:$LD_LIBRARY_PATH
+          ./build/kryon-full --version
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kryon-linux-x86_64
+          path: build/kryon-full
+
+  # Job 5: Create release with all variants
   release:
-    needs: [build-terminal, build-desktop, build-web]
+    needs: [build-terminal, build-desktop, build-web, build-default]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -229,9 +315,11 @@ jobs:
           chmod +x kryon-linux-x86_64-terminal/kryon-terminal
           chmod +x kryon-linux-x86_64-desktop/kryon-desktop
           chmod +x kryon-linux-x86_64-web/kryon-web
+          chmod +x kryon-linux-x86_64/kryon-full
           mv kryon-linux-x86_64-terminal/kryon-terminal kryon-linux-x86_64-terminal
           mv kryon-linux-x86_64-desktop/kryon-desktop kryon-linux-x86_64-desktop
           mv kryon-linux-x86_64-web/kryon-web kryon-linux-x86_64-web
+          mv kryon-linux-x86_64/kryon-full kryon-linux-x86_64
 
       - name: Create release
         uses: softprops/action-gh-release@v2
@@ -240,6 +328,7 @@ jobs:
           name: Latest Build
           prerelease: true
           files: |
+            kryon-linux-x86_64
             kryon-linux-x86_64-terminal
             kryon-linux-x86_64-desktop
             kryon-linux-x86_64-web
@@ -252,20 +341,24 @@ jobs:
 
             | Variant | Static | Works On | Use Case |
             |---------|--------|----------|----------|
+            | `kryon-linux-x86_64` | No (glibc) | Ubuntu, Debian, Fedora, etc. | Full CLI with all backends |
             | `kryon-linux-x86_64-terminal` | Yes (musl) | Any Linux | Terminal UI, CI/CD, headless |
-            | `kryon-linux-x86_64-desktop` | No (glibc) | Ubuntu, Debian, Fedora, etc. | SDL3 desktop apps |
-            | `kryon-linux-x86_64-web` | Yes (musl) | Any Linux | WASM/HTML5 compilation |
+            | `kryon-linux-x86_64-desktop` | No (glibc) | Ubuntu, Debian, Fedora, etc. | SDL3 desktop apps only |
+            | `kryon-linux-x86_64-web` | Yes (musl) | Any Linux | Website generation (HTML/CSS/JS) |
 
             ## Download
 
             ```bash
+            # Full CLI (all backends, requires glibc)
+            curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64 -o kryon
+
             # Terminal-only (static, works everywhere)
             curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64-terminal -o kryon
 
-            # Desktop (SDL3, requires glibc)
+            # Desktop (SDL3 only, requires glibc)
             curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64-desktop -o kryon
 
-            # Web (static, works everywhere)
+            # Web (HTML/CSS/JS generation, static)
             curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64-web -o kryon
 
             chmod +x kryon
