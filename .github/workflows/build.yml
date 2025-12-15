@@ -11,34 +11,59 @@ env:
   SDL3_TTF_VERSION: "3.2.2"
 
 jobs:
-  # Job 1: Terminal build (no SDL3 needed - fast)
+  # Job 1: Terminal build - fully static with musl (works on any Linux)
   build-terminal:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:3.20
     steps:
+      - name: Install Alpine dependencies
+        run: |
+          apk add --no-cache \
+            git \
+            build-base \
+            pkgconf \
+            harfbuzz-dev \
+            harfbuzz-static \
+            freetype-dev \
+            freetype-static \
+            fribidi-dev \
+            fribidi-static \
+            bzip2-static \
+            libpng-static \
+            zlib-static \
+            brotli-static \
+            curl \
+            bash
+
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install base dependencies
+      - name: Install Nim (choosenim)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            pkg-config \
-            libharfbuzz-dev \
-            libfreetype6-dev \
-            libfribidi-dev
+          curl https://nim-lang.org/choosenim/init.sh -sSf | sh -s -- -y
+          echo "$HOME/.nimble/bin" >> $GITHUB_PATH
 
-      - name: Install Nim
-        uses: jiro4989/setup-nim-action@v2
-        with:
-          nim-version: ${{ env.NIM_VERSION }}
+      - name: Install Nim dependencies
+        run: |
+          export PATH="$HOME/.nimble/bin:$PATH"
+          nimble install -y parsetoml cligen
 
-      - name: Build terminal variant
-        run: make build-terminal
+      - name: Build terminal variant (static)
+        run: |
+          export PATH="$HOME/.nimble/bin:$PATH"
+          make -C ir all CC=gcc CFLAGS="-std=c99 -Wall -O2 -fPIC -static"
+          nim c --define:kryonVersion=0.2.0 -d:terminalOnly --opt:size \
+            --passL:"-static" \
+            --passL:"-Lbuild -lkryon_ir" \
+            --passL:"-lharfbuzz -lfreetype -lfribidi -lbz2 -lpng -lz -lbrotlidec -lbrotlicommon" \
+            -o:build/kryon-terminal cli/main.nim
 
-      - name: Verify build
-        run: ./build/kryon-terminal --version
+      - name: Verify build is static
+        run: |
+          file build/kryon-terminal
+          ./build/kryon-terminal --version
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -46,7 +71,7 @@ jobs:
           name: kryon-linux-x86_64-terminal
           path: build/kryon-terminal
 
-  # Job 2: Desktop build (needs SDL3)
+  # Job 2: Desktop build (needs SDL3) - dynamic linking, glibc-based distros only
   build-desktop:
     runs-on: ubuntu-24.04
     steps:
@@ -112,6 +137,9 @@ jobs:
         with:
           nim-version: ${{ env.NIM_VERSION }}
 
+      - name: Install Nim dependencies
+        run: nimble install -y parsetoml cligen
+
       - name: Build desktop variant
         run: |
           export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
@@ -128,34 +156,59 @@ jobs:
           name: kryon-linux-x86_64-desktop
           path: build/kryon-desktop
 
-  # Job 3: Web build (for WASM target)
+  # Job 3: Web build - fully static with musl (works on any Linux)
   build-web:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:3.20
     steps:
+      - name: Install Alpine dependencies
+        run: |
+          apk add --no-cache \
+            git \
+            build-base \
+            pkgconf \
+            harfbuzz-dev \
+            harfbuzz-static \
+            freetype-dev \
+            freetype-static \
+            fribidi-dev \
+            fribidi-static \
+            bzip2-static \
+            libpng-static \
+            zlib-static \
+            brotli-static \
+            curl \
+            bash
+
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install base dependencies
+      - name: Install Nim (choosenim)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            pkg-config \
-            libharfbuzz-dev \
-            libfreetype6-dev \
-            libfribidi-dev
+          curl https://nim-lang.org/choosenim/init.sh -sSf | sh -s -- -y
+          echo "$HOME/.nimble/bin" >> $GITHUB_PATH
 
-      - name: Install Nim
-        uses: jiro4989/setup-nim-action@v2
-        with:
-          nim-version: ${{ env.NIM_VERSION }}
+      - name: Install Nim dependencies
+        run: |
+          export PATH="$HOME/.nimble/bin:$PATH"
+          nimble install -y parsetoml cligen
 
-      - name: Build web variant
-        run: make build-web
+      - name: Build web variant (static)
+        run: |
+          export PATH="$HOME/.nimble/bin:$PATH"
+          make -C ir all CC=gcc CFLAGS="-std=c99 -Wall -O2 -fPIC -static"
+          nim c --define:kryonVersion=0.2.0 -d:webBackend --opt:size \
+            --passL:"-static" \
+            --passL:"-Lbuild -lkryon_ir" \
+            --passL:"-lharfbuzz -lfreetype -lfribidi -lbz2 -lpng -lz -lbrotlidec -lbrotlicommon" \
+            -o:build/kryon-web cli/main.nim
 
-      - name: Verify build
-        run: ./build/kryon-web --version
+      - name: Verify build is static
+        run: |
+          file build/kryon-web
+          ./build/kryon-web --version
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -199,22 +252,22 @@ jobs:
 
             ## Available Variants
 
-            | Variant | Size | Use Case |
-            |---------|------|----------|
-            | `kryon-linux-x86_64-terminal` | ~2MB | Terminal UI, CI/CD, headless |
-            | `kryon-linux-x86_64-desktop` | ~8MB | SDL3 desktop apps |
-            | `kryon-linux-x86_64-web` | ~3MB | WASM/HTML5 compilation |
+            | Variant | Static | Works On | Use Case |
+            |---------|--------|----------|----------|
+            | `kryon-linux-x86_64-terminal` | Yes (musl) | Any Linux | Terminal UI, CI/CD, headless |
+            | `kryon-linux-x86_64-desktop` | No (glibc) | Ubuntu, Debian, Fedora, etc. | SDL3 desktop apps |
+            | `kryon-linux-x86_64-web` | Yes (musl) | Any Linux | WASM/HTML5 compilation |
 
             ## Download
 
             ```bash
-            # Terminal-only (lightest)
+            # Terminal-only (static, works everywhere)
             curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64-terminal -o kryon
 
-            # Desktop (SDL3)
+            # Desktop (SDL3, requires glibc)
             curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64-desktop -o kryon
 
-            # Web (WASM)
+            # Web (static, works everywhere)
             curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64-web -o kryon
 
             chmod +x kryon
