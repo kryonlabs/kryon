@@ -50,7 +50,7 @@ jobs:
       - name: Build terminal variant (static)
         run: |
           export PATH="$HOME/.nimble/bin:$PATH"
-          make -C ir all CC=gcc CFLAGS="-std=c99 -Wall -O2 -fPIC -static"
+          make -C ir all
           nim c --define:kryonVersion=0.2.0 -d:terminalOnly --opt:size \
             --passL:"-static" \
             --passL:"-Lbuild -lkryon_ir" \
