@@ -318,6 +318,47 @@ float measure_text_width(TTF_Font* font, const char* text) {
 }
 
 // ============================================================================
+// FONT METRICS CALLBACKS (for IR layout system)
+// ============================================================================
+
+static TTF_Font* get_font_for_metrics(float font_size) {
+    int size = (int)(font_size + 0.5f);
+    if (g_default_font_path[0] == '\0') return NULL;
+    return desktop_ir_get_cached_font(g_default_font_path, size);
+}
+
+static float desktop_font_metrics_get_text_width(const char* text, uint32_t length,
+                                                  float font_size, const char* font_family) {
+    (void)font_family;
+    if (!text || length == 0) return 0.0f;
+
+    TTF_Font* font = get_font_for_metrics(font_size);
+    if (!font) {
+        // No font available yet - return estimate
+        return length * font_size * 0.6f;
+    }
+    int w = 0, h = 0;
+    TTF_GetStringSize(font, text, length, &w, &h);
+    return (float)w;
+}
+
+static float desktop_font_metrics_get_font_height(float font_size, const char* font_family) {
+    (void)font_family;
+    TTF_Font* font = get_font_for_metrics(font_size);
+    return (float)TTF_GetFontHeight(font);
+}
+
+static IRFontMetrics g_desktop_font_metrics = {
+    .get_text_width = desktop_font_metrics_get_text_width,
+    .get_font_height = desktop_font_metrics_get_font_height,
+    .get_word_width = NULL
+};
+
+void desktop_register_font_metrics(void) {
+    ir_set_font_metrics(&g_desktop_font_metrics);
+}
+
+// ============================================================================
 // TEXT TEXTURE CACHE (LRU with Hash Table - 15-25% speedup)
 // ============================================================================
 // Phase 1, Week 1: Performance optimization

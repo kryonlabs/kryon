@@ -1630,8 +1630,8 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
 // ============================================================================
 
 // Default layout parameters
-#define FLOWCHART_NODE_MIN_WIDTH 120.0f
-#define FLOWCHART_NODE_MIN_HEIGHT 40.0f
+#define FLOWCHART_NODE_MIN_WIDTH 40.0f
+#define FLOWCHART_NODE_MIN_HEIGHT 24.0f
 #define FLOWCHART_NODE_PADDING 15.0f
 #define FLOWCHART_NODE_SPACING 20.0f
 #define FLOWCHART_RANK_SPACING 40.0f
@@ -1669,25 +1669,37 @@ void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, 
     float rank_spacing = state->rank_spacing > 0 ? state->rank_spacing : FLOWCHART_RANK_SPACING;
 
     // Phase 1: Compute node sizes based on labels
+    // Use flowchart's font size if specified, otherwise default to 14
+    float font_size = (flowchart->style && flowchart->style->font.size > 0)
+                      ? flowchart->style->font.size : 14.0f;
     for (uint32_t i = 0; i < state->node_count; i++) {
         IRFlowchartNodeData* node = state->nodes[i];
         if (!node) continue;
 
-        // Size calculation based on label length
-        // Font size 14 typically renders at ~8-10px per character
-        // Use 9px average plus extra padding for safety
-        float char_width = 9.0f;
-        float label_width = node->label ? (float)strlen(node->label) * char_width : 50.0f;
-        float label_height = 18.0f;  // Approximate height for font 14
+        float label_width = 50.0f;
+        float label_height = font_size * 1.2f;
 
-        // Add horizontal padding (space around text)
-        float h_padding = 24.0f;  // 12px on each side
-        float v_padding = 16.0f;  // 8px on each side
+        if (node->label && node->label[0] != '\0') {
+            if (g_ir_font_metrics && g_ir_font_metrics->get_text_width) {
+                size_t len = strlen(node->label);
+                label_width = g_ir_font_metrics->get_text_width(node->label, (uint32_t)len, font_size, NULL);
+                label_height = g_ir_font_metrics->get_font_height(font_size, NULL);
+            } else {
+                // No font metrics - use estimate
+                label_width = strlen(node->label) * font_size * 0.6f;
+            }
+        }
 
-        // Extra padding for non-rectangular shapes
-        if (node->shape == IR_FLOWCHART_SHAPE_DIAMOND ||
-            node->shape == IR_FLOWCHART_SHAPE_CIRCLE ||
-            node->shape == IR_FLOWCHART_SHAPE_HEXAGON) {
+        // Add padding around text
+        float h_padding = 32.0f;  // 16px on each side
+        float v_padding = 20.0f;  // 10px on each side
+
+        // Extra padding for non-rectangular shapes (text area is smaller)
+        if (node->shape == IR_FLOWCHART_SHAPE_DIAMOND) {
+            h_padding *= 2.0f;  // Diamond needs ~2x because text area is diagonal
+            v_padding *= 2.0f;
+        } else if (node->shape == IR_FLOWCHART_SHAPE_CIRCLE ||
+                   node->shape == IR_FLOWCHART_SHAPE_HEXAGON) {
             h_padding *= 1.5f;
             v_padding *= 1.5f;
         }
@@ -2008,16 +2020,20 @@ void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, 
         scale = min_scale;
     }
 
-    // Apply scaling to all nodes if needed
+    // Apply scaling to node POSITIONS only (not dimensions!)
+    // Node dimensions must stay the same size as the text they contain
+    // Only positions scale to fit within available space
     if (scale < 1.0f) {
         for (uint32_t i = 0; i < state->node_count; i++) {
             IRFlowchartNodeData* node = state->nodes[i];
             if (!node) continue;
 
+            // Scale position only, NOT width/height
+            // Text rendering uses node dimensions directly
             node->x = padding + (node->x) * scale;
             node->y = padding + (node->y) * scale;
-            node->width *= scale;
-            node->height *= scale;
+            // DO NOT scale: node->width *= scale;
+            // DO NOT scale: node->height *= scale;
         }
 
         // Also scale edge path points
