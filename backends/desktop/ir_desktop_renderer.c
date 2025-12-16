@@ -272,6 +272,9 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
         g_font_cache_hash_table[i] = -1;
     }
 
+    /* Register font metrics callbacks for IR layout system */
+    desktop_register_font_metrics();
+
     printf("Desktop renderer initialized successfully\n");
     return true;
 

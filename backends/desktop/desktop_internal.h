@@ -184,6 +184,9 @@ TTF_Font* desktop_ir_resolve_font(DesktopIRRenderer* renderer, IRComponent* comp
 // Text measurement
 float measure_text_width(TTF_Font* font, const char* text);
 
+// Font metrics for IR layout system
+void desktop_register_font_metrics(void);
+
 // Text texture cache
 uint32_t pack_color(SDL_Color color);
 bool get_font_info(TTF_Font* font, const char** out_path, int* out_size);

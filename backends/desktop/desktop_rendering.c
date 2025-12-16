@@ -61,6 +61,7 @@
 #include "../../ir/ir_plugin.h"
 #include "../../core/include/kryon_canvas.h"
 #include "../../third_party/stb/stb_image.h"
+#include "../../third_party/stb/stb_image_write.h"
 
 #ifdef ENABLE_SDL3
 
@@ -1501,10 +1502,12 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 if (node->label) {
                     TTF_Font* font = desktop_ir_resolve_font(renderer, component, 14.0f);
                     if (font) {
-                        SDL_Color text_color = {255, 255, 255, (uint8_t)(255 * opacity)};
+                        // Dark text for contrast against light node fill
+                        SDL_Color text_color = {20, 30, 60, (uint8_t)(255 * opacity)};
                         // Center text in node
                         int text_w = 0, text_h = 0;
                         TTF_GetStringSize(font, node->label, 0, &text_w, &text_h);
+
                         float text_x = node_rect.x + (node_rect.w - text_w) / 2;
                         float text_y = node_rect.y + (node_rect.h - text_h) / 2;
 
@@ -2463,17 +2466,34 @@ bool desktop_save_screenshot(DesktopIRRenderer* renderer, const char* path) {
         return false;
     }
 
-    // Save to PNG using SDL_SaveBMP (we can add stb_image_write later for PNG)
-    char bmp_path[512];
-    snprintf(bmp_path, sizeof(bmp_path), "%s.bmp", path);
-    if (!SDL_SaveBMP(surface, bmp_path)) {
-        fprintf(stderr, "Failed to save screenshot: %s\n", SDL_GetError());
-        SDL_DestroySurface(surface);
-        return false;
+    // Check file extension to determine format
+    const char* ext = strrchr(path, '.');
+    bool is_png = (ext && strcasecmp(ext, ".png") == 0);
+
+    bool success = false;
+    if (is_png) {
+        // Use stb_image_write for PNG
+        // Convert surface to RGBA format for stbi_write_png
+        SDL_Surface* rgba_surface = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_RGBA32);
+        if (rgba_surface) {
+            int stride = rgba_surface->w * 4;
+            success = stbi_write_png(path, rgba_surface->w, rgba_surface->h, 4,
+                                      rgba_surface->pixels, stride) != 0;
+            SDL_DestroySurface(rgba_surface);
+        }
+        if (!success) {
+            fprintf(stderr, "Failed to save PNG screenshot: %s\n", path);
+        }
+    } else {
+        // Use SDL_SaveBMP for BMP files
+        success = SDL_SaveBMP(surface, path);
+        if (!success) {
+            fprintf(stderr, "Failed to save screenshot: %s\n", SDL_GetError());
+        }
     }
 
     SDL_DestroySurface(surface);
-    return true;
+    return success;
 }
 
 // Debug overlay rendering function
