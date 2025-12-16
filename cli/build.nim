@@ -756,10 +756,18 @@ proc processInlineMarkdown*(text: string): string
 
 proc convertMarkdownToHtml*(markdown: string): string =
   ## Convert markdown to HTML with proper CSS classes
-  ## Supports: headers, paragraphs, code blocks, lists, blockquotes, links
+  ## Supports: headers, paragraphs, code blocks, lists, blockquotes, links, tables
   result = "<div class=\"kryon-md\">\n"
 
-  var lines = markdown.split("\n")
+  # Normalize line endings (handle \r\n, \r, and escaped \n)
+  var normalizedMd = markdown.replace("\\n", "\n").replace("\r\n", "\n").replace("\r", "\n")
+
+  let debugBuild = getEnv("KRYON_DEBUG_BUILD") == "1"
+  if debugBuild:
+    echo "DEBUG convertMarkdownToHtml: input length=", markdown.len
+    echo "DEBUG: First 200 chars: ", markdown[0..min(199, markdown.len-1)]
+
+  var lines = normalizedMd.split("\n")
   var i = 0
   var inCodeBlock = false
   var codeBlockLang = ""
@@ -769,6 +777,9 @@ proc convertMarkdownToHtml*(markdown: string): string =
 
   while i < lines.len:
     var line = lines[i]
+
+    if debugBuild and line.strip().len > 0 and line.contains("|"):
+      echo "DEBUG line ", i, ": '", line, "' startsWith('|')=", line.strip().startsWith("|")
 
     # Code blocks (fenced)
     if line.startsWith("```"):

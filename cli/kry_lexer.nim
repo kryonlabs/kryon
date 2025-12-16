@@ -112,6 +112,25 @@ proc scanString(lex: var Lexer): string =
   discard lex.advance()  # consume closing quote
   s
 
+proc scanTripleQuotedString(lex: var Lexer): string =
+  ## Scan a triple-quoted string ("""...""")
+  ## Preserves newlines as-is, no escape processing
+  discard lex.advance()  # "
+  discard lex.advance()  # "
+  discard lex.advance()  # "
+
+  var s = ""
+  while lex.peek() != '\0':
+    # Check for closing """
+    if lex.peek() == '"' and lex.peek(1) == '"' and lex.peek(2) == '"':
+      discard lex.advance()  # "
+      discard lex.advance()  # "
+      discard lex.advance()  # "
+      return s
+    s.add(lex.advance())
+
+  lex.error("Unterminated triple-quoted string")
+
 proc scanNumber(lex: var Lexer): string =
   var s = ""
   while lex.peek().isDigit:
@@ -288,7 +307,15 @@ proc tokenize*(lex: var Lexer): seq[Token] =
         lex.tokens.add(Token(kind: tkOr, value: "||", loc: loc))
       else:
         lex.error("Expected '||' but got single '|'")
-    of '"', '\'':
+    of '"':
+      # Check for triple-quoted string ("""...""")
+      if lex.peek(1) == '"' and lex.peek(2) == '"':
+        let s = lex.scanTripleQuotedString()
+        lex.tokens.add(Token(kind: tkString, value: s, loc: loc))
+      else:
+        let s = lex.scanString()
+        lex.tokens.add(Token(kind: tkString, value: s, loc: loc))
+    of '\'':
       let s = lex.scanString()
       lex.tokens.add(Token(kind: tkString, value: s, loc: loc))
     of '#':
