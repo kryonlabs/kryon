@@ -1,0 +1,432 @@
+/**
+ * Kryon UI Framework - C Frontend
+ *
+ * This is the main C API for building Kryon UIs.
+ * The API follows a runtime builder pattern that wraps the IR builder API.
+ *
+ * Usage:
+ *   1. Call kryon_init() to initialize
+ *   2. Create components with kryon_*() functions
+ *   3. Set properties with kryon_set_*() functions
+ *   4. Build tree with kryon_add_child()
+ *   5. Call kryon_finalize() to serialize to .kir
+ */
+
+#ifndef KRYON_H
+#define KRYON_H
+
+#include "../../ir/ir_core.h"
+#include "../../ir/ir_builder.h"
+#include "../../ir/ir_serialization.h"
+#include <stdbool.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// ============================================================================
+// Initialization & App Management
+// ============================================================================
+
+/**
+ * Initialize the Kryon context with window configuration
+ */
+void kryon_init(const char* title, int width, int height);
+
+/**
+ * Get the root component
+ */
+IRComponent* kryon_get_root(void);
+
+/**
+ * Finalize and serialize the component tree to a .kir file
+ */
+bool kryon_finalize(const char* output_path);
+
+/**
+ * Clean up and destroy all resources
+ */
+void kryon_cleanup(void);
+
+// ============================================================================
+// Component Creation
+// ============================================================================
+
+/**
+ * Create a generic container component
+ */
+IRComponent* kryon_container(void);
+
+/**
+ * Create a row layout component (horizontal flex)
+ */
+IRComponent* kryon_row(void);
+
+/**
+ * Create a column layout component (vertical flex)
+ */
+IRComponent* kryon_column(void);
+
+/**
+ * Create a center alignment component
+ */
+IRComponent* kryon_center(void);
+
+/**
+ * Create a text display component
+ */
+IRComponent* kryon_text(const char* content);
+
+/**
+ * Create a button component with label
+ */
+IRComponent* kryon_button(const char* label);
+
+/**
+ * Create a text input component
+ */
+IRComponent* kryon_input(const char* placeholder);
+
+/**
+ * Create a checkbox component
+ */
+IRComponent* kryon_checkbox(const char* label, bool checked);
+
+/**
+ * Create a dropdown component
+ */
+IRComponent* kryon_dropdown(const char* placeholder);
+
+/**
+ * Create an image component
+ */
+IRComponent* kryon_image(const char* src, const char* alt);
+
+// ============================================================================
+// Tab Components
+// ============================================================================
+
+IRComponent* kryon_tab_group(void);
+IRComponent* kryon_tab_bar(void);
+IRComponent* kryon_tab(const char* title);
+IRComponent* kryon_tab_content(void);
+IRComponent* kryon_tab_panel(void);
+
+// ============================================================================
+// Table Components
+// ============================================================================
+
+IRComponent* kryon_table(void);
+IRComponent* kryon_table_head(void);
+IRComponent* kryon_table_body(void);
+IRComponent* kryon_table_row(void);
+IRComponent* kryon_table_cell(const char* content);
+IRComponent* kryon_table_header_cell(const char* content);
+
+// ============================================================================
+// Component Properties - Dimensions
+// ============================================================================
+
+/**
+ * Set width with unit ("px", "%", "auto", "fr")
+ */
+void kryon_set_width(IRComponent* c, float value, const char* unit);
+
+/**
+ * Set height with unit
+ */
+void kryon_set_height(IRComponent* c, float value, const char* unit);
+
+/**
+ * Set min-width with unit
+ */
+void kryon_set_min_width(IRComponent* c, float value, const char* unit);
+
+/**
+ * Set min-height with unit
+ */
+void kryon_set_min_height(IRComponent* c, float value, const char* unit);
+
+/**
+ * Set max-width with unit
+ */
+void kryon_set_max_width(IRComponent* c, float value, const char* unit);
+
+/**
+ * Set max-height with unit
+ */
+void kryon_set_max_height(IRComponent* c, float value, const char* unit);
+
+// ============================================================================
+// Component Properties - Colors
+// ============================================================================
+
+/**
+ * Set background color (0xRRGGBB or 0xRRGGBBAA)
+ */
+void kryon_set_background(IRComponent* c, uint32_t color);
+
+/**
+ * Set text color (0xRRGGBB or 0xRRGGBBAA)
+ */
+void kryon_set_color(IRComponent* c, uint32_t color);
+
+/**
+ * Set border color (0xRRGGBB or 0xRRGGBBAA)
+ */
+void kryon_set_border_color(IRComponent* c, uint32_t color);
+
+// ============================================================================
+// Component Properties - Spacing
+// ============================================================================
+
+/**
+ * Set uniform padding on all sides
+ */
+void kryon_set_padding(IRComponent* c, float value);
+
+/**
+ * Set padding for each side individually
+ */
+void kryon_set_padding_sides(IRComponent* c, float top, float right, float bottom, float left);
+
+/**
+ * Set uniform margin on all sides
+ */
+void kryon_set_margin(IRComponent* c, float value);
+
+/**
+ * Set margin for each side individually
+ */
+void kryon_set_margin_sides(IRComponent* c, float top, float right, float bottom, float left);
+
+/**
+ * Set gap between children (for flex layouts)
+ */
+void kryon_set_gap(IRComponent* c, float value);
+
+// ============================================================================
+// Component Properties - Typography
+// ============================================================================
+
+/**
+ * Set font size in pixels
+ */
+void kryon_set_font_size(IRComponent* c, float size);
+
+/**
+ * Set font family
+ */
+void kryon_set_font_family(IRComponent* c, const char* family);
+
+/**
+ * Set font weight (100-900, 400=normal, 700=bold)
+ */
+void kryon_set_font_weight(IRComponent* c, uint16_t weight);
+
+/**
+ * Set font bold
+ */
+void kryon_set_font_bold(IRComponent* c, bool bold);
+
+/**
+ * Set font italic
+ */
+void kryon_set_font_italic(IRComponent* c, bool italic);
+
+/**
+ * Set line height multiplier
+ */
+void kryon_set_line_height(IRComponent* c, float line_height);
+
+/**
+ * Set letter spacing in pixels
+ */
+void kryon_set_letter_spacing(IRComponent* c, float spacing);
+
+/**
+ * Set text alignment
+ */
+void kryon_set_text_align(IRComponent* c, IRTextAlign align);
+
+// ============================================================================
+// Component Properties - Border & Radius
+// ============================================================================
+
+/**
+ * Set border width in pixels
+ */
+void kryon_set_border_width(IRComponent* c, float width);
+
+/**
+ * Set border radius in pixels
+ */
+void kryon_set_border_radius(IRComponent* c, float radius);
+
+// ============================================================================
+// Component Properties - Effects
+// ============================================================================
+
+/**
+ * Set opacity (0.0 = transparent, 1.0 = opaque)
+ */
+void kryon_set_opacity(IRComponent* c, float opacity);
+
+/**
+ * Set z-index for layering
+ */
+void kryon_set_z_index(IRComponent* c, uint32_t z_index);
+
+/**
+ * Set visibility
+ */
+void kryon_set_visible(IRComponent* c, bool visible);
+
+// ============================================================================
+// Layout Properties
+// ============================================================================
+
+/**
+ * Set justify-content for flex layout
+ */
+void kryon_set_justify_content(IRComponent* c, IRAlignment align);
+
+/**
+ * Set align-items for flex layout
+ */
+void kryon_set_align_items(IRComponent* c, IRAlignment align);
+
+/**
+ * Set flex-grow (default: 0)
+ */
+void kryon_set_flex_grow(IRComponent* c, uint8_t grow);
+
+/**
+ * Set flex-shrink (default: 1)
+ */
+void kryon_set_flex_shrink(IRComponent* c, uint8_t shrink);
+
+/**
+ * Set flex-wrap
+ */
+void kryon_set_flex_wrap(IRComponent* c, bool wrap);
+
+// ============================================================================
+// Tree Management
+// ============================================================================
+
+/**
+ * Add a child component to a parent
+ */
+void kryon_add_child(IRComponent* parent, IRComponent* child);
+
+/**
+ * Remove a child component from a parent
+ */
+void kryon_remove_child(IRComponent* parent, IRComponent* child);
+
+/**
+ * Insert a child at a specific index
+ */
+void kryon_insert_child(IRComponent* parent, IRComponent* child, uint32_t index);
+
+// ============================================================================
+// Event Handlers
+// ============================================================================
+
+/**
+ * Event handler function type
+ */
+typedef void (*KryonEventHandler)(void);
+
+/**
+ * Register a click event handler
+ */
+void kryon_on_click(IRComponent* component, KryonEventHandler handler);
+
+/**
+ * Register a change event handler (for inputs)
+ */
+void kryon_on_change(IRComponent* component, KryonEventHandler handler);
+
+/**
+ * Register a hover event handler
+ */
+void kryon_on_hover(IRComponent* component, KryonEventHandler handler);
+
+/**
+ * Register a focus event handler
+ */
+void kryon_on_focus(IRComponent* component, KryonEventHandler handler);
+
+/**
+ * C event bridge - called by the renderer when events fire
+ * This is exported for the C renderer to call
+ */
+void kryon_c_event_bridge(const char* logic_id);
+
+// ============================================================================
+// Color Utilities
+// ============================================================================
+
+/**
+ * Create an RGB color value
+ */
+#define KRYON_COLOR_RGB(r, g, b) (((uint32_t)(r) << 16) | ((uint32_t)(g) << 8) | (uint32_t)(b))
+
+/**
+ * Create an RGBA color value
+ */
+#define KRYON_COLOR_RGBA(r, g, b, a) (((uint32_t)(a) << 24) | ((uint32_t)(r) << 16) | ((uint32_t)(g) << 8) | (uint32_t)(b))
+
+/**
+ * Named color constants
+ */
+#define KRYON_COLOR_BLACK       0x000000
+#define KRYON_COLOR_WHITE       0xFFFFFF
+#define KRYON_COLOR_RED         0xFF0000
+#define KRYON_COLOR_GREEN       0x00FF00
+#define KRYON_COLOR_BLUE        0x0000FF
+#define KRYON_COLOR_YELLOW      0xFFFF00
+#define KRYON_COLOR_CYAN        0x00FFFF
+#define KRYON_COLOR_MAGENTA     0xFF00FF
+#define KRYON_COLOR_GRAY        0x808080
+#define KRYON_COLOR_DARK_GRAY   0x404040
+#define KRYON_COLOR_LIGHT_GRAY  0xC0C0C0
+#define KRYON_COLOR_TRANSPARENT 0x00000000
+
+// ============================================================================
+// Animation (Advanced)
+// ============================================================================
+
+/**
+ * Create a keyframe animation
+ */
+IRAnimation* kryon_animation_create(const char* name, float duration_ms);
+
+/**
+ * Add a keyframe to an animation
+ */
+void kryon_animation_add_keyframe(IRAnimation* anim, float offset, IRAnimationProperty property, float value);
+
+/**
+ * Set animation iterations (-1 for infinite)
+ */
+void kryon_animation_set_iterations(IRAnimation* anim, int32_t count);
+
+/**
+ * Set animation to alternate direction
+ */
+void kryon_animation_set_alternate(IRAnimation* anim, bool alternate);
+
+/**
+ * Add animation to a component
+ */
+void kryon_component_add_animation(IRComponent* c, IRAnimation* anim);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // KRYON_H

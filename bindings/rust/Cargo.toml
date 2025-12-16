@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = [
+    "kryon-core",
+    "kryon",
+    "kryon-macros",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Kryon Contributors"]
+license = "MIT"
+repository = "https://github.com/kryon-ui/kryon"
+homepage = "https://kryon-ui.org"
+description = "Cross-platform UI framework with intermediate representation"
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

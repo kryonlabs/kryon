@@ -1,0 +1,15 @@
+[package]
+name = "kryon"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Kryon UI framework - Rust frontend with builder API"
+
+[dependencies]
+kryon-core = { path = "../kryon-core" }
+kryon-macros = { path = "../kryon-macros" }
+serde.workspace = true
+serde_json.workspace = true

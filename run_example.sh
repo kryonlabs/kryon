@@ -34,6 +34,14 @@ NC='\033[0m' # No Color
 # Ensure build directories exist
 mkdir -p build/ir build/nim
 
+# Always rebuild and install libraries to ensure we're testing latest code
+echo -e "${CYAN}Building and installing libraries...${NC}"
+if [ -n "$IN_NIX_SHELL" ]; then
+    make install > /dev/null 2>&1 || echo -e "${YELLOW}Build failed${NC}"
+else
+    nix-shell --run "make install" > /dev/null 2>&1 || echo -e "${YELLOW}Build failed${NC}"
+fi
+
 # Prioritize local build directory, then installed libraries
 export LD_LIBRARY_PATH="$SCRIPT_DIR/build:$HOME/.local/lib:$LD_LIBRARY_PATH"
 

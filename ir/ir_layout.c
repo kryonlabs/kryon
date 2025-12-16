@@ -457,10 +457,21 @@ void ir_layout_compute(IRComponent* root, float available_width, float available
     }
 
     // Recursively layout children
+    // SKIP table children - their layout is handled by ir_layout_compute_table()
+    // and uses RELATIVE coordinates that would be corrupted by flex layout
     for (uint32_t i = 0; i < root->child_count; i++) {
         IRComponent* child = root->children[i];
         if (child->style && child->style->visible) {
-            ir_layout_compute(child, child->rendered_bounds.width, child->rendered_bounds.height);
+            // Skip table children - their layout is managed by table layout algorithm
+            bool is_table_child = (child->type == IR_COMPONENT_TABLE_HEAD ||
+                                   child->type == IR_COMPONENT_TABLE_BODY ||
+                                   child->type == IR_COMPONENT_TABLE_FOOT ||
+                                   child->type == IR_COMPONENT_TABLE_ROW ||
+                                   child->type == IR_COMPONENT_TABLE_CELL ||
+                                   child->type == IR_COMPONENT_TABLE_HEADER_CELL);
+            if (!is_table_child) {
+                ir_layout_compute(child, child->rendered_bounds.width, child->rendered_bounds.height);
+            }
         }
     }
 
@@ -1321,9 +1332,47 @@ static float table_get_cell_content_height(IRComponent* cell) {
 
 // Main table layout function
 void ir_layout_compute_table(IRComponent* table, float available_width, float available_height) {
-    if (!table || table->type != IR_COMPONENT_TABLE) return;
+    if (!table || table->type != IR_COMPONENT_TABLE) {
+        return;
+    }
 
     IRTableState* state = (IRTableState*)table->custom_data;
+
+    // Debug: always trace layout state
+    if (getenv("KRYON_TRACE_LAYOUT")) {
+        fprintf(stderr, "📊 TABLE_LAYOUT: state=%p layout_valid=%d cached_h=%.1f\n",
+                (void*)state, state ? state->layout_valid : -1,
+                state ? state->cached_total_height : 0);
+    }
+
+    // Early return if layout is already valid AND children have valid bounds
+    // Must verify first child (section) has non-zero height to ensure bounds were set
+    if (state && state->layout_valid && state->cached_total_height > 0) {
+        // Verify first section has valid bounds
+        bool bounds_valid = false;
+        for (uint32_t i = 0; i < table->child_count && !bounds_valid; i++) {
+            IRComponent* section = table->children[i];
+            if (section && (section->type == IR_COMPONENT_TABLE_HEAD ||
+                           section->type == IR_COMPONENT_TABLE_BODY ||
+                           section->type == IR_COMPONENT_TABLE_FOOT)) {
+                // Check if section has valid height
+                if (section->rendered_bounds.height > 0) {
+                    bounds_valid = true;
+                }
+            }
+        }
+
+        if (bounds_valid) {
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                fprintf(stderr, "📊 TABLE: using cached layout (%.1fx%.1f)\n",
+                        state->cached_total_width, state->cached_total_height);
+            }
+            return;
+        } else if (getenv("KRYON_TRACE_LAYOUT")) {
+            fprintf(stderr, "📊 TABLE: cache invalid (bounds not set), recomputing\n");
+        }
+    }
+
     IRStyle* table_style = table->style;
 
     uint32_t num_cols = table_count_columns(table);
