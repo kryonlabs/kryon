@@ -1131,6 +1131,441 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             return true;
         }
 
+        // ============================================================================
+        // FLOWCHART RENDERING
+        // ============================================================================
+
+        case IR_COMPONENT_FLOWCHART: {
+            // Flowchart container - render background
+            float opacity = component->style ? component->style->opacity * inherited_opacity : inherited_opacity;
+            render_background(renderer->renderer, component, &sdl_rect, opacity);
+
+            // Get flowchart state for rendering nodes and edges
+            IRFlowchartState* fc_state = ir_get_flowchart_state(component);
+            if (!fc_state) break;
+
+            // Compute flowchart layout if not already done
+            // (similar to table layout handling)
+            if (!fc_state->layout_computed) {
+                float inner_width = rect.width - (component->style ? component->style->padding.left + component->style->padding.right : 0);
+                float inner_height = rect.height - (component->style ? component->style->padding.top + component->style->padding.bottom : 0);
+                ir_layout_compute_flowchart(component, inner_width, inner_height);
+            }
+
+            // Render edges first (behind nodes)
+            for (uint32_t i = 0; i < fc_state->edge_count; i++) {
+                IRFlowchartEdgeData* edge = fc_state->edges[i];
+                if (!edge || !edge->path_points || edge->path_point_count < 2) continue;
+
+                // Set edge color (default gray)
+                uint32_t edge_color = 0x888888FF;
+                SDL_SetRenderDrawColor(renderer->renderer,
+                    (edge_color >> 24) & 0xFF,
+                    (edge_color >> 16) & 0xFF,
+                    (edge_color >> 8) & 0xFF,
+                    (uint8_t)(((edge_color) & 0xFF) * opacity));
+
+                // Draw edge path
+                for (uint32_t p = 0; p < edge->path_point_count - 1; p++) {
+                    float x1 = rect.x + edge->path_points[p * 2];
+                    float y1 = rect.y + edge->path_points[p * 2 + 1];
+                    float x2 = rect.x + edge->path_points[(p + 1) * 2];
+                    float y2 = rect.y + edge->path_points[(p + 1) * 2 + 1];
+
+                    // Line style based on edge type
+                    if (edge->type == IR_FLOWCHART_EDGE_DOTTED) {
+                        // Draw dotted line
+                        float dx = x2 - x1;
+                        float dy = y2 - y1;
+                        float len = sqrtf(dx * dx + dy * dy);
+                        float dash_len = 5.0f;
+                        int num_dashes = (int)(len / (dash_len * 2));
+                        for (int d = 0; d < num_dashes; d++) {
+                            float t1 = (float)(d * 2) / (num_dashes * 2);
+                            float t2 = (float)(d * 2 + 1) / (num_dashes * 2);
+                            SDL_RenderLine(renderer->renderer,
+                                x1 + dx * t1, y1 + dy * t1,
+                                x1 + dx * t2, y1 + dy * t2);
+                        }
+                    } else if (edge->type == IR_FLOWCHART_EDGE_THICK) {
+                        // Draw thick line (multiple lines)
+                        SDL_RenderLine(renderer->renderer, x1, y1, x2, y2);
+                        SDL_RenderLine(renderer->renderer, x1 + 1, y1, x2 + 1, y2);
+                        SDL_RenderLine(renderer->renderer, x1, y1 + 1, x2, y2 + 1);
+                    } else {
+                        // Normal line
+                        SDL_RenderLine(renderer->renderer, x1, y1, x2, y2);
+                    }
+                }
+
+                // Draw arrow head if needed
+                if (edge->type == IR_FLOWCHART_EDGE_ARROW ||
+                    edge->type == IR_FLOWCHART_EDGE_DOTTED ||
+                    edge->type == IR_FLOWCHART_EDGE_THICK ||
+                    edge->type == IR_FLOWCHART_EDGE_BIDIRECTIONAL) {
+
+                    float x1 = rect.x + edge->path_points[(edge->path_point_count - 2) * 2];
+                    float y1 = rect.y + edge->path_points[(edge->path_point_count - 2) * 2 + 1];
+                    float x2 = rect.x + edge->path_points[(edge->path_point_count - 1) * 2];
+                    float y2 = rect.y + edge->path_points[(edge->path_point_count - 1) * 2 + 1];
+
+                    // Calculate arrow direction
+                    float dx = x2 - x1;
+                    float dy = y2 - y1;
+                    float len = sqrtf(dx * dx + dy * dy);
+                    if (len > 0) {
+                        dx /= len;
+                        dy /= len;
+                    }
+
+                    // Arrow head size
+                    float arrow_len = 10.0f;
+                    float arrow_width = 6.0f;
+
+                    // Arrow head points
+                    float ax = x2 - dx * arrow_len;
+                    float ay = y2 - dy * arrow_len;
+                    float bx = ax - dy * arrow_width;
+                    float by = ay + dx * arrow_width;
+                    float cx = ax + dy * arrow_width;
+                    float cy = ay - dx * arrow_width;
+
+                    SDL_RenderLine(renderer->renderer, x2, y2, bx, by);
+                    SDL_RenderLine(renderer->renderer, x2, y2, cx, cy);
+                }
+
+                // Draw reverse arrow for bidirectional
+                if (edge->type == IR_FLOWCHART_EDGE_BIDIRECTIONAL && edge->path_point_count >= 2) {
+                    float x1 = rect.x + edge->path_points[0];
+                    float y1 = rect.y + edge->path_points[1];
+                    float x2 = rect.x + edge->path_points[2];
+                    float y2 = rect.y + edge->path_points[3];
+
+                    float dx = x1 - x2;
+                    float dy = y1 - y2;
+                    float len = sqrtf(dx * dx + dy * dy);
+                    if (len > 0) {
+                        dx /= len;
+                        dy /= len;
+                    }
+
+                    float arrow_len = 10.0f;
+                    float arrow_width = 6.0f;
+
+                    float ax = x1 - dx * arrow_len;
+                    float ay = y1 - dy * arrow_len;
+                    float bx = ax - dy * arrow_width;
+                    float by = ay + dx * arrow_width;
+                    float cx = ax + dy * arrow_width;
+                    float cy = ay - dx * arrow_width;
+
+                    SDL_RenderLine(renderer->renderer, x1, y1, bx, by);
+                    SDL_RenderLine(renderer->renderer, x1, y1, cx, cy);
+                }
+            }
+
+            // Render nodes
+            for (uint32_t i = 0; i < fc_state->node_count; i++) {
+                IRFlowchartNodeData* node = fc_state->nodes[i];
+                if (!node) continue;
+
+                SDL_FRect node_rect = {
+                    rect.x + node->x,
+                    rect.y + node->y,
+                    node->width,
+                    node->height
+                };
+
+                // Fill color (default light blue)
+                uint32_t fill = node->fill_color ? node->fill_color : 0x5588FFFF;
+                // Stroke color (default dark blue)
+                uint32_t stroke = node->stroke_color ? node->stroke_color : 0x3366CCFF;
+
+                SDL_SetRenderDrawColor(renderer->renderer,
+                    (fill >> 24) & 0xFF,
+                    (fill >> 16) & 0xFF,
+                    (fill >> 8) & 0xFF,
+                    (uint8_t)((fill & 0xFF) * opacity));
+
+                // Draw shape based on type
+                switch (node->shape) {
+                    case IR_FLOWCHART_SHAPE_RECTANGLE:
+                    case IR_FLOWCHART_SHAPE_SUBROUTINE:
+                        SDL_RenderFillRect(renderer->renderer, &node_rect);
+                        SDL_SetRenderDrawColor(renderer->renderer,
+                            (stroke >> 24) & 0xFF,
+                            (stroke >> 16) & 0xFF,
+                            (stroke >> 8) & 0xFF,
+                            (uint8_t)((stroke & 0xFF) * opacity));
+                        SDL_RenderRect(renderer->renderer, &node_rect);
+
+                        // Subroutine has double lines on sides
+                        if (node->shape == IR_FLOWCHART_SHAPE_SUBROUTINE) {
+                            SDL_RenderLine(renderer->renderer,
+                                node_rect.x + 10, node_rect.y,
+                                node_rect.x + 10, node_rect.y + node_rect.h);
+                            SDL_RenderLine(renderer->renderer,
+                                node_rect.x + node_rect.w - 10, node_rect.y,
+                                node_rect.x + node_rect.w - 10, node_rect.y + node_rect.h);
+                        }
+                        break;
+
+                    case IR_FLOWCHART_SHAPE_ROUNDED:
+                    case IR_FLOWCHART_SHAPE_STADIUM:
+                        // Approximate rounded rect with filled rect for now
+                        SDL_RenderFillRect(renderer->renderer, &node_rect);
+                        SDL_SetRenderDrawColor(renderer->renderer,
+                            (stroke >> 24) & 0xFF,
+                            (stroke >> 16) & 0xFF,
+                            (stroke >> 8) & 0xFF,
+                            (uint8_t)((stroke & 0xFF) * opacity));
+                        SDL_RenderRect(renderer->renderer, &node_rect);
+                        break;
+
+                    case IR_FLOWCHART_SHAPE_DIAMOND: {
+                        // Diamond shape
+                        float cx = node_rect.x + node_rect.w / 2;
+                        float cy = node_rect.y + node_rect.h / 2;
+                        float hw = node_rect.w / 2;
+                        float hh = node_rect.h / 2;
+
+                        // Fill diamond (draw horizontal lines)
+                        for (float y = -hh; y <= hh; y += 1.0f) {
+                            float ratio = 1.0f - fabsf(y) / hh;
+                            float x_offset = hw * ratio;
+                            SDL_RenderLine(renderer->renderer,
+                                cx - x_offset, cy + y,
+                                cx + x_offset, cy + y);
+                        }
+
+                        // Stroke
+                        SDL_SetRenderDrawColor(renderer->renderer,
+                            (stroke >> 24) & 0xFF,
+                            (stroke >> 16) & 0xFF,
+                            (stroke >> 8) & 0xFF,
+                            (uint8_t)((stroke & 0xFF) * opacity));
+                        SDL_RenderLine(renderer->renderer, cx, cy - hh, cx + hw, cy);
+                        SDL_RenderLine(renderer->renderer, cx + hw, cy, cx, cy + hh);
+                        SDL_RenderLine(renderer->renderer, cx, cy + hh, cx - hw, cy);
+                        SDL_RenderLine(renderer->renderer, cx - hw, cy, cx, cy - hh);
+                        break;
+                    }
+
+                    case IR_FLOWCHART_SHAPE_CIRCLE: {
+                        // Circle shape
+                        float cx = node_rect.x + node_rect.w / 2;
+                        float cy = node_rect.y + node_rect.h / 2;
+                        float r = fminf(node_rect.w, node_rect.h) / 2;
+
+                        // Fill circle with horizontal lines
+                        for (float y = -r; y <= r; y += 1.0f) {
+                            float x_offset = sqrtf(r * r - y * y);
+                            SDL_RenderLine(renderer->renderer,
+                                cx - x_offset, cy + y,
+                                cx + x_offset, cy + y);
+                        }
+
+                        // Stroke circle with line segments
+                        SDL_SetRenderDrawColor(renderer->renderer,
+                            (stroke >> 24) & 0xFF,
+                            (stroke >> 16) & 0xFF,
+                            (stroke >> 8) & 0xFF,
+                            (uint8_t)((stroke & 0xFF) * opacity));
+                        int segments = 32;
+                        for (int s = 0; s < segments; s++) {
+                            float a1 = (float)s / segments * 2 * 3.14159f;
+                            float a2 = (float)(s + 1) / segments * 2 * 3.14159f;
+                            SDL_RenderLine(renderer->renderer,
+                                cx + cosf(a1) * r, cy + sinf(a1) * r,
+                                cx + cosf(a2) * r, cy + sinf(a2) * r);
+                        }
+                        break;
+                    }
+
+                    case IR_FLOWCHART_SHAPE_HEXAGON: {
+                        // Hexagon shape
+                        float cx = node_rect.x + node_rect.w / 2;
+                        float cy = node_rect.y + node_rect.h / 2;
+                        float hw = node_rect.w / 2;
+                        float hh = node_rect.h / 2;
+                        float inset = hw * 0.25f;
+
+                        // Fill with horizontal lines
+                        for (float y = -hh; y <= hh; y += 1.0f) {
+                            float ratio = fabsf(y) / hh;
+                            float x_left = ratio < 0.5f ? -hw : -hw + inset * (ratio - 0.5f) * 4;
+                            float x_right = ratio < 0.5f ? hw : hw - inset * (ratio - 0.5f) * 4;
+                            SDL_RenderLine(renderer->renderer,
+                                cx + x_left, cy + y,
+                                cx + x_right, cy + y);
+                        }
+
+                        // Stroke
+                        SDL_SetRenderDrawColor(renderer->renderer,
+                            (stroke >> 24) & 0xFF,
+                            (stroke >> 16) & 0xFF,
+                            (stroke >> 8) & 0xFF,
+                            (uint8_t)((stroke & 0xFF) * opacity));
+                        // Top edge
+                        SDL_RenderLine(renderer->renderer, cx - hw + inset, cy - hh, cx + hw - inset, cy - hh);
+                        // Top-right
+                        SDL_RenderLine(renderer->renderer, cx + hw - inset, cy - hh, cx + hw, cy);
+                        // Bottom-right
+                        SDL_RenderLine(renderer->renderer, cx + hw, cy, cx + hw - inset, cy + hh);
+                        // Bottom
+                        SDL_RenderLine(renderer->renderer, cx + hw - inset, cy + hh, cx - hw + inset, cy + hh);
+                        // Bottom-left
+                        SDL_RenderLine(renderer->renderer, cx - hw + inset, cy + hh, cx - hw, cy);
+                        // Top-left
+                        SDL_RenderLine(renderer->renderer, cx - hw, cy, cx - hw + inset, cy - hh);
+                        break;
+                    }
+
+                    case IR_FLOWCHART_SHAPE_CYLINDER: {
+                        // Cylinder (database) shape - rectangle with ellipse top/bottom
+                        float ellipse_height = node_rect.h * 0.15f;
+
+                        // Fill body
+                        SDL_FRect body_rect = {
+                            node_rect.x,
+                            node_rect.y + ellipse_height / 2,
+                            node_rect.w,
+                            node_rect.h - ellipse_height
+                        };
+                        SDL_RenderFillRect(renderer->renderer, &body_rect);
+
+                        // Draw ellipse top and bottom (approximated)
+                        float cx = node_rect.x + node_rect.w / 2;
+                        float rx = node_rect.w / 2;
+                        float ry = ellipse_height / 2;
+
+                        // Top ellipse fill
+                        float top_cy = node_rect.y + ry;
+                        for (float y = -ry; y <= ry; y += 1.0f) {
+                            float ratio = sqrtf(1.0f - (y * y) / (ry * ry));
+                            float x_offset = rx * ratio;
+                            SDL_RenderLine(renderer->renderer,
+                                cx - x_offset, top_cy + y,
+                                cx + x_offset, top_cy + y);
+                        }
+
+                        // Stroke
+                        SDL_SetRenderDrawColor(renderer->renderer,
+                            (stroke >> 24) & 0xFF,
+                            (stroke >> 16) & 0xFF,
+                            (stroke >> 8) & 0xFF,
+                            (uint8_t)((stroke & 0xFF) * opacity));
+
+                        // Left/right edges
+                        SDL_RenderLine(renderer->renderer,
+                            node_rect.x, node_rect.y + ry,
+                            node_rect.x, node_rect.y + node_rect.h - ry);
+                        SDL_RenderLine(renderer->renderer,
+                            node_rect.x + node_rect.w, node_rect.y + ry,
+                            node_rect.x + node_rect.w, node_rect.y + node_rect.h - ry);
+
+                        // Top/bottom ellipse strokes
+                        int segments = 16;
+                        float bottom_cy = node_rect.y + node_rect.h - ry;
+                        for (int s = 0; s < segments; s++) {
+                            float a1 = (float)s / segments * 3.14159f;
+                            float a2 = (float)(s + 1) / segments * 3.14159f;
+                            // Top ellipse (full)
+                            SDL_RenderLine(renderer->renderer,
+                                cx + cosf(a1) * rx, top_cy - sinf(a1) * ry,
+                                cx + cosf(a2) * rx, top_cy - sinf(a2) * ry);
+                            SDL_RenderLine(renderer->renderer,
+                                cx + cosf(a1 + 3.14159f) * rx, top_cy - sinf(a1 + 3.14159f) * ry,
+                                cx + cosf(a2 + 3.14159f) * rx, top_cy - sinf(a2 + 3.14159f) * ry);
+                            // Bottom ellipse (bottom half only)
+                            SDL_RenderLine(renderer->renderer,
+                                cx + cosf(a1 + 3.14159f) * rx, bottom_cy - sinf(a1 + 3.14159f) * ry,
+                                cx + cosf(a2 + 3.14159f) * rx, bottom_cy - sinf(a2 + 3.14159f) * ry);
+                        }
+                        break;
+                    }
+
+                    default:
+                        // Fallback to rectangle for other shapes
+                        SDL_RenderFillRect(renderer->renderer, &node_rect);
+                        SDL_SetRenderDrawColor(renderer->renderer,
+                            (stroke >> 24) & 0xFF,
+                            (stroke >> 16) & 0xFF,
+                            (stroke >> 8) & 0xFF,
+                            (uint8_t)((stroke & 0xFF) * opacity));
+                        SDL_RenderRect(renderer->renderer, &node_rect);
+                        break;
+                }
+
+                // Render node label
+                if (node->label) {
+                    TTF_Font* font = desktop_ir_resolve_font(renderer, component, 14.0f);
+                    if (font) {
+                        SDL_Color text_color = {255, 255, 255, (uint8_t)(255 * opacity)};
+                        // Center text in node
+                        int text_w = 0, text_h = 0;
+                        TTF_GetStringSize(font, node->label, 0, &text_w, &text_h);
+                        float text_x = node_rect.x + (node_rect.w - text_w) / 2;
+                        float text_y = node_rect.y + (node_rect.h - text_h) / 2;
+
+                        SDL_Surface* text_surface = TTF_RenderText_Blended(font, node->label, 0, text_color);
+                        if (text_surface) {
+                            SDL_Texture* text_texture = SDL_CreateTextureFromSurface(renderer->renderer, text_surface);
+                            if (text_texture) {
+                                SDL_FRect text_rect = {text_x, text_y, (float)text_w, (float)text_h};
+                                SDL_RenderTexture(renderer->renderer, text_texture, NULL, &text_rect);
+                                SDL_DestroyTexture(text_texture);
+                            }
+                            SDL_DestroySurface(text_surface);
+                        }
+                    }
+                }
+            }
+
+            // Render edge labels
+            for (uint32_t i = 0; i < fc_state->edge_count; i++) {
+                IRFlowchartEdgeData* edge = fc_state->edges[i];
+                if (!edge || !edge->label || !edge->path_points || edge->path_point_count < 2) continue;
+
+                // Position label at midpoint of first edge segment
+                float mid_x = rect.x + (edge->path_points[0] + edge->path_points[2]) / 2;
+                float mid_y = rect.y + (edge->path_points[1] + edge->path_points[3]) / 2;
+
+                TTF_Font* font = desktop_ir_resolve_font(renderer, component, 12.0f);
+                if (font) {
+                    SDL_Color text_color = {200, 200, 200, (uint8_t)(255 * opacity)};
+                    int text_w = 0, text_h = 0;
+                    TTF_GetStringSize(font, edge->label, 0, &text_w, &text_h);
+
+                    // Draw background for label
+                    SDL_FRect label_bg = {mid_x - text_w/2 - 2, mid_y - text_h/2 - 1, (float)text_w + 4, (float)text_h + 2};
+                    SDL_SetRenderDrawColor(renderer->renderer, 40, 40, 40, (uint8_t)(220 * opacity));
+                    SDL_RenderFillRect(renderer->renderer, &label_bg);
+
+                    SDL_Surface* text_surface = TTF_RenderText_Blended(font, edge->label, 0, text_color);
+                    if (text_surface) {
+                        SDL_Texture* text_texture = SDL_CreateTextureFromSurface(renderer->renderer, text_surface);
+                        if (text_texture) {
+                            SDL_FRect text_rect = {mid_x - text_w/2, mid_y - text_h/2, (float)text_w, (float)text_h};
+                            SDL_RenderTexture(renderer->renderer, text_texture, NULL, &text_rect);
+                            SDL_DestroyTexture(text_texture);
+                        }
+                        SDL_DestroySurface(text_surface);
+                    }
+                }
+            }
+
+            // Flowchart rendering is complete - children are rendered above
+            return true;
+        }
+
+        case IR_COMPONENT_FLOWCHART_NODE:
+        case IR_COMPONENT_FLOWCHART_EDGE:
+        case IR_COMPONENT_FLOWCHART_SUBGRAPH:
+        case IR_COMPONENT_FLOWCHART_LABEL:
+            // These are rendered by the parent Flowchart component
+            break;
+
         default:
             SDL_RenderFillRect(renderer->renderer, &sdl_rect);
             break;

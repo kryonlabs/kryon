@@ -1,0 +1,95 @@
+// Flowchart Demo - Testing Mermaid flowchart support
+
+App {
+    windowTitle = "Flowchart Demo"
+    windowWidth = 800
+    windowHeight = 600
+
+    Column {
+        width = 100%
+        height = 100%
+        backgroundColor = "#1a1a2e"
+        padding = 20
+
+        Text {
+            text = "Flowchart Demo"
+            fontSize = 24
+            color = "#ffffff"
+            marginBottom = 20
+        }
+
+        // Simple decision flowchart
+        Flowchart {
+            width = 100%
+            height = 400
+            backgroundColor = "#16213e"
+            padding = 20
+            borderRadius = 8
+            direction = "TB"
+
+            FlowchartNode {
+                id = "start"
+                shape = "rounded"
+                label = "Start"
+            }
+            FlowchartNode {
+                id = "process"
+                shape = "rectangle"
+                label = "Process Data"
+            }
+            FlowchartNode {
+                id = "decision"
+                shape = "diamond"
+                label = "Valid?"
+            }
+            FlowchartNode {
+                id = "success"
+                shape = "rectangle"
+                label = "Success"
+            }
+            FlowchartNode {
+                id = "error"
+                shape = "rectangle"
+                label = "Handle Error"
+            }
+            FlowchartNode {
+                id = "end"
+                shape = "circle"
+                label = "End"
+            }
+
+            FlowchartEdge {
+                from = "start"
+                to = "process"
+                type = "arrow"
+            }
+            FlowchartEdge {
+                from = "process"
+                to = "decision"
+                type = "arrow"
+            }
+            FlowchartEdge {
+                from = "decision"
+                to = "success"
+                type = "arrow"
+                label = "Yes"
+            }
+            FlowchartEdge {
+                from = "decision"
+                to = "error"
+                type = "arrow"
+                label = "No"
+            }
+            FlowchartEdge {
+                from = "error"
+                to = "process"
+                type = "dotted"
+            }
+            FlowchartEdge {
+                from = "success"
+                to = "end"
+                type = "arrow"
+            }
+        }
+    }
+}
