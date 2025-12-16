@@ -17,6 +17,7 @@ dist/
 cli/main
 *.kir
 *.kirb
+target/
 
 .cache/
 .nimble_cache/
@@ -33,6 +34,7 @@ examples/*/nimcache/
 
 # Generated examples (regenerate with scripts/generate_examples.sh)
 # Only .kry files are source of truth
+examples/c/
 examples/nim/
 examples/lua/
 examples/js/

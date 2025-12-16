@@ -7,6 +7,7 @@
 #
 # Usage:
 #   ./scripts/generate_examples.sh                    # Generate all (nim)
+#   ./scripts/generate_examples.sh --lang=c           # Generate C
 #   ./scripts/generate_examples.sh --lang=tsx         # Generate TSX
 #   ./scripts/generate_examples.sh hello_world        # Generate one
 #   ./scripts/generate_examples.sh --validate         # With validation
@@ -15,6 +16,7 @@
 #   ./scripts/generate_examples.sh --parallel         # Parallel processing
 #
 # Output:
+#   examples/c/*.c                  # Generated C examples
 #   examples/nim/*.nim              # Generated Nim examples
 #   examples/tsx/*.tsx              # Generated TSX examples
 #   build/generated/kir/*.kir       # Generated KIR files (debug)
@@ -28,6 +30,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 KRY_DIR="$PROJECT_DIR/examples/kry"
 OUTPUT_NIM_DIR="$PROJECT_DIR/examples/nim"
 OUTPUT_TSX_DIR="$PROJECT_DIR/examples/tsx"
+OUTPUT_C_DIR="$PROJECT_DIR/examples/c"
 GEN_KIR_DIR="$PROJECT_DIR/build/generated/kir"
 GEN_ROUNDTRIP_DIR="$PROJECT_DIR/build/generated/roundtrip"
 KRYON="${KRYON:-$HOME/.local/bin/kryon}"
@@ -61,10 +64,10 @@ while [[ $# -gt 0 ]]; do
     -j) PARALLEL=true; MAX_JOBS="$2"; shift 2 ;;
     --lang=*) LANG="${1#*=}"; shift ;;
     -h|--help)
-      echo "Usage: $0 [example_name] [--lang=nim|tsx] [--validate] [--diff] [--clean] [--verbose] [--parallel] [-j N]"
+      echo "Usage: $0 [example_name] [--lang=c|nim|tsx] [--validate] [--diff] [--clean] [--verbose] [--parallel] [-j N]"
       echo ""
       echo "Options:"
-      echo "  --lang=LANG   Target language (nim, tsx). Default: nim"
+      echo "  --lang=LANG   Target language (c, nim, tsx). Default: nim"
       echo "  --validate    Validate round-trip transpilation"
       echo "  --diff        Show detailed diffs for mismatches"
       echo "  --clean       Remove all generated files"
@@ -82,6 +85,7 @@ done
 case "$LANG" in
   nim) OUTPUT_DIR="$OUTPUT_NIM_DIR"; EXT=".nim" ;;
   tsx|jsx) OUTPUT_DIR="$OUTPUT_TSX_DIR"; EXT=".tsx" ;;
+  c) OUTPUT_DIR="$OUTPUT_C_DIR"; EXT=".c" ;;
   *) echo "Unknown language: $LANG"; exit 1 ;;
 esac
 
@@ -90,6 +94,7 @@ if [ "$CLEAN" = true ]; then
   echo -e "${YELLOW}Cleaning generated files...${NC}"
   rm -rf "$OUTPUT_NIM_DIR"
   rm -rf "$OUTPUT_TSX_DIR"
+  rm -rf "$OUTPUT_C_DIR"
   rm -rf "$GEN_KIR_DIR"
   rm -rf "$GEN_ROUNDTRIP_DIR"
   echo -e "${GREEN}✓ Cleaned${NC}"

@@ -26,11 +26,13 @@ All frontends go through the same pipeline:
 ```
 .kry  → .kir (JSON) → renderer
 .nim  → .kir (JSON) → renderer
+.c    → .kir (JSON) → renderer
 .kirb → renderer (binary, pre-compiled)
 ```
 
 - **`.kry`** - Simple declarative syntax, parsed by `kry_parser.nim`
 - **`.nim`** - Nim DSL with reactive state, compiled to binary that serializes IR
+- **`.c`** - C API (runtime builder), compiled binary serializes IR
 - **`.kir`** - JSON IR format (human-readable, named colors supported)
 - **`.kirb`** - Binary IR format (5-10× smaller, optimized)
 
@@ -79,6 +81,11 @@ The CLI uses `renderIRFile()` helper (cli/main.nim:128) for unified rendering ac
     reactive.nim          - Reactive helpers
     animations.nim        - Animation DSL
 
+/bindings/c/              - C language bindings
+  kryon.h                 - Complete C API for UI building
+  kryon.c                 - Implementation with event handler registry
+  Makefile                - Builds libkryon_c.a
+
 /bindings/lua/            - Lua language bindings (in progress)
   kryon/                  - Lua module structure
 
@@ -95,6 +102,9 @@ The CLI uses `renderIRFile()` helper (cli/main.nim:128) for unified rendering ac
   kry_parser.nim          - .kry parser (produces AST)
   kry_to_kir.nim          - .kry AST to .kir JSON transpiler
   kry_ast.nim             - .kry AST types
+  kir_to_c.nim            - .kir to C code generator (transpiler)
+  codegen.nim             - Nim/Lua code generation from .kir
+  codegen_tsx.nim         - TSX/JSX code generation from .kir
 
 /examples/kry/            - .kry example applications (SOURCE OF TRUTH)
   hello_world.kry         - Simple hello world
@@ -129,24 +139,31 @@ The CLI uses `renderIRFile()` helper (cli/main.nim:128) for unified rendering ac
 
 ## Examples Workflow
 
-**IMPORTANT:** Only `.kry` files in `examples/kry/` are checked into git. All other formats (`.nim`, `.lua`, etc.) are auto-generated on demand.
+**IMPORTANT:** Only `.kry` files in `examples/kry/` are checked into git. All other formats (`.c`, `.nim`, `.lua`, etc.) are auto-generated on demand.
 
 ### Working with Examples
 
-**Do NOT edit** files in `examples/nim/` - they are generated and will be overwritten!
+**Do NOT edit** files in `examples/c/` or `examples/nim/` - they are generated and will be overwritten!
 
 **DO edit** files in `examples/kry/` - these are the source of truth.
 
 ### Generating Examples
 
 ```bash
-# Generate all examples from .kry sources
+# Generate all examples from .kry sources (Nim by default)
 make generate-examples
 # Or directly:
 ./scripts/generate_examples.sh
 
+# Generate C examples
+./scripts/generate_examples.sh --lang=c
+
+# Generate TSX examples
+./scripts/generate_examples.sh --lang=tsx
+
 # Generate specific example
 ./scripts/generate_examples.sh button_demo
+./scripts/generate_examples.sh --lang=c button_demo
 
 # Validate round-trip transpilation (must be 100%)
 make validate-examples
@@ -162,9 +179,14 @@ make clean-generated
 The examples pipeline ensures perfect round-trip transpilation:
 
 1. **`.kry → .kir`** - Parse .kry file to JSON IR (with `--preserve-static` for codegen)
-2. **`.kir → .nim`** - Generate idiomatic Nim DSL code from IR
-3. **`.nim → .kir`** - Compile generated Nim back to IR (round-trip test)
+2. **`.kir → .<lang>`** - Generate idiomatic code from IR (Nim, C, TSX, etc.)
+3. **`.<lang> → .kir`** - Compile generated code back to IR (round-trip test)
 4. **Validation** - Compare original and round-trip `.kir` files semantically
+
+**Supported Languages**:
+- **C**: Full support via `kryon codegen --lang=c` (generates clean C with kryon.h API)
+- **Nim**: Full support with reactive state (default)
+- **TSX**: Partial support (no round-trip validation yet)
 
 If validation fails, it indicates a transpilation bug that must be fixed.
 
