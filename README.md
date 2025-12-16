@@ -157,9 +157,12 @@ KRYON_RENDERER=terminal kryon run app.kry
 
 ## Documentation
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture and design
-- **[Installation Guide](examples/)** - See examples directory for usage
-- **Build System** - See Makefile for build options
+Full documentation is available at the [Kryon Website](https://kryon-website.netlify.app/docs) (or run locally with `cd kryon-website && kryon build --targets=web`).
+
+**Quick Links:**
+- [Architecture](https://kryon-website.netlify.app/docs/architecture) - System design and IR pipeline
+- [Language Bindings](https://kryon-website.netlify.app/docs/nim-bindings) - Nim, Rust, TypeScript, JavaScript, Lua, C
+- [Developer Guide](https://kryon-website.netlify.app/docs/developer-guide) - Building and contributing
 
 ## Examples
 
