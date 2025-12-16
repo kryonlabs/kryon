@@ -222,6 +222,82 @@ proc compileNimToIR*(sourceFile: string, outputFile: string, format: CompileForm
   if verbose:
     echo "[compile] IR compilation completed in ", result.compileTime, "s"
 
+proc compileCToIR*(sourceFile: string, outputFile: string, format: CompileFormat, verbose: bool): CompilationResult =
+  ## Compile C source to Kryon IR
+  result.success = false
+  result.errors = @[]
+  result.warnings = @[]
+  result.irFile = outputFile
+
+  let startTime = cpuTime()
+
+  if verbose:
+    echo "[compile] Compiling C to IR: ", sourceFile
+    echo "[compile] Output format: ", if format == FormatBinary: "binary (.kirb)" else: "JSON (.kir)"
+
+  # Get kryon root directory
+  let kryonRoot = getCurrentDir()
+
+  # Build temporary executable path
+  let tempExe = ".kryon_cache" / "temp_c_compile_" & sourceFile.extractFilename().changeFileExt("")
+
+  # Build C compiler command
+  var compileCmd = "gcc -o " & tempExe & " " & sourceFile
+  compileCmd &= " -I" & kryonRoot / "bindings/c"
+  compileCmd &= " -I" & kryonRoot / "ir"
+  compileCmd &= " -I" & kryonRoot / "backends/desktop"
+  compileCmd &= " -L" & kryonRoot / "bindings/c"
+  compileCmd &= " -L" & kryonRoot / "build"
+  compileCmd &= " -lkryon_c -lkryon_ir -lm"
+
+  if verbose:
+    echo "[compile] Running: ", compileCmd
+
+  let (compileOutput, compileExit) = execCmdEx(compileCmd)
+
+  if compileExit != 0:
+    result.errors.add("C compilation failed")
+    result.errors.add(compileOutput)
+    result.compileTime = cpuTime() - startTime
+    return
+
+  if verbose:
+    echo "[compile] Executable built successfully"
+    echo "[compile] Running with KRYON_SERIALIZE_IR=", outputFile
+
+  # Run the executable with KRYON_SERIALIZE_IR set
+  let runCmd = "LD_LIBRARY_PATH=" & kryonRoot / "build:$LD_LIBRARY_PATH KRYON_SERIALIZE_IR=" & outputFile & " " & tempExe
+  let (runOutput, runExit) = execCmdEx(runCmd)
+
+  if verbose:
+    echo "[compile] Run output:"
+    echo runOutput
+
+  if runExit != 0:
+    result.errors.add("IR serialization failed")
+    result.errors.add(runOutput)
+    result.compileTime = cpuTime() - startTime
+    return
+
+  # Check if the IR file was created
+  if not fileExists(outputFile):
+    result.errors.add("IR file was not created: " & outputFile)
+    result.compileTime = cpuTime() - startTime
+    return
+
+  # Clean up temporary executable
+  try:
+    removeFile(tempExe)
+  except:
+    discard
+
+  result.success = true
+  result.componentCount = 0  # TODO: Parse from output
+  result.compileTime = cpuTime() - startTime
+
+  if verbose:
+    echo "[compile] C to IR compilation completed in ", result.compileTime, "s"
+
 proc validateIR*(irFile: string): tuple[valid: bool, errors: seq[string]] =
   ## Validate IR file format and structure
   result.valid = false
@@ -435,8 +511,7 @@ proc compile*(opts: CompileOptions): CompilationResult =
     result.errors.add("Lua frontend not yet implemented")
     return
   of "c":
-    result.errors.add("C frontend not yet implemented")
-    return
+    result = compileCToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput)
   else:
     result.errors.add("Unknown frontend: " & frontend)
     return

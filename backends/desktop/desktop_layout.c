@@ -540,6 +540,18 @@ float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_he
 
     // Handle TABLE components - measure based on row count and content
     if (child->type == IR_COMPONENT_TABLE && child->child_count > 0) {
+        IRTableState* state = (IRTableState*)child->custom_data;
+
+        // Return cached height if layout has been computed
+        // This ensures measurement matches layout, preventing thrashing
+        if (state && state->layout_valid && state->cached_total_height > 0) {
+            if (getenv("KRYON_TRACE_LAYOUT")) {
+                printf("    📊 TABLE measurement: returning cached height=%.1f\n", state->cached_total_height);
+            }
+            return is_height ? state->cached_total_height : parent_rect.width;
+        }
+
+        // First frame: compute estimate by counting rows
         float total_height = 0.0f;
         float row_height = 32.0f;  // Default row height
 
@@ -557,8 +569,7 @@ float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_he
             }
         }
 
-        // Add cell padding
-        IRTableState* state = (IRTableState*)child->custom_data;
+        // Add cell padding (state already declared above)
         if (state) {
             // Account for cell padding and borders
             float cell_padding = state->style.cell_padding > 0 ? state->style.cell_padding : 8.0f;

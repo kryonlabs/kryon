@@ -331,7 +331,18 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
     }
 
     // Cache rendered bounds for hit testing
-    ir_set_rendered_bounds(component, rect.x, rect.y, rect.width, rect.height);
+    // IMPORTANT: Skip for TABLE children (sections, rows, cells) because their
+    // rendered_bounds use RELATIVE coordinates set by ir_layout_compute_table.
+    // Writing absolute coordinates here would corrupt the table layout cache.
+    bool is_table_child = (component->type == IR_COMPONENT_TABLE_HEAD ||
+                           component->type == IR_COMPONENT_TABLE_BODY ||
+                           component->type == IR_COMPONENT_TABLE_FOOT ||
+                           component->type == IR_COMPONENT_TABLE_ROW ||
+                           component->type == IR_COMPONENT_TABLE_CELL ||
+                           component->type == IR_COMPONENT_TABLE_HEADER_CELL);
+    if (!is_table_child) {
+        ir_set_rendered_bounds(component, rect.x, rect.y, rect.width, rect.height);
+    }
 
     SDL_FRect sdl_rect = {
         .x = rect.x,
@@ -1081,9 +1092,11 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             // Regular cell - render background and border
             IRComponent* table = NULL;
             IRComponent* p = component->parent;
-            while (p) {
+            int depth = 0;
+            while (p && depth < 100) {
                 if (p->type == IR_COMPONENT_TABLE) { table = p; break; }
                 p = p->parent;
+                depth++;
             }
 
             IRTableState* table_state = table ? (IRTableState*)table->custom_data : NULL;
@@ -1600,15 +1613,9 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
     // Special handling for TABLE components - use table layout algorithm
     if (component->type == IR_COMPONENT_TABLE && component->child_count > 0) {
-        // Only recompute if cache invalid or dimensions changed
-        IRTableState* table_state = (IRTableState*)component->custom_data;
-        bool need_layout = !table_state || !table_state->layout_valid ||
-                           table_state->cached_available_width != child_rect.width ||
-                           table_state->cached_available_height != child_rect.height;
-
-        if (need_layout) {
-            ir_layout_compute_table(component, child_rect.width, child_rect.height);
-        }
+        // Always compute table layout for now - caching was causing rendering issues
+        // TODO: Investigate why caching breaks table rendering
+        ir_layout_compute_table(component, child_rect.width, child_rect.height);
 
         // Calculate cascaded opacity for children
         float child_opacity = (component->style ? component->style->opacity : 1.0f) * inherited_opacity;

@@ -801,6 +801,13 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                 }
                 break;
 
+            case SDL_EVENT_WINDOW_EXPOSED:
+            case SDL_EVENT_WINDOW_RESTORED:
+            case SDL_EVENT_WINDOW_SHOWN:
+                // Force redraw when window becomes visible after occlusion
+                renderer->needs_relayout = true;
+                break;
+
             default:
                 break;
         }

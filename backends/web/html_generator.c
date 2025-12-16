@@ -28,6 +28,14 @@ static const HTMLTagMapping tag_mappings[] = {
     {IR_COMPONENT_IMAGE, "img", "kryon-image"},
     {IR_COMPONENT_CANVAS, "canvas", "kryon-canvas"},
     {IR_COMPONENT_CUSTOM, "div", "kryon-custom"},
+    // Table components
+    {IR_COMPONENT_TABLE, "table", "kryon-table"},
+    {IR_COMPONENT_TABLE_HEAD, "thead", "kryon-thead"},
+    {IR_COMPONENT_TABLE_BODY, "tbody", "kryon-tbody"},
+    {IR_COMPONENT_TABLE_FOOT, "tfoot", "kryon-tfoot"},
+    {IR_COMPONENT_TABLE_ROW, "tr", "kryon-tr"},
+    {IR_COMPONENT_TABLE_CELL, "td", "kryon-td"},
+    {IR_COMPONENT_TABLE_HEADER_CELL, "th", "kryon-th"},
     {IR_COMPONENT_CONTAINER, "div", "kryon-container"}  // Default fallback
 };
 
@@ -276,6 +284,26 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
                 html_generator_write_format(generator, " height=\"%u\"", (uint32_t)component->style->height.value);
             }
             break;
+
+        case IR_COMPONENT_TABLE_CELL:
+        case IR_COMPONENT_TABLE_HEADER_CELL: {
+            IRTableCellData* cell_data = (IRTableCellData*)component->custom_data;
+            if (cell_data) {
+                if (cell_data->colspan > 1) {
+                    html_generator_write_format(generator, " colspan=\"%u\"", cell_data->colspan);
+                }
+                if (cell_data->rowspan > 1) {
+                    html_generator_write_format(generator, " rowspan=\"%u\"", cell_data->rowspan);
+                }
+                // Emit alignment as inline style
+                if (cell_data->alignment == IR_ALIGNMENT_CENTER) {
+                    html_generator_write_string(generator, " style=\"text-align: center;\"");
+                } else if (cell_data->alignment == IR_ALIGNMENT_END) {
+                    html_generator_write_string(generator, " style=\"text-align: right;\"");
+                }
+            }
+            break;
+        }
 
         default:
             break;
