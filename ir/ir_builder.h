@@ -383,4 +383,68 @@ IRComponent* ir_table_header_cell(uint16_t colspan, uint16_t rowspan);
 // Table Finalization (call after all children are added)
 void ir_table_finalize(IRComponent* table);
 
+// ============================================================================
+// Flowchart Components
+// ============================================================================
+
+// Flowchart State Management
+IRFlowchartState* ir_flowchart_create_state(IRFlowchartDirection direction);
+void ir_flowchart_destroy_state(IRFlowchartState* state);
+IRFlowchartState* ir_get_flowchart_state(IRComponent* component);
+
+// Flowchart Node Data Management
+IRFlowchartNodeData* ir_flowchart_node_data_create(const char* node_id, IRFlowchartShape shape, const char* label);
+void ir_flowchart_node_data_destroy(IRFlowchartNodeData* data);
+IRFlowchartNodeData* ir_get_flowchart_node_data(IRComponent* component);
+
+// Flowchart Edge Data Management
+IRFlowchartEdgeData* ir_flowchart_edge_data_create(const char* from_id, const char* to_id, IRFlowchartEdgeType type);
+void ir_flowchart_edge_data_destroy(IRFlowchartEdgeData* data);
+IRFlowchartEdgeData* ir_get_flowchart_edge_data(IRComponent* component);
+void ir_flowchart_edge_set_label(IRFlowchartEdgeData* data, const char* label);
+void ir_flowchart_edge_set_markers(IRFlowchartEdgeData* data, IRFlowchartMarker start, IRFlowchartMarker end);
+
+// Flowchart Subgraph Data Management
+IRFlowchartSubgraphData* ir_flowchart_subgraph_data_create(const char* subgraph_id, const char* title);
+void ir_flowchart_subgraph_data_destroy(IRFlowchartSubgraphData* data);
+IRFlowchartSubgraphData* ir_get_flowchart_subgraph_data(IRComponent* component);
+
+// Flowchart Node Styling
+void ir_flowchart_node_set_fill_color(IRFlowchartNodeData* data, uint32_t rgba);
+void ir_flowchart_node_set_stroke_color(IRFlowchartNodeData* data, uint32_t rgba);
+void ir_flowchart_node_set_stroke_width(IRFlowchartNodeData* data, float width);
+
+// Flowchart Component Creation (convenience functions)
+IRComponent* ir_flowchart(IRFlowchartDirection direction);
+IRComponent* ir_flowchart_node(const char* node_id, IRFlowchartShape shape, const char* label);
+IRComponent* ir_flowchart_edge(const char* from_id, const char* to_id, IRFlowchartEdgeType type);
+IRComponent* ir_flowchart_subgraph(const char* subgraph_id, const char* title);
+IRComponent* ir_flowchart_label(const char* text);
+
+// Flowchart Registration (register nodes/edges with parent flowchart)
+void ir_flowchart_register_node(IRFlowchartState* state, IRFlowchartNodeData* node);
+void ir_flowchart_register_edge(IRFlowchartState* state, IRFlowchartEdgeData* edge);
+void ir_flowchart_register_subgraph(IRFlowchartState* state, IRFlowchartSubgraphData* subgraph);
+
+// Flowchart Layout Parameters
+void ir_flowchart_set_node_spacing(IRFlowchartState* state, float spacing);
+void ir_flowchart_set_rank_spacing(IRFlowchartState* state, float spacing);
+void ir_flowchart_set_subgraph_padding(IRFlowchartState* state, float padding);
+
+// Flowchart Finalization (call after all nodes/edges are added)
+void ir_flowchart_finalize(IRComponent* flowchart);
+
+// Flowchart Node Lookup (find node by ID)
+IRFlowchartNodeData* ir_flowchart_find_node(IRFlowchartState* state, const char* node_id);
+
+// Direction/Shape/Edge Type String Conversion
+IRFlowchartDirection ir_flowchart_parse_direction(const char* str);
+const char* ir_flowchart_direction_to_string(IRFlowchartDirection dir);
+IRFlowchartShape ir_flowchart_parse_shape(const char* str);
+const char* ir_flowchart_shape_to_string(IRFlowchartShape shape);
+IRFlowchartEdgeType ir_flowchart_parse_edge_type(const char* str);
+const char* ir_flowchart_edge_type_to_string(IRFlowchartEdgeType type);
+IRFlowchartMarker ir_flowchart_parse_marker(const char* str);
+const char* ir_flowchart_marker_to_string(IRFlowchartMarker marker);
+
 #endif // IR_BUILDER_H

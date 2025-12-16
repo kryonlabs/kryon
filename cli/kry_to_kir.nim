@@ -449,6 +449,26 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
   var tableShowBorders: JsonNode = nil
   var tableStriped: JsonNode = nil
 
+  # Collect flowchart config properties for nested flowchart_config object
+  var flowchartDirection: JsonNode = nil
+  var flowchartNodeSpacing: JsonNode = nil
+  var flowchartRankSpacing: JsonNode = nil
+  var flowchartSubgraphPadding: JsonNode = nil
+
+  # Collect flowchart node properties for nested flowchart_node object
+  var flowchartNodeId: JsonNode = nil
+  var flowchartNodeShape: JsonNode = nil
+  var flowchartNodeLabel: JsonNode = nil
+  var flowchartNodeFillColor: JsonNode = nil
+  var flowchartNodeStrokeColor: JsonNode = nil
+  var flowchartNodeStrokeWidth: JsonNode = nil
+
+  # Collect flowchart edge properties for nested flowchart_edge object
+  var flowchartEdgeFrom: JsonNode = nil
+  var flowchartEdgeTo: JsonNode = nil
+  var flowchartEdgeType: JsonNode = nil
+  var flowchartEdgeLabel: JsonNode = nil
+
   # Handle positional arguments for custom components
   # Map positional args to parameter names from component definition
   if node.componentArgs.len > 0 and ctx.componentDefs.hasKey(node.componentType):
@@ -567,8 +587,51 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
         tableShowBorders = simpleVal
       of "striped":
         tableStriped = simpleVal
+      # Handle flowchart config properties (only for Flowchart component)
+      of "direction":
+        if node.componentType == "Flowchart":
+          flowchartDirection = simpleVal
+        else:
+          result[irName] = simpleVal
+      of "nodeSpacing", "node_spacing":
+        flowchartNodeSpacing = simpleVal
+      of "rankSpacing", "rank_spacing":
+        flowchartRankSpacing = simpleVal
+      of "subgraphPadding", "subgraph_padding":
+        flowchartSubgraphPadding = simpleVal
+      # Handle flowchart node properties (only for FlowchartNode)
+      of "shape":
+        if node.componentType == "FlowchartNode":
+          flowchartNodeShape = simpleVal
+        else:
+          result[irName] = simpleVal
+      of "label":
+        if node.componentType == "FlowchartEdge":
+          flowchartEdgeLabel = simpleVal
+        elif node.componentType == "FlowchartNode":
+          flowchartNodeLabel = simpleVal
+        else:
+          result[irName] = simpleVal
+      of "fillColor", "fill_color":
+        flowchartNodeFillColor = simpleVal
+      of "strokeColor", "stroke_color":
+        flowchartNodeStrokeColor = simpleVal
+      of "strokeWidth", "stroke_width":
+        flowchartNodeStrokeWidth = simpleVal
+      # Handle flowchart edge properties (only for FlowchartEdge)
+      of "from":
+        flowchartEdgeFrom = simpleVal
+      of "to":
+        flowchartEdgeTo = simpleVal
       else:
-        result[irName] = simpleVal
+        # For FlowchartEdge, "type" should go to flowchart_edge.type
+        if irName == "type" and node.componentType == "FlowchartEdge":
+          flowchartEdgeType = simpleVal
+        # For FlowchartNode, "id" should go to flowchart_node.id
+        elif irName == "id" and node.componentType == "FlowchartNode":
+          flowchartNodeId = simpleVal
+        else:
+          result[irName] = simpleVal
 
   # Build nested border object if any border properties were set
   if not borderWidth.isNil or not borderColor.isNil or not borderRadius.isNil:
@@ -623,6 +686,53 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
     if not tableStriped.isNil:
       tableConfigObj["striped"] = tableStriped
     result["table_config"] = tableConfigObj
+
+  # Build nested flowchart_config object if any flowchart properties were set (for Flowchart)
+  if not flowchartDirection.isNil or not flowchartNodeSpacing.isNil or
+     not flowchartRankSpacing.isNil or not flowchartSubgraphPadding.isNil:
+    var flowchartConfigObj = newJObject()
+    if not flowchartDirection.isNil:
+      flowchartConfigObj["direction"] = flowchartDirection
+    if not flowchartNodeSpacing.isNil:
+      flowchartConfigObj["nodeSpacing"] = flowchartNodeSpacing
+    if not flowchartRankSpacing.isNil:
+      flowchartConfigObj["rankSpacing"] = flowchartRankSpacing
+    if not flowchartSubgraphPadding.isNil:
+      flowchartConfigObj["subgraphPadding"] = flowchartSubgraphPadding
+    result["flowchart_config"] = flowchartConfigObj
+
+  # Build nested flowchart_node object if any node properties were set (for FlowchartNode)
+  if not flowchartNodeId.isNil or not flowchartNodeShape.isNil or
+     not flowchartNodeLabel.isNil or not flowchartNodeFillColor.isNil or
+     not flowchartNodeStrokeColor.isNil or not flowchartNodeStrokeWidth.isNil:
+    var flowchartNodeObj = newJObject()
+    if not flowchartNodeId.isNil:
+      flowchartNodeObj["id"] = flowchartNodeId
+    if not flowchartNodeShape.isNil:
+      flowchartNodeObj["shape"] = flowchartNodeShape
+    if not flowchartNodeLabel.isNil:
+      flowchartNodeObj["label"] = flowchartNodeLabel
+    if not flowchartNodeFillColor.isNil:
+      flowchartNodeObj["fillColor"] = flowchartNodeFillColor
+    if not flowchartNodeStrokeColor.isNil:
+      flowchartNodeObj["strokeColor"] = flowchartNodeStrokeColor
+    if not flowchartNodeStrokeWidth.isNil:
+      flowchartNodeObj["strokeWidth"] = flowchartNodeStrokeWidth
+    result["flowchart_node"] = flowchartNodeObj
+
+  # Build nested flowchart_edge object if any edge properties were set (for FlowchartEdge)
+  if not flowchartEdgeFrom.isNil or not flowchartEdgeTo.isNil or
+     not flowchartEdgeType.isNil or not flowchartEdgeLabel.isNil:
+    var flowchartEdgeObj = newJObject()
+    if not flowchartEdgeFrom.isNil:
+      flowchartEdgeObj["from"] = flowchartEdgeFrom
+    if not flowchartEdgeTo.isNil:
+      flowchartEdgeObj["to"] = flowchartEdgeTo
+    if not flowchartEdgeType.isNil:
+      flowchartEdgeObj["type"] = flowchartEdgeType
+    if not flowchartEdgeLabel.isNil:
+      flowchartEdgeObj["label"] = flowchartEdgeLabel
+    result["flowchart_edge"] = flowchartEdgeObj
 
   # Process children
   if node.componentChildren.len > 0:

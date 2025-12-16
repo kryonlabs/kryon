@@ -60,6 +60,12 @@ const char* ir_component_type_to_string(IRComponentType type) {
         case IR_COMPONENT_TABLE_ROW: return "TableRow";
         case IR_COMPONENT_TABLE_CELL: return "TableCell";
         case IR_COMPONENT_TABLE_HEADER_CELL: return "TableHeaderCell";
+        // Flowchart components
+        case IR_COMPONENT_FLOWCHART: return "Flowchart";
+        case IR_COMPONENT_FLOWCHART_NODE: return "FlowchartNode";
+        case IR_COMPONENT_FLOWCHART_EDGE: return "FlowchartEdge";
+        case IR_COMPONENT_FLOWCHART_SUBGRAPH: return "FlowchartSubgraph";
+        case IR_COMPONENT_FLOWCHART_LABEL: return "FlowchartLabel";
         case IR_COMPONENT_CUSTOM: return "Custom";
         default: return "Unknown";
     }
@@ -2741,4 +2747,476 @@ IRTableColumnDef ir_table_column_percent(float percent) {
 IRTableColumnDef ir_table_column_with_alignment(IRTableColumnDef col, IRAlignment alignment) {
     col.alignment = alignment;
     return col;
+}
+
+// ============================================================================
+// Flowchart Components Implementation
+// ============================================================================
+
+// Direction string conversion
+IRFlowchartDirection ir_flowchart_parse_direction(const char* str) {
+    if (!str) return IR_FLOWCHART_DIR_TB;
+    if (ir_str_ieq(str, "TB") || ir_str_ieq(str, "top-bottom") || ir_str_ieq(str, "TD")) return IR_FLOWCHART_DIR_TB;
+    if (ir_str_ieq(str, "LR") || ir_str_ieq(str, "left-right")) return IR_FLOWCHART_DIR_LR;
+    if (ir_str_ieq(str, "BT") || ir_str_ieq(str, "bottom-top")) return IR_FLOWCHART_DIR_BT;
+    if (ir_str_ieq(str, "RL") || ir_str_ieq(str, "right-left")) return IR_FLOWCHART_DIR_RL;
+    return IR_FLOWCHART_DIR_TB;
+}
+
+const char* ir_flowchart_direction_to_string(IRFlowchartDirection dir) {
+    switch (dir) {
+        case IR_FLOWCHART_DIR_TB: return "TB";
+        case IR_FLOWCHART_DIR_LR: return "LR";
+        case IR_FLOWCHART_DIR_BT: return "BT";
+        case IR_FLOWCHART_DIR_RL: return "RL";
+        default: return "TB";
+    }
+}
+
+// Shape string conversion
+IRFlowchartShape ir_flowchart_parse_shape(const char* str) {
+    if (!str) return IR_FLOWCHART_SHAPE_RECTANGLE;
+    if (ir_str_ieq(str, "rectangle") || ir_str_ieq(str, "rect")) return IR_FLOWCHART_SHAPE_RECTANGLE;
+    if (ir_str_ieq(str, "rounded") || ir_str_ieq(str, "round")) return IR_FLOWCHART_SHAPE_ROUNDED;
+    if (ir_str_ieq(str, "stadium") || ir_str_ieq(str, "pill")) return IR_FLOWCHART_SHAPE_STADIUM;
+    if (ir_str_ieq(str, "diamond") || ir_str_ieq(str, "rhombus")) return IR_FLOWCHART_SHAPE_DIAMOND;
+    if (ir_str_ieq(str, "circle")) return IR_FLOWCHART_SHAPE_CIRCLE;
+    if (ir_str_ieq(str, "hexagon") || ir_str_ieq(str, "hex")) return IR_FLOWCHART_SHAPE_HEXAGON;
+    if (ir_str_ieq(str, "parallelogram") || ir_str_ieq(str, "para")) return IR_FLOWCHART_SHAPE_PARALLELOGRAM;
+    if (ir_str_ieq(str, "cylinder") || ir_str_ieq(str, "database") || ir_str_ieq(str, "db")) return IR_FLOWCHART_SHAPE_CYLINDER;
+    if (ir_str_ieq(str, "subroutine") || ir_str_ieq(str, "predefined")) return IR_FLOWCHART_SHAPE_SUBROUTINE;
+    if (ir_str_ieq(str, "asymmetric") || ir_str_ieq(str, "flag")) return IR_FLOWCHART_SHAPE_ASYMMETRIC;
+    if (ir_str_ieq(str, "trapezoid") || ir_str_ieq(str, "trap")) return IR_FLOWCHART_SHAPE_TRAPEZOID;
+    return IR_FLOWCHART_SHAPE_RECTANGLE;
+}
+
+const char* ir_flowchart_shape_to_string(IRFlowchartShape shape) {
+    switch (shape) {
+        case IR_FLOWCHART_SHAPE_RECTANGLE: return "rectangle";
+        case IR_FLOWCHART_SHAPE_ROUNDED: return "rounded";
+        case IR_FLOWCHART_SHAPE_STADIUM: return "stadium";
+        case IR_FLOWCHART_SHAPE_DIAMOND: return "diamond";
+        case IR_FLOWCHART_SHAPE_CIRCLE: return "circle";
+        case IR_FLOWCHART_SHAPE_HEXAGON: return "hexagon";
+        case IR_FLOWCHART_SHAPE_PARALLELOGRAM: return "parallelogram";
+        case IR_FLOWCHART_SHAPE_CYLINDER: return "cylinder";
+        case IR_FLOWCHART_SHAPE_SUBROUTINE: return "subroutine";
+        case IR_FLOWCHART_SHAPE_ASYMMETRIC: return "asymmetric";
+        case IR_FLOWCHART_SHAPE_TRAPEZOID: return "trapezoid";
+        default: return "rectangle";
+    }
+}
+
+// Edge type string conversion
+IRFlowchartEdgeType ir_flowchart_parse_edge_type(const char* str) {
+    if (!str) return IR_FLOWCHART_EDGE_ARROW;
+    if (ir_str_ieq(str, "arrow") || ir_str_ieq(str, "-->")) return IR_FLOWCHART_EDGE_ARROW;
+    if (ir_str_ieq(str, "open") || ir_str_ieq(str, "---") || ir_str_ieq(str, "line")) return IR_FLOWCHART_EDGE_OPEN;
+    if (ir_str_ieq(str, "bidirectional") || ir_str_ieq(str, "<-->")) return IR_FLOWCHART_EDGE_BIDIRECTIONAL;
+    if (ir_str_ieq(str, "dotted") || ir_str_ieq(str, "-.->")) return IR_FLOWCHART_EDGE_DOTTED;
+    if (ir_str_ieq(str, "thick") || ir_str_ieq(str, "==>")) return IR_FLOWCHART_EDGE_THICK;
+    return IR_FLOWCHART_EDGE_ARROW;
+}
+
+const char* ir_flowchart_edge_type_to_string(IRFlowchartEdgeType type) {
+    switch (type) {
+        case IR_FLOWCHART_EDGE_ARROW: return "arrow";
+        case IR_FLOWCHART_EDGE_OPEN: return "open";
+        case IR_FLOWCHART_EDGE_BIDIRECTIONAL: return "bidirectional";
+        case IR_FLOWCHART_EDGE_DOTTED: return "dotted";
+        case IR_FLOWCHART_EDGE_THICK: return "thick";
+        default: return "arrow";
+    }
+}
+
+// Marker string conversion
+IRFlowchartMarker ir_flowchart_parse_marker(const char* str) {
+    if (!str) return IR_FLOWCHART_MARKER_ARROW;
+    if (ir_str_ieq(str, "none")) return IR_FLOWCHART_MARKER_NONE;
+    if (ir_str_ieq(str, "arrow")) return IR_FLOWCHART_MARKER_ARROW;
+    if (ir_str_ieq(str, "circle") || ir_str_ieq(str, "o")) return IR_FLOWCHART_MARKER_CIRCLE;
+    if (ir_str_ieq(str, "cross") || ir_str_ieq(str, "x")) return IR_FLOWCHART_MARKER_CROSS;
+    return IR_FLOWCHART_MARKER_ARROW;
+}
+
+const char* ir_flowchart_marker_to_string(IRFlowchartMarker marker) {
+    switch (marker) {
+        case IR_FLOWCHART_MARKER_NONE: return "none";
+        case IR_FLOWCHART_MARKER_ARROW: return "arrow";
+        case IR_FLOWCHART_MARKER_CIRCLE: return "circle";
+        case IR_FLOWCHART_MARKER_CROSS: return "cross";
+        default: return "arrow";
+    }
+}
+
+// Flowchart state management
+IRFlowchartState* ir_flowchart_create_state(IRFlowchartDirection direction) {
+    IRFlowchartState* state = (IRFlowchartState*)calloc(1, sizeof(IRFlowchartState));
+    if (!state) return NULL;
+
+    state->direction = direction;
+    state->node_capacity = 16;
+    state->edge_capacity = 16;
+    state->subgraph_capacity = 4;
+
+    state->nodes = (IRFlowchartNodeData**)calloc(state->node_capacity, sizeof(IRFlowchartNodeData*));
+    state->edges = (IRFlowchartEdgeData**)calloc(state->edge_capacity, sizeof(IRFlowchartEdgeData*));
+    state->subgraphs = (IRFlowchartSubgraphData**)calloc(state->subgraph_capacity, sizeof(IRFlowchartSubgraphData*));
+
+    // Default layout parameters
+    state->node_spacing = 50.0f;
+    state->rank_spacing = 80.0f;
+    state->subgraph_padding = 20.0f;
+
+    state->layout_computed = false;
+
+    return state;
+}
+
+void ir_flowchart_destroy_state(IRFlowchartState* state) {
+    if (!state) return;
+
+    // Note: node/edge/subgraph data is owned by component custom_data, not state
+    // We only free the arrays here
+    if (state->nodes) free(state->nodes);
+    if (state->edges) free(state->edges);
+    if (state->subgraphs) free(state->subgraphs);
+
+    free(state);
+}
+
+IRFlowchartState* ir_get_flowchart_state(IRComponent* component) {
+    if (!component || component->type != IR_COMPONENT_FLOWCHART) return NULL;
+    return (IRFlowchartState*)component->custom_data;
+}
+
+// Node data management
+IRFlowchartNodeData* ir_flowchart_node_data_create(const char* node_id, IRFlowchartShape shape, const char* label) {
+    IRFlowchartNodeData* data = (IRFlowchartNodeData*)calloc(1, sizeof(IRFlowchartNodeData));
+    if (!data) return NULL;
+
+    data->node_id = node_id ? strdup(node_id) : NULL;
+    data->shape = shape;
+    data->label = label ? strdup(label) : NULL;
+
+    // Default styling
+    data->fill_color = 0xE0E0E0FF;    // Light gray background
+    data->stroke_color = 0x333333FF;   // Dark gray border
+    data->stroke_width = 2.0f;
+
+    return data;
+}
+
+void ir_flowchart_node_data_destroy(IRFlowchartNodeData* data) {
+    if (!data) return;
+    if (data->node_id) free(data->node_id);
+    if (data->label) free(data->label);
+    if (data->subgraph_id) free(data->subgraph_id);
+    free(data);
+}
+
+IRFlowchartNodeData* ir_get_flowchart_node_data(IRComponent* component) {
+    if (!component || component->type != IR_COMPONENT_FLOWCHART_NODE) return NULL;
+    return (IRFlowchartNodeData*)component->custom_data;
+}
+
+// Edge data management
+IRFlowchartEdgeData* ir_flowchart_edge_data_create(const char* from_id, const char* to_id, IRFlowchartEdgeType type) {
+    IRFlowchartEdgeData* data = (IRFlowchartEdgeData*)calloc(1, sizeof(IRFlowchartEdgeData));
+    if (!data) return NULL;
+
+    data->from_id = from_id ? strdup(from_id) : NULL;
+    data->to_id = to_id ? strdup(to_id) : NULL;
+    data->type = type;
+
+    // Default markers based on edge type
+    switch (type) {
+        case IR_FLOWCHART_EDGE_ARROW:
+        case IR_FLOWCHART_EDGE_DOTTED:
+        case IR_FLOWCHART_EDGE_THICK:
+            data->start_marker = IR_FLOWCHART_MARKER_NONE;
+            data->end_marker = IR_FLOWCHART_MARKER_ARROW;
+            break;
+        case IR_FLOWCHART_EDGE_BIDIRECTIONAL:
+            data->start_marker = IR_FLOWCHART_MARKER_ARROW;
+            data->end_marker = IR_FLOWCHART_MARKER_ARROW;
+            break;
+        case IR_FLOWCHART_EDGE_OPEN:
+        default:
+            data->start_marker = IR_FLOWCHART_MARKER_NONE;
+            data->end_marker = IR_FLOWCHART_MARKER_NONE;
+            break;
+    }
+
+    return data;
+}
+
+void ir_flowchart_edge_data_destroy(IRFlowchartEdgeData* data) {
+    if (!data) return;
+    if (data->from_id) free(data->from_id);
+    if (data->to_id) free(data->to_id);
+    if (data->label) free(data->label);
+    if (data->path_points) free(data->path_points);
+    free(data);
+}
+
+IRFlowchartEdgeData* ir_get_flowchart_edge_data(IRComponent* component) {
+    if (!component || component->type != IR_COMPONENT_FLOWCHART_EDGE) return NULL;
+    return (IRFlowchartEdgeData*)component->custom_data;
+}
+
+void ir_flowchart_edge_set_label(IRFlowchartEdgeData* data, const char* label) {
+    if (!data) return;
+    if (data->label) free(data->label);
+    data->label = label ? strdup(label) : NULL;
+}
+
+void ir_flowchart_edge_set_markers(IRFlowchartEdgeData* data, IRFlowchartMarker start, IRFlowchartMarker end) {
+    if (!data) return;
+    data->start_marker = start;
+    data->end_marker = end;
+}
+
+// Subgraph data management
+IRFlowchartSubgraphData* ir_flowchart_subgraph_data_create(const char* subgraph_id, const char* title) {
+    IRFlowchartSubgraphData* data = (IRFlowchartSubgraphData*)calloc(1, sizeof(IRFlowchartSubgraphData));
+    if (!data) return NULL;
+
+    data->subgraph_id = subgraph_id ? strdup(subgraph_id) : NULL;
+    data->title = title ? strdup(title) : NULL;
+
+    // Default styling
+    data->background_color = 0xF5F5F520;  // Very light gray, semi-transparent
+    data->border_color = 0x999999FF;       // Medium gray
+
+    return data;
+}
+
+void ir_flowchart_subgraph_data_destroy(IRFlowchartSubgraphData* data) {
+    if (!data) return;
+    if (data->subgraph_id) free(data->subgraph_id);
+    if (data->title) free(data->title);
+    free(data);
+}
+
+IRFlowchartSubgraphData* ir_get_flowchart_subgraph_data(IRComponent* component) {
+    if (!component || component->type != IR_COMPONENT_FLOWCHART_SUBGRAPH) return NULL;
+    return (IRFlowchartSubgraphData*)component->custom_data;
+}
+
+// Node styling
+void ir_flowchart_node_set_fill_color(IRFlowchartNodeData* data, uint32_t rgba) {
+    if (!data) return;
+    data->fill_color = rgba;
+}
+
+void ir_flowchart_node_set_stroke_color(IRFlowchartNodeData* data, uint32_t rgba) {
+    if (!data) return;
+    data->stroke_color = rgba;
+}
+
+void ir_flowchart_node_set_stroke_width(IRFlowchartNodeData* data, float width) {
+    if (!data) return;
+    data->stroke_width = width;
+}
+
+// Component creation convenience functions
+IRComponent* ir_flowchart(IRFlowchartDirection direction) {
+    IRComponent* comp = ir_create_component(IR_COMPONENT_FLOWCHART);
+    if (!comp) return NULL;
+
+    IRFlowchartState* state = ir_flowchart_create_state(direction);
+    if (state) {
+        comp->custom_data = (char*)state;
+    }
+
+    return comp;
+}
+
+IRComponent* ir_flowchart_node(const char* node_id, IRFlowchartShape shape, const char* label) {
+    IRComponent* comp = ir_create_component(IR_COMPONENT_FLOWCHART_NODE);
+    if (!comp) return NULL;
+
+    IRFlowchartNodeData* data = ir_flowchart_node_data_create(node_id, shape, label);
+    if (data) {
+        comp->custom_data = (char*)data;
+    }
+
+    return comp;
+}
+
+IRComponent* ir_flowchart_edge(const char* from_id, const char* to_id, IRFlowchartEdgeType type) {
+    IRComponent* comp = ir_create_component(IR_COMPONENT_FLOWCHART_EDGE);
+    if (!comp) return NULL;
+
+    IRFlowchartEdgeData* data = ir_flowchart_edge_data_create(from_id, to_id, type);
+    if (data) {
+        comp->custom_data = (char*)data;
+    }
+
+    return comp;
+}
+
+IRComponent* ir_flowchart_subgraph(const char* subgraph_id, const char* title) {
+    IRComponent* comp = ir_create_component(IR_COMPONENT_FLOWCHART_SUBGRAPH);
+    if (!comp) return NULL;
+
+    IRFlowchartSubgraphData* data = ir_flowchart_subgraph_data_create(subgraph_id, title);
+    if (data) {
+        comp->custom_data = (char*)data;
+    }
+
+    return comp;
+}
+
+IRComponent* ir_flowchart_label(const char* text) {
+    IRComponent* comp = ir_create_component(IR_COMPONENT_FLOWCHART_LABEL);
+    if (!comp) return NULL;
+
+    if (text) {
+        comp->text_content = strdup(text);
+    }
+
+    return comp;
+}
+
+// Registration functions
+void ir_flowchart_register_node(IRFlowchartState* state, IRFlowchartNodeData* node) {
+    if (!state || !node) return;
+
+    if (state->node_count >= state->node_capacity) {
+        uint32_t new_capacity = state->node_capacity * 2;
+        IRFlowchartNodeData** new_nodes = (IRFlowchartNodeData**)realloc(
+            state->nodes, new_capacity * sizeof(IRFlowchartNodeData*));
+        if (!new_nodes) return;
+        state->nodes = new_nodes;
+        state->node_capacity = new_capacity;
+    }
+
+    state->nodes[state->node_count++] = node;
+    state->layout_computed = false;
+}
+
+void ir_flowchart_register_edge(IRFlowchartState* state, IRFlowchartEdgeData* edge) {
+    if (!state || !edge) return;
+
+    if (state->edge_count >= state->edge_capacity) {
+        uint32_t new_capacity = state->edge_capacity * 2;
+        IRFlowchartEdgeData** new_edges = (IRFlowchartEdgeData**)realloc(
+            state->edges, new_capacity * sizeof(IRFlowchartEdgeData*));
+        if (!new_edges) return;
+        state->edges = new_edges;
+        state->edge_capacity = new_capacity;
+    }
+
+    state->edges[state->edge_count++] = edge;
+    state->layout_computed = false;
+}
+
+void ir_flowchart_register_subgraph(IRFlowchartState* state, IRFlowchartSubgraphData* subgraph) {
+    if (!state || !subgraph) return;
+
+    if (state->subgraph_count >= state->subgraph_capacity) {
+        uint32_t new_capacity = state->subgraph_capacity * 2;
+        IRFlowchartSubgraphData** new_subgraphs = (IRFlowchartSubgraphData**)realloc(
+            state->subgraphs, new_capacity * sizeof(IRFlowchartSubgraphData*));
+        if (!new_subgraphs) return;
+        state->subgraphs = new_subgraphs;
+        state->subgraph_capacity = new_capacity;
+    }
+
+    state->subgraphs[state->subgraph_count++] = subgraph;
+    state->layout_computed = false;
+}
+
+// Layout parameters
+void ir_flowchart_set_node_spacing(IRFlowchartState* state, float spacing) {
+    if (!state) return;
+    state->node_spacing = spacing;
+    state->layout_computed = false;
+}
+
+void ir_flowchart_set_rank_spacing(IRFlowchartState* state, float spacing) {
+    if (!state) return;
+    state->rank_spacing = spacing;
+    state->layout_computed = false;
+}
+
+void ir_flowchart_set_subgraph_padding(IRFlowchartState* state, float padding) {
+    if (!state) return;
+    state->subgraph_padding = padding;
+    state->layout_computed = false;
+}
+
+// Find node by ID
+IRFlowchartNodeData* ir_flowchart_find_node(IRFlowchartState* state, const char* node_id) {
+    if (!state || !node_id) return NULL;
+
+    for (uint32_t i = 0; i < state->node_count; i++) {
+        if (state->nodes[i] && state->nodes[i]->node_id &&
+            strcmp(state->nodes[i]->node_id, node_id) == 0) {
+            return state->nodes[i];
+        }
+    }
+    return NULL;
+}
+
+// Finalization - register all children with the flowchart state
+void ir_flowchart_finalize(IRComponent* flowchart) {
+    if (!flowchart || flowchart->type != IR_COMPONENT_FLOWCHART) return;
+
+    IRFlowchartState* state = ir_get_flowchart_state(flowchart);
+    if (!state) return;
+
+    // Clear existing registrations
+    state->node_count = 0;
+    state->edge_count = 0;
+    state->subgraph_count = 0;
+
+    // Recursively register all flowchart children
+    for (uint32_t i = 0; i < flowchart->child_count; i++) {
+        IRComponent* child = flowchart->children[i];
+        if (!child) continue;
+
+        switch (child->type) {
+            case IR_COMPONENT_FLOWCHART_NODE: {
+                IRFlowchartNodeData* node_data = ir_get_flowchart_node_data(child);
+                if (node_data) {
+                    ir_flowchart_register_node(state, node_data);
+                }
+                break;
+            }
+            case IR_COMPONENT_FLOWCHART_EDGE: {
+                IRFlowchartEdgeData* edge_data = ir_get_flowchart_edge_data(child);
+                if (edge_data) {
+                    ir_flowchart_register_edge(state, edge_data);
+                }
+                break;
+            }
+            case IR_COMPONENT_FLOWCHART_SUBGRAPH: {
+                IRFlowchartSubgraphData* subgraph_data = ir_get_flowchart_subgraph_data(child);
+                if (subgraph_data) {
+                    ir_flowchart_register_subgraph(state, subgraph_data);
+                }
+                // Also register nodes within the subgraph
+                for (uint32_t j = 0; j < child->child_count; j++) {
+                    IRComponent* subchild = child->children[j];
+                    if (subchild && subchild->type == IR_COMPONENT_FLOWCHART_NODE) {
+                        IRFlowchartNodeData* node_data = ir_get_flowchart_node_data(subchild);
+                        if (node_data) {
+                            // Mark node as belonging to this subgraph
+                            if (node_data->subgraph_id) free(node_data->subgraph_id);
+                            node_data->subgraph_id = subgraph_data->subgraph_id ? strdup(subgraph_data->subgraph_id) : NULL;
+                            ir_flowchart_register_node(state, node_data);
+                        }
+                    }
+                }
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    state->layout_computed = false;
 }
