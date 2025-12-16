@@ -2,11 +2,88 @@
 ##
 ## Converts a .kry AST into JSON IR (.kir format v3.0)
 
-import std/[json, tables, strutils, strformat, sequtils]
+import std/[json, tables, strutils, strformat, sequtils, os, dynlib]
 import kry_ast, kry_parser
 
 # Note: Named colors (e.g., "yellow", "red") are resolved by the IR layer
 # in json_parse_color() via ir_color_named(). No normalization needed here.
+
+# ============================================================================
+# Markdown Plugin FFI
+# ============================================================================
+# The kryon-plugin-markdown library provides markdown→IR conversion
+# We dynamically load it if available
+
+var markdownLibHandle: LibHandle = nil
+var markdownToKir: proc(markdown: cstring, length: csize_t): cstring {.cdecl.} = nil
+var markdownLibLoaded = false
+var markdownLibChecked = false
+
+proc tryLoadMarkdownPlugin() =
+  ## Try to load the markdown plugin library
+  if markdownLibChecked:
+    return
+  markdownLibChecked = true
+
+  # Try various library paths
+  const libPaths = [
+    "../kryon-plugin-markdown/build/libkryon_markdown.so",
+    "~/.local/lib/libkryon_markdown.so",
+    "/usr/local/lib/libkryon_markdown.so",
+    "libkryon_markdown.so"
+  ]
+
+  for path in libPaths:
+    let expandedPath = path.expandTilde()
+    if fileExists(expandedPath):
+      markdownLibHandle = loadLib(expandedPath)
+      if markdownLibHandle != nil:
+        markdownToKir = cast[proc(markdown: cstring, length: csize_t): cstring {.cdecl.}](
+          markdownLibHandle.symAddr("kryon_markdown_to_kir")
+        )
+        if markdownToKir != nil:
+          markdownLibLoaded = true
+          stderr.writeLine "📝 Loaded markdown plugin from: " & expandedPath
+          return
+
+  # Also check LD_LIBRARY_PATH
+  let ldPath = getEnv("LD_LIBRARY_PATH", "")
+  for dir in ldPath.split(':'):
+    if dir.len > 0:
+      let fullPath = dir / "libkryon_markdown.so"
+      if fileExists(fullPath):
+        markdownLibHandle = loadLib(fullPath)
+        if markdownLibHandle != nil:
+          markdownToKir = cast[proc(markdown: cstring, length: csize_t): cstring {.cdecl.}](
+            markdownLibHandle.symAddr("kryon_markdown_to_kir")
+          )
+          if markdownToKir != nil:
+            markdownLibLoaded = true
+            stderr.writeLine "📝 Loaded markdown plugin from: " & fullPath
+            return
+
+proc convertMarkdownToKir(source: string): JsonNode =
+  ## Convert markdown source to KIR JSON using the plugin
+  ## Returns the parsed JSON or nil if plugin not available
+  tryLoadMarkdownPlugin()
+
+  if not markdownLibLoaded or markdownToKir == nil:
+    stderr.writeLine "⚠️  Markdown plugin not available - using raw Markdown component"
+    return nil
+
+  let kirResult = markdownToKir(source.cstring, source.len.csize_t)
+  if kirResult == nil:
+    stderr.writeLine "⚠️  Markdown conversion failed"
+    return nil
+
+  # Parse the JSON result
+  try:
+    let json = parseJson($kirResult)
+    # Free the C string (normally we'd call free() but Nim's GC handles the copy)
+    return json
+  except JsonParsingError as e:
+    stderr.writeLine "⚠️  Failed to parse markdown KIR JSON: " & e.msg
+    return nil
 
 type
   ConstValue = object
@@ -312,6 +389,38 @@ proc mapPropertyName(name: string): string =
 # Transpile a component instance to IR
 proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0): JsonNode =
   let id = ctx.genId()
+
+  # Special handling for Markdown components - convert to IR at compile time
+  if node.componentType == "Markdown":
+    # Get the source property
+    if node.componentProps.hasKey("source"):
+      let sourceVal = node.componentProps["source"]
+      var markdownSource: string = ""
+
+      # Extract the markdown source string
+      if sourceVal.kind == nkExprLiteral and sourceVal.litKind == lkString:
+        markdownSource = sourceVal.litString
+
+      if markdownSource.len > 0:
+        # Convert markdown to KIR JSON
+        let kirJson = convertMarkdownToKir(markdownSource)
+        if kirJson != nil:
+          # Update ID to use our generated ID
+          if kirJson.hasKey("id"):
+            kirJson["id"] = %id
+          return kirJson
+
+    # Fallback: create Markdown component with source as text_content
+    # This will be handled by the markdown plugin renderer at runtime
+    result = %*{
+      "id": id,
+      "type": "Markdown"
+    }
+    if node.componentProps.hasKey("source"):
+      let sourceVal = node.componentProps["source"]
+      if sourceVal.kind == nkExprLiteral and sourceVal.litKind == lkString:
+        result["text"] = %sourceVal.litString
+    return result
 
   result = %*{
     "id": id,
