@@ -849,6 +849,39 @@ proc convertMarkdownToHtml*(markdown: string): string =
         listType = "ol"
       result.add("<li class=\"kryon-md-li\">" & processInlineMarkdown(line[2..^1].strip()) & "</li>\n")
 
+    # Markdown table
+    elif line.strip().startsWith("|"):
+      # Start of table - collect all table rows
+      var tableRows: seq[string] = @[]
+      while i < lines.len and lines[i].strip().startsWith("|"):
+        tableRows.add(lines[i])
+        i += 1
+      i -= 1  # Back up one since we'll increment at end of loop
+
+      if tableRows.len >= 2:
+        result.add("<table class=\"kryon-md-table\">\n")
+
+        # Parse header row
+        let headerLine = tableRows[0]
+        var headerCells = headerLine.split("|").filterIt(it.strip().len > 0)
+        result.add("<thead>\n<tr>")
+        for cell in headerCells:
+          result.add("<th class=\"kryon-md-th\">" & processInlineMarkdown(cell.strip()) & "</th>")
+        result.add("</tr>\n</thead>\n")
+
+        # Parse data rows (skip separator row at index 1)
+        result.add("<tbody>\n")
+        for rowIdx in 2 ..< tableRows.len:
+          let row = tableRows[rowIdx]
+          var cells = row.split("|").filterIt(it.strip().len > 0)
+          result.add("<tr>")
+          for cell in cells:
+            result.add("<td class=\"kryon-md-td\">" & processInlineMarkdown(cell.strip()) & "</td>")
+          result.add("</tr>\n")
+        result.add("</tbody>\n")
+
+        result.add("</table>\n")
+
     # Paragraph
     else:
       result.add("<p class=\"kryon-md-p\">" & processInlineMarkdown(line) & "</p>\n")
@@ -1059,15 +1092,29 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
       let componentTemplate = componentMap[componentType]
       return generateComponentCssAndHtml(componentTemplate, parentId, depth, callProps)
 
-    # Built-in component types
+    # Built-in component types - comprehensive HTML tag mappings
     let tagName = case componentType:
       of "Text": "span"
       of "Button": "button"
       of "Link": "a"
       of "Image": "img"
-      of "Markdown": "div"
-      of "Row", "Column", "Container": "div"
+      of "Input": "input"
+      of "Checkbox": "input"
+      of "Dropdown": "select"
+      of "Canvas": "canvas"
+      of "Table": "table"
+      of "TableHead": "thead"
+      of "TableBody": "tbody"
+      of "TableFoot": "tfoot"
+      of "TableRow": "tr"
+      of "TableCell": "td"
+      of "TableHeaderCell": "th"
+      of "Tab": "button"
+      of "Row", "Column", "Container", "Center", "TabGroup", "TabBar", "TabContent", "TabPanel", "Markdown": "div"
       else: "div"
+
+    # Self-closing elements
+    let selfClosing = componentType in ["Image", "Input", "Checkbox"]
 
     # Build opening tag with special attributes
     var openingTag = "<" & tagName & " id=\"" & componentId & "\" class=\"kryon-" & componentType.toLowerAscii() & "\""
@@ -1117,8 +1164,48 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
         if altVal.len > 0:
           openingTag.add(" alt=\"" & altVal & "\"")
 
-    # Self-closing for void elements (img)
-    if componentType == "Image":
+    # Checkbox type attribute
+    if componentType == "Checkbox":
+      openingTag.add(" type=\"checkbox\"")
+
+    # Input type attribute
+    if componentType == "Input" and node.hasKey("inputType"):
+      openingTag.add(" type=\"" & node["inputType"].getStr() & "\"")
+    elif componentType == "Input":
+      openingTag.add(" type=\"text\"")  # Default to text
+
+    # Table cell colspan/rowspan
+    if componentType in ["TableCell", "TableHeaderCell"]:
+      if node.hasKey("colspan"):
+        let colspan = node["colspan"].getInt()
+        if colspan > 1:
+          openingTag.add(" colspan=\"" & $colspan & "\"")
+      if node.hasKey("rowspan"):
+        let rowspan = node["rowspan"].getInt()
+        if rowspan > 1:
+          openingTag.add(" rowspan=\"" & $rowspan & "\"")
+
+    # Accessibility roles for tabs
+    if componentType == "Tab":
+      openingTag.add(" role=\"tab\"")
+    if componentType == "TabPanel":
+      openingTag.add(" role=\"tabpanel\"")
+    if componentType == "TabGroup":
+      openingTag.add(" role=\"tablist\"")
+
+    # Canvas dimensions as attributes
+    if componentType == "Canvas":
+      if node.hasKey("width"):
+        let w = node["width"]
+        if w.kind == JInt:
+          openingTag.add(" width=\"" & $w.getInt() & "\"")
+      if node.hasKey("height"):
+        let h = node["height"]
+        if h.kind == JInt:
+          openingTag.add(" height=\"" & $h.getInt() & "\"")
+
+    # Self-closing for void elements (img, input, etc.)
+    if selfClosing:
       openingTag.add(" />")
       html.add(openingTag)
     else:
@@ -1327,19 +1414,21 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
         let sourceNode = node["source"]
         if sourceNode.kind == JString:
           mdSource = sourceNode.getStr()
+      elif node.hasKey("text_content"):
+        mdSource = node["text_content"].getStr()
 
       if mdSource.len > 0:
         html.add(convertMarkdownToHtml(mdSource))
 
-    # Process children (skip for self-closing elements like Image)
-    if componentType != "Image" and node.hasKey("children"):
+    # Process children (skip for self-closing elements)
+    if not selfClosing and node.hasKey("children"):
       for child in node["children"]:
         let (childCss, childHtml) = generateComponentCssAndHtml(child, componentId, depth + 1, props)
         css.add(childCss)
         html.add(childHtml)
 
-    # Close HTML element (skip for self-closing elements like Image)
-    if componentType != "Image":
+    # Close HTML element (skip for self-closing elements)
+    if not selfClosing:
       html.add("</" & tagName & ">")
 
     result = (css, html)
@@ -1390,6 +1479,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .kryon-md-th { background: #161B22; font-weight: bold; color: #E6EDF3; }
 .kryon-md strong { color: #E6EDF3; }
 .kryon-md em { color: #C9D1D9; font-style: italic; }
+
+/* Native Table Components */
+table.kryon-table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+.kryon-tablehead { }
+.kryon-tablebody { }
+.kryon-tablefoot { }
+.kryon-tablerow { }
+.kryon-tablecell, .kryon-tableheadercell { border: 1px solid #30363D; padding: 8px 12px; text-align: left; color: #C9D1D9; }
+.kryon-tableheadercell { background: #161B22; font-weight: bold; color: #E6EDF3; }
+
+/* Input/Form Components */
+.kryon-input, .kryon-checkbox { padding: 8px; border: 1px solid #30363D; background: #161B22; color: #C9D1D9; border-radius: 4px; }
+.kryon-dropdown { padding: 8px; border: 1px solid #30363D; background: #161B22; color: #C9D1D9; border-radius: 4px; }
+.kryon-canvas { display: block; }
+
+/* Tab Components */
+.kryon-tabgroup { }
+.kryon-tabbar { display: flex; gap: 4px; }
+.kryon-tab { padding: 8px 16px; border: 1px solid #30363D; background: #161B22; color: #C9D1D9; cursor: pointer; }
+.kryon-tabcontent { }
+.kryon-tabpanel { }
 """
 
   # Generate HTML file

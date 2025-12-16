@@ -440,21 +440,14 @@ void text_texture_cache_insert(const char* font_path, int font_size, const char*
             g_text_texture_cache[lru_index].color
         );
 
-        // Remove from hash chain
+        // Remove from hash chain (max 2 entries per bucket)
         if (g_text_cache_hash_table[old_hash].cache_index == lru_index) {
-            // First in chain
+            // First in chain - promote second to first
             g_text_cache_hash_table[old_hash].cache_index = g_text_cache_hash_table[old_hash].next_index;
             g_text_cache_hash_table[old_hash].next_index = -1;
-        } else {
-            // Walk chain to find predecessor
-            int prev_idx = g_text_cache_hash_table[old_hash].cache_index;
-            while (prev_idx != -1) {
-                if (g_text_cache_hash_table[old_hash].next_index == lru_index) {
-                    g_text_cache_hash_table[old_hash].next_index = -1;
-                    break;
-                }
-                prev_idx = g_text_cache_hash_table[old_hash].next_index;
-            }
+        } else if (g_text_cache_hash_table[old_hash].next_index == lru_index) {
+            // Second in chain - just remove it
+            g_text_cache_hash_table[old_hash].next_index = -1;
         }
 
         // Destroy old texture

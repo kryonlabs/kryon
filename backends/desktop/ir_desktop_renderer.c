@@ -346,12 +346,18 @@ void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
  * RENDERING - Frame rendering and main loop
  * ============================================================================ */
 
+static int g_debug_frame_count = 0;
+
 bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* root) {
     if (!renderer || !root || !renderer->initialized) return false;
 
 #ifdef ENABLE_SDL3
     renderer->blend_mode_set = false;
     g_frame_counter++;
+    g_debug_frame_count++;
+
+    // Clear needs_relayout flag after each frame (full redraw already happens every frame)
+    renderer->needs_relayout = false;
 
     /* Calculate delta time for animations */
     double current_time = SDL_GetTicks() / 1000.0;

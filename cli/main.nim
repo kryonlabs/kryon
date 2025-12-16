@@ -17,7 +17,7 @@ const
   hasWebBackend* = defined(webBackend) or defined(staticBackend)
 
 # CLI modules
-import project, build, device, compile, diff, inspect, config, codegen, codegen_tsx, plugin_manager
+import project, build, device, compile, diff, inspect, config, codegen, codegen_tsx, plugin_manager, kir_to_c
 import kry_ast, kry_lexer, kry_parser, kry_to_kir, kyt_parser, tsx_parser
 
 # IR and backend bindings (for orchestration)
@@ -1376,7 +1376,7 @@ proc handleCodegenCommand*(args: seq[string]) =
   ## Handle 'kryon codegen' command - Generate source code from .kir files
   if args.len == 0:
     echo "Error: Input .kir file required"
-    echo "Usage: kryon codegen <input.kir> [--lang=lua|nim|tsx] [--output=file]"
+    echo "Usage: kryon codegen <input.kir> [--lang=c|lua|nim|tsx] [--output=file]"
     quit(1)
 
   let inputFile = args[0]
@@ -1418,9 +1418,11 @@ proc handleCodegenCommand*(args: seq[string]) =
           generateNimFromKir(inputFile)
       of "tsx", "jsx":
         generateTsxFromKir(inputFile)
+      of "c":
+        generateCFromKir(inputFile)
       else:
         echo "✗ Unsupported language: " & lang
-        echo "   Supported: lua, nim, tsx"
+        echo "   Supported: lua, nim, tsx, c"
         quit(1)
 
     if outputFile != "":
