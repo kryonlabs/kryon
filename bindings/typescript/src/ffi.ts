@@ -308,6 +308,14 @@ const commonSymbols = {
     args: [],
     returns: FFIType.ptr,
   },
+
+  // ============================================================
+  // Markdown Parser (Core)
+  // ============================================================
+  ir_markdown_parse: {
+    args: [FFIType.cstring, FFIType.u64],  // source, length
+    returns: FFIType.ptr,  // IRComponent*
+  },
 };
 
 const desktopSymbols = {

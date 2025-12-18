@@ -76,6 +76,28 @@ install-headers: $(BUILD_DIR)
 debug: CFLAGS += -g -DDEBUG
 debug: $(WEB_STATIC_LIB) $(WEB_SHARED_LIB)
 
+# Sanitizer flag definitions (preserve pkg-config CFLAGS)
+ASAN_FLAGS = -g -fsanitize=address -fno-omit-frame-pointer -DDEBUG
+UBSAN_FLAGS = -g -fsanitize=undefined -fno-omit-frame-pointer -DDEBUG
+TSAN_FLAGS = -g -fsanitize=thread -fno-omit-frame-pointer -DDEBUG
+
+# Sanitizer builds for catching bugs during testing
+asan:
+	$(MAKE) clean
+	$(MAKE) all CFLAGS="$(CFLAGS) $(ASAN_FLAGS)"
+
+ubsan:
+	$(MAKE) clean
+	$(MAKE) all CFLAGS="$(CFLAGS) $(UBSAN_FLAGS)"
+
+asan-ubsan:
+	$(MAKE) clean
+	$(MAKE) all CFLAGS="$(CFLAGS) $(ASAN_FLAGS) $(UBSAN_FLAGS)"
+
+tsan:
+	$(MAKE) clean
+	$(MAKE) all CFLAGS="$(CFLAGS) $(TSAN_FLAGS)"
+
 # Help
 help:
 	@echo "Kryon Web Backend Build Targets:"
@@ -85,6 +107,10 @@ help:
 	@echo "  clean          - Remove build artifacts"
 	@echo "  install-headers - Copy headers to build directory"
 	@echo "  debug          - Build with debug symbols"
+	@echo "  asan           - Build with AddressSanitizer"
+	@echo "  ubsan          - Build with UndefinedBehaviorSanitizer"
+	@echo "  asan-ubsan     - Build with both ASan and UBSan (recommended)"
+	@echo "  tsan           - Build with ThreadSanitizer"
 	@echo "  help           - Show this help"
 
-.PHONY: all clean debug install-headers help
+.PHONY: all clean debug asan ubsan asan-ubsan tsan install-headers help

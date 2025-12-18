@@ -169,36 +169,41 @@ export function renderNode(node: IRNode | string, parentPtr?: Pointer): Pointer 
     return 0;
   }
 
-  // Handle markdown components with file prop
-  if (node.type === 'markdown' && node.props.file) {
-    console.log(`[Markdown] Processing file: ${node.props.file}`);
+  // Handle markdown components with file or content prop
+  if (node.type === 'markdown' && (node.props.file || node.props.content)) {
     try {
-      // Read markdown file
-      const filePath = resolve(node.props.file);
-      console.log(`[Markdown] Resolved path: ${filePath}`);
-      const markdownContent = readFileSync(filePath, 'utf-8');
-      console.log(`[Markdown] File size: ${markdownContent.length} bytes`);
+      let markdownContent: string;
 
-      // Check if markdown plugin is available
-      if (typeof ffi.kryon_markdown_to_ir !== 'function') {
-        console.error('[Markdown] kryon_markdown_to_ir function not available!');
-        // Fall through
+      if (node.props.file) {
+        // Read markdown from file
+        const filePath = resolve(node.props.file);
+        console.log(`[Markdown] Loading file: ${filePath}`);
+        markdownContent = readFileSync(filePath, 'utf-8');
       } else {
-        console.log('[Markdown] Calling kryon_markdown_to_ir...');
-        // Call markdown plugin to convert to IR
-        const irPtr = ffi.kryon_markdown_to_ir(cstr(markdownContent), markdownContent.length) as unknown as Pointer;
-
-        if (!irPtr) {
-          console.error(`[Markdown] Failed to parse markdown file: ${node.props.file}`);
-          // Fall through to create empty markdown component
-        } else {
-          console.log(`[Markdown] ✓ Successfully converted to IR: ${irPtr}`);
-          return irPtr;
-        }
+        // Use inline content
+        markdownContent = node.props.content || '';
       }
+
+      if (markdownContent.length === 0) {
+        console.warn('[Markdown] Empty markdown content');
+        return ffi.ir_container(cstr('div')) as unknown as Pointer;
+      }
+
+      // Use core markdown parser (supports Mermaid → Flowchart conversion)
+      console.log(`[Markdown] Parsing ${markdownContent.length} bytes with core parser...`);
+      const irPtr = ffi.ir_markdown_parse(cstr(markdownContent), markdownContent.length) as unknown as Pointer;
+
+      if (!irPtr) {
+        console.error(`[Markdown] Failed to parse markdown`);
+        return ffi.ir_container(cstr('div')) as unknown as Pointer;
+      }
+
+      console.log(`[Markdown] ✓ Successfully converted to IR component tree`);
+      return irPtr;
+
     } catch (error) {
-      console.error(`[Markdown] Error processing file ${node.props.file}:`, error);
-      // Fall through to create empty markdown component
+      console.error(`[Markdown] Error processing markdown:`, error);
+      return ffi.ir_container(cstr('div')) as unknown as Pointer;
     }
   }
 

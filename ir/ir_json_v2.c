@@ -170,6 +170,10 @@ static cJSON* clone_and_substitute_json_impl(cJSON* json, StateContext* sc, bool
 
     if (cJSON_IsArray(json)) {
         cJSON* result = cJSON_CreateArray();
+        if (!result) {
+            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) in clone_and_substitute_json_impl\n");
+            return NULL;
+        }
         cJSON* item;
         cJSON_ArrayForEach(item, json) {
             cJSON_AddItemToArray(result, clone_and_substitute_json_impl(item, sc, false));
@@ -179,6 +183,10 @@ static cJSON* clone_and_substitute_json_impl(cJSON* json, StateContext* sc, bool
 
     if (cJSON_IsObject(json)) {
         cJSON* result = cJSON_CreateObject();
+        if (!result) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) in clone_and_substitute_json_impl\n");
+            return NULL;
+        }
         cJSON* item;
 
         // Check if this object has text_expression - if so, use it to compute text
@@ -368,6 +376,10 @@ static cJSON* json_spacing_to_json(IRSpacing spacing) {
     // Check for vertical/horizontal shorthand [vertical, horizontal]
     if (spacing.top == spacing.bottom && spacing.left == spacing.right) {
         cJSON* array = cJSON_CreateArray();
+        if (!array) {
+            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) in json_spacing_to_json (shorthand)\n");
+            return NULL;
+        }
         cJSON_AddItemToArray(array, cJSON_CreateNumber(spacing.top));
         cJSON_AddItemToArray(array, cJSON_CreateNumber(spacing.left));
         return array;
@@ -375,6 +387,10 @@ static cJSON* json_spacing_to_json(IRSpacing spacing) {
 
     // Full array [top, right, bottom, left]
     cJSON* array = cJSON_CreateArray();
+    if (!array) {
+        fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) in json_spacing_to_json (full)\n");
+        return NULL;
+    }
     cJSON_AddItemToArray(array, cJSON_CreateNumber(spacing.top));
     cJSON_AddItemToArray(array, cJSON_CreateNumber(spacing.right));
     cJSON_AddItemToArray(array, cJSON_CreateNumber(spacing.bottom));
@@ -429,6 +445,10 @@ static void json_serialize_style(cJSON* obj, IRStyle* style) {
     // Border (width, color, radius - any can be set independently)
     if (style->border.width > 0 || style->border.radius > 0) {
         cJSON* border = cJSON_CreateObject();
+        if (!border) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for border in json_style_to_json\n");
+            return;
+        }
 
         if (style->border.width > 0) {
             cJSON_AddNumberToObject(border, "width", style->border.width);
@@ -543,9 +563,18 @@ static void json_serialize_style(cJSON* obj, IRStyle* style) {
         fabs(style->transform.scale_x - 1.0f) > 0.001f || fabs(style->transform.scale_y - 1.0f) > 0.001f ||
         fabs(style->transform.rotate) > 0.001f) {
         cJSON* transform = cJSON_CreateObject();
+        if (!transform) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for transform in json_style_to_json\n");
+            return;
+        }
 
         if (fabs(style->transform.translate_x) > 0.001f || fabs(style->transform.translate_y) > 0.001f) {
             cJSON* translate = cJSON_CreateArray();
+            if (!translate) {
+                fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for translate in json_style_to_json\n");
+                cJSON_Delete(transform);
+                return;
+            }
             cJSON_AddItemToArray(translate, cJSON_CreateNumber(style->transform.translate_x));
             cJSON_AddItemToArray(translate, cJSON_CreateNumber(style->transform.translate_y));
             cJSON_AddItemToObject(transform, "translate", translate);
@@ -553,6 +582,11 @@ static void json_serialize_style(cJSON* obj, IRStyle* style) {
 
         if (fabs(style->transform.scale_x - 1.0f) > 0.001f || fabs(style->transform.scale_y - 1.0f) > 0.001f) {
             cJSON* scale = cJSON_CreateArray();
+            if (!scale) {
+                fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for scale in json_style_to_json\n");
+                cJSON_Delete(transform);
+                return;
+            }
             cJSON_AddItemToArray(scale, cJSON_CreateNumber(style->transform.scale_x));
             cJSON_AddItemToArray(scale, cJSON_CreateNumber(style->transform.scale_y));
             cJSON_AddItemToObject(transform, "scale", scale);
@@ -686,6 +720,10 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     if (!component) return NULL;
 
     cJSON* obj = cJSON_CreateObject();
+    if (!obj) {
+        fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) in json_serialize_component_impl\n");
+        return NULL;
+    }
 
     // If this is a component instance (has component_ref) and we're not serializing as template,
     // output just a reference instead of the full tree
@@ -770,6 +808,10 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     if (component->type == IR_COMPONENT_DROPDOWN && component->custom_data) {
         IRDropdownState* state = (IRDropdownState*)component->custom_data;
         cJSON* dropdownState = cJSON_CreateObject();
+        if (!dropdownState) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for dropdown state\n");
+            return obj;
+        }
 
         // Placeholder
         if (state->placeholder) {
@@ -779,6 +821,11 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         // Options array
         if (state->options && state->option_count > 0) {
             cJSON* optionsArr = cJSON_CreateArray();
+            if (!optionsArr) {
+                fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for dropdown options\n");
+                cJSON_Delete(dropdownState);
+                return obj;
+            }
             for (uint32_t i = 0; i < state->option_count; i++) {
                 if (state->options[i]) {
                     cJSON_AddItemToArray(optionsArr, cJSON_CreateString(state->options[i]));
@@ -800,12 +847,27 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     if (component->type == IR_COMPONENT_TABLE && component->custom_data) {
         IRTableState* state = (IRTableState*)component->custom_data;
         cJSON* tableConfig = cJSON_CreateObject();
+        if (!tableConfig) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for table config\n");
+            return obj;
+        }
 
         // Columns
         if (state->columns && state->column_count > 0) {
             cJSON* columnsArr = cJSON_CreateArray();
+            if (!columnsArr) {
+                fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for table columns\n");
+                cJSON_Delete(tableConfig);
+                return obj;
+            }
             for (uint32_t i = 0; i < state->column_count; i++) {
                 cJSON* colObj = cJSON_CreateObject();
+                if (!colObj) {
+                    fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for column object\n");
+                    cJSON_Delete(columnsArr);
+                    cJSON_Delete(tableConfig);
+                    return obj;
+                }
                 IRTableColumnDef* col = &state->columns[i];
 
                 // Width dimension
@@ -887,6 +949,10 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
          component->type == IR_COMPONENT_TABLE_HEADER_CELL) && component->custom_data) {
         IRTableCellData* cellData = (IRTableCellData*)component->custom_data;
         cJSON* cellObj = cJSON_CreateObject();
+        if (!cellObj) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for table cell data\n");
+            return obj;
+        }
 
         cJSON_AddNumberToObject(cellObj, "colspan", cellData->colspan);
         cJSON_AddNumberToObject(cellObj, "rowspan", cellData->rowspan);
@@ -968,6 +1034,10 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     if (component->type == IR_COMPONENT_FLOWCHART && component->custom_data) {
         IRFlowchartState* state = (IRFlowchartState*)component->custom_data;
         cJSON* flowchartObj = cJSON_CreateObject();
+        if (!flowchartObj) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for flowchart config\n");
+            return obj;
+        }
 
         // Direction
         cJSON_AddStringToObject(flowchartObj, "direction", ir_flowchart_direction_to_string(state->direction));
@@ -984,6 +1054,10 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     if (component->type == IR_COMPONENT_FLOWCHART_NODE && component->custom_data) {
         IRFlowchartNodeData* nodeData = (IRFlowchartNodeData*)component->custom_data;
         cJSON* nodeObj = cJSON_CreateObject();
+        if (!nodeObj) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for flowchart node\n");
+            return obj;
+        }
 
         if (nodeData->node_id) {
             cJSON_AddStringToObject(nodeObj, "id", nodeData->node_id);
@@ -1012,6 +1086,10 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     if (component->type == IR_COMPONENT_FLOWCHART_EDGE && component->custom_data) {
         IRFlowchartEdgeData* edgeData = (IRFlowchartEdgeData*)component->custom_data;
         cJSON* edgeObj = cJSON_CreateObject();
+        if (!edgeObj) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for flowchart edge\n");
+            return obj;
+        }
 
         if (edgeData->from_id) {
             cJSON_AddStringToObject(edgeObj, "from", edgeData->from_id);
@@ -1033,6 +1111,10 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     if (component->type == IR_COMPONENT_FLOWCHART_SUBGRAPH && component->custom_data) {
         IRFlowchartSubgraphData* subgraphData = (IRFlowchartSubgraphData*)component->custom_data;
         cJSON* subgraphObj = cJSON_CreateObject();
+        if (!subgraphObj) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for flowchart subgraph\n");
+            return obj;
+        }
 
         if (subgraphData->subgraph_id) {
             cJSON_AddStringToObject(subgraphObj, "id", subgraphData->subgraph_id);
@@ -1054,9 +1136,18 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     // Serialize events (IR v2.1: with bytecode support)
     if (component->events) {
         cJSON* events = cJSON_CreateArray();
+        if (!events) {
+            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for events array\n");
+            return obj;
+        }
         IREvent* event = component->events;
         while (event) {
             cJSON* eventObj = cJSON_CreateObject();
+            if (!eventObj) {
+                fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for event object\n");
+                cJSON_Delete(events);
+                return obj;
+            }
 
             // Event type
             const char* eventType = "unknown";
@@ -1112,6 +1203,11 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     // Children
     if (component->child_count > 0) {
         cJSON* children = cJSON_CreateArray();
+        if (!children) {
+            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for children in json_serialize_component_impl\n");
+            cJSON_Delete(obj);
+            return NULL;
+        }
         for (uint32_t i = 0; i < component->child_count; i++) {
             cJSON* child = json_serialize_component_impl(component->children[i], as_template);
             if (child) {
@@ -1150,10 +1246,19 @@ static cJSON* json_serialize_component_definitions(IRReactiveManifest* manifest)
     if (!manifest || manifest->component_def_count == 0) return NULL;
 
     cJSON* arr = cJSON_CreateArray();
+    if (!arr) {
+        fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for component definitions\n");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < manifest->component_def_count; i++) {
         IRComponentDefinition* def = &manifest->component_defs[i];
         cJSON* defObj = cJSON_CreateObject();
+        if (!defObj) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for component definition\n");
+            cJSON_Delete(arr);
+            return NULL;
+        }
 
         if (def->name) {
             cJSON_AddStringToObject(defObj, "name", def->name);
@@ -1162,9 +1267,20 @@ static cJSON* json_serialize_component_definitions(IRReactiveManifest* manifest)
         // Serialize props
         if (def->prop_count > 0 && def->props) {
             cJSON* propsArr = cJSON_CreateArray();
+            if (!propsArr) {
+                fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for component props\n");
+                cJSON_Delete(defObj);
+                return NULL;
+            }
             for (uint32_t j = 0; j < def->prop_count; j++) {
                 IRComponentProp* prop = &def->props[j];
                 cJSON* propObj = cJSON_CreateObject();
+                if (!propObj) {
+                    fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for prop object\n");
+                    cJSON_Delete(propsArr);
+                    cJSON_Delete(defObj);
+                    return NULL;
+                }
                 if (prop->name) cJSON_AddStringToObject(propObj, "name", prop->name);
                 if (prop->type) cJSON_AddStringToObject(propObj, "type", prop->type);
                 if (prop->default_value) cJSON_AddStringToObject(propObj, "default", prop->default_value);
@@ -1176,9 +1292,20 @@ static cJSON* json_serialize_component_definitions(IRReactiveManifest* manifest)
         // Serialize state variables
         if (def->state_var_count > 0 && def->state_vars) {
             cJSON* stateArr = cJSON_CreateArray();
+            if (!stateArr) {
+                fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for state variables\n");
+                cJSON_Delete(defObj);
+                return NULL;
+            }
             for (uint32_t j = 0; j < def->state_var_count; j++) {
                 IRComponentStateVar* sv = &def->state_vars[j];
                 cJSON* svObj = cJSON_CreateObject();
+                if (!svObj) {
+                    fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for state var object\n");
+                    cJSON_Delete(stateArr);
+                    cJSON_Delete(defObj);
+                    return NULL;
+                }
                 if (sv->name) cJSON_AddStringToObject(svObj, "name", sv->name);
                 if (sv->type) cJSON_AddStringToObject(svObj, "type", sv->type);
                 if (sv->initial_expr) cJSON_AddStringToObject(svObj, "initial", sv->initial_expr);
@@ -1209,13 +1336,28 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
                       manifest->conditional_count == 0 && manifest->for_loop_count == 0)) return NULL;
 
     cJSON* obj = cJSON_CreateObject();
+    if (!obj) {
+        fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for reactive manifest\n");
+        return NULL;
+    }
 
     // Serialize variables
     if (manifest->variable_count > 0) {
         cJSON* vars = cJSON_CreateArray();
+        if (!vars) {
+            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for reactive variables\n");
+            cJSON_Delete(obj);
+            return NULL;
+        }
         for (uint32_t i = 0; i < manifest->variable_count; i++) {
             IRReactiveVarDescriptor* var = &manifest->variables[i];
             cJSON* varObj = cJSON_CreateObject();
+            if (!varObj) {
+                fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for reactive var object\n");
+                cJSON_Delete(vars);
+                cJSON_Delete(obj);
+                return NULL;
+            }
 
             cJSON_AddNumberToObject(varObj, "id", var->id);
             if (var->name) cJSON_AddStringToObject(varObj, "name", var->name);
@@ -1253,9 +1395,20 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
     // Serialize bindings
     if (manifest->binding_count > 0) {
         cJSON* bindings = cJSON_CreateArray();
+        if (!bindings) {
+            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for bindings\n");
+            cJSON_Delete(obj);
+            return NULL;
+        }
         for (uint32_t i = 0; i < manifest->binding_count; i++) {
             IRReactiveBinding* binding = &manifest->bindings[i];
             cJSON* bindingObj = cJSON_CreateObject();
+            if (!bindingObj) {
+                fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for binding object\n");
+                cJSON_Delete(bindings);
+                cJSON_Delete(obj);
+                return NULL;
+            }
 
             cJSON_AddNumberToObject(bindingObj, "component_id", binding->component_id);
             cJSON_AddNumberToObject(bindingObj, "var_id", binding->reactive_var_id);
@@ -1274,9 +1427,20 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
         printf("[ir_json_v2] SERIALIZATION FUNCTION CALLED - %d conditionals\n", manifest->conditional_count);
         fflush(stdout);
         cJSON* conditionals = cJSON_CreateArray();
+        if (!conditionals) {
+            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for conditionals\n");
+            cJSON_Delete(obj);
+            return NULL;
+        }
         for (uint32_t i = 0; i < manifest->conditional_count; i++) {
             IRReactiveConditional* cond = &manifest->conditionals[i];
             cJSON* condObj = cJSON_CreateObject();
+            if (!condObj) {
+                fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for conditional object\n");
+                cJSON_Delete(conditionals);
+                cJSON_Delete(obj);
+                return NULL;
+            }
 
             cJSON_AddNumberToObject(condObj, "component_id", cond->component_id);
 
@@ -1298,6 +1462,13 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
             // Serialize branch children IDs for round-trip support
             if (cond->then_children_count > 0 && cond->then_children_ids) {
                 cJSON* thenIds = cJSON_CreateArray();
+                if (!thenIds) {
+                    fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for then_children_ids\n");
+                    cJSON_Delete(condObj);
+                    cJSON_Delete(conditionals);
+                    cJSON_Delete(obj);
+                    return NULL;
+                }
                 for (uint32_t j = 0; j < cond->then_children_count; j++) {
                     cJSON_AddItemToArray(thenIds, cJSON_CreateNumber(cond->then_children_ids[j]));
                 }
@@ -1306,6 +1477,13 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
 
             if (cond->else_children_count > 0 && cond->else_children_ids) {
                 cJSON* elseIds = cJSON_CreateArray();
+                if (!elseIds) {
+                    fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for else_children_ids\n");
+                    cJSON_Delete(condObj);
+                    cJSON_Delete(conditionals);
+                    cJSON_Delete(obj);
+                    return NULL;
+                }
                 for (uint32_t j = 0; j < cond->else_children_count; j++) {
                     cJSON_AddItemToArray(elseIds, cJSON_CreateNumber(cond->else_children_ids[j]));
                 }
@@ -1320,9 +1498,20 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
     // Serialize for-loops
     if (manifest->for_loop_count > 0) {
         cJSON* loops = cJSON_CreateArray();
+        if (!loops) {
+            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for for-loops\n");
+            cJSON_Delete(obj);
+            return NULL;
+        }
         for (uint32_t i = 0; i < manifest->for_loop_count; i++) {
             IRReactiveForLoop* loop = &manifest->for_loops[i];
             cJSON* loopObj = cJSON_CreateObject();
+            if (!loopObj) {
+                fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for for-loop object\n");
+                cJSON_Delete(loops);
+                cJSON_Delete(obj);
+                return NULL;
+            }
 
             cJSON_AddNumberToObject(loopObj, "parent_component_id", loop->parent_component_id);
             cJSON_AddNumberToObject(loopObj, "collection_var_id", loop->collection_var_id);
@@ -1425,6 +1614,12 @@ char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* 
     char** required_plugins = ir_plugin_scan_requirements(root, &plugin_count);
     if (required_plugins && plugin_count > 0) {
         cJSON* pluginsArray = cJSON_CreateArray();
+        if (!pluginsArray) {
+            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for plugins array\n");
+            ir_plugin_free_requirements(required_plugins, plugin_count);
+            cJSON_Delete(wrapper);
+            return NULL;
+        }
         for (uint32_t i = 0; i < plugin_count; i++) {
             cJSON_AddItemToArray(pluginsArray, cJSON_CreateString(required_plugins[i]));
         }
@@ -1437,6 +1632,11 @@ char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* 
     // Add sources if present (for round-trip preservation)
     if (manifest && manifest->source_count > 0) {
         cJSON* sources = cJSON_CreateObject();
+        if (!sources) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for sources object\n");
+            cJSON_Delete(wrapper);
+            return NULL;
+        }
         for (uint32_t i = 0; i < manifest->source_count; i++) {
             if (manifest->sources[i].lang && manifest->sources[i].code) {
                 cJSON_AddStringToObject(sources, manifest->sources[i].lang, manifest->sources[i].code);
@@ -1556,6 +1756,12 @@ char* ir_serialize_json_v3(IRComponent* root, IRReactiveManifest* manifest, stru
     char** required_plugins = ir_plugin_scan_requirements(root, &plugin_count);
     if (required_plugins && plugin_count > 0) {
         cJSON* pluginsArray = cJSON_CreateArray();
+        if (!pluginsArray) {
+            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for plugins array\n");
+            ir_plugin_free_requirements(required_plugins, plugin_count);
+            cJSON_Delete(wrapper);
+            return NULL;
+        }
         for (uint32_t i = 0; i < plugin_count; i++) {
             cJSON_AddItemToArray(pluginsArray, cJSON_CreateString(required_plugins[i]));
         }
@@ -1568,6 +1774,11 @@ char* ir_serialize_json_v3(IRComponent* root, IRReactiveManifest* manifest, stru
     // Add sources if present (for round-trip preservation)
     if (manifest && manifest->source_count > 0) {
         cJSON* sources = cJSON_CreateObject();
+        if (!sources) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for sources object\n");
+            cJSON_Delete(wrapper);
+            return NULL;
+        }
         for (uint32_t i = 0; i < manifest->source_count; i++) {
             if (manifest->sources[i].lang && manifest->sources[i].code) {
                 cJSON_AddStringToObject(sources, manifest->sources[i].lang, manifest->sources[i].code);

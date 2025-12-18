@@ -198,22 +198,27 @@ debug: $(IR_STATIC_LIB) $(IR_SHARED_LIB)
 debug-mem: CFLAGS += -g -DDEBUG -DIR_DEBUG_LEVEL=4
 debug-mem: clean all
 
+# Sanitizer flag definitions (preserve pkg-config CFLAGS)
+ASAN_FLAGS = -g -fsanitize=address -fno-omit-frame-pointer -DDEBUG
+UBSAN_FLAGS = -g -fsanitize=undefined -fno-omit-frame-pointer -DDEBUG
+TSAN_FLAGS = -g -fsanitize=thread -fno-omit-frame-pointer -DDEBUG
+
 # Sanitizer builds for catching bugs during testing
 asan:
 	$(MAKE) clean
-	$(MAKE) all CFLAGS="-std=c99 -Wall -Wextra -O2 -fPIC -g -fsanitize=address -fno-omit-frame-pointer -DDEBUG"
+	$(MAKE) all CFLAGS="$(CFLAGS) $(ASAN_FLAGS)"
 
 ubsan:
 	$(MAKE) clean
-	$(MAKE) all CFLAGS="-std=c99 -Wall -Wextra -O2 -fPIC -g -fsanitize=undefined -fno-omit-frame-pointer -DDEBUG"
+	$(MAKE) all CFLAGS="$(CFLAGS) $(UBSAN_FLAGS)"
 
 asan-ubsan:
 	$(MAKE) clean
-	$(MAKE) all CFLAGS="-std=c99 -Wall -Wextra -O2 -fPIC -g -fsanitize=address,undefined -fno-omit-frame-pointer -DDEBUG"
+	$(MAKE) all CFLAGS="$(CFLAGS) $(ASAN_FLAGS) $(UBSAN_FLAGS)"
 
 tsan:
 	$(MAKE) clean
-	$(MAKE) all CFLAGS="-std=c99 -Wall -Wextra -O2 -fPIC -g -fsanitize=thread -fno-omit-frame-pointer -DDEBUG"
+	$(MAKE) all CFLAGS="$(CFLAGS) $(TSAN_FLAGS)"
 
 # Help
 help:
