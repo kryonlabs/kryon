@@ -912,6 +912,58 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         cJSON_AddItemToObject(obj, "cell_data", cellObj);
     }
 
+    // Serialize markdown component data
+    if (component->type == IR_COMPONENT_HEADING && component->custom_data) {
+        IRHeadingData* data = (IRHeadingData*)component->custom_data;
+        cJSON_AddNumberToObject(obj, "level", data->level);
+        if (data->text) {
+            cJSON_AddStringToObject(obj, "text", data->text);
+        }
+        if (data->id) {
+            cJSON_AddStringToObject(obj, "id_attr", data->id);
+        }
+    }
+
+    if (component->type == IR_COMPONENT_CODE_BLOCK && component->custom_data) {
+        IRCodeBlockData* data = (IRCodeBlockData*)component->custom_data;
+        if (data->language) {
+            cJSON_AddStringToObject(obj, "language", data->language);
+        }
+        if (data->code) {
+            cJSON_AddStringToObject(obj, "code", data->code);
+        }
+        cJSON_AddBoolToObject(obj, "showLineNumbers", data->show_line_numbers);
+    }
+
+    if (component->type == IR_COMPONENT_LIST && component->custom_data) {
+        IRListData* data = (IRListData*)component->custom_data;
+        cJSON_AddStringToObject(obj, "listType", data->type == IR_LIST_ORDERED ? "ordered" : "unordered");
+        if (data->type == IR_LIST_ORDERED && data->start > 1) {
+            cJSON_AddNumberToObject(obj, "start", data->start);
+        }
+        cJSON_AddBoolToObject(obj, "tight", data->tight);
+    }
+
+    if (component->type == IR_COMPONENT_LIST_ITEM && component->custom_data) {
+        IRListItemData* data = (IRListItemData*)component->custom_data;
+        if (data->marker) {
+            cJSON_AddStringToObject(obj, "marker", data->marker);
+        }
+        if (data->number > 0) {
+            cJSON_AddNumberToObject(obj, "number", data->number);
+        }
+    }
+
+    if (component->type == IR_COMPONENT_LINK && component->custom_data) {
+        IRLinkData* data = (IRLinkData*)component->custom_data;
+        if (data->url) {
+            cJSON_AddStringToObject(obj, "url", data->url);
+        }
+        if (data->title) {
+            cJSON_AddStringToObject(obj, "title", data->title);
+        }
+    }
+
     // Serialize flowchart data
     if (component->type == IR_COMPONENT_FLOWCHART && component->custom_data) {
         IRFlowchartState* state = (IRFlowchartState*)component->custom_data;
@@ -1299,11 +1351,29 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
 char* ir_serialize_json_v2(IRComponent* root) {
     if (!root) return NULL;
 
+    fprintf(stderr, "=== ir_serialize_json_v2: Starting serialization...\n");
+    fflush(stderr);
+
     cJSON* json = json_serialize_component_recursive(root);
-    if (!json) return NULL;
+    if (!json) {
+        fprintf(stderr, "=== ir_serialize_json_v2: Serialization failed!\n");
+        fflush(stderr);
+        return NULL;
+    }
+
+    fprintf(stderr, "=== ir_serialize_json_v2: Serialization succeeded, calling cJSON_Print...\n");
+    fflush(stderr);
 
     char* jsonStr = cJSON_Print(json);  // Pretty-printed JSON
+
+    fprintf(stderr, "=== ir_serialize_json_v2: cJSON_Print returned, length=%zu\n", jsonStr ? strlen(jsonStr) : 0);
+    fprintf(stderr, "=== ir_serialize_json_v2: Calling cJSON_Delete... (THIS MIGHT CRASH)\n");
+    fflush(stderr);
+
     cJSON_Delete(json);
+
+    fprintf(stderr, "=== ir_serialize_json_v2: cJSON_Delete succeeded\n");
+    fflush(stderr);
 
     return jsonStr;
 }
@@ -1997,6 +2067,15 @@ static IRComponentType ir_string_to_component_type(const char* str) {
     if (strcmp(str, "open") == 0) return IR_COMPONENT_FLOWCHART_EDGE;
     if (strcmp(str, "thick") == 0) return IR_COMPONENT_FLOWCHART_EDGE;
     if (strcmp(str, "bidirectional") == 0) return IR_COMPONENT_FLOWCHART_EDGE;
+    // Markdown components
+    if (strcmp(str, "Heading") == 0) return IR_COMPONENT_HEADING;
+    if (strcmp(str, "Paragraph") == 0) return IR_COMPONENT_PARAGRAPH;
+    if (strcmp(str, "Blockquote") == 0) return IR_COMPONENT_BLOCKQUOTE;
+    if (strcmp(str, "CodeBlock") == 0) return IR_COMPONENT_CODE_BLOCK;
+    if (strcmp(str, "HorizontalRule") == 0) return IR_COMPONENT_HORIZONTAL_RULE;
+    if (strcmp(str, "List") == 0) return IR_COMPONENT_LIST;
+    if (strcmp(str, "ListItem") == 0) return IR_COMPONENT_LIST_ITEM;
+    if (strcmp(str, "Link") == 0) return IR_COMPONENT_LINK;
     if (strcmp(str, "Custom") == 0) return IR_COMPONENT_CUSTOM;
     return IR_COMPONENT_CONTAINER;
 }
@@ -2512,6 +2591,117 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
                 if (rowspanItem && cJSON_IsNumber(rowspanItem)) {
                     data->rowspan = (uint16_t)rowspanItem->valueint;
                 }
+            }
+
+            component->custom_data = (char*)data;
+        }
+    }
+
+    // Parse markdown component data
+    if (component->type == IR_COMPONENT_HEADING) {
+        IRHeadingData* data = (IRHeadingData*)calloc(1, sizeof(IRHeadingData));
+        if (data) {
+            cJSON* levelItem = cJSON_GetObjectItem(json, "level");
+            if (levelItem && cJSON_IsNumber(levelItem)) {
+                data->level = (uint8_t)levelItem->valueint;
+            } else {
+                data->level = 1;  // Default to H1
+            }
+
+            cJSON* textItem = cJSON_GetObjectItem(json, "text");
+            if (textItem && cJSON_IsString(textItem)) {
+                data->text = strdup(textItem->valuestring);
+            }
+
+            cJSON* idItem = cJSON_GetObjectItem(json, "id_attr");
+            if (idItem && cJSON_IsString(idItem)) {
+                data->id = strdup(idItem->valuestring);
+            }
+
+            component->custom_data = (char*)data;
+        }
+    }
+
+    if (component->type == IR_COMPONENT_CODE_BLOCK) {
+        IRCodeBlockData* data = (IRCodeBlockData*)calloc(1, sizeof(IRCodeBlockData));
+        if (data) {
+            cJSON* langItem = cJSON_GetObjectItem(json, "language");
+            if (langItem && cJSON_IsString(langItem)) {
+                data->language = strdup(langItem->valuestring);
+            }
+
+            cJSON* codeItem = cJSON_GetObjectItem(json, "code");
+            if (codeItem && cJSON_IsString(codeItem)) {
+                data->code = strdup(codeItem->valuestring);
+                data->length = strlen(data->code);
+            }
+
+            cJSON* showLineNumsItem = cJSON_GetObjectItem(json, "showLineNumbers");
+            if (showLineNumsItem && cJSON_IsBool(showLineNumsItem)) {
+                data->show_line_numbers = cJSON_IsTrue(showLineNumsItem);
+            }
+
+            component->custom_data = (char*)data;
+        }
+    }
+
+    if (component->type == IR_COMPONENT_LIST) {
+        IRListData* data = (IRListData*)calloc(1, sizeof(IRListData));
+        if (data) {
+            cJSON* typeItem = cJSON_GetObjectItem(json, "listType");
+            if (typeItem && cJSON_IsString(typeItem)) {
+                data->type = (strcmp(typeItem->valuestring, "ordered") == 0) ?
+                    IR_LIST_ORDERED : IR_LIST_UNORDERED;
+            } else {
+                data->type = IR_LIST_UNORDERED;  // Default
+            }
+
+            cJSON* startItem = cJSON_GetObjectItem(json, "start");
+            if (startItem && cJSON_IsNumber(startItem)) {
+                data->start = (uint32_t)startItem->valueint;
+            } else {
+                data->start = 1;
+            }
+
+            cJSON* tightItem = cJSON_GetObjectItem(json, "tight");
+            if (tightItem && cJSON_IsBool(tightItem)) {
+                data->tight = cJSON_IsTrue(tightItem);
+            } else {
+                data->tight = true;  // Default
+            }
+
+            component->custom_data = (char*)data;
+        }
+    }
+
+    if (component->type == IR_COMPONENT_LIST_ITEM) {
+        IRListItemData* data = (IRListItemData*)calloc(1, sizeof(IRListItemData));
+        if (data) {
+            cJSON* markerItem = cJSON_GetObjectItem(json, "marker");
+            if (markerItem && cJSON_IsString(markerItem)) {
+                data->marker = strdup(markerItem->valuestring);
+            }
+
+            cJSON* numberItem = cJSON_GetObjectItem(json, "number");
+            if (numberItem && cJSON_IsNumber(numberItem)) {
+                data->number = (uint32_t)numberItem->valueint;
+            }
+
+            component->custom_data = (char*)data;
+        }
+    }
+
+    if (component->type == IR_COMPONENT_LINK) {
+        IRLinkData* data = (IRLinkData*)calloc(1, sizeof(IRLinkData));
+        if (data) {
+            cJSON* urlItem = cJSON_GetObjectItem(json, "url");
+            if (urlItem && cJSON_IsString(urlItem)) {
+                data->url = strdup(urlItem->valuestring);
+            }
+
+            cJSON* titleItem = cJSON_GetObjectItem(json, "title");
+            if (titleItem && cJSON_IsString(titleItem)) {
+                data->title = strdup(titleItem->valuestring);
             }
 
             component->custom_data = (char*)data;

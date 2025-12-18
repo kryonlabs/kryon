@@ -33,6 +33,15 @@ typedef enum {
     IR_COMPONENT_TABLE_ROW,
     IR_COMPONENT_TABLE_CELL,
     IR_COMPONENT_TABLE_HEADER_CELL,
+    // Markdown document components
+    IR_COMPONENT_HEADING,             // H1-H6 with semantic level
+    IR_COMPONENT_PARAGRAPH,           // Text paragraph with wrapping
+    IR_COMPONENT_BLOCKQUOTE,          // Quoted text block
+    IR_COMPONENT_CODE_BLOCK,          // Fenced code with language tag
+    IR_COMPONENT_HORIZONTAL_RULE,     // Thematic break (---, ***, ___)
+    IR_COMPONENT_LIST,                // Ordered/unordered list container
+    IR_COMPONENT_LIST_ITEM,           // Individual list item
+    IR_COMPONENT_LINK,                // Hyperlink <a href="...">
     // Flowchart components
     IR_COMPONENT_FLOWCHART,           // Root container with layout direction
     IR_COMPONENT_FLOWCHART_NODE,      // Node (shape + label)
@@ -732,6 +741,57 @@ typedef struct IRTableState {
 } IRTableState;
 
 // ============================================================================
+// Markdown Component Structures
+// ============================================================================
+
+// Heading data (H1-H6)
+typedef struct {
+    uint8_t level;          // 1-6 for H1-H6
+    char* text;             // Heading text content
+    char* id;               // Optional anchor ID for linking (NULL if none)
+} IRHeadingData;
+
+// List data
+typedef enum {
+    IR_LIST_UNORDERED = 0,  // Bullet list (-, *, +)
+    IR_LIST_ORDERED = 1     // Numbered list (1., 2., ...)
+} IRListType;
+
+typedef struct {
+    IRListType type;        // Ordered or unordered
+    uint32_t start;         // Starting number (for ordered lists, default 1)
+    bool tight;             // Tight vs loose spacing (CommonMark spec)
+} IRListData;
+
+// List item data
+typedef struct {
+    uint32_t number;        // Item number (for ordered lists)
+    char* marker;           // Bullet character (-, *, +) or NULL
+    bool is_task_item;      // GitHub-style task list item
+    bool is_checked;        // Task item checked state
+} IRListItemData;
+
+// Blockquote data
+typedef struct {
+    uint8_t depth;          // Nesting level for nested quotes (1-based)
+} IRBlockquoteData;
+
+// Code block data
+typedef struct {
+    char* language;         // Language tag (e.g., "python", "rust", NULL for none)
+    char* code;             // Code content (raw text)
+    size_t length;          // Code length in bytes
+    bool show_line_numbers; // Enable line numbers
+    uint32_t start_line;    // Starting line number (default 1)
+} IRCodeBlockData;
+
+// Link data
+typedef struct {
+    char* url;              // Target URL (required)
+    char* title;            // Optional title attribute (NULL if none)
+} IRLinkData;
+
+// ============================================================================
 // Flowchart Component Structures
 // ============================================================================
 
@@ -817,9 +877,16 @@ typedef struct IRFlowchartEdgeData {
 typedef struct IRFlowchartSubgraphData {
     char* subgraph_id;                 // Subgraph ID
     char* title;                       // Display title
+    IRFlowchartDirection direction;    // Local direction override (LR, TB, etc.)
 
     // Computed bounds
     float x, y, width, height;
+
+    // Layout cache (for nested layout)
+    float local_width;                 // Width in local coordinates
+    float local_height;                // Height in local coordinates
+    bool layout_computed;              // Flag to track if layout done
+    char* parent_subgraph_id;          // Parent subgraph ID (NULL if top-level)
 
     // Styling
     uint32_t background_color;         // Background color (RGBA)
@@ -849,6 +916,14 @@ typedef struct IRFlowchartState {
     bool layout_computed;
     float computed_width;
     float computed_height;
+    float natural_width;               // Natural width before scaling
+    float natural_height;              // Natural height before scaling
+
+    // Content bounds (for responsive SVG)
+    float content_width;               // Actual width of flowchart content
+    float content_height;              // Actual height of flowchart content
+    float content_offset_x;            // Left offset (for centering)
+    float content_offset_y;            // Top offset (for centering)
 
     // Layout parameters
     float node_spacing;                // Space between nodes

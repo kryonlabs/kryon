@@ -583,6 +583,19 @@ float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_he
         return is_height ? (total_height > 0 ? total_height : 100.0f) : parent_rect.width;
     }
 
+    // Flowchart AUTO sizing - use IR layer intrinsic sizing
+    if (child->type == IR_COMPONENT_FLOWCHART) {
+        fprintf(stderr, "    🎯 Desktop FLOWCHART case: calling IR intrinsic\n");
+        float result = is_height ?
+            ir_get_component_intrinsic_height(child) :
+            ir_get_component_intrinsic_width(child);
+        fprintf(stderr, "    🎯 Desktop FLOWCHART result: %.1f\n", result);
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            printf("    📐 FLOWCHART %s: %.1f\n", is_height ? "height" : "width", result);
+        }
+        return result;
+    }
+
     // For Container/Row/Column with AUTO size, we need to measure children
     // But we CANNOT recurse into full layout - just sum up their explicit sizes
     if (getenv("KRYON_TRACE_LAYOUT")) {

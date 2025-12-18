@@ -148,6 +148,38 @@ function runDesktop(rootElement: IRNode, options: Required<RunOptions>): void {
 export function run(rootElement: IRNode, options: RunOptions = {}): void {
   const opts = { ...defaultOptions, ...options };
 
+  // Check for serialization mode (TypeScript → .kir pipeline)
+  const serializeTarget = process.env.KRYON_SERIALIZE_IR;
+  if (serializeTarget) {
+    // Serialize to .kir instead of rendering
+    const rootPtr = render(rootElement);
+    if (!rootPtr) {
+      console.error('Failed to render root element');
+      process.exit(1);
+    }
+
+    // TODO: Reactive manifest support
+    const manifest = 0; // null pointer
+    // TODO: Logic block support for event handlers
+    const logicBlock = 0; // null pointer
+
+    const success = ffi.ir_write_json_v3_file(
+      rootPtr,
+      manifest,
+      logicBlock,
+      cstr(serializeTarget)
+    );
+
+    if (success) {
+      console.log(`Serialized IR to ${serializeTarget}`);
+      process.exit(0);
+    } else {
+      console.error('Failed to serialize IR');
+      process.exit(1);
+    }
+  }
+
+  // Normal rendering path
   if (KRYON_RENDERER === 'web') {
     runWeb(rootElement, opts);
   } else {

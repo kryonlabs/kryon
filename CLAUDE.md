@@ -27,12 +27,14 @@ All frontends go through the same pipeline:
 .kry  → .kir (JSON) → renderer
 .nim  → .kir (JSON) → renderer
 .c    → .kir (JSON) → renderer
+.md   → .kir (JSON) → renderer
 .kirb → renderer (binary, pre-compiled)
 ```
 
 - **`.kry`** - Simple declarative syntax, parsed by `kry_parser.nim`
 - **`.nim`** - Nim DSL with reactive state, compiled to binary that serializes IR
 - **`.c`** - C API (runtime builder), compiled binary serializes IR
+- **`.md`** - Markdown files (full CommonMark + Mermaid), parsed by `ir_markdown_parse()` in C
 - **`.kir`** - JSON IR format (human-readable, named colors supported)
 - **`.kirb`** - Binary IR format (5-10× smaller, optimized)
 
@@ -51,6 +53,9 @@ The CLI uses `renderIRFile()` helper (cli/main.nim:128) for unified rendering ac
   ir_reactive_manifest.c  - Reactive state preservation for hot reload
   ir_hot_reload.c         - Hot reload support
   ir_text_shaping.c       - Text shaping with HarfBuzz
+  ir_markdown_parser.c    - Markdown parser (CommonMark + Mermaid)
+  ir_markdown_to_ir.c     - Markdown AST to IR converter
+  ir_flowchart_parser.c   - Mermaid flowchart parser
   ir_core.h               - Core types and structures
   Makefile                - Builds libkryon_ir.a
 
@@ -135,6 +140,120 @@ The CLI uses `renderIRFile()` helper (cli/main.nim:128) for unified rendering ac
   generate_examples.sh    - Generate/validate all examples from .kry
   compare_kir.sh          - Semantic .kir comparison
   normalize_kir.jq        - JSON normalization filter
+```
+
+## Markdown Frontend (.md files)
+
+Kryon supports **full CommonMark specification** as a first-class frontend with native Mermaid integration.
+
+### Running Markdown Files
+
+```bash
+# Run markdown file directly
+kryon run docs.md
+kryon run examples/md/hello_world.md
+
+# Build to web
+kryon build README.md --targets=web
+
+# Convert to .kir
+kryon parse documentation.md
+
+# Use terminal renderer
+KRYON_RENDERER=terminal kryon run examples/md/flowchart.md
+```
+
+### Supported Features (Full CommonMark)
+
+- ✅ **Headings** (H1-H6) with semantic levels
+- ✅ **Paragraphs** with inline formatting
+- ✅ **Bold** (`**text**`), *italic* (`*text*`), `code` (`` `code` ``), [links](url)
+- ✅ **Lists** (ordered, unordered, nested)
+- ✅ **Tables** (GFM style with alignment: `|:---|:---:|---:|`)
+- ✅ **Code blocks** with language tags for syntax highlighting
+- ✅ **Blockquotes** (nested with `>`)
+- ✅ **Horizontal rules** (`---`, `***`, `___`)
+- ✅ **Mermaid flowcharts** (converted to native IR components!)
+
+### Mermaid Flowchart Integration
+
+Mermaid code blocks are automatically detected and converted to native Kryon Flowchart IR components:
+
+````markdown
+```mermaid
+flowchart LR
+    A[Start] --> B[Process]
+    B --> C[End]
+```
+````
+
+**How it works:**
+1. Markdown parser detects ````mermaid` code block
+2. Calls `ir_flowchart_parse()` (same parser used for `.kry` Flowchart components)
+3. Generates `IR_COMPONENT_FLOWCHART` with nodes and edges
+4. Renders natively on all backends (SDL3, terminal, web)
+
+**No external dependencies** - flowchart parsing is built into core!
+
+### Embedded Markdown in .kry Files
+
+You can embed markdown content in `.kry` files using the Markdown component:
+
+```
+Container {
+  width = 100.percent
+  height = 100.percent
+
+  Markdown {
+    source = """
+# Welcome
+This is **embedded** markdown with *formatting*!
+
+- Item 1
+- Item 2
+"""
+  }
+}
+```
+
+### Example Files
+
+See `examples/md/` for complete examples:
+
+- `README.md` - Overview of markdown support
+- `hello_world.md` - Simple example
+- `inline_formatting.md` - Bold, italic, code, links
+- `lists.md` - Ordered and unordered lists (nested)
+- `table_demo.md` - Tables with alignment
+- `code_blocks.md` - Code syntax highlighting
+- `flowchart.md` - Mermaid diagram integration
+- `documentation.md` - Full-featured documentation page
+
+### Implementation Details
+
+**Parser Location**: `/ir/ir_markdown_parser.c` and `/ir/ir_markdown_to_ir.c`
+
+**Entry Point**: `ir_markdown_parse(const char* source, size_t length)`
+
+**Conversion**: `ir_markdown_to_kir(const char* source, size_t length)` for direct JSON output
+
+**Key Functions**:
+```c
+// Parse markdown to IR component tree
+IRComponent* ir_markdown_parse(const char* source, size_t length);
+
+// Convert markdown to KIR JSON string
+char* ir_markdown_to_kir(const char* source, size_t length);
+```
+
+**Mermaid Detection** (in `ir_markdown_to_ir.c:367-371`):
+```c
+// Check if code block is mermaid
+if (lang && strcmp(lang, "mermaid") == 0) {
+    // Parse with native flowchart parser
+    comp = ir_flowchart_parse(code, code_len);
+    if (comp) return comp;  // Native Flowchart component!
+}
 ```
 
 ## Examples Workflow

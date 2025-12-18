@@ -49,6 +49,15 @@ const char* debug_component_type_str(IRComponentType type) {
         case IR_COMPONENT_CANVAS: return "Canvas";
         case IR_COMPONENT_MARKDOWN: return "Markdown";
         case IR_COMPONENT_CUSTOM: return "Custom";
+        // Markdown components
+        case IR_COMPONENT_HEADING: return "Heading";
+        case IR_COMPONENT_PARAGRAPH: return "Paragraph";
+        case IR_COMPONENT_BLOCKQUOTE: return "Blockquote";
+        case IR_COMPONENT_CODE_BLOCK: return "CodeBlock";
+        case IR_COMPONENT_HORIZONTAL_RULE: return "HorizontalRule";
+        case IR_COMPONENT_LIST: return "List";
+        case IR_COMPONENT_LIST_ITEM: return "ListItem";
+        case IR_COMPONENT_LINK: return "Link";
         default: return "Unknown";
     }
 }

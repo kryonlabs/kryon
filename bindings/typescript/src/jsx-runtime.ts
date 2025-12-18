@@ -1,7 +1,7 @@
 // Kryon JSX Runtime - Custom JSX transform for Bun
 // This implements the automatic JSX runtime (react-jsx)
 
-import type { IRNode, BaseProps } from './types.ts';
+import type { IRNode, BaseProps, FlowchartProps, FlowchartNodeProps, FlowchartEdgeProps, FlowchartSubgraphProps } from './types.ts';
 
 export type { IRNode };
 
@@ -27,6 +27,12 @@ export namespace JSX {
     image: ImageProps;
     canvas: CanvasProps;
     markdown: MarkdownProps;
+
+    // Flowchart components
+    flowchart: FlowchartProps;
+    flowchartnode: FlowchartNodeProps;
+    flowchartedge: FlowchartEdgeProps;
+    flowchartsubgraph: FlowchartSubgraphProps;
   }
 
   export interface ElementChildrenAttribute {
@@ -100,6 +106,8 @@ interface CanvasProps extends BaseProps {
 
 interface MarkdownProps extends BaseProps {
   content?: string;
+  file?: string;
+  theme?: 'default' | 'light' | 'dark';
 }
 
 // Flatten children array (handles nested arrays from map() etc.)

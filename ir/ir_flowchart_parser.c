@@ -18,8 +18,10 @@ typedef struct {
     IRComponent* flowchart;
     IRFlowchartState* state;
 
-    // Current subgraph (NULL if not in subgraph)
-    IRComponent* current_subgraph;
+    // Subgraph stack (for nested subgraphs)
+    IRComponent** subgraph_stack;
+    uint32_t stack_depth;
+    uint32_t stack_capacity;
 } FlowchartParser;
 
 // Forward declarations
@@ -34,6 +36,8 @@ static bool match_case_insensitive(FlowchartParser* p, const char* str);
 static char* parse_identifier(FlowchartParser* p);
 static char* parse_text_in_brackets(FlowchartParser* p, char open, char close);
 static char* parse_quoted_string(FlowchartParser* p);
+static char* process_html_in_text(const char* text);
+static IRFlowchartDirection parse_direction(FlowchartParser* p);
 static void parse_node_definition(FlowchartParser* p, const char* node_id);
 static void parse_edge(FlowchartParser* p, const char* from_id);
 static void parse_subgraph(FlowchartParser* p);
@@ -41,6 +45,11 @@ static void parse_style(FlowchartParser* p);
 static void parse_line(FlowchartParser* p);
 static uint32_t parse_hex_color(const char* str);
 static bool node_exists_in_children(IRComponent* parent, const char* node_id);
+
+// Subgraph stack helpers
+static void parser_push_subgraph(FlowchartParser* p, IRComponent* subgraph);
+static void parser_pop_subgraph(FlowchartParser* p);
+static IRComponent* parser_current_subgraph(FlowchartParser* p);
 
 // Utility functions
 static void skip_whitespace(FlowchartParser* p) {
@@ -167,7 +176,11 @@ static char* parse_text_in_brackets(FlowchartParser* p, char open, char close) {
         memmove(text, trimmed, strlen(trimmed) + 1);
     }
 
-    return text;
+    // Process HTML tags (convert <br/> to newlines, strip formatting tags)
+    char* processed = process_html_in_text(text);
+    free(text);
+
+    return processed;
 }
 
 static char* parse_quoted_string(FlowchartParser* p) {
@@ -192,6 +205,95 @@ static char* parse_quoted_string(FlowchartParser* p) {
     return str;
 }
 
+// Process HTML tags in text, converting to appropriate Kryon representations
+static char* process_html_in_text(const char* text) {
+    if (!text) return NULL;
+
+    size_t len = strlen(text);
+    size_t output_size = len * 2;  // Generous buffer for potential newlines
+    char* output = (char*)malloc(output_size);
+    if (!output) return NULL;
+
+    size_t out_pos = 0;
+
+    for (size_t i = 0; i < len; ) {
+        if (text[i] == '<') {
+            // Check for specific HTML tags
+            if (strncasecmp(&text[i], "<br/>", 5) == 0) {
+                output[out_pos++] = '\n';
+                i += 5;
+            } else if (strncasecmp(&text[i], "<br>", 4) == 0) {
+                output[out_pos++] = '\n';
+                i += 4;
+            } else if (strncasecmp(&text[i], "<br />", 6) == 0) {
+                output[out_pos++] = '\n';
+                i += 6;
+            } else if (i + 1 < len && text[i + 1] == '/') {
+                // Closing tag (e.g., </b>, </i>) - skip it
+                while (i < len && text[i] != '>') i++;
+                if (i < len) i++;  // Skip >
+            } else {
+                // Opening tag (e.g., <b>, <i>, <code>) - skip tag but keep content
+                while (i < len && text[i] != '>') i++;
+                if (i < len) i++;  // Skip >
+            }
+        } else {
+            // Regular character - copy it
+            output[out_pos++] = text[i++];
+        }
+    }
+
+    output[out_pos] = '\0';
+
+    // Reallocate to exact size to save memory
+    char* final = (char*)realloc(output, out_pos + 1);
+    return final ? final : output;
+}
+
+// Parse flowchart direction (TB, LR, BT, RL)
+static IRFlowchartDirection parse_direction(FlowchartParser* p) {
+    skip_whitespace(p);
+
+    if (match_case_insensitive(p, "TB") || match_case_insensitive(p, "TD")) {
+        return IR_FLOWCHART_DIR_TB;
+    } else if (match_case_insensitive(p, "LR")) {
+        return IR_FLOWCHART_DIR_LR;
+    } else if (match_case_insensitive(p, "BT")) {
+        return IR_FLOWCHART_DIR_BT;
+    } else if (match_case_insensitive(p, "RL")) {
+        return IR_FLOWCHART_DIR_RL;
+    }
+
+    return IR_FLOWCHART_DIR_TB;  // Default
+}
+
+// Subgraph stack helpers
+static void parser_push_subgraph(FlowchartParser* p, IRComponent* subgraph) {
+    if (!p || !subgraph) return;
+
+    // Grow stack if needed
+    if (p->stack_depth >= p->stack_capacity) {
+        uint32_t new_capacity = p->stack_capacity == 0 ? 4 : p->stack_capacity * 2;
+        IRComponent** new_stack = (IRComponent**)realloc(p->subgraph_stack,
+                                                          new_capacity * sizeof(IRComponent*));
+        if (!new_stack) return;  // Out of memory
+        p->subgraph_stack = new_stack;
+        p->stack_capacity = new_capacity;
+    }
+
+    p->subgraph_stack[p->stack_depth++] = subgraph;
+}
+
+static void parser_pop_subgraph(FlowchartParser* p) {
+    if (!p || p->stack_depth == 0) return;
+    p->stack_depth--;
+}
+
+static IRComponent* parser_current_subgraph(FlowchartParser* p) {
+    if (!p || p->stack_depth == 0) return NULL;
+    return p->subgraph_stack[p->stack_depth - 1];
+}
+
 // Check if a node with given ID already exists as a child of the parent component
 static bool node_exists_in_children(IRComponent* parent, const char* node_id) {
     if (!parent || !node_id) return false;
@@ -204,8 +306,13 @@ static bool node_exists_in_children(IRComponent* parent, const char* node_id) {
                 return true;
             }
         }
-        // Also check subgraph children
+        // Also check if the ID matches a subgraph (subgraphs can be edge targets)
         if (child && child->type == IR_COMPONENT_FLOWCHART_SUBGRAPH) {
+            IRFlowchartSubgraphData* sg_data = ir_get_flowchart_subgraph_data(child);
+            if (sg_data && sg_data->subgraph_id && strcmp(sg_data->subgraph_id, node_id) == 0) {
+                return true;  // This ID is a subgraph, not a node
+            }
+            // Also check children within the subgraph
             if (node_exists_in_children(child, node_id)) {
                 return true;
             }
@@ -322,8 +429,9 @@ static void parse_node_definition(FlowchartParser* p, const char* node_id) {
 
     // Check if node already exists - skip creating duplicate
     bool already_exists = node_exists_in_children(p->flowchart, node_id);
-    if (p->current_subgraph && !already_exists) {
-        already_exists = node_exists_in_children(p->current_subgraph, node_id);
+    IRComponent* current = parser_current_subgraph(p);
+    if (current && !already_exists) {
+        already_exists = node_exists_in_children(current, node_id);
     }
 
     if (!already_exists) {
@@ -332,8 +440,8 @@ static void parse_node_definition(FlowchartParser* p, const char* node_id) {
 
         if (node) {
             // Add to current subgraph or flowchart
-            if (p->current_subgraph) {
-                ir_add_child(p->current_subgraph, node);
+            if (current) {
+                ir_add_child(current, node);
             } else {
                 ir_add_child(p->flowchart, node);
             }
@@ -417,6 +525,23 @@ static void parse_edge(FlowchartParser* p, const char* from_id) {
         return;
     }
 
+    // Create implicit target node if it doesn't exist
+    IRComponent* current = parser_current_subgraph(p);
+    bool to_node_exists = node_exists_in_children(p->flowchart, to_id);
+    if (current && !to_node_exists) {
+        to_node_exists = node_exists_in_children(current, to_id);
+    }
+    if (!to_node_exists) {
+        IRComponent* to_node = ir_flowchart_node(to_id, IR_FLOWCHART_SHAPE_RECTANGLE, to_id);
+        if (to_node) {
+            if (current) {
+                ir_add_child(current, to_node);
+            } else {
+                ir_add_child(p->flowchart, to_node);
+            }
+        }
+    }
+
     // Create edge component
     IRComponent* edge = ir_flowchart_edge(from_id, to_id, type);
     if (edge && label) {
@@ -436,6 +561,14 @@ static void parse_edge(FlowchartParser* p, const char* from_id) {
         parse_node_definition(p, to_id);
     }
 
+    // Check for chained arrows: A --> B --> C
+    skip_whitespace(p);
+    char next = peek(p);
+    if (next == '-' || next == '=' || next == '<') {
+        // There's another edge following, parse it recursively with to_id as the new from_id
+        parse_edge(p, to_id);
+    }
+
     if (label) free(label);
     free(to_id);
 }
@@ -446,19 +579,59 @@ static void parse_subgraph(FlowchartParser* p) {
     // Parse subgraph ID
     char* subgraph_id = parse_identifier(p);
 
-    // Parse optional title in brackets
+    // Parse optional title in brackets (supports both [text] and ["quoted text"])
     skip_whitespace(p);
     char* title = NULL;
     if (peek(p) == '[') {
-        title = parse_text_in_brackets(p, '[', ']');
+        size_t save_pos = p->pos;  // Save position in case we need to backtrack
+        advance(p);  // Skip '['
+        skip_whitespace(p);
+
+        if (peek(p) == '"') {
+            // Handle ["quoted text"] format
+            title = parse_quoted_string(p);
+            skip_whitespace(p);
+            if (peek(p) == ']') advance(p);  // Skip ']'
+        } else {
+            // Handle [plain text] format - restore position and use existing parser
+            p->pos = save_pos;
+            title = parse_text_in_brackets(p, '[', ']');
+        }
     }
 
     // Create subgraph component
     IRComponent* subgraph = ir_flowchart_subgraph(subgraph_id, title ? title : subgraph_id);
 
     if (subgraph) {
-        ir_add_child(p->flowchart, subgraph);
-        p->current_subgraph = subgraph;
+        // Add subgraph to parent (current subgraph or flowchart root)
+        IRComponent* parent = parser_current_subgraph(p);
+        if (parent) {
+            ir_add_child(parent, subgraph);
+
+            // Set parent_subgraph_id for nested subgraphs
+            IRFlowchartSubgraphData* subgraph_data = ir_get_flowchart_subgraph_data(subgraph);
+            IRFlowchartSubgraphData* parent_data = ir_get_flowchart_subgraph_data(parent);
+            if (subgraph_data && parent_data && parent_data->subgraph_id) {
+                subgraph_data->parent_subgraph_id = strdup(parent_data->subgraph_id);
+            }
+        } else {
+            ir_add_child(p->flowchart, subgraph);
+        }
+
+        // Push new subgraph onto stack
+        parser_push_subgraph(p, subgraph);
+
+        // Check for direction directive inside subgraph
+        skip_whitespace_and_newlines(p);
+        if (match_case_insensitive(p, "direction")) {
+            IRFlowchartDirection dir = parse_direction(p);
+
+            // Set the direction in the subgraph data
+            IRFlowchartSubgraphData* data = ir_get_flowchart_subgraph_data(subgraph);
+            if (data) {
+                data->direction = dir;
+            }
+        }
     }
 
     if (subgraph_id) free(subgraph_id);
@@ -554,8 +727,8 @@ static void parse_line(FlowchartParser* p) {
     }
 
     if (match_case_insensitive(p, "end")) {
-        // End of subgraph
-        p->current_subgraph = NULL;
+        // End of subgraph - pop from stack
+        parser_pop_subgraph(p);
         return;
     }
 
@@ -602,16 +775,17 @@ static void parse_line(FlowchartParser* p) {
     } else if (c == '-' || c == '=' || c == '<') {
         // Edge (node might be defined elsewhere or implicitly)
         // First ensure node exists (check children, not state which isn't finalized yet)
+        IRComponent* current = parser_current_subgraph(p);
         bool node_exists = node_exists_in_children(p->flowchart, node_id);
-        if (p->current_subgraph && !node_exists) {
-            node_exists = node_exists_in_children(p->current_subgraph, node_id);
+        if (current && !node_exists) {
+            node_exists = node_exists_in_children(current, node_id);
         }
         if (!node_exists) {
             // Create implicit node with default shape
             IRComponent* node = ir_flowchart_node(node_id, IR_FLOWCHART_SHAPE_RECTANGLE, node_id);
             if (node) {
-                if (p->current_subgraph) {
-                    ir_add_child(p->current_subgraph, node);
+                if (current) {
+                    ir_add_child(current, node);
                 } else {
                     ir_add_child(p->flowchart, node);
                 }
@@ -621,15 +795,16 @@ static void parse_line(FlowchartParser* p) {
     } else if (c == '&') {
         // Node chain: A & B & C (multiple nodes, often styled together)
         // For now, just create the first node
+        IRComponent* current = parser_current_subgraph(p);
         bool node_exists = node_exists_in_children(p->flowchart, node_id);
-        if (p->current_subgraph && !node_exists) {
-            node_exists = node_exists_in_children(p->current_subgraph, node_id);
+        if (current && !node_exists) {
+            node_exists = node_exists_in_children(current, node_id);
         }
         if (!node_exists) {
             IRComponent* node = ir_flowchart_node(node_id, IR_FLOWCHART_SHAPE_RECTANGLE, node_id);
             if (node) {
-                if (p->current_subgraph) {
-                    ir_add_child(p->current_subgraph, node);
+                if (current) {
+                    ir_add_child(current, node);
                 } else {
                     ir_add_child(p->flowchart, node);
                 }
@@ -670,7 +845,9 @@ IRComponent* ir_flowchart_parse(const char* source, size_t length) {
     parser.line = 1;
     parser.col = 0;
     parser.direction = IR_FLOWCHART_DIR_TB;
-    parser.current_subgraph = NULL;
+    parser.subgraph_stack = NULL;
+    parser.stack_depth = 0;
+    parser.stack_capacity = 0;
 
     skip_whitespace_and_newlines(&parser);
 
@@ -713,6 +890,11 @@ IRComponent* ir_flowchart_parse(const char* source, size_t length) {
 
     // Finalize flowchart (register all nodes/edges)
     ir_flowchart_finalize(parser.flowchart);
+
+    // Cleanup stack
+    if (parser.subgraph_stack) {
+        free(parser.subgraph_stack);
+    }
 
     return parser.flowchart;
 }

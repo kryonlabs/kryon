@@ -62,7 +62,7 @@ pkgs.mkShell {
     echo "  Run terminal examples: ./run_example.sh hello_world nim terminal"
     echo "  Run web examples: ./run_example.sh hello_world ts web"
     echo ""
-    echo "Available frontends: nim, typescript (ts), lua, c"
+    echo "Available frontends: kry, nim, typescript (ts), lua, c"
     echo "Available renderers: sdl3, terminal, web, framebuffer"
     echo ""
   '';

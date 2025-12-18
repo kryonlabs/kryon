@@ -14,8 +14,8 @@ INCLUDE_DIR = .
 INCLUDE_IR_DIR = ../../ir
 
 # Source files
-WEB_SOURCES = ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c
-WEB_HEADERS = ir_web_renderer.h html_generator.h css_generator.h wasm_bridge.h
+WEB_SOURCES = ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c svg_generator.c
+WEB_HEADERS = ir_web_renderer.h html_generator.h css_generator.h wasm_bridge.h svg_generator.h
 
 # Output files
 WEB_STATIC_LIB = $(BUILD_DIR)/libkryon_web.a
@@ -48,13 +48,16 @@ css_generator.o: css_generator.c css_generator.h
 wasm_bridge.o: wasm_bridge.c wasm_bridge.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c wasm_bridge.c -o wasm_bridge.o
 
+svg_generator.o: svg_generator.c svg_generator.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c svg_generator.c -o svg_generator.o
+
 # Create static library
-$(WEB_STATIC_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o
-	$(AR) $(ARFLAGS) $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o
+$(WEB_STATIC_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o svg_generator.o
+	$(AR) $(ARFLAGS) $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o svg_generator.o
 
 # Create shared library
-$(WEB_SHARED_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o ../../build/libkryon_ir.a
+$(WEB_SHARED_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o svg_generator.o
+	$(CC) $(CFLAGS) -shared -o $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o svg_generator.o ../../build/libkryon_ir.a
 
 # Test and example targets (when test files are created)
 # test: $(WEB_TEST)

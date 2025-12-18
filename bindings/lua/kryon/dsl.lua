@@ -350,10 +350,12 @@ local function applyProperties(component, props)
     ::continue::
   end
 
-  -- Add children (array elements)
-  for i, child in ipairs(props) do
-    if type(child) == "cdata" then  -- It's an IRComponent*
-      C.ir_add_child(component, child)
+  -- Add children from the children property
+  if props.children and type(props.children) == "table" then
+    for i, child in ipairs(props.children) do
+      if type(child) == "cdata" then  -- It's an IRComponent*
+        C.ir_add_child(component, child)
+      end
     end
   end
 end
