@@ -260,6 +260,54 @@ const commonSymbols = {
     args: [],
     returns: FFIType.ptr,
   },
+
+  // ============================================================
+  // Flowchart Components
+  // ============================================================
+  ir_flowchart: {
+    args: [FFIType.i32],  // direction (IRFlowchartDirection)
+    returns: FFIType.ptr,
+  },
+  ir_flowchart_node: {
+    args: [FFIType.cstring, FFIType.i32, FFIType.cstring],  // node_id, shape, label
+    returns: FFIType.ptr,
+  },
+  ir_flowchart_edge: {
+    args: [FFIType.cstring, FFIType.cstring, FFIType.i32],  // from_id, to_id, type
+    returns: FFIType.ptr,
+  },
+  ir_flowchart_subgraph: {
+    args: [FFIType.cstring, FFIType.cstring],  // subgraph_id, title
+    returns: FFIType.ptr,
+  },
+  ir_flowchart_edge_set_label: {
+    args: [FFIType.ptr, FFIType.cstring],  // edge, label
+    returns: FFIType.void,
+  },
+  ir_flowchart_finalize: {
+    args: [FFIType.ptr],  // flowchart component
+    returns: FFIType.void,
+  },
+
+  // ============================================================
+  // IR Serialization
+  // ============================================================
+  ir_serialize_json_v3: {
+    args: [FFIType.ptr, FFIType.ptr, FFIType.ptr],  // root, manifest, logic_block
+    returns: FFIType.cstring,  // JSON string
+  },
+  ir_write_json_v3_file: {
+    args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.cstring],  // root, manifest, logic_block, filename
+    returns: FFIType.bool,
+  },
+  ir_reactive_manifest_create: {
+    args: [],
+    returns: FFIType.ptr,
+  },
+  ir_logic_block_create: {
+    args: [],
+    returns: FFIType.ptr,
+  },
 };
 
 const desktopSymbols = {
@@ -330,7 +378,52 @@ const symbols = KRYON_RENDERER === 'web'
 // Load the shared libraries
 const lib = dlopen(KRYON_LIB_PATH, symbols);
 
-export const ffi = lib.symbols;
+// Load markdown plugin library
+let markdownLib: ReturnType<typeof dlopen> | null = null;
+try {
+  const markdownPluginPath = process.env.KRYON_MARKDOWN_PLUGIN_PATH ||
+    join(homedir(), '.local', 'lib', 'libkryon_markdown.so');
+
+  console.log('[FFI] Attempting to load markdown plugin from:', markdownPluginPath);
+  if (existsSync(markdownPluginPath)) {
+    console.log('[FFI] ✓ File exists, loading...');
+    markdownLib = dlopen(markdownPluginPath, {
+      kryon_markdown_to_ir: {
+        args: [FFIType.cstring, FFIType.u64],
+        returns: FFIType.ptr,
+      },
+    });
+    console.log('[FFI] ✓ Markdown plugin loaded successfully!');
+  } else {
+    console.log('[FFI] ✗ Not found, trying alternate path...');
+    // Try relative path from kryon project
+    const altPath = join(dirname(dirname(dirname(dirname(import.meta.dir)))),
+                         '..', 'kryon-plugin-markdown', 'build', 'libkryon_markdown.so');
+    console.log('[FFI] Alternate path:', altPath);
+    if (existsSync(altPath)) {
+      console.log('[FFI] ✓ Found at alternate path, loading...');
+      markdownLib = dlopen(altPath, {
+        kryon_markdown_to_ir: {
+          args: [FFIType.cstring, FFIType.u64],
+          returns: FFIType.ptr,
+        },
+      });
+      console.log('[FFI] ✓ Markdown plugin loaded successfully!');
+    } else {
+      console.log('[FFI] ✗ Not found at alternate path either');
+    }
+  }
+} catch (e) {
+  console.warn('[FFI] ✗ Error loading markdown plugin:', e);
+  console.warn('[FFI] Markdown files will not be processed');
+}
+
+// Merge markdown symbols into main FFI if loaded
+const allSymbols = markdownLib
+  ? { ...lib.symbols, ...markdownLib.symbols }
+  : lib.symbols;
+
+export const ffi = allSymbols;
 
 // Try to load the TypeScript wrapper library (for struct helpers)
 // This is optional - we can fall back to manual struct creation if not available

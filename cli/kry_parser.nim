@@ -49,11 +49,20 @@ proc parsePrimary(p: var Parser): KryNode =
     result = newLitPercent(parseFloat(tok.value), loc)
   of tkString:
     discard p.lex.advanceToken()
-    # Check if it's a color literal
-    if tok.value.startsWith("#"):
-      result = newLitColor(tok.value, loc)
+    # Check if it's a color literal (#RGB, #RRGGBB, or #RRGGBBAA format)
+    # Must be 4, 7, or 9 chars total and all hex digits after #
+    let v = tok.value
+    var isColor = false
+    if v.startsWith("#") and v.len in [4, 7, 9]:
+      isColor = true
+      for i in 1 ..< v.len:
+        if v[i] notin {'0'..'9', 'a'..'f', 'A'..'F'}:
+          isColor = false
+          break
+    if isColor:
+      result = newLitColor(v, loc)
     else:
-      result = newLitString(tok.value, loc)
+      result = newLitString(v, loc)
   of tkTrue:
     discard p.lex.advanceToken()
     result = newLitBool(true, loc)

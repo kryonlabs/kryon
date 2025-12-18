@@ -19,6 +19,44 @@ let nextId = 1;
 // Const map for resolving variable references like colors.accent
 const constMap = new Map<string, any>();
 
+// Map lowercase JSX component names to PascalCase type names (for JSON)
+function toPascalCase(name: string): string {
+  const map: Record<string, string> = {
+    'container': 'Container',
+    'text': 'Text',
+    'button': 'Button',
+    'input': 'Input',
+    'checkbox': 'Checkbox',
+    'dropdown': 'Dropdown',
+    'row': 'Row',
+    'column': 'Column',
+    'center': 'Center',
+    'image': 'Image',
+    'canvas': 'Canvas',
+    'markdown': 'Markdown',
+    'sprite': 'Sprite',
+    'tabgroup': 'TabGroup',
+    'tabbar': 'TabBar',
+    'tab': 'Tab',
+    'tabcontent': 'TabContent',
+    'tabpanel': 'TabPanel',
+    'table': 'Table',
+    'tablehead': 'TableHead',
+    'tablebody': 'TableBody',
+    'tablefoot': 'TableFoot',
+    'tablerow': 'TableRow',
+    'tablecell': 'TableCell',
+    'tableheadercell': 'TableHeaderCell',
+    'flowchart': 'Flowchart',
+    'flowchartnode': 'FlowchartNode',
+    'flowchartedge': 'FlowchartEdge',
+    'flowchartsubgraph': 'FlowchartSubgraph',
+    'flowchartlabel': 'FlowchartLabel',
+  };
+
+  return map[name.toLowerCase()] || name;
+}
+
 /**
  * Evaluate a simple expression to extract its value
  * Handles: literals, objects, arrays, member access
@@ -282,7 +320,7 @@ function parseJSXElement(node: t.JSXElement, state: ParsedState): KirNode {
   // Get element name
   const openingElement = node.openingElement;
   if (t.isJSXIdentifier(openingElement.name)) {
-    result.type = openingElement.name.name;
+    result.type = toPascalCase(openingElement.name.name);
   }
 
   // Parse attributes
@@ -335,6 +373,62 @@ function parseJSXElement(node: t.JSXElement, state: ParsedState): KirNode {
         case 'file':
           // Markdown file path (relative to project root)
           result.file = value;
+          break;
+        // Flowchart properties
+        case 'direction':
+          // Flowchart direction (TB, BT, LR, RL)
+          if (result.type === 'Flowchart') {
+            result.flowchart_config = result.flowchart_config || {};
+            result.flowchart_config.direction = value;
+          }
+          break;
+        case 'id':
+          // FlowchartNode or FlowchartSubgraph id
+          if (result.type === 'FlowchartNode') {
+            result.node_data = result.node_data || {};
+            result.node_data.id = value;
+          } else if (result.type === 'FlowchartSubgraph') {
+            result.subgraph_data = result.subgraph_data || {};
+            result.subgraph_data.id = value;
+          }
+          break;
+        case 'shape':
+          // FlowchartNode shape
+          if (result.type === 'FlowchartNode') {
+            result.node_data = result.node_data || {};
+            result.node_data.shape = value;
+          }
+          break;
+        case 'label':
+          // FlowchartNode or FlowchartEdge label
+          if (result.type === 'FlowchartNode') {
+            result.node_data = result.node_data || {};
+            result.node_data.label = value;
+          } else if (result.type === 'FlowchartEdge') {
+            result.edge_data = result.edge_data || {};
+            result.edge_data.label = value;
+          }
+          break;
+        case 'from':
+          // FlowchartEdge from node
+          if (result.type === 'FlowchartEdge') {
+            result.edge_data = result.edge_data || {};
+            result.edge_data.from = value;
+          }
+          break;
+        case 'to':
+          // FlowchartEdge to node
+          if (result.type === 'FlowchartEdge') {
+            result.edge_data = result.edge_data || {};
+            result.edge_data.to = value;
+          }
+          break;
+        case 'type':
+          // FlowchartEdge type (arrow, dotted, open, thick, bidirectional)
+          if (result.type === 'FlowchartEdge') {
+            result.edge_data = result.edge_data || {};
+            result.edge_data.type = value;
+          }
           break;
         case 'onClick':
           if (value && typeof value === 'object' && value.handler) {

@@ -8,6 +8,7 @@
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_plugin.h"
 #include "html_generator.h"
+#include "svg_generator.h"
 
 // HTML tag mapping
 typedef struct {
@@ -36,6 +37,15 @@ static const HTMLTagMapping tag_mappings[] = {
     {IR_COMPONENT_TABLE_ROW, "tr", "kryon-tr"},
     {IR_COMPONENT_TABLE_CELL, "td", "kryon-td"},
     {IR_COMPONENT_TABLE_HEADER_CELL, "th", "kryon-th"},
+    // Markdown components
+    {IR_COMPONENT_HEADING, "div", "kryon-heading"},
+    {IR_COMPONENT_PARAGRAPH, "p", "kryon-paragraph"},
+    {IR_COMPONENT_BLOCKQUOTE, "blockquote", "kryon-blockquote"},
+    {IR_COMPONENT_CODE_BLOCK, "pre", "kryon-code-block"},
+    {IR_COMPONENT_HORIZONTAL_RULE, "hr", "kryon-hr"},
+    {IR_COMPONENT_LIST, "div", "kryon-list"},
+    {IR_COMPONENT_LIST_ITEM, "li", "kryon-list-item"},
+    {IR_COMPONENT_LINK, "a", "kryon-link"},
     {IR_COMPONENT_CONTAINER, "div", "kryon-container"}  // Default fallback
 };
 
@@ -228,7 +238,8 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
     const char* tag = get_html_tag(component->type);
     bool is_self_closing = (component->type == IR_COMPONENT_INPUT ||
                           component->type == IR_COMPONENT_CHECKBOX ||
-                          component->type == IR_COMPONENT_IMAGE);
+                          component->type == IR_COMPONENT_IMAGE ||
+                          component->type == IR_COMPONENT_HORIZONTAL_RULE);
 
     html_generator_write_indent(generator);
     html_generator_write_format(generator, "<%s", tag);
@@ -285,6 +296,32 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             }
             break;
 
+        case IR_COMPONENT_FLOWCHART: {
+            // Generate SVG for flowchart
+            SVGOptions svg_opts = svg_options_default();
+            svg_opts.theme = SVG_THEME_DEFAULT;  // Could read from context if available
+            svg_opts.interactive = true;
+
+            char* svg = flowchart_to_svg(component, &svg_opts);
+            if (svg) {
+                // Close the opening tag
+                html_generator_write_string(generator, ">\n");
+                generator->indent_level++;
+
+                // Write SVG content
+                html_generator_write_indent(generator);
+                html_generator_write_string(generator, svg);
+                html_generator_write_string(generator, "\n");
+                free(svg);
+
+                generator->indent_level--;
+                html_generator_write_indent(generator);
+                html_generator_write_format(generator, "</%s>\n", tag);
+                return true;
+            }
+            break;
+        }
+
         case IR_COMPONENT_TABLE_CELL:
         case IR_COMPONENT_TABLE_HEADER_CELL: {
             IRTableCellData* cell_data = (IRTableCellData*)component->custom_data;
@@ -300,6 +337,70 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
                     html_generator_write_string(generator, " style=\"text-align: center;\"");
                 } else if (cell_data->alignment == IR_ALIGNMENT_END) {
                     html_generator_write_string(generator, " style=\"text-align: right;\"");
+                }
+            }
+            break;
+        }
+
+        // Markdown components
+        case IR_COMPONENT_HEADING: {
+            IRHeadingData* data = (IRHeadingData*)component->custom_data;
+            if (data) {
+                // Use semantic heading tag (h1-h6) instead of div
+                html_generator_write_format(generator, " data-level=\"%u\"", data->level);
+                // Override tag to use actual heading element
+                tag = (data->level == 1) ? "h1" :
+                      (data->level == 2) ? "h2" :
+                      (data->level == 3) ? "h3" :
+                      (data->level == 4) ? "h4" :
+                      (data->level == 5) ? "h5" : "h6";
+                if (data->id) {
+                    html_generator_write_format(generator, " id=\"%s\"", data->id);
+                }
+            }
+            break;
+        }
+
+        case IR_COMPONENT_CODE_BLOCK: {
+            IRCodeBlockData* data = (IRCodeBlockData*)component->custom_data;
+            if (data && data->language) {
+                html_generator_write_format(generator, " data-language=\"%s\"", data->language);
+            }
+            break;
+        }
+
+        case IR_COMPONENT_LIST: {
+            IRListData* data = (IRListData*)component->custom_data;
+            if (data) {
+                // Use semantic list tags (ol/ul) instead of div
+                tag = (data->type == IR_LIST_ORDERED) ? "ol" : "ul";
+                if (data->type == IR_LIST_ORDERED && data->start > 1) {
+                    html_generator_write_format(generator, " start=\"%u\"", data->start);
+                }
+            }
+            break;
+        }
+
+        case IR_COMPONENT_LIST_ITEM: {
+            IRListItemData* data = (IRListItemData*)component->custom_data;
+            if (data && data->number > 0) {
+                html_generator_write_format(generator, " value=\"%u\"", data->number);
+            }
+            break;
+        }
+
+        case IR_COMPONENT_LINK: {
+            IRLinkData* data = (IRLinkData*)component->custom_data;
+            if (data) {
+                if (data->url) {
+                    char escaped_url[2048];
+                    escape_html_text(data->url, escaped_url, sizeof(escaped_url));
+                    html_generator_write_format(generator, " href=\"%s\"", escaped_url);
+                }
+                if (data->title) {
+                    char escaped_title[1024];
+                    escape_html_text(data->title, escaped_title, sizeof(escaped_title));
+                    html_generator_write_format(generator, " title=\"%s\"", escaped_title);
                 }
             }
             break;
@@ -339,8 +440,33 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
 
     generator->indent_level++;
 
-    // Write text content if present
-    if (component->text_content && strlen(component->text_content) > 0) {
+    // Special handling for markdown components with custom_data text
+    if (component->type == IR_COMPONENT_HEADING) {
+        IRHeadingData* data = (IRHeadingData*)component->custom_data;
+        if (data && data->text) {
+            html_generator_write_indent(generator);
+            char escaped_text[2048];
+            escape_html_text(data->text, escaped_text, sizeof(escaped_text));
+            html_generator_write_format(generator, "%s\n", escaped_text);
+        }
+    } else if (component->type == IR_COMPONENT_CODE_BLOCK) {
+        IRCodeBlockData* data = (IRCodeBlockData*)component->custom_data;
+        if (data && data->code) {
+            html_generator_write_indent(generator);
+            html_generator_write_string(generator, "<code");
+            if (data->language) {
+                html_generator_write_format(generator, " class=\"language-%s\"", data->language);
+            }
+            html_generator_write_string(generator, ">");
+            // Code blocks need special escaping to preserve formatting
+            char escaped_code[4096];
+            escape_html_text(data->code, escaped_code, sizeof(escaped_code));
+            html_generator_write_string(generator, escaped_code);
+            html_generator_write_string(generator, "</code>\n");
+        }
+    }
+    // Write text content if present (for non-markdown components)
+    else if (component->text_content && strlen(component->text_content) > 0) {
         html_generator_write_indent(generator);
         char escaped_text[1024];
         escape_html_text(component->text_content, escaped_text, sizeof(escaped_text));

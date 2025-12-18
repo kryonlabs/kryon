@@ -18,7 +18,7 @@ const
 
 # CLI modules
 import project, build, device, compile, diff, inspect, config, codegen, codegen_tsx, plugin_manager, kir_to_c
-import kry_ast, kry_lexer, kry_parser, kry_to_kir, kyt_parser, tsx_parser
+import kry_ast, kry_lexer, kry_parser, kry_to_kir, kyt_parser, tsx_parser, md_parser
 
 # IR and backend bindings (for orchestration)
 import ../bindings/nim/ir_core
@@ -151,10 +151,20 @@ when hasDesktopBackend:
     ir_set_context(ctx)
 
     # Load IR tree (supports both .kir JSON and .kirb binary)
-    let irRoot = if kirPath.endsWith(".kirb"):
-                   ir_serialization.ir_read_binary_file(cstring(kirPath))
-                 else:
-                   ir_read_json_v2_file(cstring(kirPath))
+    # Try format based on extension first, then fallback to the other format
+    var irRoot: ptr IRComponent = nil
+    if kirPath.endsWith(".kirb"):
+      # Try binary first
+      irRoot = ir_serialization.ir_read_binary_file(cstring(kirPath))
+      if irRoot.isNil:
+        # Fallback to JSON
+        irRoot = ir_read_json_v2_file(cstring(kirPath))
+    else:
+      # Try JSON first
+      irRoot = ir_read_json_v2_file(cstring(kirPath))
+      if irRoot.isNil:
+        # Fallback to binary
+        irRoot = ir_serialization.ir_read_binary_file(cstring(kirPath))
 
     if irRoot.isNil:
       echo "❌ Failed to load IR: " & kirPath
@@ -385,7 +395,7 @@ proc handleBuildCommand*(args: seq[string]) =
 
 proc detectFileWithExtensions*(baseName: string): tuple[found: bool, path: string, ext: string] =
   ## Try to find a file with common Kryon frontend extensions
-  const extensions = [".lua", ".nim", ".ts", ".js", ".c"]
+  const extensions = [".kry", ".lua", ".nim", ".md", ".markdown", ".ts", ".js", ".c"]
 
   # If the file already has an extension, check if it exists
   if baseName.contains('.'):
@@ -488,7 +498,7 @@ proc handleRunCommand*(args: seq[string]) =
       echo "🔍 Detected " & ext & " file: " & file
     else:
       echo "❌ Could not find file: " & baseName
-      echo "   Tried extensions: .lua, .nim, .ts, .js, .c"
+      echo "   Tried extensions: .kry, .lua, .nim, .md, .markdown, .ts, .js, .c"
       quit(1)
 
   # Determine frontend type from extension
@@ -763,9 +773,68 @@ end
     echo "✓ Application closed"
     quit(0)
 
+  elif frontend == ".md" or frontend == ".markdown":
+    # .md → .kir → IR renderer
+    echo "📦 Running .md via IR pipeline..."
+
+    if not fileExists(file):
+      echo "❌ File not found: " & file
+      quit(1)
+
+    # Set up temp directory
+    let homeCache = getHomeDir() / ".cache" / "kryon"
+    let runCache = homeCache / "cli_run"
+    createDir(runCache)
+
+    let baseName = splitFile(file).name
+    let tempKir = runCache / baseName & ".kir"
+
+    # Parse .md -> .kir using core parser
+    echo "  → Parsing Markdown to KIR..."
+    try:
+      let kirContent = parseMdToKir(file, tempKir)
+      if not fileExists(tempKir):
+        echo "❌ Markdown parser did not create output file"
+        quit(1)
+    except:
+      echo "❌ Failed to parse .md file: " & getCurrentExceptionMsg()
+      quit(1)
+
+    # Extract window properties from KIR root
+    var windowTitle = "Kryon Markdown"
+    var windowWidth = 800
+    var windowHeight = 600
+    try:
+      let kirJson = parseFile(tempKir)
+      if kirJson.hasKey("root"):
+        let root = kirJson["root"]
+        if kirJson.hasKey("windowTitle"):
+          windowTitle = kirJson["windowTitle"].getStr("Kryon Markdown")
+        elif root.hasKey("windowTitle"):
+          windowTitle = root["windowTitle"].getStr("Kryon Markdown")
+        if root.hasKey("width"):
+          let wStr = root["width"].getStr("800.0px")
+          windowWidth = parseInt(wStr.replace(".0px", "").replace("px", ""))
+        if root.hasKey("height"):
+          let hStr = root["height"].getStr("600.0px")
+          windowHeight = parseInt(hStr.replace(".0px", "").replace("px", ""))
+    except:
+      discard  # Use defaults if parsing fails
+
+    # Render via unified IR pipeline
+    echo "  → Rendering..."
+    let renderSuccess = renderIRFile(tempKir, windowTitle, windowWidth, windowHeight)
+
+    if not renderSuccess:
+      echo "❌ Rendering failed"
+      quit(1)
+
+    echo "✓ Application closed"
+    quit(0)
+
   elif frontend != ".nim":
     echo "❌ Unknown frontend: " & frontend
-    echo "   Supported: .nim, .lua, .ts, .js, .tsx, .jsx, .kir, .kirb, .kry"
+    echo "   Supported: .nim, .lua, .ts, .js, .tsx, .jsx, .kir, .kirb, .kry, .md"
     quit(1)
 
   # Continue with Nim compilation for .nim files
@@ -945,7 +1014,7 @@ proc handleDevCommand*(args: seq[string]) =
       file = detected.path
     else:
       echo "❌ Could not find file: " & baseName
-      echo "   Tried extensions: .lua, .nim, .ts, .js, .c"
+      echo "   Tried extensions: .kry, .lua, .nim, .md, .markdown, .ts, .js, .c"
       quit(1)
 
   let (_, _, ext) = splitFile(file)
@@ -1399,11 +1468,8 @@ proc handleCodegenCommand*(args: seq[string]) =
     let kirJson = parseFile(inputFile)
     let version = kirJson{"format_version"}.getStr("2.0")
 
-    # Use V3 codegen only when there are component_definitions
-    # V3 is designed for component-based apps, V2 handles simple component trees better
-    let hasComponentDefs = kirJson.hasKey("component_definitions") and
-                           kirJson["component_definitions"].len > 0
-    let useV3Codegen = hasComponentDefs
+    # Use V3 codegen for v3.0 format files
+    let useV3Codegen = version == "3.0"
 
     let generatedCode = case lang.toLowerAscii():
       of "lua":

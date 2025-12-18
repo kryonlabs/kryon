@@ -298,6 +298,175 @@ proc compileCToIR*(sourceFile: string, outputFile: string, format: CompileFormat
   if verbose:
     echo "[compile] C to IR compilation completed in ", result.compileTime, "s"
 
+proc compileLuaToIR*(sourceFile: string, outputFile: string, format: CompileFormat, verbose: bool): CompilationResult =
+  ## Compile Lua source to Kryon IR
+  ## Uses LuaJIT to execute the Lua code and capture the generated IR tree
+  result.success = false
+  result.errors = @[]
+  result.warnings = @[]
+  result.irFile = outputFile
+
+  let startTime = cpuTime()
+
+  if verbose:
+    echo "[compile] Compiling Lua to IR: ", sourceFile
+    echo "[compile] Output format: ", if format == FormatBinary: "binary (.kirb)" else: "JSON (.kir)"
+
+  # Validate Lua file exists
+  if not fileExists(sourceFile):
+    result.errors.add("Lua source file not found: " & sourceFile)
+    result.compileTime = cpuTime() - startTime
+    return
+
+  # Get kryon root directory
+  # Priority: KRYON_ROOT env -> walk up from cwd -> walk up from executable location
+  var kryonRoot = getEnv("KRYON_ROOT")
+  if kryonRoot.len == 0 or not dirExists(kryonRoot):
+    # Walk up from current directory to find kryon root
+    var cur = absolutePath(getCurrentDir())
+    while true:
+      if fileExists(cur / "ir" / "ir_core.h") or
+         (dirExists(cur / "bindings" / "lua") and dirExists(cur / "ir")):
+        kryonRoot = cur
+        break
+      let parent = parentDir(cur)
+      if parent.len == 0 or parent == cur:
+        break
+      cur = parent
+
+    # If not found, try from executable location
+    if kryonRoot.len == 0:
+      let exeDir = parentDir(getAppFilename())
+      cur = absolutePath(exeDir)
+      while true:
+        if fileExists(cur / "ir" / "ir_core.h") or
+           (dirExists(cur / "bindings" / "lua") and dirExists(cur / "ir")):
+          kryonRoot = cur
+          break
+        let parent = parentDir(cur)
+        if parent.len == 0 or parent == cur:
+          break
+        cur = parent
+
+    # Final fallback
+    if kryonRoot.len == 0:
+      kryonRoot = getCurrentDir()
+
+  let buildDir = kryonRoot / "build"
+
+  # Setup environment variables for Lua bindings
+  putEnv("KRYON_LIB_PATH", buildDir / "libkryon_ir.so")
+  let existingLDPath = getEnv("LD_LIBRARY_PATH")
+  putEnv("LD_LIBRARY_PATH", buildDir & ":" & existingLDPath)
+
+  # Set Lua module path so require("kryon") works
+  let luaBindingsDir = kryonRoot / "bindings" / "lua"
+  let existingLuaPath = getEnv("LUA_PATH")
+  let luaPath = luaBindingsDir / "?.lua;" &
+                luaBindingsDir / "?/init.lua;" &
+                (if existingLuaPath.len > 0: existingLuaPath else: ";")
+  putEnv("LUA_PATH", luaPath)
+
+  # Create wrapper script to capture IR
+  let wrapperScript = ".kryon_cache" / "compile_wrapper_" & $getCurrentProcessId() & ".lua"
+  let absSourcePath = if sourceFile.isAbsolute(): sourceFile else: getCurrentDir() / sourceFile
+  # Always generate to temp binary file first
+  let tempBinaryFile = ".kryon_cache" / "temp_ir_" & $getCurrentProcessId() & ".kirb"
+  let absOutputPath = if outputFile.isAbsolute(): outputFile else: getCurrentDir() / outputFile
+
+  let wrapperCode = """
+local kryon = require('kryon')
+local app = dofile('""" & absSourcePath & """')
+
+if app and app.root then
+  -- Save IR to temp binary file
+  kryon.saveIR(app, '""" & tempBinaryFile & """')
+  print('✓ IR tree created')
+else
+  error('App must return a valid app object with root component')
+end
+"""
+
+  writeFile(wrapperScript, wrapperCode)
+
+  if verbose:
+    echo "[compile] Executing Lua with wrapper script..."
+
+  # Run wrapper to generate IR
+  let (wrapperOutput, wrapperExitCode) = execCmdEx("luajit " & wrapperScript)
+
+  if verbose and wrapperOutput.len > 0:
+    echo "[compile] LuaJIT output:"
+    echo wrapperOutput
+
+  # Cleanup wrapper script
+  try:
+    removeFile(wrapperScript)
+  except:
+    discard
+
+  if wrapperExitCode != 0:
+    result.errors.add("LuaJIT execution failed")
+    result.errors.add(wrapperOutput)
+    result.compileTime = cpuTime() - startTime
+    return
+
+  # Check if the temp binary IR file was created
+  if not fileExists(tempBinaryFile):
+    result.errors.add("IR file was not created: " & tempBinaryFile)
+    result.compileTime = cpuTime() - startTime
+    return
+
+  # Convert to requested format
+  if format == FormatJSON:
+    if verbose:
+      echo "[compile] Converting binary IR to JSON format..."
+
+    # Load binary IR
+    let component = ir_serialization.ir_read_binary_file(cstring(tempBinaryFile))
+    if component == nil:
+      result.errors.add("Failed to read generated IR file")
+      try:
+        removeFile(tempBinaryFile)
+      except:
+        discard
+      result.compileTime = cpuTime() - startTime
+      return
+
+    # Write as JSON
+    if not ir_write_json_v2_file(component, cstring(absOutputPath)):
+      result.errors.add("Failed to write JSON IR file")
+      ir_destroy_component(component)
+      try:
+        removeFile(tempBinaryFile)
+      except:
+        discard
+      result.compileTime = cpuTime() - startTime
+      return
+
+    ir_destroy_component(component)
+
+    # Clean up temp file
+    try:
+      removeFile(tempBinaryFile)
+    except:
+      discard
+  else:
+    # Binary format - just move the temp file
+    try:
+      moveFile(tempBinaryFile, absOutputPath)
+    except:
+      result.errors.add("Failed to move binary IR file to: " & absOutputPath)
+      result.compileTime = cpuTime() - startTime
+      return
+
+  result.success = true
+  result.componentCount = 0  # TODO: Parse component count from output
+  result.compileTime = cpuTime() - startTime
+
+  if verbose:
+    echo "[compile] Lua to IR compilation completed in ", result.compileTime, "s"
+
 proc validateIR*(irFile: string): tuple[valid: bool, errors: seq[string]] =
   ## Validate IR file format and structure
   result.valid = false
@@ -508,8 +677,7 @@ proc compile*(opts: CompileOptions): CompilationResult =
   of "tsx":
     result = compileTsxToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput)
   of "lua":
-    result.errors.add("Lua frontend not yet implemented")
-    return
+    result = compileLuaToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput)
   of "c":
     result = compileCToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput)
   else:

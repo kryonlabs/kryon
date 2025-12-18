@@ -2,6 +2,8 @@
 
 import { ffi, cstr } from './ffi.ts';
 import { IRNode, ComponentType, DimensionType, Alignment, EventType, Pointer, Size } from './types.ts';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 
 // Map JSX type names to C component types
 const componentTypeMap: Record<string, ComponentType> = {
@@ -17,6 +19,10 @@ const componentTypeMap: Record<string, ComponentType> = {
   image: ComponentType.Image,
   canvas: ComponentType.Canvas,
   markdown: ComponentType.Markdown,
+  flowchart: ComponentType.Flowchart,
+  flowchartnode: ComponentType.FlowchartNode,
+  flowchartedge: ComponentType.FlowchartEdge,
+  flowchartsubgraph: ComponentType.FlowchartSubgraph,
 };
 
 // Parse size value to dimension type and float value
@@ -92,6 +98,45 @@ function parseAlignment(align: string): Alignment {
   return alignMap[align] ?? Alignment.Start;
 }
 
+// Parse flowchart direction string to enum
+function parseFlowchartDirection(dir: string): number {
+  const map: Record<string, number> = {
+    TB: 0,  // Top-Bottom
+    BT: 1,  // Bottom-Top
+    LR: 2,  // Left-Right
+    RL: 3,  // Right-Left
+  };
+  return map[dir] ?? 0;
+}
+
+// Parse flowchart shape string to enum
+function parseFlowchartShape(shape: string): number {
+  const map: Record<string, number> = {
+    rectangle: 0,
+    rounded: 1,
+    stadium: 2,
+    diamond: 3,
+    circle: 4,
+    hexagon: 5,
+    cylinder: 6,
+    subroutine: 7,
+    asymmetric: 8,
+  };
+  return map[shape] ?? 0;
+}
+
+// Parse flowchart edge type string to enum
+function parseFlowchartEdgeType(type: string): number {
+  const map: Record<string, number> = {
+    arrow: 0,
+    dotted: 1,
+    open: 2,
+    thick: 3,
+    bidirectional: 4,
+  };
+  return map[type] ?? 0;
+}
+
 // Event handler storage (maps component ID to handler)
 const eventHandlers = new Map<number, Map<EventType, Function>>();
 let nextHandlerId = 1;
@@ -122,6 +167,39 @@ export function renderNode(node: IRNode | string, parentPtr?: Pointer): Pointer 
     // Fragments don't create a component, children are added to parent directly
     // Return 0 to indicate no component created
     return 0;
+  }
+
+  // Handle markdown components with file prop
+  if (node.type === 'markdown' && node.props.file) {
+    console.log(`[Markdown] Processing file: ${node.props.file}`);
+    try {
+      // Read markdown file
+      const filePath = resolve(node.props.file);
+      console.log(`[Markdown] Resolved path: ${filePath}`);
+      const markdownContent = readFileSync(filePath, 'utf-8');
+      console.log(`[Markdown] File size: ${markdownContent.length} bytes`);
+
+      // Check if markdown plugin is available
+      if (typeof ffi.kryon_markdown_to_ir !== 'function') {
+        console.error('[Markdown] kryon_markdown_to_ir function not available!');
+        // Fall through
+      } else {
+        console.log('[Markdown] Calling kryon_markdown_to_ir...');
+        // Call markdown plugin to convert to IR
+        const irPtr = ffi.kryon_markdown_to_ir(cstr(markdownContent), markdownContent.length) as unknown as Pointer;
+
+        if (!irPtr) {
+          console.error(`[Markdown] Failed to parse markdown file: ${node.props.file}`);
+          // Fall through to create empty markdown component
+        } else {
+          console.log(`[Markdown] ✓ Successfully converted to IR: ${irPtr}`);
+          return irPtr;
+        }
+      }
+    } catch (error) {
+      console.error(`[Markdown] Error processing file ${node.props.file}:`, error);
+      // Fall through to create empty markdown component
+    }
   }
 
   // Create the component
@@ -164,6 +242,34 @@ export function renderNode(node: IRNode | string, parentPtr?: Pointer): Pointer 
       if (node.props.alt) {
         ffi.ir_set_text_content(componentPtr, cstr(node.props.alt));
       }
+      break;
+    case 'flowchart':
+      componentPtr = ffi.ir_flowchart(
+        parseFlowchartDirection(node.props.direction || 'TB')
+      ) as unknown as Pointer;
+      break;
+    case 'flowchartnode':
+      componentPtr = ffi.ir_flowchart_node(
+        cstr(node.props.id),
+        parseFlowchartShape(node.props.shape),
+        cstr(node.props.label)
+      ) as unknown as Pointer;
+      break;
+    case 'flowchartedge':
+      componentPtr = ffi.ir_flowchart_edge(
+        cstr(node.props.from),
+        cstr(node.props.to),
+        parseFlowchartEdgeType(node.props.type)
+      ) as unknown as Pointer;
+      if (node.props.label) {
+        ffi.ir_flowchart_edge_set_label(componentPtr, cstr(node.props.label));
+      }
+      break;
+    case 'flowchartsubgraph':
+      componentPtr = ffi.ir_flowchart_subgraph(
+        cstr(node.props.id),
+        cstr(node.props.title)
+      ) as unknown as Pointer;
       break;
     default:
       componentPtr = ffi.ir_create_component(componentType) as unknown as Pointer;
@@ -310,6 +416,11 @@ export function renderNode(node: IRNode | string, parentPtr?: Pointer): Pointer 
         ffi.ir_add_child(componentPtr, childPtr);
       }
     }
+  }
+
+  // Finalize flowchart after all children are added
+  if (node.type === 'flowchart') {
+    ffi.ir_flowchart_finalize(componentPtr);
   }
 
   return componentPtr;

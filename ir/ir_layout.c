@@ -1,6 +1,8 @@
 // IR Layout Engine - Unified flexbox layout system integrated with IR
 // Moved from /core/layout.c and adapted for IR architecture
 
+#define KRYON_TRACE_LAYOUT 1  // DEBUG: Remove after fixing flowchart issue
+
 #include "ir_core.h"
 #include "ir_builder.h"
 #include "ir_text_shaping.h"
@@ -8,6 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+// Forward declarations
+void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, float available_height);
 
 // ============================================================================
 // Layout Cache & Dirty Tracking
@@ -163,6 +168,22 @@ static float ir_get_component_intrinsic_width_impl(IRComponent* component) {
             }
             return 100.0f;
 
+        case IR_COMPONENT_FLOWCHART: {
+            IRFlowchartState* fc_state = ir_get_flowchart_state(component);
+            if (fc_state) {
+                // If layout already computed, use natural width
+                if (fc_state->layout_computed && fc_state->natural_width > 0) {
+                    return fc_state->natural_width;
+                }
+                // Pre-compute layout to get natural dimensions
+                ir_layout_compute_flowchart(component, 0, 0);
+                if (fc_state->natural_width > 0) {
+                    return fc_state->natural_width;
+                }
+            }
+            return 400.0f;  // Reasonable default for flowcharts
+        }
+
         default:
             return 100.0f;
     }
@@ -184,7 +205,12 @@ float ir_get_component_intrinsic_width(IRComponent* component) {
 }
 
 static float ir_get_component_intrinsic_height_impl(IRComponent* component) {
-    if (!component || !component->style) return 50.0f;
+    fprintf(stderr, "🔹 _impl called: type=%d, style=%p\n",
+        component ? component->type : -1, component ? (void*)component->style : NULL);
+    if (!component || !component->style) {
+        fprintf(stderr, "🔹 _impl early return (no style): returning 50.0f\n");
+        return 50.0f;
+    }
 
     IRStyle* style = component->style;
 
@@ -267,6 +293,31 @@ static float ir_get_component_intrinsic_height_impl(IRComponent* component) {
             }
             return 50.0f;
 
+        case IR_COMPONENT_FLOWCHART: {
+            IRFlowchartState* fc_state = ir_get_flowchart_state(component);
+            fprintf(stderr, "      🔷 FLOWCHART intrinsic height: state=%p\n", (void*)fc_state);
+            if (fc_state) {
+                fprintf(stderr, "      🔷 node_count=%u, layout_computed=%d, natural_h=%.1f\n",
+                    fc_state->node_count, fc_state->layout_computed, fc_state->natural_height);
+            }
+            if (fc_state) {
+                // If layout already computed, use natural height
+                if (fc_state->layout_computed && fc_state->natural_height > 0) {
+                    return fc_state->natural_height;
+                }
+                // Pre-compute layout to get natural dimensions
+                // Use 0,0 to compute without scaling constraints
+                ir_layout_compute_flowchart(component, 0, 0);
+                #ifdef KRYON_TRACE_LAYOUT
+                fprintf(stderr, "      🔷 After compute: natural_h=%.1f\n", fc_state->natural_height);
+                #endif
+                if (fc_state->natural_height > 0) {
+                    return fc_state->natural_height;
+                }
+            }
+            return 200.0f;  // Reasonable default for flowcharts
+        }
+
         default:
             return 50.0f;
     }
@@ -274,6 +325,8 @@ static float ir_get_component_intrinsic_height_impl(IRComponent* component) {
 
 float ir_get_component_intrinsic_height(IRComponent* component) {
     if (!component) return 0.0f;
+
+    fprintf(stderr, "🔶 ir_get_component_intrinsic_height called: type=%d\n", component->type);
 
     // Check cache (use >= 0 since -1.0f means not cached)
     if (!component->layout_cache.dirty && component->layout_cache.cached_intrinsic_height >= 0.0f) {
@@ -1635,43 +1688,122 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
 #define FLOWCHART_NODE_PADDING 15.0f
 #define FLOWCHART_NODE_SPACING 20.0f
 #define FLOWCHART_RANK_SPACING 40.0f
+#define FLOWCHART_SUBGRAPH_PADDING 40.0f
+#define FLOWCHART_SUBGRAPH_TITLE_HEIGHT 30.0f
 
-// Simple layered layout for flowcharts
-// Uses topological sort to assign layers, then positions nodes within layers
-void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, float available_height) {
-    if (!flowchart || flowchart->type != IR_COMPONENT_FLOWCHART) return;
+// Compute bounding boxes for subgraphs based on their contained nodes
+static void compute_subgraph_bounds(IRFlowchartState* fc_state) {
+    if (!fc_state) return;
 
-    IRFlowchartState* state = ir_get_flowchart_state(flowchart);
-    if (!state) return;
+    // Iterate over all subgraphs
+    for (uint32_t i = 0; i < fc_state->subgraph_count; i++) {
+        IRFlowchartSubgraphData* sg_data = fc_state->subgraphs[i];
+        if (!sg_data || !sg_data->subgraph_id) continue;
 
-    // Check if layout is already computed and dimensions match
-    if (state->layout_computed &&
-        state->computed_width == available_width &&
-        state->computed_height == available_height) {
-        return;
+        // Find all nodes that belong to this subgraph
+        float min_x = INFINITY, min_y = INFINITY;
+        float max_x = -INFINITY, max_y = -INFINITY;
+        bool has_nodes = false;
+
+        for (uint32_t j = 0; j < fc_state->node_count; j++) {
+            IRFlowchartNodeData* node_data = fc_state->nodes[j];
+
+            // Check if this node belongs to the current subgraph
+            if (node_data && node_data->subgraph_id &&
+                strcmp(node_data->subgraph_id, sg_data->subgraph_id) == 0) {
+
+                has_nodes = true;
+
+                // Update bounding box
+                float node_left = node_data->x;
+                float node_top = node_data->y;
+                float node_right = node_data->x + node_data->width;
+                float node_bottom = node_data->y + node_data->height;
+
+                if (node_left < min_x) min_x = node_left;
+                if (node_top < min_y) min_y = node_top;
+                if (node_right > max_x) max_x = node_right;
+                if (node_bottom > max_y) max_y = node_bottom;
+            }
+        }
+
+        if (has_nodes) {
+            // Add padding around nodes for subgraph box
+            sg_data->x = min_x - FLOWCHART_SUBGRAPH_PADDING;
+            sg_data->y = min_y - FLOWCHART_SUBGRAPH_PADDING - FLOWCHART_SUBGRAPH_TITLE_HEIGHT;
+            sg_data->width = (max_x - min_x) + (FLOWCHART_SUBGRAPH_PADDING * 2);
+            sg_data->height = (max_y - min_y) + (FLOWCHART_SUBGRAPH_PADDING * 2) + FLOWCHART_SUBGRAPH_TITLE_HEIGHT;
+
+            #ifdef KRYON_TRACE_LAYOUT
+            fprintf(stderr, "  📦 Subgraph '%s' bounds: x=%.1f y=%.1f w=%.1f h=%.1f\n",
+                   sg_data->subgraph_id, sg_data->x, sg_data->y,
+                   sg_data->width, sg_data->height);
+            #endif
+        }
+    }
+}
+
+// Helper: Transform coordinates recursively for nested subgraphs
+static void transform_subgraph_coordinates(IRComponent* subgraph, float offset_x, float offset_y, IRFlowchartState* state) {
+    if (!subgraph || !state) return;
+
+    IRFlowchartSubgraphData* sg_data = ir_get_flowchart_subgraph_data(subgraph);
+    if (!sg_data || !sg_data->subgraph_id) return;
+
+    // Transform all nodes in this subgraph
+    for (uint32_t i = 0; i < state->node_count; i++) {
+        IRFlowchartNodeData* node = state->nodes[i];
+        if (node && node->subgraph_id && strcmp(node->subgraph_id, sg_data->subgraph_id) == 0) {
+            node->x += offset_x;
+            node->y += offset_y;
+        }
     }
 
-    #ifdef KRYON_TRACE_LAYOUT
-    fprintf(stderr, "🔀 FLOWCHART_LAYOUT: %u nodes, %u edges, dir=%s\n",
-            state->node_count, state->edge_count,
-            ir_flowchart_direction_to_string(state->direction));
-    #endif
+    // Transform edges (if they belong to this subgraph)
+    for (uint32_t i = 0; i < state->edge_count; i++) {
+        IRFlowchartEdgeData* edge = state->edges[i];
+        if (edge && edge->path_points) {
+            // Check if edge connects nodes in this subgraph
+            bool from_in_subgraph = false;
+            bool to_in_subgraph = false;
 
-    if (state->node_count == 0) {
-        state->layout_computed = true;
-        state->computed_width = available_width;
-        state->computed_height = available_height;
-        return;
+            for (uint32_t j = 0; j < state->node_count; j++) {
+                IRFlowchartNodeData* node = state->nodes[j];
+                if (node && node->subgraph_id && strcmp(node->subgraph_id, sg_data->subgraph_id) == 0) {
+                    if (edge->from_id && node->node_id && strcmp(node->node_id, edge->from_id) == 0) {
+                        from_in_subgraph = true;
+                    }
+                    if (edge->to_id && node->node_id && strcmp(node->node_id, edge->to_id) == 0) {
+                        to_in_subgraph = true;
+                    }
+                }
+            }
+
+            // Transform edge if both endpoints are in this subgraph
+            if (from_in_subgraph && to_in_subgraph) {
+                for (uint32_t p = 0; p < edge->path_point_count; p++) {
+                    edge->path_points[p * 2] += offset_x;
+                    edge->path_points[p * 2 + 1] += offset_y;
+                }
+            }
+        }
     }
 
-    // Use layout parameters from state or defaults
-    float node_spacing = state->node_spacing > 0 ? state->node_spacing : FLOWCHART_NODE_SPACING;
-    float rank_spacing = state->rank_spacing > 0 ? state->rank_spacing : FLOWCHART_RANK_SPACING;
+    // Update subgraph bounds
+    sg_data->x += offset_x;
+    sg_data->y += offset_y;
 
-    // Phase 1: Compute node sizes based on labels
-    // Use flowchart's font size if specified, otherwise default to 14
-    float font_size = (flowchart->style && flowchart->style->font.size > 0)
-                      ? flowchart->style->font.size : 14.0f;
+    // Recursively transform nested subgraphs
+    for (uint32_t i = 0; i < subgraph->child_count; i++) {
+        IRComponent* child = subgraph->children[i];
+        if (child && child->type == IR_COMPONENT_FLOWCHART_SUBGRAPH) {
+            transform_subgraph_coordinates(child, offset_x, offset_y, state);
+        }
+    }
+}
+
+// Helper: Compute node sizes based on labels and shapes
+static void compute_flowchart_node_sizes(IRFlowchartState* state, float font_size) {
     for (uint32_t i = 0; i < state->node_count; i++) {
         IRFlowchartNodeData* node = state->nodes[i];
         if (!node) continue;
@@ -1715,6 +1847,111 @@ void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, 
             node->height = size;
         }
     }
+}
+
+// Helper: Layout nodes belonging to a specific subgraph (or top-level if subgraph_id is NULL)
+// Returns the computed size of the subgraph in local coordinates
+static void layout_subgraph_nodes(IRFlowchartState* state, const char* subgraph_id,
+                                   IRFlowchartDirection direction, float node_spacing,
+                                   float rank_spacing, float* out_width, float* out_height) {
+    if (!state) return;
+
+    // Filter nodes that belong to this subgraph
+    uint32_t* subgraph_node_indices = (uint32_t*)malloc(state->node_count * sizeof(uint32_t));
+    uint32_t subgraph_node_count = 0;
+
+    for (uint32_t i = 0; i < state->node_count; i++) {
+        IRFlowchartNodeData* node = state->nodes[i];
+        if (!node) continue;
+
+        // Check if node belongs to this subgraph
+        bool belongs = false;
+        if (subgraph_id == NULL) {
+            // Top-level: nodes with no subgraph_id
+            belongs = (node->subgraph_id == NULL);
+        } else {
+            // Specific subgraph: nodes with matching subgraph_id
+            belongs = (node->subgraph_id && strcmp(node->subgraph_id, subgraph_id) == 0);
+        }
+
+        if (belongs) {
+            subgraph_node_indices[subgraph_node_count++] = i;
+        }
+    }
+
+    if (subgraph_node_count == 0) {
+        free(subgraph_node_indices);
+        if (out_width) *out_width = 0;
+        if (out_height) *out_height = 0;
+        return;
+    }
+
+    // TODO: Implement layering and positioning for subgraph nodes
+    // For now, just free and return
+    free(subgraph_node_indices);
+    if (out_width) *out_width = 0;
+    if (out_height) *out_height = 0;
+}
+
+// Simple layered layout for flowcharts
+// Uses topological sort to assign layers, then positions nodes within layers
+void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, float available_height) {
+    if (!flowchart || flowchart->type != IR_COMPONENT_FLOWCHART) return;
+
+    IRFlowchartState* state = ir_get_flowchart_state(flowchart);
+    if (!state) return;
+
+    // Check if layout is already computed and dimensions match
+    if (state->layout_computed &&
+        state->computed_width == available_width &&
+        state->computed_height == available_height) {
+        return;
+    }
+
+    #ifdef KRYON_TRACE_LAYOUT
+    fprintf(stderr, "🔀 FLOWCHART_LAYOUT: %u nodes, %u edges, dir=%s\n",
+            state->node_count, state->edge_count,
+            ir_flowchart_direction_to_string(state->direction));
+    #endif
+
+    if (state->node_count == 0) {
+        state->layout_computed = true;
+        state->computed_width = available_width;
+        state->computed_height = available_height;
+        return;
+    }
+
+    // Use layout parameters from state or defaults
+    float node_spacing = state->node_spacing > 0 ? state->node_spacing : FLOWCHART_NODE_SPACING;
+    float rank_spacing = state->rank_spacing > 0 ? state->rank_spacing : FLOWCHART_RANK_SPACING;
+
+    // Phase 1: Compute node sizes based on labels
+    // Use flowchart's font size if specified, otherwise default to 14
+    float font_size = (flowchart->style && flowchart->style->font.size > 0)
+                      ? flowchart->style->font.size : 14.0f;
+    compute_flowchart_node_sizes(state, font_size);
+
+    // Check if any subgraphs have different directions than parent
+    bool has_directional_subgraphs = false;
+    for (uint32_t i = 0; i < state->subgraph_count; i++) {
+        IRFlowchartSubgraphData* sg = state->subgraphs[i];
+        if (sg && sg->direction != state->direction) {
+            has_directional_subgraphs = true;
+            #ifdef KRYON_TRACE_LAYOUT
+            fprintf(stderr, "  📐 Subgraph '%s' has direction %s (parent: %s)\n",
+                    sg->subgraph_id ? sg->subgraph_id : "?",
+                    ir_flowchart_direction_to_string(sg->direction),
+                    ir_flowchart_direction_to_string(state->direction));
+            #endif
+            break;
+        }
+    }
+
+    #ifdef KRYON_TRACE_LAYOUT
+    if (has_directional_subgraphs) {
+        fprintf(stderr, "  🔀 Detected subgraphs with independent directions\n");
+    }
+    #endif
 
     // Phase 2: Assign nodes to layers using longest-path algorithm
     // This properly handles cycles by only considering forward edges
@@ -1893,20 +2130,114 @@ void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, 
         if (!node) continue;
 
         int layer = node_layer[i];
-        int pos = layer_position[layer]++;
+
+        // For nodes in subgraphs with different directions, track position separately
+        bool node_in_directional_subgraph = false;
+        if (has_directional_subgraphs && node->subgraph_id) {
+            for (uint32_t sg_idx = 0; sg_idx < state->subgraph_count; sg_idx++) {
+                IRFlowchartSubgraphData* sg = state->subgraphs[sg_idx];
+                if (sg && sg->subgraph_id && strcmp(node->subgraph_id, sg->subgraph_id) == 0) {
+                    if (sg->direction != state->direction) {
+                        node_in_directional_subgraph = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        int pos;
+        if (node_in_directional_subgraph) {
+            // For directional subgraphs, calculate position within subgraph context
+            pos = 0;  // Count nodes in same (layer, subgraph) before this one
+            for (uint32_t j = 0; j < i; j++) {
+                if (node_layer[j] == layer) {
+                    IRFlowchartNodeData* other = state->nodes[j];
+                    if (other && other->subgraph_id && node->subgraph_id &&
+                        strcmp(other->subgraph_id, node->subgraph_id) == 0) {
+                        pos++;
+                    }
+                }
+            }
+        } else {
+            // Global position for top-level nodes
+            pos = layer_position[layer]++;
+        }
 
         // Calculate center position within layer
-        int nodes_in_this_layer = nodes_per_layer[layer];
-        float layer_start = (max_nodes_in_layer - nodes_in_this_layer) * (max_node_width + node_spacing) / 2.0f;
+        // Count only nodes in the same subgraph (or top-level) for proper centering
+        int nodes_in_this_layer = 0;
+        for (uint32_t j = 0; j < state->node_count; j++) {
+            if (node_layer[j] == layer) {
+                IRFlowchartNodeData* other = state->nodes[j];
+                if (!other) continue;
+
+                // Check if both nodes are in the same subgraph
+                bool same_subgraph = false;
+                if (node->subgraph_id == NULL && other->subgraph_id == NULL) {
+                    same_subgraph = true;  // Both top-level
+                } else if (node->subgraph_id && other->subgraph_id &&
+                           strcmp(node->subgraph_id, other->subgraph_id) == 0) {
+                    same_subgraph = true;  // Both in same subgraph
+                }
+
+                if (same_subgraph) {
+                    nodes_in_this_layer++;
+                }
+            }
+        }
+
+        #ifdef KRYON_TRACE_LAYOUT
+        if (has_directional_subgraphs && node->subgraph_id) {
+            fprintf(stderr, "    [DEBUG] Node '%s' L%d P%d: nodes_in_this_layer=%d (subgraph: %s)\n",
+                    node->node_id ? node->node_id : "?", layer, pos,
+                    nodes_in_this_layer, node->subgraph_id);
+        }
+        #endif
+
+        // Check if node belongs to a subgraph with different direction
+        IRFlowchartDirection node_direction = state->direction;
+        bool node_horizontal = horizontal;
+        bool node_reversed = reversed;
+
+        if (has_directional_subgraphs && node->subgraph_id) {
+            for (uint32_t sg_idx = 0; sg_idx < state->subgraph_count; sg_idx++) {
+                IRFlowchartSubgraphData* sg = state->subgraphs[sg_idx];
+                if (sg && sg->subgraph_id && strcmp(node->subgraph_id, sg->subgraph_id) == 0) {
+                    if (sg->direction != state->direction) {  // Use subgraph's direction if different from parent
+                        node_direction = sg->direction;
+                        node_horizontal = (node_direction == IR_FLOWCHART_DIR_LR ||
+                                          node_direction == IR_FLOWCHART_DIR_RL);
+                        node_reversed = (node_direction == IR_FLOWCHART_DIR_BT ||
+                                        node_direction == IR_FLOWCHART_DIR_RL);
+                        #ifdef KRYON_TRACE_LAYOUT
+                        fprintf(stderr, "    → Node '%s' in subgraph '%s' using direction: %s\n",
+                                node->node_id ? node->node_id : "?", sg->subgraph_id,
+                                ir_flowchart_direction_to_string(node_direction));
+                        #endif
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Calculate centering offset for nodes within this layer
+        float layer_start;
+        if (node_horizontal) {
+            // LR/RL: nodes in layer arranged vertically (use height for spacing)
+            layer_start = (max_nodes_in_layer - nodes_in_this_layer) * (max_node_height + node_spacing) / 2.0f;
+        } else {
+            // TB/BT: nodes in layer arranged horizontally (use width for spacing)
+            layer_start = (max_nodes_in_layer - nodes_in_this_layer) * (max_node_width + node_spacing) / 2.0f;
+        }
 
         float primary_coord, secondary_coord;
 
-        if (horizontal) {
+        if (node_horizontal) {
             // LR/RL: layers are columns, positions are rows
             primary_coord = layer * (max_node_width + rank_spacing);
             secondary_coord = layer_start + pos * (max_node_height + node_spacing);
 
-            if (reversed) {
+            if (node_reversed) {
                 primary_coord = (max_layer - layer) * (max_node_width + rank_spacing);
             }
 
@@ -1917,7 +2248,7 @@ void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, 
             primary_coord = layer * (max_node_height + rank_spacing);
             secondary_coord = layer_start + pos * (max_node_width + node_spacing);
 
-            if (reversed) {
+            if (node_reversed) {
                 primary_coord = (max_layer - layer) * (max_node_height + rank_spacing);
             }
 
@@ -1999,6 +2330,10 @@ void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, 
     natural_width += padding * 2;
     natural_height += padding * 2;
 
+    // Store natural dimensions (before scaling) for intrinsic sizing
+    state->natural_width = natural_width;
+    state->natural_height = natural_height;
+
     // Scale to fit within available space if needed
     float scale_x = 1.0f;
     float scale_y = 1.0f;
@@ -2070,6 +2405,9 @@ void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, 
         }
     }
 
+    // Compute subgraph bounding boxes after node positions are finalized
+    compute_subgraph_bounds(state);
+
     // NOTE: Do NOT overwrite flowchart->rendered_bounds here!
     // The parent container (Column/Row) sets the flowchart's bounds based on
     // its width/height style properties. The flowchart layout just positions
@@ -2079,6 +2417,24 @@ void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, 
     state->layout_computed = true;
     state->computed_width = available_width;
     state->computed_height = available_height;
+
+    // Use natural dimensions (already computed in Phase 4)
+    // These include layer spacing, not just node bounding box
+    // NOTE: SVG generator will add its own padding, so we remove the padding here
+    // to avoid double-padding
+    if (state->node_count > 0) {
+        const float PADDING = 20.0f;
+        state->content_width = state->natural_width - (PADDING * 2);
+        state->content_height = state->natural_height - (PADDING * 2);
+        state->content_offset_x = 0.0f;
+        state->content_offset_y = 0.0f;
+    } else {
+        // Empty flowchart - use minimum dimensions
+        state->content_width = 100.0f;
+        state->content_height = 100.0f;
+        state->content_offset_x = 0.0f;
+        state->content_offset_y = 0.0f;
+    }
 
     #ifdef KRYON_TRACE_LAYOUT
     fprintf(stderr, "🔀 FLOWCHART_LAYOUT done: size=%.1fx%.1f\n",

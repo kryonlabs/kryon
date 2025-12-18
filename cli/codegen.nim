@@ -132,6 +132,30 @@ proc toLuaValue(val: JsonNode): string =
   else:
     return "nil"
 
+proc shouldIncludePropertyV3(key: string): bool =
+  ## Filter out KIR metadata that shouldn't appear in Lua props
+  const skipProps = ["id", "type", "children", "events", "component_ref",
+                     "text_expression", "cell_data", "template",
+                     "loop_var", "iterable"]
+  return key notin skipProps
+
+proc mapKirTypeToLuaDsl(componentType: string): string =
+  ## Map KIR component types to Lua DSL constructor names
+  case componentType:
+  of "Column": "UI.Column"
+  of "Row": "UI.Row"
+  of "Text": "UI.Text"
+  of "Button": "UI.Button"
+  of "Input": "UI.Input"
+  of "Checkbox": "UI.Checkbox"
+  of "Container": "UI.Container"
+  of "Center": "UI.Center"
+  of "Markdown": "UI.Markdown"
+  of "Canvas": "UI.Canvas"
+  of "Image": "UI.Image"
+  of "Dropdown": "UI.Dropdown"
+  else: componentType  # Custom component - use name as-is
+
 proc reconstructExpression(val: JsonNode): string =
   ## Recursively reconstruct Nim expression from JSON expression object
   ## Handles binary operators (add, sub, mul, div) and variable references
@@ -253,7 +277,7 @@ proc generateLuaComponent(node: JsonNode, level: int = 0): string =
                    "maxWidth", "maxHeight", "direction", "flexShrink", "flexGrow"]:
       # Map property names to Lua style
       let luaKey = case key:
-        of "background": "background"
+        of "background": "backgroundColor"
         of "color": "color"
         of "width": "width"
         of "height": "height"
@@ -295,6 +319,45 @@ end"""
 
   if level == 0:
     result.add "\n"
+
+proc generateLuaComponentV3(node: JsonNode, indentLevel: int = 0): string =
+  ## Recursively generate Lua code for a component and its children (v3.0 format)
+
+  # Get component type
+  let componentType = node{"type"}.getStr("Container")
+  let luaDslName = mapKirTypeToLuaDsl(componentType)
+
+  # Collect properties
+  var props: seq[string] = @[]
+  let baseIndent = "  ".repeat(indentLevel + 1)
+
+  for key, val in node.pairs:
+    if shouldIncludePropertyV3(key):
+      let luaVal = toLuaValue(val)
+      props.add baseIndent & &"{key} = {luaVal}"
+
+  # Handle children recursively
+  if node.hasKey("children") and node["children"].len > 0:
+    var childrenCode = baseIndent & "children = {\n"
+    let children = node["children"]
+    for i in 0 ..< children.len:
+      let child = children[i]
+      childrenCode.add "  ".repeat(indentLevel + 2)
+      childrenCode.add generateLuaComponentV3(child, indentLevel + 2)
+      if i < children.len - 1:
+        childrenCode.add ","
+      childrenCode.add "\n"
+    childrenCode.add baseIndent & "}"
+    props.add childrenCode
+
+  # Build component constructor
+  result = &"{luaDslName}({{\n"
+  for i, prop in props:
+    result.add prop
+    if i < props.len - 1:
+      result.add ","
+    result.add "\n"
+  result.add "  ".repeat(indentLevel) & "})"
 
 proc generateLuaFromKir*(kirPath: string): string =
   ## Generate Lua code from .kir file (v2.0 and v2.1 support)
@@ -1273,11 +1336,35 @@ proc generateLuaFromKirV3*(kirPath: string): string =
 
         luaCode.add "end\n\n"
 
-  luaCode.add "return {\n"
-  if kirJson.hasKey("logic") and kirJson["logic"].hasKey("functions"):
-    for fnName, _ in kirJson["logic"]["functions"].pairs:
-      let safeName = fnName.replace(":", "_")
-      luaCode.add &"  {safeName} = {safeName},\n"
-  luaCode.add "}\n"
+  # Generate root component tree
+  luaCode.add "-- UI Tree\n"
+  luaCode.add "local root = "
+  if kirJson.hasKey("root"):
+    luaCode.add generateLuaComponentV3(kirJson["root"], 0)
+    luaCode.add "\n\n"
+
+    # Extract window properties from root component
+    let root = kirJson["root"]
+    let windowWidth = root{"width"}.getStr("800.0px").replace("px", "")
+    let windowHeight = root{"height"}.getStr("600.0px").replace("px", "")
+    let windowTitle = root{"windowTitle"}.getStr("Kryon App")
+
+    # Return app object instead of just root
+    luaCode.add "-- Return app object\n"
+    luaCode.add "return {\n"
+    luaCode.add "  root = root,\n"
+    luaCode.add "  window = {\n"
+    luaCode.add &"    width = {windowWidth},\n"
+    luaCode.add &"    height = {windowHeight},\n"
+    luaCode.add &"    title = \"{windowTitle}\"\n"
+    luaCode.add "  }\n"
+    luaCode.add "}\n"
+  else:
+    # Fallback for files without root
+    luaCode.add "UI.Container({ format_version = \"3.0\" })\n\n"
+    luaCode.add "return {\n"
+    luaCode.add "  root = root,\n"
+    luaCode.add "  window = { width = 800, height = 600, title = \"Kryon App\" }\n"
+    luaCode.add "}\n"
 
   return luaCode

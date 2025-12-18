@@ -3,7 +3,7 @@
 ## Universal IR-based build system for different targets
 
 import os, strutils, json, times, sequtils, osproc, tables
-import config, tsx_parser, kry_parser, kry_to_kir
+import config, tsx_parser, kry_parser, kry_to_kir, md_parser
 
 # Forward declarations
 proc buildLinuxTarget*()
@@ -195,6 +195,12 @@ proc buildForTarget*(target: string) =
     sourceFile = "main.kry"
   elif fileExists("index.kry"):
     sourceFile = "index.kry"
+  elif fileExists("index.md"):
+    sourceFile = "index.md"
+  elif fileExists("main.md"):
+    sourceFile = "main.md"
+  elif fileExists("README.md"):
+    sourceFile = "README.md"
   elif fileExists("src/main.nim"):
     sourceFile = "src/main.nim"
   elif fileExists("main.nim"):
@@ -606,7 +612,7 @@ proc buildWithIRForPage*(sourceFile: string, target: string, pagePath: string, c
 
 proc compileToKIR*(sourceFile: string): string =
   ## Compile source file to KIR JSON format
-  ## Handles: .tsx, .jsx, .kry, .nim
+  ## Handles: .tsx, .jsx, .kry, .nim, .md
   let ext = sourceFile.splitFile().ext.toLowerAscii()
   let projectName = getCurrentDir().splitPath().tail
   createDir(".kryon_cache")
@@ -629,6 +635,13 @@ proc compileToKIR*(sourceFile: string): string =
       let ast = parseKry(kryContent, sourceFile)
       let kirJson = transpileToKir(ast, preserveStatic = false)
       writeFile(kirFile, kirJson.pretty())
+      echo "   ✅ KIR generated: " & kirFile
+      result = kirFile
+
+    of ".md", ".markdown":
+      # Markdown → KIR via core parser
+      echo "   📝 Parsing Markdown..."
+      let kirContent = parseMdToKir(sourceFile, kirFile)
       echo "   ✅ KIR generated: " & kirFile
       result = kirFile
 
@@ -709,6 +722,13 @@ proc compileToKIRForPage*(sourceFile: string, pageName: string): string =
       echo "   ✅ KIR generated: " & kirFile
       result = kirFile
 
+    of ".md", ".markdown":
+      # Markdown → KIR via core parser
+      echo "   📝 Parsing Markdown..."
+      let kirContent = parseMdToKir(sourceFile, kirFile)
+      echo "   ✅ KIR generated: " & kirFile
+      result = kirFile
+
     else:
       raise newException(ValueError, "Unsupported source file type: " & ext)
 
@@ -754,6 +774,15 @@ proc renderIRToTarget*(kirFile: string, target: string) =
 # Forward declaration for markdown inline processing
 proc processInlineMarkdown*(text: string): string
 
+# FFI bindings for flowchart rendering
+{.passC: "-I" & currentSourcePath().parentDir() & "/../ir".}
+{.passL: "-Lbuild -lkryon_ir".}
+
+type
+  IRComponent {.importc: "IRComponent", header: "ir_core.h", incompleteStruct.} = object
+
+proc ir_destroy_component*(component: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
+
 proc convertMarkdownToHtml*(markdown: string): string =
   ## Convert markdown to HTML with proper CSS classes
   ## Supports: headers, paragraphs, code blocks, lists, blockquotes, links, tables
@@ -785,12 +814,14 @@ proc convertMarkdownToHtml*(markdown: string): string =
     if line.startsWith("```"):
       if inCodeBlock:
         # End code block
+        # Render code block (including mermaid) as pre/code
         result.add("<pre class=\"kryon-md-pre\"><code")
         if codeBlockLang.len > 0:
           result.add(" class=\"language-" & codeBlockLang & "\"")
         result.add(">")
         result.add(codeBlockContent.replace("<", "&lt;").replace(">", "&gt;"))
         result.add("</code></pre>\n")
+
         inCodeBlock = false
         codeBlockLang = ""
         codeBlockContent = ""

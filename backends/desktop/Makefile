@@ -32,12 +32,12 @@ else
     CFLAGS += -DDISABLE_SDL3
 endif
 
-# Source files (modular architecture - 11 modules)
+# Source files (modular architecture - 12 modules)
 DESKTOP_SOURCES = ir_desktop_renderer.c desktop_globals.c \
                   desktop_fonts.c desktop_effects.c desktop_layout.c \
                   desktop_input.c desktop_rendering.c desktop_test_events.c \
-                  debug_backend.c canvas.c stb_image_impl.c
-DESKTOP_HEADERS = ir_desktop_renderer.h desktop_internal.h debug_backend.h
+                  debug_backend.c canvas.c stb_image_impl.c terminal_flowchart.c
+DESKTOP_HEADERS = ir_desktop_renderer.h desktop_internal.h debug_backend.h terminal_flowchart.h
 
 # Output files
 DESKTOP_STATIC_LIB = $(BUILD_DIR)/libkryon_desktop.a
@@ -61,7 +61,7 @@ $(BUILD_DIR):
 DESKTOP_OBJS = ir_desktop_renderer.o desktop_globals.o \
                desktop_fonts.o desktop_effects.o desktop_layout.o \
                desktop_input.o desktop_rendering.o desktop_test_events.o \
-               debug_backend.o canvas.o stb_image_impl.o
+               debug_backend.o canvas.o stb_image_impl.o terminal_flowchart.o
 
 # Dependency files (auto-generated)
 DESKTOP_DEPS = $(DESKTOP_OBJS:.o=.d)
@@ -77,24 +77,9 @@ DESKTOP_DEPS = $(DESKTOP_OBJS:.o=.d)
 $(DESKTOP_STATIC_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)
 	$(AR) $(ARFLAGS) $@ $(DESKTOP_OBJS)
 
-# External plugin paths (optional - use weak linking)
-MARKDOWN_PLUGIN_DIR = $(HOME)/Projects/kryon-plugin-markdown
-MARKDOWN_PLUGIN_LIB = $(MARKDOWN_PLUGIN_DIR)/build/libkryon_markdown.a
-
-# Check if markdown plugin exists
-MARKDOWN_PLUGIN_EXISTS = $(shell [ -f "$(MARKDOWN_PLUGIN_LIB)" ] && echo "yes" || echo "no")
-
-# Add markdown plugin to link flags if it exists
-ifeq ($(MARKDOWN_PLUGIN_EXISTS),yes)
-    PLUGIN_LIBS = $(MARKDOWN_PLUGIN_LIB)
-    $(info Found markdown plugin at $(MARKDOWN_PLUGIN_LIB))
-else
-    PLUGIN_LIBS =
-endif
-
 # Create shared library
 $(DESKTOP_SHARED_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)
-	$(CC) $(CFLAGS) -shared -o $@ $(DESKTOP_OBJS) $(PLUGIN_LIBS) -L$(BUILD_DIR) -lkryon_ir $(LIBS)
+	$(CC) $(CFLAGS) -shared -o $@ $(DESKTOP_OBJS) -L$(BUILD_DIR) -lkryon_ir $(LIBS)
 
 # Build test program
 $(DESKTOP_TEST): $(DESKTOP_STATIC_LIB) desktop_test.c

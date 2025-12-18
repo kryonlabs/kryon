@@ -16,6 +16,24 @@ export enum ComponentType {
   Image = 9,
   Canvas = 10,
   Markdown = 11,
+  Sprite = 12,
+  TabGroup = 13,
+  TabBar = 14,
+  Tab = 15,
+  TabContent = 16,
+  TabPanel = 17,
+  Table = 18,
+  TableHead = 19,
+  TableBody = 20,
+  TableFoot = 21,
+  TableRow = 22,
+  TableCell = 23,
+  TableHeaderCell = 24,
+  Flowchart = 25,
+  FlowchartNode = 26,
+  FlowchartEdge = 27,
+  FlowchartSubgraph = 28,
+  FlowchartLabel = 29,
 }
 
 // Dimension types
@@ -84,6 +102,30 @@ export interface BaseProps {
   opacity?: number;
   zIndex?: number;
   children?: IRNode | IRNode[] | string;
+}
+
+// Flowchart props
+export interface FlowchartProps extends BaseProps {
+  direction?: 'TB' | 'BT' | 'LR' | 'RL';  // Top-Bottom, Bottom-Top, Left-Right, Right-Left
+}
+
+export interface FlowchartNodeProps {
+  id: string;
+  shape: 'rectangle' | 'rounded' | 'stadium' | 'diamond' | 'circle' |
+         'hexagon' | 'cylinder' | 'subroutine' | 'asymmetric';
+  label: string;
+}
+
+export interface FlowchartEdgeProps {
+  from: string;
+  to: string;
+  type: 'arrow' | 'dotted' | 'open' | 'thick' | 'bidirectional';
+  label?: string;
+}
+
+export interface FlowchartSubgraphProps {
+  id: string;
+  title: string;
 }
 
 // App configuration

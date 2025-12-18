@@ -1,6 +1,6 @@
 # Kryon UI Framework
 
-A declarative UI framework with multiple frontends (.kry, .nim) and rendering backends (SDL3, terminal).
+A declarative UI framework with multiple frontends (.kry, .nim, .md) and rendering backends (SDL3, terminal, web).
 
 ## Quick Start
 
@@ -62,6 +62,33 @@ app.run()
 
 Run with: `kryon run hello.nim`
 
+### Using Markdown (for documentation and content)
+
+```markdown
+# My App Documentation
+
+Welcome to **Kryon**! This entire UI is written in *markdown*.
+
+## Features
+
+- ✅ Full CommonMark support
+- ✅ Tables, lists, code blocks
+- ✅ Native Mermaid flowcharts
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Markdown[Markdown File] --> Parser[Core Parser]
+    Parser --> IR[IR Components]
+    IR --> Render[SDL3/Web/Terminal]
+```
+
+Run with interactive flowcharts!
+```
+
+Run with: `kryon run docs.md`
+
 ## Installation
 
 ### Using Nix (Recommended)
@@ -96,10 +123,12 @@ The `make install` command installs:
 # Run applications
 kryon run examples/kry/hello_world.kry   # Run .kry file
 kryon run examples/nim/button_demo.nim   # Run Nim app
+kryon run examples/md/documentation.md   # Run markdown file
 kryon run app.kir                        # Run pre-compiled IR
 
-# Parse .kry to .kir (JSON IR)
-kryon parse hello.kry                    # Outputs hello.kir
+# Parse to .kir (JSON IR)
+kryon parse hello.kry                    # .kry to .kir
+kryon parse docs.md                      # .md to .kir
 
 # Inspect IR files
 kryon tree app.kir                       # Show component tree
@@ -131,8 +160,11 @@ KRYON_RENDERER=terminal kryon run app.kry
 
 ## Features
 
+- ✅ Multiple frontends (.kry, .nim, .md)
 - ✅ Declarative DSL syntax
-- ✅ Multiple rendering backends
+- ✅ Multiple rendering backends (SDL3, terminal, web)
+- ✅ Full CommonMark markdown support
+- ✅ Native Mermaid flowchart integration
 - ✅ Event handlers (onClick, onChange, onSubmit, etc.)
 - ✅ Reactive state management
 - ✅ Flexible layout system (Column, Row, Center, Grid)
@@ -195,6 +227,20 @@ All 14 examples are source-controlled as `.kry` files:
 
 **DO NOT edit** generated `.nim` files - they will be overwritten!
 **DO edit** `.kry` source files in `examples/kry/`.
+
+### Markdown Examples (in `examples/md/`)
+
+8 markdown examples demonstrating all features:
+- `hello_world.md` - Simple markdown introduction
+- `inline_formatting.md` - Bold, italic, links, code
+- `lists.md` - Ordered, unordered, and nested lists
+- `table_demo.md` - Tables with alignment
+- `code_blocks.md` - Syntax highlighting for multiple languages
+- `flowchart.md` - Native Mermaid flowchart integration
+- `documentation.md` - Full-featured documentation page
+- `README.md` - Overview of markdown support
+
+Run with: `kryon run examples/md/<filename>.md`
 
 ## License
 
