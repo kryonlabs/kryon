@@ -107,6 +107,28 @@ install-headers: $(BUILD_DIR)
 debug: CFLAGS += -g -DDEBUG
 debug: $(DESKTOP_STATIC_LIB) $(DESKTOP_SHARED_LIB)
 
+# Sanitizer flag definitions (preserve pkg-config CFLAGS)
+ASAN_FLAGS = -g -fsanitize=address -fno-omit-frame-pointer -DDEBUG
+UBSAN_FLAGS = -g -fsanitize=undefined -fno-omit-frame-pointer -DDEBUG
+TSAN_FLAGS = -g -fsanitize=thread -fno-omit-frame-pointer -DDEBUG
+
+# Sanitizer builds for catching bugs during testing
+asan:
+	$(MAKE) clean
+	$(MAKE) all CFLAGS="$(CFLAGS) $(ASAN_FLAGS)"
+
+ubsan:
+	$(MAKE) clean
+	$(MAKE) all CFLAGS="$(CFLAGS) $(UBSAN_FLAGS)"
+
+asan-ubsan:
+	$(MAKE) clean
+	$(MAKE) all CFLAGS="$(CFLAGS) $(ASAN_FLAGS) $(UBSAN_FLAGS)"
+
+tsan:
+	$(MAKE) clean
+	$(MAKE) all CFLAGS="$(CFLAGS) $(TSAN_FLAGS)"
+
 # Build without SDL3 (header-only mode)
 no-sdl: ENABLE_SDL3=0
 no-sdl: $(DESKTOP_STATIC_LIB) $(DESKTOP_SHARED_LIB)
@@ -122,9 +144,13 @@ help:
 	@echo "  clean          - Remove build artifacts"
 	@echo "  install-headers - Copy headers to build directory"
 	@echo "  debug          - Build with debug symbols"
+	@echo "  asan           - Build with AddressSanitizer"
+	@echo "  ubsan          - Build with UndefinedBehaviorSanitizer"
+	@echo "  asan-ubsan     - Build with both ASan and UBSan (recommended)"
+	@echo "  tsan           - Build with ThreadSanitizer"
 	@echo "  no-sdl         - Build without SDL3 support (header-only)"
 	@echo "  help           - Show this help"
 	@echo ""
 	@echo "SDL3 Status: $(if $(ENABLE_SDL3),ENABLED,DISABLED)"
 
-.PHONY: all clean test example debug install-headers help no-sdl
+.PHONY: all clean test example debug asan ubsan asan-ubsan tsan install-headers help no-sdl

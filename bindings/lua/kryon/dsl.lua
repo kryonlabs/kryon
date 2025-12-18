@@ -271,8 +271,14 @@ local function applyProperties(component, props)
 
     elseif key == "color" or key == "textColor" then
       local r, g, b, a = parseColor(value)
+      -- Check if fontSize is also specified in props to avoid overriding
+      local size = 16  -- Default size
+      if props.fontSize then
+        local _, s = parseDimension(props.fontSize)
+        size = s
+      end
       -- Text color is set via font
-      C.ir_set_font(ensureStyle(), 16, nil, r, g, b, a, false, false)
+      C.ir_set_font(ensureStyle(), size, nil, r, g, b, a, false, false)
 
     -- ========== Spacing ==========
     elseif key == "padding" then
@@ -303,7 +309,12 @@ local function applyProperties(component, props)
 
     elseif key == "fontSize" then
       local _, size = parseDimension(value)
-      C.ir_set_font(ensureStyle(), size, nil, 255, 255, 255, 255, false, false)
+      -- Check if color is also specified in props to avoid overriding
+      local r, g, b, a = 255, 255, 255, 255  -- Default to white
+      if props.color or props.textColor then
+        r, g, b, a = parseColor(props.color or props.textColor)
+      end
+      C.ir_set_font(ensureStyle(), size, nil, r, g, b, a, false, false)
 
     elseif key == "fontWeight" then
       C.ir_set_font_weight(ensureStyle(), tonumber(value) or 400)

@@ -403,6 +403,66 @@ test-modular: test-serialization test-validation test-conversion test-backend te
 test-all: test test-modular
 	@echo "✅ Complete test suite passed!"
 
+# ============================================================================
+# ASAN (AddressSanitizer) Build and Testing
+# ============================================================================
+
+.PHONY: asan-full build-cli-asan asan-test clean-asan
+
+# Build entire stack with AddressSanitizer and UndefinedBehaviorSanitizer
+asan-full:
+	@echo "🔍 Building Kryon with ASAN+UBSan (full stack)..."
+	@echo "Step 1/3: Building IR library with ASAN+UBSan..."
+	$(MAKE) -C ir clean
+	$(MAKE) -C ir asan-ubsan
+	@echo "Step 2/3: Building Desktop backend with ASAN+UBSan..."
+	$(MAKE) -C backends/desktop clean
+	$(MAKE) -C backends/desktop asan-ubsan
+	@echo "Step 3/3: Building Nim CLI with ASAN-instrumented libraries..."
+	@ASAN_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+		$(MAKE) build-cli-asan
+	@echo "✅ ASAN build complete!"
+	@echo ""
+	@echo "Usage: LD_LIBRARY_PATH=build:\$$LD_LIBRARY_PATH ./run_example.sh <example>"
+	@echo "       ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=build:\$$LD_LIBRARY_PATH ./run_example.sh <example>"
+
+# Build Nim CLI with ASAN-instrumented libraries
+build-cli-asan: $(CLI_SRC)
+	@mkdir -p $(BUILD_DIR)
+	$(NIM) c $(NIMFLAGS) --opt:speed \
+		--passL:"-fsanitize=address,undefined -fno-omit-frame-pointer -L$(BUILD_DIR) -lkryon_ir -lkryon_desktop $(SDL3_LIBS) $(SDL_TTF_LIBS)" \
+		-o:$(CLI_BIN) $(CLI_SRC)
+
+# Run ASAN test on example
+asan-test:
+	@if [ -z "$(EXAMPLE)" ]; then \
+		echo "Usage: make asan-test EXAMPLE=<example_name>"; \
+		echo "Example: make asan-test EXAMPLE=button_demo"; \
+		exit 1; \
+	fi
+	@echo "🧪 Running ASAN test on $(EXAMPLE)..."
+	@ASAN_OPTIONS="detect_leaks=1:halt_on_error=0:log_path=/tmp/asan.log" \
+		LD_LIBRARY_PATH=build:\$$LD_LIBRARY_PATH \
+		timeout 5 ./run_example.sh $(EXAMPLE) 2>&1 | tee /tmp/asan_output.txt || true
+	@if grep -q "ERROR: AddressSanitizer" /tmp/asan_output.txt 2>/dev/null; then \
+		echo "❌ ASAN errors detected!"; \
+		if [ -f ./scripts/parse_asan.sh ]; then \
+			./scripts/parse_asan.sh /tmp/asan_output.txt; \
+		fi; \
+		exit 1; \
+	else \
+		echo "✅ No ASAN errors detected"; \
+	fi
+
+# Clean ASAN build artifacts
+clean-asan:
+	@echo "🧹 Cleaning ASAN build artifacts..."
+	$(MAKE) -C ir clean
+	$(MAKE) -C backends/desktop clean
+	rm -f $(CLI_BIN)
+	rm -f /tmp/asan*.log /tmp/asan_output.txt
+	@echo "✅ ASAN clean complete!"
+
 # Interactive testing
 .PHONY: test-interactive test-all-with-interactive
 
@@ -504,6 +564,11 @@ help:
 	@echo "  clean         Clean build artifacts"
 	@echo "  distclean     Deep clean including generated files"
 	@echo "  help          Show this help"
+	@echo ""
+	@echo "Memory Debugging (ASAN):"
+	@echo "  asan-full     Build entire stack with AddressSanitizer+UBSan"
+	@echo "  asan-test EXAMPLE=<name>  Run ASAN test on specific example"
+	@echo "  clean-asan    Clean ASAN build artifacts"
 	@echo ""
 	@echo "Installation paths:"
 	@echo "  CLI: $(BINDIR)/kryon"

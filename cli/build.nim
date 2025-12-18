@@ -5,6 +5,38 @@
 import os, strutils, json, times, sequtils, osproc, tables
 import config, tsx_parser, kry_parser, kry_to_kir, md_parser
 
+# FFI bindings to C web backend
+type
+  IRComponent = ptr object
+  HTMLGenerator = ptr object
+
+const libIrPath = when defined(release):
+  getHomeDir() & ".local/lib/libkryon_ir.so"
+else:
+  currentSourcePath().parentDir() & "/../build/libkryon_ir.so"
+
+const libWebPath = when defined(release):
+  getHomeDir() & ".local/lib/libkryon_web.so"
+else:
+  currentSourcePath().parentDir() & "/../build/libkryon_web.so"
+
+# IR deserialization
+proc ir_read_json_v2_file(filename: cstring): IRComponent {.
+  importc, dynlib: libIrPath.}
+
+proc ir_destroy_component(component: IRComponent) {.
+  importc, dynlib: libIrPath.}
+
+# HTML generation
+proc html_generator_create(): HTMLGenerator {.
+  importc, dynlib: libWebPath.}
+
+proc html_generator_destroy(generator: HTMLGenerator) {.
+  importc, dynlib: libWebPath.}
+
+proc html_generator_generate(generator: HTMLGenerator, root: IRComponent): cstring {.
+  importc, dynlib: libWebPath.}
+
 # Forward declarations
 proc buildLinuxTarget*()
 proc buildSTM32Target*()
@@ -22,6 +54,8 @@ proc renderIRToTarget*(kirFile: string, target: string)
 proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig)
 
 # Docs auto-generation helpers
+proc convertMarkdownToHtml*(markdown: string): string
+
 proc filenameToSlug*(filename: string): string =
   ## Convert filename to URL-friendly slug
   ## "lua-bindings.md" -> "lua-bindings"
@@ -89,40 +123,68 @@ proc loadProjectPlugins*(cfg: KryonConfig) =
         # TODO: Load plugin from registry
 
 proc substituteDocsContent*(kirJson: JsonNode, docsFilePath: string): JsonNode =
-  ## Recursively find Markdown components and embed the markdown content
-  ## This allows the plugin web renderer to render the content without dynamic loading
+  ## Recursively find Markdown components and convert them to IR components using core parser
+  ## This makes all markdown content (including Mermaid) become proper Kryon IR elements
+  ## docsFilePath: the actual markdown file to use (overrides the file attribute in JSON)
   result = kirJson.copy()
 
-  # Load the markdown content
-  let markdownContent = loadMarkdownContent(docsFilePath)
-
-  proc substituteInNode(node: JsonNode) =
+  proc substituteInNode(node: JsonNode): JsonNode =
     if node.kind != JObject:
-      return
+      return node
 
-    # If this is a Markdown component, embed the content
+    # If this is a Markdown component, convert to IR using proper pipeline
     if node.hasKey("type") and node["type"].getStr() == "Markdown":
-      node["file"] = newJString(docsFilePath)
-      if markdownContent.len > 0:
-        node["text_content"] = newJString(markdownContent)
+      if fileExists(docsFilePath):
+        echo "📝 Converting markdown file to IR: ", docsFilePath
 
-    # Recurse into children
-    if node.hasKey("children"):
-      for child in node["children"]:
-        substituteInNode(child)
+        try:
+          # Use C markdown parser (NOW FIXED with context initialization)
+          let kirJson = parseMdToKir(docsFilePath)
+          let kirNode = parseJson(kirJson)
+
+          # Return the IR tree (will contain Heading, Paragraph, Flowchart components, etc.)
+          return kirNode
+        except:
+          echo "⚠️  Markdown parsing failed for: ", docsFilePath
+          # Return error text component
+          return %* {
+            "type": "Text",
+            "text": "Error: Failed to parse markdown file: " & docsFilePath,
+            "color": "#ff0000"
+          }
+      else:
+        echo "⚠️  Markdown file not found: ", docsFilePath
+        # Return error text component
+        return %* {
+          "type": "Text",
+          "text": "Error: Markdown file not found: " & docsFilePath,
+          "color": "#ff0000"
+        }
+
+    # Recursively process children
+    var modifiedNode = node.copy()
+    if modifiedNode.hasKey("children"):
+      var newChildren = newJArray()
+      for child in modifiedNode["children"]:
+        newChildren.add(substituteInNode(child))
+      modifiedNode["children"] = newChildren
 
     # Also check template field (for component definitions)
-    if node.hasKey("template"):
-      substituteInNode(node["template"])
+    if modifiedNode.hasKey("template"):
+      modifiedNode["template"] = substituteInNode(modifiedNode["template"])
+
+    return modifiedNode
 
   # Search in root
   if result.hasKey("root"):
-    substituteInNode(result["root"])
+    result["root"] = substituteInNode(result["root"])
 
   # Search in component definitions
   if result.hasKey("component_definitions"):
+    var newDefs = newJArray()
     for def in result["component_definitions"]:
-      substituteInNode(def)
+      newDefs.add(substituteInNode(def))
+    result["component_definitions"] = newDefs
 
 # Legacy support (for transition period)
 proc buildNimLinux*()
@@ -777,15 +839,10 @@ proc processInlineMarkdown*(text: string): string
 # FFI bindings for flowchart rendering
 {.passC: "-I" & currentSourcePath().parentDir() & "/../ir".}
 {.passL: "-Lbuild -lkryon_ir".}
-
-type
-  IRComponent {.importc: "IRComponent", header: "ir_core.h", incompleteStruct.} = object
-
-proc ir_destroy_component*(component: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
-
 proc convertMarkdownToHtml*(markdown: string): string =
   ## Convert markdown to HTML with proper CSS classes
   ## Supports: headers, paragraphs, code blocks, lists, blockquotes, links, tables
+  echo "🔧 convertMarkdownToHtml called with ", markdown.len, " bytes of markdown"
   result = "<div class=\"kryon-md\">\n"
 
   # Normalize line endings (handle \r\n, \r, and escaped \n)
@@ -814,13 +871,24 @@ proc convertMarkdownToHtml*(markdown: string): string =
     if line.startsWith("```"):
       if inCodeBlock:
         # End code block
-        # Render code block (including mermaid) as pre/code
-        result.add("<pre class=\"kryon-md-pre\"><code")
-        if codeBlockLang.len > 0:
-          result.add(" class=\"language-" & codeBlockLang & "\"")
-        result.add(">")
-        result.add(codeBlockContent.replace("<", "&lt;").replace(">", "&gt;"))
-        result.add("</code></pre>\n")
+        # Check if this is a Mermaid flowchart
+        if codeBlockLang == "mermaid" or codeBlockLang == "mmd":
+          # Convert Mermaid to SVG using the core parser
+          echo "📊 Converting Mermaid diagram to SVG (", codeBlockContent.len, " bytes)"
+          # Remove try/except temporarily to see the actual error
+          let svgOutput = convertMermaidToSvg(codeBlockContent, SVGTheme.Dark)
+          echo "✅ Mermaid converted to SVG (", svgOutput.len, " bytes)"
+          result.add("<div class=\"kryon-flowchart-container\">\n")
+          result.add(svgOutput)
+          result.add("</div>\n")
+        else:
+          # Regular code block
+          result.add("<pre class=\"kryon-md-pre\"><code")
+          if codeBlockLang.len > 0:
+            result.add(" class=\"language-" & codeBlockLang & "\"")
+          result.add(">")
+          result.add(codeBlockContent.replace("<", "&lt;").replace(">", "&gt;"))
+          result.add("</code></pre>\n")
 
         inCodeBlock = false
         codeBlockLang = ""
@@ -1005,573 +1073,38 @@ proc processInlineMarkdown*(text: string): string =
   result = replaceLinks(result)
 
 proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
-  ## Generate HTML/CSS/JS from KIR JSON
-  let kirContent = readFile(kirFile)
-  let kirJson = parseJson(kirContent)
-
-  # Build component definitions lookup map
-  var componentMap = initTable[string, JsonNode]()
-  if kirJson.hasKey("component_definitions"):
-    for def in kirJson["component_definitions"]:
-      if def.hasKey("name") and def.hasKey("template"):
-        componentMap[def["name"].getStr()] = def["template"]
-
-  # Extract app metadata from root or metadata section
-  var appTitle = cfg.projectName
-  var appWidth = 800
-  var appHeight = 600
-  var appBg = "#ffffff"
-
-  if kirJson.hasKey("root"):
-    let root = kirJson["root"]
-    if root.hasKey("windowTitle"):
-      appTitle = root["windowTitle"].getStr()
-    if root.hasKey("width"):
-      let w = root["width"]
-      if w.kind == JString:
-        let ws = w.getStr()
-        if ws.endsWith("px"):
-          appWidth = parseInt(ws.replace(".0px", "").replace("px", ""))
-      elif w.kind == JInt or w.kind == JFloat:
-        appWidth = w.getFloat().int
-    if root.hasKey("height"):
-      let h = root["height"]
-      if h.kind == JString:
-        let hs = h.getStr()
-        if hs.endsWith("px"):
-          appHeight = parseInt(hs.replace(".0px", "").replace("px", ""))
-      elif h.kind == JInt or h.kind == JFloat:
-        appHeight = h.getFloat().int
-    if root.hasKey("background"):
-      appBg = root["background"].getStr()
-
-  if kirJson.hasKey("metadata"):
-    let appMeta = kirJson["metadata"]
-    if appMeta.hasKey("title"):
-      appTitle = appMeta["title"].getStr()
-    if appMeta.hasKey("window_width"):
-      appWidth = appMeta["window_width"].getInt()
-    if appMeta.hasKey("window_height"):
-      appHeight = appMeta["window_height"].getInt()
-    if appMeta.hasKey("background"):
-      appBg = appMeta["background"].getStr()
-
-  # Generate CSS from component tree
-  var cssRules = ""
-  var htmlBody = ""
-  var idCounter = 1000  # For generated IDs
-
-  # Helper to resolve template strings like "https://x.com/{{twitter|replace:@:}}"
-  proc resolveTemplateString(tmpl: string, props: Table[string, JsonNode]): string =
-    result = tmpl
-    var i = 0
-    while i < result.len:
-      if i + 1 < result.len and result[i] == '{' and result[i+1] == '{':
-        # Find closing }}
-        let start = i
-        var j = i + 2
-        while j + 1 < result.len and not (result[j] == '}' and result[j+1] == '}'):
-          inc j
-        if j + 1 < result.len:
-          # Extract variable expression: varName or varName|transform
-          let expr = result[start+2 .. j-1]
-          var varName = expr
-          var transform = ""
-          let pipePos = expr.find('|')
-          if pipePos >= 0:
-            varName = expr[0 ..< pipePos]
-            transform = expr[pipePos+1 .. ^1]
-
-          # Resolve variable value
-          var value = ""
-          if props.hasKey(varName):
-            value = props[varName].getStr()
-
-          # Apply transform if present
-          if transform.startsWith("replace:"):
-            let parts = transform[8 .. ^1].split(':')
-            if parts.len >= 1:
-              let fromStr = parts[0]
-              let toStr = if parts.len >= 2: parts[1] else: ""
-              value = value.replace(fromStr, toStr)
-
-          # Replace the placeholder
-          result = result[0 ..< start] & value & result[j+2 .. ^1]
-          i = start + value.len
-        else:
-          inc i
-      else:
-        inc i
-
-  proc generateComponentCssAndHtml(node: JsonNode, parentId: string = "", depth: int = 0, props: Table[string, JsonNode] = initTable[string, JsonNode]()): tuple[css: string, html: string] =
-    var css = ""
-    var html = ""
-
-    let componentType = if node.hasKey("type"): node["type"].getStr() else: "Container"
-    let componentId = if node.hasKey("id"): "c" & $node["id"].getInt() else: "c" & $idCounter
-    idCounter += 1
-
-    # Check conditional rendering: when property
-    if node.hasKey("when"):
-      let whenNode = node["when"]
-      if whenNode.kind == JObject and whenNode.hasKey("var"):
-        let varName = whenNode["var"].getStr()
-        # Skip this component if the condition variable is not set or empty
-        if not props.hasKey(varName):
-          return ("", "")
-        let propVal = props[varName]
-        if propVal.kind == JNull or (propVal.kind == JString and propVal.getStr() == ""):
-          return ("", "")
-
-    # Check if this is a custom component that needs expansion
-    if componentMap.hasKey(componentType):
-      # Collect props from the call site
-      var callProps = initTable[string, JsonNode]()
-      for key, val in node.pairs:
-        if key notin ["id", "type", "children", "when"]:
-          callProps[key] = val
-      # Expand the component template with props
-      let componentTemplate = componentMap[componentType]
-      return generateComponentCssAndHtml(componentTemplate, parentId, depth, callProps)
-
-    # Built-in component types - comprehensive HTML tag mappings
-    let tagName = case componentType:
-      of "Text": "span"
-      of "Button": "button"
-      of "Link": "a"
-      of "Image": "img"
-      of "Input": "input"
-      of "Checkbox": "input"
-      of "Dropdown": "select"
-      of "Canvas": "canvas"
-      of "Table": "table"
-      of "TableHead": "thead"
-      of "TableBody": "tbody"
-      of "TableFoot": "tfoot"
-      of "TableRow": "tr"
-      of "TableCell": "td"
-      of "TableHeaderCell": "th"
-      of "Tab": "button"
-      of "Row", "Column", "Container", "Center", "TabGroup", "TabBar", "TabContent", "TabPanel", "Markdown": "div"
-      else: "div"
-
-    # Self-closing elements
-    let selfClosing = componentType in ["Image", "Input", "Checkbox"]
-
-    # Build opening tag with special attributes
-    var openingTag = "<" & tagName & " id=\"" & componentId & "\" class=\"kryon-" & componentType.toLowerAscii() & "\""
-
-    # Handle href for Link components
-    if componentType == "Link" and node.hasKey("href"):
-      let hrefNode = node["href"]
-      var hrefVal = ""
-      if hrefNode.kind == JObject and hrefNode.hasKey("var"):
-        let varName = hrefNode["var"].getStr()
-        if props.hasKey(varName):
-          hrefVal = props[varName].getStr()
-      elif hrefNode.kind == JObject and hrefNode.hasKey("template"):
-        # Template string like "https://x.com/{{twitter|replace:@:}}"
-        hrefVal = resolveTemplateString(hrefNode["template"].getStr(), props)
-      elif hrefNode.kind == JString:
-        hrefVal = hrefNode.getStr()
-      openingTag.add(" href=\"" & hrefVal & "\"")
-
-    # Handle target for Link components
-    if componentType == "Link" and node.hasKey("target"):
-      openingTag.add(" target=\"" & node["target"].getStr() & "\"")
-
-    # Handle src and alt for Image components
-    if componentType == "Image":
-      if node.hasKey("src"):
-        let srcNode = node["src"]
-        # Resolve variable reference if present
-        var srcVal = ""
-        if srcNode.kind == JObject and srcNode.hasKey("var"):
-          let varName = srcNode["var"].getStr()
-          if props.hasKey(varName):
-            srcVal = props[varName].getStr()
-        elif srcNode.kind == JString:
-          srcVal = srcNode.getStr()
-        if srcVal.len > 0:
-          openingTag.add(" src=\"" & srcVal & "\"")
-      if node.hasKey("alt"):
-        let altNode = node["alt"]
-        var altVal = ""
-        if altNode.kind == JObject and altNode.hasKey("var"):
-          let varName = altNode["var"].getStr()
-          if props.hasKey(varName):
-            altVal = props[varName].getStr()
-        elif altNode.kind == JString:
-          altVal = altNode.getStr()
-        if altVal.len > 0:
-          openingTag.add(" alt=\"" & altVal & "\"")
-
-    # Checkbox type attribute
-    if componentType == "Checkbox":
-      openingTag.add(" type=\"checkbox\"")
-
-    # Input type attribute
-    if componentType == "Input" and node.hasKey("inputType"):
-      openingTag.add(" type=\"" & node["inputType"].getStr() & "\"")
-    elif componentType == "Input":
-      openingTag.add(" type=\"text\"")  # Default to text
-
-    # Table cell colspan/rowspan
-    if componentType in ["TableCell", "TableHeaderCell"]:
-      if node.hasKey("colspan"):
-        let colspan = node["colspan"].getInt()
-        if colspan > 1:
-          openingTag.add(" colspan=\"" & $colspan & "\"")
-      if node.hasKey("rowspan"):
-        let rowspan = node["rowspan"].getInt()
-        if rowspan > 1:
-          openingTag.add(" rowspan=\"" & $rowspan & "\"")
-
-    # Accessibility roles for tabs
-    if componentType == "Tab":
-      openingTag.add(" role=\"tab\"")
-    if componentType == "TabPanel":
-      openingTag.add(" role=\"tabpanel\"")
-    if componentType == "TabGroup":
-      openingTag.add(" role=\"tablist\"")
-
-    # Canvas dimensions as attributes
-    if componentType == "Canvas":
-      if node.hasKey("width"):
-        let w = node["width"]
-        if w.kind == JInt:
-          openingTag.add(" width=\"" & $w.getInt() & "\"")
-      if node.hasKey("height"):
-        let h = node["height"]
-        if h.kind == JInt:
-          openingTag.add(" height=\"" & $h.getInt() & "\"")
-
-    # Self-closing for void elements (img, input, etc.)
-    if selfClosing:
-      openingTag.add(" />")
-      html.add(openingTag)
-    else:
-      openingTag.add(">")
-      html.add(openingTag)
-
-    # Extract styles
-    var styles: seq[string] = @[]
-
-    # Root element (depth 0) uses responsive dimensions
-    if depth == 0:
-      styles.add("width: 100%")
-      styles.add("min-height: 100vh")
-    else:
-      if node.hasKey("width"):
-        let w = node["width"]
-        if w.kind == JString:
-          styles.add("width: " & w.getStr())
-        elif w.kind == JInt or w.kind == JFloat:
-          styles.add("width: " & $w.getFloat().int & "px")
-
-      if node.hasKey("height"):
-        let h = node["height"]
-        if h.kind == JString:
-          styles.add("height: " & h.getStr())
-        elif h.kind == JInt or h.kind == JFloat:
-          styles.add("height: " & $h.getFloat().int & "px")
-
-      if node.hasKey("maxWidth"):
-        let mw = node["maxWidth"]
-        if mw.kind == JString:
-          styles.add("max-width: " & mw.getStr())
-        elif mw.kind == JInt or mw.kind == JFloat:
-          styles.add("max-width: " & $mw.getFloat().int & "px")
-
-      if node.hasKey("minWidth"):
-        let mw = node["minWidth"]
-        if mw.kind == JString:
-          styles.add("min-width: " & mw.getStr())
-        elif mw.kind == JInt or mw.kind == JFloat:
-          styles.add("min-width: " & $mw.getFloat().int & "px")
-
-      if node.hasKey("maxHeight"):
-        let mh = node["maxHeight"]
-        if mh.kind == JString:
-          styles.add("max-height: " & mh.getStr())
-        elif mh.kind == JInt or mh.kind == JFloat:
-          styles.add("max-height: " & $mh.getFloat().int & "px")
-
-      if node.hasKey("minHeight"):
-        let mh = node["minHeight"]
-        if mh.kind == JString:
-          styles.add("min-height: " & mh.getStr())
-        elif mh.kind == JInt or mh.kind == JFloat:
-          styles.add("min-height: " & $mh.getFloat().int & "px")
-
-    if node.hasKey("background"):
-      styles.add("background: " & node["background"].getStr())
-
-    if node.hasKey("backgroundColor"):
-      styles.add("background-color: " & node["backgroundColor"].getStr())
-
-    if node.hasKey("color"):
-      styles.add("color: " & node["color"].getStr())
-
-    if node.hasKey("fontSize"):
-      let fs = node["fontSize"]
-      if fs.kind == JInt or fs.kind == JFloat:
-        styles.add("font-size: " & $fs.getFloat().int & "px")
-
-    if node.hasKey("fontWeight"):
-      styles.add("font-weight: " & node["fontWeight"].getStr())
-
-    if node.hasKey("padding"):
-      let p = node["padding"]
-      if p.kind == JString:
-        styles.add("padding: " & p.getStr())
-      elif p.kind == JInt or p.kind == JFloat:
-        styles.add("padding: " & $p.getFloat().int & "px")
-
-    if node.hasKey("paddingTop"):
-      let p = node["paddingTop"]
-      if p.kind == JInt or p.kind == JFloat:
-        styles.add("padding-top: " & $p.getFloat().int & "px")
-
-    if node.hasKey("paddingBottom"):
-      let p = node["paddingBottom"]
-      if p.kind == JInt or p.kind == JFloat:
-        styles.add("padding-bottom: " & $p.getFloat().int & "px")
-
-    if node.hasKey("paddingLeft"):
-      let p = node["paddingLeft"]
-      if p.kind == JInt or p.kind == JFloat:
-        styles.add("padding-left: " & $p.getFloat().int & "px")
-
-    if node.hasKey("paddingRight"):
-      let p = node["paddingRight"]
-      if p.kind == JInt or p.kind == JFloat:
-        styles.add("padding-right: " & $p.getFloat().int & "px")
-
-    if node.hasKey("margin"):
-      let m = node["margin"]
-      if m.kind == JString:
-        styles.add("margin: " & m.getStr())
-      elif m.kind == JInt or m.kind == JFloat:
-        styles.add("margin: " & $m.getFloat().int & "px")
-
-    if node.hasKey("marginTop"):
-      let m = node["marginTop"]
-      if m.kind == JInt or m.kind == JFloat:
-        styles.add("margin-top: " & $m.getFloat().int & "px")
-
-    if node.hasKey("marginBottom"):
-      let m = node["marginBottom"]
-      if m.kind == JInt or m.kind == JFloat:
-        styles.add("margin-bottom: " & $m.getFloat().int & "px")
-
-    if node.hasKey("marginLeft"):
-      let m = node["marginLeft"]
-      if m.kind == JInt or m.kind == JFloat:
-        styles.add("margin-left: " & $m.getFloat().int & "px")
-
-    if node.hasKey("marginRight"):
-      let m = node["marginRight"]
-      if m.kind == JInt or m.kind == JFloat:
-        styles.add("margin-right: " & $m.getFloat().int & "px")
-
-    if node.hasKey("borderRadius"):
-      let br = node["borderRadius"]
-      if br.kind == JInt or br.kind == JFloat:
-        styles.add("border-radius: " & $br.getFloat().int & "px")
-
-    if node.hasKey("border"):
-      styles.add("border: " & node["border"].getStr())
-
-    if node.hasKey("gap"):
-      let g = node["gap"]
-      if g.kind == JInt or g.kind == JFloat:
-        styles.add("gap: " & $g.getFloat().int & "px")
-
-    if node.hasKey("justifyContent"):
-      styles.add("justify-content: " & node["justifyContent"].getStr())
-
-    if node.hasKey("alignItems"):
-      styles.add("align-items: " & node["alignItems"].getStr())
-
-    if node.hasKey("flexGrow"):
-      let fg = node["flexGrow"]
-      if fg.kind == JInt or fg.kind == JFloat:
-        styles.add("flex-grow: " & $fg.getFloat().int)
-
-    if node.hasKey("flexShrink"):
-      let fs = node["flexShrink"]
-      if fs.kind == JInt or fs.kind == JFloat:
-        styles.add("flex-shrink: " & $fs.getFloat().int)
-
-    if node.hasKey("flexBasis"):
-      let fb = node["flexBasis"]
-      if fb.kind == JString:
-        styles.add("flex-basis: " & fb.getStr())
-      elif fb.kind == JInt or fb.kind == JFloat:
-        styles.add("flex-basis: " & $fb.getFloat().int & "px")
-
-    # Add flexbox for layout containers
-    if componentType in ["Row", "Column", "Container"]:
-      styles.add("display: flex")
-      if componentType == "Row":
-        styles.add("flex-direction: row")
-      elif componentType == "Column":
-        styles.add("flex-direction: column")
-
-    # Generate CSS rule
-    if styles.len > 0:
-      css.add("#" & componentId & " { " & styles.join("; ") & " }\n")
-
-    # Add text content
-    if node.hasKey("text"):
-      let textNode = node["text"]
-      if textNode.kind == JString:
-        html.add(textNode.getStr())
-      elif textNode.kind == JObject and textNode.hasKey("var"):
-        # Variable reference - resolve from props
-        let varName = textNode["var"].getStr()
-        if props.hasKey(varName):
-          let propVal = props[varName]
-          if propVal.kind == JString:
-            html.add(propVal.getStr())
-          else:
-            html.add($propVal)
-        else:
-          html.add("{{" & varName & "}}")
-
-    # Handle Markdown source content (file or inline)
-    if componentType == "Markdown":
-      var mdSource = ""
-
-      # File prop takes precedence over inline source
-      if node.hasKey("file"):
-        let filePath = node["file"].getStr()
-        let fullPath = getCurrentDir() / filePath
-        if fileExists(fullPath):
-          mdSource = readFile(fullPath)
-        else:
-          mdSource = "**Error:** Markdown file not found: " & filePath
-      elif node.hasKey("source"):
-        let sourceNode = node["source"]
-        if sourceNode.kind == JString:
-          mdSource = sourceNode.getStr()
-      elif node.hasKey("text_content"):
-        mdSource = node["text_content"].getStr()
-
-      if mdSource.len > 0:
-        html.add(convertMarkdownToHtml(mdSource))
-
-    # Process children (skip for self-closing elements)
-    if not selfClosing and node.hasKey("children"):
-      for child in node["children"]:
-        let (childCss, childHtml) = generateComponentCssAndHtml(child, componentId, depth + 1, props)
-        css.add(childCss)
-        html.add(childHtml)
-
-    # Close HTML element (skip for self-closing elements)
-    if not selfClosing:
-      html.add("</" & tagName & ">")
-
-    result = (css, html)
-
-  # Generate from root
-  if kirJson.hasKey("root"):
-    let (css, html) = generateComponentCssAndHtml(kirJson["root"])
-    cssRules = css
-    htmlBody = html
-  elif kirJson.hasKey("children"):
-    for child in kirJson["children"]:
-      let (css, html) = generateComponentCssAndHtml(child)
-      cssRules.add(css)
-      htmlBody.add(html)
-
-  # Base CSS reset
-  let baseCss = """
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { width: 100%; min-height: 100vh; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-.kryon-row { display: flex; flex-direction: row; }
-.kryon-column { display: flex; flex-direction: column; }
-.kryon-container { display: flex; }
-.kryon-button { cursor: pointer; border: none; }
-.kryon-text { display: inline; }
-.kryon-link { text-decoration: none; cursor: pointer; }
-.kryon-link:hover { text-decoration: underline; }
-.kryon-markdown { padding: 20px; line-height: 1.6; color: #E6EDF3; }
-.kryon-md { padding: 20px; line-height: 1.6; color: #E6EDF3; }
-.kryon-md-h1 { font-size: 2em; font-weight: bold; margin: 0.67em 0; border-bottom: 1px solid #30363D; padding-bottom: 0.3em; color: #E6EDF3; }
-.kryon-md-h2 { font-size: 1.5em; font-weight: bold; margin: 0.83em 0; border-bottom: 1px solid #30363D; padding-bottom: 0.3em; color: #E6EDF3; }
-.kryon-md-h3 { font-size: 1.25em; font-weight: bold; margin: 1em 0; color: #E6EDF3; }
-.kryon-md-h4 { font-size: 1em; font-weight: bold; margin: 1.33em 0; color: #E6EDF3; }
-.kryon-md-h5 { font-size: 0.9em; font-weight: bold; margin: 1.5em 0; color: #E6EDF3; }
-.kryon-md-h6 { font-size: 0.85em; font-weight: bold; margin: 1.67em 0; color: #8B949E; }
-.kryon-md-p { margin: 1em 0; color: #C9D1D9; }
-.kryon-md-code { background: #161B22; padding: 0.2em 0.4em; border-radius: 4px; font-family: monospace; font-size: 0.9em; color: #79C0FF; }
-.kryon-md-pre { background: #161B22; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 1em 0; border: 1px solid #30363D; }
-.kryon-md-pre code { background: none; padding: 0; font-size: 0.9em; color: #C9D1D9; }
-.kryon-md-ul, .kryon-md-ol { padding-left: 2em; margin: 1em 0; color: #C9D1D9; }
-.kryon-md-li { margin: 0.25em 0; color: #C9D1D9; }
-.kryon-md-blockquote { border-left: 4px solid #00A8FF; padding-left: 16px; margin: 1em 0; color: #8B949E; }
-.kryon-md-hr { border: none; border-top: 1px solid #30363D; margin: 2em 0; }
-.kryon-md-link { color: #58A6FF; text-decoration: none; }
-.kryon-md-link:hover { text-decoration: underline; }
-.kryon-md-table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-.kryon-md-th, .kryon-md-td { border: 1px solid #30363D; padding: 8px 12px; text-align: left; color: #C9D1D9; }
-.kryon-md-th { background: #161B22; font-weight: bold; color: #E6EDF3; }
-.kryon-md strong { color: #E6EDF3; }
-.kryon-md em { color: #C9D1D9; font-style: italic; }
-
-/* Native Table Components */
-table.kryon-table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-.kryon-tablehead { }
-.kryon-tablebody { }
-.kryon-tablefoot { }
-.kryon-tablerow { }
-.kryon-tablecell, .kryon-tableheadercell { border: 1px solid #30363D; padding: 8px 12px; text-align: left; color: #C9D1D9; }
-.kryon-tableheadercell { background: #161B22; font-weight: bold; color: #E6EDF3; }
-
-/* Input/Form Components */
-.kryon-input, .kryon-checkbox { padding: 8px; border: 1px solid #30363D; background: #161B22; color: #C9D1D9; border-radius: 4px; }
-.kryon-dropdown { padding: 8px; border: 1px solid #30363D; background: #161B22; color: #C9D1D9; border-radius: 4px; }
-.kryon-canvas { display: block; }
-
-/* Tab Components */
-.kryon-tabgroup { }
-.kryon-tabbar { display: flex; gap: 4px; }
-.kryon-tab { padding: 8px 16px; border: 1px solid #30363D; background: #161B22; color: #C9D1D9; cursor: pointer; }
-.kryon-tabcontent { }
-.kryon-tabpanel { }
-"""
-
-  # Generate HTML file
-  let htmlContent = """<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>""" & appTitle & """</title>
-  <style>
-""" & baseCss & """
-""" & cssRules & """
-  </style>
-</head>
-<body style="background: """ & appBg & """;">
-""" & htmlBody & """
-</body>
-</html>
-"""
-
-  # Write files
+  ## Generate HTML from KIR using C web backend
+  ## This ensures proper rendering of all IR components including Flowchart → SVG
+  echo "🌐 Generating web output from: ", kirFile
+
+  # Load .kir file → IRComponent using C deserialization
+  echo "   📥 Deserializing IR from .kir file..."
+  let component = ir_read_json_v2_file(kirFile.cstring)
+  if component == nil:
+    raise newException(IOError, "Failed to read KIR file: " & kirFile)
+
+  defer:
+    echo "   🧹 Cleaning up IR component..."
+    ir_destroy_component(component)
+
+  # Generate HTML using C web backend
+  echo "   🎨 Generating HTML with web backend (includes SVG for flowcharts)..."
+  let generator = html_generator_create()
+  if generator == nil:
+    raise newException(IOError, "Failed to create HTML generator")
+
+  defer:
+    html_generator_destroy(generator)
+
+  let htmlCstr = html_generator_generate(generator, component)
+  if htmlCstr == nil:
+    raise newException(IOError, "Failed to generate HTML from IR")
+
+  let htmlContent = $htmlCstr
+
+  # Write HTML to output file
   let htmlPath = outputDir / "index.html"
   writeFile(htmlPath, htmlContent)
   echo "   ✅ Generated: " & htmlPath
-
-  # Optionally write separate CSS if configured
-  if cfg.webGenerateSeparateFiles:
-    let cssPath = outputDir / "styles.css"
-    writeFile(cssPath, baseCss & "\n" & cssRules)
-    echo "   ✅ Generated: " & cssPath
-
   echo "   📁 Web files in: " & outputDir & "/"
   echo "   🌐 Open " & htmlPath & " in a browser"

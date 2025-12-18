@@ -37,7 +37,15 @@ extern IRComponent* ir_markdown_ast_to_ir(MdNode* ast_root);
 // Default allocation sizes
 #define DEFAULT_NODE_POOL_SIZE 256
 #define DEFAULT_INLINE_POOL_SIZE 512
-#define DEFAULT_TEXT_BUFFER_SIZE 8192
+#define TEXT_CHUNK_SIZE 8192  // 8KB per chunk (never reallocated)
+
+// Text buffer chunk for linked-list allocation (eliminates pointer invalidation)
+typedef struct TextBufferChunk {
+    char* data;                    // Fixed-size buffer
+    size_t size;                   // Size of this chunk (TEXT_CHUNK_SIZE or larger)
+    size_t used;                   // Bytes used in this chunk
+    struct TextBufferChunk* next;  // Next chunk in chain
+} TextBufferChunk;
 
 // Parser state for memory management
 typedef struct {
@@ -55,10 +63,9 @@ typedef struct {
     size_t inline_pool_size;
     size_t inline_pool_used;
 
-    // Text buffer for string copies
-    char* text_buffer;
-    size_t text_buffer_size;
-    size_t text_buffer_used;
+    // Text buffer chain for string copies (linked list of fixed-size chunks)
+    TextBufferChunk* first_chunk;    // First chunk in chain
+    TextBufferChunk* current_chunk;  // Current chunk for allocation
 } parser_state_t;
 
 static parser_state_t* parser_create(const char* input, size_t length) {
@@ -77,14 +84,38 @@ static parser_state_t* parser_create(const char* input, size_t length) {
     p->inline_pool_size = DEFAULT_INLINE_POOL_SIZE;
     p->inline_pool_used = 0;
 
-    p->text_buffer = (char*)malloc(DEFAULT_TEXT_BUFFER_SIZE);
-    p->text_buffer_size = DEFAULT_TEXT_BUFFER_SIZE;
-    p->text_buffer_used = 0;
-
-    if (!p->node_pool || !p->inline_pool || !p->text_buffer) {
+    // Create first text buffer chunk
+    p->first_chunk = (TextBufferChunk*)malloc(sizeof(TextBufferChunk));
+    if (!p->first_chunk) {
         free(p->node_pool);
         free(p->inline_pool);
-        free(p->text_buffer);
+        free(p);
+        return NULL;
+    }
+    p->first_chunk->data = (char*)malloc(TEXT_CHUNK_SIZE);
+    if (!p->first_chunk->data) {
+        free(p->first_chunk);
+        free(p->node_pool);
+        free(p->inline_pool);
+        free(p);
+        return NULL;
+    }
+    p->first_chunk->size = TEXT_CHUNK_SIZE;
+    p->first_chunk->used = 0;
+    p->first_chunk->next = NULL;
+    p->current_chunk = p->first_chunk;
+
+    if (!p->node_pool || !p->inline_pool) {
+        // Free chunk chain
+        TextBufferChunk* chunk = p->first_chunk;
+        while (chunk) {
+            TextBufferChunk* next = chunk->next;
+            free(chunk->data);
+            free(chunk);
+            chunk = next;
+        }
+        free(p->node_pool);
+        free(p->inline_pool);
         free(p);
         return NULL;
     }
@@ -94,9 +125,18 @@ static parser_state_t* parser_create(const char* input, size_t length) {
 
 static void parser_destroy(parser_state_t* p) {
     if (!p) return;
+
+    // Free all text buffer chunks
+    TextBufferChunk* chunk = p->first_chunk;
+    while (chunk) {
+        TextBufferChunk* next = chunk->next;
+        free(chunk->data);
+        free(chunk);
+        chunk = next;
+    }
+
     free(p->node_pool);
     free(p->inline_pool);
-    free(p->text_buffer);
     free(p);
 }
 
@@ -135,20 +175,33 @@ static MdInline* alloc_inline(parser_state_t* p, MdInlineType type) {
 }
 
 static char* alloc_text(parser_state_t* p, const char* text, size_t length) {
-    if (p->text_buffer_used + length + 1 > p->text_buffer_size) {
-        // Expand buffer
-        size_t new_size = p->text_buffer_size * 2;
-        while (p->text_buffer_used + length + 1 > new_size) new_size *= 2;
-        char* new_buffer = (char*)realloc(p->text_buffer, new_size);
-        if (!new_buffer) return NULL;
-        p->text_buffer = new_buffer;
-        p->text_buffer_size = new_size;
+    // Check if current chunk has enough space
+    if (p->current_chunk->used + length + 1 > p->current_chunk->size) {
+        // Current chunk full - allocate new chunk
+        TextBufferChunk* new_chunk = (TextBufferChunk*)malloc(sizeof(TextBufferChunk));
+        if (!new_chunk) return NULL;
+
+        // For large strings (> 8KB), allocate a larger chunk
+        size_t chunk_size = (length + 1 > TEXT_CHUNK_SIZE) ? (length + 1) : TEXT_CHUNK_SIZE;
+        new_chunk->data = (char*)malloc(chunk_size);
+        if (!new_chunk->data) {
+            free(new_chunk);
+            return NULL;
+        }
+        new_chunk->size = chunk_size;
+        new_chunk->used = 0;
+        new_chunk->next = NULL;
+
+        // Link to chain
+        p->current_chunk->next = new_chunk;
+        p->current_chunk = new_chunk;
     }
 
-    char* result = p->text_buffer + p->text_buffer_used;
+    // Allocate from current chunk (NEVER MOVES - pointer remains valid!)
+    char* result = p->current_chunk->data + p->current_chunk->used;
     memcpy(result, text, length);
     result[length] = '\0';
-    p->text_buffer_used += length + 1;
+    p->current_chunk->used += length + 1;
     return result;
 }
 
@@ -981,11 +1034,25 @@ char* ir_markdown_to_kir(const char* source, size_t length) {
     fprintf(stderr, "=== ir_markdown_to_kir: Starting parse...\n");
     fflush(stderr);
 
-    // Parse markdown to IR
-    fprintf(stderr, "=== ir_markdown_to_kir: Calling ir_markdown_parse...\n");
+    // Create temporary context for unique component ID assignment
+    extern IRContext* g_ir_context;  // Global context (defined in ir_builder.c)
+    extern IRContext* ir_create_context(void);
+    extern void ir_set_context(IRContext* context);
+    extern void ir_destroy_context(IRContext* context);
+    extern void ir_destroy_component(IRComponent* component);
+
+    IRContext* old_context = g_ir_context;  // Save old context
+    IRContext* temp_context = ir_create_context();
+    ir_set_context(temp_context);
+
+    fprintf(stderr, "=== ir_markdown_to_kir: Created temp context, calling ir_markdown_parse...\n");
     fflush(stderr);
 
+    // Parse markdown to IR (components now get unique IDs from context)
     IRComponent* root = ir_markdown_parse(source, length);
+
+    // Restore original context
+    ir_set_context(old_context);
 
     fprintf(stderr, "=== ir_markdown_to_kir: ir_markdown_parse returned! root=%p\n", (void*)root);
     fflush(stderr);
@@ -993,6 +1060,7 @@ char* ir_markdown_to_kir(const char* source, size_t length) {
     if (!root) {
         fprintf(stderr, "=== ir_markdown_to_kir: Parse failed, root is NULL\n");
         fflush(stderr);
+        ir_destroy_context(temp_context);
         return NULL;
     }
 
@@ -1007,17 +1075,31 @@ char* ir_markdown_to_kir(const char* source, size_t length) {
     if (!json_str) {
         fprintf(stderr, "=== ir_markdown_to_kir: Serialization failed\n");
         fflush(stderr);
+        ir_destroy_component(root);
+        ir_destroy_context(temp_context);
         return NULL;
     }
 
     fprintf(stderr, "=== ir_markdown_to_kir: Serialization successful, length=%zu\n", strlen(json_str));
     fflush(stderr);
 
-    // TODO: Free the IR tree (currently leaking to avoid crash)
-    // The markdown parser creates components with uninitialized fields
-    // that cause ir_destroy_component to crash. Need to fix parser first.
-    // extern void ir_destroy_component(IRComponent* component);
-    // ir_destroy_component(root);
+    // Clean up context (this also frees all components created with it)
+    // No need to call ir_destroy_component - context cleanup handles it
+    fprintf(stderr, "=== ir_markdown_to_kir: Cleaning up context (will free all components)...\n");
+    fflush(stderr);
+    ir_destroy_context(temp_context);
+
+    // CRITICAL: Also destroy the global parser to prevent stale state between files
+    fprintf(stderr, "=== ir_markdown_to_kir: Destroying global parser...\n");
+    fflush(stderr);
+    extern parser_state_t* g_parser;
+    extern void parser_destroy(parser_state_t* p);
+    if (g_parser) {
+        parser_destroy(g_parser);
+        g_parser = NULL;
+    }
+    fprintf(stderr, "=== ir_markdown_to_kir: Cleanup complete\n");
+    fflush(stderr);
 
     return json_str;
 }

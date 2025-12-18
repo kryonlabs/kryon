@@ -32,6 +32,13 @@ static IRComponent* create_text_component(const char* text, size_t length) {
     fprintf(stderr, "=== create_text_component: ir_text returned %p\n", (void*)comp);
     fflush(stderr);
 
+    // CRITICAL: Initialize style to prevent NULL pointer crashes during layout
+    if (comp) {
+        IRStyle* style = ir_get_style(comp);
+        fprintf(stderr, "=== create_text_component: ir_get_style returned %p\n", (void*)style);
+        fflush(stderr);
+    }
+
     if (comp && text && length > 0) {
         char* content = (char*)malloc(length + 1);
         fprintf(stderr, "=== create_text_component: malloc returned %p\n", (void*)content);
@@ -43,10 +50,8 @@ static IRComponent* create_text_component(const char* text, size_t length) {
             fprintf(stderr, "=== create_text_component: calling ir_set_text_content...\n");
             fflush(stderr);
             ir_set_text_content(comp, content);
-            fprintf(stderr, "=== create_text_component: freeing content...\n");
-            fflush(stderr);
-            free(content);
-            fprintf(stderr, "=== create_text_component: freed content\n");
+            // Don't free! ir_set_text_content() takes ownership of the pointer
+            fprintf(stderr, "=== create_text_component: content ownership transferred\n");
             fflush(stderr);
         }
     }
