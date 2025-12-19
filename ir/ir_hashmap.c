@@ -70,19 +70,18 @@ static bool ir_map_resize(IRComponentMap* map, uint32_t new_capacity) {
     if (!new_buckets) return false;
 
     // Rehash all existing components
+    // Note: This hashmap uses linear probing, not chaining
+    // Each bucket contains at most one component
     for (uint32_t i = 0; i < map->bucket_count; i++) {
         IRComponent* component = map->buckets[i];
-        while (component) {
-            // Linear probing to find next slot
+        if (component) {
+            // Linear probing to find next slot in new table
             uint32_t hash = hash_component_id(component->id, new_capacity);
             while (new_buckets[hash] != NULL) {
                 hash = (hash + 1) % new_capacity;
             }
 
-            IRComponent* next = (IRComponent*)component->tag; // Temporarily stored next pointer
             new_buckets[hash] = component;
-            component->tag = NULL; // Clear temporary storage
-            component = next;
         }
     }
 

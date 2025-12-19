@@ -71,6 +71,184 @@ static const char* get_css_class(IRComponent* component) {
     return "kryon-component";  // Default fallback
 }
 
+static const char* get_component_type_name(IRComponentType type) {
+    switch (type) {
+        case IR_COMPONENT_CONTAINER: return "CONTAINER";
+        case IR_COMPONENT_TEXT: return "TEXT";
+        case IR_COMPONENT_BUTTON: return "BUTTON";
+        case IR_COMPONENT_INPUT: return "INPUT";
+        case IR_COMPONENT_CHECKBOX: return "CHECKBOX";
+        case IR_COMPONENT_ROW: return "ROW";
+        case IR_COMPONENT_COLUMN: return "COLUMN";
+        case IR_COMPONENT_CENTER: return "CENTER";
+        case IR_COMPONENT_IMAGE: return "IMAGE";
+        case IR_COMPONENT_CANVAS: return "CANVAS";
+        case IR_COMPONENT_TABLE: return "TABLE";
+        case IR_COMPONENT_TABLE_HEAD: return "TABLE_HEAD";
+        case IR_COMPONENT_TABLE_BODY: return "TABLE_BODY";
+        case IR_COMPONENT_TABLE_FOOT: return "TABLE_FOOT";
+        case IR_COMPONENT_TABLE_ROW: return "TABLE_ROW";
+        case IR_COMPONENT_TABLE_CELL: return "TABLE_CELL";
+        case IR_COMPONENT_TABLE_HEADER_CELL: return "TABLE_HEADER_CELL";
+        case IR_COMPONENT_HEADING: return "HEADING";
+        case IR_COMPONENT_PARAGRAPH: return "PARAGRAPH";
+        case IR_COMPONENT_BLOCKQUOTE: return "BLOCKQUOTE";
+        case IR_COMPONENT_CODE_BLOCK: return "CODE_BLOCK";
+        case IR_COMPONENT_HORIZONTAL_RULE: return "HORIZONTAL_RULE";
+        case IR_COMPONENT_LIST: return "LIST";
+        case IR_COMPONENT_LIST_ITEM: return "LIST_ITEM";
+        case IR_COMPONENT_LINK: return "LINK";
+        case IR_COMPONENT_TAB_GROUP: return "TAB_GROUP";
+        case IR_COMPONENT_TAB_BAR: return "TAB_BAR";
+        case IR_COMPONENT_TAB: return "TAB";
+        case IR_COMPONENT_TAB_CONTENT: return "TAB_CONTENT";
+        case IR_COMPONENT_TAB_PANEL: return "TAB_PANEL";
+        case IR_COMPONENT_DROPDOWN: return "DROPDOWN";
+        case IR_COMPONENT_FLOWCHART: return "FLOWCHART";
+        case IR_COMPONENT_CUSTOM: return "CUSTOM";
+        default: return "UNKNOWN";
+    }
+}
+
+// Helper to get color as CSS string (borrowed from css_generator.c logic)
+static void append_color_string(char* buffer, size_t size, IRColor color) {
+    switch (color.type) {
+        case IR_COLOR_SOLID:
+            snprintf(buffer, size, "rgba(%u, %u, %u, %.2f)",
+                    color.data.r, color.data.g, color.data.b, color.data.a / 255.0f);
+            break;
+        case IR_COLOR_TRANSPARENT:
+            snprintf(buffer, size, "transparent");
+            break;
+        default:
+            snprintf(buffer, size, "transparent");
+            break;
+    }
+}
+
+// Helper to get dimension as CSS string
+static void append_dimension_string(char* buffer, size_t size, IRDimension dim) {
+    switch (dim.type) {
+        case IR_DIMENSION_PX:
+            snprintf(buffer, size, "%.2fpx", dim.value);
+            break;
+        case IR_DIMENSION_PERCENT:
+            snprintf(buffer, size, "%.2f%%", dim.value);
+            break;
+        case IR_DIMENSION_AUTO:
+            snprintf(buffer, size, "auto");
+            break;
+        default:
+            snprintf(buffer, size, "auto");
+            break;
+    }
+}
+
+// Generate inline style attribute for transpilation mode
+static void generate_inline_styles(HTMLGenerator* generator, IRComponent* component) {
+    if (!component || !component->style) return;
+
+    char style_buffer[4096] = "";
+    char temp[256];
+
+    // Width
+    if (component->style->width.type != IR_DIMENSION_AUTO) {
+        append_dimension_string(temp, sizeof(temp), component->style->width);
+        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                "width: %s; ", temp);
+    }
+
+    // Height
+    if (component->style->height.type != IR_DIMENSION_AUTO) {
+        append_dimension_string(temp, sizeof(temp), component->style->height);
+        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                "height: %s; ", temp);
+    }
+
+    // Background
+    if (component->style->background.type != IR_COLOR_TRANSPARENT) {
+        append_color_string(temp, sizeof(temp), component->style->background);
+        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                "background-color: %s; ", temp);
+    }
+
+    // Border
+    if (component->style->border.width > 0) {
+        append_color_string(temp, sizeof(temp), component->style->border.color);
+        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                "border: %.2fpx solid %s; ", component->style->border.width, temp);
+        if (component->style->border.radius > 0) {
+            snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                    "border-radius: %upx; ", component->style->border.radius);
+        }
+    }
+
+    // Padding
+    if (component->style->padding.top != 0 || component->style->padding.right != 0 ||
+        component->style->padding.bottom != 0 || component->style->padding.left != 0) {
+        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                "padding: %.2fpx %.2fpx %.2fpx %.2fpx; ",
+                component->style->padding.top, component->style->padding.right,
+                component->style->padding.bottom, component->style->padding.left);
+    }
+
+    // Margin
+    if (component->style->margin.top != 0 || component->style->margin.right != 0 ||
+        component->style->margin.bottom != 0 || component->style->margin.left != 0) {
+        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                "margin: %.2fpx %.2fpx %.2fpx %.2fpx; ",
+                component->style->margin.top, component->style->margin.right,
+                component->style->margin.bottom, component->style->margin.left);
+    }
+
+    // Font size
+    if (component->style->font.size > 0) {
+        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                "font-size: %.2fpx; ", component->style->font.size);
+    }
+
+    // Font color
+    if (component->style->font.color.type != IR_COLOR_TRANSPARENT) {
+        append_color_string(temp, sizeof(temp), component->style->font.color);
+        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                "color: %s; ", temp);
+    }
+
+    // Font weight
+    if (component->style->font.weight > 0) {
+        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                "font-weight: %u; ", component->style->font.weight);
+    } else if (component->style->font.bold) {
+        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                "font-weight: bold; ");
+    }
+
+    // Font style (italic)
+    if (component->style->font.italic) {
+        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                "font-style: italic; ");
+    }
+
+    // Text align
+    const char* align_str = NULL;
+    switch (component->style->font.align) {
+        case IR_TEXT_ALIGN_LEFT: align_str = "left"; break;
+        case IR_TEXT_ALIGN_RIGHT: align_str = "right"; break;
+        case IR_TEXT_ALIGN_CENTER: align_str = "center"; break;
+        case IR_TEXT_ALIGN_JUSTIFY: align_str = "justify"; break;
+        default: break;
+    }
+    if (align_str) {
+        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                "text-align: %s; ", align_str);
+    }
+
+    // Only write style attribute if we have styles
+    if (strlen(style_buffer) > 0) {
+        html_generator_write_format(generator, " style=\"%s\"", style_buffer);
+    }
+}
+
 static void escape_html_text(const char* text, char* buffer, size_t buffer_size) {
     if (!text || !buffer || buffer_size == 0) return;
 
@@ -116,7 +294,21 @@ static void escape_html_text(const char* text, char* buffer, size_t buffer_size)
 }
 
 
+HtmlGeneratorOptions html_generator_default_options(void) {
+    HtmlGeneratorOptions opts = {
+        .mode = HTML_MODE_DISPLAY,
+        .minify = false,
+        .inline_css = true,
+        .preserve_ids = false
+    };
+    return opts;
+}
+
 HTMLGenerator* html_generator_create() {
+    return html_generator_create_with_options(html_generator_default_options());
+}
+
+HTMLGenerator* html_generator_create_with_options(HtmlGeneratorOptions options) {
     HTMLGenerator* generator = malloc(sizeof(HTMLGenerator));
     if (!generator) return NULL;
 
@@ -124,7 +316,8 @@ HTMLGenerator* html_generator_create() {
     generator->buffer_size = 0;
     generator->buffer_capacity = 0;
     generator->indent_level = 0;
-    generator->pretty_print = true;
+    generator->pretty_print = !options.minify;
+    generator->options = options;
 
     return generator;
 }
@@ -167,11 +360,16 @@ bool html_generator_write_string(HTMLGenerator* generator, const char* string) {
 
         generator->output_buffer = new_buffer;
         generator->buffer_capacity = new_capacity;
+        // CRITICAL: Ensure buffer is null-terminated at current position
+        // so strcpy knows where to write
+        generator->output_buffer[generator->buffer_size] = '\0';
     }
 
-    strcat(generator->output_buffer + generator->buffer_size, string);
+    // Use strcpy instead of strcat - we already know the offset
+    // This avoids strcat searching for '\0' in uninitialized memory
+    strcpy(generator->output_buffer + generator->buffer_size, string);
     generator->buffer_size += string_len;
-    generator->output_buffer[generator->buffer_size] = '\0';
+    // Null terminator already added by strcpy
 
     return true;
 }
@@ -236,6 +434,32 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
     }
 
     const char* tag = get_html_tag(component->type);
+
+    // CRITICAL: Override tag for semantic HTML elements BEFORE writing opening tag
+    // This prevents mismatched tags like <div>...</h1> or <div>...</ul>
+    switch (component->type) {
+        case IR_COMPONENT_HEADING: {
+            IRHeadingData* data = (IRHeadingData*)component->custom_data;
+            if (data) {
+                tag = (data->level == 1) ? "h1" :
+                      (data->level == 2) ? "h2" :
+                      (data->level == 3) ? "h3" :
+                      (data->level == 4) ? "h4" :
+                      (data->level == 5) ? "h5" : "h6";
+            }
+            break;
+        }
+        case IR_COMPONENT_LIST: {
+            IRListData* data = (IRListData*)component->custom_data;
+            if (data) {
+                tag = (data->type == IR_LIST_ORDERED) ? "ol" : "ul";
+            }
+            break;
+        }
+        default:
+            break;
+    }
+
     bool is_self_closing = (component->type == IR_COMPONENT_INPUT ||
                           component->type == IR_COMPONENT_CHECKBOX ||
                           component->type == IR_COMPONENT_IMAGE ||
@@ -248,6 +472,23 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
     html_generator_write_format(generator, " id=\"kryon-%u\"", component->id);
     const char* css_class = get_css_class(component);
     html_generator_write_format(generator, " class=\"%s\"", css_class);
+
+    // In transpilation mode, add metadata attributes for roundtrip
+    if (generator->options.mode == HTML_MODE_TRANSPILE) {
+        // Add component type for reconstruction
+        html_generator_write_format(generator, " data-ir-type=\"%s\"",
+                                    get_component_type_name(component->type));
+
+        // Add component ID for debugging/tracking
+        if (generator->options.preserve_ids) {
+            html_generator_write_format(generator, " data-ir-id=\"%u\"", component->id);
+        }
+
+        // Add inline styles for transpilation mode
+        if (generator->options.inline_css) {
+            generate_inline_styles(generator, component);
+        }
+    }
 
     // Add custom tag if specified
     if (component->tag && strcmp(component->tag, "") != 0) {
@@ -346,14 +587,8 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         case IR_COMPONENT_HEADING: {
             IRHeadingData* data = (IRHeadingData*)component->custom_data;
             if (data) {
-                // Use semantic heading tag (h1-h6) instead of div
+                // Note: tag override now happens before opening tag (see lines 247-268)
                 html_generator_write_format(generator, " data-level=\"%u\"", data->level);
-                // Override tag to use actual heading element
-                tag = (data->level == 1) ? "h1" :
-                      (data->level == 2) ? "h2" :
-                      (data->level == 3) ? "h3" :
-                      (data->level == 4) ? "h4" :
-                      (data->level == 5) ? "h5" : "h6";
                 if (data->id) {
                     html_generator_write_format(generator, " id=\"%s\"", data->id);
                 }
@@ -372,8 +607,7 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         case IR_COMPONENT_LIST: {
             IRListData* data = (IRListData*)component->custom_data;
             if (data) {
-                // Use semantic list tags (ol/ul) instead of div
-                tag = (data->type == IR_LIST_ORDERED) ? "ol" : "ul";
+                // Note: tag override now happens before opening tag (see lines 247-268)
                 if (data->type == IR_LIST_ORDERED && data->start > 1) {
                     html_generator_write_format(generator, " start=\"%u\"", data->start);
                 }
@@ -410,24 +644,26 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             break;
     }
 
-    // Add event handlers
-    for (IREvent* event = component->events; event; event = event->next) {
-        switch (event->type) {
-            case IR_EVENT_CLICK:
-                html_generator_write_format(generator, " onclick=\"kryon_handle_click(%u, '%s')\"",
-                        component->id, event->logic_id ? event->logic_id : "");
-                break;
-            case IR_EVENT_HOVER:
-                html_generator_write_format(generator, " onmouseover=\"kryon_handle_hover(%u, '%s')\"",
-                        component->id, event->logic_id ? event->logic_id : "");
-                html_generator_write_format(generator, " onmouseout=\"kryon_handle_leave(%u)\"", component->id);
-                break;
-            case IR_EVENT_FOCUS:
-                html_generator_write_format(generator, " onfocus=\"kryon_handle_focus(%u)\"", component->id);
-                html_generator_write_format(generator, " onblur=\"kryon_handle_blur(%u)\"", component->id);
-                break;
-            default:
-                break;
+    // Add event handlers (skip in transpilation mode - no JS needed)
+    if (generator->options.mode == HTML_MODE_DISPLAY) {
+        for (IREvent* event = component->events; event; event = event->next) {
+            switch (event->type) {
+                case IR_EVENT_CLICK:
+                    html_generator_write_format(generator, " onclick=\"kryon_handle_click(%u, '%s')\"",
+                            component->id, event->logic_id ? event->logic_id : "");
+                    break;
+                case IR_EVENT_HOVER:
+                    html_generator_write_format(generator, " onmouseover=\"kryon_handle_hover(%u, '%s')\"",
+                            component->id, event->logic_id ? event->logic_id : "");
+                    html_generator_write_format(generator, " onmouseout=\"kryon_handle_leave(%u)\"", component->id);
+                    break;
+                case IR_EVENT_FOCUS:
+                    html_generator_write_format(generator, " onfocus=\"kryon_handle_focus(%u)\"", component->id);
+                    html_generator_write_format(generator, " onblur=\"kryon_handle_blur(%u)\"", component->id);
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
@@ -500,8 +736,15 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
     html_generator_write_string(generator, "  <meta charset=\"UTF-8\">\n");
     html_generator_write_string(generator, "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
     html_generator_write_string(generator, "  <title>Kryon Web Application</title>\n");
-    html_generator_write_string(generator, "  <link rel=\"stylesheet\" href=\"kryon.css\">\n");
-    html_generator_write_string(generator, "  <script src=\"kryon.js\"></script>\n");
+
+    // In display mode, include JavaScript and CSS for runtime
+    // In transpilation mode, skip JS and use inline CSS
+    if (generator->options.mode == HTML_MODE_DISPLAY) {
+        html_generator_write_string(generator, "  <link rel=\"stylesheet\" href=\"kryon.css\">\n");
+        html_generator_write_string(generator, "  <script src=\"kryon.js\"></script>\n");
+    }
+    // TODO: In transpilation mode with inline_css, add <style> block here
+
     html_generator_write_string(generator, "</head>\n<body>\n");
 
     generator->indent_level = 1;

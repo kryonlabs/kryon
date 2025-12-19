@@ -34,10 +34,26 @@ extern IRComponent* ir_markdown_ast_to_ir(MdNode* ast_root);
 // MEMORY MANAGEMENT
 // ============================================================================
 
-// Default allocation sizes
-#define DEFAULT_NODE_POOL_SIZE 256
-#define DEFAULT_INLINE_POOL_SIZE 512
-#define TEXT_CHUNK_SIZE 8192  // 8KB per chunk (never reallocated)
+// Default allocation sizes (fixed-size chunks, never reallocated)
+#define NODE_CHUNK_SIZE 256       // Nodes per chunk
+#define INLINE_CHUNK_SIZE 512     // Inlines per chunk
+#define TEXT_CHUNK_SIZE 8192      // 8KB per text chunk
+
+// Node pool chunk (linked list of fixed-size arrays)
+typedef struct NodeChunk {
+    MdNode* nodes;                 // Fixed-size array of nodes
+    size_t capacity;               // Capacity (NODE_CHUNK_SIZE)
+    size_t used;                   // Nodes used in this chunk
+    struct NodeChunk* next;        // Next chunk in chain
+} NodeChunk;
+
+// Inline pool chunk (linked list of fixed-size arrays)
+typedef struct InlineChunk {
+    MdInline* inlines;             // Fixed-size array of inlines
+    size_t capacity;               // Capacity (INLINE_CHUNK_SIZE)
+    size_t used;                   // Inlines used in this chunk
+    struct InlineChunk* next;      // Next chunk in chain
+} InlineChunk;
 
 // Text buffer chunk for linked-list allocation (eliminates pointer invalidation)
 typedef struct TextBufferChunk {
@@ -53,15 +69,13 @@ typedef struct {
     size_t input_length;
     size_t position;
 
-    // Node allocation
-    MdNode* node_pool;
-    size_t node_pool_size;
-    size_t node_pool_used;
+    // Node pool chain (linked list of fixed-size chunks)
+    NodeChunk* first_node_chunk;
+    NodeChunk* current_node_chunk;
 
-    // Inline allocation
-    MdInline* inline_pool;
-    size_t inline_pool_size;
-    size_t inline_pool_used;
+    // Inline pool chain (linked list of fixed-size chunks)
+    InlineChunk* first_inline_chunk;
+    InlineChunk* current_inline_chunk;
 
     // Text buffer chain for string copies (linked list of fixed-size chunks)
     TextBufferChunk* first_chunk;    // First chunk in chain
@@ -76,27 +90,61 @@ static parser_state_t* parser_create(const char* input, size_t length) {
     p->input_length = length;
     p->position = 0;
 
-    p->node_pool = (MdNode*)calloc(DEFAULT_NODE_POOL_SIZE, sizeof(MdNode));
-    p->node_pool_size = DEFAULT_NODE_POOL_SIZE;
-    p->node_pool_used = 0;
+    // Initialize node chunk pool
+    p->first_node_chunk = (NodeChunk*)malloc(sizeof(NodeChunk));
+    if (!p->first_node_chunk) {
+        free(p);
+        return NULL;
+    }
+    p->first_node_chunk->nodes = (MdNode*)calloc(NODE_CHUNK_SIZE, sizeof(MdNode));
+    if (!p->first_node_chunk->nodes) {
+        free(p->first_node_chunk);
+        free(p);
+        return NULL;
+    }
+    p->first_node_chunk->capacity = NODE_CHUNK_SIZE;
+    p->first_node_chunk->used = 0;
+    p->first_node_chunk->next = NULL;
+    p->current_node_chunk = p->first_node_chunk;
 
-    p->inline_pool = (MdInline*)calloc(DEFAULT_INLINE_POOL_SIZE, sizeof(MdInline));
-    p->inline_pool_size = DEFAULT_INLINE_POOL_SIZE;
-    p->inline_pool_used = 0;
+    // Initialize inline chunk pool
+    p->first_inline_chunk = (InlineChunk*)malloc(sizeof(InlineChunk));
+    if (!p->first_inline_chunk) {
+        free(p->first_node_chunk->nodes);
+        free(p->first_node_chunk);
+        free(p);
+        return NULL;
+    }
+    p->first_inline_chunk->inlines = (MdInline*)calloc(INLINE_CHUNK_SIZE, sizeof(MdInline));
+    if (!p->first_inline_chunk->inlines) {
+        free(p->first_inline_chunk);
+        free(p->first_node_chunk->nodes);
+        free(p->first_node_chunk);
+        free(p);
+        return NULL;
+    }
+    p->first_inline_chunk->capacity = INLINE_CHUNK_SIZE;
+    p->first_inline_chunk->used = 0;
+    p->first_inline_chunk->next = NULL;
+    p->current_inline_chunk = p->first_inline_chunk;
 
     // Create first text buffer chunk
     p->first_chunk = (TextBufferChunk*)malloc(sizeof(TextBufferChunk));
     if (!p->first_chunk) {
-        free(p->node_pool);
-        free(p->inline_pool);
+        free(p->first_inline_chunk->inlines);
+        free(p->first_inline_chunk);
+        free(p->first_node_chunk->nodes);
+        free(p->first_node_chunk);
         free(p);
         return NULL;
     }
     p->first_chunk->data = (char*)malloc(TEXT_CHUNK_SIZE);
     if (!p->first_chunk->data) {
         free(p->first_chunk);
-        free(p->node_pool);
-        free(p->inline_pool);
+        free(p->first_inline_chunk->inlines);
+        free(p->first_inline_chunk);
+        free(p->first_node_chunk->nodes);
+        free(p->first_node_chunk);
         free(p);
         return NULL;
     }
@@ -105,21 +153,6 @@ static parser_state_t* parser_create(const char* input, size_t length) {
     p->first_chunk->next = NULL;
     p->current_chunk = p->first_chunk;
 
-    if (!p->node_pool || !p->inline_pool) {
-        // Free chunk chain
-        TextBufferChunk* chunk = p->first_chunk;
-        while (chunk) {
-            TextBufferChunk* next = chunk->next;
-            free(chunk->data);
-            free(chunk);
-            chunk = next;
-        }
-        free(p->node_pool);
-        free(p->inline_pool);
-        free(p);
-        return NULL;
-    }
-
     return p;
 }
 
@@ -127,48 +160,86 @@ static void parser_destroy(parser_state_t* p) {
     if (!p) return;
 
     // Free all text buffer chunks
-    TextBufferChunk* chunk = p->first_chunk;
-    while (chunk) {
-        TextBufferChunk* next = chunk->next;
-        free(chunk->data);
-        free(chunk);
-        chunk = next;
+    TextBufferChunk* text_chunk = p->first_chunk;
+    while (text_chunk) {
+        TextBufferChunk* next = text_chunk->next;
+        free(text_chunk->data);
+        free(text_chunk);
+        text_chunk = next;
     }
 
-    free(p->node_pool);
-    free(p->inline_pool);
+    // Free all node chunks
+    NodeChunk* node_chunk = p->first_node_chunk;
+    while (node_chunk) {
+        NodeChunk* next = node_chunk->next;
+        free(node_chunk->nodes);
+        free(node_chunk);
+        node_chunk = next;
+    }
+
+    // Free all inline chunks
+    InlineChunk* inline_chunk = p->first_inline_chunk;
+    while (inline_chunk) {
+        InlineChunk* next = inline_chunk->next;
+        free(inline_chunk->inlines);
+        free(inline_chunk);
+        inline_chunk = next;
+    }
+
     free(p);
 }
 
 static MdNode* alloc_node(parser_state_t* p, MdBlockType type) {
-    if (p->node_pool_used >= p->node_pool_size) {
-        // Expand pool
-        size_t new_size = p->node_pool_size * 2;
-        MdNode* new_pool = (MdNode*)realloc(p->node_pool, new_size * sizeof(MdNode));
-        if (!new_pool) return NULL;
-        memset(new_pool + p->node_pool_size, 0, (new_size - p->node_pool_size) * sizeof(MdNode));
-        p->node_pool = new_pool;
-        p->node_pool_size = new_size;
+    // Check if current chunk has space
+    if (p->current_node_chunk->used >= p->current_node_chunk->capacity) {
+        // Current chunk full - allocate new chunk
+        NodeChunk* new_chunk = (NodeChunk*)malloc(sizeof(NodeChunk));
+        if (!new_chunk) return NULL;
+
+        new_chunk->nodes = (MdNode*)calloc(NODE_CHUNK_SIZE, sizeof(MdNode));
+        if (!new_chunk->nodes) {
+            free(new_chunk);
+            return NULL;
+        }
+        new_chunk->capacity = NODE_CHUNK_SIZE;
+        new_chunk->used = 0;
+        new_chunk->next = NULL;
+
+        // Link to chain
+        p->current_node_chunk->next = new_chunk;
+        p->current_node_chunk = new_chunk;
     }
 
-    MdNode* node = &p->node_pool[p->node_pool_used++];
+    // Allocate from current chunk (NEVER MOVES - pointer remains valid!)
+    MdNode* node = &p->current_node_chunk->nodes[p->current_node_chunk->used++];
     memset(node, 0, sizeof(MdNode));
     node->type = type;
     return node;
 }
 
 static MdInline* alloc_inline(parser_state_t* p, MdInlineType type) {
-    if (p->inline_pool_used >= p->inline_pool_size) {
-        // Expand pool
-        size_t new_size = p->inline_pool_size * 2;
-        MdInline* new_pool = (MdInline*)realloc(p->inline_pool, new_size * sizeof(MdInline));
-        if (!new_pool) return NULL;
-        memset(new_pool + p->inline_pool_size, 0, (new_size - p->inline_pool_size) * sizeof(MdInline));
-        p->inline_pool = new_pool;
-        p->inline_pool_size = new_size;
+    // Check if current chunk has space
+    if (p->current_inline_chunk->used >= p->current_inline_chunk->capacity) {
+        // Current chunk full - allocate new chunk
+        InlineChunk* new_chunk = (InlineChunk*)malloc(sizeof(InlineChunk));
+        if (!new_chunk) return NULL;
+
+        new_chunk->inlines = (MdInline*)calloc(INLINE_CHUNK_SIZE, sizeof(MdInline));
+        if (!new_chunk->inlines) {
+            free(new_chunk);
+            return NULL;
+        }
+        new_chunk->capacity = INLINE_CHUNK_SIZE;
+        new_chunk->used = 0;
+        new_chunk->next = NULL;
+
+        // Link to chain
+        p->current_inline_chunk->next = new_chunk;
+        p->current_inline_chunk = new_chunk;
     }
 
-    MdInline* inl = &p->inline_pool[p->inline_pool_used++];
+    // Allocate from current chunk (NEVER MOVES - pointer remains valid!)
+    MdInline* inl = &p->current_inline_chunk->inlines[p->current_inline_chunk->used++];
     memset(inl, 0, sizeof(MdInline));
     inl->type = type;
     return inl;
@@ -1126,18 +1197,23 @@ bool ir_markdown_feature_supported(const char* feature_name) {
 
 // Cleanup function for freeing AST memory
 void ir_markdown_free_ast(MdNode* root) {
-    // The nodes are allocated from pools, so we clean up the parser state
+    (void)root; // Unused, kept for API compatibility
+
+    // The nodes are allocated from chunk pools, so we clean up the parser state
     if (g_parser) {
-        // Free any alignment arrays in table nodes
-        if (g_parser->node_pool) {
-            for (size_t i = 0; i < g_parser->node_pool_used; i++) {
-                MdNode* node = &g_parser->node_pool[i];
+        // Free any alignment arrays in table nodes (iterate through chunks)
+        NodeChunk* chunk = g_parser->first_node_chunk;
+        while (chunk) {
+            for (size_t i = 0; i < chunk->used; i++) {
+                MdNode* node = &chunk->nodes[i];
                 if (node->type == MD_BLOCK_TABLE && node->data.table.alignments) {
                     free(node->data.table.alignments);
                     node->data.table.alignments = NULL;
                 }
             }
+            chunk = chunk->next;
         }
+
         parser_destroy(g_parser);
         g_parser = NULL;
     }

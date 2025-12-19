@@ -51,7 +51,11 @@ VERBOSE=false
 PARALLEL=false
 MAX_JOBS=4
 SPECIFIC_EXAMPLE=""
-LANG="nim"  # Default language
+LANG=""  # Empty = all languages
+ALL_LANGS=false
+
+# All supported languages
+SUPPORTED_LANGS=("nim" "c" "tsx" "lua" "html" "markdown")
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -63,11 +67,13 @@ while [[ $# -gt 0 ]]; do
     --jobs=*) MAX_JOBS="${1#*=}"; PARALLEL=true; shift ;;
     -j) PARALLEL=true; MAX_JOBS="$2"; shift 2 ;;
     --lang=*) LANG="${1#*=}"; shift ;;
+    --all) ALL_LANGS=true; shift ;;
     -h|--help)
-      echo "Usage: $0 [example_name] [--lang=c|nim|tsx] [--validate] [--diff] [--clean] [--verbose] [--parallel] [-j N]"
+      echo "Usage: $0 [example_name] [--lang=LANG|--all] [--validate] [--diff] [--clean] [--verbose] [--parallel] [-j N]"
       echo ""
       echo "Options:"
-      echo "  --lang=LANG   Target language (c, nim, tsx). Default: nim"
+      echo "  --lang=LANG   Target language (c, nim, tsx, lua, html, markdown). Default: all"
+      echo "  --all         Generate for all languages (default behavior)"
       echo "  --validate    Validate round-trip transpilation"
       echo "  --diff        Show detailed diffs for mismatches"
       echo "  --clean       Remove all generated files"
@@ -81,13 +87,32 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Set output directory based on language
-case "$LANG" in
-  nim) OUTPUT_DIR="$OUTPUT_NIM_DIR"; EXT=".nim" ;;
-  tsx|jsx) OUTPUT_DIR="$OUTPUT_TSX_DIR"; EXT=".tsx" ;;
-  c) OUTPUT_DIR="$OUTPUT_C_DIR"; EXT=".c" ;;
-  *) echo "Unknown language: $LANG"; exit 1 ;;
-esac
+# If no language specified, use all
+if [ -z "$LANG" ] || [ "$ALL_LANGS" = true ]; then
+  LANGS=("${SUPPORTED_LANGS[@]}")
+else
+  # Validate language
+  if [[ ! " ${SUPPORTED_LANGS[@]} " =~ " ${LANG} " ]]; then
+    echo -e "${RED}Error: Unknown language '$LANG'${NC}"
+    echo "Supported: ${SUPPORTED_LANGS[*]}"
+    exit 1
+  fi
+  LANGS=("$LANG")
+fi
+
+# Get output dir and extension for a language
+get_output_info() {
+  local lang="$1"
+  case "$lang" in
+    nim) echo "$OUTPUT_NIM_DIR:.nim" ;;
+    tsx|jsx) echo "$OUTPUT_TSX_DIR:.tsx" ;;
+    c) echo "$OUTPUT_C_DIR:.c" ;;
+    lua) echo "$PROJECT_DIR/examples/lua:.lua" ;;
+    html) echo "$PROJECT_DIR/examples/html:.html" ;;
+    markdown|md) echo "$PROJECT_DIR/examples/md:.md" ;;
+    *) echo ":"; return 1 ;;
+  esac
+}
 
 # Clean mode
 if [ "$CLEAN" = true ]; then

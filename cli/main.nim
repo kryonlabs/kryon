@@ -355,6 +355,7 @@ proc handleConfigCommand*(args: seq[string]) =
 proc handleBuildCommand*(args: seq[string]) =
   ## Handle 'kryon build' command
   var targets: seq[string] = @[]
+  var sourceFile = ""
 
   # First, try to read targets from config
   try:
@@ -374,24 +375,46 @@ proc handleBuildCommand*(args: seq[string]) =
       elif arg.startsWith("--target="):
         targets = @[arg[9..^1]]
       elif not arg.startsWith("-"):
-        targets = @[arg]
+        # Non-option argument is the source file
+        sourceFile = arg
 
   # Default to linux if still empty
   if targets.len == 0:
     targets = @["linux"]
 
-  echo "Building Kryon project for targets: " & targets.join(", ")
+  # If source file is provided, build that specific file
+  if sourceFile != "":
+    if not fileExists(sourceFile):
+      echo "✗ Source file not found: " & sourceFile
+      quit(1)
 
-  try:
-    for target in targets:
-      echo "Building for " & target & "..."
-      buildForTarget(target)
-      echo "✓ " & target & " build complete"
-    echo ""
-    echo "Build artifacts available in build/"
-  except:
-    echo "✗ Build failed: " & getCurrentExceptionMsg()
-    quit(1)
+    echo "Building source file: " & sourceFile
+    echo "Targets: " & targets.join(", ")
+
+    try:
+      for target in targets:
+        echo "Building for " & target & "..."
+        buildWithIR(sourceFile, target)
+        echo "✓ " & target & " build complete"
+      echo ""
+      echo "Build artifacts available in build/"
+    except:
+      echo "✗ Build failed: " & getCurrentExceptionMsg()
+      quit(1)
+  else:
+    # Project-based build (auto-detect source file)
+    echo "Building Kryon project for targets: " & targets.join(", ")
+
+    try:
+      for target in targets:
+        echo "Building for " & target & "..."
+        buildForTarget(target)
+        echo "✓ " & target & " build complete"
+      echo ""
+      echo "Build artifacts available in build/"
+    except:
+      echo "✗ Build failed: " & getCurrentExceptionMsg()
+      quit(1)
 
 proc detectFileWithExtensions*(baseName: string): tuple[found: bool, path: string, ext: string] =
   ## Try to find a file with common Kryon frontend extensions
