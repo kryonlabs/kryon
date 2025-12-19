@@ -1,5 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ir_html_parser.h"
+#include "ir_html_to_ir.h"
+#include "ir_serialization.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -447,18 +449,81 @@ HtmlNode* ir_html_parse_file(const char* filepath) {
     return ast;
 }
 
-// Stub implementations (to be completed with HTML-to-IR conversion)
+// HTML to KIR JSON conversion
 char* ir_html_to_kir(const char* html, size_t length) {
-    // TODO: Implement after HTML-to-IR conversion is done
-    (void)html;
-    (void)length;
-    fprintf(stderr, "Error: ir_html_to_kir not yet implemented\n");
-    return NULL;
+    if (!html) return NULL;
+
+    // Step 1: Parse HTML to AST
+    HtmlNode* ast = ir_html_parse(html, length);
+    if (!ast) {
+        fprintf(stderr, "Error: Failed to parse HTML\n");
+        return NULL;
+    }
+
+    // Step 2: Convert AST to IR
+    IRComponent* root = ir_html_to_ir_convert(ast);
+    html_node_free(ast);  // Free AST after conversion
+
+    if (!root) {
+        fprintf(stderr, "Error: Failed to convert HTML to IR\n");
+        return NULL;
+    }
+
+    // Step 3: Serialize IR to JSON
+    char* json = ir_serialize_json_v2(root);
+    ir_destroy_component(root);  // Free IR after serialization
+
+    if (!json) {
+        fprintf(stderr, "Error: Failed to serialize IR to JSON\n");
+        return NULL;
+    }
+
+    return json;
 }
 
 char* ir_html_file_to_kir(const char* filepath) {
-    // TODO: Implement after HTML-to-IR conversion is done
-    (void)filepath;
-    fprintf(stderr, "Error: ir_html_file_to_kir not yet implemented\n");
-    return NULL;
+    if (!filepath) return NULL;
+
+    // Read HTML file
+    FILE* f = fopen(filepath, "r");
+    if (!f) {
+        fprintf(stderr, "Error: Cannot open file: %s\n", filepath);
+        return NULL;
+    }
+
+    // Get file size
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    if (size <= 0) {
+        fclose(f);
+        fprintf(stderr, "Error: Empty or invalid file: %s\n", filepath);
+        return NULL;
+    }
+
+    // Read content
+    char* html = (char*)malloc((size_t)size + 1);
+    if (!html) {
+        fclose(f);
+        fprintf(stderr, "Error: Memory allocation failed\n");
+        return NULL;
+    }
+
+    size_t bytes_read = fread(html, 1, (size_t)size, f);
+    fclose(f);
+
+    if ((long)bytes_read != size) {
+        free(html);
+        fprintf(stderr, "Error: Failed to read file: %s\n", filepath);
+        return NULL;
+    }
+
+    html[bytes_read] = '\0';
+
+    // Convert HTML to KIR
+    char* kir = ir_html_to_kir(html, bytes_read);
+    free(html);
+
+    return kir;
 }

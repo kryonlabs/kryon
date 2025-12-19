@@ -2238,9 +2238,11 @@ static void json_deserialize_layout(cJSON* obj, IRLayout* layout) {
 
 /**
  * Convert component type string to enum
+ * Made public for use by HTML parser
  */
-static IRComponentType ir_string_to_component_type(const char* str) {
+IRComponentType ir_string_to_component_type(const char* str) {
     if (!str) return IR_COMPONENT_CONTAINER;
+    // CamelCase variants (from .kir files)
     if (strcmp(str, "Container") == 0) return IR_COMPONENT_CONTAINER;
     if (strcmp(str, "Row") == 0) return IR_COMPONENT_ROW;
     if (strcmp(str, "Column") == 0) return IR_COMPONENT_COLUMN;
@@ -2258,6 +2260,24 @@ static IRComponentType ir_string_to_component_type(const char* str) {
     if (strcmp(str, "Tab") == 0) return IR_COMPONENT_TAB;
     if (strcmp(str, "TabContent") == 0) return IR_COMPONENT_TAB_CONTENT;
     if (strcmp(str, "TabPanel") == 0) return IR_COMPONENT_TAB_PANEL;
+    // UPPERCASE variants (from HTML transpiler data-ir-type attributes)
+    if (strcmp(str, "CONTAINER") == 0) return IR_COMPONENT_CONTAINER;
+    if (strcmp(str, "ROW") == 0) return IR_COMPONENT_ROW;
+    if (strcmp(str, "COLUMN") == 0) return IR_COMPONENT_COLUMN;
+    if (strcmp(str, "CENTER") == 0) return IR_COMPONENT_CENTER;
+    if (strcmp(str, "TEXT") == 0) return IR_COMPONENT_TEXT;
+    if (strcmp(str, "BUTTON") == 0) return IR_COMPONENT_BUTTON;
+    if (strcmp(str, "INPUT") == 0) return IR_COMPONENT_INPUT;
+    if (strcmp(str, "CHECKBOX") == 0) return IR_COMPONENT_CHECKBOX;
+    if (strcmp(str, "IMAGE") == 0) return IR_COMPONENT_IMAGE;
+    if (strcmp(str, "CANVAS") == 0) return IR_COMPONENT_CANVAS;
+    if (strcmp(str, "DROPDOWN") == 0) return IR_COMPONENT_DROPDOWN;
+    if (strcmp(str, "MARKDOWN") == 0) return IR_COMPONENT_MARKDOWN;
+    if (strcmp(str, "TAB_GROUP") == 0) return IR_COMPONENT_TAB_GROUP;
+    if (strcmp(str, "TAB_BAR") == 0) return IR_COMPONENT_TAB_BAR;
+    if (strcmp(str, "TAB") == 0) return IR_COMPONENT_TAB;
+    if (strcmp(str, "TAB_CONTENT") == 0) return IR_COMPONENT_TAB_CONTENT;
+    if (strcmp(str, "TAB_PANEL") == 0) return IR_COMPONENT_TAB_PANEL;
     // Table components
     if (strcmp(str, "Table") == 0) return IR_COMPONENT_TABLE;
     if (strcmp(str, "TableHead") == 0) return IR_COMPONENT_TABLE_HEAD;
