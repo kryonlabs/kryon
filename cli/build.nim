@@ -3,7 +3,7 @@
 ## Universal IR-based build system for different targets
 
 import os, strutils, json, times, sequtils, osproc, tables
-import config, tsx_parser, kry_parser, kry_to_kir, md_parser
+import config, tsx_parser, kry_parser, kry_to_kir, md_parser, html_transpiler
 
 # FFI bindings to C web backend
 type
@@ -284,7 +284,7 @@ proc buildForTarget*(target: string) =
 
   # Use the universal IR pipeline
   case target.toLowerAscii():
-    of "linux", "windows", "macos", "stm32f4", "web", "terminal":
+    of "linux", "windows", "macos", "stm32f4", "web", "terminal", "html":
       buildWithIR(sourceFile, target)
     else:
       raise newException(ValueError, "Unknown target: " & target)
@@ -809,6 +809,14 @@ proc renderIRToTarget*(kirFile: string, target: string) =
       # Generate web output from KIR
       echo "   🌐 Generating web files..."
       generateWebFromKir(kirFile, outputDir, cfg)
+
+    of "html":
+      # Generate standalone HTML from KIR (transpilation mode)
+      echo "   📄 Generating standalone HTML..."
+      let htmlOutputPath = outputDir / (projectName & ".html")
+      let opts = defaultTranspilationOptions()
+      transpileKirToHTMLFile(kirFile, htmlOutputPath, opts)
+      echo "   ✅ HTML file generated: " & htmlOutputPath
 
     of "linux":
       # Build desktop backend

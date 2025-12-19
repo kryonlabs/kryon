@@ -34,11 +34,10 @@ examples/*/nimcache/
 
 # Generated examples (regenerate with scripts/generate_examples.sh)
 # Only .kry files are source of truth
-examples/c/
-examples/nim/
-examples/lua/
-examples/js/
-examples/typescript/
+!examples/lua
+!examples/Makefile
+!examples/README.md
+examples/
 
 # Generated build artifacts
 build/generated/
