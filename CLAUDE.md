@@ -40,6 +40,44 @@ All frontends go through the same pipeline:
 
 The CLI uses `renderIRFile()` helper (cli/main.nim:128) for unified rendering across all paths.
 
+### HTML Transpilation and Roundtrip
+
+Kryon supports HTML as a first-class transpilation target with roundtrip validation:
+
+```
+.kir → HTML (transpilation) → .kir (roundtrip validation)
+```
+
+**HTML Parsing Pipeline**:
+- **Stage 1**: HTML → AST (tokenize tags, attributes, text)
+- **Stage 2**: AST → IR (map semantic tags to components, parse CSS)
+- **Stage 3**: IR → JSON (.kir format)
+
+**Key Features**:
+- Parse HTML back to KIR for roundtrip validation
+- Inline CSS parsing (colors, dimensions, spacing, typography)
+- Metadata preservation via `data-*` attributes
+- Semantic HTML tag mapping (h1-h6, ul/ol, table, etc.)
+- Roundtrip testing: `.kir → HTML → .kir` comparison
+
+**Implementation**:
+- `ir/ir_html_parser.c` - HTML tokenizer and parser
+- `ir/ir_html_to_ir.c` - AST to IR conversion
+- `ir/ir_css_parser.c` - Inline CSS parsing
+- `cli/html_parser.nim` - Nim FFI bindings
+- `scripts/test_html_roundtrip.sh` - Automated roundtrip testing
+
+**Usage**:
+```bash
+# Parse HTML to KIR
+kryon parse-html build/app.html
+
+# Roundtrip validation
+./scripts/test_html_roundtrip.sh build/app.kir
+```
+
+See [docs/HTML_TRANSPILATION.md](docs/HTML_TRANSPILATION.md) for complete documentation.
+
 ## Directory Structure
 
 ```
@@ -56,6 +94,9 @@ The CLI uses `renderIRFile()` helper (cli/main.nim:128) for unified rendering ac
   ir_markdown_parser.c    - Markdown parser (CommonMark + Mermaid)
   ir_markdown_to_ir.c     - Markdown AST to IR converter
   ir_flowchart_parser.c   - Mermaid flowchart parser
+  ir_html_parser.c        - HTML parser (tokenizer, AST builder)
+  ir_html_to_ir.c         - HTML AST to IR converter
+  ir_css_parser.c         - CSS parser for inline styles
   ir_core.h               - Core types and structures
   Makefile                - Builds libkryon_ir.a
 
@@ -110,6 +151,7 @@ The CLI uses `renderIRFile()` helper (cli/main.nim:128) for unified rendering ac
   kir_to_c.nim            - .kir to C code generator (transpiler)
   codegen.nim             - Nim/Lua code generation from .kir
   codegen_tsx.nim         - TSX/JSX code generation from .kir
+  html_parser.nim         - HTML to .kir parser (roundtrip support)
 
 /examples/kry/            - .kry example applications (SOURCE OF TRUTH)
   hello_world.kry         - Simple hello world
@@ -363,6 +405,10 @@ kryon validate app.kirb
 
 # Compare IR files
 kryon diff old.kir new.kir
+
+# HTML Transpilation
+kryon parse-html build/app.html     # Parse HTML to .kir (roundtrip)
+kryon parse-html build/app.html -o=/tmp/roundtrip.kir
 
 # Project management
 kryon new <name>                    # Create project (kryon.json)

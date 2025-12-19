@@ -2,6 +2,7 @@
 #include "ir_html_to_ir.h"
 #include "ir_builder.h"
 #include "ir_css_parser.h"
+#include "ir_serialization.h"  // For ir_string_to_component_type
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -87,12 +88,15 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
 
         case HTML_NODE_ELEMENT: {
             // Use data-ir-type if available (preserves original type)
+            IRComponentType type;
             if (node->data_ir_type) {
-                // TODO: Map data-ir-type string to IRComponentType enum
+                // Restore original component type from metadata
+                type = ir_string_to_component_type(node->data_ir_type);
+                printf("  [html→ir] Restored type from data-ir-type: %s → %d\n", node->data_ir_type, type);
+            } else {
+                // Fall back to HTML tag mapping
+                type = ir_html_tag_to_component_type(node->tag_name);
             }
-
-            // Map HTML tag to IR component type
-            IRComponentType type = ir_html_tag_to_component_type(node->tag_name);
 
             switch (type) {
                 case IR_COMPONENT_HEADING: {
@@ -232,9 +236,13 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
                     break;
                 }
 
-                case IR_COMPONENT_CONTAINER:
                 default:
-                    component = ir_container(node->tag_name);
+                    // Use the type from data-ir-type (or tag mapping) to create component
+                    // This handles Column, Row, Button, Input, and other common types
+                    component = ir_create_component(type);
+                    if (component && node->tag_name) {
+                        component->tag = strdup(node->tag_name);
+                    }
                     break;
             }
 

@@ -37,6 +37,21 @@ proc html_generator_destroy(generator: HTMLGenerator) {.
 proc html_generator_generate(generator: HTMLGenerator, root: IRComponent): cstring {.
   importc, dynlib: libWebPath.}
 
+# CSS generation
+type CSSGenerator = ptr object
+
+proc css_generator_create(): CSSGenerator {.
+  importc, dynlib: libWebPath.}
+
+proc css_generator_destroy(generator: CSSGenerator) {.
+  importc, dynlib: libWebPath.}
+
+proc css_generator_generate(generator: CSSGenerator, root: IRComponent): cstring {.
+  importc, dynlib: libWebPath.}
+
+proc css_generator_write_to_file(generator: CSSGenerator, root: IRComponent, filename: cstring): bool {.
+  importc, dynlib: libWebPath.}
+
 # Forward declarations
 proc buildLinuxTarget*()
 proc buildSTM32Target*()
@@ -1114,5 +1129,20 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
   let htmlPath = outputDir / "index.html"
   writeFile(htmlPath, htmlContent)
   echo "   ✅ Generated: " & htmlPath
+
+  # Generate CSS file
+  echo "   🎨 Generating CSS file..."
+  let cssGenerator = css_generator_create()
+  if cssGenerator == nil:
+    raise newException(IOError, "Failed to create CSS generator")
+
+  defer:
+    css_generator_destroy(cssGenerator)
+
+  let cssPath = (outputDir / "kryon.css").cstring
+  if not css_generator_write_to_file(cssGenerator, component, cssPath):
+    raise newException(IOError, "Failed to generate CSS file")
+
+  echo "   ✅ Generated: " & outputDir / "kryon.css"
   echo "   📁 Web files in: " & outputDir & "/"
   echo "   🌐 Open " & htmlPath & " in a browser"

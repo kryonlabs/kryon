@@ -144,6 +144,20 @@ static void append_dimension_string(char* buffer, size_t size, IRDimension dim) 
     }
 }
 
+// Convert IRAlignment to CSS flexbox value
+static const char* alignment_to_css_value(IRAlignment alignment) {
+    switch (alignment) {
+        case IR_ALIGN_START: return "flex-start";
+        case IR_ALIGN_CENTER: return "center";
+        case IR_ALIGN_END: return "flex-end";
+        case IR_ALIGN_SPACE_BETWEEN: return "space-between";
+        case IR_ALIGN_SPACE_AROUND: return "space-around";
+        case IR_ALIGN_SPACE_EVENLY: return "space-evenly";
+        case IR_ALIGN_STRETCH: return "stretch";
+        default: return "flex-start";
+    }
+}
+
 // Generate inline style attribute for transpilation mode
 static void generate_inline_styles(HTMLGenerator* generator, IRComponent* component) {
     if (!component || !component->style) return;
@@ -241,6 +255,66 @@ static void generate_inline_styles(HTMLGenerator* generator, IRComponent* compon
     if (align_str) {
         snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
                 "text-align: %s; ", align_str);
+    }
+
+    // Flexbox layout properties
+    if (component->layout) {
+        IRFlexbox* flex = &component->layout->flex;
+
+        // Add display:flex if component has children or explicit flex properties
+        if (component->child_count > 0 || flex->gap > 0 || flex->wrap) {
+            snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                    "display: flex; ");
+
+            // Flex direction (0=column, 1=row)
+            if (flex->direction == 1) {
+                snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                        "flex-direction: row; ");
+            } else {
+                snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                        "flex-direction: column; ");
+            }
+
+            // Justify content (main axis alignment)
+            if (flex->justify_content != IR_ALIGN_START) {
+                const char* justify = alignment_to_css_value(flex->justify_content);
+                if (justify) {
+                    snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                            "justify-content: %s; ", justify);
+                }
+            }
+
+            // Align items (cross axis alignment)
+            if (flex->cross_axis != IR_ALIGN_STRETCH) {
+                const char* align = alignment_to_css_value(flex->cross_axis);
+                if (align) {
+                    snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                            "align-items: %s; ", align);
+                }
+            }
+
+            // Gap
+            if (flex->gap > 0) {
+                snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                        "gap: %upx; ", flex->gap);
+            }
+
+            // Flex wrap
+            if (flex->wrap) {
+                snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                        "flex-wrap: wrap; ");
+            }
+
+            // Flex grow/shrink (for child flex items)
+            if (flex->grow > 0) {
+                snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                        "flex-grow: %u; ", flex->grow);
+            }
+            if (flex->shrink > 0) {
+                snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
+                        "flex-shrink: %u; ", flex->shrink);
+            }
+        }
     }
 
     // Only write style attribute if we have styles

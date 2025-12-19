@@ -129,6 +129,7 @@ kryon run app.kir                        # Run pre-compiled IR
 # Parse to .kir (JSON IR)
 kryon parse hello.kry                    # .kry to .kir
 kryon parse docs.md                      # .md to .kir
+kryon parse-html build/app.html          # HTML to .kir (roundtrip)
 
 # Inspect IR files
 kryon tree app.kir                       # Show component tree
@@ -163,6 +164,7 @@ KRYON_RENDERER=terminal kryon run app.kry
 - ✅ Multiple frontends (.kry, .nim, .md)
 - ✅ Declarative DSL syntax
 - ✅ Multiple rendering backends (SDL3, terminal, web)
+- ✅ HTML transpilation with roundtrip validation
 - ✅ Full CommonMark markdown support
 - ✅ Native Mermaid flowchart integration
 - ✅ Event handlers (onClick, onChange, onSubmit, etc.)

@@ -46,6 +46,9 @@ bool ir_write_json_v2_file(IRComponent* root, const char* filename);
 char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* manifest);
 bool ir_write_json_v2_with_manifest_file(IRComponent* root, IRReactiveManifest* manifest, const char* filename);
 
+// Component type conversion (for HTML parser and other tools)
+IRComponentType ir_string_to_component_type(const char* str);
+
 // Forward declaration for logic block (defined in ir_logic.h)
 struct IRLogicBlock;
 
