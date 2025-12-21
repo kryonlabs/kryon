@@ -173,15 +173,22 @@ LayoutRect calculate_component_layout(IRComponent* component, LayoutRect parent_
         rect.y = parent_rect.y;
     }
 
-    // For TEXT, BUTTON, and TAB components with AUTO dimensions, start with 0 instead of parent dimensions
+    // For TEXT, BUTTON, TAB, and LINK components with AUTO dimensions, start with 0 instead of parent dimensions
     // This allows get_child_size() to detect and measure them properly
     // CRITICAL: Buttons in a ROW must NOT default to parent width, or flex_grow won't work correctly!
-    if (component->type == IR_COMPONENT_TEXT || component->type == IR_COMPONENT_BUTTON || component->type == IR_COMPONENT_TAB) {
+    if (component->type == IR_COMPONENT_TEXT || component->type == IR_COMPONENT_BUTTON ||
+        component->type == IR_COMPONENT_TAB || component->type == IR_COMPONENT_LINK) {
         rect.width = 0;
         rect.height = 0;
     } else {
-        rect.width = parent_rect.width;
-        rect.height = parent_rect.height;
+        // Check if component has explicit dimensions or should auto-size
+        bool has_explicit_width = component->style && component->style->width.type != IR_DIMENSION_AUTO;
+        bool has_explicit_height = component->style && component->style->height.type != IR_DIMENSION_AUTO;
+
+        // Default to parent dimensions, BUT use 0 for auto-sized dimensions
+        // This allows auto-sized Row/Column to measure their content properly
+        rect.width = has_explicit_width ? parent_rect.width : 0;
+        rect.height = has_explicit_height ? parent_rect.height : 0;
     }
 
     // Apply component-specific dimensions
@@ -323,6 +330,13 @@ LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect) {
         }
     }
 
+    // Measure LINK components using get_child_dimension (which measures text via measure_text_dimensions)
+    if (child->type == IR_COMPONENT_LINK) {
+        // ALWAYS measure link text dimensions for proper hit testing
+        layout.width = get_child_dimension(child, parent_rect, false);
+        layout.height = get_child_dimension(child, parent_rect, true);
+    }
+
     // For absolutely positioned components, preserve the x/y coordinates from calculate_component_layout
     // For relative positioned components, return position 0 (will be set in main layout loop)
     bool is_absolute = child->style && child->style->position_mode == IR_POSITION_ABSOLUTE;
@@ -456,6 +470,33 @@ float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_he
 #endif
         // Fallback for tabs
         return is_height ? 40.0f : 100.0f;
+    }
+
+    // Link auto-size: measure text content (like text, but inline)
+    if (child->type == IR_COMPONENT_LINK) {
+#ifdef ENABLE_SDL3
+        float text_width = 0.0f, text_height = 0.0f;
+        measure_text_dimensions(child, parent_rect.width, &text_width, &text_height);
+
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            printf("    🔗 LINK measurement result: width=%.1f, height=%.1f\n", text_width, text_height);
+        }
+
+        if (is_height && text_height > 0.0f) {
+            return text_height;
+        } else if (!is_height && text_width > 0.0f) {
+            return text_width;
+        }
+#endif
+        // Fallback if measurement failed
+        if (is_height) {
+            float font_size = 16.0f;
+            if (child->style && child->style->font.size > 0) {
+                font_size = child->style->font.size;
+            }
+            return font_size * 1.2f;
+        }
+        return 0.0f;  // Width fallback
     }
 
     // Button auto-size: measure text content + padding

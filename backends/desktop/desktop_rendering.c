@@ -2151,14 +2151,29 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
         }
 
         case IR_COMPONENT_LINK: {
-            // Render link as underlined text
-            IRLinkData* data = (IRLinkData*)component->custom_data;
-            if (data) {
-                // Render link text (children contain the actual text)
-                // Draw underline
-                float text_height = 16; // Approximate
-                SDL_FRect underline = {rect.x, rect.y + text_height, rect.width, 1};
-                SDL_SetRenderDrawColor(renderer->renderer, 0, 100, 200, 255);
+            // Render link text with underline
+            TTF_Font* font = desktop_ir_resolve_font(renderer, component, component->style && component->style->font.size > 0 ? component->style->font.size : 16.0f);
+            if (component->text_content && font) {
+                SDL_Color text_color = component->style ?
+                    ir_color_to_sdl(component->style->font.color) :
+                    (SDL_Color){139, 148, 158, 255};  // Default link color
+
+                // Apply component opacity to text
+                if (component->style) {
+                    float opacity = component->style->opacity * inherited_opacity;
+                    text_color.a = (uint8_t)(text_color.a * opacity);
+                }
+
+                // Render link text
+                render_text_with_shadow(renderer->renderer, font,
+                                       component->text_content, text_color, component,
+                                       rect.x, rect.y);
+
+                // Draw underline below text
+                int text_width = 0, text_height = 0;
+                TTF_GetStringSize(font, component->text_content, 0, &text_width, &text_height);
+                SDL_FRect underline = {rect.x, rect.y + text_height, (float)text_width, 1};
+                SDL_SetRenderDrawColor(renderer->renderer, text_color.r, text_color.g, text_color.b, text_color.a);
                 SDL_RenderFillRect(renderer->renderer, &underline);
             }
             break;
@@ -2927,40 +2942,19 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     rect_for_child.width = needs_full_width ? child_rect.width : child_layout.width;
                 }
                 if (is_auto_height) {
-                    // For ROW: only needs measured content height, even with cross-axis alignment
-                    // For COLUMN: needs parent's full height if it has cross-axis alignment
-                    bool is_column_with_cross_align = (child->type == IR_COMPONENT_COLUMN) &&
-                                                      child->layout &&
-                                                      child->layout->flex.cross_axis != IR_ALIGNMENT_START;
+                    // For auto-height children, ALWAYS use measured content height
+                    // Cross-axis alignment doesn't require full parent height:
+                    // - For Column: cross-axis is HORIZONTAL (width), not vertical
+                    // - For Row: cross-axis is VERTICAL (height), but auto-height means use content height
 
-                    if (is_column_with_cross_align) {
-                        // Column needs full height to horizontally center its children
-                        rect_for_child.height = child_rect.height;
-                    } else {
-                        // For auto-height children in a Column with CENTER/END alignment,
-                        // use their measured content height for positioning
-                        bool parent_is_centering = component->type == IR_COMPONENT_COLUMN &&
-                                                  component->layout &&
-                                                  (component->layout->flex.justify_content == IR_ALIGNMENT_CENTER ||
-                                                   component->layout->flex.justify_content == IR_ALIGNMENT_END);
-                        if (parent_is_centering) {
-                            // Measure the actual content height of the child
-                            float content_height = get_child_dimension(child, child_rect, true);
-                            if (content_height > 0) {
-                                rect_for_child.height = content_height;
-                            } else {
-                                // Fallback to measured height if available
-                                rect_for_child.height = child_layout.height > 0 ? child_layout.height : child_rect.height;
-                            }
-                        } else {
-                            // Use measured content height first; fall back to computed/measured defaults
-                            float content_height = get_child_dimension(child, child_rect, true);
-                            if (content_height > 0) {
-                                rect_for_child.height = content_height;
-                            } else {
-                                rect_for_child.height = child_layout.height > 0 ? child_layout.height : child_rect.height;
-                            }
-                        }
+                    // Use child_layout.height (measured from get_child_size) first
+                    // This is the sum of children's heights for Columns, or max child height for Rows
+                    rect_for_child.height = child_layout.height;
+
+                    // If child_layout.height is 0 (measurement failed), fall back to get_child_dimension
+                    if (rect_for_child.height <= 0) {
+                        float content_height = get_child_dimension(child, child_rect, true);
+                        rect_for_child.height = content_height > 0 ? content_height : child_rect.height;
                     }
                 }
 

@@ -47,6 +47,7 @@ endif
 
 # Source directories
 CLI_SRC = cli/main.nim
+CLI_DEPS = $(wildcard cli/*.nim)
 LIB_SRC = bindings/nim/kryon_dsl
 
 # Build targets
@@ -69,7 +70,7 @@ all: build-cli build-lib
 # Build CLI tool (development version)
 build-cli: $(CLI_BIN)
 
-$(CLI_BIN): $(CLI_SRC)
+$(CLI_BIN): $(CLI_DEPS)
 	@echo "Building Kryon CLI (development)..."
 	@mkdir -p $(BUILD_DIR)
 	@# Backup nim.cfg if it exists and build without C dependencies
@@ -83,7 +84,7 @@ $(CLI_BIN): $(CLI_SRC)
 # Build static CLI with all backends bundled
 build-static: $(STATIC_BIN)
 
-$(STATIC_BIN): $(CLI_SRC)
+$(STATIC_BIN): $(CLI_DEPS)
 	@echo "Building Kryon CLI (static with all backends)..."
 	@mkdir -p $(BUILD_DIR)
 	$(NIM) c $(NIMFLAGS) $(STATIC_FLAGS) -o:$(STATIC_BIN) $(CLI_SRC)
@@ -91,7 +92,7 @@ $(STATIC_BIN): $(CLI_SRC)
 # Build dynamic CLI using system libraries
 build-dynamic: $(DYNAMIC_BIN)
 
-$(DYNAMIC_BIN): $(CLI_SRC)
+$(DYNAMIC_BIN): $(CLI_DEPS)
 	@echo "Building Kryon CLI (dynamic linking)..."
 	@mkdir -p $(BUILD_DIR)
 	@# Build without C dependencies

@@ -1,4 +1,4 @@
-import json, strformat, os, strutils, tables, sets
+import json, strformat, os, strutils, tables, sets, re
 
 # Forward declarations
 proc generateNimExpression*(expr: JsonNode): string
@@ -320,44 +320,153 @@ end"""
   if level == 0:
     result.add "\n"
 
-proc generateLuaComponentV3(node: JsonNode, indentLevel: int = 0): string =
-  ## Recursively generate Lua code for a component and its children (v3.0 format)
+proc generateLuaComponentV3Internal(node: JsonNode, indentLevel: int, customComponents: HashSet[string]): string =
+  ## Internal version that supports custom components
 
   # Get component type
   let componentType = node{"type"}.getStr("Container")
-  let luaDslName = mapKirTypeToLuaDsl(componentType)
 
-  # Collect properties
-  var props: seq[string] = @[]
-  let baseIndent = "  ".repeat(indentLevel + 1)
+  # Check if this is a custom component
+  if componentType in customComponents:
+    # Generate function call: Counter(5) or Counter(initialValue = 10)
+    var args: seq[string] = @[]
+    for key, val in node.pairs:
+      if key notin ["id", "type", "children", "events"]:
+        args.add toLuaValue(val)
 
-  for key, val in node.pairs:
-    if shouldIncludePropertyV3(key):
-      let luaVal = toLuaValue(val)
-      props.add baseIndent & &"{key} = {luaVal}"
+    result = &"{componentType}("
+    if args.len > 0:
+      result.add args.join(", ")
+    result.add ")"
+  else:
+    # Generate built-in UI component (original logic)
+    let luaDslName = mapKirTypeToLuaDsl(componentType)
 
-  # Handle children recursively
-  if node.hasKey("children") and node["children"].len > 0:
-    var childrenCode = baseIndent & "children = {\n"
-    let children = node["children"]
-    for i in 0 ..< children.len:
-      let child = children[i]
-      childrenCode.add "  ".repeat(indentLevel + 2)
-      childrenCode.add generateLuaComponentV3(child, indentLevel + 2)
-      if i < children.len - 1:
-        childrenCode.add ","
-      childrenCode.add "\n"
-    childrenCode.add baseIndent & "}"
-    props.add childrenCode
+    # Collect properties
+    var props: seq[string] = @[]
+    let baseIndent = "  ".repeat(indentLevel + 1)
 
-  # Build component constructor
-  result = &"{luaDslName}({{\n"
-  for i, prop in props:
-    result.add prop
-    if i < props.len - 1:
-      result.add ","
-    result.add "\n"
-  result.add "  ".repeat(indentLevel) & "})"
+    # Check if there's a text_expression field
+    let hasTextExpression = node.hasKey("text_expression")
+
+    for key, val in node.pairs:
+      # Skip text_expression field (we handle it separately)
+      if key == "text_expression":
+        continue
+
+      if shouldIncludePropertyV3(key):
+        # Special handling for text field when text_expression exists
+        if key == "text" and hasTextExpression:
+          let textExpr = node["text_expression"].getStr()
+          # Convert {{value}} to tostring(value)
+          var luaExpr = textExpr.replace("{{", "tostring(").replace("}}", ")")
+          props.add baseIndent & &"{key} = {luaExpr}"
+        else:
+          let luaVal = toLuaValue(val)
+          props.add baseIndent & &"{key} = {luaVal}"
+
+    # Handle children recursively - PASS customComponents for nested support
+    if node.hasKey("children") and node["children"].len > 0:
+      var childrenCode = baseIndent & "children = {\n"
+      let children = node["children"]
+      for i in 0 ..< children.len:
+        let child = children[i]
+        childrenCode.add "  ".repeat(indentLevel + 2)
+        childrenCode.add generateLuaComponentV3Internal(child, indentLevel + 2, customComponents)
+        if i < children.len - 1:
+          childrenCode.add ","
+        childrenCode.add "\n"
+      childrenCode.add baseIndent & "}"
+      props.add childrenCode
+
+    # Build component constructor
+    result = &"{luaDslName}({{\n"
+    for i, prop in props:
+      result.add prop
+      if i < props.len - 1:
+        result.add ","
+      result.add "\n"
+    result.add "  ".repeat(indentLevel) & "})"
+
+proc generateLuaComponentV3(node: JsonNode, indentLevel: int = 0): string =
+  ## Public wrapper for backward compatibility
+  return generateLuaComponentV3Internal(node, indentLevel, initHashSet[string]())
+
+proc generateLuaComponentFunction(compDef: JsonNode, logic: JsonNode, customComponents: HashSet[string]): string =
+  ## Generate a Lua function definition for a custom component
+  let name = compDef["name"].getStr()
+  let props = compDef{"props"}
+  let state = compDef{"state"}
+  let tmpl = compDef{"template"}
+
+  # 1. Function signature with props
+  var paramList: seq[string] = @[]
+  if not props.isNil and props.kind == JArray:
+    for prop in props:
+      paramList.add prop["name"].getStr()
+
+  result = &"local function {name}("
+  if paramList.len > 0:
+    result.add paramList.join(", ")
+  result.add ")\n"
+
+  # 2. State variables with initial values from props
+  if not state.isNil and state.kind == JArray:
+    for stateVar in state:
+      let sName = stateVar["name"].getStr()
+      let initial = stateVar{"initial"}.getStr("0")
+
+      # Parse prop reference: {"var":"initialValue"} -> initialValue
+      var initExpr = initial
+      if initial.startsWith("{\"var\":"):
+        initExpr = initial.replace("{\"var\":\"", "").replace("\"}", "")
+
+      result.add &"  local {sName} = {initExpr}\n"
+
+  # 3. Event handlers from logic block
+  if not logic.isNil and logic.hasKey("functions"):
+    for fnName, fnDef in logic["functions"].pairs:
+      if fnDef.hasKey("universal"):
+        let universal = fnDef["universal"]
+        if universal.hasKey("statements"):
+          # Check if this handler uses component state
+          var usesComponentState = false
+          for stmt in universal["statements"]:
+            if stmt.hasKey("target") and not state.isNil:
+              for stateVar in state:
+                if stmt["target"].getStr() == stateVar["name"].getStr():
+                  usesComponentState = true
+                  break
+
+          if usesComponentState:
+            let handlerName = fnName.split("_")[^2] & fnName.split("_")[^1]  # handler_3_click -> 3click
+            result.add &"\n  local function handler{handlerName}()\n"
+
+            for stmt in universal["statements"]:
+              let op = stmt{"op"}.getStr("")
+              if op == "assign":
+                let target = stmt["target"].getStr()
+                let expr = stmt["expr"]
+                let exprOp = expr{"op"}.getStr("")
+
+                if exprOp == "sub":
+                  let right = expr{"right"}.getInt(1)
+                  result.add &"    {target} = {target} - {right}\n"
+                elif exprOp == "add":
+                  let right = expr{"right"}.getInt(1)
+                  result.add &"    {target} = {target} + {right}\n"
+
+            result.add "  end\n"
+
+  # 4. Return template tree - use Internal version for nested custom component support
+  result.add "\n  return "
+  if not tmpl.isNil:
+    result.add generateLuaComponentV3Internal(tmpl, 2, customComponents)
+  else:
+    result.add "UI.Row({})"
+  result.add "\n"
+
+  result.add "end\n"
 
 proc generateLuaFromKir*(kirPath: string): string =
   ## Generate Lua code from .kir file (v2.0 and v2.1 support)
@@ -1293,23 +1402,67 @@ proc generateLuaFromKirV3*(kirPath: string): string =
   luaCode.add "local Reactive = require(\"kryon.reactive\")\n"
   luaCode.add "local UI = require(\"kryon.dsl\")\n\n"
 
-  # Generate reactive variables from manifest
+  # Build set of custom component names
+  var customComponents: HashSet[string]
+  if kirJson.hasKey("component_definitions"):
+    for def in kirJson["component_definitions"]:
+      customComponents.incl(def["name"].getStr())
+
+  # Generate reactive variables from manifest (skip component-scoped variables)
   if kirJson.hasKey("reactive_manifest"):
     let manifest = kirJson["reactive_manifest"]
     if manifest.hasKey("variables") and manifest["variables"].len > 0:
-      luaCode.add "-- Reactive State\n"
+      var hasGlobalVars = false
       for varNode in manifest["variables"]:
-        let varName = varNode["name"].getStr().split(":")[^1]
-        let initialValue = varNode{"initial_value"}.getStr("0")
-        luaCode.add &"local {varName} = Reactive.state({initialValue})\n"
+        let scope = varNode{"scope"}.getStr("global")
+        if scope != "component":
+          if not hasGlobalVars:
+            luaCode.add "-- Reactive State\n"
+            hasGlobalVars = true
+          let varName = varNode["name"].getStr().split(":")[^1]
+          let initialValue = varNode{"initial_value"}.getStr("0")
+          luaCode.add &"local {varName} = Reactive.state({initialValue})\n"
+      if hasGlobalVars:
+        luaCode.add "\n"
+
+  # Generate component definitions and track component-scoped handlers
+  var componentHandlers: HashSet[string]
+  if kirJson.hasKey("component_definitions"):
+    luaCode.add "-- Component Definitions\n"
+    let logic = kirJson{"logic"}
+
+    # Build set of component state variables to identify component handlers
+    for compDef in kirJson["component_definitions"]:
+      let state = compDef{"state"}
+      if not state.isNil and state.kind == JArray:
+        for stateVar in state:
+          let sName = stateVar["name"].getStr()
+          # Find handlers that use this state variable
+          if not logic.isNil and logic.hasKey("functions"):
+            for fnName, fnDef in logic["functions"].pairs:
+              if fnDef.hasKey("universal"):
+                let universal = fnDef["universal"]
+                if universal.hasKey("statements"):
+                  for stmt in universal["statements"]:
+                    if stmt.hasKey("target") and stmt["target"].getStr() == sName:
+                      componentHandlers.incl(fnName)
+
+      luaCode.add generateLuaComponentFunction(compDef, logic, customComponents)
       luaCode.add "\n"
 
-  # Generate handlers from logic block
+  # Generate handlers from logic block (skip component-scoped handlers)
   if kirJson.hasKey("logic"):
     let logic = kirJson["logic"]
     if logic.hasKey("functions") and logic["functions"].len > 0:
-      luaCode.add "-- Event Handlers\n"
+      var hasGlobalHandlers = false
       for fnName, fnDef in logic["functions"].pairs:
+        # Skip handlers that are component-scoped
+        if fnName in componentHandlers:
+          continue
+
+        if not hasGlobalHandlers:
+          luaCode.add "-- Event Handlers\n"
+          hasGlobalHandlers = true
         let safeName = fnName.replace(":", "_")
         luaCode.add &"local function {safeName}()\n"
 
@@ -1340,7 +1493,7 @@ proc generateLuaFromKirV3*(kirPath: string): string =
   luaCode.add "-- UI Tree\n"
   luaCode.add "local root = "
   if kirJson.hasKey("root"):
-    luaCode.add generateLuaComponentV3(kirJson["root"], 0)
+    luaCode.add generateLuaComponentV3Internal(kirJson["root"], 0, customComponents)
     luaCode.add "\n\n"
 
     # Extract window properties from root component
@@ -1370,64 +1523,672 @@ proc generateLuaFromKirV3*(kirPath: string): string =
   return luaCode
 
 # =============================================================================
-# Markdown Code Generation (Basic Layout Representation)
+# Markdown Code Generation (Semantic Transpilation)
 # =============================================================================
 
+# Helper for static_for expansion - substitute template variables
+proc substituteTemplateVarsMarkdown(tmpl: JsonNode, varName: string, value: JsonNode): JsonNode =
+  ## Recursively substitute {{varName.prop}} with actual values
+  ## Supports: {{var.prop}}, {{var[0]}}, {{var}}
+
+  # Helper to resolve a template pattern like "{{item.name}}"
+  proc resolvePattern(pattern: string): string =
+    if not pattern.contains("{{"):
+      return pattern
+
+    var output = pattern
+    let varPattern = "{{" & varName
+
+    # Try each replacement type in order
+    # Direct reference {{var}}
+    let directPattern = varPattern & "}}"
+    if output.contains(directPattern):
+      let replValue = if value.kind == JString: value.getStr()
+                      else: $value
+      output = output.replace(directPattern, replValue)
+
+    # Property access {{var.prop}}
+    if value.kind == JObject:
+      for key in value.keys():
+        let propPattern = varPattern & "." & key & "}}"
+        if output.contains(propPattern):
+          let propValue = if value[key].kind == JString: value[key].getStr()
+                          else: $value[key]
+          output = output.replace(propPattern, propValue)
+
+    # Array access {{var[index]}}
+    if value.kind == JArray:
+      for i in 0..<value.len:
+        let indexPattern = varPattern & "[" & $i & "]}}"
+        if output.contains(indexPattern):
+          let arrayValue = if value[i].kind == JString: value[i].getStr()
+                           else: $value[i]
+          output = output.replace(indexPattern, arrayValue)
+
+    return output
+
+  # Recursively process JSON node
+  case tmpl.kind
+  of JString:
+    return %resolvePattern(tmpl.getStr())
+  of JInt, JFloat, JBool, JNull:
+    return tmpl
+  of JObject:
+    result = newJObject()
+    for key, val in tmpl.pairs():
+      result[key] = substituteTemplateVarsMarkdown(val, varName, value)
+  of JArray:
+    result = newJArray()
+    for item in tmpl:
+      result.add substituteTemplateVarsMarkdown(item, varName, value)
+
 proc generateMarkdownFromKir*(kirFile: string): string =
-  ## Generate basic markdown representation from .kir file
-  ## This is a simple text-based representation, not full markdown export
-  
-  let kirJson = parseFile(kirFile)
-  var mdCode = "# Kryon Component Tree\n\n"
-  mdCode.add "Generated from: `" & extractFilename(kirFile) & "`\n\n"
-  
-  proc componentToMarkdown(comp: JsonNode, depth: int = 0): string =
-    result = ""
-    let indent = "  ".repeat(depth)
-    
-    # Component type
-    let compType = comp{"type"}.getStr("Container")
-    result.add indent & "- **" & compType & "**"
-    
-    # Component text (if any)
+  ## Generate proper markdown from .kir file
+  ## Supports semantic transpilation: IR components -> markdown syntax
+
+  # ===== Helper Functions =====
+
+  # Forward declaration for recursive markdown generation
+  proc componentToMarkdown(comp: JsonNode, depth: int, constants: Table[string, JsonNode]): string
+
+  proc escapeMarkdownText(text: string): string =
+    ## Escape special markdown characters in plain text
+    result = text
+    result = result.replace("\\", "\\\\")  # Backslash first
+    result = result.replace("*", "\\*")
+    result = result.replace("_", "\\_")
+    result = result.replace("[", "\\[")
+    result = result.replace("]", "\\]")
+    result = result.replace("`", "\\`")
+    result = result.replace("#", "\\#")
+
+  proc extractText(comp: JsonNode): string =
+    ## Extract text content from component
     if comp.hasKey("text"):
-      let text = comp["text"]
-      if text.kind == JString:
-        result.add ": \"" & text.getStr() & "\""
-      elif text.kind == JObject and text.hasKey("value"):
-        result.add ": \"" & text["value"].getStr() & "\""
-    
-    # Component props (width, height, etc.)
-    if comp.hasKey("width") or comp.hasKey("height"):
-      result.add " `"
-      if comp.hasKey("width"):
-        result.add "width: " & comp["width"].getStr()
-      if comp.hasKey("height"):
-        if comp.hasKey("width"):
-          result.add ", "
-        result.add "height: " & comp["height"].getStr()
-      result.add "`"
-    
-    result.add "\n"
-    
-    # Children
+      let textNode = comp["text"]
+      if textNode.kind == JString:
+        return textNode.getStr()
+      elif textNode.kind == JObject and textNode.hasKey("value"):
+        return textNode["value"].getStr()
+    return ""
+
+  proc extractHeadingData(comp: JsonNode): tuple[level: int, text: string] =
+    ## Extract heading level and text from custom_data
+    var level = 1
+    var text = ""
+
+    # Try custom_data first (IRHeadingData)
+    if comp.hasKey("heading_data"):
+      let data = comp["heading_data"]
+      level = data{"level"}.getInt(1)
+      text = data{"text"}.getStr("")
+
+    # Fallback to text field
+    if text.len == 0:
+      text = extractText(comp)
+
+    return (level, text)
+
+  proc extractListData(comp: JsonNode): tuple[isOrdered: bool, start: int] =
+    ## Extract list type from custom_data
+    if comp.hasKey("list_data"):
+      let data = comp["list_data"]
+      let listType = data{"type"}.getInt(0)  # 0 = unordered, 1 = ordered
+      let start = data{"start"}.getInt(1)
+      return (listType == 1, start)
+    return (false, 1)
+
+  proc extractCodeBlockData(comp: JsonNode): tuple[language: string, code: string] =
+    ## Extract code block language and code from custom_data
+    if comp.hasKey("code_block_data"):
+      let data = comp["code_block_data"]
+      return (data{"language"}.getStr(""), data{"code"}.getStr(""))
+    return ("", "")
+
+  proc extractLinkData(comp: JsonNode): tuple[url: string, title: string] =
+    ## Extract link URL and title from custom_data
+    if comp.hasKey("link_data"):
+      let data = comp["link_data"]
+      return (data{"url"}.getStr(""), data{"title"}.getStr(""))
+    return ("", "")
+
+  proc extractCellAlignment(cell: JsonNode): string =
+    ## Extract alignment from table cell metadata
+    if cell.hasKey("cell_data"):
+      let alignment = cell["cell_data"]{"alignment"}.getInt(0)
+      case alignment
+      of 1: return "center"  # IR_ALIGNMENT_CENTER
+      of 2: return "right"   # IR_ALIGNMENT_END
+      else: return "left"
+    return "left"
+
+  proc collectTextContent(comp: JsonNode): string =
+    ## Recursively collect all text content (handles inline formatting)
+    result = ""
+
+    # Direct text field
+    let text = extractText(comp)
+    if text.len > 0:
+      # Check for bold/italic styling
+      if comp.hasKey("style"):
+        let style = comp["style"]
+        let bold = style{"font"}{"bold"}.getBool(false)
+        let italic = style{"font"}{"italic"}.getBool(false)
+
+        if bold and italic:
+          return "***" & escapeMarkdownText(text) & "***"
+        elif bold:
+          return "**" & escapeMarkdownText(text) & "**"
+        elif italic:
+          return "*" & escapeMarkdownText(text) & "*"
+
+      return escapeMarkdownText(text)
+
+    # Collect from children
     if comp.hasKey("children"):
       for child in comp["children"]:
-        result.add componentToMarkdown(child, depth + 1)
-  
-  # Process root component
-  if kirJson.hasKey("root"):
-    mdCode.add "## Component Hierarchy\n\n"
-    mdCode.add componentToMarkdown(kirJson["root"])
-  elif kirJson.hasKey("component"):
-    mdCode.add "## Component Hierarchy\n\n"
-    mdCode.add componentToMarkdown(kirJson["component"])
+        let childType = child{"type"}.getStr("Text")
+
+        case childType
+        of "Link":
+          let (url, title) = extractLinkData(child)
+          let linkText = collectTextContent(child)
+          if title.len > 0:
+            result.add &"[{linkText}]({url} \"{title}\")"
+          else:
+            result.add &"[{linkText}]({url})"
+        else:
+          result.add collectTextContent(child)
+
+    return result
+
+  # ===== HTML Fallback Helpers =====
+
+  proc generateInlineStyles(comp: JsonNode): string =
+    ## Convert IR styles to inline CSS for HTML fallback
+    ## Supports both v3.0 format (flat properties) and nested style format
+    var styles: seq[string] = @[]
+
+    # Background color (v3.0: flat "background", nested: "style.background")
+    if comp.hasKey("background"):
+      let bg = comp["background"]
+      if bg.kind == JString:
+        # Hex color or named color
+        styles.add "background-color: " & bg.getStr()
+      elif bg.kind == JObject and bg.hasKey("r"):
+        let r = bg["r"].getInt()
+        let g = bg["g"].getInt()
+        let b = bg["b"].getInt()
+        let a = bg{"a"}.getInt(255)
+        if a < 255:
+          styles.add "background-color: rgba(" & $r & ", " & $g & ", " & $b & ", " & $(float(a) / 255.0) & ")"
+        else:
+          styles.add "background-color: rgb(" & $r & ", " & $g & ", " & $b & ")"
+
+    # Dimensions (v3.0: flat "width"/"height")
+    if comp.hasKey("width"):
+      let width = comp["width"]
+      if width.kind == JString:
+        styles.add "width: " & width.getStr()
+      elif width.kind == JObject and width.hasKey("value"):
+        styles.add "width: " & $width["value"].getFloat() & "px"
+      elif width.kind == JFloat or width.kind == JInt:
+        styles.add "width: " & $width.getFloat() & "px"
+
+    if comp.hasKey("height"):
+      let height = comp["height"]
+      if height.kind == JString:
+        styles.add "height: " & height.getStr()
+      elif height.kind == JObject and height.hasKey("value"):
+        styles.add "height: " & $height["value"].getFloat() & "px"
+      elif height.kind == JFloat or height.kind == JInt:
+        styles.add "height: " & $height.getFloat() & "px"
+
+    # Text color (v3.0: flat "color")
+    if comp.hasKey("color"):
+      let color = comp["color"]
+      if color.kind == JString:
+        styles.add "color: " & color.getStr()
+      elif color.kind == JObject and color.hasKey("r"):
+        let r = color["r"].getInt()
+        let g = color["g"].getInt()
+        let b = color["b"].getInt()
+        styles.add "color: rgb(" & $r & ", " & $g & ", " & $b & ")"
+
+    # Handle nested style format (if exists)
+    if comp.hasKey("style"):
+      let style = comp["style"]
+
+      if style.hasKey("padding"):
+        let p = style["padding"]
+        if p.kind == JObject:
+          let top = p{"top"}.getFloat(0)
+          let right = p{"right"}.getFloat(0)
+          let bottom = p{"bottom"}.getFloat(0)
+          let left = p{"left"}.getFloat(0)
+          if top != 0 or right != 0 or bottom != 0 or left != 0:
+            styles.add "padding: " & $top & "px " & $right & "px " & $bottom & "px " & $left & "px"
+
+      if style.hasKey("margin"):
+        let m = style["margin"]
+        if m.kind == JObject:
+          let top = m{"top"}.getFloat(0)
+          let right = m{"right"}.getFloat(0)
+          let bottom = m{"bottom"}.getFloat(0)
+          let left = m{"left"}.getFloat(0)
+          if top != 0 or right != 0 or bottom != 0 or left != 0:
+            styles.add "margin: " & $top & "px " & $right & "px " & $bottom & "px " & $left & "px"
+
+      if style.hasKey("border"):
+        let border = style["border"]
+        if border.kind == JObject and border.hasKey("radius"):
+          let radius = border["radius"].getInt(0)
+          if radius > 0:
+            styles.add "border-radius: " & $radius & "px"
+
+      if style.hasKey("font"):
+        let font = style["font"]
+        if font.kind == JObject:
+          if font.hasKey("size"):
+            styles.add "font-size: " & $font["size"].getFloat() & "px"
+          if font.hasKey("weight"):
+            styles.add "font-weight: " & $font["weight"].getInt()
+          elif font{"bold"}.getBool(false):
+            styles.add "font-weight: bold"
+          if font{"italic"}.getBool(false):
+            styles.add "font-style: italic"
+
+    if styles.len > 0:
+      return " style=\"" & styles.join("; ") & "\""
+    return ""
+
+  proc escapeHTMLText(text: string): string =
+    ## Escape HTML special characters
+    result = text
+    result = result.replace("&", "&amp;")
+    result = result.replace("<", "&lt;")
+    result = result.replace(">", "&gt;")
+    result = result.replace("\"", "&quot;")
+    result = result.replace("'", "&#x27;")
+
+  proc generateComponentAsHTML(comp: JsonNode): string =
+    ## Generate inline HTML for components that can't be represented in markdown
+    let compType = comp{"type"}.getStr()
+    let styleAttr = generateInlineStyles(comp)
+
+    case compType
+    of "Button":
+      let text = escapeHTMLText(extractText(comp))
+      return "<button class=\"kryon-button\"" & styleAttr & ">" & text & "</button>\n\n"
+
+    of "Input":
+      let placeholder = comp{"custom_data"}.getStr("")
+      let escapedPlaceholder = escapeHTMLText(placeholder)
+      return "<input type=\"text\" class=\"kryon-input\" placeholder=\"" & escapedPlaceholder & "\"" & styleAttr & " />\n\n"
+
+    of "Checkbox":
+      let label = escapeHTMLText(extractText(comp))
+      return "<label><input type=\"checkbox\" class=\"kryon-checkbox\"" & styleAttr & " /> " & label & "</label>\n\n"
+
+    of "Dropdown":
+      # For dropdowns, we'd need to extract options from custom_data
+      # For now, just render a basic select
+      return "<select class=\"kryon-dropdown\"" & styleAttr & "></select>\n\n"
+
+    of "Canvas":
+      let width = comp{"style"}{"width"}{"value"}.getFloat(300)
+      let height = comp{"style"}{"height"}{"value"}.getFloat(150)
+      return "<canvas class=\"kryon-canvas\" width=\"" & $width & "\" height=\"" & $height & "\"" & styleAttr & "></canvas>\n\n"
+
+    else:
+      # Fallback for truly unsupported components
+      return "<!-- Unsupported component: " & compType & " -->\n\n"
+
+  # ===== Component Generators =====
+
+  proc generateHeading(comp: JsonNode): string =
+    let (level, text) = extractHeadingData(comp)
+    let headingText = if text.len > 0: text else: collectTextContent(comp)
+    return "#".repeat(level) & " " & headingText & "\n\n"
+
+  proc generateParagraph(comp: JsonNode): string =
+    let text = collectTextContent(comp)
+    if text.len > 0:
+      return text & "\n\n"
+    return ""
+
+  proc generateCodeBlock(comp: JsonNode): string =
+    let (language, code) = extractCodeBlockData(comp)
+    result.add "```"
+    if language.len > 0:
+      result.add language
+    result.add "\n"
+    result.add code
+    if not code.endsWith("\n"):
+      result.add "\n"
+    result.add "```\n\n"
+
+  proc generateBlockquote(comp: JsonNode): string =
+    let text = collectTextContent(comp)
+    for line in text.splitLines():
+      result.add "> " & line & "\n"
+    result.add "\n"
+
+  proc generateLink(comp: JsonNode): string =
+    let (url, title) = extractLinkData(comp)
+    let linkText = collectTextContent(comp)
+    if title.len > 0:
+      return "[" & linkText & "](" & url & " \"" & title & "\")"
+    else:
+      return "[" & linkText & "](" & url & ")"
+
+  proc generateImage(comp: JsonNode): string =
+    let src = comp{"custom_data"}.getStr("")
+    let alt = extractText(comp)
+    return fmt"![{alt}]({src})\n\n"
+
+  proc generateList(comp: JsonNode, depth: int): string =
+    let (isOrdered, start) = extractListData(comp)
+
+    if comp.hasKey("children"):
+      var itemNum = start
+      for child in comp["children"]:
+        if child{"type"}.getStr() == "ListItem":
+          let indent = "  ".repeat(depth)
+          let text = collectTextContent(child)
+
+          if isOrdered:
+            result.add fmt"{indent}{itemNum}. {text}" & "\n"
+            itemNum.inc
+          else:
+            result.add fmt"{indent}- {text}" & "\n"
+
+          # Handle nested lists
+          if child.hasKey("children"):
+            for nestedChild in child["children"]:
+              let nestedType = nestedChild{"type"}.getStr()
+              if nestedType == "List":
+                # Forward declare componentToMarkdown for recursion
+                result.add generateList(nestedChild, depth + 1)
+
+    result.add "\n"
+
+  proc generateTable(comp: JsonNode): string =
+    ## Generate markdown table from IR Table component
+    var headers: seq[string] = @[]
+    var rows: seq[seq[string]] = @[]
+    var alignments: seq[string] = @[]
+
+    if not comp.hasKey("children"):
+      return ""
+
+    # Walk table structure
+    for section in comp["children"]:
+      let sectionType = section{"type"}.getStr()
+
+      case sectionType
+      of "TableHead":
+        # Extract header row
+        if section.hasKey("children"):
+          for row in section["children"]:
+            if row{"type"}.getStr() == "Tr" and row.hasKey("children"):
+              for cell in row["children"]:
+                let cellType = cell{"type"}.getStr()
+                if cellType == "Th" or cellType == "TableHeaderCell":
+                  headers.add collectTextContent(cell)
+                  alignments.add extractCellAlignment(cell)
+
+      of "TableBody":
+        # Extract data rows
+        if section.hasKey("children"):
+          for row in section["children"]:
+            if row{"type"}.getStr() == "Tr" and row.hasKey("children"):
+              var rowData: seq[string] = @[]
+              for cell in row["children"]:
+                let cellType = cell{"type"}.getStr()
+                if cellType == "Td" or cellType == "TableCell":
+                  rowData.add collectTextContent(cell)
+              if rowData.len > 0:
+                rows.add rowData
+
+    # Generate markdown table
+    if headers.len == 0:
+      return ""
+
+    # Header row
+    result.add "| " & headers.join(" | ") & " |\n"
+
+    # Separator row with alignment
+    result.add "|"
+    for i in 0..<headers.len:
+      let align = if i < alignments.len: alignments[i] else: "left"
+      case align
+      of "center":
+        result.add ":---:|"
+      of "right":
+        result.add "---:|"
+      else:
+        result.add "---|"
+    result.add "\n"
+
+    # Data rows
+    for row in rows:
+      # Pad row to match header count
+      var paddedRow = row
+      while paddedRow.len < headers.len:
+        paddedRow.add ""
+      result.add "| " & paddedRow.join(" | ") & " |\n"
+
+    result.add "\n"
+
+  # ===== Flowchart/Mermaid Helpers =====
+
+  proc flowchartShapeToMermaid(shape: string, label: string): string =
+    ## Convert IR shape to Mermaid bracket notation
+    ## Returns the label wrapped in appropriate brackets
+    case shape.toLower()
+    of "rectangle": return "[" & label & "]"
+    of "rounded": return "(" & label & ")"
+    of "stadium": return "([" & label & "])"
+    of "diamond": return "{" & label & "}"
+    of "circle": return "((" & label & "))"
+    of "hexagon": return "{{" & label & "}}"
+    of "parallelogram": return "[/" & label & "/]"
+    of "cylinder": return "[(" & label & ")]"
+    of "subroutine": return "[[" & label & "]]"
+    of "asymmetric": return ">" & label & "]"
+    of "trapezoid": return "[/" & label & "\\]"
+    else: return "[" & label & "]"  # Default to rectangle
+
+  proc flowchartEdgeToMermaid(edgeType: string, hasLabel: bool): tuple[connector: string, labelPrefix: string, labelSuffix: string] =
+    ## Convert IR edge type to Mermaid arrow syntax
+    ## Returns (connector, labelPrefix, labelSuffix) for formatting
+    case edgeType.toLower()
+    of "arrow":
+      if hasLabel: return ("-->", "|", "|")
+      else: return ("-->", "", "")
+    of "open":
+      if hasLabel: return ("---", "|", "|")
+      else: return ("---", "", "")
+    of "dotted":
+      if hasLabel: return ("-.->", "|", "|")
+      else: return ("-.->", "", "")
+    of "thick":
+      if hasLabel: return ("==>", "|", "|")
+      else: return ("==>", "", "")
+    of "bidirectional":
+      if hasLabel: return ("<-->", "|", "|")
+      else: return ("<-->", "", "")
+    else:
+      if hasLabel: return ("-->", "|", "|")
+      else: return ("-->", "", "")
+
+  proc generateFlowchart(comp: JsonNode): string =
+    ## Generate Mermaid flowchart from IR Flowchart component
+    var mermaid = "```mermaid\n"
+
+    # Get direction (default to TB)
+    var direction = "TB"
+    if comp.hasKey("flowchart_config"):
+      let config = comp["flowchart_config"]
+      if config.hasKey("direction"):
+        direction = config["direction"].getStr("TB")
+
+    mermaid.add "flowchart " & direction & "\n"
+
+    # Extract nodes and edges from children
+    if not comp.hasKey("children"):
+      mermaid.add "```\n\n"
+      return mermaid
+
+    var nodes: seq[tuple[id: string, shape: string, label: string]] = @[]
+    var edges: seq[tuple[fromId: string, toId: string, edgeType: string, label: string]] = @[]
+
+    # First pass: collect all nodes and edges
+    for child in comp["children"]:
+      let childType = child{"type"}.getStr()
+
+      if childType == "FlowchartNode":
+        if child.hasKey("flowchart_node"):
+          let node = child["flowchart_node"]
+          let nodeId = node{"id"}.getStr("")
+          let shape = node{"shape"}.getStr("rectangle")
+          let label = node{"label"}.getStr("")
+
+          if nodeId.len > 0:
+            nodes.add((nodeId, shape, label))
+
+      elif childType == "FlowchartEdge":
+        if child.hasKey("flowchart_edge"):
+          let edge = child["flowchart_edge"]
+          let fromId = edge{"from"}.getStr("")
+          let toId = edge{"to"}.getStr("")
+          let edgeType = edge{"type"}.getStr("arrow")
+          let label = edge{"label"}.getStr("")
+
+          if fromId.len > 0 and toId.len > 0:
+            edges.add((fromId, toId, edgeType, label))
+
+    # Generate node definitions
+    for node in nodes:
+      let shapedLabel = flowchartShapeToMermaid(node.shape, node.label)
+      mermaid.add "    " & node.id & shapedLabel & "\n"
+
+    # Generate edge definitions
+    for edge in edges:
+      let hasLabel = edge.label.len > 0
+      let (connector, labelPrefix, labelSuffix) = flowchartEdgeToMermaid(edge.edgeType, hasLabel)
+
+      mermaid.add "    " & edge.fromId & " " & connector
+      if hasLabel:
+        mermaid.add labelPrefix & edge.label & labelSuffix & " "
+      else:
+        mermaid.add " "
+      mermaid.add edge.toId & "\n"
+
+    mermaid.add "```\n\n"
+    return mermaid
+
+  # ===== Main Dispatcher =====
+
+  proc componentToMarkdown(comp: JsonNode, depth: int, constants: Table[string, JsonNode]): string =
+    ## Convert IR component to markdown syntax (constants needed for static_for expansion)
+    if comp.isNil or comp.kind != JObject:
+      return ""
+
+    if not comp.hasKey("type"):
+      return ""
+
+    let compType = comp{"type"}.getStr("Container")
+
+    # Handle static_for expansion inline
+    if compType == "static_for":
+      let loopVar = comp{"loop_var"}.getStr("item")
+      let iterableName = comp{"iterable"}.getStr()
+      let loopTemplate = comp["template"]
+
+      # Resolve iterable from constants
+      if not constants.hasKey(iterableName):
+        return "<!-- Error: constant '" & iterableName & "' not found -->\n\n"
+
+      let iterableValues = constants[iterableName]
+      if iterableValues.kind != JArray:
+        return "<!-- Error: iterable '" & iterableName & "' is not an array -->\n\n"
+
+      # Expand template for each item
+      result = ""
+      for item in iterableValues:
+        # Substitute template variables using module-level function
+        let expandedTemplate = substituteTemplateVarsMarkdown(loopTemplate, loopVar, item)
+        # Recursively generate markdown for this iteration
+        result.add componentToMarkdown(expandedTemplate, depth, constants)
+      return result
+
+    case compType
+    of "Flowchart":
+      return generateFlowchart(comp)
+    of "Heading":
+      return generateHeading(comp)
+    of "Paragraph":
+      return generateParagraph(comp)
+    of "List":
+      return generateList(comp, depth)
+    of "CodeBlock":
+      return generateCodeBlock(comp)
+    of "Blockquote":
+      return generateBlockquote(comp)
+    of "HorizontalRule":
+      return "---\n\n"
+    of "Table":
+      return generateTable(comp)
+    of "Link":
+      return generateLink(comp)
+    of "Image":
+      return generateImage(comp)
+    of "Text":
+      # Standalone text (not inside paragraph)
+      let text = collectTextContent(comp)
+      if text.len > 0:
+        return text & "\n\n"
+      return ""
+    of "Container", "Column", "Row", "Center":
+      # Structural components - recurse into children
+      if comp.hasKey("children"):
+        for child in comp["children"]:
+          result.add componentToMarkdown(child, depth, constants)
+    of "Button", "Input", "Checkbox", "Dropdown", "Canvas":
+      # UI components - generate inline HTML
+      return generateComponentAsHTML(comp)
+    of "FlowchartNode", "FlowchartEdge":
+      # These should only appear inside Flowchart component
+      # If encountered standalone, skip them
+      return ""
+    else:
+      # Try HTML fallback for other components, or comment if not supported
+      return generateComponentAsHTML(comp)
+
+  # ===== Main Entry Point =====
+
+  let kirJson = parseFile(kirFile)
+  var mdOutput = ""
+
+  # Extract constants for static_for expansion
+  var constants = initTable[string, JsonNode]()
+  if kirJson.hasKey("constants"):
+    for constDef in kirJson["constants"]:
+      let name = constDef["name"].getStr()
+      constants[name] = constDef["value"]
+
+  # Get root component
+  let root = if kirJson.hasKey("root"): kirJson["root"]
+             elif kirJson.hasKey("component"): kirJson["component"]
+             else: kirJson
+
+  # Skip root container wrapper, process children directly
+  if root{"type"}.getStr() == "Column" and root.hasKey("children"):
+    for child in root["children"]:
+      mdOutput.add componentToMarkdown(child, 0, constants)
   else:
-    # Try to process as a raw component
-    mdCode.add "## Component\n\n"
-    mdCode.add componentToMarkdown(kirJson)
-  
-  mdCode.add "\n---\n\n"
-  mdCode.add "*Generated by Kryon codegen (markdown)*\n"
-  
-  return mdCode
+    mdOutput.add componentToMarkdown(root, 0, constants)
+
+  return mdOutput.strip()

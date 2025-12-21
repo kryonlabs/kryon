@@ -29,6 +29,142 @@
 #include <math.h>
 
 // ============================================================================
+// PAGE ROUTER FOR MULTI-PAGE APPS
+// ============================================================================
+
+/**
+ * Page router state for internal navigation in multi-page apps.
+ * Tracks current page and handles loading different IR trees.
+ */
+typedef struct {
+    char current_page[256];      // Current page path (e.g., "/docs")
+    char ir_directory[512];      // Directory containing .kir files (e.g., "build/ir/")
+    IRComponent* root_component; // Pointer to current root to replace on navigation
+    void* renderer;              // Renderer to trigger reload
+} PageRouter;
+
+static PageRouter page_router = {0};
+
+/**
+ * Initialize the page router with starting page and IR directory.
+ * Called from CLI after IR tree is loaded.
+ */
+void desktop_init_router(const char* initial_page, const char* ir_dir, IRComponent* root, void* renderer) {
+    if (initial_page) {
+        strncpy(page_router.current_page, initial_page, sizeof(page_router.current_page) - 1);
+        page_router.current_page[sizeof(page_router.current_page) - 1] = '\0';
+    }
+    if (ir_dir) {
+        strncpy(page_router.ir_directory, ir_dir, sizeof(page_router.ir_directory) - 1);
+        page_router.ir_directory[sizeof(page_router.ir_directory) - 1] = '\0';
+    }
+    page_router.root_component = root;
+    page_router.renderer = renderer;
+    printf("🔗 Router initialized: page=%s, ir_dir=%s\n", page_router.current_page, page_router.ir_directory);
+}
+
+/**
+ * Check if URL is external (starts with http://, https://, or mailto:)
+ */
+static bool is_external_url(const char* url) {
+    if (!url) return false;
+    return (strncmp(url, "http://", 7) == 0 ||
+            strncmp(url, "https://", 8) == 0 ||
+            strncmp(url, "mailto:", 7) == 0);
+}
+
+/**
+ * Map internal path to .kir filename
+ * Examples: / -> index.kir, /docs -> docs.kir
+ */
+static void path_to_kir_file(const char* path, char* kir_path, size_t max_len) {
+    if (!path || strlen(path) == 0 || strcmp(path, "/") == 0) {
+        snprintf(kir_path, max_len, "%sindex.kir", page_router.ir_directory);
+    } else {
+        // Strip leading slash and append .kir
+        const char* clean_path = path[0] == '/' ? path + 1 : path;
+        snprintf(kir_path, max_len, "%s%s.kir", page_router.ir_directory, clean_path);
+    }
+}
+
+// Forward declaration - renderer reload function
+void desktop_renderer_reload_tree(void* renderer, IRComponent* new_root);
+
+/**
+ * Navigate to a new page by loading its IR tree.
+ * This is the core of internal navigation - loads a new .kir file and swaps the IR tree.
+ */
+static bool navigate_to_page(const char* path) {
+    char kir_path[1024];
+    path_to_kir_file(path, kir_path, sizeof(kir_path));
+
+    printf("🔗 Navigating to: %s (IR file: %s)\n", path, kir_path);
+
+    // Check if file exists
+    FILE* test = fopen(kir_path, "r");
+    if (!test) {
+        fprintf(stderr, "❌ Page not found: %s (tried %s)\n", path, kir_path);
+        return false;
+    }
+    fclose(test);
+
+    // Load new IR tree
+    IRComponent* new_root = ir_read_json_v2_file(kir_path);
+    if (!new_root) {
+        fprintf(stderr, "❌ Failed to load IR from: %s\n", kir_path);
+        return false;
+    }
+
+    // Clean up old tree
+    if (page_router.root_component) {
+        ir_destroy_component(page_router.root_component);
+    }
+
+    // Update router state
+    page_router.root_component = new_root;
+    strncpy(page_router.current_page, path, sizeof(page_router.current_page) - 1);
+    page_router.current_page[sizeof(page_router.current_page) - 1] = '\0';
+
+    // Trigger renderer reload
+    desktop_renderer_reload_tree(page_router.renderer, new_root);
+
+    printf("✅ Navigation complete: %s\n", path);
+    return true;
+}
+
+/**
+ * Open external URLs in system browser.
+ * Uses platform-specific commands (xdg-open on Linux, open on macOS, start on Windows).
+ */
+static void open_external_url(const char* url) {
+    if (!url) return;
+
+    printf("🔗 Opening external URL: %s\n", url);
+
+    // Validate URL for safety (prevent command injection)
+    for (const char* p = url; *p; p++) {
+        if (*p == '\"' || *p == '\'' || *p == ';' || *p == '`' || *p == '$') {
+            fprintf(stderr, "❌ Unsafe characters in URL: %s\n", url);
+            return;
+        }
+    }
+
+    char command[2048];
+    #if defined(_WIN32)
+        snprintf(command, sizeof(command), "start \"\" \"%s\"", url);
+    #elif defined(__APPLE__)
+        snprintf(command, sizeof(command), "open \"%s\"", url);
+    #else
+        snprintf(command, sizeof(command), "xdg-open \"%s\" > /dev/null 2>&1 &", url);
+    #endif
+
+    int result = system(command);
+    if (result != 0) {
+        fprintf(stderr, "❌ Failed to open URL: %s (exit code: %d)\n", url, result);
+    }
+}
+
+// ============================================================================
 // INPUT STATE MANAGEMENT
 // ============================================================================
 // NOTE: input_states and input_state_count are defined in desktop_globals.c
@@ -361,6 +497,16 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                         );
                     }
 
+                    // DEBUG: Show what was found at click position
+                    printf("[DEBUG] Click at (%.0f, %.0f) found: %s (ID: %u)\n",
+                           (float)event.button.x, (float)event.button.y,
+                           clicked ? (clicked->type == IR_COMPONENT_LINK ? "LINK" :
+                                     clicked->type == IR_COMPONENT_BUTTON ? "BUTTON" :
+                                     clicked->type == IR_COMPONENT_TEXT ? "TEXT" :
+                                     clicked->type == IR_COMPONENT_ROW ? "ROW" :
+                                     clicked->type == IR_COMPONENT_COLUMN ? "COLUMN" : "OTHER") : "NULL",
+                           clicked ? clicked->id : 0);
+
                     if (clicked) {
                         // Handle input focus
                         if (clicked->type == IR_COMPONENT_INPUT) {
@@ -419,6 +565,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
                         // Find and trigger IR_EVENT_CLICK handler
                         IREvent* ir_event = ir_find_event(clicked, IR_EVENT_CLICK);
+                        printf("[DEBUG] Component %u has ir_event: %s\n", clicked->id, ir_event ? "YES" : "NO");
                         if (ir_event) {
                             // Use legacy logic_id system
                             if (ir_event->logic_id) {
@@ -573,6 +720,30 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                     }
                                 }
                             }
+                            // Handle Link clicks - navigate internally or open externally
+                            else if (clicked->type == IR_COMPONENT_LINK) {
+                                printf("[DEBUG] Link handler reached! custom_data: %p\n", clicked->custom_data);
+                                IRLinkData* link_data = (IRLinkData*)clicked->custom_data;
+                                if (link_data) {
+                                    printf("[DEBUG] link_data exists, url: %s\n", link_data->url ? link_data->url : "NULL");
+                                }
+                                if (link_data && link_data->url) {
+                                    if (link_data->title) {
+                                        printf("🔗 Link clicked: %s (%s)\n", link_data->url, link_data->title);
+                                    } else {
+                                        printf("🔗 Link clicked: %s\n", link_data->url);
+                                    }
+
+                                    // Route based on link type
+                                    if (is_external_url(link_data->url)) {
+                                        // External link: open in browser
+                                        open_external_url(link_data->url);
+                                    } else {
+                                        // Internal link: navigate within app
+                                        navigate_to_page(link_data->url);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -659,7 +830,8 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                         (hovered && (hovered->type == IR_COMPONENT_BUTTON ||
                                      hovered->type == IR_COMPONENT_INPUT ||
                                      hovered->type == IR_COMPONENT_CHECKBOX ||
-                                     hovered->type == IR_COMPONENT_DROPDOWN))) {
+                                     hovered->type == IR_COMPONENT_DROPDOWN ||
+                                     hovered->type == IR_COMPONENT_LINK))) {
                         desired_cursor = renderer->cursor_hand;
                     } else {
                         desired_cursor = renderer->cursor_default;

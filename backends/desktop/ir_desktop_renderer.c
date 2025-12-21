@@ -495,7 +495,7 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
             ir_file_watcher_poll(ir_hot_reload_get_watcher(renderer->hot_reload_ctx), 0);
         }
 
-        if (!desktop_ir_renderer_render_frame(renderer, root)) {
+        if (!desktop_ir_renderer_render_frame(renderer, renderer->last_root)) {
             printf("Frame rendering failed\n");
             break;
         }
@@ -614,6 +614,24 @@ DesktopRendererConfig desktop_renderer_config_sdl3(int width, int height, const 
     config.window_height = height;
     config.window_title = title ? title : "Kryon Desktop Application";
     return config;
+}
+
+/**
+ * Reload the root IR tree in the renderer.
+ * Used for page navigation - swaps the current IR tree with a new one.
+ * Preserves font and texture caches, but clears layout cache to force recalculation.
+ */
+void desktop_renderer_reload_tree(void* renderer_ptr, IRComponent* new_root) {
+    if (!renderer_ptr || !new_root) return;
+
+    DesktopIRRenderer* renderer = (DesktopIRRenderer*)renderer_ptr;
+
+    // Update root component - layout will be recalculated on next frame
+    renderer->last_root = new_root;
+
+    if (getenv("KRYON_TRACE_LAYOUT")) {
+        printf("📄 Page tree reloaded, layouts will be recalculated on next frame\n");
+    }
 }
 
 bool desktop_render_ir_component(IRComponent* root, const DesktopRendererConfig* config) {

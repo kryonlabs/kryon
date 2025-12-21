@@ -17,7 +17,7 @@ const
   hasWebBackend* = defined(webBackend) or defined(staticBackend)
 
 # CLI modules
-import project, build, device, compile, diff, inspect, config, codegen, codegen_tsx, codegen_jsx, plugin_manager, kir_to_c
+import project, build, device, compile, diff, inspect, config, codegen, codegen_tsx, codegen_jsx, codegen_html, plugin_manager, kir_to_c
 import kry_ast, kry_lexer, kry_parser, kry_to_kir, kyt_parser, tsx_parser, md_parser, html_parser
 from html_transpiler import transpileKirToHTML, defaultTranspilationOptions
 
@@ -76,6 +76,7 @@ EXAMPLES:
   kryon new myapp --template=nim
   kryon build --targets=stm32f4,linux
   kryon run examples/nim/hello_world.nim
+  kryon run app.kry --renderer=terminal
   kryon dev examples/nim/habits.nim
   kryon config show
   kryon inspect --target=stm32f4
@@ -188,9 +189,29 @@ when hasDesktopBackend:
           executor = nil
 
     var config = desktop_renderer_config_sdl3(width.cint, height.cint, cstring(title))
-    let renderSuccess = desktop_render_ir_component(irRoot, addr config)
 
-    # Cleanup
+    # Create renderer manually to allow router initialization for multi-page apps
+    let renderer = desktop_ir_renderer_create(addr config)
+    if renderer.isNil:
+      echo "❌ Failed to create renderer"
+      return false
+
+    # Initialize page router for multi-page projects
+    # Check if .kryon_cache exists (indicates multi-page build system)
+    let cacheDir = getCurrentDir() / ".kryon_cache"
+    let buildIRDir = getCurrentDir() / "build" / "ir"
+    if dirExists(cacheDir) or dirExists(buildIRDir):
+      # Multi-page project - initialize router
+      let irDir = if dirExists(buildIRDir): buildIRDir & "/" else: cacheDir & "/"
+      desktop_init_router(cstring("/"), cstring(irDir), irRoot, renderer)
+
+    # Run main loop
+    let renderSuccess = desktop_ir_renderer_run_main_loop(renderer, irRoot)
+
+    # Cleanup renderer
+    desktop_ir_renderer_destroy(renderer)
+
+    # Cleanup executor
     if executor != nil:
       ir_executor_set_global(nil)
       ir_executor_destroy(executor)
@@ -439,7 +460,38 @@ proc detectFileWithExtensions*(baseName: string): tuple[found: bool, path: strin
 
 proc handleRunCommand*(args: seq[string]) =
   ## Handle 'kryon run' command - Multi-frontend support
+  # Check for help flag
+  for arg in args:
+    if arg == "--help" or arg == "-h":
+      echo """
+Usage:
+  kryon run [<file>] [--target=<target>] [--renderer=<renderer>] [--port=<port>]
+
+Arguments:
+  <file>        Path to source file (default: main)
+
+Options:
+  --target      Target platform (native, web)
+  --renderer    Rendering backend (sdl3, terminal) - defaults to sdl3
+  --port        Port for web server (default: 3000)
+
+Environment Variables:
+  KRYON_RENDERER   Rendering backend (overridden by --renderer flag)
+
+Description:
+  Compile and run a Kryon application. Automatically detects the frontend
+  type from the file extension and uses the appropriate compilation pipeline.
+
+Examples:
+  kryon run app.kry                      # Run with SDL3 renderer (default)
+  kryon run app.kry --renderer=terminal  # Run with terminal renderer
+  kryon run app.nim --renderer=sdl3      # Run Nim app with SDL3
+  kryon run app.ts --target=web          # Run TypeScript app in browser
+"""
+      quit(0)
+
   var target = "native"
+  var renderer = ""  # CLI flag for --renderer (overrides KRYON_RENDERER env var)
   var file = ""
   var baseName = ""
   var hasWebTarget = false
@@ -449,7 +501,14 @@ proc handleRunCommand*(args: seq[string]) =
   # Try to load config to get defaults
   try:
     let config = loadProjectConfig()
-    baseName = config.buildEntry
+    # Get entry point: use build.entry, or first page file, or default to main
+    if config.buildEntry != "":
+      baseName = config.buildEntry
+    elif config.buildPages.len > 0:
+      baseName = config.buildPages[0].file
+    else:
+      baseName = "main"
+
     if target == "native":
       target = config.buildTarget
     # Check if this is a web project
@@ -465,10 +524,30 @@ proc handleRunCommand*(args: seq[string]) =
   for arg in args:
     if arg.startsWith("--target="):
       target = arg[9..^1]
+      # Validate target value - NO FALLBACKS
       if target == "web":
         hasWebTarget = true
+      elif target == "native" or target == "sdl3" or target == "terminal":
+        # Accept sdl3/terminal as aliases for native (they specify renderer)
+        hasWebTarget = false
+        target = "native"
+      else:
+        echo "❌ Invalid target: " & target
+        echo "   Valid targets: native, web"
+        echo "   (Use --renderer=sdl3 or --renderer=terminal for native rendering)"
+        quit(1)
     elif arg.startsWith("--port="):
       webPort = parseInt(arg[7..^1])
+    elif arg.startsWith("--renderer="):
+      renderer = arg[11..^1]  # Extract value after "--renderer="
+      # Validate renderer value (add new renderers here when implemented)
+      if renderer != "sdl3" and renderer != "terminal":
+        echo "❌ Invalid renderer: " & renderer
+        echo "   Valid options: sdl3, terminal"
+        quit(1)
+      # Force native mode when --renderer is specified (override config)
+      hasWebTarget = false
+      target = "native"
     elif arg.startsWith("--device="):
       discard  # For compatibility
     elif not arg.startsWith("-") and arg != "run":
@@ -611,8 +690,11 @@ end
     # Run TypeScript/JavaScript with appropriate runtime
     echo "📦 Running TypeScript/JavaScript application..."
 
-    # Set KRYON_RENDERER environment variable based on target
-    putEnv("KRYON_RENDERER", target)
+    # Set KRYON_RENDERER environment variable (CLI flag overrides target)
+    if renderer != "":
+      putEnv("KRYON_RENDERER", renderer)
+    else:
+      putEnv("KRYON_RENDERER", target)
 
     var jsCmd: string
     if fileExists("bun.lockb") or fileExists("bunfig.toml"):
@@ -672,9 +754,11 @@ end
       except:
         discard  # Use defaults if parsing fails
 
-    # Render via unified IR pipeline
-    let renderer = getEnv("KRYON_RENDERER", "sdl3")
-    echo "🎨 Rendering with " & renderer & " backend..."
+    # Render via unified IR pipeline (CLI flag overrides env var)
+    if renderer != "":
+      putEnv("KRYON_RENDERER", renderer)
+    let rendererName = getEnv("KRYON_RENDERER", "sdl3")
+    echo "🎨 Rendering with " & rendererName & " backend..."
 
     let renderSuccess = renderIRFile(file, windowTitle, windowWidth, windowHeight)
 
@@ -692,6 +776,10 @@ end
     if not fileExists(file):
       echo "❌ File not found: " & file
       quit(1)
+
+    # Set renderer environment variable if specified
+    if renderer != "":
+      putEnv("KRYON_RENDERER", renderer)
 
     # Set up temp directory
     let homeCache = getHomeDir() / ".cache" / "kryon"
@@ -806,6 +894,10 @@ end
       echo "❌ File not found: " & file
       quit(1)
 
+    # Set renderer environment variable if specified
+    if renderer != "":
+      putEnv("KRYON_RENDERER", renderer)
+
     # Set up temp directory
     let homeCache = getHomeDir() / ".cache" / "kryon"
     let runCache = homeCache / "cli_run"
@@ -857,12 +949,80 @@ end
     echo "✓ Application closed"
     quit(0)
 
+  elif frontend == ".html" or frontend == ".htm":
+    # .html → .kir → IR renderer
+    echo "📦 Running .html via IR pipeline..."
+
+    if not fileExists(file):
+      echo "❌ File not found: " & file
+      quit(1)
+
+    # Set renderer environment variable if specified
+    if renderer != "":
+      putEnv("KRYON_RENDERER", renderer)
+
+    # Set up temp directory
+    let homeCache = getHomeDir() / ".cache" / "kryon"
+    let runCache = homeCache / "cli_run"
+    createDir(runCache)
+
+    let baseName = splitFile(file).name
+    let tempKir = runCache / baseName & ".kir"
+
+    # Parse .html -> .kir using core parser
+    echo "  → Parsing HTML to KIR..."
+    try:
+      let kirContent = parseHTMLToKir(file)
+      writeFile(tempKir, kirContent)
+      if not fileExists(tempKir):
+        echo "❌ HTML parser did not create output file"
+        quit(1)
+    except:
+      echo "❌ Failed to parse .html file: " & getCurrentExceptionMsg()
+      quit(1)
+
+    # Extract window properties from KIR root
+    var windowTitle = "Kryon Web Application"
+    var windowWidth = 800
+    var windowHeight = 600
+    try:
+      let kirJson = parseFile(tempKir)
+      if kirJson.hasKey("root"):
+        let root = kirJson["root"]
+        if kirJson.hasKey("windowTitle"):
+          windowTitle = kirJson["windowTitle"].getStr("Kryon Web Application")
+        elif root.hasKey("windowTitle"):
+          windowTitle = root["windowTitle"].getStr("Kryon Web Application")
+        if root.hasKey("width"):
+          let wStr = root["width"].getStr("800.0px")
+          windowWidth = parseInt(wStr.replace(".0px", "").replace("px", ""))
+        if root.hasKey("height"):
+          let hStr = root["height"].getStr("600.0px")
+          windowHeight = parseInt(hStr.replace(".0px", "").replace("px", ""))
+    except:
+      discard  # Use defaults if parsing fails
+
+    # Render via unified IR pipeline
+    echo "  → Rendering..."
+    let renderSuccess = renderIRFile(tempKir, windowTitle, windowWidth, windowHeight)
+
+    if not renderSuccess:
+      echo "❌ Rendering failed"
+      quit(1)
+
+    echo "✓ Application closed"
+    quit(0)
+
   elif frontend != ".nim":
     echo "❌ Unknown frontend: " & frontend
-    echo "   Supported: .nim, .lua, .ts, .js, .tsx, .jsx, .kir, .kirb, .kry, .md"
+    echo "   Supported: .nim, .lua, .ts, .js, .tsx, .jsx, .kir, .kirb, .kry, .md, .html"
     quit(1)
 
   # Continue with Nim compilation for .nim files
+  # Set renderer environment variable if specified
+  if renderer != "":
+    putEnv("KRYON_RENDERER", renderer)
+
   try:
     # Check for installed kryon first (user project mode)
     let installed = findInstalledKryon()
@@ -1541,7 +1701,7 @@ proc handleCodegenCommand*(args: seq[string]) =
     echo "  tsx      - TypeScript with JSX (types included)"
     echo "  jsx      - JavaScript with JSX (no types)"
     echo "  html     - HTML with inline CSS (static export)"
-    echo "  markdown - Markdown representation (basic layout)"
+    echo "  markdown - Markdown (tables, headings, lists, code blocks)"
     quit(1)
 
   let inputFile = args[0]
@@ -1585,12 +1745,10 @@ proc handleCodegenCommand*(args: seq[string]) =
       of "c":
         generateCFromKir(inputFile)
       of "html":
-        # Use transpilation mode for static HTML export
-        let opts = defaultTranspilationOptions()
-        transpileKirToHTML(inputFile, opts)
+        # Use new Nim-based HTML generator with JavaScript support
+        generateVanillaHTML(inputFile)
       of "markdown", "md":
-        # For now, generate basic text representation
-        # TODO: Implement proper markdown generator with layout preservation
+        # Generate proper markdown from IR components
         generateMarkdownFromKir(inputFile)
       else:
         echo "✗ Unsupported language: " & lang

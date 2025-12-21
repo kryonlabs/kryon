@@ -21,7 +21,7 @@ proc ir_layout_invalidate_cache*(component: ptr IRComponent) {.importc, cdecl, h
 
 type
   KryonComponent* = ptr IRComponent  # Type alias for compatibility
-  KryonRenderer* = DesktopIRRenderer  # Type alias for compatibility
+  KryonRenderer* = ptr DesktopIRRenderer  # Type alias for compatibility
   KryonAlignment* = IRAlignment  # Type alias for compatibility
 
   KryonApp* = ref object

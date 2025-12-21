@@ -5,7 +5,7 @@
 import os, osproc, strutils, times, hashes, json, tables
 import ../bindings/nim/ir_core
 import ../bindings/nim/ir_serialization
-import kry_parser, kry_to_kir, tsx_parser, md_parser
+import kry_parser, kry_to_kir, tsx_parser, md_parser, html_parser
 
 type
   CompileFormat* = enum
@@ -133,6 +133,7 @@ proc detectFrontend*(sourceFile: string): string =
   of ".kry": return "kry"
   of ".tsx", ".jsx": return "tsx"
   of ".md", ".markdown": return "markdown"
+  of ".html", ".htm": return "html"
   else: return "unknown"
 
 proc compileNimToIR*(sourceFile: string, outputFile: string, format: CompileFormat, verbose: bool): CompilationResult =
@@ -666,6 +667,42 @@ proc compileMarkdownToIR*(sourceFile: string, outputFile: string, format: Compil
   except CatchableError as e:
     result.errors.add("Markdown parsing error: " & e.msg)
 
+proc compileHtmlToIR*(sourceFile: string, outputFile: string, format: CompileFormat, verbose: bool): CompilationResult =
+  ## Compile .html source to Kryon IR using core HTML parser
+  result.success = false
+  result.errors = @[]
+  result.warnings = @[]
+  result.irFile = outputFile
+
+  let startTime = cpuTime()
+
+  if verbose:
+    echo "[html] Parsing: ", sourceFile
+
+  try:
+    # Use core HTML parser to convert to KIR JSON
+    let kirContent = parseHTMLToKir(sourceFile)
+
+    # Write output
+    if format == FormatJSON:
+      writeFile(outputFile, kirContent)
+    else:
+      # For binary format, write JSON first then convert
+      result.warnings.add("Binary format not yet supported for HTML, using JSON")
+      writeFile(outputFile.changeFileExt(".kir"), kirContent)
+      result.irFile = outputFile.changeFileExt(".kir")
+
+    result.success = true
+    result.compileTime = cpuTime() - startTime
+
+    if verbose:
+      echo "[html] Compilation completed in ", result.compileTime * 1000, " ms"
+
+  except IOError as e:
+    result.errors.add(e.msg)
+  except CatchableError as e:
+    result.errors.add("HTML parsing error: " & e.msg)
+
 proc compile*(opts: CompileOptions): CompilationResult =
   ## Main compilation entry point with caching
   result.success = false
@@ -715,6 +752,8 @@ proc compile*(opts: CompileOptions): CompilationResult =
     result = compileTsxToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput)
   of "markdown":
     result = compileMarkdownToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput)
+  of "html":
+    result = compileHtmlToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput)
   of "lua":
     result = compileLuaToIR(opts.sourceFile, opts.outputFile, opts.format, opts.verboseOutput)
   of "c":

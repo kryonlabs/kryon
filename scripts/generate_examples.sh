@@ -224,8 +224,8 @@ process_example() {
   fi
 
   # Step 4: Validation (if requested and language supports it)
-  # Note: Only Nim supports full round-trip validation currently
-  if [ "$VALIDATE" = true ] && [ "$lang" = "nim" ]; then
+  # Note: Nim and Lua support full round-trip validation
+  if [ "$VALIDATE" = true ] && { [ "$lang" = "nim" ] || [ "$lang" = "lua" ]; }; then
     if ! "$KRYON" compile "$output_file" --output="$roundtrip_kir" --no-cache >/dev/null 2>&1; then
       echo "FAILED:$name:$lang:roundtrip"
       return 1
@@ -402,7 +402,7 @@ else
           echo -e "  ${YELLOW}⚠ Comparison script not found, skipping validation${NC}"
           lang_success[$lang]=$((${lang_success[$lang]} + 1))
         fi
-      elif [ "$VALIDATE" = true ] && [ "$lang" != "nim" ]; then
+      elif [ "$VALIDATE" = true ] && [ "$lang" != "nim" ] && [ "$lang" != "lua" ]; then
         echo -e "  ${YELLOW}⚠ Validation not yet supported for $lang${NC}"
         lang_success[$lang]=$((${lang_success[$lang]} + 1))
       else
