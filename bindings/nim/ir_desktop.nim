@@ -47,33 +47,36 @@ type
     vsync_enabled*: bool
     target_fps*: int32
 
-  DesktopIRRenderer* = ptr object
-    # Internal structure defined in ir_desktop_renderer.h
+  DesktopIRRenderer* {.importc: "struct DesktopIRRenderer", header: "ir_desktop_renderer.h", incompleteStruct.} = object
 
 # Renderer Creation and Management
-proc desktop_ir_renderer_create*(config: ptr DesktopRendererConfig): DesktopIRRenderer {.importc, cdecl, header: "ir_desktop_renderer.h".}
-proc desktop_ir_renderer_destroy*(renderer: DesktopIRRenderer) {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_renderer_create*(config: ptr DesktopRendererConfig): ptr DesktopIRRenderer {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_renderer_destroy*(renderer: ptr DesktopIRRenderer) {.importc, cdecl, header: "ir_desktop_renderer.h".}
 
 # Rendering and Main Loop
-proc desktop_ir_renderer_initialize*(renderer: DesktopIRRenderer): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
-proc desktop_ir_renderer_render_frame*(renderer: DesktopIRRenderer; root: ptr IRComponent): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
-proc desktop_ir_renderer_run_main_loop*(renderer: DesktopIRRenderer; root: ptr IRComponent): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
-proc desktop_ir_renderer_stop*(renderer: DesktopIRRenderer) {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_renderer_initialize*(renderer: ptr DesktopIRRenderer): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_renderer_render_frame*(renderer: ptr DesktopIRRenderer; root: ptr IRComponent): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_renderer_run_main_loop*(renderer: ptr DesktopIRRenderer; root: ptr IRComponent): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_renderer_stop*(renderer: ptr DesktopIRRenderer) {.importc, cdecl, header: "ir_desktop_renderer.h".}
 
 # Event Handling
-proc desktop_ir_renderer_set_event_callback*(renderer: DesktopIRRenderer; callback: DesktopEventCallback; user_data: pointer) {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_renderer_set_event_callback*(renderer: ptr DesktopIRRenderer; callback: DesktopEventCallback; user_data: pointer) {.importc, cdecl, header: "ir_desktop_renderer.h".}
 
 # Resource Management
-proc desktop_ir_renderer_load_font*(renderer: DesktopIRRenderer; font_path: cstring; size: cfloat): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
-proc desktop_ir_renderer_load_image*(renderer: DesktopIRRenderer; image_path: cstring): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
-proc desktop_ir_renderer_clear_resources*(renderer: DesktopIRRenderer) {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_renderer_load_font*(renderer: ptr DesktopIRRenderer; font_path: cstring; size: cfloat): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_renderer_load_image*(renderer: ptr DesktopIRRenderer; image_path: cstring): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_renderer_clear_resources*(renderer: ptr DesktopIRRenderer) {.importc, cdecl, header: "ir_desktop_renderer.h".}
 proc desktop_ir_register_font*(name: cstring; path: cstring) {.importc, cdecl, header: "ir_desktop_renderer.h".}
 proc desktop_ir_set_default_font*(name: cstring) {.importc, cdecl, header: "ir_desktop_renderer.h".}
 
 # Utility Functions
-proc desktop_ir_renderer_validate_ir*(renderer: DesktopIRRenderer; root: ptr IRComponent): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
-proc desktop_ir_renderer_print_tree_info*(renderer: DesktopIRRenderer; root: ptr IRComponent) {.importc, cdecl, header: "ir_desktop_renderer.h".}
-proc desktop_ir_renderer_print_performance_stats*(renderer: DesktopIRRenderer) {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_renderer_validate_ir*(renderer: ptr DesktopIRRenderer; root: ptr IRComponent): bool {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_renderer_print_tree_info*(renderer: ptr DesktopIRRenderer; root: ptr IRComponent) {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_ir_renderer_print_performance_stats*(renderer: ptr DesktopIRRenderer) {.importc, cdecl, header: "ir_desktop_renderer.h".}
+
+# Page Navigation Support
+proc desktop_renderer_reload_tree*(renderer_ptr: pointer; new_root: ptr IRComponent) {.importc, cdecl, header: "ir_desktop_renderer.h".}
+proc desktop_init_router*(initial_page: cstring; ir_dir: cstring; root: ptr IRComponent; renderer: pointer) {.importc, cdecl, header: "ir_desktop_renderer.h".}
 
 # Configuration Helpers
 proc desktop_renderer_config_default*(): DesktopRendererConfig {.importc, cdecl, header: "ir_desktop_renderer.h".}

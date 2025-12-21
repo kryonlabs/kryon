@@ -2925,7 +2925,11 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
     if (component->type == IR_COMPONENT_LINK) {
         IRLinkData* data = (IRLinkData*)calloc(1, sizeof(IRLinkData));
         if (data) {
+            // Accept both "url" (KIR format) and "href" (TSX/HTML format)
             cJSON* urlItem = cJSON_GetObjectItem(json, "url");
+            if (!urlItem) {
+                urlItem = cJSON_GetObjectItem(json, "href");
+            }
             if (urlItem && cJSON_IsString(urlItem)) {
                 data->url = strdup(urlItem->valuestring);
             }

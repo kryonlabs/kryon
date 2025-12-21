@@ -34,6 +34,7 @@ export enum ComponentType {
   FlowchartEdge = 27,
   FlowchartSubgraph = 28,
   FlowchartLabel = 29,
+  Link = 30,
 }
 
 // Dimension types

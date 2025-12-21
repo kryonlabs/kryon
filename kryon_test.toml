@@ -1,0 +1,9 @@
+[project]
+name = "Test"
+version = "0.1.0"
+
+[build]
+pages = [{source = "examples/html/button_demo.html", path = "/"}]
+
+[web]
+include_js_runtime = false

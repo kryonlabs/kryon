@@ -201,6 +201,7 @@ interface ParsedState {
   root: KirNode | null;
   reactiveVars: ReactiveVar[];
   logic: LogicBlock;
+  expansionStack: string[];  // Track components being expanded (for recursion detection)
 }
 
 interface ComponentDef {
@@ -313,14 +314,195 @@ function formatDimension(value: any): string {
   return String(value);
 }
 
+/**
+ * Deep clone a KIR node and all its descendants
+ * Similar to C: clone_and_substitute_json_impl
+ */
+function deepCloneKirNode(node: KirNode): KirNode {
+  const cloned: KirNode = {
+    id: node.id, // Will be remapped later
+    type: node.type,
+  };
+
+  // Copy all properties except children
+  for (const [key, value] of Object.entries(node)) {
+    if (key === 'children') continue;
+    if (key === 'component_ref') continue; // Don't copy component_ref
+
+    if (value === null || value === undefined) {
+      continue;
+    } else if (Array.isArray(value)) {
+      cloned[key] = value.map(v =>
+        typeof v === 'object' && v !== null && 'type' in v
+          ? deepCloneKirNode(v)
+          : v
+      );
+    } else if (typeof value === 'object' && value !== null && 'type' in value) {
+      cloned[key] = deepCloneKirNode(value);
+    } else {
+      cloned[key] = value;
+    }
+  }
+
+  // Recursively clone children
+  if (node.children && Array.isArray(node.children)) {
+    cloned.children = node.children.map(child => deepCloneKirNode(child));
+  }
+
+  return cloned;
+}
+
+/**
+ * Remap all component IDs recursively to ensure uniqueness
+ * Similar to C: remap_ids_recursive
+ */
+function remapIdsRecursive(node: KirNode): void {
+  node.id = nextId++;
+
+  if (node.children && Array.isArray(node.children)) {
+    for (const child of node.children) {
+      remapIdsRecursive(child);
+    }
+  }
+}
+
+/**
+ * Apply props to template by substituting {var: "propName"} with actual values
+ * Similar to C: build_state_from_def + clone_and_substitute_json
+ */
+function applyPropsToTemplate(
+  template: KirNode,
+  props: Record<string, any>,
+  componentDef: ComponentDef
+): void {
+  // Build prop context (merge instance props with defaults)
+  const propContext: Record<string, any> = {};
+
+  for (const propDef of componentDef.props) {
+    const propName = propDef.name;
+    if (props[propName] !== undefined) {
+      propContext[propName] = props[propName];
+    } else if (propDef.default !== undefined) {
+      propContext[propName] = propDef.default;
+    }
+  }
+
+  // Recursively substitute {var: "name"} with actual values
+  function substituteInNode(node: KirNode): void {
+    for (const [key, value] of Object.entries(node)) {
+      if (key === 'children') continue;
+
+      // Handle {var: "propName"} objects
+      if (typeof value === 'object' && value !== null && 'var' in value) {
+        const varName = value.var;
+        if (propContext[varName] !== undefined) {
+          node[key] = propContext[varName];
+        }
+      }
+      // Handle arrays that might contain {var: ...}
+      else if (Array.isArray(value)) {
+        node[key] = value.map(v =>
+          typeof v === 'object' && v !== null && 'var' in v && propContext[v.var] !== undefined
+            ? propContext[v.var]
+            : v
+        );
+      }
+    }
+
+    // Recurse into children
+    if (node.children && Array.isArray(node.children)) {
+      for (const child of node.children) {
+        substituteInNode(child);
+      }
+    }
+  }
+
+  substituteInNode(template);
+}
+
+/**
+ * Inline a custom component by expanding its template with props
+ * Returns the expanded node tree, or null if component not found
+ */
+function inlineComponent(
+  componentName: string,
+  props: Record<string, any>,
+  children: KirNode[] | undefined,
+  instanceId: number,
+  state: ParsedState
+): KirNode | null {
+  const componentDef = state.componentDefs.get(componentName);
+  if (!componentDef || !componentDef.template) {
+    return null; // Not a custom component
+  }
+
+  // Detect recursion
+  if (state.expansionStack.includes(componentName)) {
+    console.warn(`Warning: Recursive component detected: ${componentName}`);
+    return null;
+  }
+
+  if (state.expansionStack.length > 100) {
+    console.error(`Error: Component expansion depth limit exceeded`);
+    return null;
+  }
+
+  state.expansionStack.push(componentName);
+
+  // Clone the template (deep copy)
+  const expanded = deepCloneKirNode(componentDef.template);
+
+  // Apply props to template (substitute {var: "propName"})
+  applyPropsToTemplate(expanded, props, componentDef);
+
+  // Handle children prop if provided
+  if (children && children.length > 0) {
+    // Check if template has a placeholder for children
+    // For now, append to template's children array
+    if (!expanded.children) {
+      expanded.children = [];
+    }
+    expanded.children.push(...children);
+  }
+
+  // Remap all IDs to ensure uniqueness
+  remapIdsRecursive(expanded);
+
+  // Use the instance ID for the root element
+  expanded.id = instanceId;
+
+  // Remove component_ref if present (not needed in expanded form)
+  delete expanded.component_ref;
+
+  state.expansionStack.pop();
+
+  return expanded;
+}
+
 function parseJSXElement(node: t.JSXElement, state: ParsedState): KirNode {
   const id = nextId++;
   const result: KirNode = { id, type: '' };
 
   // Get element name
   const openingElement = node.openingElement;
+  let elementName = '';
   if (t.isJSXIdentifier(openingElement.name)) {
-    result.type = toPascalCase(openingElement.name.name);
+    elementName = openingElement.name.name;
+    result.type = toPascalCase(elementName);
+
+    // Check if this is a custom component (not a primitive)
+    const isPrimitive = elementName.toLowerCase() in {
+      container: 1, text: 1, button: 1, input: 1, checkbox: 1, dropdown: 1,
+      row: 1, column: 1, center: 1, image: 1, canvas: 1, markdown: 1,
+      sprite: 1, tabgroup: 1, tabbar: 1, tab: 1, tabcontent: 1, tabpanel: 1,
+      table: 1, tablehead: 1, tablebody: 1, tablefoot: 1, tablerow: 1,
+      tablecell: 1, tableheadercell: 1, flowchart: 1, flowchartnode: 1,
+      flowchartedge: 1, flowchartsubgraph: 1, flowchartlabel: 1
+    };
+
+    if (!isPrimitive && state.componentDefs.has(result.type)) {
+      result._needsExpansion = true;  // Mark for later expansion
+    }
   }
 
   // Parse attributes
@@ -517,6 +699,24 @@ function parseJSXElement(node: t.JSXElement, state: ParsedState): KirNode {
 
   if (children.length > 0) {
     result.children = children;
+  }
+
+  // If this is a custom component, inline it now
+  if (result._needsExpansion) {
+    delete result._needsExpansion;
+
+    // Extract props (everything except id, type, children)
+    const { id, type, children, _needsExpansion, ...props } = result as any;
+
+    // Inline the component
+    const expanded = inlineComponent(type, props, children, id, state);
+
+    if (expanded) {
+      return expanded;  // Return inlined tree instead
+    } else {
+      // Component definition not found - fall back to reference
+      console.warn(`Warning: Component "${type}" referenced but not defined`);
+    }
   }
 
   return result;
@@ -739,7 +939,8 @@ async function main() {
     logic: {
       functions: {},
       event_bindings: []
-    }
+    },
+    expansionStack: []
   };
 
   // First pass: Extract TypeScript interfaces for prop types

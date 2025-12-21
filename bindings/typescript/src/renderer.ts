@@ -23,6 +23,7 @@ const componentTypeMap: Record<string, ComponentType> = {
   flowchartnode: ComponentType.FlowchartNode,
   flowchartedge: ComponentType.FlowchartEdge,
   flowchartsubgraph: ComponentType.FlowchartSubgraph,
+  link: ComponentType.Link,
 };
 
 // Parse size value to dimension type and float value
@@ -276,6 +277,12 @@ export function renderNode(node: IRNode | string, parentPtr?: Pointer): Pointer 
         cstr(node.props.title)
       ) as unknown as Pointer;
       break;
+    case 'link':
+      componentPtr = ffi.ir_link(
+        cstr(node.props.href || ''),
+        cstr(node.props.children?.[0] || node.props.text || '')
+      ) as unknown as Pointer;
+      break;
     default:
       componentPtr = ffi.ir_create_component(componentType) as unknown as Pointer;
       break;
@@ -309,18 +316,33 @@ export function renderNode(node: IRNode | string, parentPtr?: Pointer): Pointer 
     hasStyle = true;
   }
 
+  // Helper function to parse padding (CSS-like strings, numbers, or arrays)
+  function parsePadding(value: string | number | number[]): number[] {
+    if (typeof value === 'number') {
+      return [value, value, value, value];
+    }
+    if (Array.isArray(value)) {
+      if (value.length === 2) return [value[0], value[1], value[0], value[1]];
+      if (value.length === 4) return value;
+      return [value[0] || 0, value[0] || 0, value[0] || 0, value[0] || 0];
+    }
+    if (typeof value === 'string') {
+      // Parse CSS-like strings: "10", "10 20", "10 20 30 40"
+      const parts = value.trim().split(/\s+/).map(p => {
+        const num = parseFloat(p.replace('px', '').replace('em', '').replace('%', ''));
+        return isNaN(num) ? 0 : num;
+      });
+      if (parts.length === 1) return [parts[0], parts[0], parts[0], parts[0]];
+      if (parts.length === 2) return [parts[0], parts[1], parts[0], parts[1]]; // vert, horiz
+      if (parts.length === 4) return parts; // top, right, bottom, left
+    }
+    return [0, 0, 0, 0];
+  }
+
   // Padding
   if (node.props.padding !== undefined) {
-    const p = node.props.padding;
-    if (typeof p === 'number') {
-      ffi.ir_set_padding(stylePtr, p, p, p, p);
-    } else if (Array.isArray(p)) {
-      if (p.length === 2) {
-        ffi.ir_set_padding(stylePtr, p[0], p[1], p[0], p[1]);
-      } else if (p.length === 4) {
-        ffi.ir_set_padding(stylePtr, p[0], p[1], p[2], p[3]);
-      }
-    }
+    const [top, right, bottom, left] = parsePadding(node.props.padding);
+    ffi.ir_set_padding(stylePtr, top, right, bottom, left);
     hasStyle = true;
   }
 

@@ -260,6 +260,10 @@ const commonSymbols = {
     args: [],
     returns: FFIType.ptr,
   },
+  ir_link: {
+    args: [FFIType.cstring, FFIType.cstring],  // url, text
+    returns: FFIType.ptr,
+  },
 
   // ============================================================
   // Flowchart Components

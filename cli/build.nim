@@ -3,7 +3,7 @@
 ## Universal IR-based build system for different targets
 
 import os, strutils, json, times, sequtils, osproc, tables
-import config, tsx_parser, kry_parser, kry_to_kir, md_parser, html_transpiler
+import config, tsx_parser, kry_parser, kry_to_kir, md_parser, html_transpiler, codegen_html
 
 # FFI bindings to C web backend
 type
@@ -52,6 +52,16 @@ proc css_generator_generate(generator: CSSGenerator, root: IRComponent): cstring
 proc css_generator_write_to_file(generator: CSSGenerator, root: IRComponent, filename: cstring): bool {.
   importc, dynlib: libWebPath.}
 
+# HTML generator with options
+type HtmlGeneratorOptions* = object
+  mode*: cint           # 0 = display (runtime), 1 = transpile (static)
+  minify*: bool
+  inline_css*: bool     # Generate inline styles vs external CSS
+  preserve_ids*: bool   # Preserve component IDs in output
+
+proc html_generator_create_with_options*(options: HtmlGeneratorOptions): HTMLGenerator {.
+  importc: "html_generator_create_with_options", dynlib: libWebPath.}
+
 # Forward declarations
 proc buildLinuxTarget*()
 proc buildSTM32Target*()
@@ -63,6 +73,7 @@ proc buildTerminalTarget*()
 # IR-based build system
 proc buildWithIR*(sourceFile: string, target: string)
 proc buildWithIRForPage*(sourceFile: string, target: string, pagePath: string, cfg: KryonConfig, docsFile: string = "")
+proc organizeSdlKirFile*(sourceFile: string, pagePath: string, cfg: KryonConfig, docsFile: string = "")
 proc compileToKIR*(sourceFile: string): string
 proc compileToKIRForPage*(sourceFile: string, pageName: string): string
 proc renderIRToTarget*(kirFile: string, target: string)
@@ -238,23 +249,37 @@ proc buildForTarget*(target: string) =
     echo "   (docs auto-generation disabled)"
 
   # Check for multi-page configuration
-  if allPages.len > 0 and target.toLowerAscii() == "web":
+  if allPages.len > 0:
     echo "📄 Multi-page build configured (" & $allPages.len & " pages)"
-    for page in allPages:
-      if not fileExists(page.file):
-        echo "⚠️  Page source not found: " & page.file
-        continue
+    let isWebTarget = target.toLowerAscii() == "web"
 
-      echo "📁 Building page: " & page.file & " → " & page.path
-      buildWithIRForPage(page.file, target, page.path, cfg, page.docsFile)
+    # Web target: generate HTML files
+    # Desktop target: organize .kir files in build/ir/
+    if isWebTarget:
+      for page in allPages:
+        if not fileExists(page.file):
+          echo "⚠️  Page source not found: " & page.file
+          continue
 
-    # Copy assets directory if it exists
-    if dirExists("assets"):
-      let destAssets = "build/assets"
-      if dirExists(destAssets):
-        removeDir(destAssets)
-      copyDir("assets", destAssets)
-      echo "📁 Copied assets/ → build/assets/"
+        echo "📁 Building page: " & page.file & " → " & page.path
+        buildWithIRForPage(page.file, target, page.path, cfg, page.docsFile)
+
+      # Copy assets directory if it exists
+      if dirExists("assets"):
+        let destAssets = "build/assets"
+        if dirExists(destAssets):
+          removeDir(destAssets)
+        copyDir("assets", destAssets)
+        echo "📁 Copied assets/ → build/assets/"
+    else:
+      # Desktop/SDL3 target: organize .kir files for navigation
+      echo "🖥️  Organizing .kir files for SDL3 navigation..."
+      for page in allPages:
+        if not fileExists(page.file):
+          echo "⚠️  Page source not found: " & page.file
+          continue
+
+        organizeSdlKirFile(page.file, page.path, cfg, page.docsFile)
 
     return
 
@@ -687,6 +712,51 @@ proc buildWithIRForPage*(sourceFile: string, target: string, pagePath: string, c
   let htmlFile = if pagePath == "/": "index.html" else: outputDir / "index.html"
   echo "   ✅ Generated: " & htmlFile
 
+proc organizeSdlKirFile*(sourceFile: string, pagePath: string, cfg: KryonConfig, docsFile: string = "") =
+  ## Organize .kir file in build/ir/ directory for SDL3 router
+  ## pagePath: "/" for root, "/docs/architecture" for nested pages
+  ## docsFile: Optional markdown file path for auto-generated docs pages
+
+  # Convert page path to cache filename (same logic as buildWithIRForPage)
+  let pageName = if pagePath == "/":
+                   sourceFile.splitFile().name
+                 else:
+                   pagePath.strip(chars = {'/'}).replace("/", "_")
+
+  # Step 1: Compile to .kir in .kryon_cache/
+  let cacheKirFile = compileToKIRForPage(sourceFile, pageName)
+
+  # Step 1.5: If this is a docs page, embed the markdown content in KIR
+  if docsFile.len > 0:
+    var kirJson = parseJson(readFile(cacheKirFile))
+    kirJson = substituteDocsContent(kirJson, docsFile)
+    writeFile(cacheKirFile, kirJson.pretty())
+
+  # Step 2: Determine target path in build/ir/
+  let irDir = cfg.buildOutputDir / "ir"
+  var targetKirPath: string
+
+  if pagePath == "/" or pagePath.len == 0:
+    targetKirPath = irDir / "index.kir"
+  else:
+    # Convert path to filesystem structure
+    # /docs/architecture → build/ir/docs/architecture.kir
+    let cleanPath = pagePath.strip(chars = {'/'})
+    targetKirPath = irDir / cleanPath & ".kir"
+
+  # Step 3: Create directory structure if needed
+  let targetDir = targetKirPath.parentDir()
+  if not dirExists(targetDir):
+    createDir(targetDir)
+
+  # Step 4: Copy .kir file from cache to organized location
+  if fileExists(cacheKirFile):
+    copyFile(cacheKirFile, targetKirPath)
+    let relPath = targetKirPath.relativePath(getCurrentDir())
+    echo "   ✅ " & pagePath & " → " & relPath
+  else:
+    echo "   ⚠️  Warning: " & cacheKirFile & " not found"
+
 proc compileToKIR*(sourceFile: string): string =
   ## Compile source file to KIR JSON format
   ## Handles: .tsx, .jsx, .kry, .nim, .md
@@ -1096,53 +1166,17 @@ proc processInlineMarkdown*(text: string): string =
   result = replaceLinks(result)
 
 proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
-  ## Generate HTML from KIR using C web backend
-  ## This ensures proper rendering of all IR components including Flowchart → SVG
+  ## Generate self-contained HTML from KIR using Nim transpiler
+  ## Produces HTML with inline CSS and JavaScript (no external dependencies)
   echo "🌐 Generating web output from: ", kirFile
 
-  # Load .kir file → IRComponent using C deserialization
-  echo "   📥 Deserializing IR from .kir file..."
-  let component = ir_read_json_v2_file(kirFile.cstring)
-  if component == nil:
-    raise newException(IOError, "Failed to read KIR file: " & kirFile)
-
-  defer:
-    echo "   🧹 Cleaning up IR component..."
-    ir_destroy_component(component)
-
-  # Generate HTML using C web backend
-  echo "   🎨 Generating HTML with web backend (includes SVG for flowcharts)..."
-  let generator = html_generator_create()
-  if generator == nil:
-    raise newException(IOError, "Failed to create HTML generator")
-
-  defer:
-    html_generator_destroy(generator)
-
-  let htmlCstr = html_generator_generate(generator, component)
-  if htmlCstr == nil:
-    raise newException(IOError, "Failed to generate HTML from IR")
-
-  let htmlContent = $htmlCstr
+  # Generate HTML using Nim transpiler (codegen_html.nim)
+  echo "   🎨 Generating self-contained HTML with inline styles and JavaScript..."
+  let htmlContent = generateVanillaHTML(kirFile)
 
   # Write HTML to output file
   let htmlPath = outputDir / "index.html"
   writeFile(htmlPath, htmlContent)
   echo "   ✅ Generated: " & htmlPath
-
-  # Generate CSS file
-  echo "   🎨 Generating CSS file..."
-  let cssGenerator = css_generator_create()
-  if cssGenerator == nil:
-    raise newException(IOError, "Failed to create CSS generator")
-
-  defer:
-    css_generator_destroy(cssGenerator)
-
-  let cssPath = (outputDir / "kryon.css").cstring
-  if not css_generator_write_to_file(cssGenerator, component, cssPath):
-    raise newException(IOError, "Failed to generate CSS file")
-
-  echo "   ✅ Generated: " & outputDir / "kryon.css"
   echo "   📁 Web files in: " & outputDir & "/"
   echo "   🌐 Open " & htmlPath & " in a browser"

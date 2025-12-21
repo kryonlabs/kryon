@@ -86,6 +86,10 @@ bool desktop_ir_renderer_validate_ir(DesktopIRRenderer* renderer, IRComponent* r
 void desktop_ir_renderer_print_tree_info(DesktopIRRenderer* renderer, IRComponent* root);
 void desktop_ir_renderer_print_performance_stats(DesktopIRRenderer* renderer);
 
+// Page navigation support
+void desktop_renderer_reload_tree(void* renderer_ptr, IRComponent* new_root);
+void desktop_init_router(const char* initial_page, const char* ir_dir, IRComponent* root, void* renderer);
+
 // Convenience functions
 DesktopRendererConfig desktop_renderer_config_default(void);
 DesktopRendererConfig desktop_renderer_config_sdl3(int width, int height, const char* title);

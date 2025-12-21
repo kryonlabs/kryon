@@ -147,13 +147,13 @@ static void append_dimension_string(char* buffer, size_t size, IRDimension dim) 
 // Convert IRAlignment to CSS flexbox value
 static const char* alignment_to_css_value(IRAlignment alignment) {
     switch (alignment) {
-        case IR_ALIGN_START: return "flex-start";
-        case IR_ALIGN_CENTER: return "center";
-        case IR_ALIGN_END: return "flex-end";
-        case IR_ALIGN_SPACE_BETWEEN: return "space-between";
-        case IR_ALIGN_SPACE_AROUND: return "space-around";
-        case IR_ALIGN_SPACE_EVENLY: return "space-evenly";
-        case IR_ALIGN_STRETCH: return "stretch";
+        case IR_ALIGNMENT_START: return "flex-start";
+        case IR_ALIGNMENT_CENTER: return "center";
+        case IR_ALIGNMENT_END: return "flex-end";
+        case IR_ALIGNMENT_SPACE_BETWEEN: return "space-between";
+        case IR_ALIGNMENT_SPACE_AROUND: return "space-around";
+        case IR_ALIGNMENT_SPACE_EVENLY: return "space-evenly";
+        case IR_ALIGNMENT_STRETCH: return "stretch";
         default: return "flex-start";
     }
 }
@@ -276,7 +276,7 @@ static void generate_inline_styles(HTMLGenerator* generator, IRComponent* compon
             }
 
             // Justify content (main axis alignment)
-            if (flex->justify_content != IR_ALIGN_START) {
+            if (flex->justify_content != IR_ALIGNMENT_START) {
                 const char* justify = alignment_to_css_value(flex->justify_content);
                 if (justify) {
                     snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
@@ -285,7 +285,7 @@ static void generate_inline_styles(HTMLGenerator* generator, IRComponent* compon
             }
 
             // Align items (cross axis alignment)
-            if (flex->cross_axis != IR_ALIGN_STRETCH) {
+            if (flex->cross_axis != IR_ALIGNMENT_STRETCH) {
                 const char* align = alignment_to_css_value(flex->cross_axis);
                 if (align) {
                     snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
@@ -811,13 +811,16 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
     html_generator_write_string(generator, "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
     html_generator_write_string(generator, "  <title>Kryon Web Application</title>\n");
 
-    // In display mode, include JavaScript and CSS for runtime
-    // In transpilation mode, skip JS and use inline CSS
-    if (generator->options.mode == HTML_MODE_DISPLAY) {
+    // Add CSS link if using external CSS file (not inline)
+    if (!generator->options.inline_css) {
         html_generator_write_string(generator, "  <link rel=\"stylesheet\" href=\"kryon.css\">\n");
+    }
+    // TODO: If inline_css is true, add <style> block here
+
+    // Add JavaScript runtime only in display mode
+    if (generator->options.mode == HTML_MODE_DISPLAY) {
         html_generator_write_string(generator, "  <script src=\"kryon.js\"></script>\n");
     }
-    // TODO: In transpilation mode with inline_css, add <style> block here
 
     html_generator_write_string(generator, "</head>\n<body>\n");
 

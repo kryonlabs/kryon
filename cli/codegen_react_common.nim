@@ -37,6 +37,7 @@ type
     ## Generation context for React code
     mode*: ReactOutputMode
     componentDefs*: Table[string, ComponentDef]
+    kirComponentDefs*: JsonNode  # Raw KIR component_definitions array for HTML generator
     logicFunctions*: JsonNode
     eventBindings*: JsonNode
     indentLevel*: int
