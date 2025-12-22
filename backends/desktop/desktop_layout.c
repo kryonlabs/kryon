@@ -263,6 +263,10 @@ LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect) {
         bool is_auto_width = !child->style || child->style->width.type == IR_DIMENSION_AUTO;
         bool is_auto_height = !child->style || child->style->height.type == IR_DIMENSION_AUTO;
 
+        // Check if component needs main-axis space for alignment (justifyContent)
+        bool needs_main_axis_space = child->layout &&
+                                    child->layout->flex.justify_content != IR_ALIGNMENT_START;
+
         if (is_auto_width || is_auto_height) {
             float total_width = 0, total_height = 0;
             float gap = 0.0f;
@@ -285,8 +289,27 @@ LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect) {
                 }
             }
 
-            if (is_auto_width) layout.width = total_width;
-            if (is_auto_height) layout.height = total_height;
+            // For COLUMN: Don't shrink height if justifyContent != START
+            // For ROW: Don't shrink width if justifyContent != START
+            bool shrink_width = !(child->type == IR_COMPONENT_ROW && needs_main_axis_space);
+            bool shrink_height = !(child->type == IR_COMPONENT_COLUMN && needs_main_axis_space);
+
+            if (is_auto_width) {
+                if (shrink_width) {
+                    layout.width = total_width;
+                } else {
+                    // Don't shrink - use parent's available width for alignment
+                    layout.width = parent_rect.width;
+                }
+            }
+            if (is_auto_height) {
+                if (shrink_height) {
+                    layout.height = total_height;
+                } else {
+                    // Don't shrink - use parent's available height for alignment
+                    layout.height = parent_rect.height;
+                }
+            }
         }
     }
 
@@ -728,8 +751,6 @@ float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_he
         }
 
         if (getenv("KRYON_TRACE_LAYOUT")) {
-            const char* type_name = child->type == IR_COMPONENT_ROW ? "ROW" :
-                                   child->type == IR_COMPONENT_COLUMN ? "COLUMN" : "CONTAINER";
             if (is_height && child->style) {
                 printf("      └─ Content %s: %.1f + padding (%.1f+%.1f) = %.1f\n",
                        is_height ? "HEIGHT" : "WIDTH",

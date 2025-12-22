@@ -2192,7 +2192,11 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
     // EXCEPTION: If component has cross-axis alignment (not START), keep rect dimensions
     // so it can align its children within the full available space
     if ((component->type == IR_COMPONENT_COLUMN || component->type == IR_COMPONENT_ROW)) {
-        // Check if component needs cross-axis space for alignment
+        // Check if component needs MAIN-axis space for alignment (justifyContent)
+        bool needs_main_axis_space = component->layout &&
+                                    component->layout->flex.justify_content != IR_ALIGNMENT_START;
+
+        // Check if component needs CROSS-axis space for alignment (alignItems)
         bool needs_cross_axis_space = component->layout &&
                                      component->layout->flex.cross_axis != IR_ALIGNMENT_START;
 
@@ -2200,12 +2204,24 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
         float content_width = get_child_dimension(component, rect, false);
         float content_height = get_child_dimension(component, rect, true);
 
+        // For COLUMN: Don't shrink height if justifyContent != START
+        // For ROW: Don't shrink width if justifyContent != START
+        bool shrink_width = !(component->type == IR_COMPONENT_ROW && needs_main_axis_space);
+        bool shrink_height = !(component->type == IR_COMPONENT_COLUMN && needs_main_axis_space);
+
+        // Debug output
+        if (getenv("KRYON_TRACE_LAYOUT") && component->type == IR_COMPONENT_COLUMN && needs_main_axis_space) {
+            fprintf(stderr, "[SHRINK] Column needs_main=%d shrink_height=%d rect.h=%.1f content_h=%.1f justify=%d\n",
+                   needs_main_axis_space, shrink_height, rect.height, content_height,
+                   component->layout->flex.justify_content);
+        }
+
         // If rect dimensions are 0 (AUTO-sized), use measured content dimensions
-        // UNLESS component needs cross-axis space for alignment
-        if (rect.width == 0.0f && content_width > 0.0f && !needs_cross_axis_space) {
+        // UNLESS component needs space for alignment
+        if (rect.width == 0.0f && content_width > 0.0f && !needs_cross_axis_space && shrink_width) {
             child_rect.width = content_width;
         }
-        if (rect.height == 0.0f && content_height > 0.0f && !needs_cross_axis_space) {
+        if (rect.height == 0.0f && content_height > 0.0f && !needs_cross_axis_space && shrink_height) {
             child_rect.height = content_height;
         }
     }

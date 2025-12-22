@@ -2004,13 +2004,19 @@ static IRTextAlign json_parse_text_align(const char* str) {
  */
 static IRAlignment json_parse_alignment(const char* str) {
     if (!str) return IR_ALIGNMENT_START;
-    if (strcmp(str, "center") == 0) return IR_ALIGNMENT_CENTER;
-    if (strcmp(str, "flex-end") == 0) return IR_ALIGNMENT_END;
-    if (strcmp(str, "space-between") == 0) return IR_ALIGNMENT_SPACE_BETWEEN;
-    if (strcmp(str, "space-around") == 0) return IR_ALIGNMENT_SPACE_AROUND;
-    if (strcmp(str, "space-evenly") == 0) return IR_ALIGNMENT_SPACE_EVENLY;
-    if (strcmp(str, "stretch") == 0) return IR_ALIGNMENT_STRETCH;
-    return IR_ALIGNMENT_START;
+
+    // Handle both bare values ("center", "end") and CSS values ("flex-end")
+    IRAlignment result;
+    if (strcmp(str, "center") == 0) result = IR_ALIGNMENT_CENTER;
+    else if (strcmp(str, "start") == 0 || strcmp(str, "flex-start") == 0) result = IR_ALIGNMENT_START;
+    else if (strcmp(str, "end") == 0 || strcmp(str, "flex-end") == 0) result = IR_ALIGNMENT_END;
+    else if (strcmp(str, "space-between") == 0) result = IR_ALIGNMENT_SPACE_BETWEEN;
+    else if (strcmp(str, "space-around") == 0) result = IR_ALIGNMENT_SPACE_AROUND;
+    else if (strcmp(str, "space-evenly") == 0) result = IR_ALIGNMENT_SPACE_EVENLY;
+    else if (strcmp(str, "stretch") == 0) result = IR_ALIGNMENT_STRETCH;
+    else result = IR_ALIGNMENT_START;  // Default for unrecognized values
+
+    return result;
 }
 
 /**
@@ -2214,6 +2220,7 @@ static void json_deserialize_layout(cJSON* obj, IRLayout* layout) {
     }
     if ((item = cJSON_GetObjectItem(obj, "justifyContent")) != NULL && cJSON_IsString(item)) {
         layout->flex.justify_content = json_parse_alignment(item->valuestring);
+        layout->flex.main_axis = layout->flex.justify_content;  // Keep in sync
     }
     if ((item = cJSON_GetObjectItem(obj, "alignItems")) != NULL && cJSON_IsString(item)) {
         layout->flex.cross_axis = json_parse_alignment(item->valuestring);
