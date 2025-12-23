@@ -2653,6 +2653,18 @@ static void intrinsic_size_container(IRComponent* c, IRIntrinsicSize* out) {
     } else {
         intrinsic_size_column(c, out);
     }
+
+    // If container has explicit dimensions, override intrinsic size with those
+    if (c->style) {
+        if (c->style->width.type == IR_DIMENSION_PX) {
+            out->min_content_width = c->style->width.value;
+            out->max_content_width = c->style->width.value;
+        }
+        if (c->style->height.type == IR_DIMENSION_PX) {
+            out->min_content_height = c->style->height.value;
+            out->max_content_height = c->style->height.value;
+        }
+    }
 }
 
 /**
@@ -2838,10 +2850,21 @@ static void apply_main_axis_alignment(IRComponent* c, float available_space, boo
     for (uint32_t i = 0; i < c->child_count; i++) {
         IRComponent* child = c->children[i];
         if (!child || !child->layout_state) continue;
+        if (getenv("KRYON_TRACE_ALIGNMENT")) {
+            fprintf(stderr, "[ALIGN]   Child %u: before offset: %s=%.1f\n",
+                    child->id, is_column ? "y" : "x",
+                    is_column ? child->layout_state->computed.y : child->layout_state->computed.x);
+        }
         if (is_column) {
             child->layout_state->computed.y += offset;
         } else {
             child->layout_state->computed.x += offset;
+        }
+        if (getenv("KRYON_TRACE_ALIGNMENT")) {
+            fprintf(stderr, "[ALIGN]   Child %u: after offset: %s=%.1f (offset=%.1f)\n",
+                    child->id, is_column ? "y" : "x",
+                    is_column ? child->layout_state->computed.y : child->layout_state->computed.x,
+                    offset);
         }
     }
 }
@@ -3056,6 +3079,20 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
         // SPECIAL CASE: CENTER components fill their parent
         if (c->type == IR_COMPONENT_CENTER) {
             layout->width = constraints.max_width;
+        }
+        // SPECIAL CASE: Rows with justifyContent alignment need to FILL parent
+        // to have space for alignment to work
+        else if (c->type == IR_COMPONENT_ROW && c->layout) {
+            IRAlignment justify = c->layout->flex.justify_content;
+            // Only START can shrink-to-fit; all others need full width for alignment
+            if (justify != IR_ALIGNMENT_START) {
+                layout->width = constraints.max_width;
+            } else {
+                layout->width = intrinsic->max_content_width;
+                if (layout->width > constraints.max_width) {
+                    layout->width = constraints.max_width;
+                }
+            }
         } else {
             layout->width = intrinsic->max_content_width;
             if (layout->width > constraints.max_width) {
@@ -3073,6 +3110,20 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
         // SPECIAL CASE: CENTER components fill their parent
         if (c->type == IR_COMPONENT_CENTER) {
             layout->height = constraints.max_height;
+        }
+        // SPECIAL CASE: Columns with justifyContent alignment need to FILL parent
+        // to have space for alignment to work
+        else if (c->type == IR_COMPONENT_COLUMN && c->layout) {
+            IRAlignment justify = c->layout->flex.justify_content;
+            // Only START can shrink-to-fit; all others need full height for alignment
+            if (justify != IR_ALIGNMENT_START) {
+                layout->height = constraints.max_height;
+            } else {
+                layout->height = intrinsic->max_content_height;
+                if (layout->height > constraints.max_height) {
+                    layout->height = constraints.max_height;
+                }
+            }
         } else {
             layout->height = intrinsic->max_content_height;
             if (layout->height > constraints.max_height) {
