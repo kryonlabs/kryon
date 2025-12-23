@@ -499,8 +499,9 @@ Examples:
   var webOutputDir = "build"
 
   # Try to load config to get defaults
+  var config = defaultConfig()  # Declare outside try block for later access
   try:
-    let config = loadProjectConfig()
+    config = loadProjectConfig()
     # Get entry point: use build.entry, or first page file, or default to main
     if config.buildEntry != "":
       baseName = config.buildEntry
@@ -517,8 +518,8 @@ Examples:
       webPort = config.devPort
       webOutputDir = config.buildOutputDir
   except:
-    # No config file, use defaults
-    baseName = "main"
+    # No config file, use defaults (already set above)
+    discard
 
   # Parse command-line arguments (override config)
   for arg in args:
@@ -632,13 +633,44 @@ Examples:
     let buildDir = kryonRoot / "build"
 
     putEnv("KRYON_LIB_PATH", buildDir / "libkryon_ir.so")
-    putEnv("LD_LIBRARY_PATH", buildDir & ":" & getEnv("LD_LIBRARY_PATH"))
+
+    # Add plugin build directories to LD_LIBRARY_PATH
+    var pluginLibraryPaths = buildDir  # Start with kryon's build dir
+    for plugin in config.plugins:
+      if plugin.source == psPath:
+        let pluginPath = if plugin.path.startsWith(".") or plugin.path.startsWith(".."):
+          getCurrentDir() / plugin.path
+        else:
+          plugin.path
+
+        let pluginBuildDir = pluginPath / "build"
+        if dirExists(pluginBuildDir):
+          pluginLibraryPaths.add(":" & pluginBuildDir)
+
+    putEnv("LD_LIBRARY_PATH", pluginLibraryPaths & ":" & getEnv("LD_LIBRARY_PATH"))
 
     # Set Lua module path so require("kryon") works from any directory
     let luaBindingsDir = kryonRoot / "bindings" / "lua"
     let existingPath = getEnv("LUA_PATH")
+
+    # Add plugin bindings paths to LUA_PATH
+    var pluginLuaPaths = ""
+    for plugin in config.plugins:
+      if plugin.source == psPath:
+        # Resolve relative paths from current directory
+        let pluginPath = if plugin.path.startsWith(".") or plugin.path.startsWith(".."):
+          getCurrentDir() / plugin.path
+        else:
+          plugin.path
+
+        let pluginBindingsDir = pluginPath / "bindings" / "lua"
+        if dirExists(pluginBindingsDir):
+          pluginLuaPaths.add(pluginBindingsDir / "?.lua;")
+          pluginLuaPaths.add(pluginBindingsDir / "?/init.lua;")
+
     let luaPath = luaBindingsDir / "?.lua;" &
                   luaBindingsDir / "?/init.lua;" &
+                  pluginLuaPaths &
                   (if existingPath.len > 0: existingPath else: ";")
     putEnv("LUA_PATH", luaPath)
 

@@ -2224,6 +2224,10 @@ static void json_deserialize_layout(cJSON* obj, IRLayout* layout) {
     }
     if ((item = cJSON_GetObjectItem(obj, "alignItems")) != NULL && cJSON_IsString(item)) {
         layout->flex.cross_axis = json_parse_alignment(item->valuestring);
+        if (getenv("KRYON_TRACE_MAXWIDTH")) {
+            fprintf(stderr, "[MAXWIDTH] JSON: Parsed alignItems=\"%s\" -> cross_axis=%d\n",
+                    item->valuestring, layout->flex.cross_axis);
+        }
     }
     if ((item = cJSON_GetObjectItem(obj, "flexWrap")) != NULL && cJSON_IsBool(item)) {
         layout->flex.wrap = cJSON_IsTrue(item);
@@ -2482,6 +2486,11 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
     // Deserialize style and layout
     json_deserialize_style(json, component->style);
     json_deserialize_layout(json, component->layout);
+
+    if (getenv("KRYON_TRACE_MAXWIDTH") && component->layout) {
+        fprintf(stderr, "[MAXWIDTH] After JSON deserialize - Component %u: cross_axis=%d\n",
+                component->id, component->layout->flex.cross_axis);
+    }
 
     // Parse animation property
     if ((item = cJSON_GetObjectItem(json, "animation")) != NULL && cJSON_IsString(item)) {

@@ -378,7 +378,7 @@ void render_background(SDL_Renderer* renderer, IRComponent* comp, SDL_FRect* rec
 
 void render_text_with_shadow(SDL_Renderer* sdl_renderer, TTF_Font* font,
                              const char* text, SDL_Color color, IRComponent* comp,
-                             float x, float y) {
+                             float x, float y, float max_width) {
     if (!comp || !text || !sdl_renderer) return;
 
     // Check if text should be rendered RTL
@@ -435,18 +435,42 @@ void render_text_with_shadow(SDL_Renderer* sdl_renderer, TTF_Font* font,
         }
     }
 
-    // Simple text rendering - shadow effects not yet implemented in current IR
-    int width, height;
-    SDL_Texture* texture = get_text_texture_cached(sdl_renderer, font, render_text, color, &width, &height);
-    if (texture) {
-        // Use explicit x, y position parameters for correct positioning
-        SDL_FRect text_rect = {
-            x,
-            y,
-            (float)width,
-            (float)height
-        };
-        SDL_RenderTexture(sdl_renderer, texture, NULL, &text_rect);
+    // Get font size and calculate line height
+    float font_size = comp->style && comp->style->font.size > 0
+                     ? comp->style->font.size : 16.0f;
+    float line_height = font_size * TEXT_LINE_HEIGHT_RATIO;
+
+    // Wrap text into lines
+    char** lines = NULL;
+    int line_count = wrap_text_into_lines(render_text, max_width, font, font_size, &lines);
+
+    if (line_count > 0 && lines) {
+        // Render each line separately
+        float current_y = y;
+        for (int i = 0; i < line_count; i++) {
+            int width = 0, height = 0;
+            SDL_Texture* texture = get_text_texture_cached(sdl_renderer, font, lines[i], color, &width, &height);
+            if (texture) {
+                SDL_FRect text_rect = {
+                    x,
+                    current_y,
+                    (float)width,
+                    (float)height
+                };
+                SDL_RenderTexture(sdl_renderer, texture, NULL, &text_rect);
+            }
+            current_y += line_height;
+            free(lines[i]);
+        }
+        free(lines);
+    } else {
+        // Fallback to single-line rendering if wrapping failed
+        int width, height;
+        SDL_Texture* texture = get_text_texture_cached(sdl_renderer, font, render_text, color, &width, &height);
+        if (texture) {
+            SDL_FRect text_rect = {x, y, (float)width, (float)height};
+            SDL_RenderTexture(sdl_renderer, texture, NULL, &text_rect);
+        }
     }
 
     // Clean up reversed text if allocated

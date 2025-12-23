@@ -515,6 +515,10 @@ function parseJSXElement(node: t.JSXElement, state: ParsedState): KirNode {
       switch (name) {
         case 'width':
         case 'height':
+        case 'minWidth':
+        case 'minHeight':
+        case 'maxWidth':
+        case 'maxHeight':
           if (typeof value === 'number') {
             result[name] = `${value}.0px`;
           } else if (typeof value === 'string' && value.endsWith('%')) {

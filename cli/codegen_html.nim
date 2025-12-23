@@ -151,12 +151,22 @@ proc generateInlineStyles(node: JsonNode): string =
   if node.hasKey("maxWidth"):
     let mw = node["maxWidth"]
     if mw.kind == JFloat or mw.kind == JInt:
-      styles.add(&"max-width: {mw.getFloat():.0f}px")
+      styles.add(&"max-width: {mw.getInt()}px")
 
   if node.hasKey("minWidth"):
     let mw = node["minWidth"]
     if mw.kind == JFloat or mw.kind == JInt:
-      styles.add(&"min-width: {mw.getFloat():.0f}px")
+      styles.add(&"min-width: {mw.getInt()}px")
+
+  if node.hasKey("maxHeight"):
+    let mh = node["maxHeight"]
+    if mh.kind == JFloat or mh.kind == JInt:
+      styles.add(&"max-height: {mh.getInt()}px")
+
+  if node.hasKey("minHeight"):
+    let mh = node["minHeight"]
+    if mh.kind == JFloat or mh.kind == JInt:
+      styles.add(&"min-height: {mh.getInt()}px")
 
   # Individual padding properties
   if node.hasKey("paddingTop"):
