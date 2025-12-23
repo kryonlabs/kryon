@@ -2448,6 +2448,14 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
     component->style = ir_create_style();
     component->layout = ir_create_layout();
 
+    // Initialize layout state for two-pass layout system
+    component->layout_state = calloc(1, sizeof(IRLayoutState));
+    if (component->layout_state) {
+        component->layout_state->dirty = true;  // Start dirty, needs initial layout
+        // intrinsic_valid = false (default from calloc)
+        // layout_valid = false (default from calloc)
+    }
+
     cJSON* item = NULL;
 
     // ID
