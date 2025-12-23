@@ -821,8 +821,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                         SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text
                         float text_w = (float)surface->w;
                         float text_h = (float)surface->h;
-                        float avail_w = rect.width;
-                        float text_y = roundf(rect.y + (rect.height - text_h) / 2);
+                        float avail_w = sdl_rect.w;
+                        float text_y = roundf(sdl_rect.y + (sdl_rect.h - text_h) / 2);
 
                         // Check text_effect settings for overflow handling
                         IRTextOverflowType overflow = IR_TEXT_OVERFLOW_CLIP;  // Default: clip (no fade)
@@ -837,7 +837,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
                         if (text_w > avail_w - 16) {
                             // Text overflows - handle based on text_effect settings
-                            float text_x = rect.x + 8;  // Small left padding
+                            float text_x = sdl_rect.x + 8;  // Small left padding
                             float visible_w = avail_w - 12;  // Leave margin
 
                             // Use fade if: overflow is FADE, or fade_type is HORIZONTAL with length > 0
@@ -862,7 +862,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                         } else {
                             // Text fits: render normally, centered
                             SDL_FRect text_rect = {
-                                .x = roundf(rect.x + (rect.width - text_w) / 2),
+                                .x = roundf(sdl_rect.x + (sdl_rect.w - text_w) / 2),
                                 .y = text_y,
                                 .w = text_w,
                                 .h = text_h
@@ -918,8 +918,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
                         // Center text in tab
                         SDL_FRect text_rect = {
-                            .x = roundf(rect.x + (rect.width - text_w) / 2),
-                            .y = roundf(rect.y + (rect.height - text_h) / 2),
+                            .x = roundf(sdl_rect.x + (sdl_rect.w - text_w) / 2),
+                            .y = roundf(sdl_rect.y + (sdl_rect.h - text_h) / 2),
                             .w = text_w,
                             .h = text_h
                         };
@@ -956,7 +956,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 // Render text with optional shadow
                 render_text_with_shadow(renderer->renderer, font,
                                        component->text_content, text_color, component,
-                                       rect.x, rect.y, rect.width);
+                                       sdl_rect.x, sdl_rect.y, sdl_rect.w);
             }
             break;
         }
@@ -1007,7 +1007,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 float pad_left = component->style ? component->style->padding.left : 8.0f;
                 float pad_top = component->style ? component->style->padding.top : 8.0f;
                 float pad_right = component->style ? component->style->padding.right : 8.0f;
-                float avail_width = rect.width - pad_left - pad_right;
+                float avail_width = sdl_rect.w - pad_left - pad_right;
 
                 SDL_Color text_color = has_value ? (SDL_Color){40, 40, 40, 255}
                                                  : (SDL_Color){160, 160, 160, 255};
@@ -1023,9 +1023,9 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     }
                 }
 
-                float caret_x = rect.x + pad_left;
-                float caret_y = rect.y + pad_top;
-                float caret_height = rect.height - pad_top - (component->style ? component->style->padding.bottom : 8.0f);
+                float caret_x = sdl_rect.x + pad_left;
+                float caret_y = sdl_rect.y + pad_top;
+                float caret_height = sdl_rect.h - pad_top - (component->style ? component->style->padding.bottom : 8.0f);
 
                 float caret_local = 0.0f;
                 if (font && istate) {
@@ -1033,9 +1033,9 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     caret_local = measure_text_width(font, prefix);
                     free(prefix);
                     ensure_caret_visible(renderer, component, istate, font, pad_left, pad_right);
-                    caret_x = rect.x + pad_left + (caret_local - istate->scroll_x);
+                    caret_x = sdl_rect.x + pad_left + (caret_local - istate->scroll_x);
                 } else {
-                    caret_x = rect.x + pad_left;
+                    caret_x = sdl_rect.x + pad_left;
                 }
 
                 if (font && to_render && to_render[0] != '\0') {
@@ -1047,10 +1047,10 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                         SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
                         if (texture) {
                             SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text
-                            float text_x = rect.x + pad_left;
-                            float text_y = rect.y + pad_top;
+                            float text_x = sdl_rect.x + pad_left;
+                            float text_y = sdl_rect.y + pad_top;
                             if (!component->style || (component->style->padding.top == 0 && component->style->padding.bottom == 0)) {
-                                text_y = rect.y + (rect.height - surface->h) / 2;
+                                text_y = sdl_rect.y + (sdl_rect.h - surface->h) / 2;
                             }
                             SDL_FRect dest_rect = {
                                 .x = roundf(text_x - (istate ? istate->scroll_x : 0.0f)),
@@ -1060,10 +1060,10 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                             };
                             // Clip to input rect minus padding
                             SDL_FRect clip_rect = {
-                                .x = rect.x + pad_left,
-                                .y = rect.y + pad_top,
-                                .w = fmaxf(0.0f, rect.width - pad_left - pad_right),
-                                .h = rect.height - pad_top - (component->style ? component->style->padding.bottom : 8.0f)
+                                .x = sdl_rect.x + pad_left,
+                                .y = sdl_rect.y + pad_top,
+                                .w = fmaxf(0.0f, sdl_rect.w - pad_left - pad_right),
+                                .h = sdl_rect.h - pad_top - (component->style ? component->style->padding.bottom : 8.0f)
                             };
                             SDL_Rect clip_px = {
                                 .x = (int)clip_rect.x,
@@ -1102,11 +1102,11 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
         case IR_COMPONENT_CHECKBOX: {
             // Checkbox is rendered as a small box on the left + label text
-            float checkbox_size = fminf(rect.height * 0.6f, 20.0f);
-            float checkbox_y = rect.y + (rect.height - checkbox_size) / 2;
+            float checkbox_size = fminf(sdl_rect.h * 0.6f, 20.0f);
+            float checkbox_y = sdl_rect.y + (sdl_rect.h - checkbox_size) / 2;
 
             SDL_FRect checkbox_rect = {
-                .x = rect.x + 5,
+                .x = sdl_rect.x + 5,
                 .y = checkbox_y,
                 .w = checkbox_size,
                 .h = checkbox_size
@@ -1167,7 +1167,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                         // Round text position to integer pixels for crisp rendering
                         SDL_FRect text_rect = {
                             .x = roundf(checkbox_rect.x + checkbox_size + 10),
-                            .y = roundf(rect.y + (rect.height - surface->h) / 2.0f),
+                            .y = roundf(sdl_rect.y + (sdl_rect.h - surface->h) / 2.0f),
                             .w = (float)surface->w,
                             .h = (float)surface->h
                         };
@@ -1205,10 +1205,10 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             SDL_SetRenderDrawColor(renderer->renderer, border_color.r, border_color.g, border_color.b, border_color.a);
             for (int i = 0; i < (int)border_width; i++) {
                 SDL_FRect border_rect = {
-                    .x = rect.x + i,
-                    .y = rect.y + i,
-                    .w = rect.width - 2*i,
-                    .h = rect.height - 2*i
+                    .x = sdl_rect.x + i,
+                    .y = sdl_rect.y + i,
+                    .w = sdl_rect.w - 2*i,
+                    .h = sdl_rect.h - 2*i
                 };
                 SDL_RenderRect(renderer->renderer, &border_rect);
             }
@@ -1231,8 +1231,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     if (texture) {
                         SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text
                         SDL_FRect text_rect = {
-                            .x = roundf(rect.x + 10),
-                            .y = roundf(rect.y + (rect.height - surface->h) / 2.0f),
+                            .x = roundf(sdl_rect.x + 10),
+                            .y = roundf(sdl_rect.y + (sdl_rect.h - surface->h) / 2.0f),
                             .w = (float)surface->w,
                             .h = (float)surface->h
                         };
@@ -1244,8 +1244,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             }
 
             // Draw dropdown arrow on the right
-            float arrow_x = rect.x + rect.width - 20;
-            float arrow_y = rect.y + rect.height / 2;
+            float arrow_x = sdl_rect.x + sdl_rect.w - 20;
+            float arrow_y = sdl_rect.y + sdl_rect.h / 2;
             float arrow_size = 5;
             SDL_SetRenderDrawColor(renderer->renderer, text_color.r, text_color.g, text_color.b, text_color.a);
             // Draw downward arrow using lines
@@ -1270,8 +1270,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             };
 
             if (!ir_plugin_dispatch_component_render(&plugin_ctx, component->type,
-                                                      component, rect.x, rect.y,
-                                                      rect.width, rect.height)) {
+                                                      component, sdl_rect.x, sdl_rect.y,
+                                                      sdl_rect.w, sdl_rect.h)) {
                 fprintf(stderr, "[kryon][desktop] No renderer registered for CANVAS component\n");
             }
             break;
@@ -1287,7 +1287,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     .user_data = NULL
                 };
                 if (!ir_plugin_dispatch_component_render(&plugin_ctx, component->type, component,
-                                                         rect.x, rect.y, rect.width, rect.height)) {
+                                                         sdl_rect.x, sdl_rect.y, sdl_rect.w, sdl_rect.h)) {
                     // No plugin renderer registered - silently ignore or warn
                     // This allows graceful degradation if plugin is not installed
                 }
@@ -1310,17 +1310,17 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
                     // Determine destination rect
                     SDL_FRect dest_rect;
-                    dest_rect.x = rect.x;
-                    dest_rect.y = rect.y;
+                    dest_rect.x = sdl_rect.x;
+                    dest_rect.y = sdl_rect.y;
 
                     // Use component dimensions if set, otherwise use image intrinsic size
                     if (component->style && component->style->width.value > 0) {
-                        dest_rect.w = rect.width;
+                        dest_rect.w = sdl_rect.w;
                     } else {
                         dest_rect.w = (float)img_width;
                     }
                     if (component->style && component->style->height.value > 0) {
-                        dest_rect.h = rect.height;
+                        dest_rect.h = sdl_rect.h;
                     } else {
                         dest_rect.h = (float)img_height;
                     }
@@ -1436,7 +1436,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     SDL_Color text_color = {255, 255, 255, (uint8_t)(255 * opacity)};  // White text for headers
                     float cell_padding = table_state ? table_state->style.cell_padding : 8.0f;
                     render_text_with_shadow(renderer->renderer, font, component->text_content, text_color, component,
-                                           rect.x + cell_padding, rect.y + cell_padding, rect.width - 2 * cell_padding);
+                                           sdl_rect.x + cell_padding, sdl_rect.y + cell_padding, sdl_rect.w - 2 * cell_padding);
                 }
             }
             // Header cell rendering is complete - don't fall through to child rendering
@@ -1479,7 +1479,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     text_color.a = (uint8_t)(text_color.a * opacity);
                     float cell_padding = table_state ? table_state->style.cell_padding : 8.0f;
                     render_text_with_shadow(renderer->renderer, font, component->text_content, text_color, component,
-                                           rect.x + cell_padding, rect.y + cell_padding, rect.width - 2 * cell_padding);
+                                           sdl_rect.x + cell_padding, sdl_rect.y + cell_padding, sdl_rect.w - 2 * cell_padding);
                 }
             }
             // Cell rendering is complete - don't fall through to child rendering
@@ -1502,8 +1502,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             // Compute flowchart layout if not already done
             // (similar to table layout handling)
             if (!fc_state->layout_computed) {
-                float inner_width = rect.width - (component->style ? component->style->padding.left + component->style->padding.right : 0);
-                float inner_height = rect.height - (component->style ? component->style->padding.top + component->style->padding.bottom : 0);
+                float inner_width = sdl_rect.w - (component->style ? component->style->padding.left + component->style->padding.right : 0);
+                float inner_height = sdl_rect.h - (component->style ? component->style->padding.top + component->style->padding.bottom : 0);
                 ir_layout_compute_flowchart(component, inner_width, inner_height);
             }
 
@@ -1516,8 +1516,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 if (!subgraph) continue;
 
                 SDL_FRect subgraph_rect = {
-                    rect.x + subgraph->x,
-                    rect.y + subgraph->y,
+                    sdl_rect.x + subgraph->x,
+                    sdl_rect.y + subgraph->y,
                     subgraph->width,
                     subgraph->height
                 };
@@ -1610,10 +1610,10 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
                 // Draw edge path
                 for (uint32_t p = 0; p < edge->path_point_count - 1; p++) {
-                    float x1 = rect.x + edge->path_points[p * 2];
-                    float y1 = rect.y + edge->path_points[p * 2 + 1];
-                    float x2 = rect.x + edge->path_points[(p + 1) * 2];
-                    float y2 = rect.y + edge->path_points[(p + 1) * 2 + 1];
+                    float x1 = sdl_rect.x + edge->path_points[p * 2];
+                    float y1 = sdl_rect.y + edge->path_points[p * 2 + 1];
+                    float x2 = sdl_rect.x + edge->path_points[(p + 1) * 2];
+                    float y2 = sdl_rect.y + edge->path_points[(p + 1) * 2 + 1];
 
                     // Line style based on edge type
                     if (edge->type == IR_FLOWCHART_EDGE_DOTTED) {
@@ -1647,10 +1647,10 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     edge->type == IR_FLOWCHART_EDGE_THICK ||
                     edge->type == IR_FLOWCHART_EDGE_BIDIRECTIONAL) {
 
-                    float x1 = rect.x + edge->path_points[(edge->path_point_count - 2) * 2];
-                    float y1 = rect.y + edge->path_points[(edge->path_point_count - 2) * 2 + 1];
-                    float x2 = rect.x + edge->path_points[(edge->path_point_count - 1) * 2];
-                    float y2 = rect.y + edge->path_points[(edge->path_point_count - 1) * 2 + 1];
+                    float x1 = sdl_rect.x + edge->path_points[(edge->path_point_count - 2) * 2];
+                    float y1 = sdl_rect.y + edge->path_points[(edge->path_point_count - 2) * 2 + 1];
+                    float x2 = sdl_rect.x + edge->path_points[(edge->path_point_count - 1) * 2];
+                    float y2 = sdl_rect.y + edge->path_points[(edge->path_point_count - 1) * 2 + 1];
 
                     // Calculate arrow direction
                     float dx = x2 - x1;
@@ -1679,10 +1679,10 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
                 // Draw reverse arrow for bidirectional
                 if (edge->type == IR_FLOWCHART_EDGE_BIDIRECTIONAL && edge->path_point_count >= 2) {
-                    float x1 = rect.x + edge->path_points[0];
-                    float y1 = rect.y + edge->path_points[1];
-                    float x2 = rect.x + edge->path_points[2];
-                    float y2 = rect.y + edge->path_points[3];
+                    float x1 = sdl_rect.x + edge->path_points[0];
+                    float y1 = sdl_rect.y + edge->path_points[1];
+                    float x2 = sdl_rect.x + edge->path_points[2];
+                    float y2 = sdl_rect.y + edge->path_points[3];
 
                     float dx = x1 - x2;
                     float dy = y1 - y2;
@@ -1713,8 +1713,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 if (!node) continue;
 
                 SDL_FRect node_rect = {
-                    rect.x + node->x,
-                    rect.y + node->y,
+                    sdl_rect.x + node->x,
+                    sdl_rect.y + node->y,
                     node->width,
                     node->height
                 };
@@ -1969,8 +1969,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 // Find position at path midpoint
                 float target_len = total_len / 2.0f;
                 float current_len = 0;
-                float mid_x = rect.x + edge->path_points[0];
-                float mid_y = rect.y + edge->path_points[1];
+                float mid_x = sdl_rect.x + edge->path_points[0];
+                float mid_y = sdl_rect.y + edge->path_points[1];
 
                 for (uint32_t p = 0; p < edge->path_point_count - 1; p++) {
                     float x1 = edge->path_points[p*2];
@@ -1985,8 +1985,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     if (current_len + seg_len >= target_len) {
                         // Midpoint is in this segment
                         float t = (target_len - current_len) / seg_len;
-                        mid_x = rect.x + x1 + dx * t;
-                        mid_y = rect.y + y1 + dy * t;
+                        mid_x = sdl_rect.x + x1 + dx * t;
+                        mid_y = sdl_rect.y + y1 + dy * t;
                         break;
                     }
                     current_len += seg_len;
@@ -2055,7 +2055,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     }
 
                     // Render text
-                    render_text_with_shadow(renderer->renderer, font, data->text, text_color, component, rect.x, rect.y, rect.width);
+                    render_text_with_shadow(renderer->renderer, font, data->text, text_color, component, sdl_rect.x, sdl_rect.y, sdl_rect.w);
                 }
             }
             break;
@@ -2078,7 +2078,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             SDL_RenderFillRect(renderer->renderer, &sdl_rect);
 
             // Left border (4px wide, blue)
-            SDL_FRect border = {rect.x, rect.y, 4, rect.height};
+            SDL_FRect border = {rect.x, sdl_rect.y, 4, sdl_rect.h};
             SDL_SetRenderDrawColor(renderer->renderer, 100, 150, 200, 255);
             SDL_RenderFillRect(renderer->renderer, &border);
             break;
@@ -2109,7 +2109,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     }
 
                     // Render text with padding
-                    render_text_with_shadow(renderer->renderer, font, data->code, text_color, component, rect.x + 12, rect.y + 12, rect.width - 24);
+                    render_text_with_shadow(renderer->renderer, font, data->code, text_color, component, sdl_rect.x + 12, sdl_rect.y + 12, sdl_rect.w - 24);
                 }
             }
             break;
@@ -2117,7 +2117,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
         case IR_COMPONENT_HORIZONTAL_RULE: {
             // Render horizontal line
-            SDL_FRect line = {rect.x, rect.y + rect.height / 2, rect.width, 2};
+            SDL_FRect line = {rect.x, sdl_rect.y + sdl_rect.h / 2, sdl_rect.w, 2};
             SDL_SetRenderDrawColor(renderer->renderer, 200, 200, 200, 255);
             SDL_RenderFillRect(renderer->renderer, &line);
             break;
@@ -2157,14 +2157,14 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
                 // Render bullet or number
                 if (data && data->marker) {
-                    render_text_with_shadow(renderer->renderer, font, data->marker, text_color, component, rect.x, rect.y, rect.width);
+                    render_text_with_shadow(renderer->renderer, font, data->marker, text_color, component, sdl_rect.x, sdl_rect.y, sdl_rect.w);
                 } else if (data && data->number > 0) {
                     char number_str[16];
                     snprintf(number_str, sizeof(number_str), "%d.", data->number);
-                    render_text_with_shadow(renderer->renderer, font, number_str, text_color, component, rect.x, rect.y, rect.width);
+                    render_text_with_shadow(renderer->renderer, font, number_str, text_color, component, sdl_rect.x, sdl_rect.y, sdl_rect.w);
                 } else {
                     // Default bullet
-                    render_text_with_shadow(renderer->renderer, font, "•", text_color, component, rect.x, rect.y, rect.width);
+                    render_text_with_shadow(renderer->renderer, font, "•", text_color, component, sdl_rect.x, sdl_rect.y, sdl_rect.w);
                 }
             }
             break;
@@ -2187,12 +2187,12 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 // Render link text
                 render_text_with_shadow(renderer->renderer, font,
                                        component->text_content, text_color, component,
-                                       rect.x, rect.y, rect.width);
+                                       sdl_rect.x, sdl_rect.y, sdl_rect.w);
 
                 // Draw underline below text
                 int text_width = 0, text_height = 0;
                 TTF_GetStringSize(font, component->text_content, 0, &text_width, &text_height);
-                SDL_FRect underline = {rect.x, rect.y + text_height, (float)text_width, 1};
+                SDL_FRect underline = {rect.x, sdl_rect.y + text_height, (float)text_width, 1};
                 SDL_SetRenderDrawColor(renderer->renderer, text_color.r, text_color.g, text_color.b, text_color.a);
                 SDL_RenderFillRect(renderer->renderer, &underline);
             }
@@ -2303,9 +2303,9 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             if (row->style && !row->style->visible) continue;
 
             LayoutRect row_rect = {
-                .x = rect.x + row->rendered_bounds.x,
-                .y = rect.y + row->rendered_bounds.y,
-                .width = row->rendered_bounds.width > 0 ? row->rendered_bounds.width : rect.width,
+                .x = sdl_rect.x + row->rendered_bounds.x,
+                .y = sdl_rect.y + row->rendered_bounds.y,
+                .width = row->rendered_bounds.width > 0 ? row->rendered_bounds.width : sdl_rect.w,
                 .height = row->rendered_bounds.height
             };
 
@@ -2324,10 +2324,10 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             if (cell->style && !cell->style->visible) continue;
 
             LayoutRect cell_rect = {
-                .x = rect.x + cell->rendered_bounds.x,
-                .y = rect.y + cell->rendered_bounds.y,
+                .x = sdl_rect.x + cell->rendered_bounds.x,
+                .y = sdl_rect.y + cell->rendered_bounds.y,
                 .width = cell->rendered_bounds.width,
-                .height = cell->rendered_bounds.height > 0 ? cell->rendered_bounds.height : rect.height
+                .height = cell->rendered_bounds.height > 0 ? cell->rendered_bounds.height : sdl_rect.h
             };
 
             render_component_sdl3(renderer, cell, cell_rect, child_opacity);
