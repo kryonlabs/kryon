@@ -2923,6 +2923,9 @@ static void layout_column_children(IRComponent* c, IRLayoutConstraints constrain
             // Flex-grow child: distribute remaining space proportionally
             float share = remaining_height * (child->layout->flex.grow / total_flex_grow);
             child_constraints.max_height = share > 0 ? share : 0;
+        } else if (child->type == IR_COMPONENT_CENTER) {
+            // CENTER components fill available height to center their children
+            child_constraints.max_height = available_height;
         } else {
             // Fixed-size child
             child_constraints.max_height = child->layout_state->intrinsic.max_content_height;
@@ -2995,6 +2998,9 @@ static void layout_row_children(IRComponent* c, IRLayoutConstraints constraints)
             // Flex-grow child: distribute remaining space proportionally
             float share = remaining_width * (child->layout->flex.grow / total_flex_grow);
             child_constraints.max_width = share > 0 ? share : 0;
+        } else if (child->type == IR_COMPONENT_CENTER) {
+            // CENTER components fill available width to center their children
+            child_constraints.max_width = available_width;
         } else {
             // Fixed-size child
             child_constraints.max_width = child->layout_state->intrinsic.max_content_width;
@@ -3039,9 +3045,14 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
                                                 intrinsic->max_content_width);
     } else {
         // AUTO: use intrinsic size, clamped to constraint
-        layout->width = intrinsic->max_content_width;
-        if (layout->width > constraints.max_width) {
+        // SPECIAL CASE: CENTER components fill their parent
+        if (c->type == IR_COMPONENT_CENTER) {
             layout->width = constraints.max_width;
+        } else {
+            layout->width = intrinsic->max_content_width;
+            if (layout->width > constraints.max_width) {
+                layout->width = constraints.max_width;
+            }
         }
     }
 
@@ -3051,9 +3062,14 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
                                                  intrinsic->max_content_height);
     } else {
         // AUTO: use intrinsic size, clamped to constraint
-        layout->height = intrinsic->max_content_height;
-        if (layout->height > constraints.max_height) {
+        // SPECIAL CASE: CENTER components fill their parent
+        if (c->type == IR_COMPONENT_CENTER) {
             layout->height = constraints.max_height;
+        } else {
+            layout->height = intrinsic->max_content_height;
+            if (layout->height > constraints.max_height) {
+                layout->height = constraints.max_height;
+            }
         }
     }
 
