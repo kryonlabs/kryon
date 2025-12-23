@@ -93,7 +93,7 @@ static void render_inlines_to_ir(MdInline* inl, IRComponent* parent) {
                     // Style as inline code
                     ir_set_font(comp->style, 14.0f, "monospace", 121, 192, 255, 255, false, false);
                     ir_set_background_color(comp->style, 22, 27, 34, 255);
-                    ir_set_padding(comp->style, 2, 6, 2, 6);
+                    ir_set_padding(comp, 2, 6, 2, 6);
                 }
                 break;
 
@@ -246,7 +246,7 @@ static IRComponent* md_node_to_ir(MdNode* node) {
             // Root container with column layout
             comp = ir_column();
             if (comp && comp->style) {
-                ir_set_padding(comp->style, 20, 20, 20, 20);
+                ir_set_padding(comp, 20, 20, 20, 20);
                 ir_set_font(comp->style, 16.0f, NULL, 230, 237, 243, 255, false, false);
             }
             if (comp && comp->layout) {
@@ -283,7 +283,7 @@ static IRComponent* md_node_to_ir(MdNode* node) {
             // Add border for H1 and H2 (like GitHub markdown)
             if (comp && level < 3 && comp->style) {
                 ir_set_border(comp->style, 1, 48, 54, 61, 255, 0);
-                ir_set_padding(comp->style, 0, 0, 12, 0);
+                ir_set_padding(comp, 0, 0, 12, 0);
             }
 
             convert_children_to_ir(node, comp);
@@ -311,7 +311,7 @@ static IRComponent* md_node_to_ir(MdNode* node) {
 
             // Add left padding for nested list appearance
             if (comp && comp->style) {
-                ir_set_padding(comp->style, 0, 0, 0, 32);
+                ir_set_padding(comp, 0, 0, 0, 32);
             }
 
             convert_children_to_ir(node, comp);
@@ -324,7 +324,7 @@ static IRComponent* md_node_to_ir(MdNode* node) {
 
             // Add left padding for nested list appearance
             if (comp && comp->style) {
-                ir_set_padding(comp->style, 0, 0, 0, 32);
+                ir_set_padding(comp, 0, 0, 0, 32);
             }
 
             convert_children_to_ir(node, comp);
@@ -353,7 +353,7 @@ static IRComponent* md_node_to_ir(MdNode* node) {
                 if (comp) {
                     // Add margin to match other block elements
                     if (comp->style) {
-                        ir_set_margin(comp->style, 16, 0, 16, 0);
+                        ir_set_margin(comp, 16, 0, 16, 0);
                     }
                     break;
                 }
@@ -378,7 +378,7 @@ static IRComponent* md_node_to_ir(MdNode* node) {
             // Additional blockquote styling (left border accent)
             if (comp && comp->style) {
                 ir_set_border(comp->style, 4, 0, 168, 255, 255, 0);
-                ir_set_padding(comp->style, 0, 0, 0, 16);
+                ir_set_padding(comp, 0, 0, 0, 16);
             }
 
             // Add blockquote content

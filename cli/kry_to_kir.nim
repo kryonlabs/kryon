@@ -690,6 +690,10 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
   if node.componentType == "TabBar" and not result.hasKey("flexDirection"):
     result["flexDirection"] = %"row"  # Horizontal layout
 
+  # Set default flexDirection for Container (vertical layout, like HTML div)
+  if node.componentType == "Container" and not result.hasKey("flexDirection"):
+    result["flexDirection"] = %"column"  # Vertical layout
+
 # Forward declaration for transpileChildrenAsTemplate
 proc transpileChildrenAsTemplate(ctx: var TranspilerContext, children: seq[KryNode], parentId: int, loopVar: string): seq[JsonNode]
 

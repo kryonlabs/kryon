@@ -268,7 +268,7 @@ static bool deserialize_grid_track(IRBuffer* buffer, IRGridTrack* track) {
 static bool serialize_flexbox(IRBuffer* buffer, IRFlexbox* flex) {
     if (!write_uint8(buffer, flex->wrap)) return false;
     if (!write_uint32(buffer, flex->gap)) return false;
-    if (!write_uint8(buffer, flex->main_axis)) return false;
+    // NOTE: main_axis was removed - it's the same as justify_content
     if (!write_uint8(buffer, flex->cross_axis)) return false;
     if (!write_uint8(buffer, flex->justify_content)) return false;
     if (!write_uint8(buffer, flex->grow)) return false;
@@ -283,7 +283,7 @@ static bool serialize_flexbox(IRBuffer* buffer, IRFlexbox* flex) {
 static bool deserialize_flexbox(IRBuffer* buffer, IRFlexbox* flex) {
     if (!read_uint8(buffer, (uint8_t*)&flex->wrap)) return false;
     if (!read_uint32(buffer, &flex->gap)) return false;
-    if (!read_uint8(buffer, (uint8_t*)&flex->main_axis)) return false;
+    // NOTE: main_axis was removed - it's the same as justify_content
     if (!read_uint8(buffer, (uint8_t*)&flex->cross_axis)) return false;
     if (!read_uint8(buffer, (uint8_t*)&flex->justify_content)) return false;
     if (!read_uint8(buffer, &flex->grow)) return false;

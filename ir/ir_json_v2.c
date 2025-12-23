@@ -2220,7 +2220,7 @@ static void json_deserialize_layout(cJSON* obj, IRLayout* layout) {
     }
     if ((item = cJSON_GetObjectItem(obj, "justifyContent")) != NULL && cJSON_IsString(item)) {
         layout->flex.justify_content = json_parse_alignment(item->valuestring);
-        layout->flex.main_axis = layout->flex.justify_content;  // Keep in sync
+        // NOTE: main_axis field was removed - justify_content is used directly
     }
     if ((item = cJSON_GetObjectItem(obj, "alignItems")) != NULL && cJSON_IsString(item)) {
         layout->flex.cross_axis = json_parse_alignment(item->valuestring);

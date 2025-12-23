@@ -638,6 +638,15 @@ IRComponent* ir_create_component_with_id(IRComponentType type, uint32_t id) {
         ir_map_insert(g_ir_context->component_map, component);
     }
 
+    // Initialize layout state for two-pass layout system
+    component->layout_state = calloc(1, sizeof(IRLayoutState));
+    if (component->layout_state) {
+        component->layout_state->dirty = true;  // Start dirty, needs initial layout
+        // intrinsic_valid = false (default)
+        // layout_valid = false (default)
+        // cache_generation = 0 (default)
+    }
+
     return component;
 }
 
@@ -673,6 +682,12 @@ void ir_destroy_component(IRComponent* component) {
     // Destroy layout
     if (component->layout) {
         ir_destroy_layout(component->layout);
+    }
+
+    // Destroy layout state
+    if (component->layout_state) {
+        free(component->layout_state);
+        component->layout_state = NULL;
     }
 
     // Free strings
@@ -989,16 +1004,18 @@ void ir_clear_filters(IRStyle* style) {
 }
 
 // Style Property Helpers
-void ir_set_width(IRStyle* style, IRDimensionType type, float value) {
-    if (!style) return;
-    style->width.type = type;
-    style->width.value = value;
+void ir_set_width(IRComponent* component, IRDimensionType type, float value) {
+    if (!component || !component->style) return;
+    component->style->width.type = type;
+    component->style->width.value = value;
+    ir_layout_mark_dirty(component);
 }
 
-void ir_set_height(IRStyle* style, IRDimensionType type, float value) {
-    if (!style) return;
-    style->height.type = type;
-    style->height.value = value;
+void ir_set_height(IRComponent* component, IRDimensionType type, float value) {
+    if (!component || !component->style) return;
+    component->style->height.type = type;
+    component->style->height.value = value;
+    ir_layout_mark_dirty(component);
 }
 
 void ir_set_background_color(IRStyle* style, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
@@ -1021,20 +1038,22 @@ void ir_set_border(IRStyle* style, float width, uint8_t r, uint8_t g, uint8_t b,
     style->border.radius = radius;
 }
 
-void ir_set_margin(IRStyle* style, float top, float right, float bottom, float left) {
-    if (!style) return;
-    style->margin.top = top;
-    style->margin.right = right;
-    style->margin.bottom = bottom;
-    style->margin.left = left;
+void ir_set_margin(IRComponent* component, float top, float right, float bottom, float left) {
+    if (!component || !component->style) return;
+    component->style->margin.top = top;
+    component->style->margin.right = right;
+    component->style->margin.bottom = bottom;
+    component->style->margin.left = left;
+    ir_layout_mark_dirty(component);
 }
 
-void ir_set_padding(IRStyle* style, float top, float right, float bottom, float left) {
-    if (!style) return;
-    style->padding.top = top;
-    style->padding.right = right;
-    style->padding.bottom = bottom;
-    style->padding.left = left;
+void ir_set_padding(IRComponent* component, float top, float right, float bottom, float left) {
+    if (!component || !component->style) return;
+    component->style->padding.top = top;
+    component->style->padding.right = right;
+    component->style->padding.bottom = bottom;
+    component->style->padding.left = left;
+    ir_layout_mark_dirty(component);
 }
 
 void ir_set_font(IRStyle* style, float size, const char* family, uint8_t r, uint8_t g, uint8_t b, uint8_t a, bool bold, bool italic) {
@@ -1115,7 +1134,7 @@ IRLayout* ir_create_layout(void) {
     memset(layout, 0, sizeof(IRLayout));
 
     // Set sensible defaults
-    layout->flex.main_axis = IR_ALIGNMENT_START;
+    layout->flex.justify_content = IR_ALIGNMENT_START;
     layout->flex.cross_axis = IR_ALIGNMENT_START;
     layout->flex.justify_content = IR_ALIGNMENT_START;
 
@@ -1149,7 +1168,7 @@ void ir_set_flexbox(IRLayout* layout, bool wrap, uint32_t gap, IRAlignment main_
     if (!layout) return;
     layout->flex.wrap = wrap;
     layout->flex.gap = gap;
-    layout->flex.main_axis = main_axis;
+    layout->flex.justify_content = main_axis;
     layout->flex.cross_axis = cross_axis;
 }
 
@@ -1342,7 +1361,10 @@ void ir_set_text_content(IRComponent* component, const char* text) {
         component->text_layout = NULL;
     }
 
-    // Mark component dirty - content changed
+    // Mark component dirty - content changed (two-pass layout system)
+    ir_layout_mark_dirty(component);
+
+    // Also invalidate old layout cache for backward compatibility
     ir_layout_invalidate_cache(component);
     component->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
 }
@@ -1477,6 +1499,11 @@ void ir_set_tag(IRComponent* component, const char* tag) {
 // Convenience Functions
 IRComponent* ir_container(const char* tag) {
     IRComponent* component = ir_create_component(IR_COMPONENT_CONTAINER);
+    // Container defaults to column layout (like HTML div)
+    IRLayout* layout = ir_get_layout(component);
+    layout->flex.direction = 0;  // 0 = column (vertical)
+    layout->flex.justify_content = IR_ALIGNMENT_START;
+    layout->flex.cross_axis = IR_ALIGNMENT_START;
     if (tag) ir_set_tag(component, tag);
     return component;
 }
@@ -1537,7 +1564,7 @@ IRComponent* ir_dropdown(const char* placeholder, char** options, uint32_t optio
 IRComponent* ir_row(void) {
     IRComponent* component = ir_create_component(IR_COMPONENT_ROW);
     IRLayout* layout = ir_get_layout(component);
-    layout->flex.main_axis = IR_ALIGNMENT_START;
+    layout->flex.justify_content = IR_ALIGNMENT_START;
     layout->flex.cross_axis = IR_ALIGNMENT_CENTER;
     return component;
 }
@@ -1545,7 +1572,7 @@ IRComponent* ir_row(void) {
 IRComponent* ir_column(void) {
     IRComponent* component = ir_create_component(IR_COMPONENT_COLUMN);
     IRLayout* layout = ir_get_layout(component);
-    layout->flex.main_axis = IR_ALIGNMENT_CENTER;
+    layout->flex.justify_content = IR_ALIGNMENT_CENTER;
     layout->flex.cross_axis = IR_ALIGNMENT_START;
     return component;
 }
@@ -1553,7 +1580,7 @@ IRComponent* ir_column(void) {
 IRComponent* ir_center(void) {
     IRComponent* component = ir_create_component(IR_COMPONENT_CENTER);
     IRLayout* layout = ir_get_layout(component);
-    layout->flex.main_axis = IR_ALIGNMENT_CENTER;
+    layout->flex.justify_content = IR_ALIGNMENT_CENTER;
     layout->flex.cross_axis = IR_ALIGNMENT_CENTER;
     layout->flex.justify_content = IR_ALIGNMENT_CENTER;
     return component;
@@ -1709,7 +1736,7 @@ void ir_set_align_content(IRLayout* layout, IRAlignment align) {
     if (!layout) return;
     // align-content controls how multiple rows/columns are aligned (when wrapping)
     // For now, use main_axis to control overall alignment
-    layout->flex.main_axis = align;
+    layout->flex.justify_content = align;
 }
 
 // ============================================================================
@@ -2779,7 +2806,7 @@ IRComponent* ir_heading(uint8_t level, const char* text) {
     IRStyle* style = ir_get_style(comp);
     float font_sizes[] = {32.0f, 28.0f, 24.0f, 20.0f, 18.0f, 16.0f};
     ir_set_font(style, font_sizes[level - 1], NULL, 255, 255, 255, 255, true, false);
-    ir_set_margin(style, 24.0f, 0.0f, 12.0f, 0.0f);
+    ir_set_margin(comp, 24.0f, 0.0f, 12.0f, 0.0f);
 
     return comp;
 }
@@ -2791,7 +2818,7 @@ IRComponent* ir_paragraph(void) {
     // Set default paragraph styling
     // Text wrapping is handled automatically by the backend based on component type
     IRStyle* style = ir_get_style(comp);
-    ir_set_margin(style, 0.0f, 0.0f, 16.0f, 0.0f);
+    ir_set_margin(comp, 0.0f, 0.0f, 16.0f, 0.0f);
 
     return comp;
 }
@@ -2806,8 +2833,8 @@ IRComponent* ir_blockquote(void) {
 
     // Set default blockquote styling
     IRStyle* style = ir_get_style(comp);
-    ir_set_padding(style, 12.0f, 16.0f, 12.0f, 16.0f);
-    ir_set_margin(style, 0.0f, 0.0f, 16.0f, 0.0f);
+    ir_set_padding(comp, 12.0f, 16.0f, 12.0f, 16.0f);
+    ir_set_margin(comp, 0.0f, 0.0f, 16.0f, 0.0f);
     ir_set_background_color(style, 40, 44, 52, 255);  // Dark background
     ir_set_border(style, 4.0f, 80, 120, 200, 255, 0);  // Left border (blue-ish)
 
@@ -2830,8 +2857,8 @@ IRComponent* ir_code_block(const char* language, const char* code) {
     IRStyle* style = ir_get_style(comp);
     ir_set_font(style, 14.0f, "monospace", 220, 220, 220, 255, false, false);
     ir_set_background_color(style, 22, 27, 34, 255);  // Dark background
-    ir_set_padding(style, 16.0f, 16.0f, 16.0f, 16.0f);
-    ir_set_margin(style, 0.0f, 0.0f, 16.0f, 0.0f);
+    ir_set_padding(comp, 16.0f, 16.0f, 16.0f, 16.0f);
+    ir_set_margin(comp, 0.0f, 0.0f, 16.0f, 0.0f);
 
     return comp;
 }
@@ -2842,10 +2869,10 @@ IRComponent* ir_horizontal_rule(void) {
 
     // Set default HR styling
     IRStyle* style = ir_get_style(comp);
-    ir_set_height(style, IR_DIMENSION_PX, 2.0f);
-    ir_set_width(style, IR_DIMENSION_PERCENT, 100.0f);
+    ir_set_height(comp, IR_DIMENSION_PX, 2.0f);
+    ir_set_width(comp, IR_DIMENSION_PERCENT, 100.0f);
     ir_set_background_color(style, 80, 80, 80, 255);
-    ir_set_margin(style, 24.0f, 0.0f, 24.0f, 0.0f);
+    ir_set_margin(comp, 24.0f, 0.0f, 24.0f, 0.0f);
 
     return comp;
 }
@@ -2862,8 +2889,8 @@ IRComponent* ir_list(IRListType type) {
 
     // Set default list styling
     IRStyle* style = ir_get_style(comp);
-    ir_set_margin(style, 0.0f, 0.0f, 16.0f, 0.0f);
-    ir_set_padding(style, 0.0f, 0.0f, 0.0f, 24.0f);  // Left padding for indentation
+    ir_set_margin(comp, 0.0f, 0.0f, 16.0f, 0.0f);
+    ir_set_padding(comp, 0.0f, 0.0f, 0.0f, 24.0f);  // Left padding for indentation
 
     return comp;
 }
@@ -2881,7 +2908,7 @@ IRComponent* ir_list_item(void) {
 
     // Set default list item styling
     IRStyle* style = ir_get_style(comp);
-    ir_set_margin(style, 0.0f, 0.0f, 8.0f, 0.0f);
+    ir_set_margin(comp, 0.0f, 0.0f, 8.0f, 0.0f);
 
     return comp;
 }
