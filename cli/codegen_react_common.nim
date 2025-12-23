@@ -278,9 +278,9 @@ proc generateReactProps*(node: JsonNode, ctx: var ReactContext, hasTextExpressio
   result = @[]
 
   var skipProps = @["id", "type", "children", "events", "template", "loop_var",
-                    "iterable", "minWidth", "minHeight", "maxWidth", "maxHeight",
-                    "direction", "flexShrink", "flexGrow", "component_ref",
-                    "text_expression", "windowTitle", "dropdown_state"]
+                    "iterable", "direction", "flexShrink", "flexGrow",
+                    "component_ref", "text_expression", "windowTitle",
+                    "dropdown_state"]
 
   # Skip text if we have a text_expression (will be added separately)
   if hasTextExpression:

@@ -179,6 +179,41 @@ static void generate_inline_styles(HTMLGenerator* generator, IRComponent* compon
                 "height: %s; ", temp);
     }
 
+    // Size constraints (min/max width/height) - supports both PX and PERCENT
+    if (component->layout) {
+        // Min width
+        if (component->layout->min_width.type != IR_DIMENSION_AUTO) {
+            append_dimension_string(temp, sizeof(temp), component->layout->min_width);
+            snprintf(style_buffer + strlen(style_buffer),
+                    sizeof(style_buffer) - strlen(style_buffer),
+                    "min-width: %s; ", temp);
+        }
+
+        // Max width
+        if (component->layout->max_width.type != IR_DIMENSION_AUTO) {
+            append_dimension_string(temp, sizeof(temp), component->layout->max_width);
+            snprintf(style_buffer + strlen(style_buffer),
+                    sizeof(style_buffer) - strlen(style_buffer),
+                    "max-width: %s; ", temp);
+        }
+
+        // Min height
+        if (component->layout->min_height.type != IR_DIMENSION_AUTO) {
+            append_dimension_string(temp, sizeof(temp), component->layout->min_height);
+            snprintf(style_buffer + strlen(style_buffer),
+                    sizeof(style_buffer) - strlen(style_buffer),
+                    "min-height: %s; ", temp);
+        }
+
+        // Max height
+        if (component->layout->max_height.type != IR_DIMENSION_AUTO) {
+            append_dimension_string(temp, sizeof(temp), component->layout->max_height);
+            snprintf(style_buffer + strlen(style_buffer),
+                    sizeof(style_buffer) - strlen(style_buffer),
+                    "max-height: %s; ", temp);
+        }
+    }
+
     // Background
     if (component->style->background.type != IR_COLOR_TRANSPARENT) {
         append_color_string(temp, sizeof(temp), component->style->background);

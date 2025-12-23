@@ -222,7 +222,7 @@ void render_background(SDL_Renderer* renderer, IRComponent* comp, SDL_FRect* rec
 
 // Text effects
 void render_text_with_shadow(SDL_Renderer* sdl_renderer, TTF_Font* font, const char* text,
-                             SDL_Color color, IRComponent* comp, float x, float y);
+                             SDL_Color color, IRComponent* comp, float x, float y, float max_width);
 void render_text_with_fade(SDL_Renderer* renderer, TTF_Font* font, const char* text,
                            SDL_FRect* rect, SDL_Color color, float fade_start_ratio);
 
@@ -237,7 +237,12 @@ float ir_dimension_to_pixels(IRDimension dimension, float container_size);
 #ifdef ENABLE_SDL3
 void measure_text_dimensions(IRComponent* component, float max_width,
                             float* out_width, float* out_height);
+int wrap_text_into_lines(const char* text, float max_width, TTF_Font* font,
+                         float font_size, char*** out_lines);
 #endif
+
+// Intrinsic size calculation (no parent constraints)
+float get_component_intrinsic_width(IRComponent* component);
 
 // Layout calculation
 LayoutRect calculate_component_layout(IRComponent* component, LayoutRect parent_rect);

@@ -936,7 +936,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 // Render text with optional shadow
                 render_text_with_shadow(renderer->renderer, font,
                                        component->text_content, text_color, component,
-                                       rect.x, rect.y);
+                                       rect.x, rect.y, rect.width);
             }
             break;
         }
@@ -1416,7 +1416,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     SDL_Color text_color = {255, 255, 255, (uint8_t)(255 * opacity)};  // White text for headers
                     float cell_padding = table_state ? table_state->style.cell_padding : 8.0f;
                     render_text_with_shadow(renderer->renderer, font, component->text_content, text_color, component,
-                                           rect.x + cell_padding, rect.y + cell_padding);
+                                           rect.x + cell_padding, rect.y + cell_padding, rect.width - 2 * cell_padding);
                 }
             }
             // Header cell rendering is complete - don't fall through to child rendering
@@ -1459,7 +1459,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     text_color.a = (uint8_t)(text_color.a * opacity);
                     float cell_padding = table_state ? table_state->style.cell_padding : 8.0f;
                     render_text_with_shadow(renderer->renderer, font, component->text_content, text_color, component,
-                                           rect.x + cell_padding, rect.y + cell_padding);
+                                           rect.x + cell_padding, rect.y + cell_padding, rect.width - 2 * cell_padding);
                 }
             }
             // Cell rendering is complete - don't fall through to child rendering
@@ -2035,7 +2035,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     }
 
                     // Render text
-                    render_text_with_shadow(renderer->renderer, font, data->text, text_color, component, rect.x, rect.y);
+                    render_text_with_shadow(renderer->renderer, font, data->text, text_color, component, rect.x, rect.y, rect.width);
                 }
             }
             break;
@@ -2089,7 +2089,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     }
 
                     // Render text with padding
-                    render_text_with_shadow(renderer->renderer, font, data->code, text_color, component, rect.x + 12, rect.y + 12);
+                    render_text_with_shadow(renderer->renderer, font, data->code, text_color, component, rect.x + 12, rect.y + 12, rect.width - 24);
                 }
             }
             break;
@@ -2137,14 +2137,14 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
                 // Render bullet or number
                 if (data && data->marker) {
-                    render_text_with_shadow(renderer->renderer, font, data->marker, text_color, component, rect.x, rect.y);
+                    render_text_with_shadow(renderer->renderer, font, data->marker, text_color, component, rect.x, rect.y, rect.width);
                 } else if (data && data->number > 0) {
                     char number_str[16];
                     snprintf(number_str, sizeof(number_str), "%d.", data->number);
-                    render_text_with_shadow(renderer->renderer, font, number_str, text_color, component, rect.x, rect.y);
+                    render_text_with_shadow(renderer->renderer, font, number_str, text_color, component, rect.x, rect.y, rect.width);
                 } else {
                     // Default bullet
-                    render_text_with_shadow(renderer->renderer, font, "•", text_color, component, rect.x, rect.y);
+                    render_text_with_shadow(renderer->renderer, font, "•", text_color, component, rect.x, rect.y, rect.width);
                 }
             }
             break;
@@ -2167,7 +2167,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 // Render link text
                 render_text_with_shadow(renderer->renderer, font,
                                        component->text_content, text_color, component,
-                                       rect.x, rect.y);
+                                       rect.x, rect.y, rect.width);
 
                 // Draw underline below text
                 int text_width = 0, text_height = 0;

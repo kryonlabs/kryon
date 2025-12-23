@@ -11,6 +11,8 @@
  * absolute positioning, and responsive sizing (pixels, percentages, auto).
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,6 +69,111 @@ float ir_dimension_to_pixels(IRDimension dimension, float container_size) {
  * @param out_width Pointer to store calculated width
  * @param out_height Pointer to store calculated height
  */
+/**
+ * Wrap text into lines based on max_width constraint
+ * Returns the number of lines needed to fit the text
+ */
+int wrap_text_into_lines(const char* text, float max_width, TTF_Font* font,
+                         float font_size, char*** out_lines) {
+    if (!text || !*text) return 0;
+
+    // Trace wrapping during RENDERING (not measurement)
+    if (getenv("KRYON_TRACE_TEXT_WRAP") && out_lines) {
+        fprintf(stderr, "[TEXT_WRAP_RENDER] text=\"%.50s%s\" max_width=%.1f\n",
+                text, strlen(text) > 50 ? "..." : "", max_width);
+    }
+
+    // If no max_width constraint, single line
+    if (max_width <= 0.0f) {
+        if (out_lines) {
+            *out_lines = malloc(sizeof(char*));
+            (*out_lines)[0] = strdup(text);
+        }
+        return 1;
+    }
+
+    // Strategy 1: Use SDL_TTF for accurate measurement if available
+    if (font) {
+        // Split text into words
+        char* text_copy = strdup(text);
+        char** words = NULL;
+        int word_count = 0;
+
+        // Tokenize by spaces
+        char* saveptr = NULL;
+        char* token = strtok_r(text_copy, " ", &saveptr);
+        while (token) {
+            words = realloc(words, sizeof(char*) * (word_count + 1));
+            words[word_count++] = strdup(token);
+            token = strtok_r(NULL, " ", &saveptr);
+        }
+
+        if (word_count == 0) {
+            free(text_copy);
+            return 0;
+        }
+
+        // Build lines by adding words until exceeding max_width
+        char** lines = NULL;
+        int line_count = 0;
+        char current_line[4096] = "";
+
+        for (int i = 0; i < word_count; i++) {
+            char test_line[4096];
+            if (current_line[0]) {
+                snprintf(test_line, sizeof(test_line), "%s %s", current_line, words[i]);
+            } else {
+                snprintf(test_line, sizeof(test_line), "%s", words[i]);
+            }
+
+            // Measure test line
+            int line_w = 0, line_h = 0;
+            TTF_GetStringSize(font, test_line, 0, &line_w, &line_h);
+
+            // Check if line exceeds max_width
+            if (line_w > max_width && current_line[0]) {
+                // Line would be too long, finalize current line
+                lines = realloc(lines, sizeof(char*) * (line_count + 1));
+                lines[line_count++] = strdup(current_line);
+                snprintf(current_line, sizeof(current_line), "%s", words[i]);
+            } else {
+                // Line still fits, keep building
+                strcpy(current_line, test_line);
+            }
+        }
+
+        // Add last line
+        if (current_line[0]) {
+            lines = realloc(lines, sizeof(char*) * (line_count + 1));
+            lines[line_count++] = strdup(current_line);
+        }
+
+        // Cleanup
+        for (int i = 0; i < word_count; i++) free(words[i]);
+        free(words);
+        free(text_copy);
+
+        if (out_lines) {
+            *out_lines = lines;
+        } else {
+            // Caller doesn't want lines, just free them
+            for (int i = 0; i < line_count; i++) free(lines[i]);
+            free(lines);
+        }
+
+        return line_count;
+    }
+
+    // Strategy 2: Heuristic fallback when no font available
+    size_t text_len = strlen(text);
+    float char_width = font_size * TEXT_CHAR_WIDTH_RATIO;
+    int chars_per_line = (int)(max_width / char_width);
+    if (chars_per_line < 1) chars_per_line = 1;
+
+    int line_count = (text_len + chars_per_line - 1) / chars_per_line;
+    return line_count > 0 ? line_count : 1;
+}
+
 void measure_text_dimensions(IRComponent* component, float max_width, float* out_width, float* out_height) {
     *out_width = 0.0f;
     *out_height = 0.0f;
@@ -81,58 +188,180 @@ void measure_text_dimensions(IRComponent* component, float max_width, float* out
         font_size = component->style->font.size;
     }
 
+    float line_height = font_size * TEXT_LINE_HEIGHT_RATIO;
+
     // Try to use actual font measurement via SDL_TTF if a renderer is available
     DesktopIRRenderer* renderer = g_desktop_renderer;
     if (renderer) {
         // Get font at the correct size using the font resolver
         TTF_Font* font = desktop_ir_resolve_font(renderer, component, font_size);
 
-        // Try actual text measurement
+        // Try actual text measurement with wrapping
         if (font && component->text_content[0] != '\0') {
-            SDL_Color dummy = {255, 255, 255, 255};
-            SDL_Surface* surface = TTF_RenderText_Blended(font, component->text_content,
-                                                          strlen(component->text_content), dummy);
-            if (surface) {
-                *out_width = (float)surface->w;
-                *out_height = (float)surface->h;
-                SDL_DestroySurface(surface);
+            // Wrap text into lines
+            char** lines = NULL;
+            int line_count = wrap_text_into_lines(component->text_content, max_width, font, font_size, &lines);
+
+            if (line_count > 0 && lines) {
+                // Measure each line to find maximum width
+                float max_line_width = 0.0f;
+                for (int i = 0; i < line_count; i++) {
+                    int line_w = 0, line_h = 0;
+                    TTF_GetStringSize(font, lines[i], 0, &line_w, &line_h);
+                    if (line_w > max_line_width) max_line_width = line_w;
+                    free(lines[i]);
+                }
+                free(lines);
+
+                *out_width = max_line_width;
+                *out_height = line_count * line_height;
+
+                if (getenv("KRYON_TRACE_TEXT_WRAP")) {
+                    fprintf(stderr, "[TEXT_WRAP] Component %u: text=\"%.50s%s\" max_width=%.1f → %d lines, width=%.1f, height=%.1f\n",
+                            component->id, component->text_content,
+                            strlen(component->text_content) > 50 ? "..." : "",
+                            max_width, line_count, *out_width, *out_height);
+                }
 
                 if (getenv("KRYON_TRACE_LAYOUT")) {
-                    printf("    📏 TEXT measured via TTF: width=%.1f, height=%.1f\n", *out_width, *out_height);
+                    printf("    📏 TEXT measured via TTF (wrapped): %d lines, width=%.1f, height=%.1f\n",
+                           line_count, *out_width, *out_height);
                 }
 
-                // Constrain to parent width
-                if (max_width > 0.0f && *out_width > max_width) {
-                    if (getenv("KRYON_TRACE_LAYOUT")) {
-                        printf("    📏 TEXT width clamped: %.1f -> %.1f\n", *out_width, max_width);
-                    }
-                    *out_width = max_width;
-                }
                 return;
             }
         }
     }
 
-    // Fallback: Estimate dimensions based on text length and font size using heuristic ratios
-    size_t text_len = strlen(component->text_content);
-    *out_height = font_size * TEXT_LINE_HEIGHT_RATIO;
-    *out_width = (float)text_len * font_size * TEXT_CHAR_WIDTH_RATIO;
+    // Fallback: Estimate dimensions with wrapping using heuristic
+    int line_count = wrap_text_into_lines(component->text_content, max_width, NULL, font_size, NULL);
 
-    if (getenv("KRYON_TRACE_LAYOUT")) {
-        printf("    📏 TEXT measured via heuristic: width=%.1f, height=%.1f (len=%zu, fontSize=%.1f)\n",
-               *out_width, *out_height, text_len, font_size);
+    size_t text_len = strlen(component->text_content);
+    float char_width = font_size * TEXT_CHAR_WIDTH_RATIO;
+    int chars_per_line = max_width > 0 ? (int)(max_width / char_width) : text_len;
+    if (chars_per_line < 1) chars_per_line = 1;
+
+    *out_height = line_count * line_height;
+    *out_width = (chars_per_line < text_len) ? max_width : text_len * char_width;
+
+    if (getenv("KRYON_TRACE_TEXT_WRAP")) {
+        fprintf(stderr, "[TEXT_WRAP] Component %u (heuristic): text=\"%.50s%s\" max_width=%.1f → %d lines, width=%.1f, height=%.1f\n",
+                component->id, component->text_content,
+                strlen(component->text_content) > 50 ? "..." : "",
+                max_width, line_count, *out_width, *out_height);
     }
 
-    // Constrain TEXT to parent container width to prevent overflow
-    if (max_width > 0.0f && *out_width > max_width) {
-        if (getenv("KRYON_TRACE_LAYOUT")) {
-            printf("    📏 TEXT width clamped: %.1f -> %.1f (container constraint)\n", *out_width, max_width);
-        }
-        *out_width = max_width;
+    if (getenv("KRYON_TRACE_LAYOUT")) {
+        printf("    📏 TEXT measured via heuristic (wrapped): %d lines, width=%.1f, height=%.1f (len=%zu, fontSize=%.1f)\n",
+               line_count, *out_width, *out_height, text_len, font_size);
     }
 }
 
 #endif // ENABLE_SDL3
+
+/**
+ * Get intrinsic width of a component (no parent constraints)
+ *
+ * Calculates the natural width a component needs based on its content,
+ * WITHOUT being constrained by parent dimensions. This is critical for
+ * proper flexbox layout where siblings must share available space.
+ *
+ * Based on ir_get_component_intrinsic_width() from ir_layout.c but adapted
+ * for the desktop renderer with SDL_TTF text measurement.
+ *
+ * @param component The component to measure
+ * @return The intrinsic width in pixels
+ */
+float get_component_intrinsic_width(IRComponent* component) {
+    if (!component) return 0.0f;
+    if (!component->style) return 100.0f;
+
+    IRStyle* style = component->style;
+
+    // Use explicit width if set
+    if (style->width.type == IR_DIMENSION_PX) {
+        return style->width.value;
+    }
+
+    // Calculate based on component type and content
+    switch (component->type) {
+        case IR_COMPONENT_TEXT:
+            if (component->text_content) {
+#ifdef ENABLE_SDL3
+                float width, height;
+                // Measure text without width constraint (0 = unlimited)
+                measure_text_dimensions(component, 0, &width, &height);
+                return width;
+#else
+                // Fallback estimate
+                float font_size = style->font.size > 0 ? style->font.size : 16.0f;
+                return strlen(component->text_content) * font_size * 0.5f;
+#endif
+            }
+            return 50.0f;
+
+        case IR_COMPONENT_BUTTON:
+        case IR_COMPONENT_TAB:
+        case IR_COMPONENT_LINK:
+            if (component->text_content) {
+#ifdef ENABLE_SDL3
+                float text_width, text_height;
+                measure_text_dimensions(component, 0, &text_width, &text_height);
+                float padding = style->padding.left + style->padding.right;
+                return text_width + padding + 20.0f; // Extra space for button chrome
+#else
+                float font_size = style->font.size > 0 ? style->font.size : 14.0f;
+                float text_width = strlen(component->text_content) * font_size * 0.5f;
+                float padding = style->padding.left + style->padding.right;
+                return text_width + padding + 20.0f;
+#endif
+            }
+            return 80.0f;
+
+        case IR_COMPONENT_INPUT:
+            return 200.0f; // Default input width
+
+        case IR_COMPONENT_CONTAINER:
+        case IR_COMPONENT_ROW:
+        case IR_COMPONENT_COLUMN:
+        case IR_COMPONENT_TAB_BAR:
+        case IR_COMPONENT_CENTER:
+            // Container width depends on children and layout direction
+            if (component->child_count > 0 && component->layout) {
+                float total_width = 0.0f;
+                float max_width = 0.0f;
+                float gap = component->layout->flex.gap;
+
+                bool is_row = (component->layout->flex.direction == 1) ||
+                             (component->type == IR_COMPONENT_ROW) ||
+                             (component->type == IR_COMPONENT_TAB_BAR);
+
+                for (uint32_t i = 0; i < component->child_count; i++) {
+                    IRComponent* child = component->children[i];
+                    if (!child->style || !child->style->visible) continue;
+
+                    // Recursively measure child intrinsic width
+                    float child_width = get_component_intrinsic_width(child);
+                    child_width += child->style->margin.left + child->style->margin.right;
+
+                    if (is_row) {
+                        total_width += child_width;
+                        if (i > 0) total_width += gap;
+                    } else {
+                        if (child_width > max_width) max_width = child_width;
+                    }
+                }
+
+                float result = is_row ? total_width : max_width;
+                result += style->padding.left + style->padding.right;
+                return result;
+            }
+            return 100.0f;
+
+        default:
+            return 100.0f;
+    }
+}
 
 /**
  * Calculate layout rectangle for a component
@@ -180,6 +409,10 @@ LayoutRect calculate_component_layout(IRComponent* component, LayoutRect parent_
         component->type == IR_COMPONENT_TAB || component->type == IR_COMPONENT_LINK) {
         rect.width = 0;
         rect.height = 0;
+    } else if (component->type == IR_COMPONENT_CENTER) {
+        // CENTER always uses parent dimensions (to provide space for centering its child)
+        rect.width = parent_rect.width;
+        rect.height = parent_rect.height;
     } else {
         // Check if component has explicit dimensions or should auto-size
         bool has_explicit_width = component->style && component->style->width.type != IR_DIMENSION_AUTO;
@@ -253,6 +486,11 @@ LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect) {
         return zero;
     }
 
+    if (getenv("KRYON_TRACE_LAYOUT") && child->type == IR_COMPONENT_COLUMN && child->child_count > 0) {
+        printf("  🔍 get_child_size(COLUMN #%u): parent_rect.width=%.1f, child_count=%u\n",
+               child->id, parent_rect.width, child->child_count);
+    }
+
     // Use the existing calculate_component_layout which handles all component types correctly
     LayoutRect layout = calculate_component_layout(child, parent_rect);
 
@@ -275,6 +513,11 @@ LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect) {
             }
 
             for (uint32_t i = 0; i < child->child_count; i++) {
+                if (getenv("KRYON_TRACE_LAYOUT") && child->type == IR_COMPONENT_COLUMN &&
+                    child->children[i] && child->children[i]->type == IR_COMPONENT_TEXT) {
+                    printf("    🔍 COLUMN measuring TEXT child: parent_rect.width=%.1f\n", parent_rect.width);
+                }
+
                 float child_w = get_child_dimension(child->children[i], parent_rect, false);
                 float child_h = get_child_dimension(child->children[i], parent_rect, true);
 
@@ -437,6 +680,10 @@ float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_he
     if (child->type == IR_COMPONENT_TEXT || child->type == IR_COMPONENT_CHECKBOX) {
         // Text/checkbox auto-size to content
 #ifdef ENABLE_SDL3
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            printf("    📝 TEXT Component %u: get_child_dimension called with parent_rect.width=%.1f\n",
+                   child->id, parent_rect.width);
+        }
         float text_width = 0.0f, text_height = 0.0f;
         measure_text_dimensions(child, parent_rect.width, &text_width, &text_height);
 
@@ -688,7 +935,7 @@ float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_he
 
         // Determine if we're measuring the main axis
         // TabBar is treated as horizontal (Row-like)
-        bool is_main_axis = (is_height && child->type == IR_COMPONENT_COLUMN) ||
+        bool is_main_axis = (is_height && (child->type == IR_COMPONENT_COLUMN || child->type == IR_COMPONENT_CONTAINER)) ||
                            (!is_height && (child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_TAB_BAR));
 
         if (getenv("KRYON_TRACE_LAYOUT")) {
