@@ -2785,6 +2785,11 @@ static void apply_main_axis_alignment(IRComponent* c, float available_space, boo
     IRAlignment align = c->layout->flex.justify_content;
     if (align == IR_ALIGNMENT_START) return;  // Already positioned at start
 
+    if (getenv("KRYON_TRACE_ALIGNMENT")) {
+        fprintf(stderr, "[ALIGN] Component %u, align=%d, available=%.1f, is_column=%d\n",
+                c->id, align, available_space, is_column);
+    }
+
     float gap = c->layout->flex.gap;
     float total_content = 0;
 
@@ -2802,6 +2807,9 @@ static void apply_main_axis_alignment(IRComponent* c, float available_space, boo
     }
 
     float remaining = available_space - total_content;
+    if (getenv("KRYON_TRACE_ALIGNMENT")) {
+        fprintf(stderr, "[ALIGN]   total_content=%.1f, remaining=%.1f\n", total_content, remaining);
+    }
     if (remaining <= 0) return;  // No space to distribute
 
     float offset = 0;
@@ -2882,8 +2890,9 @@ static void layout_column_children(IRComponent* c, IRLayoutConstraints constrain
     IRSpacing pad = {0};
     if (c->style) pad = c->style->padding;
 
-    float available_height = constraints.max_height - (pad.top + pad.bottom);
-    float available_width = constraints.max_width - (pad.left + pad.right);
+    // Use the component's COMPUTED dimensions, not the parent's constraints
+    float available_height = c->layout_state->computed.height - (pad.top + pad.bottom);
+    float available_width = c->layout_state->computed.width - (pad.left + pad.right);
     float gap = c->layout ? (float)c->layout->flex.gap : 0.0f;
 
     // Phase 1: Measure fixed-size children and count flex_grow
@@ -2913,7 +2922,7 @@ static void layout_column_children(IRComponent* c, IRLayoutConstraints constrain
 
         IRLayoutConstraints child_constraints = {
             .max_width = available_width,
-            .max_height = 0,
+            .max_height = available_height,  // Default to available height for percentage calculations
             .min_width = 0,
             .min_height = 0
         };
@@ -2926,10 +2935,9 @@ static void layout_column_children(IRComponent* c, IRLayoutConstraints constrain
         } else if (child->type == IR_COMPONENT_CENTER) {
             // CENTER components fill available height to center their children
             child_constraints.max_height = available_height;
-        } else {
-            // Fixed-size child
-            child_constraints.max_height = child->layout_state->intrinsic.max_content_height;
         }
+        // For all other children (fixed size, percentage, AUTO):
+        // They get available_height as max constraint (already set above)
 
         // Recursively layout child
         ir_layout_compute_constraints(child, child_constraints);
@@ -2957,8 +2965,9 @@ static void layout_row_children(IRComponent* c, IRLayoutConstraints constraints)
     IRSpacing pad = {0};
     if (c->style) pad = c->style->padding;
 
-    float available_width = constraints.max_width - (pad.left + pad.right);
-    float available_height = constraints.max_height - (pad.top + pad.bottom);
+    // Use the component's COMPUTED dimensions, not the parent's constraints
+    float available_width = c->layout_state->computed.width - (pad.left + pad.right);
+    float available_height = c->layout_state->computed.height - (pad.top + pad.bottom);
     float gap = c->layout ? (float)c->layout->flex.gap : 0.0f;
 
     // Phase 1: Measure fixed-size children and count flex_grow
@@ -2987,7 +2996,7 @@ static void layout_row_children(IRComponent* c, IRLayoutConstraints constraints)
         if (!child || !child->layout_state) continue;
 
         IRLayoutConstraints child_constraints = {
-            .max_width = 0,
+            .max_width = available_width,  // Default to available width for percentage calculations
             .max_height = available_height,
             .min_width = 0,
             .min_height = 0
@@ -3001,10 +3010,9 @@ static void layout_row_children(IRComponent* c, IRLayoutConstraints constraints)
         } else if (child->type == IR_COMPONENT_CENTER) {
             // CENTER components fill available width to center their children
             child_constraints.max_width = available_width;
-        } else {
-            // Fixed-size child
-            child_constraints.max_width = child->layout_state->intrinsic.max_content_width;
         }
+        // For all other children (fixed size, percentage, AUTO):
+        // They get available_width as max constraint (already set above)
 
         // Recursively layout child
         ir_layout_compute_constraints(child, child_constraints);
