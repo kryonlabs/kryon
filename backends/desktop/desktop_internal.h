@@ -227,27 +227,20 @@ void render_text_with_fade(SDL_Renderer* renderer, TTF_Font* font, const char* t
                            SDL_FRect* rect, SDL_Color color, float fade_start_ratio);
 
 // ============================================================================
-// LAYOUT CALCULATION (desktop_layout.c)
+// LAYOUT UTILITIES (desktop_layout.c)
 // ============================================================================
+// All layout computation is now in ir/ir_layout.c (two-pass system)
 
 // Dimension conversion
 float ir_dimension_to_pixels(IRDimension dimension, float container_size);
 
-// Text measurement for layout
+// Text measurement callback for IR layout system
 #ifdef ENABLE_SDL3
-void measure_text_dimensions(IRComponent* component, float max_width,
-                            float* out_width, float* out_height);
+void desktop_text_measure_callback(const char* text, float font_size,
+                                   float max_width, float* out_width, float* out_height);
 int wrap_text_into_lines(const char* text, float max_width, TTF_Font* font,
                          float font_size, char*** out_lines);
 #endif
-
-// Intrinsic size calculation (no parent constraints)
-float get_component_intrinsic_width(IRComponent* component);
-
-// Layout calculation
-LayoutRect calculate_component_layout(IRComponent* component, LayoutRect parent_rect);
-LayoutRect get_child_size(IRComponent* child, LayoutRect parent_rect);
-float get_child_dimension(IRComponent* child, LayoutRect parent_rect, bool is_height);
 
 // ============================================================================
 // INPUT HANDLING (desktop_input.c)

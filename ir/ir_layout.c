@@ -15,22 +15,48 @@
 void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, float available_height);
 
 // ============================================================================
+// Text Measurement Callback (Backend-Specific)
+// ============================================================================
+
+static IRTextMeasureCallback g_text_measure_callback = NULL;
+
+void ir_layout_set_text_measure_callback(IRTextMeasureCallback callback) {
+    g_text_measure_callback = callback;
+}
+
+// ============================================================================
 // Layout Cache & Dirty Tracking
 // ============================================================================
 
 void ir_layout_mark_dirty(IRComponent* component) {
-    if (!component) return;
+    if (!component || !component->layout_state) return;
 
+    // Mark this component dirty (invalidate both passes)
+    component->layout_state->dirty = true;
+    component->layout_state->intrinsic_valid = false;
+    component->layout_state->layout_valid = false;
+
+    // Keep old dirty_flags for compatibility during transition
     component->dirty_flags |= IR_DIRTY_LAYOUT;
 
-    // Propagate dirty flag upward to parents AND invalidate their layout caches
+    // Propagate dirty flag upward to parents
+    // Parent intrinsic sizes may change if child size changes
     IRComponent* parent = component->parent;
     while (parent) {
+        if (!parent->layout_state) break;
+
+        // Mark parent layout invalid (but intrinsic needs recomputation too)
+        parent->layout_state->dirty = true;
+        parent->layout_state->layout_valid = false;
+        // Note: We DON'T invalidate parent's intrinsic here yet
+        // because we'll recompute it in the bottom-up pass anyway
+
+        // Keep old dirty_flags for compatibility
         parent->dirty_flags |= IR_DIRTY_SUBTREE;
-        // Invalidate parent's layout cache since child changed
         parent->layout_cache.dirty = true;
         parent->layout_cache.cached_intrinsic_width = -1.0f;
         parent->layout_cache.cached_intrinsic_height = -1.0f;
+
         parent = parent->parent;
     }
 }
@@ -2440,4 +2466,724 @@ void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, 
     fprintf(stderr, "🔀 FLOWCHART_LAYOUT done: size=%.1fx%.1f\n",
             flowchart->rendered_bounds.width, flowchart->rendered_bounds.height);
     #endif
+}
+
+// ============================================================================
+// Two-Pass Layout System - Clay-Inspired Architecture
+// ============================================================================
+
+// ============================================================================
+// Phase 1: Bottom-Up Intrinsic Sizing (Content-Based)
+// ============================================================================
+
+/**
+ * Compute intrinsic size for Text components
+ * Uses backend text measurement callback if available, otherwise fallback heuristic
+ */
+static void intrinsic_size_text(IRComponent* c, IRIntrinsicSize* out) {
+    if (!c || !out) return;
+
+    float font_size = (c->style && c->style->font.size > 0) ? c->style->font.size : 16.0f;
+    const char* text = c->text_content ? c->text_content : "";
+
+    if (g_text_measure_callback) {
+        // Use backend measurement (SDL3 TTF, terminal, etc.)
+        float width = 0, height = 0;
+        g_text_measure_callback(text, font_size, 0, &width, &height);
+        out->max_content_width = width;
+        out->max_content_height = height;
+        out->min_content_width = font_size * 0.5f;  // At least 1 character wide
+        out->min_content_height = height;
+    } else {
+        // Heuristic fallback (no backend available)
+        float char_width = font_size * 0.5f;  // Rough approximation
+        size_t len = strlen(text);
+        out->max_content_width = len * char_width;
+        out->max_content_height = font_size * 1.2f;  // Line height
+        out->min_content_width = char_width;
+        out->min_content_height = font_size * 1.2f;
+    }
+}
+
+/**
+ * Compute intrinsic size for Column components
+ * Sums children heights, takes max width
+ */
+static void intrinsic_size_column(IRComponent* c, IRIntrinsicSize* out) {
+    if (!c || !out) return;
+
+    float max_width = 0;
+    float sum_height = 0;
+    float gap = (c->layout && c->layout->flex.gap > 0) ? (float)c->layout->flex.gap : 0.0f;
+
+    // Sum children dimensions
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (!child || !child->layout_state) continue;
+
+        IRIntrinsicSize* child_intrinsic = &child->layout_state->intrinsic;
+
+        // Max width across all children
+        if (child_intrinsic->max_content_width > max_width) {
+            max_width = child_intrinsic->max_content_width;
+        }
+
+        // Sum heights
+        sum_height += child_intrinsic->max_content_height;
+        if (i > 0) sum_height += gap;  // Gap between children
+    }
+
+    // Add padding
+    IRSpacing pad = {0};
+    if (c->style) pad = c->style->padding;
+
+    out->min_content_width = max_width + pad.left + pad.right;
+    out->max_content_width = max_width + pad.left + pad.right;
+    out->min_content_height = sum_height + pad.top + pad.bottom;
+    out->max_content_height = sum_height + pad.top + pad.bottom;
+}
+
+/**
+ * Compute intrinsic size for Row components
+ * Sums children widths, takes max height
+ */
+static void intrinsic_size_row(IRComponent* c, IRIntrinsicSize* out) {
+    if (!c || !out) return;
+
+    float sum_width = 0;
+    float max_height = 0;
+    float gap = (c->layout && c->layout->flex.gap > 0) ? (float)c->layout->flex.gap : 0.0f;
+
+    // Sum children dimensions
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (!child || !child->layout_state) continue;
+
+        IRIntrinsicSize* child_intrinsic = &child->layout_state->intrinsic;
+
+        // Sum widths
+        sum_width += child_intrinsic->max_content_width;
+        if (i > 0) sum_width += gap;  // Gap between children
+
+        // Max height across all children
+        if (child_intrinsic->max_content_height > max_height) {
+            max_height = child_intrinsic->max_content_height;
+        }
+    }
+
+    // Add padding
+    IRSpacing pad = {0};
+    if (c->style) pad = c->style->padding;
+
+    out->min_content_width = sum_width + pad.left + pad.right;
+    out->max_content_width = sum_width + pad.left + pad.right;
+    out->min_content_height = max_height + pad.top + pad.bottom;
+    out->max_content_height = max_height + pad.top + pad.bottom;
+}
+
+/**
+ * Compute intrinsic size for Center components
+ * Auto-sizes to single child
+ */
+static void intrinsic_size_center(IRComponent* c, IRIntrinsicSize* out) {
+    if (!c || !out) return;
+
+    // Center auto-sizes to its single child (or 0 if no children)
+    if (c->child_count == 1 && c->children[0] && c->children[0]->layout_state) {
+        *out = c->children[0]->layout_state->intrinsic;
+    } else {
+        // No children or multiple children - default to 0
+        memset(out, 0, sizeof(IRIntrinsicSize));
+    }
+
+    // Add padding if present
+    if (c->style) {
+        IRSpacing pad = c->style->padding;
+        out->min_content_width += pad.left + pad.right;
+        out->max_content_width += pad.left + pad.right;
+        out->min_content_height += pad.top + pad.bottom;
+        out->max_content_height += pad.top + pad.bottom;
+    }
+}
+
+/**
+ * Compute intrinsic size for Button components
+ * Measures text content plus padding
+ */
+static void intrinsic_size_button(IRComponent* c, IRIntrinsicSize* out) {
+    if (!c || !out) return;
+
+    // Buttons are like text with extra padding
+    intrinsic_size_text(c, out);
+
+    // Add button-specific padding (standard button padding)
+    const float BUTTON_PADDING_H = 16.0f;
+    const float BUTTON_PADDING_V = 8.0f;
+
+    out->min_content_width += BUTTON_PADDING_H * 2;
+    out->max_content_width += BUTTON_PADDING_H * 2;
+    out->min_content_height += BUTTON_PADDING_V * 2;
+    out->max_content_height += BUTTON_PADDING_V * 2;
+
+    // Add explicit padding if present
+    if (c->style) {
+        IRSpacing pad = c->style->padding;
+        out->min_content_width += pad.left + pad.right;
+        out->max_content_width += pad.left + pad.right;
+        out->min_content_height += pad.top + pad.bottom;
+        out->max_content_height += pad.top + pad.bottom;
+    }
+}
+
+/**
+ * Compute intrinsic size for Container components
+ * Similar to Column, but supports both directions
+ */
+static void intrinsic_size_container(IRComponent* c, IRIntrinsicSize* out) {
+    if (!c || !out) return;
+
+    // Check layout direction (default to column)
+    bool is_row = false;
+    if (c->layout && c->layout->flex.direction == 1) {
+        is_row = true;
+    }
+
+    if (is_row) {
+        intrinsic_size_row(c, out);
+    } else {
+        intrinsic_size_column(c, out);
+    }
+}
+
+/**
+ * Main intrinsic measurement function (Pass 1: Bottom-Up)
+ * Traverses tree from leaves to root, computing content-based sizes
+ */
+void ir_layout_compute_intrinsic(IRComponent* component) {
+    if (!component || !component->layout_state) return;
+
+    // Skip if already valid and not dirty
+    if (component->layout_state->intrinsic_valid && !component->layout_state->dirty) {
+        return;
+    }
+
+    // Recurse to children FIRST (bottom-up traversal)
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        ir_layout_compute_intrinsic(component->children[i]);
+    }
+
+    // Now measure THIS component based on its type
+    IRIntrinsicSize* out = &component->layout_state->intrinsic;
+
+    switch (component->type) {
+        case IR_COMPONENT_TEXT:
+            intrinsic_size_text(component, out);
+            break;
+
+        case IR_COMPONENT_COLUMN:
+            intrinsic_size_column(component, out);
+            break;
+
+        case IR_COMPONENT_ROW:
+            intrinsic_size_row(component, out);
+            break;
+
+        case IR_COMPONENT_CENTER:
+            intrinsic_size_center(component, out);
+            break;
+
+        case IR_COMPONENT_BUTTON:
+            intrinsic_size_button(component, out);
+            break;
+
+        case IR_COMPONENT_CONTAINER:
+            intrinsic_size_container(component, out);
+            break;
+
+        case IR_COMPONENT_CHECKBOX:
+            // Checkboxes are like buttons with text
+            intrinsic_size_button(component, out);
+            break;
+
+        case IR_COMPONENT_INPUT:
+            // Inputs need a default size
+            out->min_content_width = 100.0f;
+            out->max_content_width = 200.0f;
+            out->min_content_height = 24.0f;
+            out->max_content_height = 24.0f;
+            if (component->style) {
+                IRSpacing pad = component->style->padding;
+                out->min_content_width += pad.left + pad.right;
+                out->max_content_width += pad.left + pad.right;
+                out->min_content_height += pad.top + pad.bottom;
+                out->max_content_height += pad.top + pad.bottom;
+            }
+            break;
+
+        case IR_COMPONENT_TAB_GROUP:
+        case IR_COMPONENT_TAB_BAR:
+        case IR_COMPONENT_TAB_CONTENT:
+            // These are containers, treat like columns
+            intrinsic_size_column(component, out);
+            break;
+
+        case IR_COMPONENT_TAB:
+        case IR_COMPONENT_TAB_PANEL:
+            // Tabs and panels can have mixed content
+            intrinsic_size_container(component, out);
+            break;
+
+        default:
+            // Unknown type - assume container-like behavior
+            if (component->child_count > 0) {
+                intrinsic_size_container(component, out);
+            } else {
+                // Leaf component with no handler - default to 0
+                memset(out, 0, sizeof(IRIntrinsicSize));
+            }
+            break;
+    }
+
+    // Mark intrinsic sizing as valid
+    component->layout_state->intrinsic_valid = true;
+}
+
+// ============================================================================
+// Phase 2: Top-Down Constraint Application
+// ============================================================================
+
+/**
+ * Resolve dimension based on style and constraints
+ * Handles FIXED (px), PERCENT (%), and AUTO sizing
+ */
+static float layout_resolve_dimension(IRDimension dim, float constraint, float intrinsic_size) {
+    switch (dim.type) {
+        case IR_DIMENSION_PX:
+            // Fixed size in pixels
+            return dim.value;
+
+        case IR_DIMENSION_PERCENT:
+            // Percentage of parent constraint
+            return constraint * (dim.value / 100.0f);
+
+        case IR_DIMENSION_AUTO:
+        default:
+            // Auto: use intrinsic size, clamped to constraint
+            if (intrinsic_size > constraint) {
+                return constraint;
+            }
+            return intrinsic_size;
+    }
+}
+
+/**
+ * Apply main-axis alignment (justify-content for flex containers)
+ */
+static void apply_main_axis_alignment(IRComponent* c, float available_space, bool is_column) {
+    if (!c || !c->layout || c->child_count == 0) return;
+
+    IRAlignment align = c->layout->flex.justify_content;
+    if (align == IR_ALIGNMENT_START) return;  // Already positioned at start
+
+    float gap = c->layout->flex.gap;
+    float total_content = 0;
+
+    // Calculate total content size
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (!child || !child->layout_state) continue;
+
+        if (is_column) {
+            total_content += child->layout_state->computed.height;
+        } else {
+            total_content += child->layout_state->computed.width;
+        }
+        if (i > 0) total_content += gap;
+    }
+
+    float remaining = available_space - total_content;
+    if (remaining <= 0) return;  // No space to distribute
+
+    float offset = 0;
+    if (align == IR_ALIGNMENT_CENTER) {
+        offset = remaining / 2.0f;
+    } else if (align == IR_ALIGNMENT_END) {
+        offset = remaining;
+    } else if (align == IR_ALIGNMENT_SPACE_BETWEEN) {
+        // First child stays at 0, distribute remaining space between children
+        if (c->child_count > 1) {
+            float spacing = remaining / (c->child_count - 1);
+            for (uint32_t i = 1; i < c->child_count; i++) {
+                IRComponent* child = c->children[i];
+                if (!child || !child->layout_state) continue;
+                if (is_column) {
+                    child->layout_state->computed.y += spacing * i;
+                } else {
+                    child->layout_state->computed.x += spacing * i;
+                }
+            }
+        }
+        return;
+    }
+
+    // Apply offset to all children (for CENTER and END)
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (!child || !child->layout_state) continue;
+        if (is_column) {
+            child->layout_state->computed.y += offset;
+        } else {
+            child->layout_state->computed.x += offset;
+        }
+    }
+}
+
+/**
+ * Apply cross-axis alignment (align-items for flex containers)
+ */
+static void apply_cross_axis_alignment(IRComponent* c, float available_space, bool is_column) {
+    if (!c || !c->layout || c->child_count == 0) return;
+
+    IRAlignment align = c->layout->flex.cross_axis;
+    if (align == IR_ALIGNMENT_START) return;  // Already positioned at start
+
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (!child || !child->layout_state) continue;
+
+        float child_size = is_column ? child->layout_state->computed.width
+                                     : child->layout_state->computed.height;
+        float remaining = available_space - child_size;
+        if (remaining <= 0) continue;
+
+        float offset = 0;
+        if (align == IR_ALIGNMENT_CENTER) {
+            offset = remaining / 2.0f;
+        } else if (align == IR_ALIGNMENT_END) {
+            offset = remaining;
+        }
+
+        if (is_column) {
+            // Cross-axis is X for columns
+            child->layout_state->computed.x += offset;
+        } else {
+            // Cross-axis is Y for rows
+            child->layout_state->computed.y += offset;
+        }
+    }
+}
+
+/**
+ * Layout children in a column with flex_grow support
+ */
+static void layout_column_children(IRComponent* c, IRLayoutConstraints constraints) {
+    if (!c || !c->layout_state) return;
+
+    IRSpacing pad = {0};
+    if (c->style) pad = c->style->padding;
+
+    float available_height = constraints.max_height - (pad.top + pad.bottom);
+    float available_width = constraints.max_width - (pad.left + pad.right);
+    float gap = c->layout ? (float)c->layout->flex.gap : 0.0f;
+
+    // Phase 1: Measure fixed-size children and count flex_grow
+    float total_flex_grow = 0;
+    float fixed_height = 0;
+
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (!child || !child->layout_state) continue;
+
+        if (child->layout && child->layout->flex.grow > 0) {
+            total_flex_grow += child->layout->flex.grow;
+        } else {
+            // Fixed-size child: use intrinsic or explicit height
+            fixed_height += child->layout_state->intrinsic.max_content_height;
+        }
+        if (i > 0) fixed_height += gap;
+    }
+
+    // Phase 2: Distribute remaining space to flex_grow children
+    float remaining_height = available_height - fixed_height;
+    float current_y = pad.top;
+
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (!child || !child->layout_state) continue;
+
+        IRLayoutConstraints child_constraints = {
+            .max_width = available_width,
+            .max_height = 0,
+            .min_width = 0,
+            .min_height = 0
+        };
+
+        // Determine child height
+        if (child->layout && child->layout->flex.grow > 0 && total_flex_grow > 0) {
+            // Flex-grow child: distribute remaining space proportionally
+            float share = remaining_height * (child->layout->flex.grow / total_flex_grow);
+            child_constraints.max_height = share > 0 ? share : 0;
+        } else {
+            // Fixed-size child
+            child_constraints.max_height = child->layout_state->intrinsic.max_content_height;
+        }
+
+        // Recursively layout child
+        ir_layout_compute_constraints(child, child_constraints);
+
+        // Position child
+        child->layout_state->computed.x = pad.left;
+        child->layout_state->computed.y = current_y;
+
+        current_y += child->layout_state->computed.height + gap;
+    }
+
+    // Apply cross-axis alignment (horizontal alignment in columns)
+    apply_cross_axis_alignment(c, available_width, true);
+
+    // Apply main-axis alignment (vertical alignment in columns)
+    apply_main_axis_alignment(c, available_height, true);
+}
+
+/**
+ * Layout children in a row with flex_grow support
+ */
+static void layout_row_children(IRComponent* c, IRLayoutConstraints constraints) {
+    if (!c || !c->layout_state) return;
+
+    IRSpacing pad = {0};
+    if (c->style) pad = c->style->padding;
+
+    float available_width = constraints.max_width - (pad.left + pad.right);
+    float available_height = constraints.max_height - (pad.top + pad.bottom);
+    float gap = c->layout ? (float)c->layout->flex.gap : 0.0f;
+
+    // Phase 1: Measure fixed-size children and count flex_grow
+    float total_flex_grow = 0;
+    float fixed_width = 0;
+
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (!child || !child->layout_state) continue;
+
+        if (child->layout && child->layout->flex.grow > 0) {
+            total_flex_grow += child->layout->flex.grow;
+        } else {
+            // Fixed-size child: use intrinsic or explicit width
+            fixed_width += child->layout_state->intrinsic.max_content_width;
+        }
+        if (i > 0) fixed_width += gap;
+    }
+
+    // Phase 2: Distribute remaining space to flex_grow children
+    float remaining_width = available_width - fixed_width;
+    float current_x = pad.left;
+
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (!child || !child->layout_state) continue;
+
+        IRLayoutConstraints child_constraints = {
+            .max_width = 0,
+            .max_height = available_height,
+            .min_width = 0,
+            .min_height = 0
+        };
+
+        // Determine child width
+        if (child->layout && child->layout->flex.grow > 0 && total_flex_grow > 0) {
+            // Flex-grow child: distribute remaining space proportionally
+            float share = remaining_width * (child->layout->flex.grow / total_flex_grow);
+            child_constraints.max_width = share > 0 ? share : 0;
+        } else {
+            // Fixed-size child
+            child_constraints.max_width = child->layout_state->intrinsic.max_content_width;
+        }
+
+        // Recursively layout child
+        ir_layout_compute_constraints(child, child_constraints);
+
+        // Position child
+        child->layout_state->computed.x = current_x;
+        child->layout_state->computed.y = pad.top;
+
+        current_x += child->layout_state->computed.width + gap;
+    }
+
+    // Apply cross-axis alignment (vertical alignment in rows)
+    apply_cross_axis_alignment(c, available_height, false);
+
+    // Apply main-axis alignment (horizontal alignment in rows)
+    apply_main_axis_alignment(c, available_width, false);
+}
+
+/**
+ * Main constraint application function (Pass 2: Top-Down)
+ * Applies parent constraints and computes final layout
+ */
+void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constraints) {
+    if (!c || !c->layout_state) return;
+
+    // Skip if already valid and not dirty
+    if (c->layout_state->layout_valid && !c->layout_state->dirty) {
+        return;
+    }
+
+    IRComputedLayout* layout = &c->layout_state->computed;
+    IRIntrinsicSize* intrinsic = &c->layout_state->intrinsic;
+    IRStyle* style = c->style;
+
+    // Resolve width
+    if (style && style->width.type != IR_DIMENSION_AUTO) {
+        layout->width = layout_resolve_dimension(style->width, constraints.max_width,
+                                                intrinsic->max_content_width);
+    } else {
+        // AUTO: use intrinsic size, clamped to constraint
+        layout->width = intrinsic->max_content_width;
+        if (layout->width > constraints.max_width) {
+            layout->width = constraints.max_width;
+        }
+    }
+
+    // Resolve height
+    if (style && style->height.type != IR_DIMENSION_AUTO) {
+        layout->height = layout_resolve_dimension(style->height, constraints.max_height,
+                                                 intrinsic->max_content_height);
+    } else {
+        // AUTO: use intrinsic size, clamped to constraint
+        layout->height = intrinsic->max_content_height;
+        if (layout->height > constraints.max_height) {
+            layout->height = constraints.max_height;
+        }
+    }
+
+    // Apply min/max constraints (if we add them later)
+    // TODO: Add min_width, max_width, min_height, max_height support
+
+    // Apply aspect ratio (if present)
+    // TODO: Add aspect_ratio support
+
+    // Build child constraints
+    IRSpacing pad = {0};
+    if (style) pad = style->padding;
+
+    IRLayoutConstraints child_constraints = {
+        .max_width = layout->width - (pad.left + pad.right),
+        .max_height = layout->height - (pad.top + pad.bottom),
+        .min_width = 0,
+        .min_height = 0
+    };
+
+    // Layout children based on component type
+    switch (c->type) {
+        case IR_COMPONENT_COLUMN:
+        case IR_COMPONENT_CONTAINER:
+            // Check if container is column or row
+            if (c->layout && c->layout->flex.direction == 1) {
+                layout_row_children(c, constraints);
+            } else {
+                layout_column_children(c, constraints);
+            }
+            break;
+
+        case IR_COMPONENT_ROW:
+            layout_row_children(c, constraints);
+            break;
+
+        case IR_COMPONENT_CENTER:
+            // Center positions its single child in the middle
+            if (c->child_count == 1) {
+                IRComponent* child = c->children[0];
+                ir_layout_compute_constraints(child, child_constraints);
+
+                // Center the child
+                child->layout_state->computed.x =
+                    (layout->width - child->layout_state->computed.width) / 2.0f;
+                child->layout_state->computed.y =
+                    (layout->height - child->layout_state->computed.height) / 2.0f;
+            }
+            break;
+
+        case IR_COMPONENT_TAB_GROUP:
+        case IR_COMPONENT_TAB_BAR:
+        case IR_COMPONENT_TAB_CONTENT:
+            // Tab components behave like columns
+            layout_column_children(c, constraints);
+            break;
+
+        default:
+            // Default: layout each child independently with same constraints
+            for (uint32_t i = 0; i < c->child_count; i++) {
+                ir_layout_compute_constraints(c->children[i], child_constraints);
+            }
+            break;
+    }
+
+    // Mark layout as valid
+    c->layout_state->layout_valid = true;
+    layout->valid = true;
+}
+
+// ============================================================================
+// Phase 3: Absolute Positioning
+// ============================================================================
+
+/**
+ * Convert relative positions to absolute screen coordinates
+ * Traverses top-down: root → leaves
+ */
+void ir_layout_compute_absolute_positions(IRComponent* c, float parent_x, float parent_y) {
+    if (!c || !c->layout_state) return;
+
+    // Convert relative to absolute
+    c->layout_state->computed.x += parent_x;
+    c->layout_state->computed.y += parent_y;
+
+    // Recurse to children
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (child && child->layout_state) {
+            ir_layout_compute_absolute_positions(child,
+                c->layout_state->computed.x,
+                c->layout_state->computed.y);
+        }
+    }
+}
+
+// ============================================================================
+// Public API
+// ============================================================================
+
+/**
+ * Main entry point for two-pass layout computation
+ * Call this before rendering to compute all layout
+ */
+void ir_layout_compute_tree(IRComponent* root, float viewport_width, float viewport_height) {
+    if (!root) return;
+
+    // Phase 1: Bottom-up intrinsic sizing
+    ir_layout_compute_intrinsic(root);
+
+    // Phase 2: Top-down constraint application
+    IRLayoutConstraints root_constraints = {
+        .max_width = viewport_width,
+        .max_height = viewport_height,
+        .min_width = 0,
+        .min_height = 0
+    };
+    ir_layout_compute_constraints(root, root_constraints);
+
+    // Phase 3: Convert to absolute coordinates
+    ir_layout_compute_absolute_positions(root, 0, 0);
+}
+
+/**
+ * Get computed layout bounds for a component
+ * Returns NULL if layout hasn't been computed
+ */
+IRComputedLayout* ir_layout_get_bounds(IRComponent* component) {
+    if (!component || !component->layout_state || !component->layout_state->layout_valid) {
+        return NULL;
+    }
+    return &component->layout_state->computed;
 }

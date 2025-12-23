@@ -657,6 +657,48 @@ static void render_polygon_stroke(SDL_Renderer* renderer, const float* points, i
     }
 }
 
+/* ============================================================================
+ * Layout Helper Functions (NEW LAYOUT SYSTEM)
+ * ============================================================================ */
+
+/**
+ * Get computed dimension from new layout system
+ * Falls back to intrinsic size if layout not computed
+ */
+static float get_computed_dimension(IRComponent* component, bool is_height) {
+    if (!component) return 0.0f;
+
+    if (component->layout_state && component->layout_state->layout_valid) {
+        return is_height ? component->layout_state->computed.height
+                        : component->layout_state->computed.width;
+    }
+
+    // Fallback: use intrinsic size if available
+    if (component->layout_state && component->layout_state->intrinsic_valid) {
+        return is_height ? component->layout_state->intrinsic.max_content_height
+                        : component->layout_state->intrinsic.max_content_width;
+    }
+
+    return 0.0f;
+}
+
+/**
+ * Get computed layout rect for a component
+ */
+static LayoutRect get_computed_layout(IRComponent* component, LayoutRect fallback) {
+    if (!component || !component->layout_state || !component->layout_state->layout_valid) {
+        return fallback;
+    }
+
+    LayoutRect result = {
+        .x = component->layout_state->computed.x,
+        .y = component->layout_state->computed.y,
+        .width = component->layout_state->computed.width,
+        .height = component->layout_state->computed.height
+    };
+    return result;
+}
+
 bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, LayoutRect rect, float inherited_opacity) {
     if (!renderer || !component || !renderer->renderer) return false;
 
@@ -2200,9 +2242,11 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
         bool needs_cross_axis_space = component->layout &&
                                      component->layout->flex.cross_axis != IR_ALIGNMENT_START;
 
-        // Get measured content dimensions
-        float content_width = get_child_dimension(component, rect, false);
-        float content_height = get_child_dimension(component, rect, true);
+        // Get measured content dimensions from computed layout
+        float content_width = component->layout_state && component->layout_state->layout_valid
+                             ? component->layout_state->computed.width : rect.width;
+        float content_height = component->layout_state && component->layout_state->layout_valid
+                              ? component->layout_state->computed.height : rect.height;
 
         // For COLUMN: Don't shrink height if justifyContent != START
         // For ROW: Don't shrink width if justifyContent != START
@@ -2257,7 +2301,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
         for (uint32_t i = 0; i < component->child_count; i++) {
             // Use get_child_dimension to correctly measure all component types
-            float child_height = get_child_dimension(component->children[i], child_rect, true);
+            float child_height = get_computed_dimension(component->children[i], true);
 
             if (getenv("KRYON_TRACE_LAYOUT")) {
                 const char* child_type_name = "OTHER";
@@ -2360,7 +2404,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
         for (uint32_t i = 0; i < component->child_count; i++) {
             // Use get_child_dimension to correctly measure all component types
-            float child_width = get_child_dimension(component->children[i], child_rect, false);
+            float child_width = get_computed_dimension(component->children[i], false);
 
             if (getenv("KRYON_TRACE_LAYOUT")) {
                 IRComponent* child = component->children[i];
@@ -2496,7 +2540,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 // Equal space between items, no space at edges
                 float total_height = 0.0f;
                 for (uint32_t i = 0; i < component->child_count; i++) {
-                    float child_height = get_child_dimension(component->children[i], measure_rect, true);
+                    float child_height = get_computed_dimension(component->children[i], true);
                     total_height += child_height;
                 }
                 available_space = child_rect.height - total_height;
@@ -2512,7 +2556,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 // Equal space around each item (half space at edges)
                 float total_height = 0.0f;
                 for (uint32_t i = 0; i < component->child_count; i++) {
-                    float child_height = get_child_dimension(component->children[i], measure_rect, true);
+                    float child_height = get_computed_dimension(component->children[i], true);
                     total_height += child_height;
                 }
                 available_space = child_rect.height - total_height;
@@ -2529,7 +2573,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 // Equal space everywhere including edges
                 float total_height = 0.0f;
                 for (uint32_t i = 0; i < component->child_count; i++) {
-                    float child_height = get_child_dimension(component->children[i], measure_rect, true);
+                    float child_height = get_computed_dimension(component->children[i], true);
                     total_height += child_height;
                 }
                 available_space = child_rect.height - total_height;
@@ -2555,7 +2599,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 // Equal space between items, no space at edges
                 float total_width = 0.0f;
                 for (uint32_t i = 0; i < component->child_count; i++) {
-                    float child_width = get_child_dimension(component->children[i], measure_rect, false);
+                    float child_width = get_computed_dimension(component->children[i], false);
                     total_width += child_width;
                 }
                 available_space = child_rect.width - total_width;
@@ -2571,7 +2615,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 // Equal space around each item (half space at edges)
                 float total_width = 0.0f;
                 for (uint32_t i = 0; i < component->child_count; i++) {
-                    float child_width = get_child_dimension(component->children[i], measure_rect, false);
+                    float child_width = get_computed_dimension(component->children[i], false);
                     total_width += child_width;
                 }
                 available_space = child_rect.width - total_width;
@@ -2588,7 +2632,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 // Equal space everywhere including edges
                 float total_width = 0.0f;
                 for (uint32_t i = 0; i < component->child_count; i++) {
-                    float child_width = get_child_dimension(component->children[i], measure_rect, false);
+                    float child_width = get_computed_dimension(component->children[i], false);
                     total_width += child_width;
                 }
                 available_space = child_rect.width - total_width;
@@ -2616,10 +2660,10 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
         const char* type_name = component->type == IR_COMPONENT_COLUMN ? "COLUMN" :
                                component->type == IR_COMPONENT_ROW ? "ROW" : "OTHER";
         if (component->layout) {
-            printf("Layout %s: start=(%.1f,%.1f) child_rect=(%.1f,%.1f %.1fx%.1f) gap=%.1f main_axis=%d cross_axis=%d\n",
+            printf("Layout %s: start=(%.1f,%.1f) child_rect=(%.1f,%.1f %.1fx%.1f) gap=%.1f justify_content=%d cross_axis=%d\n",
                    type_name, start_x, start_y, child_rect.x, child_rect.y,
                    child_rect.width, child_rect.height, distributed_gap,
-                   component->layout->flex.main_axis, component->layout->flex.cross_axis);
+                   component->layout->flex.justify_content, component->layout->flex.cross_axis);
         } else {
             printf("Layout %s: start=(%.1f,%.1f) child_rect=(%.1f,%.1f %.1fx%.1f) gap=%.1f\n",
                    type_name, start_x, start_y, child_rect.x, child_rect.y,
@@ -2668,7 +2712,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             if (!child) continue;
             // Skip invisible children
             if (child->style && !child->style->visible) continue;
-            LayoutRect abs_layout = calculate_component_layout(child, rect);
+            LayoutRect abs_layout = get_computed_layout(child, rect);
             render_component_sdl3(renderer, child, abs_layout, child_opacity);
         }
         free(abs_children);
@@ -2766,7 +2810,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
         }
 
         // Get child size WITHOUT recursive layout (just from style)
-        LayoutRect child_layout = get_child_size(child, child_rect);
+        LayoutRect child_layout = get_computed_layout(child, child_rect);
 
         // Check if child has absolute positioning - if so, skip all alignment/positioning logic
         bool is_child_absolute = child && child->style && child->style->position_mode == IR_POSITION_ABSOLUTE;
@@ -2802,7 +2846,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                     float width_for_centering = child_layout.width;
                     if ((child->type == IR_COMPONENT_ROW || child->type == IR_COMPONENT_COLUMN) &&
                         child_layout.width == 0.0f) {
-                        width_for_centering = get_child_dimension(child, child_rect, false);
+                        width_for_centering = get_computed_dimension(child, false);
                     }
 
                     // Only center if child fits in container, otherwise align to start
@@ -2969,7 +3013,7 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
                     // If child_layout.height is 0 (measurement failed), fall back to get_child_dimension
                     if (rect_for_child.height <= 0) {
-                        float content_height = get_child_dimension(child, child_rect, true);
+                        float content_height = get_computed_dimension(child, true);
                         rect_for_child.height = content_height > 0 ? content_height : child_rect.height;
                     }
                 }

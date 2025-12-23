@@ -34,13 +34,13 @@ void ir_set_style(IRComponent* component, IRStyle* style);
 IRStyle* ir_get_style(IRComponent* component);
 
 // Style Property Helpers
-void ir_set_width(IRStyle* style, IRDimensionType type, float value);
-void ir_set_height(IRStyle* style, IRDimensionType type, float value);
+void ir_set_width(IRComponent* component, IRDimensionType type, float value);
+void ir_set_height(IRComponent* component, IRDimensionType type, float value);
 void ir_set_visible(IRStyle* style, bool visible);
 void ir_set_background_color(IRStyle* style, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 void ir_set_border(IRStyle* style, float width, uint8_t r, uint8_t g, uint8_t b, uint8_t a, uint8_t radius);
-void ir_set_margin(IRStyle* style, float top, float right, float bottom, float left);
-void ir_set_padding(IRStyle* style, float top, float right, float bottom, float left);
+void ir_set_margin(IRComponent* component, float top, float right, float bottom, float left);
+void ir_set_padding(IRComponent* component, float top, float right, float bottom, float left);
 void ir_set_font(IRStyle* style, float size, const char* family, uint8_t r, uint8_t g, uint8_t b, uint8_t a, bool bold, bool italic);
 void ir_set_z_index(IRStyle* style, uint32_t z_index);
 

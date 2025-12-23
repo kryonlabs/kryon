@@ -275,6 +275,9 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
     /* Register font metrics callbacks for IR layout system */
     desktop_register_font_metrics();
 
+    /* Register text measurement callback for two-pass layout system */
+    ir_layout_set_text_measure_callback(desktop_text_measure_callback);
+
     printf("Desktop renderer initialized successfully\n");
     return true;
 
@@ -385,6 +388,9 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
     int window_width = renderer->config.window_width;
     int window_height = renderer->config.window_height;
     SDL_GetWindowSize(renderer->window, &window_width, &window_height);
+
+    /* Compute layout using two-pass system before rendering */
+    ir_layout_compute_tree(root, (float)window_width, (float)window_height);
 
     LayoutRect root_rect = {
         .x = 0, .y = 0,

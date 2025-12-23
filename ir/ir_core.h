@@ -70,6 +70,49 @@ typedef struct {
     float value;
 } IRDimension;
 
+// ============================================================================
+// Layout System - Clay-Inspired Two-Pass Architecture
+// ============================================================================
+
+// Intrinsic sizing (content-based, no parent constraints)
+// Computed bottom-up: leaves → root
+typedef struct {
+    float min_content_width;   // Minimum without overflow
+    float max_content_width;   // Maximum without wrapping
+    float min_content_height;  // Minimum height
+    float max_content_height;  // Maximum height
+} IRIntrinsicSize;
+
+// Layout constraints from parent
+// Passed down top-down: root → leaves
+typedef struct {
+    float max_width;   // Available width from parent
+    float max_height;  // Available height from parent
+    float min_width;   // Minimum allowed width
+    float min_height;  // Minimum allowed height
+} IRLayoutConstraints;
+
+// Final computed layout (absolute positioning)
+// Result of two-pass algorithm
+typedef struct {
+    float x;           // Absolute X position
+    float y;           // Absolute Y position
+    float width;       // Final width
+    float height;      // Final height
+    bool valid;        // Layout is current (not dirty)
+} IRComputedLayout;
+
+// Complete layout state per component
+// Tracks both passes and caching
+typedef struct {
+    IRIntrinsicSize intrinsic;          // Pass 1: intrinsic measurement
+    IRComputedLayout computed;          // Pass 2: constraint application
+    uint32_t cache_generation;          // For cache invalidation
+    bool dirty;                         // Needs recomputation
+    bool intrinsic_valid;               // Pass 1 complete
+    bool layout_valid;                  // Pass 2 complete
+} IRLayoutState;
+
 // Color Types
 typedef enum {
     IR_COLOR_SOLID,
@@ -154,9 +197,9 @@ typedef enum {
 typedef struct {
     bool wrap;
     uint32_t gap;
-    IRAlignment main_axis;
+    // NOTE: main_axis was removed - use justify_content instead
     IRAlignment cross_axis;
-    IRAlignment justify_content;
+    IRAlignment justify_content;  // Main-axis alignment (was main_axis)
     uint8_t grow;      // Flex grow factor (0-255)
     uint8_t shrink;    // Flex shrink factor (0-255)
     uint8_t direction; // Flexbox direction: 0=column, 1=row
@@ -953,6 +996,7 @@ typedef struct IRComponent {
     uint32_t child_count;
     uint32_t child_capacity;  // Allocated capacity for exponential growth
     IRLayout* layout;
+    IRLayoutState* layout_state;  // NEW: Two-pass layout state (replaces dirty_flags)
     struct IRComponent* parent;
     char* text_content;      // For text components (evaluated value)
     char* text_expression;   // For reactive text (e.g., "{{value}}" or "$value")
@@ -1019,6 +1063,19 @@ void ir_layout_invalidate_subtree(IRComponent* component);
 void ir_layout_invalidate_cache(IRComponent* component);
 float ir_get_component_intrinsic_width(IRComponent* component);
 float ir_get_component_intrinsic_height(IRComponent* component);
+
+// Text measurement callback for two-pass layout system
+// Backend-specific text measurement (SDL3 TTF, terminal, etc.)
+typedef void (*IRTextMeasureCallback)(const char* text, float font_size,
+                                       float max_width, float* out_width, float* out_height);
+void ir_layout_set_text_measure_callback(IRTextMeasureCallback callback);
+
+// Two-pass layout system (Clay-inspired)
+void ir_layout_compute_intrinsic(IRComponent* component);
+void ir_layout_compute_constraints(IRComponent* component, IRLayoutConstraints constraints);
+void ir_layout_compute_absolute_positions(IRComponent* component, float parent_x, float parent_y);
+void ir_layout_compute_tree(IRComponent* root, float viewport_width, float viewport_height);
+IRComputedLayout* ir_layout_get_bounds(IRComponent* component);
 
 // Text Layout API (defined in ir_layout.c)
 IRTextLayout* ir_text_layout_create(uint32_t max_lines);
