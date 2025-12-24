@@ -692,6 +692,13 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
         .h = layout->height
     };
 
+    // Debug: Track TabBar final rendered position (critical for tab clicking bug)
+    if (component->type == IR_COMPONENT_TAB_BAR) {
+        fprintf(stderr, "[TAB_DEBUG] RENDER: TabBar id=%u at (%.1f,%.1f) size=(%.1f x %.1f) absolute_computed=%d\n",
+                component->id, layout->x, layout->y, layout->width, layout->height,
+                component->layout_state->absolute_positions_computed);
+    }
+
     // Cache rendered bounds for hit testing
     // IMPORTANT: Skip for TABLE children (sections, rows, cells) because their
     // rendered_bounds use RELATIVE coordinates set by ir_layout_compute_table.

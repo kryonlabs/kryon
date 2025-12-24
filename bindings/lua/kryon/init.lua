@@ -47,6 +47,11 @@ Kryon.Markdown = dsl.Markdown
 Kryon.Canvas = dsl.Canvas
 Kryon.Image = dsl.Image
 Kryon.Dropdown = dsl.Dropdown
+Kryon.TabGroup = dsl.TabGroup
+Kryon.TabBar = dsl.TabBar
+Kryon.Tab = dsl.Tab
+Kryon.TabContent = dsl.TabContent
+Kryon.TabPanel = dsl.TabPanel
 
 -- ============================================================================
 -- Reactive State (from reactive module)

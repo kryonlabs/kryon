@@ -28,13 +28,69 @@ void ir_layout_set_text_measure_callback(IRTextMeasureCallback callback) {
 // Layout Cache & Dirty Tracking
 // ============================================================================
 
+// Helper: Recursively clear absolute_positions_computed for entire subtree
+// IMPORTANT: Also converts positions back to relative to prevent doubling
+static void ir_layout_invalidate_subtree_absolute_positions(IRComponent* component) {
+    if (!component || !component->layout_state) return;
+
+    // Debug: Show BEFORE state for tabs
+    if (component->type == IR_COMPONENT_TAB_BAR || component->type == IR_COMPONENT_TAB) {
+        fprintf(stderr, "[TAB_DEBUG] RECURSIVE CLEAR START: %s id=%u BEFORE: pos=(%.1f,%.1f) absolute_computed=%d parent_pos=(%.1f,%.1f)\n",
+                ir_component_type_to_string(component->type), component->id,
+                component->layout_state->computed.x, component->layout_state->computed.y,
+                component->layout_state->absolute_positions_computed,
+                component->parent && component->parent->layout_state ? component->parent->layout_state->computed.x : -999.0,
+                component->parent && component->parent->layout_state ? component->parent->layout_state->computed.y : -999.0);
+    }
+
+    // If positions were absolute, convert back to relative before clearing flag
+    if (component->layout_state->absolute_positions_computed && component->parent && component->parent->layout_state) {
+        // Subtract parent's absolute position to get relative position
+        component->layout_state->computed.x -= component->parent->layout_state->computed.x;
+        component->layout_state->computed.y -= component->parent->layout_state->computed.y;
+    }
+
+    // Clear flag for this component
+    component->layout_state->absolute_positions_computed = false;
+
+    // Debug: Track recursive clearing for tab components
+    if (component->type == IR_COMPONENT_TAB_BAR || component->type == IR_COMPONENT_TAB) {
+        fprintf(stderr, "[TAB_DEBUG] RECURSIVE CLEAR END: %s id=%u AFTER: pos=(%.1f,%.1f) absolute_computed=%d\n",
+                ir_component_type_to_string(component->type), component->id,
+                component->layout_state->computed.x, component->layout_state->computed.y,
+                component->layout_state->absolute_positions_computed);
+    }
+
+    // Recurse to all children
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        ir_layout_invalidate_subtree_absolute_positions(component->children[i]);
+    }
+}
+
 void ir_layout_mark_dirty(IRComponent* component) {
     if (!component || !component->layout_state) return;
+
+    // Debug: Track when TabGroup/TabBar marked dirty (critical for tab switching bug)
+    if (component->type == IR_COMPONENT_TAB_GROUP || component->type == IR_COMPONENT_TAB_BAR) {
+        fprintf(stderr, "[TAB_DEBUG] MARKED DIRTY: %s id=%u - absolute_positions_computed cleared\n",
+                ir_component_type_to_string(component->type), component->id);
+    }
 
     // Mark this component dirty (invalidate both passes)
     component->layout_state->dirty = true;
     component->layout_state->intrinsic_valid = false;
     component->layout_state->layout_valid = false;
+    component->layout_state->absolute_positions_computed = false;  // Also invalidate absolute positions
+
+    // CRITICAL FIX: Recursively clear absolute_positions_computed for ALL descendants
+    // Without this, children keep their flag set and hit early return, staying at wrong coordinates
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        IRComponent* child = component->children[i];
+        if (child && child->layout_state) {
+            // Recursively clear for entire subtree
+            ir_layout_invalidate_subtree_absolute_positions(child);
+        }
+    }
 
     // Keep old dirty_flags for compatibility during transition
     component->dirty_flags |= IR_DIRTY_LAYOUT;
@@ -2767,9 +2823,15 @@ static void intrinsic_size_row(IRComponent* c, IRIntrinsicSize* out) {
     // Sum children dimensions
     for (uint32_t i = 0; i < c->child_count; i++) {
         IRComponent* child = c->children[i];
-        if (!child || !child->layout_state) continue;
+        if (!child || !child->layout_state) {
+            fprintf(stderr, "[LAYOUT] intrinsic_size_row: child[%d] is NULL or has no layout_state\n", i);
+            continue;
+        }
 
         IRIntrinsicSize* child_intrinsic = &child->layout_state->intrinsic;
+
+        fprintf(stderr, "[LAYOUT] intrinsic_size_row: child[%d] intrinsic size: width=%.1f height=%.1f\n",
+                i, child_intrinsic->max_content_width, child_intrinsic->max_content_height);
 
         // Sum widths
         sum_width += child_intrinsic->max_content_width;
@@ -2843,6 +2905,56 @@ static void intrinsic_size_button(IRComponent* c, IRIntrinsicSize* out) {
         out->min_content_height += pad.top + pad.bottom;
         out->max_content_height += pad.top + pad.bottom;
     }
+}
+
+/**
+ * Compute intrinsic size for Tab components
+ * Tabs are like buttons but use tab_data->title for text
+ */
+static void intrinsic_size_tab(IRComponent* c, IRIntrinsicSize* out) {
+    if (!c || !out) return;
+
+    float font_size = (c->style && c->style->font.size > 0) ? c->style->font.size : 16.0f;
+    const char* title = (c->tab_data && c->tab_data->title) ? c->tab_data->title : "";
+
+    if (g_text_measure_callback) {
+        // Use backend measurement (SDL3 TTF, terminal, etc.)
+        float width = 0, height = 0;
+        g_text_measure_callback(title, font_size, 0, &width, &height);
+        out->max_content_width = width;
+        out->max_content_height = height;
+        out->min_content_width = font_size * 0.5f;  // At least 1 character wide
+        out->min_content_height = height;
+    } else {
+        // Heuristic fallback (no backend available)
+        float char_width = font_size * 0.5f;  // Rough approximation
+        size_t len = strlen(title);
+        out->max_content_width = len * char_width;
+        out->max_content_height = font_size * 1.2f;  // Line height
+        out->min_content_width = char_width;
+        out->min_content_height = font_size * 1.2f;
+    }
+
+    // Add tab-specific padding (similar to buttons)
+    const float TAB_PADDING_H = 16.0f;
+    const float TAB_PADDING_V = 8.0f;
+
+    out->min_content_width += TAB_PADDING_H * 2;
+    out->max_content_width += TAB_PADDING_H * 2;
+    out->min_content_height += TAB_PADDING_V * 2;
+    out->max_content_height += TAB_PADDING_V * 2;
+
+    // Add explicit padding if present
+    if (c->style) {
+        IRSpacing pad = c->style->padding;
+        out->min_content_width += pad.left + pad.right;
+        out->max_content_width += pad.left + pad.right;
+        out->min_content_height += pad.top + pad.bottom;
+        out->max_content_height += pad.top + pad.bottom;
+    }
+
+    fprintf(stderr, "[LAYOUT] intrinsic_size_tab: title='%s' size=(%.1f x %.1f)\n",
+            title, out->max_content_width, out->max_content_height);
 }
 
 /**
@@ -2945,13 +3057,39 @@ void ir_layout_compute_intrinsic(IRComponent* component) {
         case IR_COMPONENT_TAB_GROUP:
         case IR_COMPONENT_TAB_BAR:
         case IR_COMPONENT_TAB_CONTENT:
-            // These are containers, treat like columns
-            intrinsic_size_column(component, out);
+            // TabBar can be row or column depending on flexDirection
+            // TabContent and TabGroup are always vertical (column)
+            if (component->type == IR_COMPONENT_TAB_BAR) {
+                if (getenv("KRYON_TRACE_LAYOUT")) {
+                    fprintf(stderr, "[TabBar intrinsic] layout=%p direction=%d\n",
+                            (void*)component->layout,
+                            component->layout ? component->layout->flex.direction : -1);
+                }
+                if (component->layout && component->layout->flex.direction == 1) {
+                    fprintf(stderr, "[LAYOUT] TabBar calling intrinsic_size_row()\n");
+                    intrinsic_size_row(component, out);  // Horizontal tabs
+                    if (getenv("KRYON_TRACE_LAYOUT")) {
+                        fprintf(stderr, "[TabBar] intrinsic_size_row result: max_width=%.1f max_height=%.1f\n",
+                                out->max_content_width, out->max_content_height);
+                    }
+                } else {
+                    if (getenv("KRYON_TRACE_LAYOUT")) {
+                        fprintf(stderr, "[TabBar] Calling intrinsic_size_column()\n");
+                    }
+                    intrinsic_size_column(component, out);  // Vertical layout
+                }
+            } else {
+                intrinsic_size_column(component, out);  // Vertical layout
+            }
             break;
 
         case IR_COMPONENT_TAB:
+            // Tabs are sized based on their title text
+            intrinsic_size_tab(component, out);
+            break;
+
         case IR_COMPONENT_TAB_PANEL:
-            // Tabs and panels can have mixed content
+            // Tab panels can have mixed content
             intrinsic_size_container(component, out);
             break;
 
@@ -3307,6 +3445,15 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
         return;
     }
 
+    // Debug: Track why TabPanel and Column are being recomputed
+    if (c->type == IR_COMPONENT_TAB_PANEL || c->type == IR_COMPONENT_COLUMN) {
+        static int frame_count = 0;
+        frame_count++;
+        fprintf(stderr, "[LAYOUT] Frame %d: Recomputing layout for %s (id=%d): valid=%d dirty=%d\n",
+                frame_count, ir_component_type_to_string(c->type), c->id,
+                c->layout_state->layout_valid, c->layout_state->dirty);
+    }
+
     // Reset absolute positions flag since we're recomputing layout
     // Positions will be relative after this pass and need Phase 3 conversion
     c->layout_state->absolute_positions_computed = false;
@@ -3314,6 +3461,20 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
     IRComputedLayout* layout = &c->layout_state->computed;
     IRIntrinsicSize* intrinsic = &c->layout_state->intrinsic;
     IRStyle* style = c->style;
+
+    // Debug: Track TabGroup and TabContent sizing
+    if (c->type == IR_COMPONENT_TAB_GROUP || c->type == IR_COMPONENT_TAB_CONTENT) {
+        fprintf(stderr, "[LAYOUT] %s (id=%d): constraints max=(%.1f x %.1f)\n",
+                ir_component_type_to_string(c->type), c->id,
+                constraints.max_width, constraints.max_height);
+        if (style) {
+            fprintf(stderr, "  width=%s height=%s\n",
+                    style->width.type == IR_DIMENSION_AUTO ? "auto" :
+                    style->width.type == IR_DIMENSION_PERCENT ? "percent" : "fixed",
+                    style->height.type == IR_DIMENSION_AUTO ? "auto" :
+                    style->height.type == IR_DIMENSION_PERCENT ? "percent" : "fixed");
+        }
+    }
 
     // Resolve width
     if (style && style->width.type != IR_DIMENSION_AUTO) {
@@ -3323,6 +3484,11 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
         // AUTO: use intrinsic size, clamped to constraint
         // SPECIAL CASE: CENTER components fill their parent
         if (c->type == IR_COMPONENT_CENTER) {
+            layout->width = constraints.max_width;
+        }
+        // SPECIAL CASE: TabContent and TabPanel fill their parent by default
+        // (they are containers for tab panels, should expand to fill TabGroup)
+        else if (c->type == IR_COMPONENT_TAB_CONTENT || c->type == IR_COMPONENT_TAB_PANEL) {
             layout->width = constraints.max_width;
         }
         // SPECIAL CASE: Rows with justifyContent alignment need to FILL parent
@@ -3354,6 +3520,11 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
         // AUTO: use intrinsic size, clamped to constraint
         // SPECIAL CASE: CENTER components fill their parent
         if (c->type == IR_COMPONENT_CENTER) {
+            layout->height = constraints.max_height;
+        }
+        // SPECIAL CASE: TabContent and TabPanel fill their parent by default
+        // (they are containers for tab panels, should expand to fill TabGroup)
+        else if (c->type == IR_COMPONENT_TAB_CONTENT || c->type == IR_COMPONENT_TAB_PANEL) {
             layout->height = constraints.max_height;
         }
         // SPECIAL CASE: Columns with justifyContent alignment need to FILL parent
@@ -3398,6 +3569,7 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
     switch (c->type) {
         case IR_COMPONENT_COLUMN:
         case IR_COMPONENT_CONTAINER:
+        case IR_COMPONENT_TAB_PANEL:  // TabPanel acts like a Column container
             // Check if container is column or row
             if (c->layout && c->layout->flex.direction == 1) {
                 layout_row_children(c, constraints);
@@ -3427,8 +3599,30 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
         case IR_COMPONENT_TAB_GROUP:
         case IR_COMPONENT_TAB_BAR:
         case IR_COMPONENT_TAB_CONTENT:
-            // Tab components behave like columns
-            layout_column_children(c, constraints);
+            // TabBar can be row or column depending on flexDirection
+            // TabContent and TabGroup are always vertical (column)
+            if (c->type == IR_COMPONENT_TAB_BAR &&
+                c->layout && c->layout->flex.direction == 1) {
+                fprintf(stderr, "[LAYOUT] TabBar calling layout_row_children(), child_count=%d\n",
+                        c->child_count);
+                layout_row_children(c, constraints);  // Horizontal tabs
+                if (getenv("KRYON_TRACE_LAYOUT")) {
+                    fprintf(stderr, "[TabBar layout] After layout_row_children:\n");
+                    for (int i = 0; i < c->child_count; i++) {
+                        IRComponent* child = c->children[i];
+                        if (child->layout_state) {
+                            fprintf(stderr, "  Tab[%d] pos=(%.1f, %.1f) size=(%.1f x %.1f)\n",
+                                    i, child->layout_state->computed.x, child->layout_state->computed.y,
+                                    child->layout_state->computed.width, child->layout_state->computed.height);
+                        }
+                    }
+                }
+            } else {
+                if (getenv("KRYON_TRACE_LAYOUT")) {
+                    fprintf(stderr, "[TabBar/TabContent] Calling layout_column_children()\n");
+                }
+                layout_column_children(c, constraints);  // Vertical layout
+            }
             break;
 
         case IR_COMPONENT_TABLE:
@@ -3446,8 +3640,9 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
             break;
     }
 
-    // Mark layout as valid
+    // Mark layout as valid and clear dirty flag
     c->layout_state->layout_valid = true;
+    c->layout_state->dirty = false;  // CRITICAL: Clear dirty flag after successful layout
     layout->valid = true;
 }
 
@@ -3462,8 +3657,20 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
 void ir_layout_compute_absolute_positions(IRComponent* c, float parent_x, float parent_y) {
     if (!c || !c->layout_state) return;
 
+    // Debug: Track TabBar absolute positioning (critical for tab coordinate bug)
+    if (c->type == IR_COMPONENT_TAB_BAR) {
+        fprintf(stderr, "[TAB_DEBUG] BEFORE ABSOLUTE POS: TabBar id=%u absolute_pos_computed=%d pos=(%.1f,%.1f) parent=(%.1f,%.1f)\n",
+                c->id, c->layout_state->absolute_positions_computed,
+                c->layout_state->computed.x, c->layout_state->computed.y,
+                parent_x, parent_y);
+    }
+
     // Skip if absolute positions already computed (prevents accumulation on each frame)
     if (c->layout_state->absolute_positions_computed) {
+        // Debug: Track early return (this is the BUG - TabBar skipped!)
+        if (c->type == IR_COMPONENT_TAB_BAR) {
+            fprintf(stderr, "[TAB_DEBUG] EARLY RETURN: TabBar id=%u already computed - SKIPPING absolute pos conversion\n", c->id);
+        }
         // Positions are already absolute, recurse to children that may not have been converted yet
         for (uint32_t i = 0; i < c->child_count; i++) {
             IRComponent* child = c->children[i];
@@ -3493,6 +3700,12 @@ void ir_layout_compute_absolute_positions(IRComponent* c, float parent_x, float 
 
     // Mark as converted
     c->layout_state->absolute_positions_computed = true;
+
+    // Debug: Show final absolute position for TabBar
+    if (c->type == IR_COMPONENT_TAB_BAR) {
+        fprintf(stderr, "[TAB_DEBUG] AFTER ABSOLUTE POS: TabBar id=%u now at (%.1f,%.1f) - MARKED absolute_pos_computed=1\n",
+                c->id, c->layout_state->computed.x, c->layout_state->computed.y);
+    }
 
     // Recurse to children
     for (uint32_t i = 0; i < c->child_count; i++) {

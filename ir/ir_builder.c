@@ -261,12 +261,18 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
         state->tab_content->rendered_bounds.valid = false;
     }
 
-    // Invalidate parent/group/root bounds to force relayout
+    // Debug: Track tab selection calls
+    fprintf(stderr, "[TAB_DEBUG] TAB SELECTED: Switching to tab %d in TabGroup id=%u\n",
+            index, state->group ? state->group->id : 0);
+
+    // Mark TabGroup dirty to trigger full layout recalculation including absolute positions
     if (state->group) {
-        state->group->rendered_bounds.valid = false;
+        fprintf(stderr, "[TAB_DEBUG] Marking TabGroup id=%u dirty (should trigger absolute pos recompute)\n",
+                state->group->id);
+        ir_layout_mark_dirty(state->group);
     }
     if (g_ir_context && g_ir_context->root) {
-        g_ir_context->root->rendered_bounds.valid = false;
+        ir_layout_mark_dirty(g_ir_context->root);
     }
 
     // Apply tab visuals (active/inactive colors)
@@ -1677,6 +1683,13 @@ IRComponent* ir_find_component_at_point(IRComponent* root, float x, float y) {
         return NULL;
     }
 
+    // Debug: Track TabGroup hit testing
+    if (root->type == IR_COMPONENT_TAB_GROUP) {
+        fprintf(stderr, "[HIT] Checking TabGroup id=%u at (%.1f,%.1f) for point (%.1f,%.1f)\n",
+                root->id, root->rendered_bounds.x, root->rendered_bounds.y, x, y);
+        fprintf(stderr, "[HIT]   TabGroup child_count=%u\n", root->child_count);
+    }
+
     // Find the child with highest z-index that contains the point
     IRComponent* best_target = NULL;
     uint32_t best_z_index = 0;
@@ -1684,6 +1697,13 @@ IRComponent* ir_find_component_at_point(IRComponent* root, float x, float y) {
     for (uint32_t i = 0; i < root->child_count; i++) {
         IRComponent* child = root->children[i];
         if (!child) continue;
+
+        // Debug: Track child checks for TabGroup
+        if (root->type == IR_COMPONENT_TAB_GROUP) {
+            bool in_child = ir_is_point_in_component(child, x, y);
+            fprintf(stderr, "[HIT]   Child[%u]: %s id=%u in_bounds=%d\n",
+                    i, ir_component_type_to_string(child->type), child->id, in_child);
+        }
 
         // Check if point is in this child's bounds
         if (ir_is_point_in_component(child, x, y)) {
@@ -1702,15 +1722,28 @@ IRComponent* ir_find_component_at_point(IRComponent* root, float x, float y) {
     }
 
     if (best_target != NULL) {
+        if (root->type == IR_COMPONENT_TAB_GROUP) {
+            fprintf(stderr, "[HIT]   TabGroup returning: %s id=%u\n",
+                    ir_component_type_to_string(best_target->type), best_target->id);
+        }
         return best_target;
     }
 
     // No child handled the event, return this component
+    if (root->type == IR_COMPONENT_TAB_GROUP) {
+        fprintf(stderr, "[HIT]   TabGroup returning SELF (no child handled)\n");
+    }
     return root;
 }
 
 void ir_set_rendered_bounds(IRComponent* component, float x, float y, float width, float height) {
     if (!component) return;
+
+    // Debug: Track TabBar bounds being set (critical for hit testing)
+    if (component->type == IR_COMPONENT_TAB_BAR) {
+        fprintf(stderr, "[TAB_DEBUG] SET BOUNDS: TabBar id=%u bounds=(%.1f,%.1f) size=(%.1f x %.1f)\n",
+                component->id, x, y, width, height);
+    }
 
     component->rendered_bounds.x = x;
     component->rendered_bounds.y = y;

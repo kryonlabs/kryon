@@ -439,4 +439,28 @@ function DSL.Dropdown(props)
   return buildComponent(C.IR_COMPONENT_DROPDOWN, props)
 end
 
+-- ============================================================================
+-- Tab Components
+-- ============================================================================
+
+function DSL.TabBar(props)
+  return buildComponent(C.IR_COMPONENT_TAB_BAR, props)
+end
+
+function DSL.Tab(props)
+  return buildComponent(C.IR_COMPONENT_TAB, props)
+end
+
+function DSL.TabContent(props)
+  return buildComponent(C.IR_COMPONENT_TAB_CONTENT, props)
+end
+
+function DSL.TabPanel(props)
+  return buildComponent(C.IR_COMPONENT_TAB_PANEL, props)
+end
+
+function DSL.TabGroup(props)
+  return buildComponent(C.IR_COMPONENT_TAB_GROUP, props)
+end
+
 return DSL
