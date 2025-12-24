@@ -50,6 +50,17 @@ local lib_name = findLibrary()
 -- Load the IR core library
 local C = ffi.load(lib_name)
 
+-- Load the desktop renderer library (for runDesktop)
+local desktop_lib_name = lib_name:gsub("libkryon_ir", "libkryon_desktop")
+local Desktop = nil
+local success, err = pcall(function()
+  Desktop = ffi.load(desktop_lib_name)
+end)
+if not success then
+  print("⚠️ Failed to load desktop library '" .. desktop_lib_name .. "': " .. tostring(err))
+  print("   Desktop rendering features will not be available.")
+end
+
 -- C type definitions (from ir_core.h and ir_builder.h)
 ffi.cdef[[
   // ============================================================================
@@ -311,11 +322,41 @@ ffi.cdef[[
   // Binary serialization
   bool ir_write_binary_file(IRComponent* root, const char* filename);
   IRComponent* ir_read_binary_file(const char* filename);
+
+  // ============================================================================
+  // Desktop Renderer (ir_desktop_renderer.h)
+  // ============================================================================
+  typedef struct DesktopIRRenderer DesktopIRRenderer;
+
+  typedef struct DesktopRendererConfig {
+    int backend_type;  // 0 = SDL3
+    int window_width;
+    int window_height;
+    const char* window_title;
+    bool resizable;
+    bool fullscreen;
+    bool vsync_enabled;
+    int target_fps;
+  } DesktopRendererConfig;
+
+  // Renderer functions
+  DesktopIRRenderer* desktop_ir_renderer_create(const DesktopRendererConfig* config);
+  void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer);
+  bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer);
+  bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* root);
+  bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent* root);
+  void desktop_ir_renderer_stop(DesktopIRRenderer* renderer);
+
+  // Event callback
+  typedef void (*LuaEventCallback)(uint32_t component_id, int event_type);
+  void desktop_ir_renderer_set_lua_event_callback(DesktopIRRenderer* renderer, LuaEventCallback callback);
+  void desktop_ir_renderer_update_root(DesktopIRRenderer* renderer, IRComponent* new_root);
 ]]
 
 -- Export the C namespace and type constants
 return {
   C = C,
+  Desktop = Desktop,
   lib_name = lib_name,
 
   -- Component types

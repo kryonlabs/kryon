@@ -34,12 +34,6 @@ void ir_layout_set_text_measure_callback(IRTextMeasureCallback callback) {
 static void ir_layout_invalidate_subtree_absolute_positions(IRComponent* component) {
     if (!component || !component->layout_state) return;
 
-    // Debug: Show what we're invalidating
-    if (component->type == IR_COMPONENT_TAB_BAR || component->type == IR_COMPONENT_TAB) {
-        fprintf(stderr, "[TAB_DEBUG] INVALIDATE SUBTREE: %s id=%u - forcing full layout recompute\n",
-                ir_component_type_to_string(component->type), component->id);
-    }
-
     // Mark this component dirty - this will trigger full layout recomputation
     // which will recompute positions from scratch using relative coordinates
     component->layout_state->dirty = true;
@@ -55,12 +49,6 @@ static void ir_layout_invalidate_subtree_absolute_positions(IRComponent* compone
 
 void ir_layout_mark_dirty(IRComponent* component) {
     if (!component || !component->layout_state) return;
-
-    // Debug: Track when TabGroup/TabBar marked dirty (critical for tab switching bug)
-    if (component->type == IR_COMPONENT_TAB_GROUP || component->type == IR_COMPONENT_TAB_BAR) {
-        fprintf(stderr, "[TAB_DEBUG] MARKED DIRTY: %s id=%u - absolute_positions_computed cleared\n",
-                ir_component_type_to_string(component->type), component->id);
-    }
 
     // Mark this component dirty (invalidate both passes)
     component->layout_state->dirty = true;
@@ -202,6 +190,10 @@ static float ir_get_component_intrinsic_width_impl(IRComponent* component) {
             return 80.0f;
 
         case IR_COMPONENT_INPUT:
+            // Check for explicit width first
+            if (component->style && component->style->width.type == IR_DIMENSION_PX) {
+                return component->style->width.value;
+            }
             return 200.0f; // Default input width
 
         case IR_COMPONENT_CONTAINER:
@@ -321,6 +313,10 @@ static float ir_get_component_intrinsic_height_impl(IRComponent* component) {
         }
 
         case IR_COMPONENT_INPUT:
+            // Check for explicit height first
+            if (component->style && component->style->height.type == IR_DIMENSION_PX) {
+                return component->style->height.value;
+            }
             return 30.0f;
 
         case IR_COMPONENT_CONTAINER:
@@ -3026,11 +3022,27 @@ void ir_layout_compute_intrinsic(IRComponent* component) {
             break;
 
         case IR_COMPONENT_INPUT:
-            // Inputs need a default size
-            out->min_content_width = 100.0f;
-            out->max_content_width = 200.0f;
-            out->min_content_height = 24.0f;
-            out->max_content_height = 24.0f;
+            // Check for explicit width/height first
+            if (component->style && component->style->width.type == IR_DIMENSION_PX) {
+                // Use explicit width
+                out->min_content_width = component->style->width.value;
+                out->max_content_width = component->style->width.value;
+            } else {
+                // Use default width
+                out->min_content_width = 100.0f;
+                out->max_content_width = 200.0f;
+            }
+
+            if (component->style && component->style->height.type == IR_DIMENSION_PX) {
+                // Use explicit height
+                out->min_content_height = component->style->height.value;
+                out->max_content_height = component->style->height.value;
+            } else {
+                // Use default height
+                out->min_content_height = 24.0f;
+                out->max_content_height = 24.0f;
+            }
+
             if (component->style) {
                 IRSpacing pad = component->style->padding;
                 out->min_content_width += pad.left + pad.right;
@@ -3275,6 +3287,16 @@ static void apply_cross_axis_alignment(IRComponent* c, float available_space, bo
 static void layout_column_children(IRComponent* c, IRLayoutConstraints constraints) {
     if (!c || !c->layout_state) return;
 
+    // CRITICAL: Clear absolute_positions_computed for ALL children
+    // When parent layout is recomputed, all children positions are recalculated
+    // and need to be converted to absolute in Phase 3
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (child && child->layout_state) {
+            child->layout_state->absolute_positions_computed = false;
+        }
+    }
+
     IRSpacing pad = {0};
     if (c->style) pad = c->style->padding;
 
@@ -3349,6 +3371,16 @@ static void layout_column_children(IRComponent* c, IRLayoutConstraints constrain
  */
 static void layout_row_children(IRComponent* c, IRLayoutConstraints constraints) {
     if (!c || !c->layout_state) return;
+
+    // CRITICAL: Clear absolute_positions_computed for ALL children
+    // When parent layout is recomputed, all children positions are recalculated
+    // and need to be converted to absolute in Phase 3
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (child && child->layout_state) {
+            child->layout_state->absolute_positions_computed = false;
+        }
+    }
 
     IRSpacing pad = {0};
     if (c->style) pad = c->style->padding;
@@ -3643,20 +3675,8 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
 void ir_layout_compute_absolute_positions(IRComponent* c, float parent_x, float parent_y) {
     if (!c || !c->layout_state) return;
 
-    // Debug: Track TabBar absolute positioning (critical for tab coordinate bug)
-    if (c->type == IR_COMPONENT_TAB_BAR) {
-        fprintf(stderr, "[TAB_DEBUG] BEFORE ABSOLUTE POS: TabBar id=%u absolute_pos_computed=%d pos=(%.1f,%.1f) parent=(%.1f,%.1f)\n",
-                c->id, c->layout_state->absolute_positions_computed,
-                c->layout_state->computed.x, c->layout_state->computed.y,
-                parent_x, parent_y);
-    }
-
     // Skip if absolute positions already computed (prevents accumulation on each frame)
     if (c->layout_state->absolute_positions_computed) {
-        // Debug: Track early return (this is the BUG - TabBar skipped!)
-        if (c->type == IR_COMPONENT_TAB_BAR) {
-            fprintf(stderr, "[TAB_DEBUG] EARLY RETURN: TabBar id=%u already computed - SKIPPING absolute pos conversion\n", c->id);
-        }
         // Positions are already absolute, recurse to children that may not have been converted yet
         for (uint32_t i = 0; i < c->child_count; i++) {
             IRComponent* child = c->children[i];
@@ -3686,12 +3706,6 @@ void ir_layout_compute_absolute_positions(IRComponent* c, float parent_x, float 
 
     // Mark as converted
     c->layout_state->absolute_positions_computed = true;
-
-    // Debug: Show final absolute position for TabBar
-    if (c->type == IR_COMPONENT_TAB_BAR) {
-        fprintf(stderr, "[TAB_DEBUG] AFTER ABSOLUTE POS: TabBar id=%u now at (%.1f,%.1f) - MARKED absolute_pos_computed=1\n",
-                c->id, c->layout_state->computed.x, c->layout_state->computed.y);
-    }
 
     // Recurse to children
     for (uint32_t i = 0; i < c->child_count; i++) {

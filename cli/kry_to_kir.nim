@@ -78,6 +78,33 @@ proc transpileExpression(ctx: var TranspilerContext, node: KryNode): JsonNode
 proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0): JsonNode
 proc transpileChildren(ctx: var TranspilerContext, children: seq[KryNode], parentId: int): seq[JsonNode]
 
+# Helper: Check if expression contains reactive variables
+proc containsReactiveVariable(ctx: TranspilerContext, node: KryNode): bool =
+  ## Recursively check if expression tree contains reactive variables
+  ## (not constants, not loop bindings)
+  if node.isNil:
+    return false
+
+  case node.kind
+  of nkExprIdent:
+    # Check if this is a reactive variable (not a constant or loop binding)
+    return not ctx.constants.hasKey(node.identName) and
+           not ctx.loopBindings.hasKey(node.identName)
+  of nkExprBinary:
+    return containsReactiveVariable(ctx, node.binLeft) or
+           containsReactiveVariable(ctx, node.binRight)
+  of nkExprUnary:
+    return containsReactiveVariable(ctx, node.unaryExpr)
+  of nkExprCall:
+    for arg in node.callArgs:
+      if containsReactiveVariable(ctx, arg):
+        return true
+    return false
+  of nkExprMember:
+    return containsReactiveVariable(ctx, node.memberObj)
+  else:
+    return false
+
 # Transpile expressions to universal logic format
 proc transpileExpression(ctx: var TranspilerContext, node: KryNode): JsonNode =
   if node.isNil:
@@ -485,10 +512,17 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
         result[irName] = simpleVal
       of "text":
         result["text"] = simpleVal
-        # Check for text_expression
+
+        # Check for reactive expressions:
+        # 1. Simple interpolation: $variable
         if value.kind == nkExprInterp:
           if value.interpExpr.kind == nkExprIdent:
             result["text_expression"] = %("{{" & value.interpExpr.identName & "}}")
+
+        # 2. Binary concatenation with variables: "str" + var
+        elif value.kind == nkExprBinary and containsReactiveVariable(ctx, value):
+          # Generate text_expression from the expression object
+          result["text_expression"] = %(($simpleVal))
       # Handle border properties - collect for nested object
       of "borderWidth":
         borderWidth = simpleVal

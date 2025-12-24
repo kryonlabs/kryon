@@ -261,14 +261,8 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
         state->tab_content->rendered_bounds.valid = false;
     }
 
-    // Debug: Track tab selection calls
-    fprintf(stderr, "[TAB_DEBUG] TAB SELECTED: Switching to tab %d in TabGroup id=%u\n",
-            index, state->group ? state->group->id : 0);
-
     // Mark TabGroup dirty to trigger full layout recalculation including absolute positions
     if (state->group) {
-        fprintf(stderr, "[TAB_DEBUG] Marking TabGroup id=%u dirty (should trigger absolute pos recompute)\n",
-                state->group->id);
         ir_layout_mark_dirty(state->group);
     }
     if (g_ir_context && g_ir_context->root) {
@@ -1717,12 +1711,6 @@ IRComponent* ir_find_component_at_point(IRComponent* root, float x, float y) {
 
 void ir_set_rendered_bounds(IRComponent* component, float x, float y, float width, float height) {
     if (!component) return;
-
-    // Debug: Track TabBar bounds being set (critical for hit testing)
-    if (component->type == IR_COMPONENT_TAB_BAR) {
-        fprintf(stderr, "[TAB_DEBUG] SET BOUNDS: TabBar id=%u bounds=(%.1f,%.1f) size=(%.1f x %.1f)\n",
-                component->id, x, y, width, height);
-    }
 
     component->rendered_bounds.x = x;
     component->rendered_bounds.y = y;

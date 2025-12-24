@@ -348,7 +348,9 @@ local function applyProperties(component, props)
 
     -- ========== Events ==========
     elseif key == "onClick" and type(value) == "function" then
-      runtime.registerHandler(component, C.IR_EVENT_CLICK, value)
+      print("📝 Registering onClick handler for component")
+      local handlerId = runtime.registerHandler(component, C.IR_EVENT_CLICK, value)
+      print(string.format("   Handler ID: %d", handlerId))
 
     elseif key == "onHover" and type(value) == "function" then
       runtime.registerHandler(component, C.IR_EVENT_HOVER, value)

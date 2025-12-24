@@ -2,8 +2,10 @@
 -- Handles event dispatch, component lifecycle, and app management
 -- All heavy lifting (layout, rendering, animation) is delegated to C IR core
 
-local ffi = require("kryon.ffi")
-local C = ffi.C
+local kryonFfi = require("kryon.ffi")
+local C = kryonFfi.C
+local Desktop = kryonFfi.Desktop
+local ffi = require("ffi")  -- LuaJIT FFI for ffi.new(), ffi.cast(), etc.
 
 local Runtime = {}
 
@@ -32,6 +34,7 @@ function Runtime.registerHandler(component, eventType, callback)
 
   -- Generate a unique ID for this handler
   local handlerId = Runtime.nextHandlerId
+  print(string.format("🎯 registerHandler: handlerId=%d eventType=%d", handlerId, eventType))
   Runtime.nextHandlerId = Runtime.nextHandlerId + 1
 
   -- Store the callback
@@ -41,8 +44,11 @@ function Runtime.registerHandler(component, eventType, callback)
     callback = callback,
   }
 
-  -- Create IR event in C (the C layer will handle event routing to component)
-  local event = C.ir_create_event(eventType, nil, nil)
+  -- Create IR event with logic_id that identifies it as a Lua event
+  -- Desktop renderer will check for "lua_event_" prefix
+  local logicId = "lua_event_" .. handlerId
+  print(string.format("   Creating IR event with logic_id='%s'", logicId))
+  local event = C.ir_create_event(eventType, logicId, nil)
   C.ir_add_event(component, event)
 
   return handlerId
@@ -69,18 +75,35 @@ end
 -- ============================================================================
 
 --- Dispatch an event to the registered Lua callback
---- This would be called from the C event system or renderer backend
+--- This is called from the desktop renderer when events fire
+--- @param handlerId number Handler ID from logic_id
+function Runtime.dispatchEvent(handlerId)
+  local handler = Runtime.handlers[handlerId]
+  if handler then
+    print(string.format("✅ Found handler %d, executing callback", handlerId))
+    local success, err = pcall(handler.callback)
+    if not success then
+      print("❌ Error in Lua event handler: " .. tostring(err))
+    end
+  else
+    print(string.format("⚠️ No handler found for ID: %d", handlerId))
+  end
+end
+
+--- Dispatch event by component and event type (for compatibility)
 --- @param componentId number Component ID
 --- @param eventType number Event type
-function Runtime.dispatchEvent(componentId, eventType)
+function Runtime.dispatchEventByComponent(componentId, eventType)
   -- Find the handler for this component and event type
   for id, handler in pairs(Runtime.handlers) do
     if handler.eventType == eventType then
-      -- TODO: Check if handler.component matches componentId
-      -- For now, just call all matching event types
-      local success, err = pcall(handler.callback)
-      if not success then
-        print("Error in event handler: " .. tostring(err))
+      local handlerComponentId = tonumber(ffi.cast("uintptr_t", handler.component))
+      if handlerComponentId == componentId then
+        local success, err = pcall(handler.callback)
+        if not success then
+          print("❌ Error in Lua event handler: " .. tostring(err))
+        end
+        return
       end
     end
   end
@@ -199,6 +222,89 @@ function Runtime.saveIR(app, filepath)
 
   print("Saved IR to: " .. filepath)
   return true
+end
+
+--- Global renderer reference (for dynamic UI updates)
+Runtime._globalRenderer = nil
+Runtime._globalApp = nil
+
+--- Update the UI root component in the renderer
+--- @param newRoot cdata New IRComponent* root
+function Runtime.updateRoot(newRoot)
+  if Runtime._globalRenderer and newRoot then
+    Desktop.desktop_ir_renderer_update_root(Runtime._globalRenderer, newRoot)
+  end
+end
+
+--- Run the desktop renderer with the app (keeps Lua process alive)
+--- This is the preferred way to run Lua apps with event handlers
+--- @param app table Application object with root, window config
+--- @return boolean Success status
+function Runtime.runDesktop(app)
+  if not app or not app.root then
+    error("runDesktop requires app with root component")
+  end
+
+  -- Check if desktop library is available
+  if not Desktop then
+    error("Desktop renderer library not available. Make sure libkryon_desktop.so is built and in the library path.")
+  end
+
+  -- Store app globally for updates
+  Runtime._globalApp = app
+
+  -- Create renderer config
+  local config = ffi.new("DesktopRendererConfig")
+  config.backend_type = 0  -- SDL3
+  config.window_width = app.window.width or 800
+  config.window_height = app.window.height or 600
+  config.window_title = app.window.title or "Kryon App"
+  config.resizable = true
+  config.fullscreen = false
+  config.vsync_enabled = true
+  config.target_fps = 60
+
+  -- Create and initialize renderer
+  local renderer = Desktop.desktop_ir_renderer_create(config)
+  if not renderer or renderer == nil then
+    error("Failed to create desktop renderer")
+  end
+
+  local initSuccess = Desktop.desktop_ir_renderer_initialize(renderer)
+  if not initSuccess then
+    Desktop.desktop_ir_renderer_destroy(renderer)
+    error("Failed to initialize desktop renderer")
+  end
+
+  -- Store renderer globally for dynamic updates
+  Runtime._globalRenderer = renderer
+
+  -- Set up event callback so C can call back to Lua
+  -- This callback will be invoked when Lua events fire
+  local eventCallback = ffi.cast("LuaEventCallback", function(handler_id, event_type)
+    -- handler_id is the ID we stored in Runtime.handlers (will be passed by C after we update it)
+    print(string.format("🔔 Lua callback invoked: handler_id=%d event_type=%d", handler_id, event_type))
+    Runtime.dispatchEvent(handler_id)
+  end)
+
+  Desktop.desktop_ir_renderer_set_lua_event_callback(renderer, eventCallback)
+
+  -- Store callback to prevent garbage collection
+  Runtime._eventCallback = eventCallback
+
+  print("🎨 Rendering...")
+
+  -- Run main loop (blocking - keeps Lua alive)
+  -- Event handlers in Runtime.handlers will be called via dispatchEvent
+  local success = Desktop.desktop_ir_renderer_run_main_loop(renderer, app.root)
+
+  -- Cleanup
+  Desktop.desktop_ir_renderer_destroy(renderer)
+  Runtime._eventCallback = nil
+  Runtime._globalRenderer = nil
+  Runtime._globalApp = nil
+
+  return success
 end
 
 --- Load IR tree from .kir file (binary format)

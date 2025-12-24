@@ -72,6 +72,13 @@ typedef struct DesktopEvent {
 typedef bool (*DesktopEventCallback)(const DesktopEvent* event, void* user_data);
 void desktop_ir_renderer_set_event_callback(DesktopIRRenderer* renderer, DesktopEventCallback callback, void* user_data);
 
+// Lua event callback (for LuaJIT FFI bindings)
+void desktop_ir_renderer_set_lua_event_callback(DesktopIRRenderer* renderer,
+                                                void (*callback)(uint32_t component_id, int event_type));
+
+// Dynamic root update (for reactive UI rebuilds)
+void desktop_ir_renderer_update_root(DesktopIRRenderer* renderer, IRComponent* new_root);
+
 // Resource management
 bool desktop_ir_renderer_load_font(DesktopIRRenderer* renderer, const char* font_path, float size);
 bool desktop_ir_renderer_load_image(DesktopIRRenderer* renderer, const char* image_path);
