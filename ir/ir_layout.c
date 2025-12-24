@@ -28,38 +28,24 @@ void ir_layout_set_text_measure_callback(IRTextMeasureCallback callback) {
 // Layout Cache & Dirty Tracking
 // ============================================================================
 
-// Helper: Recursively clear absolute_positions_computed for entire subtree
-// IMPORTANT: Also converts positions back to relative to prevent doubling
+// Helper: Recursively invalidate layout for entire subtree
+// Marks subtree dirty to force full layout recomputation (intrinsic + constraint + absolute)
+// This is simpler than trying to convert positions back manually
 static void ir_layout_invalidate_subtree_absolute_positions(IRComponent* component) {
     if (!component || !component->layout_state) return;
 
-    // Debug: Show BEFORE state for tabs
+    // Debug: Show what we're invalidating
     if (component->type == IR_COMPONENT_TAB_BAR || component->type == IR_COMPONENT_TAB) {
-        fprintf(stderr, "[TAB_DEBUG] RECURSIVE CLEAR START: %s id=%u BEFORE: pos=(%.1f,%.1f) absolute_computed=%d parent_pos=(%.1f,%.1f)\n",
-                ir_component_type_to_string(component->type), component->id,
-                component->layout_state->computed.x, component->layout_state->computed.y,
-                component->layout_state->absolute_positions_computed,
-                component->parent && component->parent->layout_state ? component->parent->layout_state->computed.x : -999.0,
-                component->parent && component->parent->layout_state ? component->parent->layout_state->computed.y : -999.0);
+        fprintf(stderr, "[TAB_DEBUG] INVALIDATE SUBTREE: %s id=%u - forcing full layout recompute\n",
+                ir_component_type_to_string(component->type), component->id);
     }
 
-    // If positions were absolute, convert back to relative before clearing flag
-    if (component->layout_state->absolute_positions_computed && component->parent && component->parent->layout_state) {
-        // Subtract parent's absolute position to get relative position
-        component->layout_state->computed.x -= component->parent->layout_state->computed.x;
-        component->layout_state->computed.y -= component->parent->layout_state->computed.y;
-    }
-
-    // Clear flag for this component
+    // Mark this component dirty - this will trigger full layout recomputation
+    // which will recompute positions from scratch using relative coordinates
+    component->layout_state->dirty = true;
+    component->layout_state->intrinsic_valid = false;
+    component->layout_state->layout_valid = false;
     component->layout_state->absolute_positions_computed = false;
-
-    // Debug: Track recursive clearing for tab components
-    if (component->type == IR_COMPONENT_TAB_BAR || component->type == IR_COMPONENT_TAB) {
-        fprintf(stderr, "[TAB_DEBUG] RECURSIVE CLEAR END: %s id=%u AFTER: pos=(%.1f,%.1f) absolute_computed=%d\n",
-                ir_component_type_to_string(component->type), component->id,
-                component->layout_state->computed.x, component->layout_state->computed.y,
-                component->layout_state->absolute_positions_computed);
-    }
 
     // Recurse to all children
     for (uint32_t i = 0; i < component->child_count; i++) {
