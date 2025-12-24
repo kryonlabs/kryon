@@ -42,6 +42,9 @@ struct DesktopIRRenderer {
     DesktopEventCallback event_callback;
     void* event_user_data;
 
+    // Lua event callback (for Lua FFI bindings)
+    void (*lua_event_callback)(uint32_t component_id, int event_type);
+
     // Performance tracking
     uint64_t frame_count;
     double last_frame_time;
@@ -166,8 +169,8 @@ extern size_t input_state_count;
 extern bool g_debug_renderer;
 #define DEBUG_LOG(...) do { if (g_debug_renderer) fprintf(stderr, __VA_ARGS__); } while(0)
 
-// Nim bridge declarations
-extern void nimProcessReactiveUpdates();
+// Nim bridge declarations (weak symbols for Lua compatibility)
+__attribute__((weak)) void nimProcessReactiveUpdates(void);
 
 // ============================================================================
 // FONT MANAGEMENT (desktop_fonts.c)

@@ -692,27 +692,6 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
         .h = layout->height
     };
 
-    // Debug: Track TabBar final rendered position (critical for tab clicking bug)
-    if (component->type == IR_COMPONENT_TAB_BAR) {
-        fprintf(stderr, "[TAB_DEBUG] RENDER: TabBar id=%u at (%.1f,%.1f) size=(%.1f x %.1f) absolute_computed=%d\n",
-                component->id, layout->x, layout->y, layout->width, layout->height,
-                component->layout_state->absolute_positions_computed);
-    }
-
-    // Cache rendered bounds for hit testing
-    // IMPORTANT: Skip for TABLE children (sections, rows, cells) because their
-    // rendered_bounds use RELATIVE coordinates set by ir_layout_compute_table.
-    // Writing absolute coordinates here would corrupt the table layout cache.
-    bool is_table_child = (component->type == IR_COMPONENT_TABLE_HEAD ||
-                           component->type == IR_COMPONENT_TABLE_BODY ||
-                           component->type == IR_COMPONENT_TABLE_FOOT ||
-                           component->type == IR_COMPONENT_TABLE_ROW ||
-                           component->type == IR_COMPONENT_TABLE_CELL ||
-                           component->type == IR_COMPONENT_TABLE_HEADER_CELL);
-    if (!is_table_child) {
-        ir_set_rendered_bounds(component, sdl_rect.x, sdl_rect.y, sdl_rect.w, sdl_rect.h);
-    }
-
     // Apply CSS-like transforms (scale, translate)
     if (component->style) {
         IRTransform* t = &component->style->transform;
@@ -731,6 +710,23 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
         // Apply translation
         sdl_rect.x += t->translate_x;
         sdl_rect.y += t->translate_y;
+    }
+
+    // Cache rendered bounds for hit testing AFTER transforms
+    // This ensures hit testing matches the visual rendering
+    // Transforms (scale, translate) affect both rendering AND interaction
+    //
+    // IMPORTANT: Skip for TABLE children (sections, rows, cells) because their
+    // rendered_bounds use RELATIVE coordinates set by ir_layout_compute_table.
+    // Writing absolute coordinates here would corrupt the table layout cache.
+    bool is_table_child = (component->type == IR_COMPONENT_TABLE_HEAD ||
+                           component->type == IR_COMPONENT_TABLE_BODY ||
+                           component->type == IR_COMPONENT_TABLE_FOOT ||
+                           component->type == IR_COMPONENT_TABLE_ROW ||
+                           component->type == IR_COMPONENT_TABLE_CELL ||
+                           component->type == IR_COMPONENT_TABLE_HEADER_CELL);
+    if (!is_table_child) {
+        ir_set_rendered_bounds(component, sdl_rect.x, sdl_rect.y, sdl_rect.w, sdl_rect.h);
     }
 
     // Render based on component type

@@ -650,6 +650,10 @@ void ir_executor_sync_input_to_var(IRExecutorContext* ctx, IRComponent* input_co
                 var->value = new_val;
                 printf("[executor] Synced Input #%u to var '%s' = '%s'\n",
                        input_comp->id, var_name, new_val.string_val);
+
+                // CRITICAL: Update all text components that reference this variable
+                // This triggers layout invalidation for reactive text expressions
+                ir_executor_update_text_components(ctx);
             }
         }
     }
@@ -1810,11 +1814,20 @@ static void update_text_recursive(IRExecutorContext* ctx, IRComponent* comp, uin
                             }
                         }
 
-                        // Update the component's text_content
-                        if (comp->text_content) {
-                            free(comp->text_content);
-                        }
+                        // Update text_content WITH layout invalidation
+                        char* old_text = comp->text_content;
                         comp->text_content = strdup(result);
+
+                        // CRITICAL: Invalidate layout if text changed
+                        // This ensures the component resizes correctly
+                        if (!old_text || strcmp(old_text, result) != 0) {
+                            ir_layout_mark_dirty(comp);
+                            ir_layout_invalidate_cache(comp);
+                            comp->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
+                        }
+                        if (old_text) {
+                            free(old_text);
+                        }
                         printf("[executor] Evaluated expression -> '%s'\n", result);
                     }
                 }
@@ -1848,11 +1861,20 @@ static void update_text_recursive(IRExecutorContext* ctx, IRComponent* comp, uin
                         strcat(newText, valueStr);
                         strcat(newText, end + 2);
 
-                        // Update the component's text_content (display text)
-                        if (comp->text_content) {
-                            free(comp->text_content);
-                        }
+                        // Update text_content WITH layout invalidation
+                        char* old_text = comp->text_content;
                         comp->text_content = strdup(newText);
+
+                        // CRITICAL: Invalidate layout if text changed
+                        // This ensures the component resizes correctly
+                        if (!old_text || strcmp(old_text, newText) != 0) {
+                            ir_layout_mark_dirty(comp);
+                            ir_layout_invalidate_cache(comp);
+                            comp->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
+                        }
+                        if (old_text) {
+                            free(old_text);
+                        }
                         printf("[executor] Updated text: %s -> %s\n", expr, newText);
                     }
                 }

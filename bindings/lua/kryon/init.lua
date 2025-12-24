@@ -70,6 +70,7 @@ Kryon.batch = reactive.batch
 Kryon.update = runtime.update
 Kryon.render = runtime.render
 Kryon.destroyApp = runtime.destroyApp
+Kryon.runDesktop = runtime.runDesktop
 
 -- IR Serialization
 Kryon.saveIR = runtime.saveIR

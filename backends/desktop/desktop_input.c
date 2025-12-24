@@ -28,6 +28,12 @@
 #include <stdlib.h>
 #include <math.h>
 
+// Nim bridge functions (optional, weak symbols for Lua compatibility)
+__attribute__((weak)) void nimButtonBridge(uint32_t componentId);
+__attribute__((weak)) void nimCheckboxBridge(uint32_t componentId);
+__attribute__((weak)) void nimDropdownBridge(uint32_t componentId, int32_t selectedIndex);
+__attribute__((weak)) bool nimInputBridge(IRComponent* component, const char* text);
+
 // ============================================================================
 // PAGE ROUTER FOR MULTI-PAGE APPS
 // ============================================================================
@@ -537,8 +543,6 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
                         // Handle IR-level tab clicks (new system)
                         if (clicked->type == IR_COMPONENT_TAB) {
-                            fprintf(stderr, "[TAB_DEBUG] TAB CLICK DETECTED: Tab id=%u at click point (%.1f,%.1f)\n",
-                                   clicked->id, (float)event.button.x, (float)event.button.y);
                             // Find the TabGroup ancestor
                             IRComponent* tab_group = clicked->parent;
                             while (tab_group && tab_group->type != IR_COMPONENT_TAB_GROUP) {
@@ -555,15 +559,11 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                     for (uint32_t i = 0; i < tab_bar->child_count; i++) {
                                         if (tab_bar->children[i] == clicked) {
                                             // Switch to the clicked tab (triggers panel switching!)
-                                            fprintf(stderr, "[TAB_DEBUG] CALLING ir_tabgroup_select: tab_index=%u TabGroup=%u\n",
-                                                    i, tab_group->id);
                                             ir_tabgroup_select(tg_state, (int)i);
                                             break;
                                         }
                                     }
                                 }
-                            } else {
-                                fprintf(stderr, "[TAB_DEBUG] ERROR: Tab click failed - no TabGroup or TabGroupState\n");
                             }
                         }
 
@@ -585,8 +585,26 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                 printf("Click on component ID %u (logic: %s)\n",
                                        clicked->id, ir_event->logic_id);
 
+                                // Check if this is a Lua event handler
+                                if (strncmp(ir_event->logic_id, "lua_event_", 10) == 0) {
+                                    // Extract handler ID from logic_id (e.g., "lua_event_42" -> 42)
+                                    uint32_t handler_id = 0;
+                                    if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
+                                        // Call Lua callback with HANDLER ID, not component ID
+                                        if (renderer->lua_event_callback) {
+                                            fprintf(stderr, "[LUA_EVENT] Calling Lua handler %u for component %u\n",
+                                                    handler_id, clicked->id);
+                                            renderer->lua_event_callback(handler_id, IR_EVENT_CLICK);
+                                        } else {
+                                            printf("⚠️ Lua event detected but no callback registered\n");
+                                        }
+                                    } else {
+                                        fprintf(stderr, "⚠️ Failed to parse handler ID from logic_id: %s\n",
+                                                ir_event->logic_id);
+                                    }
+                                }
                                 // Check if this is a Nim button handler
-                                if (strncmp(ir_event->logic_id, "nim_button_", 11) == 0) {
+                                else if (strncmp(ir_event->logic_id, "nim_button_", 11) == 0) {
                                 // Check if this button is actually a tab in a TabGroup
                                 // by looking at parent's custom_data for TabGroupState
                                 bool handled_as_tab = false;
@@ -604,8 +622,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                                 IRExecutorContext* executor = ir_executor_get_global();
                                                 if (executor) {
                                                     ir_executor_handle_event(executor, clicked->id, "click");
-                                                } else {
-                                                    extern void nimButtonBridge(uint32_t componentId);
+                                                } else if (nimButtonBridge) {
                                                     nimButtonBridge(clicked->id);
                                                 }
                                                 handled_as_tab = true;
@@ -624,9 +641,8 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                         ir_executor_set_root(executor, renderer->last_root);
                                         // Execute via IR executor using logic_id (handles .kir logic blocks)
                                         ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
-                                    } else {
+                                    } else if (nimButtonBridge) {
                                         // Fallback to Nim bridge (for compiled Nim binaries)
-                                        extern void nimButtonBridge(uint32_t componentId);
                                         nimButtonBridge(clicked->id);
                                     }
                                 }
@@ -643,9 +659,8 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                     // Set root for UI updates
                                     ir_executor_set_root(executor, renderer->last_root);
                                     ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
-                                } else {
+                                } else if (nimCheckboxBridge) {
                                     // Fallback to Nim bridge
-                                    extern void nimCheckboxBridge(uint32_t componentId);
                                     nimCheckboxBridge(clicked->id);
                                 }
                             }
@@ -671,8 +686,9 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                                     ir_set_dropdown_open_state(clicked, false);
 
                                                     // Call Nim handler with selected index
-                                                    extern void nimDropdownBridge(uint32_t componentId, int32_t selectedIndex);
-                                                    nimDropdownBridge(clicked->id, (int32_t)option_index);
+                                                    if (nimDropdownBridge) {
+                                                        nimDropdownBridge(clicked->id, (int32_t)option_index);
+                                                    }
                                                 }
                                             } else {
                                                 // Click outside menu - just close it
@@ -886,8 +902,9 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             istate->cursor_index = cursor + incoming_len;
                             ensure_caret_visible(renderer, focused_input, istate, font, pad_left, pad_right);
                         }
-                        extern bool nimInputBridge(IRComponent* component, const char* text);
-                        nimInputBridge(focused_input, focused_input->text_content);
+                        if (nimInputBridge) {
+                            nimInputBridge(focused_input, focused_input->text_content);
+                        }
 
                         // Sync to bound variable
                         IRExecutorContext* exec_ctx = ir_executor_get_global();
@@ -950,8 +967,9 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                 istate->cursor_index = prefix_len;
                                 ensure_caret_visible(renderer, focused_input, istate, font, pad_left, pad_right);
                             }
-                            extern bool nimInputBridge(IRComponent* component, const char* text);
-                            nimInputBridge(focused_input, focused_input->text_content);
+                            if (nimInputBridge) {
+                                nimInputBridge(focused_input, focused_input->text_content);
+                            }
 
                             // Sync to bound variable
                             IRExecutorContext* exec_ctx = ir_executor_get_global();

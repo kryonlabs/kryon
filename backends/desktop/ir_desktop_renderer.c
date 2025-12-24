@@ -489,7 +489,9 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
         handle_sdl3_events(renderer);
 
         /* Process reactive updates */
-        nimProcessReactiveUpdates();
+        if (nimProcessReactiveUpdates) {
+            nimProcessReactiveUpdates();
+        }
 
         /* Check for style variable changes */
         if (ir_style_vars_is_dirty()) {
@@ -541,6 +543,20 @@ void desktop_ir_renderer_set_event_callback(DesktopIRRenderer* renderer,
     if (renderer) {
         renderer->event_callback = callback;
         renderer->event_user_data = user_data;
+    }
+}
+
+void desktop_ir_renderer_set_lua_event_callback(DesktopIRRenderer* renderer,
+                                                void (*callback)(uint32_t, int)) {
+    if (renderer) {
+        renderer->lua_event_callback = callback;
+    }
+}
+
+void desktop_ir_renderer_update_root(DesktopIRRenderer* renderer, IRComponent* new_root) {
+    if (renderer && new_root) {
+        renderer->last_root = new_root;
+        renderer->needs_relayout = true;
     }
 }
 
