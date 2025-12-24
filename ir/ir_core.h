@@ -111,6 +111,7 @@ typedef struct {
     bool dirty;                         // Needs recomputation
     bool intrinsic_valid;               // Pass 1 complete
     bool layout_valid;                  // Pass 2 complete
+    bool absolute_positions_computed;   // Phase 3 complete (prevents re-conversion)
 } IRLayoutState;
 
 // Color Types

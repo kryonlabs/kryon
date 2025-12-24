@@ -2264,9 +2264,9 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
 
     // Special handling for TABLE components - use table layout algorithm
     if (component->type == IR_COMPONENT_TABLE && component->child_count > 0) {
-        // Always compute table layout for now - caching was causing rendering issues
-        // TODO: Investigate why caching breaks table rendering
-        ir_layout_compute_table(component, child_rect.width, child_rect.height);
+        // Table layout is already computed in Phase 2 and cached
+        // Cell positions are already absolute from Phase 3
+        // No need to recompute here (cache will prevent it anyway)
 
         // Calculate cascaded opacity for children
         float child_opacity = (component->style ? component->style->opacity : 1.0f) * inherited_opacity;
@@ -2276,13 +2276,14 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             IRComponent* section = component->children[i];
             if (!section) continue;
             if (section->style && !section->style->visible) continue;
+            if (!section->layout_state) continue;
 
-            // Use the rendered_bounds set by ir_layout_compute_table
+            // Use the layout_state->computed set by ir_layout_compute_table
             LayoutRect section_rect = {
-                .x = child_rect.x + section->rendered_bounds.x,
-                .y = child_rect.y + section->rendered_bounds.y,
-                .width = section->rendered_bounds.width > 0 ? section->rendered_bounds.width : child_rect.width,
-                .height = section->rendered_bounds.height
+                .x = child_rect.x + section->layout_state->computed.x,
+                .y = child_rect.y + section->layout_state->computed.y,
+                .width = section->layout_state->computed.width > 0 ? section->layout_state->computed.width : child_rect.width,
+                .height = section->layout_state->computed.height
             };
 
             // Render the section (transparent, just for structure)
@@ -2301,12 +2302,13 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             IRComponent* row = component->children[i];
             if (!row) continue;
             if (row->style && !row->style->visible) continue;
+            if (!row->layout_state) continue;
 
             LayoutRect row_rect = {
-                .x = sdl_rect.x + row->rendered_bounds.x,
-                .y = sdl_rect.y + row->rendered_bounds.y,
-                .width = row->rendered_bounds.width > 0 ? row->rendered_bounds.width : sdl_rect.w,
-                .height = row->rendered_bounds.height
+                .x = sdl_rect.x + row->layout_state->computed.x,
+                .y = sdl_rect.y + row->layout_state->computed.y,
+                .width = row->layout_state->computed.width > 0 ? row->layout_state->computed.width : sdl_rect.w,
+                .height = row->layout_state->computed.height
             };
 
             render_component_sdl3(renderer, row, row_rect, child_opacity);
@@ -2322,12 +2324,13 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             IRComponent* cell = component->children[i];
             if (!cell) continue;
             if (cell->style && !cell->style->visible) continue;
+            if (!cell->layout_state) continue;
 
             LayoutRect cell_rect = {
-                .x = sdl_rect.x + cell->rendered_bounds.x,
-                .y = sdl_rect.y + cell->rendered_bounds.y,
-                .width = cell->rendered_bounds.width,
-                .height = cell->rendered_bounds.height > 0 ? cell->rendered_bounds.height : sdl_rect.h
+                .x = sdl_rect.x + cell->layout_state->computed.x,
+                .y = sdl_rect.y + cell->layout_state->computed.y,
+                .width = cell->layout_state->computed.width,
+                .height = cell->layout_state->computed.height > 0 ? cell->layout_state->computed.height : sdl_rect.h
             };
 
             render_component_sdl3(renderer, cell, cell_rect, child_opacity);

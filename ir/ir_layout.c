@@ -1417,6 +1417,177 @@ static float table_get_cell_content_height(IRComponent* cell) {
     return height > 0 ? height : 24.0f;  // Minimum cell height
 }
 
+/**
+ * Compute intrinsic size for Table components
+ * Runs table layout algorithm (phases 1-4) to calculate dimensions
+ */
+static void intrinsic_size_table(IRComponent* c, IRIntrinsicSize* out) {
+    if (!c || !out || c->type != IR_COMPONENT_TABLE) return;
+
+    IRTableState* state = (IRTableState*)c->custom_data;
+    if (!state) {
+        // No state - return default size
+        memset(out, 0, sizeof(IRIntrinsicSize));
+        return;
+    }
+
+    // Use cached dimensions if valid
+    if (state->layout_valid && state->cached_total_width > 0 && state->cached_total_height > 0) {
+        out->min_content_width = state->cached_total_width;
+        out->max_content_width = state->cached_total_width;
+        out->min_content_height = state->cached_total_height;
+        out->max_content_height = state->cached_total_height;
+        return;
+    }
+
+    // Calculate intrinsic size by running table layout algorithm
+    // We need to compute column widths and row heights
+
+    uint32_t num_cols = table_count_columns(c);
+    uint32_t num_rows = table_count_rows(c);
+
+    if (num_cols == 0 || num_rows == 0) {
+        memset(out, 0, sizeof(IRIntrinsicSize));
+        return;
+    }
+
+    // Get table styling
+    float cell_padding = state->style.cell_padding;
+    float border_width = state->style.show_borders ? state->style.border_width : 0.0f;
+
+    // Allocate arrays for column widths and row heights
+    float* col_widths = (float*)calloc(num_cols, sizeof(float));
+    float* row_heights = (float*)calloc(num_rows, sizeof(float));
+    float* min_col_widths = (float*)calloc(num_cols, sizeof(float));
+
+    if (!col_widths || !row_heights || !min_col_widths) {
+        free(col_widths);
+        free(row_heights);
+        free(min_col_widths);
+        memset(out, 0, sizeof(IRIntrinsicSize));
+        return;
+    }
+
+    // Initialize minimum widths from column definitions
+    for (uint32_t col = 0; col < num_cols; col++) {
+        if (col < state->column_count && state->columns) {
+            IRTableColumnDef* col_def = &state->columns[col];
+            if (col_def->width.type == IR_DIMENSION_PX) {
+                col_widths[col] = col_def->width.value;
+            }
+            if (col_def->min_width.type == IR_DIMENSION_PX) {
+                min_col_widths[col] = col_def->min_width.value;
+            }
+        }
+    }
+
+    // Phase 1: Calculate intrinsic column widths from cell content
+    uint32_t row_idx = 0;
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* section = c->children[i];
+        if (section->type != IR_COMPONENT_TABLE_HEAD &&
+            section->type != IR_COMPONENT_TABLE_BODY &&
+            section->type != IR_COMPONENT_TABLE_FOOT) continue;
+
+        for (uint32_t j = 0; j < section->child_count; j++) {
+            IRComponent* row = section->children[j];
+            if (row->type != IR_COMPONENT_TABLE_ROW) continue;
+
+            uint32_t col_idx = 0;
+            for (uint32_t k = 0; k < row->child_count; k++) {
+                IRComponent* cell = row->children[k];
+                IRTableCellData* data = get_cell_data(cell);
+                uint32_t colspan = data ? data->colspan : 1;
+                if (colspan == 0) colspan = 1;
+
+                // Only measure cells without colspan for initial width
+                if (colspan == 1 && col_idx < num_cols) {
+                    float content_width = table_get_cell_content_width(cell) + cell_padding * 2;
+                    if (content_width > col_widths[col_idx]) {
+                        col_widths[col_idx] = content_width;
+                    }
+                }
+
+                col_idx += colspan;
+            }
+            row_idx++;
+        }
+    }
+
+    // Phase 2: Apply minimum widths
+    for (uint32_t col = 0; col < num_cols; col++) {
+        if (col_widths[col] < min_col_widths[col]) {
+            col_widths[col] = min_col_widths[col];
+        }
+        if (col_widths[col] < 30.0f) {
+            col_widths[col] = 30.0f;  // Absolute minimum
+        }
+    }
+
+    // Phase 3: Calculate total width (no expansion - intrinsic size)
+    float total_width = 0;
+    for (uint32_t col = 0; col < num_cols; col++) {
+        total_width += col_widths[col];
+    }
+    total_width += border_width * (num_cols + 1);
+
+    // Phase 4: Calculate row heights from cell content
+    row_idx = 0;
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* section = c->children[i];
+        if (section->type != IR_COMPONENT_TABLE_HEAD &&
+            section->type != IR_COMPONENT_TABLE_BODY &&
+            section->type != IR_COMPONENT_TABLE_FOOT) continue;
+
+        for (uint32_t j = 0; j < section->child_count; j++) {
+            IRComponent* row = section->children[j];
+            if (row->type != IR_COMPONENT_TABLE_ROW) continue;
+
+            float max_cell_height = 0;
+            for (uint32_t k = 0; k < row->child_count; k++) {
+                IRComponent* cell = row->children[k];
+                IRTableCellData* data = get_cell_data(cell);
+                uint32_t rowspan = data ? data->rowspan : 1;
+                if (rowspan == 0) rowspan = 1;
+
+                // Only measure cells without rowspan for initial height
+                if (rowspan == 1) {
+                    float content_height = table_get_cell_content_height(cell) + cell_padding * 2;
+                    if (content_height > max_cell_height) {
+                        max_cell_height = content_height;
+                    }
+                }
+            }
+
+            row_heights[row_idx] = max_cell_height > 0 ? max_cell_height : 30.0f;
+            row_idx++;
+        }
+    }
+
+    // Calculate total table height
+    float total_height = 0;
+    for (uint32_t row = 0; row < num_rows; row++) {
+        total_height += row_heights[row];
+    }
+    total_height += border_width * (num_rows + 1);
+
+    // Cache the dimensions (but don't set layout_valid yet - that's done in Phase 2 after cell positions are set)
+    state->cached_total_width = total_width;
+    state->cached_total_height = total_height;
+    // NOTE: We don't set layout_valid = true here because Phase 2 needs to run to set cell positions
+
+    // Store in output
+    out->min_content_width = total_width;
+    out->max_content_width = total_width;
+    out->min_content_height = total_height;
+    out->max_content_height = total_height;
+
+    // Clean up temporary arrays
+    free(col_widths);
+    free(row_heights);
+    free(min_col_widths);
+}
+
 // Main table layout function
 void ir_layout_compute_table(IRComponent* table, float available_width, float available_height) {
     if (!table || table->type != IR_COMPONENT_TABLE) {
@@ -1432,32 +1603,37 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
                 state ? state->cached_total_height : 0);
     }
 
-    // Early return if layout is already valid AND children have valid bounds
-    // Must verify first child (section) has non-zero height to ensure bounds were set
+    // Use cached layout if valid (avoids recomputing every frame)
     if (state && state->layout_valid && state->cached_total_height > 0) {
-        // Verify first section has valid bounds
-        bool bounds_valid = false;
-        for (uint32_t i = 0; i < table->child_count && !bounds_valid; i++) {
+        if (getenv("KRYON_TRACE_LAYOUT")) {
+            fprintf(stderr, "📊 TABLE: using cached layout (%.1fx%.1f)\n",
+                    state->cached_total_width, state->cached_total_height);
+        }
+        // Mark children as valid when using cache (they already have positions from previous computation)
+        for (uint32_t i = 0; i < table->child_count; i++) {
             IRComponent* section = table->children[i];
-            if (section && (section->type == IR_COMPONENT_TABLE_HEAD ||
-                           section->type == IR_COMPONENT_TABLE_BODY ||
-                           section->type == IR_COMPONENT_TABLE_FOOT)) {
-                // Check if section has valid height
-                if (section->rendered_bounds.height > 0) {
-                    bounds_valid = true;
+            if (!section) continue;
+            if (section->layout_state) {
+                section->layout_state->layout_valid = true;
+            }
+
+            for (uint32_t j = 0; j < section->child_count; j++) {
+                IRComponent* row = section->children[j];
+                if (!row) continue;
+                if (row->layout_state) {
+                    row->layout_state->layout_valid = true;
+                }
+
+                for (uint32_t k = 0; k < row->child_count; k++) {
+                    IRComponent* cell = row->children[k];
+                    if (!cell) continue;
+                    if (cell->layout_state) {
+                        cell->layout_state->layout_valid = true;
+                    }
                 }
             }
         }
-
-        if (bounds_valid) {
-            if (getenv("KRYON_TRACE_LAYOUT")) {
-                fprintf(stderr, "📊 TABLE: using cached layout (%.1fx%.1f)\n",
-                        state->cached_total_width, state->cached_total_height);
-            }
-            return;
-        } else if (getenv("KRYON_TRACE_LAYOUT")) {
-            fprintf(stderr, "📊 TABLE: cache invalid (bounds not set), recomputing\n");
-        }
+        return;
     }
 
     IRStyle* table_style = table->style;
@@ -1595,7 +1771,7 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
     }
     total_height += border_width * (num_rows + 1);
 
-    // Phase 5: Position all cells
+    // Phase 5: Position all cells using layout_state->computed
     float y_offset = border_width;
     row_idx = 0;
 
@@ -1605,30 +1781,33 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
             section->type != IR_COMPONENT_TABLE_BODY &&
             section->type != IR_COMPONENT_TABLE_FOOT) continue;
 
+        if (!section->layout_state) continue;
+
         // Position section to fill table width
-        section->rendered_bounds.x = 0;
-        section->rendered_bounds.y = y_offset;
-        section->rendered_bounds.width = total_width;
-        section->rendered_bounds.valid = true;
+        section->layout_state->computed.x = 0;
+        section->layout_state->computed.y = y_offset;
+        section->layout_state->computed.width = total_width;
 
         float section_height = 0;
 
         for (uint32_t j = 0; j < section->child_count; j++) {
             IRComponent* row = section->children[j];
             if (row->type != IR_COMPONENT_TABLE_ROW) continue;
+            if (!row->layout_state) continue;
 
             // Position row
-            row->rendered_bounds.x = 0;
-            row->rendered_bounds.y = section_height;
-            row->rendered_bounds.width = total_width;
-            row->rendered_bounds.height = row_heights[row_idx];
-            row->rendered_bounds.valid = true;
+            row->layout_state->computed.x = 0;
+            row->layout_state->computed.y = section_height;
+            row->layout_state->computed.width = total_width;
+            row->layout_state->computed.height = row_heights[row_idx];
 
             float x_offset = border_width;
             uint32_t col_idx = 0;
 
             for (uint32_t k = 0; k < row->child_count; k++) {
                 IRComponent* cell = row->children[k];
+                if (!cell->layout_state) continue;
+
                 IRTableCellData* data = get_cell_data(cell);
                 uint32_t colspan = data ? data->colspan : 1;
                 uint32_t rowspan = data ? data->rowspan : 1;
@@ -1649,12 +1828,11 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
                 }
                 cell_height += border_width * (rowspan - 1);
 
-                // Position cell
-                cell->rendered_bounds.x = x_offset;
-                cell->rendered_bounds.y = 0;  // Relative to row
-                cell->rendered_bounds.width = cell_width;
-                cell->rendered_bounds.height = cell_height;
-                cell->rendered_bounds.valid = true;
+                // Position cell (relative to row)
+                cell->layout_state->computed.x = x_offset;
+                cell->layout_state->computed.y = 0;  // Relative to row
+                cell->layout_state->computed.width = cell_width;
+                cell->layout_state->computed.height = cell_height;
 
                 x_offset += cell_width + border_width;
                 col_idx += colspan;
@@ -1664,7 +1842,7 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
             row_idx++;
         }
 
-        section->rendered_bounds.height = section_height;
+        section->layout_state->computed.height = section_height;
         y_offset += section_height;
     }
 
@@ -1680,6 +1858,35 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
         state->cached_total_width = total_width;
         state->cached_total_height = total_height;
 
+        // Mark all children as valid after computing layout
+        // Also reset absolute_positions_computed since we just set RELATIVE positions
+        for (uint32_t i = 0; i < table->child_count; i++) {
+            IRComponent* section = table->children[i];
+            if (!section) continue;
+            if (section->layout_state) {
+                section->layout_state->layout_valid = true;
+                section->layout_state->absolute_positions_computed = false;
+            }
+
+            for (uint32_t j = 0; j < section->child_count; j++) {
+                IRComponent* row = section->children[j];
+                if (!row) continue;
+                if (row->layout_state) {
+                    row->layout_state->layout_valid = true;
+                    row->layout_state->absolute_positions_computed = false;
+                }
+
+                for (uint32_t k = 0; k < row->child_count; k++) {
+                    IRComponent* cell = row->children[k];
+                    if (!cell) continue;
+                    if (cell->layout_state) {
+                        cell->layout_state->layout_valid = true;
+                        cell->layout_state->absolute_positions_computed = false;
+                    }
+                }
+            }
+        }
+
         free(min_col_widths);
     } else {
         free(col_widths);
@@ -1687,9 +1894,12 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
         free(min_col_widths);
     }
 
-    // Update table bounds
-    table->rendered_bounds.width = total_width;
-    table->rendered_bounds.height = total_height;
+    // Update table dimensions in layout_state->computed
+    if (table->layout_state) {
+        table->layout_state->computed.width = total_width;
+        table->layout_state->computed.height = total_height;
+        // X and Y should already be set by parent layout in constraint phase
+    }
 
     // Mark layout as cached with current input dimensions
     if (state) {
@@ -2745,6 +2955,11 @@ void ir_layout_compute_intrinsic(IRComponent* component) {
             intrinsic_size_container(component, out);
             break;
 
+        case IR_COMPONENT_TABLE:
+            // Tables need special intrinsic size calculation
+            intrinsic_size_table(component, out);
+            break;
+
         default:
             // Unknown type - assume container-like behavior
             if (component->child_count > 0) {
@@ -2841,6 +3056,32 @@ static void apply_main_axis_alignment(IRComponent* c, float available_space, boo
                 } else {
                     child->layout_state->computed.x += spacing * i;
                 }
+            }
+        }
+        return;
+    } else if (align == IR_ALIGNMENT_SPACE_EVENLY) {
+        // Equal space before, between, and after all children
+        float spacing = remaining / (c->child_count + 1);
+        for (uint32_t i = 0; i < c->child_count; i++) {
+            IRComponent* child = c->children[i];
+            if (!child || !child->layout_state) continue;
+            if (is_column) {
+                child->layout_state->computed.y += spacing * (i + 1);
+            } else {
+                child->layout_state->computed.x += spacing * (i + 1);
+            }
+        }
+        return;
+    } else if (align == IR_ALIGNMENT_SPACE_AROUND) {
+        // Half space before first, full space between, half space after last
+        float spacing = remaining / c->child_count;
+        for (uint32_t i = 0; i < c->child_count; i++) {
+            IRComponent* child = c->children[i];
+            if (!child || !child->layout_state) continue;
+            if (is_column) {
+                child->layout_state->computed.y += spacing * (i + 0.5f);
+            } else {
+                child->layout_state->computed.x += spacing * (i + 0.5f);
             }
         }
         return;
@@ -3066,6 +3307,10 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
         return;
     }
 
+    // Reset absolute positions flag since we're recomputing layout
+    // Positions will be relative after this pass and need Phase 3 conversion
+    c->layout_state->absolute_positions_computed = false;
+
     IRComputedLayout* layout = &c->layout_state->computed;
     IRIntrinsicSize* intrinsic = &c->layout_state->intrinsic;
     IRStyle* style = c->style;
@@ -3186,6 +3431,13 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
             layout_column_children(c, constraints);
             break;
 
+        case IR_COMPONENT_TABLE:
+            // Tables use specialized layout algorithm
+            // Table dimensions are already resolved above
+            // Now layout table contents (sections, rows, cells)
+            ir_layout_compute_table(c, layout->width, layout->height);
+            break;
+
         default:
             // Default: layout each child independently with same constraints
             for (uint32_t i = 0; i < c->child_count; i++) {
@@ -3210,9 +3462,37 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
 void ir_layout_compute_absolute_positions(IRComponent* c, float parent_x, float parent_y) {
     if (!c || !c->layout_state) return;
 
-    // Convert relative to absolute
-    c->layout_state->computed.x += parent_x;
-    c->layout_state->computed.y += parent_y;
+    // Skip if absolute positions already computed (prevents accumulation on each frame)
+    if (c->layout_state->absolute_positions_computed) {
+        // Positions are already absolute, recurse to children that may not have been converted yet
+        for (uint32_t i = 0; i < c->child_count; i++) {
+            IRComponent* child = c->children[i];
+            if (child && child->layout_state && !child->layout_state->absolute_positions_computed) {
+                ir_layout_compute_absolute_positions(child,
+                    c->layout_state->computed.x,
+                    c->layout_state->computed.y);
+            }
+        }
+        return;
+    }
+
+    // Check for absolute positioning
+    if (c->style && c->style->position_mode == IR_POSITION_ABSOLUTE) {
+        // Use explicit left/top values (positioned relative to viewport, not parent)
+        c->layout_state->computed.x = c->style->absolute_x;
+        c->layout_state->computed.y = c->style->absolute_y;
+        if (getenv("KRYON_TRACE_ABSOLUTE")) {
+            fprintf(stderr, "[ABSOLUTE] Component %u: position=absolute, left=%.1f, top=%.1f\n",
+                    c->id, c->style->absolute_x, c->style->absolute_y);
+        }
+    } else {
+        // Convert relative to absolute
+        c->layout_state->computed.x += parent_x;
+        c->layout_state->computed.y += parent_y;
+    }
+
+    // Mark as converted
+    c->layout_state->absolute_positions_computed = true;
 
     // Recurse to children
     for (uint32_t i = 0; i < c->child_count; i++) {
