@@ -498,14 +498,22 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                     }
 
                     // DEBUG: Show what was found at click position
-                    printf("[DEBUG] Click at (%.0f, %.0f) found: %s (ID: %u)\n",
+                    printf("[DEBUG] Click at (%.0f, %.0f) found: %s (ID: %u type=%d)\n",
                            (float)event.button.x, (float)event.button.y,
                            clicked ? (clicked->type == IR_COMPONENT_LINK ? "LINK" :
                                      clicked->type == IR_COMPONENT_BUTTON ? "BUTTON" :
                                      clicked->type == IR_COMPONENT_TEXT ? "TEXT" :
                                      clicked->type == IR_COMPONENT_ROW ? "ROW" :
-                                     clicked->type == IR_COMPONENT_COLUMN ? "COLUMN" : "OTHER") : "NULL",
-                           clicked ? clicked->id : 0);
+                                     clicked->type == IR_COMPONENT_COLUMN ? "COLUMN" :
+                                     clicked->type == IR_COMPONENT_TAB ? "TAB" :
+                                     clicked->type == IR_COMPONENT_TAB_BAR ? "TAB_BAR" :
+                                     clicked->type == IR_COMPONENT_TAB_CONTENT ? "TAB_CONTENT" :
+                                     clicked->type == IR_COMPONENT_TAB_PANEL ? "TAB_PANEL" : "OTHER") : "NULL",
+                           clicked ? clicked->id : 0,
+                           clicked ? clicked->type : -1);
+                    if (clicked && clicked->parent) {
+                        printf("[DEBUG]   parent: ID=%u type=%d\n", clicked->parent->id, clicked->parent->type);
+                    }
 
                     if (clicked) {
                         // Handle input focus
@@ -529,6 +537,8 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
                         // Handle IR-level tab clicks (new system)
                         if (clicked->type == IR_COMPONENT_TAB) {
+                            fprintf(stderr, "[TAB_DEBUG] TAB CLICK DETECTED: Tab id=%u at click point (%.1f,%.1f)\n",
+                                   clicked->id, (float)event.button.x, (float)event.button.y);
                             // Find the TabGroup ancestor
                             IRComponent* tab_group = clicked->parent;
                             while (tab_group && tab_group->type != IR_COMPONENT_TAB_GROUP) {
@@ -545,12 +555,15 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                     for (uint32_t i = 0; i < tab_bar->child_count; i++) {
                                         if (tab_bar->children[i] == clicked) {
                                             // Switch to the clicked tab (triggers panel switching!)
-                                            printf("[tabs] Clicked tab %u in TabGroup %u\n", i, tab_group->id);
+                                            fprintf(stderr, "[TAB_DEBUG] CALLING ir_tabgroup_select: tab_index=%u TabGroup=%u\n",
+                                                    i, tab_group->id);
                                             ir_tabgroup_select(tg_state, (int)i);
                                             break;
                                         }
                                     }
                                 }
+                            } else {
+                                fprintf(stderr, "[TAB_DEBUG] ERROR: Tab click failed - no TabGroup or TabGroupState\n");
                             }
                         }
 
