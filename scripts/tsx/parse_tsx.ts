@@ -304,7 +304,7 @@ function parseValue(node: t.Node): any {
 
 function formatDimension(value: any): string {
   if (typeof value === 'number') {
-    return `${value}.0px`;
+    return `${value}px`;
   } else if (typeof value === 'string') {
     if (value.endsWith('%') || value.endsWith('px')) {
       return value;
@@ -520,9 +520,9 @@ function parseJSXElement(node: t.JSXElement, state: ParsedState): KirNode {
         case 'maxWidth':
         case 'maxHeight':
           if (typeof value === 'number') {
-            result[name] = `${value}.0px`;
+            result[name] = `${value}px`;
           } else if (typeof value === 'string' && value.endsWith('%')) {
-            result[name] = value.replace('%', '.0%');
+            result[name] = value;
           } else {
             result[name] = value;
           }
@@ -1013,8 +1013,8 @@ async function main() {
     kir.root = {
       id: nextId++,
       type: 'Column',
-      width: `${state.rootConfig.width}.0px`,
-      height: `${state.rootConfig.height}.0px`,
+      width: `${state.rootConfig.width}px`,
+      height: `${state.rootConfig.height}px`,
       background: state.rootConfig.background,
       windowTitle: state.rootConfig.title,
       children: [state.root]

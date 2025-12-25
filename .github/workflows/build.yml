@@ -223,7 +223,7 @@ jobs:
         run: |
           export PATH="$HOME/.nimble/bin:$PATH"
           make -C ir all
-          make -C backends/web all
+          make -C codegens/web all
           nim c --define:kryonVersion=0.2.0 -d:webBackend --opt:size \
             --passL:"-static" \
             --passL:"-Lbuild -lkryon_ir -lkryon_web" \
@@ -316,7 +316,7 @@ jobs:
           # Build C libraries (static and shared)
           make -C ir all
           make -C backends/desktop all
-          make -C backends/web all
+          make -C codegens/web all
           # Build CLI with RPATH set to find libs in ./lib relative to binary
           nim c --define:kryonVersion=0.2.0 -d:staticBackend --opt:speed \
             --passL:"-Wl,-rpath,'\$ORIGIN/lib'" \

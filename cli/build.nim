@@ -5,7 +5,12 @@
 import os, strutils, json, times, sequtils, osproc, tables
 import config, tsx_parser, kry_parser, kry_to_kir, md_parser, html_transpiler, codegen_html
 
-# FFI bindings to C web backend
+# Architecture Note:
+# - Rendering backends: SDL3 (desktop), Terminal - use Kryon's renderer to draw UI
+# - Transpilation frontends: HTML/web - codegen that outputs browser-renderable code
+# - All compilation flows through the KIR (Kryon Intermediate Representation) pipeline
+
+# FFI bindings to C HTML/web transpiler (codegen, not a rendering backend)
 type
   IRComponent = ptr object
   HTMLGenerator = ptr object
@@ -891,12 +896,13 @@ proc renderIRToTarget*(kirFile: string, target: string) =
 
   case target.toLowerAscii():
     of "web":
-      # Generate web output from KIR
+      # Transpile KIR to HTML/CSS/JS (codegen frontend, not a rendering backend)
+      # The browser will render this code, not Kryon's renderer
       echo "   🌐 Generating web files..."
       generateWebFromKir(kirFile, outputDir, cfg)
 
     of "html":
-      # Generate standalone HTML from KIR (transpilation mode)
+      # Transpile KIR to standalone HTML file (single-file output mode)
       echo "   📄 Generating standalone HTML..."
       let htmlOutputPath = outputDir / (projectName & ".html")
       let opts = defaultTranspilationOptions()
@@ -904,7 +910,7 @@ proc renderIRToTarget*(kirFile: string, target: string) =
       echo "   ✅ HTML file generated: " & htmlOutputPath
 
     of "linux":
-      # Build desktop backend
+      # Build for desktop rendering backend (SDL3)
       echo "   🖥️  Building desktop backend..."
       let desktopCmd = "make -C ../../backends/desktop ENABLE_SDL3=1"
       let (desktopOutput, desktopExitCode) = execCmdEx(desktopCmd)

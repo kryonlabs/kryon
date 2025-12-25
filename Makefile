@@ -2,6 +2,10 @@
 #
 # This Makefile provides system-wide installation of Kryon CLI tool and library
 # Supports both static and dynamic builds, with NixOS integration
+#
+# ARCHITECTURE:
+# - Rendering backends: SDL3 (desktop), Terminal - use Kryon's renderer to draw UI
+# - Transpilation frontends: HTML/web (/codegens/web/) - codegen that outputs browser-renderable code
 
 .PHONY: all clean install install-dynamic install-static uninstall doctor dev test help
 .PHONY: build-cli build-lib build-dynamic build-static
@@ -22,7 +26,7 @@ CONFIGDIR = $(HOME)/.config/kryon
 NIM = nim
 NIMFLAGS = --define:kryonVersion=$(VERSION)
 
-# Static build flags (includes all backends)
+# Static build flags (includes all rendering backends + transpilers)
 STATIC_FLAGS = -d:staticBackend --opt:size --passL:"-static"
 
 # Dynamic build flags (uses system libraries)
@@ -34,10 +38,10 @@ SDL3_CFLAGS = $(shell pkg-config --cflags sdl3 2>/dev/null || echo "-I/usr/inclu
 SDL3_LIBS = $(shell pkg-config --libs sdl3 2>/dev/null || echo "-lSDL3")
 SDL_TTF_LIBS = $(shell pkg-config --libs SDL3_ttf 2>/dev/null || echo "-lSDL3_ttf")
 
-# Renderer-specific build flags (lightweight variants)
-TERMINAL_FLAGS = -d:terminalOnly --opt:size
-DESKTOP_FLAGS = -d:desktopBackend --opt:speed
-WEB_FLAGS = -d:webBackend --opt:size
+# Target-specific build flags (lightweight variants)
+TERMINAL_FLAGS = -d:terminalOnly --opt:size        # Terminal renderer only
+DESKTOP_FLAGS = -d:desktopBackend --opt:speed      # SDL3 renderer only
+WEB_FLAGS = -d:webBackend --opt:size               # HTML/web transpiler only (not a renderer)
 
 # Detect NixOS environment
 ifeq ($(shell test -e /etc/nixos && echo yes), yes)
@@ -134,29 +138,29 @@ $(DESKTOP_BIN): $(CLI_SRC)
 		-o:$(DESKTOP_BIN) $(CLI_SRC)
 	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
 
-# Web CLI (for website generation - HTML/CSS/JS)
+# Web CLI (HTML/CSS/JS transpiler - codegen, not a renderer)
 build-web: $(WEB_BIN)
 
 $(WEB_BIN): $(CLI_SRC)
-	@echo "Building Kryon CLI (web target with HTML/CSS/JS generation)..."
+	@echo "Building Kryon CLI (HTML/web transpiler)..."
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C ir all
-	$(MAKE) -C backends/web all
+	$(MAKE) -C codegens/web all
 	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
 	$(NIM) c $(NIMFLAGS) $(WEB_FLAGS) \
 		--passL:"-L$(BUILD_DIR) -lkryon_ir -lkryon_web" \
 		-o:$(WEB_BIN) $(CLI_SRC)
 	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
 
-# Default CLI (all backends - terminal, desktop, web)
+# Default CLI (all targets: renderers + transpilers)
 build-default: $(DEFAULT_BIN)
 
 $(DEFAULT_BIN): $(CLI_SRC)
-	@echo "Building Kryon CLI (all backends)..."
+	@echo "Building Kryon CLI (all targets: renderers + transpilers)..."
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C ir all
 	$(MAKE) -C backends/desktop all
-	$(MAKE) -C backends/web all
+	$(MAKE) -C codegens/web all
 	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
 	$(NIM) c $(NIMFLAGS) -d:staticBackend --opt:speed \
 		--passL:"-L$(BUILD_DIR) -lkryon_ir -lkryon_desktop -lkryon_web $(SDL3_LIBS) $(SDL_TTF_LIBS)" \
@@ -534,17 +538,17 @@ help:
 	@echo "Build targets:"
 	@echo "  all           Build CLI and library (development)"
 	@echo "  build-cli     Build CLI tool only"
-	@echo "  build-static  Build static CLI with backends bundled"
+	@echo "  build-static  Build static CLI with all targets bundled"
 	@echo "  build-dynamic Build dynamic CLI using system libraries"
 	@echo "  build-lib     Build library for other projects"
 	@echo "  dev           Development build with debug symbols"
 	@echo ""
-	@echo "Renderer-specific builds (for CI):"
-	@echo "  build-terminal      Terminal-only CLI (no SDL3 deps)"
-	@echo "  build-desktop       Desktop CLI with SDL3 support"
-	@echo "  build-web           Web CLI (HTML/CSS/JS generation)"
-	@echo "  build-default       Full CLI with all backends"
-	@echo "  build-all-variants  Build all renderer variants"
+	@echo "Target-specific builds (for CI):"
+	@echo "  build-terminal      Terminal renderer only"
+	@echo "  build-desktop       SDL3 renderer only"
+	@echo "  build-web           HTML/web transpiler (codegen, not a renderer)"
+	@echo "  build-default       Full CLI with all targets (renderers + transpilers)"
+	@echo "  build-all-variants  Build all target variants"
 	@echo ""
 	@echo "Installation:"
 	@echo "  install       Install dynamic CLI, library and config"
