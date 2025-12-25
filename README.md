@@ -1,6 +1,6 @@
 # Kryon UI Framework
 
-A declarative UI framework with multiple frontends (.kry, .nim, .md) and rendering backends (SDL3, terminal, web).
+A declarative UI framework with multiple frontends (.kry, .nim, .tsx, .md) and rendering backends (SDL3, terminal). Includes HTML/web transpilation for browser deployment.
 
 ## Quick Start
 
@@ -149,7 +149,7 @@ KRYON_RENDERER=terminal ./run_example.sh hello_world  # Use terminal renderer
 
 **Note:** The script automatically generates `.nim` files from `.kry` sources if they don't exist.
 
-### Available Backends
+### Available Rendering Backends
 
 - **SDL3** - Modern cross-platform, hardware accelerated (default)
 - **Terminal** - Text-based UI using ANSI escape sequences
@@ -159,12 +159,21 @@ KRYON_RENDERER=terminal ./run_example.sh hello_world  # Use terminal renderer
 KRYON_RENDERER=terminal kryon run app.kry
 ```
 
+### Transpilation Targets
+
+- **HTML/Web** - Generate HTML/CSS/JS for browser deployment (codegen, not a renderer)
+
+```bash
+# Transpile to HTML/web
+kryon run app.kry --target web
+```
+
 ## Features
 
-- ✅ Multiple frontends (.kry, .nim, .md)
+- ✅ Multiple frontends (.kry, .nim, .tsx, .md)
 - ✅ Declarative DSL syntax
-- ✅ Multiple rendering backends (SDL3, terminal, web)
-- ✅ HTML transpilation with roundtrip validation
+- ✅ Rendering backends (SDL3, terminal)
+- ✅ HTML/web transpilation for browsers
 - ✅ Full CommonMark markdown support
 - ✅ Native Mermaid flowchart integration
 - ✅ Event handlers (onClick, onChange, onSubmit, etc.)

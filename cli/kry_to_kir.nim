@@ -496,7 +496,7 @@ proc transpileComponent(ctx: var TranspilerContext, node: KryNode, parentId = 0)
       case irName
       of "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight":
         if simpleVal.kind == JInt:
-          result[irName] = %(&"{simpleVal.getInt}.0px")
+          result[irName] = %(&"{simpleVal.getInt}px")
         elif simpleVal.kind == JFloat:
           result[irName] = %(&"{simpleVal.getFloat}px")
         elif simpleVal.kind == JString:
@@ -1144,8 +1144,8 @@ proc transpileAppBlock(ctx: var TranspilerContext, node: KryNode): JsonNode =
     else:
       discard
 
-  result["width"] = %(&"{appWidth}.0px")
-  result["height"] = %(&"{appHeight}.0px")
+  result["width"] = %(&"{appWidth}px")
+  result["height"] = %(&"{appHeight}px")
   result["background"] = %appBg
   result["windowTitle"] = %appTitle
 

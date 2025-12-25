@@ -5,6 +5,19 @@
 import json, strformat, strutils
 import codegen_react_common  # Reuse generateHandlerBody, generateReactExpression
 
+proc formatDimension(val: JsonNode): string =
+  ## Format a dimension value to px without unnecessary decimals
+  if val.kind == JInt:
+    return $val.getInt() & "px"
+  elif val.kind == JFloat:
+    let f = val.getFloat()
+    if f == f.int.float:  # Check if it's a whole number
+      return $f.int & "px"
+    else:
+      return &"{f:.2f}px"
+  else:
+    return "0px"
+
 proc generateInlineStyles(node: JsonNode): string =
   ## Generate inline CSS from KIR node properties
   var styles: seq[string] = @[]
@@ -53,13 +66,13 @@ proc generateInlineStyles(node: JsonNode): string =
   if node.hasKey("padding"):
     let p = node["padding"]
     if p.kind == JFloat or p.kind == JInt:
-      styles.add(&"padding: {p.getFloat():.2f}px")
+      styles.add(&"padding: {formatDimension(p)}")
     elif p.kind == JObject:
-      let top = p{"top"}.getFloat(0.0)
-      let right = p{"right"}.getFloat(0.0)
-      let bottom = p{"bottom"}.getFloat(0.0)
-      let left = p{"left"}.getFloat(0.0)
-      styles.add(&"padding: {top:.2f}px {right:.2f}px {bottom:.2f}px {left:.2f}px")
+      let top = formatDimension(p{"top"})
+      let right = formatDimension(p{"right"})
+      let bottom = formatDimension(p{"bottom"})
+      let left = formatDimension(p{"left"})
+      styles.add(&"padding: {top} {right} {bottom} {left}")
 
   # Flexbox layout (map component type to flex-direction)
   if node.hasKey("children") and node["children"].len > 0:
@@ -82,7 +95,7 @@ proc generateInlineStyles(node: JsonNode): string =
   if node.hasKey("fontSize"):
     let fs = node["fontSize"]
     if fs.kind == JFloat or fs.kind == JInt:
-      styles.add(&"font-size: {fs.getFloat():.2f}px")
+      styles.add(&"font-size: {formatDimension(fs)}")
 
   if node.hasKey("fontWeight"):
     let fw = node["fontWeight"]
@@ -98,22 +111,22 @@ proc generateInlineStyles(node: JsonNode): string =
   if node.hasKey("marginTop"):
     let mt = node["marginTop"]
     if mt.kind == JFloat or mt.kind == JInt:
-      styles.add(&"margin-top: {mt.getFloat():.0f}px")
+      styles.add(&"margin-top: {formatDimension(mt)}")
 
   if node.hasKey("marginBottom"):
     let mb = node["marginBottom"]
     if mb.kind == JFloat or mb.kind == JInt:
-      styles.add(&"margin-bottom: {mb.getFloat():.0f}px")
+      styles.add(&"margin-bottom: {formatDimension(mb)}")
 
   if node.hasKey("marginLeft"):
     let ml = node["marginLeft"]
     if ml.kind == JFloat or ml.kind == JInt:
-      styles.add(&"margin-left: {ml.getFloat():.0f}px")
+      styles.add(&"margin-left: {formatDimension(ml)}")
 
   if node.hasKey("marginRight"):
     let mr = node["marginRight"]
     if mr.kind == JFloat or mr.kind == JInt:
-      styles.add(&"margin-right: {mr.getFloat():.0f}px")
+      styles.add(&"margin-right: {formatDimension(mr)}")
 
   # Borders
   if node.hasKey("border"):
@@ -134,7 +147,7 @@ proc generateInlineStyles(node: JsonNode): string =
   if node.hasKey("borderRadius"):
     let br = node["borderRadius"]
     if br.kind == JFloat or br.kind == JInt:
-      styles.add(&"border-radius: {br.getFloat():.0f}px")
+      styles.add(&"border-radius: {formatDimension(br)}")
 
   # Flexbox alignment
   if node.hasKey("alignItems"):
@@ -172,22 +185,22 @@ proc generateInlineStyles(node: JsonNode): string =
   if node.hasKey("paddingTop"):
     let pt = node["paddingTop"]
     if pt.kind == JFloat or pt.kind == JInt:
-      styles.add(&"padding-top: {pt.getFloat():.0f}px")
+      styles.add(&"padding-top: {formatDimension(pt)}")
 
   if node.hasKey("paddingBottom"):
     let pb = node["paddingBottom"]
     if pb.kind == JFloat or pb.kind == JInt:
-      styles.add(&"padding-bottom: {pb.getFloat():.0f}px")
+      styles.add(&"padding-bottom: {formatDimension(pb)}")
 
   if node.hasKey("paddingLeft"):
     let pl = node["paddingLeft"]
     if pl.kind == JFloat or pl.kind == JInt:
-      styles.add(&"padding-left: {pl.getFloat():.0f}px")
+      styles.add(&"padding-left: {formatDimension(pl)}")
 
   if node.hasKey("paddingRight"):
     let pr = node["paddingRight"]
     if pr.kind == JFloat or pr.kind == JInt:
-      styles.add(&"padding-right: {pr.getFloat():.0f}px")
+      styles.add(&"padding-right: {formatDimension(pr)}")
 
   return styles.join("; ")
 
@@ -292,17 +305,24 @@ proc generateVanillaHTMLElement(node: JsonNode, ctx: var ReactContext, indent: i
             # Last resort: use logic_id as function name
             result &= &" onclick=\"{logicId}()\""
 
-  # Add text data attribute (for button text)
-  if node.hasKey("text"):
+  # Handle component-specific attributes
+  if compType == "Image":
+    # For images, add src and alt attributes
+    if node.hasKey("src"):
+      result &= &" src=\"{node[\"src\"].getStr()}\""
+    if node.hasKey("alt"):
+      result &= &" alt=\"{node[\"alt\"].getStr()}\""
+  elif node.hasKey("text"):
+    # Add text data attribute (for button text and other components)
     let text = node["text"].getStr()
     result &= &" data-text=\"{text}\""
 
   result &= ">"
 
-  # Text content (for Text components and Buttons)
+  # Text content (for Text components, Buttons, and Links)
   if node.hasKey("text"):
     let text = node["text"].getStr()
-    if htmlTag in ["span", "button", "th", "td"]:
+    if htmlTag in ["span", "button", "th", "td", "a"]:
       result &= &"\n{indentStr}  {text}\n{indentStr}"
 
   # Children

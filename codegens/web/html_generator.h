@@ -1,3 +1,18 @@
+/**
+ * HTML/CSS/JS Transpiler (Codegen Frontend)
+ *
+ * This is a transpilation/codegen frontend that generates browser-renderable code.
+ *
+ * Architecture:
+ * - Rendering backends (SDL3, Terminal) use Kryon's renderer to draw UI directly
+ * - Transpilation frontends (HTML/web) generate code that browsers render
+ *
+ * This module:
+ * - Takes KIR (Kryon Intermediate Representation) as input
+ * - Outputs HTML/CSS/JavaScript code for browsers
+ * - Does NOT render anything itself - the browser does the rendering
+ */
+
 #ifndef HTML_GENERATOR_H
 #define HTML_GENERATOR_H
 

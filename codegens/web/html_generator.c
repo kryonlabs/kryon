@@ -1,3 +1,10 @@
+/**
+ * HTML/CSS/JS Transpiler Implementation
+ *
+ * This is a CODEGEN FRONTEND, not a rendering backend.
+ * See html_generator.h for architectural explanation.
+ */
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -629,6 +636,10 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             break;
 
         case IR_COMPONENT_IMAGE:
+            fprintf(stderr, "[HTML_GEN] IMAGE component id=%u, custom_data=%s, text_content=%s\n",
+                    component->id,
+                    component->custom_data ? component->custom_data : "NULL",
+                    component->text_content ? component->text_content : "NULL");
             if (component->custom_data) {  // src URL
                 html_generator_write_format(generator, " src=\"%s\"", component->custom_data);
             }
