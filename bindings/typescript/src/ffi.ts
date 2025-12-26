@@ -200,6 +200,10 @@ const commonSymbols = {
     args: [FFIType.ptr, FFIType.i32, FFIType.f32],
     returns: FFIType.void,
   },
+  ir_set_text_max_width: {
+    args: [FFIType.ptr, FFIType.i32, FFIType.f32],
+    returns: FFIType.void,
+  },
   ir_set_justify_content: {
     args: [FFIType.ptr, FFIType.i32],
     returns: FFIType.void,

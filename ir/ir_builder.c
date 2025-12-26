@@ -3545,3 +3545,21 @@ void ir_flowchart_finalize(IRComponent* flowchart) {
 
     state->layout_computed = false;
 }
+
+// Get component type (helper for Lua FFI)
+IRComponentType ir_get_component_type(IRComponent* component) {
+    if (!component) return IR_COMPONENT_CONTAINER;  // Default fallback
+    return component->type;
+}
+
+// Get child count (helper for Lua FFI)
+uint32_t ir_get_child_count(IRComponent* component) {
+    if (!component) return 0;
+    return component->child_count;
+}
+
+// Get child at index (helper for Lua FFI)
+IRComponent* ir_get_child_at(IRComponent* component, uint32_t index) {
+    if (!component || index >= component->child_count) return NULL;
+    return component->children[index];
+}

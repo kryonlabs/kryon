@@ -627,6 +627,13 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
             child_width = ir_get_component_intrinsic_width(child);
         }
 
+        // Apply max_width constraint before calculating total
+        if (child->layout && child->layout->max_width.type == IR_DIMENSION_PX && child->layout->max_width.value > 0) {
+            if (child_width > child->layout->max_width.value) {
+                child_width = child->layout->max_width.value;
+            }
+        }
+
         child_width += child->style->margin.left + child->style->margin.right;
         total_width += child_width;
 
@@ -715,6 +722,20 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
             child_height = available_height - child->style->margin.top - child->style->margin.bottom;
         }
 
+        // Apply max_width/max_height constraints
+        if (child->layout) {
+            if (child->layout->max_width.type == IR_DIMENSION_PX && child->layout->max_width.value > 0) {
+                if (child_width > child->layout->max_width.value) {
+                    child_width = child->layout->max_width.value;
+                }
+            }
+            if (child->layout->max_height.type == IR_DIMENSION_PX && child->layout->max_height.value > 0) {
+                if (child_height > child->layout->max_height.value) {
+                    child_height = child->layout->max_height.value;
+                }
+            }
+        }
+
         // Set child bounds
         child->rendered_bounds.x = current_x + child->style->margin.left;
         child->rendered_bounds.y = child_y;
@@ -746,6 +767,13 @@ static void ir_layout_compute_column(IRComponent* container, float available_wid
         float child_height = resolve_dimension(child->style->height, available_height);
         if (child_height == 0.0f) {
             child_height = ir_get_component_intrinsic_height(child);
+        }
+
+        // Apply max_height constraint before calculating total
+        if (child->layout && child->layout->max_height.type == IR_DIMENSION_PX && child->layout->max_height.value > 0) {
+            if (child_height > child->layout->max_height.value) {
+                child_height = child->layout->max_height.value;
+            }
         }
 
         child_height += child->style->margin.top + child->style->margin.bottom;
@@ -834,6 +862,20 @@ static void ir_layout_compute_column(IRComponent* container, float available_wid
             child_x += available_width - child_width;
         } else if (layout->flex.cross_axis == IR_ALIGNMENT_STRETCH) {
             child_width = available_width - child->style->margin.left - child->style->margin.right;
+        }
+
+        // Apply max_width/max_height constraints
+        if (child->layout) {
+            if (child->layout->max_width.type == IR_DIMENSION_PX && child->layout->max_width.value > 0) {
+                if (child_width > child->layout->max_width.value) {
+                    child_width = child->layout->max_width.value;
+                }
+            }
+            if (child->layout->max_height.type == IR_DIMENSION_PX && child->layout->max_height.value > 0) {
+                if (child_height > child->layout->max_height.value) {
+                    child_height = child->layout->max_height.value;
+                }
+            }
         }
 
         // Set child bounds
@@ -2789,6 +2831,26 @@ static void intrinsic_size_column(IRComponent* c, IRIntrinsicSize* out) {
     out->max_content_width = max_width + pad.left + pad.right;
     out->min_content_height = sum_height + pad.top + pad.bottom;
     out->max_content_height = sum_height + pad.top + pad.bottom;
+
+    // Apply max_width/max_height constraints to intrinsic size
+    if (c->layout) {
+        if (c->layout->max_width.type == IR_DIMENSION_PX && c->layout->max_width.value > 0) {
+            if (out->max_content_width > c->layout->max_width.value) {
+                out->max_content_width = c->layout->max_width.value;
+            }
+            if (out->min_content_width > c->layout->max_width.value) {
+                out->min_content_width = c->layout->max_width.value;
+            }
+        }
+        if (c->layout->max_height.type == IR_DIMENSION_PX && c->layout->max_height.value > 0) {
+            if (out->max_content_height > c->layout->max_height.value) {
+                out->max_content_height = c->layout->max_height.value;
+            }
+            if (out->min_content_height > c->layout->max_height.value) {
+                out->min_content_height = c->layout->max_height.value;
+            }
+        }
+    }
 }
 
 /**
@@ -2833,6 +2895,26 @@ static void intrinsic_size_row(IRComponent* c, IRIntrinsicSize* out) {
     out->max_content_width = sum_width + pad.left + pad.right;
     out->min_content_height = max_height + pad.top + pad.bottom;
     out->max_content_height = max_height + pad.top + pad.bottom;
+
+    // Apply max_width/max_height constraints to intrinsic size
+    if (c->layout) {
+        if (c->layout->max_width.type == IR_DIMENSION_PX && c->layout->max_width.value > 0) {
+            if (out->max_content_width > c->layout->max_width.value) {
+                out->max_content_width = c->layout->max_width.value;
+            }
+            if (out->min_content_width > c->layout->max_width.value) {
+                out->min_content_width = c->layout->max_width.value;
+            }
+        }
+        if (c->layout->max_height.type == IR_DIMENSION_PX && c->layout->max_height.value > 0) {
+            if (out->max_content_height > c->layout->max_height.value) {
+                out->max_content_height = c->layout->max_height.value;
+            }
+            if (out->min_content_height > c->layout->max_height.value) {
+                out->min_content_height = c->layout->max_height.value;
+            }
+        }
+    }
 }
 
 /**
@@ -2967,6 +3049,26 @@ static void intrinsic_size_container(IRComponent* c, IRIntrinsicSize* out) {
         if (c->style->height.type == IR_DIMENSION_PX) {
             out->min_content_height = c->style->height.value;
             out->max_content_height = c->style->height.value;
+        }
+    }
+
+    // Apply max_width/max_height constraints to intrinsic size
+    if (c->layout) {
+        if (c->layout->max_width.type == IR_DIMENSION_PX && c->layout->max_width.value > 0) {
+            if (out->max_content_width > c->layout->max_width.value) {
+                out->max_content_width = c->layout->max_width.value;
+            }
+            if (out->min_content_width > c->layout->max_width.value) {
+                out->min_content_width = c->layout->max_width.value;
+            }
+        }
+        if (c->layout->max_height.type == IR_DIMENSION_PX && c->layout->max_height.value > 0) {
+            if (out->max_content_height > c->layout->max_height.value) {
+                out->max_content_height = c->layout->max_height.value;
+            }
+            if (out->min_content_height > c->layout->max_height.value) {
+                out->min_content_height = c->layout->max_height.value;
+            }
         }
     }
 }
@@ -3566,8 +3668,45 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
         }
     }
 
-    // Apply min/max constraints (if we add them later)
-    // TODO: Add min_width, max_width, min_height, max_height support
+    // Apply min/max constraints
+    printf("[CONSTRAINT_DEBUG] Checking constraints: c->layout=%p\n", (void*)c->layout);
+    if (c->layout) {
+        printf("[CONSTRAINT_DEBUG] max_width.type=%d, max_width.value=%.2f\n",
+               c->layout->max_width.type, c->layout->max_width.value);
+        // Apply max_width constraint
+        if (c->layout->max_width.type == IR_DIMENSION_PX && c->layout->max_width.value > 0) {
+            float original_width = layout->width;
+            if (layout->width > c->layout->max_width.value) {
+                layout->width = c->layout->max_width.value;
+                printf("[CONSTRAINT] Clamped width: %.2f -> %.2f (maxWidth=%.2f)\n",
+                       original_width, layout->width, c->layout->max_width.value);
+            } else {
+                printf("[CONSTRAINT] Width %.2f already within maxWidth=%.2f\n",
+                       layout->width, c->layout->max_width.value);
+            }
+        }
+
+        // Apply min_width constraint
+        if (c->layout->min_width.type == IR_DIMENSION_PX && c->layout->min_width.value > 0) {
+            if (layout->width < c->layout->min_width.value) {
+                layout->width = c->layout->min_width.value;
+            }
+        }
+
+        // Apply max_height constraint
+        if (c->layout->max_height.type == IR_DIMENSION_PX && c->layout->max_height.value > 0) {
+            if (layout->height > c->layout->max_height.value) {
+                layout->height = c->layout->max_height.value;
+            }
+        }
+
+        // Apply min_height constraint
+        if (c->layout->min_height.type == IR_DIMENSION_PX && c->layout->min_height.value > 0) {
+            if (layout->height < c->layout->min_height.value) {
+                layout->height = c->layout->min_height.value;
+            }
+        }
+    }
 
     // Apply aspect ratio (if present)
     // TODO: Add aspect_ratio support

@@ -68,6 +68,7 @@ interface TextProps extends BaseProps {
   fontFamily?: string;
   bold?: boolean;
   italic?: boolean;
+  maxTextWidth?: number;  // Maximum width for text wrapping
 }
 
 interface ButtonProps extends BaseProps {

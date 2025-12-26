@@ -2163,6 +2163,12 @@ static void json_deserialize_style(cJSON* obj, IRStyle* style) {
         }
     }
 
+    // Text effects
+    if ((item = cJSON_GetObjectItem(obj, "maxTextWidth")) != NULL && cJSON_IsNumber(item)) {
+        style->text_effect.max_width.type = IR_DIMENSION_PX;
+        style->text_effect.max_width.value = (float)item->valuedouble;
+    }
+
     // Spacing
     if ((item = cJSON_GetObjectItem(obj, "padding")) != NULL) {
         style->padding = json_parse_spacing(item);

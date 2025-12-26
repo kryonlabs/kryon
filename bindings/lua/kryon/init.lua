@@ -9,6 +9,7 @@ local ffi = require("kryon.ffi")
 local runtime = require("kryon.runtime")
 local reactive = require("kryon.reactive")
 local dsl = require("kryon.dsl")
+local utils = require("kryon.utils")
 
 local Kryon = {}
 
@@ -91,6 +92,7 @@ Kryon.ffi = ffi
 Kryon.runtime = runtime
 Kryon.reactive = reactive
 Kryon.dsl = dsl
+Kryon.utils = utils
 
 -- Direct access to C functions
 Kryon.C = ffi.C

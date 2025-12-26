@@ -171,6 +171,44 @@ static void open_external_url(const char* url) {
 }
 
 // ============================================================================
+// TAB CLICK DETECTION (Frontend-Agnostic)
+// ============================================================================
+
+/**
+ * Check if clicked button is a tab in a TabGroup and handle tab switching.
+ * This is frontend-agnostic - works for both Lua and Nim tabs.
+ * Returns true if handled as tab, false otherwise.
+ */
+static bool try_handle_as_tab_click(DesktopIRRenderer* renderer, IRComponent* clicked) {
+    if (!clicked || !clicked->parent || !clicked->parent->custom_data) {
+        return false;
+    }
+
+    TabGroupState* tg_state = (TabGroupState*)clicked->parent->custom_data;
+
+    // Verify this looks like a valid TabGroupState (tab_bar matches parent)
+    if (!tg_state || tg_state->tab_bar != clicked->parent) {
+        return false;
+    }
+
+    // Find which tab was clicked
+    for (uint32_t i = 0; i < tg_state->tab_count; i++) {
+        if (tg_state->tabs[i] == clicked) {
+            // C handles tab selection (panel switching, visuals)
+            ir_tabgroup_handle_tab_click(tg_state, i);
+
+            // Trigger user's onClick callback if they provided one
+            // For Lua tabs, this will be called via lua_event_callback
+            // For Nim tabs, this is handled by existing executor/bridge code
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ============================================================================
 // INPUT STATE MANAGEMENT
 // ============================================================================
 // NOTE: input_states and input_state_count are defined in desktop_globals.c
@@ -587,54 +625,30 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
                                 // Check if this is a Lua event handler
                                 if (strncmp(ir_event->logic_id, "lua_event_", 10) == 0) {
-                                    // Extract handler ID from logic_id (e.g., "lua_event_42" -> 42)
+                                    // FIRST: Check if this button is a tab
+                                    bool handled_as_tab = try_handle_as_tab_click(renderer, clicked);
+
+                                    // THEN: Call user's onClick callback (if provided)
                                     uint32_t handler_id = 0;
                                     if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
-                                        // Call Lua callback with HANDLER ID, not component ID
                                         if (renderer->lua_event_callback) {
-                                            fprintf(stderr, "[LUA_EVENT] Calling Lua handler %u for component %u\n",
-                                                    handler_id, clicked->id);
+                                            fprintf(stderr, "[LUA_EVENT] Calling Lua handler %u for component %u%s\n",
+                                                    handler_id, clicked->id, handled_as_tab ? " (TAB)" : "");
                                             renderer->lua_event_callback(handler_id, IR_EVENT_CLICK);
-                                        } else {
+                                        } else if (!handled_as_tab) {
                                             printf("⚠️ Lua event detected but no callback registered\n");
                                         }
-                                    } else {
+                                    } else if (!handled_as_tab) {
                                         fprintf(stderr, "⚠️ Failed to parse handler ID from logic_id: %s\n",
                                                 ir_event->logic_id);
                                     }
                                 }
                                 // Check if this is a Nim button handler
                                 else if (strncmp(ir_event->logic_id, "nim_button_", 11) == 0) {
-                                // Check if this button is actually a tab in a TabGroup
-                                // by looking at parent's custom_data for TabGroupState
-                                bool handled_as_tab = false;
-                                if (clicked->parent && clicked->parent->custom_data) {
-                                    TabGroupState* tg_state = (TabGroupState*)clicked->parent->custom_data;
+                                    // Check if this button is a tab using shared helper
+                                    bool handled_as_tab = try_handle_as_tab_click(renderer, clicked);
 
-                                    // Verify this looks like a valid TabGroupState (tab_bar matches parent)
-                                    if (tg_state && tg_state->tab_bar == clicked->parent) {
-                                        // Find which tab was clicked
-                                        for (uint32_t i = 0; i < tg_state->tab_count; i++) {
-                                            if (tg_state->tabs[i] == clicked) {
-                                                // C handles tab selection (panel switching, visuals)
-                                                ir_tabgroup_handle_tab_click(tg_state, i);
-                                                // Also call handler for user's onClick
-                                                IRExecutorContext* executor = ir_executor_get_global();
-                                                if (executor) {
-                                                    ir_executor_handle_event(executor, clicked->id, "click");
-                                                } else if (nimButtonBridge) {
-                                                    nimButtonBridge(clicked->id);
-                                                }
-                                                handled_as_tab = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // If not a tab, use normal button bridge
-                                if (!handled_as_tab) {
-                                    // Try executor first (for .kir file execution)
+                                    // Call handler for user's onClick (for tabs AND regular buttons)
                                     IRExecutorContext* executor = ir_executor_get_global();
                                     if (executor) {
                                         // Set root for UI updates
@@ -646,7 +660,6 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                         nimButtonBridge(clicked->id);
                                     }
                                 }
-                            }
                             // Check if this is a Nim checkbox handler
                             else if (strncmp(ir_event->logic_id, "nim_checkbox_", 13) == 0) {
                                 // Toggle checkbox state BEFORE calling user handler

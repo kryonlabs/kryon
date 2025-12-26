@@ -269,11 +269,25 @@ ffi.cdef[[
   // Tab Groups (ir_builder.h)
   // ============================================================================
   TabGroupState* ir_tabgroup_create_state(IRComponent* group, IRComponent* tabBar, IRComponent* tabContent, int selectedIndex, bool reorderable);
+  void ir_tabgroup_register_bar(TabGroupState* state, IRComponent* tab_bar);
+  void ir_tabgroup_register_content(TabGroupState* state, IRComponent* tab_content);
   void ir_tabgroup_register_tab(TabGroupState* state, IRComponent* tab);
   void ir_tabgroup_register_panel(TabGroupState* state, IRComponent* panel);
   void ir_tabgroup_finalize(TabGroupState* state);
   void ir_tabgroup_select(TabGroupState* state, int index);
   int ir_tabgroup_get_selected(TabGroupState* state);
+
+  // ============================================================================
+  // Tab Visual State (Colors for active/inactive tabs)
+  // ============================================================================
+  typedef struct TabVisualState {
+    uint32_t background_color;        // RGBA packed: 0xRRGGBBAA
+    uint32_t active_background_color;
+    uint32_t text_color;
+    uint32_t active_text_color;
+  } TabVisualState;
+
+  void ir_tabgroup_set_tab_visual(TabGroupState* state, int index, TabVisualState visual);
 
   // ============================================================================
   // Debug Utilities (debug_backend.h)
@@ -292,6 +306,13 @@ ffi.cdef[[
   IRComponent* ir_row(void);
   IRComponent* ir_column(void);
   IRComponent* ir_center(void);
+
+  // ============================================================================
+  // Component Type and Tree Helpers
+  // ============================================================================
+  IRComponentType ir_get_component_type(IRComponent* component);
+  uint32_t ir_get_child_count(IRComponent* component);
+  IRComponent* ir_get_child_at(IRComponent* component, uint32_t index);
 
   // ============================================================================
   // Color Helpers (ir_builder.h)

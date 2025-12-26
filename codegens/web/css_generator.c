@@ -821,7 +821,7 @@ static void generate_layout_rules(CSSGenerator* generator, IRComponent* componen
             // Set display flex for containers with children or explicit flex settings
             if (component->child_count > 0 ||
                 flex->gap > 0 ||
-                flex->main_axis != IR_ALIGNMENT_START ||
+                flex->justify_content != IR_ALIGNMENT_START ||
                 flex->cross_axis != IR_ALIGNMENT_START) {
 
                 css_generator_write_string(generator, "  display: flex;\n");
@@ -853,7 +853,7 @@ static void generate_layout_rules(CSSGenerator* generator, IRComponent* componen
 
                 // Main axis alignment (align-self for single item)
                 css_generator_write_format(generator, "  align-self: %s;\n",
-                                          get_alignment_string(flex->main_axis));
+                                          get_alignment_string(flex->justify_content));
             }
 
             // Positioning
