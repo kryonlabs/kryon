@@ -8,6 +8,29 @@ local C = ffi.C
 
 local DSL = {}
 
+-- Module-level table to track tab visual states
+-- Keys are tostring(component), values are {backgroundColor, activeBackgroundColor, textColor, activeTextColor}
+-- This is needed because we create tabs before TabGroup finalization, so we need to preserve color info
+local tabVisualStates = {}
+
+-- ============================================================================
+-- TabGroup Context Stack (for automatic initialization)
+-- ============================================================================
+
+local tabGroupContextStack = {}
+
+local function pushTabGroupContext(context)
+  table.insert(tabGroupContextStack, context)
+end
+
+local function popTabGroupContext()
+  return table.remove(tabGroupContextStack)
+end
+
+local function getCurrentTabGroupContext()
+  return tabGroupContextStack[#tabGroupContextStack]
+end
+
 -- ============================================================================
 -- Utility Functions
 -- ============================================================================
@@ -194,6 +217,22 @@ local function parseTextAlign(align)
   return C.IR_TEXT_ALIGN_LEFT
 end
 
+--- Convert hex color string to packed RGBA uint32 (0xRRGGBBAA format)
+--- Matches Nim rgba() function logic for C core compatibility
+--- @param color string Hex color like "#FFFFFF" or "#FFFFFFFF"
+--- @return number Packed RGBA as uint32
+local function colorToRGBA(color)
+  local r, g, b, a = parseColor(color)
+  -- Pack as 0xRRGGBBAA: (R << 24) | (G << 16) | (B << 8) | A
+  -- Use LuaJIT bit library for bitwise operations
+  return bit.bor(
+    bit.lshift(r, 24),
+    bit.lshift(g, 16),
+    bit.lshift(b, 8),
+    a
+  )
+end
+
 -- ============================================================================
 -- Component Builder
 -- ============================================================================
@@ -303,8 +342,23 @@ local function applyProperties(component, props)
     elseif key == "alignContent" then
       C.ir_set_align_content(ensureLayout(), parseAlignment(value))
 
+    elseif key == "flexDirection" then
+      local direction = 0  -- Default: column (vertical)
+      local dirStr = tostring(value):lower()
+      if dirStr == "row" or dirStr == "horizontal" then
+        direction = 1
+      elseif dirStr == "column" or dirStr == "vertical" then
+        direction = 0
+      end
+      -- Set flex properties with direction (grow=0, shrink=0 by default)
+      C.ir_set_flex_properties(ensureLayout(), 0, 0, direction)
+
     -- ========== Text ==========
     elseif key == "text" or key == "content" then
+      C.ir_set_text_content(component, tostring(value))
+
+    elseif key == "title" then
+      -- Tab title is set as text content
       C.ir_set_text_content(component, tostring(value))
 
     elseif key == "fontSize" then
@@ -368,6 +422,26 @@ local function applyProperties(component, props)
     for i, child in ipairs(props.children) do
       if type(child) == "cdata" then  -- It's an IRComponent*
         C.ir_add_child(component, child)
+
+        -- Auto-register with TabGroup context if applicable
+        local ctx = getCurrentTabGroupContext()
+        if ctx then
+          local childType = C.ir_get_component_type(child)
+
+          if childType == C.IR_COMPONENT_TAB_BAR then
+            ctx.tabBar = child
+            print("📝 Registered TabBar with context")
+          elseif childType == C.IR_COMPONENT_TAB then
+            table.insert(ctx.tabs, child)
+            print(string.format("📝 Registered Tab #%d with context", #ctx.tabs))
+          elseif childType == C.IR_COMPONENT_TAB_CONTENT then
+            ctx.tabContent = child
+            print("📝 Registered TabContent with context")
+          elseif childType == C.IR_COMPONENT_TAB_PANEL then
+            table.insert(ctx.panels, child)
+            print(string.format("📝 Registered TabPanel #%d with context", #ctx.panels))
+          end
+        end
       end
     end
   end
@@ -381,9 +455,128 @@ local function buildComponent(componentType, props)
   -- Step 1: Create IR component (C call)
   local component = C.ir_create_component(componentType)
 
-  -- Step 2: Apply all properties (each becomes a C call)
+  -- Step 2: Handle TabGroup initialization
+  if componentType == C.IR_COMPONENT_TAB_GROUP then
+    -- Create context for this TabGroup
+    local context = {
+      group = component,
+      tabBar = nil,
+      tabContent = nil,
+      tabs = {},
+      panels = {},
+      selectedIndex = (props and props.selectedIndex) or 0,
+      reorderable = (props and props.reorderable) or false
+    }
+    pushTabGroupContext(context)
+    print("📝 Pushing TabGroup context")
+  end
+
+  -- Step 3: Apply all properties (adds children, which auto-register)
   if props then
     applyProperties(component, props)
+  end
+
+  -- Step 4: Finalize TabGroup after all children are added
+  if componentType == C.IR_COMPONENT_TAB_GROUP then
+    local context = popTabGroupContext()
+
+    if context.tabBar and context.tabContent then
+      -- Recursively find and register Tab components from TabBar's children
+      local function findChildrenOfType(parent, targetType)
+        local result = {}
+        if not parent or parent == nil then return result end
+
+        local childCount = C.ir_get_child_count(parent)
+        for i = 0, childCount - 1 do
+          local child = C.ir_get_child_at(parent, i)
+          if child and child ~= nil then
+            local childType = C.ir_get_component_type(child)
+            if childType == targetType then
+              table.insert(result, child)
+            end
+            -- Recursively search child's children too
+            local grandchildren = findChildrenOfType(child, targetType)
+            for _, gc in ipairs(grandchildren) do
+              table.insert(result, gc)
+            end
+          end
+        end
+        return result
+      end
+
+      -- Find all Button components under TabBar (tabs are buttons in the DSL)
+      local tabs = findChildrenOfType(context.tabBar, C.IR_COMPONENT_BUTTON)
+
+      -- Find all TabPanel components under TabContent
+      local panels = findChildrenOfType(context.tabContent, C.IR_COMPONENT_TAB_PANEL)
+
+      -- Create TabGroupState
+      local state = C.ir_tabgroup_create_state(
+        context.group,
+        context.tabBar,
+        context.tabContent,
+        context.selectedIndex,
+        context.reorderable
+      )
+
+      -- Register TabBar and TabContent with state (critical for rendering!)
+      -- This sets tabBar->custom_data = state which the renderer needs
+      C.ir_tabgroup_register_bar(state, context.tabBar)
+      C.ir_tabgroup_register_content(state, context.tabContent)
+
+      -- Register all tabs AND their visual states
+      print(string.format("📊 Found %d tabs to register", #tabs))
+
+      for idx, tab in ipairs(tabs) do
+        local tabType = tonumber(C.ir_get_component_type(tab))
+        print(string.format("  Tab %d: type=%d", idx, tabType))
+
+        -- Register tab with C core
+        C.ir_tabgroup_register_tab(state, tab)
+
+        -- Retrieve visual state from module table
+        local key = tostring(tab)
+        local visualState = tabVisualStates[key]
+
+        if visualState then
+          -- Convert hex colors to packed RGBA format
+          local rawffi = require("ffi")
+          local visual = rawffi.new("TabVisualState", {
+            background_color = colorToRGBA(visualState.backgroundColor),
+            active_background_color = colorToRGBA(visualState.activeBackgroundColor),
+            text_color = colorToRGBA(visualState.textColor),
+            active_text_color = colorToRGBA(visualState.activeTextColor)
+          })
+
+          -- Register visual state with C core (0-indexed!)
+          C.ir_tabgroup_set_tab_visual(state, idx - 1, visual)
+          print(string.format("  ✓ Registered visual state for tab %d (text: %s -> %s)",
+                              idx, visualState.textColor, visualState.activeTextColor))
+        else
+          print(string.format("  ⚠️ No visual state found for tab %d", idx))
+        end
+      end
+
+      -- Clean up visual states from module table after registration
+      -- This prevents memory leaks if tabs are destroyed and recreated
+      for idx, tab in ipairs(tabs) do
+        local key = tostring(tab)
+        tabVisualStates[key] = nil
+      end
+
+      -- Register all panels
+      for _, panel in ipairs(panels) do
+        C.ir_tabgroup_register_panel(state, panel)
+      end
+
+      -- Finalize (applies visuals, shows tabs)
+      C.ir_tabgroup_finalize(state)
+
+      print(string.format("✅ TabGroup initialized: %d tabs, %d panels, selected=%d",
+                          #tabs, #panels, context.selectedIndex))
+    else
+      print("⚠️ TabGroup missing TabBar or TabContent!")
+    end
   end
 
   return component
@@ -446,11 +639,79 @@ end
 -- ============================================================================
 
 function DSL.TabBar(props)
-  return buildComponent(C.IR_COMPONENT_TAB_BAR, props)
+  local tabBarProps = props or {}
+
+  -- TabBar should be horizontal (row) by default, matching JSON parser behavior
+  -- (ir_json_v2.c:2646 sets flexDirection=1 for TabBar)
+  if not tabBarProps.flexDirection then
+    tabBarProps.flexDirection = "row"
+  end
+
+  -- TabBar should fill width of parent TabGroup
+  if not tabBarProps.width then
+    tabBarProps.width = "100%"
+  end
+
+  return buildComponent(C.IR_COMPONENT_TAB_BAR, tabBarProps)
 end
 
 function DSL.Tab(props)
-  return buildComponent(C.IR_COMPONENT_TAB, props)
+  -- Tabs in the Nim DSL are Button components with specific styling
+  -- This matches the Nim DSL implementation (components.nim:1745-1912)
+  local tabProps = props or {}
+
+  -- Extract tab-specific props
+  local title = tabProps.title or "Tab"
+  local backgroundColor = tabProps.backgroundColor or "#292C30"
+  local activeBackgroundColor = tabProps.activeBackgroundColor or "#3C4047"
+  local textColor = tabProps.textColor or "#C7C9CC"
+  local activeTextColor = tabProps.activeTextColor or "#FFFFFF"
+
+  -- Set defaults matching Nim DSL tab layout (from components.nim:1816-1824)
+  if not tabProps.height then tabProps.height = "32px" end
+  if not tabProps.minHeight then tabProps.minHeight = "28px" end
+  if not tabProps.minWidth then tabProps.minWidth = "16px" end
+  if not tabProps.maxWidth then tabProps.maxWidth = "180px" end
+  if not tabProps.alignItems then tabProps.alignItems = "center" end
+  if not tabProps.justifyContent then tabProps.justifyContent = "center" end
+  if not tabProps.padding then tabProps.padding = "6px 10px" end
+  if not tabProps.margin then tabProps.margin = "2px 1px 0px 1px" end
+  if not tabProps.borderColor then tabProps.borderColor = "#4C5057" end
+  if not tabProps.borderWidth then tabProps.borderWidth = 1 end
+
+  -- Set text from title
+  tabProps.text = title
+
+  -- Use backgroundColor for the button (active state colors handled by TabGroup)
+  if not tabProps.backgroundColor then
+    tabProps.backgroundColor = backgroundColor
+  end
+  if not tabProps.color then
+    tabProps.color = textColor
+  end
+
+  -- CRITICAL: Always add onClick to ensure IR_EVENT_CLICK is created
+  -- Tab switching requires click events even if user doesn't provide onClick
+  -- The desktop backend will detect this is a tab and call ir_tabgroup_handle_tab_click()
+  if not tabProps.onClick then
+    tabProps.onClick = function() end  -- Dummy handler to trigger event creation
+  end
+
+  -- Create a Button component instead of IR_COMPONENT_TAB
+  -- The Nim DSL does this too (components.nim:1848)
+  local button = buildComponent(C.IR_COMPONENT_BUTTON, tabProps)
+
+  -- Store visual state in module-level table for later registration
+  -- Use tostring() to convert cdata pointer to stable string key
+  local key = tostring(button)
+  tabVisualStates[key] = {
+    backgroundColor = backgroundColor,
+    activeBackgroundColor = activeBackgroundColor,
+    textColor = textColor,
+    activeTextColor = activeTextColor
+  }
+
+  return button
 end
 
 function DSL.TabContent(props)

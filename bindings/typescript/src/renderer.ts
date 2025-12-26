@@ -309,6 +309,34 @@ export function renderNode(node: IRNode | string, parentPtr?: Pointer): Pointer 
     hasStyle = true;
   }
 
+  // Min/Max Width/Height
+  if (node.props.minWidth !== undefined) {
+    const dim = parseSize(node.props.minWidth);
+    ffi.ir_set_min_width(stylePtr, dim.type, dim.value);
+    hasStyle = true;
+  }
+  if (node.props.maxWidth !== undefined) {
+    const dim = parseSize(node.props.maxWidth);
+    ffi.ir_set_max_width(stylePtr, dim.type, dim.value);
+    hasStyle = true;
+  }
+  if (node.props.minHeight !== undefined) {
+    const dim = parseSize(node.props.minHeight);
+    ffi.ir_set_min_height(stylePtr, dim.type, dim.value);
+    hasStyle = true;
+  }
+  if (node.props.maxHeight !== undefined) {
+    const dim = parseSize(node.props.maxHeight);
+    ffi.ir_set_max_height(stylePtr, dim.type, dim.value);
+    hasStyle = true;
+  }
+
+  // Text-specific: maxTextWidth for wrapping
+  if (node.type === 'text' && node.props.maxTextWidth !== undefined) {
+    ffi.ir_set_text_max_width(stylePtr, DimensionType.Px, node.props.maxTextWidth);
+    hasStyle = true;
+  }
+
   // Background color
   if (node.props.backgroundColor) {
     const color = parseColor(node.props.backgroundColor);

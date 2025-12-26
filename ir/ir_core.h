@@ -1053,6 +1053,11 @@ typedef struct IRContext {
 const char* ir_component_type_to_string(IRComponentType type);
 const char* ir_event_type_to_string(IREventType type);
 const char* ir_logic_type_to_string(LogicSourceType type);
+IRComponentType ir_get_component_type(IRComponent* component);
+
+// Component Tree Accessors (for Lua FFI)
+uint32_t ir_get_child_count(IRComponent* component);
+IRComponent* ir_get_child_at(IRComponent* component, uint32_t index);
 
 // IR Layout API (defined in ir_layout.c)
 void ir_layout_compute(IRComponent* root, float available_width, float available_height);
