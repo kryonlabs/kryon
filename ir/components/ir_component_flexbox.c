@@ -5,6 +5,26 @@
 #include <math.h>
 
 /**
+ * Recursively update positions of all descendants when parent is moved by alignment.
+ * This is necessary because children store absolute positions, so when we move a parent,
+ * we must also move all its descendants by the same offset.
+ */
+static void update_descendants_position(IRComponent* c, float dx, float dy) {
+    if (!c || !c->layout_state) return;
+
+    // Update this component's position
+    c->layout_state->computed.x += dx;
+    c->layout_state->computed.y += dy;
+
+    // Recursively update all children
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        if (c->children[i]) {
+            update_descendants_position(c->children[i], dx, dy);
+        }
+    }
+}
+
+/**
  * Unified Axis-Parameterized Flexbox Layout
  *
  * This single function handles Row, Column, and Container layout by abstracting
@@ -137,10 +157,16 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     }
 
     // Determine own dimensions
-    // Main axis: Fill available space if no explicit dimension (for alignment)
-    // Cross axis: Shrink to content if no explicit dimension
+    // Main axis: Fill available space ONLY if:
+    //   1. Has explicit dimension, OR
+    //   2. Has justifyContent alignment that needs space (not START)
+    // Otherwise: Shrink-wrap to content
+    // Cross axis: Always shrink to content if no explicit dimension
     // Note: Both PX and PERCENT are considered "explicit" dimensions
     float own_main, own_cross;
+
+    // Check if container has main-axis alignment that requires filling available space
+    bool has_main_alignment = c->layout && c->layout->flex.justify_content != IR_ALIGNMENT_START;
 
     if (axis == LAYOUT_AXIS_HORIZONTAL) {
         bool has_explicit_width = c->style && (c->style->width.type == IR_DIMENSION_PX ||
@@ -150,7 +176,7 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
 
         own_main = has_explicit_width
                    ? container_width - padding.left - padding.right
-                   : available_main;
+                   : (has_main_alignment ? available_main : total_main_size);
         own_cross = has_explicit_height
                     ? container_height - padding.top - padding.bottom
                     : max_cross_size;
@@ -162,7 +188,7 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
 
         own_main = has_explicit_height
                    ? container_height - padding.top - padding.bottom
-                   : available_main;
+                   : (has_main_alignment ? available_main : total_main_size);
         own_cross = has_explicit_width
                     ? container_width - padding.left - padding.right
                     : max_cross_size;
@@ -229,10 +255,12 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                     (void*)c, i, (void*)child, old_pos, cumulative_offset);
         }
 
+        // Move child AND all its descendants by the alignment offset
+        // This is necessary because descendants have absolute positions
         if (axis == LAYOUT_AXIS_HORIZONTAL) {
-            child->layout_state->computed.x += cumulative_offset;
+            update_descendants_position(child, cumulative_offset, 0.0f);
         } else {
-            child->layout_state->computed.y += cumulative_offset;
+            update_descendants_position(child, 0.0f, cumulative_offset);
         }
 
         if (getenv("KRYON_DEBUG_FLEXBOX")) {
@@ -250,6 +278,10 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
 
     // Apply cross-axis alignment to children
     if (c->layout && c->layout->flex.cross_axis != IR_ALIGNMENT_START) {
+        if (getenv("KRYON_DEBUG_FLEXBOX")) {
+            fprintf(stderr, "[Flexbox] Cross-axis alignment: mode=%d, own_cross=%.1f\n",
+                    c->layout->flex.cross_axis, own_cross);
+        }
         for (uint32_t i = 0; i < c->child_count; i++) {
             IRComponent* child = c->children[i];
             if (!child || !child->layout_state) continue;
@@ -262,6 +294,10 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
             switch (c->layout->flex.cross_axis) {
                 case IR_ALIGNMENT_CENTER:
                     cross_offset = (own_cross - child_cross) / 2.0f;
+                    if (getenv("KRYON_DEBUG_FLEXBOX")) {
+                        fprintf(stderr, "[Flexbox] Cross-axis CENTER: child_cross=%.1f, offset=%.1f\n",
+                                child_cross, cross_offset);
+                    }
                     break;
                 case IR_ALIGNMENT_END:
                     cross_offset = own_cross - child_cross;
@@ -279,10 +315,22 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                     break;
             }
 
+            // Move child AND all its descendants by the cross-axis offset
+            // Calculate how much we need to move from current position
             if (axis == LAYOUT_AXIS_HORIZONTAL) {
-                child->layout_state->computed.y = content_y + cross_offset;
+                float current_y = child->layout_state->computed.y;
+                float target_y = content_y + cross_offset;
+                float dy = target_y - current_y;
+                if (dy != 0.0f) {
+                    update_descendants_position(child, 0.0f, dy);
+                }
             } else {
-                child->layout_state->computed.x = content_x + cross_offset;
+                float current_x = child->layout_state->computed.x;
+                float target_x = content_x + cross_offset;
+                float dx = target_x - current_x;
+                if (dx != 0.0f) {
+                    update_descendants_position(child, dx, 0.0f);
+                }
             }
         }
     }

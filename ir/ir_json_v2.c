@@ -2948,6 +2948,8 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
             cJSON* langItem = cJSON_GetObjectItem(json, "language");
             if (langItem && cJSON_IsString(langItem)) {
                 data->language = strdup(langItem->valuestring);
+                // Also set component->tag to language for HTML generator
+                component->tag = strdup(langItem->valuestring);
             }
 
             cJSON* codeItem = cJSON_GetObjectItem(json, "code");
