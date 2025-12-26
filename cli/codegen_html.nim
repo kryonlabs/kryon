@@ -5,6 +5,24 @@
 import json, strformat, strutils
 import codegen_react_common  # Reuse generateHandlerBody, generateReactExpression
 
+proc toKebabCase(s: string): string =
+  ## Convert PascalCase to kebab-case
+  ## "CodeBlock" → "code-block"
+  result = ""
+  for i, c in s:
+    if c.isUpperAscii() and i > 0:
+      result.add('-')
+    result.add(c.toLowerAscii())
+
+proc toScreamingSnakeCase(s: string): string =
+  ## Convert PascalCase to SCREAMING_SNAKE_CASE
+  ## "CodeBlock" → "CODE_BLOCK"
+  result = ""
+  for i, c in s:
+    if c.isUpperAscii() and i > 0:
+      result.add('_')
+    result.add(c.toUpperAscii())
+
 proc formatDimension(val: JsonNode): string =
   ## Format a dimension value to px without unnecessary decimals
   if val.kind == JInt:
@@ -263,10 +281,10 @@ proc generateVanillaHTMLElement(node: JsonNode, ctx: var ReactContext, indent: i
     result &= &" id=\"kryon-{nodeId}\""
 
   # Add class attribute
-  result &= &" class=\"kryon-{compType.toLowerAscii()}\""
+  result &= &" class=\"kryon-{compType.toKebabCase()}\""
 
   # Add data-ir-type for debugging
-  result &= &" data-ir-type=\"{compType.toUpperAscii()}\""
+  result &= &" data-ir-type=\"{compType.toScreamingSnakeCase()}\""
 
   # Add href attribute for links
   if htmlTag == "a" and node.hasKey("href"):
