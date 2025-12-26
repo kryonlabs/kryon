@@ -2323,6 +2323,10 @@ IRComponentType ir_string_to_component_type(const char* str) {
     if (strcmp(str, "TAB") == 0) return IR_COMPONENT_TAB;
     if (strcmp(str, "TAB_CONTENT") == 0) return IR_COMPONENT_TAB_CONTENT;
     if (strcmp(str, "TAB_PANEL") == 0) return IR_COMPONENT_TAB_PANEL;
+    if (strcmp(str, "TABGROUP") == 0) return IR_COMPONENT_TAB_GROUP;
+    if (strcmp(str, "TABBAR") == 0) return IR_COMPONENT_TAB_BAR;
+    if (strcmp(str, "TABCONTENT") == 0) return IR_COMPONENT_TAB_CONTENT;
+    if (strcmp(str, "TABPANEL") == 0) return IR_COMPONENT_TAB_PANEL;
     // Table components
     if (strcmp(str, "Table") == 0) return IR_COMPONENT_TABLE;
     if (strcmp(str, "TableHead") == 0) return IR_COMPONENT_TABLE_HEAD;
@@ -2331,12 +2335,32 @@ IRComponentType ir_string_to_component_type(const char* str) {
     if (strcmp(str, "TableRow") == 0 || strcmp(str, "Tr") == 0) return IR_COMPONENT_TABLE_ROW;
     if (strcmp(str, "TableCell") == 0 || strcmp(str, "Td") == 0) return IR_COMPONENT_TABLE_CELL;
     if (strcmp(str, "TableHeaderCell") == 0 || strcmp(str, "Th") == 0) return IR_COMPONENT_TABLE_HEADER_CELL;
+    if (strcmp(str, "TABLE_HEAD") == 0) return IR_COMPONENT_TABLE_HEAD;
+    if (strcmp(str, "TABLE_BODY") == 0) return IR_COMPONENT_TABLE_BODY;
+    if (strcmp(str, "TABLE_FOOT") == 0) return IR_COMPONENT_TABLE_FOOT;
+    if (strcmp(str, "TABLE_ROW") == 0) return IR_COMPONENT_TABLE_ROW;
+    if (strcmp(str, "TABLE_CELL") == 0) return IR_COMPONENT_TABLE_CELL;
+    if (strcmp(str, "TABLE_HEADER_CELL") == 0) return IR_COMPONENT_TABLE_HEADER_CELL;
+    if (strcmp(str, "TABLEHEAD") == 0) return IR_COMPONENT_TABLE_HEAD;
+    if (strcmp(str, "TABLEBODY") == 0) return IR_COMPONENT_TABLE_BODY;
+    if (strcmp(str, "TABLEFOOT") == 0) return IR_COMPONENT_TABLE_FOOT;
+    if (strcmp(str, "TABLEROW") == 0) return IR_COMPONENT_TABLE_ROW;
+    if (strcmp(str, "TABLECELL") == 0) return IR_COMPONENT_TABLE_CELL;
+    if (strcmp(str, "TABLEHEADERCELL") == 0) return IR_COMPONENT_TABLE_HEADER_CELL;
     // Flowchart components
     if (strcmp(str, "Flowchart") == 0) return IR_COMPONENT_FLOWCHART;
     if (strcmp(str, "FlowchartNode") == 0) return IR_COMPONENT_FLOWCHART_NODE;
     if (strcmp(str, "FlowchartEdge") == 0) return IR_COMPONENT_FLOWCHART_EDGE;
     if (strcmp(str, "FlowchartSubgraph") == 0) return IR_COMPONENT_FLOWCHART_SUBGRAPH;
     if (strcmp(str, "FlowchartLabel") == 0) return IR_COMPONENT_FLOWCHART_LABEL;
+    if (strcmp(str, "FLOWCHART_NODE") == 0) return IR_COMPONENT_FLOWCHART_NODE;
+    if (strcmp(str, "FLOWCHART_EDGE") == 0) return IR_COMPONENT_FLOWCHART_EDGE;
+    if (strcmp(str, "FLOWCHART_SUBGRAPH") == 0) return IR_COMPONENT_FLOWCHART_SUBGRAPH;
+    if (strcmp(str, "FLOWCHART_LABEL") == 0) return IR_COMPONENT_FLOWCHART_LABEL;
+    if (strcmp(str, "FLOWCHARTNODE") == 0) return IR_COMPONENT_FLOWCHART_NODE;
+    if (strcmp(str, "FLOWCHARTEDGE") == 0) return IR_COMPONENT_FLOWCHART_EDGE;
+    if (strcmp(str, "FLOWCHARTSUBGRAPH") == 0) return IR_COMPONENT_FLOWCHART_SUBGRAPH;
+    if (strcmp(str, "FLOWCHARTLABEL") == 0) return IR_COMPONENT_FLOWCHART_LABEL;
     // Edge type strings (used by transpiler as component types)
     if (strcmp(str, "arrow") == 0) return IR_COMPONENT_FLOWCHART_EDGE;
     if (strcmp(str, "dotted") == 0) return IR_COMPONENT_FLOWCHART_EDGE;
@@ -2353,6 +2377,13 @@ IRComponentType ir_string_to_component_type(const char* str) {
     if (strcmp(str, "ListItem") == 0) return IR_COMPONENT_LIST_ITEM;
     if (strcmp(str, "Link") == 0) return IR_COMPONENT_LINK;
     if (strcmp(str, "Custom") == 0) return IR_COMPONENT_CUSTOM;
+    // Uppercase markdown components (from HTML transpiler)
+    if (strcmp(str, "CODE_BLOCK") == 0) return IR_COMPONENT_CODE_BLOCK;
+    if (strcmp(str, "CODEBLOCK") == 0) return IR_COMPONENT_CODE_BLOCK;
+    if (strcmp(str, "HORIZONTAL_RULE") == 0) return IR_COMPONENT_HORIZONTAL_RULE;
+    if (strcmp(str, "HORIZONTALRULE") == 0) return IR_COMPONENT_HORIZONTAL_RULE;
+    if (strcmp(str, "LIST_ITEM") == 0) return IR_COMPONENT_LIST_ITEM;
+    if (strcmp(str, "LISTITEM") == 0) return IR_COMPONENT_LIST_ITEM;
     return IR_COMPONENT_CONTAINER;
 }
 
