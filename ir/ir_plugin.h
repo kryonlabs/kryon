@@ -94,6 +94,18 @@ typedef struct {
 } IRPluginInfo;
 
 // ============================================================================
+// Global Plugin System State
+// ============================================================================
+
+// Forward declaration of internal plugin system structure
+typedef struct PluginSystem PluginSystem;
+
+// Global plugin system instance - shared across all dynamically loaded libraries
+// This ensures that plugin registrations made in one library (e.g., canvas plugin)
+// are visible to all other libraries (e.g., desktop backend)
+extern PluginSystem g_plugin_system;
+
+// ============================================================================
 // Plugin Registration
 // ============================================================================
 

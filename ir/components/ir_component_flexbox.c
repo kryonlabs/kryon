@@ -24,9 +24,9 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     }
 
     if (getenv("KRYON_DEBUG_FLEXBOX")) {
-        fprintf(stderr, "[Flexbox] Layout %s (type=%d, children=%d)\n",
+        fprintf(stderr, "[Flexbox] Layout %s (type=%d, children=%d, ptr=%p)\n",
                 axis == LAYOUT_AXIS_HORIZONTAL ? "ROW" : "COLUMN",
-                c->type, c->child_count);
+                c->type, c->child_count, (void*)c);
     }
 
     // Get padding and gap
@@ -45,9 +45,14 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     if (c->style) {
         if (c->style->width.type == IR_DIMENSION_PX) {
             container_width = c->style->width.value;
+        } else if (c->style->width.type == IR_DIMENSION_PERCENT) {
+            container_width = constraints.max_width * (c->style->width.value / 100.0f);
         }
+
         if (c->style->height.type == IR_DIMENSION_PX) {
             container_height = c->style->height.value;
+        } else if (c->style->height.type == IR_DIMENSION_PERCENT) {
+            container_height = constraints.max_height * (c->style->height.value / 100.0f);
         }
     }
 
@@ -60,9 +65,18 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                            ? container_height - padding.top - padding.bottom
                            : container_width - padding.left - padding.right;
 
-    // Compute content area position (parent position + padding)
-    float content_x = parent_x + padding.left;
-    float content_y = parent_y + padding.top;
+    // Determine container's base position (check for absolute positioning first)
+    float container_x = parent_x;
+    float container_y = parent_y;
+
+    if (c->style && c->style->position_mode == IR_POSITION_ABSOLUTE) {
+        container_x = c->style->absolute_x;
+        container_y = c->style->absolute_y;
+    }
+
+    // Compute content area position (container position + padding)
+    float content_x = container_x + padding.left;
+    float content_y = container_y + padding.top;
 
     // Track layout along main axis
     float main_position = 0;
@@ -123,23 +137,115 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     }
 
     // Determine own dimensions
-    // Use explicit dimensions if set (already calculated), otherwise use content size
+    // Main axis: Fill available space if no explicit dimension (for alignment)
+    // Cross axis: Shrink to content if no explicit dimension
+    // Note: Both PX and PERCENT are considered "explicit" dimensions
     float own_main, own_cross;
 
     if (axis == LAYOUT_AXIS_HORIZONTAL) {
-        own_main = (c->style && c->style->width.type == IR_DIMENSION_PX)
+        bool has_explicit_width = c->style && (c->style->width.type == IR_DIMENSION_PX ||
+                                                c->style->width.type == IR_DIMENSION_PERCENT);
+        bool has_explicit_height = c->style && (c->style->height.type == IR_DIMENSION_PX ||
+                                                 c->style->height.type == IR_DIMENSION_PERCENT);
+
+        own_main = has_explicit_width
                    ? container_width - padding.left - padding.right
-                   : total_main_size;
-        own_cross = (c->style && c->style->height.type == IR_DIMENSION_PX)
+                   : available_main;
+        own_cross = has_explicit_height
                     ? container_height - padding.top - padding.bottom
                     : max_cross_size;
     } else {
-        own_main = (c->style && c->style->height.type == IR_DIMENSION_PX)
+        bool has_explicit_width = c->style && (c->style->width.type == IR_DIMENSION_PX ||
+                                                c->style->width.type == IR_DIMENSION_PERCENT);
+        bool has_explicit_height = c->style && (c->style->height.type == IR_DIMENSION_PX ||
+                                                 c->style->height.type == IR_DIMENSION_PERCENT);
+
+        own_main = has_explicit_height
                    ? container_height - padding.top - padding.bottom
-                   : total_main_size;
-        own_cross = (c->style && c->style->width.type == IR_DIMENSION_PX)
+                   : available_main;
+        own_cross = has_explicit_width
                     ? container_width - padding.left - padding.right
                     : max_cross_size;
+    }
+
+    // Apply main-axis alignment (justify_content)
+    float remaining_main = own_main - total_main_size;
+    float main_offset = 0.0f;
+    float extra_gap = 0.0f;
+
+    if (remaining_main > 0 && c->layout) {
+        if (getenv("KRYON_DEBUG_FLEXBOX")) {
+            fprintf(stderr, "[Flexbox] Has layout, justify_content=%d\n", c->layout->flex.justify_content);
+        }
+
+        switch (c->layout->flex.justify_content) {
+            case IR_ALIGNMENT_START:
+                // No adjustment (default)
+                break;
+            case IR_ALIGNMENT_CENTER:
+                main_offset = remaining_main / 2.0f;
+                break;
+            case IR_ALIGNMENT_END:
+                main_offset = remaining_main;
+                break;
+            case IR_ALIGNMENT_SPACE_BETWEEN:
+                if (c->child_count > 1) {
+                    extra_gap = remaining_main / (c->child_count - 1);
+                }
+                break;
+            case IR_ALIGNMENT_SPACE_AROUND:
+                if (c->child_count > 0) {
+                    extra_gap = remaining_main / c->child_count;
+                    main_offset = extra_gap / 2.0f;
+                }
+                break;
+            case IR_ALIGNMENT_SPACE_EVENLY:
+                if (c->child_count > 0) {
+                    extra_gap = remaining_main / (c->child_count + 1);
+                    main_offset = extra_gap;
+                }
+                break;
+            default:
+                break;
+        }
+
+        if (getenv("KRYON_DEBUG_FLEXBOX")) {
+            fprintf(stderr, "[Flexbox] Main-axis alignment: remaining=%.1f, offset=%.1f, extra_gap=%.1f\n",
+                    remaining_main, main_offset, extra_gap);
+        }
+    }
+
+    // Adjust child positions along main axis
+    float cumulative_offset = main_offset;
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (!child || !child->layout_state) continue;
+
+        if (getenv("KRYON_DEBUG_FLEXBOX")) {
+            float old_pos = (axis == LAYOUT_AXIS_HORIZONTAL)
+                ? child->layout_state->computed.x
+                : child->layout_state->computed.y;
+            fprintf(stderr, "[Flexbox] Parent=%p Child %d (ptr=%p): before_offset=%.1f, applying_offset=%.1f\n",
+                    (void*)c, i, (void*)child, old_pos, cumulative_offset);
+        }
+
+        if (axis == LAYOUT_AXIS_HORIZONTAL) {
+            child->layout_state->computed.x += cumulative_offset;
+        } else {
+            child->layout_state->computed.y += cumulative_offset;
+        }
+
+        if (getenv("KRYON_DEBUG_FLEXBOX")) {
+            float new_pos = (axis == LAYOUT_AXIS_HORIZONTAL)
+                ? child->layout_state->computed.x
+                : child->layout_state->computed.y;
+            fprintf(stderr, "[Flexbox] Parent=%p Child %d (ptr=%p): after_offset=%.1f\n",
+                    (void*)c, i, (void*)child, new_pos);
+        }
+
+        if (i < c->child_count - 1) {
+            cumulative_offset += extra_gap;
+        }
     }
 
     // Apply cross-axis alignment to children
@@ -159,6 +265,15 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                     break;
                 case IR_ALIGNMENT_END:
                     cross_offset = own_cross - child_cross;
+                    break;
+                case IR_ALIGNMENT_STRETCH:
+                    // Stretch child to fill cross dimension
+                    if (axis == LAYOUT_AXIS_HORIZONTAL) {
+                        child->layout_state->computed.height = own_cross;
+                    } else {
+                        child->layout_state->computed.width = own_cross;
+                    }
+                    // Keep position at content edge (no offset)
                     break;
                 default:
                     break;
@@ -181,8 +296,9 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         c->layout_state->computed.height = own_main + padding.top + padding.bottom;
     }
 
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
+    // Set final position (already determined at the start)
+    c->layout_state->computed.x = container_x;
+    c->layout_state->computed.y = container_y;
 
     // Mark layout as valid
     c->layout_state->layout_valid = true;
@@ -241,9 +357,18 @@ void layout_center_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     float available_width = constraints.max_width - padding.left - padding.right;
     float available_height = constraints.max_height - padding.top - padding.bottom;
 
-    // Content area position (parent position + padding)
-    float content_x = parent_x + padding.left;
-    float content_y = parent_y + padding.top;
+    // Determine container's base position (check for absolute positioning first)
+    float container_x = parent_x;
+    float container_y = parent_y;
+
+    if (c->style && c->style->position_mode == IR_POSITION_ABSOLUTE) {
+        container_x = c->style->absolute_x;
+        container_y = c->style->absolute_y;
+    }
+
+    // Content area position (container position + padding)
+    float content_x = container_x + padding.left;
+    float content_y = container_y + padding.top;
 
     // Layout the child if it exists
     float child_width = 0;
@@ -300,8 +425,10 @@ void layout_center_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     // Set final computed dimensions (add padding back)
     c->layout_state->computed.width = own_width + padding.left + padding.right;
     c->layout_state->computed.height = own_height + padding.top + padding.bottom;
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
+
+    // Set final position (already determined at the start)
+    c->layout_state->computed.x = container_x;
+    c->layout_state->computed.y = container_y;
 
     // Mark layout as valid
     c->layout_state->layout_valid = true;

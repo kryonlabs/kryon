@@ -34,7 +34,8 @@ typedef struct {
 // Global State
 // ============================================================================
 
-typedef struct {
+// Named struct to match forward declaration in header
+typedef struct PluginSystem {
     // Handler table (256 entries, only 100-255 used for plugins)
     IRPluginHandler handlers[256];
     uint32_t registered_count;
@@ -70,7 +71,9 @@ typedef struct {
     uint32_t current_requirement_count;
 } PluginSystem;
 
-static PluginSystem g_plugin_system = {0};
+// Global plugin system instance - shared across all dynamically loaded libraries
+// Removed 'static' keyword to make symbol globally visible
+PluginSystem g_plugin_system = {0};
 
 // ============================================================================
 // Version Comparison Helpers
