@@ -2,6 +2,7 @@
 #include "ir_component_text.h"
 #include "ir_component_flexbox.h"
 #include "ir_component_button.h"
+#include "ir_component_checkbox.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,6 +35,9 @@ void ir_layout_init_traits(void) {
 
     // Register Button component
     ir_button_component_init();
+
+    // Register Checkbox component
+    ir_checkbox_component_init();
 
     if (getenv("KRYON_DEBUG_REGISTRY")) {
         fprintf(stderr, "[Registry] Layout traits initialized\n");

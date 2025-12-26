@@ -1,0 +1,20 @@
+# Build artifacts
+*.o
+*.a
+*.so
+kryon
+build/
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.log

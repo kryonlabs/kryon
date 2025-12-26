@@ -762,7 +762,12 @@ Examples:
     putEnv("KRYON_LIB_PATH", buildDir / "libkryon_ir.so")
 
     # Add plugin build directories to LD_LIBRARY_PATH
-    var pluginLibraryPaths = buildDir  # Start with kryon's build dir
+    # Prioritize installed libraries over build artifacts to ensure single library instance
+    let homeDir = getEnv("HOME")
+    var pluginLibraryPaths = homeDir / ".local/lib"  # Installed libraries first
+
+    # Add build directories as fallback for development
+    pluginLibraryPaths.add(":" & buildDir)
     for plugin in config.plugins:
       if plugin.source == psPath:
         let pluginPath = if plugin.path.startsWith(".") or plugin.path.startsWith(".."):
@@ -802,47 +807,61 @@ Examples:
     putEnv("LUA_PATH", luaPath)
 
     # Create wrapper script to capture IR
-    let tempIR = "/tmp/kryon_ir_" & $getCurrentProcessId() & ".kir"
     let wrapperScript = "/tmp/kryon_wrapper_" & $getCurrentProcessId() & ".lua"
 
     let absPath = if file.isAbsolute(): file else: getCurrentDir() / file
+
+    # Build plugin loading code
+    var pluginLoadCode = ""
+    if config.plugins.len > 0:
+      pluginLoadCode = "print('📦 Loading ' .. " & $config.plugins.len & " .. ' plugin(s)...')\n"
+      for plugin in config.plugins:
+        if plugin.source == psPath:
+          let pluginName = plugin.name
+          pluginLoadCode.add("  print('  Loading " & pluginName & "...')\n")
+          pluginLoadCode.add("  local " & pluginName & "_plugin = require('" & pluginName & "')\n")
+          pluginLoadCode.add("  if " & pluginName & "_plugin and " & pluginName & "_plugin.init then\n")
+          pluginLoadCode.add("    " & pluginName & "_plugin.init()\n")
+          pluginLoadCode.add("  end\n")
+          pluginLoadCode.add("  print('  ✓ " & pluginName & " loaded')\n")
+
     let wrapperCode = """
 local kryon = require('kryon')
+
+""" & pluginLoadCode & """
+
+-- Load user's app
 local app = dofile('""" & absPath & """')
 
-if app and app.root then
-  -- Save IR to temp file
-  kryon.saveIR(app, '""" & tempIR & """')
-  print('✓ IR tree created and saved')
-else
+if not app or not app.root then
   error('App must return a valid app object with root component')
 end
+
+print('✓ IR tree created')
+
+-- Run desktop renderer (keeps Lua alive during rendering)
+local success = kryon.runDesktop(app)
+
+if not success then
+  error('Desktop renderer failed')
+end
+
+print('✓ Application closed')
 """
 
     writeFile(wrapperScript, wrapperCode)
 
-    # Run wrapper to generate IR
-    echo "📦 Creating IR tree..."
+    # Run Lua app with desktop renderer (blocks until window closes)
     let (wrapperOutput, wrapperExitCode) = execCmdEx("luajit " & wrapperScript)
     echo wrapperOutput
 
-    if wrapperExitCode != 0:
-      echo "❌ Failed to create IR tree"
-      quit(1)
-
-    # Render via unified IR pipeline
-    echo "🎨 Rendering..."
-    let renderSuccess = renderIRFile(tempIR)
-
     # Cleanup temp files
-    removeFile(tempIR)
     removeFile(wrapperScript)
 
-    if not renderSuccess:
-      echo "❌ Rendering failed"
+    if wrapperExitCode != 0:
+      echo "❌ Application failed"
       quit(1)
 
-    echo "✓ Application closed"
     quit(0)
 
   elif frontend == ".ts" or frontend == ".js":
