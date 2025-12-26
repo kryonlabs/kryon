@@ -15,6 +15,7 @@
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_plugin.h"
 #include "html_generator.h"
+#include "css_generator.h"
 #include "svg_generator.h"
 
 // HTML tag mapping
@@ -864,11 +865,23 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
     html_generator_write_string(generator, "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
     html_generator_write_string(generator, "  <title>Kryon Web Application</title>\n");
 
-    // Add CSS link if using external CSS file (not inline)
-    if (!generator->options.inline_css) {
+    // Add CSS - either inline <style> or external <link>
+    if (generator->options.inline_css) {
+        // Generate inline CSS in <style> block
+        CSSGenerator* css_gen = css_generator_create();
+        if (css_gen) {
+            const char* css = css_generator_generate(css_gen, root);
+            if (css && strlen(css) > 0) {
+                html_generator_write_string(generator, "  <style>\n");
+                html_generator_write_string(generator, css);
+                html_generator_write_string(generator, "  </style>\n");
+            }
+            css_generator_destroy(css_gen);
+        }
+    } else {
+        // Link to external CSS file
         html_generator_write_string(generator, "  <link rel=\"stylesheet\" href=\"kryon.css\">\n");
     }
-    // TODO: If inline_css is true, add <style> block here
 
     // Add JavaScript runtime only in display mode
     if (generator->options.mode == HTML_MODE_DISPLAY) {
