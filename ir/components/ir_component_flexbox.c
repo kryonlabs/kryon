@@ -24,9 +24,9 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     }
 
     if (getenv("KRYON_DEBUG_FLEXBOX")) {
-        fprintf(stderr, "[Flexbox] Layout %s (type=%d, children=%d, ptr=%p)\n",
+        fprintf(stderr, "[Flexbox] Layout %s (type=%d, children=%d, ptr=%p, parent_pos=(%.1f,%.1f))\n",
                 axis == LAYOUT_AXIS_HORIZONTAL ? "ROW" : "COLUMN",
-                c->type, c->child_count, (void*)c);
+                c->type, c->child_count, (void*)c, parent_x, parent_y);
     }
 
     // Get padding and gap
