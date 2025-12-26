@@ -412,6 +412,11 @@ local function applyProperties(component, props)
     elseif key == "onFocus" and type(value) == "function" then
       runtime.registerHandler(component, C.IR_EVENT_FOCUS, value)
 
+    elseif key == "onTextChange" and type(value) == "function" then
+      print("📝 Registering onTextChange handler for Input component")
+      local handlerId = runtime.registerHandler(component, C.IR_EVENT_TEXT_CHANGE, value)
+      print(string.format("   Handler ID: %d", handlerId))
+
     end
 
     ::continue::

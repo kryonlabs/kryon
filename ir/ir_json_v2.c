@@ -2177,6 +2177,34 @@ static void json_deserialize_style(cJSON* obj, IRStyle* style) {
         style->margin = json_parse_spacing(item);
     }
 
+    // Individual margin properties (override unified margin for specific sides)
+    if ((item = cJSON_GetObjectItem(obj, "marginTop")) != NULL && cJSON_IsNumber(item)) {
+        style->margin.top = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(obj, "marginRight")) != NULL && cJSON_IsNumber(item)) {
+        style->margin.right = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(obj, "marginBottom")) != NULL && cJSON_IsNumber(item)) {
+        style->margin.bottom = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(obj, "marginLeft")) != NULL && cJSON_IsNumber(item)) {
+        style->margin.left = (float)item->valuedouble;
+    }
+
+    // Individual padding properties (override unified padding for specific sides)
+    if ((item = cJSON_GetObjectItem(obj, "paddingTop")) != NULL && cJSON_IsNumber(item)) {
+        style->padding.top = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(obj, "paddingRight")) != NULL && cJSON_IsNumber(item)) {
+        style->padding.right = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(obj, "paddingBottom")) != NULL && cJSON_IsNumber(item)) {
+        style->padding.bottom = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(obj, "paddingLeft")) != NULL && cJSON_IsNumber(item)) {
+        style->padding.left = (float)item->valuedouble;
+    }
+
     // Transform
     if ((item = cJSON_GetObjectItem(obj, "transform")) != NULL && cJSON_IsObject(item)) {
         cJSON* transformItem = NULL;
