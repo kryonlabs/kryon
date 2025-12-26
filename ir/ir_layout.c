@@ -743,7 +743,7 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
         child->rendered_bounds.height = child_height;
         child->rendered_bounds.valid = true;
 
-        current_x += child_width + child->style->margin.left + child->style->margin.right + layout->flex.gap + extra_gap;
+        current_x += child_width + child->style->margin.right + layout->flex.gap + extra_gap;
     }
 }
 
@@ -892,7 +892,7 @@ static void ir_layout_compute_column(IRComponent* container, float available_wid
             ir_get_component_intrinsic_height(child));
         #endif
 
-        current_y += child_height + child->style->margin.top + child->style->margin.bottom + layout->flex.gap + extra_gap;
+        current_y += child_height + child->style->margin.bottom + layout->flex.gap + extra_gap;
     }
 
     #ifdef KRYON_TRACE_LAYOUT
@@ -2776,10 +2776,17 @@ static void intrinsic_size_text(IRComponent* c, IRIntrinsicSize* out) {
     float font_size = (c->style && c->style->font.size > 0) ? c->style->font.size : 16.0f;
     const char* text = c->text_content ? c->text_content : "";
 
+    // Check if max_width is set for text wrapping
+    float max_width = 0.0f;
+    if (c->style && c->style->text_effect.max_width.type == IR_DIMENSION_PX) {
+        max_width = c->style->text_effect.max_width.value;
+    }
+
     if (g_text_measure_callback) {
         // Use backend measurement (SDL3 TTF, terminal, etc.)
+        // Pass max_width so backend can calculate multi-line height
         float width = 0, height = 0;
-        g_text_measure_callback(text, font_size, 0, &width, &height);
+        g_text_measure_callback(text, font_size, max_width, &width, &height);
         out->max_content_width = width;
         out->max_content_height = height;
         out->min_content_width = font_size * 0.5f;  // At least 1 character wide
@@ -3385,9 +3392,10 @@ static void apply_cross_axis_alignment(IRComponent* c, float available_space, bo
 
 /**
  * Layout children in a column with flex_grow support
+ * Returns the final content height (how much vertical space the children actually used)
  */
-static void layout_column_children(IRComponent* c, IRLayoutConstraints constraints) {
-    if (!c || !c->layout_state) return;
+static float layout_column_children(IRComponent* c, IRLayoutConstraints constraints) {
+    if (!c || !c->layout_state) return 0.0f;
 
     // CRITICAL: Clear absolute_positions_computed for ALL children
     // When parent layout is recomputed, all children positions are recalculated
@@ -3454,11 +3462,22 @@ static void layout_column_children(IRComponent* c, IRLayoutConstraints constrain
         // Recursively layout child
         ir_layout_compute_constraints(child, child_constraints);
 
-        // Position child
-        child->layout_state->computed.x = pad.left;
-        child->layout_state->computed.y = current_y;
+        // Get child margins
+        IRSpacing child_margin = {0};
+        if (child->style) child_margin = child->style->margin;
 
-        current_y += child->layout_state->computed.height + gap;
+        // Position child with top margin
+        child->layout_state->computed.x = pad.left + child_margin.left;
+        child->layout_state->computed.y = current_y + child_margin.top;
+
+        // Debug output for column child positioning
+        if (getenv("KRYON_DEBUG_COLUMN")) {
+            fprintf(stderr, "[COLUMN id=%d] Child %d (type=%d, id=%d) positioned at y=%.1f, height=%.1f, advancing current_y from %.1f to %.1f\n",
+                    c->id, i, child->type, child->id, child->layout_state->computed.y, child->layout_state->computed.height,
+                    current_y, current_y + child->layout_state->computed.height + child_margin.top + child_margin.bottom + gap);
+        }
+
+        current_y += child->layout_state->computed.height + child_margin.top + child_margin.bottom + gap;
     }
 
     // Apply cross-axis alignment (horizontal alignment in columns)
@@ -3466,6 +3485,9 @@ static void layout_column_children(IRComponent* c, IRLayoutConstraints constrain
 
     // Apply main-axis alignment (vertical alignment in columns)
     apply_main_axis_alignment(c, available_height, true);
+
+    // Return the actual content height used
+    return current_y;
 }
 
 /**
@@ -3539,11 +3561,15 @@ static void layout_row_children(IRComponent* c, IRLayoutConstraints constraints)
         // Recursively layout child
         ir_layout_compute_constraints(child, child_constraints);
 
-        // Position child
-        child->layout_state->computed.x = current_x;
-        child->layout_state->computed.y = pad.top;
+        // Get child margins
+        IRSpacing child_margin = {0};
+        if (child->style) child_margin = child->style->margin;
 
-        current_x += child->layout_state->computed.width + gap;
+        // Position child with left margin
+        child->layout_state->computed.x = current_x + child_margin.left;
+        child->layout_state->computed.y = pad.top + child_margin.top;
+
+        current_x += child->layout_state->computed.width + child_margin.left + child_margin.right + gap;
     }
 
     // Apply cross-axis alignment (vertical alignment in rows)
@@ -3629,6 +3655,24 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
             if (layout->width > constraints.max_width) {
                 layout->width = constraints.max_width;
             }
+        }
+    }
+
+    // SPECIAL CASE: Remeasure text components after width is resolved
+    // Text might wrap to multiple lines when constrained to a smaller width
+    if (c->type == IR_COMPONENT_TEXT && c->text_content && g_text_measure_callback) {
+        // If the resolved width is less than the intrinsic width, text might wrap
+        if (layout->width < intrinsic->max_content_width) {
+            float font_size = (style && style->font.size > 0) ? style->font.size : 16.0f;
+            float measured_width = 0, measured_height = 0;
+
+            // Remeasure with the constrained width
+            g_text_measure_callback(c->text_content, font_size, layout->width,
+                                   &measured_width, &measured_height);
+
+            // Update intrinsic height with the multi-line height
+            intrinsic->max_content_height = measured_height;
+            intrinsic->min_content_height = measured_height;
         }
     }
 
@@ -3722,7 +3766,19 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
             if (c->layout && c->layout->flex.direction == 1) {
                 layout_row_children(c, constraints);
             } else {
-                layout_column_children(c, constraints);
+                float content_height = layout_column_children(c, constraints);
+
+                // For AUTO-height columns, update height to match actual content
+                if ((!style || style->height.type == IR_DIMENSION_AUTO) &&
+                    (c->type == IR_COMPONENT_COLUMN || c->type == IR_COMPONENT_CONTAINER)) {
+                    // Add padding to content height
+                    layout->height = content_height + pad.top + pad.bottom;
+
+                    // Clamp to constraints
+                    if (layout->height > constraints.max_height) {
+                        layout->height = constraints.max_height;
+                    }
+                }
             }
             break;
 

@@ -77,13 +77,26 @@ end
 --- Dispatch an event to the registered Lua callback
 --- This is called from the desktop renderer when events fire
 --- @param handlerId number Handler ID from logic_id
-function Runtime.dispatchEvent(handlerId)
+--- @param eventType number Event type (optional)
+function Runtime.dispatchEvent(handlerId, eventType)
   local handler = Runtime.handlers[handlerId]
   if handler then
     print(string.format("✅ Found handler %d, executing callback", handlerId))
-    local success, err = pcall(handler.callback)
-    if not success then
-      print("❌ Error in Lua event handler: " .. tostring(err))
+
+    -- For TEXT_CHANGE events, get the current input text and pass it to the callback
+    if eventType == C.IR_EVENT_TEXT_CHANGE then
+      local component = handler.component
+      local text = component.text_content and ffi.string(component.text_content) or ""
+      local success, err = pcall(handler.callback, text)
+      if not success then
+        print("❌ Error in Lua event handler: " .. tostring(err))
+      end
+    else
+      -- For other events, call callback with no arguments
+      local success, err = pcall(handler.callback)
+      if not success then
+        print("❌ Error in Lua event handler: " .. tostring(err))
+      end
     end
   else
     print(string.format("⚠️ No handler found for ID: %d", handlerId))
@@ -284,7 +297,7 @@ function Runtime.runDesktop(app)
   local eventCallback = ffi.cast("LuaEventCallback", function(handler_id, event_type)
     -- handler_id is the ID we stored in Runtime.handlers (will be passed by C after we update it)
     print(string.format("🔔 Lua callback invoked: handler_id=%d event_type=%d", handler_id, event_type))
-    Runtime.dispatchEvent(handler_id)
+    Runtime.dispatchEvent(handler_id, event_type)
   end)
 
   Desktop.desktop_ir_renderer_set_lua_event_callback(renderer, eventCallback)

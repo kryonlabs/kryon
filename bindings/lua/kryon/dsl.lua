@@ -357,6 +357,14 @@ local function applyProperties(component, props)
     elseif key == "text" or key == "content" then
       C.ir_set_text_content(component, tostring(value))
 
+    elseif key == "value" then
+      -- For Input components, set the initial text value
+      C.ir_set_text_content(component, tostring(value))
+
+    elseif key == "placeholder" then
+      -- For Input components, set the placeholder hint text
+      C.ir_set_custom_data(component, tostring(value))
+
     elseif key == "title" then
       -- Tab title is set as text content
       C.ir_set_text_content(component, tostring(value))
@@ -588,7 +596,43 @@ local function buildComponent(componentType, props)
 end
 
 -- ============================================================================
--- Component Constructors
+-- Smart Component Factory (Metaprogramming DSL Enhancement)
+-- ============================================================================
+-- Enables Nim-like syntax by detecting children from array part of table
+-- Example:
+--   Column {
+--     backgroundColor = "#1a1a1a",  -- property (string key)
+--     Row { Text {text = "Hello"} } -- child (array index)
+--   }
+
+local function SmartComponent(componentType)
+  return function(props)
+    props = props or {}
+    local finalProps = {}
+    local children = {}
+
+    -- Separate children (array part) from properties (hash part)
+    for k, v in pairs(props) do
+      if type(k) == "number" then
+        -- Numeric key = child component
+        children[k] = v
+      else
+        -- String key = property
+        finalProps[k] = v
+      end
+    end
+
+    -- If we found children in array part, set them
+    if #children > 0 then
+      finalProps.children = children
+    end
+
+    return buildComponent(componentType, finalProps)
+  end
+end
+
+-- ============================================================================
+-- Component Constructors (Original API - Backward Compatible)
 -- ============================================================================
 
 function DSL.Container(props)
@@ -730,5 +774,52 @@ end
 function DSL.TabGroup(props)
   return buildComponent(C.IR_COMPONENT_TAB_GROUP, props)
 end
+
+-- ============================================================================
+-- Smart Component Wrappers (Nim-like DSL Syntax)
+-- ============================================================================
+-- These provide cleaner syntax where children are in array part of props table
+
+DSL.Container_ = SmartComponent(C.IR_COMPONENT_CONTAINER)
+DSL.Text_ = SmartComponent(C.IR_COMPONENT_TEXT)
+DSL.Button_ = SmartComponent(C.IR_COMPONENT_BUTTON)
+DSL.Input_ = SmartComponent(C.IR_COMPONENT_INPUT)
+DSL.Checkbox_ = SmartComponent(C.IR_COMPONENT_CHECKBOX)
+DSL.Row_ = SmartComponent(C.IR_COMPONENT_ROW)
+DSL.Column_ = SmartComponent(C.IR_COMPONENT_COLUMN)
+DSL.Center_ = SmartComponent(C.IR_COMPONENT_CENTER)
+DSL.Markdown_ = SmartComponent(C.IR_COMPONENT_MARKDOWN)
+DSL.Canvas_ = SmartComponent(C.IR_COMPONENT_CANVAS)
+DSL.Image_ = SmartComponent(C.IR_COMPONENT_IMAGE)
+DSL.Dropdown_ = SmartComponent(C.IR_COMPONENT_DROPDOWN)
+DSL.TabBar_ = SmartComponent(C.IR_COMPONENT_TAB_BAR)
+DSL.TabContent_ = SmartComponent(C.IR_COMPONENT_TAB_CONTENT)
+DSL.TabPanel_ = SmartComponent(C.IR_COMPONENT_TAB_PANEL)
+DSL.TabGroup_ = SmartComponent(C.IR_COMPONENT_TAB_GROUP)
+
+-- Tab is special - it needs custom logic, so we'll keep using DSL.Tab directly
+-- but users can alias it if needed
+
+-- ============================================================================
+-- Helper Functions for Smart DSL
+-- ============================================================================
+
+--- Array mapping utility (like JavaScript's Array.map)
+--- Useful for generating dynamic children lists
+--- @param arr table Array to map
+--- @param fn function Mapper function(value, index) -> result
+--- @return table Mapped array
+function DSL.mapArray(arr, fn)
+  local result = {}
+  for i, v in ipairs(arr) do
+    result[i] = fn(v, i)
+  end
+  return result
+end
+
+--- Lua 5.1/5.2 compatibility for unpacking arrays
+--- Use this to spread mapArray results into children
+--- Example: Row { unpack(mapArray(days, function(d) return Button{text=d} end)) }
+DSL.unpack = unpack or table.unpack
 
 return DSL

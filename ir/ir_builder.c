@@ -2818,6 +2818,7 @@ IRComponent* ir_paragraph(void) {
     // Set default paragraph styling
     // Text wrapping is handled automatically by the backend based on component type
     IRStyle* style = ir_get_style(comp);
+    ir_set_font(style, 16.0f, NULL, 230, 237, 243, 255, false, false);  // Light gray text for readability
     ir_set_margin(comp, 0.0f, 0.0f, 16.0f, 0.0f);
 
     return comp;
