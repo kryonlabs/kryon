@@ -956,10 +956,17 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                 IRTextShadow* shadow = (component->style && component->style->text_effect.shadow.enabled) ?
                     &component->style->text_effect.shadow : NULL;
 
+                // Determine max_width for text wrapping
+                // Use explicit max_width if set, otherwise use large value to prevent unwanted wrapping
+                float text_max_width = 10000.0f; // Default: no wrapping
+                if (component->style && component->style->text_effect.max_width.type == IR_DIMENSION_PX) {
+                    text_max_width = component->style->text_effect.max_width.value;
+                }
+
                 // Render text with optional shadow
                 render_text_with_shadow(renderer->renderer, font,
                                        component->text_content, text_color, component,
-                                       sdl_rect.x, sdl_rect.y, sdl_rect.w);
+                                       sdl_rect.x, sdl_rect.y, text_max_width);
             }
             break;
         }
