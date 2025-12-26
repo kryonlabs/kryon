@@ -852,23 +852,6 @@ void kryon_button_set_center_text(kryon_component_t* component, bool center);
 void kryon_button_set_ellipsize(kryon_component_t* component, bool ellipsize);
 void kryon_button_set_font_size(kryon_component_t* component, uint8_t font_size);
 
-// Canvas component
-typedef struct {
-    uint16_t width;
-    uint16_t height;
-    uint32_t background_color;
-    bool (*on_draw)(kryon_component_t* canvas, kryon_cmd_buf_t* buf);
-    void (*on_update)(kryon_component_t* canvas, float delta_time);
-    float update_timer;
-} kryon_canvas_state_t;
-
-extern const kryon_component_ops_t kryon_canvas_ops;
-void kryon_component_set_canvas_ops(kryon_component_t* component);
-void kryon_canvas_set_draw_callback(kryon_component_t* component,
-                                    bool (*on_draw)(kryon_component_t*, kryon_cmd_buf_t*));
-void kryon_canvas_set_size(kryon_component_t* component, uint16_t width, uint16_t height);
-void kryon_canvas_component_set_background_color(kryon_component_t* component, uint32_t color);
-
 // Input component
 typedef struct {
     char text[KRYON_MAX_TEXT_LENGTH];
@@ -936,9 +919,6 @@ typedef struct {
 extern const kryon_component_ops_t kryon_dropdown_ops;
 
 // Component factory functions
-kryon_component_t* kryon_canvas_create(uint16_t width, uint16_t height, uint32_t background_color,
-                                         bool (*on_draw)(kryon_component_t*, kryon_cmd_buf_t*),
-                                         void (*on_update)(kryon_component_t*, float));
 kryon_component_t* kryon_input_create(const char* placeholder, const char* initial_text,
                                          uint16_t font_id, bool password_mode);
 kryon_component_t* kryon_checkbox_create(const char* label, bool initial_checked,

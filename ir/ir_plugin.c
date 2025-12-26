@@ -865,8 +865,8 @@ IRPluginHandle* ir_plugin_load(const char* plugin_path, const char* plugin_name)
         return NULL;
     }
 
-    // Load shared library
-    handle->dl_handle = dlopen(plugin_path, RTLD_LAZY | RTLD_LOCAL);
+    // Load shared library with RTLD_GLOBAL for symbol visibility to Lua FFI
+    handle->dl_handle = dlopen(plugin_path, RTLD_LAZY | RTLD_GLOBAL);
     if (!handle->dl_handle) {
         fprintf(stderr, "[kryon][plugin] Error loading %s: %s\n", plugin_path, dlerror());
         free(handle);

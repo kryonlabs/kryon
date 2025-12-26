@@ -85,6 +85,10 @@ static void render_inlines_to_ir(MdInline* inl, IRComponent* parent) {
         switch (inl->type) {
             case MD_INLINE_TEXT:
                 comp = create_text_component(inl->data.text.text, inl->data.text.length);
+                if (comp && comp->style) {
+                    // Set default readable text color (light gray for dark theme)
+                    ir_set_font(comp->style, 16.0f, NULL, 230, 237, 243, 255, false, false);
+                }
                 break;
 
             case MD_INLINE_CODE_SPAN:

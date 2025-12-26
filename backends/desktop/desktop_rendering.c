@@ -59,7 +59,6 @@
 #include "../../ir/ir_serialization.h"
 #include "../../ir/ir_style_vars.h"
 #include "../../ir/ir_plugin.h"
-#include "../../core/include/kryon_canvas.h"
 #include "../../third_party/stb/stb_image.h"
 #include "../../third_party/stb/stb_image_write.h"
 

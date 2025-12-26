@@ -161,13 +161,36 @@ ffi.cdef[[
   // ============================================================================
   // Opaque Types (forward declarations)
   // ============================================================================
-  typedef struct IRComponent IRComponent;
   typedef struct IRStyle IRStyle;
   typedef struct IRLayout IRLayout;
   typedef struct IRContext IRContext;
   typedef struct IREvent IREvent;
   typedef struct IRGradient IRGradient;
   typedef struct TabGroupState TabGroupState;
+  typedef struct IRLayoutState IRLayoutState;
+  typedef struct IRRenderedBounds IRRenderedBounds;
+  typedef struct IRLayoutCache IRLayoutCache;
+  typedef struct IRTextLayout IRTextLayout;
+  typedef struct IRTabData IRTabData;
+  typedef struct IRLogic IRLogic;
+
+  // IRComponent struct (partial definition for FFI access to text_content)
+  typedef struct IRComponent {
+    uint32_t id;
+    IRComponentType type;
+    char* tag;
+    IRStyle* style;
+    IREvent* events;
+    IRLogic* logic;
+    struct IRComponent** children;
+    uint32_t child_count;
+    uint32_t child_capacity;
+    IRLayout* layout;
+    IRLayoutState* layout_state;
+    struct IRComponent* parent;
+    char* text_content;
+    // Additional fields exist in C struct but are not needed for FFI
+  } IRComponent;
 
   // ============================================================================
   // Context Management (ir_builder.h)

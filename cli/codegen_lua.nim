@@ -51,22 +51,27 @@ proc generateReactiveVars(gen: var LuaCodeGenerator, manifest: JsonNode) =
   gen.addLine("")
 
 proc generateComponentTree(gen: var LuaCodeGenerator, comp: JsonNode, varName: string = "root"): string =
-  ## Recursively generate component tree code
+  ## Recursively generate component tree code using smart DSL syntax
   let compType = comp["type"].getStr()
 
-  # Map IR type to Lua DSL function
+  # Map IR type to Lua Smart DSL component (using _ suffix)
   let dslFunc = case compType
-    of "Row": "Container"
-    of "Text": "Text"
-    of "Button": "Button"
-    of "Checkbox": "Checkbox"
-    of "Input": "Input"
-    else: "Container"
+    of "Row": "Row_"
+    of "Column": "Column_"
+    of "Text": "Text_"
+    of "Button": "Button_"
+    of "Checkbox": "Checkbox_"
+    of "Input": "Input_"
+    of "TabGroup": "TabGroup_"
+    of "TabBar": "TabBar_"
+    of "TabContent": "TabContent_"
+    of "TabPanel": "TabPanel_"
+    else: "Container_"
 
-  gen.addLine(fmt"local {varName} = UI.{dslFunc} {{")
+  gen.addLine(fmt"local {varName} = {dslFunc} {{")
   gen.increaseIndent()
 
-  # Generate properties
+  # Generate properties (string keys)
   if comp.hasKey("width"):
     let width = comp["width"].getStr()
     if width != "0.0px":
@@ -90,23 +95,28 @@ proc generateComponentTree(gen: var LuaCodeGenerator, comp: JsonNode, varName: s
     let text = comp["text"].getStr()
     gen.addLine(fmt"text = \"{text}\",")
 
+  if comp.hasKey("backgroundColor"):
+    let bg = comp["backgroundColor"].getStr()
+    gen.addLine(fmt"backgroundColor = \"{bg}\",")
+
+  if comp.hasKey("color"):
+    let color = comp["color"].getStr()
+    gen.addLine(fmt"color = \"{color}\",")
+
   if comp.hasKey("flexDirection"):
     let flexDir = comp["flexDirection"].getStr()
     if flexDir == "column":
       gen.addLine("layoutDirection = \"column\",")
 
-  # Generate children
+  # Generate children using Nim-like DSL (children as array indices, NOT children = {...})
   if comp.hasKey("children") and comp["children"].len > 0:
-    gen.addLine("children = {")
-    gen.increaseIndent()
+    # Add blank line before children for readability
+    gen.addLine("")
 
     for i, child in comp["children"]:
       let childVar = fmt"{varName}_child{i}"
       discard gen.generateComponentTree(child, childVar)
       gen.addLine(fmt"{childVar},")
-
-    gen.decreaseIndent()
-    gen.addLine("},")
 
   gen.decreaseIndent()
   gen.addLine("}")
@@ -119,10 +129,26 @@ proc generateLuaCode*(kirJson: JsonNode): string =
 
   # Header
   gen.addLine("-- Generated from .kir v2.1 by Kryon Code Generator")
+  gen.addLine("-- Uses Nim-like Smart DSL syntax for clean, readable code")
   gen.addLine("-- Do not edit manually - regenerate from source")
   gen.addLine("")
   gen.addLine("local Reactive = require(\"kryon.reactive\")")
   gen.addLine("local UI = require(\"kryon.dsl\")")
+  gen.addLine("")
+  gen.addLine("-- Smart DSL Components (Nim-like syntax)")
+  gen.addLine("local Column_ = UI.Column_")
+  gen.addLine("local Row_ = UI.Row_")
+  gen.addLine("local Text_ = UI.Text_")
+  gen.addLine("local Button_ = UI.Button_")
+  gen.addLine("local Input_ = UI.Input_")
+  gen.addLine("local Checkbox_ = UI.Checkbox_")
+  gen.addLine("local Container_ = UI.Container_")
+  gen.addLine("local TabGroup_ = UI.TabGroup_")
+  gen.addLine("local TabBar_ = UI.TabBar_")
+  gen.addLine("local TabContent_ = UI.TabContent_")
+  gen.addLine("local TabPanel_ = UI.TabPanel_")
+  gen.addLine("local mapArray = UI.mapArray")
+  gen.addLine("local unpack = UI.unpack")
 
   # Generate reactive variables if manifest exists
   if kirJson.hasKey("reactive_manifest"):
