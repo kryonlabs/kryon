@@ -54,21 +54,21 @@ proc generateComponentTree(gen: var LuaCodeGenerator, comp: JsonNode, varName: s
   ## Recursively generate component tree code using smart DSL syntax
   let compType = comp["type"].getStr()
 
-  # Map IR type to Lua Smart DSL component (using _ suffix)
+  # Map IR type to Lua Smart DSL component
   let dslFunc = case compType
-    of "Row": "Row_"
-    of "Column": "Column_"
-    of "Text": "Text_"
-    of "Button": "Button_"
-    of "Checkbox": "Checkbox_"
-    of "Input": "Input_"
-    of "TabGroup": "TabGroup_"
-    of "TabBar": "TabBar_"
-    of "TabContent": "TabContent_"
-    of "TabPanel": "TabPanel_"
-    else: "Container_"
+    of "Row": "Row"
+    of "Column": "Column"
+    of "Text": "Text"
+    of "Button": "Button"
+    of "Checkbox": "Checkbox"
+    of "Input": "Input"
+    of "TabGroup": "TabGroup"
+    of "TabBar": "TabBar"
+    of "TabContent": "TabContent"
+    of "TabPanel": "TabPanel"
+    else: "Container"
 
-  gen.addLine(fmt"local {varName} = {dslFunc} {{")
+  gen.addLine(fmt"local {varName} = UI.{dslFunc} {{")
   gen.increaseIndent()
 
   # Generate properties (string keys)
@@ -129,26 +129,11 @@ proc generateLuaCode*(kirJson: JsonNode): string =
 
   # Header
   gen.addLine("-- Generated from .kir v2.1 by Kryon Code Generator")
-  gen.addLine("-- Uses Nim-like Smart DSL syntax for clean, readable code")
+  gen.addLine("-- Uses Smart DSL syntax for clean, readable code")
   gen.addLine("-- Do not edit manually - regenerate from source")
   gen.addLine("")
   gen.addLine("local Reactive = require(\"kryon.reactive\")")
   gen.addLine("local UI = require(\"kryon.dsl\")")
-  gen.addLine("")
-  gen.addLine("-- Smart DSL Components (Nim-like syntax)")
-  gen.addLine("local Column_ = UI.Column_")
-  gen.addLine("local Row_ = UI.Row_")
-  gen.addLine("local Text_ = UI.Text_")
-  gen.addLine("local Button_ = UI.Button_")
-  gen.addLine("local Input_ = UI.Input_")
-  gen.addLine("local Checkbox_ = UI.Checkbox_")
-  gen.addLine("local Container_ = UI.Container_")
-  gen.addLine("local TabGroup_ = UI.TabGroup_")
-  gen.addLine("local TabBar_ = UI.TabBar_")
-  gen.addLine("local TabContent_ = UI.TabContent_")
-  gen.addLine("local TabPanel_ = UI.TabPanel_")
-  gen.addLine("local mapArray = UI.mapArray")
-  gen.addLine("local unpack = UI.unpack")
 
   # Generate reactive variables if manifest exists
   if kirJson.hasKey("reactive_manifest"):

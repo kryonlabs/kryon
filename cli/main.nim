@@ -17,9 +17,9 @@ const
   hasWebBackend* = defined(webBackend) or defined(staticBackend)
 
 # CLI modules
-import project, build, device, compile, diff, inspect, config, codegen, codegen_tsx, codegen_jsx, codegen_html, plugin_manager, kir_to_c
+import project, build, device, compile, diff, inspect, config, codegen, codegen_tsx, codegen_jsx, html_transpiler, plugin_manager, kir_to_c
 import kry_ast, kry_lexer, kry_parser, kry_to_kir, kyt_parser, tsx_parser, md_parser, html_parser
-from html_transpiler import transpileKirToHTML, defaultTranspilationOptions
+from html_transpiler import transpileKirToHTML, defaultTranspilationOptions, defaultDisplayOptions
 
 # IR and backend bindings (for orchestration)
 import ../bindings/nim/ir_core

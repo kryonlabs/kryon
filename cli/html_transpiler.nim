@@ -4,9 +4,10 @@
 ## Enables `.kir → HTML` with metadata preservation for roundtrip validation
 
 import os
+import ../bindings/nim/ir_core
+import ../bindings/nim/ir_serialization  # For ir_read_json_v2_file
 
 type
-  IRComponent* = ptr object
   HTMLGenerator* = ptr object
 
   HtmlGeneratorMode* {.pure.} = enum
@@ -20,31 +21,19 @@ type
     inline_css*: bool        ## Inline CSS vs external file
     preserve_ids*: bool      ## Preserve component IDs for debugging
 
-const libIrPath = when defined(release):
-  getHomeDir() & ".local/lib/libkryon_ir.so"
-else:
-  currentSourcePath().parentDir() & "/../build/libkryon_ir.so"
-
 const libWebPath = when defined(release):
   getHomeDir() & ".local/lib/libkryon_web.so"
 else:
   currentSourcePath().parentDir() & "/../build/libkryon_web.so"
 
-# IR deserialization
-proc ir_read_json_v2_file*(filename: cstring): IRComponent {.
-  importc, dynlib: libIrPath.}
-
-proc ir_destroy_component*(component: IRComponent) {.
-  importc, dynlib: libIrPath.}
-
-# HTML generation with options
+# HTML generation with options (C web codegen library)
 proc html_generator_create_with_options*(options: HtmlGeneratorOptions): HTMLGenerator {.
   importc, dynlib: libWebPath.}
 
 proc html_generator_destroy*(generator: HTMLGenerator) {.
   importc, dynlib: libWebPath.}
 
-proc html_generator_generate*(generator: HTMLGenerator, root: IRComponent): cstring {.
+proc html_generator_generate*(generator: HTMLGenerator, root: ptr IRComponent): cstring {.
   importc, dynlib: libWebPath.}
 
 proc html_generator_default_options*(): HtmlGeneratorOptions {.
@@ -84,22 +73,25 @@ proc transpileKirToHTML*(kirPath: string, options: HtmlGeneratorOptions): string
   ##   let html = transpileKirToHTML("app.kir", opts)
   ##   writeFile("app.html", html)
 
-  if not fileExists(kirPath):
-    raise newException(IOError, "KIR file not found: " & kirPath)
-
-  # Load IR from file
+  # Load KIR file using C IR library
   let root = ir_read_json_v2_file(kirPath.cstring)
   if root.isNil:
-    raise newException(ValueError, "Failed to load IR from: " & kirPath)
+    raise newException(IOError, "Failed to load KIR file: " & kirPath)
 
-  # Create generator with options
+  # Create HTML generator with options using C web codegen library
   let generator = html_generator_create_with_options(options)
   if generator.isNil:
     ir_destroy_component(root)
-    raise newException(ValueError, "Failed to create HTML generator")
+    raise newException(IOError, "Failed to create HTML generator")
 
-  # Generate HTML
+  # Generate HTML from IR tree
   let htmlCStr = html_generator_generate(generator, root)
+  if htmlCStr.isNil:
+    html_generator_destroy(generator)
+    ir_destroy_component(root)
+    raise newException(IOError, "Failed to generate HTML")
+
+  # Convert C string to Nim string
   result = $htmlCStr
 
   # Cleanup

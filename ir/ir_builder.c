@@ -3,6 +3,7 @@
 #include "ir_memory.h"
 #include "ir_hashmap.h"
 #include "ir_animation.h"
+#include "components/ir_component_registry.h"
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -28,7 +29,7 @@ void ir_tabgroup_apply_visuals(TabGroupState* state);
 // Helper function to mark component dirty when style changes
 static void mark_style_dirty(IRComponent* component) {
     if (!component) return;
-    ir_layout_invalidate_cache(component);
+    ir_layout_mark_dirty(component);
     component->dirty_flags |= IR_DIRTY_STYLE | IR_DIRTY_LAYOUT;
 }
 
@@ -558,6 +559,13 @@ IRContext* ir_create_context(void) {
         return NULL;
     }
 
+    // Initialize component layout traits (once per context)
+    static bool traits_initialized = false;
+    if (!traits_initialized) {
+        ir_layout_init_traits();
+        traits_initialized = true;
+    }
+
     return context;
 }
 
@@ -745,7 +753,7 @@ void ir_add_child(IRComponent* parent, IRComponent* child) {
     child->parent = parent;
 
     // Mark parent dirty - children changed
-    ir_layout_invalidate_cache(parent);
+    ir_layout_mark_dirty(parent);
     parent->dirty_flags |= IR_DIRTY_CHILDREN | IR_DIRTY_LAYOUT;
 }
 
@@ -774,7 +782,7 @@ void ir_remove_child(IRComponent* parent, IRComponent* child) {
     child->parent = NULL;
 
     // Mark parent dirty - children changed
-    ir_layout_invalidate_cache(parent);
+    ir_layout_mark_dirty(parent);
     parent->dirty_flags |= IR_DIRTY_CHILDREN | IR_DIRTY_LAYOUT;
 }
 
@@ -1365,7 +1373,7 @@ void ir_set_text_content(IRComponent* component, const char* text) {
     ir_layout_mark_dirty(component);
 
     // Also invalidate old layout cache for backward compatibility
-    ir_layout_invalidate_cache(component);
+    ir_layout_mark_dirty(component);
     component->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
 }
 
@@ -3551,6 +3559,12 @@ void ir_flowchart_finalize(IRComponent* flowchart) {
 IRComponentType ir_get_component_type(IRComponent* component) {
     if (!component) return IR_COMPONENT_CONTAINER;  // Default fallback
     return component->type;
+}
+
+// Get component ID (helper for Lua FFI)
+uint32_t ir_get_component_id(IRComponent* component) {
+    if (!component) return 0;
+    return component->id;
 }
 
 // Get child count (helper for Lua FFI)

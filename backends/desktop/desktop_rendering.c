@@ -59,6 +59,7 @@
 #include "../../ir/ir_serialization.h"
 #include "../../ir/ir_style_vars.h"
 #include "../../ir/ir_plugin.h"
+#include "../../ir/ir_native_canvas.h"
 #include "../../third_party/stb/stb_image.h"
 #include "../../third_party/stb/stb_image_write.h"
 
@@ -1275,6 +1276,38 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
                                                       component, sdl_rect.x, sdl_rect.y,
                                                       sdl_rect.w, sdl_rect.h)) {
                 fprintf(stderr, "[kryon][desktop] No renderer registered for CANVAS component\n");
+            }
+            break;
+        }
+
+        case IR_COMPONENT_NATIVE_CANVAS: {
+            // NativeCanvas - invoke user callback for direct backend access
+            // This allows users to call backend-specific rendering functions
+            // (e.g., raylib 3D functions, SDL3 rendering, etc.)
+
+            // Invoke the callback if one is registered
+            if (!ir_native_canvas_invoke_callback(component->id)) {
+                // No callback registered - render a placeholder or warning
+                IRNativeCanvasData* canvas_data = ir_native_canvas_get_data(component);
+                if (canvas_data) {
+                    // Render background color
+                    SDL_FRect bg_rect = sdl_rect;
+                    uint32_t bg_color = canvas_data->background_color;
+                    uint8_t r = (bg_color >> 24) & 0xFF;
+                    uint8_t g = (bg_color >> 16) & 0xFF;
+                    uint8_t b = (bg_color >> 8) & 0xFF;
+                    uint8_t a = bg_color & 0xFF;
+
+                    SDL_SetRenderDrawColor(renderer->renderer, r, g, b, a);
+                    SDL_RenderFillRect(renderer->renderer, &bg_rect);
+
+                    // Draw a debug "X" to indicate missing callback
+                    SDL_SetRenderDrawColor(renderer->renderer, 255, 0, 0, 255);
+                    SDL_RenderLine(renderer->renderer, bg_rect.x, bg_rect.y,
+                                 bg_rect.x + bg_rect.w, bg_rect.y + bg_rect.h);
+                    SDL_RenderLine(renderer->renderer, bg_rect.x + bg_rect.w, bg_rect.y,
+                                 bg_rect.x, bg_rect.y + bg_rect.h);
+                }
             }
             break;
         }

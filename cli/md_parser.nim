@@ -30,10 +30,11 @@ const libIrPath = when defined(release):
 else:
   currentSourcePath().parentDir() & "/../build/libkryon_ir.so"  # Use build path for development
 
-const libWebPath = when defined(release):
-  getHomeDir() & ".local/lib/libkryon_web.so"  # Use installed path for release builds
-else:
-  currentSourcePath().parentDir() & "/../build/libkryon_web.so"  # Use build path for development
+# DISABLED: Requires libkryon_web.so which is not built by default
+# const libWebPath = when defined(release):
+#   getHomeDir() & ".local/lib/libkryon_web.so"  # Use installed path for release builds
+# else:
+#   currentSourcePath().parentDir() & "/../build/libkryon_web.so"  # Use build path for development
 
 proc ir_markdown_parse(source: cstring, length: csize_t): IRComponent {.
   importc, dynlib: libIrPath.}
@@ -45,11 +46,12 @@ proc ir_destroy_component(root: IRComponent) {.
   importc, dynlib: libIrPath.}
 
 # Web backend SVG generation
-proc flowchart_to_svg(flowchart: IRComponent, options: ptr SVGOptions): cstring {.
-  importc, dynlib: libWebPath.}
-
-proc svg_options_default(): SVGOptions {.
-  importc, dynlib: libWebPath.}
+# DISABLED: Requires libkryon_web.so which is not built by default
+# proc flowchart_to_svg(flowchart: IRComponent, options: ptr SVGOptions): cstring {.
+#   importc, dynlib: libWebPath.}
+#
+# proc svg_options_default(): SVGOptions {.
+#   importc, dynlib: libWebPath.}
 
 proc parseMdToKir*(mdPath: string, outputPath: string = ""): string =
   ## Parse .md file and convert to .kir JSON
@@ -124,26 +126,8 @@ proc convertMermaidToSvg*(mermaidCode: string, theme: SVGTheme = SVGTheme.Dark):
   ## Raises:
   ##   IOError: If parsing or conversion failed
 
-  # Wrap mermaid code in a markdown code fence
-  let markdownSource = "```mermaid\n" & mermaidCode & "\n```"
-
-  # Parse markdown to IR (this will convert mermaid to flowchart component)
-  let irRoot = ir_markdown_parse(markdownSource.cstring, markdownSource.len.csize_t)
-  if irRoot == nil:
-    raise newException(IOError, "Failed to parse Mermaid code")
-
-  defer:
-    ir_destroy_component(irRoot)
-
-  # Get SVG options
-  var options = svg_options_default()
-  options.theme = theme
-  options.use_intrinsic_size = true
-
-  # Convert flowchart IR to SVG
-  # The flowchart should be the root component (or first child of a container)
-  let svgCstr = flowchart_to_svg(irRoot, addr options)
-  if svgCstr == nil:
-    raise newException(IOError, "Failed to convert flowchart to SVG")
-
-  result = $svgCstr
+  # SVG conversion requires libkryon_web.so which is not built by default
+  raise newException(IOError,
+    "SVG conversion is currently disabled. " &
+    "This feature requires libkryon_web.so which is not built by default. " &
+    "To enable SVG conversion, build the web backend first.")

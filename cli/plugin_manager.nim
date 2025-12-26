@@ -3,7 +3,7 @@
 ## Handles: kryon plugin add/remove/list/update/info
 
 import std/[os, strformat, strutils, tables, algorithm, options]
-import plugin_registry, plugin_git, plugin_build
+import plugin_registry, plugin_git, plugin_build, config
 
 # =============================================================================
 # Plugin Add Command
@@ -304,3 +304,64 @@ proc handlePluginCommand*(args: seq[string]) =
     echo &"Unknown plugin subcommand: {subcommand}"
     echo "Use 'kryon plugin' for help"
     quit(1)
+
+# =============================================================================
+# Runtime Plugin Loading (for Lua/frontend execution)
+# =============================================================================
+
+import ../bindings/nim/ir_core
+
+proc loadPluginsForRuntime*(config: KryonConfig): seq[ptr IRPluginHandle] =
+  ## Load all plugins from config before Lua execution
+  result = @[]
+
+  if config.plugins.len == 0:
+    return
+
+  echo &"📦 Loading {config.plugins.len} plugin(s)..."
+
+  for plugin in config.plugins:
+    if plugin.source != psPath:
+      echo &"  ⚠ Skipping non-path plugin '{plugin.name}'"
+      continue
+
+    # Resolve plugin path
+    let pluginPath = if plugin.path.startsWith(".") or plugin.path.startsWith(".."):
+      getCurrentDir() / plugin.path
+    else:
+      plugin.path
+
+    # Find .so file
+    let soPath = pluginPath / "build" / &"libkryon_{plugin.name}.so"
+
+    if not fileExists(soPath):
+      echo &"  ✗ Plugin '{plugin.name}' not built: {soPath}"
+      echo &"    Build it with: cd {pluginPath} && make"
+      quit(1)
+
+    echo &"  Loading {plugin.name}..."
+
+    # Load plugin with RTLD_GLOBAL
+    let handle = ir_plugin_load(cstring(soPath), cstring(plugin.name))
+
+    if handle.isNil:
+      echo &"  ✗ Failed to load plugin '{plugin.name}'"
+      quit(1)
+
+    # Call init function
+    if not handle.init_func.isNil:
+      if not handle.init_func(nil):  # Pass nil for backend context
+        echo &"  ✗ Plugin '{plugin.name}' initialization failed"
+        ir_plugin_unload(handle)
+        quit(1)
+
+    result.add(handle)
+    echo &"  ✓ {plugin.name} loaded"
+
+proc unloadPluginsForRuntime*(handles: seq[ptr IRPluginHandle]) =
+  ## Unload all runtime-loaded plugins
+  for handle in handles:
+    if not handle.isNil:
+      if not handle.shutdown_func.isNil:
+        handle.shutdown_func()
+      ir_plugin_unload(handle)

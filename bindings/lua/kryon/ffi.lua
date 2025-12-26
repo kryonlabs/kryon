@@ -23,25 +23,9 @@ local function findLibrary()
     lib_name = "libkryon_ir.so"
   end
 
-  -- Try various paths
-  local search_paths = {
-    "build/" .. lib_name,  -- Relative to project root
-    "/home/wao/Projects/kryon/build/" .. lib_name,  -- Absolute path
-    "/usr/local/lib/" .. lib_name,  -- System install
-    "/usr/lib/" .. lib_name,  -- System install
-    lib_name,  -- Just the name (system LD_LIBRARY_PATH)
-  }
-
-  -- Check which one exists by attempting to open
-  for _, path in ipairs(search_paths) do
-    local f = io.open(path, "r")
-    if f then
-      f:close()
-      return path
-    end
-  end
-
-  -- Default fallback
+  -- Just return the library name without path to let the system handle it
+  -- This ensures we use whichever libkryon_ir.so is in LD_LIBRARY_PATH
+  -- and prevents loading multiple copies of the library
   return lib_name
 end
 
@@ -335,6 +319,7 @@ ffi.cdef[[
   // Component Type and Tree Helpers
   // ============================================================================
   IRComponentType ir_get_component_type(IRComponent* component);
+  uint32_t ir_get_component_id(IRComponent* component);
   uint32_t ir_get_child_count(IRComponent* component);
   IRComponent* ir_get_child_at(IRComponent* component, uint32_t index);
 

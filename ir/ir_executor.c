@@ -1822,7 +1822,7 @@ static void update_text_recursive(IRExecutorContext* ctx, IRComponent* comp, uin
                         // This ensures the component resizes correctly
                         if (!old_text || strcmp(old_text, result) != 0) {
                             ir_layout_mark_dirty(comp);
-                            ir_layout_invalidate_cache(comp);
+                            ir_layout_mark_dirty(comp);
                             comp->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
                         }
                         if (old_text) {
@@ -1869,7 +1869,7 @@ static void update_text_recursive(IRExecutorContext* ctx, IRComponent* comp, uin
                         // This ensures the component resizes correctly
                         if (!old_text || strcmp(old_text, newText) != 0) {
                             ir_layout_mark_dirty(comp);
-                            ir_layout_invalidate_cache(comp);
+                            ir_layout_mark_dirty(comp);
                             comp->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
                         }
                         if (old_text) {

@@ -587,6 +587,13 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
     // Generate attributes directly using the generator
     html_generator_write_format(generator, " id=\"kryon-%u\"", component->id);
     const char* css_class = get_css_class(component);
+
+    // DEBUG: Log code block rendering
+    if (component->type == IR_COMPONENT_CODE_BLOCK) {
+        fprintf(stderr, "[HTML_GEN] CODE_BLOCK: id=%u, tag='%s', css_class='%s'\n",
+                component->id, component->tag ? component->tag : "NULL", css_class);
+    }
+
     html_generator_write_format(generator, " class=\"%s\"", css_class);
 
     // In transpilation mode, add metadata attributes for roundtrip
