@@ -305,7 +305,9 @@ proc tomlToConfig(tomlResult: TomlParseResult): KryonConfig =
     result.buildTargets = parseSimpleArray(toml["build.targets"])
   if toml.hasKey("build.output_dir"):
     result.buildOutputDir = toml["build.output_dir"]
-  if toml.hasKey("build.entry"):
+  if toml.hasKey("build.entry_point"):
+    result.buildEntry = toml["build.entry_point"]
+  elif toml.hasKey("build.entry"):
     result.buildEntry = toml["build.entry"]
   if toml.hasKey("build.frontend"):
     result.buildFrontend = toml["build.frontend"]

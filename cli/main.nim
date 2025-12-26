@@ -15,6 +15,7 @@ const
   hasTerminalBackend* = defined(terminalOnly) or defined(staticBackend) or not (defined(desktopOnly) or defined(webBackend))
   hasDesktopBackend* = defined(desktopBackend) or defined(staticBackend) or not (defined(terminalOnly) or defined(webBackend))
   hasWebBackend* = defined(webBackend) or defined(staticBackend)
+  hasRaylibBackend* = defined(raylibBackend) or defined(staticBackend)
 
 # CLI modules
 import project, build, device, compile, diff, inspect, config, codegen, codegen_tsx, codegen_jsx, html_transpiler, plugin_manager, kir_to_c
@@ -146,8 +147,8 @@ proc pkgLibFlags*(pkg: string): seq[string] =
 # =============================================================================
 
 when hasDesktopBackend:
-  proc renderIRFile*(kirPath: string, title: string = "Kryon App",
-                     width: int = 800, height: int = 600): bool =
+  proc renderIRFileDesktop*(kirPath: string, title: string = "Kryon App",
+                            width: int = 800, height: int = 600): bool =
     ## Unified IR rendering - loads .kir/.kirb and renders with SDL3 backend
     ## Returns true on success, false on failure
     let ctx = ir_create_context()
@@ -219,13 +220,139 @@ when hasDesktopBackend:
     ir_destroy_component(irRoot)
 
     return renderSuccess
-else:
-  proc renderIRFile*(kirPath: string, title: string = "Kryon App",
-                     width: int = 800, height: int = 600): bool =
-    ## Stub for when desktop backend is not compiled in
-    echo "❌ Desktop rendering not available in this build"
-    echo "   This CLI was built without SDL3 support."
-    echo "   Use kryon-desktop for graphical rendering."
+
+# =============================================================================
+# Raylib Backend Rendering
+# =============================================================================
+
+when hasRaylibBackend:
+  # Raylib C backend FFI
+  {.passL: "-lraylib -lm".}
+  {.passC: "-I" & KRYON_SOURCE_DIR & "/renderers/raylib".}
+
+  type
+    kryon_raylib_app_config_t* {.importc, header: "raylib_backend.h", bycopy.} = object
+      window_width*: uint16
+      window_height*: uint16
+      window_title*: cstring
+      target_fps*: cint
+      background_color*: uint32
+
+    kryon_raylib_app_t* {.importc, header: "raylib_backend.h", incompleteStruct.} = object
+
+  proc kryon_raylib_app_create*(config: ptr kryon_raylib_app_config_t): ptr kryon_raylib_app_t {.
+    importc, header: "raylib_backend.h".}
+  proc kryon_raylib_app_destroy*(app: ptr kryon_raylib_app_t) {.
+    importc, header: "raylib_backend.h".}
+  proc kryon_raylib_app_handle_events*(app: ptr kryon_raylib_app_t): bool {.
+    importc, header: "raylib_backend.h".}
+  proc kryon_raylib_app_begin_frame*(app: ptr kryon_raylib_app_t) {.
+    importc, header: "raylib_backend.h".}
+  proc kryon_raylib_app_end_frame*(app: ptr kryon_raylib_app_t) {.
+    importc, header: "raylib_backend.h".}
+
+  # NativeCanvas callback invocation
+  proc ir_native_canvas_invoke_callback*(component_id: uint32): bool {.
+    importc, header: "../../ir/ir_native_canvas.h".}
+
+  proc renderIRFileRaylib*(kirPath: string, title: string = "Kryon App",
+                           width: int = 800, height: int = 600): bool =
+    ## Render IR file using Raylib backend
+    ## Returns true on success, false on failure
+    let ctx = ir_create_context()
+    ir_set_context(ctx)
+
+    # Load IR tree
+    var irRoot: ptr IRComponent = nil
+    if kirPath.endsWith(".kirb"):
+      irRoot = ir_serialization.ir_read_binary_file(cstring(kirPath))
+      if irRoot.isNil:
+        irRoot = ir_serialization.ir_read_json_v2_file(cstring(kirPath))
+    else:
+      irRoot = ir_serialization.ir_read_json_v2_file(cstring(kirPath))
+      if irRoot.isNil:
+        irRoot = ir_serialization.ir_read_binary_file(cstring(kirPath))
+
+    if irRoot.isNil:
+      echo "❌ Failed to load IR: " & kirPath
+      return false
+
+    # Set up executor for logic blocks
+    var executor: ptr IRExecutorContext = nil
+    if not kirPath.endsWith(".kirb"):
+      executor = ir_executor_create()
+      if executor != nil:
+        if ir_executor_load_kir_file(executor, cstring(kirPath)):
+          ir_executor_set_global(executor)
+          ir_executor_set_root(executor, irRoot)
+          ir_executor_apply_initial_conditionals(executor)
+        else:
+          ir_executor_destroy(executor)
+          executor = nil
+
+    # Create raylib app
+    var config = kryon_raylib_app_config_t(
+      window_width: width.uint16,
+      window_height: height.uint16,
+      window_title: cstring(title),
+      target_fps: 60,
+      background_color: 0x1a1a2eFF'u32
+    )
+
+    let app = kryon_raylib_app_create(addr config)
+    if app.isNil:
+      echo "❌ Failed to create Raylib app"
+      return false
+
+    # Main rendering loop
+    while kryon_raylib_app_handle_events(app):
+      kryon_raylib_app_begin_frame(app)
+
+      # Invoke NativeCanvas callback for the root component
+      discard ir_native_canvas_invoke_callback(irRoot.id)
+
+      kryon_raylib_app_end_frame(app)
+
+    # Cleanup
+    kryon_raylib_app_destroy(app)
+
+    if executor != nil:
+      ir_executor_set_global(nil)
+      ir_executor_destroy(executor)
+
+    ir_destroy_component(irRoot)
+
+    return true
+
+# =============================================================================
+# Unified IR Renderer Dispatcher
+# =============================================================================
+
+proc renderIRFile*(kirPath: string, title: string = "Kryon App",
+                   width: int = 800, height: int = 600): bool =
+  ## Unified IR rendering dispatcher - checks KRYON_RENDERER and delegates
+  let renderer = getEnv("KRYON_RENDERER", "sdl3")
+
+  case renderer.toLowerAscii()
+  of "raylib":
+    when hasRaylibBackend:
+      return renderIRFileRaylib(kirPath, title, width, height)
+    else:
+      echo "❌ Raylib backend not available in this build"
+      echo "   Use kryon-raylib for Raylib/3D rendering."
+      return false
+
+  of "sdl3", "desktop", "":
+    when hasDesktopBackend:
+      return renderIRFileDesktop(kirPath, title, width, height)
+    else:
+      echo "❌ Desktop backend not available in this build"
+      echo "   Use kryon-desktop for SDL3 rendering."
+      return false
+
+  else:
+    echo "❌ Unknown renderer: " & renderer
+    echo "   Available: sdl3, raylib"
     return false
 
 # =============================================================================
@@ -441,7 +568,7 @@ proc handleBuildCommand*(args: seq[string]) =
 
 proc detectFileWithExtensions*(baseName: string): tuple[found: bool, path: string, ext: string] =
   ## Try to find a file with common Kryon frontend extensions
-  const extensions = [".kry", ".lua", ".nim", ".md", ".markdown", ".ts", ".js", ".c"]
+  const extensions = [".kry", ".lua", ".nim", ".md", ".markdown", ".ts", ".tsx", ".js", ".jsx", ".kir", ".c"]
 
   # If the file already has an extension, check if it exists
   if baseName.contains('.'):
@@ -603,7 +730,7 @@ Examples:
       echo "🔍 Detected " & ext & " file: " & file
     else:
       echo "❌ Could not find file: " & baseName
-      echo "   Tried extensions: .kry, .lua, .nim, .md, .markdown, .ts, .js, .c"
+      echo "   Tried extensions: .kry, .lua, .nim, .md, .markdown, .ts, .tsx, .js, .jsx, .kir, .c"
       quit(1)
 
   # Determine frontend type from extension
@@ -1777,8 +1904,9 @@ proc handleCodegenCommand*(args: seq[string]) =
       of "c":
         generateCFromKir(inputFile)
       of "html":
-        # Use new Nim-based HTML generator with JavaScript support
-        generateVanillaHTML(inputFile)
+        # Use C web codegen library via FFI
+        let options = defaultDisplayOptions()
+        transpileKirToHTML(inputFile, options)
       of "markdown", "md":
         # Generate proper markdown from IR components
         generateMarkdownFromKir(inputFile)
