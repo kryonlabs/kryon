@@ -1179,9 +1179,9 @@ proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
   ## Produces HTML with inline CSS and JavaScript (no external dependencies)
   echo "🌐 Generating web output from: ", kirFile
 
-  # Generate HTML using C web codegen library (html_generator.c via FFI)
+  # Generate HTML with IR metadata for roundtrip (uses Transpile mode)
   echo "   🎨 Generating HTML using C web codegen..."
-  let options = defaultDisplayOptions()  # Use display mode with JavaScript runtime
+  let options = defaultTranspilationOptions()  # Use transpile mode for roundtrip capability
   let htmlContent = transpileKirToHTML(kirFile, options)
 
   # Write HTML to output file
