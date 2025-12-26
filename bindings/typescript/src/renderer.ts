@@ -389,6 +389,28 @@ export function renderNode(node: IRNode | string, parentPtr?: Pointer): Pointer 
     hasStyle = true;
   }
 
+  // Individual margin properties (override unified margin for specific sides)
+  if (node.props.marginTop !== undefined || node.props.marginBottom !== undefined ||
+      node.props.marginLeft !== undefined || node.props.marginRight !== undefined) {
+    const top = node.props.marginTop ?? 0;
+    const right = node.props.marginRight ?? 0;
+    const bottom = node.props.marginBottom ?? 0;
+    const left = node.props.marginLeft ?? 0;
+    ffi.ir_set_margin(stylePtr, top, right, bottom, left);
+    hasStyle = true;
+  }
+
+  // Individual padding properties (override unified padding for specific sides)
+  if (node.props.paddingTop !== undefined || node.props.paddingBottom !== undefined ||
+      node.props.paddingLeft !== undefined || node.props.paddingRight !== undefined) {
+    const top = node.props.paddingTop ?? 0;
+    const right = node.props.paddingRight ?? 0;
+    const bottom = node.props.paddingBottom ?? 0;
+    const left = node.props.paddingLeft ?? 0;
+    ffi.ir_set_padding(stylePtr, top, right, bottom, left);
+    hasStyle = true;
+  }
+
   // Opacity
   if (node.props.opacity !== undefined) {
     ffi.ir_set_opacity(stylePtr, node.props.opacity);

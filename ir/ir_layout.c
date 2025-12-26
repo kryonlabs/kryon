@@ -3669,20 +3669,11 @@ void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constrain
     }
 
     // Apply min/max constraints
-    printf("[CONSTRAINT_DEBUG] Checking constraints: c->layout=%p\n", (void*)c->layout);
     if (c->layout) {
-        printf("[CONSTRAINT_DEBUG] max_width.type=%d, max_width.value=%.2f\n",
-               c->layout->max_width.type, c->layout->max_width.value);
         // Apply max_width constraint
         if (c->layout->max_width.type == IR_DIMENSION_PX && c->layout->max_width.value > 0) {
-            float original_width = layout->width;
             if (layout->width > c->layout->max_width.value) {
                 layout->width = c->layout->max_width.value;
-                printf("[CONSTRAINT] Clamped width: %.2f -> %.2f (maxWidth=%.2f)\n",
-                       original_width, layout->width, c->layout->max_width.value);
-            } else {
-                printf("[CONSTRAINT] Width %.2f already within maxWidth=%.2f\n",
-                       layout->width, c->layout->max_width.value);
             }
         }
 

@@ -96,6 +96,16 @@ export interface BaseProps {
   maxHeight?: Size;
   padding?: number | [number, number] | [number, number, number, number];
   margin?: number | [number, number] | [number, number, number, number];
+  // Individual margin properties (override unified margin for specific sides)
+  marginTop?: number;
+  marginBottom?: number;
+  marginLeft?: number;
+  marginRight?: number;
+  // Individual padding properties (override unified padding for specific sides)
+  paddingTop?: number;
+  paddingBottom?: number;
+  paddingLeft?: number;
+  paddingRight?: number;
   backgroundColor?: Color;
   borderColor?: Color;
   borderWidth?: number;

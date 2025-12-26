@@ -919,6 +919,20 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             nimInputBridge(focused_input, focused_input->text_content);
                         }
 
+                        // Fire IR_EVENT_TEXT_CHANGE for Lua handlers
+                        IREvent* text_event = ir_find_event(focused_input, IR_EVENT_TEXT_CHANGE);
+                        if (text_event && text_event->logic_id) {
+                            if (strncmp(text_event->logic_id, "lua_event_", 10) == 0) {
+                                uint32_t handler_id = 0;
+                                if (sscanf(text_event->logic_id + 10, "%u", &handler_id) == 1) {
+                                    if (renderer->lua_event_callback) {
+                                        fprintf(stderr, "[LUA_EVENT] Firing onTextChange handler %u (text input)\n", handler_id);
+                                        renderer->lua_event_callback(handler_id, IR_EVENT_TEXT_CHANGE);
+                                    }
+                                }
+                            }
+                        }
+
                         // Sync to bound variable
                         IRExecutorContext* exec_ctx = ir_executor_get_global();
                         if (exec_ctx) {
@@ -982,6 +996,20 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             }
                             if (nimInputBridge) {
                                 nimInputBridge(focused_input, focused_input->text_content);
+                            }
+
+                            // Fire IR_EVENT_TEXT_CHANGE for Lua handlers
+                            IREvent* text_event = ir_find_event(focused_input, IR_EVENT_TEXT_CHANGE);
+                            if (text_event && text_event->logic_id) {
+                                if (strncmp(text_event->logic_id, "lua_event_", 10) == 0) {
+                                    uint32_t handler_id = 0;
+                                    if (sscanf(text_event->logic_id + 10, "%u", &handler_id) == 1) {
+                                        if (renderer->lua_event_callback) {
+                                            fprintf(stderr, "[LUA_EVENT] Firing onTextChange handler %u (backspace)\n", handler_id);
+                                            renderer->lua_event_callback(handler_id, IR_EVENT_TEXT_CHANGE);
+                                        }
+                                    }
+                                }
                             }
 
                             // Sync to bound variable

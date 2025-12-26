@@ -151,10 +151,11 @@ ffi.cdef[[
     IR_EVENT_HOVER = 1,
     IR_EVENT_FOCUS = 2,
     IR_EVENT_BLUR = 3,
-    IR_EVENT_KEY = 4,
-    IR_EVENT_SCROLL = 5,
-    IR_EVENT_TIMER = 6,
-    IR_EVENT_CUSTOM = 7
+    IR_EVENT_TEXT_CHANGE = 4,  // Text input change event (for Input components)
+    IR_EVENT_KEY = 5,
+    IR_EVENT_SCROLL = 6,
+    IR_EVENT_TIMER = 7,
+    IR_EVENT_CUSTOM = 8
   } IREventType;
 
   // ============================================================================

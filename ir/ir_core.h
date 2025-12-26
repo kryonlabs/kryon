@@ -634,6 +634,7 @@ typedef enum {
     IR_EVENT_HOVER,
     IR_EVENT_FOCUS,
     IR_EVENT_BLUR,
+    IR_EVENT_TEXT_CHANGE,  // Text input change event (for Input components)
     IR_EVENT_KEY,
     IR_EVENT_SCROLL,
     IR_EVENT_TIMER,
