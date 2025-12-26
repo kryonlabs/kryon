@@ -18,6 +18,7 @@ typedef enum {
     IR_COMPONENT_CENTER,
     IR_COMPONENT_IMAGE,
     IR_COMPONENT_CANVAS,
+    IR_COMPONENT_NATIVE_CANVAS,
     IR_COMPONENT_MARKDOWN,
     IR_COMPONENT_SPRITE,
     IR_COMPONENT_TAB_GROUP,
@@ -71,20 +72,10 @@ typedef struct {
 } IRDimension;
 
 // ============================================================================
-// Layout System - Clay-Inspired Two-Pass Architecture
+// Layout System - Single-Pass Recursive Architecture
 // ============================================================================
 
-// Intrinsic sizing (content-based, no parent constraints)
-// Computed bottom-up: leaves → root
-typedef struct {
-    float min_content_width;   // Minimum without overflow
-    float max_content_width;   // Maximum without wrapping
-    float min_content_height;  // Minimum height
-    float max_content_height;  // Maximum height
-} IRIntrinsicSize;
-
 // Layout constraints from parent
-// Passed down top-down: root → leaves
 typedef struct {
     float max_width;   // Available width from parent
     float max_height;  // Available height from parent
@@ -93,7 +84,6 @@ typedef struct {
 } IRLayoutConstraints;
 
 // Final computed layout (absolute positioning)
-// Result of two-pass algorithm
 typedef struct {
     float x;           // Absolute X position
     float y;           // Absolute Y position
@@ -103,15 +93,11 @@ typedef struct {
 } IRComputedLayout;
 
 // Complete layout state per component
-// Tracks both passes and caching
 typedef struct {
-    IRIntrinsicSize intrinsic;          // Pass 1: intrinsic measurement
-    IRComputedLayout computed;          // Pass 2: constraint application
+    IRComputedLayout computed;          // Final layout (single-pass)
     uint32_t cache_generation;          // For cache invalidation
     bool dirty;                         // Needs recomputation
-    bool intrinsic_valid;               // Pass 1 complete
-    bool layout_valid;                  // Pass 2 complete
-    bool absolute_positions_computed;   // Phase 3 complete (prevents re-conversion)
+    bool layout_valid;                  // Layout complete
 } IRLayoutState;
 
 // Color Types
@@ -1055,6 +1041,7 @@ const char* ir_component_type_to_string(IRComponentType type);
 const char* ir_event_type_to_string(IREventType type);
 const char* ir_logic_type_to_string(LogicSourceType type);
 IRComponentType ir_get_component_type(IRComponent* component);
+uint32_t ir_get_component_id(IRComponent* component);
 
 // Component Tree Accessors (for Lua FFI)
 uint32_t ir_get_child_count(IRComponent* component);
@@ -1067,7 +1054,6 @@ void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, 
 void ir_layout_mark_dirty(IRComponent* component);
 void ir_layout_mark_render_dirty(IRComponent* component);
 void ir_layout_invalidate_subtree(IRComponent* component);
-void ir_layout_invalidate_cache(IRComponent* component);
 float ir_get_component_intrinsic_width(IRComponent* component);
 float ir_get_component_intrinsic_height(IRComponent* component);
 
@@ -1077,10 +1063,12 @@ typedef void (*IRTextMeasureCallback)(const char* text, float font_size,
                                        float max_width, float* out_width, float* out_height);
 void ir_layout_set_text_measure_callback(IRTextMeasureCallback callback);
 
-// Two-pass layout system (Clay-inspired)
-void ir_layout_compute_intrinsic(IRComponent* component);
-void ir_layout_compute_constraints(IRComponent* component, IRLayoutConstraints constraints);
-void ir_layout_compute_absolute_positions(IRComponent* component, float parent_x, float parent_y);
+// Text width estimation (used by component modules)
+float ir_get_text_width_estimate(const char* text, float font_size);
+
+// Single-pass recursive layout system
+void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
+                           float parent_x, float parent_y);
 void ir_layout_compute_tree(IRComponent* root, float viewport_width, float viewport_height);
 IRComputedLayout* ir_layout_get_bounds(IRComponent* component);
 

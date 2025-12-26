@@ -106,6 +106,14 @@ type
     center_x*: cfloat        # For radial/conic (0.0 to 1.0)
     center_y*: cfloat        # For radial/conic (0.0 to 1.0)
 
+  # Plugin system bindings
+  IRPluginHandle* {.importc: "IRPluginHandle", header: "ir_plugin.h".} = object
+    dl_handle*: pointer
+    name*: array[64, char]
+    path*: array[512, char]
+    init_func*: proc(ctx: pointer): bool {.cdecl.}
+    shutdown_func*: proc() {.cdecl.}
+
   # Union data for IRColor - matches C union layout exactly
   # C has: union { struct { uint8_t r, g, b, a; }; IRStyleVarId var_id; ptr[IRGradient] gradient; }
   # Use importc to match the C field names
@@ -280,6 +288,10 @@ proc ir_destroy_context*(context: ptr IRContext) {.importc, cdecl, header: "ir_b
 proc ir_set_context*(context: ptr IRContext) {.importc, cdecl, header: "ir_builder.h".}
 proc ir_get_root*(): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_root*(root: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
+
+# Plugin loading functions
+proc ir_plugin_load*(plugin_path: cstring; plugin_name: cstring): ptr IRPluginHandle {.importc, cdecl, header: "ir_plugin.h".}
+proc ir_plugin_unload*(handle: ptr IRPluginHandle) {.importc, cdecl, header: "ir_plugin.h".}
 
 # Component Creation
 proc ir_create_component*(component_type: IRComponentType): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}

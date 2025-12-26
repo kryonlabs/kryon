@@ -484,11 +484,14 @@ bool ir_plugin_dispatch_component_render(void* backend_ctx, uint32_t component_t
                                          const IRComponent* component,
                                          float x, float y, float width, float height) {
     if (component_type >= 32) {
+        fprintf(stderr, "[kryon][plugin] Component type %u out of range (>= 32)\n", component_type);
         return false;
     }
 
     IRPluginComponentRenderer renderer = g_plugin_system.component_renderers[component_type];
     if (renderer == NULL) {
+        fprintf(stderr, "[kryon][plugin] No renderer for component type %u (count=%u)\n",
+                component_type, g_plugin_system.component_renderer_count);
         return false;
     }
 

@@ -15,6 +15,9 @@ pkgs.mkShell {
     sdl3-ttf
     sdl3-image
 
+    # Raylib for 3D rendering backend
+    raylib
+
     # Text layout and shaping
     harfbuzz
     freetype
@@ -63,7 +66,8 @@ pkgs.mkShell {
     echo "  Run web examples: ./run_example.sh hello_world ts web"
     echo ""
     echo "Available frontends: kry, nim, typescript (ts), lua, c"
-    echo "Available renderers: sdl3, terminal, web, framebuffer"
+    echo "Available renderers: sdl3, raylib, terminal, framebuffer"
+    echo "Available codegen targets: web"
     echo ""
   '';
 }

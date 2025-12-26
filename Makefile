@@ -38,9 +38,14 @@ SDL3_CFLAGS = $(shell pkg-config --cflags sdl3 2>/dev/null || echo "-I/usr/inclu
 SDL3_LIBS = $(shell pkg-config --libs sdl3 2>/dev/null || echo "-lSDL3")
 SDL_TTF_LIBS = $(shell pkg-config --libs SDL3_ttf 2>/dev/null || echo "-lSDL3_ttf")
 
+# Raylib Configuration
+RAYLIB_CFLAGS = $(shell pkg-config --cflags raylib 2>/dev/null || echo "-I/usr/local/include")
+RAYLIB_LIBS = $(shell pkg-config --libs raylib 2>/dev/null || echo "-lraylib -lm")
+
 # Target-specific build flags (lightweight variants)
 TERMINAL_FLAGS = -d:terminalOnly --opt:size        # Terminal renderer only
 DESKTOP_FLAGS = -d:desktopBackend --opt:speed      # SDL3 renderer only
+RAYLIB_FLAGS = -d:raylibBackend --opt:speed        # Raylib renderer only (3D support)
 WEB_FLAGS = -d:webBackend --opt:size               # HTML/web transpiler only (not a renderer)
 
 # Detect NixOS environment
@@ -65,6 +70,7 @@ LIB_FILE = $(BUILD_DIR)/libkryon.a
 # Renderer-specific binaries
 TERMINAL_BIN = $(BUILD_DIR)/kryon-terminal
 DESKTOP_BIN = $(BUILD_DIR)/kryon-desktop
+RAYLIB_BIN = $(BUILD_DIR)/kryon-raylib
 WEB_BIN = $(BUILD_DIR)/kryon-web
 DEFAULT_BIN = $(BUILD_DIR)/kryon-full
 
@@ -138,6 +144,22 @@ $(DESKTOP_BIN): $(CLI_SRC)
 		-o:$(DESKTOP_BIN) $(CLI_SRC)
 	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
 
+# Raylib CLI (requires raylib - 3D rendering support)
+build-raylib: $(RAYLIB_BIN)
+
+$(RAYLIB_BIN): $(CLI_SRC) $(LIB_FILE)
+	@echo "Building Kryon CLI (raylib/3D)..."
+	@mkdir -p $(BUILD_DIR)
+	$(MAKE) -C ir all
+	$(MAKE) -C renderers/common all
+	$(MAKE) -C renderers/common install
+	$(MAKE) -C renderers/raylib all
+	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
+	$(NIM) c $(NIMFLAGS) $(RAYLIB_FLAGS) \
+		--passL:"-L$(BUILD_DIR) -lkryon_raylib -lkryon_common -lkryon_ir -lkryon $(RAYLIB_LIBS)" \
+		-o:$(RAYLIB_BIN) $(CLI_SRC)
+	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
+
 # Web CLI (HTML/CSS/JS transpiler - codegen, not a renderer)
 build-web: $(WEB_BIN)
 
@@ -160,15 +182,16 @@ $(DEFAULT_BIN): $(CLI_SRC)
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C ir all
 	$(MAKE) -C backends/desktop all
+	$(MAKE) -C renderers/raylib all
 	$(MAKE) -C codegens/web all
 	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
 	$(NIM) c $(NIMFLAGS) -d:staticBackend --opt:speed \
-		--passL:"-L$(BUILD_DIR) -lkryon_ir -lkryon_desktop -lkryon_web $(SDL3_LIBS) $(SDL_TTF_LIBS)" \
+		--passL:"-L$(BUILD_DIR) -lkryon_ir -lkryon_desktop -lkryon_raylib -lkryon_web $(SDL3_LIBS) $(SDL_TTF_LIBS) $(RAYLIB_LIBS)" \
 		-o:$(DEFAULT_BIN) $(CLI_SRC)
 	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
 
 # Build all renderer variants
-build-all-variants: build-terminal build-desktop build-web build-default
+build-all-variants: build-terminal build-desktop build-raylib build-web build-default
 	@echo "✅ All renderer variants built successfully!"
 
 # Build library for use by other projects

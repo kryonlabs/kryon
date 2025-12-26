@@ -6,6 +6,7 @@
 #include "ir_core.h"
 #include "ir_builder.h"
 #include "ir_text_shaping.h"
+#include "components/ir_component_registry.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +19,7 @@ void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, 
 // Text Measurement Callback (Backend-Specific)
 // ============================================================================
 
-static IRTextMeasureCallback g_text_measure_callback = NULL;
+IRTextMeasureCallback g_text_measure_callback = NULL;
 
 void ir_layout_set_text_measure_callback(IRTextMeasureCallback callback) {
     g_text_measure_callback = callback;
@@ -29,59 +30,44 @@ void ir_layout_set_text_measure_callback(IRTextMeasureCallback callback) {
 // ============================================================================
 
 // Helper: Recursively invalidate layout for entire subtree
-// Marks subtree dirty to force full layout recomputation (intrinsic + constraint + absolute)
-// This is simpler than trying to convert positions back manually
-static void ir_layout_invalidate_subtree_absolute_positions(IRComponent* component) {
+void ir_layout_invalidate_subtree(IRComponent* component) {
     if (!component || !component->layout_state) return;
 
-    // Mark this component dirty - this will trigger full layout recomputation
-    // which will recompute positions from scratch using relative coordinates
+    // Mark this component dirty
     component->layout_state->dirty = true;
-    component->layout_state->intrinsic_valid = false;
     component->layout_state->layout_valid = false;
-    component->layout_state->absolute_positions_computed = false;
 
     // Recurse to all children
     for (uint32_t i = 0; i < component->child_count; i++) {
-        ir_layout_invalidate_subtree_absolute_positions(component->children[i]);
+        ir_layout_invalidate_subtree(component->children[i]);
     }
 }
 
 void ir_layout_mark_dirty(IRComponent* component) {
     if (!component || !component->layout_state) return;
 
-    // Mark this component dirty (invalidate both passes)
+    // Mark this component dirty
     component->layout_state->dirty = true;
-    component->layout_state->intrinsic_valid = false;
     component->layout_state->layout_valid = false;
-    component->layout_state->absolute_positions_computed = false;  // Also invalidate absolute positions
 
-    // CRITICAL FIX: Recursively clear absolute_positions_computed for ALL descendants
-    // Without this, children keep their flag set and hit early return, staying at wrong coordinates
+    // Recursively invalidate entire subtree
     for (uint32_t i = 0; i < component->child_count; i++) {
         IRComponent* child = component->children[i];
         if (child && child->layout_state) {
-            // Recursively clear for entire subtree
-            ir_layout_invalidate_subtree_absolute_positions(child);
+            ir_layout_invalidate_subtree(child);
         }
     }
 
-    // Keep old dirty_flags for compatibility during transition
+    // Keep old dirty_flags for compatibility
     component->dirty_flags |= IR_DIRTY_LAYOUT;
 
     // Propagate dirty flag upward to parents
-    // Parent intrinsic sizes may change if child size changes
     IRComponent* parent = component->parent;
     while (parent) {
         if (!parent->layout_state) break;
 
-        // Mark parent layout invalid (but intrinsic needs recomputation too)
         parent->layout_state->dirty = true;
         parent->layout_state->layout_valid = false;
-        // Note: We DON'T invalidate parent's intrinsic here yet
-        // because we'll recompute it in the bottom-up pass anyway
-
-        // Keep old dirty_flags for compatibility
         parent->dirty_flags |= IR_DIRTY_SUBTREE;
         parent->layout_cache.dirty = true;
         parent->layout_cache.cached_intrinsic_width = -1.0f;
@@ -99,18 +85,6 @@ void ir_layout_mark_render_dirty(IRComponent* component) {
     // Do NOT propagate to parents - visual-only changes don't affect parent layout
 }
 
-void ir_layout_invalidate_subtree(IRComponent* component) {
-    if (!component) return;
-
-    component->dirty_flags |= IR_DIRTY_LAYOUT | IR_DIRTY_SUBTREE;
-    component->layout_cache.dirty = true;
-
-    // Recursively invalidate all children
-    for (uint32_t i = 0; i < component->child_count; i++) {
-        ir_layout_invalidate_subtree(component->children[i]);
-    }
-}
-
 // Invalidate layout cache when properties change
 void ir_layout_invalidate_cache(IRComponent* component) {
     if (!component) return;
@@ -119,11 +93,7 @@ void ir_layout_invalidate_cache(IRComponent* component) {
     fprintf(stderr, "🔄 INVALIDATE_CACHE for component %u (type=%d)\n", component->id, component->type);
     #endif
 
-    component->layout_cache.dirty = true;
-    component->layout_cache.cache_generation++;
-    // OPTIMIZATION: Use -1.0f to distinguish "not cached" from "cached as 0"
-    component->layout_cache.cached_intrinsic_width = -1.0f;
-    component->layout_cache.cached_intrinsic_height = -1.0f;
+    // Mark this component's layout as dirty
     ir_layout_mark_dirty(component);
 }
 
@@ -131,7 +101,7 @@ void ir_layout_invalidate_cache(IRComponent* component) {
 // Intrinsic Size Calculation (with caching)
 // ============================================================================
 
-static float ir_get_text_width_estimate(const char* text, float font_size) {
+float ir_get_text_width_estimate(const char* text, float font_size) {
     if (!text) return 0.0f;
 
     // Improved text width estimation (same algorithm as old layout.c)
@@ -1501,172 +1471,6 @@ static float table_get_cell_content_height(IRComponent* cell) {
  * Compute intrinsic size for Table components
  * Runs table layout algorithm (phases 1-4) to calculate dimensions
  */
-static void intrinsic_size_table(IRComponent* c, IRIntrinsicSize* out) {
-    if (!c || !out || c->type != IR_COMPONENT_TABLE) return;
-
-    IRTableState* state = (IRTableState*)c->custom_data;
-    if (!state) {
-        // No state - return default size
-        memset(out, 0, sizeof(IRIntrinsicSize));
-        return;
-    }
-
-    // Use cached dimensions if valid
-    if (state->layout_valid && state->cached_total_width > 0 && state->cached_total_height > 0) {
-        out->min_content_width = state->cached_total_width;
-        out->max_content_width = state->cached_total_width;
-        out->min_content_height = state->cached_total_height;
-        out->max_content_height = state->cached_total_height;
-        return;
-    }
-
-    // Calculate intrinsic size by running table layout algorithm
-    // We need to compute column widths and row heights
-
-    uint32_t num_cols = table_count_columns(c);
-    uint32_t num_rows = table_count_rows(c);
-
-    if (num_cols == 0 || num_rows == 0) {
-        memset(out, 0, sizeof(IRIntrinsicSize));
-        return;
-    }
-
-    // Get table styling
-    float cell_padding = state->style.cell_padding;
-    float border_width = state->style.show_borders ? state->style.border_width : 0.0f;
-
-    // Allocate arrays for column widths and row heights
-    float* col_widths = (float*)calloc(num_cols, sizeof(float));
-    float* row_heights = (float*)calloc(num_rows, sizeof(float));
-    float* min_col_widths = (float*)calloc(num_cols, sizeof(float));
-
-    if (!col_widths || !row_heights || !min_col_widths) {
-        free(col_widths);
-        free(row_heights);
-        free(min_col_widths);
-        memset(out, 0, sizeof(IRIntrinsicSize));
-        return;
-    }
-
-    // Initialize minimum widths from column definitions
-    for (uint32_t col = 0; col < num_cols; col++) {
-        if (col < state->column_count && state->columns) {
-            IRTableColumnDef* col_def = &state->columns[col];
-            if (col_def->width.type == IR_DIMENSION_PX) {
-                col_widths[col] = col_def->width.value;
-            }
-            if (col_def->min_width.type == IR_DIMENSION_PX) {
-                min_col_widths[col] = col_def->min_width.value;
-            }
-        }
-    }
-
-    // Phase 1: Calculate intrinsic column widths from cell content
-    uint32_t row_idx = 0;
-    for (uint32_t i = 0; i < c->child_count; i++) {
-        IRComponent* section = c->children[i];
-        if (section->type != IR_COMPONENT_TABLE_HEAD &&
-            section->type != IR_COMPONENT_TABLE_BODY &&
-            section->type != IR_COMPONENT_TABLE_FOOT) continue;
-
-        for (uint32_t j = 0; j < section->child_count; j++) {
-            IRComponent* row = section->children[j];
-            if (row->type != IR_COMPONENT_TABLE_ROW) continue;
-
-            uint32_t col_idx = 0;
-            for (uint32_t k = 0; k < row->child_count; k++) {
-                IRComponent* cell = row->children[k];
-                IRTableCellData* data = get_cell_data(cell);
-                uint32_t colspan = data ? data->colspan : 1;
-                if (colspan == 0) colspan = 1;
-
-                // Only measure cells without colspan for initial width
-                if (colspan == 1 && col_idx < num_cols) {
-                    float content_width = table_get_cell_content_width(cell) + cell_padding * 2;
-                    if (content_width > col_widths[col_idx]) {
-                        col_widths[col_idx] = content_width;
-                    }
-                }
-
-                col_idx += colspan;
-            }
-            row_idx++;
-        }
-    }
-
-    // Phase 2: Apply minimum widths
-    for (uint32_t col = 0; col < num_cols; col++) {
-        if (col_widths[col] < min_col_widths[col]) {
-            col_widths[col] = min_col_widths[col];
-        }
-        if (col_widths[col] < 30.0f) {
-            col_widths[col] = 30.0f;  // Absolute minimum
-        }
-    }
-
-    // Phase 3: Calculate total width (no expansion - intrinsic size)
-    float total_width = 0;
-    for (uint32_t col = 0; col < num_cols; col++) {
-        total_width += col_widths[col];
-    }
-    total_width += border_width * (num_cols + 1);
-
-    // Phase 4: Calculate row heights from cell content
-    row_idx = 0;
-    for (uint32_t i = 0; i < c->child_count; i++) {
-        IRComponent* section = c->children[i];
-        if (section->type != IR_COMPONENT_TABLE_HEAD &&
-            section->type != IR_COMPONENT_TABLE_BODY &&
-            section->type != IR_COMPONENT_TABLE_FOOT) continue;
-
-        for (uint32_t j = 0; j < section->child_count; j++) {
-            IRComponent* row = section->children[j];
-            if (row->type != IR_COMPONENT_TABLE_ROW) continue;
-
-            float max_cell_height = 0;
-            for (uint32_t k = 0; k < row->child_count; k++) {
-                IRComponent* cell = row->children[k];
-                IRTableCellData* data = get_cell_data(cell);
-                uint32_t rowspan = data ? data->rowspan : 1;
-                if (rowspan == 0) rowspan = 1;
-
-                // Only measure cells without rowspan for initial height
-                if (rowspan == 1) {
-                    float content_height = table_get_cell_content_height(cell) + cell_padding * 2;
-                    if (content_height > max_cell_height) {
-                        max_cell_height = content_height;
-                    }
-                }
-            }
-
-            row_heights[row_idx] = max_cell_height > 0 ? max_cell_height : 30.0f;
-            row_idx++;
-        }
-    }
-
-    // Calculate total table height
-    float total_height = 0;
-    for (uint32_t row = 0; row < num_rows; row++) {
-        total_height += row_heights[row];
-    }
-    total_height += border_width * (num_rows + 1);
-
-    // Cache the dimensions (but don't set layout_valid yet - that's done in Phase 2 after cell positions are set)
-    state->cached_total_width = total_width;
-    state->cached_total_height = total_height;
-    // NOTE: We don't set layout_valid = true here because Phase 2 needs to run to set cell positions
-
-    // Store in output
-    out->min_content_width = total_width;
-    out->max_content_width = total_width;
-    out->min_content_height = total_height;
-    out->max_content_height = total_height;
-
-    // Clean up temporary arrays
-    free(col_widths);
-    free(row_heights);
-    free(min_col_widths);
-}
 
 // Main table layout function
 void ir_layout_compute_table(IRComponent* table, float available_width, float available_height) {
@@ -1945,7 +1749,6 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
             if (!section) continue;
             if (section->layout_state) {
                 section->layout_state->layout_valid = true;
-                section->layout_state->absolute_positions_computed = false;
             }
 
             for (uint32_t j = 0; j < section->child_count; j++) {
@@ -1953,7 +1756,6 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
                 if (!row) continue;
                 if (row->layout_state) {
                     row->layout_state->layout_valid = true;
-                    row->layout_state->absolute_positions_computed = false;
                 }
 
                 for (uint32_t k = 0; k < row->child_count; k++) {
@@ -1961,7 +1763,6 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
                     if (!cell) continue;
                     if (cell->layout_state) {
                         cell->layout_state->layout_valid = true;
-                        cell->layout_state->absolute_positions_computed = false;
                     }
                 }
             }
@@ -2770,1138 +2571,119 @@ void ir_layout_compute_flowchart(IRComponent* flowchart, float available_width, 
  * Compute intrinsic size for Text components
  * Uses backend text measurement callback if available, otherwise fallback heuristic
  */
-static void intrinsic_size_text(IRComponent* c, IRIntrinsicSize* out) {
-    if (!c || !out) return;
 
-    float font_size = (c->style && c->style->font.size > 0) ? c->style->font.size : 16.0f;
-    const char* text = c->text_content ? c->text_content : "";
-
-    // Check if max_width is set for text wrapping
-    float max_width = 0.0f;
-    if (c->style && c->style->text_effect.max_width.type == IR_DIMENSION_PX) {
-        max_width = c->style->text_effect.max_width.value;
-    }
-
-    if (g_text_measure_callback) {
-        // Use backend measurement (SDL3 TTF, terminal, etc.)
-        // Pass max_width so backend can calculate multi-line height
-        float width = 0, height = 0;
-        g_text_measure_callback(text, font_size, max_width, &width, &height);
-        out->max_content_width = width;
-        out->max_content_height = height;
-        out->min_content_width = font_size * 0.5f;  // At least 1 character wide
-        out->min_content_height = height;
-    } else {
-        // Heuristic fallback (no backend available)
-        float char_width = font_size * 0.5f;  // Rough approximation
-        size_t len = strlen(text);
-        out->max_content_width = len * char_width;
-        out->max_content_height = font_size * 1.2f;  // Line height
-        out->min_content_width = char_width;
-        out->min_content_height = font_size * 1.2f;
-    }
-}
+// ============================================================================
+// Single-Pass Recursive Layout System (NEW)
+// ============================================================================
 
 /**
- * Compute intrinsic size for Column components
- * Sums children heights, takes max width
+ * Single-pass recursive layout algorithm
+ *
+ * Computes final dimensions and positions in a single bottom-up post-order traversal.
+ * Each component fully resolves its layout before returning to parent, eliminating
+ * timing issues where parents read stale child dimensions.
+ *
+ * Algorithm:
+ * 1. Resolve own width/height (or mark AUTO)
+ * 2. For each child:
+ *    - Recursively call ir_layout_single_pass (child computes FINAL dimensions)
+ *    - Position child using fresh child.computed.width/height
+ *    - Advance position for next child
+ * 3. If AUTO dimensions: finalize based on positioned children
+ * 4. Convert to absolute coordinates
+ * 5. Return (parent can now use our final dimensions)
  */
-static void intrinsic_size_column(IRComponent* c, IRIntrinsicSize* out) {
-    if (!c || !out) return;
+void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
+                           float parent_x, float parent_y) {
+    if (!c) return;
 
-    float max_width = 0;
-    float sum_height = 0;
-    float gap = (c->layout && c->layout->flex.gap > 0) ? (float)c->layout->flex.gap : 0.0f;
-
-    // Sum children dimensions
-    for (uint32_t i = 0; i < c->child_count; i++) {
-        IRComponent* child = c->children[i];
-        if (!child || !child->layout_state) continue;
-
-        IRIntrinsicSize* child_intrinsic = &child->layout_state->intrinsic;
-
-        // Max width across all children
-        if (child_intrinsic->max_content_width > max_width) {
-            max_width = child_intrinsic->max_content_width;
-        }
-
-        // Sum heights
-        sum_height += child_intrinsic->max_content_height;
-        if (i > 0) sum_height += gap;  // Gap between children
+    // Ensure layout state exists
+    if (!c->layout_state) {
+        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
     }
 
-    // Add padding
-    IRSpacing pad = {0};
-    if (c->style) pad = c->style->padding;
+    // Try to dispatch to component-specific trait first
+    ir_layout_dispatch(c, constraints, parent_x, parent_y);
 
-    out->min_content_width = max_width + pad.left + pad.right;
-    out->max_content_width = max_width + pad.left + pad.right;
-    out->min_content_height = sum_height + pad.top + pad.bottom;
-    out->max_content_height = sum_height + pad.top + pad.bottom;
-
-    // Apply max_width/max_height constraints to intrinsic size
-    if (c->layout) {
-        if (c->layout->max_width.type == IR_DIMENSION_PX && c->layout->max_width.value > 0) {
-            if (out->max_content_width > c->layout->max_width.value) {
-                out->max_content_width = c->layout->max_width.value;
-            }
-            if (out->min_content_width > c->layout->max_width.value) {
-                out->min_content_width = c->layout->max_width.value;
-            }
-        }
-        if (c->layout->max_height.type == IR_DIMENSION_PX && c->layout->max_height.value > 0) {
-            if (out->max_content_height > c->layout->max_height.value) {
-                out->max_content_height = c->layout->max_height.value;
-            }
-            if (out->min_content_height > c->layout->max_height.value) {
-                out->min_content_height = c->layout->max_height.value;
-            }
-        }
-    }
-}
-
-/**
- * Compute intrinsic size for Row components
- * Sums children widths, takes max height
- */
-static void intrinsic_size_row(IRComponent* c, IRIntrinsicSize* out) {
-    if (!c || !out) return;
-
-    float sum_width = 0;
-    float max_height = 0;
-    float gap = (c->layout && c->layout->flex.gap > 0) ? (float)c->layout->flex.gap : 0.0f;
-
-    // Sum children dimensions
-    for (uint32_t i = 0; i < c->child_count; i++) {
-        IRComponent* child = c->children[i];
-        if (!child || !child->layout_state) {
-            fprintf(stderr, "[LAYOUT] intrinsic_size_row: child[%d] is NULL or has no layout_state\n", i);
-            continue;
-        }
-
-        IRIntrinsicSize* child_intrinsic = &child->layout_state->intrinsic;
-
-        fprintf(stderr, "[LAYOUT] intrinsic_size_row: child[%d] intrinsic size: width=%.1f height=%.1f\n",
-                i, child_intrinsic->max_content_width, child_intrinsic->max_content_height);
-
-        // Sum widths
-        sum_width += child_intrinsic->max_content_width;
-        if (i > 0) sum_width += gap;  // Gap between children
-
-        // Max height across all children
-        if (child_intrinsic->max_content_height > max_height) {
-            max_height = child_intrinsic->max_content_height;
-        }
+    // If dispatch handled it (trait registered), we're done
+    // Check if computed dimensions are set (trait completed layout)
+    if (c->layout_state->computed.width > 0 || c->layout_state->computed.height > 0) {
+        return;
     }
 
-    // Add padding
-    IRSpacing pad = {0};
-    if (c->style) pad = c->style->padding;
+    // Otherwise, fall back to generic container layout
+    // This is a simple implementation - will be enhanced in Phase 4 (Axis-Parameterized Flexbox)
 
-    out->min_content_width = sum_width + pad.left + pad.right;
-    out->max_content_width = sum_width + pad.left + pad.right;
-    out->min_content_height = max_height + pad.top + pad.bottom;
-    out->max_content_height = max_height + pad.top + pad.bottom;
-
-    // Apply max_width/max_height constraints to intrinsic size
-    if (c->layout) {
-        if (c->layout->max_width.type == IR_DIMENSION_PX && c->layout->max_width.value > 0) {
-            if (out->max_content_width > c->layout->max_width.value) {
-                out->max_content_width = c->layout->max_width.value;
-            }
-            if (out->min_content_width > c->layout->max_width.value) {
-                out->min_content_width = c->layout->max_width.value;
-            }
-        }
-        if (c->layout->max_height.type == IR_DIMENSION_PX && c->layout->max_height.value > 0) {
-            if (out->max_content_height > c->layout->max_height.value) {
-                out->max_content_height = c->layout->max_height.value;
-            }
-            if (out->min_content_height > c->layout->max_height.value) {
-                out->min_content_height = c->layout->max_height.value;
-            }
-        }
-    }
-}
-
-/**
- * Compute intrinsic size for Center components
- * Auto-sizes to single child
- */
-static void intrinsic_size_center(IRComponent* c, IRIntrinsicSize* out) {
-    if (!c || !out) return;
-
-    // Center auto-sizes to its single child (or 0 if no children)
-    if (c->child_count == 1 && c->children[0] && c->children[0]->layout_state) {
-        *out = c->children[0]->layout_state->intrinsic;
-    } else {
-        // No children or multiple children - default to 0
-        memset(out, 0, sizeof(IRIntrinsicSize));
+    if (getenv("KRYON_DEBUG_SINGLE_PASS")) {
+        fprintf(stderr, "[SinglePass] Component type %d: using fallback generic layout\n", c->type);
     }
 
-    // Add padding if present
-    if (c->style) {
-        IRSpacing pad = c->style->padding;
-        out->min_content_width += pad.left + pad.right;
-        out->max_content_width += pad.left + pad.right;
-        out->min_content_height += pad.top + pad.bottom;
-        out->max_content_height += pad.top + pad.bottom;
-    }
-}
+    // Resolve own dimensions
+    float own_width = constraints.max_width;
+    float own_height = constraints.max_height;
 
-/**
- * Compute intrinsic size for Button components
- * Measures text content plus padding
- */
-static void intrinsic_size_button(IRComponent* c, IRIntrinsicSize* out) {
-    if (!c || !out) return;
-
-    // Buttons are like text with extra padding
-    intrinsic_size_text(c, out);
-
-    // Add button-specific padding (standard button padding)
-    const float BUTTON_PADDING_H = 16.0f;
-    const float BUTTON_PADDING_V = 8.0f;
-
-    out->min_content_width += BUTTON_PADDING_H * 2;
-    out->max_content_width += BUTTON_PADDING_H * 2;
-    out->min_content_height += BUTTON_PADDING_V * 2;
-    out->max_content_height += BUTTON_PADDING_V * 2;
-
-    // Add explicit padding if present
-    if (c->style) {
-        IRSpacing pad = c->style->padding;
-        out->min_content_width += pad.left + pad.right;
-        out->max_content_width += pad.left + pad.right;
-        out->min_content_height += pad.top + pad.bottom;
-        out->max_content_height += pad.top + pad.bottom;
-    }
-}
-
-/**
- * Compute intrinsic size for Tab components
- * Tabs are like buttons but use tab_data->title for text
- */
-static void intrinsic_size_tab(IRComponent* c, IRIntrinsicSize* out) {
-    if (!c || !out) return;
-
-    float font_size = (c->style && c->style->font.size > 0) ? c->style->font.size : 16.0f;
-    const char* title = (c->tab_data && c->tab_data->title) ? c->tab_data->title : "";
-
-    if (g_text_measure_callback) {
-        // Use backend measurement (SDL3 TTF, terminal, etc.)
-        float width = 0, height = 0;
-        g_text_measure_callback(title, font_size, 0, &width, &height);
-        out->max_content_width = width;
-        out->max_content_height = height;
-        out->min_content_width = font_size * 0.5f;  // At least 1 character wide
-        out->min_content_height = height;
-    } else {
-        // Heuristic fallback (no backend available)
-        float char_width = font_size * 0.5f;  // Rough approximation
-        size_t len = strlen(title);
-        out->max_content_width = len * char_width;
-        out->max_content_height = font_size * 1.2f;  // Line height
-        out->min_content_width = char_width;
-        out->min_content_height = font_size * 1.2f;
-    }
-
-    // Add tab-specific padding (similar to buttons)
-    const float TAB_PADDING_H = 16.0f;
-    const float TAB_PADDING_V = 8.0f;
-
-    out->min_content_width += TAB_PADDING_H * 2;
-    out->max_content_width += TAB_PADDING_H * 2;
-    out->min_content_height += TAB_PADDING_V * 2;
-    out->max_content_height += TAB_PADDING_V * 2;
-
-    // Add explicit padding if present
-    if (c->style) {
-        IRSpacing pad = c->style->padding;
-        out->min_content_width += pad.left + pad.right;
-        out->max_content_width += pad.left + pad.right;
-        out->min_content_height += pad.top + pad.bottom;
-        out->max_content_height += pad.top + pad.bottom;
-    }
-
-    fprintf(stderr, "[LAYOUT] intrinsic_size_tab: title='%s' size=(%.1f x %.1f)\n",
-            title, out->max_content_width, out->max_content_height);
-}
-
-/**
- * Compute intrinsic size for Container components
- * Similar to Column, but supports both directions
- */
-static void intrinsic_size_container(IRComponent* c, IRIntrinsicSize* out) {
-    if (!c || !out) return;
-
-    // Check layout direction (default to column)
-    bool is_row = false;
-    if (c->layout && c->layout->flex.direction == 1) {
-        is_row = true;
-    }
-
-    if (is_row) {
-        intrinsic_size_row(c, out);
-    } else {
-        intrinsic_size_column(c, out);
-    }
-
-    // If container has explicit dimensions, override intrinsic size with those
+    // Apply explicit dimensions if set
     if (c->style) {
         if (c->style->width.type == IR_DIMENSION_PX) {
-            out->min_content_width = c->style->width.value;
-            out->max_content_width = c->style->width.value;
+            own_width = c->style->width.value;
         }
         if (c->style->height.type == IR_DIMENSION_PX) {
-            out->min_content_height = c->style->height.value;
-            out->max_content_height = c->style->height.value;
+            own_height = c->style->height.value;
         }
     }
 
-    // Apply max_width/max_height constraints to intrinsic size
-    if (c->layout) {
-        if (c->layout->max_width.type == IR_DIMENSION_PX && c->layout->max_width.value > 0) {
-            if (out->max_content_width > c->layout->max_width.value) {
-                out->max_content_width = c->layout->max_width.value;
-            }
-            if (out->min_content_width > c->layout->max_width.value) {
-                out->min_content_width = c->layout->max_width.value;
-            }
-        }
-        if (c->layout->max_height.type == IR_DIMENSION_PX && c->layout->max_height.value > 0) {
-            if (out->max_content_height > c->layout->max_height.value) {
-                out->max_content_height = c->layout->max_height.value;
-            }
-            if (out->min_content_height > c->layout->max_height.value) {
-                out->min_content_height = c->layout->max_height.value;
-            }
-        }
-    }
-}
+    // Track whether dimensions are AUTO (need to compute from children)
+    bool width_auto = (c->style && c->style->width.type == IR_DIMENSION_AUTO);
+    bool height_auto = (c->style && c->style->height.type == IR_DIMENSION_AUTO);
 
-/**
- * Main intrinsic measurement function (Pass 1: Bottom-Up)
- * Traverses tree from leaves to root, computing content-based sizes
- */
-void ir_layout_compute_intrinsic(IRComponent* component) {
-    if (!component || !component->layout_state) return;
-
-    // Skip if already valid and not dirty
-    if (component->layout_state->intrinsic_valid && !component->layout_state->dirty) {
-        return;
-    }
-
-    // Recurse to children FIRST (bottom-up traversal)
-    for (uint32_t i = 0; i < component->child_count; i++) {
-        ir_layout_compute_intrinsic(component->children[i]);
-    }
-
-    // Now measure THIS component based on its type
-    IRIntrinsicSize* out = &component->layout_state->intrinsic;
-
-    switch (component->type) {
-        case IR_COMPONENT_TEXT:
-            intrinsic_size_text(component, out);
-            break;
-
-        case IR_COMPONENT_COLUMN:
-            intrinsic_size_column(component, out);
-            break;
-
-        case IR_COMPONENT_ROW:
-            intrinsic_size_row(component, out);
-            break;
-
-        case IR_COMPONENT_CENTER:
-            intrinsic_size_center(component, out);
-            break;
-
-        case IR_COMPONENT_BUTTON:
-            intrinsic_size_button(component, out);
-            break;
-
-        case IR_COMPONENT_CONTAINER:
-            intrinsic_size_container(component, out);
-            break;
-
-        case IR_COMPONENT_CHECKBOX:
-            // Checkboxes are like buttons with text
-            intrinsic_size_button(component, out);
-            break;
-
-        case IR_COMPONENT_INPUT:
-            // Check for explicit width/height first
-            if (component->style && component->style->width.type == IR_DIMENSION_PX) {
-                // Use explicit width
-                out->min_content_width = component->style->width.value;
-                out->max_content_width = component->style->width.value;
-            } else {
-                // Use default width
-                out->min_content_width = 100.0f;
-                out->max_content_width = 200.0f;
-            }
-
-            if (component->style && component->style->height.type == IR_DIMENSION_PX) {
-                // Use explicit height
-                out->min_content_height = component->style->height.value;
-                out->max_content_height = component->style->height.value;
-            } else {
-                // Use default height
-                out->min_content_height = 24.0f;
-                out->max_content_height = 24.0f;
-            }
-
-            if (component->style) {
-                IRSpacing pad = component->style->padding;
-                out->min_content_width += pad.left + pad.right;
-                out->max_content_width += pad.left + pad.right;
-                out->min_content_height += pad.top + pad.bottom;
-                out->max_content_height += pad.top + pad.bottom;
-            }
-            break;
-
-        case IR_COMPONENT_TAB_GROUP:
-        case IR_COMPONENT_TAB_BAR:
-        case IR_COMPONENT_TAB_CONTENT:
-            // TabBar can be row or column depending on flexDirection
-            // TabContent and TabGroup are always vertical (column)
-            if (component->type == IR_COMPONENT_TAB_BAR) {
-                if (getenv("KRYON_TRACE_LAYOUT")) {
-                    fprintf(stderr, "[TabBar intrinsic] layout=%p direction=%d\n",
-                            (void*)component->layout,
-                            component->layout ? component->layout->flex.direction : -1);
-                }
-                if (component->layout && component->layout->flex.direction == 1) {
-                    fprintf(stderr, "[LAYOUT] TabBar calling intrinsic_size_row()\n");
-                    intrinsic_size_row(component, out);  // Horizontal tabs
-                    if (getenv("KRYON_TRACE_LAYOUT")) {
-                        fprintf(stderr, "[TabBar] intrinsic_size_row result: max_width=%.1f max_height=%.1f\n",
-                                out->max_content_width, out->max_content_height);
-                    }
-                } else {
-                    if (getenv("KRYON_TRACE_LAYOUT")) {
-                        fprintf(stderr, "[TabBar] Calling intrinsic_size_column()\n");
-                    }
-                    intrinsic_size_column(component, out);  // Vertical layout
-                }
-            } else {
-                intrinsic_size_column(component, out);  // Vertical layout
-            }
-            break;
-
-        case IR_COMPONENT_TAB:
-            // Tabs are sized based on their title text
-            intrinsic_size_tab(component, out);
-            break;
-
-        case IR_COMPONENT_TAB_PANEL:
-            // Tab panels can have mixed content
-            intrinsic_size_container(component, out);
-            break;
-
-        case IR_COMPONENT_TABLE:
-            // Tables need special intrinsic size calculation
-            intrinsic_size_table(component, out);
-            break;
-
-        default:
-            // Unknown type - assume container-like behavior
-            if (component->child_count > 0) {
-                intrinsic_size_container(component, out);
-            } else {
-                // Leaf component with no handler - default to 0
-                memset(out, 0, sizeof(IRIntrinsicSize));
-            }
-            break;
-    }
-
-    // Mark intrinsic sizing as valid
-    component->layout_state->intrinsic_valid = true;
-}
-
-// ============================================================================
-// Phase 2: Top-Down Constraint Application
-// ============================================================================
-
-/**
- * Resolve dimension based on style and constraints
- * Handles FIXED (px), PERCENT (%), and AUTO sizing
- */
-static float layout_resolve_dimension(IRDimension dim, float constraint, float intrinsic_size) {
-    switch (dim.type) {
-        case IR_DIMENSION_PX:
-            // Fixed size in pixels
-            return dim.value;
-
-        case IR_DIMENSION_PERCENT:
-            // Percentage of parent constraint
-            return constraint * (dim.value / 100.0f);
-
-        case IR_DIMENSION_AUTO:
-        default:
-            // Auto: use intrinsic size, clamped to constraint
-            if (intrinsic_size > constraint) {
-                return constraint;
-            }
-            return intrinsic_size;
-    }
-}
-
-/**
- * Apply main-axis alignment (justify-content for flex containers)
- */
-static void apply_main_axis_alignment(IRComponent* c, float available_space, bool is_column) {
-    if (!c || !c->layout || c->child_count == 0) return;
-
-    IRAlignment align = c->layout->flex.justify_content;
-    if (align == IR_ALIGNMENT_START) return;  // Already positioned at start
-
-    if (getenv("KRYON_TRACE_ALIGNMENT")) {
-        fprintf(stderr, "[ALIGN] Component %u, align=%d, available=%.1f, is_column=%d\n",
-                c->id, align, available_space, is_column);
-    }
-
-    float gap = c->layout->flex.gap;
-    float total_content = 0;
-
-    // Calculate total content size
-    for (uint32_t i = 0; i < c->child_count; i++) {
-        IRComponent* child = c->children[i];
-        if (!child || !child->layout_state) continue;
-
-        if (is_column) {
-            total_content += child->layout_state->computed.height;
-        } else {
-            total_content += child->layout_state->computed.width;
-        }
-        if (i > 0) total_content += gap;
-    }
-
-    float remaining = available_space - total_content;
-    if (getenv("KRYON_TRACE_ALIGNMENT")) {
-        fprintf(stderr, "[ALIGN]   total_content=%.1f, remaining=%.1f\n", total_content, remaining);
-    }
-    if (remaining <= 0) return;  // No space to distribute
-
-    float offset = 0;
-    if (align == IR_ALIGNMENT_CENTER) {
-        offset = remaining / 2.0f;
-    } else if (align == IR_ALIGNMENT_END) {
-        offset = remaining;
-    } else if (align == IR_ALIGNMENT_SPACE_BETWEEN) {
-        // First child stays at 0, distribute remaining space between children
-        if (c->child_count > 1) {
-            float spacing = remaining / (c->child_count - 1);
-            for (uint32_t i = 1; i < c->child_count; i++) {
-                IRComponent* child = c->children[i];
-                if (!child || !child->layout_state) continue;
-                if (is_column) {
-                    child->layout_state->computed.y += spacing * i;
-                } else {
-                    child->layout_state->computed.x += spacing * i;
-                }
-            }
-        }
-        return;
-    } else if (align == IR_ALIGNMENT_SPACE_EVENLY) {
-        // Equal space before, between, and after all children
-        float spacing = remaining / (c->child_count + 1);
-        for (uint32_t i = 0; i < c->child_count; i++) {
-            IRComponent* child = c->children[i];
-            if (!child || !child->layout_state) continue;
-            if (is_column) {
-                child->layout_state->computed.y += spacing * (i + 1);
-            } else {
-                child->layout_state->computed.x += spacing * (i + 1);
-            }
-        }
-        return;
-    } else if (align == IR_ALIGNMENT_SPACE_AROUND) {
-        // Half space before first, full space between, half space after last
-        float spacing = remaining / c->child_count;
-        for (uint32_t i = 0; i < c->child_count; i++) {
-            IRComponent* child = c->children[i];
-            if (!child || !child->layout_state) continue;
-            if (is_column) {
-                child->layout_state->computed.y += spacing * (i + 0.5f);
-            } else {
-                child->layout_state->computed.x += spacing * (i + 0.5f);
-            }
-        }
-        return;
-    }
-
-    // Apply offset to all children (for CENTER and END)
-    for (uint32_t i = 0; i < c->child_count; i++) {
-        IRComponent* child = c->children[i];
-        if (!child || !child->layout_state) continue;
-        if (getenv("KRYON_TRACE_ALIGNMENT")) {
-            fprintf(stderr, "[ALIGN]   Child %u: before offset: %s=%.1f\n",
-                    child->id, is_column ? "y" : "x",
-                    is_column ? child->layout_state->computed.y : child->layout_state->computed.x);
-        }
-        if (is_column) {
-            child->layout_state->computed.y += offset;
-        } else {
-            child->layout_state->computed.x += offset;
-        }
-        if (getenv("KRYON_TRACE_ALIGNMENT")) {
-            fprintf(stderr, "[ALIGN]   Child %u: after offset: %s=%.1f (offset=%.1f)\n",
-                    child->id, is_column ? "y" : "x",
-                    is_column ? child->layout_state->computed.y : child->layout_state->computed.x,
-                    offset);
-        }
-    }
-}
-
-/**
- * Apply cross-axis alignment (align-items for flex containers)
- */
-static void apply_cross_axis_alignment(IRComponent* c, float available_space, bool is_column) {
-    if (!c || !c->layout || c->child_count == 0) return;
-
-    IRAlignment align = c->layout->flex.cross_axis;
-    if (align == IR_ALIGNMENT_START) return;  // Already positioned at start
+    // Layout children recursively
+    float child_y = 0;
+    float max_child_width = 0;
+    float total_child_height = 0;
 
     for (uint32_t i = 0; i < c->child_count; i++) {
         IRComponent* child = c->children[i];
-        if (!child || !child->layout_state) continue;
+        if (!child) continue;
 
-        float child_size = is_column ? child->layout_state->computed.width
-                                     : child->layout_state->computed.height;
-        float remaining = available_space - child_size;
-        if (remaining <= 0) continue;
-
-        float offset = 0;
-        if (align == IR_ALIGNMENT_CENTER) {
-            offset = remaining / 2.0f;
-        } else if (align == IR_ALIGNMENT_END) {
-            offset = remaining;
-        }
-
-        if (is_column) {
-            // Cross-axis is X for columns
-            child->layout_state->computed.x += offset;
-        } else {
-            // Cross-axis is Y for rows
-            child->layout_state->computed.y += offset;
-        }
-    }
-}
-
-/**
- * Layout children in a column with flex_grow support
- * Returns the final content height (how much vertical space the children actually used)
- */
-static float layout_column_children(IRComponent* c, IRLayoutConstraints constraints) {
-    if (!c || !c->layout_state) return 0.0f;
-
-    // CRITICAL: Clear absolute_positions_computed for ALL children
-    // When parent layout is recomputed, all children positions are recalculated
-    // and need to be converted to absolute in Phase 3
-    for (uint32_t i = 0; i < c->child_count; i++) {
-        IRComponent* child = c->children[i];
-        if (child && child->layout_state) {
-            child->layout_state->absolute_positions_computed = false;
-        }
-    }
-
-    IRSpacing pad = {0};
-    if (c->style) pad = c->style->padding;
-
-    // Use the component's COMPUTED dimensions, not the parent's constraints
-    float available_height = c->layout_state->computed.height - (pad.top + pad.bottom);
-    float available_width = c->layout_state->computed.width - (pad.left + pad.right);
-    float gap = c->layout ? (float)c->layout->flex.gap : 0.0f;
-
-    // Phase 1: Measure fixed-size children and count flex_grow
-    float total_flex_grow = 0;
-    float fixed_height = 0;
-
-    for (uint32_t i = 0; i < c->child_count; i++) {
-        IRComponent* child = c->children[i];
-        if (!child || !child->layout_state) continue;
-
-        if (child->layout && child->layout->flex.grow > 0) {
-            total_flex_grow += child->layout->flex.grow;
-        } else {
-            // Fixed-size child: use intrinsic or explicit height
-            fixed_height += child->layout_state->intrinsic.max_content_height;
-        }
-        if (i > 0) fixed_height += gap;
-    }
-
-    // Phase 2: Distribute remaining space to flex_grow children
-    float remaining_height = available_height - fixed_height;
-    float current_y = pad.top;
-
-    for (uint32_t i = 0; i < c->child_count; i++) {
-        IRComponent* child = c->children[i];
-        if (!child || !child->layout_state) continue;
-
+        // Create constraints for child
         IRLayoutConstraints child_constraints = {
-            .max_width = available_width,
-            .max_height = available_height,  // Default to available height for percentage calculations
+            .max_width = own_width,
+            .max_height = own_height - child_y,
             .min_width = 0,
             .min_height = 0
         };
 
-        // Determine child height
-        if (child->layout && child->layout->flex.grow > 0 && total_flex_grow > 0) {
-            // Flex-grow child: distribute remaining space proportionally
-            float share = remaining_height * (child->layout->flex.grow / total_flex_grow);
-            child_constraints.max_height = share > 0 ? share : 0;
-        } else if (child->type == IR_COMPONENT_CENTER) {
-            // CENTER components fill available height to center their children
-            child_constraints.max_height = available_height;
-        }
-        // For all other children (fixed size, percentage, AUTO):
-        // They get available_height as max constraint (already set above)
+        // RECURSIVELY layout child (child computes FINAL dimensions)
+        ir_layout_single_pass(child, child_constraints, parent_x, parent_y + child_y);
 
-        // Recursively layout child
-        ir_layout_compute_constraints(child, child_constraints);
+        // Track child dimensions for AUTO dimension calculation
+        if (child->layout_state) {
+            // Track for AUTO dimension calculation
+            max_child_width = fmaxf(max_child_width, child->layout_state->computed.width);
+            total_child_height += child->layout_state->computed.height;
 
-        // Get child margins
-        IRSpacing child_margin = {0};
-        if (child->style) child_margin = child->style->margin;
-
-        // Position child with top margin
-        child->layout_state->computed.x = pad.left + child_margin.left;
-        child->layout_state->computed.y = current_y + child_margin.top;
-
-        // Debug output for column child positioning
-        if (getenv("KRYON_DEBUG_COLUMN")) {
-            fprintf(stderr, "[COLUMN id=%d] Child %d (type=%d, id=%d) positioned at y=%.1f, height=%.1f, advancing current_y from %.1f to %.1f\n",
-                    c->id, i, child->type, child->id, child->layout_state->computed.y, child->layout_state->computed.height,
-                    current_y, current_y + child->layout_state->computed.height + child_margin.top + child_margin.bottom + gap);
-        }
-
-        current_y += child->layout_state->computed.height + child_margin.top + child_margin.bottom + gap;
-    }
-
-    // Apply cross-axis alignment (horizontal alignment in columns)
-    apply_cross_axis_alignment(c, available_width, true);
-
-    // Apply main-axis alignment (vertical alignment in columns)
-    apply_main_axis_alignment(c, available_height, true);
-
-    // Return the actual content height used
-    return current_y;
-}
-
-/**
- * Layout children in a row with flex_grow support
- */
-static void layout_row_children(IRComponent* c, IRLayoutConstraints constraints) {
-    if (!c || !c->layout_state) return;
-
-    // CRITICAL: Clear absolute_positions_computed for ALL children
-    // When parent layout is recomputed, all children positions are recalculated
-    // and need to be converted to absolute in Phase 3
-    for (uint32_t i = 0; i < c->child_count; i++) {
-        IRComponent* child = c->children[i];
-        if (child && child->layout_state) {
-            child->layout_state->absolute_positions_computed = false;
+            // Advance Y position for next child (Column layout)
+            child_y += child->layout_state->computed.height;
         }
     }
 
-    IRSpacing pad = {0};
-    if (c->style) pad = c->style->padding;
-
-    // Use the component's COMPUTED dimensions, not the parent's constraints
-    float available_width = c->layout_state->computed.width - (pad.left + pad.right);
-    float available_height = c->layout_state->computed.height - (pad.top + pad.bottom);
-    float gap = c->layout ? (float)c->layout->flex.gap : 0.0f;
-
-    // Phase 1: Measure fixed-size children and count flex_grow
-    float total_flex_grow = 0;
-    float fixed_width = 0;
-
-    for (uint32_t i = 0; i < c->child_count; i++) {
-        IRComponent* child = c->children[i];
-        if (!child || !child->layout_state) continue;
-
-        if (child->layout && child->layout->flex.grow > 0) {
-            total_flex_grow += child->layout->flex.grow;
-        } else {
-            // Fixed-size child: use intrinsic or explicit width
-            fixed_width += child->layout_state->intrinsic.max_content_width;
-        }
-        if (i > 0) fixed_width += gap;
+    // Finalize AUTO dimensions
+    if (width_auto) {
+        own_width = max_child_width;
+    }
+    if (height_auto) {
+        own_height = total_child_height;
     }
 
-    // Phase 2: Distribute remaining space to flex_grow children
-    float remaining_width = available_width - fixed_width;
-    float current_x = pad.left;
+    // Set final computed dimensions
+    c->layout_state->computed.width = own_width;
+    c->layout_state->computed.height = own_height;
+    c->layout_state->computed.x = parent_x;
+    c->layout_state->computed.y = parent_y;
 
-    for (uint32_t i = 0; i < c->child_count; i++) {
-        IRComponent* child = c->children[i];
-        if (!child || !child->layout_state) continue;
-
-        IRLayoutConstraints child_constraints = {
-            .max_width = available_width,  // Default to available width for percentage calculations
-            .max_height = available_height,
-            .min_width = 0,
-            .min_height = 0
-        };
-
-        // Determine child width
-        if (child->layout && child->layout->flex.grow > 0 && total_flex_grow > 0) {
-            // Flex-grow child: distribute remaining space proportionally
-            float share = remaining_width * (child->layout->flex.grow / total_flex_grow);
-            child_constraints.max_width = share > 0 ? share : 0;
-        } else if (child->type == IR_COMPONENT_CENTER) {
-            // CENTER components fill available width to center their children
-            child_constraints.max_width = available_width;
-        }
-        // For all other children (fixed size, percentage, AUTO):
-        // They get available_width as max constraint (already set above)
-
-        // Recursively layout child
-        ir_layout_compute_constraints(child, child_constraints);
-
-        // Get child margins
-        IRSpacing child_margin = {0};
-        if (child->style) child_margin = child->style->margin;
-
-        // Position child with left margin
-        child->layout_state->computed.x = current_x + child_margin.left;
-        child->layout_state->computed.y = pad.top + child_margin.top;
-
-        current_x += child->layout_state->computed.width + child_margin.left + child_margin.right + gap;
-    }
-
-    // Apply cross-axis alignment (vertical alignment in rows)
-    apply_cross_axis_alignment(c, available_height, false);
-
-    // Apply main-axis alignment (horizontal alignment in rows)
-    apply_main_axis_alignment(c, available_width, false);
-}
-
-/**
- * Main constraint application function (Pass 2: Top-Down)
- * Applies parent constraints and computes final layout
- */
-void ir_layout_compute_constraints(IRComponent* c, IRLayoutConstraints constraints) {
-    if (!c || !c->layout_state) return;
-
-    // Skip if already valid and not dirty
-    if (c->layout_state->layout_valid && !c->layout_state->dirty) {
-        return;
-    }
-
-    // Debug: Track why TabPanel and Column are being recomputed
-    if (c->type == IR_COMPONENT_TAB_PANEL || c->type == IR_COMPONENT_COLUMN) {
-        static int frame_count = 0;
-        frame_count++;
-        fprintf(stderr, "[LAYOUT] Frame %d: Recomputing layout for %s (id=%d): valid=%d dirty=%d\n",
-                frame_count, ir_component_type_to_string(c->type), c->id,
-                c->layout_state->layout_valid, c->layout_state->dirty);
-    }
-
-    // Reset absolute positions flag since we're recomputing layout
-    // Positions will be relative after this pass and need Phase 3 conversion
-    c->layout_state->absolute_positions_computed = false;
-
-    IRComputedLayout* layout = &c->layout_state->computed;
-    IRIntrinsicSize* intrinsic = &c->layout_state->intrinsic;
-    IRStyle* style = c->style;
-
-    // Debug: Track TabGroup and TabContent sizing
-    if (c->type == IR_COMPONENT_TAB_GROUP || c->type == IR_COMPONENT_TAB_CONTENT) {
-        fprintf(stderr, "[LAYOUT] %s (id=%d): constraints max=(%.1f x %.1f)\n",
-                ir_component_type_to_string(c->type), c->id,
-                constraints.max_width, constraints.max_height);
-        if (style) {
-            fprintf(stderr, "  width=%s height=%s\n",
-                    style->width.type == IR_DIMENSION_AUTO ? "auto" :
-                    style->width.type == IR_DIMENSION_PERCENT ? "percent" : "fixed",
-                    style->height.type == IR_DIMENSION_AUTO ? "auto" :
-                    style->height.type == IR_DIMENSION_PERCENT ? "percent" : "fixed");
-        }
-    }
-
-    // Resolve width
-    if (style && style->width.type != IR_DIMENSION_AUTO) {
-        layout->width = layout_resolve_dimension(style->width, constraints.max_width,
-                                                intrinsic->max_content_width);
-    } else {
-        // AUTO: use intrinsic size, clamped to constraint
-        // SPECIAL CASE: CENTER components fill their parent
-        if (c->type == IR_COMPONENT_CENTER) {
-            layout->width = constraints.max_width;
-        }
-        // SPECIAL CASE: TabContent and TabPanel fill their parent by default
-        // (they are containers for tab panels, should expand to fill TabGroup)
-        else if (c->type == IR_COMPONENT_TAB_CONTENT || c->type == IR_COMPONENT_TAB_PANEL) {
-            layout->width = constraints.max_width;
-        }
-        // SPECIAL CASE: Rows with justifyContent alignment need to FILL parent
-        // to have space for alignment to work
-        else if (c->type == IR_COMPONENT_ROW && c->layout) {
-            IRAlignment justify = c->layout->flex.justify_content;
-            // Only START can shrink-to-fit; all others need full width for alignment
-            if (justify != IR_ALIGNMENT_START) {
-                layout->width = constraints.max_width;
-            } else {
-                layout->width = intrinsic->max_content_width;
-                if (layout->width > constraints.max_width) {
-                    layout->width = constraints.max_width;
-                }
-            }
-        } else {
-            layout->width = intrinsic->max_content_width;
-            if (layout->width > constraints.max_width) {
-                layout->width = constraints.max_width;
-            }
-        }
-    }
-
-    // SPECIAL CASE: Remeasure text components after width is resolved
-    // Text might wrap to multiple lines when constrained to a smaller width
-    if (c->type == IR_COMPONENT_TEXT && c->text_content && g_text_measure_callback) {
-        // If the resolved width is less than the intrinsic width, text might wrap
-        if (layout->width < intrinsic->max_content_width) {
-            float font_size = (style && style->font.size > 0) ? style->font.size : 16.0f;
-            float measured_width = 0, measured_height = 0;
-
-            // Remeasure with the constrained width
-            g_text_measure_callback(c->text_content, font_size, layout->width,
-                                   &measured_width, &measured_height);
-
-            // Update intrinsic height with the multi-line height
-            intrinsic->max_content_height = measured_height;
-            intrinsic->min_content_height = measured_height;
-        }
-    }
-
-    // Resolve height
-    if (style && style->height.type != IR_DIMENSION_AUTO) {
-        layout->height = layout_resolve_dimension(style->height, constraints.max_height,
-                                                 intrinsic->max_content_height);
-    } else {
-        // AUTO: use intrinsic size, clamped to constraint
-        // SPECIAL CASE: CENTER components fill their parent
-        if (c->type == IR_COMPONENT_CENTER) {
-            layout->height = constraints.max_height;
-        }
-        // SPECIAL CASE: TabContent and TabPanel fill their parent by default
-        // (they are containers for tab panels, should expand to fill TabGroup)
-        else if (c->type == IR_COMPONENT_TAB_CONTENT || c->type == IR_COMPONENT_TAB_PANEL) {
-            layout->height = constraints.max_height;
-        }
-        // SPECIAL CASE: Columns with justifyContent alignment need to FILL parent
-        // to have space for alignment to work
-        else if (c->type == IR_COMPONENT_COLUMN && c->layout) {
-            IRAlignment justify = c->layout->flex.justify_content;
-            // Only START can shrink-to-fit; all others need full height for alignment
-            if (justify != IR_ALIGNMENT_START) {
-                layout->height = constraints.max_height;
-            } else {
-                layout->height = intrinsic->max_content_height;
-                if (layout->height > constraints.max_height) {
-                    layout->height = constraints.max_height;
-                }
-            }
-        } else {
-            layout->height = intrinsic->max_content_height;
-            if (layout->height > constraints.max_height) {
-                layout->height = constraints.max_height;
-            }
-        }
-    }
-
-    // Apply min/max constraints
-    if (c->layout) {
-        // Apply max_width constraint
-        if (c->layout->max_width.type == IR_DIMENSION_PX && c->layout->max_width.value > 0) {
-            if (layout->width > c->layout->max_width.value) {
-                layout->width = c->layout->max_width.value;
-            }
-        }
-
-        // Apply min_width constraint
-        if (c->layout->min_width.type == IR_DIMENSION_PX && c->layout->min_width.value > 0) {
-            if (layout->width < c->layout->min_width.value) {
-                layout->width = c->layout->min_width.value;
-            }
-        }
-
-        // Apply max_height constraint
-        if (c->layout->max_height.type == IR_DIMENSION_PX && c->layout->max_height.value > 0) {
-            if (layout->height > c->layout->max_height.value) {
-                layout->height = c->layout->max_height.value;
-            }
-        }
-
-        // Apply min_height constraint
-        if (c->layout->min_height.type == IR_DIMENSION_PX && c->layout->min_height.value > 0) {
-            if (layout->height < c->layout->min_height.value) {
-                layout->height = c->layout->min_height.value;
-            }
-        }
-    }
-
-    // Apply aspect ratio (if present)
-    // TODO: Add aspect_ratio support
-
-    // Build child constraints
-    IRSpacing pad = {0};
-    if (style) pad = style->padding;
-
-    IRLayoutConstraints child_constraints = {
-        .max_width = layout->width - (pad.left + pad.right),
-        .max_height = layout->height - (pad.top + pad.bottom),
-        .min_width = 0,
-        .min_height = 0
-    };
-
-    // Layout children based on component type
-    switch (c->type) {
-        case IR_COMPONENT_COLUMN:
-        case IR_COMPONENT_CONTAINER:
-        case IR_COMPONENT_TAB_PANEL:  // TabPanel acts like a Column container
-            // Check if container is column or row
-            if (c->layout && c->layout->flex.direction == 1) {
-                layout_row_children(c, constraints);
-            } else {
-                float content_height = layout_column_children(c, constraints);
-
-                // For AUTO-height columns, update height to match actual content
-                if ((!style || style->height.type == IR_DIMENSION_AUTO) &&
-                    (c->type == IR_COMPONENT_COLUMN || c->type == IR_COMPONENT_CONTAINER)) {
-                    // Add padding to content height
-                    layout->height = content_height + pad.top + pad.bottom;
-
-                    // Clamp to constraints
-                    if (layout->height > constraints.max_height) {
-                        layout->height = constraints.max_height;
-                    }
-                }
-            }
-            break;
-
-        case IR_COMPONENT_ROW:
-            layout_row_children(c, constraints);
-            break;
-
-        case IR_COMPONENT_CENTER:
-            // Center positions its single child in the middle
-            if (c->child_count == 1) {
-                IRComponent* child = c->children[0];
-                ir_layout_compute_constraints(child, child_constraints);
-
-                // Center the child
-                child->layout_state->computed.x =
-                    (layout->width - child->layout_state->computed.width) / 2.0f;
-                child->layout_state->computed.y =
-                    (layout->height - child->layout_state->computed.height) / 2.0f;
-            }
-            break;
-
-        case IR_COMPONENT_TAB_GROUP:
-        case IR_COMPONENT_TAB_BAR:
-        case IR_COMPONENT_TAB_CONTENT:
-            // TabBar can be row or column depending on flexDirection
-            // TabContent and TabGroup are always vertical (column)
-            if (c->type == IR_COMPONENT_TAB_BAR &&
-                c->layout && c->layout->flex.direction == 1) {
-                fprintf(stderr, "[LAYOUT] TabBar calling layout_row_children(), child_count=%d\n",
-                        c->child_count);
-                layout_row_children(c, constraints);  // Horizontal tabs
-                if (getenv("KRYON_TRACE_LAYOUT")) {
-                    fprintf(stderr, "[TabBar layout] After layout_row_children:\n");
-                    for (int i = 0; i < c->child_count; i++) {
-                        IRComponent* child = c->children[i];
-                        if (child->layout_state) {
-                            fprintf(stderr, "  Tab[%d] pos=(%.1f, %.1f) size=(%.1f x %.1f)\n",
-                                    i, child->layout_state->computed.x, child->layout_state->computed.y,
-                                    child->layout_state->computed.width, child->layout_state->computed.height);
-                        }
-                    }
-                }
-            } else {
-                if (getenv("KRYON_TRACE_LAYOUT")) {
-                    fprintf(stderr, "[TabBar/TabContent] Calling layout_column_children()\n");
-                }
-                layout_column_children(c, constraints);  // Vertical layout
-            }
-            break;
-
-        case IR_COMPONENT_TABLE:
-            // Tables use specialized layout algorithm
-            // Table dimensions are already resolved above
-            // Now layout table contents (sections, rows, cells)
-            ir_layout_compute_table(c, layout->width, layout->height);
-            break;
-
-        default:
-            // Default: layout each child independently with same constraints
-            for (uint32_t i = 0; i < c->child_count; i++) {
-                ir_layout_compute_constraints(c->children[i], child_constraints);
-            }
-            break;
-    }
-
-    // Mark layout as valid and clear dirty flag
+    // Mark layout as valid
     c->layout_state->layout_valid = true;
-    c->layout_state->dirty = false;  // CRITICAL: Clear dirty flag after successful layout
-    layout->valid = true;
-}
-
-// ============================================================================
-// Phase 3: Absolute Positioning
-// ============================================================================
-
-/**
- * Convert relative positions to absolute screen coordinates
- * Traverses top-down: root → leaves
- */
-void ir_layout_compute_absolute_positions(IRComponent* c, float parent_x, float parent_y) {
-    if (!c || !c->layout_state) return;
-
-    // Skip if absolute positions already computed (prevents accumulation on each frame)
-    if (c->layout_state->absolute_positions_computed) {
-        // Positions are already absolute, recurse to children that may not have been converted yet
-        for (uint32_t i = 0; i < c->child_count; i++) {
-            IRComponent* child = c->children[i];
-            if (child && child->layout_state && !child->layout_state->absolute_positions_computed) {
-                ir_layout_compute_absolute_positions(child,
-                    c->layout_state->computed.x,
-                    c->layout_state->computed.y);
-            }
-        }
-        return;
-    }
-
-    // Check for absolute positioning
-    if (c->style && c->style->position_mode == IR_POSITION_ABSOLUTE) {
-        // Use explicit left/top values (positioned relative to viewport, not parent)
-        c->layout_state->computed.x = c->style->absolute_x;
-        c->layout_state->computed.y = c->style->absolute_y;
-        if (getenv("KRYON_TRACE_ABSOLUTE")) {
-            fprintf(stderr, "[ABSOLUTE] Component %u: position=absolute, left=%.1f, top=%.1f\n",
-                    c->id, c->style->absolute_x, c->style->absolute_y);
-        }
-    } else {
-        // Convert relative to absolute
-        c->layout_state->computed.x += parent_x;
-        c->layout_state->computed.y += parent_y;
-    }
-
-    // Mark as converted
-    c->layout_state->absolute_positions_computed = true;
-
-    // Recurse to children
-    for (uint32_t i = 0; i < c->child_count; i++) {
-        IRComponent* child = c->children[i];
-        if (child && child->layout_state) {
-            ir_layout_compute_absolute_positions(child,
-                c->layout_state->computed.x,
-                c->layout_state->computed.y);
-        }
-    }
+    c->layout_state->computed.valid = true;
 }
 
 // ============================================================================
@@ -3909,26 +2691,23 @@ void ir_layout_compute_absolute_positions(IRComponent* c, float parent_x, float 
 // ============================================================================
 
 /**
- * Main entry point for two-pass layout computation
- * Call this before rendering to compute all layout
+ * Main entry point for layout computation
+ * Single-pass recursive layout system
  */
 void ir_layout_compute_tree(IRComponent* root, float viewport_width, float viewport_height) {
     if (!root) return;
 
-    // Phase 1: Bottom-up intrinsic sizing
-    ir_layout_compute_intrinsic(root);
+    if (getenv("KRYON_DEBUG_LAYOUT_MODE")) {
+        fprintf(stderr, "[Layout] Using SINGLE-PASS layout system\n");
+    }
 
-    // Phase 2: Top-down constraint application
     IRLayoutConstraints root_constraints = {
         .max_width = viewport_width,
         .max_height = viewport_height,
         .min_width = 0,
         .min_height = 0
     };
-    ir_layout_compute_constraints(root, root_constraints);
-
-    // Phase 3: Convert to absolute coordinates
-    ir_layout_compute_absolute_positions(root, 0, 0);
+    ir_layout_single_pass(root, root_constraints, 0, 0);
 }
 
 /**

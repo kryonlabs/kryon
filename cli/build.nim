@@ -3,7 +3,7 @@
 ## Universal IR-based build system for different targets
 
 import os, strutils, json, times, sequtils, osproc, tables
-import config, tsx_parser, kry_parser, kry_to_kir, md_parser, html_transpiler, codegen_html
+import config, tsx_parser, kry_parser, kry_to_kir, md_parser, html_transpiler
 
 # Architecture Note:
 # - Rendering backends: SDL3 (desktop), Terminal - use Kryon's renderer to draw UI
@@ -33,29 +33,31 @@ proc ir_destroy_component(component: IRComponent) {.
   importc, dynlib: libIrPath.}
 
 # HTML generation
-proc html_generator_create(): HTMLGenerator {.
-  importc, dynlib: libWebPath.}
-
-proc html_generator_destroy(generator: HTMLGenerator) {.
-  importc, dynlib: libWebPath.}
-
-proc html_generator_generate(generator: HTMLGenerator, root: IRComponent): cstring {.
-  importc, dynlib: libWebPath.}
+# DISABLED: Requires libkryon_web.so which is not built by default
+# proc html_generator_create(): HTMLGenerator {.
+#   importc, dynlib: libWebPath.}
+#
+# proc html_generator_destroy(generator: HTMLGenerator) {.
+#   importc, dynlib: libWebPath.}
+#
+# proc html_generator_generate(generator: HTMLGenerator, root: IRComponent): cstring {.
+#   importc, dynlib: libWebPath.}
 
 # CSS generation
 type CSSGenerator = ptr object
 
-proc css_generator_create(): CSSGenerator {.
-  importc, dynlib: libWebPath.}
-
-proc css_generator_destroy(generator: CSSGenerator) {.
-  importc, dynlib: libWebPath.}
-
-proc css_generator_generate(generator: CSSGenerator, root: IRComponent): cstring {.
-  importc, dynlib: libWebPath.}
-
-proc css_generator_write_to_file(generator: CSSGenerator, root: IRComponent, filename: cstring): bool {.
-  importc, dynlib: libWebPath.}
+# DISABLED: Requires libkryon_web.so which is not built by default
+# proc css_generator_create(): CSSGenerator {.
+#   importc, dynlib: libWebPath.}
+#
+# proc css_generator_destroy(generator: CSSGenerator) {.
+#   importc, dynlib: libWebPath.}
+#
+# proc css_generator_generate(generator: CSSGenerator, root: IRComponent): cstring {.
+#   importc, dynlib: libWebPath.}
+#
+# proc css_generator_write_to_file(generator: CSSGenerator, root: IRComponent, filename: cstring): bool {.
+#   importc, dynlib: libWebPath.}
 
 # HTML generator with options
 type HtmlGeneratorOptions* = object
@@ -64,8 +66,9 @@ type HtmlGeneratorOptions* = object
   inline_css*: bool     # Generate inline styles vs external CSS
   preserve_ids*: bool   # Preserve component IDs in output
 
-proc html_generator_create_with_options*(options: HtmlGeneratorOptions): HTMLGenerator {.
-  importc: "html_generator_create_with_options", dynlib: libWebPath.}
+# DISABLED: Requires libkryon_web.so which is not built by default
+# proc html_generator_create_with_options*(options: HtmlGeneratorOptions): HTMLGenerator {.
+#   importc: "html_generator_create_with_options", dynlib: libWebPath.}
 
 # Forward declarations
 proc buildLinuxTarget*()
@@ -1172,13 +1175,14 @@ proc processInlineMarkdown*(text: string): string =
   result = replaceLinks(result)
 
 proc generateWebFromKir*(kirFile: string, outputDir: string, cfg: KryonConfig) =
-  ## Generate self-contained HTML from KIR using Nim transpiler
+  ## Generate self-contained HTML from KIR using C web codegen library
   ## Produces HTML with inline CSS and JavaScript (no external dependencies)
   echo "🌐 Generating web output from: ", kirFile
 
-  # Generate HTML using Nim transpiler (codegen_html.nim)
-  echo "   🎨 Generating self-contained HTML with inline styles and JavaScript..."
-  let htmlContent = generateVanillaHTML(kirFile)
+  # Generate HTML using C web codegen library (html_generator.c via FFI)
+  echo "   🎨 Generating HTML using C web codegen..."
+  let options = defaultDisplayOptions()  # Use display mode with JavaScript runtime
+  let htmlContent = transpileKirToHTML(kirFile, options)
 
   # Write HTML to output file
   let htmlPath = outputDir / "index.html"

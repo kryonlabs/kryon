@@ -425,6 +425,18 @@ local function applyProperties(component, props)
       local handlerId = runtime.registerHandler(component, C.IR_EVENT_TEXT_CHANGE, value)
       print(string.format("   Handler ID: %d", handlerId))
 
+    elseif key == "onDraw" and type(value) == "function" then
+      print("📝 Registering onDraw handler for Canvas component")
+      local componentId = tonumber(C.ir_get_component_id(component))
+      runtime.registerCanvasCallback(componentId, value)
+      print(string.format("   Canvas callback registered for component ID: %d", componentId))
+
+    elseif key == "onUpdate" and type(value) == "function" then
+      print("📝 Registering onUpdate handler for Canvas component")
+      local componentId = tonumber(C.ir_get_component_id(component))
+      runtime.registerCanvasUpdateCallback(componentId, value)
+      print(string.format("   Canvas update callback registered for component ID: %d", componentId))
+
     end
 
     ::continue::
@@ -632,76 +644,42 @@ local function SmartComponent(componentType)
 end
 
 -- ============================================================================
--- Component Constructors (Original API - Backward Compatible)
+-- Component Constructors (Smart DSL)
 -- ============================================================================
 
-function DSL.Container(props)
-  return buildComponent(C.IR_COMPONENT_CONTAINER, props)
-end
-
-function DSL.Text(props)
-  return buildComponent(C.IR_COMPONENT_TEXT, props)
-end
-
-function DSL.Button(props)
-  return buildComponent(C.IR_COMPONENT_BUTTON, props)
-end
-
-function DSL.Input(props)
-  return buildComponent(C.IR_COMPONENT_INPUT, props)
-end
-
-function DSL.Checkbox(props)
-  return buildComponent(C.IR_COMPONENT_CHECKBOX, props)
-end
-
-function DSL.Row(props)
-  return buildComponent(C.IR_COMPONENT_ROW, props)
-end
-
-function DSL.Column(props)
-  return buildComponent(C.IR_COMPONENT_COLUMN, props)
-end
-
-function DSL.Center(props)
-  return buildComponent(C.IR_COMPONENT_CENTER, props)
-end
-
-function DSL.Markdown(props)
-  return buildComponent(C.IR_COMPONENT_MARKDOWN, props)
-end
-
-function DSL.Canvas(props)
-  return buildComponent(C.IR_COMPONENT_CANVAS, props)
-end
-
-function DSL.Image(props)
-  return buildComponent(C.IR_COMPONENT_IMAGE, props)
-end
-
-function DSL.Dropdown(props)
-  return buildComponent(C.IR_COMPONENT_DROPDOWN, props)
-end
+DSL.Container = SmartComponent(C.IR_COMPONENT_CONTAINER)
+DSL.Text = SmartComponent(C.IR_COMPONENT_TEXT)
+DSL.Button = SmartComponent(C.IR_COMPONENT_BUTTON)
+DSL.Input = SmartComponent(C.IR_COMPONENT_INPUT)
+DSL.Checkbox = SmartComponent(C.IR_COMPONENT_CHECKBOX)
+DSL.Row = SmartComponent(C.IR_COMPONENT_ROW)
+DSL.Column = SmartComponent(C.IR_COMPONENT_COLUMN)
+DSL.Center = SmartComponent(C.IR_COMPONENT_CENTER)
+DSL.Markdown = SmartComponent(C.IR_COMPONENT_MARKDOWN)
+DSL.Canvas = SmartComponent(C.IR_COMPONENT_CANVAS)
+DSL.Image = SmartComponent(C.IR_COMPONENT_IMAGE)
+DSL.Dropdown = SmartComponent(C.IR_COMPONENT_DROPDOWN)
 
 -- ============================================================================
 -- Tab Components
 -- ============================================================================
 
-function DSL.TabBar(props)
-  local tabBarProps = props or {}
+-- TabBar with smart DSL and default properties
+DSL.TabBar = function(props)
+  props = props or {}
 
   -- TabBar should be horizontal (row) by default, matching JSON parser behavior
   -- (ir_json_v2.c:2646 sets flexDirection=1 for TabBar)
-  if not tabBarProps.flexDirection then
-    tabBarProps.flexDirection = "row"
+  if not props.flexDirection then
+    props.flexDirection = "row"
   end
 
   -- TabBar should fill width of parent TabGroup
-  if not tabBarProps.width then
-    tabBarProps.width = "100%"
+  if not props.width then
+    props.width = "100%"
   end
 
-  return buildComponent(C.IR_COMPONENT_TAB_BAR, tabBarProps)
+  return SmartComponent(C.IR_COMPONENT_TAB_BAR)(props)
 end
 
 function DSL.Tab(props)
@@ -763,42 +741,9 @@ function DSL.Tab(props)
   return button
 end
 
-function DSL.TabContent(props)
-  return buildComponent(C.IR_COMPONENT_TAB_CONTENT, props)
-end
-
-function DSL.TabPanel(props)
-  return buildComponent(C.IR_COMPONENT_TAB_PANEL, props)
-end
-
-function DSL.TabGroup(props)
-  return buildComponent(C.IR_COMPONENT_TAB_GROUP, props)
-end
-
--- ============================================================================
--- Smart Component Wrappers (Nim-like DSL Syntax)
--- ============================================================================
--- These provide cleaner syntax where children are in array part of props table
-
-DSL.Container_ = SmartComponent(C.IR_COMPONENT_CONTAINER)
-DSL.Text_ = SmartComponent(C.IR_COMPONENT_TEXT)
-DSL.Button_ = SmartComponent(C.IR_COMPONENT_BUTTON)
-DSL.Input_ = SmartComponent(C.IR_COMPONENT_INPUT)
-DSL.Checkbox_ = SmartComponent(C.IR_COMPONENT_CHECKBOX)
-DSL.Row_ = SmartComponent(C.IR_COMPONENT_ROW)
-DSL.Column_ = SmartComponent(C.IR_COMPONENT_COLUMN)
-DSL.Center_ = SmartComponent(C.IR_COMPONENT_CENTER)
-DSL.Markdown_ = SmartComponent(C.IR_COMPONENT_MARKDOWN)
-DSL.Canvas_ = SmartComponent(C.IR_COMPONENT_CANVAS)
-DSL.Image_ = SmartComponent(C.IR_COMPONENT_IMAGE)
-DSL.Dropdown_ = SmartComponent(C.IR_COMPONENT_DROPDOWN)
-DSL.TabBar_ = SmartComponent(C.IR_COMPONENT_TAB_BAR)
-DSL.TabContent_ = SmartComponent(C.IR_COMPONENT_TAB_CONTENT)
-DSL.TabPanel_ = SmartComponent(C.IR_COMPONENT_TAB_PANEL)
-DSL.TabGroup_ = SmartComponent(C.IR_COMPONENT_TAB_GROUP)
-
--- Tab is special - it needs custom logic, so we'll keep using DSL.Tab directly
--- but users can alias it if needed
+DSL.TabContent = SmartComponent(C.IR_COMPONENT_TAB_CONTENT)
+DSL.TabPanel = SmartComponent(C.IR_COMPONENT_TAB_PANEL)
+DSL.TabGroup = SmartComponent(C.IR_COMPONENT_TAB_GROUP)
 
 -- ============================================================================
 -- Helper Functions for Smart DSL

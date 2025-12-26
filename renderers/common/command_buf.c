@@ -2,6 +2,156 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+
+// ============================================================================
+// Fixed-Point Conversion Functions (Implementation)
+// ============================================================================
+
+#if KRYON_NO_FLOAT
+// Fixed-point 16.16 format
+float kryon_fp_to_float(kryon_fp_t fp) {
+    return (float)fp / 65536.0f;
+}
+
+kryon_fp_t kryon_fp_from_int(int32_t i) {
+    return i << 16;
+}
+
+int32_t kryon_fp_to_int_round(kryon_fp_t fp) {
+    return (fp + 32768) >> 16;  // Round to nearest
+}
+
+kryon_fp_t kryon_fp_add(kryon_fp_t a, kryon_fp_t b) {
+    return a + b;
+}
+
+kryon_fp_t kryon_fp_sub(kryon_fp_t a, kryon_fp_t b) {
+    return a - b;
+}
+
+kryon_fp_t kryon_fp_mul(kryon_fp_t a, kryon_fp_t b) {
+    return ((int64_t)a * b) >> 16;
+}
+
+kryon_fp_t kryon_fp_div(kryon_fp_t a, kryon_fp_t b) {
+    return ((int64_t)a << 16) / b;
+}
+
+kryon_fp_t kryon_fp_sqrt(kryon_fp_t value) {
+    // Simple integer sqrt for fixed-point
+    int32_t result = 0;
+    int32_t bit = 1 << 30;
+
+    while (bit > value) bit >>= 2;
+
+    while (bit != 0) {
+        if (value >= result + bit) {
+            value -= result + bit;
+            result = (result >> 1) + bit;
+        } else {
+            result >>= 1;
+        }
+        bit >>= 2;
+    }
+
+    return result << 8;  // Convert to 16.16
+}
+
+kryon_fp_t kryon_fp_abs(kryon_fp_t value) {
+    return value < 0 ? -value : value;
+}
+
+kryon_fp_t kryon_fp_min(kryon_fp_t a, kryon_fp_t b) {
+    return a < b ? a : b;
+}
+
+kryon_fp_t kryon_fp_max(kryon_fp_t a, kryon_fp_t b) {
+    return a > b ? a : b;
+}
+
+kryon_fp_t kryon_fp_clamp(kryon_fp_t value, kryon_fp_t min, kryon_fp_t max) {
+    return value < min ? min : (value > max ? max : value);
+}
+
+bool kryon_fp_equal(kryon_fp_t a, kryon_fp_t b, kryon_fp_t epsilon) {
+    kryon_fp_t diff = a - b;
+    return (diff < 0 ? -diff : diff) <= epsilon;
+}
+
+kryon_fp_t kryon_lerp(kryon_fp_t a, kryon_fp_t b, kryon_fp_t t) {
+    return a + kryon_fp_mul(b - a, t);
+}
+
+kryon_fp_t kryon_smoothstep(kryon_fp_t edge0, kryon_fp_t edge1, kryon_fp_t x) {
+    kryon_fp_t t = kryon_fp_clamp(kryon_fp_div(x - edge0, edge1 - edge0), 0, KRYON_FP_FROM_INT(1));
+    return kryon_fp_mul(kryon_fp_mul(t, t), KRYON_FP_FROM_INT(3) - kryon_fp_mul(KRYON_FP_FROM_INT(2), t));
+}
+
+#else
+// Floating-point build (desktop)
+float kryon_fp_to_float(kryon_fp_t fp) {
+    return fp;  // Already a float
+}
+
+kryon_fp_t kryon_fp_from_int(int32_t i) {
+    return (float)i;
+}
+
+int32_t kryon_fp_to_int_round(kryon_fp_t fp) {
+    return (int32_t)(fp + 0.5f);
+}
+
+kryon_fp_t kryon_fp_add(kryon_fp_t a, kryon_fp_t b) {
+    return a + b;
+}
+
+kryon_fp_t kryon_fp_sub(kryon_fp_t a, kryon_fp_t b) {
+    return a - b;
+}
+
+kryon_fp_t kryon_fp_mul(kryon_fp_t a, kryon_fp_t b) {
+    return a * b;
+}
+
+kryon_fp_t kryon_fp_div(kryon_fp_t a, kryon_fp_t b) {
+    return a / b;
+}
+
+kryon_fp_t kryon_fp_sqrt(kryon_fp_t value) {
+    return sqrtf(value);
+}
+
+kryon_fp_t kryon_fp_abs(kryon_fp_t value) {
+    return fabsf(value);
+}
+
+kryon_fp_t kryon_fp_min(kryon_fp_t a, kryon_fp_t b) {
+    return a < b ? a : b;
+}
+
+kryon_fp_t kryon_fp_max(kryon_fp_t a, kryon_fp_t b) {
+    return a > b ? a : b;
+}
+
+kryon_fp_t kryon_fp_clamp(kryon_fp_t value, kryon_fp_t min, kryon_fp_t max) {
+    return value < min ? min : (value > max ? max : value);
+}
+
+bool kryon_fp_equal(kryon_fp_t a, kryon_fp_t b, kryon_fp_t epsilon) {
+    float diff = a - b;
+    return (diff < 0 ? -diff : diff) <= epsilon;
+}
+
+kryon_fp_t kryon_lerp(kryon_fp_t a, kryon_fp_t b, kryon_fp_t t) {
+    return a + (b - a) * t;
+}
+
+kryon_fp_t kryon_smoothstep(kryon_fp_t edge0, kryon_fp_t edge1, kryon_fp_t x) {
+    float t = kryon_fp_clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+    return t * t * (3.0f - 2.0f * t);
+}
+#endif
 
 // ============================================================================
 // Command Buffer Management
