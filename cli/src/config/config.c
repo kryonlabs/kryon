@@ -141,6 +141,66 @@ KryonConfig* config_load(const char* config_path) {
         return NULL;
     }
 
+    // Check for deprecated field names and show clear errors
+    bool has_deprecated = false;
+
+    if (toml_get_string(toml, "build.entry_point", NULL)) {
+        fprintf(stderr, "Error: Invalid field 'entry_point' in [build]\n");
+        fprintf(stderr, "       Use 'entry' instead\n");
+        has_deprecated = true;
+    }
+
+    if (toml_get_string(toml, "build.target", NULL)) {
+        fprintf(stderr, "Error: Invalid field 'target' in [build]\n");
+        fprintf(stderr, "       Use 'targets' (array) instead: targets = [\"web\"]\n");
+        has_deprecated = true;
+    }
+
+    if (toml_get_string(toml, "project.entry", NULL)) {
+        fprintf(stderr, "Error: Invalid field 'entry' in [project]\n");
+        fprintf(stderr, "       Move to [build] section: build.entry = \"...\"\n");
+        has_deprecated = true;
+    }
+
+    if (toml_get_string(toml, "project.frontend", NULL)) {
+        fprintf(stderr, "Error: Invalid field 'frontend' in [project]\n");
+        fprintf(stderr, "       Move to [build] section: build.frontend = \"...\"\n");
+        has_deprecated = true;
+    }
+
+    if (toml_get_string(toml, "build.language", NULL)) {
+        fprintf(stderr, "Error: Invalid field 'language' in [build]\n");
+        fprintf(stderr, "       Use 'frontend' instead\n");
+        has_deprecated = true;
+    }
+
+    if (toml_get_string(toml, "desktop.window_title", NULL) ||
+        toml_get_string(toml, "desktop.window_width", NULL) ||
+        toml_get_string(toml, "desktop.window_height", NULL)) {
+        fprintf(stderr, "Error: Invalid window fields in [desktop]\n");
+        fprintf(stderr, "       Move to [window] section:\n");
+        fprintf(stderr, "       [window]\n");
+        fprintf(stderr, "       title = \"...\"\n");
+        fprintf(stderr, "       width = ...\n");
+        fprintf(stderr, "       height = ...\n");
+        has_deprecated = true;
+    }
+
+    // Check for old pages format
+    if (toml_get_string(toml, "build.pages.0.file", NULL) ||
+        toml_get_string(toml, "build.pages.0.path", NULL)) {
+        fprintf(stderr, "Error: Invalid fields in [[build.pages]]\n");
+        fprintf(stderr, "       Use: name = \"...\", route = \"...\", source = \"...\"\n");
+        fprintf(stderr, "       NOT: file = \"...\", path = \"...\"\n");
+        has_deprecated = true;
+    }
+
+    if (has_deprecated) {
+        fprintf(stderr, "\nSee docs/configuration.md for the complete configuration reference\n");
+        toml_free(toml);
+        return NULL;
+    }
+
     KryonConfig* config = config_create_default();
     if (!config) {
         toml_free(toml);
@@ -172,36 +232,56 @@ KryonConfig* config_load(const char* config_path) {
         config->project_description = str_copy(description);
     }
 
-    // Parse build settings
-    const char* target = toml_get_string(toml, "build.target", NULL);
-    if (target) {
-        free(config->build_target);
-        config->build_target = str_copy(target);
-    }
-
+    // Parse build settings - strict format enforcement
     const char* output_dir = toml_get_string(toml, "build.output_dir", NULL);
     if (output_dir) {
         free(config->build_output_dir);
         config->build_output_dir = str_copy(output_dir);
     }
 
-    // Support both build.entry and build.entry_point
+    // Parse build.entry (required, NO fallback to entry_point)
     const char* entry = toml_get_string(toml, "build.entry", NULL);
-    if (!entry) {
-        entry = toml_get_string(toml, "build.entry_point", NULL);
-    }
     if (entry) {
         config->build_entry = str_copy(entry);
     }
 
-    // Support both build.frontend and project.frontend
+    // Parse build.frontend (required, NO fallback to project.frontend)
     const char* frontend = toml_get_string(toml, "build.frontend", NULL);
-    if (!frontend) {
-        frontend = toml_get_string(toml, "project.frontend", NULL);
-    }
     if (frontend) {
         free(config->build_frontend);
         config->build_frontend = str_copy(frontend);
+    }
+
+    // Parse build.targets array (required)
+    // Count targets by looking for build.targets.N keys
+    int max_target_idx = -1;
+    for (int i = 0; i < 10; i++) {
+        char key[128];
+        snprintf(key, sizeof(key), "build.targets.%d", i);
+        const char* target_val = toml_get_string(toml, key, NULL);
+        if (target_val) {
+            max_target_idx = i;
+        }
+    }
+
+    if (max_target_idx >= 0) {
+        config->build_targets_count = max_target_idx + 1;
+        config->build_targets = (char**)calloc(config->build_targets_count, sizeof(char*));
+        if (config->build_targets) {
+            for (int i = 0; i <= max_target_idx; i++) {
+                char key[128];
+                snprintf(key, sizeof(key), "build.targets.%d", i);
+                const char* target_val = toml_get_string(toml, key, NULL);
+                if (target_val) {
+                    config->build_targets[i] = str_copy(target_val);
+                    // Also set build_target to first target for backward compat in commands
+                    if (i == 0) {
+                        free(config->build_target);
+                        config->build_target = str_copy(target_val);
+                    }
+                }
+            }
+        }
     }
 
     // Parse pages
@@ -278,35 +358,77 @@ KryonConfig* config_find_and_load(void) {
 bool config_validate(KryonConfig* config) {
     if (!config) return false;
 
-    // Validate required fields
+    bool has_errors = false;
+
+    // Validate required [project] fields
     if (!config->project_name) {
         fprintf(stderr, "Error: project.name is required in kryon.toml\n");
-        return false;
+        has_errors = true;
     }
 
-    if (!config->build_target) {
-        fprintf(stderr, "Error: build.target is required in kryon.toml\n");
-        return false;
+    if (!config->project_version) {
+        fprintf(stderr, "Error: project.version is required in kryon.toml\n");
+        has_errors = true;
     }
 
-    // Validate target is supported
-    const char* valid_targets[] = {"web", "desktop", "terminal", "embedded",
-                                    "linux", "windows", "macos", "stm32", "esp32"};
-    bool valid_target = false;
-    for (size_t i = 0; i < sizeof(valid_targets) / sizeof(valid_targets[0]); i++) {
-        if (strcmp(config->build_target, valid_targets[i]) == 0) {
-            valid_target = true;
-            break;
+    // Validate required [build] fields
+    if (!config->build_entry) {
+        fprintf(stderr, "Error: build.entry is required in kryon.toml\n");
+        fprintf(stderr, "       Specify the entry point file (e.g., entry = \"main.tsx\")\n");
+        has_errors = true;
+    }
+
+    if (!config->build_frontend) {
+        fprintf(stderr, "Error: build.frontend is required in kryon.toml\n");
+        fprintf(stderr, "       Valid values: tsx, jsx, lua, nim, md, kry, c\n");
+        has_errors = true;
+    }
+
+    if (!config->build_targets || config->build_targets_count == 0) {
+        fprintf(stderr, "Error: build.targets is required in kryon.toml\n");
+        fprintf(stderr, "       Specify as array: targets = [\"web\"] or targets = [\"web\", \"desktop\"]\n");
+        has_errors = true;
+    }
+
+    // Validate each target is supported
+    const char* valid_targets[] = {"web", "desktop", "terminal", "embedded"};
+    if (config->build_targets && config->build_targets_count > 0) {
+        for (int i = 0; i < config->build_targets_count; i++) {
+            bool valid_target = false;
+            for (size_t j = 0; j < sizeof(valid_targets) / sizeof(valid_targets[0]); j++) {
+                if (strcmp(config->build_targets[i], valid_targets[j]) == 0) {
+                    valid_target = true;
+                    break;
+                }
+            }
+
+            if (!valid_target) {
+                fprintf(stderr, "Error: Invalid build target '%s'\n", config->build_targets[i]);
+                fprintf(stderr, "       Valid targets: web, desktop, terminal, embedded\n");
+                has_errors = true;
+            }
         }
     }
 
-    if (!valid_target) {
-        fprintf(stderr, "Error: Invalid build target '%s'\n", config->build_target);
-        fprintf(stderr, "Valid targets: web, desktop, terminal, embedded, linux, windows, macos, stm32, esp32\n");
-        return false;
+    // Validate frontend is supported
+    if (config->build_frontend) {
+        const char* valid_frontends[] = {"tsx", "jsx", "lua", "nim", "md", "kry", "c"};
+        bool valid_frontend = false;
+        for (size_t i = 0; i < sizeof(valid_frontends) / sizeof(valid_frontends[0]); i++) {
+            if (strcmp(config->build_frontend, valid_frontends[i]) == 0) {
+                valid_frontend = true;
+                break;
+            }
+        }
+
+        if (!valid_frontend) {
+            fprintf(stderr, "Error: Invalid build.frontend '%s'\n", config->build_frontend);
+            fprintf(stderr, "       Valid frontends: tsx, jsx, lua, nim, md, kry, c\n");
+            has_errors = true;
+        }
     }
 
-    return true;
+    return !has_errors;
 }
 
 /**
