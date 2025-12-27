@@ -211,7 +211,7 @@ Target Language Source Code
 bool nim_codegen_generate(const char* kir_path, const char* output_path) {
     // 1. Parse KIR JSON
     char* kir_json = read_file(kir_path);
-    KIRDocument* doc = parse_kir_v3(kir_json);
+    KIRDocument* doc = parse_kir(kir_json);
 
     FILE* out = fopen(output_path, "w");
 
@@ -415,7 +415,7 @@ when isMainModule:
 ```c
 bool lua_codegen_generate(const char* kir_path, const char* output_path) {
     char* kir_json = read_file(kir_path);
-    KIRDocument* doc = parse_kir_v3(kir_json);
+    KIRDocument* doc = parse_kir(kir_json);
 
     FILE* out = fopen(output_path, "w");
 
@@ -583,7 +583,7 @@ return root
 ```c
 bool c_codegen_generate(const char* kir_path, const char* output_path) {
     char* kir_json = read_file(kir_path);
-    KIRDocument* doc = parse_kir_v3(kir_json);
+    KIRDocument* doc = parse_kir(kir_json);
 
     FILE* out = fopen(output_path, "w");
 

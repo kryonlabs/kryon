@@ -6,45 +6,43 @@ This document defines the complete KIR (Kryon Intermediate Representation) forma
 
 ## Current State
 
-### KIR Version 2.0 (Current)
-Located in: `/mnt/storage/Projects/kryon/ir/ir_json_v2.c`
+### What KIR Currently Serializes
+Located in: `/mnt/storage/Projects/kryon/ir/ir_serialization.c`
+
+**Working:**
+- ✅ Component hierarchy (type, id, parent-child relationships)
+- ✅ Style properties (background, color, fonts, borders)
+- ✅ Layout properties (width, height, padding, margin, flexbox)
+- ✅ Animations and transitions
+- ✅ Pseudo-styles (:hover, :focus, :active)
+
+**Missing (Needs Implementation):**
+- ❌ Event handlers as source code
+- ❌ Reactive state bindings
+- ❌ Logic blocks (if/else, loops)
+- ❌ Original source language metadata
+- ❌ Component-level custom logic
+
+### What Needs to Be Added
+
+The serialization function needs to accept additional parameters:
 
 ```c
-#define IR_FORMAT_VERSION_MAJOR 2
-#define IR_FORMAT_VERSION_MINOR 0
+char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest);
 ```
 
-**Currently Serializes:**
-- Component hierarchy (type, id, parent-child relationships)
-- Style properties (background, color, fonts, borders)
-- Layout properties (width, height, padding, margin, flexbox)
-- Animations and transitions
-- Pseudo-styles (:hover, :focus, :active)
-
-**Missing:**
-- Event handlers as source code
-- Reactive state bindings
-- Logic blocks (if/else, loops)
-- Original source language metadata
-- Component-level custom logic
-
-### KIR Version 3.0 (Partial Implementation)
-
-```c
-char* ir_serialize_json_v3(IRComponent* root, IRReactiveManifest* manifest, IRLogicBlock* logic);
-```
-
-**Designed to include:**
+**Needs to include:**
 - `IRReactiveManifest` - reactive state/variables
-- `IRLogicBlock` - event handler logic as source code
+- Event handler logic as source code blocks
+- Metadata about source language and context
 
-**Status:** Function signature exists, partial implementation
+**Status:** Structures exist, serialization incomplete
 
-## Problems with Current KIR
+## Problems Preventing Round-Trip Conversion
 
 ### 1. Event Handlers Not Preserved
 
-**Example:** Button click handler lost in KIR
+**Example:** Button click handler gets lost during serialization
 
 ```tsx
 // Source: button.tsx
@@ -132,7 +130,7 @@ if (user->logged_in) {
 
 ### Core Principles
 
-1. **Complete Preservation** - KIR must preserve 100% of semantic information
+1. **Complete Preservation** - KIR must preserve all semantic information
 2. **Language Agnostic** - Works for C, Nim, Lua, TSX, HTML, etc.
 3. **Round-Trip Capable** - Can regenerate source in any supported language
 4. **Human Readable** - JSON format for debugging and inspection
@@ -142,7 +140,7 @@ if (user->logged_in) {
 
 ```json
 {
-  "format_version": "3.0",
+  "format": "kir",
   "metadata": {
     "source_language": "tsx|c|nim|lua|kry|html",
     "source_file": "path/to/source.tsx",
@@ -251,7 +249,7 @@ if (user->logged_in) {
 
 #### components
 
-*(Existing KIR 2.0 fields +)*
+*(Existing current KIR fields +)*
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -270,7 +268,7 @@ if (user->logged_in) {
 typedef struct IRComponent {
     // ... existing fields ...
 
-    // NEW in v3.0:
+    // NEW in improved KIR:
     char* source_language;              // "tsx", "c", "nim", etc.
     IREventBindings* event_bindings;    // Event → logic mapping
     IRPropertyBindings* property_bindings; // Prop → state mapping
@@ -367,12 +365,12 @@ typedef struct IRReactiveManifest {
 
 ### Phase 4: Update JSON Serialization
 
-**File:** `/mnt/storage/Projects/kryon/ir/ir_json_v2.c`
+**File:** `/mnt/storage/Projects/kryon/ir/ir_serialization.c`
 
-**Implement complete `ir_serialize_json_v3()`:**
+**Implement complete `ir_serialize_json_complete()`:**
 
 ```c
-char* ir_serialize_json_v3(
+char* ir_serialize_json_complete(
     IRComponent* root,
     IRReactiveManifest* manifest,
     IRLogicManifest* logic,
@@ -380,8 +378,8 @@ char* ir_serialize_json_v3(
 ) {
     cJSON* json = cJSON_CreateObject();
 
-    // 1. Format version
-    cJSON_AddStringToObject(json, "format_version", "3.0");
+    // 1. Format identifier
+    cJSON_AddStringToObject(json, "format", "kir");
 
     // 2. Metadata section
     cJSON* meta = cJSON_CreateObject();
@@ -403,7 +401,7 @@ char* ir_serialize_json_v3(
     }
 
     // 5. Component tree
-    cJSON* components = serialize_component_tree_v3(root);
+    cJSON* components = serialize_component_tree_complete(root);
     cJSON_AddItemToObject(json, "components", components);
 
     char* result = cJSON_Print(json);
@@ -506,7 +504,7 @@ kryon codegen nim app.kir -o app.nim  # Translated with preserved logic
 ir/ir_core.h .................... Add event/property bindings
 ir/ir_logic.h ................... Complete logic block system
 ir/ir_reactive_manifest.h ....... Complete reactive manifest
-ir/ir_json_v2.c ................. Implement v3 serialization
+ir/ir_serialization.c ................. Implement complete serialization
 ir/parsers/tsx/ir_tsx_parser.c .. Preserve TSX event handlers
 ir/parsers/c/ir_c_parser.c ...... Preserve C function bodies
 ir/ir_kry_parser.c .............. Preserve .kry expressions

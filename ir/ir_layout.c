@@ -1819,43 +1819,90 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     bool width_auto = (c->style && c->style->width.type == IR_DIMENSION_AUTO);
     bool height_auto = (c->style && c->style->height.type == IR_DIMENSION_AUTO);
 
+    // Determine layout direction from flex.direction (0=column/vertical, 1=row/horizontal)
+    IRLayout* layout = ir_get_layout(c);
+    bool is_row = (layout && layout->flex.direction == 1);
+
+    // Get padding values
+    float pad_left = c->style ? c->style->padding.left : 0;
+    float pad_top = c->style ? c->style->padding.top : 0;
+    float pad_right = c->style ? c->style->padding.right : 0;
+    float pad_bottom = c->style ? c->style->padding.bottom : 0;
+
+    // Available space for children (subtract padding from container dimensions)
+    float content_width = own_width - pad_left - pad_right;
+    float content_height = own_height - pad_top - pad_bottom;
+
     // Layout children recursively
+    float child_x = 0;
     float child_y = 0;
     float max_child_width = 0;
+    float max_child_height = 0;
+    float total_child_width = 0;
     float total_child_height = 0;
 
     for (uint32_t i = 0; i < c->child_count; i++) {
         IRComponent* child = c->children[i];
         if (!child) continue;
 
-        // Create constraints for child
+        // Create constraints for child based on direction (use content dimensions)
         IRLayoutConstraints child_constraints = {
-            .max_width = own_width,
-            .max_height = own_height - child_y,
+            .max_width = is_row ? (content_width - child_x) : content_width,
+            .max_height = is_row ? content_height : (content_height - child_y),
             .min_width = 0,
             .min_height = 0
         };
 
         // RECURSIVELY layout child (child computes FINAL dimensions)
-        ir_layout_single_pass(child, child_constraints, parent_x, parent_y + child_y);
+        // Offset by padding
+        if (is_row) {
+            ir_layout_single_pass(child, child_constraints, parent_x + pad_left + child_x, parent_y + pad_top);
+        } else {
+            ir_layout_single_pass(child, child_constraints, parent_x + pad_left, parent_y + pad_top + child_y);
+        }
 
         // Track child dimensions for AUTO dimension calculation
         if (child->layout_state) {
-            // Track for AUTO dimension calculation
             max_child_width = fmaxf(max_child_width, child->layout_state->computed.width);
+            max_child_height = fmaxf(max_child_height, child->layout_state->computed.height);
+            total_child_width += child->layout_state->computed.width;
             total_child_height += child->layout_state->computed.height;
 
-            // Advance Y position for next child (Column layout)
-            child_y += child->layout_state->computed.height;
+            // Advance position for next child based on direction
+            if (is_row) {
+                child_x += child->layout_state->computed.width;
+                // Apply gap if set
+                if (layout && layout->flex.gap > 0 && i < c->child_count - 1) {
+                    child_x += layout->flex.gap;
+                }
+            } else {
+                child_y += child->layout_state->computed.height;
+                // Apply gap if set
+                if (layout && layout->flex.gap > 0 && i < c->child_count - 1) {
+                    child_y += layout->flex.gap;
+                }
+            }
         }
     }
 
-    // Finalize AUTO dimensions
+    // Finalize AUTO dimensions based on direction
     if (width_auto) {
-        own_width = max_child_width;
+        own_width = is_row ? total_child_width : max_child_width;
+        // Add gaps for row layout
+        if (is_row && layout && layout->flex.gap > 0 && c->child_count > 1) {
+            own_width += layout->flex.gap * (c->child_count - 1);
+        }
+        // Add padding to auto width
+        own_width += pad_left + pad_right;
     }
     if (height_auto) {
-        own_height = total_child_height;
+        own_height = is_row ? max_child_height : total_child_height;
+        // Add gaps for column layout
+        if (!is_row && layout && layout->flex.gap > 0 && c->child_count > 1) {
+            own_height += layout->flex.gap * (c->child_count - 1);
+        }
+        // Add padding to auto height
+        own_height += pad_top + pad_bottom;
     }
 
     // Set final computed dimensions

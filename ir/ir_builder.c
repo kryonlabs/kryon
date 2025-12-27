@@ -616,6 +616,12 @@ IRComponent* ir_create_component_with_id(IRComponentType type, uint32_t id) {
     // Use pool allocator if context exists
     if (g_ir_context && g_ir_context->component_pool) {
         component = ir_pool_alloc_component(g_ir_context->component_pool);
+        if (component) {
+            // Zero-initialize to clear any stale data from previous use
+            memset(component, 0, sizeof(IRComponent));
+            component->layout_cache.dirty = true;
+            component->dirty_flags = IR_DIRTY_LAYOUT;
+        }
     } else {
         // Fallback to malloc if no context/pool
         component = malloc(sizeof(IRComponent));
@@ -647,6 +653,19 @@ IRComponent* ir_create_component_with_id(IRComponentType type, uint32_t id) {
         // intrinsic_valid = false (default)
         // layout_valid = false (default)
         // cache_generation = 0 (default)
+    }
+
+    // Set flex direction based on component type
+    if (type == IR_COMPONENT_ROW) {
+        IRLayout* layout = ir_get_layout(component);
+        if (layout) {
+            layout->flex.direction = 1;  // Row = horizontal
+        }
+    } else if (type == IR_COMPONENT_COLUMN) {
+        IRLayout* layout = ir_get_layout(component);
+        if (layout) {
+            layout->flex.direction = 0;  // Column = vertical
+        }
     }
 
     return component;
@@ -1138,7 +1157,7 @@ IRLayout* ir_create_layout(void) {
     // Set sensible defaults
     layout->flex.justify_content = IR_ALIGNMENT_START;
     layout->flex.cross_axis = IR_ALIGNMENT_START;
-    layout->flex.justify_content = IR_ALIGNMENT_START;
+    layout->flex.shrink = 1;  // CSS default is 1, not 0
 
     return layout;
 }
@@ -1566,6 +1585,7 @@ IRComponent* ir_dropdown(const char* placeholder, char** options, uint32_t optio
 IRComponent* ir_row(void) {
     IRComponent* component = ir_create_component(IR_COMPONENT_ROW);
     IRLayout* layout = ir_get_layout(component);
+    layout->flex.direction = 1;  // Row = horizontal (1)
     layout->flex.justify_content = IR_ALIGNMENT_START;
     layout->flex.cross_axis = IR_ALIGNMENT_CENTER;
     return component;
@@ -1574,6 +1594,7 @@ IRComponent* ir_row(void) {
 IRComponent* ir_column(void) {
     IRComponent* component = ir_create_component(IR_COMPONENT_COLUMN);
     IRLayout* layout = ir_get_layout(component);
+    layout->flex.direction = 0;  // Column = vertical (0)
     layout->flex.justify_content = IR_ALIGNMENT_CENTER;
     layout->flex.cross_axis = IR_ALIGNMENT_START;
     return component;

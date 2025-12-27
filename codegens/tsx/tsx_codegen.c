@@ -28,8 +28,12 @@ char* tsx_codegen_from_json(const char* kir_json) {
         .indent_level = 0
     };
 
-    // Extract logic functions if present
-    cJSON* logic = cJSON_GetObjectItem(root, "logic");
+    // Extract logic functions if present (support both old "logic" and new "logic_block")
+    cJSON* logic = cJSON_GetObjectItem(root, "logic_block");
+    if (!logic) {
+        logic = cJSON_GetObjectItem(root, "logic");  // Fallback to old format
+    }
+
     if (logic && cJSON_IsObject(logic)) {
         ctx.logic_functions = cJSON_GetObjectItem(logic, "functions");
         ctx.event_bindings = cJSON_GetObjectItem(logic, "event_bindings");

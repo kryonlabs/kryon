@@ -340,7 +340,7 @@ typedef struct {
 bool ir_compile_to_krb(const char* kir_path, const char* krb_path) {
     // 1. Parse KIR
     char* kir_json = read_file(kir_path);
-    KIRDocument* doc = parse_kir_v3(kir_json);
+    KIRDocument* doc = parse_kir(kir_json);
 
     // 2. Initialize builder
     KRBBuilder builder;

@@ -4,6 +4,9 @@
  */
 
 #include "kryon_cli.h"
+#include "../../ir/ir_core.h"
+#include "../../ir/ir_serialization.h"
+#include "../../backends/desktop/ir_desktop_renderer.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -140,21 +143,49 @@ int cmd_run(int argc, char** argv) {
             return 1;
         }
 
-        // For now, compilation is complete - desktop runner not yet implemented
-        printf("\n✓ Compiled to KIR: %s\n", kir_file);
-        printf("Note: Desktop runner execution not yet implemented\n");
-        printf("You can inspect the KIR file or use it with other backends\n");
+        // Now execute the compiled KIR
+        printf("✓ Compiled to KIR: %s\n", kir_file);
+
+        // Load the KIR file
+        IRComponent* root = ir_read_json_file(kir_file);
+        if (!root) {
+            fprintf(stderr, "Error: Failed to load KIR file: %s\n", kir_file);
+            if (free_target) free((char*)target_file);
+            return 1;
+        }
+
+        // Create desktop renderer config
+        DesktopRendererConfig config = desktop_renderer_config_sdl3(800, 600, "Kryon App");
+
+        // Run the application
+        printf("Running application...\n");
+        bool success = desktop_render_ir_component(root, &config);
+
+        // Cleanup
+        ir_destroy_component(root);
 
         if (free_target) free((char*)target_file);
-        return 0;
+        return success ? 0 : 1;
     }
 
-    // Execute KIR files directly (implementation needed)
-    printf("\n");
-    printf("Note: Direct KIR execution not yet implemented\n");
-    printf("KIR file: %s\n", target_file);
-    printf("\nTo run this KIR file, you need a desktop renderer implementation\n");
+    // Execute KIR files directly
+    IRComponent* root = ir_read_json_file(target_file);
+    if (!root) {
+        fprintf(stderr, "Error: Failed to load KIR file: %s\n", target_file);
+        if (free_target) free((char*)target_file);
+        return 1;
+    }
+
+    // Create desktop renderer config
+    DesktopRendererConfig config = desktop_renderer_config_sdl3(800, 600, "Kryon App");
+
+    // Run the application
+    printf("Running application...\n");
+    bool success = desktop_render_ir_component(root, &config);
+
+    // Cleanup
+    ir_destroy_component(root);
 
     if (free_target) free((char*)target_file);
-    return 0;
+    return success ? 0 : 1;
 }

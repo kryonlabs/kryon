@@ -296,8 +296,106 @@ char* react_generate_expression(cJSON* expr) {
     return strdup("null");
 }
 
+/**
+ * Generate handler body from logic_block sources[] format
+ * Looks for TypeScript/JavaScript source, or translates from kry
+ */
+static char* react_generate_handler_from_sources(cJSON* functions, const char* handler_id) {
+    if (!functions || !cJSON_IsArray(functions)) return NULL;
+
+    // Find the function by name
+    cJSON* func = NULL;
+    cJSON_ArrayForEach(func, functions) {
+        cJSON* name_node = cJSON_GetObjectItem(func, "name");
+        if (name_node && cJSON_IsString(name_node) &&
+            strcmp(cJSON_GetStringValue(name_node), handler_id) == 0) {
+            break;
+        }
+    }
+    if (!func) return NULL;
+
+    // Get sources array
+    cJSON* sources = cJSON_GetObjectItem(func, "sources");
+    if (!sources || !cJSON_IsArray(sources)) return NULL;
+
+    // Look for TypeScript or JavaScript source first
+    const char* preferred_langs[] = {"typescript", "javascript", "jsx", "tsx", NULL};
+    for (int i = 0; preferred_langs[i]; i++) {
+        cJSON* source = NULL;
+        cJSON_ArrayForEach(source, sources) {
+            cJSON* lang = cJSON_GetObjectItem(source, "language");
+            if (lang && cJSON_IsString(lang) &&
+                strcmp(cJSON_GetStringValue(lang), preferred_langs[i]) == 0) {
+                cJSON* source_code = cJSON_GetObjectItem(source, "source");
+                if (source_code && cJSON_IsString(source_code)) {
+                    return strdup(cJSON_GetStringValue(source_code));
+                }
+            }
+        }
+    }
+
+    // Fall back to kry source and translate simple cases
+    cJSON* source = cJSON_GetArrayItem(sources, 0);
+    if (source) {
+        cJSON* lang = cJSON_GetObjectItem(source, "language");
+        cJSON* source_code = cJSON_GetObjectItem(source, "source");
+
+        if (source_code && cJSON_IsString(source_code)) {
+            const char* code = cJSON_GetStringValue(source_code);
+            char buffer[1024];
+
+            // Strip leading/trailing whitespace and braces
+            while (*code && (*code == ' ' || *code == '\t' || *code == '\n' || *code == '{')) {
+                code++;
+            }
+
+            // Find end of actual code (before closing brace if present)
+            const char* end = code + strlen(code) - 1;
+            while (end > code && (*end == ' ' || *end == '\t' || *end == '\n' || *end == '}')) {
+                end--;
+            }
+
+            size_t len = end - code + 1;
+            char cleaned[1024];
+            strncpy(cleaned, code, len);
+            cleaned[len] = '\0';
+
+            // Simple translation: print(...) -> console.log(...)
+            if (strstr(cleaned, "print(") != NULL) {
+                const char* start = strstr(cleaned, "print(");
+                const char* args_start = start + 6; // After "print("
+                const char* args_end = strchr(args_start, ')');
+
+                if (args_end) {
+                    size_t args_len = args_end - args_start;
+                    char args[512];
+                    strncpy(args, args_start, args_len);
+                    args[args_len] = '\0';
+
+                    snprintf(buffer, sizeof(buffer), "console.log(%s)", args);
+                    return strdup(buffer);
+                }
+            }
+
+            // Return cleaned code
+            return strdup(cleaned);
+        }
+    }
+
+    return NULL;
+}
+
 char* react_generate_handler_body(cJSON* functions, const char* handler_id) {
-    if (!functions || !cJSON_IsObject(functions)) return NULL;
+    if (!functions) return NULL;
+
+    // Try new sources[] format first (for logic_block)
+    if (cJSON_IsArray(functions)) {
+        char* result = react_generate_handler_from_sources(functions, handler_id);
+        if (result) return result;
+    }
+
+    // Fall back to old universal format (for reactive manifest)
+    if (!cJSON_IsObject(functions)) return NULL;
 
     cJSON* func_def = cJSON_GetObjectItem(functions, handler_id);
     if (!func_def) return NULL;
@@ -417,16 +515,60 @@ StringBuilder* react_generate_props(cJSON* node, ReactContext* ctx, bool has_tex
         cJSON_ArrayForEach(event, events) {
             cJSON* event_type = cJSON_GetObjectItem(event, "type");
             if (event_type && strcmp(cJSON_GetStringValue(event_type), "click") == 0) {
-                cJSON* logic_id = cJSON_GetObjectItem(event, "logic_id");
-                if (logic_id && cJSON_IsString(logic_id)) {
-                    char* handler_body = react_generate_handler_body(
-                        ctx->logic_functions, cJSON_GetStringValue(logic_id));
+                char* handler_body = NULL;
 
-                    if (handler_body) {
-                        if (sb->size > 0) sb_append(sb, " ");
-                        sb_append_fmt(sb, "onClick={() => %s}", handler_body);
-                        free(handler_body);
+                // Try to generate from logic_functions first
+                cJSON* logic_id = cJSON_GetObjectItem(event, "logic_id");
+                if (logic_id && cJSON_IsString(logic_id) && ctx->logic_functions) {
+                    handler_body = react_generate_handler_body(
+                        ctx->logic_functions, cJSON_GetStringValue(logic_id));
+                }
+
+                // Fall back to handler_data if available
+                if (!handler_body) {
+                    cJSON* handler_data = cJSON_GetObjectItem(event, "handler_data");
+                    if (handler_data && cJSON_IsString(handler_data)) {
+                        const char* code = cJSON_GetStringValue(handler_data);
+
+                        // Clean up and translate
+                        char cleaned[1024];
+                        const char* start = code;
+                        while (*start && (*start == ' ' || *start == '\t' || *start == '{')) start++;
+
+                        const char* end = start + strlen(start) - 1;
+                        while (end > start && (*end == ' ' || *end == '\t' || *end == '}')) end--;
+
+                        size_t len = end - start + 1;
+                        strncpy(cleaned, start, len);
+                        cleaned[len] = '\0';
+
+                        // Simple translation: print(...) -> console.log(...)
+                        if (strstr(cleaned, "print(") != NULL) {
+                            const char* print_start = strstr(cleaned, "print(");
+                            const char* args_start = print_start + 6;
+                            const char* args_end = strchr(args_start, ')');
+                            if (args_end) {
+                                size_t args_len = args_end - args_start;
+                                char args[512];
+                                strncpy(args, args_start, args_len);
+                                args[args_len] = '\0';
+
+                                char buffer[1024];
+                                snprintf(buffer, sizeof(buffer), "console.log(%s)", args);
+                                handler_body = strdup(buffer);
+                            }
+                        }
+
+                        if (!handler_body) {
+                            handler_body = strdup(cleaned);
+                        }
                     }
+                }
+
+                if (handler_body) {
+                    if (sb->size > 0) sb_append(sb, " ");
+                    sb_append_fmt(sb, "onClick={() => %s}", handler_body);
+                    free(handler_body);
                 }
             }
         }

@@ -881,6 +881,14 @@ typedef struct IRMetadata {
     char reserved[16];                // For future expansion
 } IRMetadata;
 
+// Source file metadata for round-trip serialization
+typedef struct IRSourceMetadata {
+    char* source_language;    // Original language: "tsx", "c", "nim", "lua", "kry", "html", "md"
+    char* source_file;        // Path to original source file
+    char* compiler_version;   // Kryon compiler version (e.g., "kryon-1.0.0")
+    char* timestamp;          // ISO8601 timestamp when KIR was generated
+} IRSourceMetadata;
+
 // Global IR Context
 typedef struct IRContext {
     IRComponent* root;

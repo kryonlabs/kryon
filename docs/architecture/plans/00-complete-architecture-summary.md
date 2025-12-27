@@ -372,7 +372,7 @@ diff app.kir app2.kir  # Should match
 ├── ir/                          # IR Core
 │   ├── ir_core.h               # Component system
 │   ├── ir_logic.h              # Logic blocks
-│   ├── ir_json_v2.c            # KIR serialization
+│   ├── ir_serialization.c      # KIR serialization
 │   ├── ir_krb.c                # .krb compiler
 │   ├── ir_krb_vm.c             # VM runtime
 │   └── parsers/                # All parsers → KIR

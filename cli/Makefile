@@ -2,7 +2,7 @@
 
 CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I../ir -I../ir/third_party/cJSON -D_POSIX_C_SOURCE=200809L
-LDFLAGS = -L../build -lkryon_ir -lm ../ir/third_party/cJSON/cJSON.c
+LDFLAGS = -L../build -lkryon_ir -lkryon_desktop -lm ../ir/third_party/cJSON/cJSON.c
 
 # Directories
 SRC_DIR = src
@@ -33,7 +33,7 @@ OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 TARGET = kryon
 
 # Codegen object files
-CODEGEN_OBJS = ../codegens/nim/nim_codegen.o ../codegens/lua/lua_codegen.o
+CODEGEN_OBJS = ../codegens/kry/kry_codegen.o ../codegens/tsx/tsx_codegen.o ../codegens/nim/nim_codegen.o ../codegens/lua/lua_codegen.o ../codegens/react_common.o
 
 # Default target
 all: $(TARGET)

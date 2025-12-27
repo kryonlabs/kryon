@@ -119,12 +119,8 @@ echo -e "${BLUE}Kryon Example Runner${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Step 1a: Compile .kry to .kir with --preserve-static for codegen
+# Step 1: Compile .kry to .kir
 echo -e "${YELLOW}[1/3]${NC} Parsing ${GREEN}$INPUT_FILE${NC} → ${GREEN}$KIR_FILE${NC}"
-KIR_STATIC="${KIR_FILE%.kir}_static.kir"
-~/.local/bin/kryon compile "$INPUT_FILE" --output="$KIR_STATIC" --preserve-static --no-cache
-
-# Step 1b: Compile without --preserve-static for runtime (expanded)
 ~/.local/bin/kryon compile "$INPUT_FILE" --output="$KIR_FILE" --no-cache
 
 if [ -f "$KIR_FILE" ]; then
@@ -134,9 +130,9 @@ else
     exit 1
 fi
 
-# Step 2: Generate .nim from .kir (use preserved static version)
+# Step 2: Generate .nim from .kir
 echo -e "${YELLOW}[2/3]${NC} Generating ${GREEN}$KIR_FILE${NC} → ${GREEN}$NIM_FILE${NC}"
-~/.local/bin/kryon codegen "$KIR_STATIC" --lang=nim --output="$NIM_FILE"
+~/.local/bin/kryon codegen "$KIR_FILE" --lang=nim --output="$NIM_FILE"
 
 if [ -f "$NIM_FILE" ]; then
     echo -e "      ${GREEN}✓${NC} Generated $(wc -l < "$NIM_FILE") lines"

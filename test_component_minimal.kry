@@ -1,5 +1,0 @@
-component Test {
-    Text {
-        text = "Hello"
-    }
-}
