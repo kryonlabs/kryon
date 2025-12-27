@@ -215,6 +215,8 @@ KryNode* kry_node_create(KryParser* parser, KryNodeType type) {
     node->next_sibling = NULL;
     node->name = NULL;
     node->value = NULL;
+    node->is_component_definition = false;
+    node->arguments = NULL;
     node->line = parser->line;
     node->column = parser->column;
 
@@ -404,6 +406,14 @@ static KryValue* parse_value(KryParser* p) {
         return kry_value_create_identifier(p, id);
     }
 
+    // Variable reference $variable (shorthand for {variable})
+    if (c == '$') {
+        advance(p);  // Skip $
+        char* var_name = parse_identifier(p);
+        if (!var_name) return NULL;
+        return kry_value_create_expression(p, var_name);
+    }
+
     // Expression block { }
     if (c == '{') {
         size_t start = p->pos;
@@ -450,6 +460,56 @@ static KryNode* parse_property(KryParser* p, char* name) {
 
 static KryNode* parse_component(KryParser* p);  // Forward declaration
 
+// Helper function to check if an identifier matches a keyword
+static bool keyword_match(const char* id, const char* keyword) {
+    return strcmp(id, keyword) == 0;
+}
+
+// Parse state declaration: state value: int = initialValue
+static KryNode* parse_state_declaration(KryParser* p) {
+    skip_whitespace(p);
+
+    // Parse variable name
+    char* var_name = parse_identifier(p);
+    if (!var_name) return NULL;
+
+    skip_whitespace(p);
+
+    // Expect ':'
+    if (!match(p, ':')) {
+        kry_parser_error(p, "Expected ':' after state variable name");
+        return NULL;
+    }
+
+    skip_whitespace(p);
+
+    // Parse type
+    char* type_name = parse_identifier(p);
+    if (!type_name) return NULL;
+
+    skip_whitespace(p);
+
+    // Parse optional initializer
+    KryValue* initial_value = NULL;
+    if (match(p, '=')) {
+        skip_whitespace(p);
+        initial_value = parse_value(p);
+        if (!initial_value) return NULL;
+    }
+
+    // Create state node
+    KryNode* state_node = kry_node_create(p, KRY_NODE_STATE);
+    if (!state_node) return NULL;
+
+    state_node->name = var_name;
+    state_node->value = initial_value;
+
+    // Store type in value's identifier field (a bit of a hack, but works for now)
+    // TODO: Add type field to KryNode for proper type storage
+
+    return state_node;
+}
+
 static KryNode* parse_component_body(KryParser* p, KryNode* component) {
     skip_whitespace(p);
 
@@ -476,8 +536,14 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
 
         skip_whitespace(p);
 
+        // Check for state declaration
+        if (keyword_match(name, "state")) {
+            KryNode* state = parse_state_declaration(p);
+            if (!state) return NULL;
+            kry_node_append_child(component, state);
+        }
         // Check if it's a property (=) or child component ({)
-        if (peek(p) == '=') {
+        else if (peek(p) == '=') {
             // Property
             KryNode* prop = parse_property(p, name);
             if (!prop) return NULL;
@@ -493,8 +559,33 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
             }
 
             kry_node_append_child(component, child);
+        } else if (peek(p) == '(') {
+            // Component instantiation with arguments
+            KryNode* child = kry_node_create(p, KRY_NODE_COMPONENT);
+            if (!child) return NULL;
+            child->name = name;
+
+            // Capture argument string
+            match(p, '(');
+            size_t arg_start = p->pos;
+            int paren_depth = 1;
+            while (paren_depth > 0 && peek(p) != '\0') {
+                if (peek(p) == '(') paren_depth++;
+                else if (peek(p) == ')') paren_depth--;
+                if (paren_depth > 0) advance(p);  // Don't advance past final ')'
+            }
+            size_t arg_length = p->pos - arg_start;
+
+            // Store arguments (empty string if no args)
+            if (arg_length > 0) {
+                child->arguments = kry_strndup(p, p->source + arg_start, arg_length);
+            }
+
+            match(p, ')');  // Consume closing ')'
+            skip_whitespace(p);
+            kry_node_append_child(component, child);
         } else {
-            kry_parser_error(p, "Expected '=' or '{' after identifier");
+            kry_parser_error(p, "Expected '=', '{', or '(' after identifier");
             return NULL;
         }
 
@@ -520,6 +611,44 @@ static KryNode* parse_component(KryParser* p) {
     char* name = parse_identifier(p);
     if (!name) return NULL;
 
+    skip_whitespace(p);
+
+    // Check if this is a component definition
+    if (keyword_match(name, "component")) {
+        // Parse component definition name
+        if (!isalpha(peek(p)) && peek(p) != '_') {
+            kry_parser_error(p, "Expected component definition name after 'component'");
+            return NULL;
+        }
+
+        char* comp_def_name = parse_identifier(p);
+        if (!comp_def_name) return NULL;
+
+        skip_whitespace(p);
+
+        // Parse parameter list if present
+        if (peek(p) == '(') {
+            match(p, '(');
+            // Consume parameters
+            int paren_depth = 1;
+            while (paren_depth > 0 && peek(p) != '\0') {
+                if (peek(p) == '(') paren_depth++;
+                else if (peek(p) == ')') paren_depth--;
+                advance(p);
+            }
+            skip_whitespace(p);
+        }
+
+        // Create component definition node
+        KryNode* component = kry_node_create(p, KRY_NODE_COMPONENT);
+        if (!component) return NULL;
+        component->name = comp_def_name;
+        component->is_component_definition = true;
+
+        return parse_component_body(p, component);
+    }
+
+    // Regular component
     KryNode* component = kry_node_create(p, KRY_NODE_COMPONENT);
     if (!component) return NULL;
 
@@ -537,7 +666,41 @@ KryNode* kry_parse(KryParser* parser) {
 
     skip_whitespace(parser);
 
+    // Parse first component (could be a component definition or root app)
     parser->root = parse_component(parser);
+
+    if (parser->has_error || !parser->root) {
+        return NULL;
+    }
+
+    // Check if there are more top-level declarations
+    skip_whitespace(parser);
+
+    KryNode* current = parser->root;
+    while (peek(parser) != '\0' && !parser->has_error) {
+        skip_whitespace(parser);
+        if (peek(parser) == '\0') break;
+
+        // Check if next character can start a component (alpha or _)
+        if (!isalpha(peek(parser)) && peek(parser) != '_') {
+            // Hit something that's not a component (e.g., @c block)
+            // Stop parsing top-level declarations
+            break;
+        }
+
+        // Parse next top-level component
+        KryNode* next = parse_component(parser);
+        if (!next || parser->has_error) {
+            break;
+        }
+
+        // Link as sibling
+        current->next_sibling = next;
+        next->prev_sibling = current;
+        current = next;
+
+        skip_whitespace(parser);
+    }
 
     if (parser->has_error) {
         return NULL;
@@ -551,18 +714,9 @@ KryNode* kry_parse(KryParser* parser) {
 // ============================================================================
 
 IRComponent* ir_kry_parse(const char* source, size_t length);  // Implemented in ir_kry_to_ir.c
-extern char* ir_serialize_json_v2(IRComponent* root);  // From ir_json_v2.c
+extern char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest);  // From ir_json_v2.c
 
-char* ir_kry_to_kir(const char* source, size_t length) {
-    IRComponent* root = ir_kry_parse(source, length);
-    if (!root) return NULL;
-
-    // Serialize to JSON string
-    char* json = ir_serialize_json_v2(root);
-    ir_destroy_component(root);
-
-    return json;
-}
+// NOTE: ir_kry_to_kir is now implemented in ir_kry_to_ir.c with manifest support
 
 IRComponent* ir_kry_parse_with_errors(const char* source, size_t length,
                                        char** error_message,

@@ -8,6 +8,7 @@
 #include "ir_c_parser.h"
 #include "../../ir_serialization.h"
 #include "../../../bindings/c/kryon.h"
+#include "../../ir_c_metadata.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,9 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <ctype.h>
+
+// External reference to metadata (defined in kryon.c)
+extern CSourceMetadata g_c_metadata;
 
 static char cached_compiler_path[512] = "";
 
@@ -586,7 +590,75 @@ char* ir_c_to_kir(const char* source, size_t length) {
         return NULL;
     }
 
+    // Write original source
     fwrite(source, 1, length, f);
+
+    // Inject metadata registration calls at the end (before main is executed)
+    // These will be called via a constructor function
+    fprintf(f, "\n\n// Auto-generated metadata registration\n");
+    fprintf(f, "__attribute__((constructor)) static void __kryon_register_metadata(void) {\n");
+
+    // Register includes
+    for (size_t i = 0; i < g_c_metadata.include_count; i++) {
+        fprintf(f, "    kryon_add_include(\"%s\", %s, %d);\n",
+                g_c_metadata.includes[i].include_string,
+                g_c_metadata.includes[i].is_system ? "true" : "false",
+                g_c_metadata.includes[i].line_number);
+    }
+
+    // Register variables
+    for (size_t i = 0; i < g_c_metadata.variable_count; i++) {
+        fprintf(f, "    kryon_register_variable(\"%s\", \"%s\", %s, \"%s\", 0, %d);\n",
+                g_c_metadata.variables[i].name,
+                g_c_metadata.variables[i].type,
+                g_c_metadata.variables[i].storage ? "\"static\"" : "NULL",
+                g_c_metadata.variables[i].initial_value,
+                g_c_metadata.variables[i].line_number);
+    }
+
+    // Register event handlers
+    for (size_t i = 0; i < g_c_metadata.event_handler_count; i++) {
+        // Escape the body string
+        fprintf(f, "    kryon_register_event_handler(\"%s\", \"%s\", \"%s\", \"%s\", ",
+                g_c_metadata.event_handlers[i].logic_id,
+                g_c_metadata.event_handlers[i].function_name,
+                g_c_metadata.event_handlers[i].return_type,
+                g_c_metadata.event_handlers[i].parameters);
+        // Write body as string literal
+        fprintf(f, "\"");
+        const char* body = g_c_metadata.event_handlers[i].body;
+        while (*body) {
+            if (*body == '\"') fprintf(f, "\\\"");
+            else if (*body == '\\') fprintf(f, "\\\\");
+            else if (*body == '\n') fprintf(f, "\\n");
+            else if (*body == '\t') fprintf(f, "\\t");
+            else fputc(*body, f);
+            body++;
+        }
+        fprintf(f, "\", %d);\n", g_c_metadata.event_handlers[i].line_number);
+    }
+
+    // Register helper functions
+    for (size_t i = 0; i < g_c_metadata.helper_function_count; i++) {
+        fprintf(f, "    kryon_register_helper_function(\"%s\", \"%s\", \"%s\", ",
+                g_c_metadata.helper_functions[i].name,
+                g_c_metadata.helper_functions[i].return_type,
+                g_c_metadata.helper_functions[i].parameters);
+        // Write body as string literal
+        fprintf(f, "\"");
+        const char* body = g_c_metadata.helper_functions[i].body;
+        while (*body) {
+            if (*body == '\"') fprintf(f, "\\\"");
+            else if (*body == '\\') fprintf(f, "\\\\");
+            else if (*body == '\n') fprintf(f, "\\n");
+            else if (*body == '\t') fprintf(f, "\\t");
+            else fputc(*body, f);
+            body++;
+        }
+        fprintf(f, "\", %d);\n", g_c_metadata.helper_functions[i].line_number);
+    }
+
+    fprintf(f, "}\n");
     fclose(f);
 
     // Compile the C source

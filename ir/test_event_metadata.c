@@ -122,7 +122,7 @@ bool test_json_roundtrip() {
     clickEvent->next = hoverEvent;
 
     // Serialize to JSON
-    char* json = ir_serialize_json_v2(original);
+    char* json = ir_serialize_json(original);
     if (!json) {
         printf("  Failed to serialize to JSON\n");
         ir_destroy_component(original);

@@ -608,7 +608,7 @@ KRBModule* krb_compile_from_ir(IRComponent* root, IRLogicBlock* logic, IRReactiv
 
 KRBModule* krb_compile_from_kir(const char* kir_path) {
     // Load component tree using existing function
-    IRComponent* root = ir_read_json_v2_file(kir_path);
+    IRComponent* root = ir_read_json_file(kir_path);
     if (!root) {
         fprintf(stderr, "[KRB] Failed to load KIR file: %s\n", kir_path);
         return NULL;

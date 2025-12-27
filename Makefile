@@ -260,11 +260,12 @@ install-lib: build-lib
 		install -m 755 build/libkryon_web.so $(LIBDIR)/; \
 		echo "✓ Installed libkryon_web.so"; \
 	fi
-	# Copy Nim bindings to include directory
-	rm -rf $(INCDIR)
-	mkdir -p $(INCDIR)
-	cp -r bindings/nim/* $(INCDIR)/
-	cp c_core_build.nim $(PREFIX)/include/
+	# Copy Nim bindings to include directory (optional - only if they exist)
+	@mkdir -p $(INCDIR)
+	@if [ -d bindings/nim ] && [ -n "$$(ls -A bindings/nim 2>/dev/null)" ]; then \
+		cp -r bindings/nim/* $(INCDIR)/ 2>/dev/null || true; \
+		echo "✓ Installed Nim bindings"; \
+	fi
 	# Copy C headers for compilation (fix relative paths for flat install)
 	mkdir -p $(INCDIR)/c
 	cp core/include/*.h $(INCDIR)/c/

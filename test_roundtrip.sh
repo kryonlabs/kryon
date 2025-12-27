@@ -16,7 +16,7 @@ if [ ! -f "$CODEGEN" ]; then
     echo "→ Building code generator..."
     cd "$KRYON_ROOT"
     gcc -o "$CODEGEN" /tmp/test_codegen.c \
-        ir/codegens/ir_c_codegen.c \
+        codegens/c/ir_c_codegen.c \
         ir/third_party/cJSON/cJSON.c \
         -I. -I./ir -I./ir/third_party/cJSON -lm \
         -Wl,--unresolved-symbols=ignore-all

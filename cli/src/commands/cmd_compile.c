@@ -61,14 +61,8 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
         // Convert to KIR JSON based on frontend type
         char* json = NULL;
         if (strcmp(frontend, "kry") == 0) {
-            IRComponent* root = ir_kry_parse(source, size);
-            if (!root) {
-                fprintf(stderr, "Error: Failed to parse %s\n", source_file);
-                free(source);
-                return 1;
-            }
-            json = ir_serialize_json_v2(root);
-            ir_destroy_component(root);
+            // Use ir_kry_to_kir for complete manifest serialization
+            json = ir_kry_to_kir(source, size);
         } else if (strcmp(frontend, "markdown") == 0) {
             json = ir_markdown_to_kir(source, size);
         } else if (strcmp(frontend, "html") == 0) {

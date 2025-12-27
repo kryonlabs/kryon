@@ -13,15 +13,8 @@
 // Internal State
 // ============================================================================
 
-typedef struct {
-    IRContext* context;
-    IRComponent* root;
-    char* window_title;
-    int window_width;
-    int window_height;
-} KryonAppState;
-
-static KryonAppState g_app_state = {NULL, NULL, NULL, 800, 600};
+// App state is now defined in kryon.h
+KryonAppState g_app_state = {NULL, NULL, NULL, 800, 600};
 
 // ============================================================================
 // Event Handler Registry
@@ -295,7 +288,7 @@ bool kryon_finalize(const char* output_path) {
     const char* final_output = env_output ? env_output : output_path;
 
     // Serialize to .kir JSON file (v3 format)
-    bool success = ir_write_json_v3_file(g_app_state.root, NULL, NULL, final_output);
+    bool success = ir_write_json_file(g_app_state.root, NULL, final_output);
 
     if (!success) {
         fprintf(stderr, "[kryon] Error: Failed to write .kir file to %s\n", output_path);

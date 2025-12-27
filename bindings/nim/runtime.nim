@@ -886,7 +886,7 @@ proc run*(app: KryonApp) =
 
     # Write JSON v3.0 if we have handlers, otherwise v2.1
     if logicBlock != nil:
-      if ir_write_json_v3_file(app.root, manifest, logicBlock, cstring(serializeTarget)):
+      if ir_write_json_file(app.root, manifest, logicBlock, cstring(serializeTarget)):
         addWindowPropertiesToKir(serializeTarget, app.window)
         echo "✓ IR serialized successfully (JSON v3.0 with logic block, ", manifest.source_count, " sources)"
         ir_logic_block_free(logicBlock)
@@ -911,7 +911,7 @@ proc run*(app: KryonApp) =
         quit(1)
     else:
       # Use v3.0 format even without reactive state or handlers (ensures proper envelope structure)
-      if ir_write_json_v3_file(app.root, manifest, nil, cstring(serializeTarget)):
+      if ir_write_json_file(app.root, manifest, nil, cstring(serializeTarget)):
         addWindowPropertiesToKir(serializeTarget, app.window)
         echo "✓ IR serialized successfully (JSON v3.0)"
         if manifest != nil:
@@ -951,7 +951,7 @@ proc run*(app: KryonApp) =
 
   if hasLogic:
     # Use JSON v3.0 with logic block (includes handlers for .kir execution)
-    if ir_write_json_v3_file(app.root, manifest, logicBlock.handle, cstring(kirPath)):
+    if ir_write_json_file(app.root, manifest, logicBlock.handle, cstring(kirPath)):
       addWindowPropertiesToKir(kirPath, app.window)
       echo "[IR] Saved JSON v3.0 IR with logic block (", logicBlock.functionCount, " handlers): ", kirPath
     else:
@@ -968,7 +968,7 @@ proc run*(app: KryonApp) =
     ir_reactive_manifest_destroy(manifest)
   else:
     # Use v3.0 format even without reactive state or handlers (ensures proper envelope structure)
-    if ir_write_json_v3_file(app.root, manifest, nil, cstring(kirPath)):
+    if ir_write_json_file(app.root, manifest, nil, cstring(kirPath)):
       addWindowPropertiesToKir(kirPath, app.window)
       echo "[IR] Saved JSON v3.0 IR: ", kirPath
     else:

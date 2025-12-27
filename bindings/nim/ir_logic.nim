@@ -128,7 +128,7 @@ proc ir_stmt_free*(stmt: IRStatementPtr)
 proc ir_serialize_json_v3*(root: pointer, manifest: pointer, logic: IRLogicBlockPtr): cstring
   {.cdecl, importc, dynlib: irLib.}
 
-proc ir_write_json_v3_file*(root: pointer, manifest: pointer, logic: IRLogicBlockPtr, filename: cstring): bool
+proc ir_write_json_file*(root: pointer, manifest: pointer, logic: IRLogicBlockPtr, filename: cstring): bool
   {.cdecl, importc, dynlib: irLib.}
 
 # ============================================================================

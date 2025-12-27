@@ -16,7 +16,7 @@ Kryon supports bidirectional conversion between C source code and KIR (Kryon Int
    - Serializes IR and metadata to JSON format (version "1")
    - Preserves all structural and behavioral information
 
-3. **C Code Generator** (`ir/codegens/ir_c_codegen.c`)
+3. **C Code Generator** (`codegens/c/ir_c_codegen.c`)
    - Generates idiomatic C DSL code from KIR
    - Maps KIR components and properties to C macros
 
@@ -428,5 +428,5 @@ To extend the round-trip conversion system:
 
 - [Kryon IR Documentation](./IR_SPECIFICATION.md)
 - [C DSL Reference](../bindings/c/README.md)
-- [Code Generator Source](../ir/codegens/ir_c_codegen.c)
+- [Code Generator Source](../codegens/c/ir_c_codegen.c)
 - [Metadata Header](../ir/ir_c_metadata.h)

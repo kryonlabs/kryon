@@ -163,7 +163,7 @@ export function run(rootElement: IRNode, options: RunOptions = {}): void {
     // TODO: Logic block support for event handlers
     const logicBlock = 0; // null pointer
 
-    const success = ffi.ir_write_json_v3_file(
+    const success = ffi.ir_write_json_file(
       rootPtr,
       manifest,
       logicBlock,
