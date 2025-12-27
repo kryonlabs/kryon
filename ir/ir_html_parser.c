@@ -294,11 +294,33 @@ HtmlNode* ir_html_parse(const char* html, size_t length) {
     HtmlNode* root = html_node_create_element("root");  // Wrapper root node
     stack_push(&stack, root);
 
+    bool inside_style = false;
+    bool inside_script = false;
+
     while (next_token(&tok)) {
         Token* token = &tok.current;
 
         switch (token->type) {
             case TOKEN_TAG_OPEN: {
+                // Check if we're entering <style> or <script> tags - skip them entirely
+                if (strcmp(token->value, "style") == 0) {
+                    inside_style = true;
+                    // Skip attributes and '>'
+                    while (peek_char(&tok) != '>' && peek_char(&tok) != '\0') {
+                        tok.pos++;
+                    }
+                    if (peek_char(&tok) == '>') tok.pos++;
+                    break;
+                } else if (strcmp(token->value, "script") == 0) {
+                    inside_script = true;
+                    // Skip attributes and '>'
+                    while (peek_char(&tok) != '>' && peek_char(&tok) != '\0') {
+                        tok.pos++;
+                    }
+                    if (peek_char(&tok) == '>') tok.pos++;
+                    break;
+                }
+
                 // Create element node
                 HtmlNode* element = html_node_create_element(token->value);
                 if (!element) continue;
@@ -368,6 +390,13 @@ HtmlNode* ir_html_parse(const char* html, size_t length) {
             }
 
             case TOKEN_TAG_CLOSE: {
+                // Check if we're exiting <style> or <script> tags
+                if (strcmp(token->value, "style") == 0) {
+                    inside_style = false;
+                } else if (strcmp(token->value, "script") == 0) {
+                    inside_script = false;
+                }
+
                 // Pop from stack
                 HtmlNode* current = stack_peek(&stack);
                 if (current && current->tag_name && strcmp(current->tag_name, token->value) == 0) {
@@ -387,6 +416,11 @@ HtmlNode* ir_html_parse(const char* html, size_t length) {
             }
 
             case TOKEN_TEXT: {
+                // Skip text content inside <style> and <script> tags
+                if (inside_style || inside_script) {
+                    break;
+                }
+
                 // Create text node
                 HtmlNode* text_node = html_node_create_text(token->value);
                 if (!text_node) continue;
@@ -469,8 +503,8 @@ char* ir_html_to_kir(const char* html, size_t length) {
         return NULL;
     }
 
-    // Step 3: Serialize IR to JSON
-    char* json = ir_serialize_json_v2(root);
+    // Step 3: Serialize IR to JSON with KIR v3 format (includes wrapper structure)
+    char* json = ir_serialize_json_v3(root, NULL, NULL);
     ir_destroy_component(root);  // Free IR after serialization
 
     if (!json) {

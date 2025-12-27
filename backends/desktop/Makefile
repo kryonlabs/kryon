@@ -36,8 +36,8 @@ endif
 DESKTOP_SOURCES = ir_desktop_renderer.c desktop_globals.c \
                   desktop_fonts.c desktop_effects.c desktop_layout.c \
                   desktop_input.c desktop_rendering.c desktop_test_events.c \
-                  debug_backend.c stb_image_impl.c terminal_flowchart.c
-DESKTOP_HEADERS = ir_desktop_renderer.h desktop_internal.h debug_backend.h terminal_flowchart.h
+                  debug_backend.c stb_image_impl.c
+DESKTOP_HEADERS = ir_desktop_renderer.h desktop_internal.h debug_backend.h
 
 # Output files
 DESKTOP_STATIC_LIB = $(BUILD_DIR)/libkryon_desktop.a
@@ -61,7 +61,7 @@ $(BUILD_DIR):
 DESKTOP_OBJS = ir_desktop_renderer.o desktop_globals.o \
                desktop_fonts.o desktop_effects.o desktop_layout.o \
                desktop_input.o desktop_rendering.o desktop_test_events.o \
-               debug_backend.o stb_image_impl.o terminal_flowchart.o
+               debug_backend.o stb_image_impl.o
 
 # Dependency files (auto-generated)
 DESKTOP_DEPS = $(DESKTOP_OBJS:.o=.d)

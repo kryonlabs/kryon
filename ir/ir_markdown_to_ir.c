@@ -17,7 +17,6 @@
 #include "ir_markdown_ast.h"
 #include "ir_builder.h"
 #include "ir_core.h"
-#include "ir_flowchart_parser.h"
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -349,20 +348,6 @@ static IRComponent* md_node_to_ir(MdNode* node) {
             const char* code = node->data.code_block.code;
             uint16_t code_len = node->data.code_block.length;
 
-            // Check if this is a mermaid diagram
-            if (lang && code && code_len > 0 &&
-                (strcmp(lang, "mermaid") == 0 || strcmp(lang, "mmd") == 0)) {
-                // Parse mermaid → native Kryon Flowchart component
-                comp = ir_flowchart_parse(code, code_len);
-                if (comp) {
-                    // Add margin to match other block elements
-                    if (comp->style) {
-                        ir_set_margin(comp, 16, 0, 16, 0);
-                    }
-                    break;
-                }
-                // If parse failed, fall through to render as code block
-            }
 
             // Use specialized code block builder
             comp = ir_code_block(lang, code);
