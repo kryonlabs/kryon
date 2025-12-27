@@ -323,6 +323,869 @@ static SDL_Texture* load_image_texture(SDL_Renderer* renderer, const char* path,
  *     - Prints child positions and sizing at each phase
  *
  */
+bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, LayoutRect rect, float inherited_opacity) {
+    if (!renderer || !component || !renderer->renderer) return false;
+
+    // Skip rendering if component is not visible
+    if (component->style && !component->style->visible) {
+        return true;  // Successfully "rendered" by not drawing
+    }
+
+    // CRITICAL: Layout MUST be pre-computed by ir_layout_compute_tree()
+    // NO FALLBACKS - if layout isn't valid, this is a BUG that must be fixed!
+    if (!component->layout_state || !component->layout_state->layout_valid) {
+        fprintf(stderr, "FATAL ERROR: Layout not computed for component %u type %d\n",
+                component->id, component->type);
+        fprintf(stderr, "  Call ir_layout_compute_tree() before rendering!\n");
+        return false;
+    }
+
+    // Read pre-computed layout (NEVER use rect parameter for positioning!)
+    IRComputedLayout* layout = &component->layout_state->computed;
+    SDL_FRect sdl_rect = {
+        .x = layout->x,
+        .y = layout->y,
+        .w = layout->width,
+        .h = layout->height
+    };
+
+    // Apply CSS-like transforms (scale, translate)
+    if (component->style) {
+        IRTransform* t = &component->style->transform;
+
+        // Apply scale from center
+        if (t->scale_x != 1.0f || t->scale_y != 1.0f) {
+            float orig_w = sdl_rect.w;
+            float orig_h = sdl_rect.h;
+            sdl_rect.w *= t->scale_x;
+            sdl_rect.h *= t->scale_y;
+            // Recenter after scaling
+            sdl_rect.x -= (sdl_rect.w - orig_w) / 2.0f;
+            sdl_rect.y -= (sdl_rect.h - orig_h) / 2.0f;
+        }
+
+        // Apply translation
+        sdl_rect.x += t->translate_x;
+        sdl_rect.y += t->translate_y;
+    }
+
+    // Cache rendered bounds for hit testing AFTER transforms
+    // This ensures hit testing matches the visual rendering
+    // Transforms (scale, translate) affect both rendering AND interaction
+    //
+    // IMPORTANT: Skip for TABLE children (sections, rows, cells) because their
+    // rendered_bounds use RELATIVE coordinates set by ir_layout_compute_table.
+    // Writing absolute coordinates here would corrupt the table layout cache.
+    bool is_table_child = (component->type == IR_COMPONENT_TABLE_HEAD ||
+                           component->type == IR_COMPONENT_TABLE_BODY ||
+                           component->type == IR_COMPONENT_TABLE_FOOT ||
+                           component->type == IR_COMPONENT_TABLE_ROW ||
+                           component->type == IR_COMPONENT_TABLE_CELL ||
+                           component->type == IR_COMPONENT_TABLE_HEADER_CELL);
+    if (!is_table_child) {
+        ir_set_rendered_bounds(component, sdl_rect.x, sdl_rect.y, sdl_rect.w, sdl_rect.h);
+    }
+
+    // Render based on component type
+    switch (component->type) {
+        case IR_COMPONENT_CONTAINER:
+        case IR_COMPONENT_ROW:
+        case IR_COMPONENT_COLUMN:
+            // Render box shadow if present (simplified - no blur)
+            if (component->style && component->style->box_shadow.enabled && !component->style->box_shadow.inset) {
+                IRBoxShadow* shadow = &component->style->box_shadow;
+
+                // Create shadow rectangle offset by shadow.offset_x/y
+                SDL_FRect shadow_rect = {
+                    .x = sdl_rect.x + shadow->offset_x,
+                    .y = sdl_rect.y + shadow->offset_y,
+                    .w = sdl_rect.w + (shadow->spread_radius * 2.0f),
+                    .h = sdl_rect.h + (shadow->spread_radius * 2.0f)
+                };
+
+                // Adjust position for spread (expand from center)
+                shadow_rect.x -= shadow->spread_radius;
+                shadow_rect.y -= shadow->spread_radius;
+
+                // Render shadow with shadow color and opacity
+                float opacity = component->style->opacity * inherited_opacity;
+                SDL_Color shadow_color = ir_color_to_sdl(shadow->color);
+                shadow_color = apply_opacity_to_color(shadow_color, opacity);
+                ensure_blend_mode(renderer->renderer);
+                SDL_SetRenderDrawColor(renderer->renderer,
+                    shadow_color.r, shadow_color.g, shadow_color.b, shadow_color.a);
+                SDL_RenderFillRect(renderer->renderer, &shadow_rect);
+            }
+
+            // Only render background if component has a style with non-transparent background
+            if (component->style) {
+                float opacity = component->style->opacity * inherited_opacity;
+                render_background(renderer->renderer, component, &sdl_rect, opacity);
+
+                // Render border if it has a width > 0
+                float border_width = component->style->border.width;
+                if (border_width > 0) {
+                    SDL_Color border_color = ir_color_to_sdl(component->style->border.color);
+                    // Apply opacity to border as well
+                    border_color.a = (uint8_t)(border_color.a * opacity);
+                    ensure_blend_mode(renderer->renderer);
+                    SDL_SetRenderDrawColor(renderer->renderer, border_color.r, border_color.g, border_color.b, border_color.a);
+
+                    // Draw border with specified width (multiple concentric rectangles)
+                    for (int i = 0; i < (int)border_width; i++) {
+                        SDL_FRect border_rect = {
+                            .x = sdl_rect.x + i,
+                            .y = sdl_rect.y + i,
+                            .w = sdl_rect.w - 2*i,
+                            .h = sdl_rect.h - 2*i
+                        };
+                        SDL_RenderRect(renderer->renderer, &border_rect);
+                    }
+                }
+            }
+            break;
+
+        case IR_COMPONENT_CENTER:
+            // Center is a layout-only component, completely transparent - don't render background
+            break;
+
+        case IR_COMPONENT_BUTTON: {
+            TTF_Font* font = desktop_ir_resolve_font(renderer, component, component->style && component->style->font.size > 0 ? component->style->font.size : 16.0f);
+            // Render button background with opacity
+            if (component->style) {
+                float opacity = component->style->opacity * inherited_opacity;
+                render_background(renderer->renderer, component, &sdl_rect, opacity);
+            } else {
+                ensure_blend_mode(renderer->renderer);
+                SDL_SetRenderDrawColor(renderer->renderer, 100, 100, 200, 255);
+                SDL_RenderFillRect(renderer->renderer, &sdl_rect);
+            }
+
+            // Draw button border
+            SDL_SetRenderDrawColor(renderer->renderer, 100, 100, 100, 255);
+            SDL_RenderRect(renderer->renderer, &sdl_rect);
+
+            // Render button text if present
+            if (component->text_content && font) {
+                SDL_Color text_color = component->style ?
+                    ir_color_to_sdl(component->style->font.color) :
+                    (SDL_Color){0, 0, 0, 255};
+
+                SDL_Surface* surface = TTF_RenderText_Blended(font,
+                                                              component->text_content,
+                                                              strlen(component->text_content),
+                                                              text_color);
+                if (surface) {
+                    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
+                    if (texture) {
+                        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text
+                        float text_w = (float)surface->w;
+                        float text_h = (float)surface->h;
+                        float avail_w = sdl_rect.w;
+                        float text_y = roundf(sdl_rect.y + (sdl_rect.h - text_h) / 2);
+
+                        // Check text_effect settings for overflow handling
+                        IRTextOverflowType overflow = IR_TEXT_OVERFLOW_CLIP;  // Default: clip (no fade)
+                        IRTextFadeType fade_type = IR_TEXT_FADE_NONE;
+                        float fade_length = 0;
+
+                        if (component->style) {
+                            overflow = component->style->text_effect.overflow;
+                            fade_type = component->style->text_effect.fade_type;
+                            fade_length = component->style->text_effect.fade_length;
+                        }
+
+                        if (text_w > avail_w - 16) {
+                            // Text overflows - handle based on text_effect settings
+                            float text_x = sdl_rect.x + 8;  // Small left padding
+                            float visible_w = avail_w - 12;  // Leave margin
+
+                            // Use fade if: overflow is FADE, or fade_type is HORIZONTAL with length > 0
+                            bool should_fade = (overflow == IR_TEXT_OVERFLOW_FADE) ||
+                                              (fade_type == IR_TEXT_FADE_HORIZONTAL && fade_length > 0);
+
+                            if (should_fade) {
+                                // Calculate fade ratio from fade_length or default to 25%
+                                float fade_ratio = (fade_length > 0) ? (fade_length / visible_w) : 0.25f;
+                                if (fade_ratio > 1.0f) fade_ratio = 1.0f;
+
+                                // Fade not yet implemented - render normally
+                                SDL_FRect src_rect = { 0, 0, visible_w, text_h };
+                                SDL_FRect dst_rect = { text_x, text_y, visible_w, text_h };
+                                SDL_RenderTexture(renderer->renderer, texture, &src_rect, &dst_rect);
+                            } else {
+                                // Clip: just render what fits, no fade
+                                SDL_FRect src_rect = { 0, 0, visible_w, text_h };
+                                SDL_FRect dst_rect = { text_x, text_y, visible_w, text_h };
+                                SDL_RenderTexture(renderer->renderer, texture, &src_rect, &dst_rect);
+                            }
+                        } else {
+                            // Text fits: render normally, centered
+                            SDL_FRect text_rect = {
+                                .x = roundf(sdl_rect.x + (sdl_rect.w - text_w) / 2),
+                                .y = text_y,
+                                .w = text_w,
+                                .h = text_h
+                            };
+                            SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
+                        }
+                        SDL_DestroyTexture(texture);
+                    }
+                    SDL_DestroySurface(surface);
+                }
+            }
+            break;
+        }
+
+        case IR_COMPONENT_TAB: {
+            // Render tab like a button but use tab_data->title
+            TTF_Font* font = desktop_ir_resolve_font(renderer, component, component->style && component->style->font.size > 0 ? component->style->font.size : 16.0f);
+
+            // Render tab background with opacity
+            if (component->style) {
+                float opacity = component->style->opacity * inherited_opacity;
+                render_background(renderer->renderer, component, &sdl_rect, opacity);
+            }
+
+            // Render tab title text if present
+            if (component->tab_data && component->tab_data->title && font) {
+                SDL_Color text_color = component->style ?
+                    ir_color_to_sdl(component->style->font.color) :
+                    (SDL_Color){255, 255, 255, 255};
+
+                // Guard against alpha=0 colors (uninitialized or transparent)
+                if (text_color.a == 0) {
+                    // Default to white text for tabs (good contrast on dark backgrounds)
+                    text_color = (SDL_Color){255, 255, 255, 255};
+                }
+
+                // Apply component opacity to text (cascaded with inherited opacity)
+                if (component->style) {
+                    float opacity = component->style->opacity * inherited_opacity;
+                    text_color.a = (uint8_t)(text_color.a * opacity);
+                }
+
+                SDL_Surface* surface = TTF_RenderText_Blended(font,
+                                                              component->tab_data->title,
+                                                              strlen(component->tab_data->title),
+                                                              text_color);
+                if (surface) {
+                    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
+                    if (texture) {
+                        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+                        float text_w = (float)surface->w;
+                        float text_h = (float)surface->h;
+
+                        // Center text in tab
+                        SDL_FRect text_rect = {
+                            .x = roundf(sdl_rect.x + (sdl_rect.w - text_w) / 2),
+                            .y = roundf(sdl_rect.y + (sdl_rect.h - text_h) / 2),
+                            .w = text_w,
+                            .h = text_h
+                        };
+                        SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
+                        SDL_DestroyTexture(texture);
+                    }
+                    SDL_DestroySurface(surface);
+                }
+            }
+            break;
+        }
+
+        case IR_COMPONENT_TEXT: {
+            TTF_Font* font = desktop_ir_resolve_font(renderer, component, component->style && component->style->font.size > 0 ? component->style->font.size : 16.0f);
+            if (component->text_content && font) {
+                SDL_Color text_color = component->style ?
+                    ir_color_to_sdl(component->style->font.color) :
+                    (SDL_Color){51, 51, 51, 255};
+                if (text_color.a == 0) {
+                    // Avoid invisible/alpha=0 colors; default to dark text
+                    text_color = (SDL_Color){51, 51, 51, 255};
+                }
+
+                // Apply component opacity to text (cascaded with inherited opacity)
+                if (component->style) {
+                    float opacity = component->style->opacity * inherited_opacity;
+                    text_color.a = (uint8_t)(text_color.a * opacity);
+                }
+
+                // Check for text shadow effect
+                IRTextShadow* shadow = (component->style && component->style->text_effect.shadow.enabled) ?
+                    &component->style->text_effect.shadow : NULL;
+
+                // Determine max_width for text wrapping
+                // Use explicit max_width if set, otherwise use large value to prevent unwanted wrapping
+                float text_max_width = 10000.0f; // Default: no wrapping
+                if (component->style && component->style->text_effect.max_width.type == IR_DIMENSION_PX) {
+                    text_max_width = component->style->text_effect.max_width.value;
+                }
+
+                // Render text with optional shadow
+                render_text_with_shadow(renderer->renderer, font,
+                                       component->text_content, text_color, component,
+                                       sdl_rect.x, sdl_rect.y, text_max_width);
+            }
+            break;
+        }
+
+        case IR_COMPONENT_INPUT:
+            // Background
+            {
+                SDL_Color bg_color = (SDL_Color){255, 255, 255, 255};
+                if (component->style) {
+                    SDL_Color candidate = ir_color_to_sdl(component->style->background);
+                    // Default styles have alpha=0; use fallback if fully transparent
+                    if (candidate.a != 0) {
+                        bg_color = candidate;
+                    }
+                }
+                float opacity = component->style ? component->style->opacity * inherited_opacity : 1.0f;
+                bg_color = apply_opacity_to_color(bg_color, opacity);
+                ensure_blend_mode(renderer->renderer);
+                SDL_SetRenderDrawColor(renderer->renderer, bg_color.r, bg_color.g, bg_color.b, bg_color.a);
+                SDL_RenderFillRect(renderer->renderer, &sdl_rect);
+            }
+
+            // Border
+            {
+                SDL_Color border_color = (SDL_Color){180, 180, 180, 255};
+                if (component->style) {
+                    SDL_Color candidate = ir_color_to_sdl(component->style->border.color);
+                    if (candidate.a != 0) {
+                        border_color = candidate;
+                    }
+                }
+                float opacity = component->style ? component->style->opacity * inherited_opacity : 1.0f;
+                border_color = apply_opacity_to_color(border_color, opacity);
+                ensure_blend_mode(renderer->renderer);
+                SDL_SetRenderDrawColor(renderer->renderer, border_color.r, border_color.g, border_color.b, border_color.a);
+                SDL_RenderRect(renderer->renderer, &sdl_rect);
+            }
+
+            // Text / placeholder with scrolling and caret
+            {
+                InputRuntimeState* istate = get_input_state(component->id);
+                const char* value_text = component->text_content ? component->text_content : "";
+                bool has_value = value_text[0] != '\0';
+                const char* placeholder = component->custom_data ? component->custom_data : "";
+                const char* to_render = has_value ? value_text : placeholder;
+                TTF_Font* font = desktop_ir_resolve_font(renderer, component, component->style && component->style->font.size > 0 ? component->style->font.size : 16.0f);
+
+                float pad_left = component->style ? component->style->padding.left : 8.0f;
+                float pad_top = component->style ? component->style->padding.top : 8.0f;
+                float pad_right = component->style ? component->style->padding.right : 8.0f;
+                float avail_width = sdl_rect.w - pad_left - pad_right;
+
+                SDL_Color text_color = has_value ? (SDL_Color){40, 40, 40, 255}
+                                                 : (SDL_Color){160, 160, 160, 255};
+                if (component->style) {
+                    SDL_Color candidate = ir_color_to_sdl(component->style->font.color);
+                    if (candidate.a != 0) {
+                        text_color = candidate;
+                        if (!has_value) {
+                            text_color.r = (uint8_t)((text_color.r + 255) / 2);
+                            text_color.g = (uint8_t)((text_color.g + 255) / 2);
+                            text_color.b = (uint8_t)((text_color.b + 255) / 2);
+                        }
+                    }
+                }
+
+                float caret_x = sdl_rect.x + pad_left;
+                float caret_y = sdl_rect.y + pad_top;
+                float caret_height = sdl_rect.h - pad_top - (component->style ? component->style->padding.bottom : 8.0f);
+
+                float caret_local = 0.0f;
+                if (font && istate) {
+                    char* prefix = strndup(value_text, istate->cursor_index);
+                    caret_local = measure_text_width(font, prefix);
+                    free(prefix);
+                    ensure_caret_visible(renderer, component, istate, font, pad_left, pad_right);
+                    caret_x = sdl_rect.x + pad_left + (caret_local - istate->scroll_x);
+                } else {
+                    caret_x = sdl_rect.x + pad_left;
+                }
+
+                if (font && to_render && to_render[0] != '\0') {
+                    SDL_Surface* surface = TTF_RenderText_Blended(font,
+                                                                  to_render,
+                                                                  strlen(to_render),
+                                                                  text_color);
+                    if (surface) {
+                        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
+                        if (texture) {
+                            SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text
+                            float text_x = sdl_rect.x + pad_left;
+                            float text_y = sdl_rect.y + pad_top;
+                            if (!component->style || (component->style->padding.top == 0 && component->style->padding.bottom == 0)) {
+                                text_y = sdl_rect.y + (sdl_rect.h - surface->h) / 2;
+                            }
+                            SDL_FRect dest_rect = {
+                                .x = roundf(text_x - (istate ? istate->scroll_x : 0.0f)),
+                                .y = roundf(text_y),
+                                .w = (float)surface->w,
+                                .h = (float)surface->h
+                            };
+                            // Clip to input rect minus padding
+                            SDL_FRect clip_rect = {
+                                .x = sdl_rect.x + pad_left,
+                                .y = sdl_rect.y + pad_top,
+                                .w = fmaxf(0.0f, sdl_rect.w - pad_left - pad_right),
+                                .h = sdl_rect.h - pad_top - (component->style ? component->style->padding.bottom : 8.0f)
+                            };
+                            SDL_Rect clip_px = {
+                                .x = (int)clip_rect.x,
+                                .y = (int)clip_rect.y,
+                                .w = (int)clip_rect.w,
+                                .h = (int)clip_rect.h
+                            };
+                            SDL_SetRenderClipRect(renderer->renderer, &clip_px);
+                            SDL_RenderTexture(renderer->renderer, texture, NULL, &dest_rect);
+                            SDL_SetRenderClipRect(renderer->renderer, NULL);
+                            SDL_DestroyTexture(texture);
+                        }
+                        SDL_DestroySurface(surface);
+                    }
+                }
+
+                // Caret rendering
+                if (istate && istate->focused && font) {
+                    uint32_t now = SDL_GetTicks();
+                    if (now - istate->last_blink_ms > 500) {
+                        istate->caret_visible = !istate->caret_visible;
+                        istate->last_blink_ms = now;
+                    }
+                    if (istate->caret_visible) {
+                        SDL_Color caret_color = text_color;
+                        SDL_SetRenderDrawColor(renderer->renderer, caret_color.r, caret_color.g, caret_color.b, caret_color.a);
+                        SDL_RenderLine(renderer->renderer,
+                            caret_x,
+                            caret_y,
+                            caret_x,
+                            caret_y + caret_height - 2);
+                    }
+                }
+            }
+            break;
+
+        case IR_COMPONENT_CHECKBOX: {
+            // Checkbox is rendered as a small box on the left + label text
+            float checkbox_size = fminf(sdl_rect.h * 0.6f, 20.0f);
+            float checkbox_y = sdl_rect.y + (sdl_rect.h - checkbox_size) / 2;
+
+            SDL_FRect checkbox_rect = {
+                .x = sdl_rect.x + 5,
+                .y = checkbox_y,
+                .w = checkbox_size,
+                .h = checkbox_size
+            };
+
+            // Calculate opacity for all checkbox elements
+            float opacity = component->style ? component->style->opacity * inherited_opacity : 1.0f;
+
+            // Draw checkbox background
+            SDL_Color bg_color = component->style ?
+                ir_color_to_sdl(component->style->background) :
+                (SDL_Color){255, 255, 255, 255};
+            bg_color = apply_opacity_to_color(bg_color, opacity);
+            ensure_blend_mode(renderer->renderer);
+            SDL_SetRenderDrawColor(renderer->renderer, bg_color.r, bg_color.g, bg_color.b, bg_color.a);
+            SDL_RenderFillRect(renderer->renderer, &checkbox_rect);
+
+            // Draw checkbox border
+            SDL_Color border_color = apply_opacity_to_color((SDL_Color){100, 100, 100, 255}, opacity);
+            SDL_SetRenderDrawColor(renderer->renderer, border_color.r, border_color.g, border_color.b, border_color.a);
+            SDL_RenderRect(renderer->renderer, &checkbox_rect);
+
+            // Check if checkbox is checked (stored in custom_data)
+            bool is_checked = component->custom_data &&
+                             strcmp(component->custom_data, "checked") == 0;
+
+            // Draw checkmark if checked
+            if (is_checked) {
+                SDL_Color check_color = apply_opacity_to_color((SDL_Color){50, 200, 50, 255}, opacity);
+                SDL_SetRenderDrawColor(renderer->renderer, check_color.r, check_color.g, check_color.b, check_color.a);
+                // Draw a simple checkmark using lines
+                float cx = checkbox_rect.x + checkbox_size / 2;
+                float cy = checkbox_rect.y + checkbox_size / 2;
+                float size = checkbox_size * 0.3f;
+
+                SDL_RenderLine(renderer->renderer,
+                              cx - size, cy,
+                              cx - size/3, cy + size);
+                SDL_RenderLine(renderer->renderer,
+                              cx - size/3, cy + size,
+                              cx + size, cy - size);
+            }
+
+            // Render label text next to checkbox
+            if (component->text_content && renderer->default_font) {
+                SDL_Color text_color = component->style ?
+                    ir_color_to_sdl(component->style->font.color) :
+                    (SDL_Color){0, 0, 0, 255};
+
+                SDL_Surface* surface = TTF_RenderText_Blended(renderer->default_font,
+                                                              component->text_content,
+                                                              strlen(component->text_content),
+                                                              text_color);
+                if (surface) {
+                    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
+                    if (texture) {
+                        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text
+                        // Round text position to integer pixels for crisp rendering
+                        SDL_FRect text_rect = {
+                            .x = roundf(checkbox_rect.x + checkbox_size + 10),
+                            .y = roundf(sdl_rect.y + (sdl_rect.h - surface->h) / 2.0f),
+                            .w = (float)surface->w,
+                            .h = (float)surface->h
+                        };
+                        SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
+                        SDL_DestroyTexture(texture);
+                    }
+                    SDL_DestroySurface(surface);
+                }
+            }
+            break;
+        }
+
+        case IR_COMPONENT_DROPDOWN: {
+            // Get dropdown state from custom_data
+            IRDropdownState* dropdown_state = ir_get_dropdown_state(component);
+            if (!dropdown_state) break;
+
+            // Get colors and styling
+            SDL_Color bg_color = component->style ?
+                ir_color_to_sdl(component->style->background) :
+                (SDL_Color){255, 255, 255, 255};
+            SDL_Color text_color = component->style ?
+                ir_color_to_sdl(component->style->font.color) :
+                (SDL_Color){0, 0, 0, 255};
+            SDL_Color border_color = component->style ?
+                ir_color_to_sdl(component->style->border.color) :
+                (SDL_Color){209, 213, 219, 255};
+
+            // Draw main dropdown box
+            SDL_SetRenderDrawColor(renderer->renderer, bg_color.r, bg_color.g, bg_color.b, bg_color.a);
+            SDL_RenderFillRect(renderer->renderer, &sdl_rect);
+
+            // Draw border
+            float border_width = component->style ? component->style->border.width : 1.0f;
+            SDL_SetRenderDrawColor(renderer->renderer, border_color.r, border_color.g, border_color.b, border_color.a);
+            for (int i = 0; i < (int)border_width; i++) {
+                SDL_FRect border_rect = {
+                    .x = sdl_rect.x + i,
+                    .y = sdl_rect.y + i,
+                    .w = sdl_rect.w - 2*i,
+                    .h = sdl_rect.h - 2*i
+                };
+                SDL_RenderRect(renderer->renderer, &border_rect);
+            }
+
+            // Render selected text or placeholder
+            const char* display_text = dropdown_state->placeholder;
+            if (dropdown_state->selected_index >= 0 &&
+                dropdown_state->selected_index < (int32_t)dropdown_state->option_count &&
+                dropdown_state->options) {
+                display_text = dropdown_state->options[dropdown_state->selected_index];
+            }
+
+            if (display_text && renderer->default_font) {
+                SDL_Surface* surface = TTF_RenderText_Blended(renderer->default_font,
+                                                              display_text,
+                                                              strlen(display_text),
+                                                              text_color);
+                if (surface) {
+                    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer->renderer, surface);
+                    if (texture) {
+                        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // Crisp text
+                        SDL_FRect text_rect = {
+                            .x = roundf(sdl_rect.x + 10),
+                            .y = roundf(sdl_rect.y + (sdl_rect.h - surface->h) / 2.0f),
+                            .w = (float)surface->w,
+                            .h = (float)surface->h
+                        };
+                        SDL_RenderTexture(renderer->renderer, texture, NULL, &text_rect);
+                        SDL_DestroyTexture(texture);
+                    }
+                    SDL_DestroySurface(surface);
+                }
+            }
+
+            // Draw dropdown arrow on the right
+            float arrow_x = sdl_rect.x + sdl_rect.w - 20;
+            float arrow_y = sdl_rect.y + sdl_rect.h / 2;
+            float arrow_size = 5;
+            SDL_SetRenderDrawColor(renderer->renderer, text_color.r, text_color.g, text_color.b, text_color.a);
+            // Draw downward arrow using lines
+            SDL_RenderLine(renderer->renderer,
+                          arrow_x - arrow_size, arrow_y - arrow_size/2,
+                          arrow_x, arrow_y + arrow_size/2);
+            SDL_RenderLine(renderer->renderer,
+                          arrow_x, arrow_y + arrow_size/2,
+                          arrow_x + arrow_size, arrow_y - arrow_size/2);
+
+            // Dropdown menu rendering is deferred to second pass (after all components)
+            // This ensures menus appear on top (correct z-index)
+            break;
+        }
+
+        case IR_COMPONENT_CANVAS: {
+            // Generic plugin dispatch - follows markdown pattern
+            IRPluginBackendContext plugin_ctx = {
+                .renderer = renderer->renderer,
+                .font = renderer->default_font,
+                .user_data = NULL
+            };
+
+            if (!ir_plugin_dispatch_component_render(&plugin_ctx, component->type,
+                                                      component, sdl_rect.x, sdl_rect.y,
+                                                      sdl_rect.w, sdl_rect.h)) {
+                fprintf(stderr, "[kryon][desktop] No renderer registered for CANVAS component\n");
+            }
+            break;
+        }
+
+        case IR_COMPONENT_NATIVE_CANVAS: {
+            // NativeCanvas - invoke user callback for direct backend access
+            // This allows users to call backend-specific rendering functions
+            // (e.g., raylib 3D functions, SDL3 rendering, etc.)
+
+            // Invoke the callback if one is registered
+            if (!ir_native_canvas_invoke_callback(component->id)) {
+                // No callback registered - render a placeholder or warning
+                IRNativeCanvasData* canvas_data = ir_native_canvas_get_data(component);
+                if (canvas_data) {
+                    // Render background color
+                    SDL_FRect bg_rect = sdl_rect;
+                    uint32_t bg_color = canvas_data->background_color;
+                    uint8_t r = (bg_color >> 24) & 0xFF;
+                    uint8_t g = (bg_color >> 16) & 0xFF;
+                    uint8_t b = (bg_color >> 8) & 0xFF;
+                    uint8_t a = bg_color & 0xFF;
+
+                    SDL_SetRenderDrawColor(renderer->renderer, r, g, b, a);
+                    SDL_RenderFillRect(renderer->renderer, &bg_rect);
+
+                    // Draw a debug "X" to indicate missing callback
+                    SDL_SetRenderDrawColor(renderer->renderer, 255, 0, 0, 255);
+                    SDL_RenderLine(renderer->renderer, bg_rect.x, bg_rect.y,
+                                 bg_rect.x + bg_rect.w, bg_rect.y + bg_rect.h);
+                    SDL_RenderLine(renderer->renderer, bg_rect.x + bg_rect.w, bg_rect.y,
+                                 bg_rect.x, bg_rect.y + bg_rect.h);
+                }
+            }
+            break;
+        }
+
+        case IR_COMPONENT_MARKDOWN:
+            // Generic plugin component - dispatch to registered component renderer
+            // No hardcoding of plugin names - routing based on component type
+            {
+                IRPluginBackendContext plugin_ctx = {
+                    .renderer = renderer->renderer,
+                    .font = renderer->default_font,
+                    .user_data = NULL
+                };
+                if (!ir_plugin_dispatch_component_render(&plugin_ctx, component->type, component,
+                                                         sdl_rect.x, sdl_rect.y, sdl_rect.w, sdl_rect.h)) {
+                    // No plugin renderer registered - silently ignore or warn
+                    // This allows graceful degradation if plugin is not installed
+                }
+            }
+            break;
+
+        case IR_COMPONENT_IMAGE: {
+            // Image component - load and render image from src (stored in custom_data)
+            const char* src = component->custom_data;
+            if (src && strlen(src) > 0) {
+                int img_width, img_height;
+                SDL_Texture* texture = load_image_texture(renderer->renderer, src, &img_width, &img_height);
+                if (texture) {
+                    // Apply opacity
+                    float opacity = inherited_opacity;
+                    if (component->style) {
+                        opacity *= component->style->opacity;
+                    }
+                    SDL_SetTextureAlphaMod(texture, (Uint8)(opacity * 255));
+
+                    // Determine destination rect
+                    SDL_FRect dest_rect;
+                    dest_rect.x = sdl_rect.x;
+                    dest_rect.y = sdl_rect.y;
+
+                    // Use component dimensions if set, otherwise use image intrinsic size
+                    if (component->style && component->style->width.value > 0) {
+                        dest_rect.w = sdl_rect.w;
+                    } else {
+                        dest_rect.w = (float)img_width;
+                    }
+                    if (component->style && component->style->height.value > 0) {
+                        dest_rect.h = sdl_rect.h;
+                    } else {
+                        dest_rect.h = (float)img_height;
+                    }
+
+                    // Render the image
+                    SDL_RenderTexture(renderer->renderer, texture, NULL, &dest_rect);
+                }
+            }
+            break;
+        }
+
+        case IR_COMPONENT_TAB_GROUP:
+        case IR_COMPONENT_TAB_BAR:
+        case IR_COMPONENT_TAB_CONTENT:
+        case IR_COMPONENT_TAB_PANEL:
+            // Tab containers - render as normal containers with background
+            if (component->style) {
+                float opacity = component->style->opacity * inherited_opacity;
+                render_background(renderer->renderer, component, &sdl_rect, opacity);
+            }
+            break;
+
+        case IR_COMPONENT_TABLE: {
+            // Table container - render background and outer border
+            IRTableState* table_state = (IRTableState*)component->custom_data;
+            float opacity = component->style ? component->style->opacity * inherited_opacity : inherited_opacity;
+            render_background(renderer->renderer, component, &sdl_rect, opacity);
+
+            // Draw outer border if show_borders is enabled
+            if (table_state && table_state->style.show_borders && table_state->style.border_width > 0) {
+                IRColor border_color = table_state->style.border_color;
+                SDL_SetRenderDrawColor(renderer->renderer,
+                    border_color.data.r, border_color.data.g, border_color.data.b,
+                    (uint8_t)(border_color.data.a * opacity));
+                SDL_RenderRect(renderer->renderer, &sdl_rect);
+            }
+            break;
+        }
+
+        case IR_COMPONENT_TABLE_HEAD:
+        case IR_COMPONENT_TABLE_BODY:
+        case IR_COMPONENT_TABLE_FOOT:
+            // Table sections - transparent containers
+            break;
+
+        case IR_COMPONENT_TABLE_ROW: {
+            // Table row - render striped background if applicable
+            IRComponent* table = component->parent ? component->parent->parent : NULL;
+            if (table && table->type == IR_COMPONENT_TABLE) {
+                IRTableState* table_state = (IRTableState*)table->custom_data;
+                if (table_state && table_state->style.striped_rows) {
+                    // Find row index to determine even/odd
+                    IRComponent* section = component->parent;
+                    int row_index = 0;
+                    for (uint32_t i = 0; i < section->child_count; i++) {
+                        if (section->children[i] == component) break;
+                        if (section->children[i]->type == IR_COMPONENT_TABLE_ROW) row_index++;
+                    }
+
+                    // Only apply striping to body rows
+                    if (section->type == IR_COMPONENT_TABLE_BODY) {
+                        IRColor bg_color = (row_index % 2 == 0) ?
+                            table_state->style.even_row_background :
+                            table_state->style.odd_row_background;
+                        float opacity = component->style ? component->style->opacity * inherited_opacity : inherited_opacity;
+                        SDL_SetRenderDrawColor(renderer->renderer,
+                            bg_color.data.r, bg_color.data.g, bg_color.data.b,
+                            (uint8_t)(bg_color.data.a * opacity));
+                        SDL_RenderFillRect(renderer->renderer, &sdl_rect);
+                    }
+                }
+            }
+            break;
+        }
+
+        case IR_COMPONENT_TABLE_HEADER_CELL: {
+            // Header cell - render with header background
+            IRComponent* table = NULL;
+            IRComponent* p = component->parent;
+            while (p) {
+                if (p->type == IR_COMPONENT_TABLE) { table = p; break; }
+                p = p->parent;
+            }
+
+            IRTableState* table_state = table ? (IRTableState*)table->custom_data : NULL;
+            float opacity = component->style ? component->style->opacity * inherited_opacity : inherited_opacity;
+
+            // Draw header background
+            if (table_state) {
+                IRColor bg_color = table_state->style.header_background;
+                SDL_SetRenderDrawColor(renderer->renderer,
+                    bg_color.data.r, bg_color.data.g, bg_color.data.b,
+                    (uint8_t)(bg_color.data.a * opacity));
+                SDL_RenderFillRect(renderer->renderer, &sdl_rect);
+
+                // Draw cell border
+                if (table_state->style.show_borders && table_state->style.border_width > 0) {
+                    IRColor border_color = table_state->style.border_color;
+                    SDL_SetRenderDrawColor(renderer->renderer,
+                        border_color.data.r, border_color.data.g, border_color.data.b,
+                        (uint8_t)(border_color.data.a * opacity));
+                    SDL_RenderRect(renderer->renderer, &sdl_rect);
+                }
+            } else {
+                render_background(renderer->renderer, component, &sdl_rect, opacity);
+            }
+
+            // Render header cell text content (bold white text)
+            if (component->text_content) {
+                float font_size = component->style && component->style->font.size > 0 ? component->style->font.size : 14.0f;
+                TTF_Font* font = desktop_ir_resolve_font(renderer, component, font_size);
+                if (font) {
+                    SDL_Color text_color = {255, 255, 255, (uint8_t)(255 * opacity)};  // White text for headers
+                    float cell_padding = table_state ? table_state->style.cell_padding : 8.0f;
+                    render_text_with_shadow(renderer->renderer, font, component->text_content, text_color, component,
+                                           sdl_rect.x + cell_padding, sdl_rect.y + cell_padding, sdl_rect.w - 2 * cell_padding);
+                }
+            }
+            // Header cell rendering is complete - don't fall through to child rendering
+            return true;
+        }
+
+        case IR_COMPONENT_TABLE_CELL: {
+            // Regular cell - render background and border
+            IRComponent* table = NULL;
+            IRComponent* p = component->parent;
+            int depth = 0;
+            while (p && depth < 100) {
+                if (p->type == IR_COMPONENT_TABLE) { table = p; break; }
+                p = p->parent;
+                depth++;
+            }
+
+            IRTableState* table_state = table ? (IRTableState*)table->custom_data : NULL;
+            float opacity = component->style ? component->style->opacity * inherited_opacity : inherited_opacity;
+
+            // Draw cell background (if explicitly set)
+            render_background(renderer->renderer, component, &sdl_rect, opacity);
+
+            // Draw cell border
+            if (table_state && table_state->style.show_borders && table_state->style.border_width > 0) {
+                IRColor border_color = table_state->style.border_color;
+                SDL_SetRenderDrawColor(renderer->renderer,
+                    border_color.data.r, border_color.data.g, border_color.data.b,
+                    (uint8_t)(border_color.data.a * opacity));
+                SDL_RenderRect(renderer->renderer, &sdl_rect);
+            }
+
+            // Render cell text content
+            if (component->text_content) {
+                float font_size = component->style && component->style->font.size > 0 ? component->style->font.size : 14.0f;
+                TTF_Font* font = desktop_ir_resolve_font(renderer, component, font_size);
+                if (font) {
+                    SDL_Color text_color = component->style ? ir_color_to_sdl(component->style->font.color) : (SDL_Color){255, 255, 255, 255};
+                    if (text_color.a == 0) text_color = (SDL_Color){255, 255, 255, 255};  // Default to white
+                    text_color.a = (uint8_t)(text_color.a * opacity);
+                    float cell_padding = table_state ? table_state->style.cell_padding : 8.0f;
+                    render_text_with_shadow(renderer->renderer, font, component->text_content, text_color, component,
+                                           sdl_rect.x + cell_padding, sdl_rect.y + cell_padding, sdl_rect.w - 2 * cell_padding);
+                }
+            }
+            // Cell rendering is complete - don't fall through to child rendering
+            return true;
+        }
+
+
         // ========================================================================
         // Markdown Components (Core Support)
         // ========================================================================
