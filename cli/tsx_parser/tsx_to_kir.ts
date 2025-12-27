@@ -52,6 +52,13 @@ function parseJSXElement(node: any): KIRComponent | null {
       type
     };
 
+    // Automatically set flexDirection based on component type
+    if (type === 'Row') {
+      component.flexDirection = 'row';
+    } else if (type === 'Column') {
+      component.flexDirection = 'column';
+    }
+
     // Flatten props directly onto component (KIR v3.0 format)
     if (node.props) {
       for (const [key, value] of Object.entries(node.props)) {

@@ -332,7 +332,7 @@ CXChildVisitResult visit_function(CXCursor cursor, CXCursor parent, CXClientData
     return CXChildVisit_Recurse;
 }
 
-char* ir_c_file_to_kir_v3(const char* filepath) {
+char* ir_c_file_to_kir(const char* filepath) {
     // Parse C file with libclang
     CXIndex index = clang_createIndex(0, 0);
     CXTranslationUnit unit = clang_parseTranslationUnit(
@@ -367,7 +367,7 @@ char* ir_c_file_to_kir_v3(const char* filepath) {
     };
 
     // Serialize to KIR
-    char* kir = ir_serialize_json_v3(root, NULL, &collector, &metadata);
+    char* kir = ir_serialize_json_complete(root, NULL, &collector, &metadata);
 
     // Cleanup
     clang_disposeTranslationUnit(unit);
@@ -426,7 +426,7 @@ char* ir_nim_to_kir(const char* source, size_t length) {
     };
 
     // Serialize to KIR
-    char* kir = ir_serialize_json_v3(root, NULL, &logic, &metadata);
+    char* kir = ir_serialize_json_complete(root, NULL, &logic, &metadata);
 
     return kir;
 }
@@ -502,7 +502,7 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         .file_path = "stdin"
     };
 
-    char* kir = ir_serialize_json_v3(root, NULL, &logic, &metadata);
+    char* kir = ir_serialize_json_complete(root, NULL, &logic, &metadata);
 
     return kir;
 }

@@ -7,25 +7,62 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../../codegens/kry/kry_codegen.h"
 #include "../../codegens/nim/nim_codegen.h"
 #include "../../codegens/lua/lua_codegen.h"
+#include "../../codegens/tsx/tsx_codegen.h"
 
 int cmd_codegen(int argc, char** argv) {
-    if (argc < 3) {
+    if (argc < 1) {
         fprintf(stderr, "Error: Missing arguments\n\n");
-        fprintf(stderr, "Usage: kryon codegen <language> <input.kir> <output>\n\n");
+        fprintf(stderr, "Usage: kryon codegen <language> <input.kir> <output>\n");
+        fprintf(stderr, "   or: kryon codegen <input.kir> --lang=<language> --output=<output>\n\n");
         fprintf(stderr, "Supported languages:\n");
+        fprintf(stderr, "  kry    - Generate .kry source code (round-trip)\n");
+        fprintf(stderr, "  tsx    - Generate TypeScript React code\n");
         fprintf(stderr, "  nim    - Generate Nim source code\n");
         fprintf(stderr, "  lua    - Generate Lua source code\n");
         fprintf(stderr, "\nExample:\n");
+        fprintf(stderr, "  kryon codegen kry app.kir app.kry\n");
+        fprintf(stderr, "  kryon codegen tsx app.kir app.tsx\n");
         fprintf(stderr, "  kryon codegen nim app.kir app.nim\n");
-        fprintf(stderr, "  kryon codegen lua app.kir app.lua\n");
+        fprintf(stderr, "  kryon codegen app.kir --lang=kry --output=app.kry\n");
         return 1;
     }
 
-    const char* language = argv[0];
-    const char* input_kir = argv[1];
-    const char* output_file = argv[2];
+    const char* language = NULL;
+    const char* input_kir = NULL;
+    const char* output_file = NULL;
+
+    // Check if using flag-based syntax (first arg has .kir extension)
+    if (argc >= 1 && strstr(argv[0], ".kir") != NULL) {
+        // Flag-based: kryon codegen <input.kir> --lang=<language> --output=<output>
+        input_kir = argv[0];
+
+        for (int i = 1; i < argc; i++) {
+            if (strncmp(argv[i], "--lang=", 7) == 0) {
+                language = argv[i] + 7;
+            } else if (strncmp(argv[i], "--output=", 9) == 0) {
+                output_file = argv[i] + 9;
+            }
+        }
+
+        if (!language || !output_file) {
+            fprintf(stderr, "Error: Missing required flags\n");
+            fprintf(stderr, "Usage: kryon codegen <input.kir> --lang=<language> --output=<output>\n");
+            return 1;
+        }
+    } else if (argc >= 3) {
+        // Positional: kryon codegen <language> <input.kir> <output>
+        language = argv[0];
+        input_kir = argv[1];
+        output_file = argv[2];
+    } else {
+        fprintf(stderr, "Error: Missing arguments\n\n");
+        fprintf(stderr, "Usage: kryon codegen <language> <input.kir> <output>\n");
+        fprintf(stderr, "   or: kryon codegen <input.kir> --lang=<language> --output=<output>\n");
+        return 1;
+    }
 
     // Check if input file exists
     if (!file_exists(input_kir)) {
@@ -37,13 +74,19 @@ int cmd_codegen(int argc, char** argv) {
 
     bool success = false;
 
-    if (strcmp(language, "nim") == 0) {
+    if (strcmp(language, "kry") == 0) {
+        success = kry_codegen_generate(input_kir, output_file);
+    } else if (strcmp(language, "tsx") == 0) {
+        success = tsx_codegen_generate(input_kir, output_file);
+    } else if (strcmp(language, "nim") == 0) {
         success = nim_codegen_generate(input_kir, output_file);
     } else if (strcmp(language, "lua") == 0) {
         success = lua_codegen_generate(input_kir, output_file);
     } else {
         fprintf(stderr, "Error: Unsupported language: %s\n\n", language);
         fprintf(stderr, "Supported languages:\n");
+        fprintf(stderr, "  kry    - Generate .kry source code (round-trip)\n");
+        fprintf(stderr, "  tsx    - Generate TypeScript React code\n");
         fprintf(stderr, "  nim    - Generate Nim source code\n");
         fprintf(stderr, "  lua    - Generate Lua source code\n");
         return 1;

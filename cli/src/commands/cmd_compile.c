@@ -166,11 +166,25 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
 int cmd_compile(int argc, char** argv) {
     if (argc < 1) {
         fprintf(stderr, "Error: No source file specified\n");
-        fprintf(stderr, "Usage: kryon compile <file>\n");
+        fprintf(stderr, "Usage: kryon compile <file> [--output=<file>] [--preserve-static] [--no-cache]\n");
         return 1;
     }
 
     const char* source_file = argv[0];
+    const char* output_file = NULL;
+    bool use_cache = true;
+    // bool preserve_static = false;  // TODO: implement preserve-static for codegen
+
+    // Parse flags
+    for (int i = 1; i < argc; i++) {
+        if (strncmp(argv[i], "--output=", 9) == 0) {
+            output_file = argv[i] + 9;
+        } else if (strcmp(argv[i], "--no-cache") == 0) {
+            use_cache = false;
+        } else if (strcmp(argv[i], "--preserve-static") == 0) {
+            // preserve_static = true;  // TODO: implement
+        }
+    }
 
     if (!file_exists(source_file)) {
         fprintf(stderr, "Error: Source file not found: %s\n", source_file);
@@ -185,22 +199,43 @@ int cmd_compile(int argc, char** argv) {
         return 1;
     }
 
-    // Create cache directory
-    if (!file_is_directory(".kryon_cache")) {
-        dir_create(".kryon_cache");
+    // Determine output path
+    char kir_file[1024];
+    if (output_file) {
+        // Use specified output path
+        snprintf(kir_file, sizeof(kir_file), "%s", output_file);
+    } else {
+        // Create cache directory if using cache
+        if (use_cache && !file_is_directory(".kryon_cache")) {
+            dir_create(".kryon_cache");
+        }
+
+        // Generate KIR filename
+        const char* basename = strrchr(source_file, '/');
+        basename = basename ? basename + 1 : source_file;
+
+        char* name_copy = str_copy(basename);
+        char* dot = strrchr(name_copy, '.');
+        if (dot) *dot = '\0';
+
+        if (use_cache) {
+            snprintf(kir_file, sizeof(kir_file), ".kryon_cache/%s.kir", name_copy);
+        } else {
+            snprintf(kir_file, sizeof(kir_file), "%s.kir", name_copy);
+        }
+        free(name_copy);
     }
 
-    // Generate KIR filename
-    const char* basename = strrchr(source_file, '/');
-    basename = basename ? basename + 1 : source_file;
-
-    char* name_copy = str_copy(basename);
-    char* dot = strrchr(name_copy, '.');
-    if (dot) *dot = '\0';
-
-    char kir_file[1024];
-    snprintf(kir_file, sizeof(kir_file), ".kryon_cache/%s.kir", name_copy);
-    free(name_copy);
+    // Ensure output directory exists
+    char* last_slash = strrchr(kir_file, '/');
+    if (last_slash) {
+        char* dir_path = str_copy(kir_file);
+        dir_path[last_slash - kir_file] = '\0';
+        if (!file_is_directory(dir_path)) {
+            dir_create(dir_path);
+        }
+        free(dir_path);
+    }
 
     // Compile to KIR
     int result = compile_to_kir(source_file, kir_file, frontend);

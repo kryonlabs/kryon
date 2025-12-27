@@ -1440,16 +1440,157 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
  */
 
 /**
- * Serialize IR component tree with reactive manifest to JSON format
+ * Serialize source metadata to JSON
+ */
+static cJSON* json_serialize_metadata(IRSourceMetadata* metadata) {
+    if (!metadata) return NULL;
+
+    cJSON* meta = cJSON_CreateObject();
+    if (!meta) return NULL;
+
+    if (metadata->source_language) {
+        cJSON_AddStringToObject(meta, "source_language", metadata->source_language);
+    }
+    if (metadata->source_file) {
+        cJSON_AddStringToObject(meta, "source_file", metadata->source_file);
+    }
+    if (metadata->compiler_version) {
+        cJSON_AddStringToObject(meta, "compiler_version", metadata->compiler_version);
+    }
+    if (metadata->timestamp) {
+        cJSON_AddStringToObject(meta, "timestamp", metadata->timestamp);
+    }
+
+    return meta;
+}
+
+/**
+ * Serialize IRLogic linked list to JSON array
+ * This preserves the source code for event handlers
+ */
+static cJSON* json_serialize_logic_list(IRLogic* logic) {
+    if (!logic) return NULL;
+
+    cJSON* logicArray = cJSON_CreateArray();
+    if (!logicArray) return NULL;
+
+    IRLogic* current = logic;
+    while (current) {
+        cJSON* logicObj = cJSON_CreateObject();
+
+        if (current->id) {
+            cJSON_AddStringToObject(logicObj, "id", current->id);
+        }
+        if (current->source_code) {
+            cJSON_AddStringToObject(logicObj, "source_code", current->source_code);
+        }
+        cJSON_AddStringToObject(logicObj, "type", ir_logic_type_to_string(current->type));
+
+        cJSON_AddItemToArray(logicArray, logicObj);
+        current = current->next;
+    }
+
+    return logicArray;
+}
+
+/**
+ * Serialize IRLogicBlock (from ir_logic.h) to JSON
+ * This includes multi-language function definitions
+ */
+static cJSON* json_serialize_logic_block(IRLogicBlock* logic_block) {
+    if (!logic_block) return NULL;
+
+    cJSON* blockObj = cJSON_CreateObject();
+    if (!blockObj) return NULL;
+
+    // Serialize functions
+    if (logic_block->function_count > 0 && logic_block->functions) {
+        cJSON* functionsArray = cJSON_CreateArray();
+
+        for (int i = 0; i < logic_block->function_count; i++) {
+            IRLogicFunction* func = logic_block->functions[i];
+            if (!func) continue;
+
+            cJSON* funcObj = cJSON_CreateObject();
+
+            if (func->name) {
+                cJSON_AddStringToObject(funcObj, "name", func->name);
+            }
+
+            // Serialize multi-language sources
+            if (func->source_count > 0) {
+                cJSON* sourcesArray = cJSON_CreateArray();
+
+                for (int j = 0; j < func->source_count; j++) {
+                    cJSON* sourceObj = cJSON_CreateObject();
+                    cJSON_AddStringToObject(sourceObj, "language", func->sources[j].language);
+                    cJSON_AddStringToObject(sourceObj, "source", func->sources[j].source);
+                    cJSON_AddItemToArray(sourcesArray, sourceObj);
+                }
+
+                cJSON_AddItemToObject(funcObj, "sources", sourcesArray);
+            }
+
+            cJSON_AddItemToArray(functionsArray, funcObj);
+        }
+
+        cJSON_AddItemToObject(blockObj, "functions", functionsArray);
+    }
+
+    // Serialize event bindings
+    if (logic_block->event_binding_count > 0 && logic_block->event_bindings) {
+        cJSON* bindingsArray = cJSON_CreateArray();
+
+        for (int i = 0; i < logic_block->event_binding_count; i++) {
+            IREventBinding* binding = logic_block->event_bindings[i];
+            if (!binding) continue;
+
+            cJSON* bindingObj = cJSON_CreateObject();
+            cJSON_AddNumberToObject(bindingObj, "component_id", binding->component_id);
+            if (binding->event_type) {
+                cJSON_AddStringToObject(bindingObj, "event_type", binding->event_type);
+            }
+            if (binding->handler_name) {
+                cJSON_AddStringToObject(bindingObj, "handler_name", binding->handler_name);
+            }
+            cJSON_AddItemToArray(bindingsArray, bindingObj);
+        }
+
+        cJSON_AddItemToObject(blockObj, "event_bindings", bindingsArray);
+    }
+
+    return blockObj;
+}
+
+/**
+ * Serialize IR component tree with complete metadata, logic, and reactive manifest
  * @param root Root component to serialize
  * @param manifest Reactive manifest to include (can be NULL)
+ * @param logic_block Logic block with functions and event bindings (can be NULL)
+ * @param source_metadata Source file metadata (can be NULL)
  * @return JSON string (caller must free), or NULL on error
  */
-char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest) {
+char* ir_serialize_json_complete(
+    IRComponent* root,
+    IRReactiveManifest* manifest,
+    IRLogicBlock* logic_block,
+    IRSourceMetadata* source_metadata
+) {
     if (!root) return NULL;
 
     // Create wrapper object
     cJSON* wrapper = cJSON_CreateObject();
+
+    // Add format identifier
+    cJSON_AddStringToObject(wrapper, "format", "kir");
+
+    // Add source metadata
+    if (source_metadata) {
+        cJSON* metaJson = json_serialize_metadata(source_metadata);
+        if (metaJson) {
+            cJSON_AddItemToObject(wrapper, "metadata", metaJson);
+        }
+    }
 
     // Add component definitions FIRST (at the top)
     if (manifest && manifest->component_def_count > 0) {
@@ -1459,14 +1600,6 @@ char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest) {
         }
     }
 
-    // Add component tree
-    cJSON* componentJson = json_serialize_component_recursive(root);
-    if (!componentJson) {
-        cJSON_Delete(wrapper);
-        return NULL;
-    }
-    cJSON_AddItemToObject(wrapper, "root", componentJson);
-
     // Add reactive manifest if present (variables, bindings, conditionals, for-loops)
     if (manifest && (manifest->variable_count > 0 || manifest->binding_count > 0 ||
                      manifest->conditional_count > 0 || manifest->for_loop_count > 0)) {
@@ -1475,6 +1608,28 @@ char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest) {
             cJSON_AddItemToObject(wrapper, "reactive_manifest", manifestJson);
         }
     }
+
+    // Add logic block (new!)
+    if (logic_block) {
+        cJSON* logicJson = json_serialize_logic_block(logic_block);
+        if (logicJson) {
+            cJSON_AddItemToObject(wrapper, "logic_block", logicJson);
+        }
+    }
+
+    // Also serialize component->logic linked lists for backwards compatibility
+    // Collect all logic from component tree
+    IRLogic* all_logic = NULL;
+    // TODO: traverse tree and collect all component->logic nodes
+    // For now, we'll rely on IRLogicBlock instead
+
+    // Add component tree
+    cJSON* componentJson = json_serialize_component_recursive(root);
+    if (!componentJson) {
+        cJSON_Delete(wrapper);
+        return NULL;
+    }
+    cJSON_AddItemToObject(wrapper, "root", componentJson);
 
     // Scan and add plugin requirements
     uint32_t plugin_count = 0;
@@ -1487,35 +1642,52 @@ char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest) {
             cJSON_Delete(wrapper);
             return NULL;
         }
-        for (uint32_t i = 0; i < plugin_count; i++) {
-            cJSON_AddItemToArray(pluginsArray, cJSON_CreateString(required_plugins[i]));
-        }
-        cJSON_AddItemToObject(wrapper, "required_plugins", pluginsArray);
 
-        // Clean up
+        for (uint32_t i = 0; i < plugin_count; i++) {
+            cJSON* pluginStr = cJSON_CreateString(required_plugins[i]);
+            if (!pluginStr) {
+                fprintf(stderr, "ERROR: cJSON_CreateString failed (OOM) for plugin: %s\n",
+                        required_plugins[i]);
+                cJSON_Delete(pluginsArray);
+                ir_plugin_free_requirements(required_plugins, plugin_count);
+                cJSON_Delete(wrapper);
+                return NULL;
+            }
+            cJSON_AddItemToArray(pluginsArray, pluginStr);
+        }
+
+        cJSON_AddItemToObject(wrapper, "required_plugins", pluginsArray);
         ir_plugin_free_requirements(required_plugins, plugin_count);
     }
 
-    // Add sources if present (for round-trip preservation)
+    // Add source code entries from manifest
     if (manifest && manifest->source_count > 0) {
-        cJSON* sources = cJSON_CreateObject();
-        if (!sources) {
-            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for sources object\n");
-            cJSON_Delete(wrapper);
-            return NULL;
-        }
+        cJSON* sourcesArray = cJSON_CreateArray();
         for (uint32_t i = 0; i < manifest->source_count; i++) {
-            if (manifest->sources[i].lang && manifest->sources[i].code) {
-                cJSON_AddStringToObject(sources, manifest->sources[i].lang, manifest->sources[i].code);
-            }
+            cJSON* sourceObj = cJSON_CreateObject();
+            cJSON_AddStringToObject(sourceObj, "lang", manifest->sources[i].lang);
+            cJSON_AddStringToObject(sourceObj, "code", manifest->sources[i].code);
+            cJSON_AddItemToArray(sourcesArray, sourceObj);
         }
-        cJSON_AddItemToObject(wrapper, "sources", sources);
+        cJSON_AddItemToObject(wrapper, "sources", sourcesArray);
     }
 
-    char* jsonStr = cJSON_Print(wrapper);  // Pretty-printed JSON
+    // Convert to string
+    char* jsonString = cJSON_Print(wrapper);
     cJSON_Delete(wrapper);
 
-    return jsonStr;
+    return jsonString;
+}
+
+/**
+ * Legacy serialize function - calls complete version with NULL logic/metadata
+ * @param root Root component to serialize
+ * @param manifest Reactive manifest to include (can be NULL)
+ * @return JSON string (caller must free), or NULL on error
+ */
+char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest) {
+    // Legacy function - just call the complete version with NULL logic/metadata
+    return ir_serialize_json_complete(root, manifest, NULL, NULL);
 }
 
 /**

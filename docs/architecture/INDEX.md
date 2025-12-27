@@ -23,9 +23,16 @@ This directory contains comprehensive architectural documentation and implementa
 2. **[Parser Pipeline Unification](plans/02-parser-pipeline-unification.md)** (19KB)
    - Fix TSX parser (TypeScript AST)
    - Fix C parser (libclang)
-   - Implement Nim parser
+   - Implement Nim parser (✅ DONE)
    - Implement Lua parser
    - **Effort:** 18 days (3.5 weeks)
+
+2b. **[Complete Lua Implementation](plans/PLAN-lua-complete-implementation.md)** (NEW)
+   - Lua Parser (execution-based with mock DSL)
+   - Lua Codegen (idiomatic metaprogramming syntax)
+   - Full round-trip capability
+   - Reactive state & event handlers
+   - **Effort:** 22 days (4.5 weeks)
 
 3. **[Complete Codegen Implementation](plans/03-codegen-complete-implementation.md)** (26KB)
    - Complete Nim codegen
@@ -97,8 +104,8 @@ app.tsx → KIR → app.c → KIR → app.nim → KIR
 
 | Phase | Duration | Key Deliverables |
 |-------|----------|------------------|
-| 1. KIR Foundation | 3 weeks | KIR structures, serialization |
-| 2. Parser Unification | 3.5 weeks | All parsers produce KIR |
+| 1. KIR Foundation | 3 weeks | Complete KIR serialization |
+| 2. Parser Unification | 3.5 weeks | All parsers → complete KIR |
 | 3. Codegen Completion | 5 weeks | All codegens from KIR |
 | 4. Bytecode VM | 4 weeks | .krb format + VM runtime |
 | 5. Binary Compilation | 4.5 weeks | Full build pipeline |
@@ -112,15 +119,15 @@ app.tsx → KIR → app.c → KIR → app.nim → KIR
 - ✅ .md - Markdown CommonMark (98% complete)
 - ⚠️ .tsx - TypeScript/JSX (needs AST-based rewrite)
 - ⚠️ .c - C with Kryon API (needs libclang rewrite)
-- ❌ .nim - Nim DSL (needs implementation)
-- ❌ .lua - Lua API (needs implementation)
+- ✅ .nim - Nim DSL (complete!)
+- ⏳ .lua - Lua API (plan ready, needs implementation)
 
 ### Codegens (Output)
 - ⚠️ HTML/CSS - 70% complete (needs event handlers)
 - ⚠️ TSX/JSX - 60% complete (needs hooks)
-- ❌ Nim - 20% complete (needs full implementation)
-- ❌ Lua - 30% complete (needs full implementation)
-- ❌ C - 10% stub (needs full implementation)
+- ⏳ Nim - 20% complete (needs full implementation)
+- ⏳ Lua - 30% complete (plan ready, needs implementation)
+- ⏳ C - 10% stub (needs full implementation)
 
 ### Backends (Rendering)
 - ✅ SDL3 - Desktop rendering (complete)
@@ -140,7 +147,8 @@ docs/architecture/
     ├── 02-parser-pipeline-unification.md
     ├── 03-codegen-complete-implementation.md
     ├── 04-bytecode-vm-system.md
-    └── 05-binary-compilation-pipeline.md
+    ├── 05-binary-compilation-pipeline.md
+    └── PLAN-lua-complete-implementation.md
 ```
 
 ## Reading Guide

@@ -4,6 +4,9 @@
 #include "ir_core.h"
 #include <stdio.h>
 
+// Forward declarations
+typedef struct IRLogicBlock IRLogicBlock;
+
 // Forward declarations for functions defined in ir_builder.c
 IRStyle* ir_create_style(void);
 void ir_destroy_style(IRStyle* style);
@@ -36,8 +39,17 @@ IRComponent* ir_read_binary_file(const char* filename);
 // KIR Serialization - ONE Complete Format
 // ============================================================================
 
-// Serialize to KIR JSON (complete format with manifest)
+// Serialize to KIR JSON (complete format with manifest, logic, and metadata)
+char* ir_serialize_json_complete(
+    IRComponent* root,
+    IRReactiveManifest* manifest,
+    struct IRLogicBlock* logic_block,
+    IRSourceMetadata* source_metadata
+);
+
+// Legacy function (kept for backwards compatibility, uses NULL for logic/metadata)
 char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest);
+
 bool ir_write_json_file(IRComponent* root, IRReactiveManifest* manifest, const char* filename);
 
 // Deserialize from KIR JSON

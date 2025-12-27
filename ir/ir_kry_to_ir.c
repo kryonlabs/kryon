@@ -8,6 +8,7 @@
 #include "ir_kry_ast.h"
 #include "ir_builder.h"
 #include "ir_serialization.h"
+#include "ir_logic.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -29,6 +30,8 @@ typedef struct {
     ParamSubstitution params[MAX_PARAMS];  // Parameter substitutions
     int param_count;
     IRReactiveManifest* manifest;  // Reactive manifest for state variables
+    IRLogicBlock* logic_block;     // Logic block for event handlers
+    uint32_t next_handler_id;      // Counter for generating unique handler names
 } ConversionContext;
 
 // ============================================================================
@@ -252,11 +255,33 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
         }
     }
 
-    // Event handlers
+    // Event handlers - create logic functions and event bindings
     if (strcmp(name, "onClick") == 0) {
-        if (value->type == KRY_VALUE_EXPRESSION) {
-            // Create click event with handler code
-            IREvent* event = ir_create_event(IR_EVENT_CLICK, NULL, value->expression);
+        if (value->type == KRY_VALUE_EXPRESSION && ctx->logic_block) {
+            // Generate unique handler name
+            char handler_name[64];
+            snprintf(handler_name, sizeof(handler_name), "handler_%u_click", ctx->next_handler_id++);
+
+            // Create logic function with .kry source code
+            IRLogicFunction* func = ir_logic_function_create(handler_name);
+            if (func) {
+                // Add the source code as .kry language
+                ir_logic_function_add_source(func, "kry", value->expression);
+
+                // Add function to logic block
+                ir_logic_block_add_function(ctx->logic_block, func);
+
+                // Create event binding
+                IREventBinding* binding = ir_event_binding_create(
+                    component->id, "click", handler_name
+                );
+                if (binding) {
+                    ir_logic_block_add_binding(ctx->logic_block, binding);
+                }
+            }
+
+            // Also create legacy IREvent for backwards compatibility
+            IREvent* event = ir_create_event(IR_EVENT_CLICK, handler_name, value->expression);
             if (event) {
                 ir_add_event(component, event);
             }
@@ -265,8 +290,24 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
     }
 
     if (strcmp(name, "onHover") == 0) {
-        if (value->type == KRY_VALUE_EXPRESSION) {
-            IREvent* event = ir_create_event(IR_EVENT_HOVER, NULL, value->expression);
+        if (value->type == KRY_VALUE_EXPRESSION && ctx->logic_block) {
+            char handler_name[64];
+            snprintf(handler_name, sizeof(handler_name), "handler_%u_hover", ctx->next_handler_id++);
+
+            IRLogicFunction* func = ir_logic_function_create(handler_name);
+            if (func) {
+                ir_logic_function_add_source(func, "kry", value->expression);
+                ir_logic_block_add_function(ctx->logic_block, func);
+
+                IREventBinding* binding = ir_event_binding_create(
+                    component->id, "hover", handler_name
+                );
+                if (binding) {
+                    ir_logic_block_add_binding(ctx->logic_block, binding);
+                }
+            }
+
+            IREvent* event = ir_create_event(IR_EVENT_HOVER, handler_name, value->expression);
             if (event) {
                 ir_add_event(component, event);
             }
@@ -275,8 +316,24 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
     }
 
     if (strcmp(name, "onChange") == 0) {
-        if (value->type == KRY_VALUE_EXPRESSION) {
-            IREvent* event = ir_create_event(IR_EVENT_TEXT_CHANGE, NULL, value->expression);
+        if (value->type == KRY_VALUE_EXPRESSION && ctx->logic_block) {
+            char handler_name[64];
+            snprintf(handler_name, sizeof(handler_name), "handler_%u_change", ctx->next_handler_id++);
+
+            IRLogicFunction* func = ir_logic_function_create(handler_name);
+            if (func) {
+                ir_logic_function_add_source(func, "kry", value->expression);
+                ir_logic_block_add_function(ctx->logic_block, func);
+
+                IREventBinding* binding = ir_event_binding_create(
+                    component->id, "change", handler_name
+                );
+                if (binding) {
+                    ir_logic_block_add_binding(ctx->logic_block, binding);
+                }
+            }
+
+            IREvent* event = ir_create_event(IR_EVENT_TEXT_CHANGE, handler_name, value->expression);
             if (event) {
                 ir_add_event(component, event);
             }
@@ -294,6 +351,19 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
         if (value->type == KRY_VALUE_NUMBER) {
             IRDimensionType dim_type = value->is_percentage ? IR_DIMENSION_PERCENT : IR_DIMENSION_PX;
             ir_set_width(component, dim_type, (float)value->number_value);
+        } else if (value->type == KRY_VALUE_STRING) {
+            // Parse string like "100px", "50%", "auto"
+            const char* str = value->string_value;
+            if (strcmp(str, "auto") == 0) {
+                ir_set_width(component, IR_DIMENSION_AUTO, 0);
+            } else if (strstr(str, "%")) {
+                float num = (float)atof(str);
+                ir_set_width(component, IR_DIMENSION_PERCENT, num);
+            } else {
+                // Parse px value (strip "px" suffix if present)
+                float num = (float)atof(str);
+                ir_set_width(component, IR_DIMENSION_PX, num);
+            }
         }
         return;
     }
@@ -302,6 +372,19 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
         if (value->type == KRY_VALUE_NUMBER) {
             IRDimensionType dim_type = value->is_percentage ? IR_DIMENSION_PERCENT : IR_DIMENSION_PX;
             ir_set_height(component, dim_type, (float)value->number_value);
+        } else if (value->type == KRY_VALUE_STRING) {
+            // Parse string like "100px", "50%", "auto"
+            const char* str = value->string_value;
+            if (strcmp(str, "auto") == 0) {
+                ir_set_height(component, IR_DIMENSION_AUTO, 0);
+            } else if (strstr(str, "%")) {
+                float num = (float)atof(str);
+                ir_set_height(component, IR_DIMENSION_PERCENT, num);
+            } else {
+                // Parse px value (strip "px" suffix if present)
+                float num = (float)atof(str);
+                ir_set_height(component, IR_DIMENSION_PX, num);
+            }
         }
         return;
     }
@@ -435,10 +518,85 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
         return;
     }
 
+    // Gap (for flex layouts)
+    if (strcmp(name, "gap") == 0) {
+        if (value->type == KRY_VALUE_NUMBER) {
+            IRLayout* layout = ir_get_layout(component);
+            if (layout) {
+                layout->flex.gap = (uint32_t)value->number_value;
+            }
+        }
+        return;
+    }
+
+    // Font properties
+    if (strcmp(name, "fontSize") == 0) {
+        if (value->type == KRY_VALUE_NUMBER) {
+            style->font.size = (float)value->number_value;
+        }
+        return;
+    }
+
+    if (strcmp(name, "fontWeight") == 0) {
+        if (value->type == KRY_VALUE_NUMBER) {
+            style->font.weight = (uint16_t)value->number_value;
+        }
+        return;
+    }
+
+    if (strcmp(name, "fontFamily") == 0) {
+        if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER) {
+            const char* family = value->type == KRY_VALUE_STRING ?
+                                value->string_value : value->identifier;
+            strncpy(style->font.family, family, sizeof(style->font.family) - 1);
+        }
+        return;
+    }
+
     // Window properties (for App component)
     if (strcmp(name, "windowTitle") == 0 || strcmp(name, "windowWidth") == 0 ||
         strcmp(name, "windowHeight") == 0) {
         // These are metadata properties - handle separately if needed
+        return;
+    }
+
+    // Animation property
+    if (strcmp(name, "animation") == 0) {
+        if (value->type == KRY_VALUE_STRING) {
+            // Parse preset animation string (e.g., "pulse(2.0, -1)")
+            const char* anim_str = value->string_value;
+
+            // Extract animation name and parameters
+            char anim_name[64] = {0};
+            float duration = 1.0f;
+            int iterations = 1;
+
+            // Simple parser for "name(duration, iterations)" format
+            if (sscanf(anim_str, "%63[^(](%f, %d)", anim_name, &duration, &iterations) >= 1) {
+                IRAnimation* anim = NULL;
+
+                // Create preset animation based on name
+                if (strcmp(anim_name, "pulse") == 0) {
+                    anim = ir_animation_pulse(duration);
+                } else if (strcmp(anim_name, "fadeInOut") == 0) {
+                    anim = ir_animation_fade_in_out(duration);
+                } else if (strcmp(anim_name, "slideInLeft") == 0) {
+                    anim = ir_animation_slide_in_left(duration);
+                }
+
+                if (anim) {
+                    anim->iteration_count = iterations;
+
+                    // Ensure style exists
+                    if (!component->style) {
+                        component->style = (IRStyle*)calloc(1, sizeof(IRStyle));
+                    }
+
+                    // Add animation to component
+                    ir_component_add_animation(component, anim);
+                }
+            }
+        }
         return;
     }
 
@@ -603,6 +761,8 @@ IRComponent* ir_kry_parse(const char* source, size_t length) {
     ctx.ast_root = ast;
     ctx.param_count = 0;  // Initialize with no parameters
     ctx.manifest = ir_reactive_manifest_create();  // Create reactive manifest for state tracking
+    ctx.logic_block = ir_logic_block_create();     // Create logic block for event handlers
+    ctx.next_handler_id = 1;                       // Start handler ID counter
 
     // Convert AST to IR
     IRComponent* root = convert_node(&ctx, root_node);
@@ -610,10 +770,13 @@ IRComponent* ir_kry_parse(const char* source, size_t length) {
     // Free parser (includes AST)
     kry_parser_free(parser);
 
-    // TODO: Return manifest along with root (needs API change)
-    // For now, just destroy it since we can't return it
+    // TODO: Return manifest and logic_block along with root (needs API change)
+    // For now, just destroy them since we can't return them
     if (ctx.manifest) {
         ir_reactive_manifest_destroy(ctx.manifest);
+    }
+    if (ctx.logic_block) {
+        ir_logic_block_free(ctx.logic_block);
     }
 
     return root;
@@ -664,11 +827,17 @@ char* ir_kry_to_kir(const char* source, size_t length) {
         return NULL;
     }
 
-    // Create conversion context with manifest
+    // Create conversion context with manifest and logic block
     ConversionContext ctx;
     ctx.ast_root = ast;
     ctx.param_count = 0;
     ctx.manifest = ir_reactive_manifest_create();
+    ctx.logic_block = ir_logic_block_create();  // NEW: Create logic block
+    ctx.next_handler_id = 1;                    // NEW: Initialize handler counter
+
+    // Create IR context for component ID generation
+    IRContext* ir_ctx = ir_create_context();
+    ir_set_context(ir_ctx);
 
     // Track all component definitions in the manifest
     KryNode* def_node = ast;
@@ -701,17 +870,31 @@ char* ir_kry_to_kir(const char* source, size_t length) {
         if (ctx.manifest) {
             ir_reactive_manifest_destroy(ctx.manifest);
         }
+        if (ctx.logic_block) {
+            ir_logic_block_free(ctx.logic_block);
+        }
         return NULL;
     }
 
-    // Serialize with manifest
-    char* json = ir_serialize_json(root, ctx.manifest);
+    // Create source metadata
+    IRSourceMetadata metadata;
+    metadata.source_language = "kry";
+    metadata.source_file = "stdin";  // TODO: Pass actual filename
+    metadata.compiler_version = "kryon-1.0.0";
+    metadata.timestamp = NULL;  // TODO: Add timestamp
+
+    // Serialize with complete KIR format (manifest + logic_block + metadata)
+    char* json = ir_serialize_json_complete(root, ctx.manifest, ctx.logic_block, &metadata);
 
     // Clean up
     ir_destroy_component(root);
     if (ctx.manifest) {
         ir_reactive_manifest_destroy(ctx.manifest);
     }
+    if (ctx.logic_block) {
+        ir_logic_block_free(ctx.logic_block);
+    }
+    ir_destroy_context(ir_ctx);  // Clean up IR context
 
     return json;
 }
