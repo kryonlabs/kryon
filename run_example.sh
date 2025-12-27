@@ -4,13 +4,14 @@
 # =============================================================================
 # Runs .kry examples through the full pipeline:
 #
-# Default mode (.kry → .kir → render):
+# Basic usage (.kry → .kir → render with SDL3):
 #   ./run_example.sh hello_world
 #
-# Nim mode (.nim → .kir → render):
-#   ./run_example.sh hello_world nim
+# Specify renderer (.kry → .kir → render with custom renderer):
+#   ./run_example.sh hello_world raylib
+#   ./run_example.sh 10 sdl2
 #
-# This tests the round-trip: .kry → .kir → .nim → .kir → render
+# Available renderers: sdl3 (default), sdl2, raylib
 #
 # Output:
 #   build/ir/   - Generated .kir files
@@ -53,12 +54,13 @@ done
 
 # Get example name
 if [ -z "$1" ]; then
-    echo -e "${YELLOW}Usage:${NC} ./run_example.sh <number|name> [nim]"
+    echo -e "${YELLOW}Usage:${NC} ./run_example.sh <number|name> [renderer]"
     echo ""
-    echo -e "${BLUE}Modes:${NC}"
-    echo "  ./run_example.sh 8                 # Run example #8"
-    echo "  ./run_example.sh hello_world       # Run by name"
-    echo "  ./run_example.sh 8 nim             # Round-trip test"
+    echo -e "${BLUE}Examples:${NC}"
+    echo "  ./run_example.sh 8                 # Run example #8 with SDL3 (default)"
+    echo "  ./run_example.sh 8 raylib          # Run example #8 with raylib"
+    echo "  ./run_example.sh hello_world       # Run by name with SDL3"
+    echo "  ./run_example.sh hello_world sdl2  # Run by name with SDL2"
     echo ""
     echo -e "${BLUE}Available examples:${NC}"
     i=1
@@ -70,7 +72,7 @@ if [ -z "$1" ]; then
 fi
 
 EXAMPLE="$1"
-MODE="${2:-kry}"  # Default to kry mode
+RENDERER="${2:-sdl3}"  # Default to sdl3 renderer
 
 # If input is a number, convert to example name
 if [[ "$EXAMPLE" =~ ^[0-9]+$ ]]; then
@@ -97,61 +99,7 @@ KIR_FILE="build/ir/${BASENAME}.kir"
 NIM_FILE="build/nim/${BASENAME}.nim"
 
 # =============================================================================
-# NIM MODE: Run generated .nim through the pipeline
-# =============================================================================
-if [ "$MODE" = "nim" ]; then
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN}Kryon Example Runner - Nim Mode (Round-Trip Test)${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-
-    # Auto-generate .nim file if it doesn't exist but .kry source exists
-    if [ ! -f "$NIM_FILE" ] && [ -f "examples/kry/${BASENAME}.kry" ]; then
-        echo -e "${YELLOW}Info:${NC} Generating examples/nim/${BASENAME}.nim from .kry..."
-        bash scripts/generate_examples.sh "$BASENAME" || {
-            echo -e "${RED}Error:${NC} Failed to generate .nim file"
-            exit 1
-        }
-        # Update NIM_FILE path to generated location
-        NIM_FILE="examples/nim/${BASENAME}.nim"
-    elif [ ! -f "$NIM_FILE" ]; then
-        echo -e "${RED}Error:${NC} Nim file not found: $NIM_FILE"
-        echo -e "${YELLOW}Hint:${NC} Run './run_example.sh $BASENAME' first to generate the .nim file"
-        exit 1
-    fi
-
-    # Use a separate .kir file for nim-generated IR
-    NIM_KIR_FILE="build/ir/${BASENAME}_from_nim.kir"
-
-    # Step 1: Compile .nim to .kir
-    echo -e "${YELLOW}[1/2]${NC} Compiling ${GREEN}$NIM_FILE${NC} → ${GREEN}$NIM_KIR_FILE${NC}"
-    ~/.local/bin/kryon compile "$NIM_FILE" --output="$NIM_KIR_FILE"
-
-    if [ -f "$NIM_KIR_FILE" ]; then
-        echo -e "      ${GREEN}✓${NC} Generated $(wc -c < "$NIM_KIR_FILE") bytes"
-    else
-        echo -e "      ${RED}✗${NC} Failed to compile .nim to .kir"
-        exit 1
-    fi
-
-    echo ""
-
-    # Step 2: Run the .kir file
-    echo -e "${YELLOW}[2/2]${NC} Running ${GREEN}$NIM_KIR_FILE${NC} (from Nim)"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    ~/.local/bin/kryon run "$NIM_KIR_FILE"
-
-    echo ""
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GREEN}Round-trip files:${NC}"
-    echo "  • Source Nim: $NIM_FILE"
-    echo "  • Generated IR: $NIM_KIR_FILE"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    exit 0
-fi
-
-# =============================================================================
-# KRY MODE: Default .kry → .kir → .nim → render
+# MAIN: .kry → .kir → .nim → render
 # =============================================================================
 
 # Determine input file path
@@ -199,9 +147,9 @@ fi
 echo ""
 
 # Step 3: Run the .kir file (not the original .kry)
-echo -e "${YELLOW}[3/3]${NC} Running ${GREEN}$KIR_FILE${NC} (generated IR)"
+echo -e "${YELLOW}[3/3]${NC} Running ${GREEN}$KIR_FILE${NC} with ${CYAN}$RENDERER${NC} renderer"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-~/.local/bin/kryon run "$KIR_FILE"
+~/.local/bin/kryon run "$KIR_FILE" --renderer="$RENDERER"
 
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

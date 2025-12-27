@@ -1,7 +1,7 @@
 /**
  * Kryon Markdown Parser - Core Implementation
  *
- * Full CommonMark specification support with Mermaid flowchart integration.
+ * Full CommonMark specification support.
  * Parses markdown source to native Kryon IR component trees.
  *
  * Supported Features:
@@ -12,7 +12,6 @@
  *   - Code blocks (fenced and indented, with language tags)
  *   - Blockquotes (nested)
  *   - Horizontal rules (---, ***, ___)
- *   - Mermaid flowcharts (```mermaid → IR_COMPONENT_FLOWCHART)
  */
 
 #ifndef IR_MARKDOWN_PARSER_H
@@ -31,9 +30,6 @@ extern "C" {
  * Converts markdown text into a native Kryon IR component hierarchy.
  * The returned component is a Column container with markdown elements
  * as children (headings, paragraphs, lists, tables, etc.).
- *
- * Mermaid code blocks (```mermaid) are automatically converted to
- * IR_COMPONENT_FLOWCHART via ir_flowchart_parse().
  *
  * @param source Markdown source text (UTF-8 encoded)
  * @param length Length of source in bytes (0 for null-terminated string)

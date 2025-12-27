@@ -112,7 +112,6 @@ static const char* get_component_type_name(IRComponentType type) {
         case IR_COMPONENT_TAB_CONTENT: return "TAB_CONTENT";
         case IR_COMPONENT_TAB_PANEL: return "TAB_PANEL";
         case IR_COMPONENT_DROPDOWN: return "DROPDOWN";
-        case IR_COMPONENT_FLOWCHART: return "FLOWCHART";
         case IR_COMPONENT_CUSTOM: return "CUSTOM";
         default: return "UNKNOWN";
     }
@@ -664,32 +663,6 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
                 html_generator_write_format(generator, " height=\"%u\"", (uint32_t)component->style->height.value);
             }
             break;
-
-        case IR_COMPONENT_FLOWCHART: {
-            // Generate SVG for flowchart
-            SVGOptions svg_opts = svg_options_default();
-            svg_opts.theme = SVG_THEME_DEFAULT;  // Could read from context if available
-            svg_opts.interactive = true;
-
-            char* svg = flowchart_to_svg(component, &svg_opts);
-            if (svg) {
-                // Close the opening tag
-                html_generator_write_string(generator, ">\n");
-                generator->indent_level++;
-
-                // Write SVG content
-                html_generator_write_indent(generator);
-                html_generator_write_string(generator, svg);
-                html_generator_write_string(generator, "\n");
-                free(svg);
-
-                generator->indent_level--;
-                html_generator_write_indent(generator);
-                html_generator_write_format(generator, "</%s>\n", tag);
-                return true;
-            }
-            break;
-        }
 
         case IR_COMPONENT_TABLE_CELL:
         case IR_COMPONENT_TABLE_HEADER_CELL: {

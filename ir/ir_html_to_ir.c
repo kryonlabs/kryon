@@ -256,6 +256,13 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
             if (node->data_ir_id > 0 && component) {
                 component->id = node->data_ir_id;
             }
+            // Also extract ID from id="kryon-N" attribute
+            else if (component && node->id && strncmp(node->id, "kryon-", 6) == 0) {
+                uint32_t id = (uint32_t)atoi(node->id + 6);
+                if (id > 0) {
+                    component->id = id;
+                }
+            }
 
             // Recursively convert children (except for components that already consumed their children)
             if (component && type != IR_COMPONENT_HEADING &&
@@ -285,7 +292,48 @@ IRComponent* ir_html_to_ir_convert(HtmlNode* html_root) {
     // Handle wrapper root node (skip if tag is "root")
     if (html_root->tag_name && strcmp(html_root->tag_name, "root") == 0 &&
         html_root->child_count == 1) {
-        return ir_html_node_to_component(html_root->children[0]);
+        html_root = html_root->children[0];
+    }
+
+    // Skip <html> wrapper and find <body>
+    if (html_root->tag_name && strcmp(html_root->tag_name, "html") == 0) {
+        // Look for <body> tag in children
+        for (uint32_t i = 0; i < html_root->child_count; i++) {
+            HtmlNode* child = html_root->children[i];
+            if (child && child->tag_name && strcmp(child->tag_name, "body") == 0) {
+                // Convert body's children directly (skip body wrapper)
+                if (child->child_count == 1) {
+                    return ir_html_node_to_component(child->children[0]);
+                } else if (child->child_count > 1) {
+                    // Multiple children in body - wrap in a column
+                    IRComponent* column = ir_column();
+                    for (uint32_t j = 0; j < child->child_count; j++) {
+                        IRComponent* body_child = ir_html_node_to_component(child->children[j]);
+                        if (body_child) {
+                            ir_add_child(column, body_child);
+                        }
+                    }
+                    return column;
+                }
+            }
+        }
+    }
+
+    // Skip <body> wrapper if this node is <body>
+    if (html_root->tag_name && strcmp(html_root->tag_name, "body") == 0) {
+        if (html_root->child_count == 1) {
+            return ir_html_node_to_component(html_root->children[0]);
+        } else if (html_root->child_count > 1) {
+            // Multiple children - wrap in column
+            IRComponent* column = ir_column();
+            for (uint32_t i = 0; i < html_root->child_count; i++) {
+                IRComponent* child = ir_html_node_to_component(html_root->children[i]);
+                if (child) {
+                    ir_add_child(column, child);
+                }
+            }
+            return column;
+        }
     }
 
     return ir_html_node_to_component(html_root);

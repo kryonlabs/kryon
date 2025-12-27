@@ -55,8 +55,9 @@ ifeq ($(shell test -e /etc/nixos && echo yes), yes)
 endif
 
 # Source directories
-CLI_SRC = cli/main.nim
-CLI_DEPS = $(wildcard cli/*.nim)
+CLI_DIR = cli
+CLI_SRC = $(CLI_DIR)/src/main.c
+CLI_DEPS = $(wildcard $(CLI_DIR)/src/**/*.c)
 LIB_SRC = bindings/nim/kryon_dsl
 
 # Build targets
@@ -81,15 +82,11 @@ all: build-cli build-lib
 build-cli: $(CLI_BIN)
 
 $(CLI_BIN): $(CLI_DEPS)
-	@echo "Building Kryon CLI (development)..."
+	@echo "Building Kryon CLI (development - C version)..."
 	@mkdir -p $(BUILD_DIR)
-	@# Backup nim.cfg if it exists and build without C dependencies
-	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp && \
-		$(NIM) c $(NIMFLAGS) --opt:speed -o:$(CLI_BIN) $(CLI_SRC) && \
-		mv nim.cfg.tmp nim.cfg; \
-	else \
-		$(NIM) c $(NIMFLAGS) --opt:speed -o:$(CLI_BIN) $(CLI_SRC); \
-	fi
+	$(MAKE) -C $(CLI_DIR) clean
+	$(MAKE) -C $(CLI_DIR)
+	@cp $(CLI_DIR)/kryon $(CLI_BIN)
 
 # Build static CLI with all backends bundled
 build-static: $(STATIC_BIN)

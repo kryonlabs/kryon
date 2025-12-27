@@ -67,9 +67,15 @@ bool css_generator_write_string(CSSGenerator* generator, const char* string) {
 
         generator->output_buffer = new_buffer;
         generator->buffer_capacity = new_capacity;
+
+        // Ensure buffer is null-terminated after reallocation
+        if (generator->buffer_size == 0) {
+            generator->output_buffer[0] = '\0';
+        }
     }
 
-    strcat(generator->output_buffer + generator->buffer_size, string);
+    // Use memcpy instead of strcat for better performance and safety
+    memcpy(generator->output_buffer + generator->buffer_size, string, string_len + 1);
     generator->buffer_size += string_len;
     generator->output_buffer[generator->buffer_size] = '\0';
 
