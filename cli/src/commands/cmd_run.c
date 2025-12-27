@@ -140,21 +140,21 @@ int cmd_run(int argc, char** argv) {
             return 1;
         }
 
-        // Run the KIR
-        snprintf(cmd, sizeof(cmd),
-                 "LD_LIBRARY_PATH=/home/wao/.local/lib:\"/mnt/storage/Projects/kryon/build\":$LD_LIBRARY_PATH "
-                 "KRYON_LIB_PATH=\"%s\" "
-                 "%s \"%s\"",
-                 desktop_lib, desktop_lib, kir_file);
+        // For now, compilation is complete - desktop runner not yet implemented
+        printf("\n✓ Compiled to KIR: %s\n", kir_file);
+        printf("Note: Desktop runner execution not yet implemented\n");
+        printf("You can inspect the KIR file or use it with other backends\n");
+
+        if (free_target) free((char*)target_file);
+        return 0;
     }
 
-    // Execute
-    if (getenv("KRYON_VERBOSE")) {
-        printf("[kryon run] Executing: %s\n", cmd);
-    }
-
-    int result = system(cmd);
+    // Execute KIR files directly (implementation needed)
+    printf("\n");
+    printf("Note: Direct KIR execution not yet implemented\n");
+    printf("KIR file: %s\n", target_file);
+    printf("\nTo run this KIR file, you need a desktop renderer implementation\n");
 
     if (free_target) free((char*)target_file);
-    return result;
+    return 0;
 }
