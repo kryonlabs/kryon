@@ -17,6 +17,7 @@
 #define HTML_GENERATOR_H
 
 #include "../../ir/ir_core.h"
+#include "../../ir/ir_logic.h"
 #include <stdbool.h>
 #include <stdarg.h>
 
@@ -42,6 +43,7 @@ typedef struct HTMLGenerator {
     int indent_level;
     bool pretty_print;
     HtmlGeneratorOptions options;  // Generation options
+    IRLogicBlock* logic_block;     // Logic block for event handlers (transpile mode)
 } HTMLGenerator;
 
 // HTML Generator Functions
@@ -59,6 +61,7 @@ bool html_generator_write_format(HTMLGenerator* generator, const char* format, .
 
 // Main HTML generation function
 const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root);
+const char* html_generator_generate_with_logic(HTMLGenerator* generator, IRComponent* root, IRLogicBlock* logic_block);
 bool html_generator_write_to_file(HTMLGenerator* generator, IRComponent* root, const char* filename);
 
 // Utility functions

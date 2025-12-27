@@ -17,6 +17,10 @@
 #include <SDL3_ttf/SDL_ttf.h>
 #endif
 
+#ifdef ENABLE_RAYLIB
+#include <raylib.h>
+#endif
+
 // ============================================================================
 // SHARED TYPE DEFINITIONS
 // ============================================================================
@@ -36,6 +40,13 @@ struct DesktopIRRenderer {
     SDL_Cursor* current_cursor;
     SDL_Texture* white_texture;  // 1x1 white texture for vertex coloring
     bool blend_mode_set;  // Track if blend mode already set this frame
+#endif
+
+#ifdef ENABLE_RAYLIB
+    // Raylib manages window internally, no separate window handle
+    Font default_font_raylib;
+    int window_width;
+    int window_height;
 #endif
 
     // Event handling
@@ -282,5 +293,23 @@ bool desktop_save_screenshot(DesktopIRRenderer* renderer, const char* path);
 void desktop_render_debug_overlay(DesktopIRRenderer* renderer, IRComponent* root);
 
 #endif // ENABLE_SDL3
+
+// ============================================================================
+// RAYLIB BACKEND FUNCTIONS
+// ============================================================================
+
+#ifdef ENABLE_RAYLIB
+// Initialization and cleanup
+bool initialize_raylib_backend(DesktopIRRenderer* renderer);
+void shutdown_raylib_backend(DesktopIRRenderer* renderer);
+
+// Frame rendering
+bool render_frame_raylib(DesktopIRRenderer* renderer, IRComponent* root);
+
+// Component rendering
+bool render_component_raylib(DesktopIRRenderer* renderer, IRComponent* component,
+                             LayoutRect rect, float inherited_opacity);
+
+#endif // ENABLE_RAYLIB
 
 #endif // DESKTOP_INTERNAL_H

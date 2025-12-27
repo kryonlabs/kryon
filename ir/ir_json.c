@@ -2400,6 +2400,11 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
         // layout_valid = false (default from calloc)
     }
 
+    // Initialize layout cache to dirty state (uncached)
+    component->layout_cache.dirty = true;
+    component->layout_cache.cached_intrinsic_width = -1.0f;
+    component->layout_cache.cached_intrinsic_height = -1.0f;
+
     cJSON* item = NULL;
 
     // ID

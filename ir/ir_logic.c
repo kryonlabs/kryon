@@ -394,13 +394,18 @@ IRLogicBlock* ir_logic_block_from_json(cJSON* json) {
 
     // Parse functions
     cJSON* functions = cJSON_GetObjectItem(json, "functions");
-    if (functions && cJSON_IsObject(functions)) {
-        cJSON* func_json = NULL;
-        cJSON_ArrayForEach(func_json, functions) {
-            if (func_json->string) {
-                IRLogicFunction* func = ir_logic_function_from_json(func_json->string, func_json);
-                if (func) {
-                    ir_logic_block_add_function(block, func);
+    if (functions && cJSON_IsArray(functions)) {
+        int func_count = cJSON_GetArraySize(functions);
+        for (int i = 0; i < func_count; i++) {
+            cJSON* func_json = cJSON_GetArrayItem(functions, i);
+            if (func_json) {
+                cJSON* name_json = cJSON_GetObjectItem(func_json, "name");
+                const char* name = name_json ? name_json->valuestring : NULL;
+                if (name) {
+                    IRLogicFunction* func = ir_logic_function_from_json(name, func_json);
+                    if (func) {
+                        ir_logic_block_add_function(block, func);
+                    }
                 }
             }
         }
