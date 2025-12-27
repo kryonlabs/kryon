@@ -47,10 +47,12 @@ typedef enum {
 } IRComponentType;
 
 // Dimension Types
+// IMPORTANT: IR_DIMENSION_AUTO must be 0 so that memset(0) correctly
+// initializes dimension types to AUTO (no constraint)
 typedef enum {
+    IR_DIMENSION_AUTO = 0,  // Must be 0 for memset compatibility
     IR_DIMENSION_PX,
     IR_DIMENSION_PERCENT,
-    IR_DIMENSION_AUTO,
     IR_DIMENSION_FLEX,
     IR_DIMENSION_VW,        // Viewport width (1vw = 1% of viewport width)
     IR_DIMENSION_VH,        // Viewport height (1vh = 1% of viewport height)

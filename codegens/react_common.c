@@ -1,0 +1,633 @@
+/**
+ * React Code Generation Common Utilities
+ * Shared logic for TSX and JSX generation
+ */
+
+#include "react_common.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+#include <ctype.h>
+
+// =============================================================================
+// String Builder Implementation
+// =============================================================================
+
+StringBuilder* sb_create(size_t initial_capacity) {
+    StringBuilder* sb = malloc(sizeof(StringBuilder));
+    if (!sb) return NULL;
+
+    sb->capacity = initial_capacity;
+    sb->size = 0;
+    sb->buffer = malloc(sb->capacity);
+    if (!sb->buffer) {
+        free(sb);
+        return NULL;
+    }
+    sb->buffer[0] = '\0';
+    return sb;
+}
+
+bool sb_append(StringBuilder* sb, const char* str) {
+    if (!sb || !str) return false;
+
+    size_t len = strlen(str);
+    while (sb->size + len >= sb->capacity) {
+        sb->capacity *= 2;
+        char* new_buffer = realloc(sb->buffer, sb->capacity);
+        if (!new_buffer) return false;
+        sb->buffer = new_buffer;
+    }
+
+    strcpy(sb->buffer + sb->size, str);
+    sb->size += len;
+    return true;
+}
+
+bool sb_append_fmt(StringBuilder* sb, const char* fmt, ...) {
+    char temp[4096];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(temp, sizeof(temp), fmt, args);
+    va_end(args);
+    return sb_append(sb, temp);
+}
+
+const char* sb_get(StringBuilder* sb) {
+    return sb ? sb->buffer : NULL;
+}
+
+void sb_free(StringBuilder* sb) {
+    if (sb) {
+        free(sb->buffer);
+        free(sb);
+    }
+}
+
+// =============================================================================
+// Mode-Aware Helper Functions
+// =============================================================================
+
+const char* react_type_annotation(ReactOutputMode mode, const char* typ) {
+    if (mode != REACT_MODE_TYPESCRIPT) return "";
+
+    if (strcmp(typ, "int") == 0 || strcmp(typ, "float") == 0) return ": number";
+    if (strcmp(typ, "string") == 0) return ": string";
+    if (strcmp(typ, "bool") == 0) return ": boolean";
+    return ": any";
+}
+
+bool react_should_generate_interface(ReactOutputMode mode) {
+    return mode == REACT_MODE_TYPESCRIPT;
+}
+
+const char* react_file_extension(ReactOutputMode mode) {
+    return mode == REACT_MODE_TYPESCRIPT ? ".tsx" : ".jsx";
+}
+
+const char* react_generate_imports(ReactOutputMode mode) {
+    (void)mode; // Same for both modes
+    return "import { kryonApp, Column, Row, Button, Text, useState } from '@kryon/react';";
+}
+
+// =============================================================================
+// Property Mapping
+// =============================================================================
+
+const char* react_map_kir_property(const char* key) {
+    // Simple mapping - just return the key as-is for now
+    // Could expand with specific mappings if needed
+    if (strcmp(key, "backgroundColor") == 0) return "background";
+    if (strcmp(key, "windowTitle") == 0) return "title";
+    return key;
+}
+
+static bool ends_with(const char* str, const char* suffix) {
+    size_t str_len = strlen(str);
+    size_t suffix_len = strlen(suffix);
+    if (suffix_len > str_len) return false;
+    return strcmp(str + str_len - suffix_len, suffix) == 0;
+}
+
+static bool starts_with(const char* str, const char* prefix) {
+    return strncmp(str, prefix, strlen(prefix)) == 0;
+}
+
+char* react_format_value(const char* key, cJSON* val) {
+    (void)key; // May use for context-specific formatting
+    char buffer[1024];
+
+    if (cJSON_IsString(val)) {
+        const char* s = cJSON_GetStringValue(val);
+
+        // Check for pixel values
+        if (ends_with(s, "px")) {
+            char num_str[256];
+            size_t len = strlen(s) - 2;
+            strncpy(num_str, s, len);
+            num_str[len] = '\0';
+
+            double f = atof(num_str);
+            if (f == (int)f) {
+                snprintf(buffer, sizeof(buffer), "{%d}", (int)f);
+            } else {
+                snprintf(buffer, sizeof(buffer), "{%s}", num_str);
+            }
+            return strdup(buffer);
+        }
+
+        // Check for percentage values
+        if (ends_with(s, "%")) {
+            snprintf(buffer, sizeof(buffer), "\"%s\"", s);
+            return strdup(buffer);
+        }
+
+        // Check for color values
+        if (starts_with(s, "#")) {
+            snprintf(buffer, sizeof(buffer), "\"%s\"", s);
+            return strdup(buffer);
+        }
+
+        // Check for template expressions {{value}}
+        if (starts_with(s, "{{") && ends_with(s, "}}")) {
+            char var_name[256];
+            size_t len = strlen(s) - 4;
+            strncpy(var_name, s + 2, len);
+            var_name[len] = '\0';
+            snprintf(buffer, sizeof(buffer), "{String(%s)}", var_name);
+            return strdup(buffer);
+        }
+
+        // Regular string
+        snprintf(buffer, sizeof(buffer), "\"%s\"", s);
+        return strdup(buffer);
+    }
+
+    if (cJSON_IsNumber(val)) {
+        double d = cJSON_GetNumberValue(val);
+        if (d == (int)d) {
+            snprintf(buffer, sizeof(buffer), "{%d}", (int)d);
+        } else {
+            snprintf(buffer, sizeof(buffer), "{%g}", d);
+        }
+        return strdup(buffer);
+    }
+
+    if (cJSON_IsBool(val)) {
+        snprintf(buffer, sizeof(buffer), "{%s}", cJSON_IsTrue(val) ? "true" : "false");
+        return strdup(buffer);
+    }
+
+    if (cJSON_IsArray(val)) {
+        StringBuilder* sb = sb_create(256);
+        sb_append(sb, "{[");
+
+        cJSON* item = NULL;
+        int first = 1;
+        cJSON_ArrayForEach(item, val) {
+            if (!first) sb_append(sb, ", ");
+            first = 0;
+
+            if (cJSON_IsString(item)) {
+                sb_append_fmt(sb, "\"%s\"", cJSON_GetStringValue(item));
+            } else {
+                char* formatted = react_format_value(key, item);
+                sb_append(sb, formatted);
+                free(formatted);
+            }
+        }
+
+        sb_append(sb, "]}");
+        char* result = strdup(sb_get(sb));
+        sb_free(sb);
+        return result;
+    }
+
+    return strdup("\"\"");
+}
+
+bool react_is_default_value(const char* key, cJSON* val) {
+    if (strcmp(key, "direction") == 0 && cJSON_IsString(val)) {
+        return strcmp(cJSON_GetStringValue(val), "auto") == 0;
+    }
+
+    if ((strcmp(key, "flexShrink") == 0 || strcmp(key, "flexGrow") == 0) && cJSON_IsNumber(val)) {
+        return cJSON_GetNumberValue(val) == 0;
+    }
+
+    if ((strcmp(key, "color") == 0 || strcmp(key, "background") == 0) && cJSON_IsString(val)) {
+        return strcmp(cJSON_GetStringValue(val), "#00000000") == 0;
+    }
+
+    return false;
+}
+
+// =============================================================================
+// Expression Generation
+// =============================================================================
+
+char* react_generate_expression(cJSON* expr) {
+    char buffer[1024];
+
+    if (cJSON_IsNumber(expr)) {
+        double d = cJSON_GetNumberValue(expr);
+        if (d == (int)d) {
+            snprintf(buffer, sizeof(buffer), "%d", (int)d);
+        } else {
+            snprintf(buffer, sizeof(buffer), "%g", d);
+        }
+        return strdup(buffer);
+    }
+
+    if (cJSON_IsString(expr)) {
+        snprintf(buffer, sizeof(buffer), "\"%s\"", cJSON_GetStringValue(expr));
+        return strdup(buffer);
+    }
+
+    if (cJSON_IsBool(expr)) {
+        return strdup(cJSON_IsTrue(expr) ? "true" : "false");
+    }
+
+    if (!cJSON_IsObject(expr)) {
+        return strdup("null");
+    }
+
+    // Variable reference: {"var": "name"}
+    cJSON* var_node = cJSON_GetObjectItem(expr, "var");
+    if (var_node && cJSON_IsString(var_node)) {
+        return strdup(cJSON_GetStringValue(var_node));
+    }
+
+    // Binary operations
+    cJSON* op_node = cJSON_GetObjectItem(expr, "op");
+    if (!op_node || !cJSON_IsString(op_node)) {
+        return strdup("null");
+    }
+
+    const char* op = cJSON_GetStringValue(op_node);
+
+    if (strcmp(op, "add") == 0 || strcmp(op, "sub") == 0 ||
+        strcmp(op, "mul") == 0 || strcmp(op, "div") == 0) {
+        char* left = react_generate_expression(cJSON_GetObjectItem(expr, "left"));
+        char* right = react_generate_expression(cJSON_GetObjectItem(expr, "right"));
+
+        char op_char;
+        if (strcmp(op, "add") == 0) op_char = '+';
+        else if (strcmp(op, "sub") == 0) op_char = '-';
+        else if (strcmp(op, "mul") == 0) op_char = '*';
+        else op_char = '/';
+
+        snprintf(buffer, sizeof(buffer), "(%s %c %s)", left, op_char, right);
+        free(left);
+        free(right);
+        return strdup(buffer);
+    }
+
+    if (strcmp(op, "not") == 0) {
+        cJSON* operand = cJSON_GetObjectItem(expr, "operand");
+        if (!operand) operand = cJSON_GetObjectItem(expr, "expr");
+        char* operand_str = react_generate_expression(operand);
+        snprintf(buffer, sizeof(buffer), "(!%s)", operand_str);
+        free(operand_str);
+        return strdup(buffer);
+    }
+
+    return strdup("null");
+}
+
+char* react_generate_handler_body(cJSON* functions, const char* handler_id) {
+    if (!functions || !cJSON_IsObject(functions)) return NULL;
+
+    cJSON* func_def = cJSON_GetObjectItem(functions, handler_id);
+    if (!func_def) return NULL;
+
+    cJSON* universal = cJSON_GetObjectItem(func_def, "universal");
+    if (!universal) return NULL;
+
+    cJSON* statements = cJSON_GetObjectItem(universal, "statements");
+    if (!statements || !cJSON_IsArray(statements) || cJSON_GetArraySize(statements) == 0) {
+        return NULL;
+    }
+
+    // Process first statement (simplified)
+    cJSON* stmt = cJSON_GetArrayItem(statements, 0);
+    if (!stmt) return NULL;
+
+    cJSON* op = cJSON_GetObjectItem(stmt, "op");
+    if (!op || strcmp(cJSON_GetStringValue(op), "assign") != 0) return NULL;
+
+    const char* target = cJSON_GetStringValue(cJSON_GetObjectItem(stmt, "target"));
+    cJSON* expr = cJSON_GetObjectItem(stmt, "expr");
+
+    // Generate setter name: counter -> setCounter
+    char setter_name[256];
+    if (target && strlen(target) > 0) {
+        snprintf(setter_name, sizeof(setter_name), "set%c%s",
+                 toupper(target[0]), target + 1);
+    } else {
+        return NULL;
+    }
+
+    // Check for increment/decrement patterns
+    cJSON* expr_op = cJSON_GetObjectItem(expr, "op");
+    if (expr_op && cJSON_IsString(expr_op)) {
+        const char* expr_op_str = cJSON_GetStringValue(expr_op);
+
+        if (strcmp(expr_op_str, "add") == 0 || strcmp(expr_op_str, "sub") == 0) {
+            cJSON* left = cJSON_GetObjectItem(expr, "left");
+            cJSON* right = cJSON_GetObjectItem(expr, "right");
+
+            cJSON* left_var = left ? cJSON_GetObjectItem(left, "var") : NULL;
+            if (left_var && strcmp(cJSON_GetStringValue(left_var), target) == 0 && cJSON_IsNumber(right)) {
+                char op_char = (strcmp(expr_op_str, "add") == 0) ? '+' : '-';
+                char buffer[512];
+                snprintf(buffer, sizeof(buffer), "%s(%s %c %d)",
+                         setter_name, target, op_char, (int)cJSON_GetNumberValue(right));
+                return strdup(buffer);
+            }
+        }
+    }
+
+    // Generic assignment
+    char* expr_str = react_generate_expression(expr);
+    char buffer[512];
+    snprintf(buffer, sizeof(buffer), "%s(%s)", setter_name, expr_str);
+    free(expr_str);
+    return strdup(buffer);
+}
+
+// =============================================================================
+// Element Generation (Forward declaration and helpers)
+// =============================================================================
+
+static char* generate_children(cJSON* node, ReactContext* ctx, int indent);
+
+StringBuilder* react_generate_props(cJSON* node, ReactContext* ctx, bool has_text_expression) {
+    StringBuilder* sb = sb_create(512);
+
+    const char* skip_props[] = {
+        "id", "type", "children", "events", "template", "loop_var",
+        "iterable", "direction", "flexShrink", "flexGrow",
+        "component_ref", "text_expression", "windowTitle", "dropdown_state",
+        NULL
+    };
+
+    // Skip text if we have text_expression
+    bool skip_text = has_text_expression;
+
+    cJSON* item = NULL;
+    cJSON_ArrayForEach(item, node) {
+        const char* key = item->string;
+        if (!key) continue;
+
+        // Check skip list
+        bool should_skip = false;
+        for (int i = 0; skip_props[i]; i++) {
+            if (strcmp(key, skip_props[i]) == 0) {
+                should_skip = true;
+                break;
+            }
+        }
+        if (should_skip) continue;
+        if (skip_text && strcmp(key, "text") == 0) continue;
+
+        // Check default values
+        if (react_is_default_value(key, item)) continue;
+
+        const char* react_key = react_map_kir_property(key);
+        char* react_val = react_format_value(key, item);
+
+        // Skip empty values (except selectedIndex)
+        if ((strcmp(react_val, "\"\"") == 0 || strcmp(react_val, "null") == 0 ||
+             strcmp(react_val, "{0}") == 0) && strcmp(key, "selectedIndex") != 0) {
+            free(react_val);
+            continue;
+        }
+
+        if (sb->size > 0) sb_append(sb, " ");
+        sb_append_fmt(sb, "%s=%s", react_key, react_val);
+        free(react_val);
+    }
+
+    // Handle events
+    cJSON* events = cJSON_GetObjectItem(node, "events");
+    if (events && cJSON_IsArray(events)) {
+        cJSON* event = NULL;
+        cJSON_ArrayForEach(event, events) {
+            cJSON* event_type = cJSON_GetObjectItem(event, "type");
+            if (event_type && strcmp(cJSON_GetStringValue(event_type), "click") == 0) {
+                cJSON* logic_id = cJSON_GetObjectItem(event, "logic_id");
+                if (logic_id && cJSON_IsString(logic_id)) {
+                    char* handler_body = react_generate_handler_body(
+                        ctx->logic_functions, cJSON_GetStringValue(logic_id));
+
+                    if (handler_body) {
+                        if (sb->size > 0) sb_append(sb, " ");
+                        sb_append_fmt(sb, "onClick={() => %s}", handler_body);
+                        free(handler_body);
+                    }
+                }
+            }
+        }
+    }
+
+    // Handle text_expression
+    if (has_text_expression) {
+        cJSON* text_expr = cJSON_GetObjectItem(node, "text_expression");
+        if (text_expr && cJSON_IsString(text_expr)) {
+            const char* expr = cJSON_GetStringValue(text_expr);
+            // Extract variable name from {{varName}}
+            if (strlen(expr) > 4) {
+                char var_name[256];
+                size_t len = strlen(expr) - 4;
+                strncpy(var_name, expr + 2, len);
+                var_name[len] = '\0';
+
+                if (sb->size > 0) sb_append(sb, " ");
+                sb_append_fmt(sb, "text={String(%s)}", var_name);
+            }
+        }
+    }
+
+    return sb;
+}
+
+char* react_generate_element(cJSON* node, ReactContext* ctx, int indent) {
+    if (!cJSON_IsObject(node)) return strdup("");
+
+    StringBuilder* sb = sb_create(1024);
+
+    // Generate indentation
+    for (int i = 0; i < indent; i++) {
+        sb_append(sb, "  ");
+    }
+
+    const char* comp_type = "div";
+    cJSON* type_node = cJSON_GetObjectItem(node, "type");
+    if (type_node && cJSON_IsString(type_node)) {
+        comp_type = cJSON_GetStringValue(type_node);
+    }
+
+    // Check for text_expression
+    bool has_text_expr = cJSON_HasObjectItem(node, "text_expression");
+
+    // Generate properties
+    StringBuilder* props_sb = react_generate_props(node, ctx, has_text_expr);
+    const char* props = sb_get(props_sb);
+
+    // Generate children
+    char* children = generate_children(node, ctx, indent + 1);
+
+    // Build element
+    if (strlen(children) == 0) {
+        // Self-closing
+        if (strlen(props) == 0) {
+            sb_append_fmt(sb, "<%s />", comp_type);
+        } else {
+            sb_append_fmt(sb, "<%s %s />", comp_type, props);
+        }
+    } else {
+        // With children
+        if (strlen(props) == 0) {
+            sb_append_fmt(sb, "<%s>%s\n", comp_type, children);
+        } else {
+            sb_append_fmt(sb, "<%s %s>%s\n", comp_type, props, children);
+        }
+
+        for (int i = 0; i < indent; i++) {
+            sb_append(sb, "  ");
+        }
+        sb_append_fmt(sb, "</%s>", comp_type);
+    }
+
+    sb_free(props_sb);
+    free(children);
+
+    char* result = strdup(sb_get(sb));
+    sb_free(sb);
+    return result;
+}
+
+static char* generate_children(cJSON* node, ReactContext* ctx, int indent) {
+    cJSON* children = cJSON_GetObjectItem(node, "children");
+    if (!children || !cJSON_IsArray(children) || cJSON_GetArraySize(children) == 0) {
+        return strdup("");
+    }
+
+    StringBuilder* sb = sb_create(2048);
+
+    cJSON* child = NULL;
+    cJSON_ArrayForEach(child, children) {
+        sb_append(sb, "\n");
+        char* elem = react_generate_element(child, ctx, indent);
+        sb_append(sb, elem);
+        free(elem);
+    }
+
+    char* result = strdup(sb_get(sb));
+    sb_free(sb);
+    return result;
+}
+
+// =============================================================================
+// Window Configuration
+// =============================================================================
+
+WindowConfig react_extract_window_config(cJSON* component) {
+    WindowConfig config = {
+        .width = 800,
+        .height = 600,
+        .title = strdup("Kryon App"),
+        .background = strdup("#1E1E1E")
+    };
+
+    if (!component) return config;
+
+    cJSON* width = cJSON_GetObjectItem(component, "width");
+    if (width && cJSON_IsString(width)) {
+        const char* w = cJSON_GetStringValue(width);
+        if (ends_with(w, "px")) {
+            config.width = atoi(w);
+        }
+    }
+
+    cJSON* height = cJSON_GetObjectItem(component, "height");
+    if (height && cJSON_IsString(height)) {
+        const char* h = cJSON_GetStringValue(height);
+        if (ends_with(h, "px")) {
+            config.height = atoi(h);
+        }
+    }
+
+    cJSON* title = cJSON_GetObjectItem(component, "windowTitle");
+    if (!title) title = cJSON_GetObjectItem(component, "title");
+    if (title && cJSON_IsString(title)) {
+        free(config.title);
+        config.title = strdup(cJSON_GetStringValue(title));
+    }
+
+    cJSON* background = cJSON_GetObjectItem(component, "background");
+    if (background && cJSON_IsString(background)) {
+        free(config.background);
+        config.background = strdup(cJSON_GetStringValue(background));
+    }
+
+    return config;
+}
+
+void react_free_window_config(WindowConfig* config) {
+    if (config) {
+        free(config->title);
+        free(config->background);
+    }
+}
+
+// =============================================================================
+// State Hooks Generation
+// =============================================================================
+
+char* react_generate_state_hooks(cJSON* manifest, ReactContext* ctx) {
+    (void)ctx; // May use mode for type annotations
+
+    if (!manifest || !cJSON_IsObject(manifest)) return strdup("");
+
+    cJSON* variables = cJSON_GetObjectItem(manifest, "variables");
+    if (!variables || !cJSON_IsArray(variables) || cJSON_GetArraySize(variables) == 0) {
+        return strdup("");
+    }
+
+    StringBuilder* sb = sb_create(512);
+
+    cJSON* var = NULL;
+    cJSON_ArrayForEach(var, variables) {
+        cJSON* name_node = cJSON_GetObjectItem(var, "name");
+        cJSON* initial_node = cJSON_GetObjectItem(var, "initial_value");
+
+        if (!name_node || !cJSON_IsString(name_node)) continue;
+
+        const char* name = cJSON_GetStringValue(name_node);
+        const char* initial = initial_node ? cJSON_GetStringValue(initial_node) : "0";
+
+        // Generate setter name
+        char setter_name[256];
+        snprintf(setter_name, sizeof(setter_name), "set%c%s",
+                 toupper(name[0]), name + 1);
+
+        // Check variable type for initial value formatting
+        cJSON* type_node = cJSON_GetObjectItem(var, "type");
+        const char* type = type_node ? cJSON_GetStringValue(type_node) : "any";
+
+        if (strcmp(type, "string") == 0) {
+            sb_append_fmt(sb, "  const [%s, %s] = useState(\"%s\");\n",
+                          name, setter_name, initial);
+        } else {
+            sb_append_fmt(sb, "  const [%s, %s] = useState(%s);\n",
+                          name, setter_name, initial);
+        }
+    }
+
+    char* result = strdup(sb_get(sb));
+    sb_free(sb);
+    return result;
+}

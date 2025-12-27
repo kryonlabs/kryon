@@ -23,6 +23,7 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/commands/cmd_build.c \
        $(SRC_DIR)/commands/cmd_compile.c \
        $(SRC_DIR)/commands/cmd_run.c \
+       $(SRC_DIR)/commands/cmd_codegen.c \
        $(SRC_DIR)/commands/cmd_new.c
 
 # Object files
@@ -30,6 +31,9 @@ OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 # Target binary
 TARGET = kryon
+
+# Codegen object files
+CODEGEN_OBJS = ../codegens/nim/nim_codegen.o ../codegens/lua/lua_codegen.o
 
 # Default target
 all: $(TARGET)
@@ -45,7 +49,7 @@ $(BUILD_DIR):
 
 # Build target
 $(TARGET): $(BUILD_DIR) $(OBJS)
-	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
+	$(CC) $(OBJS) $(CODEGEN_OBJS) -o $(TARGET) $(LDFLAGS)
 
 # Compile source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
