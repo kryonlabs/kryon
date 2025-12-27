@@ -26,6 +26,20 @@ extern "C" {
 #endif
 
 // ============================================================================
+// App State Structure
+// ============================================================================
+
+typedef struct {
+    IRContext* context;
+    IRComponent* root;
+    char* window_title;
+    int window_width;
+    int window_height;
+} KryonAppState;
+
+extern KryonAppState g_app_state;
+
+// ============================================================================
 // Initialization & App Management
 // ============================================================================
 

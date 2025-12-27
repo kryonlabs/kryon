@@ -115,7 +115,7 @@ static bool navigate_to_page(const char* path) {
     fclose(test);
 
     // Load new IR tree
-    IRComponent* new_root = ir_read_json_v2_file(kir_path);
+    IRComponent* new_root = ir_read_json_file(kir_path);
     if (!new_root) {
         fprintf(stderr, "❌ Failed to load IR from: %s\n", kir_path);
         return false;

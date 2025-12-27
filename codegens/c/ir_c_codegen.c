@@ -5,8 +5,8 @@
  */
 
 #include "ir_c_codegen.h"
-#include "../ir_c_metadata.h"
-#include "../third_party/cJSON/cJSON.h"
+#include "../../ir/ir_c_metadata.h"
+#include "../../ir/third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -302,6 +302,16 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
         fprintf(ctx->output, "\"%s\"", text_obj->valuestring);
     }
 
+    // Check for FULL_SIZE pattern (width=100.0px AND height=100.0px)
+    cJSON* width_prop = cJSON_GetObjectItem(component, "width");
+    cJSON* height_prop = cJSON_GetObjectItem(component, "height");
+    bool is_full_size = (width_prop && width_prop->valuestring &&
+                         height_prop && height_prop->valuestring &&
+                         (strcmp(width_prop->valuestring, "100.0px") == 0 ||
+                          strcmp(width_prop->valuestring, "100.0%") == 0) &&
+                         (strcmp(height_prop->valuestring, "100.0px") == 0 ||
+                          strcmp(height_prop->valuestring, "100.0%") == 0));
+
     // Check if we have properties or children
     bool has_properties = false;
     cJSON* prop = NULL;
@@ -310,7 +320,17 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
         if (!key) continue;
         if (strcmp(key, "id") != 0 && strcmp(key, "type") != 0 &&
             strcmp(key, "text") != 0 && strcmp(key, "children") != 0 &&
-            strcmp(key, "TEST_MARKER") != 0 && strcmp(key, "direction") != 0) {
+            strcmp(key, "TEST_MARKER") != 0 && strcmp(key, "direction") != 0 &&
+            strcmp(key, "background") != 0 && strcmp(key, "color") != 0) {
+            has_properties = true;
+            break;
+        }
+        // Check if background/color are non-default
+        if (strcmp(key, "background") == 0 && prop->valuestring && strcmp(prop->valuestring, "#00000000") != 0) {
+            has_properties = true;
+            break;
+        }
+        if (strcmp(key, "color") == 0 && prop->valuestring && strcmp(prop->valuestring, "#00000000") != 0) {
             has_properties = true;
             break;
         }
@@ -327,8 +347,18 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
 
     ctx->indent_level++;
 
-    // Generate properties
+    // Generate FULL_SIZE if applicable
     bool first_prop = true;
+    if (is_full_size) {
+        if (!first_prop) {
+            fprintf(ctx->output, ",\n");
+        }
+        write_indent(ctx);
+        fprintf(ctx->output, "FULL_SIZE");
+        first_prop = false;
+    }
+
+    // Generate properties
     cJSON* prop2 = NULL;
     cJSON_ArrayForEach(prop2, component) {
         const char* key = prop2->string;
@@ -338,6 +368,17 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
         if (strcmp(key, "id") == 0 || strcmp(key, "type") == 0 ||
             strcmp(key, "text") == 0 || strcmp(key, "children") == 0 ||
             strcmp(key, "TEST_MARKER") == 0 || strcmp(key, "direction") == 0) {
+            continue;
+        }
+
+        // Skip width/height if we already generated FULL_SIZE
+        if (is_full_size && (strcmp(key, "width") == 0 || strcmp(key, "height") == 0)) {
+            continue;
+        }
+
+        // Skip transparent/default colors
+        if ((strcmp(key, "background") == 0 || strcmp(key, "color") == 0) &&
+            prop2->valuestring && strcmp(prop2->valuestring, "#00000000") == 0) {
             continue;
         }
 
@@ -394,7 +435,13 @@ static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON
         if (strcmp(value->valuestring, "100.0px") == 0 || strcmp(value->valuestring, "100.0%") == 0) {
             fprintf(ctx->output, "FULL_WIDTH");
         } else {
-            fprintf(ctx->output, "WIDTH(\"%s\")", value->valuestring);
+            // Parse numeric value (e.g., "200.0px" → 200)
+            int width_val = 0;
+            if (sscanf(value->valuestring, "%d", &width_val) == 1 && width_val > 0) {
+                fprintf(ctx->output, "WIDTH(%d)", width_val);
+            } else {
+                fprintf(ctx->output, "WIDTH(\"%s\")", value->valuestring);
+            }
         }
         return true;
     }
@@ -403,7 +450,13 @@ static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON
         if (strcmp(value->valuestring, "100.0px") == 0 || strcmp(value->valuestring, "100.0%") == 0) {
             fprintf(ctx->output, "FULL_HEIGHT");
         } else {
-            fprintf(ctx->output, "HEIGHT(\"%s\")", value->valuestring);
+            // Parse numeric value (e.g., "60.0px" → 60)
+            int height_val = 0;
+            if (sscanf(value->valuestring, "%d", &height_val) == 1 && height_val > 0) {
+                fprintf(ctx->output, "HEIGHT(%d)", height_val);
+            } else {
+                fprintf(ctx->output, "HEIGHT(\"%s\")", value->valuestring);
+            }
         }
         return true;
     }
@@ -417,10 +470,28 @@ static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON
     if (strcmp(key, "color") == 0 && value->valuestring) {
         write_indent(ctx);
         // Check for named colors
-        if (strcmp(value->valuestring, "#ffff00") == 0) {
-            fprintf(ctx->output, "COLOR_YELLOW");
-        } else if (strcmp(value->valuestring, "#ffffff") == 0) {
+        if (strcmp(value->valuestring, "#ffffff") == 0) {
             fprintf(ctx->output, "COLOR_WHITE");
+        } else if (strcmp(value->valuestring, "#000000") == 0) {
+            fprintf(ctx->output, "COLOR_BLACK");
+        } else if (strcmp(value->valuestring, "#ff0000") == 0) {
+            fprintf(ctx->output, "COLOR_RED");
+        } else if (strcmp(value->valuestring, "#00ff00") == 0) {
+            fprintf(ctx->output, "COLOR_GREEN");
+        } else if (strcmp(value->valuestring, "#0000ff") == 0) {
+            fprintf(ctx->output, "COLOR_BLUE");
+        } else if (strcmp(value->valuestring, "#ffff00") == 0) {
+            fprintf(ctx->output, "COLOR_YELLOW");
+        } else if (strcmp(value->valuestring, "#00ffff") == 0) {
+            fprintf(ctx->output, "COLOR_CYAN");
+        } else if (strcmp(value->valuestring, "#ff00ff") == 0) {
+            fprintf(ctx->output, "COLOR_MAGENTA");
+        } else if (strcmp(value->valuestring, "#808080") == 0) {
+            fprintf(ctx->output, "COLOR_GRAY");
+        } else if (strcmp(value->valuestring, "#ffa500") == 0) {
+            fprintf(ctx->output, "COLOR_ORANGE");
+        } else if (strcmp(value->valuestring, "#800080") == 0) {
+            fprintf(ctx->output, "COLOR_PURPLE");
         } else {
             fprintf(ctx->output, "COLOR(\"%s\")", value->valuestring);
         }
@@ -470,8 +541,16 @@ static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON
         write_indent(ctx);
         if (strcmp(value->valuestring, "center") == 0) {
             fprintf(ctx->output, "JUSTIFY_CENTER");
+        } else if (strcmp(value->valuestring, "flex-start") == 0 || strcmp(value->valuestring, "start") == 0) {
+            fprintf(ctx->output, "JUSTIFY_START");
+        } else if (strcmp(value->valuestring, "flex-end") == 0 || strcmp(value->valuestring, "end") == 0) {
+            fprintf(ctx->output, "JUSTIFY_END");
+        } else if (strcmp(value->valuestring, "space-between") == 0) {
+            fprintf(ctx->output, "JUSTIFY_SPACE_BETWEEN");
+        } else if (strcmp(value->valuestring, "space-around") == 0) {
+            fprintf(ctx->output, "JUSTIFY_SPACE_AROUND");
         } else {
-            fprintf(ctx->output, "JUSTIFY_%s", value->valuestring);
+            fprintf(ctx->output, "JUSTIFY_CENTER");
         }
         return true;
     }
@@ -479,8 +558,14 @@ static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON
         write_indent(ctx);
         if (strcmp(value->valuestring, "center") == 0) {
             fprintf(ctx->output, "ALIGN_CENTER");
+        } else if (strcmp(value->valuestring, "flex-start") == 0 || strcmp(value->valuestring, "start") == 0) {
+            fprintf(ctx->output, "ALIGN_START");
+        } else if (strcmp(value->valuestring, "flex-end") == 0 || strcmp(value->valuestring, "end") == 0) {
+            fprintf(ctx->output, "ALIGN_END");
+        } else if (strcmp(value->valuestring, "stretch") == 0) {
+            fprintf(ctx->output, "ALIGN_STRETCH");
         } else {
-            fprintf(ctx->output, "ALIGN_%s", value->valuestring);
+            fprintf(ctx->output, "ALIGN_CENTER");
         }
         return true;
     }

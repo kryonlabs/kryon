@@ -106,7 +106,7 @@ int main(void) {
     ir_reactive_manifest_add_var(manifest, "count", IR_REACTIVE_TYPE_INT, val);
 
     // Serialize to JSON v3
-    char* json = ir_serialize_json_v3(root, manifest, logic);
+    char* json = ir_serialize_json(root, manifest, logic);
 
     if (json) {
         printf("=== JSON v3 Output ===\n");

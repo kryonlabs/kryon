@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
 
     // Serialize to JSON v2
     printf("Serializing to JSON v2...\n");
-    char* json = ir_serialize_json_v2(root);
+    char* json = ir_serialize_json(root);
     if (!json) {
         fprintf(stderr, "Error: Failed to serialize to JSON\n");
         ir_destroy_component(root);
@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
     // Output JSON
     if (output) {
         printf("Writing JSON to: %s\n", output);
-        if (!ir_write_json_v2_file(root, output)) {
+        if (!ir_write_json_file(root, output)) {
             fprintf(stderr, "Error: Failed to write JSON to %s\n", output);
             free(json);
             ir_destroy_component(root);

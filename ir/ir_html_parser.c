@@ -504,7 +504,7 @@ char* ir_html_to_kir(const char* html, size_t length) {
     }
 
     // Step 3: Serialize IR to JSON with KIR v3 format (includes wrapper structure)
-    char* json = ir_serialize_json_v3(root, NULL, NULL);
+    char* json = ir_serialize_json(root, NULL);
     ir_destroy_component(root);  // Free IR after serialization
 
     if (!json) {

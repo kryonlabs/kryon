@@ -1140,8 +1140,8 @@ char* ir_markdown_to_kir(const char* source, size_t length) {
     fflush(stderr);
 
     // Serialize to JSON string (defined in ir_json_v2.c)
-    extern char* ir_serialize_json_v2(IRComponent* root);
-    char* json_str = ir_serialize_json_v2(root);
+    extern char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest);
+    char* json_str = ir_serialize_json(root, NULL);
 
     if (!json_str) {
         fprintf(stderr, "=== ir_markdown_to_kir: Serialization failed\n");

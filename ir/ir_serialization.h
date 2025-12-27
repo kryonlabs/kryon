@@ -32,33 +32,20 @@ IRComponent* ir_deserialize_binary(IRBuffer* buffer);
 bool ir_write_binary_file(IRComponent* root, const char* filename);
 IRComponent* ir_read_binary_file(const char* filename);
 
-// JSON Serialization Functions (for debugging/tooling)
-char* ir_serialize_json(IRComponent* root);
+// ============================================================================
+// KIR Serialization - ONE Complete Format
+// ============================================================================
+
+// Serialize to KIR JSON (complete format with manifest)
+char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest);
+bool ir_write_json_file(IRComponent* root, IRReactiveManifest* manifest, const char* filename);
+
+// Deserialize from KIR JSON
 IRComponent* ir_deserialize_json(const char* json_string);
-bool ir_write_json_file(IRComponent* root, const char* filename);
 IRComponent* ir_read_json_file(const char* filename);
 
-// JSON v2 Serialization (complete property coverage)
-char* ir_serialize_json_v2(IRComponent* root);
-bool ir_write_json_v2_file(IRComponent* root, const char* filename);
-
-// JSON v2.1 Serialization with Reactive Manifest (POC)
-char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* manifest);
-bool ir_write_json_v2_with_manifest_file(IRComponent* root, IRReactiveManifest* manifest, const char* filename);
-
-// Component type conversion (for HTML parser and other tools)
+// Component type conversion (for parsers)
 IRComponentType ir_string_to_component_type(const char* str);
-
-// Forward declaration for logic block (defined in ir_logic.h)
-struct IRLogicBlock;
-
-// JSON v3.0 Serialization with Logic Block Support
-char* ir_serialize_json_v3(IRComponent* root, IRReactiveManifest* manifest, struct IRLogicBlock* logic);
-bool ir_write_json_v3_file(IRComponent* root, IRReactiveManifest* manifest, struct IRLogicBlock* logic, const char* filename);
-
-// JSON v2 Deserialization
-IRComponent* ir_deserialize_json_v2(const char* json_string);
-IRComponent* ir_read_json_v2_file(const char* filename);
 
 // Buffer Management
 IRBuffer* ir_buffer_create(size_t initial_capacity);

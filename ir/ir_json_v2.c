@@ -1434,56 +1434,22 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
 // ============================================================================
 
 /**
- * Serialize IR component tree to JSON v2 format (complete property coverage)
+ * Serialize IR component tree to JSON format (complete property coverage)
  * @param root Root component to serialize
  * @return JSON string (caller must free), or NULL on error
  */
-char* ir_serialize_json_v2(IRComponent* root) {
-    if (!root) return NULL;
-
-    fprintf(stderr, "=== ir_serialize_json_v2: Starting serialization...\n");
-    fflush(stderr);
-
-    cJSON* json = json_serialize_component_recursive(root);
-    if (!json) {
-        fprintf(stderr, "=== ir_serialize_json_v2: Serialization failed!\n");
-        fflush(stderr);
-        return NULL;
-    }
-
-    fprintf(stderr, "=== ir_serialize_json_v2: Serialization succeeded, calling cJSON_Print...\n");
-    fflush(stderr);
-
-    char* jsonStr = cJSON_Print(json);  // Pretty-printed JSON
-
-    fprintf(stderr, "=== ir_serialize_json_v2: cJSON_Print returned, length=%zu\n", jsonStr ? strlen(jsonStr) : 0);
-    fprintf(stderr, "=== ir_serialize_json_v2: Calling cJSON_Delete... (THIS MIGHT CRASH)\n");
-    fflush(stderr);
-
-    cJSON_Delete(json);
-
-    fprintf(stderr, "=== ir_serialize_json_v2: cJSON_Delete succeeded\n");
-    fflush(stderr);
-
-    return jsonStr;
-}
 
 /**
- * Serialize IR component tree with reactive manifest to JSON v2.1 format
+ * Serialize IR component tree with reactive manifest to JSON format
  * @param root Root component to serialize
  * @param manifest Reactive manifest to include (can be NULL)
  * @return JSON string (caller must free), or NULL on error
  */
-char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* manifest) {
+char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest) {
     if (!root) return NULL;
 
     // Create wrapper object
     cJSON* wrapper = cJSON_CreateObject();
-
-    // Add format version - v1 when we have component definitions, conditionals, or for-loops
-    if (manifest && (manifest->component_def_count > 0 || manifest->conditional_count > 0 || manifest->for_loop_count > 0)) {
-        cJSON_AddStringToObject(wrapper, "format_version", "1");
-    }
 
     // Add component definitions FIRST (at the top)
     if (manifest && manifest->component_def_count > 0) {
@@ -1558,262 +1524,18 @@ char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* 
  * @param filename Output file path
  * @return true on success, false on error
  */
-bool ir_write_json_v2_file(IRComponent* root, const char* filename) {
-    char* json = ir_serialize_json_v2(root);
-    if (!json) return false;
-
-    FILE* file = fopen(filename, "w");
-    if (!file) {
-        free(json);
-        return false;
-    }
-
-    bool success = (fprintf(file, "%s", json) >= 0);
-    fclose(file);
-    free(json);
-
-    return success;
-}
-
-/**
- * Write IR component tree with reactive manifest to JSON v2.1 file
- * @param root Root component to serialize
- * @param manifest Reactive manifest to include (can be NULL)
- * @param filename Output file path
- * @return true on success, false on error
- */
-bool ir_write_json_v2_with_manifest_file(IRComponent* root, IRReactiveManifest* manifest, const char* filename) {
-    char* json = ir_serialize_json_v2_with_manifest(root, manifest);
-    if (!json) return false;
-
-    FILE* file = fopen(filename, "w");
-    if (!file) {
-        free(json);
-        return false;
-    }
-
-    bool success = (fprintf(file, "%s", json) >= 0);
-    fclose(file);
-    free(json);
-
-    return success;
-}
 
 // ============================================================================
 // JSON v3.0 Serialization - With Logic Block Support
 // ============================================================================
 
 /**
- * Serialize IR component tree with reactive manifest and logic block to JSON v3.0 format
+ * Serialize IR component tree with reactive manifest and logic block to JSON format
  * @param root Root component to serialize
  * @param manifest Reactive manifest to include (can be NULL)
  * @param logic Logic block with functions and event bindings (can be NULL)
  * @return JSON string (caller must free), or NULL on error
  */
-char* ir_serialize_json_v3(IRComponent* root, IRReactiveManifest* manifest, struct IRLogicBlock* logic) {
-    if (!root) return NULL;
-
-    // Create wrapper object
-    cJSON* wrapper = cJSON_CreateObject();
-
-    // Add format version
-    cJSON_AddStringToObject(wrapper, "format_version", "1");
-
-    // Add component definitions FIRST (at the top)
-    if (manifest && manifest->component_def_count > 0) {
-        cJSON* componentDefsJson = json_serialize_component_definitions(manifest);
-        if (componentDefsJson) {
-            cJSON_AddItemToObject(wrapper, "component_definitions", componentDefsJson);
-        }
-    }
-
-    // Add component tree
-    cJSON* componentJson = json_serialize_component_recursive(root);
-    if (!componentJson) {
-        cJSON_Delete(wrapper);
-        return NULL;
-    }
-    cJSON_AddItemToObject(wrapper, "root", componentJson);
-
-    // Add logic block if present
-    if (logic && (logic->function_count > 0 || logic->event_binding_count > 0)) {
-        cJSON* logicJson = ir_logic_block_to_json(logic);
-        if (logicJson) {
-            cJSON_AddItemToObject(wrapper, "logic", logicJson);
-        }
-    }
-
-    // Add reactive manifest if present (variables, bindings, conditionals, for-loops)
-    if (manifest && (manifest->variable_count > 0 || manifest->binding_count > 0 ||
-                     manifest->conditional_count > 0 || manifest->for_loop_count > 0)) {
-        cJSON* manifestJson = json_serialize_reactive_manifest(manifest);
-        if (manifestJson) {
-            cJSON_AddItemToObject(wrapper, "reactive_manifest", manifestJson);
-        }
-    }
-
-    // Scan and add plugin requirements
-    uint32_t plugin_count = 0;
-    char** required_plugins = ir_plugin_scan_requirements(root, &plugin_count);
-    if (required_plugins && plugin_count > 0) {
-        cJSON* pluginsArray = cJSON_CreateArray();
-        if (!pluginsArray) {
-            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for plugins array\n");
-            ir_plugin_free_requirements(required_plugins, plugin_count);
-            cJSON_Delete(wrapper);
-            return NULL;
-        }
-        for (uint32_t i = 0; i < plugin_count; i++) {
-            cJSON_AddItemToArray(pluginsArray, cJSON_CreateString(required_plugins[i]));
-        }
-        cJSON_AddItemToObject(wrapper, "required_plugins", pluginsArray);
-
-        // Clean up
-        ir_plugin_free_requirements(required_plugins, plugin_count);
-    }
-
-    // Add sources if present (for round-trip preservation)
-    if (manifest && manifest->source_count > 0) {
-        cJSON* sources = cJSON_CreateObject();
-        if (!sources) {
-            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for sources object\n");
-            cJSON_Delete(wrapper);
-            return NULL;
-        }
-        for (uint32_t i = 0; i < manifest->source_count; i++) {
-            if (manifest->sources[i].lang && manifest->sources[i].code) {
-                cJSON_AddStringToObject(sources, manifest->sources[i].lang, manifest->sources[i].code);
-            }
-        }
-        cJSON_AddItemToObject(wrapper, "sources", sources);
-    }
-
-    // Add C source metadata if present (for round-trip C ↔ KIR conversion)
-    if (g_c_metadata.include_count > 0 || g_c_metadata.variable_count > 0 ||
-        g_c_metadata.event_handler_count > 0 || g_c_metadata.helper_function_count > 0 ||
-        g_c_metadata.preprocessor_directive_count > 0 || g_c_metadata.source_file_count > 0) {
-
-        cJSON* c_metadata = cJSON_CreateObject();
-        if (!c_metadata) {
-            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for c_metadata\n");
-            cJSON_Delete(wrapper);
-            return NULL;
-        }
-
-        // Add includes array
-        if (g_c_metadata.include_count > 0) {
-            cJSON* includes = cJSON_CreateArray();
-            for (size_t i = 0; i < g_c_metadata.include_count; i++) {
-                cJSON* inc = cJSON_CreateObject();
-                cJSON_AddStringToObject(inc, "include", g_c_metadata.includes[i].include_string);
-                cJSON_AddBoolToObject(inc, "is_system", g_c_metadata.includes[i].is_system);
-                cJSON_AddNumberToObject(inc, "line_number", g_c_metadata.includes[i].line_number);
-                cJSON_AddItemToArray(includes, inc);
-            }
-            cJSON_AddItemToObject(c_metadata, "includes", includes);
-        }
-
-        // Add variables array
-        if (g_c_metadata.variable_count > 0) {
-            cJSON* variables = cJSON_CreateArray();
-            for (size_t i = 0; i < g_c_metadata.variable_count; i++) {
-                cJSON* var = cJSON_CreateObject();
-                cJSON_AddStringToObject(var, "name", g_c_metadata.variables[i].name);
-                cJSON_AddStringToObject(var, "type", g_c_metadata.variables[i].type);
-                if (g_c_metadata.variables[i].storage) {
-                    cJSON_AddStringToObject(var, "storage", g_c_metadata.variables[i].storage);
-                }
-                if (g_c_metadata.variables[i].initial_value) {
-                    cJSON_AddStringToObject(var, "initial_value", g_c_metadata.variables[i].initial_value);
-                }
-                cJSON_AddNumberToObject(var, "component_id", g_c_metadata.variables[i].component_id);
-                cJSON_AddNumberToObject(var, "line_number", g_c_metadata.variables[i].line_number);
-                cJSON_AddItemToArray(variables, var);
-            }
-            cJSON_AddItemToObject(c_metadata, "variables", variables);
-        }
-
-        // Add event_handlers array
-        if (g_c_metadata.event_handler_count > 0) {
-            cJSON* handlers = cJSON_CreateArray();
-            for (size_t i = 0; i < g_c_metadata.event_handler_count; i++) {
-                cJSON* handler = cJSON_CreateObject();
-                if (g_c_metadata.event_handlers[i].logic_id) {
-                    cJSON_AddStringToObject(handler, "logic_id", g_c_metadata.event_handlers[i].logic_id);
-                }
-                cJSON_AddStringToObject(handler, "function_name", g_c_metadata.event_handlers[i].function_name);
-                cJSON_AddStringToObject(handler, "return_type", g_c_metadata.event_handlers[i].return_type);
-                cJSON_AddStringToObject(handler, "parameters", g_c_metadata.event_handlers[i].parameters);
-                cJSON_AddStringToObject(handler, "body", g_c_metadata.event_handlers[i].body);
-                cJSON_AddNumberToObject(handler, "line_number", g_c_metadata.event_handlers[i].line_number);
-                cJSON_AddItemToArray(handlers, handler);
-            }
-            cJSON_AddItemToObject(c_metadata, "event_handlers", handlers);
-        }
-
-        // Add helper_functions array
-        if (g_c_metadata.helper_function_count > 0) {
-            cJSON* helpers = cJSON_CreateArray();
-            for (size_t i = 0; i < g_c_metadata.helper_function_count; i++) {
-                cJSON* helper = cJSON_CreateObject();
-                cJSON_AddStringToObject(helper, "name", g_c_metadata.helper_functions[i].name);
-                cJSON_AddStringToObject(helper, "return_type", g_c_metadata.helper_functions[i].return_type);
-                cJSON_AddStringToObject(helper, "parameters", g_c_metadata.helper_functions[i].parameters);
-                cJSON_AddStringToObject(helper, "body", g_c_metadata.helper_functions[i].body);
-                cJSON_AddNumberToObject(helper, "line_number", g_c_metadata.helper_functions[i].line_number);
-                cJSON_AddItemToArray(helpers, helper);
-            }
-            cJSON_AddItemToObject(c_metadata, "helper_functions", helpers);
-        }
-
-        // Add preprocessor_directives array
-        if (g_c_metadata.preprocessor_directive_count > 0) {
-            cJSON* directives = cJSON_CreateArray();
-            for (size_t i = 0; i < g_c_metadata.preprocessor_directive_count; i++) {
-                cJSON* dir = cJSON_CreateObject();
-                cJSON_AddStringToObject(dir, "directive_type", g_c_metadata.preprocessor_directives[i].directive_type);
-                if (g_c_metadata.preprocessor_directives[i].condition) {
-                    cJSON_AddStringToObject(dir, "condition", g_c_metadata.preprocessor_directives[i].condition);
-                }
-                if (g_c_metadata.preprocessor_directives[i].value) {
-                    cJSON_AddStringToObject(dir, "value", g_c_metadata.preprocessor_directives[i].value);
-                }
-                cJSON_AddNumberToObject(dir, "line_number", g_c_metadata.preprocessor_directives[i].line_number);
-                cJSON_AddItemToArray(directives, dir);
-            }
-            cJSON_AddItemToObject(c_metadata, "preprocessor_directives", directives);
-        }
-
-        // Add source_files array
-        if (g_c_metadata.source_file_count > 0) {
-            cJSON* files = cJSON_CreateArray();
-            for (size_t i = 0; i < g_c_metadata.source_file_count; i++) {
-                cJSON* file = cJSON_CreateObject();
-                cJSON_AddStringToObject(file, "filename", g_c_metadata.source_files[i].filename);
-                if (g_c_metadata.source_files[i].full_path) {
-                    cJSON_AddStringToObject(file, "full_path", g_c_metadata.source_files[i].full_path);
-                }
-                if (g_c_metadata.source_files[i].content) {
-                    cJSON_AddStringToObject(file, "content", g_c_metadata.source_files[i].content);
-                }
-                cJSON_AddItemToArray(files, file);
-            }
-            cJSON_AddItemToObject(c_metadata, "source_files", files);
-        }
-
-        // Add main_source_file if present
-        if (g_c_metadata.main_source_file) {
-            cJSON_AddStringToObject(c_metadata, "main_source_file", g_c_metadata.main_source_file);
-        }
-
-        cJSON_AddItemToObject(wrapper, "c_metadata", c_metadata);
-    }
-
-    char* jsonStr = cJSON_Print(wrapper);  // Pretty-printed JSON
-    cJSON_Delete(wrapper);
-
-    return jsonStr;
-}
 
 /**
  * Write IR component tree with logic block to JSON v3.0 file
@@ -1823,22 +1545,6 @@ char* ir_serialize_json_v3(IRComponent* root, IRReactiveManifest* manifest, stru
  * @param filename Output file path
  * @return true on success, false on error
  */
-bool ir_write_json_v3_file(IRComponent* root, IRReactiveManifest* manifest, struct IRLogicBlock* logic, const char* filename) {
-    char* json = ir_serialize_json_v3(root, manifest, logic);
-    if (!json) return false;
-
-    FILE* file = fopen(filename, "w");
-    if (!file) {
-        free(json);
-        return false;
-    }
-
-    bool success = (fprintf(file, "%s", json) >= 0);
-    fclose(file);
-    free(json);
-
-    return success;
-}
 
 static IRDimension json_parse_dimension(const char* str) {
     IRDimension dim = {0};
@@ -3116,11 +2822,11 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
 // ============================================================================
 
 /**
- * Deserialize IR component tree from JSON v2 format
+ * Deserialize IR component tree from JSON format
  * @param json_string JSON string to deserialize
  * @return Deserialized component tree, or NULL on error
  */
-IRComponent* ir_deserialize_json_v2(const char* json_string) {
+IRComponent* ir_deserialize_json(const char* json_string) {
     if (!json_string) return NULL;
 
     cJSON* root = cJSON_Parse(json_string);
@@ -3301,56 +3007,3 @@ static void ir_mark_dirty_recursive(IRComponent* component) {
     }
 }
 
-/**
- * Read and deserialize IR component tree from JSON v2 file
- * @param filename Input file path
- * @return Deserialized component tree, or NULL on error
- */
-IRComponent* ir_read_json_v2_file(const char* filename) {
-    if (!filename) return NULL;
-
-    FILE* file = fopen(filename, "r");
-    if (!file) return NULL;
-
-    // Get file size
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    if (file_size <= 0) {
-        fclose(file);
-        return NULL;
-    }
-
-    // Read file content
-    char* content = (char*)malloc(file_size + 1);
-    if (!content) {
-        fclose(file);
-        return NULL;
-    }
-
-    size_t read_size = fread(content, 1, file_size, file);
-    content[read_size] = '\0';
-    fclose(file);
-
-    // Deserialize
-    IRComponent* component = ir_deserialize_json_v2(content);
-    free(content);
-
-    // Finalize all TabGroups in the tree (sets initial panel visibility)
-    if (component) {
-        ir_finalize_tabgroups_recursive(component);
-    }
-
-    // Finalize all Tables in the tree (builds span map for colspan/rowspan)
-    if (component) {
-        ir_finalize_tables_recursive(component);
-    }
-
-    // Mark entire tree as dirty so layout will be computed
-    if (component) {
-        ir_mark_dirty_recursive(component);
-    }
-
-    return component;
-}

@@ -1371,8 +1371,8 @@ void ir_print_component_info(IRComponent* component, int depth) {
     }
 }
 
-bool ir_write_json_file(IRComponent* root, const char* filename) {
-    char* json = ir_serialize_json(root);
+bool ir_write_json_file(IRComponent* root, IRReactiveManifest* manifest, const char* filename) {
+    char* json = ir_serialize_json(root, manifest);
     if (!json) return false;
 
     FILE* file = fopen(filename, "w");
@@ -1416,14 +1416,4 @@ IRComponent* ir_read_json_file(const char* filename) {
     return root;
 }
 
-// ============================================================================
-// JSON Serialization Wrappers (delegate to v2 implementations)
-// ============================================================================
-
-char* ir_serialize_json(IRComponent* root) {
-    return ir_serialize_json_v2(root);
-}
-
-IRComponent* ir_deserialize_json(const char* json_string) {
-    return ir_deserialize_json_v2(json_string);
-}
+// NOTE: ir_serialize_json and ir_deserialize_json are now implemented in ir_json_v2.c

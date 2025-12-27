@@ -81,6 +81,8 @@ struct KryNode {
     // Node data
     char* name;                 // Component or property name
     KryValue* value;            // Property value (NULL for components)
+    bool is_component_definition; // True if this is a component definition (component Foo {...})
+    char* arguments;            // Raw arguments for component instantiation (e.g., "5" or "initialValue=10")
 
     // Source location (for error messages)
     uint32_t line;

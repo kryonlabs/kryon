@@ -12,8 +12,8 @@
 #include <string.h>
 
 // External IR functions
-extern IRComponent* ir_read_json_v2_file(const char* filename);
-extern char* ir_serialize_json_v2(IRComponent* root);
+extern IRComponent* ir_read_json_file(const char* filename);
+extern char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest);
 extern void ir_print_component_info(IRComponent* component, int depth);
 extern bool ir_validate_component(IRComponent* component);
 extern void ir_pool_free_component(IRComponent* component);
@@ -127,7 +127,7 @@ int cmd_inspect(int argc, char** argv) {
 
     // Load KIR file
     printf("Loading KIR file: %s\n", file_path);
-    IRComponent* root = ir_read_json_v2_file(file_path);
+    IRComponent* root = ir_read_json_file(file_path);
 
     if (!root) {
         fprintf(stderr, "Error: Failed to load KIR file\n");
@@ -167,7 +167,7 @@ int cmd_inspect(int argc, char** argv) {
 
     // Show JSON if requested
     if (show_json) {
-        char* json = ir_serialize_json_v2(root);
+        char* json = ir_serialize_json(root, NULL);
         if (json) {
             printf("\n");
             printf("═══════════════════════════════════════════════════════════\n");

@@ -38,5 +38,5 @@ proc ir_write_json_v2_with_manifest_file*(root: ptr IRComponent; manifest: ptr I
 
 # JSON v2 deserialization
 proc ir_deserialize_json_v2*(json_string: cstring): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
-proc ir_read_json_v2_file*(filename: cstring): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
+proc ir_read_json_file*(filename: cstring): ptr IRComponent {.importc, cdecl, header: "ir_serialization.h".}
 

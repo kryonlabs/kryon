@@ -489,7 +489,7 @@ static void ir_executor_render_for_loops(IRExecutorContext* ctx) {
                 continue;
             }
 
-            IRComponent* instance = ir_deserialize_json_v2(loop->item_template);
+            IRComponent* instance = ir_deserialize_json(loop->item_template);
             if (!instance) {
                 printf("[executor] ERROR: Failed to deserialize template instance\n");
                 continue;

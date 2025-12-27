@@ -10,7 +10,7 @@
 #include <string.h>
 
 // External IR functions
-extern IRComponent* ir_read_json_v2_file(const char* filename);
+extern IRComponent* ir_read_json_file(const char* filename);
 extern void ir_pool_free_component(IRComponent* component);
 
 #define COLOR_RED     "\033[31m"
@@ -188,13 +188,13 @@ int cmd_diff(int argc, char** argv) {
     printf("  File 1: %s\n", file1);
     printf("  File 2: %s\n\n", file2);
 
-    IRComponent* root1 = ir_read_json_v2_file(file1);
+    IRComponent* root1 = ir_read_json_file(file1);
     if (!root1) {
         fprintf(stderr, "Error: Failed to load %s\n", file1);
         return 1;
     }
 
-    IRComponent* root2 = ir_read_json_v2_file(file2);
+    IRComponent* root2 = ir_read_json_file(file2);
     if (!root2) {
         fprintf(stderr, "Error: Failed to load %s\n", file2);
         ir_pool_free_component(root1);

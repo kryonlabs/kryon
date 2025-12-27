@@ -304,7 +304,7 @@ const commonSymbols = {
     args: [FFIType.ptr, FFIType.ptr, FFIType.ptr],  // root, manifest, logic_block
     returns: FFIType.cstring,  // JSON string
   },
-  ir_write_json_v3_file: {
+  ir_write_json_file: {
     args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.cstring],  // root, manifest, logic_block, filename
     returns: FFIType.bool,
   },
