@@ -567,7 +567,20 @@ StringBuilder* react_generate_props(cJSON* node, ReactContext* ctx, bool has_tex
 
                 if (handler_body) {
                     if (sb->size > 0) sb_append(sb, " ");
-                    sb_append_fmt(sb, "onClick={() => %s}", handler_body);
+
+                    // Check if handler_body already starts with arrow function
+                    const char* trimmed = handler_body;
+                    while (*trimmed == ' ' || *trimmed == '\t') trimmed++;
+
+                    if (strncmp(trimmed, "() =>", 5) == 0 ||
+                        strncmp(trimmed, "()=>", 4) == 0 ||
+                        strstr(trimmed, "function") == trimmed) {
+                        // Already a function, use directly
+                        sb_append_fmt(sb, "onClick={%s}", handler_body);
+                    } else {
+                        // Wrap in arrow function
+                        sb_append_fmt(sb, "onClick={() => %s}", handler_body);
+                    }
                     free(handler_body);
                 }
             }

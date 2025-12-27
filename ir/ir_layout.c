@@ -251,8 +251,17 @@ static float ir_get_component_intrinsic_height_impl(IRComponent* component) {
                 }
             }
 
-            // Fallback to single-line height
-            return font_size + 4.0f;
+            // Fallback to single-line height using line_height multiplier
+            float line_height = style->font.line_height > 0 ? style->font.line_height : 1.5f;
+            float computed_height = font_size * line_height;
+
+            // DEBUG: Print text height calculation
+            if (component->text_content && getenv("KRYON_DEBUG_TEXT")) {
+                fprintf(stderr, "[TEXT HEIGHT] \"%s\" fontSize=%.1f lineHeight=%.1f computed=%.1f\n",
+                       component->text_content, font_size, line_height, computed_height);
+            }
+
+            return computed_height;
         }
 
         case IR_COMPONENT_BUTTON: {
@@ -1819,6 +1828,20 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     bool width_auto = (c->style && c->style->width.type == IR_DIMENSION_AUTO);
     bool height_auto = (c->style && c->style->height.type == IR_DIMENSION_AUTO);
 
+    // For components with intrinsic sizing (Text, Button, etc), use intrinsic size if no explicit height
+    bool has_intrinsic_size = (c->type == IR_COMPONENT_TEXT || c->type == IR_COMPONENT_BUTTON ||
+                               c->type == IR_COMPONENT_INPUT || c->type == IR_COMPONENT_CHECKBOX);
+    if (getenv("KRYON_DEBUG_TEXT") && has_intrinsic_size) {
+        fprintf(stderr, "[INTRINSIC CHECK] type=%d has_intrinsic=%d height_type=%d\n",
+               c->type, has_intrinsic_size, c->style ? c->style->height.type : -1);
+    }
+    if (has_intrinsic_size && (!c->style || c->style->height.type != IR_DIMENSION_PX)) {
+        own_height = ir_get_component_intrinsic_height(c);
+        if (getenv("KRYON_DEBUG_TEXT")) {
+            fprintf(stderr, "[INTRINSIC HEIGHT] Got height=%.1f for type=%d\n", own_height, c->type);
+        }
+    }
+
     // Determine layout direction from flex.direction (0=column/vertical, 1=row/horizontal)
     IRLayout* layout = ir_get_layout(c);
     bool is_row = (layout && layout->flex.direction == 1);
@@ -1910,6 +1933,12 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     c->layout_state->computed.height = own_height;
     c->layout_state->computed.x = parent_x;
     c->layout_state->computed.y = parent_y;
+
+    // DEBUG: Print layout positions for Text components
+    if (c->type == IR_COMPONENT_TEXT && c->text_content && getenv("KRYON_DEBUG_TEXT")) {
+        fprintf(stderr, "[TEXT LAYOUT] \"%s\" x=%.1f y=%.1f w=%.1f h=%.1f\n",
+               c->text_content, parent_x, parent_y, own_width, own_height);
+    }
 
     // Mark layout as valid
     c->layout_state->layout_valid = true;

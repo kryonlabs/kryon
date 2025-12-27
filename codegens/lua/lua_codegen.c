@@ -3,6 +3,8 @@
  * Generates Lua DSL code from KIR JSON
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "lua_codegen.h"
 #include "../../ir/third_party/cJSON/cJSON.h"
 #include <stdio.h>
@@ -119,17 +121,104 @@ static void generate_reactive_vars(LuaCodeGen* gen, cJSON* manifest) {
     lua_gen_add_line(gen, "");
 }
 
+// Event handler context for storing logic_block data
+typedef struct {
+    cJSON* functions;      // logic_block.functions array
+    cJSON* event_bindings; // logic_block.event_bindings array
+} EventHandlerContext;
+
+// Find event handler source for a component
+static char* find_event_handler(EventHandlerContext* ctx, int component_id, const char* event_type) {
+    if (!ctx || !ctx->functions || !ctx->event_bindings) return NULL;
+
+    // Find binding for this component and event type
+    cJSON* binding = NULL;
+    cJSON_ArrayForEach(binding, ctx->event_bindings) {
+        cJSON* comp_id = cJSON_GetObjectItem(binding, "component_id");
+        cJSON* evt_type = cJSON_GetObjectItem(binding, "event_type");
+
+        if (comp_id && cJSON_IsNumber(comp_id) &&
+            (int)cJSON_GetNumberValue(comp_id) == component_id &&
+            evt_type && cJSON_IsString(evt_type) &&
+            strcmp(cJSON_GetStringValue(evt_type), event_type) == 0) {
+
+            // Found the binding, now get the handler function
+            cJSON* handler_name_node = cJSON_GetObjectItem(binding, "handler_name");
+            if (!handler_name_node || !cJSON_IsString(handler_name_node)) continue;
+
+            const char* handler_name = cJSON_GetStringValue(handler_name_node);
+
+            // Find function in functions array
+            cJSON* func = NULL;
+            cJSON_ArrayForEach(func, ctx->functions) {
+                cJSON* name_node = cJSON_GetObjectItem(func, "name");
+                if (name_node && cJSON_IsString(name_node) &&
+                    strcmp(cJSON_GetStringValue(name_node), handler_name) == 0) {
+
+                    // Get source code
+                    cJSON* sources = cJSON_GetObjectItem(func, "sources");
+                    if (sources && cJSON_IsArray(sources)) {
+                        // Look for Lua source first
+                        cJSON* source = NULL;
+                        cJSON_ArrayForEach(source, sources) {
+                            cJSON* lang = cJSON_GetObjectItem(source, "language");
+                            if (lang && cJSON_IsString(lang) &&
+                                strcmp(cJSON_GetStringValue(lang), "lua") == 0) {
+                                cJSON* code = cJSON_GetObjectItem(source, "source");
+                                if (code && cJSON_IsString(code)) {
+                                    return strdup(cJSON_GetStringValue(code));
+                                }
+                            }
+                        }
+
+                        // Fall back to kry source (Lua uses print() so minimal translation needed)
+                        cJSON* kry_source = cJSON_GetArrayItem(sources, 0);
+                        if (kry_source) {
+                            cJSON* code_node = cJSON_GetObjectItem(kry_source, "source");
+                            if (code_node && cJSON_IsString(code_node)) {
+                                const char* code = cJSON_GetStringValue(code_node);
+
+                                // Clean up whitespace and braces
+                                while (*code && (*code == ' ' || *code == '\t' || *code == '{')) code++;
+                                const char* end = code + strlen(code) - 1;
+                                while (end > code && (*end == ' ' || *end == '\t' || *end == '}')) end--;
+
+                                size_t len = end - code + 1;
+                                char cleaned[1024];
+                                strncpy(cleaned, code, len);
+                                cleaned[len] = '\0';
+
+                                // Lua already uses print(), so just return cleaned code
+                                return strdup(cleaned);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return NULL;
+}
+
 // Forward declaration
-static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* var_name);
+static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* var_name, EventHandlerContext* handler_ctx);
 
 // Generate component tree recursively
-static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* var_name) {
+static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* var_name, EventHandlerContext* handler_ctx) {
     if (!comp || !cJSON_IsObject(comp)) return;
 
     const char* comp_type = "Container";
     cJSON* type_node = cJSON_GetObjectItem(comp, "type");
     if (type_node && cJSON_IsString(type_node)) {
         comp_type = cJSON_GetStringValue(type_node);
+    }
+
+    // Get component ID for event handler lookup
+    int component_id = -1;
+    cJSON* id_node = cJSON_GetObjectItem(comp, "id");
+    if (id_node && cJSON_IsNumber(id_node)) {
+        component_id = (int)cJSON_GetNumberValue(id_node);
     }
 
     // Map IR type to Lua DSL function
@@ -203,6 +292,19 @@ static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* va
         }
     }
 
+    // Add event handlers if available
+    if (component_id >= 0 && handler_ctx) {
+        char* click_handler = find_event_handler(handler_ctx, component_id, "click");
+        if (click_handler) {
+            lua_gen_add_line_fmt(gen, "onClick = function()");
+            gen->indent++;
+            lua_gen_add_line_fmt(gen, "%s", click_handler);
+            gen->indent--;
+            lua_gen_add_line(gen, "end,");
+            free(click_handler);
+        }
+    }
+
     // Generate children
     cJSON* children = cJSON_GetObjectItem(comp, "children");
     if (children && cJSON_IsArray(children) && cJSON_GetArraySize(children) > 0) {
@@ -214,7 +316,7 @@ static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* va
             char child_var[256];
             snprintf(child_var, sizeof(child_var), "%s_child%d", var_name, child_idx++);
 
-            generate_component_tree(gen, child, child_var);
+            generate_component_tree(gen, child, child_var, handler_ctx);
             lua_gen_add_line_fmt(gen, "%s,", child_var);
         }
     }
@@ -253,6 +355,14 @@ char* lua_codegen_from_json(const char* kir_json) {
         generate_reactive_vars(gen, manifest);
     }
 
+    // Extract logic_block for event handlers
+    EventHandlerContext handler_ctx = {0};
+    cJSON* logic_block = cJSON_GetObjectItem(root, "logic_block");
+    if (logic_block && cJSON_IsObject(logic_block)) {
+        handler_ctx.functions = cJSON_GetObjectItem(logic_block, "functions");
+        handler_ctx.event_bindings = cJSON_GetObjectItem(logic_block, "event_bindings");
+    }
+
     // Generate component tree
     lua_gen_add_line(gen, "-- UI Component Tree");
 
@@ -260,7 +370,7 @@ char* lua_codegen_from_json(const char* kir_json) {
     if (!component) component = cJSON_GetObjectItem(root, "component");
 
     if (component) {
-        generate_component_tree(gen, component, "root");
+        generate_component_tree(gen, component, "root", &handler_ctx);
     }
 
     // Footer

@@ -869,6 +869,9 @@ IRStyle* ir_create_style(void) {
     // Initialize transforms to identity (no transformation)
     style->transform.scale_x = 1.0f;
     style->transform.scale_y = 1.0f;
+
+    // Set default line height (1.5 is CSS standard)
+    style->font.line_height = 1.5f;
     style->transform.translate_x = 0.0f;
     style->transform.translate_y = 0.0f;
     style->transform.rotate = 0.0f;
