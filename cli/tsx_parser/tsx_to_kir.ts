@@ -12,9 +12,31 @@ interface KIRComponent {
   [key: string]: any;  // Props are flattened at top level
   children?: KIRComponent[];
   text?: string;
+  events?: Array<{
+    type: string;
+    logic_id: string;
+    handler_data?: string;
+  }>;
+}
+
+interface LogicFunction {
+  name: string;
+  sources: Array<{
+    language: string;
+    source: string;
+  }>;
+}
+
+interface EventBinding {
+  component_id: number;
+  event_type: string;
+  handler_name: string;
 }
 
 let nextId = 1;
+let nextHandlerId = 1;
+const logicFunctions: LogicFunction[] = [];
+const eventBindings: EventBinding[] = [];
 
 /**
  * Parse JSX element recursively
@@ -60,10 +82,46 @@ function parseJSXElement(node: any): KIRComponent | null {
     }
 
     // Flatten props directly onto component (KIR v3.0 format)
+    const componentEvents: Array<{type: string; logic_id: string; handler_data: string}> = [];
+
     if (node.props) {
       for (const [key, value] of Object.entries(node.props)) {
         // Skip children and key
         if (key === 'children' || key === 'key') continue;
+
+        // Handle event handlers
+        if (key.startsWith('on') && typeof value === 'function') {
+          const eventType = key.slice(2).toLowerCase(); // onClick -> click
+          const handlerName = `handler_${nextHandlerId++}_${eventType}`;
+
+          // Extract function source code
+          const handlerSource = value.toString();
+
+          // Create logic function
+          logicFunctions.push({
+            name: handlerName,
+            sources: [{
+              language: 'typescript',
+              source: handlerSource
+            }]
+          });
+
+          // Create event binding (will use component.id which is set above)
+          eventBindings.push({
+            component_id: component.id!,
+            event_type: eventType,
+            handler_name: handlerName
+          });
+
+          // Add to component events array
+          componentEvents.push({
+            type: eventType,
+            logic_id: handlerName,
+            handler_data: handlerSource
+          });
+
+          continue; // Don't add onClick as a regular prop
+        }
 
         // Handle special prop names
         if (key === 'className') {
@@ -72,6 +130,11 @@ function parseJSXElement(node: any): KIRComponent | null {
           component[key] = value;
         }
       }
+    }
+
+    // Add events array if there are any event handlers
+    if (componentEvents.length > 0) {
+      component.events = componentEvents;
     }
 
     // Extract children
@@ -249,18 +312,32 @@ async function main() {
     const file = Bun.file(inputFile);
     const source = await file.text();
 
-    // Reset ID counter
+    // Reset ID counters and logic storage
     nextId = 1;
+    nextHandlerId = 1;
+    logicFunctions.length = 0;
+    eventBindings.length = 0;
 
     // Parse to KIR
     const root = await parseKryonTSX(source);
 
-    // Output KIR v3.0 format
-    const output = {
-      format_version: "3.0",
-      component_definitions: [],
+    // Build output with logic_block
+    const output: any = {
+      format: "kir",
+      metadata: {
+        source_language: "tsx",
+        compiler_version: "kryon-1.0.0"
+      },
       root
     };
+
+    // Add logic_block if there are any event handlers
+    if (logicFunctions.length > 0) {
+      output.logic_block = {
+        functions: logicFunctions,
+        event_bindings: eventBindings
+      };
+    }
 
     console.log(JSON.stringify(output, null, 2));
 

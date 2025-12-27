@@ -143,17 +143,57 @@ static void parse_logic_block(cJSON* kir_root, EventHandlerContext* ctx) {
         cJSON* sources = cJSON_GetObjectItem(func, "sources");
 
         if (name_item && sources && cJSON_IsArray(sources)) {
-            // Get first source (prefer .kry language)
+            // Look for kry language first
+            cJSON* kry_source = NULL;
+            cJSON* fallback_source = NULL;
+
             cJSON* source_item = NULL;
             cJSON_ArrayForEach(source_item, sources) {
                 cJSON* lang = cJSON_GetObjectItem(source_item, "language");
                 cJSON* src = cJSON_GetObjectItem(source_item, "source");
 
-                if (lang && src && strcmp(lang->valuestring, "kry") == 0) {
+                if (lang && src) {
+                    if (strcmp(lang->valuestring, "kry") == 0) {
+                        kry_source = src;
+                        break;
+                    } else if (!fallback_source) {
+                        fallback_source = src;
+                    }
+                }
+            }
+
+            // Use kry source if available, otherwise translate from other languages
+            if (kry_source) {
+                func_map[func_idx].name = strdup(name_item->valuestring);
+                func_map[func_idx].source = strdup(kry_source->valuestring);
+                func_idx++;
+            } else if (fallback_source) {
+                // Translate from TypeScript/JavaScript to kry
+                const char* src = fallback_source->valuestring;
+                char translated[1024];
+
+                // Simple translation: console.log(...) -> print(...)
+                if (strstr(src, "console.log(") != NULL) {
+                    const char* start = strstr(src, "console.log(");
+                    const char* args_start = start + 12; // After "console.log("
+                    const char* args_end = strchr(args_start, ')');
+
+                    if (args_end) {
+                        size_t args_len = args_end - args_start;
+                        char args[512];
+                        strncpy(args, args_start, args_len);
+                        args[args_len] = '\0';
+
+                        snprintf(translated, sizeof(translated), "print(%s)", args);
+                        func_map[func_idx].name = strdup(name_item->valuestring);
+                        func_map[func_idx].source = strdup(translated);
+                        func_idx++;
+                    }
+                } else {
+                    // Use as-is if no translation available
                     func_map[func_idx].name = strdup(name_item->valuestring);
-                    func_map[func_idx].source = strdup(src->valuestring);
+                    func_map[func_idx].source = strdup(src);
                     func_idx++;
-                    break;
                 }
             }
         }
