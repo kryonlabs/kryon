@@ -89,6 +89,167 @@ static void cleanup_handlers(void) {
 }
 
 // ============================================================================
+// C Source Metadata (for round-trip conversion)
+// ============================================================================
+
+#include "../../ir/ir_c_metadata.h"
+
+// Global metadata instance
+CSourceMetadata g_c_metadata = {0};
+
+void kryon_register_variable(const char* name, const char* type, const char* storage,
+                              const char* initial_value, uint32_t component_id, int line_number) {
+    if (!name || !type) return;
+    if (g_c_metadata.variable_count >= g_c_metadata.variable_capacity) {
+        size_t new_cap = g_c_metadata.variable_capacity == 0 ? 8 : g_c_metadata.variable_capacity * 2;
+        g_c_metadata.variables = realloc(g_c_metadata.variables, new_cap * sizeof(CVariableDecl));
+        if (!g_c_metadata.variables) return;
+        g_c_metadata.variable_capacity = new_cap;
+    }
+    CVariableDecl* var = &g_c_metadata.variables[g_c_metadata.variable_count++];
+    var->name = strdup(name);
+    var->type = strdup(type);
+    var->storage = storage ? strdup(storage) : NULL;
+    var->initial_value = initial_value ? strdup(initial_value) : NULL;
+    var->component_id = component_id;
+    var->line_number = line_number;
+}
+
+void kryon_register_event_handler(const char* logic_id, const char* function_name,
+                                   const char* return_type, const char* parameters,
+                                   const char* body, int line_number) {
+    if (!logic_id || !function_name) return;
+    if (g_c_metadata.event_handler_count >= g_c_metadata.event_handler_capacity) {
+        size_t new_cap = g_c_metadata.event_handler_capacity == 0 ? 8 : g_c_metadata.event_handler_capacity * 2;
+        g_c_metadata.event_handlers = realloc(g_c_metadata.event_handlers, new_cap * sizeof(CEventHandlerDecl));
+        if (!g_c_metadata.event_handlers) return;
+        g_c_metadata.event_handler_capacity = new_cap;
+    }
+    CEventHandlerDecl* handler = &g_c_metadata.event_handlers[g_c_metadata.event_handler_count++];
+    handler->logic_id = strdup(logic_id);
+    handler->function_name = strdup(function_name);
+    handler->return_type = return_type ? strdup(return_type) : strdup("void");
+    handler->parameters = parameters ? strdup(parameters) : strdup("void");
+    handler->body = body ? strdup(body) : NULL;
+    handler->line_number = line_number;
+}
+
+void kryon_register_helper_function(const char* name, const char* return_type,
+                                     const char* parameters, const char* body, int line_number) {
+    if (!name || !return_type) return;
+    if (g_c_metadata.helper_function_count >= g_c_metadata.helper_function_capacity) {
+        size_t new_cap = g_c_metadata.helper_function_capacity == 0 ? 8 : g_c_metadata.helper_function_capacity * 2;
+        g_c_metadata.helper_functions = realloc(g_c_metadata.helper_functions, new_cap * sizeof(CHelperFunction));
+        if (!g_c_metadata.helper_functions) return;
+        g_c_metadata.helper_function_capacity = new_cap;
+    }
+    CHelperFunction* func = &g_c_metadata.helper_functions[g_c_metadata.helper_function_count++];
+    func->name = strdup(name);
+    func->return_type = strdup(return_type);
+    func->parameters = parameters ? strdup(parameters) : strdup("void");
+    func->body = body ? strdup(body) : NULL;
+    func->line_number = line_number;
+}
+
+void kryon_add_include(const char* include_string, bool is_system, int line_number) {
+    if (!include_string) return;
+    if (g_c_metadata.include_count >= g_c_metadata.include_capacity) {
+        size_t new_cap = g_c_metadata.include_capacity == 0 ? 16 : g_c_metadata.include_capacity * 2;
+        g_c_metadata.includes = realloc(g_c_metadata.includes, new_cap * sizeof(CInclude));
+        if (!g_c_metadata.includes) return;
+        g_c_metadata.include_capacity = new_cap;
+    }
+    CInclude* inc = &g_c_metadata.includes[g_c_metadata.include_count++];
+    inc->include_string = strdup(include_string);
+    inc->is_system = is_system;
+    inc->line_number = line_number;
+}
+
+void kryon_add_preprocessor_directive(const char* directive_type, const char* condition,
+                                       const char* value, int line_number) {
+    if (!directive_type) return;
+    if (g_c_metadata.preprocessor_directive_count >= g_c_metadata.preprocessor_directive_capacity) {
+        size_t new_cap = g_c_metadata.preprocessor_directive_capacity == 0 ? 16 : g_c_metadata.preprocessor_directive_capacity * 2;
+        g_c_metadata.preprocessor_directives = realloc(g_c_metadata.preprocessor_directives, new_cap * sizeof(CPreprocessorDirective));
+        if (!g_c_metadata.preprocessor_directives) return;
+        g_c_metadata.preprocessor_directive_capacity = new_cap;
+    }
+    CPreprocessorDirective* dir = &g_c_metadata.preprocessor_directives[g_c_metadata.preprocessor_directive_count++];
+    dir->directive_type = strdup(directive_type);
+    dir->condition = condition ? strdup(condition) : NULL;
+    dir->value = value ? strdup(value) : NULL;
+    dir->line_number = line_number;
+}
+
+void kryon_add_source_file(const char* filename, const char* full_path, const char* content) {
+    if (!filename) return;
+    if (g_c_metadata.source_file_count >= g_c_metadata.source_file_capacity) {
+        size_t new_cap = g_c_metadata.source_file_capacity == 0 ? 4 : g_c_metadata.source_file_capacity * 2;
+        g_c_metadata.source_files = realloc(g_c_metadata.source_files, new_cap * sizeof(CSourceFile));
+        if (!g_c_metadata.source_files) return;
+        g_c_metadata.source_file_capacity = new_cap;
+    }
+    CSourceFile* file = &g_c_metadata.source_files[g_c_metadata.source_file_count++];
+    file->filename = strdup(filename);
+    file->full_path = full_path ? strdup(full_path) : NULL;
+    file->content = content ? strdup(content) : NULL;
+}
+
+void kryon_set_main_source_file(const char* filename) {
+    if (g_c_metadata.main_source_file) free(g_c_metadata.main_source_file);
+    g_c_metadata.main_source_file = filename ? strdup(filename) : NULL;
+}
+
+static void cleanup_metadata(void) {
+    for (size_t i = 0; i < g_c_metadata.variable_count; i++) {
+        free(g_c_metadata.variables[i].name);
+        free(g_c_metadata.variables[i].type);
+        free(g_c_metadata.variables[i].storage);
+        free(g_c_metadata.variables[i].initial_value);
+    }
+    free(g_c_metadata.variables);
+
+    for (size_t i = 0; i < g_c_metadata.event_handler_count; i++) {
+        free(g_c_metadata.event_handlers[i].logic_id);
+        free(g_c_metadata.event_handlers[i].function_name);
+        free(g_c_metadata.event_handlers[i].return_type);
+        free(g_c_metadata.event_handlers[i].parameters);
+        free(g_c_metadata.event_handlers[i].body);
+    }
+    free(g_c_metadata.event_handlers);
+
+    for (size_t i = 0; i < g_c_metadata.helper_function_count; i++) {
+        free(g_c_metadata.helper_functions[i].name);
+        free(g_c_metadata.helper_functions[i].return_type);
+        free(g_c_metadata.helper_functions[i].parameters);
+        free(g_c_metadata.helper_functions[i].body);
+    }
+    free(g_c_metadata.helper_functions);
+
+    for (size_t i = 0; i < g_c_metadata.include_count; i++) {
+        free(g_c_metadata.includes[i].include_string);
+    }
+    free(g_c_metadata.includes);
+
+    for (size_t i = 0; i < g_c_metadata.preprocessor_directive_count; i++) {
+        free(g_c_metadata.preprocessor_directives[i].directive_type);
+        free(g_c_metadata.preprocessor_directives[i].condition);
+        free(g_c_metadata.preprocessor_directives[i].value);
+    }
+    free(g_c_metadata.preprocessor_directives);
+
+    for (size_t i = 0; i < g_c_metadata.source_file_count; i++) {
+        free(g_c_metadata.source_files[i].filename);
+        free(g_c_metadata.source_files[i].full_path);
+        free(g_c_metadata.source_files[i].content);
+    }
+    free(g_c_metadata.source_files);
+
+    free(g_c_metadata.main_source_file);
+    memset(&g_c_metadata, 0, sizeof(CSourceMetadata));
+}
+
+// ============================================================================
 // Dimension Helpers
 // ============================================================================
 
@@ -153,6 +314,7 @@ void kryon_cleanup(void) {
         g_app_state.window_title = NULL;
     }
     cleanup_handlers();
+    cleanup_metadata();
     g_app_state.root = NULL;
 }
 
@@ -322,14 +484,12 @@ static IRLayout* get_or_create_layout(IRComponent* c) {
 
 void kryon_set_width(IRComponent* c, float value, const char* unit) {
     if (!c) return;
-    IRStyle* style = get_or_create_style(c);
-    ir_set_width(style, parse_unit(unit), value);
+    ir_set_width(c, parse_unit(unit), value);
 }
 
 void kryon_set_height(IRComponent* c, float value, const char* unit) {
     if (!c) return;
-    IRStyle* style = get_or_create_style(c);
-    ir_set_height(style, parse_unit(unit), value);
+    ir_set_height(c, parse_unit(unit), value);
 }
 
 void kryon_set_min_width(IRComponent* c, float value, const char* unit) {
@@ -399,26 +559,22 @@ void kryon_set_border_color(IRComponent* c, uint32_t color) {
 
 void kryon_set_padding(IRComponent* c, float value) {
     if (!c) return;
-    IRStyle* style = get_or_create_style(c);
-    ir_set_padding(style, value, value, value, value);
+    ir_set_padding(c, value, value, value, value);
 }
 
 void kryon_set_padding_sides(IRComponent* c, float top, float right, float bottom, float left) {
     if (!c) return;
-    IRStyle* style = get_or_create_style(c);
-    ir_set_padding(style, top, right, bottom, left);
+    ir_set_padding(c, top, right, bottom, left);
 }
 
 void kryon_set_margin(IRComponent* c, float value) {
     if (!c) return;
-    IRStyle* style = get_or_create_style(c);
-    ir_set_margin(style, value, value, value, value);
+    ir_set_margin(c, value, value, value, value);
 }
 
 void kryon_set_margin_sides(IRComponent* c, float top, float right, float bottom, float left) {
     if (!c) return;
-    IRStyle* style = get_or_create_style(c);
-    ir_set_margin(style, top, right, bottom, left);
+    ir_set_margin(c, top, right, bottom, left);
 }
 
 void kryon_set_gap(IRComponent* c, float value) {

@@ -6,11 +6,15 @@
 #include "ir_builder.h"
 #include "ir_logic.h"
 #include "ir_plugin.h"
+#include "ir_c_metadata.h"
 #include "cJSON.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+
+// Weak symbol fallback if C bindings aren't linked
+__attribute__((weak)) CSourceMetadata g_c_metadata = {0};
 
 // ============================================================================
 // Component Definition Context (for expansion during deserialization)
@@ -1476,9 +1480,9 @@ char* ir_serialize_json_v2_with_manifest(IRComponent* root, IRReactiveManifest* 
     // Create wrapper object
     cJSON* wrapper = cJSON_CreateObject();
 
-    // Add format version - v2.1 when we have component definitions, conditionals, or for-loops
+    // Add format version - v1 when we have component definitions, conditionals, or for-loops
     if (manifest && (manifest->component_def_count > 0 || manifest->conditional_count > 0 || manifest->for_loop_count > 0)) {
-        cJSON_AddStringToObject(wrapper, "format_version", "2.1");
+        cJSON_AddStringToObject(wrapper, "format_version", "1");
     }
 
     // Add component definitions FIRST (at the top)
@@ -1613,7 +1617,7 @@ char* ir_serialize_json_v3(IRComponent* root, IRReactiveManifest* manifest, stru
     cJSON* wrapper = cJSON_CreateObject();
 
     // Add format version
-    cJSON_AddStringToObject(wrapper, "format_version", "3.0");
+    cJSON_AddStringToObject(wrapper, "format_version", "1");
 
     // Add component definitions FIRST (at the top)
     if (manifest && manifest->component_def_count > 0) {
@@ -1682,6 +1686,127 @@ char* ir_serialize_json_v3(IRComponent* root, IRReactiveManifest* manifest, stru
             }
         }
         cJSON_AddItemToObject(wrapper, "sources", sources);
+    }
+
+    // Add C source metadata if present (for round-trip C ↔ KIR conversion)
+    if (g_c_metadata.include_count > 0 || g_c_metadata.variable_count > 0 ||
+        g_c_metadata.event_handler_count > 0 || g_c_metadata.helper_function_count > 0 ||
+        g_c_metadata.preprocessor_directive_count > 0 || g_c_metadata.source_file_count > 0) {
+
+        cJSON* c_metadata = cJSON_CreateObject();
+        if (!c_metadata) {
+            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for c_metadata\n");
+            cJSON_Delete(wrapper);
+            return NULL;
+        }
+
+        // Add includes array
+        if (g_c_metadata.include_count > 0) {
+            cJSON* includes = cJSON_CreateArray();
+            for (size_t i = 0; i < g_c_metadata.include_count; i++) {
+                cJSON* inc = cJSON_CreateObject();
+                cJSON_AddStringToObject(inc, "include", g_c_metadata.includes[i].include_string);
+                cJSON_AddBoolToObject(inc, "is_system", g_c_metadata.includes[i].is_system);
+                cJSON_AddNumberToObject(inc, "line_number", g_c_metadata.includes[i].line_number);
+                cJSON_AddItemToArray(includes, inc);
+            }
+            cJSON_AddItemToObject(c_metadata, "includes", includes);
+        }
+
+        // Add variables array
+        if (g_c_metadata.variable_count > 0) {
+            cJSON* variables = cJSON_CreateArray();
+            for (size_t i = 0; i < g_c_metadata.variable_count; i++) {
+                cJSON* var = cJSON_CreateObject();
+                cJSON_AddStringToObject(var, "name", g_c_metadata.variables[i].name);
+                cJSON_AddStringToObject(var, "type", g_c_metadata.variables[i].type);
+                if (g_c_metadata.variables[i].storage) {
+                    cJSON_AddStringToObject(var, "storage", g_c_metadata.variables[i].storage);
+                }
+                if (g_c_metadata.variables[i].initial_value) {
+                    cJSON_AddStringToObject(var, "initial_value", g_c_metadata.variables[i].initial_value);
+                }
+                cJSON_AddNumberToObject(var, "component_id", g_c_metadata.variables[i].component_id);
+                cJSON_AddNumberToObject(var, "line_number", g_c_metadata.variables[i].line_number);
+                cJSON_AddItemToArray(variables, var);
+            }
+            cJSON_AddItemToObject(c_metadata, "variables", variables);
+        }
+
+        // Add event_handlers array
+        if (g_c_metadata.event_handler_count > 0) {
+            cJSON* handlers = cJSON_CreateArray();
+            for (size_t i = 0; i < g_c_metadata.event_handler_count; i++) {
+                cJSON* handler = cJSON_CreateObject();
+                if (g_c_metadata.event_handlers[i].logic_id) {
+                    cJSON_AddStringToObject(handler, "logic_id", g_c_metadata.event_handlers[i].logic_id);
+                }
+                cJSON_AddStringToObject(handler, "function_name", g_c_metadata.event_handlers[i].function_name);
+                cJSON_AddStringToObject(handler, "return_type", g_c_metadata.event_handlers[i].return_type);
+                cJSON_AddStringToObject(handler, "parameters", g_c_metadata.event_handlers[i].parameters);
+                cJSON_AddStringToObject(handler, "body", g_c_metadata.event_handlers[i].body);
+                cJSON_AddNumberToObject(handler, "line_number", g_c_metadata.event_handlers[i].line_number);
+                cJSON_AddItemToArray(handlers, handler);
+            }
+            cJSON_AddItemToObject(c_metadata, "event_handlers", handlers);
+        }
+
+        // Add helper_functions array
+        if (g_c_metadata.helper_function_count > 0) {
+            cJSON* helpers = cJSON_CreateArray();
+            for (size_t i = 0; i < g_c_metadata.helper_function_count; i++) {
+                cJSON* helper = cJSON_CreateObject();
+                cJSON_AddStringToObject(helper, "name", g_c_metadata.helper_functions[i].name);
+                cJSON_AddStringToObject(helper, "return_type", g_c_metadata.helper_functions[i].return_type);
+                cJSON_AddStringToObject(helper, "parameters", g_c_metadata.helper_functions[i].parameters);
+                cJSON_AddStringToObject(helper, "body", g_c_metadata.helper_functions[i].body);
+                cJSON_AddNumberToObject(helper, "line_number", g_c_metadata.helper_functions[i].line_number);
+                cJSON_AddItemToArray(helpers, helper);
+            }
+            cJSON_AddItemToObject(c_metadata, "helper_functions", helpers);
+        }
+
+        // Add preprocessor_directives array
+        if (g_c_metadata.preprocessor_directive_count > 0) {
+            cJSON* directives = cJSON_CreateArray();
+            for (size_t i = 0; i < g_c_metadata.preprocessor_directive_count; i++) {
+                cJSON* dir = cJSON_CreateObject();
+                cJSON_AddStringToObject(dir, "directive_type", g_c_metadata.preprocessor_directives[i].directive_type);
+                if (g_c_metadata.preprocessor_directives[i].condition) {
+                    cJSON_AddStringToObject(dir, "condition", g_c_metadata.preprocessor_directives[i].condition);
+                }
+                if (g_c_metadata.preprocessor_directives[i].value) {
+                    cJSON_AddStringToObject(dir, "value", g_c_metadata.preprocessor_directives[i].value);
+                }
+                cJSON_AddNumberToObject(dir, "line_number", g_c_metadata.preprocessor_directives[i].line_number);
+                cJSON_AddItemToArray(directives, dir);
+            }
+            cJSON_AddItemToObject(c_metadata, "preprocessor_directives", directives);
+        }
+
+        // Add source_files array
+        if (g_c_metadata.source_file_count > 0) {
+            cJSON* files = cJSON_CreateArray();
+            for (size_t i = 0; i < g_c_metadata.source_file_count; i++) {
+                cJSON* file = cJSON_CreateObject();
+                cJSON_AddStringToObject(file, "filename", g_c_metadata.source_files[i].filename);
+                if (g_c_metadata.source_files[i].full_path) {
+                    cJSON_AddStringToObject(file, "full_path", g_c_metadata.source_files[i].full_path);
+                }
+                if (g_c_metadata.source_files[i].content) {
+                    cJSON_AddStringToObject(file, "content", g_c_metadata.source_files[i].content);
+                }
+                cJSON_AddItemToArray(files, file);
+            }
+            cJSON_AddItemToObject(c_metadata, "source_files", files);
+        }
+
+        // Add main_source_file if present
+        if (g_c_metadata.main_source_file) {
+            cJSON_AddStringToObject(c_metadata, "main_source_file", g_c_metadata.main_source_file);
+        }
+
+        cJSON_AddItemToObject(wrapper, "c_metadata", c_metadata);
     }
 
     char* jsonStr = cJSON_Print(wrapper);  // Pretty-printed JSON

@@ -425,6 +425,29 @@ void kryon_animation_set_alternate(IRAnimation* anim, bool alternate);
  */
 void kryon_component_add_animation(IRComponent* c, IRAnimation* anim);
 
+// ============================================================================
+// C Source Metadata API (for round-trip conversion)
+// ============================================================================
+
+void kryon_register_variable(const char* name, const char* type, const char* storage,
+                              const char* initial_value, uint32_t component_id, int line_number);
+
+void kryon_register_event_handler(const char* logic_id, const char* function_name,
+                                   const char* return_type, const char* parameters,
+                                   const char* body, int line_number);
+
+void kryon_register_helper_function(const char* name, const char* return_type,
+                                     const char* parameters, const char* body, int line_number);
+
+void kryon_add_include(const char* include_string, bool is_system, int line_number);
+
+void kryon_add_preprocessor_directive(const char* directive_type, const char* condition,
+                                       const char* value, int line_number);
+
+void kryon_add_source_file(const char* filename, const char* full_path, const char* content);
+
+void kryon_set_main_source_file(const char* filename);
+
 #ifdef __cplusplus
 }
 #endif

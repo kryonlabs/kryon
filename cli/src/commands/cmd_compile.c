@@ -7,6 +7,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ir_core.h"
+#include "ir_kry_parser.h"
+#include "ir_markdown_parser.h"
+#include "ir_html_parser.h"
+#include "ir_serialization.h"
+#include "parsers/c/ir_c_parser.h"
+#include "parsers/tsx/ir_tsx_parser.h"
 
 // Import compile_to_kir from cmd_build.c (we'll need to expose it)
 // For now, duplicate the logic
@@ -14,9 +21,11 @@
 static const char* detect_frontend(const char* source_file) {
     const char* ext = path_extension(source_file);
 
-    if (strcmp(ext, ".tsx") == 0 || strcmp(ext, ".jsx") == 0) return "tsx";
+    if (strcmp(ext, ".kry") == 0) return "kry";
+    else if (strcmp(ext, ".kir") == 0) return "kir";
     else if (strcmp(ext, ".md") == 0) return "markdown";
-    else if (strcmp(ext, ".kry") == 0) return "kry";
+    else if (strcmp(ext, ".html") == 0) return "html";
+    else if (strcmp(ext, ".tsx") == 0 || strcmp(ext, ".jsx") == 0) return "tsx";
     else if (strcmp(ext, ".nim") == 0) return "nim";
     else if (strcmp(ext, ".lua") == 0) return "lua";
     else if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0) return "c";
@@ -26,28 +35,133 @@ static const char* detect_frontend(const char* source_file) {
 static int compile_to_kir(const char* source_file, const char* output_kir, const char* frontend) {
     printf("Compiling %s → %s (frontend: %s)\n", source_file, output_kir, frontend);
 
-    if (strcmp(frontend, "markdown") == 0) {
-        char cmd[2048];
-        snprintf(cmd, sizeof(cmd),
-                 "kryon compile \"%s\" 2>&1 | grep -q 'KIR generated' && mv .kryon_cache/*.kir \"%s\" 2>/dev/null || kryon compile \"%s\" > /dev/null 2>&1",
-                 source_file, output_kir, source_file);
+    if (strcmp(frontend, "markdown") == 0 || strcmp(frontend, "html") == 0 || strcmp(frontend, "kry") == 0) {
+        // Read the source file
+        FILE* f = fopen(source_file, "r");
+        if (!f) {
+            fprintf(stderr, "Error: Failed to open %s\n", source_file);
+            return 1;
+        }
 
-        system(cmd);
-        return file_exists(output_kir) ? 0 : 1;
+        fseek(f, 0, SEEK_END);
+        long size = ftell(f);
+        fseek(f, 0, SEEK_SET);
+
+        char* source = (char*)malloc(size + 1);
+        if (!source) {
+            fprintf(stderr, "Error: Out of memory\n");
+            fclose(f);
+            return 1;
+        }
+
+        fread(source, 1, size, f);
+        source[size] = '\0';
+        fclose(f);
+
+        // Convert to KIR JSON based on frontend type
+        char* json = NULL;
+        if (strcmp(frontend, "kry") == 0) {
+            IRComponent* root = ir_kry_parse(source, size);
+            if (!root) {
+                fprintf(stderr, "Error: Failed to parse %s\n", source_file);
+                free(source);
+                return 1;
+            }
+            json = ir_serialize_json_v2(root);
+            ir_destroy_component(root);
+        } else if (strcmp(frontend, "markdown") == 0) {
+            json = ir_markdown_to_kir(source, size);
+        } else if (strcmp(frontend, "html") == 0) {
+            json = ir_html_to_kir(source, size);
+        }
+
+        free(source);
+
+        if (!json) {
+            fprintf(stderr, "Error: Failed to convert %s to KIR\n", source_file);
+            return 1;
+        }
+
+        // Write to output file
+        FILE* out = fopen(output_kir, "w");
+        if (!out) {
+            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
+            free(json);
+            return 1;
+        }
+
+        fprintf(out, "%s\n", json);
+        fclose(out);
+
+        free(json);
+        return 0;
     }
     else if (strcmp(frontend, "tsx") == 0 || strcmp(frontend, "jsx") == 0) {
-        char cmd[2048];
-        snprintf(cmd, sizeof(cmd),
-                 "bun run /mnt/storage/Projects/kryon/cli_nim_backup/tsx_to_kir.ts \"%s\" > \"%s\"",
-                 source_file, output_kir);
+        // Use C TSX parser (takes file path directly)
+        char* json = ir_tsx_file_to_kir(source_file);
 
-        char* output = NULL;
-        int result = process_run(cmd, &output);
-        if (output && strlen(output) > 0) {
-            fprintf(stderr, "%s", output);
-            free(output);
+        if (!json) {
+            fprintf(stderr, "Error: Failed to convert %s to KIR\n", source_file);
+            return 1;
         }
-        return result;
+
+        // Write to output file
+        FILE* out = fopen(output_kir, "w");
+        if (!out) {
+            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
+            free(json);
+            return 1;
+        }
+
+        fprintf(out, "%s\n", json);
+        fclose(out);
+
+        free(json);
+        return 0;
+    }
+    else if (strcmp(frontend, "c") == 0) {
+        // Use C parser (compile-and-execute approach, takes file path directly)
+        char* json = ir_c_file_to_kir(source_file);
+
+        if (!json) {
+            fprintf(stderr, "Error: Failed to convert %s to KIR\n", source_file);
+            return 1;
+        }
+
+        // Write to output file
+        FILE* out = fopen(output_kir, "w");
+        if (!out) {
+            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
+            free(json);
+            return 1;
+        }
+
+        fprintf(out, "%s\n", json);
+        fclose(out);
+
+        free(json);
+        return 0;
+    }
+    else if (strcmp(frontend, "nim") == 0 || strcmp(frontend, "lua") == 0) {
+        fprintf(stderr, "Error: %s is not an input format\n",
+                frontend[0] == 'n' ? "Nim" : "Lua");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "%s is an OUTPUT format generated by the codegen:\n",
+                frontend[0] == 'n' ? "Nim" : "Lua");
+        fprintf(stderr, "  kryon codegen %s <input.kir> <output.%s>\n\n",
+                frontend, frontend);
+        fprintf(stderr, "Input formats (frontends):\n");
+        fprintf(stderr, "  .kry        - Kryon DSL\n");
+        fprintf(stderr, "  .md         - Markdown documents\n");
+        fprintf(stderr, "  .html       - HTML documents\n");
+        fprintf(stderr, "  .tsx, .jsx  - TypeScript/JavaScript with JSX\n");
+        fprintf(stderr, "  .c          - C source with Kryon API\n");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "Output formats (codegens):\n");
+        fprintf(stderr, "  .nim        - Nim with Kryon DSL\n");
+        fprintf(stderr, "  .lua        - Lua with Kryon API\n");
+        fprintf(stderr, "  .c          - C source code\n");
+        return 1;
     }
     else {
         fprintf(stderr, "Error: Frontend '%s' not yet implemented in compile command\n", frontend);
@@ -73,7 +187,7 @@ int cmd_compile(int argc, char** argv) {
     const char* frontend = detect_frontend(source_file);
     if (!frontend) {
         fprintf(stderr, "Error: Could not detect frontend for %s\n", source_file);
-        fprintf(stderr, "Supported extensions: .md, .tsx, .jsx, .kry, .nim, .lua, .c\n");
+        fprintf(stderr, "Supported extensions: .kry, .kir, .md, .html, .tsx, .jsx, .nim, .lua, .c\n");
         return 1;
     }
 

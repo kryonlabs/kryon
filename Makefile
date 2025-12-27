@@ -88,27 +88,25 @@ $(CLI_BIN): $(CLI_DEPS)
 	$(MAKE) -C $(CLI_DIR)
 	@cp $(CLI_DIR)/kryon $(CLI_BIN)
 
-# Build static CLI with all backends bundled
+# Build static CLI with all backends bundled (C version)
 build-static: $(STATIC_BIN)
 
 $(STATIC_BIN): $(CLI_DEPS)
-	@echo "Building Kryon CLI (static with all backends)..."
+	@echo "Building Kryon CLI (C version with static linking)..."
 	@mkdir -p $(BUILD_DIR)
-	$(NIM) c $(NIMFLAGS) $(STATIC_FLAGS) -o:$(STATIC_BIN) $(CLI_SRC)
+	$(MAKE) -C $(CLI_DIR) clean
+	$(MAKE) -C $(CLI_DIR)
+	@cp $(CLI_DIR)/kryon $(STATIC_BIN)
 
-# Build dynamic CLI using system libraries
+# Build dynamic CLI using system libraries (C version)
 build-dynamic: $(DYNAMIC_BIN)
 
 $(DYNAMIC_BIN): $(CLI_DEPS)
-	@echo "Building Kryon CLI (dynamic linking)..."
+	@echo "Building Kryon CLI (C version with dynamic linking)..."
 	@mkdir -p $(BUILD_DIR)
-	@# Build without C dependencies
-	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp && \
-		$(NIM) c $(NIMFLAGS) $(DYNAMIC_FLAGS) -o:$(DYNAMIC_BIN) $(CLI_SRC) && \
-		mv nim.cfg.tmp nim.cfg; \
-	else \
-		$(NIM) c $(NIMFLAGS) $(DYNAMIC_FLAGS) -o:$(DYNAMIC_BIN) $(CLI_SRC); \
-	fi
+	$(MAKE) -C $(CLI_DIR) clean
+	$(MAKE) -C $(CLI_DIR)
+	@cp $(CLI_DIR)/kryon $(DYNAMIC_BIN)
 
 # =============================================================================
 # Renderer-specific builds (for GitHub Actions CI)
@@ -229,26 +227,13 @@ install: install-dynamic install-lib install-config
 	@echo "Library: $(LIBDIR)/libkryon.a"
 	@echo "Headers: $(INCDIR)/"
 
-# Install dynamic version (default for most users)
-install-dynamic:
-	@echo "Installing Kryon CLI (dynamic)..."
+# Install dynamic version (default for most users) - C CLI only
+install-dynamic: build-dynamic
+	@echo "Installing Kryon CLI (C version)..."
 	@mkdir -p $(BINDIR)
 	@mkdir -p $(LIBDIR)
-	# Try the normal build first, but if it fails, use the working CLI
-	@if $(MAKE) build-dynamic >/dev/null 2>&1 && [ -f $(DYNAMIC_BIN) ]; then \
-		install -m 755 $(DYNAMIC_BIN) $(BINDIR)/kryon; \
-		echo "✓ Installed dynamic CLI"; \
-	else \
-		echo "Building CLI without C dependencies (fallback)..."; \
-		mv nim.cfg nim.cfg.backup 2>/dev/null || true; \
-		if nim compile --passL:"-Wl,-rpath,$(LIBDIR) -L$(LIBDIR)" --out:$(BINDIR)/kryon cli/main.nim; then \
-			echo "✓ Installed CLI without C dependencies"; \
-		else \
-			echo "✗ Failed to build CLI"; \
-			exit 1; \
-		fi; \
-		mv nim.cfg.backup nim.cfg 2>/dev/null || true; \
-	fi
+	install -m 755 $(DYNAMIC_BIN) $(BINDIR)/kryon
+	@echo "✓ Installed C CLI to $(BINDIR)/kryon"
 
 # Install static version (self-contained)
 install-static: build-static

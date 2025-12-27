@@ -15,12 +15,6 @@ int cmd_plugin(int argc, char** argv) {
     return 1;
 }
 
-int cmd_codegen(int argc, char** argv) {
-    (void)argc; (void)argv;
-    printf("codegen command not yet implemented\n");
-    return 1;
-}
-
 int cmd_inspect(int argc, char** argv) {
     (void)argc; (void)argv;
     printf("inspect command not yet implemented\n");
