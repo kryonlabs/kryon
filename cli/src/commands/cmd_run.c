@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
 int cmd_run(int argc, char** argv) {
     const char* target_file = NULL;
@@ -60,10 +61,42 @@ int cmd_run(int argc, char** argv) {
     }
 
     // Delegate to Nim CLI for full feature parity
-    char cmd[4096];
-    snprintf(cmd, sizeof(cmd), "exec /mnt/storage/Projects/kryon/build/kryon run \"%s\"", target_file);
+    const char* nim_binary = "/mnt/storage/Projects/kryon/build/kryon";
 
+    // Check if Nim binary exists
+    if (!file_exists(nim_binary)) {
+        fprintf(stderr, "Error: Nim CLI not found at %s\n", nim_binary);
+        fprintf(stderr, "Run 'make build' in the Kryon repository to compile it\n");
+        if (argc < 1) free((char*)target_file);
+        return 1;
+    }
+
+    // Verbose logging
+    bool verbose = (getenv("KRYON_VERBOSE") != NULL);
+    if (verbose) {
+        printf("[kryon run] Target: %s\n", target_file);
+        printf("[kryon run] Binary: %s\n", nim_binary);
+    }
+
+    // Run command (removed 'exec' to preserve stdout/stderr)
+    // Note: Using system() instead of process_run() because GUI apps block in event loop
+    char cmd[4096];
+    snprintf(cmd, sizeof(cmd), "\"%s\" run \"%s\"", nim_binary, target_file);
+
+    if (verbose) {
+        printf("[kryon run] Executing: %s\n", cmd);
+    }
+
+    // Run and let output pass through directly
     int result = system(cmd);
+
+    // Show error message on failure
+    if (result != 0) {
+        int exit_code = WIFEXITED(result) ? WEXITSTATUS(result) : -1;
+        if (exit_code != 0) {
+            fprintf(stderr, "\nError: Command failed with exit code %d\n", exit_code);
+        }
+    }
 
     if (argc < 1) free((char*)target_file);
     return result;

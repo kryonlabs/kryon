@@ -134,15 +134,42 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
 
     /* Initialize SDL3 and TTF */
     if (!SDL_Init(SDL_INIT_VIDEO)) {
-        printf("Failed to initialize SDL3: %s\n", SDL_GetError());
+        fprintf(stderr, "\n╔════════════════════════════════════════════════════════════╗\n");
+        fprintf(stderr, "║         SDL3 Initialization Failed                       ║\n");
+        fprintf(stderr, "╚════════════════════════════════════════════════════════════╝\n\n");
+        fprintf(stderr, "Error: %s\n\n", SDL_GetError());
+        fprintf(stderr, "Possible solutions:\n\n");
+        fprintf(stderr, "  1. Install SDL3 library:\n");
+        fprintf(stderr, "     • Ubuntu/Debian: sudo apt install libsdl3-dev\n");
+        fprintf(stderr, "     • Fedora:        sudo dnf install SDL3-devel\n");
+        fprintf(stderr, "     • Arch Linux:    sudo pacman -S sdl3\n");
+        fprintf(stderr, "     • macOS:         brew install sdl3\n\n");
+        fprintf(stderr, "  2. Check display environment:\n");
+        fprintf(stderr, "     • X11:    echo $DISPLAY     (should show :0 or similar)\n");
+        fprintf(stderr, "     • Wayland: echo $WAYLAND_DISPLAY\n\n");
+        fprintf(stderr, "  3. For Wayland, try:\n");
+        fprintf(stderr, "     export SDL_VIDEODRIVER=wayland\n\n");
+        fprintf(stderr, "  4. For headless/CI environments:\n");
+        fprintf(stderr, "     xvfb-run kryon run <file>\n\n");
         return false;
     }
 
     if (!TTF_Init()) {
-        printf("Failed to initialize SDL_ttf: %s\n", SDL_GetError());
+        fprintf(stderr, "\n╔════════════════════════════════════════════════════════════╗\n");
+        fprintf(stderr, "║         SDL_ttf Initialization Failed                    ║\n");
+        fprintf(stderr, "╚════════════════════════════════════════════════════════════╝\n\n");
+        fprintf(stderr, "Error: %s\n\n", SDL_GetError());
+        fprintf(stderr, "Possible solutions:\n\n");
+        fprintf(stderr, "  1. Install SDL3_ttf library:\n");
+        fprintf(stderr, "     • Ubuntu/Debian: sudo apt install libsdl3-ttf-dev\n");
+        fprintf(stderr, "     • Fedora:        sudo dnf install SDL3_ttf-devel\n");
+        fprintf(stderr, "     • Arch Linux:    sudo pacman -S sdl3_ttf\n");
+        fprintf(stderr, "     • macOS:         brew install sdl3_ttf\n\n");
         SDL_Quit();
         return false;
     }
+
+    printf("[renderer] SDL3 initialized successfully\n");
 
     /* Flush stale events */
     SDL_PumpEvents();
@@ -161,21 +188,39 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
     );
 
     if (!renderer->window) {
-        printf("Failed to create window: %s\n", SDL_GetError());
+        fprintf(stderr, "\n╔════════════════════════════════════════════════════════════╗\n");
+        fprintf(stderr, "║         Window Creation Failed                           ║\n");
+        fprintf(stderr, "╚════════════════════════════════════════════════════════════╝\n\n");
+        fprintf(stderr, "Error: %s\n\n", SDL_GetError());
+        fprintf(stderr, "Possible causes:\n");
+        fprintf(stderr, "  • Display not available (check $DISPLAY)\n");
+        fprintf(stderr, "  • Running in headless environment without Xvfb\n");
+        fprintf(stderr, "  • Video driver issues\n\n");
         TTF_Quit();
         SDL_Quit();
         return false;
     }
 
+    printf("[renderer] Window created: %dx%d\n", renderer->config.window_width, renderer->config.window_height);
+
     /* Create renderer */
     renderer->renderer = SDL_CreateRenderer(renderer->window, NULL);
     if (!renderer->renderer) {
-        printf("Failed to create renderer: %s\n", SDL_GetError());
+        fprintf(stderr, "\n╔════════════════════════════════════════════════════════════╗\n");
+        fprintf(stderr, "║         Renderer Creation Failed                         ║\n");
+        fprintf(stderr, "╚════════════════════════════════════════════════════════════╝\n\n");
+        fprintf(stderr, "Error: %s\n\n", SDL_GetError());
+        fprintf(stderr, "Possible causes:\n");
+        fprintf(stderr, "  • Graphics driver issues\n");
+        fprintf(stderr, "  • Incompatible OpenGL version\n");
+        fprintf(stderr, "  • Try software rendering: export SDL_RENDER_DRIVER=software\n\n");
         SDL_DestroyWindow(renderer->window);
         TTF_Quit();
         SDL_Quit();
         return false;
     }
+
+    printf("[renderer] SDL renderer created successfully\n");
 
     /* Configure rendering */
     if (renderer->config.vsync_enabled) {
