@@ -1,7 +1,7 @@
 #ifndef SDL3_AUDIO_BACKEND_H
 #define SDL3_AUDIO_BACKEND_H
 
-#include "../ir/ir_audio.h"
+#include "../../ir/ir_audio.h"
 
 #ifdef __cplusplus
 extern "C" {
