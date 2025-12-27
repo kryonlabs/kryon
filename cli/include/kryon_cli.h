@@ -127,6 +127,9 @@ typedef struct {
     // Plugins
     PluginDep* plugins;
     int plugins_count;
+
+    // Desktop renderer configuration
+    char* desktop_renderer;  // "sdl3" or "raylib"
 } KryonConfig;
 
 KryonConfig* config_load(const char* config_path);

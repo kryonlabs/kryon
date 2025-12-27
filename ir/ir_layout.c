@@ -323,14 +323,13 @@ static float ir_get_component_intrinsic_height_impl(IRComponent* component) {
 float ir_get_component_intrinsic_height(IRComponent* component) {
     if (!component) return 0.0f;
 
-    fprintf(stderr, "🔶 ir_get_component_intrinsic_height called: type=%d\n", component->type);
+    fprintf(stderr, "🔶 ir_get_component_intrinsic_height called: type=%d dirty=%d cached=%.1f\n",
+           component->type, component->layout_cache.dirty, component->layout_cache.cached_intrinsic_height);
 
     // Check cache (use >= 0 since -1.0f means not cached)
     if (!component->layout_cache.dirty && component->layout_cache.cached_intrinsic_height >= 0.0f) {
-        #ifdef KRYON_TRACE_LAYOUT
         fprintf(stderr, "📋 CACHE HIT for component %u (type=%d): returning cached height %.1f\n",
             component->id, component->type, component->layout_cache.cached_intrinsic_height);
-        #endif
         return component->layout_cache.cached_intrinsic_height;
     }
 
@@ -1831,12 +1830,14 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     // For components with intrinsic sizing (Text, Button, etc), use intrinsic size if no explicit height
     bool has_intrinsic_size = (c->type == IR_COMPONENT_TEXT || c->type == IR_COMPONENT_BUTTON ||
                                c->type == IR_COMPONENT_INPUT || c->type == IR_COMPONENT_CHECKBOX);
+    bool used_intrinsic_height = false;
     if (getenv("KRYON_DEBUG_TEXT") && has_intrinsic_size) {
         fprintf(stderr, "[INTRINSIC CHECK] type=%d has_intrinsic=%d height_type=%d\n",
                c->type, has_intrinsic_size, c->style ? c->style->height.type : -1);
     }
     if (has_intrinsic_size && (!c->style || c->style->height.type != IR_DIMENSION_PX)) {
         own_height = ir_get_component_intrinsic_height(c);
+        used_intrinsic_height = true;  // Mark that we used intrinsic height
         if (getenv("KRYON_DEBUG_TEXT")) {
             fprintf(stderr, "[INTRINSIC HEIGHT] Got height=%.1f for type=%d\n", own_height, c->type);
         }
@@ -1899,6 +1900,12 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                     child_x += layout->flex.gap;
                 }
             } else {
+                if (getenv("KRYON_DEBUG_TEXT")) {
+                    fprintf(stderr, "[COLUMN LAYOUT] child %d: height=%.1f, advancing child_y from %.1f to %.1f, gap=%.1f\n",
+                           i, child->layout_state->computed.height, child_y,
+                           child_y + child->layout_state->computed.height,
+                           layout ? layout->flex.gap : 0.0f);
+                }
                 child_y += child->layout_state->computed.height;
                 // Apply gap if set
                 if (layout && layout->flex.gap > 0 && i < c->child_count - 1) {
@@ -1909,6 +1916,7 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     }
 
     // Finalize AUTO dimensions based on direction
+    // IMPORTANT: Don't override intrinsic sizing for leaf components!
     if (width_auto) {
         own_width = is_row ? total_child_width : max_child_width;
         // Add gaps for row layout
@@ -1918,7 +1926,8 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         // Add padding to auto width
         own_width += pad_left + pad_right;
     }
-    if (height_auto) {
+    if (height_auto && !used_intrinsic_height) {
+        // Only calculate height from children if we didn't use intrinsic height
         own_height = is_row ? max_child_height : total_child_height;
         // Add gaps for column layout
         if (!is_row && layout && layout->flex.gap > 0 && c->child_count > 1) {
@@ -1936,8 +1945,9 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
 
     // DEBUG: Print layout positions for Text components
     if (c->type == IR_COMPONENT_TEXT && c->text_content && getenv("KRYON_DEBUG_TEXT")) {
-        fprintf(stderr, "[TEXT LAYOUT] \"%s\" x=%.1f y=%.1f w=%.1f h=%.1f\n",
-               c->text_content, parent_x, parent_y, own_width, own_height);
+        fprintf(stderr, "[TEXT LAYOUT] \"%s\" x=%.1f y=%.1f w=%.1f h=%.1f (own_height=%.1f computed=%.1f)\n",
+               c->text_content, parent_x, parent_y, own_width, own_height, own_height,
+               c->layout_state->computed.height);
     }
 
     // Mark layout as valid

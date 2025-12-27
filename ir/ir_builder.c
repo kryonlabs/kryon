@@ -1062,6 +1062,26 @@ void ir_set_border(IRStyle* style, float width, uint8_t r, uint8_t g, uint8_t b,
     style->border.radius = radius;
 }
 
+// Individual border property setters (preserve other properties)
+void ir_set_border_width(IRStyle* style, float width) {
+    if (!style) return;
+    style->border.width = width;
+}
+
+void ir_set_border_radius(IRStyle* style, uint8_t radius) {
+    if (!style) return;
+    style->border.radius = radius;
+}
+
+void ir_set_border_color(IRStyle* style, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    if (!style) return;
+    style->border.color.type = IR_COLOR_SOLID;
+    style->border.color.data.r = r;
+    style->border.color.data.g = g;
+    style->border.color.data.b = b;
+    style->border.color.data.a = a;
+}
+
 void ir_set_margin(IRComponent* component, float top, float right, float bottom, float left) {
     if (!component || !component->style) return;
     component->style->margin.top = top;
@@ -1096,6 +1116,39 @@ void ir_set_font(IRStyle* style, float size, const char* family, uint8_t r, uint
     style->font.color.data.g = g;
     style->font.color.data.b = b;
     style->font.color.data.a = a;
+    style->font.bold = bold;
+    style->font.italic = italic;
+}
+
+// Individual font property setters (preserve other properties)
+void ir_set_font_size(IRStyle* style, float size) {
+    if (!style) return;
+    style->font.size = size;
+}
+
+void ir_set_font_family(IRStyle* style, const char* family) {
+    if (!style) return;
+
+    // Free old font family before replacing
+    if (style->font.family) {
+        free((void*)style->font.family);
+        style->font.family = NULL;
+    }
+
+    style->font.family = family ? strdup(family) : NULL;
+}
+
+void ir_set_font_color(IRStyle* style, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    if (!style) return;
+    style->font.color.type = IR_COLOR_SOLID;
+    style->font.color.data.r = r;
+    style->font.color.data.g = g;
+    style->font.color.data.b = b;
+    style->font.color.data.a = a;
+}
+
+void ir_set_font_style(IRStyle* style, bool bold, bool italic) {
+    if (!style) return;
     style->font.bold = bold;
     style->font.italic = italic;
 }

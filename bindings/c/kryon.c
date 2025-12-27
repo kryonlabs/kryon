@@ -532,7 +532,7 @@ void kryon_set_color(IRComponent* c, uint32_t color) {
     uint8_t b = color & 0xFF;
     uint8_t a = (color >> 24) & 0xFF;
     if (a == 0) a = 255;
-    ir_set_font(style, 0, NULL, r, g, b, a, false, false);  // Color only
+    ir_set_font_color(style, r, g, b, a);
 }
 
 void kryon_set_border_color(IRComponent* c, uint32_t color) {
@@ -543,7 +543,7 @@ void kryon_set_border_color(IRComponent* c, uint32_t color) {
     uint8_t b = color & 0xFF;
     uint8_t a = (color >> 24) & 0xFF;
     if (a == 0) a = 255;
-    ir_set_border(style, 0, r, g, b, a, 0);  // Color only, preserve width and radius
+    ir_set_border_color(style, r, g, b, a);
 }
 
 // ============================================================================
@@ -583,13 +583,13 @@ void kryon_set_gap(IRComponent* c, float value) {
 void kryon_set_font_size(IRComponent* c, float size) {
     if (!c) return;
     IRStyle* style = get_or_create_style(c);
-    ir_set_font(style, size, NULL, 0, 0, 0, 0, false, false);
+    ir_set_font_size(style, size);
 }
 
 void kryon_set_font_family(IRComponent* c, const char* family) {
     if (!c || !family) return;
     IRStyle* style = get_or_create_style(c);
-    ir_set_font(style, 0, family, 0, 0, 0, 0, false, false);
+    ir_set_font_family(style, family);
 }
 
 void kryon_set_font_weight(IRComponent* c, uint16_t weight) {
@@ -601,13 +601,13 @@ void kryon_set_font_weight(IRComponent* c, uint16_t weight) {
 void kryon_set_font_bold(IRComponent* c, bool bold) {
     if (!c) return;
     IRStyle* style = get_or_create_style(c);
-    ir_set_font(style, 0, NULL, 0, 0, 0, 0, bold, false);
+    ir_set_font_style(style, bold, style->font.italic);
 }
 
 void kryon_set_font_italic(IRComponent* c, bool italic) {
     if (!c) return;
     IRStyle* style = get_or_create_style(c);
-    ir_set_font(style, 0, NULL, 0, 0, 0, 0, false, italic);
+    ir_set_font_style(style, style->font.bold, italic);
 }
 
 void kryon_set_line_height(IRComponent* c, float line_height) {
@@ -635,13 +635,13 @@ void kryon_set_text_align(IRComponent* c, IRTextAlign align) {
 void kryon_set_border_width(IRComponent* c, float width) {
     if (!c) return;
     IRStyle* style = get_or_create_style(c);
-    ir_set_border(style, width, 0, 0, 0, 0, 0);  // Width only
+    ir_set_border_width(style, width);
 }
 
 void kryon_set_border_radius(IRComponent* c, float radius) {
     if (!c) return;
     IRStyle* style = get_or_create_style(c);
-    ir_set_border(style, 0, 0, 0, 0, 0, (uint8_t)radius);  // Radius only
+    ir_set_border_radius(style, (uint8_t)radius);
 }
 
 // ============================================================================

@@ -9,7 +9,8 @@
 #include <string.h>
 
 // Global trait registry - maps component types to their layout traits
-static IRLayoutTrait* g_layout_traits[IR_COMPONENT_CUSTOM + 1] = {0};
+// NOTE: Must NOT be static - needs to be shared across all shared library users
+IRLayoutTrait* g_layout_traits[IR_COMPONENT_CUSTOM + 1] = {0};
 
 void ir_layout_register_trait(IRComponentType type, const IRLayoutTrait* trait) {
     if (type < 0 || type > IR_COMPONENT_CUSTOM) {
@@ -20,8 +21,8 @@ void ir_layout_register_trait(IRComponentType type, const IRLayoutTrait* trait) 
     g_layout_traits[type] = (IRLayoutTrait*)trait;
 
     if (getenv("KRYON_DEBUG_REGISTRY")) {
-        fprintf(stderr, "[Registry] Registered trait for type %d: %s\n",
-                type, trait ? trait->name : "NULL");
+        fprintf(stderr, "[Registry] Registered trait for type %d: %s (array=%p, stored=%p)\n",
+                type, trait ? trait->name : "NULL", (void*)g_layout_traits, (void*)g_layout_traits[type]);
     }
 }
 
@@ -56,6 +57,12 @@ void ir_layout_dispatch(IRComponent* c, IRLayoutConstraints constraints,
     IRLayoutTrait* trait = (c->type >= 0 && c->type <= IR_COMPONENT_CUSTOM)
                           ? g_layout_traits[c->type]
                           : NULL;
+
+    if (getenv("KRYON_DEBUG_REGISTRY")) {
+        fprintf(stderr, "[Registry] Dispatch for type %d: trait=%p, has_func=%d (array=%p, stored=%p)\n",
+                c->type, (void*)trait, trait && trait->layout_component ? 1 : 0,
+                (void*)g_layout_traits, (void*)g_layout_traits[c->type]);
+    }
 
     if (trait && trait->layout_component) {
         // Dispatch to component-specific layout

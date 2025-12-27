@@ -39,9 +39,16 @@ void ir_set_height(IRComponent* component, IRDimensionType type, float value);
 void ir_set_visible(IRStyle* style, bool visible);
 void ir_set_background_color(IRStyle* style, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 void ir_set_border(IRStyle* style, float width, uint8_t r, uint8_t g, uint8_t b, uint8_t a, uint8_t radius);
+void ir_set_border_width(IRStyle* style, float width);
+void ir_set_border_radius(IRStyle* style, uint8_t radius);
+void ir_set_border_color(IRStyle* style, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 void ir_set_margin(IRComponent* component, float top, float right, float bottom, float left);
 void ir_set_padding(IRComponent* component, float top, float right, float bottom, float left);
 void ir_set_font(IRStyle* style, float size, const char* family, uint8_t r, uint8_t g, uint8_t b, uint8_t a, bool bold, bool italic);
+void ir_set_font_size(IRStyle* style, float size);
+void ir_set_font_family(IRStyle* style, const char* family);
+void ir_set_font_color(IRStyle* style, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+void ir_set_font_style(IRStyle* style, bool bold, bool italic);
 void ir_set_z_index(IRStyle* style, uint32_t z_index);
 
 // Style Variable Reference Setters (for theme support)

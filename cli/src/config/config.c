@@ -27,6 +27,7 @@ static KryonConfig* config_create_default(void) {
     config->dev_port = 3000;
     config->dev_auto_open = true;
     config->docs_enabled = false;
+    config->desktop_renderer = str_copy("sdl3");  // Default to SDL3
 
     return config;
 }
@@ -305,6 +306,13 @@ KryonConfig* config_load(const char* config_path) {
         config->docs_directory = str_copy(docs_dir);
     }
 
+    // Parse desktop renderer
+    const char* renderer = toml_get_string(toml, "desktop.renderer", NULL);
+    if (renderer) {
+        free(config->desktop_renderer);
+        config->desktop_renderer = str_copy(renderer);
+    }
+
     // Parse plugins
     config_parse_plugins(config, toml);
 
@@ -428,6 +436,16 @@ bool config_validate(KryonConfig* config) {
         }
     }
 
+    // Validate desktop.renderer value
+    if (config->desktop_renderer) {
+        if (strcmp(config->desktop_renderer, "sdl3") != 0 &&
+            strcmp(config->desktop_renderer, "raylib") != 0) {
+            fprintf(stderr, "Error: Invalid desktop.renderer '%s'\n", config->desktop_renderer);
+            fprintf(stderr, "       Valid values: sdl3, raylib\n");
+            has_errors = true;
+        }
+    }
+
     return !has_errors;
 }
 
@@ -446,6 +464,7 @@ void config_free(KryonConfig* config) {
     free(config->build_entry);
     free(config->build_frontend);
     free(config->docs_directory);
+    free(config->desktop_renderer);
 
     if (config->build_targets) {
         for (int i = 0; i < config->build_targets_count; i++) {

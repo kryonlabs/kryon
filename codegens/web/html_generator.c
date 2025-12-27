@@ -14,9 +14,9 @@
 
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_plugin.h"
+#include "../../ir/ir_logic.h"
 #include "html_generator.h"
 #include "css_generator.h"
-#include "svg_generator.h"
 
 // HTML tag mapping
 typedef struct {
@@ -434,6 +434,7 @@ HTMLGenerator* html_generator_create_with_options(HtmlGeneratorOptions options) 
     generator->indent_level = 0;
     generator->pretty_print = !options.minify;
     generator->options = options;
+    generator->logic_block = NULL;
 
     return generator;
 }
@@ -745,8 +746,105 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             break;
     }
 
-    // Add event handlers (skip in transpilation mode - no JS needed)
-    if (generator->options.mode == HTML_MODE_DISPLAY) {
+    // Add event handlers from logic_block (transpile mode) or legacy IREvent (display mode)
+    if (generator->options.mode == HTML_MODE_TRANSPILE && generator->logic_block) {
+        // Transpile mode: lookup handlers from logic_block
+        const char* handler_name = ir_logic_block_get_handler(generator->logic_block, component->id, "click");
+        if (handler_name) {
+            IRLogicFunction* func = ir_logic_block_find_function(generator->logic_block, handler_name);
+            if (func && func->source_count > 0) {
+                // Get JavaScript source (prefer javascript, fallback to first available)
+                const char* source = NULL;
+                for (int i = 0; i < func->source_count; i++) {
+                    if (strcmp(func->sources[i].language, "javascript") == 0) {
+                        source = func->sources[i].source;
+                        break;
+                    }
+                }
+                if (!source && func->source_count > 0) {
+                    source = func->sources[0].source;
+                }
+
+                if (source) {
+                    // Escape quotes in handler source
+                    char escaped_source[1024];
+                    const char* src = source;
+                    char* dst = escaped_source;
+                    while (*src && (dst - escaped_source) < sizeof(escaped_source) - 2) {
+                        if (*src == '"') {
+                            *dst++ = '&';
+                            *dst++ = 'q';
+                            *dst++ = 'u';
+                            *dst++ = 'o';
+                            *dst++ = 't';
+                            *dst++ = ';';
+                            src++;
+                        } else if (*src == '\'') {
+                            *dst++ = '&';
+                            *dst++ = '#';
+                            *dst++ = 'x';
+                            *dst++ = '2';
+                            *dst++ = '7';
+                            *dst++ = ';';
+                            src++;
+                        } else {
+                            *dst++ = *src++;
+                        }
+                    }
+                    *dst = '\0';
+
+                    html_generator_write_format(generator, " onclick=\"%s\"", escaped_source);
+                }
+            }
+        }
+
+        // Check for other event types
+        const char* change_handler = ir_logic_block_get_handler(generator->logic_block, component->id, "change");
+        if (change_handler) {
+            IRLogicFunction* func = ir_logic_block_find_function(generator->logic_block, change_handler);
+            if (func && func->source_count > 0) {
+                const char* source = NULL;
+                for (int i = 0; i < func->source_count; i++) {
+                    if (strcmp(func->sources[i].language, "javascript") == 0) {
+                        source = func->sources[i].source;
+                        break;
+                    }
+                }
+                if (!source) source = func->sources[0].source;
+
+                if (source) {
+                    char escaped_source[1024];
+                    const char* src = source;
+                    char* dst = escaped_source;
+                    while (*src && (dst - escaped_source) < sizeof(escaped_source) - 2) {
+                        if (*src == '"') {
+                            *dst++ = '&';
+                            *dst++ = 'q';
+                            *dst++ = 'u';
+                            *dst++ = 'o';
+                            *dst++ = 't';
+                            *dst++ = ';';
+                            src++;
+                        } else if (*src == '\'') {
+                            *dst++ = '&';
+                            *dst++ = '#';
+                            *dst++ = 'x';
+                            *dst++ = '2';
+                            *dst++ = '7';
+                            *dst++ = ';';
+                            src++;
+                        } else {
+                            *dst++ = *src++;
+                        }
+                    }
+                    *dst = '\0';
+
+                    html_generator_write_format(generator, " onchange=\"%s\"", escaped_source);
+                }
+            }
+        }
+    } else if (generator->options.mode == HTML_MODE_DISPLAY) {
+        // Display mode: use legacy IREvent system
         for (IREvent* event = component->events; event; event = event->next) {
             switch (event->type) {
                 case IR_EVENT_CLICK:
@@ -870,6 +968,21 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
     html_generator_write_string(generator, "</body>\n</html>\n");
 
     return generator->output_buffer;
+}
+
+const char* html_generator_generate_with_logic(HTMLGenerator* generator, IRComponent* root, IRLogicBlock* logic_block) {
+    if (!generator || !root) return NULL;
+
+    // Set logic_block in generator context
+    generator->logic_block = logic_block;
+
+    // Use the main generate function
+    const char* result = html_generator_generate(generator, root);
+
+    // Clear logic_block after generation
+    generator->logic_block = NULL;
+
+    return result;
 }
 
 bool html_generator_write_to_file(HTMLGenerator* generator, IRComponent* root, const char* filename) {

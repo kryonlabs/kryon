@@ -7,6 +7,7 @@
 // Desktop Rendering Backend Types
 typedef enum {
     DESKTOP_BACKEND_SDL3,
+    DESKTOP_BACKEND_RAYLIB,
     DESKTOP_BACKEND_GLFW,
     DESKTOP_BACKEND_WIN32,
     DESKTOP_BACKEND_COCOA,
