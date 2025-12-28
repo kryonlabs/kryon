@@ -283,6 +283,11 @@ end
 --- @param kir_filepath string Path to .kir file
 --- @return table Application instance ready to run
 function Runtime.loadKIR(kir_filepath)
+  io.stderr:write("==============================================\n")
+  io.stderr:write("[RUNTIME.LOADKIR] FUNCTION CALLED!\n")
+  io.stderr:write("==============================================\n")
+  io.stderr:flush()
+
   -- Load the KIR file (parses metadata into g_ir_context)
   local root = C.ir_read_json_file(kir_filepath)
   if root == nil then

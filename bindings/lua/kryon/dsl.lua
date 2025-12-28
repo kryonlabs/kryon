@@ -272,10 +272,56 @@ local function applyProperties(component, props)
     return layout
   end
 
+  -- IMPORTANT: Process event handlers in FIXED ORDER first to ensure deterministic handler IDs
+  -- This prevents handler ID mismatches between compilation and Runtime.loadKIR re-execution
+  local event_handler_keys = {"onClick", "onTextChange", "onDraw", "onUpdate", "onHover", "onFocus"}
+  for _, key in ipairs(event_handler_keys) do
+    local value = props[key]
+    if value ~= nil and type(value) == "function" then
+      if key == "onClick" then
+        io.stderr:write("📝 Registering onClick handler for component\n")
+        local handlerId = runtime.registerHandler(component, C.IR_EVENT_CLICK, value)
+        io.stderr:write(string.format("   Handler ID: %d", handlerId) .. "\n")
+
+      elseif key == "onTextChange" then
+        io.stderr:write("📝 Registering onTextChange handler for Input component\n")
+        local handlerId = runtime.registerHandler(component, C.IR_EVENT_TEXT_CHANGE, value)
+        io.stderr:write(string.format("   Handler ID: %d", handlerId) .. "\n")
+
+      elseif key == "onDraw" then
+        -- Get canvas_draw event type from plugin registry
+        local event_type_id = C.ir_plugin_get_event_type_id("canvas_draw")
+        if event_type_id == 0 then
+          error("canvas_draw event type not registered - is canvas plugin loaded?")
+        end
+        runtime.registerHandler(component, event_type_id, value)
+
+      elseif key == "onUpdate" then
+        -- Get canvas_update event type from plugin registry
+        local event_type_id = C.ir_plugin_get_event_type_id("canvas_update")
+        if event_type_id == 0 then
+          error("canvas_update event type not registered - is canvas plugin loaded?")
+        end
+        runtime.registerHandler(component, event_type_id, value)
+
+      elseif key == "onHover" then
+        runtime.registerHandler(component, C.IR_EVENT_HOVER, value)
+
+      elseif key == "onFocus" then
+        runtime.registerHandler(component, C.IR_EVENT_FOCUS, value)
+      end
+    end
+  end
+
   -- Process each property
   for key, value in pairs(props) do
     -- Skip array indices (children)
     if type(key) == "number" then
+      goto continue
+    end
+
+    -- Skip event handlers (already processed above)
+    if key == "onClick" or key == "onTextChange" or key == "onDraw" or key == "onUpdate" or key == "onHover" or key == "onFocus" then
       goto continue
     end
 
@@ -413,40 +459,8 @@ local function applyProperties(component, props)
     elseif key == "borderRadius" then
       C.ir_set_border(ensureStyle(), 1, 0, 0, 0, 255, tonumber(value) or 0)
 
-    -- ========== Events ==========
-    elseif key == "onClick" and type(value) == "function" then
-      io.stderr:write("📝 Registering onClick handler for component\n")
-      local handlerId = runtime.registerHandler(component, C.IR_EVENT_CLICK, value)
-      io.stderr:write(string.format("   Handler ID: %d", handlerId) .. "\n")
-
-    elseif key == "onHover" and type(value) == "function" then
-      runtime.registerHandler(component, C.IR_EVENT_HOVER, value)
-
-    elseif key == "onFocus" and type(value) == "function" then
-      runtime.registerHandler(component, C.IR_EVENT_FOCUS, value)
-
-    elseif key == "onTextChange" and type(value) == "function" then
-      io.stderr:write("📝 Registering onTextChange handler for Input component\n")
-      local handlerId = runtime.registerHandler(component, C.IR_EVENT_TEXT_CHANGE, value)
-      io.stderr:write(string.format("   Handler ID: %d", handlerId) .. "\n")
-
-    elseif key == "onDraw" and type(value) == "function" then
-      -- Get canvas_draw event type from plugin registry
-      local event_type_id = C.ir_plugin_get_event_type_id("canvas_draw")
-      if event_type_id == 0 then
-        error("canvas_draw event type not registered - is canvas plugin loaded?")
-      end
-      -- Register handler (same as onClick!)
-      runtime.registerHandler(component, event_type_id, value)
-
-    elseif key == "onUpdate" and type(value) == "function" then
-      -- Get canvas_update event type from plugin registry
-      local event_type_id = C.ir_plugin_get_event_type_id("canvas_update")
-      if event_type_id == 0 then
-        error("canvas_update event type not registered - is canvas plugin loaded?")
-      end
-      -- Register handler (same as onClick!)
-      runtime.registerHandler(component, event_type_id, value)
+    -- ========== Events (already processed in fixed-order loop above) ==========
+    -- Event handlers are now processed before this loop to ensure deterministic handler IDs
 
     end
 

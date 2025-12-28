@@ -876,8 +876,13 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
 // AST to IR Conversion
 // ============================================================================
 
-// Forward declaration
+// Forward declarations
 static IRComponent* convert_node(ConversionContext* ctx, KryNode* node);
+static bool is_custom_component(const char* name, IRReactiveManifest* manifest);
+static IRComponent* expand_component_template(const char* comp_name,
+                                                IRReactiveManifest* manifest,
+                                                const char* instance_scope);
+static IRComponent* ir_component_clone_tree(IRComponent* source);
 
 // Expand for loop by unrolling at compile time
 static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode* for_node) {
@@ -1096,32 +1101,38 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
 
     if (node->type == KRY_NODE_COMPONENT) {
         // Check if this is a custom component instantiation
-        IRComponentType type = get_component_type(node->name);
+        if (ctx->manifest && is_custom_component(node->name, ctx->manifest)) {
+            fprintf(stderr, "[CUSTOM_COMPONENT] Found custom component instantiation: %s\n", node->name);
+            fflush(stderr);
 
-        // If unknown type, check if it's a custom component
-        if (type == IR_COMPONENT_CONTAINER) {
-            KryNode* def = find_component_definition(ctx, node->name);
-            if (def) {
-                // Found custom component definition - expand it inline
-                // Create a new context with parameter substitutions
-                ConversionContext expanded_ctx = *ctx;  // Copy parent context
+            // Generate unique instance ID
+            static uint32_t instance_counter = 0;
+            char instance_scope[128];
+            snprintf(instance_scope, sizeof(instance_scope),
+                     "%s#%u", node->name, instance_counter++);
 
-                // Parse arguments and set up parameter substitutions
-                parse_arguments(&expanded_ctx, node->arguments ? node->arguments : "", def);
+            // Expand component template
+            IRComponent* instance = expand_component_template(
+                node->name,
+                ctx->manifest,
+                instance_scope
+            );
 
-                if (def->first_child) {
-                    // Find the actual content (skip state declarations)
-                    KryNode* body_child = def->first_child;
-                    while (body_child) {
-                        if (body_child->type == KRY_NODE_COMPONENT) {
-                            // Found the actual component content - expand with substitutions
-                            return convert_node(&expanded_ctx, body_child);
-                        }
-                        body_child = body_child->next_sibling;
-                    }
-                }
+            if (instance) {
+                fprintf(stderr, "[CUSTOM_COMPONENT] Successfully expanded %s (instance %d)\n",
+                        node->name, instance_counter - 1);
+                fflush(stderr);
+                // TODO: Apply instance arguments to initialize state variables
+                // For MVP, we're using default values from component definition
+                return instance;
             }
+
+            fprintf(stderr, "[CUSTOM_COMPONENT] Failed to expand %s\n", node->name);
+            fflush(stderr);
+            // If expansion failed, fall through to create regular container
         }
+
+        IRComponentType type = get_component_type(node->name);
 
         // Create component (built-in or fallback container)
         IRComponent* component = ir_create_component(type);
@@ -1423,6 +1434,189 @@ IRComponent* ir_kry_parse(const char* source, size_t length) {
 }
 
 // ============================================================================
+// Helper Functions for Component Definitions
+// ============================================================================
+
+// Deep clone a component tree (for component instantiation)
+static IRComponent* ir_component_clone_tree(IRComponent* source) {
+    if (!source) return NULL;
+
+    // Create new component with same type
+    IRComponent* clone = ir_create_component(source->type);
+    if (!clone) return NULL;
+
+    // Copy basic properties
+    clone->text_content = source->text_content ? strdup(source->text_content) : NULL;
+    clone->text_expression = source->text_expression ? strdup(source->text_expression) : NULL;
+    clone->tag = source->tag ? strdup(source->tag) : NULL;
+    clone->custom_data = source->custom_data ? strdup(source->custom_data) : NULL;
+
+    // Copy style (deep copy)
+    if (source->style) {
+        clone->style = malloc(sizeof(IRStyle));
+        if (clone->style) {
+            memcpy(clone->style, source->style, sizeof(IRStyle));
+        }
+    }
+
+    // Clone children recursively
+    for (uint32_t i = 0; i < source->child_count; i++) {
+        IRComponent* child_clone = ir_component_clone_tree(source->children[i]);
+        if (child_clone) {
+            ir_add_child(clone, child_clone);
+        }
+    }
+
+    // Note: We intentionally don't copy event handlers (on_click, etc.) for MVP
+    // They would need special handling for scoped state variables
+
+    return clone;
+}
+
+// Check if a component name refers to a custom component definition
+static bool is_custom_component(const char* name, IRReactiveManifest* manifest) {
+    if (!name || !manifest) {
+        fprintf(stderr, "[is_custom_component] NULL check failed: name=%p manifest=%p\n",
+                (void*)name, (void*)manifest);
+        return false;
+    }
+
+    fprintf(stderr, "[is_custom_component] Checking '%s' against %u component defs\n",
+            name, manifest->component_def_count);
+    for (uint32_t i = 0; i < manifest->component_def_count; i++) {
+        fprintf(stderr, "[is_custom_component]   [%u] %s\n", i, manifest->component_defs[i].name);
+        if (strcmp(manifest->component_defs[i].name, name) == 0) {
+            fprintf(stderr, "[is_custom_component] MATCH FOUND for %s!\n", name);
+            return true;
+        }
+    }
+    fprintf(stderr, "[is_custom_component] No match for %s\n", name);
+    return false;
+}
+
+// Expand a component template into an instance
+static IRComponent* expand_component_template(
+    const char* comp_name,
+    IRReactiveManifest* manifest,
+    const char* instance_scope
+) {
+    if (!comp_name || !manifest) return NULL;
+
+    // Find component definition
+    IRComponentDefinition* def = NULL;
+    for (uint32_t i = 0; i < manifest->component_def_count; i++) {
+        if (strcmp(manifest->component_defs[i].name, comp_name) == 0) {
+            def = &manifest->component_defs[i];
+            break;
+        }
+    }
+
+    if (!def || !def->template_root) return NULL;
+
+    // Clone the template tree
+    IRComponent* instance = ir_component_clone_tree(def->template_root);
+    if (!instance) return NULL;
+
+    // Initialize state variables with instance scope
+    // For MVP, we just store them in the manifest
+    // Full implementation would need runtime state management
+    for (uint32_t i = 0; i < def->state_var_count; i++) {
+        IRComponentStateVar* state_var = &def->state_vars[i];
+        // TODO: Register scoped state variables
+        // For now, state variables are already in the manifest from extraction
+        (void)instance_scope;  // Suppress unused parameter warning for MVP
+    }
+
+    return instance;
+}
+
+// Extract state variable declarations from component body
+static IRComponentStateVar* extract_component_state_vars(
+    KryNode* component_body,
+    uint32_t* out_count
+) {
+    if (!component_body || !out_count) {
+        if (out_count) *out_count = 0;
+        return NULL;
+    }
+
+    // Count state declarations
+    uint32_t count = 0;
+    KryNode* child = component_body->first_child;
+    while (child) {
+        if (child->type == KRY_NODE_STATE) {
+            count++;
+        }
+        child = child->next_sibling;
+    }
+
+    if (count == 0) {
+        *out_count = 0;
+        return NULL;
+    }
+
+    // Allocate array
+    IRComponentStateVar* state_vars = calloc(count, sizeof(IRComponentStateVar));
+    if (!state_vars) {
+        *out_count = 0;
+        return NULL;
+    }
+
+    // Extract each state variable
+    uint32_t idx = 0;
+    child = component_body->first_child;
+    while (child && idx < count) {
+        if (child->type != KRY_NODE_STATE) {
+            child = child->next_sibling;
+            continue;
+        }
+
+        // Parse state declaration: "state value: int = initialValue"
+        // child->name = "value"
+        // child->state_type = "int"
+        // child->value = initial expression (KryValue)
+
+        state_vars[idx].name = child->name ? strdup(child->name) : strdup("unknown");
+        state_vars[idx].type = child->state_type ? strdup(child->state_type) : strdup("any");
+
+        // Convert initial expression to string
+        if (child->value) {
+            switch (child->value->type) {
+                case KRY_VALUE_STRING:
+                    state_vars[idx].initial_expr = child->value->string_value ?
+                        strdup(child->value->string_value) : NULL;
+                    break;
+                case KRY_VALUE_NUMBER: {
+                    char num_str[64];
+                    snprintf(num_str, sizeof(num_str), "%.10g", child->value->number_value);
+                    state_vars[idx].initial_expr = strdup(num_str);
+                    break;
+                }
+                case KRY_VALUE_IDENTIFIER:
+                    state_vars[idx].initial_expr = child->value->identifier ?
+                        strdup(child->value->identifier) : NULL;
+                    break;
+                case KRY_VALUE_EXPRESSION:
+                    state_vars[idx].initial_expr = child->value->expression ?
+                        strdup(child->value->expression) : NULL;
+                    break;
+                default:
+                    state_vars[idx].initial_expr = NULL;
+                    break;
+            }
+        } else {
+            state_vars[idx].initial_expr = NULL;
+        }
+
+        idx++;
+        child = child->next_sibling;
+    }
+
+    *out_count = count;
+    return state_vars;
+}
+
+// ============================================================================
 // KIR Generation (with manifest serialization)
 // ============================================================================
 
@@ -1484,25 +1678,59 @@ char* ir_kry_to_kir(const char* source, size_t length) {
     ir_set_context(ir_ctx);
 
     // Track all component definitions in the manifest
+    fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Starting component definition scan...\n");
+    fflush(stderr);
     KryNode* def_node = ast;
+    uint32_t node_count = 0;
     while (def_node) {
+        node_count++;
+        fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Node %u: name='%s', is_component_definition=%d\n",
+                node_count, def_node->name ? def_node->name : "(null)", def_node->is_component_definition);
+        fflush(stderr);
+
         if (def_node->is_component_definition && def_node->name) {
+            fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Found component definition: %s\n", def_node->name);
+            fflush(stderr);
+
             // Convert the component definition template
             IRComponent* template_comp = convert_node(&ctx, def_node);
+            fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] template_comp = %p\n", (void*)template_comp);
+            fflush(stderr);
 
             if (template_comp) {
+                // Extract state variables from component definition
+                uint32_t state_var_count = 0;
+                IRComponentStateVar* state_vars = extract_component_state_vars(
+                    def_node,
+                    &state_var_count
+                );
+                fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Extracted %u state vars\n", state_var_count);
+                fflush(stderr);
+
                 // Add to manifest (will be serialized as component_definitions in KIR)
+                fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Calling ir_reactive_manifest_add_component_def...\n");
+                fflush(stderr);
                 ir_reactive_manifest_add_component_def(
                     ctx.manifest,
                     def_node->name,
                     NULL, 0,  // TODO: Extract props from component definition
-                    NULL, 0,  // TODO: Extract state vars from component definition
+                    state_vars,
+                    state_var_count,
                     template_comp
                 );
+                fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] After registration, component_def_count = %u\n",
+                        ctx.manifest->component_def_count);
+                fflush(stderr);
+            } else {
+                fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Failed to convert component template!\n");
+                fflush(stderr);
             }
         }
         def_node = def_node->next_sibling;
     }
+    fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Scan complete. Total nodes scanned: %u\n", node_count);
+    fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Final component_def_count: %u\n", ctx.manifest->component_def_count);
+    fflush(stderr);
 
     // Convert AST to IR
     IRComponent* root = convert_node(&ctx, root_node);

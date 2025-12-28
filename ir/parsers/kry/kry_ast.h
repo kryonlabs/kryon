@@ -98,6 +98,7 @@ struct KryNode {
     bool is_component_definition; // True if this is a component definition (component Foo {...})
     char* arguments;            // Raw arguments for component instantiation (e.g., "5" or "initialValue=10")
     char* var_type;             // Variable declaration type: "const", "let", or "var" (for KRY_NODE_VAR_DECL)
+    char* state_type;           // State variable type: "int", "string", etc. (for KRY_NODE_STATE)
 
     // Source location (for error messages)
     uint32_t line;

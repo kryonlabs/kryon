@@ -790,9 +790,7 @@ static KryNode* parse_state_declaration(KryParser* p) {
 
     state_node->name = var_name;
     state_node->value = initial_value;
-
-    // Store type in value's identifier field (a bit of a hack, but works for now)
-    // TODO: Add type field to KryNode for proper type storage
+    state_node->state_type = type_name;
 
     return state_node;
 }
@@ -998,6 +996,8 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
 }
 
 static KryNode* parse_component(KryParser* p) {
+    fprintf(stderr, "[PARSER] parse_component() called\n");
+    fflush(stderr);
     skip_whitespace(p);
 
     if (!isalpha(peek(p)) && peek(p) != '_') {
@@ -1007,11 +1007,14 @@ static KryNode* parse_component(KryParser* p) {
 
     char* name = parse_identifier(p);
     if (!name) return NULL;
+    fprintf(stderr, "[PARSER] Parsed component name: '%s'\n", name);
+    fflush(stderr);
 
     skip_whitespace(p);
 
     // Check if this is a component definition
     if (keyword_match(name, "component")) {
+        fprintf(stderr, "[PARSER] Detected component definition!\n");
         // Parse component definition name
         if (!isalpha(peek(p)) && peek(p) != '_') {
             kry_parser_error(p, "Expected component definition name after 'component'");
@@ -1020,11 +1023,15 @@ static KryNode* parse_component(KryParser* p) {
 
         char* comp_def_name = parse_identifier(p);
         if (!comp_def_name) return NULL;
+        fprintf(stderr, "[PARSER] Component definition name: '%s'\n", comp_def_name);
 
         skip_whitespace(p);
+        fprintf(stderr, "[PARSER] After skip_whitespace, peek() = '%c' (0x%02x)\n",
+                peek(p), (unsigned char)peek(p));
 
         // Parse parameter list if present
         if (peek(p) == '(') {
+            fprintf(stderr, "[PARSER] Found '(' after component name, consuming parameters...\n");
             match(p, '(');
             // Consume parameters
             int paren_depth = 1;
@@ -1033,7 +1040,11 @@ static KryNode* parse_component(KryParser* p) {
                 else if (peek(p) == ')') paren_depth--;
                 advance(p);
             }
+            fprintf(stderr, "[PARSER] After consuming params, peek() = '%c' (0x%02x)\n",
+                    peek(p), (unsigned char)peek(p));
             skip_whitespace(p);
+            fprintf(stderr, "[PARSER] After skip_whitespace, peek() = '%c' (0x%02x)\n",
+                    peek(p), (unsigned char)peek(p));
         }
 
         // Create component definition node
@@ -1098,7 +1109,49 @@ KryNode* kry_parse(KryParser* parser) {
         else if (keyword_match(id, "static")) {
             node = parse_static_block(parser);
         }
-        // Must be a component
+        // Check for component definition
+        else if (keyword_match(id, "component")) {
+            // Parse component definition name
+            char* comp_def_name = parse_identifier(parser);
+            if (!comp_def_name) {
+                kry_parser_error(parser, "Expected component definition name after 'component'");
+                break;
+            }
+
+            skip_whitespace(parser);
+
+            // Create component definition node
+            node = kry_node_create(parser, KRY_NODE_COMPONENT);
+            if (!node) break;
+            node->name = comp_def_name;
+            node->is_component_definition = true;
+
+            // Parse parameter list if present
+            if (peek(parser) == '(') {
+                match(parser, '(');
+                size_t arg_start = parser->pos;
+                int paren_depth = 1;
+                while (paren_depth > 0 && peek(parser) != '\0') {
+                    if (peek(parser) == '(') paren_depth++;
+                    else if (peek(parser) == ')') paren_depth--;
+                    if (paren_depth > 0) advance(parser);
+                }
+                size_t arg_length = parser->pos - arg_start;
+
+                if (arg_length > 0) {
+                    node->arguments = kry_strndup(parser, parser->source + arg_start, arg_length);
+                }
+
+                match(parser, ')');
+                skip_whitespace(parser);
+            }
+
+            // Parse component body
+            if (!parse_component_body(parser, node)) {
+                break;
+            }
+        }
+        // Must be a component instantiation
         else {
             // Create component node
             node = kry_node_create(parser, KRY_NODE_COMPONENT);
@@ -1139,6 +1192,10 @@ KryNode* kry_parse(KryParser* parser) {
         kry_node_append_child(parser->root, node);
         current = node;
 
+        fprintf(stderr, "[KRY_PARSE] Added node: name='%s', is_component_definition=%d\n",
+                node->name ? node->name : "(null)", node->is_component_definition);
+        fflush(stderr);
+
         skip_whitespace(parser);
     }
 
@@ -1146,13 +1203,30 @@ KryNode* kry_parse(KryParser* parser) {
         return NULL;
     }
 
+    // Count children for debug
+    uint32_t child_count = 0;
+    KryNode* child = parser->root->first_child;
+    while (child) {
+        child_count++;
+        fprintf(stderr, "[KRY_PARSE] Child %u: name='%s', is_component_definition=%d\n",
+                child_count, child->name ? child->name : "(null)", child->is_component_definition);
+        fflush(stderr);
+        child = child->next_sibling;
+    }
+    fprintf(stderr, "[KRY_PARSE] Total children: %u\n", child_count);
+    fflush(stderr);
+
     // If we only have one child component and no variable declarations, return that directly
     // Otherwise return the root wrapper
     if (parser->root->first_child && !parser->root->first_child->next_sibling &&
         parser->root->first_child->type == KRY_NODE_COMPONENT) {
+        fprintf(stderr, "[KRY_PARSE] Returning single child directly\n");
+        fflush(stderr);
         return parser->root->first_child;
     }
 
+    fprintf(stderr, "[KRY_PARSE] Returning root wrapper\n");
+    fflush(stderr);
     return parser->root;
 }
 

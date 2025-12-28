@@ -21,6 +21,12 @@ void layout_text_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                              float parent_x, float parent_y) {
     if (!c) return;
 
+    if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
+        fprintf(stderr, "[TEXT_LAYOUT_CALL] ID=%u text='%s' parent_pos=(%.1f, %.1f) constraints=(%.1f x %.1f)\n",
+                c->id, c->text_content ? c->text_content : "(null)",
+                parent_x, parent_y, constraints.max_width, constraints.max_height);
+    }
+
     // Ensure layout state exists
     if (!c->layout_state) {
         c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));

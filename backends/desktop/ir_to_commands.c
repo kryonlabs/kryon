@@ -260,6 +260,17 @@ bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutR
 bool ir_gen_text_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
     if (!comp->text_content) return true;
 
+    if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
+        fprintf(stderr, "[TEXT_RENDER] ID=%u text='%s' bounds=(%.1f, %.1f) layout_state=%p\n",
+               comp->id, comp->text_content, bounds->x, bounds->y, comp->layout_state);
+        if (comp->layout_state) {
+            fprintf(stderr, "[TEXT_RENDER]   layout_state->computed=(%.1f, %.1f, %.1f, %.1f) valid=%d\n",
+                   comp->layout_state->computed.x, comp->layout_state->computed.y,
+                   comp->layout_state->computed.width, comp->layout_state->computed.height,
+                   comp->layout_state->computed.valid);
+        }
+    }
+
     IRStyle* style = comp->style;
 
     /* Extract color from IRColor struct and convert to uint32_t */
