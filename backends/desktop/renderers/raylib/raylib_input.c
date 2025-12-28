@@ -26,43 +26,6 @@ extern void collect_open_dropdowns(IRComponent* component, IRComponent** dropdow
 extern void kryon_c_event_bridge(const char* logic_id);
 
 // ============================================================================
-// HIT TESTING
-// ============================================================================
-
-/**
- * Find component at screen coordinates using pre-computed layout
- */
-static IRComponent* find_component_at_point(IRComponent* component, float x, float y) {
-    if (!component || !component->rendered_bounds.valid) {
-        return NULL;
-    }
-
-    // Check if point is within this component's bounds
-    if (x < component->rendered_bounds.x ||
-        x > component->rendered_bounds.x + component->rendered_bounds.width ||
-        y < component->rendered_bounds.y ||
-        y > component->rendered_bounds.y + component->rendered_bounds.height) {
-        return NULL;
-    }
-
-    // Check children first (reverse order for proper z-index)
-    for (int i = component->child_count - 1; i >= 0; i--) {
-        IRComponent* child = find_component_at_point(component->children[i], x, y);
-        if (child) return child;
-    }
-
-    // Return this component if it's interactive
-    if (component->type == IR_COMPONENT_BUTTON ||
-        component->type == IR_COMPONENT_CHECKBOX ||
-        component->type == IR_COMPONENT_DROPDOWN ||
-        component->type == IR_COMPONENT_INPUT) {
-        return component;
-    }
-
-    return NULL;
-}
-
-// ============================================================================
 // EVENT HANDLERS
 // ============================================================================
 
@@ -79,7 +42,7 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
 
     if (!clicked) {
         // SECOND: Find regular component at click point
-        clicked = find_component_at_point(root, x, y);
+        clicked = ir_find_component_at_point(root, x, y);
     }
 
     if (!clicked) {
@@ -348,6 +311,59 @@ static void handle_keyboard_keys(DesktopIRRenderer* renderer, IRComponent* root)
     }
 }
 
+/**
+ * Handle mouse motion and cursor updates
+ */
+static void handle_mouse_motion(DesktopIRRenderer* renderer, IRComponent* root, float x, float y) {
+    if (!renderer || !root) return;
+
+    // Check if mouse is over a dropdown menu
+    IRComponent* dropdown_at_point = find_dropdown_menu_at_point(root, x, y);
+    bool is_in_dropdown_menu = (dropdown_at_point != NULL);
+
+    IRComponent* hovered = NULL;
+
+    if (is_in_dropdown_menu) {
+        // Update dropdown hover state
+        IRDropdownState* state = ir_get_dropdown_state(dropdown_at_point);
+        if (state && state->is_open) {
+            IRRenderedBounds bounds = dropdown_at_point->rendered_bounds;
+            float menu_y = bounds.y + bounds.height;
+            int32_t new_hover = (int32_t)((y - menu_y) / 35.0f);
+            if (new_hover >= 0 && new_hover < (int32_t)state->option_count) {
+                ir_set_dropdown_hovered_index(dropdown_at_point, new_hover);
+            }
+        }
+    } else {
+        // Find regular component at mouse position
+        hovered = ir_find_component_at_point(root, x, y);
+
+        // Clear hover state for any open dropdowns
+        #define MAX_DROPDOWNS_TO_CLEAR 10
+        IRComponent* all_dropdowns[MAX_DROPDOWNS_TO_CLEAR];
+        int count = 0;
+        collect_open_dropdowns(root, all_dropdowns, &count, MAX_DROPDOWNS_TO_CLEAR);
+        for (int i = 0; i < count; i++) {
+            ir_set_dropdown_hovered_index(all_dropdowns[i], -1);
+        }
+    }
+
+    // Update global hover state
+    g_hovered_component = hovered;
+
+    // Change cursor based on hovered component
+    // Raylib cursor types: MOUSE_CURSOR_DEFAULT, MOUSE_CURSOR_POINTING_HAND
+    if (is_in_dropdown_menu ||
+        (hovered && (hovered->type == IR_COMPONENT_BUTTON ||
+                     hovered->type == IR_COMPONENT_INPUT ||
+                     hovered->type == IR_COMPONENT_CHECKBOX ||
+                     hovered->type == IR_COMPONENT_DROPDOWN))) {
+        SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+    } else {
+        SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+    }
+}
+
 // ============================================================================
 // MAIN EVENT LOOP
 // ============================================================================
@@ -372,10 +388,13 @@ void raylib_handle_input_events(DesktopIRRenderer* renderer, IRComponent* root) 
         return;
     }
 
+    // Handle mouse motion and cursor updates
+    Vector2 mouse_pos = GetMousePosition();
+    handle_mouse_motion(renderer, root, mouse_pos.x, mouse_pos.y);
+
     // Handle mouse button clicks
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         printf("[raylib] Mouse button pressed detected\n");
-        Vector2 mouse_pos = GetMousePosition();
         handle_mouse_click(renderer, root, mouse_pos.x, mouse_pos.y);
     }
 

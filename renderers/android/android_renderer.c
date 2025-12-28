@@ -172,6 +172,10 @@ bool android_renderer_initialize(AndroidRenderer* renderer, ANativeWindow* windo
 
     glBindVertexArray(0);
 
+    // Enable alpha blending for text rendering
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     LOGI("OpenGL buffers created\n");
 #endif
 
@@ -491,6 +495,12 @@ void android_renderer_flush_batch(AndroidRenderer* renderer) {
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
                     renderer->index_count * sizeof(uint16_t),
                     renderer->indices);
+
+    // Rebind texture if one is set (needed for text rendering)
+    if (renderer->current_texture != 0) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, renderer->current_texture);
+    }
 
     // Draw
     glBindVertexArray(renderer->vao);

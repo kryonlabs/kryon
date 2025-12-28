@@ -166,7 +166,17 @@ __attribute__((weak)) void open_external_url(const char* url) {
  * Returns true if handled as tab, false otherwise.
  */
 __attribute__((weak)) bool try_handle_as_tab_click(DesktopIRRenderer* renderer, IRComponent* clicked) {
+    if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
+        fprintf(stderr, "[TAB_CLICK_CHECK] Component ID=%u parent=%p\n",
+               clicked ? clicked->id : 0, clicked ? clicked->parent : NULL);
+    }
+
     if (!clicked || !clicked->parent || !clicked->parent->custom_data) {
+        if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
+            fprintf(stderr, "[TAB_CLICK_CHECK] Early return: clicked=%p parent=%p custom_data=%p\n",
+                   clicked, clicked ? clicked->parent : NULL,
+                   (clicked && clicked->parent) ? clicked->parent->custom_data : NULL);
+        }
         return false;
     }
 
@@ -174,12 +184,19 @@ __attribute__((weak)) bool try_handle_as_tab_click(DesktopIRRenderer* renderer, 
 
     // Verify this looks like a valid TabGroupState (tab_bar matches parent)
     if (!tg_state || tg_state->tab_bar != clicked->parent) {
+        if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
+            fprintf(stderr, "[TAB_CLICK_CHECK] Not a tab: tg_state=%p tab_bar=%p parent=%p\n",
+                   tg_state, tg_state ? tg_state->tab_bar : NULL, clicked->parent);
+        }
         return false;
     }
 
     // Find which tab was clicked
     for (uint32_t i = 0; i < tg_state->tab_count; i++) {
         if (tg_state->tabs[i] == clicked) {
+            if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
+                fprintf(stderr, "[TAB_CLICK_DETECTED] Tab %u clicked, calling ir_tabgroup_handle_tab_click\n", i);
+            }
             // C handles tab selection (panel switching, visuals)
             ir_tabgroup_handle_tab_click(tg_state, i);
 
@@ -191,6 +208,9 @@ __attribute__((weak)) bool try_handle_as_tab_click(DesktopIRRenderer* renderer, 
         }
     }
 
+    if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
+        fprintf(stderr, "[TAB_CLICK_CHECK] Not found in tabs array (tab_count=%u)\n", tg_state->tab_count);
+    }
     return false;
 }
 

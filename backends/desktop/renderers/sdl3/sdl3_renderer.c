@@ -397,7 +397,7 @@ static bool sdl3_render_component(DesktopIRRenderer* renderer, IRComponent* root
     IRPluginBackendContext backend_ctx = {
         .renderer = data->renderer,
         .font = data->default_font,
-        .user_data = NULL
+        .user_data = data->white_texture  // Pass white texture for SDL_RenderGeometry
     };
 
     if (!ir_component_to_commands(root, &cmd_buf, &root_rect, 1.0f, &backend_ctx)) {

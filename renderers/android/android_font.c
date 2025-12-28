@@ -379,7 +379,34 @@ void android_renderer_draw_text(AndroidRenderer* renderer,
     // Bind font atlas texture
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, font->atlas_texture);
-    glUniform1i(renderer->shader_programs[SHADER_PROGRAM_TEXT].u_texture, 0);
+
+    // Track current texture so it can be rebound during batch flush
+    renderer->current_texture = font->atlas_texture;
+
+    // Set texture uniform - check if location is valid first
+    GLint u_tex_loc = renderer->shader_programs[SHADER_PROGRAM_TEXT].u_texture;
+    if (u_tex_loc >= 0) {
+        glUniform1i(u_tex_loc, 0);
+    } else {
+        LOGE("Text shader u_texture uniform not found! location=%d\n", u_tex_loc);
+    }
+
+    // Check GL errors
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        LOGE("GL error after texture setup: 0x%x (atlas=%u, program=%u, location=%d)\n",
+             err, font->atlas_texture,
+             renderer->shader_programs[SHADER_PROGRAM_TEXT].program, u_tex_loc);
+
+        // Get current program to verify
+        GLint current_program = 0;
+        glGetIntegerv(GL_CURRENT_PROGRAM, &current_program);
+        LOGE("Current active program: %d (expected %u)\n",
+             current_program, renderer->shader_programs[SHADER_PROGRAM_TEXT].program);
+    }
+
+    LOGI("Text shader setup: atlas_texture=%u, shader_program=%u, u_texture_location=%d\n",
+         font->atlas_texture, renderer->shader_programs[SHADER_PROGRAM_TEXT].program, u_tex_loc);
 #endif
 
     // Extract color components
@@ -395,12 +422,21 @@ void android_renderer_draw_text(AndroidRenderer* renderer,
     float cursor_x = x;
     float baseline_y = y + (font->ascent * font->scale);
 
+    LOGI("Drawing text '%s' with %d chars, font=%s, size=%d, atlas_texture=%u\n",
+         text, (int)strlen(text), name, size, font->atlas_texture);
+
     for (const char* p = text; *p; p++) {
         GlyphInfo* glyph = android_font_get_glyph(font, *p);
         if (!glyph || glyph->width == 0) {
+            LOGE("Glyph for char '%c' (0x%02x) not found or has width 0 (glyph=%p, width=%d)\n",
+                 *p, (unsigned char)*p, glyph, glyph ? glyph->width : 0);
             cursor_x += glyph ? glyph->advance : 0;
             continue;
         }
+
+        LOGI("Rendering glyph '%c': pos=(%.1f,%.1f) size=%dx%d\n",
+             *p, cursor_x + glyph->bearing_x, baseline_y + glyph->bearing_y,
+             glyph->width, glyph->height);
 
         // Check if we need to flush batch
         if (renderer->vertex_count + 4 > MAX_VERTICES ||
@@ -475,7 +511,14 @@ void android_renderer_draw_text(AndroidRenderer* renderer,
         renderer->indices[renderer->index_count++] = base_index + 2;
         renderer->indices[renderer->index_count++] = base_index + 3;
 
+        LOGI("Added glyph '%c': vertices=%d, indices=%d, uv=(%.3f,%.3f)-(%.3f,%.3f)\n",
+             *p, renderer->vertex_count, renderer->index_count,
+             glyph->u0, glyph->v0, glyph->u1, glyph->v1);
+
         // Advance cursor
         cursor_x += glyph->advance;
     }
+
+    LOGI("Text '%s' rendered with %d vertices, %d indices\n",
+         text, renderer->vertex_count, renderer->index_count);
 }

@@ -41,6 +41,12 @@ void ir_layout_invalidate_subtree(IRComponent* component) {
 void ir_layout_mark_dirty(IRComponent* component) {
     if (!component || !component->layout_state) return;
 
+    if (getenv("KRYON_DEBUG_TAB_LAYOUT") && (component->type == IR_COMPONENT_TAB_GROUP ||
+                                              component->type == IR_COMPONENT_TAB_CONTENT ||
+                                              component->type == IR_COMPONENT_TAB_PANEL)) {
+        fprintf(stderr, "[MARK_DIRTY] Component ID=%u type=%d\n", component->id, component->type);
+    }
+
     // Mark this component dirty
     component->layout_state->dirty = true;
     component->layout_state->layout_valid = false;
@@ -59,7 +65,20 @@ void ir_layout_mark_dirty(IRComponent* component) {
     // Propagate dirty flag upward to parents
     IRComponent* parent = component->parent;
     while (parent) {
-        if (!parent->layout_state) break;
+        if (!parent->layout_state) {
+            if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
+                fprintf(stderr, "[MARK_DIRTY_STOP] Parent ID=%u type=%d has no layout_state, stopping propagation\n",
+                       parent->id, parent->type);
+            }
+            break;
+        }
+
+        if (getenv("KRYON_DEBUG_TAB_LAYOUT") && (parent->type == IR_COMPONENT_TAB_GROUP ||
+                                                   parent->type == IR_COMPONENT_COLUMN ||
+                                                   parent->type == IR_COMPONENT_TAB_CONTENT)) {
+            fprintf(stderr, "[MARK_DIRTY_PARENT] Marking parent ID=%u type=%d dirty\n",
+                   parent->id, parent->type);
+        }
 
         parent->layout_state->dirty = true;
         parent->layout_state->layout_valid = false;
@@ -1801,9 +1820,38 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                            float parent_x, float parent_y) {
     if (!c) return;
 
+    if (getenv("KRYON_DEBUG_TAB_LAYOUT") &&
+        (c->type == IR_COMPONENT_TAB_CONTENT || c->type == IR_COMPONENT_TAB_PANEL)) {
+        fprintf(stderr, "[LAYOUT_PASS] Component ID=%u type=%d child_count=%u parent_pos=(%.1f, %.1f)\n",
+               c->id, c->type, c->child_count, parent_x, parent_y);
+    }
+
     // Ensure layout state exists
+    bool layout_state_created = false;
     if (!c->layout_state) {
         c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
+        layout_state_created = true;
+    }
+
+    // If component is dirty or layout invalid, clear cached dimensions
+    // This ensures fresh layout computation when needed
+    if (c->layout_state->dirty || !c->layout_state->layout_valid) {
+        if (getenv("KRYON_DEBUG_TAB_LAYOUT") &&
+            (c->type == IR_COMPONENT_TAB_CONTENT || c->type == IR_COMPONENT_TAB_PANEL || c->type == IR_COMPONENT_TEXT)) {
+            fprintf(stderr, "[LAYOUT_CLEAR] Component ID=%u type=%d dirty=%d valid=%d (clearing dimensions)\n",
+                   c->id, c->type, c->layout_state->dirty, c->layout_state->layout_valid);
+        }
+        c->layout_state->computed.width = 0;
+        c->layout_state->computed.height = 0;
+        c->layout_state->computed.valid = false;
+        c->layout_state->dirty = false;  // Clear dirty flag as we're recomputing
+    } else if (layout_state_created) {
+        // Newly created layout_state should also be computed
+        if (getenv("KRYON_DEBUG_TAB_LAYOUT") &&
+            (c->type == IR_COMPONENT_TAB_CONTENT || c->type == IR_COMPONENT_TAB_PANEL || c->type == IR_COMPONENT_TEXT)) {
+            fprintf(stderr, "[LAYOUT_NEW] Component ID=%u type=%d (new layout_state)\n",
+                   c->id, c->type);
+        }
     }
 
     // Try to dispatch to component-specific trait first
@@ -1930,6 +1978,17 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     float max_child_height = 0;
     float total_child_width = 0;
     float total_child_height = 0;
+
+    if (getenv("KRYON_DEBUG_TAB_LAYOUT") &&
+        (c->type == IR_COMPONENT_TAB_CONTENT || c->type == IR_COMPONENT_TAB_PANEL)) {
+        fprintf(stderr, "[LAYOUT_CHILDREN] Component ID=%u type=%d has %u children\n",
+               c->id, c->type, c->child_count);
+        for (uint32_t i = 0; i < c->child_count; i++) {
+            fprintf(stderr, "[LAYOUT_CHILDREN]   Child %u: ID=%u type=%d\n",
+                   i, c->children[i] ? c->children[i]->id : 0,
+                   c->children[i] ? c->children[i]->type : -1);
+        }
+    }
 
     for (uint32_t i = 0; i < c->child_count; i++) {
         IRComponent* child = c->children[i];
@@ -2106,6 +2165,22 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                c->id, c->rendered_bounds.x, c->rendered_bounds.y,
                c->rendered_bounds.width, c->rendered_bounds.height);
     }
+
+    // Debug: Print layout for tab-related components and their children
+    if (getenv("KRYON_DEBUG_TAB_LAYOUT") &&
+        (c->type == IR_COMPONENT_TAB_CONTENT || c->type == IR_COMPONENT_TAB_PANEL ||
+         c->type == IR_COMPONENT_TEXT)) {
+        const char* parent_info = "";
+        if (c->parent) {
+            static char parent_buf[64];
+            snprintf(parent_buf, sizeof(parent_buf), " parent_id=%u parent_pos=(%.1f,%.1f)",
+                    c->parent->id, c->parent->rendered_bounds.x, c->parent->rendered_bounds.y);
+            parent_info = parent_buf;
+        }
+        fprintf(stderr, "[LAYOUT_COMPUTED] ID=%u type=%d pos=(%.1f, %.1f) size=(%.1f, %.1f)%s\n",
+               c->id, c->type, c->rendered_bounds.x, c->rendered_bounds.y,
+               c->rendered_bounds.width, c->rendered_bounds.height, parent_info);
+    }
 }
 
 // ============================================================================
@@ -2121,6 +2196,13 @@ void ir_layout_compute_tree(IRComponent* root, float viewport_width, float viewp
 
     if (getenv("KRYON_DEBUG_LAYOUT_MODE")) {
         fprintf(stderr, "[Layout] Using SINGLE-PASS layout system\n");
+    }
+
+    if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
+        static int layout_call_count = 0;
+        layout_call_count++;
+        fprintf(stderr, "[LAYOUT_TREE] Call #%d: viewport=(%.0f x %.0f)\n",
+               layout_call_count, viewport_width, viewport_height);
     }
 
     IRLayoutConstraints root_constraints = {

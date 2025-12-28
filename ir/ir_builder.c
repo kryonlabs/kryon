@@ -260,6 +260,17 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
         // Add only the selected panel
         if ((uint32_t)index < state->panel_count && state->panels[index]) {
             IRComponent* panel = state->panels[index];
+
+            if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
+                fprintf(stderr, "[PANEL_ADD] Adding panel ID=%u, child_count=%u\n",
+                       panel->id, panel->child_count);
+                for (uint32_t i = 0; i < panel->child_count; i++) {
+                    IRComponent* child = panel->children[i];
+                    fprintf(stderr, "[PANEL_ADD]   Child %u: ID=%u type=%d\n",
+                           i, child ? child->id : 0, child ? child->type : -1);
+                }
+            }
+
             ir_add_child(state->tab_content, panel);
 
             // Recursively invalidate panel and all descendants so they get re-laid out
@@ -282,15 +293,30 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
     }
     if (g_ir_context && g_ir_context->root) {
         ir_layout_mark_dirty(g_ir_context->root);
+    }
 
-        // CRITICAL: Force immediate layout recalculation for the new panel
-        // Without this, the panel will have invalid bounds (0x0) until the next frame
-        // TODO: Window dimensions need to be passed as parameters or stored elsewhere
-        // if (g_ir_context->window_width > 0 && g_ir_context->window_height > 0) {
-        //     ir_layout_compute_tree(g_ir_context->root,
-        //                            (float)g_ir_context->window_width,
-        //                            (float)g_ir_context->window_height);
-        // }
+    // Debug: Print layout state before and after next frame
+    if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
+        fprintf(stderr, "\n[TAB_SWITCH] Selected tab %d\n", index);
+        if ((uint32_t)index < state->panel_count && state->panels[index]) {
+            IRComponent* panel = state->panels[index];
+            fprintf(stderr, "[TAB_SWITCH]   Panel ID=%u rendered_bounds: valid=%d [%.1f, %.1f, %.1f, %.1f]\n",
+                   panel->id, panel->rendered_bounds.valid,
+                   panel->rendered_bounds.x, panel->rendered_bounds.y,
+                   panel->rendered_bounds.width, panel->rendered_bounds.height);
+        }
+        if (state->tab_content) {
+            fprintf(stderr, "[TAB_SWITCH]   TabContent ID=%u rendered_bounds: valid=%d [%.1f, %.1f, %.1f, %.1f]\n",
+                   state->tab_content->id, state->tab_content->rendered_bounds.valid,
+                   state->tab_content->rendered_bounds.x, state->tab_content->rendered_bounds.y,
+                   state->tab_content->rendered_bounds.width, state->tab_content->rendered_bounds.height);
+        }
+        if (state->group) {
+            fprintf(stderr, "[TAB_SWITCH]   TabGroup ID=%u rendered_bounds: valid=%d [%.1f, %.1f, %.1f, %.1f]\n",
+                   state->group->id, state->group->rendered_bounds.valid,
+                   state->group->rendered_bounds.x, state->group->rendered_bounds.y,
+                   state->group->rendered_bounds.width, state->group->rendered_bounds.height);
+        }
     }
 
     // Apply tab visuals (active/inactive colors)
