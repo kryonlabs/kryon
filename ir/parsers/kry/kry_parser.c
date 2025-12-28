@@ -1161,7 +1161,7 @@ KryNode* kry_parse(KryParser* parser) {
 // ============================================================================
 
 IRComponent* ir_kry_parse(const char* source, size_t length);  // Implemented in ir_kry_to_ir.c
-extern char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest);  // From ir_json_v2.c
+extern char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest);  // From ir_json.c
 
 // NOTE: ir_kry_to_kir is now implemented in ir_kry_to_ir.c with manifest support
 

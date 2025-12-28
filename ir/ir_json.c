@@ -1,4 +1,4 @@
-// JSON v2 Serialization - Complete IR Property Coverage
+// JSON Serialization - Complete IR Property Coverage
 // This file implements full JSON serialization using cJSON
 
 #define _GNU_SOURCE
@@ -1325,7 +1325,7 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
 
     // Serialize conditionals
     if (manifest->conditional_count > 0) {
-        printf("[ir_json_v2] SERIALIZATION FUNCTION CALLED - %d conditionals\n", manifest->conditional_count);
+        printf("[ir_json] SERIALIZATION FUNCTION CALLED - %d conditionals\n", manifest->conditional_count);
         fflush(stdout);
         cJSON* conditionals = cJSON_CreateArray();
         if (!conditionals) {
@@ -1430,7 +1430,7 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
 }
 
 // ============================================================================
-// Main JSON v2 Serialization Function
+// Main JSON Serialization Function
 // ============================================================================
 
 /**
@@ -2102,14 +2102,14 @@ char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest) {
 }
 
 /**
- * Write IR component tree to JSON v2 file
+ * Write IR component tree to JSON file
  * @param root Root component to serialize
  * @param filename Output file path
  * @return true on success, false on error
  */
 
 // ============================================================================
-// JSON v3.0 Serialization - With Logic Block Support
+// JSON Serialization - With Logic Block Support
 // ============================================================================
 
 /**
@@ -3406,7 +3406,7 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
 }
 
 // ============================================================================
-// JSON v2 Deserialization Functions
+// JSON Deserialization Functions
 // ============================================================================
 
 /**

@@ -1,7 +1,7 @@
 /**
  * C Source Metadata Structures
  *
- * Shared between C frontend (bindings/c/kryon.c) and IR serialization (ir_json_v2.c)
+ * Shared between C frontend (bindings/c/kryon.c) and IR serialization (ir_json.c)
  * for round-trip C ↔ KIR conversion
  */
 

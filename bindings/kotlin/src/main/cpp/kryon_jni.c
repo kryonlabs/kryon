@@ -8,6 +8,7 @@
 // Include Kryon headers
 #include "android_platform.h"
 #include "android_renderer.h"
+#include "android_internal.h"
 
 #define LOG_TAG "KryonJNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -23,6 +24,7 @@ typedef struct {
     JavaVM* jvm;
     ANativeWindow* window;
     AndroidRenderer* renderer;
+    AndroidIRRenderer* ir_renderer;
     bool initialized;
     bool surface_ready;
 } KryonNativeContext;
@@ -93,6 +95,12 @@ Java_com_kryon_KryonActivity_nativeShutdown(JNIEnv* env, jobject thiz, jlong han
     if (handle == 0) return;
 
     KryonNativeContext* ctx = (KryonNativeContext*)handle;
+
+    // Shutdown IR renderer
+    if (ctx->ir_renderer) {
+        android_ir_renderer_destroy(ctx->ir_renderer);
+        ctx->ir_renderer = NULL;
+    }
 
     // Shutdown renderer
     if (ctx->renderer) {
@@ -204,6 +212,23 @@ Java_com_kryon_KryonActivity_nativeSurfaceCreated(JNIEnv* env, jobject thiz,
         }
 
         LOGI("Renderer initialized successfully\n");
+
+        // Create IR renderer
+        AndroidIRRendererConfig ir_config = {
+            .window_width = ANativeWindow_getWidth(ctx->window),
+            .window_height = ANativeWindow_getHeight(ctx->window),
+            .enable_animations = true,
+            .enable_hot_reload = false,
+            .hot_reload_watch_path = NULL
+        };
+
+        ctx->ir_renderer = android_ir_renderer_create(&ir_config);
+        if (ctx->ir_renderer) {
+            android_ir_renderer_initialize(ctx->ir_renderer, ctx->window);
+            LOGI("IR Renderer initialized successfully\n");
+        } else {
+            LOGE("Failed to create IR renderer\n");
+        }
     }
 
     ctx->surface_ready = true;
@@ -286,8 +311,14 @@ Java_com_kryon_KryonActivity_nativeLoadFile(JNIEnv* env, jobject thiz,
     const char* path_str = (*env)->GetStringUTFChars(env, path, NULL);
     LOGI("Load file: %s\n", path_str);
 
-    // TODO: Load and execute .krb file
-    jboolean result = JNI_FALSE;
+    KryonNativeContext* ctx = (KryonNativeContext*)handle;
+    jboolean result = android_ir_renderer_load_kir(ctx->ir_renderer, path_str) ? JNI_TRUE : JNI_FALSE;
+
+    if (result) {
+        LOGI("KIR file loaded successfully: %s\n", path_str);
+    } else {
+        LOGE("Failed to load KIR file: %s\n", path_str);
+    }
 
     (*env)->ReleaseStringUTFChars(env, path, path_str);
     return result;
