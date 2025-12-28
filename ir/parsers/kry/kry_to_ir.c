@@ -183,6 +183,32 @@ static const char* substitute_param(ConversionContext* ctx, const char* expr) {
     return expr;  // No substitution found
 }
 
+// Check if an expression is unresolved (no parameter substitution found)
+// This is used to detect property expressions that should be preserved as bindings
+static bool is_unresolved_expr(ConversionContext* ctx, const char* expr) {
+    if (!ctx || !expr) return false;
+
+    // If no params registered, everything is unresolved
+    if (ctx->param_count == 0) return true;
+
+    // Check if this expression matches any param name or starts with a param
+    for (int i = 0; i < ctx->param_count; i++) {
+        // Direct match (e.g., "item")
+        if (strcmp(expr, ctx->params[i].name) == 0) {
+            return false;  // Resolved!
+        }
+
+        // Property access (e.g., "item.value" or "item.colors[0]")
+        size_t param_len = strlen(ctx->params[i].name);
+        if (strncmp(expr, ctx->params[i].name, param_len) == 0 &&
+            (expr[param_len] == '.' || expr[param_len] == '[')) {
+            return false;  // Resolved - it's a property/index access on a param
+        }
+    }
+
+    return true;  // Unresolved
+}
+
 // ============================================================================
 // Component Definition Lookup
 // ============================================================================
@@ -298,6 +324,13 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             // Handle identifiers - apply parameter substitution (for variables like item.name)
             const char* substituted = substitute_param(ctx, value->identifier);
             printf("[APPLY_PROPERTY]   Substituted to: %s\n", substituted);
+
+            // Detect and preserve unresolved identifiers as property bindings
+            if (is_unresolved_expr(ctx, value->identifier) && ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                printf("[APPLY_PROPERTY]   Unresolved! Creating property binding for '%s'\n", value->identifier);
+                ir_component_add_property_binding(component, name, value->identifier, substituted, "static_template");
+            }
+
             ir_set_text_content(component, substituted);
             return;
         } else if (value->type == KRY_VALUE_EXPRESSION) {
@@ -305,6 +338,13 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             // Handle expressions - apply parameter substitution
             const char* substituted = substitute_param(ctx, value->expression);
             printf("[APPLY_PROPERTY]   Substituted to: %s\n", substituted);
+
+            // Detect and preserve unresolved expressions as property bindings
+            if (is_unresolved_expr(ctx, value->expression) && ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                printf("[APPLY_PROPERTY]   Unresolved! Creating property binding for '%s'\n", value->expression);
+                ir_component_add_property_binding(component, name, value->expression, substituted, "static_template");
+            }
+
             ir_set_text_content(component, substituted);
             return;
         } else {
@@ -492,7 +532,13 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                                     value->string_value : value->identifier;
             // Apply parameter substitution for identifiers (e.g., item.colors[0])
             if (value->type == KRY_VALUE_IDENTIFIER) {
+                const char* original_expr = color_str;
                 color_str = substitute_param(ctx, color_str);
+
+                // Detect and preserve unresolved identifiers as property bindings
+                if (is_unresolved_expr(ctx, original_expr) && ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                    ir_component_add_property_binding(component, name, original_expr, "#00000000", "static_template");
+                }
             }
             uint32_t color = parse_color(color_str);
             ir_set_background_color(style,
@@ -510,7 +556,13 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                                     value->string_value : value->identifier;
             // Apply parameter substitution for identifiers
             if (value->type == KRY_VALUE_IDENTIFIER) {
+                const char* original_expr = color_str;
                 color_str = substitute_param(ctx, color_str);
+
+                // Detect and preserve unresolved identifiers as property bindings
+                if (is_unresolved_expr(ctx, original_expr) && ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                    ir_component_add_property_binding(component, name, original_expr, "#00000000", "static_template");
+                }
             }
             uint32_t color = parse_color(color_str);
             style->font.color.type = IR_COLOR_SOLID;
@@ -528,7 +580,13 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                                     value->string_value : value->identifier;
             // Apply parameter substitution for identifiers
             if (value->type == KRY_VALUE_IDENTIFIER) {
+                const char* original_expr = color_str;
                 color_str = substitute_param(ctx, color_str);
+
+                // Detect and preserve unresolved identifiers as property bindings
+                if (is_unresolved_expr(ctx, original_expr) && ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                    ir_component_add_property_binding(component, name, original_expr, "#00000000", "static_template");
+                }
             }
             uint32_t color = parse_color(color_str);
             style->border.color.type = IR_COLOR_SOLID;

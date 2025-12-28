@@ -523,10 +523,9 @@ bool kryon_terminal_render_ir_tree(kryon_renderer_t* renderer, IRComponent* root
 
     // Compute layout using IR layout system (source-agnostic)
     // Convert terminal dimensions to pixels for layout calculation
-    // TODO: Implement layout computation or use existing layout if available
-    // float pixel_width = ctx.term_width * ctx.char_width;
-    // float pixel_height = ctx.term_height * ctx.char_height;
-    // ir_layout_compute_tree(root, pixel_width, pixel_height);
+    float pixel_width = ctx.term_width * ctx.char_width;
+    float pixel_height = ctx.term_height * ctx.char_height;
+    ir_layout_compute_tree(root, pixel_width, pixel_height);
 
     // Begin frame
     renderer->ops->begin_frame(renderer);
