@@ -218,7 +218,26 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "      app.window.title\n"
         "    )\n"
         "  end\n"
-        "  local json = C.ir_serialize_json(app.root)\n"
+        "  -- Create source metadata (using heap-allocated strings)\n"
+        "  local metadata = ffi.new('IRSourceMetadata')\n"
+        "  local source_file = os.getenv('KRYON_SOURCE_FILE') or '%s'\n"
+        "  -- Allocate strings on heap so they persist for serialization\n"
+        "  local lang_str = ffi.new('char[?]', 4)\n"
+        "  ffi.copy(lang_str, 'lua')\n"
+        "  local file_str = ffi.new('char[?]', #source_file + 1)\n"
+        "  ffi.copy(file_str, source_file)\n"
+        "  local ver_str = ffi.new('char[?]', 6)\n"
+        "  ffi.copy(ver_str, '0.3.0')\n"
+        "  local timestamp = os.date('%%Y-%%m-%%dT%%H:%%M:%%S')\n"
+        "  local time_str = ffi.new('char[?]', #timestamp + 1)\n"
+        "  ffi.copy(time_str, timestamp)\n"
+        "  metadata.source_language = lang_str\n"
+        "  metadata.source_file = file_str\n"
+        "  metadata.compiler_version = ver_str\n"
+        "  metadata.timestamp = time_str\n"
+        "\n"
+        "  -- Serialize with metadata\n"
+        "  local json = C.ir_serialize_json_complete(app.root, nil, nil, metadata, nil)\n"
         "  if json ~= nil then\n"
         "    io.write(ffi.string(json))\n"
         "    C.free(json)\n"
@@ -373,9 +392,29 @@ char* ir_lua_file_to_kir(const char* filepath) {
     source[read_size] = '\0';
     fclose(f);
 
+    // Set KRYON_SOURCE_FILE environment variable for metadata tracking
+    // Get absolute path to source file
+    char abs_path[4096];
+    if (filepath[0] == '/') {
+        // Already absolute
+        snprintf(abs_path, sizeof(abs_path), "%s", filepath);
+    } else {
+        // Make it absolute
+        char cwd[4096];
+        if (getcwd(cwd, sizeof(cwd))) {
+            snprintf(abs_path, sizeof(abs_path), "%s/%s", cwd, filepath);
+        } else {
+            snprintf(abs_path, sizeof(abs_path), "%s", filepath);
+        }
+    }
+    setenv("KRYON_SOURCE_FILE", abs_path, 1);
+
     // Parse
     char* result = ir_lua_to_kir(source, read_size);
     free(source);
+
+    // Unset environment variable
+    unsetenv("KRYON_SOURCE_FILE");
 
     return result;
 }

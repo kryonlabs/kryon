@@ -355,6 +355,13 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     c->layout_state->layout_valid = true;
     c->layout_state->computed.valid = true;
 
+    // Sync computed layout to rendered_bounds for click detection
+    c->rendered_bounds.x = c->layout_state->computed.x;
+    c->rendered_bounds.y = c->layout_state->computed.y;
+    c->rendered_bounds.width = c->layout_state->computed.width;
+    c->rendered_bounds.height = c->layout_state->computed.height;
+    c->rendered_bounds.valid = true;
+
     if (getenv("KRYON_DEBUG_FLEXBOX")) {
         fprintf(stderr, "[Flexbox] Final: x=%.1f, y=%.1f, w=%.1f, h=%.1f\n",
                 c->layout_state->computed.x, c->layout_state->computed.y,

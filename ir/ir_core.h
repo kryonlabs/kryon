@@ -1000,6 +1000,7 @@ typedef struct IRContext {
     IRMetadata* metadata;              // Application metadata (including plugin requirements)
     IRReactiveManifest* reactive_manifest;  // Reactive state and bindings
     IRSourceStructures* source_structures;  // Source preservation (for round-trip codegen)
+    IRSourceMetadata* source_metadata;      // Source file metadata (language, file path, etc.)
 } IRContext;
 
 // IR Type System Functions

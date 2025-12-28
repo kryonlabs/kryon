@@ -252,7 +252,24 @@ void android_shader_cleanup_all(AndroidRenderer* renderer) {
 
 void android_shader_use(AndroidRenderer* renderer, ShaderProgramType type) {
     if (!renderer) return;
+
+    // Only switch if different shader
+    if (renderer->current_shader == type) {
+        return;
+    }
+
     renderer->current_shader = type;
+
+    // Actually activate the shader program in OpenGL
+    ShaderProgram* program = &renderer->shader_programs[type];
+    glUseProgram(program->program);
+
+    // Set projection matrix uniform (required for all shaders)
+    if (program->u_projection >= 0) {
+        glUniformMatrix4fv(program->u_projection, 1, GL_FALSE, renderer->projection_matrix);
+    }
+
+    renderer->stats.shader_switches++;
 }
 
 #endif // __ANDROID__

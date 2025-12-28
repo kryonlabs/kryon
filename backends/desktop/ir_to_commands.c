@@ -129,7 +129,7 @@ bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutR
     if (!comp->style) return true;
 
     IRStyle* style = comp->style;
-    kryon_command_t cmd;
+    kryon_command_t cmd = {0};  // CRITICAL FIX: Zero-initialize to prevent stack garbage
 
     /* Render shadow if present */
     if (style->box_shadow.enabled && !style->box_shadow.inset) {
@@ -272,7 +272,7 @@ bool ir_gen_text_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* 
     }
     uint32_t text_color = ir_apply_opacity_to_color(base_color, ctx->current_opacity);
 
-    kryon_command_t cmd;
+    kryon_command_t cmd = {0};  // CRITICAL FIX: Zero-initialize
     cmd.type = KRYON_CMD_DRAW_TEXT;
     cmd.data.draw_text.x = bounds->x;
     cmd.data.draw_text.y = bounds->y;
@@ -360,7 +360,7 @@ bool ir_gen_button_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect
         float text_y = bounds->y + (bounds->height - text_height) / 2.0f;
 
         /* Create centered text command */
-        kryon_command_t cmd;
+        kryon_command_t cmd = {0};  // CRITICAL FIX: Zero-initialize
         cmd.type = KRYON_CMD_DRAW_TEXT;
         cmd.data.draw_text.x = text_x;
         cmd.data.draw_text.y = text_y;
@@ -396,7 +396,7 @@ bool ir_gen_input_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect*
             uint32_t text_color = (r << 24) | (g << 16) | (b << 8) | a;
             text_color = ir_apply_opacity_to_color(text_color, ctx->current_opacity);
 
-            kryon_command_t cmd;
+            kryon_command_t cmd = {0};  // CRITICAL FIX: Zero-initialize
             cmd.type = KRYON_CMD_DRAW_TEXT;
             cmd.data.draw_text.x = bounds->x + 8; /* 8px padding */
             cmd.data.draw_text.y = bounds->y + (bounds->height - 16) / 2;
@@ -476,7 +476,7 @@ bool ir_gen_checkbox_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRe
         }
         check_color = ir_apply_opacity_to_color(check_color, ctx->current_opacity);
 
-        kryon_command_t cmd;
+        kryon_command_t cmd = {0};  // CRITICAL FIX: Zero-initialize
         cmd.type = KRYON_CMD_DRAW_LINE;
         cmd.data.draw_line.color = check_color;
 
@@ -539,7 +539,7 @@ bool ir_gen_dropdown_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRe
     float arrow_y = bounds->y + bounds->height / 2;
     float arrow_size = 6;
 
-    kryon_command_t cmd;
+    kryon_command_t cmd = {0};  // CRITICAL FIX: Zero-initialize
     cmd.type = KRYON_CMD_DRAW_LINE;
     cmd.data.draw_line.color = arrow_color;
 
@@ -610,7 +610,7 @@ bool ir_gen_markdown_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRe
             }
             line_color = ir_apply_opacity_to_color(line_color, ctx->current_opacity);
 
-            kryon_command_t cmd;
+            kryon_command_t cmd = {0};  // CRITICAL FIX: Zero-initialize
             cmd.type = KRYON_CMD_DRAW_LINE;
             cmd.data.draw_line.x1 = bounds->x;
             cmd.data.draw_line.y1 = bounds->y + bounds->height / 2;

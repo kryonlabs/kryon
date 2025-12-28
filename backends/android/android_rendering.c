@@ -271,8 +271,12 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
                 __android_log_print(ANDROID_LOG_WARN, "KryonBackend",
                     "Text color=0x%08x, font_size=%d", color, font_size);
 
+                // Use Roboto as default font since it's registered on Android
+                const char* font_name = (component->style && component->style->font.family) ?
+                                       component->style->font.family : "Roboto";
+
                 android_renderer_draw_text(renderer, component->text_content,
-                                          x, y, NULL, font_size, color);
+                                          x, y, font_name, font_size, color);
             } else {
                 __android_log_print(ANDROID_LOG_WARN, "KryonBackend",
                     "TEXT component has no text_content!");

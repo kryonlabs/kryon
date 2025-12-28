@@ -365,6 +365,12 @@ static int run_android(const char* kir_file, const char* source_file) {
  * Works with KIR from ANY frontend: TSX, Kry, HTML, Markdown, Lua, C, etc.
  */
 static int run_terminal(const char* kir_file) {
+    (void)kir_file;  // Unused parameter
+    fprintf(stderr, "Error: Terminal renderer is not available in this build\n");
+    fprintf(stderr, "Please use desktop or other rendering backends instead.\n");
+    return 1;
+
+    /* Terminal renderer disabled - not built
     printf("\n");
     printf("╭────────────────────────────────────────────────────────╮\n");
     printf("│  Terminal Renderer - Running KIR in Terminal          │\n");
@@ -473,6 +479,7 @@ static int run_terminal(const char* kir_file) {
     // ir_component_destroy(root);
 
     return success ? 0 : 1;
+    */
 }
 
 int cmd_run(int argc, char** argv) {

@@ -1812,6 +1812,12 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     // If dispatch handled it (trait registered), we're done
     // Check if computed dimensions are set (trait completed layout)
     if (c->layout_state->computed.width > 0 || c->layout_state->computed.height > 0) {
+        // Sync computed layout to rendered_bounds for click detection
+        c->rendered_bounds.x = c->layout_state->computed.x;
+        c->rendered_bounds.y = c->layout_state->computed.y;
+        c->rendered_bounds.width = c->layout_state->computed.width;
+        c->rendered_bounds.height = c->layout_state->computed.height;
+        c->rendered_bounds.valid = true;
         return;
     }
 
