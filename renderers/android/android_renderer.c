@@ -155,17 +155,17 @@ bool android_renderer_initialize(AndroidRenderer* renderer, ANativeWindow* windo
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(renderer->indices), NULL, GL_DYNAMIC_DRAW);
 
     // Setup vertex attributes (for texture shader)
-    // Position (vec2)
+    // Position (vec2) - Location 0
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
                           (void*)offsetof(Vertex, x));
 
-    // TexCoord (vec2)
+    // TexCoord (vec2) - Location 1
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
                           (void*)offsetof(Vertex, u));
 
-    // Color (vec4)
+    // Color (vec4) - Location 2
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex),
                           (void*)offsetof(Vertex, r));

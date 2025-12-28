@@ -212,6 +212,45 @@ void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
 }
 
 /* ============================================================================
+ * CANVAS CALLBACKS - Invoke onDraw/onUpdate before rendering
+ * ============================================================================ */
+
+static void invoke_canvas_callbacks_recursive(DesktopIRRenderer* renderer, IRComponent* component) {
+    if (!component) return;
+
+    // Invoke onDraw callback for Canvas components
+    if (component->type == IR_COMPONENT_CANVAS) {
+        fprintf(stderr, "[CANVAS_CALLBACK] Found Canvas component ID=%u, callback=%p\n",
+                component->id, (void*)renderer->lua_canvas_draw_callback);
+        if (renderer->lua_canvas_draw_callback) {
+            fprintf(stderr, "[CANVAS_CALLBACK] Invoking onDraw for component %u\n", component->id);
+            renderer->lua_canvas_draw_callback(component->id);
+        }
+    }
+
+    // Recurse into children
+    for (int i = 0; i < component->child_count; i++) {
+        invoke_canvas_callbacks_recursive(renderer, component->children[i]);
+    }
+}
+
+static void invoke_canvas_update_callbacks_recursive(DesktopIRRenderer* renderer, IRComponent* component, double delta_time) {
+    if (!component) return;
+
+    // Invoke onUpdate callback for Canvas components
+    if (component->type == IR_COMPONENT_CANVAS) {
+        if (renderer->lua_canvas_update_callback) {
+            renderer->lua_canvas_update_callback(component->id, delta_time);
+        }
+    }
+
+    // Recurse into children
+    for (int i = 0; i < component->child_count; i++) {
+        invoke_canvas_update_callbacks_recursive(renderer, component->children[i], delta_time);
+    }
+}
+
+/* ============================================================================
  * RENDERING - Frame rendering and main loop
  * ============================================================================ */
 
@@ -240,6 +279,16 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
     // Compute layout using two-pass system before rendering
     ir_layout_compute_tree(root, (float)renderer->config.window_width,
                            (float)renderer->config.window_height);
+
+    // Invoke canvas onUpdate callbacks with delta time
+    fprintf(stderr, "[RENDER_FRAME] About to invoke canvas update callbacks (callback=%p)\n",
+            (void*)renderer->lua_canvas_update_callback);
+    invoke_canvas_update_callbacks_recursive(renderer, root, delta_time);
+
+    // Invoke canvas onDraw callbacks before rendering
+    fprintf(stderr, "[RENDER_FRAME] About to invoke canvas draw callbacks (callback=%p)\n",
+            (void*)renderer->lua_canvas_draw_callback);
+    invoke_canvas_callbacks_recursive(renderer, root);
 
     // Render via ops table
     if (!renderer->ops->begin_frame(renderer)) {
@@ -339,6 +388,20 @@ void desktop_ir_renderer_set_lua_event_callback(DesktopIRRenderer* renderer,
                                                 void (*callback)(uint32_t, int)) {
     if (renderer) {
         renderer->lua_event_callback = callback;
+    }
+}
+
+void desktop_ir_renderer_set_lua_canvas_draw_callback(DesktopIRRenderer* renderer,
+                                                      void (*callback)(uint32_t)) {
+    if (renderer) {
+        renderer->lua_canvas_draw_callback = callback;
+    }
+}
+
+void desktop_ir_renderer_set_lua_canvas_update_callback(DesktopIRRenderer* renderer,
+                                                        void (*callback)(uint32_t, double)) {
+    if (renderer) {
+        renderer->lua_canvas_update_callback = callback;
     }
 }
 

@@ -111,6 +111,273 @@ static const char* find_event_handler(EventHandlerContext* ctx, int component_id
     return NULL;
 }
 
+// Source structures context (for round-trip codegen)
+typedef struct {
+    cJSON* static_blocks;        // Array of static block metadata
+    cJSON* const_declarations;   // Array of const/let/var declarations
+    cJSON* for_loop_templates;   // Array of for loop templates
+} SourceStructuresContext;
+
+// Create source structures context
+static SourceStructuresContext* create_source_context(cJSON* kir_root) {
+    SourceStructuresContext* ctx = malloc(sizeof(SourceStructuresContext));
+    if (!ctx) return NULL;
+
+    ctx->static_blocks = NULL;
+    ctx->const_declarations = NULL;
+    ctx->for_loop_templates = NULL;
+
+    // Parse source_structures if present
+    cJSON* source_structures = cJSON_GetObjectItem(kir_root, "source_structures");
+    if (source_structures) {
+        ctx->static_blocks = cJSON_GetObjectItem(source_structures, "static_blocks");
+        ctx->const_declarations = cJSON_GetObjectItem(source_structures, "const_declarations");
+        ctx->for_loop_templates = cJSON_GetObjectItem(source_structures, "for_loop_templates");
+    }
+
+    return ctx;
+}
+
+// Free source structures context
+static void destroy_source_context(SourceStructuresContext* ctx) {
+    if (!ctx) return;
+    // Note: Don't free the cJSON objects as they're owned by the root JSON
+    free(ctx);
+}
+
+// Find const declarations for a given scope (NULL for global, "static_N" for static block)
+static cJSON* find_const_declarations_for_scope(SourceStructuresContext* ctx, const char* scope) {
+    if (!ctx || !ctx->const_declarations) return NULL;
+
+    // Create array to hold matching declarations
+    cJSON* result = cJSON_CreateArray();
+    if (!result) return NULL;
+
+    cJSON* decl = NULL;
+    cJSON_ArrayForEach(decl, ctx->const_declarations) {
+        cJSON* decl_scope = cJSON_GetObjectItem(decl, "scope");
+        const char* decl_scope_str = decl_scope ? decl_scope->valuestring : NULL;
+
+        bool matches = false;
+        if (scope == NULL && decl_scope_str == NULL) {
+            matches = true;  // Both global
+        } else if (scope != NULL && decl_scope_str != NULL && strcmp(scope, decl_scope_str) == 0) {
+            matches = true;  // Same scope
+        }
+
+        if (matches) {
+            cJSON_AddItemReferenceToArray(result, decl);
+        }
+    }
+
+    if (cJSON_GetArraySize(result) == 0) {
+        cJSON_Delete(result);
+        return NULL;
+    }
+
+    return result;
+}
+
+// Find static block by parent component ID
+static cJSON* find_static_block_by_parent(SourceStructuresContext* ctx, int parent_id) {
+    if (!ctx || !ctx->static_blocks) return NULL;
+
+    cJSON* block = NULL;
+    cJSON_ArrayForEach(block, ctx->static_blocks) {
+        cJSON* parent_comp_id = cJSON_GetObjectItem(block, "parent_component_id");
+        if (parent_comp_id && parent_comp_id->valueint == parent_id) {
+            return block;
+        }
+    }
+
+    return NULL;
+}
+
+// Find for loop templates by parent static block ID
+static cJSON* find_for_loops_by_parent(SourceStructuresContext* ctx, const char* parent_static_id) {
+    if (!ctx || !ctx->for_loop_templates || !parent_static_id) return NULL;
+
+    cJSON* result = cJSON_CreateArray();
+    if (!result) return NULL;
+
+    cJSON* loop = NULL;
+    cJSON_ArrayForEach(loop, ctx->for_loop_templates) {
+        cJSON* parent_id = cJSON_GetObjectItem(loop, "parent_id");
+        if (parent_id && parent_id->valuestring &&
+            strcmp(parent_id->valuestring, parent_static_id) == 0) {
+            cJSON_AddItemReferenceToArray(result, loop);
+        }
+    }
+
+    if (cJSON_GetArraySize(result) == 0) {
+        cJSON_Delete(result);
+        return NULL;
+    }
+
+    return result;
+}
+
+// Find component by ID in component tree (recursive)
+static cJSON* find_component_by_id(cJSON* component, uint32_t target_id) {
+    if (!component) return NULL;
+
+    // Check if this component matches
+    cJSON* id = cJSON_GetObjectItem(component, "id");
+    if (id && cJSON_IsNumber(id) && (uint32_t)id->valueint == target_id) {
+        return component;
+    }
+
+    // Recursively search children
+    cJSON* children = cJSON_GetObjectItem(component, "children");
+    if (children && cJSON_IsArray(children)) {
+        cJSON* child = NULL;
+        cJSON_ArrayForEach(child, children) {
+            cJSON* found = find_component_by_id(child, target_id);
+            if (found) return found;
+        }
+    }
+
+    return NULL;
+}
+
+// Generate const/let/var declarations
+static bool generate_const_declarations(cJSON* declarations, char** buffer, size_t* size,
+                                        size_t* capacity, int indent) {
+    if (!declarations) return true;
+
+    cJSON* decl = NULL;
+    cJSON_ArrayForEach(decl, declarations) {
+        cJSON* name = cJSON_GetObjectItem(decl, "name");
+        cJSON* var_type = cJSON_GetObjectItem(decl, "var_type");
+        cJSON* value_json_str = cJSON_GetObjectItem(decl, "value_json");
+
+        if (!name || !var_type) continue;
+
+        // Indentation
+        for (int i = 0; i < indent; i++) {
+            append_string(buffer, size, capacity, "  ");
+        }
+
+        // Generate declaration
+        const char* type_str = var_type->valuestring ? var_type->valuestring : "const";
+        append_fmt(buffer, size, capacity, "%s %s = ", type_str, name->valuestring);
+
+        // Parse and format value
+        if (value_json_str && value_json_str->valuestring) {
+            // TODO: For now, use the JSON string directly (placeholder)
+            // In a full implementation, parse the JSON and format it as Kry
+            append_fmt(buffer, size, capacity, "%s", value_json_str->valuestring);
+        } else {
+            append_string(buffer, size, capacity, "null");
+        }
+
+        append_string(buffer, size, capacity, "\n");
+    }
+
+    return true;
+}
+
+// Generate for loop from template
+static bool generate_for_loop(cJSON* loop_template, cJSON* kir_root, char** buffer,
+                              size_t* size, size_t* capacity, int indent,
+                              EventHandlerContext* event_ctx);  // Forward decl
+
+// Generate static block with contents
+static bool generate_static_block(SourceStructuresContext* src_ctx, const char* static_block_id,
+                                  cJSON* kir_root, char** buffer, size_t* size,
+                                  size_t* capacity, int indent, EventHandlerContext* event_ctx) {
+    if (!src_ctx || !static_block_id) return false;
+
+    // Find static block metadata
+    cJSON* static_block = find_static_block_by_parent(src_ctx, 0);  // Will refine this
+    if (!static_block) return false;
+
+    // Indentation
+    for (int i = 0; i < indent; i++) {
+        append_string(buffer, size, capacity, "  ");
+    }
+
+    append_string(buffer, size, capacity, "static {\n");
+
+    // Generate const declarations scoped to this static block
+    cJSON* const_decls = find_const_declarations_for_scope(src_ctx, static_block_id);
+    if (const_decls) {
+        generate_const_declarations(const_decls, buffer, size, capacity, indent + 1);
+        // Add blank line after declarations
+        for (int i = 0; i < indent + 1; i++) {
+            append_string(buffer, size, capacity, "  ");
+        }
+        append_string(buffer, size, capacity, "\n");
+    }
+
+    // Generate for loops in this static block
+    cJSON* for_loops = find_for_loops_by_parent(src_ctx, static_block_id);
+    if (for_loops && cJSON_IsArray(for_loops)) {
+        cJSON* loop = NULL;
+        cJSON_ArrayForEach(loop, for_loops) {
+            generate_for_loop(loop, kir_root, buffer, size, capacity, indent + 1, event_ctx);
+        }
+    }
+
+    // Closing brace
+    for (int i = 0; i < indent; i++) {
+        append_string(buffer, size, capacity, "  ");
+    }
+    append_string(buffer, size, capacity, "}\n");
+
+    return true;
+}
+
+// Generate for loop from template
+static bool generate_for_loop(cJSON* loop_template, cJSON* kir_root, char** buffer,
+                              size_t* size, size_t* capacity, int indent,
+                              EventHandlerContext* event_ctx) {
+    if (!loop_template) return false;
+
+    cJSON* iterator_name = cJSON_GetObjectItem(loop_template, "iterator_name");
+    cJSON* collection_ref = cJSON_GetObjectItem(loop_template, "collection_ref");
+
+    if (!iterator_name || !collection_ref) return false;
+
+    // Indentation
+    for (int i = 0; i < indent; i++) {
+        append_string(buffer, size, capacity, "  ");
+    }
+
+    // Generate: for <iterator> in <collection> {
+    append_fmt(buffer, size, capacity, "for %s in %s {\n",
+               iterator_name->valuestring,
+               collection_ref->valuestring);
+
+    // Get expanded component IDs to find the template
+    cJSON* expanded_ids = cJSON_GetObjectItem(loop_template, "expanded_component_ids");
+    if (expanded_ids && cJSON_IsArray(expanded_ids) && cJSON_GetArraySize(expanded_ids) > 0) {
+        // Get first expanded component as template
+        cJSON* first_id = cJSON_GetArrayItem(expanded_ids, 0);
+        if (first_id && cJSON_IsNumber(first_id)) {
+            uint32_t template_id = (uint32_t)first_id->valueint;
+
+            // Find component in KIR root tree
+            cJSON* root_comp = cJSON_GetObjectItem(kir_root, "root");
+            cJSON* template_comp = find_component_by_id(root_comp, template_id);
+
+            if (template_comp) {
+                // Generate component (this will be the loop body)
+                generate_kry_component(template_comp, buffer, size, capacity, indent + 1,
+                                      kir_root, event_ctx);
+            }
+        }
+    }
+
+    // Closing brace
+    for (int i = 0; i < indent; i++) {
+        append_string(buffer, size, capacity, "  ");
+    }
+    append_string(buffer, size, capacity, "}\n");
+
+    return true;
+}
+
 // Parse logic_block and build event handler lookup table
 static void parse_logic_block(cJSON* kir_root, EventHandlerContext* ctx) {
     if (!kir_root || !ctx) return;
@@ -225,6 +492,48 @@ static void parse_logic_block(cJSON* kir_root, EventHandlerContext* ctx) {
     free(func_map);
 }
 
+// Forward declaration for recursive formatting
+static void format_kry_value(char* output, size_t size, cJSON* value);
+
+// Format array as Kry literal
+static void format_kry_array(char* output, size_t size, cJSON* array) {
+    size_t pos = 0;
+    pos += snprintf(output + pos, size - pos, "[");
+
+    cJSON* item = NULL;
+    int idx = 0;
+    cJSON_ArrayForEach(item, array) {
+        if (idx > 0) pos += snprintf(output + pos, size - pos, ", ");
+
+        char item_str[1024];
+        format_kry_value(item_str, sizeof(item_str), item);
+        pos += snprintf(output + pos, size - pos, "%s", item_str);
+        idx++;
+    }
+
+    pos += snprintf(output + pos, size - pos, "]");
+}
+
+// Format object as Kry literal
+static void format_kry_object(char* output, size_t size, cJSON* obj) {
+    size_t pos = 0;
+    pos += snprintf(output + pos, size - pos, "{");
+
+    cJSON* item = NULL;
+    int idx = 0;
+    cJSON_ArrayForEach(item, obj) {
+        if (idx > 0) pos += snprintf(output + pos, size - pos, ", ");
+
+        const char* key = item->string;
+        char value_str[1024];
+        format_kry_value(value_str, sizeof(value_str), item);
+        pos += snprintf(output + pos, size - pos, "%s: %s", key, value_str);
+        idx++;
+    }
+
+    pos += snprintf(output + pos, size - pos, "}");
+}
+
 // Format a JSON value as .kry literal
 static void format_kry_value(char* output, size_t size, cJSON* value) {
     if (cJSON_IsString(value)) {
@@ -240,17 +549,20 @@ static void format_kry_value(char* output, size_t size, cJSON* value) {
         snprintf(output, size, "%s", cJSON_IsTrue(value) ? "true" : "false");
     } else if (cJSON_IsNull(value)) {
         snprintf(output, size, "null");
+    } else if (cJSON_IsArray(value)) {
+        format_kry_array(output, size, value);
+    } else if (cJSON_IsObject(value)) {
+        format_kry_object(output, size, value);
     } else {
-        snprintf(output, size, "\"???\"");
+        snprintf(output, size, "null");  // Fallback
     }
 }
 
 // Convert property name from KIR format to .kry format
 static const char* kir_to_kry_property(const char* kir_name) {
-    // Map KIR property names to .kry property names
-    if (strcmp(kir_name, "background") == 0) return "backgroundColor";
-    if (strcmp(kir_name, "color") == 0) return "textColor";
-    return kir_name;  // Most properties have same name
+    // KIR already uses Kry property names, no mapping needed
+    // Previously had incorrect mappings like background->backgroundColor
+    return kir_name;
 }
 
 // Parse pixel value from string like "800.0px" or "600.0px"
@@ -269,7 +581,8 @@ static bool parse_pixel_value(const char* str, int* out_value) {
 
 // Generate .kry component code recursively
 static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx,
-                                    char** buffer, size_t* size, size_t* capacity, int indent) {
+                                    char** buffer, size_t* size, size_t* capacity, int indent,
+                                    cJSON* kir_root, SourceStructuresContext* src_ctx) {
     if (!node || !cJSON_IsObject(node)) return true;
 
     // Get component type
@@ -357,16 +670,35 @@ static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx
         }
     }
 
-    // Process children
+    // Process children - check for static blocks first
     cJSON* children = cJSON_GetObjectItem(node, "children");
     if (children && cJSON_IsArray(children)) {
         // Add blank line before children for readability
         append_string(buffer, size, capacity, "\n");
 
-        cJSON* child = NULL;
-        cJSON_ArrayForEach(child, children) {
-            if (!generate_kry_component(child, handler_ctx, buffer, size, capacity, indent + 1)) {
-                return false;
+        // Check if this component has a static block (from source_structures)
+        bool has_static_block = false;
+        cJSON* static_block = NULL;
+        if (src_ctx && src_ctx->static_blocks && component_id >= 0) {
+            static_block = find_static_block_by_parent(src_ctx, (uint32_t)component_id);
+            has_static_block = (static_block != NULL);
+        }
+
+        if (has_static_block && static_block) {
+            // Generate static block with its const declarations and for loops
+            cJSON* id_obj = cJSON_GetObjectItem(static_block, "id");
+            if (id_obj && id_obj->valuestring) {
+                generate_static_block(src_ctx, id_obj->valuestring, kir_root,
+                                     buffer, size, capacity, indent + 1, handler_ctx);
+            }
+        } else {
+            // Regular children (no static block)
+            cJSON* child = NULL;
+            cJSON_ArrayForEach(child, children) {
+                if (!generate_kry_component(child, handler_ctx, buffer, size, capacity,
+                                           indent + 1, kir_root, src_ctx)) {
+                    return false;
+                }
             }
         }
     }
@@ -399,6 +731,14 @@ char* kry_codegen_from_json(const char* kir_json) {
     }
 
     parse_logic_block(root_json, handler_ctx);
+
+    // Create source structures context for round-trip support
+    SourceStructuresContext* src_ctx = create_source_context(root_json);
+    if (!src_ctx) {
+        destroy_handler_context(handler_ctx);
+        cJSON_Delete(root_json);
+        return NULL;
+    }
 
     // Allocate output buffer
     size_t capacity = 8192;

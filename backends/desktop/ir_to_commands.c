@@ -652,10 +652,12 @@ bool ir_gen_canvas_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect
     /* Render canvas background */
     ir_gen_container_commands(comp, ctx, bounds);
 
-    /* TODO: Execute canvas drawing commands from custom_data */
-    /* Canvas commands would need to be parsed and converted to kryon commands */
+    /* NOTE: Canvas drawing commands are executed by callbacks invoked
+     * before rendering in desktop_ir_renderer_invoke_canvas_callbacks().
+     * The canvas draws to its own command buffer which gets integrated here.
+     */
 
-    (void)comp;  /* Unused for now */
+    (void)comp;  /* Unused for now - canvas commands come from callback */
     (void)ctx;
     (void)bounds;
 

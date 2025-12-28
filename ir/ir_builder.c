@@ -537,6 +537,7 @@ IRContext* ir_create_context(void) {
     context->logic_list = NULL;
     context->next_component_id = 1;
     context->next_logic_id = 1;
+    context->metadata = NULL;  // Initialize metadata to NULL
 
     // Create component pool
     context->component_pool = ir_pool_create();
@@ -3145,8 +3146,10 @@ IRComponent* ir_get_child_at(IRComponent* component, uint32_t index) {
 
 // Set window metadata on IR context
 void ir_set_window_metadata(int width, int height, const char* title) {
-    extern IRContext* g_ir_context;
-    if (!g_ir_context) return;
+    if (!g_ir_context) {
+        g_ir_context = ir_create_context();
+        if (!g_ir_context) return;
+    }
 
     // Create metadata if it doesn't exist
     if (!g_ir_context->metadata) {

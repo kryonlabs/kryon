@@ -11,6 +11,7 @@
 #include "../../desktop_internal.h"
 #include "../../desktop_platform.h"
 #include "../../../../ir/ir_serialization.h"
+#include "../../../../ir/ir_native_canvas.h"
 #include "raylib_renderer.h"
 #include <raylib.h>
 #include <stdio.h>
@@ -136,17 +137,6 @@ bool render_component_raylib(DesktopIRRenderer* renderer, IRComponent* component
     // Skip if not visible
     if (component->style && !component->style->visible) {
         return true;
-    }
-
-    // Debug: Show layout for all components
-    if (component->layout_state && component->layout_state->layout_valid) {
-        printf("[raylib_render] id=%u type=%d visible=%d layout=(%.0f,%.0f,%.0fx%.0f)\n",
-               component->id, component->type,
-               component->style ? component->style->visible : -1,
-               component->layout_state->computed.x,
-               component->layout_state->computed.y,
-               component->layout_state->computed.width,
-               component->layout_state->computed.height);
     }
 
     // Check layout is computed
@@ -299,6 +289,39 @@ bool render_component_raylib(DesktopIRRenderer* renderer, IRComponent* component
                 );
             }
             break;
+
+        case IR_COMPONENT_NATIVE_CANVAS: {
+            IRNativeCanvasData* canvas_data = ir_native_canvas_get_data(component);
+            if (!canvas_data) break;
+
+            // Get canvas bounds from layout
+            float x = layout->x;
+            float y = layout->y;
+            float width = layout->width;
+            float height = layout->height;
+
+            // Set up scissor to clip rendering to canvas bounds
+            BeginScissorMode((int)x, (int)y, (int)width, (int)height);
+
+            // Clear canvas background if set
+            if (canvas_data->background_color != 0) {
+                Color bg = {
+                    (canvas_data->background_color >> 24) & 0xFF,  // R
+                    (canvas_data->background_color >> 16) & 0xFF,  // G
+                    (canvas_data->background_color >> 8) & 0xFF,   // B
+                    canvas_data->background_color & 0xFF           // A
+                };
+                DrawRectangle((int)x, (int)y, (int)width, (int)height, bg);
+            }
+
+            // Invoke user's render callback
+            // The callback can call any Raylib functions directly
+            ir_native_canvas_invoke_callback(component->id);
+
+            // End scissor mode
+            EndScissorMode();
+            break;
+        }
 
         default:
             // Unhandled component type - render nothing

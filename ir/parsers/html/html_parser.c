@@ -789,7 +789,7 @@ char* ir_html_to_kir(const char* html, size_t length) {
     }
 
     // Step 3: Serialize IR to JSON with logic_block
-    char* json = ir_serialize_json_complete(root, NULL, ctx.logic_block, NULL);
+    char* json = ir_serialize_json_complete(root, NULL, ctx.logic_block, NULL, NULL);
     ir_destroy_component(root);
     parser_ctx_free(&ctx);
 

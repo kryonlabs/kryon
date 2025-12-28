@@ -401,6 +401,13 @@ ffi.cdef[[
   // Event callback
   typedef void (*LuaEventCallback)(uint32_t component_id, int event_type);
   void desktop_ir_renderer_set_lua_event_callback(DesktopIRRenderer* renderer, LuaEventCallback callback);
+
+  // Canvas callbacks
+  typedef void (*LuaCanvasDrawCallback)(uint32_t component_id);
+  typedef void (*LuaCanvasUpdateCallback)(uint32_t component_id, double delta_time);
+  void desktop_ir_renderer_set_lua_canvas_draw_callback(DesktopIRRenderer* renderer, LuaCanvasDrawCallback callback);
+  void desktop_ir_renderer_set_lua_canvas_update_callback(DesktopIRRenderer* renderer, LuaCanvasUpdateCallback callback);
+
   void desktop_ir_renderer_update_root(DesktopIRRenderer* renderer, IRComponent* new_root);
 ]]
 
