@@ -912,27 +912,33 @@ char* react_generate_state_hooks(cJSON* manifest, ReactContext* ctx) {
             else if (strcmp(hook_type, "useCallback") == 0) {
                 cJSON* callback = cJSON_GetObjectItem(hook, "callback");
                 cJSON* deps = cJSON_GetObjectItem(hook, "dependencies");
+                cJSON* name_node = cJSON_GetObjectItem(hook, "name");
 
                 if (callback && cJSON_IsString(callback)) {
                     const char* cb_str = cJSON_GetStringValue(callback);
                     const char* deps_str = (deps && cJSON_IsString(deps)) ?
                         cJSON_GetStringValue(deps) : "[]";
+                    const char* var_name = (name_node && cJSON_IsString(name_node)) ?
+                        cJSON_GetStringValue(name_node) : "memoizedCallback";
 
-                    sb_append_fmt(sb, "  const memoizedCallback = useCallback(%s, %s);\n",
-                                  cb_str, deps_str);
+                    sb_append_fmt(sb, "  const %s = useCallback(%s, %s);\n",
+                                  var_name, cb_str, deps_str);
                 }
             }
             else if (strcmp(hook_type, "useMemo") == 0) {
                 cJSON* callback = cJSON_GetObjectItem(hook, "callback");
                 cJSON* deps = cJSON_GetObjectItem(hook, "dependencies");
+                cJSON* name_node = cJSON_GetObjectItem(hook, "name");
 
                 if (callback && cJSON_IsString(callback)) {
                     const char* cb_str = cJSON_GetStringValue(callback);
                     const char* deps_str = (deps && cJSON_IsString(deps)) ?
                         cJSON_GetStringValue(deps) : "[]";
+                    const char* var_name = (name_node && cJSON_IsString(name_node)) ?
+                        cJSON_GetStringValue(name_node) : "memoizedValue";
 
-                    sb_append_fmt(sb, "  const memoizedValue = useMemo(%s, %s);\n",
-                                  cb_str, deps_str);
+                    sb_append_fmt(sb, "  const %s = useMemo(%s, %s);\n",
+                                  var_name, cb_str, deps_str);
                 }
             }
             else if (strcmp(hook_type, "useReducer") == 0) {

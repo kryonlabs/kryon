@@ -63,6 +63,12 @@ bool kryon_finalize(const char* output_path);
  */
 void kryon_cleanup(void);
 
+/**
+ * Get the renderer backend from kryon.toml configuration
+ * Returns the backend type enum value, or -1 if not found/error
+ */
+int kryon_get_renderer_backend_from_config(void);
+
 // ============================================================================
 // Component Creation
 // ============================================================================
