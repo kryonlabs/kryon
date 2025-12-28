@@ -86,6 +86,7 @@ typedef struct {
     char path[512];
 } RegisteredFont;
 
+#ifdef ENABLE_SDL3
 // Cached font instance
 typedef struct {
     char path[512];
@@ -106,6 +107,7 @@ typedef struct {
     bool valid;               // Entry is valid
     int cache_index;          // Index in g_text_texture_cache array
 } TextTextureCache;
+#endif
 
 // Hash table for O(1) text cache lookup (Phase 1 optimization)
 #define TEXT_CACHE_HASH_SIZE 256
@@ -150,8 +152,6 @@ extern uint64_t g_frame_counter;
 // Font management
 extern RegisteredFont g_font_registry[32];
 extern int g_font_registry_count;
-extern CachedFont g_font_cache[64];
-extern int g_font_cache_count;
 extern char g_default_font_name[128];
 extern char g_default_font_path[512];
 
@@ -168,9 +168,14 @@ typedef struct {
 extern FontPathCacheEntry g_font_path_cache[FONT_PATH_CACHE_SIZE];
 extern int g_font_path_cache_count;
 
+#ifdef ENABLE_SDL3
+extern CachedFont g_font_cache[64];
+extern int g_font_cache_count;
+
 // Text texture cache
 extern TextTextureCache g_text_texture_cache[TEXT_TEXTURE_CACHE_SIZE];
 extern TextCacheHashBucket g_text_cache_hash_table[TEXT_CACHE_HASH_SIZE];
+#endif
 
 // Input states
 extern InputRuntimeState input_states[64];

@@ -477,11 +477,13 @@ static IRLayout* get_or_create_layout(IRComponent* c) {
 
 void kryon_set_width(IRComponent* c, float value, const char* unit) {
     if (!c) return;
+    get_or_create_style(c);  // Ensure style exists
     ir_set_width(c, parse_unit(unit), value);
 }
 
 void kryon_set_height(IRComponent* c, float value, const char* unit) {
     if (!c) return;
+    get_or_create_style(c);  // Ensure style exists
     ir_set_height(c, parse_unit(unit), value);
 }
 
@@ -552,21 +554,25 @@ void kryon_set_border_color(IRComponent* c, uint32_t color) {
 
 void kryon_set_padding(IRComponent* c, float value) {
     if (!c) return;
+    get_or_create_style(c);  // Ensure style exists
     ir_set_padding(c, value, value, value, value);
 }
 
 void kryon_set_padding_sides(IRComponent* c, float top, float right, float bottom, float left) {
     if (!c) return;
+    get_or_create_style(c);  // Ensure style exists
     ir_set_padding(c, top, right, bottom, left);
 }
 
 void kryon_set_margin(IRComponent* c, float value) {
     if (!c) return;
+    get_or_create_style(c);  // Ensure style exists
     ir_set_margin(c, value, value, value, value);
 }
 
 void kryon_set_margin_sides(IRComponent* c, float top, float right, float bottom, float left) {
     if (!c) return;
+    get_or_create_style(c);  // Ensure style exists
     ir_set_margin(c, top, right, bottom, left);
 }
 

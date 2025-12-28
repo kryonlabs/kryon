@@ -372,8 +372,8 @@ IREventBinding* ir_event_binding_from_json(cJSON* json) {
     if (!json || !cJSON_IsObject(json)) return NULL;
 
     cJSON* component_id = cJSON_GetObjectItem(json, "component_id");
-    cJSON* event = cJSON_GetObjectItem(json, "event");
-    cJSON* handler = cJSON_GetObjectItem(json, "handler");
+    cJSON* event = cJSON_GetObjectItem(json, "event_type");
+    cJSON* handler = cJSON_GetObjectItem(json, "handler_name");
 
     if (!component_id || !cJSON_IsNumber(component_id)) return NULL;
     if (!event || !cJSON_IsString(event)) return NULL;

@@ -878,6 +878,11 @@ typedef struct IRMetadata {
     char** required_plugins;          // Array of plugin names (e.g., ["canvas", "markdown"])
     uint32_t plugin_count;            // Number of required plugins
 
+    // Window properties (for App component)
+    char* window_title;               // Window title (NULL for default)
+    int window_width;                 // Window width (0 for default)
+    int window_height;                // Window height (0 for default)
+
     char reserved[16];                // For future expansion
 } IRMetadata;
 

@@ -1592,6 +1592,27 @@ char* ir_serialize_json_complete(
         }
     }
 
+    // Add window properties from global IR context
+    IRContext* ctx = g_ir_context;
+    if (ctx && ctx->metadata) {
+        cJSON* appJson = cJSON_CreateObject();
+        if (ctx->metadata->window_title) {
+            cJSON_AddStringToObject(appJson, "windowTitle", ctx->metadata->window_title);
+        }
+        if (ctx->metadata->window_width > 0) {
+            cJSON_AddNumberToObject(appJson, "windowWidth", ctx->metadata->window_width);
+        }
+        if (ctx->metadata->window_height > 0) {
+            cJSON_AddNumberToObject(appJson, "windowHeight", ctx->metadata->window_height);
+        }
+        // Only add app object if it has any properties
+        if (cJSON_GetArraySize(appJson) > 0) {
+            cJSON_AddItemToObject(wrapper, "app", appJson);
+        } else {
+            cJSON_Delete(appJson);
+        }
+    }
+
     // Add component definitions FIRST (at the top)
     if (manifest && manifest->component_def_count > 0) {
         cJSON* componentDefsJson = json_serialize_component_definitions(manifest);
@@ -3059,6 +3080,41 @@ IRComponent* ir_deserialize_json(const char* json_string) {
                 }
             }
             ir_plugin_set_requirements(plugin_names, plugin_count);
+        }
+    }
+
+    // Parse window properties from app object
+    cJSON* appJson = cJSON_GetObjectItem(root, "app");
+    if (appJson && cJSON_IsObject(appJson)) {
+        // Get or create global context and metadata
+        IRContext* ir_ctx = g_ir_context;
+        if (!ir_ctx) {
+            ir_ctx = ir_create_context();
+            ir_set_context(ir_ctx);
+        }
+        if (!ir_ctx->metadata) {
+            ir_ctx->metadata = (IRMetadata*)calloc(1, sizeof(IRMetadata));
+        }
+        if (ir_ctx->metadata) {
+            cJSON* titleItem = cJSON_GetObjectItem(appJson, "windowTitle");
+            if (titleItem && cJSON_IsString(titleItem)) {
+                if (ir_ctx->metadata->window_title) {
+                    free(ir_ctx->metadata->window_title);
+                }
+                size_t len = strlen(titleItem->valuestring);
+                ir_ctx->metadata->window_title = (char*)malloc(len + 1);
+                if (ir_ctx->metadata->window_title) {
+                    strcpy(ir_ctx->metadata->window_title, titleItem->valuestring);
+                }
+            }
+            cJSON* widthItem = cJSON_GetObjectItem(appJson, "windowWidth");
+            if (widthItem && cJSON_IsNumber(widthItem)) {
+                ir_ctx->metadata->window_width = (int)widthItem->valuedouble;
+            }
+            cJSON* heightItem = cJSON_GetObjectItem(appJson, "windowHeight");
+            if (heightItem && cJSON_IsNumber(heightItem)) {
+                ir_ctx->metadata->window_height = (int)heightItem->valuedouble;
+            }
         }
     }
 

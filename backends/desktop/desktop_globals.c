@@ -28,10 +28,6 @@ bool g_debug_renderer = false;
 RegisteredFont g_font_registry[32];
 int g_font_registry_count = 0;
 
-// TTF_Font cache (path+size → font, max 64 cached fonts)
-CachedFont g_font_cache[64];
-int g_font_cache_count = 0;
-
 // Default font (fallback when component doesn't specify a font)
 char g_default_font_name[128] = {0};
 char g_default_font_path[512] = {0};
@@ -39,6 +35,11 @@ char g_default_font_path[512] = {0};
 // Font path resolution cache
 FontPathCacheEntry g_font_path_cache[FONT_PATH_CACHE_SIZE];
 int g_font_path_cache_count = 0;
+
+#ifdef ENABLE_SDL3
+// TTF_Font cache (path+size → font, max 64 cached fonts)
+CachedFont g_font_cache[64];
+int g_font_cache_count = 0;
 
 // ============================================================================
 // TEXT RENDERING CACHE
@@ -49,6 +50,7 @@ TextTextureCache g_text_texture_cache[TEXT_TEXTURE_CACHE_SIZE];
 
 // Hash table for O(1) text cache lookup (Phase 1 optimization: 15-25% speedup)
 TextCacheHashBucket g_text_cache_hash_table[TEXT_CACHE_HASH_SIZE];
+#endif
 
 // ============================================================================
 // INPUT STATE
