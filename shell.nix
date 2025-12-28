@@ -1,5 +1,19 @@
-# shell.nix (Simple Kryon development environment)
-{ pkgs ? import <nixpkgs> {} }:
+# shell.nix (Kryon development environment with Android support)
+{ pkgs ? import <nixpkgs> {
+  config.android_sdk.accept_license = true;
+  config.allowUnfree = true;
+} }:
+
+let
+  androidComposition = pkgs.androidenv.composeAndroidPackages {
+    platformVersions = [ "34" ];
+    buildToolsVersions = [ "34.0.0" ];
+    includeNDK = true;
+    ndkVersion = "26.1.10909125";
+    cmakeVersions = [ "3.22.1" ];
+  };
+  androidSdk = androidComposition.androidsdk;
+in
 
 pkgs.mkShell {
   buildInputs = with pkgs; [
@@ -34,9 +48,10 @@ pkgs.mkShell {
     nodejs  # For npm compatibility if needed
 
     # Android development
-    android-tools  # adb, fastboot
-    jdk17          # Java for Gradle
-    gradle         # Build system
+    androidSdk
+    jdk17
+    gradle
+    glibc
 
     # System libraries
     libGL
@@ -55,6 +70,14 @@ pkgs.mkShell {
   ];
 
   shellHook = ''
+    # Set Android environment variables
+    export ANDROID_HOME="${androidSdk}/libexec/android-sdk"
+    export ANDROID_SDK_ROOT="$ANDROID_HOME"
+    export ANDROID_NDK_HOME="$ANDROID_HOME/ndk-bundle"
+
+    # Override aapt2 for gradle (NixOS compatibility)
+    export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$ANDROID_HOME/build-tools/34.0.0/aapt2"
+
     echo "Kryon Development Environment"
     echo "============================="
     echo "Nim version: $(nim --version | head -1)"
@@ -71,19 +94,12 @@ pkgs.mkShell {
     echo "  Run web examples: ./run_example.sh hello_world ts web"
     echo "  Android: ./cli/kryon run --target=android examples/kry/hello_world.kry"
     echo ""
-
-    # Check Android tools
-    if [ -n "$ANDROID_HOME" ] && [ -n "$ANDROID_NDK_HOME" ]; then
-      echo "Android SDK: $ANDROID_HOME"
-      echo "Android NDK: $ANDROID_NDK_HOME"
-    else
-      echo "Warning: Set ANDROID_HOME and ANDROID_NDK_HOME for Android builds"
-    fi
+    echo "Android SDK: $ANDROID_HOME"
+    echo "Android NDK: $ANDROID_NDK_HOME"
     echo ""
-
     echo "Available frontends: kry, nim, typescript (ts), lua, c"
     echo "Available renderers: sdl3, raylib, terminal, framebuffer"
-    echo "Available codegen targets: web"
+    echo "Available codegen targets: web, android"
     echo ""
   '';
 }

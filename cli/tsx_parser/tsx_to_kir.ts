@@ -61,6 +61,48 @@ const eventBindings: EventBinding[] = [];
 const reactiveVars: ReactiveVar[] = [];
 const hooks: Hook[] = [];
 
+// Track JSX text expressions for preservation
+interface TextExpression {
+  pattern: string;  // Original pattern like "Count: {count}"
+  variable: string; // Extracted variable name
+}
+const textExpressions = new Map<string, TextExpression>();
+
+/**
+ * Detect JSX text expressions before evaluation
+ * Finds patterns like: <Text>Count: {count}</Text>
+ */
+function detectTextExpressions(source: string): void {
+  // Match JSX elements with text content containing expressions
+  // Pattern: >text {variable} more text<
+  const jsxTextPattern = />([^<]*\{[^}]+\}[^<]*)</g;
+
+  let match;
+  while ((match = jsxTextPattern.exec(source)) !== null) {
+    const textContent = match[1].trim();
+
+    if (!textContent || textContent.length === 0) continue;
+
+    // Extract variables from the text
+    const expressionPattern = /\{([a-zA-Z_$][a-zA-Z0-9_$]*)\}/g;
+    let exprMatch;
+
+    while ((exprMatch = expressionPattern.exec(textContent)) !== null) {
+      const variable = exprMatch[1];
+
+      // Store the pattern and variable
+      textExpressions.set(textContent, {
+        pattern: textContent,
+        variable: variable
+      });
+
+      if (process.env.DEBUG_TSX_PARSER) {
+        console.error(`Detected text expression: "${textContent}" with variable: ${variable}`);
+      }
+    }
+  }
+}
+
 /**
  * Infer type from initial value
  */
@@ -304,6 +346,34 @@ function parseJSXElement(node: any): KIRComponent | null {
 
     if (children.length > 0) {
       component.children = children;
+
+      // Check if this Text component's children match a text expression pattern
+      if (type === "Text" && children.length >= 2) {
+        // Try to reconstruct the original pattern
+        let reconstructed = "";
+        for (const child of children) {
+          if (child.text) {
+            reconstructed += child.text;
+          }
+        }
+
+        // Check if any detected pattern starts with this reconstructed text
+        for (const [pattern, expr] of textExpressions) {
+          // The pattern might have the variable, but we have the evaluated value
+          // Try matching just the static parts
+          const staticParts = pattern.split(/\{[^}]+\}/).filter(p => p.length > 0);
+
+          if (staticParts.length > 0 && reconstructed.includes(staticParts[0])) {
+            // Mark this component with the expression
+            component.text_expression = `{${expr.variable}}`;
+
+            if (process.env.DEBUG_TSX_PARSER) {
+              console.error(`Marked component with text_expression: {${expr.variable}}`);
+            }
+            break;
+          }
+        }
+      }
     }
 
     return component;
@@ -316,7 +386,10 @@ function parseJSXElement(node: any): KIRComponent | null {
  * Transpile TSX to JSX and evaluate to get component tree
  */
 async function parseKryonTSX(source: string): Promise<KIRComponent> {
-  // FIRST: Scan source for React hooks
+  // FIRST: Detect text expressions before evaluation
+  detectTextExpressions(source);
+
+  // SECOND: Scan source for React hooks
   scanForHooks(source);
 
   // Create mock Kryon components that return JSX data structures
@@ -480,6 +553,7 @@ async function main() {
     eventBindings.length = 0;
     reactiveVars.length = 0;
     hooks.length = 0;
+    textExpressions.clear();
 
     // Parse to KIR
     const root = await parseKryonTSX(source);

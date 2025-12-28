@@ -640,23 +640,7 @@ StringBuilder* react_generate_props(cJSON* node, ReactContext* ctx, bool has_tex
         }
     }
 
-    // Handle text_expression
-    if (has_text_expression) {
-        cJSON* text_expr = cJSON_GetObjectItem(node, "text_expression");
-        if (text_expr && cJSON_IsString(text_expr)) {
-            const char* expr = cJSON_GetStringValue(text_expr);
-            // Extract variable name from {{varName}}
-            if (strlen(expr) > 4) {
-                char var_name[256];
-                size_t len = strlen(expr) - 4;
-                strncpy(var_name, expr + 2, len);
-                var_name[len] = '\0';
-
-                if (sb->size > 0) sb_append(sb, " ");
-                sb_append_fmt(sb, "text={String(%s)}", var_name);
-            }
-        }
-    }
+    // text_expression is now handled in generate_children, not here
 
     return sb;
 }
@@ -738,6 +722,36 @@ static char* generate_children(cJSON* node, ReactContext* ctx, int indent) {
     const char* parent_type = type_node && cJSON_IsString(type_node) ? cJSON_GetStringValue(type_node) : "";
 
     if (strcmp(parent_type, "Text") == 0) {
+        // Check if this has a text_expression (JSX expression like {variable})
+        cJSON* text_expr = cJSON_GetObjectItem(node, "text_expression");
+        if (text_expr && cJSON_IsString(text_expr)) {
+            // Reconstruct with JSX expression
+            // Pattern: first child is static text, last child is the evaluated value to replace
+            StringBuilder* sb = sb_create(256);
+            const char* expr = cJSON_GetStringValue(text_expr);
+
+            int child_count = cJSON_GetArraySize(children);
+            int idx = 0;
+
+            cJSON* child = NULL;
+            cJSON_ArrayForEach(child, children) {
+                cJSON* text_node = cJSON_GetObjectItem(child, "text");
+                if (text_node && cJSON_IsString(text_node)) {
+                    // Replace the last child (evaluated value) with the expression
+                    if (idx == child_count - 1) {
+                        sb_append(sb, expr);
+                    } else {
+                        sb_append(sb, cJSON_GetStringValue(text_node));
+                    }
+                }
+                idx++;
+            }
+
+            char* result = strdup(sb_get(sb));
+            sb_free(sb);
+            return result;
+        }
+
         // Check if all children are Text nodes with text property
         bool all_text_children = true;
         cJSON* child = NULL;
