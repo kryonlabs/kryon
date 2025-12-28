@@ -121,7 +121,7 @@ $(DESKTOP_STATIC_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)
 
 # Create shared library
 $(DESKTOP_SHARED_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)
-	$(CC) $(CFLAGS) -shared -o $@ $(DESKTOP_OBJS) -L$(BUILD_DIR) -lkryon_ir $(LIBS)
+	$(CC) $(CFLAGS) -shared -o $@ $(DESKTOP_OBJS) -L$(BUILD_DIR) -lkryon_ir -lkryon_sdl3 -lkryon_common $(LIBS)
 
 # Build test program
 $(DESKTOP_TEST): $(DESKTOP_STATIC_LIB) desktop_test.c

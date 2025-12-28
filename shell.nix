@@ -33,6 +33,11 @@ pkgs.mkShell {
     bun
     nodejs  # For npm compatibility if needed
 
+    # Android development
+    android-tools  # adb, fastboot
+    jdk17          # Java for Gradle
+    gradle         # Build system
+
     # System libraries
     libGL
     libglvnd
@@ -64,7 +69,18 @@ pkgs.mkShell {
     echo "  Run TypeScript examples: ./run_example.sh hello_world ts"
     echo "  Run terminal examples: ./run_example.sh hello_world nim terminal"
     echo "  Run web examples: ./run_example.sh hello_world ts web"
+    echo "  Android: ./cli/kryon run --target=android examples/kry/hello_world.kry"
     echo ""
+
+    # Check Android tools
+    if [ -n "$ANDROID_HOME" ] && [ -n "$ANDROID_NDK_HOME" ]; then
+      echo "Android SDK: $ANDROID_HOME"
+      echo "Android NDK: $ANDROID_NDK_HOME"
+    else
+      echo "Warning: Set ANDROID_HOME and ANDROID_NDK_HOME for Android builds"
+    fi
+    echo ""
+
     echo "Available frontends: kry, nim, typescript (ts), lua, c"
     echo "Available renderers: sdl3, raylib, terminal, framebuffer"
     echo "Available codegen targets: web"

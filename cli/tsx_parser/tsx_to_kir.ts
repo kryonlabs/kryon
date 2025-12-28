@@ -1,7 +1,13 @@
 #!/usr/bin/env bun
 /**
- * TSX to KIR Converter
+ * TSX to KIR Converter - Enhanced Version
  * Parses Kryon TSX/JSX and converts to Kryon Intermediate Representation
+ *
+ * Features:
+ * - Detects ALL event handlers (onClick, onChange, onSubmit, onFocus, etc.)
+ * - Detects React hooks (useState, useEffect, useCallback, useMemo)
+ * - Builds reactive_manifest with state variables and types
+ * - Preserves hook dependencies for proper generation
  */
 
 import { parseArgs } from "util";
@@ -33,10 +39,151 @@ interface EventBinding {
   handler_name: string;
 }
 
+interface ReactiveVar {
+  id: number;
+  name: string;
+  type: string;
+  initial_value: string;
+  setter_name?: string;
+}
+
+interface Hook {
+  type: "useEffect" | "useCallback" | "useMemo" | "useReducer";
+  callback: string;
+  dependencies?: string;
+}
+
 let nextId = 1;
 let nextHandlerId = 1;
 const logicFunctions: LogicFunction[] = [];
 const eventBindings: EventBinding[] = [];
+const reactiveVars: ReactiveVar[] = [];
+const hooks: Hook[] = [];
+
+/**
+ * Infer type from initial value
+ */
+function inferType(initialValue: string): string {
+  const val = initialValue.trim();
+
+  // Boolean
+  if (val === "true" || val === "false") return "boolean";
+
+  // Number (integer or float)
+  if (/^-?\d+$/.test(val)) return "number";
+  if (/^-?\d+\.\d+$/.test(val)) return "number";
+
+  // String (quoted)
+  if (val.startsWith("'") || val.startsWith('"') || val.startsWith("`")) return "string";
+
+  // Null/undefined
+  if (val === "null" || val === "undefined") return "any";
+
+  // Array
+  if (val.startsWith("[")) return "array";
+
+  // Object
+  if (val.startsWith("{")) return "object";
+
+  return "any";
+}
+
+/**
+ * Detect useState hooks in source code
+ */
+function detectUseState(source: string): void {
+  // Match: const [varName, setVarName] = useState(initialValue)
+  // Handles various formats including with type annotations
+  const useStatePattern = /const\s+\[([a-zA-Z_$][a-zA-Z0-9_$]*)\s*,\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\]\s*=\s*useState(?:<[^>]+>)?\(([^)]*)\)/g;
+
+  let match;
+  while ((match = useStatePattern.exec(source)) !== null) {
+    const varName = match[1];
+    const setterName = match[2];
+    const initialValue = match[3].trim() || "undefined";
+
+    const type = inferType(initialValue);
+
+    reactiveVars.push({
+      id: reactiveVars.length + 1,
+      name: varName,
+      type: type,
+      initial_value: initialValue,
+      setter_name: setterName
+    });
+  }
+}
+
+/**
+ * Detect useEffect hooks in source code
+ */
+function detectUseEffect(source: string): void {
+  // Match: useEffect(() => { ... }, [deps])
+  // This is a simplified regex that captures most common patterns
+  const useEffectPattern = /useEffect\(\s*((?:\([^)]*\)|[^,])*?)\s*,\s*(\[[^\]]*\])\s*\)/g;
+
+  let match;
+  while ((match = useEffectPattern.exec(source)) !== null) {
+    const callback = match[1].trim();
+    const dependencies = match[2].trim();
+
+    hooks.push({
+      type: "useEffect",
+      callback: callback,
+      dependencies: dependencies
+    });
+  }
+}
+
+/**
+ * Detect useCallback hooks in source code
+ */
+function detectUseCallback(source: string): void {
+  const useCallbackPattern = /const\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*useCallback\(\s*((?:\([^)]*\)|[^,])*?)\s*,\s*(\[[^\]]*\])\s*\)/g;
+
+  let match;
+  while ((match = useCallbackPattern.exec(source)) !== null) {
+    const varName = match[1];
+    const callback = match[2].trim();
+    const dependencies = match[3].trim();
+
+    hooks.push({
+      type: "useCallback",
+      callback: callback,
+      dependencies: dependencies
+    });
+  }
+}
+
+/**
+ * Detect useMemo hooks in source code
+ */
+function detectUseMemo(source: string): void {
+  const useMemoPattern = /const\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*useMemo\(\s*((?:\([^)]*\)|[^,])*?)\s*,\s*(\[[^\]]*\])\s*\)/g;
+
+  let match;
+  while ((match = useMemoPattern.exec(source)) !== null) {
+    const varName = match[1];
+    const callback = match[2].trim();
+    const dependencies = match[3].trim();
+
+    hooks.push({
+      type: "useMemo",
+      callback: callback,
+      dependencies: dependencies
+    });
+  }
+}
+
+/**
+ * Scan source code for all React hooks
+ */
+function scanForHooks(source: string): void {
+  detectUseState(source);
+  detectUseEffect(source);
+  detectUseCallback(source);
+  detectUseMemo(source);
+}
 
 /**
  * Parse JSX element recursively
@@ -89,9 +236,9 @@ function parseJSXElement(node: any): KIRComponent | null {
         // Skip children and key
         if (key === 'children' || key === 'key') continue;
 
-        // Handle event handlers
-        if (key.startsWith('on') && typeof value === 'function') {
-          const eventType = key.slice(2).toLowerCase(); // onClick -> click
+        // Handle ALL event handlers (not just onClick)
+        if (key.startsWith('on') && key.length > 2 && typeof value === 'function') {
+          const eventType = key.slice(2).toLowerCase(); // onClick -> click, onChange -> change
           const handlerName = `handler_${nextHandlerId++}_${eventType}`;
 
           // Extract function source code
@@ -106,7 +253,7 @@ function parseJSXElement(node: any): KIRComponent | null {
             }]
           });
 
-          // Create event binding (will use component.id which is set above)
+          // Create event binding
           eventBindings.push({
             component_id: component.id!,
             event_type: eventType,
@@ -120,7 +267,7 @@ function parseJSXElement(node: any): KIRComponent | null {
             handler_data: handlerSource
           });
 
-          continue; // Don't add onClick as a regular prop
+          continue; // Don't add event handler as a regular prop
         }
 
         // Handle special prop names
@@ -166,6 +313,9 @@ function parseJSXElement(node: any): KIRComponent | null {
  * Transpile TSX to JSX and evaluate to get component tree
  */
 async function parseKryonTSX(source: string): Promise<KIRComponent> {
+  // FIRST: Scan source for React hooks
+  scanForHooks(source);
+
   // Create mock Kryon components that return JSX data structures
   const mockComponents: Record<string, any> = {};
 
@@ -232,6 +382,14 @@ async function parseKryonTSX(source: string): Promise<KIRComponent> {
     const evalContext = {
       ...mockComponents,
       kryonApp,
+      // Mock hooks (so code doesn't crash when evaluated)
+      useState: (initial: any) => [initial, () => {}],
+      useEffect: () => {},
+      useCallback: (fn: any) => fn,
+      useMemo: (fn: any) => fn(),
+      useReducer: (reducer: any, initial: any) => [initial, () => {}],
+      useRef: (initial: any) => ({ current: initial }),
+      useContext: () => ({}),
       // Standard React API
       React: {
         createElement: jsxFactory,
@@ -317,11 +475,13 @@ async function main() {
     nextHandlerId = 1;
     logicFunctions.length = 0;
     eventBindings.length = 0;
+    reactiveVars.length = 0;
+    hooks.length = 0;
 
     // Parse to KIR
     const root = await parseKryonTSX(source);
 
-    // Build output with logic_block
+    // Build output with logic_block and reactive_manifest
     const output: any = {
       format: "kir",
       metadata: {
@@ -336,6 +496,14 @@ async function main() {
       output.logic_block = {
         functions: logicFunctions,
         event_bindings: eventBindings
+      };
+    }
+
+    // Add reactive_manifest if there are any state variables or hooks
+    if (reactiveVars.length > 0 || hooks.length > 0) {
+      output.reactive_manifest = {
+        variables: reactiveVars,
+        hooks: hooks
       };
     }
 
