@@ -66,7 +66,10 @@ void android_font_cleanup(AndroidRenderer* renderer) {
             }
 #ifdef __ANDROID__
             if (renderer->font_registry[i].atlas_texture) {
-                glDeleteTextures(1, &renderer->font_registry[i].atlas_texture);
+                // Only delete if texture ID is still valid (handles context loss)
+                if (glIsTexture(renderer->font_registry[i].atlas_texture)) {
+                    glDeleteTextures(1, &renderer->font_registry[i].atlas_texture);
+                }
                 renderer->font_registry[i].atlas_texture = 0;
             }
 #endif
@@ -153,11 +156,32 @@ static bool build_glyph_atlas(FontInfo* font, int size) {
     }
 
 #ifdef __ANDROID__
+    // Verify atlas bitmap has data
+    int non_zero_pixels = 0;
+    for (int i = 0; i < atlas_size * atlas_size; i++) {
+        if (atlas_bitmap[i] > 0) {
+            non_zero_pixels++;
+        }
+    }
+    LOGI("Atlas bitmap stats: total=%d, non_zero=%d (%.1f%%)\n",
+         atlas_size * atlas_size, non_zero_pixels,
+         100.0f * non_zero_pixels / (atlas_size * atlas_size));
+
     // Create OpenGL texture for atlas
     glGenTextures(1, &font->atlas_texture);
     glBindTexture(GL_TEXTURE_2D, font->atlas_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, atlas_size, atlas_size, 0,
                  GL_RED, GL_UNSIGNED_BYTE, atlas_bitmap);
+
+    // Check GL error
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        LOGE("glTexImage2D failed: 0x%x\n", err);
+    } else {
+        LOGI("glTexImage2D succeeded: texture=%d, size=%dx%d\n",
+             font->atlas_texture, atlas_size, atlas_size);
+    }
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -181,9 +205,31 @@ FontInfo* android_font_get(AndroidRenderer* renderer, const char* name, int size
     // Search for existing font with matching size
     for (int i = 0; i < renderer->font_registry_count; i++) {
         if (strcmp(renderer->font_registry[i].name, name) == 0 &&
-            renderer->font_registry[i].size == size &&
-            renderer->font_registry[i].atlas_texture != 0) {
-            return &renderer->font_registry[i];
+            renderer->font_registry[i].size == size) {
+
+            FontInfo* font = &renderer->font_registry[i];
+
+#ifdef __ANDROID__
+            // Validate texture still exists (handles GL context loss)
+            if (font->atlas_texture != 0) {
+                if (!glIsTexture(font->atlas_texture)) {
+                    LOGI("Font atlas texture lost (context loss), rebuilding: %s @ %d\n",
+                         name, size);
+                    font->atlas_texture = 0;  // Mark invalid
+                }
+            }
+#endif
+
+            // If texture valid, return font
+            if (font->atlas_texture != 0) {
+                return font;
+            }
+
+            // Texture invalid or missing - rebuild atlas
+            LOGI("Rebuilding font atlas: %s @ %d\n", name, size);
+            if (build_glyph_atlas(font, size)) {
+                return font;
+            }
         }
     }
 

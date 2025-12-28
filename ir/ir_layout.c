@@ -65,20 +65,7 @@ void ir_layout_mark_dirty(IRComponent* component) {
     // Propagate dirty flag upward to parents
     IRComponent* parent = component->parent;
     while (parent) {
-        if (!parent->layout_state) {
-            if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
-                fprintf(stderr, "[MARK_DIRTY_STOP] Parent ID=%u type=%d has no layout_state, stopping propagation\n",
-                       parent->id, parent->type);
-            }
-            break;
-        }
-
-        if (getenv("KRYON_DEBUG_TAB_LAYOUT") && (parent->type == IR_COMPONENT_TAB_GROUP ||
-                                                   parent->type == IR_COMPONENT_COLUMN ||
-                                                   parent->type == IR_COMPONENT_TAB_CONTENT)) {
-            fprintf(stderr, "[MARK_DIRTY_PARENT] Marking parent ID=%u type=%d dirty\n",
-                   parent->id, parent->type);
-        }
+        if (!parent->layout_state) break;
 
         parent->layout_state->dirty = true;
         parent->layout_state->layout_valid = false;
@@ -1820,38 +1807,18 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                            float parent_x, float parent_y) {
     if (!c) return;
 
-    if (getenv("KRYON_DEBUG_TAB_LAYOUT") &&
-        (c->type == IR_COMPONENT_TAB_CONTENT || c->type == IR_COMPONENT_TAB_PANEL)) {
-        fprintf(stderr, "[LAYOUT_PASS] Component ID=%u type=%d child_count=%u parent_pos=(%.1f, %.1f)\n",
-               c->id, c->type, c->child_count, parent_x, parent_y);
-    }
-
     // Ensure layout state exists
-    bool layout_state_created = false;
     if (!c->layout_state) {
         c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-        layout_state_created = true;
     }
 
     // If component is dirty or layout invalid, clear cached dimensions
     // This ensures fresh layout computation when needed
     if (c->layout_state->dirty || !c->layout_state->layout_valid) {
-        if (getenv("KRYON_DEBUG_TAB_LAYOUT") &&
-            (c->type == IR_COMPONENT_TAB_CONTENT || c->type == IR_COMPONENT_TAB_PANEL || c->type == IR_COMPONENT_TEXT)) {
-            fprintf(stderr, "[LAYOUT_CLEAR] Component ID=%u type=%d dirty=%d valid=%d (clearing dimensions)\n",
-                   c->id, c->type, c->layout_state->dirty, c->layout_state->layout_valid);
-        }
         c->layout_state->computed.width = 0;
         c->layout_state->computed.height = 0;
         c->layout_state->computed.valid = false;
         c->layout_state->dirty = false;  // Clear dirty flag as we're recomputing
-    } else if (layout_state_created) {
-        // Newly created layout_state should also be computed
-        if (getenv("KRYON_DEBUG_TAB_LAYOUT") &&
-            (c->type == IR_COMPONENT_TAB_CONTENT || c->type == IR_COMPONENT_TAB_PANEL || c->type == IR_COMPONENT_TEXT)) {
-            fprintf(stderr, "[LAYOUT_NEW] Component ID=%u type=%d (new layout_state)\n",
-                   c->id, c->type);
-        }
     }
 
     // Try to dispatch to component-specific trait first

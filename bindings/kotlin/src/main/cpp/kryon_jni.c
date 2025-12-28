@@ -146,13 +146,27 @@ Java_com_kryon_KryonActivity_nativeOnStart(JNIEnv* env, jobject thiz, jlong hand
 JNIEXPORT void JNICALL
 Java_com_kryon_KryonActivity_nativeOnResume(JNIEnv* env, jobject thiz, jlong handle) {
     LOGI("nativeOnResume called\n");
-    // TODO: Resume rendering
+
+    if (handle == 0) return;
+
+    KryonNativeContext* ctx = (KryonNativeContext*)handle;
+
+    // GLSurfaceView.onResume() handles render loop restart
+    // Just mark that we're resumed if needed for state tracking
+    // (Currently no state tracking needed)
 }
 
 JNIEXPORT void JNICALL
 Java_com_kryon_KryonActivity_nativeOnPause(JNIEnv* env, jobject thiz, jlong handle) {
     LOGI("nativeOnPause called\n");
-    // TODO: Pause rendering
+
+    if (handle == 0) return;
+
+    KryonNativeContext* ctx = (KryonNativeContext*)handle;
+
+    // GLSurfaceView.onPause() handles render loop stop and context preservation
+    // Just mark that we're paused if needed for state tracking
+    // (Currently no state tracking needed)
 }
 
 JNIEXPORT void JNICALL
@@ -168,32 +182,25 @@ Java_com_kryon_KryonActivity_nativeOnDestroy(JNIEnv* env, jobject thiz, jlong ha
 }
 
 // ============================================================================
-// Surface Callbacks
+// GLSurfaceView.Renderer Callbacks
 // ============================================================================
 
 JNIEXPORT void JNICALL
-Java_com_kryon_KryonActivity_nativeSurfaceCreated(JNIEnv* env, jobject thiz,
-                                                   jlong handle, jobject surface) {
-    LOGI("nativeSurfaceCreated called\n");
+Java_com_kryon_KryonActivity_nativeGLSurfaceCreated(JNIEnv* env, jobject thiz, jlong handle) {
+    LOGI("nativeGLSurfaceCreated called\n");
 
     if (handle == 0) return;
 
     KryonNativeContext* ctx = (KryonNativeContext*)handle;
 
-    // Get native window from Surface
-    ctx->window = ANativeWindow_fromSurface(env, surface);
-    if (!ctx->window) {
-        LOGE("Failed to get native window from surface\n");
-        return;
-    }
+    // EGL context is already created by GLSurfaceView - we're on GL thread now
+    // Just initialize GL resources (shaders, VAO, VBO, etc.)
 
-    LOGI("Native window acquired: %p\n", ctx->window);
-
-    // Create IR renderer (which creates its own AndroidRenderer internally)
+    // Create IR renderer if first time
     if (!ctx->ir_renderer) {
         AndroidIRRendererConfig ir_config = {
-            .window_width = ANativeWindow_getWidth(ctx->window),
-            .window_height = ANativeWindow_getHeight(ctx->window),
+            .window_width = 800,  // Will be updated in onSurfaceChanged
+            .window_height = 600,
             .enable_animations = true,
             .enable_hot_reload = false,
             .hot_reload_watch_path = NULL
@@ -205,36 +212,32 @@ Java_com_kryon_KryonActivity_nativeSurfaceCreated(JNIEnv* env, jobject thiz,
             return;
         }
 
-        android_ir_renderer_initialize(ctx->ir_renderer, ctx->window);
-        LOGI("IR Renderer initialized successfully\n");
+        ctx->renderer = ctx->ir_renderer->renderer;  // Keep reference
+        LOGI("IR Renderer created successfully\n");
+    }
 
-        // Now initialize the AndroidRenderer that the IR renderer created
-        if (ctx->ir_renderer->renderer) {
-            if (!android_renderer_initialize(ctx->ir_renderer->renderer, ctx->window)) {
-                LOGE("Failed to initialize AndroidRenderer\n");
-                return;
-            }
-            LOGI("AndroidRenderer initialized successfully\n");
-            ctx->renderer = ctx->ir_renderer->renderer;  // Keep reference for cleanup
-
-            // Register Android system fonts directly with the renderer
-            android_renderer_register_font(ctx->renderer, "Roboto", "/system/fonts/Roboto-Regular.ttf");
-            android_renderer_register_font(ctx->renderer, "Roboto-Bold", "/system/fonts/Roboto-Bold.ttf");
-            android_renderer_set_default_font(ctx->renderer, "Roboto", 16);
-            LOGI("Fonts registered with renderer\n");
-        } else {
-            LOGE("IR renderer has no AndroidRenderer!\n");
+    // Initialize GL resources (no EGL setup - GLSurfaceView owns that)
+    if (ctx->renderer) {
+        if (!android_renderer_initialize_gl_only(ctx->renderer)) {
+            LOGE("Failed to initialize GL resources\n");
             return;
         }
+        LOGI("GL resources initialized successfully\n");
+
+        // Register Android system fonts
+        android_renderer_register_font(ctx->renderer, "Roboto", "/system/fonts/Roboto-Regular.ttf");
+        android_renderer_register_font(ctx->renderer, "Roboto-Bold", "/system/fonts/Roboto-Bold.ttf");
+        android_renderer_set_default_font(ctx->renderer, "Roboto", 16);
+        LOGI("Fonts registered with renderer\n");
     }
 
     ctx->surface_ready = true;
 }
 
 JNIEXPORT void JNICALL
-Java_com_kryon_KryonActivity_nativeSurfaceChanged(JNIEnv* env, jobject thiz,
-                                                   jlong handle, jint width, jint height) {
-    LOGI("nativeSurfaceChanged: %dx%d\n", width, height);
+Java_com_kryon_KryonActivity_nativeGLSurfaceChanged(JNIEnv* env, jobject thiz,
+                                                     jlong handle, jint width, jint height) {
+    LOGI("nativeGLSurfaceChanged: %dx%d\n", width, height);
 
     if (handle == 0) return;
 
@@ -279,29 +282,9 @@ Java_com_kryon_KryonActivity_nativeSurfaceChanged(JNIEnv* env, jobject thiz,
     }
 }
 
-JNIEXPORT void JNICALL
-Java_com_kryon_KryonActivity_nativeSurfaceDestroyed(JNIEnv* env, jobject thiz, jlong handle) {
-    LOGI("nativeSurfaceDestroyed called\n");
-
-    if (handle == 0) return;
-
-    KryonNativeContext* ctx = (KryonNativeContext*)handle;
-
-    ctx->surface_ready = false;
-
-    // Shutdown renderer (but don't destroy - that's done in nativeShutdown)
-    if (ctx->renderer) {
-        android_renderer_shutdown(ctx->renderer);
-        // Don't call android_renderer_destroy here - it will be called in nativeShutdown
-        // via android_ir_renderer_destroy
-    }
-
-    // Release window
-    if (ctx->window) {
-        ANativeWindow_release(ctx->window);
-        ctx->window = NULL;
-    }
-}
+// Note: No nativeSurfaceDestroyed needed - GLSurfaceView handles context cleanup
+// The GL context will be destroyed automatically when needed, and onSurfaceCreated
+// will be called again to rebuild resources
 
 // ============================================================================
 // Input Events
@@ -427,16 +410,16 @@ Java_com_kryon_KryonActivity_nativeGetFPS(JNIEnv* env, jobject thiz, jlong handl
 }
 
 JNIEXPORT void JNICALL
-Java_com_kryon_KryonActivity_nativeRender(JNIEnv* env, jobject thiz, jlong handle) {
+Java_com_kryon_KryonActivity_nativeGLRender(JNIEnv* env, jobject thiz, jlong handle) {
     static int jni_render_count = 0;
     jni_render_count++;
 
     if (jni_render_count % 60 == 0) {
-        LOGI("JNI nativeRender called, count=%d", jni_render_count);
+        LOGI("JNI nativeGLRender called, count=%d", jni_render_count);
     }
 
     if (handle == 0) {
-        LOGE("nativeRender: handle is 0");
+        LOGE("nativeGLRender: handle is 0");
         return;
     }
 
@@ -447,7 +430,7 @@ Java_com_kryon_KryonActivity_nativeRender(JNIEnv* env, jobject thiz, jlong handl
         android_ir_renderer_render(ctx->ir_renderer);
     } else {
         if (jni_render_count % 60 == 0) {
-            LOGE("nativeRender: ctx->ir_renderer is NULL");
+            LOGE("nativeGLRender: ctx->ir_renderer is NULL");
         }
     }
 }

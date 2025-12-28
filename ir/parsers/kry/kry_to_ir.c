@@ -329,6 +329,14 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             if (is_unresolved_expr(ctx, value->identifier) && ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
                 printf("[APPLY_PROPERTY]   Unresolved! Creating property binding for '%s'\n", value->identifier);
                 ir_component_add_property_binding(component, name, value->identifier, substituted, "static_template");
+
+                // Set as text expression for runtime evaluation instead of static content
+                printf("[APPLY_PROPERTY]   Setting text_expression = '%s'\n", value->identifier);
+                if (component->text_expression) {
+                    free(component->text_expression);
+                }
+                component->text_expression = strdup(value->identifier);
+                return;
             }
 
             ir_set_text_content(component, substituted);
@@ -343,6 +351,14 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             if (is_unresolved_expr(ctx, value->expression) && ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
                 printf("[APPLY_PROPERTY]   Unresolved! Creating property binding for '%s'\n", value->expression);
                 ir_component_add_property_binding(component, name, value->expression, substituted, "static_template");
+
+                // Set as text expression for runtime evaluation instead of static content
+                printf("[APPLY_PROPERTY]   Setting text_expression = '%s'\n", value->expression);
+                if (component->text_expression) {
+                    free(component->text_expression);
+                }
+                component->text_expression = strdup(value->expression);
+                return;
             }
 
             ir_set_text_content(component, substituted);
@@ -1122,8 +1138,141 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                 fprintf(stderr, "[CUSTOM_COMPONENT] Successfully expanded %s (instance %d)\n",
                         node->name, instance_counter - 1);
                 fflush(stderr);
-                // TODO: Apply instance arguments to initialize state variables
-                // For MVP, we're using default values from component definition
+
+                // Apply instance arguments to initialize state variables
+                // Find the component definition
+                IRComponentDefinition* def = NULL;
+                for (uint32_t i = 0; i < ctx->manifest->component_def_count; i++) {
+                    if (strcmp(ctx->manifest->component_defs[i].name, node->name) == 0) {
+                        def = &ctx->manifest->component_defs[i];
+                        break;
+                    }
+                }
+
+                if (node->arguments && def) {
+                    fprintf(stderr, "[CUSTOM_COMPONENT] Applying arguments: '%s'\n", node->arguments);
+                    fflush(stderr);
+                    {
+                        // Parse argument - for now support simple positional or named syntax
+                        // "5" -> first positional arg
+                        // "initialValue = 10" -> named arg
+                        char* arg_copy = strdup(node->arguments);
+                        char* equals = strchr(arg_copy, '=');
+
+                        char* arg_value = NULL;
+                        if (equals) {
+                            // Named argument: "initialValue = 10"
+                            arg_value = equals + 1;
+                            // Trim whitespace
+                            while (*arg_value == ' ') arg_value++;
+                        } else {
+                            // Positional argument: "5"
+                            arg_value = arg_copy;
+                            // Trim whitespace
+                            while (*arg_value == ' ') arg_value++;
+                        }
+
+                        // Apply to state variables that reference this prop
+                        for (uint32_t i = 0; i < def->state_var_count; i++) {
+                            IRComponentStateVar* state_var = &def->state_vars[i];
+                            // If the initial_expr is the prop name, substitute with actual value
+                            if (state_var->initial_expr && equals) {
+                                // Named arg: check if initial_expr matches prop name
+                                char* prop_name_start = arg_copy;
+                                *equals = '\0'; // Temporarily terminate
+                                // Trim whitespace from prop name
+                                char* prop_name_end = equals - 1;
+                                while (prop_name_end > prop_name_start && *prop_name_end == ' ') {
+                                    *prop_name_end = '\0';
+                                    prop_name_end--;
+                                }
+
+                                if (strcmp(state_var->initial_expr, prop_name_start) == 0) {
+                                    fprintf(stderr, "[CUSTOM_COMPONENT] Registering %s.%s with initial value %s\n",
+                                            instance_scope, state_var->name, arg_value);
+                                    fflush(stderr);
+
+                                    // Register state variable in manifest with the actual value
+                                    IRReactiveValue initial_value;
+                                    initial_value.as_int = atoi(arg_value);
+
+                                    uint32_t var_id = ir_reactive_manifest_add_var(
+                                        ctx->manifest,
+                                        state_var->name,
+                                        IR_REACTIVE_TYPE_INT,
+                                        initial_value
+                                    );
+
+                                    // Set metadata including scope
+                                    ir_reactive_manifest_set_var_metadata(
+                                        ctx->manifest,
+                                        var_id,
+                                        "int",
+                                        arg_value,
+                                        instance_scope
+                                    );
+                                }
+                                *equals = '='; // Restore
+                            } else if (state_var->initial_expr) {
+                                // Positional arg - just use the value directly
+                                fprintf(stderr, "[CUSTOM_COMPONENT] Registering %s.%s with initial value %s (positional)\n",
+                                        instance_scope, state_var->name, arg_value);
+                                fflush(stderr);
+
+                                IRReactiveValue initial_value;
+                                initial_value.as_int = atoi(arg_value);
+
+                                uint32_t var_id = ir_reactive_manifest_add_var(
+                                    ctx->manifest,
+                                    state_var->name,
+                                    IR_REACTIVE_TYPE_INT,
+                                    initial_value
+                                );
+
+                                ir_reactive_manifest_set_var_metadata(
+                                    ctx->manifest,
+                                    var_id,
+                                    "int",
+                                    arg_value,
+                                    instance_scope
+                                );
+                            }
+                        }
+
+                        free(arg_copy);
+                    }
+                } else if (def) {
+                    // No arguments provided - use default values
+                    fprintf(stderr, "[CUSTOM_COMPONENT] No arguments, using defaults\n");
+                    fflush(stderr);
+
+                    for (uint32_t i = 0; i < def->state_var_count; i++) {
+                        IRComponentStateVar* state_var = &def->state_vars[i];
+                        // For Counter with no args, default is 0
+                        fprintf(stderr, "[CUSTOM_COMPONENT] Registering %s.%s with default value 0\n",
+                                instance_scope, state_var->name);
+                        fflush(stderr);
+
+                        IRReactiveValue initial_value;
+                        initial_value.as_int = 0;
+
+                        uint32_t var_id = ir_reactive_manifest_add_var(
+                            ctx->manifest,
+                            state_var->name,
+                            IR_REACTIVE_TYPE_INT,
+                            initial_value
+                        );
+
+                        ir_reactive_manifest_set_var_metadata(
+                            ctx->manifest,
+                            var_id,
+                            "int",
+                            "0",
+                            instance_scope
+                        );
+                    }
+                }
+
                 return instance;
             }
 
@@ -1467,8 +1616,31 @@ static IRComponent* ir_component_clone_tree(IRComponent* source) {
         }
     }
 
-    // Note: We intentionally don't copy event handlers (on_click, etc.) for MVP
-    // They would need special handling for scoped state variables
+    // Copy event handlers
+    if (source->events) {
+        IREvent* src_event = source->events;
+        IREvent* prev_event = NULL;
+
+        while (src_event) {
+            // Create new event
+            IREvent* event_clone = (IREvent*)calloc(1, sizeof(IREvent));
+            event_clone->type = src_event->type;
+            event_clone->event_name = src_event->event_name ? strdup(src_event->event_name) : NULL;
+            event_clone->logic_id = src_event->logic_id ? strdup(src_event->logic_id) : NULL;
+            event_clone->handler_data = src_event->handler_data ? strdup(src_event->handler_data) : NULL;
+            event_clone->bytecode_function_id = src_event->bytecode_function_id;
+
+            // Link to list
+            if (prev_event) {
+                prev_event->next = event_clone;
+            } else {
+                clone->events = event_clone;
+            }
+            prev_event = event_clone;
+
+            src_event = src_event->next;
+        }
+    }
 
     return clone;
 }
@@ -1495,6 +1667,22 @@ static bool is_custom_component(const char* name, IRReactiveManifest* manifest) 
 }
 
 // Expand a component template into an instance
+// Helper: Recursively set scope on component and all children
+static void set_component_scope_recursive(IRComponent* comp, const char* scope) {
+    if (!comp) return;
+
+    // Set scope on this component
+    if (comp->scope) {
+        free(comp->scope);
+    }
+    comp->scope = scope ? strdup(scope) : NULL;
+
+    // Recursively set scope on all children
+    for (uint32_t i = 0; i < comp->child_count; i++) {
+        set_component_scope_recursive(comp->children[i], scope);
+    }
+}
+
 static IRComponent* expand_component_template(
     const char* comp_name,
     IRReactiveManifest* manifest,
@@ -1517,14 +1705,16 @@ static IRComponent* expand_component_template(
     IRComponent* instance = ir_component_clone_tree(def->template_root);
     if (!instance) return NULL;
 
+    // Set scope on all components in the cloned tree
+    set_component_scope_recursive(instance, instance_scope);
+    fprintf(stderr, "[CUSTOM_COMPONENT] Set scope '%s' on component tree\n", instance_scope);
+
     // Initialize state variables with instance scope
     // For MVP, we just store them in the manifest
     // Full implementation would need runtime state management
     for (uint32_t i = 0; i < def->state_var_count; i++) {
         IRComponentStateVar* state_var = &def->state_vars[i];
-        // TODO: Register scoped state variables
-        // For now, state variables are already in the manifest from extraction
-        (void)instance_scope;  // Suppress unused parameter warning for MVP
+        // State variables are already registered in the manifest during argument application
     }
 
     return instance;
@@ -1644,14 +1834,37 @@ char* ir_kry_to_kir(const char* source, size_t length) {
         return NULL;
     }
 
-    // Find the root application (skip component definitions)
-    KryNode* root_node = ast;
-    while (root_node) {
-        if (!root_node->is_component_definition) {
-            // Found the actual root application
-            break;
+    // Check if ast is a Root wrapper with children or a single component
+    KryNode* root_node = NULL;
+    fprintf(stderr, "[ir_kry_to_kir] ast->name='%s', type=%d, is_component_definition=%d\n",
+            ast->name ? ast->name : "(null)", ast->type, ast->is_component_definition);
+    fflush(stderr);
+
+    if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
+        // Root wrapper with children - find the application node
+        fprintf(stderr, "[ir_kry_to_kir] Root wrapper detected, scanning children...\n");
+        fflush(stderr);
+        KryNode* child = ast->first_child;
+        while (child) {
+            fprintf(stderr, "[ir_kry_to_kir]   Child: name='%s', is_component_definition=%d\n",
+                    child->name ? child->name : "(null)", child->is_component_definition);
+            fflush(stderr);
+            if (!child->is_component_definition) {
+                root_node = child;
+                fprintf(stderr, "[ir_kry_to_kir]   Found root application: %s\n", root_node->name);
+                fflush(stderr);
+                break;
+            }
+            child = child->next_sibling;
         }
-        root_node = root_node->next_sibling;
+    } else {
+        // Single component (old behavior for compatibility)
+        fprintf(stderr, "[ir_kry_to_kir] Single component (no Root wrapper)\n");
+        fflush(stderr);
+        root_node = ast;
+        while (root_node && root_node->is_component_definition) {
+            root_node = root_node->next_sibling;
+        }
     }
 
     if (!root_node) {
@@ -1680,7 +1893,19 @@ char* ir_kry_to_kir(const char* source, size_t length) {
     // Track all component definitions in the manifest
     fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Starting component definition scan...\n");
     fflush(stderr);
-    KryNode* def_node = ast;
+
+    // If ast is a Root wrapper, scan its children; otherwise scan ast and siblings
+    KryNode* def_node = NULL;
+    if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
+        fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Scanning children of Root wrapper...\n");
+        fflush(stderr);
+        def_node = ast->first_child;
+    } else {
+        fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Scanning ast and siblings...\n");
+        fflush(stderr);
+        def_node = ast;
+    }
+
     uint32_t node_count = 0;
     while (def_node) {
         node_count++;

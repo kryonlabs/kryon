@@ -59,6 +59,9 @@ AndroidRenderer* android_renderer_create(const AndroidRendererConfig* config);
 // Initialize renderer with native window
 bool android_renderer_initialize(AndroidRenderer* renderer, ANativeWindow* window);
 
+// Initialize GL resources only (for GLSurfaceView where EGL context is pre-created)
+bool android_renderer_initialize_gl_only(AndroidRenderer* renderer);
+
 // Shutdown and cleanup renderer
 void android_renderer_shutdown(AndroidRenderer* renderer);
 

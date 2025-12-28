@@ -58,6 +58,7 @@ typedef struct {
     char* name;
     IRValue value;  // Changed from int64_t to support arrays and strings
     uint32_t owner_component_id;  // 0 = global, or component instance ID
+    char* scope;  // Scope string (e.g., "global", "Counter#0", "Counter#1")
 } IRExecutorVar;
 
 // Executor context - ties together logic, sources, and component tree
@@ -80,6 +81,7 @@ typedef struct IRExecutorContext {
 
     // Current execution context (which component instance we're executing for)
     uint32_t current_instance_id;
+    char* current_scope;  // Current scope string for variable lookups (e.g., "Counter#0")
 
     // Event metadata for current handler execution
     struct {
@@ -160,6 +162,14 @@ bool ir_executor_call_handler(IRExecutorContext* ctx, const char* handler_name);
 // Get/set the global executor context (used by desktop_input.c)
 IRExecutorContext* ir_executor_get_global(void);
 void ir_executor_set_global(IRExecutorContext* ctx);
+
+/**
+ * Evaluate a text expression and return the string representation
+ * @param expression Variable name or expression (e.g., "value", "count")
+ * @param scope Scope string for variable lookup (e.g., "Counter#0", "global", or NULL for global)
+ * @return Allocated string with the value (caller must free), or NULL if not found
+ */
+char* ir_executor_eval_text_expression(const char* expression, const char* scope);
 
 // ============================================================================
 // FILE LOADING

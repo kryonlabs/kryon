@@ -526,14 +526,18 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                         }
                     }
 
+                    // Validate hovered component is visible before using it
+                    bool hovered_is_valid = (hovered != NULL &&
+                                             (!hovered->style || hovered->style->visible));
+
                     // Set cursor to hand for clickable components
                     SDL_Cursor* desired_cursor;
                     if (is_in_dropdown_menu ||
-                        (hovered && (hovered->type == IR_COMPONENT_BUTTON ||
-                                     hovered->type == IR_COMPONENT_INPUT ||
-                                     hovered->type == IR_COMPONENT_CHECKBOX ||
-                                     hovered->type == IR_COMPONENT_DROPDOWN ||
-                                     hovered->type == IR_COMPONENT_LINK))) {
+                        (hovered_is_valid && (hovered->type == IR_COMPONENT_BUTTON ||
+                                              hovered->type == IR_COMPONENT_INPUT ||
+                                              hovered->type == IR_COMPONENT_CHECKBOX ||
+                                              hovered->type == IR_COMPONENT_DROPDOWN ||
+                                              hovered->type == IR_COMPONENT_LINK))) {
                         desired_cursor = data->cursor_hand;
                     } else {
                         desired_cursor = data->cursor_default;

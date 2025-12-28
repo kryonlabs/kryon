@@ -803,6 +803,11 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         }
     }
 
+    // Scope (for scoped variable lookups)
+    if (component->scope && component->scope[0] != '\0') {
+        cJSON_AddStringToObject(obj, "scope", component->scope);
+    }
+
     // Component reference (for custom components) - only in template mode
     if (as_template && component->component_ref && component->component_ref[0] != '\0') {
         cJSON_AddStringToObject(obj, "component_ref", component->component_ref);
@@ -1245,7 +1250,18 @@ static cJSON* json_serialize_component_as_template(IRComponent* component) {
  * Serialize component definitions to JSON
  */
 static cJSON* json_serialize_component_definitions(IRReactiveManifest* manifest) {
-    if (!manifest || manifest->component_def_count == 0) return NULL;
+    fprintf(stderr, "[json_serialize_component_definitions] Called\n");
+    fflush(stderr);
+    if (!manifest || manifest->component_def_count == 0) {
+        fprintf(stderr, "[json_serialize_component_definitions] Returning NULL: manifest=%p, count=%u\n",
+                (void*)manifest, manifest ? manifest->component_def_count : 0);
+        fflush(stderr);
+        return NULL;
+    }
+
+    fprintf(stderr, "[json_serialize_component_definitions] Creating array for %u defs\n",
+            manifest->component_def_count);
+    fflush(stderr);
 
     cJSON* arr = cJSON_CreateArray();
     if (!arr) {
@@ -1255,6 +1271,9 @@ static cJSON* json_serialize_component_definitions(IRReactiveManifest* manifest)
 
     for (uint32_t i = 0; i < manifest->component_def_count; i++) {
         IRComponentDefinition* def = &manifest->component_defs[i];
+        fprintf(stderr, "[json_serialize_component_definitions] Def %u: name='%s'\n",
+                i, def->name ? def->name : "(null)");
+        fflush(stderr);
         cJSON* defObj = cJSON_CreateObject();
         if (!defObj) {
             fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for component definition\n");
@@ -1525,6 +1544,21 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
             cJSON_AddItemToArray(loops, loopObj);
         }
         cJSON_AddItemToObject(obj, "for_loops", loops);
+    }
+
+    // Serialize component definitions
+    if (manifest->component_def_count > 0) {
+        fprintf(stderr, "[DEBUG] Serializing %u component definitions...\n", manifest->component_def_count);
+        fflush(stderr);
+        cJSON* component_defs = json_serialize_component_definitions(manifest);
+        if (component_defs) {
+            cJSON_AddItemToObject(obj, "component_definitions", component_defs);
+            fprintf(stderr, "[DEBUG] Component definitions added to manifest JSON\n");
+            fflush(stderr);
+        } else {
+            fprintf(stderr, "[DEBUG] json_serialize_component_definitions returned NULL\n");
+            fflush(stderr);
+        }
     }
 
     return obj;
@@ -3128,6 +3162,11 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
     // Text expression (reactive text template) - can also be specified directly
     if ((item = cJSON_GetObjectItem(json, "text_expression")) != NULL && cJSON_IsString(item)) {
         component->text_expression = strdup(item->valuestring);
+    }
+
+    // Scope (for scoped variable lookups)
+    if ((item = cJSON_GetObjectItem(json, "scope")) != NULL && cJSON_IsString(item)) {
+        component->scope = strdup(item->valuestring);
     }
 
     // Deserialize style and layout

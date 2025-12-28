@@ -29,6 +29,9 @@
 #include "../../ir/ir_builder.h"
 #include "../../ir/ir_animation.h"
 
+// External reference to global hover state (defined in desktop_globals.c)
+extern IRComponent* g_hovered_component;
+
 // Backend renderer headers for explicit registration
 #ifdef ENABLE_SDL3
 #include "renderers/sdl3/sdl3_renderer.h"
@@ -328,13 +331,9 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
                            (float)renderer->config.window_height);
 
     // Invoke canvas onUpdate callbacks with delta time
-    fprintf(stderr, "[RENDER_FRAME] About to invoke canvas update callbacks (callback=%p)\n",
-            (void*)renderer->lua_canvas_update_callback);
     invoke_canvas_update_callbacks_recursive(renderer, root, delta_time);
 
     // Invoke canvas onDraw callbacks before rendering
-    fprintf(stderr, "[RENDER_FRAME] About to invoke canvas draw callbacks (callback=%p)\n",
-            (void*)renderer->lua_canvas_draw_callback);
     invoke_canvas_callbacks_recursive(renderer, root);
 
     // Render via ops table
@@ -456,6 +455,9 @@ void desktop_ir_renderer_update_root(DesktopIRRenderer* renderer, IRComponent* n
     if (renderer && new_root) {
         renderer->last_root = new_root;
         renderer->needs_relayout = true;
+
+        // Clear hover state when tree changes to prevent stale references
+        g_hovered_component = NULL;
     }
 }
 
