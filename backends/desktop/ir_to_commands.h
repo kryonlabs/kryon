@@ -3,6 +3,7 @@
 
 #include "../../core/include/kryon.h"
 #include "../../ir/ir_core.h"
+#include "desktop_internal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -75,7 +76,7 @@ typedef struct IRCommandContext {
 bool ir_component_to_commands(
     IRComponent* component,
     kryon_cmd_buf_t* cmd_buf,
-    IRRect* bounds,
+    LayoutRect* bounds,
     float opacity
 );
 
@@ -86,7 +87,7 @@ bool ir_component_to_commands(
 bool ir_generate_component_commands(
     IRComponent* component,
     IRCommandContext* ctx,
-    IRRect* bounds,
+    LayoutRect* bounds,
     float inherited_opacity
 );
 
@@ -94,16 +95,16 @@ bool ir_generate_component_commands(
  * Component-Specific Command Generators
  * ============================================================================ */
 
-bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, IRRect* bounds);
-bool ir_gen_text_commands(IRComponent* comp, IRCommandContext* ctx, IRRect* bounds);
-bool ir_gen_button_commands(IRComponent* comp, IRCommandContext* ctx, IRRect* bounds);
-bool ir_gen_input_commands(IRComponent* comp, IRCommandContext* ctx, IRRect* bounds);
-bool ir_gen_checkbox_commands(IRComponent* comp, IRCommandContext* ctx, IRRect* bounds);
-bool ir_gen_dropdown_commands(IRComponent* comp, IRCommandContext* ctx, IRRect* bounds);
-bool ir_gen_image_commands(IRComponent* comp, IRCommandContext* ctx, IRRect* bounds);
-bool ir_gen_table_commands(IRComponent* comp, IRCommandContext* ctx, IRRect* bounds);
-bool ir_gen_markdown_commands(IRComponent* comp, IRCommandContext* ctx, IRRect* bounds);
-bool ir_gen_canvas_commands(IRComponent* comp, IRCommandContext* ctx, IRRect* bounds);
+bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds);
+bool ir_gen_text_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds);
+bool ir_gen_button_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds);
+bool ir_gen_input_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds);
+bool ir_gen_checkbox_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds);
+bool ir_gen_dropdown_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds);
+bool ir_gen_image_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds);
+bool ir_gen_table_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds);
+bool ir_gen_markdown_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds);
+bool ir_gen_canvas_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds);
 
 /* ============================================================================
  * Utility Functions

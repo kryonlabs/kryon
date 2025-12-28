@@ -89,3 +89,25 @@ bindings/typescript/build/
 bindings/typescript/node_modules/
 *.tsbuildinfo
 examples/tsx/
+
+# Android builds
+*.apk
+*.aab
+*.dex
+*.class
+local.properties
+.gradle/
+.cxx/
+platforms/android/build/
+renderers/android/build/
+bindings/kotlin/build/
+bindings/kotlin/.gradle/
+examples/android/build/
+examples/android/.gradle/
+examples/android/app/build/
+examples/android/local.properties
+
+# Third-party modules
+third_party/freetype/
+third_party/harfbuzz/
+third_party/stb/

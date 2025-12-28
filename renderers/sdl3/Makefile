@@ -59,7 +59,8 @@ RENDERER_SOURCES = \
     sdl3_input.c \
     sdl3_fonts.c \
     sdl3_sprite_batch.c \
-    sdl3_sprite_backend.c
+    sdl3_sprite_backend.c \
+    sdl3_effects.c
 
 # Special handling for object files with different paths
 OBJECTS = \
@@ -67,7 +68,8 @@ OBJECTS = \
     $(BUILD_DIR)/sdl3_sdl3_input.o \
     $(BUILD_DIR)/sdl3_sdl3_fonts.o \
     $(BUILD_DIR)/sdl3_sdl3_sprite_batch.o \
-    $(BUILD_DIR)/sdl3_sdl3_sprite_backend.o
+    $(BUILD_DIR)/sdl3_sdl3_sprite_backend.o \
+    $(BUILD_DIR)/sdl3_sdl3_effects.o
 
 # ============================================================================
 # Build Targets

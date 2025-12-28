@@ -259,6 +259,50 @@ int cmd_compile(int argc, char** argv) {
         free(dir_path);
     }
 
+    // Load kryon.toml and set up plugin paths for Lua compilation
+    if (strcmp(frontend, "lua") == 0) {
+        KryonConfig* config = config_find_and_load();
+        if (config && config->plugins_count > 0) {
+            // Build plugin paths string (colon-separated absolute paths)
+            char plugin_paths[4096] = "";
+            char* cwd = dir_get_current();
+
+            for (int i = 0; i < config->plugins_count; i++) {
+                if (!config->plugins[i].enabled || !config->plugins[i].path) {
+                    continue;
+                }
+
+                // Resolve plugin path to absolute
+                char* abs_path;
+                if (config->plugins[i].path[0] == '/') {
+                    // Already absolute
+                    abs_path = str_copy(config->plugins[i].path);
+                } else {
+                    // Relative to current directory
+                    abs_path = path_join(cwd, config->plugins[i].path);
+                }
+
+                // Add to plugin_paths string
+                if (plugin_paths[0] != '\0') {
+                    strncat(plugin_paths, ":", sizeof(plugin_paths) - strlen(plugin_paths) - 1);
+                }
+                strncat(plugin_paths, abs_path, sizeof(plugin_paths) - strlen(plugin_paths) - 1);
+
+                free(abs_path);
+            }
+
+            if (plugin_paths[0] != '\0') {
+                setenv("KRYON_PLUGIN_PATHS", plugin_paths, 1);
+            }
+
+            free(cwd);
+        }
+
+        if (config) {
+            config_free(config);
+        }
+    }
+
     // Compile to KIR
     int result = compile_to_kir(source_file, kir_file, frontend);
 

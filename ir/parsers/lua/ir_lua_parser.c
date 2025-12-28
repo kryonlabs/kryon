@@ -161,7 +161,30 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "-- Disable running the desktop renderer\n"
         "os.execute('export KRYON_RUN_DIRECT=false')\n"
         "_G.KRYON_RUN_DIRECT = false\n"
-        "package.path = package.path .. ';%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua'\n"
+        "\n"
+        "-- Add Kryon bindings to package path\n"
+        "package.path = package.path .. ';%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua'\n",
+        kryon_root, kryon_root);
+
+    // Add plugin paths if available
+    char* plugin_paths = getenv("KRYON_PLUGIN_PATHS");
+    if (plugin_paths && strlen(plugin_paths) > 0) {
+        fprintf(f, "\n-- Add plugin paths\n");
+
+        // Parse colon-separated plugin paths
+        char* paths_copy = strdup(plugin_paths);
+        char* path = strtok(paths_copy, ":");
+
+        while (path) {
+            fprintf(f, "package.path = package.path .. ';%s/bindings/lua/?.lua'\n", path);
+            fprintf(f, "package.cpath = package.cpath .. ';%s/build/?.so'\n", path);
+            path = strtok(NULL, ":");
+        }
+
+        free(paths_copy);
+    }
+
+    fprintf(f,
         "\n"
         "local ffi = require('ffi')\n"
         "local C = require('kryon.ffi').C\n"
@@ -183,18 +206,37 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "  io.stderr:write('Error: Lua file must return an app table with root component\\n')\n"
         "  os.exit(1)\n"
         "end\n",
-        kryon_root, kryon_root, src_file);
+        src_file);
 
     fclose(f);
+
+    // Build LD_LIBRARY_PATH with plugin paths
+    char ld_library_path[4096];
+    snprintf(ld_library_path, sizeof(ld_library_path), "%s/build:%s/bindings/c", kryon_root, kryon_root);
+
+    if (plugin_paths && strlen(plugin_paths) > 0) {
+        // Add plugin build directories to LD_LIBRARY_PATH
+        char* paths_copy = strdup(plugin_paths);
+        char* path = strtok(paths_copy, ":");
+
+        while (path) {
+            size_t current_len = strlen(ld_library_path);
+            snprintf(ld_library_path + current_len, sizeof(ld_library_path) - current_len,
+                     ":%s/build", path);
+            path = strtok(NULL, ":");
+        }
+
+        free(paths_copy);
+    }
 
     // Execute the wrapper with LuaJIT
     char exec_cmd[4096];
     snprintf(exec_cmd, sizeof(exec_cmd),
              "cd \"%s\" && "
              "export KRYON_RUN_DIRECT=false && "
-             "export LD_LIBRARY_PATH=\"%s/build:%s/bindings/c:$LD_LIBRARY_PATH\" && "
+             "export LD_LIBRARY_PATH=\"%s:$LD_LIBRARY_PATH\" && "
              "\"%s\" \"%s\" 2>&1",
-             temp_dir, kryon_root, kryon_root, luajit, wrapper_file);
+             temp_dir, ld_library_path, luajit, wrapper_file);
 
     FILE* pipe = popen(exec_cmd, "r");
     if (!pipe) {

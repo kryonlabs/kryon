@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "../../core/include/kryon.h"
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_builder.h"
 #include "../../ir/ir_animation.h"
@@ -40,6 +41,9 @@ struct DesktopIRRenderer {
     SDL_Cursor* current_cursor;
     SDL_Texture* white_texture;  // 1x1 white texture for vertex coloring
     bool blend_mode_set;  // Track if blend mode already set this frame
+
+    /* Kryon renderer wrapper for command buffer execution */
+    kryon_renderer_t* kryon_renderer;
 #endif
 
 #ifdef ENABLE_RAYLIB

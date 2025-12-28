@@ -30,6 +30,7 @@ extern "C" {
 
 // SDL3 renderer creation and management
 kryon_renderer_t* kryon_sdl3_renderer_create(uint16_t width, uint16_t height, const char* title);
+kryon_renderer_t* kryon_sdl3_renderer_wrap_existing(SDL_Renderer* sdl_renderer, SDL_Window* window);
 void kryon_sdl3_renderer_destroy(kryon_renderer_t* renderer);
 
 // SDL3 event handling

@@ -11,6 +11,7 @@
 #include <stdbool.h>
 
 #include "raylib_backend.h"
+#include "raylib_effects.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -251,6 +252,200 @@ static void raylib_execute_commands(kryon_renderer_t* renderer, kryon_cmd_buf_t*
                             color
                         );
                     }
+                }
+                break;
+            }
+
+            case KRYON_CMD_DRAW_ROUNDED_RECT: {
+                Rectangle rect = {
+                    .x = cmd.data.draw_rounded_rect.x,
+                    .y = cmd.data.draw_rounded_rect.y,
+                    .width = cmd.data.draw_rounded_rect.w,
+                    .height = cmd.data.draw_rounded_rect.h
+                };
+                raylib_render_rounded_rect(rect,
+                    cmd.data.draw_rounded_rect.radius,
+                    cmd.data.draw_rounded_rect.color);
+                break;
+            }
+
+            case KRYON_CMD_DRAW_GRADIENT: {
+                Rectangle rect = {
+                    .x = cmd.data.draw_gradient.x,
+                    .y = cmd.data.draw_gradient.y,
+                    .width = cmd.data.draw_gradient.w,
+                    .height = cmd.data.draw_gradient.h
+                };
+
+                // Convert gradient stops
+                Raylib_GradientStop stops[8];
+                for (int i = 0; i < cmd.data.draw_gradient.stop_count && i < 8; i++) {
+                    uint32_t color = cmd.data.draw_gradient.stops[i].color;
+                    stops[i].position = cmd.data.draw_gradient.stops[i].position;
+                    stops[i].r = (color >> 24) & 0xFF;
+                    stops[i].g = (color >> 16) & 0xFF;
+                    stops[i].b = (color >> 8) & 0xFF;
+                    stops[i].a = color & 0xFF;
+                }
+
+                raylib_render_gradient(
+                    rect,
+                    (Raylib_GradientType)cmd.data.draw_gradient.gradient_type,
+                    cmd.data.draw_gradient.angle,
+                    stops,
+                    cmd.data.draw_gradient.stop_count,
+                    1.0f  // Opacity handled separately
+                );
+                break;
+            }
+
+            case KRYON_CMD_DRAW_SHADOW: {
+                Rectangle rect = {
+                    .x = cmd.data.draw_shadow.x,
+                    .y = cmd.data.draw_shadow.y,
+                    .width = cmd.data.draw_shadow.w,
+                    .height = cmd.data.draw_shadow.h
+                };
+                raylib_render_shadow(
+                    rect,
+                    cmd.data.draw_shadow.offset_x,
+                    cmd.data.draw_shadow.offset_y,
+                    cmd.data.draw_shadow.blur_radius,
+                    cmd.data.draw_shadow.spread_radius,
+                    cmd.data.draw_shadow.color,
+                    cmd.data.draw_shadow.inset
+                );
+                break;
+            }
+
+            case KRYON_CMD_DRAW_TEXT_SHADOW: {
+                // TODO: Implement text shadow with blur
+                // For now, render shadow as regular text with offset
+                Color color = rgba_to_color(cmd.data.draw_text_shadow.color);
+                DrawText(
+                    cmd.data.draw_text_shadow.text,
+                    (int)(cmd.data.draw_text_shadow.x + cmd.data.draw_text_shadow.offset_x),
+                    (int)(cmd.data.draw_text_shadow.y + cmd.data.draw_text_shadow.offset_y),
+                    20,  // Default font size for shadow
+                    color
+                );
+                break;
+            }
+
+            case KRYON_CMD_DRAW_IMAGE: {
+                // TODO: Implement image rendering
+                // Requires image resource loading system
+                if (kryon_raylib_should_trace()) {
+                    printf("[RAYLIB] DRAW_IMAGE not yet implemented\n");
+                }
+                break;
+            }
+
+            case KRYON_CMD_SET_OPACITY: {
+                // TODO: Implement global opacity
+                // Raylib doesn't have built-in opacity stack - would need to apply to all colors
+                if (kryon_raylib_should_trace()) {
+                    printf("[RAYLIB] SET_OPACITY: %.2f\n", cmd.data.set_opacity.opacity);
+                }
+                break;
+            }
+
+            case KRYON_CMD_PUSH_OPACITY: {
+                // TODO: Implement opacity stack
+                if (kryon_raylib_should_trace()) {
+                    printf("[RAYLIB] PUSH_OPACITY\n");
+                }
+                break;
+            }
+
+            case KRYON_CMD_POP_OPACITY: {
+                // TODO: Implement opacity stack
+                if (kryon_raylib_should_trace()) {
+                    printf("[RAYLIB] POP_OPACITY\n");
+                }
+                break;
+            }
+
+            case KRYON_CMD_SET_BLEND_MODE: {
+                // Map Kryon blend modes to Raylib blend modes
+                switch (cmd.data.set_blend_mode.blend_mode) {
+                    case 0: // Normal/Alpha
+                        rlSetBlendMode(BLEND_ALPHA);
+                        break;
+                    case 1: // Additive
+                        rlSetBlendMode(BLEND_ADDITIVE);
+                        break;
+                    case 2: // Multiply
+                        rlSetBlendMode(BLEND_MULTIPLIED);
+                        break;
+                    default:
+                        rlSetBlendMode(BLEND_ALPHA);
+                        break;
+                }
+                break;
+            }
+
+            case KRYON_CMD_BEGIN_PASS: {
+                // TODO: Implement multi-pass rendering
+                if (kryon_raylib_should_trace()) {
+                    printf("[RAYLIB] BEGIN_PASS: %d\n", cmd.data.begin_pass.pass_id);
+                }
+                break;
+            }
+
+            case KRYON_CMD_END_PASS: {
+                // TODO: Implement multi-pass rendering
+                if (kryon_raylib_should_trace()) {
+                    printf("[RAYLIB] END_PASS\n");
+                }
+                break;
+            }
+
+            case KRYON_CMD_DRAW_TEXT_WRAPPED: {
+                // TODO: Implement word-wrapped text
+                // For now, render as regular text
+                Color color = rgba_to_color(cmd.data.draw_text_wrapped.color);
+                DrawText(
+                    cmd.data.draw_text_wrapped.text,
+                    (int)cmd.data.draw_text_wrapped.x,
+                    (int)cmd.data.draw_text_wrapped.y,
+                    cmd.data.draw_text_wrapped.font_size,
+                    color
+                );
+                break;
+            }
+
+            case KRYON_CMD_DRAW_TEXT_FADE: {
+                // TODO: Implement fade effect
+                // For now, render as regular text
+                Color color = rgba_to_color(cmd.data.draw_text_fade.color);
+                DrawText(
+                    cmd.data.draw_text_fade.text,
+                    (int)cmd.data.draw_text_fade.x,
+                    (int)cmd.data.draw_text_fade.y,
+                    cmd.data.draw_text_fade.font_size,
+                    color
+                );
+                break;
+            }
+
+            case KRYON_CMD_LOAD_FONT: {
+                // TODO: Implement font resource loading
+                if (kryon_raylib_should_trace()) {
+                    printf("[RAYLIB] LOAD_FONT: %s (id: %d, size: %d)\n",
+                        cmd.data.load_font.path,
+                        cmd.data.load_font.font_id,
+                        cmd.data.load_font.size);
+                }
+                break;
+            }
+
+            case KRYON_CMD_LOAD_IMAGE: {
+                // TODO: Implement image resource loading
+                if (kryon_raylib_should_trace()) {
+                    printf("[RAYLIB] LOAD_IMAGE: %s (id: %d)\n",
+                        cmd.data.load_image.path,
+                        cmd.data.load_image.image_id);
                 }
                 break;
             }
