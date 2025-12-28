@@ -53,6 +53,13 @@ bool render_component_raylib(DesktopIRRenderer* renderer, IRComponent* component
     // Read pre-computed layout
     IRComputedLayout* layout = &component->layout_state->computed;
 
+    // Set rendered bounds for hit testing
+    component->rendered_bounds.x = layout->x;
+    component->rendered_bounds.y = layout->y;
+    component->rendered_bounds.width = layout->width;
+    component->rendered_bounds.height = layout->height;
+    component->rendered_bounds.valid = true;
+
     // Calculate opacity
     float opacity = inherited_opacity;
     if (component->style) {

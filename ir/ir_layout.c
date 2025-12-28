@@ -1962,6 +1962,65 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         }
     }
 
+    // Apply flexbox alignment (justifyContent and alignItems)
+    if (layout && c->child_count > 0) {
+        // Calculate remaining space for main axis alignment (justifyContent)
+        float total_gaps = layout->flex.gap * (c->child_count > 1 ? (c->child_count - 1) : 0);
+        float remaining_main = is_row ?
+            (content_width - total_child_width - total_gaps) :
+            (content_height - total_child_height - total_gaps);
+
+        // Apply main axis alignment (justifyContent)
+        float main_offset = 0.0f;
+        if (remaining_main > 0) {
+            switch (layout->flex.justify_content) {
+                case IR_ALIGNMENT_CENTER:
+                    main_offset = remaining_main / 2.0f;
+                    break;
+                case IR_ALIGNMENT_END:
+                    main_offset = remaining_main;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        // Apply cross axis alignment (alignItems) and main axis offset to all children
+        for (uint32_t i = 0; i < c->child_count; i++) {
+            IRComponent* child = c->children[i];
+            if (!child || !child->layout_state) continue;
+
+            // Apply main axis offset
+            if (is_row) {
+                child->layout_state->computed.x += main_offset;
+            } else {
+                child->layout_state->computed.y += main_offset;
+            }
+
+            // Apply cross axis alignment (alignItems)
+            float child_cross_size = is_row ? child->layout_state->computed.height : child->layout_state->computed.width;
+            float available_cross = is_row ? content_height : content_width;
+            float cross_offset = 0.0f;
+
+            switch (layout->flex.cross_axis) {
+                case IR_ALIGNMENT_CENTER:
+                    cross_offset = (available_cross - child_cross_size) / 2.0f;
+                    break;
+                case IR_ALIGNMENT_END:
+                    cross_offset = available_cross - child_cross_size;
+                    break;
+                default:
+                    break;
+            }
+
+            if (is_row) {
+                child->layout_state->computed.y += cross_offset;
+            } else {
+                child->layout_state->computed.x += cross_offset;
+            }
+        }
+    }
+
     // Finalize AUTO dimensions based on direction
     // IMPORTANT: Don't override intrinsic sizing for leaf components!
     if (width_auto) {

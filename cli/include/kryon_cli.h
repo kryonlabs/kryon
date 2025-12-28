@@ -73,6 +73,7 @@ TOMLTable* toml_parse_file(const char* path);
 const char* toml_get_string(TOMLTable* table, const char* key, const char* default_value);
 int toml_get_int(TOMLTable* table, const char* key, int default_value);
 bool toml_get_bool(TOMLTable* table, const char* key, bool default_value);
+char** toml_get_plugin_names(TOMLTable* table, int* count);
 void toml_free(TOMLTable* table);
 
 // ============================================================================
@@ -86,8 +87,11 @@ typedef struct {
 } PageEntry;
 
 typedef struct {
-    char* name;
-    char* version;
+    char* name;              // Plugin name (e.g., "storage")
+    char* path;              // Path to plugin directory (absolute or relative)
+    char* version;           // Optional version constraint
+    bool enabled;            // Whether plugin is enabled (default: true)
+    char* resolved_path;     // Resolved absolute path (populated at runtime)
 } PluginDep;
 
 typedef struct {
