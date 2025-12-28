@@ -237,6 +237,36 @@ void kryon_terminal_print_capabilities(kryon_renderer_t* renderer);
  */
 bool kryon_terminal_run_compatibility_test(kryon_renderer_t* renderer);
 
+// ============================================================================
+// IR Component Tree Rendering (Source-Agnostic)
+// ============================================================================
+
+// Forward declaration (avoids requiring ir_core.h in header)
+typedef struct IRComponent IRComponent;
+
+/**
+ * Render IR component tree directly to terminal
+ *
+ * CRITICAL: This function is source-language agnostic.
+ * Works with IRComponent* from ANY frontend: TSX, Kry, HTML, Markdown, Lua, C, etc.
+ *
+ * Example usage:
+ *   // Load KIR file (compiled from TSX/Kry/HTML/etc.)
+ *   IRComponent* root = ir_read_json_file("app.kir");
+ *
+ *   // Create terminal renderer
+ *   kryon_renderer_t* renderer = kryon_terminal_renderer_create();
+ *   kryon_terminal_renderer_init(renderer);
+ *
+ *   // Render (works regardless of source language)
+ *   kryon_terminal_render_ir_tree(renderer, root);
+ *
+ * @param renderer Terminal renderer instance
+ * @param root IR component tree root (from ANY source)
+ * @return True on success, false on failure
+ */
+bool kryon_terminal_render_ir_tree(kryon_renderer_t* renderer, IRComponent* root);
+
 #ifdef __cplusplus
 }
 #endif

@@ -329,9 +329,27 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
 
     // Recursively render children
     if (component->children) {
+        // DEBUG: Log child rendering
+        if (component_render_count < 10 || component_render_count % 60 == 0) {
+            __android_log_print(ANDROID_LOG_INFO, "KryonBackend",
+                "Component type=%d has %d children, rendering them now",
+                component->type, component->child_count);
+        }
+
         for (uint32_t i = 0; i < component->child_count; i++) {
+            IRComponent* child = component->children[i];
+
+            // DEBUG: Log each child
+            if (component_render_count < 10 || component_render_count % 60 == 0) {
+                __android_log_print(ANDROID_LOG_INFO, "KryonBackend",
+                    "  Child[%d]: type=%d, has_layout=%d, layout_valid=%d",
+                    i, child ? child->type : -1,
+                    child && child->layout_state ? 1 : 0,
+                    child && child->layout_state && child->layout_state->layout_valid ? 1 : 0);
+            }
+
             // WORKAROUND: Use global variable for all calls to avoid parameter corruption
-            g_component_to_render = component->children[i];
+            g_component_to_render = child;
             render_component_android(ir_renderer, NULL, x, y, opacity);
         }
     } else {

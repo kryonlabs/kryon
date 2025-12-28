@@ -4,14 +4,15 @@
 # =============================================================================
 # Runs .kry examples through the full pipeline:
 #
-# Basic usage (.kry → .kir → render with SDL3):
+# Basic usage (.kry → .kir → render on desktop):
 #   ./run_example.sh hello_world
 #
-# Specify renderer (.kry → .kir → render with custom renderer):
-#   ./run_example.sh hello_world raylib
-#   ./run_example.sh 10 sdl2
+# Specify target platform (.kry → .kir → render on target):
+#   ./run_example.sh hello_world terminal
+#   ./run_example.sh 10 desktop
+#   ./run_example.sh 5 android
 #
-# Available renderers: sdl3 (default), sdl2, raylib
+# Available targets: desktop (default), terminal, android
 #
 # Output:
 #   build/ir/   - Generated .kir files
@@ -63,13 +64,18 @@ done
 
 # Get example name
 if [ -z "$1" ]; then
-    echo -e "${YELLOW}Usage:${NC} ./run_example.sh <number|name> [renderer]"
+    echo -e "${YELLOW}Usage:${NC} ./run_example.sh <number|name> [target]"
     echo ""
     echo -e "${BLUE}Examples:${NC}"
-    echo "  ./run_example.sh 8                 # Run example #8 with SDL3 (default)"
-    echo "  ./run_example.sh 8 raylib          # Run example #8 with raylib"
-    echo "  ./run_example.sh hello_world       # Run by name with SDL3"
-    echo "  ./run_example.sh hello_world sdl2  # Run by name with SDL2"
+    echo "  ./run_example.sh 8                 # Run example #8 with desktop (default)"
+    echo "  ./run_example.sh 8 terminal        # Run example #8 in terminal"
+    echo "  ./run_example.sh hello_world       # Run by name with desktop"
+    echo "  ./run_example.sh hello_world terminal  # Run by name in terminal"
+    echo ""
+    echo -e "${BLUE}Available targets:${NC}"
+    echo "  • desktop   - SDL3 desktop window (default)"
+    echo "  • terminal  - Terminal UI (TUI)"
+    echo "  • android   - Android device"
     echo ""
     echo -e "${BLUE}Available examples:${NC}"
     i=1
@@ -81,7 +87,7 @@ if [ -z "$1" ]; then
 fi
 
 EXAMPLE="$1"
-RENDERER="${2:-sdl3}"  # Default to sdl3 renderer
+TARGET="${2:-desktop}"  # Default to desktop target
 
 # If input is a number, convert to example name
 if [[ "$EXAMPLE" =~ ^[0-9]+$ ]]; then
@@ -152,9 +158,9 @@ fi
 echo ""
 
 # Step 3: Run the .kir file (not the original .kry)
-echo -e "${YELLOW}[3/3]${NC} Running ${GREEN}$KIR_FILE${NC} with ${CYAN}$RENDERER${NC} renderer"
+echo -e "${YELLOW}[3/3]${NC} Running ${GREEN}$KIR_FILE${NC} on ${CYAN}$TARGET${NC} target"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-~/.local/bin/kryon run "$KIR_FILE" --renderer="$RENDERER"
+~/.local/bin/kryon run "$KIR_FILE" --target="$TARGET"
 
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

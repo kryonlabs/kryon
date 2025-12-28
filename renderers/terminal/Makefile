@@ -5,7 +5,7 @@
 CC ?= gcc
 CFLAGS ?= -std=c99 -Wall -Wextra -Werror -O2
 INCLUDES = -I../../core/include -I../../ir
-LDFLAGS = -lutil
+LDFLAGS = -lutil -ltickit -lm
 
 # Directories
 BUILD_DIR = ../../build
@@ -15,8 +15,10 @@ CORE_LIB = $(BUILD_DIR)/libkryon_ir.a
 TESTDIR = tests
 
 # Source files
-SOURCES = terminal_simple.c
-HEADERS = terminal_simple.h
+# Note: terminal_events.c temporarily excluded due to API compatibility issues
+# Note: terminal_simple.c excluded - using terminal_backend.c with ANSI codes instead
+SOURCES = terminal_backend.c terminal_ir_bridge.c terminal_utils.c
+HEADERS = terminal_simple.h terminal_backend.h terminal_ir_bridge.h terminal_box_drawing.h
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = $(BUILD_DIR)/libkryon_terminal.a
 
@@ -38,7 +40,7 @@ STRESS_BIN = stress_test
 
 # Default target
 .PHONY: all clean test examples benchmark install uninstall help
-all: $(TARGET) test_bins
+all: $(TARGET)
 
 # Build static library
 $(TARGET): $(OBJECTS) $(CORE_LIB)

@@ -20,11 +20,14 @@ void android_renderer_draw_rect(AndroidRenderer* renderer,
     // Switch to color shader
     android_shader_use(renderer, SHADER_PROGRAM_COLOR);
 
-    // Extract color components
+    // Extract color components from ARGB format
     uint8_t a = (color >> 24) & 0xFF;
     uint8_t r = (color >> 16) & 0xFF;
     uint8_t g = (color >> 8) & 0xFF;
     uint8_t b = color & 0xFF;
+
+    // NO SWAP - use colors as-is (RGBA order)
+    // OpenGL ES expects RGBA in memory order
 
     // Apply global opacity
     a = (uint8_t)(a * renderer->global_opacity);
@@ -109,11 +112,14 @@ void android_renderer_draw_rounded_rect(AndroidRenderer* renderer,
                 radius);
 #endif
 
-    // Extract color components
+    // Extract color components from ARGB format
     uint8_t a = (color >> 24) & 0xFF;
     uint8_t r = (color >> 16) & 0xFF;
     uint8_t g = (color >> 8) & 0xFF;
     uint8_t b = color & 0xFF;
+
+    // NO SWAP - use colors as-is (RGBA order)
+    // OpenGL ES expects RGBA in memory order
 
     // Apply global opacity
     a = (uint8_t)(a * renderer->global_opacity);

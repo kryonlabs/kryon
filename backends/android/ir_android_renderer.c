@@ -175,6 +175,36 @@ void android_ir_renderer_set_root(AndroidIRRenderer* ir_renderer,
                                   IRComponent* root) {
     if (!ir_renderer || !root) return;
 
+    __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+        "=== SET ROOT ===");
+    __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+        "Root: ptr=%p, type=%d, child_count=%d, children=%p",
+        root, root->type, root->child_count, root->children);
+
+    // Log children if present
+    if (root->children && root->child_count > 0) {
+        for (uint32_t i = 0; i < root->child_count; i++) {
+            IRComponent* child = root->children[i];
+            if (child) {
+                uint32_t bg_color = child->style ?
+                    (child->style->background.data.a << 24) | (child->style->background.data.r << 16) |
+                    (child->style->background.data.g << 8) | child->style->background.data.b : 0;
+                __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+                    "  Child[%d]: ptr=%p, type=%d, bg=0x%08x",
+                    i, child, child->type, bg_color);
+            } else {
+                __android_log_print(ANDROID_LOG_WARN, "KryonRenderer",
+                    "  Child[%d]: NULL!", i);
+            }
+        }
+    } else {
+        __android_log_print(ANDROID_LOG_WARN, "KryonRenderer",
+            "Root has no children! (children=%p, child_count=%d)",
+            root->children, root->child_count);
+    }
+    __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+        "=== END SET ROOT ===");
+
     ir_renderer->last_root = root;
     ir_renderer->needs_relayout = true;
 }
@@ -238,13 +268,50 @@ void android_ir_renderer_render(AndroidIRRenderer* ir_renderer) {
 
         // Compute layout using IR system if dirty
         if (ir_renderer->needs_relayout) {
-            __android_log_print(ANDROID_LOG_DEBUG, "KryonRenderer", "Computing layout for root (child_count=%d before layout)",
-                              ir_renderer->last_root->child_count);
+            __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+                "=== LAYOUT COMPUTATION START ===");
+            __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+                "Root: type=%d, child_count=%d, children=%p",
+                ir_renderer->last_root->type,
+                ir_renderer->last_root->child_count,
+                ir_renderer->last_root->children);
+
+            // Log each child before layout
+            if (ir_renderer->last_root->children) {
+                for (uint32_t i = 0; i < ir_renderer->last_root->child_count; i++) {
+                    IRComponent* child = ir_renderer->last_root->children[i];
+                    __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+                        "  Child[%d] BEFORE: ptr=%p, type=%d, has_layout_state=%d",
+                        i, child, child ? child->type : -1,
+                        child && child->layout_state ? 1 : 0);
+                }
+            }
+
             ir_layout_compute_tree(ir_renderer->last_root,
                                   (float)ir_renderer->window_width,
                                   (float)ir_renderer->window_height);
-            __android_log_print(ANDROID_LOG_DEBUG, "KryonRenderer", "Layout complete (child_count=%d after layout)",
-                              ir_renderer->last_root->child_count);
+
+            __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+                "Layout complete (child_count=%d after layout)",
+                ir_renderer->last_root->child_count);
+
+            // Log each child after layout
+            if (ir_renderer->last_root->children) {
+                for (uint32_t i = 0; i < ir_renderer->last_root->child_count; i++) {
+                    IRComponent* child = ir_renderer->last_root->children[i];
+                    __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+                        "  Child[%d] AFTER: type=%d, layout_valid=%d, pos=(%.1f,%.1f), size=%.1fx%.1f",
+                        i, child ? child->type : -1,
+                        child && child->layout_state && child->layout_state->layout_valid ? 1 : 0,
+                        child && child->layout_state ? child->layout_state->computed.x : -1,
+                        child && child->layout_state ? child->layout_state->computed.y : -1,
+                        child && child->layout_state ? child->layout_state->computed.width : -1,
+                        child && child->layout_state ? child->layout_state->computed.height : -1);
+                }
+            }
+            __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+                "=== LAYOUT COMPUTATION END ===");
+
             ir_renderer->needs_relayout = false;
         }
 
