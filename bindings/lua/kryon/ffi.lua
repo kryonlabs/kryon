@@ -221,7 +221,8 @@ ffi.cdef[[
     IRComponentMap* component_map;
     IRMetadata* metadata;
     void* reactive_manifest;
-    IRSourceMetadata* source_metadata;  // Source file metadata
+    void* source_structures;         // CRITICAL: Must match C struct field order
+    IRSourceMetadata* source_metadata;  // Source file metadata (now at correct offset)
     // Additional fields exist in C struct but are not needed for FFI
   } IRContext;
 

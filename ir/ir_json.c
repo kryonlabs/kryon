@@ -1178,7 +1178,32 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     }
 
     // Children
-    if (component->child_count > 0) {
+    // SPECIAL CASE: TabContent should serialize ALL panels, not just the currently visible one
+    // During runtime, ir_tabgroup_select() keeps only one panel in tab_content->children for performance,
+    // but when serializing to KIR we need to preserve all panels for round-tripping
+    if (component->type == IR_COMPONENT_TAB_CONTENT && component->custom_data) {
+        TabGroupState* state = (TabGroupState*)component->custom_data;
+
+        cJSON* children = cJSON_CreateArray();
+        if (!children) {
+            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for children in json_serialize_component_impl\n");
+            cJSON_Delete(obj);
+            return NULL;
+        }
+
+        // Serialize ALL panels from the state, not just the visible one
+        for (uint32_t i = 0; i < state->panel_count; i++) {
+            if (state->panels[i]) {
+                cJSON* child = json_serialize_component_impl(state->panels[i], as_template);
+                if (child) {
+                    cJSON_AddItemToArray(children, child);
+                }
+            }
+        }
+        cJSON_AddItemToObject(obj, "children", children);
+    }
+    // NORMAL CASE: All other components serialize their children normally
+    else if (component->child_count > 0) {
         cJSON* children = cJSON_CreateArray();
         if (!children) {
             fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for children in json_serialize_component_impl\n");

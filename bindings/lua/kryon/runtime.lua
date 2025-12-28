@@ -291,6 +291,26 @@ function Runtime.loadKIR(kir_filepath)
 
   -- Get metadata from global context
   local ctx = C.ir_get_global_context()
+
+  -- DEBUG: Check metadata access
+  print(string.format("[runtime.loadKIR] ctx = %s", tostring(ctx)))
+  if ctx ~= nil then
+    print(string.format("[runtime.loadKIR] ctx.source_metadata = %s", tostring(ctx.source_metadata)))
+    if ctx.source_metadata ~= nil then
+      print("[runtime.loadKIR] source_metadata is NOT nil")
+      if ctx.source_metadata.source_language ~= nil then
+        local lang = ffi.string(ctx.source_metadata.source_language)
+        print(string.format("[runtime.loadKIR] source_language = '%s'", lang))
+      else
+        print("[runtime.loadKIR] source_language IS nil")
+      end
+    else
+      print("[runtime.loadKIR] source_metadata IS nil - THIS WAS THE BUG")
+    end
+  else
+    print("[runtime.loadKIR] ctx IS nil")
+  end
+
   local has_lua_events = false
   local source_file = nil
 
@@ -330,11 +350,18 @@ function Runtime.loadKIR(kir_filepath)
 
     local app = chunk()  -- Execute, returns app table and registers handlers
 
+    -- Count handlers (Runtime.handlers is a table, not an array)
+    local handler_count = 0
+    for _ in pairs(Runtime.handlers) do
+      handler_count = handler_count + 1
+    end
+    print(string.format("[runtime] After re-execution, handler count = %d", handler_count))
+
     -- Use the KIR component tree (already has layout computed)
     -- But with handlers from fresh source execution
     return {
       root = root,  -- Use KIR tree
-      window = app.window or {width = 800, height = 600},
+      window = app.window or {width = 800, height = 600, title = "Kryon App"},
       running = false
     }
   else
