@@ -64,18 +64,7 @@ static void register_handler(uint32_t component_id, const char* event_type, Kryo
     else if (strcmp(event_type, "focus") == 0) ir_event_type = IR_EVENT_FOCUS;
 
     // Store handler name in handler_data for round-trip serialization
-    FILE* debug_f = fopen("/tmp/kryon_debug.log", "a");
-    if (debug_f) {
-        fprintf(debug_f, "[kryon] register_handler: component_id=%u, event_type=%s, handler_name=%s, logic_id=%s\n",
-                component_id, event_type, handler_name ? handler_name : "NULL", logic_id);
-        fclose(debug_f);
-    }
     IREvent* event = ir_create_event(ir_event_type, logic_id, handler_name);
-    debug_f = fopen("/tmp/kryon_debug.log", "a");
-    if (debug_f) {
-        fprintf(debug_f, "[kryon] Created event with handler_data=%s\n", event->handler_data ? event->handler_data : "NULL");
-        fclose(debug_f);
-    }
     IRComponent* component = ir_find_component_by_id(g_app_state.root, component_id);
     if (component) {
         ir_add_event(component, event);

@@ -767,19 +767,11 @@ char* ir_c_to_kir(const char* source, size_t length) {
     result[read_bytes] = '\0';
     fclose(kir_f);
 
-    // Cleanup - TEMPORARILY DISABLED FOR DEBUGGING
-    FILE* debug_log = fopen("/tmp/kryon_parser_debug.log", "w");
-    if (debug_log) {
-        fprintf(debug_log, "Temp files in: %s\n", temp_dir);
-        fprintf(debug_log, "Source: %s\n", src_file);
-        fprintf(debug_log, "Executable: %s\n", exe_file);
-        fprintf(debug_log, "KIR: %s\n", kir_file);
-        fclose(debug_log);
-    }
-    // unlink(src_file);
-    // unlink(exe_file);
-    // unlink(kir_file);
-    // rmdir(temp_dir);
+    // Cleanup
+    unlink(src_file);
+    unlink(exe_file);
+    unlink(kir_file);
+    rmdir(temp_dir);
 
     return result;
 }
