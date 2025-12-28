@@ -434,9 +434,9 @@ typedef struct {
 // Command buffer (ring buffer)
 typedef struct kryon_cmd_buf {
     uint8_t buffer[KRYON_CMD_BUF_SIZE];  // Raw command buffer
-    uint16_t head;                       // Write position
-    uint16_t tail;                       // Read position
-    uint16_t count;                      // Number of commands
+    uint32_t head;                       // Write position (must be >= buffer size!)
+    uint32_t tail;                       // Read position (must be >= buffer size!)
+    uint32_t count;                      // Number of bytes (must be >= buffer size!)
     bool overflow;                       // Buffer overflow flag
 } kryon_cmd_buf_t;
 
@@ -562,8 +562,8 @@ bool kryon_cmd_buf_is_empty(kryon_cmd_buf_t* buf);
 // Command iterator (internal)
 typedef struct {
     kryon_cmd_buf_t* buf;
-    uint16_t position;
-    uint16_t remaining;
+    uint32_t position;
+    uint32_t remaining;
 } kryon_cmd_iterator_t;
 
 kryon_cmd_iterator_t kryon_cmd_iter_create(kryon_cmd_buf_t* buf);

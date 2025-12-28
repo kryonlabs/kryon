@@ -3866,6 +3866,10 @@ static void ir_finalize_tabgroups_recursive(IRComponent* component) {
                     // Store state in component's custom_data for renderer access
                     component->custom_data = (char*)state;
 
+                    // Register TabBar and TabContent (critical for setting custom_data pointers)
+                    ir_tabgroup_register_bar(state, tab_bar);
+                    ir_tabgroup_register_content(state, tab_content);
+
                     // Register all Tab components from TabBar
                     for (uint32_t i = 0; i < tab_bar->child_count; i++) {
                         IRComponent* tab = tab_bar->children[i];

@@ -409,6 +409,13 @@ static bool sdl3_render_component(DesktopIRRenderer* renderer, IRComponent* root
     fprintf(stderr, "[sdl3][CMD_BUF] Used %u bytes, head=%u, tail=%u, overflow=%d\n",
             cmd_buf.count, cmd_buf.head, cmd_buf.tail, cmd_buf.overflow);
 
+    // Debug: Check buffer contents before execute
+    fprintf(stderr, "[SDL3_PRE_EXEC] Buffer at pos 0: %02x %02x %02x %02x\n",
+            cmd_buf.buffer[0], cmd_buf.buffer[1], cmd_buf.buffer[2], cmd_buf.buffer[3]);
+    fprintf(stderr, "[SDL3_PRE_EXEC] Buffer at pos 1632: %02x %02x %02x %02x\n",
+            cmd_buf.buffer[1632], cmd_buf.buffer[1633], cmd_buf.buffer[1634], cmd_buf.buffer[1635]);
+    fflush(stderr);
+
     // Execute commands using kryon renderer backend
     if (data->kryon_renderer) {
         data->kryon_renderer->ops->execute_commands(data->kryon_renderer, &cmd_buf);
@@ -416,6 +423,11 @@ static bool sdl3_render_component(DesktopIRRenderer* renderer, IRComponent* root
         fprintf(stderr, "[sdl3] Warning: No kryon_renderer available for command execution\n");
         return false;
     }
+
+    // Debug: Check buffer contents after execute
+    fprintf(stderr, "[SDL3_POST_EXEC] Buffer at pos 0: %02x %02x %02x %02x\n",
+            cmd_buf.buffer[0], cmd_buf.buffer[1], cmd_buf.buffer[2], cmd_buf.buffer[3]);
+    fflush(stderr);
 
     return true;
 }

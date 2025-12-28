@@ -870,5 +870,12 @@ bool ir_component_to_commands(
         kryon_cmd_buf_push(cmd_buf, &cmd);
     }
 
+    // Debug: Check buffer before returning
+    fprintf(stderr, "[IR2CMD_RETURN] Buffer at pos 0: %02x %02x %02x %02x\n",
+            cmd_buf->buffer[0], cmd_buf->buffer[1], cmd_buf->buffer[2], cmd_buf->buffer[3]);
+    fprintf(stderr, "[IR2CMD_RETURN] Buffer at pos 1632: %02x %02x %02x %02x\n",
+            cmd_buf->buffer[1632], cmd_buf->buffer[1633], cmd_buf->buffer[1634], cmd_buf->buffer[1635]);
+    fflush(stderr);
+
     return success;
 }
