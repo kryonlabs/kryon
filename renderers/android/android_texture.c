@@ -13,6 +13,10 @@
 #define LOGE(...) fprintf(stderr, "[ERROR] " __VA_ARGS__)
 #endif
 
+// stb_image for PNG/JPEG loading
+#define STB_IMAGE_IMPLEMENTATION
+#include "../../third_party/stb_image.h"
+
 // ============================================================================
 // Texture Cache Management
 // ============================================================================
@@ -100,9 +104,8 @@ void android_texture_cache_set(AndroidRenderer* renderer, const char* key,
 }
 
 // ============================================================================
-// Texture Loading (Stub Implementation)
+// Texture Loading
 // ============================================================================
-// TODO: Integrate stb_image or similar for PNG/JPEG loading
 
 GLuint android_renderer_load_texture(AndroidRenderer* renderer,
                                       const void* data,
@@ -111,17 +114,51 @@ GLuint android_renderer_load_texture(AndroidRenderer* renderer,
                                       int* out_height) {
     if (!renderer || !data || size == 0) return 0;
 
-    // TODO: Decode image data and upload to GPU
-    // 1. Use stb_image to decode PNG/JPEG
-    // 2. Create OpenGL texture
-    // 3. Upload pixel data
-    // 4. Generate mipmaps
+    // Decode image using stb_image
+    int width, height, channels;
+    unsigned char* pixels = stbi_load_from_memory((const stbi_uc*)data, (int)size,
+                                                   &width, &height, &channels, 4);
 
-    (void)out_width;
-    (void)out_height;
+    if (!pixels) {
+        LOGE("Failed to decode image: %s\n", stbi_failure_reason());
+        return 0;
+    }
 
-    LOGI("Load texture from memory (stub): %zu bytes\n", size);
-    return 0;
+    LOGI("Decoded image: %dx%d with %d channels\n", width, height, channels);
+
+#ifdef __ANDROID__
+    // Create OpenGL texture
+    GLuint texture_id;
+    glGenTextures(1, &texture_id);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+
+    // Upload pixel data
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+    // Set texture parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Generate mipmaps
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+#else
+    GLuint texture_id = 1; // Dummy value for non-Android builds
+#endif
+
+    // Free pixel data
+    stbi_image_free(pixels);
+
+    // Return dimensions
+    if (out_width) *out_width = width;
+    if (out_height) *out_height = height;
+
+    LOGI("Created texture %u (%dx%d)\n", texture_id, width, height);
+    return texture_id;
 }
 
 GLuint android_renderer_load_texture_from_file(AndroidRenderer* renderer,
@@ -130,13 +167,50 @@ GLuint android_renderer_load_texture_from_file(AndroidRenderer* renderer,
                                                 int* out_height) {
     if (!renderer || !filepath) return 0;
 
-    // TODO: Load file and call android_renderer_load_texture
+    LOGI("Loading texture from file: %s\n", filepath);
 
-    (void)out_width;
-    (void)out_height;
+    // Read file into memory
+    FILE* file = fopen(filepath, "rb");
+    if (!file) {
+        LOGE("Failed to open file: %s\n", filepath);
+        return 0;
+    }
 
-    LOGI("Load texture from file (stub): %s\n", filepath);
-    return 0;
+    // Get file size
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    if (file_size <= 0) {
+        LOGE("Invalid file size: %ld\n", file_size);
+        fclose(file);
+        return 0;
+    }
+
+    // Allocate buffer
+    unsigned char* buffer = (unsigned char*)malloc(file_size);
+    if (!buffer) {
+        LOGE("Failed to allocate memory for file: %ld bytes\n", file_size);
+        fclose(file);
+        return 0;
+    }
+
+    // Read file
+    size_t bytes_read = fread(buffer, 1, file_size, file);
+    fclose(file);
+
+    if (bytes_read != (size_t)file_size) {
+        LOGE("Failed to read file: read %zu of %ld bytes\n", bytes_read, file_size);
+        free(buffer);
+        return 0;
+    }
+
+    // Load texture from memory
+    GLuint texture_id = android_renderer_load_texture(renderer, buffer, file_size,
+                                                       out_width, out_height);
+
+    free(buffer);
+    return texture_id;
 }
 
 void android_renderer_delete_texture(AndroidRenderer* renderer, GLuint texture_id) {
@@ -163,14 +237,83 @@ void android_renderer_draw_texture(AndroidRenderer* renderer,
                                     uint32_t tint_color) {
     if (!renderer || !texture_id) return;
 
-    // TODO: Implement texture rendering
-    // 1. Switch to texture shader
-    // 2. Bind texture
-    // 3. Add textured quad to batch
+    // Check if we need to flush batch
+    if (renderer->vertex_count + 4 > MAX_VERTICES ||
+        renderer->index_count + 6 > MAX_INDICES) {
+        android_renderer_flush_batch(renderer);
+    }
 
-    (void)x;
-    (void)y;
-    (void)width;
-    (void)height;
-    (void)tint_color;
+    // Switch to texture shader
+    android_shader_use(renderer, SHADER_PROGRAM_TEXTURE);
+
+#ifdef __ANDROID__
+    // Bind texture
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glUniform1i(renderer->shader_programs[SHADER_PROGRAM_TEXTURE].u_texture, 0);
+#endif
+
+    // Extract tint color components
+    uint8_t a = (tint_color >> 24) & 0xFF;
+    uint8_t r = (tint_color >> 16) & 0xFF;
+    uint8_t g = (tint_color >> 8) & 0xFF;
+    uint8_t b = tint_color & 0xFF;
+
+    // Apply global opacity
+    a = (uint8_t)(a * renderer->global_opacity);
+
+    // Add 4 vertices for textured quad
+    uint32_t base_index = renderer->vertex_count;
+
+    // Top-left
+    renderer->vertices[renderer->vertex_count].x = x;
+    renderer->vertices[renderer->vertex_count].y = y;
+    renderer->vertices[renderer->vertex_count].u = 0.0f;
+    renderer->vertices[renderer->vertex_count].v = 0.0f;
+    renderer->vertices[renderer->vertex_count].r = r;
+    renderer->vertices[renderer->vertex_count].g = g;
+    renderer->vertices[renderer->vertex_count].b = b;
+    renderer->vertices[renderer->vertex_count].a = a;
+    renderer->vertex_count++;
+
+    // Top-right
+    renderer->vertices[renderer->vertex_count].x = x + width;
+    renderer->vertices[renderer->vertex_count].y = y;
+    renderer->vertices[renderer->vertex_count].u = 1.0f;
+    renderer->vertices[renderer->vertex_count].v = 0.0f;
+    renderer->vertices[renderer->vertex_count].r = r;
+    renderer->vertices[renderer->vertex_count].g = g;
+    renderer->vertices[renderer->vertex_count].b = b;
+    renderer->vertices[renderer->vertex_count].a = a;
+    renderer->vertex_count++;
+
+    // Bottom-right
+    renderer->vertices[renderer->vertex_count].x = x + width;
+    renderer->vertices[renderer->vertex_count].y = y + height;
+    renderer->vertices[renderer->vertex_count].u = 1.0f;
+    renderer->vertices[renderer->vertex_count].v = 1.0f;
+    renderer->vertices[renderer->vertex_count].r = r;
+    renderer->vertices[renderer->vertex_count].g = g;
+    renderer->vertices[renderer->vertex_count].b = b;
+    renderer->vertices[renderer->vertex_count].a = a;
+    renderer->vertex_count++;
+
+    // Bottom-left
+    renderer->vertices[renderer->vertex_count].x = x;
+    renderer->vertices[renderer->vertex_count].y = y + height;
+    renderer->vertices[renderer->vertex_count].u = 0.0f;
+    renderer->vertices[renderer->vertex_count].v = 1.0f;
+    renderer->vertices[renderer->vertex_count].r = r;
+    renderer->vertices[renderer->vertex_count].g = g;
+    renderer->vertices[renderer->vertex_count].b = b;
+    renderer->vertices[renderer->vertex_count].a = a;
+    renderer->vertex_count++;
+
+    // Add indices for 2 triangles (6 indices)
+    renderer->indices[renderer->index_count++] = base_index + 0;
+    renderer->indices[renderer->index_count++] = base_index + 1;
+    renderer->indices[renderer->index_count++] = base_index + 2;
+    renderer->indices[renderer->index_count++] = base_index + 0;
+    renderer->indices[renderer->index_count++] = base_index + 2;
+    renderer->indices[renderer->index_count++] = base_index + 3;
 }

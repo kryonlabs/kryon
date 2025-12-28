@@ -146,6 +146,14 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
             return 1;
         }
 
+        // Strip any debug output before the JSON (find first '{')
+        char* json_start = strchr(json, '{');
+        if (!json_start) {
+            fprintf(stderr, "Error: No valid JSON found in parser output\n");
+            free(json);
+            return 1;
+        }
+
         // Write to output file
         FILE* out = fopen(output_kir, "w");
         if (!out) {
@@ -154,7 +162,7 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
             return 1;
         }
 
-        fprintf(out, "%s\n", json);
+        fprintf(out, "%s\n", json_start);
         fclose(out);
 
         free(json);

@@ -1563,6 +1563,390 @@ static cJSON* json_serialize_logic_block(IRLogicBlock* logic_block) {
 }
 
 /**
+ * Serialize C source metadata (from ir_c_metadata.h) to JSON
+ * This preserves C-specific code for round-trip C→KIR→C conversion
+ */
+static cJSON* json_serialize_c_metadata(void) {
+    // Check if there's any C metadata to serialize
+    if (g_c_metadata.event_handler_count == 0 &&
+        g_c_metadata.variable_count == 0 &&
+        g_c_metadata.helper_function_count == 0 &&
+        g_c_metadata.include_count == 0 &&
+        g_c_metadata.preprocessor_directive_count == 0) {
+        return NULL;  // No C metadata to serialize
+    }
+
+    cJSON* c_meta = cJSON_CreateObject();
+    if (!c_meta) return NULL;
+
+    // Serialize event_handlers array
+    if (g_c_metadata.event_handler_count > 0 && g_c_metadata.event_handlers) {
+        cJSON* handlers_array = cJSON_CreateArray();
+
+        for (size_t i = 0; i < g_c_metadata.event_handler_count; i++) {
+            CEventHandlerDecl* handler = &g_c_metadata.event_handlers[i];
+            cJSON* handler_obj = cJSON_CreateObject();
+
+            if (handler->logic_id) {
+                cJSON_AddStringToObject(handler_obj, "logic_id", handler->logic_id);
+            }
+            if (handler->function_name) {
+                cJSON_AddStringToObject(handler_obj, "function_name", handler->function_name);
+            }
+            if (handler->return_type) {
+                cJSON_AddStringToObject(handler_obj, "return_type", handler->return_type);
+            }
+            if (handler->parameters) {
+                cJSON_AddStringToObject(handler_obj, "parameters", handler->parameters);
+            }
+            if (handler->body) {
+                cJSON_AddStringToObject(handler_obj, "body", handler->body);
+            }
+            cJSON_AddNumberToObject(handler_obj, "line_number", handler->line_number);
+
+            cJSON_AddItemToArray(handlers_array, handler_obj);
+        }
+
+        cJSON_AddItemToObject(c_meta, "event_handlers", handlers_array);
+    }
+
+    // Serialize variables array
+    if (g_c_metadata.variable_count > 0 && g_c_metadata.variables) {
+        cJSON* variables_array = cJSON_CreateArray();
+
+        for (size_t i = 0; i < g_c_metadata.variable_count; i++) {
+            CVariableDecl* var = &g_c_metadata.variables[i];
+            cJSON* var_obj = cJSON_CreateObject();
+
+            if (var->name) {
+                cJSON_AddStringToObject(var_obj, "name", var->name);
+            }
+            if (var->type) {
+                cJSON_AddStringToObject(var_obj, "type", var->type);
+            }
+            if (var->storage) {
+                cJSON_AddStringToObject(var_obj, "storage", var->storage);
+            }
+            if (var->initial_value) {
+                cJSON_AddStringToObject(var_obj, "initial_value", var->initial_value);
+            }
+            cJSON_AddNumberToObject(var_obj, "component_id", var->component_id);
+            cJSON_AddNumberToObject(var_obj, "line_number", var->line_number);
+
+            cJSON_AddItemToArray(variables_array, var_obj);
+        }
+
+        cJSON_AddItemToObject(c_meta, "variables", variables_array);
+    }
+
+    // Serialize helper_functions array
+    if (g_c_metadata.helper_function_count > 0 && g_c_metadata.helper_functions) {
+        cJSON* helpers_array = cJSON_CreateArray();
+
+        for (size_t i = 0; i < g_c_metadata.helper_function_count; i++) {
+            CHelperFunction* helper = &g_c_metadata.helper_functions[i];
+            cJSON* helper_obj = cJSON_CreateObject();
+
+            if (helper->name) {
+                cJSON_AddStringToObject(helper_obj, "name", helper->name);
+            }
+            if (helper->return_type) {
+                cJSON_AddStringToObject(helper_obj, "return_type", helper->return_type);
+            }
+            if (helper->parameters) {
+                cJSON_AddStringToObject(helper_obj, "parameters", helper->parameters);
+            }
+            if (helper->body) {
+                cJSON_AddStringToObject(helper_obj, "body", helper->body);
+            }
+            cJSON_AddNumberToObject(helper_obj, "line_number", helper->line_number);
+
+            cJSON_AddItemToArray(helpers_array, helper_obj);
+        }
+
+        cJSON_AddItemToObject(c_meta, "helper_functions", helpers_array);
+    }
+
+    // Serialize includes array
+    if (g_c_metadata.include_count > 0 && g_c_metadata.includes) {
+        cJSON* includes_array = cJSON_CreateArray();
+
+        for (size_t i = 0; i < g_c_metadata.include_count; i++) {
+            CInclude* inc = &g_c_metadata.includes[i];
+            cJSON* inc_obj = cJSON_CreateObject();
+
+            if (inc->include_string) {
+                cJSON_AddStringToObject(inc_obj, "include_string", inc->include_string);
+            }
+            cJSON_AddBoolToObject(inc_obj, "is_system", inc->is_system);
+            cJSON_AddNumberToObject(inc_obj, "line_number", inc->line_number);
+
+            cJSON_AddItemToArray(includes_array, inc_obj);
+        }
+
+        cJSON_AddItemToObject(c_meta, "includes", includes_array);
+    }
+
+    // Serialize preprocessor_directives array
+    if (g_c_metadata.preprocessor_directive_count > 0 && g_c_metadata.preprocessor_directives) {
+        cJSON* directives_array = cJSON_CreateArray();
+
+        for (size_t i = 0; i < g_c_metadata.preprocessor_directive_count; i++) {
+            CPreprocessorDirective* dir = &g_c_metadata.preprocessor_directives[i];
+            cJSON* dir_obj = cJSON_CreateObject();
+
+            if (dir->directive_type) {
+                cJSON_AddStringToObject(dir_obj, "directive_type", dir->directive_type);
+            }
+            if (dir->condition) {
+                cJSON_AddStringToObject(dir_obj, "condition", dir->condition);
+            }
+            if (dir->value) {
+                cJSON_AddStringToObject(dir_obj, "value", dir->value);
+            }
+            cJSON_AddNumberToObject(dir_obj, "line_number", dir->line_number);
+
+            cJSON_AddItemToArray(directives_array, dir_obj);
+        }
+
+        cJSON_AddItemToObject(c_meta, "preprocessor_directives", directives_array);
+    }
+
+    return c_meta;
+}
+
+/**
+ * Deserialize C source metadata from JSON into global g_c_metadata
+ * Used for C→KIR→C round-trip to restore event handlers and other C code
+ */
+static void json_deserialize_c_metadata(cJSON* c_meta_obj) {
+    if (!c_meta_obj || !cJSON_IsObject(c_meta_obj)) return;
+
+    // Clear existing metadata (safely free existing data)
+    // TODO: Add proper cleanup function for g_c_metadata if not already exists
+
+    // Deserialize event_handlers
+    cJSON* handlers = cJSON_GetObjectItem(c_meta_obj, "event_handlers");
+    if (handlers && cJSON_IsArray(handlers)) {
+        int count = cJSON_GetArraySize(handlers);
+        if (count > 0) {
+            g_c_metadata.event_handlers = (CEventHandlerDecl*)calloc(count, sizeof(CEventHandlerDecl));
+            g_c_metadata.event_handler_count = 0;
+            g_c_metadata.event_handler_capacity = count;
+
+            for (int i = 0; i < count; i++) {
+                cJSON* handler_obj = cJSON_GetArrayItem(handlers, i);
+                if (!handler_obj || !cJSON_IsObject(handler_obj)) continue;
+
+                CEventHandlerDecl* handler = &g_c_metadata.event_handlers[g_c_metadata.event_handler_count];
+
+                cJSON* item = cJSON_GetObjectItem(handler_obj, "logic_id");
+                if (item && cJSON_IsString(item)) {
+                    handler->logic_id = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(handler_obj, "function_name");
+                if (item && cJSON_IsString(item)) {
+                    handler->function_name = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(handler_obj, "return_type");
+                if (item && cJSON_IsString(item)) {
+                    handler->return_type = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(handler_obj, "parameters");
+                if (item && cJSON_IsString(item)) {
+                    handler->parameters = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(handler_obj, "body");
+                if (item && cJSON_IsString(item)) {
+                    handler->body = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(handler_obj, "line_number");
+                if (item && cJSON_IsNumber(item)) {
+                    handler->line_number = (int)item->valuedouble;
+                }
+
+                g_c_metadata.event_handler_count++;
+            }
+        }
+    }
+
+    // Deserialize variables
+    cJSON* variables = cJSON_GetObjectItem(c_meta_obj, "variables");
+    if (variables && cJSON_IsArray(variables)) {
+        int count = cJSON_GetArraySize(variables);
+        if (count > 0) {
+            g_c_metadata.variables = (CVariableDecl*)calloc(count, sizeof(CVariableDecl));
+            g_c_metadata.variable_count = 0;
+            g_c_metadata.variable_capacity = count;
+
+            for (int i = 0; i < count; i++) {
+                cJSON* var_obj = cJSON_GetArrayItem(variables, i);
+                if (!var_obj || !cJSON_IsObject(var_obj)) continue;
+
+                CVariableDecl* var = &g_c_metadata.variables[g_c_metadata.variable_count];
+
+                cJSON* item = cJSON_GetObjectItem(var_obj, "name");
+                if (item && cJSON_IsString(item)) {
+                    var->name = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(var_obj, "type");
+                if (item && cJSON_IsString(item)) {
+                    var->type = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(var_obj, "storage");
+                if (item && cJSON_IsString(item)) {
+                    var->storage = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(var_obj, "initial_value");
+                if (item && cJSON_IsString(item)) {
+                    var->initial_value = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(var_obj, "component_id");
+                if (item && cJSON_IsNumber(item)) {
+                    var->component_id = (uint32_t)item->valuedouble;
+                }
+
+                item = cJSON_GetObjectItem(var_obj, "line_number");
+                if (item && cJSON_IsNumber(item)) {
+                    var->line_number = (int)item->valuedouble;
+                }
+
+                g_c_metadata.variable_count++;
+            }
+        }
+    }
+
+    // Deserialize helper_functions
+    cJSON* helpers = cJSON_GetObjectItem(c_meta_obj, "helper_functions");
+    if (helpers && cJSON_IsArray(helpers)) {
+        int count = cJSON_GetArraySize(helpers);
+        if (count > 0) {
+            g_c_metadata.helper_functions = (CHelperFunction*)calloc(count, sizeof(CHelperFunction));
+            g_c_metadata.helper_function_count = 0;
+            g_c_metadata.helper_function_capacity = count;
+
+            for (int i = 0; i < count; i++) {
+                cJSON* helper_obj = cJSON_GetArrayItem(helpers, i);
+                if (!helper_obj || !cJSON_IsObject(helper_obj)) continue;
+
+                CHelperFunction* helper = &g_c_metadata.helper_functions[g_c_metadata.helper_function_count];
+
+                cJSON* item = cJSON_GetObjectItem(helper_obj, "name");
+                if (item && cJSON_IsString(item)) {
+                    helper->name = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(helper_obj, "return_type");
+                if (item && cJSON_IsString(item)) {
+                    helper->return_type = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(helper_obj, "parameters");
+                if (item && cJSON_IsString(item)) {
+                    helper->parameters = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(helper_obj, "body");
+                if (item && cJSON_IsString(item)) {
+                    helper->body = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(helper_obj, "line_number");
+                if (item && cJSON_IsNumber(item)) {
+                    helper->line_number = (int)item->valuedouble;
+                }
+
+                g_c_metadata.helper_function_count++;
+            }
+        }
+    }
+
+    // Deserialize includes
+    cJSON* includes = cJSON_GetObjectItem(c_meta_obj, "includes");
+    if (includes && cJSON_IsArray(includes)) {
+        int count = cJSON_GetArraySize(includes);
+        if (count > 0) {
+            g_c_metadata.includes = (CInclude*)calloc(count, sizeof(CInclude));
+            g_c_metadata.include_count = 0;
+            g_c_metadata.include_capacity = count;
+
+            for (int i = 0; i < count; i++) {
+                cJSON* inc_obj = cJSON_GetArrayItem(includes, i);
+                if (!inc_obj || !cJSON_IsObject(inc_obj)) continue;
+
+                CInclude* inc = &g_c_metadata.includes[g_c_metadata.include_count];
+
+                cJSON* item = cJSON_GetObjectItem(inc_obj, "include_string");
+                if (item && cJSON_IsString(item)) {
+                    inc->include_string = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(inc_obj, "is_system");
+                if (item && cJSON_IsBool(item)) {
+                    inc->is_system = cJSON_IsTrue(item);
+                }
+
+                item = cJSON_GetObjectItem(inc_obj, "line_number");
+                if (item && cJSON_IsNumber(item)) {
+                    inc->line_number = (int)item->valuedouble;
+                }
+
+                g_c_metadata.include_count++;
+            }
+        }
+    }
+
+    // Deserialize preprocessor_directives
+    cJSON* directives = cJSON_GetObjectItem(c_meta_obj, "preprocessor_directives");
+    if (directives && cJSON_IsArray(directives)) {
+        int count = cJSON_GetArraySize(directives);
+        if (count > 0) {
+            g_c_metadata.preprocessor_directives = (CPreprocessorDirective*)calloc(count, sizeof(CPreprocessorDirective));
+            g_c_metadata.preprocessor_directive_count = 0;
+            g_c_metadata.preprocessor_directive_capacity = count;
+
+            for (int i = 0; i < count; i++) {
+                cJSON* dir_obj = cJSON_GetArrayItem(directives, i);
+                if (!dir_obj || !cJSON_IsObject(dir_obj)) continue;
+
+                CPreprocessorDirective* dir = &g_c_metadata.preprocessor_directives[g_c_metadata.preprocessor_directive_count];
+
+                cJSON* item = cJSON_GetObjectItem(dir_obj, "directive_type");
+                if (item && cJSON_IsString(item)) {
+                    dir->directive_type = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(dir_obj, "condition");
+                if (item && cJSON_IsString(item)) {
+                    dir->condition = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(dir_obj, "value");
+                if (item && cJSON_IsString(item)) {
+                    dir->value = strdup(item->valuestring);
+                }
+
+                item = cJSON_GetObjectItem(dir_obj, "line_number");
+                if (item && cJSON_IsNumber(item)) {
+                    dir->line_number = (int)item->valuedouble;
+                }
+
+                g_c_metadata.preprocessor_directive_count++;
+            }
+        }
+    }
+}
+
+/**
  * Serialize IR component tree with complete metadata, logic, and reactive manifest
  * @param root Root component to serialize
  * @param manifest Reactive manifest to include (can be NULL)
@@ -1628,6 +2012,12 @@ char* ir_serialize_json_complete(
         if (manifestJson) {
             cJSON_AddItemToObject(wrapper, "reactive_manifest", manifestJson);
         }
+    }
+
+    // Add C metadata (for C→KIR→C round-trip)
+    cJSON* c_metadata = json_serialize_c_metadata();
+    if (c_metadata) {
+        cJSON_AddItemToObject(wrapper, "c_metadata", c_metadata);
     }
 
     // Add logic block (new!)
@@ -3116,6 +3506,12 @@ IRComponent* ir_deserialize_json(const char* json_string) {
                 ir_ctx->metadata->window_height = (int)heightItem->valuedouble;
             }
         }
+    }
+
+    // Parse C metadata for C→KIR→C round-trip
+    cJSON* c_metadata = cJSON_GetObjectItem(root, "c_metadata");
+    if (c_metadata) {
+        json_deserialize_c_metadata(c_metadata);
     }
 
     // Clean up context before deleting JSON (context references JSON nodes)

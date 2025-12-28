@@ -633,3 +633,36 @@ kryon_cmd_stats_t kryon_cmd_buf_get_stats(kryon_cmd_buf_t* buf) {
 
     return stats;
 }
+
+// ============================================================================
+// Renderer Management Functions
+// ============================================================================
+
+kryon_renderer_t* kryon_renderer_create(const kryon_renderer_ops_t* ops) {
+    if (!ops) return NULL;
+
+    kryon_renderer_t* renderer = (kryon_renderer_t*)malloc(sizeof(kryon_renderer_t));
+    if (!renderer) return NULL;
+
+    memset(renderer, 0, sizeof(kryon_renderer_t));
+    renderer->ops = ops;
+
+    return renderer;
+}
+
+void kryon_renderer_destroy(kryon_renderer_t* renderer) {
+    if (renderer) {
+        free(renderer);
+    }
+}
+
+// ============================================================================
+// Color Utility Functions
+// ============================================================================
+
+void kryon_color_get_components(uint32_t color, uint8_t* r, uint8_t* g, uint8_t* b, uint8_t* a) {
+    if (r) *r = (color >> 24) & 0xFF;
+    if (g) *g = (color >> 16) & 0xFF;
+    if (b) *b = (color >> 8) & 0xFF;
+    if (a) *a = color & 0xFF;
+}

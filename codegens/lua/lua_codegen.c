@@ -202,10 +202,10 @@ static char* find_event_handler(EventHandlerContext* ctx, int component_id, cons
 }
 
 // Forward declaration
-static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* var_name, EventHandlerContext* handler_ctx);
+static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* var_name, EventHandlerContext* handler_ctx, bool is_inline);
 
 // Generate component tree recursively
-static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* var_name, EventHandlerContext* handler_ctx) {
+static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* var_name, EventHandlerContext* handler_ctx, bool is_inline) {
     if (!comp || !cJSON_IsObject(comp)) return;
 
     const char* comp_type = "Container";
@@ -234,7 +234,11 @@ static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* va
     else if (strcmp(comp_type, "TabContent") == 0) dsl_func = "TabContent";
     else if (strcmp(comp_type, "TabPanel") == 0) dsl_func = "TabPanel";
 
-    lua_gen_add_line_fmt(gen, "local %s = UI.%s {", var_name, dsl_func);
+    if (is_inline) {
+        lua_gen_add_line_fmt(gen, "UI.%s {", dsl_func);
+    } else {
+        lua_gen_add_line_fmt(gen, "local %s = UI.%s {", var_name, dsl_func);
+    }
     gen->indent++;
 
     // Generate properties
@@ -310,14 +314,10 @@ static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* va
     if (children && cJSON_IsArray(children) && cJSON_GetArraySize(children) > 0) {
         lua_gen_add_line(gen, "");
 
-        int child_idx = 0;
         cJSON* child = NULL;
         cJSON_ArrayForEach(child, children) {
-            char child_var[256];
-            snprintf(child_var, sizeof(child_var), "%s_child%d", var_name, child_idx++);
-
-            generate_component_tree(gen, child, child_var, handler_ctx);
-            lua_gen_add_line_fmt(gen, "%s,", child_var);
+            generate_component_tree(gen, child, NULL, handler_ctx, true);
+            lua_gen_add_line(gen, ",");
         }
     }
 
@@ -370,7 +370,7 @@ char* lua_codegen_from_json(const char* kir_json) {
     if (!component) component = cJSON_GetObjectItem(root, "component");
 
     if (component) {
-        generate_component_tree(gen, component, "root", &handler_ctx);
+        generate_component_tree(gen, component, "root", &handler_ctx, false);
     }
 
     // Footer

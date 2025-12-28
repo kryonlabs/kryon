@@ -357,22 +357,22 @@ typedef void (*KryonEventHandler)(void);
 /**
  * Register a click event handler
  */
-void kryon_on_click(IRComponent* component, KryonEventHandler handler);
+void kryon_on_click(IRComponent* component, KryonEventHandler handler, const char* handler_name);
 
 /**
  * Register a change event handler (for inputs)
  */
-void kryon_on_change(IRComponent* component, KryonEventHandler handler);
+void kryon_on_change(IRComponent* component, KryonEventHandler handler, const char* handler_name);
 
 /**
  * Register a hover event handler
  */
-void kryon_on_hover(IRComponent* component, KryonEventHandler handler);
+void kryon_on_hover(IRComponent* component, KryonEventHandler handler, const char* handler_name);
 
 /**
  * Register a focus event handler
  */
-void kryon_on_focus(IRComponent* component, KryonEventHandler handler);
+void kryon_on_focus(IRComponent* component, KryonEventHandler handler, const char* handler_name);
 
 /**
  * C event bridge - called by the renderer when events fire

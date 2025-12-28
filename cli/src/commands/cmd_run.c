@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 static const char* detect_frontend(const char* file) {
     const char* ext = path_extension(file);
@@ -110,6 +111,46 @@ int cmd_run(int argc, char** argv) {
     // Build command to run the file
     char cmd[4096];
 
+    // For C files, compile to executable and run directly (not KIR)
+    if (strcmp(frontend, "c") == 0) {
+        // C files need to be compiled to native executable
+        char exe_file[1024];
+        snprintf(exe_file, sizeof(exe_file), "/tmp/kryon_app_%d", getpid());
+
+        printf("Compiling %s to native executable...\n", target_file);
+        char compile_cmd[2048];
+        snprintf(compile_cmd, sizeof(compile_cmd),
+                 "gcc -std=c99 -O2 \"%s\" -o \"%s\" "
+                 "-I/mnt/storage/Projects/kryon/bindings/c "
+                 "-I/mnt/storage/Projects/kryon/ir "
+                 "-L/mnt/storage/Projects/kryon/build "
+                 "-lkryon_ir -lkryon_desktop -lm -lraylib 2>&1",
+                 target_file, exe_file);
+
+        int result = system(compile_cmd);
+        if (result != 0) {
+            fprintf(stderr, "Error: Failed to compile C file\n");
+            if (free_target) free((char*)target_file);
+            return 1;
+        }
+
+        printf("✓ Compiled successfully\n");
+        printf("Running application...\n");
+
+        // Run the executable
+        char run_cmd[2048];
+        snprintf(run_cmd, sizeof(run_cmd),
+                 "LD_LIBRARY_PATH=/mnt/storage/Projects/kryon/build:$LD_LIBRARY_PATH \"%s\"",
+                 exe_file);
+        result = system(run_cmd);
+
+        // Cleanup
+        remove(exe_file);
+
+        if (free_target) free((char*)target_file);
+        return result == 0 ? 0 : 1;
+    }
+
     if (strcmp(frontend, "kir") == 0) {
         // Run KIR file directly
         snprintf(cmd, sizeof(cmd),
@@ -118,7 +159,7 @@ int cmd_run(int argc, char** argv) {
                  "%s \"%s\"",
                  desktop_lib, desktop_lib, target_file);
     } else {
-        // AUTO-COMPILE ANY FORMAT TO KIR FIRST
+        // AUTO-COMPILE OTHER FORMATS TO KIR FIRST
 
         // Extract basename from target_file
         const char* basename = strrchr(target_file, '/');

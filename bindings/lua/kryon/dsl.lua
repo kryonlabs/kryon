@@ -410,9 +410,9 @@ local function applyProperties(component, props)
 
     -- ========== Events ==========
     elseif key == "onClick" and type(value) == "function" then
-      print("📝 Registering onClick handler for component")
+      io.stderr:write("📝 Registering onClick handler for component\n")
       local handlerId = runtime.registerHandler(component, C.IR_EVENT_CLICK, value)
-      print(string.format("   Handler ID: %d", handlerId))
+      io.stderr:write(string.format("   Handler ID: %d", handlerId) .. "\n")
 
     elseif key == "onHover" and type(value) == "function" then
       runtime.registerHandler(component, C.IR_EVENT_HOVER, value)
@@ -421,21 +421,21 @@ local function applyProperties(component, props)
       runtime.registerHandler(component, C.IR_EVENT_FOCUS, value)
 
     elseif key == "onTextChange" and type(value) == "function" then
-      print("📝 Registering onTextChange handler for Input component")
+      io.stderr:write("📝 Registering onTextChange handler for Input component\n")
       local handlerId = runtime.registerHandler(component, C.IR_EVENT_TEXT_CHANGE, value)
-      print(string.format("   Handler ID: %d", handlerId))
+      io.stderr:write(string.format("   Handler ID: %d", handlerId) .. "\n")
 
     elseif key == "onDraw" and type(value) == "function" then
-      print("📝 Registering onDraw handler for Canvas component")
+      io.stderr:write("📝 Registering onDraw handler for Canvas component\n")
       local componentId = tonumber(C.ir_get_component_id(component))
       runtime.registerCanvasCallback(componentId, value)
-      print(string.format("   Canvas callback registered for component ID: %d", componentId))
+      io.stderr:write(string.format("   Canvas callback registered for component ID: %d", componentId) .. "\n")
 
     elseif key == "onUpdate" and type(value) == "function" then
-      print("📝 Registering onUpdate handler for Canvas component")
+      io.stderr:write("📝 Registering onUpdate handler for Canvas component\n")
       local componentId = tonumber(C.ir_get_component_id(component))
       runtime.registerCanvasUpdateCallback(componentId, value)
-      print(string.format("   Canvas update callback registered for component ID: %d", componentId))
+      io.stderr:write(string.format("   Canvas update callback registered for component ID: %d", componentId) .. "\n")
 
     end
 
@@ -455,16 +455,16 @@ local function applyProperties(component, props)
 
           if childType == C.IR_COMPONENT_TAB_BAR then
             ctx.tabBar = child
-            print("📝 Registered TabBar with context")
+            io.stderr:write("📝 Registered TabBar with context\n")
           elseif childType == C.IR_COMPONENT_TAB then
             table.insert(ctx.tabs, child)
-            print(string.format("📝 Registered Tab #%d with context", #ctx.tabs))
+            io.stderr:write(string.format("📝 Registered Tab #%d with context", #ctx.tabs) .. "\n")
           elseif childType == C.IR_COMPONENT_TAB_CONTENT then
             ctx.tabContent = child
-            print("📝 Registered TabContent with context")
+            io.stderr:write("📝 Registered TabContent with context\n")
           elseif childType == C.IR_COMPONENT_TAB_PANEL then
             table.insert(ctx.panels, child)
-            print(string.format("📝 Registered TabPanel #%d with context", #ctx.panels))
+            io.stderr:write(string.format("📝 Registered TabPanel #%d with context", #ctx.panels) .. "\n")
           end
         end
       end
@@ -493,7 +493,7 @@ local function buildComponent(componentType, props)
       reorderable = (props and props.reorderable) or false
     }
     pushTabGroupContext(context)
-    print("📝 Pushing TabGroup context")
+    io.stderr:write("📝 Pushing TabGroup context\n")
   end
 
   -- Step 3: Apply all properties (adds children, which auto-register)
@@ -550,11 +550,11 @@ local function buildComponent(componentType, props)
       C.ir_tabgroup_register_content(state, context.tabContent)
 
       -- Register all tabs AND their visual states
-      print(string.format("📊 Found %d tabs to register", #tabs))
+      io.stderr:write(string.format("📊 Found %d tabs to register", #tabs) .. "\n")
 
       for idx, tab in ipairs(tabs) do
         local tabType = tonumber(C.ir_get_component_type(tab))
-        print(string.format("  Tab %d: type=%d", idx, tabType))
+        io.stderr:write(string.format("  Tab %d: type=%d", idx, tabType) .. "\n")
 
         -- Register tab with C core
         C.ir_tabgroup_register_tab(state, tab)
@@ -575,10 +575,10 @@ local function buildComponent(componentType, props)
 
           -- Register visual state with C core (0-indexed!)
           C.ir_tabgroup_set_tab_visual(state, idx - 1, visual)
-          print(string.format("  ✓ Registered visual state for tab %d (text: %s -> %s)",
+          io.stderr:write(string.format("  ✓ Registered visual state for tab %d (text: %s -> %s)",
                               idx, visualState.textColor, visualState.activeTextColor))
         else
-          print(string.format("  ⚠️ No visual state found for tab %d", idx))
+          io.stderr:write(string.format("  ⚠️ No visual state found for tab %d", idx) .. "\n")
         end
       end
 
@@ -597,10 +597,10 @@ local function buildComponent(componentType, props)
       -- Finalize (applies visuals, shows tabs)
       C.ir_tabgroup_finalize(state)
 
-      print(string.format("✅ TabGroup initialized: %d tabs, %d panels, selected=%d",
+      io.stderr:write(string.format("✅ TabGroup initialized: %d tabs, %d panels, selected=%d",
                           #tabs, #panels, context.selectedIndex))
     else
-      print("⚠️ TabGroup missing TabBar or TabContent!")
+      io.stderr:write("⚠️ TabGroup missing TabBar or TabContent!\n")
     end
   end
 

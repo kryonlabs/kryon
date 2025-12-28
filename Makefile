@@ -199,6 +199,9 @@ build-c-libs:
 	@echo "Building C core libraries..."
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C ir all
+	$(MAKE) -C renderers/common all
+	$(MAKE) -C renderers/common install
+	$(MAKE) -C renderers/sdl3 all
 	$(MAKE) -C backends/desktop all
 
 # Build code generators (needed by CLI)

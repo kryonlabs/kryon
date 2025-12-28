@@ -155,6 +155,23 @@ void android_renderer_draw_texture(AndroidRenderer* renderer,
                                     float width, float height,
                                     uint32_t tint_color);
 
+// Render linear gradient rectangle
+void android_renderer_draw_gradient_rect(AndroidRenderer* renderer,
+                                          float x, float y,
+                                          float width, float height,
+                                          uint32_t color_start,
+                                          uint32_t color_end,
+                                          bool vertical);
+
+// Render box shadow
+void android_renderer_draw_box_shadow(AndroidRenderer* renderer,
+                                       float x, float y,
+                                       float width, float height,
+                                       float radius,
+                                       float offset_x, float offset_y,
+                                       float blur,
+                                       uint32_t shadow_color);
+
 // ============================================================================
 // Texture Management
 // ============================================================================
