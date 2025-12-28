@@ -257,6 +257,11 @@ void android_renderer_destroy(AndroidRenderer* renderer) {
 // ============================================================================
 
 bool android_renderer_begin_frame(AndroidRenderer* renderer) {
+    static int begin_count = 0;
+    if (begin_count++ % 60 == 0) {
+        LOGI("begin_frame called: count=%d", begin_count);
+    }
+
     if (!renderer || !renderer->initialized) {
         return false;
     }

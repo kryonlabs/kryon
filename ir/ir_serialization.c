@@ -1410,6 +1410,66 @@ IRComponent* ir_read_json_file(const char* filename) {
     json[file_size] = '\0';
     fclose(file);
 
+    // Parse JSON to extract metadata (implemented in ir_json.c)
+    extern cJSON* cJSON_Parse(const char* value);
+    extern void cJSON_Delete(cJSON* item);
+    extern cJSON* cJSON_GetObjectItem(const cJSON* object, const char* string);
+    extern int cJSON_IsObject(const cJSON* item);
+    extern int cJSON_IsString(const cJSON* item);
+    extern IRSourceMetadata* ir_parse_source_metadata_from_json(cJSON* metadataObj);
+
+    cJSON* root_json = cJSON_Parse(json);
+    if (root_json) {
+        cJSON* metadataObj = cJSON_GetObjectItem(root_json, "metadata");
+        if (metadataObj && cJSON_IsObject(metadataObj)) {
+            // Parse metadata
+            IRSourceMetadata* metadata = calloc(1, sizeof(IRSourceMetadata));
+            if (metadata) {
+                cJSON* lang = cJSON_GetObjectItem(metadataObj, "source_language");
+                if (lang && cJSON_IsString(lang)) {
+                    metadata->source_language = strdup(lang->valuestring);
+                }
+
+                cJSON* file_obj = cJSON_GetObjectItem(metadataObj, "source_file");
+                if (file_obj && cJSON_IsString(file_obj)) {
+                    metadata->source_file = strdup(file_obj->valuestring);
+                }
+
+                cJSON* version = cJSON_GetObjectItem(metadataObj, "compiler_version");
+                if (version && cJSON_IsString(version)) {
+                    metadata->compiler_version = strdup(version->valuestring);
+                }
+
+                cJSON* ts = cJSON_GetObjectItem(metadataObj, "timestamp");
+                if (ts && cJSON_IsString(ts)) {
+                    metadata->timestamp = strdup(ts->valuestring);
+                }
+
+                // Store in global context
+                extern IRContext* g_ir_context;
+                if (g_ir_context) {
+                    // Free old metadata if exists
+                    if (g_ir_context->source_metadata) {
+                        if (g_ir_context->source_metadata->source_language)
+                            free(g_ir_context->source_metadata->source_language);
+                        if (g_ir_context->source_metadata->source_file)
+                            free(g_ir_context->source_metadata->source_file);
+                        if (g_ir_context->source_metadata->compiler_version)
+                            free(g_ir_context->source_metadata->compiler_version);
+                        if (g_ir_context->source_metadata->timestamp)
+                            free(g_ir_context->source_metadata->timestamp);
+                        free(g_ir_context->source_metadata);
+                    }
+                    g_ir_context->source_metadata = metadata;
+                    fprintf(stderr, "[ir_serialization] Loaded source metadata: file='%s' language='%s'\n",
+                            metadata->source_file ? metadata->source_file : "unknown",
+                            metadata->source_language ? metadata->source_language : "unknown");
+                }
+            }
+        }
+        cJSON_Delete(root_json);
+    }
+
     IRComponent* root = ir_deserialize_json(json);
     free(json);
 

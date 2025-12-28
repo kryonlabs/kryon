@@ -249,6 +249,70 @@ function Runtime.updateRoot(newRoot)
   end
 end
 
+--- Load KIR file and restore Lua callbacks by re-executing source
+--- @param kir_filepath string Path to .kir file
+--- @return table Application instance ready to run
+function Runtime.loadKIR(kir_filepath)
+  -- Load the KIR file (parses metadata into g_ir_context)
+  local root = C.ir_read_json_file(kir_filepath)
+  if root == nil then
+    error("Failed to load KIR from " .. kir_filepath)
+  end
+
+  -- Get metadata from global context
+  local ctx = C.ir_get_global_context()
+  local has_lua_events = false
+  local source_file = nil
+
+  if ctx ~= nil and ctx.source_metadata ~= nil then
+    local meta = ctx.source_metadata
+
+    if meta.source_language ~= nil then
+      local lang = ffi.string(meta.source_language)
+      if lang == "lua" then
+        if meta.source_file ~= nil then
+          source_file = ffi.string(meta.source_file)
+          has_lua_events = true
+        end
+      end
+    end
+  end
+
+  if has_lua_events and source_file then
+    print(string.format("[runtime] KIR generated from Lua, re-executing: %s", source_file))
+
+    -- Re-execute the Lua file to rebuild handler registry
+    local chunk, err = loadfile(source_file)
+    if not chunk then
+      print(string.format("[runtime] Warning: Cannot load source file: %s", err))
+      print("[runtime] Running without callbacks (KIR tree only)")
+      return {
+        root = root,
+        window = {width = 800, height = 600},
+        running = false
+      }
+    end
+
+    local app = chunk()  -- Execute, returns app table and registers handlers
+
+    -- Use the KIR component tree (already has layout computed)
+    -- But with handlers from fresh source execution
+    return {
+      root = root,  -- Use KIR tree
+      window = app.window or {width = 800, height = 600},
+      running = false
+    }
+  else
+    -- No Lua source, return KIR-only app (no callbacks)
+    print("[runtime] KIR has no Lua source metadata, running without callbacks")
+    return {
+      root = root,
+      window = {width = 800, height = 600},
+      running = false
+    }
+  end
+end
+
 --- Run the desktop renderer with the app (keeps Lua process alive)
 --- This is the preferred way to run Lua apps with event handlers
 --- @param app table Application object with root, window config

@@ -197,7 +197,17 @@ void android_shader_cleanup_all(AndroidRenderer* renderer) {
 }
 
 void android_shader_use(AndroidRenderer* renderer, ShaderProgramType type) {
-    if (!renderer || !renderer->shaders_initialized) return;
+    static int use_count = 0;
+    if (use_count++ % 60 == 0) {
+        LOGI("shader_use called: count=%d, type=%d, init=%d", use_count, type,
+             renderer ? renderer->shaders_initialized : -1);
+    }
+
+    if (!renderer || !renderer->shaders_initialized) {
+        if (use_count % 60 == 0) LOGE("Early return: renderer=%p, init=%d", renderer,
+                                      renderer ? renderer->shaders_initialized : -1);
+        return;
+    }
 
     if (type >= SHADER_PROGRAM_COUNT) {
         LOGE("Invalid shader program type: %d\n", type);
@@ -213,6 +223,8 @@ void android_shader_use(AndroidRenderer* renderer, ShaderProgramType type) {
         LOGE("Shader program %d not compiled\n", type);
         return;
     }
+
+    LOGI("Activating shader %d (program=%d)", type, program->program);
 
     glUseProgram(program->program);
 
@@ -258,15 +270,22 @@ void android_shader_use(AndroidRenderer* renderer, ShaderProgramType type) {
         return;
     }
 
+    LOGI("Switching shader: %d -> %d", renderer->current_shader, type);
+
     renderer->current_shader = type;
 
     // Actually activate the shader program in OpenGL
     ShaderProgram* program = &renderer->shader_programs[type];
     glUseProgram(program->program);
 
+    LOGI("glUseProgram(%d) called, u_projection=%d", program->program, program->u_projection);
+
     // Set projection matrix uniform (required for all shaders)
     if (program->u_projection >= 0) {
         glUniformMatrix4fv(program->u_projection, 1, GL_FALSE, renderer->projection_matrix);
+        LOGI("Projection matrix set for shader %d", type);
+    } else {
+        LOGE("WARNING: Shader %d has no u_projection uniform!", type);
     }
 
     renderer->stats.shader_switches++;

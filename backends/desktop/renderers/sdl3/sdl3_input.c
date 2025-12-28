@@ -333,6 +333,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                         renderer->lua_event_callback(handler_id, IR_EVENT_CLICK);
                                     } else if (!handled_as_tab) {
                                         printf("⚠️ Lua event detected but no callback registered\n");
+                                        printf("  💡 Hint: Run .lua files directly (don't compile to .kir first)\n");
                                     }
                                 } else if (!handled_as_tab) {
                                     fprintf(stderr, "⚠️ Failed to parse handler ID from logic_id: %s\n",
