@@ -177,11 +177,7 @@ struct AndroidRenderer {
     GLuint current_texture;
 
     // Font management
-#ifdef __ANDROID__
-    FT_Library ft_library;
-#else
-    void* ft_library;
-#endif
+    void* ft_library;  // Not used on Android (uses native font APIs)
     FontInfo font_registry[MAX_FONT_REGISTRY];
     int font_registry_count;
     char default_font_name[64];

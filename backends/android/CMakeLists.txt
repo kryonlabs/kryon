@@ -21,11 +21,10 @@ target_include_directories(kryon_android_backend PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../platforms/android
 )
 
-# Link with IR and renderer libraries
+# Link with IR library
+# Note: renderer and platform libraries will be linked by the parent CMakeLists.txt
 target_link_libraries(kryon_android_backend
     kryon_ir
-    kryon_android_renderer
-    kryon_android_platform
 )
 
 # Compiler flags

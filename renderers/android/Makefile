@@ -46,14 +46,14 @@ ndk-build:
 		echo ""; \
 		echo "=== Building for $$abi ==="; \
 		mkdir -p $(BUILD_DIR)/$$abi; \
-		cd $(BUILD_DIR)/$$abi && \
+		(cd $(BUILD_DIR)/$$abi && \
 		cmake ../.. \
 			-DCMAKE_TOOLCHAIN_FILE=$(NDK_ROOT)/build/cmake/android.toolchain.cmake \
 			-DANDROID_ABI=$$abi \
 			-DANDROID_PLATFORM=android-$(API_LEVEL) \
 			-DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 			-DCMAKE_INSTALL_PREFIX=$(INSTALL_PREFIX) && \
-		cmake --build . --config $(BUILD_TYPE) -- -j8; \
+		cmake --build . --config $(BUILD_TYPE) -- -j8) || exit 1; \
 	done
 	@echo ""
 	@echo "Renderer build complete for all ABIs"
@@ -65,14 +65,14 @@ ndk-build-single:
 	fi
 	@echo "Building renderer for $(DEFAULT_ABI)..."
 	@mkdir -p $(BUILD_DIR)/$(DEFAULT_ABI)
-	@cd $(BUILD_DIR)/$(DEFAULT_ABI) && \
+	@(cd $(BUILD_DIR)/$(DEFAULT_ABI) && \
 	cmake ../.. \
 		-DCMAKE_TOOLCHAIN_FILE=$(NDK_ROOT)/build/cmake/android.toolchain.cmake \
 		-DANDROID_ABI=$(DEFAULT_ABI) \
 		-DANDROID_PLATFORM=android-$(API_LEVEL) \
 		-DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 		-DCMAKE_INSTALL_PREFIX=$(INSTALL_PREFIX) && \
-	cmake --build . --config $(BUILD_TYPE) -- -j8
+	cmake --build . --config $(BUILD_TYPE) -- -j8)
 	@echo "Renderer build complete for $(DEFAULT_ABI)"
 
 install:
@@ -80,7 +80,7 @@ install:
 	@for abi in $(ABIS); do \
 		if [ -d "$(BUILD_DIR)/$$abi" ]; then \
 			echo "Installing $$abi..."; \
-			cd $(BUILD_DIR)/$$abi && cmake --install .; \
+			(cd $(BUILD_DIR)/$$abi && cmake --install .); \
 		fi; \
 	done
 	@echo "Installation complete"

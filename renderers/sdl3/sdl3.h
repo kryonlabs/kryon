@@ -156,6 +156,9 @@ void kryon_sdl3_app_render_component(kryon_sdl3_app_t* app, kryon_component_t* c
 #define KRYON_SDL3_KEY_TO_KRYON(sdl_key) ((uint32_t)(sdl_key))
 #define KRYON_SDL3_MOUSE_TO_KRYON(sdl_button) ((uint32_t)(sdl_button))
 
+// Screenshot functionality
+bool kryon_sdl3_save_screenshot(kryon_renderer_t* renderer, const char* path);
+
 #ifdef __cplusplus
 }
 #endif

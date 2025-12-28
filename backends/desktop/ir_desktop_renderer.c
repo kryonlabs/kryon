@@ -496,6 +496,10 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
         return false;
     }
 
+    /* Debug: Show command buffer stats */
+    fprintf(stderr, "[CMD_BUF] Used %u bytes, head=%u, tail=%u, overflow=%d\n",
+            cmd_buf.count, cmd_buf.head, cmd_buf.tail, cmd_buf.overflow);
+
     /* Execute commands using kryon renderer backend */
     if (renderer->kryon_renderer) {
         renderer->kryon_renderer->ops->execute_commands(renderer->kryon_renderer, &cmd_buf);
@@ -503,14 +507,11 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
         fprintf(stderr, "Warning: No kryon_renderer available for command execution\n");
     }
 
-    /* Render debug overlay if enabled */
-    desktop_render_debug_overlay(renderer, root);
-
     /* Handle screenshot capture BEFORE present */
     if (renderer->screenshot_path[0] != '\0' && !renderer->screenshot_taken) {
         renderer->frames_since_start++;
         if (renderer->frames_since_start >= renderer->screenshot_after_frames) {
-            desktop_save_screenshot(renderer, renderer->screenshot_path);
+            kryon_sdl3_save_screenshot(renderer->kryon_renderer, renderer->screenshot_path);
             renderer->screenshot_taken = true;
 
             /* Exit if headless mode is enabled */
@@ -637,6 +638,7 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
 
         // Find component under mouse
         IRComponent* hovered = ir_find_component_at_point(renderer->last_root, mouse_pos.x, mouse_pos.y);
+        g_hovered_component = hovered;  // Update global hover state
         bool is_hovering = hovered && (hovered->type == IR_COMPONENT_BUTTON || hovered->type == IR_COMPONENT_INPUT);
 
         // Update cursor
@@ -648,14 +650,21 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
 
         // Handle click events
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && hovered) {
+            printf("[renderer] Mouse clicked on component id=%u type=%d\n", hovered->id, hovered->type);
             if (hovered->type == IR_COMPONENT_BUTTON) {
+                printf("[renderer] Component is a button, looking for click event...\n");
                 // Find and trigger click event
                 IREvent* ir_event = ir_find_event(hovered, IR_EVENT_CLICK);
                 if (ir_event && ir_event->logic_id) {
+                    printf("[renderer] Found event with logic_id=%s, calling event bridge\n", ir_event->logic_id);
                     // Call C event bridge for native C event handlers
                     extern void kryon_c_event_bridge(const char* logic_id);
                     kryon_c_event_bridge(ir_event->logic_id);
+                } else {
+                    printf("[renderer] No click event found on button\n");
                 }
+            } else {
+                printf("[renderer] Component is not a button (type=%d), skipping\n", hovered->type);
             }
         }
 

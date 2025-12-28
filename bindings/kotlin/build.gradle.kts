@@ -6,6 +6,7 @@ plugins {
 android {
     namespace = "com.kryon"
     compileSdk = 34
+    ndkVersion = "29.0.14206865"  // Use installed NDK version
 
     defaultConfig {
         minSdk = 24

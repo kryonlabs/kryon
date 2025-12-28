@@ -289,12 +289,87 @@ bool ir_gen_text_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* 
 }
 
 bool ir_gen_button_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
+    /* Check if button is being hovered */
+    bool is_hovered = (g_hovered_component == comp);
+
+    /* Add default border for buttons if not set */
+    if (comp->style && comp->style->border.width == 0) {
+        comp->style->border.width = 2;  /* 2px for visibility */
+        /* Set default border color to bright white if not set */
+        if (comp->style->border.color.type == IR_COLOR_TRANSPARENT) {
+            comp->style->border.color.type = IR_COLOR_SOLID;
+            comp->style->border.color.data.r = 255;
+            comp->style->border.color.data.g = 255;
+            comp->style->border.color.data.b = 255;
+            comp->style->border.color.data.a = 255;
+        }
+    }
+
+    /* Apply hover effect - brighten background */
+    uint8_t original_bg_r = 0, original_bg_g = 0, original_bg_b = 0, original_bg_a = 0;
+    if (is_hovered && comp->style) {
+        /* Save original background color */
+        if (ir_color_resolve(&comp->style->background, &original_bg_r, &original_bg_g, &original_bg_b, &original_bg_a)) {
+            /* Brighten by 30% */
+            comp->style->background.data.r = (uint8_t)(original_bg_r + (255 - original_bg_r) * 0.3f);
+            comp->style->background.data.g = (uint8_t)(original_bg_g + (255 - original_bg_g) * 0.3f);
+            comp->style->background.data.b = (uint8_t)(original_bg_b + (255 - original_bg_b) * 0.3f);
+        }
+    }
+
     /* Render button background and border first */
     ir_gen_container_commands(comp, ctx, bounds);
 
-    /* Render button text */
+    /* Restore original background color if it was modified */
+    if (is_hovered && comp->style && original_bg_a > 0) {
+        comp->style->background.data.r = original_bg_r;
+        comp->style->background.data.g = original_bg_g;
+        comp->style->background.data.b = original_bg_b;
+        comp->style->background.data.a = original_bg_a;
+    }
+
+    /* Render button text centered */
     if (comp->text_content) {
-        ir_gen_text_commands(comp, ctx, bounds);
+        IRStyle* style = comp->style;
+
+        /* Get text color */
+        uint32_t base_color = 0x000000FF;  /* Default black */
+        if (style) {
+            uint8_t r, g, b, a;
+            if (ir_color_resolve(&style->font.color, &r, &g, &b, &a)) {
+                base_color = (r << 24) | (g << 16) | (b << 8) | a;
+            }
+        }
+        uint32_t text_color = ir_apply_opacity_to_color(base_color, ctx->current_opacity);
+
+        /* Get font size */
+        float font_size = style && style->font.size > 0 ? style->font.size : 16;
+
+        /* Estimate text dimensions for centering */
+        float text_width = ir_get_text_width_estimate(comp->text_content, font_size);
+        float text_height = font_size;
+
+        /* Calculate centered position */
+        float text_x = bounds->x + (bounds->width - text_width) / 2.0f;
+        float text_y = bounds->y + (bounds->height - text_height) / 2.0f;
+
+        /* Create centered text command */
+        kryon_command_t cmd;
+        cmd.type = KRYON_CMD_DRAW_TEXT;
+        cmd.data.draw_text.x = text_x;
+        cmd.data.draw_text.y = text_y;
+        cmd.data.draw_text.font_id = 0;
+        cmd.data.draw_text.font_size = font_size;
+        cmd.data.draw_text.font_weight = style && style->font.bold ? 1 : 0;
+        cmd.data.draw_text.font_style = style && style->font.italic ? 1 : 0;
+        cmd.data.draw_text.color = text_color;
+
+        strncpy(cmd.data.draw_text.text_storage, comp->text_content, 127);
+        cmd.data.draw_text.text_storage[127] = '\0';
+        cmd.data.draw_text.text = NULL;
+        cmd.data.draw_text.max_length = strlen(cmd.data.draw_text.text_storage);
+
+        kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
     }
 
     return true;

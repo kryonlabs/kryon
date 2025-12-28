@@ -1,19 +1,5 @@
 # shell.nix (Kryon development environment with Android support)
-{ pkgs ? import <nixpkgs> {
-  config.android_sdk.accept_license = true;
-  config.allowUnfree = true;
-} }:
-
-let
-  androidComposition = pkgs.androidenv.composeAndroidPackages {
-    platformVersions = [ "34" ];
-    buildToolsVersions = [ "34.0.0" ];
-    includeNDK = true;
-    ndkVersion = "26.1.10909125";
-    cmakeVersions = [ "3.22.1" ];
-  };
-  androidSdk = androidComposition.androidsdk;
-in
+{ pkgs ? import <nixpkgs> {} }:
 
 pkgs.mkShell {
   buildInputs = with pkgs; [
@@ -47,11 +33,9 @@ pkgs.mkShell {
     bun
     nodejs  # For npm compatibility if needed
 
-    # Android development
-    androidSdk
+    # Android development (uses system-installed SDK)
     jdk17
     gradle
-    glibc
 
     # System libraries
     libGL
@@ -70,13 +54,21 @@ pkgs.mkShell {
   ];
 
   shellHook = ''
-    # Set Android environment variables
-    export ANDROID_HOME="${androidSdk}/libexec/android-sdk"
+    # Set Android environment variables (using user's existing SDK)
+    export ANDROID_HOME="$HOME/Android/Sdk"
     export ANDROID_SDK_ROOT="$ANDROID_HOME"
-    export ANDROID_NDK_HOME="$ANDROID_HOME/ndk-bundle"
 
-    # Override aapt2 for gradle (NixOS compatibility)
-    export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$ANDROID_HOME/build-tools/34.0.0/aapt2"
+    # Find NDK directory
+    if [ -d "$ANDROID_HOME/ndk" ]; then
+      # Use the first NDK version found
+      export ANDROID_NDK_HOME="$(find "$ANDROID_HOME/ndk" -maxdepth 1 -type d | grep -v "^$ANDROID_HOME/ndk$" | head -1)"
+    fi
+
+    # Find build-tools version and set GRADLE_OPTS
+    if [ -d "$ANDROID_HOME/build-tools" ]; then
+      BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+      export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt2"
+    fi
 
     echo "Kryon Development Environment"
     echo "============================="

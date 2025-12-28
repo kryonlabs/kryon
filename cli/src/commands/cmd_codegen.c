@@ -11,6 +11,7 @@
 #include "../../codegens/nim/nim_codegen.h"
 #include "../../codegens/lua/lua_codegen.h"
 #include "../../codegens/tsx/tsx_codegen.h"
+#include "../../codegens/c/ir_c_codegen.h"
 
 int cmd_codegen(int argc, char** argv) {
     if (argc < 1) {
@@ -22,10 +23,12 @@ int cmd_codegen(int argc, char** argv) {
         fprintf(stderr, "  tsx    - Generate TypeScript React code\n");
         fprintf(stderr, "  nim    - Generate Nim source code\n");
         fprintf(stderr, "  lua    - Generate Lua source code\n");
+        fprintf(stderr, "  c      - Generate C source code\n");
         fprintf(stderr, "\nExample:\n");
         fprintf(stderr, "  kryon codegen kry app.kir app.kry\n");
         fprintf(stderr, "  kryon codegen tsx app.kir app.tsx\n");
         fprintf(stderr, "  kryon codegen nim app.kir app.nim\n");
+        fprintf(stderr, "  kryon codegen c app.kir app.c\n");
         fprintf(stderr, "  kryon codegen app.kir --lang=kry --output=app.kry\n");
         return 1;
     }
@@ -82,6 +85,8 @@ int cmd_codegen(int argc, char** argv) {
         success = nim_codegen_generate(input_kir, output_file);
     } else if (strcmp(language, "lua") == 0) {
         success = lua_codegen_generate(input_kir, output_file);
+    } else if (strcmp(language, "c") == 0) {
+        success = ir_generate_c_code(input_kir, output_file);
     } else {
         fprintf(stderr, "Error: Unsupported language: %s\n\n", language);
         fprintf(stderr, "Supported languages:\n");
@@ -89,6 +94,7 @@ int cmd_codegen(int argc, char** argv) {
         fprintf(stderr, "  tsx    - Generate TypeScript React code\n");
         fprintf(stderr, "  nim    - Generate Nim source code\n");
         fprintf(stderr, "  lua    - Generate Lua source code\n");
+        fprintf(stderr, "  c      - Generate C source code\n");
         return 1;
     }
 

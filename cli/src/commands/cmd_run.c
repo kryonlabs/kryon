@@ -40,7 +40,7 @@ static int android_setup_temp_project(const char* temp_dir, const char* kir_file
     snprintf(cmd, sizeof(cmd), "cp \"%s\" \"%s/app/src/main/assets/app.kir\"", kir_file, temp_dir);
     if (system(cmd) != 0) return -1;
 
-    // Create local.properties with SDK location
+    // Create local.properties with SDK location (not ndk.dir - that's deprecated)
     char local_props[2048];
     snprintf(local_props, sizeof(local_props), "%s/local.properties", temp_dir);
     FILE* props_f = fopen(local_props, "w");
@@ -49,10 +49,7 @@ static int android_setup_temp_project(const char* temp_dir, const char* kir_file
         if (android_sdk) {
             fprintf(props_f, "sdk.dir=%s\n", android_sdk);
         }
-        const char* android_ndk = getenv("ANDROID_NDK_HOME");
-        if (android_ndk) {
-            fprintf(props_f, "ndk.dir=%s\n", android_ndk);
-        }
+        // Don't set ndk.dir - use ndkVersion in build.gradle.kts instead
         fclose(props_f);
     }
 
@@ -79,6 +76,15 @@ static int android_setup_temp_project(const char* temp_dir, const char* kir_file
     fprintf(f, "include(\":app\")\n");
     fprintf(f, "include(\":kryon\")\n");
     fprintf(f, "project(\":kryon\").projectDir = file(\"/mnt/storage/Projects/kryon/bindings/kotlin\")\n");
+    fclose(f);
+
+    // Create gradle.properties with AndroidX enabled
+    char gradle_props[2048];
+    snprintf(gradle_props, sizeof(gradle_props), "%s/gradle.properties", temp_dir);
+    f = fopen(gradle_props, "w");
+    if (!f) return -1;
+    fprintf(f, "android.useAndroidX=true\n");
+    fprintf(f, "android.enableJetifier=true\n");
     fclose(f);
 
     // Create root build.gradle.kts (proper multi-module pattern)
@@ -223,8 +229,23 @@ static int run_android(const char* kir_file, const char* source_file) {
     pclose(adb_check);
 
     if (strlen(device_line) == 0) {
-        fprintf(stderr, "Error: No Android devices connected\n");
-        fprintf(stderr, "Connect a device and run: adb devices\n");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "╭────────────────────────────────────────────────────────╮\n");
+        fprintf(stderr, "│  No Android devices found                             │\n");
+        fprintf(stderr, "╰────────────────────────────────────────────────────────╯\n");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "Please connect an Android device and enable USB debugging:\n");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "  1. Connect your device via USB\n");
+        fprintf(stderr, "  2. Enable Developer Options:\n");
+        fprintf(stderr, "     Settings → About Phone → Tap \"Build Number\" 7 times\n");
+        fprintf(stderr, "  3. Enable USB Debugging:\n");
+        fprintf(stderr, "     Settings → Developer Options → USB Debugging\n");
+        fprintf(stderr, "  4. Verify connection:\n");
+        fprintf(stderr, "     adb devices\n");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "Then run this command again.\n");
+        fprintf(stderr, "\n");
         return 1;
     }
 
@@ -264,9 +285,7 @@ static int run_android(const char* kir_file, const char* source_file) {
         if (android_home) {
             fprintf(bindings_f, "sdk.dir=%s\n", android_home);
         }
-        if (android_ndk) {
-            fprintf(bindings_f, "ndk.dir=%s\n", android_ndk);
-        }
+        // Don't set ndk.dir - use ndkVersion in build.gradle.kts instead
         fclose(bindings_f);
     }
 
