@@ -289,24 +289,17 @@ static int run_android(const char* kir_file, const char* source_file) {
         return 1;
     }
 
-    // Initialize Gradle wrapper
-    char wrapper_cmd[2048];
-    snprintf(wrapper_cmd, sizeof(wrapper_cmd),
-             "cd \"%s\" && gradle wrapper --gradle-version 8.7 >/dev/null 2>&1",
-             temp_dir);
-    system(wrapper_cmd);
-
-    // Build using gradlew (wrapper should be created now)
+    // Build using gradle
     char build_cmd[2048];
     snprintf(build_cmd, sizeof(build_cmd),
-             "cd \"%s\" && chmod +x gradlew && ./gradlew assembleDebug 2>&1",
+             "cd \"%s\" && gradle assembleDebug 2>&1",
              temp_dir);
 
     int build_result = system(build_cmd);
     if (build_result != 0) {
         fprintf(stderr, "Error: Gradle build failed\n");
         fprintf(stderr, "Temporary project preserved at: %s\n", temp_dir);
-        fprintf(stderr, "You can debug it manually with: cd %s && ./gradlew assembleDebug\n", temp_dir);
+        fprintf(stderr, "You can debug it manually with: cd %s && gradle assembleDebug\n", temp_dir);
         return 1;
     }
 

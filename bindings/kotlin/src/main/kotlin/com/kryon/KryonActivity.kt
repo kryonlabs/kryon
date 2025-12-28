@@ -52,6 +52,8 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
     private var surfaceView: SurfaceView? = null
     private var surfaceCreated = false
     protected var nativeHandle: Long = 0
+    private var renderHandler: android.os.Handler? = null
+    private var isRendering = false
 
     // Register a callback and return its ID
     internal fun registerCallback(callback: () -> Unit): Int {
@@ -146,6 +148,9 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
         if (nativeHandle != 0L) {
             nativeSurfaceCreated(nativeHandle, holder.surface)
         }
+
+        // Start render loop
+        startRenderLoop()
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
@@ -159,6 +164,9 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
     override fun surfaceDestroyed(holder: SurfaceHolder) {
         Log.i(TAG, "surfaceDestroyed")
         surfaceCreated = false
+
+        // Stop render loop
+        stopRenderLoop()
 
         if (nativeHandle != 0L) {
             nativeSurfaceDestroyed(nativeHandle)
@@ -313,6 +321,33 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
     }
 
     // ========================================================================
+    // Render Loop
+    // ========================================================================
+
+    private fun startRenderLoop() {
+        if (isRendering) return
+        isRendering = true
+        renderHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        renderLoop()
+    }
+
+    private fun stopRenderLoop() {
+        isRendering = false
+        renderHandler?.removeCallbacksAndMessages(null)
+        renderHandler = null
+    }
+
+    private fun renderLoop() {
+        if (!isRendering || nativeHandle == 0L) return
+
+        // Call native render
+        nativeRender(nativeHandle)
+
+        // Schedule next frame (60 FPS = ~16ms)
+        renderHandler?.postDelayed({ renderLoop() }, 16)
+    }
+
+    // ========================================================================
     // Native Methods (JNI)
     // ========================================================================
 
@@ -343,4 +378,6 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
     private external fun nativeGetState(handle: Long, key: String): String?
 
     private external fun nativeGetFPS(handle: Long): Float
+
+    private external fun nativeRender(handle: Long)
 }

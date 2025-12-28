@@ -1756,9 +1756,21 @@ bool ir_is_point_in_component(IRComponent* component, float x, float y) {
 }
 
 IRComponent* ir_find_component_at_point(IRComponent* root, float x, float y) {
-    if (!root || !ir_is_point_in_component(root, x, y)) {
+    if (!root) {
+        printf("[FIND_AT_POINT] root is NULL\n");
         return NULL;
     }
+
+    if (!ir_is_point_in_component(root, x, y)) {
+        printf("[FIND_AT_POINT] Point (%.0f, %.0f) not in root ID=%u valid=%d bounds=[%.1f, %.1f, %.1f, %.1f]\n",
+               x, y, root->id, root->rendered_bounds.valid,
+               root->rendered_bounds.x, root->rendered_bounds.y,
+               root->rendered_bounds.width, root->rendered_bounds.height);
+        return NULL;
+    }
+
+    printf("[FIND_AT_POINT] Checking root ID=%u (type=%d) with %u children\n",
+           root->id, root->type, root->child_count);
 
     // Find the child with highest z-index that contains the point
     IRComponent* best_target = NULL;
@@ -1768,8 +1780,14 @@ IRComponent* ir_find_component_at_point(IRComponent* root, float x, float y) {
         IRComponent* child = root->children[i];
         if (!child) continue;
 
+        printf("[FIND_AT_POINT]   Child %u: ID=%u type=%d valid=%d bounds=[%.1f, %.1f, %.1f, %.1f]\n",
+               i, child->id, child->type, child->rendered_bounds.valid,
+               child->rendered_bounds.x, child->rendered_bounds.y,
+               child->rendered_bounds.width, child->rendered_bounds.height);
+
         // Check if point is in this child's bounds
         if (ir_is_point_in_component(child, x, y)) {
+            printf("[FIND_AT_POINT]     Point IS in child ID=%u\n", child->id);
             // Recursively find target in this child's subtree
             IRComponent* child_target = ir_find_component_at_point(child, x, y);
             if (child_target != NULL) {
@@ -1781,6 +1799,8 @@ IRComponent* ir_find_component_at_point(IRComponent* root, float x, float y) {
                     best_target = child_target;
                 }
             }
+        } else {
+            printf("[FIND_AT_POINT]     Point NOT in child ID=%u\n", child->id);
         }
     }
 

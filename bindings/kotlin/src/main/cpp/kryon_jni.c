@@ -251,6 +251,27 @@ Java_com_kryon_KryonActivity_nativeSurfaceChanged(JNIEnv* env, jobject thiz,
     if (ctx->renderer) {
         android_renderer_resize(ctx->renderer, width, height);
     }
+
+    // Trigger initial render if we have an IR renderer and component tree
+    if (ctx->ir_renderer) {
+        // Get the root component from global IR context
+        extern IRContext* g_ir_context;
+        LOGI("Checking IR context: g_ir_context=%p\n", g_ir_context);
+        if (g_ir_context) {
+            LOGI("IR context root: %p\n", g_ir_context->root);
+            if (g_ir_context->root) {
+                LOGI("Rendering component tree from IR context (type=%d)\n", g_ir_context->root->type);
+                android_ir_renderer_set_root(ctx->ir_renderer, g_ir_context->root);
+                android_ir_renderer_render(ctx->ir_renderer);
+            } else {
+                LOGI("IR context root is NULL\n");
+            }
+        } else {
+            LOGI("Global IR context is NULL\n");
+        }
+    } else {
+        LOGI("IR renderer is NULL\n");
+    }
 }
 
 JNIEXPORT void JNICALL
@@ -398,4 +419,16 @@ Java_com_kryon_KryonActivity_nativeGetFPS(JNIEnv* env, jobject thiz, jlong handl
     }
 
     return 0.0f;
+}
+
+JNIEXPORT void JNICALL
+Java_com_kryon_KryonActivity_nativeRender(JNIEnv* env, jobject thiz, jlong handle) {
+    if (handle == 0) return;
+
+    KryonNativeContext* ctx = (KryonNativeContext*)handle;
+
+    // Render using IR renderer if available
+    if (ctx->ir_renderer) {
+        android_ir_renderer_render(ctx->ir_renderer);
+    }
 }
