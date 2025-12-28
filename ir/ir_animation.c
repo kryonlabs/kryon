@@ -477,4 +477,57 @@ IRAnimationState* ir_animation_scale(IRComponent* target, float from_scale, floa
     return anim;
 }
 
-// Preset animation functions are implemented in ir_builder.c
+// ============================================================================
+// Preset Animations
+// ============================================================================
+
+IRAnimation* ir_animation_fade_in_out(float duration) {
+    IRAnimation* anim = ir_animation_create_keyframe("fadeInOut", duration);
+    if (!anim) return NULL;
+
+    IRKeyframe* kf0 = ir_animation_add_keyframe(anim, 0.0f);
+    ir_keyframe_set_property(kf0, IR_ANIM_PROP_OPACITY, 0.0f);
+
+    IRKeyframe* kf1 = ir_animation_add_keyframe(anim, 0.5f);
+    ir_keyframe_set_property(kf1, IR_ANIM_PROP_OPACITY, 1.0f);
+
+    IRKeyframe* kf2 = ir_animation_add_keyframe(anim, 1.0f);
+    ir_keyframe_set_property(kf2, IR_ANIM_PROP_OPACITY, 0.0f);
+
+    return anim;
+}
+
+IRAnimation* ir_animation_pulse(float duration) {
+    IRAnimation* anim = ir_animation_create_keyframe("pulse", duration);
+    if (!anim) return NULL;
+
+    IRKeyframe* kf0 = ir_animation_add_keyframe(anim, 0.0f);
+    ir_keyframe_set_property(kf0, IR_ANIM_PROP_SCALE_X, 1.0f);
+    ir_keyframe_set_property(kf0, IR_ANIM_PROP_SCALE_Y, 1.0f);
+
+    IRKeyframe* kf1 = ir_animation_add_keyframe(anim, 0.5f);
+    ir_keyframe_set_property(kf1, IR_ANIM_PROP_SCALE_X, 1.1f);
+    ir_keyframe_set_property(kf1, IR_ANIM_PROP_SCALE_Y, 1.1f);
+    ir_keyframe_set_easing(kf1, IR_EASING_EASE_IN_OUT);
+
+    IRKeyframe* kf2 = ir_animation_add_keyframe(anim, 1.0f);
+    ir_keyframe_set_property(kf2, IR_ANIM_PROP_SCALE_X, 1.0f);
+    ir_keyframe_set_property(kf2, IR_ANIM_PROP_SCALE_Y, 1.0f);
+
+    ir_animation_set_iterations(anim, -1);  // Loop forever
+    return anim;
+}
+
+IRAnimation* ir_animation_slide_in_left(float duration) {
+    IRAnimation* anim = ir_animation_create_keyframe("slideInLeft", duration);
+    if (!anim) return NULL;
+
+    IRKeyframe* kf0 = ir_animation_add_keyframe(anim, 0.0f);
+    ir_keyframe_set_property(kf0, IR_ANIM_PROP_TRANSLATE_X, -300.0f);
+
+    IRKeyframe* kf1 = ir_animation_add_keyframe(anim, 1.0f);
+    ir_keyframe_set_property(kf1, IR_ANIM_PROP_TRANSLATE_X, 0.0f);
+    ir_keyframe_set_easing(kf1, IR_EASING_EASE_OUT);
+
+    return anim;
+}

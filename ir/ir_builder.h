@@ -2,6 +2,7 @@
 #define IR_BUILDER_H
 
 #include "ir_core.h"
+#include "ir_animation.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -298,11 +299,6 @@ void ir_transition_set_trigger(IRTransition* transition, uint32_t state_mask);
 
 // Attach transition to component
 void ir_component_add_transition(IRComponent* component, IRTransition* transition);
-
-// Helper: Create common animations
-IRAnimation* ir_animation_fade_in_out(float duration);  // Fade in then out
-IRAnimation* ir_animation_pulse(float duration);  // Scale pulse effect
-IRAnimation* ir_animation_slide_in_left(float duration);
 
 // Apply all animations to a component tree (call each frame from renderer)
 void ir_animation_tree_update(IRComponent* root, float current_time);

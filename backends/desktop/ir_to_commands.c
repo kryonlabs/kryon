@@ -650,6 +650,29 @@ bool ir_generate_component_commands(
     float comp_opacity = component->style ? component->style->opacity : 1.0f;
     ir_push_opacity(ctx, comp_opacity);
 
+    /* Apply transforms (scale, translate, rotate) to bounds */
+    LayoutRect transformed_bounds = *bounds;
+    if (component->style) {
+        IRTransform* t = &component->style->transform;
+
+        /* Apply scale */
+        if (t->scale_x != 1.0f || t->scale_y != 1.0f) {
+            float center_x = bounds->x + bounds->width / 2.0f;
+            float center_y = bounds->y + bounds->height / 2.0f;
+            transformed_bounds.width *= t->scale_x;
+            transformed_bounds.height *= t->scale_y;
+            transformed_bounds.x = center_x - transformed_bounds.width / 2.0f;
+            transformed_bounds.y = center_y - transformed_bounds.height / 2.0f;
+        }
+
+        /* Apply translate */
+        transformed_bounds.x += t->translate_x;
+        transformed_bounds.y += t->translate_y;
+
+        /* TODO: Apply rotate (requires full 2D transform matrix) */
+    }
+    bounds = &transformed_bounds;
+
     /* Defer to overlay pass if needed */
     if (ir_should_defer_to_overlay(component)) {
         ir_defer_to_overlay(ctx, component);

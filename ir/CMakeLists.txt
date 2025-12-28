@@ -16,6 +16,14 @@ file(GLOB IR_SOURCES
     ir_executor.c
     ir_plugin.c
     ir_native_canvas.c
+    ir_hashmap.c
+    ir_memory.c
+    ir_layout.c
+    ir_json.c
+    ir_text_shaping.c
+    parsers/kry/kry_parser.c
+    parsers/kry/kry_to_ir.c
+    third_party/cJSON/cJSON.c
 )
 
 # Create static library

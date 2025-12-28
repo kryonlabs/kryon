@@ -130,8 +130,8 @@ bool android_ir_renderer_load_kir(AndroidIRRenderer* ir_renderer,
                                   const char* kir_path) {
     if (!ir_renderer || !kir_path) return false;
 
-    // Load KIR file
-    FILE* f = fopen(kir_path, "rb");
+    // Load KIR file (JSON format)
+    FILE* f = fopen(kir_path, "r");
     if (!f) {
         fprintf(stderr, "Failed to open KIR file: %s\n", kir_path);
         return false;
@@ -142,19 +142,19 @@ bool android_ir_renderer_load_kir(AndroidIRRenderer* ir_renderer,
     size_t size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    // Read file into buffer
-    uint8_t* data = malloc(size);
-    if (!data) {
+    // Read file into string buffer
+    char* json_data = malloc(size + 1);
+    if (!json_data) {
         fclose(f);
         return false;
     }
-    fread(data, 1, size, f);
+    fread(json_data, 1, size, f);
+    json_data[size] = '\0';
     fclose(f);
 
-    // Deserialize
-    IRBuffer buffer = { .data = data, .base = data, .size = size, .capacity = size };
-    IRComponent* root = ir_deserialize_binary(&buffer);
-    free(data);
+    // Deserialize JSON
+    IRComponent* root = ir_deserialize_json(json_data);
+    free(json_data);
 
     if (!root) {
         fprintf(stderr, "Failed to deserialize KIR file: %s\n", kir_path);

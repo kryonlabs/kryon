@@ -1252,7 +1252,7 @@ char* ir_markdown_to_kir(const char* source, size_t length) {
     fprintf(stderr, "=== ir_markdown_to_kir: Starting serialization...\n");
     fflush(stderr);
 
-    // Serialize to JSON string (defined in ir_json_v2.c)
+    // Serialize to JSON string (defined in ir_json.c)
     extern char* ir_serialize_json_complete(IRComponent* root, IRReactiveManifest* manifest,
                                             struct IRLogicBlock* logic_block,
                                             IRSourceMetadata* source_metadata);

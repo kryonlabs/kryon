@@ -178,6 +178,10 @@ void kryon_cmd_buf_clear(kryon_cmd_buf_t* buf) {
         return;
     }
 
+    fprintf(stderr, "[CMDBUF_CLEAR] BUF=%p was head=%u tail=%u count=%u\n",
+            (void*)buf, buf->head, buf->tail, buf->count);
+    fflush(stderr);
+
     buf->head = 0;
     buf->tail = 0;
     buf->count = 0;
@@ -207,6 +211,13 @@ bool kryon_cmd_buf_is_empty(kryon_cmd_buf_t* buf) {
 // ============================================================================
 
 static const uint16_t kCommandSize = sizeof(kryon_command_t);
+
+// Debug: Print command size at startup
+__attribute__((constructor))
+static void print_command_size(void) {
+    fprintf(stderr, "[CMDBUF_INIT] sizeof(kryon_command_t) = %zu bytes\n", sizeof(kryon_command_t));
+    fflush(stderr);
+}
 
 static void kryon_cmd_buf_write(kryon_cmd_buf_t* buf, const uint8_t* data, uint16_t size) {
     for (uint16_t i = 0; i < size; i++) {
@@ -250,33 +261,40 @@ bool kryon_cmd_buf_push(kryon_cmd_buf_t* buf, const kryon_command_t* cmd) {
     // Write the full command to the buffer
     uint8_t* cmd_bytes = (uint8_t*)cmd;
 
-    // Debug: Print first DRAW_RECT command being written
-    static int push_rect_count = 0;
-    if (cmd->type == KRYON_CMD_DRAW_RECT && push_rect_count < 3) {
-        fprintf(stderr, "[CMDBUF_PUSH] BUF=%p RECT #%d: x=%d y=%d w=%d h=%d color=0x%08x\n",
-                (void*)buf,
-                push_rect_count,
-                cmd->data.draw_rect.x, cmd->data.draw_rect.y,
-                cmd->data.draw_rect.w, cmd->data.draw_rect.h,
-                cmd->data.draw_rect.color);
-        fprintf(stderr, "[CMDBUF_PUSH] head=%u tail=%u count=%u, writing at position %u\n",
-                buf->head, buf->tail, buf->count, buf->head);
-        fprintf(stderr, "[CMDBUF_PUSH] First 20 cmd bytes: ");
+    // Debug: Print first 5 commands of any type
+    static int push_count = 0;
+    if (push_count < 5) {
+        fprintf(stderr, "[CMDBUF_PUSH] CMD #%d type=%d at pos=%u (head=%u tail=%u count=%u)\n",
+                push_count, cmd->type, buf->head, buf->head, buf->tail, buf->count);
+        fprintf(stderr, "[CMDBUF_PUSH] First 20 bytes: ");
         for (int i = 0; i < 20 && i < kCommandSize; i++) {
             fprintf(stderr, "%02x ", cmd_bytes[i]);
         }
         fprintf(stderr, "\n");
         fflush(stderr);
-        push_rect_count++;
+        push_count++;
     }
 
     // Write at head position, then advance head
+    uint16_t write_start = buf->head;
     for (uint16_t i = 0; i < kCommandSize; i++) {
         buf->buffer[buf->head] = cmd_bytes[i];
         buf->head = (buf->head + 1) % KRYON_CMD_BUF_SIZE;
     }
 
     buf->count += kCommandSize;
+
+    // Debug: Verify what was actually written to buffer for first 3 commands
+    static int verify_count = 0;
+    if (verify_count < 3) {
+        fprintf(stderr, "[CMDBUF_VERIFY] After write, buffer at pos %u has: ", write_start);
+        for (int i = 0; i < 20; i++) {
+            fprintf(stderr, "%02x ", buf->buffer[(write_start + i) % KRYON_CMD_BUF_SIZE]);
+        }
+        fprintf(stderr, "\n");
+        fflush(stderr);
+        verify_count++;
+    }
 
     if (getenv("KRYON_TRACE_CMD_BUF")) {
         fprintf(stderr, "[kryon][cmdbuf] push count=%u head=%u\n",

@@ -1416,4 +1416,4 @@ IRComponent* ir_read_json_file(const char* filename) {
     return root;
 }
 
-// NOTE: ir_serialize_json and ir_deserialize_json are now implemented in ir_json_v2.c
+// NOTE: ir_serialize_json and ir_deserialize_json are now implemented in ir_json.c
