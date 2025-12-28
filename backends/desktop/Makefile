@@ -55,19 +55,29 @@ ifndef ENABLE_RAYLIB
 endif
 endif
 
-# Source files (modular architecture - 11 modules)
-DESKTOP_SOURCES = ir_desktop_renderer.c desktop_globals.c \
-                  desktop_fonts.c desktop_effects.c desktop_layout.c \
-                  desktop_input.c desktop_test_events.c \
-                  debug_backend.c stb_image_impl.c
+# Source files (modular architecture with abstraction layer)
+# Core platform-agnostic sources
+DESKTOP_SOURCES = ir_desktop_renderer.c desktop_globals.c desktop_platform.c \
+                  desktop_input_helpers.c desktop_test_events.c debug_backend.c \
+                  stb_image_impl.c ir_to_commands.c
+
+# SDL3 renderer modules (in renderers/sdl3/)
+SDL3_RENDERER_SOURCES = renderers/sdl3/sdl3_renderer.c \
+                        renderers/sdl3/sdl3_input.c \
+                        renderers/sdl3/sdl3_fonts.c \
+                        renderers/sdl3/sdl3_effects.c \
+                        renderers/sdl3/sdl3_layout.c
+
+# Raylib renderer modules (in renderers/raylib/)
+RAYLIB_RENDERER_SOURCES = renderers/raylib/raylib_renderer.c
 
 # Add renderer-specific sources
 ifeq ($(ENABLE_SDL3),1)
-    DESKTOP_SOURCES += ir_to_commands.c
+    DESKTOP_SOURCES += $(SDL3_RENDERER_SOURCES)
 endif
 
 ifeq ($(ENABLE_RAYLIB),1)
-    DESKTOP_SOURCES += desktop_rendering_raylib.c desktop_init_raylib.c
+    DESKTOP_SOURCES += $(RAYLIB_RENDERER_SOURCES)
 endif
 
 DESKTOP_HEADERS = ir_desktop_renderer.h desktop_internal.h debug_backend.h
@@ -90,20 +100,8 @@ all: $(DESKTOP_STATIC_LIB) $(DESKTOP_SHARED_LIB)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-# Object files list
-DESKTOP_OBJS = ir_desktop_renderer.o desktop_globals.o \
-               desktop_fonts.o desktop_effects.o desktop_layout.o \
-               desktop_input.o desktop_test_events.o \
-               debug_backend.o stb_image_impl.o
-
-# Add renderer-specific objects
-ifeq ($(ENABLE_SDL3),1)
-    DESKTOP_OBJS += ir_to_commands.o
-endif
-
-ifeq ($(ENABLE_RAYLIB),1)
-    DESKTOP_OBJS += desktop_rendering_raylib.o desktop_init_raylib.o
-endif
+# Object files list - auto-generated from sources
+DESKTOP_OBJS = $(DESKTOP_SOURCES:.c=.o)
 
 # Dependency files (auto-generated)
 DESKTOP_DEPS = $(DESKTOP_OBJS:.o=.d)
@@ -139,6 +137,8 @@ example: $(DESKTOP_STATIC_LIB)
 # Clean build artifacts (including dependency files)
 clean:
 	rm -f *.o *.d
+	rm -f renderers/sdl3/*.o renderers/sdl3/*.d
+	rm -f renderers/raylib/*.o renderers/raylib/*.d
 	rm -f $(DESKTOP_STATIC_LIB) $(DESKTOP_SHARED_LIB) $(DESKTOP_TEST) $(BUILD_DIR)/example_desktop_render
 
 # Install headers

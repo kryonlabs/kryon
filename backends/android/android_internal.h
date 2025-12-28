@@ -92,8 +92,8 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
 void android_handle_touch_event(AndroidIRRenderer* ir_renderer,
                                 float x, float y, bool down);
 
-// Layout
-void compute_component_layout(IRComponent* component,
-                              float parent_width, float parent_height);
+// Layout integration
+void android_register_text_measurement(void);
+void android_layout_set_renderer(AndroidIRRenderer* renderer);
 
 #endif // ANDROID_BACKEND_INTERNAL_H

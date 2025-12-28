@@ -8,6 +8,8 @@
  * - Component hit testing and event dispatch
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "sdl3_renderer.h"
 #include "../../desktop_internal.h"
 #include "../../../../ir/ir_executor.h"
@@ -42,7 +44,7 @@ __attribute__((weak)) bool nimInputBridge(IRComponent* component, const char* te
  * Adjusts scroll_x to keep the caret within view, with a small margin.
  * Accounts for input field padding and available space.
  */
-void ensure_caret_visible(DesktopIRRenderer* renderer,
+static void ensure_caret_visible_sdl3(DesktopIRRenderer* renderer,
                           IRComponent* input,
                           InputRuntimeState* istate,
                           TTF_Font* font,
@@ -90,7 +92,7 @@ void ensure_caret_visible(DesktopIRRenderer* renderer,
  * Draws dropdown menu below the dropdown button with all options.
  * Highlights hovered or selected options.
  */
-void render_dropdown_menu_sdl3(DesktopIRRenderer* renderer, IRComponent* component) {
+static void render_dropdown_menu_sdl3_internal(DesktopIRRenderer* renderer, IRComponent* component) {
     if (!renderer || !component || component->type != IR_COMPONENT_DROPDOWN) return;
 
     SDL3RendererData* data = sdl3_get_data(renderer);
@@ -562,7 +564,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                         ir_set_text_content(focused_input, combined);
                         if (istate) {
                             istate->cursor_index = cursor + incoming_len;
-                            ensure_caret_visible(renderer, focused_input, istate, font, pad_left, pad_right);
+                            ensure_caret_visible_sdl3(renderer, focused_input, istate, font, pad_left, pad_right);
                         }
                         if (nimInputBridge) {
                             nimInputBridge(focused_input, focused_input->text_content);
@@ -636,7 +638,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             ir_set_text_content(focused_input, combined);
                             if (istate) {
                                 istate->cursor_index = prefix_len;
-                                ensure_caret_visible(renderer, focused_input, istate, font, pad_left, pad_right);
+                                ensure_caret_visible_sdl3(renderer, focused_input, istate, font, pad_left, pad_right);
                             }
                             if (nimInputBridge) {
                                 nimInputBridge(focused_input, focused_input->text_content);

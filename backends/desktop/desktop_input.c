@@ -486,7 +486,7 @@ IRComponent* find_dropdown_menu_at_point(IRComponent* root, float x, float y) {
  * Args:
  *   renderer - Desktop renderer context
  */
-void handle_sdl3_events(DesktopIRRenderer* renderer) {
+static void handle_sdl3_events_legacy(DesktopIRRenderer* renderer) {
     // NOTE: These static variables are NOT thread-safe
     // This renderer assumes single-threaded usage
     // If multi-threading is needed, move these to DesktopIRRenderer struct

@@ -120,6 +120,12 @@ bool android_ir_renderer_initialize(AndroidIRRenderer* ir_renderer,
     //     ir_renderer->hot_reload_enabled = true;
     // }
 
+    // Set renderer reference for text measurement
+    android_layout_set_renderer(ir_renderer);
+
+    // Register text measurement callback with IR layout system
+    android_register_text_measurement();
+
     ir_renderer->initialized = true;
     ir_renderer->running = true;
 
@@ -210,11 +216,11 @@ void android_ir_renderer_render(AndroidIRRenderer* ir_renderer) {
 
     // Render root component if available
     if (ir_renderer->last_root) {
-        // Compute layout if needed
+        // Compute layout using IR system if dirty
         if (ir_renderer->needs_relayout) {
-            compute_component_layout(ir_renderer->last_root,
-                                    (float)ir_renderer->window_width,
-                                    (float)ir_renderer->window_height);
+            ir_layout_compute_tree(ir_renderer->last_root,
+                                  (float)ir_renderer->window_width,
+                                  (float)ir_renderer->window_height);
             ir_renderer->needs_relayout = false;
         }
 

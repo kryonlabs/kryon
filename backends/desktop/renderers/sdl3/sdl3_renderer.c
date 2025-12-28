@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 /**
  * SDL3 Renderer - SDL3 Backend Implementation
  *
