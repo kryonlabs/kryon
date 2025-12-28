@@ -7,7 +7,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Collect all IR source files
 file(GLOB IR_SOURCES
-    ir_core.c
     ir_builder.c
     ir_animation.c
     ir_hot_reload.c
@@ -20,6 +19,8 @@ file(GLOB IR_SOURCES
     ir_memory.c
     ir_layout.c
     ir_json.c
+    ir_logic.c
+    ir_expression.c
     # ir_text_shaping.c  # Requires HarfBuzz - optional for basic text
     ir_bidi_stub.c
     components/ir_component_registry.c

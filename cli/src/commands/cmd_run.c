@@ -523,9 +523,19 @@ int cmd_run(int argc, char** argv) {
         argv[i] = new_argv[i];
     }
 
-    // Default to desktop if not specified
+    // If no explicit target specified, try to get it from config
     if (!target_platform) {
-        target_platform = "desktop";
+        KryonConfig* temp_config = config_find_and_load();
+        if (temp_config && temp_config->build_targets_count > 0 && temp_config->build_targets[0]) {
+            // Use first target from config
+            target_platform = temp_config->build_targets[0];
+            fprintf(stderr, "[kryon] Using target from kryon.toml: %s\n", target_platform);
+        } else {
+            // Default to desktop if no config or no targets
+            target_platform = "desktop";
+        }
+        // Note: We don't free temp_config here as target_platform points to its memory
+        // It will be freed later when we reload the config
     }
 
     // Validate target platform
@@ -553,6 +563,12 @@ int cmd_run(int argc, char** argv) {
             return 1;
         }
 
+        // Validate config (will show detailed errors)
+        if (!config_validate(config)) {
+            config_free(config);
+            return 1;
+        }
+
         if (!config->build_entry) {
             fprintf(stderr, "Error: No file specified and no build.entry in kryon.toml\n\n");
             fprintf(stderr, "Add to your kryon.toml:\n");
@@ -569,6 +585,19 @@ int cmd_run(int argc, char** argv) {
         config_free(config);
     } else {
         target_file = argv[0];
+
+        // If a file is specified, still try to load and validate config if it exists
+        // This ensures proper error messages for invalid kryon.toml files
+        KryonConfig* config = config_find_and_load();
+        if (config) {
+            // If config exists, validate it
+            if (!config_validate(config)) {
+                config_free(config);
+                if (free_target) free((char*)target_file);
+                return 1;
+            }
+            config_free(config);
+        }
     }
 
     // Check if file exists
@@ -724,6 +753,75 @@ int cmd_run(int argc, char** argv) {
             int result = run_terminal(target_file);
             if (free_target) free((char*)target_file);
             return result;
+        } else if (strcmp(target_platform, "web") == 0) {
+            // Generate HTML and serve
+            printf("Web target selected - generating HTML and starting dev server\n");
+
+            // Load config to get output directory and dev server settings
+            KryonConfig* web_config = config_find_and_load();
+            const char* output_dir = (web_config && web_config->build_output_dir) ?
+                                      web_config->build_output_dir : "build";
+            int port = (web_config && web_config->dev_port > 0) ?
+                       web_config->dev_port : 3000;
+            bool auto_open = (web_config && web_config->dev_auto_open) ?
+                             web_config->dev_auto_open : true;
+
+            // Create output directory
+            if (!file_is_directory(output_dir)) {
+                dir_create_recursive(output_dir);
+            }
+
+            // Generate HTML from KIR using web codegen
+            printf("Generating HTML files...\n");
+
+            // Get absolute paths
+            char* cwd = dir_get_current();
+            char abs_kir_path[2048];
+            char abs_output_dir[2048];
+
+            if (target_file[0] == '/') {
+                snprintf(abs_kir_path, sizeof(abs_kir_path), "%s", target_file);
+            } else {
+                snprintf(abs_kir_path, sizeof(abs_kir_path), "%s/%s", cwd, target_file);
+            }
+
+            if (output_dir[0] == '/') {
+                snprintf(abs_output_dir, sizeof(abs_output_dir), "%s", output_dir);
+            } else {
+                snprintf(abs_output_dir, sizeof(abs_output_dir), "%s/%s", cwd, output_dir);
+            }
+
+            char codegen_cmd[2048];
+            snprintf(codegen_cmd, sizeof(codegen_cmd),
+                     "cd /mnt/storage/Projects/kryon/codegens/web && "
+                     "gcc -std=c99 -O2 "
+                     "-I../../ir -I../../ir/third_party/cJSON "
+                     "kir_to_html.c ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c "
+                     "../../ir/third_party/cJSON/cJSON.c "
+                     "-L../../build -lkryon_ir -lm "
+                     "-o /tmp/kryon_web_gen_%d 2>&1 && "
+                     "/tmp/kryon_web_gen_%d \"%s\" \"%s\" 2>&1",
+                     getpid(), getpid(), abs_kir_path, abs_output_dir);
+
+            free(cwd);
+
+            int codegen_result = system(codegen_cmd);
+            if (codegen_result != 0) {
+                fprintf(stderr, "Error: HTML generation failed\n");
+                if (web_config) config_free(web_config);
+                if (free_target) free((char*)target_file);
+                return 1;
+            }
+
+            printf("✓ HTML files generated in %s/\n\n", output_dir);
+
+            // Start dev server
+            extern int start_dev_server(const char* document_root, int port, bool auto_open);
+            int result = start_dev_server(output_dir, port, auto_open);
+
+            if (web_config) config_free(web_config);
+            if (free_target) free((char*)target_file);
+            return result;
         }
 
         // Run KIR file directly on desktop (default)
@@ -768,6 +866,77 @@ int cmd_run(int argc, char** argv) {
         // Route to Android if target is Android
         if (strcmp(target_platform, "android") == 0) {
             int result = run_android(kir_file, target_file);
+            if (free_target) free((char*)target_file);
+            return result;
+        }
+
+        // Route to web if target is web
+        if (strcmp(target_platform, "web") == 0) {
+            printf("Web target selected - generating HTML and starting dev server\n");
+
+            // Load config to get output directory and dev server settings
+            KryonConfig* web_config = config_find_and_load();
+            const char* output_dir = (web_config && web_config->build_output_dir) ?
+                                      web_config->build_output_dir : "build";
+            int port = (web_config && web_config->dev_port > 0) ?
+                       web_config->dev_port : 3000;
+            bool auto_open = (web_config && web_config->dev_auto_open) ?
+                             web_config->dev_auto_open : true;
+
+            // Create output directory
+            if (!file_is_directory(output_dir)) {
+                dir_create_recursive(output_dir);
+            }
+
+            // Generate HTML from KIR using web codegen
+            printf("Generating HTML files...\n");
+
+            // Get absolute paths
+            char* cwd2 = dir_get_current();
+            char abs_kir_path2[2048];
+            char abs_output_dir2[2048];
+
+            if (kir_file[0] == '/') {
+                snprintf(abs_kir_path2, sizeof(abs_kir_path2), "%s", kir_file);
+            } else {
+                snprintf(abs_kir_path2, sizeof(abs_kir_path2), "%s/%s", cwd2, kir_file);
+            }
+
+            if (output_dir[0] == '/') {
+                snprintf(abs_output_dir2, sizeof(abs_output_dir2), "%s", output_dir);
+            } else {
+                snprintf(abs_output_dir2, sizeof(abs_output_dir2), "%s/%s", cwd2, output_dir);
+            }
+
+            char codegen_cmd[2048];
+            snprintf(codegen_cmd, sizeof(codegen_cmd),
+                     "cd /mnt/storage/Projects/kryon/codegens/web && "
+                     "gcc -std=c99 -O2 "
+                     "-I../../ir -I../../ir/third_party/cJSON "
+                     "kir_to_html.c ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c "
+                     "../../ir/third_party/cJSON/cJSON.c "
+                     "-L../../build -lkryon_ir -lm "
+                     "-o /tmp/kryon_web_gen_%d 2>&1 && "
+                     "/tmp/kryon_web_gen_%d \"%s\" \"%s\" 2>&1",
+                     getpid(), getpid(), abs_kir_path2, abs_output_dir2);
+
+            free(cwd2);
+
+            int codegen_result = system(codegen_cmd);
+            if (codegen_result != 0) {
+                fprintf(stderr, "Error: HTML generation failed\n");
+                if (web_config) config_free(web_config);
+                if (free_target) free((char*)target_file);
+                return 1;
+            }
+
+            printf("✓ HTML files generated in %s/\n\n", output_dir);
+
+            // Start dev server
+            extern int start_dev_server(const char* document_root, int port, bool auto_open);
+            int result = start_dev_server(output_dir, port, auto_open);
+
+            if (web_config) config_free(web_config);
             if (free_target) free((char*)target_file);
             return result;
         }

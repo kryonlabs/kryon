@@ -530,6 +530,9 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                     bool hovered_is_valid = (hovered != NULL &&
                                              (!hovered->style || hovered->style->visible));
 
+                    // Update global hover state (used for hover effects in rendering)
+                    g_hovered_component = hovered_is_valid ? hovered : NULL;
+
                     // Set cursor to hand for clickable components
                     SDL_Cursor* desired_cursor;
                     if (is_in_dropdown_menu ||

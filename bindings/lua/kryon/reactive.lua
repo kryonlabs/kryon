@@ -156,7 +156,7 @@ function Reactive.reactive(target, parent, parentKey)
     __index = function(t, key)
       -- Don't track internal keys
       if key == "_target" or key == "_deps" then
-        return rawget(proxy, key)
+        return rawget(t, key)
       end
 
       -- Check for pre-populated array indices (LuaJIT compatibility)
@@ -168,13 +168,13 @@ function Reactive.reactive(target, parent, parentKey)
       end
 
       -- Track this access
-      trackDependency(proxy, key)
+      trackDependency(t, key)
 
       local value = target[key]
 
       -- Recursively wrap nested tables (but don't store back - return the proxy directly)
       if type(value) == "table" and not isReactive(value) then
-        local childProxy = Reactive.reactive(value, proxy, key)
+        local childProxy = Reactive.reactive(value, t, key)
         -- Store the reactive proxy for future access
         target[key] = childProxy
         return childProxy

@@ -227,6 +227,33 @@ TOMLTable* toml_parse_file(const char* path) {
                 // Check if value is an inline table { ... }
                 if (value[0] == '{') {
                     parse_inline_table(table, full_key, value, line_num);
+                }
+                // Check if value is an array [ ... ]
+                else if (value[0] == '[' && value[strlen(value)-1] == ']') {
+                    // Parse array elements
+                    char* array_content = str_copy(value + 1);  // Skip opening [
+                    array_content[strlen(array_content) - 1] = '\0';  // Remove closing ]
+
+                    // Split by commas and add each element with index
+                    char* elem_start = array_content;
+                    int idx = 0;
+                    while (*elem_start) {
+                        char* comma = strchr(elem_start, ',');
+                        if (comma) *comma = '\0';
+
+                        char* elem = trim_whitespace(elem_start);
+                        elem = remove_quotes(elem);
+
+                        // Add as full_key.N
+                        char indexed_key[512];
+                        snprintf(indexed_key, sizeof(indexed_key), "%s.%d", full_key, idx);
+                        toml_table_add(table, indexed_key, elem, line_num);
+
+                        idx++;
+                        if (!comma) break;
+                        elem_start = comma + 1;
+                    }
+                    free(array_content);
                 } else {
                     // Remove quotes from simple value
                     value = remove_quotes(value);

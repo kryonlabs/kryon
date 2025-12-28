@@ -1854,10 +1854,11 @@ char* ir_kry_to_kir(const char* source, size_t length) {
         fflush(stderr);
         KryNode* child = ast->first_child;
         while (child) {
-            fprintf(stderr, "[ir_kry_to_kir]   Child: name='%s', is_component_definition=%d\n",
-                    child->name ? child->name : "(null)", child->is_component_definition);
+            fprintf(stderr, "[ir_kry_to_kir]   Child: name='%s', is_component_definition=%d, type=%d\n",
+                    child->name ? child->name : "(null)", child->is_component_definition, child->type);
             fflush(stderr);
-            if (!child->is_component_definition) {
+            // Skip component definitions and variable declarations
+            if (!child->is_component_definition && child->type != KRY_NODE_VAR_DECL) {
                 root_node = child;
                 fprintf(stderr, "[ir_kry_to_kir]   Found root application: %s\n", root_node->name);
                 fflush(stderr);
