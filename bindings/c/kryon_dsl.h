@@ -417,8 +417,15 @@ static inline int _kryon_run_impl(void) {
 #else
     // For standalone builds - run with desktop renderer using kryon_init() values
     extern KryonAppState g_app_state;
+
+    // Get renderer backend from kryon.toml config, fallback to raylib
+    int backend_type = kryon_get_renderer_backend_from_config();
+    if (backend_type < 0) {
+        backend_type = DESKTOP_BACKEND_RAYLIB;  // Default to raylib if config not found
+    }
+
     DesktopRendererConfig config = {
-        .backend_type = DESKTOP_BACKEND_SDL3,
+        .backend_type = backend_type,
         .window_width = g_app_state.window_width > 0 ? g_app_state.window_width : 800,
         .window_height = g_app_state.window_height > 0 ? g_app_state.window_height : 600,
         .window_title = g_app_state.window_title ? g_app_state.window_title : "Kryon App",

@@ -51,6 +51,7 @@ interface Hook {
   type: "useEffect" | "useCallback" | "useMemo" | "useReducer";
   callback: string;
   dependencies?: string;
+  name?: string;  // Variable name for useCallback/useMemo
 }
 
 let nextId = 1;
@@ -150,7 +151,8 @@ function detectUseCallback(source: string): void {
     hooks.push({
       type: "useCallback",
       callback: callback,
-      dependencies: dependencies
+      dependencies: dependencies,
+      name: varName
     });
   }
 }
@@ -170,7 +172,8 @@ function detectUseMemo(source: string): void {
     hooks.push({
       type: "useMemo",
       callback: callback,
-      dependencies: dependencies
+      dependencies: dependencies,
+      name: varName
     });
   }
 }

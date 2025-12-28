@@ -8,6 +8,7 @@
 #include <math.h>
 #include "desktop_internal.h"
 #include "../../ir/ir_text_shaping.h"
+#include "../../renderers/sdl3/sdl3_effects.h"
 
 #ifdef ENABLE_SDL3
 
@@ -368,7 +369,18 @@ void render_background(SDL_Renderer* renderer, IRComponent* comp, SDL_FRect* rec
         comp->style->background.data.gradient) {
         render_gradient(renderer, comp->style->background.data.gradient, rect, opacity);
     } else {
-        render_background_solid(renderer, rect, comp->style->background, opacity);
+        // Check if border radius should be applied
+        if (comp->style->border.radius > 0) {
+            SDL_Color color = ir_color_to_sdl(comp->style->background);
+            color = apply_opacity_to_color(color, opacity);
+            if (color.a > 0) {
+                ensure_blend_mode(renderer);
+                uint32_t rgba = (color.r << 24) | (color.g << 16) | (color.b << 8) | color.a;
+                sdl3_render_rounded_rect(renderer, rect, comp->style->border.radius, rgba);
+            }
+        } else {
+            render_background_solid(renderer, rect, comp->style->background, opacity);
+        }
     }
 }
 

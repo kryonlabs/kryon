@@ -8,6 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <limits.h>
+#include "../../third_party/tomlc99/toml.h"
+#include "../../backends/desktop/ir_desktop_renderer.h"
 
 // ============================================================================
 // Internal State
@@ -333,6 +337,78 @@ void kryon_cleanup(void) {
     cleanup_handlers();
     cleanup_metadata();
     g_app_state.root = NULL;
+}
+
+int kryon_get_renderer_backend_from_config(void) {
+    // Search for kryon.toml in current directory and parent directories
+    char cwd[PATH_MAX];
+    if (!getcwd(cwd, sizeof(cwd))) {
+        return -1;
+    }
+
+    char config_path[PATH_MAX];
+    char search_dir[PATH_MAX];
+    strncpy(search_dir, cwd, sizeof(search_dir) - 1);
+
+    // Search up to 5 parent directories
+    for (int i = 0; i < 5; i++) {
+        snprintf(config_path, sizeof(config_path), "%s/kryon.toml", search_dir);
+
+        FILE* f = fopen(config_path, "r");
+        if (f) {
+            fclose(f);
+            break;  // Found it
+        }
+
+        // Go up one directory
+        char* last_slash = strrchr(search_dir, '/');
+        if (!last_slash || last_slash == search_dir) {
+            return -1;  // Reached root without finding config
+        }
+        *last_slash = '\0';
+    }
+
+    // Parse the TOML file
+    FILE* fp = fopen(config_path, "r");
+    if (!fp) {
+        return -1;
+    }
+
+    char errbuf[200];
+    toml_table_t* conf = toml_parse_file(fp, errbuf, sizeof(errbuf));
+    fclose(fp);
+
+    if (!conf) {
+        return -1;
+    }
+
+    // Get [desktop] table
+    toml_table_t* desktop = toml_table_in(conf, "desktop");
+    if (!desktop) {
+        toml_free(conf);
+        return -1;
+    }
+
+    // Get renderer value
+    toml_datum_t renderer = toml_string_in(desktop, "renderer");
+    if (!renderer.ok) {
+        toml_free(conf);
+        return -1;
+    }
+
+    // Map renderer string to backend enum
+    int backend = -1;
+    if (strcmp(renderer.u.s, "raylib") == 0) {
+        backend = DESKTOP_BACKEND_RAYLIB;
+    } else if (strcmp(renderer.u.s, "sdl3") == 0) {
+        backend = DESKTOP_BACKEND_SDL3;
+    } else if (strcmp(renderer.u.s, "glfw") == 0) {
+        backend = DESKTOP_BACKEND_GLFW;
+    }
+
+    free(renderer.u.s);
+    toml_free(conf);
+    return backend;
 }
 
 // ============================================================================
