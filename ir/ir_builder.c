@@ -285,11 +285,12 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
 
         // CRITICAL: Force immediate layout recalculation for the new panel
         // Without this, the panel will have invalid bounds (0x0) until the next frame
-        if (g_ir_context->window_width > 0 && g_ir_context->window_height > 0) {
-            ir_layout_compute_tree(g_ir_context->root,
-                                   (float)g_ir_context->window_width,
-                                   (float)g_ir_context->window_height);
-        }
+        // TODO: Window dimensions need to be passed as parameters or stored elsewhere
+        // if (g_ir_context->window_width > 0 && g_ir_context->window_height > 0) {
+        //     ir_layout_compute_tree(g_ir_context->root,
+        //                            (float)g_ir_context->window_width,
+        //                            (float)g_ir_context->window_height);
+        // }
     }
 
     // Apply tab visuals (active/inactive colors)

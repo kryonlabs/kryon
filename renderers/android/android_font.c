@@ -360,7 +360,15 @@ void android_renderer_draw_text(AndroidRenderer* renderer,
 
     FontInfo* font = android_font_get(renderer, name, size);
     if (!font || !font->atlas_texture) {
-        LOGE("Font not available: %s @ %d\n", name, size);
+        LOGE("❌ FONT MISSING: Cannot render text '%s' - font '%s' @ %dpx not registered!\n",
+             text, name, size);
+        LOGE("   Font registry has %d fonts registered\n", renderer->font_registry_count);
+        for (int i = 0; i < renderer->font_registry_count; i++) {
+            LOGE("   Font[%d]: %s @ %dpx from %s\n",
+                 i, renderer->font_registry[i].name,
+                 renderer->font_registry[i].size,
+                 renderer->font_registry[i].path);
+        }
         return;
     }
 

@@ -259,9 +259,14 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
                 __android_log_print(ANDROID_LOG_WARN, "KryonBackend",
                     "RENDERING TEXT: '%s' at (%.1f,%.1f)", component->text_content, x, y);
 
-                IRColor text_color = component->style ?
-                    component->style->font.color :
-                    IR_COLOR_RGBA(0, 0, 0, 255);
+                // Check if font color is set and visible
+                IRColor text_color;
+                if (component->style && component->style->font.color.data.a > 0) {
+                    text_color = component->style->font.color;
+                } else {
+                    // Default to white for visibility
+                    text_color = IR_COLOR_RGBA(255, 255, 255, 255);
+                }
 
                 int font_size = component->style && component->style->font.size > 0 ?
                     (int)component->style->font.size : 16;
