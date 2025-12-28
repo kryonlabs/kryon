@@ -138,6 +138,17 @@ bool render_component_raylib(DesktopIRRenderer* renderer, IRComponent* component
         return true;
     }
 
+    // Debug: Show layout for all components
+    if (component->layout_state && component->layout_state->layout_valid) {
+        printf("[raylib_render] id=%u type=%d visible=%d layout=(%.0f,%.0f,%.0fx%.0f)\n",
+               component->id, component->type,
+               component->style ? component->style->visible : -1,
+               component->layout_state->computed.x,
+               component->layout_state->computed.y,
+               component->layout_state->computed.width,
+               component->layout_state->computed.height);
+    }
+
     // Check layout is computed
     if (!component->layout_state || !component->layout_state->layout_valid) {
         fprintf(stderr, "[raylib] Warning: Layout not computed for component %u type %d\n",

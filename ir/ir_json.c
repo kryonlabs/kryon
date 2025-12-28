@@ -413,9 +413,7 @@ static void json_serialize_style(cJSON* obj, IRStyle* style) {
 
     // Dimensions
     if (style->width.type != IR_DIMENSION_AUTO) {
-        fprintf(stderr, "[JSON] width type=%d value=%f\n", style->width.type, style->width.value);
         char* widthStr = json_dimension_to_string(style->width);
-        fprintf(stderr, "[JSON] width string='%s'\n", widthStr);
         cJSON_AddStringToObject(obj, "width", widthStr);
         free(widthStr);
     }

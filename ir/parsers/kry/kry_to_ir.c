@@ -263,6 +263,11 @@ static uint32_t parse_color(const char* color_str) {
 static void apply_property(ConversionContext* ctx, IRComponent* component, const char* name, KryValue* value) {
     if (!component || !name || !value) return;
 
+    if (strcmp(name, "justifyContent") == 0 || strcmp(name, "gap") == 0) {
+        printf("[APPLY_PROPERTY_START] Processing property '%s', value type=%d\n", name, value->type);
+        fflush(stdout);
+    }
+
     IRStyle* style = ir_get_style(component);
     if (!style) {
         style = ir_create_style();
@@ -564,12 +569,23 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
     }
 
     if (strcmp(name, "justifyContent") == 0) {
-        if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER) {
-            const char* justify = value->type == KRY_VALUE_STRING ?
-                                 value->string_value : value->identifier;
-            // Apply parameter substitution for identifiers (e.g., item.value)
-            if (value->type == KRY_VALUE_IDENTIFIER) {
+        printf("[APPLY_PROPERTY] justifyContent: value->type=%d (STRING=0, NUMBER=1, IDENTIFIER=2, EXPRESSION=3)\n", value->type);
+        printf("[APPLY_PROPERTY] KRY_VALUE_STRING=%d, KRY_VALUE_IDENTIFIER=%d, KRY_VALUE_EXPRESSION=%d\n",
+               KRY_VALUE_STRING, KRY_VALUE_IDENTIFIER, KRY_VALUE_EXPRESSION);
+        fflush(stdout);
+        if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
+            printf("[APPLY_PROPERTY] INSIDE if statement for justifyContent\n");
+            fflush(stdout);
+            const char* justify = (value->type == KRY_VALUE_STRING) ? value->string_value :
+                                  (value->type == KRY_VALUE_IDENTIFIER) ? value->identifier :
+                                  value->expression;
+            printf("[APPLY_PROPERTY] justifyContent raw value: '%s'\n", justify);
+            fflush(stdout);
+            // Apply parameter substitution for expressions and identifiers (e.g., item.value)
+            if (value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
                 justify = substitute_param(ctx, justify);
+                printf("[APPLY_PROPERTY] justifyContent after substitution: '%s'\n", justify);
+                fflush(stdout);
             }
             IRAlignment alignment = IR_ALIGNMENT_START;
             if (strcmp(justify, "center") == 0) {
@@ -611,10 +627,13 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             if (layout) {
                 layout->flex.gap = (uint32_t)value->number_value;
             }
-        } else if (value->type == KRY_VALUE_IDENTIFIER) {
-            // Handle identifiers (e.g., item.gap)
-            const char* gap_str = substitute_param(ctx, value->identifier);
+        } else if (value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
+            // Handle identifiers and expressions (e.g., item.gap)
+            const char* gap_expr = (value->type == KRY_VALUE_IDENTIFIER) ? value->identifier : value->expression;
+            const char* gap_str = substitute_param(ctx, gap_expr);
             float gap_value = (float)atof(gap_str);
+            printf("[APPLY_PROPERTY] gap substituted: '%s' -> %f\n", gap_str, gap_value);
+            fflush(stdout);
             IRLayout* layout = ir_get_layout(component);
             if (layout) {
                 layout->flex.gap = (uint32_t)gap_value;
@@ -771,6 +790,10 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
             // Create new context with iterator variable bound
             ConversionContext loop_ctx = *ctx;
 
+            // Track malloc'd strings for cleanup after iteration
+            char* allocated_strings[MAX_PARAMS * 2];
+            int alloc_count = 0;
+
             // For object elements, we need to make properties accessible
             // For now, store the element value
             // TODO: Implement proper object property access
@@ -779,8 +802,10 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
             if (element->type == KRY_VALUE_STRING) {
                 add_param(&loop_ctx, iter_name, element->string_value);
             } else if (element->type == KRY_VALUE_NUMBER) {
-                char num_buf[32];
-                snprintf(num_buf, sizeof(num_buf), "%g", element->number_value);
+                // FIX: Allocate on heap instead of stack
+                char* num_buf = (char*)malloc(32);
+                allocated_strings[alloc_count++] = num_buf;
+                snprintf(num_buf, 32, "%g", element->number_value);
                 add_param(&loop_ctx, iter_name, num_buf);
             } else if (element->type == KRY_VALUE_IDENTIFIER) {
                 add_param(&loop_ctx, iter_name, element->identifier);
@@ -792,6 +817,7 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
                     char param_name_buf[256];
                     snprintf(param_name_buf, sizeof(param_name_buf), "%s.%s", iter_name, element->object.keys[j]);
                     char* param_name = (char*)malloc(strlen(param_name_buf) + 1);
+                    allocated_strings[alloc_count++] = param_name;  // Track for cleanup
                     strcpy(param_name, param_name_buf);
 
                     KryValue* prop_value = element->object.values[j];
@@ -801,6 +827,7 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
                         char num_buf_tmp[32];
                         snprintf(num_buf_tmp, sizeof(num_buf_tmp), "%g", prop_value->number_value);
                         char* num_buf = (char*)malloc(strlen(num_buf_tmp) + 1);
+                        allocated_strings[alloc_count++] = num_buf;  // Track for cleanup
                         strcpy(num_buf, num_buf_tmp);
                         add_param(&loop_ctx, param_name, num_buf);
                     } else if (prop_value->type == KRY_VALUE_IDENTIFIER) {
@@ -812,6 +839,7 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
                             snprintf(array_param_name_buf, sizeof(array_param_name_buf), "%s.%s[%zu]",
                                      iter_name, element->object.keys[j], k);
                             char* array_param_name = (char*)malloc(strlen(array_param_name_buf) + 1);
+                            allocated_strings[alloc_count++] = array_param_name;  // Track for cleanup
                             strcpy(array_param_name, array_param_name_buf);
 
                             KryValue* array_elem = prop_value->array.elements[k];
@@ -821,6 +849,7 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
                                 char num_buf_tmp[32];
                                 snprintf(num_buf_tmp, sizeof(num_buf_tmp), "%g", array_elem->number_value);
                                 char* num_buf = (char*)malloc(strlen(num_buf_tmp) + 1);
+                                allocated_strings[alloc_count++] = num_buf;  // Track for cleanup
                                 strcpy(num_buf, num_buf_tmp);
                                 add_param(&loop_ctx, array_param_name, num_buf);
                             } else if (array_elem->type == KRY_VALUE_IDENTIFIER) {
@@ -841,6 +870,11 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
                     }
                 }
                 loop_body_child = loop_body_child->next_sibling;
+            }
+
+            // Clean up allocated strings for this iteration
+            for (int j = 0; j < alloc_count; j++) {
+                free(allocated_strings[j]);
             }
         }
     } else if (collection->type == KRY_VALUE_IDENTIFIER || collection->type == KRY_VALUE_EXPRESSION) {
@@ -907,9 +941,12 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
         while (child) {
             if (child->type == KRY_NODE_PROPERTY) {
                 // Apply property
-                printf("[CONVERT_NODE] Applying property '%s'\n", child->name);
+                printf("[CONVERT_NODE] Applying property '%s', value=%p, value->type=%d\n",
+                       child->name, (void*)child->value, child->value ? child->value->type : -1);
                 fflush(stdout);
                 apply_property(ctx, component, child->name, child->value);
+                printf("[CONVERT_NODE] After apply_property for '%s'\n", child->name);
+                fflush(stdout);
             } else if (child->type == KRY_NODE_COMPONENT) {
                 // Recursively convert child component
                 IRComponent* child_component = convert_node(ctx, child);

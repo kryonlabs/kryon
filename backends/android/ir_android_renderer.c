@@ -209,24 +209,52 @@ void android_ir_renderer_update(AndroidIRRenderer* ir_renderer,
 }
 
 void android_ir_renderer_render(AndroidIRRenderer* ir_renderer) {
-    if (!ir_renderer || !ir_renderer->renderer) return;
+    static int render_frame_count = 0;
+    render_frame_count++;
+
+    if (render_frame_count % 60 == 0) {
+        __android_log_print(ANDROID_LOG_DEBUG, "KryonRenderer", "Render frame %d", render_frame_count);
+    }
+
+    if (!ir_renderer || !ir_renderer->renderer) {
+        __android_log_print(ANDROID_LOG_WARN, "KryonRenderer", "render: ir_renderer or renderer is NULL");
+        return;
+    }
 
     // Begin frame
     android_renderer_begin_frame(ir_renderer->renderer);
 
     // Render root component if available
     if (ir_renderer->last_root) {
+        static void* last_root_ptr = NULL;
+        static int last_child_count = -1;
+
+        if (last_root_ptr != ir_renderer->last_root || last_child_count != ir_renderer->last_root->child_count) {
+            __android_log_print(ANDROID_LOG_WARN, "KryonRenderer", "Root changed! ptr=%p->%p, children=%d->%d",
+                              last_root_ptr, ir_renderer->last_root, last_child_count, ir_renderer->last_root->child_count);
+            last_root_ptr = ir_renderer->last_root;
+            last_child_count = ir_renderer->last_root->child_count;
+        }
+
         // Compute layout using IR system if dirty
         if (ir_renderer->needs_relayout) {
+            __android_log_print(ANDROID_LOG_DEBUG, "KryonRenderer", "Computing layout for root (child_count=%d before layout)",
+                              ir_renderer->last_root->child_count);
             ir_layout_compute_tree(ir_renderer->last_root,
                                   (float)ir_renderer->window_width,
                                   (float)ir_renderer->window_height);
+            __android_log_print(ANDROID_LOG_DEBUG, "KryonRenderer", "Layout complete (child_count=%d after layout)",
+                              ir_renderer->last_root->child_count);
             ir_renderer->needs_relayout = false;
         }
 
         // Render component tree
+        __android_log_print(ANDROID_LOG_DEBUG, "KryonRenderer", "Calling render_component with root ptr=%p, child_count=%d",
+                          ir_renderer->last_root, ir_renderer->last_root->child_count);
         render_component_android(ir_renderer, ir_renderer->last_root,
                                 0.0f, 0.0f, 1.0f);
+    } else {
+        __android_log_print(ANDROID_LOG_WARN, "KryonRenderer", "render: last_root is NULL!");
     }
 
     // End frame

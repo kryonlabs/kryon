@@ -1915,6 +1915,14 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         IRComponent* child = c->children[i];
         if (!child) continue;
 
+        // Skip invisible children in layout computation
+        if (child->style && !child->style->visible) {
+            printf("[LAYOUT] Skipping invisible child id=%u\n", child->id);
+            continue;
+        }
+        printf("[LAYOUT] Processing visible child id=%u (visible=%d)\n",
+               child->id, child->style ? child->style->visible : -1);
+
         // Create constraints for child based on direction (use content dimensions)
         IRLayoutConstraints child_constraints = {
             .max_width = is_row ? (content_width - child_x) : content_width,
