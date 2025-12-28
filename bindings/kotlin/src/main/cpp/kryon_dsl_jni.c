@@ -104,6 +104,7 @@ static int dsl_register_component(DSLBuildContext* ctx, IRComponent* component) 
         if (ctx->stack_depth > 0) {
             IRComponent* parent = ctx->parent_stack[ctx->stack_depth - 1];
             ir_add_child(parent, component);
+            LOGD("Added component %d as child to parent (parent now has %d children)", id, parent->child_count);
         }
 
         // Push onto parent stack if it's a container type
@@ -114,6 +115,7 @@ static int dsl_register_component(DSLBuildContext* ctx, IRComponent* component) 
             if (ctx->stack_depth < MAX_PARENT_STACK) {
                 ctx->parent_stack[ctx->stack_depth] = component;
                 ctx->stack_depth++;
+                LOGD("Pushed component %d onto parent stack, depth now: %d", id, ctx->stack_depth);
             }
         }
     }
@@ -809,10 +811,12 @@ Java_com_kryon_KryonActivity_nativeFinalizeContent(JNIEnv* env, jobject thiz, jl
     // Pass the component tree to the renderer
     if (ctx->ir_renderer) {
         LOGI("Setting component tree in renderer");
+        LOGI("Root component has %d children before passing to renderer", dsl->root->child_count);
         android_ir_renderer_set_root(ctx->ir_renderer, dsl->root);
         android_ir_renderer_render(ctx->ir_renderer);
     } else {
         LOGI("Renderer not initialized yet, will render when surface is ready");
+        LOGI("Root component has %d children (will render when surface ready)", dsl->root->child_count);
         // Component tree will be rendered when surface is created
     }
 

@@ -108,6 +108,9 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         IRComponent* child = c->children[i];
         if (!child) continue;
 
+        // Skip invisible children
+        if (child->style && !child->style->visible) continue;
+
         // Create constraints for child
         IRLayoutConstraints child_constraints = {
             .max_width = (axis == LAYOUT_AXIS_HORIZONTAL) ? available_main : available_cross,

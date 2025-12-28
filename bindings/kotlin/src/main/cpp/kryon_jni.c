@@ -266,7 +266,8 @@ Java_com_kryon_KryonActivity_nativeSurfaceChanged(JNIEnv* env, jobject thiz,
         if (g_ir_context) {
             LOGI("IR context root: %p\n", g_ir_context->root);
             if (g_ir_context->root) {
-                LOGI("Rendering component tree from IR context (type=%d)\n", g_ir_context->root->type);
+                LOGI("Rendering component tree from IR context (type=%d, child_count=%d)\n",
+                     g_ir_context->root->type, g_ir_context->root->child_count);
                 android_ir_renderer_set_root(ctx->ir_renderer, g_ir_context->root);
                 android_ir_renderer_render(ctx->ir_renderer);
             } else {
@@ -429,12 +430,26 @@ Java_com_kryon_KryonActivity_nativeGetFPS(JNIEnv* env, jobject thiz, jlong handl
 
 JNIEXPORT void JNICALL
 Java_com_kryon_KryonActivity_nativeRender(JNIEnv* env, jobject thiz, jlong handle) {
-    if (handle == 0) return;
+    static int jni_render_count = 0;
+    jni_render_count++;
+
+    if (jni_render_count % 60 == 0) {
+        LOGI("JNI nativeRender called, count=%d", jni_render_count);
+    }
+
+    if (handle == 0) {
+        LOGE("nativeRender: handle is 0");
+        return;
+    }
 
     KryonNativeContext* ctx = (KryonNativeContext*)handle;
 
     // Render using IR renderer if available
     if (ctx->ir_renderer) {
         android_ir_renderer_render(ctx->ir_renderer);
+    } else {
+        if (jni_render_count % 60 == 0) {
+            LOGE("nativeRender: ctx->ir_renderer is NULL");
+        }
     }
 }

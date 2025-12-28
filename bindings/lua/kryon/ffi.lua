@@ -201,6 +201,7 @@ ffi.cdef[[
   void ir_set_context(IRContext* context);
   IRComponent* ir_get_root(void);
   void ir_set_root(IRComponent* root);
+  void ir_set_window_metadata(int width, int height, const char* title);
 
   // ============================================================================
   // Component Creation (ir_builder.h)

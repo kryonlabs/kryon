@@ -124,10 +124,45 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
                               IRComponent* component,
                               float parent_x, float parent_y,
                               float parent_opacity) {
-    if (!ir_renderer || !component || !ir_renderer->renderer) return;
+    static int component_render_count = 0;
+    component_render_count++;
+
+    // WORKAROUND: If this is the root component (parent_x/y = 0) and has wrong pointer, use last_root instead
+    if (ir_renderer && ir_renderer->last_root &&
+        component != ir_renderer->last_root &&
+        parent_x == 0.0f && parent_y == 0.0f) {
+        if (component_render_count % 60 == 0) {
+            __android_log_print(ANDROID_LOG_WARN, "KryonBackend", "POINTER CORRUPTION DETECTED! Passed=%p, Expected=%p, using last_root",
+                              component, ir_renderer->last_root);
+        }
+        component = ir_renderer->last_root;
+    }
+
+    if (component_render_count % 60 == 0) {
+        __android_log_print(ANDROID_LOG_DEBUG, "KryonBackend", "render_component called, count=%d, component ptr=%p, child_count=%d, children ptr=%p",
+                          component_render_count, component, component ? component->child_count : -999,
+                          component ? component->children : NULL);
+    }
+
+    if (!ir_renderer || !component || !ir_renderer->renderer) {
+        __android_log_print(ANDROID_LOG_WARN, "KryonBackend", "render_component: NULL params");
+        return;
+    }
 
     // Skip if layout is not valid
-    if (!component->layout_state || !component->layout_state->layout_valid) return;
+    if (!component->layout_state) {
+        if (component_render_count % 60 == 0) {
+            __android_log_print(ANDROID_LOG_WARN, "KryonBackend", "Component has no layout_state!");
+        }
+        return;
+    }
+
+    if (!component->layout_state->layout_valid) {
+        if (component_render_count % 60 == 0) {
+            __android_log_print(ANDROID_LOG_WARN, "KryonBackend", "Component layout not valid!");
+        }
+        return;
+    }
 
     AndroidRenderer* renderer = ir_renderer->renderer;
 
@@ -252,6 +287,11 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
         for (uint32_t i = 0; i < component->child_count; i++) {
             render_component_android(ir_renderer, component->children[i],
                                     x, y, opacity);
+        }
+    } else {
+        static int no_children_log = 0;
+        if (no_children_log++ % 60 == 0) {
+            __android_log_print(ANDROID_LOG_DEBUG, "KryonBackend", "Component has no children (child_count=%d)", component->child_count);
         }
     }
 }

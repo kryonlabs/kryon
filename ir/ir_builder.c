@@ -3142,3 +3142,27 @@ IRComponent* ir_get_child_at(IRComponent* component, uint32_t index) {
     if (!component || index >= component->child_count) return NULL;
     return component->children[index];
 }
+
+// Set window metadata on IR context
+void ir_set_window_metadata(int width, int height, const char* title) {
+    extern IRContext* g_ir_context;
+    if (!g_ir_context) return;
+
+    // Create metadata if it doesn't exist
+    if (!g_ir_context->metadata) {
+        g_ir_context->metadata = (IRMetadata*)calloc(1, sizeof(IRMetadata));
+        if (!g_ir_context->metadata) return;
+    }
+
+    // Set window dimensions
+    g_ir_context->metadata->window_width = width;
+    g_ir_context->metadata->window_height = height;
+
+    // Set window title
+    if (title) {
+        if (g_ir_context->metadata->window_title) {
+            free(g_ir_context->metadata->window_title);
+        }
+        g_ir_context->metadata->window_title = strdup(title);
+    }
+}

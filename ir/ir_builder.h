@@ -416,4 +416,7 @@ void ir_set_link_url(IRComponent* comp, const char* url);
 void ir_set_link_title(IRComponent* comp, const char* title);
 void ir_set_blockquote_depth(IRComponent* comp, uint8_t depth);
 
+// Window metadata
+void ir_set_window_metadata(int width, int height, const char* title);
+
 #endif // IR_BUILDER_H
