@@ -400,10 +400,13 @@ bool android_renderer_end_frame(AndroidRenderer* renderer) {
     glBindVertexArray(0);
 #endif
 
-    // Swap buffers
-    if (!android_egl_swap_buffers(renderer)) {
-        LOGE("Failed to swap buffers\n");
-        return false;
+    // Swap buffers (only if we're managing EGL ourselves)
+    // In GL-only mode (GLSurfaceView), the framework handles swapping
+    if (renderer->egl_initialized) {
+        if (!android_egl_swap_buffers(renderer)) {
+            LOGE("Failed to swap buffers\n");
+            return false;
+        }
     }
 
     // Update performance metrics
