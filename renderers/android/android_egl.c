@@ -210,8 +210,8 @@ bool android_egl_init(AndroidRenderer* renderer, ANativeWindow* window) {
     // Disable face culling
     glDisable(GL_CULL_FACE);
 
-    // Set clear color
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    // Set clear color to black (so transparent backgrounds show as black)
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     LOGI("EGL initialization complete\n");
     return true;

@@ -169,7 +169,6 @@ ffi.cdef[[
   // ============================================================================
   typedef struct IRStyle IRStyle;
   typedef struct IRLayout IRLayout;
-  typedef struct IRContext IRContext;
   typedef struct IREvent IREvent;
   typedef struct IRGradient IRGradient;
   typedef struct TabGroupState TabGroupState;
@@ -179,6 +178,19 @@ ffi.cdef[[
   typedef struct IRTextLayout IRTextLayout;
   typedef struct IRTabData IRTabData;
   typedef struct IRLogic IRLogic;
+  typedef struct IRComponentPool IRComponentPool;
+  typedef struct IRComponentMap IRComponentMap;
+  typedef struct IRMetadata IRMetadata;
+
+  // ============================================================================
+  // Source Metadata (for KIR compilation tracking)
+  // ============================================================================
+  typedef struct {
+    char* source_language;
+    char* source_file;
+    char* compiler_version;
+    char* timestamp;
+  } IRSourceMetadata;
 
   // IRComponent struct (partial definition for FFI access to text_content)
   typedef struct IRComponent {
@@ -197,6 +209,20 @@ ffi.cdef[[
     char* text_content;
     // Additional fields exist in C struct but are not needed for FFI
   } IRComponent;
+
+  // IRContext struct (partial definition for FFI access to metadata)
+  typedef struct IRContext {
+    IRComponent* root;
+    IRLogic* logic_list;
+    uint32_t next_component_id;
+    uint32_t next_logic_id;
+    IRComponentPool* component_pool;
+    IRComponentMap* component_map;
+    IRMetadata* metadata;
+    void* reactive_manifest;
+    IRSourceMetadata* source_metadata;  // Source file metadata
+    // Additional fields exist in C struct but are not needed for FFI
+  } IRContext;
 
   // ============================================================================
   // Context Management (ir_builder.h)
@@ -366,11 +392,23 @@ ffi.cdef[[
   // ============================================================================
   // IR Serialization (ir_serialization.h)
   // ============================================================================
+  // Forward declare logic block type
+  typedef struct IRLogicBlock IRLogicBlock;
+  typedef struct IRReactiveManifest IRReactiveManifest;
+  typedef struct IRSourceStructures IRSourceStructures;
+
   // JSON serialization
   char* ir_serialize_json(IRComponent* root);
+  char* ir_serialize_json_complete(IRComponent* root, IRReactiveManifest* manifest,
+                                    IRLogicBlock* logic_block,
+                                    IRSourceMetadata* source_metadata,
+                                    IRSourceStructures* source_structures);
   IRComponent* ir_deserialize_json(const char* json_string);
   bool ir_write_json_file(IRComponent* root, const char* filename);
   IRComponent* ir_read_json_file(const char* filename);
+
+  // Context access
+  IRContext* ir_get_global_context(void);
 
   // Memory management (stdlib.h)
   void free(void* ptr);

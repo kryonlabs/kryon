@@ -2,7 +2,7 @@
 
 CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I../ir -I../ir/third_party/cJSON -D_POSIX_C_SOURCE=200809L
-LDFLAGS = -L../build -lkryon_ir -lkryon_desktop -lkryon_terminal -lm ../ir/third_party/cJSON/cJSON.c
+LDFLAGS = -L../build -lkryon_ir -lkryon_desktop -lm ../ir/third_party/cJSON/cJSON.c
 
 # Directories
 SRC_DIR = src

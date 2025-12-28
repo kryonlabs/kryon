@@ -216,16 +216,16 @@ Java_com_kryon_KryonActivity_nativeSurfaceCreated(JNIEnv* env, jobject thiz,
             }
             LOGI("AndroidRenderer initialized successfully\n");
             ctx->renderer = ctx->ir_renderer->renderer;  // Keep reference for cleanup
+
+            // Register Android system fonts directly with the renderer
+            android_renderer_register_font(ctx->renderer, "Roboto", "/system/fonts/Roboto-Regular.ttf");
+            android_renderer_register_font(ctx->renderer, "Roboto-Bold", "/system/fonts/Roboto-Bold.ttf");
+            android_renderer_set_default_font(ctx->renderer, "Roboto", 16);
+            LOGI("Fonts registered with renderer\n");
         } else {
             LOGE("IR renderer has no AndroidRenderer!\n");
             return;
         }
-
-        // Register Android system fonts
-        android_ir_register_font("Roboto", "/system/fonts/Roboto-Regular.ttf");
-        android_ir_register_font("Roboto-Bold", "/system/fonts/Roboto-Bold.ttf");
-        android_ir_set_default_font("Roboto");
-        LOGI("Default font set to Roboto\n");
     }
 
     ctx->surface_ready = true;
