@@ -558,6 +558,13 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
             }
         }
 
+        // Add padding for containers to get visual width (content-box model)
+        if (child->type == IR_COMPONENT_CONTAINER ||
+            child->type == IR_COMPONENT_ROW ||
+            child->type == IR_COMPONENT_COLUMN) {
+            child_width += child->style->padding.left + child->style->padding.right;
+        }
+
         child_width += child->style->margin.left + child->style->margin.right;
         total_width += child_width;
 
@@ -636,7 +643,14 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
             child_height = ir_get_component_intrinsic_height(child);
         }
 
-        // Apply cross-axis alignment (vertical)
+        // Apply max_height constraint BEFORE alignment calculation
+        if (child->layout && child->layout->max_height.type == IR_DIMENSION_PX && child->layout->max_height.value > 0) {
+            if (child_height > child->layout->max_height.value) {
+                child_height = child->layout->max_height.value;
+            }
+        }
+
+        // Apply cross-axis alignment (vertical) using clamped height
         float child_y = style->padding.top + child->style->margin.top;
         if (layout->flex.cross_axis == IR_ALIGNMENT_CENTER) {
             child_y += (available_height - child_height) / 2.0f;
@@ -646,17 +660,10 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
             child_height = available_height - child->style->margin.top - child->style->margin.bottom;
         }
 
-        // Apply max_width/max_height constraints
-        if (child->layout) {
-            if (child->layout->max_width.type == IR_DIMENSION_PX && child->layout->max_width.value > 0) {
-                if (child_width > child->layout->max_width.value) {
-                    child_width = child->layout->max_width.value;
-                }
-            }
-            if (child->layout->max_height.type == IR_DIMENSION_PX && child->layout->max_height.value > 0) {
-                if (child_height > child->layout->max_height.value) {
-                    child_height = child->layout->max_height.value;
-                }
+        // Apply max_width constraint
+        if (child->layout && child->layout->max_width.type == IR_DIMENSION_PX && child->layout->max_width.value > 0) {
+            if (child_width > child->layout->max_width.value) {
+                child_width = child->layout->max_width.value;
             }
         }
 
@@ -698,6 +705,13 @@ static void ir_layout_compute_column(IRComponent* container, float available_wid
             if (child_height > child->layout->max_height.value) {
                 child_height = child->layout->max_height.value;
             }
+        }
+
+        // Add padding for containers to get visual height (content-box model)
+        if (child->type == IR_COMPONENT_CONTAINER ||
+            child->type == IR_COMPONENT_ROW ||
+            child->type == IR_COMPONENT_COLUMN) {
+            child_height += child->style->padding.top + child->style->padding.bottom;
         }
 
         child_height += child->style->margin.top + child->style->margin.bottom;
@@ -778,7 +792,14 @@ static void ir_layout_compute_column(IRComponent* container, float available_wid
             child_width = ir_get_component_intrinsic_width(child);
         }
 
-        // Apply cross-axis alignment (horizontal)
+        // Apply max_width constraint BEFORE alignment calculation
+        if (child->layout && child->layout->max_width.type == IR_DIMENSION_PX && child->layout->max_width.value > 0) {
+            if (child_width > child->layout->max_width.value) {
+                child_width = child->layout->max_width.value;
+            }
+        }
+
+        // Apply cross-axis alignment (horizontal) using clamped width
         float child_x = style->padding.left + child->style->margin.left;
         if (layout->flex.cross_axis == IR_ALIGNMENT_CENTER) {
             child_x += (available_width - child_width) / 2.0f;
@@ -788,17 +809,10 @@ static void ir_layout_compute_column(IRComponent* container, float available_wid
             child_width = available_width - child->style->margin.left - child->style->margin.right;
         }
 
-        // Apply max_width/max_height constraints
-        if (child->layout) {
-            if (child->layout->max_width.type == IR_DIMENSION_PX && child->layout->max_width.value > 0) {
-                if (child_width > child->layout->max_width.value) {
-                    child_width = child->layout->max_width.value;
-                }
-            }
-            if (child->layout->max_height.type == IR_DIMENSION_PX && child->layout->max_height.value > 0) {
-                if (child_height > child->layout->max_height.value) {
-                    child_height = child->layout->max_height.value;
-                }
+        // Apply max_height constraint
+        if (child->layout && child->layout->max_height.type == IR_DIMENSION_PX && child->layout->max_height.value > 0) {
+            if (child_height > child->layout->max_height.value) {
+                child_height = child->layout->max_height.value;
             }
         }
 

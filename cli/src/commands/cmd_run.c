@@ -26,9 +26,312 @@ static const char* detect_frontend(const char* file) {
     else return NULL;
 }
 
+static int android_setup_temp_project(const char* temp_dir, const char* kir_file) {
+    char cmd[4096];
+
+    // Create directory structure
+    snprintf(cmd, sizeof(cmd), "mkdir -p \"%s/app/src/main/assets\"", temp_dir);
+    if (system(cmd) != 0) return -1;
+
+    snprintf(cmd, sizeof(cmd), "mkdir -p \"%s/app/src/main/kotlin/com/kryon/temp\"", temp_dir);
+    if (system(cmd) != 0) return -1;
+
+    // Copy KIR file to assets
+    snprintf(cmd, sizeof(cmd), "cp \"%s\" \"%s/app/src/main/assets/app.kir\"", kir_file, temp_dir);
+    if (system(cmd) != 0) return -1;
+
+    // Create settings.gradle.kts (links to real kryon module)
+    char settings_file[2048];
+    snprintf(settings_file, sizeof(settings_file), "%s/settings.gradle.kts", temp_dir);
+    FILE* f = fopen(settings_file, "w");
+    if (!f) return -1;
+    fprintf(f, "rootProject.name = \"kryon-temp\"\n");
+    fprintf(f, "include(\":app\")\n");
+    fprintf(f, "include(\":kryon\")\n");
+    fprintf(f, "project(\":kryon\").projectDir = file(\"/mnt/storage/Projects/kryon/bindings/kotlin\")\n");
+    fclose(f);
+
+    // Create root build.gradle.kts
+    char root_build[2048];
+    snprintf(root_build, sizeof(root_build), "%s/build.gradle.kts", temp_dir);
+    f = fopen(root_build, "w");
+    if (!f) return -1;
+    fprintf(f, "// Top-level build file\n");
+    fprintf(f, "buildscript {\n");
+    fprintf(f, "    repositories {\n");
+    fprintf(f, "        google()\n");
+    fprintf(f, "        mavenCentral()\n");
+    fprintf(f, "    }\n");
+    fprintf(f, "    dependencies {\n");
+    fprintf(f, "        classpath(\"com.android.tools.build:gradle:8.2.0\")\n");
+    fprintf(f, "        classpath(\"org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.20\")\n");
+    fprintf(f, "    }\n");
+    fprintf(f, "}\n\n");
+    fprintf(f, "allprojects {\n");
+    fprintf(f, "    repositories {\n");
+    fprintf(f, "        google()\n");
+    fprintf(f, "        mavenCentral()\n");
+    fprintf(f, "    }\n");
+    fprintf(f, "}\n");
+    fclose(f);
+
+    // Create app/build.gradle.kts
+    char app_build[2048];
+    snprintf(app_build, sizeof(app_build), "%s/app/build.gradle.kts", temp_dir);
+    f = fopen(app_build, "w");
+    if (!f) return -1;
+    fprintf(f, "plugins {\n");
+    fprintf(f, "    id(\"com.android.application\")\n");
+    fprintf(f, "    id(\"kotlin-android\")\n");
+    fprintf(f, "}\n\n");
+    fprintf(f, "android {\n");
+    fprintf(f, "    namespace = \"com.kryon.temp\"\n");
+    fprintf(f, "    compileSdk = 34\n\n");
+    fprintf(f, "    defaultConfig {\n");
+    fprintf(f, "        applicationId = \"com.kryon.temp\"\n");
+    fprintf(f, "        minSdk = 26\n");
+    fprintf(f, "        targetSdk = 34\n");
+    fprintf(f, "        versionCode = 1\n");
+    fprintf(f, "        versionName = \"1.0\"\n");
+    fprintf(f, "    }\n\n");
+    fprintf(f, "    compileOptions {\n");
+    fprintf(f, "        sourceCompatibility = JavaVersion.VERSION_17\n");
+    fprintf(f, "        targetCompatibility = JavaVersion.VERSION_17\n");
+    fprintf(f, "    }\n\n");
+    fprintf(f, "    kotlinOptions {\n");
+    fprintf(f, "        jvmTarget = \"17\"\n");
+    fprintf(f, "    }\n");
+    fprintf(f, "}\n\n");
+    fprintf(f, "dependencies {\n");
+    fprintf(f, "    implementation(project(\":kryon\"))\n");
+    fprintf(f, "}\n");
+    fclose(f);
+
+    // Create AndroidManifest.xml
+    snprintf(cmd, sizeof(cmd), "mkdir -p \"%s/app/src/main\"", temp_dir);
+    system(cmd);
+
+    char manifest[2048];
+    snprintf(manifest, sizeof(manifest), "%s/app/src/main/AndroidManifest.xml", temp_dir);
+    f = fopen(manifest, "w");
+    if (!f) return -1;
+    fprintf(f, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+    fprintf(f, "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n");
+    fprintf(f, "    <application\n");
+    fprintf(f, "        android:label=\"Kryon App\"\n");
+    fprintf(f, "        android:theme=\"@android:style/Theme.NoTitleBar.Fullscreen\">\n");
+    fprintf(f, "        <activity\n");
+    fprintf(f, "            android:name=\".MainActivity\"\n");
+    fprintf(f, "            android:exported=\"true\"\n");
+    fprintf(f, "            android:screenOrientation=\"portrait\">\n");
+    fprintf(f, "            <intent-filter>\n");
+    fprintf(f, "                <action android:name=\"android.intent.action.MAIN\" />\n");
+    fprintf(f, "                <category android:name=\"android.intent.category.LAUNCHER\" />\n");
+    fprintf(f, "            </intent-filter>\n");
+    fprintf(f, "        </activity>\n");
+    fprintf(f, "    </application>\n");
+    fprintf(f, "</manifest>\n");
+    fclose(f);
+
+    // Create MainActivity.kt
+    char mainactivity[2048];
+    snprintf(mainactivity, sizeof(mainactivity), "%s/app/src/main/kotlin/com/kryon/temp/MainActivity.kt", temp_dir);
+    f = fopen(mainactivity, "w");
+    if (!f) return -1;
+    fprintf(f, "package com.kryon.temp\n\n");
+    fprintf(f, "import android.util.Log\n");
+    fprintf(f, "import com.kryon.KryonActivity\n");
+    fprintf(f, "import java.io.File\n\n");
+    fprintf(f, "class MainActivity : KryonActivity() {\n");
+    fprintf(f, "    override fun onKryonCreate() {\n");
+    fprintf(f, "        Log.d(\"Kryon\", \"MainActivity.onKryonCreate()\")\n\n");
+    fprintf(f, "        val kirFile = File(filesDir, \"app.kir\")\n");
+    fprintf(f, "        assets.open(\"app.kir\").use { input ->\n");
+    fprintf(f, "            kirFile.outputStream().use { output ->\n");
+    fprintf(f, "                input.copyTo(output)\n");
+    fprintf(f, "            }\n");
+    fprintf(f, "        }\n\n");
+    fprintf(f, "        val loaded = loadKryonFile(kirFile.absolutePath)\n");
+    fprintf(f, "        Log.d(\"Kryon\", \"KIR loaded: $loaded from ${kirFile.absolutePath}\")\n");
+    fprintf(f, "    }\n\n");
+    fprintf(f, "    override fun onKryonRender(deltaTime: Float) {\n");
+    fprintf(f, "        // Rendering is handled automatically\n");
+    fprintf(f, "    }\n");
+    fprintf(f, "}\n");
+    fclose(f);
+
+    return 0;
+}
+
+static int run_android(const char* kir_file, const char* source_file) {
+    printf("Android target selected\n");
+
+    // 1. Validate environment variables
+    const char* android_home = getenv("ANDROID_HOME");
+    const char* android_ndk = getenv("ANDROID_NDK_HOME");
+
+    if (!android_home) {
+        fprintf(stderr, "Error: ANDROID_HOME not set\n");
+        fprintf(stderr, "Set it to your Android SDK path, e.g.:\n");
+        fprintf(stderr, "  export ANDROID_HOME=$HOME/Android/Sdk\n");
+        return 1;
+    }
+
+    if (!android_ndk) {
+        fprintf(stderr, "Error: ANDROID_NDK_HOME not set\n");
+        fprintf(stderr, "Install NDK via: sdkmanager --install 'ndk;26.1.10909125'\n");
+        fprintf(stderr, "Then set: export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125\n");
+        return 1;
+    }
+
+    // 2. Check for connected device
+    printf("Checking for connected devices...\n");
+    FILE* adb_check = popen("adb devices 2>&1 | grep -w 'device' | head -1", "r");
+    if (!adb_check) {
+        fprintf(stderr, "Error: Failed to run adb command\n");
+        fprintf(stderr, "Make sure adb is installed and in your PATH\n");
+        return 1;
+    }
+
+    char device_line[256] = {0};
+    fgets(device_line, sizeof(device_line), adb_check);
+    pclose(adb_check);
+
+    if (strlen(device_line) == 0) {
+        fprintf(stderr, "Error: No Android devices connected\n");
+        fprintf(stderr, "Connect a device and run: adb devices\n");
+        return 1;
+    }
+
+    // Extract device ID (before tab character)
+    char device_id[128] = {0};
+    char* tab = strchr(device_line, '\t');
+    if (tab) {
+        size_t len = tab - device_line;
+        if (len < sizeof(device_id)) {
+            strncpy(device_id, device_line, len);
+            device_id[len] = '\0';
+        }
+    } else {
+        // No tab, use whole line (trim newline)
+        strncpy(device_id, device_line, sizeof(device_id) - 1);
+        char* newline = strchr(device_id, '\n');
+        if (newline) *newline = '\0';
+    }
+
+    printf("Using device: %s\n", device_id);
+
+    // 3. Create temporary project directory
+    char temp_dir[512];
+    snprintf(temp_dir, sizeof(temp_dir), "/tmp/kryon_android_%d", getpid());
+
+    printf("Creating temporary Android project: %s\n", temp_dir);
+    if (android_setup_temp_project(temp_dir, kir_file) != 0) {
+        fprintf(stderr, "Error: Failed to setup Android project\n");
+        return 1;
+    }
+
+    // 4. Build APK with Gradle
+    printf("Building APK (this may take a minute)...\n");
+    char build_cmd[2048];
+    snprintf(build_cmd, sizeof(build_cmd),
+             "cd \"%s\" && gradle assembleDebug 2>&1",
+             temp_dir);
+
+    int build_result = system(build_cmd);
+    if (build_result != 0) {
+        fprintf(stderr, "Error: Gradle build failed\n");
+        fprintf(stderr, "Temporary project preserved at: %s\n", temp_dir);
+        fprintf(stderr, "You can debug it manually\n");
+        return 1;
+    }
+
+    printf("✓ APK built successfully\n");
+
+    // 5. Install APK
+    char apk_path[1024];
+    snprintf(apk_path, sizeof(apk_path), "%s/app/build/outputs/apk/debug/app-debug.apk", temp_dir);
+
+    printf("Installing APK on device %s...\n", device_id);
+    char install_cmd[2048];
+    snprintf(install_cmd, sizeof(install_cmd),
+             "adb -s \"%s\" install -r \"%s\" 2>&1",
+             device_id, apk_path);
+
+    int install_result = system(install_cmd);
+    if (install_result != 0) {
+        fprintf(stderr, "Error: Failed to install APK\n");
+        fprintf(stderr, "Try manually: adb uninstall com.kryon.temp\n");
+        return 1;
+    }
+
+    printf("✓ APK installed\n");
+
+    // 6. Launch app
+    printf("Launching app...\n");
+    char launch_cmd[2048];
+    snprintf(launch_cmd, sizeof(launch_cmd),
+             "adb -s \"%s\" shell am start -n com.kryon.temp/.MainActivity 2>&1",
+             device_id);
+
+    int launch_result = system(launch_cmd);
+    if (launch_result != 0) {
+        fprintf(stderr, "Warning: Failed to launch app (but it's installed)\n");
+    } else {
+        printf("✓ App launched\n");
+    }
+
+    // 7. Show log instructions
+    printf("\nTo view logs, run:\n");
+    printf("  adb logcat | grep -i kryon\n\n");
+
+    // 8. Cleanup temp directory
+    printf("Cleaning up temporary files...\n");
+    char cleanup_cmd[1024];
+    snprintf(cleanup_cmd, sizeof(cleanup_cmd), "rm -rf \"%s\"", temp_dir);
+    system(cleanup_cmd);
+
+    printf("✓ Done!\n");
+    return 0;
+}
+
 int cmd_run(int argc, char** argv) {
     const char* target_file = NULL;
     bool free_target = false;
+    const char* target_platform = NULL;
+    bool explicit_target = false;
+
+    // Parse --target flag
+    int new_argc = 0;
+    char* new_argv[128];
+    for (int i = 0; i < argc; i++) {
+        if (strncmp(argv[i], "--target=", 9) == 0) {
+            target_platform = argv[i] + 9;
+            explicit_target = true;
+        } else if (new_argc < 128) {
+            new_argv[new_argc++] = argv[i];
+        }
+    }
+
+    // Update argc/argv to exclude --target flag
+    argc = new_argc;
+    for (int i = 0; i < new_argc; i++) {
+        argv[i] = new_argv[i];
+    }
+
+    // Default to desktop if not specified
+    if (!target_platform) {
+        target_platform = "desktop";
+    }
+
+    // Validate target platform
+    if (strcmp(target_platform, "desktop") != 0 &&
+        strcmp(target_platform, "android") != 0 &&
+        strcmp(target_platform, "web") != 0) {
+        fprintf(stderr, "Error: Invalid target platform: %s\n", target_platform);
+        fprintf(stderr, "Supported targets: desktop, android, web\n");
+        return 1;
+    }
 
     // If no file specified, use entry from config
     if (argc < 1) {
@@ -152,7 +455,14 @@ int cmd_run(int argc, char** argv) {
     }
 
     if (strcmp(frontend, "kir") == 0) {
-        // Run KIR file directly
+        // Route to Android if target is Android
+        if (strcmp(target_platform, "android") == 0) {
+            int result = run_android(target_file, target_file);
+            if (free_target) free((char*)target_file);
+            return result;
+        }
+
+        // Run KIR file directly on desktop
         snprintf(cmd, sizeof(cmd),
                  "LD_LIBRARY_PATH=/home/wao/.local/lib:\"/mnt/storage/Projects/kryon/build\":$LD_LIBRARY_PATH "
                  "KRYON_LIB_PATH=\"%s\" "
@@ -190,6 +500,13 @@ int cmd_run(int argc, char** argv) {
 
         // Now execute the compiled KIR
         printf("✓ Compiled to KIR: %s\n", kir_file);
+
+        // Route to Android if target is Android
+        if (strcmp(target_platform, "android") == 0) {
+            int result = run_android(kir_file, target_file);
+            if (free_target) free((char*)target_file);
+            return result;
+        }
 
         // Load the KIR file
         IRComponent* root = ir_read_json_file(kir_file);

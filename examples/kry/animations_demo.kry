@@ -38,39 +38,36 @@ App {
                 padding = 24
                 borderRadius = 12
 
-                Column {
-                    gap = 12
-                    alignItems = "center"
+        
+                Container {
+                    width = 80
+                    height = 80
+                    background = "#6366f1"
+                    borderRadius = 40
+                    animation = "pulse(2.0, -1)"
 
-                    Container {
-                        width = 80
-                        height = 80
-                        background = "#6366f1"
-                        borderRadius = 40
-                        animation = "pulse(2.0, -1)"
-
-                        Center {
-                            Text {
-                                text = "*"
-                                fontSize = 40
-                                color = "#ffffff"
-                            }
+                    Center {
+                        Text {
+                            text = "*"
+                            fontSize = 40
+                            color = "#ffffff"
                         }
                     }
-
-                    Text {
-                        text = "Pulse"
-                        fontSize = 18
-                        fontWeight = 600
-                        color = "#e0e7ff"
-                    }
-
-                    Text {
-                        text = "Scale animation"
-                        fontSize = 13
-                        color = "#a5b4fc"
-                    }
                 }
+
+                Text {
+                    text = "Pulse"
+                    fontSize = 18
+                    fontWeight = 600
+                    color = "#e0e7ff"
+                }
+
+                Text {
+                    text = "Scale animation"
+                    fontSize = 13
+                    color = "#a5b4fc"
+                }
+                
             }
 
             // Fade Animation
@@ -80,38 +77,33 @@ App {
                 padding = 24
                 borderRadius = 12
 
-                Column {
-                    gap = 12
-                    alignItems = "center"
+                Container {
+                    width = 80
+                    height = 80
+                    background = "#a78bfa"
+                    borderRadius = 40
+                    animation = "fadeInOut(3.0, -1)"
 
-                    Container {
-                        width = 80
-                        height = 80
-                        background = "#a78bfa"
-                        borderRadius = 40
-                        animation = "fadeInOut(3.0, -1)"
-
-                        Center {
-                            Text {
-                                text = "~"
-                                fontSize = 40
-                                color = "#ffffff"
-                            }
+                    Center {
+                        Text {
+                            text = "~"
+                            fontSize = 40
+                            color = "#ffffff"
                         }
                     }
+                }
 
-                    Text {
-                        text = "Fade In/Out"
-                        fontSize = 18
-                        fontWeight = 600
-                        color = "#e0e7ff"
-                    }
+                Text {
+                    text = "Fade In/Out"
+                    fontSize = 18
+                    fontWeight = 600
+                    color = "#e0e7ff"
+                }
 
-                    Text {
-                        text = "Opacity animation"
-                        fontSize = 13
-                        color = "#a5b4fc"
-                    }
+                Text {
+                    text = "Opacity animation"
+                    fontSize = 13
+                    color = "#a5b4fc"
                 }
             }
 
@@ -122,39 +114,35 @@ App {
                 padding = 24
                 borderRadius = 12
 
-                Column {
-                    gap = 12
-                    alignItems = "center"
+                Container {
+                    width = 80
+                    height = 80
+                    background = "#f472b6"
+                    borderRadius = 40
+                    animation = "slideInLeft(2.0)"
 
-                    Container {
-                        width = 80
-                        height = 80
-                        background = "#f472b6"
-                        borderRadius = 40
-                        animation = "slideInLeft(2.0)"
-
-                        Center {
-                            Text {
-                                text = ">"
-                                fontSize = 40
-                                color = "#ffffff"
-                            }
+                    Center {
+                        Text {
+                            text = ">"
+                            fontSize = 40
+                            color = "#ffffff"
                         }
                     }
-
-                    Text {
-                        text = "Slide In"
-                        fontSize = 18
-                        fontWeight = 600
-                        color = "#e0e7ff"
-                    }
-
-                    Text {
-                        text = "Translate animation"
-                        fontSize = 13
-                        color = "#a5b4fc"
-                    }
                 }
+
+                Text {
+                    text = "Slide In"
+                    fontSize = 18
+                    fontWeight = 600
+                    color = "#e0e7ff"
+                }
+
+                Text {
+                    text = "Translate animation"
+                    fontSize = 13
+                    color = "#a5b4fc"
+                }
+                
             }
         }
 

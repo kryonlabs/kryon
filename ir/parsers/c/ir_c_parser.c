@@ -671,10 +671,10 @@ char* ir_c_to_kir(const char* source, size_t length) {
     snprintf(compile_cmd, sizeof(compile_cmd),
              "%s \"%s\" -DKRYON_KIR_ONLY -I\"%s/bindings/c\" -I\"%s/ir\" -I\"%s/backends/desktop\" "
              "-I\"%s/ir/third_party/cJSON\" -L\"%s/build\" -L\"%s/bindings/c\" "
-             "-lkryon_c -lkryon_ir -lm -o \"%s\" 2>&1",
+             "-Wl,-rpath,%s/build -lkryon_c -lkryon_ir -lm -o \"%s\" 2>&1",
              compiler, src_file, kryon_root, kryon_root, kryon_root,
              kryon_root,
-             kryon_root, kryon_root, exe_file);
+             kryon_root, kryon_root, kryon_root, exe_file);
 
     FILE* pipe = popen(compile_cmd, "r");
     if (!pipe) {
@@ -767,11 +767,19 @@ char* ir_c_to_kir(const char* source, size_t length) {
     result[read_bytes] = '\0';
     fclose(kir_f);
 
-    // Cleanup
-    unlink(src_file);
-    unlink(exe_file);
-    unlink(kir_file);
-    rmdir(temp_dir);
+    // Cleanup - TEMPORARILY DISABLED FOR DEBUGGING
+    FILE* debug_log = fopen("/tmp/kryon_parser_debug.log", "w");
+    if (debug_log) {
+        fprintf(debug_log, "Temp files in: %s\n", temp_dir);
+        fprintf(debug_log, "Source: %s\n", src_file);
+        fprintf(debug_log, "Executable: %s\n", exe_file);
+        fprintf(debug_log, "KIR: %s\n", kir_file);
+        fclose(debug_log);
+    }
+    // unlink(src_file);
+    // unlink(exe_file);
+    // unlink(kir_file);
+    // rmdir(temp_dir);
 
     return result;
 }

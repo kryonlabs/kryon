@@ -88,7 +88,7 @@ const char* react_file_extension(ReactOutputMode mode) {
 
 const char* react_generate_imports(ReactOutputMode mode) {
     (void)mode; // Same for both modes
-    return "import { kryonApp, Column, Row, Button, Text, useState } from '@kryon/react';";
+    return "import { kryonApp, Column, Row, Button, Text, Input, useState, useEffect, useCallback, useMemo, useReducer } from '@kryon/react';";
 }
 
 // =============================================================================
@@ -508,81 +508,93 @@ StringBuilder* react_generate_props(cJSON* node, ReactContext* ctx, bool has_tex
         free(react_val);
     }
 
-    // Handle events
+    // Handle ALL event types (onClick, onChange, onSubmit, onFocus, onBlur, etc.)
     cJSON* events = cJSON_GetObjectItem(node, "events");
     if (events && cJSON_IsArray(events)) {
         cJSON* event = NULL;
         cJSON_ArrayForEach(event, events) {
             cJSON* event_type = cJSON_GetObjectItem(event, "type");
-            if (event_type && strcmp(cJSON_GetStringValue(event_type), "click") == 0) {
-                char* handler_body = NULL;
+            if (!event_type || !cJSON_IsString(event_type)) continue;
 
-                // Try to generate from logic_functions first
-                cJSON* logic_id = cJSON_GetObjectItem(event, "logic_id");
-                if (logic_id && cJSON_IsString(logic_id) && ctx->logic_functions) {
-                    handler_body = react_generate_handler_body(
-                        ctx->logic_functions, cJSON_GetStringValue(logic_id));
-                }
+            const char* evt_type = cJSON_GetStringValue(event_type);
+            char* handler_body = NULL;
 
-                // Fall back to handler_data if available
-                if (!handler_body) {
-                    cJSON* handler_data = cJSON_GetObjectItem(event, "handler_data");
-                    if (handler_data && cJSON_IsString(handler_data)) {
-                        const char* code = cJSON_GetStringValue(handler_data);
+            // Try to generate from logic_functions first
+            cJSON* logic_id = cJSON_GetObjectItem(event, "logic_id");
+            if (logic_id && cJSON_IsString(logic_id) && ctx->logic_functions) {
+                handler_body = react_generate_handler_body(
+                    ctx->logic_functions, cJSON_GetStringValue(logic_id));
+            }
 
-                        // Clean up and translate
-                        char cleaned[1024];
-                        const char* start = code;
-                        while (*start && (*start == ' ' || *start == '\t' || *start == '{')) start++;
+            // Fall back to handler_data if available
+            if (!handler_body) {
+                cJSON* handler_data = cJSON_GetObjectItem(event, "handler_data");
+                if (handler_data && cJSON_IsString(handler_data)) {
+                    const char* code = cJSON_GetStringValue(handler_data);
 
-                        const char* end = start + strlen(start) - 1;
-                        while (end > start && (*end == ' ' || *end == '\t' || *end == '}')) end--;
+                    // Clean up and translate
+                    char cleaned[1024];
+                    const char* start = code;
+                    while (*start && (*start == ' ' || *start == '\t' || *start == '{')) start++;
 
-                        size_t len = end - start + 1;
-                        strncpy(cleaned, start, len);
-                        cleaned[len] = '\0';
+                    const char* end = start + strlen(start) - 1;
+                    while (end > start && (*end == ' ' || *end == '\t' || *end == '}')) end--;
 
-                        // Simple translation: print(...) -> console.log(...)
-                        if (strstr(cleaned, "print(") != NULL) {
-                            const char* print_start = strstr(cleaned, "print(");
-                            const char* args_start = print_start + 6;
-                            const char* args_end = strchr(args_start, ')');
-                            if (args_end) {
-                                size_t args_len = args_end - args_start;
-                                char args[512];
-                                strncpy(args, args_start, args_len);
-                                args[args_len] = '\0';
+                    size_t len = end - start + 1;
+                    strncpy(cleaned, start, len);
+                    cleaned[len] = '\0';
 
-                                char buffer[1024];
-                                snprintf(buffer, sizeof(buffer), "console.log(%s)", args);
-                                handler_body = strdup(buffer);
-                            }
-                        }
+                    // Simple translation: print(...) -> console.log(...)
+                    if (strstr(cleaned, "print(") != NULL) {
+                        const char* print_start = strstr(cleaned, "print(");
+                        const char* args_start = print_start + 6;
+                        const char* args_end = strchr(args_start, ')');
+                        if (args_end) {
+                            size_t args_len = args_end - args_start;
+                            char args[512];
+                            strncpy(args, args_start, args_len);
+                            args[args_len] = '\0';
 
-                        if (!handler_body) {
-                            handler_body = strdup(cleaned);
+                            char buffer[1024];
+                            snprintf(buffer, sizeof(buffer), "console.log(%s)", args);
+                            handler_body = strdup(buffer);
                         }
                     }
-                }
 
-                if (handler_body) {
-                    if (sb->size > 0) sb_append(sb, " ");
-
-                    // Check if handler_body already starts with arrow function
-                    const char* trimmed = handler_body;
-                    while (*trimmed == ' ' || *trimmed == '\t') trimmed++;
-
-                    if (strncmp(trimmed, "() =>", 5) == 0 ||
-                        strncmp(trimmed, "()=>", 4) == 0 ||
-                        strstr(trimmed, "function") == trimmed) {
-                        // Already a function, use directly
-                        sb_append_fmt(sb, "onClick={%s}", handler_body);
-                    } else {
-                        // Wrap in arrow function
-                        sb_append_fmt(sb, "onClick={() => %s}", handler_body);
+                    if (!handler_body) {
+                        handler_body = strdup(cleaned);
                     }
-                    free(handler_body);
                 }
+            }
+
+            if (handler_body) {
+                // Map event type to React prop name: "click" -> "onClick", "change" -> "onChange"
+                char react_event_name[64];
+                snprintf(react_event_name, sizeof(react_event_name),
+                         "on%c%s", toupper(evt_type[0]), evt_type + 1);
+
+                if (sb->size > 0) sb_append(sb, " ");
+
+                // Check if handler_body already starts with arrow function or has event parameter
+                const char* trimmed = handler_body;
+                while (*trimmed == ' ' || *trimmed == '\t') trimmed++;
+
+                bool is_function = (
+                    strncmp(trimmed, "() =>", 5) == 0 ||
+                    strncmp(trimmed, "()=>", 4) == 0 ||
+                    strncmp(trimmed, "(e) =>", 6) == 0 ||
+                    strncmp(trimmed, "(event) =>", 10) == 0 ||
+                    strstr(trimmed, "function") == trimmed
+                );
+
+                if (is_function) {
+                    // Already a function, use directly
+                    sb_append_fmt(sb, "%s={%s}", react_event_name, handler_body);
+                } else {
+                    // Wrap in arrow function
+                    sb_append_fmt(sb, "%s={() => %s}", react_event_name, handler_body);
+                }
+                free(handler_body);
             }
         }
     }
@@ -743,42 +755,107 @@ void react_free_window_config(WindowConfig* config) {
 // =============================================================================
 
 char* react_generate_state_hooks(cJSON* manifest, ReactContext* ctx) {
-    (void)ctx; // May use mode for type annotations
-
     if (!manifest || !cJSON_IsObject(manifest)) return strdup("");
 
+    StringBuilder* sb = sb_create(2048);
+
+    // Generate useState hooks
     cJSON* variables = cJSON_GetObjectItem(manifest, "variables");
-    if (!variables || !cJSON_IsArray(variables) || cJSON_GetArraySize(variables) == 0) {
-        return strdup("");
+    if (variables && cJSON_IsArray(variables) && cJSON_GetArraySize(variables) > 0) {
+        cJSON* var = NULL;
+        cJSON_ArrayForEach(var, variables) {
+            cJSON* name_node = cJSON_GetObjectItem(var, "name");
+            cJSON* type_node = cJSON_GetObjectItem(var, "type");
+            cJSON* initial_node = cJSON_GetObjectItem(var, "initial_value");
+            cJSON* setter_node = cJSON_GetObjectItem(var, "setter_name");
+
+            if (!name_node || !cJSON_IsString(name_node)) continue;
+
+            const char* name = cJSON_GetStringValue(name_node);
+            const char* type = type_node ? cJSON_GetStringValue(type_node) : "any";
+            const char* initial = initial_node ? cJSON_GetStringValue(initial_node) : "undefined";
+            const char* setter = setter_node ? cJSON_GetStringValue(setter_node) : NULL;
+
+            // Auto-generate setter name if not provided
+            char auto_setter[256];
+            if (!setter) {
+                snprintf(auto_setter, sizeof(auto_setter), "set%c%s",
+                         toupper(name[0]), name + 1);
+                setter = auto_setter;
+            }
+
+            // Generate with TypeScript type annotation if in TypeScript mode
+            if (ctx->mode == REACT_MODE_TYPESCRIPT && strcmp(type, "any") != 0) {
+                sb_append_fmt(sb, "  const [%s, %s] = useState<%s>(%s);\n",
+                              name, setter, type, initial);
+            } else {
+                sb_append_fmt(sb, "  const [%s, %s] = useState(%s);\n",
+                              name, setter, initial);
+            }
+        }
     }
 
-    StringBuilder* sb = sb_create(512);
+    // Generate useEffect, useCallback, and useMemo hooks
+    cJSON* hooks = cJSON_GetObjectItem(manifest, "hooks");
+    if (hooks && cJSON_IsArray(hooks) && cJSON_GetArraySize(hooks) > 0) {
+        cJSON* hook = NULL;
+        cJSON_ArrayForEach(hook, hooks) {
+            cJSON* type_node = cJSON_GetObjectItem(hook, "type");
+            if (!type_node || !cJSON_IsString(type_node)) continue;
 
-    cJSON* var = NULL;
-    cJSON_ArrayForEach(var, variables) {
-        cJSON* name_node = cJSON_GetObjectItem(var, "name");
-        cJSON* initial_node = cJSON_GetObjectItem(var, "initial_value");
+            const char* hook_type = cJSON_GetStringValue(type_node);
 
-        if (!name_node || !cJSON_IsString(name_node)) continue;
+            if (strcmp(hook_type, "useEffect") == 0) {
+                cJSON* callback = cJSON_GetObjectItem(hook, "callback");
+                cJSON* deps = cJSON_GetObjectItem(hook, "dependencies");
 
-        const char* name = cJSON_GetStringValue(name_node);
-        const char* initial = initial_node ? cJSON_GetStringValue(initial_node) : "0";
+                if (callback && cJSON_IsString(callback)) {
+                    const char* cb_str = cJSON_GetStringValue(callback);
+                    const char* deps_str = (deps && cJSON_IsString(deps)) ?
+                        cJSON_GetStringValue(deps) : "[]";
 
-        // Generate setter name
-        char setter_name[256];
-        snprintf(setter_name, sizeof(setter_name), "set%c%s",
-                 toupper(name[0]), name + 1);
+                    sb_append_fmt(sb, "  useEffect(%s, %s);\n", cb_str, deps_str);
+                }
+            }
+            else if (strcmp(hook_type, "useCallback") == 0) {
+                cJSON* callback = cJSON_GetObjectItem(hook, "callback");
+                cJSON* deps = cJSON_GetObjectItem(hook, "dependencies");
 
-        // Check variable type for initial value formatting
-        cJSON* type_node = cJSON_GetObjectItem(var, "type");
-        const char* type = type_node ? cJSON_GetStringValue(type_node) : "any";
+                if (callback && cJSON_IsString(callback)) {
+                    const char* cb_str = cJSON_GetStringValue(callback);
+                    const char* deps_str = (deps && cJSON_IsString(deps)) ?
+                        cJSON_GetStringValue(deps) : "[]";
 
-        if (strcmp(type, "string") == 0) {
-            sb_append_fmt(sb, "  const [%s, %s] = useState(\"%s\");\n",
-                          name, setter_name, initial);
-        } else {
-            sb_append_fmt(sb, "  const [%s, %s] = useState(%s);\n",
-                          name, setter_name, initial);
+                    sb_append_fmt(sb, "  const memoizedCallback = useCallback(%s, %s);\n",
+                                  cb_str, deps_str);
+                }
+            }
+            else if (strcmp(hook_type, "useMemo") == 0) {
+                cJSON* callback = cJSON_GetObjectItem(hook, "callback");
+                cJSON* deps = cJSON_GetObjectItem(hook, "dependencies");
+
+                if (callback && cJSON_IsString(callback)) {
+                    const char* cb_str = cJSON_GetStringValue(callback);
+                    const char* deps_str = (deps && cJSON_IsString(deps)) ?
+                        cJSON_GetStringValue(deps) : "[]";
+
+                    sb_append_fmt(sb, "  const memoizedValue = useMemo(%s, %s);\n",
+                                  cb_str, deps_str);
+                }
+            }
+            else if (strcmp(hook_type, "useReducer") == 0) {
+                cJSON* callback = cJSON_GetObjectItem(hook, "callback");
+                cJSON* deps = cJSON_GetObjectItem(hook, "dependencies");
+
+                if (callback && cJSON_IsString(callback)) {
+                    const char* reducer_str = cJSON_GetStringValue(callback);
+                    const char* initial_str = (deps && cJSON_IsString(deps)) ?
+                        cJSON_GetStringValue(deps) : "{}";
+
+                    sb_append_fmt(sb, "  const [state, dispatch] = useReducer(%s, %s);\n",
+                                  reducer_str, initial_str);
+                }
+            }
         }
     }
 
