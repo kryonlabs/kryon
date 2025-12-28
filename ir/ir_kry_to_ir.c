@@ -222,6 +222,7 @@ static uint32_t parse_color(const char* color_str) {
     if (strcmp(color_str, "yellow") == 0) return 0xFFFF00FF;
     if (strcmp(color_str, "cyan") == 0) return 0x00FFFFFF;
     if (strcmp(color_str, "magenta") == 0) return 0xFF00FFFF;
+    if (strcmp(color_str, "pink") == 0) return 0xFFC0CBFF;
     if (strcmp(color_str, "white") == 0) return 0xFFFFFFFF;
     if (strcmp(color_str, "black") == 0) return 0x000000FF;
     if (strcmp(color_str, "gray") == 0 || strcmp(color_str, "grey") == 0) return 0x808080FF;
@@ -554,9 +555,58 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
     }
 
     // Window properties (for App component)
-    if (strcmp(name, "windowTitle") == 0 || strcmp(name, "windowWidth") == 0 ||
-        strcmp(name, "windowHeight") == 0) {
-        // These are metadata properties - handle separately if needed
+    if (strcmp(name, "windowTitle") == 0) {
+        if (value->type == KRY_VALUE_STRING) {
+            // Get or create metadata
+            IRContext* ctx = g_ir_context;
+            if (ctx) {
+                if (!ctx->metadata) {
+                    ctx->metadata = (IRMetadata*)calloc(1, sizeof(IRMetadata));
+                }
+                if (ctx->metadata) {
+                    // Free old title if exists
+                    if (ctx->metadata->window_title) {
+                        free(ctx->metadata->window_title);
+                    }
+                    // Allocate and copy new title
+                    size_t len = strlen(value->string_value);
+                    ctx->metadata->window_title = (char*)malloc(len + 1);
+                    if (ctx->metadata->window_title) {
+                        strcpy(ctx->metadata->window_title, value->string_value);
+                    }
+                }
+            }
+        }
+        return;
+    }
+
+    if (strcmp(name, "windowWidth") == 0) {
+        if (value->type == KRY_VALUE_NUMBER) {
+            IRContext* ctx = g_ir_context;
+            if (ctx) {
+                if (!ctx->metadata) {
+                    ctx->metadata = (IRMetadata*)calloc(1, sizeof(IRMetadata));
+                }
+                if (ctx->metadata) {
+                    ctx->metadata->window_width = (int)value->number_value;
+                }
+            }
+        }
+        return;
+    }
+
+    if (strcmp(name, "windowHeight") == 0) {
+        if (value->type == KRY_VALUE_NUMBER) {
+            IRContext* ctx = g_ir_context;
+            if (ctx) {
+                if (!ctx->metadata) {
+                    ctx->metadata = (IRMetadata*)calloc(1, sizeof(IRMetadata));
+                }
+                if (ctx->metadata) {
+                    ctx->metadata->window_height = (int)value->number_value;
+                }
+            }
+        }
         return;
     }
 

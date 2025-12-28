@@ -1,6 +1,8 @@
 #ifndef KRYON_DESKTOP_TEST_EVENTS_H
 #define KRYON_DESKTOP_TEST_EVENTS_H
 
+#ifdef ENABLE_SDL3
+
 #include "../../ir/ir_core.h"
 #include <SDL3/SDL.h>
 #include <stdbool.h>
@@ -65,5 +67,7 @@ void test_queue_process(TestEventQueue* queue, DesktopIRRenderer* renderer);
  * @param queue Test event queue to free
  */
 void test_queue_free(TestEventQueue* queue);
+
+#endif // ENABLE_SDL3
 
 #endif // KRYON_DESKTOP_TEST_EVENTS_H

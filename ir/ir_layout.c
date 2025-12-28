@@ -1809,6 +1809,53 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         fprintf(stderr, "[SinglePass] Component type %d: using fallback generic layout\n", c->type);
     }
 
+    // Special handling for Center component (IR_COMPONENT_CENTER = 8)
+    if (c->type == IR_COMPONENT_CENTER) {
+        // Get padding
+        float pad_left = c->style ? c->style->padding.left : 0;
+        float pad_top = c->style ? c->style->padding.top : 0;
+        float pad_right = c->style ? c->style->padding.right : 0;
+        float pad_bottom = c->style ? c->style->padding.bottom : 0;
+
+        float available_width = constraints.max_width - pad_left - pad_right;
+        float available_height = constraints.max_height - pad_top - pad_bottom;
+
+        // Layout the child if it exists
+        if (c->child_count > 0 && c->children[0]) {
+            IRComponent* child = c->children[0];
+
+            IRLayoutConstraints child_constraints = {
+                .max_width = available_width,
+                .max_height = available_height,
+                .min_width = 0,
+                .min_height = 0
+            };
+
+            // Layout child at temporary position
+            ir_layout_single_pass(child, child_constraints, parent_x + pad_left, parent_y + pad_top);
+
+            // Center the child
+            if (child->layout_state) {
+                float child_width = child->layout_state->computed.width;
+                float child_height = child->layout_state->computed.height;
+                float offset_x = (available_width - child_width) / 2.0f;
+                float offset_y = (available_height - child_height) / 2.0f;
+
+                child->layout_state->computed.x = parent_x + pad_left + offset_x;
+                child->layout_state->computed.y = parent_y + pad_top + offset_y;
+            }
+        }
+
+        // Set Center container's dimensions
+        c->layout_state->computed.width = constraints.max_width;
+        c->layout_state->computed.height = constraints.max_height;
+        c->layout_state->computed.x = parent_x;
+        c->layout_state->computed.y = parent_y;
+        c->layout_state->layout_valid = true;
+        c->layout_state->computed.valid = true;
+        return;
+    }
+
     // Resolve own dimensions
     float own_width = constraints.max_width;
     float own_height = constraints.max_height;

@@ -327,35 +327,17 @@ KryonConfig* config_find_and_load(void) {
     char* cwd = dir_get_current();
     if (!cwd) return NULL;
 
-    char* current_dir = cwd;
-    char* config_path = NULL;
+    // Only check current directory for kryon.toml
+    char* config_path = path_join(cwd, "kryon.toml");
 
-    // Walk up directory tree looking for kryon.toml
-    while (true) {
-        config_path = path_join(current_dir, "kryon.toml");
-
-        if (file_exists(config_path)) {
-            KryonConfig* config = config_load(config_path);
-            free(config_path);
-            if (current_dir != cwd) free(current_dir);
-            free(cwd);
-            return config;
-        }
-
+    if (file_exists(config_path)) {
+        KryonConfig* config = config_load(config_path);
         free(config_path);
-
-        // Check if we're at root
-        if (strcmp(current_dir, "/") == 0) {
-            break;
-        }
-
-        // Move to parent directory
-        char* parent = path_join(current_dir, "..");
-        if (current_dir != cwd) free(current_dir);
-        current_dir = parent;
+        free(cwd);
+        return config;
     }
 
-    if (current_dir != cwd) free(current_dir);
+    free(config_path);
     free(cwd);
     return NULL;
 }

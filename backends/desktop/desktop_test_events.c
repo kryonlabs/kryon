@@ -3,6 +3,8 @@
 #define _GNU_SOURCE
 #endif
 
+#ifdef ENABLE_SDL3
+
 #include "desktop_test_events.h"
 #include "desktop_internal.h"
 #include "../../third_party/cJSON/cJSON.h"
@@ -228,7 +230,11 @@ void test_queue_process(TestEventQueue* queue, DesktopIRRenderer* renderer) {
         case TEST_EVENT_SCREENSHOT: {
             if (event->screenshot_path && renderer) {
                 printf("[test_events] Taking screenshot: %s\n", event->screenshot_path);
+#ifdef ENABLE_SDL3
                 desktop_save_screenshot(renderer, event->screenshot_path);
+#else
+                printf("[test_events] Screenshot not supported for this renderer\n");
+#endif
             }
             break;
         }
@@ -261,3 +267,5 @@ void test_queue_free(TestEventQueue* queue) {
     free(queue->events);
     free(queue);
 }
+
+#endif // ENABLE_SDL3

@@ -41,7 +41,13 @@
 
 void desktop_ir_register_font(const char* name, const char* path) {
     if (!name || !path) return;
+#ifdef ENABLE_SDL3
     desktop_ir_register_font_internal(name, path);
+#else
+    // Font registration not implemented for other backends yet
+    (void)name;
+    (void)path;
+#endif
 }
 
 void desktop_ir_set_default_font(const char* name) {
@@ -127,12 +133,8 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
     g_debug_renderer = (getenv("KRYON_DEBUG_RENDERER") != NULL);
 
 #ifdef ENABLE_SDL3
-    if (renderer->config.backend_type != DESKTOP_BACKEND_SDL3) {
-        printf("Only SDL3 backend is currently implemented\n");
-        return false;
-    }
-
-    /* Initialize SDL3 and TTF */
+    if (renderer->config.backend_type == DESKTOP_BACKEND_SDL3) {
+        /* Initialize SDL3 and TTF */
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "\n╔════════════════════════════════════════════════════════════╗\n");
         fprintf(stderr, "║         SDL3 Initialization Failed                       ║\n");
@@ -323,13 +325,27 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
     /* Register text measurement callback for two-pass layout system */
     ir_layout_set_text_measure_callback(desktop_text_measure_callback);
 
-    printf("Desktop renderer initialized successfully\n");
-    return true;
-
-#else
-    printf("SDL3 support not enabled at compile time\n");
-    return false;
+        printf("Desktop renderer initialized successfully\n");
+        return true;
+    }
 #endif
+
+#ifdef ENABLE_RAYLIB
+    if (renderer->config.backend_type == DESKTOP_BACKEND_RAYLIB) {
+        return initialize_raylib_backend(renderer);
+    }
+#endif
+
+    fprintf(stderr, "Error: Requested renderer backend not compiled in\n");
+    fprintf(stderr, "Backend type: %d\n", renderer->config.backend_type);
+    fprintf(stderr, "Available backends:\n");
+#ifdef ENABLE_SDL3
+    fprintf(stderr, "  - SDL3 (DESKTOP_BACKEND_SDL3 = 0)\n");
+#endif
+#ifdef ENABLE_RAYLIB
+    fprintf(stderr, "  - Raylib (DESKTOP_BACKEND_RAYLIB = 1)\n");
+#endif
+    return false;
 }
 
 void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
@@ -390,6 +406,12 @@ void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
     }
 #endif
 
+#ifdef ENABLE_RAYLIB
+    if (renderer->config.backend_type == DESKTOP_BACKEND_RAYLIB) {
+        shutdown_raylib_backend(renderer);
+    }
+#endif
+
     free(renderer);
 }
 
@@ -403,7 +425,8 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
     if (!renderer || !root || !renderer->initialized) return false;
 
 #ifdef ENABLE_SDL3
-    renderer->blend_mode_set = false;
+    if (renderer->config.backend_type == DESKTOP_BACKEND_SDL3) {
+        renderer->blend_mode_set = false;
     g_frame_counter++;
     g_debug_frame_count++;
 
@@ -483,12 +506,21 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
         renderer->frame_count = 0;
     }
 
-    renderer->last_frame_time = current_time;
-    return true;
-
-#else
-    return false;
+        renderer->last_frame_time = current_time;
+        return true;
+    }
 #endif
+
+#ifdef ENABLE_RAYLIB
+    if (renderer->config.backend_type == DESKTOP_BACKEND_RAYLIB) {
+        /* Compute layout before rendering */
+        ir_layout_compute_tree(root, (float)renderer->window_width, (float)renderer->window_height);
+
+        return render_frame_raylib(renderer, root);
+    }
+#endif
+
+    return false;
 }
 
 bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent* root) {
@@ -502,6 +534,7 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
     renderer->running = true;
     renderer->last_root = root;
 
+#ifdef ENABLE_SDL3
     // Initialize test event queue if test mode enabled
     TestEventQueue* test_queue = NULL;
     const char* test_mode = getenv("KRYON_TEST_MODE");
@@ -512,8 +545,6 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
             fprintf(stderr, "[renderer] Failed to load test events from %s\n", test_events_file);
         }
     }
-
-#ifdef ENABLE_SDL3
     SDL_ResetKeyboard();
     SDL_PumpEvents();
     SDL_FlushEvents(SDL_EVENT_FIRST, SDL_EVENT_LAST);
@@ -560,12 +591,56 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
             SDL_Delay(1);  // Minimum delay to allow event processing
         }
     }
-#endif
 
     // Cleanup test event queue
     if (test_queue) {
         test_queue_free(test_queue);
     }
+#endif
+
+#ifdef ENABLE_RAYLIB
+    // Raylib main loop
+    while (renderer->running && !WindowShouldClose()) {
+        /* Handle keyboard input */
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            renderer->running = false;
+            break;
+        }
+
+        /* Handle mouse input for hover/click */
+        Vector2 mouse_pos = GetMousePosition();
+        bool mouse_over_button = false;
+
+        // Check if mouse is over any interactive component
+        IRComponent* hovered = ir_find_component_at_point(renderer->last_root, mouse_pos.x, mouse_pos.y);
+        if (hovered && (hovered->type == IR_COMPONENT_BUTTON || hovered->type == IR_COMPONENT_INPUT)) {
+            mouse_over_button = true;
+            SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+        } else {
+            SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+        }
+
+        /* Process reactive updates */
+        if (nimProcessReactiveUpdates) {
+            nimProcessReactiveUpdates();
+        }
+
+        /* Check for style variable changes */
+        if (ir_style_vars_is_dirty()) {
+            ir_style_vars_clear_dirty();
+        }
+
+        /* Hot reload polling */
+        if (renderer->hot_reload_enabled && renderer->hot_reload_ctx) {
+            ir_file_watcher_poll(ir_hot_reload_get_watcher(renderer->hot_reload_ctx), 0);
+        }
+
+        if (!desktop_ir_renderer_render_frame(renderer, renderer->last_root)) {
+            printf("Frame rendering failed\n");
+            break;
+        }
+    }
+#endif
 
     printf("Desktop main loop ended\n");
     return true;
