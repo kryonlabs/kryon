@@ -19,6 +19,8 @@
 #include <signal.h>
 #include <termios.h>
 #include <time.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 static const char* detect_frontend(const char* file) {
     const char* ext = path_extension(file);
@@ -639,10 +641,10 @@ int cmd_run(int argc, char** argv) {
                 strcpy(dir_path, ".");
             }
 
-            // Find all .c files in the directory (exclude target file)
+            // Find all .c files in the directory recursively (exclude target file)
             char find_cmd[2048];
             snprintf(find_cmd, sizeof(find_cmd),
-                     "find \"%s\" -maxdepth 1 -name '*.c' ! -name '%s' 2>/dev/null",
+                     "find \"%s\" -name '*.c' ! -name '%s' 2>/dev/null",
                      dir_path,
                      last_slash ? last_slash + 1 : target_file);
 
@@ -678,12 +680,13 @@ int cmd_run(int argc, char** argv) {
                  "/mnt/storage/Projects/kryon/bindings/c/kryon_dsl.c "
                  "-o \"%s\" "
                  "%s"  // Add directory include path
+                 "-Iinclude "  // Add include directory for project headers
                  "-I/mnt/storage/Projects/kryon/bindings/c "
                  "-I/mnt/storage/Projects/kryon/ir "
                  "-I/mnt/storage/Projects/kryon/backends/desktop "
                  "-I/mnt/storage/Projects/kryon/ir/third_party/cJSON "
                  "-L/mnt/storage/Projects/kryon/build "
-                 "-lkryon_desktop -lkryon_ir -lm -lraylib 2>&1",
+                 "-lkryon_desktop -lkryon_ir -lm -lraylib",
                  target_file, additional_sources, exe_file, dir_include);
 
         int result = system(compile_cmd);
