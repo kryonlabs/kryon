@@ -9,7 +9,7 @@
 #include <assert.h>
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_builder.h"
-#include "../../ir/ir_markdown_parser.h"
+#include "../../ir/parsers/markdown/markdown_parser.h"
 
 // Test counter
 static int tests_passed = 0;

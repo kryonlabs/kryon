@@ -77,10 +77,17 @@ bool android_ir_renderer_initialize(AndroidIRRenderer* ir_renderer,
 
     // Create AndroidRenderer
     AndroidRendererConfig renderer_config = {
-        .width = ir_renderer->window_width,
-        .height = ir_renderer->window_height,
-        .enable_vsync = true,
-        .msaa_samples = 4
+        .window_width = ir_renderer->window_width,
+        .window_height = ir_renderer->window_height,
+        .vsync_enabled = true,
+        .target_fps = 60,
+        .debug_mode = false,
+        .default_font_path = NULL,
+        .default_font_size = 16,
+        .enable_texture_cache = true,
+        .texture_cache_size_mb = 64,
+        .enable_glyph_cache = true,
+        .glyph_cache_size_mb = 16
     };
 
     ir_renderer->renderer = android_renderer_create(&renderer_config);
@@ -106,13 +113,12 @@ bool android_ir_renderer_initialize(AndroidIRRenderer* ir_renderer,
     }
 
     // Initialize hot reload if enabled
-    if (ir_renderer->config.enable_hot_reload &&
-        ir_renderer->config.hot_reload_watch_path) {
-        ir_renderer->hot_reload_ctx = ir_hot_reload_context_create(
-            ir_renderer->config.hot_reload_watch_path
-        );
-        ir_renderer->hot_reload_enabled = true;
-    }
+    // TODO: Hot reload not yet implemented for Android
+    // if (ir_renderer->config.enable_hot_reload &&
+    //     ir_renderer->config.hot_reload_watch_path) {
+    //     ir_renderer->hot_reload_ctx = ir_hot_reload_create();
+    //     ir_renderer->hot_reload_enabled = true;
+    // }
 
     ir_renderer->initialized = true;
     ir_renderer->running = true;
@@ -125,9 +131,33 @@ bool android_ir_renderer_load_kir(AndroidIRRenderer* ir_renderer,
     if (!ir_renderer || !kir_path) return false;
 
     // Load KIR file
-    IRComponent* root = ir_deserialize_from_file(kir_path);
+    FILE* f = fopen(kir_path, "rb");
+    if (!f) {
+        fprintf(stderr, "Failed to open KIR file: %s\n", kir_path);
+        return false;
+    }
+
+    // Get file size
+    fseek(f, 0, SEEK_END);
+    size_t size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    // Read file into buffer
+    uint8_t* data = malloc(size);
+    if (!data) {
+        fclose(f);
+        return false;
+    }
+    fread(data, 1, size, f);
+    fclose(f);
+
+    // Deserialize
+    IRBuffer buffer = { .data = data, .base = data, .size = size, .capacity = size };
+    IRComponent* root = ir_deserialize_binary(&buffer);
+    free(data);
+
     if (!root) {
-        fprintf(stderr, "Failed to load KIR file: %s\n", kir_path);
+        fprintf(stderr, "Failed to deserialize KIR file: %s\n", kir_path);
         return false;
     }
 
@@ -149,19 +179,18 @@ void android_ir_renderer_update(AndroidIRRenderer* ir_renderer,
 
     // Update animations
     if (ir_renderer->animation_ctx) {
-        ir_animation_context_update(ir_renderer->animation_ctx, delta_time);
+        ir_animation_update(ir_renderer->animation_ctx, delta_time);
     }
 
     // Check for hot reload
-    if (ir_renderer->hot_reload_enabled && ir_renderer->hot_reload_ctx) {
-        if (ir_hot_reload_check(ir_renderer->hot_reload_ctx)) {
-            IRComponent* new_root = ir_hot_reload_load(ir_renderer->hot_reload_ctx);
-            if (new_root) {
-                ir_renderer->last_root = new_root;
-                ir_renderer->needs_relayout = true;
-            }
-        }
-    }
+    // TODO: Hot reload not yet implemented for Android
+    // if (ir_renderer->hot_reload_enabled && ir_renderer->hot_reload_ctx) {
+    //     IRReloadResult result = ir_hot_reload_poll(ir_renderer->hot_reload_ctx, NULL, NULL);
+    //     if (result.changed && result.new_root) {
+    //         ir_renderer->last_root = result.new_root;
+    //         ir_renderer->needs_relayout = true;
+    //     }
+    // }
 
     // Update FPS
     ir_renderer->frame_count++;
@@ -222,9 +251,10 @@ void android_ir_renderer_destroy(AndroidIRRenderer* ir_renderer) {
         ir_animation_context_destroy(ir_renderer->animation_ctx);
     }
 
-    if (ir_renderer->hot_reload_ctx) {
-        ir_hot_reload_context_destroy(ir_renderer->hot_reload_ctx);
-    }
+    // TODO: Hot reload not yet implemented for Android
+    // if (ir_renderer->hot_reload_ctx) {
+    //     ir_hot_reload_destroy(ir_renderer->hot_reload_ctx);
+    // }
 
     if (ir_renderer->renderer) {
         android_renderer_destroy(ir_renderer->renderer);

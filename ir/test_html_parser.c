@@ -1,5 +1,5 @@
-#include "ir_html_parser.h"
-#include "ir_html_to_ir.h"
+#include "parsers/html/html_parser.h"
+#include "parsers/html/html_to_ir.h"
 #include "ir_builder.h"
 #include <stdio.h>
 #include <stdlib.h>

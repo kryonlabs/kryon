@@ -631,6 +631,8 @@ bool ir_plugin_dispatch_callback(uint32_t component_type, uint32_t component_id)
 // Dynamic Plugin Loading Implementation
 // ============================================================================
 
+#ifndef __ANDROID__
+// Dynamic plugin loading not supported on Android
 #include <dlfcn.h>
 #include <dirent.h>
 #include <glob.h>
@@ -918,6 +920,33 @@ void ir_plugin_unload(IRPluginHandle* handle) {
     free(handle->command_ids);
     free(handle);
 }
+
+#else  // __ANDROID__
+// Stub implementations for Android
+
+IRPluginDiscoveryInfo** ir_plugin_discover(const char* search_path, uint32_t* count) {
+    (void)search_path;
+    *count = 0;
+    return NULL;
+}
+
+void ir_plugin_free_discovery(IRPluginDiscoveryInfo** plugins, uint32_t count) {
+    (void)plugins;
+    (void)count;
+}
+
+IRPluginHandle* ir_plugin_load(const char* plugin_path, const char* plugin_name) {
+    (void)plugin_path;
+    (void)plugin_name;
+    fprintf(stderr, "[kryon][plugin] Dynamic plugin loading not supported on Android\n");
+    return NULL;
+}
+
+void ir_plugin_unload(IRPluginHandle* handle) {
+    (void)handle;
+}
+
+#endif  // __ANDROID__
 
 // Helper: Recursively scan IR tree for plugin commands
 // NOTE: Currently disabled as IRComponent doesn't have plugin_command field yet.

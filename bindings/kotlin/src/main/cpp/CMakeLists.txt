@@ -13,20 +13,20 @@ set(JNI_SOURCES
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../platforms/android
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../renderers/android
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../backends/android
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../ir
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../core/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../third_party
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../platforms/android
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../renderers/android
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../backends/android
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../ir
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../core/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../third_party
 )
 
 # Build backend library
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../backends/android
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../../backends/android
                  ${CMAKE_BINARY_DIR}/backend)
 
 # Build IR library
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../ir
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../../ir
                  ${CMAKE_BINARY_DIR}/ir)
 
 # Create shared library for JNI
@@ -35,8 +35,8 @@ add_library(kryon_android SHARED ${JNI_SOURCES})
 # Link against platform, renderer, backend, and IR libraries
 target_link_libraries(kryon_android
     # These will be built separately and linked statically
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../platforms/android/build/${ANDROID_ABI}/libkryon_android_platform.a
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../renderers/android/build/${ANDROID_ABI}/libkryon_android_renderer.a
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../platforms/android/build/${ANDROID_ABI}/lib/${ANDROID_ABI}/libkryon_android_platform.a
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../renderers/android/build/${ANDROID_ABI}/lib/${ANDROID_ABI}/libkryon_android_renderer.a
 
     # Backend and IR built by CMake
     kryon_android_backend

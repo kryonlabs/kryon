@@ -249,6 +249,24 @@ bool kryon_cmd_buf_push(kryon_cmd_buf_t* buf, const kryon_command_t* cmd) {
 
     // Write the full command to the buffer
     uint8_t* cmd_bytes = (uint8_t*)cmd;
+
+    // Debug: Print first DRAW_RECT command being written
+    static int push_rect_count = 0;
+    if (cmd->type == KRYON_CMD_DRAW_RECT && push_rect_count < 3) {
+        fprintf(stderr, "[CMDBUF_PUSH] RECT #%d BEFORE WRITE: x=%d y=%d w=%d h=%d color=0x%08x\n",
+                push_rect_count,
+                cmd->data.draw_rect.x, cmd->data.draw_rect.y,
+                cmd->data.draw_rect.w, cmd->data.draw_rect.h,
+                cmd->data.draw_rect.color);
+        fprintf(stderr, "[CMDBUF_PUSH] Writing to position %u, first 20 bytes: ", buf->head);
+        for (int i = 0; i < 20 && i < kCommandSize; i++) {
+            fprintf(stderr, "%02x ", cmd_bytes[i]);
+        }
+        fprintf(stderr, "\n");
+        fflush(stderr);
+        push_rect_count++;
+    }
+
     // Write at head position, then advance head
     for (uint16_t i = 0; i < kCommandSize; i++) {
         buf->buffer[buf->head] = cmd_bytes[i];
@@ -557,6 +575,20 @@ bool kryon_cmd_iter_next(kryon_cmd_iterator_t* iter, kryon_command_t* cmd) {
     }
 
     uint16_t start_pos = iter->position;
+
+    // Debug: Print first 20 bytes from buffer before reading
+    static int iter_debug_count = 0;
+    if (iter_debug_count < 3) {
+        fprintf(stderr, "[CMDBUF_ITER] Reading from position %u, first 20 bytes from buffer: ", start_pos);
+        for (int i = 0; i < 20; i++) {
+            uint16_t pos = (start_pos + i) % KRYON_CMD_BUF_SIZE;
+            fprintf(stderr, "%02x ", iter->buf->buffer[pos]);
+        }
+        fprintf(stderr, "\n");
+        fflush(stderr);
+        iter_debug_count++;
+    }
+
     for (uint16_t i = 0; i < kCommandSize; i++) {
         ((uint8_t*)cmd)[i] = iter->buf->buffer[iter->position];
         iter->position = (iter->position + 1) % KRYON_CMD_BUF_SIZE;
@@ -568,6 +600,18 @@ bool kryon_cmd_iter_next(kryon_cmd_iterator_t* iter, kryon_command_t* cmd) {
     // It needs to point to the vertex_storage within THIS command
     if (cmd->type == KRYON_CMD_DRAW_POLYGON) {
         cmd->data.draw_polygon.vertices = cmd->data.draw_polygon.vertex_storage;
+    }
+
+    // Debug: Print first 3 DRAW_RECT commands read from buffer
+    static int rect_read_count = 0;
+    if (cmd->type == KRYON_CMD_DRAW_RECT && rect_read_count < 3) {
+        fprintf(stderr, "[CMDBUF_READ] RECT #%d: x=%d y=%d w=%d h=%d color=0x%08x\n",
+                rect_read_count,
+                cmd->data.draw_rect.x, cmd->data.draw_rect.y,
+                cmd->data.draw_rect.w, cmd->data.draw_rect.h,
+                cmd->data.draw_rect.color);
+        fflush(stderr);
+        rect_read_count++;
     }
 
     return true;

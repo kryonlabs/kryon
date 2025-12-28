@@ -95,4 +95,17 @@ void ir_animation_apply_keyframes(IRComponent* component, IRAnimation* anim, flo
 // Easing evaluation
 float ir_easing_evaluate(IREasingType type, float t);
 
+// ============================================================================
+// Preset Animations (for kry parser)
+// ============================================================================
+
+// Pulse animation (scale in/out effect)
+IRAnimation* ir_animation_pulse(float duration);
+
+// Fade in/out animation (opacity 0 → 1 → 0)
+IRAnimation* ir_animation_fade_in_out(float duration);
+
+// Slide in from left animation
+IRAnimation* ir_animation_slide_in_left(float duration);
+
 #endif // IR_ANIMATION_H

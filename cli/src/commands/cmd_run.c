@@ -184,9 +184,6 @@ static int android_setup_temp_project(const char* temp_dir, const char* kir_file
     fprintf(f, "        }\n\n");
     fprintf(f, "        val loaded = loadKryonFile(kirFile.absolutePath)\n");
     fprintf(f, "        Log.d(\"Kryon\", \"KIR loaded: $loaded from ${kirFile.absolutePath}\")\n");
-    fprintf(f, "    }\n\n");
-    fprintf(f, "    override fun onKryonRender(deltaTime: Float) {\n");
-    fprintf(f, "        // Rendering is handled automatically\n");
     fprintf(f, "    }\n");
     fprintf(f, "}\n");
     fclose(f);
@@ -291,16 +288,37 @@ static int run_android(const char* kir_file, const char* source_file) {
 
     // 4. Build APK with Gradle (native libs built automatically via buildNativeLibs task)
     printf("Building APK (this may take a minute)...\n");
+
+    // Check if gradle is available
+    int gradle_check = system("command -v gradle >/dev/null 2>&1");
+    if (gradle_check != 0) {
+        fprintf(stderr, "Error: Gradle not found in PATH\n");
+        fprintf(stderr, "Please install Gradle:\n");
+        fprintf(stderr, "  - NixOS: nix-env -iA nixpkgs.gradle\n");
+        fprintf(stderr, "  - Ubuntu/Debian: sudo apt install gradle\n");
+        fprintf(stderr, "  - Or download from: https://gradle.org/install/\n");
+        fprintf(stderr, "Temporary project preserved at: %s\n", temp_dir);
+        return 1;
+    }
+
+    // Initialize Gradle wrapper
+    char wrapper_cmd[2048];
+    snprintf(wrapper_cmd, sizeof(wrapper_cmd),
+             "cd \"%s\" && gradle wrapper --gradle-version 8.7 >/dev/null 2>&1",
+             temp_dir);
+    system(wrapper_cmd);
+
+    // Build using gradlew (wrapper should be created now)
     char build_cmd[2048];
     snprintf(build_cmd, sizeof(build_cmd),
-             "cd \"%s\" && gradle assembleDebug 2>&1",
+             "cd \"%s\" && chmod +x gradlew && ./gradlew assembleDebug 2>&1",
              temp_dir);
 
     int build_result = system(build_cmd);
     if (build_result != 0) {
         fprintf(stderr, "Error: Gradle build failed\n");
         fprintf(stderr, "Temporary project preserved at: %s\n", temp_dir);
-        fprintf(stderr, "You can debug it manually\n");
+        fprintf(stderr, "You can debug it manually with: cd %s && ./gradlew assembleDebug\n", temp_dir);
         return 1;
     }
 

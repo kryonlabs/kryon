@@ -197,6 +197,17 @@ bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutR
             cmd.data.draw_rounded_rect.radius = style->border.radius;
             cmd.data.draw_rounded_rect.color = bg_color;
         } else {
+            static int debug_count = 0;
+            if (debug_count < 3) {
+                fprintf(stderr, "[IR2CMD] RECT bounds: x=%.1f y=%.1f w=%.1f h=%.1f\n",
+                        bounds->x, bounds->y, bounds->width, bounds->height);
+                fprintf(stderr, "[IR2CMD] RECT cmd: x=%d y=%d w=%d h=%d color=0x%08x\n",
+                        (int16_t)bounds->x, (int16_t)bounds->y,
+                        (uint16_t)bounds->width, (uint16_t)bounds->height, bg_color);
+                fflush(stderr);
+                debug_count++;
+            }
+
             cmd.type = KRYON_CMD_DRAW_RECT;
             cmd.data.draw_rect.x = bounds->x;
             cmd.data.draw_rect.y = bounds->y;
