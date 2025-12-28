@@ -289,11 +289,11 @@ Java_com_kryon_KryonActivity_nativeSurfaceDestroyed(JNIEnv* env, jobject thiz, j
 
     ctx->surface_ready = false;
 
-    // Shutdown renderer
+    // Shutdown renderer (but don't destroy - that's done in nativeShutdown)
     if (ctx->renderer) {
         android_renderer_shutdown(ctx->renderer);
-        android_renderer_destroy(ctx->renderer);
-        ctx->renderer = NULL;
+        // Don't call android_renderer_destroy here - it will be called in nativeShutdown
+        // via android_ir_renderer_destroy
     }
 
     // Release window

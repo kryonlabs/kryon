@@ -13,6 +13,7 @@ extern IRContext* g_ir_context;
 IRContext* ir_create_context(void);
 void ir_destroy_context(IRContext* context);
 void ir_set_context(IRContext* context);
+IRContext* ir_get_global_context(void);  // Get the global IR context
 IRComponent* ir_get_root(void);  // Get the current root component
 void ir_set_root(IRComponent* root);  // Set the root component
 

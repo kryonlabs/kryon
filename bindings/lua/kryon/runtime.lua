@@ -7,6 +7,36 @@ local C = kryonFfi.C
 local Desktop = kryonFfi.Desktop
 local ffi = require("ffi")  -- LuaJIT FFI for ffi.new(), ffi.cast(), etc.
 
+-- ============================================================================
+-- Helper Functions
+-- ============================================================================
+
+--- Parse color string to uint32 (RGBA format)
+--- @param colorStr string Color in "#RRGGBB" or "#RRGGBBAA" format
+--- @return number uint32 color value
+local function parseColor(colorStr)
+  if type(colorStr) ~= "string" then return 0 end
+
+  -- Remove '#' prefix if present
+  local hex = colorStr:gsub("^#", "")
+
+  -- Parse hex color
+  local r, g, b, a = 0, 0, 0, 255
+  if #hex == 6 then
+    r = tonumber(hex:sub(1, 2), 16)
+    g = tonumber(hex:sub(3, 4), 16)
+    b = tonumber(hex:sub(5, 6), 16)
+  elseif #hex == 8 then
+    r = tonumber(hex:sub(1, 2), 16)
+    g = tonumber(hex:sub(3, 4), 16)
+    b = tonumber(hex:sub(5, 6), 16)
+    a = tonumber(hex:sub(7, 8), 16)
+  end
+
+  -- Pack into uint32 (RGBA format)
+  return bit.lshift(r, 24) + bit.lshift(g, 16) + bit.lshift(b, 8) + a
+end
+
 local Runtime = {}
 
 -- ============================================================================
@@ -281,6 +311,11 @@ function Runtime.loadKIR(kir_filepath)
   if has_lua_events and source_file then
     print(string.format("[runtime] KIR generated from Lua, re-executing: %s", source_file))
 
+    -- CRITICAL: Reset handler registry before re-executing
+    -- This ensures handler IDs match between compilation and runtime
+    Runtime.handlers = {}
+    Runtime.nextHandlerId = 1
+
     -- Re-execute the Lua file to rebuild handler registry
     local chunk, err = loadfile(source_file)
     if not chunk then
@@ -321,6 +356,13 @@ function Runtime.runDesktop(app)
   if not app or not app.root then
     error("runDesktop requires app with root component")
   end
+
+  -- Finalize TabGroups before starting renderer
+  -- This registers tabs with TabGroupState so the C core can handle tab switching automatically
+  print("[runtime] Finalizing TabGroups...")
+  local dsl = require("kryon.dsl")
+  tabVisualStates = dsl._tabVisualStates  -- Make it available to registration functions
+  Runtime.finalizeTabGroups(app.root)
 
   -- Check if desktop library is available
   if not Desktop then
@@ -423,5 +465,152 @@ end
 
 -- Canvas callbacks now use the standard event system (via registerHandler)
 -- No canvas-specific callback registry needed
+
+-- ============================================================================
+-- Tab Group Registration (for automatic tab switching)
+-- ============================================================================
+
+--- Create TabGroupState and register with TabGroup component
+--- @param group cdata IRComponent* TabGroup component
+--- @param selectedIndex number Initial selected tab index (0-based)
+--- @param reorderable boolean Whether tabs can be reordered
+--- @return cdata TabGroupState* pointer
+function Runtime.createTabGroupState(group, selectedIndex, reorderable)
+  local state = C.ir_tabgroup_create_state(group, nil, nil, selectedIndex or 0, reorderable or false)
+  return state
+end
+
+--- Register a tab button with TabGroupState
+--- @param state cdata TabGroupState* pointer
+--- @param tab cdata IRComponent* Button component
+--- @param visual table Visual state {backgroundColor, activeBackgroundColor, textColor, activeTextColor}
+function Runtime.registerTab(state, tab, visual)
+  if not state or not tab then return end
+
+  -- Register tab with C core
+  C.ir_tabgroup_register_tab(state, tab)
+  local tabIndex = C.ir_tabgroup_get_tab_count(state) - 1
+
+  -- Set visual state in C core
+  local cVisual = ffi.new("TabVisualState")
+  cVisual.background_color = parseColor(visual.backgroundColor or "#292C30")
+  cVisual.active_background_color = parseColor(visual.activeBackgroundColor or "#3C4047")
+  cVisual.text_color = parseColor(visual.textColor or "#C7C9CC")
+  cVisual.active_text_color = parseColor(visual.activeTextColor or "#FFFFFF")
+
+  C.ir_tabgroup_set_tab_visual(state, tabIndex, cVisual)
+end
+
+--- Register TabBar with TabGroupState
+--- @param state cdata TabGroupState* pointer
+--- @param tabBar cdata IRComponent* TabBar component
+function Runtime.registerTabBar(state, tabBar)
+  if not state or not tabBar then return end
+  C.ir_tabgroup_register_bar(state, tabBar)
+end
+
+--- Register TabContent with TabGroupState
+--- @param state cdata TabGroupState* pointer
+--- @param tabContent cdata IRComponent* TabContent component
+function Runtime.registerTabContent(state, tabContent)
+  if not state or not tabContent then return end
+  C.ir_tabgroup_register_content(state, tabContent)
+end
+
+--- Register panel with TabGroupState
+--- @param state cdata TabGroupState* pointer
+--- @param panel cdata IRComponent* TabPanel component
+function Runtime.registerPanel(state, panel)
+  if not state or not panel then return end
+  C.ir_tabgroup_register_panel(state, panel)
+end
+
+--- Finalize TabGroup (apply visuals, set initial state)
+--- @param state cdata TabGroupState* pointer
+function Runtime.finalizeTabGroup(state)
+  if not state then return end
+  C.ir_tabgroup_finalize(state)
+end
+
+--- Walk component tree and finalize all TabGroups
+--- @param root cdata IRComponent* root component
+function Runtime.finalizeTabGroups(root)
+  -- Recursively find and finalize TabGroups
+  Runtime._walkAndFinalizeTabGroups(root, {})
+end
+
+--- Internal helper to walk tree and finalize TabGroups
+--- @param component cdata IRComponent* current component
+--- @param processedGroups table Set of already processed group pointers
+function Runtime._walkAndFinalizeTabGroups(component, processedGroups)
+  if not component then return end
+
+  -- Check if this is a TabGroup
+  if component.type == C.IR_COMPONENT_TAB_GROUP then
+    -- Avoid processing same group twice
+    local key = tonumber(ffi.cast("uintptr_t", component))
+    if processedGroups[key] then return end
+    processedGroups[key] = true
+
+    -- Find TabBar and TabContent children
+    local tabBar = nil
+    local tabContent = nil
+
+    for i = 0, component.child_count - 1 do
+      local child = component.children[i]
+      if child.type == C.IR_COMPONENT_TAB_BAR then
+        tabBar = child
+      elseif child.type == C.IR_COMPONENT_TAB_CONTENT then
+        tabContent = child
+      end
+    end
+
+    if tabBar and tabContent then
+      print(string.format("[runtime] Finalizing TabGroup id=%d", component.id))
+
+      -- Create TabGroupState
+      local state = Runtime.createTabGroupState(component, 0, false)
+
+      -- Register TabBar
+      Runtime.registerTabBar(state, tabBar)
+
+      -- Register tabs (children of TabBar that are buttons)
+      for i = 0, tabBar.child_count - 1 do
+        local child = tabBar.children[i]
+        if child.type == C.IR_COMPONENT_BUTTON then
+          -- Get visual state from tabVisualStates table
+          local visualKey = tostring(child)
+          local visual = tabVisualStates[visualKey] or {}
+          Runtime.registerTab(state, child, visual)
+          print(string.format("[runtime]   Registered tab button id=%d", child.id))
+        end
+      end
+
+      -- Register TabContent
+      Runtime.registerTabContent(state, tabContent)
+
+      -- Register panels (children of TabContent that are TabPanel)
+      for i = 0, tabContent.child_count - 1 do
+        local child = tabContent.children[i]
+        if child.type == C.IR_COMPONENT_TAB_PANEL then
+          Runtime.registerPanel(state, child)
+          print(string.format("[runtime]   Registered panel id=%d", child.id))
+        end
+      end
+
+      -- Finalize (apply visuals, set initial selected tab)
+      Runtime.finalizeTabGroup(state)
+      print(string.format("[runtime] TabGroup finalized with %d tabs", C.ir_tabgroup_get_tab_count(state)))
+
+      -- Store state in component custom_data for runtime access
+      component.custom_data = ffi.cast("char*", state)
+    end
+  end
+
+  -- Recurse into children
+  for i = 0, component.child_count - 1 do
+    Runtime._walkAndFinalizeTabGroups(component.children[i], processedGroups)
+  end
+end
 
 return Runtime

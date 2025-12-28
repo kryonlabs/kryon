@@ -11,7 +11,8 @@ local DSL = {}
 -- Module-level table to track tab visual states
 -- Keys are tostring(component), values are {backgroundColor, activeBackgroundColor, textColor, activeTextColor}
 -- This is needed because we create tabs before TabGroup finalization, so we need to preserve color info
-local tabVisualStates = {}
+-- Exported as DSL._tabVisualStates for runtime access during TabGroup finalization
+DSL._tabVisualStates = {}
 
 -- ============================================================================
 -- TabGroup Context Stack (for automatic initialization)
@@ -571,7 +572,7 @@ local function buildComponent(componentType, props)
 
         -- Retrieve visual state from module table
         local key = tostring(tab)
-        local visualState = tabVisualStates[key]
+        local visualState = DSL._tabVisualStates[key]
 
         if visualState then
           -- Convert hex colors to packed RGBA format
@@ -596,7 +597,7 @@ local function buildComponent(componentType, props)
       -- This prevents memory leaks if tabs are destroyed and recreated
       for idx, tab in ipairs(tabs) do
         local key = tostring(tab)
-        tabVisualStates[key] = nil
+        DSL._tabVisualStates[key] = nil
       end
 
       -- Register all panels
@@ -707,7 +708,7 @@ function DSL.Tab(props)
   -- Set defaults matching Nim DSL tab layout (from components.nim:1816-1824)
   if not tabProps.height then tabProps.height = "32px" end
   if not tabProps.minHeight then tabProps.minHeight = "28px" end
-  if not tabProps.minWidth then tabProps.minWidth = "16px" end
+  if not tabProps.minWidth then tabProps.minWidth = "60px" end
   if not tabProps.maxWidth then tabProps.maxWidth = "180px" end
   if not tabProps.alignItems then tabProps.alignItems = "center" end
   if not tabProps.justifyContent then tabProps.justifyContent = "center" end
@@ -728,10 +729,11 @@ function DSL.Tab(props)
   end
 
   -- CRITICAL: Always add onClick to ensure IR_EVENT_CLICK is created
-  -- Tab switching requires click events even if user doesn't provide onClick
-  -- The desktop backend will detect this is a tab and call ir_tabgroup_handle_tab_click()
+  -- The C core detects tab clicks via try_handle_as_tab_click() which requires
+  -- an IR_EVENT_CLICK event to trigger the input handler check
+  -- Tab switching happens in C after event detection
   if not tabProps.onClick then
-    tabProps.onClick = function() end  -- Dummy handler to trigger event creation
+    tabProps.onClick = function() end  -- Dummy handler creates IR_EVENT_CLICK
   end
 
   -- Create a Button component instead of IR_COMPONENT_TAB
@@ -741,7 +743,7 @@ function DSL.Tab(props)
   -- Store visual state in module-level table for later registration
   -- Use tostring() to convert cdata pointer to stable string key
   local key = tostring(button)
-  tabVisualStates[key] = {
+  DSL._tabVisualStates[key] = {
     backgroundColor = backgroundColor,
     activeBackgroundColor = activeBackgroundColor,
     textColor = textColor,

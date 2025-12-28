@@ -539,6 +539,8 @@ IRContext* ir_create_context(void) {
     context->next_component_id = 1;
     context->next_logic_id = 1;
     context->metadata = NULL;  // Initialize metadata to NULL
+    context->source_metadata = NULL;  // CRITICAL FIX: Initialize source_metadata to NULL
+    context->source_structures = NULL;  // Initialize source_structures to NULL
 
     // Create component pool
     context->component_pool = ir_pool_create();
@@ -595,6 +597,10 @@ void ir_destroy_context(IRContext* context) {
 
 void ir_set_context(IRContext* context) {
     g_ir_context = context;
+}
+
+IRContext* ir_get_global_context(void) {
+    return g_ir_context;
 }
 
 IRComponent* ir_get_root(void) {
