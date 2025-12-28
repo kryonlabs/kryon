@@ -20,7 +20,14 @@ file(GLOB IR_SOURCES
     ir_memory.c
     ir_layout.c
     ir_json.c
-    ir_text_shaping.c
+    # ir_text_shaping.c  # Requires HarfBuzz - optional for basic text
+    ir_bidi_stub.c
+    components/ir_component_registry.c
+    components/ir_component_flexbox.c
+    components/ir_component_text.c
+    components/ir_component_button.c
+    components/ir_component_checkbox.c
+    components/ir_component_dropdown.c
     parsers/kry/kry_parser.c
     parsers/kry/kry_to_ir.c
     third_party/cJSON/cJSON.c

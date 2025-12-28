@@ -222,7 +222,14 @@ bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutR
 
     /* Render border */
     uint8_t border_r, border_g, border_b, border_a;
+    fprintf(stderr, "[BORDER_DEBUG] border.width=%f\n", style->border.width);
+    if (style->border.width > 0) {
+        bool color_ok = ir_color_resolve(&style->border.color, &border_r, &border_g, &border_b, &border_a);
+        fprintf(stderr, "[BORDER_DEBUG] color_ok=%d r=%u g=%u b=%u a=%u\n", color_ok, border_r, border_g, border_b, border_a);
+    }
     if (style->border.width > 0 && ir_color_resolve(&style->border.color, &border_r, &border_g, &border_b, &border_a) && border_a > 0) {
+        fprintf(stderr, "[BORDER_DEBUG] Drawing border: width=%f color=rgba(%u,%u,%u,%u)\n",
+                style->border.width, border_r, border_g, border_b, border_a);
         uint32_t border_color = (border_r << 24) | (border_g << 16) | (border_b << 8) | border_a;
         border_color = ir_apply_opacity_to_color(border_color, ctx->current_opacity);
 
@@ -304,8 +311,15 @@ bool ir_gen_button_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect
     bool is_hovered = (g_hovered_component == comp);
 
     /* Add default border for buttons if not set */
-    if (comp->style && comp->style->border.width == 0) {
-        comp->style->border.width = 2;  /* 2px for visibility */
+    fprintf(stderr, "[BUTTON_DEBUG] style=%p\n", (void*)comp->style);
+    if (comp->style) {
+        fprintf(stderr, "[BUTTON_DEBUG] border.width=%f\n", comp->style->border.width);
+    }
+    if (comp->style && comp->style->border.width == 0.0f) {
+        fprintf(stderr, "[BUTTON_DEBUG] Setting default border\n");
+        fprintf(stderr, "[BUTTON_DEBUG] Step 1\n");
+        comp->style->border.width = 2.0f;  /* 2px for visibility */
+        fprintf(stderr, "[BUTTON_DEBUG] Step 2 - wrote 2.0\n");
         /* Set default border color to bright white if not set */
         if (comp->style->border.color.type == IR_COLOR_TRANSPARENT) {
             comp->style->border.color.type = IR_COLOR_SOLID;
@@ -314,6 +328,10 @@ bool ir_gen_button_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect
             comp->style->border.color.data.b = 255;
             comp->style->border.color.data.a = 255;
         }
+        fprintf(stderr, "[BUTTON_DEBUG] After setting: border.width=%f color_type=%d r=%u g=%u b=%u a=%u\n",
+                comp->style->border.width, comp->style->border.color.type,
+                comp->style->border.color.data.r, comp->style->border.color.data.g,
+                comp->style->border.color.data.b, comp->style->border.color.data.a);
     }
 
     /* Apply hover effect - brighten background */
@@ -646,6 +664,8 @@ bool ir_generate_component_commands(
     if (!component || !ctx || !bounds) return false;
     if (component->style && !component->style->visible) return true;
 
+    fprintf(stderr, "[COMPONENT_DEBUG] type=%d id=%u\n", component->type, component->id);
+
     /* Apply opacity cascading */
     float comp_opacity = component->style ? component->style->opacity : 1.0f;
     ir_push_opacity(ctx, comp_opacity);
@@ -671,7 +691,8 @@ bool ir_generate_component_commands(
 
         /* TODO: Apply rotate (requires full 2D transform matrix) */
     }
-    bounds = &transformed_bounds;
+    /* Use transformed bounds for rendering this component */
+    LayoutRect* render_bounds = &transformed_bounds;
 
     /* Defer to overlay pass if needed */
     if (ir_should_defer_to_overlay(component)) {
@@ -688,31 +709,31 @@ bool ir_generate_component_commands(
         case IR_COMPONENT_ROW:
         case IR_COMPONENT_COLUMN:
         case IR_COMPONENT_CENTER:
-            success = ir_gen_container_commands(component, ctx, bounds);
+            success = ir_gen_container_commands(component, ctx, render_bounds);
             break;
 
         case IR_COMPONENT_TEXT:
-            success = ir_gen_text_commands(component, ctx, bounds);
+            success = ir_gen_text_commands(component, ctx, render_bounds);
             break;
 
         case IR_COMPONENT_BUTTON:
-            success = ir_gen_button_commands(component, ctx, bounds);
+            success = ir_gen_button_commands(component, ctx, render_bounds);
             break;
 
         case IR_COMPONENT_INPUT:
-            success = ir_gen_input_commands(component, ctx, bounds);
+            success = ir_gen_input_commands(component, ctx, render_bounds);
             break;
 
         case IR_COMPONENT_CHECKBOX:
-            success = ir_gen_checkbox_commands(component, ctx, bounds);
+            success = ir_gen_checkbox_commands(component, ctx, render_bounds);
             break;
 
         case IR_COMPONENT_DROPDOWN:
-            success = ir_gen_dropdown_commands(component, ctx, bounds);
+            success = ir_gen_dropdown_commands(component, ctx, render_bounds);
             break;
 
         case IR_COMPONENT_IMAGE:
-            success = ir_gen_image_commands(component, ctx, bounds);
+            success = ir_gen_image_commands(component, ctx, render_bounds);
             break;
 
         case IR_COMPONENT_TABLE:
@@ -722,7 +743,7 @@ bool ir_generate_component_commands(
         case IR_COMPONENT_TABLE_ROW:
         case IR_COMPONENT_TABLE_CELL:
         case IR_COMPONENT_TABLE_HEADER_CELL:
-            success = ir_gen_table_commands(component, ctx, bounds);
+            success = ir_gen_table_commands(component, ctx, render_bounds);
             break;
 
         case IR_COMPONENT_MARKDOWN:
@@ -734,17 +755,17 @@ bool ir_generate_component_commands(
         case IR_COMPONENT_LIST:
         case IR_COMPONENT_LIST_ITEM:
         case IR_COMPONENT_LINK:
-            success = ir_gen_markdown_commands(component, ctx, bounds);
+            success = ir_gen_markdown_commands(component, ctx, render_bounds);
             break;
 
         case IR_COMPONENT_CANVAS:
         case IR_COMPONENT_NATIVE_CANVAS:
-            success = ir_gen_canvas_commands(component, ctx, bounds);
+            success = ir_gen_canvas_commands(component, ctx, render_bounds);
             break;
 
         default:
             /* Unknown component type - render as container */
-            success = ir_gen_container_commands(component, ctx, bounds);
+            success = ir_gen_container_commands(component, ctx, render_bounds);
             break;
     }
 

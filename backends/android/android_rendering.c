@@ -1,6 +1,6 @@
 /*
  * Android Component Rendering - IR to AndroidRenderer
- * FIXED VERSION with updated API
+ * Renders IR component tree using computed layout from ir_layout_compute_tree()
  */
 
 #include <stdio.h>
@@ -8,6 +8,10 @@
 #include <string.h>
 #include <math.h>
 #include "android_internal.h"
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
 
 // Helper to convert IRColor to RGBA uint32
 static uint32_t ir_color_to_rgba(IRColor color, float opacity) {
@@ -18,6 +22,40 @@ static uint32_t ir_color_to_rgba(IRColor color, float opacity) {
     return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
+// Render box shadow
+static void render_box_shadow(AndroidRenderer* renderer,
+                              IRComponent* component,
+                              float x, float y,
+                              float width, float height,
+                              float opacity) {
+    if (!component->style) return;
+
+    IRBoxShadow* shadow = &component->style->box_shadow;
+    if (shadow->blur_radius <= 0) return;
+
+    // Draw shadow as a blurred rect offset from the component
+    float shadow_x = x + shadow->offset_x;
+    float shadow_y = y + shadow->offset_y;
+
+    uint32_t shadow_color = ir_color_to_rgba(shadow->color, opacity);
+
+    // Simple shadow approximation: draw multiple rects with increasing transparency
+    int blur_steps = (int)fminf(shadow->blur_radius, 10);
+    for (int i = 0; i < blur_steps; i++) {
+        float offset = (float)i;
+        float alpha_factor = 1.0f - ((float)i / blur_steps);
+
+        uint8_t shadow_a = (uint8_t)((shadow_color >> 24) * alpha_factor);
+        uint32_t blurred_color = (shadow_a << 24) | (shadow_color & 0x00FFFFFF);
+
+        android_renderer_draw_rect(renderer,
+                                   shadow_x - offset, shadow_y - offset,
+                                   width + offset * 2, height + offset * 2,
+                                   blurred_color);
+    }
+}
+
+// Render background with rounded corners
 static void render_background(AndroidRenderer* renderer,
                               IRComponent* component,
                               float x, float y,
@@ -25,13 +63,13 @@ static void render_background(AndroidRenderer* renderer,
                               float opacity) {
     if (!component->style) return;
 
-    // TODO: Get background from current style system
-    IRColor bg_color = IR_COLOR_RGBA(255, 255, 255, 0);
-    float radius = 0.0f;
+    IRColor bg_color = component->style->background;
 
+    // Skip if fully transparent
     if (bg_color.data.a == 0) return;
 
     uint32_t color = ir_color_to_rgba(bg_color, opacity);
+    float radius = component->style->border.radius;
 
     if (radius > 0) {
         android_renderer_draw_rounded_rect(renderer, x, y, width, height, radius, color);
@@ -40,54 +78,117 @@ static void render_background(AndroidRenderer* renderer,
     }
 }
 
+// Render border outline
 static void render_border(AndroidRenderer* renderer,
                          IRComponent* component,
                          float x, float y,
                          float width, float height,
                          float opacity) {
-    // TODO: Border rendering
-    (void)renderer; (void)component; (void)x; (void)y;
-    (void)width; (void)height; (void)opacity;
+    if (!component->style) return;
+
+    IRBorder* border = &component->style->border;
+    if (border->width <= 0 || border->color.data.a == 0) return;
+
+    uint32_t border_color = ir_color_to_rgba(border->color, opacity);
+    float bw = border->width;
+    float radius = border->radius;
+
+    if (radius > 0) {
+        // Draw 4 rounded rect outlines for the border
+        // Top
+        android_renderer_draw_rounded_rect(renderer, x, y, width, bw, radius, border_color);
+        // Bottom
+        android_renderer_draw_rounded_rect(renderer, x, y + height - bw, width, bw, radius, border_color);
+        // Left
+        android_renderer_draw_rounded_rect(renderer, x, y + bw, bw, height - 2 * bw, radius, border_color);
+        // Right
+        android_renderer_draw_rounded_rect(renderer, x + width - bw, y + bw, bw, height - 2 * bw, radius, border_color);
+    } else {
+        // Draw 4 rects for the border
+        // Top
+        android_renderer_draw_rect(renderer, x, y, width, bw, border_color);
+        // Bottom
+        android_renderer_draw_rect(renderer, x, y + height - bw, width, bw, border_color);
+        // Left
+        android_renderer_draw_rect(renderer, x, y + bw, bw, height - 2 * bw, border_color);
+        // Right
+        android_renderer_draw_rect(renderer, x + width - bw, y + bw, bw, height - 2 * bw, border_color);
+    }
 }
 
-static void render_component_recursive(AndroidIRRenderer* ir_renderer,
-                                       IRComponent* component,
-                                       float parent_x, float parent_y,
-                                       float parent_opacity) {
-    if (!ir_renderer || !component) return;
+// ============================================================================
+// MAIN RENDERING FUNCTION
+// ============================================================================
+
+void render_component_android(AndroidIRRenderer* ir_renderer,
+                              IRComponent* component,
+                              float parent_x, float parent_y,
+                              float parent_opacity) {
+    if (!ir_renderer || !component || !ir_renderer->renderer) return;
+
+    // Skip if layout is not valid
+    if (!component->layout_state || !component->layout_state->layout_valid) return;
 
     AndroidRenderer* renderer = ir_renderer->renderer;
 
-    float x = parent_x + component->rendered_bounds.x;
-    float y = parent_y + component->rendered_bounds.y;
-    float width = component->rendered_bounds.width;
-    float height = component->rendered_bounds.height;
+    // Get computed layout bounds (NEW API)
+    float x = parent_x + component->layout_state->computed.x;
+    float y = parent_y + component->layout_state->computed.y;
+    float width = component->layout_state->computed.width;
+    float height = component->layout_state->computed.height;
 
+    // Apply opacity cascading
     float opacity = parent_opacity;
+    if (component->style) {
+        opacity *= component->style->opacity;
+    }
 
-    if (opacity <= 0.0f) return;
+    // Skip if fully transparent
+    if (opacity <= 0.01f) return;
 
+    // Set opacity for renderer
     android_renderer_set_opacity(renderer, opacity);
 
+    // Render based on component type
     switch (component->type) {
         case IR_COMPONENT_CONTAINER:
         case IR_COMPONENT_ROW:
         case IR_COMPONENT_COLUMN:
+            render_box_shadow(renderer, component, x, y, width, height, opacity);
             render_background(renderer, component, x, y, width, height, opacity);
             render_border(renderer, component, x, y, width, height, opacity);
             break;
 
         case IR_COMPONENT_CENTER:
+            // Center is just a layout container, no visual rendering
             break;
 
-        case IR_COMPONENT_BUTTON: {
-            render_background(renderer, component, x, y, width, height, opacity);
-            render_border(renderer, component, x, y, width, height, opacity);
-
+        case IR_COMPONENT_TEXT:
             if (component->text_content) {
                 IRColor text_color = component->style ?
                     component->style->font.color :
                     IR_COLOR_RGBA(0, 0, 0, 255);
+
+                int font_size = component->style && component->style->font.size > 0 ?
+                    (int)component->style->font.size : 16;
+
+                uint32_t color = ir_color_to_rgba(text_color, opacity);
+
+                android_renderer_draw_text(renderer, component->text_content,
+                                          x, y, NULL, font_size, color);
+            }
+            break;
+
+        case IR_COMPONENT_BUTTON:
+            render_box_shadow(renderer, component, x, y, width, height, opacity);
+            render_background(renderer, component, x, y, width, height, opacity);
+            render_border(renderer, component, x, y, width, height, opacity);
+
+            // Render button text centered
+            if (component->text_content) {
+                IRColor text_color = component->style ?
+                    component->style->font.color :
+                    IR_COLOR_RGBA(255, 255, 255, 255);
 
                 int font_size = component->style && component->style->font.size > 0 ?
                     (int)component->style->font.size : 16;
@@ -107,10 +208,13 @@ static void render_component_recursive(AndroidIRRenderer* ir_renderer,
                                           NULL, font_size, color);
             }
             break;
-        }
 
-        case IR_COMPONENT_TEXT: {
-            if (component->text_content) {
+        case IR_COMPONENT_INPUT:
+            render_background(renderer, component, x, y, width, height, opacity);
+            render_border(renderer, component, x, y, width, height, opacity);
+
+            // Render input text with padding
+            if (component->text_content && component->text_content[0]) {
                 IRColor text_color = component->style ?
                     component->style->font.color :
                     IR_COLOR_RGBA(0, 0, 0, 255);
@@ -121,60 +225,33 @@ static void render_component_recursive(AndroidIRRenderer* ir_renderer,
                 uint32_t color = ir_color_to_rgba(text_color, opacity);
 
                 android_renderer_draw_text(renderer, component->text_content,
-                                          x, y, NULL, font_size, color);
-            }
-            break;
-        }
-
-        case IR_COMPONENT_INPUT: {
-            render_background(renderer, component, x, y, width, height, opacity);
-            render_border(renderer, component, x, y, width, height, opacity);
-
-            const char* text = component->text_content ? component->text_content : "";
-
-            if (text && text[0]) {
-                IRColor text_color = component->style ?
-                    component->style->font.color :
-                    IR_COLOR_RGBA(0, 0, 0, 255);
-
-                int font_size = component->style && component->style->font.size > 0 ?
-                    (int)component->style->font.size : 16;
-
-                uint32_t color = ir_color_to_rgba(text_color, opacity);
-
-                android_renderer_draw_text(renderer, text,
                                           x + 8, y + 8,
                                           NULL, font_size, color);
             }
             break;
-        }
 
-        case IR_COMPONENT_CHECKBOX: {
+        case IR_COMPONENT_CHECKBOX:
             render_background(renderer, component, x, y, width, height, opacity);
             render_border(renderer, component, x, y, width, height, opacity);
+
+            // TODO: Render checkmark if checked
             break;
-        }
 
         case IR_COMPONENT_IMAGE:
-            // TODO: Image rendering
+            // TODO: Implement image rendering with texture loading
+            render_background(renderer, component, x, y, width, height, opacity);
+            render_border(renderer, component, x, y, width, height, opacity);
             break;
 
         default:
             break;
     }
 
-    // Render children
+    // Recursively render children
     if (component->children) {
         for (uint32_t i = 0; i < component->child_count; i++) {
-            render_component_recursive(ir_renderer,
-                                        component->children[i],
-                                        x, y, opacity);
+            render_component_android(ir_renderer, component->children[i],
+                                    x, y, opacity);
         }
     }
-}
-
-void android_render_component(AndroidIRRenderer* ir_renderer,
-                              IRComponent* root) {
-    if (!ir_renderer || !root) return;
-    render_component_recursive(ir_renderer, root, 0, 0, 1.0f);
 }

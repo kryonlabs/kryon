@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #include "desktop_internal.h"
+#include "desktop_platform.h"
 #include "desktop_test_events.h"
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_builder.h"
@@ -135,232 +136,32 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
 
     g_debug_renderer = (getenv("KRYON_DEBUG_RENDERER") != NULL);
 
+    // Get ops table for requested backend
+    renderer->ops = desktop_get_backend_ops(renderer->config.backend_type);
+    if (!renderer->ops) {
+        fprintf(stderr, "Error: Requested renderer backend not available\n");
+        fprintf(stderr, "Backend type: %d\n", renderer->config.backend_type);
+        fprintf(stderr, "Available backends:\n");
 #ifdef ENABLE_SDL3
-    if (renderer->config.backend_type == DESKTOP_BACKEND_SDL3) {
-        /* Initialize SDL3 and TTF */
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-        fprintf(stderr, "\n╔════════════════════════════════════════════════════════════╗\n");
-        fprintf(stderr, "║         SDL3 Initialization Failed                       ║\n");
-        fprintf(stderr, "╚════════════════════════════════════════════════════════════╝\n\n");
-        fprintf(stderr, "Error: %s\n\n", SDL_GetError());
-        fprintf(stderr, "Possible solutions:\n\n");
-        fprintf(stderr, "  1. Install SDL3 library:\n");
-        fprintf(stderr, "     • Ubuntu/Debian: sudo apt install libsdl3-dev\n");
-        fprintf(stderr, "     • Fedora:        sudo dnf install SDL3-devel\n");
-        fprintf(stderr, "     • Arch Linux:    sudo pacman -S sdl3\n");
-        fprintf(stderr, "     • macOS:         brew install sdl3\n\n");
-        fprintf(stderr, "  2. Check display environment:\n");
-        fprintf(stderr, "     • X11:    echo $DISPLAY     (should show :0 or similar)\n");
-        fprintf(stderr, "     • Wayland: echo $WAYLAND_DISPLAY\n\n");
-        fprintf(stderr, "  3. For Wayland, try:\n");
-        fprintf(stderr, "     export SDL_VIDEODRIVER=wayland\n\n");
-        fprintf(stderr, "  4. For headless/CI environments:\n");
-        fprintf(stderr, "     xvfb-run kryon run <file>\n\n");
+        fprintf(stderr, "  - SDL3 (DESKTOP_BACKEND_SDL3 = 0)\n");
+#endif
+#ifdef ENABLE_RAYLIB
+        fprintf(stderr, "  - Raylib (DESKTOP_BACKEND_RAYLIB = 1)\n");
+#endif
         return false;
     }
 
-    if (!TTF_Init()) {
-        fprintf(stderr, "\n╔════════════════════════════════════════════════════════════╗\n");
-        fprintf(stderr, "║         SDL_ttf Initialization Failed                    ║\n");
-        fprintf(stderr, "╚════════════════════════════════════════════════════════════╝\n\n");
-        fprintf(stderr, "Error: %s\n\n", SDL_GetError());
-        fprintf(stderr, "Possible solutions:\n\n");
-        fprintf(stderr, "  1. Install SDL3_ttf library:\n");
-        fprintf(stderr, "     • Ubuntu/Debian: sudo apt install libsdl3-ttf-dev\n");
-        fprintf(stderr, "     • Fedora:        sudo dnf install SDL3_ttf-devel\n");
-        fprintf(stderr, "     • Arch Linux:    sudo pacman -S sdl3_ttf\n");
-        fprintf(stderr, "     • macOS:         brew install sdl3_ttf\n\n");
-        SDL_Quit();
+    // Initialize via ops table
+    if (!renderer->ops->initialize(renderer)) {
+        fprintf(stderr, "Error: Backend initialization failed\n");
         return false;
     }
 
-    printf("[renderer] SDL3 initialized successfully\n");
-
-    /* Flush stale events */
-    SDL_PumpEvents();
-    SDL_FlushEvents(SDL_EVENT_FIRST, SDL_EVENT_LAST);
-
-    /* Create window */
-    Uint32 window_flags = SDL_WINDOW_OPENGL;
-    if (renderer->config.resizable) window_flags |= SDL_WINDOW_RESIZABLE;
-    if (renderer->config.fullscreen) window_flags |= SDL_WINDOW_FULLSCREEN;
-
-    renderer->window = SDL_CreateWindow(
-        renderer->config.window_title,
-        renderer->config.window_width,
-        renderer->config.window_height,
-        window_flags
-    );
-
-    if (!renderer->window) {
-        fprintf(stderr, "\n╔════════════════════════════════════════════════════════════╗\n");
-        fprintf(stderr, "║         Window Creation Failed                           ║\n");
-        fprintf(stderr, "╚════════════════════════════════════════════════════════════╝\n\n");
-        fprintf(stderr, "Error: %s\n\n", SDL_GetError());
-        fprintf(stderr, "Possible causes:\n");
-        fprintf(stderr, "  • Display not available (check $DISPLAY)\n");
-        fprintf(stderr, "  • Running in headless environment without Xvfb\n");
-        fprintf(stderr, "  • Video driver issues\n\n");
-        TTF_Quit();
-        SDL_Quit();
-        return false;
-    }
-
-    printf("[renderer] Window created: %dx%d\n", renderer->config.window_width, renderer->config.window_height);
-
-    /* Create renderer */
-    renderer->renderer = SDL_CreateRenderer(renderer->window, NULL);
-    if (!renderer->renderer) {
-        fprintf(stderr, "\n╔════════════════════════════════════════════════════════════╗\n");
-        fprintf(stderr, "║         Renderer Creation Failed                         ║\n");
-        fprintf(stderr, "╚════════════════════════════════════════════════════════════╝\n\n");
-        fprintf(stderr, "Error: %s\n\n", SDL_GetError());
-        fprintf(stderr, "Possible causes:\n");
-        fprintf(stderr, "  • Graphics driver issues\n");
-        fprintf(stderr, "  • Incompatible OpenGL version\n");
-        fprintf(stderr, "  • Try software rendering: export SDL_RENDER_DRIVER=software\n\n");
-        SDL_DestroyWindow(renderer->window);
-        TTF_Quit();
-        SDL_Quit();
-        return false;
-    }
-
-    printf("[renderer] SDL renderer created successfully\n");
-
-    /* Wrap SDL renderer in kryon_renderer_t for command buffer execution */
-    renderer->kryon_renderer = kryon_sdl3_renderer_wrap_existing(renderer->renderer, renderer->window);
-    if (!renderer->kryon_renderer) {
-        fprintf(stderr, "Failed to create kryon renderer wrapper\n");
-        SDL_DestroyRenderer(renderer->renderer);
-        SDL_DestroyWindow(renderer->window);
-        TTF_Quit();
-        SDL_Quit();
-        return false;
-    }
-    printf("[renderer] Kryon renderer wrapper created\n");
-
-    /* Configure rendering */
-    if (renderer->config.vsync_enabled) {
-        SDL_SetRenderVSync(renderer->renderer, 1);
-    }
-
-    /* Create 1x1 white texture for vertex coloring */
-    renderer->white_texture = SDL_CreateTexture(renderer->renderer, SDL_PIXELFORMAT_RGBA8888,
-                                               SDL_TEXTUREACCESS_STATIC, 1, 1);
-    if (renderer->white_texture) {
-        uint32_t white_pixel = 0xFFFFFFFF;
-        SDL_UpdateTexture(renderer->white_texture, NULL, &white_pixel, 4);
-        SDL_SetTextureBlendMode(renderer->white_texture, SDL_BLENDMODE_BLEND);
-    }
-
-    /* Load default font */
-    if (g_default_font_path[0] != '\0') {
-        renderer->default_font = TTF_OpenFont(g_default_font_path, 16);
-        if (renderer->default_font) {
-            printf("Loaded default font (registered): %s\n", g_default_font_path);
-        }
-    }
-
-    /* Try fontconfig if no default font yet */
-    if (!renderer->default_font) {
-        FILE* fc = popen("fc-match sans:style=Regular -f \"%{file}\"", "r");
-        if (fc) {
-            char fontconfig_path[512] = {0};
-            if (fgets(fontconfig_path, sizeof(fontconfig_path), fc)) {
-                size_t len = strlen(fontconfig_path);
-                if (len > 0 && fontconfig_path[len-1] == '\n') {
-                    fontconfig_path[len-1] = '\0';
-                }
-                renderer->default_font = TTF_OpenFont(fontconfig_path, 16);
-                if (renderer->default_font) {
-                    printf("Loaded font via fontconfig: %s\n", fontconfig_path);
-                    strncpy(g_default_font_path, fontconfig_path, sizeof(g_default_font_path) - 1);
-                    g_default_font_path[sizeof(g_default_font_path) - 1] = '\0';
-                }
-            }
-            pclose(fc);
-        }
-    }
-
-    /* Fallback font paths */
-    if (!renderer->default_font) {
-        const char* font_paths[] = {
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/TTF/DejaVuSans.ttf",
-            "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
-            "/usr/share/fonts/noto/NotoSans-Regular.ttf",
-            "/System/Library/Fonts/Arial.ttf",
-            "C:/Windows/Fonts/arial.ttf",
-            NULL
-        };
-
-        for (int i = 0; font_paths[i]; i++) {
-            renderer->default_font = TTF_OpenFont(font_paths[i], 16);
-            if (renderer->default_font) {
-                printf("Loaded font: %s\n", font_paths[i]);
-                strncpy(g_default_font_path, font_paths[i], sizeof(g_default_font_path) - 1);
-                g_default_font_path[sizeof(g_default_font_path) - 1] = '\0';
-                break;
-            }
-        }
-    }
-
-    if (!renderer->default_font) {
-        printf("Warning: Could not load any system font\n");
-    }
-
-    /* Initialize cursors */
-    renderer->cursor_default = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
-    renderer->cursor_hand = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
-    renderer->current_cursor = renderer->cursor_default;
-    SDL_SetCursor(renderer->cursor_default);
-
-    renderer->initialized = true;
+    // Set global renderer pointer
     g_desktop_renderer = renderer;
 
-    /* Initialize text cache hash table (Phase 1 optimization) */
-    for (int i = 0; i < TEXT_CACHE_HASH_SIZE; i++) {
-        g_text_cache_hash_table[i].cache_index = -1;
-        g_text_cache_hash_table[i].next_index = -1;
-    }
-    for (int i = 0; i < TEXT_TEXTURE_CACHE_SIZE; i++) {
-        g_text_texture_cache[i].valid = false;
-        g_text_texture_cache[i].cache_index = i;
-    }
-
-    /* Initialize font cache hash table (Phase 1 optimization) */
-    extern int g_font_cache_hash_table[];  // Defined in desktop_fonts.c
-    for (int i = 0; i < 64; i++) {  // FONT_CACHE_HASH_SIZE = 64
-        g_font_cache_hash_table[i] = -1;
-    }
-
-    /* Register font metrics callbacks for IR layout system */
-    desktop_register_font_metrics();
-
-    /* Register text measurement callback for two-pass layout system */
-    ir_layout_set_text_measure_callback(desktop_text_measure_callback);
-
-        printf("Desktop renderer initialized successfully\n");
-        return true;
-    }
-#endif
-
-#ifdef ENABLE_RAYLIB
-    if (renderer->config.backend_type == DESKTOP_BACKEND_RAYLIB) {
-        return initialize_raylib_backend(renderer);
-    }
-#endif
-
-    fprintf(stderr, "Error: Requested renderer backend not compiled in\n");
-    fprintf(stderr, "Backend type: %d\n", renderer->config.backend_type);
-    fprintf(stderr, "Available backends:\n");
-#ifdef ENABLE_SDL3
-    fprintf(stderr, "  - SDL3 (DESKTOP_BACKEND_SDL3 = 0)\n");
-#endif
-#ifdef ENABLE_RAYLIB
-    fprintf(stderr, "  - Raylib (DESKTOP_BACKEND_RAYLIB = 1)\n");
-#endif
-    return false;
+    printf("Desktop renderer initialized successfully\n");
+    return true;
 }
 
 void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
@@ -370,32 +171,7 @@ void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
         g_desktop_renderer = NULL;
     }
 
-#ifdef ENABLE_SDL3
-    /* Destroy kryon renderer wrapper */
-    if (renderer->kryon_renderer) {
-        kryon_sdl3_renderer_destroy(renderer->kryon_renderer);
-        renderer->kryon_renderer = NULL;
-    }
-
-    /* Clean up font cache */
-    for (int i = 0; i < g_font_cache_count; i++) {
-        if (g_font_cache[i].font) {
-            TTF_CloseFont(g_font_cache[i].font);
-            g_font_cache[i].font = NULL;
-        }
-    }
-    g_font_cache_count = 0;
-
-    /* Clean up text texture cache */
-    for (int i = 0; i < TEXT_TEXTURE_CACHE_SIZE; i++) {
-        if (g_text_texture_cache[i].valid && g_text_texture_cache[i].texture) {
-            SDL_DestroyTexture(g_text_texture_cache[i].texture);
-            g_text_texture_cache[i].texture = NULL;
-            g_text_texture_cache[i].valid = false;
-        }
-    }
-
-    /* Destroy animation and hot reload contexts */
+    // Destroy animation and hot reload contexts
     if (renderer->animation_ctx) {
         ir_animation_context_destroy(renderer->animation_ctx);
         renderer->animation_ctx = NULL;
@@ -406,32 +182,10 @@ void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
         renderer->hot_reload_ctx = NULL;
     }
 
-    /* Clean up SDL resources */
-    if (renderer->cursor_hand) {
-        SDL_DestroyCursor(renderer->cursor_hand);
+    // Shutdown via ops table
+    if (renderer->ops && renderer->ops->shutdown) {
+        renderer->ops->shutdown(renderer);
     }
-    if (renderer->cursor_default) {
-        SDL_DestroyCursor(renderer->cursor_default);
-    }
-    if (renderer->white_texture) {
-        SDL_DestroyTexture(renderer->white_texture);
-    }
-    if (renderer->default_font) {
-        TTF_CloseFont(renderer->default_font);
-    }
-    if (renderer->renderer) {
-        SDL_DestroyRenderer(renderer->renderer);
-    }
-    if (renderer->window) {
-        SDL_DestroyWindow(renderer->window);
-    }
-#endif
-
-#ifdef ENABLE_RAYLIB
-    if (renderer->config.backend_type == DESKTOP_BACKEND_RAYLIB) {
-        shutdown_raylib_backend(renderer);
-    }
-#endif
 
     free(renderer);
 }
@@ -444,109 +198,44 @@ static int g_debug_frame_count = 0;
 
 bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* root) {
     if (!renderer || !root || !renderer->initialized) return false;
+    if (!renderer->ops) return false;
 
-#ifdef ENABLE_SDL3
-    if (renderer->config.backend_type == DESKTOP_BACKEND_SDL3) {
-        renderer->blend_mode_set = false;
     g_frame_counter++;
-    g_debug_frame_count++;
-
-    // Clear needs_relayout flag after each frame (full redraw already happens every frame)
     renderer->needs_relayout = false;
 
-    /* Calculate delta time for animations */
-    double current_time = SDL_GetTicks() / 1000.0;
-    float delta_time = (float)(current_time - renderer->last_frame_time);
+    // Calculate delta time for animations (platform-agnostic timing)
+    // Note: This uses a simple frame counter for now; backends can provide better timing
+    static double last_time = 0;
+    double current_time = (double)g_frame_counter / 60.0; // Assume 60 FPS for now
+    float delta_time = (float)(current_time - last_time);
+    last_time = current_time;
 
-    /* Update animation contexts */
+    // Update animation contexts
     if (renderer->animation_ctx) {
         ir_animation_update(renderer->animation_ctx, delta_time);
     }
     ir_animation_tree_update(root, (float)current_time);
 
-    /* Clear screen */
-    if (root->style) {
-        SDL_Color bg = ir_color_to_sdl(root->style->background);
-        SDL_SetRenderDrawColor(renderer->renderer, bg.r, bg.g, bg.b, bg.a);
-    } else {
-        SDL_SetRenderDrawColor(renderer->renderer, 240, 240, 240, 255);
-    }
-    SDL_RenderClear(renderer->renderer);
+    // Compute layout using two-pass system before rendering
+    ir_layout_compute_tree(root, (float)renderer->config.window_width,
+                           (float)renderer->config.window_height);
 
-    /* Get window size and render root component */
-    int window_width = renderer->config.window_width;
-    int window_height = renderer->config.window_height;
-    SDL_GetWindowSize(renderer->window, &window_width, &window_height);
-
-    /* Compute layout using two-pass system before rendering */
-    ir_layout_compute_tree(root, (float)window_width, (float)window_height);
-
-    LayoutRect root_rect = {
-        .x = 0, .y = 0,
-        .width = (float)window_width,
-        .height = (float)window_height
-    };
-
-    /* Generate rendering commands from IR component tree */
-    kryon_cmd_buf_t cmd_buf;
-    kryon_cmd_buf_init(&cmd_buf);
-
-    if (!ir_component_to_commands(root, &cmd_buf, &root_rect, 1.0f)) {
-        fprintf(stderr, "Failed to generate rendering commands\n");
+    // Render via ops table
+    if (!renderer->ops->begin_frame(renderer)) {
         return false;
     }
 
-    /* Debug: Show command buffer stats */
-    fprintf(stderr, "[CMD_BUF] Used %u bytes, head=%u, tail=%u, overflow=%d\n",
-            cmd_buf.count, cmd_buf.head, cmd_buf.tail, cmd_buf.overflow);
-
-    /* Execute commands using kryon renderer backend */
-    if (renderer->kryon_renderer) {
-        renderer->kryon_renderer->ops->execute_commands(renderer->kryon_renderer, &cmd_buf);
-    } else {
-        fprintf(stderr, "Warning: No kryon_renderer available for command execution\n");
+    if (!renderer->ops->render_component(renderer, root)) {
+        return false;
     }
 
-    /* Handle screenshot capture BEFORE present */
-    if (renderer->screenshot_path[0] != '\0' && !renderer->screenshot_taken) {
-        renderer->frames_since_start++;
-        if (renderer->frames_since_start >= renderer->screenshot_after_frames) {
-            kryon_sdl3_save_screenshot(renderer->kryon_renderer, renderer->screenshot_path);
-            renderer->screenshot_taken = true;
+    renderer->ops->end_frame(renderer);
 
-            /* Exit if headless mode is enabled */
-            if (renderer->headless_mode) {
-                printf("Headless mode: Screenshot taken, exiting\n");
-                renderer->running = false;
-            }
-        }
-    }
-
-    /* Present frame and update stats */
-    SDL_RenderPresent(renderer->renderer);
-
+    // Update frame stats
     renderer->frame_count++;
-    double fps_delta = current_time - renderer->last_frame_time;
-    if (fps_delta > 0.1) {
-        renderer->fps = renderer->frame_count / fps_delta;
-        renderer->frame_count = 0;
-    }
+    renderer->last_frame_time = current_time;
 
-        renderer->last_frame_time = current_time;
-        return true;
-    }
-#endif
-
-#ifdef ENABLE_RAYLIB
-    if (renderer->config.backend_type == DESKTOP_BACKEND_RAYLIB) {
-        /* Compute layout before rendering */
-        ir_layout_compute_tree(root, (float)renderer->window_width, (float)renderer->window_height);
-
-        return render_frame_raylib(renderer, root);
-    }
-#endif
-
-    return false;
+    return true;
 }
 
 bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent* root) {
@@ -556,139 +245,50 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
         return false;
     }
 
+    if (!renderer->ops) {
+        fprintf(stderr, "Error: No backend ops table available\n");
+        return false;
+    }
+
     printf("Starting desktop main loop\n");
     renderer->running = true;
     renderer->last_root = root;
 
-#ifdef ENABLE_SDL3
-    // Initialize test event queue if test mode enabled
-    TestEventQueue* test_queue = NULL;
-    const char* test_mode = getenv("KRYON_TEST_MODE");
-    const char* test_events_file = getenv("KRYON_TEST_EVENTS");
-    if (test_mode && strcmp(test_mode, "1") == 0 && test_events_file) {
-        test_queue = test_queue_init_from_file(test_events_file);
-        if (!test_queue) {
-            fprintf(stderr, "[renderer] Failed to load test events from %s\n", test_events_file);
-        }
-    }
-    SDL_ResetKeyboard();
-    SDL_PumpEvents();
-    SDL_FlushEvents(SDL_EVENT_FIRST, SDL_EVENT_LAST);
-
     while (renderer->running) {
-        // Process test events before SDL events
-        if (test_queue) {
-            test_queue_process(test_queue, renderer);
-
-            // Stop if all test events completed and in headless mode
-            if (!test_queue->enabled && renderer->headless_mode) {
-                printf("[renderer] Test events completed in headless mode, exiting\n");
-                renderer->running = false;
-                break;
-            }
+        // Poll events via ops table
+        if (renderer->ops->poll_events) {
+            renderer->ops->poll_events(renderer);
         }
 
-        handle_sdl3_events(renderer);
-
-        /* Process reactive updates */
+        // Process reactive updates (platform-agnostic)
         if (nimProcessReactiveUpdates) {
             nimProcessReactiveUpdates();
         }
 
-        /* Check for style variable changes */
+        // Check for style variable changes
         if (ir_style_vars_is_dirty()) {
             ir_style_vars_clear_dirty();
         }
 
-        /* Hot reload polling */
+        // Hot reload polling
         if (renderer->hot_reload_enabled && renderer->hot_reload_ctx) {
             ir_file_watcher_poll(ir_hot_reload_get_watcher(renderer->hot_reload_ctx), 0);
         }
 
+        // Render frame
         if (!desktop_ir_renderer_render_frame(renderer, renderer->last_root)) {
             printf("Frame rendering failed\n");
             break;
         }
 
-        /* Frame rate limiting */
-        if (renderer->config.target_fps > 0) {
-            SDL_Delay(1000 / renderer->config.target_fps);
-        } else {
-            SDL_Delay(1);  // Minimum delay to allow event processing
-        }
+        // Simple frame rate limiting (could be backend-specific in future)
+        // Note: Backends may implement their own FPS control in end_frame
+        #ifdef _WIN32
+        Sleep(1);
+        #else
+        usleep(1000);
+        #endif
     }
-
-    // Cleanup test event queue
-    if (test_queue) {
-        test_queue_free(test_queue);
-    }
-#endif
-
-#ifdef ENABLE_RAYLIB
-    // Raylib main loop
-    while (renderer->running && !WindowShouldClose()) {
-        /* Handle keyboard input */
-        if (IsKeyPressed(KEY_ESCAPE)) {
-            renderer->running = false;
-            break;
-        }
-
-        /* Handle mouse input */
-        Vector2 mouse_pos = GetMousePosition();
-
-        // Find component under mouse
-        IRComponent* hovered = ir_find_component_at_point(renderer->last_root, mouse_pos.x, mouse_pos.y);
-        g_hovered_component = hovered;  // Update global hover state
-        bool is_hovering = hovered && (hovered->type == IR_COMPONENT_BUTTON || hovered->type == IR_COMPONENT_INPUT);
-
-        // Update cursor
-        if (is_hovering) {
-            SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
-        } else {
-            SetMouseCursor(MOUSE_CURSOR_DEFAULT);
-        }
-
-        // Handle click events
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && hovered) {
-            printf("[renderer] Mouse clicked on component id=%u type=%d\n", hovered->id, hovered->type);
-            if (hovered->type == IR_COMPONENT_BUTTON) {
-                printf("[renderer] Component is a button, looking for click event...\n");
-                // Find and trigger click event
-                IREvent* ir_event = ir_find_event(hovered, IR_EVENT_CLICK);
-                if (ir_event && ir_event->logic_id) {
-                    printf("[renderer] Found event with logic_id=%s, calling event bridge\n", ir_event->logic_id);
-                    // Call C event bridge for native C event handlers
-                    extern void kryon_c_event_bridge(const char* logic_id);
-                    kryon_c_event_bridge(ir_event->logic_id);
-                } else {
-                    printf("[renderer] No click event found on button\n");
-                }
-            } else {
-                printf("[renderer] Component is not a button (type=%d), skipping\n", hovered->type);
-            }
-        }
-
-        /* Process reactive updates */
-        if (nimProcessReactiveUpdates) {
-            nimProcessReactiveUpdates();
-        }
-
-        /* Check for style variable changes */
-        if (ir_style_vars_is_dirty()) {
-            ir_style_vars_clear_dirty();
-        }
-
-        /* Hot reload polling */
-        if (renderer->hot_reload_enabled && renderer->hot_reload_ctx) {
-            ir_file_watcher_poll(ir_hot_reload_get_watcher(renderer->hot_reload_ctx), 0);
-        }
-
-        if (!desktop_ir_renderer_render_frame(renderer, renderer->last_root)) {
-            printf("Frame rendering failed\n");
-            break;
-        }
-    }
-#endif
 
     printf("Desktop main loop ended\n");
     return true;
