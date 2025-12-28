@@ -76,6 +76,15 @@ void raylib_text_measure_callback(const char* text, const char* font_family,
 void raylib_handle_input_events(DesktopIRRenderer* renderer, IRComponent* root);
 
 // ============================================================================
+// RAYLIB BACKEND REGISTRATION
+// ============================================================================
+
+/**
+ * Register Raylib backend (call once at startup before creating renderer)
+ */
+void raylib_backend_register(void);
+
+// ============================================================================
 // RAYLIB OPERATIONS
 // ============================================================================
 

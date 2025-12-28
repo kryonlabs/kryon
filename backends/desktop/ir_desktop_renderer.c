@@ -28,6 +28,14 @@
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_builder.h"
 #include "../../ir/ir_animation.h"
+
+// Backend renderer headers for explicit registration
+#ifdef ENABLE_SDL3
+#include "renderers/sdl3/sdl3_renderer.h"
+#endif
+#ifdef ENABLE_RAYLIB
+#include "renderers/raylib/raylib_renderer.h"
+#endif
 #include "../../ir/ir_hot_reload.h"
 #include "../../ir/ir_style_vars.h"
 #include "../../ir/ir_executor.h"
@@ -74,6 +82,19 @@ void desktop_ir_set_default_font(const char* name) {
 
 DesktopIRRenderer* desktop_ir_renderer_create(const DesktopRendererConfig* config) {
     if (!config) return NULL;
+
+    // Register backends explicitly (static library constructors don't auto-run)
+    static bool backends_registered = false;
+    if (!backends_registered) {
+        printf("[desktop_platform] Registering backends...\n");
+#ifdef ENABLE_SDL3
+        sdl3_backend_register();
+#endif
+#ifdef ENABLE_RAYLIB
+        raylib_backend_register();
+#endif
+        backends_registered = true;
+    }
 
     DesktopIRRenderer* renderer = malloc(sizeof(DesktopIRRenderer));
     if (!renderer) return NULL;

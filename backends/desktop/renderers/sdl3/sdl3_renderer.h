@@ -36,8 +36,13 @@ typedef struct {
 } SDL3RendererData;
 
 /**
+ * Register SDL3 backend (call once at startup before creating renderer)
+ */
+void sdl3_backend_register(void);
+
+/**
  * Get the SDL3 operations table
- * Called by desktop_register_backend() during auto-registration
+ * Called by desktop_register_backend() during registration
  *
  * @return Operations table for SDL3 renderer
  */

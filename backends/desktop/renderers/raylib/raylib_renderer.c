@@ -390,11 +390,13 @@ DesktopRendererOps* desktop_raylib_get_ops(void) {
 }
 
 // ============================================================================
-// AUTO-REGISTRATION
+// Backend Registration
 // ============================================================================
 
-__attribute__((constructor))
-static void raylib_register(void) {
+/**
+ * Register Raylib backend (must be called explicitly before use)
+ */
+void raylib_backend_register(void) {
     desktop_register_backend(DESKTOP_BACKEND_RAYLIB, &g_raylib_ops);
     printf("[raylib] Backend registered\n");
 }

@@ -92,9 +92,9 @@ ffi.cdef[[
   // Dimension Types
   // ============================================================================
   typedef enum {
-    IR_DIMENSION_PX = 0,
-    IR_DIMENSION_PERCENT = 1,
-    IR_DIMENSION_AUTO = 2,
+    IR_DIMENSION_AUTO = 0,
+    IR_DIMENSION_PX = 1,
+    IR_DIMENSION_PERCENT = 2,
     IR_DIMENSION_FLEX = 3,
     IR_DIMENSION_VW = 4,
     IR_DIMENSION_VH = 5,
@@ -229,13 +229,13 @@ ffi.cdef[[
   // ============================================================================
   // Style Property Setters (ir_builder.h)
   // ============================================================================
-  void ir_set_width(IRStyle* style, IRDimensionType type, float value);
-  void ir_set_height(IRStyle* style, IRDimensionType type, float value);
+  void ir_set_width(IRComponent* component, IRDimensionType type, float value);
+  void ir_set_height(IRComponent* component, IRDimensionType type, float value);
   void ir_set_visible(IRStyle* style, bool visible);
   void ir_set_background_color(IRStyle* style, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
   void ir_set_border(IRStyle* style, float width, uint8_t r, uint8_t g, uint8_t b, uint8_t a, uint8_t radius);
-  void ir_set_margin(IRStyle* style, float top, float right, float bottom, float left);
-  void ir_set_padding(IRStyle* style, float top, float right, float bottom, float left);
+  void ir_set_margin(IRComponent* component, float top, float right, float bottom, float left);
+  void ir_set_padding(IRComponent* component, float top, float right, float bottom, float left);
   void ir_set_font(IRStyle* style, float size, const char* family, uint8_t r, uint8_t g, uint8_t b, uint8_t a, bool bold, bool italic);
   void ir_set_z_index(IRStyle* style, uint32_t z_index);
   void ir_set_opacity(IRStyle* style, float opacity);

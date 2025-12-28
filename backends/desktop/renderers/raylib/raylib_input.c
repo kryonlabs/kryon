@@ -22,6 +22,9 @@ extern InputRuntimeState* get_input_state(uint32_t id);
 extern IRComponent* find_dropdown_menu_at_point(IRComponent* root, float x, float y);
 extern void collect_open_dropdowns(IRComponent* component, IRComponent** dropdown_list, int* count, int max_count);
 
+// Forward declaration from C bindings event bridge
+extern void kryon_c_event_bridge(const char* logic_id);
+
 // ============================================================================
 // HIT TESTING
 // ============================================================================
@@ -69,16 +72,22 @@ static IRComponent* find_component_at_point(IRComponent* component, float x, flo
 static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, float x, float y) {
     if (!renderer || !root) return;
 
-    // Find component at click point
-    IRComponent* clicked = find_component_at_point(root, x, y);
+    printf("[raylib] Mouse click at (%.0f, %.0f)\n", x, y);
+
+    // FIRST: Check if clicking on any open dropdown menu overlay
+    IRComponent* clicked = find_dropdown_menu_at_point(root, x, y);
 
     if (!clicked) {
-        printf("[raylib] Click at (%.0f, %.0f) - no component\n", x, y);
+        // SECOND: Find regular component at click point
+        clicked = find_component_at_point(root, x, y);
+    }
+
+    if (!clicked) {
+        printf("[raylib] No component found at click point\n");
         return;
     }
 
-    printf("[raylib] Clicked component ID=%u type=%d at (%.0f, %.0f)\n",
-           clicked->id, clicked->type, x, y);
+    printf("[raylib] Clicked component ID=%u type=%d\n", clicked->id, clicked->type);
 
     // Find and trigger IR_EVENT_CLICK handler
     IREvent* ir_event = ir_find_event(clicked, IR_EVENT_CLICK);
@@ -87,62 +96,46 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
     switch (clicked->type) {
         case IR_COMPONENT_BUTTON: {
             if (ir_event && ir_event->logic_id) {
-                printf("[raylib] Button %u clicked (logic_id=%s)\n", clicked->id, ir_event->logic_id);
-
-                // Check if this is a Nim button handler
+                // Nim button handler
                 if (strncmp(ir_event->logic_id, "nim_button_", 11) == 0) {
                     IRExecutorContext* executor = ir_executor_get_global();
                     if (executor) {
                         ir_executor_set_root(executor, renderer->last_root);
                         ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
-                    } else {
-                        printf("[raylib] Warning: No executor for button %u\n", clicked->id);
                     }
                 }
-                // Check if this is a Lua event handler
+                // Lua event handler
                 else if (strncmp(ir_event->logic_id, "lua_event_", 10) == 0) {
                     uint32_t handler_id = 0;
                     if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
                         if (renderer->lua_event_callback) {
-                            printf("[raylib] Calling Lua handler %u for component %u\n",
-                                   handler_id, clicked->id);
                             renderer->lua_event_callback(handler_id, IR_EVENT_CLICK);
-                        } else {
-                            printf("[raylib] Warning: Lua event detected but no callback registered\n");
                         }
-                    } else {
-                        printf("[raylib] Warning: Failed to parse handler ID from logic_id: %s\n",
-                               ir_event->logic_id);
                     }
                 }
-                // Generic logic_id - handle via executor
+                // C event (c_click_*, c_change_*, etc.)
+                else if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
+                    kryon_c_event_bridge(ir_event->logic_id);
+                }
+                // Generic fallback - try executor
                 else {
-                    printf("[raylib] Click on component ID %u (logic: %s)\n",
-                           clicked->id, ir_event->logic_id);
                     IRExecutorContext* executor = ir_executor_get_global();
                     if (executor) {
                         ir_executor_set_root(executor, renderer->last_root);
                         ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
                     }
                 }
-            } else {
-                printf("[raylib] Warning: Button %u has no click event\n", clicked->id);
             }
+            // No else clause - buttons without events are valid
             break;
         }
 
         case IR_COMPONENT_CHECKBOX: {
             if (ir_event && ir_event->logic_id) {
-                // Toggle checkbox state (uses IR core function)
+                // Toggle checkbox state FIRST (before calling handlers)
                 ir_toggle_checkbox_state(clicked);
 
-                bool is_checked = ir_get_checkbox_state(clicked);
-                printf("[raylib] Checkbox %u toggled to %s (logic_id=%s)\n",
-                       clicked->id,
-                       is_checked ? "checked" : "unchecked",
-                       ir_event->logic_id);
-
-                // Check if this is a Nim checkbox handler
+                // Nim checkbox handler
                 if (strncmp(ir_event->logic_id, "nim_checkbox_", 13) == 0) {
                     IRExecutorContext* executor = ir_executor_get_global();
                     if (executor) {
@@ -150,7 +143,20 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
                         ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
                     }
                 }
-                // Generic logic_id - handle via executor
+                // Lua event handler (ADDED - was missing!)
+                else if (strncmp(ir_event->logic_id, "lua_event_", 10) == 0) {
+                    uint32_t handler_id = 0;
+                    if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
+                        if (renderer->lua_event_callback) {
+                            renderer->lua_event_callback(handler_id, IR_EVENT_CLICK);
+                        }
+                    }
+                }
+                // C event
+                else if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
+                    kryon_c_event_bridge(ir_event->logic_id);
+                }
+                // Generic fallback - try executor
                 else {
                     IRExecutorContext* executor = ir_executor_get_global();
                     if (executor) {
@@ -161,57 +167,107 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
             } else {
                 // No event handler - just toggle state
                 ir_toggle_checkbox_state(clicked);
-                bool is_checked = ir_get_checkbox_state(clicked);
-                printf("[raylib] Checkbox %u toggled to %s (no handler)\n",
-                       clicked->id,
-                       is_checked ? "checked" : "unchecked");
             }
             break;
         }
 
         case IR_COMPONENT_DROPDOWN: {
-            if (ir_event && ir_event->logic_id) {
-                IRDropdownState* state = ir_get_dropdown_state(clicked);
-                if (state) {
-                    if (state->is_open) {
-                        // Close the dropdown
-                        ir_set_dropdown_open_state(clicked, false);
-                        printf("[raylib] Dropdown %u closed (logic_id=%s)\n",
-                               clicked->id, ir_event->logic_id);
-                    } else {
-                        // Open the dropdown
-                        ir_set_dropdown_open_state(clicked, true);
-                        printf("[raylib] Dropdown %u opened (logic_id=%s)\n",
-                               clicked->id, ir_event->logic_id);
-                    }
+            IRDropdownState* state = ir_get_dropdown_state(clicked);
+            if (!state) break;
 
-                    // Check if this is a Nim dropdown handler
-                    if (strncmp(ir_event->logic_id, "nim_dropdown_", 13) == 0) {
-                        IRExecutorContext* executor = ir_executor_get_global();
-                        if (executor) {
-                            ir_executor_set_root(executor, renderer->last_root);
-                            ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
+            // Check if clicking on dropdown menu overlay (when open)
+            if (state->is_open) {
+                IRRenderedBounds bounds = clicked->rendered_bounds;
+                float menu_y = bounds.y + bounds.height;
+                float menu_height = state->option_count * 35.0f; // Standard option height
+
+                // Check if click is within menu bounds
+                if (y >= menu_y && y < menu_y + menu_height) {
+                    // Calculate which option was clicked
+                    uint32_t option_index = (uint32_t)((y - menu_y) / 35.0f);
+
+                    if (option_index < state->option_count) {
+                        // Valid option clicked - select it
+                        ir_set_dropdown_selected_index(clicked, (int32_t)option_index);
+                        ir_set_dropdown_open_state(clicked, false); // Close menu
+
+                        // Fire event if handler exists
+                        if (ir_event && ir_event->logic_id) {
+                            // Nim dropdown handler
+                            if (strncmp(ir_event->logic_id, "nim_dropdown_", 13) == 0) {
+                                IRExecutorContext* executor = ir_executor_get_global();
+                                if (executor) {
+                                    ir_executor_set_root(executor, renderer->last_root);
+                                    ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
+                                }
+                            }
+                            // Lua event handler (ADDED - was missing!)
+                            else if (strncmp(ir_event->logic_id, "lua_event_", 10) == 0) {
+                                uint32_t handler_id = 0;
+                                if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
+                                    if (renderer->lua_event_callback) {
+                                        renderer->lua_event_callback(handler_id, IR_EVENT_CLICK);
+                                    }
+                                }
+                            }
+                            // C event
+                            else if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
+                                kryon_c_event_bridge(ir_event->logic_id);
+                            }
+                            // Generic fallback - try executor
+                            else {
+                                IRExecutorContext* executor = ir_executor_get_global();
+                                if (executor) {
+                                    ir_executor_set_root(executor, renderer->last_root);
+                                    ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
+                                }
+                            }
                         }
+                        return; // Done - option selected
                     }
-                    // Generic logic_id - handle via executor
-                    else {
-                        IRExecutorContext* executor = ir_executor_get_global();
-                        if (executor) {
-                            ir_executor_set_root(executor, renderer->last_root);
-                            ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
+                } else {
+                    // Click outside menu - just close it
+                    ir_set_dropdown_open_state(clicked, false);
+                    return;
+                }
+            }
+
+            // Clicking on dropdown header (not menu) - toggle open/closed
+            if (state->is_open) {
+                ir_set_dropdown_open_state(clicked, false);
+            } else {
+                ir_set_dropdown_open_state(clicked, true);
+            }
+
+            // Fire event for toggle action
+            if (ir_event && ir_event->logic_id) {
+                // Nim dropdown handler
+                if (strncmp(ir_event->logic_id, "nim_dropdown_", 13) == 0) {
+                    IRExecutorContext* executor = ir_executor_get_global();
+                    if (executor) {
+                        ir_executor_set_root(executor, renderer->last_root);
+                        ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
+                    }
+                }
+                // Lua event handler
+                else if (strncmp(ir_event->logic_id, "lua_event_", 10) == 0) {
+                    uint32_t handler_id = 0;
+                    if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
+                        if (renderer->lua_event_callback) {
+                            renderer->lua_event_callback(handler_id, IR_EVENT_CLICK);
                         }
                     }
                 }
-            } else {
-                // No event handler - just toggle state
-                IRDropdownState* state = ir_get_dropdown_state(clicked);
-                if (state) {
-                    if (state->is_open) {
-                        ir_set_dropdown_open_state(clicked, false);
-                        printf("[raylib] Dropdown %u closed (no handler)\n", clicked->id);
-                    } else {
-                        ir_set_dropdown_open_state(clicked, true);
-                        printf("[raylib] Dropdown %u opened (no handler)\n", clicked->id);
+                // C event
+                else if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
+                    kryon_c_event_bridge(ir_event->logic_id);
+                }
+                // Generic fallback - try executor
+                else {
+                    IRExecutorContext* executor = ir_executor_get_global();
+                    if (executor) {
+                        ir_executor_set_root(executor, renderer->last_root);
+                        ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
                     }
                 }
             }
@@ -304,14 +360,21 @@ static void handle_keyboard_keys(DesktopIRRenderer* renderer, IRComponent* root)
 void raylib_handle_input_events(DesktopIRRenderer* renderer, IRComponent* root) {
     if (!renderer || !root) return;
 
+    static int frame_count = 0;
+    if (frame_count++ % 60 == 0) {
+        printf("[raylib] Event polling active (frame %d)\n", frame_count);
+    }
+
     // Check for window close
     if (WindowShouldClose()) {
+        printf("[raylib] Window close requested\n");
         renderer->running = false;
         return;
     }
 
     // Handle mouse button clicks
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        printf("[raylib] Mouse button pressed detected\n");
         Vector2 mouse_pos = GetMousePosition();
         handle_mouse_click(renderer, root, mouse_pos.x, mouse_pos.y);
     }

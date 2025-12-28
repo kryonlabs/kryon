@@ -280,12 +280,14 @@ local function applyProperties(component, props)
 
     -- ========== Dimensions ==========
     if key == "width" then
+      ensureStyle()
       local dimType, dimValue = parseDimension(value)
-      C.ir_set_width(ensureStyle(), dimType, dimValue)
+      C.ir_set_width(component, dimType, dimValue)
 
     elseif key == "height" then
+      ensureStyle()
       local dimType, dimValue = parseDimension(value)
-      C.ir_set_height(ensureStyle(), dimType, dimValue)
+      C.ir_set_height(component, dimType, dimValue)
 
     elseif key == "minWidth" then
       local dimType, dimValue = parseDimension(value)
@@ -304,7 +306,7 @@ local function applyProperties(component, props)
       C.ir_set_max_height(ensureLayout(), dimType, dimValue)
 
     -- ========== Colors ==========
-    elseif key == "backgroundColor" or key == "bgColor" then
+    elseif key == "backgroundColor" or key == "bgColor" or key == "background" then
       local r, g, b, a = parseColor(value)
       C.ir_set_background_color(ensureStyle(), r, g, b, a)
 
@@ -321,12 +323,14 @@ local function applyProperties(component, props)
 
     -- ========== Spacing ==========
     elseif key == "padding" then
+      ensureStyle()
       local t, r, b, l = parseSpacing(value)
-      C.ir_set_padding(ensureStyle(), t, r, b, l)
+      C.ir_set_padding(component, t, r, b, l)
 
     elseif key == "margin" then
+      ensureStyle()
       local t, r, b, l = parseSpacing(value)
-      C.ir_set_margin(ensureStyle(), t, r, b, l)
+      C.ir_set_margin(component, t, r, b, l)
 
     elseif key == "gap" then
       local _, gapValue = parseDimension(value)

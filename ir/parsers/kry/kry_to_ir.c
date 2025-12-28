@@ -22,7 +22,8 @@
 
 typedef struct {
     char* name;
-    char* value;  // String representation of the value
+    char* value;       // String representation of the value (for simple types)
+    KryValue* kry_value;  // Full KryValue for arrays/objects (NULL for simple types)
 } ParamSubstitution;
 
 typedef struct {
@@ -125,12 +126,23 @@ static void parse_arguments(ConversionContext* ctx, const char* args, KryNode* d
     }
 }
 
-// Helper function to add a parameter substitution
+// Helper function to add a parameter substitution (string value)
 static void add_param(ConversionContext* ctx, const char* name, const char* value) {
     if (!ctx || !name || !value || ctx->param_count >= MAX_PARAMS) return;
 
     ctx->params[ctx->param_count].name = (char*)name;
     ctx->params[ctx->param_count].value = (char*)value;
+    ctx->params[ctx->param_count].kry_value = NULL;  // Simple string value
+    ctx->param_count++;
+}
+
+// Helper function to add a parameter substitution (KryValue for arrays/objects)
+static void add_param_value(ConversionContext* ctx, const char* name, KryValue* value) {
+    if (!ctx || !name || !value || ctx->param_count >= MAX_PARAMS) return;
+
+    ctx->params[ctx->param_count].name = (char*)name;
+    ctx->params[ctx->param_count].value = NULL;      // No string representation
+    ctx->params[ctx->param_count].kry_value = value;  // Store full KryValue
     ctx->param_count++;
 }
 
@@ -141,13 +153,18 @@ static void add_param(ConversionContext* ctx, const char* name, const char* valu
 static const char* substitute_param(ConversionContext* ctx, const char* expr) {
     if (!ctx || !expr) return expr;
 
+    printf("[SUBSTITUTE_PARAM] Looking for '%s' in %d params\n", expr, ctx->param_count);
     // Check if expression is a parameter reference
     for (int i = 0; i < ctx->param_count; i++) {
+        printf("[SUBSTITUTE_PARAM]   param[%d]: name='%s', value='%s'\n",
+               i, ctx->params[i].name, ctx->params[i].value ? ctx->params[i].value : "NULL");
         if (strcmp(expr, ctx->params[i].name) == 0) {
+            printf("[SUBSTITUTE_PARAM]   MATCH! Returning '%s'\n", ctx->params[i].value);
             return ctx->params[i].value;
         }
     }
 
+    printf("[SUBSTITUTE_PARAM] No match found, returning original\n");
     return expr;  // No substitution found
 }
 
@@ -254,14 +271,29 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
 
     // Text content
     if (strcmp(name, "text") == 0) {
+        printf("[APPLY_PROPERTY] text property, value type=%d\n", value->type);
+        printf("[APPLY_PROPERTY]   STRING=%d, IDENTIFIER=%d, EXPRESSION=%d\n",
+               KRY_VALUE_STRING, KRY_VALUE_IDENTIFIER, KRY_VALUE_EXPRESSION);
         if (value->type == KRY_VALUE_STRING) {
+            printf("[APPLY_PROPERTY]   Setting text to string: %s\n", value->string_value);
             ir_set_text_content(component, value->string_value);
             return;
-        } else if (value->type == KRY_VALUE_EXPRESSION) {
-            // Handle expressions - apply parameter substitution
-            const char* substituted = substitute_param(ctx, value->expression);
+        } else if (value->type == KRY_VALUE_IDENTIFIER) {
+            printf("[APPLY_PROPERTY]   Identifier: %s\n", value->identifier);
+            // Handle identifiers - apply parameter substitution (for variables like item.name)
+            const char* substituted = substitute_param(ctx, value->identifier);
+            printf("[APPLY_PROPERTY]   Substituted to: %s\n", substituted);
             ir_set_text_content(component, substituted);
             return;
+        } else if (value->type == KRY_VALUE_EXPRESSION) {
+            printf("[APPLY_PROPERTY]   Expression: %s\n", value->expression);
+            // Handle expressions - apply parameter substitution
+            const char* substituted = substitute_param(ctx, value->expression);
+            printf("[APPLY_PROPERTY]   Substituted to: %s\n", substituted);
+            ir_set_text_content(component, substituted);
+            return;
+        } else {
+            printf("[APPLY_PROPERTY]   Unknown type %d\n", value->type);
         }
     }
 
@@ -443,6 +475,10 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
         if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER) {
             const char* color_str = value->type == KRY_VALUE_STRING ?
                                     value->string_value : value->identifier;
+            // Apply parameter substitution for identifiers (e.g., item.colors[0])
+            if (value->type == KRY_VALUE_IDENTIFIER) {
+                color_str = substitute_param(ctx, color_str);
+            }
             uint32_t color = parse_color(color_str);
             ir_set_background_color(style,
                 (color >> 24) & 0xFF,
@@ -457,6 +493,10 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
         if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER) {
             const char* color_str = value->type == KRY_VALUE_STRING ?
                                     value->string_value : value->identifier;
+            // Apply parameter substitution for identifiers
+            if (value->type == KRY_VALUE_IDENTIFIER) {
+                color_str = substitute_param(ctx, color_str);
+            }
             uint32_t color = parse_color(color_str);
             style->font.color.type = IR_COLOR_SOLID;
             style->font.color.data.r = (color >> 24) & 0xFF;
@@ -471,6 +511,10 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
         if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER) {
             const char* color_str = value->type == KRY_VALUE_STRING ?
                                     value->string_value : value->identifier;
+            // Apply parameter substitution for identifiers
+            if (value->type == KRY_VALUE_IDENTIFIER) {
+                color_str = substitute_param(ctx, color_str);
+            }
             uint32_t color = parse_color(color_str);
             style->border.color.type = IR_COLOR_SOLID;
             style->border.color.data.r = (color >> 24) & 0xFF;
@@ -523,6 +567,10 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
         if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER) {
             const char* justify = value->type == KRY_VALUE_STRING ?
                                  value->string_value : value->identifier;
+            // Apply parameter substitution for identifiers (e.g., item.value)
+            if (value->type == KRY_VALUE_IDENTIFIER) {
+                justify = substitute_param(ctx, justify);
+            }
             IRAlignment alignment = IR_ALIGNMENT_START;
             if (strcmp(justify, "center") == 0) {
                 alignment = IR_ALIGNMENT_CENTER;
@@ -530,6 +578,12 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 alignment = IR_ALIGNMENT_START;
             } else if (strcmp(justify, "end") == 0) {
                 alignment = IR_ALIGNMENT_END;
+            } else if (strcmp(justify, "spaceEvenly") == 0) {
+                alignment = IR_ALIGNMENT_SPACE_EVENLY;
+            } else if (strcmp(justify, "spaceAround") == 0) {
+                alignment = IR_ALIGNMENT_SPACE_AROUND;
+            } else if (strcmp(justify, "spaceBetween") == 0) {
+                alignment = IR_ALIGNMENT_SPACE_BETWEEN;
             }
 
             // Ensure layout exists
@@ -556,6 +610,14 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             IRLayout* layout = ir_get_layout(component);
             if (layout) {
                 layout->flex.gap = (uint32_t)value->number_value;
+            }
+        } else if (value->type == KRY_VALUE_IDENTIFIER) {
+            // Handle identifiers (e.g., item.gap)
+            const char* gap_str = substitute_param(ctx, value->identifier);
+            float gap_value = (float)atof(gap_str);
+            IRLayout* layout = ir_get_layout(component);
+            if (layout) {
+                layout->flex.gap = (uint32_t)gap_value;
             }
         }
         return;
@@ -727,31 +789,39 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
                 // e.g., if iterator is "item" and object has "name" property,
                 // store "item.name" → value
                 for (size_t j = 0; j < element->object.count; j++) {
-                    char param_name[256];
-                    snprintf(param_name, sizeof(param_name), "%s.%s", iter_name, element->object.keys[j]);
+                    char param_name_buf[256];
+                    snprintf(param_name_buf, sizeof(param_name_buf), "%s.%s", iter_name, element->object.keys[j]);
+                    char* param_name = (char*)malloc(strlen(param_name_buf) + 1);
+                    strcpy(param_name, param_name_buf);
 
                     KryValue* prop_value = element->object.values[j];
                     if (prop_value->type == KRY_VALUE_STRING) {
                         add_param(&loop_ctx, param_name, prop_value->string_value);
                     } else if (prop_value->type == KRY_VALUE_NUMBER) {
-                        char num_buf[32];
-                        snprintf(num_buf, sizeof(num_buf), "%g", prop_value->number_value);
+                        char num_buf_tmp[32];
+                        snprintf(num_buf_tmp, sizeof(num_buf_tmp), "%g", prop_value->number_value);
+                        char* num_buf = (char*)malloc(strlen(num_buf_tmp) + 1);
+                        strcpy(num_buf, num_buf_tmp);
                         add_param(&loop_ctx, param_name, num_buf);
                     } else if (prop_value->type == KRY_VALUE_IDENTIFIER) {
                         add_param(&loop_ctx, param_name, prop_value->identifier);
                     } else if (prop_value->type == KRY_VALUE_ARRAY) {
                         // Handle nested arrays (e.g., item.colors[0])
                         for (size_t k = 0; k < prop_value->array.count; k++) {
-                            char array_param_name[256];
-                            snprintf(array_param_name, sizeof(array_param_name), "%s.%s[%zu]",
+                            char array_param_name_buf[256];
+                            snprintf(array_param_name_buf, sizeof(array_param_name_buf), "%s.%s[%zu]",
                                      iter_name, element->object.keys[j], k);
+                            char* array_param_name = (char*)malloc(strlen(array_param_name_buf) + 1);
+                            strcpy(array_param_name, array_param_name_buf);
 
                             KryValue* array_elem = prop_value->array.elements[k];
                             if (array_elem->type == KRY_VALUE_STRING) {
                                 add_param(&loop_ctx, array_param_name, array_elem->string_value);
                             } else if (array_elem->type == KRY_VALUE_NUMBER) {
-                                char num_buf[32];
-                                snprintf(num_buf, sizeof(num_buf), "%g", array_elem->number_value);
+                                char num_buf_tmp[32];
+                                snprintf(num_buf_tmp, sizeof(num_buf_tmp), "%g", array_elem->number_value);
+                                char* num_buf = (char*)malloc(strlen(num_buf_tmp) + 1);
+                                strcpy(num_buf, num_buf_tmp);
                                 add_param(&loop_ctx, array_param_name, num_buf);
                             } else if (array_elem->type == KRY_VALUE_IDENTIFIER) {
                                 add_param(&loop_ctx, array_param_name, array_elem->identifier);
@@ -779,10 +849,20 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
             ? collection->identifier
             : collection->expression;
 
-        // Try to find the variable in context
-        // TODO: Implement variable lookup in context
-        // For now, just skip if we can't resolve
-        (void)collection_name;  // Suppress unused warning
+        // Look up the variable in context
+        for (int i = 0; i < ctx->param_count; i++) {
+            if (strcmp(ctx->params[i].name, collection_name) == 0) {
+                // Found the variable - check if it's a KryValue
+                if (ctx->params[i].kry_value != NULL) {
+                    // Recursively call expand_for_loop with the resolved KryValue
+                    KryNode temp_for_node = *for_node;
+                    temp_for_node.value = ctx->params[i].kry_value;
+                    expand_for_loop(ctx, parent, &temp_for_node);
+                    return;
+                }
+                break;
+            }
+        }
     }
 }
 
@@ -827,6 +907,8 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
         while (child) {
             if (child->type == KRY_NODE_PROPERTY) {
                 // Apply property
+                printf("[CONVERT_NODE] Applying property '%s'\n", child->name);
+                fflush(stdout);
                 apply_property(ctx, component, child->name, child->value);
             } else if (child->type == KRY_NODE_COMPONENT) {
                 // Recursively convert child component
@@ -902,10 +984,8 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                     } else if (child->value->type == KRY_VALUE_EXPRESSION) {
                         var_value = child->value->expression;
                     } else if (child->value->type == KRY_VALUE_ARRAY || child->value->type == KRY_VALUE_OBJECT) {
-                        // For arrays and objects, store the node itself in the context
-                        // We'll handle these specially during substitution
-                        add_param(ctx, var_name, "<<array_or_object>>");
-                        // TODO: Store the actual array/object value in context for iteration
+                        // For arrays and objects, store the full KryValue in the context
+                        add_param_value(ctx, var_name, child->value);
                     }
                 }
 
@@ -926,7 +1006,6 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                         expand_for_loop(ctx, component, static_child);
                     } else if (static_child->type == KRY_NODE_VAR_DECL) {
                         // Process variable declaration in static context
-                        // (Already handled above - variables are stored in context)
                         const char* var_name = static_child->name;
                         const char* var_value = NULL;
 
@@ -937,6 +1016,15 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                                 static char num_buf[32];
                                 snprintf(num_buf, sizeof(num_buf), "%g", static_child->value->number_value);
                                 var_value = num_buf;
+                            } else if (static_child->value->type == KRY_VALUE_IDENTIFIER) {
+                                var_value = static_child->value->identifier;
+                            } else if (static_child->value->type == KRY_VALUE_EXPRESSION) {
+                                var_value = static_child->value->expression;
+                            } else if (static_child->value->type == KRY_VALUE_ARRAY ||
+                                       static_child->value->type == KRY_VALUE_OBJECT) {
+                                // For arrays and objects, store the full KryValue
+                                add_param_value(ctx, var_name, static_child->value);
+                                var_value = NULL;  // Don't add string value
                             }
                         }
 
