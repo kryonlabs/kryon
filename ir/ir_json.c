@@ -402,11 +402,14 @@ static cJSON* json_spacing_to_json(IRSpacing spacing) {
     return array;
 }
 
+// Forward declaration for property binding helper
+static bool has_property_binding(IRComponent* component, const char* property_name);
+
 // ============================================================================
 // Style Serialization
 // ============================================================================
 
-static void json_serialize_style(cJSON* obj, IRStyle* style) {
+static void json_serialize_style(cJSON* obj, IRStyle* style, IRComponent* component) {
     if (!style) return;
 
     // Only serialize non-default values for cleaner output
@@ -439,8 +442,8 @@ static void json_serialize_style(cJSON* obj, IRStyle* style) {
         cJSON_AddNumberToObject(obj, "zIndex", style->z_index);
     }
 
-    // Background color
-    if (style->background.type != IR_COLOR_TRANSPARENT) {
+    // Background color - always serialize if it has a binding
+    if (style->background.type != IR_COLOR_TRANSPARENT || has_property_binding(component, "background")) {
         char* colorStr = json_color_to_string(style->background);
         cJSON_AddStringToObject(obj, "background", colorStr);
         free(colorStr);
@@ -480,8 +483,8 @@ static void json_serialize_style(cJSON* obj, IRStyle* style) {
         cJSON_AddNumberToObject(obj, "top", style->absolute_y);
     }
 
-    // Typography
-    if (style->font.size > 0) {
+    // Typography - always serialize fontSize if it has a binding
+    if (style->font.size > 0 || has_property_binding(component, "fontSize")) {
         cJSON_AddNumberToObject(obj, "fontSize", style->font.size);
     }
 
@@ -501,7 +504,8 @@ static void json_serialize_style(cJSON* obj, IRStyle* style) {
         cJSON_AddBoolToObject(obj, "fontItalic", true);
     }
 
-    if (style->font.color.type != IR_COLOR_TRANSPARENT) {
+    // Text color - always serialize if it has a binding
+    if (style->font.color.type != IR_COLOR_TRANSPARENT || has_property_binding(component, "color")) {
         char* textColorStr = json_color_to_string(style->font.color);
         cJSON_AddStringToObject(obj, "color", textColorStr);
         free(textColorStr);
@@ -608,7 +612,7 @@ static void json_serialize_style(cJSON* obj, IRStyle* style) {
 // Layout Serialization
 // ============================================================================
 
-static void json_serialize_layout(cJSON* obj, IRLayout* layout) {
+static void json_serialize_layout(cJSON* obj, IRLayout* layout, IRComponent* component) {
     if (!layout) return;
 
     // Min/Max dimensions
@@ -665,7 +669,8 @@ static void json_serialize_layout(cJSON* obj, IRLayout* layout) {
         cJSON_AddStringToObject(obj, "unicodeBidi", bidiStr);
     }
 
-    if (layout->flex.justify_content != IR_ALIGNMENT_START) {
+    // Always serialize justifyContent if it has a binding, even if default value
+    if (layout->flex.justify_content != IR_ALIGNMENT_START || has_property_binding(component, "justifyContent")) {
         const char* justifyStr = "flex-start";
         switch (layout->flex.justify_content) {
             case IR_ALIGNMENT_CENTER: justifyStr = "center"; break;
@@ -678,7 +683,8 @@ static void json_serialize_layout(cJSON* obj, IRLayout* layout) {
         cJSON_AddStringToObject(obj, "justifyContent", justifyStr);
     }
 
-    if (layout->flex.cross_axis != IR_ALIGNMENT_START) {
+    // Always serialize alignItems if it has a binding, even if default value
+    if (layout->flex.cross_axis != IR_ALIGNMENT_START || has_property_binding(component, "alignItems")) {
         const char* alignStr = "flex-start";
         switch (layout->flex.cross_axis) {
             case IR_ALIGNMENT_CENTER: alignStr = "center"; break;
@@ -689,7 +695,8 @@ static void json_serialize_layout(cJSON* obj, IRLayout* layout) {
         cJSON_AddItemToObject(obj, "alignItems", cJSON_CreateString(alignStr));
     }
 
-    if (layout->flex.gap > 0) {
+    // Always serialize gap if it has a binding, even if default value
+    if (layout->flex.gap > 0 || has_property_binding(component, "gap")) {
         cJSON_AddNumberToObject(obj, "gap", layout->flex.gap);
     }
 
@@ -714,6 +721,25 @@ static void json_serialize_layout(cJSON* obj, IRLayout* layout) {
 // ============================================================================
 // Component Serialization (Recursive)
 // ============================================================================
+// Forward declaration for property binding serialization
+static cJSON* json_serialize_property_binding(IRPropertyBinding* binding);
+
+// Helper to check if component has a binding for a given property
+// This is used to ensure properties with bindings are always serialized, even if they have default values
+static bool has_property_binding(IRComponent* component, const char* property_name) {
+    if (!component || !property_name || component->property_binding_count == 0) {
+        return false;
+    }
+
+    for (uint32_t i = 0; i < component->property_binding_count; i++) {
+        IRPropertyBinding* binding = component->property_bindings[i];
+        if (binding && binding->property_name && strcmp(binding->property_name, property_name) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 
 /**
  * Serialize component - with option to serialize as reference or full tree
@@ -784,12 +810,12 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
 
     // Serialize style properties
     if (component->style) {
-        json_serialize_style(obj, component->style);
+        json_serialize_style(obj, component->style, component);
     }
 
     // Serialize layout properties
     if (component->layout) {
-        json_serialize_layout(obj, component->layout);
+        json_serialize_layout(obj, component->layout, component);
     }
 
     // Serialize checkbox state (stored in custom_data)
@@ -1052,18 +1078,34 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
 
             // Event type
             const char* eventType = "unknown";
-            switch (event->type) {
-                case IR_EVENT_CLICK: eventType = "click"; break;
-                case IR_EVENT_HOVER: eventType = "hover"; break;
-                case IR_EVENT_FOCUS: eventType = "focus"; break;
-                case IR_EVENT_BLUR: eventType = "blur"; break;
-                case IR_EVENT_KEY: eventType = "key"; break;
-                case IR_EVENT_SCROLL: eventType = "scroll"; break;
-                case IR_EVENT_TIMER: eventType = "timer"; break;
-                case IR_EVENT_CANVAS_DRAW: eventType = "canvas_draw"; break;
-                case IR_EVENT_CANVAS_UPDATE: eventType = "canvas_update"; break;
-                case IR_EVENT_CUSTOM: eventType = "custom"; break;
+
+            // Core events - fast path with hardcoded switch
+            if (event->type < IR_EVENT_PLUGIN_START) {
+                switch (event->type) {
+                    case IR_EVENT_CLICK: eventType = "click"; break;
+                    case IR_EVENT_HOVER: eventType = "hover"; break;
+                    case IR_EVENT_FOCUS: eventType = "focus"; break;
+                    case IR_EVENT_BLUR: eventType = "blur"; break;
+                    case IR_EVENT_TEXT_CHANGE: eventType = "text_change"; break;
+                    case IR_EVENT_KEY: eventType = "key"; break;
+                    case IR_EVENT_SCROLL: eventType = "scroll"; break;
+                    case IR_EVENT_TIMER: eventType = "timer"; break;
+                    case IR_EVENT_CUSTOM: eventType = "custom"; break;
+                    default: eventType = "unknown"; break;
+                }
             }
+            // Plugin events - use cached name or lookup in registry
+            else if (event->type >= IR_EVENT_PLUGIN_START && event->type <= IR_EVENT_PLUGIN_END) {
+                // Prefer cached name from IREvent.event_name (faster)
+                if (event->event_name) {
+                    eventType = event->event_name;
+                } else {
+                    // Fallback to registry lookup
+                    const char* name = ir_plugin_get_event_type_name(event->type);
+                    eventType = name ? name : "unknown_plugin_event";
+                }
+            }
+
             cJSON_AddStringToObject(eventObj, "type", eventType);
 
             // Legacy logic ID (for Nim/C callbacks)
@@ -1104,8 +1146,6 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     }
 
     // Serialize property bindings (for round-trip codegen)
-    // TODO: Implement json_serialize_property_binding function
-    /*
     if (component->property_binding_count > 0 && component->property_bindings) {
         cJSON* bindings = cJSON_CreateObject();
         if (bindings) {
@@ -1121,7 +1161,6 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
             cJSON_AddItemToObject(obj, "property_bindings", bindings);
         }
     }
-    */
 
     // Serialize source metadata (for round-trip codegen)
     if (component->source_metadata.generated_by) {
@@ -3560,16 +3599,30 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
             cJSON* typeItem = cJSON_GetObjectItem(eventJson, "type");
             if (typeItem && cJSON_IsString(typeItem)) {
                 const char* typeStr = typeItem->valuestring;
+
+                // Core events - fast path
                 if (strcmp(typeStr, "click") == 0) event->type = IR_EVENT_CLICK;
                 else if (strcmp(typeStr, "hover") == 0) event->type = IR_EVENT_HOVER;
                 else if (strcmp(typeStr, "focus") == 0) event->type = IR_EVENT_FOCUS;
                 else if (strcmp(typeStr, "blur") == 0) event->type = IR_EVENT_BLUR;
+                else if (strcmp(typeStr, "text_change") == 0) event->type = IR_EVENT_TEXT_CHANGE;
                 else if (strcmp(typeStr, "key") == 0) event->type = IR_EVENT_KEY;
                 else if (strcmp(typeStr, "scroll") == 0) event->type = IR_EVENT_SCROLL;
                 else if (strcmp(typeStr, "timer") == 0) event->type = IR_EVENT_TIMER;
-                else if (strcmp(typeStr, "canvas_draw") == 0) event->type = IR_EVENT_CANVAS_DRAW;
-                else if (strcmp(typeStr, "canvas_update") == 0) event->type = IR_EVENT_CANVAS_UPDATE;
                 else if (strcmp(typeStr, "custom") == 0) event->type = IR_EVENT_CUSTOM;
+                else {
+                    // Plugin events - check registry
+                    uint32_t plugin_event_id = ir_plugin_get_event_type_id(typeStr);
+                    if (plugin_event_id != 0) {
+                        event->type = (IREventType)plugin_event_id;
+                        event->event_name = strdup(typeStr);  // Cache name for serialization
+                    } else {
+                        // Unknown event type - treat as custom and log warning
+                        fprintf(stderr, "[ir_json] Warning: Unknown event type '%s', treating as custom\n", typeStr);
+                        event->type = IR_EVENT_CUSTOM;
+                        event->event_name = strdup(typeStr);
+                    }
+                }
             }
 
             // Logic ID (legacy)

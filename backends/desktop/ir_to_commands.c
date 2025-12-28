@@ -197,16 +197,10 @@ bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutR
             cmd.data.draw_rounded_rect.radius = style->border.radius;
             cmd.data.draw_rounded_rect.color = bg_color;
         } else {
-            static int debug_count = 0;
-            if (debug_count < 3) {
-                fprintf(stderr, "[IR2CMD] RECT bounds: x=%.1f y=%.1f w=%.1f h=%.1f\n",
-                        bounds->x, bounds->y, bounds->width, bounds->height);
-                fprintf(stderr, "[IR2CMD] RECT cmd: x=%d y=%d w=%d h=%d color=0x%08x\n",
-                        (int16_t)bounds->x, (int16_t)bounds->y,
-                        (uint16_t)bounds->width, (uint16_t)bounds->height, bg_color);
-                fflush(stderr);
-                debug_count++;
-            }
+            fprintf(stderr, "[IR2CMD][id=%u] RECT: x=%.1f y=%.1f w=%.1f h=%.1f rgba(%d,%d,%d,%d) color=0x%08x\n",
+                    comp->id, bounds->x, bounds->y, bounds->width, bounds->height,
+                    bg_r, bg_g, bg_b, bg_a, bg_color);
+            fflush(stderr);
 
             cmd.type = KRYON_CMD_DRAW_RECT;
             cmd.data.draw_rect.x = bounds->x;
@@ -658,12 +652,18 @@ bool ir_gen_canvas_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect
      */
     ir_set_rendered_bounds(comp, bounds->x, bounds->y, bounds->width, bounds->height);
 
-    /* NOTE: Canvas drawing commands are executed by callbacks invoked
-     * before rendering in desktop_ir_renderer_invoke_canvas_callbacks().
-     * The canvas draws to its own command buffer which gets integrated here.
+    /* Invoke canvas plugin renderer to execute onDraw commands
+     * The plugin renderer will execute canvas drawing commands from the buffer
+     * that was filled by the onDraw callback (invoked before rendering).
      */
+    extern bool ir_plugin_dispatch_component_render(void* backend_ctx, uint32_t component_type,
+                                                     const IRComponent* component,
+                                                     float x, float y, float width, float height);
 
-    (void)ctx;
+    if (ctx->backend_ctx) {
+        ir_plugin_dispatch_component_render(ctx->backend_ctx, comp->type, comp,
+                                            bounds->x, bounds->y, bounds->width, bounds->height);
+    }
 
     return true;
 }
@@ -817,7 +817,8 @@ bool ir_component_to_commands(
     IRComponent* component,
     kryon_cmd_buf_t* cmd_buf,
     LayoutRect* bounds,
-    float opacity
+    float opacity,
+    void* backend_ctx
 ) {
     if (!component || !cmd_buf || !bounds) return false;
 
@@ -831,6 +832,7 @@ bool ir_component_to_commands(
     ctx.next_font_id = 1;
     ctx.next_image_id = 1;
     ctx.overlay_count = 0;
+    ctx.backend_ctx = backend_ctx;
 
     /* Pass 1: Main rendering */
     kryon_command_t cmd = {

@@ -430,34 +430,22 @@ local function applyProperties(component, props)
       io.stderr:write(string.format("   Handler ID: %d", handlerId) .. "\n")
 
     elseif key == "onDraw" and type(value) == "function" then
-      io.stderr:write("📝 Registering onDraw handler for Canvas component\n")
-
-      -- Register in runtime (for direct execution mode)
-      local componentId = tonumber(C.ir_get_component_id(component))
-      runtime.registerCanvasCallback(componentId, value)
-
-      -- ALSO create IR event (for compilation mode)
-      local handlerId = runtime.registerHandler(component, C.IR_EVENT_CANVAS_DRAW, value)
-      local logicId = string.format("lua_canvas_draw_%d", handlerId)
-      local event = C.ir_create_event(C.IR_EVENT_CANVAS_DRAW, logicId, nil)
-      C.ir_add_event(component, event)
-
-      io.stderr:write(string.format("   Canvas onDraw registered: component_id=%d logic_id=%s\n", componentId, logicId))
+      -- Get canvas_draw event type from plugin registry
+      local event_type_id = C.ir_plugin_get_event_type_id("canvas_draw")
+      if event_type_id == 0 then
+        error("canvas_draw event type not registered - is canvas plugin loaded?")
+      end
+      -- Register handler (same as onClick!)
+      runtime.registerHandler(component, event_type_id, value)
 
     elseif key == "onUpdate" and type(value) == "function" then
-      io.stderr:write("📝 Registering onUpdate handler for Canvas component\n")
-
-      -- Register in runtime (for direct execution mode)
-      local componentId = tonumber(C.ir_get_component_id(component))
-      runtime.registerCanvasUpdateCallback(componentId, value)
-
-      -- ALSO create IR event (for compilation mode)
-      local handlerId = runtime.registerHandler(component, C.IR_EVENT_CANVAS_UPDATE, value)
-      local logicId = string.format("lua_canvas_update_%d", handlerId)
-      local event = C.ir_create_event(C.IR_EVENT_CANVAS_UPDATE, logicId, nil)
-      C.ir_add_event(component, event)
-
-      io.stderr:write(string.format("   Canvas onUpdate registered: component_id=%d logic_id=%s\n", componentId, logicId))
+      -- Get canvas_update event type from plugin registry
+      local event_type_id = C.ir_plugin_get_event_type_id("canvas_update")
+      if event_type_id == 0 then
+        error("canvas_update event type not registered - is canvas plugin loaded?")
+      end
+      -- Register handler (same as onClick!)
+      runtime.registerHandler(component, event_type_id, value)
 
     end
 

@@ -194,8 +194,19 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
     AndroidRenderer* renderer = ir_renderer->renderer;
 
     // Get computed layout bounds (NEW API)
-    float x = parent_x + component->layout_state->computed.x;
-    float y = parent_y + component->layout_state->computed.y;
+    float x, y;
+
+    // Check if component has absolute positioning
+    if (component->style && component->style->position_mode == IR_POSITION_ABSOLUTE) {
+        // Use absolute positioning
+        x = component->style->absolute_x;
+        y = component->style->absolute_y;
+    } else {
+        // Use computed layout position
+        x = parent_x + component->layout_state->computed.x;
+        y = parent_y + component->layout_state->computed.y;
+    }
+
     float width = component->layout_state->computed.width;
     float height = component->layout_state->computed.height;
 
@@ -245,6 +256,9 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
 
         case IR_COMPONENT_TEXT:
             if (component->text_content) {
+                __android_log_print(ANDROID_LOG_WARN, "KryonBackend",
+                    "RENDERING TEXT: '%s' at (%.1f,%.1f)", component->text_content, x, y);
+
                 IRColor text_color = component->style ?
                     component->style->font.color :
                     IR_COLOR_RGBA(0, 0, 0, 255);
@@ -254,8 +268,14 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
 
                 uint32_t color = ir_color_to_rgba(text_color, opacity);
 
+                __android_log_print(ANDROID_LOG_WARN, "KryonBackend",
+                    "Text color=0x%08x, font_size=%d", color, font_size);
+
                 android_renderer_draw_text(renderer, component->text_content,
                                           x, y, NULL, font_size, color);
+            } else {
+                __android_log_print(ANDROID_LOG_WARN, "KryonBackend",
+                    "TEXT component has no text_content!");
             }
             break;
 

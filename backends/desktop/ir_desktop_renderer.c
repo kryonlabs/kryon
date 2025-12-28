@@ -220,11 +220,32 @@ static void invoke_canvas_callbacks_recursive(DesktopIRRenderer* renderer, IRCom
 
     // Invoke onDraw callback for Canvas components
     if (component->type == IR_COMPONENT_CANVAS) {
-        fprintf(stderr, "[CANVAS_CALLBACK] Found Canvas component ID=%u, callback=%p\n",
-                component->id, (void*)renderer->lua_canvas_draw_callback);
-        if (renderer->lua_canvas_draw_callback) {
-            fprintf(stderr, "[CANVAS_CALLBACK] Invoking onDraw for component %u\n", component->id);
-            renderer->lua_canvas_draw_callback(component->id);
+        // Find canvas_draw event (plugin-registered event type)
+        IREvent* draw_event = NULL;
+        for (IREvent* evt = component->events; evt != NULL; evt = evt->next) {
+            // Check if this is a canvas_draw event
+            // Match both plugin events (type >= 100) and unregistered events treated as custom (type == 8)
+            if (evt->event_name && strcmp(evt->event_name, "canvas_draw") == 0 &&
+                ((evt->type >= IR_EVENT_PLUGIN_START && evt->type <= IR_EVENT_PLUGIN_END) ||
+                 evt->type == IR_EVENT_CUSTOM)) {
+                draw_event = evt;
+                break;
+            }
+        }
+
+        if (draw_event && draw_event->logic_id) {
+            // Extract handler ID from logic_id (e.g., "lua_event_1" → 1)
+            if (strncmp(draw_event->logic_id, "lua_event_", 10) == 0) {
+                uint32_t handler_id = 0;
+                if (sscanf(draw_event->logic_id + 10, "%u", &handler_id) == 1) {
+                    // Dispatch through standard event callback
+                    if (renderer->lua_event_callback) {
+                        fprintf(stderr, "[CANVAS_CALLBACK] Dispatching canvas_draw event for component %u (handler_id=%u)\n",
+                                component->id, handler_id);
+                        renderer->lua_event_callback(handler_id, draw_event->type);
+                    }
+                }
+            }
         }
     }
 
@@ -239,8 +260,34 @@ static void invoke_canvas_update_callbacks_recursive(DesktopIRRenderer* renderer
 
     // Invoke onUpdate callback for Canvas components
     if (component->type == IR_COMPONENT_CANVAS) {
-        if (renderer->lua_canvas_update_callback) {
-            renderer->lua_canvas_update_callback(component->id, delta_time);
+        // Find canvas_update event (plugin-registered event type)
+        IREvent* update_event = NULL;
+        for (IREvent* evt = component->events; evt != NULL; evt = evt->next) {
+            // Check if this is a canvas_update event
+            // Match both plugin events (type >= 100) and unregistered events treated as custom (type == 8)
+            if (evt->event_name && strcmp(evt->event_name, "canvas_update") == 0 &&
+                ((evt->type >= IR_EVENT_PLUGIN_START && evt->type <= IR_EVENT_PLUGIN_END) ||
+                 evt->type == IR_EVENT_CUSTOM)) {
+                update_event = evt;
+                break;
+            }
+        }
+
+        if (update_event && update_event->logic_id) {
+            // Extract handler ID from logic_id (e.g., "lua_event_1" → 1)
+            if (strncmp(update_event->logic_id, "lua_event_", 10) == 0) {
+                uint32_t handler_id = 0;
+                if (sscanf(update_event->logic_id + 10, "%u", &handler_id) == 1) {
+                    // Dispatch through standard event callback
+                    // Note: delta_time is not passed through lua_event_callback
+                    // The Lua side can calculate it if needed
+                    if (renderer->lua_event_callback) {
+                        fprintf(stderr, "[CANVAS_CALLBACK] Dispatching canvas_update event for component %u (handler_id=%u)\n",
+                                component->id, handler_id);
+                        renderer->lua_event_callback(handler_id, update_event->type);
+                    }
+                }
+            }
         }
     }
 

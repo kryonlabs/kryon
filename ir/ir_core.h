@@ -619,17 +619,20 @@ typedef struct IRStyle {
 
 // Event Types
 typedef enum {
-    IR_EVENT_CLICK,
-    IR_EVENT_HOVER,
-    IR_EVENT_FOCUS,
-    IR_EVENT_BLUR,
-    IR_EVENT_TEXT_CHANGE,  // Text input change event (for Input components)
-    IR_EVENT_KEY,
-    IR_EVENT_SCROLL,
-    IR_EVENT_TIMER,
-    IR_EVENT_CANVAS_DRAW,    // Canvas onDraw callback (compilation mode)
-    IR_EVENT_CANVAS_UPDATE,  // Canvas onUpdate callback (compilation mode)
-    IR_EVENT_CUSTOM
+    // Core events (0-99) - hardcoded for performance
+    IR_EVENT_CLICK = 0,
+    IR_EVENT_HOVER = 1,
+    IR_EVENT_FOCUS = 2,
+    IR_EVENT_BLUR = 3,
+    IR_EVENT_TEXT_CHANGE = 4,  // Text input change event (for Input components)
+    IR_EVENT_KEY = 5,
+    IR_EVENT_SCROLL = 6,
+    IR_EVENT_TIMER = 7,
+    IR_EVENT_CUSTOM = 8,
+
+    // Plugin event range (100-255) - dynamically registered
+    IR_EVENT_PLUGIN_START = 100,
+    IR_EVENT_PLUGIN_END = 255
 } IREventType;
 
 // Logic Source Types
@@ -644,6 +647,7 @@ typedef enum {
 // Event Handler
 typedef struct IREvent {
     IREventType type;
+    char* event_name;    // NEW: String name for plugin events (NULL for core events)
     char* logic_id;      // References IRLogic (legacy, for Nim/C callbacks)
     char* handler_data;  // Event-specific data
     uint32_t bytecode_function_id;  // References bytecode function in IRMetadata (0 = none)

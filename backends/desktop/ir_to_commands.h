@@ -54,6 +54,9 @@ typedef struct IRCommandContext {
     /* Renderer backend pointer (for font resolution, etc.) */
     void* renderer;
 
+    /* Backend context for plugin renderers */
+    void* backend_ctx;
+
     /* Deferred overlay components (dropdowns, dragged tabs) */
     IRComponent* overlays[16];
     int overlay_count;
@@ -77,7 +80,8 @@ bool ir_component_to_commands(
     IRComponent* component,
     kryon_cmd_buf_t* cmd_buf,
     LayoutRect* bounds,
-    float opacity
+    float opacity,
+    void* backend_ctx
 );
 
 /**

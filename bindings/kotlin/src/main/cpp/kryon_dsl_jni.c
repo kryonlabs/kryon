@@ -436,6 +436,8 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetColor(JNIEnv* env, jobject thiz,
     if (color_str) {
         uint8_t r, g, b, a;
         parse_color(color_str, &r, &g, &b, &a);
+        LOGI("nativeSetColor: component_id=%d, type=%d, color=%s -> RGBA(%d,%d,%d,%d)",
+             componentId, component->type, color_str, r, g, b, a);
         ir_set_font_color(component->style, r, g, b, a);
         (*env)->ReleaseStringUTFChars(env, color, color_str);
     }
@@ -568,9 +570,17 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetPosition(JNIEnv* env, jobject thiz,
 
     const char* value_str = (*env)->GetStringUTFChars(env, value, NULL);
     if (value_str) {
-        // Position handling - store in style flags or custom field
-        // For now, just log it
         LOGD("Set position: %s for component %d", value_str, componentId);
+
+        // Set position mode
+        if (strcmp(value_str, "absolute") == 0) {
+            component->style->position_mode = IR_POSITION_ABSOLUTE;
+        } else if (strcmp(value_str, "relative") == 0) {
+            component->style->position_mode = IR_POSITION_RELATIVE;
+        } else if (strcmp(value_str, "fixed") == 0) {
+            component->style->position_mode = IR_POSITION_FIXED;
+        }
+
         (*env)->ReleaseStringUTFChars(env, value, value_str);
     }
 }

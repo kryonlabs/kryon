@@ -24,7 +24,9 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/commands/cmd_compile.c \
        $(SRC_DIR)/commands/cmd_run.c \
        $(SRC_DIR)/commands/cmd_codegen.c \
-       $(SRC_DIR)/commands/cmd_new.c
+       $(SRC_DIR)/commands/cmd_new.c \
+       $(SRC_DIR)/commands/cmd_inspect.c \
+       $(SRC_DIR)/commands/cmd_diff.c
 
 # Object files
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)

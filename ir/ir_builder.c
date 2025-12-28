@@ -3,6 +3,7 @@
 #include "ir_memory.h"
 #include "ir_hashmap.h"
 #include "ir_animation.h"
+#include "ir_plugin.h"
 #include "components/ir_component_registry.h"
 #include <stdio.h>
 #include <assert.h>
@@ -1297,12 +1298,21 @@ IREvent* ir_create_event(IREventType type, const char* logic_id, const char* han
     event->logic_id = logic_id ? strdup(logic_id) : NULL;
     event->handler_data = handler_data ? strdup(handler_data) : NULL;
 
+    // NEW: For plugin events, store the string name
+    if (type >= IR_EVENT_PLUGIN_START && type <= IR_EVENT_PLUGIN_END) {
+        const char* name = ir_plugin_get_event_type_name(type);
+        event->event_name = name ? strdup(name) : NULL;
+    } else {
+        event->event_name = NULL;  // Core events don't need names
+    }
+
     return event;
 }
 
 void ir_destroy_event(IREvent* event) {
     if (!event) return;
 
+    if (event->event_name) free(event->event_name);
     if (event->logic_id) free(event->logic_id);
     if (event->handler_data) free(event->handler_data);
 
