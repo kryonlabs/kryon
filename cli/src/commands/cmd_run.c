@@ -40,11 +40,41 @@ static int android_setup_temp_project(const char* temp_dir, const char* kir_file
     snprintf(cmd, sizeof(cmd), "cp \"%s\" \"%s/app/src/main/assets/app.kir\"", kir_file, temp_dir);
     if (system(cmd) != 0) return -1;
 
-    // Create settings.gradle.kts
+    // Create local.properties with SDK location
+    char local_props[2048];
+    snprintf(local_props, sizeof(local_props), "%s/local.properties", temp_dir);
+    FILE* props_f = fopen(local_props, "w");
+    if (props_f) {
+        const char* android_sdk = getenv("ANDROID_HOME");
+        if (android_sdk) {
+            fprintf(props_f, "sdk.dir=%s\n", android_sdk);
+        }
+        const char* android_ndk = getenv("ANDROID_NDK_HOME");
+        if (android_ndk) {
+            fprintf(props_f, "ndk.dir=%s\n", android_ndk);
+        }
+        fclose(props_f);
+    }
+
+    // Create settings.gradle.kts with plugin management
     char settings_file[2048];
     snprintf(settings_file, sizeof(settings_file), "%s/settings.gradle.kts", temp_dir);
     FILE* f = fopen(settings_file, "w");
     if (!f) return -1;
+    fprintf(f, "pluginManagement {\n");
+    fprintf(f, "    repositories {\n");
+    fprintf(f, "        google()\n");
+    fprintf(f, "        mavenCentral()\n");
+    fprintf(f, "        gradlePluginPortal()\n");
+    fprintf(f, "    }\n");
+    fprintf(f, "}\n\n");
+    fprintf(f, "dependencyResolutionManagement {\n");
+    fprintf(f, "    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)\n");
+    fprintf(f, "    repositories {\n");
+    fprintf(f, "        google()\n");
+    fprintf(f, "        mavenCentral()\n");
+    fprintf(f, "    }\n");
+    fprintf(f, "}\n\n");
     fprintf(f, "rootProject.name = \"kryon-temp\"\n");
     fprintf(f, "include(\":app\")\n");
     fprintf(f, "include(\":kryon\")\n");
@@ -421,8 +451,10 @@ int cmd_run(int argc, char** argv) {
                  "gcc -std=c99 -O2 \"%s\" -o \"%s\" "
                  "-I/mnt/storage/Projects/kryon/bindings/c "
                  "-I/mnt/storage/Projects/kryon/ir "
+                 "-I/mnt/storage/Projects/kryon/backends/desktop "
                  "-L/mnt/storage/Projects/kryon/build "
-                 "-lkryon_ir -lkryon_desktop -lm -lraylib 2>&1",
+                 "-L/mnt/storage/Projects/kryon/bindings/c "
+                 "-lkryon_c -lkryon_ir -lkryon_desktop -lm -lraylib 2>&1",
                  target_file, exe_file);
 
         int result = system(compile_cmd);

@@ -78,19 +78,12 @@ char* tsx_codegen_from_json(const char* kir_json) {
 
     sb_append(sb, "    return (\n");
 
-    // Generate root children
-    cJSON* children = cJSON_GetObjectItem(component, "children");
-    if (children && cJSON_IsArray(children)) {
-        cJSON* child = NULL;
-        cJSON_ArrayForEach(child, children) {
-            char* elem = react_generate_element(child, &ctx, 3);
-            sb_append(sb, elem);
-            sb_append(sb, "\n");
-            free(elem);
-        }
-    }
+    // Generate root element (not just children!)
+    char* root_elem = react_generate_element(component, &ctx, 3);
+    sb_append(sb, root_elem);
+    free(root_elem);
 
-    sb_append(sb, "    );\n");
+    sb_append(sb, "\n    );\n");
     sb_append(sb, "  }\n");
     sb_append(sb, "});\n");
 

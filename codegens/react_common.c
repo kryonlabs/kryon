@@ -687,6 +687,9 @@ char* react_generate_element(cJSON* node, ReactContext* ctx, int indent) {
     // Generate children
     char* children = generate_children(node, ctx, indent + 1);
 
+    // Check if children is inline text (no newlines = flattened Text children)
+    bool is_inline_text = (strlen(children) > 0 && strchr(children, '\n') == NULL);
+
     // Build element
     if (strlen(children) == 0) {
         // Self-closing
@@ -695,8 +698,15 @@ char* react_generate_element(cJSON* node, ReactContext* ctx, int indent) {
         } else {
             sb_append_fmt(sb, "<%s %s />", comp_type, props);
         }
+    } else if (is_inline_text) {
+        // Inline text content (Text component with flattened children)
+        if (strlen(props) == 0) {
+            sb_append_fmt(sb, "<%s>%s</%s>", comp_type, children, comp_type);
+        } else {
+            sb_append_fmt(sb, "<%s %s>%s</%s>", comp_type, props, children, comp_type);
+        }
     } else {
-        // With children
+        // With children (multiline)
         if (strlen(props) == 0) {
             sb_append_fmt(sb, "<%s>%s\n", comp_type, children);
         } else {
@@ -721,6 +731,38 @@ static char* generate_children(cJSON* node, ReactContext* ctx, int indent) {
     cJSON* children = cJSON_GetObjectItem(node, "children");
     if (!children || !cJSON_IsArray(children) || cJSON_GetArraySize(children) == 0) {
         return strdup("");
+    }
+
+    // Check if this is a Text component with Text children - handle specially
+    cJSON* type_node = cJSON_GetObjectItem(node, "type");
+    const char* parent_type = type_node && cJSON_IsString(type_node) ? cJSON_GetStringValue(type_node) : "";
+
+    if (strcmp(parent_type, "Text") == 0) {
+        // Check if all children are Text nodes with text property
+        bool all_text_children = true;
+        cJSON* child = NULL;
+        cJSON_ArrayForEach(child, children) {
+            cJSON* child_type = cJSON_GetObjectItem(child, "type");
+            const char* child_type_str = child_type && cJSON_IsString(child_type) ? cJSON_GetStringValue(child_type) : "";
+            if (strcmp(child_type_str, "Text") != 0 || !cJSON_HasObjectItem(child, "text")) {
+                all_text_children = false;
+                break;
+            }
+        }
+
+        // If all children are simple Text nodes, flatten them into inline content
+        if (all_text_children) {
+            StringBuilder* sb = sb_create(256);
+            cJSON_ArrayForEach(child, children) {
+                cJSON* text_node = cJSON_GetObjectItem(child, "text");
+                if (text_node && cJSON_IsString(text_node)) {
+                    sb_append(sb, cJSON_GetStringValue(text_node));
+                }
+            }
+            char* result = strdup(sb_get(sb));
+            sb_free(sb);
+            return result;
+        }
     }
 
     StringBuilder* sb = sb_create(2048);

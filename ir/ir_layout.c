@@ -558,13 +558,6 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
             }
         }
 
-        // Add padding for containers to get visual width (content-box model)
-        if (child->type == IR_COMPONENT_CONTAINER ||
-            child->type == IR_COMPONENT_ROW ||
-            child->type == IR_COMPONENT_COLUMN) {
-            child_width += child->style->padding.left + child->style->padding.right;
-        }
-
         child_width += child->style->margin.left + child->style->margin.right;
         total_width += child_width;
 
@@ -705,13 +698,6 @@ static void ir_layout_compute_column(IRComponent* container, float available_wid
             if (child_height > child->layout->max_height.value) {
                 child_height = child->layout->max_height.value;
             }
-        }
-
-        // Add padding for containers to get visual height (content-box model)
-        if (child->type == IR_COMPONENT_CONTAINER ||
-            child->type == IR_COMPONENT_ROW ||
-            child->type == IR_COMPONENT_COLUMN) {
-            child_height += child->style->padding.top + child->style->padding.bottom;
         }
 
         child_height += child->style->margin.top + child->style->margin.bottom;

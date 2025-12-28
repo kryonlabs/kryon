@@ -2377,7 +2377,8 @@ static void json_deserialize_style(cJSON* obj, IRStyle* style) {
             style->border.color = json_parse_color(borderItem->valuestring);
         }
         if ((borderItem = cJSON_GetObjectItem(item, "radius")) != NULL && cJSON_IsNumber(borderItem)) {
-            style->border.radius = (float)borderItem->valuedouble;
+            style->border.radius = (uint8_t)borderItem->valuedouble;
+            fprintf(stderr, "✅ Loaded border radius: %d (from JSON: %.1f)\n", style->border.radius, borderItem->valuedouble);
         }
     }
 
