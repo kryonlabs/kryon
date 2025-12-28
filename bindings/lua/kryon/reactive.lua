@@ -1,280 +1,418 @@
--- Kryon Reactive State System
--- Lua-side observable state that triggers IR tree updates via C calls
--- Similar to Nim's ReactiveState[T]
+-- Kryon Automatic Reactivity System
+-- Vue 3 / SolidJS-inspired automatic dependency tracking
+-- Clean, beautiful, no legacy code
 
 local Reactive = {}
 
 -- ============================================================================
--- ReactiveState
+-- Reactive Context - Automatic Dependency Tracking
 -- ============================================================================
 
-local ReactiveState = {}
-ReactiveState.__index = ReactiveState
+local ReactiveContext = {
+  activeEffect = nil,      -- Currently executing effect/computed
+  effectStack = {},        -- Stack for nested effects
+  shouldTrack = true,      -- Flag to pause tracking
+}
 
---- Create a new reactive state value
+local function pushEffect(effect)
+  table.insert(ReactiveContext.effectStack, ReactiveContext.activeEffect)
+  ReactiveContext.activeEffect = effect
+end
+
+local function popEffect()
+  ReactiveContext.activeEffect = table.remove(ReactiveContext.effectStack)
+end
+
+-- Track a dependency (called during reactive reads)
+local function trackDependency(target, key, dep)
+  if not ReactiveContext.activeEffect or not ReactiveContext.shouldTrack then
+    return
+  end
+
+  if not target or type(target) ~= "table" then
+    return
+  end
+
+  dep = dep or ReactiveContext.activeEffect
+
+  -- Initialize _deps if needed (use rawget/rawset to avoid triggering metatables)
+  if not rawget(target, "_deps") then
+    rawset(target, "_deps", {})
+  end
+
+  local deps = rawget(target, "_deps")
+  if not deps[key] then
+    deps[key] = {}
+  end
+
+  -- Avoid duplicate subscriptions
+  for _, existingDep in ipairs(deps[key]) do
+    if existingDep == dep then
+      return
+    end
+  end
+
+  table.insert(deps[key], dep)
+end
+
+-- Trigger all effects for a dependency (called during reactive writes)
+local function triggerEffects(target, key)
+  if not target or type(target) ~= "table" then
+    return
+  end
+
+  if not target._deps or not target._deps[key] then
+    return
+  end
+
+  for _, effect in ipairs(target._deps[key]) do
+    if type(effect) == "function" then
+      local success, err = pcall(effect)
+      if not success then
+        print("[Reactive] Error in effect: " .. tostring(err))
+      end
+    end
+  end
+end
+
+-- ============================================================================
+-- Reactive Primitives - For Simple Values
+-- ============================================================================
+
+--- Create a reactive signal for primitive values (numbers, strings, booleans)
+--- Returns getter and setter functions
 --- @param initialValue any Initial value
---- @return table ReactiveState object
-function Reactive.state(initialValue)
-  local self = setmetatable({
-    _value = initialValue,
-    _observers = {},
-  }, ReactiveState)
-  return self
-end
+--- @return function, function getter, setter
+function Reactive.signal(initialValue)
+  local value = initialValue
+  local deps = {}
 
---- Get the current value
---- @return any Current value
-function ReactiveState:get()
-  return self._value
-end
-
---- Set a new value and notify observers
---- @param newValue any New value
-function ReactiveState:set(newValue)
-  if self._value ~= newValue then
-    local oldValue = self._value
-    self._value = newValue
-    self:_notify(newValue, oldValue)
-  end
-end
-
---- Update value using a function
---- @param updateFn function Function that receives old value and returns new value
-function ReactiveState:update(updateFn)
-  local newValue = updateFn(self._value)
-  self:set(newValue)
-end
-
---- Notify all observers of value change
---- @param newValue any New value
---- @param oldValue any Old value
-function ReactiveState:_notify(newValue, oldValue)
-  for _, observer in ipairs(self._observers) do
-    local success, err = pcall(observer, newValue, oldValue)
-    if not success then
-      print("Error in reactive observer: " .. tostring(err))
+  local function read()
+    -- Track dependency if inside reactive context
+    if ReactiveContext.activeEffect and ReactiveContext.shouldTrack then
+      -- Avoid duplicate subscriptions
+      local isDuplicate = false
+      for _, dep in ipairs(deps) do
+        if dep == ReactiveContext.activeEffect then
+          isDuplicate = true
+          break
+        end
+      end
+      if not isDuplicate then
+        table.insert(deps, ReactiveContext.activeEffect)
+      end
     end
-  end
-end
-
---- Register an observer callback
---- @param callback function Function called when value changes
---- @return function Unsubscribe function
-function ReactiveState:observe(callback)
-  if type(callback) ~= "function" then
-    error("observe requires a function callback")
+    return value
   end
 
-  table.insert(self._observers, callback)
-
-  -- Return unsubscribe function
-  return function()
-    for i, obs in ipairs(self._observers) do
-      if obs == callback then
-        table.remove(self._observers, i)
-        break
+  local function write(newValue)
+    if value ~= newValue then
+      value = newValue
+      -- Trigger all subscribed effects
+      for _, effect in ipairs(deps) do
+        if type(effect) == "function" then
+          local success, err = pcall(effect)
+          if not success then
+            print("[Reactive] Error in signal effect: " .. tostring(err))
+          end
+        end
       end
     end
   end
-end
 
---- Get the number of observers
---- @return number Number of observers
-function ReactiveState:observerCount()
-  return #self._observers
+  return read, write
 end
 
 -- ============================================================================
--- Computed Values (Derived State)
+-- Reactive Objects - Deep Reactivity for Tables
 -- ============================================================================
 
---- Create a computed value that depends on other reactive values
---- @param dependencies table Array of ReactiveState objects
---- @param computeFn function Function that computes the derived value
---- @return table ReactiveState object
-function Reactive.computed(dependencies, computeFn)
-  if type(dependencies) ~= "table" then
-    error("computed requires a table of dependencies")
+-- Track which tables are already reactive to avoid double-wrapping
+local reactiveMap = {}
+setmetatable(reactiveMap, {__mode = "k"})  -- Weak keys for GC
+
+-- Check if a value is a reactive proxy
+local function isReactive(value)
+  return type(value) == "table" and reactiveMap[value] ~= nil
+end
+
+--- Create a deep reactive object from a table
+--- @param target table The table to make reactive
+--- @param parent table|nil Parent reactive object (for nested reactivity)
+--- @param parentKey string|nil Key in parent (for nested reactivity)
+--- @return table Reactive proxy
+function Reactive.reactive(target, parent, parentKey)
+  if type(target) ~= "table" then
+    error("[Reactive] reactive() requires a table, got " .. type(target))
   end
+
+  -- Return existing proxy if already reactive
+  if reactiveMap[target] then
+    return reactiveMap[target]
+  end
+
+  -- Create reactive proxy with metatable
+  local proxy = setmetatable({}, {
+    __index = function(t, key)
+      -- Don't track internal keys
+      if key == "_target" or key == "_deps" then
+        return rawget(proxy, key)
+      end
+
+      -- Track this access
+      trackDependency(proxy, key)
+
+      local value = target[key]
+
+      -- Recursively wrap nested tables (but don't store back - return the proxy directly)
+      if type(value) == "table" and not isReactive(value) then
+        local childProxy = Reactive.reactive(value, proxy, key)
+        -- Store the reactive proxy for future access
+        target[key] = childProxy
+        return childProxy
+      end
+
+      return value
+    end,
+
+    __newindex = function(t, key, newValue)
+      -- Don't allow setting internal keys via metatable
+      if key == "_target" or key == "_deps" then
+        rawset(t, key, newValue)
+        return
+      end
+
+      local oldValue = target[key]
+
+      -- Wrap new tables automatically (but don't recurse!)
+      if type(newValue) == "table" and not isReactive(newValue) then
+        newValue = Reactive.reactive(newValue, t, key)
+      end
+
+      if oldValue ~= newValue then
+        -- Set on raw target (no recursion)
+        rawset(target, key, newValue)
+
+        -- Trigger effects for this key
+        triggerEffects(t, key)
+
+        -- Bubble up to parent if exists
+        if parent and parentKey then
+          triggerEffects(parent, parentKey)
+        end
+      end
+    end,
+
+    -- Preserve table operations
+    __len = function(t)
+      return #target
+    end,
+
+    __pairs = function(t)
+      return pairs(target)
+    end,
+
+    __ipairs = function(t)
+      return ipairs(target)
+    end,
+
+    -- Mark as reactive
+    __tostring = function(t)
+      return "ReactiveProxy(" .. tostring(target) .. ")"
+    end,
+  })
+
+  -- Store in reactive map
+  reactiveMap[target] = proxy
+  proxy._target = target
+  proxy._deps = {}
+
+  return proxy
+end
+
+--- Get the raw underlying object from a reactive proxy
+--- @param proxy table Reactive proxy
+--- @return table Raw object
+function Reactive.toRaw(proxy)
+  if type(proxy) == "table" and proxy._target then
+    return proxy._target
+  end
+  return proxy
+end
+
+-- ============================================================================
+-- Computed Values - Auto-Tracking Derived State
+-- ============================================================================
+
+--- Create a computed value that auto-tracks its dependencies
+--- @param computeFn function Function that computes the value
+--- @return function Getter function for computed value
+function Reactive.computed(computeFn)
   if type(computeFn) ~= "function" then
-    error("computed requires a compute function")
+    error("[Reactive] computed() requires a function")
   end
 
-  -- Create a reactive state for the computed result
-  local result = Reactive.state(computeFn())
+  local value = nil
+  local dirty = true
+  local deps = {}
 
-  -- Subscribe to all dependencies
-  for _, dep in ipairs(dependencies) do
-    dep:observe(function()
-      result:set(computeFn())
-    end)
-  end
+  local function recompute()
+    -- Clear old dependencies
+    deps = {}
 
-  return result
-end
+    -- Push as active effect to track dependencies
+    pushEffect(recompute)
 
--- ============================================================================
--- Reactive Collections
--- ============================================================================
-
-local ReactiveArray = {}
-ReactiveArray.__index = ReactiveArray
-
---- Create a reactive array
---- @param initialItems table Optional initial items
---- @return table ReactiveArray object
-function Reactive.array(initialItems)
-  local self = setmetatable({
-    _items = initialItems or {},
-    _observers = {},
-  }, ReactiveArray)
-  return self
-end
-
---- Get all items
---- @return table Array of items
-function ReactiveArray:getItems()
-  return self._items
-end
-
---- Get item at index
---- @param index number Index (1-based)
---- @return any Item at index
-function ReactiveArray:get(index)
-  return self._items[index]
-end
-
---- Push an item to the end
---- @param item any Item to add
-function ReactiveArray:push(item)
-  table.insert(self._items, item)
-  self:_notify("push", #self._items, item)
-end
-
---- Remove item at index
---- @param index number Index to remove (1-based)
---- @return any Removed item
-function ReactiveArray:remove(index)
-  local item = table.remove(self._items, index)
-  self:_notify("remove", index, item)
-  return item
-end
-
---- Insert item at index
---- @param index number Index to insert at (1-based)
---- @param item any Item to insert
-function ReactiveArray:insert(index, item)
-  table.insert(self._items, index, item)
-  self:_notify("insert", index, item)
-end
-
---- Clear all items
-function ReactiveArray:clear()
-  self._items = {}
-  self:_notify("clear")
-end
-
---- Get array length
---- @return number Length
-function ReactiveArray:length()
-  return #self._items
-end
-
---- Notify observers of array change
---- @param action string Action type (push, remove, insert, clear)
---- @param ... any Additional arguments
-function ReactiveArray:_notify(action, ...)
-  for _, observer in ipairs(self._observers) do
-    local success, err = pcall(observer, action, ...)
+    -- Run computation (auto-tracks dependencies)
+    local success, result = pcall(computeFn)
     if not success then
-      print("Error in reactive array observer: " .. tostring(err))
+      print("[Reactive] Error in computed: " .. tostring(result))
+      value = nil
+    else
+      value = result
     end
-  end
-end
+    dirty = false
 
---- Register an observer callback
---- @param callback function Function called when array changes
---- @return function Unsubscribe function
-function ReactiveArray:observe(callback)
-  if type(callback) ~= "function" then
-    error("observe requires a function callback")
+    -- Pop effect stack
+    popEffect()
+
+    -- Trigger our own subscribers
+    triggerEffects({_deps = {value = deps}}, "value")
   end
 
-  table.insert(self._observers, callback)
+  -- Initial computation
+  recompute()
 
-  -- Return unsubscribe function
+  -- Return getter function
   return function()
-    for i, obs in ipairs(self._observers) do
-      if obs == callback then
-        table.remove(self._observers, i)
-        break
-      end
+    -- Track this computed value as dependency
+    if ReactiveContext.activeEffect and ReactiveContext.shouldTrack then
+      table.insert(deps, ReactiveContext.activeEffect)
     end
+
+    if dirty then
+      recompute()
+    end
+    return value
   end
 end
 
 -- ============================================================================
--- Reactive Effects
+-- Effects - Side Effects with Auto-Tracking
 -- ============================================================================
 
---- Run an effect when dependencies change
---- @param dependencies table Array of ReactiveState objects
+--- Run an effect that auto-tracks its dependencies
 --- @param effectFn function Function to run
---- @return function Cleanup function
-function Reactive.effect(dependencies, effectFn)
-  if type(dependencies) ~= "table" then
-    error("effect requires a table of dependencies")
-  end
+--- @return function Cleanup/stop function
+function Reactive.effect(effectFn)
   if type(effectFn) ~= "function" then
-    error("effect requires an effect function")
+    error("[Reactive] effect() requires a function")
   end
 
-  -- Run the effect immediately
-  effectFn()
+  local cleanup = nil
+  local stopped = false
 
-  -- Subscribe to all dependencies
-  local unsubscribers = {}
-  for _, dep in ipairs(dependencies) do
-    local unsub = dep:observe(function()
-      effectFn()
-    end)
-    table.insert(unsubscribers, unsub)
+  local function runEffect()
+    if stopped then return end
+
+    -- Run cleanup from previous execution
+    if cleanup then
+      if type(cleanup) == "function" then
+        pcall(cleanup)
+      end
+      cleanup = nil
+    end
+
+    -- Push as active effect to track dependencies
+    pushEffect(runEffect)
+
+    -- Run effect (auto-tracks dependencies)
+    local success, result = pcall(effectFn)
+    if not success then
+      print("[Reactive] Error in effect: " .. tostring(result))
+    else
+      cleanup = result  -- Effect can return cleanup function
+    end
+
+    -- Pop effect stack
+    popEffect()
   end
 
-  -- Return cleanup function
+  -- Run immediately
+  runEffect()
+
+  -- Return stop function
   return function()
-    for _, unsub in ipairs(unsubscribers) do
-      unsub()
+    stopped = true
+    if cleanup and type(cleanup) == "function" then
+      pcall(cleanup)
     end
   end
 end
 
 -- ============================================================================
--- Batch Updates
+-- Batch Updates - Performance Optimization
 -- ============================================================================
 
-Reactive._batchDepth = 0
-Reactive._pendingUpdates = {}
+local batchDepth = 0
+local pendingEffects = {}
 
---- Begin a batch update (defer notifications)
+--- Batch multiple reactive updates to minimize re-renders
+--- @param batchFn function Function containing reactive updates
 function Reactive.batch(batchFn)
-  Reactive._batchDepth = Reactive._batchDepth + 1
+  batchDepth = batchDepth + 1
+  ReactiveContext.shouldTrack = false
 
   local success, err = pcall(batchFn)
 
-  Reactive._batchDepth = Reactive._batchDepth - 1
+  batchDepth = batchDepth - 1
 
-  if Reactive._batchDepth == 0 then
-    -- Execute all pending updates
-    for _, update in ipairs(Reactive._pendingUpdates) do
-      update()
+  -- Flush all pending effects when batch completes
+  if batchDepth == 0 then
+    ReactiveContext.shouldTrack = true
+    for _, effect in ipairs(pendingEffects) do
+      if type(effect) == "function" then
+        pcall(effect)
+      end
     end
-    Reactive._pendingUpdates = {}
+    pendingEffects = {}
   end
 
   if not success then
-    error("Error in batch function: " .. tostring(err))
+    ReactiveContext.shouldTrack = true
+    error("[Reactive] Error in batch: " .. tostring(err))
   end
 end
+
+-- ============================================================================
+-- Utilities
+-- ============================================================================
+
+--- Check if a value is reactive
+--- @param value any Value to check
+--- @return boolean True if reactive
+function Reactive.isReactive(value)
+  return isReactive(value)
+end
+
+--- Unwrap a reactive value (get raw value)
+--- @param value any Potentially reactive value
+--- @return any Raw value
+function Reactive.unref(value)
+  -- If it's a function (signal getter or computed), call it
+  if type(value) == "function" then
+    return value()
+  end
+  -- If it's a reactive object, return raw
+  if isReactive(value) then
+    return Reactive.toRaw(value)
+  end
+  -- Otherwise return as-is
+  return value
+end
+
+-- ============================================================================
+-- Export
+-- ============================================================================
 
 return Reactive

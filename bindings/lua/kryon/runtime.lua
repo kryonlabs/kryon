@@ -179,6 +179,65 @@ function Runtime.createApp(config)
   }
 end
 
+--- Create a reactive Kryon application with automatic re-rendering
+--- @param config table Configuration with window and root function
+--- @return table Application object
+function Runtime.createReactiveApp(config)
+  if not config or not config.root then
+    error("createReactiveApp requires config.root (function that builds UI)")
+  end
+
+  if type(config.root) ~= "function" then
+    error("createReactiveApp requires config.root to be a function")
+  end
+
+  local Reactive = require("kryon.reactive")
+
+  -- Create IR context
+  local ctx = C.ir_create_context()
+  C.ir_set_context(ctx)
+
+  local app = {
+    context = ctx,
+    root = nil,
+    window = config.window or {},
+    running = false,
+    _rootFn = config.root,
+    _stopEffect = nil,
+  }
+
+  -- Create effect that auto-rebuilds UI when reactive dependencies change
+  local function buildAndUpdateRoot()
+    print("🔄 [Reactive Effect] buildAndUpdateRoot triggered - rebuilding UI!")
+    local newRoot = config.root()
+
+    if app.root then
+      -- Update existing root (triggers re-render)
+      print("🔄 [Reactive Effect] Updating root component with new tree...")
+      C.ir_set_root(newRoot)
+      app.root = newRoot
+
+      -- Also update in renderer if available
+      if Runtime._globalRenderer then
+        print("🔄 [Reactive Effect] Updating renderer with new root")
+        Desktop.desktop_ir_renderer_update_root(Runtime._globalRenderer, newRoot)
+      else
+        print("⚠️  [Reactive Effect] No global renderer available yet")
+      end
+    else
+      -- Initial root setup
+      print("[Reactive] Setting initial root...")
+      C.ir_set_root(newRoot)
+      app.root = newRoot
+    end
+  end
+
+  -- Run effect (auto-tracks dependencies and re-runs on changes)
+  app._stopEffect = Reactive.effect(buildAndUpdateRoot)
+
+  return app
+end
+
 --- Update loop - delegates to C IR animation system
 --- @param app table Application object
 --- @param deltaTime number Time since last frame in seconds
@@ -362,13 +421,20 @@ function Runtime.loadKIR(kir_filepath)
     end
     print(string.format("[runtime] After re-execution, handler count = %d", handler_count))
 
-    -- Use the KIR component tree (already has layout computed)
-    -- But with handlers from fresh source execution
-    return {
-      root = root,  -- Use KIR tree
-      window = app.window or {width = 800, height = 600, title = "Kryon App"},
-      running = false
-    }
+    -- CRITICAL FIX: Use the app returned from source execution!
+    -- This preserves reactive effects created by createReactiveApp()
+    -- Don't use the static KIR tree - use the live reactive app
+    if app and app.root then
+      print("[runtime] Using reactive app from source execution")
+      return app  -- Return the full reactive app with effects intact
+    else
+      print("[runtime] Warning: Source execution didn't return app, falling back to KIR tree")
+      return {
+        root = root,  -- Fallback to KIR tree if source didn't return app
+        window = {width = 800, height = 600, title = "Kryon App"},
+        running = false
+      }
+    end
   else
     -- No Lua source, return KIR-only app (no callbacks)
     print("[runtime] KIR has no Lua source metadata, running without callbacks")

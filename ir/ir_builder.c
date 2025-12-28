@@ -773,6 +773,33 @@ void ir_destroy_component(IRComponent* component) {
         component->layout_state = NULL;
     }
 
+    // Clean up TabGroupState if this component is a TabGroup
+    // This prevents dangling pointers when UI rebuilds destroy and recreate component trees
+    if (component->type == IR_COMPONENT_TAB_GROUP && component->custom_data) {
+        TabGroupState* state = (TabGroupState*)component->custom_data;
+
+        // Clear panel references to prevent dangling pointers
+        for (uint32_t i = 0; i < state->panel_count; i++) {
+            state->panels[i] = NULL;
+        }
+        state->panel_count = 0;
+
+        // Clear tab references
+        for (uint32_t i = 0; i < state->tab_count; i++) {
+            state->tabs[i] = NULL;
+        }
+        state->tab_count = 0;
+
+        // Clear other references
+        state->tab_bar = NULL;
+        state->tab_content = NULL;
+        state->group = NULL;
+
+        // Free the state itself
+        free(state);
+        component->custom_data = NULL;
+    }
+
     // Free strings
     if (component->tag) free(component->tag);
     if (component->text_content) free(component->text_content);
@@ -1828,20 +1855,17 @@ bool ir_is_point_in_component(IRComponent* component, float x, float y) {
 
 IRComponent* ir_find_component_at_point(IRComponent* root, float x, float y) {
     if (!root) {
-        printf("[FIND_AT_POINT] root is NULL\n");
+        return NULL;
+    }
+
+    // Skip invisible components - they shouldn't be interactive
+    if (root->style && !root->style->visible) {
         return NULL;
     }
 
     if (!ir_is_point_in_component(root, x, y)) {
-        printf("[FIND_AT_POINT] Point (%.0f, %.0f) not in root ID=%u valid=%d bounds=[%.1f, %.1f, %.1f, %.1f]\n",
-               x, y, root->id, root->rendered_bounds.valid,
-               root->rendered_bounds.x, root->rendered_bounds.y,
-               root->rendered_bounds.width, root->rendered_bounds.height);
         return NULL;
     }
-
-    printf("[FIND_AT_POINT] Checking root ID=%u (type=%d) with %u children\n",
-           root->id, root->type, root->child_count);
 
     // Find the child with highest z-index that contains the point
     IRComponent* best_target = NULL;
@@ -1851,14 +1875,8 @@ IRComponent* ir_find_component_at_point(IRComponent* root, float x, float y) {
         IRComponent* child = root->children[i];
         if (!child) continue;
 
-        printf("[FIND_AT_POINT]   Child %u: ID=%u type=%d valid=%d bounds=[%.1f, %.1f, %.1f, %.1f]\n",
-               i, child->id, child->type, child->rendered_bounds.valid,
-               child->rendered_bounds.x, child->rendered_bounds.y,
-               child->rendered_bounds.width, child->rendered_bounds.height);
-
         // Check if point is in this child's bounds
         if (ir_is_point_in_component(child, x, y)) {
-            printf("[FIND_AT_POINT]     Point IS in child ID=%u\n", child->id);
             // Recursively find target in this child's subtree
             IRComponent* child_target = ir_find_component_at_point(child, x, y);
             if (child_target != NULL) {
@@ -1870,8 +1888,6 @@ IRComponent* ir_find_component_at_point(IRComponent* root, float x, float y) {
                     best_target = child_target;
                 }
             }
-        } else {
-            printf("[FIND_AT_POINT]     Point NOT in child ID=%u\n", child->id);
         }
     }
 

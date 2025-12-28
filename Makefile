@@ -567,6 +567,12 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf $(BIN_DIR)
 	rm -rf nimcache/
+	@echo "Cleaning Android native builds..."
+	@rm -rf renderers/android/build
+	@rm -rf backends/android/build
+	@rm -rf bindings/kotlin/build
+	@echo "Cleaning Android project builds..."
+	@find /tmp -maxdepth 1 -name "kryon_android_*" -type d -exec rm -rf {}/build {}/app/build {}/.gradle \; 2>/dev/null || true
 
 # Deep clean (including installation artifacts and Android)
 distclean: clean clean-android

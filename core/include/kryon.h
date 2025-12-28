@@ -31,7 +31,7 @@ extern "C" {
 // Command buffer size - DEFAULT TO LARGE for desktop builds
 // Only override to small if explicitly building for MCU
 #ifndef KRYON_CMD_BUF_SIZE
-#define KRYON_CMD_BUF_SIZE      131072   // Default: 128KB buffer for desktop
+#define KRYON_CMD_BUF_SIZE      4194304  // Default: 4MB buffer for desktop (generous size for complex UIs)
 #endif
 
 // Memory constraint configuration

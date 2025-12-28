@@ -2,12 +2,13 @@ package com.kryon
 
 import android.app.Activity
 import android.os.Bundle
-import android.view.SurfaceHolder
-import android.view.SurfaceView
+import android.opengl.GLSurfaceView
 import android.view.MotionEvent
 import android.view.KeyEvent
 import android.util.Log
 import com.kryon.dsl.ContainerBuilder
+import javax.microedition.khronos.egl.EGLConfig
+import javax.microedition.khronos.opengles.GL10
 
 /**
  * Base Activity class for Kryon applications.
@@ -25,7 +26,7 @@ import com.kryon.dsl.ContainerBuilder
  * }
  * ```
  */
-abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
+abstract class KryonActivity : Activity() {
 
     companion object {
         private const val TAG = "KryonActivity"
@@ -49,17 +50,40 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
         }
     }
 
-    private var surfaceView: SurfaceView? = null
-    private var surfaceCreated = false
+    private var glSurfaceView: GLSurfaceView? = null
     protected var nativeHandle: Long = 0
-    private var renderHandler: android.os.Handler? = null
-    private var isRendering = false
 
     // Register a callback and return its ID
     internal fun registerCallback(callback: () -> Unit): Int {
         val id = nextCallbackId++
         eventCallbacks[id] = callback
         return id
+    }
+
+    // ========================================================================
+    // GLSurfaceView.Renderer
+    // ========================================================================
+
+    inner class KryonGLRenderer : GLSurfaceView.Renderer {
+        override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+            Log.i(TAG, "GL onSurfaceCreated")
+            if (nativeHandle != 0L) {
+                nativeGLSurfaceCreated(nativeHandle)
+            }
+        }
+
+        override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+            Log.i(TAG, "GL onSurfaceChanged: ${width}x${height}")
+            if (nativeHandle != 0L) {
+                nativeGLSurfaceChanged(nativeHandle, width, height)
+            }
+        }
+
+        override fun onDrawFrame(gl: GL10?) {
+            if (nativeHandle != 0L) {
+                nativeGLRender(nativeHandle)
+            }
+        }
     }
 
     // ========================================================================
@@ -70,12 +94,6 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
         super.onCreate(savedInstanceState)
         Log.i(TAG, "onCreate")
 
-        // Create surface view for rendering
-        surfaceView = SurfaceView(this).apply {
-            holder.addCallback(this@KryonActivity)
-        }
-        setContentView(surfaceView)
-
         // Initialize native platform
         nativeHandle = nativeInit(this)
         if (nativeHandle == 0L) {
@@ -83,6 +101,14 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
             finish()
             return
         }
+
+        // Create GLSurfaceView with renderer
+        glSurfaceView = GLSurfaceView(this).apply {
+            setEGLContextClientVersion(3)  // OpenGL ES 3.0
+            setRenderer(KryonGLRenderer())
+            renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+        }
+        setContentView(glSurfaceView)
 
         nativeOnCreate(nativeHandle)
 
@@ -102,6 +128,7 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
     override fun onResume() {
         super.onResume()
         Log.i(TAG, "onResume")
+        glSurfaceView?.onResume()
         if (nativeHandle != 0L) {
             nativeOnResume(nativeHandle)
         }
@@ -111,6 +138,7 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
     override fun onPause() {
         super.onPause()
         Log.i(TAG, "onPause")
+        glSurfaceView?.onPause()
         if (nativeHandle != 0L) {
             nativeOnPause(nativeHandle)
         }
@@ -135,42 +163,6 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
             nativeHandle = 0
         }
         onKryonDestroy()
-    }
-
-    // ========================================================================
-    // SurfaceHolder.Callback
-    // ========================================================================
-
-    override fun surfaceCreated(holder: SurfaceHolder) {
-        Log.i(TAG, "surfaceCreated")
-        surfaceCreated = true
-
-        if (nativeHandle != 0L) {
-            nativeSurfaceCreated(nativeHandle, holder.surface)
-        }
-
-        // Start render loop
-        startRenderLoop()
-    }
-
-    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-        Log.i(TAG, "surfaceChanged: ${width}x${height}")
-
-        if (nativeHandle != 0L) {
-            nativeSurfaceChanged(nativeHandle, width, height)
-        }
-    }
-
-    override fun surfaceDestroyed(holder: SurfaceHolder) {
-        Log.i(TAG, "surfaceDestroyed")
-        surfaceCreated = false
-
-        // Stop render loop
-        stopRenderLoop()
-
-        if (nativeHandle != 0L) {
-            nativeSurfaceDestroyed(nativeHandle)
-        }
     }
 
     // ========================================================================
@@ -317,46 +309,7 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
      * Check if Kryon is ready for rendering.
      */
     fun isKryonReady(): Boolean {
-        return nativeHandle != 0L && surfaceCreated
-    }
-
-    // ========================================================================
-    // Render Loop
-    // ========================================================================
-
-    private fun startRenderLoop() {
-        Log.i(TAG, "startRenderLoop called, isRendering=$isRendering")
-        if (isRendering) return
-        isRendering = true
-        renderHandler = android.os.Handler(android.os.Looper.getMainLooper())
-        Log.i(TAG, "Starting render loop")
-        renderLoop()
-    }
-
-    private fun stopRenderLoop() {
-        isRendering = false
-        renderHandler?.removeCallbacksAndMessages(null)
-        renderHandler = null
-    }
-
-    private var frameCount = 0
-
-    private fun renderLoop() {
-        frameCount++
-        if (frameCount % 60 == 0) {
-            Log.d(TAG, "renderLoop frame $frameCount")
-        }
-
-        if (!isRendering || nativeHandle == 0L) {
-            Log.w(TAG, "renderLoop stopped: isRendering=$isRendering, nativeHandle=$nativeHandle")
-            return
-        }
-
-        // Call native render
-        nativeRender(nativeHandle)
-
-        // Schedule next frame (60 FPS = ~16ms)
-        renderHandler?.postDelayed({ renderLoop() }, 16)
+        return nativeHandle != 0L
     }
 
     // ========================================================================
@@ -373,9 +326,10 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
     private external fun nativeOnStop(handle: Long)
     private external fun nativeOnDestroy(handle: Long)
 
-    private external fun nativeSurfaceCreated(handle: Long, surface: Any)
-    private external fun nativeSurfaceChanged(handle: Long, width: Int, height: Int)
-    private external fun nativeSurfaceDestroyed(handle: Long)
+    // GLSurfaceView.Renderer callbacks
+    private external fun nativeGLSurfaceCreated(handle: Long)
+    private external fun nativeGLSurfaceChanged(handle: Long, width: Int, height: Int)
+    private external fun nativeGLRender(handle: Long)
 
     private external fun nativeTouchEvent(handle: Long, event: MotionEvent): Boolean
     private external fun nativeKeyEvent(handle: Long, event: KeyEvent): Boolean
@@ -390,6 +344,4 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
     private external fun nativeGetState(handle: Long, key: String): String?
 
     private external fun nativeGetFPS(handle: Long): Float
-
-    private external fun nativeRender(handle: Long)
 }

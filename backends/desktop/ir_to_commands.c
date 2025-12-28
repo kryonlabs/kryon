@@ -12,6 +12,7 @@
 #include "ir_to_commands.h"
 #include "desktop_internal.h"
 #include "../../ir/ir_core.h"
+#include "../../ir/ir_executor.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -128,6 +129,11 @@ void ir_defer_to_overlay(IRCommandContext* ctx, IRComponent* comp) {
 bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
     if (!comp->style) return true;
 
+    /* Skip root background rendering - SDL_RenderClear already handles it */
+    if (ctx->is_root_component) {
+        return true;
+    }
+
     IRStyle* style = comp->style;
     kryon_command_t cmd = {0};  // CRITICAL FIX: Zero-initialize to prevent stack garbage
 
@@ -197,11 +203,6 @@ bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutR
             cmd.data.draw_rounded_rect.radius = style->border.radius;
             cmd.data.draw_rounded_rect.color = bg_color;
         } else {
-            fprintf(stderr, "[IR2CMD][id=%u] RECT: x=%.1f y=%.1f w=%.1f h=%.1f rgba(%d,%d,%d,%d) color=0x%08x\n",
-                    comp->id, bounds->x, bounds->y, bounds->width, bounds->height,
-                    bg_r, bg_g, bg_b, bg_a, bg_color);
-            fflush(stderr);
-
             cmd.type = KRYON_CMD_DRAW_RECT;
             cmd.data.draw_rect.x = bounds->x;
             cmd.data.draw_rect.y = bounds->y;
@@ -258,11 +259,31 @@ bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutR
 }
 
 bool ir_gen_text_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
-    if (!comp->text_content) return true;
+    // Evaluate text expression if present, otherwise use text_content
+    char* display_text = NULL;
+    bool needs_free = false;
+
+    if (comp->text_expression) {
+        // Runtime evaluation of reactive text expression
+        // Pass component's scope for correct variable lookup
+        display_text = ir_executor_eval_text_expression(comp->text_expression, comp->scope);
+        if (display_text) {
+            needs_free = true;
+        } else {
+            // Fallback to text_content if expression evaluation fails
+            display_text = comp->text_content;
+        }
+    } else {
+        display_text = comp->text_content;
+    }
+
+    if (!display_text) {
+        return true;
+    }
 
     if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
         fprintf(stderr, "[TEXT_RENDER] ID=%u text='%s' bounds=(%.1f, %.1f) layout_state=%p\n",
-               comp->id, comp->text_content, bounds->x, bounds->y, comp->layout_state);
+               comp->id, display_text, bounds->x, bounds->y, comp->layout_state);
         if (comp->layout_state) {
             fprintf(stderr, "[TEXT_RENDER]   layout_state->computed=(%.1f, %.1f, %.1f, %.1f) valid=%d\n",
                    comp->layout_state->computed.x, comp->layout_state->computed.y,
@@ -294,12 +315,17 @@ bool ir_gen_text_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* 
     cmd.data.draw_text.color = text_color;
 
     /* Copy text to inline storage */
-    strncpy(cmd.data.draw_text.text_storage, comp->text_content, 127);
+    strncpy(cmd.data.draw_text.text_storage, display_text, 127);
     cmd.data.draw_text.text_storage[127] = '\0';
     cmd.data.draw_text.text = NULL;  /* NULL indicates text is in text_storage */
     cmd.data.draw_text.max_length = strlen(cmd.data.draw_text.text_storage);
 
     kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+
+    // Free evaluated text if needed
+    if (needs_free) {
+        free(display_text);
+    }
 
     return true;
 }
@@ -654,8 +680,8 @@ bool ir_gen_markdown_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRe
 
 /* Canvas Component Generator */
 bool ir_gen_canvas_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
-    /* Render canvas background */
-    ir_gen_container_commands(comp, ctx, bounds);
+    /* Canvas background is rendered directly by plugin renderer (not via command buffer)
+     * Skip ir_gen_container_commands to avoid background overdraw */
 
     /* BACKUP FIX: Set rendered bounds from layout bounds
      * This ensures bounds are set even if plugin renderer doesn't execute.
@@ -844,6 +870,7 @@ bool ir_component_to_commands(
     ctx.next_image_id = 1;
     ctx.overlay_count = 0;
     ctx.backend_ctx = backend_ctx;
+    ctx.is_root_component = true;  // Root component - skip background (SDL_RenderClear handles it)
 
     /* Pass 1: Main rendering */
     kryon_command_t cmd = {
@@ -853,6 +880,7 @@ bool ir_component_to_commands(
     kryon_cmd_buf_push(cmd_buf, &cmd);
 
     bool success = ir_generate_component_commands(component, &ctx, bounds, opacity);
+    ctx.is_root_component = false;  // Reset after root is processed
 
     cmd.type = KRYON_CMD_END_PASS;
     kryon_cmd_buf_push(cmd_buf, &cmd);
@@ -880,13 +908,6 @@ bool ir_component_to_commands(
         cmd.type = KRYON_CMD_END_PASS;
         kryon_cmd_buf_push(cmd_buf, &cmd);
     }
-
-    // Debug: Check buffer before returning
-    fprintf(stderr, "[IR2CMD_RETURN] Buffer at pos 0: %02x %02x %02x %02x\n",
-            cmd_buf->buffer[0], cmd_buf->buffer[1], cmd_buf->buffer[2], cmd_buf->buffer[3]);
-    fprintf(stderr, "[IR2CMD_RETURN] Buffer at pos 1632: %02x %02x %02x %02x\n",
-            cmd_buf->buffer[1632], cmd_buf->buffer[1633], cmd_buf->buffer[1634], cmd_buf->buffer[1635]);
-    fflush(stderr);
 
     return success;
 }

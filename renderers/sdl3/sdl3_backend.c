@@ -746,10 +746,6 @@ static void sdl3_draw_rect(kryon_cmd_buf_t* buf, const kryon_command_t* cmd, SDL
 
     SDL_Color color = kryon_color_to_sdl(cmd->data.draw_rect.color);
 
-    fprintf(stderr, "[SDL3_RECT] x=%.1f y=%.1f w=%.1f h=%.1f rgba(%d,%d,%d,%d)\n",
-            frect.x, frect.y, frect.w, frect.h, color.r, color.g, color.b, color.a);
-    fflush(stderr);
-
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     SDL_RenderFillRect(renderer, &frect);
 }
@@ -1135,19 +1131,12 @@ static void sdl3_begin_frame(kryon_renderer_t* renderer) {
 }
 
 static void sdl3_execute_commands(kryon_renderer_t* renderer, kryon_cmd_buf_t* buf) {
-    fprintf(stderr, "[SDL3_EXEC_START]\n");
-    fflush(stderr);
-
     if (renderer == NULL || buf == NULL || renderer->backend_data == NULL) {
-        fprintf(stderr, "[SDL3_EXEC] NULL check failed\n");
-        fflush(stderr);
         return;
     }
 
     // Check if we have commands to execute
     int cmd_count = kryon_cmd_buf_count(buf);
-    fprintf(stderr, "[SDL3_EXEC] cmd_count=%d\n", cmd_count);
-    fflush(stderr);
 
     if (cmd_count == 0) {
         return;
@@ -1177,12 +1166,6 @@ static void sdl3_execute_commands(kryon_renderer_t* renderer, kryon_cmd_buf_t* b
     while (kryon_cmd_iter_has_next(&iter)) {
         executed_count++;
         if (kryon_cmd_iter_next(&iter, &cmd)) {
-            // Debug: Print first 3 commands of every frame to see what's executing
-            if (executed_count <= 3) {
-                fprintf(stderr, "[SDL3_DBG] Command %d: type=%d\n", executed_count, cmd.type);
-                fflush(stderr);
-            }
-
             switch (cmd.type) {
                 case KRYON_CMD_DRAW_RECT:
                     sdl3_draw_rect(buf, &cmd, backend->renderer);
@@ -1362,7 +1345,6 @@ static void sdl3_execute_commands(kryon_renderer_t* renderer, kryon_cmd_buf_t* b
     if (debug_frame < 2) {
         debug_frame++;
     }
-    fprintf(stderr, "[SDL3] Executed %d commands (frame %d)\n", executed_count, debug_frame);
 }
 
 static void sdl3_end_frame(kryon_renderer_t* renderer) {

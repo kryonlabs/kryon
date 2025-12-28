@@ -61,6 +61,9 @@ typedef struct IRCommandContext {
     IRComponent* overlays[16];
     int overlay_count;
 
+    /* Root component flag - skip background for root since SDL_RenderClear handles it */
+    bool is_root_component;
+
 } IRCommandContext;
 
 /* ============================================================================

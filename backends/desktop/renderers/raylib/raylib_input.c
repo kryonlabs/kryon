@@ -351,13 +351,17 @@ static void handle_mouse_motion(DesktopIRRenderer* renderer, IRComponent* root, 
     // Update global hover state
     g_hovered_component = hovered;
 
+    // Validate hovered component is visible before using it
+    bool hovered_is_valid = (hovered != NULL &&
+                             (!hovered->style || hovered->style->visible));
+
     // Change cursor based on hovered component
     // Raylib cursor types: MOUSE_CURSOR_DEFAULT, MOUSE_CURSOR_POINTING_HAND
     if (is_in_dropdown_menu ||
-        (hovered && (hovered->type == IR_COMPONENT_BUTTON ||
-                     hovered->type == IR_COMPONENT_INPUT ||
-                     hovered->type == IR_COMPONENT_CHECKBOX ||
-                     hovered->type == IR_COMPONENT_DROPDOWN))) {
+        (hovered_is_valid && (hovered->type == IR_COMPONENT_BUTTON ||
+                              hovered->type == IR_COMPONENT_INPUT ||
+                              hovered->type == IR_COMPONENT_CHECKBOX ||
+                              hovered->type == IR_COMPONENT_DROPDOWN))) {
         SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
     } else {
         SetMouseCursor(MOUSE_CURSOR_DEFAULT);

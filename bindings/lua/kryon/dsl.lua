@@ -15,6 +15,29 @@ local DSL = {}
 DSL._tabVisualStates = {}
 
 -- ============================================================================
+-- Reactive Value Handling
+-- ============================================================================
+
+--- Unwrap a potentially reactive value to get its current raw value
+--- @param value any Potentially reactive value
+--- @return any Raw value
+local function unrefValue(value)
+  -- If it's a function (signal getter or computed), call it to get value
+  if type(value) == "function" then
+    local success, result = pcall(value)
+    if success then
+      return result
+    end
+    return value
+  end
+
+  -- If it's a reactive proxy, access it (triggers dependency tracking)
+  -- The proxy's __index metamethod will handle this automatically
+  -- We don't need to do anything special - just return it
+  return value
+end
+
+-- ============================================================================
 -- TabGroup Context Stack (for automatic initialization)
 -- ============================================================================
 
@@ -37,14 +60,12 @@ end
 -- ============================================================================
 
 --- Parse dimension string like "100px", "50%", "auto", "2fr"
---- @param value any Dimension value (number, string, or ReactiveState)
+--- @param value any Dimension value (number, string, or reactive)
 --- @return number dimensionType
 --- @return number dimensionValue
 local function parseDimension(value)
-  -- Handle reactive state
-  if type(value) == "table" and value.get then
-    return parseDimension(value:get())
-  end
+  -- Unwrap reactive values
+  value = unrefValue(value)
 
   -- Plain number = pixels
   if type(value) == "number" then
@@ -91,16 +112,14 @@ local function parseDimension(value)
 end
 
 --- Parse color string like "#RRGGBB" or "#RRGGBBAA"
---- @param color string|table Color value or ReactiveState
+--- @param color string|any Color value or reactive
 --- @return number r
 --- @return number g
 --- @return number b
 --- @return number a
 local function parseColor(color)
-  -- Handle reactive state
-  if type(color) == "table" and color.get then
-    return parseColor(color:get())
-  end
+  -- Unwrap reactive values
+  color = unrefValue(color)
 
   if type(color) == "string" then
     -- Named colors

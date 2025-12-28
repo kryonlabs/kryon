@@ -488,13 +488,28 @@ int cmd_run(int argc, char** argv) {
     const char* target_platform = NULL;
     bool explicit_target = false;
 
-    // Parse --target flag
+    // Parse --target flag and detect invalid flags
     int new_argc = 0;
     char* new_argv[128];
     for (int i = 0; i < argc; i++) {
         if (strncmp(argv[i], "--target=", 9) == 0) {
             target_platform = argv[i] + 9;
             explicit_target = true;
+        } else if (strncmp(argv[i], "--renderer=", 11) == 0) {
+            fprintf(stderr, "Error: Invalid flag '--renderer=%s'\n", argv[i] + 11);
+            fprintf(stderr, "Did you mean '--target=%s'?\n", argv[i] + 11);
+            fprintf(stderr, "\nSupported targets:\n");
+            fprintf(stderr, "  --target=desktop   (default)\n");
+            fprintf(stderr, "  --target=android\n");
+            fprintf(stderr, "  --target=terminal\n");
+            fprintf(stderr, "  --target=web\n");
+            return 1;
+        } else if (strncmp(argv[i], "--", 2) == 0 && strchr(argv[i], '=')) {
+            // Unknown flag with '='
+            fprintf(stderr, "Error: Unknown flag '%s'\n", argv[i]);
+            fprintf(stderr, "\nValid flags:\n");
+            fprintf(stderr, "  --target=<platform>    Platform to run on (desktop, android, terminal, web)\n");
+            return 1;
         } else if (new_argc < 128) {
             new_argv[new_argc++] = argv[i];
         }
@@ -609,16 +624,67 @@ int cmd_run(int argc, char** argv) {
         snprintf(exe_file, sizeof(exe_file), "/tmp/kryon_app_%d", getpid());
 
         printf("Compiling %s to native executable...\n", target_file);
-        char compile_cmd[2048];
+
+        // Find additional .c files in the same directory
+        char additional_sources[2048] = "";
+        {
+            // Extract directory from target_file
+            char dir_path[1024];
+            const char* last_slash = strrchr(target_file, '/');
+            if (last_slash) {
+                size_t dir_len = last_slash - target_file;
+                strncpy(dir_path, target_file, dir_len);
+                dir_path[dir_len] = '\0';
+            } else {
+                strcpy(dir_path, ".");
+            }
+
+            // Find all .c files in the directory (exclude target file)
+            char find_cmd[2048];
+            snprintf(find_cmd, sizeof(find_cmd),
+                     "find \"%s\" -maxdepth 1 -name '*.c' ! -name '%s' 2>/dev/null",
+                     dir_path,
+                     last_slash ? last_slash + 1 : target_file);
+
+            FILE* fp = popen(find_cmd, "r");
+            if (fp) {
+                char line[512];
+                while (fgets(line, sizeof(line), fp)) {
+                    // Remove newline
+                    line[strcspn(line, "\n")] = 0;
+                    if (strlen(line) > 0) {
+                        strncat(additional_sources, "\"", sizeof(additional_sources) - strlen(additional_sources) - 1);
+                        strncat(additional_sources, line, sizeof(additional_sources) - strlen(additional_sources) - 1);
+                        strncat(additional_sources, "\" ", sizeof(additional_sources) - strlen(additional_sources) - 1);
+                    }
+                }
+                pclose(fp);
+            }
+        }
+
+        char compile_cmd[4096];  // Increased size for additional sources
+
+        // Extract directory for -I flag
+        char dir_include[1024] = "";
+        const char* last_slash = strrchr(target_file, '/');
+        if (last_slash) {
+            size_t dir_len = last_slash - target_file;
+            snprintf(dir_include, sizeof(dir_include), "-I%.*s ", (int)dir_len, target_file);
+        }
+
         snprintf(compile_cmd, sizeof(compile_cmd),
-                 "gcc -std=c99 -O2 \"%s\" -o \"%s\" "
+                 "gcc -std=c99 -O2 \"%s\" %s"
+                 "/mnt/storage/Projects/kryon/bindings/c/kryon.c "
+                 "/mnt/storage/Projects/kryon/bindings/c/kryon_dsl.c "
+                 "-o \"%s\" "
+                 "%s"  // Add directory include path
                  "-I/mnt/storage/Projects/kryon/bindings/c "
                  "-I/mnt/storage/Projects/kryon/ir "
                  "-I/mnt/storage/Projects/kryon/backends/desktop "
+                 "-I/mnt/storage/Projects/kryon/ir/third_party/cJSON "
                  "-L/mnt/storage/Projects/kryon/build "
-                 "-L/mnt/storage/Projects/kryon/bindings/c "
-                 "-lkryon_c -lkryon_ir -lkryon_desktop -lm -lraylib 2>&1",
-                 target_file, exe_file);
+                 "-lkryon_desktop -lkryon_ir -lm -lraylib 2>&1",
+                 target_file, additional_sources, exe_file, dir_include);
 
         int result = system(compile_cmd);
         if (result != 0) {
@@ -787,17 +853,59 @@ int cmd_run(int argc, char** argv) {
             // Build Lua command to load KIR with Runtime.loadKIR
             char lua_cmd[4096];
             if (plugin_paths && strlen(plugin_paths) > 0) {
+                // Build LUA_PATH, LUA_CPATH, and LD_LIBRARY_PATH from plugin paths
+                char lua_path[2048] = "";
+                char lua_cpath[2048] = "";
+                char ld_library_path[2048] = "";
+
+                // Start with kryon root paths
+                snprintf(lua_path, sizeof(lua_path),
+                         "%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua",
+                         kryon_root, kryon_root);
+
+                // Parse plugin_paths (colon-separated)
+                char* paths_copy = strdup(plugin_paths);
+                char* path_token = strtok(paths_copy, ":");
+                while (path_token != NULL) {
+                    // Append to LUA_PATH
+                    size_t len = strlen(lua_path);
+                    snprintf(lua_path + len, sizeof(lua_path) - len,
+                             ";%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua",
+                             path_token, path_token);
+
+                    // Append to LUA_CPATH
+                    if (strlen(lua_cpath) > 0) {
+                        strncat(lua_cpath, ";", sizeof(lua_cpath) - strlen(lua_cpath) - 1);
+                    }
+                    len = strlen(lua_cpath);
+                    snprintf(lua_cpath + len, sizeof(lua_cpath) - len,
+                             "%s/build/?.so", path_token);
+
+                    // Append to LD_LIBRARY_PATH
+                    if (strlen(ld_library_path) > 0) {
+                        strncat(ld_library_path, ":", sizeof(ld_library_path) - strlen(ld_library_path) - 1);
+                    }
+                    strncat(ld_library_path, path_token, sizeof(ld_library_path) - strlen(ld_library_path) - 1);
+                    strncat(ld_library_path, "/build", sizeof(ld_library_path) - strlen(ld_library_path) - 1);
+
+                    path_token = strtok(NULL, ":");
+                }
+                free(paths_copy);
+
+                // Terminate LUA_PATH and LUA_CPATH
+                strncat(lua_path, ";;", sizeof(lua_path) - strlen(lua_path) - 1);
+                strncat(lua_cpath, ";;", sizeof(lua_cpath) - strlen(lua_cpath) - 1);
+
                 snprintf(lua_cmd, sizeof(lua_cmd),
                          "KRYON_PLUGIN_PATHS=\"%s\" "
-                         "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;%s/bindings/lua/?.lua;;\" "
-                         "LUA_CPATH=\"%s/build/?.so;;\" "
-                         "LD_LIBRARY_PATH=\"%s/build:%s/build:$LD_LIBRARY_PATH\" "
+                         "LUA_PATH=\"%s\" "
+                         "LUA_CPATH=\"%s\" "
+                         "LD_LIBRARY_PATH=\"%s:%s/build:$LD_LIBRARY_PATH\" "
                          "luajit -e '"
                          "local Runtime = require(\"kryon.runtime\"); "
                          "local app = Runtime.loadKIR(\"%s\"); "
                          "Runtime.runDesktop(app)'",
-                         plugin_paths, kryon_root, kryon_root, plugin_paths,
-                         plugin_paths, plugin_paths, kryon_root, kir_file);
+                         plugin_paths, lua_path, lua_cpath, ld_library_path, kryon_root, kir_file);
             } else {
                 snprintf(lua_cmd, sizeof(lua_cmd),
                          "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;;\" "

@@ -21,12 +21,6 @@ void layout_text_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                              float parent_x, float parent_y) {
     if (!c) return;
 
-    if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
-        fprintf(stderr, "[TEXT_LAYOUT_CALL] ID=%u text='%s' parent_pos=(%.1f, %.1f) constraints=(%.1f x %.1f)\n",
-                c->id, c->text_content ? c->text_content : "(null)",
-                parent_x, parent_y, constraints.max_width, constraints.max_height);
-    }
-
     // Ensure layout state exists
     if (!c->layout_state) {
         c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
@@ -39,7 +33,20 @@ void layout_text_single_pass(IRComponent* c, IRLayoutConstraints constraints,
 
     // Get font size from style
     float font_size = (c->style && c->style->font.size > 0) ? c->style->font.size : 16.0f;
-    const char* text = c->text_content ? c->text_content : "";
+
+    // Evaluate text expression if present (for reactive text)
+    char* evaluated_text = NULL;
+    const char* text = NULL;
+
+    if (c->text_expression && c->text_expression[0] != '\0') {
+        // Need to evaluate text expression to get actual text for measurement
+        // Declare the function here since we can't include ir_executor.h
+        extern char* ir_executor_eval_text_expression(const char* expression, const char* scope);
+        evaluated_text = ir_executor_eval_text_expression(c->text_expression, c->scope);
+        text = evaluated_text ? evaluated_text : "";
+    } else {
+        text = c->text_content ? c->text_content : "";
+    }
 
     // Determine width constraint for text measurement
     float available_width = constraints.max_width;
@@ -129,6 +136,11 @@ void layout_text_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         fprintf(stderr, "[Text] Final layout: x=%.1f, y=%.1f, width=%.1f, height=%.1f\n",
                 c->layout_state->computed.x, c->layout_state->computed.y,
                 c->layout_state->computed.width, c->layout_state->computed.height);
+    }
+
+    // Free evaluated text if allocated
+    if (evaluated_text) {
+        free(evaluated_text);
     }
 }
 

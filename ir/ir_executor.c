@@ -130,6 +130,68 @@ void ir_executor_set_global(IRExecutorContext* ctx) {
 }
 
 // ============================================================================
+// TEXT EXPRESSION EVALUATION
+// ============================================================================
+
+/**
+ * Evaluate a text expression and return the string representation
+ * @param expression Variable name or expression (e.g., "value", "count")
+ * @return Allocated string with the value (caller must free), or NULL if not found
+ */
+char* ir_executor_eval_text_expression(const char* expression, const char* scope) {
+    if (!expression || !g_executor) return NULL;
+
+    const char* lookup_scope = scope ? scope : "global";
+    fprintf(stderr, "[eval_text_expr] Evaluating '%s' in scope '%s'\n", expression, lookup_scope);
+    fflush(stderr);
+
+    // Simple variable lookup (just the variable name, no complex expressions yet)
+    // First try to find variable in the specified scope
+    for (uint32_t i = 0; i < g_executor->var_count; i++) {
+        IRExecutorVar* var = &g_executor->vars[i];
+        if (var->name && strcmp(var->name, expression) == 0) {
+            // Check if scope matches
+            if (var->scope && strcmp(var->scope, lookup_scope) == 0) {
+                fprintf(stderr, "[eval_text_expr] Found variable '%s' in scope '%s', type=%d\n",
+                       var->name, var->scope, var->value.type);
+                fflush(stderr);
+
+                // Convert value to string based on type
+                char buffer[256];
+                switch (var->value.type) {
+                    case VAR_TYPE_INT:
+                        snprintf(buffer, sizeof(buffer), "%ld", (long)var->value.int_val);
+                        fprintf(stderr, "[eval_text_expr] Converted int to '%s'\n", buffer);
+                        fflush(stderr);
+                        return strdup(buffer);
+
+                    case VAR_TYPE_STRING:
+                        if (var->value.string_val) {
+                            return strdup(var->value.string_val);
+                        }
+                        return strdup("");
+
+                    default:
+                        fprintf(stderr, "[eval_text_expr] Unknown type %d\n", var->value.type);
+                        fflush(stderr);
+                        return strdup("");
+                }
+            }
+        }
+    }
+
+    // Fallback: try global scope if not already trying global
+    if (scope && strcmp(lookup_scope, "global") != 0) {
+        fprintf(stderr, "[eval_text_expr] Not found in scope '%s', trying global\n", lookup_scope);
+        return ir_executor_eval_text_expression(expression, "global");
+    }
+
+    fprintf(stderr, "[eval_text_expr] Variable '%s' not found in any scope\n", expression);
+    fflush(stderr);
+    return NULL;
+}
+
+// ============================================================================
 // BUILT-IN ARRAY FUNCTIONS
 // ============================================================================
 
@@ -880,12 +942,20 @@ bool ir_executor_handle_event(IRExecutorContext* ctx,
 
     printf("[executor] Event '%s' on component %u\n", event_type, component_id);
 
-    // Find the clicked component to get its owner_instance_id
+    // Find the clicked component to get its scope
     if (ctx->root) {
         IRComponent* clicked = find_component_by_id(ctx->root, component_id);
-        if (clicked && clicked->owner_instance_id != 0) {
-            ctx->current_instance_id = clicked->owner_instance_id;
-            printf("[executor] Using owner_instance_id=%u for state\n", ctx->current_instance_id);
+        if (clicked) {
+            // Set scope for scoped variable lookups
+            if (clicked->scope) {
+                if (ctx->current_scope) free(ctx->current_scope);
+                ctx->current_scope = strdup(clicked->scope);
+                printf("[executor] Using scope='%s' for state\n", ctx->current_scope);
+            }
+            // Legacy: also set numeric instance ID
+            if (clicked->owner_instance_id != 0) {
+                ctx->current_instance_id = clicked->owner_instance_id;
+            }
         }
     }
 
@@ -920,12 +990,20 @@ bool ir_executor_handle_event_by_logic_id(IRExecutorContext* ctx,
 
     printf("[executor] Event with logic_id '%s' on component %u\n", logic_id, component_id);
 
-    // Find the clicked component to get its owner_instance_id
+    // Find the clicked component to get its scope
     if (ctx->root) {
         IRComponent* clicked = find_component_by_id(ctx->root, component_id);
-        if (clicked && clicked->owner_instance_id != 0) {
-            ctx->current_instance_id = clicked->owner_instance_id;
-            printf("[executor] Using owner_instance_id=%u for state\n", ctx->current_instance_id);
+        if (clicked) {
+            // Set scope for scoped variable lookups
+            if (clicked->scope) {
+                if (ctx->current_scope) free(ctx->current_scope);
+                ctx->current_scope = strdup(clicked->scope);
+                printf("[executor] Using scope='%s' for state\n", ctx->current_scope);
+            }
+            // Legacy: also set numeric instance ID
+            if (clicked->owner_instance_id != 0) {
+                ctx->current_instance_id = clicked->owner_instance_id;
+            }
         }
     }
 
@@ -1040,10 +1118,12 @@ bool ir_executor_load_kir_file(IRExecutorContext* ctx, const char* kir_path) {
                 cJSON* nameJ = cJSON_GetObjectItem(varObj, "name");
                 cJSON* typeJ = cJSON_GetObjectItem(varObj, "type");
                 cJSON* initialJ = cJSON_GetObjectItem(varObj, "initial_value");
+                cJSON* scopeJ = cJSON_GetObjectItem(varObj, "scope");
 
                 if (nameJ && cJSON_IsString(nameJ)) {
                     const char* name = nameJ->valuestring;
                     const char* type_str = typeJ && cJSON_IsString(typeJ) ? typeJ->valuestring : "int";
+                    const char* scope_str = scopeJ && cJSON_IsString(scopeJ) ? scopeJ->valuestring : "global";
 
                     IRValue value;
 
@@ -1137,8 +1217,10 @@ bool ir_executor_load_kir_file(IRExecutorContext* ctx, const char* kir_path) {
                     if (ctx->var_count < IR_EXECUTOR_MAX_VARS) {
                         ctx->vars[ctx->var_count].name = strdup(name);
                         ctx->vars[ctx->var_count].value = value;
-                        ctx->vars[ctx->var_count].owner_component_id = 0;  // global
+                        ctx->vars[ctx->var_count].scope = strdup(scope_str);
+                        ctx->vars[ctx->var_count].owner_component_id = 0;  // global (deprecated, use scope instead)
                         ctx->var_count++;
+                        printf("[executor] Loaded variable '%s' with scope '%s'\n", name, scope_str);
                     }
                 }
             }
@@ -1288,7 +1370,17 @@ bool ir_executor_load_kir_file(IRExecutorContext* ctx, const char* kir_path) {
 static IRExecutorVar* ir_executor_find_var(IRExecutorContext* ctx, const char* name, uint32_t instance_id) {
     if (!ctx || !name) return NULL;
 
-    // Check instance-specific vars first
+    // FIRST: Check current scope (for scoped variable lookups during event handlers)
+    if (ctx->current_scope) {
+        for (int i = 0; i < ctx->var_count; i++) {
+            if (ctx->vars[i].scope && strcmp(ctx->vars[i].scope, ctx->current_scope) == 0 &&
+                ctx->vars[i].name && strcmp(ctx->vars[i].name, name) == 0) {
+                return &ctx->vars[i];
+            }
+        }
+    }
+
+    // Check instance-specific vars by numeric ID (backwards compatibility)
     for (int i = 0; i < ctx->var_count; i++) {
         if (ctx->vars[i].owner_component_id == instance_id &&
             ctx->vars[i].name && strcmp(ctx->vars[i].name, name) == 0) {
@@ -1296,7 +1388,15 @@ static IRExecutorVar* ir_executor_find_var(IRExecutorContext* ctx, const char* n
         }
     }
 
-    // Check global vars (instance_id == 0)
+    // Check global vars (scope == "global")
+    for (int i = 0; i < ctx->var_count; i++) {
+        if (ctx->vars[i].scope && strcmp(ctx->vars[i].scope, "global") == 0 &&
+            ctx->vars[i].name && strcmp(ctx->vars[i].name, name) == 0) {
+            return &ctx->vars[i];
+        }
+    }
+
+    // Fallback: check any global var (owner_component_id == 0)
     for (int i = 0; i < ctx->var_count; i++) {
         if (ctx->vars[i].owner_component_id == 0 &&
             ctx->vars[i].name && strcmp(ctx->vars[i].name, name) == 0) {

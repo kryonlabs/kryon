@@ -861,6 +861,7 @@ typedef struct IRComponent {
     char* component_ref;     // For component references (e.g., "Counter")
     char* component_props;   // JSON string of props passed to component instance
     uint32_t owner_instance_id;        // ID of owning component instance (for state isolation)
+    char* scope;             // Scope string for variable lookups (e.g., "Counter#0", "Counter#1")
     IRRenderedBounds rendered_bounds;  // Cached layout bounds
     IRLayoutCache layout_cache;        // Performance cache for layout
     uint32_t dirty_flags;              // Dirty tracking for incremental updates

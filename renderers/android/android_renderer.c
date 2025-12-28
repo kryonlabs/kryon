@@ -200,6 +200,91 @@ bool android_renderer_initialize(AndroidRenderer* renderer, ANativeWindow* windo
     return true;
 }
 
+// GL-only initialization (for GLSurfaceView where EGL context is pre-created)
+bool android_renderer_initialize_gl_only(AndroidRenderer* renderer) {
+    if (!renderer) {
+        LOGE("Renderer is NULL\n");
+        return false;
+    }
+
+    if (renderer->initialized) {
+        LOGI("Renderer already initialized\n");
+        return true;
+    }
+
+    LOGI("Initializing Android renderer (GL-only mode)...\n");
+
+    // Skip EGL initialization - GLSurfaceView handles that
+    renderer->egl_initialized = false;  // Mark as not managed by us
+
+    // Initialize shaders
+    if (!android_shader_init_all(renderer)) {
+        LOGE("Failed to initialize shaders\n");
+        android_renderer_set_error(renderer, ANDROID_RENDERER_ERROR_SHADER_COMPILE_FAILED);
+        return false;
+    }
+
+#ifdef __ANDROID__
+    // Create vertex array object
+    glGenVertexArrays(1, &renderer->vao);
+    glBindVertexArray(renderer->vao);
+
+    // Create vertex buffer
+    glGenBuffers(1, &renderer->vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, renderer->vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(renderer->vertices), NULL, GL_DYNAMIC_DRAW);
+
+    // Create index buffer
+    glGenBuffers(1, &renderer->ibo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->ibo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(renderer->indices), NULL, GL_DYNAMIC_DRAW);
+
+    // Setup vertex attributes (for texture shader)
+    // Position (vec2) - Location 0
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                          (void*)offsetof(Vertex, x));
+
+    // TexCoord (vec2) - Location 1
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                          (void*)offsetof(Vertex, u));
+
+    // Color (vec4) - Location 2
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex),
+                          (void*)offsetof(Vertex, r));
+
+    glBindVertexArray(0);
+
+    // Enable alpha blending for text rendering
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    LOGI("OpenGL buffers created\n");
+#endif
+
+    // Update projection matrix
+    android_renderer_update_projection(renderer);
+
+    // Initialize font system
+    if (!android_font_init(renderer)) {
+        LOGE("Failed to initialize font system\n");
+        android_renderer_set_error(renderer, ANDROID_RENDERER_ERROR_FONT_LOAD_FAILED);
+    }
+
+    // Initialize texture cache
+    android_texture_cache_init(renderer);
+
+    renderer->initialized = true;
+    renderer->frame_start_time = get_current_time();
+
+    LOGI("Renderer initialized successfully (GL-only mode)\n");
+    android_renderer_print_info(renderer);
+
+    return true;
+}
+
 void android_renderer_shutdown(AndroidRenderer* renderer) {
     if (!renderer || !renderer->initialized) {
         return;
@@ -275,6 +360,8 @@ bool android_renderer_begin_frame(AndroidRenderer* renderer) {
     // Clear screen
 #ifdef __ANDROID__
     glClear(GL_COLOR_BUFFER_BIT);
+    // Bind VAO for entire frame - fixes GL_INVALID_OPERATION when binding textures
+    glBindVertexArray(renderer->vao);
 #endif
 
     // Reset frame state
@@ -307,6 +394,11 @@ bool android_renderer_end_frame(AndroidRenderer* renderer) {
 
     // Flush any pending batched geometry
     android_renderer_flush_batch(renderer);
+
+#ifdef __ANDROID__
+    // Unbind VAO after frame rendering complete
+    glBindVertexArray(0);
+#endif
 
     // Swap buffers
     if (!android_egl_swap_buffers(renderer)) {
@@ -500,12 +592,48 @@ void android_renderer_flush_batch(AndroidRenderer* renderer) {
     if (renderer->current_texture != 0) {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, renderer->current_texture);
+
+        // Verify texture binding
+        GLint bound_tex = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &bound_tex);
+        if (flush_count < 5 || flush_count % 60 == 0) {
+            LOGI("Texture bound: expected=%d, actual=%d\n",
+                 renderer->current_texture, bound_tex);
+        }
+
+        // For text shader, ensure texture uniform is set
+        if (renderer->current_shader == SHADER_PROGRAM_TEXT) {
+            GLint u_tex = renderer->shader_programs[SHADER_PROGRAM_TEXT].u_texture;
+            if (u_tex >= 0) {
+                glUniform1i(u_tex, 0);
+                if (flush_count < 5 || flush_count % 60 == 0) {
+                    LOGI("Set text shader texture uniform: location=%d, unit=0\n", u_tex);
+                }
+            }
+        }
+    }
+
+    // Verify GL state before drawing
+    if (flush_count < 5 || flush_count % 60 == 0) {
+        GLboolean blend_enabled = glIsEnabled(GL_BLEND);
+        GLboolean depth_test = glIsEnabled(GL_DEPTH_TEST);
+        GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
+        GLint current_program = 0;
+        glGetIntegerv(GL_CURRENT_PROGRAM, &current_program);
+
+        LOGI("GL State: blend=%d, depth=%d, scissor=%d, program=%d, shader_type=%d\n",
+             blend_enabled, depth_test, scissor, current_program, renderer->current_shader);
     }
 
     // Draw
-    glBindVertexArray(renderer->vao);
+    // VAO is already bound at frame start in begin_frame() - no need to bind/unbind here
     glDrawElements(GL_TRIANGLES, renderer->index_count, GL_UNSIGNED_SHORT, 0);
-    glBindVertexArray(0);
+
+    // Check for GL errors after draw
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        LOGE("GL Error after draw: 0x%x\n", err);
+    }
 
     // Update stats
     renderer->stats.draw_calls++;
