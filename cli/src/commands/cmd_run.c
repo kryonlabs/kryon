@@ -8,6 +8,7 @@
 #include "../../ir/ir_serialization.h"
 #include "../../ir/ir_executor.h"
 #include "../../backends/desktop/ir_desktop_renderer.h"
+#include "../../codegens/kotlin/kotlin_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -164,29 +165,16 @@ static int android_setup_temp_project(const char* temp_dir, const char* kir_file
     fprintf(f, "</manifest>\n");
     fclose(f);
 
-    // Create MainActivity.kt
+    // Generate MainActivity.kt from KIR using Kotlin codegen
     char mainactivity[2048];
     snprintf(mainactivity, sizeof(mainactivity), "%s/app/src/main/kotlin/com/kryon/temp/MainActivity.kt", temp_dir);
-    f = fopen(mainactivity, "w");
-    if (!f) return -1;
-    fprintf(f, "package com.kryon.temp\n\n");
-    fprintf(f, "import android.util.Log\n");
-    fprintf(f, "import com.kryon.KryonActivity\n");
-    fprintf(f, "import java.io.File\n\n");
-    fprintf(f, "class MainActivity : KryonActivity() {\n");
-    fprintf(f, "    override fun onKryonCreate() {\n");
-    fprintf(f, "        Log.d(\"Kryon\", \"MainActivity.onKryonCreate()\")\n\n");
-    fprintf(f, "        val kirFile = File(filesDir, \"app.kir\")\n");
-    fprintf(f, "        assets.open(\"app.kir\").use { input ->\n");
-    fprintf(f, "            kirFile.outputStream().use { output ->\n");
-    fprintf(f, "                input.copyTo(output)\n");
-    fprintf(f, "            }\n");
-    fprintf(f, "        }\n\n");
-    fprintf(f, "        val loaded = loadKryonFile(kirFile.absolutePath)\n");
-    fprintf(f, "        Log.d(\"Kryon\", \"KIR loaded: $loaded from ${kirFile.absolutePath}\")\n");
-    fprintf(f, "    }\n");
-    fprintf(f, "}\n");
-    fclose(f);
+
+    printf("Generating Kotlin code: %s\n", mainactivity);
+    if (!ir_generate_kotlin_code(kir_file, mainactivity)) {
+        fprintf(stderr, "Error: Failed to generate Kotlin code from KIR\n");
+        return -1;
+    }
+    printf("✓ Generated MainActivity.kt from KIR\n");
 
     return 0;
 }

@@ -222,14 +222,7 @@ bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutR
 
     /* Render border */
     uint8_t border_r, border_g, border_b, border_a;
-    fprintf(stderr, "[BORDER_DEBUG] border.width=%f\n", style->border.width);
-    if (style->border.width > 0) {
-        bool color_ok = ir_color_resolve(&style->border.color, &border_r, &border_g, &border_b, &border_a);
-        fprintf(stderr, "[BORDER_DEBUG] color_ok=%d r=%u g=%u b=%u a=%u\n", color_ok, border_r, border_g, border_b, border_a);
-    }
     if (style->border.width > 0 && ir_color_resolve(&style->border.color, &border_r, &border_g, &border_b, &border_a) && border_a > 0) {
-        fprintf(stderr, "[BORDER_DEBUG] Drawing border: width=%f color=rgba(%u,%u,%u,%u)\n",
-                style->border.width, border_r, border_g, border_b, border_a);
         uint32_t border_color = (border_r << 24) | (border_g << 16) | (border_b << 8) | border_a;
         border_color = ir_apply_opacity_to_color(border_color, ctx->current_opacity);
 
@@ -311,27 +304,17 @@ bool ir_gen_button_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect
     bool is_hovered = (g_hovered_component == comp);
 
     /* Add default border for buttons if not set */
-    fprintf(stderr, "[BUTTON_DEBUG] style=%p\n", (void*)comp->style);
-    if (comp->style) {
-        fprintf(stderr, "[BUTTON_DEBUG] border.width=%f\n", comp->style->border.width);
-    }
     if (comp->style && comp->style->border.width == 0.0f) {
-        fprintf(stderr, "[BUTTON_DEBUG] Setting default border\n");
-        fprintf(stderr, "[BUTTON_DEBUG] Step 1\n");
         comp->style->border.width = 2.0f;  /* 2px for visibility */
-        fprintf(stderr, "[BUTTON_DEBUG] Step 2 - wrote 2.0\n");
-        /* Set default border color to bright white if not set */
-        if (comp->style->border.color.type == IR_COLOR_TRANSPARENT) {
+        /* Set default border color to bright white if not set or transparent */
+        if (comp->style->border.color.type == IR_COLOR_TRANSPARENT ||
+            (comp->style->border.color.type == IR_COLOR_SOLID && comp->style->border.color.data.a == 0)) {
             comp->style->border.color.type = IR_COLOR_SOLID;
             comp->style->border.color.data.r = 255;
             comp->style->border.color.data.g = 255;
             comp->style->border.color.data.b = 255;
             comp->style->border.color.data.a = 255;
         }
-        fprintf(stderr, "[BUTTON_DEBUG] After setting: border.width=%f color_type=%d r=%u g=%u b=%u a=%u\n",
-                comp->style->border.width, comp->style->border.color.type,
-                comp->style->border.color.data.r, comp->style->border.color.data.g,
-                comp->style->border.color.data.b, comp->style->border.color.data.a);
     }
 
     /* Apply hover effect - brighten background */
@@ -443,6 +426,33 @@ bool ir_gen_input_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect*
 
 /* Checkbox Component Generator */
 bool ir_gen_checkbox_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
+    /* Add default styling for checkbox if not set */
+    if (comp->style) {
+        /* Set default white background for checkbox box */
+        if (comp->style->background.type == IR_COLOR_TRANSPARENT ||
+            (comp->style->background.type == IR_COLOR_SOLID && comp->style->background.data.a == 0)) {
+            comp->style->background.type = IR_COLOR_SOLID;
+            comp->style->background.data.r = 255;
+            comp->style->background.data.g = 255;
+            comp->style->background.data.b = 255;
+            comp->style->background.data.a = 255;
+        }
+
+        /* Set default border for checkbox box */
+        if (comp->style->border.width == 0.0f) {
+            comp->style->border.width = 2.0f;
+            /* Set default border color to gray if not set or transparent */
+            if (comp->style->border.color.type == IR_COLOR_TRANSPARENT ||
+                (comp->style->border.color.type == IR_COLOR_SOLID && comp->style->border.color.data.a == 0)) {
+                comp->style->border.color.type = IR_COLOR_SOLID;
+                comp->style->border.color.data.r = 128;
+                comp->style->border.color.data.g = 128;
+                comp->style->border.color.data.b = 128;
+                comp->style->border.color.data.a = 255;
+            }
+        }
+    }
+
     /* Checkbox dimensions */
     float checkbox_size = bounds->height * 0.6f < 20.0f ? bounds->height * 0.6f : 20.0f;
     float checkbox_y = bounds->y + (bounds->height - checkbox_size) / 2;
@@ -457,15 +467,16 @@ bool ir_gen_checkbox_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRe
     /* Render checkbox box (background + border) */
     ir_gen_container_commands(comp, ctx, &checkbox_bounds);
 
-    /* Check if checkbox is checked (stored in custom_data) */
-    bool is_checked = comp->custom_data && strcmp(comp->custom_data, "true") == 0;
+    /* Check if checkbox is checked (stored in custom_data as "checked" or "unchecked") */
+    bool is_checked = comp->custom_data && strcmp(comp->custom_data, "checked") == 0;
 
     if (is_checked) {
         /* Draw checkmark as two lines forming a check */
-        uint32_t check_color = 0x22C55EFF; /* Green */
+        uint32_t check_color = 0x22C55EFF; /* Default green */
         if (comp->style) {
             uint8_t r, g, b, a;
-            if (ir_color_resolve(&comp->style->font.color, &r, &g, &b, &a)) {
+            if (ir_color_resolve(&comp->style->font.color, &r, &g, &b, &a) && a > 0) {
+                /* Only use font color if it's not transparent */
                 check_color = (r << 24) | (g << 16) | (b << 8) | a;
             }
         }
@@ -663,8 +674,6 @@ bool ir_generate_component_commands(
 ) {
     if (!component || !ctx || !bounds) return false;
     if (component->style && !component->style->visible) return true;
-
-    fprintf(stderr, "[COMPONENT_DEBUG] type=%d id=%u\n", component->type, component->id);
 
     /* Apply opacity cascading */
     float comp_opacity = component->style ? component->style->opacity : 1.0f;
