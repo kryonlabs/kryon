@@ -801,6 +801,13 @@ static void ir_layout_compute_column(IRComponent* container, float available_wid
         child->rendered_bounds.height = child_height;
         child->rendered_bounds.valid = true;
 
+        if (child->type == IR_COMPONENT_CHECKBOX) {
+            printf("[LAYOUT_CHECKBOX] ID=%u type=%d bounds=[%.1f, %.1f, %.1f, %.1f] valid=%d\n",
+                   child->id, child->type, child->rendered_bounds.x, child->rendered_bounds.y,
+                   child->rendered_bounds.width, child->rendered_bounds.height,
+                   child->rendered_bounds.valid);
+        }
+
         #ifdef KRYON_TRACE_LAYOUT
         fprintf(stderr, "║ Child %u: bounds=[%.1f, %.1f, %.1f, %.1f] intrinsic_h=%.1f\n",
             i, child->rendered_bounds.x, child->rendered_bounds.y,
@@ -2009,6 +2016,18 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                 child->layout_state->computed.y += cross_offset;
             } else {
                 child->layout_state->computed.x += cross_offset;
+                if (child->type == IR_COMPONENT_CHECKBOX) {
+                    printf("[ALIGNMENT] Checkbox ID=%u: cross_offset=%.1f, new x=%.1f\n",
+                           child->id, cross_offset, child->layout_state->computed.x);
+                }
+            }
+
+            // Re-sync computed layout to rendered_bounds after alignment
+            child->rendered_bounds.x = child->layout_state->computed.x;
+            child->rendered_bounds.y = child->layout_state->computed.y;
+            if (child->type == IR_COMPONENT_CHECKBOX) {
+                printf("[RE-SYNC] Checkbox ID=%u: rendered_bounds updated to [%.1f, %.1f]\n",
+                       child->id, child->rendered_bounds.x, child->rendered_bounds.y);
             }
         }
     }
@@ -2051,6 +2070,19 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     // Mark layout as valid
     c->layout_state->layout_valid = true;
     c->layout_state->computed.valid = true;
+
+    // Sync computed layout to rendered_bounds for click detection
+    c->rendered_bounds.x = c->layout_state->computed.x;
+    c->rendered_bounds.y = c->layout_state->computed.y;
+    c->rendered_bounds.width = c->layout_state->computed.width;
+    c->rendered_bounds.height = c->layout_state->computed.height;
+    c->rendered_bounds.valid = true;
+
+    if (c->type == IR_COMPONENT_CHECKBOX) {
+        printf("[SYNC_BOUNDS] Checkbox ID=%u: computed=[%.1f, %.1f, %.1f, %.1f] -> rendered_bounds\n",
+               c->id, c->rendered_bounds.x, c->rendered_bounds.y,
+               c->rendered_bounds.width, c->rendered_bounds.height);
+    }
 }
 
 // ============================================================================

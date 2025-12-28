@@ -806,8 +806,15 @@ Java_com_kryon_KryonActivity_nativeFinalizeContent(JNIEnv* env, jobject thiz, jl
     ir_set_context(dsl->ir_context);
     ir_set_root(dsl->root);
 
-    // TODO: Pass the component tree to the IR renderer for display
-    // This will need integration with AndroidIRRenderer
+    // Pass the component tree to the renderer
+    if (ctx->ir_renderer) {
+        LOGI("Setting component tree in renderer");
+        android_ir_renderer_set_root(ctx->ir_renderer, dsl->root);
+        android_ir_renderer_render(ctx->ir_renderer);
+    } else {
+        LOGI("Renderer not initialized yet, will render when surface is ready");
+        // Component tree will be rendered when surface is created
+    }
 
     LOGI("DSL build finalized with %d components", dsl->component_count);
     LOGI("Root component type: %d", dsl->root->type);
