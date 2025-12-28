@@ -972,7 +972,9 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
             expanded_ids = (uint32_t*)malloc(expanded_capacity * sizeof(uint32_t));
         }
         // Iterate over array elements
+        fprintf(stderr, "[DEBUG_FORLOOP] Starting array iteration: count=%zu\n", collection->array.count);
         for (size_t i = 0; i < collection->array.count; i++) {
+            fprintf(stderr, "[DEBUG_FORLOOP]   Iteration %zu/%zu\n", i + 1, collection->array.count);
             KryValue* element = collection->array.elements[i];
 
             // Create new context with iterator variable bound
@@ -1050,11 +1052,18 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
 
             // Convert loop body children with the loop context
             KryNode* loop_body_child = for_node->first_child;
+            fprintf(stderr, "[DEBUG_FORLOOP]   Converting loop body (first_child=%p)\n", (void*)loop_body_child);
             while (loop_body_child) {
+                fprintf(stderr, "[DEBUG_FORLOOP]     loop_body_child type=%d (COMPONENT=%d)\n",
+                        loop_body_child->type, KRY_NODE_COMPONENT);
                 if (loop_body_child->type == KRY_NODE_COMPONENT) {
                     IRComponent* child_component = convert_node(&loop_ctx, loop_body_child);
+                    fprintf(stderr, "[DEBUG_FORLOOP]     child_component=%p\n", (void*)child_component);
                     if (child_component) {
+                        fprintf(stderr, "[DEBUG_FORLOOP]     Adding child (id=%u) to parent (id=%u, child_count=%d)\n",
+                                child_component->id, parent->id, parent->child_count);
                         ir_add_child(parent, child_component);
+                        fprintf(stderr, "[DEBUG_FORLOOP]     After add: parent->child_count=%d\n", parent->child_count);
 
                         // Track component ID for source structures
                         if (loop_data && expanded_ids) {
@@ -1080,20 +1089,31 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
             ? collection->identifier
             : collection->expression;
 
+        fprintf(stderr, "[DEBUG_FORLOOP] Collection is IDENTIFIER/EXPRESSION: '%s'\n", collection_name);
+        fprintf(stderr, "[DEBUG_FORLOOP] Searching in %d params...\n", ctx->param_count);
+
         // Look up the variable in context
         for (int i = 0; i < ctx->param_count; i++) {
+            fprintf(stderr, "[DEBUG_FORLOOP]   param[%d]: name='%s', kry_value=%p\n",
+                    i, ctx->params[i].name, (void*)ctx->params[i].kry_value);
             if (strcmp(ctx->params[i].name, collection_name) == 0) {
+                fprintf(stderr, "[DEBUG_FORLOOP]   FOUND match!\n");
                 // Found the variable - check if it's a KryValue
                 if (ctx->params[i].kry_value != NULL) {
+                    fprintf(stderr, "[DEBUG_FORLOOP]   kry_value type=%d (ARRAY=%d)\n",
+                            ctx->params[i].kry_value->type, KRY_VALUE_ARRAY);
                     // Recursively call expand_for_loop with the resolved KryValue
                     KryNode temp_for_node = *for_node;
                     temp_for_node.value = ctx->params[i].kry_value;
                     expand_for_loop(ctx, parent, &temp_for_node);
                     return;
+                } else {
+                    fprintf(stderr, "[DEBUG_FORLOOP]   ERROR: kry_value is NULL!\n");
                 }
                 break;
             }
         }
+        fprintf(stderr, "[DEBUG_FORLOOP] Variable '%s' NOT FOUND in context\n", collection_name);
     }
 
     // Update loop_data with expanded component IDs
@@ -1898,6 +1918,52 @@ char* ir_kry_to_kir(const char* source, size_t length) {
     // Create IR context for component ID generation
     IRContext* ir_ctx = ir_create_context();
     ir_set_context(ir_ctx);
+
+    // Process top-level variable declarations (const/let/var)
+    fprintf(stderr, "[VAR_DECL] Processing top-level variable declarations...\n");
+    fflush(stderr);
+    if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
+        KryNode* var_node = ast->first_child;
+        while (var_node) {
+            if (var_node->type == KRY_NODE_VAR_DECL && var_node != root_node) {
+                fprintf(stderr, "[VAR_DECL] Found top-level var: %s\n", var_node->name ? var_node->name : "(null)");
+                fflush(stderr);
+
+                const char* var_type = var_node->var_type ? var_node->var_type : "const";
+                const char* var_name = var_node->name;
+
+                // Store the variable in ctx->params so for-loop expansion can access it
+                if (ctx.param_count < MAX_PARAMS && var_node->value) {
+                    ctx.params[ctx.param_count].name = var_name;
+                    ctx.params[ctx.param_count].value = NULL;  // String representation
+                    ctx.params[ctx.param_count].kry_value = var_node->value;  // Original KryValue
+                    ctx.param_count++;
+                    fprintf(stderr, "[VAR_DECL]   Added to ctx->params, count=%d\n", ctx.param_count);
+                    fflush(stderr);
+                }
+
+                // Add variable declaration to source_structures for serialization
+                if (ctx.compile_mode == IR_COMPILE_MODE_HYBRID) {
+                    // Get value as JSON string
+                    char* var_value_json = NULL;
+                    if (var_node->value) {
+                        // TODO: Convert KryValue to JSON string
+                        // For now, we'll just mark that we found it
+                        fprintf(stderr, "[VAR_DECL]   Variable type=%s, name=%s, value exists=%d\n",
+                                var_type, var_name, var_node->value != NULL);
+                        fflush(stderr);
+                    }
+
+                    // Store the variable declaration
+                    ir_source_structures_add_var_decl(ctx.source_structures,
+                                                     var_name, var_type, var_value_json, "global");
+                }
+            }
+            var_node = var_node->next_sibling;
+        }
+    }
+    fprintf(stderr, "[VAR_DECL] Finished processing top-level variables\n");
+    fflush(stderr);
 
     // Track all component definitions in the manifest
     fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Starting component definition scan...\n");

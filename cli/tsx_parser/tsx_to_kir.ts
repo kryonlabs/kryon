@@ -417,7 +417,19 @@ async function parseKryonTSX(source: string): Promise<KIRComponent> {
   // Special handler for kryonApp
   const kryonApp = (config: any) => {
     if (config.render && typeof config.render === 'function') {
-      return config.render();
+      // Get the rendered content
+      const content = config.render();
+
+      // Wrap it in a container with the app config properties (background, width, height, etc.)
+      return {
+        type: 'Container',
+        props: {
+          width: config.width || '100%',
+          height: config.height || '100%',
+          background: config.background,
+          children: content
+        }
+      };
     }
     return { type: 'Container', props: config };
   };

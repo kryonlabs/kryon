@@ -1157,7 +1157,23 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
     css_generator_write_string(generator, "  margin: 0;\n");
     css_generator_write_string(generator, "  padding: 0;\n");
     css_generator_write_string(generator, "  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n");
-    css_generator_write_string(generator, "  background-color: #f0f0f0;\n");
+
+    // Use root component's background color if available, otherwise transparent
+    if (root && root->style) {
+        IRColor* bg = &root->style->background;
+        if (bg->type == IR_COLOR_SOLID && bg->data.a > 0) {
+            char bg_buffer[128];
+            snprintf(bg_buffer, sizeof(bg_buffer),
+                    "  background-color: rgba(%d, %d, %d, %.2f);\n",
+                    bg->data.r, bg->data.g, bg->data.b, bg->data.a / 255.0f);
+            css_generator_write_string(generator, bg_buffer);
+        } else {
+            css_generator_write_string(generator, "  background-color: transparent;\n");
+        }
+    } else {
+        css_generator_write_string(generator, "  background-color: transparent;\n");
+    }
+
     css_generator_write_string(generator, "}\n\n");
 
     // Generate @keyframes for animations

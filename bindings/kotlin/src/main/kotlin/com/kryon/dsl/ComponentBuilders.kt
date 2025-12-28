@@ -190,8 +190,18 @@ class TextBuilder(handle: Long) : ComponentBuilder(handle) {
         nativeSetText(handle, nativeComponentId, value)
     }
 
+    fun fontSize(size: Float) {
+        nativeSetTextFontSize(handle, nativeComponentId, size)
+    }
+
+    fun color(colorString: String) {
+        nativeSetTextColor(handle, nativeComponentId, colorString)
+    }
+
     private external fun nativeCreateText(handle: Long): Int
     private external fun nativeSetText(handle: Long, componentId: Int, value: String)
+    private external fun nativeSetTextFontSize(handle: Long, componentId: Int, size: Float)
+    private external fun nativeSetTextColor(handle: Long, componentId: Int, colorString: String)
 }
 
 /**

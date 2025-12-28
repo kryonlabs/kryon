@@ -12,7 +12,13 @@ local ReactiveContext = {
   activeEffect = nil,      -- Currently executing effect/computed
   effectStack = {},        -- Stack for nested effects
   shouldTrack = true,      -- Flag to pause tracking
+  debugMode = false,       -- Enable debug logging
+  traceReads = false,      -- Trace reactive reads
+  traceWrites = false,     -- Trace reactive writes
 }
+
+-- Track currently executing effects to prevent cycles
+local executingEffects = {}
 
 local function pushEffect(effect)
   table.insert(ReactiveContext.effectStack, ReactiveContext.activeEffect)
@@ -67,10 +73,26 @@ local function triggerEffects(target, key)
 
   for _, effect in ipairs(target._deps[key]) do
     if type(effect) == "function" then
+      -- Cycle detection: skip if effect is already executing
+      if executingEffects[effect] then
+        if ReactiveContext.debugMode then
+          print(string.format("[Reactive] ⚠️  Cycle detected: effect tried to trigger itself"))
+        end
+        goto continue
+      end
+
+      -- Mark effect as executing
+      executingEffects[effect] = true
+
       local success, err = pcall(effect)
       if not success then
         print("[Reactive] Error in effect: " .. tostring(err))
       end
+
+      -- Unmark effect
+      executingEffects[effect] = nil
+
+      ::continue::
     end
   end
 end
@@ -159,6 +181,12 @@ function Reactive.reactive(target, parent, parentKey)
         return rawget(t, key)
       end
 
+      -- Debug: trace reads
+      if ReactiveContext.traceReads then
+        local effectName = ReactiveContext.activeEffect and "inside effect" or "outside effect"
+        print(string.format("[Reactive READ] %s %s", tostring(key), effectName))
+      end
+
       -- Check for pre-populated array indices (LuaJIT compatibility)
       local directValue = rawget(t, key)
       if directValue ~= nil then
@@ -188,6 +216,11 @@ function Reactive.reactive(target, parent, parentKey)
       if key == "_target" or key == "_deps" then
         rawset(t, key, newValue)
         return
+      end
+
+      -- Debug: trace writes
+      if ReactiveContext.traceWrites then
+        print(string.format("[Reactive WRITE] %s = %s", tostring(key), tostring(newValue)))
       end
 
       local oldValue = target[key]
@@ -435,6 +468,36 @@ function Reactive.unref(value)
   end
   -- Otherwise return as-is
   return value
+end
+
+-- ============================================================================
+-- Debugging Utilities
+-- ============================================================================
+
+--- Enable debug mode with optional trace flags
+function Reactive.enableDebug(options)
+  options = options or {}
+  ReactiveContext.debugMode = true
+  ReactiveContext.traceReads = options.traceReads or false
+  ReactiveContext.traceWrites = options.traceWrites or false
+  print("[Reactive] Debug mode enabled")
+end
+
+--- Disable debug mode
+function Reactive.disableDebug()
+  ReactiveContext.debugMode = false
+  ReactiveContext.traceReads = false
+  ReactiveContext.traceWrites = false
+end
+
+--- Get current effect stack for debugging
+function Reactive.getEffectStack()
+  return ReactiveContext.effectStack
+end
+
+--- Get active effect for debugging
+function Reactive.getActiveEffect()
+  return ReactiveContext.activeEffect
 end
 
 -- ============================================================================
