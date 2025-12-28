@@ -42,6 +42,9 @@ static void register_handler(uint32_t component_id, const char* event_type, Kryo
     char logic_id[128];
     snprintf(logic_id, sizeof(logic_id), "c_%s_%u_%u", event_type, component_id, g_handler_id_counter++);
 
+    printf("[register_handler] Registering: component_id=%u, event_type=%s, logic_id=%s, handler_name=%s\n",
+           component_id, event_type, logic_id, handler_name ? handler_name : "NULL");
+
     // Update g_c_metadata with the logic_id
     if (handler_name) {
         update_metadata_logic_id(handler_name, logic_id);

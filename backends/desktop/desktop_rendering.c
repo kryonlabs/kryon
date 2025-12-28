@@ -462,7 +462,8 @@ bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component, 
             }
 
             // Draw button border
-            SDL_SetRenderDrawColor(renderer->renderer, 100, 100, 100, 255);
+            ensure_blend_mode(renderer->renderer);
+            SDL_SetRenderDrawColor(renderer->renderer, 180, 180, 180, 255);
             SDL_RenderRect(renderer->renderer, &sdl_rect);
 
             // Render button text if present

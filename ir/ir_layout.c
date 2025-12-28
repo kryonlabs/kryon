@@ -214,10 +214,7 @@ float ir_get_component_intrinsic_width(IRComponent* component) {
 }
 
 static float ir_get_component_intrinsic_height_impl(IRComponent* component) {
-    fprintf(stderr, "🔹 _impl called: type=%d, style=%p\n",
-        component ? component->type : -1, component ? (void*)component->style : NULL);
     if (!component || !component->style) {
-        fprintf(stderr, "🔹 _impl early return (no style): returning 50.0f\n");
         return 50.0f;
     }
 
@@ -323,13 +320,8 @@ static float ir_get_component_intrinsic_height_impl(IRComponent* component) {
 float ir_get_component_intrinsic_height(IRComponent* component) {
     if (!component) return 0.0f;
 
-    fprintf(stderr, "🔶 ir_get_component_intrinsic_height called: type=%d dirty=%d cached=%.1f\n",
-           component->type, component->layout_cache.dirty, component->layout_cache.cached_intrinsic_height);
-
     // Check cache (use >= 0 since -1.0f means not cached)
     if (!component->layout_cache.dirty && component->layout_cache.cached_intrinsic_height >= 0.0f) {
-        fprintf(stderr, "📋 CACHE HIT for component %u (type=%d): returning cached height %.1f\n",
-            component->id, component->type, component->layout_cache.cached_intrinsic_height);
         return component->layout_cache.cached_intrinsic_height;
     }
 

@@ -185,13 +185,9 @@ bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutR
     /* Render solid color background */
     else {
         uint8_t bg_r, bg_g, bg_b, bg_a;
-        bool resolved = ir_color_resolve(&style->background, &bg_r, &bg_g, &bg_b, &bg_a);
-        fprintf(stderr, "🔸 radius=%d, resolved=%d, alpha=%d\n", style->border.radius, resolved, bg_a);
-        if (resolved && bg_a > 0) {
+        if (ir_color_resolve(&style->background, &bg_r, &bg_g, &bg_b, &bg_a) && bg_a > 0) {
         uint32_t bg_color = (bg_r << 24) | (bg_g << 16) | (bg_b << 8) | bg_a;
         bg_color = ir_apply_opacity_to_color(bg_color, ctx->current_opacity);
-
-        fprintf(stderr, "🔷 Background: radius=%d, w=%.1f, h=%.1f\n", style->border.radius, bounds->width, bounds->height);
         if (style->border.radius > 0) {
             cmd.type = KRYON_CMD_DRAW_ROUNDED_RECT;
             cmd.data.draw_rounded_rect.x = bounds->x;

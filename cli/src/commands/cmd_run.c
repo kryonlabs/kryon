@@ -256,6 +256,20 @@ static int run_android(const char* kir_file, const char* source_file) {
         return 1;
     }
 
+    // Also create local.properties in bindings/kotlin for subproject
+    char bindings_props[2048];
+    snprintf(bindings_props, sizeof(bindings_props), "/mnt/storage/Projects/kryon/bindings/kotlin/local.properties");
+    FILE* bindings_f = fopen(bindings_props, "w");
+    if (bindings_f) {
+        if (android_home) {
+            fprintf(bindings_f, "sdk.dir=%s\n", android_home);
+        }
+        if (android_ndk) {
+            fprintf(bindings_f, "ndk.dir=%s\n", android_ndk);
+        }
+        fclose(bindings_f);
+    }
+
     // 4. Build APK with Gradle (native libs built automatically via buildNativeLibs task)
     printf("Building APK (this may take a minute)...\n");
     char build_cmd[2048];
