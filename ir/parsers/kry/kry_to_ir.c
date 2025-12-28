@@ -527,16 +527,21 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
 
     // Colors
     if (strcmp(name, "backgroundColor") == 0 || strcmp(name, "background") == 0) {
-        if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER) {
-            const char* color_str = value->type == KRY_VALUE_STRING ?
-                                    value->string_value : value->identifier;
-            // Apply parameter substitution for identifiers (e.g., item.colors[0])
-            if (value->type == KRY_VALUE_IDENTIFIER) {
+        if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
+            const char* color_str = (value->type == KRY_VALUE_STRING) ? value->string_value :
+                                    (value->type == KRY_VALUE_IDENTIFIER) ? value->identifier :
+                                    value->expression;
+            // Apply parameter substitution for identifiers and expressions (e.g., item.colors[0])
+            if (value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
                 const char* original_expr = color_str;
                 color_str = substitute_param(ctx, color_str);
 
                 // Detect and preserve unresolved identifiers as property bindings
-                if (is_unresolved_expr(ctx, original_expr) && ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                printf("[APPLY_PROPERTY]   Checking if '%s' is unresolved for background (compile_mode=%d)\n", original_expr, ctx->compile_mode);
+                bool unresolved = is_unresolved_expr(ctx, original_expr);
+                printf("[APPLY_PROPERTY]   is_unresolved=%d\n", unresolved);
+                if (unresolved && ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                    printf("[APPLY_PROPERTY]   Unresolved! Creating property binding for background '%s'\n", original_expr);
                     ir_component_add_property_binding(component, name, original_expr, "#00000000", "static_template");
                 }
             }
@@ -551,11 +556,12 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
     }
 
     if (strcmp(name, "color") == 0) {
-        if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER) {
-            const char* color_str = value->type == KRY_VALUE_STRING ?
-                                    value->string_value : value->identifier;
-            // Apply parameter substitution for identifiers
-            if (value->type == KRY_VALUE_IDENTIFIER) {
+        if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
+            const char* color_str = (value->type == KRY_VALUE_STRING) ? value->string_value :
+                                    (value->type == KRY_VALUE_IDENTIFIER) ? value->identifier :
+                                    value->expression;
+            // Apply parameter substitution for identifiers and expressions
+            if (value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
                 const char* original_expr = color_str;
                 color_str = substitute_param(ctx, color_str);
 
@@ -575,11 +581,12 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
     }
 
     if (strcmp(name, "borderColor") == 0) {
-        if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER) {
-            const char* color_str = value->type == KRY_VALUE_STRING ?
-                                    value->string_value : value->identifier;
-            // Apply parameter substitution for identifiers
-            if (value->type == KRY_VALUE_IDENTIFIER) {
+        if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
+            const char* color_str = (value->type == KRY_VALUE_STRING) ? value->string_value :
+                                    (value->type == KRY_VALUE_IDENTIFIER) ? value->identifier :
+                                    value->expression;
+            // Apply parameter substitution for identifiers and expressions
+            if (value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
                 const char* original_expr = color_str;
                 color_str = substitute_param(ctx, color_str);
 
@@ -615,9 +622,21 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
 
     // Layout alignment
     if (strcmp(name, "contentAlignment") == 0 || strcmp(name, "alignItems") == 0) {
-        if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER) {
-            const char* align = value->type == KRY_VALUE_STRING ?
-                               value->string_value : value->identifier;
+        if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
+            const char* align = (value->type == KRY_VALUE_STRING) ? value->string_value :
+                               (value->type == KRY_VALUE_IDENTIFIER) ? value->identifier :
+                               value->expression;
+            // Apply parameter substitution for identifiers/expressions
+            if (value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
+                const char* original_expr = align;
+                align = substitute_param(ctx, align);
+
+                // Detect and preserve unresolved identifiers as property bindings
+                if (is_unresolved_expr(ctx, original_expr) && ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                    ir_component_add_property_binding(component, name, original_expr, "start", "static_template");
+                }
+            }
+
             IRAlignment alignment = IR_ALIGNMENT_START;
             if (strcmp(align, "center") == 0) {
                 alignment = IR_ALIGNMENT_CENTER;
@@ -643,8 +662,19 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                                   value->expression;
             // Apply parameter substitution for expressions and identifiers (e.g., item.value)
             if (value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
+                const char* original_expr = justify;
                 justify = substitute_param(ctx, justify);
+
+                // Detect and preserve unresolved identifiers as property bindings
+                printf("[APPLY_PROPERTY]   Checking if '%s' is unresolved (compile_mode=%d)\n", original_expr, ctx->compile_mode);
+                bool unresolved = is_unresolved_expr(ctx, original_expr);
+                printf("[APPLY_PROPERTY]   is_unresolved=%d\n", unresolved);
+                if (unresolved && ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                    printf("[APPLY_PROPERTY]   Unresolved! Creating property binding for '%s'\n", original_expr);
+                    ir_component_add_property_binding(component, name, original_expr, "start", "static_template");
+                }
             }
+
             IRAlignment alignment = IR_ALIGNMENT_START;
             if (strcmp(justify, "center") == 0) {
                 alignment = IR_ALIGNMENT_CENTER;
@@ -652,11 +682,15 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 alignment = IR_ALIGNMENT_START;
             } else if (strcmp(justify, "end") == 0) {
                 alignment = IR_ALIGNMENT_END;
-            } else if (strcmp(justify, "spaceEvenly") == 0) {
+            } else if (strcmp(justify, "flex-start") == 0) {
+                alignment = IR_ALIGNMENT_START;
+            } else if (strcmp(justify, "flex-end") == 0) {
+                alignment = IR_ALIGNMENT_END;
+            } else if (strcmp(justify, "spaceEvenly") == 0 || strcmp(justify, "space-evenly") == 0) {
                 alignment = IR_ALIGNMENT_SPACE_EVENLY;
-            } else if (strcmp(justify, "spaceAround") == 0) {
+            } else if (strcmp(justify, "spaceAround") == 0 || strcmp(justify, "space-around") == 0) {
                 alignment = IR_ALIGNMENT_SPACE_AROUND;
-            } else if (strcmp(justify, "spaceBetween") == 0) {
+            } else if (strcmp(justify, "spaceBetween") == 0 || strcmp(justify, "space-between") == 0) {
                 alignment = IR_ALIGNMENT_SPACE_BETWEEN;
             }
 
@@ -689,6 +723,12 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             // Handle identifiers and expressions (e.g., item.gap)
             const char* gap_expr = (value->type == KRY_VALUE_IDENTIFIER) ? value->identifier : value->expression;
             const char* gap_str = substitute_param(ctx, gap_expr);
+
+            // Detect and preserve unresolved identifiers as property bindings
+            if (is_unresolved_expr(ctx, gap_expr) && ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                ir_component_add_property_binding(component, name, gap_expr, "0", "static_template");
+            }
+
             float gap_value = (float)atof(gap_str);
             IRLayout* layout = ir_get_layout(component);
             if (layout) {
@@ -702,6 +742,17 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
     if (strcmp(name, "fontSize") == 0) {
         if (value->type == KRY_VALUE_NUMBER) {
             style->font.size = (float)value->number_value;
+        } else if (value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
+            // Handle identifiers and expressions (e.g., item.fontSize)
+            const char* size_expr = (value->type == KRY_VALUE_IDENTIFIER) ? value->identifier : value->expression;
+            const char* size_str = substitute_param(ctx, size_expr);
+
+            // Detect and preserve unresolved identifiers as property bindings
+            if (is_unresolved_expr(ctx, size_expr) && ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                ir_component_add_property_binding(component, name, size_expr, "16", "static_template");
+            }
+
+            style->font.size = (float)atof(size_str);
         }
         return;
     }

@@ -148,6 +148,7 @@ ffi.cdef[[
   // Event Types
   // ============================================================================
   typedef enum {
+    // Core events (0-99) - hardcoded for performance
     IR_EVENT_CLICK = 0,
     IR_EVENT_HOVER = 1,
     IR_EVENT_FOCUS = 2,
@@ -156,9 +157,11 @@ ffi.cdef[[
     IR_EVENT_KEY = 5,
     IR_EVENT_SCROLL = 6,
     IR_EVENT_TIMER = 7,
-    IR_EVENT_CANVAS_DRAW = 8,    // Canvas onDraw callback (compilation mode)
-    IR_EVENT_CANVAS_UPDATE = 9,  // Canvas onUpdate callback (compilation mode)
-    IR_EVENT_CUSTOM = 10
+    IR_EVENT_CUSTOM = 8,
+
+    // Plugin event range (100-255) - dynamically registered
+    IR_EVENT_PLUGIN_START = 100,
+    IR_EVENT_PLUGIN_END = 255
   } IREventType;
 
   // ============================================================================
@@ -405,6 +408,13 @@ ffi.cdef[[
   void desktop_ir_renderer_set_lua_event_callback(DesktopIRRenderer* renderer, LuaEventCallback callback);
 
   void desktop_ir_renderer_update_root(DesktopIRRenderer* renderer, IRComponent* new_root);
+
+  // Plugin event type registration
+  bool ir_plugin_register_event_type(const char* plugin_name, const char* event_type_name,
+                                      uint32_t event_type_id, const char* description);
+  uint32_t ir_plugin_get_event_type_id(const char* event_type_name);
+  const char* ir_plugin_get_event_type_name(uint32_t event_type_id);
+  bool ir_plugin_has_event_type(const char* event_type_name);
 ]]
 
 -- Desktop-specific FFI declarations (for symbols in libkryon_desktop.so)
@@ -488,8 +498,8 @@ return {
     KEY = C.IR_EVENT_KEY,
     SCROLL = C.IR_EVENT_SCROLL,
     TIMER = C.IR_EVENT_TIMER,
-    CANVAS_DRAW = C.IR_EVENT_CANVAS_DRAW,
-    CANVAS_UPDATE = C.IR_EVENT_CANVAS_UPDATE,
     CUSTOM = C.IR_EVENT_CUSTOM,
+    PLUGIN_START = C.IR_EVENT_PLUGIN_START,
+    PLUGIN_END = C.IR_EVENT_PLUGIN_END,
   },
 }

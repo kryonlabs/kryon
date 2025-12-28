@@ -673,19 +673,33 @@ static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx
         if (strcmp(key, "type") == 0 ||
             strcmp(key, "id") == 0 ||
             strcmp(key, "children") == 0 ||
-            strcmp(key, "events") == 0) {  // Skip events, we use logic_block
+            strcmp(key, "events") == 0 ||
+            strcmp(key, "property_bindings") == 0) {  // Skip property_bindings metadata
             continue;
         }
 
         // Convert property name
         const char* kry_key = kir_to_kry_property(key);
 
-        // Write property
+        // Write property indentation
         for (int i = 0; i < indent + 1; i++) {
             append_string(buffer, size, capacity, "  ");
         }
 
-        // Handle special formatting for pixel values
+        // Check if this property has a binding (for unresolved template expressions)
+        cJSON* bindings_obj = cJSON_GetObjectItem(node, "property_bindings");
+        cJSON* binding = bindings_obj ? cJSON_GetObjectItem(bindings_obj, key) : NULL;
+
+        if (binding) {
+            // Use source_expr from binding (preserves original expression like "item.value")
+            cJSON* source_expr = cJSON_GetObjectItem(binding, "source_expr");
+            if (source_expr && source_expr->valuestring) {
+                append_fmt(buffer, size, capacity, "%s = %s\n", kry_key, source_expr->valuestring);
+                continue;  // Skip normal property handling
+            }
+        }
+
+        // Normal property handling for resolved values
         if (cJSON_IsString(prop)) {
             int pixel_val;
             if (parse_pixel_value(prop->valuestring, &pixel_val)) {

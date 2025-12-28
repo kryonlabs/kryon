@@ -12,6 +12,7 @@
 #include "../../ir_to_commands.h"
 #include "../../../../renderers/sdl3/sdl3.h"
 #include "../../../../ir/ir_core.h"
+#include "../../../../ir/ir_plugin.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -392,7 +393,14 @@ static bool sdl3_render_component(DesktopIRRenderer* renderer, IRComponent* root
     kryon_cmd_buf_t cmd_buf;
     kryon_cmd_buf_init(&cmd_buf);
 
-    if (!ir_component_to_commands(root, &cmd_buf, &root_rect, 1.0f)) {
+    // Create backend context for plugin renderers
+    IRPluginBackendContext backend_ctx = {
+        .renderer = data->renderer,
+        .font = data->default_font,
+        .user_data = NULL
+    };
+
+    if (!ir_component_to_commands(root, &cmd_buf, &root_rect, 1.0f, &backend_ctx)) {
         fprintf(stderr, "[sdl3] Failed to generate rendering commands\n");
         return false;
     }

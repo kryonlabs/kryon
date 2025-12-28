@@ -284,7 +284,15 @@ bool android_renderer_begin_frame(AndroidRenderer* renderer) {
 }
 
 bool android_renderer_end_frame(AndroidRenderer* renderer) {
+    static int end_frame_count = 0;
+    if (end_frame_count++ % 60 == 0) {
+        LOGI("end_frame called: renderer=%p, initialized=%d, vertex_count=%d\n",
+             renderer, renderer ? renderer->initialized : -1,
+             renderer ? renderer->vertex_count : -1);
+    }
+
     if (!renderer || !renderer->initialized) {
+        LOGE("end_frame: renderer not initialized!\n");
         return false;
     }
 

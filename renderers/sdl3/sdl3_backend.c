@@ -746,13 +746,9 @@ static void sdl3_draw_rect(kryon_cmd_buf_t* buf, const kryon_command_t* cmd, SDL
 
     SDL_Color color = kryon_color_to_sdl(cmd->data.draw_rect.color);
 
-    static int rect_count = 0;
-    if (rect_count < 3) {
-        fprintf(stderr, "[SDL3_RECT] x=%.1f y=%.1f w=%.1f h=%.1f color=rgba(%d,%d,%d,%d)\n",
-                frect.x, frect.y, frect.w, frect.h, color.r, color.g, color.b, color.a);
-        fflush(stderr);
-        rect_count++;
-    }
+    fprintf(stderr, "[SDL3_RECT] x=%.1f y=%.1f w=%.1f h=%.1f rgba(%d,%d,%d,%d)\n",
+            frect.x, frect.y, frect.w, frect.h, color.r, color.g, color.b, color.a);
+    fflush(stderr);
 
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     SDL_RenderFillRect(renderer, &frect);
@@ -1132,6 +1128,9 @@ static void sdl3_begin_frame(kryon_renderer_t* renderer) {
     // Clear screen with clear color
     SDL_Color clear_color = kryon_color_to_sdl(renderer->clear_color);
     SDL_SetRenderDrawColor(backend->renderer, clear_color.r, clear_color.g, clear_color.b, clear_color.a);
+    fprintf(stderr, "[SDL3_CLEAR] Window cleared with rgba(%d,%d,%d,%d)\n",
+            clear_color.r, clear_color.g, clear_color.b, clear_color.a);
+    fflush(stderr);
     SDL_RenderClear(backend->renderer);
 }
 

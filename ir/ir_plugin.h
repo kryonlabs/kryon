@@ -403,6 +403,59 @@ const IRBackendCapabilities* ir_plugin_get_backend_capabilities(void);
 bool ir_plugin_backend_supports(const char* capability);
 
 // ============================================================================
+// Plugin Event Type Registration
+// ============================================================================
+
+/**
+ * Plugin event type metadata.
+ * Plugins can register custom event types for component callbacks.
+ */
+typedef struct {
+    char* plugin_name;           // Plugin name (e.g., "canvas")
+    char* event_type_name;       // Event type name (e.g., "canvas_draw")
+    uint32_t event_type_id;      // Event type ID (must be 100-255)
+    char* description;           // Optional description
+} IRPluginEventType;
+
+/**
+ * Register a custom event type for a plugin.
+ * Plugins can register event types in the range 100-255.
+ * Core events (0-99) are reserved for Kryon core.
+ *
+ * @param plugin_name Plugin name (e.g., "canvas")
+ * @param event_type_name Event type name (e.g., "canvas_draw")
+ * @param event_type_id Event type ID (must be 100-255)
+ * @param description Optional description (can be NULL)
+ * @return true on success, false if ID out of range or already registered
+ */
+bool ir_plugin_register_event_type(const char* plugin_name, const char* event_type_name,
+                                    uint32_t event_type_id, const char* description);
+
+/**
+ * Get event type ID by name.
+ *
+ * @param event_type_name Event type name (e.g., "canvas_draw")
+ * @return Event type ID, or 0 if not found
+ */
+uint32_t ir_plugin_get_event_type_id(const char* event_type_name);
+
+/**
+ * Get event type name by ID.
+ *
+ * @param event_type_id Event type ID
+ * @return Event type name, or NULL if not found
+ */
+const char* ir_plugin_get_event_type_name(uint32_t event_type_id);
+
+/**
+ * Check if an event type is registered.
+ *
+ * @param event_type_name Event type name
+ * @return true if registered, false otherwise
+ */
+bool ir_plugin_has_event_type(const char* event_type_name);
+
+// ============================================================================
 // Plugin Statistics
 // ============================================================================
 

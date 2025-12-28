@@ -66,6 +66,10 @@ typedef struct PluginSystem {
     IRPluginWebCSSGenerator web_css_generators[32];
     uint32_t web_renderer_count;
 
+    // Plugin event type registry (100-255 range)
+    IRPluginEventType event_types[156];  // 156 slots for plugin events (100-255 inclusive)
+    uint32_t event_type_count;
+
     // Current plugin requirements (from deserialized IR file)
     char** current_requirements;
     uint32_t current_requirement_count;
@@ -380,6 +384,81 @@ bool ir_plugin_backend_supports(const char* capability) {
     }
 
     return false;
+}
+
+// ============================================================================
+// Plugin Event Type Registration
+// ============================================================================
+
+bool ir_plugin_register_event_type(const char* plugin_name, const char* event_type_name,
+                                    uint32_t event_type_id, const char* description) {
+    if (!plugin_name || !event_type_name) {
+        fprintf(stderr, "[plugin] Invalid parameters for event type registration\n");
+        return false;
+    }
+
+    // Validate ID range (100-255)
+    if (event_type_id < 100 || event_type_id > 255) {
+        fprintf(stderr, "[plugin] Invalid event type ID %u (must be 100-255)\n", event_type_id);
+        return false;
+    }
+
+    // Check for duplicate event type name
+    for (uint32_t i = 0; i < g_plugin_system.event_type_count; i++) {
+        if (strcmp(g_plugin_system.event_types[i].event_type_name, event_type_name) == 0) {
+            fprintf(stderr, "[plugin] Duplicate event type '%s'\n", event_type_name);
+            return false;
+        }
+    }
+
+    // Check for duplicate event type ID
+    for (uint32_t i = 0; i < g_plugin_system.event_type_count; i++) {
+        if (g_plugin_system.event_types[i].event_type_id == event_type_id) {
+            fprintf(stderr, "[plugin] Event type ID %u already used\n", event_type_id);
+            return false;
+        }
+    }
+
+    // Register event type
+    if (g_plugin_system.event_type_count >= 156) {
+        fprintf(stderr, "[plugin] Event type registry full (max 156 plugin events)\n");
+        return false;
+    }
+
+    IRPluginEventType* event_type = &g_plugin_system.event_types[g_plugin_system.event_type_count];
+    event_type->plugin_name = strdup(plugin_name);
+    event_type->event_type_name = strdup(event_type_name);
+    event_type->event_type_id = event_type_id;
+    event_type->description = description ? strdup(description) : NULL;
+    g_plugin_system.event_type_count++;
+
+    fprintf(stderr, "[plugin] Registered event type '%s' (ID=%u) from plugin '%s'\n",
+            event_type_name, event_type_id, plugin_name);
+    return true;
+}
+
+uint32_t ir_plugin_get_event_type_id(const char* event_type_name) {
+    if (!event_type_name) return 0;
+
+    for (uint32_t i = 0; i < g_plugin_system.event_type_count; i++) {
+        if (strcmp(g_plugin_system.event_types[i].event_type_name, event_type_name) == 0) {
+            return g_plugin_system.event_types[i].event_type_id;
+        }
+    }
+    return 0;  // Not found
+}
+
+const char* ir_plugin_get_event_type_name(uint32_t event_type_id) {
+    for (uint32_t i = 0; i < g_plugin_system.event_type_count; i++) {
+        if (g_plugin_system.event_types[i].event_type_id == event_type_id) {
+            return g_plugin_system.event_types[i].event_type_name;
+        }
+    }
+    return NULL;
+}
+
+bool ir_plugin_has_event_type(const char* event_type_name) {
+    return ir_plugin_get_event_type_id(event_type_name) != 0;
 }
 
 // ============================================================================

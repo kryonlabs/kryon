@@ -357,49 +357,7 @@ function Runtime.loadIR(filepath)
   return root
 end
 
--- ============================================================================
--- Canvas Callback Registry
--- ============================================================================
--- Maps component_id -> callback_function for canvas onDraw callbacks
-Runtime.canvasCallbacks = {}
-Runtime.canvasUpdateCallbacks = {}
-
---- Register a canvas onDraw callback
---- @param componentId number Component ID
---- @param callback function Lua function to call when canvas needs to be drawn
-function Runtime.registerCanvasCallback(componentId, callback)
-  if not componentId or not callback then
-    error("registerCanvasCallback requires componentId and callback")
-  end
-
-  print(string.format("[runtime] Registering canvas onDraw callback for component %d", componentId))
-  Runtime.canvasCallbacks[componentId] = callback
-end
-
---- Register a canvas onUpdate callback
---- @param componentId number Component ID
---- @param callback function Lua function to call on each frame update
-function Runtime.registerCanvasUpdateCallback(componentId, callback)
-  if not componentId or not callback then
-    error("registerCanvasUpdateCallback requires componentId and callback")
-  end
-
-  print(string.format("[runtime] Registering canvas onUpdate callback for component %d", componentId))
-  Runtime.canvasUpdateCallbacks[componentId] = callback
-end
-
---- Invoke a canvas callback (called from C callback bridge)
---- @param componentId number Component ID
-function Runtime.invokeCanvasCallback(componentId)
-  local callback = Runtime.canvasCallbacks[componentId]
-  if callback then
-    print(string.format("[runtime] Invoking canvas onDraw callback for component %d", componentId))
-    callback()
-    return true
-  else
-    print(string.format("[runtime] No canvas callback registered for component %d", componentId))
-    return false
-  end
-end
+-- Canvas callbacks now use the standard event system (via registerHandler)
+-- No canvas-specific callback registry needed
 
 return Runtime

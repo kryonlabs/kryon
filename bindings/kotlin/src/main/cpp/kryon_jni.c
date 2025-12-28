@@ -189,36 +189,8 @@ Java_com_kryon_KryonActivity_nativeSurfaceCreated(JNIEnv* env, jobject thiz,
 
     LOGI("Native window acquired: %p\n", ctx->window);
 
-    // Create renderer
-    if (!ctx->renderer) {
-        AndroidRendererConfig config = {
-            .window_width = ANativeWindow_getWidth(ctx->window),
-            .window_height = ANativeWindow_getHeight(ctx->window),
-            .vsync_enabled = true,
-            .target_fps = 60,
-            .debug_mode = true,
-            .enable_texture_cache = true,
-            .texture_cache_size_mb = 32,
-            .enable_glyph_cache = true,
-            .glyph_cache_size_mb = 4
-        };
-
-        ctx->renderer = android_renderer_create(&config);
-        if (!ctx->renderer) {
-            LOGE("Failed to create renderer\n");
-            return;
-        }
-
-        if (!android_renderer_initialize(ctx->renderer, ctx->window)) {
-            LOGE("Failed to initialize renderer\n");
-            android_renderer_destroy(ctx->renderer);
-            ctx->renderer = NULL;
-            return;
-        }
-
-        LOGI("Renderer initialized successfully\n");
-
-        // Create IR renderer
+    // Create IR renderer (which creates its own AndroidRenderer internally)
+    if (!ctx->ir_renderer) {
         AndroidIRRendererConfig ir_config = {
             .window_width = ANativeWindow_getWidth(ctx->window),
             .window_height = ANativeWindow_getHeight(ctx->window),
@@ -228,18 +200,32 @@ Java_com_kryon_KryonActivity_nativeSurfaceCreated(JNIEnv* env, jobject thiz,
         };
 
         ctx->ir_renderer = android_ir_renderer_create(&ir_config);
-        if (ctx->ir_renderer) {
-            android_ir_renderer_initialize(ctx->ir_renderer, ctx->window);
-            LOGI("IR Renderer initialized successfully\n");
-
-            // Register Android system fonts
-            android_ir_register_font("Roboto", "/system/fonts/Roboto-Regular.ttf");
-            android_ir_register_font("Roboto-Bold", "/system/fonts/Roboto-Bold.ttf");
-            android_ir_set_default_font("Roboto");
-            LOGI("Default font set to Roboto\n");
-        } else {
+        if (!ctx->ir_renderer) {
             LOGE("Failed to create IR renderer\n");
+            return;
         }
+
+        android_ir_renderer_initialize(ctx->ir_renderer, ctx->window);
+        LOGI("IR Renderer initialized successfully\n");
+
+        // Now initialize the AndroidRenderer that the IR renderer created
+        if (ctx->ir_renderer->renderer) {
+            if (!android_renderer_initialize(ctx->ir_renderer->renderer, ctx->window)) {
+                LOGE("Failed to initialize AndroidRenderer\n");
+                return;
+            }
+            LOGI("AndroidRenderer initialized successfully\n");
+            ctx->renderer = ctx->ir_renderer->renderer;  // Keep reference for cleanup
+        } else {
+            LOGE("IR renderer has no AndroidRenderer!\n");
+            return;
+        }
+
+        // Register Android system fonts
+        android_ir_register_font("Roboto", "/system/fonts/Roboto-Regular.ttf");
+        android_ir_register_font("Roboto-Bold", "/system/fonts/Roboto-Bold.ttf");
+        android_ir_set_default_font("Roboto");
+        LOGI("Default font set to Roboto\n");
     }
 
     ctx->surface_ready = true;
@@ -456,23 +442,7 @@ Java_com_kryon_KryonActivity_nativeRender(JNIEnv* env, jobject thiz, jlong handl
 
     KryonNativeContext* ctx = (KryonNativeContext*)handle;
 
-    // DIRECT TEST: Draw a hardcoded red rectangle to verify OpenGL works
-    if (ctx->renderer && jni_render_count < 300) {
-        android_renderer_begin_frame(ctx->renderer);
-
-        // Draw a 400x300 red rectangle at (100, 100)
-        // Color format: 0xAARRGGBB = 0xFFFF0000 (opaque red)
-        android_renderer_draw_rect(ctx->renderer, 100.0f, 100.0f, 400.0f, 300.0f, 0xFFFF0000);
-
-        if (jni_render_count % 60 == 0) {
-            LOGI("DIRECT TEST: Drew red rect at (100,100) size 400x300");
-        }
-
-        android_renderer_end_frame(ctx->renderer);
-        return; // Skip normal rendering for now
-    }
-
-    // Normal rendering (after test frames)
+    // Render the IR component tree
     if (ctx->ir_renderer) {
         android_ir_renderer_render(ctx->ir_renderer);
     } else {
