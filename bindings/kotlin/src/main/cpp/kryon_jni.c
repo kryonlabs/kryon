@@ -212,8 +212,14 @@ Java_com_kryon_KryonActivity_nativeGLSurfaceCreated(JNIEnv* env, jobject thiz, j
             return;
         }
 
+        // Initialize the IR renderer (creates the AndroidRenderer)
+        if (!android_ir_renderer_initialize(ctx->ir_renderer, ctx)) {
+            LOGE("Failed to initialize IR renderer\n");
+            return;
+        }
+
         ctx->renderer = ctx->ir_renderer->renderer;  // Keep reference
-        LOGI("IR Renderer created successfully\n");
+        LOGI("IR Renderer created and initialized successfully\n");
     }
 
     // Initialize GL resources (no EGL setup - GLSurfaceView owns that)
