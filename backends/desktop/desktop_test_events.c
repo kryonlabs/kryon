@@ -7,6 +7,7 @@
 
 #include "desktop_test_events.h"
 #include "desktop_internal.h"
+#include "../../renderers/sdl3/sdl3.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include "../../ir/ir_builder.h"
 #include <stdlib.h>
@@ -231,7 +232,7 @@ void test_queue_process(TestEventQueue* queue, DesktopIRRenderer* renderer) {
             if (event->screenshot_path && renderer) {
                 printf("[test_events] Taking screenshot: %s\n", event->screenshot_path);
 #ifdef ENABLE_SDL3
-                desktop_save_screenshot(renderer, event->screenshot_path);
+                kryon_sdl3_save_screenshot(renderer->kryon_renderer, event->screenshot_path);
 #else
                 printf("[test_events] Screenshot not supported for this renderer\n");
 #endif

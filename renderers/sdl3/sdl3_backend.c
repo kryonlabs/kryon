@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include "../../core/include/kryon.h"
 #include "sdl3_effects.h"
+#include "../../third_party/stb/stb_image_write.h"
 // command_buf functions are now in libkryon_core.a - no need to include the .c file
 #include <string.h>
 #include <stdlib.h>
@@ -9,6 +10,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <strings.h>
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <dirent.h>
@@ -880,15 +882,9 @@ static void sdl3_draw_polygon(kryon_cmd_buf_t* buf, const kryon_command_t* cmd, 
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     fprintf(stderr, "[SDL3] POLYGON: Set color RGB(%d,%d,%d,%d)\n", color.r, color.g, color.b, color.a);
 
-    fprintf(stderr, "[SDL3] POLYGON: About to access vertices pointer...\n");
-    const kryon_fp_t* vertices = cmd->data.draw_polygon.vertices;
+    // Use vertex_storage instead of vertices pointer to avoid dangling pointer issues
+    const kryon_fp_t* vertices = cmd->data.draw_polygon.vertex_storage;
     uint16_t vertex_count = cmd->data.draw_polygon.vertex_count;
-    fprintf(stderr, "[SDL3] POLYGON: Got vertices=%p vertex_count=%d\n", (void*)vertices, vertex_count);
-
-    if (vertices == NULL) {
-        fprintf(stderr, "[SDL3] POLYGON ERROR: vertices pointer is NULL!\n");
-        return;
-    }
 
     // Debug: Log vertex data as received by renderer
     if (getenv("KRYON_TRACE_POLYGON")) {
@@ -1189,8 +1185,10 @@ static void sdl3_execute_commands(kryon_renderer_t* renderer, kryon_cmd_buf_t* b
     kryon_command_t cmd;
 
     const bool trace_enabled = kryon_sdl3_should_trace();
+    int executed_count = 0;
 
     while (kryon_cmd_iter_has_next(&iter)) {
+        executed_count++;
         if (kryon_cmd_iter_next(&iter, &cmd)) {
             if (trace_enabled) {
                 kryon_sdl3_trace_command(&cmd);
@@ -1370,6 +1368,8 @@ static void sdl3_execute_commands(kryon_renderer_t* renderer, kryon_cmd_buf_t* b
             }
         }
     }
+
+    fprintf(stderr, "[SDL3] Executed %d commands\n", executed_count);
 }
 
 static void sdl3_end_frame(kryon_renderer_t* renderer) {
@@ -1651,6 +1651,60 @@ void kryon_get_font_metrics(uint16_t font_id, uint16_t* width, uint16_t* height)
     // Simplified font metrics - in a full implementation we'd cache actual font data
     if (width) *width = 8;  // Approximate monospace width
     if (height) *height = 16; // Approximate height
+}
+
+// Screenshot Implementation
+bool kryon_sdl3_save_screenshot(kryon_renderer_t* renderer, const char* path) {
+    if (!renderer || !renderer->backend_data || !path) {
+        return false;
+    }
+
+    kryon_sdl3_backend_t* backend = (kryon_sdl3_backend_t*)renderer->backend_data;
+    if (!backend->renderer) {
+        return false;
+    }
+
+    // Get renderer output size
+    int width, height;
+    if (!SDL_GetRenderOutputSize(backend->renderer, &width, &height)) {
+        fprintf(stderr, "Failed to get render output size: %s\n", SDL_GetError());
+        return false;
+    }
+
+    // Read pixels from renderer
+    SDL_Surface* surface = SDL_RenderReadPixels(backend->renderer, NULL);
+    if (!surface) {
+        fprintf(stderr, "Failed to read pixels: %s\n", SDL_GetError());
+        return false;
+    }
+
+    // Check file extension to determine format
+    const char* ext = strrchr(path, '.');
+    bool is_png = (ext && strcasecmp(ext, ".png") == 0);
+
+    bool success = false;
+    if (is_png) {
+        // Use stb_image_write for PNG
+        SDL_Surface* rgba_surface = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_RGBA32);
+        if (rgba_surface) {
+            int stride = rgba_surface->w * 4;
+            success = stbi_write_png(path, rgba_surface->w, rgba_surface->h, 4,
+                                      rgba_surface->pixels, stride) != 0;
+            SDL_DestroySurface(rgba_surface);
+        }
+        if (!success) {
+            fprintf(stderr, "Failed to save PNG screenshot: %s\n", path);
+        }
+    } else {
+        // Use SDL_SaveBMP for BMP files
+        success = SDL_SaveBMP(surface, path);
+        if (!success) {
+            fprintf(stderr, "Failed to save screenshot: %s\n", SDL_GetError());
+        }
+    }
+
+    SDL_DestroySurface(surface);
+    return success;
 }
 
 // Generic Renderer Factory Implementation

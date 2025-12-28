@@ -153,6 +153,9 @@ extern struct DesktopIRRenderer* g_desktop_renderer;
 // Frame counter for LRU cache
 extern uint64_t g_frame_counter;
 
+// Hover state
+extern IRComponent* g_hovered_component;
+
 // Font management
 extern RegisteredFont g_font_registry[32];
 extern int g_font_registry_count;
@@ -291,15 +294,7 @@ void handle_sdl3_events(DesktopIRRenderer* desktop_renderer);
 // MAIN RENDERING (desktop_rendering.c)
 // ============================================================================
 
-// Component rendering
-bool render_component_sdl3(DesktopIRRenderer* renderer, IRComponent* component,
-                           LayoutRect rect, float inherited_opacity);
-
-// Screenshot capture
-bool desktop_save_screenshot(DesktopIRRenderer* renderer, const char* path);
-
-// Debug overlay
-void desktop_render_debug_overlay(DesktopIRRenderer* renderer, IRComponent* root);
+// Screenshot and debug overlay functions are now in the SDL3 renderer
 
 #endif // ENABLE_SDL3
 

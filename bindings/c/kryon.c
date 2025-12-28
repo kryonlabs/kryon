@@ -42,9 +42,6 @@ static void register_handler(uint32_t component_id, const char* event_type, Kryo
     char logic_id[128];
     snprintf(logic_id, sizeof(logic_id), "c_%s_%u_%u", event_type, component_id, g_handler_id_counter++);
 
-    printf("[register_handler] Registering: component_id=%u, event_type=%s, logic_id=%s, handler_name=%s\n",
-           component_id, event_type, logic_id, handler_name ? handler_name : "NULL");
-
     // Update g_c_metadata with the logic_id
     if (handler_name) {
         update_metadata_logic_id(handler_name, logic_id);
@@ -79,9 +76,13 @@ static void register_handler(uint32_t component_id, const char* event_type, Kryo
 }
 
 void kryon_c_event_bridge(const char* logic_id) {
+    printf("[event_bridge] Called with logic_id: %s (registry has %zu handlers)\n", logic_id, g_handler_count);
     for (size_t i = 0; i < g_handler_count; i++) {
+        printf("[event_bridge]   [%zu] %s -> %p\n", i, g_handler_registry[i].logic_id, (void*)g_handler_registry[i].handler);
         if (strcmp(g_handler_registry[i].logic_id, logic_id) == 0) {
+            printf("[event_bridge] Found handler! Calling...\n");
             g_handler_registry[i].handler();
+            printf("[event_bridge] Handler completed\n");
             return;
         }
     }

@@ -59,3 +59,10 @@ TextCacheHashBucket g_text_cache_hash_table[TEXT_CACHE_HASH_SIZE];
 // Runtime state for text input components (cursor, scroll, focus, max 64 inputs)
 InputRuntimeState input_states[64];
 size_t input_state_count = 0;
+
+// ============================================================================
+// HOVER STATE
+// ============================================================================
+
+// Currently hovered component (for hover effects)
+IRComponent* g_hovered_component = NULL;
