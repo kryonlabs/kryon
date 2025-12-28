@@ -1060,6 +1060,8 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
                 case IR_EVENT_KEY: eventType = "key"; break;
                 case IR_EVENT_SCROLL: eventType = "scroll"; break;
                 case IR_EVENT_TIMER: eventType = "timer"; break;
+                case IR_EVENT_CANVAS_DRAW: eventType = "canvas_draw"; break;
+                case IR_EVENT_CANVAS_UPDATE: eventType = "canvas_update"; break;
                 case IR_EVENT_CUSTOM: eventType = "custom"; break;
             }
             cJSON_AddStringToObject(eventObj, "type", eventType);
@@ -3565,6 +3567,8 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
                 else if (strcmp(typeStr, "key") == 0) event->type = IR_EVENT_KEY;
                 else if (strcmp(typeStr, "scroll") == 0) event->type = IR_EVENT_SCROLL;
                 else if (strcmp(typeStr, "timer") == 0) event->type = IR_EVENT_TIMER;
+                else if (strcmp(typeStr, "canvas_draw") == 0) event->type = IR_EVENT_CANVAS_DRAW;
+                else if (strcmp(typeStr, "canvas_update") == 0) event->type = IR_EVENT_CANVAS_UPDATE;
                 else if (strcmp(typeStr, "custom") == 0) event->type = IR_EVENT_CUSTOM;
             }
 

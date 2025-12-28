@@ -431,15 +431,33 @@ local function applyProperties(component, props)
 
     elseif key == "onDraw" and type(value) == "function" then
       io.stderr:write("📝 Registering onDraw handler for Canvas component\n")
+
+      -- Register in runtime (for direct execution mode)
       local componentId = tonumber(C.ir_get_component_id(component))
       runtime.registerCanvasCallback(componentId, value)
-      io.stderr:write(string.format("   Canvas callback registered for component ID: %d", componentId) .. "\n")
+
+      -- ALSO create IR event (for compilation mode)
+      local handlerId = runtime.registerHandler(component, C.IR_EVENT_CANVAS_DRAW, value)
+      local logicId = string.format("lua_canvas_draw_%d", handlerId)
+      local event = C.ir_create_event(C.IR_EVENT_CANVAS_DRAW, logicId, nil)
+      C.ir_add_event(component, event)
+
+      io.stderr:write(string.format("   Canvas onDraw registered: component_id=%d logic_id=%s\n", componentId, logicId))
 
     elseif key == "onUpdate" and type(value) == "function" then
       io.stderr:write("📝 Registering onUpdate handler for Canvas component\n")
+
+      -- Register in runtime (for direct execution mode)
       local componentId = tonumber(C.ir_get_component_id(component))
       runtime.registerCanvasUpdateCallback(componentId, value)
-      io.stderr:write(string.format("   Canvas update callback registered for component ID: %d", componentId) .. "\n")
+
+      -- ALSO create IR event (for compilation mode)
+      local handlerId = runtime.registerHandler(component, C.IR_EVENT_CANVAS_UPDATE, value)
+      local logicId = string.format("lua_canvas_update_%d", handlerId)
+      local event = C.ir_create_event(C.IR_EVENT_CANVAS_UPDATE, logicId, nil)
+      C.ir_add_event(component, event)
+
+      io.stderr:write(string.format("   Canvas onUpdate registered: component_id=%d logic_id=%s\n", componentId, logicId))
 
     end
 

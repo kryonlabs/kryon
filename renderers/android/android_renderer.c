@@ -450,6 +450,22 @@ void android_renderer_flush_batch(AndroidRenderer* renderer) {
         return;
     }
 
+    // DEBUG: Log flush
+    static int flush_count = 0;
+    if (flush_count++ < 5 || flush_count % 60 == 0) {
+        LOGI("Flushing batch: %d vertices, %d indices (%d triangles)\n",
+             renderer->vertex_count, renderer->index_count, renderer->index_count / 3);
+        // Log first few vertex colors
+        for (int i = 0; i < renderer->vertex_count && i < 8; i++) {
+            if (i % 4 == 0) {  // Log one vertex per quad
+                LOGI("  Vertex[%d]: pos=(%.0f,%.0f) color=(%d,%d,%d,%d)\n",
+                     i, renderer->vertices[i].x, renderer->vertices[i].y,
+                     renderer->vertices[i].r, renderer->vertices[i].g,
+                     renderer->vertices[i].b, renderer->vertices[i].a);
+            }
+        }
+    }
+
 #ifdef __ANDROID__
     // Update vertex buffer
     glBindBuffer(GL_ARRAY_BUFFER, renderer->vbo);

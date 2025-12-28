@@ -3,6 +3,8 @@
  * Executes source files or KIR files using C backend
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "kryon_cli.h"
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_serialization.h"
@@ -15,6 +17,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <termios.h>
+#include <time.h>
 
 static const char* detect_frontend(const char* file) {
     const char* ext = path_extension(file);
@@ -408,22 +412,62 @@ static int run_terminal(const char* kir_file) {
     printf("✓ IR executor ready\n");
 
     printf("\n");
-    printf("Rendering to terminal (Press Ctrl+C to exit)...\n");
+    printf("Rendering to terminal (Press 'q' or ESC to exit)...\n");
     printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-    // 4. Render frame (single-shot for now, main loop will come later)
-    bool success = kryon_terminal_render_ir_tree(renderer, root);
+    // 4. Set terminal to raw mode for interactive input
+    struct termios old_term, new_term;
+    tcgetattr(STDIN_FILENO, &old_term);
+    new_term = old_term;
+    new_term.c_lflag &= ~(ICANON | ECHO);  // Disable canonical mode and echo
+    new_term.c_cc[VMIN] = 0;   // Non-blocking read
+    new_term.c_cc[VTIME] = 0;
+    tcsetattr(STDIN_FILENO, TCSANOW, &new_term);
+
+    // 5. Interactive event loop
+    bool running = true;
+    bool success = true;
+
+    while (running) {
+        // Render frame
+        if (!kryon_terminal_render_ir_tree(renderer, root)) {
+            success = false;
+            break;
+        }
+
+        // Poll for keyboard input (non-blocking)
+        char c;
+        ssize_t n = read(STDIN_FILENO, &c, 1);
+
+        if (n > 0) {
+            // Process input
+            if (c == 27 || c == 'q' || c == 'Q') {  // ESC or 'q'/'Q' to quit
+                running = false;
+            } else if (c == '\n' || c == '\r') {  // Enter
+                // TODO: Trigger click on focused component
+                // For now, just mark as needing redraw
+            }
+            // TODO: Handle arrow keys, tab, etc.
+        }
+
+        // Sleep to avoid busy-waiting (30 FPS)
+        struct timespec ts = { .tv_sec = 0, .tv_nsec = 33333333 };  // 33.333ms = ~30 FPS
+        nanosleep(&ts, NULL);
+    }
+
+    // 6. Restore terminal mode
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
+
+    // Clear screen and show cursor
+    printf("\033[2J\033[H\033[?25h");
 
     if (success) {
         printf("\n");
         printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-        printf("✓ Rendered successfully\n");
-        printf("\nNote: Interactive mode with event loop coming soon!\n");
-        printf("Press Enter to exit...");
-        getchar();
+        printf("✓ Exited successfully\n");
     }
 
-    // 5. Cleanup
+    // 7. Cleanup
     renderer->ops->shutdown(renderer);
     kryon_terminal_renderer_destroy(renderer);
     // ir_component_destroy(root);

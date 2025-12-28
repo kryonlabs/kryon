@@ -1,5 +1,8 @@
 #include "android_renderer_internal.h"
 #include <string.h>
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
 
 // ============================================================================
 // Primitive Rendering Functions
@@ -25,6 +28,14 @@ void android_renderer_draw_rect(AndroidRenderer* renderer,
     uint8_t r = (color >> 16) & 0xFF;
     uint8_t g = (color >> 8) & 0xFF;
     uint8_t b = color & 0xFF;
+
+    // DEBUG: Log color extraction for non-transparent colors
+    static int color_log_count = 0;
+    if (a > 0 && (color_log_count++ < 10 || color_log_count % 60 == 0)) {
+        __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+            "draw_rect: color=0x%08x -> RGBA(%d,%d,%d,%d) at (%.0f,%.0f) size %.0fx%.0f",
+            color, r, g, b, a, x, y, width, height);
+    }
 
     // NO SWAP - use colors as-is (RGBA order)
     // OpenGL ES expects RGBA in memory order

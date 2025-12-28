@@ -178,24 +178,187 @@ void terminal_draw_box(int char_x, int char_y, int char_width, int char_height, 
 bool terminal_render_text(TerminalRenderContext* ctx, IRComponent* component) {
     if (!ctx || !component) return false;
 
-    // TODO: Implement using component->text_content and component->style->font.color
-    // For now, just return success to allow compilation
-    (void)ctx;
-    (void)component;
+    // Get text content
+    const char* text = component->text_content;
+    if (!text || !text[0]) return true;  // Empty text is ok
+
+    // Get computed layout bounds
+    IRComputedLayout* bounds = ir_layout_get_bounds(component);
+    if (!bounds || !bounds->valid) {
+        return false;  // Layout not computed
+    }
+
+    // Convert pixel position to character position
+    int char_x, char_y;
+    terminal_pixel_to_char_coords(ctx, bounds->x, bounds->y, &char_x, &char_y);
+
+    // Bounds check
+    if (char_x >= ctx->term_width || char_y >= ctx->term_height) {
+        return true;  // Off-screen is ok
+    }
+    if (char_x < 0) char_x = 0;
+    if (char_y < 0) char_y = 0;
+
+    // Get text color from style
+    uint32_t color = 0xFFFFFFFF;  // Default white
+    if (component->style && component->style->font.color.type == IR_COLOR_SOLID) {
+        IRColor c = component->style->font.color;
+        color = (c.data.r << 24) | (c.data.g << 16) | (c.data.b << 8) | c.data.a;
+    }
+
+    // Apply color
+    terminal_set_fg_color(color, ctx->color_mode);
+
+    // Position cursor and render text
+    terminal_move_cursor(char_x, char_y);
+
+    // Calculate available width for text
+    int char_width = (int)(bounds->width / ctx->char_width);
+
+    // Render text (with truncation if too long)
+    int len = strlen(text);
+    if (len > char_width) {
+        // Truncate with ellipsis
+        printf("%.*s...", char_width - 3, text);
+    } else {
+        printf("%s", text);
+    }
+
+    // Reset color
+    printf("\033[0m");
+
     return true;
 }
 
 bool terminal_render_button(TerminalRenderContext* ctx, IRComponent* component) {
     if (!ctx || !component) return false;
 
-    // TODO: Implement button rendering
-    (void)ctx;
-    (void)component;
+    // Get button text (from text_content or from children)
+    const char* text = component->text_content;
+    if (!text || !text[0]) {
+        // Try to get text from first child if it's a Text component
+        if (component->child_count > 0 &&
+            component->children[0]->type == IR_COMPONENT_TEXT) {
+            text = component->children[0]->text_content;
+        }
+    }
+    if (!text || !text[0]) text = "Button";
+
+    // Get computed bounds
+    IRComputedLayout* bounds = ir_layout_get_bounds(component);
+    if (!bounds || !bounds->valid) return false;
+
+    // Convert to characters
+    int char_x, char_y, char_width, char_height;
+    terminal_pixel_to_char_coords(ctx, bounds->x, bounds->y, &char_x, &char_y);
+    terminal_pixel_to_char_size(ctx, bounds->width, bounds->height, &char_width, &char_height);
+
+    // Bounds check
+    if (char_x >= ctx->term_width || char_y >= ctx->term_height) return true;
+
+    // Get colors
+    uint32_t bg_color = 0x444444FF;  // Default dark gray
+    uint32_t fg_color = 0xFFFFFFFF;  // Default white
+
+    if (component->style) {
+        if (component->style->background.type == IR_COLOR_SOLID) {
+            IRColor c = component->style->background;
+            bg_color = (c.data.r << 24) | (c.data.g << 16) | (c.data.b << 8) | c.data.a;
+        }
+        if (component->style->font.color.type == IR_COLOR_SOLID) {
+            IRColor c = component->style->font.color;
+            fg_color = (c.data.r << 24) | (c.data.g << 16) | (c.data.b << 8) | c.data.a;
+        }
+    }
+
+    // Draw button background
+    uint8_t r = (bg_color >> 24) & 0xFF;
+    uint8_t g = (bg_color >> 16) & 0xFF;
+    uint8_t b = (bg_color >> 8) & 0xFF;
+    printf("\033[48;2;%d;%d;%dm", r, g, b);
+
+    for (int y = 0; y < char_height && (char_y + y) < ctx->term_height; y++) {
+        terminal_move_cursor(char_x, char_y + y);
+        for (int x = 0; x < char_width && (char_x + x) < ctx->term_width; x++) {
+            printf(" ");
+        }
+    }
+
+    // Draw border using box drawing characters
+    if (component->style && component->style->border.width > 0) {
+        terminal_draw_box(char_x, char_y, char_width, char_height, ctx->unicode_support);
+    }
+
+    // Draw button text (centered)
+    int text_len = strlen(text);
+    int text_x = char_x + (char_width - text_len) / 2;
+    int text_y = char_y + char_height / 2;
+
+    if (text_x >= 0 && text_x < ctx->term_width &&
+        text_y >= 0 && text_y < ctx->term_height) {
+        terminal_set_fg_color(fg_color, ctx->color_mode);
+        terminal_move_cursor(text_x, text_y);
+
+        // Truncate if needed
+        if (text_len > char_width - 2) {
+            printf("%.*s", char_width - 2, text);
+        } else {
+            printf("%s", text);
+        }
+    }
+
+    // Reset colors
+    printf("\033[0m");
+
     return true;
 }
 
 bool terminal_render_container(TerminalRenderContext* ctx, IRComponent* component) {
     if (!ctx || !component) return false;
+
+    // Get computed bounds
+    IRComputedLayout* bounds = ir_layout_get_bounds(component);
+    if (bounds && bounds->valid) {
+        // Convert to characters
+        int char_x, char_y, char_width, char_height;
+        terminal_pixel_to_char_coords(ctx, bounds->x, bounds->y, &char_x, &char_y);
+        terminal_pixel_to_char_size(ctx, bounds->width, bounds->height, &char_width, &char_height);
+
+        // Render background if specified
+        if (component->style && component->style->background.type == IR_COLOR_SOLID) {
+            IRColor c = component->style->background;
+            uint32_t bg_color = (c.data.r << 24) | (c.data.g << 16) | (c.data.b << 8) | c.data.a;
+
+            uint8_t r = (bg_color >> 24) & 0xFF;
+            uint8_t g = (bg_color >> 16) & 0xFF;
+            uint8_t b = (bg_color >> 8) & 0xFF;
+            printf("\033[48;2;%d;%d;%dm", r, g, b);
+
+            // Fill background
+            for (int y = 0; y < char_height && (char_y + y) < ctx->term_height; y++) {
+                if (char_y + y < 0) continue;
+                terminal_move_cursor(char_x, char_y + y);
+                for (int x = 0; x < char_width && (char_x + x) < ctx->term_width; x++) {
+                    if (char_x + x >= 0) printf(" ");
+                }
+            }
+            printf("\033[0m");
+        }
+
+        // Render border if specified
+        if (component->style && component->style->border.width > 0) {
+            // Set border color
+            if (component->style->border_color.type == IR_COLOR_SOLID) {
+                IRColor c = component->style->border_color;
+                uint32_t border_color = (c.data.r << 24) | (c.data.g << 16) | (c.data.b << 8) | c.data.a;
+                terminal_set_fg_color(border_color, ctx->color_mode);
+            }
+
+            // Draw border
+            terminal_draw_box(char_x, char_y, char_width, char_height, ctx->unicode_support);
+            printf("\033[0m");
+        }
+    }
 
     // Render children
     for (uint32_t i = 0; i < component->child_count; i++) {
@@ -208,27 +371,265 @@ bool terminal_render_container(TerminalRenderContext* ctx, IRComponent* componen
 bool terminal_render_input(TerminalRenderContext* ctx, IRComponent* component) {
     if (!ctx || !component) return false;
 
-    // TODO: Implement input rendering
-    (void)ctx;
-    (void)component;
+    // Get current value (from text_content)
+    const char* value = "";
+    if (component->text_content) {
+        value = component->text_content;
+    }
+
+    // Get placeholder (from component properties if available, otherwise default)
+    const char* placeholder = "Enter text...";
+    // TODO: Read from component->properties when available
+
+    // Get bounds
+    IRComputedLayout* bounds = ir_layout_get_bounds(component);
+    if (!bounds || !bounds->valid) return false;
+
+    int char_x, char_y, char_width, char_height;
+    terminal_pixel_to_char_coords(ctx, bounds->x, bounds->y, &char_x, &char_y);
+    terminal_pixel_to_char_size(ctx, bounds->width, bounds->height, &char_width, &char_height);
+
+    // Bounds check
+    if (char_x >= ctx->term_width || char_y >= ctx->term_height) return true;
+
+    // Get colors
+    uint32_t bg_color = 0xFFFFFFFF;  // Default white background
+    uint32_t fg_color = 0x000000FF;  // Default black text
+    uint32_t border_color = 0xBDC3C7FF;  // Default light gray border
+
+    if (component->style) {
+        if (component->style->background.type == IR_COLOR_SOLID) {
+            IRColor c = component->style->background;
+            bg_color = (c.data.r << 24) | (c.data.g << 16) | (c.data.b << 8) | c.data.a;
+        }
+        if (component->style->font.color.type == IR_COLOR_SOLID) {
+            IRColor c = component->style->font.color;
+            fg_color = (c.data.r << 24) | (c.data.g << 16) | (c.data.b << 8) | c.data.a;
+        }
+        if (component->style->border_color.type == IR_COLOR_SOLID) {
+            IRColor c = component->style->border_color;
+            border_color = (c.data.r << 24) | (c.data.g << 16) | (c.data.b << 8) | c.data.a;
+        }
+    }
+
+    // Draw background
+    uint8_t r = (bg_color >> 24) & 0xFF;
+    uint8_t g = (bg_color >> 16) & 0xFF;
+    uint8_t b = (bg_color >> 8) & 0xFF;
+    printf("\033[48;2;%d;%d;%dm", r, g, b);
+
+    for (int y = 0; y < char_height && (char_y + y) < ctx->term_height; y++) {
+        if (char_y + y < 0) continue;
+        terminal_move_cursor(char_x, char_y + y);
+        for (int x = 0; x < char_width && (char_x + x) < ctx->term_width; x++) {
+            if (char_x + x >= 0) printf(" ");
+        }
+    }
+    printf("\033[0m");
+
+    // Draw border
+    terminal_set_fg_color(border_color, ctx->color_mode);
+    terminal_draw_box(char_x, char_y, char_width, char_height, ctx->unicode_support);
+    printf("\033[0m");
+
+    // Draw value or placeholder
+    int text_x = char_x + 1;
+    int text_y = char_y + char_height / 2;
+
+    if (text_x >= 0 && text_x < ctx->term_width &&
+        text_y >= 0 && text_y < ctx->term_height) {
+
+        terminal_move_cursor(text_x, text_y);
+
+        if (value && value[0]) {
+            // Show value
+            terminal_set_fg_color(fg_color, ctx->color_mode);
+            int max_len = char_width - 3;  // Leave room for cursor and padding
+            int len = strlen(value);
+            if (len > max_len) {
+                printf("%.*s", max_len, value);
+            } else {
+                printf("%s", value);
+            }
+
+            // Show cursor if focused (TODO: check focus state)
+            // printf("▋");
+        } else {
+            // Show placeholder in gray
+            terminal_set_fg_color(0x888888FF, ctx->color_mode);
+            int max_len = char_width - 3;
+            int len = strlen(placeholder);
+            if (len > max_len) {
+                printf("%.*s", max_len, placeholder);
+            } else {
+                printf("%s", placeholder);
+            }
+        }
+
+        printf("\033[0m");
+    }
+
     return true;
 }
 
 bool terminal_render_checkbox(TerminalRenderContext* ctx, IRComponent* component) {
     if (!ctx || !component) return false;
 
-    // TODO: Implement checkbox rendering
-    (void)ctx;
-    (void)component;
+    // Get checked state (from custom_data or properties)
+    bool checked = false;
+    // TODO: Read from component state when available
+    // For now, checkboxes default to unchecked
+
+    // Get label text
+    const char* label = component->text_content;
+    if (!label || !label[0]) label = "Checkbox";
+
+    // Get bounds
+    IRComputedLayout* bounds = ir_layout_get_bounds(component);
+    if (!bounds || !bounds->valid) return false;
+
+    int char_x, char_y;
+    terminal_pixel_to_char_coords(ctx, bounds->x, bounds->y, &char_x, &char_y);
+
+    // Bounds check
+    if (char_x >= ctx->term_width || char_y >= ctx->term_height) return true;
+
+    // Get text color
+    uint32_t fg_color = 0xFFFFFFFF;  // Default white
+    if (component->style && component->style->font.color.type == IR_COLOR_SOLID) {
+        IRColor c = component->style->font.color;
+        fg_color = (c.data.r << 24) | (c.data.g << 16) | (c.data.b << 8) | c.data.a;
+    }
+
+    // Position cursor
+    terminal_move_cursor(char_x, char_y);
+
+    // Render checkbox symbol
+    terminal_set_fg_color(fg_color, ctx->color_mode);
+    if (ctx->unicode_support) {
+        printf(checked ? "☑ " : "☐ ");
+    } else {
+        printf(checked ? "[x] " : "[ ] ");
+    }
+
+    // Render label
+    int label_x = char_x + (ctx->unicode_support ? 2 : 4);
+    if (label_x < ctx->term_width) {
+        terminal_move_cursor(label_x, char_y);
+        int max_len = ctx->term_width - label_x - 1;
+        int len = strlen(label);
+        if (len > max_len) {
+            printf("%.*s", max_len, label);
+        } else {
+            printf("%s", label);
+        }
+    }
+
+    printf("\033[0m");
+
     return true;
 }
 
 bool terminal_render_dropdown(TerminalRenderContext* ctx, IRComponent* component) {
     if (!ctx || !component) return false;
 
-    // TODO: Implement dropdown rendering
-    (void)ctx;
-    (void)component;
+    // Get selected value
+    const char* selected = "Select...";
+    if (component->text_content && component->text_content[0]) {
+        selected = component->text_content;
+    }
+
+    // Get expanded state (TODO: track in component custom_data)
+    bool expanded = false;
+
+    // Get bounds
+    IRComputedLayout* bounds = ir_layout_get_bounds(component);
+    if (!bounds || !bounds->valid) return false;
+
+    int char_x, char_y, char_width, char_height;
+    terminal_pixel_to_char_coords(ctx, bounds->x, bounds->y, &char_x, &char_y);
+    terminal_pixel_to_char_size(ctx, bounds->width, bounds->height, &char_width, &char_height);
+
+    // Bounds check
+    if (char_x >= ctx->term_width || char_y >= ctx->term_height) return true;
+
+    // Get colors
+    uint32_t bg_color = 0xFFFFFFFF;  // Default white background
+    uint32_t fg_color = 0x000000FF;  // Default black text
+    uint32_t border_color = 0xBDC3C7FF;  // Default light gray border
+
+    if (component->style) {
+        if (component->style->background.type == IR_COLOR_SOLID) {
+            IRColor c = component->style->background;
+            bg_color = (c.data.r << 24) | (c.data.g << 16) | (c.data.b << 8) | c.data.a;
+        }
+        if (component->style->font.color.type == IR_COLOR_SOLID) {
+            IRColor c = component->style->font.color;
+            fg_color = (c.data.r << 24) | (c.data.g << 16) | (c.data.b << 8) | c.data.a;
+        }
+        if (component->style->border_color.type == IR_COLOR_SOLID) {
+            IRColor c = component->style->border_color;
+            border_color = (c.data.r << 24) | (c.data.g << 16) | (c.data.b << 8) | c.data.a;
+        }
+    }
+
+    // Draw background
+    uint8_t r = (bg_color >> 24) & 0xFF;
+    uint8_t g = (bg_color >> 16) & 0xFF;
+    uint8_t b = (bg_color >> 8) & 0xFF;
+    printf("\033[48;2;%d;%d;%dm", r, g, b);
+
+    for (int y = 0; y < char_height && (char_y + y) < ctx->term_height; y++) {
+        if (char_y + y < 0) continue;
+        terminal_move_cursor(char_x, char_y + y);
+        for (int x = 0; x < char_width && (char_x + x) < ctx->term_width; x++) {
+            if (char_x + x >= 0) printf(" ");
+        }
+    }
+    printf("\033[0m");
+
+    // Draw dropdown box border
+    terminal_set_fg_color(border_color, ctx->color_mode);
+    terminal_draw_box(char_x, char_y, char_width, char_height, ctx->unicode_support);
+    printf("\033[0m");
+
+    // Draw selected value
+    int text_x = char_x + 1;
+    int text_y = char_y + char_height / 2;
+
+    if (text_x >= 0 && text_x < ctx->term_width &&
+        text_y >= 0 && text_y < ctx->term_height) {
+        terminal_move_cursor(text_x, text_y);
+        terminal_set_fg_color(fg_color, ctx->color_mode);
+
+        int text_len = char_width - 4;  // Leave room for arrow
+        int len = strlen(selected);
+        if (len > text_len) {
+            printf("%.*s", text_len, selected);
+        } else {
+            printf("%s", selected);
+        }
+        printf("\033[0m");
+    }
+
+    // Draw dropdown arrow
+    int arrow_x = char_x + char_width - 2;
+    int arrow_y = char_y + char_height / 2;
+
+    if (arrow_x >= 0 && arrow_x < ctx->term_width &&
+        arrow_y >= 0 && arrow_y < ctx->term_height) {
+        terminal_move_cursor(arrow_x, arrow_y);
+        terminal_set_fg_color(fg_color, ctx->color_mode);
+        printf(ctx->unicode_support ? "▼" : "v");
+        printf("\033[0m");
+    }
+
+    // If expanded, draw options popup (TODO: implement when state tracking is available)
+    if (expanded) {
+        // Draw options list below
+        // This would render the dropdown menu below the main box
+    }
+
     return true;
 }
 
