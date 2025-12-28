@@ -196,6 +196,10 @@ void ir_tabgroup_register_bar(TabGroupState* state, IRComponent* tab_bar) {
 void ir_tabgroup_register_content(TabGroupState* state, IRComponent* tab_content) {
     if (!state) return;
     state->tab_content = tab_content;
+    if (tab_content) {
+        // Store state pointer for serialization lookup (unsafe cast)
+        tab_content->custom_data = (char*)state;
+    }
 }
 
 void ir_tabgroup_register_tab(TabGroupState* state, IRComponent* tab) {

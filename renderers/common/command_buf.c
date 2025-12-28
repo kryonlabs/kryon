@@ -162,15 +162,15 @@ void kryon_cmd_buf_init(kryon_cmd_buf_t* buf) {
         return;
     }
 
+    fprintf(stderr, "[CMDBUF_INIT] BUF=%p Initializing buffer (clearing %u bytes)\n",
+            (void*)buf, KRYON_CMD_BUF_SIZE);
+    fflush(stderr);
+
     buf->head = 0;
     buf->tail = 0;
     buf->count = 0;
     buf->overflow = false;
     memset(buf->buffer, 0, KRYON_CMD_BUF_SIZE);
-
-    // Debug: Log buffer size and platform detection at initialization (disabled - too verbose)
-    // fprintf(stderr, "[kryon][cmdbuf] INIT: platform=%d, buffer_size=%u, no_float=%d, no_heap=%d\n",
-    //         KRYON_TARGET_PLATFORM, KRYON_CMD_BUF_SIZE, KRYON_NO_FLOAT, KRYON_NO_HEAP);
 }
 
 void kryon_cmd_buf_clear(kryon_cmd_buf_t* buf) {

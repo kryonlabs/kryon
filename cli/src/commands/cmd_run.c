@@ -745,13 +745,15 @@ int cmd_run(int argc, char** argv) {
             if (plugin_paths) {
                 snprintf(lua_cmd, sizeof(lua_cmd),
                          "KRYON_PLUGIN_PATHS=\"%s\" "
-                         "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;;\" "
-                         "LD_LIBRARY_PATH=\"%s/build:$LD_LIBRARY_PATH\" "
+                         "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;%s/bindings/lua/?.lua;;\" "
+                         "LUA_CPATH=\"%s/build/?.so;;\" "
+                         "LD_LIBRARY_PATH=\"%s/build:%s/build:$LD_LIBRARY_PATH\" "
                          "luajit -e '"
                          "local Runtime = require(\"kryon.runtime\"); "
                          "local app = Runtime.loadKIR(\"%s\"); "
                          "Runtime.runDesktop(app)'",
-                         plugin_paths, kryon_root, kryon_root, kryon_root, kir_file);
+                         plugin_paths, kryon_root, kryon_root, plugin_paths,
+                         plugin_paths, plugin_paths, kryon_root, kir_file);
             } else {
                 snprintf(lua_cmd, sizeof(lua_cmd),
                          "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;;\" "
