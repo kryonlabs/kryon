@@ -325,9 +325,11 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
     // ========================================================================
 
     private fun startRenderLoop() {
+        Log.i(TAG, "startRenderLoop called, isRendering=$isRendering")
         if (isRendering) return
         isRendering = true
         renderHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        Log.i(TAG, "Starting render loop")
         renderLoop()
     }
 
@@ -337,8 +339,18 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
         renderHandler = null
     }
 
+    private var frameCount = 0
+
     private fun renderLoop() {
-        if (!isRendering || nativeHandle == 0L) return
+        frameCount++
+        if (frameCount % 60 == 0) {
+            Log.d(TAG, "renderLoop frame $frameCount")
+        }
+
+        if (!isRendering || nativeHandle == 0L) {
+            Log.w(TAG, "renderLoop stopped: isRendering=$isRendering, nativeHandle=$nativeHandle")
+            return
+        }
 
         // Call native render
         nativeRender(nativeHandle)

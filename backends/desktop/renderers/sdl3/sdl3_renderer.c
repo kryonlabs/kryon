@@ -459,10 +459,13 @@ DesktopRendererOps* desktop_sdl3_get_ops(void) {
 }
 
 // ============================================================================
-// Auto-Registration
+// Backend Registration
 // ============================================================================
 
-__attribute__((constructor))
-static void sdl3_auto_register(void) {
+/**
+ * Register SDL3 backend (must be called explicitly before use)
+ */
+void sdl3_backend_register(void) {
     desktop_register_backend(DESKTOP_BACKEND_SDL3, &g_sdl3_ops);
+    printf("[sdl3] Backend registered\n");
 }

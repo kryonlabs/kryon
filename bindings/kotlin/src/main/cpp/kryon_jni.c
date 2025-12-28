@@ -231,6 +231,12 @@ Java_com_kryon_KryonActivity_nativeSurfaceCreated(JNIEnv* env, jobject thiz,
         if (ctx->ir_renderer) {
             android_ir_renderer_initialize(ctx->ir_renderer, ctx->window);
             LOGI("IR Renderer initialized successfully\n");
+
+            // Register Android system fonts
+            android_ir_register_font("Roboto", "/system/fonts/Roboto-Regular.ttf");
+            android_ir_register_font("Roboto-Bold", "/system/fonts/Roboto-Bold.ttf");
+            android_ir_set_default_font("Roboto");
+            LOGI("Default font set to Roboto\n");
         } else {
             LOGE("Failed to create IR renderer\n");
         }

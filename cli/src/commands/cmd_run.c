@@ -349,7 +349,7 @@ static int run_android(const char* kir_file, const char* source_file) {
     system(cleanup_cmd);
 
     printf("✓ Done!\n");
-    return 0;
+    _exit(0);  // Use _exit to skip libc cleanup and avoid double-free
 }
 
 int cmd_run(int argc, char** argv) {

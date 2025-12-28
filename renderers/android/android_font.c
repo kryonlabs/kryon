@@ -318,8 +318,8 @@ bool android_renderer_measure_text(AndroidRenderer* renderer,
                                     float* height) {
     if (!renderer || !text) return false;
 
-    // Get font
-    const char* name = font_name ? font_name : renderer->default_font_name;
+    // Get font (use default if name is NULL or empty)
+    const char* name = (font_name && font_name[0] != '\0') ? font_name : renderer->default_font_name;
     int size = font_size > 0 ? font_size : renderer->default_font_size;
 
     FontInfo* font = android_font_get(renderer, name, size);
@@ -354,8 +354,8 @@ void android_renderer_draw_text(AndroidRenderer* renderer,
                                  uint32_t color) {
     if (!renderer || !text) return;
 
-    // Get font
-    const char* name = font_name ? font_name : renderer->default_font_name;
+    // Get font (use default if name is NULL or empty)
+    const char* name = (font_name && font_name[0] != '\0') ? font_name : renderer->default_font_name;
     int size = font_size > 0 ? font_size : renderer->default_font_size;
 
     FontInfo* font = android_font_get(renderer, name, size);

@@ -283,9 +283,112 @@ static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* va
         lua_gen_add_line_fmt(gen, "backgroundColor = \"%s\",", cJSON_GetStringValue(backgroundColor));
     }
 
+    cJSON* background = cJSON_GetObjectItem(comp, "background");
+    if (background && cJSON_IsString(background)) {
+        lua_gen_add_line_fmt(gen, "background = \"%s\",", cJSON_GetStringValue(background));
+    }
+
     cJSON* color = cJSON_GetObjectItem(comp, "color");
     if (color && cJSON_IsString(color)) {
         lua_gen_add_line_fmt(gen, "color = \"%s\",", cJSON_GetStringValue(color));
+    }
+
+    cJSON* borderRadius = cJSON_GetObjectItem(comp, "borderRadius");
+    if (borderRadius && cJSON_IsNumber(borderRadius) && cJSON_GetNumberValue(borderRadius) > 0) {
+        lua_gen_add_line_fmt(gen, "borderRadius = %d,", (int)cJSON_GetNumberValue(borderRadius));
+    }
+
+    cJSON* borderWidth = cJSON_GetObjectItem(comp, "borderWidth");
+    if (borderWidth && cJSON_IsNumber(borderWidth) && cJSON_GetNumberValue(borderWidth) > 0) {
+        lua_gen_add_line_fmt(gen, "borderWidth = %d,", (int)cJSON_GetNumberValue(borderWidth));
+    }
+
+    cJSON* borderColor = cJSON_GetObjectItem(comp, "borderColor");
+    if (borderColor && cJSON_IsString(borderColor)) {
+        lua_gen_add_line_fmt(gen, "borderColor = \"%s\",", cJSON_GetStringValue(borderColor));
+    }
+
+    cJSON* gap = cJSON_GetObjectItem(comp, "gap");
+    if (gap && cJSON_IsNumber(gap) && cJSON_GetNumberValue(gap) > 0) {
+        lua_gen_add_line_fmt(gen, "gap = %d,", (int)cJSON_GetNumberValue(gap));
+    }
+
+    cJSON* margin = cJSON_GetObjectItem(comp, "margin");
+    if (margin && cJSON_IsNumber(margin) && cJSON_GetNumberValue(margin) > 0) {
+        lua_gen_add_line_fmt(gen, "margin = %d,", (int)cJSON_GetNumberValue(margin));
+    }
+
+    cJSON* opacity = cJSON_GetObjectItem(comp, "opacity");
+    if (opacity && cJSON_IsNumber(opacity)) {
+        double op = cJSON_GetNumberValue(opacity);
+        if (op < 1.0) {  // Only output if not fully opaque
+            lua_gen_add_line_fmt(gen, "opacity = %.2f,", op);
+        }
+    }
+
+    cJSON* alignItems = cJSON_GetObjectItem(comp, "alignItems");
+    if (alignItems && cJSON_IsString(alignItems)) {
+        lua_gen_add_line_fmt(gen, "alignItems = \"%s\",", cJSON_GetStringValue(alignItems));
+    }
+
+    cJSON* justifyContent = cJSON_GetObjectItem(comp, "justifyContent");
+    if (justifyContent && cJSON_IsString(justifyContent)) {
+        lua_gen_add_line_fmt(gen, "justifyContent = \"%s\",", cJSON_GetStringValue(justifyContent));
+    }
+
+    cJSON* textAlign = cJSON_GetObjectItem(comp, "textAlign");
+    if (textAlign && cJSON_IsString(textAlign)) {
+        lua_gen_add_line_fmt(gen, "textAlign = \"%s\",", cJSON_GetStringValue(textAlign));
+    }
+
+    cJSON* placeholder = cJSON_GetObjectItem(comp, "placeholder");
+    if (placeholder && cJSON_IsString(placeholder)) {
+        lua_gen_add_line_fmt(gen, "placeholder = \"%s\",", cJSON_GetStringValue(placeholder));
+    }
+
+    cJSON* value = cJSON_GetObjectItem(comp, "value");
+    if (value && cJSON_IsString(value)) {
+        lua_gen_add_line_fmt(gen, "value = \"%s\",", cJSON_GetStringValue(value));
+    }
+
+    cJSON* checked = cJSON_GetObjectItem(comp, "checked");
+    if (checked && cJSON_IsBool(checked)) {
+        lua_gen_add_line_fmt(gen, "checked = %s,", cJSON_IsTrue(checked) ? "true" : "false");
+    }
+
+    cJSON* disabled = cJSON_GetObjectItem(comp, "disabled");
+    if (disabled && cJSON_IsBool(disabled)) {
+        lua_gen_add_line_fmt(gen, "disabled = %s,", cJSON_IsTrue(disabled) ? "true" : "false");
+    }
+
+    cJSON* visible = cJSON_GetObjectItem(comp, "visible");
+    if (visible && cJSON_IsBool(visible) && !cJSON_IsTrue(visible)) {
+        lua_gen_add_line(gen, "visible = false,");
+    }
+
+    cJSON* windowTitle = cJSON_GetObjectItem(comp, "windowTitle");
+    if (windowTitle && cJSON_IsString(windowTitle)) {
+        lua_gen_add_line_fmt(gen, "windowTitle = \"%s\",", cJSON_GetStringValue(windowTitle));
+    }
+
+    cJSON* minWidth = cJSON_GetObjectItem(comp, "minWidth");
+    if (minWidth && cJSON_IsString(minWidth)) {
+        lua_gen_add_line_fmt(gen, "minWidth = \"%s\",", cJSON_GetStringValue(minWidth));
+    }
+
+    cJSON* minHeight = cJSON_GetObjectItem(comp, "minHeight");
+    if (minHeight && cJSON_IsString(minHeight)) {
+        lua_gen_add_line_fmt(gen, "minHeight = \"%s\",", cJSON_GetStringValue(minHeight));
+    }
+
+    cJSON* maxWidth = cJSON_GetObjectItem(comp, "maxWidth");
+    if (maxWidth && cJSON_IsString(maxWidth)) {
+        lua_gen_add_line_fmt(gen, "maxWidth = \"%s\",", cJSON_GetStringValue(maxWidth));
+    }
+
+    cJSON* maxHeight = cJSON_GetObjectItem(comp, "maxHeight");
+    if (maxHeight && cJSON_IsString(maxHeight)) {
+        lua_gen_add_line_fmt(gen, "maxHeight = \"%s\",", cJSON_GetStringValue(maxHeight));
     }
 
     cJSON* flexDirection = cJSON_GetObjectItem(comp, "flexDirection");

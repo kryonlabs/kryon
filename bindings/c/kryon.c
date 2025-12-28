@@ -12,6 +12,7 @@
 #include <limits.h>
 #include "../../third_party/tomlc99/toml.h"
 #include "../../backends/desktop/ir_desktop_renderer.h"
+#include "../../ir/ir_executor.h"
 
 // ============================================================================
 // Internal State
@@ -294,6 +295,15 @@ void kryon_init(const char* title, int width, int height) {
     // Create IR context
     g_app_state.context = ir_create_context();
     ir_set_context(g_app_state.context);
+
+    // Create and set global executor for event handling
+    IRExecutorContext* executor = ir_executor_create();
+    if (executor) {
+        ir_executor_set_global(executor);
+        printf("[kryon] Executor initialized\n");
+    } else {
+        fprintf(stderr, "[kryon] Warning: Failed to create executor\n");
+    }
 
     // Store window config
     g_app_state.window_title = title ? strdup(title) : strdup("Kryon App");
