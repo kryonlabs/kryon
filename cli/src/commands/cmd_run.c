@@ -737,12 +737,56 @@ int cmd_run(int argc, char** argv) {
                 kryon_root = "/mnt/storage/Projects/kryon";  // fallback
             }
 
-            // Get plugin paths from environment
+            // Load kryon.toml to get plugin paths
+            KryonConfig* kryon_config = config_find_and_load();
+
+            // Build plugin paths from config and environment
+            char plugin_paths_buffer[2048] = "";
             char* plugin_paths = getenv("KRYON_PLUGIN_PATHS");
+
+            // If config has plugins, build paths
+            if (kryon_config && kryon_config->plugins && kryon_config->plugins_count > 0) {
+                char* cwd = dir_get_current();
+                for (int i = 0; i < kryon_config->plugins_count; i++) {
+                    PluginDep* plugin = &kryon_config->plugins[i];
+                    if (!plugin->enabled || !plugin->path) continue;
+
+                    // Resolve relative paths
+                    char* resolved_path = NULL;
+                    if (plugin->path[0] == '/') {
+                        // Absolute path
+                        resolved_path = str_copy(plugin->path);
+                    } else {
+                        // Relative to project directory
+                        resolved_path = path_join(cwd, plugin->path);
+                    }
+
+                    // Add to plugin_paths_buffer
+                    if (strlen(plugin_paths_buffer) > 0) {
+                        strncat(plugin_paths_buffer, ":", sizeof(plugin_paths_buffer) - strlen(plugin_paths_buffer) - 1);
+                    }
+                    strncat(plugin_paths_buffer, resolved_path, sizeof(plugin_paths_buffer) - strlen(plugin_paths_buffer) - 1);
+                    free(resolved_path);
+                }
+                free(cwd);
+
+                // If env var is also set, append it
+                if (plugin_paths && strlen(plugin_paths) > 0) {
+                    if (strlen(plugin_paths_buffer) > 0) {
+                        strncat(plugin_paths_buffer, ":", sizeof(plugin_paths_buffer) - strlen(plugin_paths_buffer) - 1);
+                    }
+                    strncat(plugin_paths_buffer, plugin_paths, sizeof(plugin_paths_buffer) - strlen(plugin_paths_buffer) - 1);
+                }
+
+                // Use the combined paths
+                if (strlen(plugin_paths_buffer) > 0) {
+                    plugin_paths = plugin_paths_buffer;
+                }
+            }
 
             // Build Lua command to load KIR with Runtime.loadKIR
             char lua_cmd[4096];
-            if (plugin_paths) {
+            if (plugin_paths && strlen(plugin_paths) > 0) {
                 snprintf(lua_cmd, sizeof(lua_cmd),
                          "KRYON_PLUGIN_PATHS=\"%s\" "
                          "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;%s/bindings/lua/?.lua;;\" "
@@ -767,6 +811,9 @@ int cmd_run(int argc, char** argv) {
 
             fprintf(stderr, "[DEBUG] Executing: %s\n", lua_cmd);
             int result = system(lua_cmd);
+
+            // Cleanup
+            if (kryon_config) config_free(kryon_config);
             ir_destroy_component(root);
             if (free_target) free((char*)target_file);
             return (result == 0) ? 0 : 1;

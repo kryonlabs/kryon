@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stddef.h>
 
 // ============================================================================
 // Fixed-Point Conversion Functions (Implementation)
@@ -183,6 +184,8 @@ void kryon_cmd_buf_clear(kryon_cmd_buf_t* buf) {
     fflush(stderr);
 
     buf->head = 0;
+    fprintf(stderr, "[CMDBUF_CLEAR] Setting tail=0\n");
+    fflush(stderr);
     buf->tail = 0;
     buf->count = 0;
     buf->overflow = false;
@@ -216,6 +219,9 @@ static const uint16_t kCommandSize = sizeof(kryon_command_t);
 __attribute__((constructor))
 static void print_command_size(void) {
     fprintf(stderr, "[CMDBUF_INIT] sizeof(kryon_command_t) = %zu bytes\n", sizeof(kryon_command_t));
+    fprintf(stderr, "[CMDBUF_INIT] sizeof(kryon_cmd_buf_t) = %zu bytes\n", sizeof(kryon_cmd_buf_t));
+    fprintf(stderr, "[CMDBUF_INIT] offsetof(head) = %zu, offsetof(tail) = %zu, offsetof(count) = %zu\n",
+            offsetof(kryon_cmd_buf_t, head), offsetof(kryon_cmd_buf_t, tail), offsetof(kryon_cmd_buf_t, count));
     fflush(stderr);
 }
 
