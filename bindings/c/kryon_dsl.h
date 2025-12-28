@@ -328,10 +328,10 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
 // Property Macros - Event Handlers
 // ============================================================================
 
-#define ON_CLICK(handler) kryon_on_click(_comp, handler)
-#define ON_CHANGE(handler) kryon_on_change(_comp, handler)
-#define ON_HOVER(handler) kryon_on_hover(_comp, handler)
-#define ON_FOCUS(handler) kryon_on_focus(_comp, handler)
+#define ON_CLICK(handler) kryon_on_click(_comp, handler, #handler)
+#define ON_CHANGE(handler) kryon_on_change(_comp, handler, #handler)
+#define ON_HOVER(handler) kryon_on_hover(_comp, handler, #handler)
+#define ON_FOCUS(handler) kryon_on_focus(_comp, handler, #handler)
 
 // ============================================================================
 // Utility Macros

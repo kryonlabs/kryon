@@ -1,0 +1,246 @@
+/*
+ * Kryon Android Backend - IR to Renderer Bridge
+ *
+ * This file bridges the Kryon IR system with the Android renderer.
+ * It loads KIR files and renders IR components using AndroidRenderer.
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include "android_internal.h"
+
+// ============================================================================
+// GLOBAL STATE
+// ============================================================================
+
+RegisteredFont g_font_registry[32];
+int g_font_registry_count = 0;
+char g_default_font_name[128] = "default";
+char g_default_font_path[512] = "";
+
+// ============================================================================
+// FONT REGISTRATION
+// ============================================================================
+
+void android_ir_register_font_internal(const char* name, const char* path) {
+    if (!name || !path || g_font_registry_count >= 32) return;
+
+    RegisteredFont* font = &g_font_registry[g_font_registry_count++];
+    strncpy(font->name, name, sizeof(font->name) - 1);
+    strncpy(font->path, path, sizeof(font->path) - 1);
+}
+
+void android_ir_register_font(const char* name, const char* path) {
+    if (!name || !path) return;
+    android_ir_register_font_internal(name, path);
+}
+
+void android_ir_set_default_font(const char* name) {
+    if (!name) return;
+
+    for (int i = 0; i < g_font_registry_count; i++) {
+        if (strcmp(g_font_registry[i].name, name) == 0) {
+            strncpy(g_default_font_name, g_font_registry[i].name,
+                    sizeof(g_default_font_name) - 1);
+            strncpy(g_default_font_path, g_font_registry[i].path,
+                    sizeof(g_default_font_path) - 1);
+            return;
+        }
+    }
+}
+
+// ============================================================================
+// LIFECYCLE
+// ============================================================================
+
+AndroidIRRenderer* android_ir_renderer_create(const AndroidIRRendererConfig* config) {
+    if (!config) return NULL;
+
+    AndroidIRRenderer* ir_renderer = malloc(sizeof(AndroidIRRenderer));
+    if (!ir_renderer) return NULL;
+
+    memset(ir_renderer, 0, sizeof(AndroidIRRenderer));
+    ir_renderer->config = *config;
+    ir_renderer->window_width = config->window_width;
+    ir_renderer->window_height = config->window_height;
+
+    return ir_renderer;
+}
+
+bool android_ir_renderer_initialize(AndroidIRRenderer* ir_renderer,
+                                    void* platform_context) {
+    if (!ir_renderer || !platform_context) return false;
+
+    ir_renderer->platform_context = platform_context;
+
+    // Create AndroidRenderer
+    AndroidRendererConfig renderer_config = {
+        .width = ir_renderer->window_width,
+        .height = ir_renderer->window_height,
+        .enable_vsync = true,
+        .msaa_samples = 4
+    };
+
+    ir_renderer->renderer = android_renderer_create(&renderer_config);
+    if (!ir_renderer->renderer) {
+        return false;
+    }
+
+    // Initialize renderer (will be called from Java when surface is ready)
+    // android_renderer_initialize() will be called separately
+
+    // Register default fonts
+    if (g_font_registry_count > 0 && g_default_font_path[0] != '\0') {
+        android_renderer_register_font(ir_renderer->renderer,
+                                       g_default_font_name,
+                                       g_default_font_path);
+        android_renderer_set_default_font(ir_renderer->renderer,
+                                          g_default_font_name, 16);
+    }
+
+    // Initialize animation system if enabled
+    if (ir_renderer->config.enable_animations) {
+        ir_renderer->animation_ctx = ir_animation_context_create();
+    }
+
+    // Initialize hot reload if enabled
+    if (ir_renderer->config.enable_hot_reload &&
+        ir_renderer->config.hot_reload_watch_path) {
+        ir_renderer->hot_reload_ctx = ir_hot_reload_context_create(
+            ir_renderer->config.hot_reload_watch_path
+        );
+        ir_renderer->hot_reload_enabled = true;
+    }
+
+    ir_renderer->initialized = true;
+    ir_renderer->running = true;
+
+    return true;
+}
+
+bool android_ir_renderer_load_kir(AndroidIRRenderer* ir_renderer,
+                                  const char* kir_path) {
+    if (!ir_renderer || !kir_path) return false;
+
+    // Load KIR file
+    IRComponent* root = ir_deserialize_from_file(kir_path);
+    if (!root) {
+        fprintf(stderr, "Failed to load KIR file: %s\n", kir_path);
+        return false;
+    }
+
+    android_ir_renderer_set_root(ir_renderer, root);
+    return true;
+}
+
+void android_ir_renderer_set_root(AndroidIRRenderer* ir_renderer,
+                                  IRComponent* root) {
+    if (!ir_renderer || !root) return;
+
+    ir_renderer->last_root = root;
+    ir_renderer->needs_relayout = true;
+}
+
+void android_ir_renderer_update(AndroidIRRenderer* ir_renderer,
+                                float delta_time) {
+    if (!ir_renderer) return;
+
+    // Update animations
+    if (ir_renderer->animation_ctx) {
+        ir_animation_context_update(ir_renderer->animation_ctx, delta_time);
+    }
+
+    // Check for hot reload
+    if (ir_renderer->hot_reload_enabled && ir_renderer->hot_reload_ctx) {
+        if (ir_hot_reload_check(ir_renderer->hot_reload_ctx)) {
+            IRComponent* new_root = ir_hot_reload_load(ir_renderer->hot_reload_ctx);
+            if (new_root) {
+                ir_renderer->last_root = new_root;
+                ir_renderer->needs_relayout = true;
+            }
+        }
+    }
+
+    // Update FPS
+    ir_renderer->frame_count++;
+    double current_time = (double)clock() / CLOCKS_PER_SEC;
+    double elapsed = current_time - ir_renderer->last_frame_time;
+    if (elapsed > 0.0) {
+        ir_renderer->fps = 1.0 / elapsed;
+    }
+    ir_renderer->last_frame_time = current_time;
+}
+
+void android_ir_renderer_render(AndroidIRRenderer* ir_renderer) {
+    if (!ir_renderer || !ir_renderer->renderer) return;
+
+    // Begin frame
+    android_renderer_begin_frame(ir_renderer->renderer);
+
+    // Render root component if available
+    if (ir_renderer->last_root) {
+        // Compute layout if needed
+        if (ir_renderer->needs_relayout) {
+            compute_component_layout(ir_renderer->last_root,
+                                    (float)ir_renderer->window_width,
+                                    (float)ir_renderer->window_height);
+            ir_renderer->needs_relayout = false;
+        }
+
+        // Render component tree
+        render_component_android(ir_renderer, ir_renderer->last_root,
+                                0.0f, 0.0f, 1.0f);
+    }
+
+    // End frame
+    android_renderer_end_frame(ir_renderer->renderer);
+}
+
+void android_ir_renderer_handle_event(AndroidIRRenderer* ir_renderer,
+                                      void* event) {
+    if (!ir_renderer || !event) return;
+
+    // TODO: Convert platform events to IR events
+    // For now, just pass through
+}
+
+void android_ir_renderer_set_event_callback(AndroidIRRenderer* ir_renderer,
+                                           AndroidEventCallback callback,
+                                           void* user_data) {
+    if (!ir_renderer) return;
+
+    ir_renderer->event_callback = callback;
+    ir_renderer->event_user_data = user_data;
+}
+
+void android_ir_renderer_destroy(AndroidIRRenderer* ir_renderer) {
+    if (!ir_renderer) return;
+
+    if (ir_renderer->animation_ctx) {
+        ir_animation_context_destroy(ir_renderer->animation_ctx);
+    }
+
+    if (ir_renderer->hot_reload_ctx) {
+        ir_hot_reload_context_destroy(ir_renderer->hot_reload_ctx);
+    }
+
+    if (ir_renderer->renderer) {
+        android_renderer_destroy(ir_renderer->renderer);
+    }
+
+    free(ir_renderer);
+}
+
+// ============================================================================
+// PERFORMANCE
+// ============================================================================
+
+float android_ir_renderer_get_fps(AndroidIRRenderer* ir_renderer) {
+    return ir_renderer ? (float)ir_renderer->fps : 0.0f;
+}
+
+uint64_t android_ir_renderer_get_frame_count(AndroidIRRenderer* ir_renderer) {
+    return ir_renderer ? ir_renderer->frame_count : 0;
+}

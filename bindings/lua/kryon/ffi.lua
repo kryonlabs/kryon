@@ -41,8 +41,8 @@ local success, err = pcall(function()
   Desktop = ffi.load(desktop_lib_name)
 end)
 if not success then
-  print("⚠️ Failed to load desktop library '" .. desktop_lib_name .. "': " .. tostring(err))
-  print("   Desktop rendering features will not be available.")
+  io.stderr:write("⚠️ Failed to load desktop library '" .. desktop_lib_name .. "': " .. tostring(err) .. "\n")
+  io.stderr:write("   Desktop rendering features will not be available.\n")
 end
 
 -- C type definitions (from ir_core.h and ir_builder.h)
@@ -348,6 +348,9 @@ ffi.cdef[[
   IRComponent* ir_deserialize_json(const char* json_string);
   bool ir_write_json_file(IRComponent* root, const char* filename);
   IRComponent* ir_read_json_file(const char* filename);
+
+  // Memory management (stdlib.h)
+  void free(void* ptr);
 
   // Binary serialization
   bool ir_write_binary_file(IRComponent* root, const char* filename);

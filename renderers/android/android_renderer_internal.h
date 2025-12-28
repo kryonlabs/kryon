@@ -71,10 +71,6 @@ typedef struct {
 // Font & Glyph Management
 // ============================================================================
 
-#ifdef __ANDROID__
-#include <ft2build.h>
-#include FT_FREETYPE_H
-
 typedef struct {
     GLuint texture_id;
     int width;
@@ -82,35 +78,25 @@ typedef struct {
     int bearing_x;
     int bearing_y;
     int advance;
+    float u0, v0, u1, v1;  // Atlas texture coordinates
 } GlyphInfo;
 
 typedef struct {
     char name[64];
     char path[256];
-    FT_Face face;
+    void* font_info;      // stbtt_fontinfo*
+    void* font_buffer;    // Font file data
     int size;
+    GLuint atlas_texture; // Glyph atlas texture
+    int atlas_width;
+    int atlas_height;
     GlyphInfo glyphs[256];  // ASCII only for now
+    float scale;
+    int ascent;
+    int descent;
+    int line_gap;
     bool loaded;
 } FontInfo;
-#else
-typedef struct {
-    GLuint texture_id;
-    int width;
-    int height;
-    int bearing_x;
-    int bearing_y;
-    int advance;
-} GlyphInfo;
-
-typedef struct {
-    char name[64];
-    char path[256];
-    void* face;
-    int size;
-    GlyphInfo glyphs[256];
-    bool loaded;
-} FontInfo;
-#endif
 
 // ============================================================================
 // Texture Cache

@@ -749,7 +749,12 @@ static void sdl3_draw_text(kryon_cmd_buf_t* buf, const kryon_command_t* cmd, SDL
     TTF_Font* font_to_use = default_font;
     TTF_Font* dynamic_font = NULL;
 
-    if (cmd->data.draw_text.text == NULL) {
+    /* Use text_storage if text pointer is NULL */
+    const char* text_to_render = cmd->data.draw_text.text ?
+                                   cmd->data.draw_text.text :
+                                   cmd->data.draw_text.text_storage;
+
+    if (text_to_render == NULL || text_to_render[0] == '\0') {
         return;
     }
 
@@ -793,7 +798,7 @@ static void sdl3_draw_text(kryon_cmd_buf_t* buf, const kryon_command_t* cmd, SDL
     TTF_SetFontStyle(font_to_use, ttf_style);
 
     SDL_Color color = kryon_color_to_sdl(cmd->data.draw_text.color);
-    SDL_Surface* surface = TTF_RenderText_Blended(font_to_use, cmd->data.draw_text.text, strlen(cmd->data.draw_text.text), color);
+    SDL_Surface* surface = TTF_RenderText_Blended(font_to_use, text_to_render, strlen(text_to_render), color);
     if (surface == NULL) {
         if (dynamic_font != NULL) {
             TTF_CloseFont(dynamic_font);
@@ -1594,7 +1599,8 @@ bool kryon_poll_event(kryon_event_t* event) {
 }
 
 bool kryon_is_mouse_button_down(uint8_t button) {
-    return SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(button);
+    Uint32 state = SDL_GetMouseState(NULL, NULL);
+    return (state & (1 << (button - 1))) != 0;  /* SDL3: Manual button bit checking */
 }
 
 void kryon_get_mouse_position(int16_t* x, int16_t* y) {
@@ -1605,8 +1611,10 @@ void kryon_get_mouse_position(int16_t* x, int16_t* y) {
 }
 
 bool kryon_is_key_down(uint32_t key_code) {
-    const Uint8* state = SDL_GetKeyboardState(NULL);
-    return state[SDL_GetScancodeFromKey(key_code)] != 0;
+    const bool* state = SDL_GetKeyboardState(NULL);  /* SDL3: Returns bool* not Uint8* */
+    SDL_Keymod modstate;
+    SDL_Scancode scancode = SDL_GetScancodeFromKey(key_code, &modstate);
+    return state[scancode];
 }
 
 // Generic Font Management Implementation
@@ -1614,7 +1622,7 @@ void kryon_add_font_search_path(const char* path) {
     if (!path) return;
 
     // Add to SDL3 font search path
-    SDL_AddPath(path);
+    // SDL_AddPath(path);  // TODO: SDL_AddPath doesn't exist in SDL3 - needs alternative solution
 
 #if KRYON_HAS_FONTCONFIG
     // Also add to FontConfig if available

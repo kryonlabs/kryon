@@ -21,6 +21,44 @@
  * Utility Functions
  * ============================================================================ */
 
+/**
+ * Resolve IRColor to RGBA components.
+ * Returns true if color was successfully resolved to solid RGBA.
+ * Returns false for gradients or unresolved variable references.
+ */
+bool ir_color_resolve(const IRColor* color, uint8_t* r, uint8_t* g, uint8_t* b, uint8_t* a) {
+    if (!color) return false;
+
+    switch (color->type) {
+        case IR_COLOR_SOLID:
+            *r = color->data.r;
+            *g = color->data.g;
+            *b = color->data.b;
+            *a = color->data.a;
+            return true;
+
+        case IR_COLOR_TRANSPARENT:
+            /* Fully transparent */
+            *r = 0;
+            *g = 0;
+            *b = 0;
+            *a = 0;
+            return true;
+
+        case IR_COLOR_GRADIENT:
+            /* Gradients need special handling - return false to indicate non-solid color */
+            return false;
+
+        case IR_COLOR_VAR_REF:
+            /* TODO: Resolve style variable references */
+            /* For now, return false - variable resolution not yet implemented */
+            return false;
+
+        default:
+            return false;
+    }
+}
+
 uint32_t ir_apply_opacity_to_color(uint32_t color, float opacity) {
     uint8_t r = (color >> 24) & 0xFF;
     uint8_t g = (color >> 16) & 0xFF;
@@ -94,35 +132,70 @@ bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutR
     kryon_command_t cmd;
 
     /* Render shadow if present */
-    if (style->has_shadow && !style->shadow.inset && style->shadow.color != 0) {
-        uint32_t shadow_color = ir_apply_opacity_to_color(style->shadow.color, ctx->current_opacity);
+    if (style->box_shadow.enabled && !style->box_shadow.inset) {
+        /* Convert IRColor to uint32_t */
+        uint8_t r, g, b, a;
+        uint32_t shadow_color = 0x00000080;  /* Default semi-transparent black */
+        if (ir_color_resolve(&style->box_shadow.color, &r, &g, &b, &a)) {
+            shadow_color = (r << 24) | (g << 16) | (b << 8) | a;
+        }
+        shadow_color = ir_apply_opacity_to_color(shadow_color, ctx->current_opacity);
 
         cmd.type = KRYON_CMD_DRAW_SHADOW;
-        cmd.data.draw_shadow.x = bounds->x + style->shadow.offset_x;
-        cmd.data.draw_shadow.y = bounds->y + style->shadow.offset_y;
+        cmd.data.draw_shadow.x = bounds->x + style->box_shadow.offset_x;
+        cmd.data.draw_shadow.y = bounds->y + style->box_shadow.offset_y;
         cmd.data.draw_shadow.w = bounds->width;
         cmd.data.draw_shadow.h = bounds->height;
-        cmd.data.draw_shadow.offset_x = style->shadow.offset_x;
-        cmd.data.draw_shadow.offset_y = style->shadow.offset_y;
-        cmd.data.draw_shadow.blur_radius = style->shadow.blur_radius;
-        cmd.data.draw_shadow.spread_radius = style->shadow.spread_radius;
+        cmd.data.draw_shadow.offset_x = style->box_shadow.offset_x;
+        cmd.data.draw_shadow.offset_y = style->box_shadow.offset_y;
+        cmd.data.draw_shadow.blur_radius = style->box_shadow.blur_radius;
+        cmd.data.draw_shadow.spread_radius = style->box_shadow.spread_radius;
         cmd.data.draw_shadow.color = shadow_color;
         cmd.data.draw_shadow.inset = false;
 
         kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
     }
 
-    /* Render background */
-    if (style->background_type == IR_BACKGROUND_COLOR && style->background_color != 0) {
-        uint32_t bg_color = ir_apply_opacity_to_color(style->background_color, ctx->current_opacity);
+    /* Render gradient background if present */
+    if (style->background.type == IR_COLOR_GRADIENT && style->background.data.gradient) {
+        IRGradient* gradient = style->background.data.gradient;
 
-        if (style->border_radius > 0) {
+        cmd.type = KRYON_CMD_DRAW_GRADIENT;
+        cmd.data.draw_gradient.x = bounds->x;
+        cmd.data.draw_gradient.y = bounds->y;
+        cmd.data.draw_gradient.w = bounds->width;
+        cmd.data.draw_gradient.h = bounds->height;
+        cmd.data.draw_gradient.gradient_type = gradient->type;
+        cmd.data.draw_gradient.angle = gradient->angle;
+        cmd.data.draw_gradient.stop_count = gradient->stop_count < 8 ? gradient->stop_count : 8;
+
+        for (int i = 0; i < cmd.data.draw_gradient.stop_count; i++) {
+            cmd.data.draw_gradient.stops[i].position = gradient->stops[i].position;
+
+            /* Convert gradient stop RGBA to uint32_t */
+            uint32_t color = (gradient->stops[i].r << 24) |
+                            (gradient->stops[i].g << 16) |
+                            (gradient->stops[i].b << 8) |
+                            gradient->stops[i].a;
+            cmd.data.draw_gradient.stops[i].color = ir_apply_opacity_to_color(color, ctx->current_opacity);
+        }
+
+        kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+    }
+    /* Render solid color background */
+    else {
+        uint8_t bg_r, bg_g, bg_b, bg_a;
+        if (ir_color_resolve(&style->background, &bg_r, &bg_g, &bg_b, &bg_a) && bg_a > 0) {
+        uint32_t bg_color = (bg_r << 24) | (bg_g << 16) | (bg_b << 8) | bg_a;
+        bg_color = ir_apply_opacity_to_color(bg_color, ctx->current_opacity);
+
+        if (style->border.radius > 0) {
             cmd.type = KRYON_CMD_DRAW_ROUNDED_RECT;
             cmd.data.draw_rounded_rect.x = bounds->x;
             cmd.data.draw_rounded_rect.y = bounds->y;
             cmd.data.draw_rounded_rect.w = bounds->width;
             cmd.data.draw_rounded_rect.h = bounds->height;
-            cmd.data.draw_rounded_rect.radius = style->border_radius;
+            cmd.data.draw_rounded_rect.radius = style->border.radius;
             cmd.data.draw_rounded_rect.color = bg_color;
         } else {
             cmd.type = KRYON_CMD_DRAW_RECT;
@@ -134,35 +207,17 @@ bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutR
         }
 
         kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
-    }
-
-    /* Render gradient background */
-    if (style->background_type == IR_BACKGROUND_GRADIENT && style->gradient.stop_count > 0) {
-        cmd.type = KRYON_CMD_DRAW_GRADIENT;
-        cmd.data.draw_gradient.x = bounds->x;
-        cmd.data.draw_gradient.y = bounds->y;
-        cmd.data.draw_gradient.w = bounds->width;
-        cmd.data.draw_gradient.h = bounds->height;
-        cmd.data.draw_gradient.gradient_type = style->gradient.type;
-        cmd.data.draw_gradient.angle = style->gradient.angle;
-        cmd.data.draw_gradient.stop_count = style->gradient.stop_count;
-
-        for (int i = 0; i < style->gradient.stop_count && i < 8; i++) {
-            cmd.data.draw_gradient.stops[i].position = style->gradient.stops[i].position;
-            cmd.data.draw_gradient.stops[i].color = ir_apply_opacity_to_color(
-                style->gradient.stops[i].color, ctx->current_opacity
-            );
         }
-
-        kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
     }
 
     /* Render border */
-    if (style->border_width > 0 && style->border_color != 0) {
-        uint32_t border_color = ir_apply_opacity_to_color(style->border_color, ctx->current_opacity);
+    uint8_t border_r, border_g, border_b, border_a;
+    if (style->border.width > 0 && ir_color_resolve(&style->border.color, &border_r, &border_g, &border_b, &border_a) && border_a > 0) {
+        uint32_t border_color = (border_r << 24) | (border_g << 16) | (border_b << 8) | border_a;
+        border_color = ir_apply_opacity_to_color(border_color, ctx->current_opacity);
 
         /* Draw border as 4 lines (top, right, bottom, left) */
-        for (int i = 0; i < style->border_width; i++) {
+        for (int i = 0; i < (int)style->border.width; i++) {
             /* Top */
             cmd.type = KRYON_CMD_DRAW_LINE;
             cmd.data.draw_line.x1 = bounds->x + i;
@@ -226,7 +281,7 @@ bool ir_gen_text_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* 
     /* Copy text to inline storage */
     strncpy(cmd.data.draw_text.text_storage, comp->text_content, 127);
     cmd.data.draw_text.text_storage[127] = '\0';
-    cmd.data.draw_text.text = cmd.data.draw_text.text_storage;
+    cmd.data.draw_text.text = NULL;  /* NULL indicates text is in text_storage */
     cmd.data.draw_text.max_length = strlen(cmd.data.draw_text.text_storage);
 
     kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
@@ -246,42 +301,250 @@ bool ir_gen_button_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect
     return true;
 }
 
+/* Input Component Generator */
 bool ir_gen_input_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
     /* Render input background and border */
     ir_gen_container_commands(comp, ctx, bounds);
 
-    /* TODO: Render input text, caret, selection */
+    /* Render input text content if present */
+    if (comp->text_content && comp->text_content[0] != '\0') {
+        IRStyle* style = comp->style;
+        uint8_t r, g, b, a;
+
+        /* Get text color (default to black) */
+        if (style && ir_color_resolve(&style->font.color, &r, &g, &b, &a)) {
+            uint32_t text_color = (r << 24) | (g << 16) | (b << 8) | a;
+            text_color = ir_apply_opacity_to_color(text_color, ctx->current_opacity);
+
+            kryon_command_t cmd;
+            cmd.type = KRYON_CMD_DRAW_TEXT;
+            cmd.data.draw_text.x = bounds->x + 8; /* 8px padding */
+            cmd.data.draw_text.y = bounds->y + (bounds->height - 16) / 2;
+            cmd.data.draw_text.font_id = 0;
+            cmd.data.draw_text.font_size = style->font.size > 0 ? style->font.size : 14;
+            cmd.data.draw_text.font_weight = style->font.bold ? 1 : 0;
+            cmd.data.draw_text.font_style = style->font.italic ? 1 : 0;
+            cmd.data.draw_text.color = text_color;
+
+            strncpy(cmd.data.draw_text.text_storage, comp->text_content, 127);
+            cmd.data.draw_text.text_storage[127] = '\0';
+            cmd.data.draw_text.text = NULL;  /* NULL indicates text is in text_storage */
+            cmd.data.draw_text.max_length = strlen(cmd.data.draw_text.text_storage);
+
+            kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+        }
+    }
 
     return true;
 }
 
+/* Checkbox Component Generator */
 bool ir_gen_checkbox_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
-    /* TODO: Implement checkbox rendering */
+    /* Checkbox dimensions */
+    float checkbox_size = bounds->height * 0.6f < 20.0f ? bounds->height * 0.6f : 20.0f;
+    float checkbox_y = bounds->y + (bounds->height - checkbox_size) / 2;
+
+    LayoutRect checkbox_bounds = {
+        .x = bounds->x + 5,
+        .y = checkbox_y,
+        .width = checkbox_size,
+        .height = checkbox_size
+    };
+
+    /* Render checkbox box (background + border) */
+    ir_gen_container_commands(comp, ctx, &checkbox_bounds);
+
+    /* Check if checkbox is checked (stored in custom_data) */
+    bool is_checked = comp->custom_data && strcmp(comp->custom_data, "true") == 0;
+
+    if (is_checked) {
+        /* Draw checkmark as two lines forming a check */
+        uint32_t check_color = 0x22C55EFF; /* Green */
+        if (comp->style) {
+            uint8_t r, g, b, a;
+            if (ir_color_resolve(&comp->style->font.color, &r, &g, &b, &a)) {
+                check_color = (r << 24) | (g << 16) | (b << 8) | a;
+            }
+        }
+        check_color = ir_apply_opacity_to_color(check_color, ctx->current_opacity);
+
+        kryon_command_t cmd;
+        cmd.type = KRYON_CMD_DRAW_LINE;
+        cmd.data.draw_line.color = check_color;
+
+        /* First line of checkmark */
+        cmd.data.draw_line.x1 = checkbox_bounds.x + checkbox_size * 0.2f;
+        cmd.data.draw_line.y1 = checkbox_bounds.y + checkbox_size * 0.5f;
+        cmd.data.draw_line.x2 = checkbox_bounds.x + checkbox_size * 0.4f;
+        cmd.data.draw_line.y2 = checkbox_bounds.y + checkbox_size * 0.7f;
+        kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+
+        /* Second line of checkmark */
+        cmd.data.draw_line.x1 = checkbox_bounds.x + checkbox_size * 0.4f;
+        cmd.data.draw_line.y1 = checkbox_bounds.y + checkbox_size * 0.7f;
+        cmd.data.draw_line.x2 = checkbox_bounds.x + checkbox_size * 0.8f;
+        cmd.data.draw_line.y2 = checkbox_bounds.y + checkbox_size * 0.3f;
+        kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+    }
+
+    /* Render label text if present */
+    if (comp->text_content && comp->text_content[0] != '\0') {
+        LayoutRect text_bounds = {
+            .x = bounds->x + checkbox_size + 15,
+            .y = bounds->y,
+            .width = bounds->width - checkbox_size - 15,
+            .height = bounds->height
+        };
+        ir_gen_text_commands(comp, ctx, &text_bounds);
+    }
+
     return true;
 }
 
+/* Dropdown Component Generator */
 bool ir_gen_dropdown_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
-    /* TODO: Implement dropdown rendering */
+    /* Render dropdown box background and border */
+    ir_gen_container_commands(comp, ctx, bounds);
+
+    /* Render selected text */
+    if (comp->text_content && comp->text_content[0] != '\0') {
+        LayoutRect text_bounds = {
+            .x = bounds->x + 12,
+            .y = bounds->y,
+            .width = bounds->width - 40,  /* Leave space for arrow */
+            .height = bounds->height
+        };
+        ir_gen_text_commands(comp, ctx, &text_bounds);
+    }
+
+    /* Draw dropdown arrow on the right */
+    uint32_t arrow_color = 0x6B7280FF; /* Gray */
+    if (comp->style) {
+        uint8_t r, g, b, a;
+        if (ir_color_resolve(&comp->style->font.color, &r, &g, &b, &a)) {
+            arrow_color = (r << 24) | (g << 16) | (b << 8) | a;
+        }
+    }
+    arrow_color = ir_apply_opacity_to_color(arrow_color, ctx->current_opacity);
+
+    float arrow_x = bounds->x + bounds->width - 20;
+    float arrow_y = bounds->y + bounds->height / 2;
+    float arrow_size = 6;
+
+    kryon_command_t cmd;
+    cmd.type = KRYON_CMD_DRAW_LINE;
+    cmd.data.draw_line.color = arrow_color;
+
+    /* Left line of down arrow */
+    cmd.data.draw_line.x1 = arrow_x - arrow_size / 2;
+    cmd.data.draw_line.y1 = arrow_y - 2;
+    cmd.data.draw_line.x2 = arrow_x;
+    cmd.data.draw_line.y2 = arrow_y + 2;
+    kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+
+    /* Right line of down arrow */
+    cmd.data.draw_line.x1 = arrow_x;
+    cmd.data.draw_line.y1 = arrow_y + 2;
+    cmd.data.draw_line.x2 = arrow_x + arrow_size / 2;
+    cmd.data.draw_line.y2 = arrow_y - 2;
+    kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+
+    /* TODO: Render dropdown menu if open (deferred to overlay pass) */
+
     return true;
 }
 
+/* Image Component Generator */
 bool ir_gen_image_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
-    /* TODO: Implement image rendering */
+    /* Render image background if any */
+    if (comp->style) {
+        ir_gen_container_commands(comp, ctx, bounds);
+    }
+
+    /* TODO: Load and render image from custom_data or text_content (URL/path) */
+    /* Would need image resource loading system */
+
+    (void)comp;
+    (void)ctx;
+    (void)bounds;
+
     return true;
 }
 
+/* Table Component Generator */
 bool ir_gen_table_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
-    /* TODO: Implement table rendering */
+    /* Render table background and border */
+    ir_gen_container_commands(comp, ctx, bounds);
+
+    /* Tables are hierarchical - children handle their own rendering */
+    /* Parent table just provides the container */
+
     return true;
 }
 
+/* Markdown Component Generator */
 bool ir_gen_markdown_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
-    /* TODO: Implement markdown rendering */
+    /* Markdown components are hierarchical - render as container */
+    /* Specific markdown elements (heading, paragraph, etc.) are child components */
+    
+    ir_gen_container_commands(comp, ctx, bounds);
+
+    /* Special handling for specific markdown types */
+    switch (comp->type) {
+        case IR_COMPONENT_HORIZONTAL_RULE: {
+            /* Draw horizontal line */
+            uint32_t line_color = 0xE5E7EBFF; /* Light gray */
+            if (comp->style) {
+                uint8_t r, g, b, a;
+                if (ir_color_resolve(&comp->style->border.color, &r, &g, &b, &a)) {
+                    line_color = (r << 24) | (g << 16) | (b << 8) | a;
+                }
+            }
+            line_color = ir_apply_opacity_to_color(line_color, ctx->current_opacity);
+
+            kryon_command_t cmd;
+            cmd.type = KRYON_CMD_DRAW_LINE;
+            cmd.data.draw_line.x1 = bounds->x;
+            cmd.data.draw_line.y1 = bounds->y + bounds->height / 2;
+            cmd.data.draw_line.x2 = bounds->x + bounds->width;
+            cmd.data.draw_line.y2 = bounds->y + bounds->height / 2;
+            cmd.data.draw_line.color = line_color;
+            kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+            break;
+        }
+
+        case IR_COMPONENT_CODE_BLOCK: {
+            /* Code blocks have monospace font and distinct background */
+            /* Rendering handled by container + text content */
+            if (comp->text_content) {
+                ir_gen_text_commands(comp, ctx, bounds);
+            }
+            break;
+        }
+
+        default:
+            /* Other markdown elements render their text content */
+            if (comp->text_content) {
+                ir_gen_text_commands(comp, ctx, bounds);
+            }
+            break;
+    }
+
     return true;
 }
 
+/* Canvas Component Generator */
 bool ir_gen_canvas_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
-    /* TODO: Implement canvas rendering */
+    /* Render canvas background */
+    ir_gen_container_commands(comp, ctx, bounds);
+
+    /* TODO: Execute canvas drawing commands from custom_data */
+    /* Canvas commands would need to be parsed and converted to kryon commands */
+
+    (void)comp;  /* Unused for now */
+    (void)ctx;
+    (void)bounds;
+
     return true;
 }
 
@@ -381,7 +644,7 @@ bool ir_generate_component_commands(
     if (success && component->child_count > 0) {
         for (int i = 0; i < component->child_count; i++) {
             IRComponent* child = component->children[i];
-            if (!child) continue;
+            if (!child || !child->layout_state) continue;
 
             /* Get child bounds from layout */
             LayoutRect child_bounds = {
@@ -445,6 +708,8 @@ bool ir_component_to_commands(
 
         for (int i = 0; i < ctx.overlay_count; i++) {
             IRComponent* overlay = ctx.overlays[i];
+            if (!overlay || !overlay->layout_state) continue;
+
             LayoutRect overlay_bounds = {
                 .x = overlay->layout_state->computed.x,
                 .y = overlay->layout_state->computed.y,

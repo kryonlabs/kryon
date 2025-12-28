@@ -158,6 +158,17 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "-- Kryon Lua KIR Serialization Wrapper\n"
         "-- This wrapper loads a Lua app and serializes it to KIR JSON\n"
         "\n"
+        "-- PROPER FIX: Override global print() to write to stderr\n"
+        "-- This ensures ALL print() statements go to stderr, not stdout\n"
+        "_G.print = function(...)\n"
+        "  local args = {...}\n"
+        "  for i, v in ipairs(args) do\n"
+        "    io.stderr:write(tostring(v))\n"
+        "    if i < #args then io.stderr:write('\\t') end\n"
+        "  end\n"
+        "  io.stderr:write('\\n')\n"
+        "end\n"
+        "\n"
         "-- Disable running the desktop renderer\n"
         "os.execute('export KRYON_RUN_DIRECT=false')\n"
         "_G.KRYON_RUN_DIRECT = false\n"
@@ -189,10 +200,11 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "local ffi = require('ffi')\n"
         "local C = require('kryon.ffi').C\n"
         "\n"
-        "-- Load the main Lua file\n"
+        "-- Load the main Lua file (print is overridden to use stderr)\n"
         "local app = dofile('%s')\n"
         "\n"
-        "-- If app is returned, serialize it\n"
+        "-- Serialize and output JSON to stdout\n"
+        "-- (print() goes to stderr, io.write() goes to stdout)\n"
         "if app and app.root then\n"
         "  local json = C.ir_serialize_json(app.root)\n"
         "  if json ~= nil then\n"
@@ -230,12 +242,14 @@ char* ir_lua_to_kir(const char* source, size_t length) {
     }
 
     // Execute the wrapper with LuaJIT
+    // NOTE: We don't use 2>&1 here because we want stderr to go to the terminal
+    // (for debug messages) and only stdout (JSON) to be captured
     char exec_cmd[4096];
     snprintf(exec_cmd, sizeof(exec_cmd),
              "cd \"%s\" && "
              "export KRYON_RUN_DIRECT=false && "
              "export LD_LIBRARY_PATH=\"%s:$LD_LIBRARY_PATH\" && "
-             "\"%s\" \"%s\" 2>&1",
+             "\"%s\" \"%s\"",
              temp_dir, ld_library_path, luajit, wrapper_file);
 
     FILE* pipe = popen(exec_cmd, "r");

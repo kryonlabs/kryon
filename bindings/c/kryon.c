@@ -30,10 +30,18 @@ static HandlerEntry* g_handler_registry = NULL;
 static size_t g_handler_count = 0;
 static uint32_t g_handler_id_counter = 0;
 
-static void register_handler(uint32_t component_id, const char* event_type, KryonEventHandler handler) {
+// Forward declaration - defined after g_c_metadata
+static void update_metadata_logic_id(const char* function_name, const char* logic_id);
+
+static void register_handler(uint32_t component_id, const char* event_type, KryonEventHandler handler, const char* handler_name) {
     // Generate unique logic_id
     char logic_id[128];
     snprintf(logic_id, sizeof(logic_id), "c_%s_%u_%u", event_type, component_id, g_handler_id_counter++);
+
+    // Update g_c_metadata with the logic_id
+    if (handler_name) {
+        update_metadata_logic_id(handler_name, logic_id);
+    }
 
     // Expand handler registry
     g_handler_registry = realloc(g_handler_registry, (g_handler_count + 1) * sizeof(HandlerEntry));
@@ -89,6 +97,21 @@ static void cleanup_handlers(void) {
 
 // Global metadata instance
 CSourceMetadata g_c_metadata = {0};
+
+static void update_metadata_logic_id(const char* function_name, const char* logic_id) {
+    // Find matching event handler in g_c_metadata and update its logic_id
+    for (size_t i = 0; i < g_c_metadata.event_handler_count; i++) {
+        if (g_c_metadata.event_handlers[i].function_name &&
+            strcmp(g_c_metadata.event_handlers[i].function_name, function_name) == 0) {
+            // Update logic_id
+            if (g_c_metadata.event_handlers[i].logic_id) {
+                free(g_c_metadata.event_handlers[i].logic_id);
+            }
+            g_c_metadata.event_handlers[i].logic_id = strdup(logic_id);
+            return;
+        }
+    }
+}
 
 void kryon_register_variable(const char* name, const char* type, const char* storage,
                               const char* initial_value, uint32_t component_id, int line_number) {
@@ -729,24 +752,24 @@ void kryon_insert_child(IRComponent* parent, IRComponent* child, uint32_t index)
 // Event Handlers
 // ============================================================================
 
-void kryon_on_click(IRComponent* component, KryonEventHandler handler) {
+void kryon_on_click(IRComponent* component, KryonEventHandler handler, const char* handler_name) {
     if (!component || !handler) return;
-    register_handler(component->id, "click", handler);
+    register_handler(component->id, "click", handler, handler_name);
 }
 
-void kryon_on_change(IRComponent* component, KryonEventHandler handler) {
+void kryon_on_change(IRComponent* component, KryonEventHandler handler, const char* handler_name) {
     if (!component || !handler) return;
-    register_handler(component->id, "change", handler);
+    register_handler(component->id, "change", handler, handler_name);
 }
 
-void kryon_on_hover(IRComponent* component, KryonEventHandler handler) {
+void kryon_on_hover(IRComponent* component, KryonEventHandler handler, const char* handler_name) {
     if (!component || !handler) return;
-    register_handler(component->id, "hover", handler);
+    register_handler(component->id, "hover", handler, handler_name);
 }
 
-void kryon_on_focus(IRComponent* component, KryonEventHandler handler) {
+void kryon_on_focus(IRComponent* component, KryonEventHandler handler, const char* handler_name) {
     if (!component || !handler) return;
-    register_handler(component->id, "focus", handler);
+    register_handler(component->id, "focus", handler, handler_name);
 }
 
 // ============================================================================
