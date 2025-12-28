@@ -1608,6 +1608,14 @@ static IRComponent* ir_component_clone_tree(IRComponent* source) {
         }
     }
 
+    // Copy layout (deep copy) - contains gap, alignItems, etc.
+    if (source->layout) {
+        clone->layout = malloc(sizeof(IRLayout));
+        if (clone->layout) {
+            memcpy(clone->layout, source->layout, sizeof(IRLayout));
+        }
+    }
+
     // Clone children recursively
     for (uint32_t i = 0; i < source->child_count; i++) {
         IRComponent* child_clone = ir_component_clone_tree(source->children[i]);

@@ -159,6 +159,14 @@ function Reactive.reactive(target, parent, parentKey)
         return rawget(proxy, key)
       end
 
+      -- Check for pre-populated array indices (LuaJIT compatibility)
+      local directValue = rawget(t, key)
+      if directValue ~= nil then
+        -- Track this access even for direct values
+        trackDependency(t, key)
+        return directValue
+      end
+
       -- Track this access
       trackDependency(proxy, key)
 
@@ -193,6 +201,11 @@ function Reactive.reactive(target, parent, parentKey)
         -- Set on raw target (no recursion)
         rawset(target, key, newValue)
 
+        -- Also update proxy directly for array indices (LuaJIT compatibility)
+        if type(key) == "number" then
+          rawset(t, key, newValue)
+        end
+
         -- Trigger effects for this key
         triggerEffects(t, key)
 
@@ -226,6 +239,19 @@ function Reactive.reactive(target, parent, parentKey)
   reactiveMap[target] = proxy
   proxy._target = target
   proxy._deps = {}
+
+  -- LuaJIT Fix: Pre-populate array indices for ipairs/len to work
+  -- LuaJIT (Lua 5.1) doesn't call __ipairs or __len on empty tables
+  if #target > 0 then
+    for i = 1, #target do
+      local value = target[i]
+      if type(value) == "table" and not isReactive(value) then
+        rawset(proxy, i, Reactive.reactive(value, proxy, i))
+      else
+        rawset(proxy, i, value)
+      end
+    end
+  end
 
   return proxy
 end
