@@ -287,7 +287,7 @@ bool kryon_cmd_buf_push(kryon_cmd_buf_t* buf, const kryon_command_t* cmd) {
     // Debug: Verify what was actually written to buffer for first 3 commands
     static int verify_count = 0;
     if (verify_count < 3) {
-        fprintf(stderr, "[CMDBUF_VERIFY] After write, buffer at pos %u has: ", write_start);
+        fprintf(stderr, "[CMDBUF_VERIFY] BUF=%p After write, buffer at pos %u has: ", (void*)buf, write_start);
         for (int i = 0; i < 20; i++) {
             fprintf(stderr, "%02x ", buf->buffer[(write_start + i) % KRYON_CMD_BUF_SIZE]);
         }

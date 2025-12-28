@@ -664,6 +664,31 @@ int cmd_run(int argc, char** argv) {
                  "%s \"%s\"",
                  desktop_lib, desktop_lib, target_file);
     } else {
+        // SPECIAL HANDLING FOR LUA FILES - Run with Lua runtime
+        const char* frontend = detect_frontend(target_file);
+        if (frontend && strcmp(frontend, "lua") == 0) {
+            printf("Running Lua file with Lua runtime...\n");
+
+            // Set up environment for Lua runtime
+            const char* kryon_root = getenv("KRYON_ROOT");
+            if (!kryon_root) {
+                kryon_root = "/mnt/storage/Projects/kryon";  // Default
+            }
+
+            char lua_cmd[4096];
+            snprintf(lua_cmd, sizeof(lua_cmd),
+                     "KRYON_ROOT=\"%s\" "
+                     "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;;\" "
+                     "LUA_CPATH=\"%s/build/?.so;;\" "
+                     "LD_LIBRARY_PATH=\"%s/build:$LD_LIBRARY_PATH\" "
+                     "luajit -e \"local app = loadfile('%s')(); require('kryon.runtime').runDesktop(app)\"",
+                     kryon_root, kryon_root, kryon_root, kryon_root, kryon_root, target_file);
+
+            int result = system(lua_cmd);
+            if (free_target) free((char*)target_file);
+            return result == 0 ? 0 : 1;
+        }
+
         // AUTO-COMPILE OTHER FORMATS TO KIR FIRST
 
         // Extract basename from target_file
@@ -680,7 +705,7 @@ int cmd_run(int argc, char** argv) {
             strcpy(dot, ".kir");
         }
 
-        // Compile to KIR (works for ALL formats now: .kry, .md, .html, .tsx, .lua, .c)
+        // Compile to KIR (works for ALL formats now: .kry, .md, .html, .tsx, .c)
         printf("Compiling %s...\n", target_file);
         char compile_cmd[2048];
         snprintf(compile_cmd, sizeof(compile_cmd),
@@ -709,6 +734,49 @@ int cmd_run(int argc, char** argv) {
             fprintf(stderr, "Error: Failed to load KIR file: %s\n", kir_file);
             if (free_target) free((char*)target_file);
             return 1;
+        }
+
+        // Check if KIR has Lua source metadata - if so, delegate to Lua runtime
+        extern IRContext* g_ir_context;
+        bool needs_lua_runtime = false;
+        fprintf(stderr, "[DEBUG] g_ir_context = %p\n", (void*)g_ir_context);
+        if (g_ir_context) {
+            fprintf(stderr, "[DEBUG] g_ir_context->source_metadata = %p\n", (void*)g_ir_context->source_metadata);
+            if (g_ir_context->source_metadata) {
+                IRSourceMetadata* meta = g_ir_context->source_metadata;
+                fprintf(stderr, "[DEBUG] source_language = %s\n", meta->source_language ? meta->source_language : "NULL");
+                if (meta->source_language && strcmp(meta->source_language, "lua") == 0) {
+                    needs_lua_runtime = true;
+                    fprintf(stderr, "[DEBUG] Setting needs_lua_runtime = true\n");
+                }
+            }
+        }
+        fprintf(stderr, "[DEBUG] needs_lua_runtime = %s\n", needs_lua_runtime ? "true" : "false");
+
+        if (needs_lua_runtime) {
+            fprintf(stderr, "[kryon] KIR requires Lua runtime, delegating to Runtime.loadKIR\n");
+
+            // Get LUA_PATH for Kryon bindings
+            char* kryon_root = getenv("KRYON_ROOT");
+            if (!kryon_root) {
+                kryon_root = "/mnt/storage/Projects/kryon";  // fallback
+            }
+
+            // Build Lua command to load KIR with Runtime.loadKIR
+            char lua_cmd[4096];
+            snprintf(lua_cmd, sizeof(lua_cmd),
+                     "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;;\" "
+                     "LD_LIBRARY_PATH=\"%s/build:$LD_LIBRARY_PATH\" "
+                     "luajit -e '"
+                     "local Runtime = require(\"kryon.runtime\"); "
+                     "local app = Runtime.loadKIR(\"%s\"); "
+                     "Runtime.runDesktop(app)'",
+                     kryon_root, kryon_root, kryon_root, kir_file);
+
+            int result = system(lua_cmd);
+            ir_destroy_component(root);
+            if (free_target) free((char*)target_file);
+            return (result == 0) ? 0 : 1;
         }
 
         // Create and initialize executor for event handling
@@ -785,6 +853,49 @@ int cmd_run(int argc, char** argv) {
         fprintf(stderr, "Error: Failed to load KIR file: %s\n", target_file);
         if (free_target) free((char*)target_file);
         return 1;
+    }
+
+    // Check if KIR has Lua source metadata - if so, delegate to Lua runtime
+    extern IRContext* g_ir_context;
+    bool needs_lua_runtime_kir = false;
+    fprintf(stderr, "[DEBUG KIR] g_ir_context = %p\n", (void*)g_ir_context);
+    if (g_ir_context) {
+        fprintf(stderr, "[DEBUG KIR] g_ir_context->source_metadata = %p\n", (void*)g_ir_context->source_metadata);
+        if (g_ir_context->source_metadata) {
+            IRSourceMetadata* meta = g_ir_context->source_metadata;
+            fprintf(stderr, "[DEBUG KIR] source_language = %s\n", meta->source_language ? meta->source_language : "NULL");
+            if (meta->source_language && strcmp(meta->source_language, "lua") == 0) {
+                needs_lua_runtime_kir = true;
+                fprintf(stderr, "[DEBUG KIR] Setting needs_lua_runtime_kir = true\n");
+            }
+        }
+    }
+    fprintf(stderr, "[DEBUG KIR] needs_lua_runtime_kir = %s\n", needs_lua_runtime_kir ? "true" : "false");
+
+    if (needs_lua_runtime_kir) {
+        fprintf(stderr, "[kryon] KIR requires Lua runtime, delegating to Runtime.loadKIR\n");
+
+        // Get LUA_PATH for Kryon bindings
+        char* kryon_root = getenv("KRYON_ROOT");
+        if (!kryon_root) {
+            kryon_root = "/mnt/storage/Projects/kryon";  // fallback
+        }
+
+        // Build Lua command to load KIR with Runtime.loadKIR
+        char lua_cmd[4096];
+        snprintf(lua_cmd, sizeof(lua_cmd),
+                 "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;;\" "
+                 "LD_LIBRARY_PATH=\"%s/build:$LD_LIBRARY_PATH\" "
+                 "luajit -e '"
+                 "local Runtime = require(\"kryon.runtime\"); "
+                 "local app = Runtime.loadKIR(\"%s\"); "
+                 "Runtime.runDesktop(app)'",
+                 kryon_root, kryon_root, kryon_root, target_file);
+
+        int result = system(lua_cmd);
+        ir_destroy_component(root);
+        if (free_target) free((char*)target_file);
+        return (result == 0) ? 0 : 1;
     }
 
     // Create and initialize executor for event handling
