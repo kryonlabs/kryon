@@ -70,6 +70,12 @@ void raylib_text_measure_callback(const char* text, const char* font_family,
                                    void* user_data);
 
 // ============================================================================
+// RAYLIB INPUT HANDLING (raylib_input.c)
+// ============================================================================
+
+void raylib_handle_input_events(DesktopIRRenderer* renderer, IRComponent* root);
+
+// ============================================================================
 // RAYLIB OPERATIONS
 // ============================================================================
 

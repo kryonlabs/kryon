@@ -248,6 +248,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                            (float)event.button.x, (float)event.button.y,
                            clicked ? (clicked->type == IR_COMPONENT_LINK ? "LINK" :
                                      clicked->type == IR_COMPONENT_BUTTON ? "BUTTON" :
+                                     clicked->type == IR_COMPONENT_CHECKBOX ? "CHECKBOX" :
                                      clicked->type == IR_COMPONENT_TEXT ? "TEXT" :
                                      clicked->type == IR_COMPONENT_ROW ? "ROW" :
                                      clicked->type == IR_COMPONENT_COLUMN ? "COLUMN" :
@@ -257,6 +258,12 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                      clicked->type == IR_COMPONENT_TAB_PANEL ? "TAB_PANEL" : "OTHER") : "NULL",
                            clicked ? clicked->id : 0,
                            clicked ? clicked->type : -1);
+                    if (clicked) {
+                        printf("[DEBUG]   rendered_bounds: valid=%d [%.1f, %.1f, %.1f, %.1f]\n",
+                               clicked->rendered_bounds.valid,
+                               clicked->rendered_bounds.x, clicked->rendered_bounds.y,
+                               clicked->rendered_bounds.width, clicked->rendered_bounds.height);
+                    }
                     if (clicked && clicked->parent) {
                         printf("[DEBUG]   parent: ID=%u type=%d\n", clicked->parent->id, clicked->parent->type);
                     }

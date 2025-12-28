@@ -1469,6 +1469,10 @@ void ir_set_checkbox_state(IRComponent* component, bool checked) {
 void ir_toggle_checkbox_state(IRComponent* component) {
     if (!component) return;
     bool current = ir_get_checkbox_state(component);
+    printf("[CHECKBOX_TOGGLE] Component ID %u: %s -> %s\n",
+           component->id,
+           current ? "checked" : "unchecked",
+           !current ? "checked" : "unchecked");
     ir_set_checkbox_state(component, !current);
 }
 

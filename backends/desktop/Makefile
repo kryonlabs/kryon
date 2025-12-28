@@ -72,7 +72,8 @@ SDL3_RENDERER_SOURCES = renderers/sdl3/sdl3_renderer.c \
 RAYLIB_RENDERER_SOURCES = renderers/raylib/raylib_renderer.c \
                           renderers/raylib/raylib_fonts.c \
                           renderers/raylib/raylib_effects.c \
-                          renderers/raylib/raylib_layout.c
+                          renderers/raylib/raylib_layout.c \
+                          renderers/raylib/raylib_input.c
 
 # Add renderer-specific sources
 ifeq ($(ENABLE_SDL3),1)
