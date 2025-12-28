@@ -82,7 +82,7 @@ all: build-cli build-lib
 # Build CLI tool (development version)
 build-cli: $(CLI_BIN)
 
-$(CLI_BIN): $(CLI_DEPS)
+$(CLI_BIN): $(CLI_DEPS) build-codegens
 	@echo "Building Kryon CLI (development - C version)..."
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C $(CLI_DIR) clean
@@ -200,6 +200,17 @@ build-c-libs:
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C ir all
 	$(MAKE) -C backends/desktop all
+
+# Build code generators (needed by CLI)
+build-codegens:
+	@echo "Building code generators..."
+	@mkdir -p $(BUILD_DIR)
+	$(MAKE) -C codegens all
+	@for dir in kry tsx nim lua markdown; do \
+		if [ -f codegens/$$dir/Makefile ]; then \
+			$(MAKE) -C codegens/$$dir all || true; \
+		fi \
+	done
 
 # Create combined static library from all C libraries
 $(LIB_FILE): build-c-libs

@@ -6,6 +6,7 @@
 #include "kryon_cli.h"
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_serialization.h"
+#include "../../ir/ir_executor.h"
 #include "../../backends/desktop/ir_desktop_renderer.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -157,6 +158,18 @@ int cmd_run(int argc, char** argv) {
             return 1;
         }
 
+        // Create and initialize executor for event handling
+        IRExecutorContext* executor = ir_executor_create();
+        if (executor) {
+            printf("[executor] Loading KIR file for event handling\n");
+            ir_executor_load_kir_file(executor, kir_file);
+            ir_executor_set_root(executor, root);
+            ir_executor_set_global(executor);
+            printf("[executor] Global executor initialized\n");
+        } else {
+            fprintf(stderr, "[executor] WARNING: Failed to create executor!\n");
+        }
+
         // Create desktop renderer config with defaults
         int window_width = 800;
         int window_height = 600;
@@ -204,6 +217,9 @@ int cmd_run(int argc, char** argv) {
         fprintf(stderr, "[DEBUG] desktop_render_ir_component returned: %d\n", success);
 
         // Cleanup
+        if (executor) {
+            ir_executor_destroy(executor);
+        }
         ir_destroy_component(root);
 
         if (free_target) free((char*)target_file);
@@ -216,6 +232,18 @@ int cmd_run(int argc, char** argv) {
         fprintf(stderr, "Error: Failed to load KIR file: %s\n", target_file);
         if (free_target) free((char*)target_file);
         return 1;
+    }
+
+    // Create and initialize executor for event handling
+    IRExecutorContext* executor = ir_executor_create();
+    if (executor) {
+        printf("[executor] Loading KIR file for event handling\n");
+        ir_executor_load_kir_file(executor, target_file);
+        ir_executor_set_root(executor, root);
+        ir_executor_set_global(executor);
+        printf("[executor] Global executor initialized\n");
+    } else {
+        fprintf(stderr, "[executor] WARNING: Failed to create executor!\n");
     }
 
     // Create desktop renderer config with defaults
@@ -262,6 +290,9 @@ int cmd_run(int argc, char** argv) {
     bool success = desktop_render_ir_component(root, &config);
 
     // Cleanup
+    if (executor) {
+        ir_executor_destroy(executor);
+    }
     ir_destroy_component(root);
 
     if (free_target) free((char*)target_file);

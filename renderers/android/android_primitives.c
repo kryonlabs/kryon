@@ -11,16 +11,78 @@ void android_renderer_draw_rect(AndroidRenderer* renderer,
                                  uint32_t color) {
     if (!renderer) return;
 
-    // TODO: Implement rectangle rendering
-    // 1. Switch to color shader
-    // 2. Add vertices to batch
-    // 3. Add indices for 2 triangles
+    // Check if we need to flush batch
+    if (renderer->vertex_count + 4 > MAX_VERTICES ||
+        renderer->index_count + 6 > MAX_INDICES) {
+        android_renderer_flush_batch(renderer);
+    }
 
-    (void)x;
-    (void)y;
-    (void)width;
-    (void)height;
-    (void)color;
+    // Switch to color shader
+    android_shader_use(renderer, SHADER_PROGRAM_COLOR);
+
+    // Extract color components
+    uint8_t a = (color >> 24) & 0xFF;
+    uint8_t r = (color >> 16) & 0xFF;
+    uint8_t g = (color >> 8) & 0xFF;
+    uint8_t b = color & 0xFF;
+
+    // Apply global opacity
+    a = (uint8_t)(a * renderer->global_opacity);
+
+    // Add 4 vertices for the rectangle
+    uint32_t base_index = renderer->vertex_count;
+
+    // Top-left
+    renderer->vertices[renderer->vertex_count].x = x;
+    renderer->vertices[renderer->vertex_count].y = y;
+    renderer->vertices[renderer->vertex_count].u = 0.0f;
+    renderer->vertices[renderer->vertex_count].v = 0.0f;
+    renderer->vertices[renderer->vertex_count].r = r;
+    renderer->vertices[renderer->vertex_count].g = g;
+    renderer->vertices[renderer->vertex_count].b = b;
+    renderer->vertices[renderer->vertex_count].a = a;
+    renderer->vertex_count++;
+
+    // Top-right
+    renderer->vertices[renderer->vertex_count].x = x + width;
+    renderer->vertices[renderer->vertex_count].y = y;
+    renderer->vertices[renderer->vertex_count].u = 1.0f;
+    renderer->vertices[renderer->vertex_count].v = 0.0f;
+    renderer->vertices[renderer->vertex_count].r = r;
+    renderer->vertices[renderer->vertex_count].g = g;
+    renderer->vertices[renderer->vertex_count].b = b;
+    renderer->vertices[renderer->vertex_count].a = a;
+    renderer->vertex_count++;
+
+    // Bottom-right
+    renderer->vertices[renderer->vertex_count].x = x + width;
+    renderer->vertices[renderer->vertex_count].y = y + height;
+    renderer->vertices[renderer->vertex_count].u = 1.0f;
+    renderer->vertices[renderer->vertex_count].v = 1.0f;
+    renderer->vertices[renderer->vertex_count].r = r;
+    renderer->vertices[renderer->vertex_count].g = g;
+    renderer->vertices[renderer->vertex_count].b = b;
+    renderer->vertices[renderer->vertex_count].a = a;
+    renderer->vertex_count++;
+
+    // Bottom-left
+    renderer->vertices[renderer->vertex_count].x = x;
+    renderer->vertices[renderer->vertex_count].y = y + height;
+    renderer->vertices[renderer->vertex_count].u = 0.0f;
+    renderer->vertices[renderer->vertex_count].v = 1.0f;
+    renderer->vertices[renderer->vertex_count].r = r;
+    renderer->vertices[renderer->vertex_count].g = g;
+    renderer->vertices[renderer->vertex_count].b = b;
+    renderer->vertices[renderer->vertex_count].a = a;
+    renderer->vertex_count++;
+
+    // Add indices for 2 triangles (6 indices)
+    renderer->indices[renderer->index_count++] = base_index + 0;
+    renderer->indices[renderer->index_count++] = base_index + 1;
+    renderer->indices[renderer->index_count++] = base_index + 2;
+    renderer->indices[renderer->index_count++] = base_index + 0;
+    renderer->indices[renderer->index_count++] = base_index + 2;
+    renderer->indices[renderer->index_count++] = base_index + 3;
 }
 
 void android_renderer_draw_rounded_rect(AndroidRenderer* renderer,
@@ -50,15 +112,21 @@ void android_renderer_draw_rect_outline(AndroidRenderer* renderer,
                                          uint32_t color) {
     if (!renderer) return;
 
-    // TODO: Implement rectangle outline rendering
-    // Draw 4 rectangles (top, right, bottom, left)
+    // Draw 4 rectangles for the outline
+    // Top
+    android_renderer_draw_rect(renderer, x, y, width, border_width, color);
 
-    (void)x;
-    (void)y;
-    (void)width;
-    (void)height;
-    (void)border_width;
-    (void)color;
+    // Right
+    android_renderer_draw_rect(renderer, x + width - border_width, y + border_width,
+                                border_width, height - border_width * 2, color);
+
+    // Bottom
+    android_renderer_draw_rect(renderer, x, y + height - border_width,
+                                width, border_width, color);
+
+    // Left
+    android_renderer_draw_rect(renderer, x, y + border_width,
+                                border_width, height - border_width * 2, color);
 }
 
 // ============================================================================

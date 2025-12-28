@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "../../core/include/kryon.h"
+#include "sdl3_effects.h"
 // command_buf functions are now in libkryon_core.a - no need to include the .c file
 #include <string.h>
 #include <stdlib.h>
@@ -66,6 +67,7 @@ typedef struct {
     // Window configuration from DSL
     uint16_t config_width, config_height;
     char* config_title;
+    bool owns_window;            // Whether we own the window (vs wrapped existing)
 
     // Clipping stack
     SDL_Rect clip_stack[8];      // Stack of clip rectangles (max 8 nested levels)
@@ -1249,6 +1251,114 @@ static void sdl3_execute_commands(kryon_renderer_t* renderer, kryon_cmd_buf_t* b
                     }
                     break;
 
+                case KRYON_CMD_DRAW_ROUNDED_RECT: {
+                    SDL_FRect rect = {
+                        .x = cmd.data.draw_rounded_rect.x,
+                        .y = cmd.data.draw_rounded_rect.y,
+                        .w = cmd.data.draw_rounded_rect.w,
+                        .h = cmd.data.draw_rounded_rect.h
+                    };
+                    sdl3_render_rounded_rect(backend->renderer, &rect,
+                        cmd.data.draw_rounded_rect.radius,
+                        cmd.data.draw_rounded_rect.color);
+                    break;
+                }
+
+                case KRYON_CMD_DRAW_GRADIENT: {
+                    SDL_FRect rect = {
+                        .x = cmd.data.draw_gradient.x,
+                        .y = cmd.data.draw_gradient.y,
+                        .w = cmd.data.draw_gradient.w,
+                        .h = cmd.data.draw_gradient.h
+                    };
+
+                    /* Convert gradient stops */
+                    SDL3_GradientStop stops[8];
+                    for (int i = 0; i < cmd.data.draw_gradient.stop_count && i < 8; i++) {
+                        uint32_t color = cmd.data.draw_gradient.stops[i].color;
+                        stops[i].position = cmd.data.draw_gradient.stops[i].position;
+                        stops[i].r = (color >> 24) & 0xFF;
+                        stops[i].g = (color >> 16) & 0xFF;
+                        stops[i].b = (color >> 8) & 0xFF;
+                        stops[i].a = color & 0xFF;
+                    }
+
+                    sdl3_render_gradient(backend->renderer, &rect,
+                        (SDL3_GradientType)cmd.data.draw_gradient.gradient_type,
+                        cmd.data.draw_gradient.angle,
+                        stops, cmd.data.draw_gradient.stop_count, 1.0f);
+                    break;
+                }
+
+                case KRYON_CMD_DRAW_SHADOW: {
+                    SDL_FRect rect = {
+                        .x = cmd.data.draw_shadow.x,
+                        .y = cmd.data.draw_shadow.y,
+                        .w = cmd.data.draw_shadow.w,
+                        .h = cmd.data.draw_shadow.h
+                    };
+                    sdl3_render_shadow(backend->renderer, &rect,
+                        cmd.data.draw_shadow.offset_x,
+                        cmd.data.draw_shadow.offset_y,
+                        cmd.data.draw_shadow.blur_radius,
+                        cmd.data.draw_shadow.spread_radius,
+                        cmd.data.draw_shadow.color,
+                        cmd.data.draw_shadow.inset);
+                    break;
+                }
+
+                case KRYON_CMD_DRAW_TEXT_SHADOW:
+                    /* TODO: Implement text shadow */
+                    break;
+
+                case KRYON_CMD_DRAW_IMAGE:
+                    /* TODO: Implement image rendering */
+                    break;
+
+                case KRYON_CMD_SET_OPACITY:
+                    /* Opacity applied via render draw color alpha */
+                    break;
+
+                case KRYON_CMD_PUSH_OPACITY:
+                    /* TODO: Implement opacity stack */
+                    break;
+
+                case KRYON_CMD_POP_OPACITY:
+                    /* TODO: Implement opacity stack */
+                    break;
+
+                case KRYON_CMD_SET_BLEND_MODE:
+                    /* TODO: Implement blend mode switching */
+                    break;
+
+                case KRYON_CMD_BEGIN_PASS:
+                    /* Multi-pass rendering - currently no-op */
+                    break;
+
+                case KRYON_CMD_END_PASS:
+                    /* Multi-pass rendering - currently no-op */
+                    break;
+
+                case KRYON_CMD_DRAW_TEXT_WRAPPED:
+                    /* TODO: Implement wrapped text */
+                    break;
+
+                case KRYON_CMD_DRAW_TEXT_FADE:
+                    /* TODO: Implement text fade effect */
+                    break;
+
+                case KRYON_CMD_DRAW_TEXT_STYLED:
+                    /* TODO: Implement styled text */
+                    break;
+
+                case KRYON_CMD_LOAD_FONT:
+                    /* TODO: Implement font loading */
+                    break;
+
+                case KRYON_CMD_LOAD_IMAGE:
+                    /* TODO: Implement image loading */
+                    break;
+
                 default:
                     // Unsupported command type
                     break;
@@ -1325,6 +1435,7 @@ kryon_renderer_t* kryon_sdl3_renderer_create(uint16_t width, uint16_t height, co
     // Store window configuration from DSL
     backend->config_width = width;
     backend->config_height = height;
+    backend->owns_window = true;  // We create and own the window
     if (title != NULL) {
         backend->config_title = strdup(title);
     } else {
@@ -1360,6 +1471,44 @@ void kryon_sdl3_renderer_destroy(kryon_renderer_t* renderer) {
     }
 
     kryon_renderer_destroy(renderer);
+}
+
+/**
+ * Wrap an existing SDL_Renderer into a kryon_renderer_t.
+ * This is used by the desktop renderer which manages its own SDL context.
+ * The kryon_renderer_t does NOT take ownership of the SDL_Renderer*.
+ */
+kryon_renderer_t* kryon_sdl3_renderer_wrap_existing(SDL_Renderer* sdl_renderer, SDL_Window* window) {
+    if (!sdl_renderer) return NULL;
+
+    /* Allocate backend data */
+    kryon_sdl3_backend_t* backend = (kryon_sdl3_backend_t*)malloc(sizeof(kryon_sdl3_backend_t));
+    if (!backend) return NULL;
+
+    memset(backend, 0, sizeof(kryon_sdl3_backend_t));
+
+    /* Store the existing SDL renderer (we don't own it) */
+    backend->renderer = sdl_renderer;
+    backend->window = window;
+    backend->owns_window = false;  /* Important: we don't own this */
+
+    /* Get dimensions from window if available */
+    if (window) {
+        int w, h;
+        SDL_GetWindowSize(window, &w, &h);
+        backend->config_width = w;
+        backend->config_height = h;
+    }
+
+    /* Create kryon renderer wrapper */
+    kryon_renderer_t* renderer = kryon_renderer_create(&kryon_sdl3_ops);
+    if (!renderer) {
+        free(backend);
+        return NULL;
+    }
+
+    renderer->backend_data = backend;
+    return renderer;
 }
 
 // SDL3 event handling

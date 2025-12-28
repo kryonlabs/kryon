@@ -20,9 +20,10 @@ all: $(BUILD_DIR) $(REACT_COMMON_OBJ)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-# Compile react_common object file
+# Compile react_common object file (create both local and build versions)
 $(REACT_COMMON_OBJ): $(REACT_COMMON_SRC) $(REACT_COMMON_HDR)
-	$(CC) $(CFLAGS) -I../ir -I$(CJSON_DIR) -c $(REACT_COMMON_SRC) -o $(REACT_COMMON_OBJ)
+	$(CC) $(CFLAGS) -I../ir -I$(CJSON_DIR) -c $(REACT_COMMON_SRC) -o react_common.o
+	cp react_common.o $(REACT_COMMON_OBJ)
 
 # Also provide a local object file for tsx/jsx to depend on
 react_common.o: $(REACT_COMMON_SRC) $(REACT_COMMON_HDR)

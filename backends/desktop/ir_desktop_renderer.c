@@ -32,6 +32,8 @@
 #include "../../ir/ir_executor.h"
 
 #ifdef ENABLE_SDL3
+#include "ir_to_commands.h"
+#include "../../renderers/sdl3/sdl3.h"
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #endif
@@ -225,6 +227,18 @@ bool desktop_ir_renderer_initialize(DesktopIRRenderer* renderer) {
 
     printf("[renderer] SDL renderer created successfully\n");
 
+    /* Wrap SDL renderer in kryon_renderer_t for command buffer execution */
+    renderer->kryon_renderer = kryon_sdl3_renderer_wrap_existing(renderer->renderer, renderer->window);
+    if (!renderer->kryon_renderer) {
+        fprintf(stderr, "Failed to create kryon renderer wrapper\n");
+        SDL_DestroyRenderer(renderer->renderer);
+        SDL_DestroyWindow(renderer->window);
+        TTF_Quit();
+        SDL_Quit();
+        return false;
+    }
+    printf("[renderer] Kryon renderer wrapper created\n");
+
     /* Configure rendering */
     if (renderer->config.vsync_enabled) {
         SDL_SetRenderVSync(renderer->renderer, 1);
@@ -357,6 +371,12 @@ void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
     }
 
 #ifdef ENABLE_SDL3
+    /* Destroy kryon renderer wrapper */
+    if (renderer->kryon_renderer) {
+        kryon_sdl3_renderer_destroy(renderer->kryon_renderer);
+        renderer->kryon_renderer = NULL;
+    }
+
     /* Clean up font cache */
     for (int i = 0; i < g_font_cache_count; i++) {
         if (g_font_cache[i].font) {
@@ -467,16 +487,20 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
         .height = (float)window_height
     };
 
-    render_component_sdl3(renderer, root, root_rect, 1.0f);
+    /* Generate rendering commands from IR component tree */
+    kryon_cmd_buf_t cmd_buf;
+    kryon_cmd_buf_init(&cmd_buf);
 
-    /* Render dropdowns in second pass for correct z-index */
-    #define MAX_OPEN_DROPDOWNS 10
-    IRComponent* open_dropdowns[MAX_OPEN_DROPDOWNS];
-    int dropdown_count = 0;
-    collect_open_dropdowns(root, open_dropdowns, &dropdown_count, MAX_OPEN_DROPDOWNS);
+    if (!ir_component_to_commands(root, &cmd_buf, &root_rect, 1.0f)) {
+        fprintf(stderr, "Failed to generate rendering commands\n");
+        return false;
+    }
 
-    for (int i = 0; i < dropdown_count; i++) {
-        render_dropdown_menu_sdl3(renderer, open_dropdowns[i]);
+    /* Execute commands using kryon renderer backend */
+    if (renderer->kryon_renderer) {
+        renderer->kryon_renderer->ops->execute_commands(renderer->kryon_renderer, &cmd_buf);
+    } else {
+        fprintf(stderr, "Warning: No kryon_renderer available for command execution\n");
     }
 
     /* Render debug overlay if enabled */
@@ -628,18 +652,9 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
                 // Find and trigger click event
                 IREvent* ir_event = ir_find_event(hovered, IR_EVENT_CLICK);
                 if (ir_event && ir_event->logic_id) {
-                    printf("[raylib] Button clicked! logic_id=%s\n", ir_event->logic_id);
-                    // Execute the event handler via IR executor
-                    IRExecutorContext* executor = ir_executor_get_global();
-                    if (executor) {
-                        printf("[raylib] Executor found, calling handler\n");
-                        ir_executor_set_root(executor, renderer->last_root);
-                        ir_executor_handle_event_by_logic_id(executor, hovered->id, ir_event->logic_id);
-                    } else {
-                        printf("[raylib] WARNING: No executor available!\n");
-                    }
-                } else {
-                    printf("[raylib] Button clicked but no event/logic_id found\n");
+                    // Call C event bridge for native C event handlers
+                    extern void kryon_c_event_bridge(const char* logic_id);
+                    kryon_c_event_bridge(ir_event->logic_id);
                 }
             }
         }

@@ -45,11 +45,13 @@ endif
 # ============================================================================
 
 RENDERER_SOURCES = \
-    raylib_backend.c
+    raylib_backend.c \
+    raylib_effects.c
 
 # Object files
 OBJECTS = \
-    $(BUILD_DIR)/raylib_raylib_backend.o
+    $(BUILD_DIR)/raylib_raylib_backend.o \
+    $(BUILD_DIR)/raylib_raylib_effects.o
 
 # ============================================================================
 # Build Targets

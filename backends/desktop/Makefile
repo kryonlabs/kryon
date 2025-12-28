@@ -55,13 +55,17 @@ ifndef ENABLE_RAYLIB
 endif
 endif
 
-# Source files (modular architecture - 11 modules)
+# Source files (modular architecture - 12 modules)
 DESKTOP_SOURCES = ir_desktop_renderer.c desktop_globals.c \
                   desktop_fonts.c desktop_effects.c desktop_layout.c \
                   desktop_input.c desktop_rendering.c desktop_test_events.c \
                   debug_backend.c stb_image_impl.c
 
 # Add renderer-specific sources
+ifeq ($(ENABLE_SDL3),1)
+    DESKTOP_SOURCES += ir_to_commands.c
+endif
+
 ifeq ($(ENABLE_RAYLIB),1)
     DESKTOP_SOURCES += desktop_rendering_raylib.c desktop_init_raylib.c
 endif
@@ -93,6 +97,10 @@ DESKTOP_OBJS = ir_desktop_renderer.o desktop_globals.o \
                debug_backend.o stb_image_impl.o
 
 # Add renderer-specific objects
+ifeq ($(ENABLE_SDL3),1)
+    DESKTOP_OBJS += ir_to_commands.o
+endif
+
 ifeq ($(ENABLE_RAYLIB),1)
     DESKTOP_OBJS += desktop_rendering_raylib.o desktop_init_raylib.o
 endif

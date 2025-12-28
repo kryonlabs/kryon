@@ -1,0 +1,365 @@
+#include <jni.h>
+#include <android/native_window.h>
+#include <android/native_window_jni.h>
+#include <android/log.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Include Kryon headers
+#include "android_platform.h"
+#include "android_renderer.h"
+
+#define LOG_TAG "KryonJNI"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+
+// ============================================================================
+// Native Handle Structure
+// ============================================================================
+
+typedef struct {
+    jobject activity_ref;  // Global reference to Activity
+    JavaVM* jvm;
+    ANativeWindow* window;
+    AndroidRenderer* renderer;
+    bool initialized;
+    bool surface_ready;
+} KryonNativeContext;
+
+// ============================================================================
+// JNI Helper Functions
+// ============================================================================
+
+static JNIEnv* get_jni_env(JavaVM* jvm) {
+    JNIEnv* env = NULL;
+    int status = (*jvm)->GetEnv(jvm, (void**)&env, JNI_VERSION_1_6);
+
+    if (status == JNI_EDETACHED) {
+        status = (*jvm)->AttachCurrentThread(jvm, &env, NULL);
+        if (status != JNI_OK) {
+            LOGE("Failed to attach thread to JVM\n");
+            return NULL;
+        }
+    }
+
+    return env;
+}
+
+// ============================================================================
+// Lifecycle Methods
+// ============================================================================
+
+JNIEXPORT jlong JNICALL
+Java_com_kryon_KryonActivity_nativeInit(JNIEnv* env, jobject thiz, jobject activity) {
+    LOGI("nativeInit called\n");
+
+    // Create native context
+    KryonNativeContext* ctx = (KryonNativeContext*)calloc(1, sizeof(KryonNativeContext));
+    if (!ctx) {
+        LOGE("Failed to allocate native context\n");
+        return 0;
+    }
+
+    // Get JavaVM
+    if ((*env)->GetJavaVM(env, &ctx->jvm) != JNI_OK) {
+        LOGE("Failed to get JavaVM\n");
+        free(ctx);
+        return 0;
+    }
+
+    // Create global reference to activity
+    ctx->activity_ref = (*env)->NewGlobalRef(env, activity);
+    if (!ctx->activity_ref) {
+        LOGE("Failed to create global reference to activity\n");
+        free(ctx);
+        return 0;
+    }
+
+    // Initialize platform (stub for now, as we don't have ANativeActivity)
+    // TODO: Adapt android_platform to work with regular Activity
+    LOGI("Platform initialized (stub)\n");
+
+    ctx->initialized = true;
+
+    LOGI("Native context created: %p\n", ctx);
+    return (jlong)ctx;
+}
+
+JNIEXPORT void JNICALL
+Java_com_kryon_KryonActivity_nativeShutdown(JNIEnv* env, jobject thiz, jlong handle) {
+    LOGI("nativeShutdown called\n");
+
+    if (handle == 0) return;
+
+    KryonNativeContext* ctx = (KryonNativeContext*)handle;
+
+    // Shutdown renderer
+    if (ctx->renderer) {
+        android_renderer_shutdown(ctx->renderer);
+        android_renderer_destroy(ctx->renderer);
+        ctx->renderer = NULL;
+    }
+
+    // Release window
+    if (ctx->window) {
+        ANativeWindow_release(ctx->window);
+        ctx->window = NULL;
+    }
+
+    // Delete global reference
+    if (ctx->activity_ref) {
+        (*env)->DeleteGlobalRef(env, ctx->activity_ref);
+        ctx->activity_ref = NULL;
+    }
+
+    free(ctx);
+
+    LOGI("Native context destroyed\n");
+}
+
+JNIEXPORT void JNICALL
+Java_com_kryon_KryonActivity_nativeOnCreate(JNIEnv* env, jobject thiz, jlong handle) {
+    LOGI("nativeOnCreate called\n");
+    // TODO: Initialize platform
+}
+
+JNIEXPORT void JNICALL
+Java_com_kryon_KryonActivity_nativeOnStart(JNIEnv* env, jobject thiz, jlong handle) {
+    LOGI("nativeOnStart called\n");
+    // TODO: Call platform lifecycle
+}
+
+JNIEXPORT void JNICALL
+Java_com_kryon_KryonActivity_nativeOnResume(JNIEnv* env, jobject thiz, jlong handle) {
+    LOGI("nativeOnResume called\n");
+    // TODO: Resume rendering
+}
+
+JNIEXPORT void JNICALL
+Java_com_kryon_KryonActivity_nativeOnPause(JNIEnv* env, jobject thiz, jlong handle) {
+    LOGI("nativeOnPause called\n");
+    // TODO: Pause rendering
+}
+
+JNIEXPORT void JNICALL
+Java_com_kryon_KryonActivity_nativeOnStop(JNIEnv* env, jobject thiz, jlong handle) {
+    LOGI("nativeOnStop called\n");
+    // TODO: Stop rendering
+}
+
+JNIEXPORT void JNICALL
+Java_com_kryon_KryonActivity_nativeOnDestroy(JNIEnv* env, jobject thiz, jlong handle) {
+    LOGI("nativeOnDestroy called\n");
+    // Cleanup is done in nativeShutdown
+}
+
+// ============================================================================
+// Surface Callbacks
+// ============================================================================
+
+JNIEXPORT void JNICALL
+Java_com_kryon_KryonActivity_nativeSurfaceCreated(JNIEnv* env, jobject thiz,
+                                                   jlong handle, jobject surface) {
+    LOGI("nativeSurfaceCreated called\n");
+
+    if (handle == 0) return;
+
+    KryonNativeContext* ctx = (KryonNativeContext*)handle;
+
+    // Get native window from Surface
+    ctx->window = ANativeWindow_fromSurface(env, surface);
+    if (!ctx->window) {
+        LOGE("Failed to get native window from surface\n");
+        return;
+    }
+
+    LOGI("Native window acquired: %p\n", ctx->window);
+
+    // Create renderer
+    if (!ctx->renderer) {
+        AndroidRendererConfig config = {
+            .window_width = ANativeWindow_getWidth(ctx->window),
+            .window_height = ANativeWindow_getHeight(ctx->window),
+            .vsync_enabled = true,
+            .target_fps = 60,
+            .debug_mode = true,
+            .enable_texture_cache = true,
+            .texture_cache_size_mb = 32,
+            .enable_glyph_cache = true,
+            .glyph_cache_size_mb = 4
+        };
+
+        ctx->renderer = android_renderer_create(&config);
+        if (!ctx->renderer) {
+            LOGE("Failed to create renderer\n");
+            return;
+        }
+
+        if (!android_renderer_initialize(ctx->renderer, ctx->window)) {
+            LOGE("Failed to initialize renderer\n");
+            android_renderer_destroy(ctx->renderer);
+            ctx->renderer = NULL;
+            return;
+        }
+
+        LOGI("Renderer initialized successfully\n");
+    }
+
+    ctx->surface_ready = true;
+}
+
+JNIEXPORT void JNICALL
+Java_com_kryon_KryonActivity_nativeSurfaceChanged(JNIEnv* env, jobject thiz,
+                                                   jlong handle, jint width, jint height) {
+    LOGI("nativeSurfaceChanged: %dx%d\n", width, height);
+
+    if (handle == 0) return;
+
+    KryonNativeContext* ctx = (KryonNativeContext*)handle;
+
+    if (ctx->renderer) {
+        android_renderer_resize(ctx->renderer, width, height);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_kryon_KryonActivity_nativeSurfaceDestroyed(JNIEnv* env, jobject thiz, jlong handle) {
+    LOGI("nativeSurfaceDestroyed called\n");
+
+    if (handle == 0) return;
+
+    KryonNativeContext* ctx = (KryonNativeContext*)handle;
+
+    ctx->surface_ready = false;
+
+    // Shutdown renderer
+    if (ctx->renderer) {
+        android_renderer_shutdown(ctx->renderer);
+        android_renderer_destroy(ctx->renderer);
+        ctx->renderer = NULL;
+    }
+
+    // Release window
+    if (ctx->window) {
+        ANativeWindow_release(ctx->window);
+        ctx->window = NULL;
+    }
+}
+
+// ============================================================================
+// Input Events
+// ============================================================================
+
+JNIEXPORT jboolean JNICALL
+Java_com_kryon_KryonActivity_nativeTouchEvent(JNIEnv* env, jobject thiz,
+                                               jlong handle, jobject motion_event) {
+    if (handle == 0) return JNI_FALSE;
+
+    // TODO: Convert MotionEvent to Kryon touch events
+    // For now, just log
+    LOGD("Touch event received\n");
+
+    return JNI_TRUE;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_kryon_KryonActivity_nativeKeyEvent(JNIEnv* env, jobject thiz,
+                                             jlong handle, jobject key_event) {
+    if (handle == 0) return JNI_FALSE;
+
+    // TODO: Convert KeyEvent to Kryon key events
+    LOGD("Key event received\n");
+
+    return JNI_FALSE;
+}
+
+// ============================================================================
+// File Loading
+// ============================================================================
+
+JNIEXPORT jboolean JNICALL
+Java_com_kryon_KryonActivity_nativeLoadFile(JNIEnv* env, jobject thiz,
+                                             jlong handle, jstring path) {
+    if (handle == 0) return JNI_FALSE;
+
+    const char* path_str = (*env)->GetStringUTFChars(env, path, NULL);
+    LOGI("Load file: %s\n", path_str);
+
+    // TODO: Load and execute .krb file
+    jboolean result = JNI_FALSE;
+
+    (*env)->ReleaseStringUTFChars(env, path, path_str);
+    return result;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_kryon_KryonActivity_nativeLoadSource(JNIEnv* env, jobject thiz,
+                                               jlong handle, jstring path) {
+    if (handle == 0) return JNI_FALSE;
+
+    const char* path_str = (*env)->GetStringUTFChars(env, path, NULL);
+    LOGI("Load source: %s\n", path_str);
+
+    // TODO: Compile and execute .kry file
+    jboolean result = JNI_FALSE;
+
+    (*env)->ReleaseStringUTFChars(env, path, path_str);
+    return result;
+}
+
+// ============================================================================
+// State Management
+// ============================================================================
+
+JNIEXPORT jboolean JNICALL
+Java_com_kryon_KryonActivity_nativeSetState(JNIEnv* env, jobject thiz,
+                                             jlong handle, jstring key, jstring value) {
+    if (handle == 0) return JNI_FALSE;
+
+    const char* key_str = (*env)->GetStringUTFChars(env, key, NULL);
+    const char* value_str = (*env)->GetStringUTFChars(env, value, NULL);
+
+    LOGD("Set state: %s = %s\n", key_str, value_str);
+
+    // TODO: Set state in Kryon runtime
+
+    (*env)->ReleaseStringUTFChars(env, key, key_str);
+    (*env)->ReleaseStringUTFChars(env, value, value_str);
+
+    return JNI_TRUE;
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_kryon_KryonActivity_nativeGetState(JNIEnv* env, jobject thiz,
+                                             jlong handle, jstring key) {
+    if (handle == 0) return NULL;
+
+    const char* key_str = (*env)->GetStringUTFChars(env, key, NULL);
+
+    LOGD("Get state: %s\n", key_str);
+
+    // TODO: Get state from Kryon runtime
+    jstring result = NULL;
+
+    (*env)->ReleaseStringUTFChars(env, key, key_str);
+
+    return result;
+}
+
+// ============================================================================
+// Performance
+// ============================================================================
+
+JNIEXPORT jfloat JNICALL
+Java_com_kryon_KryonActivity_nativeGetFPS(JNIEnv* env, jobject thiz, jlong handle) {
+    if (handle == 0) return 0.0f;
+
+    KryonNativeContext* ctx = (KryonNativeContext*)handle;
+
+    if (ctx->renderer) {
+        return android_renderer_get_fps(ctx->renderer);
+    }
+
+    return 0.0f;
+}

@@ -38,10 +38,19 @@ mkdir -p build/ir build/nim
 # Always rebuild and install libraries to ensure we're testing latest code
 echo -e "${CYAN}Building and installing libraries...${NC}"
 if [ -n "$IN_NIX_SHELL" ]; then
-    make install > /dev/null 2>&1 || echo -e "${YELLOW}Build failed${NC}"
+    if ! make install > /dev/null 2>&1; then
+        echo -e "${RED}✗ Build failed${NC}"
+        echo "Run 'make' to see detailed error output"
+        exit 1
+    fi
 else
-    nix-shell --run "make install" > /dev/null 2>&1 || echo -e "${YELLOW}Build failed${NC}"
+    if ! nix-shell --run "make install" > /dev/null 2>&1; then
+        echo -e "${RED}✗ Build failed${NC}"
+        echo "Run 'nix-shell --run make' to see detailed error output"
+        exit 1
+    fi
 fi
+echo -e "${GREEN}✓ Libraries built and installed successfully${NC}"
 
 # Prioritize local build directory, then installed libraries
 export LD_LIBRARY_PATH="$SCRIPT_DIR/build:$HOME/.local/lib:$LD_LIBRARY_PATH"
