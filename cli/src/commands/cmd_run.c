@@ -40,7 +40,7 @@ static int android_setup_temp_project(const char* temp_dir, const char* kir_file
     snprintf(cmd, sizeof(cmd), "cp \"%s\" \"%s/app/src/main/assets/app.kir\"", kir_file, temp_dir);
     if (system(cmd) != 0) return -1;
 
-    // Create settings.gradle.kts (links to real kryon module)
+    // Create settings.gradle.kts
     char settings_file[2048];
     snprintf(settings_file, sizeof(settings_file), "%s/settings.gradle.kts", temp_dir);
     FILE* f = fopen(settings_file, "w");
@@ -51,21 +51,16 @@ static int android_setup_temp_project(const char* temp_dir, const char* kir_file
     fprintf(f, "project(\":kryon\").projectDir = file(\"/mnt/storage/Projects/kryon/bindings/kotlin\")\n");
     fclose(f);
 
-    // Create root build.gradle.kts
+    // Create root build.gradle.kts (proper multi-module pattern)
     char root_build[2048];
     snprintf(root_build, sizeof(root_build), "%s/build.gradle.kts", temp_dir);
     f = fopen(root_build, "w");
     if (!f) return -1;
-    fprintf(f, "// Top-level build file\n");
-    fprintf(f, "buildscript {\n");
-    fprintf(f, "    repositories {\n");
-    fprintf(f, "        google()\n");
-    fprintf(f, "        mavenCentral()\n");
-    fprintf(f, "    }\n");
-    fprintf(f, "    dependencies {\n");
-    fprintf(f, "        classpath(\"com.android.tools.build:gradle:8.2.0\")\n");
-    fprintf(f, "        classpath(\"org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.20\")\n");
-    fprintf(f, "    }\n");
+    fprintf(f, "// Top-level build file for Kryon temporary Android project\n");
+    fprintf(f, "plugins {\n");
+    fprintf(f, "    id(\"com.android.application\") version \"8.2.0\" apply false\n");
+    fprintf(f, "    id(\"com.android.library\") version \"8.2.0\" apply false\n");
+    fprintf(f, "    id(\"org.jetbrains.kotlin.android\") version \"1.9.20\" apply false\n");
     fprintf(f, "}\n\n");
     fprintf(f, "allprojects {\n");
     fprintf(f, "    repositories {\n");
@@ -82,7 +77,7 @@ static int android_setup_temp_project(const char* temp_dir, const char* kir_file
     if (!f) return -1;
     fprintf(f, "plugins {\n");
     fprintf(f, "    id(\"com.android.application\")\n");
-    fprintf(f, "    id(\"kotlin-android\")\n");
+    fprintf(f, "    id(\"org.jetbrains.kotlin.android\")\n");
     fprintf(f, "}\n\n");
     fprintf(f, "android {\n");
     fprintf(f, "    namespace = \"com.kryon.temp\"\n");
@@ -231,7 +226,7 @@ static int run_android(const char* kir_file, const char* source_file) {
         return 1;
     }
 
-    // 4. Build APK with Gradle
+    // 4. Build APK with Gradle (native libs built automatically via buildNativeLibs task)
     printf("Building APK (this may take a minute)...\n");
     char build_cmd[2048];
     snprintf(build_cmd, sizeof(build_cmd),

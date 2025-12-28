@@ -487,21 +487,8 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
         .height = (float)window_height
     };
 
-    /* Generate rendering commands from IR component tree */
-    kryon_cmd_buf_t cmd_buf;
-    kryon_cmd_buf_init(&cmd_buf);
-
-    if (!ir_component_to_commands(root, &cmd_buf, &root_rect, 1.0f)) {
-        fprintf(stderr, "Failed to generate rendering commands\n");
-        return false;
-    }
-
-    /* Execute commands using kryon renderer backend */
-    if (renderer->kryon_renderer) {
-        renderer->kryon_renderer->ops->execute_commands(renderer->kryon_renderer, &cmd_buf);
-    } else {
-        fprintf(stderr, "Warning: No kryon_renderer available for command execution\n");
-    }
+    /* Render IR component tree directly using SDL3 (working implementation) */
+    render_component_sdl3(renderer, root, root_rect, 1.0f);
 
     /* Render debug overlay if enabled */
     desktop_render_debug_overlay(renderer, root);

@@ -95,6 +95,48 @@ const char* react_generate_imports(ReactOutputMode mode) {
 // Property Mapping
 // =============================================================================
 
+/**
+ * Convert event type to React camelCase event handler name
+ * Examples: "click" -> "onClick", "keydown" -> "onKeyDown", "mouseenter" -> "onMouseEnter"
+ */
+static void react_event_type_to_handler_name(const char* evt_type, char* output, size_t output_size) {
+    // Common compound event names that need special handling
+    struct {
+        const char* event;
+        const char* react_name;
+    } event_map[] = {
+        {"keydown", "onKeyDown"},
+        {"keyup", "onKeyUp"},
+        {"keypress", "onKeyPress"},
+        {"mousedown", "onMouseDown"},
+        {"mouseup", "onMouseUp"},
+        {"mousemove", "onMouseMove"},
+        {"mouseenter", "onMouseEnter"},
+        {"mouseleave", "onMouseLeave"},
+        {"mouseover", "onMouseOver"},
+        {"mouseout", "onMouseOut"},
+        {"doubleclick", "onDoubleClick"},
+        {"contextmenu", "onContextMenu"},
+        {"touchstart", "onTouchStart"},
+        {"touchend", "onTouchEnd"},
+        {"touchmove", "onTouchMove"},
+        {"touchcancel", "onTouchCancel"},
+        {NULL, NULL}
+    };
+
+    // Check if it's a known compound event
+    for (int i = 0; event_map[i].event != NULL; i++) {
+        if (strcmp(evt_type, event_map[i].event) == 0) {
+            snprintf(output, output_size, "%s", event_map[i].react_name);
+            return;
+        }
+    }
+
+    // For simple events (click, change, focus, blur, submit, etc.),
+    // just capitalize first letter and add "on"
+    snprintf(output, output_size, "on%c%s", toupper(evt_type[0]), evt_type + 1);
+}
+
 const char* react_map_kir_property(const char* key) {
     // Simple mapping - just return the key as-is for now
     // Could expand with specific mappings if needed
@@ -568,10 +610,9 @@ StringBuilder* react_generate_props(cJSON* node, ReactContext* ctx, bool has_tex
             }
 
             if (handler_body) {
-                // Map event type to React prop name: "click" -> "onClick", "change" -> "onChange"
+                // Map event type to React prop name: "click" -> "onClick", "keydown" -> "onKeyDown"
                 char react_event_name[64];
-                snprintf(react_event_name, sizeof(react_event_name),
-                         "on%c%s", toupper(evt_type[0]), evt_type + 1);
+                react_event_type_to_handler_name(evt_type, react_event_name, sizeof(react_event_name));
 
                 if (sb->size > 0) sb_append(sb, " ");
 
@@ -784,10 +825,19 @@ char* react_generate_state_hooks(cJSON* manifest, ReactContext* ctx) {
                 setter = auto_setter;
             }
 
+            // Map KIR types to TypeScript types
+            const char* ts_type = type;
+            char ts_type_buf[64];
+            if (strcmp(type, "array") == 0) {
+                ts_type = "any[]";
+            } else if (strcmp(type, "object") == 0) {
+                ts_type = "Record<string, any>";
+            }
+
             // Generate with TypeScript type annotation if in TypeScript mode
             if (ctx->mode == REACT_MODE_TYPESCRIPT && strcmp(type, "any") != 0) {
                 sb_append_fmt(sb, "  const [%s, %s] = useState<%s>(%s);\n",
-                              name, setter, type, initial);
+                              name, setter, ts_type, initial);
             } else {
                 sb_append_fmt(sb, "  const [%s, %s] = useState(%s);\n",
                               name, setter, initial);
