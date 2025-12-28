@@ -253,12 +253,15 @@ bool kryon_cmd_buf_push(kryon_cmd_buf_t* buf, const kryon_command_t* cmd) {
     // Debug: Print first DRAW_RECT command being written
     static int push_rect_count = 0;
     if (cmd->type == KRYON_CMD_DRAW_RECT && push_rect_count < 3) {
-        fprintf(stderr, "[CMDBUF_PUSH] RECT #%d BEFORE WRITE: x=%d y=%d w=%d h=%d color=0x%08x\n",
+        fprintf(stderr, "[CMDBUF_PUSH] BUF=%p RECT #%d: x=%d y=%d w=%d h=%d color=0x%08x\n",
+                (void*)buf,
                 push_rect_count,
                 cmd->data.draw_rect.x, cmd->data.draw_rect.y,
                 cmd->data.draw_rect.w, cmd->data.draw_rect.h,
                 cmd->data.draw_rect.color);
-        fprintf(stderr, "[CMDBUF_PUSH] Writing to position %u, first 20 bytes: ", buf->head);
+        fprintf(stderr, "[CMDBUF_PUSH] head=%u tail=%u count=%u, writing at position %u\n",
+                buf->head, buf->tail, buf->count, buf->head);
+        fprintf(stderr, "[CMDBUF_PUSH] First 20 cmd bytes: ");
         for (int i = 0; i < 20 && i < kCommandSize; i++) {
             fprintf(stderr, "%02x ", cmd_bytes[i]);
         }
@@ -579,6 +582,8 @@ bool kryon_cmd_iter_next(kryon_cmd_iterator_t* iter, kryon_command_t* cmd) {
     // Debug: Print first 20 bytes from buffer before reading
     static int iter_debug_count = 0;
     if (iter_debug_count < 3) {
+        fprintf(stderr, "[CMDBUF_ITER] BUF=%p head=%u tail=%u count=%u\n",
+                (void*)iter->buf, iter->buf->head, iter->buf->tail, iter->buf->count);
         fprintf(stderr, "[CMDBUF_ITER] Reading from position %u, first 20 bytes from buffer: ", start_pos);
         for (int i = 0; i < 20; i++) {
             uint16_t pos = (start_pos + i) % KRYON_CMD_BUF_SIZE;

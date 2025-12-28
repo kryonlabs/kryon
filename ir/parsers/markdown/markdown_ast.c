@@ -5,8 +5,8 @@
  * These are internal helper functions used by the markdown parser.
  */
 
-#include "ir_markdown_ast.h"
-#include "ir_core.h"
+#include "markdown_ast.h"
+#include "../../ir_core.h"
 #include <stdlib.h>
 #include <string.h>
 

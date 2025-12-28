@@ -1,8 +1,8 @@
 #ifndef IR_HTML_TO_IR_H
 #define IR_HTML_TO_IR_H
 
-#include "ir_html_ast.h"
-#include "ir_core.h"
+#include "html_ast.h"
+#include "../../ir_core.h"
 
 // HTML to IR Conversion - Convert HTML AST to Kryon IR components
 // Maps HTML tags to IR component types for roundtrip compatibility

@@ -14,9 +14,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "ir_markdown_ast.h"
-#include "ir_builder.h"
-#include "ir_core.h"
+#include "markdown_ast.h"
+#include "../../ir_builder.h"
+#include "../../ir_core.h"
 
 // ============================================================================
 // HELPER FUNCTIONS
