@@ -26,6 +26,8 @@
 
 #include "ir_markdown_ast.h"
 #include "ir_markdown_parser.h"
+#include "ir_logic.h"
+#include "ir_html_parser.h"
 
 // Forward declaration for AST to IR converter (defined in ir_markdown_to_ir.c)
 extern IRComponent* ir_markdown_ast_to_ir(MdNode* ast_root);
@@ -1136,12 +1138,128 @@ char* ir_markdown_to_kir(const char* source, size_t length) {
     }
 
     fprintf(stderr, "=== ir_markdown_to_kir: Parse successful, root type=%d\n", root->type);
+    fprintf(stderr, "=== ir_markdown_to_kir: Extracting event handlers from HTML blocks...\n");
+    fflush(stderr);
+
+    // Extract event handlers from embedded HTML blocks
+    extern IRLogicBlock* ir_logic_block_create(void);
+    extern void ir_logic_block_free(IRLogicBlock* block);
+    extern HtmlNode* html_parse(const char* html, size_t length);
+    extern void html_node_free(HtmlNode* node);
+
+    IRLogicBlock* logic_block = ir_logic_block_create();
+    uint32_t next_handler_id = 1;
+
+    // Scan markdown source for HTML tags with event handlers
+    const char* pos = source;
+    const char* end = source + length;
+
+    while (pos < end) {
+        // Look for HTML opening tags
+        const char* tag_start = strchr(pos, '<');
+        if (!tag_start || tag_start >= end) break;
+
+        // Skip XML/DOCTYPE declarations and comments
+        if (tag_start + 1 < end && (tag_start[1] == '!' || tag_start[1] == '?')) {
+            pos = tag_start + 1;
+            continue;
+        }
+
+        // Find end of opening tag
+        const char* tag_end = strchr(tag_start, '>');
+        if (!tag_end || tag_end >= end) break;
+
+        // Extract tag content
+        size_t tag_len = tag_end - tag_start + 1;
+        char* tag_content = (char*)malloc(tag_len + 1);
+        if (tag_content) {
+            memcpy(tag_content, tag_start, tag_len);
+            tag_content[tag_len] = '\0';
+
+            // Check for event attributes (onclick, onchange, etc.)
+            if (strstr(tag_content, "onclick=") || strstr(tag_content, "onchange=") ||
+                strstr(tag_content, "onsubmit=") || strstr(tag_content, "oninput=")) {
+
+                fprintf(stderr, "=== Found HTML tag with event: %s\n", tag_content);
+
+                // Parse attributes to extract event handlers
+                char* attr_pos = tag_content;
+                while (*attr_pos) {
+                    // Look for event attributes
+                    char* event_attr = NULL;
+                    char* event_type = NULL;
+
+                    if ((event_attr = strstr(attr_pos, "onclick=\"")) != NULL) {
+                        event_type = "click";
+                        event_attr += 9; // strlen("onclick=\"")
+                    } else if ((event_attr = strstr(attr_pos, "onchange=\"")) != NULL) {
+                        event_type = "change";
+                        event_attr += 10; // strlen("onchange=\"")
+                    } else if ((event_attr = strstr(attr_pos, "onsubmit=\"")) != NULL) {
+                        event_type = "submit";
+                        event_attr += 10; // strlen("onsubmit=\"")
+                    } else if ((event_attr = strstr(attr_pos, "oninput=\"")) != NULL) {
+                        event_type = "input";
+                        event_attr += 9; // strlen("oninput=\"")
+                    } else {
+                        break;
+                    }
+
+                    // Find closing quote
+                    char* quote_end = strchr(event_attr, '"');
+                    if (quote_end) {
+                        size_t handler_len = quote_end - event_attr;
+                        char* handler_source = (char*)malloc(handler_len + 1);
+                        if (handler_source) {
+                            memcpy(handler_source, event_attr, handler_len);
+                            handler_source[handler_len] = '\0';
+
+                            // Create handler function
+                            char handler_name[128];
+                            snprintf(handler_name, sizeof(handler_name), "handler_%u_%s",
+                                   next_handler_id++, event_type);
+
+                            extern IRLogicFunction* ir_logic_function_create(const char* name);
+                            extern void ir_logic_function_add_source(IRLogicFunction* func,
+                                                                     const char* language,
+                                                                     const char* source);
+                            extern void ir_logic_block_add_function(IRLogicBlock* block,
+                                                                    IRLogicFunction* func);
+
+                            IRLogicFunction* func = ir_logic_function_create(handler_name);
+                            ir_logic_function_add_source(func, "javascript", handler_source);
+                            ir_logic_block_add_function(logic_block, func);
+
+                            fprintf(stderr, "=== Extracted event handler: %s -> %s\n",
+                                   handler_name, handler_source);
+
+                            free(handler_source);
+                        }
+                        attr_pos = quote_end + 1;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            free(tag_content);
+        }
+
+        pos = tag_end + 1;
+    }
+
+    fprintf(stderr, "=== ir_markdown_to_kir: Extracted %d event handlers\n",
+            logic_block->function_count);
     fprintf(stderr, "=== ir_markdown_to_kir: Starting serialization...\n");
     fflush(stderr);
 
     // Serialize to JSON string (defined in ir_json_v2.c)
-    extern char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest);
-    char* json_str = ir_serialize_json(root, NULL);
+    extern char* ir_serialize_json_complete(IRComponent* root, IRReactiveManifest* manifest,
+                                            struct IRLogicBlock* logic_block,
+                                            IRSourceMetadata* source_metadata);
+    char* json_str = ir_serialize_json_complete(root, NULL, logic_block, NULL);
+
+    // Free logic_block (serialization makes a copy)
+    ir_logic_block_free(logic_block);
 
     if (!json_str) {
         fprintf(stderr, "=== ir_markdown_to_kir: Serialization failed\n");

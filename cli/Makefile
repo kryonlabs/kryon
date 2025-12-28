@@ -33,7 +33,7 @@ OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 TARGET = kryon
 
 # Codegen object files
-CODEGEN_OBJS = ../codegens/kry/kry_codegen.o ../codegens/tsx/tsx_codegen.o ../codegens/nim/nim_codegen.o ../codegens/lua/lua_codegen.o ../codegens/react_common.o
+CODEGEN_OBJS = ../codegens/kry/kry_codegen.o ../codegens/tsx/tsx_codegen.o ../codegens/nim/nim_codegen.o ../codegens/lua/lua_codegen.o ../codegens/markdown/markdown_codegen.o ../codegens/react_common.o
 
 # Default target
 all: $(TARGET)

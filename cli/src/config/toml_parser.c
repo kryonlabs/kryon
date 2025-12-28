@@ -79,6 +79,62 @@ static void toml_table_add(TOMLTable* table, const char* key, const char* value,
     table->count++;
 }
 
+/**
+ * Parse inline table syntax: { key1 = value1, key2 = value2 }
+ * Adds entries to the TOML table with the format: base_key.inner_key
+ */
+static void parse_inline_table(TOMLTable* table, const char* base_key, const char* inline_table, int line_num) {
+    if (!table || !base_key || !inline_table) return;
+
+    // Find the opening and closing braces
+    const char* start = strchr(inline_table, '{');
+    const char* end = strrchr(inline_table, '}');
+
+    if (!start || !end || end <= start) return;
+
+    // Extract the content between braces
+    size_t content_len = end - start - 1;
+    char* content = (char*)malloc(content_len + 1);
+    if (!content) return;
+
+    strncpy(content, start + 1, content_len);
+    content[content_len] = '\0';
+
+    // Parse comma-separated key-value pairs
+    char* pair_start = content;
+    char* pair_end;
+
+    while (*pair_start) {
+        // Find the next comma or end of string
+        pair_end = strchr(pair_start, ',');
+        if (pair_end) {
+            *pair_end = '\0';
+        }
+
+        // Parse this key-value pair
+        char* equals = strchr(pair_start, '=');
+        if (equals) {
+            *equals = '\0';
+            char* key = trim_whitespace(pair_start);
+            char* value = trim_whitespace(equals + 1);
+
+            // Remove quotes from value
+            value = remove_quotes(value);
+
+            // Build full key: base_key.inner_key
+            char full_key[512];
+            snprintf(full_key, sizeof(full_key), "%s.%s", base_key, key);
+
+            toml_table_add(table, full_key, value, line_num);
+        }
+
+        if (!pair_end) break;
+        pair_start = pair_end + 1;
+    }
+
+    free(content);
+}
+
 static const char* toml_table_get(TOMLTable* table, const char* key) {
     if (!table || !key) return NULL;
 
@@ -159,9 +215,6 @@ TOMLTable* toml_parse_file(const char* path) {
                 char* key = trim_whitespace(line);
                 char* value = trim_whitespace(equals + 1);
 
-                // Remove quotes from value
-                value = remove_quotes(value);
-
                 // Build full key with section prefix
                 char full_key[512];
                 if (current_section[0]) {
@@ -171,7 +224,14 @@ TOMLTable* toml_parse_file(const char* path) {
                     full_key[sizeof(full_key) - 1] = '\0';
                 }
 
-                toml_table_add(table, full_key, value, line_num);
+                // Check if value is an inline table { ... }
+                if (value[0] == '{') {
+                    parse_inline_table(table, full_key, value, line_num);
+                } else {
+                    // Remove quotes from simple value
+                    value = remove_quotes(value);
+                    toml_table_add(table, full_key, value, line_num);
+                }
             }
         }
 
@@ -207,6 +267,78 @@ bool toml_get_bool(TOMLTable* table, const char* key, bool default_value) {
     if (!value) return default_value;
 
     return strcmp(value, "true") == 0 || strcmp(value, "1") == 0;
+}
+
+/**
+ * Get all unique plugin names from TOML table
+ * Returns array of plugin names and sets count
+ * Caller must free the returned array and each string
+ */
+char** toml_get_plugin_names(TOMLTable* table, int* count) {
+    if (!table || !count) return NULL;
+
+    *count = 0;
+
+    // First pass: count unique plugin names
+    char** temp_names = (char**)malloc(table->count * sizeof(char*));
+    if (!temp_names) return NULL;
+
+    for (int i = 0; i < table->count; i++) {
+        const char* key = table->entries[i].key;
+
+        // Check if key starts with "plugins."
+        if (strncmp(key, "plugins.", 8) != 0) continue;
+
+        // Extract plugin name (between "plugins." and next ".")
+        const char* name_start = key + 8;
+        const char* name_end = strchr(name_start, '.');
+
+        if (!name_end) continue;  // Skip if no second dot
+
+        // Extract the plugin name
+        size_t name_len = name_end - name_start;
+        char* plugin_name = (char*)malloc(name_len + 1);
+        if (!plugin_name) continue;
+
+        strncpy(plugin_name, name_start, name_len);
+        plugin_name[name_len] = '\0';
+
+        // Check if we already have this plugin name
+        bool found = false;
+        for (int j = 0; j < *count; j++) {
+            if (strcmp(temp_names[j], plugin_name) == 0) {
+                found = true;
+                free(plugin_name);
+                break;
+            }
+        }
+
+        if (!found) {
+            temp_names[*count] = plugin_name;
+            (*count)++;
+        }
+    }
+
+    // Allocate final array with exact size
+    if (*count == 0) {
+        free(temp_names);
+        return NULL;
+    }
+
+    char** names = (char**)malloc(*count * sizeof(char*));
+    if (!names) {
+        for (int i = 0; i < *count; i++) {
+            free(temp_names[i]);
+        }
+        free(temp_names);
+        *count = 0;
+        return NULL;
+    }
+
+    memcpy(names, temp_names, *count * sizeof(char*));
+    free(temp_names);
+
+    return names;
 }
 
 /**

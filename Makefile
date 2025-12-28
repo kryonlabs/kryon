@@ -12,6 +12,7 @@
 .PHONY: build-terminal build-desktop build-web build-default build-all-variants
 .PHONY: test-serialization test-validation test-conversion test-backend test-integration test-all test-modular
 .PHONY: generate-examples validate-examples clean-generated
+.PHONY: build-android clean-android install-android check-android-ndk
 
 # Configuration
 VERSION = 0.2.0
@@ -524,14 +525,37 @@ generate-bindings:
 	@echo "✓ Bindings generated: bindings/nim/$(PLUGIN)_generated.nim"
 
 # Clean build artifacts
+# ============================================================================
+# Android Platform Targets
+# ============================================================================
+
+# Build Android platform library for all ABIs
+build-android:
+	@echo "Building Android platform library..."
+	$(MAKE) -C platforms/android ndk-build
+
+# Clean Android build artifacts
+clean-android:
+	@echo "Cleaning Android build artifacts..."
+	$(MAKE) -C platforms/android clean
+
+# Check Android NDK installation
+check-android-ndk:
+	@echo "Checking Android NDK installation..."
+	@$(MAKE) -C platforms/android check-ndk
+
+# ============================================================================
+# Clean Targets
+# ============================================================================
+
 clean:
 	@echo "Cleaning build artifacts..."
 	rm -rf $(BUILD_DIR)
 	rm -rf $(BIN_DIR)
 	rm -rf nimcache/
 
-# Deep clean (including installation artifacts)
-distclean: clean
+# Deep clean (including installation artifacts and Android)
+distclean: clean clean-android
 	@echo "Deep cleaning..."
 	rm -f $(LIB_FILE)
 	rm -f *.pc
@@ -568,6 +592,11 @@ help:
 	@echo "  doctor        System health check and dependencies"
 	@echo "  test          Run test suite"
 	@echo "  examples      Build example programs"
+	@echo ""
+	@echo "Android Platform:"
+	@echo "  build-android       Build Android platform library (all ABIs)"
+	@echo "  clean-android       Clean Android build artifacts"
+	@echo "  check-android-ndk   Verify Android NDK installation"
 	@echo "  generate-examples    Generate all examples from .kry files"
 	@echo "  validate-examples    Validate round-trip transpilation"
 	@echo "  clean-generated      Clean generated example files"

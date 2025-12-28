@@ -256,6 +256,28 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
         }
     }
 
+    // Checkbox label
+    if (strcmp(name, "label") == 0 && value->type == KRY_VALUE_STRING) {
+        ir_set_text_content(component, value->string_value);
+        return;
+    }
+
+    // Checkbox checked state
+    if (strcmp(name, "checked") == 0) {
+        bool checked = false;
+        if (value->type == KRY_VALUE_IDENTIFIER) {
+            if (strcmp(value->identifier, "true") == 0) {
+                checked = true;
+            } else if (strcmp(value->identifier, "false") == 0) {
+                checked = false;
+            }
+        } else if (value->type == KRY_VALUE_NUMBER) {
+            checked = (value->number_value != 0);
+        }
+        ir_set_checkbox_state(component, checked);
+        return;
+    }
+
     // Event handlers - create logic functions and event bindings
     if (strcmp(name, "onClick") == 0) {
         if (value->type == KRY_VALUE_EXPRESSION && ctx->logic_block) {

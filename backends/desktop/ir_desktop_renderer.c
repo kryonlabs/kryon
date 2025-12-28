@@ -29,6 +29,7 @@
 #include "../../ir/ir_animation.h"
 #include "../../ir/ir_hot_reload.h"
 #include "../../ir/ir_style_vars.h"
+#include "../../ir/ir_executor.h"
 
 #ifdef ENABLE_SDL3
 #include <SDL3/SDL.h>
@@ -607,17 +608,40 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
             break;
         }
 
-        /* Handle mouse input for hover/click */
+        /* Handle mouse input */
         Vector2 mouse_pos = GetMousePosition();
-        bool mouse_over_button = false;
 
-        // Check if mouse is over any interactive component
+        // Find component under mouse
         IRComponent* hovered = ir_find_component_at_point(renderer->last_root, mouse_pos.x, mouse_pos.y);
-        if (hovered && (hovered->type == IR_COMPONENT_BUTTON || hovered->type == IR_COMPONENT_INPUT)) {
-            mouse_over_button = true;
+        bool is_hovering = hovered && (hovered->type == IR_COMPONENT_BUTTON || hovered->type == IR_COMPONENT_INPUT);
+
+        // Update cursor
+        if (is_hovering) {
             SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
         } else {
             SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+        }
+
+        // Handle click events
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && hovered) {
+            if (hovered->type == IR_COMPONENT_BUTTON) {
+                // Find and trigger click event
+                IREvent* ir_event = ir_find_event(hovered, IR_EVENT_CLICK);
+                if (ir_event && ir_event->logic_id) {
+                    printf("[raylib] Button clicked! logic_id=%s\n", ir_event->logic_id);
+                    // Execute the event handler via IR executor
+                    IRExecutorContext* executor = ir_executor_get_global();
+                    if (executor) {
+                        printf("[raylib] Executor found, calling handler\n");
+                        ir_executor_set_root(executor, renderer->last_root);
+                        ir_executor_handle_event_by_logic_id(executor, hovered->id, ir_event->logic_id);
+                    } else {
+                        printf("[raylib] WARNING: No executor available!\n");
+                    }
+                } else {
+                    printf("[raylib] Button clicked but no event/logic_id found\n");
+                }
+            }
         }
 
         /* Process reactive updates */

@@ -150,14 +150,12 @@ int cmd_run(int argc, char** argv) {
         printf("✓ Compiled to KIR: %s\n", kir_file);
 
         // Load the KIR file
-        fprintf(stderr, "[DEBUG] Loading KIR file: %s\n", kir_file);
         IRComponent* root = ir_read_json_file(kir_file);
         if (!root) {
             fprintf(stderr, "Error: Failed to load KIR file: %s\n", kir_file);
             if (free_target) free((char*)target_file);
             return 1;
         }
-        fprintf(stderr, "[DEBUG] KIR file loaded successfully\n");
 
         // Create desktop renderer config with defaults
         int window_width = 800;
@@ -166,42 +164,24 @@ int cmd_run(int argc, char** argv) {
 
         // Override with window properties from IR metadata if available
         extern IRContext* g_ir_context;
-        fprintf(stderr, "[DEBUG] Checking IR context for window properties\n");
         if (g_ir_context) {
-            fprintf(stderr, "[DEBUG] IR context exists\n");
             if (g_ir_context->metadata) {
-                fprintf(stderr, "[DEBUG] Metadata exists\n");
                 if (g_ir_context->metadata->window_width > 0) {
                     window_width = g_ir_context->metadata->window_width;
-                    fprintf(stderr, "[DEBUG] Using window width: %d\n", window_width);
                 }
                 if (g_ir_context->metadata->window_height > 0) {
                     window_height = g_ir_context->metadata->window_height;
-                    fprintf(stderr, "[DEBUG] Using window height: %d\n", window_height);
                 }
                 if (g_ir_context->metadata->window_title) {
                     window_title = g_ir_context->metadata->window_title;
-                    fprintf(stderr, "[DEBUG] Using window title: %s\n", window_title);
                 }
-            } else {
-                fprintf(stderr, "[DEBUG] No metadata in IR context\n");
             }
-        } else {
-            fprintf(stderr, "[DEBUG] No IR context found\n");
         }
 
-        fprintf(stderr, "[DEBUG] About to create renderer config with: %dx%d, title='%s'\n", window_width, window_height, window_title);
-        fflush(stderr);
         DesktopRendererConfig config = desktop_renderer_config_sdl3(window_width, window_height, window_title);
-        fprintf(stderr, "[DEBUG] Created renderer config successfully\n");
-        fflush(stderr);
 
         // Read kryon.toml to determine renderer
-        fprintf(stderr, "[DEBUG] Loading config file from current directory\n");
-        fflush(stderr);
         KryonConfig* kryon_config = config_find_and_load();
-        fprintf(stderr, "[DEBUG] Config loaded: %p\n", (void*)kryon_config);
-        fflush(stderr);
         if (kryon_config && kryon_config->desktop_renderer) {
             if (strcmp(kryon_config->desktop_renderer, "raylib") == 0) {
                 printf("Renderer: raylib (from kryon.toml)\n");
@@ -231,14 +211,12 @@ int cmd_run(int argc, char** argv) {
     }
 
     // Execute KIR files directly
-    fprintf(stderr, "[DEBUG] Loading KIR file: %s\n", target_file);
     IRComponent* root = ir_read_json_file(target_file);
     if (!root) {
         fprintf(stderr, "Error: Failed to load KIR file: %s\n", target_file);
         if (free_target) free((char*)target_file);
         return 1;
     }
-    fprintf(stderr, "[DEBUG] KIR file loaded successfully\n");
 
     // Create desktop renderer config with defaults
     int window_width = 800;
@@ -247,42 +225,24 @@ int cmd_run(int argc, char** argv) {
 
     // Override with window properties from IR metadata if available
     extern IRContext* g_ir_context;
-    fprintf(stderr, "[DEBUG] Checking IR context for window properties\n");
     if (g_ir_context) {
-        fprintf(stderr, "[DEBUG] IR context exists\n");
         if (g_ir_context->metadata) {
-            fprintf(stderr, "[DEBUG] Metadata exists\n");
             if (g_ir_context->metadata->window_width > 0) {
                 window_width = g_ir_context->metadata->window_width;
-                fprintf(stderr, "[DEBUG] Using window width: %d\n", window_width);
             }
             if (g_ir_context->metadata->window_height > 0) {
                 window_height = g_ir_context->metadata->window_height;
-                fprintf(stderr, "[DEBUG] Using window height: %d\n", window_height);
             }
             if (g_ir_context->metadata->window_title) {
                 window_title = g_ir_context->metadata->window_title;
-                fprintf(stderr, "[DEBUG] Using window title: %s\n", window_title);
             }
-        } else {
-            fprintf(stderr, "[DEBUG] No metadata in IR context\n");
         }
-    } else {
-        fprintf(stderr, "[DEBUG] No IR context found\n");
     }
 
-    fprintf(stderr, "[DEBUG] About to create renderer config with: %dx%d, title='%s'\n", window_width, window_height, window_title);
-    fflush(stderr);
     DesktopRendererConfig config = desktop_renderer_config_sdl3(window_width, window_height, window_title);
-    fprintf(stderr, "[DEBUG] Created renderer config successfully\n");
-    fflush(stderr);
 
     // Read kryon.toml to determine renderer
-    fprintf(stderr, "[DEBUG] Loading config file from current directory\n");
-    fflush(stderr);
     KryonConfig* kryon_config = config_find_and_load();
-    fprintf(stderr, "[DEBUG] Config loaded: %p\n", (void*)kryon_config);
-    fflush(stderr);
     if (kryon_config && kryon_config->desktop_renderer) {
         if (strcmp(kryon_config->desktop_renderer, "raylib") == 0) {
             printf("Renderer: raylib (from kryon.toml)\n");

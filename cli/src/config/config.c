@@ -85,48 +85,75 @@ static void config_parse_pages(KryonConfig* config, TOMLTable* toml) {
 }
 
 /**
- * Parse plugins array from TOML
+ * Parse plugins from TOML using named plugin syntax
+ * Format: [plugins]
+ *         storage = { path = "../kryon-storage", version = "1.0.0" }
  */
 static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
-    // Count plugins by looking for plugins.N.* keys
-    int max_plugin_idx = -1;
+    // Get all plugin names from TOML
+    int plugin_count = 0;
+    char** plugin_names = toml_get_plugin_names(toml, &plugin_count);
 
-    for (int i = 0; i < 100; i++) {
-        char key[128];
-        snprintf(key, sizeof(key), "plugins.%d.name", i);
-        if (toml_get_string(toml, key, NULL)) {
-            max_plugin_idx = i;
-        }
-    }
-
-    if (max_plugin_idx < 0) {
+    if (!plugin_names || plugin_count == 0) {
         config->plugins_count = 0;
         config->plugins = NULL;
         return;
     }
 
-    config->plugins_count = max_plugin_idx + 1;
-    config->plugins = (PluginDep*)calloc(config->plugins_count, sizeof(PluginDep));
+    // Allocate plugin array
+    config->plugins = (PluginDep*)calloc(plugin_count, sizeof(PluginDep));
     if (!config->plugins) {
+        // Free plugin names
+        for (int i = 0; i < plugin_count; i++) {
+            free(plugin_names[i]);
+        }
+        free(plugin_names);
         config->plugins_count = 0;
         return;
     }
 
-    for (int i = 0; i <= max_plugin_idx; i++) {
-        char key[128];
+    config->plugins_count = plugin_count;
 
-        snprintf(key, sizeof(key), "plugins.%d.name", i);
-        const char* name = toml_get_string(toml, key, NULL);
-        if (name) {
-            config->plugins[i].name = str_copy(name);
+    // Parse each plugin's properties
+    for (int i = 0; i < plugin_count; i++) {
+        const char* plugin_name = plugin_names[i];
+        PluginDep* plugin = &config->plugins[i];
+
+        // Set plugin name
+        plugin->name = str_copy(plugin_name);
+
+        // Get plugin properties
+        char key[256];
+
+        // Get path (required)
+        snprintf(key, sizeof(key), "plugins.%s.path", plugin_name);
+        const char* path = toml_get_string(toml, key, NULL);
+        if (path) {
+            plugin->path = str_copy(path);
         }
 
-        snprintf(key, sizeof(key), "plugins.%d.version", i);
+        // Get version (optional)
+        snprintf(key, sizeof(key), "plugins.%s.version", plugin_name);
         const char* version = toml_get_string(toml, key, NULL);
         if (version) {
-            config->plugins[i].version = str_copy(version);
+            plugin->version = str_copy(version);
+        } else {
+            plugin->version = NULL;
         }
+
+        // Get enabled flag (optional, default: true)
+        snprintf(key, sizeof(key), "plugins.%s.enabled", plugin_name);
+        plugin->enabled = toml_get_bool(toml, key, true);
+
+        // Resolved path will be set later
+        plugin->resolved_path = NULL;
     }
+
+    // Free plugin names
+    for (int i = 0; i < plugin_count; i++) {
+        free(plugin_names[i]);
+    }
+    free(plugin_names);
 }
 
 /**
@@ -467,7 +494,9 @@ void config_free(KryonConfig* config) {
     if (config->plugins) {
         for (int i = 0; i < config->plugins_count; i++) {
             free(config->plugins[i].name);
+            free(config->plugins[i].path);
             free(config->plugins[i].version);
+            free(config->plugins[i].resolved_path);
         }
         free(config->plugins);
     }

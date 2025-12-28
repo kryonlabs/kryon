@@ -226,6 +226,24 @@ typedef enum {
     KRYON_CMD_POP_TRANSFORM  = 10,
     KRYON_CMD_DRAW_POLYGON   = 11,
 
+    // Advanced rendering commands (12-27)
+    KRYON_CMD_DRAW_ROUNDED_RECT   = 12,  // Rounded rectangle with radius
+    KRYON_CMD_DRAW_GRADIENT        = 13,  // Linear/radial/conic gradients
+    KRYON_CMD_DRAW_SHADOW          = 14,  // Box shadow (before main shape)
+    KRYON_CMD_DRAW_TEXT_SHADOW     = 15,  // Text shadow effect
+    KRYON_CMD_DRAW_IMAGE           = 16,  // Image with transforms
+    KRYON_CMD_SET_OPACITY          = 17,  // Global opacity modifier
+    KRYON_CMD_PUSH_OPACITY         = 18,  // Save opacity state
+    KRYON_CMD_POP_OPACITY          = 19,  // Restore opacity state
+    KRYON_CMD_SET_BLEND_MODE       = 20,  // Blend mode
+    KRYON_CMD_BEGIN_PASS           = 21,  // Start deferred render pass
+    KRYON_CMD_END_PASS             = 22,  // Execute deferred pass
+    KRYON_CMD_DRAW_TEXT_WRAPPED    = 23,  // Text with word wrapping
+    KRYON_CMD_DRAW_TEXT_FADE       = 24,  // Text with fade effect
+    KRYON_CMD_DRAW_TEXT_STYLED     = 25,  // Rich text with inline styles
+    KRYON_CMD_LOAD_FONT            = 26,  // Register font resource
+    KRYON_CMD_LOAD_IMAGE           = 27,  // Register image resource
+
     // Plugin commands (100-255)
     KRYON_CMD_PLUGIN_START   = 100,
 
@@ -322,6 +340,94 @@ typedef struct {
             uint16_t width, height;  // Tilemap dimensions in tiles
             uint16_t tile_width, tile_height;  // Tile size in pixels
         } tilemap_render;
+
+        // Advanced rendering command structures
+        struct {
+            int16_t x, y;
+            uint16_t w, h;
+            uint16_t radius;         // Corner radius in pixels
+            uint32_t color;
+        } draw_rounded_rect;
+        struct {
+            int16_t x, y;
+            uint16_t w, h;
+            uint8_t gradient_type;   // 0=linear, 1=radial, 2=conic
+            int16_t angle;           // For linear gradients (degrees)
+            uint8_t stop_count;      // Number of gradient stops (max 8)
+            struct {
+                float position;      // 0.0 to 1.0
+                uint32_t color;
+            } stops[8];
+        } draw_gradient;
+        struct {
+            int16_t x, y;
+            uint16_t w, h;
+            int16_t offset_x, offset_y;
+            uint16_t blur_radius;    // For future use
+            uint16_t spread_radius;
+            uint32_t color;
+            bool inset;
+        } draw_shadow;
+        struct {
+            const char* text;
+            int16_t x, y;
+            int16_t offset_x, offset_y;
+            uint16_t blur_radius;    // For future use
+            uint32_t color;
+            char text_storage[128];  // Inline text storage
+        } draw_text_shadow;
+        struct {
+            uint16_t image_id;
+            int16_t x, y;
+            uint16_t w, h;           // 0 = use original size
+            float opacity;
+        } draw_image;
+        struct {
+            float opacity;           // 0.0 to 1.0
+        } set_opacity;
+        struct {
+            uint8_t blend_mode;      // 0=normal, 1=add, 2=multiply, etc.
+        } set_blend_mode;
+        struct {
+            uint8_t pass_id;         // 0=main, 1=overlay, etc.
+        } begin_pass;
+        struct {
+            const char* text;
+            int16_t x, y;
+            uint16_t max_width;
+            uint16_t font_id;
+            uint8_t font_size;
+            uint8_t font_weight;
+            uint8_t font_style;
+            uint32_t color;
+            uint16_t line_height;    // 0 = auto
+            char text_storage[128];
+        } draw_text_wrapped;
+        struct {
+            const char* text;
+            int16_t x, y;
+            uint16_t w, h;           // Fade region
+            uint16_t font_id;
+            uint8_t font_size;
+            uint8_t font_weight;
+            uint8_t font_style;
+            uint32_t color;
+            float fade_ratio;        // 0.0 to 1.0 (how much to fade)
+            char text_storage[128];
+        } draw_text_fade;
+        struct {
+            uint16_t font_id;
+            const char* path;
+            uint8_t size;
+            uint8_t weight;          // 0=normal, 1=bold
+            uint8_t style;           // 0=normal, 1=italic
+            char path_storage[256];  // Inline path storage
+        } load_font;
+        struct {
+            uint16_t image_id;
+            const char* path;
+            char path_storage[256];  // Inline path storage
+        } load_image;
     } data;
 } kryon_command_t;
 
