@@ -792,40 +792,55 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
     // NOTE: For loops outside static blocks are runtime reactive (IRReactiveForLoop)
     fprintf(stderr, "[DEBUG] expand_for_loop: compile_mode=%d, current_static_block_id=%s\n",
             ctx->compile_mode, ctx->current_static_block_id ? ctx->current_static_block_id : "NULL");
-    if (ctx->compile_mode == IR_COMPILE_MODE_HYBRID && ctx->current_static_block_id != NULL) {
-        fprintf(stderr, "[DEBUG] Preserving for loop template!\n");
-        // Get collection reference as string
-        const char* collection_ref = NULL;
-        if (collection->type == KRY_VALUE_IDENTIFIER) {
-            collection_ref = collection->identifier;
-        } else if (collection->type == KRY_VALUE_EXPRESSION) {
-            collection_ref = collection->expression;
-        }
 
-        // Create template component (convert first child without parameter substitution)
-        // TODO: For now, we'll set template to NULL and add it in Phase 5 during codegen
-        // The collection_ref is enough to regenerate the for loop structure
-
-        IRForLoopData* loop_data = ir_source_structures_add_for_loop(
-            ctx->source_structures,
-            ctx->current_static_block_id,
-            iter_name,
-            collection_ref,
-            NULL  // template_component - will be added when we implement deep copy
-        );
-
-        if (loop_data) {
-            // Store parent component ID for later reference
-            if (parent) {
-                // The expanded components will be added as children, we'll track their IDs
-                // For now, just store the for loop metadata
-            }
-        }
-    }
+    // Track expanded component IDs for source structures
+    IRForLoopData* loop_data = NULL;
+    uint32_t* expanded_ids = NULL;
+    size_t expanded_count = 0;
+    size_t expanded_capacity = 0;
 
     // ALSO expand for runtime execution (current behavior)
     // Handle different collection types
     if (collection->type == KRY_VALUE_ARRAY) {
+        // HYBRID MODE: Create loop template metadata (only when we have the actual array)
+        if (ctx->compile_mode == IR_COMPILE_MODE_HYBRID && ctx->current_static_block_id != NULL) {
+            fprintf(stderr, "[DEBUG] Preserving for loop template!\n");
+            // Get collection reference as string
+            const char* collection_ref = NULL;
+            // Try to find the original identifier name from the parent call
+            // For now, use a generic name - this will be improved later
+            collection_ref = "items";  // FIXME: Pass this from parent call
+
+            // Create template component (convert first child WITHOUT parameter substitution)
+            IRComponent* template_comp = NULL;
+            fprintf(stderr, "[DEBUG] for_node->first_child=%p\n", (void*)for_node->first_child);
+            if (for_node->first_child) {
+                fprintf(stderr, "[DEBUG] for_node->first_child->type=%u (COMPONENT=%u)\n",
+                        for_node->first_child->type, KRY_NODE_COMPONENT);
+            }
+            if (for_node->first_child && for_node->first_child->type == KRY_NODE_COMPONENT) {
+                fprintf(stderr, "[DEBUG] Creating template component from first child\n");
+                template_comp = convert_node(ctx, for_node->first_child);
+                if (template_comp) {
+                    fprintf(stderr, "[DEBUG] Template component created: tag=%s, id=%u\n",
+                            template_comp->tag ? template_comp->tag : "NULL", template_comp->id);
+                }
+            } else {
+                fprintf(stderr, "[DEBUG] Skipping template creation - no component child found\n");
+            }
+
+            loop_data = ir_source_structures_add_for_loop(
+                ctx->source_structures,
+                ctx->current_static_block_id,
+                iter_name,
+                collection_ref,
+                template_comp  // Store template component
+            );
+
+            // Initialize expanded IDs array
+            expanded_capacity = 16;  // Initial capacity
+            expanded_ids = (uint32_t*)malloc(expanded_capacity * sizeof(uint32_t));
+        }
         // Iterate over array elements
         for (size_t i = 0; i < collection->array.count; i++) {
             KryValue* element = collection->array.elements[i];
@@ -910,6 +925,15 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
                     IRComponent* child_component = convert_node(&loop_ctx, loop_body_child);
                     if (child_component) {
                         ir_add_child(parent, child_component);
+
+                        // Track component ID for source structures
+                        if (loop_data && expanded_ids) {
+                            if (expanded_count >= expanded_capacity) {
+                                expanded_capacity *= 2;
+                                expanded_ids = (uint32_t*)realloc(expanded_ids, expanded_capacity * sizeof(uint32_t));
+                            }
+                            expanded_ids[expanded_count++] = child_component->id;
+                        }
                     }
                 }
                 loop_body_child = loop_body_child->next_sibling;
@@ -940,6 +964,21 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
                 break;
             }
         }
+    }
+
+    // Update loop_data with expanded component IDs
+    if (loop_data && expanded_ids && expanded_count > 0) {
+        loop_data->expanded_component_ids = expanded_ids;
+        loop_data->expanded_count = (uint32_t)expanded_count;
+        fprintf(stderr, "[DEBUG] Updated loop_data with %zu expanded component IDs\n", expanded_count);
+        for (size_t i = 0; i < expanded_count; i++) {
+            fprintf(stderr, "[DEBUG]   ID[%zu] = %u\n", i, expanded_ids[i]);
+        }
+    } else if (expanded_ids) {
+        // Clean up if we didn't use the array
+        fprintf(stderr, "[DEBUG] Cleaning up expanded_ids (loop_data=%p, expanded_count=%zu)\n",
+                (void*)loop_data, expanded_count);
+        free(expanded_ids);
     }
 }
 
@@ -1120,15 +1159,33 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
 
                             // Convert value to JSON string for preservation
                             const char* value_json = NULL;
+                            static char json_buffer[4096];  // Static buffer for JSON serialization
                             if (static_child->value) {
                                 if (static_child->value->type == KRY_VALUE_STRING) {
-                                    value_json = static_child->value->string_value;
+                                    // Quote string values
+                                    snprintf(json_buffer, sizeof(json_buffer), "\"%s\"", static_child->value->string_value);
+                                    value_json = json_buffer;
                                 } else if (static_child->value->type == KRY_VALUE_ARRAY) {
-                                    // TODO: Serialize array to JSON string
-                                    value_json = "[...]";  // Placeholder
+                                    // Serialize array to JSON
+                                    size_t pos = 0;
+                                    pos += snprintf(json_buffer + pos, sizeof(json_buffer) - pos, "[");
+                                    for (size_t i = 0; i < static_child->value->array.count; i++) {
+                                        if (i > 0) pos += snprintf(json_buffer + pos, sizeof(json_buffer) - pos, ", ");
+                                        KryValue* elem = static_child->value->array.elements[i];
+                                        if (elem->type == KRY_VALUE_STRING) {
+                                            pos += snprintf(json_buffer + pos, sizeof(json_buffer) - pos, "\"%s\"", elem->string_value);
+                                        } else if (elem->type == KRY_VALUE_NUMBER) {
+                                            pos += snprintf(json_buffer + pos, sizeof(json_buffer) - pos, "%g", elem->number_value);
+                                        }
+                                    }
+                                    pos += snprintf(json_buffer + pos, sizeof(json_buffer) - pos, "]");
+                                    value_json = json_buffer;
                                 } else if (static_child->value->type == KRY_VALUE_OBJECT) {
                                     // TODO: Serialize object to JSON string
                                     value_json = "{...}";  // Placeholder
+                                } else if (static_child->value->type == KRY_VALUE_NUMBER) {
+                                    snprintf(json_buffer, sizeof(json_buffer), "%g", static_child->value->number_value);
+                                    value_json = json_buffer;
                                 }
                             }
 

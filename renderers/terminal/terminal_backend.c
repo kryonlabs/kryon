@@ -4,6 +4,8 @@
  * Implements a terminal-based renderer using libtickit for cross-platform
  * terminal UI capabilities. This backend provides TUI (Terminal User Interface)
  * support while maintaining compatibility with Kryon's component model.
+ *
+ * CRITICAL: This backend is source-language agnostic and works with IR only.
  */
 
 #include <stdlib.h>
@@ -15,9 +17,12 @@
 #include <tickit.h>
 
 #include "../../core/include/kryon.h"
-#include "../../ir/ir_vm.h"
-#include "../../ir/ir_metadata.h"
 #include "terminal_backend.h"
+
+// IR integration (source-agnostic)
+#include "../../ir/ir_core.h"
+#include "../../ir/ir_serialization.h"
+#include "terminal_ir_bridge.h"
 
 // ============================================================================
 // Terminal Renderer State
@@ -60,10 +65,6 @@ typedef struct {
     char* char_buffer;
     size_t buffer_size;
 
-    // Bytecode VM (Phase 3: Backend Integration)
-    IRVM* vm;
-    IRMetadata* metadata;
-
 } kryon_terminal_state_t;
 
 // ============================================================================
@@ -82,24 +83,6 @@ static void terminal_set_clear_color(kryon_renderer_t* renderer, uint32_t color)
 // ============================================================================
 // Utility Functions
 // ============================================================================
-
-// Convert Kryon color (0xRRGGBBAA) to Tickit color
-static int kryon_color_to_tickit(uint32_t kryon_color) {
-    uint8_t r = (kryon_color >> 24) & 0xFF;
-    uint8_t g = (kryon_color >> 16) & 0xFF;
-    uint8_t b = (kryon_color >> 8) & 0xFF;
-    uint8_t a = kryon_color & 0xFF;
-
-    // Handle alpha by blending with background
-    if (a < 255) {
-        // Simple alpha blending with black background
-        r = (r * a) / 255;
-        g = (g * a) / 255;
-        b = (b * a) / 255;
-    }
-
-    return (r << 16) | (g << 8) | b;
-}
 
 // Mark region as dirty
 static void mark_dirty(kryon_terminal_state_t* state, int x, int y, int w, int h) {
@@ -128,7 +111,7 @@ static void handle_sigwinch(int sig) {
 // Drawing Functions
 // ============================================================================
 
-// Draw rectangle in terminal cells
+// Draw rectangle in terminal cells (using ANSI codes)
 static void terminal_draw_rect(kryon_terminal_state_t* state,
                                int16_t x, int16_t y, uint16_t w, uint16_t h, uint32_t color) {
     if (x >= state->term_width || y >= state->term_height) return;
@@ -139,154 +122,135 @@ static void terminal_draw_rect(kryon_terminal_state_t* state,
     uint16_t draw_w = (draw_x + w > state->term_width) ? state->term_width - draw_x : w;
     uint16_t draw_h = (draw_y + h > state->term_height) ? state->term_height - draw_y : h;
 
-    // Set pen for background color
-    TickitPen* pen = tickit_pen_new();
-    tickit_pen_set_colour_attr(pen, TICKIT_PEN_BG, kryon_color_to_tickit(color));
+    // Extract RGB from color
+    uint8_t r = (color >> 24) & 0xFF;
+    uint8_t g = (color >> 16) & 0xFF;
+    uint8_t b = (color >> 8) & 0xFF;
+
+    // Set background color using ANSI codes
+    printf("\033[48;2;%d;%d;%dm", r, g, b);
 
     // Draw filled rectangle using spaces with background color
     for (int16_t row = draw_y; row < draw_y + draw_h; row++) {
-        for (int16_t col = draw_x; col < draw_x + draw_w; col++) {
-            tickit_renderbuffer_setpen(state->buffer, pen);
-            tickit_renderbuffer_char_at(state->buffer, row, col, ' ');
+        printf("\033[%d;%dH", row + 1, draw_x + 1);  // Move cursor
+        for (uint16_t col = 0; col < draw_w; col++) {
+            printf(" ");
         }
     }
 
-    tickit_pen_unref(pen);
+    // Reset color
+    printf("\033[0m");
+
     mark_dirty(state, draw_x, draw_y, draw_w, draw_h);
 }
 
-// Draw text in terminal
+// Draw text in terminal (using ANSI codes)
 static void terminal_draw_text(kryon_terminal_state_t* state,
                                const char* text, int16_t x, int16_t y,
                                uint16_t font_id, uint32_t color) {
+    (void)font_id;  // Unused in terminal renderer
     if (x >= state->term_width || y >= state->term_height || !text) return;
 
-    // Set pen for text color
-    TickitPen* pen = tickit_pen_new();
-    tickit_pen_set_colour_attr(pen, TICKIT_PEN_FG, kryon_color_to_tickit(color));
+    // Extract RGB from color
+    uint8_t r = (color >> 24) & 0xFF;
+    uint8_t g = (color >> 16) & 0xFF;
+    uint8_t b = (color >> 8) & 0xFF;
 
-    // Draw text character by character
-    int16_t current_x = x;
-    const char* ptr = text;
+    // Position cursor and set color
+    printf("\033[%d;%dH", y + 1, x + 1);
+    printf("\033[38;2;%d;%d;%dm", r, g, b);
 
-    while (*ptr && current_x < state->term_width) {
-        // Handle simple ASCII for now, Unicode can be added later
-        if ((unsigned char)*ptr >= 32 && (unsigned char)*ptr <= 126) {
-            tickit_renderbuffer_setpen(state->buffer, pen);
-            tickit_renderbuffer_char_at(state->buffer, y, current_x, *ptr);
-            current_x++;
-        }
-        ptr++;
-    }
+    // Print text
+    printf("%s", text);
 
-    tickit_pen_unref(pen);
-    mark_dirty(state, x, y, current_x - x, 1);
+    // Reset color
+    printf("\033[0m");
+
+    mark_dirty(state, x, y, strlen(text), 1);
 }
 
-// Draw line using terminal line-drawing characters
+// Draw line using ANSI codes (simplified)
 static void terminal_draw_line(kryon_terminal_state_t* state,
                                int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint32_t color) {
-    // Simple implementation using Bresenham's algorithm
+    // Extract RGB from color
+    uint8_t r = (color >> 24) & 0xFF;
+    uint8_t g = (color >> 16) & 0xFF;
+    uint8_t b = (color >> 8) & 0xFF;
+
+    // Set color
+    printf("\033[38;2;%d;%d;%dm", r, g, b);
+
+    // Simple Bresenham's line algorithm
     int16_t dx = abs(x2 - x1);
     int16_t dy = abs(y2 - y1);
     int16_t sx = (x1 < x2) ? 1 : -1;
     int16_t sy = (y1 < y2) ? 1 : -1;
     int16_t err = dx - dy;
-
     int16_t current_x = x1;
     int16_t current_y = y1;
 
-    // Set pen for line color
-    TickitPen* pen = tickit_pen_new();
-    tickit_pen_set_colour_attr(pen, TICKIT_PEN_FG, kryon_color_to_tickit(color));
-
     while (1) {
-        // Draw point
         if (current_x >= 0 && current_x < state->term_width &&
             current_y >= 0 && current_y < state->term_height) {
-            // Use different characters for different line directions
-            char line_char = '*';
-            if (dx == 0) line_char = '|';          // Vertical
-            else if (dy == 0) line_char = '-';     // Horizontal
-            else line_char = '*';                  // Diagonal
-
-            tickit_renderbuffer_setpen(state->buffer, pen);
-            tickit_renderbuffer_char_at(state->buffer, current_y, current_x, line_char);
+            char line_char = (dx == 0) ? '|' : (dy == 0) ? '-' : '*';
+            printf("\033[%d;%dH%c", current_y + 1, current_x + 1, line_char);
         }
 
         if (current_x == x2 && current_y == y2) break;
 
         int16_t e2 = 2 * err;
-        if (e2 > -dy) {
-            err -= dy;
-            current_x += sx;
-        }
-        if (e2 < dx) {
-            err += dx;
-            current_y += sy;
-        }
+        if (e2 > -dy) { err -= dy; current_x += sx; }
+        if (e2 < dx) { err += dx; current_y += sy; }
     }
 
-    tickit_pen_unref(pen);
-    mark_dirty(state,
-              (x1 < x2) ? x1 : x2,
-              (y1 < y2) ? y1 : y2,
-              abs(x2 - x1) + 1,
-              abs(y2 - y1) + 1);
+    printf("\033[0m");
+    mark_dirty(state, (x1 < x2) ? x1 : x2, (y1 < y2) ? y1 : y2, abs(x2 - x1) + 1, abs(y2 - y1) + 1);
 }
 
-// Draw arc/circle using character approximation
+// Draw arc/circle using ANSI codes (simplified)
 static void terminal_draw_arc(kryon_terminal_state_t* state,
                               int16_t cx, int16_t cy, uint16_t radius,
                               int16_t start_angle, int16_t end_angle, uint32_t color) {
-    // Simple circle approximation using ASCII characters
-    // This is a very basic implementation
-    TickitPen* pen = tickit_pen_new();
-    tickit_pen_set_colour_attr(pen, TICKIT_PEN_FG, kryon_color_to_tickit(color));
+    (void)start_angle;  // Unused - full circle for now
+    (void)end_angle;    // Unused - full circle for now
 
-    // Draw circle using midpoint circle algorithm
+    // Extract RGB from color
+    uint8_t r = (color >> 24) & 0xFF;
+    uint8_t g = (color >> 16) & 0xFF;
+    uint8_t b = (color >> 8) & 0xFF;
+
+    // Set color
+    printf("\033[38;2;%d;%d;%dm", r, g, b);
+
+    // Simple midpoint circle algorithm
     int16_t x = radius;
     int16_t y = 0;
     int16_t err = 0;
 
     while (x >= y) {
-        // Draw 8 points of the circle
+        // Draw 8 points
         if (cx + x >= 0 && cx + x < state->term_width && cy + y >= 0 && cy + y < state->term_height)
-            tickit_renderbuffer_setpen(state->buffer, pen);
-            tickit_renderbuffer_char_at(state->buffer, cy + y, cx + x, 'o');
+            printf("\033[%d;%dHo", cy + y + 1, cx + x + 1);
         if (cx + y >= 0 && cx + y < state->term_width && cy + x >= 0 && cy + x < state->term_height)
-            tickit_renderbuffer_setpen(state->buffer, pen);
-            tickit_renderbuffer_char_at(state->buffer, cy + x, cx + y, 'o');
+            printf("\033[%d;%dHo", cy + x + 1, cx + y + 1);
         if (cx - y >= 0 && cx - y < state->term_width && cy + x >= 0 && cy + x < state->term_height)
-            tickit_renderbuffer_setpen(state->buffer, pen);
-            tickit_renderbuffer_char_at(state->buffer, cy + x, cx - y, 'o');
+            printf("\033[%d;%dHo", cy + x + 1, cx - y + 1);
         if (cx - x >= 0 && cx - x < state->term_width && cy + y >= 0 && cy + y < state->term_height)
-            tickit_renderbuffer_setpen(state->buffer, pen);
-            tickit_renderbuffer_char_at(state->buffer, cy + y, cx - x, 'o');
+            printf("\033[%d;%dHo", cy + y + 1, cx - x + 1);
         if (cx - x >= 0 && cx - x < state->term_width && cy - y >= 0 && cy - y < state->term_height)
-            tickit_renderbuffer_setpen(state->buffer, pen);
-            tickit_renderbuffer_char_at(state->buffer, cy - y, cx - x, 'o');
+            printf("\033[%d;%dHo", cy - y + 1, cx - x + 1);
         if (cx - y >= 0 && cx - y < state->term_width && cy - x >= 0 && cy - x < state->term_height)
-            tickit_renderbuffer_setpen(state->buffer, pen);
-            tickit_renderbuffer_char_at(state->buffer, cy - x, cx - y, 'o');
+            printf("\033[%d;%dHo", cy - x + 1, cx - y + 1);
         if (cx + y >= 0 && cx + y < state->term_width && cy - x >= 0 && cy - x < state->term_height)
-            tickit_renderbuffer_setpen(state->buffer, pen);
-            tickit_renderbuffer_char_at(state->buffer, cy - x, cx + y, 'o');
+            printf("\033[%d;%dHo", cy - x + 1, cx + y + 1);
         if (cx + x >= 0 && cx + x < state->term_width && cy - y >= 0 && cy - y < state->term_height)
-            tickit_renderbuffer_setpen(state->buffer, pen);
-            tickit_renderbuffer_char_at(state->buffer, cy - y, cx + x, 'o');
+            printf("\033[%d;%dHo", cy - y + 1, cx + x + 1);
 
-        if (err <= 0) {
-            y += 1;
-            err += 2 * y + 1;
-        }
-        if (err > 0) {
-            x -= 1;
-            err -= 2 * x + 1;
-        }
+        if (err <= 0) { y += 1; err += 2 * y + 1; }
+        if (err > 0) { x -= 1; err -= 2 * x + 1; }
     }
 
-    tickit_pen_unref(pen);
+    printf("\033[0m");
     mark_dirty(state, cx - radius, cy - radius, radius * 2, radius * 2);
 }
 
@@ -295,75 +259,49 @@ static void terminal_draw_arc(kryon_terminal_state_t* state,
 // ============================================================================
 
 static bool terminal_init(kryon_renderer_t* renderer, void* native_window) {
+    (void)native_window;  // Unused for terminal renderer
+
     kryon_terminal_state_t* state = malloc(sizeof(kryon_terminal_state_t));
     if (!state) return false;
 
     memset(state, 0, sizeof(kryon_terminal_state_t));
     renderer->backend_data = state;
 
-    // Initialize tickit
-    state->tickit = tickit_new();
-    if (!state->tickit) {
-        free(state);
-        return false;
-    }
+    // For now, use a simplified ANSI-based terminal (no tickit)
+    // Get terminal size using ANSI escape codes or defaults
+    state->term_width = 80;   // Default, can be detected via ioctl
+    state->term_height = 24;  // Default
 
-    // Set up terminal
-    tickit_term_setctl_int(tickit_get_term(state->tickit), TICKIT_TERMCTL_HIDE_CURSOR, 1);
-    tickit_term_setctl_int(tickit_get_term(state->tickit), TICKIT_TERMCTL_MOUSE, TICKIT_MOUSEEV_DRAG);
-
-    // Create root window
-    state->root = tickit_get_rootwin(state->tickit);
-    if (!state->root) {
-        tickit_free(state->tickit);
-        free(state);
-        return false;
-    }
-
-    // Get terminal size
-    state->term_width = tickit_window_get_cols(state->root);
-    state->term_height = tickit_window_get_lines(state->root);
-
-    // Create render buffer
-    state->buffer = tickit_renderbuffer_new(state->term_width, state->term_height);
-    if (!state->buffer) {
-        tickit_window_unref(state->root);
-        tickit_free(state->tickit);
-        free(state);
-        return false;
-    }
-
-    // Create default pen
-    state->default_pen = tickit_pen_new();
-
-    // Detect terminal capabilities
-    int colors = tickit_term_get_int(tickit_get_term(state->tickit), TICKIT_TERM_COLORS);
-    if (colors >= 16777216) {
+    // Detect color mode from COLORTERM environment variable
+    const char* colorterm = getenv("COLORTERM");
+    if (colorterm && (strcmp(colorterm, "truecolor") == 0 || strcmp(colorterm, "24bit") == 0)) {
         state->color_mode = 24;  // Truecolor
         state->true_color = true;
-    } else if (colors >= 256) {
-        state->color_mode = 8;   // 256 colors
     } else {
-        state->color_mode = 4;   // 16 colors
+        const char* term = getenv("TERM");
+        if (term && strstr(term, "256color")) {
+            state->color_mode = 8;   // 256 colors
+        } else {
+            state->color_mode = 4;   // 16 colors
+        }
     }
 
     state->unicode_support = true; // Assume Unicode support
-    state->mouse_enabled = true;
+    state->mouse_enabled = false;   // Disabled for now
 
     // Set up signal handler for terminal resize
     signal(SIGWINCH, handle_sigwinch);
 
-    // Clear screen initially
-    tickit_term_clear(tickit_get_term(state->tickit));
+    // Hide cursor and clear screen using ANSI codes
+    printf("\033[?25l");  // Hide cursor
+    printf("\033[2J");    // Clear screen
+    printf("\033[H");     // Move to home
 
-    // Initialize bytecode VM (Phase 3: Backend Integration)
-    state->vm = ir_vm_create();
-    if (!state->vm) {
-        fprintf(stderr, "Warning: Failed to create bytecode VM for terminal renderer\n");
-        // Continue without VM - non-critical for rendering
-    }
-
-    state->metadata = NULL;  // Will be set when loading IR
+    // Note: tickit members are NULL - using ANSI codes directly
+    state->tickit = NULL;
+    state->root = NULL;
+    state->buffer = NULL;
+    state->default_pen = NULL;
 
     return true;
 }
@@ -372,32 +310,15 @@ static void terminal_shutdown(kryon_renderer_t* renderer) {
     kryon_terminal_state_t* state = (kryon_terminal_state_t*)renderer->backend_data;
     if (!state) return;
 
-    // Clean up tickit resources
-    if (state->buffer) {
-        tickit_renderbuffer_unref(state->buffer);
-    }
-    if (state->default_pen) {
-        tickit_pen_destroy(state->default_pen);
-    }
-    if (state->root) {
-        tickit_window_unref(state->root);
-    }
-    if (state->tickit) {
-        // Note: Show cursor not available in this API version
-        tickit_free(state->tickit);
-    }
+    // Restore terminal state using ANSI codes
+    printf("\033[?25h");  // Show cursor
+    printf("\033[0m");    // Reset colors
+    printf("\033[2J");    // Clear screen
+    printf("\033[H");     // Move to home
 
     // Clean up character buffer
     if (state->char_buffer) {
         free(state->char_buffer);
-    }
-
-    // Clean up bytecode VM
-    if (state->vm) {
-        ir_vm_destroy(state->vm);
-    }
-    if (state->metadata) {
-        ir_metadata_destroy(state->metadata);
     }
 
     free(state);
@@ -411,33 +332,20 @@ static void terminal_begin_frame(kryon_renderer_t* renderer) {
     // Clear dirty region
     state->dirty_region.dirty = false;
 
-    // Check for terminal resize
-    int new_width = tickit_window_get_cols(state->root);
-    int new_height = tickit_window_get_lines(state->root);
-
-    if (new_width != state->term_width || new_height != state->term_height) {
-        state->term_width = new_width;
-        state->term_height = new_height;
-        state->needs_resize = true;
-
-        // Resize render buffer
-        if (state->buffer) {
-            tickit_renderbuffer_unref(state->buffer);
-        }
-        state->buffer = tickit_renderbuffer_new(state->term_width, state->term_height);
-    }
-
-    // Clear render buffer for new frame
-    tickit_renderbuffer_clear(state->buffer);
+    // Move cursor to home (rendering will happen via IR bridge using ANSI codes)
+    printf("\033[H");
 }
 
 static void terminal_end_frame(kryon_renderer_t* renderer) {
     kryon_terminal_state_t* state = (kryon_terminal_state_t*)renderer->backend_data;
     if (!state) return;
 
-    // Render buffer to terminal
-    // Note: Advanced rendering not available in this API version
-    // For now, we'll skip the complex rendering
+    // Flush output
+    fflush(stdout);
+
+    // Clear dirty region after rendering
+    state->dirty_region.dirty = false;
+    state->needs_redraw = false;
 }
 
 static void terminal_execute_commands(kryon_renderer_t* renderer, kryon_cmd_buf_t* buf) {
@@ -525,8 +433,14 @@ static void terminal_set_clear_color(kryon_renderer_t* renderer, uint32_t color)
     kryon_terminal_state_t* state = (kryon_terminal_state_t*)renderer->backend_data;
     if (!state) return;
 
-    // Set default pen background color
-    tickit_pen_set_colour_attr(state->default_pen, TICKIT_PEN_BG, kryon_color_to_tickit(color));
+    // Extract RGB and set background color using ANSI codes
+    uint8_t r = (color >> 24) & 0xFF;
+    uint8_t g = (color >> 16) & 0xFF;
+    uint8_t b = (color >> 8) & 0xFF;
+
+    printf("\033[48;2;%d;%d;%dm", r, g, b);
+    printf("\033[2J");  // Clear screen with background color
+    printf("\033[0m");  // Reset
 }
 
 // ============================================================================
@@ -570,4 +484,58 @@ void kryon_terminal_renderer_destroy(kryon_renderer_t* renderer) {
     }
 
     free(renderer);
+}
+
+// ============================================================================
+// IR Component Tree Rendering (Source-Agnostic)
+// ============================================================================
+
+/**
+ * Render IR component tree directly to terminal
+ *
+ * CRITICAL: This function is source-language agnostic.
+ * Works with IR from ANY frontend: TSX, Kry, HTML, Markdown, Lua, C, etc.
+ *
+ * @param renderer Terminal renderer instance
+ * @param root IR component tree root (from any source)
+ * @return true on success, false on failure
+ */
+bool kryon_terminal_render_ir_tree(kryon_renderer_t* renderer, IRComponent* root) {
+    if (!renderer || !root) return false;
+
+    kryon_terminal_state_t* state = (kryon_terminal_state_t*)renderer->backend_data;
+    if (!state) return false;
+
+    // Create rendering context
+    TerminalRenderContext ctx = {
+        .unicode_support = state->unicode_support,
+        .color_mode = state->color_mode,
+        .term_width = state->term_width,
+        .term_height = state->term_height,
+        .char_width = 8,   // Default character cell width
+        .char_height = 12, // Default character cell height
+        .buffer = state->buffer,
+        .pen = state->default_pen,
+        .use_libtickit = (state->tickit != NULL),
+        .needs_redraw = false,
+        .frame_count = 0
+    };
+
+    // Compute layout using IR layout system (source-agnostic)
+    // Convert terminal dimensions to pixels for layout calculation
+    // TODO: Implement layout computation or use existing layout if available
+    // float pixel_width = ctx.term_width * ctx.char_width;
+    // float pixel_height = ctx.term_height * ctx.char_height;
+    // ir_layout_compute_tree(root, pixel_width, pixel_height);
+
+    // Begin frame
+    renderer->ops->begin_frame(renderer);
+
+    // Render IR tree (works for ANY source language)
+    bool success = terminal_render_ir_tree(&ctx, root);
+
+    // End frame (flush to terminal)
+    renderer->ops->end_frame(renderer);
+
+    return success;
 }

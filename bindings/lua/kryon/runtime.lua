@@ -310,14 +310,9 @@ function Runtime.runDesktop(app)
     print("[RUNTIME] Canvas draw callback invoked for component:", component_id)
     Runtime.invokeCanvasCallback(component_id)
   end)
-  local success, err = pcall(function()
-    Desktop.desktop_ir_renderer_set_lua_canvas_draw_callback(renderer, canvasDrawCallback)
-  end)
-  if not success then
-    print("[RUNTIME] ERROR setting canvas draw callback:", err)
-  else
-    print("[RUNTIME] Canvas draw callback registered successfully")
-  end
+
+  Desktop.desktop_ir_renderer_set_lua_canvas_draw_callback(renderer, canvasDrawCallback)
+  print("[RUNTIME] Canvas draw callback registered successfully")
   Runtime._canvasDrawCallback = canvasDrawCallback
 
   -- Set up canvas update callback
@@ -327,14 +322,9 @@ function Runtime.runDesktop(app)
       callback(delta_time)
     end
   end)
-  local success2, err2 = pcall(function()
-    Desktop.desktop_ir_renderer_set_lua_canvas_update_callback(renderer, canvasUpdateCallback)
-  end)
-  if not success2 then
-    print("[RUNTIME] ERROR setting canvas update callback:", err2)
-  else
-    print("[RUNTIME] Canvas update callback registered successfully")
-  end
+
+  Desktop.desktop_ir_renderer_set_lua_canvas_update_callback(renderer, canvasUpdateCallback)
+  print("[RUNTIME] Canvas update callback registered successfully")
   Runtime._canvasUpdateCallback = canvasUpdateCallback
 
   print("🎨 Rendering...")

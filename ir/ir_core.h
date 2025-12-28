@@ -627,6 +627,8 @@ typedef enum {
     IR_EVENT_KEY,
     IR_EVENT_SCROLL,
     IR_EVENT_TIMER,
+    IR_EVENT_CANVAS_DRAW,    // Canvas onDraw callback (compilation mode)
+    IR_EVENT_CANVAS_UPDATE,  // Canvas onUpdate callback (compilation mode)
     IR_EVENT_CUSTOM
 } IREventType;
 

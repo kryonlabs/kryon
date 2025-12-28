@@ -8,11 +8,13 @@
 #include "../../ir/ir_serialization.h"
 #include "../../ir/ir_executor.h"
 #include "../../backends/desktop/ir_desktop_renderer.h"
+#include "../../renderers/terminal/terminal_backend.h"
 #include "../../codegens/kotlin/kotlin_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 
 static const char* detect_frontend(const char* file) {
     const char* ext = path_extension(file);
@@ -352,6 +354,83 @@ static int run_android(const char* kir_file, const char* source_file) {
     _exit(0);  // Use _exit to skip libc cleanup and avoid double-free
 }
 
+/**
+ * Run KIR file in terminal renderer
+ *
+ * CRITICAL: This function is source-language agnostic.
+ * Works with KIR from ANY frontend: TSX, Kry, HTML, Markdown, Lua, C, etc.
+ */
+static int run_terminal(const char* kir_file) {
+    printf("\n");
+    printf("╭────────────────────────────────────────────────────────╮\n");
+    printf("│  Terminal Renderer - Running KIR in Terminal          │\n");
+    printf("╰────────────────────────────────────────────────────────╯\n");
+    printf("\n");
+    printf("File: %s\n", kir_file);
+    printf("Source-agnostic: Works with KIR from TSX, Kry, HTML, etc.\n");
+    printf("\n");
+
+    // 1. Load KIR file (source-agnostic - works for ANY frontend)
+    printf("Loading KIR file...\n");
+    IRComponent* root = ir_read_json_file(kir_file);
+    if (!root) {
+        fprintf(stderr, "Error: Failed to load KIR file: %s\n", kir_file);
+        return 1;
+    }
+    printf("✓ KIR loaded successfully\n");
+
+    // 2. Create terminal renderer
+    printf("Initializing terminal renderer...\n");
+    kryon_renderer_t* renderer = kryon_terminal_renderer_create();
+    if (!renderer) {
+        fprintf(stderr, "Error: Failed to create terminal renderer\n");
+        // // ir_component_destroy(root);  // Function doesn't exist
+        return 1;
+    }
+
+    // Initialize renderer
+    if (!renderer->ops->init(renderer, NULL)) {
+        fprintf(stderr, "Error: Failed to initialize terminal renderer\n");
+        kryon_terminal_renderer_destroy(renderer);
+        // ir_component_destroy(root);
+        return 1;
+    }
+    printf("✓ Terminal renderer initialized\n");
+
+    // 3. Initialize IR executor (handles logic from any source)
+    printf("Setting up IR executor...\n");
+    IRExecutorContext* executor = ir_executor_get_global();
+    if (!executor) {
+        executor = ir_executor_create();
+        ir_executor_set_global(executor);
+    }
+    ir_executor_set_root(executor, root);
+    printf("✓ IR executor ready\n");
+
+    printf("\n");
+    printf("Rendering to terminal (Press Ctrl+C to exit)...\n");
+    printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+    // 4. Render frame (single-shot for now, main loop will come later)
+    bool success = kryon_terminal_render_ir_tree(renderer, root);
+
+    if (success) {
+        printf("\n");
+        printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        printf("✓ Rendered successfully\n");
+        printf("\nNote: Interactive mode with event loop coming soon!\n");
+        printf("Press Enter to exit...");
+        getchar();
+    }
+
+    // 5. Cleanup
+    renderer->ops->shutdown(renderer);
+    kryon_terminal_renderer_destroy(renderer);
+    // ir_component_destroy(root);
+
+    return success ? 0 : 1;
+}
+
 int cmd_run(int argc, char** argv) {
     const char* target_file = NULL;
     bool free_target = false;
@@ -384,9 +463,10 @@ int cmd_run(int argc, char** argv) {
     // Validate target platform
     if (strcmp(target_platform, "desktop") != 0 &&
         strcmp(target_platform, "android") != 0 &&
+        strcmp(target_platform, "terminal") != 0 &&
         strcmp(target_platform, "web") != 0) {
         fprintf(stderr, "Error: Invalid target platform: %s\n", target_platform);
-        fprintf(stderr, "Supported targets: desktop, android, web\n");
+        fprintf(stderr, "Supported targets: desktop, android, terminal, web\n");
         return 1;
     }
 
@@ -514,14 +594,19 @@ int cmd_run(int argc, char** argv) {
     }
 
     if (strcmp(frontend, "kir") == 0) {
-        // Route to Android if target is Android
+        // Route to platform-specific execution
         if (strcmp(target_platform, "android") == 0) {
             int result = run_android(target_file, target_file);
             if (free_target) free((char*)target_file);
             return result;
+        } else if (strcmp(target_platform, "terminal") == 0) {
+            // Run KIR file in terminal renderer (source-agnostic)
+            int result = run_terminal(target_file);
+            if (free_target) free((char*)target_file);
+            return result;
         }
 
-        // Run KIR file directly on desktop
+        // Run KIR file directly on desktop (default)
         snprintf(cmd, sizeof(cmd),
                  "LD_LIBRARY_PATH=/home/wao/.local/lib:\"/mnt/storage/Projects/kryon/build\":$LD_LIBRARY_PATH "
                  "KRYON_LIB_PATH=\"%s\" "

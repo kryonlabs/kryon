@@ -652,14 +652,18 @@ bool ir_gen_canvas_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect
     /* Render canvas background */
     ir_gen_container_commands(comp, ctx, bounds);
 
+    /* BACKUP FIX: Set rendered bounds from layout bounds
+     * This ensures bounds are set even if plugin renderer doesn't execute.
+     * Provides safety net for hit testing.
+     */
+    ir_set_rendered_bounds(comp, bounds->x, bounds->y, bounds->width, bounds->height);
+
     /* NOTE: Canvas drawing commands are executed by callbacks invoked
      * before rendering in desktop_ir_renderer_invoke_canvas_callbacks().
      * The canvas draws to its own command buffer which gets integrated here.
      */
 
-    (void)comp;  /* Unused for now - canvas commands come from callback */
     (void)ctx;
-    (void)bounds;
 
     return true;
 }

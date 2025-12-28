@@ -156,7 +156,9 @@ ffi.cdef[[
     IR_EVENT_KEY = 5,
     IR_EVENT_SCROLL = 6,
     IR_EVENT_TIMER = 7,
-    IR_EVENT_CUSTOM = 8
+    IR_EVENT_CANVAS_DRAW = 8,    // Canvas onDraw callback (compilation mode)
+    IR_EVENT_CANVAS_UPDATE = 9,  // Canvas onUpdate callback (compilation mode)
+    IR_EVENT_CUSTOM = 10
   } IREventType;
 
   // ============================================================================
@@ -402,14 +404,19 @@ ffi.cdef[[
   typedef void (*LuaEventCallback)(uint32_t component_id, int event_type);
   void desktop_ir_renderer_set_lua_event_callback(DesktopIRRenderer* renderer, LuaEventCallback callback);
 
-  // Canvas callbacks
-  typedef void (*LuaCanvasDrawCallback)(uint32_t component_id);
-  typedef void (*LuaCanvasUpdateCallback)(uint32_t component_id, double delta_time);
-  void desktop_ir_renderer_set_lua_canvas_draw_callback(DesktopIRRenderer* renderer, LuaCanvasDrawCallback callback);
-  void desktop_ir_renderer_set_lua_canvas_update_callback(DesktopIRRenderer* renderer, LuaCanvasUpdateCallback callback);
-
   void desktop_ir_renderer_update_root(DesktopIRRenderer* renderer, IRComponent* new_root);
 ]]
+
+-- Desktop-specific FFI declarations (for symbols in libkryon_desktop.so)
+if Desktop then
+  ffi.cdef[[
+    // Canvas callbacks (Desktop-specific, not in IR core)
+    typedef void (*LuaCanvasDrawCallback)(uint32_t component_id);
+    typedef void (*LuaCanvasUpdateCallback)(uint32_t component_id, double delta_time);
+    void desktop_ir_renderer_set_lua_canvas_draw_callback(DesktopIRRenderer* renderer, LuaCanvasDrawCallback callback);
+    void desktop_ir_renderer_set_lua_canvas_update_callback(DesktopIRRenderer* renderer, LuaCanvasUpdateCallback callback);
+  ]]
+end
 
 -- Export the C namespace and type constants
 return {
@@ -481,6 +488,8 @@ return {
     KEY = C.IR_EVENT_KEY,
     SCROLL = C.IR_EVENT_SCROLL,
     TIMER = C.IR_EVENT_TIMER,
+    CANVAS_DRAW = C.IR_EVENT_CANVAS_DRAW,
+    CANVAS_UPDATE = C.IR_EVENT_CANVAS_UPDATE,
     CUSTOM = C.IR_EVENT_CUSTOM,
   },
 }
