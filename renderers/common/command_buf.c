@@ -276,24 +276,22 @@ bool kryon_cmd_buf_push(kryon_cmd_buf_t* buf, const kryon_command_t* cmd) {
     }
 
     // Write at head position, then advance head
-    uint16_t write_start = buf->head;
-    for (uint16_t i = 0; i < kCommandSize; i++) {
+    uint32_t write_start = buf->head;
+    for (uint32_t i = 0; i < kCommandSize; i++) {
         buf->buffer[buf->head] = cmd_bytes[i];
         buf->head = (buf->head + 1) % KRYON_CMD_BUF_SIZE;
     }
 
     buf->count += kCommandSize;
 
-    // Debug: Verify what was actually written to buffer for first 3 commands
-    static int verify_count = 0;
-    if (verify_count < 3) {
-        fprintf(stderr, "[CMDBUF_VERIFY] BUF=%p After write, buffer at pos %u has: ", (void*)buf, write_start);
+    // Debug: Verify what was actually written to buffer for ALL commands
+    if (cmd->type == KRYON_CMD_DRAW_RECT) {
+        fprintf(stderr, "[CMDBUF_VERIFY_RECT] BUF=%p After write at pos %u, buffer has: ", (void*)buf, write_start);
         for (int i = 0; i < 20; i++) {
             fprintf(stderr, "%02x ", buf->buffer[(write_start + i) % KRYON_CMD_BUF_SIZE]);
         }
         fprintf(stderr, "\n");
         fflush(stderr);
-        verify_count++;
     }
 
     if (getenv("KRYON_TRACE_CMD_BUF")) {
@@ -612,7 +610,7 @@ bool kryon_cmd_iter_next(kryon_cmd_iterator_t* iter, kryon_command_t* cmd) {
         iter_debug_count++;
     }
 
-    for (uint16_t i = 0; i < kCommandSize; i++) {
+    for (uint32_t i = 0; i < kCommandSize; i++) {
         ((uint8_t*)cmd)[i] = iter->buf->buffer[iter->position];
         iter->position = (iter->position + 1) % KRYON_CMD_BUF_SIZE;
     }

@@ -157,6 +157,15 @@ static void ir_tabgroup_set_visible(IRComponent* component, bool visible) {
     style->visible = visible;
 }
 
+// Recursively invalidate rendered bounds for a component and all its descendants
+static void ir_invalidate_bounds_recursive(IRComponent* component) {
+    if (!component) return;
+    component->rendered_bounds.valid = false;
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        ir_invalidate_bounds_recursive(component->children[i]);
+    }
+}
+
 TabGroupState* ir_tabgroup_create_state(IRComponent* group,
                                         IRComponent* tab_bar,
                                         IRComponent* tab_content,
@@ -250,10 +259,16 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
 
         // Add only the selected panel
         if ((uint32_t)index < state->panel_count && state->panels[index]) {
-            ir_add_child(state->tab_content, state->panels[index]);
+            IRComponent* panel = state->panels[index];
+            ir_add_child(state->tab_content, panel);
+
+            // Recursively invalidate panel and all descendants so they get re-laid out
+            // This is necessary because panels are removed from the tree when not selected
+            ir_invalidate_bounds_recursive(panel);
+
             // Notify Nim that this panel was added - resets cleanup tracking
             if (nimOnComponentAdded) {
-                nimOnComponentAdded(state->panels[index]);
+                nimOnComponentAdded(panel);
             }
         }
 
@@ -267,6 +282,14 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
     }
     if (g_ir_context && g_ir_context->root) {
         ir_layout_mark_dirty(g_ir_context->root);
+
+        // CRITICAL: Force immediate layout recalculation for the new panel
+        // Without this, the panel will have invalid bounds (0x0) until the next frame
+        if (g_ir_context->window_width > 0 && g_ir_context->window_height > 0) {
+            ir_layout_compute_tree(g_ir_context->root,
+                                   (float)g_ir_context->window_width,
+                                   (float)g_ir_context->window_height);
+        }
     }
 
     // Apply tab visuals (active/inactive colors)
