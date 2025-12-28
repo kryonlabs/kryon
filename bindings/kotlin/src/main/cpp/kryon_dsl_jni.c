@@ -682,6 +682,32 @@ Java_com_kryon_dsl_InputBuilder_nativeSetInputValue(JNIEnv* env, jobject thiz,
 // Event Handler Registration
 // ============================================================================
 
+JNIEXPORT void JNICALL
+Java_com_kryon_dsl_InputBuilder_nativeRegisterTextChangeCallback(JNIEnv* env, jobject thiz,
+                                                                   jlong handle, jint componentId,
+                                                                   jobject callback) {
+    KryonNativeContext* ctx = (KryonNativeContext*)handle;
+    if (!ctx || !ctx->dsl_context) return;
+
+    DSLBuildContext* dsl = ctx->dsl_context;
+    ir_set_context(dsl->ir_context);
+
+    IRComponent* component = dsl_get_component(dsl, componentId);
+    if (!component) return;
+
+    // Create a global reference to the callback
+    jobject globalCallback = (*env)->NewGlobalRef(env, callback);
+    if (globalCallback) {
+        LOGI("Registered onChanged handler for Input component %d", componentId);
+
+        // Create text change event
+        IREvent* event = ir_create_event(IR_EVENT_TEXT_CHANGE, "text_change_handler", NULL);
+        if (event) {
+            ir_add_event(component, event);
+        }
+    }
+}
+
 JNIEXPORT jint JNICALL
 Java_com_kryon_dsl_ButtonBuilder_nativeRegisterClickCallback(JNIEnv* env, jobject thiz,
                                                                jlong handle, jint componentId,

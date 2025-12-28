@@ -116,15 +116,10 @@ static void raylib_shutdown(DesktopIRRenderer* renderer) {
  * Poll raylib events
  */
 static void raylib_poll_events(DesktopIRRenderer* renderer) {
-    // Raylib handles events internally via PollInputEvents()
-    // We'll handle specific events in the main loop
+    if (!renderer) return;
 
-    // Check for window close
-    if (WindowShouldClose()) {
-        renderer->running = false;
-    }
-
-    // TODO: Convert raylib events to DesktopEvent and call event_callback
+    // Handle input events (mouse, keyboard, window)
+    raylib_handle_input_events(renderer, renderer->last_root);
 }
 
 // ============================================================================

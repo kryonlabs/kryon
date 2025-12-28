@@ -235,10 +235,12 @@ class InputBuilder(handle: Long) : ComponentBuilder(handle) {
     }
 
     fun onChanged(handler: (String) -> Unit) {
-        // TODO: Store lambda and call native handler registration
+        // Register the text change callback
+        nativeRegisterTextChangeCallback(handle, nativeComponentId, handler)
     }
 
     private external fun nativeCreateInput(handle: Long): Int
     private external fun nativeSetPlaceholder(handle: Long, componentId: Int, value: String)
     private external fun nativeSetInputValue(handle: Long, componentId: Int, value: String)
+    private external fun nativeRegisterTextChangeCallback(handle: Long, componentId: Int, callback: (String) -> Unit)
 }
