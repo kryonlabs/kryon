@@ -387,7 +387,7 @@ void desktop_ir_renderer_print_performance_stats(DesktopIRRenderer* renderer) {
 
 DesktopRendererConfig desktop_renderer_config_default(void) {
     DesktopRendererConfig config = {0};
-    config.backend_type = DESKTOP_BACKEND_SDL3;
+    config.backend_type = DESKTOP_BACKEND_SDL3;  // Default backend
     config.window_width = 800;
     config.window_height = 600;
     config.window_title = "Kryon Desktop Application";

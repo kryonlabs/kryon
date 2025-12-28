@@ -7,6 +7,7 @@ import android.view.SurfaceView
 import android.view.MotionEvent
 import android.view.KeyEvent
 import android.util.Log
+import com.kryon.dsl.ContainerBuilder
 
 /**
  * Base Activity class for Kryon applications.
@@ -36,11 +37,28 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
                 Log.e(TAG, "Failed to load Kryon native library", e)
             }
         }
+
+        // Global callback registry for event handlers
+        private val eventCallbacks = mutableMapOf<Int, () -> Unit>()
+        private var nextCallbackId = 1
+
+        // Called from JNI when an event occurs
+        @JvmStatic
+        fun invokeEventCallback(callbackId: Int) {
+            eventCallbacks[callbackId]?.invoke()
+        }
     }
 
     private var surfaceView: SurfaceView? = null
     private var surfaceCreated = false
-    private var nativeHandle: Long = 0
+    protected var nativeHandle: Long = 0
+
+    // Register a callback and return its ID
+    internal fun registerCallback(callback: () -> Unit): Int {
+        val id = nextCallbackId++
+        eventCallbacks[id] = callback
+        return id
+    }
 
     // ========================================================================
     // Activity Lifecycle
@@ -208,6 +226,38 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
     protected open fun onKryonDestroy() {}
 
     /**
+     * Set content using declarative DSL builder.
+     *
+     * Example:
+     * ```kotlin
+     * setContent {
+     *     Container {
+     *         background("#191970")
+     *         Text {
+     *             text("Hello World")
+     *         }
+     *     }
+     * }
+     * ```
+     */
+    protected fun setContent(block: ContainerBuilder.() -> Unit) {
+        if (nativeHandle == 0L) {
+            Log.e(TAG, "Cannot set content: native handle is null")
+            return
+        }
+
+        // Initialize DSL build session
+        nativeBeginDSLBuild(nativeHandle)
+
+        // Build component tree via DSL
+        val rootBuilder = ContainerBuilder(nativeHandle)
+        rootBuilder.block()
+
+        // Finalize tree in native layer
+        nativeFinalizeContent(nativeHandle)
+    }
+
+    /**
      * Load Kryon bytecode file (.krb).
      */
     protected fun loadKryonFile(path: String): Boolean {
@@ -282,6 +332,9 @@ abstract class KryonActivity : Activity(), SurfaceHolder.Callback {
 
     private external fun nativeTouchEvent(handle: Long, event: MotionEvent): Boolean
     private external fun nativeKeyEvent(handle: Long, event: KeyEvent): Boolean
+
+    private external fun nativeBeginDSLBuild(handle: Long)
+    private external fun nativeFinalizeContent(handle: Long)
 
     private external fun nativeLoadFile(handle: Long, path: String): Boolean
     private external fun nativeLoadSource(handle: Long, path: String): Boolean

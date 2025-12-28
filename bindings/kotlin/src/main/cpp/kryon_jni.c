@@ -19,6 +19,9 @@
 // Native Handle Structure
 // ============================================================================
 
+// Forward declaration of DSLBuildContext (defined in kryon_dsl_jni.c)
+typedef struct DSLBuildContext DSLBuildContext;
+
 typedef struct {
     jobject activity_ref;  // Global reference to Activity
     JavaVM* jvm;
@@ -27,6 +30,7 @@ typedef struct {
     AndroidIRRenderer* ir_renderer;
     bool initialized;
     bool surface_ready;
+    DSLBuildContext* dsl_context;  // DSL build context for setContent()
 } KryonNativeContext;
 
 // ============================================================================
@@ -83,6 +87,7 @@ Java_com_kryon_KryonActivity_nativeInit(JNIEnv* env, jobject thiz, jobject activ
     LOGI("Platform initialized (stub)\n");
 
     ctx->initialized = true;
+    ctx->dsl_context = NULL;  // DSL context created on demand
 
     LOGI("Native context created: %p\n", ctx);
     return (jlong)ctx;

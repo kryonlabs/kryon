@@ -8,6 +8,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Source files
 set(JNI_SOURCES
     kryon_jni.c
+    kryon_dsl_jni.c
 )
 
 # Include directories
