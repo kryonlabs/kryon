@@ -476,3 +476,92 @@ IRAnimationState* ir_animation_scale(IRComponent* target, float from_scale, floa
     }
     return anim;
 }
+
+// ============================================================================
+// Preset Animations (for kry parser)
+// ============================================================================
+
+IRAnimation* ir_animation_pulse(float duration) {
+    IRAnimation* anim = (IRAnimation*)calloc(1, sizeof(IRAnimation));
+    if (!anim) return NULL;
+
+    anim->type = IR_ANIM_SCALE;
+    anim->duration = duration;
+    anim->easing = IR_EASING_EASE_IN_OUT;
+
+    // Create 4 keyframes for pulse: 1.0 → 1.2 → 1.0 → 1.2 → 1.0
+    anim->keyframe_count = 5;
+    anim->keyframes = (IRKeyframe*)calloc(anim->keyframe_count, sizeof(IRKeyframe));
+
+    // Start at scale 1.0 (0%)
+    anim->keyframes[0].time = 0.0f;
+    anim->keyframes[0].value = 1.0f;
+
+    // Scale to 1.2 (25%)
+    anim->keyframes[1].time = 0.25f;
+    anim->keyframes[1].value = 1.2f;
+
+    // Back to 1.0 (50%)
+    anim->keyframes[2].time = 0.5f;
+    anim->keyframes[2].value = 1.0f;
+
+    // Scale to 1.2 again (75%)
+    anim->keyframes[3].time = 0.75f;
+    anim->keyframes[3].value = 1.2f;
+
+    // End at 1.0 (100%)
+    anim->keyframes[4].time = 1.0f;
+    anim->keyframes[4].value = 1.0f;
+
+    return anim;
+}
+
+IRAnimation* ir_animation_fade_in_out(float duration) {
+    IRAnimation* anim = (IRAnimation*)calloc(1, sizeof(IRAnimation));
+    if (!anim) return NULL;
+
+    anim->type = IR_ANIM_OPACITY;
+    anim->duration = duration;
+    anim->easing = IR_EASING_EASE_IN_OUT;
+
+    // Create keyframes for fade: 0.0 → 1.0 → 0.0
+    anim->keyframe_count = 3;
+    anim->keyframes = (IRKeyframe*)calloc(anim->keyframe_count, sizeof(IRKeyframe));
+
+    // Start invisible (0%)
+    anim->keyframes[0].time = 0.0f;
+    anim->keyframes[0].value = 0.0f;
+
+    // Fully visible (50%)
+    anim->keyframes[1].time = 0.5f;
+    anim->keyframes[1].value = 1.0f;
+
+    // Back to invisible (100%)
+    anim->keyframes[2].time = 1.0f;
+    anim->keyframes[2].value = 0.0f;
+
+    return anim;
+}
+
+IRAnimation* ir_animation_slide_in_left(float duration) {
+    IRAnimation* anim = (IRAnimation*)calloc(1, sizeof(IRAnimation));
+    if (!anim) return NULL;
+
+    anim->type = IR_ANIM_TRANSLATE_X;
+    anim->duration = duration;
+    anim->easing = IR_EASING_EASE_OUT;
+
+    // Create keyframes for slide: -200 → 0
+    anim->keyframe_count = 2;
+    anim->keyframes = (IRKeyframe*)calloc(anim->keyframe_count, sizeof(IRKeyframe));
+
+    // Start off-screen to the left
+    anim->keyframes[0].time = 0.0f;
+    anim->keyframes[0].value = -200.0f;
+
+    // End at normal position
+    anim->keyframes[1].time = 1.0f;
+    anim->keyframes[1].value = 0.0f;
+
+    return anim;
+}

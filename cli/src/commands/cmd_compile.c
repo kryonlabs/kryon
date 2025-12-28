@@ -8,13 +8,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ir_core.h"
-#include "ir_kry_parser.h"
-#include "ir_markdown_parser.h"
-#include "ir_html_parser.h"
+#include "parsers/kry/kry_parser.h"
+#include "parsers/markdown/markdown_parser.h"
+#include "parsers/html/html_parser.h"
 #include "ir_serialization.h"
-#include "parsers/c/ir_c_parser.h"
-#include "parsers/tsx/ir_tsx_parser.h"
-#include "parsers/lua/ir_lua_parser.h"
+#include "parsers/c/c_parser.h"
+#include "parsers/tsx/tsx_parser.h"
+#include "parsers/lua/lua_parser.h"
 
 // Import compile_to_kir from cmd_build.c (we'll need to expose it)
 // For now, duplicate the logic

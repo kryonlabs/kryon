@@ -77,7 +77,12 @@ tasks.register("buildNativeLibs") {
     }
 }
 
-// Make assembleDebug/Release depend on buildNativeLibs
+// Make all CMake tasks depend on buildNativeLibs
+tasks.matching { it.name.startsWith("buildCMake") || it.name.startsWith("configureCMake") }.configureEach {
+    dependsOn("buildNativeLibs")
+}
+
+// Also make preBuild depend on it for good measure
 tasks.named("preBuild") {
     dependsOn("buildNativeLibs")
 }

@@ -26,6 +26,7 @@ target_include_directories(kryon_ir PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../third_party
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cJSON
 )
 
 # Compiler flags
