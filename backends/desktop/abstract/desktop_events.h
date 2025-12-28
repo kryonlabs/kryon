@@ -62,8 +62,11 @@ typedef struct {
     } data;
 } DesktopEvent;
 
-// Event callback function type
-typedef void (*DesktopEventCallback)(DesktopEvent* event, void* user_data);
+/**
+ * Event callback function type
+ * @return true if event was handled, false otherwise
+ */
+typedef bool (*DesktopEventCallback)(const DesktopEvent* event, void* user_data);
 
 #ifdef __cplusplus
 }

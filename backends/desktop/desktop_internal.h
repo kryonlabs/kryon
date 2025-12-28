@@ -32,6 +32,9 @@ struct DesktopIRRenderer {
     bool initialized;
     bool running;
 
+    // Backend abstraction (NEW)
+    DesktopRendererOps* ops;  // Operations table for current backend
+
 #ifdef ENABLE_SDL3
     SDL_Window* window;
     SDL_Renderer* renderer;
@@ -84,11 +87,7 @@ struct DesktopIRRenderer {
     bool headless_mode;
 };
 
-// Font registry entry
-typedef struct {
-    char name[128];
-    char path[512];
-} RegisteredFont;
+// Use RegisteredFont from desktop_platform.h (no need to redefine)
 
 #ifdef ENABLE_SDL3
 // Cached font instance

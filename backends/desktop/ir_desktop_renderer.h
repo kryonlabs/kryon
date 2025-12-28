@@ -2,17 +2,8 @@
 #define IR_DESKTOP_RENDERER_H
 
 #include "../../ir/ir_core.h"
+#include "desktop_platform.h"
 #include <stdbool.h>
-
-// Desktop Rendering Backend Types
-typedef enum {
-    DESKTOP_BACKEND_SDL3,
-    DESKTOP_BACKEND_RAYLIB,
-    DESKTOP_BACKEND_GLFW,
-    DESKTOP_BACKEND_WIN32,
-    DESKTOP_BACKEND_COCOA,
-    DESKTOP_BACKEND_X11
-} DesktopBackendType;
 
 // Desktop Renderer Context (opaque)
 typedef struct DesktopIRRenderer DesktopIRRenderer;
@@ -39,38 +30,7 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
 bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent* root);
 void desktop_ir_renderer_stop(DesktopIRRenderer* renderer);
 
-// Event handling
-typedef struct DesktopEvent {
-    enum {
-        DESKTOP_EVENT_QUIT,
-        DESKTOP_EVENT_MOUSE_CLICK,
-        DESKTOP_EVENT_MOUSE_MOVE,
-        DESKTOP_EVENT_KEY_PRESS,
-        DESKTOP_EVENT_KEY_RELEASE,
-        DESKTOP_EVENT_WINDOW_RESIZE,
-        DESKTOP_EVENT_FOCUS_GAINED,
-        DESKTOP_EVENT_FOCUS_LOST
-    } type;
-
-    union {
-        struct {
-            int x, y;
-            uint32_t button;
-        } mouse;
-        struct {
-            int key_code;
-            bool shift, ctrl, alt;
-        } keyboard;
-        struct {
-            int width, height;
-        } resize;
-    } data;
-
-    uint64_t timestamp;
-} DesktopEvent;
-
-// Event callback function type
-typedef bool (*DesktopEventCallback)(const DesktopEvent* event, void* user_data);
+// Event callback
 void desktop_ir_renderer_set_event_callback(DesktopIRRenderer* renderer, DesktopEventCallback callback, void* user_data);
 
 // Lua event callback (for LuaJIT FFI bindings)

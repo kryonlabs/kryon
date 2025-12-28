@@ -4,21 +4,21 @@ Quick reference for extending Kryon.
 
 ## Adding a Parser
 
-Create `parsers/mylang/mylang_parser.c`:
+Create `ir/parsers/mylang/mylang_parser.c`:
 
 ```c
 cJSON* parse_mylang_to_kir_json(const char* source) {
     cJSON* kir = cJSON_CreateObject();
     cJSON_AddStringToObject(kir, "format", "kir");
-    
+
     cJSON* metadata = cJSON_CreateObject();
     cJSON_AddStringToObject(metadata, "source_language", "mylang");
     cJSON_AddItemToObject(kir, "metadata", metadata);
-    
+
     // Build root component tree
     cJSON* root = ...; // Parse source
     cJSON_AddItemToObject(kir, "root", root);
-    
+
     return kir;
 }
 ```
@@ -26,7 +26,7 @@ cJSON* parse_mylang_to_kir_json(const char* source) {
 Add to CLI in `cli/src/commands/cmd_compile.c`:
 
 ```c
-#include "../../parsers/mylang/mylang_parser.h"
+#include "parsers/mylang/mylang_parser.h"
 
 if (strcmp(frontend, "mylang") == 0) {
     cJSON* kir = parse_mylang_to_kir_json(source);

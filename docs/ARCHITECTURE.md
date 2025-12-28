@@ -69,12 +69,12 @@ KIR (Kryon Intermediate Representation) is JSON with three sections:
 
 ### 1. Parsers (Source → KIR)
 
-- **TSX** (`cli/tsx_parser/`) - TypeScript/React with hooks
-- **Kry** (`ir/ir_kry_parser.c`) - Custom DSL
-- **Lua** (`parsers/lua/`) - Lua-based UI (perfect roundtrip)
-- **HTML** (`ir/ir_html_parser.c`) - Standard HTML
-- **Markdown** (`ir/ir_markdown_parser.c`) - Documents
-- **C** (`parsers/c/`) - C-based UI
+- **TSX** (`cli/tsx_parser/`, `ir/parsers/tsx/`) - TypeScript/React with hooks
+- **Kry** (`ir/parsers/kry/`) - Custom DSL
+- **Lua** (`ir/parsers/lua/`) - Lua-based UI (perfect roundtrip)
+- **HTML** (`ir/parsers/html/`) - Standard HTML with CSS support
+- **Markdown** (`ir/parsers/markdown/`) - Documents
+- **C** (`ir/parsers/c/`) - C-based UI
 
 All parsers output the same KIR format.
 
