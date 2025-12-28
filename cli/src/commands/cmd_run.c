@@ -664,32 +664,7 @@ int cmd_run(int argc, char** argv) {
                  "%s \"%s\"",
                  desktop_lib, desktop_lib, target_file);
     } else {
-        // SPECIAL HANDLING FOR LUA FILES - Run with Lua runtime
-        const char* frontend = detect_frontend(target_file);
-        if (frontend && strcmp(frontend, "lua") == 0) {
-            printf("Running Lua file with Lua runtime...\n");
-
-            // Set up environment for Lua runtime
-            const char* kryon_root = getenv("KRYON_ROOT");
-            if (!kryon_root) {
-                kryon_root = "/mnt/storage/Projects/kryon";  // Default
-            }
-
-            char lua_cmd[4096];
-            snprintf(lua_cmd, sizeof(lua_cmd),
-                     "KRYON_ROOT=\"%s\" "
-                     "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;;\" "
-                     "LUA_CPATH=\"%s/build/?.so;;\" "
-                     "LD_LIBRARY_PATH=\"%s/build:$LD_LIBRARY_PATH\" "
-                     "luajit -e \"local app = loadfile('%s')(); require('kryon.runtime').runDesktop(app)\"",
-                     kryon_root, kryon_root, kryon_root, kryon_root, kryon_root, target_file);
-
-            int result = system(lua_cmd);
-            if (free_target) free((char*)target_file);
-            return result == 0 ? 0 : 1;
-        }
-
-        // AUTO-COMPILE OTHER FORMATS TO KIR FIRST
+        // AUTO-COMPILE SOURCE FILES TO KIR FIRST (including .lua)
 
         // Extract basename from target_file
         const char* basename = strrchr(target_file, '/');
@@ -762,17 +737,33 @@ int cmd_run(int argc, char** argv) {
                 kryon_root = "/mnt/storage/Projects/kryon";  // fallback
             }
 
+            // Get plugin paths from environment
+            char* plugin_paths = getenv("KRYON_PLUGIN_PATHS");
+
             // Build Lua command to load KIR with Runtime.loadKIR
             char lua_cmd[4096];
-            snprintf(lua_cmd, sizeof(lua_cmd),
-                     "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;;\" "
-                     "LD_LIBRARY_PATH=\"%s/build:$LD_LIBRARY_PATH\" "
-                     "luajit -e '"
-                     "local Runtime = require(\"kryon.runtime\"); "
-                     "local app = Runtime.loadKIR(\"%s\"); "
-                     "Runtime.runDesktop(app)'",
-                     kryon_root, kryon_root, kryon_root, kir_file);
+            if (plugin_paths) {
+                snprintf(lua_cmd, sizeof(lua_cmd),
+                         "KRYON_PLUGIN_PATHS=\"%s\" "
+                         "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;;\" "
+                         "LD_LIBRARY_PATH=\"%s/build:$LD_LIBRARY_PATH\" "
+                         "luajit -e '"
+                         "local Runtime = require(\"kryon.runtime\"); "
+                         "local app = Runtime.loadKIR(\"%s\"); "
+                         "Runtime.runDesktop(app)'",
+                         plugin_paths, kryon_root, kryon_root, kryon_root, kir_file);
+            } else {
+                snprintf(lua_cmd, sizeof(lua_cmd),
+                         "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;;\" "
+                         "LD_LIBRARY_PATH=\"%s/build:$LD_LIBRARY_PATH\" "
+                         "luajit -e '"
+                         "local Runtime = require(\"kryon.runtime\"); "
+                         "local app = Runtime.loadKIR(\"%s\"); "
+                         "Runtime.runDesktop(app)'",
+                         kryon_root, kryon_root, kryon_root, kir_file);
+            }
 
+            fprintf(stderr, "[DEBUG] Executing: %s\n", lua_cmd);
             int result = system(lua_cmd);
             ir_destroy_component(root);
             if (free_target) free((char*)target_file);

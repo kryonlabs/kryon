@@ -1389,8 +1389,12 @@ bool ir_write_json_file(IRComponent* root, IRReactiveManifest* manifest, const c
 }
 
 IRComponent* ir_read_json_file(const char* filename) {
+    fprintf(stderr, "[DEBUG] ir_read_json_file called with filename: %s\n", filename);
     FILE* file = fopen(filename, "r");
-    if (!file) return NULL;
+    if (!file) {
+        fprintf(stderr, "[DEBUG] Failed to open file: %s\n", filename);
+        return NULL;
+    }
 
     fseek(file, 0, SEEK_END);
     size_t file_size = ftell(file);
@@ -1410,6 +1414,16 @@ IRComponent* ir_read_json_file(const char* filename) {
     json[file_size] = '\0';
     fclose(file);
 
+    // Ensure global context exists before parsing metadata
+    extern IRContext* g_ir_context;
+    if (!g_ir_context) {
+        extern IRContext* ir_create_context(void);
+        extern void ir_set_context(IRContext* ctx);
+        IRContext* ctx = ir_create_context();
+        ir_set_context(ctx);
+        fprintf(stderr, "[ir_serialization] Created global IR context\n");
+    }
+
     // Parse JSON to extract metadata (implemented in ir_json.c)
     extern cJSON* cJSON_Parse(const char* value);
     extern void cJSON_Delete(cJSON* item);
@@ -1419,9 +1433,12 @@ IRComponent* ir_read_json_file(const char* filename) {
     extern IRSourceMetadata* ir_parse_source_metadata_from_json(cJSON* metadataObj);
 
     cJSON* root_json = cJSON_Parse(json);
+    fprintf(stderr, "[DEBUG ir_read_json_file] root_json = %p\n", (void*)root_json);
     if (root_json) {
         cJSON* metadataObj = cJSON_GetObjectItem(root_json, "metadata");
+        fprintf(stderr, "[DEBUG ir_read_json_file] metadataObj = %p\n", (void*)metadataObj);
         if (metadataObj && cJSON_IsObject(metadataObj)) {
+            fprintf(stderr, "[DEBUG ir_read_json_file] metadataObj is object, parsing...\n");
             // Parse metadata
             IRSourceMetadata* metadata = calloc(1, sizeof(IRSourceMetadata));
             if (metadata) {
@@ -1447,9 +1464,16 @@ IRComponent* ir_read_json_file(const char* filename) {
 
                 // Store in global context
                 extern IRContext* g_ir_context;
+                fprintf(stderr, "[DEBUG ir_read_json_file] g_ir_context = %p\n", (void*)g_ir_context);
                 if (g_ir_context) {
+                    fprintf(stderr, "[DEBUG ir_read_json_file] Storing metadata in g_ir_context\n");
+                    fflush(stderr);
                     // Free old metadata if exists
+                    fprintf(stderr, "[DEBUG] Checking old metadata\n");
+                    fflush(stderr);
                     if (g_ir_context->source_metadata) {
+                        fprintf(stderr, "[DEBUG] Freeing old metadata\n");
+                        fflush(stderr);
                         if (g_ir_context->source_metadata->source_language)
                             free(g_ir_context->source_metadata->source_language);
                         if (g_ir_context->source_metadata->source_file)
@@ -1460,18 +1484,27 @@ IRComponent* ir_read_json_file(const char* filename) {
                             free(g_ir_context->source_metadata->timestamp);
                         free(g_ir_context->source_metadata);
                     }
+                    fprintf(stderr, "[DEBUG] Assigning new metadata\n");
+                    fflush(stderr);
                     g_ir_context->source_metadata = metadata;
+                    fprintf(stderr, "[DEBUG] About to print metadata info\n");
+                    fflush(stderr);
                     fprintf(stderr, "[ir_serialization] Loaded source metadata: file='%s' language='%s'\n",
                             metadata->source_file ? metadata->source_file : "unknown",
                             metadata->source_language ? metadata->source_language : "unknown");
+                    fflush(stderr);
                 }
             }
         }
+        fprintf(stderr, "[DEBUG ir_read_json_file] About to delete root_json\n");
         cJSON_Delete(root_json);
+        fprintf(stderr, "[DEBUG ir_read_json_file] Deleted root_json, calling ir_deserialize_json\n");
     }
 
     IRComponent* root = ir_deserialize_json(json);
+    fprintf(stderr, "[DEBUG ir_read_json_file] ir_deserialize_json returned %p\n", (void*)root);
     free(json);
+    fprintf(stderr, "[DEBUG ir_read_json_file] Freed json, returning\n");
 
     return root;
 }

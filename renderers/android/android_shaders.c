@@ -218,6 +218,13 @@ void android_shader_use(AndroidRenderer* renderer, ShaderProgramType type) {
         return;  // Already using this shader
     }
 
+    // Flush batch if switching shaders and batch has vertices
+    // This ensures vertices are rendered with the correct shader
+    if (renderer->current_shader != SHADER_PROGRAM_COUNT &&
+        renderer->vertex_count > 0) {
+        android_renderer_flush_batch(renderer);
+    }
+
     ShaderProgram* program = &renderer->shader_programs[type];
     if (!program->compiled) {
         LOGE("Shader program %d not compiled\n", type);

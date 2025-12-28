@@ -207,6 +207,7 @@ ffi.cdef[[
     IRLayoutState* layout_state;
     struct IRComponent* parent;
     char* text_content;
+    char* custom_data;       // For custom components (e.g., TabGroupState*)
     // Additional fields exist in C struct but are not needed for FFI
   } IRComponent;
 
@@ -333,6 +334,7 @@ ffi.cdef[[
   void ir_tabgroup_finalize(TabGroupState* state);
   void ir_tabgroup_select(TabGroupState* state, int index);
   int ir_tabgroup_get_selected(TabGroupState* state);
+  uint32_t ir_tabgroup_get_tab_count(TabGroupState* state);
 
   // ============================================================================
   // Tab Visual State (Colors for active/inactive tabs)
