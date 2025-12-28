@@ -248,11 +248,16 @@ void android_ir_renderer_render(AndroidIRRenderer* ir_renderer) {
             ir_renderer->needs_relayout = false;
         }
 
-        // Render component tree
-        __android_log_print(ANDROID_LOG_DEBUG, "KryonRenderer", "Calling render_component with root ptr=%p, child_count=%d",
+        // Render component tree - use wrapper to avoid pointer corruption
+        __android_log_print(ANDROID_LOG_DEBUG, "KryonRenderer", "Rendering root ptr=%p, child_count=%d",
                           ir_renderer->last_root, ir_renderer->last_root->child_count);
-        render_component_android(ir_renderer, ir_renderer->last_root,
-                                0.0f, 0.0f, 1.0f);
+
+        // WORKAROUND: Render inline to avoid ABI mismatch
+        if (ir_renderer->last_root && ir_renderer->renderer) {
+            // Manually traverse and render the tree
+            extern void render_component_tree_inline(AndroidIRRenderer* ir_renderer);
+            render_component_tree_inline(ir_renderer);
+        }
     } else {
         __android_log_print(ANDROID_LOG_WARN, "KryonRenderer", "render: last_root is NULL!");
     }

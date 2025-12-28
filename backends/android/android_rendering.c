@@ -120,6 +120,25 @@ static void render_border(AndroidRenderer* renderer,
 // MAIN RENDERING FUNCTION
 // ============================================================================
 
+// WORKAROUND: Global variable to bypass corrupted parameter passing
+static IRComponent* g_component_to_render = NULL;
+
+// WORKAROUND: Inline wrapper to avoid ABI mismatch when calling from ir_android_renderer.c
+void render_component_tree_inline(AndroidIRRenderer* ir_renderer) {
+    if (!ir_renderer || !ir_renderer->last_root || !ir_renderer->renderer) {
+        __android_log_print(ANDROID_LOG_WARN, "KryonBackend", "render_tree_inline: NULL params");
+        return;
+    }
+
+    __android_log_print(ANDROID_LOG_DEBUG, "KryonBackend", "render_tree_inline: root=%p, child_count=%d",
+                      ir_renderer->last_root, ir_renderer->last_root->child_count);
+
+    // WORKAROUND: Use global variable to bypass parameter passing corruption
+    g_component_to_render = ir_renderer->last_root;
+    render_component_android(ir_renderer, NULL, 0.0f, 0.0f, 1.0f);
+}
+
+__attribute__((noinline))
 void render_component_android(AndroidIRRenderer* ir_renderer,
                               IRComponent* component,
                               float parent_x, float parent_y,
@@ -127,15 +146,23 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
     static int component_render_count = 0;
     component_render_count++;
 
-    // WORKAROUND: If this is the root component (parent_x/y = 0) and has wrong pointer, use last_root instead
-    if (ir_renderer && ir_renderer->last_root &&
-        component != ir_renderer->last_root &&
-        parent_x == 0.0f && parent_y == 0.0f) {
-        if (component_render_count % 60 == 0) {
-            __android_log_print(ANDROID_LOG_WARN, "KryonBackend", "POINTER CORRUPTION DETECTED! Passed=%p, Expected=%p, using last_root",
-                              component, ir_renderer->last_root);
-        }
-        component = ir_renderer->last_root;
+    // WORKAROUND: If component is NULL, use global variable (root component)
+    if (component_render_count % 60 == 0) {
+        __android_log_print(ANDROID_LOG_DEBUG, "KryonBackend",
+                          "Received params: component=%p, g_component_to_render=%p",
+                          component, g_component_to_render);
+    }
+
+    if (component == NULL && g_component_to_render != NULL) {
+        component = g_component_to_render;
+        g_component_to_render = NULL;  // Clear after use
+        __android_log_print(ANDROID_LOG_DEBUG, "KryonBackend",
+                          "Using global component workaround: ptr=%p, child_count=%d",
+                          component, component->child_count);
+    } else if (g_component_to_render != NULL) {
+        __android_log_print(ANDROID_LOG_ERROR, "KryonBackend",
+                          "Global set but component not NULL! component=%p, global=%p",
+                          component, g_component_to_render);
     }
 
     if (component_render_count % 60 == 0) {
@@ -184,11 +211,29 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
     // Set opacity for renderer
     android_renderer_set_opacity(renderer, opacity);
 
+    // DEBUG: Log component type every 60 frames
+    if (component_render_count % 60 == 0) {
+        __android_log_print(ANDROID_LOG_INFO, "KryonBackend",
+            "Component type=%d at (%.1f,%.1f) size %.1fx%.1f",
+            component->type, x, y, width, height);
+    }
+
     // Render based on component type
     switch (component->type) {
         case IR_COMPONENT_CONTAINER:
         case IR_COMPONENT_ROW:
         case IR_COMPONENT_COLUMN:
+            // TEMPORARY: Log ALL containers to debug
+            {
+                uint32_t bg_color = component->style ?
+                    (component->style->background.data.a << 24) | (component->style->background.data.r << 16) |
+                    (component->style->background.data.g << 8) | component->style->background.data.b : 0;
+                if (component_render_count < 10 || component_render_count % 60 == 0) {
+                    __android_log_print(ANDROID_LOG_INFO, "KryonBackend",
+                        "Rendering container at (%.1f,%.1f) size %.1fx%.1f bg=0x%08x",
+                        x, y, width, height, bg_color);
+                }
+            }
             render_box_shadow(renderer, component, x, y, width, height, opacity);
             render_background(renderer, component, x, y, width, height, opacity);
             render_border(renderer, component, x, y, width, height, opacity);
@@ -285,8 +330,9 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
     // Recursively render children
     if (component->children) {
         for (uint32_t i = 0; i < component->child_count; i++) {
-            render_component_android(ir_renderer, component->children[i],
-                                    x, y, opacity);
+            // WORKAROUND: Use global variable for all calls to avoid parameter corruption
+            g_component_to_render = component->children[i];
+            render_component_android(ir_renderer, NULL, x, y, opacity);
         }
     } else {
         static int no_children_log = 0;

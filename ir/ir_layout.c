@@ -161,6 +161,13 @@ static float ir_get_component_intrinsic_width_impl(IRComponent* component) {
             }
             return 200.0f; // Default input width
 
+        case IR_COMPONENT_NATIVE_CANVAS:
+            // Native canvas always has explicit dimensions set during creation
+            if (component->style && component->style->width.type == IR_DIMENSION_PX) {
+                return component->style->width.value;
+            }
+            return 800.0f; // Fallback default
+
         case IR_COMPONENT_CONTAINER:
         case IR_COMPONENT_ROW:
         case IR_COMPONENT_COLUMN:
@@ -273,6 +280,13 @@ static float ir_get_component_intrinsic_height_impl(IRComponent* component) {
                 return component->style->height.value;
             }
             return 30.0f;
+
+        case IR_COMPONENT_NATIVE_CANVAS:
+            // Native canvas always has explicit dimensions set during creation
+            if (component->style && component->style->height.type == IR_DIMENSION_PX) {
+                return component->style->height.value;
+            }
+            return 600.0f; // Fallback default
 
         case IR_COMPONENT_CONTAINER:
         case IR_COMPONENT_ROW:
@@ -1916,12 +1930,7 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         if (!child) continue;
 
         // Skip invisible children in layout computation
-        if (child->style && !child->style->visible) {
-            printf("[LAYOUT] Skipping invisible child id=%u\n", child->id);
-            continue;
-        }
-        printf("[LAYOUT] Processing visible child id=%u (visible=%d)\n",
-               child->id, child->style ? child->style->visible : -1);
+        if (child->style && !child->style->visible) continue;
 
         // Create constraints for child based on direction (use content dimensions)
         IRLayoutConstraints child_constraints = {

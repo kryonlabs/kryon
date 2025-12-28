@@ -305,6 +305,38 @@ function Runtime.runDesktop(app)
   -- Store callback to prevent garbage collection
   Runtime._eventCallback = eventCallback
 
+  -- Set up canvas draw callback
+  local canvasDrawCallback = ffi.cast("LuaCanvasDrawCallback", function(component_id)
+    print("[RUNTIME] Canvas draw callback invoked for component:", component_id)
+    Runtime.invokeCanvasCallback(component_id)
+  end)
+  local success, err = pcall(function()
+    Desktop.desktop_ir_renderer_set_lua_canvas_draw_callback(renderer, canvasDrawCallback)
+  end)
+  if not success then
+    print("[RUNTIME] ERROR setting canvas draw callback:", err)
+  else
+    print("[RUNTIME] Canvas draw callback registered successfully")
+  end
+  Runtime._canvasDrawCallback = canvasDrawCallback
+
+  -- Set up canvas update callback
+  local canvasUpdateCallback = ffi.cast("LuaCanvasUpdateCallback", function(component_id, delta_time)
+    local callback = Runtime.canvasUpdateCallbacks[component_id]
+    if callback then
+      callback(delta_time)
+    end
+  end)
+  local success2, err2 = pcall(function()
+    Desktop.desktop_ir_renderer_set_lua_canvas_update_callback(renderer, canvasUpdateCallback)
+  end)
+  if not success2 then
+    print("[RUNTIME] ERROR setting canvas update callback:", err2)
+  else
+    print("[RUNTIME] Canvas update callback registered successfully")
+  end
+  Runtime._canvasUpdateCallback = canvasUpdateCallback
+
   print("🎨 Rendering...")
 
   -- Run main loop (blocking - keeps Lua alive)
@@ -314,6 +346,8 @@ function Runtime.runDesktop(app)
   -- Cleanup
   Desktop.desktop_ir_renderer_destroy(renderer)
   Runtime._eventCallback = nil
+  Runtime._canvasDrawCallback = nil
+  Runtime._canvasUpdateCallback = nil
   Runtime._globalRenderer = nil
   Runtime._globalApp = nil
 

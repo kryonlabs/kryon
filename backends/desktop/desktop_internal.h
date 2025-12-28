@@ -63,6 +63,10 @@ struct DesktopIRRenderer {
     // Lua event callback (for Lua FFI bindings)
     void (*lua_event_callback)(uint32_t component_id, int event_type);
 
+    // Lua canvas callback (for Canvas onDraw/onUpdate)
+    void (*lua_canvas_draw_callback)(uint32_t component_id);
+    void (*lua_canvas_update_callback)(uint32_t component_id, double delta_time);
+
     // Performance tracking
     uint64_t frame_count;
     double last_frame_time;

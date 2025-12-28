@@ -44,7 +44,8 @@ char* ir_serialize_json_complete(
     IRComponent* root,
     IRReactiveManifest* manifest,
     struct IRLogicBlock* logic_block,
-    IRSourceMetadata* source_metadata
+    IRSourceMetadata* source_metadata,
+    IRSourceStructures* source_structures
 );
 
 // Legacy function (kept for backwards compatibility, uses NULL for logic/metadata)

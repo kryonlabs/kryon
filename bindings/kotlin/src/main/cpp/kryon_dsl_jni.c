@@ -296,7 +296,16 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetWidth(JNIEnv* env, jobject thiz,
 
     IRComponent* component = dsl_get_component(dsl, componentId);
     if (component) {
-        ir_set_width(component, IR_DIMENSION_PX, value);
+        // Get or create style (required for ir_set_width)
+        IRStyle* style = ir_get_style(component);
+        if (style) {
+            LOGD("Setting width for component %d: %.1f", componentId, value);
+            ir_set_width(component, IR_DIMENSION_PX, value);
+        } else {
+            LOGE("nativeSetWidth: failed to get/create style");
+        }
+    } else {
+        LOGE("nativeSetWidth: component %d not found", componentId);
     }
 }
 
@@ -311,7 +320,16 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetHeight(JNIEnv* env, jobject thiz,
 
     IRComponent* component = dsl_get_component(dsl, componentId);
     if (component) {
-        ir_set_height(component, IR_DIMENSION_PX, value);
+        // Get or create style (required for ir_set_height)
+        IRStyle* style = ir_get_style(component);
+        if (style) {
+            LOGD("Setting height for component %d: %.1f", componentId, value);
+            ir_set_height(component, IR_DIMENSION_PX, value);
+        } else {
+            LOGE("nativeSetHeight: failed to get/create style");
+        }
+    } else {
+        LOGE("nativeSetHeight: component %d not found", componentId);
     }
 }
 
@@ -371,19 +389,33 @@ JNIEXPORT void JNICALL
 Java_com_kryon_dsl_ComponentBuilder_nativeSetBackground(JNIEnv* env, jobject thiz,
                                                          jlong handle, jint componentId, jstring color) {
     KryonNativeContext* ctx = (KryonNativeContext*)handle;
-    if (!ctx || !ctx->dsl_context) return;
+    if (!ctx || !ctx->dsl_context) {
+        LOGE("nativeSetBackground: NULL context");
+        return;
+    }
 
     DSLBuildContext* dsl = ctx->dsl_context;
     ir_set_context(dsl->ir_context);
 
     IRComponent* component = dsl_get_component(dsl, componentId);
-    if (!component || !component->style) return;
+    if (!component) {
+        LOGE("nativeSetBackground: component is NULL");
+        return;
+    }
+
+    // Get or create style
+    IRStyle* style = ir_get_style(component);
+    if (!style) {
+        LOGE("nativeSetBackground: failed to get/create style");
+        return;
+    }
 
     const char* color_str = (*env)->GetStringUTFChars(env, color, NULL);
     if (color_str) {
         uint8_t r, g, b, a;
         parse_color(color_str, &r, &g, &b, &a);
-        ir_set_background_color(component->style, r, g, b, a);
+        LOGD("Setting background for component %d: %s -> rgba(%d,%d,%d,%d)", componentId, color_str, r, g, b, a);
+        ir_set_background_color(style, r, g, b, a);
         (*env)->ReleaseStringUTFChars(env, color, color_str);
     }
 }
@@ -802,6 +834,16 @@ Java_com_kryon_KryonActivity_nativeFinalizeContent(JNIEnv* env, jobject thiz, jl
     if (!dsl->root) {
         LOGE("No root component in DSL build");
         return;
+    }
+
+    // Make root container fill the screen if no dimensions set
+    if (dsl->root && ctx->ir_renderer) {
+        AndroidIRRenderer* ir_renderer = (AndroidIRRenderer*)ctx->ir_renderer;
+        float screen_width = (float)ir_renderer->window_width;
+        float screen_height = (float)ir_renderer->window_height;
+        LOGD("Setting root dimensions to fill screen: %.0fx%.0f", screen_width, screen_height);
+        ir_set_width(dsl->root, IR_DIMENSION_PX, screen_width);
+        ir_set_height(dsl->root, IR_DIMENSION_PX, screen_height);
     }
 
     // Set the root in the IR context

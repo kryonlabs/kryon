@@ -29,6 +29,7 @@
 #define KRYON_DSL_H
 
 #include "kryon.h"
+#include "../../ir/ir_native_canvas.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -157,6 +158,29 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
         IRComponent* _comp = kryon_image(src, alt); \
         _kryon_add_to_parent(_comp); \
         (void)0, ##__VA_ARGS__; \
+        _comp; \
+    })
+
+/**
+ * NATIVE_CANVAS - Native rendering canvas with backend access
+ * Allows direct Raylib/SDL3 rendering inside a callback
+ *
+ * Usage:
+ *   NATIVE_CANVAS(render_callback,
+ *       WIDTH(800),
+ *       HEIGHT(600)
+ *   )
+ */
+#define NATIVE_CANVAS(callback, ...) \
+    ({ \
+        IRComponent* _comp = ir_create_native_canvas(800, 600); \
+        if (_comp) { \
+            _kryon_add_to_parent(_comp); \
+            _kryon_push_parent(_comp); \
+            (void)0, ##__VA_ARGS__; \
+            _kryon_pop_parent(); \
+            ir_native_canvas_set_callback(_comp->id, callback); \
+        } \
         _comp; \
     })
 

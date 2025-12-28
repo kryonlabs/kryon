@@ -14,7 +14,8 @@ static const char* VERTEX_SHADER_COLOR =
     "precision highp float;\n"
     "\n"
     "layout(location = 0) in vec2 aPosition;\n"
-    "layout(location = 1) in vec4 aColor;\n"
+    "layout(location = 1) in vec2 aTexCoord;\n"  // Location 1 is always TexCoord
+    "layout(location = 2) in vec4 aColor;\n"     // Location 2 is Color
     "\n"
     "uniform mat4 uProjection;\n"
     "\n"

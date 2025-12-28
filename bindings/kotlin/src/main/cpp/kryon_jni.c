@@ -268,7 +268,19 @@ Java_com_kryon_KryonActivity_nativeSurfaceChanged(JNIEnv* env, jobject thiz,
             if (g_ir_context->root) {
                 LOGI("Rendering component tree from IR context (type=%d, child_count=%d)\n",
                      g_ir_context->root->type, g_ir_context->root->child_count);
+
+                // Set root dimensions to fill screen
+                LOGI("Setting root dimensions to %dx%d\n", width, height);
+                ir_set_width(g_ir_context->root, IR_DIMENSION_PX, (float)width);
+                ir_set_height(g_ir_context->root, IR_DIMENSION_PX, (float)height);
+
+                // Mark tree as needing re-layout
                 android_ir_renderer_set_root(ctx->ir_renderer, g_ir_context->root);
+
+                // Force re-layout with new dimensions
+                AndroidIRRenderer* ir_renderer = (AndroidIRRenderer*)ctx->ir_renderer;
+                ir_renderer->needs_relayout = true;
+
                 android_ir_renderer_render(ctx->ir_renderer);
             } else {
                 LOGI("IR context root is NULL\n");
@@ -444,7 +456,23 @@ Java_com_kryon_KryonActivity_nativeRender(JNIEnv* env, jobject thiz, jlong handl
 
     KryonNativeContext* ctx = (KryonNativeContext*)handle;
 
-    // Render using IR renderer if available
+    // DIRECT TEST: Draw a hardcoded red rectangle to verify OpenGL works
+    if (ctx->renderer && jni_render_count < 300) {
+        android_renderer_begin_frame(ctx->renderer);
+
+        // Draw a 400x300 red rectangle at (100, 100)
+        // Color format: 0xAARRGGBB = 0xFFFF0000 (opaque red)
+        android_renderer_draw_rect(ctx->renderer, 100.0f, 100.0f, 400.0f, 300.0f, 0xFFFF0000);
+
+        if (jni_render_count % 60 == 0) {
+            LOGI("DIRECT TEST: Drew red rect at (100,100) size 400x300");
+        }
+
+        android_renderer_end_frame(ctx->renderer);
+        return; // Skip normal rendering for now
+    }
+
+    // Normal rendering (after test frames)
     if (ctx->ir_renderer) {
         android_ir_renderer_render(ctx->ir_renderer);
     } else {

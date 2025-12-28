@@ -1101,6 +1101,41 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         }
     }
 
+    // Serialize property bindings (for round-trip codegen)
+    // TODO: Implement json_serialize_property_binding function
+    /*
+    if (component->property_binding_count > 0 && component->property_bindings) {
+        cJSON* bindings = cJSON_CreateObject();
+        if (bindings) {
+            for (uint32_t i = 0; i < component->property_binding_count; i++) {
+                IRPropertyBinding* binding = component->property_bindings[i];
+                if (binding && binding->property_name) {
+                    cJSON* binding_obj = json_serialize_property_binding(binding);
+                    if (binding_obj) {
+                        cJSON_AddItemToObject(bindings, binding->property_name, binding_obj);
+                    }
+                }
+            }
+            cJSON_AddItemToObject(obj, "property_bindings", bindings);
+        }
+    }
+    */
+
+    // Serialize source metadata (for round-trip codegen)
+    if (component->source_metadata.generated_by) {
+        cJSON* src_meta = cJSON_CreateObject();
+        if (src_meta) {
+            cJSON_AddStringToObject(src_meta, "generated_by", component->source_metadata.generated_by);
+            if (component->source_metadata.iteration_index > 0) {
+                cJSON_AddNumberToObject(src_meta, "iteration_index", component->source_metadata.iteration_index);
+            }
+            if (component->source_metadata.is_template) {
+                cJSON_AddBoolToObject(src_meta, "is_template", component->source_metadata.is_template);
+            }
+            cJSON_AddItemToObject(obj, "source_metadata", src_meta);
+        }
+    }
+
     // Children
     if (component->child_count > 0) {
         cJSON* children = cJSON_CreateArray();
@@ -1946,19 +1981,179 @@ static void json_deserialize_c_metadata(cJSON* c_meta_obj) {
     }
 }
 
+// ============================================================================
+// Source Structures Serialization (for Kry → KIR → Kry round-trip)
+// ============================================================================
+
+static cJSON* json_serialize_property_binding(IRPropertyBinding* binding) {
+    if (!binding) return NULL;
+
+    cJSON* obj = cJSON_CreateObject();
+    if (binding->source_expr) {
+        cJSON_AddStringToObject(obj, "source_expr", binding->source_expr);
+    }
+    if (binding->resolved_value) {
+        cJSON_AddStringToObject(obj, "resolved_value", binding->resolved_value);
+    }
+    if (binding->binding_type) {
+        cJSON_AddStringToObject(obj, "binding_type", binding->binding_type);
+    }
+    return obj;
+}
+
+static cJSON* json_serialize_var_decl(IRVarDecl* var) {
+    if (!var) return NULL;
+
+    cJSON* obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(obj, "id", var->id);
+    cJSON_AddStringToObject(obj, "name", var->name);
+    cJSON_AddStringToObject(obj, "var_type", var->var_type);
+
+    if (var->value_type) {
+        cJSON_AddStringToObject(obj, "value_type", var->value_type);
+    }
+    if (var->value_json) {
+        cJSON_AddStringToObject(obj, "value_json", var->value_json);
+    }
+    if (var->scope) {
+        cJSON_AddStringToObject(obj, "scope", var->scope);
+    }
+
+    return obj;
+}
+
+static cJSON* json_serialize_for_loop(IRForLoopData* loop) {
+    if (!loop) return NULL;
+
+    cJSON* obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(obj, "id", loop->id);
+
+    if (loop->parent_id) {
+        cJSON_AddStringToObject(obj, "parent_id", loop->parent_id);
+    }
+    cJSON_AddStringToObject(obj, "iterator_name", loop->iterator_name);
+    cJSON_AddStringToObject(obj, "collection_ref", loop->collection_ref);
+
+    if (loop->collection_expr) {
+        cJSON_AddStringToObject(obj, "collection_expr", loop->collection_expr);
+    }
+
+    // Serialize template component if present
+    if (loop->template_component) {
+        cJSON* template_json = json_serialize_component_recursive(loop->template_component);
+        if (template_json) {
+            cJSON_AddItemToObject(obj, "template_component", template_json);
+        }
+    }
+
+    // Serialize expanded component IDs
+    if (loop->expanded_count > 0 && loop->expanded_component_ids) {
+        cJSON* ids_array = cJSON_CreateArray();
+        for (uint32_t i = 0; i < loop->expanded_count; i++) {
+            cJSON_AddItemToArray(ids_array, cJSON_CreateNumber(loop->expanded_component_ids[i]));
+        }
+        cJSON_AddItemToObject(obj, "expanded_component_ids", ids_array);
+    }
+
+    return obj;
+}
+
+static cJSON* json_serialize_static_block(IRStaticBlockData* block) {
+    if (!block) return NULL;
+
+    cJSON* obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(obj, "id", block->id);
+    cJSON_AddNumberToObject(obj, "parent_component_id", block->parent_component_id);
+
+    // Serialize children IDs
+    if (block->children_count > 0 && block->children_ids) {
+        cJSON* ids_array = cJSON_CreateArray();
+        for (uint32_t i = 0; i < block->children_count; i++) {
+            cJSON_AddItemToArray(ids_array, cJSON_CreateNumber(block->children_ids[i]));
+        }
+        cJSON_AddItemToObject(obj, "children_ids", ids_array);
+    }
+
+    // Serialize var declaration IDs
+    if (block->var_decl_count > 0 && block->var_declaration_ids) {
+        cJSON* var_ids = cJSON_CreateArray();
+        for (uint32_t i = 0; i < block->var_decl_count; i++) {
+            cJSON_AddItemToArray(var_ids, cJSON_CreateString(block->var_declaration_ids[i]));
+        }
+        cJSON_AddItemToObject(obj, "var_declaration_ids", var_ids);
+    }
+
+    // Serialize for loop IDs
+    if (block->for_loop_count > 0 && block->for_loop_ids) {
+        cJSON* loop_ids = cJSON_CreateArray();
+        for (uint32_t i = 0; i < block->for_loop_count; i++) {
+            cJSON_AddItemToArray(loop_ids, cJSON_CreateString(block->for_loop_ids[i]));
+        }
+        cJSON_AddItemToObject(obj, "for_loop_ids", loop_ids);
+    }
+
+    return obj;
+}
+
+static cJSON* json_serialize_source_structures(IRSourceStructures* ss) {
+    if (!ss) return NULL;
+
+    cJSON* obj = cJSON_CreateObject();
+
+    // Serialize static blocks
+    if (ss->static_block_count > 0) {
+        cJSON* blocks_array = cJSON_CreateArray();
+        for (uint32_t i = 0; i < ss->static_block_count; i++) {
+            cJSON* block_json = json_serialize_static_block(ss->static_blocks[i]);
+            if (block_json) {
+                cJSON_AddItemToArray(blocks_array, block_json);
+            }
+        }
+        cJSON_AddItemToObject(obj, "static_blocks", blocks_array);
+    }
+
+    // Serialize variable declarations
+    if (ss->var_decl_count > 0) {
+        cJSON* vars_array = cJSON_CreateArray();
+        for (uint32_t i = 0; i < ss->var_decl_count; i++) {
+            cJSON* var_json = json_serialize_var_decl(ss->var_decls[i]);
+            if (var_json) {
+                cJSON_AddItemToArray(vars_array, var_json);
+            }
+        }
+        cJSON_AddItemToObject(obj, "const_declarations", vars_array);
+    }
+
+    // Serialize for loops (compile-time only)
+    if (ss->for_loop_count > 0) {
+        cJSON* loops_array = cJSON_CreateArray();
+        for (uint32_t i = 0; i < ss->for_loop_count; i++) {
+            cJSON* loop_json = json_serialize_for_loop(ss->for_loops[i]);
+            if (loop_json) {
+                cJSON_AddItemToArray(loops_array, loop_json);
+            }
+        }
+        cJSON_AddItemToObject(obj, "for_loop_templates", loops_array);
+    }
+
+    return obj;
+}
+
 /**
  * Serialize IR component tree with complete metadata, logic, and reactive manifest
  * @param root Root component to serialize
  * @param manifest Reactive manifest to include (can be NULL)
  * @param logic_block Logic block with functions and event bindings (can be NULL)
  * @param source_metadata Source file metadata (can be NULL)
+ * @param source_structures Source preservation structures (can be NULL)
  * @return JSON string (caller must free), or NULL on error
  */
 char* ir_serialize_json_complete(
     IRComponent* root,
     IRReactiveManifest* manifest,
     IRLogicBlock* logic_block,
-    IRSourceMetadata* source_metadata
+    IRSourceMetadata* source_metadata,
+    IRSourceStructures* source_structures
 ) {
     if (!root) return NULL;
 
@@ -2011,6 +2206,24 @@ char* ir_serialize_json_complete(
         cJSON* manifestJson = json_serialize_reactive_manifest(manifest);
         if (manifestJson) {
             cJSON_AddItemToObject(wrapper, "reactive_manifest", manifestJson);
+        }
+    }
+
+    // Add source structures if present (for Kry→KIR→Kry round-trip)
+    fprintf(stderr, "[DEBUG_JSON] source_structures=%p\n", (void*)source_structures);
+    if (source_structures) {
+        fprintf(stderr, "[DEBUG_JSON] static_block_count=%u, var_decl_count=%u, for_loop_count=%u\n",
+                source_structures->static_block_count,
+                source_structures->var_decl_count,
+                source_structures->for_loop_count);
+    }
+    if (source_structures && (source_structures->static_block_count > 0 ||
+                              source_structures->var_decl_count > 0 ||
+                              source_structures->for_loop_count > 0)) {
+        fprintf(stderr, "[DEBUG_JSON] Serializing source_structures!\n");
+        cJSON* sourceStructsJson = json_serialize_source_structures(source_structures);
+        if (sourceStructsJson) {
+            cJSON_AddItemToObject(wrapper, "source_structures", sourceStructsJson);
         }
     }
 
@@ -2098,7 +2311,7 @@ char* ir_serialize_json_complete(
  */
 char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest) {
     // Legacy function - just call the complete version with NULL logic/metadata
-    return ir_serialize_json_complete(root, manifest, NULL, NULL);
+    return ir_serialize_json_complete(root, manifest, NULL, NULL, NULL);
 }
 
 /**

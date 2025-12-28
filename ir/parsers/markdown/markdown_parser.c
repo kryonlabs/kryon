@@ -1255,8 +1255,9 @@ char* ir_markdown_to_kir(const char* source, size_t length) {
     // Serialize to JSON string (defined in ir_json.c)
     extern char* ir_serialize_json_complete(IRComponent* root, IRReactiveManifest* manifest,
                                             struct IRLogicBlock* logic_block,
-                                            IRSourceMetadata* source_metadata);
-    char* json_str = ir_serialize_json_complete(root, NULL, logic_block, NULL);
+                                            IRSourceMetadata* source_metadata,
+                                            IRSourceStructures* source_structures);
+    char* json_str = ir_serialize_json_complete(root, NULL, logic_block, NULL, NULL);
 
     // Free logic_block (serialization makes a copy)
     ir_logic_block_free(logic_block);

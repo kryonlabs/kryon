@@ -4,6 +4,7 @@
  * Converts the parsed .kry AST into IR component trees.
  */
 
+#define _POSIX_C_SOURCE 200809L
 #include "kry_parser.h"
 #include "kry_ast.h"
 #include "../../ir_builder.h"
@@ -13,6 +14,16 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+
+// ============================================================================
+// Compilation Modes
+// ============================================================================
+
+typedef enum {
+    IR_COMPILE_MODE_RUNTIME,  // Expand only (default, current behavior)
+    IR_COMPILE_MODE_CODEGEN,  // Preserve only (templates for codegen)
+    IR_COMPILE_MODE_HYBRID    // Both expand AND preserve (recommended for round-trip)
+} IRCompileMode;
 
 // ============================================================================
 // Conversion Context
@@ -33,6 +44,10 @@ typedef struct {
     IRReactiveManifest* manifest;  // Reactive manifest for state variables
     IRLogicBlock* logic_block;     // Logic block for event handlers
     uint32_t next_handler_id;      // Counter for generating unique handler names
+    IRCompileMode compile_mode;    // Compilation mode (RUNTIME/CODEGEN/HYBRID)
+    IRSourceStructures* source_structures;  // Source preservation (for round-trip codegen)
+    uint32_t static_block_counter; // Counter for generating unique static block IDs
+    const char* current_static_block_id;  // Current static block context (NULL if not in static block)
 } ConversionContext;
 
 // ============================================================================
@@ -262,11 +277,6 @@ static uint32_t parse_color(const char* color_str) {
 
 static void apply_property(ConversionContext* ctx, IRComponent* component, const char* name, KryValue* value) {
     if (!component || !name || !value) return;
-
-    if (strcmp(name, "justifyContent") == 0 || strcmp(name, "gap") == 0) {
-        printf("[APPLY_PROPERTY_START] Processing property '%s', value type=%d\n", name, value->type);
-        fflush(stdout);
-    }
 
     IRStyle* style = ir_get_style(component);
     if (!style) {
@@ -569,23 +579,13 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
     }
 
     if (strcmp(name, "justifyContent") == 0) {
-        printf("[APPLY_PROPERTY] justifyContent: value->type=%d (STRING=0, NUMBER=1, IDENTIFIER=2, EXPRESSION=3)\n", value->type);
-        printf("[APPLY_PROPERTY] KRY_VALUE_STRING=%d, KRY_VALUE_IDENTIFIER=%d, KRY_VALUE_EXPRESSION=%d\n",
-               KRY_VALUE_STRING, KRY_VALUE_IDENTIFIER, KRY_VALUE_EXPRESSION);
-        fflush(stdout);
         if (value->type == KRY_VALUE_STRING || value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
-            printf("[APPLY_PROPERTY] INSIDE if statement for justifyContent\n");
-            fflush(stdout);
             const char* justify = (value->type == KRY_VALUE_STRING) ? value->string_value :
                                   (value->type == KRY_VALUE_IDENTIFIER) ? value->identifier :
                                   value->expression;
-            printf("[APPLY_PROPERTY] justifyContent raw value: '%s'\n", justify);
-            fflush(stdout);
             // Apply parameter substitution for expressions and identifiers (e.g., item.value)
             if (value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
                 justify = substitute_param(ctx, justify);
-                printf("[APPLY_PROPERTY] justifyContent after substitution: '%s'\n", justify);
-                fflush(stdout);
             }
             IRAlignment alignment = IR_ALIGNMENT_START;
             if (strcmp(justify, "center") == 0) {
@@ -632,8 +632,6 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             const char* gap_expr = (value->type == KRY_VALUE_IDENTIFIER) ? value->identifier : value->expression;
             const char* gap_str = substitute_param(ctx, gap_expr);
             float gap_value = (float)atof(gap_str);
-            printf("[APPLY_PROPERTY] gap substituted: '%s' -> %f\n", gap_str, gap_value);
-            fflush(stdout);
             IRLayout* layout = ir_get_layout(component);
             if (layout) {
                 layout->flex.gap = (uint32_t)gap_value;
@@ -774,13 +772,58 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node);
 
 // Expand for loop by unrolling at compile time
 static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode* for_node) {
-    if (!for_node || for_node->type != KRY_NODE_FOR_LOOP) return;
+    fprintf(stderr, "[DEBUG_FORLOOP] Called expand_for_loop\n");
+    if (!for_node || for_node->type != KRY_NODE_FOR_LOOP) {
+        fprintf(stderr, "[DEBUG_FORLOOP] Early return: for_node=%p, type=%d\n",
+                (void*)for_node, for_node ? for_node->type : -1);
+        return;
+    }
 
     const char* iter_name = for_node->name;  // Iterator variable name
     KryValue* collection = for_node->value;  // Collection to iterate over
 
-    if (!collection || !iter_name) return;
+    if (!collection || !iter_name) {
+        fprintf(stderr, "[DEBUG_FORLOOP] Early return: collection=%p, iter_name=%s\n",
+                (void*)collection, iter_name ? iter_name : "NULL");
+        return;
+    }
 
+    // HYBRID MODE: Preserve for loop template (ONLY if inside static block)
+    // NOTE: For loops outside static blocks are runtime reactive (IRReactiveForLoop)
+    fprintf(stderr, "[DEBUG] expand_for_loop: compile_mode=%d, current_static_block_id=%s\n",
+            ctx->compile_mode, ctx->current_static_block_id ? ctx->current_static_block_id : "NULL");
+    if (ctx->compile_mode == IR_COMPILE_MODE_HYBRID && ctx->current_static_block_id != NULL) {
+        fprintf(stderr, "[DEBUG] Preserving for loop template!\n");
+        // Get collection reference as string
+        const char* collection_ref = NULL;
+        if (collection->type == KRY_VALUE_IDENTIFIER) {
+            collection_ref = collection->identifier;
+        } else if (collection->type == KRY_VALUE_EXPRESSION) {
+            collection_ref = collection->expression;
+        }
+
+        // Create template component (convert first child without parameter substitution)
+        // TODO: For now, we'll set template to NULL and add it in Phase 5 during codegen
+        // The collection_ref is enough to regenerate the for loop structure
+
+        IRForLoopData* loop_data = ir_source_structures_add_for_loop(
+            ctx->source_structures,
+            ctx->current_static_block_id,
+            iter_name,
+            collection_ref,
+            NULL  // template_component - will be added when we implement deep copy
+        );
+
+        if (loop_data) {
+            // Store parent component ID for later reference
+            if (parent) {
+                // The expanded components will be added as children, we'll track their IDs
+                // For now, just store the for loop metadata
+            }
+        }
+    }
+
+    // ALSO expand for runtime execution (current behavior)
     // Handle different collection types
     if (collection->type == KRY_VALUE_ARRAY) {
         // Iterate over array elements
@@ -1031,6 +1074,29 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                 }
             } else if (child->type == KRY_NODE_STATIC_BLOCK) {
                 // Static block: expand children at compile time
+
+                // HYBRID MODE: Create static block metadata and set context
+                char* static_block_id = NULL;
+                if (ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                    // Generate unique static block ID
+                    static char id_buf[64];
+                    snprintf(id_buf, sizeof(id_buf), "static_%u", ctx->static_block_counter++);
+                    static_block_id = strdup(id_buf);
+
+                    // Create static block data
+                    IRStaticBlockData* static_data = ir_source_structures_add_static_block(
+                        ctx->source_structures,
+                        component->id  // Parent component ID
+                    );
+
+                    if (static_data) {
+                        static_data->id = static_block_id;
+                    }
+
+                    // Set current static block context
+                    ctx->current_static_block_id = static_block_id;
+                }
+
                 KryNode* static_child = child->first_child;
                 while (static_child) {
                     if (static_child->type == KRY_NODE_COMPONENT) {
@@ -1045,6 +1111,36 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                         // Process variable declaration in static context
                         const char* var_name = static_child->name;
                         const char* var_value = NULL;
+
+                        // HYBRID MODE: Preserve variable declaration
+                        if (ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                            // Determine variable type
+                            const char* var_type = "const";  // Default
+                            // TODO: Parse actual var type from AST (const/let/var)
+
+                            // Convert value to JSON string for preservation
+                            const char* value_json = NULL;
+                            if (static_child->value) {
+                                if (static_child->value->type == KRY_VALUE_STRING) {
+                                    value_json = static_child->value->string_value;
+                                } else if (static_child->value->type == KRY_VALUE_ARRAY) {
+                                    // TODO: Serialize array to JSON string
+                                    value_json = "[...]";  // Placeholder
+                                } else if (static_child->value->type == KRY_VALUE_OBJECT) {
+                                    // TODO: Serialize object to JSON string
+                                    value_json = "{...}";  // Placeholder
+                                }
+                            }
+
+                            // Add variable declaration to source structures
+                            ir_source_structures_add_var_decl(
+                                ctx->source_structures,
+                                var_name,
+                                var_type,
+                                value_json,
+                                static_block_id  // Scope: this static block
+                            );
+                        }
 
                         if (static_child->value) {
                             if (static_child->value->type == KRY_VALUE_STRING) {
@@ -1071,6 +1167,13 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                     }
 
                     static_child = static_child->next_sibling;
+                }
+
+                // HYBRID MODE: Clear static block context
+                if (ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
+                    ctx->current_static_block_id = NULL;
+                    // NOTE: Don't free static_block_id here - ownership transferred to IRStaticBlockData
+                    // It will be freed when source_structures is destroyed
                 }
             } else if (child->type == KRY_NODE_FOR_LOOP) {
                 // For loop outside static block - expand/unroll
@@ -1205,6 +1308,10 @@ char* ir_kry_to_kir(const char* source, size_t length) {
     ctx.manifest = ir_reactive_manifest_create();
     ctx.logic_block = ir_logic_block_create();  // NEW: Create logic block
     ctx.next_handler_id = 1;                    // NEW: Initialize handler counter
+    ctx.compile_mode = IR_COMPILE_MODE_HYBRID;  // Use HYBRID mode for round-trip codegen
+    ctx.source_structures = ir_source_structures_create();  // Create source structures
+    ctx.static_block_counter = 0;               // Initialize static block counter
+    ctx.current_static_block_id = NULL;         // Not in static block initially
 
     // Create IR context for component ID generation
     IRContext* ir_ctx = ir_create_context();
@@ -1254,8 +1361,8 @@ char* ir_kry_to_kir(const char* source, size_t length) {
     metadata.compiler_version = "kryon-1.0.0";
     metadata.timestamp = NULL;  // TODO: Add timestamp
 
-    // Serialize with complete KIR format (manifest + logic_block + metadata)
-    char* json = ir_serialize_json_complete(root, ctx.manifest, ctx.logic_block, &metadata);
+    // Serialize with complete KIR format (manifest + logic_block + metadata + source_structures)
+    char* json = ir_serialize_json_complete(root, ctx.manifest, ctx.logic_block, &metadata, ctx.source_structures);
 
     // Clean up
     ir_destroy_component(root);
@@ -1264,6 +1371,9 @@ char* ir_kry_to_kir(const char* source, size_t length) {
     }
     if (ctx.logic_block) {
         ir_logic_block_free(ctx.logic_block);
+    }
+    if (ctx.source_structures) {
+        ir_source_structures_destroy(ctx.source_structures);
     }
     ir_destroy_context(ir_ctx);  // Clean up IR context
 
