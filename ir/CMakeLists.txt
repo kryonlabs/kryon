@@ -34,6 +34,7 @@ file(GLOB IR_SOURCES
     components/ir_component_button.c
     components/ir_component_checkbox.c
     components/ir_component_dropdown.c
+    components/ir_component_table.c
     parsers/kry/kry_parser.c
     parsers/kry/kry_to_ir.c
     third_party/cJSON/cJSON.c

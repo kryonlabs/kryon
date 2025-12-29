@@ -6,10 +6,6 @@
 #include <sys/time.h>
 
 #ifdef __ANDROID__
-#include "../../platforms/android/android_platform.h"
-#endif
-
-#ifdef __ANDROID__
 #include <android/log.h>
 #define LOG_TAG "KryonRenderer"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -254,20 +250,13 @@ bool android_renderer_initialize_gl_only(AndroidRenderer* renderer) {
         return false;
     }
 
-#ifdef __ANDROID__
-    // Query display density for automatic px → dp scaling
-    kryon_android_display_info_t display_info = kryon_android_get_display_info();
-    renderer->density_scale = display_info.density_scale;
-    renderer->density_dpi = display_info.density_dpi;
-
-    __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
-        "Display density: scale=%.2f, dpi=%d (automatic px→dp scaling enabled)",
-        renderer->density_scale, renderer->density_dpi);
-#else
-    // Desktop/other platforms: no scaling
-    renderer->density_scale = 1.0f;
-    renderer->density_dpi = 160;
-#endif
+    // Note: Density scale is set from JNI layer after this function returns
+    // (because display info query requires JNI env which isn't available on GL thread)
+    // Default to 1.0 in case it's not set
+    if (renderer->density_scale == 0.0f) {
+        renderer->density_scale = 1.0f;
+        renderer->density_dpi = 160;
+    }
 
 #ifdef __ANDROID__
     // Create vertex array object

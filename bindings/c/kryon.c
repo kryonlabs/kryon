@@ -310,6 +310,19 @@ void kryon_init(const char* title, int width, int height) {
     g_app_state.window_width = width > 0 ? width : 800;
     g_app_state.window_height = height > 0 ? height : 600;
 
+    // SYNC window config to g_ir_context->metadata (single source of truth for serialization)
+    if (g_app_state.context) {
+        if (!g_app_state.context->metadata) {
+            g_app_state.context->metadata = (IRMetadata*)calloc(1, sizeof(IRMetadata));
+        }
+        if (g_app_state.context->metadata) {
+            free(g_app_state.context->metadata->window_title);
+            g_app_state.context->metadata->window_title = strdup(g_app_state.window_title);
+            g_app_state.context->metadata->window_width = g_app_state.window_width;
+            g_app_state.context->metadata->window_height = g_app_state.window_height;
+        }
+    }
+
     // Create root container
     g_app_state.root = ir_create_component(IR_COMPONENT_CONTAINER);
     ir_set_root(g_app_state.root);

@@ -380,12 +380,15 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
     // Mark this class as generated
     mark_class_generated(generator, class_name);
 
+    // Track buffer size before writing selector
+    size_t start_size = generator->buffer_size;
+
     // Generate class selector instead of ID selector
     css_generator_write_format(generator, ".%s {\n", class_name);
     free(class_name);
 
-    // Track if we actually wrote any properties
-    size_t start_size = generator->buffer_size;
+    // Track size after selector (for property checking)
+    size_t after_selector_size = generator->buffer_size;
 
     // Basic dimensions
     if (component->style->width.type != IR_DIMENSION_AUTO) {
@@ -910,9 +913,9 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
     }
 
     // Check if we actually wrote any properties
-    // If buffer size didn't change (only selector was written), remove the empty block
-    if (generator->buffer_size == start_size) {
-        // No properties were written, truncate buffer to remove the selector
+    // If buffer size didn't change after selector (no properties), remove the empty block
+    if (generator->buffer_size == after_selector_size) {
+        // No properties were written, truncate buffer to remove the entire block
         generator->buffer_size = start_size;
         if (generator->output_buffer) {
             generator->output_buffer[start_size] = '\0';

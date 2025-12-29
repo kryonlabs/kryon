@@ -69,6 +69,9 @@ static bool raylib_initialize(DesktopIRRenderer* renderer) {
         return false;
     }
 
+    // Disable ESC key closing the window (let app handle it)
+    SetExitKey(KEY_NULL);
+
     // Set target FPS
     SetTargetFPS(renderer->config.target_fps);
 

@@ -10,7 +10,7 @@
 #include "../../ir/ir_hot_reload.h"
 #include "../../ir/ir_style_vars.h"
 #include "../../ir/ir_serialization.h"
-#include "../../renderers/android/android_renderer.h"
+#include "../../renderers/android/android_renderer_internal.h"
 #include "../../platforms/android/android_platform.h"
 #include "ir_android_renderer.h"
 

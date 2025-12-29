@@ -1474,8 +1474,6 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
 
     // Serialize conditionals
     if (manifest->conditional_count > 0) {
-        printf("[ir_json] SERIALIZATION FUNCTION CALLED - %d conditionals\n", manifest->conditional_count);
-        fflush(stdout);
         cJSON* conditionals = cJSON_CreateArray();
         if (!conditionals) {
             fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for conditionals\n");
@@ -3208,7 +3206,14 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
     // Type
     if ((item = cJSON_GetObjectItem(json, "type")) != NULL && cJSON_IsString(item)) {
         const char* type_str = item->valuestring;
-        component->type = ir_string_to_component_type(type_str);
+        IRComponentType parsed_type = ir_string_to_component_type(type_str);
+        component->type = parsed_type;
+
+        if (getenv("KRYON_DEBUG_DESER")) {
+            fprintf(stderr, "[DESER] Component id=%u type_str='%s' → type=%d\n",
+                    component->id, type_str, parsed_type);
+        }
+
         // Preserve "Body" tag for HTML generator
         if (strcmp(type_str, "Body") == 0) {
             component->tag = strdup("Body");
@@ -3913,38 +3918,31 @@ IRComponent* ir_deserialize_json(const char* json_string) {
         }
     }
 
-    // Parse window properties from app object
+    // Parse window properties from "app" object (canonical format)
     cJSON* appJson = cJSON_GetObjectItem(root, "app");
-    if (appJson && cJSON_IsObject(appJson)) {
-        // Get or create global context and metadata
-        IRContext* ir_ctx = g_ir_context;
-        if (!ir_ctx) {
-            ir_ctx = ir_create_context();
-            ir_set_context(ir_ctx);
-        }
+
+    if (appJson) {
+        IRContext* ir_ctx = g_ir_context ?: (ir_set_context(ir_create_context()), g_ir_context);
         if (!ir_ctx->metadata) {
             ir_ctx->metadata = (IRMetadata*)calloc(1, sizeof(IRMetadata));
         }
-        if (ir_ctx->metadata) {
-            cJSON* titleItem = cJSON_GetObjectItem(appJson, "windowTitle");
-            if (titleItem && cJSON_IsString(titleItem)) {
-                if (ir_ctx->metadata->window_title) {
-                    free(ir_ctx->metadata->window_title);
-                }
-                size_t len = strlen(titleItem->valuestring);
-                ir_ctx->metadata->window_title = (char*)malloc(len + 1);
-                if (ir_ctx->metadata->window_title) {
-                    strcpy(ir_ctx->metadata->window_title, titleItem->valuestring);
-                }
-            }
-            cJSON* widthItem = cJSON_GetObjectItem(appJson, "windowWidth");
-            if (widthItem && cJSON_IsNumber(widthItem)) {
-                ir_ctx->metadata->window_width = (int)widthItem->valuedouble;
-            }
-            cJSON* heightItem = cJSON_GetObjectItem(appJson, "windowHeight");
-            if (heightItem && cJSON_IsNumber(heightItem)) {
-                ir_ctx->metadata->window_height = (int)heightItem->valuedouble;
-            }
+
+        // Window title: app.windowTitle
+        cJSON* titleItem = cJSON_GetObjectItem(appJson, "windowTitle");
+        if (titleItem && cJSON_IsString(titleItem)) {
+            free(ir_ctx->metadata->window_title);
+            ir_ctx->metadata->window_title = strdup(titleItem->valuestring);
+        }
+
+        // Window dimensions: app.windowWidth, app.windowHeight
+        cJSON* widthItem = cJSON_GetObjectItem(appJson, "windowWidth");
+        if (widthItem && cJSON_IsNumber(widthItem)) {
+            ir_ctx->metadata->window_width = (int)widthItem->valuedouble;
+        }
+
+        cJSON* heightItem = cJSON_GetObjectItem(appJson, "windowHeight");
+        if (heightItem && cJSON_IsNumber(heightItem)) {
+            ir_ctx->metadata->window_height = (int)heightItem->valuedouble;
         }
     }
 
