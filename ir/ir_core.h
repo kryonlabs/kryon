@@ -228,15 +228,46 @@ typedef struct {
     float value;  // Value for PX, PERCENT, FR
 } IRGridTrack;
 
+// Minmax constraint for grid tracks: minmax(min, max)
+typedef struct {
+    IRGridTrackType min_type;
+    float min_value;
+    IRGridTrackType max_type;
+    float max_value;
+} IRGridMinMax;
+
+// Repeat mode for grid templates
+typedef enum {
+    IR_GRID_REPEAT_NONE,       // No repeat (explicit tracks)
+    IR_GRID_REPEAT_COUNT,      // repeat(3, 1fr)
+    IR_GRID_REPEAT_AUTO_FIT,   // repeat(auto-fit, ...)
+    IR_GRID_REPEAT_AUTO_FILL   // repeat(auto-fill, ...)
+} IRGridRepeatMode;
+
+// Grid repeat definition: repeat(mode, track)
+typedef struct {
+    IRGridRepeatMode mode;
+    uint8_t count;             // For REPEAT_COUNT mode
+    IRGridTrack track;         // Track to repeat (simple case)
+    IRGridMinMax minmax;       // For minmax() inside repeat
+    bool has_minmax;           // Using minmax vs simple track
+} IRGridRepeat;
+
 // Grid Properties
 #define IR_MAX_GRID_TRACKS 12  // Maximum rows/columns
 
 typedef struct {
-    // Grid template
+    // Grid template (explicit tracks)
     IRGridTrack rows[IR_MAX_GRID_TRACKS];
     IRGridTrack columns[IR_MAX_GRID_TRACKS];
     uint8_t row_count;
     uint8_t column_count;
+
+    // Grid template (repeat syntax)
+    IRGridRepeat column_repeat;  // For repeat() syntax on columns
+    IRGridRepeat row_repeat;     // For repeat() syntax on rows
+    bool use_column_repeat;      // Use column_repeat instead of explicit columns
+    bool use_row_repeat;         // Use row_repeat instead of explicit rows
 
     // Gaps
     float row_gap;

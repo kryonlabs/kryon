@@ -132,6 +132,10 @@ typedef struct IRStyleProperties {
     uint8_t flex_grow;
     uint8_t flex_shrink;
 
+    // Grid layout
+    char* grid_template_columns;   // Raw CSS string: "repeat(auto-fit, minmax(240px, 1fr))"
+    char* grid_template_rows;      // Raw CSS string for rows
+
     // Other
     float opacity;
     uint32_t z_index;
@@ -176,6 +180,8 @@ typedef struct IRStyleProperties {
 #define IR_PROP_BACKGROUND_IMAGE (1ULL << 32)
 #define IR_PROP_BACKGROUND_CLIP  (1ULL << 33)
 #define IR_PROP_TEXT_FILL_COLOR  (1ULL << 34)
+#define IR_PROP_GRID_TEMPLATE_COLUMNS (1ULL << 35)
+#define IR_PROP_GRID_TEMPLATE_ROWS    (1ULL << 36)
 
 // ============================================================================
 // Style Rules

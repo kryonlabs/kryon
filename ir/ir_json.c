@@ -610,6 +610,35 @@ static const char* json_display_mode_to_string(IRLayoutMode mode) {
 }
 
 /**
+ * Convert IR_GRID_TRACK_* enum to string for JSON serialization
+ */
+static const char* json_grid_track_type_to_string(IRGridTrackType type) {
+    switch (type) {
+        case IR_GRID_TRACK_PX: return "px";
+        case IR_GRID_TRACK_PERCENT: return "percent";
+        case IR_GRID_TRACK_FR: return "fr";
+        case IR_GRID_TRACK_AUTO: return "auto";
+        case IR_GRID_TRACK_MIN_CONTENT: return "min-content";
+        case IR_GRID_TRACK_MAX_CONTENT: return "max-content";
+        default: return "auto";
+    }
+}
+
+/**
+ * Parse grid track type from JSON string
+ */
+static IRGridTrackType json_parse_grid_track_type(const char* str) {
+    if (!str) return IR_GRID_TRACK_AUTO;
+    if (strcmp(str, "px") == 0) return IR_GRID_TRACK_PX;
+    if (strcmp(str, "percent") == 0) return IR_GRID_TRACK_PERCENT;
+    if (strcmp(str, "fr") == 0) return IR_GRID_TRACK_FR;
+    if (strcmp(str, "auto") == 0) return IR_GRID_TRACK_AUTO;
+    if (strcmp(str, "min-content") == 0) return IR_GRID_TRACK_MIN_CONTENT;
+    if (strcmp(str, "max-content") == 0) return IR_GRID_TRACK_MAX_CONTENT;
+    return IR_GRID_TRACK_AUTO;
+}
+
+/**
  * Convert IR_BACKGROUND_CLIP_* enum to string
  */
 static const char* json_background_clip_to_string(IRBackgroundClip clip) {
@@ -977,6 +1006,138 @@ static void json_serialize_layout(cJSON* obj, IRLayout* layout, IRComponent* com
     // Aspect ratio
     if (layout->aspect_ratio > 0) {
         cJSON_AddNumberToObject(obj, "aspectRatio", layout->aspect_ratio);
+    }
+
+    // Grid properties (only if grid mode)
+    if (layout->mode == IR_LAYOUT_MODE_GRID) {
+        IRGrid* grid = &layout->grid;
+
+        // Grid gaps
+        if (grid->row_gap > 0 || grid->column_gap > 0) {
+            if (grid->row_gap == grid->column_gap && grid->row_gap > 0) {
+                cJSON_AddNumberToObject(obj, "gap", grid->row_gap);
+            } else {
+                if (grid->row_gap > 0) cJSON_AddNumberToObject(obj, "rowGap", grid->row_gap);
+                if (grid->column_gap > 0) cJSON_AddNumberToObject(obj, "columnGap", grid->column_gap);
+            }
+        }
+
+        // Grid column repeat
+        if (grid->use_column_repeat && grid->column_repeat.mode != IR_GRID_REPEAT_NONE) {
+            cJSON* repeat_obj = cJSON_CreateObject();
+            if (repeat_obj) {
+                // Mode
+                const char* mode_str = "none";
+                switch (grid->column_repeat.mode) {
+                    case IR_GRID_REPEAT_AUTO_FIT: mode_str = "auto-fit"; break;
+                    case IR_GRID_REPEAT_AUTO_FILL: mode_str = "auto-fill"; break;
+                    case IR_GRID_REPEAT_COUNT: mode_str = "count"; break;
+                    default: break;
+                }
+                cJSON_AddStringToObject(repeat_obj, "mode", mode_str);
+
+                // Count (for repeat(N, track))
+                if (grid->column_repeat.mode == IR_GRID_REPEAT_COUNT) {
+                    cJSON_AddNumberToObject(repeat_obj, "count", grid->column_repeat.count);
+                }
+
+                // Minmax or track
+                if (grid->column_repeat.has_minmax) {
+                    cJSON* minmax_obj = cJSON_CreateObject();
+                    if (minmax_obj) {
+                        cJSON_AddStringToObject(minmax_obj, "minType",
+                            json_grid_track_type_to_string(grid->column_repeat.minmax.min_type));
+                        cJSON_AddNumberToObject(minmax_obj, "minValue", grid->column_repeat.minmax.min_value);
+                        cJSON_AddStringToObject(minmax_obj, "maxType",
+                            json_grid_track_type_to_string(grid->column_repeat.minmax.max_type));
+                        cJSON_AddNumberToObject(minmax_obj, "maxValue", grid->column_repeat.minmax.max_value);
+                        cJSON_AddItemToObject(repeat_obj, "minmax", minmax_obj);
+                    }
+                } else {
+                    cJSON_AddStringToObject(repeat_obj, "trackType",
+                        json_grid_track_type_to_string(grid->column_repeat.track.type));
+                    cJSON_AddNumberToObject(repeat_obj, "trackValue", grid->column_repeat.track.value);
+                }
+
+                cJSON_AddItemToObject(obj, "gridColumnRepeat", repeat_obj);
+            }
+        } else if (grid->column_count > 0) {
+            // Explicit columns
+            cJSON* cols = cJSON_CreateArray();
+            if (cols) {
+                for (uint8_t i = 0; i < grid->column_count; i++) {
+                    cJSON* col = cJSON_CreateObject();
+                    if (col) {
+                        cJSON_AddStringToObject(col, "type",
+                            json_grid_track_type_to_string(grid->columns[i].type));
+                        cJSON_AddNumberToObject(col, "value", grid->columns[i].value);
+                        cJSON_AddItemToArray(cols, col);
+                    }
+                }
+                cJSON_AddItemToObject(obj, "gridColumns", cols);
+            }
+        }
+
+        // Grid row repeat (similar to columns)
+        if (grid->use_row_repeat && grid->row_repeat.mode != IR_GRID_REPEAT_NONE) {
+            cJSON* repeat_obj = cJSON_CreateObject();
+            if (repeat_obj) {
+                const char* mode_str = "none";
+                switch (grid->row_repeat.mode) {
+                    case IR_GRID_REPEAT_AUTO_FIT: mode_str = "auto-fit"; break;
+                    case IR_GRID_REPEAT_AUTO_FILL: mode_str = "auto-fill"; break;
+                    case IR_GRID_REPEAT_COUNT: mode_str = "count"; break;
+                    default: break;
+                }
+                cJSON_AddStringToObject(repeat_obj, "mode", mode_str);
+
+                if (grid->row_repeat.mode == IR_GRID_REPEAT_COUNT) {
+                    cJSON_AddNumberToObject(repeat_obj, "count", grid->row_repeat.count);
+                }
+
+                if (grid->row_repeat.has_minmax) {
+                    cJSON* minmax_obj = cJSON_CreateObject();
+                    if (minmax_obj) {
+                        cJSON_AddStringToObject(minmax_obj, "minType",
+                            json_grid_track_type_to_string(grid->row_repeat.minmax.min_type));
+                        cJSON_AddNumberToObject(minmax_obj, "minValue", grid->row_repeat.minmax.min_value);
+                        cJSON_AddStringToObject(minmax_obj, "maxType",
+                            json_grid_track_type_to_string(grid->row_repeat.minmax.max_type));
+                        cJSON_AddNumberToObject(minmax_obj, "maxValue", grid->row_repeat.minmax.max_value);
+                        cJSON_AddItemToObject(repeat_obj, "minmax", minmax_obj);
+                    }
+                } else {
+                    cJSON_AddStringToObject(repeat_obj, "trackType",
+                        json_grid_track_type_to_string(grid->row_repeat.track.type));
+                    cJSON_AddNumberToObject(repeat_obj, "trackValue", grid->row_repeat.track.value);
+                }
+
+                cJSON_AddItemToObject(obj, "gridRowRepeat", repeat_obj);
+            }
+        } else if (grid->row_count > 0) {
+            // Explicit rows
+            cJSON* rows = cJSON_CreateArray();
+            if (rows) {
+                for (uint8_t i = 0; i < grid->row_count; i++) {
+                    cJSON* row = cJSON_CreateObject();
+                    if (row) {
+                        cJSON_AddStringToObject(row, "type",
+                            json_grid_track_type_to_string(grid->rows[i].type));
+                        cJSON_AddNumberToObject(row, "value", grid->rows[i].value);
+                        cJSON_AddItemToArray(rows, row);
+                    }
+                }
+                cJSON_AddItemToObject(obj, "gridRows", rows);
+            }
+        }
+
+        // Grid alignment
+        if (grid->justify_items != IR_ALIGNMENT_START) {
+            cJSON_AddStringToObject(obj, "justifyItems", json_align_items_to_string(grid->justify_items));
+        }
+        if (grid->align_items != IR_ALIGNMENT_START) {
+            cJSON_AddStringToObject(obj, "gridAlignItems", json_align_items_to_string(grid->align_items));
+        }
     }
 }
 
@@ -1792,6 +1953,18 @@ static cJSON* json_serialize_style_properties(const IRStyleProperties* props) {
         char* fillColorStr = json_color_to_string(props->text_fill_color);
         cJSON_AddStringToObject(obj, "textFillColor", fillColorStr);
         free(fillColorStr);
+    }
+
+    // Grid template (raw CSS strings)
+    if (props->set_flags & IR_PROP_GRID_TEMPLATE_COLUMNS) {
+        if (props->grid_template_columns) {
+            cJSON_AddStringToObject(obj, "gridTemplateColumns", props->grid_template_columns);
+        }
+    }
+    if (props->set_flags & IR_PROP_GRID_TEMPLATE_ROWS) {
+        if (props->grid_template_rows) {
+            cJSON_AddStringToObject(obj, "gridTemplateRows", props->grid_template_rows);
+        }
     }
 
     return obj;
@@ -3523,6 +3696,188 @@ static void json_deserialize_layout(cJSON* obj, IRLayout* layout) {
     }
     if ((item = cJSON_GetObjectItem(obj, "gap")) != NULL && cJSON_IsNumber(item)) {
         layout->flex.gap = (uint32_t)item->valueint;
+        // Also set grid gaps if in grid mode
+        if (layout->mode == IR_LAYOUT_MODE_GRID) {
+            layout->grid.row_gap = (float)item->valuedouble;
+            layout->grid.column_gap = (float)item->valuedouble;
+        }
+    }
+
+    // Grid-specific properties (only if grid mode)
+    if (layout->mode == IR_LAYOUT_MODE_GRID) {
+        IRGrid* grid = &layout->grid;
+
+        // Grid row/column gaps
+        if ((item = cJSON_GetObjectItem(obj, "rowGap")) != NULL && cJSON_IsNumber(item)) {
+            grid->row_gap = (float)item->valuedouble;
+        }
+        if ((item = cJSON_GetObjectItem(obj, "columnGap")) != NULL && cJSON_IsNumber(item)) {
+            grid->column_gap = (float)item->valuedouble;
+        }
+
+        // Grid column repeat
+        cJSON* col_repeat = cJSON_GetObjectItem(obj, "gridColumnRepeat");
+        if (col_repeat && cJSON_IsObject(col_repeat)) {
+            grid->use_column_repeat = true;
+
+            // Mode
+            cJSON* mode = cJSON_GetObjectItem(col_repeat, "mode");
+            if (mode && cJSON_IsString(mode)) {
+                if (strcmp(mode->valuestring, "auto-fit") == 0) {
+                    grid->column_repeat.mode = IR_GRID_REPEAT_AUTO_FIT;
+                } else if (strcmp(mode->valuestring, "auto-fill") == 0) {
+                    grid->column_repeat.mode = IR_GRID_REPEAT_AUTO_FILL;
+                } else if (strcmp(mode->valuestring, "count") == 0) {
+                    grid->column_repeat.mode = IR_GRID_REPEAT_COUNT;
+                }
+            }
+
+            // Count
+            cJSON* count = cJSON_GetObjectItem(col_repeat, "count");
+            if (count && cJSON_IsNumber(count)) {
+                grid->column_repeat.count = (uint8_t)count->valueint;
+            }
+
+            // Minmax
+            cJSON* minmax = cJSON_GetObjectItem(col_repeat, "minmax");
+            if (minmax && cJSON_IsObject(minmax)) {
+                grid->column_repeat.has_minmax = true;
+
+                cJSON* minType = cJSON_GetObjectItem(minmax, "minType");
+                cJSON* minVal = cJSON_GetObjectItem(minmax, "minValue");
+                cJSON* maxType = cJSON_GetObjectItem(minmax, "maxType");
+                cJSON* maxVal = cJSON_GetObjectItem(minmax, "maxValue");
+
+                if (minType && cJSON_IsString(minType)) {
+                    grid->column_repeat.minmax.min_type = json_parse_grid_track_type(minType->valuestring);
+                }
+                if (minVal && cJSON_IsNumber(minVal)) {
+                    grid->column_repeat.minmax.min_value = (float)minVal->valuedouble;
+                }
+                if (maxType && cJSON_IsString(maxType)) {
+                    grid->column_repeat.minmax.max_type = json_parse_grid_track_type(maxType->valuestring);
+                }
+                if (maxVal && cJSON_IsNumber(maxVal)) {
+                    grid->column_repeat.minmax.max_value = (float)maxVal->valuedouble;
+                }
+            } else {
+                // Simple track
+                cJSON* trackType = cJSON_GetObjectItem(col_repeat, "trackType");
+                cJSON* trackVal = cJSON_GetObjectItem(col_repeat, "trackValue");
+                if (trackType && cJSON_IsString(trackType)) {
+                    grid->column_repeat.track.type = json_parse_grid_track_type(trackType->valuestring);
+                }
+                if (trackVal && cJSON_IsNumber(trackVal)) {
+                    grid->column_repeat.track.value = (float)trackVal->valuedouble;
+                }
+            }
+        }
+
+        // Explicit grid columns
+        cJSON* cols = cJSON_GetObjectItem(obj, "gridColumns");
+        if (cols && cJSON_IsArray(cols) && !grid->use_column_repeat) {
+            int count = cJSON_GetArraySize(cols);
+            if (count > IR_MAX_GRID_TRACKS) count = IR_MAX_GRID_TRACKS;
+            grid->column_count = (uint8_t)count;
+
+            for (int i = 0; i < count; i++) {
+                cJSON* col = cJSON_GetArrayItem(cols, i);
+                if (col && cJSON_IsObject(col)) {
+                    cJSON* type = cJSON_GetObjectItem(col, "type");
+                    cJSON* val = cJSON_GetObjectItem(col, "value");
+                    if (type && cJSON_IsString(type)) {
+                        grid->columns[i].type = json_parse_grid_track_type(type->valuestring);
+                    }
+                    if (val && cJSON_IsNumber(val)) {
+                        grid->columns[i].value = (float)val->valuedouble;
+                    }
+                }
+            }
+        }
+
+        // Grid row repeat
+        cJSON* row_repeat = cJSON_GetObjectItem(obj, "gridRowRepeat");
+        if (row_repeat && cJSON_IsObject(row_repeat)) {
+            grid->use_row_repeat = true;
+
+            cJSON* mode = cJSON_GetObjectItem(row_repeat, "mode");
+            if (mode && cJSON_IsString(mode)) {
+                if (strcmp(mode->valuestring, "auto-fit") == 0) {
+                    grid->row_repeat.mode = IR_GRID_REPEAT_AUTO_FIT;
+                } else if (strcmp(mode->valuestring, "auto-fill") == 0) {
+                    grid->row_repeat.mode = IR_GRID_REPEAT_AUTO_FILL;
+                } else if (strcmp(mode->valuestring, "count") == 0) {
+                    grid->row_repeat.mode = IR_GRID_REPEAT_COUNT;
+                }
+            }
+
+            cJSON* count = cJSON_GetObjectItem(row_repeat, "count");
+            if (count && cJSON_IsNumber(count)) {
+                grid->row_repeat.count = (uint8_t)count->valueint;
+            }
+
+            cJSON* minmax = cJSON_GetObjectItem(row_repeat, "minmax");
+            if (minmax && cJSON_IsObject(minmax)) {
+                grid->row_repeat.has_minmax = true;
+
+                cJSON* minType = cJSON_GetObjectItem(minmax, "minType");
+                cJSON* minVal = cJSON_GetObjectItem(minmax, "minValue");
+                cJSON* maxType = cJSON_GetObjectItem(minmax, "maxType");
+                cJSON* maxVal = cJSON_GetObjectItem(minmax, "maxValue");
+
+                if (minType && cJSON_IsString(minType)) {
+                    grid->row_repeat.minmax.min_type = json_parse_grid_track_type(minType->valuestring);
+                }
+                if (minVal && cJSON_IsNumber(minVal)) {
+                    grid->row_repeat.minmax.min_value = (float)minVal->valuedouble;
+                }
+                if (maxType && cJSON_IsString(maxType)) {
+                    grid->row_repeat.minmax.max_type = json_parse_grid_track_type(maxType->valuestring);
+                }
+                if (maxVal && cJSON_IsNumber(maxVal)) {
+                    grid->row_repeat.minmax.max_value = (float)maxVal->valuedouble;
+                }
+            } else {
+                cJSON* trackType = cJSON_GetObjectItem(row_repeat, "trackType");
+                cJSON* trackVal = cJSON_GetObjectItem(row_repeat, "trackValue");
+                if (trackType && cJSON_IsString(trackType)) {
+                    grid->row_repeat.track.type = json_parse_grid_track_type(trackType->valuestring);
+                }
+                if (trackVal && cJSON_IsNumber(trackVal)) {
+                    grid->row_repeat.track.value = (float)trackVal->valuedouble;
+                }
+            }
+        }
+
+        // Explicit grid rows
+        cJSON* rows = cJSON_GetObjectItem(obj, "gridRows");
+        if (rows && cJSON_IsArray(rows) && !grid->use_row_repeat) {
+            int count = cJSON_GetArraySize(rows);
+            if (count > IR_MAX_GRID_TRACKS) count = IR_MAX_GRID_TRACKS;
+            grid->row_count = (uint8_t)count;
+
+            for (int i = 0; i < count; i++) {
+                cJSON* row = cJSON_GetArrayItem(rows, i);
+                if (row && cJSON_IsObject(row)) {
+                    cJSON* type = cJSON_GetObjectItem(row, "type");
+                    cJSON* val = cJSON_GetObjectItem(row, "value");
+                    if (type && cJSON_IsString(type)) {
+                        grid->rows[i].type = json_parse_grid_track_type(type->valuestring);
+                    }
+                    if (val && cJSON_IsNumber(val)) {
+                        grid->rows[i].value = (float)val->valuedouble;
+                    }
+                }
+            }
+        }
+
+        // Grid alignment
+        if ((item = cJSON_GetObjectItem(obj, "justifyItems")) != NULL && cJSON_IsString(item)) {
+            grid->justify_items = json_parse_alignment(item->valuestring);
+        }
+        if ((item = cJSON_GetObjectItem(obj, "gridAlignItems")) != NULL && cJSON_IsString(item)) {
+            grid->align_items = json_parse_alignment(item->valuestring);
+        }
     }
 }
 
@@ -4627,6 +4982,20 @@ static void json_deserialize_style_properties(cJSON* propsObj, IRStyleProperties
     if ((item = cJSON_GetObjectItem(propsObj, "textFillColor")) && cJSON_IsString(item)) {
         props->set_flags |= IR_PROP_TEXT_FILL_COLOR;
         props->text_fill_color = json_parse_color(item->valuestring);
+    }
+
+    // Grid template columns (raw CSS string for roundtrip)
+    if ((item = cJSON_GetObjectItem(propsObj, "gridTemplateColumns")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_GRID_TEMPLATE_COLUMNS;
+        if (props->grid_template_columns) free(props->grid_template_columns);
+        props->grid_template_columns = strdup(item->valuestring);
+    }
+
+    // Grid template rows (raw CSS string for roundtrip)
+    if ((item = cJSON_GetObjectItem(propsObj, "gridTemplateRows")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_GRID_TEMPLATE_ROWS;
+        if (props->grid_template_rows) free(props->grid_template_rows);
+        props->grid_template_rows = strdup(item->valuestring);
     }
 }
 
