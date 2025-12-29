@@ -672,6 +672,20 @@ void ir_css_to_style_properties(const CSSProperty* props, uint32_t count, IRStyl
     if (temp_layout.flex.grow > 0) out->set_flags |= IR_PROP_FLEX_GROW;
     if (temp_layout.flex.shrink != 1) out->set_flags |= IR_PROP_FLEX_SHRINK;
 
+    // Grid template - store raw CSS string for roundtrip
+    // Look through original props for grid-template-columns/rows
+    for (uint32_t i = 0; i < count; i++) {
+        if (props[i].property && props[i].value) {
+            if (strcmp(props[i].property, "grid-template-columns") == 0) {
+                out->grid_template_columns = strdup(props[i].value);
+                out->set_flags |= IR_PROP_GRID_TEMPLATE_COLUMNS;
+            } else if (strcmp(props[i].property, "grid-template-rows") == 0) {
+                out->grid_template_rows = strdup(props[i].value);
+                out->set_flags |= IR_PROP_GRID_TEMPLATE_ROWS;
+            }
+        }
+    }
+
     // Size constraints
     out->min_width = temp_layout.min_width;
     out->max_width = temp_layout.max_width;

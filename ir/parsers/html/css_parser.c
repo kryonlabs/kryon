@@ -39,6 +39,177 @@ static void trim_whitespace(char* str) {
 }
 
 // ============================================================================
+// GRID PARSING HELPERS
+// ============================================================================
+
+// Parse a single grid track value (1fr, 100px, auto, min-content, etc.)
+static bool parse_grid_track_value(const char* token, IRGridTrack* out) {
+    if (!token || !out) return false;
+
+    // Skip leading whitespace
+    while (*token && isspace(*token)) token++;
+    if (!*token) return false;
+
+    float num;
+    if (strstr(token, "fr") && sscanf(token, "%ffr", &num) == 1) {
+        out->type = IR_GRID_TRACK_FR;
+        out->value = num;
+        return true;
+    }
+    if (strstr(token, "px") && sscanf(token, "%fpx", &num) == 1) {
+        out->type = IR_GRID_TRACK_PX;
+        out->value = num;
+        return true;
+    }
+    if (strstr(token, "%") && sscanf(token, "%f%%", &num) == 1) {
+        out->type = IR_GRID_TRACK_PERCENT;
+        out->value = num;
+        return true;
+    }
+    if (strncmp(token, "auto", 4) == 0) {
+        out->type = IR_GRID_TRACK_AUTO;
+        out->value = 0;
+        return true;
+    }
+    if (strncmp(token, "min-content", 11) == 0) {
+        out->type = IR_GRID_TRACK_MIN_CONTENT;
+        out->value = 0;
+        return true;
+    }
+    if (strncmp(token, "max-content", 11) == 0) {
+        out->type = IR_GRID_TRACK_MAX_CONTENT;
+        out->value = 0;
+        return true;
+    }
+    return false;
+}
+
+// Parse minmax(min, max) function
+static bool parse_grid_minmax(const char* value, IRGridMinMax* out) {
+    if (!value || !out) return false;
+
+    // Skip leading whitespace
+    while (*value && isspace(*value)) value++;
+
+    // Must start with "minmax("
+    if (strncmp(value, "minmax(", 7) != 0) return false;
+
+    const char* inner = value + 7;
+
+    // Find the comma - need to handle nested parens carefully
+    int paren_depth = 0;
+    const char* comma = NULL;
+    for (const char* p = inner; *p; p++) {
+        if (*p == '(') paren_depth++;
+        else if (*p == ')') {
+            if (paren_depth == 0) break;  // End of minmax
+            paren_depth--;
+        }
+        else if (*p == ',' && paren_depth == 0) {
+            comma = p;
+            break;
+        }
+    }
+
+    if (!comma) return false;
+
+    // Find closing paren
+    const char* close = strrchr(value, ')');
+    if (!close || close < comma) return false;
+
+    // Extract min value
+    char min_str[64] = {0};
+    size_t min_len = comma - inner;
+    if (min_len >= sizeof(min_str)) min_len = sizeof(min_str) - 1;
+    strncpy(min_str, inner, min_len);
+    trim_whitespace(min_str);
+
+    // Extract max value
+    char max_str[64] = {0};
+    size_t max_len = close - (comma + 1);
+    if (max_len >= sizeof(max_str)) max_len = sizeof(max_str) - 1;
+    strncpy(max_str, comma + 1, max_len);
+    trim_whitespace(max_str);
+
+    // Parse both values
+    IRGridTrack min_track = {0}, max_track = {0};
+    if (!parse_grid_track_value(min_str, &min_track)) return false;
+    if (!parse_grid_track_value(max_str, &max_track)) return false;
+
+    out->min_type = min_track.type;
+    out->min_value = min_track.value;
+    out->max_type = max_track.type;
+    out->max_value = max_track.value;
+    return true;
+}
+
+// Parse repeat(mode, track) function
+static bool parse_grid_repeat(const char* value, IRGridRepeat* out) {
+    if (!value || !out) return false;
+
+    // Skip leading whitespace
+    while (*value && isspace(*value)) value++;
+
+    // Must start with "repeat("
+    if (strncmp(value, "repeat(", 7) != 0) return false;
+
+    const char* inner = value + 7;
+
+    // Find the comma separating mode from track
+    const char* comma = strchr(inner, ',');
+    if (!comma) return false;
+
+    // Extract and parse mode
+    char mode_str[32] = {0};
+    size_t mode_len = comma - inner;
+    if (mode_len >= sizeof(mode_str)) mode_len = sizeof(mode_str) - 1;
+    strncpy(mode_str, inner, mode_len);
+    trim_whitespace(mode_str);
+
+    if (strcmp(mode_str, "auto-fit") == 0) {
+        out->mode = IR_GRID_REPEAT_AUTO_FIT;
+        out->count = 0;
+    } else if (strcmp(mode_str, "auto-fill") == 0) {
+        out->mode = IR_GRID_REPEAT_AUTO_FILL;
+        out->count = 0;
+    } else {
+        out->mode = IR_GRID_REPEAT_COUNT;
+        out->count = (uint8_t)atoi(mode_str);
+        if (out->count == 0) out->count = 1;
+    }
+
+    // Parse track definition (skip comma and whitespace)
+    const char* track_start = comma + 1;
+    while (*track_start && isspace(*track_start)) track_start++;
+
+    // Find the final closing paren (accounting for nested parens like minmax())
+    int paren_depth = 1;  // We're inside repeat()
+    const char* close = track_start;
+    while (*close && paren_depth > 0) {
+        if (*close == '(') paren_depth++;
+        else if (*close == ')') paren_depth--;
+        close++;
+    }
+    close--;  // Back to the final ')'
+
+    // Extract track value
+    char track_str[128] = {0};
+    size_t track_len = close - track_start;
+    if (track_len >= sizeof(track_str)) track_len = sizeof(track_str) - 1;
+    strncpy(track_str, track_start, track_len);
+    trim_whitespace(track_str);
+
+    // Check for minmax()
+    if (strncmp(track_str, "minmax(", 7) == 0) {
+        out->has_minmax = true;
+        return parse_grid_minmax(track_str, &out->minmax);
+    } else {
+        out->has_minmax = false;
+        return parse_grid_track_value(track_str, &out->track);
+    }
+}
+
+// ============================================================================
 // GRADIENT PARSING HELPERS
 // ============================================================================
 
@@ -1129,72 +1300,62 @@ void ir_css_apply_to_layout(IRLayout* layout, const CSSProperty* props, uint32_t
         // Grid properties
         else if (strcmp(prop, "grid-template-columns") == 0) {
             // Parse grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) or simple values
-            // For now, handle simple cases like "1fr 1fr 1fr" or "240px 1fr"
             layout->mode = IR_LAYOUT_MODE_GRID;
             layout->grid.column_count = 0;
+            layout->grid.use_column_repeat = false;
 
-            char* val_copy = strdup(val);
-            char* token = strtok(val_copy, " ");
-            while (token && layout->grid.column_count < IR_MAX_GRID_TRACKS) {
-                float num;
-                if (strstr(token, "fr")) {
-                    if (sscanf(token, "%ffr", &num) == 1) {
-                        layout->grid.columns[layout->grid.column_count].type = IR_GRID_TRACK_FR;
-                        layout->grid.columns[layout->grid.column_count].value = num;
-                        layout->grid.column_count++;
-                    }
-                } else if (strstr(token, "px")) {
-                    if (sscanf(token, "%fpx", &num) == 1) {
-                        layout->grid.columns[layout->grid.column_count].type = IR_GRID_TRACK_PX;
-                        layout->grid.columns[layout->grid.column_count].value = num;
-                        layout->grid.column_count++;
-                    }
-                } else if (strcmp(token, "auto") == 0) {
-                    layout->grid.columns[layout->grid.column_count].type = IR_GRID_TRACK_AUTO;
-                    layout->grid.columns[layout->grid.column_count].value = 0;
-                    layout->grid.column_count++;
-                } else if (strstr(token, "repeat")) {
-                    // Handle repeat(auto-fit, minmax(240px, 1fr)) - simplified: use 3 x 1fr
-                    for (int r = 0; r < 3 && layout->grid.column_count < IR_MAX_GRID_TRACKS; r++) {
-                        layout->grid.columns[layout->grid.column_count].type = IR_GRID_TRACK_FR;
-                        layout->grid.columns[layout->grid.column_count].value = 1.0f;
-                        layout->grid.column_count++;
-                    }
-                    break;  // Skip rest of token parsing for repeat
+            // Check for repeat() function first (before tokenizing by space)
+            const char* val_trimmed = val;
+            while (*val_trimmed && isspace(*val_trimmed)) val_trimmed++;
+
+            if (strncmp(val_trimmed, "repeat(", 7) == 0) {
+                // Parse repeat() syntax: repeat(auto-fit, minmax(240px, 1fr))
+                if (parse_grid_repeat(val_trimmed, &layout->grid.column_repeat)) {
+                    layout->grid.use_column_repeat = true;
                 }
-                token = strtok(NULL, " ");
+            } else {
+                // Parse simple space-separated values: "1fr 1fr 1fr" or "240px 1fr"
+                char* val_copy = strdup(val);
+                char* token = strtok(val_copy, " ");
+                while (token && layout->grid.column_count < IR_MAX_GRID_TRACKS) {
+                    IRGridTrack track = {0};
+                    if (parse_grid_track_value(token, &track)) {
+                        layout->grid.columns[layout->grid.column_count] = track;
+                        layout->grid.column_count++;
+                    }
+                    token = strtok(NULL, " ");
+                }
+                free(val_copy);
             }
-            free(val_copy);
         }
         else if (strcmp(prop, "grid-template-rows") == 0) {
-            // Similar parsing for rows
+            // Parse grid-template-rows: repeat() or simple values
             layout->mode = IR_LAYOUT_MODE_GRID;
             layout->grid.row_count = 0;
+            layout->grid.use_row_repeat = false;
 
-            char* val_copy = strdup(val);
-            char* token = strtok(val_copy, " ");
-            while (token && layout->grid.row_count < IR_MAX_GRID_TRACKS) {
-                float num;
-                if (strstr(token, "fr")) {
-                    if (sscanf(token, "%ffr", &num) == 1) {
-                        layout->grid.rows[layout->grid.row_count].type = IR_GRID_TRACK_FR;
-                        layout->grid.rows[layout->grid.row_count].value = num;
-                        layout->grid.row_count++;
-                    }
-                } else if (strstr(token, "px")) {
-                    if (sscanf(token, "%fpx", &num) == 1) {
-                        layout->grid.rows[layout->grid.row_count].type = IR_GRID_TRACK_PX;
-                        layout->grid.rows[layout->grid.row_count].value = num;
-                        layout->grid.row_count++;
-                    }
-                } else if (strcmp(token, "auto") == 0) {
-                    layout->grid.rows[layout->grid.row_count].type = IR_GRID_TRACK_AUTO;
-                    layout->grid.rows[layout->grid.row_count].value = 0;
-                    layout->grid.row_count++;
+            // Check for repeat() function first
+            const char* val_trimmed = val;
+            while (*val_trimmed && isspace(*val_trimmed)) val_trimmed++;
+
+            if (strncmp(val_trimmed, "repeat(", 7) == 0) {
+                if (parse_grid_repeat(val_trimmed, &layout->grid.row_repeat)) {
+                    layout->grid.use_row_repeat = true;
                 }
-                token = strtok(NULL, " ");
+            } else {
+                // Parse simple space-separated values
+                char* val_copy = strdup(val);
+                char* token = strtok(val_copy, " ");
+                while (token && layout->grid.row_count < IR_MAX_GRID_TRACKS) {
+                    IRGridTrack track = {0};
+                    if (parse_grid_track_value(token, &track)) {
+                        layout->grid.rows[layout->grid.row_count] = track;
+                        layout->grid.row_count++;
+                    }
+                    token = strtok(NULL, " ");
+                }
+                free(val_copy);
             }
-            free(val_copy);
         }
         else if (strcmp(prop, "row-gap") == 0) {
             float gap;

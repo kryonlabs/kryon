@@ -874,6 +874,85 @@ static void ir_layout_compute_grid(IRComponent* container, float available_width
     IRLayout* layout = container->layout;
     IRGrid* grid = &layout->grid;
 
+    // Handle repeat(auto-fit/auto-fill, ...) for columns
+    if (grid->use_column_repeat && grid->column_repeat.mode != IR_GRID_REPEAT_NONE) {
+        IRGridRepeat* rep = &grid->column_repeat;
+
+        if (rep->mode == IR_GRID_REPEAT_AUTO_FIT || rep->mode == IR_GRID_REPEAT_AUTO_FILL) {
+            // Calculate how many columns fit based on minimum track size
+            float min_size = 100.0f;  // Default fallback
+            if (rep->has_minmax && rep->minmax.min_type == IR_GRID_TRACK_PX) {
+                min_size = rep->minmax.min_value;
+            } else if (!rep->has_minmax && rep->track.type == IR_GRID_TRACK_PX) {
+                min_size = rep->track.value;
+            }
+
+            // Calculate: n * min_size + (n-1) * gap <= available_width
+            // Solving: n <= (available_width + gap) / (min_size + gap)
+            float gap = grid->column_gap;
+            uint8_t count = (uint8_t)((available_width + gap) / (min_size + gap));
+            if (count < 1) count = 1;
+            if (count > IR_MAX_GRID_TRACKS) count = IR_MAX_GRID_TRACKS;
+            grid->column_count = count;
+
+            // Populate columns with the repeat track definition
+            for (uint8_t i = 0; i < count; i++) {
+                if (rep->has_minmax) {
+                    // For minmax, use FR for flexible distribution
+                    grid->columns[i].type = IR_GRID_TRACK_FR;
+                    grid->columns[i].value = (rep->minmax.max_type == IR_GRID_TRACK_FR)
+                        ? rep->minmax.max_value : 1.0f;
+                } else {
+                    grid->columns[i] = rep->track;
+                }
+            }
+        } else if (rep->mode == IR_GRID_REPEAT_COUNT) {
+            // Fixed repeat count
+            uint8_t count = rep->count;
+            if (count > IR_MAX_GRID_TRACKS) count = IR_MAX_GRID_TRACKS;
+            grid->column_count = count;
+            for (uint8_t i = 0; i < count; i++) {
+                if (rep->has_minmax) {
+                    grid->columns[i].type = IR_GRID_TRACK_FR;
+                    grid->columns[i].value = (rep->minmax.max_type == IR_GRID_TRACK_FR)
+                        ? rep->minmax.max_value : 1.0f;
+                } else {
+                    grid->columns[i] = rep->track;
+                }
+            }
+        }
+    }
+
+    // Handle repeat() for rows similarly
+    if (grid->use_row_repeat && grid->row_repeat.mode != IR_GRID_REPEAT_NONE) {
+        IRGridRepeat* rep = &grid->row_repeat;
+
+        if (rep->mode == IR_GRID_REPEAT_COUNT) {
+            uint8_t count = rep->count;
+            if (count > IR_MAX_GRID_TRACKS) count = IR_MAX_GRID_TRACKS;
+            grid->row_count = count;
+            for (uint8_t i = 0; i < count; i++) {
+                if (rep->has_minmax) {
+                    grid->rows[i].type = IR_GRID_TRACK_FR;
+                    grid->rows[i].value = (rep->minmax.max_type == IR_GRID_TRACK_FR)
+                        ? rep->minmax.max_value : 1.0f;
+                } else {
+                    grid->rows[i] = rep->track;
+                }
+            }
+        }
+        // Note: auto-fit/auto-fill for rows is less common, skip for now
+    }
+
+    // Auto-calculate row count based on child count if not specified
+    if (grid->row_count == 0 && container->child_count > 0 && grid->column_count > 0) {
+        grid->row_count = (container->child_count + grid->column_count - 1) / grid->column_count;
+        for (uint8_t i = 0; i < grid->row_count; i++) {
+            grid->rows[i].type = IR_GRID_TRACK_AUTO;
+            grid->rows[i].value = 0;
+        }
+    }
+
     // If no grid template is defined, fall back to auto layout
     if (grid->row_count == 0 || grid->column_count == 0) {
         return;

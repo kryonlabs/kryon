@@ -434,13 +434,13 @@ static const char* get_grid_track_string(IRGridTrack* track) {
 
     switch (track->type) {
         case IR_GRID_TRACK_PX:
-            snprintf(track_buffer, sizeof(track_buffer), "%.1fpx", track->value);
+            snprintf(track_buffer, sizeof(track_buffer), "%.0fpx", track->value);
             return track_buffer;
         case IR_GRID_TRACK_PERCENT:
-            snprintf(track_buffer, sizeof(track_buffer), "%.1f%%", track->value);
+            snprintf(track_buffer, sizeof(track_buffer), "%.0f%%", track->value);
             return track_buffer;
         case IR_GRID_TRACK_FR:
-            snprintf(track_buffer, sizeof(track_buffer), "%.1ffr", track->value);
+            snprintf(track_buffer, sizeof(track_buffer), "%.0ffr", track->value);
             return track_buffer;
         case IR_GRID_TRACK_AUTO:
             return "auto";
@@ -450,6 +450,83 @@ static const char* get_grid_track_string(IRGridTrack* track) {
             return "max-content";
         default:
             return "1fr";
+    }
+}
+
+// Get track string for minmax min or max value
+static const char* get_grid_track_string_minmax(IRGridTrackType type, float value, char* buffer, size_t size) {
+    switch (type) {
+        case IR_GRID_TRACK_PX:
+            snprintf(buffer, size, "%.0fpx", value);
+            break;
+        case IR_GRID_TRACK_PERCENT:
+            snprintf(buffer, size, "%.0f%%", value);
+            break;
+        case IR_GRID_TRACK_FR:
+            snprintf(buffer, size, "%.0ffr", value);
+            break;
+        case IR_GRID_TRACK_AUTO:
+            strncpy(buffer, "auto", size);
+            break;
+        case IR_GRID_TRACK_MIN_CONTENT:
+            strncpy(buffer, "min-content", size);
+            break;
+        case IR_GRID_TRACK_MAX_CONTENT:
+            strncpy(buffer, "max-content", size);
+            break;
+        default:
+            strncpy(buffer, "auto", size);
+            break;
+    }
+    return buffer;
+}
+
+// Generate grid-template-columns or grid-template-rows
+static void generate_grid_template(CSSGenerator* generator, IRGrid* grid, bool is_columns) {
+    IRGridRepeat* repeat = is_columns ? &grid->column_repeat : &grid->row_repeat;
+    bool use_repeat = is_columns ? grid->use_column_repeat : grid->use_row_repeat;
+    IRGridTrack* tracks = is_columns ? grid->columns : grid->rows;
+    uint8_t count = is_columns ? grid->column_count : grid->row_count;
+
+    const char* prop = is_columns ? "grid-template-columns" : "grid-template-rows";
+
+    if (use_repeat && repeat->mode != IR_GRID_REPEAT_NONE) {
+        // Output repeat() syntax
+        css_generator_write_format(generator, "  %s: repeat(", prop);
+
+        switch (repeat->mode) {
+            case IR_GRID_REPEAT_AUTO_FIT:
+                css_generator_write_string(generator, "auto-fit");
+                break;
+            case IR_GRID_REPEAT_AUTO_FILL:
+                css_generator_write_string(generator, "auto-fill");
+                break;
+            case IR_GRID_REPEAT_COUNT:
+                css_generator_write_format(generator, "%d", repeat->count);
+                break;
+            default:
+                break;
+        }
+
+        css_generator_write_string(generator, ", ");
+
+        if (repeat->has_minmax) {
+            char min_str[32], max_str[32];
+            get_grid_track_string_minmax(repeat->minmax.min_type, repeat->minmax.min_value, min_str, sizeof(min_str));
+            get_grid_track_string_minmax(repeat->minmax.max_type, repeat->minmax.max_value, max_str, sizeof(max_str));
+            css_generator_write_format(generator, "minmax(%s, %s)", min_str, max_str);
+        } else {
+            css_generator_write_string(generator, get_grid_track_string(&repeat->track));
+        }
+
+        css_generator_write_string(generator, ");\n");
+    } else if (count > 0) {
+        // Explicit tracks
+        css_generator_write_format(generator, "  %s:", prop);
+        for (uint8_t i = 0; i < count; i++) {
+            css_generator_write_format(generator, " %s", get_grid_track_string(&tracks[i]));
+        }
+        css_generator_write_string(generator, ";\n");
     }
 }
 
@@ -1129,8 +1206,41 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
             }
         } else if (layout->display_explicit && layout->mode == IR_LAYOUT_MODE_GRID) {
             // Grid mode - only if explicitly set
+            IRGrid* grid = &layout->grid;
+
             css_generator_write_string(generator, "  display: grid;\n");
-            // Grid properties would go here
+
+            // Grid template columns
+            generate_grid_template(generator, grid, true);
+
+            // Grid template rows (if explicit)
+            if (grid->row_count > 0 || grid->use_row_repeat) {
+                generate_grid_template(generator, grid, false);
+            }
+
+            // Gap
+            if (grid->row_gap > 0 || grid->column_gap > 0) {
+                if (grid->row_gap == grid->column_gap) {
+                    css_generator_write_format(generator, "  gap: %.0fpx;\n", grid->row_gap);
+                } else {
+                    if (grid->row_gap > 0) {
+                        css_generator_write_format(generator, "  row-gap: %.0fpx;\n", grid->row_gap);
+                    }
+                    if (grid->column_gap > 0) {
+                        css_generator_write_format(generator, "  column-gap: %.0fpx;\n", grid->column_gap);
+                    }
+                }
+            }
+
+            // Justify/align items (if non-default)
+            if (grid->justify_items != IR_ALIGNMENT_START) {
+                css_generator_write_format(generator, "  justify-items: %s;\n",
+                                          get_alignment_string(grid->justify_items));
+            }
+            if (grid->align_items != IR_ALIGNMENT_START) {
+                css_generator_write_format(generator, "  align-items: %s;\n",
+                                          get_alignment_string(grid->align_items));
+            }
         }
 
         // Gap can also apply to non-flex layouts if explicitly set
@@ -1537,6 +1647,14 @@ static void generate_stylesheet_rules(CSSGenerator* generator, IRStylesheet* sty
 
         if (props->set_flags & IR_PROP_GAP) {
             css_generator_write_format(generator, "  gap: %.0fpx;\n", props->gap);
+        }
+
+        // Grid template (raw CSS strings for roundtrip)
+        if (props->set_flags & IR_PROP_GRID_TEMPLATE_COLUMNS) {
+            css_generator_write_format(generator, "  grid-template-columns: %s;\n", props->grid_template_columns);
+        }
+        if (props->set_flags & IR_PROP_GRID_TEMPLATE_ROWS) {
+            css_generator_write_format(generator, "  grid-template-rows: %s;\n", props->grid_template_rows);
         }
 
         if (props->set_flags & IR_PROP_WIDTH) {

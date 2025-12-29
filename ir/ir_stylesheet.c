@@ -49,6 +49,18 @@ void ir_style_properties_cleanup(IRStyleProperties* props) {
         free(props->font_family);
         props->font_family = NULL;
     }
+    if (props->background_image) {
+        free(props->background_image);
+        props->background_image = NULL;
+    }
+    if (props->grid_template_columns) {
+        free(props->grid_template_columns);
+        props->grid_template_columns = NULL;
+    }
+    if (props->grid_template_rows) {
+        free(props->grid_template_rows);
+        props->grid_template_rows = NULL;
+    }
 }
 
 // ============================================================================
@@ -575,6 +587,16 @@ bool ir_stylesheet_add_rule(IRStylesheet* stylesheet, const char* selector,
     // Deep copy background_image if present
     if (properties->background_image) {
         rule->properties.background_image = str_dup(properties->background_image);
+    }
+
+    // Deep copy grid_template_columns if present
+    if (properties->grid_template_columns) {
+        rule->properties.grid_template_columns = str_dup(properties->grid_template_columns);
+    }
+
+    // Deep copy grid_template_rows if present
+    if (properties->grid_template_rows) {
+        rule->properties.grid_template_rows = str_dup(properties->grid_template_rows);
     }
 
     return true;
