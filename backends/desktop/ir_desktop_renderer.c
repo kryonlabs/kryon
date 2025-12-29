@@ -229,10 +229,18 @@ static bool execute_shutdown_callbacks(DesktopIRRenderer* renderer) {
     for (int i = 0; i < renderer->shutdown_callback_count - 1; i++) {
         for (int j = 0; j < renderer->shutdown_callback_count - i - 1; j++) {
             if (renderer->shutdown_callbacks[j].priority < renderer->shutdown_callbacks[j + 1].priority) {
-                // Swap
-                typeof(renderer->shutdown_callbacks[0]) temp = renderer->shutdown_callbacks[j];
-                renderer->shutdown_callbacks[j] = renderer->shutdown_callbacks[j + 1];
-                renderer->shutdown_callbacks[j + 1] = temp;
+                // Swap - use individual field copies
+                KryonShutdownCallback temp_cb = renderer->shutdown_callbacks[j].callback;
+                void* temp_data = renderer->shutdown_callbacks[j].user_data;
+                int temp_prio = renderer->shutdown_callbacks[j].priority;
+
+                renderer->shutdown_callbacks[j].callback = renderer->shutdown_callbacks[j + 1].callback;
+                renderer->shutdown_callbacks[j].user_data = renderer->shutdown_callbacks[j + 1].user_data;
+                renderer->shutdown_callbacks[j].priority = renderer->shutdown_callbacks[j + 1].priority;
+
+                renderer->shutdown_callbacks[j + 1].callback = temp_cb;
+                renderer->shutdown_callbacks[j + 1].user_data = temp_data;
+                renderer->shutdown_callbacks[j + 1].priority = temp_prio;
             }
         }
     }

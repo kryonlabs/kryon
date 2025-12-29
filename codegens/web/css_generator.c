@@ -8,6 +8,8 @@
 
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_style_vars.h"
+#include "../../ir/ir_stylesheet.h"
+#include "../../ir/ir_builder.h"
 #include "css_generator.h"
 #include "style_analyzer.h"
 
@@ -547,7 +549,10 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
     }
 
     // Background (color or gradient) - skip fully transparent
-    if (component->style->background.type == IR_COLOR_SOLID) {
+    // First check for background_image (gradient string like "linear-gradient(...)")
+    if (component->style->background_image && component->style->background_image[0] != '\0') {
+        css_generator_write_format(generator, "  background: %s;\n", component->style->background_image);
+    } else if (component->style->background.type == IR_COLOR_SOLID) {
         // Only output if not fully transparent
         if (component->style->background.data.a > 0) {
             const char* bg = get_color_string(component->style->background);
@@ -556,6 +561,26 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
     } else if (component->style->background.type == IR_COLOR_GRADIENT) {
         const char* bg = get_color_string(component->style->background);
         css_generator_write_format(generator, "  background: %s;\n", bg);
+    }
+
+    // Background clip (for gradient text effects)
+    if (component->style->background_clip == IR_BACKGROUND_CLIP_TEXT) {
+        css_generator_write_string(generator, "  -webkit-background-clip: text;\n");
+        css_generator_write_string(generator, "  background-clip: text;\n");
+        // Also output text-fill-color if transparent (common for gradient text)
+        if (component->style->text_fill_color.type == IR_COLOR_TRANSPARENT ||
+            (component->style->text_fill_color.type == IR_COLOR_SOLID &&
+             component->style->text_fill_color.data.a == 0)) {
+            css_generator_write_string(generator, "  -webkit-text-fill-color: transparent;\n");
+            css_generator_write_string(generator, "  color: transparent;\n");
+        } else if (component->style->text_fill_color.type == IR_COLOR_SOLID) {
+            const char* fill_color = get_color_string(component->style->text_fill_color);
+            css_generator_write_format(generator, "  -webkit-text-fill-color: %s;\n", fill_color);
+        }
+    } else if (component->style->background_clip == IR_BACKGROUND_CLIP_CONTENT_BOX) {
+        css_generator_write_string(generator, "  background-clip: content-box;\n");
+    } else if (component->style->background_clip == IR_BACKGROUND_CLIP_PADDING_BOX) {
+        css_generator_write_string(generator, "  background-clip: padding-box;\n");
     }
 
     // Border
@@ -1424,6 +1449,223 @@ static void generate_component_css(CSSGenerator* generator, IRComponent* compone
     }
 }
 
+// ============================================================================
+// Global Stylesheet Rules Generation
+// ============================================================================
+
+/**
+ * Helper to get color string for IRColor
+ */
+static const char* get_stylesheet_color_string(IRColor color) {
+    static char buffer[64];
+    if (color.type == IR_COLOR_SOLID) {
+        if (color.data.a == 255) {
+            snprintf(buffer, sizeof(buffer), "rgba(%d, %d, %d, 1.00)",
+                     color.data.r, color.data.g, color.data.b);
+        } else {
+            snprintf(buffer, sizeof(buffer), "rgba(%d, %d, %d, %.2f)",
+                     color.data.r, color.data.g, color.data.b, color.data.a / 255.0f);
+        }
+        return buffer;
+    } else if (color.type == IR_COLOR_VAR_REF && color.var_name) {
+        snprintf(buffer, sizeof(buffer), "var(%s)", color.var_name);
+        return buffer;
+    }
+    return "transparent";
+}
+
+/**
+ * Generate CSS rules from global IRStylesheet
+ * These are rules with complex selectors like "header .container" or ".btn.primary"
+ */
+static void generate_stylesheet_rules(CSSGenerator* generator, IRStylesheet* stylesheet) {
+    if (!generator || !stylesheet || stylesheet->rule_count == 0) return;
+
+    css_generator_write_string(generator, "/* Global Stylesheet Rules */\n");
+
+    for (uint32_t i = 0; i < stylesheet->rule_count; i++) {
+        IRStyleRule* rule = &stylesheet->rules[i];
+        if (!rule->selector || !rule->selector->original_selector) continue;
+
+        IRStyleProperties* props = &rule->properties;
+        if (props->set_flags == 0) continue;
+
+        // Output selector and opening brace
+        css_generator_write_format(generator, "%s {\n", rule->selector->original_selector);
+
+        // Output properties
+        if (props->set_flags & IR_PROP_DISPLAY) {
+            const char* display_str = "block";
+            if (props->display == IR_LAYOUT_MODE_FLEX) display_str = "flex";
+            else if (props->display == IR_LAYOUT_MODE_GRID) display_str = "grid";
+            css_generator_write_format(generator, "  display: %s;\n", display_str);
+        }
+
+        if (props->set_flags & IR_PROP_FLEX_DIRECTION) {
+            css_generator_write_format(generator, "  flex-direction: %s;\n",
+                                        props->flex_direction ? "row" : "column");
+        }
+
+        if (props->set_flags & IR_PROP_FLEX_WRAP) {
+            css_generator_write_format(generator, "  flex-wrap: %s;\n",
+                                        props->flex_wrap ? "wrap" : "nowrap");
+        }
+
+        if (props->set_flags & IR_PROP_JUSTIFY_CONTENT) {
+            const char* jc_str = "flex-start";
+            switch (props->justify_content) {
+                case IR_ALIGNMENT_CENTER: jc_str = "center"; break;
+                case IR_ALIGNMENT_END: jc_str = "flex-end"; break;
+                case IR_ALIGNMENT_SPACE_BETWEEN: jc_str = "space-between"; break;
+                case IR_ALIGNMENT_SPACE_AROUND: jc_str = "space-around"; break;
+                case IR_ALIGNMENT_SPACE_EVENLY: jc_str = "space-evenly"; break;
+                default: break;
+            }
+            css_generator_write_format(generator, "  justify-content: %s;\n", jc_str);
+        }
+
+        if (props->set_flags & IR_PROP_ALIGN_ITEMS) {
+            const char* ai_str = "flex-start";
+            switch (props->align_items) {
+                case IR_ALIGNMENT_CENTER: ai_str = "center"; break;
+                case IR_ALIGNMENT_END: ai_str = "flex-end"; break;
+                case IR_ALIGNMENT_STRETCH: ai_str = "stretch"; break;
+                default: break;
+            }
+            css_generator_write_format(generator, "  align-items: %s;\n", ai_str);
+        }
+
+        if (props->set_flags & IR_PROP_GAP) {
+            css_generator_write_format(generator, "  gap: %.0fpx;\n", props->gap);
+        }
+
+        if (props->set_flags & IR_PROP_WIDTH) {
+            if (props->width.type == IR_DIMENSION_PX) {
+                css_generator_write_format(generator, "  width: %.2fpx;\n", props->width.value);
+            } else if (props->width.type == IR_DIMENSION_PERCENT) {
+                css_generator_write_format(generator, "  width: %.1f%%;\n", props->width.value);
+            }
+        }
+
+        if (props->set_flags & IR_PROP_HEIGHT) {
+            if (props->height.type == IR_DIMENSION_PX) {
+                css_generator_write_format(generator, "  height: %.2fpx;\n", props->height.value);
+            } else if (props->height.type == IR_DIMENSION_PERCENT) {
+                css_generator_write_format(generator, "  height: %.1f%%;\n", props->height.value);
+            }
+        }
+
+        if (props->set_flags & IR_PROP_MAX_WIDTH) {
+            if (props->max_width.type == IR_DIMENSION_PX) {
+                css_generator_write_format(generator, "  max-width: %.2fpx;\n", props->max_width.value);
+            }
+        }
+
+        if (props->set_flags & IR_PROP_PADDING) {
+            css_generator_write_format(generator, "  padding: %.0fpx %.0fpx %.0fpx %.0fpx;\n",
+                                        props->padding.top, props->padding.right,
+                                        props->padding.bottom, props->padding.left);
+        }
+
+        if (props->set_flags & IR_PROP_MARGIN) {
+            css_generator_write_format(generator, "  margin: %.0fpx %.0fpx %.0fpx %.0fpx;\n",
+                                        props->margin.top, props->margin.right,
+                                        props->margin.bottom, props->margin.left);
+        }
+
+        if (props->set_flags & IR_PROP_BACKGROUND) {
+            const char* color_str = get_stylesheet_color_string(props->background);
+            css_generator_write_format(generator, "  background-color: %s;\n", color_str);
+        }
+
+        if (props->set_flags & IR_PROP_COLOR) {
+            const char* color_str = get_stylesheet_color_string(props->color);
+            css_generator_write_format(generator, "  color: %s;\n", color_str);
+        }
+
+        if (props->set_flags & IR_PROP_FONT_SIZE) {
+            css_generator_write_format(generator, "  font-size: %.2fpx;\n", props->font_size);
+        }
+
+        if (props->set_flags & IR_PROP_FONT_WEIGHT) {
+            if (props->font_bold) {
+                css_generator_write_string(generator, "  font-weight: bold;\n");
+            } else {
+                css_generator_write_format(generator, "  font-weight: %u;\n", props->font_weight);
+            }
+        }
+
+        if (props->set_flags & IR_PROP_FONT_FAMILY && props->font_family) {
+            css_generator_write_format(generator, "  font-family: %s;\n", props->font_family);
+        }
+
+        if (props->set_flags & IR_PROP_TEXT_ALIGN) {
+            const char* ta_str = "left";
+            switch (props->text_align) {
+                case IR_TEXT_ALIGN_CENTER: ta_str = "center"; break;
+                case IR_TEXT_ALIGN_RIGHT: ta_str = "right"; break;
+                case IR_TEXT_ALIGN_JUSTIFY: ta_str = "justify"; break;
+                default: break;
+            }
+            css_generator_write_format(generator, "  text-align: %s;\n", ta_str);
+        }
+
+        if (props->set_flags & IR_PROP_BORDER) {
+            css_generator_write_format(generator, "  border-width: %.2fpx;\n", props->border_width);
+        }
+
+        if (props->set_flags & IR_PROP_BORDER_RADIUS) {
+            css_generator_write_format(generator, "  border-radius: %upx;\n", props->border_radius);
+        }
+
+        if (props->set_flags & IR_PROP_LINE_HEIGHT) {
+            css_generator_write_format(generator, "  line-height: %.2f;\n", props->line_height);
+        }
+
+        // Background image (gradient string)
+        if (props->set_flags & IR_PROP_BACKGROUND_IMAGE) {
+            if (props->background_image) {
+                css_generator_write_format(generator, "  background: %s;\n", props->background_image);
+            }
+        }
+
+        // Background clip (for gradient text effects)
+        // Track if we're using background-clip: text for automatic text-fill-color
+        bool has_background_clip_text = false;
+        if (props->set_flags & IR_PROP_BACKGROUND_CLIP) {
+            if (props->background_clip == IR_BACKGROUND_CLIP_TEXT) {
+                css_generator_write_string(generator, "  -webkit-background-clip: text;\n");
+                css_generator_write_string(generator, "  background-clip: text;\n");
+                has_background_clip_text = true;
+            } else if (props->background_clip == IR_BACKGROUND_CLIP_CONTENT_BOX) {
+                css_generator_write_string(generator, "  background-clip: content-box;\n");
+            } else if (props->background_clip == IR_BACKGROUND_CLIP_PADDING_BOX) {
+                css_generator_write_string(generator, "  background-clip: padding-box;\n");
+            }
+        }
+
+        // Text fill color (for gradient text effects)
+        // If background-clip: text is set, automatically add transparent text-fill-color
+        // unless explicitly specified otherwise
+        if (props->set_flags & IR_PROP_TEXT_FILL_COLOR) {
+            if (props->text_fill_color.type == IR_COLOR_TRANSPARENT ||
+                (props->text_fill_color.type == IR_COLOR_SOLID && props->text_fill_color.data.a == 0)) {
+                css_generator_write_string(generator, "  -webkit-text-fill-color: transparent;\n");
+                css_generator_write_string(generator, "  color: transparent;\n");
+            } else if (props->text_fill_color.type == IR_COLOR_SOLID) {
+                const char* color_str = get_stylesheet_color_string(props->text_fill_color);
+                css_generator_write_format(generator, "  -webkit-text-fill-color: %s;\n", color_str);
+            }
+        } else if (has_background_clip_text) {
+            // Auto-add transparent text-fill-color for gradient text effect
+            css_generator_write_string(generator, "  -webkit-text-fill-color: transparent;\n");
+            css_generator_write_string(generator, "  color: transparent;\n");
+        }
+
+        css_generator_write_string(generator, "}\n\n");
+    }
+}
+
 const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
     if (!generator || !root) return NULL;
 
@@ -1481,6 +1723,11 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
             }
             css_generator_write_string(generator, "}\n\n");
         }
+    }
+
+    // Generate global stylesheet rules if available (descendant selectors, etc.)
+    if (g_ir_context && g_ir_context->stylesheet) {
+        generate_stylesheet_rules(generator, g_ir_context->stylesheet);
     }
 
     // Generate base styles for body

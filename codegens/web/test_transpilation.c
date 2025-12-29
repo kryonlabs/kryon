@@ -138,10 +138,10 @@ void test_component_type_names() {
     html_generator_destroy(generator);
     generator = html_generator_create_with_options(opts);
 
-    // Test heading
+    // Test heading - level is encoded in h1/h2/h3 tag, not data-level attribute
     const char* html4 = html_generator_generate(generator, heading);
     assert(strstr(html4, "data-ir-type=\"HEADING\"") != NULL);
-    assert(strstr(html4, "data-level=\"1\"") != NULL);
+    assert(strstr(html4, "<h1") != NULL);  // Level 1 heading uses h1 tag
 
     html_generator_destroy(generator);
     ir_destroy_component(container);

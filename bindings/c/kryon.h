@@ -468,6 +468,80 @@ void kryon_add_source_file(const char* filename, const char* full_path, const ch
 
 void kryon_set_main_source_file(const char* filename);
 
+// ============================================================================
+// Application Lifecycle - Graceful Shutdown System
+// ============================================================================
+
+// Types defined in desktop_platform.h (single source of truth)
+#include "../../backends/desktop/desktop_platform.h"
+
+// C-style naming aliases
+typedef KryonShutdownState kryon_shutdown_state_t;
+typedef KryonShutdownReason kryon_shutdown_reason_t;
+typedef KryonShutdownCallback kryon_shutdown_callback_t;
+typedef KryonCleanupCallback kryon_cleanup_callback_t;
+
+/**
+ * Request graceful shutdown
+ * This initiates the shutdown sequence:
+ * 1. State transitions to SHUTDOWN_REQUESTED
+ * 2. All registered shutdown callbacks are called
+ * 3. If not vetoed, state transitions to SHUTDOWN_IN_PROGRESS
+ * 4. Main loop exits
+ * 5. Cleanup callback is called (GPU resources can be freed here)
+ * 6. State transitions to SHUTDOWN_COMPLETE
+ * 7. Window is closed
+ *
+ * @param renderer The renderer instance (pass NULL to use global)
+ * @param reason The reason for shutdown
+ * @return true if shutdown is proceeding, false if vetoed
+ */
+bool kryon_request_shutdown(void* renderer, kryon_shutdown_reason_t reason);
+
+/**
+ * Register a shutdown callback
+ * Callbacks are called in priority order (highest first) when shutdown is requested.
+ * Only callbacks for USER-initiated shutdowns can veto by returning false.
+ *
+ * @param renderer The renderer instance (pass NULL to use global)
+ * @param callback Function to call on shutdown
+ * @param user_data User data to pass to callback
+ * @param priority Callback priority (higher = called first)
+ * @return true if registered successfully
+ */
+bool kryon_register_shutdown_callback(void* renderer,
+                                       kryon_shutdown_callback_t callback,
+                                       void* user_data,
+                                       int priority);
+
+/**
+ * Set cleanup callback
+ * The cleanup callback is called after the main loop exits but before the
+ * window is closed. This is the correct place to free GPU resources like
+ * textures, meshes, and shaders.
+ *
+ * @param renderer The renderer instance (pass NULL to use global)
+ * @param callback Function to call for cleanup
+ * @param user_data User data to pass to callback
+ */
+void kryon_set_cleanup_callback(void* renderer,
+                                 kryon_cleanup_callback_t callback,
+                                 void* user_data);
+
+/**
+ * Get current shutdown state
+ * @param renderer The renderer instance (pass NULL to use global)
+ * @return Current shutdown state
+ */
+kryon_shutdown_state_t kryon_get_shutdown_state(void* renderer);
+
+/**
+ * Check if renderer is shutting down
+ * @param renderer The renderer instance (pass NULL to use global)
+ * @return true if shutdown is in progress or complete
+ */
+bool kryon_is_shutting_down(void* renderer);
+
 #ifdef __cplusplus
 }
 #endif

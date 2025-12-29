@@ -830,10 +830,38 @@ void ir_css_apply_to_style(IRStyle* style, const CSSProperty* props, uint32_t co
         }
 
         // Colors
-        else if (strcmp(prop, "background-color") == 0 || strcmp(prop, "background") == 0) {
+        else if (strcmp(prop, "background-color") == 0) {
             ir_css_parse_color(val, &style->background);
+        } else if (strcmp(prop, "background") == 0) {
+            // Check if it's a gradient
+            if (strncmp(val, "linear-gradient", 15) == 0 ||
+                strncmp(val, "radial-gradient", 15) == 0 ||
+                strncmp(val, "-webkit-linear-gradient", 23) == 0) {
+                // Store raw gradient string for round-trip
+                if (style->background_image) free(style->background_image);
+                style->background_image = strdup(val);
+            } else {
+                ir_css_parse_color(val, &style->background);
+            }
         } else if (strcmp(prop, "color") == 0) {
             ir_css_parse_color(val, &style->font.color);
+        }
+        // Background clipping (for gradient text effects)
+        else if (strcmp(prop, "background-clip") == 0 ||
+                 strcmp(prop, "-webkit-background-clip") == 0) {
+            if (strcmp(val, "text") == 0) {
+                style->background_clip = IR_BACKGROUND_CLIP_TEXT;
+            } else if (strcmp(val, "content-box") == 0) {
+                style->background_clip = IR_BACKGROUND_CLIP_CONTENT_BOX;
+            } else if (strcmp(val, "padding-box") == 0) {
+                style->background_clip = IR_BACKGROUND_CLIP_PADDING_BOX;
+            } else {
+                style->background_clip = IR_BACKGROUND_CLIP_BORDER_BOX;
+            }
+        }
+        // Text fill color (for gradient text effects)
+        else if (strcmp(prop, "-webkit-text-fill-color") == 0) {
+            ir_css_parse_color(val, &style->text_fill_color);
         }
 
         // Spacing

@@ -203,6 +203,11 @@ build-c-libs:
 	$(MAKE) -C renderers/common install
 	$(MAKE) -C renderers/sdl3 all
 	$(MAKE) -C backends/desktop all
+	@echo "Building code generators..."
+	$(MAKE) -C codegens all
+	$(MAKE) -C codegens/c all
+	$(MAKE) -C codegens/kotlin all
+	$(MAKE) -C codegens/web all
 
 # Build code generators (needed by CLI)
 build-codegens:
@@ -567,6 +572,24 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf $(BIN_DIR)
 	rm -rf nimcache/
+	@echo "Cleaning codegen object files..."
+	rm -f codegens/web/*.o codegens/web/kir_to_html
+	rm -f codegens/kry/*.o
+	rm -f codegens/tsx/*.o
+	rm -f codegens/nim/*.o
+	rm -f codegens/lua/*.o
+	rm -f codegens/c/*.o
+	rm -f codegens/markdown/*.o
+	rm -f codegens/kotlin/*.o
+	rm -f codegens/*.o
+	@echo "Cleaning IR object files..."
+	rm -f ir/*.o
+	rm -f ir/parsers/html/*.o
+	rm -f ir/parsers/kry/*.o
+	@echo "Cleaning backend object files..."
+	rm -f backends/desktop/*.o
+	rm -f backends/desktop/renderers/sdl3/*.o
+	rm -f backends/desktop/renderers/raylib/*.o
 	@echo "Cleaning Android native builds..."
 	@rm -rf renderers/android/build
 	@rm -rf backends/android/build

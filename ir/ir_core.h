@@ -43,6 +43,13 @@ typedef enum {
     IR_COMPONENT_LIST,                // Ordered/unordered list container
     IR_COMPONENT_LIST_ITEM,           // Individual list item
     IR_COMPONENT_LINK,                // Hyperlink <a href="...">
+    // Inline semantic components (for rich text)
+    IR_COMPONENT_SPAN,                // <span> - inline container
+    IR_COMPONENT_STRONG,              // <strong> - bold/important text
+    IR_COMPONENT_EM,                  // <em> - emphasized/italic text
+    IR_COMPONENT_CODE_INLINE,         // <code> - inline code
+    IR_COMPONENT_SMALL,               // <small> - smaller text
+    IR_COMPONENT_MARK,                // <mark> - highlighted text
     IR_COMPONENT_CUSTOM,
     // Source structure types (for round-trip codegen)
     IR_COMPONENT_STATIC_BLOCK,        // Static block (compile-time code execution)
@@ -581,10 +588,21 @@ typedef struct {
 
 #define IR_MAX_PSEUDO_STYLES 8  // Support multiple pseudo-class styles per component
 
+// Background clipping mode for gradient text effects
+typedef enum {
+    IR_BACKGROUND_CLIP_BORDER_BOX = 0,
+    IR_BACKGROUND_CLIP_PADDING_BOX,
+    IR_BACKGROUND_CLIP_CONTENT_BOX,
+    IR_BACKGROUND_CLIP_TEXT           // For gradient text (background-clip: text)
+} IRBackgroundClip;
+
 // Style Properties
 typedef struct IRStyle {
     IRDimension width, height;
     IRColor background;
+    char* background_image;           // For gradient strings like "linear-gradient(...)"
+    IRBackgroundClip background_clip; // Background clipping mode
+    IRColor text_fill_color;          // For -webkit-text-fill-color
     IRColor border_color;
     IRBorder border;
     IRSpacing margin, padding;
@@ -838,6 +856,8 @@ typedef struct {
 typedef struct {
     char* url;              // Target URL (required)
     char* title;            // Optional title attribute (NULL if none)
+    char* target;           // Target window (_blank, _self, _parent, _top)
+    char* rel;              // Relationship (noopener, noreferrer, external, etc.)
 } IRLinkData;
 
 // Main IR Component

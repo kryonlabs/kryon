@@ -122,7 +122,7 @@ static void parse_inline_table(TOMLTable* table, const char* base_key, const cha
             value = remove_quotes(value);
 
             // Build full key: base_key.inner_key
-            char full_key[512];
+            char full_key[2048];
             snprintf(full_key, sizeof(full_key), "%s.%s", base_key, key);
 
             toml_table_add(table, full_key, value, line_num);
@@ -216,7 +216,7 @@ TOMLTable* toml_parse_file(const char* path) {
                 char* value = trim_whitespace(equals + 1);
 
                 // Build full key with section prefix
-                char full_key[512];
+                char full_key[1024];
                 if (current_section[0]) {
                     snprintf(full_key, sizeof(full_key), "%s.%s", current_section, key);
                 } else {
@@ -245,7 +245,7 @@ TOMLTable* toml_parse_file(const char* path) {
                         elem = remove_quotes(elem);
 
                         // Add as full_key.N
-                        char indexed_key[512];
+                        char indexed_key[2048];
                         snprintf(indexed_key, sizeof(indexed_key), "%s.%d", full_key, idx);
                         toml_table_add(table, indexed_key, elem, line_num);
 

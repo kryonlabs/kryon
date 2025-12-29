@@ -10,6 +10,8 @@
 #include "../../ir_builder.h"
 #include "../../ir_serialization.h"
 #include "../../ir_logic.h"
+#include "../../ir_stylesheet.h"
+#include "../html/css_parser.h"  // For ir_css_parse_color
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -264,6 +266,23 @@ static IRComponentType get_component_type(const char* name) {
     if (strcmp(lower, "tablecell") == 0 || strcmp(lower, "td") == 0) return IR_COMPONENT_TABLE_CELL;
     if (strcmp(lower, "tableheadercell") == 0 || strcmp(lower, "th") == 0) return IR_COMPONENT_TABLE_HEADER_CELL;
 
+    // Inline semantic components (for rich text)
+    if (strcmp(lower, "span") == 0) return IR_COMPONENT_SPAN;
+    if (strcmp(lower, "strong") == 0) return IR_COMPONENT_STRONG;
+    if (strcmp(lower, "em") == 0) return IR_COMPONENT_EM;
+    if (strcmp(lower, "codeinline") == 0 || strcmp(lower, "code") == 0) return IR_COMPONENT_CODE_INLINE;
+    if (strcmp(lower, "small") == 0) return IR_COMPONENT_SMALL;
+    if (strcmp(lower, "mark") == 0) return IR_COMPONENT_MARK;
+
+    // Markdown document components
+    if (strcmp(lower, "paragraph") == 0 || strcmp(lower, "p") == 0) return IR_COMPONENT_PARAGRAPH;
+    if (strcmp(lower, "heading") == 0) return IR_COMPONENT_HEADING;
+    if (strcmp(lower, "blockquote") == 0) return IR_COMPONENT_BLOCKQUOTE;
+    if (strcmp(lower, "codeblock") == 0) return IR_COMPONENT_CODE_BLOCK;
+    if (strcmp(lower, "list") == 0) return IR_COMPONENT_LIST;
+    if (strcmp(lower, "listitem") == 0) return IR_COMPONENT_LIST_ITEM;
+    if (strcmp(lower, "link") == 0 || strcmp(lower, "a") == 0) return IR_COMPONENT_LINK;
+
     // Default to container for unknown types
     return IR_COMPONENT_CONTAINER;
 }
@@ -341,6 +360,18 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
     if (!style) {
         style = ir_create_style();
         ir_set_style(component, style);
+    }
+
+    // CSS class name
+    if (strcmp(name, "className") == 0 || strcmp(name, "class") == 0) {
+        if (value->type == KRY_VALUE_STRING) {
+            if (component->css_class) {
+                free(component->css_class);
+            }
+            component->css_class = strdup(value->string_value);
+            fprintf(stderr, "[APPLY_PROPERTY] Set css_class = '%s'\n", component->css_class);
+        }
+        return;
     }
 
     // Text content
@@ -1751,6 +1782,158 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                     // NOTE: Don't free static_block_id here - ownership transferred to IRStaticBlockData
                     // It will be freed when source_structures is destroyed
                 }
+            } else if (child->type == KRY_NODE_STYLE_BLOCK) {
+                // Style block: add rule to global stylesheet
+                const char* selector = child->name;  // Selector is stored in name
+                if (!selector) {
+                    child = child->next_sibling;
+                    continue;
+                }
+
+                // Ensure stylesheet exists in global context
+                if (g_ir_context && !g_ir_context->stylesheet) {
+                    g_ir_context->stylesheet = ir_stylesheet_create();
+                }
+
+                if (g_ir_context && g_ir_context->stylesheet) {
+                    // Build IRStyleProperties from child properties
+                    IRStyleProperties props;
+                    ir_style_properties_init(&props);
+
+                    // Iterate through property children
+                    KryNode* prop_child = child->first_child;
+                    while (prop_child) {
+                        if (prop_child->type == KRY_NODE_PROPERTY && prop_child->name && prop_child->value) {
+                            const char* prop_name = prop_child->name;
+                            KryValue* val = prop_child->value;
+
+                            // Convert property to IRStyleProperties
+                            if (strcmp(prop_name, "backgroundColor") == 0 || strcmp(prop_name, "background") == 0) {
+                                if (val->type == KRY_VALUE_STRING) {
+                                    IRColor color;
+                                    if (ir_css_parse_color(val->string_value, &color)) {
+                                        props.background = color;
+                                        props.set_flags |= IR_PROP_BACKGROUND;
+                                    }
+                                }
+                            } else if (strcmp(prop_name, "color") == 0) {
+                                if (val->type == KRY_VALUE_STRING) {
+                                    IRColor color;
+                                    if (ir_css_parse_color(val->string_value, &color)) {
+                                        props.color = color;
+                                        props.set_flags |= IR_PROP_COLOR;
+                                    }
+                                }
+                            } else if (strcmp(prop_name, "display") == 0) {
+                                if (val->type == KRY_VALUE_IDENTIFIER || val->type == KRY_VALUE_STRING) {
+                                    const char* display_val = (val->type == KRY_VALUE_IDENTIFIER) ? val->identifier : val->string_value;
+                                    if (strcmp(display_val, "flex") == 0) {
+                                        props.display = IR_LAYOUT_MODE_FLEX;
+                                    } else if (strcmp(display_val, "grid") == 0) {
+                                        props.display = IR_LAYOUT_MODE_GRID;
+                                    } else if (strcmp(display_val, "block") == 0) {
+                                        props.display = IR_LAYOUT_MODE_BLOCK;
+                                    }
+                                    // Note: "none" is handled via visible property, not layout mode
+                                    props.display_explicit = true;
+                                    props.set_flags |= IR_PROP_DISPLAY;
+                                }
+                            } else if (strcmp(prop_name, "flexDirection") == 0) {
+                                if (val->type == KRY_VALUE_IDENTIFIER || val->type == KRY_VALUE_STRING) {
+                                    const char* dir_val = (val->type == KRY_VALUE_IDENTIFIER) ? val->identifier : val->string_value;
+                                    if (strcmp(dir_val, "row") == 0) {
+                                        props.flex_direction = 1;
+                                    } else {
+                                        props.flex_direction = 0;  // column
+                                    }
+                                    props.set_flags |= IR_PROP_FLEX_DIRECTION;
+                                }
+                            } else if (strcmp(prop_name, "justifyContent") == 0) {
+                                if (val->type == KRY_VALUE_IDENTIFIER || val->type == KRY_VALUE_STRING) {
+                                    const char* jc_val = (val->type == KRY_VALUE_IDENTIFIER) ? val->identifier : val->string_value;
+                                    if (strcmp(jc_val, "center") == 0) {
+                                        props.justify_content = IR_ALIGNMENT_CENTER;
+                                    } else if (strcmp(jc_val, "spaceBetween") == 0 || strcmp(jc_val, "space-between") == 0) {
+                                        props.justify_content = IR_ALIGNMENT_SPACE_BETWEEN;
+                                    } else if (strcmp(jc_val, "spaceAround") == 0 || strcmp(jc_val, "space-around") == 0) {
+                                        props.justify_content = IR_ALIGNMENT_SPACE_AROUND;
+                                    } else if (strcmp(jc_val, "flexEnd") == 0 || strcmp(jc_val, "flex-end") == 0) {
+                                        props.justify_content = IR_ALIGNMENT_END;
+                                    } else {
+                                        props.justify_content = IR_ALIGNMENT_START;
+                                    }
+                                    props.set_flags |= IR_PROP_JUSTIFY_CONTENT;
+                                }
+                            } else if (strcmp(prop_name, "alignItems") == 0) {
+                                if (val->type == KRY_VALUE_IDENTIFIER || val->type == KRY_VALUE_STRING) {
+                                    const char* ai_val = (val->type == KRY_VALUE_IDENTIFIER) ? val->identifier : val->string_value;
+                                    if (strcmp(ai_val, "center") == 0) {
+                                        props.align_items = IR_ALIGNMENT_CENTER;
+                                    } else if (strcmp(ai_val, "flexEnd") == 0 || strcmp(ai_val, "flex-end") == 0) {
+                                        props.align_items = IR_ALIGNMENT_END;
+                                    } else if (strcmp(ai_val, "stretch") == 0) {
+                                        props.align_items = IR_ALIGNMENT_STRETCH;
+                                    } else {
+                                        props.align_items = IR_ALIGNMENT_START;
+                                    }
+                                    props.set_flags |= IR_PROP_ALIGN_ITEMS;
+                                }
+                            } else if (strcmp(prop_name, "padding") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    float p = (float)val->number_value;
+                                    props.padding.top = props.padding.right = props.padding.bottom = props.padding.left = p;
+                                    props.set_flags |= IR_PROP_PADDING;
+                                }
+                            } else if (strcmp(prop_name, "margin") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    float m = (float)val->number_value;
+                                    props.margin.top = props.margin.right = props.margin.bottom = props.margin.left = m;
+                                    props.set_flags |= IR_PROP_MARGIN;
+                                }
+                            } else if (strcmp(prop_name, "gap") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    props.gap = (float)val->number_value;
+                                    props.set_flags |= IR_PROP_GAP;
+                                }
+                            } else if (strcmp(prop_name, "fontSize") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    props.font_size = (float)val->number_value;
+                                    props.set_flags |= IR_PROP_FONT_SIZE;
+                                }
+                            } else if (strcmp(prop_name, "borderRadius") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    props.border_radius = (uint8_t)val->number_value;
+                                    props.set_flags |= IR_PROP_BORDER_RADIUS;
+                                }
+                            } else if (strcmp(prop_name, "width") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    props.width.type = val->is_percentage ? IR_DIMENSION_PERCENT : IR_DIMENSION_PX;
+                                    props.width.value = (float)val->number_value;
+                                    props.set_flags |= IR_PROP_WIDTH;
+                                }
+                            } else if (strcmp(prop_name, "height") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    props.height.type = val->is_percentage ? IR_DIMENSION_PERCENT : IR_DIMENSION_PX;
+                                    props.height.value = (float)val->number_value;
+                                    props.set_flags |= IR_PROP_HEIGHT;
+                                }
+                            } else if (strcmp(prop_name, "opacity") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    props.opacity = (float)val->number_value;
+                                    props.set_flags |= IR_PROP_OPACITY;
+                                }
+                            }
+                        }
+                        prop_child = prop_child->next_sibling;
+                    }
+
+                    // Add rule to stylesheet
+                    if (props.set_flags != 0) {
+                        ir_stylesheet_add_rule(g_ir_context->stylesheet, selector, &props);
+                    }
+
+                    ir_style_properties_cleanup(&props);
+                }
             } else if (child->type == KRY_NODE_FOR_LOOP) {
                 // For loop outside static block - expand/unroll
                 expand_for_loop(ctx, component, child);
@@ -2155,8 +2338,10 @@ char* ir_kry_to_kir(const char* source, size_t length) {
             fprintf(stderr, "[ir_kry_to_kir]   Child: name='%s', is_component_definition=%d, type=%d\n",
                     child->name ? child->name : "(null)", child->is_component_definition, child->type);
             fflush(stderr);
-            // Skip component definitions and variable declarations
-            if (!child->is_component_definition && child->type != KRY_NODE_VAR_DECL) {
+            // Skip component definitions, variable declarations, and style blocks
+            if (!child->is_component_definition &&
+                child->type != KRY_NODE_VAR_DECL &&
+                child->type != KRY_NODE_STYLE_BLOCK) {
                 root_node = child;
                 fprintf(stderr, "[ir_kry_to_kir]   Found root application: %s\n", root_node->name);
                 fflush(stderr);
@@ -2316,6 +2501,168 @@ char* ir_kry_to_kir(const char* source, size_t length) {
         }
     }
     fprintf(stderr, "[VAR_DECL] Finished processing top-level variables\n");
+    fflush(stderr);
+
+    // Process top-level style blocks
+    fprintf(stderr, "[STYLE_BLOCKS] Processing top-level style blocks...\n");
+    fflush(stderr);
+    if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
+        KryNode* style_node = ast->first_child;
+        while (style_node) {
+            if (style_node->type == KRY_NODE_STYLE_BLOCK && style_node->name) {
+                fprintf(stderr, "[STYLE_BLOCKS] Found style block: %s\n", style_node->name);
+                fflush(stderr);
+
+                // Ensure stylesheet exists in global context
+                if (g_ir_context && !g_ir_context->stylesheet) {
+                    g_ir_context->stylesheet = ir_stylesheet_create();
+                }
+
+                if (g_ir_context && g_ir_context->stylesheet) {
+                    // Build IRStyleProperties from child properties
+                    IRStyleProperties props;
+                    ir_style_properties_init(&props);
+
+                    // Iterate through property children
+                    KryNode* prop_child = style_node->first_child;
+                    while (prop_child) {
+                        if (prop_child->type == KRY_NODE_PROPERTY && prop_child->name && prop_child->value) {
+                            const char* prop_name = prop_child->name;
+                            KryValue* val = prop_child->value;
+
+                            // Convert property to IRStyleProperties
+                            if (strcmp(prop_name, "backgroundColor") == 0 || strcmp(prop_name, "background") == 0) {
+                                if (val->type == KRY_VALUE_STRING) {
+                                    IRColor color;
+                                    if (ir_css_parse_color(val->string_value, &color)) {
+                                        props.background = color;
+                                        props.set_flags |= IR_PROP_BACKGROUND;
+                                    }
+                                }
+                            } else if (strcmp(prop_name, "color") == 0) {
+                                if (val->type == KRY_VALUE_STRING) {
+                                    IRColor color;
+                                    if (ir_css_parse_color(val->string_value, &color)) {
+                                        props.color = color;
+                                        props.set_flags |= IR_PROP_COLOR;
+                                    }
+                                }
+                            } else if (strcmp(prop_name, "display") == 0) {
+                                if (val->type == KRY_VALUE_IDENTIFIER || val->type == KRY_VALUE_STRING) {
+                                    const char* display_val = (val->type == KRY_VALUE_IDENTIFIER) ? val->identifier : val->string_value;
+                                    if (strcmp(display_val, "flex") == 0) {
+                                        props.display = IR_LAYOUT_MODE_FLEX;
+                                    } else if (strcmp(display_val, "grid") == 0) {
+                                        props.display = IR_LAYOUT_MODE_GRID;
+                                    } else if (strcmp(display_val, "block") == 0) {
+                                        props.display = IR_LAYOUT_MODE_BLOCK;
+                                    }
+                                    props.display_explicit = true;
+                                    props.set_flags |= IR_PROP_DISPLAY;
+                                }
+                            } else if (strcmp(prop_name, "flexDirection") == 0) {
+                                if (val->type == KRY_VALUE_IDENTIFIER || val->type == KRY_VALUE_STRING) {
+                                    const char* dir_val = (val->type == KRY_VALUE_IDENTIFIER) ? val->identifier : val->string_value;
+                                    if (strcmp(dir_val, "row") == 0) {
+                                        props.flex_direction = 1;
+                                    } else {
+                                        props.flex_direction = 0;
+                                    }
+                                    props.set_flags |= IR_PROP_FLEX_DIRECTION;
+                                }
+                            } else if (strcmp(prop_name, "justifyContent") == 0) {
+                                if (val->type == KRY_VALUE_IDENTIFIER || val->type == KRY_VALUE_STRING) {
+                                    const char* jc_val = (val->type == KRY_VALUE_IDENTIFIER) ? val->identifier : val->string_value;
+                                    if (strcmp(jc_val, "center") == 0) {
+                                        props.justify_content = IR_ALIGNMENT_CENTER;
+                                    } else if (strcmp(jc_val, "spaceBetween") == 0 || strcmp(jc_val, "space-between") == 0) {
+                                        props.justify_content = IR_ALIGNMENT_SPACE_BETWEEN;
+                                    } else if (strcmp(jc_val, "spaceAround") == 0 || strcmp(jc_val, "space-around") == 0) {
+                                        props.justify_content = IR_ALIGNMENT_SPACE_AROUND;
+                                    } else if (strcmp(jc_val, "flexEnd") == 0 || strcmp(jc_val, "flex-end") == 0) {
+                                        props.justify_content = IR_ALIGNMENT_END;
+                                    } else {
+                                        props.justify_content = IR_ALIGNMENT_START;
+                                    }
+                                    props.set_flags |= IR_PROP_JUSTIFY_CONTENT;
+                                }
+                            } else if (strcmp(prop_name, "alignItems") == 0) {
+                                if (val->type == KRY_VALUE_IDENTIFIER || val->type == KRY_VALUE_STRING) {
+                                    const char* ai_val = (val->type == KRY_VALUE_IDENTIFIER) ? val->identifier : val->string_value;
+                                    if (strcmp(ai_val, "center") == 0) {
+                                        props.align_items = IR_ALIGNMENT_CENTER;
+                                    } else if (strcmp(ai_val, "flexEnd") == 0 || strcmp(ai_val, "flex-end") == 0) {
+                                        props.align_items = IR_ALIGNMENT_END;
+                                    } else if (strcmp(ai_val, "stretch") == 0) {
+                                        props.align_items = IR_ALIGNMENT_STRETCH;
+                                    } else {
+                                        props.align_items = IR_ALIGNMENT_START;
+                                    }
+                                    props.set_flags |= IR_PROP_ALIGN_ITEMS;
+                                }
+                            } else if (strcmp(prop_name, "padding") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    float p = (float)val->number_value;
+                                    props.padding.top = props.padding.right = props.padding.bottom = props.padding.left = p;
+                                    props.set_flags |= IR_PROP_PADDING;
+                                }
+                            } else if (strcmp(prop_name, "margin") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    float m = (float)val->number_value;
+                                    props.margin.top = props.margin.right = props.margin.bottom = props.margin.left = m;
+                                    props.set_flags |= IR_PROP_MARGIN;
+                                }
+                            } else if (strcmp(prop_name, "gap") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    props.gap = (float)val->number_value;
+                                    props.set_flags |= IR_PROP_GAP;
+                                }
+                            } else if (strcmp(prop_name, "fontSize") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    props.font_size = (float)val->number_value;
+                                    props.set_flags |= IR_PROP_FONT_SIZE;
+                                }
+                            } else if (strcmp(prop_name, "borderRadius") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    props.border_radius = (uint8_t)val->number_value;
+                                    props.set_flags |= IR_PROP_BORDER_RADIUS;
+                                }
+                            } else if (strcmp(prop_name, "width") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    props.width.type = val->is_percentage ? IR_DIMENSION_PERCENT : IR_DIMENSION_PX;
+                                    props.width.value = (float)val->number_value;
+                                    props.set_flags |= IR_PROP_WIDTH;
+                                }
+                            } else if (strcmp(prop_name, "height") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    props.height.type = val->is_percentage ? IR_DIMENSION_PERCENT : IR_DIMENSION_PX;
+                                    props.height.value = (float)val->number_value;
+                                    props.set_flags |= IR_PROP_HEIGHT;
+                                }
+                            } else if (strcmp(prop_name, "opacity") == 0) {
+                                if (val->type == KRY_VALUE_NUMBER) {
+                                    props.opacity = (float)val->number_value;
+                                    props.set_flags |= IR_PROP_OPACITY;
+                                }
+                            }
+                        }
+                        prop_child = prop_child->next_sibling;
+                    }
+
+                    // Add rule to stylesheet
+                    if (props.set_flags != 0) {
+                        ir_stylesheet_add_rule(g_ir_context->stylesheet, style_node->name, &props);
+                        fprintf(stderr, "[STYLE_BLOCKS]   Added rule for selector: %s\n", style_node->name);
+                        fflush(stderr);
+                    }
+
+                    ir_style_properties_cleanup(&props);
+                }
+            }
+            style_node = style_node->next_sibling;
+        }
+    }
+    fprintf(stderr, "[STYLE_BLOCKS] Finished processing top-level style blocks\n");
     fflush(stderr);
 
     // Track all component definitions in the manifest

@@ -572,6 +572,11 @@ bool ir_stylesheet_add_rule(IRStylesheet* stylesheet, const char* selector,
         rule->properties.font_family = str_dup(properties->font_family);
     }
 
+    // Deep copy background_image if present
+    if (properties->background_image) {
+        rule->properties.background_image = str_dup(properties->background_image);
+    }
+
     return true;
 }
 
@@ -740,7 +745,7 @@ void ir_style_properties_apply(const IRStyleProperties* props, IRStyle* style, I
             layout->flex.justify_content = props->justify_content;
         }
         if (props->set_flags & IR_PROP_ALIGN_ITEMS) {
-            layout->flex.align_items = props->align_items;
+            layout->flex.cross_axis = props->align_items;
         }
         if (props->set_flags & IR_PROP_GAP) {
             layout->flex.gap = props->gap;

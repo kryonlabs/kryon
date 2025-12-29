@@ -353,21 +353,24 @@ static char* json_dimension_to_string(IRDimension dim) {
 }
 
 /**
+ * Format rgba values to hex string in provided buffer
+ */
+static void json_rgba_to_hex(char* buffer, size_t size, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    if (a == 255) {
+        snprintf(buffer, size, "#%02x%02x%02x", r, g, b);
+    } else {
+        snprintf(buffer, size, "#%02x%02x%02x%02x", r, g, b, a);
+    }
+}
+
+/**
  * Serialize color to JSON string (e.g., "#rrggbb" or "#rrggbbaa")
  */
 static char* json_color_to_string(IRColor color) {
     char buffer[16];
 
     if (color.type == IR_COLOR_SOLID) {
-        if (color.data.a == 255) {
-            // Fully opaque - use short form
-            snprintf(buffer, sizeof(buffer), "#%02x%02x%02x",
-                    color.data.r, color.data.g, color.data.b);
-        } else {
-            // Include alpha channel
-            snprintf(buffer, sizeof(buffer), "#%02x%02x%02x%02x",
-                    color.data.r, color.data.g, color.data.b, color.data.a);
-        }
+        json_rgba_to_hex(buffer, sizeof(buffer), color.data.r, color.data.g, color.data.b, color.data.a);
         return strdup(buffer);
     } else if (color.type == IR_COLOR_TRANSPARENT) {
         return strdup("transparent");
@@ -414,13 +417,9 @@ static cJSON* json_serialize_gradient(IRGradient* gradient) {
             if (stop) {
                 cJSON_AddNumberToObject(stop, "position", gradient->stops[i].position);
                 char color_str[16];
-                if (gradient->stops[i].a == 255) {
-                    snprintf(color_str, sizeof(color_str), "#%02x%02x%02x",
-                             gradient->stops[i].r, gradient->stops[i].g, gradient->stops[i].b);
-                } else {
-                    snprintf(color_str, sizeof(color_str), "#%02x%02x%02x%02x",
-                             gradient->stops[i].r, gradient->stops[i].g, gradient->stops[i].b, gradient->stops[i].a);
-                }
+                json_rgba_to_hex(color_str, sizeof(color_str),
+                    gradient->stops[i].r, gradient->stops[i].g,
+                    gradient->stops[i].b, gradient->stops[i].a);
                 cJSON_AddStringToObject(stop, "color", color_str);
                 cJSON_AddItemToArray(stops, stop);
             }
@@ -551,6 +550,76 @@ static cJSON* json_spacing_to_json(IRSpacing spacing) {
     cJSON_AddItemToArray(array, cJSON_CreateNumber(spacing.bottom));
     cJSON_AddItemToArray(array, cJSON_CreateNumber(spacing.left));
     return array;
+}
+
+// ============================================================================
+// Unified Enum-to-String Helpers (to eliminate duplication)
+// ============================================================================
+
+/**
+ * Convert IR_TEXT_ALIGN_* enum to string
+ */
+static const char* json_text_align_to_string(IRTextAlign align) {
+    switch (align) {
+        case IR_TEXT_ALIGN_CENTER: return "center";
+        case IR_TEXT_ALIGN_RIGHT: return "right";
+        case IR_TEXT_ALIGN_JUSTIFY: return "justify";
+        case IR_TEXT_ALIGN_LEFT:
+        default: return "left";
+    }
+}
+
+/**
+ * Convert IR_ALIGNMENT_* enum to CSS justify-content string
+ */
+static const char* json_justify_content_to_string(IRAlignment align) {
+    switch (align) {
+        case IR_ALIGNMENT_CENTER: return "center";
+        case IR_ALIGNMENT_END: return "flex-end";
+        case IR_ALIGNMENT_SPACE_BETWEEN: return "space-between";
+        case IR_ALIGNMENT_SPACE_AROUND: return "space-around";
+        case IR_ALIGNMENT_SPACE_EVENLY: return "space-evenly";
+        case IR_ALIGNMENT_START:
+        default: return "flex-start";
+    }
+}
+
+/**
+ * Convert IR_ALIGNMENT_* enum to CSS align-items string
+ */
+static const char* json_align_items_to_string(IRAlignment align) {
+    switch (align) {
+        case IR_ALIGNMENT_CENTER: return "center";
+        case IR_ALIGNMENT_END: return "flex-end";
+        case IR_ALIGNMENT_STRETCH: return "stretch";
+        case IR_ALIGNMENT_START:
+        default: return "flex-start";
+    }
+}
+
+/**
+ * Convert IR_LAYOUT_MODE_* enum to CSS display string
+ */
+static const char* json_display_mode_to_string(IRLayoutMode mode) {
+    switch (mode) {
+        case IR_LAYOUT_MODE_FLEX: return "flex";
+        case IR_LAYOUT_MODE_GRID: return "grid";
+        case IR_LAYOUT_MODE_BLOCK:
+        default: return "block";
+    }
+}
+
+/**
+ * Convert IR_BACKGROUND_CLIP_* enum to string
+ */
+static const char* json_background_clip_to_string(IRBackgroundClip clip) {
+    switch (clip) {
+        case IR_BACKGROUND_CLIP_TEXT: return "text";
+        case IR_BACKGROUND_CLIP_CONTENT_BOX: return "content-box";
+        case IR_BACKGROUND_CLIP_PADDING_BOX: return "padding-box";
+        case IR_BACKGROUND_CLIP_BORDER_BOX:
+        default: return "border-box";
+    }
 }
 
 // Forward declaration for property binding helper
@@ -698,14 +767,7 @@ static void json_serialize_style(cJSON* obj, IRStyle* style, IRComponent* compon
 
     // Text alignment
     if (style->font.align != IR_TEXT_ALIGN_LEFT) {
-        const char* alignStr = "left";
-        switch (style->font.align) {
-            case IR_TEXT_ALIGN_CENTER: alignStr = "center"; break;
-            case IR_TEXT_ALIGN_RIGHT: alignStr = "right"; break;
-            case IR_TEXT_ALIGN_JUSTIFY: alignStr = "justify"; break;
-            default: break;
-        }
-        cJSON_AddStringToObject(obj, "textAlign", alignStr);
+        cJSON_AddStringToObject(obj, "textAlign", json_text_align_to_string(style->font.align));
     }
 
     // Letter and word spacing
@@ -791,6 +853,32 @@ static void json_serialize_style(cJSON* obj, IRStyle* style, IRComponent* compon
 
         cJSON_AddItemToObject(obj, "transform", transform);
     }
+
+    // Background image (gradient string) for gradient text effects
+    if (style->background_image && style->background_image[0] != '\0') {
+        cJSON_AddStringToObject(obj, "backgroundImage", style->background_image);
+    }
+
+    // Background clip (for gradient text effects)
+    if (style->background_clip != IR_BACKGROUND_CLIP_BORDER_BOX) {
+        cJSON_AddStringToObject(obj, "backgroundClip", json_background_clip_to_string(style->background_clip));
+    }
+
+    // Text fill color (for gradient text effects)
+    // Only serialize if explicitly set: type is TRANSPARENT, or type is SOLID with non-zero alpha
+    // Skip if all zeros (default uninitialized state)
+    bool has_text_fill = false;
+    if (style->text_fill_color.type == IR_COLOR_TRANSPARENT) {
+        has_text_fill = true;
+    } else if (style->text_fill_color.type == IR_COLOR_SOLID &&
+               style->text_fill_color.data.a > 0) {
+        has_text_fill = true;
+    }
+    if (has_text_fill) {
+        char* fillColorStr = json_color_to_string(style->text_fill_color);
+        cJSON_AddStringToObject(obj, "textFillColor", fillColorStr);
+        free(fillColorStr);
+    }
 }
 
 // ============================================================================
@@ -802,13 +890,7 @@ static void json_serialize_layout(cJSON* obj, IRLayout* layout, IRComponent* com
 
     // Display mode (only if explicitly set)
     if (layout->display_explicit) {
-        const char* displayStr = "block";
-        switch (layout->mode) {
-            case IR_LAYOUT_MODE_FLEX: displayStr = "flex"; break;
-            case IR_LAYOUT_MODE_GRID: displayStr = "grid"; break;
-            case IR_LAYOUT_MODE_BLOCK: displayStr = "block"; break;
-        }
-        cJSON_AddStringToObject(obj, "display", displayStr);
+        cJSON_AddStringToObject(obj, "display", json_display_mode_to_string(layout->mode));
     }
 
     // Min/Max dimensions
@@ -867,28 +949,12 @@ static void json_serialize_layout(cJSON* obj, IRLayout* layout, IRComponent* com
 
     // Always serialize justifyContent if it has a binding, even if default value
     if (layout->flex.justify_content != IR_ALIGNMENT_START || has_property_binding(component, "justifyContent")) {
-        const char* justifyStr = "flex-start";
-        switch (layout->flex.justify_content) {
-            case IR_ALIGNMENT_CENTER: justifyStr = "center"; break;
-            case IR_ALIGNMENT_END: justifyStr = "flex-end"; break;
-            case IR_ALIGNMENT_SPACE_BETWEEN: justifyStr = "space-between"; break;
-            case IR_ALIGNMENT_SPACE_AROUND: justifyStr = "space-around"; break;
-            case IR_ALIGNMENT_SPACE_EVENLY: justifyStr = "space-evenly"; break;
-            default: break;
-        }
-        cJSON_AddStringToObject(obj, "justifyContent", justifyStr);
+        cJSON_AddStringToObject(obj, "justifyContent", json_justify_content_to_string(layout->flex.justify_content));
     }
 
     // Always serialize alignItems if it has a binding, even if default value
     if (layout->flex.cross_axis != IR_ALIGNMENT_START || has_property_binding(component, "alignItems")) {
-        const char* alignStr = "flex-start";
-        switch (layout->flex.cross_axis) {
-            case IR_ALIGNMENT_CENTER: alignStr = "center"; break;
-            case IR_ALIGNMENT_END: alignStr = "flex-end"; break;
-            case IR_ALIGNMENT_STRETCH: alignStr = "stretch"; break;
-            default: break;
-        }
-        cJSON_AddItemToObject(obj, "alignItems", cJSON_CreateString(alignStr));
+        cJSON_AddStringToObject(obj, "alignItems", json_align_items_to_string(layout->flex.cross_axis));
     }
 
     // Always serialize gap if it has a binding, even if default value
@@ -1181,23 +1247,22 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         IRTableStyle* style = &state->style;
 
         // Border color
-        char colorBuf[10];
-        snprintf(colorBuf, sizeof(colorBuf), "#%02x%02x%02x",
-                 style->border_color.data.r, style->border_color.data.g, style->border_color.data.b);
-        cJSON_AddStringToObject(tableConfig, "borderColor", colorBuf);
+        char* colorStr = json_color_to_string(style->border_color);
+        cJSON_AddStringToObject(tableConfig, "borderColor", colorStr);
+        free(colorStr);
 
         // Header background
-        snprintf(colorBuf, sizeof(colorBuf), "#%02x%02x%02x",
-                 style->header_background.data.r, style->header_background.data.g, style->header_background.data.b);
-        cJSON_AddStringToObject(tableConfig, "headerBackground", colorBuf);
+        colorStr = json_color_to_string(style->header_background);
+        cJSON_AddStringToObject(tableConfig, "headerBackground", colorStr);
+        free(colorStr);
 
         // Row backgrounds (for striping)
-        snprintf(colorBuf, sizeof(colorBuf), "#%02x%02x%02x",
-                 style->even_row_background.data.r, style->even_row_background.data.g, style->even_row_background.data.b);
-        cJSON_AddStringToObject(tableConfig, "evenRowBackground", colorBuf);
-        snprintf(colorBuf, sizeof(colorBuf), "#%02x%02x%02x",
-                 style->odd_row_background.data.r, style->odd_row_background.data.g, style->odd_row_background.data.b);
-        cJSON_AddStringToObject(tableConfig, "oddRowBackground", colorBuf);
+        colorStr = json_color_to_string(style->even_row_background);
+        cJSON_AddStringToObject(tableConfig, "evenRowBackground", colorStr);
+        free(colorStr);
+        colorStr = json_color_to_string(style->odd_row_background);
+        cJSON_AddStringToObject(tableConfig, "oddRowBackground", colorStr);
+        free(colorStr);
 
         cJSON_AddNumberToObject(tableConfig, "borderWidth", style->border_width);
         cJSON_AddNumberToObject(tableConfig, "cellPadding", style->cell_padding);
@@ -1292,6 +1357,12 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         }
         if (data->title) {
             cJSON_AddStringToObject(obj, "title", data->title);
+        }
+        if (data->target) {
+            cJSON_AddStringToObject(obj, "target", data->target);
+        }
+        if (data->rel) {
+            cJSON_AddStringToObject(obj, "rel", data->rel);
         }
     }
 
@@ -1613,27 +1684,11 @@ static cJSON* json_serialize_style_properties(const IRStyleProperties* props) {
     }
 
     if (props->set_flags & IR_PROP_JUSTIFY_CONTENT) {
-        const char* jc_str = "flex-start";
-        switch (props->justify_content) {
-            case IR_ALIGNMENT_CENTER: jc_str = "center"; break;
-            case IR_ALIGNMENT_END: jc_str = "flex-end"; break;
-            case IR_ALIGNMENT_SPACE_BETWEEN: jc_str = "space-between"; break;
-            case IR_ALIGNMENT_SPACE_AROUND: jc_str = "space-around"; break;
-            case IR_ALIGNMENT_SPACE_EVENLY: jc_str = "space-evenly"; break;
-            default: break;
-        }
-        cJSON_AddStringToObject(obj, "justifyContent", jc_str);
+        cJSON_AddStringToObject(obj, "justifyContent", json_justify_content_to_string(props->justify_content));
     }
 
     if (props->set_flags & IR_PROP_ALIGN_ITEMS) {
-        const char* ai_str = "flex-start";
-        switch (props->align_items) {
-            case IR_ALIGNMENT_CENTER: ai_str = "center"; break;
-            case IR_ALIGNMENT_END: ai_str = "flex-end"; break;
-            case IR_ALIGNMENT_STRETCH: ai_str = "stretch"; break;
-            default: break;
-        }
-        cJSON_AddStringToObject(obj, "alignItems", ai_str);
+        cJSON_AddStringToObject(obj, "alignItems", json_align_items_to_string(props->align_items));
     }
 
     if (props->set_flags & IR_PROP_GAP) {
@@ -1685,23 +1740,15 @@ static cJSON* json_serialize_style_properties(const IRStyleProperties* props) {
     }
 
     if (props->set_flags & IR_PROP_BACKGROUND) {
-        if (props->background.type == IR_COLOR_SOLID) {
-            char buf[32];
-            snprintf(buf, sizeof(buf), "rgba(%d,%d,%d,%.2f)",
-                props->background.data.r, props->background.data.g,
-                props->background.data.b, props->background.data.a / 255.0f);
-            cJSON_AddStringToObject(obj, "backgroundColor", buf);
-        }
+        char* bgColorStr = json_color_to_string(props->background);
+        cJSON_AddStringToObject(obj, "backgroundColor", bgColorStr);
+        free(bgColorStr);
     }
 
     if (props->set_flags & IR_PROP_COLOR) {
-        if (props->color.type == IR_COLOR_SOLID) {
-            char buf[32];
-            snprintf(buf, sizeof(buf), "rgba(%d,%d,%d,%.2f)",
-                props->color.data.r, props->color.data.g,
-                props->color.data.b, props->color.data.a / 255.0f);
-            cJSON_AddStringToObject(obj, "color", buf);
-        }
+        char* colorStr = json_color_to_string(props->color);
+        cJSON_AddStringToObject(obj, "color", colorStr);
+        free(colorStr);
     }
 
     if (props->set_flags & IR_PROP_FONT_SIZE) {
@@ -1717,14 +1764,7 @@ static cJSON* json_serialize_style_properties(const IRStyleProperties* props) {
     }
 
     if (props->set_flags & IR_PROP_TEXT_ALIGN) {
-        const char* ta_str = "left";
-        switch (props->text_align) {
-            case IR_TEXT_ALIGN_CENTER: ta_str = "center"; break;
-            case IR_TEXT_ALIGN_RIGHT: ta_str = "right"; break;
-            case IR_TEXT_ALIGN_JUSTIFY: ta_str = "justify"; break;
-            default: break;
-        }
-        cJSON_AddStringToObject(obj, "textAlign", ta_str);
+        cJSON_AddStringToObject(obj, "textAlign", json_text_align_to_string(props->text_align));
     }
 
     if (props->set_flags & IR_PROP_BORDER) {
@@ -1733,6 +1773,25 @@ static cJSON* json_serialize_style_properties(const IRStyleProperties* props) {
 
     if (props->set_flags & IR_PROP_BORDER_RADIUS) {
         cJSON_AddNumberToObject(obj, "borderRadius", props->border_radius);
+    }
+
+    // Background image (gradient string)
+    if (props->set_flags & IR_PROP_BACKGROUND_IMAGE) {
+        if (props->background_image) {
+            cJSON_AddStringToObject(obj, "backgroundImage", props->background_image);
+        }
+    }
+
+    // Background clip
+    if (props->set_flags & IR_PROP_BACKGROUND_CLIP) {
+        cJSON_AddStringToObject(obj, "backgroundClip", json_background_clip_to_string(props->background_clip));
+    }
+
+    // Text fill color
+    if (props->set_flags & IR_PROP_TEXT_FILL_COLOR) {
+        char* fillColorStr = json_color_to_string(props->text_fill_color);
+        cJSON_AddStringToObject(obj, "textFillColor", fillColorStr);
+        free(fillColorStr);
     }
 
     return obj;
@@ -1867,6 +1926,7 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
                     case IR_REACTIVE_TYPE_FLOAT: typeStr = "float"; break;
                     case IR_REACTIVE_TYPE_STRING: typeStr = "string"; break;
                     case IR_REACTIVE_TYPE_BOOL: typeStr = "bool"; break;
+                    case IR_REACTIVE_TYPE_CUSTOM: typeStr = "custom"; break;
                 }
                 cJSON_AddStringToObject(varObj, "type", typeStr);
             }
@@ -2068,35 +2128,6 @@ static cJSON* json_serialize_metadata(IRSourceMetadata* metadata) {
     }
 
     return meta;
-}
-
-/**
- * Serialize IRLogic linked list to JSON array
- * This preserves the source code for event handlers
- */
-static cJSON* json_serialize_logic_list(IRLogic* logic) {
-    if (!logic) return NULL;
-
-    cJSON* logicArray = cJSON_CreateArray();
-    if (!logicArray) return NULL;
-
-    IRLogic* current = logic;
-    while (current) {
-        cJSON* logicObj = cJSON_CreateObject();
-
-        if (current->id) {
-            cJSON_AddStringToObject(logicObj, "id", current->id);
-        }
-        if (current->source_code) {
-            cJSON_AddStringToObject(logicObj, "source_code", current->source_code);
-        }
-        cJSON_AddStringToObject(logicObj, "type", ir_logic_type_to_string(current->type));
-
-        cJSON_AddItemToArray(logicArray, logicObj);
-        current = current->next;
-    }
-
-    return logicArray;
 }
 
 /**
@@ -2858,12 +2889,6 @@ char* ir_serialize_json_complete(
         }
     }
 
-    // Also serialize component->logic linked lists for backwards compatibility
-    // Collect all logic from component tree
-    IRLogic* all_logic = NULL;
-    // TODO: traverse tree and collect all component->logic nodes
-    // For now, we'll rely on IRLogicBlock instead
-
     // Add component tree
     cJSON* componentJson = json_serialize_component_recursive(root);
     if (!componentJson) {
@@ -3048,7 +3073,31 @@ static IRColor json_parse_color(const char* str) {
     // Check for var() reference
     if (strncmp(str, "var(", 4) == 0) {
         color.type = IR_COLOR_VAR_REF;
-        sscanf(str + 4, "%u", &color.data.var_id);
+        sscanf(str + 4, "%hu", &color.data.var_id);
+        return color;
+    }
+
+    // Parse rgba(r,g,b,a) format
+    if (strncmp(str, "rgba(", 5) == 0) {
+        color.type = IR_COLOR_SOLID;
+        float r = 0, g = 0, b = 0, a = 1.0f;
+        sscanf(str + 5, "%f,%f,%f,%f", &r, &g, &b, &a);
+        color.data.r = (uint8_t)r;
+        color.data.g = (uint8_t)g;
+        color.data.b = (uint8_t)b;
+        color.data.a = (uint8_t)(a * 255.0f);
+        return color;
+    }
+
+    // Parse rgb(r,g,b) format
+    if (strncmp(str, "rgb(", 4) == 0) {
+        color.type = IR_COLOR_SOLID;
+        float r = 0, g = 0, b = 0;
+        sscanf(str + 4, "%f,%f,%f", &r, &g, &b);
+        color.data.r = (uint8_t)r;
+        color.data.g = (uint8_t)g;
+        color.data.b = (uint8_t)b;
+        color.data.a = 255;
         return color;
     }
 
@@ -3388,6 +3437,30 @@ static void json_deserialize_style(cJSON* obj, IRStyle* style) {
             style->transform.rotate = (float)transformItem->valuedouble;
         }
     }
+
+    // Background image (gradient string)
+    if ((item = cJSON_GetObjectItem(obj, "backgroundImage")) != NULL && cJSON_IsString(item)) {
+        if (style->background_image) free(style->background_image);
+        style->background_image = strdup(item->valuestring);
+    }
+
+    // Background clip
+    if ((item = cJSON_GetObjectItem(obj, "backgroundClip")) != NULL && cJSON_IsString(item)) {
+        if (strcmp(item->valuestring, "text") == 0) {
+            style->background_clip = IR_BACKGROUND_CLIP_TEXT;
+        } else if (strcmp(item->valuestring, "content-box") == 0) {
+            style->background_clip = IR_BACKGROUND_CLIP_CONTENT_BOX;
+        } else if (strcmp(item->valuestring, "padding-box") == 0) {
+            style->background_clip = IR_BACKGROUND_CLIP_PADDING_BOX;
+        } else {
+            style->background_clip = IR_BACKGROUND_CLIP_BORDER_BOX;
+        }
+    }
+
+    // Text fill color
+    if ((item = cJSON_GetObjectItem(obj, "textFillColor")) != NULL && cJSON_IsString(item)) {
+        style->text_fill_color = json_parse_color(item->valuestring);
+    }
 }
 
 /**
@@ -3541,6 +3614,21 @@ IRComponentType ir_string_to_component_type(const char* str) {
     if (strcmp(str, "HORIZONTALRULE") == 0) return IR_COMPONENT_HORIZONTAL_RULE;
     if (strcmp(str, "LIST_ITEM") == 0) return IR_COMPONENT_LIST_ITEM;
     if (strcmp(str, "LISTITEM") == 0) return IR_COMPONENT_LIST_ITEM;
+    // Inline semantic components (for rich text)
+    if (strcmp(str, "Span") == 0) return IR_COMPONENT_SPAN;
+    if (strcmp(str, "Strong") == 0) return IR_COMPONENT_STRONG;
+    if (strcmp(str, "Em") == 0) return IR_COMPONENT_EM;
+    if (strcmp(str, "CodeInline") == 0) return IR_COMPONENT_CODE_INLINE;
+    if (strcmp(str, "Small") == 0) return IR_COMPONENT_SMALL;
+    if (strcmp(str, "Mark") == 0) return IR_COMPONENT_MARK;
+    // Uppercase variants for inline semantic components
+    if (strcmp(str, "SPAN") == 0) return IR_COMPONENT_SPAN;
+    if (strcmp(str, "STRONG") == 0) return IR_COMPONENT_STRONG;
+    if (strcmp(str, "EM") == 0) return IR_COMPONENT_EM;
+    if (strcmp(str, "CODE_INLINE") == 0) return IR_COMPONENT_CODE_INLINE;
+    if (strcmp(str, "CODEINLINE") == 0) return IR_COMPONENT_CODE_INLINE;
+    if (strcmp(str, "SMALL") == 0) return IR_COMPONENT_SMALL;
+    if (strcmp(str, "MARK") == 0) return IR_COMPONENT_MARK;
     return IR_COMPONENT_CONTAINER;
 }
 
@@ -3583,13 +3671,6 @@ static void apply_animation_from_string(IRComponent* component, const char* anim
 
 // Forward declaration for context-aware deserialization
 static IRComponent* json_deserialize_component_with_context(cJSON* json, ComponentDefContext* ctx);
-
-/**
- * Recursively deserialize component from JSON (legacy wrapper)
- */
-static IRComponent* json_deserialize_component_recursive(cJSON* json) {
-    return json_deserialize_component_with_context(json, NULL);
-}
 
 /**
  * Helper: Set owner_instance_id recursively on all components in subtree
@@ -4238,6 +4319,16 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
                 data->title = strdup(titleItem->valuestring);
             }
 
+            cJSON* targetItem = cJSON_GetObjectItem(json, "target");
+            if (targetItem && cJSON_IsString(targetItem)) {
+                data->target = strdup(targetItem->valuestring);
+            }
+
+            cJSON* relItem = cJSON_GetObjectItem(json, "rel");
+            if (relItem && cJSON_IsString(relItem)) {
+                data->rel = strdup(relItem->valuestring);
+            }
+
             component->custom_data = (char*)data;
         }
     }
@@ -4349,6 +4440,251 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
 // ============================================================================
 // JSON Deserialization Functions
 // ============================================================================
+
+/**
+ * Deserialize style properties from JSON object
+ * Matches format from json_serialize_style_properties()
+ */
+static void json_deserialize_style_properties(cJSON* propsObj, IRStyleProperties* props) {
+    if (!propsObj || !cJSON_IsObject(propsObj) || !props) return;
+
+    cJSON* item;
+
+    // Display
+    if ((item = cJSON_GetObjectItem(propsObj, "display")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_DISPLAY;
+        if (strcmp(item->valuestring, "flex") == 0) props->display = IR_LAYOUT_MODE_FLEX;
+        else if (strcmp(item->valuestring, "grid") == 0) props->display = IR_LAYOUT_MODE_GRID;
+        else props->display = IR_LAYOUT_MODE_BLOCK;
+    }
+
+    // Flex direction
+    if ((item = cJSON_GetObjectItem(propsObj, "flexDirection")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_FLEX_DIRECTION;
+        props->flex_direction = (strcmp(item->valuestring, "row") == 0) ? 1 : 0;
+    }
+
+    // Flex wrap
+    if ((item = cJSON_GetObjectItem(propsObj, "flexWrap")) && cJSON_IsBool(item)) {
+        props->set_flags |= IR_PROP_FLEX_WRAP;
+        props->flex_wrap = cJSON_IsTrue(item);
+    }
+
+    // Justify content
+    if ((item = cJSON_GetObjectItem(propsObj, "justifyContent")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_JUSTIFY_CONTENT;
+        if (strcmp(item->valuestring, "center") == 0) props->justify_content = IR_ALIGNMENT_CENTER;
+        else if (strcmp(item->valuestring, "flex-end") == 0) props->justify_content = IR_ALIGNMENT_END;
+        else if (strcmp(item->valuestring, "space-between") == 0) props->justify_content = IR_ALIGNMENT_SPACE_BETWEEN;
+        else if (strcmp(item->valuestring, "space-around") == 0) props->justify_content = IR_ALIGNMENT_SPACE_AROUND;
+        else if (strcmp(item->valuestring, "space-evenly") == 0) props->justify_content = IR_ALIGNMENT_SPACE_EVENLY;
+        else props->justify_content = IR_ALIGNMENT_START;
+    }
+
+    // Align items
+    if ((item = cJSON_GetObjectItem(propsObj, "alignItems")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_ALIGN_ITEMS;
+        if (strcmp(item->valuestring, "center") == 0) props->align_items = IR_ALIGNMENT_CENTER;
+        else if (strcmp(item->valuestring, "flex-end") == 0) props->align_items = IR_ALIGNMENT_END;
+        else if (strcmp(item->valuestring, "stretch") == 0) props->align_items = IR_ALIGNMENT_STRETCH;
+        else props->align_items = IR_ALIGNMENT_START;
+    }
+
+    // Gap
+    if ((item = cJSON_GetObjectItem(propsObj, "gap")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_GAP;
+        props->gap = (float)item->valuedouble;
+    }
+
+    // Colors
+    if ((item = cJSON_GetObjectItem(propsObj, "color")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_COLOR;
+        props->color = json_parse_color(item->valuestring);
+    }
+
+    if ((item = cJSON_GetObjectItem(propsObj, "background")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_BACKGROUND;
+        props->background = json_parse_color(item->valuestring);
+    }
+
+    // Font properties
+    if ((item = cJSON_GetObjectItem(propsObj, "fontSize")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_FONT_SIZE;
+        props->font_size = (float)item->valuedouble;
+    }
+
+    if ((item = cJSON_GetObjectItem(propsObj, "fontWeight")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_FONT_WEIGHT;
+        props->font_weight = (uint16_t)item->valueint;
+    }
+
+    if ((item = cJSON_GetObjectItem(propsObj, "lineHeight")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_LINE_HEIGHT;
+        props->line_height = (float)item->valuedouble;
+    }
+
+    if ((item = cJSON_GetObjectItem(propsObj, "letterSpacing")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_LETTER_SPACING;
+        props->letter_spacing = (float)item->valuedouble;
+    }
+
+    if ((item = cJSON_GetObjectItem(propsObj, "fontFamily")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_FONT_FAMILY;
+        props->font_family = strdup(item->valuestring);
+    }
+
+    // Text align
+    if ((item = cJSON_GetObjectItem(propsObj, "textAlign")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_TEXT_ALIGN;
+        if (strcmp(item->valuestring, "center") == 0) props->text_align = IR_TEXT_ALIGN_CENTER;
+        else if (strcmp(item->valuestring, "right") == 0) props->text_align = IR_TEXT_ALIGN_RIGHT;
+        else if (strcmp(item->valuestring, "justify") == 0) props->text_align = IR_TEXT_ALIGN_JUSTIFY;
+        else props->text_align = IR_TEXT_ALIGN_LEFT;
+    }
+
+    // Opacity
+    if ((item = cJSON_GetObjectItem(propsObj, "opacity")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_OPACITY;
+        props->opacity = (float)item->valuedouble;
+    }
+
+    // Border
+    if ((item = cJSON_GetObjectItem(propsObj, "borderColor")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_BORDER;
+        props->border_color = json_parse_color(item->valuestring);
+    }
+
+    if ((item = cJSON_GetObjectItem(propsObj, "borderWidth")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_BORDER;
+        props->border_width = (float)item->valuedouble;
+    }
+
+    if ((item = cJSON_GetObjectItem(propsObj, "borderRadius")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_BORDER_RADIUS;
+        props->border_radius = (uint8_t)item->valueint;
+    }
+
+    // Padding
+    cJSON* paddingObj = cJSON_GetObjectItem(propsObj, "padding");
+    if (paddingObj && cJSON_IsObject(paddingObj)) {
+        props->set_flags |= IR_PROP_PADDING;
+        if ((item = cJSON_GetObjectItem(paddingObj, "top"))) props->padding.top = (float)item->valuedouble;
+        if ((item = cJSON_GetObjectItem(paddingObj, "right"))) props->padding.right = (float)item->valuedouble;
+        if ((item = cJSON_GetObjectItem(paddingObj, "bottom"))) props->padding.bottom = (float)item->valuedouble;
+        if ((item = cJSON_GetObjectItem(paddingObj, "left"))) props->padding.left = (float)item->valuedouble;
+    }
+
+    // Margin
+    cJSON* marginObj = cJSON_GetObjectItem(propsObj, "margin");
+    if (marginObj && cJSON_IsObject(marginObj)) {
+        props->set_flags |= IR_PROP_MARGIN;
+        if ((item = cJSON_GetObjectItem(marginObj, "top"))) props->margin.top = (float)item->valuedouble;
+        if ((item = cJSON_GetObjectItem(marginObj, "right"))) props->margin.right = (float)item->valuedouble;
+        if ((item = cJSON_GetObjectItem(marginObj, "bottom"))) props->margin.bottom = (float)item->valuedouble;
+        if ((item = cJSON_GetObjectItem(marginObj, "left"))) props->margin.left = (float)item->valuedouble;
+    }
+
+    // Dimensions
+    if ((item = cJSON_GetObjectItem(propsObj, "width")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_WIDTH;
+        props->width = json_parse_dimension(item->valuestring);
+    }
+    if ((item = cJSON_GetObjectItem(propsObj, "height")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_HEIGHT;
+        props->height = json_parse_dimension(item->valuestring);
+    }
+    if ((item = cJSON_GetObjectItem(propsObj, "minWidth")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_MIN_WIDTH;
+        props->min_width = json_parse_dimension(item->valuestring);
+    }
+    if ((item = cJSON_GetObjectItem(propsObj, "maxWidth")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_MAX_WIDTH;
+        props->max_width = json_parse_dimension(item->valuestring);
+    }
+
+    // Background image (gradient string)
+    if ((item = cJSON_GetObjectItem(propsObj, "backgroundImage")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_BACKGROUND_IMAGE;
+        if (props->background_image) free(props->background_image);
+        props->background_image = strdup(item->valuestring);
+    }
+
+    // Background clip
+    if ((item = cJSON_GetObjectItem(propsObj, "backgroundClip")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_BACKGROUND_CLIP;
+        if (strcmp(item->valuestring, "text") == 0) {
+            props->background_clip = IR_BACKGROUND_CLIP_TEXT;
+        } else if (strcmp(item->valuestring, "content-box") == 0) {
+            props->background_clip = IR_BACKGROUND_CLIP_CONTENT_BOX;
+        } else if (strcmp(item->valuestring, "padding-box") == 0) {
+            props->background_clip = IR_BACKGROUND_CLIP_PADDING_BOX;
+        } else {
+            props->background_clip = IR_BACKGROUND_CLIP_BORDER_BOX;
+        }
+    }
+
+    // Text fill color
+    if ((item = cJSON_GetObjectItem(propsObj, "textFillColor")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_TEXT_FILL_COLOR;
+        props->text_fill_color = json_parse_color(item->valuestring);
+    }
+}
+
+/**
+ * Deserialize stylesheet from JSON object
+ * Matches format from json_serialize_stylesheet()
+ */
+static IRStylesheet* json_deserialize_stylesheet(cJSON* obj) {
+    if (!obj || !cJSON_IsObject(obj)) return NULL;
+
+    IRStylesheet* stylesheet = ir_stylesheet_create();
+    if (!stylesheet) return NULL;
+
+    // Deserialize CSS variables
+    cJSON* variables = cJSON_GetObjectItem(obj, "variables");
+    if (variables && cJSON_IsObject(variables)) {
+        cJSON* var = NULL;
+        cJSON_ArrayForEach(var, variables) {
+            if (cJSON_IsString(var) && var->string) {
+                ir_stylesheet_add_variable(stylesheet, var->string, var->valuestring);
+            }
+        }
+    }
+
+    // Deserialize rules
+    cJSON* rules = cJSON_GetObjectItem(obj, "rules");
+    if (rules && cJSON_IsArray(rules)) {
+        cJSON* rule = NULL;
+        cJSON_ArrayForEach(rule, rules) {
+            if (!cJSON_IsObject(rule)) continue;
+
+            // Get selector string
+            cJSON* selectorJson = cJSON_GetObjectItem(rule, "selector");
+            if (!selectorJson || !cJSON_IsString(selectorJson)) continue;
+
+            const char* selector_str = selectorJson->valuestring;
+            if (!selector_str || !selector_str[0]) continue;
+
+            // Get properties object
+            cJSON* propsJson = cJSON_GetObjectItem(rule, "properties");
+            IRStyleProperties props = {0};
+            json_deserialize_style_properties(propsJson, &props);
+
+            // Add rule (ir_stylesheet_add_rule parses the selector string)
+            ir_stylesheet_add_rule(stylesheet, selector_str, &props);
+
+            // Free allocated strings (ir_stylesheet_add_rule deep copies them)
+            if (props.font_family) {
+                free(props.font_family);
+            }
+            if (props.background_image) {
+                free(props.background_image);
+            }
+        }
+    }
+
+    return stylesheet;
+}
 
 /**
  * Deserialize IR component tree from JSON format
@@ -4463,6 +4799,20 @@ IRComponent* ir_deserialize_json(const char* json_string) {
         json_deserialize_c_metadata(c_metadata);
     }
 
+    // Parse stylesheet for CSS rules with complex selectors (e.g., ".logo span")
+    cJSON* stylesheetJson = cJSON_GetObjectItem(root, "stylesheet");
+    if (stylesheetJson && cJSON_IsObject(stylesheetJson)) {
+        IRStylesheet* stylesheet = json_deserialize_stylesheet(stylesheetJson);
+        if (stylesheet) {
+            IRContext* ir_ctx = g_ir_context ?: (ir_set_context(ir_create_context()), g_ir_context);
+            if (ir_ctx->stylesheet) {
+                ir_stylesheet_free(ir_ctx->stylesheet);
+            }
+            ir_ctx->stylesheet = stylesheet;
+            LOGI("[ir_json] Deserialized stylesheet with %u rules", stylesheet->rule_count);
+        }
+    }
+
     // Clean up context before deleting JSON (context references JSON nodes)
     component_def_context_free(ctx);
     cJSON_Delete(root);
@@ -4473,119 +4823,5 @@ IRComponent* ir_deserialize_json(const char* json_string) {
     }
 
     return component;
-}
-
-/**
- * Recursively finalize all TabGroup components in the tree
- * This is necessary for .kir files loaded from disk, where TabGroups
- * are deserialized but never have their TabGroupState runtime state created.
- * @param component Root of component tree to process
- */
-static void ir_finalize_tabgroups_recursive(IRComponent* component) {
-    if (!component) return;
-
-    // Create and finalize state for TabGroup components
-    if (component->type == IR_COMPONENT_TAB_GROUP) {
-        // Check if TabGroupState already exists (Nim DSL path creates it)
-        if (!component->custom_data) {
-            // Find TabBar and TabContent children
-            IRComponent* tab_bar = NULL;
-            IRComponent* tab_content = NULL;
-
-            for (uint32_t i = 0; i < component->child_count; i++) {
-                IRComponent* child = component->children[i];
-                if (child->type == IR_COMPONENT_TAB_BAR) {
-                    tab_bar = child;
-                } else if (child->type == IR_COMPONENT_TAB_CONTENT) {
-                    tab_content = child;
-                }
-            }
-
-            // Only create state if we found both required children
-            if (tab_bar && tab_content) {
-                // Get initial selectedIndex from tab_data (defaults to 0 if not set)
-                int selected_index = component->tab_data ? component->tab_data->selected_index : 0;
-                bool reorderable = component->tab_data ? component->tab_data->reorderable : false;
-
-                // Create the TabGroupState
-                TabGroupState* state = ir_tabgroup_create_state(
-                    component,
-                    tab_bar,
-                    tab_content,
-                    selected_index,
-                    reorderable
-                );
-
-                if (state) {
-                    // Store state in component's custom_data for renderer access
-                    component->custom_data = (char*)state;
-
-                    // Register TabBar and TabContent (critical for setting custom_data pointers)
-                    ir_tabgroup_register_bar(state, tab_bar);
-                    ir_tabgroup_register_content(state, tab_content);
-
-                    // Register all Tab components from TabBar
-                    for (uint32_t i = 0; i < tab_bar->child_count; i++) {
-                        IRComponent* tab = tab_bar->children[i];
-                        if (tab->type == IR_COMPONENT_TAB) {
-                            ir_tabgroup_register_tab(state, tab);
-                        }
-                    }
-
-                    // Register all TabPanel components from TabContent
-                    for (uint32_t i = 0; i < tab_content->child_count; i++) {
-                        IRComponent* panel = tab_content->children[i];
-                        if (panel->type == IR_COMPONENT_TAB_PANEL) {
-                            ir_tabgroup_register_panel(state, panel);
-                        }
-                    }
-
-                    // Finalize the state (sets initial panel visibility based on selectedIndex)
-                    ir_tabgroup_finalize(state);
-                }
-            }
-        } else {
-            // State already exists (Nim DSL path), just finalize it
-            TabGroupState* state = (TabGroupState*)component->custom_data;
-            ir_tabgroup_finalize(state);
-        }
-    }
-
-    // Recursively process all children
-    for (uint32_t i = 0; i < component->child_count; i++) {
-        ir_finalize_tabgroups_recursive(component->children[i]);
-    }
-}
-
-/**
- * Recursively finalize all Table components in the tree
- * This builds the span map for colspan/rowspan support after deserialization.
- * @param component Root of component tree to process
- */
-static void ir_finalize_tables_recursive(IRComponent* component) {
-    if (!component) return;
-
-    // Finalize Table components
-    if (component->type == IR_COMPONENT_TABLE && component->custom_data) {
-        ir_table_finalize(component);
-    }
-
-    // Recursively process all children
-    for (uint32_t i = 0; i < component->child_count; i++) {
-        ir_finalize_tables_recursive(component->children[i]);
-    }
-}
-
-/**
- * Recursively mark a component and all its descendants as dirty.
- */
-static void ir_mark_dirty_recursive(IRComponent* component) {
-    if (!component) return;
-
-    component->dirty_flags |= IR_DIRTY_LAYOUT | IR_DIRTY_SUBTREE;
-
-    for (uint32_t i = 0; i < component->child_count; i++) {
-        ir_mark_dirty_recursive(component->children[i]);
-    }
 }
 

@@ -139,6 +139,14 @@ IRComponent* ir_row(void);
 IRComponent* ir_column(void);
 IRComponent* ir_center(void);
 
+// Inline Semantic Components (for rich text)
+IRComponent* ir_span(void);                  // Inline container <span>
+IRComponent* ir_strong(const char* text);    // Bold/important <strong>
+IRComponent* ir_em(const char* text);        // Emphasis/italic <em>
+IRComponent* ir_code_inline(const char* text); // Inline code <code>
+IRComponent* ir_small(const char* text);     // Small text <small>
+IRComponent* ir_mark(const char* text);      // Highlighted <mark>
+
 // Dimension Helpers
 IRDimension ir_dimension_px(float value);
 IRDimension ir_dimension_percent(float value);
@@ -415,6 +423,8 @@ void ir_set_list_item_marker(IRComponent* comp, const char* marker);
 void ir_set_list_item_task(IRComponent* comp, bool is_task, bool checked);
 void ir_set_link_url(IRComponent* comp, const char* url);
 void ir_set_link_title(IRComponent* comp, const char* title);
+void ir_set_link_target(IRComponent* comp, const char* target);
+void ir_set_link_rel(IRComponent* comp, const char* rel);
 void ir_set_blockquote_depth(IRComponent* comp, uint8_t depth);
 
 // Window metadata

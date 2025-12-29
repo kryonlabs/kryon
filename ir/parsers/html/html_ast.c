@@ -101,6 +101,10 @@ void html_node_set_attribute(HtmlNode* node, const char* name, const char* value
         attr_ptr = &node->src;
     } else if (strcmp(name, "href") == 0) {
         attr_ptr = &node->href;
+    } else if (strcmp(name, "target") == 0) {
+        attr_ptr = &node->target;
+    } else if (strcmp(name, "rel") == 0) {
+        attr_ptr = &node->rel;
     } else if (strcmp(name, "alt") == 0) {
         attr_ptr = &node->alt;
     } else if (strcmp(name, "type") == 0) {
@@ -129,6 +133,8 @@ const char* html_node_get_attribute(HtmlNode* node, const char* name) {
     if (strcmp(name, "style") == 0) return node->style;
     if (strcmp(name, "src") == 0) return node->src;
     if (strcmp(name, "href") == 0) return node->href;
+    if (strcmp(name, "target") == 0) return node->target;
+    if (strcmp(name, "rel") == 0) return node->rel;
     if (strcmp(name, "alt") == 0) return node->alt;
     if (strcmp(name, "type") == 0) return node->input_type;
     if (strcmp(name, "value") == 0) return node->value;
@@ -172,6 +178,8 @@ void html_node_free(HtmlNode* node) {
     if (node->style) free(node->style);
     if (node->src) free(node->src);
     if (node->href) free(node->href);
+    if (node->target) free(node->target);
+    if (node->rel) free(node->rel);
     if (node->alt) free(node->alt);
     if (node->input_type) free(node->input_type);
     if (node->value) free(node->value);
@@ -213,6 +221,8 @@ HtmlNode* html_node_clone(const HtmlNode* node) {
     CLONE_STR(style);
     CLONE_STR(src);
     CLONE_STR(href);
+    CLONE_STR(target);
+    CLONE_STR(rel);
     CLONE_STR(alt);
     CLONE_STR(input_type);
     CLONE_STR(value);

@@ -5,6 +5,7 @@
 #include "../../ir_serialization.h"
 #include "../../ir_logic.h"
 #include "../../ir_builder.h"
+#include "../../ir_stylesheet.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -971,18 +972,13 @@ static IRComponent* ir_html_node_to_component_with_css(HtmlNode* node, CSSStyles
             }
         }
 
-        // Detect component type to handle special cases
+        // Detect component type - ONLY from HTML tag or data-ir-type attribute
+        // CSS class names are for STYLING, never for type inference
         IRComponentType type = IR_COMPONENT_CONTAINER;
         if (node->data_ir_type) {
             type = ir_string_to_component_type(node->data_ir_type);
         } else if (node->tag_name) {
             type = ir_html_tag_to_component_type(node->tag_name);
-            if (type == IR_COMPONENT_CONTAINER && node->class_name) {
-                IRComponentType inferred = ir_infer_type_from_classes(node->class_name);
-                if (inferred != IR_COMPONENT_CONTAINER) {
-                    type = inferred;
-                }
-            }
         }
 
         // Components that extract text from children need the full node
@@ -1308,6 +1304,21 @@ char* ir_html_file_to_kir(const char* filepath) {
                                                           "css_variable", css_var->value, "global");
                 }
             }
+        }
+
+        // Convert CSSStylesheet to IRStylesheet and store in global context
+        // This enables JSON serialization of complex selectors for round-trip
+        IRStylesheet* ir_stylesheet = ir_css_stylesheet_to_ir_stylesheet(stylesheet);
+        if (ir_stylesheet) {
+            // Create global context if needed
+            if (!g_ir_context) {
+                ir_set_context(ir_create_context());
+            }
+            // Free any existing stylesheet
+            if (g_ir_context->stylesheet) {
+                ir_stylesheet_free(g_ir_context->stylesheet);
+            }
+            g_ir_context->stylesheet = ir_stylesheet;
         }
 
         ir_css_stylesheet_free(stylesheet);

@@ -71,6 +71,13 @@ const char* ir_component_type_to_string(IRComponentType type) {
         case IR_COMPONENT_LIST: return "List";
         case IR_COMPONENT_LIST_ITEM: return "ListItem";
         case IR_COMPONENT_LINK: return "Link";
+        // Inline semantic components
+        case IR_COMPONENT_SPAN: return "Span";
+        case IR_COMPONENT_STRONG: return "Strong";
+        case IR_COMPONENT_EM: return "Em";
+        case IR_COMPONENT_CODE_INLINE: return "CodeInline";
+        case IR_COMPONENT_SMALL: return "Small";
+        case IR_COMPONENT_MARK: return "Mark";
         case IR_COMPONENT_CUSTOM: return "Custom";
         default: return "Unknown";
     }
@@ -803,7 +810,25 @@ void ir_destroy_component(IRComponent* component) {
     // Free strings
     if (component->tag) free(component->tag);
     if (component->text_content) free(component->text_content);
-    if (component->custom_data) free(component->custom_data);
+
+    // Free custom_data based on component type
+    if (component->custom_data) {
+        switch (component->type) {
+            case IR_COMPONENT_LINK: {
+                IRLinkData* link_data = (IRLinkData*)component->custom_data;
+                if (link_data->url) free(link_data->url);
+                if (link_data->title) free(link_data->title);
+                if (link_data->target) free(link_data->target);
+                if (link_data->rel) free(link_data->rel);
+                free(link_data);
+                break;
+            }
+            default:
+                free(component->custom_data);
+                break;
+        }
+        component->custom_data = NULL;
+    }
     if (component->visible_condition) free(component->visible_condition);
 
     // Free tab data
@@ -1765,6 +1790,77 @@ IRComponent* ir_center(void) {
     layout->flex.justify_content = IR_ALIGNMENT_CENTER;
     layout->flex.cross_axis = IR_ALIGNMENT_CENTER;
     layout->flex.justify_content = IR_ALIGNMENT_CENTER;
+    return component;
+}
+
+// Inline Semantic Components (for rich text)
+IRComponent* ir_span(void) {
+    return ir_create_component(IR_COMPONENT_SPAN);
+}
+
+IRComponent* ir_strong(const char* text) {
+    IRComponent* component = ir_create_component(IR_COMPONENT_STRONG);
+    if (text) {
+        component->text_content = strdup(text);
+    }
+    // Apply bold font weight
+    IRStyle* style = ir_get_style(component);
+    if (style) {
+        style->font.weight = 700;
+    }
+    return component;
+}
+
+IRComponent* ir_em(const char* text) {
+    IRComponent* component = ir_create_component(IR_COMPONENT_EM);
+    if (text) {
+        component->text_content = strdup(text);
+    }
+    // Apply italic style
+    IRStyle* style = ir_get_style(component);
+    if (style) {
+        style->font.italic = true;
+    }
+    return component;
+}
+
+IRComponent* ir_code_inline(const char* text) {
+    IRComponent* component = ir_create_component(IR_COMPONENT_CODE_INLINE);
+    if (text) {
+        component->text_content = strdup(text);
+    }
+    // Apply monospace font
+    IRStyle* style = ir_get_style(component);
+    if (style) {
+        if (style->font.family) free(style->font.family);
+        style->font.family = strdup("monospace");
+    }
+    return component;
+}
+
+IRComponent* ir_small(const char* text) {
+    IRComponent* component = ir_create_component(IR_COMPONENT_SMALL);
+    if (text) {
+        component->text_content = strdup(text);
+    }
+    // Apply smaller font size
+    IRStyle* style = ir_get_style(component);
+    if (style) {
+        style->font.size = 0.8f * 16.0f;  // 80% of default 16px
+    }
+    return component;
+}
+
+IRComponent* ir_mark(const char* text) {
+    IRComponent* component = ir_create_component(IR_COMPONENT_MARK);
+    if (text) {
+        component->text_content = strdup(text);
+    }
+    // Apply yellow highlight background
+    IRStyle* style = ir_get_style(component);
+    if (style) {
+        style->background = IR_COLOR_RGBA(255, 255, 0, 255);
+    }
     return component;
 }
 
@@ -3198,6 +3294,24 @@ void ir_set_link_title(IRComponent* comp, const char* title) {
 
     if (data->title) free(data->title);
     data->title = title ? strdup(title) : NULL;
+}
+
+void ir_set_link_target(IRComponent* comp, const char* target) {
+    if (!comp || comp->type != IR_COMPONENT_LINK) return;
+    IRLinkData* data = (IRLinkData*)comp->custom_data;
+    if (!data) return;
+
+    if (data->target) free(data->target);
+    data->target = target ? strdup(target) : NULL;
+}
+
+void ir_set_link_rel(IRComponent* comp, const char* rel) {
+    if (!comp || comp->type != IR_COMPONENT_LINK) return;
+    IRLinkData* data = (IRLinkData*)comp->custom_data;
+    if (!data) return;
+
+    if (data->rel) free(data->rel);
+    data->rel = rel ? strdup(rel) : NULL;
 }
 
 void ir_set_blockquote_depth(IRComponent* comp, uint8_t depth) {

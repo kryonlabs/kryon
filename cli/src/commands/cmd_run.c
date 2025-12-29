@@ -791,7 +791,7 @@ int cmd_run(int argc, char** argv) {
                 snprintf(abs_output_dir, sizeof(abs_output_dir), "%s/%s", cwd, output_dir);
             }
 
-            char codegen_cmd[2048];
+            char codegen_cmd[8192];
             snprintf(codegen_cmd, sizeof(codegen_cmd),
                      "cd /mnt/storage/Projects/kryon/codegens/web && "
                      "gcc -std=c99 -O2 "
@@ -908,7 +908,7 @@ int cmd_run(int argc, char** argv) {
                 snprintf(abs_output_dir2, sizeof(abs_output_dir2), "%s/%s", cwd2, output_dir);
             }
 
-            char codegen_cmd[2048];
+            char codegen_cmd[8192];
             snprintf(codegen_cmd, sizeof(codegen_cmd),
                      "cd /mnt/storage/Projects/kryon/codegens/web && "
                      "gcc -std=c99 -O2 "

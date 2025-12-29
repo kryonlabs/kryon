@@ -23,14 +23,25 @@
 extern IRContext* g_ir_context;
 
 // HTML semantic tag mapping (NO kryon-* classes)
+// Returns NULL for components that should output raw content without wrapper tags
 static const char* get_html_tag(IRComponentType type) {
     switch (type) {
+        // Raw text - no wrapper tag
+        case IR_COMPONENT_TEXT: return NULL;
+
         case IR_COMPONENT_BUTTON: return "button";
         case IR_COMPONENT_INPUT: return "input";
         case IR_COMPONENT_CHECKBOX: return "input";
         case IR_COMPONENT_IMAGE: return "img";
         case IR_COMPONENT_CANVAS: return "canvas";
-        case IR_COMPONENT_TEXT: return "span";
+
+        // Inline semantic elements (for rich text)
+        case IR_COMPONENT_SPAN: return "span";
+        case IR_COMPONENT_STRONG: return "strong";
+        case IR_COMPONENT_EM: return "em";
+        case IR_COMPONENT_CODE_INLINE: return "code";
+        case IR_COMPONENT_SMALL: return "small";
+        case IR_COMPONENT_MARK: return "mark";
 
         // Table elements
         case IR_COMPONENT_TABLE: return "table";
@@ -561,6 +572,24 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             break;
     }
 
+    // Handle raw text output (no wrapper tag)
+    // IR_COMPONENT_TEXT outputs raw text content without any HTML tag
+    if (tag == NULL) {
+        // Output text content directly (escaped)
+        if (component->text_content && strlen(component->text_content) > 0) {
+            html_generator_write_indent(generator);
+            char escaped_text[4096];
+            escape_html_text(component->text_content, escaped_text, sizeof(escaped_text));
+            html_generator_write_string(generator, escaped_text);
+            // Don't add newline for inline text - let parent handle formatting
+        }
+        // Process children (inline semantic components may have text children)
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            generate_component_html(generator, component->children[i]);
+        }
+        return true;
+    }
+
     bool is_self_closing = (component->type == IR_COMPONENT_INPUT ||
                           component->type == IR_COMPONENT_CHECKBOX ||
                           component->type == IR_COMPONENT_IMAGE ||
@@ -578,9 +607,37 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         html_generator_write_format(generator, " id=\"%s-%u\"", prefix, component->id);
     }
 
-    // ONLY add class if component has custom styling
-    if (analysis && analysis->needs_css && analysis->suggested_class) {
-        html_generator_write_format(generator, " class=\"%s\"", analysis->suggested_class);
+    // ONLY add class if component has EXPLICIT css_class set
+    // This allows descendant selectors like ".logo span" to work correctly
+    if (component->css_class && component->css_class[0] != '\0') {
+        html_generator_write_format(generator, " class=\"%s\"", component->css_class);
+    } else if (analysis && analysis->needs_css && analysis->suggested_class) {
+        // Fallback: add class for components with custom styling but no explicit class
+        // Skip semantic elements that have their own HTML tags - CSS can target them directly
+        bool skip_class = false;
+        switch (component->type) {
+            // Inline elements - skip to preserve descendant selectors
+            case IR_COMPONENT_SPAN:
+            case IR_COMPONENT_STRONG:
+            case IR_COMPONENT_EM:
+            case IR_COMPONENT_CODE_INLINE:
+            case IR_COMPONENT_MARK:
+            case IR_COMPONENT_LINK:
+            // Semantic block elements - CSS can target h1, h2, p, etc. directly
+            case IR_COMPONENT_HEADING:
+            case IR_COMPONENT_PARAGRAPH:
+            case IR_COMPONENT_LIST:
+            case IR_COMPONENT_LIST_ITEM:
+            case IR_COMPONENT_BLOCKQUOTE:
+            case IR_COMPONENT_CODE_BLOCK:
+                skip_class = true;
+                break;
+            default:
+                break;
+        }
+        if (!skip_class) {
+            html_generator_write_format(generator, " class=\"%s\"", analysis->suggested_class);
+        }
     }
 
     // Add inline styles
@@ -658,12 +715,10 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         // Markdown components
         case IR_COMPONENT_HEADING: {
             IRHeadingData* data = (IRHeadingData*)component->custom_data;
-            if (data) {
-                // Note: tag override now happens before opening tag (see lines 247-268)
-                html_generator_write_format(generator, " data-level=\"%u\"", data->level);
-                if (data->id) {
-                    html_generator_write_format(generator, " id=\"%s\"", data->id);
-                }
+            if (data && data->id) {
+                // Only add id attribute if explicitly set (e.g., for anchor links)
+                // Level is already encoded in the h1/h2/h3 tag itself
+                html_generator_write_format(generator, " id=\"%s\"", data->id);
             }
             break;
         }
@@ -702,6 +757,16 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
                     char escaped_url[2048];
                     escape_html_text(data->url, escaped_url, sizeof(escaped_url));
                     html_generator_write_format(generator, " href=\"%s\"", escaped_url);
+                }
+                if (data->target) {
+                    char escaped_target[128];
+                    escape_html_text(data->target, escaped_target, sizeof(escaped_target));
+                    html_generator_write_format(generator, " target=\"%s\"", escaped_target);
+                }
+                if (data->rel) {
+                    char escaped_rel[256];
+                    escape_html_text(data->rel, escaped_rel, sizeof(escaped_rel));
+                    html_generator_write_format(generator, " rel=\"%s\"", escaped_rel);
                 }
                 if (data->title) {
                     char escaped_title[1024];
